@@ -59,7 +59,8 @@ obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn read(len: uint) -> [u8] {
         let buf = [];
         vec::reserve::<u8>(buf, len);
-        let read = os::libc::fread(vec::to_ptr::<u8>(buf), 1u, len, f);
+        let read = os::libc::fread(vec::unsafe::to_ptr::<u8>(buf),
+                                   1u, len, f);
         vec::unsafe::set_len::<u8>(buf, read);
         ret buf;
     }
@@ -237,7 +238,7 @@ type buf_writer =
 obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn write(v: &[u8]) {
         let len = vec::len::<u8>(v);
-        let vbuf = vec::to_ptr::<u8>(v);
+        let vbuf = vec::unsafe::to_ptr::<u8>(v);
         let nout = os::libc::fwrite(vbuf, len, 1u, f);
         if nout < 1u { log_err "error dumping buffer"; }
     }
@@ -255,7 +256,7 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
         let count = 0u;
         let vbuf;
         while count < len {
-            vbuf = ptr::offset(vec::to_ptr::<u8>(v), count);
+            vbuf = ptr::offset(vec::unsafe::to_ptr::<u8>(v), count);
             let nout = os::libc::write(fd, vbuf, len);
             if nout < 0 {
                 log_err "error dumping buffer";

@@ -19,20 +19,11 @@ fn square_if_odd(n: &uint) -> option::t<uint> {
 fn add(x: &uint, y: &uint) -> uint { ret x + y; }
 
 #[test]
-fn test_reserve_and_on_heap() {
-    let v: [int] = [1, 2];
-    assert (!vec::on_heap(v));
-    vec::reserve(v, 8u);
-    assert (vec::on_heap(v));
-}
-
-#[test]
 fn test_unsafe_ptrs() {
     // Test on-stack copy-from-buf.
     let a = [1, 2, 3];
     let ptr = vec::to_ptr(a);
-    let b = [];
-    vec::unsafe::copy_from_buf(b, ptr, 3u);
+    let b = vec::unsafe::from_buf(ptr, 3u);
     assert (vec::len(b) == 3u);
     assert (b[0] == 1);
     assert (b[1] == 2);
@@ -41,8 +32,7 @@ fn test_unsafe_ptrs() {
     // Test on-heap copy-from-buf.
     let c = [1, 2, 3, 4, 5];
     ptr = vec::to_ptr(c);
-    let d = [];
-    vec::unsafe::copy_from_buf(d, ptr, 5u);
+    let d = vec::unsafe::from_buf(ptr, 5u);
     assert (vec::len(d) == 5u);
     assert (d[0] == 1);
     assert (d[1] == 2);

@@ -158,13 +158,13 @@ export type_kind;
 export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
-export type_needs_copy_glue;
 export type_has_pointers;
 export type_needs_drop;
 export type_is_bool;
 export type_is_bot;
 export type_is_box;
 export type_is_boxed;
+export type_is_ivec;
 export type_is_fp;
 export type_is_integral;
 export type_is_native;
@@ -178,7 +178,6 @@ export type_is_copyable;
 export type_is_tup_like;
 export type_is_str;
 export type_is_unique;
-export type_owns_heap_mem;
 export type_autoderef;
 export type_param;
 export unify;
@@ -226,7 +225,6 @@ type ctxt =
       short_names_cache: hashmap<t, @istr>,
       has_pointer_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, ast::kind>,
-      owns_heap_mem_cache: hashmap<t, bool>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>};
 
 type ty_ctxt = ctxt;
@@ -418,7 +416,6 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map,
           short_names_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           has_pointer_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           kind_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
-          owns_heap_mem_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           ast_ty_to_ty_cache: map::mk_hashmap(ast_util::hash_ty,
                                               ast_util::eq_ty)};
     populate_type_store(cx);
@@ -828,8 +825,6 @@ fn type_is_structural(cx: &ctxt, ty: t) -> bool {
       ty_fn(_, _, _, _, _) { ret true; }
       ty_obj(_) { ret true; }
       ty_res(_, _, _) { ret true; }
-      ty_vec(_) { ret true; }
-      ty_istr. { ret true; }
       _ { ret false; }
     }
 }
@@ -861,8 +856,6 @@ fn type_is_str(cx: &ctxt, ty: t) -> bool {
 
 fn sequence_is_interior(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-
-
       ty::ty_str. {
         ret false;
       }
@@ -919,8 +912,20 @@ fn type_is_boxed(cx: &ctxt, ty: t) -> bool {
     }
 }
 
+fn type_is_ivec(cx: &ctxt, ty: t) -> bool {
+    ret alt struct(cx, ty) {
+      ty_vec(_) { true }
+      ty_istr. { true }
+      _ { false }
+    };
+}
+
 fn type_is_unique(cx: &ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_uniq(_) { ret true; } _ { ret false; } }
+    alt struct(cx, ty) {
+      ty_uniq(_) { ret true; }
+      ty_vec(_) { true }
+      ty_istr. { true }
+      _ { ret false; } }
 }
 
 fn type_is_scalar(cx: &ctxt, ty: t) -> bool {
@@ -947,13 +952,8 @@ fn type_has_pointers(cx: &ctxt, ty: t) -> bool {
 
     let result = false;
     alt struct(cx, ty) {
-
-
       // scalar types
-      ty_nil. {
-        /* no-op */
-
-      }
+      ty_nil. {/* no-op */ }
       ty_bot. {/* no-op */ }
       ty_bool. {/* no-op */ }
       ty_int. {/* no-op */ }
@@ -996,6 +996,7 @@ fn type_has_pointers(cx: &ctxt, ty: t) -> bool {
 fn type_needs_drop(cx: &ctxt, ty: t) -> bool {
     ret alt struct(cx, ty) {
           ty_res(_, _, _) { true }
+          ty_param(_, _) { true }
           _ { type_has_pointers(cx, ty) }
         };
 }
@@ -1152,7 +1153,6 @@ fn type_structurally_contains(cx: &ctxt, ty: t,
         }
         ret false;
       }
-      ty_vec(mt) { ret type_structurally_contains(cx, mt.ty, test); }
       ty_rec(fields) {
         for field in fields {
             if type_structurally_contains(cx, field.mt.ty, test) { ret true; }
@@ -1177,17 +1177,6 @@ fn type_has_dynamic_size(cx: &ctxt, ty: t) -> bool {
     ret type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
         ret alt sty {
           ty_param(_, _) { true }
-          _ { false }
-        };
-    });
-}
-
-fn type_needs_copy_glue(cx: &ctxt, ty: t) -> bool {
-    ret type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
-        ret alt sty {
-          ty_param(_, _) { true }
-          ty_vec(_) { true }
-          ty_istr. { true }
           _ { false }
         };
     });
@@ -1244,82 +1233,6 @@ fn type_is_signed(cx: &ctxt, ty: t) -> bool {
       }
       _ { ret false; }
     }
-}
-
-fn type_owns_heap_mem(cx: &ctxt, ty: t) -> bool {
-    alt cx.owns_heap_mem_cache.find(ty) {
-      some(result) { ret result; }
-      none. {/* fall through */ }
-    }
-
-    let result = false;
-    alt struct(cx, ty) {
-      ty_vec(_) { result = true; }
-      ty_istr. { result = true; }
-
-
-
-      // scalar types
-      ty_nil. {
-        result = false;
-      }
-      ty_bot. { result = false; }
-      ty_bool. { result = false; }
-      ty_int. { result = false; }
-      ty_float. { result = false; }
-      ty_uint. { result = false; }
-      ty_machine(_) { result = false; }
-      ty_char. { result = false; }
-      ty_type. { result = false; }
-      ty_native(_) { result = false; }
-
-
-
-      // boxed types
-      ty_str. {
-        result = false;
-      }
-      ty_box(_) { result = false; }
-      ty_fn(_, _, _, _, _) { result = false; }
-      ty_native_fn(_, _, _) { result = false; }
-      ty_obj(_) { result = false; }
-
-
-
-      // structural types
-      ty_tag(did, tps) {
-        let variants = tag_variants(cx, did);
-        for variant: variant_info in variants {
-            for aty: t in variant.args {
-                // Perform any type parameter substitutions.
-                let arg_ty = substitute_type_params(cx, tps, aty);
-                if type_owns_heap_mem(cx, arg_ty) { result = true; }
-            }
-        }
-      }
-      ty_rec(flds) {
-        for f: field in flds {
-            if type_owns_heap_mem(cx, f.mt.ty) { result = true; }
-        }
-      }
-      ty_tup(elts) {
-        for m in elts { if type_owns_heap_mem(cx, m) { result = true; } }
-      }
-      ty_res(_, inner, tps) {
-        result =
-            type_owns_heap_mem(cx, substitute_type_params(cx, tps, inner));
-      }
-
-
-      ty_ptr(_) {
-        result = false;
-      }
-      ty_var(_) { fail "ty_var in type_owns_heap_mem"; }
-      ty_param(_, _) { result = false; }
-    }
-
-    cx.owns_heap_mem_cache.insert(ty, result);
-    ret result;
 }
 
 // Whether a type is Plain Old Data (i.e. can be safely memmoved).

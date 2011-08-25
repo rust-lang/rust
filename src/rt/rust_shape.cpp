@@ -226,17 +226,6 @@ size_of::walk_struct(bool align, const uint8_t *end_sp) {
     sa = struct_sa;
 }
 
-void
-size_of::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
-    if (!elem_sa.is_set())
-        walk(align);    // Determine the size the slow way.
-    else
-        sa = elem_sa;   // Use the size hint.
-
-    sa.set(sizeof(rust_ivec) - sizeof(uintptr_t) + sa.size * 4,
-           max(sa.alignment, sizeof(uintptr_t)));
-}
-
 
 // Copy constructors
 
@@ -321,8 +310,8 @@ public:
         walk_vec(align, is_pod, get_evec_data_range(dp));
     }
 
-    void walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
-        walk_vec(align, is_pod, get_ivec_data_range(dp));
+    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
+        walk_vec(align, is_pod, get_vec_data_range(dp));
     }
 
     void walk_box(bool align) {

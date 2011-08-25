@@ -206,24 +206,47 @@ str_byte_len(rust_task *task, rust_str *s)
 }
 
 extern "C" CDECL rust_str *
-str_from_ivec(rust_task *task, rust_ivec *v)
+str_from_vec(rust_task *task, rust_vec **vp)
 {
-    bool is_interior = v->fill || !v->payload.ptr;
-    uintptr_t fill = is_interior ? v->fill : v->payload.ptr->fill;
-    void *data = is_interior ? v->payload.data : v->payload.ptr->data;
-
-    rust_str *st =
-        vec_alloc_with_data(task,
-                            fill + 1,   // +1 to fit at least '\0'
-                            fill,
-                            1,
-                            fill ? data : NULL);
+    rust_vec* v = *vp;
+    rust_str *st = vec_alloc_with_data(task,
+                                       v->fill + 1, // +1 for \0
+                                       v->fill,
+                                       1,
+                                       &v->data[0]);
     if (!st) {
         task->fail();
         return NULL;
     }
     st->data[st->fill++] = '\0';
     return st;
+}
+
+extern "C" CDECL void
+vec_reserve_shared(rust_task* task, type_desc* ty, rust_vec** vp,
+                    size_t n_elts) {
+    size_t new_sz = n_elts * ty->size;
+    if (new_sz > (*vp)->alloc) {
+        size_t new_alloc = next_power_of_two(new_sz);
+        *vp = (rust_vec*)task->kernel->realloc(*vp, new_alloc +
+                                                sizeof(rust_vec));
+        (*vp)->alloc = new_alloc;
+    }
+}
+
+/**
+ * Copies elements in an unsafe buffer to the given interior vector. The
+ * vector must have size zero.
+ */
+extern "C" CDECL rust_vec*
+vec_from_buf_shared(rust_task *task, type_desc *ty,
+                     void *ptr, size_t count) {
+    size_t fill = ty->size * count;
+    rust_vec* v = (rust_vec*)task->kernel->malloc(fill + sizeof(rust_vec),
+                                                    "vec_from_buf");
+    v->fill = v->alloc = fill;
+    memmove(&v->data[0], ptr, fill);
+    return v;
 }
 
 extern "C" CDECL rust_str *
@@ -471,23 +494,19 @@ rust_list_files(rust_task *task, rust_str *path) {
       closedir(dirp);
   }
 #endif
-  size_t str_ivec_sz =
-      sizeof(size_t)            // fill
-      + sizeof(size_t)          // alloc
-      + sizeof(rust_str *) * 4; // payload
-  rust_box *box = (rust_box *)task->malloc(sizeof(rust_box) + str_ivec_sz,
-                                           "rust_box(list_files_ivec)");
+  rust_box *box =
+      (rust_box *)task->malloc(sizeof(rust_box) + sizeof(rust_vec*),
+                               "rust_box(list_files_vec)");
+  rust_vec* vec =
+      (rust_vec*)task->kernel->malloc(vec_size<rust_str*>(strings.size()),
+                                       "list_files_vec");
 
   box->ref_count = 1;
-  rust_ivec *iv = (rust_ivec *)&box->data;
-  iv->fill = 0;
-
-  size_t alloc_sz = sizeof(rust_str *) * strings.size();
-  iv->alloc = alloc_sz;
-  iv->payload.ptr = (rust_ivec_heap *)
-      task->kernel->malloc(alloc_sz + sizeof(size_t), "files ivec");
-  iv->payload.ptr->fill = alloc_sz;
-  memcpy(&iv->payload.ptr->data, strings.data(), alloc_sz);
+  rust_vec** box_content = (rust_vec**)&box->data[0];
+  *box_content = vec;
+  size_t alloc_sz = sizeof(rust_str*) * strings.size();
+  vec->fill = vec->alloc = alloc_sz;
+  memcpy(&vec->data[0], strings.data(), alloc_sz);
   return box;
 }
 
@@ -547,157 +566,6 @@ extern "C" CDECL void
 nano_time(rust_task *task, uint64_t *ns) {
     timer t;
     *ns = t.time_ns();
-}
-
-/**
- * Preallocates the exact number of bytes in the given interior vector.
- */
-extern "C" CDECL void
-ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
-{
-    size_t new_alloc = n_elems * ty->size;
-    if (new_alloc <= v->alloc)
-        return;     // Already big enough.
-
-    rust_ivec_heap *heap_part;
-    if (v->fill || !v->payload.ptr) {
-        // On stack; spill to heap.
-        heap_part = (rust_ivec_heap *)task->malloc(new_alloc +
-                                                   sizeof(size_t),
-                                                   "ivec reserve heap part");
-        heap_part->fill = v->fill;
-        memcpy(&heap_part->data, v->payload.data, v->fill);
-
-        v->fill = 0;
-        v->payload.ptr = heap_part;
-    } else {
-        // On heap; resize.
-        heap_part = (rust_ivec_heap *)
-            task->realloc(v->payload.ptr,
-                          new_alloc + sizeof(size_t));
-        v->payload.ptr = heap_part;
-    }
-
-    v->alloc = new_alloc;
-}
-
-/**
- * Preallocates the exact number of bytes in the given interior vector.
- */
-extern "C" CDECL void
-ivec_reserve_shared(rust_task *task, type_desc *ty, rust_ivec *v,
-                    size_t n_elems)
-{
-    size_t new_alloc = n_elems * ty->size;
-    if (new_alloc <= v->alloc)
-        return;     // Already big enough.
-
-    rust_ivec_heap *heap_part;
-    if (v->fill || !v->payload.ptr) {
-        // On stack; spill to heap.
-        heap_part = (rust_ivec_heap *)
-            task->kernel->malloc(new_alloc + sizeof(size_t),
-                                 "ivec reserve shared");
-        heap_part->fill = v->fill;
-        memcpy(&heap_part->data, v->payload.data, v->fill);
-
-        v->fill = 0;
-        v->payload.ptr = heap_part;
-    } else {
-        // On heap; resize.
-        heap_part = (rust_ivec_heap *)task->kernel->realloc(v->payload.ptr,
-                                                new_alloc + sizeof(size_t));
-        v->payload.ptr = heap_part;
-    }
-
-    v->alloc = new_alloc;
-}
-
-/**
- * Returns true if the given vector is on the heap and false if it's on the
- * stack.
- */
-extern "C" CDECL bool
-ivec_on_heap(rust_task *task, type_desc *ty, rust_ivec *v)
-{
-    return !v->fill && v->payload.ptr;
-}
-
-/**
- * Returns an unsafe pointer to the data part of an interior vector.
- */
-extern "C" CDECL void *
-ivec_to_ptr(rust_task *task, type_desc *ty, rust_ivec *v)
-{
-    return v->fill ? v->payload.data : v->payload.ptr->data;
-}
-
-static size_t
-get_ivec_size(rust_ivec *v)
-{
-    if (v->fill)
-        return v->fill;
-    if (v->payload.ptr)
-        return v->payload.ptr->fill;
-    return 0;
-}
-
-/**
- * Copies elements in an unsafe buffer to the given interior vector. The
- * vector must have size zero.
- */
-extern "C" CDECL void
-ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
-                   size_t count)
-{
-    size_t old_size = get_ivec_size(v);
-    if (old_size) {
-        task->fail();
-        return;
-    }
-
-    ivec_reserve(task, ty, v, count);
-
-    size_t new_size = count * ty->size;
-    if (v->fill || !v->payload.ptr) {
-        // On stack.
-        memmove(v->payload.data, ptr, new_size);
-        v->fill = new_size;
-        return;
-    }
-
-    // On heap.
-    memmove(v->payload.ptr->data, ptr, new_size);
-    v->payload.ptr->fill = new_size;
-}
-
-/**
- * Copies elements in an unsafe buffer to the given interior vector. The
- * vector must have size zero.
- */
-extern "C" CDECL void
-ivec_copy_from_buf_shared(rust_task *task, type_desc *ty, rust_ivec *v,
-                   void *ptr, size_t count)
-{
-    size_t old_size = get_ivec_size(v);
-    if (old_size) {
-        task->fail();
-        return;
-    }
-
-    ivec_reserve_shared(task, ty, v, count);
-
-    size_t new_size = count * ty->size;
-    if (v->fill || !v->payload.ptr) {
-        // On stack.
-        memmove(v->payload.data, ptr, new_size);
-        v->fill = new_size;
-        return;
-    }
-
-    // On heap.
-    memmove(v->payload.ptr->data, ptr, new_size);
-    v->payload.ptr->fill = new_size;
 }
 
 extern "C" CDECL void

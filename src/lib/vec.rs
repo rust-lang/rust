@@ -6,27 +6,20 @@ import uint::next_power_of_two;
 import ptr::addr_of;
 
 native "rust-intrinsic" mod rusti {
-    fn ivec_len<T>(v: &[T]) -> uint;
+    fn vec_len<T>(v: &[T]) -> uint;
 }
 
 native "rust" mod rustrt {
-    fn ivec_reserve_shared<T>(v: &mutable [mutable? T], n: uint);
-    fn ivec_on_heap<T>(v: &[T]) -> uint;
-    fn ivec_to_ptr<T>(v: &[T]) -> *T;
-    fn ivec_copy_from_buf_shared<T>(v: &mutable [mutable? T], ptr: *T,
-                                    count: uint);
+    fn vec_reserve_shared<T>(v: &mutable [mutable? T], n: uint);
+    fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
 }
 
 /// Reserves space for `n` elements in the given vector.
 fn reserve<@T>(v: &mutable [mutable? T], n: uint) {
-    rustrt::ivec_reserve_shared(v, n);
+    rustrt::vec_reserve_shared(v, n);
 }
 
-fn on_heap<T>(v: &[T]) -> bool { ret rustrt::ivec_on_heap(v) != 0u; }
-
-fn to_ptr<T>(v: &[T]) -> *T { ret rustrt::ivec_to_ptr(v); }
-
-fn len<T>(v: &[mutable? T]) -> uint { ret rusti::ivec_len(v); }
+fn len<T>(v: &[mutable? T]) -> uint { ret rusti::vec_len(v); }
 
 type init_op<T> = fn(uint) -> T;
 
@@ -310,32 +303,27 @@ iter iter2<@T>(v: &[T]) -> (uint, T) {
 }
 
 mod unsafe {
-    type ivec_repr =
-        {mutable fill: uint,
-         mutable alloc: uint,
-         heap_part: *mutable ivec_heap_part};
-    type ivec_heap_part = {mutable fill: uint};
+    type ivec_repr = {mutable fill: uint,
+                      mutable alloc: uint,
+                      data: u8};
 
-    fn copy_from_buf<T>(v: &mutable [T], ptr: *T, count: uint) {
-        ret rustrt::ivec_copy_from_buf_shared(v, ptr, count);
-    }
-
-    fn from_buf<T>(ptr: *T, bytes: uint) -> [T] {
-        let v = [];
-        copy_from_buf(v, ptr, bytes);
-        ret v;
+    fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
+        ret rustrt::vec_from_buf_shared(ptr, elts);
     }
 
     fn set_len<T>(v: &mutable [T], new_len: uint) {
-        let new_fill = new_len * sys::size_of::<T>();
-        let stack_part: *mutable ivec_repr =
-            ::unsafe::reinterpret_cast(addr_of(v));
-        if (*stack_part).fill == 0u {
-            (*(*stack_part).heap_part).fill = new_fill; // On heap.
-        } else {
-            (*stack_part).fill = new_fill; // On stack.
-        }
+        let repr: **ivec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        (**repr).fill = new_len * sys::size_of::<T>();
     }
+
+    fn to_ptr<T>(v: &[T]) -> *T {
+        let repr: **ivec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
+    }
+}
+
+fn to_ptr<T>(v: &[T]) -> *T {
+    ret unsafe::to_ptr(v);
 }
 
 // Local Variables:

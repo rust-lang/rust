@@ -60,7 +60,7 @@ type parser =
         fn get_sess() -> parse_sess;
     };
 
-fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: &istr,
+fn new_parser_from_file(sess: parse_sess, cfg: &ast::crate_cfg, path: &istr,
                         chpos: uint, byte_pos: uint, ftype: file_type) ->
    parser {
     let src = io::read_whole_file_str(path);
@@ -69,11 +69,10 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: &istr,
     sess.cm.files += [filemap];
     let itr = @interner::mk(istr::hash, istr::eq);
     let rdr = lexer::new_reader(sess.cm, src, filemap, itr);
-
     ret new_parser(sess, cfg, rdr, ftype);
 }
 
-fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
+fn new_parser(sess: parse_sess, cfg: &ast::crate_cfg, rdr: lexer::reader,
               ftype: file_type) -> parser {
     obj stdio_parser(sess: parse_sess,
                      cfg: ast::crate_cfg,
@@ -141,7 +140,6 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
         fn get_id() -> node_id { ret next_node_id(sess); }
         fn get_sess() -> parse_sess { ret sess; }
     }
-
     let tok0 = lexer::next_token(rdr);
     let span0 = ast_util::mk_sp(tok0.chpos, rdr.get_chpos());
     ret stdio_parser(sess, cfg, ftype, tok0.tok, span0, span0, [],

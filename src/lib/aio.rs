@@ -45,7 +45,7 @@ tag request {
 type ctx = chan<request>;
 
 fn ip_to_sbuf(ip: net::ip_addr) -> *u8 {
-    vec::to_ptr(str::bytes(net::format_addr(ip)))
+    vec::unsafe::to_ptr(str::bytes(net::format_addr(ip)))
 }
 
 fn connect_task(ip: net::ip_addr, portnum: int, evt: chan<socket_event>) {
@@ -132,7 +132,7 @@ fn request_task(c: chan<ctx>) {
             task::spawn(bind server_task(ip, portnum, events, server));
           }
           write(socket, v, status) {
-            rustrt::aio_writedata(socket, vec::to_ptr::<u8>(v),
+            rustrt::aio_writedata(socket, vec::unsafe::to_ptr::<u8>(v),
                                   vec::len::<u8>(v), status);
           }
           close_server(server, status) {

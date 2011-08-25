@@ -62,16 +62,6 @@ upcall_log_str(rust_task *task, uint32_t level, rust_str *str) {
 }
 
 extern "C" CDECL void
-upcall_log_istr(rust_task *task, uint32_t level, rust_ivec *str) {
-    LOG_UPCALL_ENTRY(task);
-    if (task->sched->log_lvl < level)
-        return;
-    const char *buf = (const char *)
-        (str->fill ? str->payload.data : str->payload.ptr->data);
-    task->sched->log(task, level, "rust: %s", buf);
-}
-
-extern "C" CDECL void
 upcall_yield(rust_task *task) {
     LOG_UPCALL_ENTRY(task);
     LOG(task, comm, "upcall yield()");
@@ -354,69 +344,33 @@ upcall_get_type_desc(rust_task *task,
     return td;
 }
 
-/**
- * Resizes an interior vector that has been spilled to the heap.
- */
 extern "C" CDECL void
-upcall_ivec_resize_shared(rust_task *task,
-                          rust_ivec *v,
-                          size_t newsz) {
+upcall_vec_grow(rust_task* task, rust_vec** vp, size_t new_sz) {
     LOG_UPCALL_ENTRY(task);
-    scoped_lock with(task->sched->lock);
-    I(task->sched, !v->fill);
-
-    size_t new_alloc = next_power_of_two(newsz);
-    rust_ivec_heap *new_heap_part = (rust_ivec_heap *)
-        task->kernel->realloc(v->payload.ptr, new_alloc + sizeof(size_t));
-
-    new_heap_part->fill = newsz;
-    v->alloc = new_alloc;
-    v->payload.ptr = new_heap_part;
-}
-
-/**
- * Spills an interior vector to the heap.
- */
-extern "C" CDECL void
-upcall_ivec_spill_shared(rust_task *task,
-                         rust_ivec *v,
-                         size_t newsz) {
-    LOG_UPCALL_ENTRY(task);
-    scoped_lock with(task->sched->lock);
-    size_t new_alloc = next_power_of_two(newsz);
-
-    rust_ivec_heap *heap_part = (rust_ivec_heap *)
-        task->kernel->malloc(new_alloc + sizeof(size_t),
-                             "ivec spill shared");
-    heap_part->fill = newsz;
-    memcpy(&heap_part->data, v->payload.data, v->fill);
-
-    v->fill = 0;
-    v->alloc = new_alloc;
-    v->payload.ptr = heap_part;
-}
-
-extern "C" CDECL void
-upcall_ivec_push(rust_task* task, rust_ivec* v, type_desc* elt_ty, void* x) {
-    LOG_UPCALL_ENTRY(task);
-    bool is_interior = v->fill || !v->payload.ptr;
-    size_t sz = elt_ty->size;
-    size_t old_fill = is_interior ? v->fill : v->payload.ptr->fill;
-    size_t new_sz = sz + old_fill;
-    if (new_sz > v->alloc) {
-        if (is_interior) {
-            upcall_ivec_spill_shared(task, v, new_sz);
-            is_interior = false;
-        } else {
-            upcall_ivec_resize_shared(task, v, new_sz);
-        }
-    } else {
-        if (is_interior) v->fill = new_sz;
-        else v->payload.ptr->fill = new_sz;
+    // FIXME factor this into a utility function
+    if (new_sz > (*vp)->alloc) {
+        size_t new_alloc = next_power_of_two(new_sz);
+        *vp = (rust_vec*)task->kernel->realloc(*vp, new_alloc +
+                                                sizeof(rust_vec));
+        (*vp)->alloc = new_alloc;
     }
-    uint8_t* dataptr = is_interior ? &v->payload.data[0]
-                                   : &v->payload.ptr->data[0];
-    copy_elements(task, elt_ty, dataptr + old_fill, x, sz);
+    (*vp)->fill = new_sz;
+}
+
+extern "C" CDECL void
+upcall_vec_push(rust_task* task, rust_vec** vp, type_desc* elt_ty,
+                 void* elt) {
+    LOG_UPCALL_ENTRY(task);
+    rust_vec* v = *vp;
+    size_t new_sz = v->fill + elt_ty->size;
+    if (new_sz > v->alloc) {
+        size_t new_alloc = next_power_of_two(new_sz);
+        *vp = v = (rust_vec*)task->kernel->realloc(v, new_alloc +
+                                                    sizeof(rust_vec));
+        v->alloc = new_alloc;
+    }
+    copy_elements(task, elt_ty, &v->data[0] + v->fill, elt, elt_ty->size);
+    v->fill += elt_ty->size;
 }
 
 

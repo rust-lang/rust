@@ -92,23 +92,11 @@ const closure_elt_bindings: int = 1;
 
 const closure_elt_ty_params: int = 2;
 
-const ivec_default_length: uint = 4u;
+const ivec_elt_fill: uint = 0u;
 
-const ivec_elt_len: uint = 0u;
-
-const ivec_elt_alen: uint = 1u;
+const ivec_elt_alloc: uint = 1u;
 
 const ivec_elt_elems: uint = 2u;
-
-const ivec_heap_stub_elt_zero: uint = 0u;
-
-const ivec_heap_stub_elt_alen: uint = 1u;
-
-const ivec_heap_stub_elt_ptr: uint = 2u;
-
-const ivec_heap_elt_len: uint = 0u;
-
-const ivec_heap_elt_elems: uint = 1u;
 
 const worst_case_glue_call_args: int = 7;
 

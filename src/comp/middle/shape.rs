@@ -313,7 +313,6 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
         s += [shape_ivec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
-        add_size_hint(ccx, s, unit_ty);
         add_substr(s, shape_of(ccx, unit_ty));
       }
 
@@ -365,7 +364,6 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
       ty::ty_vec(mt) {
         s += [shape_ivec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
-        add_size_hint(ccx, s, mt.ty);
         add_substr(s, shape_of(ccx, mt.ty));
       }
       ty::ty_rec(fields) {
@@ -414,14 +412,6 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
     }
 
     ret s;
-}
-
-fn add_size_hint(ccx: &@crate_ctxt, s: &mutable [u8], typ: ty::t) {
-    if ty::type_has_dynamic_size(ccx.tcx, typ) { s += [0u8, 0u8, 0u8]; ret; }
-
-    let llty = trans::type_of(ccx, dummy_sp(), typ);
-    add_u16(s, trans::llsize_of_real(ccx, llty) as u16);
-    s += [trans::llalign_of_real(ccx, llty) as u8];
 }
 
 // FIXME: We might discover other variants as we traverse these. Handle this.

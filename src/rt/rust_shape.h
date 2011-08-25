@@ -37,7 +37,7 @@ const uint8_t SHAPE_I64 = 7u;
 const uint8_t SHAPE_F32 = 8u;
 const uint8_t SHAPE_F64 = 9u;
 const uint8_t SHAPE_EVEC = 10u;
-const uint8_t SHAPE_IVEC = 11u;
+const uint8_t SHAPE_VEC = 11u;
 const uint8_t SHAPE_TAG = 12u;
 const uint8_t SHAPE_BOX = 13u;
 const uint8_t SHAPE_STRUCT = 17u;
@@ -192,7 +192,7 @@ protected:
 
 private:
     void walk_evec(bool align);
-    void walk_ivec(bool align);
+    void walk_vec(bool align);
     void walk_tag(bool align);
     void walk_box(bool align);
     void walk_struct(bool align);
@@ -278,6 +278,7 @@ public:
 template<typename T>
 void
 ctxt<T>::walk(bool align) {
+  
     switch (*sp++) {
     case SHAPE_U8:      WALK_NUMBER(uint8_t);   break;
     case SHAPE_U16:     WALK_NUMBER(uint16_t);  break;
@@ -290,7 +291,7 @@ ctxt<T>::walk(bool align) {
     case SHAPE_F32:     WALK_NUMBER(float);     break;
     case SHAPE_F64:     WALK_NUMBER(double);    break;
     case SHAPE_EVEC:    walk_evec(align);       break;
-    case SHAPE_IVEC:    walk_ivec(align);       break;
+    case SHAPE_VEC:     walk_vec(align);        break;
     case SHAPE_TAG:     walk_tag(align);        break;
     case SHAPE_BOX:     walk_box(align);        break;
     case SHAPE_STRUCT:  walk_struct(align);     break;
@@ -347,18 +348,13 @@ ctxt<T>::walk_evec(bool align) {
 
 template<typename T>
 void
-ctxt<T>::walk_ivec(bool align) {
+ctxt<T>::walk_vec(bool align) {
     bool is_pod = *sp++;
-    size_align elem_sa = get_size_align(sp);
 
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    // FIXME: Hack to work around our incorrect alignment in some cases.
-    if (elem_sa.alignment == 8)
-        elem_sa.alignment = 4;
-
-    static_cast<T *>(this)->walk_ivec(align, is_pod, elem_sa);
+    static_cast<T *>(this)->walk_vec(align, is_pod, sp_size);
 
     sp = end_sp;
 }
@@ -471,8 +467,8 @@ public:
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
         DPRINT("evec<"); walk(align); DPRINT(">");
     }
-    void walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
-        DPRINT("ivec<"); walk(align); DPRINT(">");
+    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
+        DPRINT("vec<"); walk(align); DPRINT(">");
     }
     void walk_box(bool align) {
         DPRINT("box<"); walk(align); DPRINT(">");
@@ -522,7 +518,6 @@ public:
 
     void walk_tag(bool align, tag_info &tinfo);
     void walk_struct(bool align, const uint8_t *end_sp);
-    void walk_ivec(bool align, bool is_pod, size_align &elem_sa);
 
     void walk_box(bool align)   { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_port(bool align)  { sa.set(sizeof(void *),   sizeof(void *)); }
@@ -533,6 +528,9 @@ public:
 
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
         sa.set(sizeof(void *), sizeof(void *));
+    }
+    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
+        sa.set(sizeof(void*), sizeof(void*));
     }
 
     void walk_var(bool align, uint8_t param_index) {
@@ -725,9 +723,9 @@ protected:
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_evec_data_range(ptr dp);
-    static std::pair<uint8_t *,uint8_t *> get_ivec_data_range(ptr dp);
+    static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
     static std::pair<ptr_pair,ptr_pair> get_evec_data_range(ptr_pair &dp);
-    static std::pair<ptr_pair,ptr_pair> get_ivec_data_range(ptr_pair &dp);
+    static std::pair<ptr_pair,ptr_pair> get_vec_data_range(ptr_pair &dp);
 
 public:
     U dp;
@@ -740,7 +738,6 @@ public:
     : ctxt< data<T,U> >(in_task, in_sp, in_params, in_tables), dp(in_dp) {}
 
     void walk_tag(bool align, tag_info &tinfo);
-    void walk_ivec(bool align, bool is_pod, size_align &elem_sa);
 
     void walk_struct(bool align, const uint8_t *end_sp) {
         static_cast<T *>(this)->walk_struct(align, end_sp);
@@ -748,6 +745,9 @@ public:
 
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
         DATA_SIMPLE(void *, walk_evec(align, is_pod, sp_size));
+    }
+    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
+        DATA_SIMPLE(void *, walk_vec(align, is_pod, sp_size));
     }
 
     void walk_box(bool align)   { DATA_SIMPLE(void *, walk_box(align)); }
@@ -815,27 +815,10 @@ data<T,U>::get_evec_data_range(ptr dp) {
 
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
-data<T,U>::get_ivec_data_range(ptr dp) {
-    size_t fill = bump_dp<size_t>(dp);
-    bump_dp<size_t>(dp);    // Skip over alloc.
-    uint8_t *payload_dp = dp;
-    rust_ivec_payload payload = bump_dp<rust_ivec_payload>(dp);
-
-    uint8_t *start, *end;
-    if (!fill) {
-        if (!payload.ptr) {             // Zero length.
-            start = end = NULL;
-        } else {                        // On heap.
-            fill = payload.ptr->fill;
-            start = payload.ptr->data;
-            end = start + fill;
-        }
-    } else {                            // On stack.
-        start = payload_dp;
-        end = start + fill;
-    }
-
-    return std::make_pair(start, end);
+data<T,U>::get_vec_data_range(ptr dp) {
+    rust_vec* ptr = bump_dp<rust_vec*>(dp);
+    uint8_t* data = &ptr->data[0];
+    return std::make_pair(data, data + ptr->fill);
 }
 
 template<typename T,typename U>
@@ -850,30 +833,12 @@ data<T,U>::get_evec_data_range(ptr_pair &dp) {
 
 template<typename T,typename U>
 std::pair<ptr_pair,ptr_pair>
-data<T,U>::get_ivec_data_range(ptr_pair &dp) {
-    std::pair<uint8_t *,uint8_t *> fst = get_ivec_data_range(dp.fst);
-    std::pair<uint8_t *,uint8_t *> snd = get_ivec_data_range(dp.snd);
+data<T,U>::get_vec_data_range(ptr_pair &dp) {
+    std::pair<uint8_t *,uint8_t *> fst = get_vec_data_range(dp.fst);
+    std::pair<uint8_t *,uint8_t *> snd = get_vec_data_range(dp.snd);
     ptr_pair start(fst.first, snd.first);
     ptr_pair end(fst.second, snd.second);
     return std::make_pair(start, end);
-}
-
-template<typename T,typename U>
-void
-data<T,U>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
-    if (!elem_sa.is_set())
-        elem_sa = size_of::get(*this);
-    else if (elem_sa.alignment == 8)
-        elem_sa.alignment = 4;  // FIXME: This is an awful hack.
-
-    // Get a pointer to the interior vector, and determine its size.
-    if (align) dp = align_to(dp, ALIGNOF(rust_ivec *));
-    U end_dp = dp + sizeof(rust_ivec) - sizeof(uintptr_t) + elem_sa.size * 4;
-
-    // Call to the implementation.
-    static_cast<T *>(this)->walk_ivec(align, is_pod, elem_sa);
-
-    dp = end_dp;
 }
 
 template<typename T,typename U>
@@ -978,8 +943,8 @@ private:
         walk_vec(align, is_pod, get_evec_data_range(dp));
     }
 
-    void walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
-        walk_vec(align, is_pod, get_ivec_data_range(dp));
+    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
+        walk_vec(align, is_pod, get_vec_data_range(dp));
     }
 
     void walk_tag(bool align, tag_info &tinfo, uint32_t tag_variant) {

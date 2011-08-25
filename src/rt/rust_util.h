@@ -197,27 +197,17 @@ typedef rust_evec rust_str;
 // Interior vectors (rust-user-code level).
 
 struct
-rust_ivec_heap
-{
-    size_t fill;
-    uint8_t data[];
-};
-
-// Note that the payload is actually size 4*sizeof(elem), even when heapified
-union
-rust_ivec_payload
-{
-    rust_ivec_heap *ptr;    // if on heap
-    uint8_t data[];         // if on stack
-};
-
-struct
-rust_ivec
+rust_vec
 {
     size_t fill;    // in bytes; if zero, heapified
     size_t alloc;   // in bytes
-    rust_ivec_payload payload;
+    uint8_t data[0];
 };
+
+template <typename T>
+inline size_t vec_size(size_t elems) {
+    return sizeof(rust_vec) + sizeof(T) * elems;
+}
 
 //
 // Local Variables:

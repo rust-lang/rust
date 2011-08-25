@@ -10,7 +10,7 @@ command_line_args : public kernel_owned<command_line_args>
     rust_str **strs;
 
     // [str] passed to rust_task::start.
-    rust_ivec *args;
+    rust_vec *args;
 
     command_line_args(rust_task *task,
                       int sys_argc,
@@ -51,21 +51,13 @@ command_line_args : public kernel_owned<command_line_args>
             strs[i]->ref_count++;
         }
 
-        size_t ivec_interior_sz =
-            sizeof(size_t) * 2 + sizeof(rust_str *) * 4;
-        args = (rust_ivec *)
-            kernel->malloc(ivec_interior_sz,
+        args = (rust_vec *)
+            kernel->malloc(vec_size<rust_str*>(argc),
                            "command line arg interior");
-        args->fill = 0;
-        size_t ivec_exterior_sz = sizeof(rust_str *) * argc;
-        args->alloc = ivec_exterior_sz;
-        // NB: _rust_main owns the ivec payload and will be responsible for
+        args->fill = args->alloc = sizeof(rust_str *) * argc;
+        // NB: _rust_main owns the vec and will be responsible for
         // freeing it
-        args->payload.ptr = (rust_ivec_heap *)
-            kernel->malloc(ivec_exterior_sz + sizeof(size_t),
-                           "command line arg exterior");
-        args->payload.ptr->fill = ivec_exterior_sz;
-        memcpy(&args->payload.ptr->data, strs, ivec_exterior_sz);
+        memcpy(&args->data[0], strs, args->fill);
     }
 
     ~command_line_args() {

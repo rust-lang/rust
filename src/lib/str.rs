@@ -60,7 +60,7 @@ native "rust" mod rustrt {
     fn str_buf(s: str) -> sbuf;
     fn str_byte_len(s: str) -> uint;
     fn str_alloc(n_bytes: uint) -> str;
-    fn str_from_ivec(b: &[mutable? u8]) -> str;
+    fn str_from_vec(b: &[mutable? u8]) -> str;
     fn str_from_cstr(cstr: sbuf) -> str;
     fn str_from_buf(buf: sbuf, len: uint) -> str;
     fn str_push_byte(s: str, byte: uint) -> str;
@@ -187,10 +187,10 @@ fn bytes(s: str) -> [u8] {
 }
 
 fn unsafe_from_bytes(v: &[mutable? u8]) -> str {
-    ret rustrt::str_from_ivec(v);
+    ret rustrt::str_from_vec(v);
 }
 
-fn unsafe_from_byte(u: u8) -> str { ret rustrt::str_from_ivec([u]); }
+fn unsafe_from_byte(u: u8) -> str { ret rustrt::str_from_vec([u]); }
 
 fn str_from_cstr(cstr: sbuf) -> str { ret rustrt::str_from_cstr(cstr); }
 

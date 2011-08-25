@@ -5,6 +5,7 @@
 
 import std::int;
 import std::vec;
+import std::vec::to_ptr;
 import std::str;
 import std::istr;
 import std::uint;
@@ -454,7 +455,7 @@ fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
     let elt_count = llvm::LLVMCountStructElementTypes(llstructty);
     assert (n < elt_count);
     let elt_tys = std::vec::init_elt(T_nil(), elt_count);
-    llvm::LLVMGetStructElementTypes(llstructty, std::vec::to_ptr(elt_tys));
+    llvm::LLVMGetStructElementTypes(llstructty, to_ptr(elt_tys));
     ret llvm::LLVMGetElementType(elt_tys[n]);
 }
 
@@ -539,7 +540,7 @@ fn T_size_t() -> TypeRef {
 }
 
 fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
-    ret llvm::LLVMFunctionType(output, std::vec::to_ptr(inputs),
+    ret llvm::LLVMFunctionType(output, to_ptr(inputs),
                                std::vec::len::<TypeRef>(inputs), False);
 }
 
@@ -550,8 +551,8 @@ fn T_fn_pair(cx: &crate_ctxt, tfn: TypeRef) -> TypeRef {
 fn T_ptr(t: TypeRef) -> TypeRef { ret llvm::LLVMPointerType(t, 0u); }
 
 fn T_struct(elts: &[TypeRef]) -> TypeRef {
-    ret llvm::LLVMStructType(std::vec::to_ptr(elts), std::vec::len(elts),
-                             False);
+    ret llvm::LLVMStructType(to_ptr(elts),
+                             std::vec::len(elts), False);
 }
 
 fn T_named_struct(name: &istr) -> TypeRef {
@@ -562,8 +563,8 @@ fn T_named_struct(name: &istr) -> TypeRef {
 }
 
 fn set_struct_body(t: TypeRef, elts: &[TypeRef]) {
-    llvm::LLVMStructSetBody(t, std::vec::to_ptr(elts), std::vec::len(elts),
-                            False);
+    llvm::LLVMStructSetBody(t, to_ptr(elts),
+                            std::vec::len(elts), False);
 }
 
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
@@ -606,7 +607,7 @@ fn T_tydesc_field(cx: &crate_ctxt, field: int) -> TypeRef {
     let tydesc_elts: [TypeRef] =
         std::vec::init_elt::<TypeRef>(T_nil(), abi::n_tydesc_fields as uint);
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
-                                    std::vec::to_ptr::<TypeRef>(tydesc_elts));
+                                    to_ptr::<TypeRef>(tydesc_elts));
     let t = llvm::LLVMGetElementType(tydesc_elts[field]);
     ret t;
 }
@@ -676,48 +677,14 @@ fn T_opaque_vec_ptr() -> TypeRef { ret T_ptr(T_evec(T_int())); }
 //
 // TODO: Support user-defined vector sizes.
 fn T_ivec(t: TypeRef) -> TypeRef {
-    ret T_struct([T_int(), // Length ("fill"; if zero, heapified)
-                  T_int(), // Alloc
-                  T_array(t, abi::ivec_default_length)]); // Body elements
-
+    ret T_struct([T_int(), // fill
+                  T_int(), // alloc
+                  T_array(t, 0u)]); // elements
 }
-
 
 // Note that the size of this one is in bytes.
 fn T_opaque_ivec() -> TypeRef {
-    ret T_struct([T_int(), // Length ("fill"; if zero, heapified)
-                  T_int(), // Alloc
-                  T_array(T_i8(), 0u)]); // Body elements
-
-}
-
-fn T_ivec_heap_part(t: TypeRef) -> TypeRef {
-    ret T_struct([T_int(), // Real length
-                  T_array(t, 0u)]); // Body elements
-
-}
-
-
-// Interior vector on the heap, also known as the "stub". Cast to this when
-// the allocated length (second element of T_ivec above) is zero.
-fn T_ivec_heap(t: TypeRef) -> TypeRef {
-    ret T_struct([T_int(), // Length (zero)
-                  T_int(), // Alloc
-                  T_ptr(T_ivec_heap_part(t))]); // Pointer
-
-}
-
-fn T_opaque_ivec_heap_part() -> TypeRef {
-    ret T_struct([T_int(), // Real length
-                  T_array(T_i8(), 0u)]); // Body elements
-
-}
-
-fn T_opaque_ivec_heap() -> TypeRef {
-    ret T_struct([T_int(), // Length (zero)
-                  T_int(), // Alloc
-                  T_ptr(T_opaque_ivec_heap_part())]); // Pointer
-
+    ret T_ivec(T_i8());
 }
 
 fn T_str() -> TypeRef { ret T_evec(T_i8()); }
