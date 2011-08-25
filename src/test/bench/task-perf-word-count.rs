@@ -81,10 +81,10 @@ mod map_reduce {
         // log_err "map_task " + input;
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap<str, chan<reduce_proto>>,
+        fn emit(im: &map::hashmap<istr, chan<reduce_proto>>,
                 ctrl: chan<ctrl_proto>, key: str, val: int) {
             let c;
-            alt im.find(key) {
+            alt im.find(istr::from_estr(key)) {
               some(_c) {
 
                 c = _c
@@ -94,7 +94,7 @@ mod map_reduce {
                 let keyi = str::bytes(key);
                 send(ctrl, find_reducer(keyi, chan(p)));
                 c = recv(p);
-                im.insert(key, c);
+                im.insert(istr::from_estr(key), c);
                 send(c, ref);
               }
             }
@@ -103,7 +103,7 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        for each kv: @{key: str, val: chan<reduce_proto>} in
+        for each kv: @{key: istr, val: chan<reduce_proto>} in
                  intermediates.items() {
             send(kv.val, release);
         }
@@ -147,7 +147,7 @@ mod map_reduce {
         // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let reducers: map::hashmap<str, chan<reduce_proto>>;
+        let reducers: map::hashmap<istr, chan<reduce_proto>>;
 
         reducers = map::new_str_hash();
 
@@ -163,7 +163,7 @@ mod map_reduce {
               }
               find_reducer(ki, cc) {
                 let c;
-                let k = str::unsafe_from_bytes(ki);
+                let k = istr::unsafe_from_bytes(ki);
                 // log_err "finding reducer for " + k;
                 alt reducers.find(k) {
                   some(_c) {
@@ -174,7 +174,8 @@ mod map_reduce {
                     // log_err "creating new reducer for " + k;
                     let p = port();
                     tasks +=
-                        [task::spawn_joinable(bind reduce_task(k, chan(p)))];
+                        [task::spawn_joinable(
+                            bind reduce_task(istr::to_estr(k), chan(p)))];
                     c = recv(p);
                     reducers.insert(k, c);
                   }
@@ -184,7 +185,7 @@ mod map_reduce {
             }
         }
 
-        for each kv: @{key: str, val: chan<reduce_proto>} in reducers.items()
+        for each kv: @{key: istr, val: chan<reduce_proto>} in reducers.items()
                  {
             send(kv.val, done);
         }

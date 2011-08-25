@@ -10,6 +10,7 @@ import option = std::option::t;
 import std::option::some;
 import std::option::none;
 import std::str;
+import std::istr;
 import std::vec;
 import std::map;
 import std::task;
@@ -40,10 +41,10 @@ mod map_reduce {
 
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap<str, int>, ctrl: chan<ctrl_proto>,
+        fn emit(im: &map::hashmap<istr, int>, ctrl: chan<ctrl_proto>,
                 key: str, val: str) {
             let c;
-            alt im.find(key) {
+            alt im.find(istr::from_estr(key)) {
               some(_c) { c = _c }
               none. {
                 let p = port();
@@ -52,7 +53,7 @@ mod map_reduce {
                 log_err "receiving";
                 c = recv(p);
                 log_err c;
-                im.insert(key, c);
+                im.insert(istr::from_estr(key), c);
               }
             }
         }
@@ -67,7 +68,7 @@ mod map_reduce {
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let reducers: map::hashmap<str, int>;
+        let reducers: map::hashmap<istr, int>;
 
         reducers = map::new_str_hash();
 
@@ -80,7 +81,7 @@ mod map_reduce {
               mapper_done. { num_mappers -= 1; }
               find_reducer(k, cc) {
                 let c;
-                alt reducers.find(str::unsafe_from_bytes(k)) {
+                alt reducers.find(istr::unsafe_from_bytes(k)) {
                   some(_c) { c = _c; }
                   none. { c = 0; }
                 }

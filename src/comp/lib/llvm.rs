@@ -901,22 +901,26 @@ native "cdecl" mod llvm = "rustllvm" {
 /* Memory-managed object interface to type handles. */
 
 obj type_names(type_names: std::map::hashmap<TypeRef, str>,
-               named_types: std::map::hashmap<str, TypeRef>) {
+               named_types: std::map::hashmap<istr, TypeRef>) {
 
     fn associate(s: str, t: TypeRef) {
-        assert (!named_types.contains_key(s));
+        assert (!named_types.contains_key(istr::from_estr(s)));
         assert (!type_names.contains_key(t));
         type_names.insert(t, s);
-        named_types.insert(s, t);
+        named_types.insert(istr::from_estr(s), t);
     }
 
     fn type_has_name(t: TypeRef) -> bool { ret type_names.contains_key(t); }
 
     fn get_name(t: TypeRef) -> str { ret type_names.get(t); }
 
-    fn name_has_type(s: str) -> bool { ret named_types.contains_key(s); }
+    fn name_has_type(s: str) -> bool {
+        ret named_types.contains_key(istr::from_estr(s));
+    }
 
-    fn get_type(s: str) -> TypeRef { ret named_types.get(s); }
+    fn get_type(s: str) -> TypeRef {
+        ret named_types.get(istr::from_estr(s));
+    }
 }
 
 fn mk_type_names() -> type_names {

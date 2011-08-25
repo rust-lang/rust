@@ -2,6 +2,7 @@ use std;
 
 import codemap::span;
 import std::vec;
+import std::istr;
 import std::option;
 import std::map::hashmap;
 import std::map::new_str_hash;
@@ -18,6 +19,7 @@ import fold::*;
 import ast::node_id;
 import ast_util::respan;
 import ast::ident;
+import ast::identistr;
 import ast::path;
 import ast::ty;
 import ast::blk;
@@ -155,9 +157,9 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
 
 
 type binders =
-    {real_binders: hashmap<ident, selector>,
+    {real_binders: hashmap<identistr, selector>,
      mutable literal_ast_matchers: [selector]};
-type bindings = hashmap<ident, arb_depth<matchable>>;
+type bindings = hashmap<identistr, arb_depth<matchable>>;
 
 fn acumm_bindings(_cx: &ext_ctxt, _b_dest: &bindings, _b_src: &bindings) { }
 
@@ -189,7 +191,8 @@ fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t<bindings> {
         alt sel(match_expr(e)) { none. { ret none; } _ { } }
     }
     let never_mind: bool = false;
-    for each pair: @{key: ident, val: selector} in b.real_binders.items() {
+    for each pair: @{key: identistr,
+                     val: selector} in b.real_binders.items() {
         alt pair.val(match_expr(e)) {
           none. { never_mind = true; }
           some(mtc) { res.insert(pair.key, mtc); }
@@ -262,10 +265,12 @@ fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t<arb_depth<matchable>>,
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 iter free_vars(b: &bindings, e: @expr) -> ident {
-    let idents: hashmap<ident, ()> = new_str_hash::<()>();
+    let idents: hashmap<identistr, ()> = new_str_hash::<()>();
     fn mark_ident(i: &ident, _fld: ast_fold, b: &bindings,
-                  idents: &hashmap<ident, ()>) -> ident {
-        if b.contains_key(i) { idents.insert(i, ()); }
+                  idents: &hashmap<identistr, ()>) -> ident {
+        if b.contains_key(istr::from_estr(i)) {
+            idents.insert(istr::from_estr(i), ());
+        }
         ret i;
     }
     // using fold is a hack: we want visit, but it doesn't hit idents ) :
@@ -276,7 +281,7 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
     dummy_out(f);
-    for each id: ident in idents.keys() { put id; }
+    for each id: identistr in idents.keys() { put istr::to_estr(id); }
 }
 
 
@@ -293,7 +298,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
             for each fv: ident in free_vars(b, repeat_me) {
-                let cur_pos = follow(b.get(fv), idx_path);
+                let cur_pos = follow(b.get(istr::from_estr(fv)), idx_path);
                 alt cur_pos {
                   leaf(_) { }
                   seq(ms, _) {
@@ -345,7 +350,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 // substitute, in a position that's required to be an ident
 fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                     i: &ident, _fld: ast_fold) -> ident {
-    ret alt follow_for_trans(cx, b.find(i), idx_path) {
+    ret alt follow_for_trans(cx, b.find(istr::from_estr(i)), idx_path) {
           some(match_ident(a_id)) { a_id.node }
           some(m) { match_error(cx, m, "an identifier") }
           none. { i }
@@ -357,7 +362,8 @@ fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                    p: &path_, _fld: ast_fold) -> path_ {
     // Don't substitute into qualified names.
     if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret p; }
-    ret alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
+    ret alt follow_for_trans(cx, b.find(
+        istr::from_estr(p.idents[0])), idx_path) {
           some(match_ident(id)) {
             {global: false, idents: [id.node], types: []}
           }
@@ -378,7 +384,8 @@ fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
             if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u {
                 e
             }
-            alt follow_for_trans(cx, b.find(p.node.idents[0]), idx_path) {
+            alt follow_for_trans(cx, b.find(
+                istr::from_estr(p.node.idents[0])), idx_path) {
               some(match_ident(id)) {
                 expr_path(respan(id.span,
                                  {global: false,
@@ -402,7 +409,8 @@ fn transcribe_type(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
           ast::ty_path(pth, _) {
             alt path_to_ident(pth) {
               some(id) {
-                alt follow_for_trans(cx, b.find(id), idx_path) {
+                alt follow_for_trans(cx, b.find(
+                    istr::from_estr(id)), idx_path) {
                   some(match_ty(ty)) { ty.node }
                   some(m) { match_error(cx, m, "a type") }
                   none. { orig(t, fld) }
@@ -424,7 +432,8 @@ fn transcribe_block(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                     orig: fn(&blk_, ast_fold) -> blk_) -> blk_ {
     ret alt block_to_ident(blk) {
           some(id) {
-            alt follow_for_trans(cx, b.find(id), idx_path) {
+            alt follow_for_trans(cx, b.find(
+                istr::from_estr(id)), idx_path) {
               some(match_block(new_blk)) { new_blk.node }
 
 
@@ -525,10 +534,11 @@ fn p_t_s_r_path(cx: &ext_ctxt, p: &path, s: &selector, b: &binders) {
                   _ { cx.bug("broken traversal in p_t_s_r") }
                 }
         }
-        if b.real_binders.contains_key(p_id) {
+        if b.real_binders.contains_key(istr::from_estr(p_id)) {
             cx.span_fatal(p.span, "duplicate binding identifier");
         }
-        b.real_binders.insert(p_id, compose_sels(s, bind select(cx, _)));
+        b.real_binders.insert(istr::from_estr(p_id),
+                              compose_sels(s, bind select(cx, _)));
       }
       none. { }
     }
@@ -573,7 +583,8 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
                         }
                 }
                 let final_step = bind select_pt_1(cx, _, select_pt_2);
-                b.real_binders.insert(id, compose_sels(s, final_step));
+                b.real_binders.insert(
+                    istr::from_estr(id), compose_sels(s, final_step));
               }
               none. { no_des(cx, pth.span, "under `#<>`"); }
             }
@@ -593,7 +604,8 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
                     }
             }
             let final_step = bind select_pt_1(cx, _, select_pt_2);
-            b.real_binders.insert(id, compose_sels(s, final_step));
+            b.real_binders.insert(istr::from_estr(id),
+                                  compose_sels(s, final_step));
           }
           none. { no_des(cx, blk.span, "under `#{}`"); }
         }

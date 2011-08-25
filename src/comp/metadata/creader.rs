@@ -47,7 +47,7 @@ fn read_crates(sess: session::session, crate: &ast::crate) {
 
 type env =
     @{sess: session::session,
-      crate_cache: @hashmap<str, int>,
+      crate_cache: @hashmap<istr, int>,
       library_search_paths: [str],
       mutable next_crate_num: ast::crate_num};
 
@@ -226,7 +226,7 @@ fn load_library_crate(sess: &session::session, span: span, ident: &ast::ident,
 
 fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
                  span: span) -> ast::crate_num {
-    if !e.crate_cache.contains_key(ident) {
+    if !e.crate_cache.contains_key(istr::from_estr(ident)) {
         let cinfo =
             load_library_crate(e.sess, span, ident, metas,
                                e.library_search_paths);
@@ -236,7 +236,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache.insert(ident, cnum);
+        e.crate_cache.insert(istr::from_estr(ident), cnum);
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
@@ -248,7 +248,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
         cstore::set_crate_data(cstore, cnum, cmeta);
         cstore::add_used_crate_file(cstore, cfilename);
         ret cnum;
-    } else { ret e.crate_cache.get(ident); }
+    } else { ret e.crate_cache.get(istr::from_estr(ident)); }
 }
 
 // Go through the crate metadata and load any crates that it references
@@ -261,10 +261,10 @@ fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;
         log #fmt["resolving dep %s", cname];
-        if e.crate_cache.contains_key(cname) {
+        if e.crate_cache.contains_key(istr::from_estr(cname)) {
             log "already have it";
             // We've already seen this crate
-            let local_cnum = e.crate_cache.get(cname);
+            let local_cnum = e.crate_cache.get(istr::from_estr(cname));
             cnum_map.insert(extrn_cnum, local_cnum);
         } else {
             log "need to load it";

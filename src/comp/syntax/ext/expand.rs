@@ -5,6 +5,7 @@ import std::option::some;
 
 import std::map::hashmap;
 import std::vec;
+import std::istr;
 
 import syntax::ast::crate;
 import syntax::ast::expr_;
@@ -14,7 +15,7 @@ import syntax::fold::*;
 import syntax::ext::base::*;
 
 
-fn expand_expr(exts: &hashmap<str, syntax_extension>, cx: &ext_ctxt,
+fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
                e: &expr_, fld: ast_fold, orig: &fn(&expr_, ast_fold) -> expr_)
    -> expr_ {
     ret alt e {
@@ -23,7 +24,7 @@ fn expand_expr(exts: &hashmap<str, syntax_extension>, cx: &ext_ctxt,
               mac_invoc(pth, args, body) {
                 assert (vec::len(pth.node.idents) > 0u);
                 let extname = pth.node.idents[0];
-                alt exts.find(extname) {
+                alt exts.find(istr::from_estr(extname)) {
                   none. {
                     cx.span_fatal(pth.span,
                                   #fmt["macro undefined: '%s'", extname])
@@ -40,7 +41,9 @@ fn expand_expr(exts: &hashmap<str, syntax_extension>, cx: &ext_ctxt,
                   }
                   some(macro_defining(ext)) {
                     let named_extension = ext(cx, pth.span, args, body);
-                    exts.insert(named_extension.ident, named_extension.ext);
+                    exts.insert(
+                        istr::from_estr(named_extension.ident),
+                        named_extension.ext);
                     ast::expr_rec([], none)
                   }
                 }

@@ -33,6 +33,7 @@ import std::option::is_none;
 import std::option::some;
 import std::option::none;
 import std::str;
+import std::istr;
 import syntax::print::pprust::*;
 
 export resolve_crate;
@@ -101,7 +102,7 @@ tag mod_index_entry {
     mie_tag_variant(/* tag item */@ast::item, /* variant index */uint);
 }
 
-type mod_index = hashmap<ident, list<mod_index_entry>>;
+type mod_index = hashmap<identistr, list<mod_index_entry>>;
 
 // A tuple of an imported def and the import stmt that brung it
 type glob_imp_def = {def: def, item: @ast::view_item};
@@ -110,7 +111,7 @@ type indexed_mod =
     {m: option::t<ast::_mod>,
      index: mod_index,
      mutable glob_imports: [glob_imp_def],
-     glob_imported_names: hashmap<str, import_state>};
+     glob_imported_names: hashmap<istr, import_state>};
 
 
 /* native modules can't contain tags, and we don't store their ASTs because we
@@ -954,7 +955,7 @@ fn lookup_in_local_mod(e: &env, node_id: node_id, sp: &span, id: &ident,
         ret none::<def>; // name is not visible
 
     }
-    alt info.index.find(id) {
+    alt info.index.find(istr::from_estr(id)) {
       none. { }
       some(lst_) {
         let lst = lst_;
@@ -1009,14 +1010,15 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
     // since we don't know what names we have in advance,
     // absence takes the place of todo()
 
-    if !info.glob_imported_names.contains_key(id) {
-        info.glob_imported_names.insert(id, resolving(sp));
+    if !info.glob_imported_names.contains_key(istr::from_estr(id)) {
+        info.glob_imported_names.insert(istr::from_estr(id), resolving(sp));
         let val = per_ns(e, info, sp, id, ns_value, dr);
         let typ = per_ns(e, info, sp, id, ns_type, dr);
         let md = per_ns(e, info, sp, id, ns_module, dr);
-        info.glob_imported_names.insert(id, resolved(val, typ, md));
+        info.glob_imported_names.insert(istr::from_estr(id),
+                                        resolved(val, typ, md));
     }
-    alt info.glob_imported_names.get(id) {
+    alt info.glob_imported_names.get(istr::from_estr(id)) {
       todo(_, _, _, _, _) { e.sess.bug("Shouldn't've put a todo in."); }
       resolving(sp) {
         ret none::<def>; //circularity is okay in import globs
@@ -1071,10 +1073,12 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
 
 
 // Module indexing
-fn add_to_index(index: &hashmap<ident, list<mod_index_entry>>, id: &ident,
-                ent: &mod_index_entry) {
+fn add_to_index(index: &hashmap<identistr, list<mod_index_entry>>,
+                id: &ident, ent: &mod_index_entry) {
+    let id = istr::from_estr(id);
     alt index.find(id) {
-      none. { index.insert(id, cons(ent, @nil::<mod_index_entry>)); }
+      none. { index.insert(id,
+                           cons(ent, @nil::<mod_index_entry>)); }
       some(prev) { index.insert(id, cons(ent, @prev)); }
     }
 }
@@ -1187,9 +1191,9 @@ fn check_for_collisions(e: &@env, c: &ast::crate) {
     // Module indices make checking those relatively simple -- just check each
     // name for multiple entities in the same namespace.
     for each m: @{key: ast::node_id, val: @indexed_mod} in e.mod_map.items() {
-        for each name: @{key: ident, val: list<mod_index_entry>} in
+        for each name: @{key: identistr, val: list<mod_index_entry>} in
                  m.val.index.items() {
-            check_mod_name(*e, name.key, name.val);
+            check_mod_name(*e, istr::to_estr(name.key), name.val);
         }
     }
     // Other scopes have to be checked the hard way.

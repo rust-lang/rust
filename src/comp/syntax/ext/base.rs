@@ -1,3 +1,4 @@
+import std::istr;
 import std::vec;
 import std::option;
 import std::map::hashmap;
@@ -19,17 +20,17 @@ tag syntax_extension {
 
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
-fn syntax_expander_table() -> hashmap<str, syntax_extension> {
+fn syntax_expander_table() -> hashmap<istr, syntax_extension> {
     let syntax_expanders = new_str_hash::<syntax_extension>();
-    syntax_expanders.insert("fmt", normal(ext::fmt::expand_syntax_ext));
-    syntax_expanders.insert("env", normal(ext::env::expand_syntax_ext));
-    syntax_expanders.insert("macro",
+    syntax_expanders.insert(~"fmt", normal(ext::fmt::expand_syntax_ext));
+    syntax_expanders.insert(~"env", normal(ext::env::expand_syntax_ext));
+    syntax_expanders.insert(~"macro",
                             macro_defining(ext::simplext::add_new_extension));
-    syntax_expanders.insert("concat_idents",
+    syntax_expanders.insert(~"concat_idents",
                             normal(ext::concat_idents::expand_syntax_ext));
-    syntax_expanders.insert("ident_to_str",
+    syntax_expanders.insert(~"ident_to_str",
                             normal(ext::ident_to_str::expand_syntax_ext));
-    syntax_expanders.insert("log_syntax",
+    syntax_expanders.insert(~"log_syntax",
                             normal(ext::log_syntax::expand_syntax_ext));
     ret syntax_expanders;
 }

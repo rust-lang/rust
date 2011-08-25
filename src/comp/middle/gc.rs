@@ -47,7 +47,7 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     bcx = td_r.result.bcx;
     let lltydesc = td_r.result.val;
 
-    let gcroot = bcx_ccx(bcx).intrinsics.get("llvm.gcroot");
+    let gcroot = bcx_ccx(bcx).intrinsics.get(~"llvm.gcroot");
     let llvalptr = bld::PointerCast(bcx, llval, T_ptr(T_ptr(T_i8())));
 
     alt td_r.kind {

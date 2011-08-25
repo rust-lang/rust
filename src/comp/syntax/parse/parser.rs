@@ -53,7 +53,7 @@ type parser =
         fn get_str(token::str_num) -> str;
         fn get_reader() -> lexer::reader;
         fn get_filemap() -> codemap::filemap;
-        fn get_bad_expr_words() -> hashmap<str, ()>;
+        fn get_bad_expr_words() -> hashmap<istr, ()>;
         fn get_chpos() -> uint;
         fn get_byte_pos() -> uint;
         fn get_id() -> node_id;
@@ -84,7 +84,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
                      mutable restr: restriction,
                      rdr: lexer::reader,
                      precs: @[op_spec],
-                     bad_words: hashmap<str, ()>) {
+                     bad_words: hashmap<istr, ()>) {
         fn peek() -> token::token { ret tok; }
         fn bump() {
             last_tok_span = tok_span;
@@ -132,7 +132,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
         }
         fn get_reader() -> lexer::reader { ret rdr; }
         fn get_filemap() -> codemap::filemap { ret rdr.get_filemap(); }
-        fn get_bad_expr_words() -> hashmap<str, ()> { ret bad_words; }
+        fn get_bad_expr_words() -> hashmap<istr, ()> { ret bad_words; }
         fn get_chpos() -> uint { ret rdr.get_chpos(); }
         fn get_byte_pos() -> uint { ret rdr.get_byte_pos(); }
         fn get_id() -> node_id { ret next_node_id(sess); }
@@ -148,44 +148,44 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
 // These are the words that shouldn't be allowed as value identifiers,
 // because, if used at the start of a line, they will cause the line to be
 // interpreted as a specific kind of statement, which would be confusing.
-fn bad_expr_word_table() -> hashmap<str, ()> {
+fn bad_expr_word_table() -> hashmap<istr, ()> {
     let words = new_str_hash();
-    words.insert("mod", ());
-    words.insert("if", ());
-    words.insert("else", ());
-    words.insert("while", ());
-    words.insert("do", ());
-    words.insert("alt", ());
-    words.insert("for", ());
-    words.insert("each", ());
-    words.insert("break", ());
-    words.insert("cont", ());
-    words.insert("put", ());
-    words.insert("ret", ());
-    words.insert("be", ());
-    words.insert("fail", ());
-    words.insert("type", ());
-    words.insert("resource", ());
-    words.insert("check", ());
-    words.insert("assert", ());
-    words.insert("claim", ());
-    words.insert("prove", ());
-    words.insert("native", ());
-    words.insert("fn", ());
-    words.insert("block", ());
-    words.insert("lambda", ());
-    words.insert("pure", ());
-    words.insert("iter", ());
-    words.insert("block", ());
-    words.insert("import", ());
-    words.insert("export", ());
-    words.insert("let", ());
-    words.insert("const", ());
-    words.insert("log", ());
-    words.insert("log_err", ());
-    words.insert("tag", ());
-    words.insert("obj", ());
-    words.insert("copy", ());
+    words.insert(~"mod", ());
+    words.insert(~"if", ());
+    words.insert(~"else", ());
+    words.insert(~"while", ());
+    words.insert(~"do", ());
+    words.insert(~"alt", ());
+    words.insert(~"for", ());
+    words.insert(~"each", ());
+    words.insert(~"break", ());
+    words.insert(~"cont", ());
+    words.insert(~"put", ());
+    words.insert(~"ret", ());
+    words.insert(~"be", ());
+    words.insert(~"fail", ());
+    words.insert(~"type", ());
+    words.insert(~"resource", ());
+    words.insert(~"check", ());
+    words.insert(~"assert", ());
+    words.insert(~"claim", ());
+    words.insert(~"prove", ());
+    words.insert(~"native", ());
+    words.insert(~"fn", ());
+    words.insert(~"block", ());
+    words.insert(~"lambda", ());
+    words.insert(~"pure", ());
+    words.insert(~"iter", ());
+    words.insert(~"block", ());
+    words.insert(~"import", ());
+    words.insert(~"export", ());
+    words.insert(~"let", ());
+    words.insert(~"const", ());
+    words.insert(~"log", ());
+    words.insert(~"log_err", ());
+    words.insert(~"tag", ());
+    words.insert(~"obj", ());
+    words.insert(~"copy", ());
     ret words;
 }
 
@@ -273,7 +273,7 @@ fn check_bad_word(p: &parser) {
     alt p.peek() {
       token::IDENT(sid, false) {
         let w = p.get_str(sid);
-        if p.get_bad_expr_words().contains_key(w) {
+        if p.get_bad_expr_words().contains_key(istr::from_estr(w)) {
             p.fatal("found " + w + " in expression position");
         }
       }
@@ -1455,7 +1455,8 @@ fn parse_pat(p: &parser) -> @ast::pat {
                 p.bump();
                 subpat = parse_pat(p);
             } else {
-                if p.get_bad_expr_words().contains_key(fieldname) {
+                if p.get_bad_expr_words()
+                    .contains_key(istr::from_estr(fieldname)) {
                     p.fatal("found " + fieldname + " in binding position");
                 }
                 subpat =
@@ -2061,7 +2062,7 @@ fn parse_item_tag(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let variants: [ast::variant] = [];
     // Newtype syntax
     if p.peek() == token::EQ {
-        if p.get_bad_expr_words().contains_key(id) {
+        if p.get_bad_expr_words().contains_key(istr::from_estr(id)) {
             p.fatal("found " + id + " in tag constructor position");
         }
         p.bump();

@@ -1,4 +1,5 @@
 import std::str;
+import std::istr;
 import std::option;
 import codemap::span;
 import ast::*;
@@ -43,7 +44,7 @@ fn def_id_of_def(d: def) -> def_id {
     }
 }
 
-type pat_id_map = std::map::hashmap<str, ast::node_id>;
+type pat_id_map = std::map::hashmap<istr, ast::node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
@@ -51,7 +52,7 @@ fn pat_id_map(pat: &@pat) -> pat_id_map {
     let map = std::map::new_str_hash::<node_id>();
     for each bound in pat_bindings(pat) {
         let name = alt bound.node { pat_bind(n) { n } };
-        map.insert(name, bound.id);
+        map.insert(istr::from_estr(name), bound.id);
     }
     ret map;
 }

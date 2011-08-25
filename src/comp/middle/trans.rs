@@ -355,23 +355,27 @@ fn decl_glue(llmod: ModuleRef, cx: &crate_ctxt, s: &str) -> ValueRef {
     ret decl_cdecl_fn(llmod, s, T_fn([T_taskptr(cx)], T_void()));
 }
 
-fn get_extern_fn(externs: &hashmap<str, ValueRef>, llmod: ModuleRef,
+fn get_extern_fn(externs: &hashmap<istr, ValueRef>, llmod: ModuleRef,
                  name: &str, cc: uint, ty: TypeRef) -> ValueRef {
-    if externs.contains_key(name) { ret externs.get(name); }
+    if externs.contains_key(istr::from_estr(name)) {
+        ret externs.get(istr::from_estr(name));
+    }
     let f = decl_fn(llmod, name, cc, ty);
-    externs.insert(name, f);
+    externs.insert(istr::from_estr(name), f);
     ret f;
 }
 
-fn get_extern_const(externs: &hashmap<str, ValueRef>, llmod: ModuleRef,
+fn get_extern_const(externs: &hashmap<istr, ValueRef>, llmod: ModuleRef,
                     name: &str, ty: TypeRef) -> ValueRef {
-    if externs.contains_key(name) { ret externs.get(name); }
+    if externs.contains_key(istr::from_estr(name)) {
+        ret externs.get(istr::from_estr(name));
+    }
     let c = llvm::LLVMAddGlobal(llmod, ty, str::buf(name));
-    externs.insert(name, c);
+    externs.insert(istr::from_estr(name), c);
     ret c;
 }
 
-fn get_simple_extern_fn(externs: &hashmap<str, ValueRef>, llmod: ModuleRef,
+fn get_simple_extern_fn(externs: &hashmap<istr, ValueRef>, llmod: ModuleRef,
                         name: &str, n_args: int) -> ValueRef {
     let inputs = std::vec::init_elt::<TypeRef>(T_int(), n_args as uint);
     let output = T_int();
@@ -379,7 +383,7 @@ fn get_simple_extern_fn(externs: &hashmap<str, ValueRef>, llmod: ModuleRef,
     ret get_extern_fn(externs, llmod, name, lib::llvm::LLVMCCallConv, t);
 }
 
-fn trans_native_call(cx: &@block_ctxt, externs: &hashmap<str, ValueRef>,
+fn trans_native_call(cx: &@block_ctxt, externs: &hashmap<istr, ValueRef>,
                      llmod: ModuleRef, name: &str, args: &[ValueRef]) ->
    ValueRef {
     let n: int = std::vec::len::<ValueRef>(args) as int;
@@ -2287,8 +2291,8 @@ fn call_memmove(cx: &@block_ctxt, dst: ValueRef, src: ValueRef,
     // LLVM complains -- not even a constant element of a tydesc works).
 
     let i = bcx_ccx(cx).intrinsics;
-    assert (i.contains_key("llvm.memmove.p0i8.p0i8.i32"));
-    let memmove = i.get("llvm.memmove.p0i8.p0i8.i32");
+    assert (i.contains_key(~"llvm.memmove.p0i8.p0i8.i32"));
+    let memmove = i.get(~"llvm.memmove.p0i8.p0i8.i32");
     let src_ptr = bld::PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = bld::PointerCast(cx, dst, T_ptr(T_i8()));
     let size = bld::IntCast(cx, n_bytes, T_i32());
@@ -2304,8 +2308,8 @@ fn call_bzero(cx: &@block_ctxt, dst: ValueRef, n_bytes: ValueRef,
     // FIXME: switch to the 64-bit variant when on such a platform.
 
     let i = bcx_ccx(cx).intrinsics;
-    assert (i.contains_key("llvm.memset.p0i8.i32"));
-    let memset = i.get("llvm.memset.p0i8.i32");
+    assert (i.contains_key(~"llvm.memset.p0i8.i32"));
+    let memset = i.get(~"llvm.memset.p0i8.i32");
     let dst_ptr = bld::PointerCast(cx, dst, T_ptr(T_i8()));
     let size = bld::IntCast(cx, n_bytes, T_i32());
     let align =
@@ -4524,8 +4528,8 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
     let lcx = cx.fcx.lcx;
     let modname = str::connect(lcx.module_path, "::");
     let global;
-    if lcx.ccx.module_data.contains_key(modname) {
-        global = lcx.ccx.module_data.get(modname);
+    if lcx.ccx.module_data.contains_key(istr::from_estr(modname)) {
+        global = lcx.ccx.module_data.get(istr::from_estr(modname));
     } else {
         let s =
             link::mangle_internal_name_by_path_and_seq(lcx.ccx,
@@ -4536,7 +4540,7 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
         llvm::LLVMSetInitializer(global, C_null(T_int()));
         llvm::LLVMSetLinkage(global,
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
-        lcx.ccx.module_data.insert(modname, global);
+        lcx.ccx.module_data.insert(istr::from_estr(modname), global);
     }
     let log_cx = new_scope_block_ctxt(cx, "log");
     let after_cx = new_sub_block_ctxt(cx, "after");
@@ -6168,7 +6172,7 @@ fn vi2p(cx: &@block_ctxt, v: ValueRef, t: TypeRef) -> ValueRef {
 
 fn p2i(v: ValueRef) -> ValueRef { ret llvm::LLVMConstPtrToInt(v, T_int()); }
 
-fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
+fn declare_intrinsics(llmod: ModuleRef) -> hashmap<istr, ValueRef> {
     let T_memmove32_args: [TypeRef] =
         [T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
     let T_memmove64_args: [TypeRef] =
@@ -6198,19 +6202,19 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
                       T_fn(T_memset64_args, T_void()));
     let trap = decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args, T_void()));
     let intrinsics = new_str_hash::<ValueRef>();
-    intrinsics.insert("llvm.gcroot", gcroot);
-    intrinsics.insert("llvm.gcread", gcread);
-    intrinsics.insert("llvm.memmove.p0i8.p0i8.i32", memmove32);
-    intrinsics.insert("llvm.memmove.p0i8.p0i8.i64", memmove64);
-    intrinsics.insert("llvm.memset.p0i8.i32", memset32);
-    intrinsics.insert("llvm.memset.p0i8.i64", memset64);
-    intrinsics.insert("llvm.trap", trap);
+    intrinsics.insert(~"llvm.gcroot", gcroot);
+    intrinsics.insert(~"llvm.gcread", gcread);
+    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i32", memmove32);
+    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i64", memmove64);
+    intrinsics.insert(~"llvm.memset.p0i8.i32", memset32);
+    intrinsics.insert(~"llvm.memset.p0i8.i64", memset64);
+    intrinsics.insert(~"llvm.trap", trap);
     ret intrinsics;
 }
 
 fn trap(bcx: &@block_ctxt) {
     let v: [ValueRef] = [];
-    alt bcx_ccx(bcx).intrinsics.find("llvm.trap") {
+    alt bcx_ccx(bcx).intrinsics.find(~"llvm.trap") {
       some(x) { bld::Call(bcx, x, v); }
       _ { bcx_ccx(bcx).sess.bug("unbound llvm.trap in trap"); }
     }
@@ -6264,8 +6268,9 @@ fn create_module_map(ccx: &@crate_ctxt) -> ValueRef {
     llvm::LLVMSetLinkage(map,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     let elts: [ValueRef] = [];
-    for each item: @{key: str, val: ValueRef} in ccx.module_data.items() {
-        let elt = C_struct([p2i(C_cstr(ccx, item.key)), p2i(item.val)]);
+    for each item: @{key: istr, val: ValueRef} in ccx.module_data.items() {
+        let elt = C_struct([p2i(C_cstr(ccx, istr::to_estr(item.key))),
+                            p2i(item.val)]);
         elts += [elt];
     }
     let term = C_struct([C_int(0), C_int(0)]);

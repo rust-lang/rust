@@ -1322,7 +1322,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
         let vid = lookup_local(fcx, pat.span, pat.id);
         let typ = ty::mk_var(fcx.ccx.tcx, vid);
         typ = demand::simple(fcx, pat.span, expected, typ);
-        let canon_id = map.get(name);
+        let canon_id = map.get(istr::from_estr(name));
         if canon_id != pat.id {
             let ct =
                 ty::mk_var(fcx.ccx.tcx,

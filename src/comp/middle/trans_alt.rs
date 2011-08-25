@@ -1,4 +1,5 @@
 import std::str;
+import std::istr;
 import std::vec;
 import std::option;
 import option::some;
@@ -303,7 +304,8 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
             // the actual arm block.
             for each @{key, val} in data.id_map.items() {
                 bcx.fcx.lllocals.insert
-                    (val, option::get(assoc(key, m[0].bound)));
+                    (val, option::get(assoc(istr::to_estr(key),
+                                            m[0].bound)));
             }
             let {bcx: guard_bcx, val: guard_val} =
                 trans::trans_expr(guard_cx, e);
@@ -467,12 +469,12 @@ fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
                      ids: &ast_util::pat_id_map) -> bool {
     let our_block = bcx.llbb as uint;
     let success = true;
-    for each item: @{key: ast::ident, val: ast::node_id} in ids.items() {
+    for each item: @{key: ast::identistr, val: ast::node_id} in ids.items() {
         let llbbs = [];
         let vals = [];
         for ex: exit_node in map {
             if ex.to as uint == our_block {
-                alt assoc(item.key, ex.bound) {
+                alt assoc(istr::to_estr(item.key), ex.bound) {
                   some(val) { llbbs += [ex.from]; vals += [val]; }
                   none. { }
                 }
