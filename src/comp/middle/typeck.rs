@@ -1715,6 +1715,11 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
            literals or slots */
         alt e.node {
           ast::expr_call(operator, operands) {
+            if !ty::is_pred_ty(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, operator)) {
+                    fcx.ccx.tcx.sess.span_fatal(operator.span,
+                     "Operator in constraint has non-boolean return type");
+            }
+
             alt operator.node {
               ast::expr_path(oper_name) {
                 alt fcx.ccx.tcx.def_map.find(operator.id) {
@@ -1723,7 +1728,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                   }
                   _ {
                     fcx.ccx.tcx.sess.span_fatal(operator.span,
-                                                "non-predicate as operator \
+                                           "Impure function as operator \
                                        in constraint");
                   }
                 }
@@ -2596,18 +2601,6 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
           mutable fixups: fixups,
           ccx: ccx};
     check_block(fcx, body);
-    alt decl.purity {
-      ast::pure_fn. {
-
-        // This just checks that the declared type is bool, and trusts
-        // that that's the actual return type.
-        if !ty::type_is_bool(ccx.tcx, fcx.ret_ty) {
-            ccx.tcx.sess.span_err(body.span,
-                                  "Non-boolean return type in pred");
-        }
-      }
-      _ { }
-    }
 
     // For non-iterator fns, we unify the tail expr's type with the
     // function result type, if there is a tail expr.

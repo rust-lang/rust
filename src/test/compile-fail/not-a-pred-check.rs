@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern: non-predicate
+// error-pattern: Impure function as operator
 
 fn f(q: int) -> bool { ret true; }
 

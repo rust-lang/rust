@@ -55,6 +55,7 @@ export hash_ty;
 export idx_nil;
 export is_lval;
 export is_binopable;
+export is_pred_ty;
 export item_table;
 export lookup_item_type;
 export method;
@@ -1735,6 +1736,12 @@ fn is_fn_ty(cx: &ctxt, fty: t) -> bool {
       ty::ty_native_fn(_, _, _) { ret true; }
       _ { ret false; }
     }
+}
+
+// Just checks whether it's a fn that returns bool,
+// not its purity.
+fn is_pred_ty(cx: &ctxt, fty:t) -> bool {
+    is_fn_ty(cx, fty) && type_is_bool(cx, ty_fn_ret(cx, fty))
 }
 
 fn ty_var_id(cx: &ctxt, typ: t) -> int {
