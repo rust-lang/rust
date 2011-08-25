@@ -2,7 +2,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
 index, rindex, find, starts_with, ends_with, substr, slice, split,
 concat, connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
 unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars, to_chars,
-char_len, char_at, bytes, is_ascii, shift_byte, pop_byte;
+char_len, char_at, bytes, is_ascii, shift_byte, pop_byte, unsafe_from_bytes;
 
 export from_str, to_str;
 
@@ -111,6 +111,7 @@ fn bytes(s: &istr) -> [u8] {
 fn unsafe_from_bytes(v: &[mutable? u8]) -> istr {
     let vcopy: [u8] = v + [0u8];
     let scopy: istr = unsafe::reinterpret_cast(vcopy);
+    unsafe::leak(vcopy);
     ret scopy;
 }
 

@@ -249,3 +249,10 @@ fn pop_byte() {
     assert s == ~"AB";
     assert b == 67u8;
 }
+
+#[test]
+fn unsafe_from_bytes() {
+    let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
+    let b = istr::unsafe_from_bytes(a);
+    assert b == ~"AAAAAAA";
+}
