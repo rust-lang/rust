@@ -4,7 +4,7 @@ import lib::llvm::False;
 import lib::llvm::True;
 import lib::llvm::llvm::ValueRef;
 import middle::trans;
-import middle::trans::get_tydesc;
+import middle::trans::{ get_tydesc, tps_normal };
 import middle::trans_common::*;
 import middle::ty;
 import std::option::none;
@@ -43,7 +43,7 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     bcx = trans::zero_alloca(bcx, llval, ty).bcx;
 
     let ti = none;
-    let td_r = get_tydesc(bcx, ty, false, ti);
+    let td_r = get_tydesc(bcx, ty, false, tps_normal, ti);
     bcx = td_r.result.bcx;
     let lltydesc = td_r.result.val;
 

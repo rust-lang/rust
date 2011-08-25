@@ -640,7 +640,7 @@ fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
     let elems =
         [tydescpp, T_int(), T_int(), glue_fn_ty, glue_fn_ty, glue_fn_ty,
          copy_glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
-         T_ptr(T_i8()), T_ptr(T_i8()), T_int()];
+         T_ptr(T_i8()), T_ptr(T_i8()), T_int(), T_int()];
     set_struct_body(tydesc, elems);
     ret tydesc;
 }

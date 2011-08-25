@@ -3,14 +3,13 @@
 
 struct rust_scheduler;
 
-class
-rust_crate_cache
-{
+class rust_crate_cache {
 public:
     type_desc *get_type_desc(size_t size,
                              size_t align,
                              size_t n_descs,
-                             type_desc const **descs);
+                             type_desc const **descs,
+                             uintptr_t n_obj_params);
 
 private:
 

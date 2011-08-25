@@ -5,7 +5,8 @@ type_desc *
 rust_crate_cache::get_type_desc(size_t size,
                                 size_t align,
                                 size_t n_descs,
-                                type_desc const **descs)
+                                type_desc const **descs,
+                                uintptr_t n_obj_params)
 {
     I(sched, n_descs > 1);
     type_desc *td = NULL;
@@ -35,6 +36,7 @@ rust_crate_cache::get_type_desc(size_t size,
         // FIXME (issue #136):  Below is a miscalculation.
         td->is_stateful |= descs[i]->is_stateful;
     }
+    td->n_obj_params = n_obj_params;
     HASH_ADD(hh, this->type_descs, descs, keysz, td);
     return td;
 }

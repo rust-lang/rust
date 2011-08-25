@@ -284,7 +284,8 @@ struct type_desc {
     cmp_glue_fn *cmp_glue;
     const uint8_t *shape;
     const rust_shape_tables *shape_tables;
-    uint32_t n_params;
+    uintptr_t n_params;
+    uintptr_t n_obj_params;
 
     // Residual fields past here are known only to runtime.
     UT_hash_handle hh;

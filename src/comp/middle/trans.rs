@@ -884,7 +884,7 @@ fn trans_malloc_boxed(cx: &@block_ctxt, t: ty::t) ->
 fn field_of_tydesc(cx: &@block_ctxt, t: ty::t, escapes: bool, field: int) ->
    result {
     let ti = none::<@tydesc_info>;
-    let tydesc = get_tydesc(cx, t, escapes, ti).result;
+    let tydesc = get_tydesc(cx, t, escapes, tps_normal, ti).result;
     ret rslt(tydesc.bcx,
              bld::GEP(tydesc.bcx, tydesc.val, [C_int(0), C_int(field)]));
 }
@@ -919,16 +919,16 @@ fn linearize_ty_params(cx: &@block_ctxt, t: ty::t) ->
 
 fn trans_stack_local_derived_tydesc(cx: &@block_ctxt, llsz: ValueRef,
                                     llalign: ValueRef, llroottydesc: ValueRef,
-                                    llparamtydescs: ValueRef, n_params: uint)
+                                    llfirstparam: ValueRef, n_params: uint,
+                                    obj_params: uint)
    -> ValueRef {
     let llmyroottydesc = alloca(cx, bcx_ccx(cx).tydesc_type);
-    // By convention, desc 0 is the root descriptor.
 
+    // By convention, desc 0 is the root descriptor.
     llroottydesc = bld::Load(cx, llroottydesc);
     bld::Store(cx, llroottydesc, llmyroottydesc);
-    // Store a pointer to the rest of the descriptors.
 
-    let llfirstparam = bld::GEP(cx, llparamtydescs, [C_int(0), C_int(0)]);
+    // Store a pointer to the rest of the descriptors.
     store_inbounds(cx, llfirstparam, llmyroottydesc,
                    [C_int(0), C_int(abi::tydesc_field_first_param)]);
     store_inbounds(cx, C_uint(n_params), llmyroottydesc,
@@ -937,10 +937,20 @@ fn trans_stack_local_derived_tydesc(cx: &@block_ctxt, llsz: ValueRef,
                    [C_int(0), C_int(abi::tydesc_field_size)]);
     store_inbounds(cx, llalign, llmyroottydesc,
                    [C_int(0), C_int(abi::tydesc_field_align)]);
+    store_inbounds(cx, C_uint(obj_params), llmyroottydesc,
+                   [C_int(0), C_int(abi::tydesc_field_obj_params)]);
     ret llmyroottydesc;
 }
 
+// Objects store their type parameters differently (in the object itself
+// rather than in the type descriptor).
+tag ty_param_storage {
+    tps_normal;
+    tps_obj(uint);
+}
+
 fn get_derived_tydesc(cx: &@block_ctxt, t: ty::t, escapes: bool,
+                      storage: ty_param_storage,
                       static_ti: &mutable option::t<@tydesc_info>) -> result {
     alt cx.fcx.derived_tydescs.find(t) {
       some(info) {
@@ -954,10 +964,7 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: ty::t, escapes: bool,
     }
     bcx_ccx(cx).stats.n_derived_tydescs += 1u;
     let bcx = new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs);
-    let n_params: uint = ty::count_ty_params(bcx_tcx(bcx), t);
     let tys = linearize_ty_params(bcx, t);
-    assert (n_params == std::vec::len::<uint>(tys.params));
-    assert (n_params == std::vec::len::<ValueRef>(tys.descs));
     let root_ti = get_static_tydesc(bcx, t, tys.params);
     static_ti = some::<@tydesc_info>(root_ti);
     lazily_emit_all_tydesc_glue(cx, static_ti);
@@ -966,43 +973,52 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: ty::t, escapes: bool,
     bcx = sz.bcx;
     let align = align_of(bcx, t);
     bcx = align.bcx;
+
+    // Store the captured type descriptors in an alloca if the caller isn't
+    // promising to do so itself.
+    let n_params = ty::count_ty_params(bcx_tcx(bcx), t);
+
+    assert (n_params == std::vec::len::<uint>(tys.params));
+    assert (n_params == std::vec::len::<ValueRef>(tys.descs));
+
+    let llparamtydescs =
+        alloca(bcx, T_array(T_ptr(bcx_ccx(bcx).tydesc_type), n_params + 1u));
+    let i = 0;
+
+    // If the type descriptor escapes, we need to add in the root as
+    // the first parameter, because upcall_get_type_desc() expects it.
+    if escapes {
+        bld::Store(bcx, root, GEPi(bcx, llparamtydescs, [0, 0]));
+        i += 1;
+    }
+
+    for td: ValueRef in tys.descs {
+        bld::Store(bcx, td, GEPi(bcx, llparamtydescs, [0, i]));
+        i += 1;
+    }
+
+    let llfirstparam =
+        bld::PointerCast(bcx, llparamtydescs,
+                         T_ptr(T_ptr(bcx_ccx(bcx).tydesc_type)));
+
+    let obj_params;
+    alt storage {
+        tps_normal. { obj_params = 0u; }
+        tps_obj(np) { obj_params = np; }
+    }
+
     let v;
     if escapes {
-        /* for root*/
-        let tydescs =
-            alloca(bcx,
-                   T_array(T_ptr(bcx_ccx(bcx).tydesc_type), 1u + n_params));
-        let i = 0;
-        let tdp = bld::GEP(bcx, tydescs, [C_int(0), C_int(i)]);
-        bld::Store(bcx, root, tdp);
-        i += 1;
-        for td: ValueRef in tys.descs {
-            let tdp = bld::GEP(bcx, tydescs, [C_int(0), C_int(i)]);
-            bld::Store(bcx, td, tdp);
-            i += 1;
-        }
-        let lltydescsptr =
-            bld::PointerCast(bcx, tydescs,
-                                  T_ptr(T_ptr(bcx_ccx(bcx).tydesc_type)));
         let td_val =
             bld::Call(bcx, bcx_ccx(bcx).upcalls.get_type_desc,
                            [bcx.fcx.lltaskptr, C_null(T_ptr(T_nil())), sz.val,
-                            align.val, C_int(1u + n_params as int),
-                            lltydescsptr]);
+                            align.val, C_uint(1u + n_params),
+                            llfirstparam, C_uint(obj_params)]);
         v = td_val;
     } else {
-        let llparamtydescs =
-            alloca(bcx,
-                   T_array(T_ptr(bcx_ccx(bcx).tydesc_type), n_params + 1u));
-        let i = 0;
-        for td: ValueRef in tys.descs {
-            let tdp = bld::GEP(bcx, llparamtydescs, [C_int(0), C_int(i)]);
-            bld::Store(bcx, td, tdp);
-            i += 1;
-        }
-        v =
-            trans_stack_local_derived_tydesc(bcx, sz.val, align.val, root,
-                                             llparamtydescs, n_params);
+        v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val, root,
+                                             llfirstparam, n_params,
+                                             obj_params);
     }
     bcx.fcx.derived_tydescs.insert(t, {lltydesc: v, escapes: escapes});
     ret rslt(cx, v);
@@ -1011,6 +1027,7 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: ty::t, escapes: bool,
 type get_tydesc_result = {kind: tydesc_kind, result: result};
 
 fn get_tydesc(cx: &@block_ctxt, orig_t: ty::t, escapes: bool,
+              storage: ty_param_storage,
               static_ti: &mutable option::t<@tydesc_info>) ->
    get_tydesc_result {
 
@@ -1036,7 +1053,7 @@ fn get_tydesc(cx: &@block_ctxt, orig_t: ty::t, escapes: bool,
     // Does it contain a type param? If so, generate a derived tydesc.
     if ty::type_contains_params(bcx_tcx(cx), t) {
         ret {kind: tk_derived,
-             result: get_derived_tydesc(cx, t, escapes, static_ti)};
+             result: get_derived_tydesc(cx, t, escapes, storage, static_ti)};
     }
 
     // Otherwise, generate a tydesc if necessary, and return it.
@@ -1264,7 +1281,8 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
                             cmp_glue, // cmp_glue
                             C_shape(ccx, shape), // shape
                             shape_tables, // shape_tables
-                            C_int(0)]); // n_params
+                            C_int(0),   // n_params
+                            C_int(0)]); // n_obj_params
 
         let gvar = ti.tydesc;
         llvm::LLVMSetInitializer(gvar, tydesc);
@@ -1483,7 +1501,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
     let args = [cx.fcx.llretptr, cx.fcx.lltaskptr, dtor_env];
     for tp: ty::t in tps {
         let ti: option::t<@tydesc_info> = none;
-        let td = get_tydesc(cx, tp, false, ti).result;
+        let td = get_tydesc(cx, tp, false, tps_normal, ti).result;
         args += [td.val];
         cx = td.bcx;
     }
@@ -2143,7 +2161,7 @@ fn call_tydesc_glue_full(cx: &@block_ctxt, v: ValueRef, tydesc: ValueRef,
 fn call_tydesc_glue(cx: &@block_ctxt, v: ValueRef, t: ty::t, field: int) ->
    result {
     let ti: option::t<@tydesc_info> = none::<@tydesc_info>;
-    let td = get_tydesc(cx, t, false, ti).result;
+    let td = get_tydesc(cx, t, false, tps_normal, ti).result;
     call_tydesc_glue_full(td.bcx, spill_if_immediate(td.bcx, v, t), td.val,
                           field, ti);
     ret rslt(td.bcx, C_nil());
@@ -2159,7 +2177,7 @@ fn call_cmp_glue(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     let llrawlhsptr = bld::BitCast(cx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = bld::BitCast(cx, llrhs, T_ptr(T_i8()));
     let ti = none::<@tydesc_info>;
-    let r = get_tydesc(cx, t, false, ti).result;
+    let r = get_tydesc(cx, t, false, tps_normal, ti).result;
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, ti);
     let lltydesc = r.val;
     let lltydescs =
@@ -2194,7 +2212,8 @@ fn call_copy_glue(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t,
     let srcptr = bld::BitCast(cx, src, T_ptr(T_i8()));
     let dstptr = bld::BitCast(cx, dst, T_ptr(T_i8()));
     let ti = none;
-    let {bcx, val: lltydesc} = get_tydesc(cx, t, false, ti).result;
+    let {bcx, val: lltydesc} =
+        get_tydesc(cx, t, false, tps_normal, ti).result;
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_copy_glue, ti);
     let lltydescs = bld::GEP
         (bcx, lltydesc, [C_int(0), C_int(abi::tydesc_field_first_param)]);
@@ -2594,10 +2613,10 @@ fn trans_evec_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
     }
     let bcx = cx;
     let ti = none::<@tydesc_info>;
-    let llvec_tydesc = get_tydesc(bcx, t, false, ti).result;
+    let llvec_tydesc = get_tydesc(bcx, t, false, tps_normal, ti).result;
     bcx = llvec_tydesc.bcx;
     ti = none::<@tydesc_info>;
-    let llelt_tydesc = get_tydesc(bcx, elt_ty, false, ti).result;
+    let llelt_tydesc = get_tydesc(bcx, elt_ty, false, tps_normal, ti).result;
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, ti);
@@ -2956,7 +2975,8 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     if copying {
         let bound_tydesc = GEPi(bcx, closure, [0, abi::closure_elt_tydesc]);
         let ti = none;
-        let bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti).result;
+        let bindings_tydesc =
+            get_tydesc(bcx, bindings_ty, true, tps_normal, ti).result;
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = bindings_tydesc.bcx;
@@ -3273,7 +3293,7 @@ fn lval_generic_fn(cx: &@block_ctxt, tpt: &ty::ty_param_kinds_and_ty,
             // TODO: Doesn't always escape.
 
             let ti = none::<@tydesc_info>;
-            let td = get_tydesc(bcx, t, true, ti).result;
+            let td = get_tydesc(bcx, t, true, tps_normal, ti).result;
             tis += [ti];
             bcx = td.bcx;
             tydescs += [td.val];
@@ -4526,7 +4546,7 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
     let log_bcx = sub.bcx;
 
     let ti = none::<@tydesc_info>;
-    let r = get_tydesc(log_bcx, e_ty, false, ti).result;
+    let r = get_tydesc(log_bcx, e_ty, false, tps_normal, ti).result;
     log_bcx = r.bcx;
 
     // Call the polymorphic log function.

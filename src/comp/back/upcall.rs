@@ -91,7 +91,7 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
           get_type_desc:
               d("get_type_desc",
                 [T_ptr(T_nil()), T_size_t(), T_size_t(), T_size_t(),
-                 T_ptr(T_ptr(tydesc_type))], T_ptr(tydesc_type)),
+                 T_ptr(T_ptr(tydesc_type)), T_int()], T_ptr(tydesc_type)),
           ivec_resize:
               d("ivec_resize", [T_ptr(T_opaque_ivec()), T_int()], T_void()),
           ivec_spill:

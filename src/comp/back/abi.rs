@@ -60,7 +60,8 @@ const tydesc_field_cmp_glue: int = 10;
 const tydesc_field_shape: int = 11;
 const tydesc_field_shape_tables: int = 12;
 const tydesc_field_n_params: int = 13;
-const n_tydesc_fields: int = 14;
+const tydesc_field_obj_params: int = 14;
+const n_tydesc_fields: int = 15;
 
 const cmp_glue_op_eq: uint = 0u;
 

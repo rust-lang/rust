@@ -8,7 +8,7 @@ import trans::{call_memmove, trans_shared_malloc, llsize_of,
                alloca, array_alloca, size_of, llderivedtydescs_block_ctxt,
                lazily_emit_tydesc_glue, get_tydesc, load_inbounds,
                move_val_if_temp, trans_lval, node_id_type,
-               new_sub_block_ctxt};
+               new_sub_block_ctxt, tps_normal};
 import bld = trans_build;
 import trans_common::*;
 
@@ -360,9 +360,9 @@ fn trans_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
     // FIXME (issue #511): This is needed to prevent a leak.
     let no_tydesc_info = none;
 
-    rs = get_tydesc(bcx, t, false, no_tydesc_info).result;
+    rs = get_tydesc(bcx, t, false, tps_normal, no_tydesc_info).result;
     bcx = rs.bcx;
-    rs = get_tydesc(bcx, unit_ty, false, no_tydesc_info).result;
+    rs = get_tydesc(bcx, unit_ty, false, tps_normal, no_tydesc_info).result;
     bcx = rs.bcx;
     lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, none);
     lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, none);
@@ -448,7 +448,8 @@ fn trans_append_literal(bcx: &@block_ctxt, v: ValueRef, vec_ty: ty::t,
                         vals: &[@ast::expr]) -> @block_ctxt {
     let elt_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let ti = none;
-    let {bcx, val: td} = get_tydesc(bcx, elt_ty, false, ti).result;
+    let {bcx, val: td} =
+        get_tydesc(bcx, elt_ty, false, tps_normal, ti).result;
     trans::lazily_emit_all_tydesc_glue(bcx, ti);
     let opaque_v = bld::PointerCast(bcx, v, T_ptr(T_opaque_ivec()));
     for val in vals {

@@ -2,6 +2,7 @@
 
 import std::str;
 import std::option;
+import std::vec;
 import option::none;
 import option::some;
 
@@ -133,7 +134,14 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
             GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
         let ti = none::<@tydesc_info>;
-        let body_td = get_tydesc(bcx, body_ty, true, ti).result;
+
+        let r = GEP_tup_like(bcx, body_ty, body,
+                             [0, abi::obj_body_elt_typarams]);
+        bcx = r.bcx;
+        let body_typarams = r.val;
+
+        let storage = tps_obj(vec::len(ty_params));
+        let body_td = get_tydesc(bcx, body_ty, true, storage, ti).result;
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = body_td.bcx;
@@ -147,16 +155,13 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         // Likewise for the object's fields.)
 
         // Copy typarams into captured typarams.
-        let body_typarams =
-            GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_typarams]);
-        bcx = body_typarams.bcx;
         // TODO: can we just get typarams_ty out of body_ty instead?
         let typarams_ty: ty::t = ty::mk_tup(ccx.tcx, tps);
         let i: int = 0;
         for tp: ast::ty_param in ty_params {
             let typaram = bcx.fcx.lltydescs[i];
             let capture =
-                GEP_tup_like(bcx, typarams_ty, body_typarams.val, [0, i]);
+                GEP_tup_like(bcx, typarams_ty, body_typarams, [0, i]);
             bcx = capture.bcx;
             bcx = copy_val(bcx, INIT, capture.val, typaram, tydesc_ty);
             i += 1;
@@ -323,7 +328,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
             GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
         let ti = none::<@tydesc_info>;
-        let body_td = get_tydesc(bcx, body_ty, true, ti).result;
+        let body_td = get_tydesc(bcx, body_ty, true, tps_normal, ti).result;
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = body_td.bcx;

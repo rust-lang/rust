@@ -339,7 +339,8 @@ upcall_get_type_desc(rust_task *task,
                      size_t size,
                      size_t align,
                      size_t n_descs,
-                     type_desc const **descs) {
+                     type_desc const **descs,
+                     uintptr_t n_obj_params) {
     check_stack(task);
     LOG_UPCALL_ENTRY(task);
 
@@ -347,7 +348,8 @@ upcall_get_type_desc(rust_task *task,
         ", align=%" PRIdPTR ", %" PRIdPTR " descs", size, align,
         n_descs);
     rust_crate_cache *cache = task->get_crate_cache();
-    type_desc *td = cache->get_type_desc(size, align, n_descs, descs);
+    type_desc *td = cache->get_type_desc(size, align, n_descs, descs,
+                                         n_obj_params);
     LOG(task, cache, "returning tydesc 0x%" PRIxPTR, td);
     return td;
 }
