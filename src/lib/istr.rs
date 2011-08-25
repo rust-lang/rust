@@ -3,9 +3,9 @@ index, rindex, find, starts_with, ends_with, substr, slice, split,
 concat, connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
 unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars, to_chars,
 char_len, char_at, bytes, is_ascii, shift_byte, pop_byte, unsafe_from_byte,
-unsafe_from_bytes, from_char;
+unsafe_from_bytes, from_char, char_range_at;
 
-export from_estr, to_estr;
+export from_estr, to_estr, from_estrs, to_estrs;
 
 fn from_estr(s: &str) -> istr {
     let s2 = ~"";
@@ -21,6 +21,22 @@ fn to_estr(s: &istr) -> str {
         str::push_byte(s2, u);
     }
     ret s2;
+}
+
+fn from_estrs(ss: &[str]) -> [istr] {
+    let ss2 = [];
+    for s in ss {
+        ss2 += [from_estr(s)];
+    }
+    ret ss2;
+}
+
+fn to_estrs(ss: &[istr]) -> [str] {
+    let ss2 = [];
+    for s in ss {
+        ss2 += [to_estr(s)];
+    }
+    ret ss2;
 }
 
 fn eq(a: &istr, b: &istr) -> bool { a == b }

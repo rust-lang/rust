@@ -66,20 +66,22 @@ type opt_res = either::t<test_opts, str>;
 // Parses command line arguments into test options
 fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
 
-    let args_ = vec::tail(args);
-    let opts = [getopts::optflag("ignored")];
+    let args_ = istr::from_estrs(vec::tail(args));
+    let opts = [getopts::optflag(~"ignored")];
     let match =
         alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
-          getopts::failure(f) { ret either::right(getopts::fail_str(f)) }
+          getopts::failure(f) {
+            ret either::right(istr::to_estr(getopts::fail_str(f)))
+          }
         };
 
     let filter =
         if vec::len(match.free) > 0u {
-            option::some(match.free[0])
+            option::some(istr::to_estr(match.free[0]))
         } else { option::none };
 
-    let run_ignored = getopts::opt_present(match, "ignored");
+    let run_ignored = getopts::opt_present(match, ~"ignored");
 
     let test_opts = {filter: filter, run_ignored: run_ignored};
 

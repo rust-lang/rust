@@ -30,45 +30,45 @@ fn main(args: [str]) {
 }
 
 fn parse_config(args: &[str]) -> config {
+    let args = istr::from_estrs(args);
     let opts =
-        [getopts::reqopt("compile-lib-path"), getopts::reqopt("run-lib-path"),
-         getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
-         getopts::reqopt("build-base"), getopts::reqopt("stage-id"),
-         getopts::reqopt("mode"), getopts::optflag("ignored"),
-         getopts::optopt("runtool"), getopts::optopt("rustcflags"),
-         getopts::optflag("verbose")];
+        [getopts::reqopt(~"compile-lib-path"),
+         getopts::reqopt(~"run-lib-path"),
+         getopts::reqopt(~"rustc-path"),
+         getopts::reqopt(~"src-base"),
+         getopts::reqopt(~"build-base"),
+         getopts::reqopt(~"stage-id"),
+         getopts::reqopt(~"mode"),
+         getopts::optflag(~"ignored"),
+         getopts::optopt(~"runtool"),
+         getopts::optopt(~"rustcflags"),
+         getopts::optflag(~"verbose")];
 
     check (vec::is_not_empty(args));
     let args_ = vec::tail(args);
     let match =
         alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
-          getopts::failure(f) { fail getopts::fail_str(f) }
+          getopts::failure(f) {
+            fail istr::to_estr(getopts::fail_str(f))
+          }
         };
 
-    let cnv = istr::from_estr;
-    let cnvo = fn(o: &option::t<str>) -> option::t<istr> {
-        alt o {
-          option::some(s) { option::some(istr::from_estr(s)) }
-          option::none. { option::none }
-        }
-    };
-
-    ret {compile_lib_path: cnv(getopts::opt_str(match, "compile-lib-path")),
-         run_lib_path: cnv(getopts::opt_str(match, "run-lib-path")),
-         rustc_path: cnv(getopts::opt_str(match, "rustc-path")),
-         src_base: cnv(getopts::opt_str(match, "src-base")),
-         build_base: cnv(getopts::opt_str(match, "build-base")),
-         stage_id: cnv(getopts::opt_str(match, "stage-id")),
-         mode: str_mode(getopts::opt_str(match, "mode")),
-         run_ignored: getopts::opt_present(match, "ignored"),
+    ret {compile_lib_path: getopts::opt_str(match, ~"compile-lib-path"),
+         run_lib_path: getopts::opt_str(match, ~"run-lib-path"),
+         rustc_path: getopts::opt_str(match, ~"rustc-path"),
+         src_base: getopts::opt_str(match, ~"src-base"),
+         build_base: getopts::opt_str(match, ~"build-base"),
+         stage_id: getopts::opt_str(match, ~"stage-id"),
+         mode: str_mode(istr::to_estr(getopts::opt_str(match, ~"mode"))),
+         run_ignored: getopts::opt_present(match, ~"ignored"),
          filter:
              if vec::len(match.free) > 0u {
-                 option::some(cnv(match.free[0]))
+                 option::some(match.free[0])
              } else { option::none },
-         runtool: cnvo(getopts::opt_maybe_str(match, "runtool")),
-         rustcflags: cnvo(getopts::opt_maybe_str(match, "rustcflags")),
-         verbose: getopts::opt_present(match, "verbose")};
+         runtool: getopts::opt_maybe_str(match, ~"runtool"),
+         rustcflags: getopts::opt_maybe_str(match, ~"rustcflags"),
+         verbose: getopts::opt_present(match, ~"verbose")};
 }
 
 fn log_config(config: &config) {

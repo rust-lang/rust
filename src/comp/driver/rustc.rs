@@ -330,45 +330,47 @@ fn build_target_config() -> @session::config {
     ret target_cfg;
 }
 
-fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
+fn build_session_options(binary: str, match: &getopts::match, binary_dir: str)
    -> @session::options {
-    let library = opt_present(match, "lib");
-    let static = opt_present(match, "static");
+    let library = opt_present(match, ~"lib");
+    let static = opt_present(match, ~"static");
 
     let library_search_paths = [binary_dir + "/lib"];
-    let lsp_vec = getopts::opt_strs(match, "L");
-    for lsp: str in lsp_vec { library_search_paths += [lsp]; }
+    let lsp_vec = getopts::opt_strs(match, ~"L");
+    for lsp: istr in lsp_vec {
+        library_search_paths += [istr::to_estr(lsp)];
+    }
 
-    let parse_only = opt_present(match, "parse-only");
-    let no_trans = opt_present(match, "no-trans");
+    let parse_only = opt_present(match, ~"parse-only");
+    let no_trans = opt_present(match, ~"no-trans");
 
     let output_type =
         if parse_only || no_trans {
             link::output_type_none
-        } else if opt_present(match, "S") {
+        } else if opt_present(match, ~"S") {
             link::output_type_assembly
-        } else if opt_present(match, "c") {
+        } else if opt_present(match, ~"c") {
             link::output_type_object
-        } else if opt_present(match, "emit-llvm") {
+        } else if opt_present(match, ~"emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let verify = !opt_present(match, "noverify");
-    let save_temps = opt_present(match, "save-temps");
-    let debuginfo = opt_present(match, "g");
-    let stats = opt_present(match, "stats");
-    let time_passes = opt_present(match, "time-passes");
-    let time_llvm_passes = opt_present(match, "time-llvm-passes");
-    let run_typestate = !opt_present(match, "no-typestate");
-    let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
+    let verify = !opt_present(match, ~"noverify");
+    let save_temps = opt_present(match, ~"save-temps");
+    let debuginfo = opt_present(match, ~"g");
+    let stats = opt_present(match, ~"stats");
+    let time_passes = opt_present(match, ~"time-passes");
+    let time_llvm_passes = opt_present(match, ~"time-llvm-passes");
+    let run_typestate = !opt_present(match, ~"no-typestate");
+    let sysroot_opt = getopts::opt_maybe_str(match, ~"sysroot");
     let opt_level: uint =
-        if opt_present(match, "O") {
-            if opt_present(match, "OptLevel") {
+        if opt_present(match, ~"O") {
+            if opt_present(match, ~"OptLevel") {
                 log_err "error: -O and --OptLevel both provided";
                 fail;
             }
             2u
-        } else if opt_present(match, "OptLevel") {
-            alt getopts::opt_str(match, "OptLevel") {
+        } else if opt_present(match, ~"OptLevel") {
+            alt istr::to_estr(getopts::opt_str(match, ~"OptLevel")) {
               "0" { 0u }
               "1" { 1u }
               "2" { 2u }
@@ -383,11 +385,12 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
     let sysroot =
         alt sysroot_opt {
           none. { get_default_sysroot(binary) }
-          some(s) { s }
+          some(s) { istr::to_estr(s) }
         };
-    let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
-    let test = opt_present(match, "test");
-    let do_gc = opt_present(match, "gc");
+    let cfg = parse_cfgspecs(
+        istr::to_estrs(getopts::opt_strs(match, ~"cfg")));
+    let test = opt_present(match, ~"test");
+    let do_gc = opt_present(match, ~"gc");
     let sopts: @session::options =
         @{library: library,
           static: static,
@@ -418,28 +421,29 @@ fn build_session(sopts: @session::options) -> session::session {
                          none, 0u);
 }
 
-fn parse_pretty(sess: session::session, name: &str) -> pp_mode {
-    if str::eq(name, "normal") {
+fn parse_pretty(sess: session::session, name: &istr) -> pp_mode {
+    if istr::eq(name, ~"normal") {
         ret ppm_normal;
-    } else if str::eq(name, "expanded") {
+    } else if istr::eq(name, ~"expanded") {
         ret ppm_expanded;
-    } else if str::eq(name, "typed") {
+    } else if istr::eq(name, ~"typed") {
         ret ppm_typed;
-    } else if str::eq(name, "identified") { ret ppm_identified; }
+    } else if istr::eq(name, ~"identified") { ret ppm_identified; }
     sess.fatal("argument to `pretty` must be one of `normal`, `typed`, or "
                + "`identified`");
 }
 
 fn opts() -> [getopts::opt] {
-    ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
-         optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
-         optflag("ls"), optflag("parse-only"), optflag("no-trans"),
-         optflag("O"), optopt("OptLevel"), optmulti("L"),
-         optflag("S"), optflag("c"), optopt("o"), optflag("g"),
-         optflag("save-temps"), optopt("sysroot"), optflag("stats"),
-         optflag("time-passes"), optflag("time-llvm-passes"),
-         optflag("no-typestate"), optflag("noverify"), optmulti("cfg"),
-         optflag("test"), optflag("lib"), optflag("static"), optflag("gc")];
+    ret [optflag(~"h"), optflag(~"help"), optflag(~"v"), optflag(~"version"),
+         optflag(~"glue"), optflag(~"emit-llvm"), optflagopt(~"pretty"),
+         optflag(~"ls"), optflag(~"parse-only"), optflag(~"no-trans"),
+         optflag(~"O"), optopt(~"OptLevel"), optmulti(~"L"),
+         optflag(~"S"), optflag(~"c"), optopt(~"o"), optflag(~"g"),
+         optflag(~"save-temps"), optopt(~"sysroot"), optflag(~"stats"),
+         optflag(~"time-passes"), optflag(~"time-llvm-passes"),
+         optflag(~"no-typestate"), optflag(~"noverify"), optmulti(~"cfg"),
+         optflag(~"test"), optflag(~"lib"), optflag(~"static"),
+         optflag(~"gc")];
 }
 
 fn main(args: [str]) {
@@ -447,31 +451,32 @@ fn main(args: [str]) {
     let binary_dir = istr::to_estr(
         fs::dirname(istr::from_estr(binary)));
     let match =
-        alt getopts::getopts(args, opts()) {
+        alt getopts::getopts(istr::from_estrs(args), opts()) {
           getopts::success(m) { m }
           getopts::failure(f) {
-            log_err #fmt["error: %s", getopts::fail_str(f)];
+            log_err #fmt["error: %s", istr::to_estr(getopts::fail_str(f))];
             fail
           }
         };
-    if opt_present(match, "h") || opt_present(match, "help") {
+    if opt_present(match, ~"h") || opt_present(match, ~"help") {
         usage(binary);
         ret;
     }
-    if opt_present(match, "v") || opt_present(match, "version") {
+    if opt_present(match, ~"v") || opt_present(match, ~"version") {
         version(binary);
         ret;
     }
     let sopts = build_session_options(binary, match, binary_dir);
     let sess = build_session(sopts);
-    let n_inputs = vec::len::<str>(match.free);
-    let output_file = getopts::opt_maybe_str(match, "o");
-    let glue = opt_present(match, "glue");
+    let n_inputs = vec::len::<istr>(match.free);
+    let output_file = getopts::opt_maybe_str(match, ~"o");
+    let glue = opt_present(match, ~"glue");
     if glue {
         if n_inputs > 0u {
             sess.fatal("No input files allowed with --glue.");
         }
-        let out = option::from_maybe::<str>("glue.bc", output_file);
+        let out = option::from_maybe::<istr>(~"glue.bc", output_file);
+        let out = istr::to_estr(out);
         middle::trans::make_common_glue(sess, out);
         ret;
     }
@@ -480,14 +485,14 @@ fn main(args: [str]) {
     } else if n_inputs > 1u {
         sess.fatal("Multiple input filenames provided.");
     }
-    let ifile = match.free[0];
+    let ifile = istr::to_estr(match.free[0]);
     let saved_out_filename: str = "";
     let cfg = build_configuration(sess, binary, ifile);
     let pretty =
-        option::map::<str,
+        option::map::<istr,
                       pp_mode>(bind parse_pretty(sess, _),
-                               getopts::opt_default(match, "pretty",
-                                                    "normal"));
+                               getopts::opt_default(match, ~"pretty",
+                                                    ~"normal"));
     alt pretty {
       some::<pp_mode>(ppm) {
         pretty_print_input(sess, cfg, ifile, ppm);
@@ -495,7 +500,7 @@ fn main(args: [str]) {
       }
       none::<pp_mode>. {/* continue */ }
     }
-    let ls = opt_present(match, "ls");
+    let ls = opt_present(match, ~"ls");
     if ls { metadata::creader::list_file_metadata(ifile, io::stdout()); ret; }
 
     let stop_after_codegen =
@@ -528,6 +533,7 @@ fn main(args: [str]) {
         compile_input(sess, cfg, ifile, ofile);
       }
       some(ofile) {
+        let ofile = istr::to_estr(ofile);
         // FIXME: what about windows? This will create a foo.exe.o.
         saved_out_filename = ofile;
         let temp_filename =
@@ -634,7 +640,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let match =
-            alt getopts::getopts(["--test"], opts()) {
+            alt getopts::getopts([~"--test"], opts()) {
               getopts::success(m) { m }
             };
         let sessopts = build_session_options("whatever", match, "whatever");
@@ -648,7 +654,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let match =
-            alt getopts::getopts(["--test", "--cfg=test"], opts()) {
+            alt getopts::getopts([~"--test", ~"--cfg=test"], opts()) {
               getopts::success(m) { m }
             };
         let sessopts = build_session_options("whatever", match, "whatever");
