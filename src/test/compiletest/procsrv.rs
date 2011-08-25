@@ -153,11 +153,11 @@ fn worker(p: port<request>) {
 }
 
 fn with_lib_path<@T>(path: &str, f: fn() -> T) -> T {
-    let maybe_oldpath = getenv(util::lib_path_env_var());
+    let maybe_oldpath = getenv(istr::from_estr(util::lib_path_env_var()));
     append_lib_path(path);
     let res = f();
     if option::is_some(maybe_oldpath) {
-        export_lib_path(option::get(maybe_oldpath));
+        export_lib_path(istr::to_estr(option::get(maybe_oldpath)));
     } else {
         // FIXME: This should really be unset but we don't have that yet
         export_lib_path("");
@@ -167,7 +167,9 @@ fn with_lib_path<@T>(path: &str, f: fn() -> T) -> T {
 
 fn append_lib_path(path: &str) { export_lib_path(util::make_new_path(path)); }
 
-fn export_lib_path(path: &str) { setenv(util::lib_path_env_var(), path); }
+fn export_lib_path(path: &str) {
+    setenv(istr::from_estr(util::lib_path_env_var()), istr::from_estr(path));
+}
 
 fn clone_vecstr(v: &[str]) -> [[u8]] {
     let r = [];

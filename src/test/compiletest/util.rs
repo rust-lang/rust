@@ -1,6 +1,7 @@
 import std::option;
 import std::generic_os::getenv;
 import std::io;
+import std::istr;
 
 import common::config;
 
@@ -8,8 +9,8 @@ fn make_new_path(path: &str) -> str {
 
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
-    alt getenv(lib_path_env_var()) {
-      option::some(curr) { #fmt["%s:%s", path, curr] }
+    alt getenv(istr::from_estr(lib_path_env_var())) {
+      option::some(curr) { #fmt["%s:%s", path, istr::to_estr(curr)] }
       option::none. { path }
     }
 }

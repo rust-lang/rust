@@ -49,10 +49,10 @@ fn reset(writer: io::buf_writer) {
 
 fn color_supported() -> bool {
     let supported_terms = [~"xterm-color", ~"xterm", ~"screen-bce"];
-    ret alt generic_os::getenv("TERM") {
+    ret alt generic_os::getenv(~"TERM") {
           option::some(env) {
             for term: istr in supported_terms {
-                if istr::eq(term, istr::from_estr(env)) { ret true; }
+                if istr::eq(term, env) { ret true; }
             }
             false
           }

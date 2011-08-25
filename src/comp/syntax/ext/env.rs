@@ -5,6 +5,7 @@
  * interface.
  */
 import std::vec;
+import std::istr;
 import std::option;
 import std::generic_os;
 import base::*;
@@ -26,9 +27,11 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
     // option::t<str> rather than just an maybe-empty string.
 
     let var = expr_to_str(cx, args[0], "#env requires a string");
-    alt generic_os::getenv(var) {
+    alt generic_os::getenv(istr::from_estr(var)) {
       option::none. { ret make_new_str(cx, sp, ""); }
-      option::some(s) { ret make_new_str(cx, sp, s); }
+      option::some(s) {
+        ret make_new_str(cx, sp, istr::to_estr(s));
+      }
     }
 }
 
