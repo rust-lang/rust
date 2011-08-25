@@ -52,11 +52,11 @@ mod libc_constants {
     fn S_IWUSR() -> uint { ret 128u; }
 }
 
-fn exec_suffix() -> str { ret ""; }
+fn exec_suffix() -> istr { ret ~""; }
 
-fn target_os() -> str { ret "linux"; }
+fn target_os() -> istr { ret ~"linux"; }
 
-fn dylib_filename(base: str) -> str { ret "lib" + base + ".so"; }
+fn dylib_filename(base: &istr) -> istr { ret ~"lib" + base + ~".so"; }
 
 fn pipe() -> {in: int, out: int} {
     let fds = {mutable in: 0, mutable out: 0};
@@ -76,7 +76,9 @@ native "rust" mod rustrt {
     fn rust_getcwd() -> str;
 }
 
-fn getcwd() -> str { ret rustrt::rust_getcwd(); }
+fn getcwd() -> istr {
+    ret istr::from_estr(rustrt::rust_getcwd());
+}
 
 
 // Local Variables:

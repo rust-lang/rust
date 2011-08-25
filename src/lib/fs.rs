@@ -70,7 +70,7 @@ fn make_absolute(p: &path) -> path {
     if path_is_absolute(p) {
         ret p;
     } else {
-        ret connect(istr::from_estr(getcwd()), p);
+        ret connect(getcwd(), p);
     }
 }
 

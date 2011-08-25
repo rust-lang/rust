@@ -55,7 +55,8 @@ fn default_configuration(sess: session::session, argv0: str, input: str) ->
     let mk = attr::mk_name_value_item_str;
 
     ret [ // Target bindings.
-         mk("target_os", std::os::target_os()), mk("target_arch", "x86"),
+         mk("target_os", istr::to_estr(std::os::target_os())),
+        mk("target_arch", "x86"),
          mk("target_libc", libc),
          // Build bindings.
          mk("build_compiler", argv0), mk("build_input", input)];

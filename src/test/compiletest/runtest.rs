@@ -252,7 +252,7 @@ fn make_compile_args(config: &config, props: &test_props, testfile: &str) ->
 }
 
 fn make_exe_name(config: &config, testfile: &str) -> str {
-    output_base_name(config, testfile) + os::exec_suffix()
+    output_base_name(config, testfile) + istr::to_estr(os::exec_suffix())
 }
 
 fn make_run_args(config: &config, props: &test_props, testfile: &str) ->

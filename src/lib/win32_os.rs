@@ -46,11 +46,11 @@ native "x86stdcall" mod kernel32 {
     fn SetEnvironmentVariableA(n: sbuf, v: sbuf) -> int;
 }
 
-fn exec_suffix() -> str { ret ".exe"; }
+fn exec_suffix() -> istr { ret ~".exe"; }
 
-fn target_os() -> str { ret "win32"; }
+fn target_os() -> istr { ret ~"win32"; }
 
-fn dylib_filename(base: str) -> str { ret base + ".dll"; }
+fn dylib_filename(base: &istr) -> istr { ret base + ~".dll"; }
 
 fn pipe() -> {in: int, out: int} {
     // Windows pipes work subtly differently than unix pipes, and their
@@ -78,7 +78,9 @@ native "rust" mod rustrt {
 
 fn waitpid(pid: int) -> int { ret rustrt::rust_process_wait(pid); }
 
-fn getcwd() -> str { ret rustrt::rust_getcwd(); }
+fn getcwd() -> istr {
+    ret istr::from_estr(rustrt::rust_getcwd());
+}
 
 // Local Variables:
 // mode: rust;
