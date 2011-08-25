@@ -3,7 +3,7 @@ index, rindex, find, starts_with, ends_with, substr, slice, split,
 concat, connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
 unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars, to_chars,
 char_len, char_at, bytes, is_ascii, shift_byte, pop_byte, unsafe_from_byte,
-unsafe_from_bytes, from_char, char_range_at;
+unsafe_from_bytes, from_char, char_range_at, str_from_cstr;
 
 export from_estr, to_estr, from_estrs, to_estrs;
 
@@ -461,4 +461,17 @@ fn trim_right(s: &istr) -> istr {
 
 fn trim(s: &istr) -> istr {
     trim_left(trim_right(s))
+}
+
+fn str_from_cstr(cstr: *u8) -> istr {
+    let res = ~"";
+    let start = cstr;
+    let curr = start;
+    let i = 0u;
+    while *curr != 0u8 {
+        push_byte(res, *curr);
+        i += 1u;
+        curr = ptr::offset(start, i);
+    }
+    ret res;
 }

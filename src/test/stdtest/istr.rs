@@ -1,4 +1,5 @@
 import std::istr;
+import std::vec;
 
 #[test]
 fn test_eq() {
@@ -255,4 +256,12 @@ fn unsafe_from_bytes() {
     let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
     let b = istr::unsafe_from_bytes(a);
     assert b == ~"AAAAAAA";
+}
+
+#[test]
+fn str_from_cstr() {
+    let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+    let b = vec::to_ptr(a);
+    let c = istr::str_from_cstr(b);
+    assert c == ~"AAAAAAA";
 }
