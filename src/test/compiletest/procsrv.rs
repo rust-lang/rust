@@ -13,6 +13,7 @@ import std::os;
 import std::run;
 import std::io;
 import std::str;
+import std::istr;
 import std::comm::chan;
 import std::comm::port;
 import std::comm::send;
@@ -128,7 +129,8 @@ fn worker(p: port<request>) {
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
         let spawnproc =
-            bind run::spawn_process(execparms.prog, execparms.args,
+            bind run::spawn_process(istr::from_estr(execparms.prog),
+                                    istr::from_estrs(execparms.args),
                                     pipe_in.in, pipe_out.out, pipe_err.out);
         let pid = with_lib_path(execparms.lib_path, spawnproc);
 

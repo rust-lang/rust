@@ -551,12 +551,14 @@ fn main(args: [str]) {
     let glu: str = binary_dir + "/lib/glue.o";
     let main: str = binary_dir + "/lib/main.o";
     let stage: str = "-L" + binary_dir + "/lib";
-    let prog: str = "gcc";
+    let prog: istr = ~"gcc";
     // The invocations of gcc share some flags across platforms
 
     let gcc_args =
-        [stage, "-Lrt", "-lrustrt", glu, "-m32", "-o", saved_out_filename,
-         saved_out_filename + ".o"];
+        [istr::from_estr(stage),
+         ~"-Lrt", ~"-lrustrt", istr::from_estr(glu),
+         ~"-m32", ~"-o", istr::from_estr(saved_out_filename),
+         istr::from_estr(saved_out_filename) + ~".o"];
     let lib_cmd;
 
     let os = sess.get_targ_cfg().os;
@@ -590,46 +592,49 @@ fn main(args: [str]) {
     let cstore = sess.get_cstore();
     for cratepath: str in cstore::get_used_crate_files(cstore) {
         if str::ends_with(cratepath, ".rlib") {
-            gcc_args += [cratepath];
+            gcc_args += [istr::from_estr(cratepath)];
             cont;
         }
         let cratepath = istr::from_estr(cratepath);
         let dir = fs::dirname(cratepath);
-        if dir != ~"" { gcc_args += ["-L" + istr::to_estr(dir)]; }
+        if dir != ~"" { gcc_args += [~"-L" + dir]; }
         let libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
-        gcc_args += ["-l" + istr::to_estr(libarg)];
+        gcc_args += [~"-l" + libarg];
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for arg: str in ula { gcc_args += [arg]; }
+    for arg: str in ula { gcc_args += [istr::from_estr(arg)]; }
 
     let used_libs = cstore::get_used_libraries(cstore);
-    for l: str in used_libs { gcc_args += ["-l" + l]; }
+    for l: str in used_libs { gcc_args += [~"-l" + istr::from_estr(l)]; }
 
     if sopts.library {
-        gcc_args += [lib_cmd];
+        gcc_args += [istr::from_estr(lib_cmd)];
     } else {
         // FIXME: why do we hardcode -lm?
-        gcc_args += ["-lm", main];
+        gcc_args += [~"-lm", istr::from_estr(main)];
     }
     // We run 'gcc' here
 
     let err_code = run::run_program(prog, gcc_args);
     if 0 != err_code {
         sess.err(#fmt["linking with gcc failed with code %d", err_code]);
-        sess.note(#fmt["gcc arguments: %s", str::connect(gcc_args, " ")]);
+        sess.note(#fmt["gcc arguments: %s",
+                       istr::to_estr(istr::connect(gcc_args, ~" "))]);
         sess.abort_if_errors();
     }
     // Clean up on Darwin
 
     if sess.get_targ_cfg().os == session::os_macos {
-        run::run_program("dsymutil", [saved_out_filename]);
+        run::run_program(~"dsymutil",
+                         [istr::from_estr(saved_out_filename)]);
     }
 
 
     // Remove the temporary object file if we aren't saving temps
     if !sopts.save_temps {
-        run::run_program("rm", [saved_out_filename + ".o"]);
+        run::run_program(~"rm",
+                         [istr::from_estr(saved_out_filename) + ~".o"]);
     }
 }
 

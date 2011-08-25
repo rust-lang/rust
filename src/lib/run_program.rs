@@ -19,8 +19,10 @@ fn arg_vec(prog: str, args: &[str]) -> [sbuf] {
     ret argptrs;
 }
 
-fn spawn_process(prog: str, args: &[str], in_fd: int, out_fd: int,
+fn spawn_process(prog: &istr, args: &[istr], in_fd: int, out_fd: int,
                  err_fd: int) -> int {
+    let prog = istr::to_estr(prog);
+    let args = istr::to_estrs(args);
     // Note: we have to hold on to this vector reference while we hold a
     // pointer to its buffer
     let argv = arg_vec(prog, args);
@@ -29,7 +31,7 @@ fn spawn_process(prog: str, args: &[str], in_fd: int, out_fd: int,
     ret pid;
 }
 
-fn run_program(prog: str, args: &[str]) -> int {
+fn run_program(prog: &istr, args: &[istr]) -> int {
     ret os::waitpid(spawn_process(prog, args, 0, 0, 0));
 }
 
@@ -46,7 +48,7 @@ type program =
 
 resource program_res(p: program) { p.destroy(); }
 
-fn start_program(prog: str, args: &[str]) -> @program_res {
+fn start_program(prog: &istr, args: &[istr]) -> @program_res {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -106,7 +108,7 @@ fn read_all(rd: &io::reader) -> str {
     ret buf;
 }
 
-fn program_output(prog: str, args: [str]) ->
+fn program_output(prog: &istr, args: &[istr]) ->
    {status: int, out: str, err: str} {
     let pr = start_program(prog, args);
     pr.close_input();
