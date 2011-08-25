@@ -26,6 +26,7 @@ fn mode_str(m: &ty::mode) -> str {
       mo_val. { "" }
       mo_alias(false) { "&" }
       mo_alias(true) { "&mutable " }
+      mo_move. { "-" }
     }
 }
 
