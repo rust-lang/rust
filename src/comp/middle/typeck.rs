@@ -1305,7 +1305,7 @@ fn check_lit(ccx: @crate_ctxt, lit: &@ast::lit) -> ty::t {
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
+fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
              expected: ty::t) {
     alt pat.node {
       ast::pat_wild. { write::ty_only_fixup(fcx, pat.id, expected); }

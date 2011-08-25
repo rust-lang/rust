@@ -69,7 +69,7 @@ type match_branch =
       bound: bind_map,
       data: @{body: BasicBlockRef,
               guard: option::t<@ast::expr>,
-              id_map: ast::pat_id_map}};
+              id_map: ast_util::pat_id_map}};
 type match = [match_branch];
 
 fn matches_always(p: &@ast::pat) -> bool {
@@ -464,7 +464,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
 
 // Returns false for unreachable blocks
 fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
-                     ids: &ast::pat_id_map) -> bool {
+                     ids: &ast_util::pat_id_map) -> bool {
     let our_block = bcx.llbb as uint;
     let success = true;
     for each item: @{key: ast::ident, val: ast::node_id} in ids.items() {

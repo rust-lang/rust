@@ -98,8 +98,6 @@ tag pat_ {
     pat_box(@pat);
 }
 
-type pat_id_map = std::map::hashmap<str, ast::node_id>;
-
 tag mutability { mut; imm; maybe_mut; }
 
 tag kind { kind_pinned; kind_shared; kind_unique; }

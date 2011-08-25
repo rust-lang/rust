@@ -43,6 +43,8 @@ fn def_id_of_def(d: def) -> def_id {
     }
 }
 
+type pat_id_map = std::map::hashmap<str, ast::node_id>;
+
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
 fn pat_id_map(pat: &@pat) -> pat_id_map {
