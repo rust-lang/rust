@@ -2,12 +2,7 @@ import sys;
 import ptr;
 import unsafe;
 import task;
-import task::task_id;
 
-export _chan;
-export _port;
-export chan_handle;
-export mk_port;
 export send;
 export recv;
 export chan;
@@ -17,7 +12,8 @@ native "rust" mod rustrt {
     type void;
     type rust_port;
 
-    fn chan_id_send<~T>(target_task: task_id, target_port: port_id, data: -T);
+    fn chan_id_send<~T>(target_task: task::task,
+                        target_port: port_id, data: -T);
 
     fn new_port(unit_sz: uint) -> *rust_port;
     fn del_port(po: *rust_port);
@@ -31,10 +27,9 @@ native "rust-intrinsic" mod rusti {
 
 type port_id = int;
 
-type chan_handle<~T> = {task: task_id, port: port_id};
-
-tag chan<~T> { chan_t(chan_handle<T>); }
-type _chan<~T> = chan<T>;
+// It's critical that this only have one variant, so it has a record
+// layout, and will work in the rust_task structure in task.rs.
+tag chan<~T> { chan_t(task::task, port_id); }
 
 resource port_ptr(po: *rustrt::rust_port) {
     rustrt::drop_port(po);
@@ -43,17 +38,9 @@ resource port_ptr(po: *rustrt::rust_port) {
 
 tag port<~T> { port_t(@port_ptr); }
 
-obj port_obj<~T>(raw_port: port<T>) {
-    fn mk_chan() -> chan<T> { chan(raw_port) }
-
-    fn recv() -> T { recv(raw_port) }
-}
-type _port<~T> = port_obj<T>;
-
-fn mk_port<~T>() -> _port<T> { ret port_obj::<T>(port::<T>()); }
-
 fn send<~T>(ch: &chan<T>, data: -T) {
-    rustrt::chan_id_send(ch.task, ch.port, data);
+    let chan_t(t, p) = ch;
+    rustrt::chan_id_send(t, p, data);
 }
 
 fn port<~T>() -> port<T> {
@@ -63,5 +50,5 @@ fn port<~T>() -> port<T> {
 fn recv<~T>(p: &port<T>) -> T { ret rusti::recv(***p) }
 
 fn chan<~T>(p: &port<T>) -> chan<T> {
-    chan_t({task: task::get_task_id(), port: rustrt::get_port_id(***p)})
+    chan_t(task::get_task_id(), rustrt::get_port_id(***p))
 }

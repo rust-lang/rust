@@ -2,9 +2,15 @@
    A test case for issue #577, which also exposes #588
 */
 
+// FIXME: This won't work until we can compare resources
+// xfail-stage0
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
+
 use std;
 import std::task;
-import std::task::join_id;
+import std::task::join;
 import std::comm;
 
 fn child() { }
@@ -15,8 +21,8 @@ fn main() {
     let t2;
 
     let c1 = child, c2 = child;
-    t1 = task::_spawn(c1);
-    t2 = task::_spawn(c2);
+    t1 = task::spawn_joinable(c1);
+    t2 = task::spawn_joinable(c2);
 
     assert (t1 == t1);
     assert (t1 != t2);
@@ -25,22 +31,19 @@ fn main() {
     let p1;
     let p2;
 
-    p1 = comm::mk_port::<int>();
-    p2 = comm::mk_port::<int>();
+    p1 = comm::port::<int>();
+    p2 = comm::port::<int>();
 
     assert (p1 == p1);
     assert (p1 != p2);
 
     // channels
-    let c1;
-    let c2;
-
-    c1 = p1.mk_chan();
-    c2 = p2.mk_chan();
+    let c1 = comm::chan(p1);
+    let c2 = comm::chan(p2);
 
     assert (c1 == c1);
     assert (c1 != c2);
 
-    join_id(t1);
-    join_id(t2);
+    join(t1);
+    join(t2);
 }

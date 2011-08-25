@@ -21,30 +21,30 @@ import std::getopts;
 import std::task;
 import std::u64;
 import std::comm;
-import std::comm::_port;
-import std::comm::mk_port;
-import std::comm::_chan;
+import std::comm::port;
+import std::comm::chan;
 import std::comm::send;
+import std::comm::recv;
 
 fn fib(n: int) -> int {
-    fn pfib(c: _chan<int>, n: int) {
+    fn pfib(c: chan<int>, n: int) {
         if n == 0 {
             send(c, 0);
         } else if n <= 2 {
             send(c, 1);
         } else {
-            let p = mk_port::<int>();
+            let p = port();
 
-            let t1 = task::_spawn(bind pfib(p.mk_chan(), n - 1));
-            let t2 = task::_spawn(bind pfib(p.mk_chan(), n - 2));
+            let t1 = task::spawn(bind pfib(chan(p), n - 1));
+            let t2 = task::spawn(bind pfib(chan(p), n - 2));
 
-            send(c, p.recv() + p.recv());
+            send(c, recv(p) + recv(p));
         }
     }
 
-    let p = mk_port();
-    let t = task::_spawn(bind pfib(p.mk_chan(), n));
-    ret p.recv();
+    let p = port();
+    let t = task::spawn(bind pfib(chan(p), n));
+    ret recv(p);
 }
 
 type config = {stress: bool};
@@ -74,9 +74,9 @@ fn stress_task(id: int) {
 fn stress(num_tasks: int) {
     let tasks = [];
     for each i: int in range(0, num_tasks) {
-        tasks += [task::_spawn(bind stress_task(i))];
+        tasks += [task::spawn_joinable(bind stress_task(i))];
     }
-    for t in tasks { task::join_id(t); }
+    for t in tasks { task::join(t); }
 }
 
 fn main(argv: [str]) {
@@ -96,7 +96,6 @@ fn main(argv: [str]) {
             let num_trials = 10;
 
             let out = io::stdout();
-
 
             for each n: int in range(1, max + 1) {
                 for each i: int in range(0, num_trials) {

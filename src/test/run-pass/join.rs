@@ -6,10 +6,10 @@ import std::task::*;
 
 fn main() {
     let f = child;
-    let other = _spawn(f);
+    let other = spawn_joinable(f);
     log_err "1";
     yield();
-    join_id(other);
+    join(other);
     log_err "3";
 }
 

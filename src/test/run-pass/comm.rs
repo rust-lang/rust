@@ -2,20 +2,21 @@
 
 use std;
 import std::comm;
-import std::comm::_chan;
+import std::comm::chan;
 import std::comm::send;
+import std::comm::recv;
 import std::task;
 
 fn main() {
-    let p = comm::mk_port();
-    let t = task::_spawn(bind child(p.mk_chan()));
-    let y = p.recv();
+    let p = comm::port();
+    let t = task::spawn(bind child(chan(p)));
+    let y = recv(p);
     log_err "received";
     log_err y;
     assert (y == 10);
 }
 
-fn child(c: _chan<int>) {
+fn child(c: chan<int>) {
     log_err "sending";
     send(c, 10);
     log_err "value sent"

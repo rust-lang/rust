@@ -8,28 +8,30 @@
 use std;
 
 import std::task;
-import std::task::join_id;
+import std::task::join;
 import std::comm;
-import std::comm::_chan;
+import std::comm::chan;
 import std::comm::send;
+import std::comm::port;
+import std::comm::recv;
 
-fn grandchild(c: _chan<int>) { send(c, 42); }
+fn grandchild(c: chan<int>) { send(c, 42); }
 
-fn child(c: _chan<int>) {
-    let _grandchild = task::_spawn(bind grandchild(c));
-    join_id(_grandchild);
+fn child(c: chan<int>) {
+    let _grandchild = task::spawn_joinable(bind grandchild(c));
+    join(_grandchild);
 }
 
 fn main() {
-    let p = comm::mk_port();
+    let p = comm::port();
 
-    let _child = task::_spawn(bind child(p.mk_chan()));
+    let _child = task::spawn_joinable(bind child(chan(p)));
 
-    let x: int = p.recv();
+    let x: int = recv(p);
 
     log x;
 
     assert (x == 42);
 
-    join_id(_child);
+    join(_child);
 }

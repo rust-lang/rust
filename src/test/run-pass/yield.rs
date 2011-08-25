@@ -5,13 +5,13 @@ import std::task::*;
 
 fn main() {
     let f = child;
-    let other = task::spawn(f);
+    let other = task::spawn_joinable(f);
     log_err "1";
     yield();
     log_err "2";
     yield();
     log_err "3";
-    join_id(other);
+    join(other);
 }
 
 fn child() { log_err "4"; yield(); log_err "5"; yield(); log_err "6"; }

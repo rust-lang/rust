@@ -4,7 +4,7 @@
 // while providing a base that other test frameworks may build off of.
 
 import generic_os::getenv;
-import task::task_id;
+import task::task;
 
 export test_name;
 export test_fn;
@@ -88,7 +88,7 @@ fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
 
 tag test_result { tr_ok; tr_failed; tr_ignored; }
 
-type joinable = (task_id, comm::port<task::task_notification>);
+type joinable = (task, comm::port<task::task_notification>);
 
 // To get isolation and concurrency tests have to be run in their own tasks.
 // In cases where test functions and closures it is not ok to just dump them

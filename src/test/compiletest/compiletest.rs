@@ -5,13 +5,12 @@ import std::fs;
 import std::str;
 import std::vec;
 import std::task;
-import std::task::task_id;
 
 import std::comm;
-import std::comm::_port;
-import std::comm::_chan;
+import std::comm::port;
+import std::comm::chan;
 import std::comm::send;
-import std::comm::mk_port;
+import std::comm::recv;
 
 import common::cx;
 import common::config;
@@ -125,7 +124,7 @@ type tests_and_conv_fn =
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
     log #fmt["making tests from %s", cx.config.src_base];
-    let configport = mk_port::<[u8]>();
+    let configport = port::<[u8]>();
     let tests = [];
     for file: str in fs::list_dir(cx.config.src_base) {
         log #fmt["inspecting file %s", file];
@@ -156,10 +155,10 @@ fn is_test(config: &config, testfile: &str) -> bool {
     ret valid;
 }
 
-fn make_test(cx: &cx, testfile: &str, configport: &_port<[u8]>) ->
+fn make_test(cx: &cx, testfile: &str, configport: &port<[u8]>) ->
    test::test_desc {
     {name: make_test_name(cx.config, testfile),
-     fn: make_test_closure(testfile, configport.mk_chan()),
+     fn: make_test_closure(testfile, chan(configport)),
      ignore: header::is_test_ignored(cx.config, testfile)}
 }
 
@@ -186,12 +185,12 @@ up. Then we'll spawn that data into another task and return the task.
 Really convoluted. Need to think up of a better definition for tests.
 */
 
-fn make_test_closure(testfile: &str, configchan: _chan<[u8]>) ->
+fn make_test_closure(testfile: &str, configchan: chan<[u8]>) ->
    test::test_fn {
     bind send_config(testfile, configchan)
 }
 
-fn send_config(testfile: str, configchan: _chan<[u8]>) {
+fn send_config(testfile: str, configchan: chan<[u8]>) {
     send(configchan, str::bytes(testfile));
 }
 
@@ -205,10 +204,10 @@ break up the config record and pass everything individually to the spawned
 function.
 */
 
-fn closure_to_task(cx: cx, configport: _port<[u8]>, testfn: &fn()) ->
+fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: &fn()) ->
    test::joinable {
     testfn();
-    let testfile = configport.recv();
+    let testfile = recv(configport);
     let testthunk =
         bind run_test_task(cx.config.compile_lib_path, cx.config.run_lib_path,
                            cx.config.rustc_path, cx.config.src_base,

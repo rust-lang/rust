@@ -1,24 +1,25 @@
 // -*- rust -*-
 
 use std;
-import std::comm::_chan;
-import std::comm::mk_port;
+import std::comm::chan;
+import std::comm::port;
 import std::comm::send;
+import std::comm::recv;
 import std::task;
 
-fn a(c: _chan<int>) { send(c, 10); }
+fn a(c: chan<int>) { send(c, 10); }
 
 fn main() {
-    let p = mk_port();
-    task::_spawn(bind a(p.mk_chan()));
-    task::_spawn(bind b(p.mk_chan()));
+    let p = port();
+    task::spawn(bind a(chan(p)));
+    task::spawn(bind b(chan(p)));
     let n: int = 0;
-    n = p.recv();
-    n = p.recv();
+    n = recv(p);
+    n = recv(p);
     //    log "Finished.";
 }
 
-fn b(c: _chan<int>) {
+fn b(c: chan<int>) {
     //    log "task b0";
     //    log "task b1";
     //    log "task b2";

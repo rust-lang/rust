@@ -5,6 +5,24 @@ import option::none;
 import option = option::t;
 import ptr;
 
+export task;
+export joinable_task;
+export sleep;
+export yield;
+export task_notification;
+export join;
+export unsupervise;
+export pin;
+export unpin;
+export set_min_stack;
+export spawn;
+export spawn_notify;
+export spawn_joinable;
+export task_result;
+export tr_success;
+export tr_failure;
+export get_task_id;
+
 native "rust" mod rustrt {
     fn task_sleep(time_in_us: uint);
     fn task_yield();
@@ -29,8 +47,8 @@ native "rust" mod rustrt {
 
 type rust_task =
     {id: task,
-     mutable notify_enabled: u8,
-     mutable notify_chan: comm::chan_handle<task_notification>,
+     mutable notify_enabled: u32,
+     mutable notify_chan: comm::chan<task_notification>,
      ctx: task_context,
      stack_ptr: *u8};
 
@@ -40,6 +58,7 @@ resource rust_task_ptr(task: *rust_task) { rustrt::drop_task(task); }
 
 type task = int;
 type task_id = task;
+type joinable_task = (task_id, comm::port<task_notification>);
 
 fn get_task_id() -> task_id { rustrt::get_task_id() }
 
@@ -79,15 +98,13 @@ fn unpin() { rustrt::unpin_task(); }
 
 fn set_min_stack(stack_size: uint) { rustrt::set_min_stack(stack_size); }
 
-fn _spawn(thunk: -fn()) -> task { spawn(thunk) }
-
 fn spawn(thunk: -fn()) -> task { spawn_inner(thunk, none) }
 
 fn spawn_notify(thunk: -fn(), notify: comm::chan<task_notification>) -> task {
     spawn_inner(thunk, some(notify))
 }
 
-fn spawn_joinable(thunk: -fn()) -> (task_id, comm::port<task_notification>) {
+fn spawn_joinable(thunk: -fn()) -> joinable_task {
     let p = comm::port::<task_notification>();
     let id = spawn_notify(thunk, comm::chan::<task_notification>(p));
     ret (id, p);
@@ -105,7 +122,7 @@ fn spawn_inner(thunk: -fn(), notify: option<comm::chan<task_notification>>) ->
     // set up the task pointer
     let task_ptr = rust_task_ptr(rustrt::get_task_pointer(id));
     let regs = ptr::addr_of((**task_ptr).ctx.regs);
-    (*regs).edx = cast(*task_ptr);;
+    (*regs).edx = cast(*task_ptr);
     (*regs).esp = cast((**task_ptr).stack_ptr);
 
     assert (ptr::null() != (**task_ptr).stack_ptr);
@@ -116,8 +133,8 @@ fn spawn_inner(thunk: -fn(), notify: option<comm::chan<task_notification>>) ->
     // set up notifications if they are enabled.
     alt notify {
       some(c) {
-        (**task_ptr).notify_enabled = 1u8;;
-        (**task_ptr).notify_chan = *c;
+        (**task_ptr).notify_enabled = 1u32;;
+        (**task_ptr).notify_chan = c;
       }
       none { }
     };

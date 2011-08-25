@@ -1,17 +1,19 @@
 use std;
 import std::comm;
 import std::comm::send;
+import comm::chan;
+import comm::recv;
 
 fn main() { test00(); }
 
 fn test00() {
     let r: int = 0;
     let sum: int = 0;
-    let p = comm::mk_port();
-    let c0 = p.mk_chan();
-    let c1 = p.mk_chan();
-    let c2 = p.mk_chan();
-    let c3 = p.mk_chan();
+    let p = comm::port();
+    let c0 = chan(p);
+    let c1 = chan(p);
+    let c2 = chan(p);
+    let c3 = chan(p);
     let number_of_messages: int = 1000;
     let i: int = 0;
     while i < number_of_messages {
@@ -23,13 +25,13 @@ fn test00() {
     }
     i = 0;
     while i < number_of_messages {
-        r = p.recv();
+        r = recv(p);
         sum += r;
-        r = p.recv();
+        r = recv(p);
         sum += r;
-        r = p.recv();
+        r = recv(p);
         sum += r;
-        r = p.recv();
+        r = recv(p);
         sum += r;
         i += 1;
     }

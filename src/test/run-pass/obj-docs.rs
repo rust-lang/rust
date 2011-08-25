@@ -1,9 +1,9 @@
 // Sanity-check the code examples that appear in the object system
 // documentation.
 use std;
-import std::comm::_chan;
+import std::comm::chan;
 import std::comm::send;
-import std::comm::mk_port;
+import std::comm::port;
 
 fn main() {
 
@@ -40,16 +40,16 @@ fn main() {
         fn take(y: int) { *x += y; }
     }
 
-    obj sender(c: _chan<int>) {
+    obj sender(c: chan<int>) {
         fn take(z: int) { send(c, z); }
     }
 
     fn give_ints(t: taker) { t.take(1); t.take(2); t.take(3); }
 
-    let p = mk_port::<int>();
+    let p = port();
 
     let t1: taker = adder(@mutable 0);
-    let t2: taker = sender(p.mk_chan());
+    let t2: taker = sender(chan(p));
 
     give_ints(t1);
     give_ints(t2);

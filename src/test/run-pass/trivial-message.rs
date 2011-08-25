@@ -1,15 +1,14 @@
 use std;
-import std::comm::mk_port;
-import std::comm::send;
+import std::comm::*;
 
 /*
   This is about the simplest program that can successfully send a
   message.
  */
 fn main() {
-    let po = mk_port::<int>();
-    let ch = po.mk_chan();
+    let po = port();
+    let ch = chan(po);
     send(ch, 42);
-    let r = po.recv();
+    let r = recv(po);
     log_err r;
 }

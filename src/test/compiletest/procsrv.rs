@@ -6,7 +6,6 @@
 
 import std::option;
 import std::task;
-import std::task::task_id;
 import std::generic_os::setenv;
 import std::generic_os::getenv;
 import std::vec;
@@ -28,7 +27,8 @@ export reqchan;
 
 type reqchan = chan<request>;
 
-type handle = {task: option::t<task_id>, chan: reqchan};
+type handle = {task: option::t<(task::task, port<task::task_notification>)>,
+    chan: reqchan};
 
 tag request { exec([u8], [u8], [[u8]], chan<response>); stop; }
 
@@ -37,12 +37,12 @@ type response = {pid: int, infd: int, outfd: int, errfd: int};
 fn mk() -> handle {
     let setupport = port();
     let task =
-        task::spawn(bind fn (setupchan: chan<chan<request>>) {
-                             let reqport = port();
-                             let reqchan = chan(reqport);
-                             send(setupchan, reqchan);
-                             worker(reqport);
-                         }(chan(setupport)));
+        task::spawn_joinable(bind fn (setupchan: chan<chan<request>>) {
+            let reqport = port();
+            let reqchan = chan(reqport);
+            send(setupchan, reqchan);
+            worker(reqport);
+        }(chan(setupport)));
     ret {task: option::some(task), chan: recv(setupport)};
 }
 
@@ -50,7 +50,7 @@ fn from_chan(ch: &reqchan) -> handle { {task: option::none, chan: ch} }
 
 fn close(handle: &handle) {
     send(handle.chan, stop);
-    task::join_id(option::get(handle.task));
+    task::join(option::get(handle.task));
 }
 
 fn run(handle: &handle, lib_path: &str, prog: &str, args: &[str],

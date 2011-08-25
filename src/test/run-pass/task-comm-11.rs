@@ -3,13 +3,13 @@ use std;
 import std::comm;
 import std::task;
 
-fn start(c: comm::_chan<comm::_chan<int>>) {
-    let p: comm::_port<int> = comm::mk_port();
-    comm::send(c, p.mk_chan());
+fn start(c: comm::chan<comm::chan<int>>) {
+    let p: comm::port<int> = comm::port();
+    comm::send(c, comm::chan(p));
 }
 
 fn main() {
-    let p = comm::mk_port::<comm::_chan<int>>();
-    let child = task::_spawn(bind start(p.mk_chan()));
-    let c = p.recv();
+    let p = comm::port();
+    let child = task::spawn(bind start(comm::chan(p)));
+    let c = comm::recv(p);
 }

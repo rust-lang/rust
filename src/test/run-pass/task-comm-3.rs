@@ -2,14 +2,14 @@
 
 use std;
 import std::task;
-import std::task::task_id;
 import std::comm;
-import std::comm::_chan;
+import std::comm::chan;
 import std::comm::send;
+import std::comm::recv;
 
 fn main() { log "===== WITHOUT THREADS ====="; test00(); }
 
-fn test00_start(ch: _chan<int>, message: int, count: int) {
+fn test00_start(ch: chan<int>, message: int, count: int) {
     log "Starting test00_start";
     let i: int = 0;
     while i < count {
@@ -26,31 +26,32 @@ fn test00() {
 
     log "Creating tasks";
 
-    let po = comm::mk_port();
-    let ch = po.mk_chan();
+    let po = comm::port();
+    let ch = chan(po);
 
     let i: int = 0;
 
     // Create and spawn tasks...
     let tasks = [];
     while i < number_of_tasks {
-        tasks += [task::_spawn(bind test00_start(ch, i, number_of_messages))];
+        let thunk = bind test00_start(ch, i, number_of_messages);
+        tasks += [task::spawn_joinable(thunk)];
         i = i + 1;
     }
 
     // Read from spawned tasks...
     let sum = 0;
-    for t: task_id in tasks {
+    for t in tasks {
         i = 0;
         while i < number_of_messages {
-            let value = po.recv();
+            let value = recv(po);
             sum += value;
             i = i + 1;
         }
     }
 
     // Join spawned tasks...
-    for t: task_id in tasks { task::join_id(t); }
+    for t in tasks { task::join(t); }
 
     log "Completed: Final number is: ";
     log_err sum;

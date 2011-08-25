@@ -26,7 +26,8 @@ struct frame_glue_fns {
 // library. This struct must agree with the std::task::rust_task record.
 struct rust_task_user {
     rust_task_id id;
-    uint8_t notify_enabled;
+    uint32_t notify_enabled;   // this is way more bits than necessary, but it
+                               // simplifies the alignment.
     chan_handle notify_chan;
     context ctx;
     uintptr_t rust_sp;         // Saved sp when not running.

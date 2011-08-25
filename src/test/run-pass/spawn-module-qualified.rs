@@ -1,8 +1,12 @@
 use std;
-import std::task::join_id;
-import std::task::_spawn;
+import std::task::join;
+import std::task::spawn_joinable;
 
-fn main() { let x = _spawn(bind m::child(10)); join_id(x); }
+fn main() {
+    let x = spawn_joinable(bind m::child(10));
+    join(x);
+}
+
 mod m {
     fn child(i: int) { log i; }
 }

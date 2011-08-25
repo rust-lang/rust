@@ -9,46 +9,30 @@ fn test_sleep() { task::sleep(1000000u); }
 fn test_unsupervise() {
     fn f() { task::unsupervise(); fail; }
     let foo = f;
-    task::_spawn(foo);
-}
-
-#[test]
-#[ignore]
-fn test_join() {
-    fn winner() { }
-
-    let wintask = task::_spawn(bind winner());
-
-    assert (task::join_id(wintask) == task::tr_success);
-
-    fn failer() { task::unsupervise(); fail; }
-
-    let failtask = task::_spawn(bind failer());
-
-    assert (task::join_id(failtask) == task::tr_failure);
+    task::spawn(foo);
 }
 
 #[test]
 fn test_lib_spawn() {
     fn foo() { log_err "Hello, World!"; }
     let f = foo;
-    task::_spawn(f);
+    task::spawn(f);
 }
 
 #[test]
 fn test_lib_spawn2() {
     fn foo(x: int) { assert (x == 42); }
-    task::_spawn(bind foo(42));
+    task::spawn(bind foo(42));
 }
 
 #[test]
 fn test_join_chan() {
     fn winner() { }
 
-    let p = comm::mk_port::<task::task_notification>();
+    let p = comm::port();
     let f = winner;
-    task::spawn_notify(f, p.mk_chan());
-    let s = p.recv();
+    task::spawn_notify(f, comm::chan(p));
+    let s = comm::recv(p);
     log_err "received task status message";
     log_err s;
     alt s {
@@ -61,10 +45,10 @@ fn test_join_chan() {
 fn test_join_chan_fail() {
     fn failer() { task::unsupervise(); fail }
 
-    let p = comm::mk_port::<task::task_notification>();
+    let p = comm::port();
     let f = failer;
-    task::spawn_notify(f, p.mk_chan());
-    let s = p.recv();
+    task::spawn_notify(f, comm::chan(p));
+    let s = comm::recv(p);
     log_err "received task status message";
     log_err s;
     alt s {

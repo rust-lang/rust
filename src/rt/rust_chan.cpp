@@ -64,7 +64,7 @@ void rust_chan::disassociate() {
     port->chans.swap_delete(this);
 
     // Delete reference to the port.
-     port = NULL;
+    port = NULL;
 
     this->deref();
 }

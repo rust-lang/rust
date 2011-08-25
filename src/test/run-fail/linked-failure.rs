@@ -5,13 +5,14 @@
 
 use std;
 import std::task;
-import std::comm::mk_port;
+import std::comm::port;
+import std::comm::recv;
 
 fn child() { assert (1 == 2); }
 
 fn main() {
-    let p = mk_port::<int>();
+    let p = port::<int>();
     let f = child;
-    task::_spawn(f);
-    let x = p.recv();
+    task::spawn(f);
+    let x = recv(p);
 }

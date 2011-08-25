@@ -2,36 +2,37 @@
 
 use std;
 import std::task;
-import std::comm::_chan;
+import std::comm::chan;
 import std::comm::send;
 import std::comm;
-import std::comm::mk_port;
+import std::comm::port;
+import std::comm::recv;
 
-tag request { quit; close(_chan<bool>); }
+tag request { quit; close(chan<bool>); }
 
-type ctx = _chan<request>;
+type ctx = chan<request>;
 
-fn request_task(c: _chan<ctx>) {
-    let p = mk_port();
-    send(c, p.mk_chan());
+fn request_task(c: chan<ctx>) {
+    let p = port();
+    send(c, chan(p));
     let req: request;
-    req = p.recv();
+    req = recv(p);
     // Need to drop req before receiving it again
-    req = p.recv();
+    req = recv(p);
 }
 
 fn new() -> ctx {
-    let p = mk_port();
-    let t = task::_spawn(bind request_task(p.mk_chan()));
+    let p = port();
+    let t = task::spawn(bind request_task(chan(p)));
     let cx: ctx;
-    cx = p.recv();
+    cx = recv(p);
     ret cx;
 }
 
 fn main() {
     let cx = new();
 
-    let p = mk_port::<bool>();
-    send(cx, close(p.mk_chan()));
+    let p = port::<bool>();
+    send(cx, close(chan(p)));
     send(cx, quit);
 }
