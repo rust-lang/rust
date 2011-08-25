@@ -259,6 +259,9 @@ public:
     // Creates type parameters from a type descriptor.
     static inline type_param *from_tydesc(const type_desc *tydesc,
                                           arena &arena) {
+        if (tydesc->n_obj_params) {
+            // TODO
+        }
         return make(tydesc->first_param, tydesc->n_params, arena);
     }
 };

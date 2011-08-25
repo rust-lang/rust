@@ -1,5 +1,6 @@
 
 #include "rust_internal.h"
+#include <algorithm>
 
 type_desc *
 rust_crate_cache::get_type_desc(size_t size,
@@ -14,6 +15,10 @@ rust_crate_cache::get_type_desc(size_t size,
     HASH_FIND(hh, this->type_descs, descs, keysz, td);
     if (td) {
         DLOG(sched, cache, "rust_crate_cache::get_type_desc hit");
+
+        // FIXME: This is a gross hack.
+        td->n_obj_params = std::max(td->n_obj_params, n_obj_params);
+
         return td;
     }
     DLOG(sched, cache, "rust_crate_cache::get_type_desc miss");

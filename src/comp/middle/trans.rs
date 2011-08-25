@@ -958,10 +958,13 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: ty::t, escapes: bool,
 
         // If the tydesc escapes in this context, the cached derived
         // tydesc also has to be one that was marked as escaping.
-        if !(escapes && !info.escapes) { ret rslt(cx, info.lltydesc); }
+        if !(escapes && !info.escapes) && storage == tps_normal {
+            ret rslt(cx, info.lltydesc);
+        }
       }
       none. {/* fall through */ }
     }
+
     bcx_ccx(cx).stats.n_derived_tydescs += 1u;
     let bcx = new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs);
     let tys = linearize_ty_params(bcx, t);
