@@ -16,11 +16,15 @@ fn from_estr(s: &str) -> istr {
 }
 
 fn to_estr(s: &istr) -> str {
-    let s2 = "";
-    for u in s {
-        str::push_byte(s2, u);
-    }
-    ret s2;
+    if byte_len(s) == 0u { ret "" };
+    let v: [u8] = unsafe::reinterpret_cast(s);
+    let vlen = vec::len(v);
+    assert vlen > 0u;
+    vec::unsafe::set_len(v, vlen - 1u);
+    let res = str::unsafe_from_bytes(v);
+    vec::unsafe::set_len(v, vlen);
+    unsafe::leak(v);
+    ret res;
 }
 
 fn from_estrs(ss: &[str]) -> [istr] {
