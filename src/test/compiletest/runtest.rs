@@ -139,7 +139,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
     }
 
     fn make_pp_args(config: &config, _testfile: &str) -> procargs {
-        let prog = config.rustc_path;
+        let prog = istr::to_estr(config.rustc_path);
         let args = ["-", "--pretty", "normal"];
         ret {prog: prog, args: args};
     }
@@ -170,7 +170,7 @@ actual:\n\
     }
 
     fn make_typecheck_args(config: &config, _testfile: &str) -> procargs {
-        let prog = config.rustc_path;
+        let prog = istr::to_estr(config.rustc_path);
         let args = ["-", "--no-trans", "--lib"];
         ret {prog: prog, args: args};
     }
@@ -230,7 +230,7 @@ fn exec_compiled_test(cx: &cx, props: &test_props, testfile: &str) ->
 }
 
 fn compose_and_run(cx: &cx, testfile: &str,
-                   make_args: fn(&config, &str) -> procargs, lib_path: &str,
+                   make_args: fn(&config, &str) -> procargs, lib_path: &istr,
                    input: option::t<str>) -> procres {
     let procargs = make_args(cx.config, testfile);
     ret program_output(cx, testfile, lib_path, procargs.prog, procargs.args,
@@ -239,9 +239,13 @@ fn compose_and_run(cx: &cx, testfile: &str,
 
 fn make_compile_args(config: &config, props: &test_props, testfile: &str) ->
    procargs {
-    let prog = config.rustc_path;
+    let prog = istr::to_estr(config.rustc_path);
     let args = [testfile, "-o", make_exe_name(config, testfile)];
-    args += split_maybe_args(config.rustcflags);
+    let rustcflags = alt config.rustcflags {
+      option::some(s) { option::some(istr::to_estr(s)) }
+      option::none. { option::none }
+    };
+    args += split_maybe_args(rustcflags);
     args += split_maybe_args(props.compile_flags);
     ret {prog: prog, args: args};
 }
@@ -252,13 +256,15 @@ fn make_exe_name(config: &config, testfile: &str) -> str {
 
 fn make_run_args(config: &config, props: &test_props, testfile: &str) ->
    procargs {
-    let toolargs =
-        if !props.no_valgrind {
-
-            // If we've got another tool to run under (valgrind),
-            // then split apart its command
-            split_maybe_args(config.runtool)
-        } else { [] };
+    let toolargs = if !props.no_valgrind {
+        // If we've got another tool to run under (valgrind),
+        // then split apart its command
+        let runtool = alt config.runtool {
+          option::some(s) { option::some(istr::to_estr(s)) }
+          option::none. { option::none }
+        };
+        split_maybe_args(runtool)
+    } else { [] };
 
     let args = toolargs + [make_exe_name(config, testfile)];
     ret {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
@@ -284,8 +290,9 @@ fn split_maybe_args(argstr: &option::t<str>) -> [str] {
     }
 }
 
-fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
+fn program_output(cx: &cx, testfile: &str, lib_path: &istr, prog: &str,
                   args: &[str], input: option::t<str>) -> procres {
+    let lib_path = istr::to_estr(lib_path);
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
@@ -337,7 +344,7 @@ fn make_out_name(config: &config, testfile: &str, extension: &str) -> str {
 }
 
 fn output_base_name(config: &config, testfile: &str) -> str {
-    let base = config.build_base;
+    let base = istr::to_estr(config.build_base);
     let filename =
         {
             let parts = istr::split(fs::basename(istr::from_estr(testfile)),
@@ -345,7 +352,8 @@ fn output_base_name(config: &config, testfile: &str) -> str {
             parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
             istr::connect(parts, ~".")
         };
-    #fmt["%s%s.%s", base, istr::to_estr(filename), config.stage_id]
+    #fmt["%s%s.%s", base, istr::to_estr(filename),
+         istr::to_estr(config.stage_id)]
 }
 
 fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {

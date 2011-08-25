@@ -46,32 +46,41 @@ fn parse_config(args: &[str]) -> config {
           getopts::failure(f) { fail getopts::fail_str(f) }
         };
 
-    ret {compile_lib_path: getopts::opt_str(match, "compile-lib-path"),
-         run_lib_path: getopts::opt_str(match, "run-lib-path"),
-         rustc_path: getopts::opt_str(match, "rustc-path"),
-         src_base: getopts::opt_str(match, "src-base"),
-         build_base: getopts::opt_str(match, "build-base"),
-         stage_id: getopts::opt_str(match, "stage-id"),
+    let cnv = istr::from_estr;
+    let cnvo = fn(o: &option::t<str>) -> option::t<istr> {
+        alt o {
+          option::some(s) { option::some(istr::from_estr(s)) }
+          option::none. { option::none }
+        }
+    };
+
+    ret {compile_lib_path: cnv(getopts::opt_str(match, "compile-lib-path")),
+         run_lib_path: cnv(getopts::opt_str(match, "run-lib-path")),
+         rustc_path: cnv(getopts::opt_str(match, "rustc-path")),
+         src_base: cnv(getopts::opt_str(match, "src-base")),
+         build_base: cnv(getopts::opt_str(match, "build-base")),
+         stage_id: cnv(getopts::opt_str(match, "stage-id")),
          mode: str_mode(getopts::opt_str(match, "mode")),
          run_ignored: getopts::opt_present(match, "ignored"),
          filter:
              if vec::len(match.free) > 0u {
-                 option::some(match.free[0])
+                 option::some(cnv(match.free[0]))
              } else { option::none },
-         runtool: getopts::opt_maybe_str(match, "runtool"),
-         rustcflags: getopts::opt_maybe_str(match, "rustcflags"),
+         runtool: cnvo(getopts::opt_maybe_str(match, "runtool")),
+         rustcflags: cnvo(getopts::opt_maybe_str(match, "rustcflags")),
          verbose: getopts::opt_present(match, "verbose")};
 }
 
 fn log_config(config: &config) {
     let c = config;
     logv(c, #fmt["configuration:"]);
-    logv(c, #fmt["compile_lib_path: %s", config.compile_lib_path]);
-    logv(c, #fmt["run_lib_path: %s", config.run_lib_path]);
-    logv(c, #fmt["rustc_path: %s", config.rustc_path]);
-    logv(c, #fmt["src_base: %s", config.src_base]);
-    logv(c, #fmt["build_base: %s", config.build_base]);
-    logv(c, #fmt["stage_id: %s", config.stage_id]);
+    logv(c, #fmt["compile_lib_path: %s",
+                 istr::to_estr(config.compile_lib_path)]);
+    logv(c, #fmt["run_lib_path: %s", istr::to_estr(config.run_lib_path)]);
+    logv(c, #fmt["rustc_path: %s", istr::to_estr(config.rustc_path)]);
+    logv(c, #fmt["src_base: %s", istr::to_estr(config.src_base)]);
+    logv(c, #fmt["build_base: %s", istr::to_estr(config.build_base)]);
+    logv(c, #fmt["stage_id: %s", istr::to_estr(config.stage_id)]);
     logv(c, #fmt["mode: %s", mode_str(config.mode)]);
     logv(c, #fmt["run_ignored: %b", config.run_ignored]);
     logv(c, #fmt["filter: %s", opt_str(config.filter)]);
@@ -81,12 +90,15 @@ fn log_config(config: &config) {
     logv(c, #fmt["\n"]);
 }
 
-fn opt_str(maybestr: option::t<str>) -> str {
-    alt maybestr { option::some(s) { s } option::none. { "(none)" } }
+fn opt_str(maybestr: option::t<istr>) -> str {
+    alt maybestr {
+      option::some(s) { istr::to_estr(s) }
+      option::none. { "(none)" }
+    }
 }
 
-fn str_opt(maybestr: str) -> option::t<str> {
-    if maybestr != "(none)" { option::some(maybestr) } else { option::none }
+fn str_opt(maybestr: &istr) -> option::t<istr> {
+    if maybestr != ~"(none)" { option::some(maybestr) } else { option::none }
 }
 
 fn str_mode(s: str) -> mode {
@@ -117,17 +129,23 @@ fn run_tests(config: &config) {
 }
 
 fn test_opts(config: &config) -> test::test_opts {
-    {filter: config.filter, run_ignored: config.run_ignored}
+    {
+        filter: alt config.filter {
+          option::some(s) { option::some(istr::to_estr(s)) }
+          option::none. { option::none }
+        },
+        run_ignored: config.run_ignored
+    }
 }
 
 type tests_and_conv_fn =
     {tests: [test::test_desc], to_task: fn(&fn()) -> test::joinable};
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
-    log #fmt["making tests from %s", cx.config.src_base];
+    log #fmt["making tests from %s", istr::to_estr(cx.config.src_base)];
     let configport = port::<[u8]>();
     let tests = [];
-    for file: istr in fs::list_dir(istr::from_estr(cx.config.src_base)) {
+    for file: istr in fs::list_dir(cx.config.src_base) {
         let file = istr::to_estr(file);
         log #fmt["inspecting file %s", file];
         if is_test(cx.config, file) {
@@ -212,23 +230,43 @@ fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: &fn()) ->
    test::joinable {
     testfn();
     let testfile = recv(configport);
+
+    let compile_lib_path = cx.config.compile_lib_path;
+    let run_lib_path = cx.config.run_lib_path;
+    let rustc_path = cx.config.rustc_path;
+    let src_base = cx.config.src_base;
+    let build_base = cx.config.build_base;
+    let stage_id = cx.config.stage_id;
+    let mode = istr::from_estr(mode_str(cx.config.mode));
+    let run_ignored = cx.config.run_ignored;
+    let filter = istr::from_estr(opt_str(cx.config.filter));
+    let runtool = istr::from_estr(opt_str(cx.config.runtool));
+    let rustcflags = istr::from_estr(opt_str(cx.config.rustcflags));
+    let verbose = cx.config.verbose;
+    let chan = cx.procsrv.chan;
+
     let testthunk =
-        bind run_test_task(cx.config.compile_lib_path, cx.config.run_lib_path,
-                           cx.config.rustc_path, cx.config.src_base,
-                           cx.config.build_base, cx.config.stage_id,
-                           mode_str(cx.config.mode), cx.config.run_ignored,
-                           opt_str(cx.config.filter),
-                           opt_str(cx.config.runtool),
-                           opt_str(cx.config.rustcflags), cx.config.verbose,
-                           cx.procsrv.chan, testfile);
+        bind run_test_task(compile_lib_path, run_lib_path,
+                           rustc_path, src_base,
+                           build_base, stage_id,
+                           mode,
+                           run_ignored,
+                           filter,
+                           runtool,
+                           rustcflags,
+                           verbose,
+                           chan,
+                           testfile);
     ret task::spawn_joinable(testthunk);
 }
 
-fn run_test_task(compile_lib_path: str, run_lib_path: str, rustc_path: str,
-                 src_base: str, build_base: str, stage_id: str, mode: str,
-                 run_ignored: bool, opt_filter: str, opt_runtool: str,
-                 opt_rustcflags: str, verbose: bool,
-                 procsrv_chan: procsrv::reqchan, testfile: -[u8]) {
+fn run_test_task(compile_lib_path: -istr, run_lib_path: -istr,
+                 rustc_path: -istr,
+                 src_base: -istr, build_base: -istr, stage_id: -istr,
+                 mode: -istr,
+                 run_ignored: -bool, opt_filter: -istr, opt_runtool: -istr,
+                 opt_rustcflags: -istr, verbose: -bool,
+                 procsrv_chan: -procsrv::reqchan, testfile: -[u8]) {
 
     test::configure_test_task();
 
@@ -239,7 +277,7 @@ fn run_test_task(compile_lib_path: str, run_lib_path: str, rustc_path: str,
          src_base: src_base,
          build_base: build_base,
          stage_id: stage_id,
-         mode: str_mode(mode),
+         mode: str_mode(istr::to_estr(mode)),
          run_ignored: run_ignored,
          filter: str_opt(opt_filter),
          runtool: str_opt(opt_runtool),

@@ -60,7 +60,8 @@ fn is_test_ignored(config: &config, testfile: &str) -> bool {
     for each ln: str in iter_header(testfile) {
         // FIXME: Can't return or break from iterator
         found = found
-            || parse_name_directive(ln, "xfail-" + config.stage_id);
+            || parse_name_directive(ln, "xfail-"
+                                    + istr::to_estr(config.stage_id));
         if (config.mode == common::mode_pretty) {
             found = found
                 || parse_name_directive(ln, "xfail-pretty");
