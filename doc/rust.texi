@@ -1227,15 +1227,6 @@ immediately destructed (if acyclic) or else collected using a general
 (cycle-aware) garbage-collector local to each task. Garbage collection within
 a local heap does not interrupt execution of other tasks.
 
-Immutable boxes are @dfn{shared}, and can be multiply-referenced by many
-different tasks. Like any other immutable type, they can pass over channels,
-and live as long as the last task referencing them within a given domain. When
-unreferenced, they are destroyed immediately (due to reference-counting) and
-returned to the heap memory allocator. Destruction of an immutable box also
-executes within the context of the task that drops the last reference to a
-shared heap allocation, so executing a long-running destructor does not
-interrupt execution of other tasks.
-
 
 @node       Ref.Mem.Own
 @subsection Ref.Mem.Own
@@ -1371,25 +1362,23 @@ fn main() @{
 @node       Ref.Mem.Acct
 @subsection Ref.Mem.Acct
 @c * Ref.Mem.Acct::                Memory accounting model.
-@cindex Domain
 @cindex Accounting
 @cindex Memory budget
 
-Every task belongs to a domain, and that domain tracks the amount of memory
-allocated and not yet released by tasks within it. @xref{Ref.Task.Dom}. Each
-domain has a memory budget. The @dfn{budget} of a domain is the maximum amount
-of memory that can be simultaneously allocated in the domain. If a task tries
-to allocate memory within a domain with an exceeded budget, the task will
-receive a signal.
+Every task tracks the amount of memory allocated and not yet released. Each
+task may have a memory budget. The @dfn{budget} of a task is the maximum
+amount of memory that can be simultaneously allocated in the task. If a task
+tries to allocate memory with an exceeded budget, the task will receive a
+signal.
 
 Within a task, accounting is strictly enforced: all memory allocated through
-the runtime library, both user data, sub-domains and runtime-support
-structures such as channel and signal queues, are charged to a task's domain.
+the runtime library, both user data and runtime-support structures such as
+channel and signal queues, are charged to a task.
 
-When a communication channel crosses from one domain to another, any value
+When a communication channel crosses from one task to another, any value
 sent over the channel is guaranteed to have been @emph{detached} from the
-domain's memory graph (singly referenced, and/or deep-copied), so its memory
-cost is transferred to the receiving domain.
+task's memory graph (singly referenced, and/or deep-copied), so its memory
+cost is transferred to the receiving task.
 
 
 @page
@@ -1414,7 +1403,6 @@ operating-system processes.
 @menu
 * Ref.Task.Comm::               Inter-task communication.
 * Ref.Task.Life::               Task lifecycle and state transitions.
-* Ref.Task.Dom::                Task domains.
 * Ref.Task.Sched::              Task scheduling model.
 * Ref.Task.Spawn::              Library interface for making new tasks.
 * Ref.Task.Send::               Library interface for sending messages.
@@ -1467,12 +1455,12 @@ transmit side. A channel contains a message queue and asynchronously sending a
 message merely inserts it into the sending channel's queue; message receipt is
 the responsibility of the receiving task.
 
-Queued messages in channels are charged to the domain of the @emph{sending}
-task. If too many messages are queued for transmission from a single sending
-task, without being received by a receiving task, the sending task may exceed
-its memory budget, which causes a run-time signal. To help control this
-possibility, a semi-synchronous send operation is possible, which blocks until
-there is room in the existing queue before sending send.
+Queued messages in channels are charged to the @emph{sending} task. If too
+many messages are queued for transmission from a single sending task, without
+being received by a receiving task, the sending task may exceed its memory
+budget, which causes a run-time signal. To help control this possibility, a
+semi-synchronous send operation is possible, which blocks until there is room
+in the existing queue before sending send.
 
 Messages are sent on channels and received on ports using standard library
 functions.
@@ -1535,31 +1523,6 @@ A task in the @emph{dead} state cannot transition to other states; it exists
 only to have its termination status inspected by other tasks, and/or to await
 reclamation when the last reference to it drops.
 
-@node       Ref.Task.Dom
-@subsection Ref.Task.Dom
-@c * Ref.Task.Dom::                Task domains
-
-@cindex Domain
-@cindex Process
-@cindex Thread
-
-Every task belongs to a domain. A @dfn{domain} is a structure that owns tasks,
-schedules tasks, tracks memory allocation within tasks and manages access to
-runtime services on behalf of tasks.
-
-Typically each domain runs on a separate operating-system @emph{thread}, or
-within an isolated operating-system @emph{process}. An easy way to think of a
-domain is as an abstraction over either an operating-system thread @emph{or} a
-process.
-
-The key feature of a domain is that it isolates memory references created by
-the Rust tasks within it. No Rust task can refer directly to memory outside
-its domain.
-
-Tasks can own sub-domains, which in turn own their own tasks. Every domain
-owns one @emph{root task}, which is the root of the tree of tasks owned by the
-domain.
-
 @node       Ref.Task.Sched
 @subsection Ref.Task.Sched
 @c * Ref.Task.Sched::              Task scheduling model.
@@ -1568,11 +1531,9 @@ domain.
 @cindex Preemption
 @cindex Yielding control
 
-Every task is @emph{scheduled} within its domain. @xref{Ref.Task.Dom}. The
-currently scheduled task is given a finite @emph{time slice} in which to
+The currently scheduled task is given a finite @emph{time slice} in which to
 execute, after which it is @emph{descheduled} at a loop-edge or similar
-preemption point, and another task within the domain is scheduled,
-pseudo-randomly.
+preemption point, and another task within is scheduled, pseudo-randomly.
 
 An executing task can @code{yield} control at any time, which deschedules it
 immediately. Entering any other non-executing state (blocked, dead) similarly
@@ -1591,7 +1552,7 @@ function. The passed function is referred to as the @dfn{entry function} for
 the spawned task, and any captured environment is carries is moved from the
 spawning task to the spawned task before the spawned task begins execution.
 
-The result of a @code{spawn} call is a @code{std::task::task_id} value.
+The result of a @code{spawn} call is a @code{std::task::task} value.
 
 An example of a @code{spawn} call:
 @example
@@ -1606,10 +1567,10 @@ fn helper(c: chan<u8>) @{
 
 let p: port<u8>;
 
-spawn(bind helper(p.mk_chan()));
+spawn(bind helper(chan(p)));
 // let task run, do other things.
 // ...
-let result = p.recv();
+let result = recv(p);
 
 @end example
 
@@ -1649,7 +1610,7 @@ An example of a @emph{receive}:
 @example
 import std::comm::*;
 let p: port<str> = @dots{};
-let s: str = p.recv();
+let s: str = recv(p);
 @end example
 
 
@@ -3699,7 +3660,7 @@ signal queue associated with each task. Sending a signal to a task inserts the
 signal into the task's signal queue and marks the task as having a pending
 signal. At the next scheduling opportunity, the runtime processes signals in
 the task's queue using its dispatch table. The signal queue memory is charged
-to the task's domain; if the queue grows too big, the task will fail.
+to the task; if the queue grows too big, the task will fail.
 
 @c ############################################################
 @c end main body of nodes
