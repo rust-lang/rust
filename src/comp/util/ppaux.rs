@@ -147,13 +147,13 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
           ty_param(id, _) {
             "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)])
           }
-          _ { ty_to_short_str(cx, typ) }
+          _ { istr::to_estr(ty_to_short_str(cx, typ)) }
         }
 }
 
-fn ty_to_short_str(cx: &ctxt, typ: t) -> str {
+fn ty_to_short_str(cx: &ctxt, typ: t) -> istr {
     let s = encoder::encoded_ty(cx, typ);
-    if str::byte_len(s) >= 32u { s = str::substr(s, 0u, 32u); }
+    if istr::byte_len(s) >= 32u { s = istr::substr(s, 0u, 32u); }
     ret s;
 }
 

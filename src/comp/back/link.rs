@@ -412,7 +412,7 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: &link_meta) ->
     // FIXME: This wants to be link_meta.meta_hash
     sha.input_str(istr::from_estr(link_meta.name));
     sha.input_str(~"-");
-    sha.input_str(istr::from_estr(encoder::encoded_ty(tcx, t)));
+    sha.input_str(encoder::encoded_ty(tcx, t));
     let hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 
@@ -458,7 +458,7 @@ fn mangle_internal_name_by_type_only(ccx: &@crate_ctxt, t: ty::t, name: &str)
    -> str {
     let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    ret mangle([name, s, hash]);
+    ret mangle([name, istr::to_estr(s), hash]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: &@crate_ctxt, path: &[str],

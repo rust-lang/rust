@@ -26,7 +26,7 @@ type ctxt =
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
-type ty_abbrev = {pos: uint, len: uint, s: str};
+type ty_abbrev = {pos: uint, len: uint, s: @istr};
 
 tag abbrev_ctxt { ac_no_abbrevs; ac_use_abbrevs(hashmap<ty::t, ty_abbrev>); }
 
@@ -40,21 +40,21 @@ fn cx_uses_abbrevs(cx: &@ctxt) -> bool {
 fn enc_ty(w: &io::writer, cx: &@ctxt, t: ty::t) {
     alt cx.abbrevs {
       ac_no_abbrevs. {
-        let result_str;
+        let result_str: @istr;
         alt cx.tcx.short_names_cache.find(t) {
           some(s) { result_str = s; }
           none. {
             let sw = io::string_writer();
             enc_sty(sw.get_writer(), cx, ty::struct(cx.tcx, t));
-            result_str = istr::to_estr(sw.get_str());
+            result_str = @sw.get_str();
             cx.tcx.short_names_cache.insert(t, result_str);
           }
         }
-        w.write_str(istr::from_estr(result_str));
+        w.write_str(*result_str);
       }
       ac_use_abbrevs(abbrevs) {
         alt abbrevs.find(t) {
-          some(a) { w.write_str(istr::from_estr(a.s)); ret; }
+          some(a) { w.write_str(*a.s); ret; }
           none. {
             let pos = w.get_buf_writer().tell();
             enc_sty(w, cx, ty::struct(cx.tcx, t));
@@ -73,7 +73,7 @@ fn enc_ty(w: &io::writer, cx: &@ctxt, t: ty::t) {
                 let s =
                     ~"#" + uint::to_str(pos, 16u) + ~":" +
                     uint::to_str(len, 16u) + ~"#";
-                let a = {pos: pos, len: len, s: istr::to_estr(s)};
+                let a = {pos: pos, len: len, s: @s};
                 abbrevs.insert(t, a);
             }
             ret;

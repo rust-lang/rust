@@ -1232,7 +1232,8 @@ fn make_generic_glue(cx: &@local_ctxt, sp: &span, t: ty::t, llfn: ValueRef,
     let start = time::get_time();
     let llval = make_generic_glue_inner(cx, sp, t, llfn, helper, ty_params);
     let end = time::get_time();
-    log_fn_time(cx.ccx, "glue " + name + " " + ty_to_short_str(cx.ccx.tcx, t),
+    log_fn_time(cx.ccx, "glue " + name + " " +
+                istr::to_estr(ty_to_short_str(cx.ccx.tcx, t)),
                 start, end);
     ret llval;
 }

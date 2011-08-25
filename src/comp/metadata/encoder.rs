@@ -27,9 +27,9 @@ type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 type encode_ctxt = {ccx: @crate_ctxt, type_abbrevs: abbrev_map};
 
 // Path table encoding
-fn encode_name(ebml_w: &ebml::writer, name: &str) {
+fn encode_name(ebml_w: &ebml::writer, name: &istr) {
     ebml::start_tag(ebml_w, tag_paths_data_name);
-    ebml_w.writer.write(str::bytes(name));
+    ebml_w.writer.write(istr::bytes(name));
     ebml::end_tag(ebml_w);
 }
 
@@ -42,107 +42,111 @@ fn encode_def_id(ebml_w: &ebml::writer, id: &def_id) {
 type entry<T> = {val: T, pos: uint};
 
 fn encode_tag_variant_paths(ebml_w: &ebml::writer, variants: &[variant],
-                            path: &[str], index: &mutable [entry<str>]) {
+                            path: &[istr], index: &mutable [entry<istr>]) {
     for variant: variant in variants {
-        add_to_index(ebml_w, path, index, variant.node.name);
+        add_to_index(ebml_w, path, index, istr::from_estr(variant.node.name));
         ebml::start_tag(ebml_w, tag_paths_data_item);
-        encode_name(ebml_w, variant.node.name);
+        encode_name(ebml_w, istr::from_estr(variant.node.name));
         encode_def_id(ebml_w, local_def(variant.node.id));
         ebml::end_tag(ebml_w);
     }
 }
 
-fn add_to_index(ebml_w: &ebml::writer, path: &[str],
-                index: &mutable [entry<str>], name: &str) {
+fn add_to_index(ebml_w: &ebml::writer, path: &[istr],
+                index: &mutable [entry<istr>], name: &istr) {
     let full_path = path + [name];
     index +=
-        [{val: str::connect(full_path, "::"), pos: ebml_w.writer.tell()}];
+        [{val: istr::connect(full_path, ~"::"), pos: ebml_w.writer.tell()}];
 }
 
 fn encode_native_module_item_paths(ebml_w: &ebml::writer, nmod: &native_mod,
-                                   path: &[str],
-                                   index: &mutable [entry<str>]) {
+                                   path: &[istr],
+                                   index: &mutable [entry<istr>]) {
     for nitem: @native_item in nmod.items {
-        add_to_index(ebml_w, path, index, nitem.ident);
+        add_to_index(ebml_w, path, index, istr::from_estr(nitem.ident));
         ebml::start_tag(ebml_w, tag_paths_data_item);
-        encode_name(ebml_w, nitem.ident);
+        encode_name(ebml_w, istr::from_estr(nitem.ident));
         encode_def_id(ebml_w, local_def(nitem.id));
         ebml::end_tag(ebml_w);
     }
 }
 
 fn encode_module_item_paths(ebml_w: &ebml::writer, module: &_mod,
-                            path: &[str], index: &mutable [entry<str>]) {
+                            path: &[istr], index: &mutable [entry<istr>]) {
     for it: @item in module.items {
         if !ast_util::is_exported(it.ident, module) { cont; }
         alt it.node {
           item_const(_, _) {
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
           item_fn(_, tps) {
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
           item_mod(_mod) {
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_mod);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(it.id));
-            encode_module_item_paths(ebml_w, _mod, path + [it.ident], index);
+            encode_module_item_paths(ebml_w, _mod,
+                                     path + [istr::from_estr(it.ident)],
+                                     index);
             ebml::end_tag(ebml_w);
           }
           item_native_mod(nmod) {
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_mod);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(it.id));
-            encode_native_module_item_paths(ebml_w, nmod, path + [it.ident],
-                                            index);
+            encode_native_module_item_paths(
+                ebml_w, nmod,
+                path + [istr::from_estr(it.ident)],
+                index);
             ebml::end_tag(ebml_w);
           }
           item_ty(_, tps) {
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
           item_res(_, _, tps, ctor_id) {
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(ctor_id));
             ebml::end_tag(ebml_w);
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
           item_tag(variants, tps) {
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
             encode_tag_variant_paths(ebml_w, variants, path, index);
           }
           item_obj(_, tps, ctor_id) {
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(ctor_id));
             ebml::end_tag(ebml_w);
-            add_to_index(ebml_w, path, index, it.ident);
+            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
+            encode_name(ebml_w, istr::from_estr(it.ident));
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
@@ -150,9 +154,9 @@ fn encode_module_item_paths(ebml_w: &ebml::writer, module: &_mod,
     }
 }
 
-fn encode_item_paths(ebml_w: &ebml::writer, crate: &@crate) -> [entry<str>] {
-    let index: [entry<str>] = [];
-    let path: [str] = [];
+fn encode_item_paths(ebml_w: &ebml::writer, crate: &@crate) -> [entry<istr>] {
+    let index: [entry<istr>] = [];
+    let path: [istr] = [];
     ebml::start_tag(ebml_w, tag_paths);
     encode_module_item_paths(ebml_w, crate.node.module, path, index);
     ebml::end_tag(ebml_w);
@@ -436,8 +440,8 @@ fn encode_index<T>(ebml_w: &ebml::writer, buckets: &[@[entry<T>]],
     ebml::end_tag(ebml_w);
 }
 
-fn write_str(writer: &io::writer, s: &str) {
-    writer.write_str(istr::from_estr(s));
+fn write_str(writer: &io::writer, s: &istr) {
+    writer.write_str(s);
 }
 
 fn write_int(writer: &io::writer, n: &int) {
@@ -623,11 +627,11 @@ fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
 }
 
 // Get the encoded string for a type
-fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> str {
+fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> istr {
     let cx = @{ds: def_to_str, tcx: tcx, abbrevs: tyencode::ac_no_abbrevs};
     let sw = io::string_writer();
     tyencode::enc_ty(sw.get_writer(), cx, t);
-    ret istr::to_estr(sw.get_str());
+    ret sw.get_str();
 }
 
 

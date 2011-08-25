@@ -223,7 +223,7 @@ type ctxt =
       freevars: freevars::freevar_map,
       tcache: type_cache,
       rcache: creader_cache,
-      short_names_cache: hashmap<t, str>,
+      short_names_cache: hashmap<t, @istr>,
       has_pointer_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, ast::kind>,
       owns_heap_mem_cache: hashmap<t, bool>,

@@ -158,7 +158,8 @@ fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
     let result: [ast::def_id] = [];
-    for doc: ebml::doc in lookup_hash(paths, eqer, hash_path(s)) {
+    for doc: ebml::doc in lookup_hash(paths, eqer,
+                                      hash_path(istr::from_estr(s))) {
         let did_doc = ebml::get_doc(doc, tag_def_id);
         result += [parse_def_id(ebml::doc_data(did_doc))];
     }
