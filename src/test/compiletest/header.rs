@@ -71,9 +71,9 @@ fn is_test_ignored(config: &config, testfile: &str) -> bool {
 }
 
 iter iter_header(testfile: &str) -> str {
-    let rdr = io::file_reader(testfile);
+    let rdr = io::file_reader(istr::from_estr(testfile));
     while !rdr.eof() {
-        let ln = rdr.read_line();
+        let ln = istr::to_estr(rdr.read_line());
 
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization

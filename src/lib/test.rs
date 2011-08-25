@@ -119,26 +119,30 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
-            st.out.write_line(#fmt["\nrunning %u tests", st.total]);
+            st.out.write_line(
+                istr::from_estr(#fmt["\nrunning %u tests", st.total]));
           }
-          te_wait(test) { st.out.write_str(#fmt["test %s ... ", test.name]); }
+          te_wait(test) {
+            st.out.write_str(
+                istr::from_estr(#fmt["test %s ... ", test.name]));
+          }
           te_result(test, result) {
             alt result {
               tr_ok. {
                 st.passed += 1u;
                 write_ok(st.out, st.use_color);
-                st.out.write_line("");
+                st.out.write_line(~"");
               }
               tr_failed. {
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
-                st.out.write_line("");
+                st.out.write_line(~"");
                 st.failures += [test];
               }
               tr_ignored. {
                 st.ignored += 1u;
                 write_ignored(st.out, st.use_color);
-                st.out.write_line("");
+                st.out.write_line(~"");
               }
             }
           }
@@ -160,20 +164,22 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
     let success = st.failed == 0u;
 
     if !success {
-        st.out.write_line("\nfailures:");
+        st.out.write_line(~"\nfailures:");
         for test: test_desc in st.failures {
             let testname = test.name; // Satisfy alias analysis
-            st.out.write_line(#fmt["    %s", testname]);
+            st.out.write_line(istr::from_estr(#fmt["    %s", testname]));
         }
     }
 
-    st.out.write_str(#fmt["\nresult: "]);
+    st.out.write_str(istr::from_estr(#fmt["\nresult: "]));
     if success {
         // There's no parallelism at this point so it's safe to use color
         write_ok(st.out, true);
     } else { write_failed(st.out, true); }
-    st.out.write_str(#fmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
-                          st.failed, st.ignored]);
+    st.out.write_str(
+        istr::from_estr(
+            #fmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
+                          st.failed, st.ignored]));
 
     ret success;
 
@@ -194,7 +200,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
         if use_color && term::color_supported() {
             term::fg(out.get_buf_writer(), color);
         }
-        out.write_str(word);
+        out.write_str(istr::from_estr(word));
         if use_color && term::color_supported() {
             term::reset(out.get_buf_writer());
         }

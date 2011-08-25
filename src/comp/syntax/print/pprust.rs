@@ -112,7 +112,7 @@ fn fun_to_str(f: &ast::_fn, name: str, params: &[ast::ty_param]) -> str {
     let s = rust_printer(writer.get_writer());
     print_fn(s, f.decl, f.proto, name, params, f.decl.constraints);
     eof(s.s);
-    ret writer.get_str();
+    ret istr::to_estr(writer.get_str());
 }
 
 fn block_to_str(blk: &ast::blk) -> str {
@@ -126,7 +126,7 @@ fn block_to_str(blk: &ast::blk) -> str {
     ibox(s, 0u);
     print_block(s, blk);
     eof(s.s);
-    ret writer.get_str();
+    ret istr::to_estr(writer.get_str());
 }
 
 fn meta_item_to_str(mi: &ast::meta_item) -> str {
@@ -1621,7 +1621,7 @@ fn to_str<T>(t: &T, f: fn(&ps, &T)) -> str {
     let s = rust_printer(writer.get_writer());
     f(s, t);
     eof(s.s);
-    ret writer.get_str();
+    ret istr::to_estr(writer.get_str());
 }
 
 fn next_comment(s: &ps) -> option::t<lexer::cmnt> {

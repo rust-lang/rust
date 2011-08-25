@@ -73,7 +73,7 @@ fn run(handle: &handle, lib_path: &str, prog: &str, args: &[str],
 fn writeclose(fd: int, s: &option::t<str>) {
     if option::is_some(s) {
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
-        writer.write_str(option::get(s));
+        writer.write_str(istr::from_estr(option::get(s)));
     }
 
     os::libc::close(fd);

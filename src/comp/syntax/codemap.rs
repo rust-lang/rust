@@ -1,6 +1,7 @@
 import std::vec;
 import std::uint;
 import std::str;
+import std::istr;
 import std::term;
 import std::io;
 import std::option;
@@ -108,13 +109,13 @@ fn emit_diagnostic(sp: &option::t<span>, msg: &str, kind: &str, color: u8,
       }
       none. { }
     }
-    io::stdout().write_str(ss);
+    io::stdout().write_str(istr::from_estr(ss));
     if term::color_supported() {
         term::fg(io::stdout().get_buf_writer(), color);
     }
-    io::stdout().write_str(#fmt["%s:", kind]);
+    io::stdout().write_str(istr::from_estr(#fmt["%s:", kind]));
     if term::color_supported() { term::reset(io::stdout().get_buf_writer()); }
-    io::stdout().write_str(#fmt[" %s\n", msg]);
+    io::stdout().write_str(istr::from_estr(#fmt[" %s\n", msg]));
 
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
@@ -130,7 +131,8 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
 
         // FIXME: reading in the entire file is the worst possible way to
         //        get access to the necessary lines.
-        let file = io::read_whole_file_str(lines.name);
+        let file = istr::to_estr(
+            io::read_whole_file_str(istr::from_estr(lines.name)));
         let fm = get_filemap(cm, lines.name);
 
         // arbitrarily only print up to six lines of the error
@@ -143,18 +145,19 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
         }
         // Print the offending lines
         for line: uint in display_lines {
-            io::stdout().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
+            io::stdout().write_str(
+                istr::from_estr(#fmt["%s:%u ", fm.name, line + 1u]));
             let s = get_line(fm, line as int, file);
             if !str::ends_with(s, "\n") { s += "\n"; }
-            io::stdout().write_str(s);
+            io::stdout().write_str(istr::from_estr(s));
         }
         if elided {
             let last_line = display_lines[vec::len(display_lines) - 1u];
             let s = #fmt["%s:%u ", fm.name, last_line + 1u];
             let indent = str::char_len(s);
-            let out = "";
-            while indent > 0u { out += " "; indent -= 1u; }
-            out += "...\n";
+            let out = ~"";
+            while indent > 0u { out += ~" "; indent -= 1u; }
+            out += ~"...\n";
             io::stdout().write_str(out);
         }
 
@@ -180,7 +183,7 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
                 let width = hi.col - lo.col - 1u;
                 while width > 0u { str::push_char(s, '~'); width -= 1u; }
             }
-            io::stdout().write_str(s + "\n");
+            io::stdout().write_str(istr::from_estr(s + "\n"));
         }
       }
       _ { }

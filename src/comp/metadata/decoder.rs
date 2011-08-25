@@ -4,6 +4,7 @@ import std::ebml;
 import std::vec;
 import std::option;
 import std::str;
+import std::istr;
 import std::io;
 import std::map::hashmap;
 import syntax::ast;
@@ -346,18 +347,20 @@ fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
 
 fn list_meta_items(meta_items: &ebml::doc, out: io::writer) {
     for mi: @ast::meta_item in get_meta_items(meta_items) {
-        out.write_str(#fmt["%s\n", pprust::meta_item_to_str(*mi)]);
+        out.write_str(
+            istr::from_estr(#fmt["%s\n", pprust::meta_item_to_str(*mi)]));
     }
 }
 
 fn list_crate_attributes(md: &ebml::doc, out: io::writer) {
-    out.write_str("=Crate Attributes=\n");
+    out.write_str(~"=Crate Attributes=\n");
 
     for attr: ast::attribute in get_attributes(md) {
-        out.write_str(#fmt["%s\n", pprust::attribute_to_str(attr)]);
+        out.write_str(
+            istr::from_estr(#fmt["%s\n", pprust::attribute_to_str(attr)]));
     }
 
-    out.write_str("\n\n");
+    out.write_str(~"\n\n");
 }
 
 fn get_crate_attributes(data: @[u8]) -> [ast::attribute] {
@@ -380,17 +383,18 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
 }
 
 fn list_crate_deps(data: @[u8], out: io::writer) {
-    out.write_str("=External Dependencies=\n");
+    out.write_str(~"=External Dependencies=\n");
 
     for dep: crate_dep in get_crate_deps(data) {
-        out.write_str(#fmt["%d %s\n", dep.cnum, dep.ident]);
+        out.write_str(
+            istr::from_estr(#fmt["%d %s\n", dep.cnum, dep.ident]));
     }
 
-    out.write_str("\n");
+    out.write_str(~"\n");
 }
 
 fn list_crate_items(bytes: &@[u8], md: &ebml::doc, out: io::writer) {
-    out.write_str("=Items=\n");
+    out.write_str(~"=Items=\n");
     let paths = ebml::get_doc(md, tag_paths);
     let items = ebml::get_doc(md, tag_items);
     let index = ebml::get_doc(paths, tag_index);
@@ -403,11 +407,12 @@ fn list_crate_items(bytes: &@[u8], md: &ebml::doc, out: io::writer) {
             let def = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
             let did = parse_def_id(ebml::doc_data(did_doc));
-            out.write_str(#fmt["%s (%s)\n", data.path,
-                               describe_def(items, did)]);
+            out.write_str(
+                istr::from_estr(#fmt["%s (%s)\n", data.path,
+                                     describe_def(items, did)]));
         }
     }
-    out.write_str("\n");
+    out.write_str(~"\n");
 }
 
 fn list_crate_metadata(bytes: &@[u8], out: io::writer) {

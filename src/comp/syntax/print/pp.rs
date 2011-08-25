@@ -2,7 +2,7 @@
 import std::io;
 import std::vec;
 import std::str;
-
+import std::istr;
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's
@@ -391,7 +391,7 @@ obj printer(out: io::writer,
     }
     fn print_newline(amount: int) {
         log #fmt["NEWLINE %d", amount];
-        out.write_str("\n");
+        out.write_str(~"\n");
         pending_indentation = 0;
         self.indent(amount);
     }
@@ -407,10 +407,10 @@ obj printer(out: io::writer,
     }
     fn write_str(s: str) {
         while pending_indentation > 0 {
-            out.write_str(" ");
+            out.write_str(~" ");
             pending_indentation -= 1;
         }
-        out.write_str(s);
+        out.write_str(istr::from_estr(s));
     }
     fn print(x: token, L: int) {
         log #fmt["print %s %d (remaining line space=%d)", tok_str(x), L,

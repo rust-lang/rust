@@ -31,7 +31,7 @@ import std::comm::recv;
 import std::comm::send;
 
 fn map(filename: &[u8], emit: &map_reduce::putter<[u8], int>) {
-    let f = io::file_reader(str::unsafe_from_bytes(filename));
+    let f = io::file_reader(istr::unsafe_from_bytes(filename));
 
     while true {
         alt read_word(f) {
@@ -202,7 +202,8 @@ fn main(argv: [str]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 
-        out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
+        out.write_line(
+            istr::from_estr(#fmt["Usage: %s <filename> ...", argv[0]]));
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.

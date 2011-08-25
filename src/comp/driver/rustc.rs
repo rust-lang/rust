@@ -100,7 +100,7 @@ fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg, infile: str)
    -> {crate: @ast::crate, src: str} {
     let srcbytes =
         if infile != "-" {
-            io::file_reader(infile)
+            io::file_reader(istr::from_estr(infile))
         } else { io::stdin() }.read_whole_stream();
     let src = str::unsafe_from_bytes(srcbytes);
     let crate =
@@ -238,18 +238,21 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
       ppm_normal. { ann = pprust::no_ann(); }
     }
     pprust::print_crate(sess.get_codemap(), crate, input,
-                        io::string_reader(src), io::stdout(), ann);
+                        io::string_reader(istr::from_estr(src)),
+                        io::stdout(), ann);
 }
 
 fn version(argv0: str) {
     let vers = "unknown version";
     let env_vers = #env["CFG_VERSION"];
     if str::byte_len(env_vers) != 0u { vers = env_vers; }
-    io::stdout().write_str(#fmt["%s %s\n", argv0, vers]);
+    io::stdout().write_str(
+        istr::from_estr(#fmt["%s %s\n", argv0, vers]));
 }
 
 fn usage(argv0: str) {
-    io::stdout().write_str(#fmt["usage: %s [options] <input>\n", argv0] +
+    io::stdout().write_str(istr::from_estr(
+        #fmt["usage: %s [options] <input>\n", argv0] +
                                "
 options:
 
@@ -283,7 +286,7 @@ options:
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
 
-");
+"));
 }
 
 fn get_os(triple: str) -> session::os {

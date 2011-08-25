@@ -2,6 +2,7 @@
 
 import std::vec;
 import std::str;
+import std::istr;
 import std::uint;
 import std::io;
 import std::option;
@@ -435,7 +436,9 @@ fn encode_index<T>(ebml_w: &ebml::writer, buckets: &[@[entry<T>]],
     ebml::end_tag(ebml_w);
 }
 
-fn write_str(writer: &io::writer, s: &str) { writer.write_str(s); }
+fn write_str(writer: &io::writer, s: &str) {
+    writer.write_str(istr::from_estr(s));
+}
 
 fn write_int(writer: &io::writer, n: &int) {
     writer.write_be_uint(n as uint, 4u);
@@ -616,7 +619,7 @@ fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
     // remaining % 4 bytes.
 
     buf_w.write([0u8, 0u8, 0u8, 0u8]);
-    ret string_w.get_str();
+    ret istr::to_estr(string_w.get_str());
 }
 
 // Get the encoded string for a type
@@ -624,7 +627,7 @@ fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> str {
     let cx = @{ds: def_to_str, tcx: tcx, abbrevs: tyencode::ac_no_abbrevs};
     let sw = io::string_writer();
     tyencode::enc_ty(sw.get_writer(), cx, t);
-    ret sw.get_str();
+    ret istr::to_estr(sw.get_str());
 }
 
 

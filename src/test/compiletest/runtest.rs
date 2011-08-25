@@ -23,7 +23,7 @@ fn run(cx: &cx, _testfile: -[u8]) {
     let testfile = str::unsafe_from_bytes(_testfile);
     if cx.config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
-        io::stdout().write_str("\n\n");
+        io::stdout().write_str(~"\n\n");
     }
     log #fmt["running %s", testfile];
     let props = load_props(testfile);
@@ -87,7 +87,8 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
     let rounds =
         alt props.pp_exact { option::some(_) { 1 } option::none. { 2 } };
 
-    let srcs = [io::read_whole_file_str(testfile)];
+    let srcs = [istr::to_estr(io::read_whole_file_str(
+        istr::from_estr(testfile)))];
 
     let round = 0;
     while round < rounds {
@@ -108,7 +109,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
           option::some(file) {
             let filepath = fs::connect(fs::dirname(
                 istr::from_estr(testfile)), istr::from_estr(file));
-            io::read_whole_file_str(istr::to_estr(filepath))
+            istr::to_estr(io::read_whole_file_str(filepath))
           }
           option::none. { srcs[vec::len(srcs) - 2u] }
         };
@@ -159,7 +160,7 @@ actual:\n\
 ------------------------------------------\n\
 \n",
                      expected, actual];
-            io::stdout().write_str(msg);
+            io::stdout().write_str(istr::from_estr(msg));
             fail;
         }
     }
@@ -329,8 +330,9 @@ fn dump_output(config: &config, testfile: &str, out: &str, err: &str) {
 fn dump_output_file(config: &config, testfile: &str, out: &str,
                     extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    let writer = io::file_writer(outfile, [io::create, io::truncate]);
-    writer.write_str(out);
+    let writer = io::file_writer(istr::from_estr(outfile),
+                                 [io::create, io::truncate]);
+    writer.write_str(istr::from_estr(out));
 }
 
 // FIXME (726): Can't use file_writer on mac
@@ -361,21 +363,23 @@ fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
         let sep1 = #fmt["------%s------------------------------", "stdout"];
         let sep2 = #fmt["------%s------------------------------", "stderr"];
         let sep3 = "------------------------------------------";
-        io::stdout().write_line(sep1);
-        io::stdout().write_line(out);
-        io::stdout().write_line(sep2);
-        io::stdout().write_line(err);
-        io::stdout().write_line(sep3);
+        io::stdout().write_line(istr::from_estr(sep1));
+        io::stdout().write_line(istr::from_estr(out));
+        io::stdout().write_line(istr::from_estr(sep2));
+        io::stdout().write_line(istr::from_estr(err));
+        io::stdout().write_line(istr::from_estr(sep3));
     }
 }
 
-fn error(err: &str) { io::stdout().write_line(#fmt["\nerror: %s", err]); }
+fn error(err: &str) {
+    io::stdout().write_line(istr::from_estr(#fmt["\nerror: %s", err]));
+}
 
 fn fatal(err: &str) -> ! { error(err); fail; }
 
 fn fatal_procres(err: &str, procres: procres) -> ! {
     let msg =
-        #fmt["\n\
+        istr::from_estr(#fmt["\n\
 error: %s\n\
 command: %s\n\
 stdout:\n\
@@ -387,7 +391,7 @@ stderr:\n\
 %s\n\
 ------------------------------------------\n\
 \n",
-             err, procres.cmdline, procres.stdout, procres.stderr];
+             err, procres.cmdline, procres.stdout, procres.stderr]);
     io::stdout().write_str(msg);
     fail;
 }

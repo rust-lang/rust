@@ -107,8 +107,10 @@ fn main(argv: [str]) {
 
                     let elapsed = stop - start;
 
-                    out.write_line(#fmt["%d\t%d\t%s", n, fibn,
-                                        istr::to_estr(u64::str(elapsed))]);
+                    out.write_line(
+                        istr::from_estr(
+                            #fmt["%d\t%d\t%s", n, fibn,
+                                 istr::to_estr(u64::str(elapsed))]));
                 }
             }
         }

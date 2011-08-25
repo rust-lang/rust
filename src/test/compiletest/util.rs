@@ -25,5 +25,7 @@ fn lib_path_env_var() -> str { "PATH" }
 
 fn logv(config: &config, s: &str) {
     log s;
-    if config.verbose { io::stdout().write_line(s); }
+    if config.verbose {
+        io::stdout().write_line(std::istr::from_estr(s));
+    }
 }

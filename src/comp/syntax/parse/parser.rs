@@ -63,7 +63,7 @@ type parser =
 fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
                         chpos: uint, byte_pos: uint, ftype: file_type) ->
    parser {
-    let src = io::read_whole_file_str(path);
+    let src = istr::to_estr(io::read_whole_file_str(istr::from_estr(path)));
     let filemap = codemap::new_filemap(path, chpos, byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);

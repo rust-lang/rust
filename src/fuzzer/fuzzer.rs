@@ -22,13 +22,13 @@ import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
 fn write_file(filename: &str, content: &str) {
-    io::file_writer(filename, [io::create, io::truncate]).write_str(content);
+    io::file_writer(istr::from_estr(filename), [io::create, io::truncate]).write_str(istr::from_estr(content));
     // Work around https://github.com/graydon/rust/issues/726
     std::run::run_program(~"chmod", [~"644", istr::from_estr(filename)]);
 }
 
 fn file_contains(filename: &str, needle: &str) -> bool {
-    let contents = io::read_whole_file_str(filename);
+    let contents = istr::to_estr(io::read_whole_file_str(istr::from_estr(filename)));
     ret str::find(contents, needle) != -1;
 }
 
@@ -154,7 +154,7 @@ fn devnull() -> io::writer { std::io::string_writer().get_writer() }
 fn as_str(f: fn(io::writer)) -> str {
     let w = std::io::string_writer();
     f(w.get_writer());
-    ret w.get_str();
+    ret istr::to_estr(w.get_str());
 }
 
 fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
@@ -171,7 +171,7 @@ fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
                 // string for stability is easier and ok for now.
                 let str3 =
                     as_str(bind pprust::print_crate(codemap, crate2, filename,
-                                                    io::string_reader(""), _,
+                                                    io::string_reader(~""), _,
                                                     pprust::no_ann()));
                 // 1u would be sane here, but the pretty-printer currently has lots of whitespace and paren issues,
                 // and https://github.com/graydon/rust/issues/766 is hilarious.
@@ -254,7 +254,7 @@ fn parse_and_print(code: &str) -> str {
     //write_file(filename, code);
     let crate = parser::parse_crate_from_source_str(filename, code, [], sess);
     ret as_str(bind pprust::print_crate(sess.cm, crate, filename,
-                                        io::string_reader(code), _,
+                                        io::string_reader(istr::from_estr(code)), _,
                                         pprust::no_ann()));
 }
 
@@ -340,7 +340,7 @@ fn check_convergence(files: &[str]) {
     log_err #fmt["pp convergence tests: %u files", vec::len(files)];
     for file in files {
         if !file_is_confusing(file) {
-            let s = io::read_whole_file_str(file);
+            let s = istr::to_estr(io::read_whole_file_str(istr::from_estr(file)));
             if !content_is_confusing(s) {
                 log_err #fmt["pp converge: %s", file];
                 // Change from 7u to 2u when https://github.com/graydon/rust/issues/759 is fixed
@@ -353,7 +353,7 @@ fn check_convergence(files: &[str]) {
 fn check_variants(files: &[str]) {
     for file in files {
         if !file_is_confusing(file) {
-            let s = io::read_whole_file_str(file);
+            let s = istr::to_estr(io::read_whole_file_str(istr::from_estr(file)));
             if content_is_dangerous_to_modify(s) || content_is_confusing(s) {
                 cont;
             }
@@ -362,7 +362,7 @@ fn check_variants(files: &[str]) {
             let crate =
                 parser::parse_crate_from_source_str(file, s, [], sess);
             log_err as_str(bind pprust::print_crate(sess.cm, crate, file,
-                                                    io::string_reader(s), _,
+                                                    io::string_reader(istr::from_estr(s)), _,
                                                     pprust::no_ann()));
             check_variants_of_ast(*crate, sess.cm, file);
         }

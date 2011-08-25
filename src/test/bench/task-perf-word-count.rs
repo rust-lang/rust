@@ -14,6 +14,7 @@ import option = std::option::t;
 import std::option::some;
 import std::option::none;
 import std::str;
+import std::istr;
 import std::map;
 import std::vec;
 import std::io;
@@ -30,7 +31,7 @@ import std::comm::recv;
 import std::comm::send;
 
 fn map(filename: str, emit: map_reduce::putter) {
-    let f = io::file_reader(filename);
+    let f = io::file_reader(istr::from_estr(filename));
 
 
     while true {
@@ -196,7 +197,8 @@ fn main(argv: [str]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 
-        out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
+        out.write_line(istr::from_estr(
+            #fmt["Usage: %s <filename> ...", argv[0]]));
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.
