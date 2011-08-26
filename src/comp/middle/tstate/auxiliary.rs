@@ -621,8 +621,17 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: &@expr) -> @constr_arg_use {
                         carg_ident({ident: p.node.idents[0],
                                     node: a_id.node}));
           }
-          _ {
+          some (def_binding(b_id)) {
+            ret @respan(p.span,
+                        carg_ident({ident: p.node.idents[0],
+                                    node: b_id.node}));
+           }
+          some(_) {
             tcx.sess.bug("exprs_to_constr_args: non-local variable " +
+                             "as pred arg");
+          }
+          none {
+            tcx.sess.bug("exprs_to_constr_args: NONE " +
                              "as pred arg");
 
           }
@@ -646,10 +655,6 @@ fn exprs_to_constr_args(tcx: ty::ctxt, args: &[@expr]) -> [@constr_arg_use] {
 
 fn expr_to_constr(tcx: ty::ctxt, e: &@expr) -> sp_constr {
     alt e.node {
-
-
-      // FIXME change the first pattern to expr_path to test a
-      // typechecker bug
       expr_call(operator, args) {
         alt operator.node {
           expr_path(p) {
