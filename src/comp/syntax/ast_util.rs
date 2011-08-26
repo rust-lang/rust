@@ -167,8 +167,8 @@ fn is_exported(i: ident, m: _mod) -> bool {
     ret count == 0u && !nonlocal;
 }
 
-pure fn is_call_expr(e: @expr) -> bool {
-    alt e.node { expr_call(_, _) { true } _ { false } }
+fn is_call_expr(e: @expr) -> bool {
+    alt e.node { expr_call(_, _) { ret true; } _ { ret false; } }
 }
 
 fn is_constraint_arg(e: @expr) -> bool {
