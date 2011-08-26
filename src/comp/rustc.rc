@@ -30,7 +30,6 @@ mod middle {
     mod freevars;
     mod shape;
     mod gc;
-    mod cstrcache;
 
     mod tstate {
         mod ck;
