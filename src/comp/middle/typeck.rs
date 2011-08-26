@@ -107,7 +107,7 @@ fn lookup_def(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> ast::def {
 fn ident_for_local(loc: &@ast::local) -> ast::ident {
     ret alt loc.node.pat.node {
           ast::pat_bind(name) { name }
-          _ { "local" }
+          _ { ~"local" }
         }; // FIXME DESTR
 }
 
@@ -626,7 +626,7 @@ mod collect {
                  ty_params: &[ast::ty_param]) -> ty::ty_param_kinds_and_ty {
         let methods = get_obj_method_types(cx, ob);
         let t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
-        t_obj = ty::rename(cx.tcx, t_obj, id);
+        t_obj = ty::rename(cx.tcx, t_obj, istr::to_estr(id));
         ret {kinds: ty_param_kinds(ty_params), ty: t_obj};
     }
     fn ty_of_obj_ctor(cx: @ctxt, id: &ast::ident, ob: &ast::_obj,
@@ -1322,7 +1322,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
         let vid = lookup_local(fcx, pat.span, pat.id);
         let typ = ty::mk_var(fcx.ccx.tcx, vid);
         typ = demand::simple(fcx, pat.span, expected, typ);
-        let canon_id = map.get(istr::from_estr(name));
+        let canon_id = map.get(name);
         if canon_id != pat.id {
             let ct =
                 ty::mk_var(fcx.ccx.tcx,
@@ -1429,8 +1429,8 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
                       fields",
                      ex_f_count, f_count]);
         }
-        fn matches(name: &str, f: &ty::field) -> bool {
-            ret str::eq(name, f.ident);
+        fn matches(name: &istr, f: &ty::field) -> bool {
+            ret istr::eq(name, f.ident);
         }
         for f: ast::field_pat in fields {
             alt vec::find(bind matches(f.ident, _), ex_fields) {
@@ -1439,7 +1439,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
                 fcx.ccx.tcx.sess.span_fatal(pat.span,
                                             #fmt["mismatched types: did not \
                                              expect a record with a field %s",
-                                                 f.ident]);
+                                                 istr::to_estr(f.ident)]);
               }
             }
         }
@@ -2255,7 +2255,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
             for f: spanned<ty::field> in fields_t {
                 let found = false;
                 for bf: ty::field in base_fields {
-                    if str::eq(f.node.ident, bf.ident) {
+                    if istr::eq(f.node.ident, bf.ident) {
                         demand::simple(fcx, f.span, bf.mt.ty, f.node.mt.ty);
                         found = true;
                     }
@@ -2263,7 +2263,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                 if !found {
                     tcx.sess.span_fatal(f.span,
                                         "unknown field in record update: " +
-                                            f.node.ident);
+                                        istr::to_estr(f.node.ident));
                 }
             }
           }
@@ -2419,7 +2419,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                option::t<ty::method> {
 
                 for om: @ast::method in outer_obj_methods {
-                    if str::eq(om.node.ident, m.ident) {
+                    if istr::eq(om.node.ident, m.ident) {
                         // We'd better be overriding with one of the same
                         // type.  Check to make sure.
                         let new_type = ty_of_method(ccx, om);
@@ -2427,7 +2427,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                             ccx.tcx.sess.span_fatal(
                                 om.span,
                                 "Attempted to override method "
-                                + m.ident +
+                                + istr::to_estr(m.ident) +
                                 " with one of a different type");
                         }
                         ret none;
@@ -2504,7 +2504,7 @@ fn check_decl_local(fcx: &@fn_ctxt, local: &@ast::local) -> bool {
     alt fcx.locals.find(local.node.id) {
       none. {
         fcx.ccx.tcx.sess.bug("check_decl_local: local id not found " +
-                                 ident_for_local(local));
+                             istr::to_estr(ident_for_local(local)));
       }
       some(i) {
         let t = ty::mk_var(fcx.ccx.tcx, i);

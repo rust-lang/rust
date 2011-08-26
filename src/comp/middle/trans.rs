@@ -4240,7 +4240,7 @@ fn trans_rec(cx: &@block_ctxt, fields: &[ast::field],
         bcx = dst_res.bcx;
         let expr_provided = false;
         for f: ast::field in fields {
-            if str::eq(f.node.ident, tf.ident) {
+            if istr::eq(f.node.ident, tf.ident) {
                 expr_provided = true;
                 let lv = trans_lval(bcx, f.node.expr);
                 bcx = move_val_if_temp(lv.res.bcx, INIT, dst_res.val,
@@ -5060,6 +5060,7 @@ fn alloc_local(cx: &@block_ctxt, local: &@ast::local) -> result {
     alt local.node.pat.node {
       ast::pat_bind(ident) {
         if bcx_ccx(cx).sess.get_opts().debuginfo {
+            let ident = istr::to_estr(ident);
             llvm::LLVMSetValueName(r.val, str::buf(ident));
         }
       }
@@ -5523,7 +5524,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         fn_args +=
             [{mode: ast::alias(false),
               ty: varg.ty,
-              ident: istr::to_estr(~"arg" + uint::to_str(i, 10u)),
+              ident: ~"arg" + uint::to_str(i, 10u),
               id: varg.id}];
     }
     assert (cx.ccx.item_ids.contains_key(variant.node.id));
@@ -5625,7 +5626,7 @@ fn trans_const(cx: &@crate_ctxt, e: @ast::expr, id: ast::node_id) {
 fn trans_item(cx: @local_ctxt, item: &ast::item) {
     alt item.node {
       ast::item_fn(f, tps) {
-        let sub_cx = extend_path(cx, item.ident);
+        let sub_cx = extend_path(cx, istr::to_estr(item.ident));
         alt cx.ccx.item_ids.find(item.id) {
           some(llfndecl) {
             trans_fn(sub_cx, item.span, f, llfndecl, none, tps, item.id);
@@ -5639,7 +5640,7 @@ fn trans_item(cx: @local_ctxt, item: &ast::item) {
       ast::item_obj(ob, tps, ctor_id) {
         let sub_cx =
             @{obj_typarams: tps, obj_fields: ob.fields
-                 with *extend_path(cx, item.ident)};
+                 with *extend_path(cx, istr::to_estr(item.ident))};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
       ast::item_res(dtor, dtor_id, tps, ctor_id) {
@@ -5657,12 +5658,13 @@ fn trans_item(cx: @local_ctxt, item: &ast::item) {
       }
       ast::item_mod(m) {
         let sub_cx =
-            @{path: cx.path + [item.ident],
-              module_path: cx.module_path + [item.ident] with *cx};
+            @{path: cx.path + [istr::to_estr(item.ident)],
+              module_path: cx.module_path
+                  + [istr::to_estr(item.ident)] with *cx};
         trans_mod(sub_cx, m);
       }
       ast::item_tag(variants, tps) {
-        let sub_cx = extend_path(cx, item.ident);
+        let sub_cx = extend_path(cx, istr::to_estr(item.ident));
         let degen = std::vec::len(variants) == 1u;
         let i = 0;
         for variant: ast::variant in variants {
@@ -5717,6 +5719,7 @@ fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[str],
     let ps: str = mangle_exported_name(ccx, path, node_type);
     register_fn_pair(ccx, ps, llfty, llfn, node_id);
 
+    let path = istr::from_estrs(path);
     let is_main: bool = is_main_name(path) && !ccx.sess.get_opts().library;
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
 }
@@ -6029,14 +6032,15 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     finish_fn(fcx, lltop);
 }
 
-fn item_path(item: &@ast::item) -> [str] { ret [item.ident]; }
+fn item_path(item: &@ast::item) -> [str] { ret [istr::to_estr(item.ident)]; }
 
 fn collect_native_item(ccx: @crate_ctxt, i: &@ast::native_item, pt: &[str],
                        _v: &vt<[str]>) {
     alt i.node {
       ast::native_item_fn(_, _, _) {
         if !ccx.obj_methods.contains_key(i.id) {
-            decl_native_fn_and_pair(ccx, i.span, pt, i.ident, i.id);
+            decl_native_fn_and_pair(ccx, i.span, pt,
+                                    istr::to_estr(i.ident), i.id);
         }
       }
       _ { }
@@ -6050,7 +6054,7 @@ fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
       ast::item_const(_, _) {
         let typ = node_id_type(ccx, i.id);
         let s =
-            mangle_exported_name(ccx, pt + [i.ident],
+            mangle_exported_name(ccx, pt + [istr::to_estr(i.ident)],
                                  node_id_type(ccx, i.id));
         let g =
             llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ),
@@ -6110,7 +6114,8 @@ fn collect_tag_ctor(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
       ast::item_tag(variants, tps) {
         for variant: ast::variant in variants {
             if std::vec::len(variant.node.args) != 0u {
-                decl_fn_and_pair(ccx, i.span, new_pt + [variant.node.name],
+                decl_fn_and_pair(ccx, i.span,
+                                 new_pt + [istr::to_estr(variant.node.name)],
                                  "tag", tps, variant.node.id);
             }
         }
@@ -6138,7 +6143,8 @@ fn trans_constant(ccx: @crate_ctxt, it: &@ast::item, pt: &[str],
         let n_variants = std::vec::len::<ast::variant>(variants);
         while i < n_variants {
             let variant = variants[i];
-            let p = new_pt + [it.ident, variant.node.name, "discrim"];
+            let p = new_pt + istr::to_estrs([it.ident,
+                                             variant.node.name, ~"discrim"]);
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let discrim_gvar =
                 llvm::LLVMAddGlobal(ccx.llmod, T_int(), str::buf(s));

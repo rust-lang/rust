@@ -2,6 +2,7 @@
 
 import std::vec;
 import std::str;
+import std::istr;
 import std::map;
 import std::option;
 import syntax::ast;
@@ -32,7 +33,7 @@ export mk_attr;
 // linkage
 fn find_linkage_metas(attrs: &[ast::attribute]) -> [@ast::meta_item] {
     let metas: [@ast::meta_item] = [];
-    for attr: ast::attribute in find_attrs_by_name(attrs, "link") {
+    for attr: ast::attribute in find_attrs_by_name(attrs, ~"link") {
         alt attr.node.value.node {
           ast::meta_list(_, items) { metas += items; }
           _ { log "ignoring link attribute that has incorrect type"; }
@@ -163,11 +164,11 @@ fn sort_meta_items(items: &[@ast::meta_item]) -> [@ast::meta_item] {
     ret v2;
 }
 
-fn remove_meta_items_by_name(items: &[@ast::meta_item], name: str) ->
+fn remove_meta_items_by_name(items: &[@ast::meta_item], name: &istr) ->
    [@ast::meta_item] {
 
     let filter =
-        bind fn (item: &@ast::meta_item, name: str) ->
+        bind fn (item: &@ast::meta_item, name: &istr) ->
                 option::t<@ast::meta_item> {
                  if get_meta_item_name(item) != name {
                      option::some(item)
@@ -178,12 +179,13 @@ fn remove_meta_items_by_name(items: &[@ast::meta_item], name: str) ->
 }
 
 fn require_unique_names(sess: &session::session, metas: &[@ast::meta_item]) {
-    let map = map::mk_hashmap::<str, ()>(str::hash, str::eq);
+    let map = map::new_str_hash();
     for meta: @ast::meta_item in metas {
         let name = get_meta_item_name(meta);
         if map.contains_key(name) {
             sess.span_fatal(meta.span,
-                            #fmt["duplicate meta item `%s`", name]);
+                            #fmt["duplicate meta item `%s`",
+                                 istr::to_estr(name)]);
         }
         map.insert(name, ());
     }

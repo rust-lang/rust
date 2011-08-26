@@ -55,11 +55,11 @@ fn default_configuration(sess: session::session, argv0: str, input: str) ->
     let mk = attr::mk_name_value_item_str;
 
     ret [ // Target bindings.
-         mk("target_os", istr::to_estr(std::os::target_os())),
-        mk("target_arch", "x86"),
-         mk("target_libc", libc),
+         mk(~"target_os", istr::to_estr(std::os::target_os())),
+        mk(~"target_arch", "x86"),
+         mk(~"target_libc", libc),
          // Build bindings.
-         mk("build_compiler", argv0), mk("build_input", input)];
+         mk(~"build_compiler", argv0), mk(~"build_input", input)];
 }
 
 fn build_configuration(sess: session::session, argv0: str, input: str) ->
@@ -71,9 +71,9 @@ fn build_configuration(sess: session::session, argv0: str, input: str) ->
     // If the user wants a test runner, then add the test cfg
     let gen_cfg =
         {
-            if sess.get_opts().test && !attr::contains_name(user_cfg, "test")
-               {
-                [attr::mk_word_item("test")]
+            if sess.get_opts().test
+                && !attr::contains_name(user_cfg, ~"test") {
+                [attr::mk_word_item(~"test")]
             } else { [] }
         };
     ret user_cfg + gen_cfg + default_cfg;
@@ -84,7 +84,9 @@ fn parse_cfgspecs(cfgspecs: &[str]) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
     let words = [];
-    for s: str in cfgspecs { words += [attr::mk_word_item(s)]; }
+    for s: str in cfgspecs {
+        words += [attr::mk_word_item(istr::from_estr(s))];
+    }
     ret words;
 }
 
@@ -655,7 +657,7 @@ mod test {
         let sessopts = build_session_options("whatever", match, "whatever");
         let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
-        assert (attr::contains_name(cfg, "test"));
+        assert (attr::contains_name(cfg, ~"test"));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
@@ -669,7 +671,7 @@ mod test {
         let sessopts = build_session_options("whatever", match, "whatever");
         let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
-        let test_items = attr::find_meta_items_by_name(cfg, "test");
+        let test_items = attr::find_meta_items_by_name(cfg, ~"test");
         assert (vec::len(test_items) == 1u);
     }
 }

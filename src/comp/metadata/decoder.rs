@@ -153,7 +153,7 @@ fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
     fn eq_item(data: &[u8], s: str) -> bool {
         ret str::eq(str::unsafe_from_bytes(data), s);
     }
-    let s = str::connect(path, "::");
+    let s = istr::to_estr(istr::connect(path, ~"::"));
     let md = ebml::new_doc(data);
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
@@ -302,14 +302,14 @@ fn get_meta_items(md: &ebml::doc) -> [@ast::meta_item] {
     for each meta_item_doc: ebml::doc in
              ebml::tagged_docs(md, tag_meta_item_word) {
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
+        let n = istr::unsafe_from_bytes(ebml::doc_data(nd));
         items += [attr::mk_word_item(n)];
     }
     for each meta_item_doc: ebml::doc in
              ebml::tagged_docs(md, tag_meta_item_name_value) {
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
+        let n = istr::unsafe_from_bytes(ebml::doc_data(nd));
         let v = str::unsafe_from_bytes(ebml::doc_data(vd));
         // FIXME (#611): Should be able to decode meta_name_value variants,
         // but currently they can't be encoded
@@ -318,7 +318,7 @@ fn get_meta_items(md: &ebml::doc) -> [@ast::meta_item] {
     for each meta_item_doc: ebml::doc in
              ebml::tagged_docs(md, tag_meta_item_list) {
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
+        let n = istr::unsafe_from_bytes(ebml::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
         items += [attr::mk_list_item(n, subitems)];
     }

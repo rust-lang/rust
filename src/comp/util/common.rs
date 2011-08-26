@@ -70,11 +70,11 @@ fn log_block_err(b: &ast::blk) { log_err print::pprust::block_to_str(b); }
 
 fn log_item_err(i: &@ast::item) { log_err print::pprust::item_to_str(i); }
 
-fn log_fn(f: &ast::_fn, name: str, params: &[ast::ty_param]) {
+fn log_fn(f: &ast::_fn, name: &ast::ident, params: &[ast::ty_param]) {
     log print::pprust::fun_to_str(f, name, params);
 }
 
-fn log_fn_err(f: &ast::_fn, name: str, params: &[ast::ty_param]) {
+fn log_fn_err(f: &ast::_fn, name: &ast::ident, params: &[ast::ty_param]) {
     log_err print::pprust::fun_to_str(f, name, params);
 }
 
@@ -154,8 +154,8 @@ fn call_kind_str(c: call_kind) -> str {
     }
 }
 
-fn is_main_name(path: &[str]) -> bool {
-    str::eq(option::get(std::vec::last(path)), "main")
+fn is_main_name(path: &[ast::ident]) -> bool {
+    istr::eq(option::get(std::vec::last(path)), ~"main")
 }
 
 // FIXME mode this to std::float when editing the stdlib no longer

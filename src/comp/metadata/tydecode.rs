@@ -2,6 +2,7 @@
 
 import std::vec;
 import std::str;
+import std::istr;
 import std::uint;
 import std::option;
 import std::option::none;
@@ -42,9 +43,9 @@ fn parse_ident(st: @pstate, sd: str_def, last: char) -> ast::ident {
 
 fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool) ->
    ast::ident {
-    let rslt = "";
+    let rslt = ~"";
     while !is_last(peek(st) as char) {
-        rslt += str::unsafe_from_byte(next(st));
+        rslt += istr::unsafe_from_byte(next(st));
     }
     ret rslt;
 }
@@ -225,9 +226,9 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         assert (next(st) as char == '[');
         let fields: [ty::field] = [];
         while peek(st) as char != ']' {
-            let name = "";
+            let name = ~"";
             while peek(st) as char != '=' {
-                name += str::unsafe_from_byte(next(st));
+                name += istr::unsafe_from_byte(next(st));
             }
             st.pos = st.pos + 1u;
             fields += [{ident: name, mt: parse_mt(st, sd)}];
@@ -278,9 +279,9 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
               'W' { proto = ast::proto_iter; }
               'F' { proto = ast::proto_fn; }
             }
-            let name = "";
+            let name = ~"";
             while peek(st) as char != '[' {
-                name += str::unsafe_from_byte(next(st));
+                name += istr::unsafe_from_byte(next(st));
             }
             let func = parse_ty_fn(st, sd);
             methods +=

@@ -1,6 +1,7 @@
 // Translation of object-related things to LLVM IR.
 
 import std::str;
+import std::istr;
 import std::option;
 import std::vec;
 import option::none;
@@ -396,7 +397,7 @@ tag vtbl_mthd {
 
 // Alphabetize ast::methods by ident.  A helper for create_vtbl.
 fn ast_mthd_lteq(a: &@ast::method, b: &@ast::method) -> bool {
-    ret str::lteq(a.node.ident, b.node.ident);
+    ret istr::lteq(a.node.ident, b.node.ident);
 }
 
 // Alphabetize vtbl_mthds by ident.  A helper for create_vtbl.
@@ -404,14 +405,14 @@ fn vtbl_mthd_lteq(a: &vtbl_mthd, b: &vtbl_mthd) -> bool {
     alt a {
       normal_mthd(ma) {
         alt b {
-          normal_mthd(mb) { ret str::lteq(ma.node.ident, mb.node.ident); }
-          fwding_mthd(mb) { ret str::lteq(ma.node.ident, mb.ident); }
+          normal_mthd(mb) { ret istr::lteq(ma.node.ident, mb.node.ident); }
+          fwding_mthd(mb) { ret istr::lteq(ma.node.ident, mb.ident); }
         }
       }
       fwding_mthd(ma) {
         alt b {
-          normal_mthd(mb) { ret str::lteq(ma.ident, mb.node.ident); }
-          fwding_mthd(mb) { ret str::lteq(ma.ident, mb.ident); }
+          normal_mthd(mb) { ret istr::lteq(ma.ident, mb.node.ident); }
+          fwding_mthd(mb) { ret istr::lteq(ma.ident, mb.ident); }
         }
       }
     }
@@ -430,7 +431,7 @@ fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd, addtl_meths: [@ast::method])
     alt m {
       fwding_mthd(fm) {
         for am: @ast::method in addtl_meths {
-            if str::eq(am.node.ident, fm.ident) { ret none; }
+            if istr::eq(am.node.ident, fm.ident) { ret none; }
         }
         ret some(fwding_mthd(fm));
       }
@@ -598,7 +599,8 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Create a local context that's aware of the name of the method we're
     // creating.
-    let mcx: @local_ctxt = @{path: cx.path + ["method", m.ident] with *cx};
+    let mcx: @local_ctxt = @{path: cx.path
+        + ["method", istr::to_estr(m.ident)] with *cx};
 
     // Make up a name for the backwarding function.
     let fn_name: str = "backwarding_fn";
@@ -726,7 +728,8 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Create a local context that's aware of the name of the method we're
     // creating.
-    let mcx: @local_ctxt = @{path: cx.path + ["method", m.ident] with *cx};
+    let mcx: @local_ctxt = @{path: cx.path
+        + ["method", istr::to_estr(m.ident)] with *cx};
 
     // Make up a name for the forwarding function.
     let fn_name: str = "forwarding_fn";
@@ -917,7 +920,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
       }
     }
     let mcx: @local_ctxt =
-        @{path: cx.path + ["method", m.node.ident] with *cx};
+        @{path: cx.path + ["method", istr::to_estr(m.node.ident)] with *cx};
     let s: str = mangle_internal_name_by_path(mcx.ccx, mcx.path);
     let llfn: ValueRef = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
 

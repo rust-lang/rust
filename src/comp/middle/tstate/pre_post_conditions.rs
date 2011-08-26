@@ -1,5 +1,6 @@
 
 import std::vec;
+import std::istr;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -68,11 +69,11 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
                  {constrs: @new_def_hash::<constraint>(),
                   num_constraints: 0u,
                   cf: return,
-                  i_return: ninit(0, ""),
-                  i_diverge: ninit(0, ""),
+                  i_return: ninit(0, ~""),
+                  i_diverge: ninit(0, ~""),
                   used_vars: v},
              id: 0,
-             name: "",
+             name: ~"",
              ccx: ccx};
         find_pre_post_expr(fake_fcx, e);
       }
@@ -369,7 +370,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
         let upvars = freevars::get_freevars(fcx.ccx.tcx, e.id);
-        for id: node_id in *upvars { handle_var(fcx, rslt, id, "upvar"); }
+        for id: node_id in *upvars { handle_var(fcx, rslt, id, ~"upvar"); }
       }
       expr_block(b) {
         find_pre_post_block(fcx, b);
@@ -750,7 +751,7 @@ fn fn_pre_post(f: &_fn, tps: &[ty_param], sp: &span, i: &fn_ident,
     let fcx =
         {enclosing: ccx.fm.get(id),
          id: id,
-         name: fn_ident_to_string(id, i),
+         name: istr::from_estr(fn_ident_to_string(id, i)),
          ccx: ccx};
     find_pre_post_fn(fcx, f);
 }

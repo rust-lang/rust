@@ -134,7 +134,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       ty::ty_rec(fields) {
         w.write_str(~"R[");
         for field: ty::field in fields {
-            w.write_str(istr::from_estr(field.ident));
+            w.write_str(field.ident);
             w.write_char('=');
             enc_mt(w, cx, field.mt);
         }
@@ -159,7 +159,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
         w.write_str(~"O[");
         for m: ty::method in methods {
             enc_proto(w, m.proto);
-            w.write_str(istr::from_estr(m.ident));
+            w.write_str(m.ident);
             enc_ty_fn(w, cx, m.inputs, m.output, m.cf, m.constrs);
         }
         w.write_char(']');

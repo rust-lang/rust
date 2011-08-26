@@ -38,16 +38,16 @@ fn mode_str_1(m: &ty::mode) -> str {
 fn fn_ident_to_string(id: ast::node_id, i: &ast::fn_ident) -> str {
     ret alt i {
       none. { istr::to_estr(~"anon" + int::str(id)) }
-      some(s) { s }
+      some(s) { istr::to_estr(s) }
     };
 }
 
 fn get_id_ident(cx: &ctxt, id: ast::def_id) -> str {
     if id.crate != ast::local_crate {
-        str::connect(cx.ext_map.get(id), "::")
+        str::connect(istr::to_estrs(cx.ext_map.get(id)), "::")
     } else {
         alt cx.items.find(id.node) {
-          some(ast_map::node_item(it)) { it.ident }
+          some(ast_map::node_item(it)) { istr::to_estr(it.ident) }
           _ { fail "get_id_ident: can't find item in ast_map" }
         }
     }
@@ -63,7 +63,13 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
                  inputs: &[arg], output: t, cf: ast::controlflow,
                  constrs: &[@constr]) -> str {
         let s = proto_to_str(proto);
-        alt ident { some(i) { s += " "; s += i; } _ { } }
+        alt ident {
+          some(i) {
+            s += " ";
+            s += istr::to_estr(i);
+          }
+          _ { }
+        }
         s += "(";
         let strs = [];
         for a: arg in inputs { strs += [fn_input_to_str(cx, a)]; }
@@ -83,7 +89,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
                       m.output, m.cf, m.constrs) + ";";
     }
     fn field_to_str(cx: &ctxt, f: &field) -> str {
-        ret f.ident + ": " + mt_to_str(cx, f.mt);
+        ret istr::to_estr(f.ident) + ": " + mt_to_str(cx, f.mt);
     }
     fn mt_to_str(cx: &ctxt, m: &mt) -> str {
         let mstr;

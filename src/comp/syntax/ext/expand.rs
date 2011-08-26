@@ -24,10 +24,11 @@ fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
               mac_invoc(pth, args, body) {
                 assert (vec::len(pth.node.idents) > 0u);
                 let extname = pth.node.idents[0];
-                alt exts.find(istr::from_estr(extname)) {
+                alt exts.find(extname) {
                   none. {
                     cx.span_fatal(pth.span,
-                                  #fmt["macro undefined: '%s'", extname])
+                                  #fmt["macro undefined: '%s'",
+                                       istr::to_estr(extname)])
                   }
                   some(normal(ext)) {
                     let expanded = ext(cx, pth.span, args, body);

@@ -18,7 +18,7 @@ type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 fn collect_local(loc: &@local, cx: &ctxt, v: &visit::vt<ctxt>) {
     for each p: @pat in pat_bindings(loc.node.pat) {
         let ident = alt p.node { pat_bind(id) { id } };
-        log "collect_local: pushing " + ident;;
+        log ~"collect_local: pushing " + ident;;
         *cx.cs += [respan(loc.span, ninit(p.id, ident))];
     }
     visit::visit_local(loc, cx, v);
@@ -94,7 +94,7 @@ fn add_constraint(tcx: &ty::ctxt, c: sp_constr, next: uint, tbl: constr_map)
    to a bit number in the precondition/postcondition vectors */
 fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
               f_name: &fn_ident, id: node_id) {
-    let name = fn_ident_to_string(id, f_name);
+    let name = istr::from_estr(fn_ident_to_string(id, f_name));
     let res_map = @new_def_hash::<constraint>();
     let next: uint = 0u;
 
@@ -130,7 +130,7 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
     // and the name of the function, with a '!' appended to it, for the
     // "diverges" constraint
     let diverges_id = ccx.tcx.sess.next_node_id();
-    let diverges_name = name + "!";
+    let diverges_name = name + ~"!";
     add_constraint(cx.tcx, respan(f_sp, ninit(diverges_id, diverges_name)),
                    next, res_map);
 
@@ -147,9 +147,9 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
          i_diverge: ninit(diverges_id, diverges_name),
          used_vars: v};
     ccx.fm.insert(id, rslt);
-    log name + istr::to_estr(~" has "
-                             + std::uint::str(num_constraints(rslt))
-                             + ~" constraints");
+    log istr::to_estr(name + ~" has "
+                      + std::uint::str(num_constraints(rslt))
+                      + ~" constraints");
 }
 
 

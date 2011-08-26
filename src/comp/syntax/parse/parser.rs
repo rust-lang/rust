@@ -229,7 +229,10 @@ fn spanned<@T>(lo: uint, hi: uint, node: &T) -> spanned<T> {
 
 fn parse_ident(p: &parser) -> ast::ident {
     alt p.peek() {
-      token::IDENT(i, _) { p.bump(); ret p.get_str(i); }
+      token::IDENT(i, _) {
+        p.bump();
+        ret istr::from_estr(p.get_str(i));
+      }
       _ { p.fatal("expecting ident"); }
     }
 }
@@ -375,7 +378,8 @@ fn parse_ty_field(p: &parser) -> ast::ty_field {
 fn ident_index(p: &parser, args: &[ast::arg], i: &ast::ident) -> uint {
     let j = 0u;
     for a: ast::arg in args { if a.ident == i { ret j; } j += 1u; }
-    p.fatal("Unbound variable " + i + " in constraint arg");
+    p.fatal("Unbound variable " +
+            istr::to_estr(i) + " in constraint arg");
 }
 
 fn parse_type_constr_arg(p: &parser) -> @ast::ty_constr_arg {
@@ -742,7 +746,7 @@ fn parse_path(p: &parser) -> ast::path {
         alt p.peek() {
           token::IDENT(i, _) {
             hi = p.get_hi_pos();
-            ids += [p.get_str(i)];
+            ids += [istr::from_estr(p.get_str(i))];
             hi = p.get_hi_pos();
             p.bump();
             if p.peek() == token::MOD_SEP && p.look_ahead(1u) != token::LT {
@@ -1102,7 +1106,9 @@ fn parse_dot_or_call_expr_with(p: &parser, e: @ast::expr) -> @ast::expr {
               token::IDENT(i, _) {
                 hi = p.get_hi_pos();
                 p.bump();
-                e = mk_expr(p, lo, hi, ast::expr_field(e, p.get_str(i)));
+                e = mk_expr(p, lo, hi,
+                            ast::expr_field(
+                                e, istr::from_estr(p.get_str(i))));
               }
               t { unexpected(p, t); }
             }
@@ -1455,9 +1461,9 @@ fn parse_pat(p: &parser) -> @ast::pat {
                 p.bump();
                 subpat = parse_pat(p);
             } else {
-                if p.get_bad_expr_words()
-                    .contains_key(istr::from_estr(fieldname)) {
-                    p.fatal("found " + fieldname + " in binding position");
+                if p.get_bad_expr_words().contains_key(fieldname) {
+                    p.fatal("found " + istr::to_estr(fieldname)
+                            + " in binding position");
                 }
                 subpat =
                     @{id: p.get_id(),
@@ -1984,7 +1990,8 @@ fn parse_native_item(p: &parser, attrs: &[ast::attribute]) ->
     } else { unexpected(p, p.peek()); }
 }
 
-fn parse_native_mod_items(p: &parser, native_name: &str, abi: ast::native_abi,
+fn parse_native_mod_items(p: &parser, native_name: &str,
+                          abi: ast::native_abi,
                           first_item_attrs: &[ast::attribute]) ->
    ast::native_mod {
     // Shouldn't be any view items since we've already parsed an item attr
@@ -2027,7 +2034,7 @@ fn parse_item_native_mod(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     if p.peek() == token::EQ {
         expect(p, token::EQ);
         native_name = parse_str(p);
-    } else { native_name = id; }
+    } else { native_name = istr::to_estr(id); }
     expect(p, token::LBRACE);
     let more_attrs = parse_inner_attrs_and_next(p);
     let inner_attrs = more_attrs.inner;
@@ -2062,8 +2069,9 @@ fn parse_item_tag(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let variants: [ast::variant] = [];
     // Newtype syntax
     if p.peek() == token::EQ {
-        if p.get_bad_expr_words().contains_key(istr::from_estr(id)) {
-            p.fatal("found " + id + " in tag constructor position");
+        if p.get_bad_expr_words().contains_key(id) {
+            p.fatal("found " + istr::to_estr(id)
+                    + " in tag constructor position");
         }
         p.bump();
         let ty = parse_ty(p, false);
@@ -2100,7 +2108,8 @@ fn parse_item_tag(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
             }
             expect(p, token::SEMI);
             p.get_id();
-            let vr = {name: p.get_str(name), args: args, id: p.get_id()};
+            let vr = {name: istr::from_estr(p.get_str(name)),
+                      args: args, id: p.get_id()};
             variants += [spanned(vlo, vhi, vr)];
           }
           token::RBRACE. {/* empty */ }
@@ -2261,7 +2270,7 @@ fn parse_use(p: &parser) -> ast::view_item_ {
     ret ast::view_item_use(ident, metadata, p.get_id());
 }
 
-fn parse_rest_import_name(p: &parser, first: ast::ident,
+fn parse_rest_import_name(p: &parser, first: &ast::ident,
                           def_ident: option::t<ast::ident>) ->
    ast::view_item_ {
     let identifiers: [ast::ident] = [first];
@@ -2336,12 +2345,13 @@ fn parse_rest_import_name(p: &parser, first: ast::ident,
     }
 }
 
-fn parse_full_import_name(p: &parser, def_ident: ast::ident) ->
+fn parse_full_import_name(p: &parser, def_ident: &ast::ident) ->
    ast::view_item_ {
     alt p.peek() {
       token::IDENT(i, _) {
         p.bump();
-        ret parse_rest_import_name(p, p.get_str(i), some(def_ident));
+        ret parse_rest_import_name(
+            p, istr::from_estr(p.get_str(i)), some(def_ident));
       }
       _ { p.fatal("expecting an identifier"); }
     }
@@ -2354,9 +2364,12 @@ fn parse_import(p: &parser) -> ast::view_item_ {
         alt p.peek() {
           token::EQ. {
             p.bump();
-            ret parse_full_import_name(p, p.get_str(i));
+            ret parse_full_import_name(p, istr::from_estr(p.get_str(i)));
           }
-          _ { ret parse_rest_import_name(p, p.get_str(i), none); }
+          _ {
+            ret parse_rest_import_name(
+                p, istr::from_estr(p.get_str(i)), none);
+          }
         }
       }
       _ { p.fatal("expecting an identifier"); }
@@ -2436,7 +2449,7 @@ fn parse_crate_mod(p: &parser, _cfg: &ast::crate_cfg) -> @ast::crate {
                   config: p.get_cfg()});
 }
 
-fn parse_str(p: &parser) -> ast::ident {
+fn parse_str(p: &parser) -> str {
     alt p.peek() {
       token::LIT_STR(s) { p.bump(); ret p.get_str(s); }
       _ { fail; }

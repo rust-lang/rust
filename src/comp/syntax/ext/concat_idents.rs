@@ -11,7 +11,7 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
             cx.span_fatal(sp, "#concat_idents requires a vector argument .")
           }
         };
-    let res: ast::ident = "";
+    let res: ast::ident = ~"";
     for e: @ast::expr in args {
         res += expr_to_ident(cx, e, "expected an ident");
     }

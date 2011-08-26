@@ -432,7 +432,7 @@ fn follow_import(e: &env, sc: &scopes, path: &[ident], sp: &span) ->
           ast::def_mod(_) | ast::def_native_mod(_) { ret dcur; }
           _ {
             e.sess.span_err(sp,
-                            str::connect(path, "::") +
+                            istr::to_estr(istr::connect(path, ~"::")) +
                                 " does not name a module.");
             ret none;
           }
@@ -465,7 +465,7 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
     let end_id = ids[n_idents - 1u];
     // Ignore the current scope if this import would shadow itself.
     let sc =
-        if str::eq(name, ids[0]) { std::list::cdr(sc_in) } else { sc_in };
+        if istr::eq(name, ids[0]) { std::list::cdr(sc_in) } else { sc_in };
     if n_idents == 1u {
         register(e, defid, sp, end_id, sc_in,
                  lookup_in_scope(e, sc, sp, end_id, ns_value),
@@ -559,9 +559,10 @@ fn unresolved_err(e: &env, sc: &scopes, sp: &span, name: &ident, kind: &str) {
     }
     let err_scope = find_fn_or_mod_scope(sc);
     for rs: {ident: str, sc: scope} in e.reported {
-        if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
+        if str::eq(rs.ident, istr::to_estr(name))
+            && err_scope == rs.sc { ret; }
     }
-    e.reported += [{ident: name, sc: err_scope}];
+    e.reported += [{ident: istr::to_estr(name), sc: err_scope}];
     e.sess.span_err(sp, mk_unresolved_msg(name, kind));
 }
 
@@ -570,7 +571,7 @@ fn unresolved_fatal(e: &env, sp: &span, id: &ident, kind: &str) -> ! {
 }
 
 fn mk_unresolved_msg(id: &ident, kind: &str) -> str {
-    ret #fmt["unresolved %s: %s", kind, id];
+    ret #fmt["unresolved %s: %s", kind, istr::to_estr(id)];
 }
 
 // Lookup helpers
@@ -734,7 +735,7 @@ fn lookup_in_ty_params(name: &ident, ty_params: &[ast::ty_param]) ->
    option::t<def> {
     let i = 0u;
     for tp: ast::ty_param in ty_params {
-        if str::eq(tp.ident, name) { ret some(ast::def_ty_arg(i, tp.kind)); }
+        if istr::eq(tp.ident, name) { ret some(ast::def_ty_arg(i, tp.kind)); }
         i += 1u;
     }
     ret none::<def>;
@@ -744,7 +745,7 @@ fn lookup_in_pat(name: &ident, pat: &@ast::pat) -> option::t<def_id> {
     let found = none;
     for each bound in ast_util::pat_bindings(pat) {
         let p_name = alt bound.node { ast::pat_bind(n) { n } };
-        if str::eq(p_name, name) { found = some(local_def(bound.id)); }
+        if istr::eq(p_name, name) { found = some(local_def(bound.id)); }
     }
     ret found;
 }
@@ -755,7 +756,7 @@ fn lookup_in_fn(name: &ident, decl: &ast::fn_decl,
     alt ns {
       ns_value. {
         for a: ast::arg in decl.inputs {
-            if str::eq(a.ident, name) {
+            if istr::eq(a.ident, name) {
                 ret some(ast::def_arg(local_def(a.id)));
             }
         }
@@ -771,7 +772,7 @@ fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &[ast::ty_param],
     alt ns {
       ns_value. {
         for f: ast::obj_field in ob.fields {
-            if str::eq(f.ident, name) {
+            if istr::eq(f.ident, name) {
                 ret some(ast::def_obj_field(local_def(f.id)));
             }
         }
@@ -810,12 +811,12 @@ fn lookup_in_block(name: &ident, b: &ast::blk_, pos: uint, loc_pos: uint,
                 alt it.node {
                   ast::item_tag(variants, _) {
                     if ns == ns_type {
-                        if str::eq(it.ident, name) {
+                        if istr::eq(it.ident, name) {
                             ret some(ast::def_ty(local_def(it.id)));
                         }
                     } else if ns == ns_value {
                         for v: ast::variant in variants {
-                            if str::eq(v.node.name, name) {
+                            if istr::eq(v.node.name, name) {
                                 let i = v.node.id;
                                 ret some(ast::def_variant(local_def(it.id),
                                                           local_def(i)));
@@ -824,7 +825,7 @@ fn lookup_in_block(name: &ident, b: &ast::blk_, pos: uint, loc_pos: uint,
                     }
                   }
                   _ {
-                    if str::eq(it.ident, name) {
+                    if istr::eq(it.ident, name) {
                         let found = found_def_item(it, ns);
                         if !is_none(found) { ret found; }
                     }
@@ -898,13 +899,15 @@ fn lookup_in_mod(e: &env, m: &def, sp: &span, name: &ident, ns: namespace,
     if defid.crate != ast::local_crate {
         // examining a module in an external crate
 
-        let cached = e.ext_cache.find({did: defid, ident: name, ns: ns});
+        let cached = e.ext_cache.find({did: defid,
+                                       ident: istr::to_estr(name), ns: ns});
         if !is_none(cached) { ret cached; }
         let path = [name];
         if defid.node != -1 { path = e.ext_map.get(defid) + path; }
         let fnd = lookup_external(e, defid.crate, path, ns);
         if !is_none(fnd) {
-            e.ext_cache.insert({did: defid, ident: name, ns: ns},
+            e.ext_cache.insert({did: defid,
+                                ident: istr::to_estr(name), ns: ns},
                                option::get(fnd));
         }
         ret fnd;
@@ -955,7 +958,7 @@ fn lookup_in_local_mod(e: &env, node_id: node_id, sp: &span, id: &ident,
         ret none::<def>; // name is not visible
 
     }
-    alt info.index.find(istr::from_estr(id)) {
+    alt info.index.find(id) {
       none. { }
       some(lst_) {
         let lst = lst_;
@@ -1000,25 +1003,27 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
         } else {
             for match: glob_imp_def in matches {
                 let sp = match.item.span;
-                e.sess.span_note(sp, #fmt["'%s' is imported here", id]);
+                e.sess.span_note(sp, #fmt["'%s' is imported here",
+                                          istr::to_estr(id)]);
             }
             e.sess.span_fatal(sp,
-                              "'" + id + "' is glob-imported from" +
+                              "'" + istr::to_estr(id)
+                              + "' is glob-imported from" +
                                   " multiple different modules.");
         }
     }
     // since we don't know what names we have in advance,
     // absence takes the place of todo()
 
-    if !info.glob_imported_names.contains_key(istr::from_estr(id)) {
-        info.glob_imported_names.insert(istr::from_estr(id), resolving(sp));
+    if !info.glob_imported_names.contains_key(id) {
+        info.glob_imported_names.insert(id, resolving(sp));
         let val = per_ns(e, info, sp, id, ns_value, dr);
         let typ = per_ns(e, info, sp, id, ns_type, dr);
         let md = per_ns(e, info, sp, id, ns_module, dr);
-        info.glob_imported_names.insert(istr::from_estr(id),
+        info.glob_imported_names.insert(id,
                                         resolved(val, typ, md));
     }
-    alt info.glob_imported_names.get(istr::from_estr(id)) {
+    alt info.glob_imported_names.get(id) {
       todo(_, _, _, _, _) { e.sess.bug("Shouldn't've put a todo in."); }
       resolving(sp) {
         ret none::<def>; //circularity is okay in import globs
@@ -1075,7 +1080,6 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
 // Module indexing
 fn add_to_index(index: &hashmap<identistr, list<mod_index_entry>>,
                 id: &ident, ent: &mod_index_entry) {
-    let id = istr::from_estr(id);
     alt index.find(id) {
       none. { index.insert(id,
                            cons(ent, @nil::<mod_index_entry>)); }
@@ -1193,7 +1197,7 @@ fn check_for_collisions(e: &@env, c: &ast::crate) {
     for each m: @{key: ast::node_id, val: @indexed_mod} in e.mod_map.items() {
         for each name: @{key: identistr, val: list<mod_index_entry>} in
                  m.val.index.items() {
-            check_mod_name(*e, istr::to_estr(name.key), name.val);
+            check_mod_name(*e, name.key, name.val);
         }
     }
     // Other scopes have to be checked the hard way.
@@ -1211,7 +1215,8 @@ fn check_mod_name(e: &env, name: &ident, entries: list<mod_index_entry>) {
     let saw_type = false;
     let saw_value = false;
     fn dup(e: &env, sp: &span, word: &str, name: &ident) {
-        e.sess.span_fatal(sp, "duplicate definition of " + word + name);
+        e.sess.span_fatal(sp, "duplicate definition of " + word
+                          + istr::to_estr(name));
     }
     while true {
         alt entries {
@@ -1303,11 +1308,11 @@ fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt<()>) {
                             "inconsistent number of bindings");
         } else {
             for name: ident in ch.seen {
-                if is_none(vec::find(bind str::eq(name, _), seen0)) {
+                if is_none(vec::find(bind istr::eq(name, _), seen0)) {
                     // Fight the alias checker
                     let name_ = name;
                     e.sess.span_err(a.pats[i].span,
-                                    "binding " + name_ +
+                                    "binding " + istr::to_estr(name_) +
                                         " does not occur in first pattern");
                 }
             }
@@ -1399,8 +1404,9 @@ fn checker(e: &env, kind: str) -> checker {
 
 fn check_name(ch: &checker, sp: &span, name: &ident) {
     for s: ident in ch.seen {
-        if str::eq(s, name) {
-            ch.sess.span_fatal(sp, "duplicate " + ch.kind + " name: " + name);
+        if istr::eq(s, name) {
+            ch.sess.span_fatal(sp, "duplicate " + ch.kind
+                               + " name: " + istr::to_estr(name));
         }
     }
 }

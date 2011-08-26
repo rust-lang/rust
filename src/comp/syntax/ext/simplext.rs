@@ -268,8 +268,8 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
     let idents: hashmap<identistr, ()> = new_str_hash::<()>();
     fn mark_ident(i: &ident, _fld: ast_fold, b: &bindings,
                   idents: &hashmap<identistr, ()>) -> ident {
-        if b.contains_key(istr::from_estr(i)) {
-            idents.insert(istr::from_estr(i), ());
+        if b.contains_key(i) {
+            idents.insert(i, ());
         }
         ret i;
     }
@@ -281,7 +281,7 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
     dummy_out(f);
-    for each id: identistr in idents.keys() { put istr::to_estr(id); }
+    for each id: identistr in idents.keys() { put id; }
 }
 
 
@@ -298,7 +298,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
             for each fv: ident in free_vars(b, repeat_me) {
-                let cur_pos = follow(b.get(istr::from_estr(fv)), idx_path);
+                let cur_pos = follow(b.get(fv), idx_path);
                 alt cur_pos {
                   leaf(_) { }
                   seq(ms, _) {
@@ -310,8 +310,10 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                         let len = vec::len(*ms);
                         if old_len != len {
                             let msg =
-                                #fmt["'%s' occurs %u times, but ", fv, len] +
-                                    #fmt["'%s' occurs %u times", old_name,
+                                #fmt["'%s' occurs %u times, but ",
+                                     istr::to_estr(fv), len] +
+                                    #fmt["'%s' occurs %u times",
+                                         istr::to_estr(old_name),
                                          old_len];
                             cx.span_fatal(repeat_me.span, msg);
                         }
@@ -350,7 +352,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 // substitute, in a position that's required to be an ident
 fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                     i: &ident, _fld: ast_fold) -> ident {
-    ret alt follow_for_trans(cx, b.find(istr::from_estr(i)), idx_path) {
+    ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
           some(m) { match_error(cx, m, "an identifier") }
           none. { i }
@@ -362,8 +364,7 @@ fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                    p: &path_, _fld: ast_fold) -> path_ {
     // Don't substitute into qualified names.
     if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret p; }
-    ret alt follow_for_trans(cx, b.find(
-        istr::from_estr(p.idents[0])), idx_path) {
+    ret alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
           some(match_ident(id)) {
             {global: false, idents: [id.node], types: []}
           }
@@ -384,8 +385,7 @@ fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
             if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u {
                 e
             }
-            alt follow_for_trans(cx, b.find(
-                istr::from_estr(p.node.idents[0])), idx_path) {
+            alt follow_for_trans(cx, b.find(p.node.idents[0]), idx_path) {
               some(match_ident(id)) {
                 expr_path(respan(id.span,
                                  {global: false,
@@ -409,8 +409,7 @@ fn transcribe_type(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
           ast::ty_path(pth, _) {
             alt path_to_ident(pth) {
               some(id) {
-                alt follow_for_trans(cx, b.find(
-                    istr::from_estr(id)), idx_path) {
+                alt follow_for_trans(cx, b.find(id), idx_path) {
                   some(match_ty(ty)) { ty.node }
                   some(m) { match_error(cx, m, "a type") }
                   none. { orig(t, fld) }
@@ -433,7 +432,7 @@ fn transcribe_block(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
     ret alt block_to_ident(blk) {
           some(id) {
             alt follow_for_trans(cx, b.find(
-                istr::from_estr(id)), idx_path) {
+                id), idx_path) {
               some(match_block(new_blk)) { new_blk.node }
 
 
@@ -534,10 +533,10 @@ fn p_t_s_r_path(cx: &ext_ctxt, p: &path, s: &selector, b: &binders) {
                   _ { cx.bug("broken traversal in p_t_s_r") }
                 }
         }
-        if b.real_binders.contains_key(istr::from_estr(p_id)) {
+        if b.real_binders.contains_key(p_id) {
             cx.span_fatal(p.span, "duplicate binding identifier");
         }
-        b.real_binders.insert(istr::from_estr(p_id),
+        b.real_binders.insert(p_id,
                               compose_sels(s, bind select(cx, _)));
       }
       none. { }
@@ -584,7 +583,7 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
                 }
                 let final_step = bind select_pt_1(cx, _, select_pt_2);
                 b.real_binders.insert(
-                    istr::from_estr(id), compose_sels(s, final_step));
+                    id, compose_sels(s, final_step));
               }
               none. { no_des(cx, pth.span, "under `#<>`"); }
             }
@@ -604,7 +603,7 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
                     }
             }
             let final_step = bind select_pt_1(cx, _, select_pt_2);
-            b.real_binders.insert(istr::from_estr(id),
+            b.real_binders.insert(id,
                                   compose_sels(s, final_step));
           }
           none. { no_des(cx, blk.span, "under `#{}`"); }
@@ -700,7 +699,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
           }
         };
 
-    let macro_name: option::t<str> = none;
+    let macro_name: option::t<istr> = none;
     let clauses: [@clause] = [];
     for arg: @expr in args {
         alt arg.node {
@@ -760,7 +759,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
 
     ret {ident:
              alt macro_name {
-               some(id) { id }
+               some(id) { istr::to_estr(id) }
                none. {
                  cx.span_fatal(sp,
                                "macro definition must have " +

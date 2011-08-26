@@ -44,9 +44,9 @@ type entry<T> = {val: T, pos: uint};
 fn encode_tag_variant_paths(ebml_w: &ebml::writer, variants: &[variant],
                             path: &[istr], index: &mutable [entry<istr>]) {
     for variant: variant in variants {
-        add_to_index(ebml_w, path, index, istr::from_estr(variant.node.name));
+        add_to_index(ebml_w, path, index, variant.node.name);
         ebml::start_tag(ebml_w, tag_paths_data_item);
-        encode_name(ebml_w, istr::from_estr(variant.node.name));
+        encode_name(ebml_w, variant.node.name);
         encode_def_id(ebml_w, local_def(variant.node.id));
         ebml::end_tag(ebml_w);
     }
@@ -63,9 +63,9 @@ fn encode_native_module_item_paths(ebml_w: &ebml::writer, nmod: &native_mod,
                                    path: &[istr],
                                    index: &mutable [entry<istr>]) {
     for nitem: @native_item in nmod.items {
-        add_to_index(ebml_w, path, index, istr::from_estr(nitem.ident));
+        add_to_index(ebml_w, path, index, nitem.ident);
         ebml::start_tag(ebml_w, tag_paths_data_item);
-        encode_name(ebml_w, istr::from_estr(nitem.ident));
+        encode_name(ebml_w, nitem.ident);
         encode_def_id(ebml_w, local_def(nitem.id));
         ebml::end_tag(ebml_w);
     }
@@ -77,76 +77,76 @@ fn encode_module_item_paths(ebml_w: &ebml::writer, module: &_mod,
         if !ast_util::is_exported(it.ident, module) { cont; }
         alt it.node {
           item_const(_, _) {
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
           item_fn(_, tps) {
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
           item_mod(_mod) {
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_mod);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             encode_module_item_paths(ebml_w, _mod,
-                                     path + [istr::from_estr(it.ident)],
+                                     path + [it.ident],
                                      index);
             ebml::end_tag(ebml_w);
           }
           item_native_mod(nmod) {
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_mod);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             encode_native_module_item_paths(
                 ebml_w, nmod,
-                path + [istr::from_estr(it.ident)],
+                path + [it.ident],
                 index);
             ebml::end_tag(ebml_w);
           }
           item_ty(_, tps) {
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
           item_res(_, _, tps, ctor_id) {
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(ctor_id));
             ebml::end_tag(ebml_w);
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
           item_tag(variants, tps) {
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
             encode_tag_variant_paths(ebml_w, variants, path, index);
           }
           item_obj(_, tps, ctor_id) {
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(ctor_id));
             ebml::end_tag(ebml_w);
-            add_to_index(ebml_w, path, index, istr::from_estr(it.ident));
+            add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, istr::from_estr(it.ident));
+            encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
@@ -453,7 +453,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
       meta_word(name) {
         ebml::start_tag(ebml_w, tag_meta_item_word);
         ebml::start_tag(ebml_w, tag_meta_item_name);
-        ebml_w.writer.write(str::bytes(name));
+        ebml_w.writer.write(istr::bytes(name));
         ebml::end_tag(ebml_w);
         ebml::end_tag(ebml_w);
       }
@@ -462,7 +462,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
           lit_str(value, _) {
             ebml::start_tag(ebml_w, tag_meta_item_name_value);
             ebml::start_tag(ebml_w, tag_meta_item_name);
-            ebml_w.writer.write(str::bytes(name));
+            ebml_w.writer.write(istr::bytes(name));
             ebml::end_tag(ebml_w);
             ebml::start_tag(ebml_w, tag_meta_item_value);
             ebml_w.writer.write(str::bytes(value));
@@ -475,7 +475,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
       meta_list(name, items) {
         ebml::start_tag(ebml_w, tag_meta_item_list);
         ebml::start_tag(ebml_w, tag_meta_item_name);
-        ebml_w.writer.write(str::bytes(name));
+        ebml_w.writer.write(istr::bytes(name));
         ebml::end_tag(ebml_w);
         for inner_item: @meta_item in items {
             encode_meta_item(ebml_w, *inner_item);
@@ -508,18 +508,18 @@ fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> [attribute] {
         assert (ecx.ccx.link_meta.vers != "");
 
         let name_item =
-            attr::mk_name_value_item_str("name", ecx.ccx.link_meta.name);
+            attr::mk_name_value_item_str(~"name", ecx.ccx.link_meta.name);
         let vers_item =
-            attr::mk_name_value_item_str("vers", ecx.ccx.link_meta.vers);
+            attr::mk_name_value_item_str(~"vers", ecx.ccx.link_meta.vers);
 
         let other_items =
             {
-                let tmp = attr::remove_meta_items_by_name(items, "name");
-                attr::remove_meta_items_by_name(tmp, "vers")
+                let tmp = attr::remove_meta_items_by_name(items, ~"name");
+                attr::remove_meta_items_by_name(tmp, ~"vers")
             };
 
         let meta_items = [name_item, vers_item] + other_items;
-        let link_item = attr::mk_list_item("link", meta_items);
+        let link_item = attr::mk_list_item(~"link", meta_items);
 
         ret attr::mk_attr(link_item);
     }
@@ -528,7 +528,7 @@ fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> [attribute] {
     let found_link_attr = false;
     for attr: attribute in crate.node.attrs {
         attrs +=
-            if attr::get_attr_name(attr) != "link" {
+            if attr::get_attr_name(attr) != ~"link" {
                 [attr]
             } else {
                 alt attr.node.value.node {

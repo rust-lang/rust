@@ -10,6 +10,7 @@ import syntax::visit;
 import visit::vt;
 import std::vec;
 import std::str;
+import std::istr;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -593,7 +594,7 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
             alt ty::struct(cx.tcx, auto_unbox.t) {
               ty::ty_rec(fields) {
                 for fld: ty::field in fields {
-                    if str::eq(ident, fld.ident) {
+                    if istr::eq(ident, fld.ident) {
                         mut = fld.mt.mut != ast::imm;
                         break;
                     }

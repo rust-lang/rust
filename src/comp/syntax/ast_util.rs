@@ -16,7 +16,9 @@ fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
 fn path_name(p: &path) -> str { path_name_i(p.node.idents) }
 
-fn path_name_i(idents: &[ident]) -> str { str::connect(idents, "::") }
+fn path_name_i(idents: &[ident]) -> str {
+    istr::to_estr(istr::connect(idents, ~"::"))
+}
 
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
@@ -52,7 +54,7 @@ fn pat_id_map(pat: &@pat) -> pat_id_map {
     let map = std::map::new_str_hash::<node_id>();
     for each bound in pat_bindings(pat) {
         let name = alt bound.node { pat_bind(n) { n } };
-        map.insert(istr::from_estr(name), bound.id);
+        map.insert(name, bound.id);
     }
     ret map;
 }
@@ -156,7 +158,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for vi: @ast::view_item in m.view_items {
         alt vi.node {
           ast::view_item_export(ids, _) {
-            for id in ids { if str::eq(i, id) { ret true; } }
+            for id in ids { if istr::eq(i, id) { ret true; } }
             count += 1u;
           }
           _ {/* fall through */ }

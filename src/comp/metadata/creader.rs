@@ -70,7 +70,7 @@ fn visit_item(e: env, i: &@ast::item) {
         let cstore = e.sess.get_cstore();
         if !cstore::add_used_library(cstore, m.native_name) { ret; }
         for a: ast::attribute in
-            attr::find_attrs_by_name(i.attrs, "link_args") {
+            attr::find_attrs_by_name(i.attrs, ~"link_args") {
             alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
               some(linkarg) { cstore::add_used_link_args(cstore, linkarg); }
               none. {/* fallthrough */ }
@@ -128,15 +128,15 @@ fn find_library_crate(sess: &session::session, ident: &ast::ident,
     // is using the wrong type of meta item
     let crate_name =
         {
-            let name_items = attr::find_meta_items_by_name(metas, "name");
+            let name_items = attr::find_meta_items_by_name(metas, ~"name");
             alt vec::last(name_items) {
               some(i) {
                 alt attr::get_meta_item_value_str(i) {
                   some(n) { n }
-                  _ { ident }
+                  _ { istr::to_estr(ident) }
                 }
               }
-              none. { ident }
+              none. { istr::to_estr(ident) }
             }
         };
 
@@ -219,14 +219,15 @@ fn load_library_crate(sess: &session::session, span: span, ident: &ast::ident,
     alt find_library_crate(sess, ident, metas, library_search_paths) {
       some(t) { ret t; }
       none. {
-        sess.span_fatal(span, #fmt["can't find crate for '%s'", ident]);
+        sess.span_fatal(span, #fmt["can't find crate for '%s'",
+                                   istr::to_estr(ident)]);
       }
     }
 }
 
-fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
+fn resolve_crate(e: env, ident: &ast::ident, metas: [@ast::meta_item],
                  span: span) -> ast::crate_num {
-    if !e.crate_cache.contains_key(istr::from_estr(ident)) {
+    if !e.crate_cache.contains_key(ident) {
         let cinfo =
             load_library_crate(e.sess, span, ident, metas,
                                e.library_search_paths);
@@ -236,19 +237,20 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache.insert(istr::from_estr(ident), cnum);
+        e.crate_cache.insert(ident, cnum);
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
         let cnum_map = resolve_crate_deps(e, cdata);
 
-        let cmeta = {name: ident, data: cdata, cnum_map: cnum_map};
+        let cmeta = {name: istr::to_estr(ident),
+                     data: cdata, cnum_map: cnum_map};
 
         let cstore = e.sess.get_cstore();
         cstore::set_crate_data(cstore, cnum, cmeta);
         cstore::add_used_crate_file(cstore, cfilename);
         ret cnum;
-    } else { ret e.crate_cache.get(istr::from_estr(ident)); }
+    } else { ret e.crate_cache.get(ident); }
 }
 
 // Go through the crate metadata and load any crates that it references
@@ -271,7 +273,9 @@ fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
             // This is a new one so we've got to load it
             // FIXME: Need better error reporting than just a bogus span
             let fake_span = ast_util::dummy_sp();
-            let local_cnum = resolve_crate(e, cname, [], fake_span);
+            let local_cnum = resolve_crate(e,
+                                           istr::from_estr(cname),
+                                           [], fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);
         }
     }

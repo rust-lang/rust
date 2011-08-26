@@ -47,13 +47,18 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
                         items: &mutable [@ast::item]) {
     alt cdir.node {
       ast::cdir_src_mod(id, file_opt, attrs) {
-        let file_path = id + ".rs";
-        alt file_opt { some(f) { file_path = f; } none. { } }
+        let file_path = id + ~".rs";
+        alt file_opt {
+          some(f) {
+            file_path = istr::from_estr(f);
+          }
+          none. { }
+        }
         let full_path = if std::fs::path_is_absolute(
-            istr::from_estr(file_path)) {
-            file_path
+            file_path) {
+            istr::to_estr(file_path)
         } else {
-            prefix + istr::to_estr(std::fs::path_sep()) + file_path
+            prefix + istr::to_estr(std::fs::path_sep() + file_path)
         };
         if cx.mode == mode_depend { cx.deps += [full_path]; ret; }
         let p0 =
@@ -74,11 +79,18 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
       }
       ast::cdir_dir_mod(id, dir_opt, cdirs, attrs) {
         let path = id;
-        alt dir_opt { some(d) { path = d; } none. { } }
+        alt dir_opt {
+          some(d) {
+            path = istr::from_estr(d);
+          }
+          none. { }
+        }
         let full_path =
-            if std::fs::path_is_absolute(istr::from_estr(path)) {
-                path
-            } else { prefix + istr::to_estr(std::fs::path_sep()) + path };
+            if std::fs::path_is_absolute(path) {
+                istr::to_estr(path)
+            } else {
+            prefix + istr::to_estr(std::fs::path_sep() + path)
+        };
         let m0 = eval_crate_directives_to_mod(cx, cdirs, full_path);
         let i =
             @{ident: id,

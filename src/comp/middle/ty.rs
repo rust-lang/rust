@@ -1513,7 +1513,7 @@ fn hash_type_structure(st: &sty) -> uint {
       ty_native_fn(_, args, rty) { ret hash_fn(28u, args, rty); }
       ty_obj(methods) {
         let h = 29u;
-        for m: method in methods { h += h << 5u + str::hash(m.ident); }
+        for m: method in methods { h += h << 5u + istr::hash(m.ident); }
         ret h;
       }
       ty_var(v) { ret hash_uint(30u, v as uint); }
@@ -1801,20 +1801,21 @@ fn stmt_node_id(s: &@ast::stmt) -> ast::node_id {
 fn field_idx(sess: &session::session, sp: &span, id: &ast::ident,
              fields: &[field]) -> uint {
     let i: uint = 0u;
-    for f: field in fields { if str::eq(f.ident, id) { ret i; } i += 1u; }
-    sess.span_fatal(sp, "unknown field '" + id + "' of record");
+    for f: field in fields { if istr::eq(f.ident, id) { ret i; } i += 1u; }
+    sess.span_fatal(sp, "unknown field '" +
+                    istr::to_estr(id) + "' of record");
 }
 
 fn method_idx(sess: &session::session, sp: &span, id: &ast::ident,
               meths: &[method]) -> uint {
     let i: uint = 0u;
-    for m: method in meths { if str::eq(m.ident, id) { ret i; } i += 1u; }
-    sess.span_fatal(sp, "unknown method '" + id + "' of obj");
+    for m: method in meths { if istr::eq(m.ident, id) { ret i; } i += 1u; }
+    sess.span_fatal(sp, "unknown method '" + istr::to_estr(id) + "' of obj");
 }
 
 fn sort_methods(meths: &[method]) -> [method] {
     fn method_lteq(a: &method, b: &method) -> bool {
-        ret str::lteq(a.ident, b.ident);
+        ret istr::lteq(a.ident, b.ident);
     }
     ret std::sort::merge_sort::<method>(bind method_lteq(_, _), meths);
 }
@@ -2135,7 +2136,7 @@ mod unify {
         while i < expected_len {
             let e_meth = expected_meths[i];
             let a_meth = actual_meths[i];
-            if !str::eq(e_meth.ident, a_meth.ident) {
+            if !istr::eq(e_meth.ident, a_meth.ident) {
                 ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident));
             }
             let r =
@@ -2412,7 +2413,7 @@ mod unify {
                       none. { ret ures_err(terr_record_mutability); }
                       some(m) { mut = m; }
                     }
-                    if !str::eq(expected_field.ident, actual_field.ident) {
+                    if !istr::eq(expected_field.ident, actual_field.ident) {
                         let err =
                             terr_record_fields(expected_field.ident,
                                                actual_field.ident);
@@ -2622,14 +2623,14 @@ fn type_err_to_str(err: &ty::type_err) -> str {
       }
       terr_record_mutability. { ret "record elements differ in mutability"; }
       terr_record_fields(e_fld, a_fld) {
-        ret "expected a record with field '" + e_fld +
-                "' but found one with field '" + a_fld + "'";
+        ret "expected a record with field '" + istr::to_estr(e_fld) +
+                "' but found one with field '" + istr::to_estr(a_fld) + "'";
       }
       terr_arg_count. { ret "incorrect number of function parameters"; }
       terr_meth_count. { ret "incorrect number of object methods"; }
       terr_obj_meths(e_meth, a_meth) {
-        ret "expected an obj with method '" + e_meth +
-                "' but found one with method '" + a_meth + "'";
+        ret "expected an obj with method '" + istr::to_estr(e_meth) +
+                "' but found one with method '" + istr::to_estr(a_meth) + "'";
       }
       terr_mode_mismatch(e_mode, a_mode) {
         ret "expected argument mode " + mode_str_1(e_mode) + " but found " +
