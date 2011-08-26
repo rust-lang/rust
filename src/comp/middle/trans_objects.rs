@@ -571,9 +571,9 @@ fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: str) ->
     let vtbl = C_struct(llmethods);
     let vtbl_name = mangle_internal_name_by_path(
         cx.ccx, istr::from_estrs(cx.path + [name]));
-    let vtbl_name = istr::to_estr(vtbl_name);
-    let gvar =
-        llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl), str::buf(vtbl_name));
+    let gvar = istr::as_buf(vtbl_name, { |buf|
+        llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl), buf)
+    });
     llvm::LLVMSetInitializer(gvar, vtbl);
     llvm::LLVMSetGlobalConstant(gvar, True);
     llvm::LLVMSetLinkage(gvar,

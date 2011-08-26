@@ -11,6 +11,7 @@ import std::option::none;
 import std::option::some;
 import std::ptr;
 import std::str;
+import std::istr;
 import std::unsafe;
 import std::vec;
 
@@ -22,8 +23,9 @@ type ctxt = @{mutable next_tydesc_num: uint};
 fn mk_ctxt() -> ctxt { ret @{mutable next_tydesc_num: 0u}; }
 
 fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: str) -> ValueRef {
-    let llglobal =
-        lll::LLVMAddGlobal(ccx.llmod, val_ty(llval), str::buf(name));
+    let llglobal = istr::as_buf(istr::from_estr(name), { |buf|
+        lll::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
+    });
     lll::LLVMSetInitializer(llglobal, llval);
     lll::LLVMSetGlobalConstant(llglobal, True);
     ret llglobal;

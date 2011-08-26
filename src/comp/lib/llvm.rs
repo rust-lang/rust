@@ -1,7 +1,6 @@
 import std::vec;
-import std::str;
 import std::istr;
-import std::str::rustrt::sbuf;
+import std::istr::sbuf;
 
 import llvm::ModuleRef;
 import llvm::ContextRef;
@@ -1070,7 +1069,9 @@ resource target_data_res(TD: TargetDataRef) {
 type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
 
 fn mk_target_data(string_rep: str) -> target_data {
-    let lltd = llvm::LLVMCreateTargetData(str::buf(string_rep));
+    let lltd = istr::as_buf(istr::from_estr(string_rep), { |buf|
+        llvm::LLVMCreateTargetData(buf)
+    });
     ret {lltd: lltd, dtor: @target_data_res(lltd)};
 }
 

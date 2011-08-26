@@ -325,8 +325,8 @@ fn get_default_sysroot(binary: str) -> str {
 }
 
 fn build_target_config() -> @session::config {
-    let triple: str =
-        std::str::rustrt::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple());
+    let triple: str = istr::to_estr(
+        istr::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple()));
     let target_cfg: @session::config =
         @{os: get_os(triple),
           arch: get_arch(triple),

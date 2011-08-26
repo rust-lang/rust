@@ -31,6 +31,7 @@ import std::map::hashmap;
 import std::option::none;
 import std::option::some;
 import std::str;
+import std::istr;
 
 import ty_ctxt = middle::ty::ctxt;
 
@@ -86,9 +87,9 @@ fn eq_res_info(a: &res_info, b: &res_info) -> bool {
 
 fn mk_global(ccx: &@crate_ctxt, name: &str, llval: ValueRef,
              internal: bool) -> ValueRef {
-    let llglobal =
-        lib::llvm::llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval),
-                                       str::buf(name));
+    let llglobal = istr::as_buf(istr::from_estr(name), { |buf|
+        lib::llvm::llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
+    });
     lib::llvm::llvm::LLVMSetInitializer(llglobal, llval);
     lib::llvm::llvm::LLVMSetGlobalConstant(llglobal, True);
 
@@ -248,9 +249,9 @@ fn s_float(_tcx: &ty_ctxt) -> u8 {
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     let llshapetablesty = trans_common::T_named_struct("shapes");
-    let llshapetables =
-        lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty,
-                                       str::buf("shapes"));
+    let llshapetables = istr::as_buf(~"shapes", { |buf|
+        lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
+    });
 
     ret {mutable next_tag_id: 0u16,
          pad: 0u16,

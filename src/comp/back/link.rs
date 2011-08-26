@@ -34,23 +34,23 @@ tag output_type {
 
 fn llvm_err(sess: session::session, msg: &istr) {
     let buf = llvm::LLVMRustGetLastError();
-    if buf as uint == 0u {
+    if buf == std::ptr::null() {
         sess.fatal(istr::to_estr(msg));
     } else {
         sess.fatal(
-            istr::to_estr(msg) + ": " + str::str_from_cstr(buf));
+            istr::to_estr(msg + ~": " + istr::str_from_cstr(buf)));
     }
 }
 
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
-    let path = istr::to_estr(
+    let path =
         fs::connect(istr::from_estr(sess.get_opts().sysroot),
-                    ~"lib/intrinsics.bc"));
-    let membuf =
-        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(str::buf(path));
+                    ~"lib/intrinsics.bc");
+    let membuf = istr::as_buf(path, { |buf|
+        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
+    });
     if membuf as uint == 0u {
-        llvm_err(sess, ~"installation problem: couldn't open "
-                 + istr::from_estr(path));
+        llvm_err(sess, ~"installation problem: couldn't open " + path);
         fail;
     }
     let llintrinsicsmod = llvm::LLVMRustParseBitcode(membuf);
@@ -104,14 +104,16 @@ mod write {
               output_type_bitcode. {
                 if opts.optimize != 0u {
                     let filename = mk_intermediate_name(output, ~"no-opt.bc");
-                    let filename = istr::to_estr(filename);
-                    llvm::LLVMWriteBitcodeToFile(llmod, str::buf(filename));
+                    istr::as_buf(filename, { |buf|
+                        llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                    });
                 }
               }
               _ {
                 let filename = mk_intermediate_name(output, ~"bc");
-                let filename = istr::to_estr(filename);
-                llvm::LLVMWriteBitcodeToFile(llmod, str::buf(filename));
+                istr::as_buf(filename, { |buf|
+                    llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                });
               }
             }
         }
@@ -183,20 +185,24 @@ mod write {
                 // Always output the bitcode file with --save-temps
 
                 let filename = mk_intermediate_name(output, ~"opt.bc");
-                let filename = istr::to_estr(filename);
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                llvm::LLVMWriteBitcodeToFile(llmod, str::buf(filename));
+                istr::as_buf(filename, { |buf|
+                    llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                });
                 pm = mk_pass_manager();
                 // Save the assembly file if -S is used
 
                 if opts.output_type == output_type_assembly {
-                    let triple = istr::to_estr(x86::get_target_triple());
-                    let output = istr::to_estr(output);
-                    llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
-                                                  str::buf(triple),
-                                                  str::buf(output),
-                                                  LLVMAssemblyFile,
-                                                  CodeGenOptLevel);
+                    let _: () =
+                        istr::as_buf(x86::get_target_triple(), { |buf_t|
+                            istr::as_buf(output, { |buf_o|
+                                llvm::LLVMRustWriteOutputFile(
+                                    pm.llpm, llmod,
+                                    buf_t,
+                                    buf_o,
+                                    LLVMAssemblyFile,
+                                    CodeGenOptLevel)
+                                                 })});
                 }
 
 
@@ -204,24 +210,29 @@ mod write {
                 // This .o is needed when an exe is built
                 if opts.output_type == output_type_object ||
                        opts.output_type == output_type_exe {
-                    let triple = istr::to_estr(x86::get_target_triple());
-                    let output = istr::to_estr(output);
-                    llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
-                                                  str::buf(triple),
-                                                  str::buf(output),
-                                                  LLVMObjectFile,
-                                                  CodeGenOptLevel);
+                    let _: () =
+                        istr::as_buf(x86::get_target_triple(), { |buf_t|
+                            istr::as_buf(output, { |buf_o|
+                                llvm::LLVMRustWriteOutputFile(
+                                    pm.llpm, llmod,
+                                    buf_t,
+                                    buf_o,
+                                    LLVMObjectFile,
+                                    CodeGenOptLevel)
+                                                 })});
                 }
             } else {
                 // If we aren't saving temps then just output the file
                 // type corresponding to the '-c' or '-S' flag used
 
-                let triple = istr::to_estr(x86::get_target_triple());
-                let output = istr::to_estr(output);
-                llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
-                                              str::buf(triple),
-                                              str::buf(output), FileType,
-                                              CodeGenOptLevel);
+                let _: () = istr::as_buf(x86::get_target_triple(), { |buf_t|
+                    istr::as_buf(output, { |buf_o|
+                        llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
+                                                      buf_t,
+                                                      buf_o,
+                                                      FileType,
+                                                      CodeGenOptLevel)
+                                         })});
             }
             // Clean up and return
 
@@ -233,8 +244,9 @@ mod write {
         // flag, then output it here
 
         llvm::LLVMRunPassManager(pm.llpm, llmod);
-        let output = istr::to_estr(output);
-        llvm::LLVMWriteBitcodeToFile(llmod, str::buf(output));
+        istr::as_buf(output, { |buf|
+            llvm::LLVMWriteBitcodeToFile(llmod, buf)
+        });
         llvm::LLVMDisposeModule(llmod);
         if opts.time_llvm_passes { llvm::LLVMRustPrintPassTimings(); }
     }

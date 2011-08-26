@@ -553,7 +553,9 @@ fn T_struct(elts: &[TypeRef]) -> TypeRef {
 
 fn T_named_struct(name: &str) -> TypeRef {
     let c = llvm::LLVMGetGlobalContext();
-    ret llvm::LLVMStructCreateNamed(c, str::buf(name));
+    ret istr::as_buf(istr::from_estr(name), { |buf|
+        llvm::LLVMStructCreateNamed(c, buf)
+    });
 }
 
 fn set_struct_body(t: TypeRef, elts: &[TypeRef]) {
@@ -816,11 +818,15 @@ fn C_integral(t: TypeRef, u: uint, sign_extend: Bool) -> ValueRef {
 }
 
 fn C_float(s: &str) -> ValueRef {
-    ret llvm::LLVMConstRealOfString(T_float(), str::buf(s));
+    ret istr::as_buf(istr::from_estr(s), { |buf|
+        llvm::LLVMConstRealOfString(T_float(), buf)
+    });
 }
 
 fn C_floating(s: &str, t: TypeRef) -> ValueRef {
-    ret llvm::LLVMConstRealOfString(t, str::buf(s));
+    ret istr::as_buf(istr::from_estr(s), { |buf|
+        llvm::LLVMConstRealOfString(t, buf)
+    });
 }
 
 fn C_nil() -> ValueRef {
@@ -845,11 +851,12 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i, False); }
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: &@crate_ctxt, s: &str) -> ValueRef {
-    let sc = llvm::LLVMConstString(str::buf(s), str::byte_len(s), False);
-    let gname = cx.names.next("str");
-    let g =
-        llvm::LLVMAddGlobal(cx.llmod, val_ty(sc),
-                            str::buf(gname));
+    let sc = istr::as_buf(istr::from_estr(s), { |buf|
+        llvm::LLVMConstString(buf, str::byte_len(s), False)
+    });
+    let g = istr::as_buf(istr::from_estr(cx.names.next("str")), { |buf|
+        llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf)
+    });
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -864,13 +871,15 @@ fn C_str(cx: &@crate_ctxt, s: &str) -> ValueRef {
                           // 'fill'
                           // 'pad'
 
+    let cstr = istr::as_buf(istr::from_estr(s), { |buf|
+        llvm::LLVMConstString(buf, len, False)
+    });
     let box =
         C_struct([C_int(abi::const_refcount as int), C_int(len + 1u as int),
-                  C_int(len + 1u as int), C_int(0),
-                  llvm::LLVMConstString(str::buf(s), len, False)]);
-    let gname = cx.names.next("str");
-    let g =
-        llvm::LLVMAddGlobal(cx.llmod, val_ty(box), str::buf(gname));
+                  C_int(len + 1u as int), C_int(0), cstr]);
+    let g = istr::as_buf(istr::from_estr(cx.names.next("str")), { |buf|
+        llvm::LLVMAddGlobal(cx.llmod, val_ty(box), buf)
+    });
     llvm::LLVMSetInitializer(g, box);
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -879,7 +888,9 @@ fn C_str(cx: &@crate_ctxt, s: &str) -> ValueRef {
 
 // Returns a Plain Old LLVM String:
 fn C_postr(s: &str) -> ValueRef {
-    ret llvm::LLVMConstString(str::buf(s), str::byte_len(s), False);
+    ret istr::as_buf(istr::from_estr(s), { |buf|
+        llvm::LLVMConstString(buf, str::byte_len(s), False)
+    });
 }
 
 fn C_zero_byte_arr(size: uint) -> ValueRef {
@@ -911,9 +922,10 @@ fn C_bytes(bytes: &[u8]) -> ValueRef {
 
 fn C_shape(ccx: &@crate_ctxt, bytes: &[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
-    let gname = ccx.names.next("shape");
-    let llglobal =
-        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), str::buf(gname));
+    let llglobal = istr::as_buf(
+        istr::from_estr(ccx.names.next("shape")), { |buf|
+        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
+    });
     llvm::LLVMSetInitializer(llglobal, llshape);
     llvm::LLVMSetGlobalConstant(llglobal, True);
     llvm::LLVMSetLinkage(llglobal,
