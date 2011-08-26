@@ -4441,7 +4441,14 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
       ast::expr_cont. { ret trans_cont(e.span, cx); }
       ast::expr_ret(ex) { ret trans_ret(cx, ex); }
       ast::expr_put(ex) { ret trans_put(cx, ex); }
-      ast::expr_be(ex) { ret trans_be(cx, ex); }
+      ast::expr_be(ex) {
+        // Ideally, the expr_be tag would have a precondition
+        // that is_call_expr(ex) -- but we don't support that
+        // yet
+        // FIXME
+        check ast_util::is_call_expr(ex);
+        ret trans_be(cx, ex);
+      }
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(cx, e.span, anon_obj, e.id);
       }
@@ -4762,10 +4769,10 @@ fn trans_ret(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
 
 fn build_return(bcx: &@block_ctxt) { bld::Br(bcx, bcx_fcx(bcx).llreturn); }
 
-fn trans_be(cx: &@block_ctxt, e: &@ast::expr) -> result {
-    // FIXME: This should be a typestate precondition
+// fn trans_be(cx: &@block_ctxt, e: &@ast::expr) -> result {
+fn trans_be(cx: &@block_ctxt, e: &@ast::expr)
+    : ast_util::is_call_expr(e) -> result {
 
-    assert (ast_util::is_call_expr(e));
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled
 
