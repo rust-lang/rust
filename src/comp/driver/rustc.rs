@@ -429,7 +429,7 @@ fn parse_pretty(sess: session::session, name: &str) -> pp_mode {
 fn opts() -> [getopts::opt] {
     ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
          optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
-         optflag("ls"), optflag("parse-only"), optflag("no-trans"), 
+         optflag("ls"), optflag("parse-only"), optflag("no-trans"),
          optflag("O"), optopt("OptLevel"), optmulti("L"),
          optflag("S"), optflag("c"), optopt("o"), optflag("g"),
          optflag("save-temps"), optopt("sysroot"), optflag("stats"),
