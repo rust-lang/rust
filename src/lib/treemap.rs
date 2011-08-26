@@ -15,6 +15,7 @@ export treemap;
 export init;
 export insert;
 export find;
+export traverse;
 
 tag tree_node<@K, @V> {
     empty;
@@ -70,6 +71,28 @@ fn find<@K, @V>(m : &treemap<K, V>, k : &K) -> option<V> {
               find(right, k)
             }
           }
+      }
+    }
+  }
+}
+
+// Performs an in-order traversal
+fn traverse<@K, @V>(m : &treemap<K, V>, f : fn(&K, &V)) {
+  alt *m {
+    empty. { }
+    node(@k, @v, _, _) {
+      // copy v to make aliases work out
+      let v1 = v;
+      alt *m {
+        node(_, _, left, _) {
+          traverse(left, f);
+        }
+      }
+      f(k, v1);
+      alt *m {
+        node(_, _, _, right) {
+          traverse(right, f);
+        }
       }
     }
   }

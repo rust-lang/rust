@@ -40,3 +40,20 @@ fn find_not_found() {
     insert(m, 1, 2);
     assert(find(m, 2) == none);
 }
+
+#[test]
+fn traverse_in_order() {
+    let m = init();
+    insert(m, 3, ());
+    insert(m, 0, ());
+    insert(m, 4, ());
+    insert(m, 2, ());
+    insert(m, 1, ());
+
+    let n = 0;
+    fn t(n : &mutable int, k : &int, v : &()) {
+        assert(n == k);
+        n += 1;
+    }
+    traverse(m, bind t(n, _, _));
+}
