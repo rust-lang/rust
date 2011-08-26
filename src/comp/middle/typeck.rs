@@ -2081,7 +2081,12 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         check_fn(fcx.ccx, f, id, some(fcx));
       }
       ast::expr_block(b) {
-        bot = check_block(fcx, b);
+        // If this is an unchecked block, turn off purity-checking
+        let fcx_for_block = alt b.node.rules {
+          ast::unchecked. { @{ purity: ast::impure_fn with *fcx } }
+          _               { fcx }
+        };
+        bot = check_block(fcx_for_block, b);
         let typ =
             alt b.node.expr {
               some(expr) { expr_ty(tcx, expr) }

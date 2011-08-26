@@ -4,7 +4,8 @@ import std::option;
 import std::vec;
 import syntax::ast;
 import syntax::ast_util;
-import syntax::ast_util::dummy_sp;
+import syntax::ast_util::*;
+//import syntax::ast_util::dummy_sp;
 import syntax::fold;
 import syntax::print::pprust;
 import front::attr;
@@ -189,8 +190,8 @@ fn mk_tests(cx: &test_ctxt) -> @ast::item {
     // The vector of test_descs for this crate
     let test_descs = mk_test_desc_vec(cx);
 
-    let body_: ast::blk_ =
-        {stmts: [], expr: option::some(test_descs), id: cx.next_node_id()};
+    let body_: ast::blk_ = checked_blk([], option::some(test_descs),
+                                       cx.next_node_id());
     let body = nospan(body_);
 
     let fn_ = {decl: decl, proto: proto, body: body};
@@ -305,10 +306,8 @@ fn mk_main(cx: &test_ctxt) -> @ast::item {
 
     let test_main_call_expr = mk_test_main_call(cx);
 
-    let body_: ast::blk_ =
-        {stmts: [],
-         expr: option::some(test_main_call_expr),
-         id: cx.next_node_id()};
+    let body_: ast::blk_ = checked_blk([], option::some(test_main_call_expr),
+                                       cx.next_node_id());
     let body = {node: body_, span: dummy_sp()};
 
     let fn_ = {decl: decl, proto: proto, body: body};

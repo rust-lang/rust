@@ -82,7 +82,8 @@ tag meta_item_ {
 
 type blk = spanned<blk_>;
 
-type blk_ = {stmts: [@stmt], expr: option::t<@expr>, id: node_id};
+type blk_ = {stmts: [@stmt], expr: option::t<@expr>,
+    id: node_id, rules: check_mode};
 
 type pat = {id: node_id, node: pat_, span: span};
 
@@ -222,6 +223,15 @@ tag expr_ {
     expr_mac(mac);
     expr_uniq(@expr);
 }
+
+/*
+// Says whether this is a block the user marked as
+// "unchecked"
+tag blk_sort {
+    blk_unchecked; // declared as "exception to effect-checking rules"
+    blk_checked; // all typing rules apply
+}
+*/
 
 type mac = spanned<mac_>;
 

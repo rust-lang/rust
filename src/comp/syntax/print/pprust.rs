@@ -579,6 +579,11 @@ tag embed_type { block_macro; block_block_fn; block_normal; }
 
 fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
                                  indented: uint) {
+    alt blk.node.rules {
+      ast::unchecked. { word(s.s, "unchecked"); }
+      _ {}
+    }
+
     maybe_print_comment(s, blk.span.lo);
     let ann_node = node_block(s, blk);
     s.ann.pre(ann_node);

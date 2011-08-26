@@ -184,10 +184,14 @@ fn eq_ty(a: &@ty, b: &@ty) -> bool { ret std::box::ptr_eq(a, b); }
 fn hash_ty(t: &@ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
 
 fn block_from_expr(e: @expr) -> blk {
-    let blk_ = {stmts: [], expr: option::some::<@expr>(e), id: e.id};
+    let blk_ = checked_blk([], option::some::<@expr>(e), e.id);
     ret {node: blk_, span: e.span};
 }
 
+fn checked_blk(stmts1: [@stmt], expr1: option::t<@expr>, id1: node_id)
+    -> blk_ {
+    ret {stmts: stmts1, expr: expr1, id: id1, rules: checked};
+}
 
 fn obj_field_from_anon_obj_field(f: &anon_obj_field) -> obj_field {
     ret {mut: f.mut, ty: f.ty, ident: f.ident, id: f.id};

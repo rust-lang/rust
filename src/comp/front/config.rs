@@ -77,7 +77,7 @@ fn fold_block(cfg: &ast::crate_cfg, b: &ast::blk_, fld: fold::ast_fold) ->
     let filtered_stmts = vec::filter_map(filter, b.stmts);
     ret {stmts: vec::map(fld.fold_stmt, filtered_stmts),
          expr: option::map(fld.fold_expr, b.expr),
-         id: b.id};
+         id: b.id, rules: b.rules};
 }
 
 fn item_in_cfg(cfg: &ast::crate_cfg, item: &@ast::item) -> bool {

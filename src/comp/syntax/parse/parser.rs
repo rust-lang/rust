@@ -837,7 +837,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         } else if p.peek() == token::BINOP(token::OR) {
             ret parse_fn_block_expr(p);
         } else {
-            let blk = parse_block_tail(p, lo);
+            let blk = parse_block_tail(p, lo, ast::checked);
             ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
         }
     } else if eat_word(p, "if") {
@@ -860,6 +860,10 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         ret parse_fn_expr(p, ast::proto_block);
     } else if eat_word(p, "lambda") {
         ret parse_fn_expr(p, ast::proto_closure);
+    } else if eat_word(p, "unchecked") {
+        expect(p, token::LBRACE);
+        let blk = parse_block_tail(p, lo, ast::unchecked);
+        ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
     } else if p.peek() == token::LBRACKET {
         p.bump();
         let mut = parse_mutability(p);
@@ -876,7 +880,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_embed_type(ty))
     } else if p.peek() == token::POUND_LBRACE {
         p.bump();
-        let blk = ast::mac_embed_block(parse_block_tail(p, lo));
+        let blk = ast::mac_embed_block(parse_block_tail(p, lo, ast::checked));
         ret mk_mac_expr(p, lo, p.get_hi_pos(), blk);
     } else if p.peek() == token::ELLIPSIS {
         p.bump();
@@ -1309,7 +1313,7 @@ fn parse_fn_expr(p: &parser, proto: ast::proto) -> @ast::expr {
 fn parse_fn_block_expr(p: &parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let decl = parse_fn_block_decl(p);
-    let body = parse_block_tail(p, lo);
+    let body = parse_block_tail(p, lo, ast::checked);
     let _fn = {decl: decl, proto: ast::proto_block, body: body};
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
 }
@@ -1664,12 +1668,20 @@ fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
 
 fn parse_block(p: &parser) -> ast::blk {
     let lo = p.get_lo_pos();
-    expect(p, token::LBRACE);
-    be parse_block_tail(p, lo);
+    if eat_word(p, "unchecked") {
+        be parse_block_tail(p, lo, ast::unchecked);
+    }
+    else {
+        expect(p, token::LBRACE);
+        be parse_block_tail(p, lo, ast::checked);
+    }
 }
 
+// Precondition: already parsed the '{' or '#{'
+// I guess that also means "already parsed the 'impure'" if
+// necessary, and this should take a qualifier.
 // some blocks start with "#{"...
-fn parse_block_tail(p: &parser, lo: uint) -> ast::blk {
+fn parse_block_tail(p: &parser, lo: uint, s: ast::check_mode) -> ast::blk {
     let stmts: [@ast::stmt] = [];
     let expr: option::t<@ast::expr> = none;
     while p.peek() != token::RBRACE {
@@ -1710,7 +1722,7 @@ fn parse_block_tail(p: &parser, lo: uint) -> ast::blk {
     }
     let hi = p.get_hi_pos();
     p.bump();
-    let bloc = {stmts: stmts, expr: expr, id: p.get_id()};
+    let bloc = {stmts: stmts, expr: expr, id: p.get_id(), rules: s};
     ret spanned(lo, hi, bloc);
 }
 
