@@ -490,8 +490,7 @@ fn mangle_internal_name_by_type_only(ccx: &@crate_ctxt, t: ty::t, name: &istr)
 
 fn mangle_internal_name_by_path_and_seq(ccx: &@crate_ctxt, path: &[istr],
                                         flav: &istr) -> istr {
-    ret mangle(path +
-               istr::from_estrs([ccx.names.next(istr::to_estr(flav))]));
+    ret mangle(path + [ccx.names.next(flav)]);
 }
 
 fn mangle_internal_name_by_path(_ccx: &@crate_ctxt, path: &[istr]) -> istr {
@@ -499,7 +498,7 @@ fn mangle_internal_name_by_path(_ccx: &@crate_ctxt, path: &[istr]) -> istr {
 }
 
 fn mangle_internal_name_by_seq(ccx: &@crate_ctxt, flav: &istr) -> istr {
-    ret istr::from_estr(ccx.names.next(istr::to_estr(flav)));
+    ret ccx.names.next(flav);
 }
 //
 // Local Variables:

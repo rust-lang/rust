@@ -2492,7 +2492,7 @@ fn trans_lit_istr(cx: &@block_ctxt, s: str) -> result {
     let llvecptr = alloc_res.llptr;
     let llfirsteltptr = alloc_res.llfirsteltptr;
 
-    let llcstr = C_cstr(bcx_ccx(cx), s);
+    let llcstr = C_cstr(bcx_ccx(cx), istr::from_estr(s));
 
     // FIXME: We need to avoid this memmove
     bcx = call_memmove(bcx, llfirsteltptr, llcstr, C_uint(veclen)).bcx;
@@ -2523,16 +2523,16 @@ fn trans_crate_lit(cx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
         }
         ret C_integral(t, i as uint, s);
       }
-      ast::lit_float(fs) { ret C_float(fs); }
+      ast::lit_float(fs) { ret C_float(istr::from_estr(fs)); }
       ast::lit_mach_float(tm, s) {
         let t = T_float();
         alt tm { ast::ty_f32. { t = T_f32(); } ast::ty_f64. { t = T_f64(); } }
-        ret C_floating(s, t);
+        ret C_floating(istr::from_estr(s), t);
       }
       ast::lit_char(c) { ret C_integral(T_char(), c as uint, False); }
       ast::lit_bool(b) { ret C_bool(b); }
       ast::lit_nil. { ret C_nil(); }
-      ast::lit_str(s, ast::sk_rc.) { ret C_str(cx, s); }
+      ast::lit_str(s, ast::sk_rc.) { ret C_str(cx, istr::from_estr(s)); }
       ast::lit_str(s, ast::sk_unique.) {
         cx.sess.span_unimpl(lit.span, "unique string in this context");
       }
@@ -4317,7 +4317,8 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         let ccx = bcx_ccx(cx);
         let llfnty: TypeRef =
             type_of_fn_from_ty(ccx, e.span, node_id_type(ccx, e.id), 0u);
-        let sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
+        let sub_cx = extend_path(cx.fcx.lcx,
+                                 istr::to_estr(ccx.names.next(~"anon")));
         let s = mangle_internal_name_by_path(ccx,
                                              istr::from_estrs(sub_cx.path));
         let llfn = decl_internal_fastcall_fn(ccx.llmod,
@@ -4632,7 +4633,7 @@ fn trans_fail_expr(cx: &@block_ctxt, sp_opt: &option::t<span>,
 
 fn trans_fail(cx: &@block_ctxt, sp_opt: &option::t<span>, fail_str: &str) ->
    result {
-    let V_fail_str = C_cstr(bcx_ccx(cx), fail_str);
+    let V_fail_str = C_cstr(bcx_ccx(cx), istr::from_estr(fail_str));
     ret trans_fail_value(cx, sp_opt, V_fail_str);
 }
 
@@ -4643,10 +4644,10 @@ fn trans_fail_value(cx: &@block_ctxt, sp_opt: &option::t<span>,
     alt sp_opt {
       some(sp) {
         let loc = bcx_ccx(cx).sess.lookup_pos(sp.lo);
-        V_filename = C_cstr(bcx_ccx(cx), loc.filename);
+        V_filename = C_cstr(bcx_ccx(cx), istr::from_estr(loc.filename));
         V_line = loc.line as int;
       }
-      none. { V_filename = C_cstr(bcx_ccx(cx), "<runtime>"); V_line = 0; }
+      none. { V_filename = C_cstr(bcx_ccx(cx), ~"<runtime>"); V_line = 0; }
     }
     let V_str = bld::PointerCast(cx, V_fail_str, T_ptr(T_i8()));
     V_filename = bld::PointerCast(cx, V_filename, T_ptr(T_i8()));
@@ -4924,12 +4925,12 @@ fn trans_stmt(cx: &@block_ctxt, s: &ast::stmt) -> result {
 // next three functions instead.
 fn new_block_ctxt(cx: &@fn_ctxt, parent: &block_parent, kind: block_kind,
                   name: &str) -> @block_ctxt {
-    let s = "";
+    let s = ~"";
     if cx.lcx.ccx.sess.get_opts().save_temps ||
            cx.lcx.ccx.sess.get_opts().debuginfo {
-        s = cx.lcx.ccx.names.next(name);
+        s = cx.lcx.ccx.names.next(istr::from_estr(name));
     }
-    let llbb: BasicBlockRef = istr::as_buf(istr::from_estr(s), { |buf|
+    let llbb: BasicBlockRef = istr::as_buf(s, { |buf|
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
     ret @{llbb: llbb,
@@ -6325,7 +6326,7 @@ fn create_module_map(ccx: &@crate_ctxt) -> ValueRef {
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     let elts: [ValueRef] = [];
     for each item: @{key: istr, val: ValueRef} in ccx.module_data.items() {
-        let elt = C_struct([p2i(C_cstr(ccx, istr::to_estr(item.key))),
+        let elt = C_struct([p2i(C_cstr(ccx, item.key)),
                             p2i(item.val)]);
         elts += [elt];
     }
@@ -6370,7 +6371,8 @@ fn create_crate_map(ccx: &@crate_ctxt) -> ValueRef {
 
 fn write_metadata(cx: &@crate_ctxt, crate: &@ast::crate) {
     if !cx.sess.get_opts().library { ret; }
-    let llmeta = C_postr(metadata::encoder::encode_metadata(cx, crate));
+    let llmeta = C_postr(
+        istr::from_estr(metadata::encoder::encode_metadata(cx, crate)));
     let llconst = trans_common::C_struct([llmeta]);
     let llglobal = istr::as_buf(~"rust_metadata", { |buf|
         llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)

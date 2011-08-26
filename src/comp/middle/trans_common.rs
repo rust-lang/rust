@@ -63,8 +63,8 @@ import trans::type_of_fn_full;
 import trans::drop_ty;
 
 obj namegen(mutable i: int) {
-    fn next(prefix: str) -> str {
-        i += 1; ret prefix + istr::to_estr(int::str(i));
+    fn next(prefix: &istr) -> istr {
+        i += 1; ret prefix + int::str(i);
     }
 }
 
@@ -438,13 +438,15 @@ fn rslt(bcx: @block_ctxt, val: ValueRef) -> result {
     ret {bcx: bcx, val: val};
 }
 
-fn ty_str(tn: type_names, t: TypeRef) -> str {
-    ret istr::to_estr(lib::llvm::type_to_str(tn, t));
+fn ty_str(tn: type_names, t: TypeRef) -> istr {
+    ret lib::llvm::type_to_str(tn, t);
 }
 
 fn val_ty(v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
 
-fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
+fn val_str(tn: type_names, v: ValueRef) -> istr {
+    ret ty_str(tn, val_ty(v));
+}
 
 // Returns the nth element of the given LLVM structure type.
 fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
@@ -551,9 +553,9 @@ fn T_struct(elts: &[TypeRef]) -> TypeRef {
                              False);
 }
 
-fn T_named_struct(name: &str) -> TypeRef {
+fn T_named_struct(name: &istr) -> TypeRef {
     let c = llvm::LLVMGetGlobalContext();
-    ret istr::as_buf(istr::from_estr(name), { |buf|
+    ret istr::as_buf(name, { |buf|
         llvm::LLVMStructCreateNamed(c, buf)
     });
 }
@@ -570,14 +572,14 @@ fn T_empty_struct() -> TypeRef { ret T_struct([]); }
 // existing objects, use ccx.rust_object_type.  Calling
 // T_rust_object() again will return a different one.
 fn T_rust_object() -> TypeRef {
-    let t = T_named_struct("rust_object");
+    let t = T_named_struct(~"rust_object");
     let e = T_ptr(T_empty_struct());
     set_struct_body(t, [e, e]);
     ret t;
 }
 
 fn T_task() -> TypeRef {
-    let t = T_named_struct("task");
+    let t = T_named_struct(~"task");
 
      // Refcount
      // Delegate pointer
@@ -633,7 +635,7 @@ fn T_copy_glue_fn(cx: &crate_ctxt) -> TypeRef {
 }
 
 fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
-    let tydesc = T_named_struct("tydesc");
+    let tydesc = T_named_struct(~"tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
     let glue_fn_ty =
@@ -817,14 +819,14 @@ fn C_integral(t: TypeRef, u: uint, sign_extend: Bool) -> ValueRef {
     ret llvm::LLVMRustConstSmallInt(t, u, sign_extend);
 }
 
-fn C_float(s: &str) -> ValueRef {
-    ret istr::as_buf(istr::from_estr(s), { |buf|
+fn C_float(s: &istr) -> ValueRef {
+    ret istr::as_buf(s, { |buf|
         llvm::LLVMConstRealOfString(T_float(), buf)
     });
 }
 
-fn C_floating(s: &str, t: TypeRef) -> ValueRef {
-    ret istr::as_buf(istr::from_estr(s), { |buf|
+fn C_floating(s: &istr, t: TypeRef) -> ValueRef {
+    ret istr::as_buf(s, { |buf|
         llvm::LLVMConstRealOfString(t, buf)
     });
 }
@@ -850,11 +852,11 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i, False); }
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-fn C_cstr(cx: &@crate_ctxt, s: &str) -> ValueRef {
-    let sc = istr::as_buf(istr::from_estr(s), { |buf|
-        llvm::LLVMConstString(buf, str::byte_len(s), False)
+fn C_cstr(cx: &@crate_ctxt, s: &istr) -> ValueRef {
+    let sc = istr::as_buf(s, { |buf|
+        llvm::LLVMConstString(buf, istr::byte_len(s), False)
     });
-    let g = istr::as_buf(istr::from_estr(cx.names.next("str")), { |buf|
+    let g = istr::as_buf(cx.names.next(~"str"), { |buf|
         llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf)
     });
     llvm::LLVMSetInitializer(g, sc);
@@ -865,19 +867,19 @@ fn C_cstr(cx: &@crate_ctxt, s: &str) -> ValueRef {
 
 
 // A rust boxed-and-length-annotated string.
-fn C_str(cx: &@crate_ctxt, s: &str) -> ValueRef {
+fn C_str(cx: &@crate_ctxt, s: &istr) -> ValueRef {
     let len =
-        str::byte_len(s); // 'alloc'
+        istr::byte_len(s); // 'alloc'
                           // 'fill'
                           // 'pad'
 
-    let cstr = istr::as_buf(istr::from_estr(s), { |buf|
+    let cstr = istr::as_buf(s, { |buf|
         llvm::LLVMConstString(buf, len, False)
     });
     let box =
         C_struct([C_int(abi::const_refcount as int), C_int(len + 1u as int),
                   C_int(len + 1u as int), C_int(0), cstr]);
-    let g = istr::as_buf(istr::from_estr(cx.names.next("str")), { |buf|
+    let g = istr::as_buf(cx.names.next(~"str"), { |buf|
         llvm::LLVMAddGlobal(cx.llmod, val_ty(box), buf)
     });
     llvm::LLVMSetInitializer(g, box);
@@ -887,9 +889,9 @@ fn C_str(cx: &@crate_ctxt, s: &str) -> ValueRef {
 }
 
 // Returns a Plain Old LLVM String:
-fn C_postr(s: &str) -> ValueRef {
-    ret istr::as_buf(istr::from_estr(s), { |buf|
-        llvm::LLVMConstString(buf, str::byte_len(s), False)
+fn C_postr(s: &istr) -> ValueRef {
+    ret istr::as_buf(s, { |buf|
+        llvm::LLVMConstString(buf, istr::byte_len(s), False)
     });
 }
 
@@ -922,8 +924,7 @@ fn C_bytes(bytes: &[u8]) -> ValueRef {
 
 fn C_shape(ccx: &@crate_ctxt, bytes: &[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
-    let llglobal = istr::as_buf(
-        istr::from_estr(ccx.names.next("shape")), { |buf|
+    let llglobal = istr::as_buf(ccx.names.next(~"shape"), { |buf|
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });
     llvm::LLVMSetInitializer(llglobal, llshape);

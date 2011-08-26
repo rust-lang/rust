@@ -248,7 +248,7 @@ fn s_float(_tcx: &ty_ctxt) -> u8 {
 }
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
-    let llshapetablesty = trans_common::T_named_struct("shapes");
+    let llshapetablesty = trans_common::T_named_struct(~"shapes");
     let llshapetables = istr::as_buf(~"shapes", { |buf|
         lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
     });
