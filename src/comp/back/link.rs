@@ -91,7 +91,7 @@ mod write {
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
         link_intrinsics(sess, llmod);
         let pm = mk_pass_manager();
-        let td = mk_target_data(istr::to_estr(x86::get_data_layout()));
+        let td = mk_target_data(x86::get_data_layout());
         llvm::LLVMAddTargetData(td.lltd, pm.llpm);
         // TODO: run the linter here also, once there are llvm-c bindings for
         // it.

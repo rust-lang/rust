@@ -6306,7 +6306,7 @@ fn make_common_glue(sess: &session::session, output: &str) {
     let _: () = istr::as_buf(x86::get_target_triple(), { |buf|
         llvm::LLVMSetTarget(llmod, buf)
     });
-    mk_target_data(istr::to_estr(x86::get_data_layout()));
+    mk_target_data(x86::get_data_layout());
     declare_intrinsics(llmod);
     let _: () = istr::as_buf(x86::get_module_asm(), { |buf|
         llvm::LLVMSetModuleInlineAsm(llmod, buf)
@@ -6411,14 +6411,14 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     let _: () = istr::as_buf(x86::get_target_triple(), { |buf|
         llvm::LLVMSetTarget(llmod, buf)
     });
-    let td = mk_target_data(istr::to_estr(x86::get_data_layout()));
+    let td = mk_target_data(x86::get_data_layout());
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
     let task_type = T_task();
     let taskptr_type = T_ptr(task_type);
-    tn.associate("taskptr", taskptr_type);
+    tn.associate(~"taskptr", taskptr_type);
     let tydesc_type = T_tydesc(taskptr_type);
-    tn.associate("tydesc", tydesc_type);
+    tn.associate(~"tydesc", tydesc_type);
     let glues = make_glues(llmod, taskptr_type);
     let hasher = ty::hash_ty;
     let eqer = ty::eq_ty;

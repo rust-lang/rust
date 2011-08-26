@@ -439,7 +439,7 @@ fn rslt(bcx: @block_ctxt, val: ValueRef) -> result {
 }
 
 fn ty_str(tn: type_names, t: TypeRef) -> str {
-    ret lib::llvm::type_to_str(tn, t);
+    ret istr::to_estr(lib::llvm::type_to_str(tn, t));
 }
 
 fn val_ty(v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
@@ -609,7 +609,7 @@ fn T_tydesc_field(cx: &crate_ctxt, field: int) -> TypeRef {
 }
 
 fn T_glue_fn(cx: &crate_ctxt) -> TypeRef {
-    let s = "glue_fn";
+    let s = ~"glue_fn";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t = T_tydesc_field(cx, abi::tydesc_field_drop_glue);
     cx.tn.associate(s, t);
@@ -617,7 +617,7 @@ fn T_glue_fn(cx: &crate_ctxt) -> TypeRef {
 }
 
 fn T_cmp_glue_fn(cx: &crate_ctxt) -> TypeRef {
-    let s = "cmp_glue_fn";
+    let s = ~"cmp_glue_fn";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t = T_tydesc_field(cx, abi::tydesc_field_cmp_glue);
     cx.tn.associate(s, t);
@@ -625,7 +625,7 @@ fn T_cmp_glue_fn(cx: &crate_ctxt) -> TypeRef {
 }
 
 fn T_copy_glue_fn(cx: &crate_ctxt) -> TypeRef {
-    let s = "copy_glue_fn";
+    let s = ~"copy_glue_fn";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t = T_tydesc_field(cx, abi::tydesc_field_copy_glue);
     cx.tn.associate(s, t);
@@ -736,7 +736,7 @@ fn T_taskptr(cx: &crate_ctxt) -> TypeRef { ret T_ptr(cx.task_type); }
 
 // This type must never be used directly; it must always be cast away.
 fn T_typaram(tn: &type_names) -> TypeRef {
-    let s = "typaram";
+    let s = ~"typaram";
     if tn.name_has_type(s) { ret tn.get_type(s); }
     let t = T_i8();
     tn.associate(s, t);
@@ -755,7 +755,7 @@ fn T_closure_ptr(cx: &crate_ctxt, llbindings_ty: TypeRef, n_ty_params: uint)
 }
 
 fn T_opaque_closure_ptr(cx: &crate_ctxt) -> TypeRef {
-    let s = "*closure";
+    let s = ~"*closure";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t = T_closure_ptr(cx, T_nil(), 0u);
     cx.tn.associate(s, t);
@@ -763,7 +763,7 @@ fn T_opaque_closure_ptr(cx: &crate_ctxt) -> TypeRef {
 }
 
 fn T_tag(tn: &type_names, size: uint) -> TypeRef {
-    let s = "tag_" + istr::to_estr(uint::to_str(size, 10u));
+    let s = ~"tag_" + uint::to_str(size, 10u);
     if tn.name_has_type(s) { ret tn.get_type(s); }
     let t = T_struct([T_int(), T_array(T_i8(), size)]);
     tn.associate(s, t);
@@ -771,7 +771,7 @@ fn T_tag(tn: &type_names, size: uint) -> TypeRef {
 }
 
 fn T_opaque_tag(tn: &type_names) -> TypeRef {
-    let s = "opaque_tag";
+    let s = ~"opaque_tag";
     if tn.name_has_type(s) { ret tn.get_type(s); }
     let t = T_struct([T_int(), T_i8()]);
     tn.associate(s, t);
