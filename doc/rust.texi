@@ -642,6 +642,7 @@ The keywords are:
 @tab @code{syntax}
 @tab @code{mutable}
 @tab @code{native}
+@tab @code{unchecked}
 @item @code{mod}
 @tab @code{import}
 @tab @code{export}
@@ -679,7 +680,7 @@ The keywords are:
 @tab @code{with}
 @item @code{fn}
 @tab @code{iter}
-@tab @code{pred}
+@tab @code{pure}
 @tab @code{obj}
 @tab @code{resource}
 @item @code{if}
@@ -1867,7 +1868,7 @@ control).
 Any pure boolean function is called a @emph{predicate}, and may be used
 as part of the static typestate system. @xref{Ref.Typestate.Constr}. A
 predicate declaration is identical to a function declaration, except that it
-is declared with the keyword @code{pred} instead of @code{fn}. In addition,
+is declared with the additional keyword @code{pure}. In addition,
 the typechecker checks the body of a predicate with a restricted set of
 typechecking rules. A predicate
 @itemize
@@ -1878,11 +1879,65 @@ self-call expression; and
 
 An example of a predicate:
 @example
-pred lt_42(int x) -> bool @{
+pure fn lt_42(x: int) -> bool @{
     ret (x < 42);
 @}
 @end example
 
+A non-boolean function may also be declared with @code{pure fn}. This allows
+predicates to call non-boolean functions as long as they are pure. For example:
+@example
+pure fn pure_length<@@T>(ls: &list<T>) -> uint @{ /* ... */ @}
+
+pure fn nonempty_list<@@T>(ls: &list<T>) -> bool @{ pure_length(ls) > 0u @}
+@end example
+
+In this example, @code{nonempty_list} is a predicate---it can be used in a
+typestate constraint---but the auxiliary function @code{pure_length}@ is
+not.
+
+@emph{ToDo:} should actually define referential transparency.
+
+The effect checking rules previously enumerated are a restricted set of
+typechecking rules meant to approximate the universe of observably
+referentially transparent Rust procedures conservatively. Sometimes, these
+rules are @emph{too} restrictive. Rust allows programmers to violate these
+rules by writing predicates that the compiler cannot prove to be referentially
+transparent, using an escape-hatch feature called ``unchecked blocks''. When
+writing code that uses unchecked blocks, programmers should always be aware
+that they have an obligation to show that the code @emph{behaves} referentially
+transparently at all times, even if the compiler cannot @emph{prove}
+automatically that the code is referentially transparent. In the presence of
+unchecked blocks, the compiler provides no static guarantee that the code will
+behave as expected at runtime. Rather, the programmer has an independent
+obligation to verify the semantics of the predicates they write.
+
+@emph{ToDo:} last two sentences are vague.
+
+An example of a predicate that uses an unchecked block:
+@example
+fn pure_foldl<@@T, @@U>(ls: &list<T>, u: &U, f: &block(&T, &U) -> U) -> U @{
+    alt ls @{
+      nil. @{ u @}
+      cons(hd, tl) @{ f(hd, pure_foldl(*tl, f(hd, u), f)) @}
+    @}
+@}
+
+pure fn pure_length<@@T>(ls: &list<T>) -> uint @{
+    fn count<T>(_t: &T, u: &uint) -> uint @{ u + 1u @}
+    unchecked @{
+        pure_foldl(ls, 0u, count)
+    @}
+@}
+@end example
+
+Despite its name, @code{pure_foldl} is a @code{fn}, not a @code{pure fn},
+because there is no way in Rust to specify that the higher-order function
+argument @code{f} is a pure function. So, to use @code{foldl} in a pure list
+length function that a predicate could then use, we must use an
+@code{unchecked} block wrapped around the call to @code{pure_foldl} in the
+definition of @code{pure_length}.
+ 
 @node          Ref.Item.Iter
 @subsection    Ref.Item.Iter
 @c * Ref.Item.Iter::          Items defining iterators.
@@ -2684,7 +2739,7 @@ A @dfn{constraint} is a predicate applied to specific slots.
 For example, consider the following code:
 
 @example
-pred is_less_than(int a, int b) -> bool @{
+pure fn is_less_than(int a, int b) -> bool @{
      ret a < b;
 @}
 
@@ -3461,7 +3516,7 @@ and statically comparing implied states and their
 specifications. @xref{Ref.Typestate}.
 
 @example
-pred even(x: &int) -> bool @{
+pure fn even(x: &int) -> bool @{
     ret x & 1 == 0;
 @}
 
