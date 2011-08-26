@@ -13,6 +13,7 @@ rt/rust_*.cpp      - The majority of the runtime services
 rt/isaac           - The PRNG used for pseudo-random choices in the runtime
 rt/bigint          - The bigint library used for the 'big' type
 rt/uthash          - Small hashtable-and-list library for C, used in runtime
+rt/libuv           - The library used for async IO in the runtime
 rt/{sync,util}     - Small utility classes for the runtime.
 
 test/              Testsuite
