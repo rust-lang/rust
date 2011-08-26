@@ -154,7 +154,8 @@ type crate_ctxt =
      task_type: TypeRef,
      builder: BuilderRef_res,
      shape_cx: shape::ctxt,
-     gc_cx: gc::ctxt};
+     gc_cx: gc::ctxt,
+     cstrcache: cstrcache::t};
 
 type local_ctxt =
     {path: [str],
@@ -842,10 +843,11 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i, False); }
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: &@crate_ctxt, s: &str) -> ValueRef {
-    let sc = llvm::LLVMConstString(str::buf(s), str::byte_len(s), False);
+    let sc = llvm::LLVMConstString(safe_sbuf(cx, s),
+                                   str::byte_len(s), False);
     let g =
         llvm::LLVMAddGlobal(cx.llmod, val_ty(sc),
-                            str::buf(cx.names.next("str")));
+                            safe_sbuf(cx, cx.names.next("str")));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -863,10 +865,10 @@ fn C_str(cx: &@crate_ctxt, s: &str) -> ValueRef {
     let box =
         C_struct([C_int(abi::const_refcount as int), C_int(len + 1u as int),
                   C_int(len + 1u as int), C_int(0),
-                  llvm::LLVMConstString(str::buf(s), len, False)]);
+                  llvm::LLVMConstString(safe_sbuf(cx, s), len, False)]);
     let g =
         llvm::LLVMAddGlobal(cx.llmod, val_ty(box),
-                            str::buf(cx.names.next("str")));
+                            safe_sbuf(cx, cx.names.next("str")));
     llvm::LLVMSetInitializer(g, box);
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -909,12 +911,16 @@ fn C_shape(ccx: &@crate_ctxt, bytes: &[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
     let llglobal =
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape),
-                            str::buf(ccx.names.next("shape")));
+                            safe_sbuf(ccx, ccx.names.next("shape")));
     llvm::LLVMSetInitializer(llglobal, llshape);
     llvm::LLVMSetGlobalConstant(llglobal, True);
     llvm::LLVMSetLinkage(llglobal,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     ret llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
+}
+
+fn safe_sbuf(ccx: &@crate_ctxt, s: &str) -> str::rustrt::sbuf {
+    cstrcache::get_cstr(ccx.cstrcache, s)
 }
 
 //
