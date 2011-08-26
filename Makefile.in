@@ -186,8 +186,15 @@ SREQ$(1) = stage$(1)/rustc$(X)          \
            $$(MKFILES)
 endif
 
+ifeq ($(1),0)
+# Don't run the the stage0 compiler under valgrind - that ship has sailed
+CFG_VALGRIND_COMPILE$(1) =
+else
+CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)
+endif
+
 STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,stage$(1), \
-                $$(CFG_VALGRIND_COMPILE) stage$(1)/rustc$$(X) \
+                $$(CFG_VALGRIND_COMPILE$(1)) stage$(1)/rustc$$(X) \
                 $$(CFG_RUSTC_FLAGS))
 endef
 
