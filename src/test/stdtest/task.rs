@@ -64,3 +64,15 @@ fn test_join_convenient() {
     let handle = task::spawn_joinable(f);
     assert (task::tr_success == task::join(handle));
 }
+
+#[test]
+fn spawn_polymorphic() {
+    fn foo<~T>(x : -T) {
+        log_err x;
+    }
+
+    let fb = bind foo(true);
+
+    task::spawn(fb);
+    task::spawn(bind foo(42));
+}
