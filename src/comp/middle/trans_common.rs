@@ -843,9 +843,10 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i, False); }
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: &@crate_ctxt, s: &str) -> ValueRef {
     let sc = llvm::LLVMConstString(str::buf(s), str::byte_len(s), False);
+    let gname = cx.names.next("str");
     let g =
         llvm::LLVMAddGlobal(cx.llmod, val_ty(sc),
-                            str::buf(cx.names.next("str")));
+                            str::buf(gname));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -864,9 +865,9 @@ fn C_str(cx: &@crate_ctxt, s: &str) -> ValueRef {
         C_struct([C_int(abi::const_refcount as int), C_int(len + 1u as int),
                   C_int(len + 1u as int), C_int(0),
                   llvm::LLVMConstString(str::buf(s), len, False)]);
+    let gname = cx.names.next("str");
     let g =
-        llvm::LLVMAddGlobal(cx.llmod, val_ty(box),
-                            str::buf(cx.names.next("str")));
+        llvm::LLVMAddGlobal(cx.llmod, val_ty(box), str::buf(gname));
     llvm::LLVMSetInitializer(g, box);
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -907,9 +908,9 @@ fn C_bytes(bytes: &[u8]) -> ValueRef {
 
 fn C_shape(ccx: &@crate_ctxt, bytes: &[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
+    let gname = ccx.names.next("shape");
     let llglobal =
-        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape),
-                            str::buf(ccx.names.next("shape")));
+        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), str::buf(gname));
     llvm::LLVMSetInitializer(llglobal, llshape);
     llvm::LLVMSetGlobalConstant(llglobal, True);
     llvm::LLVMSetLinkage(llglobal,
