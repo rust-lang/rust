@@ -3,7 +3,8 @@ index, rindex, find, starts_with, ends_with, substr, slice, split,
 concat, connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
 unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars, to_chars,
 char_len, char_at, bytes, is_ascii, shift_byte, pop_byte, unsafe_from_byte,
-unsafe_from_bytes, from_char, char_range_at, str_from_cstr;
+unsafe_from_bytes, from_char, char_range_at, str_from_cstr, sbuf,
+as_buf;
 
 export from_estr, to_estr, from_estrs, to_estrs;
 
@@ -467,7 +468,21 @@ fn trim(s: &istr) -> istr {
     trim_left(trim_right(s))
 }
 
-fn str_from_cstr(cstr: *u8) -> istr {
+type sbuf = *u8;
+
+fn buf(s: &istr) -> sbuf {
+    let saddr = ptr::addr_of(s);
+    let vaddr: *[u8] = unsafe::reinterpret_cast(saddr);
+    let buf = vec::to_ptr(*vaddr);
+    ret buf;
+}
+
+fn as_buf<T>(s: &istr, f: &block(sbuf) -> T) -> T {
+    let buf = buf(s);
+    f(buf)
+}
+
+fn str_from_cstr(cstr: sbuf) -> istr {
     let res = ~"";
     let start = cstr;
     let curr = start;

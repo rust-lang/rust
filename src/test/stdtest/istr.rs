@@ -265,3 +265,23 @@ fn str_from_cstr() {
     let c = istr::str_from_cstr(b);
     assert c == ~"AAAAAAA";
 }
+
+#[test]
+fn as_buf() {
+    let a = ~"Abcdefg";
+    let b = istr::as_buf(a, { |buf|
+        assert *buf == 65u8;
+        100
+    });
+    assert b == 100;
+}
+
+#[test]
+fn as_buf_small() {
+    let a = ~"A";
+    let b = istr::as_buf(a, { |buf|
+        assert *buf == 65u8;
+        100
+    });
+    assert b == 100;
+}
