@@ -903,6 +903,8 @@ data<T,U>::walk_obj_contents(bool align, ptr &dp) {
     type_desc *subtydesc =
         *reinterpret_cast<type_desc **>(box_ptr + sizeof(void *));
     ptr obj_closure_dp(box_ptr + sizeof(void *));
+    if (!box_ptr)   // Null check.
+        return;
 
     arena arena;
     type_param *params = type_param::from_obj_shape(subtydesc->shape,
