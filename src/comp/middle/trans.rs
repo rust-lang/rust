@@ -287,23 +287,23 @@ fn type_of_or_i8(bcx: &@block_ctxt, typ: ty::t) -> TypeRef {
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
-fn sanitize(s: &str) -> str {
-    let result = "";
+fn sanitize(s: &istr) -> istr {
+    let result = ~"";
     for c: u8 in s {
         if c == '@' as u8 {
-            result += "boxed_";
+            result += ~"boxed_";
         } else {
             if c == ',' as u8 {
-                result += "_";
+                result += ~"_";
             } else {
                 if c == '{' as u8 || c == '(' as u8 {
-                    result += "_of_";
+                    result += ~"_of_";
                 } else {
                     if c != 10u8 && c != '}' as u8 && c != ')' as u8 &&
                            c != ' ' as u8 && c != '\t' as u8 && c != ';' as u8
                        {
                         let v = [c];
-                        result += str::unsafe_from_bytes(v);
+                        result += istr::unsafe_from_bytes(v);
                     }
                 }
             }
@@ -1137,9 +1137,10 @@ fn declare_tydesc(cx: &@local_ctxt, sp: &span, t: ty::t, ty_params: &[uint])
     }
     let name;
     if cx.ccx.sess.get_opts().debuginfo {
-        name = mangle_internal_name_by_type_only(cx.ccx, t, "tydesc");
+        name = mangle_internal_name_by_type_only(cx.ccx, t, ~"tydesc");
         name = sanitize(name);
-    } else { name = mangle_internal_name_by_seq(cx.ccx, "tydesc"); }
+    } else { name = mangle_internal_name_by_seq(cx.ccx, ~"tydesc"); }
+    let name = istr::to_estr(name);
     let gvar =
         llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, str::buf(name));
     let info =
@@ -1164,12 +1165,13 @@ tag glue_helper {
 
 fn declare_generic_glue(cx: &@local_ctxt, t: ty::t, llfnty: TypeRef,
                         name: &str) -> ValueRef {
+    let name = istr::from_estr(name);
     let fn_nm;
     if cx.ccx.sess.get_opts().debuginfo {
-        fn_nm = mangle_internal_name_by_type_only(cx.ccx, t, "glue_" + name);
+        fn_nm = mangle_internal_name_by_type_only(cx.ccx, t, ~"glue_" + name);
         fn_nm = sanitize(fn_nm);
-    } else { fn_nm = mangle_internal_name_by_seq(cx.ccx, "glue_" + name); }
-    let llfn = decl_cdecl_fn(cx.ccx.llmod, fn_nm, llfnty);
+    } else { fn_nm = mangle_internal_name_by_seq(cx.ccx, ~"glue_" + name); }
+    let llfn = decl_cdecl_fn(cx.ccx.llmod, istr::to_estr(fn_nm), llfnty);
     set_glue_inlining(cx, llfn, t);
     ret llfn;
 }
@@ -3155,8 +3157,10 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     let llenv = build_closure(cx, upvars, false);
 
     // Step 2: Declare foreach body function.
-    let s: str =
-        mangle_internal_name_by_path_and_seq(lcx.ccx, lcx.path, "foreach");
+    let s: istr =
+        mangle_internal_name_by_path_and_seq(lcx.ccx,
+                                             istr::from_estrs(lcx.path),
+                                             ~"foreach");
 
     // The 'env' arg entering the body function is a fake env member (as in
     // the env-part of the normal rust calling convention) that actually
@@ -3167,7 +3171,8 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
         type_of_fn_from_ty(lcx.ccx, cx.sp,
                            ty::mk_iter_body_fn(lcx.ccx.tcx, decl_ty), 0u);
     let lliterbody: ValueRef =
-        decl_internal_fastcall_fn(lcx.ccx.llmod, s, iter_body_llty);
+        decl_internal_fastcall_fn(lcx.ccx.llmod,
+                                  istr::to_estr(s), iter_body_llty);
     let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id);
     fcx.iterbodyty = cx.fcx.iterbodyty;
 
@@ -3699,12 +3704,15 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
     // construct and return that thunk.
 
     // Give the thunk a name, type, and value.
-    let s: str =
-        mangle_internal_name_by_path_and_seq(cx.ccx, cx.path, "thunk");
+    let s: istr =
+        mangle_internal_name_by_path_and_seq(cx.ccx,
+                                             istr::from_estrs(cx.path),
+                                             ~"thunk");
     let llthunk_ty: TypeRef =
         get_pair_fn_ty(type_of(cx.ccx, sp, incoming_fty));
     let llthunk: ValueRef =
-        decl_internal_fastcall_fn(cx.ccx.llmod, s, llthunk_ty);
+        decl_internal_fastcall_fn(cx.ccx.llmod,
+                                  istr::to_estr(s), llthunk_ty);
 
     // Create a new function context and block context for the thunk, and hold
     // onto a pointer to the first block in the function for later use.
@@ -4298,8 +4306,10 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         let llfnty: TypeRef =
             type_of_fn_from_ty(ccx, e.span, node_id_type(ccx, e.id), 0u);
         let sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
-        let s = mangle_internal_name_by_path(ccx, sub_cx.path);
-        let llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
+        let s = mangle_internal_name_by_path(ccx,
+                                             istr::from_estrs(sub_cx.path));
+        let llfn = decl_internal_fastcall_fn(ccx.llmod,
+                                             istr::to_estr(s), llfnty);
 
         let fn_res =
             trans_closure(some(cx), some(llfnty), sub_cx, e.span, f, llfn,
@@ -4308,7 +4318,8 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
             alt fn_res {
               some(fn_pair) { fn_pair }
               none. {
-                {fn_pair: create_fn_pair(ccx, s, llfnty, llfn, false),
+                {fn_pair: create_fn_pair(ccx, istr::to_estr(s),
+                                         llfnty, llfn, false),
                  bcx: cx}
               }
             };
@@ -4532,9 +4543,11 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
         global = lcx.ccx.module_data.get(istr::from_estr(modname));
     } else {
         let s =
-            link::mangle_internal_name_by_path_and_seq(lcx.ccx,
-                                                       lcx.module_path,
-                                                       "loglevel");
+            link::mangle_internal_name_by_path_and_seq(
+                lcx.ccx,
+                istr::from_estrs(lcx.module_path),
+                ~"loglevel");
+        let s = istr::to_estr(s);
         global = llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), str::buf(s));
         llvm::LLVMSetGlobalConstant(global, False);
         llvm::LLVMSetInitializer(global, C_null(T_int()));
@@ -5130,7 +5143,7 @@ fn trans_block(cx: &@block_ctxt, b: &ast::blk, output: &out_method) ->
 fn new_local_ctxt(ccx: &@crate_ctxt) -> @local_ctxt {
     let pth: [str] = [];
     ret @{path: pth,
-          module_path: [ccx.link_meta.name],
+          module_path: [istr::to_estr(ccx.link_meta.name)],
           obj_typarams: [],
           obj_fields: [],
           ccx: ccx};
@@ -5702,6 +5715,7 @@ fn decl_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str], flav: str,
 fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[str],
                          _flav: str, ty_params: &[ast::ty_param],
                          node_id: ast::node_id, node_type: ty::t) {
+    let path = istr::from_estrs(path);
     let llfty =
         type_of_fn_from_ty(ccx, sp, node_type, std::vec::len(ty_params));
     alt ty::struct(ccx.tcx, node_type) {
@@ -5712,14 +5726,14 @@ fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[str],
       }
       _ { ccx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type!"); }
     }
-    let s: str = mangle_internal_name_by_path(ccx, path);
-    let llfn: ValueRef = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
+    let s: istr = mangle_internal_name_by_path(ccx, path);
+    let llfn: ValueRef = decl_internal_fastcall_fn(ccx.llmod,
+                                                   istr::to_estr(s), llfty);
     // Declare the global constant pair that points to it.
 
-    let ps: str = mangle_exported_name(ccx, path, node_type);
-    register_fn_pair(ccx, ps, llfty, llfn, node_id);
+    let ps: istr = mangle_exported_name(ccx, path, node_type);
+    register_fn_pair(ccx, istr::to_estr(ps), llfty, llfn, node_id);
 
-    let path = istr::from_estrs(path);
     let is_main: bool = is_main_name(path) && !ccx.sess.get_opts().library;
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
 }
@@ -5851,18 +5865,20 @@ fn native_fn_wrapper_type(cx: &@crate_ctxt, sp: &span, ty_param_count: uint,
 
 fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
                            name: str, id: ast::node_id) {
+    let path = istr::from_estrs(path);
     let num_ty_param = native_fn_ty_param_count(ccx, id);
     // Declare the wrapper.
 
     let t = node_id_type(ccx, id);
     let wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
-    let s: str = mangle_internal_name_by_path(ccx, path);
+    let s: istr = mangle_internal_name_by_path(ccx, path);
     let wrapper_fn: ValueRef =
-        decl_internal_fastcall_fn(ccx.llmod, s, wrapper_type);
+        decl_internal_fastcall_fn(ccx.llmod,
+                                  istr::to_estr(s), wrapper_type);
     // Declare the global constant pair that points to it.
 
-    let ps: str = mangle_exported_name(ccx, path, node_id_type(ccx, id));
-    register_fn_pair(ccx, ps, wrapper_type, wrapper_fn, id);
+    let ps: istr = mangle_exported_name(ccx, path, node_id_type(ccx, id));
+    register_fn_pair(ccx, istr::to_estr(ps), wrapper_type, wrapper_fn, id);
     // Build the wrapper.
 
     let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, wrapper_fn);
@@ -6054,8 +6070,9 @@ fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
       ast::item_const(_, _) {
         let typ = node_id_type(ccx, i.id);
         let s =
-            mangle_exported_name(ccx, pt + [istr::to_estr(i.ident)],
+            mangle_exported_name(ccx, istr::from_estrs(pt) + [i.ident],
                                  node_id_type(ccx, i.id));
+        let s = istr::to_estr(s);
         let g =
             llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ),
                                 str::buf(s));
@@ -6143,9 +6160,12 @@ fn trans_constant(ccx: @crate_ctxt, it: &@ast::item, pt: &[str],
         let n_variants = std::vec::len::<ast::variant>(variants);
         while i < n_variants {
             let variant = variants[i];
-            let p = new_pt + istr::to_estrs([it.ident,
-                                             variant.node.name, ~"discrim"]);
-            let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
+            let p = istr::from_estrs(new_pt) + [it.ident,
+                                                variant.node.name,
+                                                ~"discrim"];
+            let s = mangle_exported_name(ccx, p,
+                                         ty::mk_int(ccx.tcx));
+            let s = istr::to_estr(s);
             let discrim_gvar =
                 llvm::LLVMAddGlobal(ccx.llmod, T_int(), str::buf(s));
             if n_variants != 1u {
@@ -6263,7 +6283,7 @@ fn make_common_glue(sess: &session::session, output: &str) {
     let modl_asm = x86::get_module_asm(); //HACK (buf lifetime issue)
     llvm::LLVMSetModuleInlineAsm(llmod, str::buf(modl_asm));
     make_glues(llmod, taskptr_type);
-    link::write::run_passes(sess, llmod, output);
+    link::write::run_passes(sess, llmod, istr::from_estr(output));
 }
 
 fn create_module_map(ccx: &@crate_ctxt) -> ValueRef {
@@ -6301,8 +6321,8 @@ fn create_crate_map(ccx: &@crate_ctxt) -> ValueRef {
     let mapname;
     if ccx.sess.get_opts().library {
         mapname = ccx.link_meta.name;
-    } else { mapname = "toplevel"; }
-    let sym_name = "_rust_crate_map_" + mapname;
+    } else { mapname = ~"toplevel"; }
+    let sym_name = istr::to_estr(~"_rust_crate_map_" + mapname);
     let arrtype = T_array(T_int(), std::vec::len::<ValueRef>(subcrates));
     let maptype = T_struct([T_int(), arrtype]);
     let map = llvm::LLVMAddGlobal(ccx.llmod, maptype, str::buf(sym_name));
@@ -6367,7 +6387,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     let tag_sizes = map::mk_hashmap::<ty::t, uint>(hasher, eqer);
     let tydescs = map::mk_hashmap::<ty::t, @tydesc_info>(hasher, eqer);
     let lltypes = map::mk_hashmap::<ty::t, TypeRef>(hasher, eqer);
-    let sha1s = map::mk_hashmap::<ty::t, str>(hasher, eqer);
+    let sha1s = map::mk_hashmap::<ty::t, istr>(hasher, eqer);
     let short_names = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let sha = std::sha1::mk_sha1();
     let ccx =
@@ -6381,7 +6401,8 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
           ast_map: amap,
           item_symbols: new_int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
-          link_meta: link::build_link_meta(sess, *crate, output, sha),
+          link_meta: link::build_link_meta(sess, *crate,
+                                           istr::from_estr(output), sha),
           tag_sizes: tag_sizes,
           discrims: new_int_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),

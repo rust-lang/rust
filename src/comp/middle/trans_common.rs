@@ -146,7 +146,7 @@ type crate_ctxt =
      glues: @glue_fns,
      names: namegen,
      sha: std::sha1::sha1,
-     type_sha1s: hashmap<ty::t, str>,
+     type_sha1s: hashmap<ty::t, istr>,
      type_short_names: hashmap<ty::t, str>,
      tcx: ty::ctxt,
      mut_map: alias::mut_map,

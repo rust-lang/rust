@@ -169,7 +169,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
                      bind trans::trans_crate(sess, crate, ty_cx, output,
                                              ast_map, mut_map));
     time(time_passes, "LLVM passes",
-         bind link::write::run_passes(sess, llmod, output));
+         bind link::write::run_passes(sess, llmod, istr::from_estr(output)));
 }
 
 fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,

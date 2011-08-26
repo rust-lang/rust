@@ -569,7 +569,9 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
 fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: str) ->
    ValueRef {
     let vtbl = C_struct(llmethods);
-    let vtbl_name = mangle_internal_name_by_path(cx.ccx, cx.path + [name]);
+    let vtbl_name = mangle_internal_name_by_path(
+        cx.ccx, istr::from_estrs(cx.path + [name]));
+    let vtbl_name = istr::to_estr(vtbl_name);
     let gvar =
         llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl), str::buf(vtbl_name));
     llvm::LLVMSetInitializer(gvar, vtbl);
@@ -603,16 +605,18 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         + ["method", istr::to_estr(m.ident)] with *cx};
 
     // Make up a name for the backwarding function.
-    let fn_name: str = "backwarding_fn";
-    let s: str =
-        mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
+    let fn_name: istr = ~"backwarding_fn";
+    let s: istr =
+        mangle_internal_name_by_path_and_seq(
+            mcx.ccx, istr::from_estrs(mcx.path), fn_name);
 
     // Get the backwarding function's type and declare it.
     let llbackwarding_fn_ty: TypeRef =
         type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
                         std::vec::len::<ast::ty_param>(ty_params));
     let llbackwarding_fn: ValueRef =
-        decl_internal_fastcall_fn(cx.ccx.llmod, s, llbackwarding_fn_ty);
+        decl_internal_fastcall_fn(
+            cx.ccx.llmod, istr::to_estr(s), llbackwarding_fn_ty);
 
     // Create a new function context and block context for the backwarding
     // function, holding onto a pointer to the first block.
@@ -732,16 +736,18 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         + ["method", istr::to_estr(m.ident)] with *cx};
 
     // Make up a name for the forwarding function.
-    let fn_name: str = "forwarding_fn";
-    let s: str =
-        mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
+    let fn_name: istr = ~"forwarding_fn";
+    let s: istr =
+        mangle_internal_name_by_path_and_seq(
+            mcx.ccx, istr::from_estrs(mcx.path), fn_name);
 
     // Get the forwarding function's type and declare it.
     let llforwarding_fn_ty: TypeRef =
         type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
                         std::vec::len::<ast::ty_param>(ty_params));
     let llforwarding_fn: ValueRef =
-        decl_internal_fastcall_fn(cx.ccx.llmod, s, llforwarding_fn_ty);
+        decl_internal_fastcall_fn(
+            cx.ccx.llmod, istr::to_estr(s), llforwarding_fn_ty);
 
     // Create a new function context and block context for the forwarding
     // function, holding onto a pointer to the first block.
@@ -921,14 +927,16 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     }
     let mcx: @local_ctxt =
         @{path: cx.path + ["method", istr::to_estr(m.node.ident)] with *cx};
-    let s: str = mangle_internal_name_by_path(mcx.ccx, mcx.path);
-    let llfn: ValueRef = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
+    let s: istr = mangle_internal_name_by_path(mcx.ccx,
+                                               istr::from_estrs(mcx.path));
+    let llfn: ValueRef = decl_internal_fastcall_fn(
+        cx.ccx.llmod, istr::to_estr(s), llfnty);
 
     // Every method on an object gets its node_id inserted into the crate-wide
     // item_ids map, together with the ValueRef that points to where that
     // method's definition will be in the executable.
     cx.ccx.item_ids.insert(m.node.id, llfn);
-    cx.ccx.item_symbols.insert(m.node.id, s);
+    cx.ccx.item_symbols.insert(m.node.id, istr::to_estr(s));
     trans_fn(mcx, m.span, m.node.meth, llfn, some(self_ty), ty_params,
              m.node.id);
 
