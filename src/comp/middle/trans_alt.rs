@@ -469,7 +469,7 @@ fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
                      ids: &ast_util::pat_id_map) -> bool {
     let our_block = bcx.llbb as uint;
     let success = true;
-    for each item: @{key: ast::identistr, val: ast::node_id} in ids.items() {
+    for each item: @{key: ast::ident, val: ast::node_id} in ids.items() {
         let llbbs = [];
         let vals = [];
         for ex: exit_node in map {

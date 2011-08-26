@@ -102,7 +102,7 @@ tag mod_index_entry {
     mie_tag_variant(/* tag item */@ast::item, /* variant index */uint);
 }
 
-type mod_index = hashmap<identistr, list<mod_index_entry>>;
+type mod_index = hashmap<ident, list<mod_index_entry>>;
 
 // A tuple of an imported def and the import stmt that brung it
 type glob_imp_def = {def: def, item: @ast::view_item};
@@ -1078,7 +1078,7 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
 
 
 // Module indexing
-fn add_to_index(index: &hashmap<identistr, list<mod_index_entry>>,
+fn add_to_index(index: &hashmap<ident, list<mod_index_entry>>,
                 id: &ident, ent: &mod_index_entry) {
     alt index.find(id) {
       none. { index.insert(id,
@@ -1195,7 +1195,7 @@ fn check_for_collisions(e: &@env, c: &ast::crate) {
     // Module indices make checking those relatively simple -- just check each
     // name for multiple entities in the same namespace.
     for each m: @{key: ast::node_id, val: @indexed_mod} in e.mod_map.items() {
-        for each name: @{key: identistr, val: list<mod_index_entry>} in
+        for each name: @{key: ident, val: list<mod_index_entry>} in
                  m.val.index.items() {
             check_mod_name(*e, name.key, name.val);
         }

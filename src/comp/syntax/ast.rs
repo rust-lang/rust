@@ -8,7 +8,6 @@ import codemap::filename;
 type spanned<T> = {node: T, span: span};
 
 type ident = istr;
-type identistr = istr;
 
 // Functions may or may not have names.
 type fn_ident = option::t<ident>;

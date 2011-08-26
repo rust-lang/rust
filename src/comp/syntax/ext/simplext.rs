@@ -19,7 +19,6 @@ import fold::*;
 import ast::node_id;
 import ast_util::respan;
 import ast::ident;
-import ast::identistr;
 import ast::path;
 import ast::ty;
 import ast::blk;
@@ -157,9 +156,9 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
 
 
 type binders =
-    {real_binders: hashmap<identistr, selector>,
+    {real_binders: hashmap<ident, selector>,
      mutable literal_ast_matchers: [selector]};
-type bindings = hashmap<identistr, arb_depth<matchable>>;
+type bindings = hashmap<ident, arb_depth<matchable>>;
 
 fn acumm_bindings(_cx: &ext_ctxt, _b_dest: &bindings, _b_src: &bindings) { }
 
@@ -191,7 +190,7 @@ fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t<bindings> {
         alt sel(match_expr(e)) { none. { ret none; } _ { } }
     }
     let never_mind: bool = false;
-    for each pair: @{key: identistr,
+    for each pair: @{key: ident,
                      val: selector} in b.real_binders.items() {
         alt pair.val(match_expr(e)) {
           none. { never_mind = true; }
@@ -265,9 +264,9 @@ fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t<arb_depth<matchable>>,
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 iter free_vars(b: &bindings, e: @expr) -> ident {
-    let idents: hashmap<identistr, ()> = new_str_hash::<()>();
+    let idents: hashmap<ident, ()> = new_str_hash::<()>();
     fn mark_ident(i: &ident, _fld: ast_fold, b: &bindings,
-                  idents: &hashmap<identistr, ()>) -> ident {
+                  idents: &hashmap<ident, ()>) -> ident {
         if b.contains_key(i) {
             idents.insert(i, ());
         }
@@ -281,7 +280,7 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
     dummy_out(f);
-    for each id: identistr in idents.keys() { put id; }
+    for each id: ident in idents.keys() { put id; }
 }
 
 
