@@ -210,6 +210,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
                                 ~"passing an immutable object \
                                  field by mutable alias");
                         }
+                        cx.mut_map.insert(dnum, ());
                     } else {
                         cx.tcx.sess.span_err(
                             arg.span,
