@@ -349,3 +349,9 @@
    ...
 }
 
+{  
+   llvm-user-new-leak
+   Memcheck:Leak
+   fun:_Znwj
+   fun:_ZN4llvm4UsernwEjj
+}
