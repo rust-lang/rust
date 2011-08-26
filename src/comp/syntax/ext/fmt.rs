@@ -241,6 +241,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
         }
         alt cnv.ty {
           ty_str. { ret make_conv_call(cx, arg.span, "str", cnv, arg); }
+          ty_istr. { ret make_conv_call(cx, arg.span, "istr", cnv, arg); }
           ty_int(sign) {
             alt sign {
               signed. { ret make_conv_call(cx, arg.span, "int", cnv, arg); }
@@ -297,6 +298,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
         alt c.ty {
           ty_bool. { log "type: bool"; }
           ty_str. { log "type: str"; }
+          ty_istr. { log "type: istr"; }
           ty_char. { log "type: char"; }
           ty_int(s) {
             alt s {

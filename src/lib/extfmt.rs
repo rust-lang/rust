@@ -41,8 +41,9 @@ mod ct {
         ty_bits;
         ty_hex(caseness);
         ty_octal;
+        // FIXME: Transitional
+        ty_istr;
         // FIXME: More types
-
     }
     tag flag {
         flag_left_justify;
@@ -225,6 +226,8 @@ mod ct {
                 ty_bool
             } else if str::eq(tstr, "s") {
                 ty_str
+            } else if str::eq(tstr, "S") {
+                ty_istr
             } else if str::eq(tstr, "c") {
                 ty_char
             } else if str::eq(tstr, "d") || str::eq(tstr, "i") {
@@ -320,6 +323,10 @@ mod rt {
               }
             };
         ret pad(cv, unpadded, pad_nozero);
+    }
+
+    fn conv_istr(cv: &conv, s: &istr) -> str {
+        ret conv_str(cv, istr::to_estr(s));
     }
 
     // Convert an int to string with minimum number of digits. If precision is
