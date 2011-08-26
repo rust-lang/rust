@@ -39,7 +39,7 @@ import std::getopts::optflagopt;
 import std::getopts::opt_present;
 import back::link::output_type;
 
-tag pp_mode { ppm_normal; ppm_typed; ppm_identified; }
+tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
 
 fn default_configuration(sess: session::session, argv0: str, input: str) ->
    ast::crate_cfg {
@@ -169,7 +169,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
 }
 
 fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
-                      ppm: pp_mode, expand: bool) {
+                      ppm: pp_mode) {
     fn ann_paren_for_expr(node: &pprust::ann_node) {
         alt node { pprust::node_expr(s, expr) { pprust::popen(s); } _ { } }
     }
@@ -213,10 +213,14 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let crate = crate_src.crate;
     let src = crate_src.src;
 
-    if expand { crate = syntax::ext::expand::expand_crate(sess, crate); }
     let ann;
     alt ppm {
+      ppm_expanded. {
+        crate = syntax::ext::expand::expand_crate(sess, crate);
+        ann = pprust::no_ann();
+      }
       ppm_typed. {
+        crate = syntax::ext::expand::expand_crate(sess, crate);
         let amap = middle::ast_map::map_crate(*crate);
         let {def_map: def_map, ext_map: ext_map} =
             resolve::resolve_crate(sess, amap, crate);
@@ -254,7 +258,6 @@ options:
     --lib              compile a library crate
     --static           use or produce static libraries
     --pretty [type]    pretty-print the input instead of compiling
-    --expand [type]    expand and pretty-print the input instead of compiling
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
     --noverify         suppress LLVM verification step (slight speedup)
@@ -414,18 +417,20 @@ fn build_session(sopts: @session::options) -> session::session {
 fn parse_pretty(sess: session::session, name: &str) -> pp_mode {
     if str::eq(name, "normal") {
         ret ppm_normal;
+    } else if str::eq(name, "expanded") {
+        ret ppm_expanded;
     } else if str::eq(name, "typed") {
         ret ppm_typed;
     } else if str::eq(name, "identified") { ret ppm_identified; }
-    sess.fatal("argument to `pretty` or `expand` must be one of `normal`, " +
-                   "`typed`, or `identified`");
+    sess.fatal("argument to `pretty` must be one of `normal`, `typed`, or "
+               + "`identified`");
 }
 
 fn opts() -> [getopts::opt] {
     ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
          optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
-         optflagopt("expand"), optflag("ls"), optflag("parse-only"),
-         optflag("no-trans"), optflag("O"), optopt("OptLevel"), optmulti("L"),
+         optflag("ls"), optflag("parse-only"), optflag("no-trans"), 
+         optflag("O"), optopt("OptLevel"), optmulti("L"),
          optflag("S"), optflag("c"), optopt("o"), optflag("g"),
          optflag("save-temps"), optopt("sysroot"), optflag("stats"),
          optflag("time-passes"), optflag("time-llvm-passes"),
@@ -473,18 +478,6 @@ fn main(args: [str]) {
     let ifile = match.free[0];
     let saved_out_filename: str = "";
     let cfg = build_configuration(sess, binary, ifile);
-    let expand =
-        option::map::<str,
-                      pp_mode>(bind parse_pretty(sess, _),
-                               getopts::opt_default(match, "expand",
-                                                    "normal"));
-    alt expand {
-      some::<pp_mode>(ppm) {
-        pretty_print_input(sess, cfg, ifile, ppm, true);
-        ret;
-      }
-      none::<pp_mode>. {/* continue */ }
-    }
     let pretty =
         option::map::<str,
                       pp_mode>(bind parse_pretty(sess, _),
@@ -492,7 +485,7 @@ fn main(args: [str]) {
                                                     "normal"));
     alt pretty {
       some::<pp_mode>(ppm) {
-        pretty_print_input(sess, cfg, ifile, ppm, false);
+        pretty_print_input(sess, cfg, ifile, ppm);
         ret;
       }
       none::<pp_mode>. {/* continue */ }
