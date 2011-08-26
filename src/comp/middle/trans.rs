@@ -6395,8 +6395,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
           task_type: task_type,
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: shape::mk_ctxt(llmod),
-          gc_cx: gc::mk_ctxt(),
-          cstrcache: cstrcache::mk()};
+          gc_cx: gc::mk_ctxt()};
     let cx = new_local_ctxt(ccx);
     collect_items(ccx, crate);
     collect_tag_ctors(ccx, crate);
