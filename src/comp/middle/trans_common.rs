@@ -59,7 +59,6 @@ import bld = trans_build;
 
 // FIXME: These should probably be pulled in here too.
 import trans::type_of_fn_full;
-import trans::drop_slot;
 import trans::drop_ty;
 
 obj namegen(mutable i: int) {
@@ -299,10 +298,15 @@ tag cleanup {
 }
 
 fn add_clean(cx: &@block_ctxt, val: ValueRef, ty: ty::t) {
-    find_scope_cx(cx).cleanups += [clean(bind drop_slot(_, val, ty))];
+    find_scope_cx(cx).cleanups += [clean(bind drop_ty(_, val, ty))];
 }
 fn add_clean_temp(cx: &@block_ctxt, val: ValueRef, ty: ty::t) {
-    find_scope_cx(cx).cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
+    fn spill_and_drop(bcx: &@block_ctxt, val: ValueRef, ty: ty::t) -> result {
+        let spilled = trans::spill_if_immediate(bcx, val, ty);
+        ret drop_ty(bcx, spilled, ty);
+    }
+    find_scope_cx(cx).cleanups +=
+        [clean_temp(val, bind spill_and_drop(_, val, ty))];
 }
 
 // Note that this only works for temporaries. We should, at some point, move
