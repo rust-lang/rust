@@ -156,10 +156,10 @@ fn is_ascii(s: str) -> bool {
 fn alloc(n_bytes: uint) -> str { ret rustrt::str_alloc(n_bytes); }
 
 /// Returns true if the string has length 0
-pred is_empty(s: str) -> bool { for c: u8 in s { ret false; } ret true; }
+pure fn is_empty(s: str) -> bool { for c: u8 in s { ret false; } ret true; }
 
 /// Returns true if the string has length greater than 0
-pred is_not_empty(s: str) -> bool { !is_empty(s) }
+pure fn is_not_empty(s: str) -> bool { !is_empty(s) }
 
 fn is_whitespace(s: str) -> bool {
     let i = 0u;
