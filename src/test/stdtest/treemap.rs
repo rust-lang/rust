@@ -2,6 +2,7 @@ use std;
 import std::treemap::*;
 import std::option::some;
 import std::option::none;
+import std::str;
 
 #[test]
 fn init_treemap() {
@@ -56,4 +57,18 @@ fn traverse_in_order() {
         n += 1;
     }
     traverse(m, bind t(n, _, _));
+}
+
+#[test]
+fn u8_map() {
+    let m = init();
+
+    let k1 = str::bytes("foo");
+    let k2 = str::bytes("bar");
+
+    insert(m, k1, "foo");
+    insert(m, k2, "bar");
+
+    assert(find(m, k2) == some("bar"));
+    assert(find(m, k1) == some("foo"));
 }
