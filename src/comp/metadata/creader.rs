@@ -200,7 +200,7 @@ fn get_metadata_section(filename: str) -> option::t<@[u8]> {
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
         let name_buf = llvm::LLVMGetSectionName(si.llsi);
         let name = str::str_from_cstr(name_buf);
-        if str::eq(name, x86::get_meta_sect_name()) {
+        if str::eq(name, istr::to_estr(x86::get_meta_sect_name())) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi);
             let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);

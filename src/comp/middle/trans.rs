@@ -6248,7 +6248,8 @@ fn trap(bcx: &@block_ctxt) {
 
 fn decl_no_op_type_glue(llmod: ModuleRef, taskptr_type: TypeRef) -> ValueRef {
     let ty = T_fn([taskptr_type, T_ptr(T_i8())], T_void());
-    ret decl_fastcall_fn(llmod, abi::no_op_type_glue_name(), ty);
+    ret decl_fastcall_fn(llmod,
+                         istr::to_estr(abi::no_op_type_glue_name()), ty);
 }
 
 fn vec_fill(bcx: &@block_ctxt, v: ValueRef) -> ValueRef {
@@ -6274,13 +6275,16 @@ fn make_common_glue(sess: &session::session, output: &str) {
     let llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                 llvm::LLVMGetGlobalContext());
-    let dat_layt = x86::get_data_layout(); //HACK (buf lifetime issue)
+    let dat_layt = istr::to_estr(
+        x86::get_data_layout()); //HACK (buf lifetime issue)
     llvm::LLVMSetDataLayout(llmod, str::buf(dat_layt));
-    let targ_trip = x86::get_target_triple(); //HACK (buf lifetime issue)
+    let targ_trip = istr::to_estr(
+        x86::get_target_triple()); //HACK (buf lifetime issue)
     llvm::LLVMSetTarget(llmod, str::buf(targ_trip));
-    mk_target_data(x86::get_data_layout());
+    mk_target_data(istr::to_estr(x86::get_data_layout()));
     declare_intrinsics(llmod);
-    let modl_asm = x86::get_module_asm(); //HACK (buf lifetime issue)
+    let modl_asm = istr::to_estr(
+        x86::get_module_asm()); //HACK (buf lifetime issue)
     llvm::LLVMSetModuleInlineAsm(llmod, str::buf(modl_asm));
     make_glues(llmod, taskptr_type);
     link::write::run_passes(sess, llmod, istr::from_estr(output));
@@ -6342,7 +6346,8 @@ fn write_metadata(cx: &@crate_ctxt, crate: &@ast::crate) {
         llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst),
                             str::buf("rust_metadata"));
     llvm::LLVMSetInitializer(llglobal, llconst);
-    let met_sct_nm = x86::get_meta_sect_name(); //HACK (buf lifetime issue)
+    let met_sct_nm = istr::to_estr(
+        x86::get_meta_sect_name()); //HACK (buf lifetime issue)
     llvm::LLVMSetSection(llglobal, str::buf(met_sct_nm));
     llvm::LLVMSetLinkage(llglobal,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -6369,9 +6374,11 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     let llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                 llvm::LLVMGetGlobalContext());
-    let dat_layt = x86::get_data_layout(); //HACK (buf lifetime issue)
+    let dat_layt = istr::to_estr(
+        x86::get_data_layout()); //HACK (buf lifetime issue)
     llvm::LLVMSetDataLayout(llmod, str::buf(dat_layt));
-    let targ_trip = x86::get_target_triple(); //HACK (buf lifetime issue)
+    let targ_trip = istr::to_estr(
+        x86::get_target_triple()); //HACK (buf lifetime issue)
     llvm::LLVMSetTarget(llmod, str::buf(targ_trip));
     let td = mk_target_data(dat_layt);
     let tn = mk_type_names();

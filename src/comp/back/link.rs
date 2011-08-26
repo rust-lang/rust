@@ -91,7 +91,7 @@ mod write {
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
         link_intrinsics(sess, llmod);
         let pm = mk_pass_manager();
-        let td = mk_target_data(x86::get_data_layout());
+        let td = mk_target_data(istr::to_estr(x86::get_data_layout()));
         llvm::LLVMAddTargetData(td.lltd, pm.llpm);
         // TODO: run the linter here also, once there are llvm-c bindings for
         // it.
@@ -190,7 +190,7 @@ mod write {
                 // Save the assembly file if -S is used
 
                 if opts.output_type == output_type_assembly {
-                    let triple = x86::get_target_triple();
+                    let triple = istr::to_estr(x86::get_target_triple());
                     let output = istr::to_estr(output);
                     llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
                                                   str::buf(triple),
@@ -204,7 +204,7 @@ mod write {
                 // This .o is needed when an exe is built
                 if opts.output_type == output_type_object ||
                        opts.output_type == output_type_exe {
-                    let triple = x86::get_target_triple();
+                    let triple = istr::to_estr(x86::get_target_triple());
                     let output = istr::to_estr(output);
                     llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
                                                   str::buf(triple),
@@ -216,7 +216,7 @@ mod write {
                 // If we aren't saving temps then just output the file
                 // type corresponding to the '-c' or '-S' flag used
 
-                let triple = x86::get_target_triple();
+                let triple = istr::to_estr(x86::get_target_triple());
                 let output = istr::to_estr(output);
                 llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
                                               str::buf(triple),
