@@ -160,8 +160,8 @@ type crate_ctxt =
      gc_cx: gc::ctxt};
 
 type local_ctxt =
-    {path: [str],
-     module_path: [str],
+    {path: [istr],
+     module_path: [istr],
      obj_typarams: [ast::ty_param],
      obj_fields: [ast::obj_field],
      ccx: @crate_ctxt};
@@ -430,7 +430,7 @@ tag block_parent { parent_none; parent_some(@block_ctxt); }
 type result = {bcx: @block_ctxt, val: ValueRef};
 type result_t = {bcx: @block_ctxt, val: ValueRef, ty: ty::t};
 
-fn extend_path(cx: @local_ctxt, name: &str) -> @local_ctxt {
+fn extend_path(cx: @local_ctxt, name: &istr) -> @local_ctxt {
     ret @{path: cx.path + [name] with *cx};
 }
 

@@ -3169,7 +3169,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     // Step 2: Declare foreach body function.
     let s: istr =
         mangle_internal_name_by_path_and_seq(lcx.ccx,
-                                             istr::from_estrs(lcx.path),
+                                             lcx.path,
                                              ~"foreach");
 
     // The 'env' arg entering the body function is a fake env member (as in
@@ -3718,7 +3718,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
     // Give the thunk a name, type, and value.
     let s: istr =
         mangle_internal_name_by_path_and_seq(cx.ccx,
-                                             istr::from_estrs(cx.path),
+                                             cx.path,
                                              ~"thunk");
     let llthunk_ty: TypeRef =
         get_pair_fn_ty(type_of(cx.ccx, sp, incoming_fty));
@@ -4318,9 +4318,9 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         let llfnty: TypeRef =
             type_of_fn_from_ty(ccx, e.span, node_id_type(ccx, e.id), 0u);
         let sub_cx = extend_path(cx.fcx.lcx,
-                                 istr::to_estr(ccx.names.next(~"anon")));
+                                 ccx.names.next(~"anon"));
         let s = mangle_internal_name_by_path(ccx,
-                                             istr::from_estrs(sub_cx.path));
+                                             sub_cx.path);
         let llfn = decl_internal_fastcall_fn(ccx.llmod,
                                              istr::to_estr(s), llfnty);
 
@@ -4550,15 +4550,15 @@ fn load_if_immediate(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> ValueRef {
 
 fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
     let lcx = cx.fcx.lcx;
-    let modname = str::connect(lcx.module_path, "::");
+    let modname = istr::connect(lcx.module_path, ~"::");
     let global;
-    if lcx.ccx.module_data.contains_key(istr::from_estr(modname)) {
-        global = lcx.ccx.module_data.get(istr::from_estr(modname));
+    if lcx.ccx.module_data.contains_key(modname) {
+        global = lcx.ccx.module_data.get(modname);
     } else {
         let s =
             link::mangle_internal_name_by_path_and_seq(
                 lcx.ccx,
-                istr::from_estrs(lcx.module_path),
+                lcx.module_path,
                 ~"loglevel");
         global = istr::as_buf(s, { |buf|
             llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), buf)
@@ -4567,7 +4567,7 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
         llvm::LLVMSetInitializer(global, C_null(T_int()));
         llvm::LLVMSetLinkage(global,
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
-        lcx.ccx.module_data.insert(istr::from_estr(modname), global);
+        lcx.ccx.module_data.insert(modname, global);
     }
     let log_cx = new_scope_block_ctxt(cx, "log");
     let after_cx = new_sub_block_ctxt(cx, "after");
@@ -5156,9 +5156,9 @@ fn trans_block(cx: &@block_ctxt, b: &ast::blk, output: &out_method) ->
 }
 
 fn new_local_ctxt(ccx: &@crate_ctxt) -> @local_ctxt {
-    let pth: [str] = [];
+    let pth: [istr] = [];
     ret @{path: pth,
-          module_path: [istr::to_estr(ccx.link_meta.name)],
+          module_path: [ccx.link_meta.name],
           obj_typarams: [],
           obj_fields: [],
           ccx: ccx};
@@ -5506,7 +5506,8 @@ fn trans_fn(cx: @local_ctxt, sp: &span, f: &ast::_fn, llfndecl: ValueRef,
     let start = time::get_time();
     trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
     let end = time::get_time();
-    log_fn_time(cx.ccx, str::connect(cx.path, "::"), start, end);
+    log_fn_time(cx.ccx, istr::to_estr(istr::connect(cx.path, ~"::")),
+                start, end);
 }
 
 fn trans_res_ctor(cx: @local_ctxt, sp: &span, dtor: &ast::_fn,
@@ -5664,7 +5665,7 @@ fn trans_const(cx: &@crate_ctxt, e: @ast::expr, id: ast::node_id) {
 fn trans_item(cx: @local_ctxt, item: &ast::item) {
     alt item.node {
       ast::item_fn(f, tps) {
-        let sub_cx = extend_path(cx, istr::to_estr(item.ident));
+        let sub_cx = extend_path(cx, item.ident);
         alt cx.ccx.item_ids.find(item.id) {
           some(llfndecl) {
             trans_fn(sub_cx, item.span, f, llfndecl, none, tps, item.id);
@@ -5678,7 +5679,7 @@ fn trans_item(cx: @local_ctxt, item: &ast::item) {
       ast::item_obj(ob, tps, ctor_id) {
         let sub_cx =
             @{obj_typarams: tps, obj_fields: ob.fields
-                 with *extend_path(cx, istr::to_estr(item.ident))};
+                 with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
       ast::item_res(dtor, dtor_id, tps, ctor_id) {
@@ -5696,13 +5697,13 @@ fn trans_item(cx: @local_ctxt, item: &ast::item) {
       }
       ast::item_mod(m) {
         let sub_cx =
-            @{path: cx.path + [istr::to_estr(item.ident)],
+            @{path: cx.path + [item.ident],
               module_path: cx.module_path
-                  + [istr::to_estr(item.ident)] with *cx};
+                  + [item.ident] with *cx};
         trans_mod(sub_cx, m);
       }
       ast::item_tag(variants, tps) {
-        let sub_cx = extend_path(cx, istr::to_estr(item.ident));
+        let sub_cx = extend_path(cx, item.ident);
         let degen = std::vec::len(variants) == 1u;
         let i = 0;
         for variant: ast::variant in variants {

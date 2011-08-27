@@ -570,7 +570,7 @@ fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: str) ->
    ValueRef {
     let vtbl = C_struct(llmethods);
     let vtbl_name = mangle_internal_name_by_path(
-        cx.ccx, istr::from_estrs(cx.path + [name]));
+        cx.ccx, cx.path + [istr::from_estr(name)]);
     let gvar = istr::as_buf(vtbl_name, { |buf|
         llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl), buf)
     });
@@ -602,13 +602,13 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // Create a local context that's aware of the name of the method we're
     // creating.
     let mcx: @local_ctxt = @{path: cx.path
-        + ["method", istr::to_estr(m.ident)] with *cx};
+        + [~"method", m.ident] with *cx};
 
     // Make up a name for the backwarding function.
     let fn_name: istr = ~"backwarding_fn";
     let s: istr =
         mangle_internal_name_by_path_and_seq(
-            mcx.ccx, istr::from_estrs(mcx.path), fn_name);
+            mcx.ccx, mcx.path, fn_name);
 
     // Get the backwarding function's type and declare it.
     let llbackwarding_fn_ty: TypeRef =
@@ -733,13 +733,13 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // Create a local context that's aware of the name of the method we're
     // creating.
     let mcx: @local_ctxt = @{path: cx.path
-        + ["method", istr::to_estr(m.ident)] with *cx};
+        + [~"method", m.ident] with *cx};
 
     // Make up a name for the forwarding function.
     let fn_name: istr = ~"forwarding_fn";
     let s: istr =
         mangle_internal_name_by_path_and_seq(
-            mcx.ccx, istr::from_estrs(mcx.path), fn_name);
+            mcx.ccx, mcx.path, fn_name);
 
     // Get the forwarding function's type and declare it.
     let llforwarding_fn_ty: TypeRef =
@@ -926,9 +926,9 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
       }
     }
     let mcx: @local_ctxt =
-        @{path: cx.path + ["method", istr::to_estr(m.node.ident)] with *cx};
+        @{path: cx.path + [~"method", m.node.ident] with *cx};
     let s: istr = mangle_internal_name_by_path(mcx.ccx,
-                                               istr::from_estrs(mcx.path));
+                                               mcx.path);
     let llfn: ValueRef = decl_internal_fastcall_fn(
         cx.ccx.llmod, istr::to_estr(s), llfnty);
 
