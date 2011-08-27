@@ -751,7 +751,7 @@ fn fn_pre_post(f: &_fn, tps: &[ty_param], sp: &span, i: &fn_ident,
     let fcx =
         {enclosing: ccx.fm.get(id),
          id: id,
-         name: istr::from_estr(fn_ident_to_string(id, i)),
+         name: fn_ident_to_string(id, i),
          ccx: ccx};
     find_pre_post_fn(fcx, f);
 }

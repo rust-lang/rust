@@ -77,6 +77,7 @@ import syntax::visit;
 
 import std::vec;
 import std::option;
+import std::istr;
 
 import ast::kind;
 import ast::kind_unique;
@@ -115,13 +116,13 @@ fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
     let tk = type_and_kind(tcx, e);
     log #fmt["for %s: want %s type, got %s type %s", descr,
              kind_to_str(k_need), kind_to_str(tk.kind),
-             util::ppaux::ty_to_str(tcx, tk.ty)];
+             istr::to_estr(util::ppaux::ty_to_str(tcx, tk.ty))];
 
     if !kind_lteq(k_need, tk.kind) {
         let s =
             #fmt["mismatched kinds for %s: needed %s type, got %s type %s",
                  descr, kind_to_str(k_need), kind_to_str(tk.kind),
-                 util::ppaux::ty_to_str(tcx, tk.ty)];
+                 istr::to_estr(util::ppaux::ty_to_str(tcx, tk.ty))];
         tcx.sess.span_err(e.span, s);
     }
 }
@@ -170,7 +171,7 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
                         #fmt["mismatched kinds for typaram %d: \
                                   needed %s type, got %s type %s",
                              i, kind_to_str(k_need), kind_to_str(k),
-                             util::ppaux::ty_to_str(tcx, t)];
+                             istr::to_estr(util::ppaux::ty_to_str(tcx, t))];
                     tcx.sess.span_err(e.span, s);
                 }
                 i += 1;

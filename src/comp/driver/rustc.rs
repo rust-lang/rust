@@ -118,7 +118,7 @@ fn time<@T>(do_it: bool, what: str, thunk: fn() -> T) -> T {
     let rv = thunk();
     let end = std::time::precise_time_s();
     log_err #fmt["time: %s took %s s", what,
-                 common::float_to_str(end - start, 3u)];
+                 istr::to_estr(common::float_to_str(end - start, 3u))];
     ret rv;
 }
 
@@ -184,7 +184,9 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
             pp::space(s.s);
             pp::word(s.s, "as");
             pp::space(s.s);
-            pp::word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
+            pp::word(
+                s.s,
+                istr::to_estr(ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr))));
             pprust::pclose(s);
           }
           _ { }

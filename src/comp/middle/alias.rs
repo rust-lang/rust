@@ -390,9 +390,10 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
       ty::ty_vec(mt) { if mt.mut != ast::imm { unsafe = [seq_t]; } }
       ty::ty_str. | ty::ty_istr. {/* no-op */ }
       _ {
-        cx.tcx.sess.span_unimpl(seq.span,
-                                "unknown seq type " +
-                                    util::ppaux::ty_to_str(cx.tcx, seq_t));
+        cx.tcx.sess.span_unimpl(
+            seq.span,
+            "unknown seq type " +
+            istr::to_estr(util::ppaux::ty_to_str(cx.tcx, seq_t)));
       }
     }
     let bindings = ast_util::pat_binding_ids(local.node.pat);

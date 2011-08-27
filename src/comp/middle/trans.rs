@@ -84,7 +84,7 @@ fn type_of(cx: &@crate_ctxt, sp: &span, t: ty::t) -> TypeRef {
     if ty::type_has_dynamic_size(cx.tcx, t) {
         cx.sess.span_fatal(sp,
                            "type_of() called on a type with dynamic size: " +
-                               ty_to_str(cx.tcx, t));
+                           istr::to_estr(ty_to_str(cx.tcx, t)));
     }
     ret type_of_inner(cx, sp, t);
 }
@@ -1060,12 +1060,13 @@ fn get_tydesc(cx: &@block_ctxt, orig_t: ty::t, escapes: bool,
         if id < vec::len(cx.fcx.lltydescs) {
             ret {kind: tk_param, result: rslt(cx, cx.fcx.lltydescs[id])};
         } else {
-            bcx_tcx(cx).sess.span_bug(cx.sp,
-                                      "Unbound typaram in get_tydesc: " +
-                                      "orig_t = " +
-                                      ty_to_str(bcx_tcx(cx), orig_t) +
-                                      " ty_param = " +
-                                      istr::to_estr(std::uint::str(id)));
+            bcx_tcx(cx).sess.span_bug(
+                cx.sp,
+                "Unbound typaram in get_tydesc: " +
+                "orig_t = " +
+                istr::to_estr(ty_to_str(bcx_tcx(cx), orig_t)) +
+                " ty_param = " +
+                istr::to_estr(std::uint::str(id)));
         }
       }
       none. {/* fall through */ }
@@ -1129,7 +1130,7 @@ fn set_glue_inlining(cx: &@local_ctxt, f: ValueRef, t: ty::t) {
 // Generates the declaration for (but doesn't emit) a type descriptor.
 fn declare_tydesc(cx: &@local_ctxt, sp: &span, t: ty::t, ty_params: &[uint])
    -> @tydesc_info {
-    log "+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
+    log ~"+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
     let ccx = cx.ccx;
     let llsize;
     let llalign;
@@ -1163,7 +1164,7 @@ fn declare_tydesc(cx: &@local_ctxt, sp: &span, t: ty::t, ty_params: &[uint])
           mutable cmp_glue: none::<ValueRef>,
           mutable copy_glue: none::<ValueRef>,
           ty_params: ty_params};
-    log "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
+    log ~"--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
     ret info;
 }
 
@@ -2029,9 +2030,9 @@ fn iter_sequence(cx: @block_ctxt, v: ValueRef, t: ty::t, f: &val_and_ty_fn)
         ret iter_sequence_body(cx, v, et, f, true, true);
       }
       _ {
-        bcx_ccx(cx).sess.bug("unexpected type in \
-                                 trans::iter_sequence: "
-                                 + ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+        bcx_ccx(cx).sess.bug(
+            "unexpected type in trans::iter_sequence: "
+            + istr::to_estr(ty_to_str(cx.fcx.lcx.ccx.tcx, t)));
       }
     }
 }
@@ -2062,7 +2063,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue TAKE %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                         istr::to_estr(ty_to_str(bcx_tcx(cx), ti.ty))];
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
@@ -2072,7 +2073,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                                   default_helper(make_take_glue),
                                   ti.ty_params, ~"take");
                 log #fmt["--- lazily_emit_tydesc_glue TAKE %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                         istr::to_estr(ty_to_str(bcx_tcx(cx), ti.ty))];
               }
             }
         } else if field == abi::tydesc_field_drop_glue {
@@ -2080,7 +2081,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue DROP %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                         istr::to_estr(ty_to_str(bcx_tcx(cx), ti.ty))];
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
@@ -2090,7 +2091,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                                   default_helper(make_drop_glue),
                                   ti.ty_params, ~"drop");
                 log #fmt["--- lazily_emit_tydesc_glue DROP %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                         istr::to_estr(ty_to_str(bcx_tcx(cx), ti.ty))];
               }
             }
          } else if field == abi::tydesc_field_free_glue {
@@ -2098,7 +2099,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue FREE %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                         istr::to_estr(ty_to_str(bcx_tcx(cx), ti.ty))];
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
@@ -2108,7 +2109,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                                   default_helper(make_free_glue),
                                   ti.ty_params, ~"free");
                 log #fmt["--- lazily_emit_tydesc_glue FREE %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                         istr::to_estr(ty_to_str(bcx_tcx(cx), ti.ty))];
               }
             }
         } else if field == abi::tydesc_field_cmp_glue {
@@ -2116,10 +2117,10 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue CMP %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                         istr::to_estr(ty_to_str(bcx_tcx(cx), ti.ty))];
                 ti.cmp_glue = some(bcx_ccx(cx).upcalls.cmp_type);
                 log #fmt["--- lazily_emit_tydesc_glue CMP %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                         istr::to_estr(ty_to_str(bcx_tcx(cx), ti.ty))];
               }
             }
         } else if field == abi::tydesc_field_copy_glue {
@@ -2421,7 +2422,7 @@ fn copy_val_no_check(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
         }
     }
     ccx.sess.bug("unexpected type in trans::copy_val_no_check: " +
-                     ty_to_str(ccx.tcx, t));
+                 istr::to_estr(ty_to_str(ccx.tcx, t)));
 }
 
 
@@ -2468,7 +2469,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         }
     }
     bcx_ccx(cx).sess.bug("unexpected type in trans::move_val: " +
-                             ty_to_str(tcx, t));
+                         istr::to_estr(ty_to_str(tcx, t)));
 }
 
 fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
@@ -4627,9 +4628,8 @@ fn trans_fail_expr(cx: &@block_ctxt, sp_opt: &option::t<span>,
             ret trans_fail_value(bcx, sp_opt, elt);
         } else {
             bcx_ccx(cx).sess.span_bug(expr.span,
-                                      "fail called with unsupported \
-                                             type "
-                                          + ty_to_str(tcx, e_ty));
+                                      "fail called with unsupported type "
+                                      + istr::to_estr(ty_to_str(tcx, e_ty)));
         }
       }
       _ { ret trans_fail(bcx, sp_opt, ~"explicit failure"); }

@@ -123,7 +123,8 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
 }
 
 fn find_library_crate(sess: &session::session, ident: &ast::ident,
-                      metas: &[@ast::meta_item], library_search_paths: &[istr])
+                      metas: &[@ast::meta_item],
+                      library_search_paths: &[istr])
    -> option::t<{ident: istr, data: @[u8]}> {
 
     attr::require_unique_names(sess, metas);

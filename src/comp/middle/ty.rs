@@ -896,7 +896,8 @@ fn get_element_type(cx: &ctxt, ty: t, i: uint) -> t {
       ty_rec(flds) { ret flds[i].mt.ty; }
       ty_tup(ts) { ret ts[i]; }
       _ {
-        cx.sess.bug("get_element_type called on type " + ty_to_str(cx, ty) +
+        cx.sess.bug("get_element_type called on type " +
+                    istr::to_estr(ty_to_str(cx, ty)) +
                         " - expected a \
             tuple or record");
       }
@@ -1120,7 +1121,7 @@ fn type_kind(cx: &ctxt, ty: t) -> ast::kind {
 
 
       _ {
-        cx.sess.bug("missed case: " + ty_to_str(cx, ty));
+        cx.sess.bug("missed case: " + istr::to_estr(ty_to_str(cx, ty)));
       }
     }
 
@@ -1848,8 +1849,9 @@ fn occurs_check_fails(tcx: &ctxt, sp: &option::t<span>, vid: int, rt: t) ->
                 s,
                 "Type inference failed because I \
                  could not find a type\n that's both of the form "
-                + ty_to_str(tcx, ty::mk_var(tcx, vid)) +
-                " and of the form " + ty_to_str(tcx, rt) +
+                + istr::to_estr(ty_to_str(tcx, ty::mk_var(tcx, vid))) +
+                " and of the form " +
+                istr::to_estr(ty_to_str(tcx, rt)) +
                 ". Such a type would have to be infinitely \
                  large.");
           }
@@ -2541,7 +2543,9 @@ mod unify {
             let typespec;
             alt smallintmap::find::<t>(vb.types, i) {
               none. { typespec = ""; }
-              some(typ) { typespec = " =" + ty_to_str(tcx, typ); }
+              some(typ) {
+                typespec = " =" + istr::to_estr(ty_to_str(tcx, typ));
+              }
             }
             log_err #fmt["set %u:%s%s", i, typespec, sets];
             i += 1u;
@@ -2598,54 +2602,54 @@ mod unify {
     }
 }
 
-fn type_err_to_str(err: &ty::type_err) -> str {
+fn type_err_to_str(err: &ty::type_err) -> istr {
     alt err {
-      terr_mismatch. { ret "types differ"; }
+      terr_mismatch. { ret ~"types differ"; }
       terr_controlflow_mismatch. {
-        ret "returning function used where non-returning function" +
-                " was expected";
+        ret ~"returning function used where non-returning function" +
+                ~" was expected";
       }
-      terr_box_mutability. { ret "boxed values differ in mutability"; }
-      terr_vec_mutability. { ret "vectors differ in mutability"; }
+      terr_box_mutability. { ret ~"boxed values differ in mutability"; }
+      terr_vec_mutability. { ret ~"vectors differ in mutability"; }
       terr_tuple_size(e_sz, a_sz) {
-        ret istr::to_estr(~"expected a tuple with " +
-                          uint::to_str(e_sz, 10u) +
-                          ~" elements but found one with " +
-                          uint::to_str(a_sz, 10u) +
-                          ~" elements");
+        ret ~"expected a tuple with " +
+            uint::to_str(e_sz, 10u) +
+            ~" elements but found one with " +
+            uint::to_str(a_sz, 10u) +
+            ~" elements";
       }
       terr_record_size(e_sz, a_sz) {
-        ret istr::to_estr(~"expected a record with " +
-                          uint::to_str(e_sz, 10u) +
-                          ~" fields but found one with " +
-                          uint::to_str(a_sz, 10u) +
-                          ~" fields");
+        ret ~"expected a record with " +
+            uint::to_str(e_sz, 10u) +
+            ~" fields but found one with " +
+            uint::to_str(a_sz, 10u) +
+            ~" fields";
       }
-      terr_record_mutability. { ret "record elements differ in mutability"; }
+      terr_record_mutability. { ret ~"record elements differ in mutability"; }
       terr_record_fields(e_fld, a_fld) {
-        ret "expected a record with field '" + istr::to_estr(e_fld) +
-                "' but found one with field '" + istr::to_estr(a_fld) + "'";
+        ret ~"expected a record with field '" + e_fld +
+                ~"' but found one with field '" + a_fld + ~"'";
       }
-      terr_arg_count. { ret "incorrect number of function parameters"; }
-      terr_meth_count. { ret "incorrect number of object methods"; }
+      terr_arg_count. { ret ~"incorrect number of function parameters"; }
+      terr_meth_count. { ret ~"incorrect number of object methods"; }
       terr_obj_meths(e_meth, a_meth) {
-        ret "expected an obj with method '" + istr::to_estr(e_meth) +
-                "' but found one with method '" + istr::to_estr(a_meth) + "'";
+        ret ~"expected an obj with method '" + e_meth +
+                ~"' but found one with method '" + a_meth + ~"'";
       }
       terr_mode_mismatch(e_mode, a_mode) {
-        ret "expected argument mode " + mode_str_1(e_mode) + " but found " +
+        ret ~"expected argument mode " + mode_str_1(e_mode) + ~" but found " +
                 mode_str_1(a_mode);
       }
       terr_constr_len(e_len, a_len) {
-        ret istr::to_estr(~"Expected a type with " +
-                          uint::str(e_len) +
-                          ~" constraints, but found one with " +
-                          uint::str(a_len) + ~" constraints");
+        ret ~"Expected a type with " +
+            uint::str(e_len) +
+            ~" constraints, but found one with " +
+            uint::str(a_len) + ~" constraints";
       }
       terr_constr_mismatch(e_constr, a_constr) {
-        ret "Expected a type with constraint " + ty_constr_to_str(e_constr) +
-                " but found one with constraint " +
-                ty_constr_to_str(a_constr);
+        ret ~"Expected a type with constraint " + ty_constr_to_str(e_constr) +
+            ~" but found one with constraint " +
+            ty_constr_to_str(a_constr);
       }
     }
 }
@@ -2781,7 +2785,7 @@ fn ret_ty_of_fn_ty(cx: ctxt, a_ty: t) -> t {
       ty::ty_native_fn(_, _, ret_ty) { ret ret_ty; }
       _ {
         cx.sess.bug("ret_ty_of_fn_ty() called on non-function type: " +
-                        ty_to_str(cx, a_ty));
+                    istr::to_estr(ty_to_str(cx, a_ty)));
       }
     }
 }

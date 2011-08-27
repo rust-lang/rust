@@ -1119,8 +1119,9 @@ fn callee_modes(fcx: &fn_ctxt, callee: node_id) -> [ty::mode] {
       }
       _ {
         // Shouldn't happen; callee should be ty_fn.
-        fcx.ccx.tcx.sess.bug("non-fn callee type in callee_modes: " +
-                                 util::ppaux::ty_to_str(fcx.ccx.tcx, ty));
+        fcx.ccx.tcx.sess.bug(
+            "non-fn callee type in callee_modes: " +
+            istr::to_estr(util::ppaux::ty_to_str(fcx.ccx.tcx, ty)));
       }
     }
 }

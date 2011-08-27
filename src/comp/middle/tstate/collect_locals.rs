@@ -94,7 +94,7 @@ fn add_constraint(tcx: &ty::ctxt, c: sp_constr, next: uint, tbl: constr_map)
    to a bit number in the precondition/postcondition vectors */
 fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
               f_name: &fn_ident, id: node_id) {
-    let name = istr::from_estr(fn_ident_to_string(id, f_name));
+    let name = fn_ident_to_string(id, f_name);
     let res_map = @new_def_hash::<constraint>();
     let next: uint = 0u;
 
