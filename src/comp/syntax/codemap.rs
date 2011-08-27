@@ -99,16 +99,16 @@ fn span_to_str(sp: &span, cm: &codemap) -> str {
 
 fn emit_diagnostic(sp: &option::t<span>, msg: &str, kind: &str, color: u8,
                    cm: &codemap) {
-    let ss = "<input>:0:0:0:0";
+    let ss = "";
     let maybe_lines: option::t<@file_lines> = none;
     alt sp {
       some(ssp) {
-        ss = span_to_str(ssp, cm);
+        ss = span_to_str(ssp, cm) + " ";
         maybe_lines = some(span_to_lines(ssp, cm));
       }
       none. { }
     }
-    io::stdout().write_str(ss + " ");
+    io::stdout().write_str(ss);
     if term::color_supported() {
         term::fg(io::stdout().get_buf_writer(), color);
     }
