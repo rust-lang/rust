@@ -17,7 +17,7 @@ import codemap::span;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
-                     _body: option::t<str>) -> @ast::expr {
+                     _body: &option::t<istr>) -> @ast::expr {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -52,7 +52,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
         ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
     }
     fn make_new_str(cx: &ext_ctxt, sp: span, s: str) -> @ast::expr {
-        let lit = ast::lit_str(s, ast::sk_rc);
+        let lit = ast::lit_str(istr::from_estr(s), ast::sk_rc);
         ret make_new_lit(cx, sp, lit);
     }
     fn make_new_int(cx: &ext_ctxt, sp: span, i: int) -> @ast::expr {

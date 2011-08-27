@@ -5,7 +5,7 @@ import base::*;
 import syntax::ast;
 
 fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
-                     _body: option::t<str>) -> @ast::expr {
+                     _body: &option::t<istr>) -> @ast::expr {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -18,8 +18,8 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
     }
 
     ret make_new_lit(cx, sp,
-                     ast::lit_str(istr::to_estr(expr_to_ident(cx, args[0u],
-                                                "expected an ident")),
+                     ast::lit_str(expr_to_ident(cx, args[0u],
+                                                "expected an ident"),
                                   ast::sk_rc));
 
 }

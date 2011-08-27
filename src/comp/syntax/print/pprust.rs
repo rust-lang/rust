@@ -371,7 +371,11 @@ fn print_native_item(s: &ps, item: &@ast::native_item) {
                  decl.constraints);
         alt lname {
           none. { }
-          some(ss) { space(s.s); word_space(s, "="); print_string(s, ss); }
+          some(ss) {
+            space(s.s);
+            word_space(s, "=");
+            print_string(s, istr::to_estr(ss));
+          }
         }
         end(s); // end head-ibox
         word(s.s, ";");
@@ -426,9 +430,9 @@ fn print_item(s: &ps, item: &@ast::item) {
         }
         word_nbsp(s, "mod");
         word_nbsp(s, istr::to_estr(item.ident));
-        if !str::eq(nmod.native_name, istr::to_estr(item.ident)) {
+        if !istr::eq(nmod.native_name, item.ident) {
             word_space(s, "=");
-            print_string(s, nmod.native_name);
+            print_string(s, istr::to_estr(nmod.native_name));
             nbsp(s);
         }
         bopen(s);
@@ -1505,7 +1509,7 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
     alt lit.node {
       ast::lit_str(st, kind) {
         if kind == ast::sk_unique { word(s.s, "~"); }
-        print_string(s, st);
+        print_string(s, istr::to_estr(st));
       }
       ast::lit_char(ch) {
         word(s.s,
@@ -1514,14 +1518,14 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
       }
       ast::lit_int(val) { word(s.s, istr::to_estr(int::str(val))); }
       ast::lit_uint(val) { word(s.s, istr::to_estr(uint::str(val)) + "u"); }
-      ast::lit_float(fstr) { word(s.s, fstr); }
+      ast::lit_float(fstr) { word(s.s, istr::to_estr(fstr)); }
       ast::lit_mach_int(mach, val) {
         word(s.s, istr::to_estr(int::str(val as int)));
         word(s.s, ast_util::ty_mach_to_str(mach));
       }
       ast::lit_mach_float(mach, val) {
         // val is already a str
-        word(s.s, val);
+        word(s.s, istr::to_estr(val));
         word(s.s, ast_util::ty_mach_to_str(mach));
       }
       ast::lit_nil. { word(s.s, "()"); }

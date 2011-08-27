@@ -2523,16 +2523,16 @@ fn trans_crate_lit(cx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
         }
         ret C_integral(t, i as uint, s);
       }
-      ast::lit_float(fs) { ret C_float(istr::from_estr(fs)); }
+      ast::lit_float(fs) { ret C_float(fs); }
       ast::lit_mach_float(tm, s) {
         let t = T_float();
         alt tm { ast::ty_f32. { t = T_f32(); } ast::ty_f64. { t = T_f64(); } }
-        ret C_floating(istr::from_estr(s), t);
+        ret C_floating(s, t);
       }
       ast::lit_char(c) { ret C_integral(T_char(), c as uint, False); }
       ast::lit_bool(b) { ret C_bool(b); }
       ast::lit_nil. { ret C_nil(); }
-      ast::lit_str(s, ast::sk_rc.) { ret C_str(cx, istr::from_estr(s)); }
+      ast::lit_str(s, ast::sk_rc.) { ret C_str(cx, s); }
       ast::lit_str(s, ast::sk_unique.) {
         cx.sess.span_unimpl(lit.span, "unique string in this context");
       }
@@ -2541,7 +2541,9 @@ fn trans_crate_lit(cx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
 
 fn trans_lit(cx: &@block_ctxt, lit: &ast::lit) -> result {
     alt lit.node {
-      ast::lit_str(s, ast::sk_unique.) { ret trans_lit_istr(cx, s); }
+      ast::lit_str(s, ast::sk_unique.) {
+        ret trans_lit_istr(cx, istr::to_estr(s));
+      }
       _ { ret rslt(cx, trans_crate_lit(bcx_ccx(cx), lit)); }
     }
 }

@@ -8,10 +8,10 @@ import std::map::new_str_hash;
 import codemap;
 
 type syntax_expander =
-    fn(&ext_ctxt, span, @ast::expr, option::t<str>) -> @ast::expr;
+    fn(&ext_ctxt, span, @ast::expr, &option::t<istr>) -> @ast::expr;
 type macro_def = {ident: str, ext: syntax_extension};
 type macro_definer =
-    fn(&ext_ctxt, span, @ast::expr, option::t<str>) -> macro_def;
+    fn(&ext_ctxt, span, @ast::expr, &option::t<istr>) -> macro_def;
 
 tag syntax_extension {
     normal(syntax_expander);
@@ -100,7 +100,7 @@ fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: str) -> str {
     alt expr.node {
       ast::expr_lit(l) {
         alt l.node {
-          ast::lit_str(s, _) { ret s; }
+          ast::lit_str(s, _) { ret istr::to_estr(s); }
           _ { cx.span_fatal(l.span, error); }
         }
       }

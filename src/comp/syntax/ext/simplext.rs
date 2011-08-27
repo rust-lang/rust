@@ -688,7 +688,7 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], _repeat_after: bool,
 }
 
 fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                     _body: option::t<str>) -> base::macro_def {
+                     _body: &option::t<istr>) -> base::macro_def {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -768,7 +768,8 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
          ext: normal(ext)};
 
     fn generic_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                         _body: option::t<str>, clauses: [@clause]) -> @expr {
+                         _body: &option::t<istr>,
+                         clauses: [@clause]) -> @expr {
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) { ret transcribe(cx, bindings, c.body) }

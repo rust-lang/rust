@@ -324,12 +324,12 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
         for meta: @ast::meta_item in linkage_metas {
             if attr::get_meta_item_name(meta) == ~"name" {
                 alt attr::get_meta_item_value_str(meta) {
-                  some(v) { name = some(istr::from_estr(v)); }
+                  some(v) { name = some(v); }
                   none. { cmh_items += [meta]; }
                 }
             } else if attr::get_meta_item_name(meta) == ~"vers" {
                 alt attr::get_meta_item_value_str(meta) {
-                  some(v) { vers = some(istr::from_estr(v)); }
+                  some(v) { vers = some(v); }
                   none. { cmh_items += [meta]; }
                 }
             } else { cmh_items += [meta]; }

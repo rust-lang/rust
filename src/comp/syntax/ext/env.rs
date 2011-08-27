@@ -12,7 +12,7 @@ import base::*;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
-                     _body: option::t<str>) -> @ast::expr {
+                     _body: &option::t<istr>) -> @ast::expr {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -36,7 +36,7 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
 }
 
 fn make_new_str(cx: &ext_ctxt, sp: codemap::span, s: str) -> @ast::expr {
-    ret make_new_lit(cx, sp, ast::lit_str(s, ast::sk_rc));
+    ret make_new_lit(cx, sp, ast::lit_str(istr::from_estr(s), ast::sk_rc));
 }
 //
 // Local Variables:

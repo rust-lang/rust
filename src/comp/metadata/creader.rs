@@ -68,11 +68,14 @@ fn visit_item(e: env, i: &@ast::item) {
             ret;
         }
         let cstore = e.sess.get_cstore();
-        if !cstore::add_used_library(cstore, m.native_name) { ret; }
+        if !cstore::add_used_library(cstore,
+                                     istr::to_estr(m.native_name)) { ret; }
         for a: ast::attribute in
             attr::find_attrs_by_name(i.attrs, ~"link_args") {
             alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
-              some(linkarg) { cstore::add_used_link_args(cstore, linkarg); }
+              some(linkarg) {
+                cstore::add_used_link_args(cstore, istr::to_estr(linkarg));
+              }
               none. {/* fallthrough */ }
             }
         }
@@ -133,19 +136,21 @@ fn find_library_crate(sess: &session::session, ident: &ast::ident,
               some(i) {
                 alt attr::get_meta_item_value_str(i) {
                   some(n) { n }
-                  _ { istr::to_estr(ident) }
+                  _ { ident }
                 }
               }
-              none. { istr::to_estr(ident) }
+              none. { ident }
             }
         };
 
     let nn = default_native_lib_naming(sess, sess.get_opts().static);
     let x =
-        find_library_crate_aux(nn, crate_name, metas, library_search_paths);
+        find_library_crate_aux(nn, istr::to_estr(crate_name),
+                               metas, library_search_paths);
     if x != none || sess.get_opts().static { ret x; }
     let nn2 = default_native_lib_naming(sess, true);
-    ret find_library_crate_aux(nn2, crate_name, metas, library_search_paths);
+    ret find_library_crate_aux(nn2, istr::to_estr(crate_name),
+                               metas, library_search_paths);
 }
 
 fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,

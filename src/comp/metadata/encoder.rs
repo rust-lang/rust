@@ -465,7 +465,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
             ebml_w.writer.write(istr::bytes(name));
             ebml::end_tag(ebml_w);
             ebml::start_tag(ebml_w, tag_meta_item_value);
-            ebml_w.writer.write(str::bytes(value));
+            ebml_w.writer.write(istr::bytes(value));
             ebml::end_tag(ebml_w);
             ebml::end_tag(ebml_w);
           }

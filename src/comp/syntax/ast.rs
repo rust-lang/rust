@@ -237,7 +237,7 @@ tag blk_sort {
 type mac = spanned<mac_>;
 
 tag mac_ {
-    mac_invoc(path, @expr, option::t<str>);
+    mac_invoc(path, @expr, option::t<istr>);
     mac_embed_type(@ty);
     mac_embed_block(blk);
     mac_ellipsis;
@@ -246,13 +246,13 @@ tag mac_ {
 type lit = spanned<lit_>;
 
 tag lit_ {
-    lit_str(str, seq_kind);
+    lit_str(istr, seq_kind);
     lit_char(char);
     lit_int(int);
     lit_uint(uint);
     lit_mach_int(ty_mach, int);
-    lit_float(str);
-    lit_mach_float(ty_mach, str);
+    lit_float(istr);
+    lit_mach_float(ty_mach, istr);
     lit_nil;
     lit_bool(bool);
 }
@@ -421,7 +421,7 @@ tag native_abi {
 }
 
 type native_mod =
-    {native_name: str,
+    {native_name: istr,
      abi: native_abi,
      view_items: [@view_item],
      items: [@native_item]};
@@ -494,7 +494,7 @@ type native_item =
 
 tag native_item_ {
     native_item_ty;
-    native_item_fn(option::t<str>, fn_decl, [ty_param]);
+    native_item_fn(option::t<istr>, fn_decl, [ty_param]);
 }
 
 //

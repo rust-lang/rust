@@ -2,6 +2,7 @@
 
 import std::option;
 import std::vec;
+import std::istr;
 import syntax::ast;
 import syntax::ast_util;
 import syntax::ast_util::*;
@@ -249,7 +250,8 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
     log #fmt["encoding %s", ast_util::path_name_i(path)];
 
     let name_lit: ast::lit =
-        nospan(ast::lit_str(ast_util::path_name_i(path), ast::sk_rc));
+        nospan(ast::lit_str(
+            istr::from_estr(ast_util::path_name_i(path)), ast::sk_rc));
     let name_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_lit(@name_lit),

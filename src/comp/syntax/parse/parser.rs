@@ -696,7 +696,7 @@ fn parse_lit(p: &parser) -> ast::lit {
           token::LIT_UINT(u) { p.bump(); lit = ast::lit_uint(u); }
           token::LIT_FLOAT(s) {
             p.bump();
-            lit = ast::lit_float(p.get_str(s));
+            lit = ast::lit_float(istr::from_estr(p.get_str(s)));
           }
           token::LIT_MACH_INT(tm, i) {
             p.bump();
@@ -704,12 +704,12 @@ fn parse_lit(p: &parser) -> ast::lit {
           }
           token::LIT_MACH_FLOAT(tm, s) {
             p.bump();
-            lit = ast::lit_mach_float(tm, p.get_str(s));
+            lit = ast::lit_mach_float(tm, istr::from_estr(p.get_str(s)));
           }
           token::LIT_CHAR(c) { p.bump(); lit = ast::lit_char(c); }
           token::LIT_STR(s) {
             p.bump();
-            lit = ast::lit_str(p.get_str(s), ast::sk_rc);
+            lit = ast::lit_str(istr::from_estr(p.get_str(s)), ast::sk_rc);
           }
           token::LPAREN. {
             p.bump();
@@ -896,7 +896,8 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
             let sp = p.get_span();
             p.bump();
             let lit =
-                @{node: ast::lit_str(p.get_str(s), ast::sk_unique),
+                @{node: ast::lit_str(istr::from_estr(p.get_str(s)),
+                                     ast::sk_unique),
                   span: sp};
             ex = ast::expr_lit(lit);
           }
@@ -1971,7 +1972,10 @@ fn parse_item_native_fn(p: &parser, attrs: &[ast::attribute]) ->
     let t = parse_fn_header(p);
     let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
     let link_name = none;
-    if p.peek() == token::EQ { p.bump(); link_name = some(parse_str(p)); }
+    if p.peek() == token::EQ {
+        p.bump();
+        link_name = some(istr::from_estr(parse_str(p)));
+    }
     let hi = p.get_hi_pos();
     expect(p, token::SEMI);
     ret @{ident: t.ident,
@@ -2006,7 +2010,7 @@ fn parse_native_mod_items(p: &parser, native_name: &str,
         initial_attrs = [];
         items += [parse_native_item(p, attrs)];
     }
-    ret {native_name: native_name,
+    ret {native_name: istr::from_estr(native_name),
          abi: abi,
          view_items: view_items,
          items: items};

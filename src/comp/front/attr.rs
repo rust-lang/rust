@@ -81,7 +81,7 @@ fn get_meta_item_name(meta: &@ast::meta_item) -> ast::ident {
 
 // Gets the string value if the meta_item is a meta_name_value variant
 // containing a string, otherwise none
-fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t<str> {
+fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t<istr> {
     alt meta.node {
       ast::meta_name_value(_, v) {
         alt v.node {
@@ -196,7 +196,7 @@ fn span<@T>(item: &T) -> ast::spanned<T> {
 }
 
 fn mk_name_value_item_str(name: ast::ident, value: str) -> @ast::meta_item {
-    let value_lit = span(ast::lit_str(value, ast::sk_rc));
+    let value_lit = span(ast::lit_str(istr::from_estr(value), ast::sk_rc));
     ret mk_name_value_item(name, value_lit);
 }
 
