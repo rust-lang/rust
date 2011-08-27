@@ -21,7 +21,7 @@ export parse_ty_data;
 // data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
-type str_def = fn(str) -> ast::def_id;
+type str_def = fn(&istr) -> ast::def_id;
 
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
@@ -344,8 +344,10 @@ fn parse_mt(st: @pstate, sd: str_def) -> ty::mt {
 }
 
 fn parse_def(st: @pstate, sd: str_def) -> ast::def_id {
-    let def = "";
-    while peek(st) as char != '|' { def += str::unsafe_from_byte(next(st)); }
+    let def = ~"";
+    while peek(st) as char != '|' {
+        def += istr::unsafe_from_byte(next(st));
+    }
     st.pos = st.pos + 1u;
     ret sd(def);
 }

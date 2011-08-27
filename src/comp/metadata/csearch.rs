@@ -11,7 +11,7 @@ export lookup_defs;
 export get_tag_variants;
 export get_type;
 
-fn get_symbol(cstore: &cstore::cstore, def: ast::def_id) -> str {
+fn get_symbol(cstore: &cstore::cstore, def: ast::def_id) -> istr {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     ret decoder::get_symbol(cdata, def.node);
 }

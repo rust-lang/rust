@@ -3290,7 +3290,7 @@ fn trans_external_path(cx: &@block_ctxt, did: &ast::def_id,
     let lcx = cx.fcx.lcx;
     let name = csearch::get_symbol(lcx.ccx.sess.get_cstore(), did);
     ret get_extern_const(lcx.ccx.externs, lcx.ccx.llmod,
-                         istr::from_estr(name),
+                         name,
                          type_of_ty_param_kinds_and_ty(lcx, cx.sp, tpt));
 }
 
@@ -3331,7 +3331,7 @@ fn lookup_discriminant(lcx: &@local_ctxt, vid: &ast::def_id) -> ValueRef {
         // It's an external discriminant that we haven't seen yet.
         assert (vid.crate != ast::local_crate);
         let sym = csearch::get_symbol(lcx.ccx.sess.get_cstore(), vid);
-        let gvar = istr::as_buf(istr::from_estr(sym), { |buf|
+        let gvar = istr::as_buf(sym, { |buf|
             llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), buf)
         });
         llvm::LLVMSetLinkage(gvar,
@@ -6350,8 +6350,9 @@ fn create_crate_map(ccx: &@crate_ctxt) -> ValueRef {
     let i = 1;
     let cstore = ccx.sess.get_cstore();
     while cstore::have_crate_data(cstore, i) {
-        let nm = "_rust_crate_map_" + cstore::get_crate_data(cstore, i).name;
-        let cr = istr::as_buf(istr::from_estr(nm), { |buf|
+        let nm = ~"_rust_crate_map_" +
+            cstore::get_crate_data(cstore, i).name;
+        let cr = istr::as_buf(nm, { |buf|
             llvm::LLVMAddGlobal(ccx.llmod, T_int(), buf)
         });
         subcrates += [p2i(cr)];
@@ -6379,7 +6380,7 @@ fn create_crate_map(ccx: &@crate_ctxt) -> ValueRef {
 fn write_metadata(cx: &@crate_ctxt, crate: &@ast::crate) {
     if !cx.sess.get_opts().library { ret; }
     let llmeta = C_postr(
-        istr::from_estr(metadata::encoder::encode_metadata(cx, crate)));
+        metadata::encoder::encode_metadata(cx, crate));
     let llconst = trans_common::C_struct([llmeta]);
     let llglobal = istr::as_buf(~"rust_metadata", { |buf|
         llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)

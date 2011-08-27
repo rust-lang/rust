@@ -35,7 +35,7 @@ fn encode_name(ebml_w: &ebml::writer, name: &istr) {
 
 fn encode_def_id(ebml_w: &ebml::writer, id: &def_id) {
     ebml::start_tag(ebml_w, tag_def_id);
-    ebml_w.writer.write(str::bytes(def_to_str(id)));
+    ebml_w.writer.write(istr::bytes(def_to_str(id)));
     ebml::end_tag(ebml_w);
 }
 
@@ -177,7 +177,9 @@ fn encode_inlineness(ebml_w: &ebml::writer, c: u8) {
     ebml::end_tag(ebml_w);
 }
 
-fn def_to_str(did: &def_id) -> str { ret #fmt["%d:%d", did.crate, did.node]; }
+fn def_to_str(did: &def_id) -> istr {
+    ret istr::from_estr(#fmt["%d:%d", did.crate, did.node]);
+}
 
 fn encode_type_param_kinds(ebml_w: &ebml::writer, tps: &[ty_param]) {
     ebml::start_tag(ebml_w, tag_items_data_item_ty_param_kinds);
@@ -196,7 +198,7 @@ fn encode_type_param_kinds(ebml_w: &ebml::writer, tps: &[ty_param]) {
 
 fn encode_variant_id(ebml_w: &ebml::writer, vid: &def_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_variant);
-    ebml_w.writer.write(str::bytes(def_to_str(vid)));
+    ebml_w.writer.write(istr::bytes(def_to_str(vid)));
     ebml::end_tag(ebml_w);
 }
 
@@ -226,7 +228,7 @@ fn encode_discriminant(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
 
 fn encode_tag_id(ebml_w: &ebml::writer, id: &def_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_tag_id);
-    ebml_w.writer.write(str::bytes(def_to_str(id)));
+    ebml_w.writer.write(istr::bytes(def_to_str(id)));
     ebml::end_tag(ebml_w);
 }
 
@@ -550,9 +552,9 @@ fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> [attribute] {
 
 fn encode_crate_deps(ebml_w: &ebml::writer, cstore: &cstore::cstore) {
 
-    fn get_ordered_names(cstore: &cstore::cstore) -> [str] {
+    fn get_ordered_names(cstore: &cstore::cstore) -> [istr] {
         type hashkv = @{key: crate_num, val: cstore::crate_metadata};
-        type numname = {crate: crate_num, ident: str};
+        type numname = {crate: crate_num, ident: istr};
 
         // Pull the cnums and names out of cstore
         let pairs: [mutable numname] = [mutable];
@@ -574,7 +576,7 @@ fn encode_crate_deps(ebml_w: &ebml::writer, cstore: &cstore::cstore) {
         }
 
         // Return just the names
-        fn name(kv: &numname) -> str { kv.ident }
+        fn name(kv: &numname) -> istr { kv.ident }
         // mutable -> immutable hack for vec::map
         let immpairs = vec::slice(pairs, 0u, vec::len(pairs));
         ret vec::map(name, immpairs);
@@ -585,15 +587,15 @@ fn encode_crate_deps(ebml_w: &ebml::writer, cstore: &cstore::cstore) {
     // FIXME: This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     ebml::start_tag(ebml_w, tag_crate_deps);
-    for cname: str in get_ordered_names(cstore) {
+    for cname: istr in get_ordered_names(cstore) {
         ebml::start_tag(ebml_w, tag_crate_dep);
-        ebml_w.writer.write(str::bytes(cname));
+        ebml_w.writer.write(istr::bytes(cname));
         ebml::end_tag(ebml_w);
     }
     ebml::end_tag(ebml_w);
 }
 
-fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
+fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> istr {
 
     let abbrevs = map::mk_hashmap(ty::hash_ty, ty::eq_ty);
     let ecx = @{ccx: cx, type_abbrevs: abbrevs};
@@ -625,7 +627,7 @@ fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
     // remaining % 4 bytes.
 
     buf_w.write([0u8, 0u8, 0u8, 0u8]);
-    ret istr::to_estr(string_w.get_str());
+    ret string_w.get_str();
 }
 
 // Get the encoded string for a type

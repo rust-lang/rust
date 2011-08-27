@@ -354,9 +354,9 @@ fn get_res_dtor(ccx: &@crate_ctxt, sp: &span, did: &ast::def_id,
                           [{mode: ty::mo_alias(false), ty: inner_t}],
                           ty::mk_nil(ccx.tcx), params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
-                                istr::from_estr(csearch::get_symbol(
+                                csearch::get_symbol(
                                     ccx.sess.get_cstore(),
-                                    did)),
+                                    did),
                                 T_fn_pair(*ccx, f_t));
 }
 

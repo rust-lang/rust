@@ -21,7 +21,7 @@ export enc_ty;
 type ctxt =
      // Def -> str Callback:
      // The type context.
-     {ds: fn(&def_id) -> str, tcx: ty::ctxt, abbrevs: abbrev_ctxt};
+     {ds: fn(&def_id) -> istr, tcx: ty::ctxt, abbrevs: abbrev_ctxt};
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
@@ -117,7 +117,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       ty::ty_istr. { w.write_char('S'); }
       ty::ty_tag(def, tys) {
         w.write_str(~"t[");
-        w.write_str(istr::from_estr(cx.ds(def)));
+        w.write_str(cx.ds(def));
         w.write_char('|');
         for t: ty::t in tys { enc_ty(w, cx, t); }
         w.write_char(']');
@@ -166,7 +166,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       }
       ty::ty_res(def, ty, tps) {
         w.write_str(~"r[");
-        w.write_str(istr::from_estr(cx.ds(def)));
+        w.write_str(cx.ds(def));
         w.write_char('|');
         enc_ty(w, cx, ty);
         for t: ty::t in tps { enc_ty(w, cx, t); }
@@ -178,7 +178,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       }
       ty::ty_native(def) {
         w.write_char('E');
-        w.write_str(istr::from_estr(cx.ds(def)));
+        w.write_str(cx.ds(def));
         w.write_char('|');
       }
       ty::ty_param(id, k) {
@@ -237,7 +237,7 @@ fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: ty::t,
 fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
     w.write_str(istr::from_estr(path_to_str(c.node.path)));
     w.write_char('(');
-    w.write_str(istr::from_estr(cx.ds(c.node.id)));
+    w.write_str(cx.ds(c.node.id));
     w.write_char('|');
     let semi = false;
     for a: @constr_arg in c.node.args {
@@ -256,7 +256,7 @@ fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
 fn enc_ty_constr(w: &io::writer, cx: &@ctxt, c: &@ty::type_constr) {
     w.write_str(istr::from_estr(path_to_str(c.node.path)));
     w.write_char('(');
-    w.write_str(istr::from_estr(cx.ds(c.node.id)));
+    w.write_str(cx.ds(c.node.id));
     w.write_char('|');
     let semi = false;
     for a: @ty::ty_constr_arg in c.node.args {

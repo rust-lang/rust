@@ -491,9 +491,10 @@ fn main(args: [str]) {
     } else if n_inputs > 1u {
         sess.fatal("Multiple input filenames provided.");
     }
-    let ifile = istr::to_estr(match.free[0]);
+    let ifile = match.free[0];
     let saved_out_filename: str = "";
-    let cfg = build_configuration(sess, binary, ifile);
+    let cfg = build_configuration(sess, binary,
+                                  istr::to_estr(ifile));
     let pretty =
         option::map::<istr,
                       pp_mode>(bind parse_pretty(sess, _),
@@ -501,7 +502,7 @@ fn main(args: [str]) {
                                                     ~"normal"));
     alt pretty {
       some::<pp_mode>(ppm) {
-        pretty_print_input(sess, cfg, ifile, ppm);
+        pretty_print_input(sess, cfg, istr::to_estr(ifile), ppm);
         ret;
       }
       none::<pp_mode>. {/* continue */ }
@@ -519,8 +520,8 @@ fn main(args: [str]) {
         // have to make up a name
         // We want to toss everything after the final '.'
         let parts =
-            if !input_is_stdin(ifile) {
-                str::split(ifile, '.' as u8)
+            if !input_is_stdin(istr::to_estr(ifile)) {
+                istr::to_estrs(istr::split(ifile, '.' as u8))
             } else { ["default", "rs"] };
         vec::pop(parts);
         saved_out_filename = str::connect(parts, ".");
@@ -536,7 +537,7 @@ fn main(args: [str]) {
               }
             };
         let ofile = saved_out_filename + "." + suffix;
-        compile_input(sess, cfg, ifile, ofile);
+        compile_input(sess, cfg, istr::to_estr(ifile), ofile);
       }
       some(ofile) {
         let ofile = istr::to_estr(ofile);
@@ -544,7 +545,7 @@ fn main(args: [str]) {
         saved_out_filename = ofile;
         let temp_filename =
             if !stop_after_codegen { ofile + ".o" } else { ofile };
-        compile_input(sess, cfg, ifile, temp_filename);
+        compile_input(sess, cfg, istr::to_estr(ifile), temp_filename);
       }
     }
 
@@ -596,12 +597,12 @@ fn main(args: [str]) {
     }
 
     let cstore = sess.get_cstore();
-    for cratepath: str in cstore::get_used_crate_files(cstore) {
-        if str::ends_with(cratepath, ".rlib") {
-            gcc_args += [istr::from_estr(cratepath)];
+    for cratepath: istr in cstore::get_used_crate_files(cstore) {
+        if istr::ends_with(cratepath, ~".rlib") {
+            gcc_args += [cratepath];
             cont;
         }
-        let cratepath = istr::from_estr(cratepath);
+        let cratepath = cratepath;
         let dir = fs::dirname(cratepath);
         if dir != ~"" { gcc_args += [~"-L" + dir]; }
         let libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
@@ -609,10 +610,10 @@ fn main(args: [str]) {
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for arg: str in ula { gcc_args += [istr::from_estr(arg)]; }
+    for arg: istr in ula { gcc_args += [arg]; }
 
     let used_libs = cstore::get_used_libraries(cstore);
-    for l: str in used_libs { gcc_args += [~"-l" + istr::from_estr(l)]; }
+    for l: istr in used_libs { gcc_args += [~"-l" + l]; }
 
     if sopts.library {
         gcc_args += [istr::from_estr(lib_cmd)];
