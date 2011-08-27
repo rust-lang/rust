@@ -296,9 +296,9 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
         let data = m[0].data;
         alt data.guard {
           some(e) {
-            let guard_cx = new_scope_block_ctxt(bcx, "guard");
-            let next_cx = new_sub_block_ctxt(bcx, "next");
-            let else_cx = new_sub_block_ctxt(bcx, "else");
+            let guard_cx = new_scope_block_ctxt(bcx, ~"guard");
+            let next_cx = new_sub_block_ctxt(bcx, ~"next");
+            let else_cx = new_sub_block_ctxt(bcx, ~"else");
             bld::Br(bcx, guard_cx.llbb);
             // Temporarily set bindings. They'll be rewritten to PHI nodes for
             // the actual arm block.
@@ -413,7 +413,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
     let else_cx =
         alt kind {
           no_branch. | single. { bcx }
-          _ { new_sub_block_ctxt(bcx, "match_else") }
+          _ { new_sub_block_ctxt(bcx, ~"match_else") }
         };
     let sw =
         if kind == switch {
@@ -422,7 +422,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
 
      // Compile subtrees for each option
     for opt: opt in opts {
-        let opt_cx = new_sub_block_ctxt(bcx, "match_case");
+        let opt_cx = new_sub_block_ctxt(bcx, ~"match_case");
         alt kind {
           single. { bld::Br(bcx, opt_cx.llbb); }
           switch. {
@@ -436,7 +436,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
             let t = ty::node_id_to_type(ccx.tcx, pat_id);
             let eq =
                 trans::trans_compare(bcx, ast::eq, test_val, t, r.val, t);
-            bcx = new_sub_block_ctxt(bcx, "next");
+            bcx = new_sub_block_ctxt(bcx, ~"next");
             bld::CondBr(eq.bcx, eq.val, opt_cx.llbb, bcx.llbb);
           }
           _ { }
@@ -503,7 +503,7 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
     }
 
     for a: ast::arm in arms {
-        let body = new_scope_block_ctxt(cx, "case_body");
+        let body = new_scope_block_ctxt(cx, ~"case_body");
         let id_map = ast_util::pat_id_map(a.pats[0]);
         bodies += [body];
         for p: @ast::pat in a.pats {
@@ -520,8 +520,8 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
     fn mk_fail(cx: &@block_ctxt, sp: &span,
                done: @mutable option::t<BasicBlockRef>) -> BasicBlockRef {
         alt *done { some(bb) { ret bb; } _ { } }
-        let fail_cx = new_sub_block_ctxt(cx, "case_fallthrough");
-        trans::trans_fail(fail_cx, some(sp), "non-exhaustive match failure");;
+        let fail_cx = new_sub_block_ctxt(cx, ~"case_fallthrough");
+        trans::trans_fail(fail_cx, some(sp), ~"non-exhaustive match failure");
         *done = some(fail_cx.llbb);
         ret fail_cx.llbb;
     }

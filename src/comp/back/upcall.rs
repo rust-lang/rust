@@ -59,7 +59,7 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
         for t: TypeRef in tys { arg_tys += [t]; }
         let fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod,
-                                 istr::to_estr(~"upcall_" + name), fn_ty);
+                                 ~"upcall_" + name, fn_ty);
     }
     fn decl_with_taskptr(taskptr_type: TypeRef, llmod: ModuleRef,
                          name: &istr,

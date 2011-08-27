@@ -148,8 +148,8 @@ fn get_len_and_data(bcx: &@block_ctxt, orig_v: ValueRef, unit_ty: ty::t)
                                C_int(0)]);
     let on_heap =
         bld::ICmp(bcx, lib::llvm::LLVMIntEQ, stack_len, C_int(0));
-    let on_heap_cx = new_sub_block_ctxt(bcx, "on_heap");
-    let next_cx = new_sub_block_ctxt(bcx, "next");
+    let on_heap_cx = new_sub_block_ctxt(bcx, ~"on_heap");
+    let next_cx = new_sub_block_ctxt(bcx, ~"next");
     bld::CondBr(bcx, on_heap, on_heap_cx.llbb, next_cx.llbb);
     let heap_stub =
         bld::PointerCast(on_heap_cx, v, T_ptr(T_ivec_heap(llunitty)));
@@ -165,8 +165,8 @@ fn get_len_and_data(bcx: &@block_ctxt, orig_v: ValueRef, unit_ty: ty::t)
     let heap_ptr_is_null =
         bld::ICmp(on_heap_cx, lib::llvm::LLVMIntEQ, heap_ptr,
                               C_null(T_ptr(llheapptrty)));
-    let zero_len_cx = new_sub_block_ctxt(bcx, "zero_len");
-    let nonzero_len_cx = new_sub_block_ctxt(bcx, "nonzero_len");
+    let zero_len_cx = new_sub_block_ctxt(bcx, ~"zero_len");
+    let nonzero_len_cx = new_sub_block_ctxt(bcx, ~"nonzero_len");
     bld::CondBr(on_heap_cx, heap_ptr_is_null, zero_len_cx.llbb,
                             nonzero_len_cx.llbb);
     // Technically this context is unnecessary, but it makes this function
@@ -220,11 +220,11 @@ fn reserve_space(cx: &@block_ctxt, llunitty: TypeRef, v: ValueRef,
 
     let maybe_on_heap =
         bld::ICmp(cx, lib::llvm::LLVMIntEQ, stack_len, C_int(0));
-    let maybe_on_heap_cx = new_sub_block_ctxt(cx, "maybe_on_heap");
-    let on_stack_cx = new_sub_block_ctxt(cx, "on_stack");
+    let maybe_on_heap_cx = new_sub_block_ctxt(cx, ~"maybe_on_heap");
+    let on_stack_cx = new_sub_block_ctxt(cx, ~"on_stack");
     bld::CondBr(cx, maybe_on_heap, maybe_on_heap_cx.llbb,
                     on_stack_cx.llbb);
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     // We're possibly on the heap, unless the vector is zero-length.
 
     let stub_p = [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)];
@@ -235,7 +235,7 @@ fn reserve_space(cx: &@block_ctxt, llunitty: TypeRef, v: ValueRef,
     let on_heap =
         bld::ICmp(maybe_on_heap_cx, lib::llvm::LLVMIntNE, heap_ptr,
                                     C_null(val_ty(heap_ptr)));
-    let on_heap_cx = new_sub_block_ctxt(cx, "on_heap");
+    let on_heap_cx = new_sub_block_ctxt(cx, ~"on_heap");
     bld::CondBr(maybe_on_heap_cx, on_heap, on_heap_cx.llbb,
                                   on_stack_cx.llbb);
     // We're definitely on the heap. Check whether we need to resize.
@@ -250,8 +250,8 @@ fn reserve_space(cx: &@block_ctxt, llunitty: TypeRef, v: ValueRef,
         bld::UDiv(on_heap_cx, heap_len, llsize_of(llunitty));
     let heap_no_resize_needed =
         bld::ICmp(on_heap_cx, lib::llvm::LLVMIntULE, new_heap_len, alen);
-    let heap_no_resize_cx = new_sub_block_ctxt(cx, "heap_no_resize");
-    let heap_resize_cx = new_sub_block_ctxt(cx, "heap_resize");
+    let heap_no_resize_cx = new_sub_block_ctxt(cx, ~"heap_no_resize");
+    let heap_resize_cx = new_sub_block_ctxt(cx, ~"heap_resize");
     bld::CondBr(on_heap_cx, heap_no_resize_needed, heap_no_resize_cx.llbb,
                             heap_resize_cx.llbb);
     // Case (1): We're on the heap and don't need to resize.
@@ -293,8 +293,8 @@ fn reserve_space(cx: &@block_ctxt, llunitty: TypeRef, v: ValueRef,
                                alen);
     let stack_len_unscaled =
         bld::UDiv(on_stack_cx, stack_len, llsize_of(llunitty));
-    let stack_no_spill_cx = new_sub_block_ctxt(cx, "stack_no_spill");
-    let stack_spill_cx = new_sub_block_ctxt(cx, "stack_spill");
+    let stack_no_spill_cx = new_sub_block_ctxt(cx, ~"stack_no_spill");
+    let stack_spill_cx = new_sub_block_ctxt(cx, ~"stack_spill");
     bld::CondBr(on_stack_cx, stack_no_spill_needed,
                              stack_no_spill_cx.llbb, stack_spill_cx.llbb);
     // Case (3): We're on the stack and don't need to spill.
@@ -412,14 +412,14 @@ fn trans_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
     bld::Store(bcx, lhs_data, dest_ptr);
     let src_ptr = alloca(bcx, T_ptr(llunitty));
     bld::Store(bcx, rhs_data, src_ptr);
-    let copy_loop_header_cx = new_sub_block_ctxt(bcx, "copy_loop_header");
+    let copy_loop_header_cx = new_sub_block_ctxt(bcx, ~"copy_loop_header");
     bld::Br(bcx, copy_loop_header_cx.llbb);
     let copy_dest_ptr = bld::Load(copy_loop_header_cx, dest_ptr);
     let not_yet_at_end =
         bld::ICmp(copy_loop_header_cx, lib::llvm::LLVMIntNE,
                                        copy_dest_ptr, lhs_end);
-    let copy_loop_body_cx = new_sub_block_ctxt(bcx, "copy_loop_body");
-    let next_cx = new_sub_block_ctxt(bcx, "next");
+    let copy_loop_body_cx = new_sub_block_ctxt(bcx, ~"copy_loop_body");
+    let next_cx = new_sub_block_ctxt(bcx, ~"next");
     bld::CondBr(copy_loop_header_cx, not_yet_at_end,
                                      copy_loop_body_cx.llbb,
                                      next_cx.llbb);
@@ -547,8 +547,8 @@ fn trans_add(cx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
 
     let len_is_zero =
         bld::ICmp(bcx, lib::llvm::LLVMIntEQ, lllen, C_int(0));
-    let zero_len_cx = new_sub_block_ctxt(bcx, "zero_len");
-    let nonzero_len_cx = new_sub_block_ctxt(bcx, "nonzero_len");
+    let zero_len_cx = new_sub_block_ctxt(bcx, ~"zero_len");
+    let nonzero_len_cx = new_sub_block_ctxt(bcx, ~"nonzero_len");
     bld::CondBr(bcx, len_is_zero, zero_len_cx.llbb, nonzero_len_cx.llbb);
     // Case (1): Length is zero.
 
@@ -571,14 +571,14 @@ fn trans_add(cx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     bld::Store(zero_len_cx, C_null(T_ptr(llheappartty)),
                             bld::InBoundsGEP(zero_len_cx, stub_ptr_zero,
                                                           stub_p));
-    let next_cx = new_sub_block_ctxt(bcx, "next");
+    let next_cx = new_sub_block_ctxt(bcx, ~"next");
     bld::Br(zero_len_cx, next_cx.llbb);
     // Determine whether we need to spill to the heap.
 
     let on_stack =
         bld::ICmp(nonzero_len_cx, lib::llvm::LLVMIntULE, lllen, llalen);
-    let stack_cx = new_sub_block_ctxt(bcx, "stack");
-    let heap_cx = new_sub_block_ctxt(bcx, "heap");
+    let stack_cx = new_sub_block_ctxt(bcx, ~"stack");
+    let heap_cx = new_sub_block_ctxt(bcx, ~"heap");
     bld::CondBr(nonzero_len_cx, on_stack, stack_cx.llbb, heap_cx.llbb);
     // Case (2): Copy onto stack.
 
@@ -590,7 +590,7 @@ fn trans_add(cx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
         bld::InBoundsGEP(stack_cx, llvecptr,
                                    [C_int(0), C_uint(abi::ivec_elt_elems),
                                     C_int(0)]);
-    let copy_cx = new_sub_block_ctxt(bcx, "copy");
+    let copy_cx = new_sub_block_ctxt(bcx, ~"copy");
     bld::Br(stack_cx, copy_cx.llbb);
     // Case (3): Allocate on heap and copy there.
 
@@ -644,7 +644,7 @@ fn trans_add(cx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     bld::Store(copy_cx, lhs_data, lhs_ptr_ptr);
     let rhs_ptr_ptr = alloca(copy_cx, T_ptr(llunitty));
     bld::Store(copy_cx, rhs_data, rhs_ptr_ptr);
-    let lhs_copy_cx = new_sub_block_ctxt(bcx, "lhs_copy");
+    let lhs_copy_cx = new_sub_block_ctxt(bcx, ~"lhs_copy");
     bld::Br(copy_cx, lhs_copy_cx.llbb);
     // Copy in elements from the LHS.
 
@@ -652,8 +652,8 @@ fn trans_add(cx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let not_at_end_lhs =
         bld::ICmp(lhs_copy_cx, lib::llvm::LLVMIntNE, lhs_ptr,
                                lhs_end_ptr);
-    let lhs_do_copy_cx = new_sub_block_ctxt(bcx, "lhs_do_copy");
-    let rhs_copy_cx = new_sub_block_ctxt(bcx, "rhs_copy");
+    let lhs_do_copy_cx = new_sub_block_ctxt(bcx, ~"lhs_do_copy");
+    let rhs_copy_cx = new_sub_block_ctxt(bcx, ~"rhs_copy");
     bld::CondBr(lhs_copy_cx, not_at_end_lhs, lhs_do_copy_cx.llbb,
                              rhs_copy_cx.llbb);
     let dest_ptr_lhs_copy = bld::Load(lhs_do_copy_cx, dest_ptr_ptr);
@@ -680,7 +680,7 @@ fn trans_add(cx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let not_at_end_rhs =
         bld::ICmp(rhs_copy_cx, lib::llvm::LLVMIntNE, rhs_ptr,
                                rhs_end_ptr);
-    let rhs_do_copy_cx = new_sub_block_ctxt(bcx, "rhs_do_copy");
+    let rhs_do_copy_cx = new_sub_block_ctxt(bcx, ~"rhs_do_copy");
     bld::CondBr(rhs_copy_cx, not_at_end_rhs, rhs_do_copy_cx.llbb,
                              next_cx.llbb);
     let dest_ptr_rhs_copy = bld::Load(rhs_do_copy_cx, dest_ptr_ptr);
@@ -726,8 +726,8 @@ fn duplicate_heap_part(cx: &@block_ctxt, orig_vptr: ValueRef,
     let stack_len = bld::Load(cx, stack_len_ptr);
     let stack_len_is_zero =
         bld::ICmp(cx, lib::llvm::LLVMIntEQ, stack_len, C_int(0));
-    let maybe_on_heap_cx = new_sub_block_ctxt(cx, "maybe_on_heap");
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let maybe_on_heap_cx = new_sub_block_ctxt(cx, ~"maybe_on_heap");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     bld::CondBr(cx, stack_len_is_zero, maybe_on_heap_cx.llbb,
                     next_cx.llbb);
 
@@ -743,7 +743,7 @@ fn duplicate_heap_part(cx: &@block_ctxt, orig_vptr: ValueRef,
     let heap_ptr_is_nonnull =
         bld::ICmp(maybe_on_heap_cx, lib::llvm::LLVMIntNE, heap_ptr,
                                     C_null(T_ptr(llheappartty)));
-    let on_heap_cx = new_sub_block_ctxt(cx, "on_heap");
+    let on_heap_cx = new_sub_block_ctxt(cx, ~"on_heap");
     bld::CondBr(maybe_on_heap_cx, heap_ptr_is_nonnull, on_heap_cx.llbb,
                                   next_cx.llbb);
 

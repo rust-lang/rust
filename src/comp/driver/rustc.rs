@@ -166,7 +166,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
          bind kind::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
     let llmod = time(time_passes, "translation",
-                     bind trans::trans_crate(sess, crate, ty_cx, output,
+                     bind trans::trans_crate(sess, crate, ty_cx,
+                                             istr::from_estr(output),
                                              ast_map, mut_map));
     time(time_passes, "LLVM passes",
          bind link::write::run_passes(sess, llmod, istr::from_estr(output)));
@@ -482,7 +483,6 @@ fn main(args: [str]) {
             sess.fatal("No input files allowed with --glue.");
         }
         let out = option::from_maybe::<istr>(~"glue.bc", output_file);
-        let out = istr::to_estr(out);
         middle::trans::make_common_glue(sess, out);
         ret;
     }

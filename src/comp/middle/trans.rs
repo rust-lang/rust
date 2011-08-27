@@ -313,7 +313,7 @@ fn sanitize(s: &istr) -> istr {
 }
 
 
-fn log_fn_time(ccx: &@crate_ctxt, name: str, start: &time::timeval,
+fn log_fn_time(ccx: &@crate_ctxt, name: &istr, start: &time::timeval,
                end: &time::timeval) {
     let elapsed =
         1000 * (end.sec - start.sec as int) +
@@ -322,20 +322,21 @@ fn log_fn_time(ccx: &@crate_ctxt, name: str, start: &time::timeval,
 }
 
 
-fn decl_fn(llmod: ModuleRef, name: &str, cc: uint, llty: TypeRef) ->
+fn decl_fn(llmod: ModuleRef, name: &istr, cc: uint, llty: TypeRef) ->
    ValueRef {
-    let llfn: ValueRef = istr::as_buf(istr::from_estr(name), { |buf|
+    let llfn: ValueRef = istr::as_buf(name, { |buf|
         llvm::LLVMAddFunction(llmod, buf, llty)
     });
     llvm::LLVMSetFunctionCallConv(llfn, cc);
     ret llfn;
 }
 
-fn decl_cdecl_fn(llmod: ModuleRef, name: &str, llty: TypeRef) -> ValueRef {
+fn decl_cdecl_fn(llmod: ModuleRef, name: &istr, llty: TypeRef) -> ValueRef {
     ret decl_fn(llmod, name, lib::llvm::LLVMCCallConv, llty);
 }
 
-fn decl_fastcall_fn(llmod: ModuleRef, name: &str, llty: TypeRef) -> ValueRef {
+fn decl_fastcall_fn(llmod: ModuleRef, name: &istr,
+                    llty: TypeRef) -> ValueRef {
     let llfn = decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
     let _: () = istr::as_buf(~"rust", { |buf|
         llvm::LLVMSetGC(llfn, buf)
@@ -346,7 +347,7 @@ fn decl_fastcall_fn(llmod: ModuleRef, name: &str, llty: TypeRef) -> ValueRef {
 
 // Only use this if you are going to actually define the function. It's
 // not valid to simply declare a function as internal.
-fn decl_internal_fastcall_fn(llmod: ModuleRef, name: &str, llty: TypeRef) ->
+fn decl_internal_fastcall_fn(llmod: ModuleRef, name: &istr, llty: TypeRef) ->
    ValueRef {
     let llfn = decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
     llvm::LLVMSetLinkage(llfn,
@@ -357,34 +358,34 @@ fn decl_internal_fastcall_fn(llmod: ModuleRef, name: &str, llty: TypeRef) ->
     ret llfn;
 }
 
-fn decl_glue(llmod: ModuleRef, cx: &crate_ctxt, s: &str) -> ValueRef {
+fn decl_glue(llmod: ModuleRef, cx: &crate_ctxt, s: &istr) -> ValueRef {
     ret decl_cdecl_fn(llmod, s, T_fn([T_taskptr(cx)], T_void()));
 }
 
 fn get_extern_fn(externs: &hashmap<istr, ValueRef>, llmod: ModuleRef,
-                 name: &str, cc: uint, ty: TypeRef) -> ValueRef {
-    if externs.contains_key(istr::from_estr(name)) {
-        ret externs.get(istr::from_estr(name));
+                 name: &istr, cc: uint, ty: TypeRef) -> ValueRef {
+    if externs.contains_key(name) {
+        ret externs.get(name);
     }
     let f = decl_fn(llmod, name, cc, ty);
-    externs.insert(istr::from_estr(name), f);
+    externs.insert(name, f);
     ret f;
 }
 
 fn get_extern_const(externs: &hashmap<istr, ValueRef>, llmod: ModuleRef,
-                    name: &str, ty: TypeRef) -> ValueRef {
-    if externs.contains_key(istr::from_estr(name)) {
-        ret externs.get(istr::from_estr(name));
+                    name: &istr, ty: TypeRef) -> ValueRef {
+    if externs.contains_key(name) {
+        ret externs.get(name);
     }
-    let c = istr::as_buf(istr::from_estr(name), { |buf|
+    let c = istr::as_buf(name, { |buf|
         llvm::LLVMAddGlobal(llmod, ty, buf)
     });
-    externs.insert(istr::from_estr(name), c);
+    externs.insert(name, c);
     ret c;
 }
 
 fn get_simple_extern_fn(externs: &hashmap<istr, ValueRef>, llmod: ModuleRef,
-                        name: &str, n_args: int) -> ValueRef {
+                        name: &istr, n_args: int) -> ValueRef {
     let inputs = std::vec::init_elt::<TypeRef>(T_int(), n_args as uint);
     let output = T_int();
     let t = T_fn(inputs, output);
@@ -392,7 +393,7 @@ fn get_simple_extern_fn(externs: &hashmap<istr, ValueRef>, llmod: ModuleRef,
 }
 
 fn trans_native_call(cx: &@block_ctxt, externs: &hashmap<istr, ValueRef>,
-                     llmod: ModuleRef, name: &str, args: &[ValueRef]) ->
+                     llmod: ModuleRef, name: &istr, args: &[ValueRef]) ->
    ValueRef {
     let n: int = std::vec::len::<ValueRef>(args) as int;
     let llnative: ValueRef = get_simple_extern_fn(externs, llmod, name, n);
@@ -1172,14 +1173,14 @@ tag glue_helper {
 }
 
 fn declare_generic_glue(cx: &@local_ctxt, t: ty::t, llfnty: TypeRef,
-                        name: &str) -> ValueRef {
-    let name = istr::from_estr(name);
+                        name: &istr) -> ValueRef {
+    let name = name;
     let fn_nm;
     if cx.ccx.sess.get_opts().debuginfo {
         fn_nm = mangle_internal_name_by_type_only(cx.ccx, t, ~"glue_" + name);
         fn_nm = sanitize(fn_nm);
     } else { fn_nm = mangle_internal_name_by_seq(cx.ccx, ~"glue_" + name); }
-    let llfn = decl_cdecl_fn(cx.ccx.llmod, istr::to_estr(fn_nm), llfnty);
+    let llfn = decl_cdecl_fn(cx.ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(cx, llfn, t);
     ret llfn;
 }
@@ -1238,7 +1239,7 @@ fn make_generic_glue_inner(cx: &@local_ctxt, sp: &span, t: ty::t,
 
 fn make_generic_glue(cx: &@local_ctxt, sp: &span, t: ty::t, llfn: ValueRef,
                      helper: &glue_helper, ty_params: &[uint],
-                     name: &str) -> ValueRef {
+                     name: &istr) -> ValueRef {
     if !cx.ccx.sess.get_opts().stats {
         ret make_generic_glue_inner(cx, sp, t, llfn, helper, ty_params);
     }
@@ -1246,8 +1247,8 @@ fn make_generic_glue(cx: &@local_ctxt, sp: &span, t: ty::t, llfn: ValueRef,
     let start = time::get_time();
     let llval = make_generic_glue_inner(cx, sp, t, llfn, helper, ty_params);
     let end = time::get_time();
-    log_fn_time(cx.ccx, "glue " + name + " " +
-                istr::to_estr(ty_to_short_str(cx.ccx.tcx, t)),
+    log_fn_time(cx.ccx, ~"glue " + name + ~" " +
+                ty_to_short_str(cx.ccx.tcx, t),
                 start, end);
     ret llval;
 }
@@ -1342,8 +1343,8 @@ fn incr_refcnt_of_boxed(cx: &@block_ctxt, box_ptr: ValueRef) -> result {
     let rc_ptr =
         bld::GEP(cx, box_ptr, [C_int(0), C_int(abi::box_rc_field_refcnt)]);
     let rc = bld::Load(cx, rc_ptr);
-    let rc_adj_cx = new_sub_block_ctxt(cx, "rc++");
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let rc_adj_cx = new_sub_block_ctxt(cx, ~"rc++");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     let const_test =
         bld::ICmp(cx, lib::llvm::LLVMIntEQ, C_int(abi::const_refcount as int),
                       rc);
@@ -1431,8 +1432,8 @@ fn maybe_free_ivec_heap_part(cx: &@block_ctxt, v0: ValueRef, unit_ty: ty::t)
         bld::Load(cx, bld::InBoundsGEP(cx, v0,
                                            [C_int(0),
                                             C_uint(abi::ivec_elt_len)]));
-    let maybe_on_heap_cx = new_sub_block_ctxt(cx, "maybe_on_heap");
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let maybe_on_heap_cx = new_sub_block_ctxt(cx, ~"maybe_on_heap");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     let maybe_on_heap =
         bld::ICmp(cx, lib::llvm::LLVMIntEQ, stack_len, C_int(0));
     bld::CondBr(cx, maybe_on_heap, maybe_on_heap_cx.llbb, next_cx.llbb);
@@ -1501,8 +1502,8 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
     let ccx = bcx_ccx(cx);
     let inner_t_s = ty::substitute_type_params(ccx.tcx, tps, inner_t);
     let tup_ty = ty::mk_tup(ccx.tcx, [ty::mk_int(ccx.tcx), inner_t_s]);
-    let drop_cx = new_sub_block_ctxt(cx, "drop res");
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let drop_cx = new_sub_block_ctxt(cx, ~"drop res");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
 
     let drop_flag = GEP_tup_like(cx, tup_ty, rs, [0, 0]);
     cx = drop_flag.bcx;
@@ -1546,10 +1547,10 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
 fn decr_refcnt_maybe_free(cx: &@block_ctxt, box_ptr_alias: ValueRef,
                           full_alias: ValueRef, t: ty::t) -> result {
     let ccx = bcx_ccx(cx);
-    let load_rc_cx = new_sub_block_ctxt(cx, "load rc");
-    let rc_adj_cx = new_sub_block_ctxt(cx, "rc--");
-    let free_cx = new_sub_block_ctxt(cx, "free");
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let load_rc_cx = new_sub_block_ctxt(cx, ~"load rc");
+    let rc_adj_cx = new_sub_block_ctxt(cx, ~"rc--");
+    let free_cx = new_sub_block_ctxt(cx, ~"free");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     let box_ptr = bld::Load(cx, box_ptr_alias);
     let llbox_ty = T_opaque_obj_ptr(*ccx);
     box_ptr = bld::PointerCast(cx, box_ptr, llbox_ty);
@@ -1581,9 +1582,9 @@ fn decr_refcnt_maybe_free(cx: &@block_ctxt, box_ptr_alias: ValueRef,
 
 
 // Structural comparison: a rather involved form of glue.
-fn maybe_name_value(cx: &@crate_ctxt, v: ValueRef, s: &str) {
+fn maybe_name_value(cx: &@crate_ctxt, v: ValueRef, s: &istr) {
     if cx.sess.get_opts().save_temps {
-        let _: () = istr::as_buf(istr::from_estr(s), { |buf|
+        let _: () = istr::as_buf(s, { |buf|
             llvm::LLVMSetValueName(v, buf)
         });
     }
@@ -1618,17 +1619,17 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
         }
       }
       ty::ty_type. {
-        trans_fail(cx, none, "attempt to compare values of type type");
+        trans_fail(cx, none, ~"attempt to compare values of type type");
 
         // This is a bit lame, because we return a dummy block to the
         // caller that's actually unreachable, but I don't think it
         // matters.
-        ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"), C_bool(false));
+        ret rslt(new_sub_block_ctxt(cx, ~"after_fail_dummy"), C_bool(false));
       }
       ty::ty_native(_) {
         trans_fail(cx, none::<span>,
-                   "attempt to compare values of type native");
-        ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"), C_bool(false));
+                   ~"attempt to compare values of type native");
+        ret rslt(new_sub_block_ctxt(cx, ~"after_fail_dummy"), C_bool(false));
       }
       _ {
         // Should never get here, because t is scalar.
@@ -1685,17 +1686,17 @@ fn compare_scalar_values(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef,
         } else { r = bld::ICmp(cx, op, lhs, rhs); }
         ret r;
     }
-    let last_cx = new_sub_block_ctxt(cx, "last");
-    let eq_cx = new_sub_block_ctxt(cx, "eq");
+    let last_cx = new_sub_block_ctxt(cx, ~"last");
+    let eq_cx = new_sub_block_ctxt(cx, ~"eq");
     let eq_result = generic_cmp(eq_cx, nt, eq_cmp, lhs, rhs);
     bld::Br(eq_cx, last_cx.llbb);
-    let lt_cx = new_sub_block_ctxt(cx, "lt");
+    let lt_cx = new_sub_block_ctxt(cx, ~"lt");
     let lt_result = generic_cmp(lt_cx, nt, lt_cmp, lhs, rhs);
     bld::Br(lt_cx, last_cx.llbb);
-    let le_cx = new_sub_block_ctxt(cx, "le");
+    let le_cx = new_sub_block_ctxt(cx, ~"le");
     let le_result = generic_cmp(le_cx, nt, le_cmp, lhs, rhs);
     bld::Br(le_cx, last_cx.llbb);
-    let unreach_cx = new_sub_block_ctxt(cx, "unreach");
+    let unreach_cx = new_sub_block_ctxt(cx, ~"unreach");
     bld::Unreachable(unreach_cx);
     let llswitch = bld::Switch(cx, llop, unreach_cx.llbb, 3u);
     llvm::LLVMAddCase(llswitch, C_u8(abi::cmp_glue_op_eq), eq_cx.llbb);
@@ -1745,8 +1746,8 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: ty::t,
         let box_ptr = bld::Load(cx, box_cell);
         let tnil = ty::mk_nil(bcx_tcx(cx));
         let tbox = ty::mk_imm_box(bcx_tcx(cx), tnil);
-        let inner_cx = new_sub_block_ctxt(cx, "iter box");
-        let next_cx = new_sub_block_ctxt(cx, "next");
+        let inner_cx = new_sub_block_ctxt(cx, ~"iter box");
+        let next_cx = new_sub_block_ctxt(cx, ~"next");
         let null_test = bld::IsNull(cx, box_ptr);
         bld::CondBr(cx, null_test, next_cx.llbb, inner_cx.llbb);
         let r = f(inner_cx, box_cell, tbox);
@@ -1782,14 +1783,15 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: ty::t,
         bld::Store(bcx, a_elem, dest_elem_ptr);
 
         // Now perform the iteration.
-        let loop_header_cx = new_sub_block_ctxt(bcx, "iter_ivec_loop_header");
+        let loop_header_cx = new_sub_block_ctxt(
+            bcx, ~"iter_ivec_loop_header");
         bld::Br(bcx, loop_header_cx.llbb);
         let dest_elem = bld::Load(loop_header_cx, dest_elem_ptr);
         let not_yet_at_end =
             bld::ICmp(loop_header_cx, lib::llvm::LLVMIntULT, dest_elem,
                                       a_end);
-        let loop_body_cx = new_sub_block_ctxt(bcx, "iter_ivec_loop_body");
-        let next_cx = new_sub_block_ctxt(bcx, "iter_ivec_next");
+        let loop_body_cx = new_sub_block_ctxt(bcx, ~"iter_ivec_loop_body");
+        let next_cx = new_sub_block_ctxt(bcx, ~"iter_ivec_next");
         bld::CondBr(loop_header_cx, not_yet_at_end, loop_body_cx.llbb,
                                     next_cx.llbb);
 
@@ -1881,16 +1883,16 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: ty::t,
         // comparison know not to proceed when the discriminants differ.
         let bcx = cx;
         bcx = f(bcx, lldiscrim_a_ptr, ty::mk_int(bcx_tcx(cx))).bcx;
-        let unr_cx = new_sub_block_ctxt(bcx, "tag-iter-unr");
+        let unr_cx = new_sub_block_ctxt(bcx, ~"tag-iter-unr");
         bld::Unreachable(unr_cx);
         let llswitch = bld::Switch(bcx, lldiscrim_a, unr_cx.llbb, n_variants);
-        let next_cx = new_sub_block_ctxt(bcx, "tag-iter-next");
+        let next_cx = new_sub_block_ctxt(bcx, ~"tag-iter-next");
         let i = 0u;
         for variant: ty::variant_info in variants {
             let variant_cx =
                 new_sub_block_ctxt(bcx,
-                                   istr::to_estr(~"tag-iter-variant-" +
-                                                 uint::to_str(i, 10u)));
+                                   ~"tag-iter-variant-" +
+                                                 uint::to_str(i, 10u));
             llvm::LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
             variant_cx =
                 iter_variant(variant_cx, llunion_a_ptr, variant, tps, tid,
@@ -1936,9 +1938,9 @@ fn iter_sequence_raw(cx: @block_ctxt, dst: ValueRef,
     let dst_int: ValueRef = vp2i(bcx, dst);
     let src_int: ValueRef = vp2i(bcx, src);
     let src_lim_int: ValueRef = vp2i(bcx, src_lim);
-    let cond_cx = new_scope_block_ctxt(cx, "sequence-iter cond");
-    let body_cx = new_scope_block_ctxt(cx, "sequence-iter body");
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let cond_cx = new_scope_block_ctxt(cx, ~"sequence-iter cond");
+    let body_cx = new_scope_block_ctxt(cx, ~"sequence-iter body");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     bld::Br(bcx, cond_cx.llbb);
     let dst_curr: ValueRef =
         bld::Phi(cond_cx, T_int(), [dst_int], [bcx.llbb]);
@@ -2064,11 +2066,11 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
-                                         "take");
+                                         ~"take");
                 ti.take_glue = some::<ValueRef>(glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   default_helper(make_take_glue),
-                                  ti.ty_params, "take");
+                                  ti.ty_params, ~"take");
                 log #fmt["--- lazily_emit_tydesc_glue TAKE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
               }
@@ -2082,11 +2084,11 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
-                                         "drop");
+                                         ~"drop");
                 ti.drop_glue = some::<ValueRef>(glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   default_helper(make_drop_glue),
-                                  ti.ty_params, "drop");
+                                  ti.ty_params, ~"drop");
                 log #fmt["--- lazily_emit_tydesc_glue DROP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
               }
@@ -2100,11 +2102,11 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
-                                         "free");
+                                         ~"free");
                 ti.free_glue = some::<ValueRef>(glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   default_helper(make_free_glue),
-                                  ti.ty_params, "free");
+                                  ti.ty_params, ~"free");
                 log #fmt["--- lazily_emit_tydesc_glue FREE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
               }
@@ -2127,11 +2129,11 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_copy_glue_fn(*lcx.ccx),
-                                         "copy");
+                                         ~"copy");
                 ti.copy_glue = some(glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   copy_helper(make_copy_glue),
-                                  ti.ty_params, "copy");
+                                  ti.ty_params, ~"copy");
               }
             }
         }
@@ -2373,8 +2375,8 @@ fn copy_val(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
             src: ValueRef, t: ty::t) -> @block_ctxt {
     if type_is_structural_or_param(bcx_ccx(cx).tcx, t) &&
        action == DROP_EXISTING {
-        let do_copy_cx = new_sub_block_ctxt(cx, "do_copy");
-        let next_cx = new_sub_block_ctxt(cx, "next");
+        let do_copy_cx = new_sub_block_ctxt(cx, ~"do_copy");
+        let next_cx = new_sub_block_ctxt(cx, ~"next");
         let self_assigning =
             bld::ICmp(cx, lib::llvm::LLVMIntNE,
                           bld::PointerCast(cx, dst, val_ty(src)), src);
@@ -2480,11 +2482,11 @@ fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
     ret move_val(cx, action, dst, src, t);
 }
 
-fn trans_lit_istr(cx: &@block_ctxt, s: str) -> result {
+fn trans_lit_istr(cx: &@block_ctxt, s: &istr) -> result {
     let vec_ty = ty::mk_vec(bcx_tcx(cx),
                             {ty: ty::mk_mach(bcx_tcx(cx), ast::ty_u8),
                              mut: ast::imm});
-    let strlen = str::byte_len(s);
+    let strlen = istr::byte_len(s);
     let veclen = strlen + 1u; // +1 for \0
     let alloc_res = trans_ivec::alloc_with_heap(cx, vec_ty, veclen);
 
@@ -2492,7 +2494,7 @@ fn trans_lit_istr(cx: &@block_ctxt, s: str) -> result {
     let llvecptr = alloc_res.llptr;
     let llfirsteltptr = alloc_res.llfirsteltptr;
 
-    let llcstr = C_cstr(bcx_ccx(cx), istr::from_estr(s));
+    let llcstr = C_cstr(bcx_ccx(cx), s);
 
     // FIXME: We need to avoid this memmove
     bcx = call_memmove(bcx, llfirsteltptr, llcstr, C_uint(veclen)).bcx;
@@ -2542,7 +2544,7 @@ fn trans_crate_lit(cx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
 fn trans_lit(cx: &@block_ctxt, lit: &ast::lit) -> result {
     alt lit.node {
       ast::lit_str(s, ast::sk_unique.) {
-        ret trans_lit_istr(cx, istr::to_estr(s));
+        ret trans_lit_istr(cx, s);
       }
       _ { ret rslt(cx, trans_crate_lit(bcx_ccx(cx), lit)); }
     }
@@ -2771,10 +2773,10 @@ fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
       ast::and. {
         // Lazy-eval and
         let lhs_res = trans_expr(cx, a);
-        let rhs_cx = new_scope_block_ctxt(cx, "rhs");
+        let rhs_cx = new_scope_block_ctxt(cx, ~"rhs");
         let rhs_res = trans_expr(rhs_cx, b);
 
-        let lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
+        let lhs_false_cx = new_scope_block_ctxt(cx, ~"lhs false");
         let lhs_false_res = rslt(lhs_false_cx, C_bool(false));
 
         // The following line ensures that any cleanups for rhs
@@ -2789,9 +2791,9 @@ fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
       ast::or. {
         // Lazy-eval or
         let lhs_res = trans_expr(cx, a);
-        let rhs_cx = new_scope_block_ctxt(cx, "rhs");
+        let rhs_cx = new_scope_block_ctxt(cx, ~"rhs");
         let rhs_res = trans_expr(rhs_cx, b);
-        let lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
+        let lhs_true_cx = new_scope_block_ctxt(cx, ~"lhs true");
         let lhs_true_res = rslt(lhs_true_cx, C_bool(true));
 
         // see the and case for an explanation
@@ -2837,14 +2839,14 @@ fn join_results(parent_cx: &@block_ctxt, t: TypeRef, ins: &[result]) ->
     }
     // We have >1 incoming edges. Make a join block and br+phi them into it.
 
-    let join_cx = new_sub_block_ctxt(parent_cx, "join");
+    let join_cx = new_sub_block_ctxt(parent_cx, ~"join");
     for r: result in live { bld::Br(r.bcx, join_cx.llbb); }
     let phi = bld::Phi(join_cx, t, vals, bbs);
     ret rslt(join_cx, phi);
 }
 
 fn join_branches(parent_cx: &@block_ctxt, ins: &[result]) -> @block_ctxt {
-    let out = new_sub_block_ctxt(parent_cx, "join");
+    let out = new_sub_block_ctxt(parent_cx, ~"join");
     for r: result in ins {
         if !is_terminated(r.bcx) { bld::Br(r.bcx, out.llbb); }
     }
@@ -2866,9 +2868,9 @@ fn trans_if(cx: &@block_ctxt, cond: &@ast::expr, thn: &ast::blk,
         } else { ret cond_res; }
     }
 
-    let then_cx = new_scope_block_ctxt(cx, "then");
+    let then_cx = new_scope_block_ctxt(cx, ~"then");
     let then_res = trans_block(then_cx, thn, output);
-    let else_cx = new_scope_block_ctxt(cx, "else");
+    let else_cx = new_scope_block_ctxt(cx, ~"else");
     // Synthesize a block here to act as the else block
     // containing an if expression. Needed in order for the
     // else scope to behave like a normal block scope. A tad
@@ -2900,11 +2902,11 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     // obviously a bug.
     fn inner(cx: &@block_ctxt, local: @ast::local, curr: ValueRef, t: ty::t,
              body: &ast::blk, outer_next_cx: @block_ctxt) -> result {
-        let next_cx = new_sub_block_ctxt(cx, "next");
+        let next_cx = new_sub_block_ctxt(cx, ~"next");
         let scope_cx =
             new_loop_scope_block_ctxt(cx,
                                       option::some::<@block_ctxt>(next_cx),
-                                      outer_next_cx, "for loop scope");
+                                      outer_next_cx, ~"for loop scope");
         bld::Br(cx, scope_cx.llbb);
         let local_res = alloc_local(scope_cx, local);
         let bcx = copy_val(local_res.bcx, INIT, local_res.val, curr, t);
@@ -2920,7 +2922,7 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
         }
         ret rslt(next_cx, C_nil());
     }
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     let seq_ty = ty::expr_ty(bcx_tcx(cx), seq);
     let seq_res = trans_expr(cx, seq);
     let it =
@@ -3184,7 +3186,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
                            ty::mk_iter_body_fn(lcx.ccx.tcx, decl_ty), 0u);
     let lliterbody: ValueRef =
         decl_internal_fastcall_fn(lcx.ccx.llmod,
-                                  istr::to_estr(s), iter_body_llty);
+                                  s, iter_body_llty);
     let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id);
     fcx.iterbodyty = cx.fcx.iterbodyty;
 
@@ -3220,11 +3222,11 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
 
 fn trans_while(cx: &@block_ctxt, cond: &@ast::expr, body: &ast::blk) ->
    result {
-    let next_cx = new_sub_block_ctxt(cx, "while next");
+    let next_cx = new_sub_block_ctxt(cx, ~"while next");
     let cond_cx = new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>,
-                                            next_cx, "while cond");
+                                            next_cx, ~"while cond");
     let body_cx =
-        new_scope_block_ctxt(cond_cx, "while loop body");
+        new_scope_block_ctxt(cond_cx, ~"while loop body");
     let body_res = trans_block(body_cx, body, return);
     let cond_res = trans_expr(cond_cx, cond);
     bld::Br(body_res.bcx, cond_cx.llbb);
@@ -3236,10 +3238,10 @@ fn trans_while(cx: &@block_ctxt, cond: &@ast::expr, body: &ast::blk) ->
 
 fn trans_do_while(cx: &@block_ctxt, body: &ast::blk, cond: &@ast::expr) ->
    result {
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     let body_cx =
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
-                                  "do-while loop body");
+                                  ~"do-while loop body");
     let body_res = trans_block(body_cx, body, return);
     if is_terminated(body_res.bcx) {
         // This is kind of ridiculous, but no permutations
@@ -3287,7 +3289,8 @@ fn trans_external_path(cx: &@block_ctxt, did: &ast::def_id,
                        tpt: &ty::ty_param_kinds_and_ty) -> ValueRef {
     let lcx = cx.fcx.lcx;
     let name = csearch::get_symbol(lcx.ccx.sess.get_cstore(), did);
-    ret get_extern_const(lcx.ccx.externs, lcx.ccx.llmod, name,
+    ret get_extern_const(lcx.ccx.externs, lcx.ccx.llmod,
+                         istr::from_estr(name),
                          type_of_ty_param_kinds_and_ty(lcx, cx.sp, tpt));
 }
 
@@ -3483,9 +3486,9 @@ fn trans_index(cx: &@block_ctxt, sp: &span, base: &@ast::expr,
     let unit_ty = node_id_type(bcx_ccx(cx), id);
     let unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
-    maybe_name_value(bcx_ccx(cx), unit_sz.val, "unit_sz");
+    maybe_name_value(bcx_ccx(cx), unit_sz.val, ~"unit_sz");
     let scaled_ix = bld::Mul(bcx, ix_val, unit_sz.val);
-    maybe_name_value(bcx_ccx(cx), scaled_ix, "scaled_ix");
+    maybe_name_value(bcx_ccx(cx), scaled_ix, ~"scaled_ix");
     let interior_len_and_data;
     if is_interior {
         let rslt = ivec::get_len_and_data(bcx, v, unit_ty);
@@ -3501,12 +3504,12 @@ fn trans_index(cx: &@block_ctxt, sp: &span, base: &@ast::expr,
       }
     }
     let bounds_check = bld::ICmp(bcx, lib::llvm::LLVMIntULT, scaled_ix, lim);
-    let fail_cx = new_sub_block_ctxt(bcx, "fail");
-    let next_cx = new_sub_block_ctxt(bcx, "next");
+    let fail_cx = new_sub_block_ctxt(bcx, ~"fail");
+    let next_cx = new_sub_block_ctxt(bcx, ~"next");
     bld::CondBr(bcx, bounds_check, next_cx.llbb, fail_cx.llbb);
     // fail: bad bounds check.
 
-    trans_fail(fail_cx, some::<span>(sp), "bounds check");
+    trans_fail(fail_cx, some::<span>(sp), ~"bounds check");
     let body;
     alt interior_len_and_data {
       some(lad) { body = lad.data; }
@@ -3726,7 +3729,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
         get_pair_fn_ty(type_of(cx.ccx, sp, incoming_fty));
     let llthunk: ValueRef =
         decl_internal_fastcall_fn(cx.ccx.llmod,
-                                  istr::to_estr(s), llthunk_ty);
+                                  s, llthunk_ty);
 
     // Create a new function context and block context for the thunk, and hold
     // onto a pointer to the first block in the function for later use.
@@ -4125,7 +4128,7 @@ fn trans_call(in_cx: &@block_ctxt, f: &@ast::expr,
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
-    let cx = new_scope_block_ctxt(in_cx, "call");
+    let cx = new_scope_block_ctxt(in_cx, ~"call");
     bld::Br(in_cx, cx.llbb);
     let f_res = trans_lval_gen(cx, f);
     let fn_ty: ty::t;
@@ -4209,7 +4212,7 @@ fn trans_call(in_cx: &@block_ctxt, f: &@ast::expr,
             revoke_clean(bcx, v)
         }
         bcx = trans_block_cleanups(bcx, cx);
-        let next_cx = new_sub_block_ctxt(in_cx, "next");
+        let next_cx = new_sub_block_ctxt(in_cx, ~"next");
         bld::Br(bcx, next_cx.llbb);
         bcx = next_cx;
     }
@@ -4324,7 +4327,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         let s = mangle_internal_name_by_path(ccx,
                                              sub_cx.path);
         let llfn = decl_internal_fastcall_fn(ccx.llmod,
-                                             istr::to_estr(s), llfnty);
+                                             s, llfnty);
 
         let fn_res =
             trans_closure(some(cx), some(llfnty), sub_cx, e.span, f, llfn,
@@ -4333,7 +4336,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
             alt fn_res {
               some(fn_pair) { fn_pair }
               none. {
-                {fn_pair: create_fn_pair(ccx, istr::to_estr(s),
+                {fn_pair: create_fn_pair(ccx, s,
                                          llfnty, llfn, false),
                  bcx: cx}
               }
@@ -4341,8 +4344,8 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         ret rslt(fn_pair.bcx, fn_pair.fn_pair);
       }
       ast::expr_block(blk) {
-        let sub_cx = new_scope_block_ctxt(cx, "block-expr body");
-        let next_cx = new_sub_block_ctxt(cx, "next");
+        let sub_cx = new_scope_block_ctxt(cx, ~"block-expr body");
+        let next_cx = new_sub_block_ctxt(cx, ~"next");
         let sub =
             with_out_method(bind trans_block(sub_cx, blk, _), cx, e.id,
                             output);
@@ -4450,9 +4453,9 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
       ast::expr_mac(_) { ret bcx_ccx(cx).sess.bug("unexpanded macro"); }
       ast::expr_fail(expr) { ret trans_fail_expr(cx, some(e.span), expr); }
       ast::expr_log(lvl, a) { ret trans_log(lvl, cx, a); }
-      ast::expr_assert(a) { ret trans_check_expr(cx, a, "Assertion"); }
+      ast::expr_assert(a) { ret trans_check_expr(cx, a, ~"Assertion"); }
       ast::expr_check(ast::checked., a) {
-        ret trans_check_expr(cx, a, "Predicate");
+        ret trans_check_expr(cx, a, ~"Predicate");
       }
       ast::expr_check(ast::unchecked., a) {
         /* Claims are turned on and off by a global variable
@@ -4462,12 +4465,12 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
            otherwise. */
         let c =
             get_extern_const(bcx_ccx(cx).externs, bcx_ccx(cx).llmod,
-                             "check_claims", T_bool());
+                             ~"check_claims", T_bool());
         let cond = bld::Load(cx, c);
 
-        let then_cx = new_scope_block_ctxt(cx, "claim_then");
-        let check_res = trans_check_expr(then_cx, a, "Claim");
-        let else_cx = new_scope_block_ctxt(cx, "else");
+        let then_cx = new_scope_block_ctxt(cx, ~"claim_then");
+        let check_res = trans_check_expr(then_cx, a, ~"Claim");
+        let else_cx = new_scope_block_ctxt(cx, ~"else");
         let els = rslt(else_cx, C_nil());
 
         bld::CondBr(cx, cond, then_cx.llbb, else_cx.llbb);
@@ -4571,8 +4574,8 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
         lcx.ccx.module_data.insert(modname, global);
     }
-    let log_cx = new_scope_block_ctxt(cx, "log");
-    let after_cx = new_sub_block_ctxt(cx, "after");
+    let log_cx = new_scope_block_ctxt(cx, ~"log");
+    let after_cx = new_sub_block_ctxt(cx, ~"after");
     let load = bld::Load(cx, global);
     let test = bld::ICmp(cx, lib::llvm::LLVMIntSGE, load, C_int(lvl));
     bld::CondBr(cx, test, log_cx.llbb, after_cx.llbb);
@@ -4596,12 +4599,12 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
     ret rslt(after_cx, C_nil());
 }
 
-fn trans_check_expr(cx: &@block_ctxt, e: &@ast::expr, s: &str) -> result {
+fn trans_check_expr(cx: &@block_ctxt, e: &@ast::expr, s: &istr) -> result {
     let cond_res = trans_expr(cx, e);
-    let expr_str = s + " " + expr_to_str(e) + " failed";
-    let fail_cx = new_sub_block_ctxt(cx, "fail");
+    let expr_str = s + ~" " + istr::from_estr(expr_to_str(e)) + ~" failed";
+    let fail_cx = new_sub_block_ctxt(cx, ~"fail");
     trans_fail(fail_cx, some::<span>(e.span), expr_str);
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let next_cx = new_sub_block_ctxt(cx, ~"next");
     bld::CondBr(cond_res.bcx, cond_res.val, next_cx.llbb, fail_cx.llbb);
     ret rslt(next_cx, C_nil());
 }
@@ -4629,13 +4632,13 @@ fn trans_fail_expr(cx: &@block_ctxt, sp_opt: &option::t<span>,
                                           + ty_to_str(tcx, e_ty));
         }
       }
-      _ { ret trans_fail(bcx, sp_opt, "explicit failure"); }
+      _ { ret trans_fail(bcx, sp_opt, ~"explicit failure"); }
     }
 }
 
-fn trans_fail(cx: &@block_ctxt, sp_opt: &option::t<span>, fail_str: &str) ->
+fn trans_fail(cx: &@block_ctxt, sp_opt: &option::t<span>, fail_str: &istr) ->
    result {
-    let V_fail_str = C_cstr(bcx_ccx(cx), istr::from_estr(fail_str));
+    let V_fail_str = C_cstr(bcx_ccx(cx), fail_str);
     ret trans_fail_value(cx, sp_opt, V_fail_str);
 }
 
@@ -4660,7 +4663,7 @@ fn trans_fail_value(cx: &@block_ctxt, sp_opt: &option::t<span>,
 }
 
 fn trans_put(in_cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
-    let cx = new_scope_block_ctxt(in_cx, "put");
+    let cx = new_scope_block_ctxt(in_cx, ~"put");
     bld::Br(in_cx, cx.llbb);
     let llcallee = C_nil();
     let llenv = C_nil();
@@ -4692,7 +4695,7 @@ fn trans_put(in_cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
     }
     bld::FastCall(bcx, llcallee, llargs);
     bcx = trans_block_cleanups(bcx, cx);
-    let next_cx = new_sub_block_ctxt(in_cx, "next");
+    let next_cx = new_sub_block_ctxt(in_cx, ~"next");
     bld::Br(bcx, next_cx.llbb);
     ret rslt(next_cx, C_nil());
 }
@@ -4733,7 +4736,7 @@ fn trans_break_cont(sp: &span, cx: &@block_ctxt, to_end: bool) -> result {
                   _ { bld::Br(bcx, cleanup_cx.llbb); }
                 }
             }
-            ret rslt(new_sub_block_ctxt(bcx, "break_cont.unreachable"),
+            ret rslt(new_sub_block_ctxt(bcx, ~"break_cont.unreachable"),
                      C_nil());
           }
           _ {
@@ -4803,7 +4806,7 @@ fn trans_ret(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
         }
     }
     build_return(bcx);
-    ret rslt(new_sub_block_ctxt(bcx, "ret.unreachable"), C_nil());
+    ret rslt(new_sub_block_ctxt(bcx, ~"ret.unreachable"), C_nil());
 }
 
 fn build_return(bcx: &@block_ctxt) { bld::Br(bcx, bcx_fcx(bcx).llreturn); }
@@ -4926,11 +4929,11 @@ fn trans_stmt(cx: &@block_ctxt, s: &ast::stmt) -> result {
 // You probably don't want to use this one. See the
 // next three functions instead.
 fn new_block_ctxt(cx: &@fn_ctxt, parent: &block_parent, kind: block_kind,
-                  name: &str) -> @block_ctxt {
+                  name: &istr) -> @block_ctxt {
     let s = ~"";
     if cx.lcx.ccx.sess.get_opts().save_temps ||
            cx.lcx.ccx.sess.get_opts().debuginfo {
-        s = cx.lcx.ccx.names.next(istr::from_estr(name));
+        s = cx.lcx.ccx.names.next(name);
     }
     let llbb: BasicBlockRef = istr::as_buf(s, { |buf|
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
@@ -4947,25 +4950,25 @@ fn new_block_ctxt(cx: &@fn_ctxt, parent: &block_parent, kind: block_kind,
 
 // Use this when you're at the top block of a function or the like.
 fn new_top_block_ctxt(fcx: &@fn_ctxt) -> @block_ctxt {
-    ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK, "function top level");
+    ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK, ~"function top level");
 }
 
 
 // Use this when you're at a curly-brace or similar lexical scope.
-fn new_scope_block_ctxt(bcx: &@block_ctxt, n: &str) -> @block_ctxt {
+fn new_scope_block_ctxt(bcx: &@block_ctxt, n: &istr) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n);
 }
 
 fn new_loop_scope_block_ctxt(bcx: &@block_ctxt,
                              _cont: &option::t<@block_ctxt>,
-                             _break: &@block_ctxt, n: &str) -> @block_ctxt {
+                             _break: &@block_ctxt, n: &istr) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx),
                        LOOP_SCOPE_BLOCK(_cont, _break), n);
 }
 
 
 // Use this when you're making a general CFG BB within a scope.
-fn new_sub_block_ctxt(bcx: &@block_ctxt, n: &str) -> @block_ctxt {
+fn new_sub_block_ctxt(bcx: &@block_ctxt, n: &istr) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx), NON_SCOPE_BLOCK, n);
 }
 
@@ -5508,7 +5511,7 @@ fn trans_fn(cx: @local_ctxt, sp: &span, f: &ast::_fn, llfndecl: ValueRef,
     let start = time::get_time();
     trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
     let end = time::get_time();
-    log_fn_time(cx.ccx, istr::to_estr(istr::connect(cx.path, ~"::")),
+    log_fn_time(cx.ccx, istr::connect(cx.path, ~"::"),
                 start, end);
 }
 
@@ -5734,16 +5737,16 @@ fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
     ret struct_elt(llpairty, 0u);
 }
 
-fn decl_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str], flav: str,
+fn decl_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[istr], flav: &istr,
                     ty_params: &[ast::ty_param], node_id: ast::node_id) {
     decl_fn_and_pair_full(ccx, sp, path, flav, ty_params, node_id,
                           node_id_type(ccx, node_id));
 }
 
-fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[str],
-                         _flav: str, ty_params: &[ast::ty_param],
+fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[istr],
+                         _flav: &istr, ty_params: &[ast::ty_param],
                          node_id: ast::node_id, node_type: ty::t) {
-    let path = istr::from_estrs(path);
+    let path = path;
     let llfty =
         type_of_fn_from_ty(ccx, sp, node_type, std::vec::len(ty_params));
     alt ty::struct(ccx.tcx, node_type) {
@@ -5756,11 +5759,11 @@ fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[str],
     }
     let s: istr = mangle_internal_name_by_path(ccx, path);
     let llfn: ValueRef = decl_internal_fastcall_fn(ccx.llmod,
-                                                   istr::to_estr(s), llfty);
+                                                   s, llfty);
     // Declare the global constant pair that points to it.
 
     let ps: istr = mangle_exported_name(ccx, path, node_type);
-    register_fn_pair(ccx, istr::to_estr(ps), llfty, llfn, node_id);
+    register_fn_pair(ccx, ps, llfty, llfn, node_id);
 
     let is_main: bool = is_main_name(path) && !ccx.sess.get_opts().library;
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
@@ -5793,7 +5796,7 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
         let llfty =
             type_of_fn(ccx, sp, ast::proto_fn, [ivecarg_ty],
                        ty::mk_nil(ccx.tcx), 0u);
-        let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main", llfty);
+        let llfdecl = decl_fastcall_fn(ccx.llmod, ~"_rust_main", llfty);
 
         let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
 
@@ -5822,9 +5825,9 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
 // Create a closure: a pair containing (1) a ValueRef, pointing to where the
 // fn's definition is in the executable we're creating, and (2) a pointer to
 // space for the function's environment.
-fn create_fn_pair(cx: &@crate_ctxt, ps: str, llfnty: TypeRef, llfn: ValueRef,
-                  external: bool) -> ValueRef {
-    let gvar = istr::as_buf(istr::from_estr(ps), { |buf|
+fn create_fn_pair(cx: &@crate_ctxt, ps: &istr, llfnty: TypeRef,
+                  llfn: ValueRef, external: bool) -> ValueRef {
+    let gvar = istr::as_buf(ps, { |buf|
         llvm::LLVMAddGlobal(cx.llmod, T_fn_pair(*cx, llfnty), buf)
     });
     let pair = C_struct([llfn, C_null(T_opaque_closure_ptr(*cx))]);
@@ -5854,14 +5857,14 @@ fn create_real_fn_pair(cx: &@block_ctxt, llfnty: TypeRef, llfn: ValueRef,
     ret pair;
 }
 
-fn register_fn_pair(cx: &@crate_ctxt, ps: str, llfnty: TypeRef,
+fn register_fn_pair(cx: &@crate_ctxt, ps: &istr, llfnty: TypeRef,
                     llfn: ValueRef, id: ast::node_id) {
     // FIXME: We should also hide the unexported pairs in crates.
 
     let gvar =
         create_fn_pair(cx, ps, llfnty, llfn, cx.sess.get_opts().library);
     cx.item_ids.insert(id, llfn);
-    cx.item_symbols.insert(id, istr::from_estr(ps));
+    cx.item_symbols.insert(id, ps);
     cx.fn_pairs.insert(id, gvar);
 }
 
@@ -5892,9 +5895,9 @@ fn native_fn_wrapper_type(cx: &@crate_ctxt, sp: &span, ty_param_count: uint,
     }
 }
 
-fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
-                           name: str, id: ast::node_id) {
-    let path = istr::from_estrs(path);
+fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[istr],
+                           name: &istr, id: ast::node_id) {
+    let path = path;
     let num_ty_param = native_fn_ty_param_count(ccx, id);
     // Declare the wrapper.
 
@@ -5903,11 +5906,11 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     let s: istr = mangle_internal_name_by_path(ccx, path);
     let wrapper_fn: ValueRef =
         decl_internal_fastcall_fn(ccx.llmod,
-                                  istr::to_estr(s), wrapper_type);
+                                  s, wrapper_type);
     // Declare the global constant pair that points to it.
 
     let ps: istr = mangle_exported_name(ccx, path, node_id_type(ccx, id));
-    register_fn_pair(ccx, istr::to_estr(ps), wrapper_type, wrapper_fn, id);
+    register_fn_pair(ccx, ps, wrapper_type, wrapper_fn, id);
     // Build the wrapper.
 
     let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, wrapper_fn);
@@ -5994,7 +5997,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
         ret vp2i(cx, v);
     }
 
-    fn trans_simple_native_abi(bcx: &@block_ctxt, name: str,
+    fn trans_simple_native_abi(bcx: &@block_ctxt, name: &istr,
                                call_args: &mutable [ValueRef], fn_type: ty::t,
                                uses_retptr: bool, cc: uint) ->
        {val: ValueRef, rptr: ValueRef} {
@@ -6046,7 +6049,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
         rptr = result.rptr;
       }
       ast::native_abi_rust_intrinsic. {
-        let external_name = "rust_intrinsic_" + name;
+        let external_name = ~"rust_intrinsic_" + name;
         let result =
             trans_simple_native_abi(bcx, external_name, call_args, fn_type,
                                     uses_retptr, lib::llvm::LLVMCCallConv);
@@ -6077,29 +6080,29 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     finish_fn(fcx, lltop);
 }
 
-fn item_path(item: &@ast::item) -> [str] { ret [istr::to_estr(item.ident)]; }
+fn item_path(item: &@ast::item) -> [istr] { ret [item.ident]; }
 
-fn collect_native_item(ccx: @crate_ctxt, i: &@ast::native_item, pt: &[str],
-                       _v: &vt<[str]>) {
+fn collect_native_item(ccx: @crate_ctxt, i: &@ast::native_item, pt: &[istr],
+                       _v: &vt<[istr]>) {
     alt i.node {
       ast::native_item_fn(_, _, _) {
         if !ccx.obj_methods.contains_key(i.id) {
             decl_native_fn_and_pair(ccx, i.span, pt,
-                                    istr::to_estr(i.ident), i.id);
+                                    i.ident, i.id);
         }
       }
       _ { }
     }
 }
 
-fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
-                  v: &vt<[str]>) {
+fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[istr],
+                  v: &vt<[istr]>) {
     visit::visit_item(i, pt + item_path(i), v);
     alt i.node {
       ast::item_const(_, _) {
         let typ = node_id_type(ccx, i.id);
         let s =
-            mangle_exported_name(ccx, istr::from_estrs(pt) + [i.ident],
+            mangle_exported_name(ccx, pt + [i.ident],
                                  node_id_type(ccx, i.id));
         let g = istr::as_buf(s, { |buf|
             llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ), buf)
@@ -6111,29 +6114,29 @@ fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
     }
 }
 
-fn collect_item_2(ccx: &@crate_ctxt, i: &@ast::item, pt: &[str],
-                  v: &vt<[str]>) {
+fn collect_item_2(ccx: &@crate_ctxt, i: &@ast::item, pt: &[istr],
+                  v: &vt<[istr]>) {
     let new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt i.node {
       ast::item_fn(f, tps) {
         if !ccx.obj_methods.contains_key(i.id) {
-            decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.id);
+            decl_fn_and_pair(ccx, i.span, new_pt, ~"fn", tps, i.id);
         }
       }
       ast::item_obj(ob, tps, ctor_id) {
-        decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
+        decl_fn_and_pair(ccx, i.span, new_pt, ~"obj_ctor", tps, ctor_id);
         for m: @ast::method in ob.methods {
             ccx.obj_methods.insert(m.node.id, ());
         }
       }
       ast::item_res(_, dtor_id, tps, ctor_id) {
-        decl_fn_and_pair(ccx, i.span, new_pt, "res_ctor", tps, ctor_id);
+        decl_fn_and_pair(ccx, i.span, new_pt, ~"res_ctor", tps, ctor_id);
         // Note that the destructor is associated with the item's id, not
         // the dtor_id. This is a bit counter-intuitive, but simplifies
         // ty_res, which would have to carry around two def_ids otherwise
         // -- one to identify the type, and one to find the dtor symbol.
-        decl_fn_and_pair_full(ccx, i.span, new_pt, "res_dtor", tps, i.id,
+        decl_fn_and_pair_full(ccx, i.span, new_pt, ~"res_dtor", tps, i.id,
                               node_id_type(ccx, dtor_id));
       }
       _ { }
@@ -6151,8 +6154,8 @@ fn collect_items(ccx: &@crate_ctxt, crate: @ast::crate) {
     visit::visit_crate(*crate, [], visit::mk_vt(visitor2));
 }
 
-fn collect_tag_ctor(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
-                    v: &vt<[str]>) {
+fn collect_tag_ctor(ccx: @crate_ctxt, i: &@ast::item, pt: &[istr],
+                    v: &vt<[istr]>) {
     let new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt i.node {
@@ -6160,8 +6163,8 @@ fn collect_tag_ctor(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
         for variant: ast::variant in variants {
             if std::vec::len(variant.node.args) != 0u {
                 decl_fn_and_pair(ccx, i.span,
-                                 new_pt + [istr::to_estr(variant.node.name)],
-                                 "tag", tps, variant.node.id);
+                                 new_pt + [variant.node.name],
+                                 ~"tag", tps, variant.node.id);
             }
         }
       }
@@ -6178,8 +6181,8 @@ fn collect_tag_ctors(ccx: &@crate_ctxt, crate: @ast::crate) {
 
 
 // The constant translation pass.
-fn trans_constant(ccx: @crate_ctxt, it: &@ast::item, pt: &[str],
-                  v: &vt<[str]>) {
+fn trans_constant(ccx: @crate_ctxt, it: &@ast::item, pt: &[istr],
+                  v: &vt<[istr]>) {
     let new_pt = pt + item_path(it);
     visit::visit_item(it, new_pt, v);
     alt it.node {
@@ -6188,9 +6191,9 @@ fn trans_constant(ccx: @crate_ctxt, it: &@ast::item, pt: &[str],
         let n_variants = std::vec::len::<ast::variant>(variants);
         while i < n_variants {
             let variant = variants[i];
-            let p = istr::from_estrs(new_pt) + [it.ident,
-                                                variant.node.name,
-                                                ~"discrim"];
+            let p = new_pt + [it.ident,
+                              variant.node.name,
+                              ~"discrim"];
             let s = mangle_exported_name(ccx, p,
                                          ty::mk_int(ccx.tcx));
             let discrim_gvar = istr::as_buf(s, { |buf|
@@ -6237,24 +6240,25 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<istr, ValueRef> {
         [T_ptr(T_i8()), T_i8(), T_i64(), T_i32(), T_i1()];
     let T_trap_args: [TypeRef] = [];
     let gcroot =
-        decl_cdecl_fn(llmod, "llvm.gcroot",
+        decl_cdecl_fn(llmod, ~"llvm.gcroot",
                       T_fn([T_ptr(T_ptr(T_i8())), T_ptr(T_i8())], T_void()));
     let gcread =
-        decl_cdecl_fn(llmod, "llvm.gcread",
+        decl_cdecl_fn(llmod, ~"llvm.gcread",
                       T_fn([T_ptr(T_i8()), T_ptr(T_ptr(T_i8()))], T_void()));
     let memmove32 =
-        decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i32",
+        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i32",
                       T_fn(T_memmove32_args, T_void()));
     let memmove64 =
-        decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i64",
+        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i64",
                       T_fn(T_memmove64_args, T_void()));
     let memset32 =
-        decl_cdecl_fn(llmod, "llvm.memset.p0i8.i32",
+        decl_cdecl_fn(llmod, ~"llvm.memset.p0i8.i32",
                       T_fn(T_memset32_args, T_void()));
     let memset64 =
-        decl_cdecl_fn(llmod, "llvm.memset.p0i8.i64",
+        decl_cdecl_fn(llmod, ~"llvm.memset.p0i8.i64",
                       T_fn(T_memset64_args, T_void()));
-    let trap = decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args, T_void()));
+    let trap = decl_cdecl_fn(llmod, ~"llvm.trap",
+                             T_fn(T_trap_args, T_void()));
     let intrinsics = new_str_hash::<ValueRef>();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
@@ -6277,7 +6281,7 @@ fn trap(bcx: &@block_ctxt) {
 fn decl_no_op_type_glue(llmod: ModuleRef, taskptr_type: TypeRef) -> ValueRef {
     let ty = T_fn([taskptr_type, T_ptr(T_i8())], T_void());
     ret decl_fastcall_fn(llmod,
-                         istr::to_estr(abi::no_op_type_glue_name()), ty);
+                         abi::no_op_type_glue_name(), ty);
 }
 
 fn vec_fill(bcx: &@block_ctxt, v: ValueRef) -> ValueRef {
@@ -6294,7 +6298,7 @@ fn make_glues(llmod: ModuleRef, taskptr_type: TypeRef) -> @glue_fns {
     ret @{no_op_type_glue: decl_no_op_type_glue(llmod, taskptr_type)};
 }
 
-fn make_common_glue(sess: &session::session, output: &str) {
+fn make_common_glue(sess: &session::session, output: &istr) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it.
     let task_type = T_task();
@@ -6316,7 +6320,7 @@ fn make_common_glue(sess: &session::session, output: &str) {
         llvm::LLVMSetModuleInlineAsm(llmod, buf)
     });
     make_glues(llmod, taskptr_type);
-    link::write::run_passes(sess, llmod, istr::from_estr(output));
+    link::write::run_passes(sess, llmod, output);
 }
 
 fn create_module_map(ccx: &@crate_ctxt) -> ValueRef {
@@ -6404,7 +6408,7 @@ fn write_abi_version(ccx: &@crate_ctxt) {
 }
 
 fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
-               output: &str, amap: &ast_map::map, mut_map: alias::mut_map)
+               output: &istr, amap: &ast_map::map, mut_map: alias::mut_map)
     -> ModuleRef {
     let llmod = istr::as_buf(~"rust_out", { |buf|
         llvm::LLVMModuleCreateWithNameInContext(buf,
@@ -6445,7 +6449,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
           item_symbols: new_int_hash::<istr>(),
           mutable main_fn: none::<ValueRef>,
           link_meta: link::build_link_meta(sess, *crate,
-                                           istr::from_estr(output), sha),
+                                           output, sha),
           tag_sizes: tag_sizes,
           discrims: new_int_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<istr>(),
@@ -6498,8 +6502,9 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
         log_err #fmt["n_real_glues: %u", ccx.stats.n_real_glues];
 
 
-        for timing: {ident: str, time: int} in *ccx.stats.fn_times {
-            log_err #fmt["time: %s took %d ms", timing.ident, timing.time];
+        for timing: {ident: istr, time: int} in *ccx.stats.fn_times {
+            log_err #fmt["time: %s took %d ms",
+                         istr::to_estr(timing.ident), timing.time];
         }
     }
     ret llmod;

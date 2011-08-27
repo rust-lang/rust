@@ -616,7 +616,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
                         std::vec::len::<ast::ty_param>(ty_params));
     let llbackwarding_fn: ValueRef =
         decl_internal_fastcall_fn(
-            cx.ccx.llmod, istr::to_estr(s), llbackwarding_fn_ty);
+            cx.ccx.llmod, s, llbackwarding_fn_ty);
 
     // Create a new function context and block context for the backwarding
     // function, holding onto a pointer to the first block.
@@ -747,7 +747,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
                         std::vec::len::<ast::ty_param>(ty_params));
     let llforwarding_fn: ValueRef =
         decl_internal_fastcall_fn(
-            cx.ccx.llmod, istr::to_estr(s), llforwarding_fn_ty);
+            cx.ccx.llmod, s, llforwarding_fn_ty);
 
     // Create a new function context and block context for the forwarding
     // function, holding onto a pointer to the first block.
@@ -930,7 +930,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     let s: istr = mangle_internal_name_by_path(mcx.ccx,
                                                mcx.path);
     let llfn: ValueRef = decl_internal_fastcall_fn(
-        cx.ccx.llmod, istr::to_estr(s), llfnty);
+        cx.ccx.llmod, s, llfnty);
 
     // Every method on an object gets its node_id inserted into the crate-wide
     // item_ids map, together with the ValueRef that points to where that

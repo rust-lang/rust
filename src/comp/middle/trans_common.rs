@@ -111,7 +111,7 @@ type stats =
      mutable n_glues_created: uint,
      mutable n_null_glues: uint,
      mutable n_real_glues: uint,
-     fn_times: @mutable [{ident: str, time: int}]};
+     fn_times: @mutable [{ident: istr, time: int}]};
 
 resource BuilderRef_res(B: llvm::BuilderRef) {
     llvm::LLVMDisposeBuilder(B);
@@ -354,8 +354,9 @@ fn get_res_dtor(ccx: &@crate_ctxt, sp: &span, did: &ast::def_id,
                           [{mode: ty::mo_alias(false), ty: inner_t}],
                           ty::mk_nil(ccx.tcx), params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
-                                csearch::get_symbol(ccx.sess.get_cstore(),
-                                                    did),
+                                istr::from_estr(csearch::get_symbol(
+                                    ccx.sess.get_cstore(),
+                                    did)),
                                 T_fn_pair(*ccx, f_t));
 }
 
