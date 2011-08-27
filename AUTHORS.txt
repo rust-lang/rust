@@ -11,7 +11,7 @@ Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Chris Double <chris.double@double.co.nz>
 Dave Herman <dherman@mozilla.com>
-Eric Holk <eholk@mozilla.com>
+Eric Holk <eric.holk@gmail.com>
 Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Jason Orendorff <jorendorff@mozilla.com>
 Jeff Balogh <jbalogh@mozilla.com>
