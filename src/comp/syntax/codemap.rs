@@ -8,7 +8,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 
-type filename = str;
+type filename = istr;
 
 type file_pos = {ch: uint, byte: uint};
 
@@ -84,7 +84,9 @@ fn span_to_str(sp: &span, cm: &codemap) -> str {
             #fmt["%s:%u:%u: %u:%u",
                  if some(lo.filename) == prev_file {
                      "-"
-                 } else { lo.filename }, lo.line, lo.col, hi.line, hi.col];
+                 } else {
+                     istr::to_estr(lo.filename)
+                 }, lo.line, lo.col, hi.line, hi.col];
         alt cur.expanded_from {
           os_none. { break; }
           os_some(new_sp) {
@@ -146,14 +148,16 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
         // Print the offending lines
         for line: uint in display_lines {
             io::stdout().write_str(
-                istr::from_estr(#fmt["%s:%u ", fm.name, line + 1u]));
+                istr::from_estr(#fmt["%s:%u ",
+                                     istr::to_estr(fm.name), line + 1u]));
             let s = get_line(fm, line as int, file);
             if !str::ends_with(s, "\n") { s += "\n"; }
             io::stdout().write_str(istr::from_estr(s));
         }
         if elided {
             let last_line = display_lines[vec::len(display_lines) - 1u];
-            let s = #fmt["%s:%u ", fm.name, last_line + 1u];
+            let s = #fmt["%s:%u ",
+                         istr::to_estr(fm.name), last_line + 1u];
             let indent = str::char_len(s);
             let out = ~"";
             while indent > 0u { out += ~" "; indent -= 1u; }
@@ -172,7 +176,7 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
             while num > 0u { num /= 10u; digits += 1u; }
 
             // indent past |name:## | and the 0-offset column location
-            let left = str::char_len(fm.name) + digits + lo.col + 3u;
+            let left = istr::char_len(fm.name) + digits + lo.col + 3u;
             let s = "";
             while left > 0u { str::push_char(s, ' '); left -= 1u; }
 
@@ -209,7 +213,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     for each i: uint in uint::range(lo.line - 1u, hi.line as uint) {
         lines += [i];
     }
-    ret @{name: lo.filename, lines: lines};
+    ret @{name: istr::to_estr(lo.filename), lines: lines};
 }
 
 fn get_line(fm: filemap, line: int, file: &str) -> str {
@@ -230,7 +234,9 @@ fn get_line(fm: filemap, line: int, file: &str) -> str {
 }
 
 fn get_filemap(cm: codemap, filename: str) -> filemap {
-    for fm: filemap in cm.files { if fm.name == filename { ret fm; } }
+    for fm: filemap in cm.files {
+        if fm.name == istr::from_estr(filename) { ret fm; }
+    }
     //XXjdm the following triggers a mismatched type bug
     //      (or expected function, found _|_)
     fail; // ("asking for " + filename + " which we don't know about");

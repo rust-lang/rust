@@ -51,7 +51,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &istr,
         let file_path = id + ~".rs";
         alt file_opt {
           some(f) {
-            file_path = istr::from_estr(f);
+            file_path = f;
           }
           none. { }
         }
@@ -63,7 +63,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &istr,
         if cx.mode == mode_depend { cx.deps += [full_path]; ret; }
         let p0 =
             new_parser_from_file(cx.sess, cx.cfg,
-                                 istr::to_estr(full_path), cx.chpos,
+                                 full_path, cx.chpos,
                                  cx.byte_pos, SOURCE_FILE);
         let inner_attrs = parse_inner_attrs_and_next(p0);
         let mod_attrs = attrs + inner_attrs.inner;
@@ -82,7 +82,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &istr,
         let path = id;
         alt dir_opt {
           some(d) {
-            path = istr::from_estr(d);
+            path = d;
           }
           none. { }
         }

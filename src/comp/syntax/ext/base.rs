@@ -93,7 +93,8 @@ fn mk_ctxt(sess: &session) -> ext_ctxt {
     // super-ugly and needs a better solution.
     let crate_file_name_hack = sess.get_codemap().files[0].name;
 
-    ret ext_ctxt(@sess, crate_file_name_hack, codemap::os_none);
+    ret ext_ctxt(@sess, istr::to_estr(crate_file_name_hack),
+                 codemap::os_none);
 }
 
 fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: str) -> str {

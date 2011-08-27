@@ -95,7 +95,8 @@ fn input_is_stdin(filename: str) -> bool { filename == "-" }
 fn parse_input(sess: session::session, cfg: &ast::crate_cfg, input: str) ->
    @ast::crate {
     if !input_is_stdin(input) {
-        parser::parse_crate_from_file(input, cfg, sess.get_parse_sess())
+        parser::parse_crate_from_file(
+            istr::from_estr(input), cfg, sess.get_parse_sess())
     } else { parse_input_src(sess, cfg, input).crate }
 }
 
@@ -107,8 +108,10 @@ fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg, infile: str)
         } else { io::stdin() }.read_whole_stream();
     let src = str::unsafe_from_bytes(srcbytes);
     let crate =
-        parser::parse_crate_from_source_str(infile, src, cfg,
-                                            sess.get_parse_sess());
+        parser::parse_crate_from_source_str(
+            istr::from_estr(infile),
+            istr::from_estr(src), cfg,
+            sess.get_parse_sess());
     ret {crate: crate, src: src};
 }
 

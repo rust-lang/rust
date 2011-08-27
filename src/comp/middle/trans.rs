@@ -4649,7 +4649,7 @@ fn trans_fail_value(cx: &@block_ctxt, sp_opt: &option::t<span>,
     alt sp_opt {
       some(sp) {
         let loc = bcx_ccx(cx).sess.lookup_pos(sp.lo);
-        V_filename = C_cstr(bcx_ccx(cx), istr::from_estr(loc.filename));
+        V_filename = C_cstr(bcx_ccx(cx), loc.filename);
         V_line = loc.line as int;
       }
       none. { V_filename = C_cstr(bcx_ccx(cx), ~"<runtime>"); V_line = 0; }

@@ -252,7 +252,8 @@ fn parse_and_print(code: &str) -> str {
     let filename = "tmp.rs";
     let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
     //write_file(filename, code);
-    let crate = parser::parse_crate_from_source_str(filename, code, [], sess);
+    let crate = parser::parse_crate_from_source_str(
+        istr::from_estr(filename), istr::from_estr(code), [], sess);
     ret as_str(bind pprust::print_crate(sess.cm, crate, filename,
                                         io::string_reader(istr::from_estr(code)), _,
                                         pprust::no_ann()));
@@ -360,7 +361,9 @@ fn check_variants(files: &[str]) {
             log_err "check_variants: " + file;
             let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
             let crate =
-                parser::parse_crate_from_source_str(file, s, [], sess);
+                parser::parse_crate_from_source_str(
+                    istr::from_estr(file),
+                    istr::from_estr(s), [], sess);
             log_err as_str(bind pprust::print_crate(sess.cm, crate, file,
                                                     io::string_reader(istr::from_estr(s)), _,
                                                     pprust::no_ann()));

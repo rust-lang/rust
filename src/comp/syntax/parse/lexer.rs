@@ -728,7 +728,7 @@ fn gather_comments_and_literals(cm: &codemap::codemap, path: &istr,
     let itr = @interner::mk::<istr>(istr::hash, istr::eq);
     let rdr = new_reader(cm, src,
                          codemap::new_filemap(
-                             istr::to_estr(path), 0u, 0u), itr);
+                             path, 0u, 0u), itr);
     let comments: [cmnt] = [];
     let literals: [lit] = [];
     let first_read: bool = true;
