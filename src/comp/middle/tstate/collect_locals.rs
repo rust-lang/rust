@@ -70,8 +70,8 @@ fn add_constraint(tcx: &ty::ctxt, c: sp_constr, next: uint, tbl: constr_map)
           some(ct) {
             alt ct {
               cinit(_, _, _) {
-                tcx.sess.bug("add_constraint: same def_id used" +
-                                 " as a variable and a pred");
+                tcx.sess.bug(~"add_constraint: same def_id used" +
+                                 ~" as a variable and a pred");
               }
               cpred(_, pds) {
                 *pds += [respan(c.span, {args: args, bit_num: next})];

@@ -1,6 +1,7 @@
 import syntax::print::pprust::path_to_str;
 import util::ppaux::ty_to_str;
 import std::vec;
+import std::istr;
 import std::option;
 import std::option::get;
 import std::option::is_none;
@@ -169,10 +170,10 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
     let changed = find_pre_post_state_expr(fcx, pres, a);
     // FIXME: This could be a typestate constraint
     if vec::len(bs) != vec::len(ops) {
-        fcx.ccx.tcx.sess.span_bug(a.span,
+        fcx.ccx.tcx.sess.span_bug(a.span, istr::from_estr(
                                   #fmt["mismatched arg lengths: \
                                         %u exprs vs. %u ops",
-                                       vec::len(bs), vec::len(ops)]);
+                                       vec::len(bs), vec::len(ops)]));
     }
     ret find_pre_post_state_exprs(fcx, expr_poststate(fcx.ccx, a), id, ops,
                                   bs, cf) || changed;
@@ -344,7 +345,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       expr_log(_, ex) {
         ret find_pre_post_state_sub(fcx, pres, ex, e.id, none);
       }
-      expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
+      expr_mac(_) { fcx.ccx.tcx.sess.bug(~"unexpanded macro"); }
       expr_put(maybe_e) {
         alt maybe_e {
           some(arg) {

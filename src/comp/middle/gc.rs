@@ -78,8 +78,8 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
         bld::Call(bcx, gcroot, [llvalptr, llsrcindex]);
       }
       tk_param. {
-        bcx_tcx(cx).sess.bug("we should never be trying to root values " +
-                                 "of a type parameter");
+        bcx_tcx(cx).sess.bug(~"we should never be trying to root values " +
+                                 ~"of a type parameter");
       }
       tk_static. {
         // Static type descriptor.

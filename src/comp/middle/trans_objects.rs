@@ -38,7 +38,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     let llctor_decl;
     alt ccx.item_ids.find(ctor_id) {
       some(x) { llctor_decl = x; }
-      _ { cx.ccx.sess.span_fatal(sp, "unbound llctor_decl in trans_obj"); }
+      _ { cx.ccx.sess.span_fatal(sp, ~"unbound llctor_decl in trans_obj"); }
     }
 
     // Much like trans_fn, we must create an LLVM function, but since we're
@@ -187,7 +187,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
               }
               none. {
                 bcx_ccx(bcx).sess.span_fatal(f.ty.span,
-                                             "internal error in trans_obj");
+                                             ~"internal error in trans_obj");
               }
             }
         }
@@ -436,7 +436,7 @@ fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd, addtl_meths: [@ast::method])
         ret some(fwding_mthd(fm));
       }
       normal_mthd(_) {
-        cx.ccx.sess.bug("create_vtbl(): shouldn't be any \
+        cx.ccx.sess.bug(~"create_vtbl(): shouldn't be any \
                         normal_mthds in meths here");
       }
     }
@@ -486,7 +486,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
             }
           }
           _ {
-            cx.ccx.sess.bug("create_vtbl(): trying to extend a \
+            cx.ccx.sess.bug(~"create_vtbl(): trying to extend a \
                             non-object");
           }
         }
@@ -550,7 +550,7 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
       }
       _ {
         // Shouldn't happen.
-        cx.ccx.sess.bug("create_backwarding_vtbl(): trying to extend a \
+        cx.ccx.sess.bug(~"create_backwarding_vtbl(): trying to extend a \
                             non-object");
       }
     }
@@ -657,7 +657,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
       }
       _ {
         // Shouldn't happen.
-        cx.ccx.sess.bug("process_bkwding_mthd(): non-object type passed \
+        cx.ccx.sess.bug(~"process_bkwding_mthd(): non-object type passed \
                         as outer_obj_ty");
       }
     }
@@ -823,7 +823,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
       }
       _ {
         // Shouldn't happen.
-        cx.ccx.sess.bug("process_fwding_mthd(): non-object type passed \
+        cx.ccx.sess.bug(~"process_fwding_mthd(): non-object type passed \
                         as target_obj_ty");
       }
     }

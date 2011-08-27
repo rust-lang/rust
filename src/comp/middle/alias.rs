@@ -129,8 +129,8 @@ fn visit_expr(cx: &@ctx, ex: &@ast::expr, sc: &scope, v: &vt<scope>) {
             let root = expr_root(*cx, ex, false);
             if mut_field(root.ds) {
                 cx.tcx.sess.span_err(ex.span,
-                                     "result of put must be" +
-                                         " immutably rooted");
+                                     ~"result of put must be" +
+                                         ~" immutably rooted");
             }
             visit_expr(cx, ex, sc, v);
           }
@@ -202,25 +202,25 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
                         if is_immutable_alias(cx, sc, dnum) {
                             cx.tcx.sess.span_err(
                                 arg.span,
-                                "passing an immutable alias \
+                                ~"passing an immutable alias \
                                  by mutable alias");
                         } else if is_immutable_objfield(cx, dnum) {
                             cx.tcx.sess.span_err(
                                 arg.span,
-                                "passing an immutable object \
+                                ~"passing an immutable object \
                                  field by mutable alias");
                         }
                     } else {
                         cx.tcx.sess.span_err(
                             arg.span,
-                            "passing a static item by mutable alias");
+                            ~"passing a static item by mutable alias");
                     }
                     mut_roots += [{arg: i, node: dnum}];
                   }
                   _ {
                     if !mut_field(root.ds) {
                         let m =
-                            "passing a temporary value or \
+                            ~"passing a temporary value or \
                                  immutable field by mutable alias";
                         cx.tcx.sess.span_err(arg.span, m);
                     }
@@ -242,10 +242,10 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
         alt f.node {
           ast::expr_path(_) {
             if def_is_local(cx.tcx.def_map.get(f.id), true) {
-                cx.tcx.sess.span_err(f.span,
+                cx.tcx.sess.span_err(f.span, istr::from_estr(
                                      #fmt["function may alias with \
                          argument %u, which is not immutably rooted",
-                                          unsafe_t_offsets[0]]);
+                                          unsafe_t_offsets[0]]));
             }
           }
           _ { }
@@ -260,10 +260,10 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
             let mut_alias = arg_t.mode == ty::mo_alias(true);
             if i != offset &&
                    ty_can_unsafely_include(cx, unsafe, arg_t.ty, mut_alias) {
-                cx.tcx.sess.span_err(args[i].span,
+                cx.tcx.sess.span_err(args[i].span, istr::from_estr(
                                      #fmt["argument %u may alias with \
                      argument %u, which is not immutably rooted",
-                                          i, offset]);
+                                          i, offset]));
             }
             i += 1u;
         }
@@ -286,7 +286,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
 
         if mut_alias_to_root {
             cx.tcx.sess.span_err(args[root.arg].span,
-                                 "passing a mutable alias to a \
+                                 ~"passing a mutable alias to a \
                  variable that roots another alias");
         }
     }
@@ -309,7 +309,7 @@ fn check_tail_call(cx: &ctx, call: &@ast::expr) {
                   some(arg(ast::alias(mut))) {
                     if mut_a && !mut {
                         cx.tcx.sess.span_err(args[i].span,
-                                             "passing an immutable \
+                                             ~"passing an immutable \
                                      alias by mutable alias");
                     }
                   }
@@ -320,7 +320,7 @@ fn check_tail_call(cx: &ctx, call: &@ast::expr) {
             }
             if !ok {
                 cx.tcx.sess.span_err(args[i].span,
-                                     "can not pass a local value by \
+                                     ~"can not pass a local value by \
                                      alias to a tail call");
             }
         }
@@ -392,8 +392,8 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
       _ {
         cx.tcx.sess.span_unimpl(
             seq.span,
-            "unknown seq type " +
-            istr::to_estr(util::ppaux::ty_to_str(cx.tcx, seq_t)));
+            ~"unknown seq type " +
+            util::ppaux::ty_to_str(cx.tcx, seq_t));
       }
     }
     let bindings = ast_util::pat_binding_ids(local.node.pat);
@@ -435,10 +435,10 @@ fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt<scope>) {
         let dnum = ast_util::def_id_of_def(cx.tcx.def_map.get(dest.id)).node;
         cx.mut_map.insert(dnum, ());
         if is_immutable_alias(*cx, sc, dnum) {
-            cx.tcx.sess.span_err(dest.span, "assigning to immutable alias");
+            cx.tcx.sess.span_err(dest.span, ~"assigning to immutable alias");
         } else if is_immutable_objfield(*cx, dnum) {
             cx.tcx.sess.span_err(dest.span,
-                                 "assigning to immutable obj field");
+                                 ~"assigning to immutable obj field");
         }
         for r: restrict in *sc {
             if vec::member(dnum, r.root_vars) {
@@ -449,16 +449,16 @@ fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt<scope>) {
       _ {
         let root = expr_root(*cx, dest, false);
         if vec::len(*root.ds) == 0u {
-            cx.tcx.sess.span_err(dest.span, "assignment to non-lvalue");
+            cx.tcx.sess.span_err(dest.span, ~"assignment to non-lvalue");
         } else if !root.ds[0].mut {
             let name =
                 alt root.ds[0].kind {
-                  unbox. { "box" }
-                  field. { "field" }
-                  index. { "vec content" }
+                  unbox. { ~"box" }
+                  field. { ~"field" }
+                  index. { ~"vec content" }
                 };
             cx.tcx.sess.span_err(dest.span,
-                                 "assignment to immutable " + name);
+                                 ~"assignment to immutable " + name);
         }
         visit_expr(cx, dest, sc, v);
       }
@@ -471,7 +471,7 @@ fn check_move_rhs(cx: &@ctx, src: &@ast::expr, sc: &scope, v: &vt<scope>) {
         alt cx.tcx.def_map.get(src.id) {
           ast::def_obj_field(_) {
             cx.tcx.sess.span_err(src.span,
-                                 "may not move out of an obj field");
+                                 ~"may not move out of an obj field");
           }
           _ { }
         }
@@ -482,7 +482,7 @@ fn check_move_rhs(cx: &@ctx, src: &@ast::expr, sc: &scope, v: &vt<scope>) {
 
         // Not a path and no-derefs means this is a temporary.
         if vec::len(*root.ds) != 0u {
-            cx.tcx.sess.span_err(src.span, "moving out of a data structure");
+            cx.tcx.sess.span_err(src.span, ~"moving out of a data structure");
         }
       }
     }
@@ -518,19 +518,19 @@ fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
         let msg =
             alt prob {
               overwritten(sp, wpt) {
-                {span: sp, msg: "overwriting " +
-                    istr::to_estr(ast_util::path_name(wpt))}
+                {span: sp, msg: ~"overwriting " +
+                    ast_util::path_name(wpt)}
               }
               val_taken(sp, vpt) {
                 {span: sp,
-                 msg: "taking the value of " +
-                     istr::to_estr(ast_util::path_name(vpt))}
+                 msg: ~"taking the value of " +
+                     ast_util::path_name(vpt)}
               }
             };
         cx.tcx.sess.span_err(msg.span,
-                             msg.msg + " will invalidate alias " +
-                             istr::to_estr(ast_util::path_name(p)) +
-                             ", which is still used");
+                             msg.msg + ~" will invalidate alias " +
+                             ast_util::path_name(p) +
+                             ~", which is still used");
     }
 }
 

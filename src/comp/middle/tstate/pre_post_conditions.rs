@@ -554,7 +554,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       }
       expr_break. { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_cont. { clear_pp(expr_pp(fcx.ccx, e)); }
-      expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
+      expr_mac(_) { fcx.ccx.tcx.sess.bug(~"unexpanded macro"); }
       expr_anon_obj(anon_obj) {
         alt anon_obj.inner_obj {
           some(ex) {
@@ -605,7 +605,7 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                               pat_bind(n) { n }
                               _ {
                                 fcx.ccx.tcx.sess.span_bug(pat.span,
-                                                          "Impossible LHS");
+                                                          ~"Impossible LHS");
                               }
                             };
                         alt p {
@@ -642,7 +642,7 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                           }
                           _ {
                             fcx.ccx.tcx.sess.span_bug(pat.span,
-                                                      "Impossible LHS");
+                                                      ~"Impossible LHS");
                           }
                         }
                     }

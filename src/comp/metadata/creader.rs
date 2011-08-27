@@ -36,7 +36,7 @@ fn read_crates(sess: session::session, crate: &ast::crate) {
         @{sess: sess,
           crate_cache: @std::map::new_str_hash::<int>(),
           library_search_paths:
-          istr::from_estrs(sess.get_opts().library_search_paths),
+          sess.get_opts().library_search_paths,
           mutable next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
@@ -230,8 +230,9 @@ fn load_library_crate(sess: &session::session, span: span, ident: &ast::ident,
     alt find_library_crate(sess, ident, metas, library_search_paths) {
       some(t) { ret t; }
       none. {
-        sess.span_fatal(span, #fmt["can't find crate for '%s'",
-                                   istr::to_estr(ident)]);
+        sess.span_fatal(span, istr::from_estr(
+                        #fmt["can't find crate for '%s'",
+                                   istr::to_estr(ident)]));
       }
     }
 }

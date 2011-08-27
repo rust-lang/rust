@@ -56,8 +56,8 @@ fn check_unused_vars(fcx: &fn_ctxt) {
             if !vec_contains(fcx.enclosing.used_vars, id) && v[0] != '_' as u8
                {
                 fcx.ccx.tcx.sess.span_warn(c.c.span,
-                                           "unused variable "
-                                           + istr::to_estr(v));
+                                           ~"unused variable "
+                                           + v);
             }
           }
           _ {/* ignore pred constraints */ }
@@ -92,7 +92,7 @@ fn check_states_expr(e: &@expr, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
         s += tritv_to_str(fcx, prec);
         s += ~"\nPrestate:\n";
         s += tritv_to_str(fcx, pres);
-        fcx.ccx.tcx.sess.span_fatal(e.span, istr::to_estr(s));
+        fcx.ccx.tcx.sess.span_fatal(e.span, s);
     }
 }
 
@@ -124,7 +124,7 @@ fn check_states_stmt(s: &@stmt, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
         ss += tritv_to_str(fcx, prec);
         ss += ~"\nPrestate: \n";
         ss += tritv_to_str(fcx, pres);
-        fcx.ccx.tcx.sess.span_fatal(s.span, istr::to_estr(ss));
+        fcx.ccx.tcx.sess.span_fatal(s.span, ss);
     }
 }
 
@@ -150,14 +150,14 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
            !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
            f.decl.cf == return {
         fcx.ccx.tcx.sess.span_err(f.body.span,
-                                  "In function " +
-                                  istr::to_estr(fcx.name) +
-                                      ", not all control paths \
+                                  ~"In function " +
+                                  fcx.name +
+                                      ~", not all control paths \
                                         return a value");
         fcx.ccx.tcx.sess.span_fatal(
             f.decl.output.span,
-            "see declared return type of '" +
-            istr::to_estr(ty_to_str(f.decl.output)) + "'");
+            ~"see declared return type of '" +
+            ty_to_str(f.decl.output) + ~"'");
     } else if f.decl.cf == noreturn {
 
         // check that this really always fails
@@ -166,9 +166,9 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
 
         if !promises(fcx, post, fcx.enclosing.i_diverge) {
             fcx.ccx.tcx.sess.span_fatal(f.body.span,
-                                        "In non-returning function " +
-                                            istr::to_estr(fcx.name) +
-                                            ", some control paths may \
+                                        ~"In non-returning function " +
+                                            fcx.name +
+                                            ~", some control paths may \
                                            return to the caller");
         }
     }

@@ -35,16 +35,16 @@ tag output_type {
 fn llvm_err(sess: session::session, msg: &istr) {
     let buf = llvm::LLVMRustGetLastError();
     if buf == std::ptr::null() {
-        sess.fatal(istr::to_estr(msg));
+        sess.fatal(msg);
     } else {
         sess.fatal(
-            istr::to_estr(msg + ~": " + istr::str_from_cstr(buf)));
+            msg + ~": " + istr::str_from_cstr(buf));
     }
 }
 
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
     let path =
-        fs::connect(istr::from_estr(sess.get_opts().sysroot),
+        fs::connect(sess.get_opts().sysroot,
                     ~"lib/intrinsics.bc");
     let membuf = istr::as_buf(path, { |buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
@@ -374,8 +374,9 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
 
     fn warn_missing(sess: &session::session, name: &istr, default: &istr) {
         if !sess.get_opts().library { ret; }
-        sess.warn(#fmt["missing crate link meta '%s', using '%s' as default",
-                       istr::to_estr(name), istr::to_estr(default)]);
+        sess.warn(istr::from_estr(
+            #fmt["missing crate link meta '%s', using '%s' as default",
+                       istr::to_estr(name), istr::to_estr(default)]));
     }
 
     fn crate_meta_name(sess: &session::session, _crate: &ast::crate,

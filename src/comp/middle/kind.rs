@@ -123,7 +123,7 @@ fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
             #fmt["mismatched kinds for %s: needed %s type, got %s type %s",
                  descr, kind_to_str(k_need), kind_to_str(tk.kind),
                  istr::to_estr(util::ppaux::ty_to_str(tcx, tk.ty))];
-        tcx.sess.span_err(e.span, s);
+        tcx.sess.span_err(e.span, istr::from_estr(s));
     }
 }
 
@@ -172,7 +172,7 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
                                   needed %s type, got %s type %s",
                              i, kind_to_str(k_need), kind_to_str(k),
                              istr::to_estr(util::ppaux::ty_to_str(tcx, t))];
-                    tcx.sess.span_err(e.span, s);
+                    tcx.sess.span_err(e.span, istr::from_estr(s));
                 }
                 i += 1;
             }

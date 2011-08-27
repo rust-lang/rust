@@ -344,7 +344,7 @@ fn get_res_dtor(ccx: &@crate_ctxt, sp: &span, did: &ast::def_id,
     if did.crate == ast::local_crate {
         alt ccx.fn_pairs.find(did.node) {
           some(x) { ret x; }
-          _ { ccx.tcx.sess.bug("get_res_dtor: can't find resource dtor!"); }
+          _ { ccx.tcx.sess.bug(~"get_res_dtor: can't find resource dtor!"); }
         }
     }
 
@@ -463,8 +463,8 @@ fn find_scope_cx(cx: &@block_ctxt) -> @block_ctxt {
     alt cx.parent {
       parent_some(b) { ret find_scope_cx(b); }
       parent_none. {
-        cx.fcx.lcx.ccx.sess.bug("trans::find_scope_cx() " +
-                                    "called on parentless block_ctxt");
+        cx.fcx.lcx.ccx.sess.bug(~"trans::find_scope_cx() " +
+                                ~"called on parentless block_ctxt");
       }
     }
 }

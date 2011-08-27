@@ -185,9 +185,9 @@ fn require_unique_names(sess: &session::session, metas: &[@ast::meta_item]) {
     for meta: @ast::meta_item in metas {
         let name = get_meta_item_name(meta);
         if map.contains_key(name) {
-            sess.span_fatal(meta.span,
+            sess.span_fatal(meta.span, istr::from_estr(
                             #fmt["duplicate meta item `%s`",
-                                 istr::to_estr(name)]);
+                                 istr::to_estr(name)]));
         }
         map.insert(name, ());
     }

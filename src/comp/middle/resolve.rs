@@ -323,8 +323,8 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
               }
               _ {
                 e.sess.span_err(p.span,
-                                "not a tag variant: " +
-                                istr::to_estr(ast_util::path_name(p)));
+                                ~"not a tag variant: " +
+                                ast_util::path_name(p));
               }
             }
           }
@@ -432,8 +432,8 @@ fn follow_import(e: &env, sc: &scopes, path: &[ident], sp: &span) ->
           ast::def_mod(_) | ast::def_native_mod(_) { ret dcur; }
           _ {
             e.sess.span_err(sp,
-                            istr::to_estr(istr::connect(path, ~"::")) +
-                                " does not name a module.");
+                            istr::connect(path, ~"::") +
+                                ~" does not name a module.");
             ret none;
           }
         }
@@ -450,8 +450,8 @@ fn resolve_constr(e: @env, c: &@ast::constr, sc: &scopes, _v: &vt<scopes>) {
           }
           _ {
             e.sess.span_err(c.span,
-                            "Non-predicate in constraint: " +
-                            istr::to_estr(path_to_str(c.node.path)));
+                            ~"Non-predicate in constraint: " +
+                            path_to_str(c.node.path));
           }
         }
     }
@@ -566,11 +566,11 @@ fn unresolved_err(e: &env, sc: &scopes, sp: &span,
             && err_scope == rs.sc { ret; }
     }
     e.reported += [{ident: name, sc: err_scope}];
-    e.sess.span_err(sp, istr::to_estr(mk_unresolved_msg(name, kind)));
+    e.sess.span_err(sp, mk_unresolved_msg(name, kind));
 }
 
 fn unresolved_fatal(e: &env, sp: &span, id: &ident, kind: &istr) -> ! {
-    e.sess.span_fatal(sp, istr::to_estr(mk_unresolved_msg(id, kind)));
+    e.sess.span_fatal(sp, mk_unresolved_msg(id, kind));
 }
 
 fn mk_unresolved_msg(id: &ident, kind: &istr) -> istr {
@@ -712,11 +712,11 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
                     let msg =
                         alt ns {
                           ns_type. {
-                            "Attempt to use a type \
+                            ~"Attempt to use a type \
                                 argument out of scope"
                           }
                           _ {
-                            "attempted dynamic \
+                            ~"attempted dynamic \
                                        environment-capture"
                           }
                         };
@@ -732,7 +732,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
           }
         }
     }
-    e.sess.bug("reached unreachable code in lookup_in_scope"); // sigh
+    e.sess.bug(~"reached unreachable code in lookup_in_scope"); // sigh
 
 }
 
@@ -943,7 +943,7 @@ fn lookup_import(e: &env, defid: def_id, ns: namespace) -> option::t<def> {
         resolve_import(e, local_def(node_id), name, path, span, scopes);
         ret lookup_import(e, defid, ns);
       }
-      resolving(sp) { e.sess.span_err(sp, "cyclic import"); ret none; }
+      resolving(sp) { e.sess.span_err(sp, ~"cyclic import"); ret none; }
       resolved(val, typ, md) {
         ret alt ns { ns_value. { val } ns_type. { typ } ns_module. { md } };
       }
@@ -1009,13 +1009,14 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
         } else {
             for match: glob_imp_def in matches {
                 let sp = match.item.span;
-                e.sess.span_note(sp, #fmt["'%s' is imported here",
-                                          istr::to_estr(id)]);
+                e.sess.span_note(
+                    sp, istr::from_estr(#fmt["'%s' is imported here",
+                                             istr::to_estr(id)]));
             }
             e.sess.span_fatal(sp,
-                              "'" + istr::to_estr(id)
-                              + "' is glob-imported from" +
-                                  " multiple different modules.");
+                              ~"'" + id
+                              + ~"' is glob-imported from" +
+                                  ~" multiple different modules.");
         }
     }
     // since we don't know what names we have in advance,
@@ -1030,7 +1031,7 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
                                         resolved(val, typ, md));
     }
     alt info.glob_imported_names.get(id) {
-      todo(_, _, _, _, _) { e.sess.bug("Shouldn't've put a todo in."); }
+      todo(_, _, _, _, _) { e.sess.bug(~"Shouldn't've put a todo in."); }
       resolving(sp) {
         ret none::<def>; //circularity is okay in import globs
 
@@ -1221,8 +1222,8 @@ fn check_mod_name(e: &env, name: &ident, entries: list<mod_index_entry>) {
     let saw_type = false;
     let saw_value = false;
     fn dup(e: &env, sp: &span, word: &istr, name: &ident) {
-        e.sess.span_fatal(sp, "duplicate definition of " +
-                          istr::to_estr(word + name));
+        e.sess.span_fatal(sp, ~"duplicate definition of " +
+                          word + name);
     }
     while true {
         alt entries {
@@ -1311,15 +1312,15 @@ fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt<()>) {
         // the first pattern.
         if vec::len(ch.seen) != vec::len(seen0) {
             e.sess.span_err(a.pats[i].span,
-                            "inconsistent number of bindings");
+                            ~"inconsistent number of bindings");
         } else {
             for name: ident in ch.seen {
                 if is_none(vec::find(bind istr::eq(name, _), seen0)) {
                     // Fight the alias checker
                     let name_ = name;
                     e.sess.span_err(a.pats[i].span,
-                                    "binding " + istr::to_estr(name_) +
-                                        " does not occur in first pattern");
+                                    ~"binding " + name_ +
+                                        ~" does not occur in first pattern");
                 }
             }
         }
@@ -1411,8 +1412,8 @@ fn checker(e: &env, kind: &istr) -> checker {
 fn check_name(ch: &checker, sp: &span, name: &ident) {
     for s: ident in ch.seen {
         if istr::eq(s, name) {
-            ch.sess.span_fatal(sp, "duplicate " + istr::to_estr(ch.kind)
-                               + " name: " + istr::to_estr(name));
+            ch.sess.span_fatal(sp, ~"duplicate " + ch.kind
+                               + ~" name: " + name);
         }
     }
 }

@@ -22,7 +22,7 @@ fn alloc_with_heap(bcx: @block_ctxt, typ: &ty::t, vecsz: uint) ->
     let unit_ty;
     alt ty::struct(bcx_tcx(bcx), typ) {
       ty::ty_vec(mt) { unit_ty = mt.ty; }
-      _ { bcx_ccx(bcx).sess.bug("non-ivec type in trans_ivec"); }
+      _ { bcx_ccx(bcx).sess.bug(~"non-ivec type in trans_ivec"); }
     }
     let llunitty = type_of_or_i8(bcx, unit_ty);
 
@@ -376,7 +376,7 @@ fn trans_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
     let have_istrs = alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_istr. { true }
       ty::ty_vec(_) { false }
-      _ { bcx_tcx(cx).sess.bug("non-istr/ivec in trans_append"); }
+      _ { bcx_tcx(cx).sess.bug(~"non-istr/ivec in trans_append"); }
     };
 
     let extra_len = if have_istrs {
@@ -532,7 +532,7 @@ fn trans_add(cx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
         bld::Sub(bcx, lhs_len, C_uint(1u))
       }
       ty::ty_vec(_) { lhs_len }
-      _ { bcx_tcx(bcx).sess.bug("non-istr/ivec in trans_add") }
+      _ { bcx_tcx(bcx).sess.bug(~"non-istr/ivec in trans_add") }
     };
 
     let rhs_len_and_data = get_len_and_data(bcx, rhs, unit_ty);

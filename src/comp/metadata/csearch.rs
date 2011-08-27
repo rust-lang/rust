@@ -63,7 +63,7 @@ fn translate_def_id(sess: &session::session, searched_crate: ast::crate_num,
     let local_cnum =
         alt cmeta.cnum_map.find(ext_cnum) {
           option::some(n) { n }
-          option::none. { sess.bug("didn't find a crate in the cnum_map") }
+          option::none. { sess.bug(~"didn't find a crate in the cnum_map") }
         };
 
     ret {crate: local_cnum, node: node_id};

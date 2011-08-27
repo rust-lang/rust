@@ -57,7 +57,7 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
               ast::expr_path(path) {
                 if !def_map.contains_key(expr.id) {
                     sess.span_fatal(expr.span,
-                                    "internal error in collect_freevars");
+                                    ~"internal error in collect_freevars");
                 }
                 alt def_map.get(expr.id) {
                   ast::def_arg(did) { *refs += [expr.id]; }

@@ -416,8 +416,8 @@ fn build_session_options(binary: str, match: &getopts::match, binary_dir: str)
           time_passes: time_passes,
           time_llvm_passes: time_llvm_passes,
           output_type: output_type,
-          library_search_paths: library_search_paths,
-          sysroot: sysroot,
+          library_search_paths: istr::from_estrs(library_search_paths),
+          sysroot: istr::from_estr(sysroot),
           cfg: cfg,
           test: test,
           parse_only: parse_only,
@@ -442,8 +442,8 @@ fn parse_pretty(sess: session::session, name: &istr) -> pp_mode {
     } else if istr::eq(name, ~"typed") {
         ret ppm_typed;
     } else if istr::eq(name, ~"identified") { ret ppm_identified; }
-    sess.fatal("argument to `pretty` must be one of `normal`, `typed`, or "
-               + "`identified`");
+    sess.fatal(~"argument to `pretty` must be one of `normal`, `typed`, or "
+               + ~"`identified`");
 }
 
 fn opts() -> [getopts::opt] {
@@ -486,16 +486,16 @@ fn main(args: [str]) {
     let glue = opt_present(match, ~"glue");
     if glue {
         if n_inputs > 0u {
-            sess.fatal("No input files allowed with --glue.");
+            sess.fatal(~"No input files allowed with --glue.");
         }
         let out = option::from_maybe::<istr>(~"glue.bc", output_file);
         middle::trans::make_common_glue(sess, out);
         ret;
     }
     if n_inputs == 0u {
-        sess.fatal("No input filename given.");
+        sess.fatal(~"No input filename given.");
     } else if n_inputs > 1u {
-        sess.fatal("Multiple input filenames provided.");
+        sess.fatal(~"Multiple input filenames provided.");
     }
     let ifile = match.free[0];
     let saved_out_filename: str = "";
@@ -631,9 +631,11 @@ fn main(args: [str]) {
 
     let err_code = run::run_program(prog, gcc_args);
     if 0 != err_code {
-        sess.err(#fmt["linking with gcc failed with code %d", err_code]);
-        sess.note(#fmt["gcc arguments: %s",
-                       istr::to_estr(istr::connect(gcc_args, ~" "))]);
+        sess.err(istr::from_estr(
+            #fmt["linking with gcc failed with code %d", err_code]));
+        sess.note(istr::from_estr(
+            #fmt["gcc arguments: %s",
+                       istr::to_estr(istr::connect(gcc_args, ~" "))]));
         sess.abort_if_errors();
     }
     // Clean up on Darwin

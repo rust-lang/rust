@@ -64,21 +64,24 @@ obj ext_ctxt(sess: @session,
 
     fn span_fatal(sp: span, msg: str) -> ! {
         self.print_backtrace();
-        sess.span_fatal(sp, msg);
+        sess.span_fatal(sp, istr::from_estr(msg));
     }
     fn span_err(sp: span, msg: str) {
         self.print_backtrace();
-        sess.span_err(sp, msg);
+        sess.span_err(sp, istr::from_estr(msg));
     }
     fn span_unimpl(sp: span, msg: str) -> ! {
         self.print_backtrace();
-        sess.span_unimpl(sp, msg);
+        sess.span_unimpl(sp, istr::from_estr(msg));
     }
     fn span_bug(sp: span, msg: str) -> ! {
         self.print_backtrace();
-        sess.span_bug(sp, msg);
+        sess.span_bug(sp, istr::from_estr(msg));
     }
-    fn bug(msg: str) -> ! { self.print_backtrace(); sess.bug(msg); }
+    fn bug(msg: str) -> ! {
+        self.print_backtrace();
+        sess.bug(istr::from_estr(msg));
+    }
     fn next_id() -> ast::node_id { ret sess.next_node_id(); }
 
 }

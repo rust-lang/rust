@@ -868,7 +868,7 @@ fn sequence_is_interior(cx: &ctxt, ty: t) -> bool {
       }
       ty::ty_vec(_) { ret true; }
       ty::ty_istr. { ret true; }
-      _ { cx.sess.bug("sequence_is_interior called on non-sequence type"); }
+      _ { cx.sess.bug(~"sequence_is_interior called on non-sequence type"); }
     }
 }
 
@@ -877,7 +877,8 @@ fn sequence_element_type(cx: &ctxt, ty: t) -> t {
       ty_str. { ret mk_mach(cx, ast::ty_u8); }
       ty_istr. { ret mk_mach(cx, ast::ty_u8); }
       ty_vec(mt) { ret mt.ty; }
-      _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
+      _ { cx.sess.bug(
+          ~"sequence_element_type called on non-sequence value"); }
     }
 }
 
@@ -896,9 +897,9 @@ fn get_element_type(cx: &ctxt, ty: t, i: uint) -> t {
       ty_rec(flds) { ret flds[i].mt.ty; }
       ty_tup(ts) { ret ts[i]; }
       _ {
-        cx.sess.bug("get_element_type called on type " +
-                    istr::to_estr(ty_to_str(cx, ty)) +
-                        " - expected a \
+        cx.sess.bug(~"get_element_type called on type " +
+                    ty_to_str(cx, ty) +
+                        ~" - expected a \
             tuple or record");
       }
     }
@@ -1121,7 +1122,7 @@ fn type_kind(cx: &ctxt, ty: t) -> ast::kind {
 
 
       _ {
-        cx.sess.bug("missed case: " + istr::to_estr(ty_to_str(cx, ty)));
+        cx.sess.bug(~"missed case: " + ty_to_str(cx, ty));
       }
     }
 
@@ -1629,10 +1630,10 @@ fn node_id_to_ty_param_substs_opt_and_ty(cx: &ctxt, id: &ast::node_id) ->
     // Pull out the node type table.
     alt smallintmap::find(*cx.node_types, id as uint) {
       none. {
-        cx.sess.bug("node_id_to_ty_param_substs_opt_and_ty() called on " +
-                    "an untyped node (" +
-                    istr::to_estr(std::int::to_str(id, 10u)) +
-                    ")");
+        cx.sess.bug(~"node_id_to_ty_param_substs_opt_and_ty() called on " +
+                    ~"an untyped node (" +
+                    std::int::to_str(id, 10u) +
+                    ~")");
       }
       some(tpot) { ret tpot; }
     }
@@ -1707,21 +1708,21 @@ fn ty_fn_args(cx: &ctxt, fty: t) -> [arg] {
     alt struct(cx, fty) {
       ty::ty_fn(_, a, _, _, _) { ret a; }
       ty::ty_native_fn(_, a, _) { ret a; }
-      _ { cx.sess.bug("ty_fn_args() called on non-fn type"); }
+      _ { cx.sess.bug(~"ty_fn_args() called on non-fn type"); }
     }
 }
 
 fn ty_fn_proto(cx: &ctxt, fty: t) -> ast::proto {
     alt struct(cx, fty) {
       ty::ty_fn(p, _, _, _, _) { ret p; }
-      _ { cx.sess.bug("ty_fn_proto() called on non-fn type"); }
+      _ { cx.sess.bug(~"ty_fn_proto() called on non-fn type"); }
     }
 }
 
 fn ty_fn_abi(cx: &ctxt, fty: t) -> ast::native_abi {
     alt struct(cx, fty) {
       ty::ty_native_fn(a, _, _) { ret a; }
-      _ { cx.sess.bug("ty_fn_abi() called on non-native-fn type"); }
+      _ { cx.sess.bug(~"ty_fn_abi() called on non-native-fn type"); }
     }
 }
 
@@ -1729,7 +1730,7 @@ fn ty_fn_ret(cx: &ctxt, fty: t) -> t {
     alt struct(cx, fty) {
       ty::ty_fn(_, _, r, _, _) { ret r; }
       ty::ty_native_fn(_, _, r) { ret r; }
-      _ { cx.sess.bug("ty_fn_ret() called on non-fn type"); }
+      _ { cx.sess.bug(~"ty_fn_ret() called on non-fn type"); }
     }
 }
 
@@ -1803,15 +1804,15 @@ fn field_idx(sess: &session::session, sp: &span, id: &ast::ident,
              fields: &[field]) -> uint {
     let i: uint = 0u;
     for f: field in fields { if istr::eq(f.ident, id) { ret i; } i += 1u; }
-    sess.span_fatal(sp, "unknown field '" +
-                    istr::to_estr(id) + "' of record");
+    sess.span_fatal(sp, ~"unknown field '" +
+                    id + ~"' of record");
 }
 
 fn method_idx(sess: &session::session, sp: &span, id: &ast::ident,
               meths: &[method]) -> uint {
     let i: uint = 0u;
     for m: method in meths { if istr::eq(m.ident, id) { ret i; } i += 1u; }
-    sess.span_fatal(sp, "unknown method '" + istr::to_estr(id) + "' of obj");
+    sess.span_fatal(sp, ~"unknown method '" + id + ~"' of obj");
 }
 
 fn sort_methods(meths: &[method]) -> [method] {
@@ -1847,12 +1848,12 @@ fn occurs_check_fails(tcx: &ctxt, sp: &option::t<span>, vid: int, rt: t) ->
             // variables, so in this case we have to be sure to die.
             tcx.sess.span_fatal(
                 s,
-                "Type inference failed because I \
+                ~"Type inference failed because I \
                  could not find a type\n that's both of the form "
-                + istr::to_estr(ty_to_str(tcx, ty::mk_var(tcx, vid))) +
-                " and of the form " +
-                istr::to_estr(ty_to_str(tcx, rt)) +
-                ". Such a type would have to be infinitely \
+                + ty_to_str(tcx, ty::mk_var(tcx, vid)) +
+                ~" and of the form " +
+                ty_to_str(tcx, rt) +
+                ~". Such a type would have to be infinitely \
                  large.");
           }
           _ { ret true; }
@@ -2667,7 +2668,8 @@ fn bind_params_in_type(sp: &span, cx: &ctxt, next_ty_var: fn() -> int, typ: t,
         if index < vec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids[index]);
         } else {
-            cx.sess.span_fatal(sp, "Unbound type parameter in callee's type");
+            cx.sess.span_fatal(
+                sp, ~"Unbound type parameter in callee's type");
         }
     }
     let new_typ =
@@ -2717,7 +2719,7 @@ fn tag_variants(cx: &ctxt, id: &ast::def_id) -> [variant_info] {
     let item =
         alt cx.items.find(id.node) {
           some(i) { i }
-          none. { cx.sess.bug("expected to find cached node_item") }
+          none. { cx.sess.bug(~"expected to find cached node_item") }
         };
     alt item {
       ast_map::node_item(item) {
@@ -2756,7 +2758,7 @@ fn tag_variant_with_id(cx: &ctxt, tag_id: &ast::def_id,
         if def_eq(variant.id, variant_id) { ret variant; }
         i += 1u;
     }
-    cx.sess.bug("tag_variant_with_id(): no variant exists with that ID");
+    cx.sess.bug(~"tag_variant_with_id(): no variant exists with that ID");
 }
 
 
@@ -2784,8 +2786,8 @@ fn ret_ty_of_fn_ty(cx: ctxt, a_ty: t) -> t {
       ty::ty_fn(_, _, ret_ty, _, _) { ret ret_ty; }
       ty::ty_native_fn(_, _, ret_ty) { ret ret_ty; }
       _ {
-        cx.sess.bug("ret_ty_of_fn_ty() called on non-function type: " +
-                    istr::to_estr(ty_to_str(cx, a_ty)));
+        cx.sess.bug(~"ret_ty_of_fn_ty() called on non-function type: " +
+                    ty_to_str(cx, a_ty));
       }
     }
 }
@@ -2900,9 +2902,9 @@ fn ast_constr_to_constr<T>(tcx: ty::ctxt, c: &@ast::constr_general<T>) ->
       }
       _ {
         tcx.sess.span_fatal(c.span,
-                            "Predicate " +
-                            istr::to_estr(path_to_str(c.node.path)) +
-                            " is unbound or bound to a non-function or an \
+                            ~"Predicate " +
+                            path_to_str(c.node.path) +
+                            ~" is unbound or bound to a non-function or an \
                              impure function");
       }
     }
