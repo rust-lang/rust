@@ -191,7 +191,7 @@ fn bad_expr_word_table() -> hashmap<istr, ()> {
 
 fn unexpected(p: &parser, t: token::token) -> ! {
     let s: str = "unexpected token: ";
-    s += token::to_str(p.get_reader(), t);
+    s += istr::to_estr(token::to_str(p.get_reader(), t));
     p.fatal(s);
 }
 
@@ -200,9 +200,9 @@ fn expect(p: &parser, t: token::token) {
         p.bump();
     } else {
         let s: str = "expecting ";
-        s += token::to_str(p.get_reader(), t);
+        s += istr::to_estr(token::to_str(p.get_reader(), t));
         s += ", found ";
-        s += token::to_str(p.get_reader(), p.peek());
+        s += istr::to_estr(token::to_str(p.get_reader(), p.peek()));
         p.fatal(s);
     }
 }
@@ -216,9 +216,9 @@ fn expect_gt(p: &parser) {
         p.swap(token::BINOP(token::LSR), p.get_lo_pos() + 1u, p.get_hi_pos());
     } else {
         let s: str = "expecting ";
-        s += token::to_str(p.get_reader(), token::GT);
+        s += istr::to_estr(token::to_str(p.get_reader(), token::GT));
         s += ", found ";
-        s += token::to_str(p.get_reader(), p.peek());
+        s += istr::to_estr(token::to_str(p.get_reader(), p.peek()));
         p.fatal(s);
     }
 }
@@ -268,7 +268,7 @@ fn eat_word(p: &parser, word: &str) -> bool {
 fn expect_word(p: &parser, word: &str) {
     if !eat_word(p, word) {
         p.fatal("expecting " + word + ", found " +
-                    token::to_str(p.get_reader(), p.peek()));
+                istr::to_estr(token::to_str(p.get_reader(), p.peek())));
     }
 }
 
@@ -1450,7 +1450,8 @@ fn parse_pat(p: &parser) -> @ast::pat {
                 p.bump();
                 if p.peek() != token::RBRACE {
                     p.fatal("expecting }, found " +
-                                token::to_str(p.get_reader(), p.peek()));
+                            istr::to_estr(
+                                token::to_str(p.get_reader(), p.peek())));
                 }
                 etc = true;
                 break;
@@ -1705,7 +1706,8 @@ fn parse_block_tail(p: &parser, lo: uint, s: ast::check_mode) -> ast::blk {
                     if stmt_ends_with_semi(*stmt) {
                         p.fatal("expected ';' or '}' after " +
                                     "expression but found " +
-                                    token::to_str(p.get_reader(), t));
+                                istr::to_estr(
+                                    token::to_str(p.get_reader(), t)));
                     }
                     stmts += [stmt];
                   }
@@ -1923,7 +1925,8 @@ fn parse_mod_items(p: &parser, term: token::token,
           some(i) { items += [i]; }
           _ {
             p.fatal("expected item but found " +
-                        token::to_str(p.get_reader(), p.peek()));
+                    istr::to_estr(
+                        token::to_str(p.get_reader(), p.peek())));
           }
         }
     }
@@ -2119,7 +2122,8 @@ fn parse_item_tag(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
           token::RBRACE. {/* empty */ }
           _ {
             p.fatal("expected name of variant or '}' but found " +
-                        token::to_str(p.get_reader(), tok));
+                    istr::to_estr(
+                        token::to_str(p.get_reader(), tok)));
           }
         }
     }

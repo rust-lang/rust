@@ -750,7 +750,7 @@ fn gather_comments_and_literals(cm: &codemap::codemap, path: &istr,
         if is_lit(tok.tok) {
             literals += [{lit: rdr.get_str_from(tok.bpos), pos: tok.chpos}];
         }
-        log "tok: " + token::to_str(rdr, tok.tok);
+        log ~"tok: " + token::to_str(rdr, tok.tok);
         first_read = false;
     }
     ret {cmnts: comments, lits: literals};
