@@ -245,6 +245,8 @@ public:
     const rust_shape_tables *tables;
     const type_param *params;   // subparameters
 
+    // Constructs type parameters from a function shape.
+    static type_param *from_fn_shape(const uint8_t *sp, ptr dp, arena &arena);
     // Creates type parameters from an object shape description.
     static type_param *from_obj_shape(const uint8_t *sp, ptr dp,
                                       arena &arena);
@@ -718,6 +720,7 @@ template<typename T,typename U>
 class data : public ctxt< data<T,U> > {
 protected:
     void walk_box_contents(bool align);
+    void walk_fn_contents(bool align, ptr &dp);
     void walk_obj_contents(bool align, ptr &dp);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
 
@@ -896,6 +899,28 @@ data<T,U>::walk_tag(bool align, tag_info &tinfo) {
 
 template<typename T,typename U>
 void
+data<T,U>::walk_fn_contents(bool align, ptr &dp) {
+    dp += sizeof(void *);   // Skip over the code pointer.
+
+    uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
+    type_desc *subtydesc =
+        *reinterpret_cast<type_desc **>(box_ptr + sizeof(void *));
+    ptr closure_dp(box_ptr + sizeof(void *));
+    if (!box_ptr)
+        return;
+
+    arena arena;
+    type_param *params = type_param::from_fn_shape(subtydesc->shape,
+                                                   closure_dp, arena);
+
+    closure_dp += sizeof(void *);
+    T sub(*static_cast<T *>(this), subtydesc->shape, params,
+          subtydesc->shape_tables, closure_dp);
+    sub.walk(true);
+}
+
+template<typename T,typename U>
+void
 data<T,U>::walk_obj_contents(bool align, ptr &dp) {
     dp += sizeof(void *);   // Skip over the vtable.
 
@@ -967,7 +992,16 @@ private:
         data<log,ptr>::walk_box_contents(align);
     }
 
-    void walk_fn(bool align) { out << "fn"; }
+    void walk_fn(bool align) {
+        out << "fn";
+        data<log,ptr>::walk_fn_contents(align, dp);
+    }
+
+    void walk_obj(bool align) {
+        out << "obj";
+        data<log,ptr>::walk_obj_contents(align, dp);
+    }
+
     void walk_port(bool align) { out << "port"; }
     void walk_chan(bool align) { out << "chan"; }
     void walk_task(bool align) { out << "task"; }
@@ -988,7 +1022,6 @@ private:
 
     void walk_struct(bool align, const uint8_t *end_sp);
     void walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data);
-    void walk_obj(bool align);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);

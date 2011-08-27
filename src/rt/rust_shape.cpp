@@ -42,7 +42,17 @@ type_param::make(const type_desc **tydescs, unsigned n_tydescs,
     return ptrs;
 }
 
-// Constructs type parameters from an object shape. This is a bit messy,
+// Constructs type parameters from a function shape. This is a bit messy,
+// because it requires that the function shape have a specific format.
+type_param *
+type_param::from_fn_shape(const uint8_t *sp, ptr dp, arena &arena) {
+    const type_desc *tydesc = bump_dp<const type_desc *>(dp);
+    const type_desc **descs = (const type_desc **)(dp + tydesc->size);
+    unsigned n_tydescs = tydesc->n_obj_params & 0x7fffffff;
+    return make(descs, n_tydescs, arena);
+}
+
+// Constructs type parameters from an object shape. This is also a bit messy,
 // because it requires that the object shape have a specific format.
 type_param *
 type_param::from_obj_shape(const uint8_t *sp, ptr dp, arena &arena) {
@@ -458,12 +468,6 @@ log::walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data) {
     }
 
     out << "]";
-}
-
-void
-log::walk_obj(bool align) {
-    out << "obj";
-    data<log,ptr>::walk_obj_contents(align, dp);
 }
 
 void

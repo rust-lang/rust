@@ -942,11 +942,12 @@ fn trans_stack_local_derived_tydesc(cx: &@block_ctxt, llsz: ValueRef,
     ret llmyroottydesc;
 }
 
-// Objects store their type parameters differently (in the object itself
-// rather than in the type descriptor).
+// Objects and closures store their type parameters differently (in the object
+// or closure itself rather than in the type descriptor).
 tag ty_param_storage {
     tps_normal;
     tps_obj(uint);
+    tps_fn(uint);
 }
 
 fn get_derived_tydesc(cx: &@block_ctxt, t: ty::t, escapes: bool,
@@ -1004,10 +1005,13 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: ty::t, escapes: bool,
         bld::PointerCast(bcx, llparamtydescs,
                          T_ptr(T_ptr(bcx_ccx(bcx).tydesc_type)));
 
+    // The top bit indicates whether this type descriptor describes an object
+    // (0) or a function (1).
     let obj_params;
     alt storage {
         tps_normal. { obj_params = 0u; }
         tps_obj(np) { obj_params = np; }
+        tps_fn(np)  { obj_params = 0x80000000u | np; }
     }
 
     let v;
