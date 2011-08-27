@@ -105,7 +105,8 @@ fn metadata_matches(crate_data: &@[u8], metas: &[@ast::meta_item]) -> bool {
 
     for needed: @ast::meta_item in metas {
         if !attr::contains(linkage_metas, needed) {
-            log #fmt["missing %s", pprust::meta_item_to_str(*needed)];
+            log #fmt["missing %s",
+                     istr::to_estr(pprust::meta_item_to_str(*needed))];
             ret false;
         }
     }

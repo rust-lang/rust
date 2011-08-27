@@ -4602,7 +4602,7 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
 
 fn trans_check_expr(cx: &@block_ctxt, e: &@ast::expr, s: &istr) -> result {
     let cond_res = trans_expr(cx, e);
-    let expr_str = s + ~" " + istr::from_estr(expr_to_str(e)) + ~" failed";
+    let expr_str = s + ~" " + expr_to_str(e) + ~" failed";
     let fail_cx = new_sub_block_ctxt(cx, ~"fail");
     trans_fail(fail_cx, some::<span>(e.span), expr_str);
     let next_cx = new_sub_block_ctxt(cx, ~"next");

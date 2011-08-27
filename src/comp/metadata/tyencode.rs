@@ -235,7 +235,7 @@ fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: ty::t,
 
 // FIXME less copy-and-paste
 fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
-    w.write_str(istr::from_estr(path_to_str(c.node.path)));
+    w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
@@ -246,7 +246,7 @@ fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
           carg_base. { w.write_char('*'); }
           carg_ident(i) { w.write_uint(i); }
           carg_lit(l) {
-            w.write_str(istr::from_estr(lit_to_str(l)));
+            w.write_str(lit_to_str(l));
           }
         }
     }
@@ -254,7 +254,7 @@ fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
 }
 
 fn enc_ty_constr(w: &io::writer, cx: &@ctxt, c: &@ty::type_constr) {
-    w.write_str(istr::from_estr(path_to_str(c.node.path)));
+    w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
@@ -264,9 +264,9 @@ fn enc_ty_constr(w: &io::writer, cx: &@ctxt, c: &@ty::type_constr) {
         alt a.node {
           carg_base. { w.write_char('*'); }
           carg_ident(p) {
-            w.write_str(istr::from_estr(path_to_str(p))); }
+            w.write_str(path_to_str(p)); }
           carg_lit(l) {
-            w.write_str(istr::from_estr(lit_to_str(l))); }
+            w.write_str(lit_to_str(l)); }
         }
     }
     w.write_char(')');

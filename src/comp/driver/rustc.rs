@@ -185,11 +185,11 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         alt node {
           pprust::node_expr(s, expr) {
             pp::space(s.s);
-            pp::word(s.s, "as");
+            pp::word(s.s, ~"as");
             pp::space(s.s);
             pp::word(
                 s.s,
-                istr::to_estr(ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr))));
+                ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
             pprust::pclose(s);
           }
           _ { }
@@ -200,17 +200,17 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
           pprust::node_item(s, item) {
             pp::space(s.s);
             pprust::synth_comment(
-                s, istr::to_estr(int::to_str(item.id, 10u)));
+                s, int::to_str(item.id, 10u));
           }
           pprust::node_block(s, blk) {
             pp::space(s.s);
             pprust::synth_comment(
-                s, istr::to_estr(~"block " + int::to_str(blk.node.id, 10u)));
+                s, ~"block " + int::to_str(blk.node.id, 10u));
           }
           pprust::node_expr(s, expr) {
             pp::space(s.s);
             pprust::synth_comment(
-                s, istr::to_estr(int::to_str(expr.id, 10u)));
+                s, int::to_str(expr.id, 10u));
             pprust::pclose(s);
           }
           _ { }
@@ -246,7 +246,8 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
       }
       ppm_normal. { ann = pprust::no_ann(); }
     }
-    pprust::print_crate(sess.get_codemap(), crate, input,
+    pprust::print_crate(sess.get_codemap(), crate,
+                        istr::from_estr(input),
                         io::string_reader(istr::from_estr(src)),
                         io::stdout(), ann);
 }

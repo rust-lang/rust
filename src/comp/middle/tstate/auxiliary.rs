@@ -68,7 +68,7 @@ fn comma_str(args: &[@constr_arg_use]) -> istr {
         alt a.node {
           carg_base. { rslt += ~"*"; }
           carg_ident(i) { rslt += i.ident; }
-          carg_lit(l) { rslt += istr::from_estr(lit_to_str(l)); }
+          carg_lit(l) { rslt += lit_to_str(l); }
         }
     }
     ret rslt;
@@ -81,7 +81,7 @@ fn constraint_to_str(tcx: &ty::ctxt, c: &sp_constr) -> istr {
             istr::from_estr(tcx.sess.span_str(c.span)) + ~"])";
       }
       npred(p, _, args) {
-        ret istr::from_estr(path_to_str(p)) + ~"(" +
+        ret path_to_str(p) + ~"(" +
             comma_str(args) + ~")" + ~"[" +
                 istr::from_estr(tcx.sess.span_str(c.span)) + ~"]";
       }
@@ -593,9 +593,9 @@ fn constraints(fcx: &fn_ctxt) -> [norm_constraint] {
 // should freeze it at some earlier point.
 fn match_args(fcx: &fn_ctxt, occs: &@mutable [pred_args],
               occ: &[@constr_arg_use]) -> uint {
-    log "match_args: looking at " +
-            constr_args_to_str(fn (i: &inst) -> str {
-                ret istr::to_estr(i.ident);
+    log ~"match_args: looking at " +
+            constr_args_to_str(fn (i: &inst) -> istr {
+                ret i.ident;
             }, occ);
     for pd: pred_args in *occs {
         log ~"match_args: candidate " + pred_args_to_str(pd);
@@ -687,11 +687,11 @@ fn expr_to_constr(tcx: ty::ctxt, e: &@expr) -> sp_constr {
 }
 
 fn pred_args_to_str(p: &pred_args) -> istr {
-    istr::from_estr("<" + istr::to_estr(uint::str(p.node.bit_num)) + ", " +
-                  constr_args_to_str(fn (i: &inst) -> str {
-                      ret istr::to_estr(i.ident);
-                  }, p.node.args)
-                  + ">")
+    ~"<" + uint::str(p.node.bit_num) + ~", " +
+        constr_args_to_str(fn (i: &inst) -> istr {
+            ret i.ident;
+        }, p.node.args)
+        + ~">"
 }
 
 fn substitute_constr_args(cx: &ty::ctxt, actuals: &[@expr], c: &@ty::constr)

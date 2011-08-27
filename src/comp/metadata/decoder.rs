@@ -349,7 +349,9 @@ fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
 fn list_meta_items(meta_items: &ebml::doc, out: io::writer) {
     for mi: @ast::meta_item in get_meta_items(meta_items) {
         out.write_str(
-            istr::from_estr(#fmt["%s\n", pprust::meta_item_to_str(*mi)]));
+            istr::from_estr(
+                #fmt["%s\n",
+                     istr::to_estr(pprust::meta_item_to_str(*mi))]));
     }
 }
 
@@ -358,7 +360,9 @@ fn list_crate_attributes(md: &ebml::doc, out: io::writer) {
 
     for attr: ast::attribute in get_attributes(md) {
         out.write_str(
-            istr::from_estr(#fmt["%s\n", pprust::attribute_to_str(attr)]));
+            istr::from_estr(
+                #fmt["%s\n",
+                     istr::to_estr(pprust::attribute_to_str(attr))]));
     }
 
     out.write_str(~"\n\n");

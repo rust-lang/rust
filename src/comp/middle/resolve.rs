@@ -451,7 +451,7 @@ fn resolve_constr(e: @env, c: &@ast::constr, sc: &scopes, _v: &vt<scopes>) {
           _ {
             e.sess.span_err(c.span,
                             "Non-predicate in constraint: " +
-                                path_to_str(c.node.path));
+                            istr::to_estr(path_to_str(c.node.path)));
           }
         }
     }

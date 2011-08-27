@@ -62,7 +62,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> istr {
     fn fn_to_str(cx: &ctxt, proto: ast::proto, ident: option::t<ast::ident>,
                  inputs: &[arg], output: t, cf: ast::controlflow,
                  constrs: &[@constr]) -> istr {
-        let s = istr::from_estr(proto_to_str(proto));
+        let s = proto_to_str(proto);
         alt ident {
           some(i) {
             s += ~" ";
@@ -169,9 +169,8 @@ fn ty_to_short_str(cx: &ctxt, typ: t) -> istr {
 }
 
 fn constr_to_str(c: &@constr) -> istr {
-    ret istr::from_estr(path_to_str(c.node.path)) +
-        istr::from_estr(
-            pprust::constr_args_to_str(pprust::uint_to_str, c.node.args));
+    ret path_to_str(c.node.path) +
+        pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
 }
 
 fn constrs_str(constrs: &[@constr]) -> istr {
@@ -186,9 +185,8 @@ fn constrs_str(constrs: &[@constr]) -> istr {
 
 fn ty_constr_to_str<Q>(c: &@ast::spanned<ast::constr_general_<ast::path, Q>>)
    -> istr {
-    ret istr::from_estr(path_to_str(c.node.path)) +
-        istr::from_estr(
-            constr_args_to_str::<ast::path>(path_to_str, c.node.args));
+    ret path_to_str(c.node.path) +
+        constr_args_to_str::<ast::path>(path_to_str, c.node.args);
 }
 
 // Local Variables:

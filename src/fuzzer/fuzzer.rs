@@ -163,14 +163,15 @@ fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
     let exprsL = vec::len(exprs);
     if exprsL < 100u {
         for each i: uint in under(uint::min(exprsL, 20u)) {
-            log_err "Replacing... " + pprust::expr_to_str(@exprs[i]);
+            log_err ~"Replacing... " + pprust::expr_to_str(@exprs[i]);
             for each j: uint in under(uint::min(exprsL, 5u)) {
-                log_err "With... " + pprust::expr_to_str(@exprs[j]);
+                log_err ~"With... " + pprust::expr_to_str(@exprs[j]);
                 let crate2 = @replace_expr_in_crate(crate, i, exprs[j].node);
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
                 let str3 =
-                    as_str(bind pprust::print_crate(codemap, crate2, filename,
+                    as_str(bind pprust::print_crate(codemap, crate2,
+                                                    istr::from_estr(filename),
                                                     io::string_reader(~""), _,
                                                     pprust::no_ann()));
                 // 1u would be sane here, but the pretty-printer currently has lots of whitespace and paren issues,
@@ -254,7 +255,8 @@ fn parse_and_print(code: &str) -> str {
     //write_file(filename, code);
     let crate = parser::parse_crate_from_source_str(
         istr::from_estr(filename), istr::from_estr(code), [], sess);
-    ret as_str(bind pprust::print_crate(sess.cm, crate, filename,
+    ret as_str(bind pprust::print_crate(sess.cm, crate,
+                                        istr::from_estr(filename),
                                         io::string_reader(istr::from_estr(code)), _,
                                         pprust::no_ann()));
 }
@@ -364,7 +366,8 @@ fn check_variants(files: &[str]) {
                 parser::parse_crate_from_source_str(
                     istr::from_estr(file),
                     istr::from_estr(s), [], sess);
-            log_err as_str(bind pprust::print_crate(sess.cm, crate, file,
+            log_err as_str(bind pprust::print_crate(sess.cm, crate,
+                                                    istr::from_estr(file),
                                                     io::string_reader(istr::from_estr(s)), _,
                                                     pprust::no_ann()));
             check_variants_of_ast(*crate, sess.cm, file);

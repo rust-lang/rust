@@ -167,7 +167,8 @@ fn mk_test_module(cx: &test_ctxt) -> @ast::item {
          node: item_,
          span: dummy_sp()};
 
-    log #fmt["Synthetic test module:\n%s\n", pprust::item_to_str(@item)];
+    log #fmt["Synthetic test module:\n%s\n",
+             istr::to_estr(pprust::item_to_str(@item))];
 
     ret @item;
 }

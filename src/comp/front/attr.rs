@@ -125,10 +125,12 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
 
 fn contains(haystack: &[@ast::meta_item], needle: @ast::meta_item) -> bool {
     log #fmt["looking for %s",
-             syntax::print::pprust::meta_item_to_str(*needle)];
+             istr::to_estr(
+                 syntax::print::pprust::meta_item_to_str(*needle))];
     for item: @ast::meta_item in haystack {
         log #fmt["looking in %s",
-                 syntax::print::pprust::meta_item_to_str(*item)];
+                 istr::to_estr(
+                     syntax::print::pprust::meta_item_to_str(*item))];
         if eq(item, needle) { log "found it!"; ret true; }
     }
     log "found it not :(";

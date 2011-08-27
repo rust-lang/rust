@@ -87,7 +87,7 @@ fn check_states_expr(e: &@expr, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
         s +=
             ~"Unsatisfied precondition constraint (for example, " + diff +
                 ~") for expression:\n";
-        s += istr::from_estr(syntax::print::pprust::expr_to_str(e));
+        s += syntax::print::pprust::expr_to_str(e);
         s += ~"\nPrecondition:\n";
         s += tritv_to_str(fcx, prec);
         s += ~"\nPrestate:\n";
@@ -119,7 +119,7 @@ fn check_states_stmt(s: &@stmt, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
         ss +=
             ~"Unsatisfied precondition constraint (for example, " + diff +
                 ~") for statement:\n";
-        ss += istr::from_estr(syntax::print::pprust::stmt_to_str(*s));
+        ss += syntax::print::pprust::stmt_to_str(*s);
         ss += ~"\nPrecondition:\n";
         ss += tritv_to_str(fcx, prec);
         ss += ~"\nPrestate: \n";
@@ -154,9 +154,10 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
                                   istr::to_estr(fcx.name) +
                                       ", not all control paths \
                                         return a value");
-        fcx.ccx.tcx.sess.span_fatal(f.decl.output.span,
-                                    "see declared return type of '" +
-                                        ty_to_str(f.decl.output) + "'");
+        fcx.ccx.tcx.sess.span_fatal(
+            f.decl.output.span,
+            "see declared return type of '" +
+            istr::to_estr(ty_to_str(f.decl.output)) + "'");
     } else if f.decl.cf == noreturn {
 
         // check that this really always fails

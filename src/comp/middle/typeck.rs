@@ -315,7 +315,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         ret typ;
     }
     let typ;
-    let cname = none::<str>;
+    let cname = none::<istr>;
     alt ast_ty.node {
       ast::ty_nil. { typ = ty::mk_nil(tcx); }
       ast::ty_bot. { typ = ty::mk_bot(tcx); }
@@ -415,7 +415,9 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
     }
     alt cname {
       none. {/* no-op */ }
-      some(cname_str) { typ = ty::rename(tcx, typ, cname_str); }
+      some(cname_str) {
+        typ = ty::rename(tcx, typ, istr::to_estr(cname_str));
+      }
     }
     tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
     ret typ;
@@ -2402,7 +2404,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                         // The user is trying to extend a non-object.
                         tcx.sess.span_fatal(
                             e.span,
-                            syntax::print::pprust::expr_to_str(e)
+                            istr::to_estr(
+                                syntax::print::pprust::expr_to_str(e))
                             +
                             " does not have object type");
                       }

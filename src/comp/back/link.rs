@@ -347,7 +347,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
         }
 
         fn len_and_str_lit(l: &ast::lit) -> istr {
-            ret len_and_str(istr::from_estr(pprust::lit_to_str(@l)));
+            ret len_and_str(pprust::lit_to_str(@l));
         }
 
         let cmh_items = attr::sort_meta_items(metas.cmh_items);

@@ -2900,7 +2900,8 @@ fn ast_constr_to_constr<T>(tcx: ty::ctxt, c: &@ast::constr_general<T>) ->
       }
       _ {
         tcx.sess.span_fatal(c.span,
-                            "Predicate " + path_to_str(c.node.path) +
+                            "Predicate " +
+                            istr::to_estr(path_to_str(c.node.path)) +
                             " is unbound or bound to a non-function or an \
                              impure function");
       }
