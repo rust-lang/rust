@@ -2549,13 +2549,13 @@ fn parse_crate_from_crate_file(input: &str, cfg: &ast::crate_cfg,
                                sess: &parse_sess) -> @ast::crate {
     let p = new_parser_from_file(sess, cfg, input, 0u, 0u, CRATE_FILE);
     let lo = p.get_lo_pos();
-    let prefix = istr::to_estr(
-        std::fs::dirname(istr::from_estr(p.get_filemap().name)));
+    let prefix =
+        std::fs::dirname(istr::from_estr(p.get_filemap().name));
     let leading_attrs = parse_inner_attrs_and_next(p);
     let crate_attrs = leading_attrs.inner;
     let first_cdir_attr = leading_attrs.next;
     let cdirs = parse_crate_directives(p, token::EOF, first_cdir_attr);
-    let deps: [str] = [];
+    let deps: [istr] = [];
     let cx =
         @{p: p,
           mode: eval::mode_parse,
