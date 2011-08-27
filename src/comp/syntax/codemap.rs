@@ -80,7 +80,7 @@ fn span_to_str(sp: &span, cm: &codemap) -> str {
         let lo = lookup_char_pos(cm, cur.lo);
         let hi = lookup_char_pos(cm, cur.hi);
         res +=
-            #fmt["%s:%u:%u:%u:%u",
+            #fmt["%s:%u:%u: %u:%u",
                  if some(lo.filename) == prev_file {
                      "-"
                  } else { lo.filename }, lo.line, lo.col, hi.line, hi.col];
@@ -108,7 +108,7 @@ fn emit_diagnostic(sp: &option::t<span>, msg: &str, kind: &str, color: u8,
       }
       none. { }
     }
-    io::stdout().write_str(ss + ": ");
+    io::stdout().write_str(ss + " ");
     if term::color_supported() {
         term::fg(io::stdout().get_buf_writer(), color);
     }
