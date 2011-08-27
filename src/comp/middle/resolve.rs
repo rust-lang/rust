@@ -75,12 +75,12 @@ tag import_state {
              option::t<def>); /* module */
 }
 
-type ext_hash = hashmap<{did: def_id, ident: str, ns: namespace}, def>;
+type ext_hash = hashmap<{did: def_id, ident: istr, ns: namespace}, def>;
 
 fn new_ext_hash() -> ext_hash {
-    type key = {did: def_id, ident: str, ns: namespace};
+    type key = {did: def_id, ident: istr, ns: namespace};
     fn hash(v: &key) -> uint {
-        ret str::hash(v.ident) + util::common::hash_def(v.did) +
+        ret istr::hash(v.ident) + util::common::hash_def(v.did) +
                 alt v.ns {
                   ns_value. { 1u }
                   ns_type. { 2u }
@@ -89,7 +89,7 @@ fn new_ext_hash() -> ext_hash {
     }
     fn eq(v1: &key, v2: &key) -> bool {
         ret util::common::def_eq(v1.did, v2.did) &&
-                str::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
+                istr::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
     }
     ret std::map::mk_hashmap::<key, def>(hash, eq);
 }
@@ -128,7 +128,7 @@ type env =
      mod_map: hashmap<ast::node_id, @indexed_mod>,
      ext_map: hashmap<def_id, [ident]>,
      ext_cache: ext_hash,
-     mutable reported: [{ident: str, sc: scope}],
+     mutable reported: [{ident: istr, sc: scope}],
      sess: session};
 
 
@@ -477,7 +477,8 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
             alt lookup_in_scope(e, sc, sp, ids[0], ns_module) {
               some(dcur) { dcur }
               none. {
-                unresolved_err(e, sc, sp, ids[0], ns_name(ns_module));
+                unresolved_err(e, sc, sp, ids[0],
+                               ns_name(ns_module));
                 remove_if_unresolved(e.imports, defid.node);
                 ret ()
               }
@@ -499,7 +500,8 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
                         {
                       some(dcur) { dcur }
                       none. {
-                        unresolved_err(e, sc, sp, ids[i], ns_name(ns_module));
+                        unresolved_err(e, sc, sp, ids[i],
+                                       ns_name(ns_module));
                         remove_if_unresolved(e.imports, defid.node);
                         ret () // FIXME (issue #521)
                       }
@@ -512,7 +514,7 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
                 val: &option::t<def>, typ: &option::t<def>,
                 md: &option::t<def>) {
         if is_none(val) && is_none(typ) && is_none(md) {
-            unresolved_err(e, sc, sp, name, "import");
+            unresolved_err(e, sc, sp, name, ~"import");
         } else { e.imports.insert(defid.node, resolved(val, typ, md)); }
     }
     fn remove_if_unresolved(imports: hashmap<ast::node_id, import_state>,
@@ -532,15 +534,16 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
 
 
 // Utilities
-fn ns_name(ns: namespace) -> str {
+fn ns_name(ns: namespace) -> istr {
     alt ns {
-      ns_type. { ret "typename"; }
-      ns_value. { ret "name"; }
-      ns_module. { ret "modulename"; }
+      ns_type. { ret ~"typename"; }
+      ns_value. { ret ~"name"; }
+      ns_module. { ret ~"modulename"; }
     }
 }
 
-fn unresolved_err(e: &env, sc: &scopes, sp: &span, name: &ident, kind: &str) {
+fn unresolved_err(e: &env, sc: &scopes, sp: &span,
+                  name: &ident, kind: &istr) {
     fn find_fn_or_mod_scope(sc: scopes) -> scope {
         while true {
             alt sc {
@@ -558,20 +561,21 @@ fn unresolved_err(e: &env, sc: &scopes, sp: &span, name: &ident, kind: &str) {
         fail;
     }
     let err_scope = find_fn_or_mod_scope(sc);
-    for rs: {ident: str, sc: scope} in e.reported {
-        if str::eq(rs.ident, istr::to_estr(name))
+    for rs: {ident: istr, sc: scope} in e.reported {
+        if istr::eq(rs.ident, name)
             && err_scope == rs.sc { ret; }
     }
-    e.reported += [{ident: istr::to_estr(name), sc: err_scope}];
-    e.sess.span_err(sp, mk_unresolved_msg(name, kind));
+    e.reported += [{ident: name, sc: err_scope}];
+    e.sess.span_err(sp, istr::to_estr(mk_unresolved_msg(name, kind)));
 }
 
-fn unresolved_fatal(e: &env, sp: &span, id: &ident, kind: &str) -> ! {
-    e.sess.span_fatal(sp, mk_unresolved_msg(id, kind));
+fn unresolved_fatal(e: &env, sp: &span, id: &ident, kind: &istr) -> ! {
+    e.sess.span_fatal(sp, istr::to_estr(mk_unresolved_msg(id, kind)));
 }
 
-fn mk_unresolved_msg(id: &ident, kind: &str) -> str {
-    ret #fmt["unresolved %s: %s", kind, istr::to_estr(id)];
+fn mk_unresolved_msg(id: &ident, kind: &istr) -> istr {
+    ret istr::from_estr(
+        #fmt["unresolved %s: %s", istr::to_estr(kind), istr::to_estr(id)]);
 }
 
 // Lookup helpers
@@ -602,7 +606,8 @@ fn lookup_path_strict(e: &env, sc: &scopes, sp: &span, pth: &ast::path_,
 fn lookup_in_scope_strict(e: &env, sc: scopes, sp: &span, name: &ident,
                           ns: namespace) -> option::t<def> {
     alt lookup_in_scope(e, sc, sp, name, ns) {
-      none. { unresolved_err(e, sc, sp, name, ns_name(ns)); ret none; }
+      none. { unresolved_err(e, sc, sp, name,
+                             ns_name(ns)); ret none; }
       some(d) { ret some(d); }
     }
 }
@@ -888,7 +893,8 @@ fn found_def_item(i: &@ast::item, ns: namespace) -> option::t<def> {
 fn lookup_in_mod_strict(e: &env, sc: &scopes, m: def, sp: &span, name: &ident,
                         ns: namespace, dr: dir) -> option::t<def> {
     alt lookup_in_mod(e, m, sp, name, ns, dr) {
-      none. { unresolved_err(e, sc, sp, name, ns_name(ns)); ret none; }
+      none. { unresolved_err(e, sc, sp, name,
+                             ns_name(ns)); ret none; }
       some(d) { ret some(d); }
     }
 }
@@ -900,14 +906,14 @@ fn lookup_in_mod(e: &env, m: &def, sp: &span, name: &ident, ns: namespace,
         // examining a module in an external crate
 
         let cached = e.ext_cache.find({did: defid,
-                                       ident: istr::to_estr(name), ns: ns});
+                                       ident: name, ns: ns});
         if !is_none(cached) { ret cached; }
         let path = [name];
         if defid.node != -1 { path = e.ext_map.get(defid) + path; }
         let fnd = lookup_external(e, defid.crate, path, ns);
         if !is_none(fnd) {
             e.ext_cache.insert({did: defid,
-                                ident: istr::to_estr(name), ns: ns},
+                                ident: name, ns: ns},
                                option::get(fnd));
         }
         ret fnd;
@@ -1214,26 +1220,26 @@ fn check_mod_name(e: &env, name: &ident, entries: list<mod_index_entry>) {
     let saw_mod = false;
     let saw_type = false;
     let saw_value = false;
-    fn dup(e: &env, sp: &span, word: &str, name: &ident) {
-        e.sess.span_fatal(sp, "duplicate definition of " + word
-                          + istr::to_estr(name));
+    fn dup(e: &env, sp: &span, word: &istr, name: &ident) {
+        e.sess.span_fatal(sp, "duplicate definition of " +
+                          istr::to_estr(word + name));
     }
     while true {
         alt entries {
           cons(entry, rest) {
             if !is_none(lookup_in_mie(e, entry, ns_value)) {
                 if saw_value {
-                    dup(e, mie_span(entry), "", name);
+                    dup(e, mie_span(entry), ~"", name);
                 } else { saw_value = true; }
             }
             if !is_none(lookup_in_mie(e, entry, ns_type)) {
                 if saw_type {
-                    dup(e, mie_span(entry), "type ", name);
+                    dup(e, mie_span(entry), ~"type ", name);
                 } else { saw_type = true; }
             }
             if !is_none(lookup_in_mie(e, entry, ns_module)) {
                 if saw_mod {
-                    dup(e, mie_span(entry), "module ", name);
+                    dup(e, mie_span(entry), ~"module ", name);
                 } else { saw_mod = true; }
             }
             entries = *rest;
@@ -1264,20 +1270,20 @@ fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt<()>) {
       ast::item_fn(f, ty_params) {
         check_fn(*e, i.span, f);
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
-                      "type parameter");
+                      ~"type parameter");
       }
       ast::item_obj(ob, ty_params, _) {
         fn field_name(field: &ast::obj_field) -> ident { ret field.ident; }
-        ensure_unique(*e, i.span, ob.fields, field_name, "object field");
+        ensure_unique(*e, i.span, ob.fields, field_name, ~"object field");
         for m: @ast::method in ob.methods {
             check_fn(*e, m.span, m.node.meth);
         }
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
-                      "type parameter");
+                      ~"type parameter");
       }
       ast::item_tag(_, ty_params) {
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
-                      "type parameter");
+                      ~"type parameter");
       }
       _ { }
     }
@@ -1292,13 +1298,13 @@ fn check_pat(ch: checker, p: &@ast::pat) {
 
 fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt<()>) {
     visit::visit_arm(a, x, v);
-    let ch0 = checker(*e, "binding");
+    let ch0 = checker(*e, ~"binding");
     check_pat(ch0, a.pats[0]);
     let seen0 = ch0.seen;
     let i = vec::len(a.pats);
     while i > 1u {
         i -= 1u;
-        let ch = checker(*e, "binding");
+        let ch = checker(*e, ~"binding");
         check_pat(ch, a.pats[i]);
 
         // Ensure the bindings introduced in this pattern are the same as in
@@ -1322,15 +1328,15 @@ fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt<()>) {
 
 fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt<()>) {
     visit::visit_block(b, x, v);
-    let values = checker(*e, "value");
-    let types = checker(*e, "type");
-    let mods = checker(*e, "module");
+    let values = checker(*e, ~"value");
+    let types = checker(*e, ~"type");
+    let mods = checker(*e, ~"module");
     for st: @ast::stmt in b.node.stmts {
         alt st.node {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locs) {
-                let local_values = checker(*e, "value");
+                let local_values = checker(*e, ~"value");
                 for loc in locs {
                     for each p in ast_util::pat_bindings(loc.node.pat) {
                         let ident = alt p.node { pat_bind(n) { n } };
@@ -1370,14 +1376,14 @@ fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt<()>) {
 
 fn check_fn(e: &env, sp: &span, f: &ast::_fn) {
     fn arg_name(a: &ast::arg) -> ident { ret a.ident; }
-    ensure_unique(e, sp, f.decl.inputs, arg_name, "argument");
+    ensure_unique(e, sp, f.decl.inputs, arg_name, ~"argument");
 }
 
 fn check_expr(e: &@env, ex: &@ast::expr, x: &(), v: &vt<()>) {
     alt ex.node {
       ast::expr_rec(fields, _) {
         fn field_name(f: &ast::field) -> ident { ret f.node.ident; }
-        ensure_unique(*e, ex.span, fields, field_name, "field");
+        ensure_unique(*e, ex.span, fields, field_name, ~"field");
       }
       _ { }
     }
@@ -1388,16 +1394,16 @@ fn check_ty(e: &@env, ty: &@ast::ty, x: &(), v: &vt<()>) {
     alt ty.node {
       ast::ty_rec(fields) {
         fn field_name(f: &ast::ty_field) -> ident { ret f.node.ident; }
-        ensure_unique(*e, ty.span, fields, field_name, "field");
+        ensure_unique(*e, ty.span, fields, field_name, ~"field");
       }
       _ { }
     }
     visit::visit_ty(ty, x, v);
 }
 
-type checker = @{mutable seen: [ident], kind: str, sess: session};
+type checker = @{mutable seen: [ident], kind: istr, sess: session};
 
-fn checker(e: &env, kind: str) -> checker {
+fn checker(e: &env, kind: &istr) -> checker {
     let seen: [ident] = [];
     ret @{mutable seen: seen, kind: kind, sess: e.sess};
 }
@@ -1405,7 +1411,7 @@ fn checker(e: &env, kind: str) -> checker {
 fn check_name(ch: &checker, sp: &span, name: &ident) {
     for s: ident in ch.seen {
         if istr::eq(s, name) {
-            ch.sess.span_fatal(sp, "duplicate " + ch.kind
+            ch.sess.span_fatal(sp, "duplicate " + istr::to_estr(ch.kind)
                                + " name: " + istr::to_estr(name));
         }
     }
@@ -1418,7 +1424,7 @@ fn add_name(ch: &checker, sp: &span, name: &ident) {
 fn ident_id(i: &ident) -> ident { ret i; }
 
 fn ensure_unique<T>(e: &env, sp: &span, elts: &[T], id: fn(&T) -> ident,
-                    kind: &str) {
+                    kind: &istr) {
     let ch = checker(e, kind);
     for elt: T in elts { add_name(ch, sp, id(elt)); }
 }

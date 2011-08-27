@@ -82,17 +82,17 @@ fn check_states_expr(e: &@expr, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
     */
 
     if !implies(pres, prec) {
-        let s = "";
+        let s = ~"";
         let diff = first_difference_string(fcx, prec, pres);
         s +=
-            "Unsatisfied precondition constraint (for example, " + diff +
-                ") for expression:\n";
-        s += syntax::print::pprust::expr_to_str(e);
-        s += "\nPrecondition:\n";
+            ~"Unsatisfied precondition constraint (for example, " + diff +
+                ~") for expression:\n";
+        s += istr::from_estr(syntax::print::pprust::expr_to_str(e));
+        s += ~"\nPrecondition:\n";
         s += tritv_to_str(fcx, prec);
-        s += "\nPrestate:\n";
+        s += ~"\nPrestate:\n";
         s += tritv_to_str(fcx, pres);
-        fcx.ccx.tcx.sess.span_fatal(e.span, s);
+        fcx.ccx.tcx.sess.span_fatal(e.span, istr::to_estr(s));
     }
 }
 
@@ -114,17 +114,17 @@ fn check_states_stmt(s: &@stmt, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
     */
 
     if !implies(pres, prec) {
-        let ss = "";
+        let ss = ~"";
         let diff = first_difference_string(fcx, prec, pres);
         ss +=
-            "Unsatisfied precondition constraint (for example, " + diff +
-                ") for statement:\n";
-        ss += syntax::print::pprust::stmt_to_str(*s);
-        ss += "\nPrecondition:\n";
+            ~"Unsatisfied precondition constraint (for example, " + diff +
+                ~") for statement:\n";
+        ss += istr::from_estr(syntax::print::pprust::stmt_to_str(*s));
+        ss += ~"\nPrecondition:\n";
         ss += tritv_to_str(fcx, prec);
-        ss += "\nPrestate: \n";
+        ss += ~"\nPrestate: \n";
         ss += tritv_to_str(fcx, pres);
-        fcx.ccx.tcx.sess.span_fatal(s.span, ss);
+        fcx.ccx.tcx.sess.span_fatal(s.span, istr::to_estr(ss));
     }
 }
 

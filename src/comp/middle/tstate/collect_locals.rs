@@ -61,8 +61,8 @@ fn find_locals(tcx: &ty::ctxt, f: &_fn, tps: &[ty_param], sp: &span,
 
 fn add_constraint(tcx: &ty::ctxt, c: sp_constr, next: uint, tbl: constr_map)
    -> uint {
-    log constraint_to_str(tcx, c) + " |-> "
-        + istr::to_estr(std::uint::str(next));
+    log constraint_to_str(tcx, c) + ~" |-> "
+        + std::uint::str(next);
     alt c.node {
       ninit(id, i) { tbl.insert(local_def(id), cinit(next, c.span, i)); }
       npred(p, d_id, args) {

@@ -56,47 +56,48 @@ tag oper_type {
 }
 
 /* logging funs */
-fn def_id_to_str(d: def_id) -> str {
-    ret istr::to_estr(int::str(d.crate) + ~"," + int::str(d.node));
+fn def_id_to_str(d: def_id) -> istr {
+    ret int::str(d.crate) + ~"," + int::str(d.node);
 }
 
-fn comma_str(args: &[@constr_arg_use]) -> str {
-    let rslt = "";
+fn comma_str(args: &[@constr_arg_use]) -> istr {
+    let rslt = ~"";
     let comma = false;
     for a: @constr_arg_use in args {
-        if comma { rslt += ", "; } else { comma = true; }
+        if comma { rslt += ~", "; } else { comma = true; }
         alt a.node {
-          carg_base. { rslt += "*"; }
-          carg_ident(i) { rslt += istr::to_estr(i.ident); }
-          carg_lit(l) { rslt += lit_to_str(l); }
+          carg_base. { rslt += ~"*"; }
+          carg_ident(i) { rslt += i.ident; }
+          carg_lit(l) { rslt += istr::from_estr(lit_to_str(l)); }
         }
     }
     ret rslt;
 }
 
-fn constraint_to_str(tcx: &ty::ctxt, c: &sp_constr) -> str {
+fn constraint_to_str(tcx: &ty::ctxt, c: &sp_constr) -> istr {
     alt c.node {
       ninit(_, i) {
-        ret "init(" +
-            istr::to_estr(i) + " [" + tcx.sess.span_str(c.span) + "])";
+        ret ~"init(" + i + ~" [" +
+            istr::from_estr(tcx.sess.span_str(c.span)) + ~"])";
       }
       npred(p, _, args) {
-        ret path_to_str(p) + "(" + comma_str(args) + ")" + "[" +
-                tcx.sess.span_str(c.span) + "]";
+        ret istr::from_estr(path_to_str(p)) + ~"(" +
+            comma_str(args) + ~")" + ~"[" +
+                istr::from_estr(tcx.sess.span_str(c.span)) + ~"]";
       }
     }
 }
 
-fn tritv_to_str(fcx: fn_ctxt, v: &tritv::t) -> str {
-    let s = "";
+fn tritv_to_str(fcx: fn_ctxt, v: &tritv::t) -> istr {
+    let s = ~"";
     let comma = false;
     for p: norm_constraint in constraints(fcx) {
         alt tritv_get(v, p.bit_num) {
           dont_care. { }
           t {
             s +=
-                if comma { ", " } else { comma = true; "" } +
-                    if t == tfalse { "!" } else { "" } +
+                if comma { ~", " } else { comma = true; ~"" } +
+                    if t == tfalse { ~"!" } else { ~"" } +
                     constraint_to_str(fcx.ccx.tcx, p.c);
           }
         }
@@ -107,8 +108,8 @@ fn tritv_to_str(fcx: fn_ctxt, v: &tritv::t) -> str {
 fn log_tritv(fcx: &fn_ctxt, v: &tritv::t) { log tritv_to_str(fcx, v); }
 
 fn first_difference_string(fcx: &fn_ctxt, expected: &tritv::t,
-                           actual: &tritv::t) -> str {
-    let s: str = "";
+                           actual: &tritv::t) -> istr {
+    let s: istr = ~"";
     for c: norm_constraint in constraints(fcx) {
         if tritv_get(expected, c.bit_num) == ttrue &&
                tritv_get(actual, c.bit_num) != ttrue {
@@ -120,12 +121,12 @@ fn first_difference_string(fcx: &fn_ctxt, expected: &tritv::t,
 
 fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) { log_err tritv_to_str(fcx, v); }
 
-fn tos(v: &[uint]) -> str {
-    let rslt = "";
+fn tos(v: &[uint]) -> istr {
+    let rslt = ~"";
     for i: uint in v {
         if i == 0u {
-            rslt += "0";
-        } else if i == 1u { rslt += "1"; } else { rslt += "?"; }
+            rslt += ~"0";
+        } else if i == 1u { rslt += ~"1"; } else { rslt += ~"?"; }
     }
     ret rslt;
 }
@@ -597,7 +598,7 @@ fn match_args(fcx: &fn_ctxt, occs: &@mutable [pred_args],
                 ret istr::to_estr(i.ident);
             }, occ);
     for pd: pred_args in *occs {
-        log "match_args: candidate " + pred_args_to_str(pd);
+        log ~"match_args: candidate " + pred_args_to_str(pd);
         fn eq(p: &inst, q: &inst) -> bool { ret p.node == q.node; }
         if ty::args_eq(eq, pd.node.args, occ) { ret pd.node.bit_num; }
     }
@@ -685,12 +686,12 @@ fn expr_to_constr(tcx: ty::ctxt, e: &@expr) -> sp_constr {
     }
 }
 
-fn pred_args_to_str(p: &pred_args) -> str {
-    "<" + istr::to_estr(uint::str(p.node.bit_num)) + ", " +
-        constr_args_to_str(fn (i: &inst) -> str {
-            ret istr::to_estr(i.ident);
-        }, p.node.args)
-        + ">"
+fn pred_args_to_str(p: &pred_args) -> istr {
+    istr::from_estr("<" + istr::to_estr(uint::str(p.node.bit_num)) + ", " +
+                  constr_args_to_str(fn (i: &inst) -> str {
+                      ret istr::to_estr(i.ident);
+                  }, p.node.args)
+                  + ">")
 }
 
 fn substitute_constr_args(cx: &ty::ctxt, actuals: &[@expr], c: &@ty::constr)
@@ -789,18 +790,18 @@ fn find_in_subst_bool(s: &subst, id: node_id) -> bool {
     is_some(find_in_subst(id, s))
 }
 
-fn insts_to_str(stuff: &[constr_arg_general_<inst>]) -> str {
-    let rslt = "<";
+fn insts_to_str(stuff: &[constr_arg_general_<inst>]) -> istr {
+    let rslt = ~"<";
     for i: constr_arg_general_<inst> in stuff {
         rslt +=
-            " " +
+            ~" " +
                 alt i {
-                  carg_ident(p) { istr::to_estr(p.ident) }
-                  carg_base. { "*" }
-                  carg_lit(_) { "[lit]" }
-                } + " ";
+                  carg_ident(p) { p.ident }
+                  carg_base. { ~"*" }
+                  carg_lit(_) { ~"[lit]" }
+                } + ~" ";
     }
-    rslt += ">";
+    rslt += ~">";
     rslt
 }
 

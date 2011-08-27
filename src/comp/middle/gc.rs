@@ -22,8 +22,8 @@ type ctxt = @{mutable next_tydesc_num: uint};
 
 fn mk_ctxt() -> ctxt { ret @{mutable next_tydesc_num: 0u}; }
 
-fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: str) -> ValueRef {
-    let llglobal = istr::as_buf(istr::from_estr(name), { |buf|
+fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: &istr) -> ValueRef {
+    let llglobal = istr::as_buf(name, { |buf|
         lll::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
     });
     lll::LLVMSetInitializer(llglobal, llval);
@@ -63,10 +63,10 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
 
         let lldestindex =
             add_global(bcx_ccx(bcx), C_struct([C_int(0), C_uint(number)]),
-                       "rust_gc_tydesc_dest_index");
+                       ~"rust_gc_tydesc_dest_index");
         let llsrcindex =
             add_global(bcx_ccx(bcx), C_struct([C_int(1), C_uint(number)]),
-                       "rust_gc_tydesc_src_index");
+                       ~"rust_gc_tydesc_src_index");
 
         lldestindex = lll::LLVMConstPointerCast(lldestindex, T_ptr(T_i8()));
         llsrcindex = lll::LLVMConstPointerCast(llsrcindex, T_ptr(T_i8()));
@@ -86,7 +86,7 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
 
         let llstaticgcmeta =
             add_global(bcx_ccx(bcx), C_struct([C_int(2), lltydesc]),
-                       "rust_gc_tydesc_static_gc_meta");
+                       ~"rust_gc_tydesc_static_gc_meta");
         let llstaticgcmetaptr =
             lll::LLVMConstPointerCast(llstaticgcmeta, T_ptr(T_i8()));
 

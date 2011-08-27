@@ -527,7 +527,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
       }
     }
 
-    ret finish_vtbl(cx, llmethods, "vtbl");
+    ret finish_vtbl(cx, llmethods, ~"vtbl");
 }
 
 // create_backwarding_vtbl: Create a vtable for the inner object of an
@@ -561,16 +561,16 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
         // being forwarded to.
         llmethods += [process_bkwding_mthd(cx, sp, @m, [], outer_obj_ty, [])];
     }
-    ret finish_vtbl(cx, llmethods, "backwarding_vtbl");
+    ret finish_vtbl(cx, llmethods, ~"backwarding_vtbl");
 }
 
 // finish_vtbl: Given a vector of vtable entries, create the table in
 // read-only memory and return a pointer to it.
-fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: str) ->
+fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: &istr) ->
    ValueRef {
     let vtbl = C_struct(llmethods);
     let vtbl_name = mangle_internal_name_by_path(
-        cx.ccx, cx.path + [istr::from_estr(name)]);
+        cx.ccx, cx.path + [name]);
     let gvar = istr::as_buf(vtbl_name, { |buf|
         llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl), buf)
     });

@@ -6403,7 +6403,7 @@ fn write_metadata(cx: &@crate_ctxt, crate: &@ast::crate) {
 
 // Writes the current ABI version into the crate.
 fn write_abi_version(ccx: &@crate_ctxt) {
-    shape::mk_global(ccx, "rust_abi_version", C_uint(abi::abi_version),
+    shape::mk_global(ccx, ~"rust_abi_version", C_uint(abi::abi_version),
                      false);
 }
 
