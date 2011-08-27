@@ -113,12 +113,12 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
         }
         fn fatal(m: &istr) -> ! {
             codemap::emit_error(some(self.get_span()),
-                                istr::to_estr(m), sess.cm);
+                                m, sess.cm);
             fail;
         }
         fn warn(m: &istr) {
             codemap::emit_warning(some(self.get_span()),
-                                  istr::to_estr(m), sess.cm);
+                                  m, sess.cm);
         }
         fn restrict(r: restriction) { restr = r; }
         fn get_restriction() -> restriction { ret restr; }
@@ -2581,8 +2581,8 @@ fn parse_crate_from_file(input: &istr, cfg: &ast::crate_cfg,
     } else if istr::ends_with(input, ~".rs") {
         parse_crate_from_source_file(input, cfg, sess)
     } else {
-        codemap::emit_error(none, "unknown input file type: "
-                            + istr::to_estr(input),
+        codemap::emit_error(none, ~"unknown input file type: "
+                            + input,
                             sess.cm);
         fail
     }

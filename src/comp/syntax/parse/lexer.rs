@@ -81,7 +81,7 @@ fn new_reader(cm: &codemap::codemap, src: &istr, filemap: codemap::filemap,
         fn err(m: &istr) {
             codemap::emit_error(
                 some(ast_util::mk_sp(chpos, chpos)),
-                istr::to_estr(m), cm);
+                m, cm);
         }
     }
     let strs: [istr] = [];

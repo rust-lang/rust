@@ -10,6 +10,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::str;
+import std::istr;
 import syntax::parse::parser::parse_sess;
 
 tag os { os_win32; os_macos; os_linux; }
@@ -60,19 +61,19 @@ obj session(targ_cfg: @config,
     fn get_cstore() -> metadata::cstore::cstore { cstore }
     fn span_fatal(sp: span, msg: str) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        codemap::emit_error(some(sp), msg, parse_sess.cm);
+        codemap::emit_error(some(sp), istr::from_estr(msg), parse_sess.cm);
         fail;
     }
     fn fatal(msg: str) -> ! {
-        codemap::emit_error(none, msg, parse_sess.cm);
+        codemap::emit_error(none, istr::from_estr(msg), parse_sess.cm);
         fail;
     }
     fn span_err(sp: span, msg: str) {
-        codemap::emit_error(some(sp), msg, parse_sess.cm);
+        codemap::emit_error(some(sp), istr::from_estr(msg), parse_sess.cm);
         err_count += 1u;
     }
     fn err(msg: str) {
-        codemap::emit_error(none, msg, parse_sess.cm);
+        codemap::emit_error(none, istr::from_estr(msg), parse_sess.cm);
         err_count += 1u;
     }
     fn abort_if_errors() {
@@ -80,14 +81,18 @@ obj session(targ_cfg: @config,
     }
     fn span_warn(sp: span, msg: str) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        codemap::emit_warning(some(sp), msg, parse_sess.cm);
+        codemap::emit_warning(some(sp), istr::from_estr(msg), parse_sess.cm);
     }
-    fn warn(msg: str) { codemap::emit_warning(none, msg, parse_sess.cm); }
+    fn warn(msg: str) {
+        codemap::emit_warning(none, istr::from_estr(msg), parse_sess.cm);
+    }
     fn span_note(sp: span, msg: str) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        codemap::emit_note(some(sp), msg, parse_sess.cm);
+        codemap::emit_note(some(sp), istr::from_estr(msg), parse_sess.cm);
     }
-    fn note(msg: str) { codemap::emit_note(none, msg, parse_sess.cm); }
+    fn note(msg: str) {
+        codemap::emit_note(none, istr::from_estr(msg), parse_sess.cm);
+    }
     fn span_bug(sp: span, msg: str) -> ! {
         self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
     }
@@ -107,7 +112,7 @@ obj session(targ_cfg: @config,
         ret syntax::parse::parser::next_node_id(parse_sess);
     }
     fn span_str(sp: span) -> str {
-        ret codemap::span_to_str(sp, self.get_codemap());
+        ret istr::to_estr(codemap::span_to_str(sp, self.get_codemap()));
     }
     fn set_main_id(d: node_id) { main_fn = some(d); }
     fn get_main_id() -> option::t<node_id> { main_fn }
