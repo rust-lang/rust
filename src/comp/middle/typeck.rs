@@ -1792,10 +1792,10 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
             let binopstr = ast_util::binop_to_str(binop);
             let t_str = ty_to_str(fcx.ccx.tcx, resolved_t);
             let errmsg =
-                "binary operation " + binopstr +
-                    " cannot be applied to type `" +
-                istr::to_estr(t_str) + "`";
-            fcx.ccx.tcx.sess.span_err(span, errmsg);
+                ~"binary operation " + binopstr +
+                ~" cannot be applied to type `" +
+                t_str + ~"`";
+            fcx.ccx.tcx.sess.span_err(span, istr::to_estr(errmsg));
         }
     }
 

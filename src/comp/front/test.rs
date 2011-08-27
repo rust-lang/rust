@@ -92,7 +92,8 @@ fn fold_item(cx: &test_ctxt, i: &@ast::item, fld: fold::ast_fold) ->
    @ast::item {
 
     cx.path += [i.ident];
-    log #fmt["current path: %s", ast_util::path_name_i(cx.path)];
+    log #fmt["current path: %s",
+             istr::to_estr(ast_util::path_name_i(cx.path))];
 
     if is_test_fn(i) {
         log "this is a test function";
@@ -248,11 +249,11 @@ fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
 fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
     let path = test.path;
 
-    log #fmt["encoding %s", ast_util::path_name_i(path)];
+    log #fmt["encoding %s",
+             istr::to_estr(ast_util::path_name_i(path))];
 
     let name_lit: ast::lit =
-        nospan(ast::lit_str(
-            istr::from_estr(ast_util::path_name_i(path)), ast::sk_rc));
+        nospan(ast::lit_str(ast_util::path_name_i(path), ast::sk_rc));
     let name_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_lit(@name_lit),

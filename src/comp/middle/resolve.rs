@@ -324,7 +324,7 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
               _ {
                 e.sess.span_err(p.span,
                                 "not a tag variant: " +
-                                ast_util::path_name(p));
+                                istr::to_estr(ast_util::path_name(p)));
               }
             }
           }

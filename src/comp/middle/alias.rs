@@ -518,16 +518,18 @@ fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
         let msg =
             alt prob {
               overwritten(sp, wpt) {
-                {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
+                {span: sp, msg: "overwriting " +
+                    istr::to_estr(ast_util::path_name(wpt))}
               }
               val_taken(sp, vpt) {
                 {span: sp,
-                 msg: "taking the value of " + ast_util::path_name(vpt)}
+                 msg: "taking the value of " +
+                     istr::to_estr(ast_util::path_name(vpt))}
               }
             };
         cx.tcx.sess.span_err(msg.span,
                              msg.msg + " will invalidate alias " +
-                             ast_util::path_name(p) +
+                             istr::to_estr(ast_util::path_name(p)) +
                              ", which is still used");
     }
 }

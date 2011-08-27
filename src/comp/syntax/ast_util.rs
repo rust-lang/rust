@@ -14,10 +14,10 @@ fn mk_sp(lo: uint, hi: uint) -> span {
 // make this a const, once the compiler supports it
 fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
-fn path_name(p: &path) -> str { path_name_i(p.node.idents) }
+fn path_name(p: &path) -> istr { path_name_i(p.node.idents) }
 
-fn path_name_i(idents: &[ident]) -> str {
-    istr::to_estr(istr::connect(idents, ~"::"))
+fn path_name_i(idents: &[ident]) -> istr {
+    istr::connect(idents, ~"::")
 }
 
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
@@ -83,27 +83,27 @@ fn pat_binding_ids(pat: &@pat) -> [node_id] {
     ret found;
 }
 
-fn binop_to_str(op: binop) -> str {
+fn binop_to_str(op: binop) -> istr {
     alt op {
-      add. { ret "+"; }
-      sub. { ret "-"; }
-      mul. { ret "*"; }
-      div. { ret "/"; }
-      rem. { ret "%"; }
-      and. { ret "&&"; }
-      or. { ret "||"; }
-      bitxor. { ret "^"; }
-      bitand. { ret "&"; }
-      bitor. { ret "|"; }
-      lsl. { ret "<<"; }
-      lsr. { ret ">>"; }
-      asr. { ret ">>>"; }
-      eq. { ret "=="; }
-      lt. { ret "<"; }
-      le. { ret "<="; }
-      ne. { ret "!="; }
-      ge. { ret ">="; }
-      gt. { ret ">"; }
+      add. { ret ~"+"; }
+      sub. { ret ~"-"; }
+      mul. { ret ~"*"; }
+      div. { ret ~"/"; }
+      rem. { ret ~"%"; }
+      and. { ret ~"&&"; }
+      or. { ret ~"||"; }
+      bitxor. { ret ~"^"; }
+      bitand. { ret ~"&"; }
+      bitor. { ret ~"|"; }
+      lsl. { ret ~"<<"; }
+      lsr. { ret ~">>"; }
+      asr. { ret ~">>>"; }
+      eq. { ret ~"=="; }
+      lt. { ret ~"<"; }
+      le. { ret ~"<="; }
+      ne. { ret ~"!="; }
+      ge. { ret ~">="; }
+      gt. { ret ~">"; }
     }
 }
 
@@ -111,12 +111,12 @@ pure fn lazy_binop(b: binop) -> bool {
     alt b { and. { true } or. { true } _ { false } }
 }
 
-fn unop_to_str(op: unop) -> str {
+fn unop_to_str(op: unop) -> istr {
     alt op {
-      box(mt) { if mt == mut { ret "@mutable "; } ret "@"; }
-      deref. { ret "*"; }
-      not. { ret "!"; }
-      neg. { ret "-"; }
+      box(mt) { if mt == mut { ret ~"@mutable "; } ret ~"@"; }
+      deref. { ret ~"*"; }
+      not. { ret ~"!"; }
+      neg. { ret ~"-"; }
     }
 }
 
@@ -124,18 +124,18 @@ fn is_path(e: &@expr) -> bool {
     ret alt e.node { expr_path(_) { true } _ { false } };
 }
 
-fn ty_mach_to_str(tm: ty_mach) -> str {
+fn ty_mach_to_str(tm: ty_mach) -> istr {
     alt tm {
-      ty_u8. { ret "u8"; }
-      ty_u16. { ret "u16"; }
-      ty_u32. { ret "u32"; }
-      ty_u64. { ret "u64"; }
-      ty_i8. { ret "i8"; }
-      ty_i16. { ret "i16"; }
-      ty_i32. { ret "i32"; }
-      ty_i64. { ret "i64"; }
-      ty_f32. { ret "f32"; }
-      ty_f64. { ret "f64"; }
+      ty_u8. { ret ~"u8"; }
+      ty_u16. { ret ~"u16"; }
+      ty_u32. { ret ~"u32"; }
+      ty_u64. { ret ~"u64"; }
+      ty_i8. { ret ~"i8"; }
+      ty_i16. { ret ~"i16"; }
+      ty_i32. { ret ~"i32"; }
+      ty_i64. { ret ~"i64"; }
+      ty_f32. { ret ~"f32"; }
+      ty_f64. { ret ~"f64"; }
     }
 }
 

@@ -114,7 +114,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> istr {
           ty_int. { ~"int" }
           ty_float. { ~"float" }
           ty_uint. { ~"uint" }
-          ty_machine(tm) { istr::from_estr(ty_mach_to_str(tm)) }
+          ty_machine(tm) { ty_mach_to_str(tm) }
           ty_char. { ~"char" }
           ty_str. { ~"str" }
           ty_istr. { ~"istr" }

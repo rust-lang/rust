@@ -149,12 +149,12 @@ fn to_str(r: lexer::reader, t: token) -> istr {
       }
       LIT_UINT(u) { ret uint::to_str(u, 10u); }
       LIT_MACH_INT(tm, i) {
-        ret int::to_str(i, 10u) + ~"_" + istr::from_estr(ty_mach_to_str(tm));
+        ret int::to_str(i, 10u) + ~"_" + ty_mach_to_str(tm);
       }
       LIT_MACH_FLOAT(tm, s) {
         ret interner::get::<istr>(
             *r.get_interner(), s) + ~"_" +
-            istr::from_estr(ty_mach_to_str(tm));
+            ty_mach_to_str(tm);
       }
       LIT_FLOAT(s) {
         ret interner::get::<istr>(*r.get_interner(), s);
