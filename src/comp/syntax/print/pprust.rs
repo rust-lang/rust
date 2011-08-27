@@ -78,7 +78,8 @@ const default_columns: uint = 78u;
 fn print_crate(cm: &codemap, crate: @ast::crate, filename: str,
                in: io::reader, out: io::writer, ann: &pp_ann) {
     let boxes: [pp::breaks] = [];
-    let r = lexer::gather_comments_and_literals(cm, filename, in);
+    let r = lexer::gather_comments_and_literals(
+        cm, istr::from_estr(filename), in);
     let s =
         @{s: pp::mk_printer(out, default_columns),
           cm: some(cm),
@@ -1499,7 +1500,7 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
               ast::lit_str(_, ast::sk_unique.) { word(s.s, "~"); }
               _ { }
             }
-            word(s.s, lt.lit);
+            word(s.s, istr::to_estr(lt.lit));
             s.cur_lit += 1u;
             ret;
         }
@@ -1567,27 +1568,31 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
       lexer::mixed. {
         assert (vec::len(cmnt.lines) == 1u);
         zerobreak(s.s);
-        word(s.s, cmnt.lines[0]);
+        word(s.s, istr::to_estr(cmnt.lines[0]));
         zerobreak(s.s);
       }
       lexer::isolated. {
         pprust::hardbreak_if_not_bol(s);
-        for line: str in cmnt.lines {
+        for line: istr in cmnt.lines {
             // Don't print empty lines because they will end up as trailing
             // whitespace
-            if str::is_not_empty(line) { word(s.s, line); }
+            if istr::is_not_empty(line) {
+                word(s.s, istr::to_estr(line));
+            }
             hardbreak(s.s);
         }
       }
       lexer::trailing. {
         word(s.s, " ");
         if vec::len(cmnt.lines) == 1u {
-            word(s.s, cmnt.lines[0]);
+            word(s.s, istr::to_estr(cmnt.lines[0]));
             hardbreak(s.s);
         } else {
             ibox(s, 0u);
-            for line: str in cmnt.lines {
-                if str::is_not_empty(line) { word(s.s, line); }
+            for line: istr in cmnt.lines {
+                if istr::is_not_empty(line) {
+                    word(s.s, istr::to_estr(line));
+                }
                 hardbreak(s.s);
             }
             end(s);

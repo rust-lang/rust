@@ -4,7 +4,7 @@ concat, connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
 unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars, to_chars,
 char_len, char_at, bytes, is_ascii, shift_byte, pop_byte, unsafe_from_byte,
 unsafe_from_bytes, from_char, char_range_at, str_from_cstr, sbuf,
-as_buf;
+as_buf, push_byte;
 
 export from_estr, to_estr, from_estrs, to_estrs;
 

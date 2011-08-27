@@ -63,10 +63,10 @@ type parser =
 fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
                         chpos: uint, byte_pos: uint, ftype: file_type) ->
    parser {
-    let src = istr::to_estr(io::read_whole_file_str(istr::from_estr(path)));
+    let src = io::read_whole_file_str(istr::from_estr(path));
     let filemap = codemap::new_filemap(path, chpos, byte_pos);
     sess.cm.files += [filemap];
-    let itr = @interner::mk(str::hash, str::eq);
+    let itr = @interner::mk(istr::hash, istr::eq);
     let rdr = lexer::new_reader(sess.cm, src, filemap, itr);
 
     ret new_parser(sess, cfg, rdr, ftype);
@@ -128,7 +128,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
         fn get_cfg() -> ast::crate_cfg { ret cfg; }
         fn get_prec_table() -> @[op_spec] { ret precs; }
         fn get_str(i: token::str_num) -> str {
-            ret interner::get(*rdr.get_interner(), i);
+            ret istr::to_estr(interner::get(*rdr.get_interner(), i));
         }
         fn get_reader() -> lexer::reader { ret rdr; }
         fn get_filemap() -> codemap::filemap { ret rdr.get_filemap(); }
@@ -2434,8 +2434,9 @@ fn parse_crate_from_source_str(name: &str, source: &str, cfg: &ast::crate_cfg,
     let ftype = SOURCE_FILE;
     let filemap = codemap::new_filemap(name, 0u, 0u);
     sess.cm.files += [filemap];
-    let itr = @interner::mk(str::hash, str::eq);
-    let rdr = lexer::new_reader(sess.cm, source, filemap, itr);
+    let itr = @interner::mk(istr::hash, istr::eq);
+    let rdr = lexer::new_reader(sess.cm, istr::from_estr(source),
+                                filemap, itr);
     let p = new_parser(sess, cfg, rdr, ftype);
     ret parse_crate_mod(p, cfg);
 }
