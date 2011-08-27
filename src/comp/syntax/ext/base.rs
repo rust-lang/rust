@@ -9,7 +9,7 @@ import codemap;
 
 type syntax_expander =
     fn(&ext_ctxt, span, @ast::expr, &option::t<istr>) -> @ast::expr;
-type macro_def = {ident: str, ext: syntax_extension};
+type macro_def = {ident: istr, ext: syntax_extension};
 type macro_definer =
     fn(&ext_ctxt, span, @ast::expr, &option::t<istr>) -> macro_def;
 
@@ -36,9 +36,9 @@ fn syntax_expander_table() -> hashmap<istr, syntax_extension> {
 }
 
 obj ext_ctxt(sess: @session,
-             crate_file_name_hack: str,
+             crate_file_name_hack: istr,
              mutable backtrace: codemap::opt_span) {
-    fn crate_file_name() -> str { ret crate_file_name_hack; }
+    fn crate_file_name() -> istr { ret crate_file_name_hack; }
 
     fn session() -> @session { ret sess; }
 
@@ -58,29 +58,29 @@ obj ext_ctxt(sess: @session,
             let tmp = pre;
             backtrace = tmp;
           }
-          _ { self.bug("tried to pop without a push"); }
+          _ { self.bug(~"tried to pop without a push"); }
         }
     }
 
-    fn span_fatal(sp: span, msg: str) -> ! {
+    fn span_fatal(sp: span, msg: istr) -> ! {
         self.print_backtrace();
-        sess.span_fatal(sp, istr::from_estr(msg));
+        sess.span_fatal(sp, msg);
     }
-    fn span_err(sp: span, msg: str) {
+    fn span_err(sp: span, msg: istr) {
         self.print_backtrace();
-        sess.span_err(sp, istr::from_estr(msg));
+        sess.span_err(sp, msg);
     }
-    fn span_unimpl(sp: span, msg: str) -> ! {
+    fn span_unimpl(sp: span, msg: istr) -> ! {
         self.print_backtrace();
-        sess.span_unimpl(sp, istr::from_estr(msg));
+        sess.span_unimpl(sp, msg);
     }
-    fn span_bug(sp: span, msg: str) -> ! {
+    fn span_bug(sp: span, msg: istr) -> ! {
         self.print_backtrace();
-        sess.span_bug(sp, istr::from_estr(msg));
+        sess.span_bug(sp, msg);
     }
-    fn bug(msg: str) -> ! {
+    fn bug(msg: istr) -> ! {
         self.print_backtrace();
-        sess.bug(istr::from_estr(msg));
+        sess.bug(msg);
     }
     fn next_id() -> ast::node_id { ret sess.next_node_id(); }
 
@@ -96,15 +96,15 @@ fn mk_ctxt(sess: &session) -> ext_ctxt {
     // super-ugly and needs a better solution.
     let crate_file_name_hack = sess.get_codemap().files[0].name;
 
-    ret ext_ctxt(@sess, istr::to_estr(crate_file_name_hack),
+    ret ext_ctxt(@sess, crate_file_name_hack,
                  codemap::os_none);
 }
 
-fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: str) -> str {
+fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: &istr) -> istr {
     alt expr.node {
       ast::expr_lit(l) {
         alt l.node {
-          ast::lit_str(s, _) { ret istr::to_estr(s); }
+          ast::lit_str(s, _) { ret s; }
           _ { cx.span_fatal(l.span, error); }
         }
       }
@@ -112,7 +112,8 @@ fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: str) -> str {
     }
 }
 
-fn expr_to_ident(cx: &ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
+fn expr_to_ident(cx: &ext_ctxt, expr: @ast::expr,
+                 error: &istr) -> ast::ident {
     alt expr.node {
       ast::expr_path(p) {
         if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u {

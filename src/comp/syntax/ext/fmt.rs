@@ -22,23 +22,24 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
           _ {
-            cx.span_fatal(sp, "#fmt requires arguments of the form `[...]`.")
+            cx.span_fatal(sp, ~"#fmt requires arguments of the form `[...]`.")
           }
         };
     if vec::len::<@ast::expr>(args) == 0u {
-        cx.span_fatal(sp, "#fmt requires a format string");
+        cx.span_fatal(sp, ~"#fmt requires a format string");
     }
     let fmt =
         expr_to_str(cx, args[0],
-                    "first argument to #fmt must be a " + "string literal.");
+                    ~"first argument to #fmt must be a "
+                    + ~"string literal.");
     let fmtspan = args[0].span;
     log "Format string:";
     log fmt;
     fn parse_fmt_err_(cx: &ext_ctxt, sp: span, msg: str) -> ! {
-        cx.span_fatal(sp, msg);
+        cx.span_fatal(sp, istr::from_estr(msg));
     }
     let parse_fmt_err = bind parse_fmt_err_(cx, fmtspan, _);
-    let pieces = parse_fmt_string(fmt, parse_fmt_err);
+    let pieces = parse_fmt_string(istr::to_estr(fmt), parse_fmt_err);
     ret pieces_to_expr(cx, sp, pieces, args);
 }
 
@@ -102,7 +103,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     }
     fn make_path_vec(cx: &ext_ctxt, ident: &ast::ident) -> [ast::ident] {
         fn compiling_std(cx: &ext_ctxt) -> bool {
-            ret str::find(cx.crate_file_name(), "std.rc") >= 0;
+            ret istr::find(cx.crate_file_name(), ~"std.rc") >= 0;
         }
         if compiling_std(cx) {
             ret [~"extfmt", ~"rt", ident];
@@ -149,7 +150,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                 let count_is_args = [count_lit];
                 ret make_call(cx, sp, count_is_path, count_is_args);
               }
-              _ { cx.span_unimpl(sp, "unimplemented #fmt conversion"); }
+              _ { cx.span_unimpl(sp, ~"unimplemented #fmt conversion"); }
             }
         }
         fn make_ty(cx: &ext_ctxt, sp: span, t: &ty) -> @ast::expr {
@@ -203,7 +204,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
               _ { ret false; }
             }
         }
-        let unsupported = "conversion not supported in #fmt string";
+        let unsupported = ~"conversion not supported in #fmt string";
         alt cnv.param {
           option::none. { }
           _ { cx.span_unimpl(sp, unsupported); }
@@ -214,15 +215,15 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
               flag_sign_always. {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
-                                  "+ flag only valid in " +
-                                      "signed #fmt conversion");
+                                  ~"+ flag only valid in " +
+                                      ~"signed #fmt conversion");
                 }
               }
               flag_space_for_sign. {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
-                                  "space flag only valid in " +
-                                      "signed #fmt conversions");
+                                  ~"space flag only valid in " +
+                                      ~"signed #fmt conversions");
                 }
               }
               flag_left_zero_pad. { }
@@ -330,8 +331,8 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
             n += 1u;
             if n >= nargs {
                 cx.span_fatal(sp,
-                              "not enough arguments to #fmt " +
-                                  "for the given format string");
+                              ~"not enough arguments to #fmt " +
+                                  ~"for the given format string");
             }
             log "Building conversion:";
             log_conv(conv);
@@ -345,9 +346,9 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
 
     if expected_nargs < nargs {
         cx.span_fatal(
-            sp,
+            sp, istr::from_estr(
             #fmt["too many arguments to #fmt. found %u, expected %u",
-                 nargs, expected_nargs]);
+                 nargs, expected_nargs]));
     }
     ret tmp_expr;
 }
