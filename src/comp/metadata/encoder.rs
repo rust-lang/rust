@@ -213,14 +213,14 @@ fn encode_type(ecx: &@encode_ctxt, ebml_w: &ebml::writer, typ: ty::t) {
 
 fn encode_symbol(ecx: &@encode_ctxt, ebml_w: &ebml::writer, id: node_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_symbol);
-    ebml_w.writer.write(str::bytes(ecx.ccx.item_symbols.get(id)));
+    ebml_w.writer.write(istr::bytes(ecx.ccx.item_symbols.get(id)));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_discriminant(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
                        id: node_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_symbol);
-    ebml_w.writer.write(str::bytes(ecx.ccx.discrim_symbols.get(id)));
+    ebml_w.writer.write(istr::bytes(ecx.ccx.discrim_symbols.get(id)));
     ebml::end_tag(ebml_w);
 }
 

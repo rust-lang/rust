@@ -5858,7 +5858,7 @@ fn register_fn_pair(cx: &@crate_ctxt, ps: str, llfnty: TypeRef,
     let gvar =
         create_fn_pair(cx, ps, llfnty, llfn, cx.sess.get_opts().library);
     cx.item_ids.insert(id, llfn);
-    cx.item_symbols.insert(id, ps);
+    cx.item_symbols.insert(id, istr::from_estr(ps));
     cx.fn_pairs.insert(id, gvar);
 }
 
@@ -6101,7 +6101,7 @@ fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
         let g = istr::as_buf(s, { |buf|
             llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ), buf)
         });
-        ccx.item_symbols.insert(i.id, istr::to_estr(s));
+        ccx.item_symbols.insert(i.id, s);
         ccx.consts.insert(i.id, g);
       }
       _ { }
@@ -6198,7 +6198,7 @@ fn trans_constant(ccx: @crate_ctxt, it: &@ast::item, pt: &[str],
                 llvm::LLVMSetGlobalConstant(discrim_gvar, True);
             }
             ccx.discrims.insert(variant.node.id, discrim_gvar);
-            ccx.discrim_symbols.insert(variant.node.id, istr::to_estr(s));
+            ccx.discrim_symbols.insert(variant.node.id, s);
             i += 1u;
         }
       }
@@ -6428,7 +6428,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     let tydescs = map::mk_hashmap::<ty::t, @tydesc_info>(hasher, eqer);
     let lltypes = map::mk_hashmap::<ty::t, TypeRef>(hasher, eqer);
     let sha1s = map::mk_hashmap::<ty::t, istr>(hasher, eqer);
-    let short_names = map::mk_hashmap::<ty::t, str>(hasher, eqer);
+    let short_names = map::mk_hashmap::<ty::t, istr>(hasher, eqer);
     let sha = std::sha1::mk_sha1();
     let ccx =
         @{sess: sess,
@@ -6439,13 +6439,13 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
           intrinsics: intrinsics,
           item_ids: new_int_hash::<ValueRef>(),
           ast_map: amap,
-          item_symbols: new_int_hash::<str>(),
+          item_symbols: new_int_hash::<istr>(),
           mutable main_fn: none::<ValueRef>,
           link_meta: link::build_link_meta(sess, *crate,
                                            istr::from_estr(output), sha),
           tag_sizes: tag_sizes,
           discrims: new_int_hash::<ValueRef>(),
-          discrim_symbols: new_int_hash::<str>(),
+          discrim_symbols: new_int_hash::<istr>(),
           fn_pairs: new_int_hash::<ValueRef>(),
           consts: new_int_hash::<ValueRef>(),
           obj_methods: new_int_hash::<()>(),

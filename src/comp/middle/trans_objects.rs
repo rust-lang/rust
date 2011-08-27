@@ -936,7 +936,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     // item_ids map, together with the ValueRef that points to where that
     // method's definition will be in the executable.
     cx.ccx.item_ids.insert(m.node.id, llfn);
-    cx.ccx.item_symbols.insert(m.node.id, istr::to_estr(s));
+    cx.ccx.item_symbols.insert(m.node.id, s);
     trans_fn(mcx, m.span, m.node.meth, llfn, some(self_ty), ty_params,
              m.node.id);
 
