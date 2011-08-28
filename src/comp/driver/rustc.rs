@@ -42,7 +42,8 @@ import back::link::output_type;
 
 tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
 
-fn default_configuration(sess: session::session, argv0: str, input: str) ->
+fn default_configuration(sess: session::session,
+                         argv0: &istr, input: &istr) ->
    ast::crate_cfg {
     let libc =
         alt sess.get_targ_cfg().os {
@@ -59,10 +60,11 @@ fn default_configuration(sess: session::session, argv0: str, input: str) ->
         mk(~"target_arch", "x86"),
          mk(~"target_libc", libc),
          // Build bindings.
-         mk(~"build_compiler", argv0), mk(~"build_input", input)];
+         mk(~"build_compiler", istr::to_estr(argv0)),
+        mk(~"build_input", istr::to_estr(input))];
 }
 
-fn build_configuration(sess: session::session, argv0: str, input: str) ->
+fn build_configuration(sess: session::session, argv0: &istr, input: &istr) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -80,104 +82,104 @@ fn build_configuration(sess: session::session, argv0: str, input: str) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: &[str]) -> ast::crate_cfg {
+fn parse_cfgspecs(cfgspecs: &[istr]) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
     let words = [];
-    for s: str in cfgspecs {
-        words += [attr::mk_word_item(istr::from_estr(s))];
+    for s: istr in cfgspecs {
+        words += [attr::mk_word_item(s)];
     }
     ret words;
 }
 
-fn input_is_stdin(filename: str) -> bool { filename == "-" }
+fn input_is_stdin(filename: &istr) -> bool { filename == ~"-" }
 
-fn parse_input(sess: session::session, cfg: &ast::crate_cfg, input: str) ->
-   @ast::crate {
+fn parse_input(sess: session::session, cfg: &ast::crate_cfg,
+               input: &istr) -> @ast::crate {
     if !input_is_stdin(input) {
         parser::parse_crate_from_file(
-            istr::from_estr(input), cfg, sess.get_parse_sess())
+            input, cfg, sess.get_parse_sess())
     } else { parse_input_src(sess, cfg, input).crate }
 }
 
-fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg, infile: str)
-   -> {crate: @ast::crate, src: str} {
+fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg,
+                   infile: &istr) -> {crate: @ast::crate, src: istr} {
     let srcbytes =
-        if infile != "-" {
-            io::file_reader(istr::from_estr(infile))
+        if infile != ~"-" {
+            io::file_reader(infile)
         } else { io::stdin() }.read_whole_stream();
-    let src = str::unsafe_from_bytes(srcbytes);
+    let src = istr::unsafe_from_bytes(srcbytes);
     let crate =
         parser::parse_crate_from_source_str(
-            istr::from_estr(infile),
-            istr::from_estr(src), cfg,
+            infile,
+            src, cfg,
             sess.get_parse_sess());
     ret {crate: crate, src: src};
 }
 
-fn time<@T>(do_it: bool, what: str, thunk: fn() -> T) -> T {
+fn time<@T>(do_it: bool, what: &istr, thunk: fn() -> T) -> T {
     if !do_it { ret thunk(); }
     let start = std::time::precise_time_s();
     let rv = thunk();
     let end = std::time::precise_time_s();
-    log_err #fmt["time: %s took %s s", what,
+    log_err #fmt["time: %s took %s s", istr::to_estr(what),
                  istr::to_estr(common::float_to_str(end - start, 3u))];
     ret rv;
 }
 
-fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
-                 output: str) {
+fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: &istr,
+                 output: &istr) {
     let time_passes = sess.get_opts().time_passes;
     let crate =
-        time(time_passes, "parsing", bind parse_input(sess, cfg, input));
+        time(time_passes, ~"parsing", bind parse_input(sess, cfg, input));
     if sess.get_opts().parse_only { ret; }
     crate =
-        time(time_passes, "configuration",
+        time(time_passes, ~"configuration",
              bind front::config::strip_unconfigured_items(crate));
     if sess.get_opts().test {
         crate =
-            time(time_passes, "building test harness",
+            time(time_passes, ~"building test harness",
                  bind front::test::modify_for_testing(crate));
     }
     crate =
-        time(time_passes, "expansion",
+        time(time_passes, ~"expansion",
              bind syntax::ext::expand::expand_crate(sess, crate));
 
     let ast_map =
-        time(time_passes, "ast indexing",
+        time(time_passes, ~"ast indexing",
              bind middle::ast_map::map_crate(*crate));
-    time(time_passes, "external crate/lib resolution",
+    time(time_passes, ~"external crate/lib resolution",
          bind creader::read_crates(sess, *crate));
     let {def_map: def_map, ext_map: ext_map} =
-        time(time_passes, "resolution",
+        time(time_passes, ~"resolution",
              bind resolve::resolve_crate(sess, ast_map, crate));
     let freevars =
-        time(time_passes, "freevar finding",
+        time(time_passes, ~"freevar finding",
              bind freevars::annotate_freevars(sess, def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
-    time(time_passes, "typechecking",
+    time(time_passes, ~"typechecking",
          bind typeck::check_crate(ty_cx, crate));
-    time(time_passes, "alt checking",
+    time(time_passes, ~"alt checking",
          bind middle::check_alt::check_crate(ty_cx, crate));
     if sess.get_opts().run_typestate {
-        time(time_passes, "typestate checking",
+        time(time_passes, ~"typestate checking",
              bind middle::tstate::ck::check_crate(ty_cx, crate));
     }
-    let mut_map = time(time_passes, "alias checking",
+    let mut_map = time(time_passes, ~"alias checking",
                        bind middle::alias::check_crate(ty_cx, crate));
-    time(time_passes, "kind checking",
+    time(time_passes, ~"kind checking",
          bind kind::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
-    let llmod = time(time_passes, "translation",
+    let llmod = time(time_passes, ~"translation",
                      bind trans::trans_crate(sess, crate, ty_cx,
-                                             istr::from_estr(output),
+                                             output,
                                              ast_map, mut_map));
-    time(time_passes, "LLVM passes",
-         bind link::write::run_passes(sess, llmod, istr::from_estr(output)));
+    time(time_passes, ~"LLVM passes",
+         bind link::write::run_passes(sess, llmod, output));
 }
 
-fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
-                      ppm: pp_mode) {
+fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg,
+                      input: &istr, ppm: pp_mode) {
     fn ann_paren_for_expr(node: &pprust::ann_node) {
         alt node { pprust::node_expr(s, expr) { pprust::popen(s); } _ { } }
     }
@@ -247,22 +249,24 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
       ppm_normal. { ann = pprust::no_ann(); }
     }
     pprust::print_crate(sess.get_codemap(), crate,
-                        istr::from_estr(input),
-                        io::string_reader(istr::from_estr(src)),
+                        input,
+                        io::string_reader(src),
                         io::stdout(), ann);
 }
 
-fn version(argv0: str) {
+fn version(argv0: &istr) {
     let vers = "unknown version";
     let env_vers = #env["CFG_VERSION"];
     if str::byte_len(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(
-        istr::from_estr(#fmt["%s %s\n", argv0, vers]));
+        istr::from_estr(#fmt["%s %s\n",
+                             istr::to_estr(argv0),
+                             vers]));
 }
 
-fn usage(argv0: str) {
+fn usage(argv0: &istr) {
     io::stdout().write_str(istr::from_estr(
-        #fmt["usage: %s [options] <input>\n", argv0] +
+        #fmt["usage: %s [options] <input>\n", istr::to_estr(argv0)] +
                                "
 options:
 
@@ -299,41 +303,41 @@ options:
 "));
 }
 
-fn get_os(triple: str) -> session::os {
-    ret if str::find(triple, "win32") >= 0 ||
-               str::find(triple, "mingw32") >= 0 {
+fn get_os(triple: &istr) -> session::os {
+    ret if istr::find(triple, ~"win32") >= 0 ||
+               istr::find(triple, ~"mingw32") >= 0 {
             session::os_win32
-        } else if str::find(triple, "darwin") >= 0 {
+        } else if istr::find(triple, ~"darwin") >= 0 {
             session::os_macos
-        } else if str::find(triple, "linux") >= 0 {
+        } else if istr::find(triple, ~"linux") >= 0 {
             session::os_linux
-        } else { log_err "Unknown operating system!"; fail };
+        } else { log_err ~"Unknown operating system!"; fail };
 }
 
-fn get_arch(triple: str) -> session::arch {
-    ret if str::find(triple, "i386") >= 0 || str::find(triple, "i486") >= 0 ||
-               str::find(triple, "i586") >= 0 ||
-               str::find(triple, "i686") >= 0 ||
-               str::find(triple, "i786") >= 0 {
+fn get_arch(triple: &istr) -> session::arch {
+    ret if istr::find(triple, ~"i386") >= 0 ||
+        istr::find(triple, ~"i486") >= 0 ||
+               istr::find(triple, ~"i586") >= 0 ||
+               istr::find(triple, ~"i686") >= 0 ||
+               istr::find(triple, ~"i786") >= 0 {
             session::arch_x86
-        } else if str::find(triple, "x86_64") >= 0 {
+        } else if istr::find(triple, ~"x86_64") >= 0 {
             session::arch_x64
-        } else if str::find(triple, "arm") >= 0 ||
-                      str::find(triple, "xscale") >= 0 {
+        } else if istr::find(triple, ~"arm") >= 0 ||
+                      istr::find(triple, ~"xscale") >= 0 {
             session::arch_arm
-        } else { log_err "Unknown architecture! " + triple; fail };
+        } else { log_err ~"Unknown architecture! " + triple; fail };
 }
 
-fn get_default_sysroot(binary: str) -> str {
-    let dirname = istr::to_estr(
-        fs::dirname(istr::from_estr(binary)));
-    if str::eq(dirname, binary) { ret "."; }
+fn get_default_sysroot(binary: &istr) -> istr {
+    let dirname = fs::dirname(binary);
+    if istr::eq(dirname, binary) { ret ~"."; }
     ret dirname;
 }
 
 fn build_target_config() -> @session::config {
-    let triple: str = istr::to_estr(
-        istr::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple()));
+    let triple: istr =
+        istr::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple());
     let target_cfg: @session::config =
         @{os: get_os(triple),
           arch: get_arch(triple),
@@ -343,15 +347,15 @@ fn build_target_config() -> @session::config {
     ret target_cfg;
 }
 
-fn build_session_options(binary: str, match: &getopts::match, binary_dir: str)
-   -> @session::options {
+fn build_session_options(binary: &istr, match: &getopts::match,
+                         binary_dir: &istr) -> @session::options {
     let library = opt_present(match, ~"lib");
     let static = opt_present(match, ~"static");
 
-    let library_search_paths = [binary_dir + "/lib"];
+    let library_search_paths = [binary_dir + ~"/lib"];
     let lsp_vec = getopts::opt_strs(match, ~"L");
     for lsp: istr in lsp_vec {
-        library_search_paths += [istr::to_estr(lsp)];
+        library_search_paths += [lsp];
     }
 
     let parse_only = opt_present(match, ~"parse-only");
@@ -398,10 +402,10 @@ fn build_session_options(binary: str, match: &getopts::match, binary_dir: str)
     let sysroot =
         alt sysroot_opt {
           none. { get_default_sysroot(binary) }
-          some(s) { istr::to_estr(s) }
+          some(s) { s }
         };
     let cfg = parse_cfgspecs(
-        istr::to_estrs(getopts::opt_strs(match, ~"cfg")));
+        getopts::opt_strs(match, ~"cfg"));
     let test = opt_present(match, ~"test");
     let do_gc = opt_present(match, ~"gc");
     let sopts: @session::options =
@@ -416,8 +420,8 @@ fn build_session_options(binary: str, match: &getopts::match, binary_dir: str)
           time_passes: time_passes,
           time_llvm_passes: time_llvm_passes,
           output_type: output_type,
-          library_search_paths: istr::from_estrs(library_search_paths),
-          sysroot: istr::from_estr(sysroot),
+          library_search_paths: library_search_paths,
+          sysroot: sysroot,
           cfg: cfg,
           test: test,
           parse_only: parse_only,
@@ -460,11 +464,11 @@ fn opts() -> [getopts::opt] {
 }
 
 fn main(args: [str]) {
+    let args = istr::from_estrs(args);
     let binary = vec::shift(args);
-    let binary_dir = istr::to_estr(
-        fs::dirname(istr::from_estr(binary)));
+    let binary_dir = fs::dirname(binary);
     let match =
-        alt getopts::getopts(istr::from_estrs(args), opts()) {
+        alt getopts::getopts(args, opts()) {
           getopts::success(m) { m }
           getopts::failure(f) {
             log_err #fmt["error: %s", istr::to_estr(getopts::fail_str(f))];
@@ -498,9 +502,9 @@ fn main(args: [str]) {
         sess.fatal(~"Multiple input filenames provided.");
     }
     let ifile = match.free[0];
-    let saved_out_filename: str = "";
+    let saved_out_filename: istr = ~"";
     let cfg = build_configuration(sess, binary,
-                                  istr::to_estr(ifile));
+                                  ifile);
     let pretty =
         option::map::<istr,
                       pp_mode>(bind parse_pretty(sess, _),
@@ -508,7 +512,7 @@ fn main(args: [str]) {
                                                     ~"normal"));
     alt pretty {
       some::<pp_mode>(ppm) {
-        pretty_print_input(sess, cfg, istr::to_estr(ifile), ppm);
+        pretty_print_input(sess, cfg, ifile, ppm);
         ret;
       }
       none::<pp_mode>. {/* continue */ }
@@ -526,32 +530,32 @@ fn main(args: [str]) {
         // have to make up a name
         // We want to toss everything after the final '.'
         let parts =
-            if !input_is_stdin(istr::to_estr(ifile)) {
-                istr::to_estrs(istr::split(ifile, '.' as u8))
-            } else { ["default", "rs"] };
+            if !input_is_stdin(ifile) {
+                istr::split(ifile, '.' as u8)
+            } else { [~"default", ~"rs"] };
         vec::pop(parts);
-        saved_out_filename = str::connect(parts, ".");
+        saved_out_filename = istr::connect(parts, ~".");
         let suffix =
             alt sopts.output_type {
-              link::output_type_none. { "none" }
-              link::output_type_bitcode. { "bc" }
-              link::output_type_assembly. { "s" }
+              link::output_type_none. { ~"none" }
+              link::output_type_bitcode. { ~"bc" }
+              link::output_type_assembly. { ~"s" }
 
               // Object and exe output both use the '.o' extension here
               link::output_type_object. | link::output_type_exe. {
-                "o"
+                ~"o"
               }
             };
-        let ofile = saved_out_filename + "." + suffix;
-        compile_input(sess, cfg, istr::to_estr(ifile), ofile);
+        let ofile = saved_out_filename + ~"." + suffix;
+        compile_input(sess, cfg, ifile, ofile);
       }
       some(ofile) {
-        let ofile = istr::to_estr(ofile);
+        let ofile = ofile;
         // FIXME: what about windows? This will create a foo.exe.o.
         saved_out_filename = ofile;
         let temp_filename =
-            if !stop_after_codegen { ofile + ".o" } else { ofile };
-        compile_input(sess, cfg, istr::to_estr(ifile), temp_filename);
+            if !stop_after_codegen { ofile + ~".o" } else { ofile };
+        compile_input(sess, cfg, ifile, temp_filename);
       }
     }
 
@@ -561,23 +565,23 @@ fn main(args: [str]) {
     // TODO: Factor this out of main.
     if stop_after_codegen { ret; }
 
-    let glu: str = binary_dir + "/lib/glue.o";
-    let main: str = binary_dir + "/lib/main.o";
-    let stage: str = "-L" + binary_dir + "/lib";
+    let glu: istr = binary_dir + ~"/lib/glue.o";
+    let main: istr = binary_dir + ~"/lib/main.o";
+    let stage: istr = ~"-L" + binary_dir + ~"/lib";
     let prog: istr = ~"gcc";
     // The invocations of gcc share some flags across platforms
 
     let gcc_args =
-        [istr::from_estr(stage),
-         ~"-Lrt", ~"-lrustrt", istr::from_estr(glu),
-         ~"-m32", ~"-o", istr::from_estr(saved_out_filename),
-         istr::from_estr(saved_out_filename) + ~".o"];
+        [stage,
+         ~"-Lrt", ~"-lrustrt", glu,
+         ~"-m32", ~"-o", saved_out_filename,
+         saved_out_filename + ~".o"];
     let lib_cmd;
 
     let os = sess.get_targ_cfg().os;
     if os == session::os_macos {
-        lib_cmd = "-dynamiclib";
-    } else { lib_cmd = "-shared"; }
+        lib_cmd = ~"-dynamiclib";
+    } else { lib_cmd = ~"-shared"; }
 
     // Converts a library file name into a gcc -l argument
     fn unlib(config: @session::config, filename: &istr) -> istr {
@@ -622,10 +626,10 @@ fn main(args: [str]) {
     for l: istr in used_libs { gcc_args += [~"-l" + l]; }
 
     if sopts.library {
-        gcc_args += [istr::from_estr(lib_cmd)];
+        gcc_args += [lib_cmd];
     } else {
         // FIXME: why do we hardcode -lm?
-        gcc_args += [~"-lm", istr::from_estr(main)];
+        gcc_args += [~"-lm", main];
     }
     // We run 'gcc' here
 
@@ -642,14 +646,14 @@ fn main(args: [str]) {
 
     if sess.get_targ_cfg().os == session::os_macos {
         run::run_program(~"dsymutil",
-                         [istr::from_estr(saved_out_filename)]);
+                         [saved_out_filename]);
     }
 
 
     // Remove the temporary object file if we aren't saving temps
     if !sopts.save_temps {
         run::run_program(~"rm",
-                         [istr::from_estr(saved_out_filename) + ~".o"]);
+                         [saved_out_filename + ~".o"]);
     }
 }
 
@@ -663,9 +667,9 @@ mod test {
             alt getopts::getopts([~"--test"], opts()) {
               getopts::success(m) { m }
             };
-        let sessopts = build_session_options("whatever", match, "whatever");
+        let sessopts = build_session_options(~"whatever", match, ~"whatever");
         let sess = build_session(sessopts);
-        let cfg = build_configuration(sess, "whatever", "whatever");
+        let cfg = build_configuration(sess, ~"whatever", ~"whatever");
         assert (attr::contains_name(cfg, ~"test"));
     }
 
@@ -677,9 +681,9 @@ mod test {
             alt getopts::getopts([~"--test", ~"--cfg=test"], opts()) {
               getopts::success(m) { m }
             };
-        let sessopts = build_session_options("whatever", match, "whatever");
+        let sessopts = build_session_options(~"whatever", match, ~"whatever");
         let sess = build_session(sessopts);
-        let cfg = build_configuration(sess, "whatever", "whatever");
+        let cfg = build_configuration(sess, ~"whatever", ~"whatever");
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");
         assert (vec::len(test_items) == 1u);
     }
