@@ -86,6 +86,7 @@ mod sha1;
 mod ebml;
 mod ufind;
 mod extfmt;
+mod extifmt;
 mod box;
 mod getopts;
 mod time;
