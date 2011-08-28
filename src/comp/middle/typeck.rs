@@ -1860,7 +1860,15 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         bot = true;
         alt expr_opt {
           none. {/* do nothing */ }
-          some(e) { check_expr_with(fcx, e, ty::mk_str(tcx)); }
+          some(e) {
+            // FIXME: istr transitional. Should be:
+            // check_expr_with(fcx, e, ty::mk_str(tcx));
+            check_expr(fcx, e);
+            if !are_compatible(fcx, expr_ty(tcx, e), ty::mk_str(tcx))
+                && !are_compatible(fcx, expr_ty(tcx, e), ty::mk_istr(tcx)) {
+                check_expr_with(fcx, e, ty::mk_str(tcx));
+            }
+          }
         }
         write::bot_ty(tcx, id);
       }

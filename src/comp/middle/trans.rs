@@ -4409,12 +4409,22 @@ fn trans_fail_expr(cx: &@block_ctxt, sp_opt: &option::t<span>,
         let e_ty = ty::expr_ty(tcx, expr);
         bcx = expr_res.bcx;
 
-
         if ty::type_is_str(tcx, e_ty) {
-            let elt =
-                GEP(bcx, expr_res.val,
-                              [C_int(0), C_int(abi::vec_elt_data)]);
-            ret trans_fail_value(bcx, sp_opt, elt);
+            let is_istr = alt ty::struct(tcx, e_ty) {
+              ty::ty_istr. { true }
+              _ { false }
+            };
+            if !is_istr {
+                let elt =
+                    GEP(bcx, expr_res.val,
+                        [C_int(0), C_int(abi::vec_elt_data)]);
+                ret trans_fail_value(bcx, sp_opt, elt);
+            } else {
+                let data = ivec::get_dataptr(
+                    bcx, expr_res.val,
+                    type_of_or_i8(bcx, ty::mk_mach(tcx, ast::ty_u8)));
+                ret trans_fail_value(bcx, sp_opt, data);
+            }
         } else {
             bcx_ccx(cx).sess.span_bug(expr.span,
                                       ~"fail called with unsupported type "
