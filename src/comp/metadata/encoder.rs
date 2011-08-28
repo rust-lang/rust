@@ -511,10 +511,10 @@ fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> [attribute] {
 
         let name_item =
             attr::mk_name_value_item_str(
-                ~"name", istr::to_estr(ecx.ccx.link_meta.name));
+                ~"name", ecx.ccx.link_meta.name);
         let vers_item =
             attr::mk_name_value_item_str(
-                ~"vers", istr::to_estr(ecx.ccx.link_meta.vers));
+                ~"vers", ecx.ccx.link_meta.vers);
 
         let other_items =
             {

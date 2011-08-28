@@ -28,15 +28,15 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
 
     let var = expr_to_str(cx, args[0], ~"#env requires a string");
     alt generic_os::getenv(var) {
-      option::none. { ret make_new_str(cx, sp, ""); }
+      option::none. { ret make_new_str(cx, sp, ~""); }
       option::some(s) {
-        ret make_new_str(cx, sp, istr::to_estr(s));
+        ret make_new_str(cx, sp, s);
       }
     }
 }
 
-fn make_new_str(cx: &ext_ctxt, sp: codemap::span, s: str) -> @ast::expr {
-    ret make_new_lit(cx, sp, ast::lit_str(istr::from_estr(s), ast::sk_rc));
+fn make_new_str(cx: &ext_ctxt, sp: codemap::span, s: &istr) -> @ast::expr {
+    ret make_new_lit(cx, sp, ast::lit_str(s, ast::sk_rc));
 }
 //
 // Local Variables:

@@ -197,8 +197,9 @@ fn span<@T>(item: &T) -> ast::spanned<T> {
     ret {node: item, span: ast_util::dummy_sp()};
 }
 
-fn mk_name_value_item_str(name: ast::ident, value: str) -> @ast::meta_item {
-    let value_lit = span(ast::lit_str(istr::from_estr(value), ast::sk_rc));
+fn mk_name_value_item_str(name: ast::ident,
+                          value: &istr) -> @ast::meta_item {
+    let value_lit = span(ast::lit_str(value, ast::sk_rc));
     ret mk_name_value_item(name, value_lit);
 }
 

@@ -310,7 +310,7 @@ fn get_meta_items(md: &ebml::doc) -> [@ast::meta_item] {
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
         let n = istr::unsafe_from_bytes(ebml::doc_data(nd));
-        let v = str::unsafe_from_bytes(ebml::doc_data(vd));
+        let v = istr::unsafe_from_bytes(ebml::doc_data(vd));
         // FIXME (#611): Should be able to decode meta_name_value variants,
         // but currently they can't be encoded
         items += [attr::mk_name_value_item_str(n, v)];

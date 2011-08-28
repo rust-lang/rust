@@ -47,21 +47,21 @@ fn default_configuration(sess: session::session,
    ast::crate_cfg {
     let libc =
         alt sess.get_targ_cfg().os {
-          session::os_win32. { "msvcrt.dll" }
-          session::os_macos. { "libc.dylib" }
-          session::os_linux. { "libc.so.6" }
-          _ { "libc.so" }
+          session::os_win32. { ~"msvcrt.dll" }
+          session::os_macos. { ~"libc.dylib" }
+          session::os_linux. { ~"libc.so.6" }
+          _ { ~"libc.so" }
         };
 
     let mk = attr::mk_name_value_item_str;
 
     ret [ // Target bindings.
-         mk(~"target_os", istr::to_estr(std::os::target_os())),
-        mk(~"target_arch", "x86"),
+         mk(~"target_os", std::os::target_os()),
+        mk(~"target_arch", ~"x86"),
          mk(~"target_libc", libc),
          // Build bindings.
-         mk(~"build_compiler", istr::to_estr(argv0)),
-        mk(~"build_input", istr::to_estr(input))];
+         mk(~"build_compiler", argv0),
+        mk(~"build_input", input)];
 }
 
 fn build_configuration(sess: session::session, argv0: &istr, input: &istr) ->

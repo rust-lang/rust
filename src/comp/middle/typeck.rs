@@ -417,7 +417,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
     alt cname {
       none. {/* no-op */ }
       some(cname_str) {
-        typ = ty::rename(tcx, typ, istr::to_estr(cname_str));
+        typ = ty::rename(tcx, typ, cname_str);
       }
     }
     tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
@@ -629,7 +629,7 @@ mod collect {
                  ty_params: &[ast::ty_param]) -> ty::ty_param_kinds_and_ty {
         let methods = get_obj_method_types(cx, ob);
         let t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
-        t_obj = ty::rename(cx.tcx, t_obj, istr::to_estr(id));
+        t_obj = ty::rename(cx.tcx, t_obj, id);
         ret {kinds: ty_param_kinds(ty_params), ty: t_obj};
     }
     fn ty_of_obj_ctor(cx: @ctxt, id: &ast::ident, ob: &ast::_obj,

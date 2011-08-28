@@ -112,44 +112,45 @@ fn type_and_kind(tcx: &ty::ctxt, e: &@ast::expr) ->
 }
 
 fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
-                  descr: &str) {
+                  descr: &istr) {
     let tk = type_and_kind(tcx, e);
-    log #fmt["for %s: want %s type, got %s type %s", descr,
+    log #fmt["for %s: want %s type, got %s type %s", istr::to_estr(descr),
              kind_to_str(k_need), kind_to_str(tk.kind),
              istr::to_estr(util::ppaux::ty_to_str(tcx, tk.ty))];
 
     if !kind_lteq(k_need, tk.kind) {
         let s =
             #fmt["mismatched kinds for %s: needed %s type, got %s type %s",
-                 descr, kind_to_str(k_need), kind_to_str(tk.kind),
+                 istr::to_estr(descr), kind_to_str(k_need),
+                 kind_to_str(tk.kind),
                  istr::to_estr(util::ppaux::ty_to_str(tcx, tk.ty))];
         tcx.sess.span_err(e.span, istr::from_estr(s));
     }
 }
 
 fn need_shared_lhs_rhs(tcx: &ty::ctxt, a: &@ast::expr, b: &@ast::expr,
-                       op: &str) {
-    need_expr_kind(tcx, a, ast::kind_shared, op + " lhs");
-    need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
+                       op: &istr) {
+    need_expr_kind(tcx, a, ast::kind_shared, op + ~" lhs");
+    need_expr_kind(tcx, b, ast::kind_shared, op + ~" rhs");
 }
 
 fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
     alt e.node {
-      ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
-      ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
-      ast::expr_assign_op(_, a, b) { need_shared_lhs_rhs(tcx, a, b, "op="); }
-      ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
+      ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, ~"<-"); }
+      ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, ~"="); }
+      ast::expr_assign_op(_, a, b) { need_shared_lhs_rhs(tcx, a, b, ~"op="); }
+      ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, ~"<->"); }
       ast::expr_copy(a) {
-        need_expr_kind(tcx, a, ast::kind_shared, "'copy' operand");
+        need_expr_kind(tcx, a, ast::kind_shared, ~"'copy' operand");
       }
       ast::expr_ret(option::some(a)) {
-        need_expr_kind(tcx, a, ast::kind_shared, "'ret' operand");
+        need_expr_kind(tcx, a, ast::kind_shared, ~"'ret' operand");
       }
       ast::expr_be(a) {
-        need_expr_kind(tcx, a, ast::kind_shared, "'be' operand");
+        need_expr_kind(tcx, a, ast::kind_shared, ~"'be' operand");
       }
       ast::expr_fail(option::some(a)) {
-        need_expr_kind(tcx, a, ast::kind_shared, "'fail' operand");
+        need_expr_kind(tcx, a, ast::kind_shared, ~"'fail' operand");
       }
       ast::expr_call(callee, _) {
         let tpt = ty::expr_ty_params_and_ty(tcx, callee);

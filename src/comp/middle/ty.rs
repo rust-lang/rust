@@ -243,7 +243,7 @@ fn method_ty_to_fn_ty(cx: &ctxt, m: method) -> t {
 // Never construct these manually. These are interned.
 type raw_t =
     {struct: sty,
-     cname: option::t<str>,
+     cname: option::t<istr>,
      hash: uint,
      has_params: bool,
      has_vars: bool};
@@ -427,8 +427,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map,
 
 
 // Type constructors
-fn mk_raw_ty(cx: &ctxt, st: &sty, _in_cname: &option::t<str>) -> @raw_t {
-    let cname = none;
+fn mk_raw_ty(cx: &ctxt, st: &sty, _in_cname: &option::t<istr>) -> @raw_t {
+    let cname: option::t<istr> = none;
     let h = hash_type_info(st, cname);
     let has_params: bool = false;
     let has_vars: bool = false;
@@ -505,11 +505,11 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, _in_cname: &option::t<str>) -> @raw_t {
           has_vars: has_vars};
 }
 
-fn intern(cx: &ctxt, st: &sty, cname: &option::t<str>) {
+fn intern(cx: &ctxt, st: &sty, cname: &option::t<istr>) {
     interner::intern(*cx.ts, mk_raw_ty(cx, st, cname));
 }
 
-fn gen_ty_full(cx: &ctxt, st: &sty, cname: &option::t<str>) -> t {
+fn gen_ty_full(cx: &ctxt, st: &sty, cname: &option::t<istr>) -> t {
     let raw_type = mk_raw_ty(cx, st, cname);
     ret interner::intern(*cx.ts, raw_type);
 }
@@ -617,7 +617,7 @@ fn struct(cx: &ctxt, typ: t) -> sty {
 
 
 // Returns the canonical name of the given type.
-fn cname(cx: &ctxt, typ: t) -> option::t<str> {
+fn cname(cx: &ctxt, typ: t) -> option::t<istr> {
     ret interner::get(*cx.ts, typ).cname;
 }
 
@@ -794,7 +794,7 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
 
 // Type utilities
 
-fn rename(cx: &ctxt, typ: t, new_cname: str) -> t {
+fn rename(cx: &ctxt, typ: t, new_cname: &istr) -> t {
     ret gen_ty_full(cx, struct(cx, typ), some(new_cname));
 }
 
@@ -1538,11 +1538,11 @@ fn hash_type_structure(st: &sty) -> uint {
     }
 }
 
-fn hash_type_info(st: &sty, cname_opt: &option::t<str>) -> uint {
+fn hash_type_info(st: &sty, cname_opt: &option::t<istr>) -> uint {
     let h = hash_type_structure(st);
     alt cname_opt {
       none. {/* no-op */ }
-      some(s) { h += h << 5u + str::hash(s); }
+      some(s) { h += h << 5u + istr::hash(s); }
     }
     ret h;
 }
@@ -1606,7 +1606,7 @@ fn eq_raw_ty(a: &@raw_t, b: &@raw_t) -> bool {
       none. { alt b.cname { none. {/* ok */ } _ { ret false; } } }
       some(s_a) {
         alt b.cname {
-          some(s_b) { if !str::eq(s_a, s_b) { ret false; } }
+          some(s_b) { if !istr::eq(s_a, s_b) { ret false; } }
           _ { ret false; }
         }
       }

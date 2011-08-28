@@ -57,8 +57,7 @@ tag matchable {
 }
 
 /* for when given an incompatible bit of AST */
-fn match_error(cx: &ext_ctxt, m: &matchable, expected: &str) -> ! {
-    let expected = istr::from_estr(expected);
+fn match_error(cx: &ext_ctxt, m: &matchable, expected: &istr) -> ! {
     alt m {
       match_expr(x) {
         cx.span_fatal(x.span,
@@ -355,7 +354,7 @@ fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                     i: &ident, _fld: ast_fold) -> ident {
     ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
-          some(m) { match_error(cx, m, "an identifier") }
+          some(m) { match_error(cx, m, ~"an identifier") }
           none. { i }
         }
 }
@@ -370,7 +369,7 @@ fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
             {global: false, idents: [id.node], types: []}
           }
           some(match_path(a_pth)) { a_pth.node }
-          some(m) { match_error(cx, m, "a path") }
+          some(m) { match_error(cx, m, ~"a path") }
           none. { p }
         }
 }
@@ -395,7 +394,7 @@ fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
               }
               some(match_path(a_pth)) { expr_path(a_pth) }
               some(match_expr(a_exp)) { a_exp.node }
-              some(m) { match_error(cx, m, "an expression") }
+              some(m) { match_error(cx, m, ~"an expression") }
               none. { orig(e, fld) }
             }
           }
@@ -412,7 +411,7 @@ fn transcribe_type(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
               some(id) {
                 alt follow_for_trans(cx, b.find(id), idx_path) {
                   some(match_ty(ty)) { ty.node }
-                  some(m) { match_error(cx, m, "a type") }
+                  some(m) { match_error(cx, m, ~"a type") }
                   none. { orig(t, fld) }
                 }
               }
@@ -439,7 +438,7 @@ fn transcribe_block(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 
               // possibly allow promotion of ident/path/expr to blocks?
               some(m) {
-                match_error(cx, m, "a block")
+                match_error(cx, m, ~"a block")
               }
               none. { orig(blk, fld) }
             }
@@ -564,13 +563,13 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
               _ { cx.bug(~"broken traversal in p_t_s_r") }
             }
     }
-    fn no_des(cx: &ext_ctxt, sp: &span, syn: &str) -> ! {
+    fn no_des(cx: &ext_ctxt, sp: &span, syn: &istr) -> ! {
         cx.span_fatal(sp, ~"destructuring "
-                      + istr::from_estr(syn) + ~" is not yet supported");
+                      + syn + ~" is not yet supported");
     }
     alt mac.node {
       ast::mac_ellipsis. { cx.span_fatal(mac.span, ~"misused `...`"); }
-      ast::mac_invoc(_, _, _) { no_des(cx, mac.span, "macro calls"); }
+      ast::mac_invoc(_, _, _) { no_des(cx, mac.span, ~"macro calls"); }
       ast::mac_embed_type(ty) {
         alt ty.node {
           ast::ty_path(pth, _) {
@@ -587,10 +586,10 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
                 b.real_binders.insert(
                     id, compose_sels(s, final_step));
               }
-              none. { no_des(cx, pth.span, "under `#<>`"); }
+              none. { no_des(cx, pth.span, ~"under `#<>`"); }
             }
           }
-          _ { no_des(cx, ty.span, "under `#<>`"); }
+          _ { no_des(cx, ty.span, ~"under `#<>`"); }
         }
       }
       ast::mac_embed_block(blk) {
@@ -608,7 +607,7 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
             b.real_binders.insert(id,
                                   compose_sels(s, final_step));
           }
-          none. { no_des(cx, blk.span, "under `#{}`"); }
+          none. { no_des(cx, blk.span, ~"under `#{}`"); }
         }
       }
     }

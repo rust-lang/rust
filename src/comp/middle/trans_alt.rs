@@ -58,9 +58,9 @@ fn variant_opt(ccx: &@crate_ctxt, pat_id: ast::node_id) -> opt {
 }
 
 type bind_map = [{ident: ast::ident, val: ValueRef}];
-fn assoc(key: str, list: &bind_map) -> option::t<ValueRef> {
+fn assoc(key: &istr, list: &bind_map) -> option::t<ValueRef> {
     for elt: {ident: ast::ident, val: ValueRef} in list {
-        if istr::eq(elt.ident, istr::from_estr(key)) { ret some(elt.val); }
+        if istr::eq(elt.ident, key) { ret some(elt.val); }
     }
     ret none;
 }
@@ -304,7 +304,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
             // the actual arm block.
             for each @{key, val} in data.id_map.items() {
                 bcx.fcx.lllocals.insert
-                    (val, option::get(assoc(istr::to_estr(key),
+                    (val, option::get(assoc(key,
                                             m[0].bound)));
             }
             let {bcx: guard_bcx, val: guard_val} =
@@ -474,7 +474,7 @@ fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
         let vals = [];
         for ex: exit_node in map {
             if ex.to as uint == our_block {
-                alt assoc(istr::to_estr(item.key), ex.bound) {
+                alt assoc(item.key, ex.bound) {
                   some(val) { llbbs += [ex.from]; vals += [val]; }
                   none. { }
                 }

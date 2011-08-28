@@ -102,7 +102,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> istr {
     }
     alt cname(cx, typ) {
       some(cs) {
-        ret istr::from_estr(cs);
+        ret cs;
       }
       _ { }
     }
