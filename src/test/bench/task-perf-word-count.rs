@@ -124,7 +124,7 @@ mod map_reduce {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {
-                    // log_err #fmt("received %d", v);
+                    // log_err #ifmt("received %d", v);
                     ret some(v);
                   }
                   done. {
@@ -198,8 +198,8 @@ fn main(argv: [str]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 
-        out.write_line(istr::from_estr(
-            #fmt["Usage: %s <filename> ...", argv[0]]));
+        out.write_line(
+            #ifmt["Usage: %s <filename> ...", istr::from_estr(argv[0])]);
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.

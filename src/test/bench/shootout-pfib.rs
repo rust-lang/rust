@@ -69,7 +69,7 @@ fn stress_task(id: int) {
         let n = 15;
         assert (fib(n) == fib(n));
         i += 1;
-        log_err #fmt["%d: Completed %d iterations", id, i];
+        log_err #ifmt["%d: Completed %d iterations", id, i];
     }
 }
 
@@ -108,9 +108,8 @@ fn main(argv: [str]) {
                     let elapsed = stop - start;
 
                     out.write_line(
-                        istr::from_estr(
-                            #fmt["%d\t%d\t%s", n, fibn,
-                                 istr::to_estr(u64::str(elapsed))]));
+                            #ifmt["%d\t%d\t%s", n, fibn,
+                                 u64::str(elapsed)]);
                 }
             }
         }

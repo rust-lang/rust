@@ -72,34 +72,21 @@ fn parse_config(args: &[istr]) -> config {
 
 fn log_config(config: &config) {
     let c = config;
-    logv(c, istr::from_estr(
-        #fmt["configuration:"]));
-    logv(c, istr::from_estr(
-        #fmt["compile_lib_path: %s",
-             istr::to_estr(config.compile_lib_path)]));
-    logv(c, istr::from_estr(
-        #fmt["run_lib_path: %s", istr::to_estr(config.run_lib_path)]));
-    logv(c, istr::from_estr(
-        #fmt["rustc_path: %s", istr::to_estr(config.rustc_path)]));
-    logv(c, istr::from_estr(
-        #fmt["src_base: %s", istr::to_estr(config.src_base)]));
-    logv(c, istr::from_estr(
-        #fmt["build_base: %s", istr::to_estr(config.build_base)]));
-    logv(c, istr::from_estr(
-        #fmt["stage_id: %s", istr::to_estr(config.stage_id)]));
-    logv(c, istr::from_estr(
-        #fmt["mode: %s", istr::to_estr(mode_str(config.mode))]));
-    logv(c, istr::from_estr(
-        #fmt["run_ignored: %b", config.run_ignored]));
-    logv(c, istr::from_estr(
-        #fmt["filter: %s", istr::to_estr(opt_str(config.filter))]));
-    logv(c, istr::from_estr(
-        #fmt["runtool: %s", istr::to_estr(opt_str(config.runtool))]));
-    logv(c, istr::from_estr(
-        #fmt["rustcflags: %s", istr::to_estr(opt_str(config.rustcflags))]));
-    logv(c, istr::from_estr(
-        #fmt["verbose: %b", config.verbose]));
-    logv(c, istr::from_estr(#fmt["\n"]));
+    logv(c, #ifmt["configuration:"]);
+    logv(c, #ifmt["compile_lib_path: %s",
+                 config.compile_lib_path]);
+    logv(c, #ifmt["run_lib_path: %s", config.run_lib_path]);
+    logv(c, #ifmt["rustc_path: %s", config.rustc_path]);
+    logv(c, #ifmt["src_base: %s", config.src_base]);
+    logv(c, #ifmt["build_base: %s", config.build_base]);
+    logv(c, #ifmt["stage_id: %s", config.stage_id]);
+    logv(c, #ifmt["mode: %s", mode_str(config.mode)]);
+    logv(c, #ifmt["run_ignored: %b", config.run_ignored]);
+    logv(c, #ifmt["filter: %s", opt_str(config.filter)]);
+    logv(c, #ifmt["runtool: %s", opt_str(config.runtool)]);
+    logv(c, #ifmt["rustcflags: %s", opt_str(config.rustcflags)]);
+    logv(c, #ifmt["verbose: %b", config.verbose]);
+    logv(c, #ifmt["\n"]);
 }
 
 fn opt_str(maybestr: option::t<istr>) -> istr {
@@ -154,11 +141,12 @@ type tests_and_conv_fn =
     {tests: [test::test_desc], to_task: fn(&fn()) -> test::joinable};
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
-    log #fmt["making tests from %s", istr::to_estr(cx.config.src_base)];
+    log #ifmt["making tests from %s", cx.config.src_base];
     let configport = port::<[u8]>();
     let tests = [];
     for file: istr in fs::list_dir(cx.config.src_base) {
-        log #fmt["inspecting file %s", istr::to_estr(file)];
+        let file = file;
+        log #ifmt["inspecting file %s", file];
         if is_test(cx.config, file) {
             tests += [make_test(cx, file, configport)];
         }
@@ -196,9 +184,9 @@ fn make_test(cx: &cx, testfile: &istr, configport: &port<[u8]>) ->
 }
 
 fn make_test_name(config: &config, testfile: &istr) -> str {
-    #fmt["[%s] %s",
-         istr::to_estr(mode_str(config.mode)),
-         istr::to_estr(testfile)]
+    istr::to_estr(
+        #ifmt["[%s] %s", mode_str(config.mode),
+              testfile])
 }
 
 /*

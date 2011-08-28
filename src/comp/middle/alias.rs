@@ -257,10 +257,10 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
         alt f.node {
           ast::expr_path(_) {
             if def_is_local(cx.tcx.def_map.get(f.id), true) {
-                cx.tcx.sess.span_err(f.span, istr::from_estr(
-                                     #fmt["function may alias with \
+                cx.tcx.sess.span_err(f.span,
+                                     #ifmt["function may alias with \
                          argument %u, which is not immutably rooted",
-                                          unsafe_t_offsets[0]]));
+                                          unsafe_t_offsets[0]]);
             }
           }
           _ { }
@@ -275,10 +275,10 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
             let mut_alias = arg_t.mode == ty::mo_alias(true);
             if i != offset &&
                    ty_can_unsafely_include(cx, unsafe, arg_t.ty, mut_alias) {
-                cx.tcx.sess.span_err(args[i].span, istr::from_estr(
-                                     #fmt["argument %u may alias with \
+                cx.tcx.sess.span_err(args[i].span,
+                                     #ifmt["argument %u may alias with \
                      argument %u, which is not immutably rooted",
-                                          i, offset]));
+                                          i, offset]);
             }
             i += 1u;
         }

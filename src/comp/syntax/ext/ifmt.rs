@@ -1,7 +1,7 @@
 
 
 /*
- * The compiler code necessary to support the #fmt extension.  Eventually this
+ * The compiler code necessary to support the #ifmt extension. Eventually this
  * should all get sucked into either the standard library extfmt module or the
  * compiler syntax extension plugin interface.
  */
@@ -22,15 +22,16 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
           _ {
-            cx.span_fatal(sp, ~"#fmt requires arguments of the form `[...]`.")
+            cx.span_fatal(
+                sp, ~"#ifmt requires arguments of the form `[...]`.")
           }
         };
     if vec::len::<@ast::expr>(args) == 0u {
-        cx.span_fatal(sp, ~"#fmt requires a format string");
+        cx.span_fatal(sp, ~"#ifmt requires a format string");
     }
     let fmt =
         expr_to_str(cx, args[0],
-                    ~"first argument to #fmt must be a "
+                    ~"first argument to #ifmt must be a "
                     + ~"string literal.");
     let fmtspan = args[0].span;
     log "Format string:";
@@ -151,7 +152,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                 let count_is_args = [count_lit];
                 ret make_call(cx, sp, count_is_path, count_is_args);
               }
-              _ { cx.span_unimpl(sp, ~"unimplemented #fmt conversion"); }
+              _ { cx.span_unimpl(sp, ~"unimplemented #ifmt conversion"); }
             }
         }
         fn make_ty(cx: &ext_ctxt, sp: span, t: &ty) -> @ast::expr {
@@ -205,7 +206,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
               _ { ret false; }
             }
         }
-        let unsupported = ~"conversion not supported in #fmt string";
+        let unsupported = ~"conversion not supported in #ifmt string";
         alt cnv.param {
           option::none. { }
           _ { cx.span_unimpl(sp, unsupported); }
@@ -217,14 +218,14 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
                                   ~"+ flag only valid in " +
-                                      ~"signed #fmt conversion");
+                                      ~"signed #ifmt conversion");
                 }
               }
               flag_space_for_sign. {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
                                   ~"space flag only valid in " +
-                                      ~"signed #fmt conversions");
+                                      ~"signed #ifmt conversions");
                 }
               }
               flag_left_zero_pad. { }
@@ -330,7 +331,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
             n += 1u;
             if n >= nargs {
                 cx.span_fatal(sp,
-                              ~"not enough arguments to #fmt " +
+                              ~"not enough arguments to #ifmt " +
                                   ~"for the given format string");
             }
             log "Building conversion:";
@@ -345,9 +346,9 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
 
     if expected_nargs < nargs {
         cx.span_fatal(
-            sp, istr::from_estr(
-            #fmt["too many arguments to #fmt. found %u, expected %u",
-                 nargs, expected_nargs]));
+            sp,
+            #ifmt["too many arguments to #fmt. found %u, expected %u",
+                 nargs, expected_nargs]);
     }
     ret tmp_expr;
 }

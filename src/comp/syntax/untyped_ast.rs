@@ -362,7 +362,7 @@ fn dummy() {
          alt *elts.(idx) {
            leaf_destructure(x) { x }
            _ {
-             ctx.ff(sp, #fmt["expected %s in position %u",
+             ctx.ff(sp, #ifmt["expected %s in position %u",
                              #ident_to_str[leaf_destructure], idx])
            }
          }],

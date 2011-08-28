@@ -115,9 +115,8 @@ fn parse_name_value_directive(line: &istr,
         let value =
             istr::slice(line, colon + istr::byte_len(keycolon),
                        istr::byte_len(line));
-        log #fmt("%s: %s",
-                 istr::to_estr(directive),
-                 istr::to_estr(value));
+        log #ifmt("%s: %s", directive,
+                  value);
         option::some(value)
     } else { option::none }
 }

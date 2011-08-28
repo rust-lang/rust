@@ -170,10 +170,10 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
     let changed = find_pre_post_state_expr(fcx, pres, a);
     // FIXME: This could be a typestate constraint
     if vec::len(bs) != vec::len(ops) {
-        fcx.ccx.tcx.sess.span_bug(a.span, istr::from_estr(
-                                  #fmt["mismatched arg lengths: \
+        fcx.ccx.tcx.sess.span_bug(a.span,
+                                  #ifmt["mismatched arg lengths: \
                                         %u exprs vs. %u ops",
-                                       vec::len(bs), vec::len(ops)]));
+                                       vec::len(bs), vec::len(ops)]);
     }
     ret find_pre_post_state_exprs(fcx, expr_poststate(fcx.ccx, a), id, ops,
                                   bs, cf) || changed;

@@ -1040,7 +1040,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
       }
       13 { ret ~"Vector"; }
       14 { ret ~"Metadata"; }
-      _ { log_err #fmt["unknown TypeKind %d", kind as int]; fail; }
+      _ { log_err #ifmt["unknown TypeKind %d", kind as int]; fail; }
     }
 }
 

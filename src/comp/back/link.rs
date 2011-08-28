@@ -341,9 +341,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
     fn crate_meta_extras_hash(sha: sha1, _crate: &ast::crate,
                               metas: &provided_metas) -> istr {
         fn len_and_str(s: &istr) -> istr {
-            ret istr::from_estr(#fmt["%u_%s",
-                                     istr::byte_len(s),
-                                     istr::to_estr(s)]);
+            ret #ifmt["%u_%s", istr::byte_len(s), s];
         }
 
         fn len_and_str_lit(l: &ast::lit) -> istr {
@@ -374,9 +372,9 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
 
     fn warn_missing(sess: &session::session, name: &istr, default: &istr) {
         if !sess.get_opts().library { ret; }
-        sess.warn(istr::from_estr(
-            #fmt["missing crate link meta '%s', using '%s' as default",
-                       istr::to_estr(name), istr::to_estr(default)]));
+        sess.warn(
+            #ifmt["missing crate link meta '%s', using '%s' as default",
+                       name, default]);
     }
 
     fn crate_meta_name(sess: &session::session, _crate: &ast::crate,
@@ -461,9 +459,7 @@ fn mangle(ss: &[istr]) -> istr {
     let n = ~"_ZN"; // Begin name-sequence.
 
     for s: istr in ss {
-        n += istr::from_estr(#fmt["%u%s",
-                                  istr::byte_len(s),
-                                  istr::to_estr(s)]);
+        n += #ifmt["%u%s", istr::byte_len(s), s];
     }
     n += ~"E"; // End name-sequence.
 

@@ -195,7 +195,7 @@ fn check_whole_compiler(code: &str) {
             ~"/Users/jruderman/code/rust/build/stage1/rustc",
             [~"-c", istr::from_estr(filename)]);
 
-    //log_err #fmt("Status: %d", p.status);
+    //log_err #ifmt("Status: %d", p.status);
     //log_err "Output: " + p.out;
     if p.err != "" {
         if contains(p.err, "argument of incompatible type") {
@@ -265,7 +265,7 @@ fn content_is_dangerous_to_modify(code: &str) -> bool {
     let dangerous_patterns =
         ["obj", // not safe to steal; https://github.com/graydon/rust/issues/761
          "#macro", // not safe to steal things inside of it, because they have a special syntax
-         "#", // strange representation of the arguments to #fmt, for example
+         "#", // strange representation of the arguments to #ifmt, for example
          " be ", // don't want to replace its child with a non-call: "Non-call expression in tail call"
          "@"]; // hangs when compiling: https://github.com/graydon/rust/issues/768
 
@@ -327,9 +327,9 @@ fn check_roundtrip_convergence(code: &str, maxIters: uint) {
     }
 
     if old == new {
-        log_err #fmt["Converged after %u iterations", i];
+        log_err #ifmt["Converged after %u iterations", i];
     } else {
-        log_err #fmt["Did not converge after %u iterations!", i];
+        log_err #ifmt["Did not converge after %u iterations!", i];
         write_file("round-trip-a.rs", old);
         write_file("round-trip-b.rs", new);
         std::run::run_program(~"diff",
@@ -340,12 +340,12 @@ fn check_roundtrip_convergence(code: &str, maxIters: uint) {
 }
 
 fn check_convergence(files: &[str]) {
-    log_err #fmt["pp convergence tests: %u files", vec::len(files)];
+    log_err #ifmt["pp convergence tests: %u files", vec::len(files)];
     for file in files {
         if !file_is_confusing(file) {
             let s = istr::to_estr(io::read_whole_file_str(istr::from_estr(file)));
             if !content_is_confusing(s) {
-                log_err #fmt["pp converge: %s", file];
+                log_err #ifmt["pp converge: %s", istr::from_estr(file)];
                 // Change from 7u to 2u when https://github.com/graydon/rust/issues/759 is fixed
                 check_roundtrip_convergence(s, 7u);
             }
@@ -377,7 +377,7 @@ fn check_variants(files: &[str]) {
 
 fn main(args: [str]) {
     if vec::len(args) != 2u {
-        log_err #fmt["usage: %s <testdir>", args[0]];
+        log_err #ifmt["usage: %s <testdir>", istr::from_estr(args[0])];
         ret;
     }
     let files = [];

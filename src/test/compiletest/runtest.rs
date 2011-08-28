@@ -25,7 +25,7 @@ fn run(cx: &cx, _testfile: -[u8]) {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str(~"\n\n");
     }
-    log #fmt["running %s", istr::to_estr(testfile)];
+    log #ifmt["running %s", testfile];
     let props = load_props(testfile);
     alt cx.config.mode {
       mode_compile_fail. { run_cfail_test(cx, props, testfile); }
@@ -91,15 +91,13 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &istr) {
 
     let round = 0;
     while round < rounds {
-        logv(cx.config,
-             istr::from_estr(#fmt["pretty-printing round %d", round]));
+        logv(cx.config, #ifmt["pretty-printing round %d", round]);
         let procres = print_source(cx, testfile, srcs[round]);
 
         if procres.status != 0 {
             fatal_procres(
-                istr::from_estr(#fmt["pretty-printing failed in round %d",
-                                     round]),
-                procres);
+                    #ifmt["pretty-printing failed in round %d", round],
+                    procres);
         }
 
         srcs += [procres.stdout];
@@ -150,7 +148,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &istr) {
         if expected != actual {
             error(~"pretty-printed source does match expected source");
             let msg =
-                #fmt["\n\
+                #ifmt["\n\
 expected:\n\
 ------------------------------------------\n\
 %s\n\
@@ -160,8 +158,9 @@ actual:\n\
 %s\n\
 ------------------------------------------\n\
 \n",
-                     istr::to_estr(expected), istr::to_estr(actual)];
-            io::stdout().write_str(istr::from_estr(msg));
+                     expected,
+                      actual];
+            io::stdout().write_str(msg);
             fail;
         }
     }
@@ -192,7 +191,8 @@ fn check_error_patterns(props: &test_props, testfile: &istr,
     let next_err_pat = props.error_patterns[next_err_idx];
     for line: istr in istr::split(procres.stdout, '\n' as u8) {
         if istr::find(line, next_err_pat) > 0 {
-            log #fmt["found error pattern %s", istr::to_estr(next_err_pat)];
+            log #ifmt["found error pattern %s",
+                      next_err_pat];
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {
                 log "found all error patterns";
@@ -206,14 +206,13 @@ fn check_error_patterns(props: &test_props, testfile: &istr,
         vec::slice(props.error_patterns, next_err_idx,
                    vec::len(props.error_patterns));
     if vec::len(missing_patterns) == 1u {
-        fatal_procres(istr::from_estr(
-            #fmt["error pattern '%s' not found!",
-                 istr::to_estr(missing_patterns[0])]), procres);
+        fatal_procres(
+            #ifmt["error pattern '%s' not found!",
+                  missing_patterns[0]], procres);
     } else {
         for pattern: istr in missing_patterns {
-            error(istr::from_estr(
-                #fmt["error pattern '%s' not found!",
-                     istr::to_estr(pattern)]));
+            error(#ifmt["error pattern '%s' not found!",
+                        pattern]);
         }
         fatal_procres(~"multiple error patterns not found", procres);
     }
@@ -301,9 +300,8 @@ fn program_output(cx: &cx, testfile: &istr, lib_path: &istr, prog: &istr,
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
-            logv(cx.config,
-                 istr::from_estr(#fmt["executing %s",
-                                      istr::to_estr(cmdline)]));
+            logv(cx.config, #ifmt["executing %s",
+                                  cmdline]);
             cmdline
         };
     let res = procsrv::run(cx.procsrv, lib_path, prog, args, input);
@@ -315,18 +313,18 @@ fn program_output(cx: &cx, testfile: &istr, lib_path: &istr, prog: &istr,
 }
 
 fn make_cmdline(libpath: &istr, prog: &istr, args: &[istr]) -> istr {
-    istr::from_estr(#fmt["%s %s %s",
-                         istr::to_estr(lib_path_cmd_prefix(libpath)),
-                         istr::to_estr(prog),
-                         istr::to_estr(istr::connect(args, ~" "))])
+    #ifmt["%s %s %s",
+          lib_path_cmd_prefix(libpath),
+          prog,
+          istr::connect(args, ~" ")]
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
 // for diagnostic purposes
 fn lib_path_cmd_prefix(path: &istr) -> istr {
-    istr::from_estr(#fmt["%s=\"%s\"",
-                         istr::to_estr(util::lib_path_env_var()),
-                         istr::to_estr(util::make_new_path(path))])
+        #ifmt["%s=\"%s\"",
+              util::lib_path_env_var(),
+              util::make_new_path(path)]
 }
 
 fn dump_output(config: &config, testfile: &istr, out: &istr, err: &istr) {
@@ -365,34 +363,32 @@ fn output_base_name(config: &config, testfile: &istr) -> istr {
             parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
             istr::connect(parts, ~".")
         };
-    istr::from_estr(#fmt["%s%s.%s", istr::to_estr(base),
-                         istr::to_estr(filename),
-                         istr::to_estr(config.stage_id)])
+    #ifmt["%s%s.%s", base, filename,
+                        config.stage_id]
 }
 
 fn maybe_dump_to_stdout(config: &config, out: &istr, err: &istr) {
     if config.verbose {
-        let sep1 = #fmt["------%s------------------------------", "stdout"];
-        let sep2 = #fmt["------%s------------------------------", "stderr"];
+        let sep1 = #ifmt["------%s------------------------------", ~"stdout"];
+        let sep2 = #ifmt["------%s------------------------------", ~"stderr"];
         let sep3 = ~"------------------------------------------";
-        io::stdout().write_line(istr::from_estr(sep1));
+        io::stdout().write_line(sep1);
         io::stdout().write_line(out);
-        io::stdout().write_line(istr::from_estr(sep2));
+        io::stdout().write_line(sep2);
         io::stdout().write_line(err);
         io::stdout().write_line(sep3);
     }
 }
 
 fn error(err: &istr) {
-    io::stdout().write_line(istr::from_estr(#fmt["\nerror: %s",
-                                                 istr::to_estr(err)]));
+    io::stdout().write_line(#ifmt["\nerror: %s", err]);
 }
 
 fn fatal(err: &istr) -> ! { error(err); fail; }
 
 fn fatal_procres(err: &istr, procres: procres) -> ! {
     let msg =
-        istr::from_estr(#fmt["\n\
+        #ifmt["\n\
 error: %s\n\
 command: %s\n\
 stdout:\n\
@@ -404,10 +400,10 @@ stderr:\n\
 %s\n\
 ------------------------------------------\n\
 \n",
-                             istr::to_estr(err),
-                             istr::to_estr(procres.cmdline),
-                             istr::to_estr(procres.stdout),
-                             istr::to_estr(procres.stderr)]);
+                             err,
+                             procres.cmdline,
+                             procres.stdout,
+                             procres.stderr];
     io::stdout().write_str(msg);
     fail;
 }

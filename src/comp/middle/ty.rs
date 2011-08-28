@@ -2440,20 +2440,20 @@ mod unify {
     fn dump_var_bindings(tcx: ty_ctxt, vb: @var_bindings) {
         let i = 0u;
         while i < vec::len::<ufind::node>(vb.sets.nodes) {
-            let sets = "";
+            let sets = ~"";
             let j = 0u;
             while j < vec::len::<option::t<uint>>(vb.sets.nodes) {
-                if ufind::find(vb.sets, j) == i { sets += #fmt[" %u", j]; }
+                if ufind::find(vb.sets, j) == i { sets += #ifmt[" %u", j]; }
                 j += 1u;
             }
             let typespec;
             alt smallintmap::find::<t>(vb.types, i) {
-              none. { typespec = ""; }
+              none. { typespec = ~""; }
               some(typ) {
-                typespec = " =" + istr::to_estr(ty_to_str(tcx, typ));
+                typespec = ~" =" + ty_to_str(tcx, typ);
               }
             }
-            log_err #fmt["set %u:%s%s", i, typespec, sets];
+            log_err #ifmt["set %u:%s%s", i, typespec, sets];
             i += 1u;
         }
     }

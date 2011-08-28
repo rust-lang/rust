@@ -122,8 +122,8 @@ fn time<@T>(do_it: bool, what: &istr, thunk: fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = thunk();
     let end = std::time::precise_time_s();
-    log_err #fmt["time: %s took %s s", istr::to_estr(what),
-                 istr::to_estr(common::float_to_str(end - start, 3u))];
+    log_err #ifmt["time: %s took %s s", what,
+                 common::float_to_str(end - start, 3u)];
     ret rv;
 }
 
@@ -255,21 +255,21 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg,
 }
 
 fn version(argv0: &istr) {
-    let vers = "unknown version";
+    let vers = ~"unknown version";
     // FIXME: Restore after istr conversion
     //let env_vers = #env["CFG_VERSION"];
-    let env_vers = "FIXME";
-    if str::byte_len(env_vers) != 0u { vers = env_vers; }
+    let env_vers = ~"FIXME";
+    if istr::byte_len(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(
-        istr::from_estr(#fmt["%s %s\n",
-                             istr::to_estr(argv0),
-                             vers]));
+        #ifmt["%s %s\n",
+                             argv0,
+                             vers]);
 }
 
 fn usage(argv0: &istr) {
-    io::stdout().write_str(istr::from_estr(
-        #fmt["usage: %s [options] <input>\n", istr::to_estr(argv0)] +
-                               "
+    io::stdout().write_str(
+        #ifmt["usage: %s [options] <input>\n", argv0] +
+                               ~"
 options:
 
     -h --help          display this message
@@ -302,7 +302,7 @@ options:
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
 
-"));
+");
 }
 
 fn get_os(triple: &istr) -> session::os {
@@ -473,7 +473,7 @@ fn main(args: [str]) {
         alt getopts::getopts(args, opts()) {
           getopts::success(m) { m }
           getopts::failure(f) {
-            log_err #fmt["error: %s", istr::to_estr(getopts::fail_str(f))];
+            log_err #ifmt["error: %s", getopts::fail_str(f)];
             fail
           }
         };
@@ -637,11 +637,11 @@ fn main(args: [str]) {
 
     let err_code = run::run_program(prog, gcc_args);
     if 0 != err_code {
-        sess.err(istr::from_estr(
-            #fmt["linking with gcc failed with code %d", err_code]));
-        sess.note(istr::from_estr(
-            #fmt["gcc arguments: %s",
-                       istr::to_estr(istr::connect(gcc_args, ~" "))]));
+        sess.err(
+            #ifmt["linking with gcc failed with code %d", err_code]);
+        sess.note(
+            #ifmt["gcc arguments: %s",
+                       istr::connect(gcc_args, ~" ")]);
         sess.abort_if_errors();
     }
     // Clean up on Darwin

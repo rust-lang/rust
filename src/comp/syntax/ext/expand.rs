@@ -26,9 +26,9 @@ fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
                 let extname = pth.node.idents[0];
                 alt exts.find(extname) {
                   none. {
-                    cx.span_fatal(pth.span, istr::from_estr(
-                                  #fmt["macro undefined: '%s'",
-                                       istr::to_estr(extname)]))
+                    cx.span_fatal(pth.span,
+                                  #ifmt["macro undefined: '%s'",
+                                       extname])
                   }
                   some(normal(ext)) {
                     let expanded = ext(cx, pth.span, args, body);

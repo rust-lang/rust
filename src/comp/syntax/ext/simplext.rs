@@ -309,13 +309,13 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                         let len = vec::len(*ms);
                         if old_len != len {
                             let msg =
-                                #fmt["'%s' occurs %u times, but ",
-                                     istr::to_estr(fv), len] +
-                                    #fmt["'%s' occurs %u times",
-                                         istr::to_estr(old_name),
+                                #ifmt["'%s' occurs %u times, but ",
+                                     fv, len] +
+                                    #ifmt["'%s' occurs %u times",
+                                         old_name,
                                          old_len];
                             cx.span_fatal(
-                                repeat_me.span, istr::from_estr(msg));
+                                repeat_me.span, msg);
                         }
                       }
                     }

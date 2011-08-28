@@ -575,8 +575,7 @@ fn unresolved_fatal(e: &env, sp: &span, id: &ident, kind: &istr) -> ! {
 }
 
 fn mk_unresolved_msg(id: &ident, kind: &istr) -> istr {
-    ret istr::from_estr(
-        #fmt["unresolved %s: %s", istr::to_estr(kind), istr::to_estr(id)]);
+    ret #ifmt["unresolved %s: %s", kind, id];
 }
 
 // Lookup helpers
@@ -1011,8 +1010,7 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
             for match: glob_imp_def in matches {
                 let sp = match.item.span;
                 e.sess.span_note(
-                    sp, istr::from_estr(#fmt["'%s' is imported here",
-                                             istr::to_estr(id)]));
+                    sp, #ifmt["'%s' is imported here", id]);
             }
             e.sess.span_fatal(sp,
                               ~"'" + id

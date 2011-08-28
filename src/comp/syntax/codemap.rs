@@ -80,13 +80,13 @@ fn span_to_str(sp: &span, cm: &codemap) -> istr {
     while true {
         let lo = lookup_char_pos(cm, cur.lo);
         let hi = lookup_char_pos(cm, cur.hi);
-        res += istr::from_estr(
-            #fmt["%s:%u:%u: %u:%u",
+        res +=
+            #ifmt["%s:%u:%u: %u:%u",
                  if some(lo.filename) == prev_file {
-                     "-"
+                     ~"-"
                  } else {
-                     istr::to_estr(lo.filename)
-                 }, lo.line, lo.col, hi.line, hi.col]);
+                     lo.filename
+                 }, lo.line, lo.col, hi.line, hi.col];
         alt cur.expanded_from {
           os_none. { break; }
           os_some(new_sp) {
@@ -115,10 +115,9 @@ fn emit_diagnostic(sp: &option::t<span>, msg: &istr, kind: &istr, color: u8,
     if term::color_supported() {
         term::fg(io::stdout().get_buf_writer(), color);
     }
-    io::stdout().write_str(istr::from_estr(#fmt["%s:", istr::to_estr(kind)]));
+    io::stdout().write_str(#ifmt[~"%s:", kind]);
     if term::color_supported() { term::reset(io::stdout().get_buf_writer()); }
-    io::stdout().write_str(istr::from_estr(#fmt[" %s\n",
-                                                istr::to_estr(msg)]));
+    io::stdout().write_str(#ifmt[~" %s\n", msg]);
 
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
@@ -148,17 +147,15 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
         // Print the offending lines
         for line: uint in display_lines {
             io::stdout().write_str(
-                istr::from_estr(#fmt["%s:%u ",
-                                     istr::to_estr(fm.name), line + 1u]));
+                #ifmt[~"%s:%u ", fm.name, line + 1u]);
             let s = get_line(fm, line as int, file);
             if !istr::ends_with(s, ~"\n") { s += ~"\n"; }
             io::stdout().write_str(s);
         }
         if elided {
             let last_line = display_lines[vec::len(display_lines) - 1u];
-            let s = #fmt["%s:%u ",
-                         istr::to_estr(fm.name), last_line + 1u];
-            let indent = str::char_len(s);
+            let s = #ifmt[~"%s:%u ", fm.name, last_line + 1u];
+            let indent = istr::char_len(s);
             let out = ~"";
             while indent > 0u { out += ~" "; indent -= 1u; }
             out += ~"...\n";

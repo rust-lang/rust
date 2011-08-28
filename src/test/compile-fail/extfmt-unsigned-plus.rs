@@ -1,6 +1,6 @@
-// error-pattern:only valid in signed #fmt conversion
+// error-pattern:only valid in signed #ifmt conversion
 
 fn main() {
     // Can't use a sign on unsigned conversions
-    #fmt["%+u", 10u];
+    #ifmt["%+u", 10u];
 }
