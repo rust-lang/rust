@@ -45,7 +45,7 @@ tag request {
 type ctx = chan<request>;
 
 fn ip_to_sbuf(ip: net::ip_addr) -> *u8 {
-    vec::unsafe::to_ptr(str::bytes(net::format_addr(ip)))
+    vec::to_ptr(istr::bytes(net::format_addr(ip)))
 }
 
 fn connect_task(ip: net::ip_addr, portnum: int, evt: chan<socket_event>) {

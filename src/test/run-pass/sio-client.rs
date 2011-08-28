@@ -14,10 +14,10 @@ fn connectTask(cx: sio::ctx, ip: net::ip_addr, portnum: int) {
 
 fn main() {
   let cx: sio::ctx = sio::new();
-  let srv: sio::server = sio::create_server(cx,
-                                            net::parse_addr("0.0.0.0"), 9090);
+  let srv: sio::server = sio::create_server(
+       cx, net::parse_addr(~"0.0.0.0"), 9090);
   let child = task::_spawn(bind connectTask(cx,
-                                            net::parse_addr("127.0.0.1"),
+                                            net::parse_addr(~"127.0.0.1"),
                                             9090));
   let client: sio::client = sio::accept_from(srv);
   task::join_id(child);
