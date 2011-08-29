@@ -151,37 +151,22 @@ fn trans_append(cx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
 
     let lhs_data = get_dataptr(bcx, lhs, llunitty);
     let lhs_off = lfill;
-    if strings { lhs_off = Sub(bcx, lfill, C_int(1)); }
+    if strings { lhs_off = Sub(bcx, lhs_off, C_int(1)); }
     let write_ptr = pointer_add(bcx, lhs_data, lhs_off);
     let write_ptr_ptr = do_spill(bcx, write_ptr);
-    let end_ptr = pointer_add(bcx, write_ptr, rfill);
-    let read_ptr_ptr = do_spill(bcx, get_dataptr(bcx, rhs, llunitty));
-
-    let header_cx = new_sub_block_ctxt(bcx, ~"copy_loop_header");
-    Br(bcx, header_cx.llbb);
-    let write_ptr = Load(header_cx, write_ptr_ptr);
-    let not_yet_at_end = ICmp(header_cx, lib::llvm::LLVMIntNE,
-                              write_ptr, end_ptr);
-    let body_cx = new_sub_block_ctxt(bcx, ~"copy_loop_body");
-    let next_cx = new_sub_block_ctxt(bcx, ~"next");
-    CondBr(header_cx, not_yet_at_end,
-           body_cx.llbb, next_cx.llbb);
-
-    let read_ptr = Load(body_cx, read_ptr_ptr);
-    let body_cx = copy_val(body_cx, INIT, write_ptr,
-                           load_if_immediate(body_cx, read_ptr, unit_ty),
-                           unit_ty);
-    // Increment both pointers.
-    if dynamic {
-        // We have to increment by the dynamically-computed size.
-        incr_ptr(body_cx, write_ptr, unit_sz, write_ptr_ptr);
-        incr_ptr(body_cx, read_ptr, unit_sz, read_ptr_ptr);
-    } else {
-        incr_ptr(body_cx, write_ptr, C_int(1), write_ptr_ptr);
-        incr_ptr(body_cx, read_ptr, C_int(1), read_ptr_ptr);
-    }
-    Br(body_cx, header_cx.llbb);
-    ret rslt(next_cx, C_nil());
+    let bcx = iter_ivec_raw(bcx, rhs, vec_ty, rfill, { | &bcx, addr, _ty |
+        let write_ptr = Load(bcx, write_ptr_ptr);
+        let bcx = copy_val(bcx, INIT, write_ptr,
+                           load_if_immediate(bcx, addr, unit_ty), unit_ty);
+        if dynamic {
+            // We have to increment by the dynamically-computed size.
+            incr_ptr(bcx, write_ptr, unit_sz, write_ptr_ptr);
+        } else {
+            incr_ptr(bcx, write_ptr, C_int(1), write_ptr_ptr);
+        }
+        ret rslt(bcx, C_nil());
+    }).bcx;
+    ret rslt(bcx, C_nil());
 }
 
 fn trans_append_literal(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
@@ -216,75 +201,35 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let {bcx, val: new_vec, unit_ty, llunitsz, llunitty} =
         alloc(bcx, vec_ty, new_fill, true);
 
-    // Emit the copy loop
     let write_ptr_ptr = do_spill(bcx, get_dataptr(bcx, new_vec, llunitty));
-    let lhs_ptr = get_dataptr(bcx, lhs, llunitty);
-    let lhs_ptr_ptr = do_spill(bcx, lhs_ptr);
-    let lhs_end_ptr = pointer_add(bcx, lhs_ptr, lhs_fill);
-    let rhs_ptr = get_dataptr(bcx, rhs, llunitty);
-    let rhs_ptr_ptr = do_spill(bcx, rhs_ptr);
-    let rhs_end_ptr = pointer_add(bcx, rhs_ptr, rhs_fill);
+    let copy_block = { | &bcx, addr, _ty |
+        let write_ptr = Load(bcx, write_ptr_ptr);
+        let bcx = copy_val(bcx, INIT, write_ptr,
+                           load_if_immediate(bcx, addr, unit_ty), unit_ty);
+        if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
+            // We have to increment by the dynamically-computed size.
+            incr_ptr(bcx, write_ptr, llunitsz, write_ptr_ptr);
+        } else {
+            incr_ptr(bcx, write_ptr, C_int(1), write_ptr_ptr);
+        }
+        ret rslt(bcx, C_nil());
+    };
 
-    // Copy in elements from the LHS.
-    let lhs_cx = new_sub_block_ctxt(bcx, ~"lhs_copy_header");
-    Br(bcx, lhs_cx.llbb);
-    let lhs_ptr = Load(lhs_cx, lhs_ptr_ptr);
-    let not_at_end_lhs =
-        ICmp(lhs_cx, lib::llvm::LLVMIntNE, lhs_ptr, lhs_end_ptr);
-    let lhs_copy_cx = new_sub_block_ctxt(bcx, ~"lhs_copy_body");
-    let rhs_cx = new_sub_block_ctxt(bcx, ~"rhs_copy_header");
-    CondBr(lhs_cx, not_at_end_lhs, lhs_copy_cx.llbb, rhs_cx.llbb);
-    let write_ptr = Load(lhs_copy_cx, write_ptr_ptr);
-    lhs_copy_cx =
-        copy_val(lhs_copy_cx, INIT, write_ptr,
-                 load_if_immediate(lhs_copy_cx, lhs_ptr, unit_ty), unit_ty);
-    // Increment both pointers.
-    if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
-        // We have to increment by the dynamically-computed size.
-        incr_ptr(lhs_copy_cx, write_ptr, llunitsz, write_ptr_ptr);
-        incr_ptr(lhs_copy_cx, lhs_ptr, llunitsz, lhs_ptr_ptr);
-    } else {
-        incr_ptr(lhs_copy_cx, write_ptr, C_int(1), write_ptr_ptr);
-        incr_ptr(lhs_copy_cx, lhs_ptr, C_int(1), lhs_ptr_ptr);
-    }
-    Br(lhs_copy_cx, lhs_cx.llbb);
-
-    // Copy in elements from the RHS.
-    let rhs_ptr = Load(rhs_cx, rhs_ptr_ptr);
-    let not_at_end_rhs =
-        ICmp(rhs_cx, lib::llvm::LLVMIntNE, rhs_ptr, rhs_end_ptr);
-    let rhs_copy_cx = new_sub_block_ctxt(bcx, ~"rhs_copy_body");
-    let next_cx = new_sub_block_ctxt(bcx, ~"next");
-    CondBr(rhs_cx, not_at_end_rhs, rhs_copy_cx.llbb, next_cx.llbb);
-    let write_ptr = Load(rhs_copy_cx, write_ptr_ptr);
-    rhs_copy_cx =
-        copy_val(rhs_copy_cx, INIT, write_ptr,
-                 load_if_immediate(rhs_copy_cx, rhs_ptr, unit_ty), unit_ty);
-    // Increment both pointers.
-    if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
-        // We have to increment by the dynamically-computed size.
-        incr_ptr(rhs_copy_cx, write_ptr, llunitsz, write_ptr_ptr);
-        incr_ptr(rhs_copy_cx, rhs_ptr, llunitsz, rhs_ptr_ptr);
-    } else {
-        incr_ptr(rhs_copy_cx, write_ptr, C_int(1), write_ptr_ptr);
-        incr_ptr(rhs_copy_cx, rhs_ptr, C_int(1), rhs_ptr_ptr);
-    }
-    Br(rhs_copy_cx, rhs_cx.llbb);
-
-    ret rslt(next_cx, new_vec);
+    let bcx = iter_ivec_raw(bcx, lhs, vec_ty, lhs_fill, copy_block).bcx;
+    let bcx = iter_ivec_raw(bcx, rhs, vec_ty, rhs_fill, copy_block).bcx;
+    ret rslt(bcx, new_vec);
 }
 
-// FIXME factor out a utility that can be used to create the loops built
-// above
-fn iter_ivec(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
-             f: &trans::val_and_ty_fn) -> result {
+type val_and_ty_fn = fn(&@block_ctxt, ValueRef, ty::t) -> result;
+
+type iter_ivec_block = block(&@block_ctxt, ValueRef, ty::t) -> result;
+
+fn iter_ivec_raw(bcx: &@block_ctxt, vptr: ValueRef, vec_ty: ty::t,
+                 fill: ValueRef, f: &iter_ivec_block) -> result {
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
     let {bcx, val: unit_sz} = size_of(bcx, unit_ty);
-
-    let vptr = Load(bcx, PointerCast(bcx, vptrptr,
-                                     T_ptr(T_ptr(T_ivec(llunitty)))));
-    let fill = get_fill(bcx, vptr);
+    let vptr = PointerCast(bcx, vptr, T_ptr(T_ivec(llunitty)));
     let data_ptr = get_dataptr(bcx, vptr, llunitty);
 
     // Calculate the last pointer address we want to handle.
@@ -310,6 +255,13 @@ fn iter_ivec(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     Br(body_cx, header_cx.llbb);
 
     ret rslt(next_cx, C_nil());
+}
+
+fn iter_ivec(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
+             f: &iter_ivec_block) -> result {
+    let vptr = Load(bcx, PointerCast(bcx, vptrptr,
+                                     T_ptr(T_ptr(T_opaque_ivec()))));
+    ret iter_ivec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);
 }
 
 //
