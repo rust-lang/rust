@@ -48,6 +48,7 @@ rust_dirent_filename
 rust_file_is_dir
 rust_get_stdin
 rust_get_stdout
+rust_istr_push
 rust_list_files
 rust_process_wait
 rust_ptr_eq
@@ -84,7 +85,6 @@ upcall_get_type_desc
 upcall_grow_task
 upcall_vec_grow
 upcall_vec_push
-upcall_istr_push
 upcall_kill
 upcall_log_double
 upcall_log_float
