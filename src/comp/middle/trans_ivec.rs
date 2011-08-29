@@ -31,33 +31,39 @@ fn pointer_add(bcx: &@block_ctxt, ptr: ValueRef, bytes: ValueRef)
     ret PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
-// FIXME factor out a scaling version wrapping a non-scaling version
-fn alloc(bcx: &@block_ctxt, vec_ty: &ty::t, vecsz: ValueRef, is_scaled: bool)
-    -> {bcx: @block_ctxt,
-        val: ValueRef,
-        unit_ty: ty::t,
-        llunitsz: ValueRef,
-        llunitty: TypeRef} {
+fn alloc_raw(bcx: &@block_ctxt, fill: ValueRef, alloc: ValueRef) -> result {
+    let llvecty = T_opaque_ivec();
+    let vecsize = Add(bcx, alloc, llsize_of(llvecty));
+    let {bcx, val: vecptr} =
+        trans_shared_malloc(bcx, T_ptr(llvecty), vecsize);
+    Store(bcx, fill, InBoundsGEP
+          (bcx, vecptr, [C_int(0), C_uint(abi::ivec_elt_fill)]));
+    Store(bcx, alloc, InBoundsGEP
+          (bcx, vecptr, [C_int(0), C_uint(abi::ivec_elt_alloc)]));
+    ret {bcx: bcx, val: vecptr};
+}
 
+type alloc_result = {bcx: @block_ctxt,
+                     val: ValueRef,
+                     unit_ty: ty::t,
+                     llunitsz: ValueRef,
+                     llunitty: TypeRef};
+
+fn alloc(bcx: &@block_ctxt, vec_ty: &ty::t, elts: uint) -> alloc_result {
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
     let llvecty = T_ivec(llunitty);
     let {bcx, val: unit_sz} = size_of(bcx, unit_ty);
 
-    let fill = if is_scaled { vecsz }
-               else { Mul(bcx, vecsz, unit_sz) };
-    let vecsize = Add(bcx, fill, llsize_of(llvecty));
-    let {bcx, val: vecptr} =
-        trans_shared_malloc(bcx, T_ptr(llvecty), vecsize);
-    add_clean_temp(bcx, vecptr, vec_ty);
-
-    Store(bcx, fill, InBoundsGEP
-          (bcx, vecptr, [C_int(0), C_uint(abi::ivec_elt_fill)]));
-    Store(bcx, fill, InBoundsGEP
-          (bcx, vecptr, [C_int(0), C_uint(abi::ivec_elt_alloc)]));
-    ret {bcx: bcx, val: vecptr,
-         unit_ty: unit_ty, llunitsz: unit_sz, llunitty: llunitty};
+    let fill = Mul(bcx, C_uint(elts), unit_sz);
+    let alloc = if elts < 4u { Mul(bcx, C_int(4), unit_sz) } else { fill };
+    let {bcx, val: vptr} = alloc_raw(bcx, fill, alloc);
+    let vptr = PointerCast(bcx, vptr, T_ptr(llvecty));
+    add_clean_temp(bcx, vptr, vec_ty);
+    ret {bcx: bcx, val: vptr, unit_ty: unit_ty,
+         llunitsz: unit_sz, llunitty: llunitty};
 }
+
 fn duplicate(bcx: &@block_ctxt, vptrptr: ValueRef) -> @block_ctxt {
     let vptr = Load(bcx, vptrptr);
     let fill = get_fill(bcx, vptr);
@@ -89,7 +95,7 @@ fn trans_ivec(bcx: &@block_ctxt, args: &[@ast::expr],
               id: ast::node_id) -> result {
     let vec_ty = node_id_type(bcx_ccx(bcx), id);
     let {bcx, val: vptr, llunitsz, unit_ty, llunitty} =
-        alloc(bcx, vec_ty, C_uint(vec::len(args)), false);
+        alloc(bcx, vec_ty, vec::len(args));
 
     // Store the individual elements.
     let dataptr = get_dataptr(bcx, vptr, llunitty);
@@ -110,7 +116,7 @@ fn trans_ivec(bcx: &@block_ctxt, args: &[@ast::expr],
 fn trans_istr(bcx: &@block_ctxt, s: istr) -> result {
     let veclen = std::istr::byte_len(s) + 1u; // +1 for \0
     let {bcx, val: sptr, _} =
-        alloc(bcx, ty::mk_istr(bcx_tcx(bcx)), C_uint(veclen), false);
+        alloc(bcx, ty::mk_istr(bcx_tcx(bcx)), veclen);
 
     let llcstr = C_cstr(bcx_ccx(bcx), s);
     let bcx = call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()),
@@ -194,12 +200,17 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
       ty::ty_istr. { true }
       ty::ty_vec(_) { false }
     };
+    let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
+    let llunitty = type_of_or_i8(bcx, unit_ty);
+    let {bcx, val: llunitsz} = size_of(bcx, unit_ty);
+
     let lhs_fill = get_fill(bcx, lhs);
     if strings { lhs_fill = Sub(bcx, lhs_fill, C_int(1)); }
     let rhs_fill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lhs_fill, rhs_fill);
-    let {bcx, val: new_vec, unit_ty, llunitsz, llunitty} =
-        alloc(bcx, vec_ty, new_fill, true);
+    let {bcx, val: new_vec} = alloc_raw(bcx, new_fill, new_fill);
+    let new_vec = PointerCast(bcx, new_vec, T_ptr(T_ivec(llunitty)));
+    add_clean_temp(bcx, new_vec, vec_ty);
 
     let write_ptr_ptr = do_spill(bcx, get_dataptr(bcx, new_vec, llunitty));
     let copy_fn = bind fn(bcx: &@block_ctxt, addr: ValueRef, _ty: ty::t,
