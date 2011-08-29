@@ -153,6 +153,7 @@ fn resolve_crate(sess: session, amap: &ast_map::map, crate: @ast::crate) ->
     map_crate(e, crate);
     resolve_imports(*e);
     check_for_collisions(e, *crate);
+    check_bad_exports(e);
     resolve_names(e, crate);
     ret {def_map: e.def_map, ext_map: e.ext_map};
 }
@@ -960,9 +961,7 @@ fn lookup_in_local_mod(e: &env, node_id: node_id, sp: &span, id: &ident,
     let info = e.mod_map.get(node_id);
     if dr == outside && !ast_util::is_exported(id, option::get(info.m)) {
         // if we're in a native mod, then dr==inside, so info.m is some _mod
-
         ret none::<def>; // name is not visible
-
     }
     alt info.index.find(id) {
       none. { }
@@ -1428,6 +1427,40 @@ fn ensure_unique<T>(e: &env, sp: &span, elts: &[T], id: fn(&T) -> ident,
                     kind: &istr) {
     let ch = checker(e, kind);
     for elt: T in elts { add_name(ch, sp, id(elt)); }
+}
+
+fn check_bad_exports(e: &@env) {
+    fn lookup_glob_any(e: &env, info: &@indexed_mod, sp: &span,
+                       ident: &ident) -> bool {
+        ret !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
+                                                ns_module, inside)) ||
+            !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
+                                                ns_value, inside)) ||
+            !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
+                                                ns_type, inside));
+    }
+
+    for each @{val, _} in e.mod_map.items() {
+        alt val.m {
+          some(m) {
+            for vi in m.view_items {
+                alt vi.node {
+                  ast::view_item_export(idents, _) {
+                    for ident in idents {
+                        if !val.index.contains_key(ident) &&
+                           !lookup_glob_any(*e, val, vi.span, ident) {
+                            e.sess.span_warn(vi.span, ~"exported item " +
+                                             ident + ~" is not defined");
+                        }
+                    }
+                  }
+                  _ {}
+                }
+            }
+          }
+          none. {}
+        }
+    }
 }
 
 // Local Variables:
