@@ -202,7 +202,9 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
         alloc(bcx, vec_ty, new_fill, true);
 
     let write_ptr_ptr = do_spill(bcx, get_dataptr(bcx, new_vec, llunitty));
-    let copy_block = { | &bcx, addr, _ty |
+    let copy_fn = bind fn(bcx: &@block_ctxt, addr: ValueRef, _ty: ty::t,
+                          write_ptr_ptr: ValueRef, unit_ty: ty::t,
+                          llunitsz: ValueRef) -> result {
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
@@ -213,10 +215,10 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
             incr_ptr(bcx, write_ptr, C_int(1), write_ptr_ptr);
         }
         ret rslt(bcx, C_nil());
-    };
+    } (_, _, _, write_ptr_ptr, unit_ty, llunitsz);
 
-    let bcx = iter_ivec_raw(bcx, lhs, vec_ty, lhs_fill, copy_block).bcx;
-    let bcx = iter_ivec_raw(bcx, rhs, vec_ty, rhs_fill, copy_block).bcx;
+    let bcx = iter_ivec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn).bcx;
+    let bcx = iter_ivec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn).bcx;
     ret rslt(bcx, new_vec);
 }
 
