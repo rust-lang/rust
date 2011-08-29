@@ -199,7 +199,7 @@ size_of::compute_tag_size(tag_info &tinfo) {
             tinfo.tag_sa.set(1, 1);
     } else {
         // Add in space for the tag.
-        tinfo.tag_sa.add(sizeof(uint32_t), ALIGNOF(uint32_t));
+        tinfo.tag_sa.add(sizeof(uint32_t), alignof<uint32_t>());
     }
 }
 
@@ -259,7 +259,7 @@ private:
     }
 
     inline void cmp_two_pointers(bool align) {
-        if (align) dp = align_to(dp, ALIGNOF(uint8_t *) * 2);
+        if (align) dp = align_to(dp, alignof<uint8_t *>() * 2);
         data_pair<uint8_t *> fst = bump_dp<uint8_t *>(dp);
         data_pair<uint8_t *> snd = bump_dp<uint8_t *>(dp);
         cmp_number(fst);
@@ -268,7 +268,7 @@ private:
     }
 
     inline void cmp_pointer(bool align) {
-        if (align) dp = align_to(dp, ALIGNOF(uint8_t *));
+        if (align) dp = align_to(dp, alignof<uint8_t *>());
         cmp_number(bump_dp<uint8_t *>(dp));
     }
 

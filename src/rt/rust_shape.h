@@ -6,12 +6,6 @@
 
 #include "rust_internal.h"
 
-#ifdef _MSC_VER
-#define ALIGNOF     __alignof
-#else
-#define ALIGNOF     __alignof__
-#endif
-
 #define ARENA_SIZE          256
 
 #define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
@@ -84,6 +78,30 @@ public:
         return rv;
     }
 };
+
+
+// Alignment inquiries
+//
+// We can't directly use __alignof__ everywhere because that returns the
+// preferred alignment of the type, which is different from the ABI-mandated
+// alignment of the type in some cases (e.g. doubles on x86). The latter is
+// what actually gets used for struct elements.
+
+template<typename T>
+inline size_t
+alignof() {
+#ifdef _MSC_VER
+    return __alignof(T);
+#else
+    return __alignof__(T);
+#endif
+}
+
+template<>
+inline size_t
+alignof<double>() {
+    return 4;
+}
 
 
 // Utility classes
@@ -546,7 +564,7 @@ public:
     }
 
     template<typename T>
-    void walk_number(bool align) { sa.set(sizeof(T), ALIGNOF(T)); }
+    void walk_number(bool align) { sa.set(sizeof(T), alignof<T>()); }
 
     void compute_tag_size(tag_info &tinfo);
 
@@ -709,7 +727,7 @@ namespace shape {
 // for methods that actually manipulate the data involved.
 
 #define DATA_SIMPLE(ty, call) \
-    if (align) dp = align_to(dp, sizeof(ty)); \
+    if (align) dp = align_to(dp, alignof<ty>()); \
     U end_dp = dp + sizeof(ty); \
     static_cast<T *>(this)->call; \
     dp = end_dp;
@@ -847,7 +865,7 @@ data<T,U>::walk_tag(bool align, tag_info &tinfo) {
     size_of::compute_tag_size(*this, tinfo);
 
     if (tinfo.variant_count > 1 && align)
-        dp = align_to(dp, ALIGNOF(uint32_t));
+        dp = align_to(dp, alignof<uint32_t>());
 
     U end_dp = dp + tinfo.tag_sa.size;
 
