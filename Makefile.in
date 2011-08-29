@@ -57,13 +57,6 @@ else
   CFG_STDLIB_DEFAULT = $(2)/$(CFG_STDLIB)
 endif
 
-# Uncomment this to temporarily use the snapshot's runtime for stage1.
-# This is useful when making incompatible changes to the parts of the
-# runtime used directly by the compiler -- the binaries built by the
-# snapshot won't know about the changes yet. Don't leave this on. Turn
-# it on, shapshot, and turn it off again.
-CFG_USE_SNAP_LIBS_FOR_STAGE1 = 1
-
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
 CFG_VERSION = prerelease

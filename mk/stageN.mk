@@ -8,15 +8,6 @@
 # new rustrt in stage0/lib/.
 
 define LIBGEN
-
-ifdef CFG_USE_SNAP_LIBS_FOR_STAGE1
-ifeq ($(2), 0)
-RUNTIME_SOURCE = stage0/$(CFG_RUNTIME)
-stage$(2)/lib/$$(CFG_STDLIB): stage0/$$(CFG_STDLIB)
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-else
-RUNTIME_SOURCE = rt/$(CFG_RUNTIME)
 stage$(2)/lib/$$(CFG_STDLIB): $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
                               stage$(2)/rustc$$(X)               \
                               stage$(2)/$$(CFG_RUNTIME)          \
@@ -25,8 +16,6 @@ stage$(2)/lib/$$(CFG_STDLIB): $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
                               $$(SREQ$(1))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2))  --lib -o $$@ $$<
-endif
-endif
 
 stage$(2)/lib/libstd.rlib: $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
                            stage$(2)/rustc$$(X)               \
@@ -37,7 +26,7 @@ stage$(2)/lib/libstd.rlib: $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) --lib --static -o $$@ $$<
 
-stage$(2)/lib/$$(CFG_RUNTIME): $$(RUNTIME_SOURCE)
+stage$(2)/lib/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
@@ -69,20 +58,11 @@ stage$(2)/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS)          \
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) -L stage$(2) -o $$@ $$<
 
-RUNTIME_SOURCE = rt/$(CFG_RUNTIME)
-STDLIB_SOURCE = stage$(1)/lib/$$(CFG_STDLIB)
-ifdef CFG_USE_SNAP_LIBS_FOR_STAGE1
-  ifeq ($(2), 1)
-    RUNTIME_SOURCE = stage0/$(CFG_RUNTIME)
-    STDLIB_SOURCE = stage0/$(CFG_STDLIB)
-  endif
-endif
-
-stage$(2)/$$(CFG_RUNTIME): $$(RUNTIME_SOURCE)
+stage$(2)/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/$$(CFG_STDLIB): $$(STDLIB_SOURCE)
+stage$(2)/$$(CFG_STDLIB): stage$(1)/lib/$$(CFG_STDLIB)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
