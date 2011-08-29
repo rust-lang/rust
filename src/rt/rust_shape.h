@@ -775,8 +775,9 @@ public:
 
     void walk_fn(bool align) {
         if (align) dp = align_to(dp, sizeof(void *));
+        U next_dp = dp + sizeof(void *) * 2;
         static_cast<T *>(this)->walk_fn(align);
-        dp += sizeof(void *) * 2;
+        dp = next_dp;
     }
 
     void walk_obj(bool align) {
