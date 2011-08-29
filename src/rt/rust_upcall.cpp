@@ -347,13 +347,7 @@ upcall_get_type_desc(rust_task *task,
 extern "C" CDECL void
 upcall_vec_grow(rust_task* task, rust_vec** vp, size_t new_sz) {
     LOG_UPCALL_ENTRY(task);
-    // FIXME factor this into a utility function
-    if (new_sz > (*vp)->alloc) {
-        size_t new_alloc = next_power_of_two(new_sz);
-        *vp = (rust_vec*)task->kernel->realloc(*vp, new_alloc +
-                                                sizeof(rust_vec));
-        (*vp)->alloc = new_alloc;
-    }
+    reserve_vec(task, vp, new_sz);
     (*vp)->fill = new_sz;
 }
 
@@ -361,14 +355,9 @@ extern "C" CDECL void
 upcall_vec_push(rust_task* task, rust_vec** vp, type_desc* elt_ty,
                  void* elt) {
     LOG_UPCALL_ENTRY(task);
+    size_t new_sz = (*vp)->fill + elt_ty->size;
+    reserve_vec(task, vp, new_sz);
     rust_vec* v = *vp;
-    size_t new_sz = v->fill + elt_ty->size;
-    if (new_sz > v->alloc) {
-        size_t new_alloc = next_power_of_two(new_sz);
-        *vp = v = (rust_vec*)task->kernel->realloc(v, new_alloc +
-                                                    sizeof(rust_vec));
-        v->alloc = new_alloc;
-    }
     copy_elements(task, elt_ty, &v->data[0] + v->fill, elt, elt_ty->size);
     v->fill += elt_ty->size;
 }

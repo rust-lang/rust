@@ -225,13 +225,7 @@ str_from_vec(rust_task *task, rust_vec **vp)
 extern "C" CDECL void
 vec_reserve_shared(rust_task* task, type_desc* ty, rust_vec** vp,
                     size_t n_elts) {
-    size_t new_sz = n_elts * ty->size;
-    if (new_sz > (*vp)->alloc) {
-        size_t new_alloc = next_power_of_two(new_sz);
-        *vp = (rust_vec*)task->kernel->realloc(*vp, new_alloc +
-                                                sizeof(rust_vec));
-        (*vp)->alloc = new_alloc;
-    }
+    reserve_vec(task, vp, n_elts * ty->size);
 }
 
 /**

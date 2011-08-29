@@ -209,6 +209,15 @@ inline size_t vec_size(size_t elems) {
     return sizeof(rust_vec) + sizeof(T) * elems;
 }
 
+inline void reserve_vec(rust_task* task, rust_vec** vpp, size_t size) {
+    if (size > (*vpp)->alloc) {
+        size_t new_alloc = next_power_of_two(size);
+        *vpp = (rust_vec*)task->kernel->realloc(*vpp, new_alloc +
+                                                sizeof(rust_vec));
+        (*vpp)->alloc = new_alloc;
+    }
+}
+
 //
 // Local Variables:
 // mode: C++
