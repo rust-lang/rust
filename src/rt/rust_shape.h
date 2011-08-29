@@ -868,11 +868,12 @@ data<T,U>::walk_fn_contents(bool align, ptr &dp) {
     dp += sizeof(void *);   // Skip over the code pointer.
 
     uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
+    if (!box_ptr)
+        return;
+
     type_desc *subtydesc =
         *reinterpret_cast<type_desc **>(box_ptr + sizeof(void *));
     ptr closure_dp(box_ptr + sizeof(void *));
-    if (!box_ptr)
-        return;
 
     arena arena;
     type_param *params = type_param::from_fn_shape(subtydesc->shape,
