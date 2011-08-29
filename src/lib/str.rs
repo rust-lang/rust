@@ -12,7 +12,6 @@ export alloc;
 export byte_len;
 export buf;
 export bytes;
-export from_bytes;
 export unsafe_from_byte;
 export str_from_cstr;
 export str_from_buf;
