@@ -84,6 +84,7 @@ upcall_get_type_desc
 upcall_grow_task
 upcall_vec_grow
 upcall_vec_push
+upcall_istr_push
 upcall_kill
 upcall_log_double
 upcall_log_float

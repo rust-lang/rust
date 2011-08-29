@@ -353,7 +353,7 @@ upcall_vec_grow(rust_task* task, rust_vec** vp, size_t new_sz) {
 
 extern "C" CDECL void
 upcall_vec_push(rust_task* task, rust_vec** vp, type_desc* elt_ty,
-                 void* elt) {
+                void* elt) {
     LOG_UPCALL_ENTRY(task);
     size_t new_sz = (*vp)->fill + elt_ty->size;
     reserve_vec(task, vp, new_sz);
@@ -361,7 +361,6 @@ upcall_vec_push(rust_task* task, rust_vec** vp, type_desc* elt_ty,
     copy_elements(task, elt_ty, &v->data[0] + v->fill, elt, elt_ty->size);
     v->fill += elt_ty->size;
 }
-
 
 /**
  * Returns a token that can be used to deallocate all of the allocated space

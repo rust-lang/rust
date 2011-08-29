@@ -8,6 +8,10 @@ as_buf, push_byte;
 
 export from_estr, to_estr, from_estrs, to_estrs;
 
+native "rust" mod rustrt {
+    fn rust_istr_push(s: &mutable istr, ch: u8);
+}
+
 fn from_estr(s: &str) -> istr {
     let s2 = ~"";
     for u in s {
@@ -361,12 +365,12 @@ fn pop_byte(s: &mutable istr) -> u8 {
 }
 
 fn push_byte(s: &mutable istr, b: u8) {
-    s += unsafe_from_byte(b);
+    rustrt::rust_istr_push(s, b);
 }
 
 fn push_bytes(s: &mutable istr, bytes: &[u8]) {
     for byte in bytes {
-        push_byte(s, byte);
+        rustrt::rust_istr_push(s, byte);
     }
 }
 

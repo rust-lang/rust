@@ -243,6 +243,15 @@ vec_from_buf_shared(rust_task *task, type_desc *ty,
     return v;
 }
 
+extern "C" CDECL void
+rust_istr_push(rust_task* task, rust_vec** sp, uint8_t byte) {
+    size_t fill = (*sp)->fill;
+    reserve_vec(task, sp, fill + 1);
+    (*sp)->data[fill-1] = byte;
+    (*sp)->data[fill] = 0;
+    (*sp)->fill = fill + 1;
+}
+
 extern "C" CDECL rust_str *
 str_from_cstr(rust_task *task, char *sbuf)
 {
