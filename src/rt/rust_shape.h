@@ -453,7 +453,8 @@ ctxt<T>::walk_res(bool align) {
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_res(align, dtor, n_ty_params, ty_params_sp);
+    static_cast<T *>(this)->walk_res(align, dtor, n_ty_params, ty_params_sp,
+                                     end_sp);
 
     sp = end_sp;
 }
@@ -479,7 +480,7 @@ public:
     void walk_tag(bool align, tag_info &tinfo);
     void walk_struct(bool align, const uint8_t *end_sp);
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp);
+                  const uint8_t *ty_params_sp, const uint8_t *end_sp);
     void walk_var(bool align, uint8_t param);
 
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
@@ -559,7 +560,7 @@ public:
     }
 
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp) {
+                  const uint8_t *ty_params_sp, const uint8_t *end_sp) {
         abort();    // TODO
     }
 
@@ -788,10 +789,11 @@ public:
     }
 
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp) {
+                  const uint8_t *ty_params_sp, const uint8_t *end_sp) {
+        typename U::template data<uintptr_t>::t live = bump_dp<uintptr_t>(dp);
         // Delegate to the implementation.
         static_cast<T *>(this)->walk_res(align, dtor, n_ty_params,
-                                         ty_params_sp);
+                                         ty_params_sp, end_sp, live);
     }
 
     void walk_var(bool align, uint8_t param_index) {
@@ -957,8 +959,6 @@ private:
     : data<log,ptr>(other.task, other.sp, other.params, other.tables, in_dp),
       out(other.out) {}
 
-    void walk_string(const std::pair<ptr,ptr> &data);
-
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
         walk_vec(align, is_pod, get_evec_data_range(dp));
     }
@@ -991,11 +991,6 @@ private:
     void walk_chan(bool align) { out << "chan"; }
     void walk_task(bool align) { out << "task"; }
 
-    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp) {
-        out << "res";   // TODO
-    }
-
     void walk_subcontext(bool align, log &sub) { sub.walk(align); }
 
     void walk_box_contents(bool align, log &sub, ptr &ref_count_dp) {
@@ -1010,6 +1005,10 @@ private:
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
+    void walk_string(const std::pair<ptr,ptr> &data);
+    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
+                  const uint8_t *ty_params_sp, const uint8_t *end_sp,
+                  bool live);
 
     template<typename T>
     void walk_number() { out << get_dp<T>(dp); }

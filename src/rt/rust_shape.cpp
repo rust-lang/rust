@@ -111,23 +111,42 @@ print::walk_struct(bool align, const uint8_t *end_sp) {
 
 void
 print::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                const uint8_t *ty_params_sp) {
+                const uint8_t *ty_params_sp, const uint8_t *end_sp) {
     DPRINT("res@%p", dtor);
-    if (!n_ty_params)
+
+    // Print type parameters.
+    if (n_ty_params) {
+        DPRINT("<");
+
+        bool first = true;
+        for (uint16_t i = 0; i < n_ty_params; i++) {
+            if (!first)
+                DPRINT(",");
+            first = false;
+            get_u16_bump(sp);   // Skip over the size.
+            walk(align);
+        }
+
+        DPRINT(">");
+    }
+
+    // Print arguments.
+
+    if (sp == end_sp)
         return;
 
-    DPRINT("<");
+    DPRINT("(");
 
     bool first = true;
-    for (uint16_t i = 0; i < n_ty_params; i++) {
+    while (sp != end_sp) {
         if (!first)
             DPRINT(",");
         first = false;
-        get_u16_bump(sp);   // Skip over the size.
+
         walk(align);
     }
 
-    DPRINT(">");
+    DPRINT(")");
 }
 
 void
@@ -328,7 +347,8 @@ public:
                   const data_pair<uint32_t> &tag_variants);
     void walk_struct(bool align, const uint8_t *end_sp);
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp);
+                  const uint8_t *ty_params_sp, const uint8_t *end_sp,
+                  const data_pair<uintptr_t> &live);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
@@ -380,7 +400,8 @@ cmp::walk_struct(bool align, const uint8_t *end_sp) {
 
 void
 cmp::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-              const uint8_t *ty_params_sp) {
+              const uint8_t *ty_params_sp, const uint8_t *end_sp,
+              const data_pair<uintptr_t> &live) {
     abort();    // TODO
 }
 
@@ -478,6 +499,28 @@ log::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
 
     if (!first)
         out << ")";
+}
+
+void
+log::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
+              const uint8_t *ty_params_sp, const uint8_t *end_sp,
+              bool live) {
+    out << "res";
+
+    if (this->sp == end_sp)
+        return;
+
+    out << "(";
+
+    bool first = true;
+    while (sp != end_sp) {
+        if (!first)
+            out << ", ";
+        walk(align);
+        align = true, first = false;
+    }
+
+    out << ")";
 }
 
 } // end namespace shape
