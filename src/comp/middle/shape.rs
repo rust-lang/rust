@@ -395,11 +395,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
         s += [shape_res];
         add_u16(s, id as u16);
         add_u16(s, vec::len(tps) as u16);
-
-        let sub = [];
-        for tp: ty::t in tps { add_substr(s, sub); }
-        add_substr(s, sub);
-
+        for tp: ty::t in tps { add_substr(s, shape_of(ccx, tp)); }
         add_substr(s, shape_of(ccx, subt));
 
       }

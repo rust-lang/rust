@@ -446,14 +446,19 @@ ctxt<T>::walk_res(bool align) {
 
     uint16_t n_ty_params = get_u16_bump(sp);
 
-    uint16_t ty_params_size = get_u16_bump(sp);
-    const uint8_t *ty_params_sp = sp;
-    sp += ty_params_size;
+    // Read in the tag type parameters.
+    type_param params[n_ty_params];
+    for (uint16_t i = 0; i < n_ty_params; i++) {
+        uint16_t ty_param_len = get_u16_bump(sp);
+        const uint8_t *next_sp = sp + ty_param_len;
+        params[i].set(this);
+        sp = next_sp;
+    }
 
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_res(align, dtor, n_ty_params, ty_params_sp,
+    static_cast<T *>(this)->walk_res(align, dtor, n_ty_params, params,
                                      end_sp);
 
     sp = end_sp;
@@ -479,8 +484,8 @@ public:
 
     void walk_tag(bool align, tag_info &tinfo);
     void walk_struct(bool align, const uint8_t *end_sp);
-    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp, const uint8_t *end_sp);
+    void walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+                  const type_param *params, const uint8_t *end_sp);
     void walk_var(bool align, uint8_t param);
 
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
@@ -559,8 +564,8 @@ public:
         sa = sub.sa;
     }
 
-    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp, const uint8_t *end_sp) {
+    void walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+                  const type_param *params, const uint8_t *end_sp) {
         abort();    // TODO
     }
 
@@ -788,12 +793,12 @@ public:
         dp = next_dp;
     }
 
-    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp, const uint8_t *end_sp) {
+    void walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+                  const type_param *params, const uint8_t *end_sp) {
         typename U::template data<uintptr_t>::t live = bump_dp<uintptr_t>(dp);
         // Delegate to the implementation.
-        static_cast<T *>(this)->walk_res(align, dtor, n_ty_params,
-                                         ty_params_sp, end_sp, live);
+        static_cast<T *>(this)->walk_res(align, dtor, n_params, params,
+                                         end_sp, live);
     }
 
     void walk_var(bool align, uint8_t param_index) {
@@ -1006,9 +1011,8 @@ private:
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
     void walk_string(const std::pair<ptr,ptr> &data);
-    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp, const uint8_t *end_sp,
-                  bool live);
+    void walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+                  const type_param *params, const uint8_t *end_sp, bool live);
 
     template<typename T>
     void walk_number() { out << get_dp<T>(dp); }

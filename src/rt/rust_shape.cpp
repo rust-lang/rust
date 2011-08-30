@@ -110,21 +110,22 @@ print::walk_struct(bool align, const uint8_t *end_sp) {
 }
 
 void
-print::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                const uint8_t *ty_params_sp, const uint8_t *end_sp) {
+print::walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+                const type_param *params, const uint8_t *end_sp) {
     DPRINT("res@%p", dtor);
 
     // Print type parameters.
-    if (n_ty_params) {
+    if (n_params) {
         DPRINT("<");
 
         bool first = true;
-        for (uint16_t i = 0; i < n_ty_params; i++) {
+        for (uint16_t i = 0; i < n_params; i++) {
             if (!first)
                 DPRINT(",");
             first = false;
-            get_u16_bump(sp);   // Skip over the size.
-            walk(align);
+
+            ctxt<print> sub(*this, params[i].shape);
+            sub.walk(align);
         }
 
         DPRINT(">");
@@ -347,7 +348,7 @@ public:
                   const data_pair<uint32_t> &tag_variants);
     void walk_struct(bool align, const uint8_t *end_sp);
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-                  const uint8_t *ty_params_sp, const uint8_t *end_sp,
+                  const type_param *ty_params_sp, const uint8_t *end_sp,
                   const data_pair<uintptr_t> &live);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
@@ -400,7 +401,7 @@ cmp::walk_struct(bool align, const uint8_t *end_sp) {
 
 void
 cmp::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-              const uint8_t *ty_params_sp, const uint8_t *end_sp,
+              const type_param *ty_params_sp, const uint8_t *end_sp,
               const data_pair<uintptr_t> &live) {
     abort();    // TODO
 }
@@ -502,9 +503,8 @@ log::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
 }
 
 void
-log::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
-              const uint8_t *ty_params_sp, const uint8_t *end_sp,
-              bool live) {
+log::walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+              const type_param *params, const uint8_t *end_sp, bool live) {
     out << "res";
 
     if (this->sp == end_sp)
