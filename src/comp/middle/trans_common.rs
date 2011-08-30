@@ -397,29 +397,21 @@ type block_ctxt =
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
     // instructions into that block by way of this block context.
-
-    // The llvm::builder object serving as an interface to LLVM's
-    // LLVMBuild* functions.
-
-    // The block pointing to this one in the function's digraph.
-
-    // The 'kind' of basic block this is.
-
-    // A list of functions that run at the end of translating this
-    // block, cleaning up any variables that were introduced in the
-    // block and need to go out of scope at the end of it.
-
-    // The source span where this block comes from, for error
-    // reporting.
-
-    // The function context for the function to which this block is
-    // attached.
     {llbb: BasicBlockRef,
      mutable terminated: bool,
+     // The block pointing to this one in the function's digraph.
      parent: block_parent,
+     // The 'kind' of basic block this is.
      kind: block_kind,
+     // A list of functions that run at the end of translating this
+     // block, cleaning up any variables that were introduced in the
+     // block and need to go out of scope at the end of it.
      mutable cleanups: [cleanup],
+     // The source span where this block comes from, for error
+     // reporting. FIXME this is not currently reliable
      sp: span,
+     // The function context for the function to which this block is
+     // attached.
      fcx: @fn_ctxt};
 
 fn is_terminated(cx: &@block_ctxt) -> bool {
