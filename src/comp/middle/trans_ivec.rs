@@ -84,9 +84,9 @@ fn make_drop_glue(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t)
     let null_test = IsNull(bcx, vptr);
     CondBr(bcx, null_test, next_cx.llbb, drop_cx.llbb);
     if ty::type_needs_drop(bcx_tcx(bcx), unit_ty) {
-        drop_cx = iter_ivec(drop_cx, vptrptr, vec_ty, trans::drop_ty).bcx;
+        drop_cx = iter_ivec(drop_cx, vptrptr, vec_ty, trans::drop_ty);
     }
-    drop_cx = trans::trans_shared_free(drop_cx, vptr).bcx;
+    drop_cx = trans::trans_shared_free(drop_cx, vptr);
     Br(drop_cx, next_cx.llbb);
     ret next_cx;
 }
@@ -170,8 +170,8 @@ fn trans_append(cx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
         } else {
             incr_ptr(bcx, write_ptr, C_int(1), write_ptr_ptr);
         }
-        ret rslt(bcx, C_nil());
-    }).bcx;
+        ret bcx;
+    });
     ret rslt(bcx, C_nil());
 }
 
@@ -215,7 +215,7 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let write_ptr_ptr = do_spill(bcx, get_dataptr(bcx, new_vec, llunitty));
     let copy_fn = bind fn(bcx: &@block_ctxt, addr: ValueRef, _ty: ty::t,
                           write_ptr_ptr: ValueRef, unit_ty: ty::t,
-                          llunitsz: ValueRef) -> result {
+                          llunitsz: ValueRef) -> @block_ctxt {
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
@@ -225,20 +225,20 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
         } else {
             incr_ptr(bcx, write_ptr, C_int(1), write_ptr_ptr);
         }
-        ret rslt(bcx, C_nil());
+        ret bcx;
     } (_, _, _, write_ptr_ptr, unit_ty, llunitsz);
 
-    let bcx = iter_ivec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn).bcx;
-    let bcx = iter_ivec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn).bcx;
+    let bcx = iter_ivec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn);
+    let bcx = iter_ivec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn);
     ret rslt(bcx, new_vec);
 }
 
 type val_and_ty_fn = fn(&@block_ctxt, ValueRef, ty::t) -> result;
 
-type iter_ivec_block = block(&@block_ctxt, ValueRef, ty::t) -> result;
+type iter_ivec_block = block(&@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
 
 fn iter_ivec_raw(bcx: &@block_ctxt, vptr: ValueRef, vec_ty: ty::t,
-                 fill: ValueRef, f: &iter_ivec_block) -> result {
+                 fill: ValueRef, f: &iter_ivec_block) -> @block_ctxt {
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
     let {bcx, val: unit_sz} = size_of(bcx, unit_ty);
@@ -260,18 +260,18 @@ fn iter_ivec_raw(bcx: &@block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     let body_cx = new_sub_block_ctxt(bcx, ~"iter_ivec_loop_body");
     let next_cx = new_sub_block_ctxt(bcx, ~"iter_ivec_next");
     CondBr(header_cx, not_yet_at_end, body_cx.llbb, next_cx.llbb);
-    body_cx = f(body_cx, data_ptr, unit_ty).bcx;
+    body_cx = f(body_cx, data_ptr, unit_ty);
     let increment = if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
         unit_sz
     } else { C_int(1) };
     incr_ptr(body_cx, data_ptr, increment, data_ptr_ptr);
     Br(body_cx, header_cx.llbb);
 
-    ret rslt(next_cx, C_nil());
+    ret next_cx;
 }
 
 fn iter_ivec(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
-             f: &iter_ivec_block) -> result {
+             f: &iter_ivec_block) -> @block_ctxt {
     let vptr = Load(bcx, PointerCast(bcx, vptrptr,
                                      T_ptr(T_ptr(T_opaque_ivec()))));
     ret iter_ivec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);

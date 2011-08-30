@@ -297,15 +297,16 @@ type fn_ctxt =
      lcx: @local_ctxt};
 
 tag cleanup {
-    clean(fn(&@block_ctxt) -> result);
-    clean_temp(ValueRef, fn(&@block_ctxt) -> result);
+    clean(fn(&@block_ctxt) -> @block_ctxt);
+    clean_temp(ValueRef, fn(&@block_ctxt) -> @block_ctxt);
 }
 
 fn add_clean(cx: &@block_ctxt, val: ValueRef, ty: ty::t) {
     find_scope_cx(cx).cleanups += [clean(bind drop_ty(_, val, ty))];
 }
 fn add_clean_temp(cx: &@block_ctxt, val: ValueRef, ty: ty::t) {
-    fn spill_and_drop(bcx: &@block_ctxt, val: ValueRef, ty: ty::t) -> result {
+    fn spill_and_drop(bcx: &@block_ctxt, val: ValueRef, ty: ty::t)
+        -> @block_ctxt {
         let spilled = trans::spill_if_immediate(bcx, val, ty);
         ret drop_ty(bcx, spilled, ty);
     }
