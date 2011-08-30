@@ -36,7 +36,7 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
 }
 
 fn make_new_str(cx: &ext_ctxt, sp: codemap::span, s: &istr) -> @ast::expr {
-    ret make_new_lit(cx, sp, ast::lit_str(s, ast::sk_rc));
+    ret make_new_lit(cx, sp, ast::lit_str(s, ast::sk_unique));
 }
 //
 // Local Variables:
