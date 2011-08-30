@@ -57,12 +57,15 @@ fn init_elt_mut<@T>(t: &T, n_elts: uint) -> [mutable T] {
     ret v;
 }
 
+// FIXME: Possible typestate postcondition:
+// len(result) == len(v) (needs issue #586)
 fn to_mut<@T>(v: &[T]) -> [mutable T] {
     let vres = [mutable];
     for t: T in v { vres += [mutable t]; }
     ret vres;
 }
 
+// Same comment as from_mut
 fn from_mut<@T>(v: &[mutable T]) -> [T] {
     let vres = [];
     for t: T in v { vres += [t]; }
@@ -253,14 +256,23 @@ fn position_pred<T>(f: fn(&T) -> bool, v: &[T]) -> option::t<uint> {
     ret none;
 }
 
+pure fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
+    let xlen = unchecked { vec::len(xs) };
+    let ylen = unchecked { vec::len(ys) };
+    xlen == ylen
+}
+
+// FIXME: if issue #586 gets implemented, could have a postcondition
+// saying the two result lists have the same length -- or, could
+// return a nominal record with a constraint saying that, instead of
+// returning a tuple (contingent on issue #869)
 fn unzip<@T, @U>(v: &[(T, U)]) -> ([T], [U]) {
     let as = [], bs = [];
     for (a, b) in v { as += [a]; bs += [b]; }
     ret (as, bs);
 }
 
-// FIXME make the lengths being equal a constraint
-fn zip<@T, @U>(v: &[T], u: &[U]) -> [(T, U)] {
+fn zip<@T, @U>(v: &[T], u: &[U]) : same_length(v, u) -> [(T, U)] {
     let zipped = [];
     let sz = len(v), i = 0u;
     assert (sz == len(u));
@@ -291,6 +303,27 @@ fn reversed<@T>(v: &[T]) -> [T] {
     while i != 0u { rs += [v[i]]; i -= 1u; }
     rs += [v[0]];
     ret rs;
+}
+
+// Generating vecs.
+fn enum_chars(start:u8, end:u8) : u8::le(start, end) -> [char] {
+    let i = start;
+    let r = [];
+    while (i <= end) {
+        r += [i as char];
+        i += (1u as u8);
+    }
+    ret r;
+}
+
+fn enum_uints(start:uint, end:uint) : uint::le(start, end) -> [uint] {
+    let i = start;
+    let r = [];
+    while (i <= end) {
+        r += [i];
+        i += 1u;
+    }
+    ret r;
 }
 
 // Iterate over a list with with the indexes

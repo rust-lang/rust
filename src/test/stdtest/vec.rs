@@ -302,6 +302,8 @@ fn test_any_and_all() {
 fn test_zip_unzip() {
     let v1 = [1, 2, 3];
     let v2 = [4, 5, 6];
+
+    check same_length(v1, v2); // Silly, but what else can we do?
     let z1 = vec::zip(v1, v2);
 
     assert ((1, 4) == z1[0]);

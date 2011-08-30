@@ -86,6 +86,7 @@ fn sort_tests() {
          "test::ignored_tests_result_in_ignored", "test::parse_ignored_flag",
          "test::sort_tests"];
 
+    check vec::same_length(expected, filtered);
     let pairs = vec::zip(expected, filtered);
 
 
