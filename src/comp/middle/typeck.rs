@@ -979,9 +979,9 @@ mod demand {
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
     fn full(fcx: &@fn_ctxt, sp: &span, expected: ty::t, actual: ty::t,
-            ty_param_substs_0: &[ty::t], do_block_coerece: bool) ->
+            ty_param_substs_0: &[ty::t], do_block_coerce: bool) ->
        ty_param_substs_and_ty {
-        if do_block_coerece {
+        if do_block_coerce {
             actual = do_fn_block_coerce(fcx, sp, actual, expected);
         }
 
@@ -1715,54 +1715,6 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         ret bot;
     }
 
-    // A generic function for checking the pred in a check
-    // or if-check
-    fn check_pred_expr(fcx: &@fn_ctxt, e: &@ast::expr) -> bool {
-        let bot = check_expr_with(fcx, e, ty::mk_bool(fcx.ccx.tcx));
-
-        /* e must be a call expr where all arguments are either
-           literals or slots */
-        alt e.node {
-          ast::expr_call(operator, operands) {
-            if !ty::is_pred_ty(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, operator)) {
-                    fcx.ccx.tcx.sess.span_fatal(operator.span,
-                     ~"Operator in constraint has non-boolean return type");
-            }
-
-            alt operator.node {
-              ast::expr_path(oper_name) {
-                alt fcx.ccx.tcx.def_map.find(operator.id) {
-                  some(ast::def_fn(_, ast::pure_fn.)) {
-                    // do nothing
-                  }
-                  _ {
-                    fcx.ccx.tcx.sess.span_fatal(operator.span,
-                                           ~"Impure function as operator \
-                                       in constraint");
-                  }
-                }
-                for operand: @ast::expr in operands {
-                    if !ast_util::is_constraint_arg(operand) {
-                        let s =
-                            ~"Constraint args must be \
-                                              slot variables or literals";
-                        fcx.ccx.tcx.sess.span_fatal(e.span, s);
-                    }
-                }
-              }
-              _ {
-                let s =
-                    ~"In a constraint, expected the \
-                                      constraint name to be an explicit name";
-                fcx.ccx.tcx.sess.span_fatal(e.span, s);
-              }
-            }
-          }
-          _ { fcx.ccx.tcx.sess.span_fatal(
-              e.span, ~"check on non-predicate"); }
-        }
-        ret bot;
-    }
 
     // A generic function for checking the then and else in an if
     // or if-check
@@ -2604,6 +2556,110 @@ fn check_const(ccx: &@crate_ctxt, _sp: &span, e: &@ast::expr,
     check_expr(fcx, e);
 }
 
+// A generic function for checking the pred in a check
+// or if-check
+fn check_pred_expr(fcx: &@fn_ctxt, e: &@ast::expr) -> bool {
+    let bot = check_expr_with(fcx, e, ty::mk_bool(fcx.ccx.tcx));
+
+    /* e must be a call expr where all arguments are either
+    literals or slots */
+    alt e.node {
+      ast::expr_call(operator, operands) {
+        if !ty::is_pred_ty(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, operator)) {
+            fcx.ccx.tcx.sess.span_fatal(operator.span,
+                 ~"Operator in constraint has non-boolean return type");
+        }
+
+        alt operator.node {
+          ast::expr_path(oper_name) {
+            alt fcx.ccx.tcx.def_map.find(operator.id) {
+              some(ast::def_fn(_, ast::pure_fn.)) {
+                // do nothing
+              }
+              _ {
+                fcx.ccx.tcx.sess.span_fatal(operator.span,
+                                            ~"Impure function as operator \
+in constraint");
+              }
+            }
+            for operand: @ast::expr in operands {
+                if !ast_util::is_constraint_arg(operand) {
+                    let s =
+                        ~"Constraint args must be \
+slot variables or literals";
+                    fcx.ccx.tcx.sess.span_fatal(e.span, s);
+                }
+            }
+          }
+          _ {
+            let s =
+                ~"In a constraint, expected the \
+constraint name to be an explicit name";
+            fcx.ccx.tcx.sess.span_fatal(e.span, s);
+          }
+        }
+      }
+      _ { fcx.ccx.tcx.sess.span_fatal(
+          e.span, ~"check on non-predicate"); }
+    }
+    ret bot;
+}
+
+fn check_constraints(fcx: &@fn_ctxt, cs: [@ast::constr], args:[ast::arg]) {
+    let c_args;
+    let num_args = vec::len(args);
+    for c: @ast::constr in cs {
+        c_args = [];
+        for a: @spanned<ast::fn_constr_arg> in c.node.args {
+            c_args += [@(alt a.node {
+              ast::carg_base. {
+                // "base" should not occur in a fn type thing, as of
+                // yet, b/c we don't allow constraints on the return type
+
+                fcx.ccx.tcx.sess.span_bug(a.span, ~"check_constraints:\
+                    unexpected carg_base");
+              }
+              ast::carg_lit(l) {
+                let tmp_node_id = fcx.ccx.tcx.sess.next_node_id();
+                {id:tmp_node_id, node: ast::expr_lit(l), span:a.span} }
+              ast::carg_ident(i) {
+                if i < num_args {
+                    let p : ast::path_ =
+                        {global:false, idents:[(args[i]).ident],
+                         // Works b/c no higher-order polymorphism
+                         types:[]};
+                    /*
+                    This is kludgy, and we probably shouldn't be assigning
+                    node IDs here, but we're creating exprs that are
+                    ephemeral, just for the purposes of typechecking. So
+                    that's my justification.
+                    */
+                    let arg_occ_node_id = fcx.ccx.tcx.sess.next_node_id();
+                    fcx.ccx.tcx.def_map.insert(arg_occ_node_id,
+                                       ast::def_arg(local_def(args[i].id)));
+                    {id:arg_occ_node_id,
+                     node: ast::expr_path(respan(a.span, p)),
+                     span:a.span}
+                }
+                else {
+                    fcx.ccx.tcx.sess.span_bug(a.span, ~"check_constraints:\
+                     carg_ident index out of bounds");
+                }
+              }
+            })]
+        }
+        let p_op: ast::expr_ = ast::expr_path(c.node.path);
+        let oper: @ast::expr = @{id:c.node.id,
+                                 node: p_op, span:c.span};
+        // Another ephemeral expr
+        let call_expr_id = fcx.ccx.tcx.sess.next_node_id();
+        let call_expr = @{id: call_expr_id,
+                          node: ast::expr_call(oper, c_args),
+                          span: c.span};
+        check_pred_expr(fcx, call_expr);
+    }
+}
+
 fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
             old_fcx: &option::t<@fn_ctxt>) {
     let decl = f.decl;
@@ -2620,6 +2676,7 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
           next_var_id: gather_result.next_var_id,
           mutable fixups: fixups,
           ccx: ccx};
+    check_constraints(fcx, decl.constraints, decl.inputs);
     check_block(fcx, body);
 
     // For non-iterator fns, we unify the tail expr's type with the
