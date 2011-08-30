@@ -1663,17 +1663,6 @@ type val_fn = fn(&@block_ctxt, ValueRef) -> result;
 type val_and_ty_fn = fn(&@block_ctxt, ValueRef, ty::t) -> result;
 
 
-// Iterates through the elements of a structural type.
-fn iter_structural_ty(cx: &@block_ctxt, v: ValueRef, t: ty::t,
-                      f: val_and_ty_fn) -> result {
-    fn adaptor_fn(f: val_and_ty_fn, cx: &@block_ctxt, av: ValueRef, t: ty::t)
-       -> result {
-        ret f(cx, av, t);
-    }
-    let x = iter_structural_ty_full(cx, v, t, bind adaptor_fn(f, _, _, _));
-    ret x;
-}
-
 fn load_inbounds(cx: &@block_ctxt, p: ValueRef, idxs: &[ValueRef]) ->
    ValueRef {
     ret Load(cx, InBoundsGEP(cx, p, idxs));
@@ -1690,8 +1679,9 @@ fn incr_ptr(cx: &@block_ctxt, p: ValueRef, incr: ValueRef, pp: ValueRef) {
     Store(cx, InBoundsGEP(cx, p, [incr]), pp);
 }
 
-fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: ty::t,
-                           f: &val_and_ty_fn) -> result {
+// Iterates through the elements of a structural type.
+fn iter_structural_ty(cx: &@block_ctxt, av: ValueRef, t: ty::t,
+                      f: &val_and_ty_fn) -> result {
     fn iter_boxpp(cx: @block_ctxt, box_cell: ValueRef, f: &val_and_ty_fn) ->
        result {
         let box_ptr = Load(cx, box_cell);
@@ -1808,7 +1798,7 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: ty::t,
             GEP(cx, av, [C_int(0), C_int(abi::obj_field_box)]);
         ret iter_boxpp(cx, box_cell_a, f);
       }
-      _ { bcx_ccx(cx).sess.unimpl(~"type in iter_structural_ty_full"); }
+      _ { bcx_ccx(cx).sess.unimpl(~"type in iter_structural_ty"); }
     }
     ret r;
 }
