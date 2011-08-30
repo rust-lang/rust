@@ -5271,8 +5271,7 @@ fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
     // trans_mod, trans_item, trans_obj, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
     let rslt =
-        if !ty::type_is_nil(cx.ccx.tcx, block_ty) &&
-               !ty::type_is_bot(cx.ccx.tcx, block_ty) &&
+        if !ty::type_is_bot(cx.ccx.tcx, block_ty) &&
                f.proto != ast::proto_iter {
             trans_block(bcx, f.body, save_in(fcx.llretptr))
         } else { trans_block(bcx, f.body, return) };

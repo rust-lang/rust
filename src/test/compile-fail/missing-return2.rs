@@ -1,4 +1,4 @@
-// error-pattern: return
+// error-pattern: mismatched types
 
 fn f() -> int {
 

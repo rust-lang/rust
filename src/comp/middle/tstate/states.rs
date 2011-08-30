@@ -716,7 +716,6 @@ fn find_pre_post_state_block(fcx: &fn_ctxt, pres0: &prestate, b: &blk) ->
 }
 
 fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
-
     let num_constrs = num_constraints(fcx.enclosing);
     // All constraints are considered false until proven otherwise.
     // This ensures that intersect works correctly.
@@ -729,25 +728,20 @@ fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
     }
 
     // Instantiate any constraints on the arguments so we can use them
-    let tsc;
     for c: @constr in f.decl.constraints {
-        tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f.decl.inputs, c);
+        let tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f.decl.inputs, c);
         set_in_prestate_constr(fcx, tsc, block_pre);
     }
 
     let changed = find_pre_post_state_block(fcx, block_pre, f.body);
-    // Treat the tail expression as a return statement
 
+    // Treat the tail expression as a return statement
     alt f.body.node.expr {
       some(tailexpr) {
-        let tailty = expr_ty(fcx.ccx.tcx, tailexpr);
-
-        // Since blocks and alts and ifs that don't have results
-        // implicitly result in nil, we have to be careful to not
-        // interpret nil-typed block results as the result of a
-        // function with some other return type
-        if !type_is_nil(fcx.ccx.tcx, tailty) &&
-               !type_is_bot(fcx.ccx.tcx, tailty) {
+        // We don't want to clear the diverges bit for bottom typed things,
+        // which really do diverge. I feel like there is a cleaner way
+        // to do this than checking the type.
+        if !type_is_bot(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, tailexpr)) {
             let post = false_postcond(num_constrs);
             // except for the "diverges" bit...
             kill_poststate_(fcx, fcx.enclosing.i_diverge, post);

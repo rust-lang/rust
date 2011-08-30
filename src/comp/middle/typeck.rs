@@ -2692,22 +2692,14 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     // function result type, if there is a tail expr.
     // We don't do this check for an iterator, as the tail expr doesn't
     // have to have the result type of the iterator.
-    if option::is_some(body.node.expr) && f.proto != ast::proto_iter {
-        let tail_expr = option::get(body.node.expr);
-        // The use of resolve_type_vars_if_possible makes me very
-        // afraid :-(
-        let tail_expr_ty =
-            resolve_type_vars_if_possible(fcx, expr_ty(ccx.tcx, tail_expr));
-
-        // Hacky compromise: use eq and not are_compatible
-        // This allows things like while loops and ifs with no
-        // else to appear in tail position without a trailing
-        // semicolon when the return type is non-nil, while
-        // making sure to unify the tailexpr-type with the result
-        // type when the tailexpr-type is just a type variable.
-        if !ty::eq_ty(tail_expr_ty, ty::mk_nil(ccx.tcx)) {
+    alt (body.node.expr) {
+      some(tail_expr) {
+        if f.proto != ast::proto_iter {
+            let tail_expr_ty = expr_ty(ccx.tcx, tail_expr);
             demand::simple(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty);
         }
+      }
+      none. {}
     }
 
     // If we don't have any enclosing function scope, it is time to
