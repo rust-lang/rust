@@ -44,7 +44,11 @@ fn fn_ident_to_string(id: ast::node_id, i: &ast::fn_ident) -> istr {
 
 fn get_id_ident(cx: &ctxt, id: ast::def_id) -> istr {
     if id.crate != ast::local_crate {
-        istr::connect(cx.ext_map.get(id), ~"::")
+        alt cx.ext_map.find(id) {
+          some(j) { istr::connect(j, ~"::") }
+          _ { fail ("get_id_ident: can't find item in ext_map, id.crate = "
+                    + istr::to_estr(int::str(id.crate))) }
+        }
     } else {
         alt cx.items.find(id.node) {
           some(ast_map::node_item(it)) { it.ident }
