@@ -76,6 +76,7 @@ mod net;
 // FIXME: parametric
 mod map;
 mod treemap;
+mod fun_treemap;
 mod deque;
 mod list;
 mod rand;
