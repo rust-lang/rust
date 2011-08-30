@@ -28,7 +28,7 @@ tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 
 type restrict =
     @{root_vars: [node_id],
-      block_defnum: node_id,
+      local_id: uint,
       bindings: [node_id],
       tys: [ty::t],
       depends_on: [uint],
@@ -36,11 +36,16 @@ type restrict =
 
 type scope = @[restrict];
 
-tag local_info { arg(ast::mode); objfield(ast::mutability); }
+tag local_info {
+    arg(ast::mode);
+    objfield(ast::mutability);
+    local(uint);
+}
 
 type mut_map = std::map::hashmap<node_id, ()>;
 type ctx = {tcx: ty::ctxt,
             local_map: std::map::hashmap<node_id, local_info>,
+            mutable next_local: uint,
             mut_map: mut_map};
 
 fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) -> mut_map {
@@ -48,6 +53,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) -> mut_map {
     // arguments that's otherwise not easily available.
     let cx = @{tcx: tcx,
                local_map: std::map::new_int_hash(),
+               mutable next_local: 0u,
                mut_map: std::map::new_int_hash()};
     let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_item: bind visit_item(cx, _, _, _),
@@ -83,7 +89,7 @@ fn visit_fn(cx: &@ctx, f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span,
             @[
               // I'm not sure if there is anything sensical to put here
               @{root_vars: [],
-                block_defnum: 0,
+                local_id: cx.next_local,
                 bindings: dnums,
                 tys: [],
                 depends_on: [],
@@ -162,6 +168,13 @@ fn visit_expr(cx: &@ctx, ex: &@ast::expr, sc: &scope, v: &vt<scope>) {
     if !handled { visit::visit_expr(ex, sc, v); }
 }
 
+fn register_locals(cx: &ctx, pat: &@ast::pat) {
+    for each pat in ast_util::pat_bindings(pat) {
+        cx.local_map.insert(pat.id, local(cx.next_local));
+        cx.next_local += 1u;
+    }
+}
+
 fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt<scope>) {
     visit::visit_decl(d, sc, v);
     alt d.node {
@@ -175,6 +188,7 @@ fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt<scope>) {
               }
               none. { }
             }
+            register_locals(*cx, loc.node.pat);
         }
       }
       _ { }
@@ -331,47 +345,43 @@ fn check_tail_call(cx: &ctx, call: &@ast::expr) {
 
 fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
              v: &vt<scope>) {
-    visit::visit_expr(input, sc, v);
+    v.visit_expr(input, sc, v);
     let root = expr_root(cx, input, true);
     let roots =
         alt path_def_id(cx, root.ex) { some(did) { [did.node] } _ { [] } };
     let forbidden_tp: [ty::t] =
         alt inner_mut(root.ds) { some(t) { [t] } _ { [] } };
     for a: ast::arm in arms {
-        let dnums = arm_defnums(a);
+        let dnums = ast_util::pat_binding_ids(a.pats[0]);
         let new_sc = sc;
         if vec::len(dnums) > 0u {
-            new_sc =
-                @(*sc +
-                      [@{root_vars: roots,
-                         block_defnum: dnums[vec::len(dnums) - 1u],
-                         bindings: dnums,
-                         tys: forbidden_tp,
-                         depends_on: deps(sc, roots),
-                         mutable ok: valid}]);
+            new_sc = @(*sc + [@{root_vars: roots,
+                                local_id: cx.next_local,
+                                bindings: dnums,
+                                tys: forbidden_tp,
+                                depends_on: deps(sc, roots),
+                                mutable ok: valid}]);
         }
+        register_locals(cx, a.pats[0]);
         visit::visit_arm(a, new_sc, v);
     }
 }
 
-fn arm_defnums(arm: &ast::arm) -> [node_id] {
-    ret ast_util::pat_binding_ids(arm.pats[0]);
-}
-
 fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
                   blk: &ast::blk, sc: &scope, v: &vt<scope>) {
-    visit::visit_expr(call, sc, v);
+    v.visit_expr(call, sc, v);
     alt call.node {
       ast::expr_call(f, args) {
         let data = check_call(cx, f, args, sc);
         let bindings = ast_util::pat_binding_ids(local.node.pat);
         let new_sc =
             @{root_vars: data.root_vars,
-              block_defnum: bindings[vec::len(bindings) - 1u],
+              local_id: cx.next_local,
               bindings: bindings,
               tys: data.unsafe_ts,
               depends_on: deps(sc, data.root_vars),
               mutable ok: valid};
+        register_locals(cx, local.node.pat);
         visit::visit_block(blk, @(*sc + [new_sc]), v);
       }
     }
@@ -379,7 +389,7 @@ fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
 
 fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
              sc: &scope, v: &vt<scope>) {
-    visit::visit_expr(seq, sc, v);
+    v.visit_expr(seq, sc, v);
     let root = expr_root(cx, seq, false);
     let root_def =
         alt path_def_id(cx, root.ex) { some(did) { [did.node] } _ { [] } };
@@ -400,11 +410,12 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
     let bindings = ast_util::pat_binding_ids(local.node.pat);
     let new_sc =
         @{root_vars: root_def,
-          block_defnum: bindings[vec::len(bindings) - 1u],
+          local_id: cx.next_local,
           bindings: bindings,
           tys: unsafe,
           depends_on: deps(sc, root_def),
           mutable ok: valid};
+    register_locals(cx, local.node.pat);
     visit::visit_block(blk, @(*sc + [new_sc]), v);
 }
 
@@ -413,12 +424,14 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
     let def = cx.tcx.def_map.get(id);
     if !def_is_local(def, true) { ret; }
     let my_defnum = ast_util::def_id_of_def(def).node;
+    let my_local_id = alt cx.local_map.find(my_defnum) {
+      some(local(id)) { id }
+      _ { 0u }
+    };
     let var_t = ty::expr_ty(cx.tcx, ex);
     for r: restrict in *sc {
-
         // excludes variables introduced since the alias was made
-        // FIXME This does not work anymore, now that we have macros.
-        if my_defnum < r.block_defnum {
+        if my_local_id < r.local_id {
             for t: ty::t in r.tys {
                 if ty_can_unsafely_include(cx, t, var_t, assign) {
                     r.ok = val_taken(ex.span, p);
