@@ -54,12 +54,12 @@ fn close(handle: &handle) {
     task::join(option::get(handle.task));
 }
 
-fn run(handle: &handle, lib_path: &str, prog: &str, args: &[str],
-       input: &option::t<str>) -> {status: int, out: str, err: str} {
+fn run(handle: &handle, lib_path: &istr, prog: &istr, args: &[istr],
+       input: &option::t<istr>) -> {status: int, out: istr, err: istr} {
     let p = port();
     let ch = chan(p);
     send(handle.chan,
-         exec(str::bytes(lib_path), str::bytes(prog), clone_vecstr(args),
+         exec(istr::bytes(lib_path), istr::bytes(prog), clone_vecstr(args),
               ch));
     let resp = recv(p);
 
@@ -70,23 +70,23 @@ fn run(handle: &handle, lib_path: &str, prog: &str, args: &[str],
     ret {status: status, out: output, err: errput};
 }
 
-fn writeclose(fd: int, s: &option::t<str>) {
+fn writeclose(fd: int, s: &option::t<istr>) {
     if option::is_some(s) {
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
-        writer.write_str(istr::from_estr(option::get(s)));
+        writer.write_str(option::get(s));
     }
 
     os::libc::close(fd);
 }
 
-fn readclose(fd: int) -> str {
+fn readclose(fd: int) -> istr {
     // Copied from run::program_output
     let file = os::fd_FILE(fd);
     let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
-    let buf = "";
+    let buf = ~"";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
-        buf += str::unsafe_from_bytes(bytes);
+        buf += istr::unsafe_from_bytes(bytes);
     }
     os::libc::fclose(file);
     ret buf;
@@ -115,8 +115,8 @@ fn worker(p: port<request>) {
                 // the alt discriminant are wrong.
                 alt recv(p) {
                   exec(lib_path, prog, args, respchan) {
-                    {lib_path: str::unsafe_from_bytes(lib_path),
-                     prog: str::unsafe_from_bytes(prog),
+                    {lib_path: istr::unsafe_from_bytes(lib_path),
+                     prog: istr::unsafe_from_bytes(prog),
                      args: clone_vecu8str(args),
                      respchan: respchan}
                   }
@@ -129,8 +129,8 @@ fn worker(p: port<request>) {
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
         let spawnproc =
-            bind run::spawn_process(istr::from_estr(execparms.prog),
-                                    istr::from_estrs(execparms.args),
+            bind run::spawn_process(execparms.prog,
+                                    execparms.args,
                                     pipe_in.in, pipe_out.out, pipe_err.out);
         let pid = with_lib_path(execparms.lib_path, spawnproc);
 
@@ -152,35 +152,37 @@ fn worker(p: port<request>) {
     }
 }
 
-fn with_lib_path<@T>(path: &str, f: fn() -> T) -> T {
-    let maybe_oldpath = getenv(istr::from_estr(util::lib_path_env_var()));
+fn with_lib_path<@T>(path: &istr, f: fn() -> T) -> T {
+    let maybe_oldpath = getenv(util::lib_path_env_var());
     append_lib_path(path);
     let res = f();
     if option::is_some(maybe_oldpath) {
-        export_lib_path(istr::to_estr(option::get(maybe_oldpath)));
+        export_lib_path(option::get(maybe_oldpath));
     } else {
         // FIXME: This should really be unset but we don't have that yet
-        export_lib_path("");
+        export_lib_path(~"");
     }
     ret res;
 }
 
-fn append_lib_path(path: &str) { export_lib_path(util::make_new_path(path)); }
-
-fn export_lib_path(path: &str) {
-    setenv(istr::from_estr(util::lib_path_env_var()), istr::from_estr(path));
+fn append_lib_path(path: &istr) {
+    export_lib_path(util::make_new_path(path));
 }
 
-fn clone_vecstr(v: &[str]) -> [[u8]] {
+fn export_lib_path(path: &istr) {
+    setenv(util::lib_path_env_var(), path);
+}
+
+fn clone_vecstr(v: &[istr]) -> [[u8]] {
     let r = [];
-    for t: str in vec::slice(v, 0u, vec::len(v)) { r += [str::bytes(t)]; }
+    for t: istr in vec::slice(v, 0u, vec::len(v)) { r += [istr::bytes(t)]; }
     ret r;
 }
 
-fn clone_vecu8str(v: &[[u8]]) -> [str] {
+fn clone_vecu8str(v: &[[u8]]) -> [istr] {
     let r = [];
     for t in vec::slice(v, 0u, vec::len(v)) {
-        r += [str::unsafe_from_bytes(t)];
+        r += [istr::unsafe_from_bytes(t)];
     }
     ret r;
 }
