@@ -56,7 +56,10 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
       tk_derived. {
         // It's a derived type descriptor. First, spill it.
         let lltydescptr = trans::alloca(bcx, val_ty(lltydesc));
-        bld::Store(bcx, lltydesc, lltydescptr);
+
+        let llderivedtydescs =
+            trans::llderivedtydescs_block_ctxt(bcx_fcx(bcx));
+        bld::Store(llderivedtydescs, lltydesc, lltydescptr);
 
         let number = gc_cx.next_tydesc_num;
         gc_cx.next_tydesc_num += 1u;
@@ -71,10 +74,10 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
         lldestindex = lll::LLVMConstPointerCast(lldestindex, T_ptr(T_i8()));
         llsrcindex = lll::LLVMConstPointerCast(llsrcindex, T_ptr(T_i8()));
 
-        lltydescptr =
-            bld::PointerCast(bcx, lltydescptr, T_ptr(T_ptr(T_i8())));
+        lltydescptr = bld::PointerCast(llderivedtydescs, lltydescptr,
+                                       T_ptr(T_ptr(T_i8())));
 
-        bld::Call(bcx, gcroot, [lltydescptr, lldestindex]);
+        bld::Call(llderivedtydescs, gcroot, [lltydescptr, lldestindex]);
         bld::Call(bcx, gcroot, [llvalptr, llsrcindex]);
       }
       tk_param. {
