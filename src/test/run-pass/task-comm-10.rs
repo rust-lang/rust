@@ -1,9 +1,6 @@
 // FIXME: this test is xfailed until sending strings is legal again.
 
-//xfail-stage0
-//xfail-stage1
-//xfail-stage2
-//xfail-stage3
+//xfail-test
 
 use std;
 import std::task;

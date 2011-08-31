@@ -24,7 +24,7 @@ fn lib_path_env_var() -> istr { ~"LD_LIBRARY_PATH" }
 fn lib_path_env_var() -> istr { ~"DYLD_LIBRARY_PATH" }
 
 #[cfg(target_os = "win32")]
-fn lib_path_env_var() -> istr { "PATH" }
+fn lib_path_env_var() -> istr { ~"PATH" }
 
 fn logv(config: &config, s: &istr) {
     log s;

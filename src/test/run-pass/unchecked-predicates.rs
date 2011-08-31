@@ -1,4 +1,3 @@
-// xfail-stage0
 // Uses foldl to exhibit the unchecked block syntax.
 use std;
 

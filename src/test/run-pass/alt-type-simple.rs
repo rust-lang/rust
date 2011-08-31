@@ -1,6 +1,6 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
+
+// xfail-test
+
 fn altsimple(any x) {
   alt type (f) {
     case (int i) { print("int"); }

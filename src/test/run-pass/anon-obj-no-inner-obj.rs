@@ -1,6 +1,4 @@
-//xfail-stage1
-//xfail-stage2
-//xfail-stage3
+//xfail-test
 use std;
 
 // This is failing not because it's an anonymous object from nothing

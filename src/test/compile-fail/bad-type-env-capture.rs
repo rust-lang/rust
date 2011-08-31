@@ -1,6 +1,4 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
+// xfail-test
 // error-pattern: attempted dynamic environment-capture
 fn foo<T>() {
     obj bar(b: T) { }

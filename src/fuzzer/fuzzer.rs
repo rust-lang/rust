@@ -38,8 +38,8 @@ fn contains(haystack: &str, needle: &str) -> bool {
 
 fn find_rust_files(files: &mutable [str], path: str) {
     if str::ends_with(path, ".rs") {
-        if file_contains(path, "xfail-stage1") {
-            //log_err "Skipping " + path + " because it is marked as xfail-stage1";
+        if file_contains(path, "xfail-test") {
+            //log_err "Skipping " + path + " because it is marked as xfail-test";
         } else { files += [path]; }
     } else if fs::file_is_dir(istr::from_estr(path))
         && str::find(path, "compile-fail") == -1 {

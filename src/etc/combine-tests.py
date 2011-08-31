@@ -27,7 +27,7 @@ for t in os.listdir(run_pass):
       t.startswith(".") or t.startswith("#") or t.startswith("~")):
         f = codecs.open(os.path.join(run_pass, t), "r", "utf8")
         s = f.read()
-        if not ("xfail-stage2" in s or
+        if not ("xfail-test" in s or
                 "xfail-fast" in s):
             stage2_tests.append(t)
             if "main(args: [str])" in s:

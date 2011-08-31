@@ -59,12 +59,9 @@ fn is_test_ignored(config: &config, testfile: &istr) -> bool {
     let found = false;
     for each ln: istr in iter_header(testfile) {
         // FIXME: Can't return or break from iterator
-        found = found
-            || parse_name_directive(ln, ~"xfail-"
-                                    + config.stage_id);
+        found = found || parse_name_directive(ln, ~"xfail-test");
         if (config.mode == common::mode_pretty) {
-            found = found
-                || parse_name_directive(ln, ~"xfail-pretty");
+            found = found || parse_name_directive(ln, ~"xfail-pretty");
         }
     }
     ret found;
