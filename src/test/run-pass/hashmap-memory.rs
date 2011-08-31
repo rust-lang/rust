@@ -9,7 +9,6 @@ use std;
 import option = std::option::t;
 import std::option::some;
 import std::option::none;
-import std::str;
 import std::istr;
 import std::vec;
 import std::map;
@@ -20,40 +19,42 @@ import std::comm::send;
 import std::comm::recv;
 import std::comm;
 
-fn map(filename: str, emit: map_reduce::putter) { emit(filename, "1"); }
+fn map(filename: &istr, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
     export putter;
     export mapper;
     export map_reduce;
 
-    type putter = fn(str, str);
+    type putter = fn(&istr, &istr);
 
-    type mapper = fn(str, putter);
+    type mapper = fn(&istr, putter);
 
     tag ctrl_proto { find_reducer([u8], chan<int>); mapper_done; }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: &[str]) {
-        for i: str in inputs { task::spawn(bind map_task(ctrl, i)); }
+    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: &[istr]) {
+        for i: istr in inputs {
+            task::spawn(bind map_task(ctrl, i));
+        }
     }
 
-    fn map_task(ctrl: chan<ctrl_proto>, input: str) {
+    fn map_task(ctrl: chan<ctrl_proto>, input: -istr) {
 
         let intermediates = map::new_str_hash();
 
         fn emit(im: &map::hashmap<istr, int>, ctrl: chan<ctrl_proto>,
-                key: str, val: str) {
+                key: &istr, val: &istr) {
             let c;
-            alt im.find(istr::from_estr(key)) {
+            alt im.find(key) {
               some(_c) { c = _c }
               none. {
                 let p = port();
                 log_err "sending find_reducer";
-                send(ctrl, find_reducer(str::bytes(key), chan(p)));
+                send(ctrl, find_reducer(istr::bytes(key), chan(p)));
                 log_err "receiving";
                 c = recv(p);
                 log_err c;
-                im.insert(istr::from_estr(key), c);
+                im.insert(key, c);
               }
             }
         }
@@ -62,7 +63,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn map_reduce(inputs: &[str]) {
+    fn map_reduce(inputs: &[istr]) {
         let ctrl = port();
 
         // This task becomes the master control task. It spawns others
@@ -93,5 +94,5 @@ mod map_reduce {
 }
 
 fn main() {
-    map_reduce::map_reduce(["../src/test/run-pass/hashmap-memory.rs"]);
+    map_reduce::map_reduce([~"../src/test/run-pass/hashmap-memory.rs"]);
 }

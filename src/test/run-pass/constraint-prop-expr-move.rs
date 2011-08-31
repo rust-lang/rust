@@ -1,5 +1,5 @@
 use std;
-import std::str::*;
+import std::istr::*;
 import std::uint::*;
 
 fn main() {
@@ -8,5 +8,5 @@ fn main() {
     let c: uint = 17u;
     check (le(a, b));
     c <- a;
-    log safe_slice("kitties", c, b);
+    log safe_slice(~"kitties", c, b);
 }

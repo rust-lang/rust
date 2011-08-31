@@ -2,17 +2,17 @@
 
 // -*- rust -*-
 use std;
-import std::str;
+import std::istr;
 import std::vec;
 
 #[test]
 fn test_simple() {
-    let s1: str = "All mimsy were the borogoves";
+    let s1: istr = ~"All mimsy were the borogoves";
 
-    let v: [u8] = str::bytes(s1);
-    let s2: str = str::unsafe_from_bytes(v);
+    let v: [u8] = istr::bytes(s1);
+    let s2: istr = istr::unsafe_from_bytes(v);
     let i: uint = 0u;
-    let n1: uint = str::byte_len(s1);
+    let n1: uint = istr::byte_len(s1);
     let n2: uint = vec::len::<u8>(v);
     assert (n1 == n2);
     while i < n1 {
@@ -23,6 +23,4 @@ fn test_simple() {
         assert (a == b);
         i += 1u;
     }
-    log "refcnt is";
-    log str::refcount(s1);
 }

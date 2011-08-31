@@ -2,14 +2,12 @@
 
 // -*- rust -*-
 use std;
-import std::str;
+import std::istr;
 
 #[test]
 fn test() {
-    let s = "hello";
-    let sb = str::buf(s);
-    let s_cstr = str::str_from_cstr(sb);
-    assert (str::eq(s_cstr, s));
-    let s_buf = str::str_from_buf(sb, 5u);
-    assert (str::eq(s_buf, s));
+    let s = ~"hello";
+    let sb = istr::as_buf(s, { |b| b });
+    let s_cstr = istr::str_from_cstr(sb);
+    assert (istr::eq(s_cstr, s));
 }

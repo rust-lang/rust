@@ -2,57 +2,57 @@
 import rustrt::sbuf;
 import uint::le;
 export sbuf;
-export rustrt;
+// export rustrt;
 export eq;
 export lteq;
-export hash;
-export is_utf8;
-export is_ascii;
-export alloc;
+// export hash;
+// export is_utf8;
+// export is_ascii;
+// export alloc;
 export byte_len;
 export buf;
-export bytes;
-export unsafe_from_byte;
-export str_from_cstr;
-export str_from_buf;
-export push_utf8_bytes;
+// export bytes;
+// export unsafe_from_byte;
+// export str_from_cstr;
+// export str_from_buf;
+// export push_utf8_bytes;
 export from_char;
-export from_chars;
-export utf8_char_width;
-export char_range_at;
+// export from_chars;
+// export utf8_char_width;
+// export char_range_at;
 export char_at;
 export char_len;
-export to_chars;
-export push_char;
-export pop_char;
-export shift_char;
-export unshift_char;
-export refcount;
-export index;
-export rindex;
+// export to_chars;
+// export push_char;
+// export pop_char;
+// export shift_char;
+// export unshift_char;
+// export refcount;
+// export index;
+// export rindex;
 export find;
-export starts_with;
-export ends_with;
+// export starts_with;
+// export ends_with;
 export substr;
-export slice;
-export shift_byte;
-export pop_byte;
-export push_byte;
-export unshift_byte;
-export split;
-export concat;
-export connect;
+// export slice;
+// export shift_byte;
+// export pop_byte;
+// export push_byte;
+// export unshift_byte;
+// export split;
+// export concat;
+// export connect;
 export to_upper;
-export safe_slice;
+// export safe_slice;
 export unsafe_from_bytes;
-export is_empty;
-export is_not_empty;
-export is_whitespace;
-export replace;
-export char_slice;
-export trim_left;
-export trim_right;
-export trim;
+// export is_empty;
+// export is_not_empty;
+// export is_whitespace;
+// export replace;
+// export char_slice;
+// export trim_left;
+// export trim_right;
+// export trim;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -339,7 +339,7 @@ fn index(s: str, c: u8) -> int {
 }
 
 fn rindex(s: str, c: u8) -> int {
-    let n: int = str::byte_len(s) as int;
+    let n: int = byte_len(s) as int;
     while n >= 0 { if s[n] == c { ret n; } n -= 1; }
     ret n;
 }
@@ -390,15 +390,14 @@ fn slice(s: str, begin: uint, end: uint) -> str {
     // FIXME: Typestate precondition
 
     assert (begin <= end);
-    assert (end <= str::byte_len(s));
+    assert (end <= byte_len(s));
     ret rustrt::str_slice(s, begin, end);
 }
 
 fn safe_slice(s: str, begin: uint, end: uint) : le(begin, end) -> str {
-    assert (end <=
-                str::byte_len(s)); // would need some magic to
-                                   // make this a precondition
-
+    // would need some magic to
+    // make this a precondition
+    assert (end <= byte_len(s));
 
     ret rustrt::str_slice(s, begin, end);
 }
@@ -441,7 +440,7 @@ fn split(s: str, sep: u8) -> [str] {
             ends_with_sep = true;
         } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
     }
-    if str::byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
+    if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
     ret v;
 }
 

@@ -49,6 +49,12 @@ fn debug_fn<T>(x: &T) { rustrt::debug_fn::<T>(x); }
 fn ptr_cast<T, U>(x: @T) -> @U { ret rustrt::debug_ptrcast::<T, U>(x); }
 
 fn trap(s: str) { rustrt::debug_trap(s); }
+
+fn refcount<T>(a: &@T) -> uint {
+    let p: *uint = unsafe::reinterpret_cast(a);
+    ret *p;
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

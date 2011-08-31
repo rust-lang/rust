@@ -87,7 +87,7 @@ obj new_reader(rdr: buf_reader) {
 
         }
         let b0 = c0 as u8;
-        let w = str::utf8_char_width(b0);
+        let w = istr::utf8_char_width(b0);
         assert (w > 0u);
         if w == 1u { ret b0 as char; }
         let val = 0u;

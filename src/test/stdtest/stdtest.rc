@@ -26,7 +26,6 @@ mod sha1;
 mod sort;
 mod str_buf;
 mod str;
-mod istr;
 mod task;
 mod test;
 mod uint;
