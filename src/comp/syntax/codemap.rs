@@ -174,17 +174,17 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
 
             // indent past |name:## | and the 0-offset column location
             let left = istr::char_len(fm.name) + digits + lo.col + 3u;
-            let s = "";
-            while left > 0u { str::push_char(s, ' '); left -= 1u; }
+            let s = ~"";
+            while left > 0u { istr::push_char(s, ' '); left -= 1u; }
 
-            s += "^";
+            s += ~"^";
             let hi = lookup_char_pos(cm, option::get(sp).hi);
             if hi.col != lo.col {
                 // the ^ already takes up one space
                 let width = hi.col - lo.col - 1u;
-                while width > 0u { str::push_char(s, '~'); width -= 1u; }
+                while width > 0u { istr::push_char(s, '~'); width -= 1u; }
             }
-            io::stdout().write_str(istr::from_estr(s + "\n"));
+            io::stdout().write_str(s + ~"\n");
         }
       }
       _ { }

@@ -16,7 +16,6 @@ import std::int;
 import std::str;
 import std::istr;
 import std::uint;
-import std::str::rustrt::sbuf;
 import std::map;
 import std::map::hashmap;
 import std::option;

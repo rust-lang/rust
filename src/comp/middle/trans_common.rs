@@ -9,7 +9,6 @@ import std::vec::to_ptr;
 import std::str;
 import std::istr;
 import std::uint;
-import std::str::rustrt::sbuf;
 import std::map;
 import std::map::hashmap;
 import std::option;
