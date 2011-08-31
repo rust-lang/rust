@@ -6241,7 +6241,7 @@ fn write_abi_version(ccx: &@crate_ctxt) {
 }
 
 fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
-               output: &istr, amap: &ast_map::map, mut_map: alias::mut_map)
+               output: &istr, amap: &ast_map::map, mut_map: mut::mut_map)
     -> ModuleRef {
     let llmod = istr::as_buf(~"rust_out", { |buf|
         llvm::LLVMModuleCreateWithNameInContext(buf,

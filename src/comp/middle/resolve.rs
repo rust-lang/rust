@@ -678,7 +678,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
           scope_loop(local) {
             if ns == ns_value {
                 alt lookup_in_pat(name, local.node.pat) {
-                  some(did) { ret some(ast::def_local(did)); }
+                  some(did) { ret some(ast::def_binding(did)); }
                   _ { }
                 }
             }

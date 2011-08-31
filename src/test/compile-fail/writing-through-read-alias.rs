@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-// error-pattern:assignment to immutable field
+// error-pattern:assigning to immutable field
 
 type point = {x: int, y: int, z: int};
 

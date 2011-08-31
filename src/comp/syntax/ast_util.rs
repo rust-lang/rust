@@ -46,7 +46,7 @@ fn def_id_of_def(d: def) -> def_id {
     }
 }
 
-type pat_id_map = std::map::hashmap<istr, ast::node_id>;
+type pat_id_map = std::map::hashmap<istr, node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
@@ -142,7 +142,7 @@ fn ty_mach_to_str(tm: ty_mach) -> istr {
 
 fn is_exported(i: ident, m: _mod) -> bool {
     let nonlocal = true;
-    for it: @ast::item in m.items {
+    for it: @item in m.items {
         if it.ident == i { nonlocal = false; }
         alt it.node {
           item_tag(variants, _) {
@@ -155,9 +155,9 @@ fn is_exported(i: ident, m: _mod) -> bool {
         if !nonlocal { break; }
     }
     let count = 0u;
-    for vi: @ast::view_item in m.view_items {
+    for vi: @view_item in m.view_items {
         alt vi.node {
-          ast::view_item_export(ids, _) {
+          view_item_export(ids, _) {
             for id in ids { if istr::eq(i, id) { ret true; } }
             count += 1u;
           }
@@ -202,7 +202,7 @@ fn obj_field_from_anon_obj_field(f: &anon_obj_field) -> obj_field {
 
 // This is a convenience function to transfor ternary expressions to if
 // expressions so that they can be treated the same
-fn ternary_to_if(e: &@expr) -> @ast::expr {
+fn ternary_to_if(e: &@expr) -> @expr {
     alt e.node {
       expr_ternary(cond, then, els) {
         let then_blk = block_from_expr(then);
