@@ -1,6 +1,4 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
+// xfail-test
 // This checks that preemption works.
 
 fn starve_main(alive: chan<int>) {
