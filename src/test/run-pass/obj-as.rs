@@ -1,4 +1,6 @@
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 obj big() {
     fn one() -> int { ret 1; }
     fn two() -> int { ret 2; }

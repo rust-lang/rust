@@ -3,7 +3,9 @@ Can we bind native things?
 */
 
 //xfail-stage0
-//xfail-test
+//xfail-stage1
+//xfail-stage2
+//xfail-stage3
 
 native "rust" mod rustrt {
     fn task_yield();

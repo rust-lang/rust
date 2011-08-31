@@ -1,4 +1,6 @@
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 // -*- rust -*-
 
 // error-pattern: tag of infinite size

@@ -1,5 +1,7 @@
 // -*- rust -*-
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 // error-pattern:Unsatisfied precondition
 
 tag list { cons(int, @list); nil; }

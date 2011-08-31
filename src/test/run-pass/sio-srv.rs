@@ -1,4 +1,6 @@
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 use std;
 import std::sio;
 import std::net;

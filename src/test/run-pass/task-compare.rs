@@ -4,7 +4,9 @@
 
 // FIXME: This won't work until we can compare resources
 // xfail-stage0
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 
 use std;
 import std::task;

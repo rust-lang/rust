@@ -1,4 +1,6 @@
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 // Fail statements without arguments need to be disambiguated in
 // certain positions
 // error-pattern:explicit-failure

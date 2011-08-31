@@ -2,7 +2,9 @@
   A simple way to make sure threading works. This should use all the
   CPU cycles an any machines that we're likely to see for a while.
 */
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 
 use std;
 import std::task::join;

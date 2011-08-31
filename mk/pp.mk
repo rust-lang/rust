@@ -9,7 +9,7 @@ else
               $(wildcard $(S)src/fuzzer/*.rs)
 
   PP_INPUTS_FILTERED = $(shell echo $(PP_INPUTS) | xargs grep -L \
-                       "no-reformat\|xfail-pretty\|xfail-test")
+                       "no-reformat\|xfail-pretty\|xfail-stage2")
 endif
 
 reformat: $(SREQ1)

@@ -1,5 +1,7 @@
 // Broken under win
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 
 use std;
 

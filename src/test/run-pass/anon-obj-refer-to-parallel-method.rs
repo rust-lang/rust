@@ -1,4 +1,6 @@
-//xfail-test
+//xfail-stage1
+//xfail-stage2
+//xfail-stage3
 
 // Test case for issue #822.
 fn main() {

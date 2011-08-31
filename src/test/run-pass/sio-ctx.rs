@@ -1,5 +1,7 @@
 // Seems to hang for long periods, probably with RUST_THREADS > 1. Issue #810
-// xfail-test
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
 
 use std;
 import std::sio;

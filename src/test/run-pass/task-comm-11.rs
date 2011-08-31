@@ -1,3 +1,4 @@
+// xfail-stage3
 use std;
 import std::comm;
 import std::task;
