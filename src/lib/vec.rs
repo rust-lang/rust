@@ -97,6 +97,11 @@ fn last<@T>(v: &[mutable? T]) -> option::t<T> {
     ret some(v[len(v) - 1u]);
 }
 
+/// Returns the last element of a non-empty vector `v`.
+fn last_total<@T>(v: &[mutable? T]) : is_not_empty(v) -> T {
+    ret v[len(v) - 1u];
+}
+
 /// Returns a copy of the elements from [`start`..`end`) from `v`.
 fn slice<@T>(v: &[mutable? T], start: uint, end: uint) -> [T] {
     assert (start <= end);
