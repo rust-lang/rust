@@ -426,7 +426,7 @@ cmp::walk_variant(tag_info &tinfo, uint32_t variant_id,
 
 void
 log::walk_string(const std::pair<ptr,ptr> &data) {
-    out << "\"" << std::hex;
+    out << prefix << "\"" << std::hex;
 
     ptr subdp = data.first;
     while (subdp < data.second) {
@@ -443,7 +443,7 @@ log::walk_string(const std::pair<ptr,ptr> &data) {
 
 void
 log::walk_struct(const uint8_t *end_sp) {
-    out << "(";
+    out << prefix << "(";
 
     bool first = true;
     while (sp != end_sp) {
@@ -464,16 +464,15 @@ log::walk_vec(bool is_pod, const std::pair<ptr,ptr> &data) {
         return;
     }
 
-    out << "[";
+    out << prefix << "[";
 
     log sub(*this, data.first);
     sub.end_dp = data.second;
 
-    bool first = true;
     while (sub.dp < data.second) {
-        if (!first) out << ", ";
         sub.walk_reset();
-        sub.align = true, first = false;
+        sub.align = true;
+        sub.prefix = ", ";
     }
 
     out << "]";
@@ -500,7 +499,7 @@ log::walk_variant(tag_info &tinfo, uint32_t variant_id,
 void
 log::walk_res(const rust_fn *dtor, unsigned n_params,
               const type_param *params, const uint8_t *end_sp, bool live) {
-    out << "res";
+    out << prefix << "res";
 
     if (this->sp == end_sp)
         return;

@@ -974,6 +974,7 @@ class log : public data<log,ptr> {
 
 private:
     std::ostream &out;
+    const char *prefix;
     bool in_string;
 
     log(log &other,
@@ -986,7 +987,8 @@ private:
                     in_params,
                     in_tables ? in_tables : other.tables,
                     other.dp),
-      out(other.out) {}
+      out(other.out),
+      prefix("") {}
 
     log(log &other,
         const uint8_t *in_sp,
@@ -999,7 +1001,8 @@ private:
                     in_params,
                     in_tables,
                     in_dp),
-      out(other.out) {}
+      out(other.out),
+      prefix("") {}
 
     log(log &other, ptr in_dp)
     : data<log,ptr>(other.task,
@@ -1008,7 +1011,8 @@ private:
                     other.params,
                     other.tables,
                     in_dp),
-      out(other.out) {}
+      out(other.out),
+      prefix("") {}
 
     void walk_evec(bool is_pod, uint16_t sp_size) {
         walk_vec(is_pod, get_evec_data_range(dp));
@@ -1019,28 +1023,29 @@ private:
     }
 
     void walk_tag(tag_info &tinfo, uint32_t tag_variant) {
-        out << "tag" << tag_variant;
+        out << prefix << "tag" << tag_variant;
         data<log,ptr>::walk_variant(tinfo, tag_variant);
     }
 
     void walk_box() {
-        out << "@";
+        out << prefix << "@";
         data<log,ptr>::walk_box_contents();
     }
 
     void walk_fn() {
-        out << "fn";
+        out << prefix << "fn";
         data<log,ptr>::walk_fn_contents(dp);
     }
 
     void walk_obj() {
-        out << "obj";
+        out << prefix << "obj";
         data<log,ptr>::walk_obj_contents(dp);
     }
 
     void walk_subcontext(log &sub) { sub.walk(); }
 
     void walk_box_contents(log &sub, ptr &ref_count_dp) {
+        out << prefix;
         if (!ref_count_dp) {
             out << "(null)";
         } else {
@@ -1059,7 +1064,10 @@ private:
                   const type_param *params, const uint8_t *end_sp, bool live);
 
     template<typename T>
-    inline void walk_number() { fmt_number(out, get_dp<T>(dp)); }
+    inline void walk_number() {
+        out << prefix;
+        fmt_number(out, get_dp<T>(dp));
+    }
 
 public:
     log(rust_task *in_task,
@@ -1070,7 +1078,8 @@ public:
         uint8_t *in_data,
         std::ostream &in_out)
     : data<log,ptr>(in_task, in_align, in_sp, in_params, in_tables, in_data),
-      out(in_out) {}
+      out(in_out),
+      prefix("") {}
 };
 
 }   // end namespace shape
