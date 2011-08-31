@@ -1606,12 +1606,10 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                       if supplied_arg_count == 1u {
                           ~" was"
                       } else { ~"s were" }]);
-            // HACK: extend the arguments list with dummy arguments to
+            // HACK: build an arguments list with dummy arguments to
             // check against
-            let dummy = {mode: ty::mo_val, ty: ty::mk_nil(fcx.ccx.tcx)};
-            while vec::len(arg_tys) < supplied_arg_count {
-                arg_tys += [dummy];
-            }
+            let dummy = {mode: ty::mo_val, ty: ty::mk_bot(fcx.ccx.tcx)};
+            arg_tys = vec::init_elt(dummy, supplied_arg_count);
         }
 
         // Check the arguments.
