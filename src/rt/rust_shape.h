@@ -622,11 +622,9 @@ public:
     template<typename T>
     struct data { typedef T t; };
 
-    ptr(uint8_t *in_p)
-    : p(in_p) {}
-
-    ptr(uintptr_t in_p)
-    : p((uint8_t *)in_p) {}
+    ptr() : p(NULL) {}
+    ptr(uint8_t *in_p) : p(in_p) {}
+    ptr(uintptr_t in_p) : p((uint8_t *)in_p) {}
 
     inline ptr operator+(const size_t amount) const {
         return make(p + amount);
@@ -639,7 +637,8 @@ public:
     template<typename T>
     inline operator T *() { return (T *)p; }
 
-    inline operator uintptr_t() { return (uintptr_t)p; }
+    inline operator bool() const { return p != NULL; }
+    inline operator uintptr_t() const { return (uintptr_t)p; }
 
     static inline ptr make(uint8_t *in_p) {
         ptr self(in_p);
@@ -687,11 +686,13 @@ public:
     template<typename T>
     struct data { typedef data_pair<T> t; };
 
+    ptr_pair() : fst(NULL), snd(NULL) {}
     ptr_pair(uint8_t *in_fst, uint8_t *in_snd) : fst(in_fst), snd(in_snd) {}
-
     ptr_pair(data_pair<uint8_t *> &other) : fst(other.fst), snd(other.snd) {}
 
     inline void operator=(uint8_t *rhs) { fst = snd = rhs; }
+
+    inline operator bool() const { return fst != NULL && snd != NULL; }
 
     inline ptr_pair operator+(size_t n) const {
         return make(fst + n, snd + n);
@@ -754,15 +755,27 @@ namespace shape {
 // An abstract class (again using the curiously recurring template pattern)
 // for methods that actually manipulate the data involved.
 
+#define ALIGN_TO(alignment) \
+    if (this->align) { \
+        dp = align_to(dp, (alignment)); \
+        if (this->end_dp && !(dp < this->end_dp)) \
+            return; \
+    }
+
 #define DATA_SIMPLE(ty, call) \
-    if (this->align) dp = align_to(dp, alignof<ty>()); \
+    ALIGN_TO(alignof<ty>()); \
     U end_dp = dp + sizeof(ty); \
     static_cast<T *>(this)->call; \
     dp = end_dp;
 
 template<typename T,typename U>
 class data : public ctxt< data<T,U> > {
+public:
+    U dp;
+
 protected:
+    U end_dp;
+
     void walk_box_contents();
     void walk_fn_contents(ptr &dp);
     void walk_obj_contents(ptr &dp);
@@ -774,8 +787,6 @@ protected:
     static std::pair<ptr_pair,ptr_pair> get_vec_data_range(ptr_pair &dp);
 
 public:
-    U dp;
-
     data(rust_task *in_task,
          bool in_align,
          const uint8_t *in_sp,
@@ -783,7 +794,8 @@ public:
          const rust_shape_tables *in_tables,
          U const &in_dp)
     : ctxt< data<T,U> >(in_task, in_align, in_sp, in_params, in_tables),
-      dp(in_dp) {}
+      dp(in_dp),
+      end_dp() {}
 
     void walk_tag(tag_info &tinfo);
 
@@ -801,14 +813,14 @@ public:
     void walk_box()     { DATA_SIMPLE(void *, walk_box()); }
 
     void walk_fn() {
-        if (this->align) dp = align_to(dp, sizeof(void *));
+        ALIGN_TO(alignof<void *>());
         U next_dp = dp + sizeof(void *) * 2;
         static_cast<T *>(this)->walk_fn();
         dp = next_dp;
     }
 
     void walk_obj() {
-        if (this->align) dp = align_to(dp, sizeof(void *));
+        ALIGN_TO(alignof<void *>());
         U next_dp = dp + sizeof(void *) * 2;
         static_cast<T *>(this)->walk_obj();
         dp = next_dp;
@@ -893,8 +905,8 @@ void
 data<T,U>::walk_tag(tag_info &tinfo) {
     size_of::compute_tag_size(*this, tinfo);
 
-    if (tinfo.variant_count > 1 && this->align)
-        dp = align_to(dp, alignof<uint32_t>());
+    if (tinfo.variant_count > 1)
+        ALIGN_TO(alignof<uint32_t>());
 
     U end_dp = dp + tinfo.tag_sa.size;
 
@@ -1029,7 +1041,7 @@ private:
     void walk_subcontext(log &sub) { sub.walk(); }
 
     void walk_box_contents(log &sub, ptr &ref_count_dp) {
-        if (ref_count_dp == 0) {
+        if (!ref_count_dp) {
             out << "(null)";
         } else {
             sub.align = true;

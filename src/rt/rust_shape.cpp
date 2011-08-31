@@ -280,7 +280,7 @@ private:
     }
 
     inline void cmp_two_pointers() {
-        if (align) dp = align_to(dp, alignof<uint8_t *>() * 2);
+        ALIGN_TO(alignof<void *>() * 2);
         data_pair<uint8_t *> fst = bump_dp<uint8_t *>(dp);
         data_pair<uint8_t *> snd = bump_dp<uint8_t *>(dp);
         cmp_number(fst);
@@ -289,7 +289,7 @@ private:
     }
 
     inline void cmp_pointer() {
-        if (align) dp = align_to(dp, alignof<uint8_t *>());
+        ALIGN_TO(alignof<void *>());
         cmp_number(bump_dp<uint8_t *>(dp));
     }
 
@@ -369,7 +369,7 @@ void cmp::cmp_number<int32_t>(const data_pair<int32_t> &nums) {
 void
 cmp::walk_vec(bool is_pod, const std::pair<ptr_pair,ptr_pair> &data_range) {
     cmp sub(*this, data_range.first);
-    ptr_pair data_end = data_range.second;
+    ptr_pair data_end = sub.end_dp = data_range.second;
     while (!result && sub.dp < data_end) {
         sub.walk_reset();
         result = sub.result;
@@ -467,6 +467,7 @@ log::walk_vec(bool is_pod, const std::pair<ptr,ptr> &data) {
     out << "[";
 
     log sub(*this, data.first);
+    sub.end_dp = data.second;
 
     bool first = true;
     while (sub.dp < data.second) {
