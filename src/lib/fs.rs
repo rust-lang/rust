@@ -61,7 +61,7 @@ fn list_dir(p: &path) -> [istr] {
 }
 
 fn path_is_absolute(p: &path) -> bool {
-    ret os_fs::path_is_absolute(istr::to_estr(p));
+    ret os_fs::path_is_absolute(p);
 }
 
 // FIXME: under Windows, we should prepend the current drive letter to paths

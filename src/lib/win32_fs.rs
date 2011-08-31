@@ -7,9 +7,9 @@ native "rust" mod rustrt {
 
 fn list_dir(path: str) -> [str] { ret *rustrt::rust_list_files(path + "*"); }
 
-fn path_is_absolute(p: str) -> bool {
-    ret str::char_at(p, 0u) == '/' ||
-            str::char_at(p, 1u) == ':' && str::char_at(p, 2u) == '\\';
+fn path_is_absolute(p: &istr) -> bool {
+    ret istr::char_at(p, 0u) == '/' ||
+            istr::char_at(p, 1u) == ':' && istr::char_at(p, 2u) == '\\';
 }
 
 /* FIXME: win32 path handling actually accepts '/' or '\' and has subtly

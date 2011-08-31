@@ -32,7 +32,7 @@ fn list_dir(path: str) -> [str] {
 
 }
 
-fn path_is_absolute(p: str) -> bool { ret str::char_at(p, 0u) == '/'; }
+fn path_is_absolute(p: &istr) -> bool { ret istr::char_at(p, 0u) == '/'; }
 
 const path_sep: char = '/';
 
