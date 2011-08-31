@@ -168,6 +168,24 @@ get_u16_bump(const uint8_t *&addr) {
     return result;
 }
 
+template<typename T>
+inline void
+fmt_number(std::ostream &out, T n) {
+    out << n;
+}
+
+// Override the character interpretation for these two.
+template<>
+inline void
+fmt_number<uint8_t>(std::ostream &out, uint8_t n) {
+    out << (int)n;
+}
+template<>
+inline void
+fmt_number<int8_t>(std::ostream &out, int8_t n) {
+    out << (int)n;
+}
+
 
 // Contexts
 
@@ -1015,7 +1033,7 @@ private:
                   const type_param *params, const uint8_t *end_sp, bool live);
 
     template<typename T>
-    void walk_number() { out << get_dp<T>(dp); }
+    inline void walk_number() { fmt_number(out, get_dp<T>(dp)); }
 
 public:
     log(rust_task *in_task,
