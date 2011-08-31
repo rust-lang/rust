@@ -100,17 +100,17 @@ fn start_program(prog: &istr, args: &[istr]) -> @program_res {
                                  os::fd_FILE(pipe_err.in), false));
 }
 
-fn read_all(rd: &io::reader) -> str {
-    let buf = "";
+fn read_all(rd: &io::reader) -> istr {
+    let buf = ~"";
     while !rd.eof() {
         let bytes = rd.read_bytes(4096u);
-        buf += str::unsafe_from_bytes(bytes);
+        buf += istr::unsafe_from_bytes(bytes);
     }
     ret buf;
 }
 
 fn program_output(prog: &istr, args: &[istr]) ->
-   {status: int, out: str, err: str} {
+   {status: int, out: istr, err: istr} {
     let pr = start_program(prog, args);
     pr.close_input();
     ret {status: pr.finish(),
