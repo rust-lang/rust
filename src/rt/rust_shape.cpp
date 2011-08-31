@@ -73,7 +73,7 @@ type_param::from_obj_shape(const uint8_t *sp, ptr dp, arena &arena) {
 // A shape printer, useful for debugging
 
 void
-print::walk_tag(bool align, tag_info &tinfo) {
+print::walk_tag(tag_info &tinfo) {
     DPRINT("tag%u", tinfo.tag_id);
     if (!tinfo.n_params)
         return;
@@ -87,14 +87,14 @@ print::walk_tag(bool align, tag_info &tinfo) {
         first = false;
 
         ctxt<print> sub(*this, tinfo.params[i].shape);
-        sub.walk(align);
+        sub.walk();
     }
 
     DPRINT(">");
 }
 
 void
-print::walk_struct(bool align, const uint8_t *end_sp) {
+print::walk_struct(const uint8_t *end_sp) {
     DPRINT("(");
 
     bool first = true;
@@ -103,14 +103,14 @@ print::walk_struct(bool align, const uint8_t *end_sp) {
             DPRINT(",");
         first = false;
 
-        walk(align);
+        walk();
     }
 
     DPRINT(")");
 }
 
 void
-print::walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+print::walk_res(const rust_fn *dtor, unsigned n_params,
                 const type_param *params, const uint8_t *end_sp) {
     DPRINT("res@%p", dtor);
 
@@ -125,7 +125,7 @@ print::walk_res(bool align, const rust_fn *dtor, unsigned n_params,
             first = false;
 
             ctxt<print> sub(*this, params[i].shape);
-            sub.walk(align);
+            sub.walk();
         }
 
         DPRINT(">");
@@ -144,41 +144,41 @@ print::walk_res(bool align, const rust_fn *dtor, unsigned n_params,
             DPRINT(",");
         first = false;
 
-        walk(align);
+        walk();
     }
 
     DPRINT(")");
 }
 
 void
-print::walk_var(bool align, uint8_t param_index) {
+print::walk_var(uint8_t param_index) {
     DPRINT("%c=", 'T' + param_index);
 
     const type_param *param = &params[param_index];
     print sub(*this, param->shape, param->params, param->tables);
-    sub.walk(align);
+    sub.walk();
 }
 
 template<>
-void print::walk_number<uint8_t>(bool align)    { DPRINT("u8"); }
+void print::walk_number<uint8_t>()      { DPRINT("u8"); }
 template<>
-void print::walk_number<uint16_t>(bool align)   { DPRINT("u16"); }
+void print::walk_number<uint16_t>()     { DPRINT("u16"); }
 template<>
-void print::walk_number<uint32_t>(bool align)   { DPRINT("u32"); }
+void print::walk_number<uint32_t>()     { DPRINT("u32"); }
 template<>
-void print::walk_number<uint64_t>(bool align)   { DPRINT("u64"); }
+void print::walk_number<uint64_t>()     { DPRINT("u64"); }
 template<>
-void print::walk_number<int8_t>(bool align)     { DPRINT("i8"); }
+void print::walk_number<int8_t>()       { DPRINT("i8"); }
 template<>
-void print::walk_number<int16_t>(bool align)    { DPRINT("i16"); }
+void print::walk_number<int16_t>()      { DPRINT("i16"); }
 template<>
-void print::walk_number<int32_t>(bool align)    { DPRINT("i32"); }
+void print::walk_number<int32_t>()      { DPRINT("i32"); }
 template<>
-void print::walk_number<int64_t>(bool align)    { DPRINT("i64"); }
+void print::walk_number<int64_t>()      { DPRINT("i64"); }
 template<>
-void print::walk_number<float>(bool align)      { DPRINT("f32"); }
+void print::walk_number<float>()        { DPRINT("f32"); }
 template<>
-void print::walk_number<double>(bool align)     { DPRINT("f64"); }
+void print::walk_number<double>()       { DPRINT("f64"); }
 
 
 void
@@ -197,6 +197,7 @@ size_of::compute_tag_size(tag_info &tinfo) {
         const uint8_t *variant_end = variant_ptr_and_end.second;
 
         size_of sub(*this, variant_ptr, tinfo.params, NULL);
+        sub.align = false;
 
         // Compute the size of this variant.
         size_align variant_sa;
@@ -204,8 +205,8 @@ size_of::compute_tag_size(tag_info &tinfo) {
         while (sub.sp != variant_end) {
             if (!first)
                 variant_sa.size = align_to(variant_sa.size, sub.sa.alignment);
-            sub.walk(!first);
-            first = false;
+            sub.walk();
+            sub.align = true, first = false;
 
             variant_sa.add(sub.sa.size, sub.sa.alignment);
         }
@@ -224,21 +225,21 @@ size_of::compute_tag_size(tag_info &tinfo) {
 }
 
 void
-size_of::walk_tag(bool align, tag_info &tinfo) {
+size_of::walk_tag(tag_info &tinfo) {
     compute_tag_size(*this, tinfo);
     sa = tinfo.tag_sa;
 }
 
 void
-size_of::walk_struct(bool align, const uint8_t *end_sp) {
+size_of::walk_struct(const uint8_t *end_sp) {
     size_align struct_sa(0, 1);
 
     bool first = true;
     while (sp != end_sp) {
         if (!first)
             struct_sa.size = align_to(struct_sa.size, sa.alignment);
-        walk(!first);
-        first = false;
+        walk();
+        align = true, first = false;
 
         struct_sa.add(sa);
     }
@@ -264,21 +265,21 @@ class cmp : public data<cmp,ptr_pair> {
     friend class data<cmp,ptr_pair>;
 
 private:
-    void walk_vec(bool align, bool is_pod,
+    void walk_vec(bool is_pod,
                   const std::pair<ptr_pair,ptr_pair> &data_range);
 
-    inline void walk_subcontext(bool align, cmp &sub) {
-        sub.walk(align);
+    inline void walk_subcontext(cmp &sub) {
+        sub.walk();
         result = sub.result;
     }
 
-    inline void walk_box_contents(bool align, cmp &sub,
-                                  ptr_pair &ref_count_dp) {
-        sub.walk(true);
+    inline void walk_box_contents(cmp &sub, ptr_pair &ref_count_dp) {
+        sub.align = true;
+        sub.walk();
         result = sub.result;
     }
 
-    inline void cmp_two_pointers(bool align) {
+    inline void cmp_two_pointers() {
         if (align) dp = align_to(dp, alignof<uint8_t *>() * 2);
         data_pair<uint8_t *> fst = bump_dp<uint8_t *>(dp);
         data_pair<uint8_t *> snd = bump_dp<uint8_t *>(dp);
@@ -287,7 +288,7 @@ private:
             cmp_number(snd);
     }
 
-    inline void cmp_pointer(bool align) {
+    inline void cmp_pointer() {
         if (align) dp = align_to(dp, alignof<uint8_t *>());
         cmp_number(bump_dp<uint8_t *>(dp));
     }
@@ -301,12 +302,13 @@ public:
     int result;
 
     cmp(rust_task *in_task,
+        bool in_align,
         const uint8_t *in_sp,
         const type_param *in_params,
         const rust_shape_tables *in_tables,
         uint8_t *in_data_0,
         uint8_t *in_data_1)
-    : data<cmp,ptr_pair>(in_task, in_sp, in_params, in_tables,
+    : data<cmp,ptr_pair>(in_task, in_align, in_sp, in_params, in_tables,
                          ptr_pair::make(in_data_0, in_data_1)),
       result(0) {}
 
@@ -315,6 +317,7 @@ public:
         const type_param *in_params = NULL,
         const rust_shape_tables *in_tables = NULL)
     : data<cmp,ptr_pair>(other.task,
+                         other.align,
                          in_sp ? in_sp : other.sp,
                          in_params ? in_params : other.params,
                          in_tables ? in_tables : other.tables,
@@ -322,35 +325,35 @@ public:
       result(0) {}
 
     cmp(const cmp &other, const ptr_pair &in_dp)
-    : data<cmp,ptr_pair>(other.task, other.sp, other.params, other.tables,
+    : data<cmp,ptr_pair>(other.task,
+                         other.align,
+                         other.sp,
+                         other.params,
+                         other.tables,
                          in_dp),
       result(0) {}
 
-    void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
-        walk_vec(align, is_pod, get_evec_data_range(dp));
+    void walk_evec(bool is_pod, uint16_t sp_size) {
+        walk_vec(is_pod, get_evec_data_range(dp));
     }
 
-    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
-        walk_vec(align, is_pod, get_vec_data_range(dp));
+    void walk_vec(bool is_pod, uint16_t sp_size) {
+        walk_vec(is_pod, get_vec_data_range(dp));
     }
 
-    void walk_box(bool align) {
-        data<cmp,ptr_pair>::walk_box_contents(align);
+    void walk_box() {
+        data<cmp,ptr_pair>::walk_box_contents();
     }
 
-    void walk_fn(bool align) { return cmp_two_pointers(align); }
-    void walk_obj(bool align) { return cmp_two_pointers(align); }
-    void walk_port(bool align) { return cmp_pointer(align); }
-    void walk_chan(bool align) { return cmp_pointer(align); }
-    void walk_task(bool align) { return cmp_pointer(align); }
+    void walk_fn()  { return cmp_two_pointers(); }
+    void walk_obj() { return cmp_two_pointers(); }
 
-    void walk_tag(bool align, tag_info &tinfo,
-                  const data_pair<uint32_t> &tag_variants);
-    void walk_struct(bool align, const uint8_t *end_sp);
-    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
+    void walk_tag(tag_info &tinfo, const data_pair<uint32_t> &tag_variants);
+    void walk_struct(const uint8_t *end_sp);
+    void walk_res(const rust_fn *dtor, uint16_t n_ty_params,
                   const type_param *ty_params_sp, const uint8_t *end_sp,
                   const data_pair<uintptr_t> &live);
-    void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
+    void walk_variant(tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
 
@@ -364,14 +367,13 @@ void cmp::cmp_number<int32_t>(const data_pair<int32_t> &nums) {
 }
 
 void
-cmp::walk_vec(bool align, bool is_pod,
-              const std::pair<ptr_pair,ptr_pair> &data_range) {
+cmp::walk_vec(bool is_pod, const std::pair<ptr_pair,ptr_pair> &data_range) {
     cmp sub(*this, data_range.first);
     ptr_pair data_end = data_range.second;
     while (!result && sub.dp < data_end) {
-        sub.walk_reset(align);
+        sub.walk_reset();
         result = sub.result;
-        align = true;
+        sub.align = true;
     }
 
     if (!result) {
@@ -383,40 +385,39 @@ cmp::walk_vec(bool align, bool is_pod,
 }
 
 void
-cmp::walk_tag(bool align, tag_info &tinfo,
-              const data_pair<uint32_t> &tag_variants) {
+cmp::walk_tag(tag_info &tinfo, const data_pair<uint32_t> &tag_variants) {
     cmp_number(tag_variants);
     if (result != 0)
         return;
-    data<cmp,ptr_pair>::walk_variant(align, tinfo, tag_variants.fst);
+    data<cmp,ptr_pair>::walk_variant(tinfo, tag_variants.fst);
 }
 
 void
-cmp::walk_struct(bool align, const uint8_t *end_sp) {
+cmp::walk_struct(const uint8_t *end_sp) {
     while (!result && this->sp != end_sp) {
-        this->walk(align);
+        this->walk();
         align = true;
     }
 }
 
 void
-cmp::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
+cmp::walk_res(const rust_fn *dtor, uint16_t n_ty_params,
               const type_param *ty_params_sp, const uint8_t *end_sp,
               const data_pair<uintptr_t> &live) {
     abort();    // TODO
 }
 
 void
-cmp::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
+cmp::walk_variant(tag_info &tinfo, uint32_t variant_id,
                   const std::pair<const uint8_t *,const uint8_t *>
                   variant_ptr_and_end) {
     cmp sub(*this, variant_ptr_and_end.first, tinfo.params);
 
     const uint8_t *variant_end = variant_ptr_and_end.second;
     while (!result && sub.sp < variant_end) {
-        sub.walk(align);
+        sub.walk();
         result = sub.result;
-        align = true;
+        sub.align = true;
     }
 }
 
@@ -441,14 +442,14 @@ log::walk_string(const std::pair<ptr,ptr> &data) {
 }
 
 void
-log::walk_struct(bool align, const uint8_t *end_sp) {
+log::walk_struct(const uint8_t *end_sp) {
     out << "(";
 
     bool first = true;
     while (sp != end_sp) {
         if (!first)
             out << ", ";
-        walk(align);
+        walk();
         align = true, first = false;
     }
 
@@ -456,7 +457,7 @@ log::walk_struct(bool align, const uint8_t *end_sp) {
 }
 
 void
-log::walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data) {
+log::walk_vec(bool is_pod, const std::pair<ptr,ptr> &data) {
     if (peek() == SHAPE_U8) {
         sp++;   // It's a string. We handle this ourselves.
         walk_string(data);
@@ -469,20 +470,16 @@ log::walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data) {
 
     bool first = true;
     while (sub.dp < data.second) {
-        if (!first)
-            out << ", ";
-
-        sub.walk_reset(align);
-
-        align = true;
-        first = false;
+        if (!first) out << ", ";
+        sub.walk_reset();
+        sub.align = true, first = false;
     }
 
     out << "]";
 }
 
 void
-log::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
+log::walk_variant(tag_info &tinfo, uint32_t variant_id,
                   const std::pair<const uint8_t *,const uint8_t *>
                   variant_ptr_and_end) {
     log sub(*this, variant_ptr_and_end.first, tinfo.params);
@@ -491,11 +488,8 @@ log::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
     bool first = true;
     while (sub.sp < variant_end) {
         out << (first ? "(" : ", ");
-
-        sub.walk(align);
-
-        align = true;
-        first = false;
+        sub.walk();
+        sub.align = true, first = false;
     }
 
     if (!first)
@@ -503,7 +497,7 @@ log::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
 }
 
 void
-log::walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+log::walk_res(const rust_fn *dtor, unsigned n_params,
               const type_param *params, const uint8_t *end_sp, bool live) {
     out << "res";
 
@@ -516,7 +510,7 @@ log::walk_res(bool align, const rust_fn *dtor, unsigned n_params,
     while (sp != end_sp) {
         if (!first)
             out << ", ";
-        walk(align);
+        walk();
         align = true, first = false;
     }
 
@@ -531,9 +525,9 @@ upcall_cmp_type(int8_t *result, rust_task *task, type_desc *tydesc,
                 uint8_t *data_1, uint8_t cmp_type) {
     shape::arena arena;
     shape::type_param *params = shape::type_param::from_tydesc(tydesc, arena);
-    shape::cmp cmp(task, tydesc->shape, params, tydesc->shape_tables, data_0,
-                   data_1);
-    cmp.walk(true);
+    shape::cmp cmp(task, true, tydesc->shape, params, tydesc->shape_tables,
+                   data_0, data_1);
+    cmp.walk();
 
     switch (cmp_type) {
     case shape::CMP_EQ: *result = cmp.result == 0;  break;
@@ -552,10 +546,10 @@ upcall_log_type(rust_task *task, type_desc *tydesc, uint8_t *data,
     shape::type_param *params = shape::type_param::from_tydesc(tydesc, arena);
 
     std::stringstream ss;
-    shape::log log(task, tydesc->shape, params, tydesc->shape_tables, data,
-                   ss);
+    shape::log log(task, true, tydesc->shape, params, tydesc->shape_tables,
+                   data, ss);
 
-    log.walk(true);
+    log.walk();
 
     task->sched->log(task, level, "%s", ss.str().c_str());
 }

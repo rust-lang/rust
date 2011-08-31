@@ -6,10 +6,13 @@
 
 #include "rust_internal.h"
 
+// ISAAC pollutes our namespace.
+#undef align
+
 #define ARENA_SIZE          256
 
 #define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
-#define DPRINTCX(cx)        print::print_cx(cx)
+#define DPRINTCX(cx)        shape::print::print_cx(cx)
 
 //#define DPRINT(fmt,...)
 //#define DPRINTCX(cx)
@@ -198,12 +201,18 @@ public:
     const type_param *params;           // shapes of type parameters
     const rust_shape_tables *tables;
     rust_task *task;
+    bool align;
 
     ctxt(rust_task *in_task,
+         bool in_align,
          const uint8_t *in_sp,
          const type_param *in_params,
          const rust_shape_tables *in_tables)
-    : sp(in_sp), params(in_params), tables(in_tables), task(in_task) {}
+    : sp(in_sp),
+      params(in_params),
+      tables(in_tables),
+      task(in_task),
+      align(in_align) {}
 
     template<typename U>
     ctxt(const ctxt<U> &other,
@@ -213,10 +222,11 @@ public:
     : sp(in_sp ? in_sp : other.sp),
       params(in_params ? in_params : other.params),
       tables(in_tables ? in_tables : other.tables),
-      task(other.task) {}
+      task(other.task),
+      align(other.align) {}
 
-    void walk(bool align);
-    void walk_reset(bool align);
+    void walk();
+    void walk_reset();
 
     std::pair<const uint8_t *,const uint8_t *>
     get_variant_sp(tag_info &info, uint32_t variant_id);
@@ -227,13 +237,13 @@ protected:
     inline size_align get_size_align(const uint8_t *&addr);
 
 private:
-    void walk_evec(bool align);
-    void walk_vec(bool align);
-    void walk_tag(bool align);
-    void walk_box(bool align);
-    void walk_struct(bool align);
-    void walk_res(bool align);
-    void walk_var(bool align);
+    void walk_evec();
+    void walk_vec();
+    void walk_tag();
+    void walk_box();
+    void walk_struct();
+    void walk_res();
+    void walk_var();
 };
 
 
@@ -308,13 +318,12 @@ public:
 // Traversals
 
 #define WALK_NUMBER(c_type) \
-    static_cast<T *>(this)->template walk_number<c_type>(align)
-#define WALK_SIMPLE(method) static_cast<T *>(this)->method(align)
+    static_cast<T *>(this)->template walk_number<c_type>()
+#define WALK_SIMPLE(method) static_cast<T *>(this)->method()
 
 template<typename T>
 void
-ctxt<T>::walk(bool align) {
-  
+ctxt<T>::walk() {
     switch (*sp++) {
     case SHAPE_U8:      WALK_NUMBER(uint8_t);   break;
     case SHAPE_U16:     WALK_NUMBER(uint16_t);  break;
@@ -326,24 +335,24 @@ ctxt<T>::walk(bool align) {
     case SHAPE_I64:     WALK_NUMBER(int64_t);   break;
     case SHAPE_F32:     WALK_NUMBER(float);     break;
     case SHAPE_F64:     WALK_NUMBER(double);    break;
-    case SHAPE_EVEC:    walk_evec(align);       break;
-    case SHAPE_VEC:     walk_vec(align);        break;
-    case SHAPE_TAG:     walk_tag(align);        break;
-    case SHAPE_BOX:     walk_box(align);        break;
-    case SHAPE_STRUCT:  walk_struct(align);     break;
+    case SHAPE_EVEC:    walk_evec();            break;
+    case SHAPE_VEC:     walk_vec();             break;
+    case SHAPE_TAG:     walk_tag();             break;
+    case SHAPE_BOX:     walk_box();             break;
+    case SHAPE_STRUCT:  walk_struct();          break;
     case SHAPE_FN:      WALK_SIMPLE(walk_fn);   break;
     case SHAPE_OBJ:     WALK_SIMPLE(walk_obj);  break;
-    case SHAPE_RES:     walk_res(align);        break;
-    case SHAPE_VAR:     walk_var(align);        break;
+    case SHAPE_RES:     walk_res();             break;
+    case SHAPE_VAR:     walk_var();             break;
     default:            abort();
     }
 }
 
 template<typename T>
 void
-ctxt<T>::walk_reset(bool align) {
+ctxt<T>::walk_reset() {
     const uint8_t *old_sp = sp;
-    walk(align);
+    walk();
     sp = old_sp;
 }
 
@@ -371,33 +380,33 @@ ctxt<T>::get_variant_sp(tag_info &tinfo, uint32_t variant_id) {
 
 template<typename T>
 void
-ctxt<T>::walk_evec(bool align) {
+ctxt<T>::walk_evec() {
     bool is_pod = *sp++;
 
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_evec(align, is_pod, sp_size);
+    static_cast<T *>(this)->walk_evec(is_pod, sp_size);
 
     sp = end_sp;
 }
 
 template<typename T>
 void
-ctxt<T>::walk_vec(bool align) {
+ctxt<T>::walk_vec() {
     bool is_pod = *sp++;
 
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_vec(align, is_pod, sp_size);
+    static_cast<T *>(this)->walk_vec(is_pod, sp_size);
 
     sp = end_sp;
 }
 
 template<typename T>
 void
-ctxt<T>::walk_tag(bool align) {
+ctxt<T>::walk_tag() {
     tag_info tinfo;
     tinfo.tag_id = get_u16_bump(sp);
 
@@ -429,34 +438,34 @@ ctxt<T>::walk_tag(bool align) {
     tinfo.params = params;
 
     // Call to the implementation.
-    static_cast<T *>(this)->walk_tag(align, tinfo);
+    static_cast<T *>(this)->walk_tag(tinfo);
 }
 
 template<typename T>
 void
-ctxt<T>::walk_box(bool align) {
+ctxt<T>::walk_box() {
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_box(align);
+    static_cast<T *>(this)->walk_box();
 
     sp = end_sp;
 }
 
 template<typename T>
 void
-ctxt<T>::walk_struct(bool align) {
+ctxt<T>::walk_struct() {
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_struct(align, end_sp);
+    static_cast<T *>(this)->walk_struct(end_sp);
 
     sp = end_sp;
 }
 
 template<typename T>
 void
-ctxt<T>::walk_res(bool align) {
+ctxt<T>::walk_res() {
     uint16_t dtor_offset = get_u16_bump(sp);
     const rust_fn **resources =
         reinterpret_cast<const rust_fn **>(tables->resources);
@@ -476,17 +485,16 @@ ctxt<T>::walk_res(bool align) {
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_res(align, dtor, n_ty_params, params,
-                                     end_sp);
+    static_cast<T *>(this)->walk_res(dtor, n_ty_params, params, end_sp);
 
     sp = end_sp;
 }
 
 template<typename T>
 void
-ctxt<T>::walk_var(bool align) {
+ctxt<T>::walk_var() {
     uint8_t param = *sp++;
-    static_cast<T *>(this)->walk_var(align, param);
+    static_cast<T *>(this)->walk_var(param);
 }
 
 // A shape printer, useful for debugging
@@ -500,35 +508,33 @@ public:
           const rust_shape_tables *in_tables = NULL)
     : ctxt<print>(other, in_sp, in_params, in_tables) {}
 
-    void walk_tag(bool align, tag_info &tinfo);
-    void walk_struct(bool align, const uint8_t *end_sp);
-    void walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+    void walk_tag(tag_info &tinfo);
+    void walk_struct(const uint8_t *end_sp);
+    void walk_res(const rust_fn *dtor, unsigned n_params,
                   const type_param *params, const uint8_t *end_sp);
-    void walk_var(bool align, uint8_t param);
+    void walk_var(uint8_t param);
 
-    void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
-        DPRINT("evec<"); walk(align); DPRINT(">");
+    void walk_evec(bool is_pod, uint16_t sp_size) {
+        DPRINT("evec<"); walk(); DPRINT(">");
     }
-    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
-        DPRINT("vec<"); walk(align); DPRINT(">");
+    void walk_vec(bool is_pod, uint16_t sp_size) {
+        DPRINT("vec<"); walk(); DPRINT(">");
     }
-    void walk_box(bool align) {
-        DPRINT("box<"); walk(align); DPRINT(">");
+    void walk_box() {
+        DPRINT("box<"); walk(); DPRINT(">");
     }
 
-    void walk_port(bool align)                  { DPRINT("port"); }
-    void walk_chan(bool align)                  { DPRINT("chan"); }
-    void walk_task(bool align)                  { DPRINT("task"); }
-    void walk_fn(bool align)                    { DPRINT("fn");   }
-    void walk_obj(bool align)                   { DPRINT("obj");  }
+    void walk_fn()  { DPRINT("fn"); }
+    void walk_obj() { DPRINT("obj"); }
 
     template<typename T>
-    void walk_number(bool align) {}
+    void walk_number() {}
 
     template<typename T>
     static void print_cx(const T *cx) {
         print self(*cx);
-        self.walk(false);
+        self.align = false;
+        self.walk();
     }
 };
 
@@ -558,37 +564,34 @@ public:
             const rust_shape_tables *in_tables = NULL)
     : ctxt<size_of>(other, in_sp, in_params, in_tables) {}
 
-    void walk_tag(bool align, tag_info &tinfo);
-    void walk_struct(bool align, const uint8_t *end_sp);
+    void walk_tag(tag_info &tinfo);
+    void walk_struct(const uint8_t *end_sp);
 
-    void walk_box(bool align)   { sa.set(sizeof(void *),   sizeof(void *)); }
-    void walk_port(bool align)  { sa.set(sizeof(void *),   sizeof(void *)); }
-    void walk_chan(bool align)  { sa.set(sizeof(void *),   sizeof(void *)); }
-    void walk_task(bool align)  { sa.set(sizeof(void *),   sizeof(void *)); }
-    void walk_fn(bool align)    { sa.set(sizeof(void *)*2, sizeof(void *)); }
-    void walk_obj(bool align)   { sa.set(sizeof(void *)*2, sizeof(void *)); }
+    void walk_box()     { sa.set(sizeof(void *),   sizeof(void *)); }
+    void walk_fn()      { sa.set(sizeof(void *)*2, sizeof(void *)); }
+    void walk_obj()     { sa.set(sizeof(void *)*2, sizeof(void *)); }
 
-    void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
+    void walk_evec(bool is_pod, uint16_t sp_size) {
         sa.set(sizeof(void *), sizeof(void *));
     }
-    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
-        sa.set(sizeof(void*), sizeof(void*));
+    void walk_vec(bool is_pod, uint16_t sp_size) {
+        sa.set(sizeof(void *), sizeof(void *));
     }
 
-    void walk_var(bool align, uint8_t param_index) {
+    void walk_var(uint8_t param_index) {
         const type_param *param = &params[param_index];
         size_of sub(*this, param->shape, param->params, param->tables);
-        sub.walk(align);
+        sub.walk();
         sa = sub.sa;
     }
 
-    void walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+    void walk_res(const rust_fn *dtor, unsigned n_params,
                   const type_param *params, const uint8_t *end_sp) {
         abort();    // TODO
     }
 
     template<typename T>
-    void walk_number(bool align) { sa.set(sizeof(T), alignof<T>()); }
+    void walk_number()  { sa.set(sizeof(T), alignof<T>()); }
 
     void compute_tag_size(tag_info &tinfo);
 
@@ -601,7 +604,8 @@ public:
     template<typename T>
     static size_align get(const ctxt<T> &other_cx, unsigned back_up = 0) {
         size_of cx(other_cx, other_cx.sp - back_up);
-        cx.walk(false);
+        cx.align = false;
+        cx.walk();
         assert(cx.sa.alignment > 0);
         return cx.sa;
     }
@@ -751,7 +755,7 @@ namespace shape {
 // for methods that actually manipulate the data involved.
 
 #define DATA_SIMPLE(ty, call) \
-    if (align) dp = align_to(dp, alignof<ty>()); \
+    if (this->align) dp = align_to(dp, alignof<ty>()); \
     U end_dp = dp + sizeof(ty); \
     static_cast<T *>(this)->call; \
     dp = end_dp;
@@ -759,10 +763,10 @@ namespace shape {
 template<typename T,typename U>
 class data : public ctxt< data<T,U> > {
 protected:
-    void walk_box_contents(bool align);
-    void walk_fn_contents(bool align, ptr &dp);
-    void walk_obj_contents(bool align, ptr &dp);
-    void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
+    void walk_box_contents();
+    void walk_fn_contents(ptr &dp);
+    void walk_obj_contents(ptr &dp);
+    void walk_variant(tag_info &tinfo, uint32_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_evec_data_range(ptr dp);
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
@@ -773,80 +777,79 @@ public:
     U dp;
 
     data(rust_task *in_task,
+         bool in_align,
          const uint8_t *in_sp,
          const type_param *in_params,
          const rust_shape_tables *in_tables,
          U const &in_dp)
-    : ctxt< data<T,U> >(in_task, in_sp, in_params, in_tables), dp(in_dp) {}
+    : ctxt< data<T,U> >(in_task, in_align, in_sp, in_params, in_tables),
+      dp(in_dp) {}
 
-    void walk_tag(bool align, tag_info &tinfo);
+    void walk_tag(tag_info &tinfo);
 
-    void walk_struct(bool align, const uint8_t *end_sp) {
-        static_cast<T *>(this)->walk_struct(align, end_sp);
+    void walk_struct(const uint8_t *end_sp) {
+        static_cast<T *>(this)->walk_struct(end_sp);
     }
 
-    void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
-        DATA_SIMPLE(void *, walk_evec(align, is_pod, sp_size));
+    void walk_evec(bool is_pod, uint16_t sp_size) {
+        DATA_SIMPLE(void *, walk_evec(is_pod, sp_size));
     }
-    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
-        DATA_SIMPLE(void *, walk_vec(align, is_pod, sp_size));
+    void walk_vec(bool is_pod, uint16_t sp_size) {
+        DATA_SIMPLE(void *, walk_vec(is_pod, sp_size));
     }
 
-    void walk_box(bool align)   { DATA_SIMPLE(void *, walk_box(align)); }
-    void walk_port(bool align)  { DATA_SIMPLE(void *, walk_port(align)); }
-    void walk_chan(bool align)  { DATA_SIMPLE(void *, walk_chan(align)); }
-    void walk_task(bool align)  { DATA_SIMPLE(void *, walk_task(align)); }
+    void walk_box()     { DATA_SIMPLE(void *, walk_box()); }
 
-    void walk_fn(bool align) {
-        if (align) dp = align_to(dp, sizeof(void *));
+    void walk_fn() {
+        if (this->align) dp = align_to(dp, sizeof(void *));
         U next_dp = dp + sizeof(void *) * 2;
-        static_cast<T *>(this)->walk_fn(align);
+        static_cast<T *>(this)->walk_fn();
         dp = next_dp;
     }
 
-    void walk_obj(bool align) {
-        if (align) dp = align_to(dp, sizeof(void *));
+    void walk_obj() {
+        if (this->align) dp = align_to(dp, sizeof(void *));
         U next_dp = dp + sizeof(void *) * 2;
-        static_cast<T *>(this)->walk_obj(align);
+        static_cast<T *>(this)->walk_obj();
         dp = next_dp;
     }
 
-    void walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+    void walk_res(const rust_fn *dtor, unsigned n_params,
                   const type_param *params, const uint8_t *end_sp) {
         typename U::template data<uintptr_t>::t live = bump_dp<uintptr_t>(dp);
         // Delegate to the implementation.
-        static_cast<T *>(this)->walk_res(align, dtor, n_params, params,
-                                         end_sp, live);
+        static_cast<T *>(this)->walk_res(dtor, n_params, params, end_sp,
+                                         live);
     }
 
-    void walk_var(bool align, uint8_t param_index) {
+    void walk_var(uint8_t param_index) {
         const type_param *param = &this->params[param_index];
         T sub(*static_cast<T *>(this), param->shape, param->params,
               param->tables);
-        static_cast<T *>(this)->walk_subcontext(align, sub);
+        static_cast<T *>(this)->walk_subcontext(sub);
         dp = sub.dp;
     }
 
     template<typename W>
-    void walk_number(bool align) { DATA_SIMPLE(W, walk_number<W>()); }
+    void walk_number() { DATA_SIMPLE(W, walk_number<W>()); }
 };
 
 template<typename T,typename U>
 void
-data<T,U>::walk_box_contents(bool align) {
+data<T,U>::walk_box_contents() {
     typename U::template data<uint8_t *>::t box_ptr = bump_dp<uint8_t *>(dp);
 
     U ref_count_dp(box_ptr);
     T sub(*static_cast<T *>(this), ref_count_dp + sizeof(uint32_t));
-    static_cast<T *>(this)->walk_box_contents(align, sub, ref_count_dp);
+    static_cast<T *>(this)->walk_box_contents(sub, ref_count_dp);
 }
 
 template<typename T,typename U>
 void
-data<T,U>::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id) {
+data<T,U>::walk_variant(tag_info &tinfo, uint32_t variant_id) {
     std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
         this->get_variant_sp(tinfo, variant_id);
-    static_cast<T *>(this)->walk_variant(align, tinfo, variant_id,
+    static_cast<T *>(this)->walk_variant(tinfo, variant_id,
                                          variant_ptr_and_end);
 }
 
@@ -887,10 +890,10 @@ data<T,U>::get_vec_data_range(ptr_pair &dp) {
 
 template<typename T,typename U>
 void
-data<T,U>::walk_tag(bool align, tag_info &tinfo) {
+data<T,U>::walk_tag(tag_info &tinfo) {
     size_of::compute_tag_size(*this, tinfo);
 
-    if (tinfo.variant_count > 1 && align)
+    if (tinfo.variant_count > 1 && this->align)
         dp = align_to(dp, alignof<uint32_t>());
 
     U end_dp = dp + tinfo.tag_sa.size;
@@ -901,14 +904,14 @@ data<T,U>::walk_tag(bool align, tag_info &tinfo) {
     else
         tag_variant = 0;
 
-    static_cast<T *>(this)->walk_tag(align, tinfo, tag_variant);
+    static_cast<T *>(this)->walk_tag(tinfo, tag_variant);
 
     dp = end_dp;
 }
 
 template<typename T,typename U>
 void
-data<T,U>::walk_fn_contents(bool align, ptr &dp) {
+data<T,U>::walk_fn_contents(ptr &dp) {
     dp += sizeof(void *);   // Skip over the code pointer.
 
     uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
@@ -926,12 +929,13 @@ data<T,U>::walk_fn_contents(bool align, ptr &dp) {
     closure_dp += sizeof(void *);
     T sub(*static_cast<T *>(this), subtydesc->shape, params,
           subtydesc->shape_tables, closure_dp);
-    sub.walk(true);
+    sub.align = true;
+    sub.walk();
 }
 
 template<typename T,typename U>
 void
-data<T,U>::walk_obj_contents(bool align, ptr &dp) {
+data<T,U>::walk_obj_contents(ptr &dp) {
     dp += sizeof(void *);   // Skip over the vtable.
 
     uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
@@ -946,7 +950,8 @@ data<T,U>::walk_obj_contents(bool align, ptr &dp) {
                                                     obj_closure_dp, arena);
     T sub(*static_cast<T *>(this), subtydesc->shape, params,
           subtydesc->shape_tables, obj_closure_dp);
-    sub.walk(true);
+    sub.align = true;
+    sub.walk();
 }
 
 
@@ -964,6 +969,7 @@ private:
         const type_param *in_params,
         const rust_shape_tables *in_tables = NULL)
     : data<log,ptr>(other.task,
+                    other.align,
                     in_sp,
                     in_params,
                     in_tables ? in_tables : other.tables,
@@ -975,61 +981,69 @@ private:
         const type_param *in_params,
         const rust_shape_tables *in_tables,
         ptr in_dp)
-    : data<log,ptr>(other.task, in_sp, in_params, in_tables, in_dp),
+    : data<log,ptr>(other.task,
+                    other.align,
+                    in_sp,
+                    in_params,
+                    in_tables,
+                    in_dp),
       out(other.out) {}
 
     log(log &other, ptr in_dp)
-    : data<log,ptr>(other.task, other.sp, other.params, other.tables, in_dp),
+    : data<log,ptr>(other.task,
+                    other.align,
+                    other.sp,
+                    other.params,
+                    other.tables,
+                    in_dp),
       out(other.out) {}
 
-    void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
-        walk_vec(align, is_pod, get_evec_data_range(dp));
+    void walk_evec(bool is_pod, uint16_t sp_size) {
+        walk_vec(is_pod, get_evec_data_range(dp));
     }
 
-    void walk_vec(bool align, bool is_pod, uint16_t sp_size) {
-        walk_vec(align, is_pod, get_vec_data_range(dp));
+    void walk_vec(bool is_pod, uint16_t sp_size) {
+        walk_vec(is_pod, get_vec_data_range(dp));
     }
 
-    void walk_tag(bool align, tag_info &tinfo, uint32_t tag_variant) {
+    void walk_tag(tag_info &tinfo, uint32_t tag_variant) {
         out << "tag" << tag_variant;
-        data<log,ptr>::walk_variant(align, tinfo, tag_variant);
+        data<log,ptr>::walk_variant(tinfo, tag_variant);
     }
 
-    void walk_box(bool align) {
+    void walk_box() {
         out << "@";
-        data<log,ptr>::walk_box_contents(align);
+        data<log,ptr>::walk_box_contents();
     }
 
-    void walk_fn(bool align) {
+    void walk_fn() {
         out << "fn";
-        data<log,ptr>::walk_fn_contents(align, dp);
+        data<log,ptr>::walk_fn_contents(dp);
     }
 
-    void walk_obj(bool align) {
+    void walk_obj() {
         out << "obj";
-        data<log,ptr>::walk_obj_contents(align, dp);
+        data<log,ptr>::walk_obj_contents(dp);
     }
 
-    void walk_port(bool align) { out << "port"; }
-    void walk_chan(bool align) { out << "chan"; }
-    void walk_task(bool align) { out << "task"; }
+    void walk_subcontext(log &sub) { sub.walk(); }
 
-    void walk_subcontext(bool align, log &sub) { sub.walk(align); }
-
-    void walk_box_contents(bool align, log &sub, ptr &ref_count_dp) {
-        if (ref_count_dp == 0)
+    void walk_box_contents(log &sub, ptr &ref_count_dp) {
+        if (ref_count_dp == 0) {
             out << "(null)";
-        else
-            sub.walk(true);
+        } else {
+            sub.align = true;
+            sub.walk();
+        }
     }
 
-    void walk_struct(bool align, const uint8_t *end_sp);
-    void walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data);
-    void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
+    void walk_struct(const uint8_t *end_sp);
+    void walk_vec(bool is_pod, const std::pair<ptr,ptr> &data);
+    void walk_variant(tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
     void walk_string(const std::pair<ptr,ptr> &data);
-    void walk_res(bool align, const rust_fn *dtor, unsigned n_params,
+    void walk_res(const rust_fn *dtor, unsigned n_params,
                   const type_param *params, const uint8_t *end_sp, bool live);
 
     template<typename T>
@@ -1037,12 +1051,13 @@ private:
 
 public:
     log(rust_task *in_task,
+        bool in_align,
         const uint8_t *in_sp,
         const type_param *in_params,
         const rust_shape_tables *in_tables,
         uint8_t *in_data,
         std::ostream &in_out)
-    : data<log,ptr>(in_task, in_sp, in_params, in_tables, in_data),
+    : data<log,ptr>(in_task, in_align, in_sp, in_params, in_tables, in_data),
       out(in_out) {}
 };
 
