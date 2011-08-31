@@ -5579,21 +5579,50 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
         ccx.sess.span_fatal(sp, ~"multiple 'main' functions");
     }
 
-    let main_takes_ivec =
+    let (main_takes_argv, main_takes_istr) =
         alt ty::struct(ccx.tcx, main_node_type) {
-          ty::ty_fn(_, args, _, _, _) { std::vec::len(args) != 0u }
+          ty::ty_fn(_, args, _, _, _) {
+            if std::vec::len(args) == 0u {
+                (false, false)
+            } else {
+                alt ty::struct(ccx.tcx, args[0].ty) {
+                  ty::ty_vec({ty: t, _}) {
+                    alt ty::struct(ccx.tcx, t) {
+                      ty::ty_str. { (true, false) }
+                      ty::ty_istr. { (true, true) }
+                    }
+                  }
+                }
+            }
+          }
         };
 
-    let llfn = create_main(ccx, sp, main_llfn, main_takes_ivec);
+    let llfn = create_main(ccx, sp, main_llfn,
+                           main_takes_argv, main_takes_istr);
     ccx.main_fn = some(llfn);
 
+    // FIXME: This is a transitional way to let the runtime know
+    // it needs to feed us istrs
+    let lltakesistr = istr::as_buf(~"_rust_main_takes_istr", { |buf|
+        llvm::LLVMAddGlobal(ccx.llmod, T_int(), buf)
+    });
+    llvm::LLVMSetInitializer(lltakesistr, C_uint(main_takes_istr as uint));
+    llvm::LLVMSetGlobalConstant(lltakesistr, True);
+    llvm::LLVMSetLinkage(lltakesistr,
+                         lib::llvm::LLVMExternalLinkage as llvm::Linkage);
+
     fn create_main(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
-                   takes_ivec: bool) -> ValueRef {
+                   takes_argv: bool, takes_istr: bool) -> ValueRef {
+        let unit_ty = if takes_istr {
+            ty::mk_istr(ccx.tcx)
+        } else {
+            ty::mk_str(ccx.tcx)
+        };
         let ivecarg_ty: ty::arg =
             {mode: ty::mo_val,
              ty:
                  ty::mk_vec(ccx.tcx,
-                            {ty: ty::mk_str(ccx.tcx), mut: ast::imm})};
+                            {ty: unit_ty, mut: ast::imm})};
         let llfty =
             type_of_fn(ccx, sp, ast::proto_fn, [ivecarg_ty],
                        ty::mk_nil(ccx.tcx), 0u);
@@ -5609,7 +5638,7 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
         let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
         let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
         let args = [lloutputarg, lltaskarg, llenvarg];
-        if takes_ivec { args += [llargvarg]; }
+        if takes_argv { args += [llargvarg]; }
         FastCall(bcx, main_llfn, args);
         build_return(bcx);
 

@@ -2747,6 +2747,7 @@ fn arg_is_argv_ty(tcx: &ty::ctxt, a: &ty::arg) -> bool {
         if mt.mut != ast::imm { ret false; }
         alt ty::struct(tcx, mt.ty) {
           ty::ty_str. { ret true; }
+          ty::ty_istr. { ret true; }
           _ { ret false; }
         }
       }

@@ -55,6 +55,7 @@ rust_ptr_eq
 rust_run_program
 rust_start
 rust_getcwd
+set_main_takes_istr
 set_min_stack
 sched_threads
 size_of

@@ -24,7 +24,13 @@ define void @_rust_main_wrap(i1* nocapture, %task *, %2* nocapture, %vec *)
   ret void
 }
 
+; FIXME: Transitional. Please remove
+@_rust_main_takes_istr = external global i32
+declare void @set_main_takes_istr(i32)
+
 define i32 @"MAIN"(i32, i32) {
+  %i = load i32* @_rust_main_takes_istr
+  call void @set_main_takes_istr(i32 %i)
   %3 = tail call i32 @rust_start(i32 ptrtoint (void (i1*, %task*, %2*, %vec*)* @_rust_main_wrap to i32), i32 %0, i32 %1, i32 ptrtoint (%0* @_rust_crate_map_toplevel to i32))
   ret i32 %3
 }
