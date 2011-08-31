@@ -13,7 +13,6 @@ use std;
 import option = std::option::t;
 import std::option::some;
 import std::option::none;
-import std::str;
 import std::istr;
 import std::treemap;
 import std::vec;
@@ -35,7 +34,7 @@ fn map(filename: &[u8], emit: &map_reduce::putter<[u8], int>) {
 
     while true {
         alt read_word(f) {
-          some(w) { emit(str::bytes(w), 1); }
+          some(w) { emit(istr::bytes(w), 1); }
           none. { break; }
         }
     }
@@ -198,12 +197,12 @@ mod map_reduce {
     }
 }
 
-fn main(argv: [str]) {
+fn main(argv: [istr]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 
         out.write_line(
-            #ifmt["Usage: %s <filename> ...", istr::from_estr(argv[0])]);
+            #ifmt["Usage: %s <filename> ...", argv[0]]);
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.
@@ -213,7 +212,7 @@ fn main(argv: [str]) {
 
     let iargs = [];
     for a in vec::slice(argv, 1u, vec::len(argv)) {
-        iargs += [str::bytes(a)];
+        iargs += [istr::bytes(a)];
     }
 
     // We can get by with 8k stacks, and we'll probably exhaust our
@@ -228,20 +227,20 @@ fn main(argv: [str]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_err "MapReduce completed in " +
-        istr::to_estr(u64::str(elapsed)) + "ms";
+    log_err ~"MapReduce completed in " +
+        u64::str(elapsed) + ~"ms";
 }
 
-fn read_word(r: io::reader) -> option<str> {
-    let w = "";
+fn read_word(r: io::reader) -> option<istr> {
+    let w = ~"";
 
     while !r.eof() {
         let c = r.read_char();
 
 
         if is_word_char(c) {
-            w += str::from_char(c);
-        } else { if w != "" { ret some(w); } }
+            w += istr::from_char(c);
+        } else { if w != ~"" { ret some(w); } }
     }
     ret none;
 }

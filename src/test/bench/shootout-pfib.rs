@@ -14,7 +14,6 @@ use std;
 import std::vec;
 import std::uint;
 import std::time;
-import std::str;
 import std::istr;
 import std::int::range;
 import std::io;
@@ -50,8 +49,7 @@ fn fib(n: int) -> int {
 
 type config = {stress: bool};
 
-fn parse_opts(argv: [str]) -> config {
-    let argv = istr::from_estrs(argv);
+fn parse_opts(argv: &[istr]) -> config {
     let opts = [getopts::optflag(~"stress")];
 
     let opt_args = vec::slice(argv, 1u, vec::len(argv));
@@ -82,6 +80,7 @@ fn stress(num_tasks: int) {
 }
 
 fn main(argv: [str]) {
+    let argv = istr::from_estrs(argv);
     if vec::len(argv) == 1u {
         assert (fib(8) == 21);
         log fib(8);
@@ -93,7 +92,7 @@ fn main(argv: [str]) {
         if opts.stress {
             stress(2);
         } else {
-            let max = uint::parse_buf(str::bytes(argv[1]), 10u) as int;
+            let max = uint::parse_buf(istr::bytes(argv[1]), 10u) as int;
 
             let num_trials = 10;
 
