@@ -130,7 +130,7 @@ fn run_tests(config: &config) {
 fn test_opts(config: &config) -> test::test_opts {
     {
         filter: alt config.filter {
-          option::some(s) { option::some(istr::to_estr(s)) }
+          option::some(s) { option::some(s) }
           option::none. { option::none }
         },
         run_ignored: config.run_ignored
@@ -183,10 +183,8 @@ fn make_test(cx: &cx, testfile: &istr, configport: &port<[u8]>) ->
      ignore: header::is_test_ignored(cx.config, testfile)}
 }
 
-fn make_test_name(config: &config, testfile: &istr) -> str {
-    istr::to_estr(
-        #ifmt["[%s] %s", mode_str(config.mode),
-              testfile])
+fn make_test_name(config: &config, testfile: &istr) -> istr {
+    #ifmt["[%s] %s", mode_str(config.mode), testfile]
 }
 
 /*

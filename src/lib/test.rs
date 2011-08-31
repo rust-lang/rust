@@ -35,7 +35,7 @@ native "rust" mod rustrt {
 // paths, i.e it should be a series of identifiers seperated by double
 // colons. This way if some test runner wants to arrange the tests
 // heirarchically it may.
-type test_name = str;
+type test_name = istr;
 
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function fails then the test fails. We
@@ -49,7 +49,7 @@ type test_desc = {name: test_name, fn: test_fn, ignore: bool};
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: &[str], tests: &[test_desc]) {
+fn test_main(args: &[istr], tests: &[test_desc]) {
     check (vec::is_not_empty(args));
     let opts =
         alt parse_opts(args) {
@@ -59,26 +59,26 @@ fn test_main(args: &[str], tests: &[test_desc]) {
     if !run_tests_console(opts, tests) { fail "Some tests failed"; }
 }
 
-type test_opts = {filter: option::t<str>, run_ignored: bool};
+type test_opts = {filter: option::t<istr>, run_ignored: bool};
 
-type opt_res = either::t<test_opts, str>;
+type opt_res = either::t<test_opts, istr>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
+fn parse_opts(args: &[istr]) : vec::is_not_empty(args) -> opt_res {
 
-    let args_ = istr::from_estrs(vec::tail(args));
+    let args_ = vec::tail(args);
     let opts = [getopts::optflag(~"ignored")];
     let match =
         alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
           getopts::failure(f) {
-            ret either::right(istr::to_estr(getopts::fail_str(f)))
+            ret either::right(getopts::fail_str(f))
           }
         };
 
     let filter =
         if vec::len(match.free) > 0u {
-            option::some(istr::to_estr(match.free[0]))
+            option::some(match.free[0])
         } else { option::none };
 
     let run_ignored = getopts::opt_present(match, ~"ignored");
@@ -124,7 +124,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
           }
           te_wait(test) {
             st.out.write_str(
-                #ifmt["test %s ... ", istr::from_estr(test.name)]);
+                #ifmt["test %s ... ", test.name]);
           }
           te_result(test, result) {
             alt result {
@@ -167,7 +167,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
         st.out.write_line(~"\nfailures:");
         for test: test_desc in st.failures {
             let testname = test.name; // Satisfy alias analysis
-            st.out.write_line(#ifmt["    %s", istr::from_estr(testname)]);
+            st.out.write_line(#ifmt["    %s", testname]);
         }
     }
 
@@ -259,13 +259,13 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
             let filter_str =
                 alt opts.filter {
                   option::some(f) { f }
-                  option::none. { "" }
+                  option::none. { ~"" }
                 };
 
             let filter =
-                bind fn (test: &test_desc, filter_str: str) ->
+                bind fn (test: &test_desc, filter_str: &istr) ->
                         option::t<test_desc> {
-                         if str::find(test.name, filter_str) >= 0 {
+                         if istr::find(test.name, filter_str) >= 0 {
                              ret option::some(test);
                          } else { ret option::none; }
                      }(_, filter_str);
@@ -296,7 +296,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
     filtered =
         {
             fn lteq(t1: &test_desc, t2: &test_desc) -> bool {
-                str::lteq(t1.name, t2.name)
+                istr::lteq(t1.name, t2.name)
             }
             sort::merge_sort(lteq, filtered)
         };

@@ -253,7 +253,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
              ast_util::path_name_i(path)];
 
     let name_lit: ast::lit =
-        nospan(ast::lit_str(ast_util::path_name_i(path), ast::sk_rc));
+        nospan(ast::lit_str(ast_util::path_name_i(path), ast::sk_unique));
     let name_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_lit(@name_lit),
@@ -291,7 +291,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
 
 fn mk_main(cx: &test_ctxt) -> @ast::item {
 
-    let args_mt: ast::mt = {ty: @nospan(ast::ty_str), mut: ast::imm};
+    let args_mt: ast::mt = {ty: @nospan(ast::ty_istr), mut: ast::imm};
     let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
 
     let args_arg: ast::arg =
