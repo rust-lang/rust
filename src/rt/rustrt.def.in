@@ -48,6 +48,7 @@ rust_dirent_filename
 rust_file_is_dir
 rust_get_stdin
 rust_get_stdout
+rust_get_stderr
 rust_istr_push
 rust_list_files
 rust_process_wait
