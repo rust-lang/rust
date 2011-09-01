@@ -102,7 +102,7 @@ rust_obstack::alloc(size_t len, type_desc *tydesc) {
     if (!chunk)
         return alloc_new(len, tydesc);
 
-    DPRINT("alloc sz %u", (uint32_t)len);
+    DPRINT("alloc sz %u\n", (uint32_t)len);
 
     void *ptr = chunk->alloc(len, tydesc);
     ptr = ptr ? ptr : alloc_new(len, tydesc);
