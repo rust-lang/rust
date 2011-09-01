@@ -59,6 +59,7 @@ rust_obstack_chunk::alloc(size_t len, type_desc *tydesc) {
 
     rust_obstack_alloc *a = new(data + alen) rust_obstack_alloc(len, tydesc);
     alen += sizeof(*a) + len;
+    memset(a->data, '\0', len); // FIXME: For GC.
     return &a->data;
 }
 
