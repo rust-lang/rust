@@ -42,6 +42,7 @@ rust_crate_cache::get_type_desc(size_t size,
         td->is_stateful |= descs[i]->is_stateful;
     }
     td->n_obj_params = n_obj_params;
+    td->n_params = n_descs - 1;
     HASH_ADD(hh, this->type_descs, descs, keysz, td);
     return td;
 }
