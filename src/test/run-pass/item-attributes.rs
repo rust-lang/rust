@@ -189,7 +189,7 @@ mod test_native_items {
         type sbuf;
 
         #[attr]
-        fn str_buf(s: str) -> sbuf;
+        fn unsupervise();
     }
 }
 

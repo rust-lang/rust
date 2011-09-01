@@ -1,8 +1,7 @@
 
 
 native "rust" mod rustrt {
-    type sbuf;
-    fn str_buf(s: str) -> sbuf;
+    fn unsupervise();
 }
 
 native "rust" mod bar = "" { }
