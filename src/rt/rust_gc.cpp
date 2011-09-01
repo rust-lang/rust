@@ -17,8 +17,6 @@
 #include <dlfcn.h>
 #endif
 
-#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
-
 #define END_OF_STACK_RA     (void (*)())0xdeadbeef
 
 namespace gc {
