@@ -4,7 +4,7 @@ import os_fs;
 import str;
 
 native "rust" mod rustrt {
-    fn rust_file_is_dir(path: str) -> int;
+    fn rust_file_is_dir(path: istr::sbuf) -> int;
 }
 
 fn path_sep() -> istr { ret istr::from_char(os_fs::path_sep); }
@@ -43,7 +43,9 @@ fn connect(pre: &path, post: &path) -> path {
 }
 
 fn file_is_dir(p: &path) -> bool {
-    ret rustrt::rust_file_is_dir(istr::to_estr(p)) != 0;
+    ret istr::as_buf(p, { |buf|
+        rustrt::rust_file_is_dir(buf) != 0
+    });
 }
 
 fn list_dir(p: &path) -> [istr] {
