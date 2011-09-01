@@ -1,16 +1,14 @@
 
-import str::sbuf;
-
 native "cdecl" mod libc = "" {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
     fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn open(s: sbuf, flags: int, mode: uint) -> int = "_open";
+    fn open(s: istr::sbuf, flags: int, mode: uint) -> int = "_open";
     fn close(fd: int) -> int = "_close";
     type FILE;
-    fn fopen(path: sbuf, mode: sbuf) -> FILE;
-    fn _fdopen(fd: int, mode: sbuf) -> FILE;
+    fn fopen(path: istr::sbuf, mode: istr::sbuf) -> FILE;
+    fn _fdopen(fd: int, mode: istr::sbuf) -> FILE;
     fn fclose(f: FILE);
     fn fgetc(f: FILE) -> int;
     fn ungetc(c: int, f: FILE);
@@ -42,8 +40,9 @@ mod libc_constants {
 }
 
 native "x86stdcall" mod kernel32 {
-    fn GetEnvironmentVariableA(n: sbuf, v: sbuf, nsize: uint) -> uint;
-    fn SetEnvironmentVariableA(n: sbuf, v: sbuf) -> int;
+    fn GetEnvironmentVariableA(n: istr::sbuf, v: istr::sbuf,
+                               nsize: uint) -> uint;
+    fn SetEnvironmentVariableA(n: istr::sbuf, v: istr::sbuf) -> int;
 }
 
 fn exec_suffix() -> istr { ret ~".exe"; }
@@ -69,7 +68,11 @@ fn pipe() -> {in: int, out: int} {
     ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(fd: int) -> libc::FILE { ret libc::_fdopen(fd, str::buf("r")); }
+fn fd_FILE(fd: int) -> libc::FILE {
+    ret istr::as_buf(~"r", { |modebuf|
+        libc::_fdopen(fd, modebuf)
+    });
+}
 
 native "rust" mod rustrt {
     fn rust_process_wait(handle: int) -> int;

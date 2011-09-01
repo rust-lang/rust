@@ -175,10 +175,12 @@ fn stdin() -> reader {
 }
 
 fn file_reader(path: &istr) -> reader {
-    let path = istr::to_estr(path);
-    let mode = "r";
-    let f = os::libc::fopen(str::buf(path), str::buf(mode));
-    if f as uint == 0u { log_err "error opening " + path; fail; }
+    let f = istr::as_buf(path, { |pathbuf|
+        istr::as_buf(~"r", { |modebuf|
+            os::libc::fopen(pathbuf, modebuf)
+        })
+    });
+    if f as uint == 0u { log_err ~"error opening " + path; fail; }
     ret new_reader(FILE_buf_reader(f, option::some(@FILE_res(f))));
 }
 
@@ -278,7 +280,6 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
 }
 
 fn file_buf_writer(path: &istr, flags: &[fileflag]) -> buf_writer {
-    let path = istr::to_estr(path);
     let fflags: int =
         os::libc_constants::O_WRONLY() | os::libc_constants::O_BINARY();
     for f: fileflag in flags {
@@ -289,10 +290,11 @@ fn file_buf_writer(path: &istr, flags: &[fileflag]) -> buf_writer {
           none. { }
         }
     }
-    let fd =
-        os::libc::open(str::buf(path), fflags,
+    let fd = istr::as_buf(path, { |pathbuf|
+        os::libc::open(pathbuf, fflags,
                        os::libc_constants::S_IRUSR() |
-                           os::libc_constants::S_IWUSR());
+                           os::libc_constants::S_IWUSR())
+    });
     if fd < 0 {
         log_err "error opening file for writing";
         log_err sys::rustrt::last_os_error();
@@ -365,10 +367,12 @@ fn file_writer(path: &istr, flags: &[fileflag]) -> writer {
 
 // FIXME: fileflags
 fn buffered_file_buf_writer(path: &istr) -> buf_writer {
-    let path = istr::to_estr(path);
-    let mode = "w";
-    let f = os::libc::fopen(str::buf(path), str::buf(mode));
-    if f as uint == 0u { log_err "error opening " + path; fail; }
+    let f = istr::as_buf(path, { |pathbuf|
+        istr::as_buf(~"w", { |modebuf|
+            os::libc::fopen(pathbuf, modebuf)
+        })
+    });
+    if f as uint == 0u { log_err ~"error opening " + path; fail; }
     ret FILE_writer(f, option::some(@FILE_res(f)));
 }
 

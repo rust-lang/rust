@@ -1,5 +1,5 @@
 
-import str::sbuf;
+import istr::sbuf;
 
 export program;
 export run_program;
@@ -12,19 +12,21 @@ native "rust" mod rustrt {
        int;
 }
 
-fn arg_vec(prog: str, args: &[str]) -> [sbuf] {
-    let argptrs = [str::buf(prog)];
-    for arg: str in args { argptrs += [str::buf(arg)]; }
-    argptrs += [0 as sbuf];
+fn arg_vec(prog: &istr, args: &[@istr]) -> [sbuf] {
+    let argptrs = istr::as_buf(prog, { |buf| [buf] });
+    for arg in args {
+        argptrs += istr::as_buf(*arg, { |buf| [buf] });
+    }
+    argptrs += [unsafe::reinterpret_cast(0)];
     ret argptrs;
 }
 
 fn spawn_process(prog: &istr, args: &[istr], in_fd: int, out_fd: int,
                  err_fd: int) -> int {
-    let prog = istr::to_estr(prog);
-    let args = istr::to_estrs(args);
-    // Note: we have to hold on to this vector reference while we hold a
-    // pointer to its buffer
+    // Note: we have to hold on to these vector references while we hold a
+    // pointer to their buffers
+    let prog = prog;
+    let args = vec::map({ |&arg| @arg }, args);
     let argv = arg_vec(prog, args);
     let pid =
         rustrt::rust_run_program(vec::unsafe::to_ptr(argv),

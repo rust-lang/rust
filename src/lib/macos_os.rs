@@ -1,16 +1,14 @@
 
-import str::sbuf;
-
 native "cdecl" mod libc = "" {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
     fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn open(s: sbuf, flags: int, mode: uint) -> int;
+    fn open(s: istr::sbuf, flags: int, mode: uint) -> int;
     fn close(fd: int) -> int;
     type FILE;
-    fn fopen(path: sbuf, mode: sbuf) -> FILE;
-    fn fdopen(fd: int, mode: sbuf) -> FILE;
+    fn fopen(path: istr::sbuf, mode: istr::sbuf) -> FILE;
+    fn fdopen(fd: int, mode: istr::sbuf) -> FILE;
     fn fclose(f: FILE);
     fn fgetc(f: FILE) -> int;
     fn ungetc(c: int, f: FILE);
@@ -18,13 +16,13 @@ native "cdecl" mod libc = "" {
     fn fseek(f: FILE, offset: int, whence: int) -> int;
     fn ftell(f: FILE) -> int;
     type dir;
-    fn opendir(d: sbuf) -> dir;
+    fn opendir(d: istr::sbuf) -> dir;
     fn closedir(d: dir) -> int;
     type dirent;
     fn readdir(d: dir) -> dirent;
-    fn getenv(n: sbuf) -> sbuf;
-    fn setenv(n: sbuf, v: sbuf, overwrite: int) -> int;
-    fn unsetenv(n: sbuf) -> int;
+    fn getenv(n: istr::sbuf) -> istr::sbuf;
+    fn setenv(n: istr::sbuf, v: istr::sbuf, overwrite: int) -> int;
+    fn unsetenv(n: istr::sbuf) -> int;
     fn pipe(buf: *mutable int) -> int;
     fn waitpid(pid: int, status: &mutable int, options: int) -> int;
 }
@@ -61,7 +59,11 @@ fn pipe() -> {in: int, out: int} {
     ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(fd: int) -> libc::FILE { ret libc::fdopen(fd, str::buf("r")); }
+fn fd_FILE(fd: int) -> libc::FILE {
+    ret istr::as_buf(~"r", { |modebuf|
+        libc::fdopen(fd, modebuf)
+    });
+}
 
 fn waitpid(pid: int) -> int {
     let status = 0;

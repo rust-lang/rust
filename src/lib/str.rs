@@ -1,7 +1,7 @@
 
 import rustrt::sbuf;
 import uint::le;
-export sbuf;
+// export sbuf;
 // export rustrt;
 // export eq;
 // export lteq;
@@ -10,7 +10,7 @@ export sbuf;
 // export is_ascii;
 export alloc;
 // export byte_len;
-export buf;
+// export buf;
 // export bytes;
 // export unsafe_from_byte;
 // export str_from_cstr;
