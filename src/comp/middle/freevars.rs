@@ -60,7 +60,7 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
                                     ~"internal error in collect_freevars");
                 }
                 alt def_map.get(expr.id) {
-                  ast::def_arg(did) { *refs += [expr.id]; }
+                  ast::def_arg(did, _) { *refs += [expr.id]; }
                   ast::def_local(did) { *refs += [expr.id]; }
                   ast::def_binding(did) { *refs += [expr.id]; }
                   _ {/* no-op */ }

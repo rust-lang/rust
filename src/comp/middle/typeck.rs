@@ -116,8 +116,7 @@ fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
    -> ty_param_kinds_and_ty {
     let no_kinds: [ast::kind] = [];
     alt defn {
-      ast::def_arg(id) {
-
+      ast::def_arg(id, _) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {kinds: no_kinds, ty: typ};
@@ -127,7 +126,7 @@ fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {kinds: no_kinds, ty: typ};
       }
-      ast::def_obj_field(id) {
+      ast::def_obj_field(id, _) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {kinds: no_kinds, ty: typ};
@@ -2642,8 +2641,9 @@ fn check_constraints(fcx: &@fn_ctxt, cs: [@ast::constr], args:[ast::arg]) {
                     that's my justification.
                     */
                     let arg_occ_node_id = fcx.ccx.tcx.sess.next_node_id();
-                    fcx.ccx.tcx.def_map.insert(arg_occ_node_id,
-                                       ast::def_arg(local_def(args[i].id)));
+                    fcx.ccx.tcx.def_map.insert
+                        (arg_occ_node_id, ast::def_arg(local_def(args[i].id),
+                                                       args[i].mode));
                     {id:arg_occ_node_id,
                      node: ast::expr_path(respan(a.span, p)),
                      span:a.span}

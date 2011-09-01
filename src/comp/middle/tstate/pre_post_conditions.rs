@@ -295,7 +295,7 @@ fn handle_update(fcx: &fn_ctxt, parent: &@expr, lhs: &@expr, rhs: &@expr,
 fn handle_var(fcx: &fn_ctxt, rslt: &pre_and_post, id: node_id, name: ident) {
     let df = node_id_to_def_upvar_strict(fcx, id);
     alt df {
-      def_local(d_id) | def_arg(d_id) {
+      def_local(d_id) | def_arg(d_id, _) {
         let i = bit_num(fcx, ninit(d_id.node, name));
         use_var(fcx, d_id.node);
         require_and_preserve(i, rslt);

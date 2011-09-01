@@ -481,7 +481,7 @@ fn check_move_rhs(cx: &@ctx, src: &@ast::expr, sc: &scope, v: &vt<scope>) {
     alt src.node {
       ast::expr_path(p) {
         alt cx.tcx.def_map.get(src.id) {
-          ast::def_obj_field(_) {
+          ast::def_obj_field(_, _) {
             cx.tcx.sess.span_err(src.span,
                                  ~"may not move out of an obj field");
           }
@@ -743,10 +743,10 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
 
 fn def_is_local(d: &ast::def, objfields_count: bool) -> bool {
     ret alt d {
-          ast::def_local(_) | ast::def_arg(_) | ast::def_binding(_) { true }
-          ast::def_obj_field(_) { objfields_count }
-          _ { false }
-        };
+      ast::def_local(_) | ast::def_arg(_, _) | ast::def_binding(_) { true }
+      ast::def_obj_field(_, _) { objfields_count }
+      _ { false }
+    };
 }
 
 fn fty_args(cx: &ctx, fty: ty::t) -> [ty::arg] {

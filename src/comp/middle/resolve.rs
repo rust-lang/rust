@@ -624,13 +624,13 @@ fn scope_is_fn(sc: &scope) -> bool {
 
 fn def_is_local(d: &def) -> bool {
     ret alt d {
-          ast::def_arg(_) | ast::def_local(_) | ast::def_binding(_) { true }
-          _ { false }
-        };
+      ast::def_arg(_, _) | ast::def_local(_) | ast::def_binding(_) { true }
+      _ { false }
+    };
 }
 
 fn def_is_obj_field(d: &def) -> bool {
-    ret alt d { ast::def_obj_field(_) { true } _ { false } };
+    ret alt d { ast::def_obj_field(_, _) { true } _ { false } };
 }
 
 fn def_is_ty_arg(d: &def) -> bool {
@@ -764,7 +764,7 @@ fn lookup_in_fn(name: &ident, decl: &ast::fn_decl,
       ns_value. {
         for a: ast::arg in decl.inputs {
             if istr::eq(a.ident, name) {
-                ret some(ast::def_arg(local_def(a.id)));
+                ret some(ast::def_arg(local_def(a.id), a.mode));
             }
         }
         ret none::<def>;
@@ -780,7 +780,7 @@ fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &[ast::ty_param],
       ns_value. {
         for f: ast::obj_field in ob.fields {
             if istr::eq(f.ident, name) {
-                ret some(ast::def_obj_field(local_def(f.id)));
+                ret some(ast::def_obj_field(local_def(f.id), f.mut));
             }
         }
         ret none::<def>;
@@ -1170,19 +1170,19 @@ fn index_nmod(md: &ast::native_mod) -> mod_index {
 // External lookups
 fn ns_for_def(d: def) -> namespace {
     ret alt d {
-          ast::def_fn(id, _) { ns_value }
-          ast::def_obj_field(id) { ns_value }
-          ast::def_mod(id) { ns_module }
-          ast::def_native_mod(id) { ns_module }
-          ast::def_const(id) { ns_value }
-          ast::def_arg(id) { ns_value }
-          ast::def_local(id) { ns_value }
-          ast::def_variant(_, id) { ns_value }
-          ast::def_ty(id) { ns_type }
-          ast::def_binding(id) { ns_type }
-          ast::def_use(id) { ns_module }
-          ast::def_native_ty(id) { ns_type }
-          ast::def_native_fn(id) { ns_value }
+          ast::def_fn(_, _) { ns_value }
+          ast::def_obj_field(_, _) { ns_value }
+          ast::def_mod(_) { ns_module }
+          ast::def_native_mod(_) { ns_module }
+          ast::def_const(_) { ns_value }
+          ast::def_arg(_, _) { ns_value }
+          ast::def_local(_) { ns_value }
+          ast::def_variant(_, _) { ns_value }
+          ast::def_ty(_) { ns_type }
+          ast::def_binding(_) { ns_type }
+          ast::def_use(_) { ns_module }
+          ast::def_native_ty(_) { ns_type }
+          ast::def_native_fn(_) { ns_value }
         };
 }
 

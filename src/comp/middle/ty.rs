@@ -2600,10 +2600,10 @@ fn substitute_type_params(cx: &ctxt, substs: &[ty::t], typ: t) -> t {
 fn def_has_ty_params(def: &ast::def) -> bool {
     alt def {
       ast::def_fn(_, _) { ret true; }
-      ast::def_obj_field(_) { ret false; }
+      ast::def_obj_field(_, _) { ret false; }
       ast::def_mod(_) { ret false; }
       ast::def_const(_) { ret false; }
-      ast::def_arg(_) { ret false; }
+      ast::def_arg(_, _) { ret false; }
       ast::def_local(_) { ret false; }
       ast::def_variant(_, _) { ret true; }
       ast::def_ty(_) { ret false; }

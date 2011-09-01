@@ -3141,7 +3141,7 @@ fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) -> lval_result {
         assert (cx.fcx.llupvars.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.llupvars.get(did.node));
       }
-      some(ast::def_arg(did)) {
+      some(ast::def_arg(did, _)) {
         assert (cx.fcx.llargs.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.llargs.get(did.node));
       }
@@ -3153,7 +3153,7 @@ fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) -> lval_result {
         assert (cx.fcx.lllocals.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.lllocals.get(did.node));
       }
-      some(ast::def_obj_field(did)) {
+      some(ast::def_obj_field(did, _)) {
         assert (cx.fcx.llobjfields.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.llobjfields.get(did.node));
       }

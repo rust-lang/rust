@@ -29,11 +29,11 @@ type ty_param = {ident: ident, kind: kind};
 
 tag def {
     def_fn(def_id, purity);
-    def_obj_field(def_id);
+    def_obj_field(def_id, mutability);
     def_mod(def_id);
     def_native_mod(def_id);
     def_const(def_id);
-    def_arg(def_id);
+    def_arg(def_id, mode);
     def_local(def_id);
     def_variant(def_id, /* tag */def_id);
 

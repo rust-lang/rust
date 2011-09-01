@@ -625,7 +625,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: &@expr) -> @constr_arg_use {
                         carg_ident({ident: p.node.idents[0],
                                     node: l_id.node}));
           }
-          some(def_arg(a_id)) {
+          some(def_arg(a_id, _)) {
             ret @respan(p.span,
                         carg_ident({ident: p.node.idents[0],
                                     node: a_id.node}));
@@ -849,7 +849,7 @@ fn local_node_id_to_def_id_strict(fcx: &fn_ctxt, sp: &span, i: &node_id) ->
    def_id {
     alt local_node_id_to_def(fcx, i) {
       some(def_local(d_id)) { ret d_id; }
-      some(def_arg(a_id)) { ret a_id; }
+      some(def_arg(a_id, _)) { ret a_id; }
       some(_) {
         fcx.ccx.tcx.sess.span_fatal(sp,
                                     ~"local_node_id_to_def_id: id \
@@ -871,7 +871,7 @@ fn local_node_id_to_def(fcx: &fn_ctxt, i: &node_id) -> option::t<def> {
 fn local_node_id_to_def_id(fcx: &fn_ctxt, i: &node_id) -> option::t<def_id> {
     alt local_node_id_to_def(fcx, i) {
       some(def_local(d_id)) { some(d_id) }
-      some(def_arg(a_id)) { some(a_id) }
+      some(def_arg(a_id, _)) { some(a_id) }
       _ { none }
     }
 }
@@ -880,7 +880,7 @@ fn local_node_id_to_local_def_id(fcx: &fn_ctxt, i: &node_id) ->
    option::t<node_id> {
     alt local_node_id_to_def(fcx, i) {
       some(def_local(d_id)) { some(d_id.node) }
-      some(def_arg(a_id)) { some(a_id.node) }
+      some(def_arg(a_id, _)) { some(a_id.node) }
       _ { none }
     }
 }

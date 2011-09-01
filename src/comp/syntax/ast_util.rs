@@ -29,11 +29,11 @@ fn variant_def_ids(d: &def) -> {tg: def_id, var: def_id} {
 fn def_id_of_def(d: def) -> def_id {
     alt d {
       def_fn(id, _) { ret id; }
-      def_obj_field(id) { ret id; }
+      def_obj_field(id, _) { ret id; }
       def_mod(id) { ret id; }
       def_native_mod(id) { ret id; }
       def_const(id) { ret id; }
-      def_arg(id) { ret id; }
+      def_arg(id, _) { ret id; }
       def_local(id) { ret id; }
       def_variant(_, id) { ret id; }
       def_ty(id) { ret id; }
