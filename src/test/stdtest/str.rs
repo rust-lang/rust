@@ -285,3 +285,31 @@ fn as_buf_small() {
     });
     assert b == 100;
 }
+
+#[test]
+fn as_buf2() {
+    let s = ~"hello";
+    let sb = istr::as_buf(s, { |b| b });
+    let s_cstr = istr::str_from_cstr(sb);
+    assert (istr::eq(s_cstr, s));
+}
+
+#[test]
+fn vec_str_conversions() {
+    let s1: istr = ~"All mimsy were the borogoves";
+
+    let v: [u8] = istr::bytes(s1);
+    let s2: istr = istr::unsafe_from_bytes(v);
+    let i: uint = 0u;
+    let n1: uint = istr::byte_len(s1);
+    let n2: uint = vec::len::<u8>(v);
+    assert (n1 == n2);
+    while i < n1 {
+        let a: u8 = s1[i];
+        let b: u8 = s2[i];
+        log a;
+        log b;
+        assert (a == b);
+        i += 1u;
+    }
+}

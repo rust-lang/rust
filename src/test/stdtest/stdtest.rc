@@ -24,12 +24,10 @@ mod rand;
 mod run;
 mod sha1;
 mod sort;
-mod str_buf;
 mod str;
 mod task;
 mod test;
 mod uint;
-mod vec_str_conversions;
 
 // Local Variables:
 // mode: rust
