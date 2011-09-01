@@ -54,7 +54,7 @@ rust_obstack_chunk::alloc(size_t len, type_desc *tydesc) {
 
     if (sizeof(rust_obstack_alloc) + len > size - alen) {
         DPRINT("Not enough space, len=%lu!\n", len);
-        assert(0);
+        assert(0);      // FIXME
         return NULL;    // Not enough space.
     }
 
