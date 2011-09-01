@@ -3,20 +3,19 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <iostream>
 #include <new>
 #include <stdint.h>
 
 #include "rust_internal.h"
 #include "rust_obstack.h"
+#include "rust_shape.h"
 #include "rust_task.h"
 
 // ISAAC, let go of max()!
 #ifdef max
 #undef max
 #endif
-
-//#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
-#define DPRINT(fmt,...)
 
 //const size_t DEFAULT_CHUNK_SIZE = 4096;
 const size_t DEFAULT_CHUNK_SIZE = 500000;
