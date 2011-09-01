@@ -1790,11 +1790,7 @@ mod unify {
     tag union_result { unres_ok; unres_err(type_err); }
     tag fixup_result {
         fix_ok(t); // fixup succeeded
-
-
-
         fix_err(int); // fixup failed because a type variable was unresolved
-
     }
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
@@ -2605,6 +2601,7 @@ fn def_has_ty_params(def: &ast::def) -> bool {
       ast::def_const(_) { ret false; }
       ast::def_arg(_, _) { ret false; }
       ast::def_local(_) { ret false; }
+      ast::def_upvar(_, _, _) { ret false; }
       ast::def_variant(_, _) { ret true; }
       ast::def_ty(_) { ret false; }
       ast::def_ty_arg(_, _) { ret false; }

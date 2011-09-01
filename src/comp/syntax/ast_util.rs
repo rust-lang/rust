@@ -42,7 +42,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_use(id) { ret id; }
       def_native_ty(id) { ret id; }
       def_native_fn(id) { ret id; }
-      def_upvar(id, _) { ret id; }
+      def_upvar(id, _, _) { ret id; }
     }
 }
 
@@ -216,3 +216,12 @@ fn ternary_to_if(e: &@expr) -> @expr {
       _ { fail; }
     }
 }
+
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:

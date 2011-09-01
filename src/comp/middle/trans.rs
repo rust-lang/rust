@@ -2824,8 +2824,8 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
 
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for build_environment.
-fn build_closure(cx: &@block_ctxt, upvars: &@[ast::node_id], copying: bool) ->
-   {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
+fn build_closure(cx: &@block_ctxt, upvars: &@[ast::def], copying: bool)
+    -> {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
     let closure_vals: [lval_result] = [];
     let closure_tys: [ty::t] = [];
     // If we need to, package up the iterator body to call
@@ -2834,8 +2834,9 @@ fn build_closure(cx: &@block_ctxt, upvars: &@[ast::node_id], copying: bool) ->
         closure_tys += [option::get(cx.fcx.iterbodyty)];
     }
     // Package up the upvars
-    for nid: ast::node_id in *upvars {
-        closure_vals += [trans_var(cx, cx.sp, nid)];
+    for def in *upvars {
+        closure_vals += [trans_local_var(cx, def)];
+        let nid = ast_util::def_id_of_def(def).node;
         let ty = ty::node_id_to_monotype(bcx_tcx(cx), nid);
         if !copying { ty = ty::mk_mut_ptr(bcx_tcx(cx), ty); }
         closure_tys += [ty];
@@ -2882,7 +2883,7 @@ fn find_environment_tydescs(bcx: &@block_ctxt, envty: ty::t,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
 fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt, envty: ty::t,
-                    upvars: &@[ast::node_id], copying: bool) {
+                    upvars: &@[ast::def], copying: bool) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     let ty = ty::mk_imm_box(bcx_tcx(bcx), envty);
@@ -2913,14 +2914,13 @@ fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt, envty: ty::t,
         i += 1u;
     }
 
-    // Load the acutal upvars.
-    for upvar_id: ast::node_id in *upvars {
+    // Load the actual upvars.
+    for upvar_def in *upvars {
         let upvarptr = GEP_tup_like(bcx, ty, llclosure, path + [i as int]);
         bcx = upvarptr.bcx;
         let llupvarptr = upvarptr.val;
         if !copying { llupvarptr = Load(bcx, llupvarptr); }
-        let def_id = ast_util::def_id_of_def(bcx_tcx(bcx).
-                                             def_map.get(upvar_id));
+        let def_id = ast_util::def_id_of_def(upvar_def);
         fcx.llupvars.insert(def_id.node, llupvarptr);
         i += 1u;
     }
@@ -3134,34 +3134,44 @@ fn lookup_discriminant(lcx: &@local_ctxt, vid: &ast::def_id) -> ValueRef {
     }
 }
 
-fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) -> lval_result {
-    let ccx = bcx_ccx(cx);
-    alt freevars::def_lookup(bcx_tcx(cx), cx.fcx.id, id) {
-      some(ast::def_upvar(did, _)) {
+fn trans_local_var(cx: &@block_ctxt, def: &ast::def) -> lval_result {
+    alt def {
+      ast::def_upvar(did, _, _) {
         assert (cx.fcx.llupvars.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.llupvars.get(did.node));
       }
-      some(ast::def_arg(did, _)) {
+      ast::def_arg(did, _) {
         assert (cx.fcx.llargs.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.llargs.get(did.node));
       }
-      some(ast::def_local(did)) {
+      ast::def_local(did) {
         assert (cx.fcx.lllocals.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.lllocals.get(did.node));
       }
-      some(ast::def_binding(did)) {
+      ast::def_binding(did) {
         assert (cx.fcx.lllocals.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.lllocals.get(did.node));
       }
-      some(ast::def_obj_field(did, _)) {
+      ast::def_obj_field(did, _) {
         assert (cx.fcx.llobjfields.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.llobjfields.get(did.node));
       }
-      some(ast::def_fn(did, _)) {
+      _ {
+        bcx_ccx(cx).sess.span_unimpl
+            (cx.sp, ~"unsupported def type in trans_local_def");
+      }
+    }
+}
+
+fn trans_var(cx: &@block_ctxt, sp: &span, def: &ast::def,
+             id: ast::node_id) -> lval_result {
+    let ccx = bcx_ccx(cx);
+    alt def {
+      ast::def_fn(did, _) {
         let tyt = ty::lookup_item_type(ccx.tcx, did);
         ret lval_generic_fn(cx, tyt, did, id);
       }
-      some(ast::def_variant(tid, vid)) {
+      ast::def_variant(tid, vid) {
         let v_tyt = ty::lookup_item_type(ccx.tcx, vid);
         alt ty::struct(ccx.tcx, v_tyt.ty) {
           ty::ty_fn(_, _, _, _, _) {
@@ -3188,7 +3198,7 @@ fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) -> lval_result {
           }
         }
       }
-      some(ast::def_const(did)) {
+      ast::def_const(did) {
         if did.crate == ast::local_crate {
             assert (ccx.consts.contains_key(did.node));
             ret lval_mem(cx, ccx.consts.get(did.node));
@@ -3203,17 +3213,17 @@ fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) -> lval_result {
                                            tp));
         }
       }
-      some(ast::def_native_fn(did)) {
+      ast::def_native_fn(did) {
         let tyt = ty::lookup_item_type(ccx.tcx, did);
         ret lval_generic_fn(cx, tyt, did, id);
       }
-      _ { ccx.sess.span_unimpl(cx.sp, ~"def variant in trans"); }
+      _ { ret trans_local_var(cx, def); }
     }
 }
 
 fn trans_path(cx: &@block_ctxt, p: &ast::path, id: ast::node_id) ->
    lval_result {
-    ret trans_var(cx, p.span, id);
+    ret trans_var(cx, p.span, bcx_tcx(cx).def_map.get(id), id);
 }
 
 fn trans_field(cx: &@block_ctxt, sp: &span, v: ValueRef, t0: ty::t,

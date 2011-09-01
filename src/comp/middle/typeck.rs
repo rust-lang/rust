@@ -148,6 +148,9 @@ fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
       ast::def_ty(_) {
         fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type");
       }
+      ast::def_upvar(_, inner, _) {
+        ret ty_param_kinds_and_ty_for_def(fcx, sp, *inner);
+      }
       _ {
         // FIXME: handle other names.
         fcx.ccx.tcx.sess.unimpl(~"definition variant");
@@ -1128,6 +1131,14 @@ mod writeback {
     fn visit_expr(e: &@ast::expr, wbcx: &wb_ctxt, v: &wb_vt) {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, e.span, e.id);
+        alt e.node {
+          ast::expr_fn(f) {
+            for input in f.decl.inputs {
+                resolve_type_vars_for_node(wbcx, e.span, input.id);
+            }
+          }
+          _ {}
+        }
         visit::visit_expr(e, wbcx, v);
     }
     fn visit_block(b: &ast::blk, wbcx: &wb_ctxt, v: &wb_vt) {
@@ -2683,6 +2694,7 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
           next_var_id: gather_result.next_var_id,
           mutable fixups: fixups,
           ccx: ccx};
+
     check_constraints(fcx, decl.constraints, decl.inputs);
     check_block(fcx, body);
 
@@ -2698,6 +2710,13 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
         }
       }
       none. {}
+    }
+
+    let args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
+    let i = 0u;
+    for arg: ty::arg in args {
+        write::ty_only_fixup(fcx, f.decl.inputs[i].id, arg.ty);
+        i += 1u;
     }
 
     // If we don't have any enclosing function scope, it is time to

@@ -238,14 +238,18 @@ fn check_call(cx: &@ctx, f: &@expr, args: &[@expr]) {
 }
 
 fn is_immutable_def(def: &def) -> option::t<istr> {
-    ret alt def {
+    alt def {
       def_fn(_, _) | def_mod(_) | def_native_mod(_) | def_const(_) |
       def_use(_) { some(~"static item") }
       def_obj_field(_, imm.) { some(~"immutable object field") }
       def_arg(_, alias(false)) { some(~"immutable alias") }
+      def_upvar(_, inner, mut) {
+        if !mut { some(~"upvar") }
+        else { is_immutable_def(*inner) }
+      }
       def_binding(_) { some(~"binding") }
       _ { none }
-    };
+    }
 }
 
 // Local Variables:

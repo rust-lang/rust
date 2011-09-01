@@ -51,7 +51,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
     let cx = @{tcx: tcx,
                local_map: std::map::new_int_hash(),
                mutable next_local: 0u};
-    let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
+    let v = @{visit_fn: visit_fn,
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_decl: bind visit_decl(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
@@ -59,39 +59,15 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
     tcx.sess.abort_if_errors();
 }
 
-fn visit_fn(cx: &@ctx, f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span,
-            _name: &fn_ident, id: ast::node_id, sc: &scope, v: &vt<scope>) {
+fn visit_fn(f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span,
+            _name: &fn_ident, _id: ast::node_id, sc: &scope, v: &vt<scope>) {
     visit::visit_fn_decl(f.decl, sc, v);
-    let scope =
-        alt f.proto {
-
-          // Blocks need to obey any restrictions from the enclosing scope.
-          ast::proto_block. {
-            sc
-          }
-
-          // Closures need to prohibit writing to any of the upvars.
-          // This doesn't seem like a particularly clean way to do this.
-          ast::proto_closure. {
-            let dnums = [];
-            for each nid in freevars::get_freevar_defs(cx.tcx, id).keys() {
-                dnums += [nid];
-            };
-            // I'm not sure if there is anything sensical to put here
-            @[@{root_var: none,
-                local_id: cx.next_local,
-                bindings: dnums,
-                unsafe_ty: none,
-                depends_on: [],
-                mutable ok: valid}]
-          }
-
-          // Non capturing functions start out fresh.
-          _ {
-            @[]
-          }
-        };
-
+    let scope = alt f.proto {
+      // Blocks need to obey any restrictions from the enclosing scope.
+      ast::proto_block. | ast::proto_closure. { sc }
+      // Non capturing functions start out fresh.
+      _ { @[] }
+    };
     v.visit_block(f.body, scope, v);
 }
 
@@ -489,7 +465,8 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
 
 fn def_is_local(d: &ast::def, objfields_count: bool) -> bool {
     ret alt d {
-      ast::def_local(_) | ast::def_arg(_, _) | ast::def_binding(_) { true }
+      ast::def_local(_) | ast::def_arg(_, _) | ast::def_binding(_) |
+      ast::def_upvar(_, _, _) { true }
       ast::def_obj_field(_, _) { objfields_count }
       _ { false }
     };

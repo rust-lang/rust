@@ -55,7 +55,7 @@ tag scope {
     scope_item(@ast::item);
     scope_fn(ast::fn_decl, ast::proto, [ast::ty_param]);
     scope_native_item(@ast::native_item);
-    scope_loop(@ast::local); // there's only 1 decl per loop.
+    scope_loop(@ast::local, bool); // there's only 1 decl per loop.
 
     scope_block(ast::blk, @mutable uint, @mutable uint);
     scope_arm(ast::arm);
@@ -404,13 +404,11 @@ fn visit_arm_with_scope(a: &ast::arm, sc: &scopes, v: &vt<scopes>) {
 fn visit_expr_with_scope(x: &@ast::expr, sc: &scopes, v: &vt<scopes>) {
     alt x.node {
       ast::expr_for(decl, coll, blk) | ast::expr_for_each(decl, coll, blk) {
-        let new_sc = cons::<scope>(scope_loop(decl), @sc);
+        let f_e = alt x.node { expr_for_each(_, _, _) { true } _ { false } };
+        let new_sc = cons(scope_loop(decl, f_e), @sc);
         v.visit_expr(coll, sc, v);
         v.visit_local(decl, new_sc, v);
         v.visit_block(blk, new_sc, v);
-      }
-      ast::expr_fn(f) {
-        visit::visit_expr(x, cons(scope_fn(f.decl, f.proto, []), @sc), v);
       }
       _ { visit::visit_expr(x, sc, v); }
     }
@@ -622,9 +620,18 @@ fn scope_is_fn(sc: &scope) -> bool {
         };
 }
 
+fn scope_closes(sc: &scope) -> option::t<bool> {
+    alt sc {
+      scope_fn(_, ast::proto_block., _) | scope_loop(_, true) { some(true) }
+      scope_fn(_, ast::proto_closure., _) { some(false) }
+      _ { none }
+    }
+}
+
 fn def_is_local(d: &def) -> bool {
     ret alt d {
-      ast::def_arg(_, _) | ast::def_local(_) | ast::def_binding(_) { true }
+      ast::def_arg(_, _) | ast::def_local(_) | ast::def_binding(_) |
+      ast::def_upvar(_, _, _) { true }
       _ { false }
     };
 }
@@ -675,7 +682,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
           scope_fn(decl, _, ty_params) {
             ret lookup_in_fn(name, decl, ty_params, ns);
           }
-          scope_loop(local) {
+          scope_loop(local, _) {
             if ns == ns_value {
                 alt lookup_in_pat(name, local.node.pat) {
                   some(did) { ret some(ast::def_binding(did)); }
@@ -698,8 +705,8 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
         ret none::<def>;
     }
     let left_fn = false;
+    let closing = [];
     // Used to determine whether obj fields are in scope
-
     let left_fn_level2 = false;
     while true {
         alt { sc } {
@@ -708,27 +715,38 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
             let fnd = in_scope(e, sp, name, hd, ns);
             if !is_none(fnd) {
                 let df = option::get(fnd);
-                if left_fn && def_is_local(df) ||
+                let local = def_is_local(df);
+                if left_fn && local ||
                        left_fn_level2 && def_is_obj_field(df) ||
                        scope_is_fn(hd) && left_fn && def_is_ty_arg(df) {
-                    let msg =
-                        alt ns {
-                          ns_type. {
-                            ~"Attempt to use a type \
-                                argument out of scope"
-                          }
-                          _ {
-                            ~"attempted dynamic \
-                                       environment-capture"
-                          }
-                        };
+                    let msg = alt ns {
+                      ns_type. {
+                        ~"Attempt to use a type argument out of scope"
+                      }
+                      _ {
+                        ~"attempted dynamic environment-capture"
+                      }
+                    };
                     e.sess.span_fatal(sp, msg);
+                } else if local {
+                    let i = vec::len(closing);
+                    while i > 0u {
+                        i -= 1u;
+                        df = ast::def_upvar(ast_util::def_id_of_def(df),
+                                            @df, closing[i]);
+                        fnd = some(df);
+                    }
                 }
                 ret fnd;
             }
-            if left_fn { left_fn_level2 = true; }
-            if (ns == ns_value || ns == ns_type) && !left_fn {
+            if left_fn {
+                left_fn_level2 = true;
+            } else if ns == ns_value || ns == ns_type {
                 left_fn = scope_is_fn(hd);
+                alt scope_closes(hd) {
+                  some(mut) { closing += [mut]; }
+                  _ {}
+                }
             }
             sc = *tl;
           }
@@ -1177,6 +1195,7 @@ fn ns_for_def(d: def) -> namespace {
           ast::def_const(_) { ns_value }
           ast::def_arg(_, _) { ns_value }
           ast::def_local(_) { ns_value }
+          ast::def_upvar(_, _, _) { ns_value }
           ast::def_variant(_, _) { ns_value }
           ast::def_ty(_) { ns_type }
           ast::def_binding(_) { ns_type }

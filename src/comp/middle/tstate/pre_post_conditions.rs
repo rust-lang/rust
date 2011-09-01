@@ -210,7 +210,7 @@ fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
 
 fn gen_if_local(fcx: &fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
                 new_var: node_id, pth: &path) {
-    alt node_id_to_def_upvar(fcx, new_var) {
+    alt node_id_to_def(fcx.ccx, new_var) {
       some(d) {
         alt d {
           def_local(d_id) {
@@ -249,7 +249,7 @@ fn handle_update(fcx: &fn_ctxt, parent: &@expr, lhs: &@expr, rhs: &@expr,
           }
           _ {
             // pure and assign_op require the lhs to be init'd
-            let df = node_id_to_def_upvar_strict(fcx, lhs.id);
+            let df = node_id_to_def_strict(fcx.ccx.tcx, lhs.id);
             alt df {
               def_local(d_id) {
                 let i =
@@ -291,13 +291,16 @@ fn handle_update(fcx: &fn_ctxt, parent: &@expr, lhs: &@expr, rhs: &@expr,
     }
 }
 
-/* FIXME: Can't deinitialize an upvar -- tests for that? */
 fn handle_var(fcx: &fn_ctxt, rslt: &pre_and_post, id: node_id, name: ident) {
-    let df = node_id_to_def_upvar_strict(fcx, id);
-    alt df {
+    handle_var_def(fcx, rslt, node_id_to_def_strict(fcx.ccx.tcx, id), name);
+}
+
+fn handle_var_def(fcx: &fn_ctxt, rslt: &pre_and_post, def: &def,
+                  name: ident) {
+    alt def {
       def_local(d_id) | def_arg(d_id, _) {
-        let i = bit_num(fcx, ninit(d_id.node, name));
         use_var(fcx, d_id.node);
+        let i = bit_num(fcx, ninit(d_id.node, name));
         require_and_preserve(i, rslt);
       }
       _ {/* nothing to check */ }
@@ -369,8 +372,9 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       expr_fn(f) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
-        let upvars = freevars::get_freevars(fcx.ccx.tcx, e.id);
-        for id: node_id in *upvars { handle_var(fcx, rslt, id, ~"upvar"); }
+        for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
+            handle_var_def(fcx, rslt, def, ~"upvar");
+        }
       }
       expr_block(b) {
         find_pre_post_block(fcx, b);
@@ -474,6 +478,11 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       }
       expr_for_each(d, index, body) {
         find_pre_post_loop(fcx, d, index, body, e.id);
+        let rslt = expr_pp(fcx.ccx, e);
+        clear_pp(rslt);
+        for def in *freevars::get_freevars(fcx.ccx.tcx, body.node.id) {
+            handle_var_def(fcx, rslt, def, ~"upvar");
+        }
       }
       expr_index(val, sub) { find_pre_post_exprs(fcx, [val, sub], e.id); }
       expr_alt(ex, alts) {

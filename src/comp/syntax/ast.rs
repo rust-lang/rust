@@ -44,11 +44,7 @@ tag def {
     def_use(def_id);
     def_native_ty(def_id);
     def_native_fn(def_id);
-
-    /* A "fake" def for upvars. This never appears in the def_map, but
-     * freevars::def_lookup will return it for a def that is an upvar.
-     * It contains the actual def. */
-    def_upvar(def_id, @def);
+    def_upvar(def_id, @def, bool /* writable */);
 }
 
 // The set of meta_items that define the compilation environment of the crate,

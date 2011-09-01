@@ -173,7 +173,6 @@ fn bad_expr_word_table() -> hashmap<istr, ()> {
     words.insert(~"prove", ());
     words.insert(~"native", ());
     words.insert(~"fn", ());
-    words.insert(~"block", ());
     words.insert(~"lambda", ());
     words.insert(~"pure", ());
     words.insert(~"iter", ());
