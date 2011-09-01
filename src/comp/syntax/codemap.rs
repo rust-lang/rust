@@ -1,6 +1,5 @@
 import std::vec;
 import std::uint;
-import std::str;
 import std::istr;
 import std::term;
 import std::io;

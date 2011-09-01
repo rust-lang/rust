@@ -1,5 +1,4 @@
 import std::vec;
-import std::str;
 import std::istr;
 import std::int;
 import std::option;

@@ -13,7 +13,6 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 import std::int;
-import std::str;
 import std::istr;
 import std::uint;
 import std::map;

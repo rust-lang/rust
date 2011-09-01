@@ -1,4 +1,3 @@
-import std::str;
 import std::istr;
 import std::vec;
 import std::option;

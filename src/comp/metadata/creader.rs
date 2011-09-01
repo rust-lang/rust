@@ -14,7 +14,6 @@ import syntax::codemap::span;
 import back::x86;
 import util::common;
 import std::vec;
-import std::str;
 import std::istr;
 import std::fs;
 import std::io;

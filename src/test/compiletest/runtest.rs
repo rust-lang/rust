@@ -1,5 +1,4 @@
 import std::io;
-import std::str;
 import std::istr;
 import std::option;
 import std::fs;

@@ -6,7 +6,6 @@
  */
 use std;
 import std::int;
-import std::str;
 import std::istr;
 
 tag bottle { none; dual; single; multiple(int); }

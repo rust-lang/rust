@@ -3,7 +3,6 @@
 
 import std::vec;
 import std::map;
-import std::str;
 import std::istr;
 import syntax::ast;
 

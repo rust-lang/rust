@@ -1,7 +1,6 @@
 
 import os::getcwd;
 import os_fs;
-import str;
 
 native "rust" mod rustrt {
     fn rust_file_is_dir(path: istr::sbuf) -> int;

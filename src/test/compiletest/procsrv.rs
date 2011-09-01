@@ -12,7 +12,6 @@ import std::vec;
 import std::os;
 import std::run;
 import std::io;
-import std::str;
 import std::istr;
 import std::comm::chan;
 import std::comm::port;

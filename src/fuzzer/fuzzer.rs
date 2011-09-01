@@ -9,7 +9,6 @@ import std::getopts::opt_str;
 import std::io;
 import std::io::stdout;
 import std::vec;
-import std::str;
 import std::istr;
 import std::uint;
 import std::option;

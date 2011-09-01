@@ -32,7 +32,6 @@ import std::option;
 import std::option::is_none;
 import std::option::some;
 import std::option::none;
-import std::str;
 import std::istr;
 import syntax::print::pprust::*;
 

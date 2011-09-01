@@ -3,7 +3,6 @@ import comm::chan;
 import comm::send;
 import comm::recv;
 
-import str;
 import net;
 
 type ctx = aio::ctx;

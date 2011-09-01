@@ -9,7 +9,6 @@ import std::map;
 import std::option;
 import std::option::some;
 import std::option::none;
-import std::str;
 import std::istr;
 import syntax::parse::parser::parse_sess;
 

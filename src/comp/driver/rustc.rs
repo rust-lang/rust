@@ -26,7 +26,6 @@ import std::map::mk_hashmap;
 import std::option;
 import std::option::some;
 import std::option::none;
-import std::str;
 import std::istr;
 import std::vec;
 import std::int;

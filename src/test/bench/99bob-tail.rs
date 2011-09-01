@@ -4,7 +4,6 @@
  */
 use std;
 import std::int;
-import std::str;
 import std::istr;
 
 fn main() {

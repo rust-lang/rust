@@ -30,7 +30,6 @@ import std::vec;
 import std::map::hashmap;
 import std::option::none;
 import std::option::some;
-import std::str;
 import std::istr;
 
 import ty_ctxt = middle::ty::ctxt;

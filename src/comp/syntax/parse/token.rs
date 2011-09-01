@@ -5,7 +5,6 @@ import std::map::new_str_hash;
 import util::interner;
 import std::int;
 import std::uint;
-import std::str;
 import std::istr;
 
 type str_num = uint;

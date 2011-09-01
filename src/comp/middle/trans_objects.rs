@@ -1,6 +1,5 @@
 // Translation of object-related things to LLVM IR.
 
-import std::str;
 import std::istr;
 import std::option;
 import std::vec;

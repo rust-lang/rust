@@ -5,7 +5,6 @@ import front::attr;
 import middle::ty;
 import metadata::encoder;
 import middle::trans_common::crate_ctxt;
-import std::str;
 import std::istr;
 import std::fs;
 import std::vec;

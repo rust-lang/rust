@@ -1,7 +1,6 @@
 
 import lib::llvm::llvm;
 import lib::llvm::llvm::ModuleRef;
-import std::str;
 import std::istr;
 import std::os::target_os;
 

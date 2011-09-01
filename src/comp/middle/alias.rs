@@ -10,7 +10,6 @@ import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
 import std::vec;
-import std::str;
 import std::istr;
 import std::option;
 import std::option::some;

@@ -2,7 +2,6 @@
 import std::io;
 import std::int;
 import std::vec;
-import std::str;
 import std::istr;
 import std::map;
 import std::map::hashmap;

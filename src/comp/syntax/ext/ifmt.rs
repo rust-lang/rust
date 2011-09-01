@@ -6,7 +6,6 @@
  * compiler syntax extension plugin interface.
  */
 import std::vec;
-import std::str;
 import std::istr;
 import std::option;
 import std::option::none;

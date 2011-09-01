@@ -10,7 +10,6 @@ import middle::ty;
 import std::option::none;
 import std::option::some;
 import std::ptr;
-import std::str;
 import std::istr;
 import std::unsafe;
 import std::vec;

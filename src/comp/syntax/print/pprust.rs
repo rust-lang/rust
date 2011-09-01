@@ -2,7 +2,6 @@
 import std::vec;
 import std::int;
 import std::io;
-import std::str;
 import std::istr;
 import std::uint;
 import std::option;

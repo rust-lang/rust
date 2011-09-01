@@ -6,7 +6,6 @@
 import std::int;
 import std::vec;
 import std::vec::to_ptr;
-import std::str;
 import std::istr;
 import std::uint;
 import std::map;

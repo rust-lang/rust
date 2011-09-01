@@ -3,7 +3,6 @@
 import std::ebml;
 import std::vec;
 import std::option;
-import std::str;
 import std::istr;
 import std::io;
 import std::map::hashmap;

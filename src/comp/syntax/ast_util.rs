@@ -1,4 +1,3 @@
-import std::str;
 import std::istr;
 import std::option;
 import codemap::span;

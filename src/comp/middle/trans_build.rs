@@ -1,4 +1,4 @@
-import std::{vec, str, istr};
+import std::{vec, istr};
 import std::istr::sbuf;
 import lib::llvm::llvm;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef,
