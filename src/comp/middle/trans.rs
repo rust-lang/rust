@@ -471,7 +471,8 @@ fn alloca(cx: &@block_ctxt, t: TypeRef) -> ValueRef {
     ret Alloca(new_raw_block_ctxt(cx.fcx, cx.fcx.llstaticallocas), t);
 }
 
-fn array_alloca(cx: &@block_ctxt, t: TypeRef, n: ValueRef) -> ValueRef {
+fn dynastack_alloca(cx: &@block_ctxt, t: TypeRef, n: ValueRef, ty: ty::t)
+        -> ValueRef {
     let bcx = cx;
     let dy_cx = new_raw_block_ctxt(cx.fcx, cx.fcx.lldynamicallocas);
     let lltaskptr = bcx_fcx(bcx).lltaskptr;
@@ -485,7 +486,11 @@ fn array_alloca(cx: &@block_ctxt, t: TypeRef, n: ValueRef) -> ValueRef {
 
     let dynastack_alloc = bcx_ccx(bcx).upcalls.dynastack_alloc;
     let llsz = Mul(dy_cx, C_uint(llsize_of_real(bcx_ccx(bcx), t)), n);
-    let llresult = Call(dy_cx, dynastack_alloc, [lltaskptr, llsz]);
+
+    let ti = none;
+    let lltydesc = get_tydesc(cx, ty, false, tps_normal, ti).result.val;
+
+    let llresult = Call(dy_cx, dynastack_alloc, [lltaskptr, llsz, lltydesc]);
     ret PointerCast(dy_cx, llresult, T_ptr(t));
 }
 
@@ -4868,8 +4873,10 @@ fn alloc_ty(cx: &@block_ctxt, t: ty::t) -> result {
 
         let n = size_of(llderivedtydescs_block_ctxt(bcx.fcx), t);
         bcx.fcx.llderivedtydescs = n.bcx.llbb;
-        val = array_alloca(bcx, T_i8(), n.val);
-    } else { val = alloca(bcx, type_of(bcx_ccx(cx), cx.sp, t)); }
+        val = dynastack_alloca(bcx, T_i8(), n.val, t);
+    } else {
+        val = alloca(bcx, type_of(bcx_ccx(cx), cx.sp, t));
+    }
     // NB: since we've pushed all size calculations in this
     // function up to the alloca block, we actually return the
     // block passed into us unmodified; it doesn't really

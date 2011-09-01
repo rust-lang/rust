@@ -368,13 +368,26 @@ upcall_vec_push(rust_task* task, rust_vec** vp, type_desc* elt_ty,
  */
 extern "C" CDECL void *
 upcall_dynastack_mark(rust_task *task) {
-    return task->dynastack.alloc(0);
+    return task->dynastack.mark();
 }
 
-/** Allocates space in the dynamic stack and returns it. */
+/**
+ * Allocates space in the dynamic stack and returns it.
+ *
+ * FIXME: Deprecated since dynamic stacks need to be self-describing for GC.
+ */
 extern "C" CDECL void *
 upcall_dynastack_alloc(rust_task *task, size_t sz) {
-    return sz ? task->dynastack.alloc(sz) : NULL;
+    return sz ? task->dynastack.alloc(sz, NULL) : NULL;
+}
+
+/**
+ * Allocates space associated with a type descriptor in the dynamic stack and
+ * returns it.
+ */
+extern "C" CDECL void *
+upcall_dynastack_alloc_2(rust_task *task, size_t sz, type_desc *ty) {
+    return sz ? task->dynastack.alloc(sz, ty) : NULL;
 }
 
 /** Frees space in the dynamic stack. */

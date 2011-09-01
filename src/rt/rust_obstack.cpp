@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <new>
 #include <stdint.h>
 
 #include "rust_internal.h"
@@ -18,9 +19,20 @@
 #define DPRINT(fmt,...)
 
 //const size_t DEFAULT_CHUNK_SIZE = 4096;
-const size_t DEFAULT_CHUNK_SIZE = 300000;
+const size_t DEFAULT_CHUNK_SIZE = 500000;
 const size_t DEFAULT_ALIGNMENT = 16;
 
+// A single type-tagged allocation in a chunk.
+struct rust_obstack_alloc {
+    size_t len;
+    const type_desc *tydesc;
+    uint8_t data[];
+
+    rust_obstack_alloc(size_t in_len, const type_desc *in_tydesc)
+    : len(in_len), tydesc(in_tydesc) {}
+};
+
+// A contiguous set of allocations.
 struct rust_obstack_chunk {
     rust_obstack_chunk *prev;
     size_t size;
@@ -31,22 +43,24 @@ struct rust_obstack_chunk {
     rust_obstack_chunk(rust_obstack_chunk *in_prev, size_t in_size)
     : prev(in_prev), size(in_size), alen(0) {}
 
-    void *alloc(size_t len);
+    void *alloc(size_t len, type_desc *tydesc);
     bool free(void *ptr);
+    void *mark();
 };
 
 void *
-rust_obstack_chunk::alloc(size_t len) {
+rust_obstack_chunk::alloc(size_t len, type_desc *tydesc) {
     alen = align_to(alen, DEFAULT_ALIGNMENT);
 
-    if (len > size - alen) {
+    if (sizeof(rust_obstack_alloc) + len > size - alen) {
         DPRINT("Not enough space, len=%lu!\n", len);
         assert(0);
         return NULL;    // Not enough space.
     }
-    void *result = data + alen;
-    alen += len;
-    return result;
+
+    rust_obstack_alloc *a = new(data + alen) rust_obstack_alloc(len, tydesc);
+    alen += sizeof(*a) + len;
+    return &a->data;
 }
 
 bool
@@ -59,14 +73,20 @@ rust_obstack_chunk::free(void *ptr) {
     return true;
 }
 
+void *
+rust_obstack_chunk::mark() {
+    return data + alen;
+}
+
 // Allocates the given number of bytes in a new chunk.
 void *
-rust_obstack::alloc_new(size_t len) {
-    size_t chunk_size = std::max(len, DEFAULT_CHUNK_SIZE);
+rust_obstack::alloc_new(size_t len, type_desc *tydesc) {
+    size_t chunk_size = std::max(sizeof(rust_obstack_alloc) + len,
+                                 DEFAULT_CHUNK_SIZE);
     void *ptr = task->malloc(sizeof(chunk) + chunk_size, "obstack");
     DPRINT("making new chunk at %p, len %lu\n", ptr, chunk_size);
     chunk = new(ptr) rust_obstack_chunk(chunk, chunk_size);
-    return chunk->alloc(len);
+    return chunk->alloc(len, tydesc);
 }
 
 rust_obstack::~rust_obstack() {
@@ -78,14 +98,14 @@ rust_obstack::~rust_obstack() {
 }
 
 void *
-rust_obstack::alloc(size_t len) {
+rust_obstack::alloc(size_t len, type_desc *tydesc) {
     if (!chunk)
-        return alloc_new(len);
+        return alloc_new(len, tydesc);
 
     DPRINT("alloc sz %u", (uint32_t)len);
 
-    void *ptr = chunk->alloc(len);
-    ptr = ptr ? ptr : alloc_new(len);
+    void *ptr = chunk->alloc(len, tydesc);
+    ptr = ptr ? ptr : alloc_new(len, tydesc);
 
     return ptr;
 }
@@ -105,5 +125,10 @@ rust_obstack::free(void *ptr) {
         chunk = prev;
         assert(chunk);
     }
+}
+
+void *
+rust_obstack::mark() {
+    return chunk ? chunk->mark() : NULL;
 }
 

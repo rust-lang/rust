@@ -5,7 +5,7 @@ import lib::llvm::llvm::{ValueRef, TypeRef};
 import back::abi;
 import trans::{call_memmove, trans_shared_malloc, llsize_of,
                type_of_or_i8, incr_ptr, INIT, copy_val, load_if_immediate,
-               alloca, array_alloca, size_of, llderivedtydescs_block_ctxt,
+               alloca, size_of, llderivedtydescs_block_ctxt,
                lazily_emit_tydesc_glue, get_tydesc, load_inbounds,
                move_val_if_temp, trans_lval, node_id_type,
                new_sub_block_ctxt, tps_normal, do_spill};
