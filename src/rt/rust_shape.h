@@ -11,11 +11,11 @@
 
 #define ARENA_SIZE          256
 
-#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
-#define DPRINTCX(cx)        shape::print::print_cx(cx)
+//#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
+//#define DPRINTCX(cx)        shape::print::print_cx(cx)
 
-//#define DPRINT(fmt,...)
-//#define DPRINTCX(cx)
+#define DPRINT(fmt,...)
+#define DPRINTCX(cx)
 
 
 namespace shape {
