@@ -14,3 +14,8 @@ fn test_connect() {
 #[test]
 fn test_list_dir_no_invalid_memory_access() { fs::list_dir(~"."); }
 
+#[test]
+fn file_is_dir() {
+    assert fs::file_is_dir(~".");
+    assert !fs::file_is_dir(~"test/stdtest/fs.rs");
+}

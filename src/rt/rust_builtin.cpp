@@ -446,7 +446,9 @@ rust_dirent_filename(rust_task *task, dirent* ent) {
 extern "C" CDECL int
 rust_file_is_dir(rust_task *task, rust_str *path) {
     struct stat buf;
-    stat((char*)path->data, &buf);
+    if (stat((char*)path->data, &buf)) {
+        return 0;
+    }
     return S_ISDIR(buf.st_mode);
 }
 
