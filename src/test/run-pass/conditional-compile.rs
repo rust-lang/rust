@@ -81,7 +81,7 @@ fn test_in_fn_ctxt() {
 mod test_native_items {
     native "rust" mod rustrt {
         #[cfg(bogus)]
-        fn str_byte_len(s: str) -> uint;
-        fn str_byte_len(s: str) -> uint;
+        fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
+        fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
     }
 }

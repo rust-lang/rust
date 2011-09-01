@@ -140,69 +140,10 @@ vec_alloc_with_data(rust_task *task,
     return new (mem) rust_evec(alloc, fill * elt_size, (uint8_t*)d);
 }
 
-extern "C" CDECL rust_str*
-str_alloc(rust_task *task, size_t n_bytes)
-{
-    rust_str *st = vec_alloc_with_data(task,
-                                       n_bytes + 1,  // +1 to fit at least ""
-                                       1, 1,
-                                       (void*)"");
-    if (!st) {
-        task->fail();
-        return NULL;
-    }
-    return st;
-}
-
-extern "C" CDECL rust_str*
-str_push_byte(rust_task* task, rust_str* v, size_t byte)
-{
-    size_t fill = v->fill;
-    size_t alloc = next_power_of_two(sizeof(rust_evec) + fill + 1);
-    if (v->ref_count > 1 || v->alloc < alloc) {
-        v = vec_alloc_with_data(task, fill + 1, fill, 1, (void*)&v->data[0]);
-        if (!v) {
-            task->fail();
-            return NULL;
-        }
-    }
-    else if (v->ref_count != CONST_REFCOUNT) {
-        v->ref();
-    }
-    v->data[fill-1] = (char)byte;
-    v->data[fill] = '\0';
-    v->fill++;
-    return v;
-}
-
-extern "C" CDECL rust_str*
-str_slice(rust_task* task, rust_str* v, size_t begin, size_t end)
-{
-    size_t len = end - begin;
-    rust_str *st =
-        vec_alloc_with_data(task,
-                            len + 1, // +1 to fit at least '\0'
-                            len,
-                            1,
-                            len ? v->data + begin : NULL);
-    if (!st) {
-        task->fail();
-        return NULL;
-    }
-    st->data[st->fill++] = '\0';
-    return st;
-}
-
 extern "C" CDECL char const *
 str_buf(rust_task *task, rust_str *s)
 {
     return (char const *)&s->data[0];
-}
-
-extern "C" CDECL size_t
-str_byte_len(rust_task *task, rust_str *s)
-{
-    return s->fill - 1;  // -1 for the '\0' terminator.
 }
 
 extern "C" CDECL rust_str *
@@ -250,29 +191,6 @@ rust_istr_push(rust_task* task, rust_vec** sp, uint8_t byte) {
     (*sp)->data[fill-1] = byte;
     (*sp)->data[fill] = 0;
     (*sp)->fill = fill + 1;
-}
-
-extern "C" CDECL rust_str *
-str_from_cstr(rust_task *task, char *sbuf)
-{
-    size_t len = strlen(sbuf) + 1;
-    rust_str *st = vec_alloc_with_data(task, len, len, 1, sbuf);
-    if (!st) {
-        task->fail();
-        return NULL;
-    }
-    return st;
-}
-
-extern "C" CDECL rust_str *
-str_from_buf(rust_task *task, char *buf, unsigned int len) {
-    rust_str *st = vec_alloc_with_data(task, len + 1, len, 1, buf);
-    if (!st) {
-        task->fail();
-        return NULL;
-    }
-    st->data[st->fill++] = '\0';
-    return st;
 }
 
 extern "C" CDECL void *

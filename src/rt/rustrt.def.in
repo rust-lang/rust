@@ -62,16 +62,10 @@ sched_threads
 size_of
 squareroot
 start_task
-str_alloc
 str_buf
-str_byte_len
-str_from_buf
-str_from_cstr
 str_from_vec
 vec_reserve_shared
 vec_from_buf_shared
-str_push_byte
-str_slice
 task_sleep
 task_yield
 task_join

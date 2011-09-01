@@ -118,16 +118,14 @@ fn test_fn() {
 }
 
 native "rust" mod native_mod = "" {
-    fn str_byte_len(s: str) -> uint;
-    // This isn't actually the signature of str_alloc, but since
-    // we're not calling it that shouldn't matter
-    fn str_alloc(s: str) -> uint;
+    fn do_gc();
+    fn unsupervise();
 }
 
 // FIXME: comparison of native fns
 fn test_native_fn() {
-    assert (native_mod::str_byte_len == native_mod::str_byte_len);
-    assert (native_mod::str_byte_len != native_mod::str_alloc);
+    assert (native_mod::do_gc == native_mod::do_gc);
+    assert (native_mod::do_gc != native_mod::unsupervise);
 }
 
 fn test_obj() {
