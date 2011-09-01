@@ -279,7 +279,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       }
       ast::ty_char. { word(s.s, ~"char"); }
       ast::ty_str. { word(s.s, ~"str"); }
-      ast::ty_istr. { word(s.s, ~"istr"); }
+      ast::ty_istr. { word(s.s, ~"str"); }
       ast::ty_box(mt) { word(s.s, ~"@"); print_mt(s, mt); }
       ast::ty_vec(mt) {
         word(s.s, ~"[");
@@ -1497,12 +1497,6 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
     alt next_lit(s) {
       some(lt) {
         if lt.pos == lit.span.lo {
-            // FIXME: This is a hack until istrs replace strings, since
-            // istrs are prefixed with a token that is not part of the literal
-            alt lit.node {
-              ast::lit_str(_, ast::sk_unique.) { word(s.s, ~"~"); }
-              _ { }
-            }
             word(s.s, lt.lit);
             s.cur_lit += 1u;
             ret;
@@ -1512,7 +1506,6 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
     }
     alt lit.node {
       ast::lit_str(st, kind) {
-        if kind == ast::sk_unique { word(s.s, ~"~"); }
         print_string(s, st);
       }
       ast::lit_char(ch) {

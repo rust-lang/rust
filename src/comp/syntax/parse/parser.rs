@@ -493,7 +493,7 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, ~"float") {
         t = ast::ty_float;
     } else if eat_word(p, ~"str") {
-        t = ast::ty_str;
+        t = ast::ty_istr;
     } else if eat_word(p, ~"istr") {
         t = ast::ty_istr;
     } else if eat_word(p, ~"char") {
@@ -708,7 +708,7 @@ fn parse_lit(p: &parser) -> ast::lit {
           token::LIT_CHAR(c) { p.bump(); lit = ast::lit_char(c); }
           token::LIT_STR(s) {
             p.bump();
-            lit = ast::lit_str(p.get_str(s), ast::sk_rc);
+            lit = ast::lit_str(p.get_str(s), ast::sk_unique);
           }
           token::LPAREN. {
             p.bump();

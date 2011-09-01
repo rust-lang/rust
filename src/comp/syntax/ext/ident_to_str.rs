@@ -20,6 +20,6 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
     ret make_new_lit(cx, sp,
                      ast::lit_str(expr_to_ident(cx, args[0u],
                                                 ~"expected an ident"),
-                                  ast::sk_rc));
+                                  ast::sk_unique));
 
 }
