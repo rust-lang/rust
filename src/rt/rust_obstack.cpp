@@ -25,26 +25,12 @@ const size_t DEFAULT_ALIGNMENT = 16;
 struct rust_obstack_alloc {
     size_t len;
     const type_desc *tydesc;
+    uint32_t pad0;  // FIXME: x86-specific
+    uint32_t pad1;
     uint8_t data[];
 
     rust_obstack_alloc(size_t in_len, const type_desc *in_tydesc)
     : len(in_len), tydesc(in_tydesc) {}
-};
-
-// A contiguous set of allocations.
-struct rust_obstack_chunk {
-    rust_obstack_chunk *prev;
-    size_t size;
-    size_t alen;
-    size_t pad;
-    uint8_t data[];
-
-    rust_obstack_chunk(rust_obstack_chunk *in_prev, size_t in_size)
-    : prev(in_prev), size(in_size), alen(0) {}
-
-    void *alloc(size_t len, type_desc *tydesc);
-    bool free(void *ptr);
-    void *mark();
 };
 
 void *
@@ -130,5 +116,63 @@ rust_obstack::free(void *ptr) {
 void *
 rust_obstack::mark() {
     return chunk ? chunk->mark() : NULL;
+}
+
+
+// Iteration over self-describing obstacks
+
+std::pair<const type_desc *,void *>
+rust_obstack::iterator::operator*() const {
+    return std::make_pair(alloc->tydesc, alloc->data);
+}
+
+rust_obstack::iterator &
+rust_obstack::iterator::operator++() {
+    uint8_t *adata = align_to(alloc->data + alloc->len, DEFAULT_ALIGNMENT);
+    alloc = reinterpret_cast<rust_obstack_alloc *>(adata);
+    if (reinterpret_cast<uint8_t *>(alloc) >= chunk->data + chunk->alen) {
+        // We reached the end of this chunk; go on to the next one.
+        chunk = chunk->prev;
+        if (chunk)
+            alloc = reinterpret_cast<rust_obstack_alloc *>(chunk->data);
+        else
+            alloc = NULL;
+    }
+    return *this;
+}
+
+bool
+rust_obstack::iterator::operator==(const rust_obstack::iterator &other)
+        const {
+    return chunk == other.chunk && alloc == other.alloc;
+}
+
+bool
+rust_obstack::iterator::operator!=(const rust_obstack::iterator &other)
+        const {
+    return !(*this == other);
+}
+
+
+// Debugging
+
+void
+rust_obstack::dump() const {
+    iterator b = begin(), e = end();
+    while (b != e) {
+        std::pair<const type_desc *,void *> data = *b;
+        shape::arena arena;
+        shape::type_param *params = shape::type_param::from_tydesc(data.first,
+                                                                   arena);
+        shape::log log(task, true, data.first->shape, params,
+                       data.first->shape_tables,
+                       reinterpret_cast<uint8_t *>(data.second), std::cerr);
+        log.walk();
+        std::cerr << "\n";
+
+        ++b;
+    }
+
+    std::cerr << "end of dynastack dump\n";
 }
 
