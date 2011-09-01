@@ -100,11 +100,11 @@ fn str_opt(maybestr: &istr) -> option::t<istr> {
 }
 
 fn str_mode(s: &istr) -> mode {
-    alt istr::to_estr(s) {
-      "compile-fail" { mode_compile_fail }
-      "run-fail" { mode_run_fail }
-      "run-pass" { mode_run_pass }
-      "pretty" { mode_pretty }
+    alt s {
+      ~"compile-fail" { mode_compile_fail }
+      ~"run-fail" { mode_run_fail }
+      ~"run-pass" { mode_run_pass }
+      ~"pretty" { mode_pretty }
       _ { fail "invalid mode" }
     }
 }
