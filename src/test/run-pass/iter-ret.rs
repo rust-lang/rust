@@ -4,4 +4,4 @@ iter x() -> int { }
 
 fn f() -> bool { for each i: int in x() { ret true; } ret false; }
 
-fn main(args: [str]) { f(); }
+fn main(args: [istr]) { f(); }

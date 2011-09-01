@@ -375,8 +375,7 @@ fn check_variants(files: &[istr]) {
     }
 }
 
-fn main(args: [str]) {
-    let args = istr::from_estrs(args);
+fn main(args: [istr]) {
     if vec::len(args) != 2u {
         log_err #ifmt["usage: %s <testdir>", args[0]];
         ret;

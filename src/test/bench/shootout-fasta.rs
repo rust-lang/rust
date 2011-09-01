@@ -68,7 +68,7 @@ fn make_repeat_fasta(id: &istr, desc: &istr, s: &istr, n: int) {
 
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
 
-fn main(args: [str]) {
+fn main(args: [istr]) {
     let iub: [aminoacids] =
         make_cumulative([acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
                          acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),

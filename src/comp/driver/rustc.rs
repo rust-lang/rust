@@ -467,8 +467,7 @@ fn opts() -> [getopts::opt] {
          optflag(~"gc")];
 }
 
-fn main(args: [str]) {
-    let args = istr::from_estrs(args);
+fn main(args: [istr]) {
     let binary = vec::shift(args);
     let binary_dir = fs::dirname(binary);
     let match =

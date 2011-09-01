@@ -22,8 +22,7 @@ import common::mode_pretty;
 import common::mode;
 import util::logv;
 
-fn main(args: [str]) {
-    let args = istr::from_estrs(args);
+fn main(args: [istr]) {
     let config = parse_config(args);
     log_config(config);
     run_tests(config);

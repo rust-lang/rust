@@ -79,8 +79,7 @@ fn stress(num_tasks: int) {
     for t in tasks { task::join(t); }
 }
 
-fn main(argv: [str]) {
-    let argv = istr::from_estrs(argv);
+fn main(argv: [istr]) {
     if vec::len(argv) == 1u {
         assert (fib(8) == 21);
         log fib(8);
