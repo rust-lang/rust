@@ -4,6 +4,7 @@ import os::libc;
 native "rust" mod rustrt {
     fn rust_get_stdin() -> os::libc::FILE;
     fn rust_get_stdout() -> os::libc::FILE;
+    fn rust_get_stderr() -> os::libc::FILE;
 }
 
 
@@ -374,6 +375,7 @@ fn buffered_file_buf_writer(path: &istr) -> buf_writer {
 
 // FIXME it would be great if this could be a const
 fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
+fn stderr() -> writer { ret new_writer(fd_buf_writer(2, option::none)); }
 
 type str_writer =
     obj {
