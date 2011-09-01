@@ -776,7 +776,8 @@ fn GEP_tup_like(cx: &@block_ctxt, t: ty::t, base: ValueRef, ixs: &[int]) ->
 // appropriate. @llblobptr is the data part of a tag value; its actual type is
 // meaningless, as it will be cast away.
 fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: &ast::def_id,
-           variant_id: &ast::def_id, ty_substs: &[ty::t], ix: int) -> result {
+           variant_id: &ast::def_id, ty_substs: &[ty::t], ix: uint)
+    -> result {
     let variant = ty::tag_variant_with_id(bcx_tcx(cx), tag_id, variant_id);
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
     // Separately, store the type of the element we're interested in.
@@ -784,13 +785,13 @@ fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: &ast::def_id,
     let arg_tys = variant.args;
     let elem_ty = ty::mk_nil(bcx_tcx(cx)); // typestate infelicity
 
-    let i = 0;
+    let i = 0u;
     let true_arg_tys: [ty::t] = [];
     for aty: ty::t in arg_tys {
         let arg_ty = ty::substitute_type_params(bcx_tcx(cx), ty_substs, aty);
         true_arg_tys += [arg_ty];
         if i == ix { elem_ty = arg_ty; }
-        i += 1;
+        i += 1u;
     }
     let tup_ty = ty::mk_tup(bcx_tcx(cx), true_arg_tys);
     // Cast the blob pointer to the appropriate type, if we need to (i.e. if
@@ -803,7 +804,7 @@ fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: &ast::def_id,
     } else { llunionptr = llblobptr; }
     // Do the GEP_tup_like().
 
-    let rs = GEP_tup_like(cx, tup_ty, llunionptr, [0, ix]);
+    let rs = GEP_tup_like(cx, tup_ty, llunionptr, [0, ix as int]);
     // Cast the result to the appropriate type, if necessary.
 
     let val;
@@ -1668,14 +1669,14 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         let ccx = bcx_ccx(cx);
         alt ty::struct(ccx.tcx, fn_ty) {
           ty::ty_fn(_, args, _, _, _) {
-            let j = 0;
+            let j = 0u;
             for a: ty::arg in args {
                 let rslt = GEP_tag(cx, a_tup, tid, variant.id, tps, j);
                 let llfldp_a = rslt.val;
                 cx = rslt.bcx;
                 let ty_subst = ty::substitute_type_params(ccx.tcx, tps, a.ty);
                 cx = f(cx, llfldp_a, ty_subst);
-                j += 1;
+                j += 1u;
             }
           }
         }
@@ -5354,8 +5355,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     for va: ast::variant_arg in variant.node.args {
         let rslt =
             GEP_tag(bcx, llblobptr, ast_util::local_def(tag_id),
-                    ast_util::local_def(variant.node.id), ty_param_substs,
-                    i as int);
+                    ast_util::local_def(variant.node.id), ty_param_substs, i);
         bcx = rslt.bcx;
         let lldestptr = rslt.val;
         // If this argument to this function is a tag, it'll have come in to
