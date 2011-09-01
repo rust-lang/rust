@@ -296,9 +296,9 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
         let data = m[0].data;
         alt data.guard {
           some(e) {
-            let guard_cx = new_scope_block_ctxt(bcx, ~"guard");
-            let next_cx = new_sub_block_ctxt(bcx, ~"next");
-            let else_cx = new_sub_block_ctxt(bcx, ~"else");
+            let guard_cx = new_scope_block_ctxt(bcx, ~"submatch_guard");
+            let next_cx = new_sub_block_ctxt(bcx, ~"submatch_next");
+            let else_cx = new_sub_block_ctxt(bcx, ~"submatch_else");
             Br(bcx, guard_cx.llbb);
             // Temporarily set bindings. They'll be rewritten to PHI nodes for
             // the actual arm block.
@@ -431,13 +431,17 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
             llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
           }
           compare. {
+            let compare_cx = new_scope_block_ctxt(bcx, ~"compare_scope");
+            Br(bcx, compare_cx.llbb);
+            bcx = compare_cx;
             let r = trans_opt(bcx, opt);
             bcx = r.bcx;
             let t = ty::node_id_to_type(ccx.tcx, pat_id);
             let eq =
                 trans::trans_compare(bcx, ast::eq, test_val, t, r.val, t);
-            bcx = new_sub_block_ctxt(bcx, ~"next");
-            CondBr(eq.bcx, eq.val, opt_cx.llbb, bcx.llbb);
+            let cleanup_cx = trans::trans_block_cleanups(bcx, compare_cx);
+            bcx = new_sub_block_ctxt(bcx, ~"compare_next");
+            CondBr(cleanup_cx, eq.val, opt_cx.llbb, bcx.llbb);
           }
           _ { }
         }

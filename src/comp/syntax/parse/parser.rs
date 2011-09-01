@@ -1497,6 +1497,22 @@ fn parse_pat(p: &parser) -> @ast::pat {
             pat = ast::pat_tup(fields);
         }
       }
+      token::TILDE. {
+        p.bump();
+        alt p.peek() {
+          token::LIT_STR(s) {
+            let sp = p.get_span();
+            p.bump();
+            let lit =
+                @{node: ast::lit_str(p.get_str(s),
+                                     ast::sk_unique),
+                  span: sp};
+            hi = lit.span.hi;
+            pat = ast::pat_lit(lit);
+          }
+          _ { p.fatal(~"expected string literal"); }
+        }
+      }
       tok {
         if !is_ident(tok) || is_word(p, ~"true") || is_word(p, ~"false") {
             let lit = parse_lit(p);
