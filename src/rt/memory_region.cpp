@@ -37,7 +37,6 @@ void memory_region::dec_alloc() {
 void memory_region::free(void *mem) {
     // printf("free: ptr 0x%" PRIxPTR" region=%p\n", (uintptr_t) mem, this);
     if (!mem) { return; }
-    if (_synchronized) { _lock.lock(); }
     alloc_header *alloc = get_header(mem);
     assert(alloc->magic == MAGIC);
     if (_live_allocations < 1) {
@@ -45,7 +44,6 @@ void memory_region::free(void *mem) {
     }
     release_alloc(mem);
     _srv->free(alloc);
-    if (_synchronized) { _lock.unlock(); }
 }
 
 void *
@@ -78,7 +76,6 @@ memory_region::realloc(void *mem, size_t size) {
 
 void *
 memory_region::malloc(size_t size, const char *tag, bool zero) {
-    if (_synchronized) { _lock.lock(); }
     size_t old_size = size;
     size += sizeof(alloc_header);
     alloc_header *mem = (alloc_header *)_srv->malloc(size);
@@ -91,7 +88,6 @@ memory_region::malloc(size_t size, const char *tag, bool zero) {
         memset(mem->data, 0, old_size);
     }
 
-    if (_synchronized) { _lock.unlock(); }
     return mem->data;
 }
 
@@ -145,6 +141,7 @@ memory_region::release_alloc(void *mem) {
     assert(alloc->magic == MAGIC);
 
 #ifdef TRACK_ALLOCATIONS
+    if (_synchronized) { _lock.lock(); }
     if (_allocation_list[alloc->index] != alloc) {
         printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
                (uintptr_t) &alloc->data, alloc->tag);
@@ -155,6 +152,7 @@ memory_region::release_alloc(void *mem) {
         _allocation_list[alloc->index] = NULL;
         alloc->index = -1;
     }
+    if (_synchronized) { _lock.unlock(); }
 #endif
     dec_alloc();
 }
@@ -164,7 +162,9 @@ memory_region::claim_alloc(void *mem) {
     alloc_header *alloc = get_header(mem);
     assert(alloc->magic == MAGIC);
 #ifdef TRACK_ALLOCATIONS
+    if (_synchronized) { _lock.lock(); }
     alloc->index = _allocation_list.append(alloc);
+    if (_synchronized) { _lock.unlock(); }
 #endif
     add_alloc();
 }
