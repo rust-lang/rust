@@ -1,34 +1,34 @@
 
 
-fn add(x: int, y: int) -> int { ret x + y; }
+pure fn add(x: int, y: int) -> int { ret x + y; }
 
-fn sub(x: int, y: int) -> int { ret x - y; }
+pure fn sub(x: int, y: int) -> int { ret x - y; }
 
-fn mul(x: int, y: int) -> int { ret x * y; }
+pure fn mul(x: int, y: int) -> int { ret x * y; }
 
-fn div(x: int, y: int) -> int { ret x / y; }
+pure fn div(x: int, y: int) -> int { ret x / y; }
 
-fn rem(x: int, y: int) -> int { ret x % y; }
+pure fn rem(x: int, y: int) -> int { ret x % y; }
 
-fn lt(x: int, y: int) -> bool { ret x < y; }
+pure fn lt(x: int, y: int) -> bool { ret x < y; }
 
-fn le(x: int, y: int) -> bool { ret x <= y; }
+pure fn le(x: int, y: int) -> bool { ret x <= y; }
 
-fn eq(x: int, y: int) -> bool { ret x == y; }
+pure fn eq(x: int, y: int) -> bool { ret x == y; }
 
-fn ne(x: int, y: int) -> bool { ret x != y; }
+pure fn ne(x: int, y: int) -> bool { ret x != y; }
 
-fn ge(x: int, y: int) -> bool { ret x >= y; }
+pure fn ge(x: int, y: int) -> bool { ret x >= y; }
 
-fn gt(x: int, y: int) -> bool { ret x > y; }
+pure fn gt(x: int, y: int) -> bool { ret x > y; }
 
-fn positive(x: int) -> bool { ret x > 0; }
+pure fn positive(x: int) -> bool { ret x > 0; }
 
-fn negative(x: int) -> bool { ret x < 0; }
+pure fn negative(x: int) -> bool { ret x < 0; }
 
-fn nonpositive(x: int) -> bool { ret x <= 0; }
+pure fn nonpositive(x: int) -> bool { ret x <= 0; }
 
-fn nonnegative(x: int) -> bool { ret x >= 0; }
+pure fn nonnegative(x: int) -> bool { ret x >= 0; }
 
 
 // FIXME: Make sure this works with negative integers.
