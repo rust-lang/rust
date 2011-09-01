@@ -19,11 +19,7 @@ import std::option::is_none;
 
 // This is not an alias-analyser (though it would merit from becoming one, or
 // getting input from one, to be more precise). It is a pass that checks
-// whether aliases are used in a safe way. Beyond that, though it doesn't have
-// a lot to do with aliases, it also checks whether assignments are valid
-// (using an lval, which is actually mutable), since it already has all the
-// information needed to do that (and the typechecker, which would be a
-// logical place for such a check, doesn't).
+// whether aliases are used in a safe way.
 
 tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 
