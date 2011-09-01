@@ -72,11 +72,11 @@ fn waitpid(pid: int) -> int {
 }
 
 native "rust" mod rustrt {
-    fn rust_getcwd() -> str;
+    fn rust_getcwd() -> istr;
 }
 
 fn getcwd() -> istr {
-    ret istr::from_estr(rustrt::rust_getcwd());
+    ret rustrt::rust_getcwd();
 }
 
 

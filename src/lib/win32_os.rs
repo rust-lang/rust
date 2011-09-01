@@ -76,13 +76,13 @@ fn fd_FILE(fd: int) -> libc::FILE {
 
 native "rust" mod rustrt {
     fn rust_process_wait(handle: int) -> int;
-    fn rust_getcwd() -> str;
+    fn rust_getcwd() -> istr;
 }
 
 fn waitpid(pid: int) -> int { ret rustrt::rust_process_wait(pid); }
 
 fn getcwd() -> istr {
-    ret istr::from_estr(rustrt::rust_getcwd());
+    ret rustrt::rust_getcwd();
 }
 
 // Local Variables:

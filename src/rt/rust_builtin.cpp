@@ -55,7 +55,7 @@ last_os_error(rust_task *task) {
     return st;
 }
 
-extern "C" CDECL rust_str *
+extern "C" CDECL rust_vec *
 rust_getcwd(rust_task *task) {
     LOG(task, task, "rust_getcwd()");
 
@@ -70,18 +70,7 @@ rust_getcwd(rust_task *task) {
         return NULL;
     }
 
-    size_t fill = strlen(cbuf) + 1;
-    size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc, "rust_str(getcwd)");
-    if (!mem) {
-        task->fail();
-        return NULL;
-    }
-
-    rust_str *st;
-    st = new (mem) rust_str(alloc, fill, (const uint8_t *)cbuf);
-
-    return st;
+    return make_istr(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
 }
 
 extern "C" CDECL
