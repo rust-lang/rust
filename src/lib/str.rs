@@ -8,7 +8,7 @@ export lteq;
 // export hash;
 // export is_utf8;
 // export is_ascii;
-// export alloc;
+export alloc;
 export byte_len;
 export buf;
 // export bytes;
