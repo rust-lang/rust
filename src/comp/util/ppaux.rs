@@ -46,8 +46,8 @@ fn get_id_ident(cx: &ctxt, id: ast::def_id) -> istr {
     if id.crate != ast::local_crate {
         alt cx.ext_map.find(id) {
           some(j) { istr::connect(j, ~"::") }
-          _ { fail ("get_id_ident: can't find item in ext_map, id.crate = "
-                    + istr::to_estr(int::str(id.crate))) }
+          _ { fail (~"get_id_ident: can't find item in ext_map, id.crate = "
+                    + int::str(id.crate)) }
         }
     } else {
         alt cx.items.find(id.node) {

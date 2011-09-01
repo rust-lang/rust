@@ -30,11 +30,12 @@ fn show(b: bottle) {
                 "1 bottle of beer on the wall.";
       }
       multiple(n) {
-        let nb: str = istr::to_estr(int::to_str(n, 10u));
-        let mb: str = istr::to_estr(int::to_str(n - 1, 10u));
-        log nb + " bottles of beer on the wall, " + nb + " bottles of beer,";
-        log "Take one down and pass it around, " + mb +
-                " bottles of beer on the wall.";
+        let nb: istr = int::to_str(n, 10u);
+        let mb: istr = int::to_str(n - 1, 10u);
+        log nb + ~" bottles of beer on the wall, " + nb +
+            ~" bottles of beer,";
+        log ~"Take one down and pass it around, " + mb +
+                ~" bottles of beer on the wall.";
       }
     }
 }

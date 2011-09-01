@@ -331,8 +331,8 @@ fn get_ts_ann(ccx: &crate_ctxt, i: node_id) -> option::t<ts_ann> {
 fn node_id_to_ts_ann(ccx: &crate_ctxt, id: node_id) -> ts_ann {
     alt get_ts_ann(ccx, id) {
       none. {
-        log_err "node_id_to_ts_ann: no ts_ann for node_id "
-            + istr::to_estr(int::str(id));
+        log_err ~"node_id_to_ts_ann: no ts_ann for node_id "
+            + int::str(id);
         fail;
       }
       some(t) { ret t; }
@@ -534,8 +534,8 @@ fn constraints_expr(cx: &ty::ctxt, e: @expr) -> [@ty::constr] {
 fn node_id_to_def_strict(cx: &ty::ctxt, id: node_id) -> def {
     alt cx.def_map.find(id) {
       none. {
-        log_err "node_id_to_def: node_id "
-            + istr::to_estr(int::str(id)) + " has no def";
+        log_err ~"node_id_to_def: node_id "
+            + int::str(id) + ~" has no def";
         fail;
       }
       some(d) { ret d; }

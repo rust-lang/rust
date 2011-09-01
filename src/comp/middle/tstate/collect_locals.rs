@@ -147,9 +147,9 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
          i_diverge: ninit(diverges_id, diverges_name),
          used_vars: v};
     ccx.fm.insert(id, rslt);
-    log istr::to_estr(name + ~" has "
+    log name + ~" has "
                       + std::uint::str(num_constraints(rslt))
-                      + ~" constraints");
+                      + ~" constraints";
 }
 
 

@@ -49,7 +49,7 @@ fn parse_config(args: &[istr]) -> config {
         alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
           getopts::failure(f) {
-            fail istr::to_estr(getopts::fail_str(f))
+            fail getopts::fail_str(f)
           }
         };
 

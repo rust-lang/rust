@@ -120,8 +120,8 @@ fn annotate_freevars(def_map: &resolve::def_map,
 fn get_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_info {
     alt tcx.freevars.find(fid) {
       none. {
-        fail "get_freevars: " + istr::to_estr(int::str(fid))
-            + " has no freevars";
+        fail ~"get_freevars: " + int::str(fid)
+            + ~" has no freevars";
       }
       some(d) { ret d; }
     }
