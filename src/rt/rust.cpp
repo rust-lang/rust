@@ -66,14 +66,9 @@ command_line_args : public kernel_owned<command_line_args>
                            "command line arg interior");
         args_istr->fill = args_istr->alloc = sizeof(rust_vec*) * argc;
         for (int i = 0; i < argc; ++i) {
-            size_t str_fill = strlen(argv[i]) + 1;
-            size_t str_alloc = str_fill;
-            rust_vec *str = (rust_vec *)
-                kernel->malloc(vec_size<char>(str_fill),
-                               "command line arg");
-            str->fill = str_fill;
-            str->alloc = str_alloc;
-            memcpy(&str->data, argv[i], str_fill);
+            rust_vec *str = make_istr(kernel, argv[i],
+                                      strlen(argv[i]),
+                                      "command line arg");
             ((rust_vec**)&args_istr->data)[i] = str;
         }
     }
