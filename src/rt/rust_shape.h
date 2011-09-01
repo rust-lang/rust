@@ -1015,11 +1015,17 @@ private:
       prefix("") {}
 
     void walk_evec(bool is_pod, uint16_t sp_size) {
-        walk_vec(is_pod, get_evec_data_range(dp));
+        if (!get_dp<void *>(dp))
+            out << prefix << "(null)";
+        else
+            walk_vec(is_pod, get_evec_data_range(dp));
     }
 
     void walk_vec(bool is_pod, uint16_t sp_size) {
-        walk_vec(is_pod, get_vec_data_range(dp));
+        if (!get_dp<void *>(dp))
+            out << prefix << "(null)";
+        else
+            walk_vec(is_pod, get_vec_data_range(dp));
     }
 
     void walk_tag(tag_info &tinfo, uint32_t tag_variant) {
