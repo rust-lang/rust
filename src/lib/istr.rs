@@ -6,46 +6,8 @@ char_len, char_at, bytes, is_ascii, shift_byte, pop_byte, unsafe_from_byte,
 unsafe_from_bytes, from_char, char_range_at, str_from_cstr, sbuf,
 as_buf, push_byte, utf8_char_width, safe_slice;
 
-export from_estr, to_estr, from_estrs, to_estrs;
-
 native "rust" mod rustrt {
     fn rust_istr_push(s: &mutable istr, ch: u8);
-}
-
-fn from_estr(s: &str) -> istr {
-    let s2 = ~"";
-    for u in s {
-        push_byte(s2, u);
-    }
-    ret s2;
-}
-
-fn to_estr(s: &istr) -> str {
-    if byte_len(s) == 0u { ret "" };
-    let v: [u8] = unsafe::reinterpret_cast(s);
-    let vlen = vec::len(v);
-    assert vlen > 0u;
-    vec::unsafe::set_len(v, vlen - 1u);
-    let res = str::unsafe_from_bytes(v);
-    vec::unsafe::set_len(v, vlen);
-    unsafe::leak(v);
-    ret res;
-}
-
-fn from_estrs(ss: &[str]) -> [istr] {
-    let ss2 = [];
-    for s in ss {
-        ss2 += [from_estr(s)];
-    }
-    ret ss2;
-}
-
-fn to_estrs(ss: &[istr]) -> [str] {
-    let ss2 = [];
-    for s in ss {
-        ss2 += [to_estr(s)];
-    }
-    ret ss2;
 }
 
 fn eq(a: &istr, b: &istr) -> bool { a == b }
