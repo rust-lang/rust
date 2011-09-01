@@ -391,11 +391,11 @@ fn build_session_options(binary: &istr, match: &getopts::match,
             }
             2u
         } else if opt_present(match, ~"OptLevel") {
-            alt istr::to_estr(getopts::opt_str(match, ~"OptLevel")) {
-              "0" { 0u }
-              "1" { 1u }
-              "2" { 2u }
-              "3" { 3u }
+            alt getopts::opt_str(match, ~"OptLevel") {
+              ~"0" { 0u }
+              ~"1" { 1u }
+              ~"2" { 2u }
+              ~"3" { 3u }
               _ {
                 log_err "error: optimization level needs " +
                             "to be between 0-3";
