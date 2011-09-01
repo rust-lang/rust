@@ -1,0 +1,3 @@
+[submodule "src/rt/libuv"]
+	path = src/rt/libuv
+	url = https://github.com/graydon/libuv.git
