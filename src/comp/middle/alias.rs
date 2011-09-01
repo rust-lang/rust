@@ -181,7 +181,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
     }
     let f_may_close = alt f.node {
       ast::expr_path(_) { def_is_local(cx.tcx.def_map.get(f.id), true) }
-      _ { false } // FIXME should be true!
+      _ { true }
     };
     if f_may_close {
         let i = 0u;
