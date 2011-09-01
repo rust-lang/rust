@@ -383,41 +383,42 @@ rust_str* c_str_to_rust(rust_task *task, char const *str) {
     return vec_alloc_with_data(task, len, len, 1, (void*)str);
 }
 
-extern "C" CDECL rust_box*
-rust_list_files(rust_task *task, rust_str *path) {
-    array_list<rust_str*> strings;
+extern "C" CDECL rust_vec*
+rust_list_files(rust_task *task, rust_vec **path) {
+    array_list<rust_vec*> strings;
 #if defined(__WIN32__)
     WIN32_FIND_DATA FindFileData;
-    HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
+    HANDLE hFind = FindFirstFile((char*)(*path)->data, &FindFileData);
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
-            strings.push(c_str_to_rust(task, FindFileData.cFileName));
+            rust_vec *str = make_istr(task->kernel, FindFileData.cFileName,
+                                      strlen(FindFileData.cFileName),
+                                      "list_files_str");
+            strings.push(str);
         } while (FindNextFile(hFind, &FindFileData));
         FindClose(hFind);
     }
 #else
-  DIR *dirp = opendir((char*)path->data);
+    DIR *dirp = opendir((char*)(*path)->data);
   if (dirp) {
       struct dirent *dp;
-      while ((dp = readdir(dirp)))
-          strings.push(c_str_to_rust(task, dp->d_name));
+      while ((dp = readdir(dirp))) {
+          rust_vec *str = make_istr(task->kernel, dp->d_name,
+                                    strlen(dp->d_name),
+                                    "list_files_str");
+          strings.push(str);
+      }
       closedir(dirp);
   }
 #endif
-  rust_box *box =
-      (rust_box *)task->malloc(sizeof(rust_box) + sizeof(rust_vec*),
-                               "rust_box(list_files_vec)");
-  rust_vec* vec =
-      (rust_vec*)task->kernel->malloc(vec_size<rust_str*>(strings.size()),
-                                       "list_files_vec");
 
-  box->ref_count = 1;
-  rust_vec** box_content = (rust_vec**)&box->data[0];
-  *box_content = vec;
-  size_t alloc_sz = sizeof(rust_str*) * strings.size();
+  rust_vec *vec = (rust_vec *)
+      task->kernel->malloc(vec_size<rust_vec*>(strings.size()),
+                           "list_files_vec");
+  size_t alloc_sz = sizeof(rust_vec*) * strings.size();
   vec->fill = vec->alloc = alloc_sz;
   memcpy(&vec->data[0], strings.data(), alloc_sz);
-  return box;
+  return vec;
 }
 
 #if defined(__WIN32__)
