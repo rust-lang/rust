@@ -1048,10 +1048,24 @@ fn do_nothing<T>(_f: &_fn, _tp: &[ty_param], _sp: &span, _i: &fn_ident,
 }
 
 
-fn args_to_constr_args(sp: &span, args: &[arg]) -> [@constr_arg_use] {
+fn args_to_constr_args(tcx: &ty::ctxt, args: &[arg],
+                       indices:&[@sp_constr_arg<uint>]) -> [@constr_arg_use] {
     let actuals: [@constr_arg_use] = [];
-    for a: arg in args {
-        actuals += [@respan(sp, carg_ident({ident: a.ident, node: a.id}))];
+    let num_args = vec::len(args);
+    for a:@sp_constr_arg<uint> in indices {
+        actuals += [@respan(a.span, alt a.node {
+          carg_base. { carg_base }
+          carg_ident(i) {
+            if i < num_args {
+                carg_ident({ident: args[i].ident, node:args[i].id})
+            }
+            else {
+                tcx.sess.span_bug(a.span, ~"Index out of bounds in \
+                  constraint arg");
+            }
+          }
+          carg_lit(l) { carg_lit(l) }
+        })];
     }
     ret actuals;
 }
@@ -1060,7 +1074,7 @@ fn ast_constr_to_ts_constr(tcx: &ty::ctxt, args: &[arg], c: &@constr) ->
    tsconstr {
     let tconstr = ty::ast_constr_to_constr(tcx, c);
     ret npred(tconstr.node.path, tconstr.node.id,
-              args_to_constr_args(tconstr.span, args));
+         args_to_constr_args(tcx, args, tconstr.node.args));
 }
 
 fn ast_constr_to_sp_constr(tcx: &ty::ctxt, args: &[arg], c: &@constr) ->
