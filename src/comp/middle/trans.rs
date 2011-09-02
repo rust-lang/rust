@@ -777,22 +777,25 @@ fn GEP_tup_like(cx: &@block_ctxt, t: ty::t, base: ValueRef, ixs: &[int]) ->
 // meaningless, as it will be cast away.
 fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: &ast::def_id,
            variant_id: &ast::def_id, ty_substs: &[ty::t], ix: uint)
-    -> result {
+    : valid_variant_index(ix, cx, tag_id, variant_id) -> result {
     let variant = ty::tag_variant_with_id(bcx_tcx(cx), tag_id, variant_id);
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
     // Separately, store the type of the element we're interested in.
 
     let arg_tys = variant.args;
-    let elem_ty = ty::mk_nil(bcx_tcx(cx)); // typestate infelicity
 
-    let i = 0u;
     let true_arg_tys: [ty::t] = [];
     for aty: ty::t in arg_tys {
         let arg_ty = ty::substitute_type_params(bcx_tcx(cx), ty_substs, aty);
         true_arg_tys += [arg_ty];
-        if i == ix { elem_ty = arg_ty; }
-        i += 1u;
     }
+
+    // We know that ix < len(variant.args) -- so
+    // it's safe to do this. (Would be nice to have
+    // typestate guarantee that a dynamic bounds check
+    // error can't happen here, but that's in the future.)
+    let elem_ty = true_arg_tys[ix];
+
     let tup_ty = ty::mk_tup(bcx_tcx(cx), true_arg_tys);
     // Cast the blob pointer to the appropriate type, if we need to (i.e. if
     // the blob pointer isn't dynamically sized).
@@ -1670,8 +1673,10 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         alt ty::struct(ccx.tcx, fn_ty) {
           ty::ty_fn(_, args, _, _, _) {
             let j = 0u;
+            let v_id = variant.id;
             for a: ty::arg in args {
-                let rslt = GEP_tag(cx, a_tup, tid, variant.id, tps, j);
+                check valid_variant_index(j, cx, tid, v_id);
+                let rslt = GEP_tag(cx, a_tup, tid, v_id, tps, j);
                 let llfldp_a = rslt.val;
                 cx = rslt.bcx;
                 let ty_subst = ty::substitute_type_params(ccx.tcx, tps, a.ty);
@@ -5352,10 +5357,12 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
             GEP(bcx, lltagptr, [C_int(0), C_int(1)])
         };
     i = 0u;
+    let t_id = ast_util::local_def(tag_id);
+    let v_id = ast_util::local_def(variant.node.id);
     for va: ast::variant_arg in variant.node.args {
+        check valid_variant_index(i, bcx, t_id, v_id);
         let rslt =
-            GEP_tag(bcx, llblobptr, ast_util::local_def(tag_id),
-                    ast_util::local_def(variant.node.id), ty_param_substs, i);
+            GEP_tag(bcx, llblobptr, t_id, v_id, ty_param_substs, i);
         bcx = rslt.bcx;
         let lldestptr = rslt.val;
         // If this argument to this function is a tag, it'll have come in to

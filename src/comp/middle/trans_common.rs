@@ -881,6 +881,18 @@ fn C_shape(ccx: &@crate_ctxt, bytes: &[u8]) -> ValueRef {
     ret llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
 }
 
+
+pure fn valid_variant_index(ix:uint, cx:@block_ctxt, tag_id: &ast::def_id,
+                            variant_id: &ast::def_id) -> bool {
+    // Handwaving: it's ok to pretend this code is referentially
+    // transparent, because the relevant parts of the type context don't
+    // change. (We're not adding new variants during trans.)
+    unchecked {
+      let variant = ty::tag_variant_with_id(bcx_tcx(cx), tag_id, variant_id);
+      ix < vec::len(variant.args)
+    }
+}
+
 //
 // Local Variables:
 // mode: rust

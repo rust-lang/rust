@@ -216,9 +216,12 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
         blobptr = GEP(bcx, tagptr, [C_int(0), C_int(1)]);
     }
     let i = 0u;
+    let vdefs_tg = vdefs.tg;
+    let vdefs_var = vdefs.var;
     while i < size {
+        check valid_variant_index(i, bcx, vdefs_tg, vdefs_var);
         let r =
-            trans::GEP_tag(bcx, blobptr, vdefs.tg, vdefs.var, ty_param_substs,
+            trans::GEP_tag(bcx, blobptr, vdefs_tg, vdefs_var, ty_param_substs,
                            i);
         bcx = r.bcx;
         args += [r.val];
