@@ -63,7 +63,7 @@ mod syntax {
         mod base;
         mod expand;
 
-        mod ifmt;
+        mod fmt;
         mod env;
         mod simplext;
         mod concat_idents;

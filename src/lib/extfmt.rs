@@ -1,4 +1,4 @@
-// FIXME: Transitional. Remove me
+
 
 /* The 'fmt' extension is modeled on the posix printf system.
  *

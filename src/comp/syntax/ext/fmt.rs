@@ -1,7 +1,7 @@
 
 
 /*
- * The compiler code necessary to support the #ifmt extension. Eventually this
+ * The compiler code necessary to support the #fmt extension. Eventually this
  * should all get sucked into either the standard library extfmt module or the
  * compiler syntax extension plugin interface.
  */
@@ -10,7 +10,7 @@ import std::str;
 import std::option;
 import std::option::none;
 import std::option::some;
-import std::extifmt::ct::*;
+import std::extfmt::ct::*;
 import base::*;
 import codemap::span;
 export expand_syntax_ext;
@@ -22,15 +22,15 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
           ast::expr_vec(elts, _) { elts }
           _ {
             cx.span_fatal(
-                sp, ~"#ifmt requires arguments of the form `[...]`.")
+                sp, ~"#fmt requires arguments of the form `[...]`.")
           }
         };
     if vec::len::<@ast::expr>(args) == 0u {
-        cx.span_fatal(sp, ~"#ifmt requires a format string");
+        cx.span_fatal(sp, ~"#fmt requires a format string");
     }
     let fmt =
         expr_to_str(cx, args[0],
-                    ~"first argument to #ifmt must be a "
+                    ~"first argument to #fmt must be a "
                     + ~"string literal.");
     let fmtspan = args[0].span;
     log "Format string:";
@@ -106,8 +106,8 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
             ret str::find(cx.crate_file_name(), ~"std.rc") >= 0;
         }
         if compiling_std(cx) {
-            ret [~"extifmt", ~"rt", ident];
-        } else { ret [~"std", ~"extifmt", ~"rt", ident]; }
+            ret [~"extfmt", ~"rt", ident];
+        } else { ret [~"std", ~"extfmt", ~"rt", ident]; }
     }
     fn make_rt_path_expr(cx: &ext_ctxt, sp: span,
                          ident: &istr) -> @ast::expr {
@@ -151,7 +151,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                 let count_is_args = [count_lit];
                 ret make_call(cx, sp, count_is_path, count_is_args);
               }
-              _ { cx.span_unimpl(sp, ~"unimplemented #ifmt conversion"); }
+              _ { cx.span_unimpl(sp, ~"unimplemented #fmt conversion"); }
             }
         }
         fn make_ty(cx: &ext_ctxt, sp: span, t: &ty) -> @ast::expr {
@@ -205,7 +205,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
               _ { ret false; }
             }
         }
-        let unsupported = ~"conversion not supported in #ifmt string";
+        let unsupported = ~"conversion not supported in #fmt string";
         alt cnv.param {
           option::none. { }
           _ { cx.span_unimpl(sp, unsupported); }
@@ -217,14 +217,14 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
                                   ~"+ flag only valid in " +
-                                      ~"signed #ifmt conversion");
+                                      ~"signed #fmt conversion");
                 }
               }
               flag_space_for_sign. {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
                                   ~"space flag only valid in " +
-                                      ~"signed #ifmt conversions");
+                                      ~"signed #fmt conversions");
                 }
               }
               flag_left_zero_pad. { }
@@ -329,7 +329,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
             n += 1u;
             if n >= nargs {
                 cx.span_fatal(sp,
-                              ~"not enough arguments to #ifmt " +
+                              ~"not enough arguments to #fmt " +
                                   ~"for the given format string");
             }
             log "Building conversion:";

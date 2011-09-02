@@ -22,7 +22,9 @@ tag syntax_extension {
 // AST nodes into full ASTs
 fn syntax_expander_table() -> hashmap<istr, syntax_extension> {
     let syntax_expanders = new_str_hash::<syntax_extension>();
-    syntax_expanders.insert(~"ifmt", normal(ext::ifmt::expand_syntax_ext));
+    syntax_expanders.insert(~"fmt", normal(ext::fmt::expand_syntax_ext));
+    // FIXME: Transitional. Remove
+    syntax_expanders.insert(~"ifmt", normal(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(~"env", normal(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"macro",
                             macro_defining(ext::simplext::add_new_extension));
