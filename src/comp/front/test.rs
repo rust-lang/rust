@@ -286,7 +286,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
 
 fn mk_main(cx: &test_ctxt) -> @ast::item {
 
-    let args_mt: ast::mt = {ty: @nospan(ast::ty_istr), mut: ast::imm};
+    let args_mt: ast::mt = {ty: @nospan(ast::ty_str), mut: ast::imm};
     let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
 
     let args_arg: ast::arg =

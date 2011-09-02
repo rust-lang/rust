@@ -120,7 +120,7 @@ fn visit_ty<E>(t: &@ty, e: &E, v: &vt<E>) {
       ty_uint. {/* no-op */ }
       ty_machine(_) {/* no-op */ }
       ty_char. {/* no-op */ }
-      ty_istr. {/* no-op */ }
+      ty_str. {/* no-op */ }
       ty_box(mt) { v.visit_ty(mt.ty, e, v); }
       ty_vec(mt) { v.visit_ty(mt.ty, e, v); }
       ty_ptr(mt) { v.visit_ty(mt.ty, e, v); }

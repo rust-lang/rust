@@ -324,7 +324,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
 
 
 
-      ty::ty_istr. {
+      ty::ty_str. {
         s += [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);

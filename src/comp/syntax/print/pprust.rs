@@ -275,7 +275,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       ast::ty_float. { word(s.s, "float"); }
       ast::ty_machine(tm) { word(s.s, ast_util::ty_mach_to_str(tm)); }
       ast::ty_char. { word(s.s, "char"); }
-      ast::ty_istr. { word(s.s, "str"); }
+      ast::ty_str. { word(s.s, "str"); }
       ast::ty_box(mt) { word(s.s, "@"); print_mt(s, mt); }
       ast::ty_vec(mt) {
         word(s.s, "[");

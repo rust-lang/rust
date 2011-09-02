@@ -302,7 +302,7 @@ tag ty_ {
     ty_float;
     ty_machine(ty_mach);
     ty_char;
-    ty_istr;
+    ty_str;
     ty_box(mt);
     ty_vec(mt);
     ty_ptr(mt);

@@ -196,7 +196,7 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: ty::t) -> TypeRef {
         }
       }
       ty::ty_char. { llty = T_char(); }
-      ty::ty_istr. { llty = T_ptr(T_vec(T_i8())); }
+      ty::ty_str. { llty = T_ptr(T_vec(T_i8())); }
       ty::ty_tag(did, _) { llty = type_of_tag(cx, sp, did, t); }
       ty::ty_box(mt) { llty = T_ptr(T_box(type_of_inner(cx, sp, mt.ty))); }
       ty::ty_uniq(t) { llty = T_ptr(type_of_inner(cx, sp, t)); }
@@ -1393,7 +1393,7 @@ fn make_drop_glue(bcx: &@block_ctxt, v0: ValueRef, t: ty::t) {
     let ccx = bcx_ccx(bcx);
     let bcx = alt ty::struct(ccx.tcx, t) {
       ty::ty_vec(_) { tvec::make_drop_glue(bcx, v0, t) }
-      ty::ty_istr. { tvec::make_drop_glue(bcx, v0, t) }
+      ty::ty_str. { tvec::make_drop_glue(bcx, v0, t) }
       ty::ty_box(_) { decr_refcnt_maybe_free(bcx, v0, v0, t) }
       ty::ty_uniq(_) {
         let vptr = Load(bcx, v0);
@@ -1823,7 +1823,7 @@ fn iter_sequence(cx: @block_ctxt, v: ValueRef, t: ty::t, f: &val_and_ty_fn) ->
 
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_vec(elt) { ret iter_sequence_body(cx, v, elt.ty, f, false); }
-      ty::ty_istr. {
+      ty::ty_str. {
         let et = ty::mk_mach(bcx_tcx(cx), ast::ty_u8);
         ret iter_sequence_body(cx, v, et, f, true);
       }

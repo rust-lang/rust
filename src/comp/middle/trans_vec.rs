@@ -145,7 +145,7 @@ fn trans_append(cx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     }
     let strings =
         alt ty::struct(bcx_tcx(cx), vec_ty) {
-          ty::ty_istr. { true }
+          ty::ty_str. { true }
           ty::ty_vec(_) { false }
         };
 
@@ -215,7 +215,7 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef, rhs: ValueRef)
    -> result {
     let strings =
         alt ty::struct(bcx_tcx(bcx), vec_ty) {
-          ty::ty_istr. { true }
+          ty::ty_str. { true }
           ty::ty_vec(_) { false }
         };
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);

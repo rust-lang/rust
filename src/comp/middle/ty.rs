@@ -121,7 +121,7 @@ export ty_fn_abi;
 export ty_fn_proto;
 export ty_fn_ret;
 export ty_int;
-export ty_istr;
+export ty_str;
 export ty_vec;
 export ty_machine;
 export ty_native;
@@ -249,7 +249,7 @@ tag sty {
     ty_uint;
     ty_machine(ast::ty_mach);
     ty_char;
-    ty_istr;
+    ty_str;
     ty_tag(def_id, [t]);
     ty_box(mt);
     ty_uniq(t);
@@ -363,7 +363,7 @@ fn populate_type_store(cx: &ctxt) {
     intern(cx, ty_machine(ast::ty_f32), none);
     intern(cx, ty_machine(ast::ty_f64), none);
     intern(cx, ty_char, none);
-    intern(cx, ty_istr, none);
+    intern(cx, ty_str, none);
     intern(cx, ty_type, none);
     intern(cx, ty_bot, none);
     assert (vec::len(cx.ts.vect) == idx_first_others);
@@ -442,7 +442,7 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, _in_cname: &option::t<str>) -> @raw_t {
       ty_uint. {/* no-op */ }
       ty_machine(_) {/* no-op */ }
       ty_char. {/* no-op */ }
-      ty_istr. {/* no-op */ }
+      ty_str. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_param(_, _) { has_params = true; }
@@ -612,7 +612,7 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       ty_float. {/* no-op */ }
       ty_machine(_) {/* no-op */ }
       ty_char. {/* no-op */ }
-      ty_istr. {/* no-op */ }
+      ty_str. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_box(tm) { walk_ty(cx, walker, tm.ty); }
@@ -675,7 +675,7 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_float. {/* no-op */ }
       ty_machine(_) {/* no-op */ }
       ty_char. {/* no-op */ }
-      ty_istr. {/* no-op */ }
+      ty_str. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_box(tm) {
@@ -817,19 +817,19 @@ fn type_is_copyable(cx: &ctxt, ty: t) -> bool {
 
 fn type_is_sequence(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_istr. { ret true; }
+      ty_str. { ret true; }
       ty_vec(_) { ret true; }
       _ { ret false; }
     }
 }
 
 fn type_is_str(cx: &ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_istr. { ret true; } _ { ret false; } }
+    alt struct(cx, ty) { ty_str. { ret true; } _ { ret false; } }
 }
 
 fn sequence_element_type(cx: &ctxt, ty: t) -> t {
     alt struct(cx, ty) {
-      ty_istr. { ret mk_mach(cx, ast::ty_u8); }
+      ty_str. { ret mk_mach(cx, ast::ty_u8); }
       ty_vec(mt) { ret mt.ty; }
       _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
     }
@@ -870,7 +870,7 @@ fn type_is_boxed(cx: &ctxt, ty: t) -> bool {
 fn type_is_vec(cx: &ctxt, ty: t) -> bool {
     ret alt struct(cx, ty) {
           ty_vec(_) { true }
-          ty_istr. { true }
+          ty_str. { true }
           _ { false }
         };
 }
@@ -879,7 +879,7 @@ fn type_is_unique(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_uniq(_) { ret true; }
       ty_vec(_) { true }
-      ty_istr. { true }
+      ty_str. { true }
       _ { ret false; }
     }
 }
@@ -985,7 +985,7 @@ fn type_kind(cx: &ctxt, ty: t) -> ast::kind {
 
 
       // A handful of other built-in are unique too.
-      ty_type. | ty_istr. | ty_native_fn(_, _, _) {
+      ty_type. | ty_str. | ty_native_fn(_, _, _) {
         // no-op
       }
 
@@ -1228,7 +1228,7 @@ fn type_is_pod(cx: &ctxt, ty: t) -> bool {
 
 
       // Boxed types
-      ty_istr. | ty_box(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
+      ty_str. | ty_box(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
       ty_native_fn(_, _, _) | ty_obj(_) {
         result = false;
       }
@@ -1382,7 +1382,7 @@ fn hash_type_structure(st: &sty) -> uint {
         }
       }
       ty_char. { ret 15u; }
-      ty_istr. { ret 17u; }
+      ty_str. { ret 17u; }
       ty_tag(did, tys) {
         let h = hash_def(18u, did);
         for typ: t in tys { h += h << 5u + hash_ty(typ); }
@@ -2141,7 +2141,7 @@ mod unify {
           ty::ty_machine(_) { ret struct_cmp(cx, expected, actual); }
           ty::ty_float. { ret struct_cmp(cx, expected, actual); }
           ty::ty_char. { ret struct_cmp(cx, expected, actual); }
-          ty::ty_istr. { ret struct_cmp(cx, expected, actual); }
+          ty::ty_str. { ret struct_cmp(cx, expected, actual); }
           ty::ty_type. { ret struct_cmp(cx, expected, actual); }
           ty::ty_native(ex_id) {
             alt struct(cx.tcx, actual) {
@@ -2740,7 +2740,7 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
           ty_machine(ast::ty_f64.) { tycat_float }
           ty_char. { tycat_int }
           ty_ptr(_) { tycat_int }
-          ty_istr. { tycat_str }
+          ty_str. { tycat_str }
           ty_vec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }
           ty_tup(_) { tycat_struct }

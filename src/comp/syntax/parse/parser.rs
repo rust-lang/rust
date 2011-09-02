@@ -486,7 +486,7 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "float") {
         t = ast::ty_float;
     } else if eat_word(p, "str") {
-        t = ast::ty_istr;
+        t = ast::ty_str;
     } else if eat_word(p, "char") {
         t = ast::ty_char;
         /*
