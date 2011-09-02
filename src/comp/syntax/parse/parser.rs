@@ -487,8 +487,6 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
         t = ast::ty_float;
     } else if eat_word(p, "str") {
         t = ast::ty_istr;
-    } else if eat_word(p, "istr") {
-        t = ast::ty_istr;
     } else if eat_word(p, "char") {
         t = ast::ty_char;
         /*
@@ -880,15 +878,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_ellipsis)
     } else if p.peek() == token::TILDE {
         p.bump();
-        alt p.peek() {
-          token::LIT_STR(s) {
-            let sp = p.get_span();
-            p.bump();
-            let lit = @{node: ast::lit_str(p.get_str(s)), span: sp};
-            ex = ast::expr_lit(lit);
-          }
-          _ { ex = ast::expr_uniq(parse_expr(p)); }
-        }
+        ex = ast::expr_uniq(parse_expr(p));
     } else if eat_word(p, "obj") {
         // Anonymous object
 
@@ -1477,19 +1467,6 @@ fn parse_pat(p: &parser) -> @ast::pat {
             hi = p.get_hi_pos();
             expect(p, token::RPAREN);
             pat = ast::pat_tup(fields);
-        }
-      }
-      token::TILDE. {
-        p.bump();
-        alt p.peek() {
-          token::LIT_STR(s) {
-            let sp = p.get_span();
-            p.bump();
-            let lit = @{node: ast::lit_str(p.get_str(s)), span: sp};
-            hi = lit.span.hi;
-            pat = ast::pat_lit(lit);
-          }
-          _ { p.fatal("expected string literal"); }
         }
       }
       tok {
