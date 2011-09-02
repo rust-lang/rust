@@ -257,9 +257,7 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg,
 
 fn version(argv0: &istr) {
     let vers = ~"unknown version";
-    // FIXME: Restore after istr conversion
-    //let env_vers = #env["CFG_VERSION"];
-    let env_vers = ~"FIXME";
+    let env_vers = #env["CFG_VERSION"];
     if str::byte_len(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(
         #ifmt["%s %s\n",
