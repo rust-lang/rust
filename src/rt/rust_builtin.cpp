@@ -7,7 +7,7 @@
 
 /* Native builtins. */
 
-extern "C" CDECL rust_str*
+extern "C" CDECL rust_vec*
 last_os_error(rust_task *task) {
     LOG(task, task, "last_os_error()");
 
@@ -39,16 +39,9 @@ last_os_error(rust_task *task) {
         return NULL;
     }
 #endif
-    size_t fill = strlen(buf) + 1;
-    size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc, "rust_str(last_os_error)");
-    if (!mem) {
-        task->fail();
-        return NULL;
-    }
-    rust_str *st = new (mem) rust_str(alloc, fill,
-                                      (const uint8_t *)buf);
 
+    rust_vec * st = make_istr(task->kernel, buf, strlen(buf),
+                              "last_os_error");
 #ifdef __WIN32__
     LocalFree((HLOCAL)buf);
 #endif
@@ -113,43 +106,6 @@ do_gc(rust_task *task) {
 extern "C" CDECL void
 unsupervise(rust_task *task) {
     task->unsupervise();
-}
-
-/* Helper for str_alloc and str_from_vec.  Returns NULL as failure. */
-static rust_evec*
-vec_alloc_with_data(rust_task *task,
-                    size_t n_elts,
-                    size_t fill,
-                    size_t elt_size,
-                    void *d)
-{
-    size_t alloc = next_power_of_two(sizeof(rust_evec) + (n_elts * elt_size));
-    void *mem = task->malloc(alloc, "rust_evec (with data)");
-    if (!mem) return NULL;
-    return new (mem) rust_evec(alloc, fill * elt_size, (uint8_t*)d);
-}
-
-extern "C" CDECL char const *
-str_buf(rust_task *task, rust_str *s)
-{
-    return (char const *)&s->data[0];
-}
-
-extern "C" CDECL rust_str *
-str_from_vec(rust_task *task, rust_vec **vp)
-{
-    rust_vec* v = *vp;
-    rust_str *st = vec_alloc_with_data(task,
-                                       v->fill + 1, // +1 for \0
-                                       v->fill,
-                                       1,
-                                       &v->data[0]);
-    if (!st) {
-        task->fail();
-        return NULL;
-    }
-    st->data[st->fill++] = '\0';
-    return st;
 }
 
 extern "C" CDECL void
@@ -370,19 +326,6 @@ debug_ptrcast(rust_task *task,
     return ptr;
 }
 
-extern "C" CDECL void
-debug_trap(rust_task *task, rust_str *s)
-{
-    LOG(task, stdlib, "trapping: %s", s->data);
-    // FIXME: x86-ism.
-    __asm__("int3");
-}
-
-rust_str* c_str_to_rust(rust_task *task, char const *str) {
-    size_t len = strlen(str) + 1;
-    return vec_alloc_with_data(task, len, len, 1, (void*)str);
-}
-
 extern "C" CDECL rust_vec*
 rust_list_files(rust_task *task, rust_vec **path) {
     array_list<rust_vec*> strings;
@@ -420,18 +363,6 @@ rust_list_files(rust_task *task, rust_vec **path) {
   memcpy(&vec->data[0], strings.data(), alloc_sz);
   return vec;
 }
-
-#if defined(__WIN32__)
-extern "C" CDECL rust_str *
-rust_dirent_filename(rust_task *task, void* ent) {
-    return NULL;
-}
-#else
-extern "C" CDECL rust_str *
-rust_dirent_filename(rust_task *task, dirent* ent) {
-    return c_str_to_rust(task, ent->d_name);
-}
-#endif
 
 extern "C" CDECL int
 rust_file_is_dir(rust_task *task, char *path) {

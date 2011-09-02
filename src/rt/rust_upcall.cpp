@@ -4,8 +4,9 @@
 
 // Upcalls.
 
+// FIXME: Transitional. Please remove
 extern "C" CDECL char const *
-str_buf(rust_task *task, rust_str *s);
+str_buf(rust_task *task, void *s) { return NULL; }
 
 #ifdef __i386__
 void
@@ -53,19 +54,30 @@ void upcall_log_double(rust_task *task, uint32_t level, double *f) {
 }
 
 extern "C" CDECL void
-upcall_log_str(rust_task *task, uint32_t level, rust_str *str) {
-    LOG_UPCALL_ENTRY(task);
-    if (task->sched->log_lvl >= level) {
-        const char *c = str_buf(task, str);
-        task->sched->log(task, level, "rust: %s", c);
-    }
-}
-
-extern "C" CDECL void
 upcall_yield(rust_task *task) {
     LOG_UPCALL_ENTRY(task);
     LOG(task, comm, "upcall yield()");
     task->yield(1);
+}
+
+// Copy elements from one vector to another,
+// dealing with reference counts
+static inline void
+copy_elements(rust_task *task, type_desc *elem_t,
+              void *pdst, void *psrc, size_t n)
+{
+    char *dst = (char *)pdst, *src = (char *)psrc;
+    memmove(dst, src, n);
+
+    // increment the refcount of each element of the vector
+    if (elem_t->take_glue) {
+        glue_fn *take_glue = elem_t->take_glue;
+        size_t elem_size = elem_t->size;
+        const type_desc **tydescs = elem_t->first_param;
+        for (char *p = dst; p < dst+n; p += elem_size) {
+            take_glue(NULL, task, NULL, tydescs, p);
+        }
+    }
 }
 
 extern "C" CDECL void
@@ -177,150 +189,6 @@ upcall_shared_free(rust_task *task, void* ptr) {
              "upcall shared_free(0x%" PRIxPTR")",
              (uintptr_t)ptr);
     task->kernel->free(ptr);
-}
-
-rust_str *make_str(rust_task *task, char const *s, size_t fill) {
-    size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc, "rust_str (make_str)");
-    if (!mem) {
-        task->fail();
-        return NULL;
-    }
-    rust_str *st = new (mem) rust_str(alloc, fill,
-                                      (uint8_t const *) s);
-    LOG(task, mem,
-        "upcall new_str('%s', %" PRIdPTR ") = 0x%" PRIxPTR,
-        s, fill, st);
-    return st;
-}
-
-extern "C" CDECL rust_str *
-upcall_new_str(rust_task *task, char const *s, size_t fill) {
-    LOG_UPCALL_ENTRY(task);
-    return make_str(task, s, fill);
-}
-
-static rust_evec *
-vec_grow(rust_task *task,
-         rust_evec *v,
-         size_t n_bytes,
-         uintptr_t *need_copy,
-         type_desc *td)
-{
-    rust_scheduler *sched = task->sched;
-    LOG(task, mem,
-        "vec_grow(0x%" PRIxPTR ", %" PRIdPTR
-        "), rc=%" PRIdPTR " alloc=%" PRIdPTR ", fill=%" PRIdPTR
-        ", need_copy=0x%" PRIxPTR,
-        v, n_bytes, v->ref_count, v->alloc, v->fill, need_copy);
-
-    *need_copy = 0;
-    size_t alloc = next_power_of_two(sizeof(rust_evec) + v->fill + n_bytes);
-
-    if (v->ref_count == 1) {
-
-        // Fastest path: already large enough.
-        if (v->alloc >= alloc) {
-            LOG(task, mem, "no-growth path");
-            return v;
-        }
-
-        // Second-fastest path: can at least realloc.
-        LOG(task, mem, "realloc path");
-        v = (rust_evec*) task->realloc(v, alloc, td->is_stateful);
-        if (!v) {
-            task->fail();
-            return NULL;
-        }
-        v->alloc = alloc;
-
-    } else {
-        /**
-         * Slowest path: make a new vec.
-         *
-         * 1. Allocate a new rust_evec with desired additional space.
-         * 2. Down-ref the shared rust_evec, point to the new one instead.
-         * 3. Copy existing elements into the new rust_evec.
-         *
-         * Step 3 is a bit tricky.  We don't know how to properly copy the
-         * elements in the runtime (all we have are bits in a buffer; no
-         * type information and no copy glue).  What we do instead is set the
-         * need_copy outparam flag to indicate to our caller (vec-copy glue)
-         * that we need the copies performed for us.
-         */
-        LOG(task, mem, "new vec path");
-        void *mem = task->malloc(alloc, "rust_evec (vec_grow)", td);
-        if (!mem) {
-            task->fail();
-            return NULL;
-        }
-
-        if (v->ref_count != CONST_REFCOUNT)
-            v->deref();
-
-        v = new (mem) rust_evec(alloc, 0, NULL);
-        *need_copy = 1;
-    }
-    I(sched, sizeof(rust_evec) + v->fill <= v->alloc);
-    return v;
-}
-
-// Copy elements from one vector to another,
-// dealing with reference counts
-static inline void
-copy_elements(rust_task *task, type_desc *elem_t,
-              void *pdst, void *psrc, size_t n)
-{
-    char *dst = (char *)pdst, *src = (char *)psrc;
-    memmove(dst, src, n);
-
-    // increment the refcount of each element of the vector
-    if (elem_t->take_glue) {
-        glue_fn *take_glue = elem_t->take_glue;
-        size_t elem_size = elem_t->size;
-        const type_desc **tydescs = elem_t->first_param;
-        for (char *p = dst; p < dst+n; p += elem_size) {
-            take_glue(NULL, task, NULL, tydescs, p);
-        }
-    }
-}
-
-extern "C" CDECL void
-upcall_evec_append(rust_task *task, type_desc *t, type_desc *elem_t,
-                   rust_evec **dst_ptr, rust_evec *src, bool skip_null)
-{
-    LOG_UPCALL_ENTRY(task);
-    rust_evec *dst = *dst_ptr;
-    uintptr_t need_copy;
-    size_t n_src_bytes = skip_null ? src->fill - 1 : src->fill;
-    size_t n_dst_bytes = skip_null ? dst->fill - 1 : dst->fill;
-    rust_evec *new_vec = vec_grow(task, dst, n_src_bytes, &need_copy, t);
-
-    // If src and dst are the same (due to "v += v"), then dst getting
-    // resized causes src to move as well.
-    if (dst == src && !need_copy) {
-        src = new_vec;
-    }
-
-    if (need_copy) {
-        // Copy any dst elements in, omitting null if doing str.
-        copy_elements(task, elem_t, &new_vec->data, &dst->data, n_dst_bytes);
-    }
-
-    // Copy any src elements in, carrying along null if doing str.
-    void *new_end = (void *)((char *)new_vec->data + n_dst_bytes);
-    copy_elements(task, elem_t, new_end, &src->data, src->fill);
-    new_vec->fill = n_dst_bytes + src->fill;
-
-    // Write new_vec back through the alias we were given.
-    *dst_ptr = new_vec;
-}
-
-// FIXME: Transitional. Please remove.
-extern "C" CDECL void
-upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
-                  rust_evec **dst_ptr, rust_evec *src, bool skip_null) {
-    upcall_evec_append(task, t, elem_t, dst_ptr, src, skip_null);
 }
 
 extern "C" CDECL type_desc *

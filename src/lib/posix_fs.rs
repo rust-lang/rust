@@ -1,7 +1,6 @@
 
 native "rust" mod rustrt {
     fn rust_list_files(path: &istr) -> [istr];
-    fn rust_dirent_filename(ent: os::libc::dirent) -> str;
 }
 
 fn list_dir(path: &istr) -> [istr] {

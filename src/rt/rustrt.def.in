@@ -19,7 +19,6 @@ debug_opaque
 del_port
 debug_ptrcast
 debug_tag
-debug_trap
 debug_tydesc
 do_gc
 drop_port
@@ -44,7 +43,6 @@ rand_free
 rand_new
 rand_next
 refcount
-rust_dirent_filename
 rust_file_is_dir
 rust_get_stdin
 rust_get_stdout
@@ -63,7 +61,6 @@ size_of
 squareroot
 start_task
 str_buf
-str_from_vec
 vec_reserve_shared
 vec_from_buf_shared
 task_sleep
@@ -86,14 +83,9 @@ upcall_kill
 upcall_log_double
 upcall_log_float
 upcall_log_int
-upcall_log_str
-upcall_log_str
 upcall_log_type
 upcall_malloc
-upcall_new_str
 upcall_shared_malloc
 upcall_shared_free
 upcall_sleep
-upcall_evec_append
-upcall_vec_append
 upcall_yield

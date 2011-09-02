@@ -25,6 +25,7 @@ mod run;
 mod sha1;
 mod sort;
 mod str;
+mod sys;
 mod task;
 mod test;
 mod uint;

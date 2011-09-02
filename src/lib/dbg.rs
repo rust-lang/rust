@@ -19,7 +19,6 @@ native "rust" mod rustrt {
     fn debug_obj<T>(x: &T, nmethods: uint, nbytes: uint);
     fn debug_fn<T>(x: &T);
     fn debug_ptrcast<T, U>(x: @T) -> @U;
-    fn debug_trap(msg: str);
 }
 
 fn debug_tydesc<T>() { rustrt::debug_tydesc::<T>(); }
@@ -47,8 +46,6 @@ fn debug_obj<T>(x: &T, nmethods: uint, nbytes: uint) {
 fn debug_fn<T>(x: &T) { rustrt::debug_fn::<T>(x); }
 
 fn ptr_cast<T, U>(x: @T) -> @U { ret rustrt::debug_ptrcast::<T, U>(x); }
-
-fn trap(s: str) { rustrt::debug_trap(s); }
 
 fn refcount<T>(a: &@T) -> uint {
     let p: *uint = unsafe::reinterpret_cast(a);

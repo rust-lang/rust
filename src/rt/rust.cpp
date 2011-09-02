@@ -7,11 +7,9 @@ command_line_args : public kernel_owned<command_line_args>
     rust_task *task;
     int argc;
     char **argv;
-    rust_str **strs;
 
     // [str] passed to rust_task::start.
     rust_vec *args;
-    rust_vec *args_istr;
 
     command_line_args(rust_task *task,
                       int sys_argc,
@@ -40,52 +38,24 @@ command_line_args : public kernel_owned<command_line_args>
         LocalFree(wargv);
 #endif
 
-        // Allocate a vector of estrs
-        size_t vec_fill = sizeof(rust_str *) * argc;
-        size_t vec_alloc = next_power_of_two(vec_fill);
-        void *mem = kernel->malloc(vec_alloc, "command line");
-        strs = (rust_str**) mem;
-        for (int i = 0; i < argc; ++i) {
-            size_t str_fill = strlen(argv[i]) + 1;
-            size_t str_alloc = next_power_of_two(sizeof(rust_str) + str_fill);
-            mem = kernel->malloc(str_alloc, "command line arg");
-            strs[i] = new (mem) rust_str(str_alloc, str_fill,
-                                         (uint8_t const *)argv[i]);
-            strs[i]->ref_count++;
-        }
-
         args = (rust_vec *)
-            kernel->malloc(vec_size<rust_str*>(argc),
-                           "command line arg interior");
-        args->fill = args->alloc = sizeof(rust_str *) * argc;
-        memcpy(&args->data[0], strs, args->fill);
-
-        // Allocate a vector of istrs
-        args_istr = (rust_vec *)
             kernel->malloc(vec_size<rust_vec*>(argc),
                            "command line arg interior");
-        args_istr->fill = args_istr->alloc = sizeof(rust_vec*) * argc;
+        args->fill = args->alloc = sizeof(rust_vec*) * argc;
         for (int i = 0; i < argc; ++i) {
             rust_vec *str = make_istr(kernel, argv[i],
                                       strlen(argv[i]),
                                       "command line arg");
-            ((rust_vec**)&args_istr->data)[i] = str;
+            ((rust_vec**)&args->data)[i] = str;
         }
     }
 
     ~command_line_args() {
-        // Free the estr args
-        kernel->free(args);
-        for (int i = 0; i < argc; ++i)
-            kernel->free(strs[i]);
-        kernel->free(strs);
-
-        // Free the istr args
         for (int i = 0; i < argc; ++i) {
-            rust_vec *s = ((rust_vec**)&args_istr->data)[i];
+            rust_vec *s = ((rust_vec**)&args->data)[i];
             kernel->free(s);
         }
-        kernel->free(args_istr);
+        kernel->free(args);
 
 #ifdef __WIN32__
         for (int i = 0; i < argc; ++i) {
@@ -97,11 +67,9 @@ command_line_args : public kernel_owned<command_line_args>
 };
 
 
-bool main_takes_istr = true;
-
+// FIXME: Transitional. Please remove.
 extern "C" CDECL void
 set_main_takes_istr(uintptr_t flag) {
-    main_takes_istr = flag != 0;
 }
 
 /**
@@ -136,11 +104,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv,
         DLOG(sched, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    if (main_takes_istr) {
-        root_task->start(main_fn, (uintptr_t)args->args_istr);
-    } else {
-        root_task->start(main_fn, (uintptr_t)args->args);
-    }
+    root_task->start(main_fn, (uintptr_t)args->args);
     root_task->deref();
     root_task = NULL;
 
