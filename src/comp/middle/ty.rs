@@ -153,7 +153,7 @@ export type_is_bool;
 export type_is_bot;
 export type_is_box;
 export type_is_boxed;
-export type_is_ivec;
+export type_is_vec;
 export type_is_fp;
 export type_is_integral;
 export type_is_native;
@@ -877,7 +877,7 @@ fn type_is_boxed(cx: &ctxt, ty: t) -> bool {
     }
 }
 
-fn type_is_ivec(cx: &ctxt, ty: t) -> bool {
+fn type_is_vec(cx: &ctxt, ty: t) -> bool {
     ret alt struct(cx, ty) {
       ty_vec(_) { true }
       ty_istr. { true }

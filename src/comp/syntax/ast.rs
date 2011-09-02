@@ -301,9 +301,9 @@ tag ty_ {
     ty_float;
     ty_machine(ty_mach);
     ty_char;
-    ty_istr; // interior string
+    ty_istr;
     ty_box(mt);
-    ty_vec(mt); // interior vector
+    ty_vec(mt);
     ty_ptr(mt);
     ty_task;
     ty_port(@ty);

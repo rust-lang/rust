@@ -643,15 +643,15 @@ fn T_array(t: TypeRef, n: uint) -> TypeRef { ret llvm::LLVMArrayType(t, n); }
 // Interior vector.
 //
 // TODO: Support user-defined vector sizes.
-fn T_ivec(t: TypeRef) -> TypeRef {
+fn T_vec(t: TypeRef) -> TypeRef {
     ret T_struct([T_int(), // fill
                   T_int(), // alloc
                   T_array(t, 0u)]); // elements
 }
 
 // Note that the size of this one is in bytes.
-fn T_opaque_ivec() -> TypeRef {
-    ret T_ivec(T_i8());
+fn T_opaque_vec() -> TypeRef {
+    ret T_vec(T_i8());
 }
 
 fn T_box(t: TypeRef) -> TypeRef { ret T_struct([T_int(), t]); }

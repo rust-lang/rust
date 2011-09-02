@@ -36,16 +36,6 @@ const box_rc_field_body: int = 1;
 
 const general_code_alignment: int = 16;
 
-const vec_elt_rc: int = 0;
-
-const vec_elt_alloc: int = 1;
-
-const vec_elt_fill: int = 2;
-
-const vec_elt_pad: int = 3;
-
-const vec_elt_data: int = 4;
-
 const tydesc_field_first_param: int = 0;
 const tydesc_field_size: int = 1;
 const tydesc_field_align: int = 2;
@@ -92,11 +82,11 @@ const closure_elt_bindings: int = 1;
 
 const closure_elt_ty_params: int = 2;
 
-const ivec_elt_fill: uint = 0u;
+const vec_elt_fill: uint = 0u;
 
-const ivec_elt_alloc: uint = 1u;
+const vec_elt_alloc: uint = 1u;
 
-const ivec_elt_elems: uint = 2u;
+const vec_elt_elems: uint = 2u;
 
 const worst_case_glue_call_args: int = 7;
 
