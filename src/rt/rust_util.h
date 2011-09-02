@@ -189,7 +189,7 @@ inline void reserve_vec(rust_task* task, rust_vec** vpp, size_t size) {
 }
 
 inline rust_vec *
-make_istr(rust_kernel* kernel, char* c, size_t strlen, const char* name) {
+make_str(rust_kernel* kernel, char* c, size_t strlen, const char* name) {
     size_t str_fill = strlen + 1;
     size_t str_alloc = str_fill;
     rust_vec *str = (rust_vec *)

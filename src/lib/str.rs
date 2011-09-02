@@ -7,7 +7,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len, index,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice;
 
 native "rust" mod rustrt {
-    fn rust_istr_push(s: &mutable str, ch: u8);
+    fn rust_str_push(s: &mutable str, ch: u8);
 }
 
 fn eq(a: &str, b: &str) -> bool { a == b }
@@ -315,10 +315,10 @@ fn pop_byte(s: &mutable str) -> u8 {
     ret b;
 }
 
-fn push_byte(s: &mutable str, b: u8) { rustrt::rust_istr_push(s, b); }
+fn push_byte(s: &mutable str, b: u8) { rustrt::rust_str_push(s, b); }
 
 fn push_bytes(s: &mutable str, bytes: &[u8]) {
-    for byte in bytes { rustrt::rust_istr_push(s, byte); }
+    for byte in bytes { rustrt::rust_str_push(s, byte); }
 }
 
 fn split(s: &str, sep: u8) -> [str] {
