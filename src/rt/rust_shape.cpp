@@ -333,10 +333,6 @@ public:
                          in_dp),
       result(0) {}
 
-    void walk_evec(bool is_pod, uint16_t sp_size) {
-        walk_vec(is_pod, get_evec_data_range(dp));
-    }
-
     void walk_vec(bool is_pod, uint16_t sp_size) {
         walk_vec(is_pod, get_vec_data_range(dp));
     }

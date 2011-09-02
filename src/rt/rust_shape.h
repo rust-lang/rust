@@ -33,7 +33,6 @@ const uint8_t SHAPE_I32 = 6u;
 const uint8_t SHAPE_I64 = 7u;
 const uint8_t SHAPE_F32 = 8u;
 const uint8_t SHAPE_F64 = 9u;
-const uint8_t SHAPE_EVEC = 10u;
 const uint8_t SHAPE_VEC = 11u;
 const uint8_t SHAPE_TAG = 12u;
 const uint8_t SHAPE_BOX = 13u;
@@ -237,7 +236,6 @@ protected:
     inline size_align get_size_align(const uint8_t *&addr);
 
 private:
-    void walk_evec();
     void walk_vec();
     void walk_tag();
     void walk_box();
@@ -335,7 +333,6 @@ ctxt<T>::walk() {
     case SHAPE_I64:     WALK_NUMBER(int64_t);   break;
     case SHAPE_F32:     WALK_NUMBER(float);     break;
     case SHAPE_F64:     WALK_NUMBER(double);    break;
-    case SHAPE_EVEC:    walk_evec();            break;
     case SHAPE_VEC:     walk_vec();             break;
     case SHAPE_TAG:     walk_tag();             break;
     case SHAPE_BOX:     walk_box();             break;
@@ -376,19 +373,6 @@ ctxt<T>::get_variant_sp(tag_info &tinfo, uint32_t variant_id) {
     uint16_t variant_len = get_u16_bump(variant_ptr);
     const uint8_t *variant_end = variant_ptr + variant_len;
     return std::make_pair(variant_ptr, variant_end);
-}
-
-template<typename T>
-void
-ctxt<T>::walk_evec() {
-    bool is_pod = *sp++;
-
-    uint16_t sp_size = get_u16_bump(sp);
-    const uint8_t *end_sp = sp + sp_size;
-
-    static_cast<T *>(this)->walk_evec(is_pod, sp_size);
-
-    sp = end_sp;
 }
 
 template<typename T>
@@ -514,9 +498,6 @@ public:
                   const type_param *params, const uint8_t *end_sp);
     void walk_var(uint8_t param);
 
-    void walk_evec(bool is_pod, uint16_t sp_size) {
-        DPRINT("evec<"); walk(); DPRINT(">");
-    }
     void walk_vec(bool is_pod, uint16_t sp_size) {
         DPRINT("vec<"); walk(); DPRINT(">");
     }
@@ -571,9 +552,6 @@ public:
     void walk_fn()      { sa.set(sizeof(void *)*2, sizeof(void *)); }
     void walk_obj()     { sa.set(sizeof(void *)*2, sizeof(void *)); }
 
-    void walk_evec(bool is_pod, uint16_t sp_size) {
-        sa.set(sizeof(void *), sizeof(void *));
-    }
     void walk_vec(bool is_pod, uint16_t sp_size) {
         sa.set(sizeof(void *), sizeof(void *));
     }
@@ -781,9 +759,7 @@ protected:
     void walk_obj_contents(ptr &dp);
     void walk_variant(tag_info &tinfo, uint32_t variant);
 
-    static std::pair<uint8_t *,uint8_t *> get_evec_data_range(ptr dp);
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
-    static std::pair<ptr_pair,ptr_pair> get_evec_data_range(ptr_pair &dp);
     static std::pair<ptr_pair,ptr_pair> get_vec_data_range(ptr_pair &dp);
 
 public:
@@ -803,9 +779,6 @@ public:
         static_cast<T *>(this)->walk_struct(end_sp);
     }
 
-    void walk_evec(bool is_pod, uint16_t sp_size) {
-        DATA_SIMPLE(void *, walk_evec(is_pod, sp_size));
-    }
     void walk_vec(bool is_pod, uint16_t sp_size) {
         DATA_SIMPLE(void *, walk_vec(is_pod, sp_size));
     }
@@ -867,27 +840,10 @@ data<T,U>::walk_variant(tag_info &tinfo, uint32_t variant_id) {
 
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
-data<T,U>::get_evec_data_range(ptr dp) {
-    rust_evec *vp = bump_dp<rust_evec *>(dp);
-    return std::make_pair(vp->data, vp->data + vp->fill);
-}
-
-template<typename T,typename U>
-std::pair<uint8_t *,uint8_t *>
 data<T,U>::get_vec_data_range(ptr dp) {
     rust_vec* ptr = bump_dp<rust_vec*>(dp);
     uint8_t* data = &ptr->data[0];
     return std::make_pair(data, data + ptr->fill);
-}
-
-template<typename T,typename U>
-std::pair<ptr_pair,ptr_pair>
-data<T,U>::get_evec_data_range(ptr_pair &dp) {
-    std::pair<uint8_t *,uint8_t *> fst = get_evec_data_range(dp.fst);
-    std::pair<uint8_t *,uint8_t *> snd = get_evec_data_range(dp.snd);
-    ptr_pair start(fst.first, snd.first);
-    ptr_pair end(fst.second, snd.second);
-    return std::make_pair(start, end);
 }
 
 template<typename T,typename U>
@@ -1013,13 +969,6 @@ private:
                     in_dp),
       out(other.out),
       prefix("") {}
-
-    void walk_evec(bool is_pod, uint16_t sp_size) {
-        if (!get_dp<void *>(dp))
-            out << prefix << "(null)";
-        else
-            walk_vec(is_pod, get_evec_data_range(dp));
-    }
 
     void walk_vec(bool is_pod, uint16_t sp_size) {
         if (!get_dp<void *>(dp))
