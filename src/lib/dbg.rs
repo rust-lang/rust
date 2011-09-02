@@ -8,9 +8,6 @@
  * logging.
  */
 
-// FIXME: handle 64-bit case.
-const const_refcount: uint = 0x7bad_face_u;
-
 native "rust" mod rustrt {
     fn debug_tydesc<T>();
     fn debug_opaque<T>(x: &T);

@@ -1318,16 +1318,9 @@ fn incr_refcnt_of_boxed(cx: &@block_ctxt, box_ptr: ValueRef) -> @block_ctxt {
     let rc_ptr =
         GEP(cx, box_ptr, [C_int(0), C_int(abi::box_rc_field_refcnt)]);
     let rc = Load(cx, rc_ptr);
-    let rc_adj_cx = new_sub_block_ctxt(cx, ~"rc++");
-    let next_cx = new_sub_block_ctxt(cx, ~"next");
-    let const_test =
-        ICmp(cx, lib::llvm::LLVMIntEQ, C_int(abi::const_refcount as int),
-                      rc);
-    CondBr(cx, const_test, next_cx.llbb, rc_adj_cx.llbb);
-    rc = Add(rc_adj_cx, rc, C_int(1));
-    Store(rc_adj_cx, rc, rc_ptr);
-    Br(rc_adj_cx, next_cx.llbb);
-    ret next_cx;
+    rc = Add(cx, rc, C_int(1));
+    Store(cx, rc, rc_ptr);
+    ret cx;
 }
 
 fn make_free_glue(bcx: &@block_ctxt, v0: ValueRef, t: ty::t) {
@@ -1466,7 +1459,6 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
 fn decr_refcnt_maybe_free(cx: &@block_ctxt, box_ptr_alias: ValueRef,
                           full_alias: ValueRef, t: ty::t) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
-    let load_rc_cx = new_sub_block_ctxt(cx, ~"load rc");
     let rc_adj_cx = new_sub_block_ctxt(cx, ~"rc--");
     let free_cx = new_sub_block_ctxt(cx, ~"free");
     let next_cx = new_sub_block_ctxt(cx, ~"next");
@@ -1474,15 +1466,11 @@ fn decr_refcnt_maybe_free(cx: &@block_ctxt, box_ptr_alias: ValueRef,
     let llbox_ty = T_opaque_obj_ptr(*ccx);
     box_ptr = PointerCast(cx, box_ptr, llbox_ty);
     let null_test = IsNull(cx, box_ptr);
-    CondBr(cx, null_test, next_cx.llbb, load_rc_cx.llbb);
+    CondBr(cx, null_test, next_cx.llbb, rc_adj_cx.llbb);
     let rc_ptr =
-        GEP(load_rc_cx, box_ptr,
+        GEP(rc_adj_cx, box_ptr,
                              [C_int(0), C_int(abi::box_rc_field_refcnt)]);
-    let rc = Load(load_rc_cx, rc_ptr);
-    let const_test =
-        ICmp(load_rc_cx, lib::llvm::LLVMIntEQ,
-                              C_int(abi::const_refcount as int), rc);
-    CondBr(load_rc_cx, const_test, next_cx.llbb, rc_adj_cx.llbb);
+    let rc = Load(rc_adj_cx, rc_ptr);
     rc = Sub(rc_adj_cx, rc, C_int(1));
     Store(rc_adj_cx, rc, rc_ptr);
     let zero_test = ICmp(rc_adj_cx, lib::llvm::LLVMIntEQ, C_int(0), rc);

@@ -90,9 +90,6 @@ leak(rust_task *task, type_desc *t, void *thing) {
 extern "C" CDECL intptr_t
 refcount(rust_task *task, type_desc *t, intptr_t *v) {
 
-    if (*v == CONST_REFCOUNT)
-        return CONST_REFCOUNT;
-
     // Passed-in value has refcount 1 too high
     // because it was ref'ed while making the call.
     return (*v) - 1;
@@ -249,9 +246,7 @@ debug_box(rust_task *task, type_desc *t, rust_box *box)
     LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
     debug_tydesc_helper(task, t);
     LOG(task, stdlib, "  refcount %" PRIdPTR,
-        box->ref_count == CONST_REFCOUNT
-        ? CONST_REFCOUNT
-        : box->ref_count - 1);  // -1 because we ref'ed for this call
+        box->ref_count - 1);  // -1 because we ref'ed for this call
     for (uintptr_t i = 0; i < t->size; ++i) {
         LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, box->data[i]);
     }

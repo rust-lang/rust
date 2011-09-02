@@ -5,10 +5,6 @@ use std;
 
 import std::dbg;
 
-// FIXME: import std::dbg.const_refcount. Currently
-// cross-crate const references don't work.
-const const_refcount: uint = 0x7bad_face_u;
-
 tag t { make_t(@int); clam; }
 
 fn foo(s: @int) {

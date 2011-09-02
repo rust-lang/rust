@@ -4,10 +4,6 @@
 // FIXME: Most of these should be uints.
 const rc_base_field_refcnt: int = 0;
 
-
-// FIXME: import from std::dbg when imported consts work.
-const const_refcount: uint = 0x7bad_face_u;
-
 const task_field_refcnt: int = 0;
 
 const task_field_stk: int = 2;
