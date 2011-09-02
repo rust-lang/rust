@@ -92,14 +92,14 @@ fn fold_item(cx: &test_ctxt, i: &@ast::item, fld: fold::ast_fold) ->
    @ast::item {
 
     cx.path += [i.ident];
-    log #ifmt["current path: %s",
+    log #fmt["current path: %s",
              ast_util::path_name_i(cx.path)];
 
     if is_test_fn(i) {
         log "this is a test function";
         let test = {path: cx.path, ignore: is_ignored(i)};
         cx.testfns += [test];
-        log #ifmt["have %u test functions", vec::len(cx.testfns)];
+        log #fmt["have %u test functions", vec::len(cx.testfns)];
     }
 
     let res = fold::noop_fold_item(i, fld);
@@ -168,7 +168,7 @@ fn mk_test_module(cx: &test_ctxt) -> @ast::item {
          node: item_,
          span: dummy_sp()};
 
-    log #ifmt["Synthetic test module:\n%s\n",
+    log #fmt["Synthetic test module:\n%s\n",
              pprust::item_to_str(@item)];
 
     ret @item;
@@ -234,7 +234,7 @@ fn mk_test_desc_vec_ty(cx: &test_ctxt) -> @ast::ty {
 }
 
 fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
-    log #ifmt["building test vector from %u tests", vec::len(cx.testfns)];
+    log #fmt["building test vector from %u tests", vec::len(cx.testfns)];
     let descs = [];
     for test: test in cx.testfns {
         let test_ = test; // Satisfy alias analysis
@@ -249,7 +249,7 @@ fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
 fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
     let path = test.path;
 
-    log #ifmt["encoding %s",
+    log #fmt["encoding %s",
              ast_util::path_name_i(path)];
 
     let name_lit: ast::lit =

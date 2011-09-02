@@ -171,7 +171,7 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
     // FIXME: This could be a typestate constraint
     if vec::len(bs) != vec::len(ops) {
         fcx.ccx.tcx.sess.span_bug(a.span,
-                                  #ifmt["mismatched arg lengths: \
+                                  #fmt["mismatched arg lengths: \
                                         %u exprs vs. %u ops",
                                        vec::len(bs), vec::len(ops)]);
     }

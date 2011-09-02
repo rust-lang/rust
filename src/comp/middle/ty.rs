@@ -2438,7 +2438,7 @@ mod unify {
             let sets = ~"";
             let j = 0u;
             while j < vec::len::<option::t<uint>>(vb.sets.nodes) {
-                if ufind::find(vb.sets, j) == i { sets += #ifmt[" %u", j]; }
+                if ufind::find(vb.sets, j) == i { sets += #fmt[" %u", j]; }
                 j += 1u;
             }
             let typespec;
@@ -2448,7 +2448,7 @@ mod unify {
                 typespec = ~" =" + ty_to_str(tcx, typ);
               }
             }
-            log_err #ifmt["set %u:%s%s", i, typespec, sets];
+            log_err #fmt["set %u:%s%s", i, typespec, sets];
             i += 1u;
         }
     }

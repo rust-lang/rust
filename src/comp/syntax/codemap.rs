@@ -80,7 +80,7 @@ fn span_to_str(sp: &span, cm: &codemap) -> istr {
         let lo = lookup_char_pos(cm, cur.lo);
         let hi = lookup_char_pos(cm, cur.hi);
         res +=
-            #ifmt["%s:%u:%u: %u:%u",
+            #fmt["%s:%u:%u: %u:%u",
                  if some(lo.filename) == prev_file {
                      ~"-"
                  } else {
@@ -114,9 +114,9 @@ fn emit_diagnostic(sp: &option::t<span>, msg: &istr, kind: &istr, color: u8,
     if term::color_supported() {
         term::fg(io::stdout().get_buf_writer(), color);
     }
-    io::stdout().write_str(#ifmt[~"%s:", kind]);
+    io::stdout().write_str(#fmt[~"%s:", kind]);
     if term::color_supported() { term::reset(io::stdout().get_buf_writer()); }
-    io::stdout().write_str(#ifmt[~" %s\n", msg]);
+    io::stdout().write_str(#fmt[~" %s\n", msg]);
 
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
@@ -146,14 +146,14 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
         // Print the offending lines
         for line: uint in display_lines {
             io::stdout().write_str(
-                #ifmt[~"%s:%u ", fm.name, line + 1u]);
+                #fmt[~"%s:%u ", fm.name, line + 1u]);
             let s = get_line(fm, line as int, file);
             if !str::ends_with(s, ~"\n") { s += ~"\n"; }
             io::stdout().write_str(s);
         }
         if elided {
             let last_line = display_lines[vec::len(display_lines) - 1u];
-            let s = #ifmt[~"%s:%u ", fm.name, last_line + 1u];
+            let s = #fmt[~"%s:%u ", fm.name, last_line + 1u];
             let indent = str::char_len(s);
             let out = ~"";
             while indent > 0u { out += ~" "; indent -= 1u; }

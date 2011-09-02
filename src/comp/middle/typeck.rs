@@ -1377,10 +1377,10 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
                 let arg_len = vec::len::<ty::t>(arg_types);
                 if arg_len != subpats_len {
                     // TODO: note definition of tag variant
-                    // TODO (issue #448): Wrap a #ifmt string over multiple
+                    // TODO (issue #448): Wrap a #fmt string over multiple
                     // lines...
                     let s =
-                        #ifmt["this pattern has %u field%s, but the \
+                        #fmt["this pattern has %u field%s, but the \
                                        corresponding variant has %u field%s",
                              subpats_len,
                              if subpats_len == 1u { ~"" } else { ~"s" },
@@ -1400,7 +1400,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
                 // TODO: note definition of tag variant
                 fcx.ccx.tcx.sess.span_fatal(
                     pat.span,
-                    #ifmt["this pattern has %u field%s, \
+                    #fmt["this pattern has %u field%s, \
                           but the corresponding \
                           variant has no fields",
                          subpats_len,
@@ -1415,7 +1415,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
             // can never tell.
             fcx.ccx.tcx.sess.span_fatal(
                 pat.span,
-                #ifmt["mismatched types: expected %s, found tag",
+                #fmt["mismatched types: expected %s, found tag",
                      ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
@@ -1428,7 +1428,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
           _ {
             fcx.ccx.tcx.sess.span_fatal(
                 pat.span,
-                #ifmt["mismatched types: expected %s, found record",
+                #fmt["mismatched types: expected %s, found record",
                      ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
@@ -1437,7 +1437,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
         if ex_f_count < f_count || !etc && ex_f_count > f_count {
             fcx.ccx.tcx.sess.span_fatal(
                 pat.span,
-                #ifmt["mismatched types: expected a record \
+                #fmt["mismatched types: expected a record \
                       with %u fields, found one with %u \
                       fields",
                      ex_f_count, f_count]);
@@ -1450,7 +1450,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
               some(field) { check_pat(fcx, map, f.pat, field.mt.ty); }
               none. {
                 fcx.ccx.tcx.sess.span_fatal(pat.span,
-                                            #ifmt["mismatched types: did not \
+                                            #fmt["mismatched types: did not \
                                              expect a record with a field %s",
                                                  f.ident]);
               }
@@ -1465,7 +1465,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
           _ {
             fcx.ccx.tcx.sess.span_fatal(
                 pat.span,
-                #ifmt["mismatched types: expected %s, found tuple",
+                #fmt["mismatched types: expected %s, found tuple",
                      ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
@@ -1473,7 +1473,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
         if e_count != vec::len(ex_elts) {
             fcx.ccx.tcx.sess.span_fatal(
                 pat.span,
-                #ifmt["mismatched types: expected a tuple \
+                #fmt["mismatched types: expected a tuple \
                       with %u fields, found one with %u \
                       fields",
                      vec::len(ex_elts), e_count]);
@@ -1606,7 +1606,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         if expected_arg_count != supplied_arg_count {
             fcx.ccx.tcx.sess.span_err(
                 sp,
-                #ifmt["this function takes %u \
+                #fmt["this function takes %u \
                       parameter%s but %u parameter%s supplied",
                       expected_arg_count,
                       if expected_arg_count == 1u {
@@ -1828,7 +1828,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                    structure_of(fcx, oper.span, oper_t) != ty::ty_bool {
                 tcx.sess.span_err(
                     expr.span,
-                    #ifmt["mismatched types: expected bool \
+                    #fmt["mismatched types: expected bool \
                           or integer but found %s",
                          ty_to_str(tcx, oper_t)]);
             }
@@ -2274,7 +2274,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
           _ {
             let t_err = resolve_type_vars_if_possible(fcx, base_t);
             let msg =
-                #ifmt["attempted field access on type %s",
+                #fmt["attempted field access on type %s",
                      ty_to_str(tcx, t_err)];
             tcx.sess.span_fatal(expr.span, msg);
           }

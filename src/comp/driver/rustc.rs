@@ -121,7 +121,7 @@ fn time<@T>(do_it: bool, what: &istr, thunk: fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = thunk();
     let end = std::time::precise_time_s();
-    log_err #ifmt["time: %s took %s s", what,
+    log_err #fmt["time: %s took %s s", what,
                  common::float_to_str(end - start, 3u)];
     ret rv;
 }
@@ -260,14 +260,14 @@ fn version(argv0: &istr) {
     let env_vers = #env["CFG_VERSION"];
     if str::byte_len(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(
-        #ifmt["%s %s\n",
+        #fmt["%s %s\n",
                              argv0,
                              vers]);
 }
 
 fn usage(argv0: &istr) {
     io::stdout().write_str(
-        #ifmt["usage: %s [options] <input>\n", argv0] +
+        #fmt["usage: %s [options] <input>\n", argv0] +
                                ~"
 options:
 
@@ -471,7 +471,7 @@ fn main(args: [istr]) {
         alt getopts::getopts(args, opts()) {
           getopts::success(m) { m }
           getopts::failure(f) {
-            log_err #ifmt["error: %s", getopts::fail_str(f)];
+            log_err #fmt["error: %s", getopts::fail_str(f)];
             fail
           }
         };
@@ -636,9 +636,9 @@ fn main(args: [istr]) {
     let err_code = run::run_program(prog, gcc_args);
     if 0 != err_code {
         sess.err(
-            #ifmt["linking with gcc failed with code %d", err_code]);
+            #fmt["linking with gcc failed with code %d", err_code]);
         sess.note(
-            #ifmt["gcc arguments: %s",
+            #fmt["gcc arguments: %s",
                        str::connect(gcc_args, ~" ")]);
         sess.abort_if_errors();
     }

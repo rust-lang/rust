@@ -325,7 +325,7 @@ fn scan_numeric_escape(rdr: &reader, n_hex_digits: uint) -> char {
         rdr.bump();
         if !is_hex_digit(n) {
             rdr.err(
-                    #ifmt["illegal numeric character escape: %d", n as int]);
+                    #fmt["illegal numeric character escape: %d", n as int]);
             fail;
         }
         accum_int *= 16;
@@ -469,7 +469,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
               'U' { c2 = scan_numeric_escape(rdr, 8u); }
               c2 {
                 rdr.err(
-                    #ifmt["unknown character escape: %d",
+                    #fmt["unknown character escape: %d",
                                          c2 as int]);
                 fail;
               }
@@ -510,7 +510,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
                   }
                   c2 {
                     rdr.err(
-                        #ifmt["unknown string escape: %d",
+                        #fmt["unknown string escape: %d",
                                              c2 as int]);
                     fail;
                   }
@@ -551,7 +551,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
       '%' { ret binop(rdr, token::PERCENT); }
       c {
         rdr.err(
-            #ifmt["unkown start of token: %d", c as int]);
+            #fmt["unkown start of token: %d", c as int]);
         fail;
       }
     }
@@ -652,7 +652,7 @@ fn read_block_comment(rdr: &reader, code_to_the_left: bool) -> cmnt {
     let curr_line = ~"/*";
     let level: int = 1;
     while level > 0 {
-        log #ifmt["=== block comment level %d", level];
+        log #fmt["=== block comment level %d", level];
         if rdr.is_eof() { rdr.err(~"unterminated block comment"); fail; }
         if rdr.curr() == '\n' {
             trim_whitespace_prefix_and_push_line(lines, curr_line, col);

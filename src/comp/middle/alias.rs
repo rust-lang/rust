@@ -183,7 +183,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
         for r in restricts {
             if !option::is_none(r.unsafe_ty) {
                 cx.tcx.sess.span_err(f.span,
-                                     #ifmt["function may alias with argument \
+                                     #fmt["function may alias with argument \
                                            %u, which is not immutably rooted",
                                            i]);
             }
@@ -200,7 +200,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
                 if i != j &&
                    ty_can_unsafely_include(cx, ty, arg_t.ty, mut_alias) {
                     cx.tcx.sess.span_err(args[i].span,
-                        #ifmt["argument %u may alias with argument %u, \
+                        #fmt["argument %u may alias with argument %u, \
                                which is not immutably rooted", i, j]);
                 }
                 i += 1u;

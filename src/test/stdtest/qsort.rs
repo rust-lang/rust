@@ -54,7 +54,7 @@ fn test_simple() {
  // Silly, but what else can we do?
     check vec::same_length(expected, immut_names);
     let pairs = vec::zip(expected, immut_names);
-    for (a, b) in pairs { log #ifmt["%d %d", a, b]; assert (a == b); }
+    for (a, b) in pairs { log #fmt["%d %d", a, b]; assert (a == b); }
 }
 
 // Local Variables:

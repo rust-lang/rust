@@ -114,13 +114,13 @@ fn type_and_kind(tcx: &ty::ctxt, e: &@ast::expr) ->
 fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
                   descr: &istr) {
     let tk = type_and_kind(tcx, e);
-    log #ifmt["for %s: want %s type, got %s type %s", descr,
+    log #fmt["for %s: want %s type, got %s type %s", descr,
              kind_to_str(k_need), kind_to_str(tk.kind),
              util::ppaux::ty_to_str(tcx, tk.ty)];
 
     if !kind_lteq(k_need, tk.kind) {
         let s =
-            #ifmt["mismatched kinds for %s: needed %s type, got %s type %s",
+            #fmt["mismatched kinds for %s: needed %s type, got %s type %s",
                  descr, kind_to_str(k_need),
                  kind_to_str(tk.kind),
                  util::ppaux::ty_to_str(tcx, tk.ty)];
@@ -169,7 +169,7 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
                 let k = ty::type_kind(tcx, t);
                 if !kind_lteq(k_need, k) {
                     let s =
-                        #ifmt["mismatched kinds for typaram %d: \
+                        #fmt["mismatched kinds for typaram %d: \
                                   needed %s type, got %s type %s",
                              i, kind_to_str(k_need), kind_to_str(k),
                              util::ppaux::ty_to_str(tcx, t)];

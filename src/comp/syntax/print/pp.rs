@@ -66,7 +66,7 @@ tag token { STRING(istr, int); BREAK(break_t); BEGIN(begin_t); END; EOF; }
 fn tok_str(t: token) -> istr {
     alt t {
       STRING(s, len) {
-        ret #ifmt[~"STR(%s,%d)", s, len];
+        ret #fmt[~"STR(%s,%d)", s, len];
       }
       BREAK(_) { ret ~"BREAK"; }
       BEGIN(_) { ret ~"BEGIN"; }
@@ -85,7 +85,7 @@ fn buf_str(toks: &[mutable token], szs: &[mutable int], left: uint,
     while i != right && L != 0u {
         L -= 1u;
         if i != left { s += ~", "; }
-        s += #ifmt[~"%d=%s", szs[i], tok_str(toks[i])];
+        s += #fmt[~"%d=%s", szs[i], tok_str(toks[i])];
         i += 1u;
         i %= n;
     }
@@ -104,7 +104,7 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
     // fall behind.
 
     let n: uint = 3u * linewidth;
-    log #ifmt[~"mk_printer %u", linewidth];
+    log #fmt[~"mk_printer %u", linewidth];
     let token: [mutable token] = vec::init_elt_mut(EOF, n);
     let size: [mutable int] = vec::init_elt_mut(0, n);
     let scan_stack: [mutable uint] = vec::init_elt_mut(0u, n);
@@ -244,7 +244,7 @@ obj printer(out: io::writer,
     fn replace_last_token(t: token) { token[right] = t; }
 
     fn pretty_print(t: token) {
-        log #ifmt[~"pp [%u,%u]", left, right];
+        log #fmt[~"pp [%u,%u]", left, right];
         alt t {
           EOF. {
             if !scan_stack_empty {
@@ -260,17 +260,17 @@ obj printer(out: io::writer,
                 left = 0u;
                 right = 0u;
             } else { self.advance_right(); }
-            log #ifmt[~"pp BEGIN/buffer [%u,%u]", left, right];
+            log #fmt[~"pp BEGIN/buffer [%u,%u]", left, right];
             token[right] = t;
             size[right] = -right_total;
             self.scan_push(right);
           }
           END. {
             if scan_stack_empty {
-                log #ifmt[~"pp END/print [%u,%u]", left, right];
+                log #fmt[~"pp END/print [%u,%u]", left, right];
                 self.print(t, 0);
             } else {
-                log #ifmt[~"pp END/buffer [%u,%u]", left, right];
+                log #fmt[~"pp END/buffer [%u,%u]", left, right];
                 self.advance_right();
                 token[right] = t;
                 size[right] = -1;
@@ -284,7 +284,7 @@ obj printer(out: io::writer,
                 left = 0u;
                 right = 0u;
             } else { self.advance_right(); }
-            log #ifmt[~"pp BREAK/buffer [%u,%u]", left, right];
+            log #fmt[~"pp BREAK/buffer [%u,%u]", left, right];
             self.check_stack(0);
             self.scan_push(right);
             token[right] = t;
@@ -293,10 +293,10 @@ obj printer(out: io::writer,
           }
           STRING(s, len) {
             if scan_stack_empty {
-                log #ifmt[~"pp STRING/print [%u,%u]", left, right];
+                log #fmt[~"pp STRING/print [%u,%u]", left, right];
                 self.print(t, len);
             } else {
-                log #ifmt[~"pp STRING/buffer [%u,%u]", left, right];
+                log #fmt[~"pp STRING/buffer [%u,%u]", left, right];
                 self.advance_right();
                 token[right] = t;
                 size[right] = len;
@@ -307,14 +307,14 @@ obj printer(out: io::writer,
         }
     }
     fn check_stream() {
-        log #ifmt[~"check_stream [%u, %u] with left_total=%d, right_total=%d",
+        log #fmt[~"check_stream [%u, %u] with left_total=%d, right_total=%d",
                  left, right, left_total, right_total];
         if right_total - left_total > space {
-            log #ifmt[~"scan window is %d, longer than space on line (%d)",
+            log #fmt[~"scan window is %d, longer than space on line (%d)",
                      right_total - left_total, space];
             if !scan_stack_empty {
                 if left == scan_stack[bottom] {
-                    log #ifmt["setting %u to infinity and popping", left];
+                    log #fmt["setting %u to infinity and popping", left];
                     size[self.scan_pop_bottom()] = size_infinity;
                 }
             }
@@ -323,7 +323,7 @@ obj printer(out: io::writer,
         }
     }
     fn scan_push(x: uint) {
-        log #ifmt["scan_push %u", x];
+        log #fmt["scan_push %u", x];
         if scan_stack_empty {
             scan_stack_empty = false;
         } else { top += 1u; top %= buf_len; assert (top != bottom); }
@@ -352,7 +352,7 @@ obj printer(out: io::writer,
         assert (right != left);
     }
     fn advance_left(x: token, L: int) {
-        log #ifmt["advnce_left [%u,%u], sizeof(%u)=%d", left, right, left, L];
+        log #fmt["advnce_left [%u,%u], sizeof(%u)=%d", left, right, left, L];
         if L >= 0 {
             self.print(x, L);
             alt x {
@@ -391,13 +391,13 @@ obj printer(out: io::writer,
         }
     }
     fn print_newline(amount: int) {
-        log #ifmt["NEWLINE %d", amount];
+        log #fmt["NEWLINE %d", amount];
         out.write_str(~"\n");
         pending_indentation = 0;
         self.indent(amount);
     }
     fn indent(amount: int) {
-        log #ifmt["INDENT %d", amount];
+        log #fmt["INDENT %d", amount];
         pending_indentation += amount;
     }
     fn top() -> print_stack_elt {
@@ -414,7 +414,7 @@ obj printer(out: io::writer,
         out.write_str(s);
     }
     fn print(x: token, L: int) {
-        log #ifmt["print %s %d (remaining line space=%d)",
+        log #fmt["print %s %d (remaining line space=%d)",
                  tok_str(x), L,
                  space];
         log buf_str(token, size, left, right, 6u);
@@ -422,7 +422,7 @@ obj printer(out: io::writer,
           BEGIN(b) {
             if L > space {
                 let col = margin - space + b.offset;
-                log #ifmt["print BEGIN -> push broken block at col %d", col];
+                log #fmt["print BEGIN -> push broken block at col %d", col];
                 print_stack += [{offset: col, pbreak: broken(b.breaks)}];
             } else {
                 log "print BEGIN -> push fitting block";

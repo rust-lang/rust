@@ -1,3 +1,3 @@
 // error-pattern:missing type
 
-fn main() { #ifmt["%+"]; }
+fn main() { #fmt["%+"]; }

@@ -1886,7 +1886,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
             alt { ti.take_glue } {
               some(_) { }
               none. {
-                log #ifmt["+++ lazily_emit_tydesc_glue TAKE %s",
+                log #fmt["+++ lazily_emit_tydesc_glue TAKE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
@@ -1896,7 +1896,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   default_helper(make_take_glue),
                                   ti.ty_params, ~"take");
-                log #ifmt["--- lazily_emit_tydesc_glue TAKE %s",
+                log #fmt["--- lazily_emit_tydesc_glue TAKE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
               }
             }
@@ -1904,7 +1904,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
             alt { ti.drop_glue } {
               some(_) { }
               none. {
-                log #ifmt["+++ lazily_emit_tydesc_glue DROP %s",
+                log #fmt["+++ lazily_emit_tydesc_glue DROP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
@@ -1914,7 +1914,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   default_helper(make_drop_glue),
                                   ti.ty_params, ~"drop");
-                log #ifmt["--- lazily_emit_tydesc_glue DROP %s",
+                log #fmt["--- lazily_emit_tydesc_glue DROP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
               }
             }
@@ -1922,7 +1922,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
             alt { ti.free_glue } {
               some(_) { }
               none. {
-                log #ifmt["+++ lazily_emit_tydesc_glue FREE %s",
+                log #fmt["+++ lazily_emit_tydesc_glue FREE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
@@ -1932,7 +1932,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   default_helper(make_free_glue),
                                   ti.ty_params, ~"free");
-                log #ifmt["--- lazily_emit_tydesc_glue FREE %s",
+                log #fmt["--- lazily_emit_tydesc_glue FREE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
               }
             }
@@ -1940,10 +1940,10 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
             alt { ti.cmp_glue } {
               some(_) { }
               none. {
-                log #ifmt["+++ lazily_emit_tydesc_glue CMP %s",
+                log #fmt["+++ lazily_emit_tydesc_glue CMP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
                 ti.cmp_glue = some(bcx_ccx(cx).upcalls.cmp_type);
-                log #ifmt["--- lazily_emit_tydesc_glue CMP %s",
+                log #fmt["--- lazily_emit_tydesc_glue CMP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
               }
             }
@@ -6273,15 +6273,15 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     write_metadata(cx.ccx, crate);
     if ccx.sess.get_opts().stats {
         log_err "--- trans stats ---";
-        log_err #ifmt["n_static_tydescs: %u", ccx.stats.n_static_tydescs];
-        log_err #ifmt["n_derived_tydescs: %u", ccx.stats.n_derived_tydescs];
-        log_err #ifmt["n_glues_created: %u", ccx.stats.n_glues_created];
-        log_err #ifmt["n_null_glues: %u", ccx.stats.n_null_glues];
-        log_err #ifmt["n_real_glues: %u", ccx.stats.n_real_glues];
+        log_err #fmt["n_static_tydescs: %u", ccx.stats.n_static_tydescs];
+        log_err #fmt["n_derived_tydescs: %u", ccx.stats.n_derived_tydescs];
+        log_err #fmt["n_glues_created: %u", ccx.stats.n_glues_created];
+        log_err #fmt["n_null_glues: %u", ccx.stats.n_null_glues];
+        log_err #fmt["n_real_glues: %u", ccx.stats.n_real_glues];
 
 
         for timing: {ident: istr, time: int} in *ccx.stats.fn_times {
-            log_err #ifmt["time: %s took %d ms",
+            log_err #fmt["time: %s took %d ms",
                          timing.ident, timing.time];
         }
     }

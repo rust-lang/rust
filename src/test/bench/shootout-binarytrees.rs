@@ -28,7 +28,7 @@ fn main() {
     } else { max_depth = n; }
     let stretch_depth = max_depth + 1;
     let stretch_tree = bottom_up_tree(0, stretch_depth);
-    log #ifmt["stretch tree of depth %d\t check: %d", stretch_depth,
+    log #fmt["stretch tree of depth %d\t check: %d", stretch_depth,
              item_check(stretch_tree)];
     let long_lived_tree = bottom_up_tree(0, max_depth);
     let depth = min_depth;
@@ -43,10 +43,10 @@ fn main() {
             chk += item_check(temp_tree);
             i += 1;
         }
-        log #ifmt["%d\t trees of depth %d\t check: %d", iterations * 2, depth,
+        log #fmt["%d\t trees of depth %d\t check: %d", iterations * 2, depth,
                  chk];
         depth += 2;
     }
-    log #ifmt["long lived trees of depth %d\t check: %d", max_depth,
+    log #fmt["long lived trees of depth %d\t check: %d", max_depth,
              item_check(long_lived_tree)];
 }

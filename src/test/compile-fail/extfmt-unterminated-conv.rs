@@ -1,3 +1,3 @@
 // error-pattern:unterminated conversion
 
-fn main() { #ifmt["%"]; }
+fn main() { #fmt["%"]; }

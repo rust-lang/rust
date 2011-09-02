@@ -11,7 +11,7 @@ fn make_new_path(path: &istr) -> istr {
     // maintain the current value while adding our own
     alt getenv(lib_path_env_var()) {
       option::some(curr) {
-        #ifmt["%s:%s", path, curr] }
+        #fmt["%s:%s", path, curr] }
       option::none. { path }
     }
 }

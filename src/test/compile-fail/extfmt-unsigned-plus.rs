@@ -2,5 +2,5 @@
 
 fn main() {
     // Can't use a sign on unsigned conversions
-    #ifmt["%+u", 10u];
+    #fmt["%+u", 10u];
 }

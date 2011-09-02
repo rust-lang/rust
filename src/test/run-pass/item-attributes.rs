@@ -167,7 +167,7 @@ mod test_distinguish_syntax_ext {
     use std;
 
     fn f() {
-        #ifmt["test%s", ~"s"];
+        #fmt["test%s", ~"s"];
         #[attr = "val"]
         fn g() { }
     }

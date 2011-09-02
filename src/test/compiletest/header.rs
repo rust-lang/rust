@@ -114,7 +114,7 @@ fn parse_name_value_directive(line: &istr,
         let value =
             str::slice(line, colon + str::byte_len(keycolon),
                        str::byte_len(line));
-        log #ifmt("%s: %s", directive,
+        log #fmt("%s: %s", directive,
                   value);
         option::some(value)
     } else { option::none }

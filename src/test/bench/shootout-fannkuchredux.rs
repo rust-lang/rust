@@ -58,5 +58,5 @@ fn fannkuch(n: int) -> int {
 
 fn main(args: [istr]) {
     let n = 7;
-    log #ifmt["Pfannkuchen(%d) = %d", n, fannkuch(n)];
+    log #fmt["Pfannkuchen(%d) = %d", n, fannkuch(n)];
 }

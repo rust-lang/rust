@@ -120,11 +120,11 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
             st.out.write_line(
-                #ifmt["\nrunning %u tests", st.total]);
+                #fmt["\nrunning %u tests", st.total]);
           }
           te_wait(test) {
             st.out.write_str(
-                #ifmt["test %s ... ", test.name]);
+                #fmt["test %s ... ", test.name]);
           }
           te_result(test, result) {
             alt result {
@@ -167,17 +167,17 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
         st.out.write_line(~"\nfailures:");
         for test: test_desc in st.failures {
             let testname = test.name; // Satisfy alias analysis
-            st.out.write_line(#ifmt["    %s", testname]);
+            st.out.write_line(#fmt["    %s", testname]);
         }
     }
 
-    st.out.write_str(#ifmt["\nresult: "]);
+    st.out.write_str(#fmt["\nresult: "]);
     if success {
         // There's no parallelism at this point so it's safe to use color
         write_ok(st.out, true);
     } else { write_failed(st.out, true); }
     st.out.write_str(
-            #ifmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
+            #fmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
                           st.failed, st.ignored]);
 
     ret success;
@@ -225,7 +225,7 @@ fn run_tests(opts: &test_opts, tests: &[test_desc], to_task: &test_to_task,
     // provide a great user experience because you might sit waiting for the
     // result of a particular test for an unusually long amount of time.
     let concurrency = get_concurrency();
-    log #ifmt["using %u test tasks", concurrency];
+    log #fmt["using %u test tasks", concurrency];
     let total = vec::len(filtered_tests);
     let run_idx = 0u;
     let wait_idx = 0u;

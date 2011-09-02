@@ -309,9 +309,9 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                         let len = vec::len(*ms);
                         if old_len != len {
                             let msg =
-                                #ifmt["'%s' occurs %u times, but ",
+                                #fmt["'%s' occurs %u times, but ",
                                      fv, len] +
-                                    #ifmt["'%s' occurs %u times",
+                                    #fmt["'%s' occurs %u times",
                                          old_name,
                                          old_len];
                             cx.span_fatal(

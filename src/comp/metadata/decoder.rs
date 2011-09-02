@@ -348,7 +348,7 @@ fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
 fn list_meta_items(meta_items: &ebml::doc, out: io::writer) {
     for mi: @ast::meta_item in get_meta_items(meta_items) {
         out.write_str(
-                #ifmt["%s\n",
+                #fmt["%s\n",
                      pprust::meta_item_to_str(*mi)]);
     }
 }
@@ -358,7 +358,7 @@ fn list_crate_attributes(md: &ebml::doc, out: io::writer) {
 
     for attr: ast::attribute in get_attributes(md) {
         out.write_str(
-                #ifmt["%s\n",
+                #fmt["%s\n",
                      pprust::attribute_to_str(attr)]);
     }
 
@@ -389,7 +389,7 @@ fn list_crate_deps(data: @[u8], out: io::writer) {
 
     for dep: crate_dep in get_crate_deps(data) {
         out.write_str(
-            #ifmt["%d %s\n", dep.cnum,
+            #fmt["%d %s\n", dep.cnum,
                                  dep.ident]);
     }
 
@@ -411,7 +411,7 @@ fn list_crate_items(bytes: &@[u8], md: &ebml::doc, out: io::writer) {
             let did_doc = ebml::get_doc(def, tag_def_id);
             let did = parse_def_id(ebml::doc_data(did_doc));
             out.write_str(
-                    #ifmt["%s (%s)\n",
+                    #fmt["%s (%s)\n",
                          data.path,
                          describe_def(items, did)]);
         }

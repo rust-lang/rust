@@ -70,21 +70,21 @@ fn parse_config(args: &[istr]) -> config {
 
 fn log_config(config: &config) {
     let c = config;
-    logv(c, #ifmt["configuration:"]);
-    logv(c, #ifmt["compile_lib_path: %s",
+    logv(c, #fmt["configuration:"]);
+    logv(c, #fmt["compile_lib_path: %s",
                  config.compile_lib_path]);
-    logv(c, #ifmt["run_lib_path: %s", config.run_lib_path]);
-    logv(c, #ifmt["rustc_path: %s", config.rustc_path]);
-    logv(c, #ifmt["src_base: %s", config.src_base]);
-    logv(c, #ifmt["build_base: %s", config.build_base]);
-    logv(c, #ifmt["stage_id: %s", config.stage_id]);
-    logv(c, #ifmt["mode: %s", mode_str(config.mode)]);
-    logv(c, #ifmt["run_ignored: %b", config.run_ignored]);
-    logv(c, #ifmt["filter: %s", opt_str(config.filter)]);
-    logv(c, #ifmt["runtool: %s", opt_str(config.runtool)]);
-    logv(c, #ifmt["rustcflags: %s", opt_str(config.rustcflags)]);
-    logv(c, #ifmt["verbose: %b", config.verbose]);
-    logv(c, #ifmt["\n"]);
+    logv(c, #fmt["run_lib_path: %s", config.run_lib_path]);
+    logv(c, #fmt["rustc_path: %s", config.rustc_path]);
+    logv(c, #fmt["src_base: %s", config.src_base]);
+    logv(c, #fmt["build_base: %s", config.build_base]);
+    logv(c, #fmt["stage_id: %s", config.stage_id]);
+    logv(c, #fmt["mode: %s", mode_str(config.mode)]);
+    logv(c, #fmt["run_ignored: %b", config.run_ignored]);
+    logv(c, #fmt["filter: %s", opt_str(config.filter)]);
+    logv(c, #fmt["runtool: %s", opt_str(config.runtool)]);
+    logv(c, #fmt["rustcflags: %s", opt_str(config.rustcflags)]);
+    logv(c, #fmt["verbose: %b", config.verbose]);
+    logv(c, #fmt["\n"]);
 }
 
 fn opt_str(maybestr: option::t<istr>) -> istr {
@@ -139,12 +139,12 @@ type tests_and_conv_fn =
     {tests: [test::test_desc], to_task: fn(&fn()) -> test::joinable};
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
-    log #ifmt["making tests from %s", cx.config.src_base];
+    log #fmt["making tests from %s", cx.config.src_base];
     let configport = port::<[u8]>();
     let tests = [];
     for file: istr in fs::list_dir(cx.config.src_base) {
         let file = file;
-        log #ifmt["inspecting file %s", file];
+        log #fmt["inspecting file %s", file];
         if is_test(cx.config, file) {
             tests += [make_test(cx, file, configport)];
         }
@@ -182,7 +182,7 @@ fn make_test(cx: &cx, testfile: &istr, configport: &port<[u8]>) ->
 }
 
 fn make_test_name(config: &config, testfile: &istr) -> istr {
-    #ifmt["[%s] %s", mode_str(config.mode), testfile]
+    #fmt["[%s] %s", mode_str(config.mode), testfile]
 }
 
 /*

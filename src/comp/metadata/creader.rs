@@ -99,12 +99,12 @@ fn metadata_matches(crate_data: &@[u8], metas: &[@ast::meta_item]) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
 
-    log #ifmt["matching %u metadata requirements against %u items",
+    log #fmt["matching %u metadata requirements against %u items",
              vec::len(metas), vec::len(linkage_metas)];
 
     for needed: @ast::meta_item in metas {
         if !attr::contains(linkage_metas, needed) {
-            log #ifmt["missing %s",
+            log #fmt["missing %s",
                      pprust::meta_item_to_str(*needed)];
             ret false;
         }
@@ -169,13 +169,13 @@ fn find_library_crate_aux(nn: &{prefix: istr, suffix: istr},
     // manually filtering fs::list_dir here.
 
     for library_search_path: istr in library_search_paths {
-        log #ifmt["searching %s", library_search_path];
+        log #fmt["searching %s", library_search_path];
         for path: istr in fs::list_dir(library_search_path) {
-            log #ifmt["searching %s", path];
+            log #fmt["searching %s", path];
             let f: istr = fs::basename(path);
             if !(str::starts_with(f, prefix) && str::ends_with(f, suffix))
                {
-                log #ifmt["skipping %s, doesn't look like %s*%s",
+                log #fmt["skipping %s, doesn't look like %s*%s",
                          path,
                          prefix,
                          suffix];
@@ -184,11 +184,11 @@ fn find_library_crate_aux(nn: &{prefix: istr, suffix: istr},
             alt get_metadata_section(path) {
               option::some(cvec) {
                 if !metadata_matches(cvec, metas) {
-                    log #ifmt["skipping %s, metadata doesn't match",
+                    log #fmt["skipping %s, metadata doesn't match",
                              path];
                     cont;
                 }
-                log #ifmt["found %s with matching metadata",
+                log #fmt["found %s with matching metadata",
                          path];
                 ret some({ident: path, data: cvec});
               }
@@ -230,7 +230,7 @@ fn load_library_crate(sess: &session::session, span: span, ident: &ast::ident,
       some(t) { ret t; }
       none. {
         sess.span_fatal(span,
-                        #ifmt["can't find crate for '%s'",
+                        #fmt["can't find crate for '%s'",
                                    ident]);
       }
     }
@@ -274,7 +274,7 @@ fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
     for dep: decoder::crate_dep in decoder::get_crate_deps(cdata) {
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;
-        log #ifmt["resolving dep %s", cname];
+        log #fmt["resolving dep %s", cname];
         if e.crate_cache.contains_key(cname) {
             log "already have it";
             // We've already seen this crate

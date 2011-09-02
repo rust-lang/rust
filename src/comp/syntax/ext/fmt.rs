@@ -345,7 +345,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     if expected_nargs < nargs {
         cx.span_fatal(
             sp,
-            #ifmt["too many arguments to #fmt. found %u, expected %u",
+            #fmt["too many arguments to #fmt. found %u, expected %u",
                  nargs, expected_nargs]);
     }
     ret tmp_expr;

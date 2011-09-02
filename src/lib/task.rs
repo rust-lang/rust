@@ -81,7 +81,7 @@ fn join(task_port: (task_id, comm::port<task_notification>)) -> task_result {
       exit(_id, res) {
         if _id == id {
             ret res
-        } else { fail #ifmt["join received id %d, expected %d", _id, id] }
+        } else { fail #fmt["join received id %d, expected %d", _id, id] }
       }
     }
 }

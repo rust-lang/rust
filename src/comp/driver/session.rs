@@ -94,12 +94,12 @@ obj session(targ_cfg: @config,
     }
     fn span_bug(sp: span, msg: &istr) -> ! {
         self.span_fatal(sp,
-                        #ifmt["internal compiler error %s",
+                        #fmt["internal compiler error %s",
                                              msg]);
     }
     fn bug(msg: &istr) -> ! {
         self.fatal(
-            #ifmt["internal compiler error %s",
+            #fmt["internal compiler error %s",
                  msg]);
     }
     fn span_unimpl(sp: span, msg: &istr) -> ! {

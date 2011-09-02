@@ -122,7 +122,7 @@ mod map_reduce {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {
-                    // log_err #ifmt("received %d", v);
+                    // log_err #fmt("received %d", v);
                     ret some(v);
                   }
                   done. {
@@ -196,7 +196,7 @@ fn main(argv: [istr]) {
         let out = io::stdout();
 
         out.write_line(
-            #ifmt["Usage: %s <filename> ...", argv[0]]);
+            #fmt["Usage: %s <filename> ...", argv[0]]);
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.

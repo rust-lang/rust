@@ -6,7 +6,7 @@ tag ip_addr { ipv4(u8, u8, u8, u8); }
 fn format_addr(ip: ip_addr) -> istr {
     alt ip {
       ipv4(a, b, c, d) {
-        #ifmt["%u.%u.%u.%u", a as uint, b as uint, c as uint, d as uint]
+        #fmt["%u.%u.%u.%u", a as uint, b as uint, c as uint, d as uint]
       }
       _ { fail "Unsupported address type"; }
     }

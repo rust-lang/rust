@@ -177,7 +177,7 @@ fn encode_inlineness(ebml_w: &ebml::writer, c: u8) {
 }
 
 fn def_to_str(did: &def_id) -> istr {
-    ret #ifmt["%d:%d", did.crate, did.node];
+    ret #fmt["%d:%d", did.crate, did.node];
 }
 
 fn encode_type_param_kinds(ebml_w: &ebml::writer, tps: &[ty_param]) {

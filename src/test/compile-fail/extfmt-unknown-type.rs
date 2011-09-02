@@ -1,3 +1,3 @@
 // error-pattern:unknown type
 
-fn main() { #ifmt["%w"]; }
+fn main() { #fmt["%w"]; }

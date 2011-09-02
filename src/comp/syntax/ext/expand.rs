@@ -27,7 +27,7 @@ fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
                 alt exts.find(extname) {
                   none. {
                     cx.span_fatal(pth.span,
-                                  #ifmt["macro undefined: '%s'",
+                                  #fmt["macro undefined: '%s'",
                                        extname])
                   }
                   some(normal(ext)) {
