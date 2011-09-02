@@ -1268,7 +1268,7 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
 
-        let shape = shape::shape_of(ccx, pair.key);
+        let shape = shape::shape_of(ccx, pair.key, ti.ty_params);
         let shape_tables =
             llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
                                        T_ptr(T_i8()));

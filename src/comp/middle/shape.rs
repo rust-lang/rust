@@ -274,7 +274,7 @@ fn add_substr(dest: &mutable [u8], src: &[u8]) {
     dest += src;
 }
 
-fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
+fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
     let s = [];
 
     alt ty::struct(ccx.tcx, t) {
@@ -309,7 +309,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
         s += [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
-        add_substr(s, shape_of(ccx, unit_ty));
+        add_substr(s, shape_of(ccx, unit_ty, ty_param_map));
       }
 
       ty::ty_tag(did, tps) {
@@ -338,7 +338,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
 
             add_u16(sub, vec::len(tps) as u16);
             for tp: ty::t in tps {
-                let subshape = shape_of(ccx, tp);
+                let subshape = shape_of(ccx, tp, ty_param_map);
                 add_u16(sub, vec::len(subshape) as u16);
                 sub += subshape;
             }
@@ -351,27 +351,29 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
 
       ty::ty_box(mt) {
         s += [shape_box];
-        add_substr(s, shape_of(ccx, mt.ty));
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
       }
       ty::ty_uniq(subt) {
         s += [shape_uniq];
-        add_substr(s, shape_of(ccx, subt));
+        add_substr(s, shape_of(ccx, subt, ty_param_map));
       }
       ty::ty_vec(mt) {
         s += [shape_vec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
-        add_substr(s, shape_of(ccx, mt.ty));
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
       }
       ty::ty_rec(fields) {
         s += [shape_struct];
         let sub = [];
-        for f: field in fields { sub += shape_of(ccx, f.mt.ty); }
+        for f: field in fields {
+            sub += shape_of(ccx, f.mt.ty, ty_param_map);
+        }
         add_substr(s, sub);
       }
       ty::ty_tup(elts) {
         s += [shape_struct];
         let sub = [];
-        for elt in elts { sub += shape_of(ccx, elt); }
+        for elt in elts { sub += shape_of(ccx, elt, ty_param_map); }
         add_substr(s, sub);
       }
 
@@ -391,25 +393,49 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
         s += [shape_res];
         add_u16(s, id as u16);
         add_u16(s, vec::len(tps) as u16);
-        for tp: ty::t in tps { add_substr(s, shape_of(ccx, tp)); }
-        add_substr(s, shape_of(ccx, subt));
+        for tp: ty::t in tps {
+            add_substr(s, shape_of(ccx, tp, ty_param_map));
+        }
+        add_substr(s, shape_of(ccx, subt, ty_param_map));
 
       }
-
 
       ty::ty_var(n) {
         fail "shape_of ty_var";
       }
-      ty::ty_param(n, _) { s += [shape_var, n as u8]; }
+
+      ty::ty_param(n, _) {
+        // Find the type parameter in the parameter list.
+        let found = false;
+        let i = 0u;
+        while (i < vec::len(ty_param_map)) {
+            if n == ty_param_map[i] {
+                s += [shape_var, i as u8];
+                found = true;
+                break;
+            }
+            i += 1u;
+        }
+        assert found;
+      }
     }
 
     ret s;
 }
 
 // FIXME: We might discover other variants as we traverse these. Handle this.
-fn shape_of_variant(ccx: &@crate_ctxt, v: &ty::variant_info) -> [u8] {
+fn shape_of_variant(ccx: &@crate_ctxt,
+                    v: &ty::variant_info,
+                    ty_param_count: uint) -> [u8] {
+    let ty_param_map = [];
+    let i = 0u;
+    while (i < ty_param_count) {
+        ty_param_map += [i];
+        i += 1u;
+    }
+
     let s = [];
-    for t: ty::t in v.args { s += shape_of(ccx, t); }
+    for t: ty::t in v.args { s += shape_of(ccx, t, ty_param_map); }
     ret s;
 }
 
@@ -423,11 +449,13 @@ fn gen_tag_shapes(ccx: &@crate_ctxt) -> ValueRef {
     while i < vec::len(ccx.shape_cx.tag_order) {
         let did = ccx.shape_cx.tag_order[i];
         let variants = ty::tag_variants(ccx.tcx, did);
+        let item_tyt = ty::lookup_item_type(ccx.tcx, did);
+        let ty_param_count = vec::len(item_tyt.kinds);
 
         for v: ty::variant_info in variants {
             offsets += [vec::len(data) as u16];
 
-            let variant_shape = shape_of_variant(ccx, v);
+            let variant_shape = shape_of_variant(ccx, v, ty_param_count);
             add_substr(data, variant_shape);
         }
 
