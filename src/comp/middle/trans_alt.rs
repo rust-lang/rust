@@ -534,9 +534,9 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
 
     let exit_map = [];
     let t = trans::node_id_type(cx.fcx.lcx.ccx, expr.id);
-    let v = trans::spill_if_immediate(er.bcx, er.val, t);
-    compile_submatch(er.bcx, match, [v], bind mk_fail(cx, expr.span, fail_cx),
-                     exit_map);
+    let vr = trans::spill_if_immediate(er.bcx, er.val, t);
+    compile_submatch(vr.bcx, match, [vr.val],
+                     bind mk_fail(cx, expr.span, fail_cx), exit_map);
 
     let i = 0u;
     let arm_results = [];

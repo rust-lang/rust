@@ -1983,36 +1983,39 @@ fn call_cmp_glue(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     // We can't use call_tydesc_glue_full() and friends here because compare
     // glue has a special signature.
 
-    let lllhs = spill_if_immediate(cx, lhs, t);
-    let llrhs = spill_if_immediate(cx, rhs, t);
-    let llrawlhsptr = BitCast(cx, lllhs, T_ptr(T_i8()));
-    let llrawrhsptr = BitCast(cx, llrhs, T_ptr(T_i8()));
+    let bcx = cx;
+
+    let r = spill_if_immediate(bcx, lhs, t);
+    let lllhs = r.val; bcx = r.bcx;
+    r = spill_if_immediate(bcx, rhs, t);
+    let llrhs = r.val; bcx = r.bcx;
+
+    let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
+    let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
     let ti = none::<@tydesc_info>;
-    let r = get_tydesc(cx, t, false, tps_normal, ti).result;
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, ti);
-    let lltydesc = r.val;
-    let lltydescs =
-        GEP(r.bcx, lltydesc,
+    r = get_tydesc(bcx, t, false, tps_normal, ti).result;
+    let lltydesc = r.val; bcx = r.bcx;
+    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_cmp_glue, ti);
+    let lltydescs = GEP(bcx, lltydesc,
                         [C_int(0), C_int(abi::tydesc_field_first_param)]);
-    lltydescs = Load(r.bcx, lltydescs);
+    lltydescs = Load(bcx, lltydescs);
 
     let llfn;
     alt ti {
       none. {
-        let llfnptr =
-            GEP(r.bcx, lltydesc,
-                            [C_int(0), C_int(abi::tydesc_field_cmp_glue)]);
-        llfn = Load(r.bcx, llfnptr);
+        let llfnptr = GEP(bcx, lltydesc,
+                          [C_int(0), C_int(abi::tydesc_field_cmp_glue)]);
+        llfn = Load(bcx, llfnptr);
       }
       some(sti) { llfn = option::get(sti.cmp_glue); }
     }
 
-    let llcmpresultptr = alloca(r.bcx, T_i1());
+    let llcmpresultptr = alloca(bcx, T_i1());
     let llargs: [ValueRef] =
-        [llcmpresultptr, r.bcx.fcx.lltaskptr, lltydesc, lltydescs,
+        [llcmpresultptr, bcx.fcx.lltaskptr, lltydesc, lltydescs,
          llrawlhsptr, llrawrhsptr, llop];
-    Call(r.bcx, llfn, llargs);
-    ret rslt(r.bcx, Load(r.bcx, llcmpresultptr));
+    Call(bcx, llfn, llargs);
+    ret rslt(bcx, Load(bcx, llcmpresultptr));
 }
 
 // Compares two values. Performs the simple scalar comparison if the types are
@@ -3625,7 +3628,10 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
             add_clean_temp(bcx, val, e_ty);
         } else {
             if ty::type_is_vec(ccx.tcx, e_ty) {
-                let arg_copy = do_spill(bcx, Load(bcx, val));
+                let r = do_spill(bcx, Load(bcx, val), e_ty);
+                bcx = r.bcx;
+                let arg_copy = r.val;
+
                 bcx = take_ty(bcx, arg_copy, e_ty);
                 val = Load(bcx, arg_copy);
             } else {
@@ -3635,7 +3641,8 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
             add_clean_temp(bcx, val, e_ty);
         }
     } else if type_is_immediate(ccx, e_ty) && !lv.is_mem {
-        val = do_spill(bcx, val);
+        let r = do_spill(bcx, val, e_ty);
+        val = r.val; bcx = r.bcx;
     }
 
     if !is_bot && ty::type_contains_params(ccx.tcx, arg.ty) {
@@ -3812,11 +3819,12 @@ fn trans_call(in_cx: &@block_ctxt, f: &@ast::expr,
     bcx = args_res.bcx;
     let llargs = args_res.args;
     let llretslot = args_res.retslot;
+
     /*
-    log "calling: " + val_str(bcx_ccx(cx).tn, faddr);
+    log_err "calling: " + val_str(bcx_ccx(cx).tn, faddr);
 
     for arg: ValueRef in llargs {
-        log "arg: " + val_str(bcx_ccx(cx).tn, arg);
+        log_err "arg: " + val_str(bcx_ccx(cx).tn, arg);
     }
     */
 
@@ -4172,16 +4180,29 @@ fn type_is_immediate(ccx: &@crate_ctxt, t: ty::t) -> bool {
         ty::type_is_native(ccx.tcx, t) || ty::type_is_vec(ccx.tcx, t);
 }
 
-fn do_spill(cx: &@block_ctxt, v: ValueRef) -> ValueRef {
-    // We have a value but we have to spill it to pass by alias.
+fn do_spill(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result {
+    // We have a value but we have to spill it, and root it, to pass by alias.
+    let bcx = cx;
+    let r = alloc_ty(bcx, t);
+    bcx = r.bcx;
+    let llptr = r.val;
+
+    Store(bcx, v, llptr);
+
+    ret rslt(bcx, llptr);
+}
+
+// Since this function does *not* root, it is the caller's responsibility to
+// ensure that the referent is pointed to by a root.
+fn do_spill_noroot(cx: &@block_ctxt, v: ValueRef) -> ValueRef {
     let llptr = alloca(cx, val_ty(v));
     Store(cx, v, llptr);
     ret llptr;
 }
 
-fn spill_if_immediate(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> ValueRef {
-    if type_is_immediate(bcx_ccx(cx), t) { ret do_spill(cx, v); }
-    ret v;
+fn spill_if_immediate(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result {
+    if type_is_immediate(bcx_ccx(cx), t) { ret do_spill(cx, v, t); }
+    ret rslt(cx, v);
 }
 
 fn load_if_immediate(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> ValueRef {
@@ -4222,13 +4243,17 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
     let ti = none::<@tydesc_info>;
     let r = get_tydesc(log_bcx, e_ty, false, tps_normal, ti).result;
     log_bcx = r.bcx;
+    let lltydesc = r.val;
 
     // Call the polymorphic log function.
-    let llvalptr = spill_if_immediate(log_bcx, sub.val, e_ty);
+    r = spill_if_immediate(log_bcx, sub.val, e_ty);
+    log_bcx = r.bcx;
+    let llvalptr = r.val;
+
     let llval_i8 = PointerCast(log_bcx, llvalptr, T_ptr(T_i8()));
 
     Call(log_bcx, bcx_ccx(log_bcx).upcalls.log_type,
-                       [log_bcx.fcx.lltaskptr, r.val, llval_i8, C_int(lvl)]);
+         [log_bcx.fcx.lltaskptr, lltydesc, llval_i8, C_int(lvl)]);
 
     log_bcx = trans_block_cleanups(log_bcx, log_cx);
     Br(log_bcx, after_cx.llbb);
@@ -4940,7 +4965,8 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
 
 fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt,
                         args: &[ast::arg], arg_tys: &[ty::arg]) {
-    let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+    let llcopyargs = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+    let bcx = llcopyargs;
     let arg_n: uint = 0u;
     for aarg: ast::arg in args {
         let arg_ty = arg_tys[arg_n].ty;
@@ -4951,7 +4977,11 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt,
             if !type_is_structural_or_param(fcx_tcx(fcx), arg_ty) {
                 // Overwrite the llargs entry for this arg with its alloca.
                 let aval = bcx.fcx.llargs.get(aarg.id);
-                let addr = do_spill(bcx, aval);
+
+                let r = do_spill(bcx, aval, arg_ty);
+                bcx = r.bcx;
+                let addr = r.val;
+
                 bcx.fcx.llargs.insert(aarg.id, addr);
 
                 // Args that are locally assigned to need to do a local
@@ -4969,7 +4999,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt,
         }
         arg_n += 1u;
     }
-    fcx.llcopyargs = bcx.llbb;
+    fcx.llcopyargs = llcopyargs.llbb;
 }
 
 fn is_terminated(cx: &@block_ctxt) -> bool {

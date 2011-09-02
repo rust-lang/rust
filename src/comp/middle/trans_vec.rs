@@ -8,7 +8,7 @@ import trans::{call_memmove, trans_shared_malloc, llsize_of,
                alloca, size_of, llderivedtydescs_block_ctxt,
                lazily_emit_tydesc_glue, get_tydesc, load_inbounds,
                move_val_if_temp, trans_lval, node_id_type,
-               new_sub_block_ctxt, tps_normal, do_spill};
+               new_sub_block_ctxt, tps_normal, do_spill_noroot};
 import trans_build::*;
 import trans_common::*;
 
@@ -159,7 +159,7 @@ fn trans_append(cx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     let lhs_off = lfill;
     if strings { lhs_off = Sub(bcx, lhs_off, C_int(1)); }
     let write_ptr = pointer_add(bcx, lhs_data, lhs_off);
-    let write_ptr_ptr = do_spill(bcx, write_ptr);
+    let write_ptr_ptr = do_spill_noroot(bcx, write_ptr);
     let bcx = iter_vec_raw(bcx, rhs, vec_ty, rfill, { | &bcx, addr, _ty |
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
@@ -186,7 +186,8 @@ fn trans_append_literal(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     for val in vals {
         let {bcx: e_bcx, val: elt} = trans::trans_expr(bcx, val);
         bcx = e_bcx;
-        let spilled = trans::spill_if_immediate(bcx, elt, elt_ty);
+        let r = trans::spill_if_immediate(bcx, elt, elt_ty);
+        let spilled = r.val; bcx = r.bcx;
         Call(bcx, bcx_ccx(bcx).upcalls.vec_push,
              [bcx.fcx.lltaskptr, opaque_v, td,
               PointerCast(bcx, spilled, T_ptr(T_i8()))]);
@@ -212,7 +213,8 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let new_vec = PointerCast(bcx, new_vec, T_ptr(T_vec(llunitty)));
     add_clean_temp(bcx, new_vec, vec_ty);
 
-    let write_ptr_ptr = do_spill(bcx, get_dataptr(bcx, new_vec, llunitty));
+    let write_ptr_ptr = do_spill_noroot(bcx,
+                                        get_dataptr(bcx, new_vec, llunitty));
     let copy_fn = bind fn(bcx: &@block_ctxt, addr: ValueRef, _ty: ty::t,
                           write_ptr_ptr: ValueRef, unit_ty: ty::t,
                           llunitsz: ValueRef) -> @block_ctxt {
@@ -249,7 +251,7 @@ fn iter_vec_raw(bcx: &@block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     // TODO: Optimize this when the size of the unit type is statically
     // known to not use pointer casts, which tend to confuse LLVM.
     let data_end_ptr = pointer_add(bcx, data_ptr, fill);
-    let data_ptr_ptr = do_spill(bcx, data_ptr);
+    let data_ptr_ptr = do_spill_noroot(bcx, data_ptr);
 
     // Now perform the iteration.
     let header_cx = new_sub_block_ctxt(bcx, ~"iter_vec_loop_header");

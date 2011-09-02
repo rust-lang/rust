@@ -302,9 +302,11 @@ fn add_clean(cx: &@block_ctxt, val: ValueRef, ty: ty::t) {
     find_scope_cx(cx).cleanups += [clean(bind drop_ty(_, val, ty))];
 }
 fn add_clean_temp(cx: &@block_ctxt, val: ValueRef, ty: ty::t) {
-    fn spill_and_drop(bcx: &@block_ctxt, val: ValueRef, ty: ty::t)
+    fn spill_and_drop(cx: &@block_ctxt, val: ValueRef, ty: ty::t)
         -> @block_ctxt {
-        let spilled = trans::spill_if_immediate(bcx, val, ty);
+        let bcx = cx;
+        let r = trans::spill_if_immediate(bcx, val, ty);
+        let spilled = r.val; bcx = r.bcx;
         ret drop_ty(bcx, spilled, ty);
     }
     find_scope_cx(cx).cleanups +=
