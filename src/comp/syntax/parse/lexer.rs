@@ -158,10 +158,15 @@ fn consume_block_comment(rdr: reader) {
     be consume_whitespace_and_comments(rdr);
 }
 
-fn digits_to_string(s: str) -> int {
+fn string_to_int(s: str) -> int {
+    let negative = false;
+    if str::char_at(s, 0u) == '-' {
+        negative = true;
+        s = str::substr(s, 1u, str::byte_len(s) - 1u);
+    }
     let accum_int: int = 0;
     for c: u8 in s { accum_int *= 10; accum_int += dec_digit_val(c as char); }
-    ret accum_int;
+    ret if negative { -accum_int } else { accum_int };
 }
 
 fn scan_exponent(rdr: reader) -> option::t<str> {
@@ -182,6 +187,17 @@ fn scan_exponent(rdr: reader) -> option::t<str> {
     } else { ret none::<str>; }
 }
 
+fn scan_dec_digits_with_prefix(rdr: reader) -> str {
+    let negative = false;
+    if rdr.curr() == '-' {
+        negative = true;
+        rdr.bump();
+    }
+    let digits = scan_dec_digits(rdr);
+    if negative { str::unshift_char(digits, '-') }
+    ret digits;
+}
+
 fn scan_dec_digits(rdr: reader) -> str {
     let c = rdr.curr();
     let rslt: str = "";
@@ -196,7 +212,6 @@ fn scan_dec_digits(rdr: reader) -> str {
 fn scan_number(c: char, rdr: reader) -> token::token {
     let accum_int = 0;
     let num_str: str = "";
-    let is_dec_integer: bool = false;
     let n = rdr.next();
     if c == '0' && n == 'x' {
         rdr.bump();
@@ -216,8 +231,10 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             rdr.bump();
             c = rdr.curr();
         }
-    } else { num_str = scan_dec_digits(rdr); is_dec_integer = true; }
-    if is_dec_integer { accum_int = digits_to_string(num_str); }
+    } else {
+        num_str = scan_dec_digits_with_prefix(rdr);
+        accum_int = string_to_int(num_str);
+    }
     c = rdr.curr();
     n = rdr.next();
     if c == 'u' || c == 'i' {
@@ -341,7 +358,9 @@ fn next_token_inner(rdr: reader) -> token::token {
         ret token::IDENT(interner::intern::<str>(*rdr.get_interner(),
                                                  accum_str), is_mod_name);
     }
-    if is_dec_digit(c) { ret scan_number(c, rdr); }
+    if is_dec_digit(c) || (c == '-' && is_dec_digit(rdr.next())) {
+        ret scan_number(c, rdr);
+    }
     fn binop(rdr: reader, op: token::binop) -> token::token {
         rdr.bump();
         if rdr.curr() == '=' {
