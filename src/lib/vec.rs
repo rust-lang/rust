@@ -341,21 +341,21 @@ iter iter2<@T>(v: &[T]) -> (uint, T) {
 }
 
 mod unsafe {
-    type ivec_repr = {mutable fill: uint,
-                      mutable alloc: uint,
-                      data: u8};
+    type vec_repr = {mutable fill: uint,
+                     mutable alloc: uint,
+                     data: u8};
 
     fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
         ret rustrt::vec_from_buf_shared(ptr, elts);
     }
 
     fn set_len<T>(v: &mutable [T], new_len: uint) {
-        let repr: **ivec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
     fn to_ptr<T>(v: &[T]) -> *T {
-        let repr: **ivec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
 }
