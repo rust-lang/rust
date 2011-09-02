@@ -193,7 +193,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         }
       }
       'c' { ret ty::mk_char(st.tcx); }
-      'S' { ret ty::mk_istr(st.tcx); }
+      'S' { ret ty::mk_str(st.tcx); }
       't' {
         assert (next(st) as char == '[');
         let def = parse_def(st, sd);

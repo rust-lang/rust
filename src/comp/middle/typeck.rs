@@ -326,7 +326,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       ast::ty_float. { typ = ty::mk_float(tcx); }
       ast::ty_machine(tm) { typ = ty::mk_mach(tcx, tm); }
       ast::ty_char. { typ = ty::mk_char(tcx); }
-      ast::ty_str. { typ = ty::mk_istr(tcx); }
+      ast::ty_str. { typ = ty::mk_str(tcx); }
       ast::ty_box(mt) {
         typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
@@ -1298,7 +1298,7 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
 // AST fragment checking
 fn check_lit(ccx: @crate_ctxt, lit: &@ast::lit) -> ty::t {
     alt lit.node {
-      ast::lit_str(_) { ret ty::mk_istr(ccx.tcx); }
+      ast::lit_str(_) { ret ty::mk_str(ccx.tcx); }
       ast::lit_char(_) { ret ty::mk_char(ccx.tcx); }
       ast::lit_int(_) { ret ty::mk_int(ccx.tcx); }
       ast::lit_float(_) { ret ty::mk_float(ccx.tcx); }
@@ -1853,7 +1853,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         bot = true;
         alt expr_opt {
           none. {/* do nothing */ }
-          some(e) { check_expr_with(fcx, e, ty::mk_istr(tcx)); }
+          some(e) { check_expr_with(fcx, e, ty::mk_str(tcx)); }
         }
         write::bot_ty(tcx, id);
       }

@@ -67,7 +67,7 @@ export mk_fn;
 export mk_imm_box;
 export mk_mut_ptr;
 export mk_int;
-export mk_istr;
+export mk_str;
 export mk_vec;
 export mk_mach;
 export mk_native;
@@ -331,7 +331,7 @@ const idx_f64: uint = 14u;
 
 const idx_char: uint = 15u;
 
-const idx_istr: uint = 16u;
+const idx_str: uint = 16u;
 
 const idx_type: uint = 17u;
 
@@ -529,7 +529,7 @@ fn mk_mach(_cx: &ctxt, tm: &ast::ty_mach) -> t {
 
 fn mk_char(_cx: &ctxt) -> t { ret idx_char; }
 
-fn mk_istr(_cx: &ctxt) -> t { ret idx_istr; }
+fn mk_str(_cx: &ctxt) -> t { ret idx_str; }
 
 fn mk_tag(cx: &ctxt, did: &ast::def_id, tys: &[t]) -> t {
     ret gen_ty(cx, ty_tag(did, tys));

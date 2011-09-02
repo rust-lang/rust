@@ -2244,7 +2244,7 @@ fn trans_crate_lit(cx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
 
 fn trans_lit(cx: &@block_ctxt, lit: &ast::lit) -> result {
     alt lit.node {
-      ast::lit_str(s) { ret tvec::trans_istr(cx, s); }
+      ast::lit_str(s) { ret tvec::trans_str(cx, s); }
       _ { ret rslt(cx, trans_crate_lit(bcx_ccx(cx), lit)); }
     }
 }
@@ -5465,7 +5465,7 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
 
     fn create_main(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
                    takes_argv: bool) -> ValueRef {
-        let unit_ty = ty::mk_istr(ccx.tcx);
+        let unit_ty = ty::mk_str(ccx.tcx);
         let vecarg_ty: ty::arg =
             {mode: ty::mo_val,
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};

@@ -121,10 +121,10 @@ fn trans_vec(bcx: &@block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
     }
     ret rslt(bcx, vptr);
 }
-fn trans_istr(bcx: &@block_ctxt, s: str) -> result {
+fn trans_str(bcx: &@block_ctxt, s: str) -> result {
     let veclen = std::str::byte_len(s) + 1u; // +1 for \0
     let {bcx: bcx, val: sptr, _} =
-        alloc(bcx, ty::mk_istr(bcx_tcx(bcx)), veclen);
+        alloc(bcx, ty::mk_str(bcx_tcx(bcx)), veclen);
 
     let llcstr = C_cstr(bcx_ccx(bcx), s);
     let bcx =
