@@ -9,7 +9,7 @@ fn do_not_run_ignored_tests() {
     let ran = @mutable false;
     let f = bind fn (ran: @mutable bool) { *ran = true; }(ran);
 
-    let desc = {name: ~"whatever", fn: f, ignore: true};
+    let desc = {name: "whatever", fn: f, ignore: true};
 
     test::run_test(desc, test::default_test_to_task);
 
@@ -19,22 +19,22 @@ fn do_not_run_ignored_tests() {
 #[test]
 fn ignored_tests_result_in_ignored() {
     fn f() { }
-    let desc = {name: ~"whatever", fn: f, ignore: true};
+    let desc = {name: "whatever", fn: f, ignore: true};
     let res = test::run_test(desc, test::default_test_to_task).wait();
     assert (res == test::tr_ignored);
 }
 
 #[test]
 fn first_free_arg_should_be_a_filter() {
-    let args = [~"progname", ~"filter"];
+    let args = ["progname", "filter"];
     check (vec::is_not_empty(args));
     let opts = alt test::parse_opts(args) { either::left(o) { o } };
-    assert (str::eq(~"filter", option::get(opts.filter)));
+    assert (str::eq("filter", option::get(opts.filter)));
 }
 
 #[test]
 fn parse_ignored_flag() {
-    let args = [~"progname", ~"filter", ~"--ignored"];
+    let args = ["progname", "filter", "--ignored"];
     check (vec::is_not_empty(args));
     let opts = alt test::parse_opts(args) { either::left(o) { o } };
     assert (opts.run_ignored);
@@ -47,12 +47,12 @@ fn filter_for_ignored_option() {
 
     let opts = {filter: option::none, run_ignored: true};
     let tests =
-        [{name: ~"1", fn: fn () { }, ignore: true},
-         {name: ~"2", fn: fn () { }, ignore: false}];
+        [{name: "1", fn: fn () { }, ignore: true},
+         {name: "2", fn: fn () { }, ignore: false}];
     let filtered = test::filter_tests(opts, tests);
 
     assert (vec::len(filtered) == 1u);
-    assert (filtered[0].name == ~"1");
+    assert (filtered[0].name == "1");
     assert (filtered[0].ignore == false);
 }
 
@@ -61,17 +61,17 @@ fn sort_tests() {
     let opts = {filter: option::none, run_ignored: false};
 
     let names =
-        [~"sha1::test", ~"int::test_to_str", ~"int::test_pow",
-         ~"test::do_not_run_ignored_tests",
-         ~"test::ignored_tests_result_in_ignored",
-         ~"test::first_free_arg_should_be_a_filter",
-         ~"test::parse_ignored_flag", ~"test::filter_for_ignored_option",
-         ~"test::sort_tests"];
+        ["sha1::test", "int::test_to_str", "int::test_pow",
+         "test::do_not_run_ignored_tests",
+         "test::ignored_tests_result_in_ignored",
+         "test::first_free_arg_should_be_a_filter",
+         "test::parse_ignored_flag", "test::filter_for_ignored_option",
+         "test::sort_tests"];
     let tests =
         {
             let testfn = fn () { };
             let tests = [];
-            for name: istr in names {
+            for name: str in names {
                 let test = {name: name, fn: testfn, ignore: false};
                 tests += [test];
             }
@@ -80,15 +80,13 @@ fn sort_tests() {
     let filtered = test::filter_tests(opts, tests);
 
     let expected =
-        [~"int::test_pow", ~"int::test_to_str", ~"sha1::test",
-         ~"test::do_not_run_ignored_tests",
-         ~"test::filter_for_ignored_option",
-         ~"test::first_free_arg_should_be_a_filter",
-         ~"test::ignored_tests_result_in_ignored",
-         ~"test::parse_ignored_flag",
-         ~"test::sort_tests"];
+        ["int::test_pow", "int::test_to_str", "sha1::test",
+         "test::do_not_run_ignored_tests", "test::filter_for_ignored_option",
+         "test::first_free_arg_should_be_a_filter",
+         "test::ignored_tests_result_in_ignored", "test::parse_ignored_flag",
+         "test::sort_tests"];
 
-    check vec::same_length(expected, filtered);
+    check (vec::same_length(expected, filtered));
     let pairs = vec::zip(expected, filtered);
 
 

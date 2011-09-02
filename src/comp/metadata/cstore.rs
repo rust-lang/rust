@@ -29,7 +29,7 @@ export get_use_stmt_cnum;
 // own crate numbers.
 type cnum_map = map::hashmap<ast::crate_num, ast::crate_num>;
 
-type crate_metadata = {name: istr, data: @[u8], cnum_map: cnum_map};
+type crate_metadata = {name: str, data: @[u8], cnum_map: cnum_map};
 
 // This is a bit of an experiment at encapsulating the data in cstore. By
 // keeping all the data in a non-exported tag variant, it's impossible for
@@ -41,9 +41,9 @@ tag cstore { private(cstore_private); }
 type cstore_private =
     @{metas: map::hashmap<ast::crate_num, crate_metadata>,
       use_crate_map: use_crate_map,
-      mutable used_crate_files: [istr],
-      mutable used_libraries: [istr],
-      mutable used_link_args: [istr]};
+      mutable used_crate_files: [str],
+      mutable used_libraries: [str],
+      mutable used_link_args: [str]};
 
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
@@ -82,18 +82,18 @@ iter iter_crate_data(cstore: &cstore) ->
     }
 }
 
-fn add_used_crate_file(cstore: &cstore, lib: &istr) {
+fn add_used_crate_file(cstore: &cstore, lib: &str) {
     if !vec::member(lib, p(cstore).used_crate_files) {
         p(cstore).used_crate_files += [lib];
     }
 }
 
-fn get_used_crate_files(cstore: &cstore) -> [istr] {
+fn get_used_crate_files(cstore: &cstore) -> [str] {
     ret p(cstore).used_crate_files;
 }
 
-fn add_used_library(cstore: &cstore, lib: &istr) -> bool {
-    if lib == ~"" { ret false; }
+fn add_used_library(cstore: &cstore, lib: &str) -> bool {
+    if lib == "" { ret false; }
 
     if vec::member(lib, p(cstore).used_libraries) { ret false; }
 
@@ -101,15 +101,15 @@ fn add_used_library(cstore: &cstore, lib: &istr) -> bool {
     ret true;
 }
 
-fn get_used_libraries(cstore: &cstore) -> [istr] {
+fn get_used_libraries(cstore: &cstore) -> [str] {
     ret p(cstore).used_libraries;
 }
 
-fn add_used_link_args(cstore: &cstore, args: &istr) {
+fn add_used_link_args(cstore: &cstore, args: &str) {
     p(cstore).used_link_args += str::split(args, ' ' as u8);
 }
 
-fn get_used_link_args(cstore: &cstore) -> [istr] {
+fn get_used_link_args(cstore: &cstore) -> [str] {
     ret p(cstore).used_link_args;
 }
 

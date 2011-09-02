@@ -11,7 +11,7 @@ export lookup_defs;
 export get_tag_variants;
 export get_type;
 
-fn get_symbol(cstore: &cstore::cstore, def: ast::def_id) -> istr {
+fn get_symbol(cstore: &cstore::cstore, def: ast::def_id) -> str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     ret decoder::get_symbol(cdata, def.node);
 }
@@ -63,7 +63,7 @@ fn translate_def_id(sess: &session::session, searched_crate: ast::crate_num,
     let local_cnum =
         alt cmeta.cnum_map.find(ext_cnum) {
           option::some(n) { n }
-          option::none. { sess.bug(~"didn't find a crate in the cnum_map") }
+          option::none. { sess.bug("didn't find a crate in the cnum_map") }
         };
 
     ret {crate: local_cnum, node: node_id};

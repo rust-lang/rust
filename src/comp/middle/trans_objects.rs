@@ -37,7 +37,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     let llctor_decl;
     alt ccx.item_ids.find(ctor_id) {
       some(x) { llctor_decl = x; }
-      _ { cx.ccx.sess.span_fatal(sp, ~"unbound llctor_decl in trans_obj"); }
+      _ { cx.ccx.sess.span_fatal(sp, "unbound llctor_decl in trans_obj"); }
     }
 
     // Much like trans_fn, we must create an LLVM function, but since we're
@@ -79,8 +79,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     // Grab onto the first and second elements of the pair.
     // abi::obj_field_vtbl and abi::obj_field_box simply specify words 0 and 1
     // of 'pair'.
-    let pair_vtbl =
-        GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
+    let pair_vtbl = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
     let pair_box = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_box)]);
 
     // Make a vtable for this object: a static array of pointers to functions.
@@ -135,8 +134,8 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         bcx = body_tydesc.bcx;
         let ti = none::<@tydesc_info>;
 
-        let r = GEP_tup_like(bcx, body_ty, body,
-                             [0, abi::obj_body_elt_typarams]);
+        let r =
+            GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_typarams]);
         bcx = r.bcx;
         let body_typarams = r.val;
 
@@ -186,7 +185,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
               }
               none. {
                 bcx_ccx(bcx).sess.span_fatal(f.ty.span,
-                                             ~"internal error in trans_obj");
+                                             "internal error in trans_obj");
               }
             }
         }
@@ -285,8 +284,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
     add_clean_temp(bcx, pair, t);
 
     // Grab onto the first and second elements of the pair.
-    let pair_vtbl =
-        GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
+    let pair_vtbl = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
     let pair_box = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_box)]);
 
     vtbl = PointerCast(bcx, vtbl, T_ptr(T_empty_struct()));
@@ -370,8 +368,9 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
                 GEP_tup_like(bcx, body_ty, body,
                              [0, abi::obj_body_elt_inner_obj]);
             bcx = body_inner_obj.bcx;
-            bcx = copy_val(bcx, INIT, body_inner_obj.val, inner_obj_val.val,
-                           inner_obj_ty);
+            bcx =
+                copy_val(bcx, INIT, body_inner_obj.val, inner_obj_val.val,
+                         inner_obj_ty);
           }
         }
 
@@ -435,7 +434,7 @@ fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd, addtl_meths: [@ast::method])
         ret some(fwding_mthd(fm));
       }
       normal_mthd(_) {
-        cx.ccx.sess.bug(~"create_vtbl(): shouldn't be any \
+        cx.ccx.sess.bug("create_vtbl(): shouldn't be any \
                         normal_mthds in meths here");
       }
     }
@@ -485,7 +484,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
             }
           }
           _ {
-            cx.ccx.sess.bug(~"create_vtbl(): trying to extend a \
+            cx.ccx.sess.bug("create_vtbl(): trying to extend a \
                             non-object");
           }
         }
@@ -526,7 +525,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
       }
     }
 
-    ret finish_vtbl(cx, llmethods, ~"vtbl");
+    ret finish_vtbl(cx, llmethods, "vtbl");
 }
 
 // create_backwarding_vtbl: Create a vtable for the inner object of an
@@ -549,7 +548,7 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
       }
       _ {
         // Shouldn't happen.
-        cx.ccx.sess.bug(~"create_backwarding_vtbl(): trying to extend a \
+        cx.ccx.sess.bug("create_backwarding_vtbl(): trying to extend a \
                             non-object");
       }
     }
@@ -560,19 +559,20 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
         // being forwarded to.
         llmethods += [process_bkwding_mthd(cx, sp, @m, [], outer_obj_ty, [])];
     }
-    ret finish_vtbl(cx, llmethods, ~"backwarding_vtbl");
+    ret finish_vtbl(cx, llmethods, "backwarding_vtbl");
 }
 
 // finish_vtbl: Given a vector of vtable entries, create the table in
 // read-only memory and return a pointer to it.
-fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: &istr) ->
+fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: &str) ->
    ValueRef {
     let vtbl = C_struct(llmethods);
-    let vtbl_name = mangle_internal_name_by_path(
-        cx.ccx, cx.path + [name]);
-    let gvar = str::as_buf(vtbl_name, { |buf|
-        llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl), buf)
-    });
+    let vtbl_name = mangle_internal_name_by_path(cx.ccx, cx.path + [name]);
+    let gvar =
+        str::as_buf(vtbl_name,
+                    {|buf|
+                        llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl), buf)
+                    });
     llvm::LLVMSetInitializer(gvar, vtbl);
     llvm::LLVMSetGlobalConstant(gvar, True);
     llvm::LLVMSetLinkage(gvar,
@@ -600,22 +600,19 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Create a local context that's aware of the name of the method we're
     // creating.
-    let mcx: @local_ctxt = @{path: cx.path
-        + [~"method", m.ident] with *cx};
+    let mcx: @local_ctxt = @{path: cx.path + ["method", m.ident] with *cx};
 
     // Make up a name for the backwarding function.
-    let fn_name: istr = ~"backwarding_fn";
-    let s: istr =
-        mangle_internal_name_by_path_and_seq(
-            mcx.ccx, mcx.path, fn_name);
+    let fn_name: str = "backwarding_fn";
+    let s: str =
+        mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
 
     // Get the backwarding function's type and declare it.
     let llbackwarding_fn_ty: TypeRef =
         type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
                         std::vec::len::<ast::ty_param>(ty_params));
     let llbackwarding_fn: ValueRef =
-        decl_internal_fastcall_fn(
-            cx.ccx.llmod, s, llbackwarding_fn_ty);
+        decl_internal_fastcall_fn(cx.ccx.llmod, s, llbackwarding_fn_ty);
 
     // Create a new function context and block context for the backwarding
     // function, holding onto a pointer to the first block.
@@ -630,8 +627,8 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // Cast to self-stack's type.
     let llenv =
         PointerCast(bcx, fcx.llenv,
-            T_ptr(T_struct([cx.ccx.rust_object_type,
-                            T_ptr(cx.ccx.rust_object_type)])));
+                    T_ptr(T_struct([cx.ccx.rust_object_type,
+                                    T_ptr(cx.ccx.rust_object_type)])));
     let llself_obj_ptr = GEP(bcx, llenv, [C_int(0), C_int(1)]);
     llself_obj_ptr = Load(bcx, llself_obj_ptr);
 
@@ -656,7 +653,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
       }
       _ {
         // Shouldn't happen.
-        cx.ccx.sess.bug(~"process_bkwding_mthd(): non-object type passed \
+        cx.ccx.sess.bug("process_bkwding_mthd(): non-object type passed \
                         as outer_obj_ty");
       }
     }
@@ -731,22 +728,19 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Create a local context that's aware of the name of the method we're
     // creating.
-    let mcx: @local_ctxt = @{path: cx.path
-        + [~"method", m.ident] with *cx};
+    let mcx: @local_ctxt = @{path: cx.path + ["method", m.ident] with *cx};
 
     // Make up a name for the forwarding function.
-    let fn_name: istr = ~"forwarding_fn";
-    let s: istr =
-        mangle_internal_name_by_path_and_seq(
-            mcx.ccx, mcx.path, fn_name);
+    let fn_name: str = "forwarding_fn";
+    let s: str =
+        mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
 
     // Get the forwarding function's type and declare it.
     let llforwarding_fn_ty: TypeRef =
         type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
                         std::vec::len::<ast::ty_param>(ty_params));
     let llforwarding_fn: ValueRef =
-        decl_internal_fastcall_fn(
-            cx.ccx.llmod, s, llforwarding_fn_ty);
+        decl_internal_fastcall_fn(cx.ccx.llmod, s, llforwarding_fn_ty);
 
     // Create a new function context and block context for the forwarding
     // function, holding onto a pointer to the first block.
@@ -782,8 +776,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Now, reach into the box and grab the body.
     let llself_obj_body =
-        GEP(bcx, llself_obj_box,
-                      [C_int(0), C_int(abi::box_rc_field_body)]);
+        GEP(bcx, llself_obj_box, [C_int(0), C_int(abi::box_rc_field_body)]);
 
     // Now, we need to figure out exactly what type the body is supposed to be
     // cast to.
@@ -811,8 +804,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // method's entry out of the vtable so that the forwarding function can
     // call it.
     let llinner_obj_vtbl =
-        GEP(bcx, llinner_obj.val,
-                      [C_int(0), C_int(abi::obj_field_vtbl)]);
+        GEP(bcx, llinner_obj.val, [C_int(0), C_int(abi::obj_field_vtbl)]);
     llinner_obj_vtbl = Load(bcx, llinner_obj_vtbl);
 
     let llinner_obj_body =
@@ -827,7 +819,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
       }
       _ {
         // Shouldn't happen.
-        cx.ccx.sess.bug(~"process_fwding_mthd(): non-object type passed \
+        cx.ccx.sess.bug("process_fwding_mthd(): non-object type passed \
                         as target_obj_ty");
       }
     }
@@ -846,8 +838,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
                         ty::ty_fn_proto(bcx_tcx(bcx), orig_mthd_ty), true,
                         m.inputs, m.output,
                         std::vec::len::<ast::ty_param>(ty_params));
-    llorig_mthd =
-        PointerCast(bcx, llorig_mthd, T_ptr(T_ptr(llorig_mthd_ty)));
+    llorig_mthd = PointerCast(bcx, llorig_mthd, T_ptr(T_ptr(llorig_mthd_ty)));
     llorig_mthd = Load(bcx, llorig_mthd);
 
     // Set up the self-stack.
@@ -860,8 +851,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
                             llinner_obj_body);
 
     // Cast self_stack back to pointer-to-object-type to make LLVM happy.
-    self_stack =
-        PointerCast(bcx, self_stack, T_ptr(cx.ccx.rust_object_type));
+    self_stack = PointerCast(bcx, self_stack, T_ptr(cx.ccx.rust_object_type));
 
     // Set up the three implicit arguments to the original method we'll need
     // to call.
@@ -930,11 +920,9 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
       }
     }
     let mcx: @local_ctxt =
-        @{path: cx.path + [~"method", m.node.ident] with *cx};
-    let s: istr = mangle_internal_name_by_path(mcx.ccx,
-                                               mcx.path);
-    let llfn: ValueRef = decl_internal_fastcall_fn(
-        cx.ccx.llmod, s, llfnty);
+        @{path: cx.path + ["method", m.node.ident] with *cx};
+    let s: str = mangle_internal_name_by_path(mcx.ccx, mcx.path);
+    let llfn: ValueRef = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
 
     // Every method on an object gets its node_id inserted into the crate-wide
     // item_ids map, together with the ValueRef that points to where that

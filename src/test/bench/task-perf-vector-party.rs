@@ -16,13 +16,10 @@ fn f(n: uint) {
     }
 }
 
-fn main(args: [istr]) {
-    let n = if vec::len(args) < 2u {
-        100u
-    } else {
-        uint::parse_buf(str::bytes(args[1]), 10u)
-    };
-    for each i in uint::range(0u, 100u) {
-        task::spawn(bind f(n));
-    }
+fn main(args: [str]) {
+    let n =
+        if vec::len(args) < 2u {
+            100u
+        } else { uint::parse_buf(str::bytes(args[1]), 10u) };
+    for each i in uint::range(0u, 100u) { task::spawn(bind f(n)); }
 }

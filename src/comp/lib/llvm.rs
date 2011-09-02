@@ -810,18 +810,14 @@ native "cdecl" mod llvm = "rustllvm" {
     fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: PassManagerBuilderRef,
                                                    Value: Bool);
     fn LLVMPassManagerBuilderSetDisableSimplifyLibCalls(
-        PMB: PassManagerBuilderRef,
-        Value: Bool);
+        PMB: PassManagerBuilderRef, Value: Bool);
     fn LLVMPassManagerBuilderUseInlinerWithThreshold(
-        PMB: PassManagerBuilderRef,
-        threshold: uint);
+        PMB: PassManagerBuilderRef, threshold: uint);
     fn LLVMPassManagerBuilderPopulateModulePassManager(
-        PMB: PassManagerBuilderRef,
-        PM: PassManagerRef);
+        PMB: PassManagerBuilderRef, PM: PassManagerRef);
 
     fn LLVMPassManagerBuilderPopulateFunctionPassManager(
-        PMB: PassManagerBuilderRef,
-        PM: PassManagerRef);
+        PMB: PassManagerBuilderRef, PM: PassManagerRef);
 
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);
@@ -899,10 +895,10 @@ native "cdecl" mod llvm = "rustllvm" {
 
 /* Memory-managed object interface to type handles. */
 
-obj type_names(type_names: std::map::hashmap<TypeRef, istr>,
-               named_types: std::map::hashmap<istr, TypeRef>) {
+obj type_names(type_names: std::map::hashmap<TypeRef, str>,
+               named_types: std::map::hashmap<str, TypeRef>) {
 
-    fn associate(s: &istr, t: TypeRef) {
+    fn associate(s: &str, t: TypeRef) {
         assert (!named_types.contains_key(s));
         assert (!type_names.contains_key(t));
         type_names.insert(t, s);
@@ -911,15 +907,11 @@ obj type_names(type_names: std::map::hashmap<TypeRef, istr>,
 
     fn type_has_name(t: TypeRef) -> bool { ret type_names.contains_key(t); }
 
-    fn get_name(t: TypeRef) -> istr { ret type_names.get(t); }
+    fn get_name(t: TypeRef) -> str { ret type_names.get(t); }
 
-    fn name_has_type(s: &istr) -> bool {
-        ret named_types.contains_key(s);
-    }
+    fn name_has_type(s: &str) -> bool { ret named_types.contains_key(s); }
 
-    fn get_type(s: &istr) -> TypeRef {
-        ret named_types.get(s);
-    }
+    fn get_type(s: &str) -> TypeRef { ret named_types.get(s); }
 }
 
 fn mk_type_names() -> type_names {
@@ -931,17 +923,17 @@ fn mk_type_names() -> type_names {
 
     let hasher: std::map::hashfn<TypeRef> = hash;
     let eqer: std::map::eqfn<TypeRef> = eq;
-    let tn = std::map::mk_hashmap::<TypeRef, istr>(hasher, eqer);
+    let tn = std::map::mk_hashmap::<TypeRef, str>(hasher, eqer);
 
     ret type_names(tn, nt);
 }
 
-fn type_to_str(names: type_names, ty: TypeRef) -> istr {
+fn type_to_str(names: type_names, ty: TypeRef) -> str {
     ret type_to_str_inner(names, [], ty);
 }
 
 fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
-   istr {
+   str {
 
     if names.type_has_name(ty) { ret names.get_name(ty); }
 
@@ -949,12 +941,11 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
     let kind: int = llvm::LLVMGetTypeKind(ty);
 
-    fn tys_str(names: type_names, outer: &[TypeRef],
-               tys: &[TypeRef]) -> istr {
-        let s: istr = ~"";
+    fn tys_str(names: type_names, outer: &[TypeRef], tys: &[TypeRef]) -> str {
+        let s: str = "";
         let first: bool = true;
         for t: TypeRef in tys {
-            if first { first = false; } else { s += ~", "; }
+            if first { first = false; } else { s += ", "; }
             s += type_to_str_inner(names, outer, t);
         }
         ret s;
@@ -965,58 +956,63 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
 
 
+
       // FIXME: more enum-as-int constants determined from Core::h;
       // horrible, horrible. Complete as needed.
 
       0 {
-        ret ~"Void";
+        ret "Void";
       }
-      1 { ret ~"Float"; }
-      2 { ret ~"Double"; }
-      3 { ret ~"X86_FP80"; }
-      4 { ret ~"FP128"; }
-      5 { ret ~"PPC_FP128"; }
-      6 { ret ~"Label"; }
+      1 { ret "Float"; }
+      2 { ret "Double"; }
+      3 { ret "X86_FP80"; }
+      4 { ret "FP128"; }
+      5 { ret "PPC_FP128"; }
+      6 { ret "Label"; }
+
 
 
 
       7 {
-        ret ~"i" + std::int::str(
-            llvm::LLVMGetIntTypeWidth(ty) as int);
+        ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
 
 
 
+
       8 {
-        let s = ~"fn(";
+        let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args: uint = llvm::LLVMCountParamTypes(ty);
         let args: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_args);
         llvm::LLVMGetParamTypes(ty, vec::to_ptr(args));
         s += tys_str(names, outer, args);
-        s += ~") -> ";
+        s += ") -> ";
         s += type_to_str_inner(names, outer, out_ty);
         ret s;
       }
 
 
 
+
       9 {
-        let s: istr = ~"{";
+        let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
         let elts: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_elts);
         llvm::LLVMGetStructElementTypes(ty, vec::to_ptr(elts));
         s += tys_str(names, outer, elts);
-        s += ~"}";
+        s += "}";
         ret s;
       }
 
 
 
+
       10 {
         let el_ty = llvm::LLVMGetElementType(ty);
-        ret ~"[" + type_to_str_inner(names, outer, el_ty) + ~"]";
+        ret "[" + type_to_str_inner(names, outer, el_ty) + "]";
       }
+
 
 
 
@@ -1026,20 +1022,21 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
             i += 1u;
             if tout as int == ty as int {
                 let n: uint = vec::len::<TypeRef>(outer0) - i;
-                ret ~"*\\" + std::int::str(n as int);
+                ret "*\\" + std::int::str(n as int);
             }
         }
-        ret ~"*" +
+        ret "*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
 
 
 
+
       12 {
-        ret ~"Opaque";
+        ret "Opaque";
       }
-      13 { ret ~"Vector"; }
-      14 { ret ~"Metadata"; }
+      13 { ret "Vector"; }
+      14 { ret "Metadata"; }
       _ { log_err #fmt["unknown TypeKind %d", kind as int]; fail; }
     }
 }
@@ -1069,10 +1066,9 @@ resource target_data_res(TD: TargetDataRef) {
 
 type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
 
-fn mk_target_data(string_rep: &istr) -> target_data {
-    let lltd = str::as_buf(string_rep, { |buf|
-        llvm::LLVMCreateTargetData(buf)
-    });
+fn mk_target_data(string_rep: &str) -> target_data {
+    let lltd =
+        str::as_buf(string_rep, {|buf| llvm::LLVMCreateTargetData(buf) });
     ret {lltd: lltd, dtor: @target_data_res(lltd)};
 }
 

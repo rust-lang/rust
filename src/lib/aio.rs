@@ -45,6 +45,7 @@ tag request {
 type ctx = chan<request>;
 
 fn ip_to_sbuf(ip: net::ip_addr) -> *u8 {
+
     // FIXME: This is broken. We're creating a vector, getting a pointer
     // to its buffer, then dropping the vector. On top of that, the vector
     // created by str::bytes is not null-terminated.
@@ -97,8 +98,7 @@ fn accept_task(client: client, events: chan<server_event>) {
 fn server_task(ip: net::ip_addr, portnum: int, events: chan<server_event>,
                server: chan<server>) {
     let accepter = port();
-    send(server,
-         rustrt::aio_serve(ip_to_sbuf(ip), portnum, chan(accepter)));
+    send(server, rustrt::aio_serve(ip_to_sbuf(ip), portnum, chan(accepter)));
 
     let client: client;
     while true {

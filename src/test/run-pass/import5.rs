@@ -7,4 +7,4 @@ mod foo {
     }
 }
 
-fn main(args: [istr]) { bar(); }
+fn main(args: [str]) { bar(); }

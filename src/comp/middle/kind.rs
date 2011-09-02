@@ -96,11 +96,11 @@ fn lower_kind(a: kind, b: kind) -> kind {
     if kind_lteq(a, b) { a } else { b }
 }
 
-fn kind_to_str(k: kind) -> istr {
+fn kind_to_str(k: kind) -> str {
     alt k {
-      ast::kind_pinned. { ~"pinned" }
-      ast::kind_unique. { ~"unique" }
-      ast::kind_shared. { ~"shared" }
+      ast::kind_pinned. { "pinned" }
+      ast::kind_unique. { "unique" }
+      ast::kind_shared. { "shared" }
     }
 }
 
@@ -112,7 +112,7 @@ fn type_and_kind(tcx: &ty::ctxt, e: &@ast::expr) ->
 }
 
 fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
-                  descr: &istr) {
+                  descr: &str) {
     let tk = type_and_kind(tcx, e);
     log #fmt["for %s: want %s type, got %s type %s", descr,
              kind_to_str(k_need), kind_to_str(tk.kind),
@@ -121,36 +121,35 @@ fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
     if !kind_lteq(k_need, tk.kind) {
         let s =
             #fmt["mismatched kinds for %s: needed %s type, got %s type %s",
-                 descr, kind_to_str(k_need),
-                 kind_to_str(tk.kind),
+                 descr, kind_to_str(k_need), kind_to_str(tk.kind),
                  util::ppaux::ty_to_str(tcx, tk.ty)];
         tcx.sess.span_err(e.span, s);
     }
 }
 
 fn need_shared_lhs_rhs(tcx: &ty::ctxt, a: &@ast::expr, b: &@ast::expr,
-                       op: &istr) {
-    need_expr_kind(tcx, a, ast::kind_shared, op + ~" lhs");
-    need_expr_kind(tcx, b, ast::kind_shared, op + ~" rhs");
+                       op: &str) {
+    need_expr_kind(tcx, a, ast::kind_shared, op + " lhs");
+    need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
 }
 
 fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
     alt e.node {
-      ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, ~"<-"); }
-      ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, ~"="); }
-      ast::expr_assign_op(_, a, b) { need_shared_lhs_rhs(tcx, a, b, ~"op="); }
-      ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, ~"<->"); }
+      ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
+      ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
+      ast::expr_assign_op(_, a, b) { need_shared_lhs_rhs(tcx, a, b, "op="); }
+      ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
       ast::expr_copy(a) {
-        need_expr_kind(tcx, a, ast::kind_shared, ~"'copy' operand");
+        need_expr_kind(tcx, a, ast::kind_shared, "'copy' operand");
       }
       ast::expr_ret(option::some(a)) {
-        need_expr_kind(tcx, a, ast::kind_shared, ~"'ret' operand");
+        need_expr_kind(tcx, a, ast::kind_shared, "'ret' operand");
       }
       ast::expr_be(a) {
-        need_expr_kind(tcx, a, ast::kind_shared, ~"'be' operand");
+        need_expr_kind(tcx, a, ast::kind_shared, "'be' operand");
       }
       ast::expr_fail(option::some(a)) {
-        need_expr_kind(tcx, a, ast::kind_shared, ~"'fail' operand");
+        need_expr_kind(tcx, a, ast::kind_shared, "'fail' operand");
       }
       ast::expr_call(callee, _) {
         let tpt = ty::expr_ty_params_and_ty(tcx, callee);
@@ -159,8 +158,8 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
         // that all the types we're supplying as typarams conform to the
         // typaram kind constraints on that item.
         if vec::len(tpt.params) != 0u {
-            let callee_def = ast_util::def_id_of_def(
-                tcx.def_map.get(callee.id));
+            let callee_def =
+                ast_util::def_id_of_def(tcx.def_map.get(callee.id));
             let item_tk = ty::lookup_item_type(tcx, callee_def);
             let i = 0;
             assert (vec::len(item_tk.kinds) == vec::len(tpt.params));

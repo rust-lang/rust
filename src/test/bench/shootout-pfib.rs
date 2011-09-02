@@ -49,14 +49,14 @@ fn fib(n: int) -> int {
 
 type config = {stress: bool};
 
-fn parse_opts(argv: &[istr]) -> config {
-    let opts = [getopts::optflag(~"stress")];
+fn parse_opts(argv: &[str]) -> config {
+    let opts = [getopts::optflag("stress")];
 
     let opt_args = vec::slice(argv, 1u, vec::len(argv));
 
 
     alt getopts::getopts(opt_args, opts) {
-      getopts::success(m) { ret {stress: getopts::opt_present(m, ~"stress")} }
+      getopts::success(m) { ret {stress: getopts::opt_present(m, "stress")} }
       getopts::failure(_) { fail; }
     }
 }
@@ -79,7 +79,7 @@ fn stress(num_tasks: int) {
     for t in tasks { task::join(t); }
 }
 
-fn main(argv: [istr]) {
+fn main(argv: [str]) {
     if vec::len(argv) == 1u {
         assert (fib(8) == 21);
         log fib(8);
@@ -105,9 +105,8 @@ fn main(argv: [istr]) {
 
                     let elapsed = stop - start;
 
-                    out.write_line(
-                            #fmt["%d\t%d\t%s", n, fibn,
-                                 u64::str(elapsed)]);
+                    out.write_line(#fmt["%d\t%d\t%s", n, fibn,
+                                        u64::str(elapsed)]);
                 }
             }
         }

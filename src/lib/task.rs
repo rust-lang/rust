@@ -122,7 +122,7 @@ fn spawn_inner(thunk: -fn(), notify: option<comm::chan<task_notification>>) ->
     // set up the task pointer
     let task_ptr = rust_task_ptr(rustrt::get_task_pointer(id));
     let regs = ptr::addr_of((**task_ptr).ctx.regs);
-    (*regs).edx = cast(*task_ptr);
+    (*regs).edx = cast(*task_ptr);;
     (*regs).esp = cast((**task_ptr).stack_ptr);
 
     assert (ptr::null() != (**task_ptr).stack_ptr);

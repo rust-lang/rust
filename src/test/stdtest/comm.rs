@@ -2,10 +2,7 @@ use std;
 import std::comm;
 
 #[test]
-fn create_port_and_chan() {
-    let p = comm::port::<int>();
-    comm::chan(p);
-}
+fn create_port_and_chan() { let p = comm::port::<int>(); comm::chan(p); }
 
 #[test]
 fn send_recv_fn() {

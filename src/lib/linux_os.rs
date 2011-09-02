@@ -50,11 +50,11 @@ mod libc_constants {
     fn S_IWUSR() -> uint { ret 128u; }
 }
 
-fn exec_suffix() -> istr { ret ~""; }
+fn exec_suffix() -> str { ret ""; }
 
-fn target_os() -> istr { ret ~"linux"; }
+fn target_os() -> str { ret "linux"; }
 
-fn dylib_filename(base: &istr) -> istr { ret ~"lib" + base + ~".so"; }
+fn dylib_filename(base: &str) -> str { ret "lib" + base + ".so"; }
 
 fn pipe() -> {in: int, out: int} {
     let fds = {mutable in: 0, mutable out: 0};
@@ -63,9 +63,7 @@ fn pipe() -> {in: int, out: int} {
 }
 
 fn fd_FILE(fd: int) -> libc::FILE {
-    ret str::as_buf(~"r", { |modebuf|
-        libc::fdopen(fd, modebuf)
-    });
+    ret str::as_buf("r", {|modebuf| libc::fdopen(fd, modebuf) });
 }
 
 fn waitpid(pid: int) -> int {
@@ -75,12 +73,10 @@ fn waitpid(pid: int) -> int {
 }
 
 native "rust" mod rustrt {
-    fn rust_getcwd() -> istr;
+    fn rust_getcwd() -> str;
 }
 
-fn getcwd() -> istr {
-    ret rustrt::rust_getcwd();
-}
+fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 
 
 // Local Variables:

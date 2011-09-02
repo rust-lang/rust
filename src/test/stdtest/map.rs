@@ -14,8 +14,8 @@ fn test_simple() {
     fn eq_uint(x: &uint, y: &uint) -> bool { ret x == y; }
     let hasher_uint: map::hashfn<uint> = util::id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
-    let hasher_str: map::hashfn<istr> = str::hash;
-    let eqer_str: map::eqfn<istr> = str::eq;
+    let hasher_str: map::hashfn<str> = str::hash;
+    let eqer_str: map::eqfn<str> = str::eq;
     log "uint -> uint";
     let hm_uu: map::hashmap<uint, uint> =
         map::mk_hashmap::<uint, uint>(hasher_uint, eqer_uint);
@@ -29,49 +29,49 @@ fn test_simple() {
     assert (hm_uu.get(12u) == 14u);
     assert (!hm_uu.insert(12u, 12u));
     assert (hm_uu.get(12u) == 12u);
-    let ten: istr = ~"ten";
-    let eleven: istr = ~"eleven";
-    let twelve: istr = ~"twelve";
+    let ten: str = "ten";
+    let eleven: str = "eleven";
+    let twelve: str = "twelve";
     log "str -> uint";
-    let hm_su: map::hashmap<istr, uint> =
-        map::mk_hashmap::<istr, uint>(hasher_str, eqer_str);
-    assert (hm_su.insert(~"ten", 12u));
+    let hm_su: map::hashmap<str, uint> =
+        map::mk_hashmap::<str, uint>(hasher_str, eqer_str);
+    assert (hm_su.insert("ten", 12u));
     assert (hm_su.insert(eleven, 13u));
-    assert (hm_su.insert(~"twelve", 14u));
+    assert (hm_su.insert("twelve", 14u));
     assert (hm_su.get(eleven) == 13u);
-    assert (hm_su.get(~"eleven") == 13u);
-    assert (hm_su.get(~"twelve") == 14u);
-    assert (hm_su.get(~"ten") == 12u);
-    assert (!hm_su.insert(~"twelve", 14u));
-    assert (hm_su.get(~"twelve") == 14u);
-    assert (!hm_su.insert(~"twelve", 12u));
-    assert (hm_su.get(~"twelve") == 12u);
+    assert (hm_su.get("eleven") == 13u);
+    assert (hm_su.get("twelve") == 14u);
+    assert (hm_su.get("ten") == 12u);
+    assert (!hm_su.insert("twelve", 14u));
+    assert (hm_su.get("twelve") == 14u);
+    assert (!hm_su.insert("twelve", 12u));
+    assert (hm_su.get("twelve") == 12u);
     log "uint -> str";
-    let hm_us: map::hashmap<uint, istr> =
-        map::mk_hashmap::<uint, istr>(hasher_uint, eqer_uint);
-    assert (hm_us.insert(10u, ~"twelve"));
-    assert (hm_us.insert(11u, ~"thirteen"));
-    assert (hm_us.insert(12u, ~"fourteen"));
-    assert (str::eq(hm_us.get(11u), ~"thirteen"));
-    assert (str::eq(hm_us.get(12u), ~"fourteen"));
-    assert (str::eq(hm_us.get(10u), ~"twelve"));
-    assert (!hm_us.insert(12u, ~"fourteen"));
-    assert (str::eq(hm_us.get(12u), ~"fourteen"));
-    assert (!hm_us.insert(12u, ~"twelve"));
-    assert (str::eq(hm_us.get(12u), ~"twelve"));
+    let hm_us: map::hashmap<uint, str> =
+        map::mk_hashmap::<uint, str>(hasher_uint, eqer_uint);
+    assert (hm_us.insert(10u, "twelve"));
+    assert (hm_us.insert(11u, "thirteen"));
+    assert (hm_us.insert(12u, "fourteen"));
+    assert (str::eq(hm_us.get(11u), "thirteen"));
+    assert (str::eq(hm_us.get(12u), "fourteen"));
+    assert (str::eq(hm_us.get(10u), "twelve"));
+    assert (!hm_us.insert(12u, "fourteen"));
+    assert (str::eq(hm_us.get(12u), "fourteen"));
+    assert (!hm_us.insert(12u, "twelve"));
+    assert (str::eq(hm_us.get(12u), "twelve"));
     log "str -> str";
-    let hm_ss: map::hashmap<istr, istr> =
-        map::mk_hashmap::<istr, istr>(hasher_str, eqer_str);
-    assert (hm_ss.insert(ten, ~"twelve"));
-    assert (hm_ss.insert(eleven, ~"thirteen"));
-    assert (hm_ss.insert(twelve, ~"fourteen"));
-    assert (str::eq(hm_ss.get(~"eleven"), ~"thirteen"));
-    assert (str::eq(hm_ss.get(~"twelve"), ~"fourteen"));
-    assert (str::eq(hm_ss.get(~"ten"), ~"twelve"));
-    assert (!hm_ss.insert(~"twelve", ~"fourteen"));
-    assert (str::eq(hm_ss.get(~"twelve"), ~"fourteen"));
-    assert (!hm_ss.insert(~"twelve", ~"twelve"));
-    assert (str::eq(hm_ss.get(~"twelve"), ~"twelve"));
+    let hm_ss: map::hashmap<str, str> =
+        map::mk_hashmap::<str, str>(hasher_str, eqer_str);
+    assert (hm_ss.insert(ten, "twelve"));
+    assert (hm_ss.insert(eleven, "thirteen"));
+    assert (hm_ss.insert(twelve, "fourteen"));
+    assert (str::eq(hm_ss.get("eleven"), "thirteen"));
+    assert (str::eq(hm_ss.get("twelve"), "fourteen"));
+    assert (str::eq(hm_ss.get("ten"), "twelve"));
+    assert (!hm_ss.insert("twelve", "fourteen"));
+    assert (str::eq(hm_ss.get("twelve"), "fourteen"));
+    assert (!hm_ss.insert("twelve", "twelve"));
+    assert (str::eq(hm_ss.get("twelve"), "twelve"));
     log "*** finished test_simple";
 }
 
@@ -92,14 +92,14 @@ fn test_growth() {
     let i: uint = 0u;
     while i < num_to_insert {
         assert (hm_uu.insert(i, i * i));
-        log ~"inserting " + uint::to_str(i, 10u) + ~" -> " +
+        log "inserting " + uint::to_str(i, 10u) + " -> " +
                 uint::to_str(i * i, 10u);
         i += 1u;
     }
     log "-----";
     i = 0u;
     while i < num_to_insert {
-        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
+        log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm_uu.get(i), 10u);
         assert (hm_uu.get(i) == i * i);
         i += 1u;
@@ -110,44 +110,42 @@ fn test_growth() {
     hm_uu.rehash();
     i = 0u;
     while i < num_to_insert {
-        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
+        log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm_uu.get(i), 10u);
         assert (hm_uu.get(i) == i * i);
         i += 1u;
     }
     log "str -> str";
-    let hasher_str: map::hashfn<istr> = str::hash;
-    let eqer_str: map::eqfn<istr> = str::eq;
-    let hm_ss: map::hashmap<istr, istr> =
-        map::mk_hashmap::<istr, istr>(hasher_str, eqer_str);
+    let hasher_str: map::hashfn<str> = str::hash;
+    let eqer_str: map::eqfn<str> = str::eq;
+    let hm_ss: map::hashmap<str, str> =
+        map::mk_hashmap::<str, str>(hasher_str, eqer_str);
     i = 0u;
     while i < num_to_insert {
-        assert (hm_ss.insert(uint::to_str(i, 2u),
-                             uint::to_str(i * i, 2u)));
-        log ~"inserting \"" + uint::to_str(i, 2u) + ~"\" -> \"" +
-                uint::to_str(i * i, 2u) + ~"\"";
+        assert (hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u)));
+        log "inserting \"" + uint::to_str(i, 2u) + "\" -> \"" +
+                uint::to_str(i * i, 2u) + "\"";
         i += 1u;
     }
     log "-----";
     i = 0u;
     while i < num_to_insert {
-        log ~"get(\"" + uint::to_str(i, 2u) + ~"\") = \"" +
-                hm_ss.get(uint::to_str(i, 2u)) + ~"\"";
+        log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
+                hm_ss.get(uint::to_str(i, 2u)) + "\"";
         assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
                         uint::to_str(i * i, 2u)));
         i += 1u;
     }
     assert (hm_ss.insert(uint::to_str(num_to_insert, 2u),
                          uint::to_str(17u, 2u)));
-    assert (str::eq(hm_ss.get(
-        uint::to_str(num_to_insert, 2u)),
+    assert (str::eq(hm_ss.get(uint::to_str(num_to_insert, 2u)),
                     uint::to_str(17u, 2u)));
     log "-----";
     hm_ss.rehash();
     i = 0u;
     while i < num_to_insert {
-        log ~"get(\"" + uint::to_str(i, 2u) + ~"\") = \"" +
-                hm_ss.get(uint::to_str(i, 2u)) + ~"\"";
+        log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
+                hm_ss.get(uint::to_str(i, 2u)) + "\"";
         assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
                         uint::to_str(i * i, 2u)));
         i += 1u;
@@ -176,7 +174,7 @@ fn test_removal() {
     let i: uint = 0u;
     while i < num_to_insert {
         assert (hm.insert(i, i * i));
-        log ~"inserting " + uint::to_str(i, 10u) + ~" -> " +
+        log "inserting " + uint::to_str(i, 10u) + " -> " +
                 uint::to_str(i * i, 10u);
         i += 1u;
     }
@@ -186,10 +184,8 @@ fn test_removal() {
     i = 0u;
     while i < num_to_insert {
         let v = hm.remove(i);
-        alt (v) {
-          option::some(u) {
-            assert (u == (i * i));
-          }
+        alt v {
+          option::some(u) { assert (u == i * i); }
           option::none. { fail; }
         }
         i += 2u;
@@ -198,7 +194,7 @@ fn test_removal() {
     log "-----";
     i = 1u;
     while i < num_to_insert {
-        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
+        log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
         i += 2u;
@@ -209,7 +205,7 @@ fn test_removal() {
     log "-----";
     i = 1u;
     while i < num_to_insert {
-        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
+        log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
         i += 2u;
@@ -218,7 +214,7 @@ fn test_removal() {
     i = 0u;
     while i < num_to_insert {
         assert (hm.insert(i, i * i));
-        log ~"inserting " + uint::to_str(i, 10u) + ~" -> " +
+        log "inserting " + uint::to_str(i, 10u) + " -> " +
                 uint::to_str(i * i, 10u);
         i += 2u;
     }
@@ -226,7 +222,7 @@ fn test_removal() {
     log "-----";
     i = 0u;
     while i < num_to_insert {
-        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
+        log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
         i += 1u;
@@ -238,7 +234,7 @@ fn test_removal() {
     assert (hm.size() == num_to_insert);
     i = 0u;
     while i < num_to_insert {
-        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
+        log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
         i += 1u;
@@ -248,18 +244,18 @@ fn test_removal() {
 
 #[test]
 fn test_contains_key() {
-    let key = ~"k";
-    let map = map::mk_hashmap::<istr, istr>(str::hash, str::eq);
+    let key = "k";
+    let map = map::mk_hashmap::<str, str>(str::hash, str::eq);
     assert (!map.contains_key(key));
-    map.insert(key, ~"val");
+    map.insert(key, "val");
     assert (map.contains_key(key));
 }
 
 #[test]
 fn test_find() {
-    let key = ~"k";
-    let map = map::mk_hashmap::<istr, istr>(str::hash, str::eq);
+    let key = "k";
+    let map = map::mk_hashmap::<str, str>(str::hash, str::eq);
     assert (std::option::is_none(map.find(key)));
-    map.insert(key, ~"val");
-    assert (std::option::get(map.find(key)) == ~"val");
+    map.insert(key, "val");
+    assert (std::option::get(map.find(key)) == "val");
 }

@@ -83,7 +83,7 @@ fn item_family(item: &ebml::doc) -> u8 {
     ret ebml::doc_as_uint(fam) as u8;
 }
 
-fn item_symbol(item: &ebml::doc) -> istr {
+fn item_symbol(item: &ebml::doc) -> str {
     let sym = ebml::get_doc(item, tag_items_data_item_symbol);
     ret str::unsafe_from_bytes(ebml::doc_data(sym));
 }
@@ -96,7 +96,7 @@ fn variant_tag_id(d: &ebml::doc) -> ast::def_id {
 fn item_type(item: &ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
              extres: &external_resolver) -> ty::t {
     fn parse_external_def_id(this_cnum: ast::crate_num,
-                             extres: &external_resolver, s: &istr) ->
+                             extres: &external_resolver, s: &str) ->
        ast::def_id {
         let buf = str::bytes(s);
         let external_def_id = parse_def_id(buf);
@@ -149,16 +149,15 @@ fn tag_variant_ids(item: &ebml::doc, this_cnum: ast::crate_num) ->
 // Given a path and serialized crate metadata, returns the ID of the
 // definition the path refers to.
 fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
-    fn eq_item(data: &[u8], s: &istr) -> bool {
+    fn eq_item(data: &[u8], s: &str) -> bool {
         ret str::eq(str::unsafe_from_bytes(data), s);
     }
-    let s = str::connect(path, ~"::");
+    let s = str::connect(path, "::");
     let md = ebml::new_doc(data);
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
     let result: [ast::def_id] = [];
-    for doc: ebml::doc in lookup_hash(paths, eqer,
-                                      hash_path(s)) {
+    for doc: ebml::doc in lookup_hash(paths, eqer, hash_path(s)) {
         let did_doc = ebml::get_doc(doc, tag_def_id);
         result += [parse_def_id(ebml::doc_data(did_doc))];
     }
@@ -222,7 +221,7 @@ fn get_type_param_kinds(data: @[u8], id: ast::node_id) -> [ast::kind] {
     ret item_ty_param_kinds(lookup_item(id, data));
 }
 
-fn get_symbol(data: @[u8], id: ast::node_id) -> istr {
+fn get_symbol(data: @[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
 }
 
@@ -268,7 +267,7 @@ fn family_has_type_params(fam_ch: u8) -> bool {
         };
 }
 
-fn read_path(d: &ebml::doc) -> {path: istr, pos: uint} {
+fn read_path(d: &ebml::doc) -> {path: str, pos: uint} {
     let desc = ebml::doc_data(d);
     let pos = ebml::be_uint_from_bytes(@desc, 0u, 4u);
     let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
@@ -276,23 +275,23 @@ fn read_path(d: &ebml::doc) -> {path: istr, pos: uint} {
     ret {path: path, pos: pos};
 }
 
-fn describe_def(items: &ebml::doc, id: ast::def_id) -> istr {
-    if id.crate != ast::local_crate { ret ~"external"; }
+fn describe_def(items: &ebml::doc, id: ast::def_id) -> str {
+    if id.crate != ast::local_crate { ret "external"; }
     ret item_family_to_str(item_family(find_item(id.node, items)));
 }
 
-fn item_family_to_str(fam: u8) -> istr {
+fn item_family_to_str(fam: u8) -> str {
     alt fam as char {
-      'c' { ret ~"const"; }
-      'f' { ret ~"fn"; }
-      'p' { ret ~"pure fn"; }
-      'F' { ret ~"native fn"; }
-      'y' { ret ~"type"; }
-      'T' { ret ~"native type"; }
-      't' { ret ~"type"; }
-      'm' { ret ~"mod"; }
-      'n' { ret ~"native mod"; }
-      'v' { ret ~"tag"; }
+      'c' { ret "const"; }
+      'f' { ret "fn"; }
+      'p' { ret "pure fn"; }
+      'F' { ret "native fn"; }
+      'y' { ret "type"; }
+      'T' { ret "native type"; }
+      't' { ret "type"; }
+      'm' { ret "mod"; }
+      'n' { ret "native mod"; }
+      'v' { ret "tag"; }
     }
 }
 
@@ -347,29 +346,25 @@ fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
 
 fn list_meta_items(meta_items: &ebml::doc, out: io::writer) {
     for mi: @ast::meta_item in get_meta_items(meta_items) {
-        out.write_str(
-                #fmt["%s\n",
-                     pprust::meta_item_to_str(*mi)]);
+        out.write_str(#fmt["%s\n", pprust::meta_item_to_str(*mi)]);
     }
 }
 
 fn list_crate_attributes(md: &ebml::doc, out: io::writer) {
-    out.write_str(~"=Crate Attributes=\n");
+    out.write_str("=Crate Attributes=\n");
 
     for attr: ast::attribute in get_attributes(md) {
-        out.write_str(
-                #fmt["%s\n",
-                     pprust::attribute_to_str(attr)]);
+        out.write_str(#fmt["%s\n", pprust::attribute_to_str(attr)]);
     }
 
-    out.write_str(~"\n\n");
+    out.write_str("\n\n");
 }
 
 fn get_crate_attributes(data: @[u8]) -> [ast::attribute] {
     ret get_attributes(ebml::new_doc(data));
 }
 
-type crate_dep = {cnum: ast::crate_num, ident: istr};
+type crate_dep = {cnum: ast::crate_num, ident: str};
 
 fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     let deps: [crate_dep] = [];
@@ -385,19 +380,17 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
 }
 
 fn list_crate_deps(data: @[u8], out: io::writer) {
-    out.write_str(~"=External Dependencies=\n");
+    out.write_str("=External Dependencies=\n");
 
     for dep: crate_dep in get_crate_deps(data) {
-        out.write_str(
-            #fmt["%d %s\n", dep.cnum,
-                                 dep.ident]);
+        out.write_str(#fmt["%d %s\n", dep.cnum, dep.ident]);
     }
 
-    out.write_str(~"\n");
+    out.write_str("\n");
 }
 
 fn list_crate_items(bytes: &@[u8], md: &ebml::doc, out: io::writer) {
-    out.write_str(~"=Items=\n");
+    out.write_str("=Items=\n");
     let paths = ebml::get_doc(md, tag_paths);
     let items = ebml::get_doc(md, tag_items);
     let index = ebml::get_doc(paths, tag_index);
@@ -410,13 +403,11 @@ fn list_crate_items(bytes: &@[u8], md: &ebml::doc, out: io::writer) {
             let def = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
             let did = parse_def_id(ebml::doc_data(did_doc));
-            out.write_str(
-                    #fmt["%s (%s)\n",
-                         data.path,
-                         describe_def(items, did)]);
+            out.write_str(#fmt["%s (%s)\n", data.path,
+                               describe_def(items, did)]);
         }
     }
-    out.write_str(~"\n");
+    out.write_str("\n");
 }
 
 fn list_crate_metadata(bytes: &@[u8], out: io::writer) {

@@ -74,10 +74,10 @@ tag import_state {
              option::t<def>); /* module */
 }
 
-type ext_hash = hashmap<{did: def_id, ident: istr, ns: namespace}, def>;
+type ext_hash = hashmap<{did: def_id, ident: str, ns: namespace}, def>;
 
 fn new_ext_hash() -> ext_hash {
-    type key = {did: def_id, ident: istr, ns: namespace};
+    type key = {did: def_id, ident: str, ns: namespace};
     fn hash(v: &key) -> uint {
         ret str::hash(v.ident) + util::common::hash_def(v.did) +
                 alt v.ns {
@@ -110,7 +110,7 @@ type indexed_mod =
     {m: option::t<ast::_mod>,
      index: mod_index,
      mutable glob_imports: [glob_imp_def],
-     glob_imported_names: hashmap<istr, import_state>};
+     glob_imported_names: hashmap<str, import_state>};
 
 
 /* native modules can't contain tags, and we don't store their ASTs because we
@@ -127,7 +127,7 @@ type env =
      mod_map: hashmap<ast::node_id, @indexed_mod>,
      ext_map: hashmap<def_id, [ident]>,
      ext_cache: ext_hash,
-     mutable reported: [{ident: istr, sc: scope}],
+     mutable reported: [{ident: str, sc: scope}],
      sess: session};
 
 
@@ -242,6 +242,7 @@ fn map_crate(e: &@env, c: &@ast::crate) {
         alt vi.node {
 
 
+
           //if it really is a glob import, that is
           ast::view_item_import_glob(path, _) {
             let imp = follow_import(*e, sc, path, vi.span);
@@ -323,8 +324,8 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
               }
               _ {
                 e.sess.span_err(p.span,
-                                ~"not a tag variant: " +
-                                ast_util::path_name(p));
+                                "not a tag variant: " +
+                                    ast_util::path_name(p));
               }
             }
           }
@@ -430,8 +431,8 @@ fn follow_import(e: &env, sc: &scopes, path: &[ident], sp: &span) ->
           ast::def_mod(_) | ast::def_native_mod(_) { ret dcur; }
           _ {
             e.sess.span_err(sp,
-                            str::connect(path, ~"::") +
-                                ~" does not name a module.");
+                            str::connect(path, "::") +
+                                " does not name a module.");
             ret none;
           }
         }
@@ -448,8 +449,8 @@ fn resolve_constr(e: @env, c: &@ast::constr, sc: &scopes, _v: &vt<scopes>) {
           }
           _ {
             e.sess.span_err(c.span,
-                            ~"Non-predicate in constraint: " +
-                            path_to_str(c.node.path));
+                            "Non-predicate in constraint: " +
+                                path_to_str(c.node.path));
           }
         }
     }
@@ -475,8 +476,7 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
             alt lookup_in_scope(e, sc, sp, ids[0], ns_module) {
               some(dcur) { dcur }
               none. {
-                unresolved_err(e, sc, sp, ids[0],
-                               ns_name(ns_module));
+                unresolved_err(e, sc, sp, ids[0], ns_name(ns_module));
                 remove_if_unresolved(e.imports, defid.node);
                 ret ()
               }
@@ -498,8 +498,7 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
                         {
                       some(dcur) { dcur }
                       none. {
-                        unresolved_err(e, sc, sp, ids[i],
-                                       ns_name(ns_module));
+                        unresolved_err(e, sc, sp, ids[i], ns_name(ns_module));
                         remove_if_unresolved(e.imports, defid.node);
                         ret () // FIXME (issue #521)
                       }
@@ -512,7 +511,7 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
                 val: &option::t<def>, typ: &option::t<def>,
                 md: &option::t<def>) {
         if is_none(val) && is_none(typ) && is_none(md) {
-            unresolved_err(e, sc, sp, name, ~"import");
+            unresolved_err(e, sc, sp, name, "import");
         } else { e.imports.insert(defid.node, resolved(val, typ, md)); }
     }
     fn remove_if_unresolved(imports: hashmap<ast::node_id, import_state>,
@@ -532,16 +531,15 @@ fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
 
 
 // Utilities
-fn ns_name(ns: namespace) -> istr {
+fn ns_name(ns: namespace) -> str {
     alt ns {
-      ns_type. { ret ~"typename"; }
-      ns_value. { ret ~"name"; }
-      ns_module. { ret ~"modulename"; }
+      ns_type. { ret "typename"; }
+      ns_value. { ret "name"; }
+      ns_module. { ret "modulename"; }
     }
 }
 
-fn unresolved_err(e: &env, sc: &scopes, sp: &span,
-                  name: &ident, kind: &istr) {
+fn unresolved_err(e: &env, sc: &scopes, sp: &span, name: &ident, kind: &str) {
     fn find_fn_or_mod_scope(sc: scopes) -> scope {
         while true {
             alt sc {
@@ -559,19 +557,18 @@ fn unresolved_err(e: &env, sc: &scopes, sp: &span,
         fail;
     }
     let err_scope = find_fn_or_mod_scope(sc);
-    for rs: {ident: istr, sc: scope} in e.reported {
-        if str::eq(rs.ident, name)
-            && err_scope == rs.sc { ret; }
+    for rs: {ident: str, sc: scope} in e.reported {
+        if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
     }
     e.reported += [{ident: name, sc: err_scope}];
     e.sess.span_err(sp, mk_unresolved_msg(name, kind));
 }
 
-fn unresolved_fatal(e: &env, sp: &span, id: &ident, kind: &istr) -> ! {
+fn unresolved_fatal(e: &env, sp: &span, id: &ident, kind: &str) -> ! {
     e.sess.span_fatal(sp, mk_unresolved_msg(id, kind));
 }
 
-fn mk_unresolved_msg(id: &ident, kind: &istr) -> istr {
+fn mk_unresolved_msg(id: &ident, kind: &str) -> str {
     ret #fmt["unresolved %s: %s", kind, id];
 }
 
@@ -603,8 +600,7 @@ fn lookup_path_strict(e: &env, sc: &scopes, sp: &span, pth: &ast::path_,
 fn lookup_in_scope_strict(e: &env, sc: scopes, sp: &span, name: &ident,
                           ns: namespace) -> option::t<def> {
     alt lookup_in_scope(e, sc, sp, name, ns) {
-      none. { unresolved_err(e, sc, sp, name,
-                             ns_name(ns)); ret none; }
+      none. { unresolved_err(e, sc, sp, name, ns_name(ns)); ret none; }
       some(d) { ret some(d); }
     }
 }
@@ -629,10 +625,12 @@ fn scope_closes(sc: &scope) -> option::t<bool> {
 
 fn def_is_local(d: &def) -> bool {
     ret alt d {
-      ast::def_arg(_, _) | ast::def_local(_) | ast::def_binding(_) |
-      ast::def_upvar(_, _, _) { true }
-      _ { false }
-    };
+          ast::def_arg(_, _) | ast::def_local(_) | ast::def_binding(_) |
+          ast::def_upvar(_, _, _) {
+            true
+          }
+          _ { false }
+        };
 }
 
 fn def_is_obj_field(d: &def) -> bool {
@@ -715,24 +713,23 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
             if !is_none(fnd) {
                 let df = option::get(fnd);
                 let local = def_is_local(df);
-                if left_fn && local ||
-                       left_fn_level2 && def_is_obj_field(df) ||
-                       scope_is_fn(hd) && left_fn && def_is_ty_arg(df) {
-                    let msg = alt ns {
-                      ns_type. {
-                        ~"Attempt to use a type argument out of scope"
-                      }
-                      _ {
-                        ~"attempted dynamic environment-capture"
-                      }
-                    };
+                if left_fn && local || left_fn_level2 && def_is_obj_field(df)
+                       || scope_is_fn(hd) && left_fn && def_is_ty_arg(df) {
+                    let msg =
+                        alt ns {
+                          ns_type. {
+                            "Attempt to use a type argument out of scope"
+                          }
+                          _ { "attempted dynamic environment-capture" }
+                        };
                     e.sess.span_fatal(sp, msg);
                 } else if local {
                     let i = vec::len(closing);
                     while i > 0u {
                         i -= 1u;
-                        df = ast::def_upvar(ast_util::def_id_of_def(df),
-                                            @df, closing[i]);
+                        df =
+                            ast::def_upvar(ast_util::def_id_of_def(df), @df,
+                                           closing[i]);
                         fnd = some(df);
                     }
                 }
@@ -742,16 +739,13 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
                 left_fn_level2 = true;
             } else if ns == ns_value || ns == ns_type {
                 left_fn = scope_is_fn(hd);
-                alt scope_closes(hd) {
-                  some(mut) { closing += [mut]; }
-                  _ {}
-                }
+                alt scope_closes(hd) { some(mut) { closing += [mut]; } _ { } }
             }
             sc = *tl;
           }
         }
     }
-    e.sess.bug(~"reached unreachable code in lookup_in_scope"); // sigh
+    e.sess.bug("reached unreachable code in lookup_in_scope"); // sigh
 
 }
 
@@ -912,8 +906,7 @@ fn found_def_item(i: &@ast::item, ns: namespace) -> option::t<def> {
 fn lookup_in_mod_strict(e: &env, sc: &scopes, m: def, sp: &span, name: &ident,
                         ns: namespace, dr: dir) -> option::t<def> {
     alt lookup_in_mod(e, m, sp, name, ns, dr) {
-      none. { unresolved_err(e, sc, sp, name,
-                             ns_name(ns)); ret none; }
+      none. { unresolved_err(e, sc, sp, name, ns_name(ns)); ret none; }
       some(d) { ret some(d); }
     }
 }
@@ -924,15 +917,13 @@ fn lookup_in_mod(e: &env, m: &def, sp: &span, name: &ident, ns: namespace,
     if defid.crate != ast::local_crate {
         // examining a module in an external crate
 
-        let cached = e.ext_cache.find({did: defid,
-                                       ident: name, ns: ns});
+        let cached = e.ext_cache.find({did: defid, ident: name, ns: ns});
         if !is_none(cached) { ret cached; }
         let path = [name];
         if defid.node != -1 { path = e.ext_map.get(defid) + path; }
         let fnd = lookup_external(e, defid.crate, path, ns);
         if !is_none(fnd) {
-            e.ext_cache.insert({did: defid,
-                                ident: name, ns: ns},
+            e.ext_cache.insert({did: defid, ident: name, ns: ns},
                                option::get(fnd));
         }
         ret fnd;
@@ -962,7 +953,7 @@ fn lookup_import(e: &env, defid: def_id, ns: namespace) -> option::t<def> {
         resolve_import(e, local_def(node_id), name, path, span, scopes);
         ret lookup_import(e, defid, ns);
       }
-      resolving(sp) { e.sess.span_err(sp, ~"cyclic import"); ret none; }
+      resolving(sp) { e.sess.span_err(sp, "cyclic import"); ret none; }
       resolved(val, typ, md) {
         ret alt ns { ns_value. { val } ns_type. { typ } ns_module. { md } };
       }
@@ -1026,13 +1017,11 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
         } else {
             for match: glob_imp_def in matches {
                 let sp = match.item.span;
-                e.sess.span_note(
-                    sp, #fmt["'%s' is imported here", id]);
+                e.sess.span_note(sp, #fmt["'%s' is imported here", id]);
             }
             e.sess.span_fatal(sp,
-                              ~"'" + id
-                              + ~"' is glob-imported from" +
-                                  ~" multiple different modules.");
+                              "'" + id + "' is glob-imported from" +
+                                  " multiple different modules.");
         }
     }
     // since we don't know what names we have in advance,
@@ -1043,11 +1032,10 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
         let val = per_ns(e, info, sp, id, ns_value, dr);
         let typ = per_ns(e, info, sp, id, ns_type, dr);
         let md = per_ns(e, info, sp, id, ns_module, dr);
-        info.glob_imported_names.insert(id,
-                                        resolved(val, typ, md));
+        info.glob_imported_names.insert(id, resolved(val, typ, md));
     }
     alt info.glob_imported_names.get(id) {
-      todo(_, _, _, _, _) { e.sess.bug(~"Shouldn't've put a todo in."); }
+      todo(_, _, _, _, _) { e.sess.bug("Shouldn't've put a todo in."); }
       resolving(sp) {
         ret none::<def>; //circularity is okay in import globs
 
@@ -1101,11 +1089,10 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
 
 
 // Module indexing
-fn add_to_index(index: &hashmap<ident, list<mod_index_entry>>,
-                id: &ident, ent: &mod_index_entry) {
+fn add_to_index(index: &hashmap<ident, list<mod_index_entry>>, id: &ident,
+                ent: &mod_index_entry) {
     alt index.find(id) {
-      none. { index.insert(id,
-                           cons(ent, @nil::<mod_index_entry>)); }
+      none. { index.insert(id, cons(ent, @nil::<mod_index_entry>)); }
       some(prev) { index.insert(id, cons(ent, @prev)); }
     }
 }
@@ -1119,9 +1106,11 @@ fn index_mod(md: &ast::_mod) -> mod_index {
           }
 
 
+
           ast::view_item_import(ident, _, id) {
             add_to_index(index, ident, mie_import_ident(id, it.span));
           }
+
 
 
           ast::view_item_import_from(_, idents, _) {
@@ -1130,6 +1119,7 @@ fn index_mod(md: &ast::_mod) -> mod_index {
                              mie_import_ident(ident.node.id, ident.span));
             }
           }
+
 
 
           //globbed imports have to be resolved lazily.
@@ -1238,26 +1228,25 @@ fn check_mod_name(e: &env, name: &ident, entries: list<mod_index_entry>) {
     let saw_mod = false;
     let saw_type = false;
     let saw_value = false;
-    fn dup(e: &env, sp: &span, word: &istr, name: &ident) {
-        e.sess.span_fatal(sp, ~"duplicate definition of " +
-                          word + name);
+    fn dup(e: &env, sp: &span, word: &str, name: &ident) {
+        e.sess.span_fatal(sp, "duplicate definition of " + word + name);
     }
     while true {
         alt entries {
           cons(entry, rest) {
             if !is_none(lookup_in_mie(e, entry, ns_value)) {
                 if saw_value {
-                    dup(e, mie_span(entry), ~"", name);
+                    dup(e, mie_span(entry), "", name);
                 } else { saw_value = true; }
             }
             if !is_none(lookup_in_mie(e, entry, ns_type)) {
                 if saw_type {
-                    dup(e, mie_span(entry), ~"type ", name);
+                    dup(e, mie_span(entry), "type ", name);
                 } else { saw_type = true; }
             }
             if !is_none(lookup_in_mie(e, entry, ns_module)) {
                 if saw_mod {
-                    dup(e, mie_span(entry), ~"module ", name);
+                    dup(e, mie_span(entry), "module ", name);
                 } else { saw_mod = true; }
             }
             entries = *rest;
@@ -1288,20 +1277,20 @@ fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt<()>) {
       ast::item_fn(f, ty_params) {
         check_fn(*e, i.span, f);
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
-                      ~"type parameter");
+                      "type parameter");
       }
       ast::item_obj(ob, ty_params, _) {
         fn field_name(field: &ast::obj_field) -> ident { ret field.ident; }
-        ensure_unique(*e, i.span, ob.fields, field_name, ~"object field");
+        ensure_unique(*e, i.span, ob.fields, field_name, "object field");
         for m: @ast::method in ob.methods {
             check_fn(*e, m.span, m.node.meth);
         }
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
-                      ~"type parameter");
+                      "type parameter");
       }
       ast::item_tag(_, ty_params) {
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
-                      ~"type parameter");
+                      "type parameter");
       }
       _ { }
     }
@@ -1316,28 +1305,28 @@ fn check_pat(ch: checker, p: &@ast::pat) {
 
 fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt<()>) {
     visit::visit_arm(a, x, v);
-    let ch0 = checker(*e, ~"binding");
+    let ch0 = checker(*e, "binding");
     check_pat(ch0, a.pats[0]);
     let seen0 = ch0.seen;
     let i = vec::len(a.pats);
     while i > 1u {
         i -= 1u;
-        let ch = checker(*e, ~"binding");
+        let ch = checker(*e, "binding");
         check_pat(ch, a.pats[i]);
 
         // Ensure the bindings introduced in this pattern are the same as in
         // the first pattern.
         if vec::len(ch.seen) != vec::len(seen0) {
             e.sess.span_err(a.pats[i].span,
-                            ~"inconsistent number of bindings");
+                            "inconsistent number of bindings");
         } else {
             for name: ident in ch.seen {
                 if is_none(vec::find(bind str::eq(name, _), seen0)) {
                     // Fight the alias checker
                     let name_ = name;
                     e.sess.span_err(a.pats[i].span,
-                                    ~"binding " + name_ +
-                                        ~" does not occur in first pattern");
+                                    "binding " + name_ +
+                                        " does not occur in first pattern");
                 }
             }
         }
@@ -1346,15 +1335,15 @@ fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt<()>) {
 
 fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt<()>) {
     visit::visit_block(b, x, v);
-    let values = checker(*e, ~"value");
-    let types = checker(*e, ~"type");
-    let mods = checker(*e, ~"module");
+    let values = checker(*e, "value");
+    let types = checker(*e, "type");
+    let mods = checker(*e, "module");
     for st: @ast::stmt in b.node.stmts {
         alt st.node {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locs) {
-                let local_values = checker(*e, ~"value");
+                let local_values = checker(*e, "value");
                 for loc in locs {
                     for each p in ast_util::pat_bindings(loc.node.pat) {
                         let ident = alt p.node { pat_bind(n) { n } };
@@ -1394,14 +1383,14 @@ fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt<()>) {
 
 fn check_fn(e: &env, sp: &span, f: &ast::_fn) {
     fn arg_name(a: &ast::arg) -> ident { ret a.ident; }
-    ensure_unique(e, sp, f.decl.inputs, arg_name, ~"argument");
+    ensure_unique(e, sp, f.decl.inputs, arg_name, "argument");
 }
 
 fn check_expr(e: &@env, ex: &@ast::expr, x: &(), v: &vt<()>) {
     alt ex.node {
       ast::expr_rec(fields, _) {
         fn field_name(f: &ast::field) -> ident { ret f.node.ident; }
-        ensure_unique(*e, ex.span, fields, field_name, ~"field");
+        ensure_unique(*e, ex.span, fields, field_name, "field");
       }
       _ { }
     }
@@ -1412,16 +1401,16 @@ fn check_ty(e: &@env, ty: &@ast::ty, x: &(), v: &vt<()>) {
     alt ty.node {
       ast::ty_rec(fields) {
         fn field_name(f: &ast::ty_field) -> ident { ret f.node.ident; }
-        ensure_unique(*e, ty.span, fields, field_name, ~"field");
+        ensure_unique(*e, ty.span, fields, field_name, "field");
       }
       _ { }
     }
     visit::visit_ty(ty, x, v);
 }
 
-type checker = @{mutable seen: [ident], kind: istr, sess: session};
+type checker = @{mutable seen: [ident], kind: str, sess: session};
 
-fn checker(e: &env, kind: &istr) -> checker {
+fn checker(e: &env, kind: &str) -> checker {
     let seen: [ident] = [];
     ret @{mutable seen: seen, kind: kind, sess: e.sess};
 }
@@ -1429,8 +1418,7 @@ fn checker(e: &env, kind: &istr) -> checker {
 fn check_name(ch: &checker, sp: &span, name: &ident) {
     for s: ident in ch.seen {
         if str::eq(s, name) {
-            ch.sess.span_fatal(sp, ~"duplicate " + ch.kind
-                               + ~" name: " + name);
+            ch.sess.span_fatal(sp, "duplicate " + ch.kind + " name: " + name);
         }
     }
 }
@@ -1442,23 +1430,23 @@ fn add_name(ch: &checker, sp: &span, name: &ident) {
 fn ident_id(i: &ident) -> ident { ret i; }
 
 fn ensure_unique<T>(e: &env, sp: &span, elts: &[T], id: fn(&T) -> ident,
-                    kind: &istr) {
+                    kind: &str) {
     let ch = checker(e, kind);
     for elt: T in elts { add_name(ch, sp, id(elt)); }
 }
 
 fn check_bad_exports(e: &@env) {
-    fn lookup_glob_any(e: &env, info: &@indexed_mod, sp: &span,
-                       ident: &ident) -> bool {
-        ret !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
-                                                ns_module, inside)) ||
-            !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
-                                                ns_value, inside)) ||
-            !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
-                                                ns_type, inside));
+    fn lookup_glob_any(e: &env, info: &@indexed_mod, sp: &span, ident: &ident)
+       -> bool {
+        ret !option::is_none(lookup_glob_in_mod(e, info, sp, ident, ns_module,
+                                                inside)) ||
+                !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
+                                                    ns_value, inside)) ||
+                !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
+                                                    ns_type, inside));
     }
 
-    for each @{val, _} in e.mod_map.items() {
+    for each @{val: val, _} in e.mod_map.items() {
         alt val.m {
           some(m) {
             for vi in m.view_items {
@@ -1466,17 +1454,18 @@ fn check_bad_exports(e: &@env) {
                   ast::view_item_export(idents, _) {
                     for ident in idents {
                         if !val.index.contains_key(ident) &&
-                           !lookup_glob_any(*e, val, vi.span, ident) {
-                            e.sess.span_warn(vi.span, ~"exported item " +
-                                             ident + ~" is not defined");
+                               !lookup_glob_any(*e, val, vi.span, ident) {
+                            e.sess.span_warn(vi.span,
+                                             "exported item " + ident +
+                                                 " is not defined");
                         }
                     }
                   }
-                  _ {}
+                  _ { }
                 }
             }
           }
-          none. {}
+          none. { }
         }
     }
 }

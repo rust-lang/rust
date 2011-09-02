@@ -131,7 +131,7 @@ mod test {
     fn test_node_span_item() {
         let expected: codemap::span = ast_util::mk_sp(20u, 30u);
         let node =
-            node_item(@{ident: ~"test",
+            node_item(@{ident: "test",
                         attrs: [],
                         id: 0,
                         node: item_mod({view_items: [], items: []}),
@@ -143,7 +143,7 @@ mod test {
     fn test_node_span_obj_ctor() {
         let expected: codemap::span = ast_util::mk_sp(20u, 30u);
         let node =
-            node_obj_ctor(@{ident: ~"test",
+            node_obj_ctor(@{ident: "test",
                             attrs: [],
                             id: 0,
                             node: item_mod({view_items: [], items: []}),
@@ -155,7 +155,7 @@ mod test {
     fn test_node_span_native_item() {
         let expected: codemap::span = ast_util::mk_sp(20u, 30u);
         let node =
-            node_native_item(@{ident: ~"test",
+            node_native_item(@{ident: "test",
                                attrs: [],
                                node: native_item_ty,
                                id: 0,

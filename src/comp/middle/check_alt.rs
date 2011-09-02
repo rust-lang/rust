@@ -34,7 +34,7 @@ fn check_arms(tcx: &ty::ctxt, arms: &[arm]) {
                 j += 1;
             }
             if !reachable {
-                tcx.sess.span_err(arm_pat.span, ~"unreachable pattern");
+                tcx.sess.span_err(arm_pat.span, "unreachable pattern");
             }
         }
         i += 1;
@@ -106,7 +106,7 @@ fn check_local(tcx: &ty::ctxt, loc: &@local, s: &(), v: &visit::vt<()>) {
     visit::visit_local(loc, s, v);
     if is_refutable(tcx, loc.node.pat) {
         tcx.sess.span_err(loc.node.pat.span,
-                          ~"refutable pattern in local binding");
+                          "refutable pattern in local binding");
     }
 }
 

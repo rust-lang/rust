@@ -262,8 +262,8 @@ fn position_pred<T>(f: fn(&T) -> bool, v: &[T]) -> option::t<uint> {
 }
 
 pure fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
-    let xlen = unchecked { vec::len(xs) };
-    let ylen = unchecked { vec::len(ys) };
+    let xlen = unchecked{ vec::len(xs) };
+    let ylen = unchecked{ vec::len(ys) };
     xlen == ylen
 }
 
@@ -311,39 +311,28 @@ fn reversed<@T>(v: &[T]) -> [T] {
 }
 
 // Generating vecs.
-fn enum_chars(start:u8, end:u8) : u8::le(start, end) -> [char] {
+fn enum_chars(start: u8, end: u8) : u8::le(start, end) -> [char] {
     let i = start;
     let r = [];
-    while (i <= end) {
-        r += [i as char];
-        i += (1u as u8);
-    }
+    while i <= end { r += [i as char]; i += 1u as u8; }
     ret r;
 }
 
-fn enum_uints(start:uint, end:uint) : uint::le(start, end) -> [uint] {
+fn enum_uints(start: uint, end: uint) : uint::le(start, end) -> [uint] {
     let i = start;
     let r = [];
-    while (i <= end) {
-        r += [i];
-        i += 1u;
-    }
+    while i <= end { r += [i]; i += 1u; }
     ret r;
 }
 
 // Iterate over a list with with the indexes
 iter iter2<@T>(v: &[T]) -> (uint, T) {
     let i = 0u;
-    for x in v {
-        put (i, x);
-        i += 1u;
-    }
+    for x in v { put (i, x); i += 1u; }
 }
 
 mod unsafe {
-    type vec_repr = {mutable fill: uint,
-                     mutable alloc: uint,
-                     data: u8};
+    type vec_repr = {mutable fill: uint, mutable alloc: uint, data: u8};
 
     fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
         ret rustrt::vec_from_buf_shared(ptr, elts);
@@ -360,9 +349,7 @@ mod unsafe {
     }
 }
 
-fn to_ptr<T>(v: &[T]) -> *T {
-    ret unsafe::to_ptr(v);
-}
+fn to_ptr<T>(v: &[T]) -> *T { ret unsafe::to_ptr(v); }
 
 // Local Variables:
 // mode: rust;

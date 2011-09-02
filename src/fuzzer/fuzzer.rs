@@ -20,28 +20,28 @@ import rustc::syntax::codemap;
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
-fn write_file(filename: &istr, content: &istr) {
+fn write_file(filename: &str, content: &str) {
     io::file_writer(filename, [io::create, io::truncate]).write_str(content);
     // Work around https://github.com/graydon/rust/issues/726
-    std::run::run_program(~"chmod", [~"644", filename]);
+    std::run::run_program("chmod", ["644", filename]);
 }
 
-fn file_contains(filename: &istr, needle: &istr) -> bool {
+fn file_contains(filename: &str, needle: &str) -> bool {
     let contents = io::read_whole_file_str(filename);
     ret str::find(contents, needle) != -1;
 }
 
-fn contains(haystack: &istr, needle: &istr) -> bool {
+fn contains(haystack: &str, needle: &str) -> bool {
     str::find(haystack, needle) != -1
 }
 
-fn find_rust_files(files: &mutable [istr], path: &istr) {
-    if str::ends_with(path, ~".rs") {
-        if file_contains(path, ~"xfail-test") {
+fn find_rust_files(files: &mutable [str], path: &str) {
+    if str::ends_with(path, ".rs") {
+        if file_contains(path, "xfail-test") {
             //log_err "Skipping " + path + " because it is marked as xfail-test";
         } else { files += [path]; }
     } else if fs::file_is_dir(path)
-        && str::find(path, ~"compile-fail") == -1 {
+        && str::find(path, "compile-fail") == -1 {
         for p in fs::list_dir(path) {
             find_rust_files(files, p);
         }
@@ -150,28 +150,28 @@ iter under(n: uint) -> uint {
 
 fn devnull() -> io::writer { std::io::string_writer().get_writer() }
 
-fn as_str(f: fn(io::writer)) -> istr {
+fn as_str(f: fn(io::writer)) -> str {
     let w = std::io::string_writer();
     f(w.get_writer());
     ret w.get_str();
 }
 
 fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
-                         filename: &istr) {
+                         filename: &str) {
     let exprs = steal_exprs(crate);
     let exprsL = vec::len(exprs);
     if exprsL < 100u {
         for each i: uint in under(uint::min(exprsL, 20u)) {
-            log_err ~"Replacing... " + pprust::expr_to_str(@exprs[i]);
+            log_err "Replacing... " + pprust::expr_to_str(@exprs[i]);
             for each j: uint in under(uint::min(exprsL, 5u)) {
-                log_err ~"With... " + pprust::expr_to_str(@exprs[j]);
+                log_err "With... " + pprust::expr_to_str(@exprs[j]);
                 let crate2 = @replace_expr_in_crate(crate, i, exprs[j].node);
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
                 let str3 =
                     as_str(bind pprust::print_crate(codemap, crate2,
                                                     filename,
-                                                    io::string_reader(~""), _,
+                                                    io::string_reader(""), _,
                                                     pprust::no_ann()));
                 // 1u would be sane here, but the pretty-printer currently has lots of whitespace and paren issues,
                 // and https://github.com/graydon/rust/issues/766 is hilarious.
@@ -186,61 +186,61 @@ fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
 // - that would find many "false positives" or unimportant bugs
 // - that would be tricky, requiring use of tasks or serialization or randomness.
 // This seems to find plenty of bugs as it is :)
-fn check_whole_compiler(code: &istr) {
-    let filename = ~"test.rs";
+fn check_whole_compiler(code: &str) {
+    let filename = "test.rs";
     write_file(filename, code);
     let p =
         std::run::program_output(
-            ~"/Users/jruderman/code/rust/build/stage1/rustc",
-            [~"-c", filename]);
+            "/Users/jruderman/code/rust/build/stage1/rustc",
+            ["-c", filename]);
 
     //log_err #fmt("Status: %d", p.status);
     //log_err "Output: " + p.out;
-    if p.err != ~"" {
-        if contains(p.err, ~"argument of incompatible type") {
+    if p.err != "" {
+        if contains(p.err, "argument of incompatible type") {
             log_err "https://github.com/graydon/rust/issues/769";
         } else if contains(p.err,
-                           ~"Cannot create binary operator with two operands of differing type")
+                           "Cannot create binary operator with two operands of differing type")
          {
             log_err "https://github.com/graydon/rust/issues/770";
-        } else if contains(p.err, ~"May only branch on boolean predicates!") {
+        } else if contains(p.err, "May only branch on boolean predicates!") {
             log_err "https://github.com/graydon/rust/issues/770 or https://github.com/graydon/rust/issues/776";
-        } else if contains(p.err, ~"Invalid constantexpr cast!") &&
-                      contains(code, ~"!") {
+        } else if contains(p.err, "Invalid constantexpr cast!") &&
+                      contains(code, "!") {
             log_err "https://github.com/graydon/rust/issues/777";
         } else if contains(p.err,
-                           ~"Both operands to ICmp instruction are not of the same type!")
-                      && contains(code, ~"!") {
+                           "Both operands to ICmp instruction are not of the same type!")
+                      && contains(code, "!") {
             log_err "https://github.com/graydon/rust/issues/777 #issuecomment-1678487";
-        } else if contains(p.err, ~"Ptr must be a pointer to Val type!") &&
-                      contains(code, ~"!") {
+        } else if contains(p.err, "Ptr must be a pointer to Val type!") &&
+                      contains(code, "!") {
             log_err "https://github.com/graydon/rust/issues/779";
-        } else if contains(p.err, ~"Calling a function with bad signature!") &&
-                      (contains(code, ~"iter") || contains(code, ~"range")) {
+        } else if contains(p.err, "Calling a function with bad signature!") &&
+                      (contains(code, "iter") || contains(code, "range")) {
             log_err "https://github.com/graydon/rust/issues/771 - calling an iter fails";
-        } else if contains(p.err, ~"Calling a function with a bad signature!")
-                      && contains(code, ~"empty") {
+        } else if contains(p.err, "Calling a function with a bad signature!")
+                      && contains(code, "empty") {
             log_err "https://github.com/graydon/rust/issues/775 - possibly a modification of run-pass/import-glob-crate.rs";
-        } else if contains(p.err, ~"Invalid type for pointer element!") &&
-                      contains(code, ~"put") {
+        } else if contains(p.err, "Invalid type for pointer element!") &&
+                      contains(code, "put") {
             log_err "https://github.com/graydon/rust/issues/773 - put put ()";
-        } else if contains(p.err, ~"pointer being freed was not allocated") &&
-                      contains(p.out, ~"Out of stack space, sorry") {
+        } else if contains(p.err, "pointer being freed was not allocated") &&
+                      contains(p.out, "Out of stack space, sorry") {
             log_err "https://github.com/graydon/rust/issues/768 + https://github.com/graydon/rust/issues/778"
         } else {
-            log_err ~"Stderr: " + p.err;
+            log_err "Stderr: " + p.err;
             fail "Unfamiliar error message";
         }
-    } else if contains(p.out, ~"non-exhaustive match failure") &&
-                  contains(p.out, ~"alias.rs") {
+    } else if contains(p.out, "non-exhaustive match failure") &&
+                  contains(p.out, "alias.rs") {
         log_err "https://github.com/graydon/rust/issues/772";
-    } else if contains(p.out, ~"non-exhaustive match failure") &&
-                  contains(p.out, ~"trans.rs") && contains(code, ~"put") {
+    } else if contains(p.out, "non-exhaustive match failure") &&
+                  contains(p.out, "trans.rs") && contains(code, "put") {
         log_err "https://github.com/graydon/rust/issues/774";
-    } else if contains(p.out, ~"Out of stack space, sorry") {
+    } else if contains(p.out, "Out of stack space, sorry") {
         log_err "Possibly a variant of https://github.com/graydon/rust/issues/768";
     } else if p.status == 256 {
-        if !contains(p.out, ~"error:") {
+        if !contains(p.out, "error:") {
             fail "Exited with status 256 without a span-error";
         }
     } else if p.status == 11 {
@@ -248,8 +248,8 @@ fn check_whole_compiler(code: &istr) {
     } else if p.status != 0 { fail "Unfamiliar status code"; }
 }
 
-fn parse_and_print(code: &istr) -> istr {
-    let filename = ~"tmp.rs";
+fn parse_and_print(code: &str) -> str {
+    let filename = "tmp.rs";
     let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
     //write_file(filename, code);
     let crate = parser::parse_crate_from_source_str(
@@ -260,19 +260,19 @@ fn parse_and_print(code: &istr) -> istr {
                                         pprust::no_ann()));
 }
 
-fn content_is_dangerous_to_modify(code: &istr) -> bool {
+fn content_is_dangerous_to_modify(code: &str) -> bool {
     let dangerous_patterns =
-        [~"obj", // not safe to steal; https://github.com/graydon/rust/issues/761
-         ~"#macro", // not safe to steal things inside of it, because they have a special syntax
-         ~"#", // strange representation of the arguments to #fmt, for example
-         ~" be ", // don't want to replace its child with a non-call: "Non-call expression in tail call"
-         ~"@"]; // hangs when compiling: https://github.com/graydon/rust/issues/768
+        ["obj", // not safe to steal; https://github.com/graydon/rust/issues/761
+         "#macro", // not safe to steal things inside of it, because they have a special syntax
+         "#", // strange representation of the arguments to #fmt, for example
+         " be ", // don't want to replace its child with a non-call: "Non-call expression in tail call"
+         "@"]; // hangs when compiling: https://github.com/graydon/rust/issues/768
 
-    for p: istr in dangerous_patterns { if contains(code, p) { ret true; } }
+    for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
     ret false;
 }
 
-fn content_is_confusing(code: &istr) ->
+fn content_is_confusing(code: &str) ->
    bool { // https://github.com/graydon/rust/issues/671
           // https://github.com/graydon/rust/issues/669
           // https://github.com/graydon/rust/issues/669
@@ -282,16 +282,16 @@ fn content_is_confusing(code: &istr) ->
           // more precedence issues?
 
     let confusing_patterns =
-        [~"#macro", ~"][]", ~"][mutable]", ~"][mutable ]", ~"self", ~"spawn",
-         ~"bind", ~"\n\n\n\n\n", // https://github.com/graydon/rust/issues/759
-         ~" : ", // https://github.com/graydon/rust/issues/760
-         ~"if ret", ~"alt ret", ~"if fail", ~"alt fail"];
+        ["#macro", "][]", "][mutable]", "][mutable ]", "self", "spawn",
+         "bind", "\n\n\n\n\n", // https://github.com/graydon/rust/issues/759
+         " : ", // https://github.com/graydon/rust/issues/760
+         "if ret", "alt ret", "if fail", "alt fail"];
 
-    for p: istr in confusing_patterns { if contains(code, p) { ret true; } }
+    for p: str in confusing_patterns { if contains(code, p) { ret true; } }
     ret false;
 }
 
-fn file_is_confusing(filename: &istr) -> bool {
+fn file_is_confusing(filename: &str) -> bool {
 
     // https://github.com/graydon/rust/issues/674
 
@@ -302,16 +302,16 @@ fn file_is_confusing(filename: &istr) -> bool {
     // which i can't reproduce using "rustc
     // --pretty normal"???
     let confusing_files =
-        [~"block-expr-precedence.rs", ~"nil-pattern.rs",
-         ~"syntax-extension-fmt.rs",
-         ~"newtype.rs"]; // modifying it hits something like https://github.com/graydon/rust/issues/670
+        ["block-expr-precedence.rs", "nil-pattern.rs",
+         "syntax-extension-fmt.rs",
+         "newtype.rs"]; // modifying it hits something like https://github.com/graydon/rust/issues/670
 
     for f in confusing_files { if contains(filename, f) { ret true; } }
 
     ret false;
 }
 
-fn check_roundtrip_convergence(code: &istr, maxIters: uint) {
+fn check_roundtrip_convergence(code: &str, maxIters: uint) {
 
     let i = 0u;
     let new = code;
@@ -329,16 +329,16 @@ fn check_roundtrip_convergence(code: &istr, maxIters: uint) {
         log_err #fmt["Converged after %u iterations", i];
     } else {
         log_err #fmt["Did not converge after %u iterations!", i];
-        write_file(~"round-trip-a.rs", old);
-        write_file(~"round-trip-b.rs", new);
-        std::run::run_program(~"diff",
-                              [~"-w", ~"-u", ~"round-trip-a.rs",
-                               ~"round-trip-b.rs"]);
+        write_file("round-trip-a.rs", old);
+        write_file("round-trip-b.rs", new);
+        std::run::run_program("diff",
+                              ["-w", "-u", "round-trip-a.rs",
+                               "round-trip-b.rs"]);
         fail "Mismatch";
     }
 }
 
-fn check_convergence(files: &[istr]) {
+fn check_convergence(files: &[str]) {
     log_err #fmt["pp convergence tests: %u files", vec::len(files)];
     for file in files {
         if !file_is_confusing(file) {
@@ -352,14 +352,14 @@ fn check_convergence(files: &[istr]) {
     }
 }
 
-fn check_variants(files: &[istr]) {
+fn check_variants(files: &[str]) {
     for file in files {
         if !file_is_confusing(file) {
             let s = io::read_whole_file_str(file);
             if content_is_dangerous_to_modify(s) || content_is_confusing(s) {
                 cont;
             }
-            log_err ~"check_variants: " + file;
+            log_err "check_variants: " + file;
             let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
             let crate =
                 parser::parse_crate_from_source_str(
@@ -374,7 +374,7 @@ fn check_variants(files: &[istr]) {
     }
 }
 
-fn main(args: [istr]) {
+fn main(args: [str]) {
     if vec::len(args) != 2u {
         log_err #fmt["usage: %s <testdir>", args[0]];
         ret;

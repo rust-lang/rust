@@ -7,7 +7,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 
-type filename = istr;
+type filename = str;
 
 type file_pos = {ch: uint, byte: uint};
 
@@ -66,15 +66,16 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
 }
 
 tag opt_span {
-     //hack (as opposed to option::t), to make `span` compile
+
+    //hack (as opposed to option::t), to make `span` compile
     os_none;
     os_some(@span);
 }
 type span = {lo: uint, hi: uint, expanded_from: opt_span};
 
-fn span_to_str(sp: &span, cm: &codemap) -> istr {
+fn span_to_str(sp: &span, cm: &codemap) -> str {
     let cur = sp;
-    let res = ~"";
+    let res = "";
     let prev_file = none;
     while true {
         let lo = lookup_char_pos(cm, cur.lo);
@@ -82,16 +83,14 @@ fn span_to_str(sp: &span, cm: &codemap) -> istr {
         res +=
             #fmt["%s:%u:%u: %u:%u",
                  if some(lo.filename) == prev_file {
-                     ~"-"
-                 } else {
-                     lo.filename
-                 }, lo.line, lo.col, hi.line, hi.col];
+                     "-"
+                 } else { lo.filename }, lo.line, lo.col, hi.line, hi.col];
         alt cur.expanded_from {
           os_none. { break; }
           os_some(new_sp) {
             cur = *new_sp;
             prev_file = some(lo.filename);
-            res += ~"<<";
+            res += "<<";
           }
         }
     }
@@ -99,13 +98,13 @@ fn span_to_str(sp: &span, cm: &codemap) -> istr {
     ret res;
 }
 
-fn emit_diagnostic(sp: &option::t<span>, msg: &istr, kind: &istr, color: u8,
+fn emit_diagnostic(sp: &option::t<span>, msg: &str, kind: &str, color: u8,
                    cm: &codemap) {
-    let ss = ~"";
+    let ss = "";
     let maybe_lines: option::t<@file_lines> = none;
     alt sp {
       some(ssp) {
-        ss = span_to_str(ssp, cm) + ~" ";
+        ss = span_to_str(ssp, cm) + " ";
         maybe_lines = some(span_to_lines(ssp, cm));
       }
       none. { }
@@ -114,9 +113,9 @@ fn emit_diagnostic(sp: &option::t<span>, msg: &istr, kind: &istr, color: u8,
     if term::color_supported() {
         term::fg(io::stdout().get_buf_writer(), color);
     }
-    io::stdout().write_str(#fmt[~"%s:", kind]);
+    io::stdout().write_str(#fmt["%s:", kind]);
     if term::color_supported() { term::reset(io::stdout().get_buf_writer()); }
-    io::stdout().write_str(#fmt[~" %s\n", msg]);
+    io::stdout().write_str(#fmt[" %s\n", msg]);
 
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
@@ -128,7 +127,7 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
       some(lines) {
         // If we're not looking at a real file then we can't re-open it to
         // pull out the lines
-        if lines.name == ~"-" { ret; }
+        if lines.name == "-" { ret; }
 
         // FIXME: reading in the entire file is the worst possible way to
         //        get access to the necessary lines.
@@ -145,19 +144,18 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
         }
         // Print the offending lines
         for line: uint in display_lines {
-            io::stdout().write_str(
-                #fmt[~"%s:%u ", fm.name, line + 1u]);
+            io::stdout().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
             let s = get_line(fm, line as int, file);
-            if !str::ends_with(s, ~"\n") { s += ~"\n"; }
+            if !str::ends_with(s, "\n") { s += "\n"; }
             io::stdout().write_str(s);
         }
         if elided {
             let last_line = display_lines[vec::len(display_lines) - 1u];
-            let s = #fmt[~"%s:%u ", fm.name, last_line + 1u];
+            let s = #fmt["%s:%u ", fm.name, last_line + 1u];
             let indent = str::char_len(s);
-            let out = ~"";
-            while indent > 0u { out += ~" "; indent -= 1u; }
-            out += ~"...\n";
+            let out = "";
+            while indent > 0u { out += " "; indent -= 1u; }
+            out += "...\n";
             io::stdout().write_str(out);
         }
 
@@ -173,34 +171,34 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
 
             // indent past |name:## | and the 0-offset column location
             let left = str::char_len(fm.name) + digits + lo.col + 3u;
-            let s = ~"";
+            let s = "";
             while left > 0u { str::push_char(s, ' '); left -= 1u; }
 
-            s += ~"^";
+            s += "^";
             let hi = lookup_char_pos(cm, option::get(sp).hi);
             if hi.col != lo.col {
                 // the ^ already takes up one space
                 let width = hi.col - lo.col - 1u;
                 while width > 0u { str::push_char(s, '~'); width -= 1u; }
             }
-            io::stdout().write_str(s + ~"\n");
+            io::stdout().write_str(s + "\n");
         }
       }
       _ { }
     }
 }
 
-fn emit_warning(sp: &option::t<span>, msg: &istr, cm: &codemap) {
-    emit_diagnostic(sp, msg, ~"warning", 11u8, cm);
+fn emit_warning(sp: &option::t<span>, msg: &str, cm: &codemap) {
+    emit_diagnostic(sp, msg, "warning", 11u8, cm);
 }
-fn emit_error(sp: &option::t<span>, msg: &istr, cm: &codemap) {
-    emit_diagnostic(sp, msg, ~"error", 9u8, cm);
+fn emit_error(sp: &option::t<span>, msg: &str, cm: &codemap) {
+    emit_diagnostic(sp, msg, "error", 9u8, cm);
 }
-fn emit_note(sp: &option::t<span>, msg: &istr, cm: &codemap) {
-    emit_diagnostic(sp, msg, ~"note", 10u8, cm);
+fn emit_note(sp: &option::t<span>, msg: &str, cm: &codemap) {
+    emit_diagnostic(sp, msg, "note", 10u8, cm);
 }
 
-type file_lines = {name: istr, lines: [uint]};
+type file_lines = {name: str, lines: [uint]};
 
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
@@ -212,7 +210,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     ret @{name: lo.filename, lines: lines};
 }
 
-fn get_line(fm: filemap, line: int, file: &istr) -> istr {
+fn get_line(fm: filemap, line: int, file: &str) -> str {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end: uint;
     if line as uint < vec::len(fm.lines) - 1u {
@@ -229,10 +227,8 @@ fn get_line(fm: filemap, line: int, file: &istr) -> istr {
     ret str::slice(file, begin, end);
 }
 
-fn get_filemap(cm: codemap, filename: istr) -> filemap {
-    for fm: filemap in cm.files {
-        if fm.name == filename { ret fm; }
-    }
+fn get_filemap(cm: codemap, filename: str) -> filemap {
+    for fm: filemap in cm.files { if fm.name == filename { ret fm; } }
     //XXjdm the following triggers a mismatched type bug
     //      (or expected function, found _|_)
     fail; // ("asking for " + filename + " which we don't know about");

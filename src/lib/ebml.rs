@@ -67,7 +67,7 @@ fn get_doc(d: doc, tg: uint) -> doc {
     alt maybe_get_doc(d, tg) {
       some(d) { ret d; }
       none. {
-        log_err ~"failed to find block with tag " + uint::to_str(tg, 10u);
+        log_err "failed to find block with tag " + uint::to_str(tg, 10u);
         fail;
       }
     }
