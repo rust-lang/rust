@@ -1,7 +1,7 @@
 
 import std::io;
 import std::vec;
-import std::istr;
+import std::str;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -66,7 +66,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: &ast::crate_cfg, path: &istr,
     let filemap = codemap::new_filemap(
         path, chpos, byte_pos);
     sess.cm.files += [filemap];
-    let itr = @interner::mk(istr::hash, istr::eq);
+    let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.cm, src, filemap, itr);
     ret new_parser(sess, cfg, rdr, ftype);
 }
@@ -247,7 +247,7 @@ fn eat(p: &parser, tok: &token::token) -> bool {
 
 fn is_word(p: &parser, word: &istr) -> bool {
     ret alt p.peek() {
-          token::IDENT(sid, false) { istr::eq(word, p.get_str(sid)) }
+          token::IDENT(sid, false) { str::eq(word, p.get_str(sid)) }
           _ { false }
         };
 }
@@ -255,7 +255,7 @@ fn is_word(p: &parser, word: &istr) -> bool {
 fn eat_word(p: &parser, word: &istr) -> bool {
     alt p.peek() {
       token::IDENT(sid, false) {
-        if istr::eq(word, p.get_str(sid)) {
+        if str::eq(word, p.get_str(sid)) {
             p.bump();
             ret true;
         } else { ret false; }
@@ -2036,14 +2036,14 @@ fn parse_item_native_mod(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let abi = ast::native_abi_cdecl;
     if !is_word(p, ~"mod") {
         let t = parse_str(p);
-        if istr::eq(t, ~"cdecl") {
-        } else if istr::eq(t, ~"rust") {
+        if str::eq(t, ~"cdecl") {
+        } else if str::eq(t, ~"rust") {
             abi = ast::native_abi_rust;
-        } else if istr::eq(t, ~"llvm") {
+        } else if str::eq(t, ~"llvm") {
             abi = ast::native_abi_llvm;
-        } else if istr::eq(t, ~"rust-intrinsic") {
+        } else if str::eq(t, ~"rust-intrinsic") {
             abi = ast::native_abi_rust_intrinsic;
-        } else if istr::eq(t, ~"x86stdcall") {
+        } else if str::eq(t, ~"x86stdcall") {
             abi = ast::native_abi_x86stdcall;
         } else { p.fatal(~"unsupported abi: " + t); }
     }
@@ -2419,8 +2419,8 @@ fn is_view_item(p: &parser) -> bool {
     alt p.peek() {
       token::IDENT(sid, false) {
         let st = p.get_str(sid);
-        ret istr::eq(st, ~"use") || istr::eq(st, ~"import") ||
-                istr::eq(st, ~"export");
+        ret str::eq(st, ~"use") || str::eq(st, ~"import") ||
+                str::eq(st, ~"export");
       }
       _ { ret false; }
     }
@@ -2450,7 +2450,7 @@ fn parse_crate_from_source_str(name: &istr, source: &istr,
     let ftype = SOURCE_FILE;
     let filemap = codemap::new_filemap(name, 0u, 0u);
     sess.cm.files += [filemap];
-    let itr = @interner::mk(istr::hash, istr::eq);
+    let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.cm, source,
                                 filemap, itr);
     let p = new_parser(sess, cfg, rdr, ftype);
@@ -2588,9 +2588,9 @@ fn parse_crate_from_crate_file(input: &istr, cfg: &ast::crate_cfg,
 
 fn parse_crate_from_file(input: &istr, cfg: &ast::crate_cfg,
                          sess: &parse_sess) -> @ast::crate {
-    if istr::ends_with(input, ~".rc") {
+    if str::ends_with(input, ~".rc") {
         parse_crate_from_crate_file(input, cfg, sess)
-    } else if istr::ends_with(input, ~".rs") {
+    } else if str::ends_with(input, ~".rs") {
         parse_crate_from_source_file(input, cfg, sess)
     } else {
         codemap::emit_error(none, ~"unknown input file type: "

@@ -2,7 +2,7 @@ import std::option;
 import std::getopts;
 import std::test;
 import std::fs;
-import std::istr;
+import std::str;
 import std::vec;
 import std::task;
 
@@ -164,11 +164,11 @@ fn is_test(config: &config, testfile: &istr) -> bool {
     let valid = false;
 
     for ext in valid_extensions {
-        if istr::ends_with(name, ext) { valid = true }
+        if str::ends_with(name, ext) { valid = true }
     }
 
     for pre in invalid_prefixes {
-        if istr::starts_with(name, pre) { valid = false }
+        if str::starts_with(name, pre) { valid = false }
     }
 
     ret valid;
@@ -210,7 +210,7 @@ fn make_test_closure(testfile: &istr, configchan: chan<[u8]>) ->
 }
 
 fn send_config(testfile: istr, configchan: chan<[u8]>) {
-    send(configchan, istr::bytes(testfile));
+    send(configchan, str::bytes(testfile));
 }
 
 /*

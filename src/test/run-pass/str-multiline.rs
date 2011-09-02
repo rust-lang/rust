@@ -2,7 +2,7 @@
 
 // -*- rust -*-
 use std;
-import std::istr;
+import std::str;
 
 fn main() {
     let a: istr = ~"this \
@@ -12,6 +12,6 @@ is a test";
                is \
                another \
                test";
-    assert (istr::eq(a, ~"this is a test"));
-    assert (istr::eq(b, ~"this is another test"));
+    assert (str::eq(a, ~"this is a test"));
+    assert (str::eq(b, ~"this is another test"));
 }

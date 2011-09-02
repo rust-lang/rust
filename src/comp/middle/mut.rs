@@ -1,4 +1,4 @@
-import std::{vec, istr, option};
+import std::{vec, str, option};
 import option::{some, none};
 import syntax::ast::*;
 import syntax::visit;
@@ -54,7 +54,7 @@ fn expr_root(tcx: &ty::ctxt, ex: @expr, autoderef: bool)
             alt ty::struct(tcx, auto_unbox.t) {
               ty::ty_rec(fields) {
                 for fld: ty::field in fields {
-                    if istr::eq(ident, fld.ident) {
+                    if str::eq(ident, fld.ident) {
                         mut = fld.mt.mut != imm;
                         break;
                     }

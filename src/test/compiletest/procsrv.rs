@@ -12,7 +12,7 @@ import std::vec;
 import std::os;
 import std::run;
 import std::io;
-import std::istr;
+import std::str;
 import std::comm::chan;
 import std::comm::port;
 import std::comm::send;
@@ -58,7 +58,7 @@ fn run(handle: &handle, lib_path: &istr, prog: &istr, args: &[istr],
     let p = port();
     let ch = chan(p);
     send(handle.chan,
-         exec(istr::bytes(lib_path), istr::bytes(prog), clone_vecstr(args),
+         exec(str::bytes(lib_path), str::bytes(prog), clone_vecstr(args),
               ch));
     let resp = recv(p);
 
@@ -85,7 +85,7 @@ fn readclose(fd: int) -> istr {
     let buf = ~"";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
-        buf += istr::unsafe_from_bytes(bytes);
+        buf += str::unsafe_from_bytes(bytes);
     }
     os::libc::fclose(file);
     ret buf;
@@ -114,8 +114,8 @@ fn worker(p: port<request>) {
                 // the alt discriminant are wrong.
                 alt recv(p) {
                   exec(lib_path, prog, args, respchan) {
-                    {lib_path: istr::unsafe_from_bytes(lib_path),
-                     prog: istr::unsafe_from_bytes(prog),
+                    {lib_path: str::unsafe_from_bytes(lib_path),
+                     prog: str::unsafe_from_bytes(prog),
                      args: clone_vecu8str(args),
                      respchan: respchan}
                   }
@@ -174,14 +174,14 @@ fn export_lib_path(path: &istr) {
 
 fn clone_vecstr(v: &[istr]) -> [[u8]] {
     let r = [];
-    for t: istr in vec::slice(v, 0u, vec::len(v)) { r += [istr::bytes(t)]; }
+    for t: istr in vec::slice(v, 0u, vec::len(v)) { r += [str::bytes(t)]; }
     ret r;
 }
 
 fn clone_vecu8str(v: &[[u8]]) -> [istr] {
     let r = [];
     for t in vec::slice(v, 0u, vec::len(v)) {
-        r += [istr::unsafe_from_bytes(t)];
+        r += [str::unsafe_from_bytes(t)];
     }
     ret r;
 }

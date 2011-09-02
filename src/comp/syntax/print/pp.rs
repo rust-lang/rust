@@ -1,7 +1,7 @@
 
 import std::io;
 import std::vec;
-import std::istr;
+import std::str;
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's
@@ -496,7 +496,7 @@ fn end(p: printer) { p.pretty_print(END); }
 fn eof(p: printer) { p.pretty_print(EOF); }
 
 fn word(p: printer, wrd: &istr) {
-    p.pretty_print(STRING(wrd, istr::char_len(wrd) as int));
+    p.pretty_print(STRING(wrd, str::char_len(wrd) as int));
 }
 
 fn huge_word(p: printer, wrd: &istr) {

@@ -1,4 +1,4 @@
-import std::istr;
+import std::str;
 import std::uint;
 import std::int;
 import std::vec;

@@ -1,4 +1,4 @@
-import std::istr;
+import std::str;
 import std::option;
 import codemap::span;
 import ast::*;
@@ -16,7 +16,7 @@ fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 fn path_name(p: &path) -> istr { path_name_i(p.node.idents) }
 
 fn path_name_i(idents: &[ident]) -> istr {
-    istr::connect(idents, ~"::")
+    str::connect(idents, ~"::")
 }
 
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
@@ -157,7 +157,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for vi: @view_item in m.view_items {
         alt vi.node {
           view_item_export(ids, _) {
-            for id in ids { if istr::eq(i, id) { ret true; } }
+            for id in ids { if str::eq(i, id) { ret true; } }
             count += 1u;
           }
           _ {/* fall through */ }

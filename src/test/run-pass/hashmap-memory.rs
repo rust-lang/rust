@@ -9,7 +9,7 @@ use std;
 import option = std::option::t;
 import std::option::some;
 import std::option::none;
-import std::istr;
+import std::str;
 import std::vec;
 import std::map;
 import std::task;
@@ -50,7 +50,7 @@ mod map_reduce {
               none. {
                 let p = port();
                 log_err "sending find_reducer";
-                send(ctrl, find_reducer(istr::bytes(key), chan(p)));
+                send(ctrl, find_reducer(str::bytes(key), chan(p)));
                 log_err "receiving";
                 c = recv(p);
                 log_err c;
@@ -82,7 +82,7 @@ mod map_reduce {
               mapper_done. { num_mappers -= 1; }
               find_reducer(k, cc) {
                 let c;
-                alt reducers.find(istr::unsafe_from_bytes(k)) {
+                alt reducers.find(str::unsafe_from_bytes(k)) {
                   some(_c) { c = _c; }
                   none. { c = 0; }
                 }

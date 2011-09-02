@@ -1,4 +1,4 @@
-import std::istr;
+import std::str;
 import std::map;
 import std::map::hashmap;
 import std::uint;
@@ -154,7 +154,7 @@ fn call_kind_str(c: call_kind) -> istr {
 }
 
 fn is_main_name(path: &[ast::ident]) -> bool {
-    istr::eq(option::get(std::vec::last(path)), ~"main")
+    str::eq(option::get(std::vec::last(path)), ~"main")
 }
 
 // FIXME mode this to std::float when editing the stdlib no longer

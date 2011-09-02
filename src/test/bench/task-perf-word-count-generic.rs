@@ -13,7 +13,7 @@ use std;
 import option = std::option::t;
 import std::option::some;
 import std::option::none;
-import std::istr;
+import std::str;
 import std::treemap;
 import std::vec;
 import std::io;
@@ -30,11 +30,11 @@ import std::comm::recv;
 import std::comm::send;
 
 fn map(filename: &[u8], emit: &map_reduce::putter<[u8], int>) {
-    let f = io::file_reader(istr::unsafe_from_bytes(filename));
+    let f = io::file_reader(str::unsafe_from_bytes(filename));
 
     while true {
         alt read_word(f) {
-          some(w) { emit(istr::bytes(w), 1); }
+          some(w) { emit(str::bytes(w), 1); }
           none. { break; }
         }
     }
@@ -212,7 +212,7 @@ fn main(argv: [istr]) {
 
     let iargs = [];
     for a in vec::slice(argv, 1u, vec::len(argv)) {
-        iargs += [istr::bytes(a)];
+        iargs += [str::bytes(a)];
     }
 
     // We can get by with 8k stacks, and we'll probably exhaust our
@@ -239,7 +239,7 @@ fn read_word(r: io::reader) -> option<istr> {
 
 
         if is_word_char(c) {
-            w += istr::from_char(c);
+            w += str::from_char(c);
         } else { if w != ~"" { ret some(w); } }
     }
     ret none;

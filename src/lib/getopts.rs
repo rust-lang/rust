@@ -38,8 +38,8 @@ tag occur { req; optional; multi; }
 type opt = {name: name, hasarg: hasarg, occur: occur};
 
 fn mkname(nm: &istr) -> name {
-    ret if istr::char_len(nm) == 1u {
-            short(istr::char_at(nm, 0u))
+    ret if str::char_len(nm) == 1u {
+            short(str::char_at(nm, 0u))
         } else { long(nm) };
 }
 
@@ -68,11 +68,11 @@ tag optval { val(istr); given; }
 type match = {opts: [opt], vals: [mutable [optval]], free: [istr]};
 
 fn is_arg(arg: &istr) -> bool {
-    ret istr::byte_len(arg) > 1u && arg[0] == '-' as u8;
+    ret str::byte_len(arg) > 1u && arg[0] == '-' as u8;
 }
 
 fn name_str(nm: &name) -> istr {
-    ret alt nm { short(ch) { istr::from_char(ch) } long(s) { s } };
+    ret alt nm { short(ch) { str::from_char(ch) } long(s) { s } };
 }
 
 fn find_opt(opts: &[opt], nm: &name) -> option::t<uint> {
@@ -117,10 +117,10 @@ fn getopts(args: &[istr], opts: &[opt]) -> result {
     let i = 0u;
     while i < l {
         let cur = args[i];
-        let curlen = istr::byte_len(cur);
+        let curlen = str::byte_len(cur);
         if !is_arg(cur) {
             free += [cur];
-        } else if istr::eq(cur, ~"--") {
+        } else if str::eq(cur, ~"--") {
             let j = i + 1u;
             while j < l { free += [args[j]]; j += 1u; }
             break;
@@ -128,14 +128,14 @@ fn getopts(args: &[istr], opts: &[opt]) -> result {
             let names;
             let i_arg = option::none::<istr>;
             if cur[1] == '-' as u8 {
-                let tail = istr::slice(cur, 2u, curlen);
-                let eq = istr::index(tail, '=' as u8);
+                let tail = str::slice(cur, 2u, curlen);
+                let eq = str::index(tail, '=' as u8);
                 if eq == -1 {
                     names = [long(tail)];
                 } else {
-                    names = [long(istr::slice(tail, 0u, eq as uint))];
+                    names = [long(str::slice(tail, 0u, eq as uint))];
                     i_arg =
-                        option::some::<istr>(istr::slice(tail,
+                        option::some::<istr>(str::slice(tail,
                                                         (eq as uint) + 1u,
                                                         curlen - 2u));
                 }
@@ -143,7 +143,7 @@ fn getopts(args: &[istr], opts: &[opt]) -> result {
                 let j = 1u;
                 names = [];
                 while j < curlen {
-                    let range = istr::char_range_at(cur, j);
+                    let range = str::char_range_at(cur, j);
                     names += [short(range.ch)];
                     j = range.next;
                 }

@@ -3,7 +3,7 @@
 // -*- rust -*-
 use std;
 import std::map;
-import std::istr;
+import std::str;
 import std::uint;
 import std::util;
 import std::option;
@@ -14,8 +14,8 @@ fn test_simple() {
     fn eq_uint(x: &uint, y: &uint) -> bool { ret x == y; }
     let hasher_uint: map::hashfn<uint> = util::id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
-    let hasher_str: map::hashfn<istr> = istr::hash;
-    let eqer_str: map::eqfn<istr> = istr::eq;
+    let hasher_str: map::hashfn<istr> = str::hash;
+    let eqer_str: map::eqfn<istr> = str::eq;
     log "uint -> uint";
     let hm_uu: map::hashmap<uint, uint> =
         map::mk_hashmap::<uint, uint>(hasher_uint, eqer_uint);
@@ -52,26 +52,26 @@ fn test_simple() {
     assert (hm_us.insert(10u, ~"twelve"));
     assert (hm_us.insert(11u, ~"thirteen"));
     assert (hm_us.insert(12u, ~"fourteen"));
-    assert (istr::eq(hm_us.get(11u), ~"thirteen"));
-    assert (istr::eq(hm_us.get(12u), ~"fourteen"));
-    assert (istr::eq(hm_us.get(10u), ~"twelve"));
+    assert (str::eq(hm_us.get(11u), ~"thirteen"));
+    assert (str::eq(hm_us.get(12u), ~"fourteen"));
+    assert (str::eq(hm_us.get(10u), ~"twelve"));
     assert (!hm_us.insert(12u, ~"fourteen"));
-    assert (istr::eq(hm_us.get(12u), ~"fourteen"));
+    assert (str::eq(hm_us.get(12u), ~"fourteen"));
     assert (!hm_us.insert(12u, ~"twelve"));
-    assert (istr::eq(hm_us.get(12u), ~"twelve"));
+    assert (str::eq(hm_us.get(12u), ~"twelve"));
     log "str -> str";
     let hm_ss: map::hashmap<istr, istr> =
         map::mk_hashmap::<istr, istr>(hasher_str, eqer_str);
     assert (hm_ss.insert(ten, ~"twelve"));
     assert (hm_ss.insert(eleven, ~"thirteen"));
     assert (hm_ss.insert(twelve, ~"fourteen"));
-    assert (istr::eq(hm_ss.get(~"eleven"), ~"thirteen"));
-    assert (istr::eq(hm_ss.get(~"twelve"), ~"fourteen"));
-    assert (istr::eq(hm_ss.get(~"ten"), ~"twelve"));
+    assert (str::eq(hm_ss.get(~"eleven"), ~"thirteen"));
+    assert (str::eq(hm_ss.get(~"twelve"), ~"fourteen"));
+    assert (str::eq(hm_ss.get(~"ten"), ~"twelve"));
     assert (!hm_ss.insert(~"twelve", ~"fourteen"));
-    assert (istr::eq(hm_ss.get(~"twelve"), ~"fourteen"));
+    assert (str::eq(hm_ss.get(~"twelve"), ~"fourteen"));
     assert (!hm_ss.insert(~"twelve", ~"twelve"));
-    assert (istr::eq(hm_ss.get(~"twelve"), ~"twelve"));
+    assert (str::eq(hm_ss.get(~"twelve"), ~"twelve"));
     log "*** finished test_simple";
 }
 
@@ -116,8 +116,8 @@ fn test_growth() {
         i += 1u;
     }
     log "str -> str";
-    let hasher_str: map::hashfn<istr> = istr::hash;
-    let eqer_str: map::eqfn<istr> = istr::eq;
+    let hasher_str: map::hashfn<istr> = str::hash;
+    let eqer_str: map::eqfn<istr> = str::eq;
     let hm_ss: map::hashmap<istr, istr> =
         map::mk_hashmap::<istr, istr>(hasher_str, eqer_str);
     i = 0u;
@@ -133,13 +133,13 @@ fn test_growth() {
     while i < num_to_insert {
         log ~"get(\"" + uint::to_str(i, 2u) + ~"\") = \"" +
                 hm_ss.get(uint::to_str(i, 2u)) + ~"\"";
-        assert (istr::eq(hm_ss.get(uint::to_str(i, 2u)),
+        assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
                         uint::to_str(i * i, 2u)));
         i += 1u;
     }
     assert (hm_ss.insert(uint::to_str(num_to_insert, 2u),
                          uint::to_str(17u, 2u)));
-    assert (istr::eq(hm_ss.get(
+    assert (str::eq(hm_ss.get(
         uint::to_str(num_to_insert, 2u)),
                     uint::to_str(17u, 2u)));
     log "-----";
@@ -148,7 +148,7 @@ fn test_growth() {
     while i < num_to_insert {
         log ~"get(\"" + uint::to_str(i, 2u) + ~"\") = \"" +
                 hm_ss.get(uint::to_str(i, 2u)) + ~"\"";
-        assert (istr::eq(hm_ss.get(uint::to_str(i, 2u)),
+        assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
                         uint::to_str(i * i, 2u)));
         i += 1u;
     }
@@ -249,7 +249,7 @@ fn test_removal() {
 #[test]
 fn test_contains_key() {
     let key = ~"k";
-    let map = map::mk_hashmap::<istr, istr>(istr::hash, istr::eq);
+    let map = map::mk_hashmap::<istr, istr>(str::hash, str::eq);
     assert (!map.contains_key(key));
     map.insert(key, ~"val");
     assert (map.contains_key(key));
@@ -258,7 +258,7 @@ fn test_contains_key() {
 #[test]
 fn test_find() {
     let key = ~"k";
-    let map = map::mk_hashmap::<istr, istr>(istr::hash, istr::eq);
+    let map = map::mk_hashmap::<istr, istr>(str::hash, str::eq);
     assert (std::option::is_none(map.find(key)));
     map.insert(key, ~"val");
     assert (std::option::get(map.find(key)) == ~"val");

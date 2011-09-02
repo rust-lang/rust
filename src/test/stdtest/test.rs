@@ -1,5 +1,5 @@
 import std::test;
-import std::istr;
+import std::str;
 import std::option;
 import std::either;
 import std::vec;
@@ -29,7 +29,7 @@ fn first_free_arg_should_be_a_filter() {
     let args = [~"progname", ~"filter"];
     check (vec::is_not_empty(args));
     let opts = alt test::parse_opts(args) { either::left(o) { o } };
-    assert (istr::eq(~"filter", option::get(opts.filter)));
+    assert (str::eq(~"filter", option::get(opts.filter)));
 }
 
 #[test]

@@ -30,7 +30,7 @@ import std::vec;
 import std::map::hashmap;
 import std::option::none;
 import std::option::some;
-import std::istr;
+import std::str;
 
 import ty_ctxt = middle::ty::ctxt;
 
@@ -86,7 +86,7 @@ fn eq_res_info(a: &res_info, b: &res_info) -> bool {
 
 fn mk_global(ccx: &@crate_ctxt, name: &istr, llval: ValueRef,
              internal: bool) -> ValueRef {
-    let llglobal = istr::as_buf(name, { |buf|
+    let llglobal = str::as_buf(name, { |buf|
         lib::llvm::llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
     });
     lib::llvm::llvm::LLVMSetInitializer(llglobal, llval);
@@ -248,7 +248,7 @@ fn s_float(_tcx: &ty_ctxt) -> u8 {
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     let llshapetablesty = trans_common::T_named_struct(~"shapes");
-    let llshapetables = istr::as_buf(~"shapes", { |buf|
+    let llshapetables = str::as_buf(~"shapes", { |buf|
         lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
     });
 

@@ -5,7 +5,7 @@ import std::map::new_str_hash;
 import util::interner;
 import std::int;
 import std::uint;
-import std::istr;
+import std::str;
 
 type str_num = uint;
 
@@ -166,8 +166,8 @@ fn to_str(r: lexer::reader, t: token) -> istr {
       LIT_CHAR(c) {
         // FIXME: escape.
         let tmp = ~"'";
-        istr::push_char(tmp, c);
-        istr::push_byte(tmp, '\'' as u8);
+        str::push_char(tmp, c);
+        str::push_byte(tmp, '\'' as u8);
         ret tmp;
       }
       LIT_BOOL(b) { if b { ret ~"true"; } else { ret ~"false"; } }

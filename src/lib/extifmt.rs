@@ -72,10 +72,10 @@ mod ct {
 
     fn parse_fmt_string(s: &istr, error: error_fn) -> [piece] {
         let pieces: [piece] = [];
-        let lim = istr::byte_len(s);
+        let lim = str::byte_len(s);
         let buf = ~"";
         fn flush_buf(buf: &istr, pieces: &mutable [piece]) -> istr {
-            if istr::byte_len(buf) > 0u {
+            if str::byte_len(buf) > 0u {
                 let piece = piece_string(buf);
                 pieces += [piece];
             }
@@ -83,14 +83,14 @@ mod ct {
         }
         let i = 0u;
         while i < lim {
-            let curr = istr::substr(s, i, 1u);
-            if istr::eq(curr, ~"%") {
+            let curr = str::substr(s, i, 1u);
+            if str::eq(curr, ~"%") {
                 i += 1u;
                 if i >= lim {
                     error(~"unterminated conversion at end of string");
                 }
-                let curr2 = istr::substr(s, i, 1u);
-                if istr::eq(curr2, ~"%") {
+                let curr2 = str::substr(s, i, 1u);
+                if str::eq(curr2, ~"%") {
                     i += 1u;
                 } else {
                     buf = flush_buf(buf, pieces);
@@ -217,27 +217,27 @@ mod ct {
     fn parse_type(s: &istr, i: uint, lim: uint, error: error_fn) ->
        {ty: ty, next: uint} {
         if i >= lim { error(~"missing type in conversion"); }
-        let tstr = istr::substr(s, i, 1u);
+        let tstr = str::substr(s, i, 1u);
         // TODO: Do we really want two signed types here?
         // How important is it to be printf compatible?
         let t =
-            if istr::eq(tstr, ~"b") {
+            if str::eq(tstr, ~"b") {
                 ty_bool
-            } else if istr::eq(tstr, ~"s") {
+            } else if str::eq(tstr, ~"s") {
                 ty_str
-            } else if istr::eq(tstr, ~"c") {
+            } else if str::eq(tstr, ~"c") {
                 ty_char
-            } else if istr::eq(tstr, ~"d") || istr::eq(tstr, ~"i") {
+            } else if str::eq(tstr, ~"d") || str::eq(tstr, ~"i") {
                 ty_int(signed)
-            } else if istr::eq(tstr, ~"u") {
+            } else if str::eq(tstr, ~"u") {
                 ty_int(unsigned)
-            } else if istr::eq(tstr, ~"x") {
+            } else if str::eq(tstr, ~"x") {
                 ty_hex(case_lower)
-            } else if istr::eq(tstr, ~"X") {
+            } else if str::eq(tstr, ~"X") {
                 ty_hex(case_upper)
-            } else if istr::eq(tstr, ~"t") {
+            } else if str::eq(tstr, ~"t") {
                 ty_bits
-            } else if istr::eq(tstr, ~"o") {
+            } else if str::eq(tstr, ~"o") {
                 ty_octal
             } else { error(~"unknown type in conversion: " + tstr) };
         ret {ty: t, next: i + 1u};
@@ -289,7 +289,7 @@ mod rt {
             alt cv.ty {
               ty_default. { uint_to_str_prec(u, 10u, prec) }
               ty_hex_lower. { uint_to_str_prec(u, 16u, prec) }
-              ty_hex_upper. { istr::to_upper(uint_to_str_prec(u, 16u, prec)) }
+              ty_hex_upper. { str::to_upper(uint_to_str_prec(u, 16u, prec)) }
               ty_bits. { uint_to_str_prec(u, 2u, prec) }
               ty_octal. { uint_to_str_prec(u, 8u, prec) }
             };
@@ -303,7 +303,7 @@ mod rt {
         ret conv_str(cv, s);
     }
     fn conv_char(cv: &conv, c: char) -> istr {
-        ret pad(cv, istr::from_char(c), pad_nozero);
+        ret pad(cv, str::from_char(c), pad_nozero);
     }
     fn conv_str(cv: &conv, s: &istr) -> istr {
         // For strings, precision is the maximum characters
@@ -314,8 +314,8 @@ mod rt {
             alt cv.precision {
               count_implied. { s }
               count_is(max) {
-                if max as uint < istr::char_len(s) {
-                    istr::substr(s, 0u, max as uint)
+                if max as uint < str::char_len(s) {
+                    str::substr(s, 0u, max as uint)
                 } else { s }
               }
             };
@@ -338,7 +338,7 @@ mod rt {
                 ~""
             } else {
                 let s = uint::to_str(num, radix);
-                let len = istr::char_len(s);
+                let len = str::char_len(s);
                 if len < prec {
                     let diff = prec - len;
                     let pad = str_init_elt('0', diff);
@@ -357,7 +357,7 @@ mod rt {
     fn str_init_elt(c: char, n_elts: uint) -> istr {
         let svec = vec::init_elt::<u8>(c as u8, n_elts);
 
-        ret istr::unsafe_from_bytes(svec);
+        ret str::unsafe_from_bytes(svec);
     }
     tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
     fn pad(cv: &conv, s: &istr, mode: pad_mode) -> istr {
@@ -370,7 +370,7 @@ mod rt {
             uwidth = width as uint;
           }
         }
-        let strlen = istr::char_len(s);
+        let strlen = str::char_len(s);
         if uwidth <= strlen { ret s; }
         let padchar = ' ';
         let diff = uwidth - strlen;
@@ -403,12 +403,12 @@ mod rt {
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
-        if signed && zero_padding && istr::byte_len(s) > 0u {
+        if signed && zero_padding && str::byte_len(s) > 0u {
             let head = s[0];
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
-                let headstr = istr::unsafe_from_bytes([head]);
-                let bytelen = istr::byte_len(s);
-                let numpart = istr::substr(s, 1u, bytelen - 1u);
+                let headstr = str::unsafe_from_bytes([head]);
+                let bytelen = str::byte_len(s);
+                let numpart = str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;
             }
         }

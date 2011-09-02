@@ -2,7 +2,7 @@
 
 // -*- rust -*-
 use std;
-import std::istr;
+import std::str;
 
 fn test1() {
     let s: istr = ~"hello";
@@ -19,8 +19,8 @@ fn test2() {
     let b: istr = ~"ABC" + ff + ~"ABC";
     log a;
     log b;
-    assert (istr::eq(a, ~"abcABCabc"));
-    assert (istr::eq(b, ~"ABCabcABC"));
+    assert (str::eq(a, ~"abcABCabc"));
+    assert (str::eq(b, ~"ABCabcABC"));
 }
 
 fn main() { test1(); test2(); }

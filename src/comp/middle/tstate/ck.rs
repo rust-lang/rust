@@ -37,7 +37,7 @@ import std::option;
 import std::option::t;
 import std::option::some;
 import std::option::none;
-import std::istr;
+import std::str;
 import aux::*;
 import syntax::print::pprust::ty_to_str;
 import util::common::log_stmt_err;

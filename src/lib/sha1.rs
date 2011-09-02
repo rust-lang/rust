@@ -215,7 +215,7 @@ fn mk_sha1() -> sha1 {
             st.computed = false;
         }
         fn input(msg: &[u8]) { add_input(st, msg); }
-        fn input_str(msg: &istr) { add_input(st, istr::bytes(msg)); }
+        fn input_str(msg: &istr) { add_input(st, str::bytes(msg)); }
         fn result() -> [u8] { ret mk_result(st); }
         fn result_str() -> istr {
             let r = mk_result(st);

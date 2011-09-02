@@ -2,7 +2,7 @@
 import std::io;
 import std::int;
 import std::vec;
-import std::istr;
+import std::str;
 import std::map;
 import std::map::hashmap;
 import std::option;
@@ -44,19 +44,19 @@ fn new_reader(cm: &codemap::codemap, src: &istr, filemap: codemap::filemap,
         fn get_str_from(start: uint) -> istr {
             // I'm pretty skeptical about this subtraction. What if there's a
             // multi-byte character before the mark?
-            ret istr::slice(src, start - 1u, pos - 1u);
+            ret str::slice(src, start - 1u, pos - 1u);
         }
         fn get_chpos() -> uint { ret chpos; }
         fn get_byte_pos() -> uint { ret pos; }
         fn curr() -> char { ret ch; }
         fn next() -> char {
             if pos < len {
-                ret istr::char_at(src, pos);
+                ret str::char_at(src, pos);
             } else { ret -1 as char; }
         }
         fn init() {
             if pos < len {
-                let next = istr::char_range_at(src, pos);
+                let next = str::char_range_at(src, pos);
                 pos = next.next;
                 ch = next.ch;
             }
@@ -69,7 +69,7 @@ fn new_reader(cm: &codemap::codemap, src: &istr, filemap: codemap::filemap,
                     codemap::next_line(fm, chpos, pos + fm.start_pos.byte);
                     col = 0u;
                 }
-                let next = istr::char_range_at(src, pos);
+                let next = str::char_range_at(src, pos);
                 pos = next.next;
                 ch = next.ch;
             } else { ch = -1 as char; }
@@ -85,7 +85,7 @@ fn new_reader(cm: &codemap::codemap, src: &istr, filemap: codemap::filemap,
     }
     let strs: [istr] = [];
     let rd =
-        reader(cm, src, istr::byte_len(src), 0u, 0u, -1 as char,
+        reader(cm, src, str::byte_len(src), 0u, 0u, -1 as char,
                filemap.start_pos.ch, strs, filemap, itr);
     rd.init();
     ret rd;
@@ -178,15 +178,15 @@ fn scan_exponent(rdr: &reader) -> option::t<istr> {
     let c = rdr.curr();
     let rslt = ~"";
     if c == 'e' || c == 'E' {
-        rslt += istr::unsafe_from_bytes([c as u8]);
+        rslt += str::unsafe_from_bytes([c as u8]);
         rdr.bump();
         c = rdr.curr();
         if c == '-' || c == '+' {
-            rslt += istr::unsafe_from_bytes([c as u8]);
+            rslt += str::unsafe_from_bytes([c as u8]);
             rdr.bump();
         }
         let exponent = scan_dec_digits(rdr);
-        if istr::byte_len(exponent) > 0u {
+        if str::byte_len(exponent) > 0u {
             ret some(rslt + exponent);
         } else { rdr.err(~"scan_exponent: bad fp literal"); fail; }
     } else { ret none::<istr>; }
@@ -196,7 +196,7 @@ fn scan_dec_digits(rdr: &reader) -> istr {
     let c = rdr.curr();
     let rslt: istr = ~"";
     while is_dec_digit(c) || c == '_' {
-        if c != '_' { rslt += istr::unsafe_from_bytes([c as u8]); }
+        if c != '_' { rslt += str::unsafe_from_bytes([c as u8]); }
         rdr.bump();
         c = rdr.curr();
     }
@@ -348,11 +348,11 @@ fn next_token_inner(rdr: &reader) -> token::token {
     let c = rdr.curr();
     if is_alpha(c) || c == '_' {
         while is_alnum(c) || c == '_' {
-            istr::push_char(accum_str, c);
+            str::push_char(accum_str, c);
             rdr.bump();
             c = rdr.curr();
         }
-        if istr::eq(accum_str, ~"_") { ret token::UNDERSCORE; }
+        if str::eq(accum_str, ~"_") { ret token::UNDERSCORE; }
         let is_mod_name = c == ':' && rdr.next() == ':';
         ret token::IDENT(interner::intern::<istr>(
             *rdr.get_interner(),
@@ -493,20 +493,20 @@ fn next_token_inner(rdr: &reader) -> token::token {
                 let escaped = rdr.curr();
                 rdr.bump();
                 alt escaped {
-                  'n' { istr::push_byte(accum_str, '\n' as u8); }
-                  'r' { istr::push_byte(accum_str, '\r' as u8); }
-                  't' { istr::push_byte(accum_str, '\t' as u8); }
-                  '\\' { istr::push_byte(accum_str, '\\' as u8); }
-                  '"' { istr::push_byte(accum_str, '"' as u8); }
+                  'n' { str::push_byte(accum_str, '\n' as u8); }
+                  'r' { str::push_byte(accum_str, '\r' as u8); }
+                  't' { str::push_byte(accum_str, '\t' as u8); }
+                  '\\' { str::push_byte(accum_str, '\\' as u8); }
+                  '"' { str::push_byte(accum_str, '"' as u8); }
                   '\n' { consume_whitespace(rdr); }
                   'x' {
-                    istr::push_char(accum_str, scan_numeric_escape(rdr, 2u));
+                    str::push_char(accum_str, scan_numeric_escape(rdr, 2u));
                   }
                   'u' {
-                    istr::push_char(accum_str, scan_numeric_escape(rdr, 4u));
+                    str::push_char(accum_str, scan_numeric_escape(rdr, 4u));
                   }
                   'U' {
-                    istr::push_char(accum_str, scan_numeric_escape(rdr, 8u));
+                    str::push_char(accum_str, scan_numeric_escape(rdr, 8u));
                   }
                   c2 {
                     rdr.err(
@@ -516,7 +516,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
                   }
                 }
               }
-              _ { istr::push_char(accum_str, ch); }
+              _ { str::push_char(accum_str, ch); }
             }
         }
         rdr.bump();
@@ -569,7 +569,7 @@ type cmnt = {style: cmnt_style, lines: [istr], pos: uint};
 fn read_to_eol(rdr: &reader) -> istr {
     let val = ~"";
     while rdr.curr() != '\n' && !rdr.is_eof() {
-        istr::push_char(val, rdr.curr());
+        str::push_char(val, rdr.curr());
         rdr.bump();
     }
     if rdr.curr() == '\n' { rdr.bump(); }
@@ -634,8 +634,8 @@ fn trim_whitespace_prefix_and_push_line(lines: &mutable [istr], s: &istr,
                                         col: uint) {
     let s1;
     if all_whitespace(s, 0u, col) {
-        if col < istr::byte_len(s) {
-            s1 = istr::slice(s, col, istr::byte_len(s));
+        if col < str::byte_len(s) {
+            s1 = str::slice(s, col, str::byte_len(s));
         } else { s1 = ~""; }
     } else { s1 = s; }
     log ~"pushing line: " + s1;
@@ -659,7 +659,7 @@ fn read_block_comment(rdr: &reader, code_to_the_left: bool) -> cmnt {
             curr_line = ~"";
             rdr.bump();
         } else {
-            istr::push_char(curr_line, rdr.curr());
+            str::push_char(curr_line, rdr.curr());
             if rdr.curr() == '/' && rdr.next() == '*' {
                 rdr.bump();
                 rdr.bump();
@@ -675,7 +675,7 @@ fn read_block_comment(rdr: &reader, code_to_the_left: bool) -> cmnt {
             }
         }
     }
-    if istr::byte_len(curr_line) != 0u {
+    if str::byte_len(curr_line) != 0u {
         trim_whitespace_prefix_and_push_line(lines, curr_line, col);
     }
     let style = if code_to_the_left { trailing } else { isolated };
@@ -722,8 +722,8 @@ type lit = {lit: istr, pos: uint};
 fn gather_comments_and_literals(cm: &codemap::codemap, path: &istr,
                                 srdr: io::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
-    let src = istr::unsafe_from_bytes(srdr.read_whole_stream());
-    let itr = @interner::mk::<istr>(istr::hash, istr::eq);
+    let src = str::unsafe_from_bytes(srdr.read_whole_stream());
+    let itr = @interner::mk::<istr>(str::hash, str::eq);
     let rdr = new_reader(cm, src,
                          codemap::new_filemap(
                              path, 0u, 0u), itr);

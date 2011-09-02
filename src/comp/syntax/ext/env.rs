@@ -5,7 +5,7 @@
  * interface.
  */
 import std::vec;
-import std::istr;
+import std::str;
 import std::option;
 import std::generic_os;
 import base::*;

@@ -4,7 +4,7 @@ import std::option::some;
 import std::option::none;
 import std::int;
 import std::uint;
-import std::istr;
+import std::str;
 import syntax::ast::*;
 import syntax::ast_util::pat_binding_ids;
 import syntax::visit;

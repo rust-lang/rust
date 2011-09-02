@@ -3,7 +3,7 @@ import std::run;
 import std::os;
 import std::io;
 import std::option;
-import std::istr;
+import std::str;
 import std::vec;
 
 // Regression test for memory leaks
@@ -60,7 +60,7 @@ fn test_pipes() {
         let buf = ~"";
         while !reader.eof() {
             let bytes = reader.read_bytes(4096u);
-            buf += istr::unsafe_from_bytes(bytes);
+            buf += str::unsafe_from_bytes(bytes);
         }
         os::libc::fclose(file);
         ret buf;

@@ -1,4 +1,4 @@
-import std::istr;
+import std::str;
 import std::vec;
 import std::option;
 import option::some;
@@ -59,7 +59,7 @@ fn variant_opt(ccx: &@crate_ctxt, pat_id: ast::node_id) -> opt {
 type bind_map = [{ident: ast::ident, val: ValueRef}];
 fn assoc(key: &istr, list: &bind_map) -> option::t<ValueRef> {
     for elt: {ident: ast::ident, val: ValueRef} in list {
-        if istr::eq(elt.ident, key) { ret some(elt.val); }
+        if str::eq(elt.ident, key) { ret some(elt.val); }
     }
     ret none;
 }
@@ -145,7 +145,7 @@ fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
             for fname: ast::ident in fields {
                 let pat = dummy;
                 for fpat: ast::field_pat in fpats {
-                    if istr::eq(fpat.ident, fname) { pat = fpat.pat; break; }
+                    if str::eq(fpat.ident, fname) { pat = fpat.pat; break; }
                 }
                 pats += [pat];
             }
@@ -233,7 +233,7 @@ fn collect_record_fields(m: &match, col: uint) -> [ast::ident] {
         alt br.pats[col].node {
           ast::pat_rec(fs, _) {
             for f: ast::field_pat in fs {
-                if !vec::any(bind istr::eq(f.ident, _), fields) {
+                if !vec::any(bind str::eq(f.ident, _), fields) {
                     fields += [f.ident];
                 }
             }

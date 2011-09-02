@@ -2,7 +2,7 @@
 import std::vec;
 import std::int;
 import std::io;
-import std::istr;
+import std::str;
 import std::uint;
 import std::option;
 import parse::lexer;
@@ -156,7 +156,7 @@ fn head(s: &ps, w: &istr) {
     // outer-box is consistent
     cbox(s, indent_unit);
     // head-box is inconsistent
-    ibox(s, istr::char_len(w) + 1u);
+    ibox(s, str::char_len(w) + 1u);
     // keyword that starts the head
     word_nbsp(s, w);
 }
@@ -432,7 +432,7 @@ fn print_item(s: &ps, item: &@ast::item) {
         }
         word_nbsp(s, ~"mod");
         word_nbsp(s, item.ident);
-        if !istr::eq(nmod.native_name, item.ident) {
+        if !str::eq(nmod.native_name, item.ident) {
             word_space(s, ~"=");
             print_string(s, nmod.native_name);
             nbsp(s);
@@ -458,7 +458,7 @@ fn print_item(s: &ps, item: &@ast::item) {
       ast::item_tag(variants, params) {
         let newtype =
             vec::len(variants) == 1u &&
-                istr::eq(item.ident, variants[0].node.name) &&
+                str::eq(item.ident, variants[0].node.name) &&
                 vec::len(variants[0].node.args) == 1u;
         if newtype {
             ibox(s, indent_unit);
@@ -1318,7 +1318,7 @@ fn print_view_item(s: &ps, item: &@ast::view_item) {
       }
       ast::view_item_import(id, ids, _) {
         head(s, ~"import");
-        if !istr::eq(id, ids[vec::len(ids) - 1u]) {
+        if !str::eq(id, ids[vec::len(ids) - 1u]) {
             word_space(s, id);
             word_space(s, ~"=");
         }
@@ -1510,7 +1510,7 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
       }
       ast::lit_char(ch) {
         word(s.s,
-             ~"'" + escape_str(istr::unsafe_from_bytes([ch as u8]), '\'') +
+             ~"'" + escape_str(str::unsafe_from_bytes([ch as u8]), '\'') +
                  ~"'");
       }
       ast::lit_int(val) { word(s.s, int::str(val)); }
@@ -1572,7 +1572,7 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
         for line: istr in cmnt.lines {
             // Don't print empty lines because they will end up as trailing
             // whitespace
-            if istr::is_not_empty(line) {
+            if str::is_not_empty(line) {
                 word(s.s, line);
             }
             hardbreak(s.s);
@@ -1586,7 +1586,7 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
         } else {
             ibox(s, 0u);
             for line: istr in cmnt.lines {
-                if istr::is_not_empty(line) {
+                if str::is_not_empty(line) {
                     word(s.s, line);
                 }
                 hardbreak(s.s);
@@ -1615,7 +1615,7 @@ fn print_string(s: &ps, st: &istr) {
 
 fn escape_str(st: &istr, to_escape: char) -> istr {
     let out: istr = ~"";
-    let len = istr::byte_len(st);
+    let len = str::byte_len(st);
     let i = 0u;
     while i < len {
         alt st[i] as char {
@@ -1627,7 +1627,7 @@ fn escape_str(st: &istr, to_escape: char) -> istr {
             if cur == to_escape { out += ~"\\"; }
             // FIXME some (or all?) non-ascii things should be escaped
 
-            istr::push_char(out, cur);
+            str::push_char(out, cur);
           }
         }
         i += 1u;

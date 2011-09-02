@@ -10,7 +10,7 @@ import middle::ty;
 import std::option::none;
 import std::option::some;
 import std::ptr;
-import std::istr;
+import std::str;
 import std::unsafe;
 import std::vec;
 
@@ -22,7 +22,7 @@ type ctxt = @{mutable next_tydesc_num: uint};
 fn mk_ctxt() -> ctxt { ret @{mutable next_tydesc_num: 0u}; }
 
 fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: &istr) -> ValueRef {
-    let llglobal = istr::as_buf(name, { |buf|
+    let llglobal = str::as_buf(name, { |buf|
         lll::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
     });
     lll::LLVMSetInitializer(llglobal, llval);

@@ -1,4 +1,4 @@
-import std::istr;
+import std::str;
 import std::vec;
 import std::option;
 import std::map::hashmap;

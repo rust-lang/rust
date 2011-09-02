@@ -14,7 +14,7 @@ use std;
 import std::vec;
 import std::uint;
 import std::time;
-import std::istr;
+import std::str;
 import std::int::range;
 import std::io;
 import std::getopts;
@@ -91,7 +91,7 @@ fn main(argv: [istr]) {
         if opts.stress {
             stress(2);
         } else {
-            let max = uint::parse_buf(istr::bytes(argv[1]), 10u) as int;
+            let max = uint::parse_buf(str::bytes(argv[1]), 10u) as int;
 
             let num_trials = 10;
 

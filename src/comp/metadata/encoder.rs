@@ -1,7 +1,7 @@
 // Metadata encoding
 
 import std::vec;
-import std::istr;
+import std::str;
 import std::uint;
 import std::io;
 import std::option;
@@ -28,13 +28,13 @@ type encode_ctxt = {ccx: @crate_ctxt, type_abbrevs: abbrev_map};
 // Path table encoding
 fn encode_name(ebml_w: &ebml::writer, name: &istr) {
     ebml::start_tag(ebml_w, tag_paths_data_name);
-    ebml_w.writer.write(istr::bytes(name));
+    ebml_w.writer.write(str::bytes(name));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_def_id(ebml_w: &ebml::writer, id: &def_id) {
     ebml::start_tag(ebml_w, tag_def_id);
-    ebml_w.writer.write(istr::bytes(def_to_str(id)));
+    ebml_w.writer.write(str::bytes(def_to_str(id)));
     ebml::end_tag(ebml_w);
 }
 
@@ -55,7 +55,7 @@ fn add_to_index(ebml_w: &ebml::writer, path: &[istr],
                 index: &mutable [entry<istr>], name: &istr) {
     let full_path = path + [name];
     index +=
-        [{val: istr::connect(full_path, ~"::"), pos: ebml_w.writer.tell()}];
+        [{val: str::connect(full_path, ~"::"), pos: ebml_w.writer.tell()}];
 }
 
 fn encode_native_module_item_paths(ebml_w: &ebml::writer, nmod: &native_mod,
@@ -197,7 +197,7 @@ fn encode_type_param_kinds(ebml_w: &ebml::writer, tps: &[ty_param]) {
 
 fn encode_variant_id(ebml_w: &ebml::writer, vid: &def_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_variant);
-    ebml_w.writer.write(istr::bytes(def_to_str(vid)));
+    ebml_w.writer.write(str::bytes(def_to_str(vid)));
     ebml::end_tag(ebml_w);
 }
 
@@ -214,20 +214,20 @@ fn encode_type(ecx: &@encode_ctxt, ebml_w: &ebml::writer, typ: ty::t) {
 
 fn encode_symbol(ecx: &@encode_ctxt, ebml_w: &ebml::writer, id: node_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_symbol);
-    ebml_w.writer.write(istr::bytes(ecx.ccx.item_symbols.get(id)));
+    ebml_w.writer.write(str::bytes(ecx.ccx.item_symbols.get(id)));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_discriminant(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
                        id: node_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_symbol);
-    ebml_w.writer.write(istr::bytes(ecx.ccx.discrim_symbols.get(id)));
+    ebml_w.writer.write(str::bytes(ecx.ccx.discrim_symbols.get(id)));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_tag_id(ebml_w: &ebml::writer, id: &def_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_tag_id);
-    ebml_w.writer.write(istr::bytes(def_to_str(id)));
+    ebml_w.writer.write(str::bytes(def_to_str(id)));
     ebml::end_tag(ebml_w);
 }
 
@@ -454,7 +454,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
       meta_word(name) {
         ebml::start_tag(ebml_w, tag_meta_item_word);
         ebml::start_tag(ebml_w, tag_meta_item_name);
-        ebml_w.writer.write(istr::bytes(name));
+        ebml_w.writer.write(str::bytes(name));
         ebml::end_tag(ebml_w);
         ebml::end_tag(ebml_w);
       }
@@ -463,10 +463,10 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
           lit_str(value, _) {
             ebml::start_tag(ebml_w, tag_meta_item_name_value);
             ebml::start_tag(ebml_w, tag_meta_item_name);
-            ebml_w.writer.write(istr::bytes(name));
+            ebml_w.writer.write(str::bytes(name));
             ebml::end_tag(ebml_w);
             ebml::start_tag(ebml_w, tag_meta_item_value);
-            ebml_w.writer.write(istr::bytes(value));
+            ebml_w.writer.write(str::bytes(value));
             ebml::end_tag(ebml_w);
             ebml::end_tag(ebml_w);
           }
@@ -476,7 +476,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
       meta_list(name, items) {
         ebml::start_tag(ebml_w, tag_meta_item_list);
         ebml::start_tag(ebml_w, tag_meta_item_name);
-        ebml_w.writer.write(istr::bytes(name));
+        ebml_w.writer.write(str::bytes(name));
         ebml::end_tag(ebml_w);
         for inner_item: @meta_item in items {
             encode_meta_item(ebml_w, *inner_item);
@@ -588,7 +588,7 @@ fn encode_crate_deps(ebml_w: &ebml::writer, cstore: &cstore::cstore) {
     ebml::start_tag(ebml_w, tag_crate_deps);
     for cname: istr in get_ordered_names(cstore) {
         ebml::start_tag(ebml_w, tag_crate_dep);
-        ebml_w.writer.write(istr::bytes(cname));
+        ebml_w.writer.write(str::bytes(cname));
         ebml::end_tag(ebml_w);
     }
     ebml::end_tag(ebml_w);

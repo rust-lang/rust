@@ -1,40 +1,40 @@
-import std::istr;
+import std::str;
 import std::vec;
 
 #[test]
 fn test_eq() {
-    assert istr::eq(~"", ~"");
-    assert istr::eq(~"foo", ~"foo");
-    assert !istr::eq(~"foo", ~"bar");
+    assert str::eq(~"", ~"");
+    assert str::eq(~"foo", ~"foo");
+    assert !str::eq(~"foo", ~"bar");
 }
 
 #[test]
 fn test_lteq() {
-    assert istr::lteq(~"", ~"");
-    assert istr::lteq(~"", ~"foo");
-    assert istr::lteq(~"foo", ~"foo");
-    assert !istr::eq(~"foo", ~"bar");
+    assert str::lteq(~"", ~"");
+    assert str::lteq(~"", ~"foo");
+    assert str::lteq(~"foo", ~"foo");
+    assert !str::eq(~"foo", ~"bar");
 }
 
 #[test]
 fn test_bytes_len() {
-    assert (istr::byte_len(~"") == 0u);
-    assert (istr::byte_len(~"hello world") == 11u);
-    assert (istr::byte_len(~"\x63") == 1u);
-    assert (istr::byte_len(~"\xa2") == 2u);
-    assert (istr::byte_len(~"\u03c0") == 2u);
-    assert (istr::byte_len(~"\u2620") == 3u);
-    assert (istr::byte_len(~"\U0001d11e") == 4u);
+    assert (str::byte_len(~"") == 0u);
+    assert (str::byte_len(~"hello world") == 11u);
+    assert (str::byte_len(~"\x63") == 1u);
+    assert (str::byte_len(~"\xa2") == 2u);
+    assert (str::byte_len(~"\u03c0") == 2u);
+    assert (str::byte_len(~"\u2620") == 3u);
+    assert (str::byte_len(~"\U0001d11e") == 4u);
 }
 
 #[test]
 fn test_index_and_rindex() {
-    assert (istr::index(~"hello", 'e' as u8) == 1);
-    assert (istr::index(~"hello", 'o' as u8) == 4);
-    assert (istr::index(~"hello", 'z' as u8) == -1);
-    assert (istr::rindex(~"hello", 'l' as u8) == 3);
-    assert (istr::rindex(~"hello", 'h' as u8) == 0);
-    assert (istr::rindex(~"hello", 'z' as u8) == -1);
+    assert (str::index(~"hello", 'e' as u8) == 1);
+    assert (str::index(~"hello", 'o' as u8) == 4);
+    assert (str::index(~"hello", 'z' as u8) == -1);
+    assert (str::rindex(~"hello", 'l' as u8) == 3);
+    assert (str::rindex(~"hello", 'h' as u8) == 0);
+    assert (str::rindex(~"hello", 'z' as u8) == -1);
 }
 
 #[test]
@@ -42,11 +42,11 @@ fn test_split() {
     fn t(s: &istr, c: char, i: int, k: &istr) {
         log ~"splitting: " + s;
         log i;
-        let v = istr::split(s, c as u8);
+        let v = str::split(s, c as u8);
         log ~"split to: ";
         for z: istr in v { log z; }
         log ~"comparing: " + v[i] + ~" vs. " + k;
-        assert (istr::eq(v[i], k));
+        assert (str::eq(v[i], k));
     }
     t(~"abc.hello.there", '.', 0, ~"abc");
     t(~"abc.hello.there", '.', 1, ~"hello");
@@ -60,7 +60,7 @@ fn test_split() {
 #[test]
 fn test_find() {
     fn t(haystack: &istr, needle: &istr, i: int) {
-        let j: int = istr::find(haystack, needle);
+        let j: int = str::find(haystack, needle);
         log ~"searched for " + needle;
         log j;
         assert (i == j);
@@ -75,8 +75,8 @@ fn test_find() {
 #[test]
 fn test_substr() {
     fn t(a: &istr, b: &istr, start: int) {
-        assert (istr::eq(istr::substr(a, start as uint,
-                                      istr::byte_len(b)), b));
+        assert (str::eq(str::substr(a, start as uint,
+                                      str::byte_len(b)), b));
     }
     t(~"hello", ~"llo", 2);
     t(~"hello", ~"el", 1);
@@ -85,7 +85,7 @@ fn test_substr() {
 
 #[test]
 fn test_concat() {
-    fn t(v: &[istr], s: &istr) { assert (istr::eq(istr::concat(v), s)); }
+    fn t(v: &[istr], s: &istr) { assert (str::eq(str::concat(v), s)); }
     t([~"you", ~"know", ~"I'm", ~"no", ~"good"], ~"youknowI'mnogood");
     let v: [istr] = [];
     t(v, ~"");
@@ -95,7 +95,7 @@ fn test_concat() {
 #[test]
 fn test_connect() {
     fn t(v: &[istr], sep: &istr, s: &istr) {
-        assert (istr::eq(istr::connect(v, sep), s));
+        assert (str::eq(str::connect(v, sep), s));
     }
     t([~"you", ~"know", ~"I'm", ~"no", ~"good"], ~" ",
       ~"you know I'm no good");
@@ -112,15 +112,15 @@ fn test_to_upper() {
     let unicode = ~"\u65e5\u672c";
     let input = ~"abcDEF" + unicode + ~"xyz:.;";
     let expected = ~"ABCDEF" + unicode + ~"XYZ:.;";
-    let actual = istr::to_upper(input);
-    assert (istr::eq(expected, actual));
+    let actual = str::to_upper(input);
+    assert (str::eq(expected, actual));
 }
 
 #[test]
 fn test_slice() {
-    assert (istr::eq(~"ab", istr::slice(~"abc", 0u, 2u)));
-    assert (istr::eq(~"bc", istr::slice(~"abc", 1u, 3u)));
-    assert (istr::eq(~"", istr::slice(~"abc", 1u, 1u)));
+    assert (str::eq(~"ab", str::slice(~"abc", 0u, 2u)));
+    assert (str::eq(~"bc", str::slice(~"abc", 1u, 3u)));
+    assert (str::eq(~"", str::slice(~"abc", 1u, 1u)));
     fn a_million_letter_a() -> istr {
         let i = 0;
         let rs = ~"";
@@ -133,112 +133,112 @@ fn test_slice() {
         while i < 100000 { rs += ~"aaaaa"; i += 1; }
         ret rs;
     }
-    assert (istr::eq(half_a_million_letter_a(),
-                    istr::slice(a_million_letter_a(), 0u, 500000u)));
+    assert (str::eq(half_a_million_letter_a(),
+                    str::slice(a_million_letter_a(), 0u, 500000u)));
 }
 
 #[test]
 fn test_starts_with() {
-    assert (istr::starts_with(~"", ~""));
-    assert (istr::starts_with(~"abc", ~""));
-    assert (istr::starts_with(~"abc", ~"a"));
-    assert (!istr::starts_with(~"a", ~"abc"));
-    assert (!istr::starts_with(~"", ~"abc"));
+    assert (str::starts_with(~"", ~""));
+    assert (str::starts_with(~"abc", ~""));
+    assert (str::starts_with(~"abc", ~"a"));
+    assert (!str::starts_with(~"a", ~"abc"));
+    assert (!str::starts_with(~"", ~"abc"));
 }
 
 #[test]
 fn test_ends_with() {
-    assert (istr::ends_with(~"", ~""));
-    assert (istr::ends_with(~"abc", ~""));
-    assert (istr::ends_with(~"abc", ~"c"));
-    assert (!istr::ends_with(~"a", ~"abc"));
-    assert (!istr::ends_with(~"", ~"abc"));
+    assert (str::ends_with(~"", ~""));
+    assert (str::ends_with(~"abc", ~""));
+    assert (str::ends_with(~"abc", ~"c"));
+    assert (!str::ends_with(~"a", ~"abc"));
+    assert (!str::ends_with(~"", ~"abc"));
 }
 
 #[test]
 fn test_is_empty() {
-    assert (istr::is_empty(~""));
-    assert (!istr::is_empty(~"a"));
+    assert (str::is_empty(~""));
+    assert (!str::is_empty(~"a"));
 }
 
 #[test]
 fn test_is_not_empty() {
-    assert (istr::is_not_empty(~"a"));
-    assert (!istr::is_not_empty(~""));
+    assert (str::is_not_empty(~"a"));
+    assert (!str::is_not_empty(~""));
 }
 
 #[test]
 fn test_replace() {
     let a = ~"a";
-    check (istr::is_not_empty(a));
-    assert (istr::replace(~"", a, ~"b") == ~"");
-    assert (istr::replace(~"a", a, ~"b") == ~"b");
-    assert (istr::replace(~"ab", a, ~"b") == ~"bb");
+    check (str::is_not_empty(a));
+    assert (str::replace(~"", a, ~"b") == ~"");
+    assert (str::replace(~"a", a, ~"b") == ~"b");
+    assert (str::replace(~"ab", a, ~"b") == ~"bb");
     let test = ~"test";
-    check (istr::is_not_empty(test));
-    assert (istr::replace(~" test test ", test, ~"toast")
+    check (str::is_not_empty(test));
+    assert (str::replace(~" test test ", test, ~"toast")
             == ~" toast toast ");
-    assert (istr::replace(~" test test ", test, ~"") == ~"   ");
+    assert (str::replace(~" test test ", test, ~"") == ~"   ");
 }
 
 #[test]
 fn test_char_slice() {
-    assert (istr::eq(~"ab", istr::char_slice(~"abc", 0u, 2u)));
-    assert (istr::eq(~"bc", istr::char_slice(~"abc", 1u, 3u)));
-    assert (istr::eq(~"", istr::char_slice(~"abc", 1u, 1u)));
-    assert (istr::eq(~"\u65e5", istr::char_slice(~"\u65e5\u672c", 0u, 1u)));
+    assert (str::eq(~"ab", str::char_slice(~"abc", 0u, 2u)));
+    assert (str::eq(~"bc", str::char_slice(~"abc", 1u, 3u)));
+    assert (str::eq(~"", str::char_slice(~"abc", 1u, 1u)));
+    assert (str::eq(~"\u65e5", str::char_slice(~"\u65e5\u672c", 0u, 1u)));
 }
 
 #[test]
 fn trim_left() {
-    assert (istr::trim_left(~"") == ~"");
-    assert (istr::trim_left(~"a") == ~"a");
-    assert (istr::trim_left(~"    ") == ~"");
-    assert (istr::trim_left(~"     blah") == ~"blah");
-    assert (istr::trim_left(~"   \u3000  wut") == ~"wut");
-    assert (istr::trim_left(~"hey ") == ~"hey ");
+    assert (str::trim_left(~"") == ~"");
+    assert (str::trim_left(~"a") == ~"a");
+    assert (str::trim_left(~"    ") == ~"");
+    assert (str::trim_left(~"     blah") == ~"blah");
+    assert (str::trim_left(~"   \u3000  wut") == ~"wut");
+    assert (str::trim_left(~"hey ") == ~"hey ");
 }
 
 #[test]
 fn trim_right() {
-    assert (istr::trim_right(~"") == ~"");
-    assert (istr::trim_right(~"a") == ~"a");
-    assert (istr::trim_right(~"    ") == ~"");
-    assert (istr::trim_right(~"blah     ") == ~"blah");
-    assert (istr::trim_right(~"wut   \u3000  ") == ~"wut");
-    assert (istr::trim_right(~" hey") == ~" hey");
+    assert (str::trim_right(~"") == ~"");
+    assert (str::trim_right(~"a") == ~"a");
+    assert (str::trim_right(~"    ") == ~"");
+    assert (str::trim_right(~"blah     ") == ~"blah");
+    assert (str::trim_right(~"wut   \u3000  ") == ~"wut");
+    assert (str::trim_right(~" hey") == ~" hey");
 }
 
 #[test]
 fn trim() {
-    assert (istr::trim(~"") == ~"");
-    assert (istr::trim(~"a") == ~"a");
-    assert (istr::trim(~"    ") == ~"");
-    assert (istr::trim(~"    blah     ") == ~"blah");
-    assert (istr::trim(~"\nwut   \u3000  ") == ~"wut");
-    assert (istr::trim(~" hey dude ") == ~"hey dude");
+    assert (str::trim(~"") == ~"");
+    assert (str::trim(~"a") == ~"a");
+    assert (str::trim(~"    ") == ~"");
+    assert (str::trim(~"    blah     ") == ~"blah");
+    assert (str::trim(~"\nwut   \u3000  ") == ~"wut");
+    assert (str::trim(~" hey dude ") == ~"hey dude");
 }
 
 #[test]
 fn is_whitespace() {
-    assert (istr::is_whitespace(~""));
-    assert (istr::is_whitespace(~" "));
-    assert (istr::is_whitespace(~"\u2009")); // Thin space
-    assert (istr::is_whitespace(~"  \n\t   "));
-    assert (!istr::is_whitespace(~"   _   "));
+    assert (str::is_whitespace(~""));
+    assert (str::is_whitespace(~" "));
+    assert (str::is_whitespace(~"\u2009")); // Thin space
+    assert (str::is_whitespace(~"  \n\t   "));
+    assert (!str::is_whitespace(~"   _   "));
 }
 
 #[test]
 fn is_ascii() {
-    assert istr::is_ascii(~"");
-    assert istr::is_ascii(~"a");
-    assert !istr::is_ascii(~"\u2009");
+    assert str::is_ascii(~"");
+    assert str::is_ascii(~"a");
+    assert !str::is_ascii(~"\u2009");
 }
 
 #[test]
 fn shift_byte() {
     let s = ~"ABC";
-    let b = istr::shift_byte(s);
+    let b = str::shift_byte(s);
     assert s == ~"BC";
     assert b == 65u8;
 }
@@ -246,7 +246,7 @@ fn shift_byte() {
 #[test]
 fn pop_byte() {
     let s = ~"ABC";
-    let b = istr::pop_byte(s);
+    let b = str::pop_byte(s);
     assert s == ~"AB";
     assert b == 67u8;
 }
@@ -254,7 +254,7 @@ fn pop_byte() {
 #[test]
 fn unsafe_from_bytes() {
     let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
-    let b = istr::unsafe_from_bytes(a);
+    let b = str::unsafe_from_bytes(a);
     assert b == ~"AAAAAAA";
 }
 
@@ -262,14 +262,14 @@ fn unsafe_from_bytes() {
 fn str_from_cstr() {
     let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
     let b = vec::to_ptr(a);
-    let c = istr::str_from_cstr(b);
+    let c = str::str_from_cstr(b);
     assert c == ~"AAAAAAA";
 }
 
 #[test]
 fn as_buf() {
     let a = ~"Abcdefg";
-    let b = istr::as_buf(a, { |buf|
+    let b = str::as_buf(a, { |buf|
         assert *buf == 65u8;
         100
     });
@@ -279,7 +279,7 @@ fn as_buf() {
 #[test]
 fn as_buf_small() {
     let a = ~"A";
-    let b = istr::as_buf(a, { |buf|
+    let b = str::as_buf(a, { |buf|
         assert *buf == 65u8;
         100
     });
@@ -289,19 +289,19 @@ fn as_buf_small() {
 #[test]
 fn as_buf2() {
     let s = ~"hello";
-    let sb = istr::as_buf(s, { |b| b });
-    let s_cstr = istr::str_from_cstr(sb);
-    assert (istr::eq(s_cstr, s));
+    let sb = str::as_buf(s, { |b| b });
+    let s_cstr = str::str_from_cstr(sb);
+    assert (str::eq(s_cstr, s));
 }
 
 #[test]
 fn vec_str_conversions() {
     let s1: istr = ~"All mimsy were the borogoves";
 
-    let v: [u8] = istr::bytes(s1);
-    let s2: istr = istr::unsafe_from_bytes(v);
+    let v: [u8] = str::bytes(s1);
+    let s2: istr = str::unsafe_from_bytes(v);
     let i: uint = 0u;
-    let n1: uint = istr::byte_len(s1);
+    let n1: uint = str::byte_len(s1);
     let n2: uint = vec::len::<u8>(v);
     assert (n1 == n2);
     while i < n1 {

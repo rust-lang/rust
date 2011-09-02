@@ -1,5 +1,5 @@
 import std::io;
-import std::istr;
+import std::str;
 import std::option;
 import std::fs;
 import std::os;
@@ -19,7 +19,7 @@ import util::logv;
 export run;
 
 fn run(cx: &cx, _testfile: -[u8]) {
-    let testfile = istr::unsafe_from_bytes(_testfile);
+    let testfile = str::unsafe_from_bytes(_testfile);
     if cx.config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str(~"\n\n");
@@ -116,9 +116,9 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &istr) {
     if option::is_some(props.pp_exact) {
         // Now we have to care about line endings
         let cr = ~"\r";
-        check (istr::is_not_empty(cr));
-        actual = istr::replace(actual, cr, ~"");
-        expected = istr::replace(expected, cr, ~"");
+        check (str::is_not_empty(cr));
+        actual = str::replace(actual, cr, ~"");
+        expected = str::replace(expected, cr, ~"");
     }
 
     compare_source(expected, actual);
@@ -188,8 +188,8 @@ fn check_error_patterns(props: &test_props, testfile: &istr,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns[next_err_idx];
-    for line: istr in istr::split(procres.stdout, '\n' as u8) {
-        if istr::find(line, next_err_pat) > 0 {
+    for line: istr in str::split(procres.stdout, '\n' as u8) {
+        if str::find(line, next_err_pat) > 0 {
             log #ifmt["found error pattern %s",
                       next_err_pat];
             next_err_idx += 1u;
@@ -289,7 +289,7 @@ fn split_maybe_args(argstr: &option::t<istr>) -> [istr] {
     }
 
     alt argstr {
-      option::some(s) { rm_whitespace(istr::split(s, ' ' as u8)) }
+      option::some(s) { rm_whitespace(str::split(s, ' ' as u8)) }
       option::none. { [] }
     }
 }
@@ -315,7 +315,7 @@ fn make_cmdline(libpath: &istr, prog: &istr, args: &[istr]) -> istr {
     #ifmt["%s %s %s",
           lib_path_cmd_prefix(libpath),
           prog,
-          istr::connect(args, ~" ")]
+          str::connect(args, ~" ")]
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
@@ -357,10 +357,10 @@ fn output_base_name(config: &config, testfile: &istr) -> istr {
     let base = config.build_base;
     let filename =
         {
-            let parts = istr::split(fs::basename(testfile),
+            let parts = str::split(fs::basename(testfile),
                                     '.' as u8);
             parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
-            istr::connect(parts, ~".")
+            str::connect(parts, ~".")
         };
     #ifmt["%s%s.%s", base, filename,
                         config.stage_id]

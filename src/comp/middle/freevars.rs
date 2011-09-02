@@ -5,7 +5,7 @@ import std::map;
 import std::map::*;
 import std::option;
 import std::int;
-import std::istr;
+import std::str;
 import std::option::*;
 import syntax::ast;
 import syntax::ast_util;

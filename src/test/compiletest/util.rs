@@ -1,7 +1,7 @@
 import std::option;
 import std::generic_os::getenv;
 import std::io;
-import std::istr;
+import std::str;
 
 import common::config;
 

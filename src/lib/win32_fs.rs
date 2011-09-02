@@ -11,8 +11,8 @@ fn list_dir(path: &istr) -> [istr] {
 }
 
 fn path_is_absolute(p: &istr) -> bool {
-    ret istr::char_at(p, 0u) == '/' ||
-            istr::char_at(p, 1u) == ':' && istr::char_at(p, 2u) == '\\';
+    ret str::char_at(p, 0u) == '/' ||
+            str::char_at(p, 1u) == ':' && str::char_at(p, 2u) == '\\';
 }
 
 /* FIXME: win32 path handling actually accepts '/' or '\' and has subtly

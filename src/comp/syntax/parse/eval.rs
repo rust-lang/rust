@@ -1,5 +1,5 @@
 
-import std::istr;
+import std::str;
 import std::option;
 import std::option::some;
 import std::option::none;

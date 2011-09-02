@@ -4,7 +4,7 @@
  */
 use std;
 import std::int;
-import std::istr;
+import std::str;
 
 fn main() {
     fn multiple(n: int) {

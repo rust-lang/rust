@@ -1,6 +1,6 @@
 import std::vec;
 import std::uint;
-import std::istr;
+import std::str;
 import std::term;
 import std::io;
 import std::option;
@@ -148,13 +148,13 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
             io::stdout().write_str(
                 #ifmt[~"%s:%u ", fm.name, line + 1u]);
             let s = get_line(fm, line as int, file);
-            if !istr::ends_with(s, ~"\n") { s += ~"\n"; }
+            if !str::ends_with(s, ~"\n") { s += ~"\n"; }
             io::stdout().write_str(s);
         }
         if elided {
             let last_line = display_lines[vec::len(display_lines) - 1u];
             let s = #ifmt[~"%s:%u ", fm.name, last_line + 1u];
-            let indent = istr::char_len(s);
+            let indent = str::char_len(s);
             let out = ~"";
             while indent > 0u { out += ~" "; indent -= 1u; }
             out += ~"...\n";
@@ -172,16 +172,16 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
             while num > 0u { num /= 10u; digits += 1u; }
 
             // indent past |name:## | and the 0-offset column location
-            let left = istr::char_len(fm.name) + digits + lo.col + 3u;
+            let left = str::char_len(fm.name) + digits + lo.col + 3u;
             let s = ~"";
-            while left > 0u { istr::push_char(s, ' '); left -= 1u; }
+            while left > 0u { str::push_char(s, ' '); left -= 1u; }
 
             s += ~"^";
             let hi = lookup_char_pos(cm, option::get(sp).hi);
             if hi.col != lo.col {
                 // the ^ already takes up one space
                 let width = hi.col - lo.col - 1u;
-                while width > 0u { istr::push_char(s, '~'); width -= 1u; }
+                while width > 0u { str::push_char(s, '~'); width -= 1u; }
             }
             io::stdout().write_str(s + ~"\n");
         }
@@ -221,12 +221,12 @@ fn get_line(fm: filemap, line: int, file: &istr) -> istr {
         // If we're not done parsing the file, we're at the limit of what's
         // parsed. If we just slice the rest of the string, we'll print out
         // the remainder of the file, which is undesirable.
-        end = istr::byte_len(file);
-        let rest = istr::slice(file, begin, end);
-        let newline = istr::index(rest, '\n' as u8);
+        end = str::byte_len(file);
+        let rest = str::slice(file, begin, end);
+        let newline = str::index(rest, '\n' as u8);
         if newline != -1 { end = begin + (newline as uint); }
     }
-    ret istr::slice(file, begin, end);
+    ret str::slice(file, begin, end);
 }
 
 fn get_filemap(cm: codemap, filename: istr) -> filemap {

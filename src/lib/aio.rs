@@ -47,8 +47,8 @@ type ctx = chan<request>;
 fn ip_to_sbuf(ip: net::ip_addr) -> *u8 {
     // FIXME: This is broken. We're creating a vector, getting a pointer
     // to its buffer, then dropping the vector. On top of that, the vector
-    // created by istr::bytes is not null-terminated.
-    vec::to_ptr(istr::bytes(net::format_addr(ip)))
+    // created by str::bytes is not null-terminated.
+    vec::to_ptr(str::bytes(net::format_addr(ip)))
 }
 
 fn connect_task(ip: net::ip_addr, portnum: int, evt: chan<socket_event>) {

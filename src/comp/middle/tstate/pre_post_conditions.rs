@@ -1,6 +1,6 @@
 
 import std::vec;
-import std::istr;
+import std::str;
 import std::option;
 import std::option::none;
 import std::option::some;

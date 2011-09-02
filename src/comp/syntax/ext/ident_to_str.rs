@@ -1,5 +1,5 @@
 import std::vec;
-import std::istr;
+import std::str;
 import std::option;
 import base::*;
 import syntax::ast;

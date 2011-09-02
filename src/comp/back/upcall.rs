@@ -1,5 +1,5 @@
 
-import std::istr;
+import std::str;
 import middle::trans;
 import trans::decl_cdecl_fn;
 import middle::trans_common::T_f32;

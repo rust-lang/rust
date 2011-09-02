@@ -1,7 +1,7 @@
 
 use std;
 import std::int;
-import std::istr::eq;
+import std::str::eq;
 
 #[test]
 fn test_to_str() {

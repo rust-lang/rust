@@ -9,7 +9,7 @@ import std::getopts::opt_str;
 import std::io;
 import std::io::stdout;
 import std::vec;
-import std::istr;
+import std::str;
 import std::uint;
 import std::option;
 
@@ -28,20 +28,20 @@ fn write_file(filename: &istr, content: &istr) {
 
 fn file_contains(filename: &istr, needle: &istr) -> bool {
     let contents = io::read_whole_file_str(filename);
-    ret istr::find(contents, needle) != -1;
+    ret str::find(contents, needle) != -1;
 }
 
 fn contains(haystack: &istr, needle: &istr) -> bool {
-    istr::find(haystack, needle) != -1
+    str::find(haystack, needle) != -1
 }
 
 fn find_rust_files(files: &mutable [istr], path: &istr) {
-    if istr::ends_with(path, ~".rs") {
+    if str::ends_with(path, ~".rs") {
         if file_contains(path, ~"xfail-test") {
             //log_err "Skipping " + path + " because it is marked as xfail-test";
         } else { files += [path]; }
     } else if fs::file_is_dir(path)
-        && istr::find(path, ~"compile-fail") == -1 {
+        && str::find(path, ~"compile-fail") == -1 {
         for p in fs::list_dir(path) {
             find_rust_files(files, p);
         }

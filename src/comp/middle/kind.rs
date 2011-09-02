@@ -77,7 +77,7 @@ import syntax::visit;
 
 import std::vec;
 import std::option;
-import std::istr;
+import std::str;
 
 import ast::kind;
 import ast::kind_unique;

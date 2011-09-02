@@ -14,7 +14,7 @@ import syntax::codemap::span;
 import back::x86;
 import util::common;
 import std::vec;
-import std::istr;
+import std::str;
 import std::fs;
 import std::io;
 import std::option;
@@ -173,7 +173,7 @@ fn find_library_crate_aux(nn: &{prefix: istr, suffix: istr},
         for path: istr in fs::list_dir(library_search_path) {
             log #ifmt["searching %s", path];
             let f: istr = fs::basename(path);
-            if !(istr::starts_with(f, prefix) && istr::ends_with(f, suffix))
+            if !(str::starts_with(f, prefix) && str::ends_with(f, suffix))
                {
                 log #ifmt["skipping %s, doesn't look like %s*%s",
                          path,
@@ -200,7 +200,7 @@ fn find_library_crate_aux(nn: &{prefix: istr, suffix: istr},
 }
 
 fn get_metadata_section(filename: &istr) -> option::t<@[u8]> {
-    let mb = istr::as_buf(filename, { |buf|
+    let mb = str::as_buf(filename, { |buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
     });
     if mb as int == 0 { ret option::none::<@[u8]>; }
@@ -208,8 +208,8 @@ fn get_metadata_section(filename: &istr) -> option::t<@[u8]> {
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
         let name_buf = llvm::LLVMGetSectionName(si.llsi);
-        let name = istr::str_from_cstr(name_buf);
-        if istr::eq(name, x86::get_meta_sect_name()) {
+        let name = str::str_from_cstr(name_buf);
+        if str::eq(name, x86::get_meta_sect_name()) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi);
             let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);

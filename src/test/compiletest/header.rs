@@ -1,5 +1,5 @@
 import std::option;
-import std::istr;
+import std::str;
 import std::io;
 import std::fs;
 
@@ -74,8 +74,8 @@ iter iter_header(testfile: &istr) -> istr {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
-        if istr::starts_with(ln, ~"fn")
-            || istr::starts_with(ln, ~"mod") {
+        if str::starts_with(ln, ~"fn")
+            || str::starts_with(ln, ~"mod") {
             break;
         } else { put ln; }
     }
@@ -103,17 +103,17 @@ fn parse_pp_exact(line: &istr, testfile: &istr) -> option::t<istr> {
 }
 
 fn parse_name_directive(line: &istr, directive: &istr) -> bool {
-    istr::find(line, directive) >= 0
+    str::find(line, directive) >= 0
 }
 
 fn parse_name_value_directive(line: &istr,
                               directive: &istr) -> option::t<istr> {
     let keycolon = directive + ~":";
-    if istr::find(line, keycolon) >= 0 {
-        let colon = istr::find(line, keycolon) as uint;
+    if str::find(line, keycolon) >= 0 {
+        let colon = str::find(line, keycolon) as uint;
         let value =
-            istr::slice(line, colon + istr::byte_len(keycolon),
-                       istr::byte_len(line));
+            str::slice(line, colon + str::byte_len(keycolon),
+                       str::byte_len(line));
         log #ifmt("%s: %s", directive,
                   value);
         option::some(value)

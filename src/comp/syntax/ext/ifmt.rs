@@ -6,7 +6,7 @@
  * compiler syntax extension plugin interface.
  */
 import std::vec;
-import std::istr;
+import std::str;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -103,7 +103,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     }
     fn make_path_vec(cx: &ext_ctxt, ident: &ast::ident) -> [ast::ident] {
         fn compiling_std(cx: &ext_ctxt) -> bool {
-            ret istr::find(cx.crate_file_name(), ~"std.rc") >= 0;
+            ret str::find(cx.crate_file_name(), ~"std.rc") >= 0;
         }
         if compiling_std(cx) {
             ret [~"extifmt", ~"rt", ident];

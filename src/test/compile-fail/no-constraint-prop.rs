@@ -1,6 +1,6 @@
 // error-pattern:Unsatisfied precondition constraint (for example, le(b, d
 use std;
-import std::istr::*;
+import std::str::*;
 import std::uint::*;
 
 fn main() {

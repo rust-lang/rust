@@ -88,7 +88,7 @@ obj new_reader(rdr: buf_reader) {
 
         }
         let b0 = c0 as u8;
-        let w = istr::utf8_char_width(b0);
+        let w = str::utf8_char_width(b0);
         assert (w > 0u);
         if w == 1u { ret b0 as char; }
         let val = 0u;
@@ -117,7 +117,7 @@ obj new_reader(rdr: buf_reader) {
                 go_on = false;
             } else { buf += [ch as u8]; }
         }
-        ret istr::unsafe_from_bytes(buf);
+        ret str::unsafe_from_bytes(buf);
     }
     fn read_c_str() -> istr {
         let buf: [u8] = [];
@@ -126,7 +126,7 @@ obj new_reader(rdr: buf_reader) {
             let ch = rdr.read_byte();
             if ch < 1 { go_on = false; } else { buf += [ch as u8]; }
         }
-        ret istr::unsafe_from_bytes(buf);
+        ret str::unsafe_from_bytes(buf);
     }
 
     // FIXME deal with eof?
@@ -175,8 +175,8 @@ fn stdin() -> reader {
 }
 
 fn file_reader(path: &istr) -> reader {
-    let f = istr::as_buf(path, { |pathbuf|
-        istr::as_buf(~"r", { |modebuf|
+    let f = str::as_buf(path, { |pathbuf|
+        str::as_buf(~"r", { |modebuf|
             os::libc::fopen(pathbuf, modebuf)
         })
     });
@@ -220,7 +220,7 @@ fn new_byte_buf_reader(buf: &[u8]) -> buf_reader {
 }
 
 fn string_reader(s: &istr) -> reader {
-    ret new_reader(new_byte_buf_reader(istr::bytes(s)));
+    ret new_reader(new_byte_buf_reader(str::bytes(s)));
 }
 
 
@@ -290,7 +290,7 @@ fn file_buf_writer(path: &istr, flags: &[fileflag]) -> buf_writer {
           none. { }
         }
     }
-    let fd = istr::as_buf(path, { |pathbuf|
+    let fd = str::as_buf(path, { |pathbuf|
         os::libc::open(pathbuf, fflags,
                        os::libc_constants::S_IRUSR() |
                            os::libc_constants::S_IWUSR())
@@ -334,19 +334,19 @@ fn uint_to_be_bytes(n: uint, size: uint) -> [u8] {
 
 obj new_writer(out: buf_writer) {
     fn get_buf_writer() -> buf_writer { ret out; }
-    fn write_str(s: &istr) { out.write(istr::bytes(s)); }
+    fn write_str(s: &istr) { out.write(str::bytes(s)); }
     fn write_line(s: &istr) {
-        out.write(istr::bytes(s));
-        out.write(istr::bytes(~"\n"));
+        out.write(str::bytes(s));
+        out.write(str::bytes(~"\n"));
     }
     fn write_char(ch: char) {
         // FIXME needlessly consy
 
-        out.write(istr::bytes(istr::from_char(ch)));
+        out.write(str::bytes(str::from_char(ch)));
     }
-    fn write_int(n: int) { out.write(istr::bytes(
+    fn write_int(n: int) { out.write(str::bytes(
         int::to_str(n, 10u))); }
-    fn write_uint(n: uint) { out.write(istr::bytes(
+    fn write_uint(n: uint) { out.write(str::bytes(
         uint::to_str(n, 10u))); }
     fn write_bytes(bytes: &[u8]) { out.write(bytes); }
     fn write_le_uint(n: uint, size: uint) {
@@ -367,8 +367,8 @@ fn file_writer(path: &istr, flags: &[fileflag]) -> writer {
 
 // FIXME: fileflags
 fn buffered_file_buf_writer(path: &istr) -> buf_writer {
-    let f = istr::as_buf(path, { |pathbuf|
-        istr::as_buf(~"w", { |modebuf|
+    let f = str::as_buf(path, { |pathbuf|
+        str::as_buf(~"w", { |modebuf|
             os::libc::fopen(pathbuf, modebuf)
         })
     });
@@ -427,7 +427,7 @@ fn string_writer() -> str_writer {
     let buf: mutable_byte_buf = @{mutable buf: b, mutable pos: 0u};
     obj str_writer_wrap(wr: writer, buf: mutable_byte_buf) {
         fn get_writer() -> writer { ret wr; }
-        fn get_str() -> istr { ret istr::unsafe_from_bytes(buf.buf); }
+        fn get_str() -> istr { ret str::unsafe_from_bytes(buf.buf); }
     }
     ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
 }
@@ -448,7 +448,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
 }
 
 fn read_whole_file_str(file: &istr) -> istr {
-    istr::unsafe_from_bytes(read_whole_file(file))
+    str::unsafe_from_bytes(read_whole_file(file))
 }
 
 fn read_whole_file(file: &istr) -> [u8] {

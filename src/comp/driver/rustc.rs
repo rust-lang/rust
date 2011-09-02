@@ -26,7 +26,7 @@ import std::map::mk_hashmap;
 import std::option;
 import std::option::some;
 import std::option::none;
-import std::istr;
+import std::str;
 import std::vec;
 import std::int;
 import std::io;
@@ -107,7 +107,7 @@ fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg,
         if infile != ~"-" {
             io::file_reader(infile)
         } else { io::stdin() }.read_whole_stream();
-    let src = istr::unsafe_from_bytes(srcbytes);
+    let src = str::unsafe_from_bytes(srcbytes);
     let crate =
         parser::parse_crate_from_source_str(
             infile,
@@ -260,7 +260,7 @@ fn version(argv0: &istr) {
     // FIXME: Restore after istr conversion
     //let env_vers = #env["CFG_VERSION"];
     let env_vers = ~"FIXME";
-    if istr::byte_len(env_vers) != 0u { vers = env_vers; }
+    if str::byte_len(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(
         #ifmt["%s %s\n",
                              argv0,
@@ -307,40 +307,40 @@ options:
 }
 
 fn get_os(triple: &istr) -> session::os {
-    ret if istr::find(triple, ~"win32") >= 0 ||
-               istr::find(triple, ~"mingw32") >= 0 {
+    ret if str::find(triple, ~"win32") >= 0 ||
+               str::find(triple, ~"mingw32") >= 0 {
             session::os_win32
-        } else if istr::find(triple, ~"darwin") >= 0 {
+        } else if str::find(triple, ~"darwin") >= 0 {
             session::os_macos
-        } else if istr::find(triple, ~"linux") >= 0 {
+        } else if str::find(triple, ~"linux") >= 0 {
             session::os_linux
         } else { log_err ~"Unknown operating system!"; fail };
 }
 
 fn get_arch(triple: &istr) -> session::arch {
-    ret if istr::find(triple, ~"i386") >= 0 ||
-        istr::find(triple, ~"i486") >= 0 ||
-               istr::find(triple, ~"i586") >= 0 ||
-               istr::find(triple, ~"i686") >= 0 ||
-               istr::find(triple, ~"i786") >= 0 {
+    ret if str::find(triple, ~"i386") >= 0 ||
+        str::find(triple, ~"i486") >= 0 ||
+               str::find(triple, ~"i586") >= 0 ||
+               str::find(triple, ~"i686") >= 0 ||
+               str::find(triple, ~"i786") >= 0 {
             session::arch_x86
-        } else if istr::find(triple, ~"x86_64") >= 0 {
+        } else if str::find(triple, ~"x86_64") >= 0 {
             session::arch_x64
-        } else if istr::find(triple, ~"arm") >= 0 ||
-                      istr::find(triple, ~"xscale") >= 0 {
+        } else if str::find(triple, ~"arm") >= 0 ||
+                      str::find(triple, ~"xscale") >= 0 {
             session::arch_arm
         } else { log_err ~"Unknown architecture! " + triple; fail };
 }
 
 fn get_default_sysroot(binary: &istr) -> istr {
     let dirname = fs::dirname(binary);
-    if istr::eq(dirname, binary) { ret ~"."; }
+    if str::eq(dirname, binary) { ret ~"."; }
     ret dirname;
 }
 
 fn build_target_config() -> @session::config {
     let triple: istr =
-        istr::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple());
+        str::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple());
     let target_cfg: @session::config =
         @{os: get_os(triple),
           arch: get_arch(triple),
@@ -442,13 +442,13 @@ fn build_session(sopts: @session::options) -> session::session {
 }
 
 fn parse_pretty(sess: session::session, name: &istr) -> pp_mode {
-    if istr::eq(name, ~"normal") {
+    if str::eq(name, ~"normal") {
         ret ppm_normal;
-    } else if istr::eq(name, ~"expanded") {
+    } else if str::eq(name, ~"expanded") {
         ret ppm_expanded;
-    } else if istr::eq(name, ~"typed") {
+    } else if str::eq(name, ~"typed") {
         ret ppm_typed;
-    } else if istr::eq(name, ~"identified") { ret ppm_identified; }
+    } else if str::eq(name, ~"identified") { ret ppm_identified; }
     sess.fatal(~"argument to `pretty` must be one of `normal`, `typed`, or "
                + ~"`identified`");
 }
@@ -533,10 +533,10 @@ fn main(args: [istr]) {
         // We want to toss everything after the final '.'
         let parts =
             if !input_is_stdin(ifile) {
-                istr::split(ifile, '.' as u8)
+                str::split(ifile, '.' as u8)
             } else { [~"default", ~"rs"] };
         vec::pop(parts);
-        saved_out_filename = istr::connect(parts, ~".");
+        saved_out_filename = str::connect(parts, ~".");
         let suffix =
             alt sopts.output_type {
               link::output_type_none. { ~"none" }
@@ -591,15 +591,15 @@ fn main(args: [istr]) {
             bind fn (config: @session::config, filename: &istr) -> istr {
             if config.os == session::os_macos ||
                 config.os == session::os_linux &&
-                istr::find(filename, ~"lib") == 0 {
-                ret istr::slice(filename, 3u,
-                                istr::byte_len(filename));
+                str::find(filename, ~"lib") == 0 {
+                ret str::slice(filename, 3u,
+                                str::byte_len(filename));
             } else { ret filename; }
         }(config, _);
         fn rmext(filename: &istr) -> istr {
-            let parts = istr::split(filename, '.' as u8);
+            let parts = str::split(filename, '.' as u8);
             vec::pop(parts);
-            ret istr::connect(parts, ~".");
+            ret str::connect(parts, ~".");
         }
         ret alt config.os {
               session::os_macos. { rmext(rmlib(filename)) }
@@ -610,7 +610,7 @@ fn main(args: [istr]) {
 
     let cstore = sess.get_cstore();
     for cratepath: istr in cstore::get_used_crate_files(cstore) {
-        if istr::ends_with(cratepath, ~".rlib") {
+        if str::ends_with(cratepath, ~".rlib") {
             gcc_args += [cratepath];
             cont;
         }
@@ -641,7 +641,7 @@ fn main(args: [istr]) {
             #ifmt["linking with gcc failed with code %d", err_code]);
         sess.note(
             #ifmt["gcc arguments: %s",
-                       istr::connect(gcc_args, ~" ")]);
+                       str::connect(gcc_args, ~" ")]);
         sess.abort_if_errors();
     }
     // Clean up on Darwin

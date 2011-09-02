@@ -1,6 +1,6 @@
 import std::int;
 import std::vec;
-import std::istr;
+import std::str;
 import std::uint;
 import std::box;
 import std::ufind;
@@ -1420,7 +1420,7 @@ fn hash_type_structure(st: &sty) -> uint {
       ty_native_fn(_, args, rty) { ret hash_fn(28u, args, rty); }
       ty_obj(methods) {
         let h = 29u;
-        for m: method in methods { h += h << 5u + istr::hash(m.ident); }
+        for m: method in methods { h += h << 5u + str::hash(m.ident); }
         ret h;
       }
       ty_var(v) { ret hash_uint(30u, v as uint); }
@@ -1447,7 +1447,7 @@ fn hash_type_info(st: &sty, cname_opt: &option::t<istr>) -> uint {
     let h = hash_type_structure(st);
     alt cname_opt {
       none. {/* no-op */ }
-      some(s) { h += h << 5u + istr::hash(s); }
+      some(s) { h += h << 5u + str::hash(s); }
     }
     ret h;
 }
@@ -1511,7 +1511,7 @@ fn eq_raw_ty(a: &@raw_t, b: &@raw_t) -> bool {
       none. { alt b.cname { none. {/* ok */ } _ { ret false; } } }
       some(s_a) {
         alt b.cname {
-          some(s_b) { if !istr::eq(s_a, s_b) { ret false; } }
+          some(s_b) { if !str::eq(s_a, s_b) { ret false; } }
           _ { ret false; }
         }
       }
@@ -1708,7 +1708,7 @@ fn stmt_node_id(s: &@ast::stmt) -> ast::node_id {
 fn field_idx(sess: &session::session, sp: &span, id: &ast::ident,
              fields: &[field]) -> uint {
     let i: uint = 0u;
-    for f: field in fields { if istr::eq(f.ident, id) { ret i; } i += 1u; }
+    for f: field in fields { if str::eq(f.ident, id) { ret i; } i += 1u; }
     sess.span_fatal(sp, ~"unknown field '" +
                     id + ~"' of record");
 }
@@ -1716,13 +1716,13 @@ fn field_idx(sess: &session::session, sp: &span, id: &ast::ident,
 fn method_idx(sess: &session::session, sp: &span, id: &ast::ident,
               meths: &[method]) -> uint {
     let i: uint = 0u;
-    for m: method in meths { if istr::eq(m.ident, id) { ret i; } i += 1u; }
+    for m: method in meths { if str::eq(m.ident, id) { ret i; } i += 1u; }
     sess.span_fatal(sp, ~"unknown method '" + id + ~"' of obj");
 }
 
 fn sort_methods(meths: &[method]) -> [method] {
     fn method_lteq(a: &method, b: &method) -> bool {
-        ret istr::lteq(a.ident, b.ident);
+        ret str::lteq(a.ident, b.ident);
     }
     ret std::sort::merge_sort::<method>(bind method_lteq(_, _), meths);
 }
@@ -2039,7 +2039,7 @@ mod unify {
         while i < expected_len {
             let e_meth = expected_meths[i];
             let a_meth = actual_meths[i];
-            if !istr::eq(e_meth.ident, a_meth.ident) {
+            if !str::eq(e_meth.ident, a_meth.ident) {
                 ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident));
             }
             let r =
@@ -2316,7 +2316,7 @@ mod unify {
                       none. { ret ures_err(terr_record_mutability); }
                       some(m) { mut = m; }
                     }
-                    if !istr::eq(expected_field.ident, actual_field.ident) {
+                    if !str::eq(expected_field.ident, actual_field.ident) {
                         let err =
                             terr_record_fields(expected_field.ident,
                                                actual_field.ident);

@@ -1,6 +1,6 @@
 // error-pattern:Predicate le(a, b) failed
 use std;
-import std::istr::*;
+import std::str::*;
 import std::uint::le;
 
 fn main() {

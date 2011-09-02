@@ -52,7 +52,7 @@ fn color_supported() -> bool {
     ret alt generic_os::getenv(~"TERM") {
           option::some(env) {
             for term: istr in supported_terms {
-                if istr::eq(term, env) { ret true; }
+                if str::eq(term, env) { ret true; }
             }
             false
           }

@@ -1,5 +1,5 @@
 
-import istr::sbuf;
+import str::sbuf;
 
 export program;
 export run_program;
@@ -13,9 +13,9 @@ native "rust" mod rustrt {
 }
 
 fn arg_vec(prog: &istr, args: &[@istr]) -> [sbuf] {
-    let argptrs = istr::as_buf(prog, { |buf| [buf] });
+    let argptrs = str::as_buf(prog, { |buf| [buf] });
     for arg in args {
-        argptrs += istr::as_buf(*arg, { |buf| [buf] });
+        argptrs += str::as_buf(*arg, { |buf| [buf] });
     }
     argptrs += [unsafe::reinterpret_cast(0)];
     ret argptrs;
@@ -106,7 +106,7 @@ fn read_all(rd: &io::reader) -> istr {
     let buf = ~"";
     while !rd.eof() {
         let bytes = rd.read_bytes(4096u);
-        buf += istr::unsafe_from_bytes(bytes);
+        buf += str::unsafe_from_bytes(bytes);
     }
     ret buf;
 }

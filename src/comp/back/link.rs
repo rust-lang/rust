@@ -5,7 +5,7 @@ import front::attr;
 import middle::ty;
 import metadata::encoder;
 import middle::trans_common::crate_ctxt;
-import std::istr;
+import std::str;
 import std::fs;
 import std::vec;
 import std::option;
@@ -37,7 +37,7 @@ fn llvm_err(sess: session::session, msg: &istr) {
         sess.fatal(msg);
     } else {
         sess.fatal(
-            msg + ~": " + istr::str_from_cstr(buf));
+            msg + ~": " + str::str_from_cstr(buf));
     }
 }
 
@@ -45,7 +45,7 @@ fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
     let path =
         fs::connect(sess.get_opts().sysroot,
                     ~"lib/intrinsics.bc");
-    let membuf = istr::as_buf(path, { |buf|
+    let membuf = str::as_buf(path, { |buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
     });
     if membuf as uint == 0u {
@@ -78,11 +78,11 @@ mod write {
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
     fn mk_intermediate_name(output_path: &istr, extension: &istr) -> istr {
-        let dot_pos = istr::index(output_path, '.' as u8);
+        let dot_pos = str::index(output_path, '.' as u8);
         let stem;
         if dot_pos < 0 {
             stem = output_path;
-        } else { stem = istr::substr(output_path, 0u, dot_pos as uint); }
+        } else { stem = str::substr(output_path, 0u, dot_pos as uint); }
         ret stem + ~"." + extension;
     }
     fn run_passes(sess: session::session, llmod: ModuleRef, output: &istr) {
@@ -103,14 +103,14 @@ mod write {
               output_type_bitcode. {
                 if opts.optimize != 0u {
                     let filename = mk_intermediate_name(output, ~"no-opt.bc");
-                    istr::as_buf(filename, { |buf|
+                    str::as_buf(filename, { |buf|
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     });
                 }
               }
               _ {
                 let filename = mk_intermediate_name(output, ~"bc");
-                istr::as_buf(filename, { |buf|
+                str::as_buf(filename, { |buf|
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
                 });
               }
@@ -185,7 +185,7 @@ mod write {
 
                 let filename = mk_intermediate_name(output, ~"opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                istr::as_buf(filename, { |buf|
+                str::as_buf(filename, { |buf|
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
                 });
                 pm = mk_pass_manager();
@@ -193,8 +193,8 @@ mod write {
 
                 if opts.output_type == output_type_assembly {
                     let _: () =
-                        istr::as_buf(x86::get_target_triple(), { |buf_t|
-                            istr::as_buf(output, { |buf_o|
+                        str::as_buf(x86::get_target_triple(), { |buf_t|
+                            str::as_buf(output, { |buf_o|
                                 llvm::LLVMRustWriteOutputFile(
                                     pm.llpm, llmod,
                                     buf_t,
@@ -210,8 +210,8 @@ mod write {
                 if opts.output_type == output_type_object ||
                        opts.output_type == output_type_exe {
                     let _: () =
-                        istr::as_buf(x86::get_target_triple(), { |buf_t|
-                            istr::as_buf(output, { |buf_o|
+                        str::as_buf(x86::get_target_triple(), { |buf_t|
+                            str::as_buf(output, { |buf_o|
                                 llvm::LLVMRustWriteOutputFile(
                                     pm.llpm, llmod,
                                     buf_t,
@@ -224,8 +224,8 @@ mod write {
                 // If we aren't saving temps then just output the file
                 // type corresponding to the '-c' or '-S' flag used
 
-                let _: () = istr::as_buf(x86::get_target_triple(), { |buf_t|
-                    istr::as_buf(output, { |buf_o|
+                let _: () = str::as_buf(x86::get_target_triple(), { |buf_t|
+                    str::as_buf(output, { |buf_o|
                         llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
                                                       buf_t,
                                                       buf_o,
@@ -243,7 +243,7 @@ mod write {
         // flag, then output it here
 
         llvm::LLVMRunPassManager(pm.llpm, llmod);
-        istr::as_buf(output, { |buf|
+        str::as_buf(output, { |buf|
             llvm::LLVMWriteBitcodeToFile(llmod, buf)
         });
         llvm::LLVMDisposeModule(llmod);
@@ -340,7 +340,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
     fn crate_meta_extras_hash(sha: sha1, _crate: &ast::crate,
                               metas: &provided_metas) -> istr {
         fn len_and_str(s: &istr) -> istr {
-            ret #ifmt["%u_%s", istr::byte_len(s), s];
+            ret #ifmt["%u_%s", str::byte_len(s), s];
         }
 
         fn len_and_str_lit(l: &ast::lit) -> istr {
@@ -383,12 +383,12 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
               none. {
                 let name =
                     {
-                        let os = istr::split(
+                        let os = str::split(
                             fs::basename(output),
                             '.' as u8);
                         assert (vec::len(os) >= 2u);
                         vec::pop(os);
-                        istr::connect(os, ~".")
+                        str::connect(os, ~".")
                     };
                 warn_missing(sess, ~"name", name);
                 name
@@ -417,7 +417,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
 }
 
 fn truncated_sha1_result(sha: sha1) -> istr {
-    ret istr::substr(sha.result_str(), 0u, 16u);
+    ret str::substr(sha.result_str(), 0u, 16u);
 }
 
 
@@ -458,7 +458,7 @@ fn mangle(ss: &[istr]) -> istr {
     let n = ~"_ZN"; // Begin name-sequence.
 
     for s: istr in ss {
-        n += #ifmt["%u%s", istr::byte_len(s), s];
+        n += #ifmt["%u%s", str::byte_len(s), s];
     }
     n += ~"E"; // End name-sequence.
 

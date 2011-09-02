@@ -9,7 +9,7 @@ import std::map;
 import std::option;
 import std::option::some;
 import std::option::none;
-import std::istr;
+import std::str;
 import syntax::parse::parser::parse_sess;
 
 tag os { os_win32; os_macos; os_linux; }

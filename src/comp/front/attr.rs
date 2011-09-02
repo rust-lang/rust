@@ -1,7 +1,7 @@
 // Functions dealing with attributes and meta_items
 
 import std::vec;
-import std::istr;
+import std::str;
 import std::map;
 import std::option;
 import syntax::ast;

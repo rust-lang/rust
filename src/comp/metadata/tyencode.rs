@@ -1,6 +1,6 @@
 // Type encoding
 
-import std::istr;
+import std::str;
 import std::io;
 import std::map::hashmap;
 import std::option::some;

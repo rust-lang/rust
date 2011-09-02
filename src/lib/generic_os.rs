@@ -1,17 +1,17 @@
-import istr::sbuf;
+import str::sbuf;
 
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 fn getenv(n: &istr) -> option::t<istr> {
-    let s = istr::as_buf(n, { |buf|
+    let s = str::as_buf(n, { |buf|
         os::libc::getenv(buf)
     });
     ret if unsafe::reinterpret_cast(s) == 0 {
         option::none::<istr>
     } else {
         let s = unsafe::reinterpret_cast(s);
-        option::some::<istr>(istr::str_from_cstr(s))
+        option::some::<istr>(str::str_from_cstr(s))
     };
 }
 
@@ -19,9 +19,9 @@ fn getenv(n: &istr) -> option::t<istr> {
 #[cfg(target_os = "macos")]
 fn setenv(n: &istr, v: &istr) {
     // FIXME (868)
-    let _: () = istr::as_buf(n, { |nbuf|
+    let _: () = str::as_buf(n, { |nbuf|
         // FIXME (868)
-        let _: () = istr::as_buf(v, { |vbuf|
+        let _: () = str::as_buf(v, { |vbuf|
             os::libc::setenv(nbuf, vbuf, 1);
         });
     });
@@ -33,7 +33,7 @@ fn getenv(n: &istr) -> option::t<istr> {
     while true {
         let v: [u8] = [];
         vec::reserve(v, nsize);
-        let res = istr::as_buf(n, { |nbuf|
+        let res = str::as_buf(n, { |nbuf|
             let vbuf = vec::to_ptr(v);
             os::kernel32::GetEnvironmentVariableA(nbuf, vbuf, nsize)
         });
@@ -41,7 +41,7 @@ fn getenv(n: &istr) -> option::t<istr> {
             ret option::none;
         } else if res < nsize {
             vec::unsafe::set_len(v, res);
-            ret option::some(istr::unsafe_from_bytes(v));
+            ret option::some(str::unsafe_from_bytes(v));
         } else { nsize = res; }
     }
     fail;
@@ -50,8 +50,8 @@ fn getenv(n: &istr) -> option::t<istr> {
 #[cfg(target_os = "win32")]
 fn setenv(n: &istr, v: &istr) {
     // FIXME (868)
-    let _: () = istr::as_buf(n, { |nbuf|
-        let _: () = istr::as_buf(v, { |vbuf|
+    let _: () = str::as_buf(n, { |nbuf|
+        let _: () = str::as_buf(v, { |vbuf|
             os::kernel32::SetEnvironmentVariableA(nbuf, vbuf);
         });
     });

@@ -9,7 +9,7 @@ use std;
 import std::vec;
 import std::uint;
 import std::int;
-import std::istr;
+import std::str;
 
 fn LINE_LENGTH() -> uint { ret 60u; }
 
@@ -49,21 +49,21 @@ fn make_random_fasta(id: &istr, desc: &istr,
     let rng = myrandom(std::rand::mk_rng().next());
     let op: istr = ~"";
     for each i: uint in uint::range(0u, n as uint) {
-        istr::push_byte(op, select_random(rng.next(100u32), genelist) as u8);
-        if istr::byte_len(op) >= LINE_LENGTH() { log op; op = ~""; }
+        str::push_byte(op, select_random(rng.next(100u32), genelist) as u8);
+        if str::byte_len(op) >= LINE_LENGTH() { log op; op = ~""; }
     }
-    if istr::byte_len(op) > 0u { log op; }
+    if str::byte_len(op) > 0u { log op; }
 }
 
 fn make_repeat_fasta(id: &istr, desc: &istr, s: &istr, n: int) {
     log ~">" + id + ~" " + desc;
     let op: istr = ~"";
-    let sl: uint = istr::byte_len(s);
+    let sl: uint = str::byte_len(s);
     for each i: uint in uint::range(0u, n as uint) {
-        istr::push_byte(op, s[i % sl]);
-        if istr::byte_len(op) >= LINE_LENGTH() { log op; op = ~""; }
+        str::push_byte(op, s[i % sl]);
+        if str::byte_len(op) >= LINE_LENGTH() { log op; op = ~""; }
     }
-    if istr::byte_len(op) > 0u { log op; }
+    if str::byte_len(op) > 0u { log op; }
 }
 
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }

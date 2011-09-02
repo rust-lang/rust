@@ -2,7 +2,7 @@
 
 import std::option;
 import std::vec;
-import std::istr;
+import std::str;
 import syntax::ast;
 import syntax::ast_util;
 import syntax::ast_util::*;

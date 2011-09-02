@@ -5,7 +5,7 @@ import std::option::some;
 
 import std::map::hashmap;
 import std::vec;
-import std::istr;
+import std::str;
 
 import syntax::ast::crate;
 import syntax::ast::expr_;

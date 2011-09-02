@@ -3,7 +3,7 @@
 
 import std::vec;
 import std::map;
-import std::istr;
+import std::str;
 import syntax::ast;
 
 export cstore;
@@ -106,7 +106,7 @@ fn get_used_libraries(cstore: &cstore) -> [istr] {
 }
 
 fn add_used_link_args(cstore: &cstore, args: &istr) {
-    p(cstore).used_link_args += istr::split(args, ' ' as u8);
+    p(cstore).used_link_args += str::split(args, ' ' as u8);
 }
 
 fn get_used_link_args(cstore: &cstore) -> [istr] {

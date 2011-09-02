@@ -36,7 +36,7 @@ import middle::ty::unify::fix_ok;
 import middle::ty::unify::fix_err;
 import std::int;
 import std::vec;
-import std::istr;
+import std::str;
 import std::uint;
 import std::map;
 import std::map::hashmap;
@@ -1443,7 +1443,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
                      ex_f_count, f_count]);
         }
         fn matches(name: &istr, f: &ty::field) -> bool {
-            ret istr::eq(name, f.ident);
+            ret str::eq(name, f.ident);
         }
         for f: ast::field_pat in fields {
             alt vec::find(bind matches(f.ident, _), ex_fields) {
@@ -2233,7 +2233,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
             for f: spanned<ty::field> in fields_t {
                 let found = false;
                 for bf: ty::field in base_fields {
-                    if istr::eq(f.node.ident, bf.ident) {
+                    if str::eq(f.node.ident, bf.ident) {
                         demand::simple(fcx, f.span, bf.mt.ty, f.node.mt.ty);
                         found = true;
                     }
@@ -2397,7 +2397,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                option::t<ty::method> {
 
                 for om: @ast::method in outer_obj_methods {
-                    if istr::eq(om.node.ident, m.ident) {
+                    if str::eq(om.node.ident, m.ident) {
                         // We'd better be overriding with one of the same
                         // type.  Check to make sure.
                         let new_type = ty_of_method(ccx, om);

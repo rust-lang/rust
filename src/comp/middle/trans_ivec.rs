@@ -114,7 +114,7 @@ fn trans_ivec(bcx: &@block_ctxt, args: &[@ast::expr],
     ret rslt(bcx, vptr);
 }
 fn trans_istr(bcx: &@block_ctxt, s: istr) -> result {
-    let veclen = std::istr::byte_len(s) + 1u; // +1 for \0
+    let veclen = std::str::byte_len(s) + 1u; // +1 for \0
     let {bcx, val: sptr, _} =
         alloc(bcx, ty::mk_istr(bcx_tcx(bcx)), veclen);
 

@@ -1,5 +1,5 @@
 import std::vec;
-import std::istr;
+import std::str;
 import std::int;
 import std::option;
 import std::option::none;
@@ -44,7 +44,7 @@ fn fn_ident_to_string(id: ast::node_id, i: &ast::fn_ident) -> istr {
 fn get_id_ident(cx: &ctxt, id: ast::def_id) -> istr {
     if id.crate != ast::local_crate {
         alt cx.ext_map.find(id) {
-          some(j) { istr::connect(j, ~"::") }
+          some(j) { str::connect(j, ~"::") }
           _ { fail (~"get_id_ident: can't find item in ext_map, id.crate = "
                     + int::str(id.crate)) }
         }
@@ -76,7 +76,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> istr {
         s += ~"(";
         let strs = [];
         for a: arg in inputs { strs += [fn_input_to_str(cx, a)]; }
-        s += istr::connect(strs, ~", ");
+        s += str::connect(strs, ~", ");
         s += ~")";
         if struct(cx, output) != ty_nil {
             alt cf {
@@ -128,19 +128,19 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> istr {
           ty_rec(elems) {
             let strs: [istr] = [];
             for fld: field in elems { strs += [field_to_str(cx, fld)]; }
-            ~"{" + istr::connect(strs, ~",") + ~"}"
+            ~"{" + str::connect(strs, ~",") + ~"}"
           }
           ty_tup(elems) {
             let strs = [];
             for elem in elems { strs += [ty_to_str(cx, elem)]; }
-            ~"(" + istr::connect(strs, ~",") + ~")"
+            ~"(" + str::connect(strs, ~",") + ~")"
           }
           ty_tag(id, tps) {
             let s = get_id_ident(cx, id);
             if vec::len::<t>(tps) > 0u {
                 let strs: [istr] = [];
                 for typ: t in tps { strs += [ty_to_str(cx, typ)]; }
-                s += ~"[" + istr::connect(strs, ~",") + ~"]";
+                s += ~"[" + str::connect(strs, ~",") + ~"]";
             }
             s
           }
@@ -154,12 +154,12 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> istr {
           ty_obj(meths) {
             let strs = [];
             for m: method in meths { strs += [method_to_str(cx, m)]; }
-            ~"obj {\n\t" + istr::connect(strs, ~"\n\t") + ~"\n}"
+            ~"obj {\n\t" + str::connect(strs, ~"\n\t") + ~"\n}"
           }
           ty_res(id, _, _) { get_id_ident(cx, id) }
           ty_var(v) { ~"<T" + int::str(v) + ~">" }
           ty_param(id, _) {
-            ~"'" + istr::unsafe_from_bytes([('a' as u8) + (id as u8)])
+            ~"'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)])
           }
           _ { ty_to_short_str(cx, typ) }
         }
@@ -167,7 +167,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> istr {
 
 fn ty_to_short_str(cx: &ctxt, typ: t) -> istr {
     let s = encoder::encoded_ty(cx, typ);
-    if istr::byte_len(s) >= 32u { s = istr::substr(s, 0u, 32u); }
+    if str::byte_len(s) >= 32u { s = str::substr(s, 0u, 32u); }
     ret s;
 }
 

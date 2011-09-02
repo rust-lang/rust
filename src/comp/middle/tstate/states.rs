@@ -1,7 +1,7 @@
 import syntax::print::pprust::path_to_str;
 import util::ppaux::ty_to_str;
 import std::vec;
-import std::istr;
+import std::str;
 import std::option;
 import std::option::get;
 import std::option::is_none;

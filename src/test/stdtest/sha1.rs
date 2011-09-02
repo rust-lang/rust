@@ -5,7 +5,7 @@
 use std;
 import std::sha1;
 import std::vec;
-import std::istr;
+import std::str;
 
 #[test]
 fn test() {
@@ -74,11 +74,11 @@ fn test() {
 
     // Test that it works when accepting the message in pieces
     for t: test in tests {
-        let len = istr::byte_len(t.input);
+        let len = str::byte_len(t.input);
         let left = len;
         while left > 0u {
             let take = (left + 1u) / 2u;
-            sh.input_str(istr::substr(t.input, len - left, take));
+            sh.input_str(str::substr(t.input, len - left, take));
             left = left - take;
         }
         let out = sh.result();

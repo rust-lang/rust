@@ -4,11 +4,11 @@ native "cdecl" mod libc = "" {
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
     fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn open(s: istr::sbuf, flags: int, mode: uint) -> int = "_open";
+    fn open(s: str::sbuf, flags: int, mode: uint) -> int = "_open";
     fn close(fd: int) -> int = "_close";
     type FILE;
-    fn fopen(path: istr::sbuf, mode: istr::sbuf) -> FILE;
-    fn _fdopen(fd: int, mode: istr::sbuf) -> FILE;
+    fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
+    fn _fdopen(fd: int, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
     fn fgetc(f: FILE) -> int;
     fn ungetc(c: int, f: FILE);
@@ -40,9 +40,9 @@ mod libc_constants {
 }
 
 native "x86stdcall" mod kernel32 {
-    fn GetEnvironmentVariableA(n: istr::sbuf, v: istr::sbuf,
+    fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf,
                                nsize: uint) -> uint;
-    fn SetEnvironmentVariableA(n: istr::sbuf, v: istr::sbuf) -> int;
+    fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
 }
 
 fn exec_suffix() -> istr { ret ~".exe"; }
@@ -69,7 +69,7 @@ fn pipe() -> {in: int, out: int} {
 }
 
 fn fd_FILE(fd: int) -> libc::FILE {
-    ret istr::as_buf(~"r", { |modebuf|
+    ret str::as_buf(~"r", { |modebuf|
         libc::_fdopen(fd, modebuf)
     });
 }

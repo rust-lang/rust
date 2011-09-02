@@ -13,7 +13,7 @@ use std;
 import option = std::option::t;
 import std::option::some;
 import std::option::none;
-import std::istr;
+import std::str;
 import std::map;
 import std::vec;
 import std::io;
@@ -227,7 +227,7 @@ fn read_word(r: io::reader) -> option<istr> {
 
 
         if is_word_char(c) {
-            w += istr::from_char(c);
+            w += str::from_char(c);
         } else { if w != ~"" { ret some(w); } }
     }
     ret none;

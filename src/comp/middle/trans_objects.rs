@@ -1,6 +1,6 @@
 // Translation of object-related things to LLVM IR.
 
-import std::istr;
+import std::str;
 import std::option;
 import std::vec;
 import option::none;
@@ -396,7 +396,7 @@ tag vtbl_mthd {
 
 // Alphabetize ast::methods by ident.  A helper for create_vtbl.
 fn ast_mthd_lteq(a: &@ast::method, b: &@ast::method) -> bool {
-    ret istr::lteq(a.node.ident, b.node.ident);
+    ret str::lteq(a.node.ident, b.node.ident);
 }
 
 // Alphabetize vtbl_mthds by ident.  A helper for create_vtbl.
@@ -404,14 +404,14 @@ fn vtbl_mthd_lteq(a: &vtbl_mthd, b: &vtbl_mthd) -> bool {
     alt a {
       normal_mthd(ma) {
         alt b {
-          normal_mthd(mb) { ret istr::lteq(ma.node.ident, mb.node.ident); }
-          fwding_mthd(mb) { ret istr::lteq(ma.node.ident, mb.ident); }
+          normal_mthd(mb) { ret str::lteq(ma.node.ident, mb.node.ident); }
+          fwding_mthd(mb) { ret str::lteq(ma.node.ident, mb.ident); }
         }
       }
       fwding_mthd(ma) {
         alt b {
-          normal_mthd(mb) { ret istr::lteq(ma.ident, mb.node.ident); }
-          fwding_mthd(mb) { ret istr::lteq(ma.ident, mb.ident); }
+          normal_mthd(mb) { ret str::lteq(ma.ident, mb.node.ident); }
+          fwding_mthd(mb) { ret str::lteq(ma.ident, mb.ident); }
         }
       }
     }
@@ -430,7 +430,7 @@ fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd, addtl_meths: [@ast::method])
     alt m {
       fwding_mthd(fm) {
         for am: @ast::method in addtl_meths {
-            if istr::eq(am.node.ident, fm.ident) { ret none; }
+            if str::eq(am.node.ident, fm.ident) { ret none; }
         }
         ret some(fwding_mthd(fm));
       }
@@ -570,7 +570,7 @@ fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: &istr) ->
     let vtbl = C_struct(llmethods);
     let vtbl_name = mangle_internal_name_by_path(
         cx.ccx, cx.path + [name]);
-    let gvar = istr::as_buf(vtbl_name, { |buf|
+    let gvar = str::as_buf(vtbl_name, { |buf|
         llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl), buf)
     });
     llvm::LLVMSetInitializer(gvar, vtbl);

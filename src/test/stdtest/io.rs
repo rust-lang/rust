@@ -1,7 +1,7 @@
 // -*- rust -*-
 use std;
 import std::io;
-import std::istr;
+import std::str;
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "win32")]
@@ -19,7 +19,7 @@ fn test_simple() {
     let inp: io::reader = io::file_reader(tmpfile);
     let frood2: istr = inp.read_c_str();
     log frood2;
-    assert (istr::eq(frood, frood2));
+    assert (str::eq(frood, frood2));
 }
 
 // FIXME (726)

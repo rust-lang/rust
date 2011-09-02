@@ -265,7 +265,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
             let filter =
                 bind fn (test: &test_desc, filter_str: &istr) ->
                         option::t<test_desc> {
-                         if istr::find(test.name, filter_str) >= 0 {
+                         if str::find(test.name, filter_str) >= 0 {
                              ret option::some(test);
                          } else { ret option::none; }
                      }(_, filter_str);
@@ -296,7 +296,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
     filtered =
         {
             fn lteq(t1: &test_desc, t2: &test_desc) -> bool {
-                istr::lteq(t1.name, t2.name)
+                str::lteq(t1.name, t2.name)
             }
             sort::merge_sort(lteq, filtered)
         };

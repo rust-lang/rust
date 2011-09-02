@@ -1,7 +1,7 @@
 // Type decoding
 
 import std::vec;
-import std::istr;
+import std::str;
 import std::uint;
 import std::option;
 import std::option::none;
@@ -44,7 +44,7 @@ fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool) ->
    ast::ident {
     let rslt = ~"";
     while !is_last(peek(st) as char) {
-        rslt += istr::unsafe_from_byte(next(st));
+        rslt += str::unsafe_from_byte(next(st));
     }
     ret rslt;
 }
@@ -227,7 +227,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         while peek(st) as char != ']' {
             let name = ~"";
             while peek(st) as char != '=' {
-                name += istr::unsafe_from_byte(next(st));
+                name += str::unsafe_from_byte(next(st));
             }
             st.pos = st.pos + 1u;
             fields += [{ident: name, mt: parse_mt(st, sd)}];
@@ -280,7 +280,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
             }
             let name = ~"";
             while peek(st) as char != '[' {
-                name += istr::unsafe_from_byte(next(st));
+                name += str::unsafe_from_byte(next(st));
             }
             let func = parse_ty_fn(st, sd);
             methods +=
@@ -345,7 +345,7 @@ fn parse_mt(st: @pstate, sd: str_def) -> ty::mt {
 fn parse_def(st: @pstate, sd: str_def) -> ast::def_id {
     let def = ~"";
     while peek(st) as char != '|' {
-        def += istr::unsafe_from_byte(next(st));
+        def += str::unsafe_from_byte(next(st));
     }
     st.pos = st.pos + 1u;
     ret sd(def);

@@ -1,5 +1,5 @@
 use std;
-import std::istr::*;
+import std::str::*;
 import std::uint::*;
 
 fn main() {
