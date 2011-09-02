@@ -282,7 +282,7 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
     let seq_t = ty::expr_ty(cx.tcx, seq);
     alt ty::struct(cx.tcx, seq_t) {
       ty::ty_vec(mt) { if mt.mut != ast::imm { unsafe = some(seq_t); } }
-      ty::ty_str. | ty::ty_istr. {/* no-op */ }
+      ty::ty_istr. {/* no-op */ }
       _ {
         cx.tcx.sess.span_unimpl(seq.span, ~"unknown seq type " +
                                 util::ppaux::ty_to_str(cx.tcx, seq_t));

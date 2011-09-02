@@ -10,15 +10,13 @@ import middle::trans_common::T_i1;
 import middle::trans_common::T_i8;
 import middle::trans_common::T_i32;
 import middle::trans_common::T_int;
-import middle::trans_common::T_ivec;
+import middle::trans_common::T_vec;
 import middle::trans_common::T_nil;
 import middle::trans_common::T_opaque_chan_ptr;
-import middle::trans_common::T_opaque_ivec;
+import middle::trans_common::T_opaque_vec;
 import middle::trans_common::T_opaque_port_ptr;
-import middle::trans_common::T_opaque_vec_ptr;
 import middle::trans_common::T_ptr;
 import middle::trans_common::T_size_t;
-import middle::trans_common::T_str;
 import middle::trans_common::T_void;
 import lib::llvm::type_names;
 import lib::llvm::llvm::ModuleRef;
@@ -37,11 +35,9 @@ type upcalls =
      shared_malloc: ValueRef,
      shared_free: ValueRef,
      mark: ValueRef,
-     new_str: ValueRef,
-     evec_append: ValueRef,
      get_type_desc: ValueRef,
-     ivec_grow: ValueRef,
-     ivec_push: ValueRef,
+     vec_grow: ValueRef,
+     vec_push: ValueRef,
      cmp_type: ValueRef,
      log_type: ValueRef,
      dynastack_mark: ValueRef,
@@ -82,22 +78,16 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
                 T_ptr(T_i8())),
           shared_free: dv(~"shared_free", [T_ptr(T_i8())]),
           mark: d(~"mark", [T_ptr(T_i8())], T_int()),
-          new_str: d(~"new_str", [T_ptr(T_i8()), T_size_t()], T_ptr(T_str())),
-          evec_append:
-              d(~"evec_append",
-                [T_ptr(tydesc_type), T_ptr(tydesc_type),
-                 T_ptr(T_opaque_vec_ptr()), T_opaque_vec_ptr(), T_bool()],
-                T_void()),
           get_type_desc:
               d(~"get_type_desc",
                 [T_ptr(T_nil()), T_size_t(), T_size_t(), T_size_t(),
                  T_ptr(T_ptr(tydesc_type)), T_int()], T_ptr(tydesc_type)),
-          ivec_grow:
-              d(~"vec_grow", [T_ptr(T_ptr(T_opaque_ivec())), T_int()],
+          vec_grow:
+              d(~"vec_grow", [T_ptr(T_ptr(T_opaque_vec())), T_int()],
                 T_void()),
-          ivec_push:
+          vec_push:
               d(~"vec_push",
-                [T_ptr(T_ptr(T_opaque_ivec())), T_ptr(tydesc_type),
+                [T_ptr(T_ptr(T_opaque_vec())), T_ptr(tydesc_type),
                  T_ptr(T_i8())], T_void()),
           cmp_type:
               dr(~"cmp_type",

@@ -113,7 +113,6 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
         }
       }
       ty::ty_char. { w.write_char('c'); }
-      ty::ty_str. { w.write_char('s'); }
       ty::ty_istr. { w.write_char('S'); }
       ty::ty_tag(def, tys) {
         w.write_str(~"t[");

@@ -13,14 +13,14 @@ import trans_build::*;
 import trans_common::*;
 
 fn get_fill(bcx: &@block_ctxt, vptr: ValueRef) -> ValueRef {
-    Load(bcx, InBoundsGEP(bcx, vptr, [C_int(0), C_uint(abi::ivec_elt_fill)]))
+    Load(bcx, InBoundsGEP(bcx, vptr, [C_int(0), C_uint(abi::vec_elt_fill)]))
 }
 fn get_alloc(bcx: &@block_ctxt, vptr: ValueRef) -> ValueRef {
-    Load(bcx, InBoundsGEP(bcx, vptr, [C_int(0), C_uint(abi::ivec_elt_alloc)]))
+    Load(bcx, InBoundsGEP(bcx, vptr, [C_int(0), C_uint(abi::vec_elt_alloc)]))
 }
 fn get_dataptr(bcx: &@block_ctxt, vpt: ValueRef,
                unit_ty: TypeRef) -> ValueRef {
-    let ptr = InBoundsGEP(bcx, vpt, [C_int(0), C_uint(abi::ivec_elt_elems)]);
+    let ptr = InBoundsGEP(bcx, vpt, [C_int(0), C_uint(abi::vec_elt_elems)]);
     PointerCast(bcx, ptr, T_ptr(unit_ty))
 }
 
@@ -32,14 +32,14 @@ fn pointer_add(bcx: &@block_ctxt, ptr: ValueRef, bytes: ValueRef)
 }
 
 fn alloc_raw(bcx: &@block_ctxt, fill: ValueRef, alloc: ValueRef) -> result {
-    let llvecty = T_opaque_ivec();
+    let llvecty = T_opaque_vec();
     let vecsize = Add(bcx, alloc, llsize_of(llvecty));
     let {bcx, val: vecptr} =
         trans_shared_malloc(bcx, T_ptr(llvecty), vecsize);
     Store(bcx, fill, InBoundsGEP
-          (bcx, vecptr, [C_int(0), C_uint(abi::ivec_elt_fill)]));
+          (bcx, vecptr, [C_int(0), C_uint(abi::vec_elt_fill)]));
     Store(bcx, alloc, InBoundsGEP
-          (bcx, vecptr, [C_int(0), C_uint(abi::ivec_elt_alloc)]));
+          (bcx, vecptr, [C_int(0), C_uint(abi::vec_elt_alloc)]));
     ret {bcx: bcx, val: vecptr};
 }
 
@@ -52,7 +52,7 @@ type alloc_result = {bcx: @block_ctxt,
 fn alloc(bcx: &@block_ctxt, vec_ty: &ty::t, elts: uint) -> alloc_result {
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
-    let llvecty = T_ivec(llunitty);
+    let llvecty = T_vec(llunitty);
     let {bcx, val: unit_sz} = size_of(bcx, unit_ty);
 
     let fill = Mul(bcx, C_uint(elts), unit_sz);
@@ -67,11 +67,11 @@ fn alloc(bcx: &@block_ctxt, vec_ty: &ty::t, elts: uint) -> alloc_result {
 fn duplicate(bcx: &@block_ctxt, vptrptr: ValueRef) -> @block_ctxt {
     let vptr = Load(bcx, vptrptr);
     let fill = get_fill(bcx, vptr);
-    let size = Add(bcx, fill, llsize_of(T_opaque_ivec()));
+    let size = Add(bcx, fill, llsize_of(T_opaque_vec()));
     let {bcx, val: newptr} = trans_shared_malloc(bcx, val_ty(vptr), size);
     let bcx = call_memmove(bcx, newptr, vptr, size).bcx;
     Store(bcx, fill,
-          InBoundsGEP(bcx, newptr, [C_int(0), C_uint(abi::ivec_elt_alloc)]));
+          InBoundsGEP(bcx, newptr, [C_int(0), C_uint(abi::vec_elt_alloc)]));
     Store(bcx, newptr, vptrptr);
     ret bcx;
 }
@@ -84,14 +84,14 @@ fn make_drop_glue(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t)
     let null_test = IsNull(bcx, vptr);
     CondBr(bcx, null_test, next_cx.llbb, drop_cx.llbb);
     if ty::type_needs_drop(bcx_tcx(bcx), unit_ty) {
-        drop_cx = iter_ivec(drop_cx, vptrptr, vec_ty, trans::drop_ty);
+        drop_cx = iter_vec(drop_cx, vptrptr, vec_ty, trans::drop_ty);
     }
     drop_cx = trans::trans_shared_free(drop_cx, vptr);
     Br(drop_cx, next_cx.llbb);
     ret next_cx;
 }
 
-fn trans_ivec(bcx: &@block_ctxt, args: &[@ast::expr],
+fn trans_vec(bcx: &@block_ctxt, args: &[@ast::expr],
               id: ast::node_id) -> result {
     let vec_ty = node_id_type(bcx_ccx(bcx), id);
     let {bcx, val: vptr, llunitsz, unit_ty, llunitty} =
@@ -131,8 +131,8 @@ fn trans_append(cx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     let unit_ty = ty::sequence_element_type(bcx_tcx(cx), vec_ty);
     let dynamic = ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty);
     if dynamic {
-        lhsptr = PointerCast(cx, lhsptr, T_ptr(T_ptr(T_opaque_ivec())));
-        rhs = PointerCast(cx, rhs, T_ptr(T_opaque_ivec()));
+        lhsptr = PointerCast(cx, lhsptr, T_ptr(T_ptr(T_opaque_vec())));
+        rhs = PointerCast(cx, rhs, T_ptr(T_opaque_vec()));
     }
     let strings = alt ty::struct(bcx_tcx(cx), vec_ty) {
       ty::ty_istr. { true }
@@ -148,8 +148,8 @@ fn trans_append(cx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     let rfill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lfill, rfill);
     if strings { new_fill = Sub(bcx, new_fill, C_int(1)); }
-    let opaque_lhs = PointerCast(bcx, lhsptr, T_ptr(T_ptr(T_opaque_ivec())));
-    Call(bcx, bcx_ccx(cx).upcalls.ivec_grow,
+    let opaque_lhs = PointerCast(bcx, lhsptr, T_ptr(T_ptr(T_opaque_vec())));
+    Call(bcx, bcx_ccx(cx).upcalls.vec_grow,
          [cx.fcx.lltaskptr, opaque_lhs, new_fill]);
     // Was overwritten if we resized
     let lhs = Load(bcx, lhsptr);
@@ -160,7 +160,7 @@ fn trans_append(cx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     if strings { lhs_off = Sub(bcx, lhs_off, C_int(1)); }
     let write_ptr = pointer_add(bcx, lhs_data, lhs_off);
     let write_ptr_ptr = do_spill(bcx, write_ptr);
-    let bcx = iter_ivec_raw(bcx, rhs, vec_ty, rfill, { | &bcx, addr, _ty |
+    let bcx = iter_vec_raw(bcx, rhs, vec_ty, rfill, { | &bcx, addr, _ty |
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
@@ -182,12 +182,12 @@ fn trans_append_literal(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     let {bcx, val: td} =
         get_tydesc(bcx, elt_ty, false, tps_normal, ti).result;
     trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
-    let opaque_v = PointerCast(bcx, vptrptr, T_ptr(T_ptr(T_opaque_ivec())));
+    let opaque_v = PointerCast(bcx, vptrptr, T_ptr(T_ptr(T_opaque_vec())));
     for val in vals {
         let {bcx: e_bcx, val: elt} = trans::trans_expr(bcx, val);
         bcx = e_bcx;
         let spilled = trans::spill_if_immediate(bcx, elt, elt_ty);
-        Call(bcx, bcx_ccx(bcx).upcalls.ivec_push,
+        Call(bcx, bcx_ccx(bcx).upcalls.vec_push,
              [bcx.fcx.lltaskptr, opaque_v, td,
               PointerCast(bcx, spilled, T_ptr(T_i8()))]);
     }
@@ -209,7 +209,7 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let rhs_fill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lhs_fill, rhs_fill);
     let {bcx, val: new_vec} = alloc_raw(bcx, new_fill, new_fill);
-    let new_vec = PointerCast(bcx, new_vec, T_ptr(T_ivec(llunitty)));
+    let new_vec = PointerCast(bcx, new_vec, T_ptr(T_vec(llunitty)));
     add_clean_temp(bcx, new_vec, vec_ty);
 
     let write_ptr_ptr = do_spill(bcx, get_dataptr(bcx, new_vec, llunitty));
@@ -228,21 +228,21 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
         ret bcx;
     } (_, _, _, write_ptr_ptr, unit_ty, llunitsz);
 
-    let bcx = iter_ivec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn);
-    let bcx = iter_ivec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn);
+    let bcx = iter_vec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn);
+    let bcx = iter_vec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn);
     ret rslt(bcx, new_vec);
 }
 
 type val_and_ty_fn = fn(&@block_ctxt, ValueRef, ty::t) -> result;
 
-type iter_ivec_block = block(&@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
+type iter_vec_block = block(&@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
 
-fn iter_ivec_raw(bcx: &@block_ctxt, vptr: ValueRef, vec_ty: ty::t,
-                 fill: ValueRef, f: &iter_ivec_block) -> @block_ctxt {
+fn iter_vec_raw(bcx: &@block_ctxt, vptr: ValueRef, vec_ty: ty::t,
+                 fill: ValueRef, f: &iter_vec_block) -> @block_ctxt {
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
     let {bcx, val: unit_sz} = size_of(bcx, unit_ty);
-    let vptr = PointerCast(bcx, vptr, T_ptr(T_ivec(llunitty)));
+    let vptr = PointerCast(bcx, vptr, T_ptr(T_vec(llunitty)));
     let data_ptr = get_dataptr(bcx, vptr, llunitty);
 
     // Calculate the last pointer address we want to handle.
@@ -252,13 +252,13 @@ fn iter_ivec_raw(bcx: &@block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     let data_ptr_ptr = do_spill(bcx, data_ptr);
 
     // Now perform the iteration.
-    let header_cx = new_sub_block_ctxt(bcx, ~"iter_ivec_loop_header");
+    let header_cx = new_sub_block_ctxt(bcx, ~"iter_vec_loop_header");
     Br(bcx, header_cx.llbb);
     let data_ptr = Load(header_cx, data_ptr_ptr);
     let not_yet_at_end = ICmp(header_cx, lib::llvm::LLVMIntULT,
                               data_ptr, data_end_ptr);
-    let body_cx = new_sub_block_ctxt(bcx, ~"iter_ivec_loop_body");
-    let next_cx = new_sub_block_ctxt(bcx, ~"iter_ivec_next");
+    let body_cx = new_sub_block_ctxt(bcx, ~"iter_vec_loop_body");
+    let next_cx = new_sub_block_ctxt(bcx, ~"iter_vec_next");
     CondBr(header_cx, not_yet_at_end, body_cx.llbb, next_cx.llbb);
     body_cx = f(body_cx, data_ptr, unit_ty);
     let increment = if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
@@ -270,11 +270,11 @@ fn iter_ivec_raw(bcx: &@block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     ret next_cx;
 }
 
-fn iter_ivec(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
-             f: &iter_ivec_block) -> @block_ctxt {
+fn iter_vec(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
+             f: &iter_vec_block) -> @block_ctxt {
     let vptr = Load(bcx, PointerCast(bcx, vptrptr,
-                                     T_ptr(T_ptr(T_opaque_ivec()))));
-    ret iter_ivec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);
+                                     T_ptr(T_ptr(T_opaque_vec()))));
+    ret iter_vec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);
 }
 
 //

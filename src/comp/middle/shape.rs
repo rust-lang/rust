@@ -55,8 +55,8 @@ const shape_i32: u8 = 6u8;
 const shape_i64: u8 = 7u8;
 const shape_f32: u8 = 8u8;
 const shape_f64: u8 = 9u8;
-const shape_evec: u8 = 10u8;
-const shape_ivec: u8 = 11u8;
+// (10 is currently unused, was evec)
+const shape_vec: u8 = 11u8;
 const shape_tag: u8 = 12u8;
 const shape_box: u8 = 13u8;
 const shape_struct: u8 = 17u8;
@@ -305,11 +305,8 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
       ty::ty_machine(ast::ty_i64.) { s += [shape_i64]; }
 
 
-      ty::ty_str. {
-        s += [shape_evec, 1u8, 1u8, 0u8, shape_u8];
-      }
       ty::ty_istr. {
-        s += [shape_ivec];
+        s += [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
         add_substr(s, shape_of(ccx, unit_ty));
@@ -361,7 +358,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
         add_substr(s, shape_of(ccx, subt));
       }
       ty::ty_vec(mt) {
-        s += [shape_ivec];
+        s += [shape_vec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
         add_substr(s, shape_of(ccx, mt.ty));
       }

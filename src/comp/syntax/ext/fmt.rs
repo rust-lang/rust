@@ -53,7 +53,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
         ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
     }
     fn make_new_str(cx: &ext_ctxt, sp: span, s: &istr) -> @ast::expr {
-        let lit = ast::lit_str(s, ast::sk_unique);
+        let lit = ast::lit_str(s);
         ret make_new_lit(cx, sp, lit);
     }
     fn make_new_int(cx: &ext_ctxt, sp: span, i: int) -> @ast::expr {

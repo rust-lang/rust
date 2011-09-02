@@ -97,8 +97,7 @@ command_line_args : public kernel_owned<command_line_args>
 };
 
 
-// FIXME: Transitional. Please remove.
-bool main_takes_istr = false;
+bool main_takes_istr = true;
 
 extern "C" CDECL void
 set_main_takes_istr(uintptr_t flag) {
