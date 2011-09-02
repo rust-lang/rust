@@ -119,7 +119,6 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> istr {
           ty_uint. { ~"uint" }
           ty_machine(tm) { ty_mach_to_str(tm) }
           ty_char. { ~"char" }
-          ty_str. { ~"str" }
           ty_istr. { ~"istr" }
           ty_box(tm) { ~"@" + mt_to_str(cx, tm) }
           ty_uniq(t) { ~"~" + ty_to_str(cx, t) }

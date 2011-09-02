@@ -305,9 +305,6 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
       ty::ty_machine(ast::ty_i64.) { s += [shape_i64]; }
 
 
-      ty::ty_str. {
-        s += [shape_evec, 1u8, 1u8, 0u8, shape_u8];
-      }
       ty::ty_istr. {
         s += [shape_ivec];
         add_bool(s, true); // type is POD

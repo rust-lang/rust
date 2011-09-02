@@ -326,7 +326,6 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       ast::ty_float. { typ = ty::mk_float(tcx); }
       ast::ty_machine(tm) { typ = ty::mk_mach(tcx, tm); }
       ast::ty_char. { typ = ty::mk_char(tcx); }
-      ast::ty_str. { typ = ty::mk_str(tcx); }
       ast::ty_istr. { typ = ty::mk_istr(tcx); }
       ast::ty_box(mt) {
         typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
@@ -1308,8 +1307,7 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
 // AST fragment checking
 fn check_lit(ccx: @crate_ctxt, lit: &@ast::lit) -> ty::t {
     alt lit.node {
-      ast::lit_str(_, ast::sk_rc.) { ret ty::mk_str(ccx.tcx); }
-      ast::lit_str(_, ast::sk_unique.) { ret ty::mk_istr(ccx.tcx); }
+      ast::lit_str(_) { ret ty::mk_istr(ccx.tcx); }
       ast::lit_char(_) { ret ty::mk_char(ccx.tcx); }
       ast::lit_int(_) { ret ty::mk_int(ccx.tcx); }
       ast::lit_float(_) { ret ty::mk_float(ccx.tcx); }
@@ -1869,13 +1867,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         alt expr_opt {
           none. {/* do nothing */ }
           some(e) {
-            // FIXME: istr transitional. Should be:
-            // check_expr_with(fcx, e, ty::mk_str(tcx));
-            check_expr(fcx, e);
-            if !are_compatible(fcx, expr_ty(tcx, e), ty::mk_str(tcx))
-                && !are_compatible(fcx, expr_ty(tcx, e), ty::mk_istr(tcx)) {
-                check_expr_with(fcx, e, ty::mk_str(tcx));
-            }
+            check_expr_with(fcx, e, ty::mk_istr(tcx));
           }
         }
         write::bot_ty(tcx, id);
@@ -1974,7 +1966,6 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         let elt_ty;
         let ety = expr_ty(tcx, seq);
         alt structure_of(fcx, expr.span, ety) {
-          ty::ty_str. { elt_ty = ty::mk_mach(tcx, ast::ty_u8); }
           ty::ty_vec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
           ty::ty_istr. { elt_ty = ty::mk_mach(tcx, ast::ty_u8); }
           _ {
@@ -2294,10 +2285,6 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         }
         alt structure_of(fcx, expr.span, base_t) {
           ty::ty_vec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
-          ty::ty_str. {
-            let typ = ty::mk_mach(tcx, ast::ty_u8);
-            write::ty_only_fixup(fcx, id, typ);
-          }
           ty::ty_istr. {
             let typ = ty::mk_mach(tcx, ast::ty_u8);
             write::ty_only_fixup(fcx, id, typ);
@@ -2755,7 +2742,6 @@ fn arg_is_argv_ty(tcx: &ty::ctxt, a: &ty::arg) -> bool {
       ty::ty_vec(mt) {
         if mt.mut != ast::imm { ret false; }
         alt ty::struct(tcx, mt.ty) {
-          ty::ty_str. { ret true; }
           ty::ty_istr. { ret true; }
           _ { ret false; }
         }

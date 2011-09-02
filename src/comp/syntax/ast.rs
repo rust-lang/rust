@@ -160,9 +160,6 @@ type field = spanned<field_>;
 
 tag check_mode { checked; unchecked; }
 
-// FIXME: temporary
-tag seq_kind { sk_unique; sk_rc; }
-
 type expr = {id: node_id, node: expr_, span: span};
 
 tag expr_ {
@@ -241,7 +238,7 @@ tag mac_ {
 type lit = spanned<lit_>;
 
 tag lit_ {
-    lit_str(istr, seq_kind);
+    lit_str(istr);
     lit_char(char);
     lit_int(int);
     lit_uint(uint);
@@ -304,7 +301,6 @@ tag ty_ {
     ty_float;
     ty_machine(ty_mach);
     ty_char;
-    ty_str;
     ty_istr; // interior string
     ty_box(mt);
     ty_vec(mt); // interior vector

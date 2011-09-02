@@ -708,7 +708,7 @@ fn parse_lit(p: &parser) -> ast::lit {
           token::LIT_CHAR(c) { p.bump(); lit = ast::lit_char(c); }
           token::LIT_STR(s) {
             p.bump();
-            lit = ast::lit_str(p.get_str(s), ast::sk_unique);
+            lit = ast::lit_str(p.get_str(s));
           }
           token::LPAREN. {
             p.bump();
@@ -895,8 +895,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
             let sp = p.get_span();
             p.bump();
             let lit =
-                @{node: ast::lit_str(p.get_str(s),
-                                     ast::sk_unique),
+                @{node: ast::lit_str(p.get_str(s)),
                   span: sp};
             ex = ast::expr_lit(lit);
           }
@@ -1503,8 +1502,7 @@ fn parse_pat(p: &parser) -> @ast::pat {
             let sp = p.get_span();
             p.bump();
             let lit =
-                @{node: ast::lit_str(p.get_str(s),
-                                     ast::sk_unique),
+                @{node: ast::lit_str(p.get_str(s)),
                   span: sp};
             hi = lit.span.hi;
             pat = ast::pat_lit(lit);

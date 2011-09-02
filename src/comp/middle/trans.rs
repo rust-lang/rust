@@ -202,7 +202,6 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: ty::t) -> TypeRef {
         }
       }
       ty::ty_char. { llty = T_char(); }
-      ty::ty_str. { llty = T_ptr(T_str()); }
       ty::ty_istr. { llty = T_ptr(T_ivec(T_i8())); }
       ty::ty_tag(did, _) { llty = type_of_tag(cx, sp, did, t); }
       ty::ty_box(mt) { llty = T_ptr(T_box(type_of_inner(cx, sp, mt.ty))); }
@@ -1334,12 +1333,6 @@ fn incr_refcnt_of_boxed(cx: &@block_ctxt, box_ptr: ValueRef) -> @block_ctxt {
 fn make_free_glue(bcx: &@block_ctxt, v0: ValueRef, t: ty::t) {
     // NB: v is an *alias* of type t here, not a direct value.
     let bcx = alt ty::struct(bcx_tcx(bcx), t) {
-      ty::ty_str. {
-        let v = Load(bcx, v0);
-        if !bcx_ccx(bcx).sess.get_opts().do_gc {
-            trans_non_gc_free(bcx, v)
-        } else { bcx }
-      }
       ty::ty_box(body_mt) {
         let v = Load(bcx, v0);
         let body = GEP(bcx, v, [C_int(0), C_int(abi::box_rc_field_body)]);
@@ -1397,7 +1390,6 @@ fn make_drop_glue(bcx: &@block_ctxt, v0: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let ccx = bcx_ccx(bcx);
     let bcx = alt ty::struct(ccx.tcx, t) {
-      ty::ty_str. { decr_refcnt_maybe_free(bcx, v0, v0, t) }
       ty::ty_vec(_) { ivec::make_drop_glue(bcx, v0, t) }
       ty::ty_istr. { ivec::make_drop_glue(bcx, v0, t) }
       ty::ty_box(_) { decr_refcnt_maybe_free(bcx, v0, v0, t) }
@@ -1843,10 +1835,6 @@ fn iter_sequence(cx: @block_ctxt, v: ValueRef, t: ty::t, f: &val_and_ty_fn)
 
 
     alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_str. {
-        let et = ty::mk_mach(bcx_tcx(cx), ast::ty_u8);
-        ret iter_sequence_body(cx, v, et, f, true, false);
-      }
       ty::ty_vec(elt) {
         ret iter_sequence_body(cx, v, elt.ty, f, false, true);
       }
@@ -2263,8 +2251,7 @@ fn trans_crate_lit(cx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
       ast::lit_char(c) { ret C_integral(T_char(), c as uint, False); }
       ast::lit_bool(b) { ret C_bool(b); }
       ast::lit_nil. { ret C_nil(); }
-      ast::lit_str(s, ast::sk_rc.) { ret C_str(cx, s); }
-      ast::lit_str(s, ast::sk_unique.) {
+      ast::lit_str(s) {
         cx.sess.span_unimpl(lit.span, ~"unique string in this context");
       }
     }
@@ -2272,7 +2259,7 @@ fn trans_crate_lit(cx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
 
 fn trans_lit(cx: &@block_ctxt, lit: &ast::lit) -> result {
     alt lit.node {
-      ast::lit_str(s, ast::sk_unique.) { ret ivec::trans_istr(cx, s); }
+      ast::lit_str(s) { ret ivec::trans_istr(cx, s); }
       _ { ret rslt(cx, trans_crate_lit(bcx_ccx(cx), lit)); }
     }
 }
@@ -2351,10 +2338,6 @@ fn trans_evec_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
                      rhs: ValueRef) -> result {
     let elt_ty = ty::sequence_element_type(bcx_tcx(cx), t);
     let skip_null = C_bool(false);
-    alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_str. { skip_null = C_bool(true); }
-      _ { }
-    }
     let bcx = cx;
     let ti = none::<@tydesc_info>;
     let llvec_tydesc = get_tydesc(bcx, t, false, tps_normal, ti).result;
@@ -5529,45 +5512,20 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
         ccx.sess.span_fatal(sp, ~"multiple 'main' functions");
     }
 
-    let (main_takes_argv, main_takes_istr) =
+    let main_takes_argv =
         alt ty::struct(ccx.tcx, main_node_type) {
           ty::ty_fn(_, args, _, _, _) {
-            if std::vec::len(args) == 0u {
-                (false, false)
-            } else {
-                alt ty::struct(ccx.tcx, args[0].ty) {
-                  ty::ty_vec({ty: t, _}) {
-                    alt ty::struct(ccx.tcx, t) {
-                      ty::ty_str. { (true, false) }
-                      ty::ty_istr. { (true, true) }
-                    }
-                  }
-                }
-            }
+            std::vec::len(args) != 0u
           }
         };
 
     let llfn = create_main(ccx, sp, main_llfn,
-                           main_takes_argv, main_takes_istr);
+                           main_takes_argv);
     ccx.main_fn = some(llfn);
 
-    // FIXME: This is a transitional way to let the runtime know
-    // it needs to feed us istrs
-    let lltakesistr = str::as_buf(~"_rust_main_takes_istr", { |buf|
-        llvm::LLVMAddGlobal(ccx.llmod, T_int(), buf)
-    });
-    llvm::LLVMSetInitializer(lltakesistr, C_uint(main_takes_istr as uint));
-    llvm::LLVMSetGlobalConstant(lltakesistr, True);
-    llvm::LLVMSetLinkage(lltakesistr,
-                         lib::llvm::LLVMExternalLinkage as llvm::Linkage);
-
     fn create_main(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
-                   takes_argv: bool, takes_istr: bool) -> ValueRef {
-        let unit_ty = if takes_istr {
-            ty::mk_istr(ccx.tcx)
-        } else {
-            ty::mk_str(ccx.tcx)
-        };
+                   takes_argv: bool) -> ValueRef {
+        let unit_ty = ty::mk_istr(ccx.tcx);
         let ivecarg_ty: ty::arg =
             {mode: ty::mo_val,
              ty:

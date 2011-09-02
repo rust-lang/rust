@@ -460,7 +460,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
       }
       meta_name_value(name, value) {
         alt value.node {
-          lit_str(value, _) {
+          lit_str(value) {
             ebml::start_tag(ebml_w, tag_meta_item_name_value);
             ebml::start_tag(ebml_w, tag_meta_item_name);
             ebml_w.writer.write(str::bytes(name));

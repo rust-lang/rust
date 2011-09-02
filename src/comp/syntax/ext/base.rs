@@ -104,7 +104,7 @@ fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: &istr) -> istr {
     alt expr.node {
       ast::expr_lit(l) {
         alt l.node {
-          ast::lit_str(s, _) { ret s; }
+          ast::lit_str(s) { ret s; }
           _ { cx.span_fatal(l.span, error); }
         }
       }

@@ -58,7 +58,7 @@ fn safe_to_steal(e: ast::expr_) -> bool {
       }
       ast::expr_lit(lit) {
         alt lit.node {
-          ast::lit_str(_, _) { true }
+          ast::lit_str(_) { true }
           ast::lit_char(_) { true }
           ast::lit_int(_) { false }
           ast::lit_uint(_) { false }

@@ -103,9 +103,9 @@ fn local_rhs_span(l: &@ast::local, def: &span) -> span {
 
 fn lit_eq(l: &@ast::lit, m: &@ast::lit) -> bool {
     alt l.node {
-      ast::lit_str(s, kind_s) {
+      ast::lit_str(s) {
         alt m.node {
-          ast::lit_str(t, kind_t) { ret s == t && kind_s == kind_t; }
+          ast::lit_str(t) { ret s == t }
           _ { ret false; }
         }
       }

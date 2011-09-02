@@ -78,7 +78,6 @@ export mk_res;
 export mk_param;
 export mk_ptr;
 export mk_rec;
-export mk_str;
 export mk_tag;
 export mk_tup;
 export mk_type;
@@ -133,7 +132,6 @@ export ty_res;
 export ty_param;
 export ty_ptr;
 export ty_rec;
-export ty_str;
 export ty_tag;
 export ty_tup;
 export ty_type;
@@ -252,7 +250,6 @@ tag sty {
     ty_uint;
     ty_machine(ast::ty_mach);
     ty_char;
-    ty_str;
     ty_istr;
     ty_tag(def_id, [t]);
     ty_box(mt);
@@ -335,15 +332,13 @@ const idx_f64: uint = 14u;
 
 const idx_char: uint = 15u;
 
-const idx_str: uint = 16u;
+const idx_istr: uint = 16u;
 
-const idx_istr: uint = 17u;
+const idx_type: uint = 17u;
 
-const idx_type: uint = 18u;
+const idx_bot: uint = 18u;
 
-const idx_bot: uint = 19u;
-
-const idx_first_others: uint = 20u;
+const idx_first_others: uint = 19u;
 
 type type_store = interner::interner<@raw_t>;
 
@@ -369,7 +364,6 @@ fn populate_type_store(cx: &ctxt) {
     intern(cx, ty_machine(ast::ty_f32), none);
     intern(cx, ty_machine(ast::ty_f64), none);
     intern(cx, ty_char, none);
-    intern(cx, ty_str, none);
     intern(cx, ty_istr, none);
     intern(cx, ty_type, none);
     intern(cx, ty_bot, none);
@@ -449,7 +443,6 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, _in_cname: &option::t<istr>) -> @raw_t {
       ty_uint. {/* no-op */ }
       ty_machine(_) {/* no-op */ }
       ty_char. {/* no-op */ }
-      ty_str. {/* no-op */ }
       ty_istr. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
@@ -537,8 +530,6 @@ fn mk_mach(_cx: &ctxt, tm: &ast::ty_mach) -> t {
 
 fn mk_char(_cx: &ctxt) -> t { ret idx_char; }
 
-fn mk_str(_cx: &ctxt) -> t { ret idx_str; }
-
 fn mk_istr(_cx: &ctxt) -> t { ret idx_istr; }
 
 fn mk_tag(cx: &ctxt, did: &ast::def_id, tys: &[t]) -> t {
@@ -624,7 +615,6 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       ty_float. {/* no-op */ }
       ty_machine(_) {/* no-op */ }
       ty_char. {/* no-op */ }
-      ty_str. {/* no-op */ }
       ty_istr. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
@@ -688,7 +678,6 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_float. {/* no-op */ }
       ty_machine(_) {/* no-op */ }
       ty_char. {/* no-op */ }
-      ty_str. {/* no-op */ }
       ty_istr. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
@@ -831,7 +820,6 @@ fn type_is_copyable(cx: &ctxt, ty: t) -> bool {
 
 fn type_is_sequence(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_str. { ret true; }
       ty_istr. { ret true; }
       ty_vec(_) { ret true; }
       _ { ret false; }
@@ -840,7 +828,6 @@ fn type_is_sequence(cx: &ctxt, ty: t) -> bool {
 
 fn type_is_str(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_str. { ret true; }
       ty_istr. { ret true; }
       _ { ret false; }
     }
@@ -848,9 +835,6 @@ fn type_is_str(cx: &ctxt, ty: t) -> bool {
 
 fn sequence_is_interior(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty::ty_str. {
-        ret false;
-      }
       ty::ty_vec(_) { ret true; }
       ty::ty_istr. { ret true; }
       _ { cx.sess.bug(~"sequence_is_interior called on non-sequence type"); }
@@ -859,7 +843,6 @@ fn sequence_is_interior(cx: &ctxt, ty: t) -> bool {
 
 fn sequence_element_type(cx: &ctxt, ty: t) -> t {
     alt struct(cx, ty) {
-      ty_str. { ret mk_mach(cx, ast::ty_u8); }
       ty_istr. { ret mk_mach(cx, ast::ty_u8); }
       ty_vec(mt) { ret mt.ty; }
       _ { cx.sess.bug(
@@ -898,7 +881,6 @@ fn type_is_box(cx: &ctxt, ty: t) -> bool {
 
 fn type_is_boxed(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_str. { ret true; }
       ty_box(_) { ret true; }
       _ { ret false; }
     }
@@ -1017,12 +999,6 @@ fn type_kind(cx: &ctxt, ty: t) -> ast::kind {
       // A handful of other built-in are unique too.
       ty_type. | ty_istr. | ty_native_fn(_, _, _) {
         // no-op
-      }
-
-
-      // Those things with refcounts-to-interior are just shared.
-      ty_str. {
-        result = kind_shared;
       }
 
 
@@ -1240,7 +1216,7 @@ fn type_is_pod(cx: &ctxt, ty: t) -> bool {
 
 
       // Boxed types
-      ty_str. | ty_istr. | ty_box(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
+      ty_istr. | ty_box(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
       ty_native_fn(_, _, _) | ty_obj(_) {
         result = false;
       }
@@ -1392,7 +1368,6 @@ fn hash_type_structure(st: &sty) -> uint {
         }
       }
       ty_char. { ret 15u; }
-      ty_str. { ret 16u; }
       ty_istr. { ret 17u; }
       ty_tag(did, tys) {
         let h = hash_def(18u, did);
@@ -2151,7 +2126,6 @@ mod unify {
           ty::ty_machine(_) { ret struct_cmp(cx, expected, actual); }
           ty::ty_float. { ret struct_cmp(cx, expected, actual); }
           ty::ty_char. { ret struct_cmp(cx, expected, actual); }
-          ty::ty_str. { ret struct_cmp(cx, expected, actual); }
           ty::ty_istr. { ret struct_cmp(cx, expected, actual); }
           ty::ty_type. { ret struct_cmp(cx, expected, actual); }
           ty::ty_native(ex_id) {
@@ -2759,7 +2733,6 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
           ty_machine(ast::ty_f64.) { tycat_float }
           ty_char. { tycat_int }
           ty_ptr(_) { tycat_int }
-          ty_str. { tycat_str }
           ty_istr. { tycat_str }
           ty_vec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }

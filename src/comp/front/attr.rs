@@ -84,7 +84,7 @@ fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t<istr> {
     alt meta.node {
       ast::meta_name_value(_, v) {
         alt v.node {
-          ast::lit_str(s, _) { option::some(s) }
+          ast::lit_str(s) { option::some(s) }
           _ { option::none }
         }
       }
@@ -196,7 +196,7 @@ fn span<@T>(item: &T) -> ast::spanned<T> {
 
 fn mk_name_value_item_str(name: ast::ident,
                           value: &istr) -> @ast::meta_item {
-    let value_lit = span(ast::lit_str(value, ast::sk_unique));
+    let value_lit = span(ast::lit_str(value));
     ret mk_name_value_item(name, value_lit);
 }
 
