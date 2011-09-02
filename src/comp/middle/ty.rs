@@ -97,7 +97,6 @@ export rename;
 export ret_ty_of_fn;
 export ret_ty_of_fn_ty;
 export sequence_element_type;
-export sequence_is_interior;
 export struct;
 export sort_methods;
 export stmt_node_id;
@@ -830,14 +829,6 @@ fn type_is_str(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_istr. { ret true; }
       _ { ret false; }
-    }
-}
-
-fn sequence_is_interior(cx: &ctxt, ty: t) -> bool {
-    alt struct(cx, ty) {
-      ty::ty_vec(_) { ret true; }
-      ty::ty_istr. { ret true; }
-      _ { cx.sess.bug(~"sequence_is_interior called on non-sequence type"); }
     }
 }
 

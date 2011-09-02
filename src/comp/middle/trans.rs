@@ -2334,39 +2334,6 @@ fn trans_compare(cx: &@block_ctxt, op: ast::binop, lhs: ValueRef,
     }
 }
 
-fn trans_evec_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
-                     rhs: ValueRef) -> result {
-    let elt_ty = ty::sequence_element_type(bcx_tcx(cx), t);
-    let skip_null = C_bool(false);
-    let bcx = cx;
-    let ti = none::<@tydesc_info>;
-    let llvec_tydesc = get_tydesc(bcx, t, false, tps_normal, ti).result;
-    bcx = llvec_tydesc.bcx;
-    ti = none::<@tydesc_info>;
-    let llelt_tydesc = get_tydesc(bcx, elt_ty, false, tps_normal, ti).result;
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, ti);
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, ti);
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, ti);
-    bcx = llelt_tydesc.bcx;
-    let dst = PointerCast(bcx, lhs, T_ptr(T_opaque_vec_ptr()));
-    let src = PointerCast(bcx, rhs, T_opaque_vec_ptr());
-    ret rslt(bcx,
-             Call(bcx, bcx_ccx(cx).upcalls.evec_append,
-                            [cx.fcx.lltaskptr, llvec_tydesc.val,
-                             llelt_tydesc.val, dst, src, skip_null]));
-}
-
-fn trans_evec_add(cx: &@block_ctxt, t: ty::t, lhs: ValueRef, rhs: ValueRef)
-   -> result {
-    let r = alloc_ty(cx, t);
-    let tmp = r.val;
-    let bcx = copy_val(r.bcx, INIT, tmp, lhs, t);
-    let bcx = trans_evec_append(bcx, t, tmp, rhs).bcx;
-    tmp = load_if_immediate(bcx, tmp, t);
-    add_clean_temp(cx, tmp, t);
-    ret rslt(bcx, tmp);
-}
-
 // Important to get types for both lhs and rhs, because one might be _|_
 // and the other not.
 fn trans_eager_binop(cx: &@block_ctxt, op: ast::binop, lhs: ValueRef,
@@ -2390,10 +2357,7 @@ fn trans_eager_binop(cx: &@block_ctxt, op: ast::binop, lhs: ValueRef,
     alt op {
       ast::add. {
         if ty::type_is_sequence(bcx_tcx(cx), intype) {
-            if ty::sequence_is_interior(bcx_tcx(cx), intype) {
-                ret ivec::trans_add(cx, intype, lhs, rhs);
-            }
-            ret trans_evec_add(cx, intype, lhs, rhs);
+            ret ivec::trans_add(cx, intype, lhs, rhs);
         }
         if is_float {
             ret rslt(cx, FAdd(cx, lhs, rhs));
@@ -3185,8 +3149,6 @@ fn trans_index(cx: &@block_ctxt, sp: &span, base: &@ast::expr,
     let base_ty = ty::expr_ty(bcx_tcx(cx), base);
     let exp = trans_expr(cx, base);
     let lv = autoderef(exp.bcx, exp.val, base_ty);
-    let base_ty_no_boxes = lv.ty;
-    let is_interior = ty::sequence_is_interior(bcx_tcx(cx), base_ty_no_boxes);
     let ix = trans_expr(lv.bcx, idx);
     let v = lv.val;
     let bcx = ix.bcx;
@@ -3206,20 +3168,8 @@ fn trans_index(cx: &@block_ctxt, sp: &span, base: &@ast::expr,
     maybe_name_value(bcx_ccx(cx), unit_sz.val, ~"unit_sz");
     let scaled_ix = Mul(bcx, ix_val, unit_sz.val);
     maybe_name_value(bcx_ccx(cx), scaled_ix, ~"scaled_ix");
-    let interior_len_and_data;
-    if is_interior {
-        let len = ivec::get_fill(bcx, v);
-        let data = ivec::get_dataptr(bcx, v, type_of_or_i8(bcx, unit_ty));
-        interior_len_and_data = some({len: len, data: data});
-    } else { interior_len_and_data = none; }
-    let lim;
-    alt interior_len_and_data {
-      some(lad) { lim = lad.len; }
-      none. {
-        lim = GEP(bcx, v, [C_int(0), C_int(abi::vec_elt_fill)]);
-        lim = Load(bcx, lim);
-      }
-    }
+    let lim = ivec::get_fill(bcx, v);
+    let body = ivec::get_dataptr(bcx, v, type_of_or_i8(bcx, unit_ty));
     let bounds_check = ICmp(bcx, lib::llvm::LLVMIntULT, scaled_ix, lim);
     let fail_cx = new_sub_block_ctxt(bcx, ~"fail");
     let next_cx = new_sub_block_ctxt(bcx, ~"next");
@@ -3227,15 +3177,6 @@ fn trans_index(cx: &@block_ctxt, sp: &span, base: &@ast::expr,
     // fail: bad bounds check.
 
     trans_fail(fail_cx, some::<span>(sp), ~"bounds check");
-    let body;
-    alt interior_len_and_data {
-      some(lad) { body = lad.data; }
-      none. {
-        body =
-            GEP(next_cx, v,
-                              [C_int(0), C_int(abi::vec_elt_data), C_int(0)]);
-      }
-    }
     let elt;
     if ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty) {
         body = PointerCast(next_cx, body, T_ptr(T_i8()));
@@ -3683,18 +3624,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
     } else if arg.mode == ty::mo_val {
-        // Eliding take/drop for appending of external vectors currently
-        // corrupts memory. I can't figure out why, and external vectors
-        // are on the way out anyway, so this simply turns off the
-        // optimization for that case.
-        let is_ext_vec_plus = alt e.node {
-          ast::expr_binary(_, _, _) {
-            ty::type_is_sequence(ccx.tcx, e_ty) &&
-                !ty::sequence_is_interior(ccx.tcx, e_ty)
-          }
-          _ { false }
-        };
-        if !lv.is_mem && !is_ext_vec_plus {
+        if !lv.is_mem {
             // Do nothing for temporaries, just give them to callee
         } else if type_is_structural_or_param(ccx.tcx, e_ty) {
             let dst = alloc_ty(bcx, e_ty);
@@ -3706,12 +3636,9 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
                 let arg_copy = do_spill(bcx, Load(bcx, val));
                 bcx = take_ty(bcx, arg_copy, e_ty);
                 val = Load(bcx, arg_copy);
-            } else if lv.is_mem {
+            } else {
                 bcx = take_ty(bcx, val, e_ty);
                 val = load_if_immediate(bcx, val, e_ty);
-            } else if is_ext_vec_plus {
-                let spilled = do_spill(bcx, val);
-                bcx = take_ty(bcx, spilled, e_ty);
             }
             add_clean_temp(bcx, val, e_ty);
         }
@@ -4144,12 +4071,8 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         if ty::type_is_sequence(tcx, t) {
             alt op {
               ast::add. {
-                if ty::sequence_is_interior(tcx, t) {
-                    ret ivec::trans_append(rhs_res.bcx, t, lhs_res.res.val,
-                                           rhs_res.val);
-                }
-                ret trans_evec_append(rhs_res.bcx, t, lhs_res.res.val,
-                                      rhs_res.val);
+                ret ivec::trans_append(rhs_res.bcx, t, lhs_res.res.val,
+                                       rhs_res.val);
               }
               _ { }
             }

@@ -639,18 +639,6 @@ fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
 
 fn T_array(t: TypeRef, n: uint) -> TypeRef { ret llvm::LLVMArrayType(t, n); }
 
-fn T_evec(t: TypeRef) -> TypeRef {
-    ret T_struct([T_int(), // Refcount
-                  T_int(), // Alloc
-                  T_int(), // Fill
-
-                  T_int(), // Pad
-                           // Body elements
-                            T_array(t, 0u)]);
-}
-
-fn T_opaque_vec_ptr() -> TypeRef { ret T_ptr(T_evec(T_int())); }
-
 
 // Interior vector.
 //
@@ -665,8 +653,6 @@ fn T_ivec(t: TypeRef) -> TypeRef {
 fn T_opaque_ivec() -> TypeRef {
     ret T_ivec(T_i8());
 }
-
-fn T_str() -> TypeRef { ret T_evec(T_i8()); }
 
 fn T_box(t: TypeRef) -> TypeRef { ret T_struct([T_int(), t]); }
 
@@ -810,29 +796,6 @@ fn C_cstr(cx: &@crate_ctxt, s: &istr) -> ValueRef {
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     ret g;
-}
-
-
-// A rust boxed-and-length-annotated string.
-fn C_str(cx: &@crate_ctxt, s: &istr) -> ValueRef {
-    let len =
-        str::byte_len(s); // 'alloc'
-                          // 'fill'
-                          // 'pad'
-
-    let cstr = str::as_buf(s, { |buf|
-        llvm::LLVMConstString(buf, len, False)
-    });
-    let box =
-        C_struct([C_int(abi::const_refcount as int), C_int(len + 1u as int),
-                  C_int(len + 1u as int), C_int(0), cstr]);
-    let g = str::as_buf(cx.names.next(~"str"), { |buf|
-        llvm::LLVMAddGlobal(cx.llmod, val_ty(box), buf)
-    });
-    llvm::LLVMSetInitializer(g, box);
-    llvm::LLVMSetGlobalConstant(g, True);
-    llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
-    ret llvm::LLVMConstPointerCast(g, T_ptr(T_str()));
 }
 
 // Returns a Plain Old LLVM String:

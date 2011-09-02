@@ -55,7 +55,7 @@ const shape_i32: u8 = 6u8;
 const shape_i64: u8 = 7u8;
 const shape_f32: u8 = 8u8;
 const shape_f64: u8 = 9u8;
-const shape_evec: u8 = 10u8;
+// (10 is currently unused, was evec)
 const shape_ivec: u8 = 11u8;
 const shape_tag: u8 = 12u8;
 const shape_box: u8 = 13u8;
