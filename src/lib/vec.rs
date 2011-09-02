@@ -6,27 +6,20 @@ import uint::next_power_of_two;
 import ptr::addr_of;
 
 native "rust-intrinsic" mod rusti {
-    fn ivec_len<T>(v: &[T]) -> uint;
+    fn vec_len<T>(v: &[T]) -> uint;
 }
 
 native "rust" mod rustrt {
-    fn ivec_reserve_shared<T>(v: &mutable [mutable? T], n: uint);
-    fn ivec_on_heap<T>(v: &[T]) -> uint;
-    fn ivec_to_ptr<T>(v: &[T]) -> *T;
-    fn ivec_copy_from_buf_shared<T>(v: &mutable [mutable? T], ptr: *T,
-                                    count: uint);
+    fn vec_reserve_shared<T>(v: &mutable [mutable? T], n: uint);
+    fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
 }
 
 /// Reserves space for `n` elements in the given vector.
 fn reserve<@T>(v: &mutable [mutable? T], n: uint) {
-    rustrt::ivec_reserve_shared(v, n);
+    rustrt::vec_reserve_shared(v, n);
 }
 
-fn on_heap<T>(v: &[T]) -> bool { ret rustrt::ivec_on_heap(v) != 0u; }
-
-fn to_ptr<T>(v: &[T]) -> *T { ret rustrt::ivec_to_ptr(v); }
-
-fn len<T>(v: &[mutable? T]) -> uint { ret rusti::ivec_len(v); }
+fn len<T>(v: &[mutable? T]) -> uint { ret rusti::vec_len(v); }
 
 type init_op<T> = fn(uint) -> T;
 
@@ -64,12 +57,15 @@ fn init_elt_mut<@T>(t: &T, n_elts: uint) -> [mutable T] {
     ret v;
 }
 
+// FIXME: Possible typestate postcondition:
+// len(result) == len(v) (needs issue #586)
 fn to_mut<@T>(v: &[T]) -> [mutable T] {
     let vres = [mutable];
     for t: T in v { vres += [mutable t]; }
     ret vres;
 }
 
+// Same comment as from_mut
 fn from_mut<@T>(v: &[mutable T]) -> [T] {
     let vres = [];
     for t: T in v { vres += [t]; }
@@ -99,6 +95,11 @@ fn tail<@T>(v: &[mutable? T]) : is_not_empty(v) -> [mutable? T] {
 fn last<@T>(v: &[mutable? T]) -> option::t<T> {
     if len(v) == 0u { ret none; }
     ret some(v[len(v) - 1u]);
+}
+
+/// Returns the last element of a non-empty vector `v`.
+fn last_total<@T>(v: &[mutable? T]) : is_not_empty(v) -> T {
+    ret v[len(v) - 1u];
 }
 
 /// Returns a copy of the elements from [`start`..`end`) from `v`.
@@ -260,14 +261,23 @@ fn position_pred<T>(f: fn(&T) -> bool, v: &[T]) -> option::t<uint> {
     ret none;
 }
 
+pure fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
+    let xlen = unchecked { vec::len(xs) };
+    let ylen = unchecked { vec::len(ys) };
+    xlen == ylen
+}
+
+// FIXME: if issue #586 gets implemented, could have a postcondition
+// saying the two result lists have the same length -- or, could
+// return a nominal record with a constraint saying that, instead of
+// returning a tuple (contingent on issue #869)
 fn unzip<@T, @U>(v: &[(T, U)]) -> ([T], [U]) {
     let as = [], bs = [];
     for (a, b) in v { as += [a]; bs += [b]; }
     ret (as, bs);
 }
 
-// FIXME make the lengths being equal a constraint
-fn zip<@T, @U>(v: &[T], u: &[U]) -> [(T, U)] {
+fn zip<@T, @U>(v: &[T], u: &[U]) : same_length(v, u) -> [(T, U)] {
     let zipped = [];
     let sz = len(v), i = 0u;
     assert (sz == len(u));
@@ -300,6 +310,27 @@ fn reversed<@T>(v: &[T]) -> [T] {
     ret rs;
 }
 
+// Generating vecs.
+fn enum_chars(start:u8, end:u8) : u8::le(start, end) -> [char] {
+    let i = start;
+    let r = [];
+    while (i <= end) {
+        r += [i as char];
+        i += (1u as u8);
+    }
+    ret r;
+}
+
+fn enum_uints(start:uint, end:uint) : uint::le(start, end) -> [uint] {
+    let i = start;
+    let r = [];
+    while (i <= end) {
+        r += [i];
+        i += 1u;
+    }
+    ret r;
+}
+
 // Iterate over a list with with the indexes
 iter iter2<@T>(v: &[T]) -> (uint, T) {
     let i = 0u;
@@ -310,32 +341,27 @@ iter iter2<@T>(v: &[T]) -> (uint, T) {
 }
 
 mod unsafe {
-    type ivec_repr =
-        {mutable fill: uint,
-         mutable alloc: uint,
-         heap_part: *mutable ivec_heap_part};
-    type ivec_heap_part = {mutable fill: uint};
+    type ivec_repr = {mutable fill: uint,
+                      mutable alloc: uint,
+                      data: u8};
 
-    fn copy_from_buf<T>(v: &mutable [T], ptr: *T, count: uint) {
-        ret rustrt::ivec_copy_from_buf_shared(v, ptr, count);
-    }
-
-    fn from_buf<T>(ptr: *T, bytes: uint) -> [T] {
-        let v = [];
-        copy_from_buf(v, ptr, bytes);
-        ret v;
+    fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
+        ret rustrt::vec_from_buf_shared(ptr, elts);
     }
 
     fn set_len<T>(v: &mutable [T], new_len: uint) {
-        let new_fill = new_len * sys::size_of::<T>();
-        let stack_part: *mutable ivec_repr =
-            ::unsafe::reinterpret_cast(addr_of(v));
-        if (*stack_part).fill == 0u {
-            (*(*stack_part).heap_part).fill = new_fill; // On heap.
-        } else {
-            (*stack_part).fill = new_fill; // On stack.
-        }
+        let repr: **ivec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        (**repr).fill = new_len * sys::size_of::<T>();
     }
+
+    fn to_ptr<T>(v: &[T]) -> *T {
+        let repr: **ivec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
+    }
+}
+
+fn to_ptr<T>(v: &[T]) -> *T {
+    ret unsafe::to_ptr(v);
 }
 
 // Local Variables:

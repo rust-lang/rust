@@ -1,5 +1,5 @@
 // Temporarily xfailing, because something is wrong.
-// xfail-stage2
+// xfail-test
 use std;
 
 import std::comm;

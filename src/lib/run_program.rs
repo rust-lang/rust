@@ -12,24 +12,29 @@ native "rust" mod rustrt {
        int;
 }
 
-fn arg_vec(prog: str, args: &[str]) -> [sbuf] {
-    let argptrs = [str::buf(prog)];
-    for arg: str in args { argptrs += [str::buf(arg)]; }
-    argptrs += [0 as sbuf];
+fn arg_vec(prog: &istr, args: &[@istr]) -> [sbuf] {
+    let argptrs = str::as_buf(prog, { |buf| [buf] });
+    for arg in args {
+        argptrs += str::as_buf(*arg, { |buf| [buf] });
+    }
+    argptrs += [unsafe::reinterpret_cast(0)];
     ret argptrs;
 }
 
-fn spawn_process(prog: str, args: &[str], in_fd: int, out_fd: int,
+fn spawn_process(prog: &istr, args: &[istr], in_fd: int, out_fd: int,
                  err_fd: int) -> int {
-    // Note: we have to hold on to this vector reference while we hold a
-    // pointer to its buffer
+    // Note: we have to hold on to these vector references while we hold a
+    // pointer to their buffers
+    let prog = prog;
+    let args = vec::map({ |&arg| @arg }, args);
     let argv = arg_vec(prog, args);
     let pid =
-        rustrt::rust_run_program(vec::to_ptr(argv), in_fd, out_fd, err_fd);
+        rustrt::rust_run_program(vec::unsafe::to_ptr(argv),
+                                 in_fd, out_fd, err_fd);
     ret pid;
 }
 
-fn run_program(prog: str, args: &[str]) -> int {
+fn run_program(prog: &istr, args: &[istr]) -> int {
     ret os::waitpid(spawn_process(prog, args, 0, 0, 0));
 }
 
@@ -46,7 +51,7 @@ type program =
 
 resource program_res(p: program) { p.destroy(); }
 
-fn start_program(prog: str, args: &[str]) -> @program_res {
+fn start_program(prog: &istr, args: &[istr]) -> @program_res {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -97,8 +102,8 @@ fn start_program(prog: str, args: &[str]) -> @program_res {
                                  os::fd_FILE(pipe_err.in), false));
 }
 
-fn read_all(rd: &io::reader) -> str {
-    let buf = "";
+fn read_all(rd: &io::reader) -> istr {
+    let buf = ~"";
     while !rd.eof() {
         let bytes = rd.read_bytes(4096u);
         buf += str::unsafe_from_bytes(bytes);
@@ -106,8 +111,8 @@ fn read_all(rd: &io::reader) -> str {
     ret buf;
 }
 
-fn program_output(prog: str, args: [str]) ->
-   {status: int, out: str, err: str} {
+fn program_output(prog: &istr, args: &[istr]) ->
+   {status: int, out: istr, err: istr} {
     let pr = start_program(prog, args);
     pr.close_input();
     ret {status: pr.finish(),

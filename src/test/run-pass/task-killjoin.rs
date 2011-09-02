@@ -1,6 +1,4 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
+// xfail-test
 
 // Create a task that is supervised by another task,
 // join the supervised task from the supervising task,

@@ -62,16 +62,6 @@ upcall_log_str(rust_task *task, uint32_t level, rust_str *str) {
 }
 
 extern "C" CDECL void
-upcall_log_istr(rust_task *task, uint32_t level, rust_ivec *str) {
-    LOG_UPCALL_ENTRY(task);
-    if (task->sched->log_lvl < level)
-        return;
-    const char *buf = (const char *)
-        (str->fill ? str->payload.data : str->payload.ptr->data);
-    task->sched->log(task, level, "rust: %s", buf);
-}
-
-extern "C" CDECL void
 upcall_yield(rust_task *task) {
     LOG_UPCALL_ENTRY(task);
     LOG(task, comm, "upcall yield()");
@@ -354,71 +344,23 @@ upcall_get_type_desc(rust_task *task,
     return td;
 }
 
-/**
- * Resizes an interior vector that has been spilled to the heap.
- */
 extern "C" CDECL void
-upcall_ivec_resize_shared(rust_task *task,
-                          rust_ivec *v,
-                          size_t newsz) {
+upcall_vec_grow(rust_task* task, rust_vec** vp, size_t new_sz) {
     LOG_UPCALL_ENTRY(task);
-    scoped_lock with(task->sched->lock);
-    I(task->sched, !v->fill);
-
-    size_t new_alloc = next_power_of_two(newsz);
-    rust_ivec_heap *new_heap_part = (rust_ivec_heap *)
-        task->kernel->realloc(v->payload.ptr, new_alloc + sizeof(size_t));
-
-    new_heap_part->fill = newsz;
-    v->alloc = new_alloc;
-    v->payload.ptr = new_heap_part;
-}
-
-/**
- * Spills an interior vector to the heap.
- */
-extern "C" CDECL void
-upcall_ivec_spill_shared(rust_task *task,
-                         rust_ivec *v,
-                         size_t newsz) {
-    LOG_UPCALL_ENTRY(task);
-    scoped_lock with(task->sched->lock);
-    size_t new_alloc = next_power_of_two(newsz);
-
-    rust_ivec_heap *heap_part = (rust_ivec_heap *)
-        task->kernel->malloc(new_alloc + sizeof(size_t),
-                             "ivec spill shared");
-    heap_part->fill = newsz;
-    memcpy(&heap_part->data, v->payload.data, v->fill);
-
-    v->fill = 0;
-    v->alloc = new_alloc;
-    v->payload.ptr = heap_part;
+    reserve_vec(task, vp, new_sz);
+    (*vp)->fill = new_sz;
 }
 
 extern "C" CDECL void
-upcall_ivec_push(rust_task* task, rust_ivec* v, type_desc* elt_ty, void* x) {
+upcall_vec_push(rust_task* task, rust_vec** vp, type_desc* elt_ty,
+                void* elt) {
     LOG_UPCALL_ENTRY(task);
-    bool is_interior = v->fill || !v->payload.ptr;
-    size_t sz = elt_ty->size;
-    size_t old_fill = is_interior ? v->fill : v->payload.ptr->fill;
-    size_t new_sz = sz + old_fill;
-    if (new_sz > v->alloc) {
-        if (is_interior) {
-            upcall_ivec_spill_shared(task, v, new_sz);
-            is_interior = false;
-        } else {
-            upcall_ivec_resize_shared(task, v, new_sz);
-        }
-    } else {
-        if (is_interior) v->fill = new_sz;
-        else v->payload.ptr->fill = new_sz;
-    }
-    uint8_t* dataptr = is_interior ? &v->payload.data[0]
-                                   : &v->payload.ptr->data[0];
-    copy_elements(task, elt_ty, dataptr + old_fill, x, sz);
+    size_t new_sz = (*vp)->fill + elt_ty->size;
+    reserve_vec(task, vp, new_sz);
+    rust_vec* v = *vp;
+    copy_elements(task, elt_ty, &v->data[0] + v->fill, elt, elt_ty->size);
+    v->fill += elt_ty->size;
 }
-
 
 /**
  * Returns a token that can be used to deallocate all of the allocated space
@@ -426,13 +368,26 @@ upcall_ivec_push(rust_task* task, rust_ivec* v, type_desc* elt_ty, void* x) {
  */
 extern "C" CDECL void *
 upcall_dynastack_mark(rust_task *task) {
-    return task->dynastack.alloc(0);
+    return task->dynastack.mark();
 }
 
-/** Allocates space in the dynamic stack and returns it. */
+/**
+ * Allocates space in the dynamic stack and returns it.
+ *
+ * FIXME: Deprecated since dynamic stacks need to be self-describing for GC.
+ */
 extern "C" CDECL void *
 upcall_dynastack_alloc(rust_task *task, size_t sz) {
-    return sz ? task->dynastack.alloc(sz) : NULL;
+    return sz ? task->dynastack.alloc(sz, NULL) : NULL;
+}
+
+/**
+ * Allocates space associated with a type descriptor in the dynamic stack and
+ * returns it.
+ */
+extern "C" CDECL void *
+upcall_dynastack_alloc_2(rust_task *task, size_t sz, type_desc *ty) {
+    return sz ? task->dynastack.alloc(sz, ty) : NULL;
 }
 
 /** Frees space in the dynamic stack. */

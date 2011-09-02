@@ -80,15 +80,14 @@ fn find<@K, @V>(m : &treemap<K, V>, k : &K) -> option<V> {
 fn traverse<@K, @V>(m : &treemap<K, V>, f : fn(&K, &V)) {
   alt *m {
     empty. { }
-    node(@k, @v, _, _) {
-      // copy v to make aliases work out
-      let v1 = v;
+    node(k, v, _, _) {
+      let k1 = k, v1 = v;
       alt *m {
         node(_, _, left, _) {
           traverse(left, f);
         }
       }
-      f(k, v1);
+      f(*k1, *v1);
       alt *m {
         node(_, _, _, right) {
           traverse(right, f);

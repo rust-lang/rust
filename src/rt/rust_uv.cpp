@@ -113,12 +113,12 @@ static socket_data *make_socket(rust_task *task, rust_chan *chan) {
 static uv_buf_t alloc_buffer(uv_stream_t *socket, size_t suggested_size) {
   LOG_CALLBACK_ENTRY(socket);
   uv_buf_t buf;
-  size_t actual_size = suggested_size + sizeof (rust_ivec_heap);
+  size_t actual_size = suggested_size + sizeof (rust_vec);
   socket_data *data = (socket_data*)socket->data;
   char *base =
     reinterpret_cast<char*>(data->task->kernel->malloc(actual_size,
                                                        "read buffer"));
-  buf.base = base + sizeof (rust_ivec_heap);
+  buf.base = base + sizeof (rust_vec);
   buf.len = suggested_size;
   return buf;
 }
@@ -129,26 +129,23 @@ static void read_progress(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
   I(data->task->sched, data->reader != NULL);
   I(data->task->sched, nread <= ssize_t(buf.len));
 
-  rust_ivec_heap *base = reinterpret_cast<rust_ivec_heap*>(
-      reinterpret_cast<char*>(buf.base) - sizeof (rust_ivec_heap));
-  rust_ivec v;
-  v.fill = 0;
-  v.alloc = buf.len;
-  v.payload.ptr = base;
+  rust_vec *v = reinterpret_cast<rust_vec*>(
+      reinterpret_cast<char*>(buf.base) - sizeof (rust_vec));
+  v->alloc = buf.len;
 
   switch (nread) {
     case -1: // End of stream
-      base->fill = 0;
+      v->fill = 0;
       uv_read_stop(socket);
       break;
     case 0: // Nothing read
-      data->task->kernel->free(base);
+      data->task->kernel->free(v);
       return;
     default: // Got nread bytes
-      base->fill = nread;
+      v->fill = nread;
       break;
   }
-  data->reader->send(&v);
+  data->reader->send(v);
 }
 
 static void new_connection(uv_handle_t *socket, int status) {

@@ -69,11 +69,11 @@ fn log_block_err(b: &ast::blk) { log_err print::pprust::block_to_str(b); }
 
 fn log_item_err(i: &@ast::item) { log_err print::pprust::item_to_str(i); }
 
-fn log_fn(f: &ast::_fn, name: str, params: &[ast::ty_param]) {
+fn log_fn(f: &ast::_fn, name: &ast::ident, params: &[ast::ty_param]) {
     log print::pprust::fun_to_str(f, name, params);
 }
 
-fn log_fn_err(f: &ast::_fn, name: str, params: &[ast::ty_param]) {
+fn log_fn_err(f: &ast::_fn, name: &ast::ident, params: &[ast::ty_param]) {
     log_err print::pprust::fun_to_str(f, name, params);
 }
 
@@ -144,28 +144,28 @@ fn lit_eq(l: &@ast::lit, m: &@ast::lit) -> bool {
 
 tag call_kind { kind_call; kind_spawn; kind_bind; kind_for_each; }
 
-fn call_kind_str(c: call_kind) -> str {
+fn call_kind_str(c: call_kind) -> istr {
     alt c {
-      kind_call. { "Call" }
-      kind_spawn. { "Spawn" }
-      kind_bind. { "Bind" }
-      kind_for_each. { "For-Each" }
+      kind_call. { ~"Call" }
+      kind_spawn. { ~"Spawn" }
+      kind_bind. { ~"Bind" }
+      kind_for_each. { ~"For-Each" }
     }
 }
 
-fn is_main_name(path: &[str]) -> bool {
-    str::eq(option::get(std::vec::last(path)), "main")
+fn is_main_name(path: &[ast::ident]) -> bool {
+    str::eq(option::get(std::vec::last(path)), ~"main")
 }
 
 // FIXME mode this to std::float when editing the stdlib no longer
 // requires a snapshot
-fn float_to_str(num: float, digits: uint) -> str {
-    let accum = if num < 0.0 { num = -num; "-" } else { "" };
+fn float_to_str(num: float, digits: uint) -> istr {
+    let accum = if num < 0.0 { num = -num; ~"-" } else { ~"" };
     let trunc = num as uint;
     let frac = num - (trunc as float);
     accum += uint::str(trunc);
     if frac == 0.0 || digits == 0u { ret accum; }
-    accum += ".";
+    accum += ~".";
     while digits > 0u && frac > 0.0 {
         frac *= 10.0;
         let digit = frac as uint;

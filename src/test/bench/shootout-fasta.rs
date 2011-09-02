@@ -7,9 +7,9 @@
  */
 use std;
 import std::vec;
-import std::str;
 import std::uint;
 import std::int;
+import std::str;
 
 fn LINE_LENGTH() -> uint { ret 60u; }
 
@@ -43,31 +43,32 @@ fn select_random(r: u32, genelist: &[aminoacids]) -> char {
     ret bisect(genelist, 0u, vec::len::<aminoacids>(genelist) - 1u, r);
 }
 
-fn make_random_fasta(id: str, desc: str, genelist: &[aminoacids], n: int) {
-    log ">" + id + " " + desc;
+fn make_random_fasta(id: &istr, desc: &istr,
+                     genelist: &[aminoacids], n: int) {
+    log ~">" + id + ~" " + desc;
     let rng = myrandom(std::rand::mk_rng().next());
-    let op: str = "";
+    let op: istr = ~"";
     for each i: uint in uint::range(0u, n as uint) {
         str::push_byte(op, select_random(rng.next(100u32), genelist) as u8);
-        if str::byte_len(op) >= LINE_LENGTH() { log op; op = ""; }
+        if str::byte_len(op) >= LINE_LENGTH() { log op; op = ~""; }
     }
     if str::byte_len(op) > 0u { log op; }
 }
 
-fn make_repeat_fasta(id: str, desc: str, s: str, n: int) {
-    log ">" + id + " " + desc;
-    let op: str = "";
+fn make_repeat_fasta(id: &istr, desc: &istr, s: &istr, n: int) {
+    log ~">" + id + ~" " + desc;
+    let op: istr = ~"";
     let sl: uint = str::byte_len(s);
     for each i: uint in uint::range(0u, n as uint) {
         str::push_byte(op, s[i % sl]);
-        if str::byte_len(op) >= LINE_LENGTH() { log op; op = ""; }
+        if str::byte_len(op) >= LINE_LENGTH() { log op; op = ~""; }
     }
     if str::byte_len(op) > 0u { log op; }
 }
 
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
 
-fn main(args: [str]) {
+fn main(args: [istr]) {
     let iub: [aminoacids] =
         make_cumulative([acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
                          acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
@@ -77,16 +78,17 @@ fn main(args: [str]) {
     let homosapiens: [aminoacids] =
         make_cumulative([acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
                          acid('t', 30u32)]);
-    let alu: str =
-        "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +
-            "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA" +
-            "CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT" +
-            "ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA" +
-            "GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG" +
-            "AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC" +
-            "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
+    let alu: istr =
+        ~"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +
+            ~"GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA" +
+            ~"CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT" +
+            ~"ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA" +
+            ~"GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG" +
+            ~"AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC" +
+            ~"AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
     let n: int = 512;
-    make_repeat_fasta("ONE", "Homo sapiens alu", alu, n * 2);
-    make_random_fasta("TWO", "IUB ambiguity codes", iub, n * 3);
-    make_random_fasta("THREE", "Homo sapiens frequency", homosapiens, n * 5);
+    make_repeat_fasta(~"ONE", ~"Homo sapiens alu", alu, n * 2);
+    make_random_fasta(~"TWO", ~"IUB ambiguity codes", iub, n * 3);
+    make_random_fasta(~"THREE", ~"Homo sapiens frequency",
+                      homosapiens, n * 5);
 }

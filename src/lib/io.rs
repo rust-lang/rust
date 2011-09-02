@@ -4,6 +4,7 @@ import os::libc;
 native "rust" mod rustrt {
     fn rust_get_stdin() -> os::libc::FILE;
     fn rust_get_stdout() -> os::libc::FILE;
+    fn rust_get_stderr() -> os::libc::FILE;
 }
 
 
@@ -39,8 +40,8 @@ type reader =
         fn read_bytes(uint) -> [u8];
         fn read_char() -> char;
         fn eof() -> bool;
-        fn read_line() -> str;
-        fn read_c_str() -> str;
+        fn read_line() -> istr;
+        fn read_c_str() -> istr;
         fn read_le_uint(uint) -> uint;
         fn read_le_int(uint) -> int;
         fn read_be_uint(uint) -> uint;
@@ -59,7 +60,8 @@ obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn read(len: uint) -> [u8] {
         let buf = [];
         vec::reserve::<u8>(buf, len);
-        let read = os::libc::fread(vec::to_ptr::<u8>(buf), 1u, len, f);
+        let read = os::libc::fread(vec::unsafe::to_ptr::<u8>(buf),
+                                   1u, len, f);
         vec::unsafe::set_len::<u8>(buf, read);
         ret buf;
     }
@@ -104,7 +106,7 @@ obj new_reader(rdr: buf_reader) {
         ret val as char;
     }
     fn eof() -> bool { ret rdr.eof(); }
-    fn read_line() -> str {
+    fn read_line() -> istr {
         let buf: [u8] = [];
         // No break yet in rustc
 
@@ -117,7 +119,7 @@ obj new_reader(rdr: buf_reader) {
         }
         ret str::unsafe_from_bytes(buf);
     }
-    fn read_c_str() -> str {
+    fn read_c_str() -> istr {
         let buf: [u8] = [];
         let go_on = true;
         while go_on {
@@ -172,9 +174,13 @@ fn stdin() -> reader {
     ret new_reader(FILE_buf_reader(rustrt::rust_get_stdin(), option::none));
 }
 
-fn file_reader(path: str) -> reader {
-    let f = os::libc::fopen(str::buf(path), str::buf("r"));
-    if f as uint == 0u { log_err "error opening " + path; fail; }
+fn file_reader(path: &istr) -> reader {
+    let f = str::as_buf(path, { |pathbuf|
+        str::as_buf(~"r", { |modebuf|
+            os::libc::fopen(pathbuf, modebuf)
+        })
+    });
+    if f as uint == 0u { log_err ~"error opening " + path; fail; }
     ret new_reader(FILE_buf_reader(f, option::some(@FILE_res(f))));
 }
 
@@ -213,7 +219,7 @@ fn new_byte_buf_reader(buf: &[u8]) -> buf_reader {
     ret byte_buf_reader(@{buf: buf, mutable pos: 0u});
 }
 
-fn string_reader(s: &str) -> reader {
+fn string_reader(s: &istr) -> reader {
     ret new_reader(new_byte_buf_reader(str::bytes(s)));
 }
 
@@ -235,7 +241,7 @@ type buf_writer =
 obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn write(v: &[u8]) {
         let len = vec::len::<u8>(v);
-        let vbuf = vec::to_ptr::<u8>(v);
+        let vbuf = vec::unsafe::to_ptr::<u8>(v);
         let nout = os::libc::fwrite(vbuf, len, 1u, f);
         if nout < 1u { log_err "error dumping buffer"; }
     }
@@ -253,7 +259,7 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
         let count = 0u;
         let vbuf;
         while count < len {
-            vbuf = ptr::offset(vec::to_ptr::<u8>(v), count);
+            vbuf = ptr::offset(vec::unsafe::to_ptr::<u8>(v), count);
             let nout = os::libc::write(fd, vbuf, len);
             if nout < 0 {
                 log_err "error dumping buffer";
@@ -273,7 +279,7 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
     }
 }
 
-fn file_buf_writer(path: str, flags: &[fileflag]) -> buf_writer {
+fn file_buf_writer(path: &istr, flags: &[fileflag]) -> buf_writer {
     let fflags: int =
         os::libc_constants::O_WRONLY() | os::libc_constants::O_BINARY();
     for f: fileflag in flags {
@@ -284,10 +290,11 @@ fn file_buf_writer(path: str, flags: &[fileflag]) -> buf_writer {
           none. { }
         }
     }
-    let fd =
-        os::libc::open(str::buf(path), fflags,
+    let fd = str::as_buf(path, { |pathbuf|
+        os::libc::open(pathbuf, fflags,
                        os::libc_constants::S_IRUSR() |
-                           os::libc_constants::S_IWUSR());
+                           os::libc_constants::S_IWUSR())
+    });
     if fd < 0 {
         log_err "error opening file for writing";
         log_err sys::rustrt::last_os_error();
@@ -301,8 +308,8 @@ type writer =
     // function will be provided for general encoded string output
     obj {
         fn get_buf_writer() -> buf_writer;
-        fn write_str(str);
-        fn write_line(str);
+        fn write_str(&istr);
+        fn write_line(&istr);
         fn write_char(char);
         fn write_int(int);
         fn write_uint(uint);
@@ -327,18 +334,20 @@ fn uint_to_be_bytes(n: uint, size: uint) -> [u8] {
 
 obj new_writer(out: buf_writer) {
     fn get_buf_writer() -> buf_writer { ret out; }
-    fn write_str(s: str) { out.write(str::bytes(s)); }
-    fn write_line(s: str) {
+    fn write_str(s: &istr) { out.write(str::bytes(s)); }
+    fn write_line(s: &istr) {
         out.write(str::bytes(s));
-        out.write(str::bytes("\n"));
+        out.write(str::bytes(~"\n"));
     }
     fn write_char(ch: char) {
         // FIXME needlessly consy
 
         out.write(str::bytes(str::from_char(ch)));
     }
-    fn write_int(n: int) { out.write(str::bytes(int::to_str(n, 10u))); }
-    fn write_uint(n: uint) { out.write(str::bytes(uint::to_str(n, 10u))); }
+    fn write_int(n: int) { out.write(str::bytes(
+        int::to_str(n, 10u))); }
+    fn write_uint(n: uint) { out.write(str::bytes(
+        uint::to_str(n, 10u))); }
     fn write_bytes(bytes: &[u8]) { out.write(bytes); }
     fn write_le_uint(n: uint, size: uint) {
         out.write(uint_to_le_bytes(n, size));
@@ -351,26 +360,31 @@ obj new_writer(out: buf_writer) {
     }
 }
 
-fn file_writer(path: str, flags: &[fileflag]) -> writer {
+fn file_writer(path: &istr, flags: &[fileflag]) -> writer {
     ret new_writer(file_buf_writer(path, flags));
 }
 
 
 // FIXME: fileflags
-fn buffered_file_buf_writer(path: str) -> buf_writer {
-    let f = os::libc::fopen(str::buf(path), str::buf("w"));
-    if f as uint == 0u { log_err "error opening " + path; fail; }
+fn buffered_file_buf_writer(path: &istr) -> buf_writer {
+    let f = str::as_buf(path, { |pathbuf|
+        str::as_buf(~"w", { |modebuf|
+            os::libc::fopen(pathbuf, modebuf)
+        })
+    });
+    if f as uint == 0u { log_err ~"error opening " + path; fail; }
     ret FILE_writer(f, option::some(@FILE_res(f)));
 }
 
 
 // FIXME it would be great if this could be a const
 fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
+fn stderr() -> writer { ret new_writer(fd_buf_writer(2, option::none)); }
 
 type str_writer =
     obj {
         fn get_writer() -> writer;
-        fn get_str() -> str;
+        fn get_str() -> istr;
     };
 
 type mutable_byte_buf = @{mutable buf: [mutable u8], mutable pos: uint};
@@ -413,7 +427,7 @@ fn string_writer() -> str_writer {
     let buf: mutable_byte_buf = @{mutable buf: b, mutable pos: 0u};
     obj str_writer_wrap(wr: writer, buf: mutable_byte_buf) {
         fn get_writer() -> writer { ret wr; }
-        fn get_str() -> str { ret str::unsafe_from_bytes(buf.buf); }
+        fn get_str() -> istr { ret str::unsafe_from_bytes(buf.buf); }
     }
     ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
 }
@@ -433,11 +447,11 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
     ret bpos as uint;
 }
 
-fn read_whole_file_str(file: &str) -> str {
+fn read_whole_file_str(file: &istr) -> istr {
     str::unsafe_from_bytes(read_whole_file(file))
 }
 
-fn read_whole_file(file: &str) -> [u8] {
+fn read_whole_file(file: &istr) -> [u8] {
 
     // FIXME: There's a lot of copying here
     file_reader(file).read_whole_stream()

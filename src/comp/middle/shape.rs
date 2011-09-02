@@ -84,11 +84,11 @@ fn eq_res_info(a: &res_info, b: &res_info) -> bool {
     ret a.did.crate == b.did.crate && a.did.node == b.did.node && a.t == b.t;
 }
 
-fn mk_global(ccx: &@crate_ctxt, name: &str, llval: ValueRef,
+fn mk_global(ccx: &@crate_ctxt, name: &istr, llval: ValueRef,
              internal: bool) -> ValueRef {
-    let llglobal =
-        lib::llvm::llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval),
-                                       str::buf(name));
+    let llglobal = str::as_buf(name, { |buf|
+        lib::llvm::llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
+    });
     lib::llvm::llvm::LLVMSetInitializer(llglobal, llval);
     lib::llvm::llvm::LLVMSetGlobalConstant(llglobal, True);
 
@@ -247,10 +247,10 @@ fn s_float(_tcx: &ty_ctxt) -> u8 {
 }
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
-    let llshapetablesty = trans_common::T_named_struct("shapes");
-    let llshapetables =
-        lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty,
-                                       str::buf("shapes"));
+    let llshapetablesty = trans_common::T_named_struct(~"shapes");
+    let llshapetables = str::as_buf(~"shapes", { |buf|
+        lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
+    });
 
     ret {mutable next_tag_id: 0u16,
          pad: 0u16,
@@ -312,7 +312,6 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
         s += [shape_ivec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
-        add_size_hint(ccx, s, unit_ty);
         add_substr(s, shape_of(ccx, unit_ty));
       }
 
@@ -364,7 +363,6 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
       ty::ty_vec(mt) {
         s += [shape_ivec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
-        add_size_hint(ccx, s, mt.ty);
         add_substr(s, shape_of(ccx, mt.ty));
       }
       ty::ty_rec(fields) {
@@ -396,11 +394,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
         s += [shape_res];
         add_u16(s, id as u16);
         add_u16(s, vec::len(tps) as u16);
-
-        let sub = [];
-        for tp: ty::t in tps { add_substr(s, sub); }
-        add_substr(s, sub);
-
+        for tp: ty::t in tps { add_substr(s, shape_of(ccx, tp)); }
         add_substr(s, shape_of(ccx, subt));
 
       }
@@ -413,14 +407,6 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
     }
 
     ret s;
-}
-
-fn add_size_hint(ccx: &@crate_ctxt, s: &mutable [u8], typ: ty::t) {
-    if ty::type_has_dynamic_size(ccx.tcx, typ) { s += [0u8, 0u8, 0u8]; ret; }
-
-    let llty = trans::type_of(ccx, dummy_sp(), typ);
-    add_u16(s, trans::llsize_of_real(ccx, llty) as u16);
-    s += [trans::llalign_of_real(ccx, llty) as u8];
 }
 
 // FIXME: We might discover other variants as we traverse these. Handle this.
@@ -520,7 +506,7 @@ fn gen_tag_shapes(ccx: &@crate_ctxt) -> ValueRef {
     header += data;
     header += lv_table;
 
-    ret mk_global(ccx, "tag_shapes", C_bytes(header), true);
+    ret mk_global(ccx, ~"tag_shapes", C_bytes(header), true);
 }
 
 fn gen_resource_shapes(ccx: &@crate_ctxt) -> ValueRef {
@@ -533,7 +519,7 @@ fn gen_resource_shapes(ccx: &@crate_ctxt) -> ValueRef {
         i += 1u;
     }
 
-    ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
+    ret mk_global(ccx, ~"resource_shapes", C_struct(dtors), true);
 }
 
 fn gen_shape_tables(ccx: &@crate_ctxt) {

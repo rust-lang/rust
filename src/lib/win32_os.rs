@@ -1,16 +1,14 @@
 
-import str::sbuf;
-
 native "cdecl" mod libc = "" {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
     fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn open(s: sbuf, flags: int, mode: uint) -> int = "_open";
+    fn open(s: str::sbuf, flags: int, mode: uint) -> int = "_open";
     fn close(fd: int) -> int = "_close";
     type FILE;
-    fn fopen(path: sbuf, mode: sbuf) -> FILE;
-    fn _fdopen(fd: int, mode: sbuf) -> FILE;
+    fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
+    fn _fdopen(fd: int, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
     fn fgetc(f: FILE) -> int;
     fn ungetc(c: int, f: FILE);
@@ -42,15 +40,16 @@ mod libc_constants {
 }
 
 native "x86stdcall" mod kernel32 {
-    fn GetEnvironmentVariableA(n: sbuf, v: sbuf, nsize: uint) -> uint;
-    fn SetEnvironmentVariableA(n: sbuf, v: sbuf) -> int;
+    fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf,
+                               nsize: uint) -> uint;
+    fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
 }
 
-fn exec_suffix() -> str { ret ".exe"; }
+fn exec_suffix() -> istr { ret ~".exe"; }
 
-fn target_os() -> str { ret "win32"; }
+fn target_os() -> istr { ret ~"win32"; }
 
-fn dylib_filename(base: str) -> str { ret base + ".dll"; }
+fn dylib_filename(base: &istr) -> istr { ret base + ~".dll"; }
 
 fn pipe() -> {in: int, out: int} {
     // Windows pipes work subtly differently than unix pipes, and their
@@ -69,16 +68,22 @@ fn pipe() -> {in: int, out: int} {
     ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(fd: int) -> libc::FILE { ret libc::_fdopen(fd, str::buf("r")); }
+fn fd_FILE(fd: int) -> libc::FILE {
+    ret str::as_buf(~"r", { |modebuf|
+        libc::_fdopen(fd, modebuf)
+    });
+}
 
 native "rust" mod rustrt {
     fn rust_process_wait(handle: int) -> int;
-    fn rust_getcwd() -> str;
+    fn rust_getcwd() -> istr;
 }
 
 fn waitpid(pid: int) -> int { ret rustrt::rust_process_wait(pid); }
 
-fn getcwd() -> str { ret rustrt::rust_getcwd(); }
+fn getcwd() -> istr {
+    ret rustrt::rust_getcwd();
+}
 
 // Local Variables:
 // mode: rust;

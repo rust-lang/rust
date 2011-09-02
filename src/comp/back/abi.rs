@@ -52,7 +52,7 @@ const tydesc_field_align: int = 2;
 const tydesc_field_take_glue: int = 3;
 const tydesc_field_drop_glue: int = 4;
 const tydesc_field_free_glue: int = 5;
-const tydesc_field_copy_glue: int = 6;
+const tydesc_field_unused: int = 6;
 const tydesc_field_sever_glue: int = 7;
 const tydesc_field_mark_glue: int = 8;
 const tydesc_field_is_stateful: int = 9;
@@ -92,35 +92,23 @@ const closure_elt_bindings: int = 1;
 
 const closure_elt_ty_params: int = 2;
 
-const ivec_default_length: uint = 4u;
+const ivec_elt_fill: uint = 0u;
 
-const ivec_elt_len: uint = 0u;
-
-const ivec_elt_alen: uint = 1u;
+const ivec_elt_alloc: uint = 1u;
 
 const ivec_elt_elems: uint = 2u;
-
-const ivec_heap_stub_elt_zero: uint = 0u;
-
-const ivec_heap_stub_elt_alen: uint = 1u;
-
-const ivec_heap_stub_elt_ptr: uint = 2u;
-
-const ivec_heap_elt_len: uint = 0u;
-
-const ivec_heap_elt_elems: uint = 1u;
 
 const worst_case_glue_call_args: int = 7;
 
 const abi_version: uint = 1u;
 
-fn memcpy_glue_name() -> str { ret "rust_memcpy_glue"; }
+fn memcpy_glue_name() -> istr { ret ~"rust_memcpy_glue"; }
 
-fn bzero_glue_name() -> str { ret "rust_bzero_glue"; }
+fn bzero_glue_name() -> istr { ret ~"rust_bzero_glue"; }
 
-fn yield_glue_name() -> str { ret "rust_yield_glue"; }
+fn yield_glue_name() -> istr { ret ~"rust_yield_glue"; }
 
-fn no_op_type_glue_name() -> str { ret "rust_no_op_type_glue"; }
+fn no_op_type_glue_name() -> istr { ret ~"rust_no_op_type_glue"; }
 //
 // Local Variables:
 // mode: rust

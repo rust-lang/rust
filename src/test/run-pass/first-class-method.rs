@@ -1,6 +1,4 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
+// xfail-test
 
 // Test case for issue #758.
 obj foo() { fn f() { } }

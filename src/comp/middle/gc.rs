@@ -21,9 +21,10 @@ type ctxt = @{mutable next_tydesc_num: uint};
 
 fn mk_ctxt() -> ctxt { ret @{mutable next_tydesc_num: 0u}; }
 
-fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: str) -> ValueRef {
-    let llglobal =
-        lll::LLVMAddGlobal(ccx.llmod, val_ty(llval), str::buf(name));
+fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: &istr) -> ValueRef {
+    let llglobal = str::as_buf(name, { |buf|
+        lll::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
+    });
     lll::LLVMSetInitializer(llglobal, llval);
     lll::LLVMSetGlobalConstant(llglobal, True);
     ret llglobal;
@@ -47,44 +48,47 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     bcx = td_r.result.bcx;
     let lltydesc = td_r.result.val;
 
-    let gcroot = bcx_ccx(bcx).intrinsics.get("llvm.gcroot");
+    let gcroot = bcx_ccx(bcx).intrinsics.get(~"llvm.gcroot");
     let llvalptr = bld::PointerCast(bcx, llval, T_ptr(T_ptr(T_i8())));
 
     alt td_r.kind {
       tk_derived. {
         // It's a derived type descriptor. First, spill it.
         let lltydescptr = trans::alloca(bcx, val_ty(lltydesc));
-        bld::Store(bcx, lltydesc, lltydescptr);
+
+        let llderivedtydescs =
+            trans::llderivedtydescs_block_ctxt(bcx_fcx(bcx));
+        bld::Store(llderivedtydescs, lltydesc, lltydescptr);
 
         let number = gc_cx.next_tydesc_num;
         gc_cx.next_tydesc_num += 1u;
 
         let lldestindex =
             add_global(bcx_ccx(bcx), C_struct([C_int(0), C_uint(number)]),
-                       "rust_gc_tydesc_dest_index");
+                       ~"rust_gc_tydesc_dest_index");
         let llsrcindex =
             add_global(bcx_ccx(bcx), C_struct([C_int(1), C_uint(number)]),
-                       "rust_gc_tydesc_src_index");
+                       ~"rust_gc_tydesc_src_index");
 
         lldestindex = lll::LLVMConstPointerCast(lldestindex, T_ptr(T_i8()));
         llsrcindex = lll::LLVMConstPointerCast(llsrcindex, T_ptr(T_i8()));
 
-        lltydescptr =
-            bld::PointerCast(bcx, lltydescptr, T_ptr(T_ptr(T_i8())));
+        lltydescptr = bld::PointerCast(llderivedtydescs, lltydescptr,
+                                       T_ptr(T_ptr(T_i8())));
 
-        bld::Call(bcx, gcroot, [lltydescptr, lldestindex]);
+        bld::Call(llderivedtydescs, gcroot, [lltydescptr, lldestindex]);
         bld::Call(bcx, gcroot, [llvalptr, llsrcindex]);
       }
       tk_param. {
-        bcx_tcx(cx).sess.bug("we should never be trying to root values " +
-                                 "of a type parameter");
+        bcx_tcx(cx).sess.bug(~"we should never be trying to root values " +
+                                 ~"of a type parameter");
       }
       tk_static. {
         // Static type descriptor.
 
         let llstaticgcmeta =
             add_global(bcx_ccx(bcx), C_struct([C_int(2), lltydesc]),
-                       "rust_gc_tydesc_static_gc_meta");
+                       ~"rust_gc_tydesc_static_gc_meta");
         let llstaticgcmetaptr =
             lll::LLVMConstPointerCast(llstaticgcmeta, T_ptr(T_i8()));
 

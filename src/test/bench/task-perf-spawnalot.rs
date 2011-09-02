@@ -13,8 +13,7 @@ fn f(n: uint) {
 
 fn g() { }
 
-fn main(args: [str]) {
-
+fn main(args: [istr]) {
     let n =
         if vec::len(args) < 2u {
             10u

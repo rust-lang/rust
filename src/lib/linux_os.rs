@@ -1,6 +1,4 @@
 
-import str::sbuf;
-
 
 // FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
 // by https://github.com/graydon/rust/issues#issue/268
@@ -9,11 +7,11 @@ native "cdecl" mod libc = "" {
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
     fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn open(s: sbuf, flags: int, mode: uint) -> int;
+    fn open(s: str::sbuf, flags: int, mode: uint) -> int;
     fn close(fd: int) -> int;
     type FILE;
-    fn fopen(path: sbuf, mode: sbuf) -> FILE;
-    fn fdopen(fd: int, mode: sbuf) -> FILE;
+    fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
+    fn fdopen(fd: int, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
     fn fgetc(f: FILE) -> int;
     fn ungetc(c: int, f: FILE);
@@ -21,13 +19,13 @@ native "cdecl" mod libc = "" {
     fn fseek(f: FILE, offset: int, whence: int) -> int;
     fn ftell(f: FILE) -> int;
     type dir;
-    fn opendir(d: sbuf) -> dir;
+    fn opendir(d: str::sbuf) -> dir;
     fn closedir(d: dir) -> int;
     type dirent;
     fn readdir(d: dir) -> dirent;
-    fn getenv(n: sbuf) -> sbuf;
-    fn setenv(n: sbuf, v: sbuf, overwrite: int) -> int;
-    fn unsetenv(n: sbuf) -> int;
+    fn getenv(n: str::sbuf) -> str::sbuf;
+    fn setenv(n: str::sbuf, v: str::sbuf, overwrite: int) -> int;
+    fn unsetenv(n: str::sbuf) -> int;
     fn pipe(buf: *mutable int) -> int;
     fn waitpid(pid: int, status: &mutable int, options: int) -> int;
 }
@@ -52,11 +50,11 @@ mod libc_constants {
     fn S_IWUSR() -> uint { ret 128u; }
 }
 
-fn exec_suffix() -> str { ret ""; }
+fn exec_suffix() -> istr { ret ~""; }
 
-fn target_os() -> str { ret "linux"; }
+fn target_os() -> istr { ret ~"linux"; }
 
-fn dylib_filename(base: str) -> str { ret "lib" + base + ".so"; }
+fn dylib_filename(base: &istr) -> istr { ret ~"lib" + base + ~".so"; }
 
 fn pipe() -> {in: int, out: int} {
     let fds = {mutable in: 0, mutable out: 0};
@@ -64,7 +62,11 @@ fn pipe() -> {in: int, out: int} {
     ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(fd: int) -> libc::FILE { ret libc::fdopen(fd, str::buf("r")); }
+fn fd_FILE(fd: int) -> libc::FILE {
+    ret str::as_buf(~"r", { |modebuf|
+        libc::fdopen(fd, modebuf)
+    });
+}
 
 fn waitpid(pid: int) -> int {
     let status = 0;
@@ -73,10 +75,12 @@ fn waitpid(pid: int) -> int {
 }
 
 native "rust" mod rustrt {
-    fn rust_getcwd() -> str;
+    fn rust_getcwd() -> istr;
 }
 
-fn getcwd() -> str { ret rustrt::rust_getcwd(); }
+fn getcwd() -> istr {
+    ret rustrt::rust_getcwd();
+}
 
 
 // Local Variables:

@@ -1,496 +1,483 @@
 import std::{vec, str};
-import str::rustrt::sbuf;
+import std::str::sbuf;
 import lib::llvm::llvm;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef,
               Opcode, ModuleRef};
 import trans_common::block_ctxt;
 
+fn B(cx: &@block_ctxt) -> BuilderRef {
+    let b = *cx.fcx.lcx.ccx.builder;
+    llvm::LLVMPositionBuilderAtEnd(b, cx.llbb);
+    ret b;
+}
+
 fn RetVoid(cx: &@block_ctxt) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildRetVoid(B);
+    ret llvm::LLVMBuildRetVoid(B(cx));
 }
 
 fn Ret(cx: &@block_ctxt, V: ValueRef) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildRet(B, V);
+    ret llvm::LLVMBuildRet(B(cx), V);
 }
 
 fn AggregateRet(cx: &@block_ctxt, RetVals: &[ValueRef]) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildAggregateRet(B, vec::to_ptr(RetVals),
+    ret llvm::LLVMBuildAggregateRet(B(cx), vec::to_ptr(RetVals),
                                     vec::len(RetVals));
 }
 
 fn Br(cx: &@block_ctxt, Dest: BasicBlockRef) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildBr(B, Dest);
+    ret llvm::LLVMBuildBr(B(cx), Dest);
 }
 
 fn CondBr(cx: &@block_ctxt, If: ValueRef, Then: BasicBlockRef,
           Else: BasicBlockRef) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildCondBr(B, If, Then, Else);
+    ret llvm::LLVMBuildCondBr(B(cx), If, Then, Else);
 }
 
 fn Switch(cx: &@block_ctxt, V: ValueRef, Else: BasicBlockRef,
           NumCases: uint) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildSwitch(B, V, Else, NumCases);
+    ret llvm::LLVMBuildSwitch(B(cx), V, Else, NumCases);
 }
 
 fn IndirectBr(cx: &@block_ctxt, Addr: ValueRef,
               NumDests: uint) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildIndirectBr(B, Addr, NumDests);
+    ret llvm::LLVMBuildIndirectBr(B(cx), Addr, NumDests);
 }
 
 fn Invoke(cx: &@block_ctxt, Fn: ValueRef, Args: &[ValueRef],
           Then: BasicBlockRef, Catch: BasicBlockRef) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildInvoke(B, Fn, vec::to_ptr(Args),
-                              vec::len(Args), Then, Catch, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
+                              vec::len(Args), Then, Catch, buf)
+    });
 }
 
 fn Unreachable(cx: &@block_ctxt) -> ValueRef {
     assert (!cx.terminated);;
     cx.terminated = true;
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildUnreachable(B);
+    ret llvm::LLVMBuildUnreachable(B(cx));
 }
 
 /* Arithmetic */
 fn Add(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildAdd(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildAdd(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn NSWAdd(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNSWAdd(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNSWAdd(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn NUWAdd(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNUWAdd(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNUWAdd(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn FAdd(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFAdd(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFAdd(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn Sub(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildSub(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildSub(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn NSWSub(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNSWSub(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNSWSub(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn NUWSub(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNUWSub(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNUWSub(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn FSub(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFSub(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFSub(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn Mul(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildMul(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildMul(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn NSWMul(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNSWMul(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNSWMul(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn NUWMul(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNUWMul(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNUWMul(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn FMul(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFMul(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFMul(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn UDiv(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildUDiv(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildUDiv(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn SDiv(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildSDiv(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildSDiv(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn ExactSDiv(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildExactSDiv(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildExactSDiv(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn FDiv(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFDiv(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFDiv(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn URem(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildURem(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildURem(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn SRem(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildSRem(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildSRem(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn FRem(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFRem(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFRem(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn Shl(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildShl(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildShl(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn LShr(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildLShr(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildLShr(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn AShr(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildAShr(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildAShr(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn And(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildAnd(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildAnd(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn Or(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildOr(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildOr(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn Xor(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildXor(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildXor(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn BinOp(cx: &@block_ctxt, Op: Opcode, LHS: ValueRef,
          RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildBinOp(B, Op, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildBinOp(B(cx), Op, LHS, RHS, buf)
+    });
 }
 
 fn Neg(cx: &@block_ctxt, V: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNeg(B, V, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNeg(B(cx), V, buf)
+    });
 }
 
 fn NSWNeg(cx: &@block_ctxt, V: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNSWNeg(B, V, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNSWNeg(B(cx), V, buf)
+    });
 }
 
 fn NUWNeg(cx: &@block_ctxt, V: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNUWNeg(B, V, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNUWNeg(B(cx), V, buf)
+    });
 }
 fn FNeg(cx: &@block_ctxt, V: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFNeg(B, V, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFNeg(B(cx), V, buf)
+    });
 }
+
 fn Not(cx: &@block_ctxt, V: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildNot(B, V, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildNot(B(cx), V, buf)
+    });
 }
 
 /* Memory */
 fn Malloc(cx: &@block_ctxt, Ty: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildMalloc(B, Ty, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildMalloc(B(cx), Ty, buf)
+    });
 }
 
 fn ArrayMalloc(cx: &@block_ctxt, Ty: TypeRef, Val: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildArrayMalloc(B, Ty, Val, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildArrayMalloc(B(cx), Ty, Val, buf)
+    });
 }
 
 fn Alloca(cx: &@block_ctxt, Ty: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildAlloca(B, Ty, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildAlloca(B(cx), Ty, buf)
+    });
 }
 
 fn ArrayAlloca(cx: &@block_ctxt, Ty: TypeRef, Val: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildArrayAlloca(B, Ty, Val, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildArrayAlloca(B(cx), Ty, Val, buf)
+    });
 }
 
 fn Free(cx: &@block_ctxt, PointerVal: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFree(B, PointerVal);
+    ret llvm::LLVMBuildFree(B(cx), PointerVal);
 }
 
 fn Load(cx: &@block_ctxt, PointerVal: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildLoad(B, PointerVal, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildLoad(B(cx), PointerVal, buf)
+    });
 }
 
 fn Store(cx: &@block_ctxt, Val: ValueRef, Ptr: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildStore(B, Val, Ptr);
+    ret llvm::LLVMBuildStore(B(cx), Val, Ptr);
 }
 
 fn GEP(cx: &@block_ctxt, Pointer: ValueRef,
        Indices: &[ValueRef]) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildGEP(B, Pointer, vec::to_ptr(Indices),
-                           vec::len(Indices), str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildGEP(B(cx), Pointer, vec::to_ptr(Indices),
+                           vec::len(Indices), buf)
+    });
 }
 
 fn InBoundsGEP(cx: &@block_ctxt, Pointer: ValueRef,
                Indices: &[ValueRef]) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildInBoundsGEP(B, Pointer, vec::to_ptr(Indices),
-                                   vec::len(Indices), str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildInBoundsGEP(B(cx), Pointer, vec::to_ptr(Indices),
+                                   vec::len(Indices), buf)
+    });
 }
 
 fn StructGEP(cx: &@block_ctxt, Pointer: ValueRef, Idx: uint) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildStructGEP(B, Pointer, Idx, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildStructGEP(B(cx), Pointer, Idx, buf)
+    });
 }
 
 fn GlobalString(cx: &@block_ctxt, _Str: sbuf) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildGlobalString(B, _Str, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildGlobalString(B(cx), _Str, buf)
+    });
 }
 
 fn GlobalStringPtr(cx: &@block_ctxt, _Str: sbuf) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildGlobalStringPtr(B, _Str, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildGlobalStringPtr(B(cx), _Str, buf)
+    });
 }
 
 /* Casts */
 fn Trunc(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildTrunc(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildTrunc(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn ZExt(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildZExt(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildZExt(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn SExt(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildSExt(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildSExt(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn FPToUI(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFPToUI(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFPToUI(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn FPToSI(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFPToSI(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFPToSI(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn UIToFP(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildUIToFP(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildUIToFP(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn SIToFP(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildSIToFP(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildSIToFP(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn FPTrunc(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFPTrunc(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFPTrunc(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn FPExt(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFPExt(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFPExt(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn PtrToInt(cx: &@block_ctxt, Val: ValueRef,
             DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildPtrToInt(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildPtrToInt(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn IntToPtr(cx: &@block_ctxt, Val: ValueRef,
             DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildIntToPtr(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildIntToPtr(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn BitCast(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildBitCast(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildBitCast(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn ZExtOrBitCast(cx: &@block_ctxt, Val: ValueRef,
                  DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildZExtOrBitCast(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildZExtOrBitCast(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn SExtOrBitCast(cx: &@block_ctxt, Val: ValueRef,
                  DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildSExtOrBitCast(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildSExtOrBitCast(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn TruncOrBitCast(cx: &@block_ctxt, Val: ValueRef,
                   DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildTruncOrBitCast(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildTruncOrBitCast(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn Cast(cx: &@block_ctxt, Op: Opcode, Val: ValueRef,
         DestTy: TypeRef, _Name: sbuf) ->
     ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildCast(B, Op, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildCast(B(cx), Op, Val, DestTy, buf)
+    });
 }
 
 fn PointerCast(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildPointerCast(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildPointerCast(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn IntCast(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildIntCast(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildIntCast(B(cx), Val, DestTy, buf)
+    });
 }
 
 fn FPCast(cx: &@block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFPCast(B, Val, DestTy, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFPCast(B(cx), Val, DestTy, buf)
+    });
 }
 
 
 /* Comparisons */
 fn ICmp(cx: &@block_ctxt, Op: uint, LHS: ValueRef,
         RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildICmp(B, Op, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildICmp(B(cx), Op, LHS, RHS, buf)
+    });
 }
 
 fn FCmp(cx: &@block_ctxt, Op: uint, LHS: ValueRef,
         RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildFCmp(B, Op, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildFCmp(B(cx), Op, LHS, RHS, buf)
+    });
 }
 
 
 /* Miscellaneous instructions */
 fn Phi(cx: &@block_ctxt, Ty: TypeRef, vals: &[ValueRef],
        bbs: &[BasicBlockRef]) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    let phi = llvm::LLVMBuildPhi(B, Ty, str::buf(""));
+    let phi = str::as_buf(~"", { |buf|
+        llvm::LLVMBuildPhi(B(cx), Ty, buf)
+    });
     assert (vec::len::<ValueRef>(vals) == vec::len::<BasicBlockRef>(bbs));
     llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
                           vec::len(vals));
@@ -504,113 +491,108 @@ fn AddIncomingToPhi(phi: ValueRef, vals: &[ValueRef], bbs: &[BasicBlockRef]) {
 }
 
 fn Call(cx: &@block_ctxt, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildCall(B, Fn, vec::to_ptr(Args), vec::len(Args),
-                            str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
+                            vec::len(Args), buf)
+    });
 }
 
 fn FastCall(cx: &@block_ctxt, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    let v =
-        llvm::LLVMBuildCall(B, Fn, vec::to_ptr(Args), vec::len(Args),
-                            str::buf(""));
+    let v = str::as_buf(~"", { |buf|
+        llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args), vec::len(Args), buf)
+    });
     llvm::LLVMSetInstructionCallConv(v, lib::llvm::LLVMFastCallConv);
     ret v;
 }
 
 fn CallWithConv(cx: &@block_ctxt, Fn: ValueRef, Args: &[ValueRef],
                 Conv: uint) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    let v =
-        llvm::LLVMBuildCall(B, Fn, vec::to_ptr(Args), vec::len(Args),
-                            str::buf(""));
+    let v = str::as_buf(~"", { |buf|
+        llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args), vec::len(Args), buf)
+    });
     llvm::LLVMSetInstructionCallConv(v, Conv);
     ret v;
 }
 
 fn Select(cx: &@block_ctxt, If: ValueRef, Then: ValueRef,
           Else: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildSelect(B, If, Then, Else, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildSelect(B(cx), If, Then, Else, buf)
+    });
 }
 
 fn VAArg(cx: &@block_ctxt, list: ValueRef, Ty: TypeRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildVAArg(B, list, Ty, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildVAArg(B(cx), list, Ty, buf)
+    });
 }
 
 fn ExtractElement(cx: &@block_ctxt, VecVal: ValueRef,
                   Index: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildExtractElement(B, VecVal, Index, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildExtractElement(B(cx), VecVal, Index, buf)
+    });
 }
 
 fn InsertElement(cx: &@block_ctxt, VecVal: ValueRef, EltVal: ValueRef,
                  Index: ValueRef) ->
     ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildInsertElement(B, VecVal, EltVal, Index,
-                                     str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildInsertElement(B(cx), VecVal, EltVal, Index, buf)
+    });
 }
 
 fn ShuffleVector(cx: &@block_ctxt, V1: ValueRef, V2: ValueRef,
                  Mask: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildShuffleVector(B, V1, V2, Mask, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildShuffleVector(B(cx), V1, V2, Mask, buf)
+    });
 }
 
 fn ExtractValue(cx: &@block_ctxt, AggVal: ValueRef, Index: uint) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildExtractValue(B, AggVal, Index, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildExtractValue(B(cx), AggVal, Index, buf)
+    });
 }
 
 fn InsertValue(cx: &@block_ctxt, AggVal: ValueRef,
                EltVal: ValueRef, Index: uint) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildInsertValue(B, AggVal, EltVal, Index,
-                                   str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildInsertValue(B(cx), AggVal, EltVal, Index, buf)
+    });
 }
 
 fn IsNull(cx: &@block_ctxt, Val: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildIsNull(B, Val, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildIsNull(B(cx), Val, buf)
+    });
 }
 
 fn IsNotNull(cx: &@block_ctxt, Val: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildIsNotNull(B, Val, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildIsNotNull(B(cx), Val, buf)
+    });
 }
 
 fn PtrDiff(cx: &@block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    ret llvm::LLVMBuildPtrDiff(B, LHS, RHS, str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildPtrDiff(B(cx), LHS, RHS, buf)
+    });
 }
 
 fn Trap(cx: &@block_ctxt) -> ValueRef {
-    let B = *cx.fcx.lcx.ccx.builder;
-    llvm::LLVMPositionBuilderAtEnd(B, cx.llbb);
-    let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(B);
+    let b = B(cx);
+    let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(b);
     let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
     let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
-    let T: ValueRef =
-        llvm::LLVMGetNamedFunction(M, str::buf("llvm.trap"));
+    let T: ValueRef = str::as_buf(~"llvm.trap", { |buf|
+        llvm::LLVMGetNamedFunction(M, buf)
+    });
     assert (T as int != 0);
     let Args: [ValueRef] = [];
-    ret llvm::LLVMBuildCall(B, T, vec::to_ptr(Args), vec::len(Args),
-                            str::buf(""));
+    ret str::as_buf(~"", { |buf|
+        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args), vec::len(Args), buf)
+    });
 }
 
 //

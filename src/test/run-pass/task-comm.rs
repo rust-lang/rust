@@ -91,7 +91,7 @@ fn test03() {
 
 fn test04_start() {
     log "Started task";
-    let i: int = 1024 * 1024 * 64;
+    let i: int = 1024 * 1024;
     while i > 0 { i = i - 1; }
     log "Finished task";
 }
@@ -125,7 +125,7 @@ fn test05() {
 fn test06_start(task_number: int) {
     log "Started task.";
     let i: int = 0;
-    while i < 100000000 { i = i + 1; }
+    while i < 1000000 { i = i + 1; }
     log "Finished task.";
 }
 

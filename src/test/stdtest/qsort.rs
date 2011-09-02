@@ -49,7 +49,11 @@ fn test_simple() {
     fn lteq(a: &int, b: &int) -> bool { int::le(a, b) }
     sort::quick_sort(lteq, names);
 
-    let pairs = vec::zip(expected, vec::from_mut(names));
+    let immut_names = vec::from_mut(names);
+
+ // Silly, but what else can we do?
+    check vec::same_length(expected, immut_names);
+    let pairs = vec::zip(expected, immut_names);
     for (a, b) in pairs { log #fmt["%d %d", a, b]; assert (a == b); }
 }
 

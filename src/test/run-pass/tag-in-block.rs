@@ -6,4 +6,4 @@ fn foo() {
     fn baz() { zed(nil); }
 }
 
-fn main(args: [str]) { }
+fn main(args: [istr]) { }

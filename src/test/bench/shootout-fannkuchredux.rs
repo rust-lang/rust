@@ -56,7 +56,7 @@ fn fannkuch(n: int) -> int {
     ret flips;
 }
 
-fn main(args: [str]) {
+fn main(args: [istr]) {
     let n = 7;
     log #fmt["Pfannkuchen(%d) = %d", n, fannkuch(n)];
 }

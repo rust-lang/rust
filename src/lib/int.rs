@@ -1,34 +1,34 @@
 
 
-fn add(x: int, y: int) -> int { ret x + y; }
+pure fn add(x: int, y: int) -> int { ret x + y; }
 
-fn sub(x: int, y: int) -> int { ret x - y; }
+pure fn sub(x: int, y: int) -> int { ret x - y; }
 
-fn mul(x: int, y: int) -> int { ret x * y; }
+pure fn mul(x: int, y: int) -> int { ret x * y; }
 
-fn div(x: int, y: int) -> int { ret x / y; }
+pure fn div(x: int, y: int) -> int { ret x / y; }
 
-fn rem(x: int, y: int) -> int { ret x % y; }
+pure fn rem(x: int, y: int) -> int { ret x % y; }
 
-fn lt(x: int, y: int) -> bool { ret x < y; }
+pure fn lt(x: int, y: int) -> bool { ret x < y; }
 
-fn le(x: int, y: int) -> bool { ret x <= y; }
+pure fn le(x: int, y: int) -> bool { ret x <= y; }
 
-fn eq(x: int, y: int) -> bool { ret x == y; }
+pure fn eq(x: int, y: int) -> bool { ret x == y; }
 
-fn ne(x: int, y: int) -> bool { ret x != y; }
+pure fn ne(x: int, y: int) -> bool { ret x != y; }
 
-fn ge(x: int, y: int) -> bool { ret x >= y; }
+pure fn ge(x: int, y: int) -> bool { ret x >= y; }
 
-fn gt(x: int, y: int) -> bool { ret x > y; }
+pure fn gt(x: int, y: int) -> bool { ret x > y; }
 
-fn positive(x: int) -> bool { ret x > 0; }
+pure fn positive(x: int) -> bool { ret x > 0; }
 
-fn negative(x: int) -> bool { ret x < 0; }
+pure fn negative(x: int) -> bool { ret x < 0; }
 
-fn nonpositive(x: int) -> bool { ret x <= 0; }
+pure fn nonpositive(x: int) -> bool { ret x <= 0; }
 
-fn nonnegative(x: int) -> bool { ret x >= 0; }
+pure fn nonnegative(x: int) -> bool { ret x >= 0; }
 
 
 // FIXME: Make sure this works with negative integers.
@@ -41,13 +41,13 @@ iter range(lo: int, hi: int) -> int {
     while lo_ < hi { put lo_; lo_ += 1; }
 }
 
-fn to_str(n: int, radix: uint) -> str {
+fn to_str(n: int, radix: uint) -> istr {
     assert (0u < radix && radix <= 16u);
     ret if n < 0 {
-            "-" + uint::to_str(-n as uint, radix)
+            ~"-" + uint::to_str(-n as uint, radix)
         } else { uint::to_str(n as uint, radix) };
 }
-fn str(i: int) -> str { ret to_str(i, 10u); }
+fn str(i: int) -> istr { ret to_str(i, 10u); }
 
 fn pow(base: int, exponent: uint) -> int {
     ret if exponent == 0u {

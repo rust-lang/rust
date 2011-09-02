@@ -36,8 +36,8 @@ fn bit_num(fcx: &fn_ctxt, c: &tsconstr) -> uint {
         alt rslt {
           cinit(n, _, _) { ret n; }
           _ {
-            fcx.ccx.tcx.sess.bug("bit_num: asked for init constraint," +
-                                     " found a pred constraint");
+            fcx.ccx.tcx.sess.bug(~"bit_num: asked for init constraint," +
+                                     ~" found a pred constraint");
           }
         }
       }
@@ -45,8 +45,8 @@ fn bit_num(fcx: &fn_ctxt, c: &tsconstr) -> uint {
         alt rslt {
           cpred(_, descs) { ret match_args(fcx, descs, args); }
           _ {
-            fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint," +
-                                     " found an init constraint");
+            fcx.ccx.tcx.sess.bug(~"bit_num: asked for pred constraint," +
+                                     ~" found an init constraint");
           }
         }
       }
@@ -205,12 +205,12 @@ fn clear_in_poststate_expr(fcx: &fn_ctxt, e: &@expr, t: &poststate) {
               }
               some(_) {/* ignore args (for now...) */ }
               _ {
-                fcx.ccx.tcx.sess.bug("clear_in_poststate_expr: \
+                fcx.ccx.tcx.sess.bug(~"clear_in_poststate_expr: \
                                    unbound var");
               }
             }
           }
-          _ { fcx.ccx.tcx.sess.bug("clear_in_poststate_expr"); }
+          _ { fcx.ccx.tcx.sess.bug(~"clear_in_poststate_expr"); }
         }
       }
       _ {/* do nothing */ }

@@ -1,4 +1,4 @@
-// error-pattern:assigning to immutable alias
+// error-pattern:assigning to upvar
 // Make sure that nesting a block within a lambda doesn't let us
 // mutate upvars from a lambda.
 fn main() {

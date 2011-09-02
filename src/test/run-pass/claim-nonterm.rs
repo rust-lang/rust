@@ -1,6 +1,5 @@
 // tests that the pred in a claim isn't actually eval'd
 use std;
-import std::str::*;
 import std::uint::*;
 
 pure fn fails(a: uint) -> bool { fail; }

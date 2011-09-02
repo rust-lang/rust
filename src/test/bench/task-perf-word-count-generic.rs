@@ -197,11 +197,12 @@ mod map_reduce {
     }
 }
 
-fn main(argv: [str]) {
+fn main(argv: [istr]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 
-        out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
+        out.write_line(
+            #fmt["Usage: %s <filename> ...", argv[0]]);
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.
@@ -226,11 +227,12 @@ fn main(argv: [str]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
+    log_err ~"MapReduce completed in " +
+        u64::str(elapsed) + ~"ms";
 }
 
-fn read_word(r: io::reader) -> option<str> {
-    let w = "";
+fn read_word(r: io::reader) -> option<istr> {
+    let w = ~"";
 
     while !r.eof() {
         let c = r.read_char();
@@ -238,7 +240,7 @@ fn read_word(r: io::reader) -> option<str> {
 
         if is_word_char(c) {
             w += str::from_char(c);
-        } else { if w != "" { ret some(w); } }
+        } else { if w != ~"" { ret some(w); } }
     }
     ret none;
 }

@@ -17,8 +17,6 @@
 #include <dlfcn.h>
 #endif
 
-#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
-
 #define END_OF_STACK_RA     (void (*)())0xdeadbeef
 
 namespace gc {
@@ -121,9 +119,9 @@ gc::mark(std::vector<root> &roots) {
         shape::arena arena;
         shape::type_param *params = shape::type_param::from_tydesc(ri->tydesc,
                                                                    arena);
-        shape::log log(task, ri->tydesc->shape, params,
+        shape::log log(task, true, ri->tydesc->shape, params,
                        ri->tydesc->shape_tables, ri->data, std::cerr);
-        log.walk(true);
+        log.walk();
         DPRINT("\n");
 
         ++ri;

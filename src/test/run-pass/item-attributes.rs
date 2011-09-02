@@ -167,7 +167,7 @@ mod test_distinguish_syntax_ext {
     use std;
 
     fn f() {
-        #fmt["test%s", "s"];
+        #fmt["test%s", ~"s"];
         #[attr = "val"]
         fn g() { }
     }
@@ -189,7 +189,7 @@ mod test_native_items {
         type sbuf;
 
         #[attr]
-        fn str_buf(s: str) -> sbuf;
+        fn unsupervise();
     }
 }
 

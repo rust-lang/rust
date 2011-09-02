@@ -1,4 +1,4 @@
-// error-pattern:assigning to immutable alias
+// error-pattern:assigning to upvar
 // Make sure we can't write to upvars from lambdas
 fn main() {
     let i = 0;

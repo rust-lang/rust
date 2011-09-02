@@ -3,10 +3,13 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <iostream>
+#include <new>
 #include <stdint.h>
 
 #include "rust_internal.h"
 #include "rust_obstack.h"
+#include "rust_shape.h"
 #include "rust_task.h"
 
 // ISAAC, let go of max()!
@@ -14,39 +17,36 @@
 #undef max
 #endif
 
-//#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
-#define DPRINT(fmt,...)
-
 //const size_t DEFAULT_CHUNK_SIZE = 4096;
-const size_t DEFAULT_CHUNK_SIZE = 300000;
+const size_t DEFAULT_CHUNK_SIZE = 500000;
 const size_t DEFAULT_ALIGNMENT = 16;
 
-struct rust_obstack_chunk {
-    rust_obstack_chunk *prev;
-    size_t size;
-    size_t alen;
-    size_t pad;
+// A single type-tagged allocation in a chunk.
+struct rust_obstack_alloc {
+    size_t len;
+    const type_desc *tydesc;
+    uint32_t pad0;  // FIXME: x86-specific
+    uint32_t pad1;
     uint8_t data[];
 
-    rust_obstack_chunk(rust_obstack_chunk *in_prev, size_t in_size)
-    : prev(in_prev), size(in_size), alen(0) {}
-
-    void *alloc(size_t len);
-    bool free(void *ptr);
+    rust_obstack_alloc(size_t in_len, const type_desc *in_tydesc)
+    : len(in_len), tydesc(in_tydesc) {}
 };
 
 void *
-rust_obstack_chunk::alloc(size_t len) {
+rust_obstack_chunk::alloc(size_t len, type_desc *tydesc) {
     alen = align_to(alen, DEFAULT_ALIGNMENT);
 
-    if (len > size - alen) {
+    if (sizeof(rust_obstack_alloc) + len > size - alen) {
         DPRINT("Not enough space, len=%lu!\n", len);
-        assert(0);
+        assert(0);      // FIXME
         return NULL;    // Not enough space.
     }
-    void *result = data + alen;
-    alen += len;
-    return result;
+
+    rust_obstack_alloc *a = new(data + alen) rust_obstack_alloc(len, tydesc);
+    alen += sizeof(*a) + len;
+    memset(a->data, '\0', len); // FIXME: For GC.
+    return &a->data;
 }
 
 bool
@@ -59,14 +59,20 @@ rust_obstack_chunk::free(void *ptr) {
     return true;
 }
 
+void *
+rust_obstack_chunk::mark() {
+    return data + alen;
+}
+
 // Allocates the given number of bytes in a new chunk.
 void *
-rust_obstack::alloc_new(size_t len) {
-    size_t chunk_size = std::max(len, DEFAULT_CHUNK_SIZE);
+rust_obstack::alloc_new(size_t len, type_desc *tydesc) {
+    size_t chunk_size = std::max(sizeof(rust_obstack_alloc) + len,
+                                 DEFAULT_CHUNK_SIZE);
     void *ptr = task->malloc(sizeof(chunk) + chunk_size, "obstack");
     DPRINT("making new chunk at %p, len %lu\n", ptr, chunk_size);
     chunk = new(ptr) rust_obstack_chunk(chunk, chunk_size);
-    return chunk->alloc(len);
+    return chunk->alloc(len, tydesc);
 }
 
 rust_obstack::~rust_obstack() {
@@ -78,14 +84,14 @@ rust_obstack::~rust_obstack() {
 }
 
 void *
-rust_obstack::alloc(size_t len) {
+rust_obstack::alloc(size_t len, type_desc *tydesc) {
     if (!chunk)
-        return alloc_new(len);
+        return alloc_new(len, tydesc);
 
-    DPRINT("alloc sz %u", (uint32_t)len);
+    DPRINT("alloc sz %u\n", (uint32_t)len);
 
-    void *ptr = chunk->alloc(len);
-    ptr = ptr ? ptr : alloc_new(len);
+    void *ptr = chunk->alloc(len, tydesc);
+    ptr = ptr ? ptr : alloc_new(len, tydesc);
 
     return ptr;
 }
@@ -105,5 +111,68 @@ rust_obstack::free(void *ptr) {
         chunk = prev;
         assert(chunk);
     }
+}
+
+void *
+rust_obstack::mark() {
+    return chunk ? chunk->mark() : NULL;
+}
+
+
+// Iteration over self-describing obstacks
+
+std::pair<const type_desc *,void *>
+rust_obstack::iterator::operator*() const {
+    return std::make_pair(alloc->tydesc, alloc->data);
+}
+
+rust_obstack::iterator &
+rust_obstack::iterator::operator++() {
+    uint8_t *adata = align_to(alloc->data + alloc->len, DEFAULT_ALIGNMENT);
+    alloc = reinterpret_cast<rust_obstack_alloc *>(adata);
+    if (reinterpret_cast<uint8_t *>(alloc) >= chunk->data + chunk->alen) {
+        // We reached the end of this chunk; go on to the next one.
+        chunk = chunk->prev;
+        if (chunk)
+            alloc = reinterpret_cast<rust_obstack_alloc *>(chunk->data);
+        else
+            alloc = NULL;
+    }
+    return *this;
+}
+
+bool
+rust_obstack::iterator::operator==(const rust_obstack::iterator &other)
+        const {
+    return chunk == other.chunk && alloc == other.alloc;
+}
+
+bool
+rust_obstack::iterator::operator!=(const rust_obstack::iterator &other)
+        const {
+    return !(*this == other);
+}
+
+
+// Debugging
+
+void
+rust_obstack::dump() const {
+    iterator b = begin(), e = end();
+    while (b != e) {
+        std::pair<const type_desc *,void *> data = *b;
+        shape::arena arena;
+        shape::type_param *params = shape::type_param::from_tydesc(data.first,
+                                                                   arena);
+        shape::log log(task, true, data.first->shape, params,
+                       data.first->shape_tables,
+                       reinterpret_cast<uint8_t *>(data.second), std::cerr);
+        log.walk();
+        std::cerr << "\n";
+
+        ++b;
+    }
+
+    std::cerr << "end of dynastack dump\n";
 }
 

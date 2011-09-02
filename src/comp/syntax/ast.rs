@@ -1,13 +1,13 @@
 // The Rust abstract syntax tree.
 
 import std::option;
-import std::str;
 import codemap::span;
 import codemap::filename;
 
 type spanned<T> = {node: T, span: span};
 
-type ident = str;
+type ident = istr;
+
 // Functions may or may not have names.
 type fn_ident = option::t<ident>;
 
@@ -28,11 +28,11 @@ type ty_param = {ident: ident, kind: kind};
 
 tag def {
     def_fn(def_id, purity);
-    def_obj_field(def_id);
+    def_obj_field(def_id, mutability);
     def_mod(def_id);
     def_native_mod(def_id);
     def_const(def_id);
-    def_arg(def_id);
+    def_arg(def_id, mode);
     def_local(def_id);
     def_variant(def_id, /* tag */def_id);
 
@@ -43,11 +43,7 @@ tag def {
     def_use(def_id);
     def_native_ty(def_id);
     def_native_fn(def_id);
-
-    /* A "fake" def for upvars. This never appears in the def_map, but
-     * freevars::def_lookup will return it for a def that is an upvar.
-     * It contains the actual def. */
-    def_upvar(def_id, @def);
+    def_upvar(def_id, @def, bool /* writable */);
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -236,7 +232,7 @@ tag blk_sort {
 type mac = spanned<mac_>;
 
 tag mac_ {
-    mac_invoc(path, @expr, option::t<str>);
+    mac_invoc(path, @expr, option::t<istr>);
     mac_embed_type(@ty);
     mac_embed_block(blk);
     mac_ellipsis;
@@ -245,13 +241,13 @@ tag mac_ {
 type lit = spanned<lit_>;
 
 tag lit_ {
-    lit_str(str, seq_kind);
+    lit_str(istr, seq_kind);
     lit_char(char);
     lit_int(int);
     lit_uint(uint);
     lit_mach_int(ty_mach, int);
-    lit_float(str);
-    lit_mach_float(ty_mach, str);
+    lit_float(istr);
+    lit_mach_float(ty_mach, istr);
     lit_nil;
     lit_bool(bool);
 }
@@ -420,14 +416,14 @@ tag native_abi {
 }
 
 type native_mod =
-    {native_name: str,
+    {native_name: istr,
      abi: native_abi,
      view_items: [@view_item],
      items: [@native_item]};
 
 type variant_arg = {ty: @ty, id: node_id};
 
-type variant_ = {name: str, args: [variant_arg], id: node_id};
+type variant_ = {name: ident, args: [variant_arg], id: node_id};
 
 type variant = spanned<variant_>;
 
@@ -493,7 +489,7 @@ type native_item =
 
 tag native_item_ {
     native_item_ty;
-    native_item_fn(option::t<str>, fn_decl, [ty_param]);
+    native_item_fn(option::t<istr>, fn_decl, [ty_param]);
 }
 
 //

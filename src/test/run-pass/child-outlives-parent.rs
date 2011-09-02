@@ -3,6 +3,6 @@
 use std;
 import std::task;
 
-fn child2(s: str) { }
+fn child2(s: -istr) { }
 
-fn main() { let x = task::spawn(bind child2("hi")); }
+fn main() { let x = task::spawn(bind child2(~"hi")); }

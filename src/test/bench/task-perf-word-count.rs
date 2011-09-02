@@ -29,7 +29,7 @@ import std::comm::port;
 import std::comm::recv;
 import std::comm::send;
 
-fn map(filename: str, emit: map_reduce::putter) {
+fn map(filename: &istr, emit: map_reduce::putter) {
     let f = io::file_reader(filename);
 
 
@@ -38,7 +38,7 @@ fn map(filename: str, emit: map_reduce::putter) {
     }
 }
 
-fn reduce(word: str, get: map_reduce::getter) {
+fn reduce(word: &istr, get: map_reduce::getter) {
     let count = 0;
 
 
@@ -52,36 +52,36 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter = fn(str, int);
+    type putter = fn(&istr, int);
 
-    type mapper = fn(str, putter);
+    type mapper = fn(&istr, putter);
 
     type getter = fn() -> option<int>;
 
-    type reducer = fn(str, getter);
+    type reducer = fn(&istr, getter);
 
     tag ctrl_proto {
-        find_reducer([u8], chan<chan<reduce_proto>>);
+        find_reducer(istr, chan<chan<reduce_proto>>);
         mapper_done;
     }
 
     tag reduce_proto { emit_val(int); done; ref; release; }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: &[str])
+    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: &[istr])
         -> [joinable_task] {
         let tasks = [];
-        for i: str in inputs {
+        for i: istr in inputs {
             tasks += [task::spawn_joinable(bind map_task(ctrl, i))];
         }
         ret tasks;
     }
 
-    fn map_task(ctrl: chan<ctrl_proto>, input: str) {
+    fn map_task(ctrl: chan<ctrl_proto>, input: &istr) {
         // log_err "map_task " + input;
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap<str, chan<reduce_proto>>,
-                ctrl: chan<ctrl_proto>, key: str, val: int) {
+        fn emit(im: &map::hashmap<istr, chan<reduce_proto>>,
+                ctrl: chan<ctrl_proto>, key: &istr, val: int) {
             let c;
             alt im.find(key) {
               some(_c) {
@@ -90,8 +90,7 @@ mod map_reduce {
               }
               none. {
                 let p = port();
-                let keyi = str::bytes(key);
-                send(ctrl, find_reducer(keyi, chan(p)));
+                send(ctrl, find_reducer(key, chan(p)));
                 c = recv(p);
                 im.insert(key, c);
                 send(c, ref);
@@ -102,7 +101,7 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        for each kv: @{key: str, val: chan<reduce_proto>} in
+        for each kv: @{key: istr, val: chan<reduce_proto>} in
                  intermediates.items() {
             send(kv.val, release);
         }
@@ -110,7 +109,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn reduce_task(key: str, out: chan<chan<reduce_proto>>) {
+    fn reduce_task(key: &istr, out: chan<chan<reduce_proto>>) {
         let p = port();
 
         send(out, chan(p));
@@ -140,13 +139,13 @@ mod map_reduce {
         reduce(key, bind get(p, ref_count, is_done));
     }
 
-    fn map_reduce(inputs: &[str]) {
+    fn map_reduce(inputs: &[istr]) {
         let ctrl = port::<ctrl_proto>();
 
         // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let reducers: map::hashmap<str, chan<reduce_proto>>;
+        let reducers: map::hashmap<istr, chan<reduce_proto>>;
 
         reducers = map::new_str_hash();
 
@@ -160,9 +159,8 @@ mod map_reduce {
                 // log_err "received mapper terminated.";
                 num_mappers -= 1;
               }
-              find_reducer(ki, cc) {
+              find_reducer(k, cc) {
                 let c;
-                let k = str::unsafe_from_bytes(ki);
                 // log_err "finding reducer for " + k;
                 alt reducers.find(k) {
                   some(_c) {
@@ -173,7 +171,8 @@ mod map_reduce {
                     // log_err "creating new reducer for " + k;
                     let p = port();
                     tasks +=
-                        [task::spawn_joinable(bind reduce_task(k, chan(p)))];
+                        [task::spawn_joinable(
+                            bind reduce_task(k, chan(p)))];
                     c = recv(p);
                     reducers.insert(k, c);
                   }
@@ -183,7 +182,7 @@ mod map_reduce {
             }
         }
 
-        for each kv: @{key: str, val: chan<reduce_proto>} in reducers.items()
+        for each kv: @{key: istr, val: chan<reduce_proto>} in reducers.items()
                  {
             send(kv.val, done);
         }
@@ -192,11 +191,12 @@ mod map_reduce {
     }
 }
 
-fn main(argv: [str]) {
+fn main(argv: [istr]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 
-        out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
+        out.write_line(
+            #fmt["Usage: %s <filename> ...", argv[0]]);
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.
@@ -216,11 +216,11 @@ fn main(argv: [str]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
+    log_err ~"MapReduce completed in " + u64::str(elapsed) + ~"ms";
 }
 
-fn read_word(r: io::reader) -> option<str> {
-    let w = "";
+fn read_word(r: io::reader) -> option<istr> {
+    let w = ~"";
 
     while !r.eof() {
         let c = r.read_char();
@@ -228,7 +228,7 @@ fn read_word(r: io::reader) -> option<str> {
 
         if is_word_char(c) {
             w += str::from_char(c);
-        } else { if w != "" { ret some(w); } }
+        } else { if w != ~"" { ret some(w); } }
     }
     ret none;
 }

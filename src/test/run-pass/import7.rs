@@ -12,4 +12,4 @@ mod bar {
         mod zed { }
     }
 }
-fn main(args: [str]) { baz(); }
+fn main(args: [istr]) { baz(); }

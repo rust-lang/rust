@@ -246,8 +246,8 @@ fn visit_expr<E>(ex: &@expr, e: &E, v: &vt<E>) {
       }
       expr_tup(elts) { for el in elts { v.visit_expr(el, e, v); } }
       expr_call(callee, args) {
-        v.visit_expr(callee, e, v);
         visit_exprs(args, e, v);
+        v.visit_expr(callee, e, v);
       }
       expr_self_method(_) { }
       expr_bind(callee, args) {
