@@ -66,12 +66,6 @@ command_line_args : public kernel_owned<command_line_args>
     }
 };
 
-
-// FIXME: Transitional. Please remove.
-extern "C" CDECL void
-set_main_takes_istr(uintptr_t flag) {
-}
-
 /**
  * Main entry point into the Rust runtime. Here we create a Rust service,
  * initialize the kernel, create the root domain and run it.

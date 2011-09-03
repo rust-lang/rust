@@ -4,10 +4,6 @@
 
 // Upcalls.
 
-// FIXME: Transitional. Please remove
-extern "C" CDECL char const *
-str_buf(rust_task *task, void *s) { return NULL; }
-
 #ifdef __i386__
 void
 check_stack(rust_task *task) {
