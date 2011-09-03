@@ -563,6 +563,9 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
       ast::pat_bind(_) {
         if make_copy {
             let ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
+            // FIXME: Could constrain pat_bind to make this
+            // check unnecessary.
+            check type_has_static_size(ccx, ty);
             let llty = trans::type_of(ccx, pat.span, ty);
             let alloc = trans::alloca(bcx, llty);
             bcx = trans::copy_val(bcx, trans::INIT, alloc,

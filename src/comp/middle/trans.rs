@@ -74,18 +74,8 @@ import trans_objects::trans_anon_obj;
 import trans_objects::trans_obj;
 import tvec = trans_vec;
 
-// This function now fails if called on a type with dynamic size (as its
-// return value was always meaningless in that case anyhow). Beware!
-//
-// TODO: Enforce via a predicate.
-fn type_of(cx: &@crate_ctxt, sp: &span, t: ty::t) -> TypeRef {
-    if ty::type_has_dynamic_size(cx.tcx, t) {
-        cx.sess.span_fatal(sp,
-                           ~"type_of() called on a type with dynamic size: " +
-                           ty_to_str(cx.tcx, t));
-    }
-    ret type_of_inner(cx, sp, t);
-}
+fn type_of(cx: &@crate_ctxt, sp: &span, t: ty::t)
+    : type_has_static_size(cx, t) -> TypeRef { type_of_inner(cx, sp, t) }
 
 fn type_of_explicit_args(cx: &@crate_ctxt, sp: &span, inputs: &[ty::arg]) ->
    [TypeRef] {
@@ -171,6 +161,8 @@ fn type_of_native_fn(cx: &@crate_ctxt, sp: &span, abi: ast::native_abi,
     ret T_fn(atys, type_of_inner(cx, sp, output));
 }
 
+/* FIXME: could add type_has_static_size as a constraint,
+   allowing us to get rid of some impossible cases. */
 fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: ty::t) -> TypeRef {
     // Check the cache.
 
@@ -263,23 +255,33 @@ fn type_of_tag(cx: &@crate_ctxt, sp: &span, did: &ast::def_id, t: ty::t) ->
 
 fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: &span,
                                  tpt: &ty::ty_param_kinds_and_ty) -> TypeRef {
-    alt ty::struct(lcx.ccx.tcx, tpt.ty) {
+    let cx = lcx.ccx;
+    let t = tpt.ty;
+    alt ty::struct(cx.tcx, t) {
       ty::ty_fn(_, _, _, _, _) {
         let llfnty =
-            type_of_fn_from_ty(lcx.ccx, sp, tpt.ty, std::vec::len(tpt.kinds));
-        ret T_fn_pair(*lcx.ccx, llfnty);
+            type_of_fn_from_ty(cx, sp, t, std::vec::len(tpt.kinds));
+        ret T_fn_pair(*cx, llfnty);
       }
       _ {
         // fall through
       }
     }
-    ret type_of(lcx.ccx, sp, tpt.ty);
+    // FIXME: could have a precondition on tpt, but that
+    // doesn't work right now because one predicate can't imply
+    // another
+    check type_has_static_size(cx, t);
+    type_of(cx, sp, t)
 }
 
 fn type_of_or_i8(bcx: &@block_ctxt, typ: ty::t) -> TypeRef {
-    if ty::type_has_dynamic_size(bcx_tcx(bcx), typ) { ret T_i8(); }
-    ret type_of(bcx_ccx(bcx), bcx.sp, typ);
-}
+    let ccx = bcx_ccx(bcx);
+    if check type_has_static_size(ccx, typ) {
+        let sp = bcx.sp;
+        type_of(ccx, sp, typ)
+    }
+    else { T_i8() }
+ }
 
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
@@ -452,17 +454,25 @@ fn llalign_of(t: TypeRef) -> ValueRef {
 }
 
 fn size_of(cx: &@block_ctxt, t: ty::t) -> result {
-    if !ty::type_has_dynamic_size(bcx_tcx(cx), t) {
-        ret rslt(cx, llsize_of(type_of(bcx_ccx(cx), cx.sp, t)));
+    let ccx = bcx_ccx(cx);
+    if check type_has_static_size(ccx, t) {
+        let sp = cx.sp;
+        rslt(cx, llsize_of(type_of(ccx, sp, t)))
     }
-    ret dynamic_size_of(cx, t);
+    else {
+        dynamic_size_of(cx, t)
+    }
 }
 
 fn align_of(cx: &@block_ctxt, t: ty::t) -> result {
-    if !ty::type_has_dynamic_size(bcx_tcx(cx), t) {
-        ret rslt(cx, llalign_of(type_of(bcx_ccx(cx), cx.sp, t)));
+    let ccx = bcx_ccx(cx);
+    if check type_has_static_size(ccx, t) {
+        let sp = cx.sp;
+        rslt(cx, llalign_of(type_of(ccx, sp, t)))
     }
-    ret dynamic_align_of(cx, t);
+    else {
+        dynamic_align_of(cx, t)
+    }
 }
 
 fn alloca(cx: &@block_ctxt, t: TypeRef) -> ValueRef {
@@ -551,6 +561,10 @@ fn static_size_of_tag(cx: &@crate_ctxt, sp: &span, t: ty::t) -> uint {
             tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
             // Here we possibly do a recursive call.
 
+            // FIXME: Avoid this check. Since the parent has static
+            // size, any field must as well. There should be a way to
+            // express that with constrained types.
+            check type_has_static_size(cx, tup_ty);
             let this_size = llsize_of_real(cx, type_of(cx, sp, tup_ty));
             if max_size < this_size { max_size = this_size; }
         }
@@ -682,9 +696,13 @@ fn bump_ptr(bcx: &@block_ctxt, t: ty::t, base: ValueRef, sz: ValueRef) ->
    ValueRef {
     let raw = PointerCast(bcx, base, T_ptr(T_i8()));
     let bumped = GEP(bcx, raw, [sz]);
-    if ty::type_has_dynamic_size(bcx_tcx(bcx), t) { ret bumped; }
-    let typ = T_ptr(type_of(bcx_ccx(bcx), bcx.sp, t));
-    ret PointerCast(bcx, bumped, typ);
+    let ccx = bcx_ccx(bcx);
+    if check type_has_static_size(ccx, t) {
+        let sp = bcx.sp;
+        let typ = T_ptr(type_of(ccx, sp, t));
+        PointerCast(bcx, bumped, typ)
+    }
+    else { bumped }
 }
 
 // Replacement for the LLVM 'GEP' instruction when field-indexing into a
@@ -800,20 +818,25 @@ fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: &ast::def_id,
     // the blob pointer isn't dynamically sized).
 
     let llunionptr: ValueRef;
-    if !ty::type_has_dynamic_size(bcx_tcx(cx), tup_ty) {
-        let llty = type_of(bcx_ccx(cx), cx.sp, tup_ty);
+    let sp = cx.sp;
+    let ccx = bcx_ccx(cx);
+    if check type_has_static_size(ccx, tup_ty) {
+        let llty = type_of(ccx, sp, tup_ty);
         llunionptr = TruncOrBitCast(cx, llblobptr, T_ptr(llty));
-    } else { llunionptr = llblobptr; }
-    // Do the GEP_tup_like().
+    }
+    else { llunionptr = llblobptr; }
 
+    // Do the GEP_tup_like().
     let rs = GEP_tup_like(cx, tup_ty, llunionptr, [0, ix as int]);
     // Cast the result to the appropriate type, if necessary.
 
-    let val;
-    if !ty::type_has_dynamic_size(bcx_tcx(cx), elem_ty) {
-        let llelemty = type_of(bcx_ccx(rs.bcx), cx.sp, elem_ty);
-        val = PointerCast(rs.bcx, rs.val, T_ptr(llelemty));
-    } else { val = rs.val; }
+    let rs_ccx = bcx_ccx(rs.bcx);
+    let val = if check type_has_static_size(rs_ccx, elem_ty) {
+        let llelemty = type_of(rs_ccx, sp, elem_ty);
+        PointerCast(rs.bcx, rs.val, T_ptr(llelemty))
+    }
+    else { rs.val };
+
     ret rslt(rs.bcx, val);
 }
 
@@ -863,7 +886,12 @@ fn trans_malloc_boxed_raw(cx: &@block_ctxt, t: ty::t) -> result {
 
     // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
     // wants.
-    let llty = type_of(bcx_ccx(cx), cx.sp, box_ptr);
+    // FIXME: Could avoid this check with a postcondition on mk_imm_box?
+    // (requires Issue #586)
+    let ccx = bcx_ccx(cx);
+    let sp = cx.sp;
+    check type_has_static_size(ccx, box_ptr);
+    let llty = type_of(ccx, sp, box_ptr);
     ret trans_raw_malloc(sz.bcx, llty, sz.val);
 }
 
@@ -1123,7 +1151,7 @@ fn declare_tydesc(cx: &@local_ctxt, sp: &span, t: ty::t, ty_params: &[uint])
     let ccx = cx.ccx;
     let llsize;
     let llalign;
-    if !ty::type_has_dynamic_size(ccx.tcx, t) {
+    if check type_has_static_size(ccx, t) {
         let llty = type_of(ccx, sp, t);
         llsize = llsize_of(llty);
         llalign = llalign_of(llty);
@@ -1187,10 +1215,11 @@ fn make_generic_glue_inner(cx: &@local_ctxt, sp: &span, t: ty::t,
     // the caller has no idea if it's dealing with something that can be
     // passed by value.
 
-    let llty;
-    if ty::type_has_dynamic_size(cx.ccx.tcx, t) {
-        llty = T_ptr(T_i8());
-    } else { llty = T_ptr(type_of(cx.ccx, sp, t)); }
+    let ccx = cx.ccx;
+    let llty = if check type_has_static_size(ccx, t) {
+        T_ptr(type_of(ccx, sp, t))
+    } else { T_ptr(T_i8()) };
+
     let ty_param_count = std::vec::len::<uint>(ty_params);
     let lltyparams = llvm::LLVMGetParam(llfn, 3u);
     let copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
@@ -1784,11 +1813,15 @@ fn iter_sequence_inner(cx: &@block_ctxt, src: ValueRef,
                        elt_ty: &ty::t, f: &val_and_ty_fn) -> @block_ctxt {
     fn adaptor_fn(f: val_and_ty_fn, elt_ty: ty::t, cx: &@block_ctxt,
                   _dst: ValueRef, src: ValueRef) -> @block_ctxt {
-        let llptrty;
-        if !ty::type_has_dynamic_size(bcx_tcx(cx), elt_ty) {
-            let llty = type_of(bcx_ccx(cx), cx.sp, elt_ty);
-            llptrty = T_ptr(llty);
-        } else { llptrty = T_ptr(T_ptr(T_i8())); }
+        let ccx = bcx_ccx(cx);
+        let sp = cx.sp;
+        let llptrty =
+          if check type_has_static_size(ccx, elt_ty) {
+              let llty = type_of(ccx, sp, elt_ty);
+              T_ptr(llty)
+          }
+          else { T_ptr(T_ptr(T_i8())) };
+
         let p = PointerCast(cx, src, llptrty);
         ret f(cx, load_if_immediate(cx, p, elt_ty), elt_ty);
     }
@@ -2083,13 +2116,18 @@ fn call_bzero(cx: &@block_ctxt, dst: ValueRef, n_bytes: ValueRef,
 
 fn memmove_ty(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
    result {
-    if ty::type_has_dynamic_size(bcx_tcx(cx), t) {
+    let ccx = bcx_ccx(cx);
+    if check type_has_static_size(ccx, t) {
+        if ty::type_is_structural(bcx_tcx(cx), t) {
+            let sp = cx.sp;
+            let llsz = llsize_of(type_of(ccx, sp, t));
+            ret call_memmove(cx, dst, src, llsz);
+        } else { ret rslt(cx, Store(cx, Load(cx, src), dst)); }
+    }
+    else {
         let llsz = size_of(cx, t);
         ret call_memmove(llsz.bcx, dst, src, llsz.val);
-    } else if ty::type_is_structural(bcx_tcx(cx), t) {
-        let llsz = llsize_of(type_of(bcx_ccx(cx), cx.sp, t));
-        ret call_memmove(cx, dst, src, llsz);
-    } else { ret rslt(cx, Store(cx, Load(cx, src), dst)); }
+    }
 }
 
 tag copy_action { INIT; DROP_EXISTING; }
@@ -2259,7 +2297,12 @@ fn node_id_type(cx: &@crate_ctxt, id: ast::node_id) -> ty::t {
 }
 
 fn node_type(cx: &@crate_ctxt, sp: &span, id: ast::node_id) -> TypeRef {
-    ret type_of(cx, sp, node_id_type(cx, id));
+    let ty = node_id_type(cx, id);
+    // How to make this a precondition?
+    // FIXME (again, would require a predicate that implies
+    // another predicate)
+    check type_has_static_size(cx, ty);
+    type_of(cx, sp, ty)
 }
 
 fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
@@ -2286,10 +2329,14 @@ fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
         // Cast the body type to the type of the value. This is needed to
         // make tags work, since tags have a different LLVM type depending
         // on whether they're boxed or not.
-        if !ty::type_has_dynamic_size(bcx_tcx(cx), e_ty) {
-            let llety = T_ptr(type_of(bcx_ccx(sub.bcx), e.span, e_ty));
+        let sub_ccx = bcx_ccx(sub.bcx);
+        if check type_has_static_size(sub_ccx, e_ty) {
+            let e_sp = e.span;
+            let llety = T_ptr(type_of(sub_ccx, e_sp, e_ty));
             body = PointerCast(sub.bcx, body, llety);
         }
+        else {} // FIXME: can remove the else{} once we have
+                // a new snapshot
         let bcx = move_val_if_temp(sub.bcx, INIT, body, lv, e_ty);
         ret rslt(bcx, sub.box);
       }
@@ -2387,6 +2434,7 @@ fn autoderef(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result_t {
     let v1: ValueRef = v;
     let t1: ty::t = t;
     let ccx = bcx_ccx(cx);
+    let sp = cx.sp;
     while true {
         alt ty::struct(ccx.tcx, t1) {
           ty::ty_box(mt) {
@@ -2398,8 +2446,8 @@ fn autoderef(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result_t {
             // to cast this pointer, since statically-sized tag types have
             // different types depending on whether they're behind a box
             // or not.
-            if !ty::type_has_dynamic_size(ccx.tcx, mt.ty) {
-                let llty = type_of(ccx, cx.sp, mt.ty);
+            if check type_has_static_size(ccx, t1) {
+                let llty = type_of(ccx, sp, t1);
                 v1 = PointerCast(cx, body, T_ptr(llty));
             } else { v1 = body; }
           }
@@ -2416,9 +2464,10 @@ fn autoderef(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result_t {
             }
             t1 =
                 ty::substitute_type_params(ccx.tcx, tps, variants[0].args[0]);
-            if !ty::type_has_dynamic_size(ccx.tcx, t1) {
-                v1 = PointerCast(cx, v1, T_ptr(type_of(ccx, cx.sp, t1)));
+            if check type_has_static_size(ccx, t1) {
+                v1 = PointerCast(cx, v1, T_ptr(type_of(ccx, sp, t1)));
             }
+            else {} // FIXME: typestate hack
           }
           _ { break; }
         }
@@ -2756,7 +2805,13 @@ fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt, envty: ty::t,
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     let ty = ty::mk_imm_box(bcx_tcx(bcx), envty);
-    let llty = type_of(bcx_ccx(bcx), bcx.sp, ty);
+
+    let ccx = bcx_ccx(bcx);
+    let sp = bcx.sp;
+    // FIXME: should have postcondition on mk_imm_box,
+    // so this check won't be necessary
+    check type_has_static_size(ccx, ty);
+    let llty = type_of(ccx, sp, ty);
     let llclosure = PointerCast(bcx, fcx.llenv, llty);
 
     // Populate the type parameters from the environment. We need to
@@ -3161,24 +3216,23 @@ fn trans_index(cx: &@block_ctxt, sp: &span, base: &@ast::expr,
     let bounds_check = ICmp(bcx, lib::llvm::LLVMIntULT, scaled_ix, lim);
     let fail_cx = new_sub_block_ctxt(bcx, ~"fail");
     let next_cx = new_sub_block_ctxt(bcx, ~"next");
+    let ncx = bcx_ccx(next_cx);
     CondBr(bcx, bounds_check, next_cx.llbb, fail_cx.llbb);
     // fail: bad bounds check.
 
     trans_fail(fail_cx, some::<span>(sp), ~"bounds check");
-    let elt;
-    if ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty) {
-        body = PointerCast(next_cx, body, T_ptr(T_i8()));
-        elt = GEP(next_cx, body, [scaled_ix]);
-    } else {
-        elt = GEP(next_cx, body, [ix_val]);
-        // We're crossing a box boundary here, so we may need to pointer cast.
+    let elt = if check type_has_static_size(ncx, unit_ty) {
+          let elt_1 = GEP(next_cx, body, [ix_val]);
+          let llunitty = type_of(ncx, sp, unit_ty);
+          PointerCast(next_cx, elt_1, T_ptr(llunitty))
+      }
+      else {
+          body = PointerCast(next_cx, body, T_ptr(T_i8()));
+          GEP(next_cx, body, [scaled_ix])
+      };
 
-        let llunitty = type_of(bcx_ccx(next_cx), sp, unit_ty);
-        elt = PointerCast(next_cx, elt, T_ptr(llunitty));
-    }
     ret lval_mem(next_cx, elt);
 }
-
 
 // The additional bool returned indicates whether it's mem (that is
 // represented as an alloca or heap, hence needs a 'load' to be used as an
@@ -3211,10 +3265,11 @@ fn trans_lval_gen(cx: &@block_ctxt, e: &@ast::expr) -> lval_result {
               }
               ty::ty_tag(_, _) {
                 let ety = ty::expr_ty(ccx.tcx, e);
-                let ellty;
-                if ty::type_has_dynamic_size(ccx.tcx, ety) {
-                    ellty = T_typaram_ptr(ccx.tn);
-                } else { ellty = T_ptr(type_of(ccx, e.span, ety)); }
+                let sp = e.span;
+                let ellty = if check type_has_static_size(ccx, ety) {
+                    T_ptr(type_of(ccx, sp, ety))
+                }
+                else { T_typaram_ptr(ccx.tn) };
                 PointerCast(sub.bcx, sub.val, ellty)
               }
               ty::ty_ptr(_) { sub.val }
@@ -3291,6 +3346,9 @@ fn trans_cast(cx: &@block_ctxt, e: &@ast::expr, id: ast::node_id) -> result {
     let ll_t_in = val_ty(e_res.val);
     let t_in = ty::expr_ty(ccx.tcx, e);
     let t_out = node_id_type(ccx, id);
+    // Check should be avoidable because it's a cast.
+    // FIXME: Constrain types so as to avoid this check.
+    check type_has_static_size(ccx, t_out);
     let ll_t_out = type_of(ccx, e.span, t_out);
 
     tag kind { native_; integral; float; other; }
@@ -3343,7 +3401,12 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
                     outgoing_fty: ty::t, args: &[option::t<@ast::expr>],
                     env_ty: ty::t, ty_param_count: uint,
                     target_fn: &option::t<ValueRef>) ->
-   {val: ValueRef, ty: TypeRef} {
+    {val: ValueRef, ty: TypeRef} {
+    // FIXME
+    // This should be a precondition on trans_bind_thunk, but we would need
+    // to support record fields as constraint args
+    let ccx = cx.ccx;
+    check type_has_static_size(ccx, incoming_fty);
 
     // Here we're not necessarily constructing a thunk in the sense of
     // "function with no arguments".  The result of compiling 'bind f(foo,
@@ -3368,14 +3431,11 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
 
     // Give the thunk a name, type, and value.
     let s: istr =
-        mangle_internal_name_by_path_and_seq(cx.ccx,
-                                             cx.path,
-                                             ~"thunk");
+        mangle_internal_name_by_path_and_seq(ccx, cx.path, ~"thunk");
     let llthunk_ty: TypeRef =
-        get_pair_fn_ty(type_of(cx.ccx, sp, incoming_fty));
+        get_pair_fn_ty(type_of(ccx, sp, incoming_fty));
     let llthunk: ValueRef =
-        decl_internal_fastcall_fn(cx.ccx.llmod,
-                                  s, llthunk_ty);
+        decl_internal_fastcall_fn(ccx.llmod, s, llthunk_ty);
 
     // Create a new function context and block context for the thunk, and hold
     // onto a pointer to the first block in the function for later use.
@@ -3394,8 +3454,11 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
 
     // The llenv pointer needs to be the correct size.  That size is
     // 'closure_ty', which was determined by trans_bind.
-    let closure_ty = ty::mk_imm_box(cx.ccx.tcx, env_ty);
-    let llclosure_ptr_ty = type_of(cx.ccx, sp, closure_ty);
+    let closure_ty = ty::mk_imm_box(ccx.tcx, env_ty);
+    // FIXME: would be nice to have a postcondition on mk_imm_box
+    // (Issue #586)
+    check type_has_static_size(ccx, closure_ty);
+    let llclosure_ptr_ty = type_of(ccx, sp, closure_ty);
     let llclosure =
         PointerCast(copy_args_bcx, fcx.llenv, llclosure_ptr_ty);
 
@@ -3554,6 +3617,9 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     }
     let bcx = f_res.res.bcx;
 
+    // FIXME: should follow from a precondition on trans_bind_1
+    let ccx = bcx_ccx(cx);
+    check type_has_static_size(ccx, outgoing_fty);
 
     // Arrange for the bound function to live in the first binding spot
     // if the function is not statically known.
@@ -3562,8 +3628,8 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
             // Cast the function we are binding to be the type that the
             // closure will expect it to have. The type the closure knows
             // about has the type parameters substituted with the real types.
-            let llclosurety =
-                T_ptr(type_of(bcx_ccx(cx), cx.sp, outgoing_fty));
+            let sp = cx.sp;
+            let llclosurety = T_ptr(type_of(ccx, sp, outgoing_fty));
             let src_loc = PointerCast(bcx, f_res.res.val, llclosurety);
             let bound_f = {res: {bcx: bcx, val: src_loc} with f_res};
             ([outgoing_fty], [bound_f], none)
@@ -4545,14 +4611,17 @@ fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
 
 fn zero_alloca(cx: &@block_ctxt, llptr: ValueRef, t: ty::t) -> result {
     let bcx = cx;
-    if ty::type_has_dynamic_size(bcx_tcx(cx), t) {
+    let ccx = bcx_ccx(cx);
+    if check type_has_static_size(ccx, t) {
+        let sp = cx.sp;
+        let llty = type_of(ccx, sp, t);
+        Store(bcx, C_null(llty), llptr);
+    }
+    else {
         let llsz = size_of(bcx, t);
         // FIXME passing in the align here is correct, but causes issue #843
         // let llalign = align_of(llsz.bcx, t);
         bcx = call_bzero(llsz.bcx, llptr, llsz.val, C_int(0)).bcx;
-    } else {
-        let llty = type_of(bcx_ccx(bcx), cx.sp, t);
-        Store(bcx, C_null(llty), llptr);
     }
     ret rslt(bcx, llptr);
 }
@@ -4713,8 +4782,12 @@ fn llderivedtydescs_block_ctxt(fcx: &@fn_ctxt) -> @block_ctxt {
 
 fn alloc_ty(cx: &@block_ctxt, t: ty::t) -> result {
     let bcx = cx;
-    let val = C_int(0);
-    if ty::type_has_dynamic_size(bcx_tcx(bcx), t) {
+    let ccx = bcx_ccx(cx);
+    let val = if check type_has_static_size(ccx, t) {
+        let sp = cx.sp;
+        alloca(bcx, type_of(ccx, sp, t))
+    }
+    else {
         // NB: we have to run this particular 'size_of' in a
         // block_ctxt built on the llderivedtydescs block for the fn,
         // so that the size dominates the array_alloca that
@@ -4722,10 +4795,9 @@ fn alloc_ty(cx: &@block_ctxt, t: ty::t) -> result {
 
         let n = size_of(llderivedtydescs_block_ctxt(bcx.fcx), t);
         bcx.fcx.llderivedtydescs = n.bcx.llbb;
-        val = dynastack_alloca(bcx, T_i8(), n.val, t);
-    } else {
-        val = alloca(bcx, type_of(bcx_ccx(cx), cx.sp, t));
-    }
+        dynastack_alloca(bcx, T_i8(), n.val, t)
+    };
+
     // NB: since we've pushed all size calculations in this
     // function up to the alloca block, we actually return the
     // block passed into us unmodified; it doesn't really
@@ -5035,10 +5107,14 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
     // fields pointer to the appropriate LLVM type. If not, just leave it as
     // i8 *.
 
-    if !ty::type_has_dynamic_size(fcx.lcx.ccx.tcx, fields_tup_ty) {
-        let llfields_ty = type_of(fcx.lcx.ccx, fcx.sp, fields_tup_ty);
+    let ccx = fcx.lcx.ccx;
+    if check type_has_static_size(ccx, fields_tup_ty) {
+        let sp = fcx.sp;
+        let llfields_ty = type_of(ccx, sp, fields_tup_ty);
         obj_fields = vi2p(bcx, obj_fields, T_ptr(llfields_ty));
-    } else { obj_fields = vi2p(bcx, obj_fields, T_ptr(T_i8())); }
+    }
+    else { obj_fields = vi2p(bcx, obj_fields, T_ptr(T_i8())); }
+
     let i: int = 0;
     for p: ast::ty_param in fcx.lcx.obj_typarams {
         let lltyparam: ValueRef =
@@ -5644,8 +5720,13 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[istr],
                           mode: ty::mode) -> ValueRef {
         if mode == ty::mo_val {
             if ty::type_is_integral(bcx_tcx(cx), t) {
+                // FIXME: would be nice to have a postcondition that says
+                // if a type is integral, then it has static size (#586)
                 let lldsttype = T_int();
-                let llsrctype = type_of(bcx_ccx(cx), cx.sp, t);
+                let ccx = bcx_ccx(cx);
+                let sp = cx.sp;
+                check type_has_static_size(ccx, t);
+                let llsrctype = type_of(ccx, sp, t);
                 if llvm::LLVMGetIntTypeWidth(lldsttype) >
                        llvm::LLVMGetIntTypeWidth(llsrctype) {
                     ret ZExtOrBitCast(cx, v, T_int());
@@ -5665,20 +5746,20 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[istr],
        {val: ValueRef, rptr: ValueRef} {
         let call_arg_tys: [TypeRef] = [];
         for arg: ValueRef in call_args { call_arg_tys += [val_ty(arg)]; }
+        let ccx = bcx_ccx(bcx);
 
-        let llnativefnty;
-        if uses_retptr {
-            llnativefnty = T_fn(call_arg_tys, T_void());
-        } else {
-            llnativefnty =
-                T_fn(call_arg_tys,
-                     type_of(bcx_ccx(bcx), bcx.sp,
-                             ty::ty_fn_ret(bcx_tcx(bcx), fn_type)));
-        }
+        let llnativefnty =
+            if uses_retptr { T_fn(call_arg_tys, T_void()) }
+            else {
+                let fn_ret_ty = ty::ty_fn_ret(bcx_tcx(bcx), fn_type);
+                // FIXME: Could follow from a constraint on fn_type...
+                check type_has_static_size(ccx, fn_ret_ty);
+                let sp = bcx.sp;
+                T_fn(call_arg_tys, type_of(ccx, sp, fn_ret_ty))
+            };
 
         let llnativefn =
-            get_extern_fn(bcx_ccx(bcx).externs, bcx_ccx(bcx).llmod, name, cc,
-                          llnativefnty);
+            get_extern_fn(ccx.externs, ccx.llmod, name, cc, llnativefnty);
         let r =
             if cc == lib::llvm::LLVMCCallConv {
                 Call(bcx, llnativefn, call_args)
@@ -5767,6 +5848,9 @@ fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[istr],
             mangle_exported_name(ccx, pt + [i.ident],
                                  node_id_type(ccx, i.id));
         let g = str::as_buf(s, { |buf|
+            // FIXME: Could follow from a constraint on types of const
+            // items
+            check type_has_static_size(ccx, typ);
             llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ), buf)
         });
         ccx.item_symbols.insert(i.id, s);

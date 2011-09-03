@@ -126,6 +126,11 @@ fn largest_variants(ccx: &@crate_ctxt, tag_id: &ast::def_id) -> [uint] {
                 // when in fact it has minimum size sizeof(int).
                 bounded = false;
             } else {
+                // Could avoid this check: the constraint should
+                // follow from how elem_t doesn't contain params.
+                // (Could add a postcondition to type_contains_params,
+                // once we implement Issue #586.)
+                check trans_common::type_has_static_size(ccx, elem_t);
                 let llty = trans::type_of(ccx, dummy_sp(), elem_t);
                 min_size += trans::llsize_of_real(ccx, llty);
                 min_align += trans::llalign_of_real(ccx, llty);
@@ -201,6 +206,10 @@ fn compute_static_tag_size(ccx: &@crate_ctxt, largest_variants: &[uint],
         // We increment a "virtual data pointer" to compute the size.
         let lltys = [];
         for typ: ty::t in variants[vid].args {
+            // FIXME: there should really be a postcondition
+            // on tag_variants that would obviate the need for
+            // this check. (Issue #586)
+            check trans_common::type_has_static_size(ccx, typ);
             lltys += [trans::type_of(ccx, dummy_sp(), typ)];
         }
 

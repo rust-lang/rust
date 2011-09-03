@@ -1132,13 +1132,23 @@ fn type_structurally_contains(cx: &ctxt, ty: t,
     }
 }
 
-fn type_has_dynamic_size(cx: &ctxt, ty: t) -> bool {
-    ret type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
+pure fn type_has_dynamic_size(cx: &ctxt, ty: t) -> bool {
+    /* type_structurally_contains can't be declared pure
+    because it takes a function argument. But it should be
+    referentially transparent, since a given type's size should
+    never change once it's created.
+    (It would be interesting to think about how to make such properties
+    actually checkable. It seems to me like a lot of properties
+    that the type context tracks about types should be immutable.)
+    */
+    unchecked {
+    type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
         ret alt sty {
           ty_param(_, _) { true }
           _ { false }
         };
-    });
+    })
+    }
 }
 
 fn type_is_integral(cx: &ctxt, ty: t) -> bool {
