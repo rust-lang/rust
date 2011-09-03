@@ -1386,7 +1386,12 @@ fn make_drop_glue(bcx: &@block_ctxt, v0: ValueRef, t: ty::t) {
       ty::ty_vec(_) { tvec::make_drop_glue(bcx, v0, t) }
       ty::ty_istr. { tvec::make_drop_glue(bcx, v0, t) }
       ty::ty_box(_) { decr_refcnt_maybe_free(bcx, v0, v0, t) }
-      ty::ty_uniq(_) { trans_shared_free(bcx, Load(bcx, v0)) }
+      ty::ty_uniq(_) {
+        let vptr = Load(bcx, v0);
+        let bcx = trans_shared_free(bcx, vptr);
+        Store(bcx, C_null(val_ty(vptr)), v0);
+        bcx
+      }
       ty::ty_obj(_) {
         let box_cell =
             GEP(bcx, v0, [C_int(0), C_int(abi::obj_field_box)]);

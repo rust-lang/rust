@@ -87,6 +87,7 @@ fn make_drop_glue(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t)
         drop_cx = iter_vec(drop_cx, vptrptr, vec_ty, trans::drop_ty);
     }
     drop_cx = trans::trans_shared_free(drop_cx, vptr);
+    Store(drop_cx, C_null(val_ty(vptr)), vptrptr);
     Br(drop_cx, next_cx.llbb);
     ret next_cx;
 }
