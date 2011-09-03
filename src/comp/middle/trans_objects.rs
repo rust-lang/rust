@@ -791,9 +791,14 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         create_object_body_type(cx.ccx.tcx, additional_field_tys, [],
                                 some(inner_obj_ty));
     // And cast to that type.
+    // create_object_body_type maybe should have a postcondition...
+
+    let cx_ccx = cx.ccx;
+    check type_has_static_size(cx_ccx, body_ty);
+
     llself_obj_body =
         PointerCast(bcx, llself_obj_body,
-                              T_ptr(type_of(cx.ccx, sp, body_ty)));
+                              T_ptr(type_of(cx_ccx, sp, body_ty)));
 
     // Now, reach into the body and grab the inner_obj.
     let llinner_obj =

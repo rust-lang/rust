@@ -858,6 +858,10 @@ pure fn valid_variant_index(ix:uint, cx:@block_ctxt, tag_id: &ast::def_id,
     }
 }
 
+pure fn type_has_static_size(cx: &@crate_ctxt, t: ty::t) -> bool {
+    !ty::type_has_dynamic_size(cx.tcx, t)
+}
+
 //
 // Local Variables:
 // mode: rust

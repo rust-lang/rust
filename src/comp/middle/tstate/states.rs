@@ -264,12 +264,25 @@ fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
 
     alt maybe_alt {
       none. {
-        changed |=
-            find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, antec),
-                                      conseq) |
+        alt chk {
+          if_check. {
+            let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
+            let conseq_prestate = tritv_clone(expr_poststate(fcx.ccx, antec));
+            tritv_set(bit_num(fcx, c.node), conseq_prestate, ttrue);
+            changed |=
+                find_pre_post_state_block(fcx, conseq_prestate, conseq) |
                 set_poststate_ann(fcx.ccx, id,
                                   expr_poststate(fcx.ccx, antec));
-      }
+          }
+          _ {
+            changed |=
+                find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, antec),
+                                          conseq) |
+                set_poststate_ann(fcx.ccx, id,
+                                  expr_poststate(fcx.ccx, antec));
+          }
+        }
+     }
       some(altern) {
         changed |=
             find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, antec),
