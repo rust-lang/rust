@@ -43,10 +43,10 @@ command_line_args : public kernel_owned<command_line_args>
                            "command line arg interior");
         args->fill = args->alloc = sizeof(rust_vec*) * argc;
         for (int i = 0; i < argc; ++i) {
-            rust_vec *str = make_str(kernel, argv[i],
+            rust_str *str = make_str(kernel, argv[i],
                                      strlen(argv[i]),
                                      "command line arg");
-            ((rust_vec**)&args->data)[i] = str;
+            ((rust_str**)&args->data)[i] = str;
         }
     }
 
