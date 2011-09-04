@@ -244,6 +244,7 @@ rust_task::fail() {
     // See note in ::kill() regarding who should call this.
     DLOG(sched, task, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
+    die();
     // Unblock the task so it can unwind.
     unblock();
     if (supervisor) {
@@ -257,6 +258,8 @@ rust_task::fail() {
     if (NULL == supervisor && propagate_failure)
         sched->fail();
     failed = true;
+    notify_tasks_waiting_to_join();
+    yield(4);
 }
 
 void
