@@ -148,7 +148,7 @@ CFG_INFO := $(info cfg: using $(CFG_C_COMPILER))
 ifeq ($(CFG_C_COMPILER),clang)
   CC=clang
   CXX=clang++
-  CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
+  CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_COMPILE_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) \
     $(CFG_CLANG_CFLAGS) -c -o $(1) $(2)
@@ -160,7 +160,7 @@ else
 ifeq ($(CFG_C_COMPILER),gcc)
   CC=gcc
   CXX=g++
-  CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
+  CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_COMPILE_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) \
     $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
