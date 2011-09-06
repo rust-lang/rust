@@ -19,7 +19,7 @@ private:
         uint32_t magic;
         int index;
         const char *tag;
-        uint32_t pad;       // To stay 16 byte aligned.
+        uint32_t size;
         char data[];
     };
 
@@ -36,6 +36,8 @@ private:
 
     void add_alloc();
     void dec_alloc();
+    void maybe_poison(void *mem);
+
 public:
     memory_region(rust_srv *srv, bool synchronized);
     memory_region(memory_region *parent);
