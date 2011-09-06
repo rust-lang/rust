@@ -17,6 +17,7 @@ import tritv::ttrue;
 import bitvectors::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
+import syntax::codemap::span;
 import middle::ty::expr_ty;
 import middle::ty::type_is_nil;
 import middle::ty::type_is_bot;
@@ -31,10 +32,28 @@ import util::common::log_stmt;
 import util::common::log_stmt_err;
 import util::common::log_expr_err;
 
+fn forbid_upvar(fcx: &fn_ctxt, rhs_id: &node_id, sp: &span,
+                t: oper_type) {
+    alt t {
+      oper_move. {
+        alt local_node_id_to_def(fcx, rhs_id) {
+          some(def_upvar(_,_,_)) {
+             fcx.ccx.tcx.sess.span_err(sp, "Tried to deinitialize a variable \
+              declared in a different scope");
+           }
+          _ {}
+        }
+      }
+      _ { /* do nothing */ }
+    }
+}
+
 fn handle_move_or_copy(fcx: &fn_ctxt, post: &poststate, rhs_path: &path,
                        rhs_id: &node_id, instlhs: &inst, init_op: &init_op) {
-    let rhs_d = local_node_id_to_def_id(fcx, rhs_id);
-    alt rhs_d {
+    forbid_upvar(fcx, rhs_id, rhs_path.span, op_to_oper_ty(init_op));
+
+    let rhs_d_id = local_node_id_to_def_id(fcx, rhs_id);
+    alt rhs_d_id {
       some(rhsid) {
         // RHS is a local var
         let instrhs =
@@ -110,6 +129,7 @@ fn find_pre_post_state_two(fcx: &fn_ctxt, pres: &prestate, lhs: &@expr,
     changed =
         find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, lhs), rhs) ||
             changed;
+    forbid_upvar(fcx, rhs.id, rhs.span, ty);
 
     let post = tritv_clone(expr_poststate(fcx.ccx, rhs));
 
