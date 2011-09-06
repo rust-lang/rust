@@ -43,6 +43,7 @@ void memory_region::free(void *mem) {
         _srv->fatal("live_allocs < 1", __FILE__, __LINE__, "");
     }
     release_alloc(mem);
+    maybe_poison(mem);
     _srv->free(alloc);
 }
 
@@ -52,9 +53,11 @@ memory_region::realloc(void *mem, size_t size) {
     if (!mem) {
         add_alloc();
     }
+    size_t old_size = size;
     size += sizeof(alloc_header);
     alloc_header *alloc = get_header(mem);
     assert(alloc->magic == MAGIC);
+    alloc->size = old_size;
     alloc_header *newMem = (alloc_header *)_srv->realloc(alloc, size);
 #ifdef TRACK_ALLOCATIONS
     if (_allocation_list[newMem->index] != alloc) {
@@ -82,6 +85,7 @@ memory_region::malloc(size_t size, const char *tag, bool zero) {
     mem->magic = MAGIC;
     mem->tag = tag;
     mem->index = -1;
+    mem->size = old_size;
     claim_alloc(mem->data);
 
     if(zero) {
@@ -167,6 +171,22 @@ memory_region::claim_alloc(void *mem) {
     if (_synchronized) { _lock.unlock(); }
 #endif
     add_alloc();
+}
+
+void
+memory_region::maybe_poison(void *mem) {
+    // TODO: We should lock this, in case the compiler doesn't.
+    static int poison = -1;
+    if (poison < 0) {
+        char *env_str = getenv("RUST_POISON_ON_FREE");
+        poison = env_str != NULL && env_str[0] != '\0';
+    }
+
+    if (!poison)
+        return;
+
+    alloc_header *alloc = get_header(mem);
+    memset(mem, '\xcd', alloc->size);
 }
 
 //
