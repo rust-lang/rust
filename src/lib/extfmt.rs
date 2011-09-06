@@ -67,30 +67,30 @@ mod ct {
 
 
     // A fragment of the output sequence
-    tag piece { piece_string(istr); piece_conv(conv); }
-    type error_fn = fn(&istr) -> ! ;
+    tag piece { piece_string(str); piece_conv(conv); }
+    type error_fn = fn(&str) -> ! ;
 
-    fn parse_fmt_string(s: &istr, error: error_fn) -> [piece] {
+    fn parse_fmt_string(s: &str, error: error_fn) -> [piece] {
         let pieces: [piece] = [];
         let lim = str::byte_len(s);
-        let buf = ~"";
-        fn flush_buf(buf: &istr, pieces: &mutable [piece]) -> istr {
+        let buf = "";
+        fn flush_buf(buf: &str, pieces: &mutable [piece]) -> str {
             if str::byte_len(buf) > 0u {
                 let piece = piece_string(buf);
                 pieces += [piece];
             }
-            ret ~"";
+            ret "";
         }
         let i = 0u;
         while i < lim {
             let curr = str::substr(s, i, 1u);
-            if str::eq(curr, ~"%") {
+            if str::eq(curr, "%") {
                 i += 1u;
                 if i >= lim {
-                    error(~"unterminated conversion at end of string");
+                    error("unterminated conversion at end of string");
                 }
                 let curr2 = str::substr(s, i, 1u);
-                if str::eq(curr2, ~"%") {
+                if str::eq(curr2, "%") {
                     i += 1u;
                 } else {
                     buf = flush_buf(buf, pieces);
@@ -103,7 +103,7 @@ mod ct {
         buf = flush_buf(buf, pieces);
         ret pieces;
     }
-    fn peek_num(s: &istr, i: uint, lim: uint) ->
+    fn peek_num(s: &str, i: uint, lim: uint) ->
        option::t<{num: uint, next: uint}> {
         if i >= lim { ret none; }
         let c = s[i];
@@ -118,7 +118,7 @@ mod ct {
               }
             };
     }
-    fn parse_conversion(s: &istr, i: uint, lim: uint, error: error_fn) ->
+    fn parse_conversion(s: &str, i: uint, lim: uint, error: error_fn) ->
        {piece: piece, next: uint} {
         let parm = parse_parameter(s, i, lim);
         let flags = parse_flags(s, parm.next, lim);
@@ -133,7 +133,7 @@ mod ct {
                              ty: ty.ty}),
              next: ty.next};
     }
-    fn parse_parameter(s: &istr, i: uint, lim: uint) ->
+    fn parse_parameter(s: &str, i: uint, lim: uint) ->
        {param: option::t<int>, next: uint} {
         if i >= lim { ret {param: none, next: i}; }
         let num = peek_num(s, i, lim);
@@ -148,14 +148,14 @@ mod ct {
               }
             };
     }
-    fn parse_flags(s: &istr, i: uint, lim: uint) ->
+    fn parse_flags(s: &str, i: uint, lim: uint) ->
        {flags: [flag], next: uint} {
         let noflags: [flag] = [];
         if i >= lim { ret {flags: noflags, next: i}; }
 
         // FIXME: This recursion generates illegal instructions if the return
         // value isn't boxed. Only started happening after the ivec conversion
-        fn more_(f: flag, s: &istr, i: uint, lim: uint) ->
+        fn more_(f: flag, s: &str, i: uint, lim: uint) ->
            @{flags: [flag], next: uint} {
             let next = parse_flags(s, i + 1u, lim);
             let rest = next.flags;
@@ -177,8 +177,8 @@ mod ct {
                 *more(flag_alternate)
             } else { {flags: noflags, next: i} };
     }
-    fn parse_count(s: &istr, i: uint,
-                   lim: uint) -> {count: count, next: uint} {
+    fn parse_count(s: &str, i: uint, lim: uint) ->
+       {count: count, next: uint} {
         ret if i >= lim {
                 {count: count_implied, next: i}
             } else if s[i] == '*' as u8 {
@@ -198,7 +198,7 @@ mod ct {
                 }
             };
     }
-    fn parse_precision(s: &istr, i: uint, lim: uint) ->
+    fn parse_precision(s: &str, i: uint, lim: uint) ->
        {count: count, next: uint} {
         ret if i >= lim {
                 {count: count_implied, next: i}
@@ -214,32 +214,32 @@ mod ct {
                 }
             } else { {count: count_implied, next: i} };
     }
-    fn parse_type(s: &istr, i: uint, lim: uint, error: error_fn) ->
+    fn parse_type(s: &str, i: uint, lim: uint, error: error_fn) ->
        {ty: ty, next: uint} {
-        if i >= lim { error(~"missing type in conversion"); }
+        if i >= lim { error("missing type in conversion"); }
         let tstr = str::substr(s, i, 1u);
         // TODO: Do we really want two signed types here?
         // How important is it to be printf compatible?
         let t =
-            if str::eq(tstr, ~"b") {
+            if str::eq(tstr, "b") {
                 ty_bool
-            } else if str::eq(tstr, ~"s") {
+            } else if str::eq(tstr, "s") {
                 ty_str
-            } else if str::eq(tstr, ~"c") {
+            } else if str::eq(tstr, "c") {
                 ty_char
-            } else if str::eq(tstr, ~"d") || str::eq(tstr, ~"i") {
+            } else if str::eq(tstr, "d") || str::eq(tstr, "i") {
                 ty_int(signed)
-            } else if str::eq(tstr, ~"u") {
+            } else if str::eq(tstr, "u") {
                 ty_int(unsigned)
-            } else if str::eq(tstr, ~"x") {
+            } else if str::eq(tstr, "x") {
                 ty_hex(case_lower)
-            } else if str::eq(tstr, ~"X") {
+            } else if str::eq(tstr, "X") {
                 ty_hex(case_upper)
-            } else if str::eq(tstr, ~"t") {
+            } else if str::eq(tstr, "t") {
                 ty_bits
-            } else if str::eq(tstr, ~"o") {
+            } else if str::eq(tstr, "o") {
                 ty_octal
-            } else { error(~"unknown type in conversion: " + tstr) };
+            } else { error("unknown type in conversion: " + tstr) };
         ret {ty: t, next: i + 1u};
     }
 }
@@ -270,20 +270,20 @@ mod rt {
     // instead just use a bool per flag
     type conv = {flags: [flag], width: count, precision: count, ty: ty};
 
-    fn conv_int(cv: &conv, i: int) -> istr {
+    fn conv_int(cv: &conv, i: int) -> str {
         let radix = 10u;
         let prec = get_int_precision(cv);
         let s = int_to_str_prec(i, radix, prec);
         if 0 <= i {
             if have_flag(cv.flags, flag_sign_always) {
-                s = ~"+" + s;
+                s = "+" + s;
             } else if have_flag(cv.flags, flag_space_for_sign) {
-                s = ~" " + s;
+                s = " " + s;
             }
         }
         ret pad(cv, s, pad_signed);
     }
-    fn conv_uint(cv: &conv, u: uint) -> istr {
+    fn conv_uint(cv: &conv, u: uint) -> str {
         let prec = get_int_precision(cv);
         let rs =
             alt cv.ty {
@@ -295,17 +295,17 @@ mod rt {
             };
         ret pad(cv, rs, pad_unsigned);
     }
-    fn conv_bool(cv: &conv, b: bool) -> istr {
-        let s = if b { ~"true" } else { ~"false" };
+    fn conv_bool(cv: &conv, b: bool) -> str {
+        let s = if b { "true" } else { "false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
 
         ret conv_str(cv, s);
     }
-    fn conv_char(cv: &conv, c: char) -> istr {
+    fn conv_char(cv: &conv, c: char) -> str {
         ret pad(cv, str::from_char(c), pad_nozero);
     }
-    fn conv_str(cv: &conv, s: &istr) -> istr {
+    fn conv_str(cv: &conv, s: &str) -> str {
         // For strings, precision is the maximum characters
         // displayed
 
@@ -324,18 +324,18 @@ mod rt {
 
     // Convert an int to string with minimum number of digits. If precision is
     // 0 and num is 0 then the result is the empty string.
-    fn int_to_str_prec(num: int, radix: uint, prec: uint) -> istr {
+    fn int_to_str_prec(num: int, radix: uint, prec: uint) -> str {
         ret if num < 0 {
-                ~"-" + uint_to_str_prec(-num as uint, radix, prec)
+                "-" + uint_to_str_prec(-num as uint, radix, prec)
             } else { uint_to_str_prec(num as uint, radix, prec) };
     }
 
     // Convert a uint to string with a minimum number of digits.  If precision
     // is 0 and num is 0 then the result is the empty string. Could move this
     // to uint: but it doesn't seem all that useful.
-    fn uint_to_str_prec(num: uint, radix: uint, prec: uint) -> istr {
+    fn uint_to_str_prec(num: uint, radix: uint, prec: uint) -> str {
         ret if prec == 0u && num == 0u {
-                ~""
+                ""
             } else {
                 let s = uint::to_str(num, radix);
                 let len = str::char_len(s);
@@ -354,13 +354,13 @@ mod rt {
     }
 
     // FIXME: This might be useful in str: but needs to be utf8 safe first
-    fn str_init_elt(c: char, n_elts: uint) -> istr {
+    fn str_init_elt(c: char, n_elts: uint) -> str {
         let svec = vec::init_elt::<u8>(c as u8, n_elts);
 
         ret str::unsafe_from_bytes(svec);
     }
     tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
-    fn pad(cv: &conv, s: &istr, mode: pad_mode) -> istr {
+    fn pad(cv: &conv, s: &str, mode: pad_mode) -> str {
         let uwidth;
         alt cv.width {
           count_implied. { ret s; }

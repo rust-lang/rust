@@ -19,15 +19,14 @@ tag eval_mode { mode_depend; mode_parse; }
 type ctx =
     @{p: parser,
       mode: eval_mode,
-      mutable deps: [istr],
+      mutable deps: [str],
       sess: parser::parse_sess,
       mutable chpos: uint,
       mutable byte_pos: uint,
       cfg: ast::crate_cfg};
 
 fn eval_crate_directives(cx: ctx, cdirs: &[@ast::crate_directive],
-                         prefix: &istr,
-                         view_items: &mutable [@ast::view_item],
+                         prefix: &str, view_items: &mutable [@ast::view_item],
                          items: &mutable [@ast::item]) {
     for sub_cdir: @ast::crate_directive in cdirs {
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
@@ -35,34 +34,27 @@ fn eval_crate_directives(cx: ctx, cdirs: &[@ast::crate_directive],
 }
 
 fn eval_crate_directives_to_mod(cx: ctx, cdirs: &[@ast::crate_directive],
-                                prefix: &istr) -> ast::_mod {
+                                prefix: &str) -> ast::_mod {
     let view_items: [@ast::view_item] = [];
     let items: [@ast::item] = [];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
     ret {view_items: view_items, items: items};
 }
 
-fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &istr,
+fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &str,
                         view_items: &mutable [@ast::view_item],
                         items: &mutable [@ast::item]) {
     alt cdir.node {
       ast::cdir_src_mod(id, file_opt, attrs) {
-        let file_path = id + ~".rs";
-        alt file_opt {
-          some(f) {
-            file_path = f;
-          }
-          none. { }
-        }
-        let full_path = if std::fs::path_is_absolute(file_path) {
-            file_path
-        } else {
-            prefix + std::fs::path_sep() + file_path
-        };
+        let file_path = id + ".rs";
+        alt file_opt { some(f) { file_path = f; } none. { } }
+        let full_path =
+            if std::fs::path_is_absolute(file_path) {
+                file_path
+            } else { prefix + std::fs::path_sep() + file_path };
         if cx.mode == mode_depend { cx.deps += [full_path]; ret; }
         let p0 =
-            new_parser_from_file(cx.sess, cx.cfg,
-                                 full_path, cx.chpos,
+            new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos,
                                  cx.byte_pos, SOURCE_FILE);
         let inner_attrs = parse_inner_attrs_and_next(p0);
         let mod_attrs = attrs + inner_attrs.inner;
@@ -79,18 +71,11 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &istr,
       }
       ast::cdir_dir_mod(id, dir_opt, cdirs, attrs) {
         let path = id;
-        alt dir_opt {
-          some(d) {
-            path = d;
-          }
-          none. { }
-        }
+        alt dir_opt { some(d) { path = d; } none. { } }
         let full_path =
             if std::fs::path_is_absolute(path) {
                 path
-            } else {
-            prefix + std::fs::path_sep() + path
-        };
+            } else { prefix + std::fs::path_sep() + path };
         let m0 = eval_crate_directives_to_mod(cx, cdirs, full_path);
         let i =
             @{ident: id,

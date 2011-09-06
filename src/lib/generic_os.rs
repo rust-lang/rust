@@ -3,40 +3,45 @@ import str::sbuf;
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-fn getenv(n: &istr) -> option::t<istr> {
-    let s = str::as_buf(n, { |buf|
-        os::libc::getenv(buf)
-    });
+fn getenv(n: &str) -> option::t<str> {
+    let s = str::as_buf(n, {|buf| os::libc::getenv(buf) });
     ret if unsafe::reinterpret_cast(s) == 0 {
-        option::none::<istr>
-    } else {
-        let s = unsafe::reinterpret_cast(s);
-        option::some::<istr>(str::str_from_cstr(s))
-    };
+            option::none::<str>
+        } else {
+            let s = unsafe::reinterpret_cast(s);
+            option::some::<str>(str::str_from_cstr(s))
+        };
 }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-fn setenv(n: &istr, v: &istr) {
+fn setenv(n: &str, v: &str) {
     // FIXME (868)
-    let _: () = str::as_buf(n, { |nbuf|
-        // FIXME (868)
-        let _: () = str::as_buf(v, { |vbuf|
-            os::libc::setenv(nbuf, vbuf, 1);
-        });
-    });
+    let _: () =
+        str::as_buf(n,
+                    // FIXME (868)
+                    {|nbuf|
+                        let _: () =
+                            str::as_buf(v,
+                                        {|vbuf|
+                                            os::libc::setenv(nbuf, vbuf, 1);
+                                        });
+                    });
 }
 
 #[cfg(target_os = "win32")]
-fn getenv(n: &istr) -> option::t<istr> {
+fn getenv(n: &str) -> option::t<str> {
     let nsize = 256u;
     while true {
         let v: [u8] = [];
         vec::reserve(v, nsize);
-        let res = str::as_buf(n, { |nbuf|
-            let vbuf = vec::to_ptr(v);
-            os::kernel32::GetEnvironmentVariableA(nbuf, vbuf, nsize)
-        });
+        let res =
+            str::as_buf(n,
+                        {|nbuf|
+                            let vbuf = vec::to_ptr(v);
+                            os::kernel32::GetEnvironmentVariableA(nbuf, vbuf,
+                                                                  nsize)
+                        });
         if res == 0u {
             ret option::none;
         } else if res < nsize {
@@ -48,10 +53,10 @@ fn getenv(n: &istr) -> option::t<istr> {
 }
 
 #[cfg(target_os = "win32")]
-fn setenv(n: &istr, v: &istr) {
+fn setenv(n: &str, v: &str) {
     // FIXME (868)
-    let _: () = str::as_buf(n, { |nbuf|
-        let _: () = str::as_buf(v, { |vbuf|
+    let _: () = str::as_buf(n, {|nbuf|
+        let _: () = str::as_buf(v, {|vbuf|
             os::kernel32::SetEnvironmentVariableA(nbuf, vbuf);
         });
     });

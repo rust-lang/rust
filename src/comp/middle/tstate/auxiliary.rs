@@ -55,17 +55,17 @@ tag oper_type {
 }
 
 /* logging funs */
-fn def_id_to_str(d: def_id) -> istr {
-    ret int::str(d.crate) + ~"," + int::str(d.node);
+fn def_id_to_str(d: def_id) -> str {
+    ret int::str(d.crate) + "," + int::str(d.node);
 }
 
-fn comma_str(args: &[@constr_arg_use]) -> istr {
-    let rslt = ~"";
+fn comma_str(args: &[@constr_arg_use]) -> str {
+    let rslt = "";
     let comma = false;
     for a: @constr_arg_use in args {
-        if comma { rslt += ~", "; } else { comma = true; }
+        if comma { rslt += ", "; } else { comma = true; }
         alt a.node {
-          carg_base. { rslt += ~"*"; }
+          carg_base. { rslt += "*"; }
           carg_ident(i) { rslt += i.ident; }
           carg_lit(l) { rslt += lit_to_str(l); }
         }
@@ -73,30 +73,28 @@ fn comma_str(args: &[@constr_arg_use]) -> istr {
     ret rslt;
 }
 
-fn constraint_to_str(tcx: &ty::ctxt, c: &sp_constr) -> istr {
+fn constraint_to_str(tcx: &ty::ctxt, c: &sp_constr) -> str {
     alt c.node {
       ninit(_, i) {
-        ret ~"init(" + i + ~" [" +
-            tcx.sess.span_str(c.span) + ~"])";
+        ret "init(" + i + " [" + tcx.sess.span_str(c.span) + "])";
       }
       npred(p, _, args) {
-        ret path_to_str(p) + ~"(" +
-            comma_str(args) + ~")" + ~"[" +
-                tcx.sess.span_str(c.span) + ~"]";
+        ret path_to_str(p) + "(" + comma_str(args) + ")" + "[" +
+                tcx.sess.span_str(c.span) + "]";
       }
     }
 }
 
-fn tritv_to_str(fcx: fn_ctxt, v: &tritv::t) -> istr {
-    let s = ~"";
+fn tritv_to_str(fcx: fn_ctxt, v: &tritv::t) -> str {
+    let s = "";
     let comma = false;
     for p: norm_constraint in constraints(fcx) {
         alt tritv_get(v, p.bit_num) {
           dont_care. { }
           t {
             s +=
-                if comma { ~", " } else { comma = true; ~"" } +
-                    if t == tfalse { ~"!" } else { ~"" } +
+                if comma { ", " } else { comma = true; "" } +
+                    if t == tfalse { "!" } else { "" } +
                     constraint_to_str(fcx.ccx.tcx, p.c);
           }
         }
@@ -107,8 +105,8 @@ fn tritv_to_str(fcx: fn_ctxt, v: &tritv::t) -> istr {
 fn log_tritv(fcx: &fn_ctxt, v: &tritv::t) { log tritv_to_str(fcx, v); }
 
 fn first_difference_string(fcx: &fn_ctxt, expected: &tritv::t,
-                           actual: &tritv::t) -> istr {
-    let s: istr = ~"";
+                           actual: &tritv::t) -> str {
+    let s: str = "";
     for c: norm_constraint in constraints(fcx) {
         if tritv_get(expected, c.bit_num) == ttrue &&
                tritv_get(actual, c.bit_num) != ttrue {
@@ -120,12 +118,12 @@ fn first_difference_string(fcx: &fn_ctxt, expected: &tritv::t,
 
 fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) { log_err tritv_to_str(fcx, v); }
 
-fn tos(v: &[uint]) -> istr {
-    let rslt = ~"";
+fn tos(v: &[uint]) -> str {
+    let rslt = "";
     for i: uint in v {
         if i == 0u {
-            rslt += ~"0";
-        } else if i == 1u { rslt += ~"1"; } else { rslt += ~"?"; }
+            rslt += "0";
+        } else if i == 1u { rslt += "1"; } else { rslt += "?"; }
     }
     ret rslt;
 }
@@ -170,11 +168,11 @@ fn log_states_err(pp: &pre_and_post_state) {
     log_cond_err(p2);
 }
 
-fn print_ident(i: &ident) { log ~" " + i + ~" "; }
+fn print_ident(i: &ident) { log " " + i + " "; }
 
 fn print_idents(idents: &mutable [ident]) {
     if vec::len::<ident>(idents) == 0u { ret; }
-    log ~"an ident: " + vec::pop::<ident>(idents);
+    log "an ident: " + vec::pop::<ident>(idents);
     print_idents(idents);
 }
 
@@ -272,15 +270,15 @@ So we need context. And so it seems clearer to just have separate
 constraints.
 */
 type fn_info =
+    /* list, accumulated during pre/postcondition
+    computation, of all local variables that may be
+    used */
+    // Doesn't seem to work without the @ -- bug
     {constrs: constr_map,
      num_constraints: uint,
      cf: controlflow,
      i_return: tsconstr,
      i_diverge: tsconstr,
-     /* list, accumulated during pre/postcondition
-     computation, of all local variables that may be
-     used */
-     // Doesn't seem to work without the @ -- bug
      used_vars: @mutable [node_id]};
 
 fn tsconstr_to_def_id(t: &tsconstr) -> def_id {
@@ -330,8 +328,7 @@ fn get_ts_ann(ccx: &crate_ctxt, i: node_id) -> option::t<ts_ann> {
 fn node_id_to_ts_ann(ccx: &crate_ctxt, id: node_id) -> ts_ann {
     alt get_ts_ann(ccx, id) {
       none. {
-        log_err ~"node_id_to_ts_ann: no ts_ann for node_id "
-            + int::str(id);
+        log_err "node_id_to_ts_ann: no ts_ann for node_id " + int::str(id);
         fail;
       }
       some(t) { ret t; }
@@ -533,8 +530,7 @@ fn constraints_expr(cx: &ty::ctxt, e: @expr) -> [@ty::constr] {
 fn node_id_to_def_strict(cx: &ty::ctxt, id: node_id) -> def {
     alt cx.def_map.find(id) {
       none. {
-        log_err ~"node_id_to_def: node_id "
-            + int::str(id) + ~" has no def";
+        log_err "node_id_to_def: node_id " + int::str(id) + " has no def";
         fail;
       }
       some(d) { ret d; }
@@ -579,26 +575,23 @@ fn constraints(fcx: &fn_ctxt) -> [norm_constraint] {
 // should freeze it at some earlier point.
 fn match_args(fcx: &fn_ctxt, occs: &@mutable [pred_args],
               occ: &[@constr_arg_use]) -> uint {
-    log ~"match_args: looking at " +
-            constr_args_to_str(fn (i: &inst) -> istr {
-                ret i.ident;
-            }, occ);
+    log "match_args: looking at " +
+            constr_args_to_str(fn (i: &inst) -> str { ret i.ident; }, occ);
     for pd: pred_args in *occs {
-        log ~"match_args: candidate " + pred_args_to_str(pd);
+        log "match_args: candidate " + pred_args_to_str(pd);
         fn eq(p: &inst, q: &inst) -> bool { ret p.node == q.node; }
         if ty::args_eq(eq, pd.node.args, occ) { ret pd.node.bit_num; }
     }
-    fcx.ccx.tcx.sess.bug(~"match_args: no match for occurring args");
+    fcx.ccx.tcx.sess.bug("match_args: no match for occurring args");
 }
 
 fn def_id_for_constr(tcx: ty::ctxt, t: node_id) -> def_id {
     alt tcx.def_map.find(t) {
       none. {
-        tcx.sess.bug(~"node_id_for_constr: bad node_id "
-                     + int::str(t));
+        tcx.sess.bug("node_id_for_constr: bad node_id " + int::str(t));
       }
       some(def_fn(i, _)) { ret i; }
-      _ { tcx.sess.bug(~"node_id_for_constr: pred is not a function"); }
+      _ { tcx.sess.bug("node_id_for_constr: pred is not a function"); }
     }
 }
 
@@ -612,12 +605,11 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: &@expr) -> @constr_arg_use {
                         carg_ident({ident: p.node.idents[0], node: id.node}));
           }
           some(_) {
-            tcx.sess.bug(~"exprs_to_constr_args: non-local variable " +
-                             ~"as pred arg");
+            tcx.sess.bug("exprs_to_constr_args: non-local variable " +
+                             "as pred arg");
           }
           none {
-            tcx.sess.bug(~"exprs_to_constr_args: NONE " +
-                             ~"as pred arg");
+            tcx.sess.bug("exprs_to_constr_args: NONE " + "as pred arg");
 
           }
         }
@@ -625,8 +617,8 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: &@expr) -> @constr_arg_use {
       expr_lit(l) { ret @respan(e.span, carg_lit(l)); }
       _ {
         tcx.sess.span_fatal(e.span,
-                            ~"Arguments to constrained functions must be " +
-                                ~"literals or local variables");
+                            "Arguments to constrained functions must be " +
+                                "literals or local variables");
       }
     }
 }
@@ -649,25 +641,23 @@ fn expr_to_constr(tcx: ty::ctxt, e: &@expr) -> sp_constr {
           }
           _ {
             tcx.sess.span_fatal(operator.span,
-                                ~"Internal error: " +
-                                    ~" ill-formed operator \
+                                "Internal error: " +
+                                    " ill-formed operator \
                                             in predicate");
           }
         }
       }
       _ {
         tcx.sess.span_fatal(e.span,
-                            ~"Internal error: " + ~" ill-formed predicate");
+                            "Internal error: " + " ill-formed predicate");
       }
     }
 }
 
-fn pred_args_to_str(p: &pred_args) -> istr {
-    ~"<" + uint::str(p.node.bit_num) + ~", " +
-        constr_args_to_str(fn (i: &inst) -> istr {
-            ret i.ident;
-        }, p.node.args)
-        + ~">"
+fn pred_args_to_str(p: &pred_args) -> str {
+    "<" + uint::str(p.node.bit_num) + ", " +
+        constr_args_to_str(fn (i: &inst) -> str { ret i.ident; }, p.node.args)
+        + ">"
 }
 
 fn substitute_constr_args(cx: &ty::ctxt, actuals: &[@expr], c: &@ty::constr)
@@ -687,7 +677,7 @@ fn substitute_arg(cx: &ty::ctxt, actuals: &[@expr], a: @constr_arg) ->
         if i < num_actuals {
             ret expr_to_constr_arg(cx, actuals[i]);
         } else {
-            cx.sess.span_fatal(a.span, ~"Constraint argument out of bounds");
+            cx.sess.span_fatal(a.span, "Constraint argument out of bounds");
         }
       }
       carg_base. { ret @respan(a.span, carg_base); }
@@ -766,18 +756,18 @@ fn find_in_subst_bool(s: &subst, id: node_id) -> bool {
     is_some(find_in_subst(id, s))
 }
 
-fn insts_to_str(stuff: &[constr_arg_general_<inst>]) -> istr {
-    let rslt = ~"<";
+fn insts_to_str(stuff: &[constr_arg_general_<inst>]) -> str {
+    let rslt = "<";
     for i: constr_arg_general_<inst> in stuff {
         rslt +=
-            ~" " +
+            " " +
                 alt i {
                   carg_ident(p) { p.ident }
-                  carg_base. { ~"*" }
-                  carg_lit(_) { ~"[lit]" }
-                } + ~" ";
+                  carg_base. { "*" }
+                  carg_lit(_) { "[lit]" }
+                } + " ";
     }
-    rslt += ~">";
+    rslt += ">";
     rslt
 }
 
@@ -814,7 +804,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
 
 fn path_to_ident(cx: &ty::ctxt, p: &path) -> ident {
     alt vec::last(p.node.idents) {
-      none. { cx.sess.span_fatal(p.span, ~"Malformed path"); }
+      none. { cx.sess.span_fatal(p.span, "Malformed path"); }
       some(i) { ret i; }
     }
 }
@@ -829,13 +819,13 @@ fn local_node_id_to_def_id_strict(fcx: &fn_ctxt, sp: &span, i: &node_id) ->
       }
       some(_) {
         fcx.ccx.tcx.sess.span_fatal(sp,
-                                    ~"local_node_id_to_def_id: id \
+                                    "local_node_id_to_def_id: id \
                isn't a local");
       }
       none. {
         // should really be bug. span_bug()?
         fcx.ccx.tcx.sess.span_fatal(sp,
-                                    ~"local_node_id_to_def_id: id \
+                                    "local_node_id_to_def_id: id \
                is unbound");
       }
     }
@@ -848,7 +838,9 @@ fn local_node_id_to_def(fcx: &fn_ctxt, i: &node_id) -> option::t<def> {
 fn local_node_id_to_def_id(fcx: &fn_ctxt, i: &node_id) -> option::t<def_id> {
     alt local_node_id_to_def(fcx, i) {
       some(def_local(id)) | some(def_arg(id, _)) | some(def_binding(id)) |
-      some(def_upvar(id, _, _)) { some(id) }
+      some(def_upvar(id, _, _)) {
+        some(id)
+      }
       _ { none }
     }
 }
@@ -1048,23 +1040,27 @@ fn do_nothing<T>(_f: &_fn, _tp: &[ty_param], _sp: &span, _i: &fn_ident,
 
 
 fn args_to_constr_args(tcx: &ty::ctxt, args: &[arg],
-                       indices:&[@sp_constr_arg<uint>]) -> [@constr_arg_use] {
+                       indices: &[@sp_constr_arg<uint>]) ->
+   [@constr_arg_use] {
     let actuals: [@constr_arg_use] = [];
     let num_args = vec::len(args);
-    for a:@sp_constr_arg<uint> in indices {
-        actuals += [@respan(a.span, alt a.node {
-          carg_base. { carg_base }
-          carg_ident(i) {
-            if i < num_args {
-                carg_ident({ident: args[i].ident, node:args[i].id})
-            }
-            else {
-                tcx.sess.span_bug(a.span, ~"Index out of bounds in \
+    for a: @sp_constr_arg<uint> in indices {
+        actuals +=
+            [@respan(a.span,
+                     alt a.node {
+                       carg_base. { carg_base }
+                       carg_ident(i) {
+                         if i < num_args {
+                             carg_ident({ident: args[i].ident,
+                                         node: args[i].id})
+                         } else {
+                             tcx.sess.span_bug(a.span,
+                                               "Index out of bounds in \
                   constraint arg");
-            }
-          }
-          carg_lit(l) { carg_lit(l) }
-        })];
+                         }
+                       }
+                       carg_lit(l) { carg_lit(l) }
+                     })];
     }
     ret actuals;
 }
@@ -1073,7 +1069,7 @@ fn ast_constr_to_ts_constr(tcx: &ty::ctxt, args: &[arg], c: &@constr) ->
    tsconstr {
     let tconstr = ty::ast_constr_to_constr(tcx, c);
     ret npred(tconstr.node.path, tconstr.node.id,
-         args_to_constr_args(tcx, args, tconstr.node.args));
+              args_to_constr_args(tcx, args, tconstr.node.args));
 }
 
 fn ast_constr_to_sp_constr(tcx: &ty::ctxt, args: &[arg], c: &@constr) ->
@@ -1109,9 +1105,8 @@ fn callee_modes(fcx: &fn_ctxt, callee: node_id) -> [ty::mode] {
       }
       _ {
         // Shouldn't happen; callee should be ty_fn.
-        fcx.ccx.tcx.sess.bug(
-            ~"non-fn callee type in callee_modes: " +
-            util::ppaux::ty_to_str(fcx.ccx.tcx, ty));
+        fcx.ccx.tcx.sess.bug("non-fn callee type in callee_modes: " +
+                                 util::ppaux::ty_to_str(fcx.ccx.tcx, ty));
       }
     }
 }

@@ -12,8 +12,8 @@ type deref = @{mut: bool, kind: deref_t, outer_t: ty::t};
 // vec of dereferences that were used on this root. Note that, in this vec,
 // the inner derefs come in front, so foo.bar[1] becomes rec(ex=foo,
 // ds=[index,field])
-fn expr_root(tcx: &ty::ctxt, ex: @expr, autoderef: bool)
-    -> {ex: @expr, ds: @[deref]} {
+fn expr_root(tcx: &ty::ctxt, ex: @expr, autoderef: bool) ->
+   {ex: @expr, ds: @[deref]} {
     fn maybe_auto_unbox(tcx: &ty::ctxt, t: ty::t) -> {t: ty::t, ds: [deref]} {
         let ds = [];
         while true {
@@ -32,13 +32,11 @@ fn expr_root(tcx: &ty::ctxt, ex: @expr, autoderef: bool)
               ty::ty_tag(did, tps) {
                 let variants = ty::tag_variants(tcx, did);
                 if vec::len(variants) != 1u ||
-                   vec::len(variants[0].args) != 1u {
+                       vec::len(variants[0].args) != 1u {
                     break;
                 }
                 ds += [@{mut: false, kind: unbox, outer_t: t}];
-                t =
-                    ty::substitute_type_params(tcx, tps,
-                                               variants[0].args[0]);
+                t = ty::substitute_type_params(tcx, tps, variants[0].args[0]);
               }
               _ { break; }
             }
@@ -121,21 +119,25 @@ type ctx = {tcx: ty::ctxt, mut_map: mut_map};
 
 fn check_crate(tcx: ty::ctxt, crate: &@crate) -> mut_map {
     let cx = @{tcx: tcx, mut_map: std::map::new_int_hash()};
-    let v = @{visit_expr: bind visit_expr(cx, _, _, _),
-              visit_decl: bind visit_decl(cx, _, _, _)
-              with *visit::default_visitor::<()>()};
+    let v =
+        @{visit_expr: bind visit_expr(cx, _, _, _),
+          visit_decl: bind visit_decl(cx, _, _, _)
+             with *visit::default_visitor::<()>()};
     visit::visit_crate(*crate, (), visit::mk_vt(v));
     ret cx.mut_map;
 }
 
 tag msg { msg_assign; msg_move_out; msg_mut_alias; }
 
-fn mk_err(cx: &@ctx, span: &syntax::codemap::span, msg: msg, name: &istr) {
-    cx.tcx.sess.span_err(span, alt msg {
-      msg_assign. { ~"assigning to " + name }
-      msg_move_out. { ~"moving out of " + name }
-      msg_mut_alias. { ~"passing " + name + ~" by mutable alias" }
-    });
+fn mk_err(cx: &@ctx, span: &syntax::codemap::span, msg: msg, name: &str) {
+    cx.tcx.sess.span_err(span,
+                         alt msg {
+                           msg_assign. { "assigning to " + name }
+                           msg_move_out. { "moving out of " + name }
+                           msg_mut_alias. {
+                             "passing " + name + " by mutable alias"
+                           }
+                         });
 }
 
 fn visit_decl(cx: &@ctx, d: &@decl, e: &(), v: &visit::vt<()>) {
@@ -145,9 +147,7 @@ fn visit_decl(cx: &@ctx, d: &@decl, e: &(), v: &visit::vt<()>) {
         for loc: @local in locs {
             alt loc.node.init {
               some(init) {
-                if init.op == init_move {
-                    check_move_rhs(cx, init.expr);
-                }
+                if init.op == init_move { check_move_rhs(cx, init.expr); }
               }
               none. { }
             }
@@ -159,9 +159,7 @@ fn visit_decl(cx: &@ctx, d: &@decl, e: &(), v: &visit::vt<()>) {
 
 fn visit_expr(cx: &@ctx, ex: &@expr, e: &(), v: &visit::vt<()>) {
     alt ex.node {
-      expr_call(f, args) {
-        check_call(cx, f, args);
-      }
+      expr_call(f, args) { check_call(cx, f, args); }
       expr_swap(lhs, rhs) {
         check_lval(cx, lhs, msg_assign);
         check_lval(cx, rhs, msg_assign);
@@ -173,7 +171,7 @@ fn visit_expr(cx: &@ctx, ex: &@expr, e: &(), v: &visit::vt<()>) {
       expr_assign(dest, src) | expr_assign_op(_, dest, src) {
         check_lval(cx, dest, msg_assign);
       }
-      _ {}
+      _ { }
     }
     visit::visit_expr(ex, e, v);
 }
@@ -184,20 +182,21 @@ fn check_lval(cx: &@ctx, dest: &@expr, msg: msg) {
         let def = cx.tcx.def_map.get(dest.id);
         alt is_immutable_def(def) {
           some(name) { mk_err(cx, dest.span, msg, name); }
-          _ {}
+          _ { }
         }
         cx.mut_map.insert(ast_util::def_id_of_def(def).node, ());
       }
       _ {
         let root = expr_root(cx.tcx, dest, false);
         if vec::len(*root.ds) == 0u {
-            mk_err(cx, dest.span, msg, ~"non-lvalue");
+            mk_err(cx, dest.span, msg, "non-lvalue");
         } else if !root.ds[0].mut {
-            let name = alt root.ds[0].kind {
-              mut::unbox. { ~"immutable box" }
-              mut::field. { ~"immutable field" }
-              mut::index. { ~"immutable vec content" }
-            };
+            let name =
+                alt root.ds[0].kind {
+                  mut::unbox. { "immutable box" }
+                  mut::field. { "immutable field" }
+                  mut::index. { "immutable vec content" }
+                };
             mk_err(cx, dest.span, msg, name);
         }
       }
@@ -209,7 +208,7 @@ fn check_move_rhs(cx: &@ctx, src: &@expr) {
       expr_path(p) {
         alt cx.tcx.def_map.get(src.id) {
           def_obj_field(_, _) {
-            mk_err(cx, src.span, msg_move_out, ~"object field");
+            mk_err(cx, src.span, msg_move_out, "object field");
           }
           _ { }
         }
@@ -217,17 +216,19 @@ fn check_move_rhs(cx: &@ctx, src: &@expr) {
       }
       _ {
         let root = expr_root(cx.tcx, src, false);
+
         // Not a path and no-derefs means this is a temporary.
         if vec::len(*root.ds) != 0u {
-            cx.tcx.sess.span_err(src.span, ~"moving out of a data structure");
+            cx.tcx.sess.span_err(src.span, "moving out of a data structure");
         }
       }
     }
 }
 
 fn check_call(cx: &@ctx, f: &@expr, args: &[@expr]) {
-    let arg_ts = ty::ty_fn_args(cx.tcx, ty::type_autoderef
-                                (cx.tcx, ty::expr_ty(cx.tcx, f)));
+    let arg_ts =
+        ty::ty_fn_args(cx.tcx,
+                       ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f)));
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
         if arg_t.mode == ty::mo_alias(true) {
@@ -237,17 +238,18 @@ fn check_call(cx: &@ctx, f: &@expr, args: &[@expr]) {
     }
 }
 
-fn is_immutable_def(def: &def) -> option::t<istr> {
+fn is_immutable_def(def: &def) -> option::t<str> {
     alt def {
       def_fn(_, _) | def_mod(_) | def_native_mod(_) | def_const(_) |
-      def_use(_) { some(~"static item") }
-      def_obj_field(_, imm.) { some(~"immutable object field") }
-      def_arg(_, alias(false)) { some(~"immutable alias") }
-      def_upvar(_, inner, mut) {
-        if !mut { some(~"upvar") }
-        else { is_immutable_def(*inner) }
+      def_use(_) {
+        some("static item")
       }
-      def_binding(_) { some(~"binding") }
+      def_obj_field(_, imm.) { some("immutable object field") }
+      def_arg(_, alias(false)) { some("immutable alias") }
+      def_upvar(_, inner, mut) {
+        if !mut { some("upvar") } else { is_immutable_def(*inner) }
+      }
+      def_binding(_) { some("binding") }
       _ { none }
     }
 }

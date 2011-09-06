@@ -358,7 +358,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       expr_log(_, ex) {
         ret find_pre_post_state_sub(fcx, pres, ex, e.id, none);
       }
-      expr_mac(_) { fcx.ccx.tcx.sess.bug(~"unexpanded macro"); }
+      expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
       expr_put(maybe_e) {
         alt maybe_e {
           some(arg) {
@@ -751,6 +751,7 @@ fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
     // Treat the tail expression as a return statement
     alt f.body.node.expr {
       some(tailexpr) {
+
         // We don't want to clear the diverges bit for bottom typed things,
         // which really do diverge. I feel like there is a cleaner way
         // to do this than checking the type.

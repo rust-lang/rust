@@ -7,5 +7,5 @@ fn main() {
     let b: uint = 1u;
     check (le(b, a));
     b <-> a;
-    log safe_slice(~"kitties", a, b);
+    log safe_slice("kitties", a, b);
 }

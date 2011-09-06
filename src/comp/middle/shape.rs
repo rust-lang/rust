@@ -84,15 +84,18 @@ fn eq_res_info(a: &res_info, b: &res_info) -> bool {
     ret a.did.crate == b.did.crate && a.did.node == b.did.node && a.t == b.t;
 }
 
-fn mk_global(ccx: &@crate_ctxt, name: &istr, llval: ValueRef,
-             internal: bool) -> ValueRef {
-    let llglobal = str::as_buf(name, { |buf|
-        lib::llvm::llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
-    });
+fn mk_global(ccx: &@crate_ctxt, name: &str, llval: ValueRef, internal: bool)
+   -> ValueRef {
+    let llglobal =
+        str::as_buf(name,
+                    {|buf|
+                        lib::llvm::llvm::LLVMAddGlobal(ccx.llmod,
+                                                       val_ty(llval), buf)
+                    });
     lib::llvm::llvm::LLVMSetInitializer(llglobal, llval);
     lib::llvm::llvm::LLVMSetGlobalConstant(llglobal, True);
 
-    if (internal) {
+    if internal {
         lib::llvm::llvm::LLVMSetLinkage(llglobal,
                                         lib::llvm::LLVMInternalLinkage as
                                             lib::llvm::llvm::Linkage);
@@ -256,10 +259,13 @@ fn s_float(_tcx: &ty_ctxt) -> u8 {
 }
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
-    let llshapetablesty = trans_common::T_named_struct(~"shapes");
-    let llshapetables = str::as_buf(~"shapes", { |buf|
-        lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
-    });
+    let llshapetablesty = trans_common::T_named_struct("shapes");
+    let llshapetables =
+        str::as_buf("shapes",
+                    {|buf|
+                        lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty,
+                                                       buf)
+                    });
 
     ret {mutable next_tag_id: 0u16,
          pad: 0u16,
@@ -292,15 +298,18 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
       }
 
 
+
       ty::ty_int. {
         s += [s_int(ccx.tcx)];
       }
       ty::ty_float. { s += [s_float(ccx.tcx)]; }
 
 
+
       ty::ty_uint. | ty::ty_ptr(_) | ty::ty_type. | ty::ty_native(_) {
         s += [s_uint(ccx.tcx)];
       }
+
 
 
       ty::ty_machine(ast::ty_i8.) {
@@ -314,12 +323,14 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
       ty::ty_machine(ast::ty_i64.) { s += [shape_i64]; }
 
 
-      ty::ty_istr. {
+
+      ty::ty_str. {
         s += [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
         add_substr(s, shape_of(ccx, unit_ty, ty_param_map));
       }
+
 
       ty::ty_tag(did, tps) {
         alt tag_kind(ccx, did) {
@@ -358,6 +369,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
       }
 
 
+
       ty::ty_box(mt) {
         s += [shape_box];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
@@ -387,11 +399,13 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
       }
 
 
+
       ty::ty_fn(_, _, _, _, _) {
         s += [shape_fn];
       }
       ty::ty_native_fn(_, _, _) { s += [shape_u32]; }
       ty::ty_obj(_) { s += [shape_obj]; }
+
 
 
       ty::ty_res(did, raw_subt, tps) {
@@ -409,15 +423,17 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
 
       }
 
+
       ty::ty_var(n) {
         fail "shape_of ty_var";
       }
+
 
       ty::ty_param(n, _) {
         // Find the type parameter in the parameter list.
         let found = false;
         let i = 0u;
-        while (i < vec::len(ty_param_map)) {
+        while i < vec::len(ty_param_map) {
             if n == ty_param_map[i] {
                 s += [shape_var, i as u8];
                 found = true;
@@ -425,7 +441,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
             }
             i += 1u;
         }
-        assert found;
+        assert (found);
       }
     }
 
@@ -433,15 +449,11 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
 }
 
 // FIXME: We might discover other variants as we traverse these. Handle this.
-fn shape_of_variant(ccx: &@crate_ctxt,
-                    v: &ty::variant_info,
+fn shape_of_variant(ccx: &@crate_ctxt, v: &ty::variant_info,
                     ty_param_count: uint) -> [u8] {
     let ty_param_map = [];
     let i = 0u;
-    while (i < ty_param_count) {
-        ty_param_map += [i];
-        i += 1u;
-    }
+    while i < ty_param_count { ty_param_map += [i]; i += 1u; }
 
     let s = [];
     for t: ty::t in v.args { s += shape_of(ccx, t, ty_param_map); }
@@ -540,7 +552,7 @@ fn gen_tag_shapes(ccx: &@crate_ctxt) -> ValueRef {
     header += data;
     header += lv_table;
 
-    ret mk_global(ccx, ~"tag_shapes", C_bytes(header), true);
+    ret mk_global(ccx, "tag_shapes", C_bytes(header), true);
 }
 
 fn gen_resource_shapes(ccx: &@crate_ctxt) -> ValueRef {
@@ -553,7 +565,7 @@ fn gen_resource_shapes(ccx: &@crate_ctxt) -> ValueRef {
         i += 1u;
     }
 
-    ret mk_global(ccx, ~"resource_shapes", C_struct(dtors), true);
+    ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }
 
 fn gen_shape_tables(ccx: &@crate_ctxt) {

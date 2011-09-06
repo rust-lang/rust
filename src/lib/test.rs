@@ -35,7 +35,7 @@ native "rust" mod rustrt {
 // paths, i.e it should be a series of identifiers seperated by double
 // colons. This way if some test runner wants to arrange the tests
 // heirarchically it may.
-type test_name = istr;
+type test_name = str;
 
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function fails then the test fails. We
@@ -49,7 +49,7 @@ type test_desc = {name: test_name, fn: test_fn, ignore: bool};
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: &[istr], tests: &[test_desc]) {
+fn test_main(args: &[str], tests: &[test_desc]) {
     check (vec::is_not_empty(args));
     let opts =
         alt parse_opts(args) {
@@ -59,21 +59,19 @@ fn test_main(args: &[istr], tests: &[test_desc]) {
     if !run_tests_console(opts, tests) { fail "Some tests failed"; }
 }
 
-type test_opts = {filter: option::t<istr>, run_ignored: bool};
+type test_opts = {filter: option::t<str>, run_ignored: bool};
 
-type opt_res = either::t<test_opts, istr>;
+type opt_res = either::t<test_opts, str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: &[istr]) : vec::is_not_empty(args) -> opt_res {
+fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
 
     let args_ = vec::tail(args);
-    let opts = [getopts::optflag(~"ignored")];
+    let opts = [getopts::optflag("ignored")];
     let match =
         alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
-          getopts::failure(f) {
-            ret either::right(getopts::fail_str(f))
-          }
+          getopts::failure(f) { ret either::right(getopts::fail_str(f)) }
         };
 
     let filter =
@@ -81,7 +79,7 @@ fn parse_opts(args: &[istr]) : vec::is_not_empty(args) -> opt_res {
             option::some(match.free[0])
         } else { option::none };
 
-    let run_ignored = getopts::opt_present(match, ~"ignored");
+    let run_ignored = getopts::opt_present(match, "ignored");
 
     let test_opts = {filter: filter, run_ignored: run_ignored};
 
@@ -119,30 +117,26 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
-            st.out.write_line(
-                #fmt["\nrunning %u tests", st.total]);
+            st.out.write_line(#fmt["\nrunning %u tests", st.total]);
           }
-          te_wait(test) {
-            st.out.write_str(
-                #fmt["test %s ... ", test.name]);
-          }
+          te_wait(test) { st.out.write_str(#fmt["test %s ... ", test.name]); }
           te_result(test, result) {
             alt result {
               tr_ok. {
                 st.passed += 1u;
                 write_ok(st.out, st.use_color);
-                st.out.write_line(~"");
+                st.out.write_line("");
               }
               tr_failed. {
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
-                st.out.write_line(~"");
+                st.out.write_line("");
                 st.failures += [test];
               }
               tr_ignored. {
                 st.ignored += 1u;
                 write_ignored(st.out, st.use_color);
-                st.out.write_line(~"");
+                st.out.write_line("");
               }
             }
           }
@@ -164,7 +158,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
     let success = st.failed == 0u;
 
     if !success {
-        st.out.write_line(~"\nfailures:");
+        st.out.write_line("\nfailures:");
         for test: test_desc in st.failures {
             let testname = test.name; // Satisfy alias analysis
             st.out.write_line(#fmt["    %s", testname]);
@@ -176,25 +170,24 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
         // There's no parallelism at this point so it's safe to use color
         write_ok(st.out, true);
     } else { write_failed(st.out, true); }
-    st.out.write_str(
-            #fmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
+    st.out.write_str(#fmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
                           st.failed, st.ignored]);
 
     ret success;
 
     fn write_ok(out: &io::writer, use_color: bool) {
-        write_pretty(out, ~"ok", term::color_green, use_color);
+        write_pretty(out, "ok", term::color_green, use_color);
     }
 
     fn write_failed(out: &io::writer, use_color: bool) {
-        write_pretty(out, ~"FAILED", term::color_red, use_color);
+        write_pretty(out, "FAILED", term::color_red, use_color);
     }
 
     fn write_ignored(out: &io::writer, use_color: bool) {
-        write_pretty(out, ~"ignored", term::color_yellow, use_color);
+        write_pretty(out, "ignored", term::color_yellow, use_color);
     }
 
-    fn write_pretty(out: &io::writer, word: &istr, color: u8,
+    fn write_pretty(out: &io::writer, word: &str, color: u8,
                     use_color: bool) {
         if use_color && term::color_supported() {
             term::fg(out.get_buf_writer(), color);
@@ -259,11 +252,11 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
             let filter_str =
                 alt opts.filter {
                   option::some(f) { f }
-                  option::none. { ~"" }
+                  option::none. { "" }
                 };
 
             let filter =
-                bind fn (test: &test_desc, filter_str: &istr) ->
+                bind fn (test: &test_desc, filter_str: &str) ->
                         option::t<test_desc> {
                          if str::find(test.name, filter_str) >= 0 {
                              ret option::some(test);

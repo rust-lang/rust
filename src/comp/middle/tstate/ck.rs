@@ -55,9 +55,7 @@ fn check_unused_vars(fcx: &fn_ctxt) {
           ninit(id, v) {
             if !vec_contains(fcx.enclosing.used_vars, id) && v[0] != '_' as u8
                {
-                fcx.ccx.tcx.sess.span_warn(c.c.span,
-                                           ~"unused variable "
-                                           + v);
+                fcx.ccx.tcx.sess.span_warn(c.c.span, "unused variable " + v);
             }
           }
           _ {/* ignore pred constraints */ }
@@ -82,15 +80,15 @@ fn check_states_expr(e: &@expr, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
     */
 
     if !implies(pres, prec) {
-        let s = ~"";
+        let s = "";
         let diff = first_difference_string(fcx, prec, pres);
         s +=
-            ~"Unsatisfied precondition constraint (for example, " + diff +
-                ~") for expression:\n";
+            "Unsatisfied precondition constraint (for example, " + diff +
+                ") for expression:\n";
         s += syntax::print::pprust::expr_to_str(e);
-        s += ~"\nPrecondition:\n";
+        s += "\nPrecondition:\n";
         s += tritv_to_str(fcx, prec);
-        s += ~"\nPrestate:\n";
+        s += "\nPrestate:\n";
         s += tritv_to_str(fcx, pres);
         fcx.ccx.tcx.sess.span_fatal(e.span, s);
     }
@@ -114,15 +112,15 @@ fn check_states_stmt(s: &@stmt, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
     */
 
     if !implies(pres, prec) {
-        let ss = ~"";
+        let ss = "";
         let diff = first_difference_string(fcx, prec, pres);
         ss +=
-            ~"Unsatisfied precondition constraint (for example, " + diff +
-                ~") for statement:\n";
+            "Unsatisfied precondition constraint (for example, " + diff +
+                ") for statement:\n";
         ss += syntax::print::pprust::stmt_to_str(*s);
-        ss += ~"\nPrecondition:\n";
+        ss += "\nPrecondition:\n";
         ss += tritv_to_str(fcx, prec);
-        ss += ~"\nPrestate: \n";
+        ss += "\nPrestate: \n";
         ss += tritv_to_str(fcx, pres);
         fcx.ccx.tcx.sess.span_fatal(s.span, ss);
     }
@@ -150,14 +148,12 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
            !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
            f.decl.cf == return {
         fcx.ccx.tcx.sess.span_err(f.body.span,
-                                  ~"In function " +
-                                  fcx.name +
-                                      ~", not all control paths \
+                                  "In function " + fcx.name +
+                                      ", not all control paths \
                                         return a value");
-        fcx.ccx.tcx.sess.span_fatal(
-            f.decl.output.span,
-            ~"see declared return type of '" +
-            ty_to_str(f.decl.output) + ~"'");
+        fcx.ccx.tcx.sess.span_fatal(f.decl.output.span,
+                                    "see declared return type of '" +
+                                        ty_to_str(f.decl.output) + "'");
     } else if f.decl.cf == noreturn {
 
         // check that this really always fails
@@ -166,9 +162,9 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
 
         if !promises(fcx, post, fcx.enclosing.i_diverge) {
             fcx.ccx.tcx.sess.span_fatal(f.body.span,
-                                        ~"In non-returning function " +
+                                        "In non-returning function " +
                                             fcx.name +
-                                            ~", some control paths may \
+                                            ", some control paths may \
                                            return to the caller");
         }
     }
@@ -197,11 +193,8 @@ fn fn_states(f: &_fn, tps: &[ast::ty_param], sp: &span, i: &fn_ident,
 
     assert (ccx.fm.contains_key(id));
     let f_info = ccx.fm.get(id);
-    let name = option::from_maybe(~"anon", i);
-    let fcx = {enclosing: f_info,
-               id: id,
-               name: name,
-               ccx: ccx};
+    let name = option::from_maybe("anon", i);
+    let fcx = {enclosing: f_info, id: id, name: name, ccx: ccx};
     check_fn_states(fcx, f, tps, id, sp, i);
 }
 

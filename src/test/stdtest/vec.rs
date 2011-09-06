@@ -303,7 +303,7 @@ fn test_zip_unzip() {
     let v1 = [1, 2, 3];
     let v2 = [4, 5, 6];
 
-    check same_length(v1, v2); // Silly, but what else can we do?
+    check (same_length(v1, v2)); // Silly, but what else can we do?
     let z1 = vec::zip(v1, v2);
 
     assert ((1, 4) == z1[0]);
@@ -351,7 +351,7 @@ fn reverse_and_reversed() {
     // Make sure they work with 0-length vectors too.
 
     let v4 = vec::reversed::<int>([]);
-    assert v4 == [];
+    assert (v4 == []);
     let v3: [mutable int] = [mutable];
     vec::reverse::<int>(v3);
 }

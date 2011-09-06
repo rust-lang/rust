@@ -12,9 +12,9 @@ import std::task;
 
 type ctx = comm::chan<int>;
 
-fn iotask(cx: ctx, ip: -istr) { assert (str::eq(ip, ~"localhost")); }
+fn iotask(cx: ctx, ip: -str) { assert (str::eq(ip, "localhost")); }
 
 fn main() {
     let p = comm::port::<int>();
-    task::spawn(bind iotask(comm::chan(p), ~"localhost"));
+    task::spawn(bind iotask(comm::chan(p), "localhost"));
 }

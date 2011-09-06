@@ -4,7 +4,7 @@ import lib::llvm::False;
 import lib::llvm::True;
 import lib::llvm::llvm::ValueRef;
 import middle::trans;
-import middle::trans::{ get_tydesc, tps_normal };
+import middle::trans::{get_tydesc, tps_normal};
 import middle::trans_common::*;
 import middle::ty;
 import std::option::none;
@@ -21,10 +21,12 @@ type ctxt = @{mutable next_tydesc_num: uint};
 
 fn mk_ctxt() -> ctxt { ret @{mutable next_tydesc_num: 0u}; }
 
-fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: &istr) -> ValueRef {
-    let llglobal = str::as_buf(name, { |buf|
-        lll::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
-    });
+fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: &str) -> ValueRef {
+    let llglobal =
+        str::as_buf(name,
+                    {|buf|
+                        lll::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
+                    });
     lll::LLVMSetInitializer(llglobal, llval);
     lll::LLVMSetGlobalConstant(llglobal, True);
     ret llglobal;
@@ -48,7 +50,7 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     bcx = td_r.result.bcx;
     let lltydesc = td_r.result.val;
 
-    let gcroot = bcx_ccx(bcx).intrinsics.get(~"llvm.gcroot");
+    let gcroot = bcx_ccx(bcx).intrinsics.get("llvm.gcroot");
     let llvalptr = bld::PointerCast(bcx, llval, T_ptr(T_ptr(T_i8())));
 
     alt td_r.kind {
@@ -65,30 +67,31 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
 
         let lldestindex =
             add_global(bcx_ccx(bcx), C_struct([C_int(0), C_uint(number)]),
-                       ~"rust_gc_tydesc_dest_index");
+                       "rust_gc_tydesc_dest_index");
         let llsrcindex =
             add_global(bcx_ccx(bcx), C_struct([C_int(1), C_uint(number)]),
-                       ~"rust_gc_tydesc_src_index");
+                       "rust_gc_tydesc_src_index");
 
         lldestindex = lll::LLVMConstPointerCast(lldestindex, T_ptr(T_i8()));
         llsrcindex = lll::LLVMConstPointerCast(llsrcindex, T_ptr(T_i8()));
 
-        lltydescptr = bld::PointerCast(llderivedtydescs, lltydescptr,
-                                       T_ptr(T_ptr(T_i8())));
+        lltydescptr =
+            bld::PointerCast(llderivedtydescs, lltydescptr,
+                             T_ptr(T_ptr(T_i8())));
 
         bld::Call(llderivedtydescs, gcroot, [lltydescptr, lldestindex]);
         bld::Call(bcx, gcroot, [llvalptr, llsrcindex]);
       }
       tk_param. {
-        bcx_tcx(cx).sess.bug(~"we should never be trying to root values " +
-                                 ~"of a type parameter");
+        bcx_tcx(cx).sess.bug("we should never be trying to root values " +
+                                 "of a type parameter");
       }
       tk_static. {
         // Static type descriptor.
 
         let llstaticgcmeta =
             add_global(bcx_ccx(bcx), C_struct([C_int(2), lltydesc]),
-                       ~"rust_gc_tydesc_static_gc_meta");
+                       "rust_gc_tydesc_static_gc_meta");
         let llstaticgcmetaptr =
             lll::LLVMConstPointerCast(llstaticgcmeta, T_ptr(T_i8()));
 
@@ -102,11 +105,12 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
 fn type_is_gc_relevant(cx: &ty::ctxt, ty: ty::t) -> bool {
     alt ty::struct(cx, ty) {
       ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int. | ty::ty_float. |
-      ty::ty_uint. | ty::ty_machine(_) | ty::ty_char. | ty::ty_istr. |
+      ty::ty_uint. | ty::ty_machine(_) | ty::ty_char. | ty::ty_str. |
       ty::ty_type. | ty::ty_native(_) | ty::ty_ptr(_) | ty::ty_type. |
       ty::ty_native(_) {
         ret false;
       }
+
 
 
       ty::ty_rec(fields) {
@@ -117,6 +121,7 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: ty::t) -> bool {
         for elt in elts { if type_is_gc_relevant(cx, elt) { ret true; } }
         ret false;
       }
+
 
 
       ty::ty_tag(did, tps) {
@@ -131,17 +136,20 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: ty::t) -> bool {
       }
 
 
+
       ty::ty_vec(tm) {
         ret type_is_gc_relevant(cx, tm.ty);
       }
       ty::ty_constr(sub, _) { ret type_is_gc_relevant(cx, sub); }
 
 
-      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_fn(_, _, _, _, _)
-      | ty::ty_native_fn(_, _, _) | ty::ty_obj(_) | ty::ty_param(_, _) |
+
+      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_fn(_, _, _, _, _) |
+      ty::ty_native_fn(_, _, _) | ty::ty_obj(_) | ty::ty_param(_, _) |
       ty::ty_res(_, _, _) {
         ret true;
       }
+
 
 
       ty::ty_var(_) {

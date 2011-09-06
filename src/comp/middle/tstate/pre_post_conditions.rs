@@ -69,11 +69,11 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
                  {constrs: @new_def_hash::<constraint>(),
                   num_constraints: 0u,
                   cf: return,
-                  i_return: ninit(0, ~""),
-                  i_diverge: ninit(0, ~""),
+                  i_return: ninit(0, ""),
+                  i_diverge: ninit(0, ""),
                   used_vars: v},
              id: 0,
-             name: ~"",
+             name: "",
              ccx: ccx};
         find_pre_post_expr(fake_fcx, e);
       }
@@ -373,7 +373,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
         for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
-            handle_var_def(fcx, rslt, def, ~"upvar");
+            handle_var_def(fcx, rslt, def, "upvar");
         }
       }
       expr_block(b) {
@@ -481,7 +481,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
         for def in *freevars::get_freevars(fcx.ccx.tcx, body.node.id) {
-            handle_var_def(fcx, rslt, def, ~"upvar");
+            handle_var_def(fcx, rslt, def, "upvar");
         }
       }
       expr_index(val, sub) { find_pre_post_exprs(fcx, [val, sub], e.id); }
@@ -545,6 +545,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
 
 
 
+
       expr_bind(operator, maybe_args) {
         let args = [];
         let cmodes = callee_modes(fcx, operator.id);
@@ -563,7 +564,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       }
       expr_break. { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_cont. { clear_pp(expr_pp(fcx.ccx, e)); }
-      expr_mac(_) { fcx.ccx.tcx.sess.bug(~"unexpanded macro"); }
+      expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
       expr_anon_obj(anon_obj) {
         alt anon_obj.inner_obj {
           some(ex) {
@@ -614,7 +615,7 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                               pat_bind(n) { n }
                               _ {
                                 fcx.ccx.tcx.sess.span_bug(pat.span,
-                                                          ~"Impossible LHS");
+                                                          "Impossible LHS");
                               }
                             };
                         alt p {
@@ -651,7 +652,7 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                           }
                           _ {
                             fcx.ccx.tcx.sess.span_bug(pat.span,
-                                                      ~"Impossible LHS");
+                                                      "Impossible LHS");
                           }
                         }
                     }

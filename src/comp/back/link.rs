@@ -31,37 +31,35 @@ tag output_type {
     output_type_exe;
 }
 
-fn llvm_err(sess: session::session, msg: &istr) {
+fn llvm_err(sess: session::session, msg: &str) {
     let buf = llvm::LLVMRustGetLastError();
     if buf == std::ptr::null() {
         sess.fatal(msg);
-    } else {
-        sess.fatal(
-            msg + ~": " + str::str_from_cstr(buf));
-    }
+    } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
 }
 
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
-    let path =
-        fs::connect(sess.get_opts().sysroot,
-                    ~"lib/intrinsics.bc");
-    let membuf = str::as_buf(path, { |buf|
-        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-    });
+    let path = fs::connect(sess.get_opts().sysroot, "lib/intrinsics.bc");
+    let membuf =
+        str::as_buf(
+            path,
+            {|buf|
+                llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
+            });
     if membuf as uint == 0u {
-        llvm_err(sess, ~"installation problem: couldn't open " + path);
+        llvm_err(sess, "installation problem: couldn't open " + path);
         fail;
     }
     let llintrinsicsmod = llvm::LLVMRustParseBitcode(membuf);
     llvm::LLVMDisposeMemoryBuffer(membuf);
     if llintrinsicsmod as uint == 0u {
-        llvm_err(sess, ~"installation problem: couldn't parse intrinsics.bc");
+        llvm_err(sess, "installation problem: couldn't parse intrinsics.bc");
         fail;
     }
     let linkres = llvm::LLVMLinkModules(llmod, llintrinsicsmod);
     llvm::LLVMDisposeModule(llintrinsicsmod);
     if linkres == False {
-        llvm_err(sess, ~"couldn't link the module with the intrinsics");
+        llvm_err(sess, "couldn't link the module with the intrinsics");
         fail;
     }
 }
@@ -77,15 +75,15 @@ mod write {
 
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
-    fn mk_intermediate_name(output_path: &istr, extension: &istr) -> istr {
+    fn mk_intermediate_name(output_path: &str, extension: &str) -> str {
         let dot_pos = str::index(output_path, '.' as u8);
         let stem;
         if dot_pos < 0 {
             stem = output_path;
         } else { stem = str::substr(output_path, 0u, dot_pos as uint); }
-        ret stem + ~"." + extension;
+        ret stem + "." + extension;
     }
-    fn run_passes(sess: session::session, llmod: ModuleRef, output: &istr) {
+    fn run_passes(sess: session::session, llmod: ModuleRef, output: &str) {
         let opts = sess.get_opts();
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
         link_intrinsics(sess, llmod);
@@ -102,17 +100,19 @@ mod write {
             alt opts.output_type {
               output_type_bitcode. {
                 if opts.optimize != 0u {
-                    let filename = mk_intermediate_name(output, ~"no-opt.bc");
-                    str::as_buf(filename, { |buf|
-                        llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                    });
+                    let filename = mk_intermediate_name(output, "no-opt.bc");
+                    str::as_buf(filename,
+                                {|buf|
+                                    llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                                });
                 }
               }
               _ {
-                let filename = mk_intermediate_name(output, ~"bc");
-                str::as_buf(filename, { |buf|
-                    llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                });
+                let filename = mk_intermediate_name(output, "bc");
+                str::as_buf(filename,
+                            {|buf|
+                                llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                            });
               }
             }
         }
@@ -183,25 +183,28 @@ mod write {
             if opts.save_temps {
                 // Always output the bitcode file with --save-temps
 
-                let filename = mk_intermediate_name(output, ~"opt.bc");
+                let filename = mk_intermediate_name(output, "opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                str::as_buf(filename, { |buf|
-                    llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                });
+                str::as_buf(filename,
+                            {|buf|
+                                llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                            });
                 pm = mk_pass_manager();
                 // Save the assembly file if -S is used
 
                 if opts.output_type == output_type_assembly {
                     let _: () =
-                        str::as_buf(x86::get_target_triple(), { |buf_t|
-                            str::as_buf(output, { |buf_o|
+                        str::as_buf(x86::get_target_triple(), {|buf_t|
+                            str::as_buf(output, {|buf_o|
                                 llvm::LLVMRustWriteOutputFile(
-                                    pm.llpm, llmod,
+                                    pm.llpm,
+                                    llmod,
                                     buf_t,
                                     buf_o,
                                     LLVMAssemblyFile,
                                     CodeGenOptLevel)
-                                                 })});
+                            })
+                        });
                 }
 
 
@@ -210,28 +213,32 @@ mod write {
                 if opts.output_type == output_type_object ||
                        opts.output_type == output_type_exe {
                     let _: () =
-                        str::as_buf(x86::get_target_triple(), { |buf_t|
-                            str::as_buf(output, { |buf_o|
-                                llvm::LLVMRustWriteOutputFile(
-                                    pm.llpm, llmod,
-                                    buf_t,
-                                    buf_o,
-                                    LLVMObjectFile,
-                                    CodeGenOptLevel)
-                                                 })});
+                        str::as_buf(x86::get_target_triple(), {|buf_t|
+                            str::as_buf(output, {|buf_o|
+                                llvm::LLVMRustWriteOutputFile(pm.llpm,
+                                                              llmod,
+                                                              buf_t,
+                                                              buf_o,
+                                                              LLVMObjectFile,
+                                                              CodeGenOptLevel)
+                            })
+                    });
                 }
             } else {
                 // If we aren't saving temps then just output the file
                 // type corresponding to the '-c' or '-S' flag used
 
-                let _: () = str::as_buf(x86::get_target_triple(), { |buf_t|
-                    str::as_buf(output, { |buf_o|
-                        llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
-                                                      buf_t,
-                                                      buf_o,
-                                                      FileType,
-                                                      CodeGenOptLevel)
-                                         })});
+                let _: () =
+                    str::as_buf(x86::get_target_triple(), {|buf_t|
+                        str::as_buf(output, {|buf_o|
+                            llvm::LLVMRustWriteOutputFile(pm.llpm,
+                                                          llmod,
+                                                          buf_t,
+                                                          buf_o,
+                                                          FileType,
+                                                          CodeGenOptLevel)
+                            })
+                    });
             }
             // Clean up and return
 
@@ -243,9 +250,8 @@ mod write {
         // flag, then output it here
 
         llvm::LLVMRunPassManager(pm.llpm, llmod);
-        str::as_buf(output, { |buf|
-            llvm::LLVMWriteBitcodeToFile(llmod, buf)
-        });
+        str::as_buf(output,
+                    {|buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) });
         llvm::LLVMDisposeModule(llmod);
         if opts.time_llvm_passes { llvm::LLVMRustPrintPassTimings(); }
     }
@@ -303,30 +309,30 @@ mod write {
  *
  */
 
-type link_meta = {name: istr, vers: istr, extras_hash: istr};
+type link_meta = {name: str, vers: str, extras_hash: str};
 
-fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
+fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
                    sha: sha1) -> link_meta {
 
     type provided_metas =
-        {name: option::t<istr>,
-         vers: option::t<istr>,
+        {name: option::t<str>,
+         vers: option::t<str>,
          cmh_items: [@ast::meta_item]};
 
     fn provided_link_metas(sess: &session::session, c: &ast::crate) ->
        provided_metas {
-        let name: option::t<istr> = none;
-        let vers: option::t<istr> = none;
+        let name: option::t<str> = none;
+        let vers: option::t<str> = none;
         let cmh_items: [@ast::meta_item] = [];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);
         for meta: @ast::meta_item in linkage_metas {
-            if attr::get_meta_item_name(meta) == ~"name" {
+            if attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
                   none. { cmh_items += [meta]; }
                 }
-            } else if attr::get_meta_item_name(meta) == ~"vers" {
+            } else if attr::get_meta_item_name(meta) == "vers" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { vers = some(v); }
                   none. { cmh_items += [meta]; }
@@ -338,12 +344,12 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
 
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(sha: sha1, _crate: &ast::crate,
-                              metas: &provided_metas) -> istr {
-        fn len_and_str(s: &istr) -> istr {
+                              metas: &provided_metas) -> str {
+        fn len_and_str(s: &str) -> str {
             ret #fmt["%u_%s", str::byte_len(s), s];
         }
 
-        fn len_and_str_lit(l: &ast::lit) -> istr {
+        fn len_and_str_lit(l: &ast::lit) -> str {
             ret len_and_str(pprust::lit_to_str(@l));
         }
 
@@ -357,9 +363,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
                 sha.input_str(len_and_str(key));
                 sha.input_str(len_and_str_lit(value));
               }
-              ast::meta_word(name) {
-                sha.input_str(len_and_str(name));
-              }
+              ast::meta_word(name) { sha.input_str(len_and_str(name)); }
               ast::meta_list(_, _) {
                 // FIXME (#607): Implement this
                 fail "unimplemented meta_item variant";
@@ -369,40 +373,37 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
         ret truncated_sha1_result(sha);
     }
 
-    fn warn_missing(sess: &session::session, name: &istr, default: &istr) {
+    fn warn_missing(sess: &session::session, name: &str, default: &str) {
         if !sess.get_opts().library { ret; }
-        sess.warn(
-            #fmt["missing crate link meta '%s', using '%s' as default",
+        sess.warn(#fmt["missing crate link meta '%s', using '%s' as default",
                        name, default]);
     }
 
     fn crate_meta_name(sess: &session::session, _crate: &ast::crate,
-                       output: &istr, metas: &provided_metas) -> istr {
+                       output: &str, metas: &provided_metas) -> str {
         ret alt metas.name {
               some(v) { v }
               none. {
                 let name =
                     {
-                        let os = str::split(
-                            fs::basename(output),
-                            '.' as u8);
+                        let os = str::split(fs::basename(output), '.' as u8);
                         assert (vec::len(os) >= 2u);
                         vec::pop(os);
-                        str::connect(os, ~".")
+                        str::connect(os, ".")
                     };
-                warn_missing(sess, ~"name", name);
+                warn_missing(sess, "name", name);
                 name
               }
             };
     }
 
     fn crate_meta_vers(sess: &session::session, _crate: &ast::crate,
-                       metas: &provided_metas) -> istr {
+                       metas: &provided_metas) -> str {
         ret alt metas.vers {
               some(v) { v }
               none. {
-                let vers = ~"0.0";
-                warn_missing(sess, ~"vers", vers);
+                let vers = "0.0";
+                warn_missing(sess, "vers", vers);
                 vers
               }
             };
@@ -416,32 +417,32 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &istr,
     ret {name: name, vers: vers, extras_hash: extras_hash};
 }
 
-fn truncated_sha1_result(sha: sha1) -> istr {
+fn truncated_sha1_result(sha: sha1) -> str {
     ret str::substr(sha.result_str(), 0u, 16u);
 }
 
 
 // This calculates STH for a symbol, as defined above
 fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: &link_meta) ->
-   istr {
+   str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
     sha.reset();
     sha.input_str(link_meta.name);
-    sha.input_str(~"-");
+    sha.input_str("-");
     // FIXME: This wants to be link_meta.meta_hash
     sha.input_str(link_meta.name);
-    sha.input_str(~"-");
+    sha.input_str("-");
     sha.input_str(encoder::encoded_ty(tcx, t));
     let hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 
-    ret ~"_" + hash;
+    ret "_" + hash;
 }
 
-fn get_symbol_hash(ccx: &@crate_ctxt, t: ty::t) -> istr {
-    let hash = ~"";
+fn get_symbol_hash(ccx: &@crate_ctxt, t: ty::t) -> str {
+    let hash = "";
     alt ccx.type_sha1s.find(t) {
       some(h) { hash = h; }
       none. {
@@ -452,48 +453,46 @@ fn get_symbol_hash(ccx: &@crate_ctxt, t: ty::t) -> istr {
     ret hash;
 }
 
-fn mangle(ss: &[istr]) -> istr {
+fn mangle(ss: &[str]) -> str {
     // Follow C++ namespace-mangling style
 
-    let n = ~"_ZN"; // Begin name-sequence.
+    let n = "_ZN"; // Begin name-sequence.
 
-    for s: istr in ss {
-        n += #fmt["%u%s", str::byte_len(s), s];
-    }
-    n += ~"E"; // End name-sequence.
+    for s: str in ss { n += #fmt["%u%s", str::byte_len(s), s]; }
+    n += "E"; // End name-sequence.
 
     ret n;
 }
 
-fn exported_name(path: &[istr], hash: &istr, _vers: &istr) -> istr {
+fn exported_name(path: &[str], hash: &str, _vers: &str) -> str {
     // FIXME: versioning isn't working yet
 
     ret mangle(path + [hash]); //  + "@" + vers;
 
 }
 
-fn mangle_exported_name(ccx: &@crate_ctxt, path: &[istr], t: ty::t) -> istr {
+fn mangle_exported_name(ccx: &@crate_ctxt, path: &[str], t: ty::t) -> str {
     let hash = get_symbol_hash(ccx, t);
     ret exported_name(path, hash, ccx.link_meta.vers);
 }
 
-fn mangle_internal_name_by_type_only(ccx: &@crate_ctxt, t: ty::t, name: &istr)
-   -> istr {
+fn mangle_internal_name_by_type_only(ccx: &@crate_ctxt, t: ty::t, name: &str)
+   -> str {
     let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     ret mangle([name, s, hash]);
 }
 
-fn mangle_internal_name_by_path_and_seq(ccx: &@crate_ctxt, path: &[istr],
-                                        flav: &istr) -> istr {
+fn mangle_internal_name_by_path_and_seq(ccx: &@crate_ctxt, path: &[str],
+                                        flav: &str) -> str {
     ret mangle(path + [ccx.names.next(flav)]);
 }
 
-fn mangle_internal_name_by_path(_ccx: &@crate_ctxt, path: &[istr]) -> istr {
+fn mangle_internal_name_by_path(_ccx: &@crate_ctxt, path: &[str]) -> str {
     ret mangle(path);
 }
 
-fn mangle_internal_name_by_seq(ccx: &@crate_ctxt, flav: &istr) -> istr {
+fn mangle_internal_name_by_seq(ccx: &@crate_ctxt, flav: &str) -> str {
     ret ccx.names.next(flav);
 }
 //

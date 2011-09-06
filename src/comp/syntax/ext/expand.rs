@@ -15,7 +15,7 @@ import syntax::fold::*;
 import syntax::ext::base::*;
 
 
-fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
+fn expand_expr(exts: &hashmap<str, syntax_extension>, cx: &ext_ctxt,
                e: &expr_, fld: ast_fold, orig: &fn(&expr_, ast_fold) -> expr_)
    -> expr_ {
     ret alt e {
@@ -27,8 +27,7 @@ fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
                 alt exts.find(extname) {
                   none. {
                     cx.span_fatal(pth.span,
-                                  #fmt["macro undefined: '%s'",
-                                       extname])
+                                  #fmt["macro undefined: '%s'", extname])
                   }
                   some(normal(ext)) {
                     let expanded = ext(cx, pth.span, args, body);
@@ -42,14 +41,12 @@ fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
                   }
                   some(macro_defining(ext)) {
                     let named_extension = ext(cx, pth.span, args, body);
-                    exts.insert(
-                        named_extension.ident,
-                        named_extension.ext);
+                    exts.insert(named_extension.ident, named_extension.ext);
                     ast::expr_rec([], none)
                   }
                 }
               }
-              _ { cx.span_bug(mac.span, ~"naked syntactic bit") }
+              _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }
           _ { orig(e, fld) }

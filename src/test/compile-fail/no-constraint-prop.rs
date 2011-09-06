@@ -16,5 +16,5 @@ fn main() {
     // the next statement, since it's not true in the
     // prestate.
     let d <- a;
-    log safe_slice(~"kitties", b, d);
+    log safe_slice("kitties", b, d);
 }

@@ -55,6 +55,7 @@ fn trit_minus(a: trit, b: trit) -> trit {
           ttrue. { dont_care }
           tfalse. { ttrue }
 
+
           /* internally contradictory, but
              I guess it'll get flagged? */
           dont_care. {
@@ -65,6 +66,7 @@ fn trit_minus(a: trit, b: trit) -> trit {
       tfalse. {
         alt b {
           ttrue. { tfalse }
+
 
           /* see above comment */
           _ {
@@ -82,6 +84,7 @@ fn trit_or(a: trit, b: trit) -> trit {
       tfalse. {
         alt b {
           ttrue. { dont_care }
+
 
           /* FIXME: ?????? */
           _ {
@@ -101,15 +104,18 @@ fn trit_and(a: trit, b: trit) -> trit {
     alt a {
       dont_care. { b }
 
+
       // also seems wrong for case b = ttrue
       ttrue. {
         alt b {
           dont_care. { ttrue }
 
+
           // ??? Seems wrong
           ttrue. {
             ttrue
           }
+
 
 
           // false wins, since if something is uninit
@@ -122,6 +128,7 @@ fn trit_and(a: trit, b: trit) -> trit {
           }
         }
       }
+
 
 
       // Rationale: if it's uninit on one path,
@@ -261,15 +268,15 @@ fn to_vec(v: &t) -> [uint] {
     ret rslt;
 }
 
-fn to_str(v: &t) -> istr {
+fn to_str(v: &t) -> str {
     let i: uint = 0u;
-    let rs: istr = ~"";
+    let rs: str = "";
     while i < v.nbits {
         rs +=
             alt tritv_get(v, i) {
-              dont_care. { ~"?" }
-              ttrue. { ~"1" }
-              tfalse. { ~"0" }
+              dont_care. { "?" }
+              ttrue. { "1" }
+              tfalse. { "0" }
             };
         i += 1u;
     }

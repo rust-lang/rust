@@ -56,9 +56,9 @@ fn parse_buf(buf: &[u8], radix: uint) -> uint {
     fail;
 }
 
-fn from_str(s: &istr) -> uint { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: &str) -> uint { parse_buf(str::bytes(s), 10u) }
 
-fn to_str(num: uint, radix: uint) -> istr {
+fn to_str(num: uint, radix: uint) -> str {
     let n = num;
     assert (0u < radix && radix <= 16u);
     fn digit(n: uint) -> char {
@@ -82,18 +82,18 @@ fn to_str(num: uint, radix: uint) -> istr {
               _ { fail }
             };
     }
-    if n == 0u { ret ~"0"; }
-    let s: istr = ~"";
+    if n == 0u { ret "0"; }
+    let s: str = "";
     while n != 0u {
         s += str::unsafe_from_byte(digit(n % radix) as u8);
         n /= radix;
     }
-    let s1: istr = ~"";
+    let s1: str = "";
     let len: uint = str::byte_len(s);
     while len != 0u { len -= 1u; s1 += str::unsafe_from_byte(s[len]); }
     ret s1;
 }
-fn str(i: uint) -> istr { ret to_str(i, 10u); }
+fn str(i: uint) -> str { ret to_str(i, 10u); }
 
 // Local Variables:
 // mode: rust;

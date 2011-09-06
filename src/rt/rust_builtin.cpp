@@ -7,7 +7,7 @@
 
 /* Native builtins. */
 
-extern "C" CDECL rust_vec*
+extern "C" CDECL rust_str*
 last_os_error(rust_task *task) {
     LOG(task, task, "last_os_error()");
 
@@ -40,15 +40,15 @@ last_os_error(rust_task *task) {
     }
 #endif
 
-    rust_vec * st = make_istr(task->kernel, buf, strlen(buf),
-                              "last_os_error");
+    rust_str * st = make_str(task->kernel, buf, strlen(buf),
+                             "last_os_error");
 #ifdef __WIN32__
     LocalFree((HLOCAL)buf);
 #endif
     return st;
 }
 
-extern "C" CDECL rust_vec *
+extern "C" CDECL rust_str *
 rust_getcwd(rust_task *task) {
     LOG(task, task, "rust_getcwd()");
 
@@ -63,7 +63,7 @@ rust_getcwd(rust_task *task) {
         return NULL;
     }
 
-    return make_istr(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
+    return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
 }
 
 extern "C" CDECL
@@ -127,7 +127,7 @@ vec_from_buf_shared(rust_task *task, type_desc *ty,
 }
 
 extern "C" CDECL void
-rust_istr_push(rust_task* task, rust_vec** sp, uint8_t byte) {
+rust_str_push(rust_task* task, rust_vec** sp, uint8_t byte) {
     size_t fill = (*sp)->fill;
     reserve_vec(task, sp, fill + 1);
     (*sp)->data[fill-1] = byte;
@@ -323,15 +323,15 @@ debug_ptrcast(rust_task *task,
 
 extern "C" CDECL rust_vec*
 rust_list_files(rust_task *task, rust_vec **path) {
-    array_list<rust_vec*> strings;
+    array_list<rust_str*> strings;
 #if defined(__WIN32__)
     WIN32_FIND_DATA FindFileData;
     HANDLE hFind = FindFirstFile((char*)(*path)->data, &FindFileData);
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
-            rust_vec *str = make_istr(task->kernel, FindFileData.cFileName,
-                                      strlen(FindFileData.cFileName),
-                                      "list_files_str");
+            rust_str *str = make_str(task->kernel, FindFileData.cFileName,
+                                     strlen(FindFileData.cFileName),
+                                     "list_files_str");
             strings.push(str);
         } while (FindNextFile(hFind, &FindFileData));
         FindClose(hFind);
@@ -341,7 +341,7 @@ rust_list_files(rust_task *task, rust_vec **path) {
   if (dirp) {
       struct dirent *dp;
       while ((dp = readdir(dirp))) {
-          rust_vec *str = make_istr(task->kernel, dp->d_name,
+          rust_vec *str = make_str(task->kernel, dp->d_name,
                                     strlen(dp->d_name),
                                     "list_files_str");
           strings.push(str);

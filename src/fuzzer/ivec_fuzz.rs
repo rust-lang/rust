@@ -64,6 +64,7 @@ fn vec_edits<T>(v: &[T], xs: &[T]) -> [[T]] {
                   //if (Lv >= 3u) { edits += ~[vec_reverse(v)]; }
 
 
+
     }
     for each i: uint in ix(0u, 1u, Lv) { edits += [vec_omit(v, i)]; }
     for each i: uint in ix(0u, 1u, Lv) { edits += [vec_dup(v, i)]; }

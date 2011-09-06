@@ -20,7 +20,6 @@ run_pass = os.path.join(src_dir, "src", "test", "run-pass")
 run_pass = os.path.abspath(run_pass)
 stage2_tests = []
 take_args = {}
-take_iargs = {}
 
 for t in os.listdir(run_pass):
     if t.endswith(".rs") and not (
@@ -32,9 +31,6 @@ for t in os.listdir(run_pass):
             stage2_tests.append(t)
             if "main(args: [str])" in s:
                 take_args[t] = True
-            # FIXME: Transitional. Remove me
-            if "main(args: [istr])" in s:
-                take_iargs[t] = True
         f.close()
 
 stage2_tests.sort()
@@ -62,11 +58,9 @@ i = 0
 for t in stage2_tests:
     p = os.path.join("test", "run-pass", t)
     p = p.replace("\\", "\\\\")
-    d.write("    out.write_str(~\"run-pass [stage2]: %s\\n\");\n" % p)
+    d.write("    out.write_str(\"run-pass [stage2]: %s\\n\");\n" % p)
     if t in take_args:
         d.write("    t_%d::main([\"arg0\"]);\n" % i)
-    elif t in take_iargs:
-        d.write("    t_%d::main([~\"arg0\"]);\n" % i)
     else:
         d.write("    t_%d::main();\n" % i)
     i += 1

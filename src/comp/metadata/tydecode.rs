@@ -20,7 +20,7 @@ export parse_ty_data;
 // data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
-type str_def = fn(&istr) -> ast::def_id;
+type str_def = fn(&str) -> ast::def_id;
 
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
@@ -42,7 +42,7 @@ fn parse_ident(st: @pstate, sd: str_def, last: char) -> ast::ident {
 
 fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool) ->
    ast::ident {
-    let rslt = ~"";
+    let rslt = "";
     while !is_last(peek(st) as char) {
         rslt += str::unsafe_from_byte(next(st));
     }
@@ -193,7 +193,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         }
       }
       'c' { ret ty::mk_char(st.tcx); }
-      'S' { ret ty::mk_istr(st.tcx); }
+      'S' { ret ty::mk_str(st.tcx); }
       't' {
         assert (next(st) as char == '[');
         let def = parse_def(st, sd);
@@ -224,7 +224,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         assert (next(st) as char == '[');
         let fields: [ty::field] = [];
         while peek(st) as char != ']' {
-            let name = ~"";
+            let name = "";
             while peek(st) as char != '=' {
                 name += str::unsafe_from_byte(next(st));
             }
@@ -277,7 +277,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
               'W' { proto = ast::proto_iter; }
               'F' { proto = ast::proto_fn; }
             }
-            let name = ~"";
+            let name = "";
             while peek(st) as char != '[' {
                 name += str::unsafe_from_byte(next(st));
             }
@@ -342,10 +342,8 @@ fn parse_mt(st: @pstate, sd: str_def) -> ty::mt {
 }
 
 fn parse_def(st: @pstate, sd: str_def) -> ast::def_id {
-    let def = ~"";
-    while peek(st) as char != '|' {
-        def += str::unsafe_from_byte(next(st));
-    }
+    let def = "";
+    while peek(st) as char != '|' { def += str::unsafe_from_byte(next(st)); }
     st.pos = st.pos + 1u;
     ret sd(def);
 }

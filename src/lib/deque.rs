@@ -27,6 +27,7 @@ fn create<@T>() -> t<T> {
 
 
 
+
     fn grow<@T>(nelts: uint, lo: uint, elts: &[mutable cell<T>]) ->
        [mutable cell<T>] {
         assert (nelts == vec::len(elts));

@@ -8,12 +8,14 @@ fn f(n: uint) {
     let i = 0u;
     while i < n {
         let thunk = g;
-        task::join(task::spawn_joinable(thunk)); i += 1u; }
+        task::join(task::spawn_joinable(thunk));
+        i += 1u;
+    }
 }
 
 fn g() { }
 
-fn main(args: [istr]) {
+fn main(args: [str]) {
     let n =
         if vec::len(args) < 2u {
             10u

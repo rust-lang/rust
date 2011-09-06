@@ -27,8 +27,9 @@ export reqchan;
 
 type reqchan = chan<request>;
 
-type handle = {task: option::t<(task::task, port<task::task_notification>)>,
-    chan: reqchan};
+type handle =
+    {task: option::t<(task::task, port<task::task_notification>)>,
+     chan: reqchan};
 
 tag request { exec([u8], [u8], [[u8]], chan<response>); stop; }
 
@@ -38,11 +39,11 @@ fn mk() -> handle {
     let setupport = port();
     let task =
         task::spawn_joinable(bind fn (setupchan: chan<chan<request>>) {
-            let reqport = port();
-            let reqchan = chan(reqport);
-            send(setupchan, reqchan);
-            worker(reqport);
-        }(chan(setupport)));
+                                      let reqport = port();
+                                      let reqchan = chan(reqport);
+                                      send(setupchan, reqchan);
+                                      worker(reqport);
+                                  }(chan(setupport)));
     ret {task: option::some(task), chan: recv(setupport)};
 }
 
@@ -53,8 +54,8 @@ fn close(handle: &handle) {
     task::join(option::get(handle.task));
 }
 
-fn run(handle: &handle, lib_path: &istr, prog: &istr, args: &[istr],
-       input: &option::t<istr>) -> {status: int, out: istr, err: istr} {
+fn run(handle: &handle, lib_path: &str, prog: &str, args: &[str],
+       input: &option::t<str>) -> {status: int, out: str, err: str} {
     let p = port();
     let ch = chan(p);
     send(handle.chan,
@@ -69,7 +70,7 @@ fn run(handle: &handle, lib_path: &istr, prog: &istr, args: &[istr],
     ret {status: status, out: output, err: errput};
 }
 
-fn writeclose(fd: int, s: &option::t<istr>) {
+fn writeclose(fd: int, s: &option::t<str>) {
     if option::is_some(s) {
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
         writer.write_str(option::get(s));
@@ -78,11 +79,11 @@ fn writeclose(fd: int, s: &option::t<istr>) {
     os::libc::close(fd);
 }
 
-fn readclose(fd: int) -> istr {
+fn readclose(fd: int) -> str {
     // Copied from run::program_output
     let file = os::fd_FILE(fd);
     let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
-    let buf = ~"";
+    let buf = "";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
         buf += str::unsafe_from_bytes(bytes);
@@ -128,8 +129,7 @@ fn worker(p: port<request>) {
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
         let spawnproc =
-            bind run::spawn_process(execparms.prog,
-                                    execparms.args,
+            bind run::spawn_process(execparms.prog, execparms.args,
                                     pipe_in.in, pipe_out.out, pipe_err.out);
         let pid = with_lib_path(execparms.lib_path, spawnproc);
 
@@ -151,7 +151,7 @@ fn worker(p: port<request>) {
     }
 }
 
-fn with_lib_path<@T>(path: &istr, f: fn() -> T) -> T {
+fn with_lib_path<@T>(path: &str, f: fn() -> T) -> T {
     let maybe_oldpath = getenv(util::lib_path_env_var());
     append_lib_path(path);
     let res = f();
@@ -159,26 +159,22 @@ fn with_lib_path<@T>(path: &istr, f: fn() -> T) -> T {
         export_lib_path(option::get(maybe_oldpath));
     } else {
         // FIXME: This should really be unset but we don't have that yet
-        export_lib_path(~"");
+        export_lib_path("");
     }
     ret res;
 }
 
-fn append_lib_path(path: &istr) {
-    export_lib_path(util::make_new_path(path));
-}
+fn append_lib_path(path: &str) { export_lib_path(util::make_new_path(path)); }
 
-fn export_lib_path(path: &istr) {
-    setenv(util::lib_path_env_var(), path);
-}
+fn export_lib_path(path: &str) { setenv(util::lib_path_env_var(), path); }
 
-fn clone_vecstr(v: &[istr]) -> [[u8]] {
+fn clone_vecstr(v: &[str]) -> [[u8]] {
     let r = [];
-    for t: istr in vec::slice(v, 0u, vec::len(v)) { r += [str::bytes(t)]; }
+    for t: str in vec::slice(v, 0u, vec::len(v)) { r += [str::bytes(t)]; }
     ret r;
 }
 
-fn clone_vecu8str(v: &[[u8]]) -> [istr] {
+fn clone_vecu8str(v: &[[u8]]) -> [str] {
     let r = [];
     for t in vec::slice(v, 0u, vec::len(v)) {
         r += [str::unsafe_from_bytes(t)];

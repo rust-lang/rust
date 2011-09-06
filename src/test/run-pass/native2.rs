@@ -14,4 +14,4 @@ native "cdecl" mod libc = "" {
 
 native "cdecl" mod baz = "" { }
 
-fn main(args: [istr]) { }
+fn main(args: [str]) { }

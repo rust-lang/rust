@@ -40,16 +40,16 @@ mod libc_constants {
 }
 
 native "x86stdcall" mod kernel32 {
-    fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf,
-                               nsize: uint) -> uint;
+    fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: uint) ->
+       uint;
     fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
 }
 
-fn exec_suffix() -> istr { ret ~".exe"; }
+fn exec_suffix() -> str { ret ".exe"; }
 
-fn target_os() -> istr { ret ~"win32"; }
+fn target_os() -> str { ret "win32"; }
 
-fn dylib_filename(base: &istr) -> istr { ret base + ~".dll"; }
+fn dylib_filename(base: &str) -> str { ret base + ".dll"; }
 
 fn pipe() -> {in: int, out: int} {
     // Windows pipes work subtly differently than unix pipes, and their
@@ -69,21 +69,17 @@ fn pipe() -> {in: int, out: int} {
 }
 
 fn fd_FILE(fd: int) -> libc::FILE {
-    ret str::as_buf(~"r", { |modebuf|
-        libc::_fdopen(fd, modebuf)
-    });
+    ret str::as_buf("r", {|modebuf| libc::_fdopen(fd, modebuf) });
 }
 
 native "rust" mod rustrt {
     fn rust_process_wait(handle: int) -> int;
-    fn rust_getcwd() -> istr;
+    fn rust_getcwd() -> str;
 }
 
 fn waitpid(pid: int) -> int { ret rustrt::rust_process_wait(pid); }
 
-fn getcwd() -> istr {
-    ret rustrt::rust_getcwd();
-}
+fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 
 // Local Variables:
 // mode: rust;

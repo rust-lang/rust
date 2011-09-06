@@ -46,16 +46,14 @@ type upcalls =
 
 fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
                    taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
-    fn decl(llmod: ModuleRef, name: &istr, tys: [TypeRef], rv: TypeRef) ->
+    fn decl(llmod: ModuleRef, name: &str, tys: [TypeRef], rv: TypeRef) ->
        ValueRef {
         let arg_tys: [TypeRef] = [];
         for t: TypeRef in tys { arg_tys += [t]; }
         let fn_ty = T_fn(arg_tys, rv);
-        ret trans::decl_cdecl_fn(llmod,
-                                 ~"upcall_" + name, fn_ty);
+        ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
-    fn decl_with_taskptr(taskptr_type: TypeRef, llmod: ModuleRef,
-                         name: &istr,
+    fn decl_with_taskptr(taskptr_type: TypeRef, llmod: ModuleRef, name: &str,
                          tys: [TypeRef], rv: TypeRef) -> ValueRef {
         ret decl(llmod, name, [taskptr_type] + tys, rv);
     }
@@ -64,44 +62,45 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
     let dr = bind decl(llmod, _, _, _);
 
     let empty_vec: [TypeRef] = [];
-    ret @{grow_task: dv(~"grow_task", [T_size_t()]),
-          _yield: dv(~"yield", empty_vec),
-          sleep: dv(~"sleep", [T_size_t()]),
-          _fail: dv(~"fail", [T_ptr(T_i8()), T_ptr(T_i8()), T_size_t()]),
-          kill: dv(~"kill", [taskptr_type]),
-          exit: dv(~"exit", empty_vec),
+    ret @{grow_task: dv("grow_task", [T_size_t()]),
+          _yield: dv("yield", empty_vec),
+          sleep: dv("sleep", [T_size_t()]),
+          _fail: dv("fail", [T_ptr(T_i8()), T_ptr(T_i8()), T_size_t()]),
+          kill: dv("kill", [taskptr_type]),
+          exit: dv("exit", empty_vec),
           malloc:
-              d(~"malloc", [T_size_t(), T_ptr(tydesc_type)], T_ptr(T_i8())),
-          free: dv(~"free", [T_ptr(T_i8()), T_int()]),
+              d("malloc", [T_size_t(), T_ptr(tydesc_type)], T_ptr(T_i8())),
+          free: dv("free", [T_ptr(T_i8()), T_int()]),
           shared_malloc:
-              d(~"shared_malloc", [T_size_t(), T_ptr(tydesc_type)],
+              d("shared_malloc", [T_size_t(), T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
-          shared_free: dv(~"shared_free", [T_ptr(T_i8())]),
-          mark: d(~"mark", [T_ptr(T_i8())], T_int()),
+          shared_free: dv("shared_free", [T_ptr(T_i8())]),
+          mark: d("mark", [T_ptr(T_i8())], T_int()),
           get_type_desc:
-              d(~"get_type_desc",
+              d("get_type_desc",
                 [T_ptr(T_nil()), T_size_t(), T_size_t(), T_size_t(),
                  T_ptr(T_ptr(tydesc_type)), T_int()], T_ptr(tydesc_type)),
           vec_grow:
-              d(~"vec_grow", [T_ptr(T_ptr(T_opaque_vec())), T_int()],
+              d("vec_grow", [T_ptr(T_ptr(T_opaque_vec())), T_int()],
                 T_void()),
           vec_push:
-              d(~"vec_push",
+              d("vec_push",
                 [T_ptr(T_ptr(T_opaque_vec())), T_ptr(tydesc_type),
                  T_ptr(T_i8())], T_void()),
           cmp_type:
-              dr(~"cmp_type",
+              dr("cmp_type",
                  [T_ptr(T_i1()), taskptr_type, T_ptr(tydesc_type),
                   T_ptr(T_ptr(tydesc_type)), T_ptr(T_i8()), T_ptr(T_i8()),
                   T_i8()], T_void()),
           log_type:
-              dr(~"log_type",
+              dr("log_type",
                  [taskptr_type, T_ptr(tydesc_type), T_ptr(T_i8()), T_i32()],
                  T_void()),
-          dynastack_mark: d(~"dynastack_mark", [], T_ptr(T_i8())),
-          dynastack_alloc: d(~"dynastack_alloc_2",
-                             [T_size_t(), T_ptr(tydesc_type)], T_ptr(T_i8())),
-          dynastack_free: d(~"dynastack_free", [T_ptr(T_i8())], T_void())};
+          dynastack_mark: d("dynastack_mark", [], T_ptr(T_i8())),
+          dynastack_alloc:
+              d("dynastack_alloc_2", [T_size_t(), T_ptr(tydesc_type)],
+                T_ptr(T_i8())),
+          dynastack_free: d("dynastack_free", [T_ptr(T_i8())], T_void())};
 }
 //
 // Local Variables:

@@ -32,7 +32,7 @@ export mk_attr;
 // linkage
 fn find_linkage_metas(attrs: &[ast::attribute]) -> [@ast::meta_item] {
     let metas: [@ast::meta_item] = [];
-    for attr: ast::attribute in find_attrs_by_name(attrs, ~"link") {
+    for attr: ast::attribute in find_attrs_by_name(attrs, "link") {
         alt attr.node.value.node {
           ast::meta_list(_, items) { metas += items; }
           _ { log "ignoring link attribute that has incorrect type"; }
@@ -80,13 +80,10 @@ fn get_meta_item_name(meta: &@ast::meta_item) -> ast::ident {
 
 // Gets the string value if the meta_item is a meta_name_value variant
 // containing a string, otherwise none
-fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t<istr> {
+fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t<str> {
     alt meta.node {
       ast::meta_name_value(_, v) {
-        alt v.node {
-          ast::lit_str(s) { option::some(s) }
-          _ { option::none }
-        }
+        alt v.node { ast::lit_str(s) { option::some(s) } _ { option::none } }
       }
       _ { option::none }
     }
@@ -124,10 +121,10 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
 
 fn contains(haystack: &[@ast::meta_item], needle: @ast::meta_item) -> bool {
     log #fmt["looking for %s",
-                 syntax::print::pprust::meta_item_to_str(*needle)];
+             syntax::print::pprust::meta_item_to_str(*needle)];
     for item: @ast::meta_item in haystack {
         log #fmt["looking in %s",
-                     syntax::print::pprust::meta_item_to_str(*item)];
+                 syntax::print::pprust::meta_item_to_str(*item)];
         if eq(item, needle) { log "found it!"; ret true; }
     }
     log "found it not :(";
@@ -163,11 +160,11 @@ fn sort_meta_items(items: &[@ast::meta_item]) -> [@ast::meta_item] {
     ret v2;
 }
 
-fn remove_meta_items_by_name(items: &[@ast::meta_item], name: &istr) ->
+fn remove_meta_items_by_name(items: &[@ast::meta_item], name: &str) ->
    [@ast::meta_item] {
 
     let filter =
-        bind fn (item: &@ast::meta_item, name: &istr) ->
+        bind fn (item: &@ast::meta_item, name: &str) ->
                 option::t<@ast::meta_item> {
                  if get_meta_item_name(item) != name {
                      option::some(item)
@@ -183,8 +180,7 @@ fn require_unique_names(sess: &session::session, metas: &[@ast::meta_item]) {
         let name = get_meta_item_name(meta);
         if map.contains_key(name) {
             sess.span_fatal(meta.span,
-                            #fmt["duplicate meta item `%s`",
-                                 name]);
+                            #fmt["duplicate meta item `%s`", name]);
         }
         map.insert(name, ());
     }
@@ -194,8 +190,7 @@ fn span<@T>(item: &T) -> ast::spanned<T> {
     ret {node: item, span: ast_util::dummy_sp()};
 }
 
-fn mk_name_value_item_str(name: ast::ident,
-                          value: &istr) -> @ast::meta_item {
+fn mk_name_value_item_str(name: ast::ident, value: &str) -> @ast::meta_item {
     let value_lit = span(ast::lit_str(value));
     ret mk_name_value_item(name, value_lit);
 }

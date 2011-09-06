@@ -19,31 +19,29 @@ import std::comm::send;
 import std::comm::recv;
 import std::comm;
 
-fn map(filename: &istr, emit: map_reduce::putter) { emit(filename, ~"1"); }
+fn map(filename: &str, emit: map_reduce::putter) { emit(filename, "1"); }
 
 mod map_reduce {
     export putter;
     export mapper;
     export map_reduce;
 
-    type putter = fn(&istr, &istr);
+    type putter = fn(&str, &str);
 
-    type mapper = fn(&istr, putter);
+    type mapper = fn(&str, putter);
 
     tag ctrl_proto { find_reducer([u8], chan<int>); mapper_done; }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: &[istr]) {
-        for i: istr in inputs {
-            task::spawn(bind map_task(ctrl, i));
-        }
+    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: &[str]) {
+        for i: str in inputs { task::spawn(bind map_task(ctrl, i)); }
     }
 
-    fn map_task(ctrl: chan<ctrl_proto>, input: -istr) {
+    fn map_task(ctrl: chan<ctrl_proto>, input: -str) {
 
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap<istr, int>, ctrl: chan<ctrl_proto>,
-                key: &istr, val: &istr) {
+        fn emit(im: &map::hashmap<str, int>, ctrl: chan<ctrl_proto>,
+                key: &str, val: &str) {
             let c;
             alt im.find(key) {
               some(_c) { c = _c }
@@ -63,13 +61,13 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn map_reduce(inputs: &[istr]) {
+    fn map_reduce(inputs: &[str]) {
         let ctrl = port();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let reducers: map::hashmap<istr, int>;
+        let reducers: map::hashmap<str, int>;
 
         reducers = map::new_str_hash();
 
@@ -94,5 +92,5 @@ mod map_reduce {
 }
 
 fn main() {
-    map_reduce::map_reduce([~"../src/test/run-pass/hashmap-memory.rs"]);
+    map_reduce::map_reduce(["../src/test/run-pass/hashmap-memory.rs"]);
 }

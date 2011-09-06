@@ -194,7 +194,7 @@ fn mk_hashmap<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>) -> hashmap<K, V> {
 
 // Hash map constructors for basic types
 
-fn new_str_hash<@V>() -> hashmap<istr, V> {
+fn new_str_hash<@V>() -> hashmap<str, V> {
     ret mk_hashmap(str::hash, str::eq);
 }
 

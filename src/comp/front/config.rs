@@ -77,7 +77,8 @@ fn fold_block(cfg: &ast::crate_cfg, b: &ast::blk_, fld: fold::ast_fold) ->
     let filtered_stmts = vec::filter_map(filter, b.stmts);
     ret {stmts: vec::map(fld.fold_stmt, filtered_stmts),
          expr: option::map(fld.fold_expr, b.expr),
-         id: b.id, rules: b.rules};
+         id: b.id,
+         rules: b.rules};
 }
 
 fn item_in_cfg(cfg: &ast::crate_cfg, item: &@ast::item) -> bool {
@@ -94,7 +95,7 @@ fn native_item_in_cfg(cfg: &ast::crate_cfg, item: &@ast::native_item) ->
 fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
 
     // The "cfg" attributes on the item
-    let item_cfg_attrs = attr::find_attrs_by_name(attrs, ~"cfg");
+    let item_cfg_attrs = attr::find_attrs_by_name(attrs, "cfg");
     let item_has_cfg_attrs = vec::len(item_cfg_attrs) > 0u;
     if !item_has_cfg_attrs { ret true; }
 
@@ -108,7 +109,7 @@ fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
                [@ast::meta_item] {
                 alt cfg_item.node {
                   ast::meta_list(name, items) {
-                    assert (name == ~"cfg");
+                    assert (name == "cfg");
                     inner_items + items
                   }
                   _ { inner_items }

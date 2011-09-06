@@ -1,3 +1,1 @@
-fn main(args: [istr]) {
-    for s in args { log s }
-}
+fn main(args: [str]) { for s in args { log s } }

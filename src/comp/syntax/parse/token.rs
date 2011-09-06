@@ -84,62 +84,64 @@ tag token {
     EOF;
 }
 
-fn binop_to_str(o: binop) -> istr {
+fn binop_to_str(o: binop) -> str {
     alt o {
-      PLUS. { ret ~"+"; }
-      MINUS. { ret ~"-"; }
-      STAR. { ret ~"*"; }
-      SLASH. { ret ~"/"; }
-      PERCENT. { ret ~"%"; }
-      CARET. { ret ~"^"; }
-      AND. { ret ~"&"; }
-      OR. { ret ~"|"; }
-      LSL. { ret ~"<<"; }
-      LSR. { ret ~">>"; }
-      ASR. { ret ~">>>"; }
+      PLUS. { ret "+"; }
+      MINUS. { ret "-"; }
+      STAR. { ret "*"; }
+      SLASH. { ret "/"; }
+      PERCENT. { ret "%"; }
+      CARET. { ret "^"; }
+      AND. { ret "&"; }
+      OR. { ret "|"; }
+      LSL. { ret "<<"; }
+      LSR. { ret ">>"; }
+      ASR. { ret ">>>"; }
     }
 }
 
-fn to_str(r: lexer::reader, t: token) -> istr {
+fn to_str(r: lexer::reader, t: token) -> str {
     alt t {
-      EQ. { ret ~"="; }
-      LT. { ret ~"<"; }
-      LE. { ret ~"<="; }
-      EQEQ. { ret ~"=="; }
-      NE. { ret ~"!="; }
-      GE. { ret ~">="; }
-      GT. { ret ~">"; }
-      NOT. { ret ~"!"; }
-      TILDE. { ret ~"~"; }
-      OROR. { ret ~"||"; }
-      ANDAND. { ret ~"&&"; }
+      EQ. { ret "="; }
+      LT. { ret "<"; }
+      LE. { ret "<="; }
+      EQEQ. { ret "=="; }
+      NE. { ret "!="; }
+      GE. { ret ">="; }
+      GT. { ret ">"; }
+      NOT. { ret "!"; }
+      TILDE. { ret "~"; }
+      OROR. { ret "||"; }
+      ANDAND. { ret "&&"; }
       BINOP(op) { ret binop_to_str(op); }
-      BINOPEQ(op) { ret binop_to_str(op) + ~"="; }
+      BINOPEQ(op) { ret binop_to_str(op) + "="; }
+
 
 
       /* Structural symbols */
       AT. {
-        ret ~"@";
+        ret "@";
       }
-      DOT. { ret ~"."; }
-      ELLIPSIS. { ret ~"..."; }
-      COMMA. { ret ~","; }
-      SEMI. { ret ~";"; }
-      COLON. { ret ~":"; }
-      MOD_SEP. { ret ~"::"; }
-      QUES. { ret ~"?"; }
-      RARROW. { ret ~"->"; }
-      LARROW. { ret ~"<-"; }
-      DARROW. { ret ~"<->"; }
-      LPAREN. { ret ~"("; }
-      RPAREN. { ret ~")"; }
-      LBRACKET. { ret ~"["; }
-      RBRACKET. { ret ~"]"; }
-      LBRACE. { ret ~"{"; }
-      RBRACE. { ret ~"}"; }
-      POUND. { ret ~"#"; }
-      POUND_LBRACE. { ret ~"#{"; }
-      POUND_LT. { ret ~"#<"; }
+      DOT. { ret "."; }
+      ELLIPSIS. { ret "..."; }
+      COMMA. { ret ","; }
+      SEMI. { ret ";"; }
+      COLON. { ret ":"; }
+      MOD_SEP. { ret "::"; }
+      QUES. { ret "?"; }
+      RARROW. { ret "->"; }
+      LARROW. { ret "<-"; }
+      DARROW. { ret "<->"; }
+      LPAREN. { ret "("; }
+      RPAREN. { ret ")"; }
+      LBRACKET. { ret "["; }
+      RBRACKET. { ret "]"; }
+      LBRACE. { ret "{"; }
+      RBRACE. { ret "}"; }
+      POUND. { ret "#"; }
+      POUND_LBRACE. { ret "#{"; }
+      POUND_LT. { ret "#<"; }
+
 
 
       /* Literals */
@@ -148,39 +150,35 @@ fn to_str(r: lexer::reader, t: token) -> istr {
       }
       LIT_UINT(u) { ret uint::to_str(u, 10u); }
       LIT_MACH_INT(tm, i) {
-        ret int::to_str(i, 10u) + ~"_" + ty_mach_to_str(tm);
+        ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
       }
       LIT_MACH_FLOAT(tm, s) {
-        ret interner::get::<istr>(
-            *r.get_interner(), s) + ~"_" +
-            ty_mach_to_str(tm);
+        ret interner::get::<str>(*r.get_interner(), s) + "_" +
+                ty_mach_to_str(tm);
       }
-      LIT_FLOAT(s) {
-        ret interner::get::<istr>(*r.get_interner(), s);
-      }
+      LIT_FLOAT(s) { ret interner::get::<str>(*r.get_interner(), s); }
       LIT_STR(s) { // FIXME: escape.
-        ret ~"\"" +
-            interner::get::<istr>(*r.get_interner(), s)
-            + ~"\"";
+        ret "\"" + interner::get::<str>(*r.get_interner(), s) + "\"";
       }
       LIT_CHAR(c) {
         // FIXME: escape.
-        let tmp = ~"'";
+        let tmp = "'";
         str::push_char(tmp, c);
         str::push_byte(tmp, '\'' as u8);
         ret tmp;
       }
-      LIT_BOOL(b) { if b { ret ~"true"; } else { ret ~"false"; } }
+      LIT_BOOL(b) { if b { ret "true"; } else { ret "false"; } }
+
 
 
       /* Name components */
       IDENT(s, _) {
-        ret interner::get::<istr>(*r.get_interner(), s);
+        ret interner::get::<str>(*r.get_interner(), s);
       }
-      IDX(i) { ret ~"_" + int::to_str(i, 10u); }
-      UNDERSCORE. { ret ~"_"; }
-      BRACEQUOTE(_) { ret ~"<bracequote>"; }
-      EOF. { ret ~"<eof>"; }
+      IDX(i) { ret "_" + int::to_str(i, 10u); }
+      UNDERSCORE. { ret "_"; }
+      BRACEQUOTE(_) { ret "<bracequote>"; }
+      EOF. { ret "<eof>"; }
     }
 }
 

@@ -1,9 +1,9 @@
 
 native "rust" mod rustrt {
-    fn rust_list_files(path: &istr) -> [istr];
+    fn rust_list_files(path: &str) -> [str];
 }
 
-fn list_dir(path: &istr) -> [istr] {
+fn list_dir(path: &str) -> [str] {
     ret rustrt::rust_list_files(path);
 
     // FIXME: No idea why, but this appears to corrupt memory on OSX. I
@@ -30,7 +30,7 @@ fn list_dir(path: &istr) -> [istr] {
 
 }
 
-fn path_is_absolute(p: &istr) -> bool { ret str::char_at(p, 0u) == '/'; }
+fn path_is_absolute(p: &str) -> bool { ret str::char_at(p, 0u) == '/'; }
 
 const path_sep: char = '/';
 
