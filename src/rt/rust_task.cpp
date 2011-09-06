@@ -125,13 +125,13 @@ struct spawn_args {
                        uintptr_t, uintptr_t);
 };
 
-struct rust_closure {
+struct rust_closure_env {
     intptr_t ref_count;
     type_desc *td;
 };
 
 extern "C" CDECL
-void task_exit(rust_closure *env, int rval, rust_task *task) {
+void task_exit(rust_closure_env *env, int rval, rust_task *task) {
     LOG(task, task, "task exited with value %d", rval);
     if(env) {
         // free the environment.
@@ -155,14 +155,32 @@ void task_start_wrapper(spawn_args *a)
     int rval = 42;
 
     a->f(&rval, task, a->a3, a->a4);
-    task_exit(NULL, rval, task);
+    task_exit((rust_closure_env*)a->a3, rval, task);
+}
+
+/* We spawn a rust (fastcc) function through a CDECL function
+   defined in main.ll, which is built as part of each crate. These accessors
+   allow each rust program to install that function at startup */
+
+uintptr_t spawn_wrapper;
+
+extern "C" CDECL void
+set_spawn_wrapper(uintptr_t f) {
+    spawn_wrapper = f;
+}
+
+extern "C" CDECL uintptr_t
+get_spawn_wrapper() {
+    return spawn_wrapper;
 }
 
 void
 rust_task::start(uintptr_t spawnee_fn,
-                 uintptr_t args)
+                 uintptr_t args,
+                 uintptr_t env)
 {
-    LOGPTR(sched, "from spawnee", spawnee_fn);
+    LOG(this, task, "starting task from fn 0x%" PRIxPTR
+        " with args 0x%" PRIxPTR, spawnee_fn, args);
 
     I(sched, stk->data != NULL);
 
@@ -173,14 +191,21 @@ rust_task::start(uintptr_t spawnee_fn,
     spawn_args *a = (spawn_args *)sp;
 
     a->task = this;
-    a->a3 = 0;
+    a->a3 = env;
     a->a4 = args;
     void **f = (void **)&a->f;
     *f = (void *)spawnee_fn;
 
-    user.ctx.call((void *)task_start_wrapper, a, sp);
+    ctx.call((void *)task_start_wrapper, a, sp);
 
     this->start();
+}
+
+void
+rust_task::start(uintptr_t spawnee_fn,
+                 uintptr_t args)
+{
+    start(spawnee_fn, args, 0);
 }
 
 void rust_task::start()
@@ -213,7 +238,7 @@ rust_task::yield(size_t time_in_us) {
     yield_timer.reset_us(time_in_us);
 
     // Return to the scheduler.
-    user.ctx.next->swap(user.ctx);
+    ctx.next->swap(ctx);
 }
 
 void

@@ -48,10 +48,10 @@ void
 rust_scheduler::activate(rust_task *task) {
     context ctx;
 
-    task->user.ctx.next = &ctx;
+    task->ctx.next = &ctx;
     DLOG(this, task, "descheduling...");
     lock.unlock();
-    task->user.ctx.swap(ctx);
+    task->ctx.swap(ctx);
     lock.lock();
     DLOG(this, task, "task has returned");
 }

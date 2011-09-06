@@ -39,20 +39,17 @@ native "rust" mod rustrt {
     fn new_task() -> task_id;
     fn drop_task(task: *rust_task);
     fn get_task_pointer(id: task_id) -> *rust_task;
-    fn start_task(id: task_id);
     fn get_task_trampoline() -> u32;
 
     fn migrate_alloc(alloc: *u8, target: task_id);
+    fn start_task(id: task_id, closure: *u8);
 }
 
 type rust_task =
     {id: task,
      mutable notify_enabled: u32,
      mutable notify_chan: comm::chan<task_notification>,
-     ctx: task_context,
-     stack_ptr: *u8};
-
-type task_context = {regs: x86_registers, next: *u8};
+     mutable stack_ptr: *u8};
 
 resource rust_task_ptr(task: *rust_task) { rustrt::drop_task(task); }
 
@@ -115,20 +112,22 @@ fn spawn_inner(thunk: -fn(), notify: option<comm::chan<task_notification>>) ->
    task_id {
     let id = rustrt::new_task();
 
-    // the order of arguments are outptr, taskptr, envptr.
-    // LLVM fastcall puts the first two in ecx, edx, and the rest on the
-    // stack.
+    let raw_thunk: {code: u32, env: u32} = cast(thunk);
 
     // set up the task pointer
     let task_ptr = rust_task_ptr(rustrt::get_task_pointer(id));
-    let regs = ptr::addr_of((**task_ptr).ctx.regs);
-    (*regs).edx = cast(*task_ptr);;
-    (*regs).esp = cast((**task_ptr).stack_ptr);
 
     assert (ptr::null() != (**task_ptr).stack_ptr);
 
-    let raw_thunk: {code: u32, env: u32} = cast(thunk);
-    (*regs).eip = raw_thunk.code;
+    // copy the thunk from our stack to the new stack
+    let sp: uint = cast((**task_ptr).stack_ptr);
+    let ptrsize = sys::size_of::<*u8>();
+    let thunkfn: *mutable uint = cast(sp - ptrsize * 2u);
+    let thunkenv: *mutable uint = cast(sp - ptrsize);
+    *thunkfn = cast(raw_thunk.code);
+    *thunkenv = cast(raw_thunk.env);
+    // align the stack to 16 bytes
+    (**task_ptr).stack_ptr = cast(sp - ptrsize * 4u);
 
     // set up notifications if they are enabled.
     alt notify {
@@ -139,58 +138,12 @@ fn spawn_inner(thunk: -fn(), notify: option<comm::chan<task_notification>>) ->
       none { }
     };
 
-    // okay, now we align the stack and add the environment pointer and a fake
-    // return address.
-
-    // -12 for the taskm output location, the env pointer
-    // -4 for the return address.
-    (*regs).esp = align_down((*regs).esp - 12u32) - 4u32;
-
-    let ra: *mutable u32 = cast((*regs).esp);
-    let env: *mutable u32 = cast((*regs).esp + 4u32);
-    let tptr: *mutable u32 = cast((*regs).esp + 12u32);
-
-    // put the return pointer in ecx.
-    (*regs).ecx = (*regs).esp + 8u32;;
-
-    *tptr = cast(*task_ptr);;
-    *env = raw_thunk.env;;
-    *ra = rustrt::get_task_trampoline();
-
+    // give the thunk environment's allocation to the new task
     rustrt::migrate_alloc(cast(raw_thunk.env), id);
-    rustrt::start_task(id);
-
+    rustrt::start_task(id, cast(thunkfn));
+    // don't cleanup the thunk in this task
     unsafe::leak(thunk);
-
     ret id;
-}
-
-// Who says we can't write an operating system in Rust?
-type x86_registers =
-    // This needs to match the structure in context.h
-
-
-    {mutable eax: u32,
-     mutable ebx: u32,
-     mutable ecx: u32,
-     mutable edx: u32,
-     mutable ebp: u32,
-     mutable esi: u32,
-     mutable edi: u32,
-     mutable esp: u32,
-     mutable cs: u16,
-     mutable ds: u16,
-     mutable ss: u16,
-     mutable es: u16,
-     mutable fs: u16,
-     mutable gs: u16,
-     mutable eflags: u32,
-     mutable eip: u32};
-
-fn align_down(x: u32) -> u32 {
-
-    // Aligns x down to 16 bytes
-    x & !15u32
 }
 
 // Local Variables:

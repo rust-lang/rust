@@ -29,7 +29,6 @@ struct rust_task_user {
     uint32_t notify_enabled;   // this is way more bits than necessary, but it
                                // simplifies the alignment.
     chan_handle notify_chan;
-    context ctx;
     uintptr_t rust_sp;         // Saved sp when not running.
 };
 
@@ -55,6 +54,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     RUST_ATOMIC_REFCOUNT();
 
     // Fields known to the compiler.
+    context ctx;
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
     void *gc_alloc_chain;      // Linked list of GC allocations.
@@ -118,6 +118,9 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     ~rust_task();
 
+    void start(uintptr_t spawnee_fn,
+               uintptr_t args,
+               uintptr_t env);
     void start(uintptr_t spawnee_fn,
                uintptr_t args);
     void start();

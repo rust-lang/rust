@@ -440,18 +440,24 @@ get_task_pointer(rust_task *task, rust_task_id id) {
     return task->kernel->get_task_by_id(id);
 }
 
-extern "C" CDECL void
-start_task(rust_task *task, rust_task_id id) {
-    rust_task * target = task->kernel->get_task_by_id(id);
-    target->start();
-    target->deref();
-}
-
-extern "C" void *task_trampoline asm("task_trampoline");
-
+// FIXME: Transitional. Remove
 extern "C" CDECL void **
 get_task_trampoline(rust_task *task) {
-    return &task_trampoline;
+    return NULL;
+}
+
+struct fn_env_pair {
+    intptr_t f;
+    intptr_t env;
+};
+
+extern "C" CDECL uintptr_t get_spawn_wrapper();
+
+extern "C" CDECL void
+start_task(rust_task *task, rust_task_id id, fn_env_pair *f) {
+    rust_task *target = task->kernel->get_task_by_id(id);
+    target->start(get_spawn_wrapper(), f->f, f->env);
+    target->deref();
 }
 
 extern "C" CDECL void
