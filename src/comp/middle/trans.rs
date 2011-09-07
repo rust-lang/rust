@@ -3823,6 +3823,18 @@ fn trans_landing_pad(bcx: &@block_ctxt) {
     let llretval = llpad;
     // The landing pad block is a cleanup
     SetCleanup(bcx, llpad);
+
+    let bcx = bcx;
+    let scope_cx = bcx;
+    while true {
+        scope_cx = find_scope_cx(scope_cx);
+        bcx = trans_block_cleanups(bcx, scope_cx);
+        scope_cx = alt scope_cx.parent {
+          parent_some(b) { b }
+          parent_none. { break; }
+        };
+    }
+
     // Continue unwinding
     Resume(bcx, llretval);
 }
