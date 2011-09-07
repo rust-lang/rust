@@ -572,6 +572,9 @@ native "cdecl" mod llvm = "rustllvm" {
     fn LLVMBuildInvoke(B: BuilderRef, Fn: ValueRef, Args: *ValueRef,
                        NumArgs: uint, Then: BasicBlockRef,
                        Catch: BasicBlockRef, Name: sbuf) -> ValueRef;
+    fn LLVMBuildLandingPad(B: BuilderRef, Ty: TypeRef, PersFn: ValueRef,
+                           NumClauses: uint, Name: sbuf) -> ValueRef;
+    fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
     fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
     /* Add a case to the switch instruction */
@@ -579,6 +582,12 @@ native "cdecl" mod llvm = "rustllvm" {
 
     /* Add a destination to the indirectbr instruction */
     fn LLVMAddDestination(IndirectBr: ValueRef, Dest: BasicBlockRef);
+
+    /* Add a clause to the landing pad instruction */
+    fn LLVMAddClause(LandingPad: ValueRef, ClauseVal: ValueRef);
+
+    /* Set the cleanup on a landing pad instruction */
+    fn LLVMSetCleanup(LandingPad: ValueRef, Val: Bool);
 
     /* Arithmetic */
     fn LLVMBuildAdd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)

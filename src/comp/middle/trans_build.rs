@@ -545,6 +545,22 @@ fn Trap(cx: &@block_ctxt) -> ValueRef {
                     });
 }
 
+fn LandingPad(cx: &@block_ctxt, Ty: TypeRef, PersFn: ValueRef,
+              NumClauses: uint) -> ValueRef {
+    ret str::as_buf("",
+                    {|buf|
+                        llvm::LLVMBuildLandingPad(B(cx),
+                                                  Ty,
+                                                  PersFn,
+                                                  NumClauses,
+                                                  buf)
+                    });
+}
+
+fn SetCleanup(_cx: &@block_ctxt, LandingPad: ValueRef) {
+    llvm::LLVMSetCleanup(LandingPad, lib::llvm::True);
+}
+
 //
 // Local Variables:
 // mode: rust
