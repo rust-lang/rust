@@ -3761,7 +3761,7 @@ fn trans_call(in_cx: &@block_ctxt, f: &@ast::expr,
        for the call itself is unreachable. */
     let retval = C_nil();
     if !is_terminated(bcx) {
-        FastCall(bcx, faddr, llargs);
+        bcx = invoke_fastcall(bcx, faddr, llargs).bcx;
         alt lliterbody {
           none. {
             if !ty::type_is_nil(bcx_tcx(cx), ret_ty) {
@@ -3792,6 +3792,22 @@ fn trans_call(in_cx: &@block_ctxt, f: &@ast::expr,
         bcx = next_cx;
     }
     ret rslt(bcx, retval);
+}
+
+fn invoke_fastcall(bcx: &@block_ctxt, llfn: ValueRef,
+                   llargs: &[ValueRef]) -> result {
+
+    let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
+    let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
+    let retval = trans_build::FastInvoke(bcx, llfn, llargs,
+                                         normal_bcx.llbb,
+                                         unwind_bcx.llbb);
+    trans_landing_pad(unwind_bcx);
+    ret rslt(normal_bcx, retval);
+}
+
+fn trans_landing_pad(bcx: &@block_ctxt) {
+    Unreachable(bcx);
 }
 
 fn trans_tup(cx: &@block_ctxt, elts: &[@ast::expr], id: ast::node_id) ->

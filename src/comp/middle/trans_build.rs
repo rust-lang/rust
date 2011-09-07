@@ -68,6 +68,21 @@ fn Invoke(cx: &@block_ctxt, Fn: ValueRef, Args: &[ValueRef],
                     });
 }
 
+fn FastInvoke(cx: &@block_ctxt, Fn: ValueRef, Args: &[ValueRef],
+              Then: BasicBlockRef, Catch: BasicBlockRef) -> ValueRef {
+    assert (!cx.terminated);
+    cx.terminated = true;
+    let v = str::as_buf("",
+                        {|buf|
+                            llvm::LLVMBuildInvoke(B(cx), Fn,
+                                                  vec::to_ptr(Args),
+                                                  vec::len(Args), Then,
+                                                  Catch, buf)
+                        });
+    llvm::LLVMSetInstructionCallConv(v, lib::llvm::LLVMFastCallConv);
+    ret v;
+}
+
 fn Unreachable(cx: &@block_ctxt) -> ValueRef {
     assert (!cx.terminated);
     cx.terminated = true;
