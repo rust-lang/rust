@@ -2055,19 +2055,27 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         bot = check_call_or_bind(fcx, expr.span, f, args, kind_bind);
 
         // Pull the argument and return types out.
-        let (proto, arg_tys, rt, cf, constrs) =
-            alt structure_of(fcx, expr.span, expr_ty(tcx, f)) {
-              // FIXME:
-              // probably need to munge the constrs to drop constraints
-              // for any bound args
-              ty::ty_fn(proto, arg_tys, rt, cf, constrs) {
-                (proto, arg_tys, rt, cf, constrs)
-              }
-              ty::ty_native_fn(_, arg_tys, rt) {
-                (ast::proto_fn, arg_tys, rt, ast::return, [])
-              }
-              _ { fail "LHS of bind expr didn't have a function type?!"; }
-            };
+        let proto, arg_tys, rt, cf, constrs;
+        alt structure_of(fcx, expr.span, expr_ty(tcx, f)) {
+          // FIXME:
+          // probably need to munge the constrs to drop constraints
+          // for any bound args
+          ty::ty_fn(proto_, arg_tys_, rt_, cf_, constrs_) {
+            proto = proto_;
+            arg_tys = arg_tys_;
+            rt = rt_;
+            cf = cf_;
+            constrs = constrs_;
+          }
+          ty::ty_native_fn(_, arg_tys_, rt_) {
+            proto = ast::proto_fn;
+            arg_tys = arg_tys_;
+            rt = rt_;
+            cf = ast::return;
+            constrs = [];
+          }
+          _ { fail "LHS of bind expr didn't have a function type?!"; }
+        };
 
         // For each blank argument, add the type of that argument
         // to the resulting function type.
