@@ -801,6 +801,7 @@ fn type_is_structural(cx: &ctxt, ty: t) -> bool {
       ty_tup(_) { ret true; }
       ty_tag(_, _) { ret true; }
       ty_fn(_, _, _, _, _) { ret true; }
+      ty_native_fn(_, _, _) { ret true; }
       ty_obj(_) { ret true; }
       ty_res(_, _, _) { ret true; }
       _ { ret false; }

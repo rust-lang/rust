@@ -2055,34 +2055,33 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         bot = check_call_or_bind(fcx, expr.span, f, args, kind_bind);
 
         // Pull the argument and return types out.
-        let proto_1;
-        let arg_tys_1: [ty::arg] = [];
-        let rt_1;
-        let fty = expr_ty(tcx, f);
-        let t_1;
-        alt structure_of(fcx, expr.span, fty) {
-          ty::ty_fn(proto, arg_tys, rt, cf, constrs) {
-            proto_1 = proto;
-            rt_1 = rt;
-            // FIXME:
-            // probably need to munge the constrs to drop constraints
-            // for any bound args
+        let (proto, arg_tys, rt, cf, constrs) =
+            alt structure_of(fcx, expr.span, expr_ty(tcx, f)) {
+              // FIXME:
+              // probably need to munge the constrs to drop constraints
+              // for any bound args
+              ty::ty_fn(proto, arg_tys, rt, cf, constrs) {
+                (proto, arg_tys, rt, cf, constrs)
+              }
+              ty::ty_native_fn(_, arg_tys, rt) {
+                (ast::proto_fn, arg_tys, rt, ast::return, [])
+              }
+              _ { fail "LHS of bind expr didn't have a function type?!"; }
+            };
 
-            // For each blank argument, add the type of that argument
-            // to the resulting function type.
-            let i = 0u;
-            while i < vec::len::<option::t<@ast::expr>>(args) {
-                alt args[i] {
-                  some(_) {/* no-op */ }
-                  none. { arg_tys_1 += [arg_tys[i]]; }
-                }
-                i += 1u;
+        // For each blank argument, add the type of that argument
+        // to the resulting function type.
+        let out_args = [];
+        let i = 0u;
+        while i < vec::len(args) {
+            alt args[i] {
+              some(_) {/* no-op */ }
+              none. { out_args += [arg_tys[i]]; }
             }
-            t_1 = ty::mk_fn(tcx, proto_1, arg_tys_1, rt_1, cf, constrs);
-          }
-          _ { fail "LHS of bind expr didn't have a function type?!"; }
+            i += 1u;
         }
-        write::ty_only_fixup(fcx, id, t_1);
+        let ft = ty::mk_fn(tcx, proto, out_args, rt, cf, constrs);
+        write::ty_only_fixup(fcx, id, ft);
       }
       ast::expr_call(f, args) {
         bot = check_call_full(fcx, expr.span, f, args, kind_call, expr.id);

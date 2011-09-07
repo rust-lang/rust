@@ -1737,7 +1737,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         }
         ret next_cx;
       }
-      ty::ty_fn(_, _, _, _, _) {
+      ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) {
         let box_cell_a = GEP(cx, av, [C_int(0), C_int(abi::fn_field_box)]);
         ret iter_boxpp(cx, box_cell_a, f);
       }
@@ -3047,7 +3047,7 @@ fn trans_var(cx: &@block_ctxt, sp: &span, def: &ast::def, id: ast::node_id) ->
    lval_result {
     let ccx = bcx_ccx(cx);
     alt def {
-      ast::def_fn(did, _) {
+      ast::def_fn(did, _) | ast::def_native_fn(did) {
         let tyt = ty::lookup_item_type(ccx.tcx, did);
         ret lval_generic_fn(cx, tyt, did, id);
       }
@@ -3091,10 +3091,6 @@ fn trans_var(cx: &@block_ctxt, sp: &span, def: &ast::def, id: ast::node_id) ->
                                                                 ty: tp}),
                                            tp));
         }
-      }
-      ast::def_native_fn(did) {
-        let tyt = ty::lookup_item_type(ccx.tcx, did);
-        ret lval_generic_fn(cx, tyt, did, id);
       }
       _ { ret trans_local_var(cx, def); }
     }
@@ -5743,8 +5739,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
         rptr = result.rptr;
       }
       _ {
-        r =
-            trans_native_call(new_raw_block_ctxt(bcx.fcx, bcx.llbb),
+        r = trans_native_call(new_raw_block_ctxt(bcx.fcx, bcx.llbb),
                               ccx.externs, ccx.llmod, name, call_args);
         rptr = BitCast(bcx, fcx.llretptr, T_ptr(T_i32()));
       }
