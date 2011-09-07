@@ -86,6 +86,9 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
 
     stk = new_stk(sched, this, 0);
     user.rust_sp = stk->limit;
+    if (supervisor) {
+        supervisor->ref();
+    }
 }
 
 rust_task::~rust_task()
@@ -105,6 +108,10 @@ rust_task::~rust_task()
             target->send(&msg);
             target->deref();
         }
+    }
+
+    if (supervisor) {
+        supervisor->deref();
     }
 
     kernel->release_task_id(user.id);
@@ -294,6 +301,9 @@ rust_task::unsupervise()
              "task %s @0x%" PRIxPTR
              " disconnecting from supervisor %s @0x%" PRIxPTR,
              name, this, supervisor->name, supervisor);
+    if (supervisor) {
+        supervisor->deref();
+    }
     supervisor = NULL;
     propagate_failure = false;
 }
