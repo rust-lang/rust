@@ -147,12 +147,6 @@ void task_exit(rust_closure_env *env, int rval, rust_task *task) {
         //env->td->free_glue(NULL, task, NULL, env->td->first_param, env);
         task->free(env);
     }
-    task->die();
-    task->lock.lock();
-    task->notify_tasks_waiting_to_join();
-    task->lock.unlock();
-
-    task->yield(1);
 }
 
 extern "C" CDECL
@@ -161,8 +155,37 @@ void task_start_wrapper(spawn_args *a)
     rust_task *task = a->task;
     int rval = 42;
 
-    a->f(&rval, task, a->a3, a->a4);
-    task_exit((rust_closure_env*)a->a3, rval, task);
+    bool failed = false;
+    try {
+        a->f(&rval, task, a->a3, a->a4);
+    } catch (rust_task *ex) {
+        A(task->sched, ex == task,
+          "Expected this task to be thrown for unwinding");
+        failed = true;
+    }
+
+    rust_closure_env* env = (rust_closure_env*)a->a3;
+    if(env) {
+        // free the environment.
+        I(task->sched, 1 == env->ref_count); // the ref count better be 1
+        //env->td->drop_glue(NULL, task, NULL, env->td->first_param, env);
+        //env->td->free_glue(NULL, task, NULL, env->td->first_param, env);
+        task->free(env);
+    }
+
+    if (failed) {
+#ifndef __WIN32__
+        task->conclude_failure();
+#else
+        A(task->sched, false, "Shouldn't happen");
+#endif
+    } else {
+        task->die();
+        task->lock.lock();
+        task->notify_tasks_waiting_to_join();
+        task->lock.unlock();
+        task->yield(1);
+    }
 }
 
 /* We spawn a rust (fastcc) function through a CDECL function
@@ -276,6 +299,15 @@ rust_task::fail() {
     // See note in ::kill() regarding who should call this.
     DLOG(sched, task, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
+#ifndef __WIN32__
+    throw this;
+#else
+    conclude_failure();
+#endif
+}
+
+void
+rust_task::conclude_failure() {
     die();
     // Unblock the task so it can unwind.
     unblock();
