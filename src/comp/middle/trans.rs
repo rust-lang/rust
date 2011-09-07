@@ -4447,7 +4447,9 @@ fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
     // Make a note to drop this slot on the way out.
     add_clean(bcx, llptr, ty);
 
-    if must_zero(local) { bcx = zero_alloca(bcx, llptr, ty).bcx; }
+    if must_zero(bcx_ccx(bcx), local) {
+        bcx = zero_alloca(bcx, llptr, ty).bcx;
+    }
 
     alt local.node.init {
       some(init) {
@@ -4473,36 +4475,37 @@ fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
                                         bcx.fcx.lllocals, false);
     ret rslt(bcx, llptr);
 
-    fn must_zero(local: &@ast::local) -> bool {
+    fn must_zero(ccx: &@crate_ctxt, local: &@ast::local) -> bool {
         alt local.node.init {
-          some(init) { might_not_init(init.expr) }
+          some(init) { might_not_init(ccx, init.expr) }
           none. { true }
         }
     }
 
-    fn might_not_init(expr: &@ast::expr) -> bool {
-        type env = @mutable bool;
-        let e = @mutable false;
-        // FIXME: Probably also need to account for expressions that
-        // fail but since we don't unwind yet, it doesn't seem to be a
-        // problem
+    fn might_not_init(ccx: &@crate_ctxt, expr: &@ast::expr) -> bool {
+        type env = {mutable mightnt: bool,
+                    ccx: @crate_ctxt};
+        let e = {mutable mightnt: false,
+                 ccx: ccx};
+        fn visit_expr(ex: &@ast::expr, e: &env, v: &vt<env>) {
+            let might_not_init = alt ex.node {
+              ast::expr_ret(_) { true }
+              ast::expr_break. { true }
+              ast::expr_cont. { true }
+              _ {
+                let ex_ty = ty::expr_ty(e.ccx.tcx, ex);
+                ty::type_is_bot(e.ccx.tcx, ex_ty)
+              }
+            };
+            if might_not_init {
+                e.mightnt = true;
+            } else { visit::visit_expr(ex, e, v); }
+        }
         let visitor =
-            visit::mk_vt(
-                         @{visit_expr:
-                               fn (ex: &@ast::expr, e: &env, v: &vt<env>) {
-                                   let might_not_init =
-                                       alt ex.node {
-                                         ast::expr_ret(_) { true }
-                                         ast::expr_break. { true }
-                                         ast::expr_cont. { true }
-                                         _ { false }
-                                       };
-                                   if might_not_init {
-                                       *e = true;
-                                   } else { visit::visit_expr(ex, e, v); }
-                               } with *visit::default_visitor()});
+            visit::mk_vt(@{visit_expr: visit_expr
+                           with *visit::default_visitor()});
         visitor.visit_expr(expr, e, visitor);
-        ret *e;
+        ret e.mightnt;
     }
 }
 
