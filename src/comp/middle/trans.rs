@@ -3794,14 +3794,25 @@ fn trans_call(in_cx: &@block_ctxt, f: &@ast::expr,
     ret rslt(bcx, retval);
 }
 
+fn invoke(bcx: &@block_ctxt, llfn: ValueRef,
+          llargs: &[ValueRef]) -> result {
+    ret invoke_(bcx, llfn, llargs, Invoke);
+}
+
 fn invoke_fastcall(bcx: &@block_ctxt, llfn: ValueRef,
                    llargs: &[ValueRef]) -> result {
+    ret invoke_(bcx, llfn, llargs, FastInvoke);
+}
 
+fn invoke_(bcx: &@block_ctxt, llfn: ValueRef,
+           llargs: &[ValueRef],
+           invoker: fn(&@block_ctxt, ValueRef, &[ValueRef],
+                       BasicBlockRef, BasicBlockRef) -> ValueRef) -> result {
     let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
     let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
-    let retval = FastInvoke(bcx, llfn, llargs,
-                            normal_bcx.llbb,
-                            unwind_bcx.llbb);
+    let retval = invoker(bcx, llfn, llargs,
+                         normal_bcx.llbb,
+                         unwind_bcx.llbb);
     trans_landing_pad(unwind_bcx);
     ret rslt(normal_bcx, retval);
 }
@@ -4291,7 +4302,7 @@ fn trans_fail_value(cx: &@block_ctxt, sp_opt: &option::t<span>,
     let V_str = PointerCast(cx, V_fail_str, T_ptr(T_i8()));
     V_filename = PointerCast(cx, V_filename, T_ptr(T_i8()));
     let args = [cx.fcx.lltaskptr, V_str, V_filename, C_int(V_line)];
-    Call(cx, bcx_ccx(cx).upcalls._fail, args);
+    let cx = invoke(cx, bcx_ccx(cx).upcalls._fail, args).bcx;
     Unreachable(cx);
     ret rslt(cx, C_nil());
 }
