@@ -144,6 +144,7 @@ type crate_ctxt =
      type_short_names: hashmap<ty::t, str>,
      tcx: ty::ctxt,
      mut_map: mut::mut_map,
+     copy_map: alias::copy_map,
      stats: stats,
      upcalls: @upcall::upcalls,
      rust_object_type: TypeRef,

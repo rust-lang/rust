@@ -24,28 +24,35 @@ tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 
 type restrict =
     @{root_var: option::t<node_id>,
+      node_id: node_id,
+      ty: ty::t,
       local_id: uint,
       bindings: [node_id],
       unsafe_ty: option::t<ty::t>,
       depends_on: [uint],
-      mutable ok: valid};
+      mutable ok: valid,
+      mutable given_up: bool};
 
 type scope = @[restrict];
 
 tag local_info { local(uint); }
 
+type copy_map = std::map::hashmap<node_id, ()>;
+
 type ctx =
     {tcx: ty::ctxt,
      local_map: std::map::hashmap<node_id, local_info>,
-     mutable next_local: uint};
+     mutable next_local: uint,
+     copy_map: copy_map};
 
-fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
+fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) -> copy_map {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
     let cx =
         @{tcx: tcx,
           local_map: std::map::new_int_hash(),
-          mutable next_local: 0u};
+          mutable next_local: 0u,
+          copy_map: std::map::new_int_hash()};
     let v =
         @{visit_fn: visit_fn,
           visit_expr: bind visit_expr(cx, _, _, _),
@@ -53,6 +60,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
              with *visit::default_visitor::<scope>()};
     visit::visit_crate(*crate, @[], visit::mk_vt(v));
     tcx.sess.abort_if_errors();
+    ret cx.copy_map;
 }
 
 fn visit_fn(f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span, _name: &fn_ident,
@@ -148,37 +156,53 @@ fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt<scope>) {
     }
 }
 
-fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
-   [restrict] {
+fn cant_copy(cx: &ctx, r: &restrict) -> bool {
+    if r.given_up { ret false; }
+    // FIXME alt contexts copying not supported yet
+    if r.node_id == 0 { ret true; }
+    // FIXME warn when copy is expensive
+    if ty::type_allows_implicit_copy(cx.tcx, r.ty) {
+        r.given_up = true;
+        cx.copy_map.insert(r.node_id, ());
+        ret false;
+    } else {
+        ret true;
+    }
+}
+
+fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
+    -> [restrict] {
     let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
     let arg_ts = ty::ty_fn_args(cx.tcx, fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
     let restricts = [];
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
-        if arg_t.mode != ty::mo_val {
-            let arg = args[i];
-            let root = expr_root(cx.tcx, arg, false);
-            if arg_t.mode == ty::mo_alias(true) {
-                alt path_def(cx, arg) {
-                  some(def) {
-                    let dnum = ast_util::def_id_of_def(def).node;
-                    mut_roots += [{arg: i, node: dnum}];
-                  }
-                  _ { }
-                }
+        let arg = args[i];
+        let root = expr_root(cx.tcx, arg, false);
+        if arg_t.mode == ty::mo_alias(true) {
+            alt path_def(cx, arg) {
+              some(def) {
+                let dnum = ast_util::def_id_of_def(def).node;
+                mut_roots += [{arg: i, node: dnum}];
+              }
+              _ { }
             }
-            let root_var = path_def_id(cx, root.ex);
-            let unsafe_t =
-                alt inner_mut(root.ds) { some(t) { some(t) } _ { none } };
-            restricts +=
-                [@{root_var: root_var,
-                   local_id: cx.next_local,
-                   bindings: [arg.id],
-                   unsafe_ty: unsafe_t,
-                   depends_on: deps(sc, root_var),
-                   mutable ok: valid}];
         }
+        let root_var = path_def_id(cx, root.ex);
+        let unsafe_t =
+            alt inner_mut(root.ds) { some(t) { some(t) } _ { none } };
+        restricts +=
+            [@{root_var: root_var,
+               node_id: arg_t.mode == ast::by_mut_ref ? 0 : arg.id,
+               ty: arg_t.ty,
+               local_id: cx.next_local,
+               bindings: [arg.id],
+               unsafe_ty: unsafe_t,
+               depends_on: deps(sc, root_var),
+               mutable ok: valid,
+               // FIXME kludge
+               mutable given_up: arg_t.mode == ty::mo_move}];
         i += 1u;
     }
     let f_may_close =
@@ -189,7 +213,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
     if f_may_close {
         let i = 0u;
         for r in restricts {
-            if !option::is_none(r.unsafe_ty) {
+            if !option::is_none(r.unsafe_ty) && cant_copy(cx, r) {
                 cx.tcx.sess.span_err(f.span,
                                      #fmt["function may alias with argument \
                                            %u, which is not immutably rooted",
@@ -199,19 +223,19 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
         }
     }
     let j = 0u;
-    for @{unsafe_ty: unsafe_ty, _} in restricts {
-        alt unsafe_ty {
+    for r in restricts {
+        alt r.unsafe_ty {
           some(ty) {
             let i = 0u;
             for arg_t: ty::arg in arg_ts {
                 let mut_alias = arg_t.mode == ty::mo_alias(true);
                 if i != j &&
-                       ty_can_unsafely_include(cx, ty, arg_t.ty, mut_alias) {
+                   ty_can_unsafely_include(cx, ty, arg_t.ty, mut_alias) &&
+                   cant_copy(cx, r) {
                     cx.tcx.sess.span_err(
                         args[i].span,
                         #fmt["argument %u may alias with argument %u, \
-                               which is not immutably rooted",
-                                              i, j]);
+                              which is not immutably rooted", i, j]);
                 }
                 i += 1u;
             }
@@ -223,27 +247,22 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
     // Ensure we're not passing a root by mutable alias.
 
     for {node: node, arg: arg} in mut_roots {
-        let mut_alias_to_root = false;
-        let mut_alias_to_root_count = 0u;
-        for @{root_var: root_var, _} in restricts {
-            alt root_var {
-              some(root) {
-                if node == root {
-                    mut_alias_to_root_count += 1u;
-                    if mut_alias_to_root_count > 1u {
-                        mut_alias_to_root = true;
+        let i = 0u;
+        for r in restricts {
+            if i != arg {
+                alt r.root_var {
+                  some(root) {
+                    if node == root && cant_copy(cx, r) {
+                        cx.tcx.sess.span_err(
+                            args[arg].span, "passing a mutable alias to a \
+                            variable that roots another alias");
                         break;
                     }
+                  }
+                  none. { }
                 }
-              }
-              none. { }
             }
-        }
-
-        if mut_alias_to_root {
-            cx.tcx.sess.span_err(args[arg].span,
-                                 "passing a mutable alias to a variable \
-                                   that roots another alias");
+            i += 1u;
         }
     }
     ret restricts;
@@ -261,11 +280,15 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
             new_sc =
                 @(*sc +
                       [@{root_var: root_var,
+                     // FIXME need to use separate restrict for each binding
+                         node_id: 0,
+                         ty: ty::mk_int(cx.tcx),
                          local_id: cx.next_local,
                          bindings: dnums,
                          unsafe_ty: inner_mut(root.ds),
                          depends_on: deps(sc, root_var),
-                         mutable ok: valid}]);
+                         mutable ok: valid,
+                         mutable given_up: false}]);
         }
         register_locals(cx, a.pats[0]);
         visit::visit_arm(a, new_sc, v);
@@ -292,23 +315,28 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
 
     // If this is a mutable vector, don't allow it to be touched.
     let seq_t = ty::expr_ty(cx.tcx, seq);
+    let elt_t;
     alt ty::struct(cx.tcx, seq_t) {
-      ty::ty_vec(mt) { if mt.mut != ast::imm { unsafe = some(seq_t); } }
-      ty::ty_str. {/* no-op */ }
-      _ {
-        cx.tcx.sess.span_unimpl(seq.span,
-                                "unknown seq type " +
-                                    util::ppaux::ty_to_str(cx.tcx, seq_t));
+      ty::ty_vec(mt) {
+        if mt.mut != ast::imm { unsafe = some(seq_t); }
+        elt_t = mt.ty;
+      }
+      ty::ty_str. {
+        elt_t = ty::mk_mach(cx.tcx, ast::ty_u8);
       }
     }
     let root_var = path_def_id(cx, root.ex);
     let new_sc =
         @{root_var: root_var,
+          // FIXME reenable when trans knows how to copy for vars
+          node_id: 0, // blk.node.id,
+          ty: elt_t,
           local_id: cx.next_local,
           bindings: ast_util::pat_binding_ids(local.node.pat),
           unsafe_ty: unsafe,
           depends_on: deps(sc, root_var),
-          mutable ok: valid};
+          mutable ok: valid,
+          mutable given_up: false};
     register_locals(cx, local.node.pat);
     visit::visit_block(blk, @(*sc + [new_sc]), v);
 }
@@ -322,7 +350,6 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
         alt cx.local_map.find(my_defnum) { some(local(id)) { id } _ { 0u } };
     let var_t = ty::expr_ty(cx.tcx, ex);
     for r: restrict in *sc {
-
         // excludes variables introduced since the alias was made
         if my_local_id < r.local_id {
             alt r.unsafe_ty {
@@ -364,17 +391,15 @@ fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
         if prob != valid { break; }
         prob = sc[dep].ok;
     }
-    if prob != valid {
-        let msg =
-            alt prob {
-              overwritten(sp, wpt) {
-                {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
-              }
-              val_taken(sp, vpt) {
-                {span: sp,
-                 msg: "taking the value of " + ast_util::path_name(vpt)}
-              }
-            };
+    if prob != valid && cant_copy(cx, r) {
+        let msg = alt prob {
+          overwritten(sp, wpt) {
+            {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
+          }
+          val_taken(sp, vpt) {
+            {span: sp, msg: "taking the value of " + ast_util::path_name(vpt)}
+          }
+        };
         cx.tcx.sess.span_err(msg.span,
                              msg.msg + " will invalidate alias " +
                                  ast_util::path_name(p) +

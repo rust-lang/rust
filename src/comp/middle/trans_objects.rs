@@ -63,7 +63,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
                               ty::ret_ty_of_fn(ccx.tcx, ctor_id), fn_args,
                               ty_params);
     let arg_tys: [ty::arg] = arg_tys_of_fn(ccx, ctor_id);
-    copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
+    copy_args_to_allocas(fcx, bcx, fn_args, arg_tys, true);
 
     // Pick up the type of this object by looking at our own output type, that
     // is, the output type of the object constructor we're building.

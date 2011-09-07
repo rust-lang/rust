@@ -68,10 +68,14 @@ fn expr_root(tcx: &ty::ctxt, ex: @expr, autoderef: bool) ->
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));
             alt ty::struct(tcx, auto_unbox.t) {
               ty::ty_vec(mt) {
-                ds +=
-                    [@{mut: mt.mut != imm,
-                       kind: index,
-                       outer_t: auto_unbox.t}];
+                ds += [@{mut: mt.mut != imm,
+                         kind: index,
+                         outer_t: auto_unbox.t}];
+              }
+              ty::ty_str. {
+                ds += [@{mut: false,
+                         kind: index,
+                         outer_t: auto_unbox.t}];
               }
             }
             ds += auto_unbox.ds;

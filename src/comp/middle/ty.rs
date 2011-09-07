@@ -155,6 +155,7 @@ export type_is_box;
 export type_is_boxed;
 export type_is_vec;
 export type_is_fp;
+export type_allows_implicit_copy;
 export type_is_integral;
 export type_is_native;
 export type_is_nil;
@@ -167,6 +168,7 @@ export type_is_copyable;
 export type_is_tup_like;
 export type_is_str;
 export type_is_unique;
+export type_structurally_contains_uniques;
 export type_autoderef;
 export type_param;
 export unify;
@@ -1159,6 +1161,34 @@ pure fn type_has_dynamic_size(cx: &ctxt, ty: t) -> bool {
         };
     })
     }
+}
+
+// Returns true for types where a copy of a value can be distinguished from
+// the value itself. I.e. types with mutable content that's not shared through
+// a pointer.
+fn type_allows_implicit_copy(cx: &ctxt, ty: t) -> bool {
+    ret !type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
+        ret alt sty {
+          ty_param(_, _) { true }
+          ty_vec(mt) { mt.mut != ast::imm }
+          ty_rec(fields) {
+            for field in fields { if field.mt.mut != ast::imm { ret true; } }
+            false
+          }
+          _ { false }
+        };
+    });
+}
+
+fn type_structurally_contains_uniques(cx: &ctxt, ty: t) -> bool {
+    ret type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
+        ret alt sty {
+          ty_uniq(_) { ret true; }
+          ty_vec(_) { true }
+          ty_str. { true }
+          _ { ret false; }
+        };
+    });
 }
 
 fn type_is_integral(cx: &ctxt, ty: t) -> bool {

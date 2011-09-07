@@ -79,20 +79,9 @@ fn type_of(cx: &@crate_ctxt, sp: &span, t: ty::t)
 
 fn type_of_explicit_args(cx: &@crate_ctxt, sp: &span, inputs: &[ty::arg]) ->
    [TypeRef] {
-    let atys: [TypeRef] = [];
-    for arg: ty::arg in inputs {
-        let t: TypeRef = type_of_inner(cx, sp, arg.ty);
-        t =
-            alt arg.mode {
-              ty::mo_alias(_) { T_ptr(t) }
-              ty::mo_move. { T_ptr(t) }
-              _ {
-                if ty::type_is_structural(cx.tcx, arg.ty) {
-                    T_ptr(t)
-                } else { t }
-              }
-            };
-        atys += [t];
+    let atys = [];
+    for arg in inputs {
+        atys += [T_ptr(type_of_inner(cx, sp, arg.ty))];
     }
     ret atys;
 }
@@ -2038,12 +2027,6 @@ fn copy_val(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
 fn copy_val_no_check(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
                      src: ValueRef, t: ty::t) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
-    // FIXME this is just a clunky stopgap. we should do proper checking in an
-    // earlier pass.
-    if !ty::type_is_copyable(ccx.tcx, t) {
-        ccx.sess.span_fatal(cx.sp, "Copying a non-copyable type.");
-    }
-
     if ty::type_is_scalar(ccx.tcx, t) || ty::type_is_native(ccx.tcx, t) {
         Store(cx, src, dst);
         ret cx;
@@ -3387,14 +3370,12 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
     for arg: option::t<@ast::expr> in args {
         let out_arg = outgoing_args[outgoing_arg_index];
         let llout_arg_ty = llout_arg_tys[outgoing_arg_index];
-        let is_val = out_arg.mode == ty::mo_val;
         alt arg {
 
 
           // Arg provided at binding time; thunk copies it from
           // closure.
           some(e) {
-            let e_ty = ty::expr_ty(cx.ccx.tcx, e);
             let bound_arg =
                 GEP_tup_like(bcx, closure_ty, llclosure,
                              [0, abi::box_rc_field_body,
@@ -3404,19 +3385,11 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
             // If the type is parameterized, then we need to cast the
             // type we actually have to the parameterized out type.
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
-                let ty =
-                    if is_val { T_ptr(llout_arg_ty) } else { llout_arg_ty };
-                val = PointerCast(bcx, val, ty);
-            }
-            if is_val && (type_is_immediate(cx.ccx, e_ty) ||
-                          ty::type_is_unique(cx.ccx.tcx, e_ty)) {
-                val = Load(bcx, val);
+                val = PointerCast(bcx, val, llout_arg_ty);
             }
             llargs += [val];
             b += 1;
           }
-
-
 
           // Arg will be provided when the thunk is invoked.
           none. {
@@ -3543,27 +3516,22 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
         // be inspected. It's important for the value
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
-    } else if arg.mode == ty::mo_val {
-        if ty::type_is_vec(ccx.tcx, e_ty) {
-            let r = do_spill(bcx, Load(bcx, val), e_ty);
-            bcx = r.bcx;
-            let arg_copy = r.val;
-
-            bcx = take_ty(bcx, arg_copy, e_ty);
-            val = Load(bcx, arg_copy);
-            add_clean_temp(bcx, arg_copy, e_ty);
-        } else if !lv.is_mem {
-            // Do nothing for non-vector temporaries; just give them to the
-            // callee.
-        } else if type_is_structural_or_param(ccx.tcx, e_ty) {
-            let dst = alloc_ty(bcx, e_ty);
-            bcx = copy_val(dst.bcx, INIT, dst.val, val, e_ty);
-            val = dst.val;
-            add_clean_temp(bcx, val, e_ty);
-        } else {
-            bcx = take_ty(bcx, val, e_ty);
-            val = load_if_immediate(bcx, val, e_ty);
-            add_clean_temp(bcx, val, e_ty);
+    } else if arg.mode == ty::mo_val || arg.mode == ty::mo_alias(false) {
+        let copied = false;
+        if !lv.is_mem && type_is_immediate(ccx, e_ty) {
+            val = do_spill_noroot(bcx, val);
+            copied = true;
+        }
+        if ccx.copy_map.contains_key(e.id) && lv.is_mem {
+            if !copied {
+                let alloc = alloc_ty(bcx, e_ty);
+                bcx = copy_val(alloc.bcx, INIT, alloc.val,
+                               load_if_immediate(alloc.bcx, val, e_ty), e_ty);
+                val = alloc.val;
+            } else {
+                bcx = take_ty(bcx, val, e_ty);
+            }
+            add_clean(bcx, val, e_ty);
         }
     } else if type_is_immediate(ccx, e_ty) && !lv.is_mem {
         let r = do_spill(bcx, val, e_ty);
@@ -4768,7 +4736,7 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
     da: BasicBlockRef,
     rt: BasicBlockRef} {
     ret {sa:
-             str::as_buf("statuc_allocas",
+             str::as_buf("static_allocas",
                          {|buf| llvm::LLVMAppendBasicBlock(llfn, buf) }),
          ca:
              str::as_buf("copy_args",
@@ -4892,33 +4860,25 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
 }
 
 fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt, args: &[ast::arg],
-                        arg_tys: &[ty::arg]) {
+                        arg_tys: &[ty::arg], ignore_mut: bool) {
     let llcopyargs = new_raw_block_ctxt(fcx, fcx.llcopyargs);
     let bcx = llcopyargs;
     let arg_n: uint = 0u;
     for aarg: ast::arg in args {
         let arg_ty = arg_tys[arg_n].ty;
         alt aarg.mode {
-          ast::val. {
-
-            // Structural types are passed by pointer, and we use the
-            // pointed-to memory for the local.
-            if !type_is_structural_or_param(fcx_tcx(fcx), arg_ty) {
-                // Overwrite the llargs entry for this arg with its alloca.
-                let aval = bcx.fcx.llargs.get(aarg.id);
-
-                let r = do_spill(bcx, aval, arg_ty);
-                bcx = r.bcx;
-                let addr = r.val;
-
-                bcx.fcx.llargs.insert(aarg.id, addr);
-
-                // Args that are locally assigned to need to do a local
-                // take/drop
-                if fcx.lcx.ccx.mut_map.contains_key(aarg.id) {
-                    bcx = take_ty(bcx, addr, arg_ty);
-                    add_clean(scope, addr, arg_ty);
-                }
+          ast::val. | ast::alias(false) {
+            let mutated = !ignore_mut &&
+                fcx.lcx.ccx.mut_map.contains_key(aarg.id);
+            // Overwrite the llargs entry for locally mutated params
+            // with a local alloca.
+            if mutated {
+                let aptr = bcx.fcx.llargs.get(aarg.id);
+                let {bcx, val: alloc} = alloc_ty(bcx, arg_ty);
+                bcx = copy_val(bcx, INIT, alloc,
+                               load_if_immediate(bcx, aptr, arg_ty), arg_ty);
+                bcx.fcx.llargs.insert(aarg.id, alloc);
+                add_clean(scope, alloc, arg_ty);
             }
           }
           ast::move. {
@@ -5027,7 +4987,7 @@ fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
     let block_ty = node_id_type(cx.ccx, f.body.node.id);
 
     let arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
-    copy_args_to_allocas(fcx, bcx, f.decl.inputs, arg_tys);
+    copy_args_to_allocas(fcx, bcx, f.decl.inputs, arg_tys, false);
 
     // Figure out if we need to build a closure and act accordingly
     let res =
@@ -5175,7 +5135,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     }
     let arg_tys = arg_tys_of_fn(cx.ccx, variant.node.id);
     let bcx = new_top_block_ctxt(fcx);
-    copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
+    copy_args_to_allocas(fcx, bcx, fn_args, arg_tys, true);
     let lltop = bcx.llbb;
 
     // Cast the tag to a type we can GEP into.
@@ -5389,9 +5349,15 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
         let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
         let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
         let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
-        let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
         let args = [lloutputarg, lltaskarg, llenvarg];
-        if takes_argv { args += [llargvarg]; }
+        if takes_argv {
+            let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
+            // The runtime still passes the arg vector by value, this kludge
+            // makes sure it becomes a pointer (to a pointer to a vec).
+            let minus_ptr = llvm::LLVMGetElementType(val_ty(llargvarg));
+            llargvarg = PointerCast(bcx, llargvarg, minus_ptr);
+            args += [do_spill_noroot(bcx, llargvarg)];
+        }
         FastCall(bcx, main_llfn, args);
         build_return(bcx);
 
@@ -5616,6 +5582,9 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     let i = arg_n;
     for arg: ty::arg in args {
         let llarg = llvm::LLVMGetParam(fcx.llfn, i);
+        if arg.mode == ty::mo_val {
+            llarg = load_if_immediate(bcx, llarg, arg.ty);
+        }
         assert (llarg as int != 0);
         if cast_to_i32 {
             let llarg_i32 = convert_arg_to_i32(bcx, llarg, arg.ty, arg.mode);
@@ -5981,8 +5950,8 @@ fn write_abi_version(ccx: &@crate_ctxt) {
 }
 
 fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
-               output: &str, amap: &ast_map::map, mut_map: mut::mut_map) ->
-   ModuleRef {
+               output: &str, amap: &ast_map::map, mut_map: mut::mut_map,
+               copy_map: alias::copy_map) -> ModuleRef {
     let llmod =
         str::as_buf("rust_out", {|buf|
             llvm::LLVMModuleCreateWithNameInContext(
@@ -6039,6 +6008,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
           type_short_names: short_names,
           tcx: tcx,
           mut_map: mut_map,
+          copy_map: copy_map,
           stats:
               {mutable n_static_tydescs: 0u,
                mutable n_derived_tydescs: 0u,
