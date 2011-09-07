@@ -3799,15 +3799,32 @@ fn invoke_fastcall(bcx: &@block_ctxt, llfn: ValueRef,
 
     let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
     let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
-    let retval = trans_build::FastInvoke(bcx, llfn, llargs,
-                                         normal_bcx.llbb,
-                                         unwind_bcx.llbb);
+    let retval = FastInvoke(bcx, llfn, llargs,
+                            normal_bcx.llbb,
+                            unwind_bcx.llbb);
     trans_landing_pad(unwind_bcx);
     ret rslt(normal_bcx, retval);
 }
 
 fn trans_landing_pad(bcx: &@block_ctxt) {
-    Unreachable(bcx);
+    // The landing pad return type (the type being propagated). Not sure what
+    // this represents but it's determined by the personality function and
+    // this is what the EH proposal example uses.
+    let llretty = T_struct([T_ptr(T_i8()), T_i32()]);
+    // The exception handling personality function. This is the C++
+    // personality function __gxx_personality_v0, wrapped in our naming
+    // convention.
+    let personality = bcx_ccx(bcx).upcalls.rust_personality;
+    // The only landing pad clause will be 'cleanup'
+    let clauses = 1u;
+    let llpad = LandingPad(bcx, llretty, personality, clauses);
+    // The landing pad result is used both for modifying the landing pad
+    // in the C API and as the exception value
+    let llretval = llpad;
+    // The landing pad block is a cleanup
+    SetCleanup(bcx, llpad);
+    // Continue unwinding
+    Resume(bcx, llretval);
 }
 
 fn trans_tup(cx: &@block_ctxt, elts: &[@ast::expr], id: ast::node_id) ->

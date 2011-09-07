@@ -547,6 +547,7 @@ fn Trap(cx: &@block_ctxt) -> ValueRef {
 
 fn LandingPad(cx: &@block_ctxt, Ty: TypeRef, PersFn: ValueRef,
               NumClauses: uint) -> ValueRef {
+    assert (!cx.terminated);
     ret str::as_buf("",
                     {|buf|
                         llvm::LLVMBuildLandingPad(B(cx),
@@ -559,6 +560,12 @@ fn LandingPad(cx: &@block_ctxt, Ty: TypeRef, PersFn: ValueRef,
 
 fn SetCleanup(_cx: &@block_ctxt, LandingPad: ValueRef) {
     llvm::LLVMSetCleanup(LandingPad, lib::llvm::True);
+}
+
+fn Resume(cx: &@block_ctxt, Exn: ValueRef) -> ValueRef {
+    assert (!cx.terminated);
+    cx.terminated = true;
+    ret llvm::LLVMBuildResume(B(cx), Exn);
 }
 
 //
