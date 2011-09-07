@@ -5873,10 +5873,8 @@ fn trans_constant(ccx: @crate_ctxt, it: &@ast::item, pt: &[str],
                             {|buf|
                                 llvm::LLVMAddGlobal(ccx.llmod, T_int(), buf)
                             });
-            if n_variants != 1u {
-                llvm::LLVMSetInitializer(discrim_gvar, C_int(i as int));
-                llvm::LLVMSetGlobalConstant(discrim_gvar, True);
-            }
+            llvm::LLVMSetInitializer(discrim_gvar, C_int(i as int));
+            llvm::LLVMSetGlobalConstant(discrim_gvar, True);
             ccx.discrims.insert(variant.node.id, discrim_gvar);
             ccx.discrim_symbols.insert(variant.node.id, s);
             i += 1u;
