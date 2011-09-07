@@ -2088,12 +2088,13 @@ fn memmove_ty(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
             let sp = cx.sp;
             let llsz = llsize_of(type_of(ccx, sp, t));
             ret call_memmove(cx, dst, src, llsz);
-        } else { ret rslt(cx, Store(cx, Load(cx, src), dst)); }
+        }
+
+        ret rslt(cx, Store(cx, Load(cx, src), dst));
     }
-    else {
-        let llsz = size_of(cx, t);
-        ret call_memmove(llsz.bcx, dst, src, llsz.val);
-    }
+
+    let llsz = size_of(cx, t);
+    ret call_memmove(llsz.bcx, dst, src, llsz.val);
 }
 
 tag copy_action { INIT; DROP_EXISTING; }
@@ -2136,17 +2137,18 @@ fn copy_val_no_check(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
     if ty::type_is_scalar(ccx.tcx, t) || ty::type_is_native(ccx.tcx, t) {
         Store(cx, src, dst);
         ret cx;
-    } else if ty::type_is_nil(ccx.tcx, t) || ty::type_is_bot(ccx.tcx, t) {
-        ret cx;
-    } else if ty::type_is_boxed(ccx.tcx, t) || ty::type_is_vec(ccx.tcx, t) {
-        let bcx =
-            if action == DROP_EXISTING { drop_ty(cx, dst, t) } else { cx };
+    }
+    if ty::type_is_nil(ccx.tcx, t) || ty::type_is_bot(ccx.tcx, t) { ret cx; }
+    if ty::type_is_boxed(ccx.tcx, t) {
+        let bcx = cx;
+        if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
         Store(bcx, src, dst);
-        bcx = take_ty(bcx, dst, t);
-        ret bcx;
-    } else if type_is_structural_or_param(ccx.tcx, t) {
-        let bcx =
-            if action == DROP_EXISTING { drop_ty(cx, dst, t) } else { cx };
+        ret take_ty(bcx, dst, t);
+    }
+    if type_is_structural_or_param(ccx.tcx, t) ||
+            ty::type_is_vec(ccx.tcx, t) {
+        let bcx = cx;
+        if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
         bcx = memmove_ty(bcx, dst, src, t).bcx;
         ret take_ty(bcx, dst, t);
     }
@@ -2170,7 +2172,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         ret cx;
     } else if ty::type_is_nil(tcx, t) || ty::type_is_bot(tcx, t) {
         ret cx;
-    } else if ty::type_is_unique(tcx, t) || ty::type_is_boxed(tcx, t) {
+    } else if ty::type_is_boxed(tcx, t) {
         if src.is_mem { src_val = Load(cx, src_val); }
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         Store(cx, src_val, dst);
@@ -2179,7 +2181,8 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         // If we're here, it must be a temporary.
         revoke_clean(cx, src_val);
         ret cx;
-    } else if type_is_structural_or_param(tcx, t) {
+    } else if ty::type_is_unique(tcx, t) ||
+            type_is_structural_or_param(tcx, t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         cx = memmove_ty(cx, dst, src_val, t).bcx;
         if src.is_mem {
@@ -3496,7 +3499,8 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
                     if is_val { T_ptr(llout_arg_ty) } else { llout_arg_ty };
                 val = PointerCast(bcx, val, ty);
             }
-            if is_val && type_is_immediate(cx.ccx, e_ty) {
+            if is_val && (type_is_immediate(cx.ccx, e_ty) ||
+                          ty::type_is_unique(cx.ccx.tcx, e_ty)) {
                 val = Load(bcx, val);
             }
             llargs += [val];
@@ -3529,6 +3533,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: ty::t,
         type_of_fn_from_ty(bcx_ccx(bcx), sp, outgoing_fty, ty_param_count);
     lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(T_ptr(lltargetty)));
     lltargetfn = Load(bcx, lltargetfn);
+
     FastCall(bcx, lltargetfn, llargs);
     build_return(bcx);
     finish_fn(fcx, lltop);
@@ -3629,25 +3634,25 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
     } else if arg.mode == ty::mo_val {
-        if !lv.is_mem {
-            // Do nothing for temporaries, just give them to callee
+        if ty::type_is_vec(ccx.tcx, e_ty) {
+            let r = do_spill(bcx, Load(bcx, val), e_ty);
+            bcx = r.bcx;
+            let arg_copy = r.val;
+
+            bcx = take_ty(bcx, arg_copy, e_ty);
+            val = Load(bcx, arg_copy);
+            add_clean_temp(bcx, arg_copy, e_ty);
+        } else if !lv.is_mem {
+            // Do nothing for non-vector temporaries; just give them to the
+            // callee.
         } else if type_is_structural_or_param(ccx.tcx, e_ty) {
             let dst = alloc_ty(bcx, e_ty);
             bcx = copy_val(dst.bcx, INIT, dst.val, val, e_ty);
             val = dst.val;
             add_clean_temp(bcx, val, e_ty);
         } else {
-            if ty::type_is_vec(ccx.tcx, e_ty) {
-                let r = do_spill(bcx, Load(bcx, val), e_ty);
-                bcx = r.bcx;
-                let arg_copy = r.val;
-
-                bcx = take_ty(bcx, arg_copy, e_ty);
-                val = Load(bcx, arg_copy);
-            } else {
-                bcx = take_ty(bcx, val, e_ty);
-                val = load_if_immediate(bcx, val, e_ty);
-            }
+            bcx = take_ty(bcx, val, e_ty);
+            val = load_if_immediate(bcx, val, e_ty);
             add_clean_temp(bcx, val, e_ty);
         }
     } else if type_is_immediate(ccx, e_ty) && !lv.is_mem {
@@ -4185,7 +4190,7 @@ fn with_out_method(work: fn(&out_method) -> result, cx: @block_ctxt,
 // immediate-ness of the type.
 fn type_is_immediate(ccx: &@crate_ctxt, t: ty::t) -> bool {
     ret ty::type_is_scalar(ccx.tcx, t) || ty::type_is_boxed(ccx.tcx, t) ||
-            ty::type_is_native(ccx.tcx, t) || ty::type_is_vec(ccx.tcx, t);
+            ty::type_is_native(ccx.tcx, t);
 }
 
 fn do_spill(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result {
@@ -5305,9 +5310,12 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         let arg_ty = arg_tys[i].ty;
         let llargval;
         if ty::type_is_structural(cx.ccx.tcx, arg_ty) ||
-               ty::type_has_dynamic_size(cx.ccx.tcx, arg_ty) {
+               ty::type_has_dynamic_size(cx.ccx.tcx, arg_ty) ||
+               ty::type_is_unique(cx.ccx.tcx, arg_ty) {
             llargval = llargptr;
-        } else { llargval = Load(bcx, llargptr); }
+        } else {
+            llargval = Load(bcx, llargptr);
+        }
         bcx = copy_val(bcx, INIT, lldestptr, llargval, arg_ty);
         i += 1u;
     }

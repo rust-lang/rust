@@ -407,8 +407,10 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
             }
           }
           lit(l) {
-            test_val = Load(bcx, val);
-            kind = alt l.node { ast::lit_str(_) { compare } _ { switch } };
+            kind = alt l.node {
+              ast::lit_str(_) { compare }
+              _ { test_val = Load(bcx, val); switch }
+            };
           }
         }
     }
