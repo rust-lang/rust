@@ -55,11 +55,7 @@ fn run_rfail_test(cx: &cx, props: &test_props, testfile: &str) {
         fatal_procres("run-fail test didn't produce an error!", procres);
     }
 
-    // This is the value valgrind returns on failure
-    // FIXME: Why is this value neither the value we pass to
-    // valgrind as --error-exitcode (1), nor the value we see as the
-    // exit code on the command-line (137)?
-    const valgrind_err: int = 9;
+    const valgrind_err: int = 100;
     if procres.status == valgrind_err {
         fatal_procres("run-fail test isn't valgrind-clean!", procres);
     }
