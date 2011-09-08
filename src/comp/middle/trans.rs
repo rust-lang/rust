@@ -2179,18 +2179,15 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         if src.is_mem { ret zero_alloca(cx, src.res.val, t).bcx; }
 
         // If we're here, it must be a temporary.
-        revoke_clean(cx, src_val);
-        ret cx;
+        ret revoke_clean(cx, src_val, t);
     } else if ty::type_is_unique(tcx, t) ||
             type_is_structural_or_param(tcx, t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         cx = memmove_ty(cx, dst, src_val, t).bcx;
-        if src.is_mem {
-            ret zero_alloca(cx, src_val, t).bcx;
-        } else { // Temporary value
-            revoke_clean(cx, src_val);
-            ret cx;
-        }
+        if src.is_mem { ret zero_alloca(cx, src_val, t).bcx; }
+
+        // If we're here, it must be a temporary.
+        ret revoke_clean(cx, src_val, t);
     }
     bcx_ccx(cx).sess.bug("unexpected type in trans::move_val: " +
                              ty_to_str(tcx, t));
@@ -3620,7 +3617,8 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
 
 fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
                   to_zero: &mutable [{v: ValueRef, t: ty::t}],
-                  to_revoke: &mutable [ValueRef], e: &@ast::expr) -> result {
+                  to_revoke: &mutable [{v: ValueRef, t: ty::t}],
+                  e: &@ast::expr) -> result {
     let ccx = bcx_ccx(cx);
     let e_ty = ty::expr_ty(ccx.tcx, e);
     let is_bot = ty::type_is_bot(ccx.tcx, e_ty);
@@ -3672,7 +3670,9 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
             // Use actual ty, not declared ty -- anything else doesn't make
             // sense if declared ty is a ty param
             to_zero += [{v: lv.res.val, t: e_ty}];
-        } else { to_revoke += [lv.res.val]; }
+        } else {
+            to_revoke += [{v: lv.res.val, t: e_ty}];
+        }
     }
     ret rslt(bcx, val);
 }
@@ -3691,7 +3691,7 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
     args: [ValueRef],
     retslot: ValueRef,
     to_zero: [{v: ValueRef, t: ty::t}],
-    to_revoke: [ValueRef]} {
+    to_revoke: [{v: ValueRef, t: ty::t}]} {
 
     let args: [ty::arg] = ty::ty_fn_args(bcx_tcx(cx), fn_ty);
     let llargs: [ValueRef] = [];
@@ -3869,9 +3869,11 @@ fn trans_call(in_cx: &@block_ctxt, f: &@ast::expr,
 
         // Forget about anything we moved out.
         for {v: v, t: t}: {v: ValueRef, t: ty::t} in args_res.to_zero {
-            zero_alloca(bcx, v, t)
+            bcx = zero_alloca(bcx, v, t).bcx;
         }
-        for v: ValueRef in args_res.to_revoke { revoke_clean(bcx, v) }
+        for {v: v, t: t} in args_res.to_revoke {
+            bcx = revoke_clean(bcx, v, t);
+        }
         bcx = trans_block_cleanups(bcx, cx);
         let next_cx = new_sub_block_ctxt(in_cx, "next");
         Br(bcx, next_cx.llbb);
