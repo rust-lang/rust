@@ -2,7 +2,6 @@
 
 // error-pattern:1 == 2
 // xfail-test
-// no-valgrind
 use std;
 import std::task;
 import std::comm::port;

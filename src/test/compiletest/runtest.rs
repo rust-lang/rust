@@ -249,10 +249,9 @@ fn make_exe_name(config: &config, testfile: &str) -> str {
     output_base_name(config, testfile) + os::exec_suffix()
 }
 
-fn make_run_args(config: &config, props: &test_props, testfile: &str) ->
+fn make_run_args(config: &config, _props: &test_props, testfile: &str) ->
    procargs {
-    let toolargs =
-        if !props.no_valgrind {
+    let toolargs = {
             // If we've got another tool to run under (valgrind),
             // then split apart its command
             let runtool =
@@ -261,7 +260,7 @@ fn make_run_args(config: &config, props: &test_props, testfile: &str) ->
                   option::none. { option::none }
                 };
             split_maybe_args(runtool)
-        } else { [] };
+        };
 
     let args = toolargs + [make_exe_name(config, testfile)];
     ret {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
