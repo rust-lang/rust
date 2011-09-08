@@ -4520,6 +4520,7 @@ fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
               ast::expr_ret(_) { true }
               ast::expr_break. { true }
               ast::expr_cont. { true }
+              ast::expr_call(_, _) { true }
               _ {
                 let ex_ty = ty::expr_ty(e.ccx.tcx, ex);
                 ty::type_is_bot(e.ccx.tcx, ex_ty)
