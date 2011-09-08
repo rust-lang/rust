@@ -51,13 +51,19 @@ fn run_rfail_test(cx: &cx, props: &test_props, testfile: &str) {
 
     procres = exec_compiled_test(cx, props, testfile);
 
-    if procres.status == 0 {
-        fatal_procres("run-fail test didn't produce an error!", procres);
-    }
-
+    // The value our Makefile configures valgrind to return on failure
     const valgrind_err: int = 100;
     if procres.status == valgrind_err {
         fatal_procres("run-fail test isn't valgrind-clean!", procres);
+    }
+
+    // The value the rust runtime returns on failure
+    const rust_err: int = 101;
+    if procres.status != rust_err {
+        fatal_procres(
+            #fmt("run-fail test produced the wrong error code: %d",
+                 procres.status),
+            procres);
     }
 
     check_error_patterns(props, testfile, procres);

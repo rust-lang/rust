@@ -71,7 +71,7 @@ rust_scheduler::fail() {
     log(NULL, log_err, "domain %s @0x%" PRIxPTR " root task failed",
         name, this);
     I(this, kernel->rval == 0);
-    kernel->rval = 1;
+    kernel->rval = PROC_FAIL_CODE;
     kernel->fail();
 }
 
