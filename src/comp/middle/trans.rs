@@ -4343,7 +4343,7 @@ fn trans_put(in_cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
         llargs += [r.val];
       }
     }
-    FastCall(bcx, llcallee, llargs);
+    bcx = invoke_fastcall(bcx, llcallee, llargs).bcx;
     bcx = trans_block_cleanups(bcx, cx);
     let next_cx = new_sub_block_ctxt(in_cx, "next");
     Br(bcx, next_cx.llbb);
