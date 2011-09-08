@@ -440,6 +440,7 @@ log::walk_string(const std::pair<ptr,ptr> &data) {
 void
 log::walk_struct(const uint8_t *end_sp) {
     out << prefix << "(";
+    prefix = "";
 
     bool first = true;
     while (sp != end_sp) {

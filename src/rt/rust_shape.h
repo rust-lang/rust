@@ -984,16 +984,19 @@ private:
 
     void walk_box() {
         out << prefix << "@";
+        prefix = "";
         data<log,ptr>::walk_box_contents();
     }
 
     void walk_fn() {
         out << prefix << "fn";
+        prefix = "";
         data<log,ptr>::walk_fn_contents(dp);
     }
 
     void walk_obj() {
         out << prefix << "obj";
+        prefix = "";
         data<log,ptr>::walk_obj_contents(dp);
     }
 
