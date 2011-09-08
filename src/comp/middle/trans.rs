@@ -3808,6 +3808,8 @@ fn invoke_(bcx: &@block_ctxt, llfn: ValueRef,
            llargs: &[ValueRef],
            invoker: fn(&@block_ctxt, ValueRef, &[ValueRef],
                        BasicBlockRef, BasicBlockRef) -> ValueRef) -> result {
+    // FIXME: May be worth turning this into a plain call when there are no
+    // cleanups to run
     let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
     let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
     let retval = invoker(bcx, llfn, llargs,
@@ -3835,6 +3837,9 @@ fn trans_landing_pad(bcx: &@block_ctxt) {
     // The landing pad block is a cleanup
     SetCleanup(bcx, llpad);
 
+    // FIXME: This seems like a very naive and redundant way to generate the
+    // landing pads, as we're re-generating all in-scope cleanups for each
+    // function call. Probably good optimization opportunities here.
     let bcx = bcx;
     let scope_cx = bcx;
     while true {
