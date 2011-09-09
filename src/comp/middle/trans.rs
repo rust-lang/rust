@@ -2478,19 +2478,13 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     fn inner(cx: &@block_ctxt, local: @ast::local, curr: ValueRef, t: ty::t,
              body: &ast::blk, outer_next_cx: @block_ctxt) -> @block_ctxt {
         let next_cx = new_sub_block_ctxt(cx, "next");
-        let scope_cx =
-            new_loop_scope_block_ctxt(cx,
-                                      option::some::<@block_ctxt>(next_cx),
-                                      outer_next_cx, "for loop scope");
-        Br(cx, scope_cx.llbb);
-        let {bcx, val: dst} = alloc_local(scope_cx, local);
-        let val = load_if_immediate(bcx, PointerCast(bcx, curr,
-                                                     val_ty(dst)), t);
-        let bcx = copy_val(bcx, INIT, dst, val, t);
-        add_clean(scope_cx, dst, t);
-        let bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat, dst,
+        let bcx = new_loop_scope_block_ctxt(cx, option::some(next_cx),
+                                            outer_next_cx, "for loop scope");
+        Br(cx, bcx.llbb);
+        let val = PointerCast(bcx, curr, T_ptr(type_of_or_i8(cx, t)));
+        let bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat, val,
                                                   cx.fcx.lllocals, false);
-        bcx = trans_block(bcx, body, return).bcx;
+        let bcx = trans_block(bcx, body, return).bcx;
         if !is_terminated(bcx) {
             Br(bcx, next_cx.llbb);
             // otherwise, this code is unreachable
