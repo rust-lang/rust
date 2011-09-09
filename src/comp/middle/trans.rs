@@ -1629,12 +1629,6 @@ fn store_inbounds(cx: &@block_ctxt, v: ValueRef, p: ValueRef,
     Store(cx, v, InBoundsGEP(cx, p, idxs));
 }
 
-// This uses store and inboundsGEP, but it only doing so superficially; it's
-// really storing an incremented pointer to another pointer.
-fn incr_ptr(cx: &@block_ctxt, p: ValueRef, incr: ValueRef, pp: ValueRef) {
-    Store(cx, InBoundsGEP(cx, p, [incr]), pp);
-}
-
 // Iterates through the elements of a structural type.
 fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
                       f: &val_and_ty_fn) -> @block_ctxt {

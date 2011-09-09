@@ -4,7 +4,7 @@ import syntax::ast;
 import lib::llvm::llvm::{ValueRef, TypeRef};
 import back::abi;
 import trans::{call_memmove, trans_shared_malloc, llsize_of, type_of_or_i8,
-               incr_ptr, INIT, copy_val, load_if_immediate, alloca, size_of,
+               INIT, copy_val, load_if_immediate, alloca, size_of,
                llderivedtydescs_block_ctxt, lazily_emit_tydesc_glue,
                get_tydesc, load_inbounds, move_val_if_temp, trans_lval,
                node_id_type, new_sub_block_ctxt, tps_normal, do_spill_noroot,
@@ -185,12 +185,9 @@ fn trans_append(cx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
                              copy_val(bcx, INIT, write_ptr,
                                       load_if_immediate(bcx, addr, unit_ty),
                                       unit_ty);
-                         if dynamic {
-                             incr_ptr(bcx, write_ptr, unit_sz, write_ptr_ptr);
-                         } else {
-                             incr_ptr(bcx, write_ptr, C_int(1),
-                                      write_ptr_ptr);
-                         }
+                         let incr = dynamic ? unit_sz : C_int(1);
+                         Store(bcx, InBoundsGEP(bcx, write_ptr, [incr]),
+                               write_ptr_ptr);
                          ret bcx;
                      });
     ret rslt(bcx, C_nil());
@@ -249,10 +246,10 @@ fn trans_add(bcx: &@block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
                  let bcx =
                      copy_val(bcx, INIT, write_ptr,
                               load_if_immediate(bcx, addr, unit_ty), unit_ty);
-                 if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
-                     // We have to increment by the dynamically-computed size.
-                     incr_ptr(bcx, write_ptr, llunitsz, write_ptr_ptr);
-                 } else { incr_ptr(bcx, write_ptr, C_int(1), write_ptr_ptr); }
+                 let incr = ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) ?
+                     llunitsz : C_int(1);
+                 Store(bcx, InBoundsGEP(bcx, write_ptr, [incr]),
+                       write_ptr_ptr);
                  ret bcx;
              }(_, _, _, write_ptr_ptr, unit_ty, llunitsz);
 
@@ -277,12 +274,11 @@ fn iter_vec_raw(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     // TODO: Optimize this when the size of the unit type is statically
     // known to not use pointer casts, which tend to confuse LLVM.
     let data_end_ptr = pointer_add(bcx, data_ptr, fill);
-    let data_ptr_ptr = do_spill_noroot(bcx, data_ptr);
 
     // Now perform the iteration.
     let header_cx = new_sub_block_ctxt(bcx, "iter_vec_loop_header");
     Br(bcx, header_cx.llbb);
-    let data_ptr = Load(header_cx, data_ptr_ptr);
+    let data_ptr = Phi(header_cx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
     let not_yet_at_end =
         ICmp(header_cx, lib::llvm::LLVMIntULT, data_ptr, data_end_ptr);
     let body_cx = new_sub_block_ctxt(bcx, "iter_vec_loop_body");
@@ -293,9 +289,9 @@ fn iter_vec_raw(bcx: &@block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
         if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
             unit_sz
         } else { C_int(1) };
-    incr_ptr(body_cx, data_ptr, increment, data_ptr_ptr);
+    AddIncomingToPhi(data_ptr, [InBoundsGEP(body_cx, data_ptr,
+                                            [increment])], [body_cx.llbb]);
     Br(body_cx, header_cx.llbb);
-
     ret next_cx;
 }
 
