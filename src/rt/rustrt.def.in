@@ -71,17 +71,12 @@ upcall_dynastack_alloc
 upcall_dynastack_alloc_2
 upcall_dynastack_free
 upcall_dynastack_mark
-upcall_exit
 upcall_fail
 upcall_free
 upcall_get_type_desc
-upcall_grow_task
 upcall_vec_grow
 upcall_vec_push
-upcall_kill
 upcall_log_type
 upcall_malloc
 upcall_shared_malloc
 upcall_shared_free
-upcall_sleep
-upcall_yield

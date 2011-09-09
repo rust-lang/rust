@@ -20,20 +20,6 @@ check_stack(rust_task *task) {
 }
 #endif
 
-extern "C" void
-upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
-    I(task->sched, false);
-    LOG_UPCALL_ENTRY(task);
-    task->grow(n_frame_bytes);
-}
-
-extern "C" CDECL void
-upcall_yield(rust_task *task) {
-    LOG_UPCALL_ENTRY(task);
-    LOG(task, comm, "upcall yield()");
-    task->yield(1);
-}
-
 // Copy elements from one vector to another,
 // dealing with reference counts
 static inline void
@@ -55,15 +41,6 @@ copy_elements(rust_task *task, type_desc *elem_t,
 }
 
 extern "C" CDECL void
-upcall_sleep(rust_task *task, size_t time_in_us) {
-    LOG_UPCALL_ENTRY(task);
-    LOG(task, task, "elapsed %" PRIu64 " us",
-              task->yield_timer.elapsed_us());
-    LOG(task, task, "sleep %d us", time_in_us);
-    task->yield(time_in_us);
-}
-
-extern "C" CDECL void
 upcall_fail(rust_task *task,
             char const *expr,
             char const *file,
@@ -71,28 +48,6 @@ upcall_fail(rust_task *task,
     LOG_UPCALL_ENTRY(task);
     LOG_ERR(task, upcall, "upcall fail '%s', %s:%" PRIdPTR, expr, file, line);
     task->fail();
-}
-
-/**
- * Called whenever a task's ref count drops to zero.
- */
-extern "C" CDECL void
-upcall_kill(rust_task *task, rust_task_id tid) {
-    LOG_UPCALL_ENTRY(task);
-    rust_task *target = task->kernel->get_task_by_id(tid);
-    target->kill();
-    target->deref();
-}
-
-/**
- * Called by the exit glue when the task terminates.
- */
-extern "C" CDECL void
-upcall_exit(rust_task *task) {
-    LOG_UPCALL_ENTRY(task);
-    task->die();
-    task->notify_tasks_waiting_to_join();
-    task->yield(1);
 }
 
 extern "C" CDECL uintptr_t

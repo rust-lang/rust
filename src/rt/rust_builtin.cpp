@@ -160,11 +160,9 @@ rand_free(rust_task *task, randctx *rctx)
     task->free(rctx);
 }
 
-extern "C" CDECL void upcall_sleep(rust_task *task, size_t time_in_us);
-
 extern "C" CDECL void
 task_sleep(rust_task *task, size_t time_in_us) {
-    upcall_sleep(task, time_in_us);
+    task->yield(time_in_us);
 }
 
 extern "C" CDECL void

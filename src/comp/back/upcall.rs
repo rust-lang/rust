@@ -24,12 +24,7 @@ import lib::llvm::llvm::ValueRef;
 import lib::llvm::llvm::TypeRef;
 
 type upcalls =
-    {grow_task: ValueRef,
-     _yield: ValueRef,
-     sleep: ValueRef,
-     _fail: ValueRef,
-     kill: ValueRef,
-     exit: ValueRef,
+    {_fail: ValueRef,
      malloc: ValueRef,
      free: ValueRef,
      shared_malloc: ValueRef,
@@ -61,13 +56,7 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
     let d = bind decl_with_taskptr(taskptr_type, llmod, _, _, _);
     let dr = bind decl(llmod, _, _, _);
 
-    let empty_vec: [TypeRef] = [];
-    ret @{grow_task: dv("grow_task", [T_size_t()]),
-          _yield: dv("yield", empty_vec),
-          sleep: dv("sleep", [T_size_t()]),
-          _fail: dv("fail", [T_ptr(T_i8()), T_ptr(T_i8()), T_size_t()]),
-          kill: dv("kill", [taskptr_type]),
-          exit: dv("exit", empty_vec),
+    ret @{_fail: dv("fail", [T_ptr(T_i8()), T_ptr(T_i8()), T_size_t()]),
           malloc:
               d("malloc", [T_size_t(), T_ptr(tydesc_type)], T_ptr(T_i8())),
           free: dv("free", [T_ptr(T_i8()), T_int()]),
