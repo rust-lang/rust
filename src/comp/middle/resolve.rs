@@ -275,7 +275,7 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
           visit_item: visit_item_with_scope,
           visit_block: visit_block_with_scope,
           visit_decl: visit_decl_with_scope,
-          visit_arm: walk_arm,
+          visit_arm: visit_arm_with_scope,
           visit_pat: bind walk_pat(e, _, _, _),
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
@@ -309,9 +309,6 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
     fn walk_constr(e: @env, p: &ast::path, sp: &span, id: node_id,
                    sc: &scopes, _v: &vt<scopes>) {
         maybe_insert(e, id, lookup_path_strict(*e, sc, sp, p.node, ns_value));
-    }
-    fn walk_arm(a: &ast::arm, sc: &scopes, v: &vt<scopes>) {
-        visit_arm_with_scope(a, sc, v);
     }
     fn walk_pat(e: &@env, pat: &@ast::pat, sc: &scopes, v: &vt<scopes>) {
         visit::visit_pat(pat, sc, v);
@@ -398,7 +395,10 @@ fn visit_decl_with_scope(d: &@decl, sc: &scopes, v: &vt<scopes>) {
 }
 
 fn visit_arm_with_scope(a: &ast::arm, sc: &scopes, v: &vt<scopes>) {
-    visit::visit_arm(a, cons(scope_arm(a), @sc), v);
+    for p: @pat in a.pats { v.visit_pat(p, sc, v); }
+    let sc_inner = cons(scope_arm(a), @sc);
+    visit::visit_expr_opt(a.guard, sc_inner, v);
+    v.visit_block(a.body, sc_inner, v);
 }
 
 fn visit_expr_with_scope(x: &@ast::expr, sc: &scopes, v: &vt<scopes>) {
