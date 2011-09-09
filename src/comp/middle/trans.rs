@@ -1744,90 +1744,6 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
     ret cx;
 }
 
-
-// Iterates through a pointer range, until the src* hits the src_lim*.
-fn iter_sequence_raw(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
-                     src_lim: ValueRef, elt_sz: ValueRef, f: &val_pair_fn) ->
-   @block_ctxt {
-    let bcx = cx;
-    let dst_int: ValueRef = vp2i(bcx, dst);
-    let src_int: ValueRef = vp2i(bcx, src);
-    let src_lim_int: ValueRef = vp2i(bcx, src_lim);
-    let cond_cx = new_scope_block_ctxt(cx, "sequence-iter cond");
-    let body_cx = new_scope_block_ctxt(cx, "sequence-iter body");
-    let next_cx = new_sub_block_ctxt(cx, "next");
-    Br(bcx, cond_cx.llbb);
-    let dst_curr: ValueRef = Phi(cond_cx, T_int(), [dst_int], [bcx.llbb]);
-    let src_curr: ValueRef = Phi(cond_cx, T_int(), [src_int], [bcx.llbb]);
-    let end_test =
-        ICmp(cond_cx, lib::llvm::LLVMIntULT, src_curr, src_lim_int);
-    CondBr(cond_cx, end_test, body_cx.llbb, next_cx.llbb);
-    let dst_curr_ptr = vi2p(body_cx, dst_curr, T_ptr(T_i8()));
-    let src_curr_ptr = vi2p(body_cx, src_curr, T_ptr(T_i8()));
-    let body_cx = f(body_cx, dst_curr_ptr, src_curr_ptr);
-    let dst_next = Add(body_cx, dst_curr, elt_sz);
-    let src_next = Add(body_cx, src_curr, elt_sz);
-    Br(body_cx, cond_cx.llbb);
-    AddIncomingToPhi(dst_curr, [dst_next], [body_cx.llbb]);
-    AddIncomingToPhi(src_curr, [src_next], [body_cx.llbb]);
-    ret next_cx;
-}
-
-fn iter_sequence_inner(cx: &@block_ctxt, src: ValueRef, src_lim: ValueRef,
-                       elt_ty: &ty::t, f: &val_and_ty_fn) -> @block_ctxt {
-    fn adaptor_fn(f: val_and_ty_fn, elt_ty: ty::t, cx: &@block_ctxt,
-                  _dst: ValueRef, src: ValueRef) -> @block_ctxt {
-        let ccx = bcx_ccx(cx);
-        let sp = cx.sp;
-        let llptrty =
-          if check type_has_static_size(ccx, elt_ty) {
-              let llty = type_of(ccx, sp, elt_ty);
-              T_ptr(llty)
-          }
-          else { T_ptr(T_ptr(T_i8())) };
-
-        let p = PointerCast(cx, src, llptrty);
-        ret f(cx, load_if_immediate(cx, p, elt_ty), elt_ty);
-    }
-    let elt_sz = size_of(cx, elt_ty);
-    ret iter_sequence_raw(elt_sz.bcx, src, src, src_lim, elt_sz.val,
-                          bind adaptor_fn(f, elt_ty, _, _, _));
-}
-
-
-// Iterates through the elements of a vec or str.
-fn iter_sequence(cx: @block_ctxt, v: ValueRef, t: ty::t, f: &val_and_ty_fn) ->
-   @block_ctxt {
-    fn iter_sequence_body(bcx: @block_ctxt, v: ValueRef, elt_ty: ty::t,
-                          f: &val_and_ty_fn, trailing_null: bool) ->
-       @block_ctxt {
-        let llunit_ty = type_of_or_i8(bcx, elt_ty);
-        let p0 = tvec::get_dataptr(bcx, v, llunit_ty);
-        let len = tvec::get_fill(bcx, v);
-
-        if trailing_null {
-            let unit_sz = size_of(bcx, elt_ty);
-            bcx = unit_sz.bcx;
-            len = Sub(bcx, len, unit_sz.val);
-        }
-        let p1 = vi2p(bcx, Add(bcx, vp2i(bcx, p0), len), T_ptr(llunit_ty));
-        ret iter_sequence_inner(bcx, p0, p1, elt_ty, f);
-    }
-
-
-    alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_vec(elt) { ret iter_sequence_body(cx, v, elt.ty, f, false); }
-      ty::ty_str. {
-        let et = ty::mk_mach(bcx_tcx(cx), ast::ty_u8);
-        ret iter_sequence_body(cx, v, et, f, true);
-      }
-      _ {
-        bcx_ccx(cx).sess.bug("unexpected type in trans::iter_sequence: " +
-                                 ty_to_str(cx.fcx.lcx.ccx.tcx, t));
-      }
-    }
-}
-
 fn lazily_emit_all_tydesc_glue(cx: &@block_ctxt,
                                static_ti: &option::t<@tydesc_info>) {
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, static_ti);
@@ -2559,8 +2475,6 @@ fn trans_if(cx: &@block_ctxt, cond: &@ast::expr, thn: &ast::blk,
 
 fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
              body: &ast::blk) -> result {
-    // FIXME: We bind to an alias here to avoid a segfault... this is
-    // obviously a bug.
     fn inner(cx: &@block_ctxt, local: @ast::local, curr: ValueRef, t: ty::t,
              body: &ast::blk, outer_next_cx: @block_ctxt) -> @block_ctxt {
         let next_cx = new_sub_block_ctxt(cx, "next");
@@ -2569,13 +2483,13 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
                                       option::some::<@block_ctxt>(next_cx),
                                       outer_next_cx, "for loop scope");
         Br(cx, scope_cx.llbb);
-        let local_res = alloc_local(scope_cx, local);
-        let bcx = copy_val(local_res.bcx, INIT, local_res.val, curr, t);
-        add_clean(scope_cx, local_res.val, t);
-        let bcx =
-            trans_alt::bind_irrefutable_pat(bcx, local.node.pat,
-                                            local_res.val, cx.fcx.lllocals,
-                                            false);
+        let {bcx, val: dst} = alloc_local(scope_cx, local);
+        let val = load_if_immediate(bcx, PointerCast(bcx, curr,
+                                                     val_ty(dst)), t);
+        let bcx = copy_val(bcx, INIT, dst, val, t);
+        add_clean(scope_cx, dst, t);
+        let bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat, dst,
+                                                  cx.fcx.lllocals, false);
         bcx = trans_block(bcx, body, return).bcx;
         if !is_terminated(bcx) {
             Br(bcx, next_cx.llbb);
@@ -2585,10 +2499,14 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     }
     let next_cx = new_sub_block_ctxt(cx, "next");
     let seq_ty = ty::expr_ty(bcx_tcx(cx), seq);
-    let seq_res = trans_expr(cx, seq);
-    let bcx =
-        iter_sequence(seq_res.bcx, seq_res.val, seq_ty,
-                      bind inner(_, local, _, _, body, next_cx));
+    let {bcx, val: seq} = trans_expr(cx, seq);
+    let seq = PointerCast(bcx, seq, T_ptr(T_ptr(T_opaque_vec())));
+    let fill = tvec::get_fill(bcx, seq);
+    if ty::type_is_str(bcx_tcx(bcx), seq_ty) {
+        fill = Sub(bcx, fill, C_int(1));
+    }
+    let bcx = tvec::iter_vec_raw(bcx, seq, seq_ty, fill,
+                                 bind inner(_, local, _, _, body, next_cx));
     Br(bcx, next_cx.llbb);
     ret rslt(next_cx, C_nil());
 }
