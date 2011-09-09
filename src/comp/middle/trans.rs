@@ -4955,22 +4955,11 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
         GEP(bcx, box_ptr,
             [C_int(0), C_int(abi::box_rc_field_body),
              C_int(abi::obj_body_elt_typarams)]);
+
     // The object fields immediately follow the type parameters, so we skip
     // over them to get the pointer.
-
-    let et = llvm::LLVMGetElementType(val_ty(obj_typarams));
-    let obj_fields = Add(bcx, vp2i(bcx, obj_typarams), llsize_of(et));
-    // If we can (i.e. the type is statically sized), then cast the resulting
-    // fields pointer to the appropriate LLVM type. If not, just leave it as
-    // i8 *.
-
-    let ccx = fcx.lcx.ccx;
-    if check type_has_static_size(ccx, fields_tup_ty) {
-        let sp = fcx.sp;
-        let llfields_ty = type_of(ccx, sp, fields_tup_ty);
-        obj_fields = vi2p(bcx, obj_fields, T_ptr(llfields_ty));
-    }
-    else { obj_fields = vi2p(bcx, obj_fields, T_ptr(T_i8())); }
+    let obj_fields = PointerCast(bcx, GEP(bcx, obj_typarams, [C_int(1)]),
+                                 T_ptr(type_of_or_i8(bcx, fields_tup_ty)));
 
     let i: int = 0;
     for p: ast::ty_param in fcx.lcx.obj_typarams {
@@ -5809,10 +5798,6 @@ fn trans_constants(ccx: &@crate_ctxt, crate: @ast::crate) {
 
 fn vp2i(cx: &@block_ctxt, v: ValueRef) -> ValueRef {
     ret PtrToInt(cx, v, T_int());
-}
-
-fn vi2p(cx: &@block_ctxt, v: ValueRef, t: TypeRef) -> ValueRef {
-    ret IntToPtr(cx, v, t);
 }
 
 fn p2i(v: ValueRef) -> ValueRef { ret llvm::LLVMConstPtrToInt(v, T_int()); }
