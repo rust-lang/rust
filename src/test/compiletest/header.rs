@@ -50,11 +50,16 @@ fn is_test_ignored(config: &config, testfile: &str) -> bool {
     for each ln: str in iter_header(testfile) {
         // FIXME: Can't return or break from iterator
         found = found || parse_name_directive(ln, "xfail-test");
+        found = found || parse_name_directive(ln, xfail_target());
         if (config.mode == common::mode_pretty) {
             found = found || parse_name_directive(ln, "xfail-pretty");
         }
     }
     ret found;
+
+    fn xfail_target() -> str {
+        "xfail-" + std::os::target_os()
+    }
 }
 
 iter iter_header(testfile: &str) -> str {
