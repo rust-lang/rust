@@ -27,28 +27,6 @@ upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
     task->grow(n_frame_bytes);
 }
 
-extern "C" CDECL
-void upcall_log_int(rust_task *task, uint32_t level, int32_t i) {
-    LOG_UPCALL_ENTRY(task);
-    if (task->sched->log_lvl >= level)
-        task->sched->log(task, level, "rust: %" PRId32 " (0x%" PRIx32 ")",
-                       i, i);
-}
-
-extern "C" CDECL
-void upcall_log_float(rust_task *task, uint32_t level, float f) {
-    LOG_UPCALL_ENTRY(task);
-    if (task->sched->log_lvl >= level)
-        task->sched->log(task, level, "rust: %12.12f", f);
-}
-
-extern "C" CDECL
-void upcall_log_double(rust_task *task, uint32_t level, double *f) {
-    LOG_UPCALL_ENTRY(task);
-    if (task->sched->log_lvl >= level)
-        task->sched->log(task, level, "rust: %12.12f", *f);
-}
-
 extern "C" CDECL void
 upcall_yield(rust_task *task) {
     LOG_UPCALL_ENTRY(task);

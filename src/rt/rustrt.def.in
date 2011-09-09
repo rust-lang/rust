@@ -79,9 +79,6 @@ upcall_grow_task
 upcall_vec_grow
 upcall_vec_push
 upcall_kill
-upcall_log_double
-upcall_log_float
-upcall_log_int
 upcall_log_type
 upcall_malloc
 upcall_shared_malloc
