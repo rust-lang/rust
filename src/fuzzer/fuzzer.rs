@@ -197,48 +197,11 @@ fn check_whole_compiler(code: &str) {
     //log_err #fmt("Status: %d", p.status);
     //log_err "Output: " + p.out;
     if p.err != "" {
-        if contains(p.err, "argument of incompatible type") {
-            log_err "https://github.com/graydon/rust/issues/769";
-        } else if contains(p.err,
-                           "Cannot create binary operator with two operands of differing type")
-         {
-            log_err "https://github.com/graydon/rust/issues/770";
-        } else if contains(p.err, "May only branch on boolean predicates!") {
-            log_err "https://github.com/graydon/rust/issues/770 or https://github.com/graydon/rust/issues/776";
-        } else if contains(p.err, "Invalid constantexpr cast!") &&
-                      contains(code, "!") {
-            log_err "https://github.com/graydon/rust/issues/777";
-        } else if contains(p.err,
-                           "Both operands to ICmp instruction are not of the same type!")
-                      && contains(code, "!") {
-            log_err "https://github.com/graydon/rust/issues/777 #issuecomment-1678487";
-        } else if contains(p.err, "Ptr must be a pointer to Val type!") &&
-                      contains(code, "!") {
-            log_err "https://github.com/graydon/rust/issues/779";
-        } else if contains(p.err, "Calling a function with bad signature!") &&
-                      (contains(code, "iter") || contains(code, "range")) {
-            log_err "https://github.com/graydon/rust/issues/771 - calling an iter fails";
-        } else if contains(p.err, "Calling a function with a bad signature!")
-                      && contains(code, "empty") {
-            log_err "https://github.com/graydon/rust/issues/775 - possibly a modification of run-pass/import-glob-crate.rs";
-        } else if contains(p.err, "Invalid type for pointer element!") &&
-                      contains(code, "put") {
-            log_err "https://github.com/graydon/rust/issues/773 - put put ()";
-        } else if contains(p.err, "pointer being freed was not allocated") &&
-                      contains(p.out, "Out of stack space, sorry") {
-            log_err "https://github.com/graydon/rust/issues/768 + https://github.com/graydon/rust/issues/778"
+        if false {
         } else {
             log_err "Stderr: " + p.err;
             fail "Unfamiliar error message";
         }
-    } else if contains(p.out, "non-exhaustive match failure") &&
-                  contains(p.out, "alias.rs") {
-        log_err "https://github.com/graydon/rust/issues/772";
-    } else if contains(p.out, "non-exhaustive match failure") &&
-                  contains(p.out, "trans.rs") && contains(code, "put") {
-        log_err "https://github.com/graydon/rust/issues/774";
-    } else if contains(p.out, "Out of stack space, sorry") {
-        log_err "Possibly a variant of https://github.com/graydon/rust/issues/768";
     } else if p.status == 256 {
         if !contains(p.out, "error:") {
             fail "Exited with status 256 without a span-error";
