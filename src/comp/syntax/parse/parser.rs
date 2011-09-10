@@ -1613,6 +1613,7 @@ fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
               ast::expr_alt(_, _) { false }
               ast::expr_fn(_) { false }
               ast::expr_block(_) { false }
+              ast::expr_copy(_) { true }
               ast::expr_move(_, _) { true }
               ast::expr_assign(_, _) { true }
               ast::expr_swap(_, _) { true }
