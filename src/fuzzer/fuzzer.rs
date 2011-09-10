@@ -166,40 +166,78 @@ fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
                                                     io::string_reader(""), _,
                                                     pprust::no_ann()));
                 check_roundtrip_convergence(str3, 1u);
-                //check_whole_compiler(str3);
+                //let label = #fmt("buggy_%s_%ud_%ud.rs", last_part(filename), i, j);
+                //check_whole_compiler(str3, label);
             }
         }
     }
 }
 
+fn last_part(filename: &str) -> str {
+  let ix = str::rindex(filename, 47u8 /* '/' */);
+  assert ix >= 0;
+  str::slice(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
+}
+
+tag compile_result { known_bug(str); passed(str); failed(str); }
+
 // We'd find more bugs if we could take an AST here, but
 // - that would find many "false positives" or unimportant bugs
 // - that would be tricky, requiring use of tasks or serialization or randomness.
 // This seems to find plenty of bugs as it is :)
-fn check_whole_compiler(code: &str) {
+fn check_whole_compiler(code: &str, suggested_filename: &str) {
     let filename = "test.rs";
     write_file(filename, code);
-    let p =
-        std::run::program_output(
+    alt check_whole_compiler_inner(filename) {
+      known_bug(s) {
+        log_err "Ignoring known bug: " + s;
+      }
+      failed(s) {
+        log_err "check_whole_compiler failure: " + s;
+        write_file(suggested_filename, code);
+        log_err "Saved as: " + suggested_filename;
+      }
+      passed(_) { }
+    }
+}
+
+fn check_whole_compiler_inner(filename: &str) -> compile_result {
+    let p = std::run::program_output(
             "/Users/jruderman/code/rust/build/stage1/rustc",
             ["-c", filename]);
 
     //log_err #fmt("Status: %d", p.status);
-    //log_err "Output: " + p.out;
     if p.err != "" {
-        if false {
+        if contains(p.err, "May only branch on boolean predicates") {
+            known_bug("https://github.com/graydon/rust/issues/892")
+        } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\")") {
+            known_bug("https://github.com/graydon/rust/issues/895")
         } else {
             log_err "Stderr: " + p.err;
-            fail "Unfamiliar error message";
+            failed("Unfamiliar error message")
         }
-    } else if p.status == 256 {
-        if !contains(p.out, "error:") {
-            fail "Exited with status 256 without a span-error";
+    } else if p.status == 6 {
+        if contains(p.out, "get_id_ident: can't find item in ext_map") {
+            known_bug("https://github.com/graydon/rust/issues/876")
+        } else if contains(p.out, "Assertion !cx.terminated failed") {
+            known_bug("https://github.com/graydon/rust/issues/893 or https://github.com/graydon/rust/issues/894")
+        } else if !contains(p.out, "error:") {
+            log_err "Stdout: " + p.out;
+            failed("Rejected the input program without a span-error explanation")
+        } else {
+            passed("Rejected the input program cleanly")
         }
     } else if p.status == 11 {
-        log_err "What is this I don't even";
-    } else if p.status != 0 { fail "Unfamiliar status code"; }
+        failed("Crashed!?")
+    } else if p.status == 0 {
+        passed("Accepted the input program")
+    } else {
+        log_err p.status;
+        log_err p.out;
+        failed("Unfamiliar status code")
+    }
 }
+
 
 fn parse_and_print(code: &str) -> str {
     let filename = "tmp.rs";
