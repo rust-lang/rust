@@ -612,8 +612,9 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
     tag expr_or_stmt { stmt_(@ast::stmt); expr_(@ast::expr); }
 
     // The Rust syntax has an ambiguity when an if, alt, or block statement is
-    // followed by a unary op or paren. In those cases we have to add an
-    // extra semi to make sure the output retains the same meaning.
+    // followed by a unary op, square bracket, or paren. In those cases we
+    // have to add an extra semi to make sure the output retains the same
+    // meaning.
     fn maybe_protect_block(s: &ps, last: &option::t<@ast::stmt>,
                            next: &expr_or_stmt) {
         let last_expr_is_block =
@@ -684,6 +685,7 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
                 alt ex.node {
                   ast::expr_unary(_, _) { true }
                   ast::expr_tup(_) { true }
+                  ast::expr_vec(_, _) { true }
                   _ { false }
                 }
             }
