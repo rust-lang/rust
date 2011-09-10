@@ -12,11 +12,7 @@ It would be nice if this could be data-driven, so the two functions could share 
 But that gives me "error: internal compiler error unimplemented consts that's not a plain literal".
 https://github.com/graydon/rust/issues/570
 
-vec_edits is not an iter because iters might go away and:
-https://github.com/graydon/rust/issues/639
-
-vec_omit and friends are not type-parameterized because:
-https://github.com/graydon/rust/issues/640
+vec_edits is not an iter because iters might go away.
 
 */
 
