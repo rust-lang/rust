@@ -22,8 +22,6 @@ import std::vec::slice;
 import std::vec::len;
 import std::int;
 
-//fn vec_reverse(&<T> v) -> [T] { ... }
-
 fn vec_omit<@T>(v: &[T], i: uint) -> [T] {
     slice(v, 0u, i) + slice(v, i + 1u, len(v))
 }
@@ -55,12 +53,12 @@ fn vec_edits<@T>(v: &[T], xs: &[T]) -> [[T]] {
     let Lv: uint = len(v);
 
     if Lv != 1u {
-        edits +=
-            [[]]; // When Lv == 1u, this is redundant with omit
-                  //if (Lv >= 3u) { edits += ~[vec_reverse(v)]; }
-
-
-
+        // When Lv == 1u, this is redundant with omit.
+        edits += [[]];
+    }
+    if Lv >= 3u {
+        // When Lv == 2u, this is redundant with swap.
+        edits += [vec::reversed(v)];
     }
     for each i: uint in ix(0u, 1u, Lv) { edits += [vec_omit(v, i)]; }
     for each i: uint in ix(0u, 1u, Lv) { edits += [vec_dup(v, i)]; }
@@ -76,7 +74,6 @@ fn vec_edits<@T>(v: &[T], xs: &[T]) -> [[T]] {
             edits += [vec_insert(v, i, xs[j])];
         }
     }
-
 
     edits
 }
