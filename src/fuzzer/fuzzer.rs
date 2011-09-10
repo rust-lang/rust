@@ -48,8 +48,8 @@ fn find_rust_files(files: &mutable [str], path: &str) {
     }
 }
 
-fn safe_to_steal(e: ast::expr_) -> bool {
-    alt e {
+fn safe_to_steal_expr(e: &@ast::expr) -> bool {
+    alt e.node {
 
       // https://github.com/graydon/rust/issues/890
       ast::expr_lit(lit) {
@@ -89,17 +89,19 @@ fn safe_to_steal(e: ast::expr_) -> bool {
     }
 }
 
+// Not type-parameterized: https://github.com/graydon/rust/issues/898
+fn stash_expr_if(c: fn(&@ast::expr)->bool, es: @mutable [ast::expr], e: &@ast::expr) {
+    if c(e) {
+        *es += [*e];
+    } else {/* now my indices are wrong :( */ }
+}
+
 fn steal_exprs(crate: &ast::crate) -> [ast::expr] {
     let exprs: @mutable [ast::expr] = @mutable [];
-    // "Stash" is not type-parameterized because of the need for safe_to_steal
-    fn stash_expr(es: @mutable [ast::expr], e: &@ast::expr) {
-        if safe_to_steal(e.node) {
-            *es += [*e];
-        } else {/* now my indices are wrong :( */ }
-    }
-    let v =
-        visit::mk_simple_visitor(@{visit_expr: bind stash_expr(exprs, _)
-                                      with *visit::default_simple_visitor()});
+    let v = visit::mk_simple_visitor(@{
+        visit_expr: bind stash_expr_if(safe_to_steal_expr, exprs, _)
+        with *visit::default_simple_visitor()
+    });
     visit::visit_crate(crate, (), v);;
     *exprs
 }
