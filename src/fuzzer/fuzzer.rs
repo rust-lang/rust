@@ -51,17 +51,13 @@ fn find_rust_files(files: &mutable [str], path: &str) {
 fn safe_to_steal(e: ast::expr_) -> bool {
     alt e {
 
-
-      // pretty-printer precedence issues -- https://github.com/graydon/rust/issues/670
-      ast::expr_unary(_, _) {
-        false
-      }
+      // https://github.com/graydon/rust/issues/890
       ast::expr_lit(lit) {
         alt lit.node {
           ast::lit_str(_) { true }
           ast::lit_char(_) { true }
           ast::lit_int(_) { false }
-          ast::lit_uint(_) { false }
+          ast::lit_uint(_) { true }
           ast::lit_mach_int(_, _) { false }
           ast::lit_float(_) { false }
           ast::lit_mach_float(_, _) { false }
@@ -69,31 +65,27 @@ fn safe_to_steal(e: ast::expr_) -> bool {
           ast::lit_bool(_) { true }
         }
       }
+
+      // https://github.com/graydon/rust/issues/890
       ast::expr_cast(_, _) { false }
       ast::expr_assert(_) { false }
       ast::expr_binary(_, _, _) { false }
       ast::expr_assign(_, _) { false }
       ast::expr_assign_op(_, _, _) { false }
-      ast::expr_fail(option::none.) {
-        false
-        /* https://github.com/graydon/rust/issues/764 */
 
-      }
+      // https://github.com/graydon/rust/issues/764
+      ast::expr_fail(option::none.) { false }
       ast::expr_ret(option::none.) { false }
       ast::expr_put(option::none.) { false }
 
+      // These prefix-operator keywords are not being parenthesized when in callee positions.
+      // https://github.com/graydon/rust/issues/891
+      ast::expr_ret(_) { false }
+      ast::expr_put(_) { false }
+      ast::expr_check(_, _) { false }
+      ast::expr_log(_, _) { false }
 
-      ast::expr_ret(_) {
-        false
-        /* lots of code generation issues, such as https://github.com/graydon/rust/issues/770 */
-
-      }
-      ast::expr_fail(_) { false }
-
-
-      _ {
-        true
-      }
+      _ { true }
     }
 }
 
@@ -173,9 +165,7 @@ fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
                                                     filename,
                                                     io::string_reader(""), _,
                                                     pprust::no_ann()));
-                // 1u would be sane here, but the pretty-printer currently has lots of whitespace and paren issues,
-                // and https://github.com/graydon/rust/issues/766 is hilarious.
-                check_roundtrip_convergence(str3, 7u);
+                check_roundtrip_convergence(str3, 1u);
                 //check_whole_compiler(str3);
             }
         }
@@ -225,49 +215,28 @@ fn parse_and_print(code: &str) -> str {
 
 fn content_is_dangerous_to_modify(code: &str) -> bool {
     let dangerous_patterns =
-        ["obj", // not safe to steal; https://github.com/graydon/rust/issues/761
-         "#macro", // not safe to steal things inside of it, because they have a special syntax
-         "#", // strange representation of the arguments to #fmt, for example
-         " be ", // don't want to replace its child with a non-call: "Non-call expression in tail call"
-         "@"]; // hangs when compiling: https://github.com/graydon/rust/issues/768
+        ["#macro", // not safe to steal things inside of it, because they have a special syntax
+         "#",      // strange representation of the arguments to #fmt, for example
+         " be "];  // don't want to replace its child with a non-call: "Non-call expression in tail call"
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
     ret false;
 }
 
-fn content_is_confusing(code: &str) ->
-   bool { // https://github.com/graydon/rust/issues/671
-          // https://github.com/graydon/rust/issues/669
-          // https://github.com/graydon/rust/issues/669
-          // https://github.com/graydon/rust/issues/669
-          // crazy rules enforced by parser rather than typechecker?
-          // more precedence issues
-          // more precedence issues?
-
+fn content_is_confusing(code: &str) -> bool {
     let confusing_patterns =
-        ["#macro", "][]", "][mutable]", "][mutable ]", "self", "spawn",
-         "bind", "\n\n\n\n\n", // https://github.com/graydon/rust/issues/759
-         " : ", // https://github.com/graydon/rust/issues/760
-         "if ret", "alt ret", "if fail", "alt fail"];
+        ["self",       // crazy rules enforced by parser rather than typechecker?
+        "spawn",       // precedence issues?
+         "bind",       // precedence issues?
+         "\n\n\n\n\n"  // https://github.com/graydon/rust/issues/850
+        ];
 
     for p: str in confusing_patterns { if contains(code, p) { ret true; } }
     ret false;
 }
 
 fn file_is_confusing(filename: &str) -> bool {
-
-    // https://github.com/graydon/rust/issues/674
-
-    // something to do with () as a lone pattern
-
-    // an issue where -2147483648 gains an
-    // extra negative sign each time through,
-    // which i can't reproduce using "rustc
-    // --pretty normal"???
-    let confusing_files =
-        ["block-expr-precedence.rs", "nil-pattern.rs",
-         "syntax-extension-fmt.rs",
-         "newtype.rs"]; // modifying it hits something like https://github.com/graydon/rust/issues/670
+    let confusing_files = [];
 
     for f in confusing_files { if contains(filename, f) { ret true; } }
 
@@ -308,7 +277,7 @@ fn check_convergence(files: &[str]) {
             let s = io::read_whole_file_str(file);
             if !content_is_confusing(s) {
                 log_err #fmt["pp converge: %s", file];
-                // Change from 7u to 2u when https://github.com/graydon/rust/issues/759 is fixed
+                // Change from 7u to 2u once https://github.com/graydon/rust/issues/850 is fixed
                 check_roundtrip_convergence(s, 7u);
             }
         }
