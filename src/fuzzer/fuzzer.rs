@@ -89,6 +89,11 @@ fn safe_to_steal_expr(e: &@ast::expr) -> bool {
     }
 }
 
+fn safe_to_steal_ty(t: &@ast::ty) -> bool {
+    // Same restrictions
+    safe_to_replace_ty(t.node)
+}
+
 // Not type-parameterized: https://github.com/graydon/rust/issues/898
 fn stash_expr_if(c: fn(&@ast::expr)->bool, es: @mutable [ast::expr], e: &@ast::expr) {
     if c(e) {
@@ -96,18 +101,28 @@ fn stash_expr_if(c: fn(&@ast::expr)->bool, es: @mutable [ast::expr], e: &@ast::e
     } else {/* now my indices are wrong :( */ }
 }
 
-fn steal_exprs(crate: &ast::crate) -> [ast::expr] {
-    let exprs: @mutable [ast::expr] = @mutable [];
+fn stash_ty_if(c: fn(&@ast::ty)->bool, es: @mutable [ast::ty], e: &@ast::ty) {
+    if c(e) {
+        *es += [*e];
+    } else {/* now my indices are wrong :( */ }
+}
+
+type stolen_stuff = {exprs: [ast::expr], tys: [ast::ty]};
+
+fn steal(crate: &ast::crate) -> stolen_stuff {
+    let exprs = @mutable [];
+    let tys = @mutable [];
     let v = visit::mk_simple_visitor(@{
-        visit_expr: bind stash_expr_if(safe_to_steal_expr, exprs, _)
+        visit_expr: bind stash_expr_if(safe_to_steal_expr, exprs, _),
+        visit_ty: bind stash_ty_if(safe_to_steal_ty, tys, _)
         with *visit::default_simple_visitor()
     });
-    visit::visit_crate(crate, (), v);;
-    *exprs
+    visit::visit_crate(crate, (), v);
+    {exprs: *exprs, tys: *tys}
 }
 
 // https://github.com/graydon/rust/issues/652
-fn safe_to_replace(e: ast::expr_) -> bool {
+fn safe_to_replace_expr(e: ast::expr_) -> bool {
     alt e {
       ast::expr_if(_, _, _) { false }
       ast::expr_block(_) { false }
@@ -115,25 +130,54 @@ fn safe_to_replace(e: ast::expr_) -> bool {
     }
 }
 
+fn safe_to_replace_ty(t: ast::ty_) -> bool {
+    alt t {
+      ast::ty_infer. { false } // always implicit, always top level
+      ast::ty_bot. { false }   // in source, can only appear as the out type of a function
+      ast::ty_mac(_) { false }
+      _ { true }
+    }
+}
+
 // Replace the |i|th expr (in fold order) of |crate| with |newexpr|.
-fn replace_expr_in_crate(crate: &ast::crate, i: uint, newexpr: ast::expr_) ->
+fn replace_expr_in_crate(crate: &ast::crate, i: uint, newexpr: &ast::expr) ->
    ast::crate {
     let j: @mutable uint = @mutable 0u;
     fn fold_expr_rep(j_: @mutable uint, i_: uint, newexpr_: &ast::expr_,
                      original: &ast::expr_, fld: fold::ast_fold) ->
        ast::expr_ {
         *j_ += 1u;
-        if i_ + 1u == *j_ && safe_to_replace(original) {
+        if i_ + 1u == *j_ && safe_to_replace_expr(original) {
             newexpr_
         } else { fold::noop_fold_expr(original, fld) }
     }
     let afp =
-        {fold_expr: bind fold_expr_rep(j, i, newexpr, _, _)
+        {fold_expr: bind fold_expr_rep(j, i, newexpr.node, _, _)
             with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
     fold::dummy_out(af); // work around a leak (https://github.com/graydon/rust/issues/651)
-    ;
+    *crate2
+}
+
+// Replace the |i|th ty (in fold order) of |crate| with |newty|.
+fn replace_ty_in_crate(crate: &ast::crate, i: uint, newty: &ast::ty) ->
+   ast::crate {
+    let j: @mutable uint = @mutable 0u;
+    fn fold_ty_rep(j_: @mutable uint, i_: uint, newty_: &ast::ty_,
+                     original: &ast::ty_, fld: fold::ast_fold) ->
+       ast::ty_ {
+        *j_ += 1u;
+        if i_ + 1u == *j_ && safe_to_replace_ty(original) {
+            newty_
+        } else { fold::noop_fold_ty(original, fld) }
+    }
+    let afp =
+        {fold_ty: bind fold_ty_rep(j, i, newty.node, _, _)
+            with *fold::default_ast_fold()};
+    let af = fold::make_fold(afp);
+    let crate2: @ast::crate = @af.fold_crate(crate);
+    fold::dummy_out(af); // work around a leak (https://github.com/graydon/rust/issues/651)
     *crate2
 }
 
@@ -152,14 +196,30 @@ fn as_str(f: fn(io::writer)) -> str {
 
 fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
                          filename: &str) {
-    let exprs = steal_exprs(crate);
-    let exprsL = vec::len(exprs);
-    if exprsL < 100u {
-        for each i: uint in under(uint::min(exprsL, 20u)) {
-            log_err "Replacing... " + pprust::expr_to_str(@exprs[i]);
-            for each j: uint in under(uint::min(exprsL, 5u)) {
-                log_err "With... " + pprust::expr_to_str(@exprs[j]);
-                let crate2 = @replace_expr_in_crate(crate, i, exprs[j].node);
+    let stolen = steal(crate);
+    check_variants_T(crate, codemap, filename, "expr", stolen.exprs, pprust::expr_to_str, replace_expr_in_crate);
+    check_variants_T(crate, codemap, filename, "ty", stolen.tys, pprust::ty_to_str, replace_ty_in_crate);
+}
+
+fn check_variants_T<T>(
+  crate: &ast::crate,
+  codemap: &codemap::codemap,
+  filename: &str,
+  thing_label: &str,
+  things: [T],
+  stringifier: fn(&@T) -> str,
+  replacer: fn(&ast::crate, uint, &T) -> ast::crate
+  ) {
+    log_err #fmt("%s contains %u %s objects", filename, vec::len(things), thing_label);
+
+    let L = vec::len(things);
+
+    if L < 100u {
+        for each i: uint in under(uint::min(L, 20u)) {
+            log_err "Replacing... " + stringifier(@things[i]);
+            for each j: uint in under(uint::min(L, 5u)) {
+                log_err "With... " + stringifier(@things[j]);
+                let crate2 = @replacer(crate, i, things[j]);
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
                 let str3 =
@@ -168,8 +228,8 @@ fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
                                                     io::string_reader(""), _,
                                                     pprust::no_ann()));
                 check_roundtrip_convergence(str3, 1u);
-                //let label = #fmt("buggy_%s_%ud_%ud.rs", last_part(filename), i, j);
-                //check_whole_compiler(str3, label);
+                //let file_label = #fmt("buggy_%s_%s_%u_%u.rs", last_part(filename), thing_label, i, j);
+                //check_whole_compiler(str3, file_label);
             }
         }
     }
@@ -214,9 +274,20 @@ fn check_whole_compiler_inner(filename: &str) -> compile_result {
             known_bug("https://github.com/graydon/rust/issues/892")
         } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\")") {
             known_bug("https://github.com/graydon/rust/issues/895")
+        } else if contains(p.err, "Initializer type must match GlobalVariable type") {
+            known_bug("https://github.com/graydon/rust/issues/899")
+        } else if contains(p.err, "(castIsValid(op, S, Ty) && \"Invalid cast!\"), function Create") {
+            known_bug("https://github.com/graydon/rust/issues/901")
         } else {
             log_err "Stderr: " + p.err;
             failed("Unfamiliar error message")
+        }
+    } else if p.status == 256 {
+        if contains(p.out, "Out of stack space, sorry") {
+            known_bug("Recursive types - https://github.com/graydon/rust/issues/742")
+        } else {
+            log_err "Stdout: " + p.out;
+            failed("Unfamiliar sudden exit")
         }
     } else if p.status == 6 {
         if contains(p.out, "get_id_ident: can't find item in ext_map") {
@@ -235,7 +306,7 @@ fn check_whole_compiler_inner(filename: &str) -> compile_result {
         passed("Accepted the input program")
     } else {
         log_err p.status;
-        log_err p.out;
+        log_err "!Stdout: " + p.out;
         failed("Unfamiliar status code")
     }
 }
@@ -257,6 +328,7 @@ fn content_is_dangerous_to_modify(code: &str) -> bool {
     let dangerous_patterns =
         ["#macro", // not safe to steal things inside of it, because they have a special syntax
          "#",      // strange representation of the arguments to #fmt, for example
+         "tag",    // typeck hang: https://github.com/graydon/rust/issues/900
          " be "];  // don't want to replace its child with a non-call: "Non-call expression in tail call"
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
