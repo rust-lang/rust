@@ -972,40 +972,20 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
     cx.kind_cache.insert(ty, result);
 
     alt struct(cx, ty) {
-
-
-
-
-
       // Scalar types are unique-kind, no substructure.
       ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_uint. | ty_float. |
       ty_machine(_) | ty_char. | ty_native(_) {
         // no-op
       }
-
-
-
-
-
       // A handful of other built-in are unique too.
       ty_type. | ty_str. | ty_native_fn(_, _, _) {
         // no-op
       }
-
-
-
-
-
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
       ty_obj(_) {
         result = kind_shared;
       }
-
-
-
-
-
       // FIXME: the environment capture mode is not fully encoded
       // here yet, leading to weirdness around closure.
       ty_fn(proto, _, _, _, _) {
@@ -1016,21 +996,11 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
               _ { ast::kind_unique }
             }
       }
-
-
-
-
-
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
       ty_box(mt) {
         result = ast::kind_shared;
       }
-
-
-
-
-
       // Pointers and unique boxes / vecs raise pinned to shared,
       // otherwise pass through their pointee kind.
       ty_ptr(tm) | ty_vec(tm) {
@@ -1038,11 +1008,6 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
         if k == ast::kind_pinned { k = ast::kind_shared }
         result = kind::lower_kind(result, k);
       }
-
-
-
-
-
       // Records lower to the lowest of their members.
       ty_rec(flds) {
         for f: field in flds {
@@ -1050,10 +1015,6 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
             if result == ast::kind_pinned { break; }
         }
       }
-
-
-
-
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
         for ty: t in tys {
@@ -1061,11 +1022,6 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
             if result == ast::kind_pinned { break; }
         }
       }
-
-
-
-
-
       // Tags lower to the lowest of their variants.
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
@@ -1079,49 +1035,23 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
             if result == ast::kind_pinned { break; }
         }
       }
-
-
-
-
-
       // Resources are always pinned.
       ty_res(did, inner, tps) {
         result = ast::kind_pinned;
       }
-
-
-
-
-
       ty_var(_) {
         fail;
       }
-
-
-
-
-
       ty_param(_, k) {
         result = kind::lower_kind(result, k);
       }
-
-
-
-
-
       ty_constr(t, _) {
         result = type_kind(cx, t);
       }
-
-
-
-
-
       _ {
         cx.sess.bug("missed case: " + ty_to_str(cx, ty));
       }
     }
-
 
     cx.kind_cache.insert(ty, result);
     ret result;
@@ -1193,37 +1123,35 @@ pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool {
 // the value itself. I.e. types with mutable content that's not shared through
 // a pointer.
 fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
-    ret !type_structurally_contains(cx, ty,
-                                    fn (sty: sty) -> bool {
-                                        ret alt sty {
-                                              ty_param(_, _) { true }
-                                              ty_vec(mt) {
-                                                mt.mut != ast::imm
-                                              }
-                                              ty_rec(fields) {
-                                                for field in fields {
-                                                    if field.mt.mut !=
-                                                           ast::imm {
-                                                        ret true;
-                                                    }
-                                                }
-                                                false
-                                              }
-                                              _ { false }
-                                            };
-                                    });
+    ret !type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
+        ret alt sty {
+          ty_param(_, _) { true }
+          ty_vec(mt) {
+            mt.mut != ast::imm
+          }
+          ty_rec(fields) {
+            for field in fields {
+                if field.mt.mut !=
+                    ast::imm {
+                    ret true;
+                }
+            }
+            false
+          }
+          _ { false }
+        };
+    });
 }
 
 fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
-    ret type_structurally_contains(cx, ty,
-                                   fn (sty: sty) -> bool {
-                                       ret alt sty {
-                                             ty_uniq(_) { ret true; }
-                                             ty_vec(_) { true }
-                                             ty_str. { true }
-                                             _ { ret false; }
-                                           };
-                                   });
+    ret type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
+        ret alt sty {
+          ty_uniq(_) { ret true; }
+          ty_vec(_) { true }
+          ty_str. { true }
+          _ { ret false; }
+        };
+    });
 }
 
 fn type_is_integral(cx: ctxt, ty: t) -> bool {
@@ -1283,30 +1211,16 @@ fn type_is_signed(cx: ctxt, ty: t) -> bool {
 fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let result = true;
     alt struct(cx, ty) {
-
-
-
-
       // Scalar types
       ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_float. | ty_uint. |
       ty_machine(_) | ty_char. | ty_type. | ty_native(_) | ty_ptr(_) {
         result = true;
       }
-
-
-
-
-
       // Boxed types
       ty_str. | ty_box(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
       ty_native_fn(_, _, _) | ty_obj(_) {
         result = false;
       }
-
-
-
-
-
       // Structural types
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
@@ -1330,11 +1244,6 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         result = type_is_pod(cx, substitute_type_params(cx, tps, inner));
       }
       ty_constr(subt, _) { result = type_is_pod(cx, subt); }
-
-
-
-
-
       ty_var(_) {
         fail "ty_var in type_is_pod";
       }
@@ -1428,7 +1337,6 @@ fn hash_type_structure(st: sty) -> uint {
         ret h;
     }
 
-
     fn hash_fn(id: uint, args: [arg], rty: t) -> uint {
         let h = id;
         for a: arg in args { h += h << 5u + hash_ty(a.ty); }
@@ -1474,10 +1382,6 @@ fn hash_type_structure(st: sty) -> uint {
         for tt in ts { h += h << 5u + hash_ty(tt); }
         ret h;
       }
-
-
-
-
 
       // ???
       ty_fn(_, args, rty, _, _) {
@@ -2153,11 +2057,6 @@ mod unify {
         // variable.
 
         alt struct(cx.tcx, actual) {
-
-
-
-
-
           // If the RHS is a variable type, then just do the
           // appropriate binding.
           ty::ty_var(actual_id) {
@@ -2171,8 +2070,6 @@ mod unify {
                 }
               }
               _ {
-
-
                 // Just bind the type variable to the expected type.
                 alt record_var_binding(cx, actual_id, expected) {
                   ures_ok(_) {/* fall through */ }
@@ -2204,11 +2101,6 @@ mod unify {
         }
         alt struct(cx.tcx, expected) {
           ty::ty_nil. { ret struct_cmp(cx, expected, actual); }
-
-
-
-
-
           // _|_ unifies with anything
           ty::ty_bot. {
             ret ures_ok(actual);
