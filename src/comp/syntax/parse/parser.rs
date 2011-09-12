@@ -826,7 +826,8 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
             hi = p.get_hi_pos();
             expect(p, token::RBRACE);
             ex = ast::expr_rec(fields, base);
-        } else if p.peek() == token::BINOP(token::OR) {
+        } else if p.peek() == token::BINOP(token::OR) ||
+                  p.peek() == token::OROR {
             ret parse_fn_block_expr(p);
         } else {
             let blk = parse_block_tail(p, lo, ast::checked);
@@ -1772,10 +1773,13 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
 }
 
 fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
-    let inputs: ast::spanned<[ast::arg]> =
+    let inputs = if p.peek() == token::OROR {
+        p.bump(); []
+    } else {
         parse_seq(token::BINOP(token::OR), token::BINOP(token::OR),
-                  some(token::COMMA), parse_fn_block_arg, p);
-    ret {inputs: inputs.node,
+                  some(token::COMMA), parse_fn_block_arg, p).node
+    };
+    ret {inputs: inputs,
          output: @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer),
          purity: ast::impure_fn,
          il: ast::il_normal,
