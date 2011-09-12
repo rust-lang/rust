@@ -1,29 +1,14 @@
 
-import std::vec;
-import std::int;
-import std::io;
-import std::str;
-import std::uint;
-import std::option;
+import std::{vec, int, io, str, uint, option};
 import parse::lexer;
 import syntax::codemap::codemap;
 import syntax::visit;
 import ast;
 import ast_util;
-import option::some;
-import option::none;
-import pp::printer;
-import pp::break_offset;
-import pp::word;
-import pp::huge_word;
-import pp::zero_word;
-import pp::space;
-import pp::zerobreak;
-import pp::hardbreak;
-import pp::breaks;
-import pp::consistent;
-import pp::inconsistent;
-import pp::eof;
+import option::{some, none};
+import pp::{printer, break_offset, word, huge_word, zero_word,
+            space, zerobreak, hardbreak, breaks, consistent,
+            inconsistent, eof};
 
 // The ps is stored here to prevent recursive type.
 // FIXME use a nominal tag instead

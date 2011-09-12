@@ -4,10 +4,7 @@
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
-import std::vec;
-import std::str;
-import std::option;
-import std::generic_os;
+import std::{vec, str, option, generic_os};
 import base::*;
 export expand_syntax_ext;
 

@@ -1,11 +1,5 @@
-import std::vec;
-import std::uint;
-import std::str;
-import std::term;
-import std::io;
-import std::option;
-import std::option::some;
-import std::option::none;
+import std::{vec, uint, str, term, io, option};
+import std::option::{some, none};
 
 type filename = str;
 

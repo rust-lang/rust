@@ -1,47 +1,22 @@
-import syntax::ast;
-import syntax::ast_util;
-import ast::mutability;
-import syntax::ast_util::local_def;
-import syntax::ast_util::respan;
-import ast::spanned;
+import syntax::{ast, ast_util};
+import ast::{mutability, spanned};
+import syntax::ast_util::{local_def, respan};
 import syntax::visit;
 import metadata::csearch;
 import driver::session;
 import util::common;
 import util::common::*;
 import syntax::codemap::span;
-import std::map::new_int_hash;
-import std::map::new_str_hash;
 import middle::ty;
-import middle::ty::node_id_to_type;
-import middle::ty::arg;
-import middle::ty::bind_params_in_type;
-import middle::ty::block_ty;
-import middle::ty::expr_ty;
-import middle::ty::field;
-import middle::ty::method;
-import middle::ty::node_type_table;
-import middle::ty::pat_ty;
-import middle::ty::ty_param_substs_opt_and_ty;
+import middle::ty::{node_id_to_type, arg, bind_params_in_type, block_ty,
+                    expr_ty, field, method, node_type_table, pat_ty,
+                    ty_param_substs_opt_and_ty, ty_param_kinds_and_ty,
+                    ty_nil};
 import util::ppaux::ty_to_str;
-import middle::ty::ty_param_kinds_and_ty;
-import middle::ty::ty_nil;
-import middle::ty::unify::ures_ok;
-import middle::ty::unify::ures_err;
-import middle::ty::unify::fixup_result;
-import middle::ty::unify::fix_ok;
-import middle::ty::unify::fix_err;
-import std::int;
-import std::vec;
-import std::str;
-import std::uint;
-import std::map;
-import std::map::hashmap;
-import std::option;
-import std::option::none;
-import std::option::some;
-import std::option::from_maybe;
-import std::smallintmap;
+import middle::ty::unify::{ures_ok, ures_err, fixup_result, fix_ok, fix_err};
+import std::{int, vec, str, uint, map, option, smallintmap};
+import std::map::{hashmap, new_int_hash, new_str_hash};
+import std::option::{none, some, from_maybe};
 import middle::tstate::ann::ts_ann;
 import syntax::print::pprust::*;
 

@@ -1,28 +1,11 @@
-import std::vec;
-import std::str;
+import std::{vec, str};
 import std::str::sbuf;
 
-import llvm::ModuleRef;
-import llvm::ContextRef;
-import llvm::TypeRef;
-import llvm::TypeHandleRef;
-import llvm::ValueRef;
-import llvm::BasicBlockRef;
-import llvm::BuilderRef;
-import llvm::ModuleProviderRef;
-import llvm::MemoryBufferRef;
-import llvm::PassManagerRef;
-import llvm::UseRef;
-import llvm::TargetDataRef;
-import llvm::Linkage;
-import llvm::Attribute;
-import llvm::Visibility;
-import llvm::CallConv;
-import llvm::IntPredicate;
-import llvm::RealPredicate;
-import llvm::Opcode;
-import llvm::ObjectFileRef;
-import llvm::SectionIteratorRef;
+import llvm::{ModuleRef, ContextRef, TypeRef, TypeHandleRef, ValueRef,
+              BasicBlockRef, BuilderRef, ModuleProviderRef, MemoryBufferRef,
+              PassManagerRef, UseRef, TargetDataRef, Linkage, Attribute,
+              Visibility, CallConv, IntPredicate, RealPredicate, Opcode,
+              ObjectFileRef, SectionIteratorRef};
 
 type ULongLong = u64;
 type LongLong = i64;

@@ -1,7 +1,6 @@
 // Interior vector utility functions.
 
-import option::none;
-import option::some;
+import option::{some, none};
 import uint::next_power_of_two;
 import ptr::addr_of;
 

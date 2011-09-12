@@ -1,27 +1,17 @@
 // Extracting metadata from crate files
 
 import driver::session;
-import syntax::ast;
-import syntax::ast_util;
-import lib::llvm::False;
-import lib::llvm::llvm;
-import lib::llvm::mk_object_file;
-import lib::llvm::mk_section_iter;
+import syntax::{ast, ast_util};
+import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 import front::attr;
 import middle::resolve;
 import syntax::visit;
 import syntax::codemap::span;
 import back::x86;
 import util::common;
-import std::vec;
-import std::str;
-import std::fs;
-import std::io;
-import std::option;
-import std::option::none;
-import std::option::some;
-import std::map::hashmap;
-import std::map::new_int_hash;
+import std::{vec, str, fs, io, option};
+import std::option::{none, some};
+import std::map::{hashmap, new_int_hash};
 import syntax::print::pprust;
 import common::*;
 

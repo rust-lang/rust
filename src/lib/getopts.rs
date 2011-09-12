@@ -8,8 +8,7 @@
  * is what you expect. Use opt_* accessors (bottom of the file) to get
  * argument values out of the match object.
  */
-import option::some;
-import option::none;
+import option::{some, none};
 export opt;
 export reqopt;
 export optopt;

@@ -1,18 +1,11 @@
-import std::str;
-import std::vec;
-import std::option;
-import option::some;
-import option::none;
+import std::{str, vec, option};
+import option::{some, none};
 import std::map::hashmap;
 
 import lib::llvm::llvm;
-import lib::llvm::llvm::ValueRef;
-import lib::llvm::llvm::TypeRef;
-import lib::llvm::llvm::BasicBlockRef;
+import lib::llvm::llvm::{ValueRef, TypeRef, BasicBlockRef};
 import trans_build::*;
-import trans::new_sub_block_ctxt;
-import trans::new_scope_block_ctxt;
-import trans::load_if_immediate;
+import trans::{new_sub_block_ctxt, new_scope_block_ctxt, load_if_immediate};
 import ty::pat_ty;
 import syntax::ast;
 import syntax::ast_util;

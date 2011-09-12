@@ -12,66 +12,38 @@
 //     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
-import std::int;
-import std::str;
-import std::uint;
-import std::map;
+import std::{int, str, uint, map, option, fs, time, vec};
 import std::map::hashmap;
-import std::option;
-import std::option::some;
-import std::option::none;
-import std::fs;
-import std::time;
-import std::vec;
-import syntax::ast;
-import syntax::ast_util;
+import std::map::{new_int_hash, new_str_hash};
+import std::option::{some, none};
 import driver::session;
-import middle::ty;
+import middle::{ty, gc};
 import middle::freevars::*;
-import middle::gc;
-import back::link;
-import back::x86;
-import back::abi;
-import back::upcall;
+import back::{link, x86, abi, upcall};
+import syntax::{ast, ast_util};
 import syntax::visit;
+import syntax::codemap::span;
+import syntax::print::pprust::{expr_to_str, path_to_str};
 import visit::vt;
 import util::common;
 import util::common::*;
-import std::map::new_int_hash;
-import std::map::new_str_hash;
-import syntax::codemap::span;
-import lib::llvm::llvm;
-import lib::llvm::target_data;
-import lib::llvm::type_names;
-import lib::llvm::mk_target_data;
-import lib::llvm::mk_type_names;
-import lib::llvm::llvm::ModuleRef;
-import lib::llvm::llvm::ValueRef;
-import lib::llvm::llvm::TypeRef;
-import lib::llvm::llvm::TypeHandleRef;
-import lib::llvm::llvm::BuilderRef;
-import lib::llvm::llvm::BasicBlockRef;
-import lib::llvm::False;
-import lib::llvm::True;
-import lib::llvm::Bool;
-import link::mangle_internal_name_by_type_only;
-import link::mangle_internal_name_by_seq;
-import link::mangle_internal_name_by_path;
-import link::mangle_internal_name_by_path_and_seq;
-import link::mangle_exported_name;
-import metadata::creader;
-import metadata::csearch;
-import metadata::cstore;
-import util::ppaux::ty_to_str;
-import util::ppaux::ty_to_short_str;
-import syntax::print::pprust::expr_to_str;
-import syntax::print::pprust::path_to_str;
+import lib::llvm::{llvm, target_data, type_names,
+                   mk_target_data, mk_type_names};
+import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, TypeHandleRef, 
+                         BuilderRef, BasicBlockRef};
+import lib::llvm::{Bool, True, False};
+import link::{mangle_internal_name_by_type_only,
+              mangle_internal_name_by_seq,
+              mangle_internal_name_by_path,
+              mangle_internal_name_by_path_and_seq,
+              mangle_exported_name};
+import metadata::{creader, csearch, cstore};
+import util::ppaux::{ty_to_str, ty_to_short_str};
 
 import trans_common::*;
 import trans_build::*;
 
-import trans_objects::trans_anon_obj;
-import trans_objects::trans_obj;
+import trans_objects::{trans_anon_obj, trans_obj};
 import tvec = trans_vec;
 
 fn type_of(cx: @crate_ctxt, sp: span, t: ty::t) : type_has_static_size(cx, t)

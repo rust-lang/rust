@@ -3,27 +3,13 @@ import syntax::visit;
 import std::vec;
 import std::option::*;
 import aux::*;
-import tstate::ann::pre_and_post;
-import tstate::ann::precond;
-import tstate::ann::postcond;
-import tstate::ann::prestate;
-import tstate::ann::poststate;
-import tstate::ann::relax_prestate;
-import tstate::ann::relax_precond;
-import tstate::ann::relax_poststate;
-import tstate::ann::pps_len;
-import tstate::ann::true_precond;
-import tstate::ann::empty_prestate;
-import tstate::ann::difference;
-import tstate::ann::union;
-import tstate::ann::intersect;
-import tstate::ann::clone;
-import tstate::ann::set_in_postcond;
-import tstate::ann::set_in_poststate;
-import tstate::ann::set_in_poststate_;
-import tstate::ann::clear_in_poststate;
-import tstate::ann::clear_in_prestate;
-import tstate::ann::clear_in_poststate_;
+import tstate::ann::{pre_and_post, precond, postcond, prestate, poststate,
+                     relax_prestate, relax_precond, relax_poststate,
+                     pps_len, true_precond, empty_prestate,
+                     difference, union, intersect, clone,
+                     set_in_postcond, set_in_poststate, set_in_poststate_,
+                     clear_in_poststate, clear_in_prestate,
+                     clear_in_poststate_};
 import tritv::*;
 import util::common::*;
 

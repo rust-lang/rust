@@ -1,22 +1,11 @@
 use std;
 use rustc;
 
-import std::fs;
-import std::getopts;
-import std::getopts::optopt;
-import std::getopts::opt_present;
-import std::getopts::opt_str;
-import std::io;
+import std::{fs, io, getopts, vec, str, uint, option};
+import std::getopts::{optopt, opt_present, opt_str};
 import std::io::stdout;
-import std::vec;
-import std::str;
-import std::uint;
-import std::option;
 
-import rustc::syntax::ast;
-import rustc::syntax::fold;
-import rustc::syntax::visit;
-import rustc::syntax::codemap;
+import rustc::syntax::{ast, fold, visit, codemap};
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 

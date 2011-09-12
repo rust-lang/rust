@@ -1,7 +1,6 @@
-import std::option;
+import std::{str, option};
 import base::*;
 import syntax::ast;
-import std::str;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: @ast::expr,
                      _body: option::t<str>) -> @ast::expr {

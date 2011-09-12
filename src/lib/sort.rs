@@ -1,6 +1,5 @@
 
-import vec::len;
-import vec::slice;
+import vec::{len, slice};
 
 export merge_sort;
 export quick_sort;

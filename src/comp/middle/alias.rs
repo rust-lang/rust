@@ -1,20 +1,12 @@
 
-import syntax::ast;
-import syntax::ast_util;
-import ast::ident;
-import ast::fn_ident;
-import ast::node_id;
-import ast::def_id;
+import syntax::{ast, ast_util};
+import ast::{ident, fn_ident, node_id, def_id};
 import mut::{expr_root, mut_field, inner_mut};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
-import std::vec;
-import std::str;
-import std::option;
-import std::option::some;
-import std::option::none;
-import std::option::is_none;
+import std::{vec, str, option};
+import std::option::{some, none, is_none};
 
 // This is not an alias-analyser (though it would merit from becoming one, or
 // getting input from one, to be more precise). It is a pass that checks

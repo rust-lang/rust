@@ -1,9 +1,7 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-import std::vec;
-import std::map;
-import std::str;
+import std::{vec, map, str};
 import syntax::ast;
 
 export cstore;

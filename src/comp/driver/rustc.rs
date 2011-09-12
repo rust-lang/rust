@@ -1,42 +1,20 @@
 
 
 // -*- rust -*-
-import metadata::creader;
-import metadata::cstore;
-import syntax::parse::parser;
-import syntax::parse::token;
-import syntax::ast;
-import syntax::codemap;
+import metadata::{creader, cstore};
+import syntax::parse::{parser, token};
+import syntax::{ast, codemap};
 import front::attr;
-import middle::trans;
-import middle::resolve;
-import middle::freevars;
-import middle::kind;
-import middle::ty;
-import middle::typeck;
+import middle::{trans, resolve, freevars, kind, ty, typeck};
 import middle::tstate::ck;
-import syntax::print::pp;
-import syntax::print::pprust;
-import util::ppaux;
+import syntax::print::{pp, pprust};
+import util::{ppaux, common};
 import back::link;
 import lib::llvm;
-import util::common;
-import std::fs;
+import std::{fs, option, str, vec, int, io, run, getopts};
 import std::map::mk_hashmap;
-import std::option;
-import std::option::some;
-import std::option::none;
-import std::str;
-import std::vec;
-import std::int;
-import std::io;
-import std::run;
-import std::getopts;
-import std::getopts::optopt;
-import std::getopts::optmulti;
-import std::getopts::optflag;
-import std::getopts::optflagopt;
-import std::getopts::opt_present;
+import std::option::{some, none};
+import std::getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::link::output_type;
 
 tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }

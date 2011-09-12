@@ -1,15 +1,11 @@
 
-import std::str;
-import std::option;
-import std::option::some;
-import std::option::none;
+import std::{str, option};
+import std::option::{some, none};
 import syntax::ast;
 import syntax::parse::token;
-import syntax::parse::parser::parser;
-import syntax::parse::parser::new_parser_from_file;
-import syntax::parse::parser::parse_inner_attrs_and_next;
-import syntax::parse::parser::parse_mod_items;
-import syntax::parse::parser::SOURCE_FILE;
+import syntax::parse::parser::{parser, new_parser_from_file, 
+                               parse_inner_attrs_and_next,
+                               parse_mod_items, SOURCE_FILE};
 
 export eval_crate_directives_to_mod;
 export mode_parse;

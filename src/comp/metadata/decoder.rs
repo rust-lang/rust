@@ -1,18 +1,12 @@
 // Decoding metadata from a single crate's metadata
 
-import std::ebml;
-import std::vec;
-import std::option;
-import std::str;
-import std::io;
+import std::{ebml, vec, option, str, io};
 import std::map::hashmap;
-import syntax::ast;
-import syntax::ast_util;
+import syntax::{ast, ast_util};
 import front::attr;
 import middle::ty;
 import common::*;
-import tydecode::parse_def_id;
-import tydecode::parse_ty_data;
+import tydecode::{parse_def_id, parse_ty_data};
 import driver::session;
 import syntax::print::pprust;
 import cstore;

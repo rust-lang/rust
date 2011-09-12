@@ -1,13 +1,7 @@
 
-import std::io;
-import std::int;
-import std::vec;
-import std::str;
-import std::map;
+import std::{io, int, vec, str, map, option};
 import std::map::hashmap;
-import std::option;
-import std::option::some;
-import std::option::none;
+import std::option::{some, none};
 import util::interner;
 import util::interner::intern;
 import codemap;

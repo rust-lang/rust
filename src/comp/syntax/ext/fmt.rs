@@ -5,11 +5,8 @@
  * should all get sucked into either the standard library extfmt module or the
  * compiler syntax extension plugin interface.
  */
-import std::vec;
-import std::str;
-import std::option;
-import std::option::none;
-import std::option::some;
+import std::{vec, str, option};
+import std::option::{none, some};
 import std::extfmt::ct::*;
 import base::*;
 import codemap::span;

@@ -1,21 +1,13 @@
 
-import std::io;
-import std::vec;
-import std::str;
-import std::option;
-import std::option::some;
-import std::option::none;
-import std::either;
-import std::either::left;
-import std::either::right;
-import std::map::hashmap;
+import std::{io, vec, str, option, either};
+import std::option::{some, none};
+import std::either::{left, right};
+import std::map::{hashmap, new_str_hash};
 import token::can_begin_expr;
 import ex = ext::base;
 import codemap::span;
-import std::map::new_str_hash;
 import util::interner;
-import ast::node_id;
-import ast::spanned;
+import ast::{node_id, spanned};
 
 tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; }
 

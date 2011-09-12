@@ -70,19 +70,9 @@
 *
 */
 
-
-import syntax::ast;
-import syntax::ast_util;
-import syntax::visit;
-
-import std::vec;
-import std::option;
-import std::str;
-
-import ast::kind;
-import ast::kind_unique;
-import ast::kind_shared;
-import ast::kind_pinned;
+import syntax::{ast, ast_util, visit};
+import std::{vec, option, str};
+import ast::{kind, kind_unique, kind_shared, kind_pinned};
 
 fn kind_lteq(a: kind, b: kind) -> bool {
     alt a {

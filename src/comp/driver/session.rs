@@ -1,15 +1,10 @@
 
-import syntax::ast;
+import syntax::{ast, codemap};
 import syntax::ast::node_id;
-import syntax::codemap;
 import codemap::span;
 import syntax::ast::ty_mach;
-import std::uint;
-import std::map;
-import std::option;
-import std::option::some;
-import std::option::none;
-import std::str;
+import std::{uint, map, option, str};
+import std::option::{some, none};
 import syntax::parse::parser::parse_sess;
 
 tag os { os_win32; os_macos; os_linux; }

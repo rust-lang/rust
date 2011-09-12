@@ -1,22 +1,15 @@
 // Translation of object-related things to LLVM IR.
 
-import std::str;
-import std::option;
-import std::vec;
-import option::none;
-import option::some;
+import std::{str, option, vec};
+import option::{none, some};
 
-import lib::llvm::llvm;
-import lib::llvm::Bool;
-import lib::llvm::True;
-import lib::llvm::llvm::TypeRef;
-import lib::llvm::llvm::ValueRef;
+import lib::llvm::{llvm, Bool, True};
+import lib::llvm::llvm::{TypeRef, ValueRef};
 
 import back::abi;
-import back::link::mangle_internal_name_by_path;
-import back::link::mangle_internal_name_by_path_and_seq;
-import syntax::ast;
-import syntax::ast_util;
+import back::link::{mangle_internal_name_by_path,
+                    mangle_internal_name_by_path_and_seq};
+import syntax::{ast, ast_util};
 import syntax::codemap::span;
 
 import trans_common::*;

@@ -1,31 +1,14 @@
-import std::str;
-import std::map;
+import std::{str, map, uint, int, option};
 import std::map::hashmap;
-import std::uint;
-import std::int;
-import std::option;
-import std::option::none;
-import std::option::some;
+import std::option::{none, some};
 import syntax::ast;
-import ast::ty;
-import ast::pat;
-import syntax::codemap::codemap;
-import syntax::codemap::span;
-import ast::lit;
-import ast::path;
+import ast::{ty, pat, lit, path};
+import syntax::codemap::{codemap, span};
 import syntax::visit;
-import std::io::stdout;
-import std::io::str_writer;
-import std::io::string_writer;
+import std::io::{stdout, str_writer, string_writer};
 import syntax::print;
-import print::pprust::print_block;
-import print::pprust::print_item;
-import print::pprust::print_expr;
-import print::pprust::print_path;
-import print::pprust::print_decl;
-import print::pprust::print_fn;
-import print::pprust::print_type;
-import print::pprust::print_literal;
+import print::pprust::{print_block, print_item, print_expr, print_path,
+                       print_decl, print_fn, print_type, print_literal};
 import print::pp::mk_printer;
 
 type flag = hashmap<str, ()>;

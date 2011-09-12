@@ -1,7 +1,5 @@
 
-import std::io;
-import std::vec;
-import std::str;
+import std::{io, vec, str};
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's

@@ -1,36 +1,20 @@
 
-import std::vec;
-import std::str;
-import std::option;
-import std::option::none;
-import std::option::some;
+import std::{vec, str, option};
+import std::option::{none, some};
 
 import tstate::ann::*;
 import aux::*;
-import bitvectors::bit_num;
-import bitvectors::promises;
-import bitvectors::seq_preconds;
-import bitvectors::seq_postconds;
-import bitvectors::intersect_states;
-import bitvectors::declare_var;
-import bitvectors::gen_poststate;
-import bitvectors::relax_precond_block;
-import bitvectors::gen;
+import bitvectors::{bit_num, promises, seq_preconds, seq_postconds,
+                    intersect_states, declare_var, gen_poststate,
+                    relax_precond_block, gen};
 import tritv::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::visit;
 import std::map::new_int_hash;
-import util::common::new_def_hash;
-import util::common::log_expr;
-import util::common::log_fn;
-import util::common::field_exprs;
-import util::common::has_nonlocal_exits;
-import util::common::log_stmt;
-import util::common::log_stmt_err;
-import util::common::log_expr_err;
-import util::common::log_block_err;
-import util::common::log_block;
+import util::common::{new_def_hash, log_expr, log_fn, field_exprs,
+                      has_nonlocal_exits, log_stmt, log_stmt_err,
+                      log_expr_err, log_block_err, log_block};
 import syntax::codemap::span;
 import util::ppaux::fn_ident_to_string;
 

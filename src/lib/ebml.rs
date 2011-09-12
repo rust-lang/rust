@@ -3,8 +3,7 @@
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
-import option::none;
-import option::some;
+import option::{some, none};
 
 type ebml_tag = {id: uint, size: uint};
 

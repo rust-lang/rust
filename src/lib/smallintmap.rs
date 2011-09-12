@@ -2,8 +2,7 @@
 
 /// A simple map based on a vector for small integer keys. Space requirements
 /// are O(highest integer key).
-import option::none;
-import option::some;
+import option::{some, none};
 
 // FIXME: Should not be @; there's a bug somewhere in rustc that requires this
 // to be.

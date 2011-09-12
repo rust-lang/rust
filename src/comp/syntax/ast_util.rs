@@ -1,5 +1,4 @@
-import std::str;
-import std::option;
+import std::{str, option};
 import codemap::span;
 import ast::*;
 

@@ -1,5 +1,4 @@
-import option::some;
-import option::none;
+import option::{some, none};
 
 tag list<T> { cons(T, @list<T>); nil; }
 

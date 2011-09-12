@@ -1,6 +1,5 @@
 
-import option::none;
-import option::some;
+import option::{some, none};
 
 
 // A very naive implementation of union-find with unsigned integer nodes.

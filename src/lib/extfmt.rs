@@ -14,8 +14,7 @@
  * we also only support translating-to-rust a tiny subset of the possible
  * combinations at the moment.
  */
-import option::none;
-import option::some;
+import option::{some, none};
 
 
 /*

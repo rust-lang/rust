@@ -7,8 +7,7 @@ red-black tree or something else.
 
 */
 
-import option::some;
-import option::none;
+import option::{some, none};
 import option = option::t;
 
 export treemap;

@@ -1,7 +1,4 @@
-import std::str;
-import std::uint;
-import std::int;
-import std::vec;
+import std::{str, uint, int, vec};
 import syntax::ast::*;
 import syntax::ast_util::*;
 import util::ppaux::fn_ident_to_string;

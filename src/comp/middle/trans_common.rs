@@ -3,63 +3,37 @@
 
 */
 
-import std::int;
-import std::vec;
+import std::{int, vec, str, uint, map, option, fs, unsafe};
 import std::vec::to_ptr;
-import std::str;
-import std::uint;
-import std::map;
 import std::map::hashmap;
-import std::option;
-import std::option::some;
-import std::option::none;
-import std::fs;
-import std::unsafe;
+import std::option::{some, none};
 import syntax::ast;
 import driver::session;
 import middle::ty;
-import back::link;
-import back::x86;
-import back::abi;
-import back::upcall;
+import back::{link, x86, abi, upcall};
 import syntax::visit;
 import visit::vt;
 import util::common;
 import util::common::*;
-import std::map::new_int_hash;
-import std::map::new_str_hash;
+import std::map::{new_int_hash, new_str_hash};
 import syntax::codemap::span;
-import lib::llvm::llvm;
-import lib::llvm::target_data;
-import lib::llvm::type_names;
-import lib::llvm::mk_target_data;
-import lib::llvm::mk_type_names;
-import lib::llvm::llvm::ModuleRef;
-import lib::llvm::llvm::ValueRef;
-import lib::llvm::llvm::TypeRef;
-import lib::llvm::llvm::TypeHandleRef;
-import lib::llvm::llvm::BuilderRef;
-import lib::llvm::llvm::BasicBlockRef;
-import lib::llvm::False;
-import lib::llvm::True;
-import lib::llvm::Bool;
-import link::mangle_internal_name_by_type_only;
-import link::mangle_internal_name_by_seq;
-import link::mangle_internal_name_by_path;
-import link::mangle_internal_name_by_path_and_seq;
-import link::mangle_exported_name;
-import metadata::creader;
-import metadata::csearch;
-import metadata::cstore;
-import util::ppaux::ty_to_str;
-import util::ppaux::ty_to_short_str;
-import syntax::print::pprust::expr_to_str;
-import syntax::print::pprust::path_to_str;
+import lib::llvm::{llvm, target_data, type_names,
+                   mk_target_data, mk_type_names};
+import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, TypeHandleRef,
+                         BuilderRef, BasicBlockRef};
+import lib::llvm::{True, False, Bool};
+import link::{mangle_internal_name_by_type_only,
+              mangle_internal_name_by_seq,
+              mangle_internal_name_by_path,
+              mangle_internal_name_by_path_and_seq,
+              mangle_exported_name};
+import metadata::{creader, csearch, cstore};
+import util::ppaux::{ty_to_str, ty_to_short_str};
+import syntax::print::pprust::{expr_to_str, path_to_str};
 import bld = trans_build;
 
 // FIXME: These should probably be pulled in here too.
-import trans::type_of_fn_full;
-import trans::drop_ty;
+import trans::{type_of_fn_full, drop_ty};
 
 obj namegen(mutable i: int) {
     fn next(prefix: str) -> str { i += 1; ret prefix + int::str(i); }

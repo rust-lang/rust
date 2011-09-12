@@ -1,38 +1,21 @@
 
-import syntax::ast;
+import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
-import syntax::ast_util;
-import syntax::codemap;
-import ast::ident;
-import ast::fn_ident;
-import ast::def;
-import ast::def_id;
-import ast::node_id;
-import syntax::ast_util::local_def;
+import ast::{ident, fn_ident, def, def_id, node_id};
+import syntax::ast_util::{local_def, respan};
 
-import metadata::csearch;
-import metadata::cstore;
+import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;
-import std::map::new_int_hash;
-import std::map::new_str_hash;
+import std::map::{new_int_hash, new_str_hash};
 import syntax::codemap::span;
-import syntax::ast_util::respan;
 import middle::ty::constr_table;
 import syntax::visit;
 import visit::vt;
-import std::vec;
-import std::int;
+import std::{vec, int, list, option, str};
 import std::map::hashmap;
-import std::list;
-import std::list::list;
-import std::list::nil;
-import std::list::cons;
-import std::option;
-import std::option::is_none;
-import std::option::some;
-import std::option::none;
-import std::str;
+import std::list::{list, nil, cons};
+import std::option::{some, none, is_none};
 import syntax::print::pprust::*;
 
 export resolve_crate;

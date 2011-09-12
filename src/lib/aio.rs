@@ -2,10 +2,7 @@ import task;
 import vec;
 
 import comm;
-import comm::chan;
-import comm::port;
-import comm::send;
-import comm::recv;
+import comm::{chan, port, send, recv};
 import net;
 
 native "rust" mod rustrt {

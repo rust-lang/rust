@@ -1,36 +1,19 @@
 import syntax::print::pprust::path_to_str;
 import util::ppaux::ty_to_str;
-import std::vec;
-import std::str;
-import std::option;
-import std::option::get;
-import std::option::is_none;
-import std::option::none;
-import std::option::some;
-import std::option::maybe;
+import std::{vec, str, option};
+import std::option::{get, is_none, none, some, maybe};
 import ann::*;
 import aux::*;
-import tritv::tritv_clone;
-import tritv::tritv_set;
-import tritv::ttrue;
+import tritv::{tritv_clone, tritv_set, ttrue};
 
 import bitvectors::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::codemap::span;
-import middle::ty::expr_ty;
-import middle::ty::type_is_nil;
-import middle::ty::type_is_bot;
-import util::common::new_def_hash;
-import util::common::log_expr;
-import util::common::log_block;
-import util::common::log_block_err;
-import util::common::log_fn;
-import util::common::field_exprs;
-import util::common::has_nonlocal_exits;
-import util::common::log_stmt;
-import util::common::log_stmt_err;
-import util::common::log_expr_err;
+import middle::ty::{expr_ty, type_is_nil, type_is_bot};
+import util::common::{new_def_hash, log_expr, log_block, log_block_err,
+                      log_fn, field_exprs, has_nonlocal_exits, log_stmt,
+                      log_stmt_err, log_expr_err};
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
     alt t {

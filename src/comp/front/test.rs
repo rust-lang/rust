@@ -1,10 +1,7 @@
 // Code that generates a test runner to run all the tests in a crate
 
-import std::option;
-import std::vec;
-import std::str;
-import syntax::ast;
-import syntax::ast_util;
+import std::{option, vec, str};
+import syntax::{ast, ast_util};
 import syntax::ast_util::*;
 //import syntax::ast_util::dummy_sp;
 import syntax::fold;

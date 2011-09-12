@@ -1,14 +1,7 @@
 // Metadata encoding
 
-import std::vec;
-import std::str;
-import std::uint;
-import std::io;
-import std::option;
-import std::option::some;
-import std::option::none;
-import std::ebml;
-import std::map;
+import std::{vec, str, uint, io, option, ebml, map};
+import std::option::{some, none};
 import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::local_def;

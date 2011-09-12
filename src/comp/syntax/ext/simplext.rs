@@ -1,35 +1,17 @@
 use std;
 
 import codemap::span;
-import std::vec;
-import std::str;
-import std::option;
-import std::map::hashmap;
-import std::map::new_str_hash;
-import option::some;
-import option::none;
+import std::{vec, str, option};
+import std::map::{hashmap, new_str_hash};
+import option::{some, none};
 
-import base::syntax_extension;
-import base::ext_ctxt;
-import base::normal;
-import base::expr_to_str;
-import base::expr_to_ident;
+import base::{syntax_extension, ext_ctxt, normal,
+              expr_to_str, expr_to_ident};
 
 import fold::*;
-import ast::node_id;
 import ast_util::respan;
-import ast::ident;
-import ast::path;
-import ast::ty;
-import ast::blk;
-import ast::blk_;
-import ast::expr;
-import ast::expr_;
-import ast::path_;
-import ast::expr_path;
-import ast::expr_vec;
-import ast::expr_mac;
-import ast::mac_invoc;
+import ast::{ident, path, ty, blk, blk_, expr, expr_, path_, expr_path,
+             expr_vec, expr_mac, mac_invoc, node_id};
 
 export add_new_extension;
 

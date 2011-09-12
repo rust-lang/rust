@@ -1,8 +1,6 @@
-import std::smallintmap;
-import std::option;
+import std::{smallintmap, option};
 import syntax::ast::*;
-import syntax::visit;
-import syntax::codemap;
+import syntax::{visit, codemap};
 import visit::vt;
 
 tag ast_node {

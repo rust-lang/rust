@@ -1,16 +1,11 @@
 import driver::session;
 
-import std::option::none;
-import std::option::some;
+import std::option::{none, some};
 
 import std::map::hashmap;
-import std::vec;
-import std::str;
+import std::{vec, str};
 
-import syntax::ast::crate;
-import syntax::ast::expr_;
-import syntax::ast::expr_mac;
-import syntax::ast::mac_invoc;
+import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
 import syntax::fold::*;
 import syntax::ext::base::*;
 

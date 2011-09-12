@@ -1,11 +1,7 @@
 // Type decoding
 
-import std::vec;
-import std::str;
-import std::uint;
-import std::option;
-import std::option::none;
-import std::option::some;
+import std::{vec, str, uint, option};
+import std::option::{none, some};
 import syntax::ast;
 import syntax::ast::*;
 import syntax::ast_util;

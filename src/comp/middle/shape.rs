@@ -2,35 +2,22 @@
 // This substitutes for the runtime tags used by e.g. MLs.
 
 import lib::llvm::True;
-import lib::llvm::llvm::ModuleRef;
-import lib::llvm::llvm::TypeRef;
-import lib::llvm::llvm::ValueRef;
-import middle::trans;
-import middle::trans_common::crate_ctxt;
+import lib::llvm::llvm::{ModuleRef, TypeRef, ValueRef};
+import middle::{trans, trans_common};
 import middle::trans::llsize_of;
-import middle::trans_common::val_ty;
-import middle::trans_common;
-import middle::trans_common::C_bytes;
-import middle::trans_common::C_int;
-import middle::trans_common::C_named_struct;
-import middle::trans_common::C_struct;
-import middle::trans_common::C_uint;
-import middle::trans_common::T_i8;
-import middle::trans_common::T_ptr;
+import middle::trans_common::{crate_ctxt, val_ty, C_bytes, C_int,
+                              C_named_struct, C_struct, C_uint, T_i8, T_ptr};
 import middle::ty;
-import middle::ty::field;
-import middle::ty::mt;
+import middle::ty::{field, mt};
 import syntax::ast;
 import syntax::ast_util::dummy_sp;
 import syntax::codemap::span;
 import syntax::util::interner;
 import util::common;
 
-import std::vec;
+import std::{vec, str};
 import std::map::hashmap;
-import std::option::none;
-import std::option::some;
-import std::str;
+import std::option::{none, some};
 
 import ty_ctxt = middle::ty::ctxt;
 

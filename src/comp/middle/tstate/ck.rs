@@ -1,43 +1,17 @@
 
 import syntax::ast;
-import ast::method;
-import ast::item;
-import ast::item_fn;
-import ast::_fn;
-import ast::obj_field;
-import ast::_obj;
-import ast::stmt;
-import ast::ident;
-import ast::fn_ident;
-import ast::node_id;
-import ast::def_id;
+import ast::{method, item, item_fn, _fn, obj_field, _obj, stmt, ident,
+             fn_ident, node_id, def_id, ty_param, crate, return, noreturn,
+             expr};
 import syntax::ast_util::local_def;
-import ast::ty_param;
-import ast::crate;
-import ast::return;
-import ast::noreturn;
-import ast::expr;
 import syntax::visit;
 import syntax::codemap::span;
-import middle::ty::type_is_nil;
-import middle::ty::ret_ty_of_fn;
-import tstate::ann::ts_ann;
-import tstate::ann::empty_poststate;
-import tstate::ann::true_precond;
-import tstate::ann::true_postcond;
-import tstate::ann::false_postcond;
-import tstate::ann::precond;
-import tstate::ann::postcond;
-import tstate::ann::poststate;
-import tstate::ann::prestate;
-import tstate::ann::implies;
-import tstate::ann::ann_precond;
-import tstate::ann::ann_prestate;
-import std::option;
-import std::option::t;
-import std::option::some;
-import std::option::none;
-import std::str;
+import middle::ty::{type_is_nil, ret_ty_of_fn};
+import tstate::ann::{ts_ann, empty_poststate, true_precond, true_postcond,
+                     false_postcond, precond, postcond, poststate, prestate,
+                     implies, ann_precond, ann_prestate};
+import std::{str, option};
+import std::option::{t, some, none};
 import aux::*;
 import syntax::print::pprust::ty_to_str;
 import util::common::log_stmt_err;

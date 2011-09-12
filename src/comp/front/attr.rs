@@ -1,11 +1,7 @@
 // Functions dealing with attributes and meta_items
 
-import std::vec;
-import std::str;
-import std::map;
-import std::option;
-import syntax::ast;
-import syntax::ast_util;
+import std::{vec, str, map, option};
+import syntax::{ast, ast_util};
 import util::common;
 import driver::session;
 

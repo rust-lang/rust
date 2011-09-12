@@ -1,7 +1,6 @@
 import cast = unsafe::reinterpret_cast;
 import comm;
-import option::some;
-import option::none;
+import option::{some, none};
 import option = option::t;
 import ptr;
 

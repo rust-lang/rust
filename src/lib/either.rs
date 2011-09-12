@@ -1,7 +1,6 @@
 
 import option;
-import option::some;
-import option::none;
+import option::{some, none};
 
 tag t<T, U> { left(T); right(U); }
 
