@@ -707,7 +707,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
     // Used to determine whether obj fields are in scope
     let left_fn_level2 = false;
     while true {
-        alt { sc } {
+        alt copy sc {
           nil. { ret none::<def>; }
           cons(hd, tl) {
             let fnd = in_scope(e, sp, name, hd, ns);

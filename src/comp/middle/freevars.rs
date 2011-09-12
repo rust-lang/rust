@@ -53,7 +53,7 @@ fn collect_freevars(def_map: resolve::def_map, walker: fn(visit::vt<int>)) ->
               ast::expr_path(path) {
                 let def = def_map.get(expr.id), i = 0;
                 while i < depth {
-                    alt { def } {
+                    alt copy def {
                       ast::def_upvar(_, inner, _) { def = *inner; }
                       _ { break; }
                     }
