@@ -266,9 +266,10 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
                 alt r.root_var {
                   some(root) {
                     if node == root && cant_copy(cx, r) {
-                        cx.tcx.sess.span_err(args[arg].span,
-                                             "passing a mutable alias to a \
-                            variable that roots another alias");
+                        cx.tcx.sess.span_err
+                            (args[arg].span,
+                             "passing a mutable reference to a \
+                              variable that roots another reference");
                         break;
                     }
                   }
@@ -415,7 +416,7 @@ fn test_scope(cx: ctx, sc: scope, r: restrict, p: ast::path) {
               }
             };
         cx.tcx.sess.span_err(msg.span,
-                             msg.msg + " will invalidate alias " +
+                             msg.msg + " will invalidate reference " +
                                  ast_util::path_name(p) +
                                  ", which is still used");
     }

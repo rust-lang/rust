@@ -1,4 +1,4 @@
-// error-pattern:invalidate alias i
+// error-pattern:invalidate reference i
 
 tag foo { left(int); right(bool); }
 

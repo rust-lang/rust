@@ -253,21 +253,21 @@ way. To allocate such values in the heap, they must be explicitly
 value, its @emph{content}. Boxes may be either shared or unique, depending
 on which sort of storage management is desired.
 
-Boxing and unboxing in Rust is explicit, though in many cases (arithmetic
-operations, name-component dereferencing) Rust will automatically ``reach
-through'' the box to access its content. Box values can be passed and assigned
+Boxing and unboxing in Rust is explicit, though in many cases (such as
+name-component dereferencing) Rust will automatically ``reach through'' the
+box to access its content. Box values can be passed and assigned
 independently, like pointers in C; the difference is that in Rust they always
 point to live contents, and are not subject to pointer arithmetic.
 
-In addition to boxes, Rust supports a kind of pass-by-reference slot called an
-alias. Forming or releasing an alias does not perform reference-count
-operations; aliases can only be formed on referents that will provably outlive
-the alias, and are therefore only used for passing arguments to
-functions. Aliases are not ``general values'', in the sense that they cannot
-be independently manipulated. They are more like C++ references, except that
-like boxes, aliases are safe: they always point to live values.
+In addition to boxes, Rust supports a kind of pass-by-pointer slot called a
+reference. Forming or releasing a reference does not perform reference-count
+operations; references can only be formed on values that will provably outlive
+the reference. References are not ``general values'', in the sense that they
+cannot be independently manipulated. They are a lot like C++'s references,
+except that they are safe: the compiler ensures that they always point to live
+values.
 
-In addition, every slot (stack-local allocation or alias) has a static
+In addition, every slot (stack-local allocation or reference) has a static
 initialization state that is calculated by the typestate system. This permits
 late initialization of slots in functions with complex control-flow, while
 still guaranteeing that every use of a slot occurs after it has been
@@ -1283,7 +1283,7 @@ references to any boxes.
 @cindex Stack
 @cindex Slot
 @cindex Local slot
-@cindex Alias slot
+@cindex Reference slot
 
 A task's stack contains slots.
 
@@ -1293,10 +1293,9 @@ an @emph{alias}.
 A @dfn{local} slot (or @emph{stack-local} allocation) holds a value directly,
 allocated within the stack's memory. The value is a part of the stack frame.
 
-An @dfn{alias} references a value outside the frame. An alias may refer to a
+A @dfn{reference} references a value outside the frame. It may refer to a
 value allocated in another frame @emph{or} a boxed value in the heap. The
-alias-formation rules ensure that the referent of an alias will outlive the
-alias.
+reference-formation rules ensure that the referent will outlive the reference.
 
 Local slots are always implicitly mutable.
 
@@ -1306,24 +1305,18 @@ state. Subsequent statements within a function may or may not initialize the
 local slots. Local slots can only be used after they have been initialized;
 this condition is guaranteed by the typestate system.
 
-Aliases can @emph{only} be declared as arguments in a function or iterator
-signature, bound to the lifetime of a stack frame. Aliases are not general
-values and cannot be held in boxed allocations or other general data types.
+References are created for function arguments. If the compiler can not prove
+that the referred-to value will outlive the reference, it will try to set
+aside a copy of that value to refer to. If this is not sematically safe (for
+example, if the referred-to value contains mutable fields), it reject the
+program. If the compiler deems copying the value expensive, it will warn.
 
-Alias slots are indicated by the @emph{ampersand} sigil @code{&}.
+A function can be declared to take an argument by mutable reference. This
+allows the function to write to the slot that the reference refers to.
 
-An example function that accepts an alias parameter:
+An example function that accepts an value by mutable reference:
 @example
-type point3d = @{x: int, y: int, z: int@};
-
-fn extract_z(p: &point3d) -> int @{
-    ret p.z;
-@}
-@end example
-
-An example function that accepts an alias to a mutable value:
-@example
-fn incr(i: &mutable int) @{
+fn incr(&i: int) @{
     i = i + 1;
 @}
 @end example
@@ -1912,9 +1905,9 @@ pure fn lt_42(x: int) -> bool @{
 A non-boolean function may also be declared with @code{pure fn}. This allows
 predicates to call non-boolean functions as long as they are pure. For example:
 @example
-pure fn pure_length<@@T>(ls: &list<T>) -> uint @{ /* ... */ @}
+pure fn pure_length<@@T>(ls: list<T>) -> uint @{ /* ... */ @}
 
-pure fn nonempty_list<@@T>(ls: &list<T>) -> bool @{ pure_length(ls) > 0u @}
+pure fn nonempty_list<@@T>(ls: list<T>) -> bool @{ pure_length(ls) > 0u @}
 @end example
 
 In this example, @code{nonempty_list} is a predicate---it can be used in a
@@ -1941,15 +1934,15 @@ obligation to verify the semantics of the predicates they write.
 
 An example of a predicate that uses an unchecked block:
 @example
-fn pure_foldl<@@T, @@U>(ls: &list<T>, u: &U, f: &block(&T, &U) -> U) -> U @{
+fn pure_foldl<@@T, @@U>(ls: list<T>, u: U, f: block(&T, &U) -> U) -> U @{
     alt ls @{
       nil. @{ u @}
       cons(hd, tl) @{ f(hd, pure_foldl(*tl, f(hd, u), f)) @}
     @}
 @}
 
-pure fn pure_length<@@T>(ls: &list<T>) -> uint @{
-    fn count<T>(_t: &T, u: &uint) -> uint @{ u + 1u @}
+pure fn pure_length<@@T>(ls: list<T>) -> uint @{
+    fn count<T>(_t: T, u: uint) -> uint @{ u + 1u @}
     unchecked @{
         pure_foldl(ls, 0u, count)
     @}
@@ -2280,7 +2273,7 @@ The primitive types are the following:
 @item
 The ``nil'' type @code{()}, having the single ``nil'' value
 @code{()}.@footnote{The ``nil'' value @code{()} is @emph{not} a sentinel
-``null pointer'' value for alias slots; the ``nil'' type is the implicit
+``null pointer'' value for reference slots; the ``nil'' type is the implicit
 return type from functions otherwise lacking a return type, and can be used in
 other contexts (such as message-sending or type-parametric code) as a
 zero-size type.}
@@ -3062,7 +3055,7 @@ x.y = z + 2;
 @cindex Function calls
 
 A @dfn{call expression} invokes a function, providing a tuple of input slots
-and an alias slot to serve as the function's output, bound to the @var{lval}
+and an reference slot to serve as the function's output, bound to the @var{lval}
 on the right hand side of the call. If the function eventually returns, then
 the expression completes.
 
@@ -3247,7 +3240,7 @@ diagnostic buffer.
 
 An example of a @code{note} expression:
 @example
-fn read_file_lines(path: &str) -> [str] @{
+fn read_file_lines(path: str) -> [str] @{
     note path;
     let r: [str];
     let f: file = open_read(path);
@@ -3541,7 +3534,7 @@ and statically comparing implied states and their
 specifications. @xref{Ref.Typestate}.
 
 @example
-pure fn even(x: &int) -> bool @{
+pure fn even(x: int) -> bool @{
     ret x & 1 == 0;
 @}
 

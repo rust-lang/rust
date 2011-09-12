@@ -1,4 +1,4 @@
-// error-pattern:invalidate alias x
+// error-pattern:invalidate reference x
 
 fn whoknows(x: @mutable int) { *x = 10; }
 

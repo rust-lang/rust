@@ -130,15 +130,15 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) -> mut_map {
     ret cx.mut_map;
 }
 
-tag msg { msg_assign; msg_move_out; msg_mut_alias; }
+tag msg { msg_assign; msg_move_out; msg_mut_ref; }
 
 fn mk_err(cx: @ctx, span: syntax::codemap::span, msg: msg, name: str) {
     cx.tcx.sess.span_err(span,
                          alt msg {
                            msg_assign. { "assigning to " + name }
                            msg_move_out. { "moving out of " + name }
-                           msg_mut_alias. {
-                             "passing " + name + " by mutable alias"
+                           msg_mut_ref. {
+                             "passing " + name + " by mutable reference"
                            }
                          });
 }
@@ -234,7 +234,7 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
                        ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f)));
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
-        if arg_t.mode != by_ref { check_lval(cx, args[i], msg_mut_alias); }
+        if arg_t.mode != by_ref { check_lval(cx, args[i], msg_mut_ref); }
         i += 1u;
     }
 }

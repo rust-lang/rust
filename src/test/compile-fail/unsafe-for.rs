@@ -1,4 +1,4 @@
-// error-pattern:invalidate alias x
+// error-pattern:invalidate reference x
 
 fn main() {
     let v: [mutable int] = [mutable 1, 2, 3];

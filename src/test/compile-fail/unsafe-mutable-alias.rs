@@ -1,4 +1,4 @@
-// error-pattern:mutable alias to a variable that roots another alias
+// error-pattern:mutable reference to a variable that roots another reference
 
 fn f(a: {mutable x: int}, &b: {mutable x: int}) -> int {
     b.x += 1;
