@@ -286,7 +286,6 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
             p.bump();
             p.bump();
         }
-        if mode == ast::by_ref { mode = parse_arg_mode(p); }
         let t = parse_ty(p, false);
         ret spanned(lo, t.span.hi, {mode: mode, ty: t});
     }
@@ -581,7 +580,6 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
 
 fn parse_arg_mode(p: parser) -> ast::mode {
     if eat(p, token::BINOP(token::AND)) {
-        eat_word(p, "mutable");
         ret ast::by_mut_ref;
     } else if eat(p, token::BINOP(token::MINUS)) {
         ret ast::by_move;
@@ -592,7 +590,6 @@ fn parse_arg(p: parser) -> ast::arg {
     let m = parse_arg_mode(p);
     let i = parse_value_ident(p);
     expect(p, token::COLON);
-    if m == ast::by_ref { m = parse_arg_mode(p); }
     let t = parse_ty(p, false);
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
