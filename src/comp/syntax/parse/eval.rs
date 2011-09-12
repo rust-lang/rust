@@ -3,7 +3,7 @@ import std::{str, option};
 import std::option::{some, none};
 import syntax::ast;
 import syntax::parse::token;
-import syntax::parse::parser::{parser, new_parser_from_file, 
+import syntax::parse::parser::{parser, new_parser_from_file,
                                parse_inner_attrs_and_next,
                                parse_mod_items, SOURCE_FILE};
 

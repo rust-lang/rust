@@ -29,7 +29,7 @@ import util::common;
 import util::common::*;
 import lib::llvm::{llvm, target_data, type_names,
                    mk_target_data, mk_type_names};
-import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, TypeHandleRef, 
+import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, TypeHandleRef,
                          BuilderRef, BasicBlockRef};
 import lib::llvm::{Bool, True, False};
 import link::{mangle_internal_name_by_type_only,
