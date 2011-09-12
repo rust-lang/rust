@@ -323,7 +323,7 @@ fn parse_proto(p: parser) -> ast::proto {
     } else { unexpected(p, p.peek()); }
 }
 
-fn parse_ty_obj(p: parser, hi: &mutable uint) -> ast::ty_ {
+fn parse_ty_obj(p: parser, &hi: uint) -> ast::ty_ {
     fn parse_method_sig(p: parser) -> ast::ty_method {
         let flo = p.get_lo_pos();
         let proto: ast::proto = parse_proto(p);
@@ -585,9 +585,7 @@ fn parse_arg_mode(p: parser) -> ast::mode {
         ret ast::by_mut_ref;
     } else if eat(p, token::BINOP(token::MINUS)) {
         ret ast::by_move;
-    } else {
-        ret ast::by_ref;
-    }
+    } else { ret ast::by_ref; }
 }
 
 fn parse_arg(p: parser) -> ast::arg {
@@ -827,7 +825,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
             expect(p, token::RBRACE);
             ex = ast::expr_rec(fields, base);
         } else if p.peek() == token::BINOP(token::OR) ||
-                  p.peek() == token::OROR {
+                      p.peek() == token::OROR {
             ret parse_fn_block_expr(p);
         } else {
             let blk = parse_block_tail(p, lo, ast::checked);
@@ -1380,6 +1378,7 @@ fn parse_initializer(p: parser) -> option::t<ast::initializer> {
 
 
 
+
       // Now that the the channel is the first argument to receive,
       // combining it with an initializer doesn't really make sense.
       // case (token::RECV) {
@@ -1642,6 +1641,7 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
 
 
 
+
       // We should not be calling this on a cdir.
       ast::stmt_crate_directive(cdir) {
         fail;
@@ -1773,12 +1773,14 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
 }
 
 fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
-    let inputs = if p.peek() == token::OROR {
-        p.bump(); []
-    } else {
-        parse_seq(token::BINOP(token::OR), token::BINOP(token::OR),
-                  some(token::COMMA), parse_fn_block_arg, p).node
-    };
+    let inputs =
+        if p.peek() == token::OROR {
+            p.bump();;
+            []
+        } else {
+            parse_seq(token::BINOP(token::OR), token::BINOP(token::OR),
+                      some(token::COMMA), parse_fn_block_arg, p).node
+        };
     ret {inputs: inputs,
          output: @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer),
          purity: ast::impure_fn,
@@ -2269,11 +2271,13 @@ fn parse_rest_import_name(p: parser, first: ast::ident,
 
 
 
+
           //the lexer can't tell the different kinds of stars apart ) :
           token::BINOP(token::STAR.) {
             glob = true;
             p.bump();
           }
+
 
 
 
@@ -2293,6 +2297,7 @@ fn parse_rest_import_name(p: parser, first: ast::ident,
             }
             from_idents = some(from_idents_);
           }
+
 
 
 
@@ -2460,12 +2465,14 @@ fn parse_crate_directive(p: parser, first_outer_attr: [ast::attribute]) ->
 
 
 
+
           // mod x = "foo.rs";
           token::SEMI. {
             let hi = p.get_hi_pos();
             p.bump();
             ret spanned(lo, hi, ast::cdir_src_mod(id, file_opt, outer_attrs));
           }
+
 
 
 

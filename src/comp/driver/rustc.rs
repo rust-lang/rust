@@ -515,6 +515,7 @@ fn main(args: [str]) {
 
 
 
+
               // Object and exe output both use the '.o' extension here
               link::output_type_object. | link::output_type_exe. {
                 "o"

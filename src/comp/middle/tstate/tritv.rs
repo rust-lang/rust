@@ -57,6 +57,7 @@ fn trit_minus(a: trit, b: trit) -> trit {
 
 
 
+
           /* internally contradictory, but
              I guess it'll get flagged? */
           dont_care. {
@@ -67,6 +68,7 @@ fn trit_minus(a: trit, b: trit) -> trit {
       tfalse. {
         alt b {
           ttrue. { tfalse }
+
 
 
 
@@ -86,6 +88,7 @@ fn trit_or(a: trit, b: trit) -> trit {
       tfalse. {
         alt b {
           ttrue. { dont_care }
+
 
 
 
@@ -109,6 +112,7 @@ fn trit_and(a: trit, b: trit) -> trit {
 
 
 
+
       // also seems wrong for case b = ttrue
       ttrue. {
         alt b {
@@ -116,10 +120,12 @@ fn trit_and(a: trit, b: trit) -> trit {
 
 
 
+
           // ??? Seems wrong
           ttrue. {
             ttrue
           }
+
 
 
 
@@ -134,6 +140,7 @@ fn trit_and(a: trit, b: trit) -> trit {
           }
         }
       }
+
 
 
 

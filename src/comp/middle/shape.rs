@@ -276,15 +276,13 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
          llshapetables: llshapetables};
 }
 
-fn add_bool(dest: &mutable [u8], val: bool) {
-    dest += [if val { 1u8 } else { 0u8 }];
-}
+fn add_bool(&dest: [u8], val: bool) { dest += [if val { 1u8 } else { 0u8 }]; }
 
-fn add_u16(dest: &mutable [u8], val: u16) {
+fn add_u16(&dest: [u8], val: u16) {
     dest += [val & 0xffu16 as u8, val >> 8u16 as u8];
 }
 
-fn add_substr(dest: &mutable [u8], src: [u8]) {
+fn add_substr(&dest: [u8], src: [u8]) {
     add_u16(dest, vec::len(src) as u16);
     dest += src;
 }
@@ -300,6 +298,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
 
 
 
+
       ty::ty_int. {
         s += [s_int(ccx.tcx)];
       }
@@ -308,9 +307,11 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
 
 
 
+
       ty::ty_uint. | ty::ty_ptr(_) | ty::ty_type. | ty::ty_native(_) {
         s += [s_uint(ccx.tcx)];
       }
+
 
 
 
@@ -328,12 +329,14 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
 
 
 
+
       ty::ty_str. {
         s += [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
         add_substr(s, shape_of(ccx, unit_ty, ty_param_map));
       }
+
 
 
 
@@ -376,6 +379,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
 
 
 
+
       ty::ty_box(mt) {
         s += [shape_box];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
@@ -407,11 +411,13 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
 
 
 
+
       ty::ty_fn(_, _, _, _, _) {
         s += [shape_fn];
       }
       ty::ty_native_fn(_, _, _) { s += [shape_u32]; }
       ty::ty_obj(_) { s += [shape_obj]; }
+
 
 
 
@@ -433,9 +439,11 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
 
 
 
+
       ty::ty_var(n) {
         fail "shape_of ty_var";
       }
+
 
 
 

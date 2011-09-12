@@ -243,6 +243,7 @@ fn map_crate(e: @env, c: @ast::crate) {
 
 
 
+
           //if it really is a glob import, that is
           ast::view_item_import_glob(path, _) {
             let imp = follow_import(*e, sc, path, vi.span);
@@ -1106,9 +1107,11 @@ fn index_mod(md: ast::_mod) -> mod_index {
 
 
 
+
           ast::view_item_import(ident, _, id) {
             add_to_index(index, ident, mie_import_ident(id, it.span));
           }
+
 
 
 
@@ -1119,6 +1122,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
                              mie_import_ident(ident.node.id, ident.span));
             }
           }
+
 
 
 

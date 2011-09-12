@@ -412,22 +412,20 @@ fn mk_raw_ty(cx: ctxt, st: sty, _in_cname: option::t<str>) -> @raw_t {
     let h = hash_type_info(st, cname);
     let has_params: bool = false;
     let has_vars: bool = false;
-    fn derive_flags_t(cx: ctxt, has_params: &mutable bool,
-                      has_vars: &mutable bool, tt: t) {
+    fn derive_flags_t(cx: ctxt, &has_params: bool, &has_vars: bool, tt: t) {
         let rt = interner::get::<@raw_t>(*cx.ts, tt);
         has_params = has_params || rt.has_params;
         has_vars = has_vars || rt.has_vars;
     }
-    fn derive_flags_mt(cx: ctxt, has_params: &mutable bool,
-                       has_vars: &mutable bool, m: mt) {
+    fn derive_flags_mt(cx: ctxt, &has_params: bool, &has_vars: bool, m: mt) {
         derive_flags_t(cx, has_params, has_vars, m.ty);
     }
-    fn derive_flags_arg(cx: ctxt, has_params: &mutable bool,
-                        has_vars: &mutable bool, a: arg) {
+    fn derive_flags_arg(cx: ctxt, &has_params: bool, &has_vars: bool,
+                        a: arg) {
         derive_flags_t(cx, has_params, has_vars, a.ty);
     }
-    fn derive_flags_sig(cx: ctxt, has_params: &mutable bool,
-                        has_vars: &mutable bool, args: [arg], tt: t) {
+    fn derive_flags_sig(cx: ctxt, &has_params: bool, &has_vars: bool,
+                        args: [arg], tt: t) {
         for a: arg in args { derive_flags_arg(cx, has_params, has_vars, a); }
         derive_flags_t(cx, has_params, has_vars, tt);
     }
@@ -909,6 +907,7 @@ fn type_has_pointers(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
 
 
+
       // scalar types
       ty_nil. {
         /* no-op */
@@ -977,11 +976,13 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
 
 
+
       // Scalar types are unique-kind, no substructure.
       ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_uint. | ty_float. |
       ty_machine(_) | ty_char. | ty_native(_) {
         // no-op
       }
+
 
 
 
@@ -994,11 +995,13 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
 
 
+
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
       ty_obj(_) {
         result = kind_shared;
       }
+
 
 
 
@@ -1017,11 +1020,13 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
 
 
+
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
       ty_box(mt) {
         result = ast::kind_shared;
       }
+
 
 
 
@@ -1037,6 +1042,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
 
 
+
       // Records lower to the lowest of their members.
       ty_rec(flds) {
         for f: field in flds {
@@ -1047,6 +1053,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
 
 
+
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
         for ty: t in tys {
@@ -1054,6 +1061,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
             if result == ast::kind_pinned { break; }
         }
       }
+
 
 
 
@@ -1075,10 +1083,12 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
 
 
+
       // Resources are always pinned.
       ty_res(did, inner, tps) {
         result = ast::kind_pinned;
       }
+
 
 
 
@@ -1090,6 +1100,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
 
 
+
       ty_param(_, k) {
         result = kind::lower_kind(result, k);
       }
@@ -1097,9 +1108,11 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
 
 
+
       ty_constr(t, _) {
         result = type_kind(cx, t);
       }
+
 
 
 
@@ -1273,6 +1286,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
 
 
 
+
       // Scalar types
       ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_float. | ty_uint. |
       ty_machine(_) | ty_char. | ty_type. | ty_native(_) | ty_ptr(_) {
@@ -1282,11 +1296,13 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
 
 
 
+
       // Boxed types
       ty_str. | ty_box(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
       ty_native_fn(_, _, _) | ty_obj(_) {
         result = false;
       }
+
 
 
 
@@ -1314,6 +1330,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         result = type_is_pod(cx, substitute_type_params(cx, tps, inner));
       }
       ty_constr(subt, _) { result = type_is_pod(cx, subt); }
+
 
 
 
@@ -1457,6 +1474,7 @@ fn hash_type_structure(st: sty) -> uint {
         for tt in ts { h += h << 5u + hash_ty(tt); }
         ret h;
       }
+
 
 
 
@@ -1796,13 +1814,12 @@ fn occurs_check_fails(tcx: ctxt, sp: option::t<span>, vid: int, rt: t) ->
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
-            tcx.sess.span_fatal(s,
-                                "Type inference failed because I \
-                 could not find a type\n that's both of the form "
-                                    + ty_to_str(tcx, ty::mk_var(tcx, vid)) +
-                                    " and of the form " + ty_to_str(tcx, rt) +
-                                ". Such a type would have to be infinitely \
-                 large.");
+            tcx.sess.span_fatal
+                (s, "Type inference failed because I \
+                     could not find a type\n that's both of the form "
+                 + ty_to_str(tcx, ty::mk_var(tcx, vid)) +
+                 " and of the form " + ty_to_str(tcx, rt) +
+                 ". Such a type would have to be infinitely large.");
           }
           _ { ret true; }
         }
@@ -1994,8 +2011,9 @@ mod unify {
 
             let result_mode;
             if expected_input.mode != actual_input.mode {
-       ret fn_common_res_err(ures_err(terr_mode_mismatch(expected_input.mode,
-                                                        actual_input.mode)));
+                ret fn_common_res_err
+                    (ures_err(terr_mode_mismatch(expected_input.mode,
+                                                 actual_input.mode)));
             } else { result_mode = expected_input.mode; }
             let result = unify_step(cx, expected_input.ty, actual_input.ty);
             alt result {
@@ -2021,6 +2039,7 @@ mod unify {
         if e_proto != a_proto { ret ures_err(terr_mismatch); }
         alt expected_cf {
           ast::return. { }
+
 
 
 
@@ -2138,6 +2157,7 @@ mod unify {
 
 
 
+
           // If the RHS is a variable type, then just do the
           // appropriate binding.
           ty::ty_var(actual_id) {
@@ -2184,6 +2204,7 @@ mod unify {
         }
         alt struct(cx.tcx, expected) {
           ty::ty_nil. { ret struct_cmp(cx, expected, actual); }
+
 
 
 
@@ -2841,7 +2862,7 @@ fn ast_constr_to_constr<T>(tcx: ty::ctxt, c: @ast::constr_general<T>) ->
       _ {
         tcx.sess.span_fatal(c.span,
                             "Predicate " + path_to_str(c.node.path) +
-             " is unbound or bound to a non-function or an \
+                            " is unbound or bound to a non-function or an \
             impure function");
       }
     }

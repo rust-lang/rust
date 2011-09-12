@@ -114,6 +114,7 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
 
 
 
+
       ty::ty_rec(fields) {
         for f in fields { if type_is_gc_relevant(cx, f.mt.ty) { ret true; } }
         ret false;
@@ -122,6 +123,7 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
         for elt in elts { if type_is_gc_relevant(cx, elt) { ret true; } }
         ret false;
       }
+
 
 
 
@@ -140,10 +142,12 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
 
 
 
+
       ty::ty_vec(tm) {
         ret type_is_gc_relevant(cx, tm.ty);
       }
       ty::ty_constr(sub, _) { ret type_is_gc_relevant(cx, sub); }
+
 
 
 
@@ -153,6 +157,7 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
       ty::ty_res(_, _, _) {
         ret true;
       }
+
 
 
 

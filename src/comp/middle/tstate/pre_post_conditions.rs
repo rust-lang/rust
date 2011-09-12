@@ -546,6 +546,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 
 
 
+
       expr_bind(operator, maybe_args) {
         let args = [];
         let cmodes = callee_modes(fcx, operator.id);

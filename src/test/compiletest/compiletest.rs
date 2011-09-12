@@ -235,11 +235,11 @@ fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn()) ->
     ret task::spawn_joinable(testthunk);
 }
 
-fn run_test_task(compile_lib_path: -str, run_lib_path: -str, rustc_path: -str,
-                 src_base: -str, build_base: -str, stage_id: -str, mode: -str,
-                 run_ignored: -bool, opt_filter: -str, opt_runtool: -str,
-                 opt_rustcflags: -str, verbose: -bool,
-                 procsrv_chan: -procsrv::reqchan, testfile: -[u8]) {
+fn run_test_task(-compile_lib_path: str, -run_lib_path: str, -rustc_path: str,
+                 -src_base: str, -build_base: str, -stage_id: str, -mode: str,
+                 -run_ignored: bool, -opt_filter: str, -opt_runtool: str,
+                 -opt_rustcflags: str, -verbose: bool,
+                 -procsrv_chan: procsrv::reqchan, -testfile: [u8]) {
 
     test::configure_test_task();
 

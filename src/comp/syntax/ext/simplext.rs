@@ -431,6 +431,7 @@ fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 
 
 
+
               // possibly allow promotion of ident/path/expr to blocks?
               some(m) {
                 match_error(cx, m, "a block")
@@ -476,6 +477,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
               }
             }
           }
+
 
 
 

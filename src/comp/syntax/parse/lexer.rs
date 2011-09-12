@@ -363,6 +363,7 @@ fn next_token_inner(rdr: reader) -> token::token {
 
 
 
+
       // One-byte tokens.
       '?' {
         rdr.bump();
@@ -400,6 +401,7 @@ fn next_token_inner(rdr: reader) -> token::token {
             ret token::MOD_SEP;
         } else { ret token::COLON; }
       }
+
 
 
 
@@ -579,14 +581,13 @@ fn consume_non_eol_whitespace(rdr: reader) {
     }
 }
 
-fn push_blank_line_comment(rdr: reader, comments: &mutable [cmnt]) {
+fn push_blank_line_comment(rdr: reader, &comments: [cmnt]) {
     log ">>> blank-line comment";
     let v: [str] = [];
     comments += [{style: blank_line, lines: v, pos: rdr.get_chpos()}];
 }
 
-fn consume_whitespace_counting_blank_lines(rdr: reader,
-                                           comments: &mutable [cmnt]) {
+fn consume_whitespace_counting_blank_lines(rdr: reader, &comments: [cmnt]) {
     while is_whitespace(rdr.curr()) && !rdr.is_eof() {
         if rdr.get_col() == 0u && rdr.curr() == '\n' {
             push_blank_line_comment(rdr, comments);
@@ -617,8 +618,7 @@ fn all_whitespace(s: str, begin: uint, end: uint) -> bool {
     ret true;
 }
 
-fn trim_whitespace_prefix_and_push_line(lines: &mutable [str], s: str,
-                                        col: uint) {
+fn trim_whitespace_prefix_and_push_line(&lines: [str], s: str, col: uint) {
     let s1;
     if all_whitespace(s, 0u, col) {
         if col < str::byte_len(s) {
@@ -679,8 +679,7 @@ fn peeking_at_comment(rdr: reader) -> bool {
             rdr.curr() == '/' && rdr.next() == '*';
 }
 
-fn consume_comment(rdr: reader, code_to_the_left: bool,
-                   comments: &mutable [cmnt]) {
+fn consume_comment(rdr: reader, code_to_the_left: bool, &comments: [cmnt]) {
     log ">>> consume comment";
     if rdr.curr() == '/' && rdr.next() == '/' {
         comments += [read_line_comments(rdr, code_to_the_left)];

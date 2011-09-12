@@ -95,20 +95,20 @@ fn unpin() { rustrt::unpin_task(); }
 
 fn set_min_stack(stack_size: uint) { rustrt::set_min_stack(stack_size); }
 
-fn spawn(thunk: -fn()) -> task { spawn_inner(thunk, none) }
+fn spawn(-thunk: fn()) -> task { spawn_inner(thunk, none) }
 
-fn spawn_notify(thunk: -fn(), notify: comm::chan<task_notification>) -> task {
+fn spawn_notify(-thunk: fn(), notify: comm::chan<task_notification>) -> task {
     spawn_inner(thunk, some(notify))
 }
 
-fn spawn_joinable(thunk: -fn()) -> joinable_task {
+fn spawn_joinable(-thunk: fn()) -> joinable_task {
     let p = comm::port::<task_notification>();
     let id = spawn_notify(thunk, comm::chan::<task_notification>(p));
     ret (id, p);
 }
 
 // FIXME: make this a fn~ once those are supported.
-fn spawn_inner(thunk: -fn(), notify: option<comm::chan<task_notification>>) ->
+fn spawn_inner(-thunk: fn(), notify: option<comm::chan<task_notification>>) ->
    task_id {
     let id = rustrt::new_task();
 

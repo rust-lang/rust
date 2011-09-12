@@ -74,7 +74,7 @@ mod ct {
         let pieces: [piece] = [];
         let lim = str::byte_len(s);
         let buf = "";
-        fn flush_buf(buf: str, pieces: &mutable [piece]) -> str {
+        fn flush_buf(buf: str, &pieces: [piece]) -> str {
             if str::byte_len(buf) > 0u {
                 let piece = piece_string(buf);
                 pieces += [piece];

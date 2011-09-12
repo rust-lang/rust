@@ -7,7 +7,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len, index,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice;
 
 native "rust" mod rustrt {
-    fn rust_str_push(s: &mutable str, ch: u8);
+    fn rust_str_push(&s: str, ch: u8);
 }
 
 fn eq(a: str, b: str) -> bool { a == b }
@@ -101,7 +101,7 @@ fn unsafe_from_bytes(v: [mutable? u8]) -> str {
 
 fn unsafe_from_byte(u: u8) -> str { unsafe_from_bytes([u]) }
 
-fn push_utf8_bytes(s: &mutable str, ch: char) {
+fn push_utf8_bytes(&s: str, ch: char) {
     let code = ch as uint;
     let bytes =
         if code < max_one_b {
@@ -206,9 +206,9 @@ fn to_chars(s: str) -> [char] {
     ret buf;
 }
 
-fn push_char(s: &mutable str, ch: char) { s += from_char(ch); }
+fn push_char(&s: str, ch: char) { s += from_char(ch); }
 
-fn pop_char(s: &mutable str) -> char {
+fn pop_char(&s: str) -> char {
     let end = byte_len(s);
     while end > 0u && s[end - 1u] & 192u8 == tag_cont_u8 { end -= 1u; }
     assert (end > 0u);
@@ -217,13 +217,13 @@ fn pop_char(s: &mutable str) -> char {
     ret ch;
 }
 
-fn shift_char(s: &mutable str) -> char {
+fn shift_char(&s: str) -> char {
     let r = char_range_at(s, 0u);
     s = substr(s, r.next, byte_len(s) - r.next);
     ret r.ch;
 }
 
-fn unshift_char(s: &mutable str, ch: char) { s = from_char(ch) + s; }
+fn unshift_char(&s: str, ch: char) { s = from_char(ch) + s; }
 
 fn index(s: str, c: u8) -> int {
     let i: int = 0;
@@ -299,7 +299,7 @@ fn safe_slice(s: str, begin: uint, end: uint) : uint::le(begin, end) -> str {
     ret slice(s, begin, end);
 }
 
-fn shift_byte(s: &mutable str) -> u8 {
+fn shift_byte(&s: str) -> u8 {
     let len = byte_len(s);
     assert (len > 0u);
     let b = s[0];
@@ -307,7 +307,7 @@ fn shift_byte(s: &mutable str) -> u8 {
     ret b;
 }
 
-fn pop_byte(s: &mutable str) -> u8 {
+fn pop_byte(&s: str) -> u8 {
     let len = byte_len(s);
     assert (len > 0u);
     let b = s[len - 1u];
@@ -315,9 +315,9 @@ fn pop_byte(s: &mutable str) -> u8 {
     ret b;
 }
 
-fn push_byte(s: &mutable str, b: u8) { rustrt::rust_str_push(s, b); }
+fn push_byte(&s: str, b: u8) { rustrt::rust_str_push(s, b); }
 
-fn push_bytes(s: &mutable str, bytes: [u8]) {
+fn push_bytes(&s: str, bytes: [u8]) {
     for byte in bytes { rustrt::rust_str_push(s, byte); }
 }
 

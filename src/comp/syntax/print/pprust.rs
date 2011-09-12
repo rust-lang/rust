@@ -364,6 +364,7 @@ fn print_native_item(s: ps, item: @ast::native_item) {
 
 
 
+
       ast::native_item_fn(lname, decl, typarams) {
         print_fn(s, decl, ast::proto_fn, item.ident, typarams,
                  decl.constraints);
@@ -717,6 +718,7 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
 
 
 
+
               // "another else-if"
               ast::expr_if(i, t, e) {
                 cbox(s, indent_unit - 1u);
@@ -727,6 +729,7 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
                 print_block(s, t);
                 do_else(s, e);
               }
+
 
 
 
@@ -1358,6 +1361,7 @@ fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
       ast::expr_binary(op, _, _) { operator_prec(op) < outer_prec }
       ast::expr_cast(_, _) { parse::parser::as_prec < outer_prec }
       ast::expr_ternary(_, _, _) { parse::parser::ternary_prec < outer_prec }
+
 
 
 

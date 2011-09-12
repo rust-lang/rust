@@ -1,6 +1,6 @@
 // error-pattern:mutable alias to a variable that roots another alias
 
-fn f(a: {mutable x: int}, b: &mutable {mutable x: int}) -> int {
+fn f(a: {mutable x: int}, &b: {mutable x: int}) -> int {
     b.x += 1;
     ret a.x + b.x;
 }

@@ -117,8 +117,8 @@ mod map_reduce {
         let ref_count = 0;
         let is_done = false;
 
-        fn get(p: port<reduce_proto>, ref_count: &mutable int,
-               is_done: &mutable bool) -> option<int> {
+        fn get(p: port<reduce_proto>, &ref_count: int, &is_done: bool) ->
+           option<int> {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {

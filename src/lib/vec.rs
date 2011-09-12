@@ -10,12 +10,12 @@ native "rust-intrinsic" mod rusti {
 }
 
 native "rust" mod rustrt {
-    fn vec_reserve_shared<T>(v: &mutable [mutable? T], n: uint);
+    fn vec_reserve_shared<T>(&v: [mutable? T], n: uint);
     fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
 }
 
 /// Reserves space for `n` elements in the given vector.
-fn reserve<@T>(v: &mutable [mutable? T], n: uint) {
+fn reserve<@T>(&v: [mutable? T], n: uint) {
     rustrt::vec_reserve_shared(v, n);
 }
 
@@ -127,7 +127,7 @@ fn slice_mut<@T>(v: [mutable? T], start: uint, end: uint) -> [mutable T] {
 
 // Mutators
 
-fn shift<@T>(v: &mutable [mutable? T]) -> T {
+fn shift<@T>(&v: [mutable? T]) -> T {
     let ln = len::<T>(v);
     assert (ln > 0u);
     let e = v[0];
@@ -136,7 +136,7 @@ fn shift<@T>(v: &mutable [mutable? T]) -> T {
 }
 
 // TODO: Write this, unsafely, in a way that's not O(n).
-fn pop<@T>(v: &mutable [mutable? T]) -> T {
+fn pop<@T>(&v: [mutable? T]) -> T {
     let ln = len(v);
     assert (ln > 0u);
     ln -= 1u;
@@ -151,14 +151,14 @@ fn pop<@T>(v: &mutable [mutable? T]) -> T {
 // Appending
 
 /// Expands the given vector in-place by appending `n` copies of `initval`.
-fn grow<@T>(v: &mutable [T], n: uint, initval: T) {
+fn grow<@T>(&v: [T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [initval]; i += 1u; }
 }
 
 // TODO: Remove me once we have slots.
-fn grow_mut<@T>(v: &mutable [mutable T], n: uint, initval: T) {
+fn grow_mut<@T>(&v: [mutable T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [mutable initval]; i += 1u; }
@@ -166,7 +166,7 @@ fn grow_mut<@T>(v: &mutable [mutable T], n: uint, initval: T) {
 
 /// Calls `f` `n` times and appends the results of these calls to the given
 /// vector.
-fn grow_fn<@T>(v: &mutable [T], n: uint, init_fn: fn(uint) -> T) {
+fn grow_fn<@T>(&v: [T], n: uint, init_fn: fn(uint) -> T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [init_fn(i)]; i += 1u; }
@@ -175,7 +175,7 @@ fn grow_fn<@T>(v: &mutable [T], n: uint, init_fn: fn(uint) -> T) {
 /// Sets the element at position `index` to `val`. If `index` is past the end
 /// of the vector, expands the vector by replicating `initval` to fill the
 /// intervening space.
-fn grow_set<@T>(v: &mutable [mutable T], index: uint, initval: T, val: T) {
+fn grow_set<@T>(&v: [mutable T], index: uint, initval: T, val: T) {
     if index >= len(v) { grow_mut(v, index - len(v) + 1u, initval); }
     v[index] = val;
 }
@@ -337,7 +337,7 @@ mod unsafe {
         ret rustrt::vec_from_buf_shared(ptr, elts);
     }
 
-    fn set_len<T>(v: &mutable [T], new_len: uint) {
+    fn set_len<T>(&v: [T], new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }

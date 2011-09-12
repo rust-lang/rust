@@ -26,8 +26,8 @@ type ctx =
       cfg: ast::crate_cfg};
 
 fn eval_crate_directives(cx: ctx, cdirs: [@ast::crate_directive], prefix: str,
-                         view_items: &mutable [@ast::view_item],
-                         items: &mutable [@ast::item]) {
+                         &view_items: [@ast::view_item],
+                         &items: [@ast::item]) {
     for sub_cdir: @ast::crate_directive in cdirs {
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
     }
@@ -42,8 +42,8 @@ fn eval_crate_directives_to_mod(cx: ctx, cdirs: [@ast::crate_directive],
 }
 
 fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
-                        view_items: &mutable [@ast::view_item],
-                        items: &mutable [@ast::item]) {
+                        &view_items: [@ast::view_item],
+                        &items: [@ast::item]) {
     alt cdir.node {
       ast::cdir_src_mod(id, file_opt, attrs) {
         let file_path = id + ".rs";

@@ -83,8 +83,8 @@ mod map_reduce {
     }
 
     fn map_task<~K1, ~K2,
-                ~V>(map: -mapper<K1, K2, V>, ctrl: -chan<ctrl_proto<K2, V>>,
-                    input: -K1) {
+                ~V>(-map: mapper<K1, K2, V>, -ctrl: chan<ctrl_proto<K2, V>>,
+                    -input: K1) {
         // log_err "map_task " + input;
         let intermediates = treemap::init();
 
@@ -115,8 +115,8 @@ mod map_reduce {
     }
 
     fn reduce_task<~K,
-                   ~V>(reduce: -reducer<K, V>, key: -K,
-                       out: -chan<chan<reduce_proto<V>>>) {
+                   ~V>(-reduce: reducer<K, V>, -key: K,
+                       -out: chan<chan<reduce_proto<V>>>) {
         let p = port();
 
         send(out, chan(p));
@@ -124,8 +124,8 @@ mod map_reduce {
         let ref_count = 0;
         let is_done = false;
 
-        fn get<~V>(p: port<reduce_proto<V>>, ref_count: &mutable int,
-                   is_done: &mutable bool) -> option<V> {
+        fn get<~V>(p: port<reduce_proto<V>>, &ref_count: int, &is_done: bool)
+           -> option<V> {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {

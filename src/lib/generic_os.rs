@@ -56,15 +56,12 @@ fn getenv(n: str) -> option::t<str> {
 fn setenv(n: str, v: str) {
     // FIXME (868)
     let _: () =
-        str::as_buf(n,
-                    {|nbuf|
-                        let _: () =
-                            str::as_buf(v,
-                                        {|vbuf|
-                      os::kernel32::SetEnvironmentVariableA(nbuf,
-                                                            vbuf);
-                                        });
-                    });
+        str::as_buf(n, {|nbuf|
+            let _: () =
+                str::as_buf(v, {|vbuf|
+                    os::kernel32::SetEnvironmentVariableA(nbuf, vbuf);
+                });
+        });
 }
 
 // Local Variables:

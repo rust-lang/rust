@@ -170,7 +170,7 @@ fn log_states_err(pp: pre_and_post_state) {
 
 fn print_ident(i: ident) { log " " + i + " "; }
 
-fn print_idents(idents: &mutable [ident]) {
+fn print_idents(&idents: [ident]) {
     if vec::len::<ident>(idents) == 0u { ret; }
     log "an ident: " + vec::pop::<ident>(idents);
     print_idents(idents);

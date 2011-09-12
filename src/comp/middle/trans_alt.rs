@@ -184,7 +184,7 @@ fn enter_box(m: match, col: uint, val: ValueRef) -> match {
 }
 
 fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
-    fn add_to_set(set: &mutable [opt], val: opt) {
+    fn add_to_set(&set: [opt], val: opt) {
         for l: opt in set { if opt_eq(l, val) { ret; } }
         set += [val];
     }
@@ -294,7 +294,7 @@ fn pick_col(m: match) -> uint {
 }
 
 fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
-                    exits: &mutable [exit_node]) {
+                    &exits: [exit_node]) {
     if vec::len(m) == 0u { Br(bcx, f()); ret; }
     if vec::len(m[0].pats) == 0u {
         let data = m[0].data;

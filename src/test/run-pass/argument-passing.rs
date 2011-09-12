@@ -1,4 +1,4 @@
-fn f1(a: {mutable x: int}, b: &mutable int, c: -int) -> int {
+fn f1(a: {mutable x: int}, &b: int, -c: int) -> int {
     let r = a.x + b + c;
     a.x = 0;
     b = 10;

@@ -35,7 +35,7 @@ fn contains(haystack: str, needle: str) -> bool {
     str::find(haystack, needle) != -1
 }
 
-fn find_rust_files(files: &[str], path: str) {
+fn find_rust_files(&files: [str], path: str) {
     if str::ends_with(path, ".rs") {
         if file_contains(path, "xfail-test") {
             //log_err "Skipping " + path + " because it is marked as xfail-test";

@@ -169,14 +169,14 @@ fn instantiate_path(fcx: @fn_ctxt, pth: ast::path, tpt: ty_param_kinds_and_ty,
     if ty_substs_len > 0u {
         let param_var_len = vec::len(ty_param_vars);
         if param_var_len == 0u {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                    "this item does not take type parameters");
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "this item does not take type parameters");
         } else if ty_substs_len > param_var_len {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                 "too many type parameter provided for this item");
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "too many type parameter provided for this item");
         } else if ty_substs_len < param_var_len {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                "not enough type parameters provided for this item");
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "not enough type parameters provided for this item");
         }
         let ty_substs: [ty::t] = [];
         let i = 0u;
@@ -211,8 +211,8 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     alt ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, tp) {
       fix_ok(typ_s) { ret typ_s; }
       fix_err(_) {
-        fcx.ccx.tcx.sess.span_fatal(sp,
-              "the type of this value must be known in this context");
+        fcx.ccx.tcx.sess.span_fatal
+            (sp, "the type of this value must be known in this context");
       }
     }
 }
@@ -845,8 +845,8 @@ mod collect {
             visit::mk_simple_visitor(@{visit_item: bind convert(cx, abi, _),
                                        visit_native_item:
                                            bind convert_native(cx, abi, _)
-                                          with
-                               *visit::default_simple_visitor()});
+                                       with
+                                          *visit::default_simple_visitor()});
         visit::visit_crate(*crate, (), visit);
     }
 }
@@ -1364,8 +1364,9 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
                 }
             } else if subpats_len > 0u {
                 // TODO: note definition of tag variant
-                fcx.ccx.tcx.sess.span_fatal(pat.span,
-                       #fmt["this pattern has %u field%s, \
+                fcx.ccx.tcx.sess.span_fatal
+                    (pat.span,
+                     #fmt["this pattern has %u field%s, \
                           but the corresponding \
                           variant has no fields",
                                                  subpats_len,
@@ -1378,10 +1379,10 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
           _ {
             // FIXME: Switch expected and actual in this message? I
             // can never tell.
-            fcx.ccx.tcx.sess.span_fatal(pat.span,
-                       #fmt["mismatched types: expected %s, found tag",
-                                             ty_to_str(fcx.ccx.tcx,
-                                                       expected)]);
+            fcx.ccx.tcx.sess.span_fatal
+                (pat.span,
+                 #fmt["mismatched types: expected %s, found tag",
+                      ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
         write::ty_fixup(fcx, pat.id, path_tpot);
@@ -1391,20 +1392,19 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
         alt structure_of(fcx, pat.span, expected) {
           ty::ty_rec(fields) { ex_fields = fields; }
           _ {
-            fcx.ccx.tcx.sess.span_fatal(pat.span,
-                    #fmt["mismatched types: expected %s, found record",
-                                             ty_to_str(fcx.ccx.tcx,
-                                                       expected)]);
+            fcx.ccx.tcx.sess.span_fatal
+                (pat.span, #fmt["mismatched types: expected %s, found record",
+                                ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
         let f_count = vec::len(fields);
         let ex_f_count = vec::len(ex_fields);
         if ex_f_count < f_count || !etc && ex_f_count > f_count {
-            fcx.ccx.tcx.sess.span_fatal(pat.span,
-                   #fmt["mismatched types: expected a record \
+            fcx.ccx.tcx.sess.span_fatal
+                (pat.span, #fmt["mismatched types: expected a record \
                       with %u fields, found one with %u \
                       fields",
-                                             ex_f_count, f_count]);
+                                ex_f_count, f_count]);
         }
         fn matches(name: str, f: ty::field) -> bool {
             ret str::eq(name, f.ident);
@@ -1427,19 +1427,17 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
         alt structure_of(fcx, pat.span, expected) {
           ty::ty_tup(elts) { ex_elts = elts; }
           _ {
-            fcx.ccx.tcx.sess.span_fatal(pat.span,
-                #fmt["mismatched types: expected %s, found tuple",
-                                             ty_to_str(fcx.ccx.tcx,
-                                                       expected)]);
+            fcx.ccx.tcx.sess.span_fatal
+                (pat.span, #fmt["mismatched types: expected %s, found tuple",
+                                ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
         let e_count = vec::len(elts);
         if e_count != vec::len(ex_elts) {
-            fcx.ccx.tcx.sess.span_fatal(pat.span,
-                  #fmt["mismatched types: expected a tuple \
+            fcx.ccx.tcx.sess.span_fatal
+                (pat.span, #fmt["mismatched types: expected a tuple \
                       with %u fields, found one with %u \
-                      fields",
-                                             vec::len(ex_elts), e_count]);
+                      fields", vec::len(ex_elts), e_count]);
         }
         let i = 0u;
         for elt in elts { check_pat(fcx, map, elt, ex_elts[i]); i += 1u; }
@@ -1479,8 +1477,8 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::pure_fn.)) { ret; }
           _ {
-            ccx.tcx.sess.span_fatal(sp,
-         "Pure function calls function not known to be pure");
+            ccx.tcx.sess.span_fatal
+                (sp, "pure function calls function not known to be pure");
           }
         }
       }
@@ -1528,14 +1526,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         alt sty {
           ty::ty_fn(ast::proto_iter., _, _, _, _) {
             if call_kind != kind_for_each {
-                fcx.ccx.tcx.sess.span_err(sp,
-                       "calling iter outside of for each loop");
+                fcx.ccx.tcx.sess.span_err
+                    (sp, "calling iter outside of for each loop");
             }
           }
           _ {
             if call_kind == kind_for_each {
-                fcx.ccx.tcx.sess.span_err(sp,
-                   "calling non-iter as sequence of for each loop");
+                fcx.ccx.tcx.sess.span_err
+                    (sp, "calling non-iter as sequence of for each loop");
             }
           }
         }
@@ -1921,8 +1919,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           ty::ty_str. { elt_ty = ty::mk_mach(tcx, ast::ty_u8); }
           _ {
             tcx.sess.span_fatal(expr.span,
-                     "mismatched types: expected vector or string but "
-                                    + "found " + ty_to_str(tcx, ety));
+                                "mismatched types: expected vector or string "
+                                + "but found " + ty_to_str(tcx, ety));
           }
         }
         bot |= check_for_or_for_each(fcx, decl, elt_ty, body, id);
@@ -2021,6 +2019,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Pull the argument and return types out.
         let proto, arg_tys, rt, cf, constrs;
         alt structure_of(fcx, expr.span, expr_ty(tcx, f)) {
+
 
           // FIXME:
           // probably need to munge the constrs to drop constraints
@@ -2313,9 +2312,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                       ty::ty_obj(ms) { inner_obj_methods = ms; }
                       _ {
                         // The user is trying to extend a non-object.
-                        tcx.sess.span_fatal(e.span,
-                                   syntax::print::pprust::expr_to_str(e) +
-                                   " does not have object type");
+                        tcx.sess.span_fatal
+                            (e.span, syntax::print::pprust::expr_to_str(e)
+                             + " does not have object type");
                       }
                     }
                   }
@@ -2340,10 +2339,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         // type.  Check to make sure.
                         let new_type = ty_of_method(ccx, om);
                         if new_type != m {
-                            ccx.tcx.sess.span_fatal(om.span,
-                                         "Attempted to override method "
-                                                    + m.ident +
-                                         " with one of a different type");
+                            ccx.tcx.sess.span_fatal
+                                (om.span, "attempted to override method "
+                                 + m.ident + " with one of a different type");
                         }
                         ret none;
                     }
@@ -2518,8 +2516,9 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     alt e.node {
       ast::expr_call(operator, operands) {
         if !ty::is_pred_ty(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, operator)) {
-            fcx.ccx.tcx.sess.span_fatal(operator.span,
-                      "Operator in constraint has non-boolean return type");
+            fcx.ccx.tcx.sess.span_fatal
+                (operator.span,
+                 "operator in constraint has non-boolean return type");
         }
 
         alt operator.node {
@@ -2592,9 +2591,10 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
                                types: []};
                           let arg_occ_node_id =
                               fcx.ccx.tcx.sess.next_node_id();
-                          fcx.ccx.tcx.def_map.insert(arg_occ_node_id,
-                                           ast::def_arg(local_def(args[i].id),
-                                                               args[i].mode));
+                          fcx.ccx.tcx.def_map.insert
+                              (arg_occ_node_id,
+                               ast::def_arg(local_def(args[i].id),
+                                            args[i].mode));
                           {id: arg_occ_node_id,
                            node: ast::expr_path(respan(a.span, p)),
                            span: a.span}

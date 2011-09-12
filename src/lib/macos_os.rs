@@ -24,7 +24,7 @@ native "cdecl" mod libc = "" {
     fn setenv(n: str::sbuf, v: str::sbuf, overwrite: int) -> int;
     fn unsetenv(n: str::sbuf) -> int;
     fn pipe(buf: *mutable int) -> int;
-    fn waitpid(pid: int, status: &mutable int, options: int) -> int;
+    fn waitpid(pid: int, &status: int, options: int) -> int;
 }
 
 mod libc_constants {

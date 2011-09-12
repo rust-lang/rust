@@ -13,7 +13,7 @@ native "rust" mod rustrt {
     type rust_port;
 
     fn chan_id_send<~T>(target_task: task::task, target_port: port_id,
-                        data: -T);
+                        -data: T);
 
     fn new_port(unit_sz: uint) -> *rust_port;
     fn del_port(po: *rust_port);
@@ -38,7 +38,7 @@ resource port_ptr(po: *rustrt::rust_port) {
 
 tag port<~T> { port_t(@port_ptr); }
 
-fn send<~T>(ch: chan<T>, data: -T) {
+fn send<~T>(ch: chan<T>, -data: T) {
     let chan_t(t, p) = ch;
     rustrt::chan_id_send(t, p, data);
 }

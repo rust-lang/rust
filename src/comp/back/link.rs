@@ -40,10 +40,9 @@ fn llvm_err(sess: session::session, msg: str) {
 
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
     let path = fs::connect(sess.get_opts().sysroot, "lib/intrinsics.bc");
-    let membuf =
-        str::as_buf(path, {|buf|
-          llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-                    });
+    let membuf = str::as_buf(path, {|buf|
+        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
+    });
     if membuf as uint == 0u {
         llvm_err(sess, "installation problem: couldn't open " + path);
         fail;
@@ -191,17 +190,16 @@ mod write {
                 // Save the assembly file if -S is used
 
                 if opts.output_type == output_type_assembly {
-                    let _: () =
-                        str::as_buf(x86::get_target_triple(), {|buf_t|
-                            str::as_buf(output, {|buf_o|
-                                llvm::LLVMRustWriteOutputFile(pm.llpm,
-                                                              llmod,
-                                                              buf_t,
-                                                              buf_o,
-                                                             LLVMAssemblyFile,
-                                                              CodeGenOptLevel)
-                                                    })
-                                    });
+                    let _: () = str::as_buf(x86::get_target_triple(), {|buf_t|
+                        str::as_buf(output, {|buf_o|
+                            llvm::LLVMRustWriteOutputFile(pm.llpm,
+                                                          llmod,
+                                                          buf_t,
+                                                          buf_o,
+                                                          LLVMAssemblyFile,
+                                                          CodeGenOptLevel)
+                        })
+                    });
                 }
 
 
@@ -218,8 +216,8 @@ mod write {
                                                               buf_o,
                                                               LLVMObjectFile,
                                                               CodeGenOptLevel)
-                                                    })
-                                    });
+                            })
+                        });
                 }
             } else {
                 // If we aren't saving temps then just output the file
@@ -234,8 +232,8 @@ mod write {
                                                           buf_o,
                                                           FileType,
                                                           CodeGenOptLevel)
-                                                })
-                                });
+                        })
+                    });
             }
             // Clean up and return
 

@@ -67,7 +67,7 @@ fn test_join_convenient() {
 
 #[test]
 fn spawn_polymorphic() {
-    fn foo<~T>(x: -T) { log_err x; }
+    fn foo<~T>(-x: T) { log_err x; }
 
     let fb = bind foo(true);
 

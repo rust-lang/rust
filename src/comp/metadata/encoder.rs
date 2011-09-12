@@ -41,7 +41,7 @@ fn encode_def_id(ebml_w: ebml::writer, id: def_id) {
 type entry<T> = {val: T, pos: uint};
 
 fn encode_tag_variant_paths(ebml_w: ebml::writer, variants: [variant],
-                            path: [str], index: &mutable [entry<str>]) {
+                            path: [str], &index: [entry<str>]) {
     for variant: variant in variants {
         add_to_index(ebml_w, path, index, variant.node.name);
         ebml::start_tag(ebml_w, tag_paths_data_item);
@@ -51,16 +51,15 @@ fn encode_tag_variant_paths(ebml_w: ebml::writer, variants: [variant],
     }
 }
 
-fn add_to_index(ebml_w: ebml::writer, path: [str],
-                index: &mutable [entry<str>], name: str) {
+fn add_to_index(ebml_w: ebml::writer, path: [str], &index: [entry<str>],
+                name: str) {
     let full_path = path + [name];
     index +=
         [{val: str::connect(full_path, "::"), pos: ebml_w.writer.tell()}];
 }
 
 fn encode_native_module_item_paths(ebml_w: ebml::writer, nmod: native_mod,
-                                   path: [str],
-                                   index: &mutable [entry<str>]) {
+                                   path: [str], &index: [entry<str>]) {
     for nitem: @native_item in nmod.items {
         add_to_index(ebml_w, path, index, nitem.ident);
         ebml::start_tag(ebml_w, tag_paths_data_item);
@@ -71,7 +70,7 @@ fn encode_native_module_item_paths(ebml_w: ebml::writer, nmod: native_mod,
 }
 
 fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
-                            index: &mutable [entry<str>]) {
+                            &index: [entry<str>]) {
     for it: @item in module.items {
         if !ast_util::is_exported(it.ident, module) { cont; }
         alt it.node {
@@ -226,8 +225,7 @@ fn encode_tag_id(ebml_w: ebml::writer, id: def_id) {
 
 fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
                            id: node_id, variants: [variant],
-                           index: &mutable [entry<int>],
-                           ty_params: [ty_param]) {
+                           &index: [entry<int>], ty_params: [ty_param]) {
     for variant: variant in variants {
         index += [{val: variant.node.id, pos: ebml_w.writer.tell()}];
         ebml::start_tag(ebml_w, tag_items_data_item);
@@ -246,7 +244,7 @@ fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
 }
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
-                        index: &mutable [entry<int>]) {
+                        &index: [entry<int>]) {
     alt item.node {
       item_const(_, _) {
         ebml::start_tag(ebml_w, tag_items_data_item);

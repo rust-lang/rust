@@ -4,7 +4,7 @@ use std;
 import std::task::yield;
 import std::task;
 
-fn x(s: -str, n: int) { log s; log n; }
+fn x(-s: str, n: int) { log s; log n; }
 
 fn main() {
     task::spawn(bind x("hello from first spawned fn", 65));

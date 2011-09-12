@@ -810,18 +810,14 @@ native "cdecl" mod llvm = "rustllvm" {
     fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: PassManagerBuilderRef,
                                                    Value: Bool);
     fn LLVMPassManagerBuilderSetDisableSimplifyLibCalls
-        (PMB: PassManagerBuilderRef,
-                                                        Value: Bool);
+        (PMB: PassManagerBuilderRef, Value: Bool);
     fn LLVMPassManagerBuilderUseInlinerWithThreshold
-        (PMB: PassManagerBuilderRef,
-                                                     threshold: uint);
-    fn LLVMPassManagerBuilderPopulateModulePassManager(PMB:
-                                                        PassManagerBuilderRef,
-                                                       PM: PassManagerRef);
+        (PMB: PassManagerBuilderRef, threshold: uint);
+    fn LLVMPassManagerBuilderPopulateModulePassManager
+        (PMB: PassManagerBuilderRef, PM: PassManagerRef);
 
-    fn LLVMPassManagerBuilderPopulateFunctionPassManager(PMB:
-                                                        PassManagerBuilderRef,
-                                                         PM: PassManagerRef);
+    fn LLVMPassManagerBuilderPopulateFunctionPassManager
+        (PMB: PassManagerBuilderRef, PM: PassManagerRef);
 
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);
@@ -962,6 +958,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
 
 
 
+
       // FIXME: more enum-as-int constants determined from Core::h;
       // horrible, horrible. Complete as needed.
 
@@ -979,9 +976,11 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
 
 
 
+
       7 {
         ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
+
 
 
 
@@ -1003,6 +1002,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
 
 
 
+
       9 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
@@ -1017,10 +1017,12 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
 
 
 
+
       10 {
         let el_ty = llvm::LLVMGetElementType(ty);
         ret "[" + type_to_str_inner(names, outer, el_ty) + "]";
       }
+
 
 
 
@@ -1038,6 +1040,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         ret "*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
+
 
 
 

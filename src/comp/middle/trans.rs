@@ -943,7 +943,7 @@ tag ty_param_storage { tps_normal; tps_obj(uint); tps_fn(uint); }
 
 fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
                       storage: ty_param_storage,
-                      static_ti: &mutable option::t<@tydesc_info>) -> result {
+                      &static_ti: option::t<@tydesc_info>) -> result {
     alt cx.fcx.derived_tydescs.find(t) {
       some(info) {
 
@@ -1026,9 +1026,8 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
 type get_tydesc_result = {kind: tydesc_kind, result: result};
 
 fn get_tydesc(cx: @block_ctxt, orig_t: ty::t, escapes: bool,
-              storage: ty_param_storage,
-              static_ti: &mutable option::t<@tydesc_info>) ->
-   get_tydesc_result {
+              storage: ty_param_storage, &static_ti: option::t<@tydesc_info>)
+   -> get_tydesc_result {
 
     let t = ty::strip_cname(bcx_tcx(cx), orig_t);
 
@@ -1434,8 +1433,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     // Kludge to work around the fact that we know the precise type of the
     // value here, but the dtor expects a type that still has opaque pointers
     // for type variables.
-    let val_llty =
-        lib::llvm::fn_ty_param_tys
+    let val_llty = lib::llvm::fn_ty_param_tys
         (llvm::LLVMGetElementType
          (llvm::LLVMTypeOf(dtor_addr)))[std::vec::len(args)];
     let val_cast = BitCast(cx, val.val, val_llty);
@@ -2179,6 +2177,7 @@ fn trans_unary(cx: @block_ctxt, op: ast::unop, e: @ast::expr,
         } else {
         } // FIXME: can remove the else{} once we have
           // a new snapshot
+
 
         let bcx = move_val_if_temp(sub.bcx, INIT, body, lv, e_ty);
         ret rslt(bcx, sub.box);
@@ -3360,6 +3359,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
 
 
 
+
           // Arg provided at binding time; thunk copies it from
           // closure.
           some(e) {
@@ -3377,6 +3377,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
             llargs += [val];
             b += 1;
           }
+
 
 
           // Arg will be provided when the thunk is invoked.
@@ -3489,9 +3490,9 @@ fn trans_bind_1(cx: @block_ctxt, f: @ast::expr, f_res: lval_result,
 }
 
 fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
-                  to_zero: &mutable [{v: ValueRef, t: ty::t}],
-                  to_revoke: &mutable [{v: ValueRef, t: ty::t}],
-                  e: @ast::expr) -> result {
+                  &to_zero: [{v: ValueRef, t: ty::t}],
+                  &to_revoke: [{v: ValueRef, t: ty::t}], e: @ast::expr) ->
+   result {
     let ccx = bcx_ccx(cx);
     let e_ty = ty::expr_ty(ccx.tcx, e);
     let is_bot = ty::type_is_bot(ccx.tcx, e_ty);
@@ -5531,7 +5532,7 @@ fn decl_native_fn_and_pair(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     }
 
     fn trans_simple_native_abi(bcx: @block_ctxt, name: str,
-                               call_args: &mutable [ValueRef], fn_type: ty::t,
+                               &call_args: [ValueRef], fn_type: ty::t,
                                uses_retptr: bool, cc: uint) ->
        {val: ValueRef, rptr: ValueRef} {
         let call_arg_tys: [TypeRef] = [];
@@ -5640,16 +5641,12 @@ fn collect_item_1(ccx: @crate_ctxt, i: @ast::item, pt: [str], v: vt<[str]>) {
         let s =
             mangle_exported_name(ccx, pt + [i.ident],
                                  node_id_type(ccx, i.id));
-        let g = str::as_buf
-            (s,
-             // FIXME: Could follow from a constraint on types of const
-             // items
-             {|buf|
-                 check (type_has_static_size(ccx, typ));
-              llvm::LLVMAddGlobal(ccx.llmod,
-                                  type_of(ccx, i.span, typ),
-                                  buf)
-             });
+        // FIXME: Could follow from a constraint on types of const
+        // items
+        let g = str::as_buf(s, {|buf|
+            check (type_has_static_size(ccx, typ));
+            llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ), buf)
+        });
         ccx.item_symbols.insert(i.id, s);
         ccx.consts.insert(i.id, g);
       }
@@ -5825,11 +5822,10 @@ fn make_common_glue(sess: session::session, output: str) {
     let task_type = T_task();
     let taskptr_type = T_ptr(task_type);
 
-    let llmod =
-        str::as_buf("rust_out", {|buf|
-            llvm::LLVMModuleCreateWithNameInContext
+    let llmod = str::as_buf("rust_out", {|buf|
+        llvm::LLVMModuleCreateWithNameInContext
             (buf, llvm::LLVMGetGlobalContext())
-                                });
+    });
     let _: () =
         str::as_buf(x86::get_data_layout(),
                     {|buf| llvm::LLVMSetDataLayout(llmod, buf) });
@@ -5937,12 +5933,10 @@ fn write_abi_version(ccx: @crate_ctxt) {
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, amap: ast_map::map, mut_map: mut::mut_map,
                copy_map: alias::copy_map) -> ModuleRef {
-    let llmod =
-        str::as_buf("rust_out",
-                    {|buf|
-                        llvm::LLVMModuleCreateWithNameInContext(buf,
-                                       llvm::LLVMGetGlobalContext())
-                    });
+    let llmod = str::as_buf("rust_out", {|buf|
+        llvm::LLVMModuleCreateWithNameInContext
+            (buf, llvm::LLVMGetGlobalContext())
+    });
     let _: () =
         str::as_buf(x86::get_data_layout(),
                     {|buf| llvm::LLVMSetDataLayout(llmod, buf) });

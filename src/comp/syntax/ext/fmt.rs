@@ -334,8 +334,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     let expected_nargs = n + 1u; // n conversions + the fmt string
 
     if expected_nargs < nargs {
-        cx.span_fatal(sp,
-       #fmt["too many arguments to #fmt. found %u, expected %u",
+        cx.span_fatal
+            (sp, #fmt["too many arguments to #fmt. found %u, expected %u",
                            nargs, expected_nargs]);
     }
     ret tmp_expr;

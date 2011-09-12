@@ -185,10 +185,9 @@ fn find_library_crate_aux(nn: {prefix: str, suffix: str}, crate_name: str,
 }
 
 fn get_metadata_section(filename: str) -> option::t<@[u8]> {
-    let mb =
-        str::as_buf(filename, {|buf|
-                llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-                    });
+    let mb = str::as_buf(filename, {|buf|
+        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
+    });
     if mb as int == 0 { ret option::none::<@[u8]>; }
     let of = mk_object_file(mb);
     let si = mk_section_iter(of.llof);

@@ -70,10 +70,12 @@ fn visit_fn(f: ast::_fn, _tp: [ast::ty_param], _sp: span, _name: fn_ident,
         alt f.proto {
 
 
+
           // Blocks need to obey any restrictions from the enclosing scope.
           ast::proto_block. | ast::proto_closure. {
             sc
           }
+
 
 
           // Non capturing functions start out fresh.
@@ -234,8 +236,9 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
                 if i != j &&
                        ty_can_unsafely_include(cx, ty, arg_t.ty, mut_alias) &&
                        cant_copy(cx, r) {
-                    cx.tcx.sess.span_err(args[i].span,
-                               #fmt["argument %u may alias with argument %u, \
+                    cx.tcx.sess.span_err
+                        (args[i].span,
+                         #fmt["argument %u may alias with argument %u, \
                               which is not immutably rooted",
                                               i, j]);
                 }
@@ -478,11 +481,13 @@ fn ty_can_unsafely_include(cx: ctx, needle: ty::t, haystack: ty::t, mut: bool)
 
 
 
+
           // These may contain anything.
           ty::ty_fn(_, _, _, _, _) {
             ret true;
           }
           ty::ty_obj(_) { ret true; }
+
 
 
 

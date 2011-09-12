@@ -1,6 +1,6 @@
 
 
-fn incr(x: &mutable int) -> bool { x += 1; assert (false); ret false; }
+fn incr(&x: int) -> bool { x += 1; assert (false); ret false; }
 
 fn main() {
     let x = 1 == 2 || 3 == 3;
