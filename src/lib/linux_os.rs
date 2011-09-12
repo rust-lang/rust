@@ -54,7 +54,7 @@ fn exec_suffix() -> str { ret ""; }
 
 fn target_os() -> str { ret "linux"; }
 
-fn dylib_filename(base: &str) -> str { ret "lib" + base + ".so"; }
+fn dylib_filename(base: str) -> str { ret "lib" + base + ".so"; }
 
 fn pipe() -> {in: int, out: int} {
     let fds = {mutable in: 0, mutable out: 0};

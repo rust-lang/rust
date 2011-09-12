@@ -124,8 +124,8 @@ fn spawn_inner(thunk: -fn(), notify: option<comm::chan<task_notification>>) ->
     let ptrsize = sys::size_of::<*u8>();
     let thunkfn: *mutable uint = cast(sp - ptrsize * 2u);
     let thunkenv: *mutable uint = cast(sp - ptrsize);
-    *thunkfn = cast(raw_thunk.code);
-    *thunkenv = cast(raw_thunk.env);
+    *thunkfn = cast(raw_thunk.code);;
+    *thunkenv = cast(raw_thunk.env);;
     // align the stack to 16 bytes
     (**task_ptr).stack_ptr = cast(sp - ptrsize * 4u);
 
@@ -136,7 +136,7 @@ fn spawn_inner(thunk: -fn(), notify: option<comm::chan<task_notification>>) ->
         (**task_ptr).notify_chan = c;
       }
       none { }
-    };
+    }
 
     // give the thunk environment's allocation to the new task
     rustrt::migrate_alloc(cast(raw_thunk.env), id);

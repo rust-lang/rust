@@ -19,20 +19,20 @@ import std::comm::send;
 import std::comm::recv;
 import std::comm;
 
-fn map(filename: &str, emit: map_reduce::putter) { emit(filename, "1"); }
+fn map(filename: str, emit: map_reduce::putter) { emit(filename, "1"); }
 
 mod map_reduce {
     export putter;
     export mapper;
     export map_reduce;
 
-    type putter = fn(&str, &str);
+    type putter = fn(str, str);
 
-    type mapper = fn(&str, putter);
+    type mapper = fn(str, putter);
 
     tag ctrl_proto { find_reducer([u8], chan<int>); mapper_done; }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: &[str]) {
+    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: [str]) {
         for i: str in inputs { task::spawn(bind map_task(ctrl, i)); }
     }
 
@@ -40,8 +40,8 @@ mod map_reduce {
 
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap<str, int>, ctrl: chan<ctrl_proto>,
-                key: &str, val: &str) {
+        fn emit(im: map::hashmap<str, int>, ctrl: chan<ctrl_proto>, key: str,
+                val: str) {
             let c;
             alt im.find(key) {
               some(_c) { c = _c }
@@ -61,7 +61,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn map_reduce(inputs: &[str]) {
+    fn map_reduce(inputs: [str]) {
         let ctrl = port();
 
         // This task becomes the master control task. It spawns others

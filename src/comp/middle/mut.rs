@@ -12,9 +12,9 @@ type deref = @{mut: bool, kind: deref_t, outer_t: ty::t};
 // vec of dereferences that were used on this root. Note that, in this vec,
 // the inner derefs come in front, so foo.bar[1] becomes rec(ex=foo,
 // ds=[index,field])
-fn expr_root(tcx: &ty::ctxt, ex: @expr, autoderef: bool) ->
+fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
    {ex: @expr, ds: @[deref]} {
-    fn maybe_auto_unbox(tcx: &ty::ctxt, t: ty::t) -> {t: ty::t, ds: [deref]} {
+    fn maybe_auto_unbox(tcx: ty::ctxt, t: ty::t) -> {t: ty::t, ds: [deref]} {
         let ds = [];
         while true {
             alt ty::struct(tcx, t) {
@@ -68,14 +68,13 @@ fn expr_root(tcx: &ty::ctxt, ex: @expr, autoderef: bool) ->
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));
             alt ty::struct(tcx, auto_unbox.t) {
               ty::ty_vec(mt) {
-                ds += [@{mut: mt.mut != imm,
-                         kind: index,
-                         outer_t: auto_unbox.t}];
+                ds +=
+                    [@{mut: mt.mut != imm,
+                       kind: index,
+                       outer_t: auto_unbox.t}];
               }
               ty::ty_str. {
-                ds += [@{mut: false,
-                         kind: index,
-                         outer_t: auto_unbox.t}];
+                ds += [@{mut: false, kind: index, outer_t: auto_unbox.t}];
               }
             }
             ds += auto_unbox.ds;
@@ -106,12 +105,12 @@ fn expr_root(tcx: &ty::ctxt, ex: @expr, autoderef: bool) ->
     ret {ex: ex, ds: @ds};
 }
 
-fn mut_field(ds: &@[deref]) -> bool {
+fn mut_field(ds: @[deref]) -> bool {
     for d: deref in *ds { if d.mut { ret true; } }
     ret false;
 }
 
-fn inner_mut(ds: &@[deref]) -> option::t<ty::t> {
+fn inner_mut(ds: @[deref]) -> option::t<ty::t> {
     for d: deref in *ds { if d.mut { ret some(d.outer_t); } }
     ret none;
 }
@@ -121,7 +120,7 @@ fn inner_mut(ds: &@[deref]) -> option::t<ty::t> {
 type mut_map = std::map::hashmap<node_id, ()>;
 type ctx = {tcx: ty::ctxt, mut_map: mut_map};
 
-fn check_crate(tcx: ty::ctxt, crate: &@crate) -> mut_map {
+fn check_crate(tcx: ty::ctxt, crate: @crate) -> mut_map {
     let cx = @{tcx: tcx, mut_map: std::map::new_int_hash()};
     let v =
         @{visit_expr: bind visit_expr(cx, _, _, _),
@@ -133,7 +132,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@crate) -> mut_map {
 
 tag msg { msg_assign; msg_move_out; msg_mut_alias; }
 
-fn mk_err(cx: &@ctx, span: &syntax::codemap::span, msg: msg, name: &str) {
+fn mk_err(cx: @ctx, span: syntax::codemap::span, msg: msg, name: str) {
     cx.tcx.sess.span_err(span,
                          alt msg {
                            msg_assign. { "assigning to " + name }
@@ -144,7 +143,7 @@ fn mk_err(cx: &@ctx, span: &syntax::codemap::span, msg: msg, name: &str) {
                          });
 }
 
-fn visit_decl(cx: &@ctx, d: &@decl, e: &(), v: &visit::vt<()>) {
+fn visit_decl(cx: @ctx, d: @decl, e: (), v: visit::vt<()>) {
     visit::visit_decl(d, e, v);
     alt d.node {
       decl_local(locs) {
@@ -161,7 +160,7 @@ fn visit_decl(cx: &@ctx, d: &@decl, e: &(), v: &visit::vt<()>) {
     }
 }
 
-fn visit_expr(cx: &@ctx, ex: &@expr, e: &(), v: &visit::vt<()>) {
+fn visit_expr(cx: @ctx, ex: @expr, e: (), v: visit::vt<()>) {
     alt ex.node {
       expr_call(f, args) { check_call(cx, f, args); }
       expr_swap(lhs, rhs) {
@@ -180,7 +179,7 @@ fn visit_expr(cx: &@ctx, ex: &@expr, e: &(), v: &visit::vt<()>) {
     visit::visit_expr(ex, e, v);
 }
 
-fn check_lval(cx: &@ctx, dest: &@expr, msg: msg) {
+fn check_lval(cx: @ctx, dest: @expr, msg: msg) {
     alt dest.node {
       expr_path(p) {
         let def = cx.tcx.def_map.get(dest.id);
@@ -193,9 +192,7 @@ fn check_lval(cx: &@ctx, dest: &@expr, msg: msg) {
       _ {
         let root = expr_root(cx.tcx, dest, false);
         if vec::len(*root.ds) == 0u {
-            if msg == msg_assign {
-                mk_err(cx, dest.span, msg, "non-lvalue");
-            }
+            if msg == msg_assign { mk_err(cx, dest.span, msg, "non-lvalue"); }
         } else if !root.ds[0].mut {
             let name =
                 alt root.ds[0].kind {
@@ -209,7 +206,7 @@ fn check_lval(cx: &@ctx, dest: &@expr, msg: msg) {
     }
 }
 
-fn check_move_rhs(cx: &@ctx, src: &@expr) {
+fn check_move_rhs(cx: @ctx, src: @expr) {
     alt src.node {
       expr_path(p) {
         alt cx.tcx.def_map.get(src.id) {
@@ -231,20 +228,18 @@ fn check_move_rhs(cx: &@ctx, src: &@expr) {
     }
 }
 
-fn check_call(cx: &@ctx, f: &@expr, args: &[@expr]) {
+fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
     let arg_ts =
         ty::ty_fn_args(cx.tcx,
                        ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f)));
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
-        if arg_t.mode != by_ref {
-            check_lval(cx, args[i], msg_mut_alias);
-        }
+        if arg_t.mode != by_ref { check_lval(cx, args[i], msg_mut_alias); }
         i += 1u;
     }
 }
 
-fn is_immutable_def(def: &def) -> option::t<str> {
+fn is_immutable_def(def: def) -> option::t<str> {
     alt def {
       def_fn(_, _) | def_mod(_) | def_native_mod(_) | def_const(_) |
       def_use(_) {

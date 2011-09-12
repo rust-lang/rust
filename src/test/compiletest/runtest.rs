@@ -18,7 +18,7 @@ import util::logv;
 
 export run;
 
-fn run(cx: &cx, _testfile: -[u8]) {
+fn run(cx: cx, _testfile: -[u8]) {
     let testfile = str::unsafe_from_bytes(_testfile);
     if cx.config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
@@ -34,7 +34,7 @@ fn run(cx: &cx, _testfile: -[u8]) {
     }
 }
 
-fn run_cfail_test(cx: &cx, props: &test_props, testfile: &str) {
+fn run_cfail_test(cx: cx, props: test_props, testfile: str) {
     let procres = compile_test(cx, props, testfile);
 
     if procres.status == 0 {
@@ -44,7 +44,7 @@ fn run_cfail_test(cx: &cx, props: &test_props, testfile: &str) {
     check_error_patterns(props, testfile, procres);
 }
 
-fn run_rfail_test(cx: &cx, props: &test_props, testfile: &str) {
+fn run_rfail_test(cx: cx, props: test_props, testfile: str) {
     let procres = compile_test(cx, props, testfile);
 
     if procres.status != 0 { fatal_procres("compilation failed!", procres); }
@@ -67,7 +67,7 @@ fn run_rfail_test(cx: &cx, props: &test_props, testfile: &str) {
     check_error_patterns(props, testfile, procres);
 }
 
-fn run_rpass_test(cx: &cx, props: &test_props, testfile: &str) {
+fn run_rpass_test(cx: cx, props: test_props, testfile: str) {
     let procres = compile_test(cx, props, testfile);
 
     if procres.status != 0 { fatal_procres("compilation failed!", procres); }
@@ -78,7 +78,7 @@ fn run_rpass_test(cx: &cx, props: &test_props, testfile: &str) {
     if procres.status != 0 { fatal_procres("test run failed!", procres); }
 }
 
-fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
+fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
     if option::is_some(props.pp_exact) {
         logv(cx.config, "testing for exact pretty-printing");
     } else { logv(cx.config, "testing for converging pretty-printing"); }
@@ -131,18 +131,18 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
 
     ret;
 
-    fn print_source(cx: &cx, testfile: &str, src: &str) -> procres {
+    fn print_source(cx: cx, testfile: str, src: str) -> procres {
         compose_and_run(cx, testfile, make_pp_args,
                         cx.config.compile_lib_path, option::some(src))
     }
 
-    fn make_pp_args(config: &config, _testfile: &str) -> procargs {
+    fn make_pp_args(config: config, _testfile: str) -> procargs {
         let prog = config.rustc_path;
         let args = ["-", "--pretty", "normal"];
         ret {prog: prog, args: args};
     }
 
-    fn compare_source(expected: &str, actual: &str) {
+    fn compare_source(expected: str, actual: str) {
         if expected != actual {
             error("pretty-printed source does match expected source");
             let msg =
@@ -162,20 +162,19 @@ actual:\n\
         }
     }
 
-    fn typecheck_source(cx: &cx, testfile: &str, src: &str) -> procres {
+    fn typecheck_source(cx: cx, testfile: str, src: str) -> procres {
         compose_and_run(cx, testfile, make_typecheck_args,
                         cx.config.compile_lib_path, option::some(src))
     }
 
-    fn make_typecheck_args(config: &config, _testfile: &str) -> procargs {
+    fn make_typecheck_args(config: config, _testfile: str) -> procargs {
         let prog = config.rustc_path;
         let args = ["-", "--no-trans", "--lib"];
         ret {prog: prog, args: args};
     }
 }
 
-fn check_error_patterns(props: &test_props, testfile: &str,
-                        procres: &procres) {
+fn check_error_patterns(props: test_props, testfile: str, procres: procres) {
     if vec::is_empty(props.error_patterns) {
         fatal("no error pattern specified in " + testfile);
     }
@@ -216,26 +215,25 @@ type procargs = {prog: str, args: [str]};
 
 type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
-fn compile_test(cx: &cx, props: &test_props, testfile: &str) -> procres {
+fn compile_test(cx: cx, props: test_props, testfile: str) -> procres {
     compose_and_run(cx, testfile, bind make_compile_args(_, props, _),
                     cx.config.compile_lib_path, option::none)
 }
 
-fn exec_compiled_test(cx: &cx, props: &test_props, testfile: &str) ->
-   procres {
+fn exec_compiled_test(cx: cx, props: test_props, testfile: str) -> procres {
     compose_and_run(cx, testfile, bind make_run_args(_, props, _),
                     cx.config.run_lib_path, option::none)
 }
 
-fn compose_and_run(cx: &cx, testfile: &str,
-                   make_args: fn(&config, &str) -> procargs, lib_path: &str,
+fn compose_and_run(cx: cx, testfile: str,
+                   make_args: fn(config, str) -> procargs, lib_path: str,
                    input: option::t<str>) -> procres {
     let procargs = make_args(cx.config, testfile);
     ret program_output(cx, testfile, lib_path, procargs.prog, procargs.args,
                        input);
 }
 
-fn make_compile_args(config: &config, props: &test_props, testfile: &str) ->
+fn make_compile_args(config: config, props: test_props, testfile: str) ->
    procargs {
     let prog = config.rustc_path;
     let args = [testfile, "-o", make_exe_name(config, testfile)];
@@ -249,11 +247,11 @@ fn make_compile_args(config: &config, props: &test_props, testfile: &str) ->
     ret {prog: prog, args: args};
 }
 
-fn make_exe_name(config: &config, testfile: &str) -> str {
+fn make_exe_name(config: config, testfile: str) -> str {
     output_base_name(config, testfile) + os::exec_suffix()
 }
 
-fn make_run_args(config: &config, props: &test_props, testfile: &str) ->
+fn make_run_args(config: config, props: test_props, testfile: str) ->
    procargs {
     let toolargs =
         if !props.no_valgrind {
@@ -271,14 +269,14 @@ fn make_run_args(config: &config, props: &test_props, testfile: &str) ->
     ret {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
 }
 
-fn split_maybe_args(argstr: &option::t<str>) -> [str] {
-    fn rm_whitespace(v: &[str]) -> [str] {
-        fn flt(s: &str) -> option::t<str> {
+fn split_maybe_args(argstr: option::t<str>) -> [str] {
+    fn rm_whitespace(v: [str]) -> [str] {
+        fn flt(s: str) -> option::t<str> {
             if !is_whitespace(s) { option::some(s) } else { option::none }
         }
 
         // FIXME: This should be in std
-        fn is_whitespace(s: &str) -> bool {
+        fn is_whitespace(s: str) -> bool {
             for c: u8 in s { if c != ' ' as u8 { ret false; } }
             ret true;
         }
@@ -291,8 +289,8 @@ fn split_maybe_args(argstr: &option::t<str>) -> [str] {
     }
 }
 
-fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
-                  args: &[str], input: option::t<str>) -> procres {
+fn program_output(cx: cx, testfile: str, lib_path: str, prog: str,
+                  args: [str], input: option::t<str>) -> procres {
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
@@ -307,18 +305,18 @@ fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
          cmdline: cmdline};
 }
 
-fn make_cmdline(libpath: &str, prog: &str, args: &[str]) -> str {
+fn make_cmdline(libpath: str, prog: str, args: [str]) -> str {
     #fmt["%s %s %s", lib_path_cmd_prefix(libpath), prog,
          str::connect(args, " ")]
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
 // for diagnostic purposes
-fn lib_path_cmd_prefix(path: &str) -> str {
+fn lib_path_cmd_prefix(path: str) -> str {
     #fmt["%s=\"%s\"", util::lib_path_env_var(), util::make_new_path(path)]
 }
 
-fn dump_output(config: &config, testfile: &str, out: &str, err: &str) {
+fn dump_output(config: config, testfile: str, out: str, err: str) {
     dump_output_file(config, testfile, out, "out");
     dump_output_file(config, testfile, err, "err");
     maybe_dump_to_stdout(config, out, err);
@@ -326,8 +324,7 @@ fn dump_output(config: &config, testfile: &str, out: &str, err: &str) {
 
 #[cfg(target_os = "win32")]
 #[cfg(target_os = "linux")]
-fn dump_output_file(config: &config, testfile: &str, out: &str,
-                    extension: &str) {
+fn dump_output_file(config: config, testfile: str, out: str, extension: str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer = io::file_writer(outfile, [io::create, io::truncate]);
     writer.write_str(out);
@@ -335,15 +332,14 @@ fn dump_output_file(config: &config, testfile: &str, out: &str,
 
 // FIXME (726): Can't use file_writer on mac
 #[cfg(target_os = "macos")]
-fn dump_output_file(config: &config, testfile: &str, out: &str,
-                    extension: &str) {
+fn dump_output_file(config: config, testfile: str, out: str, extension: str) {
 }
 
-fn make_out_name(config: &config, testfile: &str, extension: &str) -> str {
+fn make_out_name(config: config, testfile: str, extension: str) -> str {
     output_base_name(config, testfile) + "." + extension
 }
 
-fn output_base_name(config: &config, testfile: &str) -> str {
+fn output_base_name(config: config, testfile: str) -> str {
     let base = config.build_base;
     let filename =
         {
@@ -354,7 +350,7 @@ fn output_base_name(config: &config, testfile: &str) -> str {
     #fmt["%s%s.%s", base, filename, config.stage_id]
 }
 
-fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
+fn maybe_dump_to_stdout(config: config, out: str, err: str) {
     if config.verbose {
         let sep1 = #fmt["------%s------------------------------", "stdout"];
         let sep2 = #fmt["------%s------------------------------", "stderr"];
@@ -367,11 +363,11 @@ fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
     }
 }
 
-fn error(err: &str) { io::stdout().write_line(#fmt["\nerror: %s", err]); }
+fn error(err: str) { io::stdout().write_line(#fmt["\nerror: %s", err]); }
 
-fn fatal(err: &str) -> ! { error(err); fail; }
+fn fatal(err: str) -> ! { error(err); fail; }
 
-fn fatal_procres(err: &str, procres: procres) -> ! {
+fn fatal_procres(err: str, procres: procres) -> ! {
     let msg =
         #fmt["\n\
 error: %s\n\

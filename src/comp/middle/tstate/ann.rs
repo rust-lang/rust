@@ -70,84 +70,84 @@ fn empty_ann(num_vars: uint) -> ts_ann {
           states: empty_states(num_vars)};
 }
 
-fn get_pre(p: &pre_and_post) -> precond { ret p.precondition; }
+fn get_pre(p: pre_and_post) -> precond { ret p.precondition; }
 
-fn get_post(p: &pre_and_post) -> postcond { ret p.postcondition; }
+fn get_post(p: pre_and_post) -> postcond { ret p.postcondition; }
 
-fn difference(p1: &precond, p2: &precond) -> bool {
+fn difference(p1: precond, p2: precond) -> bool {
     ret tritv_difference(p1, p2);
 }
 
-fn union(p1: &precond, p2: &precond) -> bool { ret tritv_union(p1, p2); }
+fn union(p1: precond, p2: precond) -> bool { ret tritv_union(p1, p2); }
 
-fn intersect(p1: &precond, p2: &precond) -> bool {
+fn intersect(p1: precond, p2: precond) -> bool {
     ret tritv_intersect(p1, p2);
 }
 
-fn pps_len(p: &pre_and_post) -> uint {
+fn pps_len(p: pre_and_post) -> uint {
     // gratuitous check
 
     assert (p.precondition.nbits == p.postcondition.nbits);
     ret p.precondition.nbits;
 }
 
-fn require(i: uint, p: &pre_and_post) {
+fn require(i: uint, p: pre_and_post) {
     // sets the ith bit in p's pre
     tritv_set(i, p.precondition, ttrue);
 }
 
-fn require_and_preserve(i: uint, p: &pre_and_post) {
+fn require_and_preserve(i: uint, p: pre_and_post) {
     // sets the ith bit in p's pre and post
     tritv_set(i, p.precondition, ttrue);
     tritv_set(i, p.postcondition, ttrue);
 }
 
-fn set_in_postcond(i: uint, p: &pre_and_post) -> bool {
+fn set_in_postcond(i: uint, p: pre_and_post) -> bool {
     // sets the ith bit in p's post
     ret set_in_postcond_(i, p.postcondition);
 }
 
-fn set_in_postcond_(i: uint, p: &postcond) -> bool {
+fn set_in_postcond_(i: uint, p: postcond) -> bool {
     let was_set = tritv_get(p, i);
     tritv_set(i, p, ttrue);
     ret was_set != ttrue;
 }
 
-fn set_in_poststate(i: uint, s: &pre_and_post_state) -> bool {
+fn set_in_poststate(i: uint, s: pre_and_post_state) -> bool {
     // sets the ith bit in p's post
     ret set_in_poststate_(i, s.poststate);
 }
 
-fn set_in_poststate_(i: uint, p: &poststate) -> bool {
+fn set_in_poststate_(i: uint, p: poststate) -> bool {
     let was_set = tritv_get(p, i);
     tritv_set(i, p, ttrue);
     ret was_set != ttrue;
 
 }
 
-fn clear_in_poststate(i: uint, s: &pre_and_post_state) -> bool {
+fn clear_in_poststate(i: uint, s: pre_and_post_state) -> bool {
     // sets the ith bit in p's post
     ret clear_in_poststate_(i, s.poststate);
 }
 
-fn clear_in_poststate_(i: uint, s: &poststate) -> bool {
+fn clear_in_poststate_(i: uint, s: poststate) -> bool {
     let was_set = tritv_get(s, i);
     tritv_set(i, s, tfalse);
     ret was_set != tfalse;
 }
 
-fn clear_in_prestate(i: uint, s: &pre_and_post_state) -> bool {
+fn clear_in_prestate(i: uint, s: pre_and_post_state) -> bool {
     // sets the ith bit in p's pre
     ret clear_in_prestate_(i, s.prestate);
 }
 
-fn clear_in_prestate_(i: uint, s: &prestate) -> bool {
+fn clear_in_prestate_(i: uint, s: prestate) -> bool {
     let was_set = tritv_get(s, i);
     tritv_set(i, s, tfalse);
     ret was_set != tfalse;
 }
 
-fn clear_in_postcond(i: uint, s: &pre_and_post) -> bool {
+fn clear_in_postcond(i: uint, s: pre_and_post) -> bool {
     // sets the ith bit in p's post
     let was_set = tritv_get(s.postcondition, i);
     tritv_set(i, s.postcondition, tfalse);
@@ -156,72 +156,72 @@ fn clear_in_postcond(i: uint, s: &pre_and_post) -> bool {
 
 // Sets all the bits in a's precondition to equal the
 // corresponding bit in p's precondition.
-fn set_precondition(a: ts_ann, p: &precond) {
+fn set_precondition(a: ts_ann, p: precond) {
     tritv_copy(a.conditions.precondition, p);
 }
 
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
-fn set_postcondition(a: ts_ann, p: &postcond) {
+fn set_postcondition(a: ts_ann, p: postcond) {
     tritv_copy(a.conditions.postcondition, p);
 }
 
 
 // Sets all the bits in a's prestate to equal the
 // corresponding bit in p's prestate.
-fn set_prestate(a: ts_ann, p: &prestate) -> bool {
+fn set_prestate(a: ts_ann, p: prestate) -> bool {
     ret tritv_copy(a.states.prestate, p);
 }
 
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
-fn set_poststate(a: ts_ann, p: &poststate) -> bool {
+fn set_poststate(a: ts_ann, p: poststate) -> bool {
     ret tritv_copy(a.states.poststate, p);
 }
 
 
 // Set all the bits in p that are set in new
-fn extend_prestate(p: &prestate, new: &poststate) -> bool {
+fn extend_prestate(p: prestate, new: poststate) -> bool {
     ret tritv_union(p, new);
 }
 
 
 // Set all the bits in p that are set in new
-fn extend_poststate(p: &poststate, new: &poststate) -> bool {
+fn extend_poststate(p: poststate, new: poststate) -> bool {
     ret tritv_union(p, new);
 }
 
 // Sets the given bit in p to "don't care"
 // FIXME: is this correct?
-fn relax_prestate(i: uint, p: &prestate) -> bool {
+fn relax_prestate(i: uint, p: prestate) -> bool {
     let was_set = tritv_get(p, i);
     tritv_set(i, p, dont_care);
     ret was_set != dont_care;
 }
 
 // Clears the given bit in p
-fn relax_poststate(i: uint, p: &poststate) -> bool {
+fn relax_poststate(i: uint, p: poststate) -> bool {
     ret relax_prestate(i, p);
 }
 
 // Clears the given bit in p
-fn relax_precond(i: uint, p: &precond) { relax_prestate(i, p); }
+fn relax_precond(i: uint, p: precond) { relax_prestate(i, p); }
 
 // Sets all the bits in p to "don't care"
-fn clear(p: &precond) { tritv_clear(p); }
+fn clear(p: precond) { tritv_clear(p); }
 
 // Sets all the bits in p to true
-fn set(p: &precond) { tritv_set_all(p); }
+fn set(p: precond) { tritv_set_all(p); }
 
-fn ann_precond(a: &ts_ann) -> precond { ret a.conditions.precondition; }
+fn ann_precond(a: ts_ann) -> precond { ret a.conditions.precondition; }
 
-fn ann_prestate(a: &ts_ann) -> prestate { ret a.states.prestate; }
+fn ann_prestate(a: ts_ann) -> prestate { ret a.states.prestate; }
 
-fn ann_poststate(a: &ts_ann) -> poststate { ret a.states.poststate; }
+fn ann_poststate(a: ts_ann) -> poststate { ret a.states.poststate; }
 
-fn pp_clone(p: &pre_and_post) -> pre_and_post {
+fn pp_clone(p: pre_and_post) -> pre_and_post {
     ret @{precondition: clone(p.precondition),
           postcondition: clone(p.postcondition)};
 }

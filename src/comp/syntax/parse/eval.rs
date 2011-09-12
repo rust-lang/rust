@@ -25,23 +25,23 @@ type ctx =
       mutable byte_pos: uint,
       cfg: ast::crate_cfg};
 
-fn eval_crate_directives(cx: ctx, cdirs: &[@ast::crate_directive],
-                         prefix: &str, view_items: &mutable [@ast::view_item],
+fn eval_crate_directives(cx: ctx, cdirs: [@ast::crate_directive], prefix: str,
+                         view_items: &mutable [@ast::view_item],
                          items: &mutable [@ast::item]) {
     for sub_cdir: @ast::crate_directive in cdirs {
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
     }
 }
 
-fn eval_crate_directives_to_mod(cx: ctx, cdirs: &[@ast::crate_directive],
-                                prefix: &str) -> ast::_mod {
+fn eval_crate_directives_to_mod(cx: ctx, cdirs: [@ast::crate_directive],
+                                prefix: str) -> ast::_mod {
     let view_items: [@ast::view_item] = [];
     let items: [@ast::item] = [];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
     ret {view_items: view_items, items: items};
 }
 
-fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &str,
+fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
                         view_items: &mutable [@ast::view_item],
                         items: &mutable [@ast::item]) {
     alt cdir.node {

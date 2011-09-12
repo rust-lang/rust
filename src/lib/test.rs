@@ -49,7 +49,7 @@ type test_desc = {name: test_name, fn: test_fn, ignore: bool};
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: &[str], tests: &[test_desc]) {
+fn test_main(args: [str], tests: [test_desc]) {
     check (vec::is_not_empty(args));
     let opts =
         alt parse_opts(args) {
@@ -64,7 +64,7 @@ type test_opts = {filter: option::t<str>, run_ignored: bool};
 type opt_res = either::t<test_opts, str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
+fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
 
     let args_ = vec::tail(args);
     let opts = [getopts::optflag("ignored")];
@@ -94,15 +94,15 @@ type joinable = (task, comm::port<task::task_notification>);
 // In cases where test functions and closures it is not ok to just dump them
 // into a task and run them, so this transformation gives the caller a chance
 // to create the test task.
-type test_to_task = fn(&fn()) -> joinable;
+type test_to_task = fn(fn()) -> joinable;
 
 // A simple console test runner
-fn run_tests_console(opts: &test_opts, tests: &[test_desc]) -> bool {
+fn run_tests_console(opts: test_opts, tests: [test_desc]) -> bool {
     run_tests_console_(opts, tests, default_test_to_task)
 }
 
-fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
-                      to_task: &test_to_task) -> bool {
+fn run_tests_console_(opts: test_opts, tests: [test_desc],
+                      to_task: test_to_task) -> bool {
 
     type test_state =
         @{out: io::writer,
@@ -175,20 +175,19 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
 
     ret success;
 
-    fn write_ok(out: &io::writer, use_color: bool) {
+    fn write_ok(out: io::writer, use_color: bool) {
         write_pretty(out, "ok", term::color_green, use_color);
     }
 
-    fn write_failed(out: &io::writer, use_color: bool) {
+    fn write_failed(out: io::writer, use_color: bool) {
         write_pretty(out, "FAILED", term::color_red, use_color);
     }
 
-    fn write_ignored(out: &io::writer, use_color: bool) {
+    fn write_ignored(out: io::writer, use_color: bool) {
         write_pretty(out, "ignored", term::color_yellow, use_color);
     }
 
-    fn write_pretty(out: &io::writer, word: &str, color: u8,
-                    use_color: bool) {
+    fn write_pretty(out: io::writer, word: str, color: u8, use_color: bool) {
         if use_color && term::color_supported() {
             term::fg(out.get_buf_writer(), color);
         }
@@ -207,7 +206,7 @@ tag testevent {
     te_result(test_desc, test_result);
 }
 
-fn run_tests(opts: &test_opts, tests: &[test_desc], to_task: &test_to_task,
+fn run_tests(opts: test_opts, tests: [test_desc], to_task: test_to_task,
              callback: fn(testevent)) {
 
     let filtered_tests = filter_tests(opts, tests);
@@ -241,7 +240,7 @@ fn run_tests(opts: &test_opts, tests: &[test_desc], to_task: &test_to_task,
 
 fn get_concurrency() -> uint { rustrt::sched_threads() }
 
-fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
+fn filter_tests(opts: test_opts, tests: [test_desc]) -> [test_desc] {
     let filtered = tests;
 
     // Remove tests that don't match the test filter
@@ -256,7 +255,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
                 };
 
             let filter =
-                bind fn (test: &test_desc, filter_str: &str) ->
+                bind fn (test: test_desc, filter_str: str) ->
                         option::t<test_desc> {
                          if str::find(test.name, filter_str) >= 0 {
                              ret option::some(test);
@@ -273,7 +272,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
             filtered
         } else {
             let filter =
-                fn (test: &test_desc) -> option::t<test_desc> {
+                fn (test: test_desc) -> option::t<test_desc> {
                     if test.ignore {
                         ret option::some({name: test.name,
                                           fn: test.fn,
@@ -288,7 +287,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
     // Sort the tests alphabetically
     filtered =
         {
-            fn lteq(t1: &test_desc, t2: &test_desc) -> bool {
+            fn lteq(t1: test_desc, t2: test_desc) -> bool {
                 str::lteq(t1.name, t2.name)
             }
             sort::merge_sort(lteq, filtered)
@@ -299,7 +298,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
 
 type test_future = {test: test_desc, wait: fn() -> test_result};
 
-fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
+fn run_test(test: test_desc, to_task: test_to_task) -> test_future {
     if !test.ignore {
         let test_task = to_task(test.fn);
         ret {test: test,
@@ -315,7 +314,7 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
 
 // We need to run our tests in another task in order to trap test failures.
 // This function only works with functions that don't contain closures.
-fn default_test_to_task(f: &fn()) -> joinable {
+fn default_test_to_task(f: fn()) -> joinable {
     fn run_task(f: fn()) { configure_test_task(); f(); }
     ret task::spawn_joinable(bind run_task(f));
 }

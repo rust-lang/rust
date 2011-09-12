@@ -39,7 +39,7 @@ fn next_power_of_two(n: uint) -> uint {
     ret tmp + 1u;
 }
 
-fn parse_buf(buf: &[u8], radix: uint) -> uint {
+fn parse_buf(buf: [u8], radix: uint) -> uint {
     if vec::len::<u8>(buf) == 0u {
         log_err "parse_buf(): buf is empty";
         fail;
@@ -56,7 +56,7 @@ fn parse_buf(buf: &[u8], radix: uint) -> uint {
     fail;
 }
 
-fn from_str(s: &str) -> uint { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: str) -> uint { parse_buf(str::bytes(s), 10u) }
 
 fn to_str(num: uint, radix: uint) -> str {
     let n = num;

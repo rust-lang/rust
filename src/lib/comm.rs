@@ -38,7 +38,7 @@ resource port_ptr(po: *rustrt::rust_port) {
 
 tag port<~T> { port_t(@port_ptr); }
 
-fn send<~T>(ch: &chan<T>, data: -T) {
+fn send<~T>(ch: chan<T>, data: -T) {
     let chan_t(t, p) = ch;
     rustrt::chan_id_send(t, p, data);
 }
@@ -47,8 +47,8 @@ fn port<~T>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>())))
 }
 
-fn recv<~T>(p: &port<T>) -> T { ret rusti::recv(***p) }
+fn recv<~T>(p: port<T>) -> T { ret rusti::recv(***p) }
 
-fn chan<~T>(p: &port<T>) -> chan<T> {
+fn chan<~T>(p: port<T>) -> chan<T> {
     chan_t(task::get_task_id(), rustrt::get_port_id(***p))
 }

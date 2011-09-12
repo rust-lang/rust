@@ -104,15 +104,15 @@ fn kind_to_str(k: kind) -> str {
     }
 }
 
-fn type_and_kind(tcx: &ty::ctxt, e: &@ast::expr) ->
+fn type_and_kind(tcx: ty::ctxt, e: @ast::expr) ->
    {ty: ty::t, kind: ast::kind} {
     let t = ty::expr_ty(tcx, e);
     let k = ty::type_kind(tcx, t);
     {ty: t, kind: k}
 }
 
-fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
-                  descr: &str) {
+fn need_expr_kind(tcx: ty::ctxt, e: @ast::expr, k_need: ast::kind,
+                  descr: str) {
     let tk = type_and_kind(tcx, e);
     log #fmt["for %s: want %s type, got %s type %s", descr,
              kind_to_str(k_need), kind_to_str(tk.kind),
@@ -127,13 +127,12 @@ fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
     }
 }
 
-fn need_shared_lhs_rhs(tcx: &ty::ctxt, a: &@ast::expr, b: &@ast::expr,
-                       op: &str) {
+fn need_shared_lhs_rhs(tcx: ty::ctxt, a: @ast::expr, b: @ast::expr, op: str) {
     need_expr_kind(tcx, a, ast::kind_shared, op + " lhs");
     need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
 }
 
-fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
+fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
     alt e.node {
       ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
       ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
@@ -182,7 +181,7 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
     }
 }
 
-fn check_crate(tcx: &ty::ctxt, crate: &@ast::crate) {
+fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     let visit =
         visit::mk_simple_visitor(@{visit_expr: bind check_expr(tcx, _)
                                       with *visit::default_simple_visitor()});

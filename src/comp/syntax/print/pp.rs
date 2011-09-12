@@ -73,8 +73,8 @@ fn tok_str(t: token) -> str {
     }
 }
 
-fn buf_str(toks: &[mutable token], szs: &[mutable int], left: uint,
-           right: uint, lim: uint) -> str {
+fn buf_str(toks: [mutable token], szs: [mutable int], left: uint, right: uint,
+           lim: uint) -> str {
     let n = vec::len(toks);
     assert (n == vec::len(szs));
     let i = left;
@@ -404,7 +404,7 @@ obj printer(out: io::writer,
         if n != 0u { top = print_stack[n - 1u]; }
         ret top;
     }
-    fn write_str(s: &str) {
+    fn write_str(s: str) {
         while pending_indentation > 0 {
             out.write_str(" ");
             pending_indentation -= 1;
@@ -492,15 +492,15 @@ fn end(p: printer) { p.pretty_print(END); }
 
 fn eof(p: printer) { p.pretty_print(EOF); }
 
-fn word(p: printer, wrd: &str) {
+fn word(p: printer, wrd: str) {
     p.pretty_print(STRING(wrd, str::char_len(wrd) as int));
 }
 
-fn huge_word(p: printer, wrd: &str) {
+fn huge_word(p: printer, wrd: str) {
     p.pretty_print(STRING(wrd, size_infinity));
 }
 
-fn zero_word(p: printer, wrd: &str) { p.pretty_print(STRING(wrd, 0)); }
+fn zero_word(p: printer, wrd: str) { p.pretty_print(STRING(wrd, 0)); }
 
 fn spaces(p: printer, n: uint) { break_offset(p, n, 0); }
 

@@ -29,7 +29,7 @@ import std::comm::port;
 import std::comm::recv;
 import std::comm::send;
 
-fn map(filename: &str, emit: map_reduce::putter) {
+fn map(filename: str, emit: map_reduce::putter) {
     let f = io::file_reader(filename);
 
 
@@ -38,7 +38,7 @@ fn map(filename: &str, emit: map_reduce::putter) {
     }
 }
 
-fn reduce(word: &str, get: map_reduce::getter) {
+fn reduce(word: str, get: map_reduce::getter) {
     let count = 0;
 
 
@@ -52,13 +52,13 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter = fn(&str, int);
+    type putter = fn(str, int);
 
-    type mapper = fn(&str, putter);
+    type mapper = fn(str, putter);
 
     type getter = fn() -> option<int>;
 
-    type reducer = fn(&str, getter);
+    type reducer = fn(str, getter);
 
     tag ctrl_proto {
         find_reducer(str, chan<chan<reduce_proto>>);
@@ -67,7 +67,7 @@ mod map_reduce {
 
     tag reduce_proto { emit_val(int); done; ref; release; }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: &[str]) ->
+    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: [str]) ->
        [joinable_task] {
         let tasks = [];
         for i: str in inputs {
@@ -76,12 +76,12 @@ mod map_reduce {
         ret tasks;
     }
 
-    fn map_task(ctrl: chan<ctrl_proto>, input: &str) {
+    fn map_task(ctrl: chan<ctrl_proto>, input: str) {
         // log_err "map_task " + input;
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap<str, chan<reduce_proto>>,
-                ctrl: chan<ctrl_proto>, key: &str, val: int) {
+        fn emit(im: map::hashmap<str, chan<reduce_proto>>,
+                ctrl: chan<ctrl_proto>, key: str, val: int) {
             let c;
             alt im.find(key) {
               some(_c) {
@@ -109,7 +109,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn reduce_task(key: &str, out: chan<chan<reduce_proto>>) {
+    fn reduce_task(key: str, out: chan<chan<reduce_proto>>) {
         let p = port();
 
         send(out, chan(p));
@@ -117,7 +117,7 @@ mod map_reduce {
         let ref_count = 0;
         let is_done = false;
 
-        fn get(p: &port<reduce_proto>, ref_count: &mutable int,
+        fn get(p: port<reduce_proto>, ref_count: &mutable int,
                is_done: &mutable bool) -> option<int> {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
@@ -139,7 +139,7 @@ mod map_reduce {
         reduce(key, bind get(p, ref_count, is_done));
     }
 
-    fn map_reduce(inputs: &[str]) {
+    fn map_reduce(inputs: [str]) {
         let ctrl = port::<ctrl_proto>();
 
         // This task becomes the master control task. It task::_spawns

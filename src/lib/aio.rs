@@ -14,11 +14,11 @@ native "rust" mod rustrt {
     fn aio_init();
     fn aio_run();
     fn aio_stop();
-    fn aio_connect(host: *u8, port: int, connected: &chan<socket>);
-    fn aio_serve(host: *u8, port: int, acceptChan: &chan<socket>) -> server;
-    fn aio_writedata(s: socket, buf: *u8, size: uint, status: &chan<bool>);
-    fn aio_read(s: socket, reader: &chan<[u8]>);
-    fn aio_close_server(s: server, status: &chan<bool>);
+    fn aio_connect(host: *u8, port: int, connected: chan<socket>);
+    fn aio_serve(host: *u8, port: int, acceptChan: chan<socket>) -> server;
+    fn aio_writedata(s: socket, buf: *u8, size: uint, status: chan<bool>);
+    fn aio_read(s: socket, reader: chan<[u8]>);
+    fn aio_close_server(s: server, status: chan<bool>);
     fn aio_close_socket(s: socket);
     fn aio_is_null_client(s: socket) -> bool;
 }

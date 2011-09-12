@@ -35,7 +35,7 @@ fn create(nbits: uint, init: bool) -> t {
     ret @{storage: storage, nbits: nbits};
 }
 
-fn process(op: &block(uint, uint) -> uint, v0: &t, v1: &t) -> bool {
+fn process(op: block(uint, uint) -> uint, v0: t, v1: t) -> bool {
     let len = vec::len(v1.storage);
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
@@ -51,21 +51,18 @@ fn process(op: &block(uint, uint) -> uint, v0: &t, v1: &t) -> bool {
 
 fn lor(w0: uint, w1: uint) -> uint { ret w0 | w1; }
 
-fn union(v0: &t, v1: &t) -> bool { let sub = lor; ret process(sub, v0, v1); }
+fn union(v0: t, v1: t) -> bool { let sub = lor; ret process(sub, v0, v1); }
 
 fn land(w0: uint, w1: uint) -> uint { ret w0 & w1; }
 
-fn intersect(v0: &t, v1: &t) -> bool {
+fn intersect(v0: t, v1: t) -> bool {
     let sub = land;
     ret process(sub, v0, v1);
 }
 
 fn right(_w0: uint, w1: uint) -> uint { ret w1; }
 
-fn assign(v0: &t, v1: t) -> bool {
-    let sub = right;
-    ret process(sub, v0, v1);
-}
+fn assign(v0: t, v1: t) -> bool { let sub = right; ret process(sub, v0, v1); }
 
 fn clone(v: t) -> t {
     let storage = vec::init_elt_mut::<uint>(0u, v.nbits / uint_bits() + 1u);
@@ -74,7 +71,7 @@ fn clone(v: t) -> t {
     ret @{storage: storage, nbits: v.nbits};
 }
 
-fn get(v: &t, i: uint) -> bool {
+fn get(v: t, i: uint) -> bool {
     assert (i < v.nbits);
     let bits = uint_bits();
     let w = i / bits;
@@ -83,7 +80,7 @@ fn get(v: &t, i: uint) -> bool {
     ret x == 1u;
 }
 
-fn equal(v0: &t, v1: &t) -> bool {
+fn equal(v0: t, v1: t) -> bool {
     // FIXME: when we can break or return from inside an iterator loop,
     //        we can eliminate this painful while-loop
 
@@ -96,17 +93,17 @@ fn equal(v0: &t, v1: &t) -> bool {
     ret true;
 }
 
-fn clear(v: &t) {
+fn clear(v: t) {
     for each i: uint in uint::range(0u, vec::len(v.storage)) {
         v.storage[i] = 0u;
     }
 }
 
-fn set_all(v: &t) {
+fn set_all(v: t) {
     for each i: uint in uint::range(0u, v.nbits) { set(v, i, true); }
 }
 
-fn invert(v: &t) {
+fn invert(v: t) {
     for each i: uint in uint::range(0u, vec::len(v.storage)) {
         v.storage[i] = !v.storage[i];
     }
@@ -114,14 +111,14 @@ fn invert(v: &t) {
 
 
 /* v0 = v0 - v1 */
-fn difference(v0: &t, v1: &t) -> bool {
+fn difference(v0: t, v1: t) -> bool {
     invert(v1);
     let b = intersect(v0, v1);
     invert(v1);
     ret b;
 }
 
-fn set(v: &t, i: uint, x: bool) {
+fn set(v: t, i: uint, x: bool) {
     assert (i < v.nbits);
     let bits = uint_bits();
     let w = i / bits;
@@ -132,32 +129,32 @@ fn set(v: &t, i: uint, x: bool) {
 
 
 /* true if all bits are 1 */
-fn is_true(v: &t) -> bool {
+fn is_true(v: t) -> bool {
     for i: uint in to_vec(v) { if i != 1u { ret false; } }
     ret true;
 }
 
 
 /* true if all bits are non-1 */
-fn is_false(v: &t) -> bool {
+fn is_false(v: t) -> bool {
     for i: uint in to_vec(v) { if i == 1u { ret false; } }
     ret true;
 }
 
 fn init_to_vec(v: t, i: uint) -> uint { ret if get(v, i) { 1u } else { 0u }; }
 
-fn to_vec(v: &t) -> [uint] {
+fn to_vec(v: t) -> [uint] {
     let sub = bind init_to_vec(v, _);
     ret vec::init_fn::<uint>(sub, v.nbits);
 }
 
-fn to_str(v: &t) -> str {
+fn to_str(v: t) -> str {
     let rs = "";
     for i: uint in to_vec(v) { if i == 1u { rs += "1"; } else { rs += "0"; } }
     ret rs;
 }
 
-fn eq_vec(v0: &t, v1: &[uint]) -> bool {
+fn eq_vec(v0: t, v1: [uint]) -> bool {
     assert (v0.nbits == vec::len::<uint>(v1));
     let len = v0.nbits;
     let i = 0u;

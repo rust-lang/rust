@@ -78,9 +78,9 @@ type fn_ctxt =
 
 
 // Used for ast_ty_to_ty() below.
-type ty_getter = fn(&ast::def_id) -> ty::ty_param_kinds_and_ty;
+type ty_getter = fn(ast::def_id) -> ty::ty_param_kinds_and_ty;
 
-fn lookup_local(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> int {
+fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> int {
     alt fcx.locals.find(id) {
       some(x) { x }
       _ {
@@ -90,7 +90,7 @@ fn lookup_local(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> int {
     }
 }
 
-fn lookup_def(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> ast::def {
+fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
     alt fcx.ccx.tcx.def_map.find(id) {
       some(x) { x }
       _ {
@@ -100,7 +100,7 @@ fn lookup_def(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> ast::def {
     }
 }
 
-fn ident_for_local(loc: &@ast::local) -> ast::ident {
+fn ident_for_local(loc: @ast::local) -> ast::ident {
     ret alt loc.node.pat.node {
           ast::pat_bind(name) { name }
           _ { "local" }
@@ -108,8 +108,8 @@ fn ident_for_local(loc: &@ast::local) -> ast::ident {
 }
 
 // Returns the type parameter count and the type for the given definition.
-fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
-   -> ty_param_kinds_and_ty {
+fn ty_param_kinds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
+   ty_param_kinds_and_ty {
     let no_kinds: [ast::kind] = [];
     alt defn {
       ast::def_arg(id, _) {
@@ -157,9 +157,8 @@ fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
 
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
-fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
-                    tpt: &ty_param_kinds_and_ty, sp: &span) ->
-   ty_param_substs_opt_and_ty {
+fn instantiate_path(fcx: @fn_ctxt, pth: ast::path, tpt: ty_param_kinds_and_ty,
+                    sp: span) -> ty_param_substs_opt_and_ty {
     let ty_param_count = vec::len(tpt.kinds);
     let bind_result =
         bind_params_in_type(sp, fcx.ccx.tcx, bind next_ty_var_id(fcx), tpt.ty,
@@ -170,16 +169,13 @@ fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
     if ty_substs_len > 0u {
         let param_var_len = vec::len(ty_param_vars);
         if param_var_len == 0u {
-            fcx.ccx.tcx.sess.span_fatal(
-                sp,
-                "this item does not take type parameters");
+            fcx.ccx.tcx.sess.span_fatal(sp,
+                    "this item does not take type parameters");
         } else if ty_substs_len > param_var_len {
-            fcx.ccx.tcx.sess.span_fatal(
-                sp,
-                "too many type parameter provided for this item");
+            fcx.ccx.tcx.sess.span_fatal(sp,
+                 "too many type parameter provided for this item");
         } else if ty_substs_len < param_var_len {
-            fcx.ccx.tcx.sess.span_fatal(
-                sp,
+            fcx.ccx.tcx.sess.span_fatal(sp,
                 "not enough type parameters provided for this item");
         }
         let ty_substs: [ty::t] = [];
@@ -211,26 +207,25 @@ fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
 }
 
 // Type tests
-fn structurally_resolved_type(fcx: &@fn_ctxt, sp: &span, tp: ty::t) -> ty::t {
+fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     alt ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, tp) {
       fix_ok(typ_s) { ret typ_s; }
       fix_err(_) {
-        fcx.ccx.tcx.sess.span_fatal(
-            sp,
-            "the type of this value must be known in this context");
+        fcx.ccx.tcx.sess.span_fatal(sp,
+              "the type of this value must be known in this context");
       }
     }
 }
 
 
 // Returns the one-level-deep structure of the given type.
-fn structure_of(fcx: &@fn_ctxt, sp: &span, typ: ty::t) -> ty::sty {
+fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
     ret ty::struct(fcx.ccx.tcx, structurally_resolved_type(fcx, sp, typ));
 }
 
 // Returns the one-level-deep structure of the given type or none if it
 // is not known yet.
-fn structure_of_maybe(fcx: &@fn_ctxt, _sp: &span, typ: ty::t) ->
+fn structure_of_maybe(fcx: @fn_ctxt, _sp: span, typ: ty::t) ->
    option::t<ty::sty> {
     let r =
         ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, typ);
@@ -240,12 +235,12 @@ fn structure_of_maybe(fcx: &@fn_ctxt, _sp: &span, typ: ty::t) ->
         }
 }
 
-fn type_is_integral(fcx: &@fn_ctxt, sp: &span, typ: ty::t) -> bool {
+fn type_is_integral(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     ret ty::type_is_integral(fcx.ccx.tcx, typ_s);
 }
 
-fn type_is_scalar(fcx: &@fn_ctxt, sp: &span, typ: ty::t) -> bool {
+fn type_is_scalar(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     ret ty::type_is_scalar(fcx.ccx.tcx, typ_s);
 }
@@ -254,8 +249,7 @@ fn type_is_scalar(fcx: &@fn_ctxt, sp: &span, typ: ty::t) -> bool {
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
-   ty::t {
+fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
       some(some(ty)) { ret ty; }
       some(none.) {
@@ -268,16 +262,15 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
     } /* go on */
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, none::<ty::t>);
-    fn ast_arg_to_arg(tcx: &ty::ctxt, getter: &ty_getter, arg: &ast::ty_arg)
-       -> {mode: ty::mode, ty: ty::t} {
+    fn ast_arg_to_arg(tcx: ty::ctxt, getter: ty_getter, arg: ast::ty_arg) ->
+       {mode: ty::mode, ty: ty::t} {
         ret {mode: arg.node.mode, ty: ast_ty_to_ty(tcx, getter, arg.node.ty)};
     }
-    fn ast_mt_to_mt(tcx: &ty::ctxt, getter: &ty_getter, mt: &ast::mt) ->
-       ty::mt {
+    fn ast_mt_to_mt(tcx: ty::ctxt, getter: ty_getter, mt: ast::mt) -> ty::mt {
         ret {ty: ast_ty_to_ty(tcx, getter, mt.ty), mut: mt.mut};
     }
-    fn instantiate(tcx: &ty::ctxt, sp: &span, getter: &ty_getter,
-                   id: &ast::def_id, args: &[@ast::ty]) -> ty::t {
+    fn instantiate(tcx: ty::ctxt, sp: span, getter: ty_getter,
+                   id: ast::def_id, args: [@ast::ty]) -> ty::t {
         // TODO: maybe record cname chains so we can do
         // "foo = int" like OCaml?
 
@@ -411,8 +404,8 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
 
 // A convenience function to use a crate_ctxt to resolve names for
 // ast_ty_to_ty.
-fn ast_ty_to_ty_crate(ccx: @crate_ctxt, ast_ty: &@ast::ty) -> ty::t {
-    fn getter(ccx: @crate_ctxt, id: &ast::def_id) ->
+fn ast_ty_to_ty_crate(ccx: @crate_ctxt, ast_ty: @ast::ty) -> ty::t {
+    fn getter(ccx: @crate_ctxt, id: ast::def_id) ->
        ty::ty_param_kinds_and_ty {
         ret ty::lookup_item_type(ccx.tcx, id);
     }
@@ -421,7 +414,7 @@ fn ast_ty_to_ty_crate(ccx: @crate_ctxt, ast_ty: &@ast::ty) -> ty::t {
 }
 
 // A wrapper around ast_ty_to_ty_crate that handles ty_infer.
-fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, ast_ty: &@ast::ty) ->
+fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, ast_ty: @ast::ty) ->
    option::t<ty::t> {
     alt ast_ty.node {
       ast::ty_infer. { none }
@@ -430,7 +423,7 @@ fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, ast_ty: &@ast::ty) ->
 }
 // A wrapper around ast_ty_to_ty_infer that generates a new type variable if
 // there isn't a fixed type.
-fn ast_ty_to_ty_crate_tyvar(fcx: &@fn_ctxt, ast_ty: &@ast::ty) -> ty::t {
+fn ast_ty_to_ty_crate_tyvar(fcx: @fn_ctxt, ast_ty: @ast::ty) -> ty::t {
     alt ast_ty_to_ty_crate_infer(fcx.ccx, ast_ty) {
       some(ty) { ty }
       none. { next_ty_var(fcx) }
@@ -440,14 +433,14 @@ fn ast_ty_to_ty_crate_tyvar(fcx: &@fn_ctxt, ast_ty: &@ast::ty) -> ty::t {
 
 // Functions that write types into the node type table.
 mod write {
-    fn inner(ntt: &node_type_table, node_id: ast::node_id,
-             tpot: &ty_param_substs_opt_and_ty) {
+    fn inner(ntt: node_type_table, node_id: ast::node_id,
+             tpot: ty_param_substs_opt_and_ty) {
         smallintmap::insert(*ntt, node_id as uint, tpot);
     }
 
     // Writes a type parameter count and type pair into the node type table.
-    fn ty(tcx: &ty::ctxt, node_id: ast::node_id,
-          tpot: &ty_param_substs_opt_and_ty) {
+    fn ty(tcx: ty::ctxt, node_id: ast::node_id,
+          tpot: ty_param_substs_opt_and_ty) {
         assert (!ty::type_contains_vars(tcx, tpot.ty));
         inner(tcx.node_types, node_id, tpot);
     }
@@ -456,7 +449,7 @@ mod write {
     // This function allows for the possibility of type variables, which will
     // be rewritten later during the fixup phase.
     fn ty_fixup(fcx: @fn_ctxt, node_id: ast::node_id,
-                tpot: &ty_param_substs_opt_and_ty) {
+                tpot: ty_param_substs_opt_and_ty) {
         inner(fcx.ccx.tcx.node_types, node_id, tpot);
         if ty::type_contains_vars(fcx.ccx.tcx, tpot.ty) {
             fcx.fixups += [node_id];
@@ -464,7 +457,7 @@ mod write {
     }
 
     // Writes a type with no type parameters into the node type table.
-    fn ty_only(tcx: &ty::ctxt, node_id: ast::node_id, typ: ty::t) {
+    fn ty_only(tcx: ty::ctxt, node_id: ast::node_id, typ: ty::t) {
         ty(tcx, node_id, {substs: none::<[ty::t]>, ty: typ});
     }
 
@@ -475,12 +468,12 @@ mod write {
     }
 
     // Writes a nil type into the node type table.
-    fn nil_ty(tcx: &ty::ctxt, node_id: ast::node_id) {
+    fn nil_ty(tcx: ty::ctxt, node_id: ast::node_id) {
         ret ty(tcx, node_id, {substs: none::<[ty::t]>, ty: ty::mk_nil(tcx)});
     }
 
     // Writes the bottom type into the node type table.
-    fn bot_ty(tcx: &ty::ctxt, node_id: ast::node_id) {
+    fn bot_ty(tcx: ty::ctxt, node_id: ast::node_id) {
         ret ty(tcx, node_id, {substs: none::<[ty::t]>, ty: ty::mk_bot(tcx)});
     }
 }
@@ -488,7 +481,7 @@ mod write {
 // Determine the proto for a fn type given the proto for its associated
 // code. This is needed because fn and lambda have fn type while iter
 // has iter type and block has block type. This may end up changing.
-fn proto_to_ty_proto(proto: &ast::proto) -> ast::proto {
+fn proto_to_ty_proto(proto: ast::proto) -> ast::proto {
     ret alt proto {
           ast::proto_iter. | ast::proto_block. { proto }
           _ { ast::proto_fn }
@@ -512,7 +505,7 @@ fn proto_to_ty_proto(proto: &ast::proto) -> ast::proto {
 mod collect {
     type ctxt = {tcx: ty::ctxt};
 
-    fn mk_ty_params(cx: &@ctxt, atps: &[ast::ty_param]) -> [ty::t] {
+    fn mk_ty_params(cx: @ctxt, atps: [ast::ty_param]) -> [ty::t] {
         let tps = [];
         let i = 0u;
         for atp: ast::ty_param in atps {
@@ -522,16 +515,16 @@ mod collect {
         ret tps;
     }
 
-    fn ty_param_kinds(tps: &[ast::ty_param]) -> [ast::kind] {
+    fn ty_param_kinds(tps: [ast::ty_param]) -> [ast::kind] {
         let k: [ast::kind] = [];
         for p: ast::ty_param in tps { k += [p.kind] }
         ret k;
     }
 
-    fn ty_of_fn_decl(cx: &@ctxt, convert: &fn(&@ast::ty) -> ty::t,
-                     ty_of_arg: &fn(&ast::arg) -> arg, decl: &ast::fn_decl,
-                     proto: ast::proto, ty_params: &[ast::ty_param],
-                     def_id: &option::t<ast::def_id>) ->
+    fn ty_of_fn_decl(cx: @ctxt, convert: fn(@ast::ty) -> ty::t,
+                     ty_of_arg: fn(ast::arg) -> arg, decl: ast::fn_decl,
+                     proto: ast::proto, ty_params: [ast::ty_param],
+                     def_id: option::t<ast::def_id>) ->
        ty::ty_param_kinds_and_ty {
         let input_tys = [];
         for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(a)]; }
@@ -548,10 +541,10 @@ mod collect {
         alt def_id { some(did) { cx.tcx.tcache.insert(did, tpt); } _ { } }
         ret tpt;
     }
-    fn ty_of_native_fn_decl(cx: &@ctxt, convert: &fn(&@ast::ty) -> ty::t,
-                            ty_of_arg: &fn(&ast::arg) -> arg,
-                            decl: &ast::fn_decl, abi: ast::native_abi,
-                            ty_params: &[ast::ty_param], def_id: &ast::def_id)
+    fn ty_of_native_fn_decl(cx: @ctxt, convert: fn(@ast::ty) -> ty::t,
+                            ty_of_arg: fn(ast::arg) -> arg,
+                            decl: ast::fn_decl, abi: ast::native_abi,
+                            ty_params: [ast::ty_param], def_id: ast::def_id)
        -> ty::ty_param_kinds_and_ty {
         let input_tys = [];
         for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(a)]; }
@@ -562,7 +555,7 @@ mod collect {
         cx.tcx.tcache.insert(def_id, tpt);
         ret tpt;
     }
-    fn getter(cx: @ctxt, id: &ast::def_id) -> ty::ty_param_kinds_and_ty {
+    fn getter(cx: @ctxt, id: ast::def_id) -> ty::ty_param_kinds_and_ty {
         if id.crate != ast::local_crate {
             // This is a type we need to load in from the crate reader.
             ret csearch::get_type(cx.tcx, id);
@@ -578,12 +571,12 @@ mod collect {
         }
         ret tpt;
     }
-    fn ty_of_arg(cx: @ctxt, a: &ast::arg) -> ty::arg {
+    fn ty_of_arg(cx: @ctxt, a: ast::arg) -> ty::arg {
         let f = bind getter(cx, _);
         let tt = ast_ty_to_ty(cx.tcx, f, a.ty);
         ret {mode: a.mode, ty: tt};
     }
-    fn ty_of_method(cx: @ctxt, m: &@ast::method) -> ty::method {
+    fn ty_of_method(cx: @ctxt, m: @ast::method) -> ty::method {
         let get = bind getter(cx, _);
         let convert = bind ast_ty_to_ty(cx.tcx, get, _);
 
@@ -605,15 +598,15 @@ mod collect {
              cf: m.node.meth.decl.cf,
              constrs: out_constrs};
     }
-    fn ty_of_obj(cx: @ctxt, id: &ast::ident, ob: &ast::_obj,
-                 ty_params: &[ast::ty_param]) -> ty::ty_param_kinds_and_ty {
+    fn ty_of_obj(cx: @ctxt, id: ast::ident, ob: ast::_obj,
+                 ty_params: [ast::ty_param]) -> ty::ty_param_kinds_and_ty {
         let methods = get_obj_method_types(cx, ob);
         let t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
         t_obj = ty::rename(cx.tcx, t_obj, id);
         ret {kinds: ty_param_kinds(ty_params), ty: t_obj};
     }
-    fn ty_of_obj_ctor(cx: @ctxt, id: &ast::ident, ob: &ast::_obj,
-                      ctor_id: ast::node_id, ty_params: &[ast::ty_param]) ->
+    fn ty_of_obj_ctor(cx: @ctxt, id: ast::ident, ob: ast::_obj,
+                      ctor_id: ast::node_id, ty_params: [ast::ty_param]) ->
        ty::ty_param_kinds_and_ty {
         let t_obj = ty_of_obj(cx, id, ob, ty_params);
 
@@ -631,7 +624,7 @@ mod collect {
         cx.tcx.tcache.insert(local_def(ctor_id), tpt);
         ret tpt;
     }
-    fn ty_of_item(cx: &@ctxt, it: &@ast::item) -> ty::ty_param_kinds_and_ty {
+    fn ty_of_item(cx: @ctxt, it: @ast::item) -> ty::ty_param_kinds_and_ty {
         let get = bind getter(cx, _);
         let convert = bind ast_ty_to_ty(cx.tcx, get, _);
         let no_kinds: [ast::kind] = [];
@@ -687,7 +680,7 @@ mod collect {
           ast::item_native_mod(_) { fail; }
         }
     }
-    fn ty_of_native_item(cx: &@ctxt, it: &@ast::native_item,
+    fn ty_of_native_item(cx: @ctxt, it: @ast::native_item,
                          abi: ast::native_abi) -> ty::ty_param_kinds_and_ty {
         let no_kinds: [ast::kind] = [];
         alt it.node {
@@ -710,9 +703,9 @@ mod collect {
           }
         }
     }
-    fn get_tag_variant_types(cx: &@ctxt, tag_id: &ast::def_id,
-                             variants: &[ast::variant],
-                             ty_params: &[ast::ty_param]) {
+    fn get_tag_variant_types(cx: @ctxt, tag_id: ast::def_id,
+                             variants: [ast::variant],
+                             ty_params: [ast::ty_param]) {
         // Create a set of parameter types shared among all the variants.
 
         let ty_param_tys: [ty::t] = mk_ty_params(cx, ty_params);
@@ -744,7 +737,7 @@ mod collect {
             write::ty_only(cx.tcx, variant.node.id, result_ty);
         }
     }
-    fn get_obj_method_types(cx: &@ctxt, object: &ast::_obj) -> [ty::method] {
+    fn get_obj_method_types(cx: @ctxt, object: ast::_obj) -> [ty::method] {
         let meths = [];
         for m: @ast::method in object.methods {
             meths += [ty_of_method(cx, m)];
@@ -752,7 +745,7 @@ mod collect {
         ret meths;
     }
     fn convert(cx: @ctxt, abi: @mutable option::t<ast::native_abi>,
-               it: &@ast::item) {
+               it: @ast::item) {
         alt it.node {
           ast::item_mod(_) {
             // ignore item_mod, it has no type.
@@ -827,7 +820,7 @@ mod collect {
         }
     }
     fn convert_native(cx: @ctxt, abi: @mutable option::t<ast::native_abi>,
-                      i: &@ast::native_item) {
+                      i: @ast::native_item) {
         // As above, this call populates the type table with the converted
         // type of the native item. We simply write it into the node type
         // table.
@@ -843,7 +836,7 @@ mod collect {
           }
         }
     }
-    fn collect_item_types(tcx: &ty::ctxt, crate: &@ast::crate) {
+    fn collect_item_types(tcx: ty::ctxt, crate: @ast::crate) {
         // We have to propagate the surrounding ABI to the native items
         // contained within the native module.
         let abi = @mutable none::<ast::native_abi>;
@@ -853,7 +846,7 @@ mod collect {
                                        visit_native_item:
                                            bind convert_native(cx, abi, _)
                                           with
-                                          *visit::default_simple_visitor()});
+                               *visit::default_simple_visitor()});
         visit::visit_crate(*crate, (), visit);
     }
 }
@@ -861,7 +854,7 @@ mod collect {
 
 // Type unification
 mod unify {
-    fn unify(fcx: &@fn_ctxt, expected: ty::t, actual: ty::t) ->
+    fn unify(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) ->
        ty::unify::result {
         ret ty::unify::unify(expected, actual, fcx.var_bindings, fcx.ccx.tcx);
     }
@@ -870,7 +863,7 @@ mod unify {
 
 // FIXME This is almost a duplicate of ty::type_autoderef, with structure_of
 // instead of ty::struct.
-fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: ty::t) -> ty::t {
+fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     let t1 = t;
     while true {
         alt structure_of(fcx, sp, t1) {
@@ -904,8 +897,8 @@ fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: ty::t) -> ty::t {
     fail;
 }
 
-fn do_fn_block_coerce(fcx: &@fn_ctxt, sp: &span, actual: ty::t,
-                      expected: ty::t) -> ty::t {
+fn do_fn_block_coerce(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t)
+   -> ty::t {
 
     // fns can be silently coerced to blocks when being used as
     // function call or bind arguments, but not the reverse.
@@ -928,7 +921,7 @@ fn do_fn_block_coerce(fcx: &@fn_ctxt, sp: &span, actual: ty::t,
 }
 
 
-fn resolve_type_vars_if_possible(fcx: &@fn_ctxt, typ: ty::t) -> ty::t {
+fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
     alt ty::unify::fixup_vars(fcx.ccx.tcx, none, fcx.var_bindings, typ) {
       fix_ok(new_type) { ret new_type; }
       fix_err(_) { ret typ; }
@@ -941,24 +934,24 @@ fn resolve_type_vars_if_possible(fcx: &@fn_ctxt, typ: ty::t) -> ty::t {
 type ty_param_substs_and_ty = {substs: [ty::t], ty: ty::t};
 
 mod demand {
-    fn simple(fcx: &@fn_ctxt, sp: &span, expected: ty::t, actual: ty::t) ->
+    fn simple(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) ->
        ty::t {
         full(fcx, sp, expected, actual, [], false).ty
     }
-    fn block_coerce(fcx: &@fn_ctxt, sp: &span, expected: ty::t, actual: ty::t)
+    fn block_coerce(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t)
        -> ty::t {
         full(fcx, sp, expected, actual, [], true).ty
     }
 
-    fn with_substs(fcx: &@fn_ctxt, sp: &span, expected: ty::t, actual: ty::t,
-                   ty_param_substs_0: &[ty::t]) -> ty_param_substs_and_ty {
+    fn with_substs(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
+                   ty_param_substs_0: [ty::t]) -> ty_param_substs_and_ty {
         full(fcx, sp, expected, actual, ty_param_substs_0, false)
     }
 
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
-    fn full(fcx: &@fn_ctxt, sp: &span, expected: ty::t, actual: ty::t,
-            ty_param_substs_0: &[ty::t], do_block_coerce: bool) ->
+    fn full(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
+            ty_param_substs_0: [ty::t], do_block_coerce: bool) ->
        ty_param_substs_and_ty {
         if do_block_coerce {
             actual = do_fn_block_coerce(fcx, sp, actual, expected);
@@ -975,8 +968,8 @@ mod demand {
             simple(fcx, sp, ty_param_subst, t_0);
         }
 
-        fn mk_result(fcx: &@fn_ctxt, result_ty: ty::t,
-                     ty_param_subst_var_ids: &[int]) ->
+        fn mk_result(fcx: @fn_ctxt, result_ty: ty::t,
+                     ty_param_subst_var_ids: [int]) ->
            ty_param_substs_and_ty {
             let result_ty_param_substs: [ty::t] = [];
             for var_id: int in ty_param_subst_var_ids {
@@ -1006,7 +999,7 @@ mod demand {
 
 
 // Returns true if the two types unify and false if they don't.
-fn are_compatible(fcx: &@fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
+fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
     alt unify::unify(fcx, expected, actual) {
       ures_ok(_) { ret true; }
       ures_err(_) { ret false; }
@@ -1015,8 +1008,8 @@ fn are_compatible(fcx: &@fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
 
 
 // Returns the types of the arguments to a tag variant.
-fn variant_arg_types(ccx: &@crate_ctxt, _sp: &span, vid: &ast::def_id,
-                     tag_ty_params: &[ty::t]) -> [ty::t] {
+fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
+                     tag_ty_params: [ty::t]) -> [ty::t] {
     let result: [ty::t] = [];
     let tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt ty::struct(ccx.tcx, tpt.ty) {
@@ -1052,7 +1045,7 @@ mod writeback {
     export resolve_type_vars_in_block;
     export resolve_type_vars_in_expr;
 
-    fn resolve_type_vars_in_type(fcx: &@fn_ctxt, sp: &span, typ: ty::t) ->
+    fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
        option::t<ty::t> {
         if !ty::type_contains_vars(fcx.ccx.tcx, typ) { ret some(typ); }
         alt ty::unify::fixup_vars(fcx.ccx.tcx, some(sp), fcx.var_bindings,
@@ -1066,8 +1059,7 @@ mod writeback {
           }
         }
     }
-    fn resolve_type_vars_for_node(wbcx: &wb_ctxt, sp: &span,
-                                  id: ast::node_id) {
+    fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id) {
         let fcx = wbcx.fcx;
         let tpot = ty::node_id_to_ty_param_substs_opt_and_ty(fcx.ccx.tcx, id);
         let new_ty =
@@ -1098,12 +1090,12 @@ mod writeback {
         {fcx: @fn_ctxt, mutable success: bool};
     type wb_vt = visit::vt<wb_ctxt>;
 
-    fn visit_stmt(s: &@ast::stmt, wbcx: &wb_ctxt, v: &wb_vt) {
+    fn visit_stmt(s: @ast::stmt, wbcx: wb_ctxt, v: wb_vt) {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
         visit::visit_stmt(s, wbcx, v);
     }
-    fn visit_expr(e: &@ast::expr, wbcx: &wb_ctxt, v: &wb_vt) {
+    fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, e.span, e.id);
         alt e.node {
@@ -1116,17 +1108,17 @@ mod writeback {
         }
         visit::visit_expr(e, wbcx, v);
     }
-    fn visit_block(b: &ast::blk, wbcx: &wb_ctxt, v: &wb_vt) {
+    fn visit_block(b: ast::blk, wbcx: wb_ctxt, v: wb_vt) {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, b.span, b.node.id);
         visit::visit_block(b, wbcx, v);
     }
-    fn visit_pat(p: &@ast::pat, wbcx: &wb_ctxt, v: &wb_vt) {
+    fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, p.span, p.id);
         visit::visit_pat(p, wbcx, v);
     }
-    fn visit_local(l: &@ast::local, wbcx: &wb_ctxt, v: &wb_vt) {
+    fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
         if !wbcx.success { ret; }
         let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
         let fix_rslt =
@@ -1143,11 +1135,11 @@ mod writeback {
         }
         visit::visit_local(l, wbcx, v);
     }
-    fn visit_item(_item: &@ast::item, _wbcx: &wb_ctxt, _v: &wb_vt) {
+    fn visit_item(_item: @ast::item, _wbcx: wb_ctxt, _v: wb_vt) {
         // Ignore items
     }
 
-    fn resolve_type_vars_in_expr(fcx: &@fn_ctxt, e: &@ast::expr) -> bool {
+    fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
         let wbcx = {fcx: fcx, mutable success: true};
         let visit =
             visit::mk_vt(@{visit_item: visit_item,
@@ -1161,7 +1153,7 @@ mod writeback {
         ret wbcx.success;
     }
 
-    fn resolve_type_vars_in_block(fcx: &@fn_ctxt, blk: &ast::blk) -> bool {
+    fn resolve_type_vars_in_block(fcx: @fn_ctxt, blk: ast::blk) -> bool {
         let wbcx = {fcx: fcx, mutable success: true};
         let visit =
             visit::mk_vt(@{visit_item: visit_item,
@@ -1186,8 +1178,8 @@ type gather_result =
      next_var_id: @mutable int};
 
 // Used only as a helper for check_fn.
-fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
-                 old_fcx: &option::t<@fn_ctxt>) -> gather_result {
+fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
+                 old_fcx: option::t<@fn_ctxt>) -> gather_result {
     let {vb: vb, locals: locals, local_names: local_names, nvi: nvi} =
         alt old_fcx {
           none. {
@@ -1207,7 +1199,7 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
 
     let next_var_id = lambda () -> int { let rv = *nvi; *nvi += 1; ret rv; };
     let assign =
-        lambda (nid: ast::node_id, ident: &ast::ident,
+        lambda (nid: ast::node_id, ident: ast::ident,
                 ty_opt: option::t<ty::t>) {
             let var_id = next_var_id();
             locals.insert(nid, var_id);
@@ -1246,7 +1238,7 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
 
     // Add explicitly-declared locals.
     let visit_local =
-        lambda (local: &@ast::local, e: &(), v: &visit::vt<()>) {
+        lambda (local: @ast::local, e: (), v: visit::vt<()>) {
             let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
             assign(local.node.id, ident_for_local(local), local_ty);
             visit::visit_local(local, e, v);
@@ -1254,7 +1246,7 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
 
     // Add pattern bindings.
     let visit_pat =
-        lambda (p: &@ast::pat, e: &(), v: &visit::vt<()>) {
+        lambda (p: @ast::pat, e: (), v: visit::vt<()>) {
             alt p.node {
               ast::pat_bind(ident) { assign(p.id, ident, none); }
               _ {/* no-op */ }
@@ -1263,11 +1255,11 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
         };
 
     // Don't descend into fns and items
-    fn visit_fn<E>(_f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span,
-                   _i: &ast::fn_ident, _id: ast::node_id, _e: &E,
-                   _v: &visit::vt<E>) {
+    fn visit_fn<E>(_f: ast::_fn, _tp: [ast::ty_param], _sp: span,
+                   _i: ast::fn_ident, _id: ast::node_id, _e: E,
+                   _v: visit::vt<E>) {
     }
-    fn visit_item<E>(_i: &@ast::item, _e: &E, _v: &visit::vt<E>) { }
+    fn visit_item<E>(_i: @ast::item, _e: E, _v: visit::vt<E>) { }
 
     let visit =
         @{visit_local: visit_local,
@@ -1282,7 +1274,7 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
 }
 
 // AST fragment checking
-fn check_lit(ccx: @crate_ctxt, lit: &@ast::lit) -> ty::t {
+fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
     alt lit.node {
       ast::lit_str(_) { ret ty::mk_str(ccx.tcx); }
       ast::lit_char(_) { ret ty::mk_char(ccx.tcx); }
@@ -1298,7 +1290,7 @@ fn check_lit(ccx: @crate_ctxt, lit: &@ast::lit) -> ty::t {
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
+fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
              expected: ty::t) {
     alt pat.node {
       ast::pat_wild. { write::ty_only_fixup(fcx, pat.id, expected); }
@@ -1372,9 +1364,8 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
                 }
             } else if subpats_len > 0u {
                 // TODO: note definition of tag variant
-                fcx.ccx.tcx.sess.span_fatal(
-                    pat.span,
-                    #fmt["this pattern has %u field%s, \
+                fcx.ccx.tcx.sess.span_fatal(pat.span,
+                       #fmt["this pattern has %u field%s, \
                           but the corresponding \
                           variant has no fields",
                                                  subpats_len,
@@ -1387,11 +1378,10 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
           _ {
             // FIXME: Switch expected and actual in this message? I
             // can never tell.
-            fcx.ccx.tcx.sess.span_fatal(
-                pat.span,
-                #fmt["mismatched types: expected %s, found tag",
-                     ty_to_str(fcx.ccx.tcx,
-                               expected)]);
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                       #fmt["mismatched types: expected %s, found tag",
+                                             ty_to_str(fcx.ccx.tcx,
+                                                       expected)]);
           }
         }
         write::ty_fixup(fcx, pat.id, path_tpot);
@@ -1401,9 +1391,8 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
         alt structure_of(fcx, pat.span, expected) {
           ty::ty_rec(fields) { ex_fields = fields; }
           _ {
-            fcx.ccx.tcx.sess.span_fatal(
-                pat.span,
-                #fmt["mismatched types: expected %s, found record",
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                    #fmt["mismatched types: expected %s, found record",
                                              ty_to_str(fcx.ccx.tcx,
                                                        expected)]);
           }
@@ -1411,14 +1400,13 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
         let f_count = vec::len(fields);
         let ex_f_count = vec::len(ex_fields);
         if ex_f_count < f_count || !etc && ex_f_count > f_count {
-            fcx.ccx.tcx.sess.span_fatal(
-                pat.span,
-                #fmt["mismatched types: expected a record \
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                   #fmt["mismatched types: expected a record \
                       with %u fields, found one with %u \
                       fields",
                                              ex_f_count, f_count]);
         }
-        fn matches(name: &str, f: &ty::field) -> bool {
+        fn matches(name: str, f: ty::field) -> bool {
             ret str::eq(name, f.ident);
         }
         for f: ast::field_pat in fields {
@@ -1439,8 +1427,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
         alt structure_of(fcx, pat.span, expected) {
           ty::ty_tup(elts) { ex_elts = elts; }
           _ {
-            fcx.ccx.tcx.sess.span_fatal(
-                pat.span,
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
                 #fmt["mismatched types: expected %s, found tuple",
                                              ty_to_str(fcx.ccx.tcx,
                                                        expected)]);
@@ -1448,9 +1435,8 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
         }
         let e_count = vec::len(elts);
         if e_count != vec::len(ex_elts) {
-            fcx.ccx.tcx.sess.span_fatal(
-                pat.span,
-                #fmt["mismatched types: expected a tuple \
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                  #fmt["mismatched types: expected a tuple \
                       with %u fields, found one with %u \
                       fields",
                                              vec::len(ex_elts), e_count]);
@@ -1476,8 +1462,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast_util::pat_id_map, pat: &@ast::pat,
     }
 }
 
-fn require_impure(sess: &session::session, f_purity: &ast::purity,
-                  sp: &span) {
+fn require_impure(sess: session::session, f_purity: ast::purity, sp: span) {
     alt f_purity {
       ast::impure_fn. { ret; }
       ast::pure_fn. {
@@ -1486,46 +1471,44 @@ fn require_impure(sess: &session::session, f_purity: &ast::purity,
     }
 }
 
-fn require_pure_call(ccx: @crate_ctxt, caller_purity: &ast::purity,
-                     callee: &@ast::expr, sp: &span) {
+fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
+                     callee: @ast::expr, sp: span) {
     alt caller_purity {
       ast::impure_fn. { ret; }
       ast::pure_fn. {
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::pure_fn.)) { ret; }
           _ {
-            ccx.tcx.sess.span_fatal(
-                sp,
-                "Pure function calls function not known to be pure");
+            ccx.tcx.sess.span_fatal(sp,
+         "Pure function calls function not known to be pure");
           }
         }
       }
     }
 }
 
-type unifier = fn(&@fn_ctxt, &span, ty::t, ty::t) -> ty::t;
+type unifier = fn(@fn_ctxt, span, ty::t, ty::t) -> ty::t;
 
-fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
-    fn dummy_unify(_fcx: &@fn_ctxt, _sp: &span, _expected: ty::t,
-                   actual: ty::t) -> ty::t {
+fn check_expr(fcx: @fn_ctxt, expr: @ast::expr) -> bool {
+    fn dummy_unify(_fcx: @fn_ctxt, _sp: span, _expected: ty::t, actual: ty::t)
+       -> ty::t {
         actual
     }
     ret check_expr_with_unifier(fcx, expr, dummy_unify, 0u);
 }
-fn check_expr_with(fcx: &@fn_ctxt, expr: &@ast::expr, expected: ty::t) ->
-   bool {
+fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
     ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
 }
 
-fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
+fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                            expected: ty::t) -> bool {
     //log_err "typechecking expr " + syntax::print::pprust::expr_to_str(expr);
 
     // A generic function to factor out common logic from call and bind
     // expressions.
-    fn check_call_or_bind(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
-                          args: &[option::t<@ast::expr>],
-                          call_kind: call_kind) -> bool {
+    fn check_call_or_bind(fcx: @fn_ctxt, sp: span, f: @ast::expr,
+                          args: [option::t<@ast::expr>], call_kind: call_kind)
+       -> bool {
         // Check the function.
         let bot = check_expr(fcx, f);
 
@@ -1545,16 +1528,14 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         alt sty {
           ty::ty_fn(ast::proto_iter., _, _, _, _) {
             if call_kind != kind_for_each {
-                fcx.ccx.tcx.sess.span_err(
-                    sp,
-                    "calling iter outside of for each loop");
+                fcx.ccx.tcx.sess.span_err(sp,
+                       "calling iter outside of for each loop");
             }
           }
           _ {
             if call_kind == kind_for_each {
-                fcx.ccx.tcx.sess.span_err(
-                    sp,
-                    "calling non-iter as sequence of for each loop");
+                fcx.ccx.tcx.sess.span_err(sp,
+                   "calling non-iter as sequence of for each loop");
             }
           }
         }
@@ -1633,8 +1614,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
     }
 
     // A generic function for checking assignment expressions
-    fn check_assignment(fcx: &@fn_ctxt, _sp: &span, lhs: &@ast::expr,
-                        rhs: &@ast::expr, id: &ast::node_id) -> bool {
+    fn check_assignment(fcx: @fn_ctxt, _sp: span, lhs: @ast::expr,
+                        rhs: @ast::expr, id: ast::node_id) -> bool {
         let t = next_ty_var(fcx);
         let bot = check_expr_with(fcx, lhs, t) | check_expr_with(fcx, rhs, t);
         write::ty_only_fixup(fcx, id, ty::mk_nil(fcx.ccx.tcx));
@@ -1642,8 +1623,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
     }
 
     // A generic function for checking call expressions
-    fn check_call(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
-                  args: &[@ast::expr], call_kind: call_kind) -> bool {
+    fn check_call(fcx: @fn_ctxt, sp: span, f: @ast::expr, args: [@ast::expr],
+                  call_kind: call_kind) -> bool {
         let args_opt_0: [option::t<@ast::expr>] = [];
         for arg: @ast::expr in args {
             args_opt_0 += [some::<@ast::expr>(arg)];
@@ -1654,8 +1635,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
     }
 
     // A generic function for doing all of the checking for call expressions
-    fn check_call_full(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
-                       args: &[@ast::expr], call_kind: call_kind,
+    fn check_call_full(fcx: @fn_ctxt, sp: span, f: @ast::expr,
+                       args: [@ast::expr], call_kind: call_kind,
                        id: ast::node_id) -> bool {
         /* here we're kind of hosed, as f can be any expr
         need to restrict it to being an explicit expr_path if we're
@@ -1680,8 +1661,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
     }
 
     // A generic function for checking for or for-each loops
-    fn check_for_or_for_each(fcx: &@fn_ctxt, local: &@ast::local,
-                             element_ty: ty::t, body: &ast::blk,
+    fn check_for_or_for_each(fcx: @fn_ctxt, local: @ast::local,
+                             element_ty: ty::t, body: ast::blk,
                              node_id: ast::node_id) -> bool {
         let locid = lookup_local(fcx, local.span, local.node.id);
         element_ty =
@@ -1700,9 +1681,9 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
 
     // A generic function for checking the then and else in an if
     // or if-check
-    fn check_then_else(fcx: &@fn_ctxt, thn: &ast::blk,
-                       elsopt: &option::t<@ast::expr>, id: ast::node_id,
-                       _sp: &span) -> bool {
+    fn check_then_else(fcx: @fn_ctxt, thn: ast::blk,
+                       elsopt: option::t<@ast::expr>, id: ast::node_id,
+                       _sp: span) -> bool {
         let then_bot = check_block(fcx, thn);
         let els_bot = false;
         let if_t =
@@ -1722,7 +1703,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
     }
 
     // Checks the compatibility
-    fn check_binop_type_compat(fcx: &@fn_ctxt, span: span, ty: ty::t,
+    fn check_binop_type_compat(fcx: @fn_ctxt, span: span, ty: ty::t,
                                binop: ast::binop) {
         let resolved_t = resolve_type_vars_if_possible(fcx, ty);
         if !ty::is_binopable(fcx.ccx.tcx, resolved_t, binop) {
@@ -1777,11 +1758,10 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                 let variants = ty::tag_variants(tcx, id);
                 if vec::len(variants) != 1u ||
                        vec::len(variants[0].args) != 1u {
-                    tcx.sess.span_fatal(
-                        expr.span,
-                        "can only dereference tags " +
-                        "with a single variant which has a "
-                        + "single argument");
+                    tcx.sess.span_fatal(expr.span,
+                                        "can only dereference tags " +
+                                        "with a single variant which has a "
+                                            + "single argument");
                 }
                 oper_t =
                     ty::substitute_type_params(tcx, tps, variants[0].args[0]);
@@ -1940,10 +1920,9 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
           ty::ty_vec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
           ty::ty_str. { elt_ty = ty::mk_mach(tcx, ast::ty_u8); }
           _ {
-            tcx.sess.span_fatal(
-                expr.span,
-                "mismatched types: expected vector or string but "
-                + "found " + ty_to_str(tcx, ety));
+            tcx.sess.span_fatal(expr.span,
+                     "mismatched types: expected vector or string but "
+                                    + "found " + ty_to_str(tcx, ety));
           }
         }
         bot |= check_for_or_for_each(fcx, decl, elt_ty, body, id);
@@ -2003,7 +1982,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         let cx = @{tcx: tcx};
         let convert = bind ast_ty_to_ty_crate_tyvar(fcx, _);
         let ty_of_arg =
-            lambda (a: &ast::arg) -> ty::arg {
+            lambda (a: ast::arg) -> ty::arg {
                 let tt = ast_ty_to_ty_crate_tyvar(fcx, a.ty);
                 ret {mode: a.mode, ty: tt};
             };
@@ -2042,6 +2021,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         // Pull the argument and return types out.
         let proto, arg_tys, rt, cf, constrs;
         alt structure_of(fcx, expr.span, expr_ty(tcx, f)) {
+
           // FIXME:
           // probably need to munge the constrs to drop constraints
           // for any bound args
@@ -2060,7 +2040,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
             constrs = [];
           }
           _ { fail "LHS of bind expr didn't have a function type?!"; }
-        };
+        }
 
         // For each blank argument, add the type of that argument
         // to the resulting function type.
@@ -2179,7 +2159,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         }
         alt base {
           none. {
-            fn get_node(f: &spanned<field>) -> field { f.node }
+            fn get_node(f: spanned<field>) -> field { f.node }
             let typ = ty::mk_rec(tcx, vec::map(get_node, fields_t));
             write::ty_only_fixup(fcx, id, typ);
           }
@@ -2276,11 +2256,11 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
 
         // FIXME: These next three functions are largely ripped off from
         // similar ones in collect::.  Is there a better way to do this?
-        fn ty_of_arg(ccx: @crate_ctxt, a: &ast::arg) -> ty::arg {
+        fn ty_of_arg(ccx: @crate_ctxt, a: ast::arg) -> ty::arg {
             ret {mode: a.mode, ty: ast_ty_to_ty_crate(ccx, a.ty)};
         }
 
-        fn ty_of_method(ccx: @crate_ctxt, m: &@ast::method) -> ty::method {
+        fn ty_of_method(ccx: @crate_ctxt, m: @ast::method) -> ty::method {
             let convert = bind ast_ty_to_ty_crate(ccx, _);
 
             let inputs = [];
@@ -2333,11 +2313,9 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                       ty::ty_obj(ms) { inner_obj_methods = ms; }
                       _ {
                         // The user is trying to extend a non-object.
-                        tcx.sess.span_fatal(
-                            e.span,
-                            syntax::print::pprust::expr_to_str(e)
-                            +
-                            " does not have object type");
+                        tcx.sess.span_fatal(e.span,
+                                   syntax::print::pprust::expr_to_str(e) +
+                                   " does not have object type");
                       }
                     }
                   }
@@ -2352,7 +2330,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
             // Whenever an outer method overrides an inner, we need to remove
             // that inner from the type.  Filter inner_obj_methods to remove
             // any methods that share a name with an outer method.
-            fn filtering_fn(ccx: @crate_ctxt, m: &ty::method,
+            fn filtering_fn(ccx: @crate_ctxt, m: ty::method,
                             outer_obj_methods: [@ast::method]) ->
                option::t<ty::method> {
 
@@ -2362,11 +2340,10 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                         // type.  Check to make sure.
                         let new_type = ty_of_method(ccx, om);
                         if new_type != m {
-                            ccx.tcx.sess.span_fatal(
-                                om.span,
-                                "Attempted to override method "
-                                + m.ident +
-                                " with one of a different type");
+                            ccx.tcx.sess.span_fatal(om.span,
+                                         "Attempted to override method "
+                                                    + m.ident +
+                                         " with one of a different type");
                         }
                         ret none;
                     }
@@ -2422,21 +2399,21 @@ fn next_ty_var_id(fcx: @fn_ctxt) -> int {
     ret id;
 }
 
-fn next_ty_var(fcx: &@fn_ctxt) -> ty::t {
+fn next_ty_var(fcx: @fn_ctxt) -> ty::t {
     ret ty::mk_var(fcx.ccx.tcx, next_ty_var_id(fcx));
 }
 
-fn get_obj_info(ccx: &@crate_ctxt) -> option::t<obj_info> {
+fn get_obj_info(ccx: @crate_ctxt) -> option::t<obj_info> {
     ret vec::last::<obj_info>(ccx.obj_infos);
 }
 
-fn check_decl_initializer(fcx: &@fn_ctxt, nid: ast::node_id,
-                          init: &ast::initializer) -> bool {
+fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
+                          init: ast::initializer) -> bool {
     let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.expr.span, nid));
     ret check_expr_with(fcx, init.expr, lty);
 }
 
-fn check_decl_local(fcx: &@fn_ctxt, local: &@ast::local) -> bool {
+fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
     let bot = false;
 
     alt fcx.locals.find(local.node.id) {
@@ -2460,7 +2437,7 @@ fn check_decl_local(fcx: &@fn_ctxt, local: &@ast::local) -> bool {
     ret bot;
 }
 
-fn check_stmt(fcx: &@fn_ctxt, stmt: &@ast::stmt) -> bool {
+fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
     let node_id;
     let bot = false;
     alt stmt.node {
@@ -2479,7 +2456,7 @@ fn check_stmt(fcx: &@fn_ctxt, stmt: &@ast::stmt) -> bool {
     ret bot;
 }
 
-fn check_block(fcx: &@fn_ctxt, blk: &ast::blk) -> bool {
+fn check_block(fcx: @fn_ctxt, blk: ast::blk) -> bool {
     let bot = false;
     let warned = false;
     for s: @ast::stmt in blk.node.stmts {
@@ -2513,8 +2490,7 @@ fn check_block(fcx: &@fn_ctxt, blk: &ast::blk) -> bool {
     ret bot;
 }
 
-fn check_const(ccx: &@crate_ctxt, _sp: &span, e: &@ast::expr,
-               id: &ast::node_id) {
+fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     // FIXME: this is kinda a kludge; we manufacture a fake function context
     // and statement context for checking the initializer expression.
     let rty = node_id_to_type(ccx.tcx, id);
@@ -2534,7 +2510,7 @@ fn check_const(ccx: &@crate_ctxt, _sp: &span, e: &@ast::expr,
 
 // A generic function for checking the pred in a check
 // or if-check
-fn check_pred_expr(fcx: &@fn_ctxt, e: &@ast::expr) -> bool {
+fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     let bot = check_expr_with(fcx, e, ty::mk_bool(fcx.ccx.tcx));
 
     /* e must be a call expr where all arguments are either
@@ -2542,9 +2518,8 @@ fn check_pred_expr(fcx: &@fn_ctxt, e: &@ast::expr) -> bool {
     alt e.node {
       ast::expr_call(operator, operands) {
         if !ty::is_pred_ty(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, operator)) {
-            fcx.ccx.tcx.sess.span_fatal(
-                operator.span,
-                "Operator in constraint has non-boolean return type");
+            fcx.ccx.tcx.sess.span_fatal(operator.span,
+                      "Operator in constraint has non-boolean return type");
         }
 
         alt operator.node {
@@ -2581,7 +2556,7 @@ constraint name to be an explicit name";
     ret bot;
 }
 
-fn check_constraints(fcx: &@fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
+fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
     let c_args;
     let num_args = vec::len(args);
     for c: @ast::constr in cs {
@@ -2617,10 +2592,9 @@ fn check_constraints(fcx: &@fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
                                types: []};
                           let arg_occ_node_id =
                               fcx.ccx.tcx.sess.next_node_id();
-                          fcx.ccx.tcx.def_map.insert(
-                              arg_occ_node_id,
-                              ast::def_arg(local_def(args[i].id),
-                                           args[i].mode));
+                          fcx.ccx.tcx.def_map.insert(arg_occ_node_id,
+                                           ast::def_arg(local_def(args[i].id),
+                                                               args[i].mode));
                           {id: arg_occ_node_id,
                            node: ast::expr_path(respan(a.span, p)),
                            span: a.span}
@@ -2644,8 +2618,8 @@ fn check_constraints(fcx: &@fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
     }
 }
 
-fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
-            old_fcx: &option::t<@fn_ctxt>) {
+fn check_fn(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
+            old_fcx: option::t<@fn_ctxt>) {
     let decl = f.decl;
     let body = f.body;
     let gather_result = gather_locals(ccx, f, id, old_fcx);
@@ -2694,11 +2668,11 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     }
 }
 
-fn check_method(ccx: &@crate_ctxt, method: &@ast::method) {
+fn check_method(ccx: @crate_ctxt, method: @ast::method) {
     check_fn(ccx, method.node.meth, method.node.id, none);
 }
 
-fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
+fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
       ast::item_fn(f, _) { check_fn(ccx, f, it.id, none); }
@@ -2717,7 +2691,7 @@ fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
     }
 }
 
-fn arg_is_argv_ty(tcx: &ty::ctxt, a: &ty::arg) -> bool {
+fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
     alt ty::struct(tcx, a.ty) {
       ty::ty_vec(mt) {
         if mt.mut != ast::imm { ret false; }
@@ -2730,7 +2704,7 @@ fn arg_is_argv_ty(tcx: &ty::ctxt, a: &ty::arg) -> bool {
     }
 }
 
-fn check_main_fn_ty(tcx: &ty::ctxt, main_id: &ast::node_id) {
+fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
     let main_t = ty::node_id_to_monotype(tcx, main_id);
     alt ty::struct(tcx, main_t) {
       ty::ty_fn(ast::proto_fn., args, rs, ast::return., constrs) {
@@ -2755,7 +2729,7 @@ fn check_main_fn_ty(tcx: &ty::ctxt, main_id: &ast::node_id) {
     }
 }
 
-fn check_for_main_fn(tcx: &ty::ctxt, crate: &@ast::crate) {
+fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
     if !tcx.sess.get_opts().library {
         alt tcx.sess.get_main_id() {
           some(id) { check_main_fn_ty(tcx, id); }
@@ -2764,7 +2738,7 @@ fn check_for_main_fn(tcx: &ty::ctxt, crate: &@ast::crate) {
     }
 }
 
-fn check_crate(tcx: &ty::ctxt, crate: &@ast::crate) {
+fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     collect::collect_item_types(tcx, crate);
 
     let obj_infos: [obj_info] = [];

@@ -22,7 +22,7 @@ fn b8() -> str {
     ret "Go to the store and buy some more, # of beer on the wall.";
 }
 
-fn sub(t: &str, n: int) -> str {
+fn sub(t: str, n: int) -> str {
     let b: str = "";
     let i: uint = 0u;
     let ns: str;

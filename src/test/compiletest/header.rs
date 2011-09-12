@@ -23,7 +23,7 @@ type test_props = {
 };
 
 // Load any test directives embedded in the file
-fn load_props(testfile: &str) -> test_props {
+fn load_props(testfile: str) -> test_props {
     let error_patterns = [];
     let compile_flags = option::none;
     let pp_exact = option::none;
@@ -54,7 +54,7 @@ fn load_props(testfile: &str) -> test_props {
     };
 }
 
-fn is_test_ignored(config: &config, testfile: &str) -> bool {
+fn is_test_ignored(config: config, testfile: str) -> bool {
     let found = false;
     for each ln: str in iter_header(testfile) {
         // FIXME: Can't return or break from iterator
@@ -66,7 +66,7 @@ fn is_test_ignored(config: &config, testfile: &str) -> bool {
     ret found;
 }
 
-iter iter_header(testfile: &str) -> str {
+iter iter_header(testfile: str) -> str {
     let rdr = io::file_reader(testfile);
     while !rdr.eof() {
         let ln = rdr.read_line();
@@ -81,15 +81,15 @@ iter iter_header(testfile: &str) -> str {
     }
 }
 
-fn parse_error_pattern(line: &str) -> option::t<str> {
+fn parse_error_pattern(line: str) -> option::t<str> {
     parse_name_value_directive(line, "error-pattern")
 }
 
-fn parse_compile_flags(line: &str) -> option::t<str> {
+fn parse_compile_flags(line: str) -> option::t<str> {
     parse_name_value_directive(line, "compile-flags")
 }
 
-fn parse_pp_exact(line: &str, testfile: &str) -> option::t<str> {
+fn parse_pp_exact(line: str, testfile: str) -> option::t<str> {
     alt parse_name_value_directive(line, "pp-exact") {
       option::some(s) { option::some(s) }
       option::none. {
@@ -102,12 +102,12 @@ fn parse_pp_exact(line: &str, testfile: &str) -> option::t<str> {
     }
 }
 
-fn parse_name_directive(line: &str, directive: &str) -> bool {
+fn parse_name_directive(line: str, directive: str) -> bool {
     str::find(line, directive) >= 0
 }
 
-fn parse_name_value_directive(line: &str,
-                              directive: &str) -> option::t<str> {
+fn parse_name_value_directive(line: str,
+                              directive: str) -> option::t<str> {
     let keycolon = directive + ":";
     if str::find(line, keycolon) >= 0 {
         let colon = str::find(line, keycolon) as uint;

@@ -47,15 +47,15 @@ fn mk() -> handle {
     ret {task: option::some(task), chan: recv(setupport)};
 }
 
-fn from_chan(ch: &reqchan) -> handle { {task: option::none, chan: ch} }
+fn from_chan(ch: reqchan) -> handle { {task: option::none, chan: ch} }
 
-fn close(handle: &handle) {
+fn close(handle: handle) {
     send(handle.chan, stop);
     task::join(option::get(handle.task));
 }
 
-fn run(handle: &handle, lib_path: &str, prog: &str, args: &[str],
-       input: &option::t<str>) -> {status: int, out: str, err: str} {
+fn run(handle: handle, lib_path: str, prog: str, args: [str],
+       input: option::t<str>) -> {status: int, out: str, err: str} {
     let p = port();
     let ch = chan(p);
     send(handle.chan,
@@ -70,7 +70,7 @@ fn run(handle: &handle, lib_path: &str, prog: &str, args: &[str],
     ret {status: status, out: output, err: errput};
 }
 
-fn writeclose(fd: int, s: &option::t<str>) {
+fn writeclose(fd: int, s: option::t<str>) {
     if option::is_some(s) {
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
         writer.write_str(option::get(s));
@@ -151,7 +151,7 @@ fn worker(p: port<request>) {
     }
 }
 
-fn with_lib_path<@T>(path: &str, f: fn() -> T) -> T {
+fn with_lib_path<@T>(path: str, f: fn() -> T) -> T {
     let maybe_oldpath = getenv(util::lib_path_env_var());
     append_lib_path(path);
     let res = f();
@@ -164,17 +164,17 @@ fn with_lib_path<@T>(path: &str, f: fn() -> T) -> T {
     ret res;
 }
 
-fn append_lib_path(path: &str) { export_lib_path(util::make_new_path(path)); }
+fn append_lib_path(path: str) { export_lib_path(util::make_new_path(path)); }
 
-fn export_lib_path(path: &str) { setenv(util::lib_path_env_var(), path); }
+fn export_lib_path(path: str) { setenv(util::lib_path_env_var(), path); }
 
-fn clone_vecstr(v: &[str]) -> [[u8]] {
+fn clone_vecstr(v: [str]) -> [[u8]] {
     let r = [];
     for t: str in vec::slice(v, 0u, vec::len(v)) { r += [str::bytes(t)]; }
     ret r;
 }
 
-fn clone_vecu8str(v: &[[u8]]) -> [str] {
+fn clone_vecu8str(v: [[u8]]) -> [str] {
     let r = [];
     for t in vec::slice(v, 0u, vec::len(v)) {
         r += [str::unsafe_from_bytes(t)];

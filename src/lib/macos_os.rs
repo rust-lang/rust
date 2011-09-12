@@ -51,7 +51,7 @@ fn exec_suffix() -> str { ret ""; }
 
 fn target_os() -> str { ret "macos"; }
 
-fn dylib_filename(base: &str) -> str { ret "lib" + base + ".dylib"; }
+fn dylib_filename(base: str) -> str { ret "lib" + base + ".dylib"; }
 
 fn pipe() -> {in: int, out: int} {
     let fds = {mutable in: 0, mutable out: 0};

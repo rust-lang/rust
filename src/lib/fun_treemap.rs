@@ -29,7 +29,7 @@ type treemap<@K, @V> = @tree_node<K, V>;
 
 fn init<@K, @V>() -> treemap<K, V> { @empty }
 
-fn insert<@K, @V>(m: &treemap<K, V>, k: &K, v: &V) -> treemap<K, V> {
+fn insert<@K, @V>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
     @alt m {
        @empty. { node(@k, @v, @empty, @empty) }
        @node(@kk, vv, left, right) {
@@ -42,7 +42,7 @@ fn insert<@K, @V>(m: &treemap<K, V>, k: &K, v: &V) -> treemap<K, V> {
      }
 }
 
-fn find<@K, @V>(m: &treemap<K, V>, k: &K) -> option<V> {
+fn find<@K, @V>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
       empty. { none }
       node(@kk, @v, left, right) {
@@ -55,7 +55,7 @@ fn find<@K, @V>(m: &treemap<K, V>, k: &K) -> option<V> {
 
 
 // Performs an in-order traversal
-fn traverse<@K, @V>(m: &treemap<K, V>, f: fn(&K, &V)) {
+fn traverse<@K, @V>(m: treemap<K, V>, f: fn(K, V)) {
     alt *m {
       empty. { }
       node(@k, @v, _, _) {

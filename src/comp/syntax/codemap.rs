@@ -73,7 +73,7 @@ tag opt_span {
 }
 type span = {lo: uint, hi: uint, expanded_from: opt_span};
 
-fn span_to_str(sp: &span, cm: &codemap) -> str {
+fn span_to_str(sp: span, cm: codemap) -> str {
     let cur = sp;
     let res = "";
     let prev_file = none;
@@ -98,8 +98,8 @@ fn span_to_str(sp: &span, cm: &codemap) -> str {
     ret res;
 }
 
-fn emit_diagnostic(sp: &option::t<span>, msg: &str, kind: &str, color: u8,
-                   cm: &codemap) {
+fn emit_diagnostic(sp: option::t<span>, msg: str, kind: str, color: u8,
+                   cm: codemap) {
     let ss = "";
     let maybe_lines: option::t<@file_lines> = none;
     alt sp {
@@ -120,7 +120,7 @@ fn emit_diagnostic(sp: &option::t<span>, msg: &str, kind: &str, color: u8,
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
 
-fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
+fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
                          maybe_lines: option::t<@file_lines>) {
 
     alt maybe_lines {
@@ -188,13 +188,13 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
     }
 }
 
-fn emit_warning(sp: &option::t<span>, msg: &str, cm: &codemap) {
+fn emit_warning(sp: option::t<span>, msg: str, cm: codemap) {
     emit_diagnostic(sp, msg, "warning", 11u8, cm);
 }
-fn emit_error(sp: &option::t<span>, msg: &str, cm: &codemap) {
+fn emit_error(sp: option::t<span>, msg: str, cm: codemap) {
     emit_diagnostic(sp, msg, "error", 9u8, cm);
 }
-fn emit_note(sp: &option::t<span>, msg: &str, cm: &codemap) {
+fn emit_note(sp: option::t<span>, msg: str, cm: codemap) {
     emit_diagnostic(sp, msg, "note", 10u8, cm);
 }
 
@@ -210,7 +210,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     ret @{name: lo.filename, lines: lines};
 }
 
-fn get_line(fm: filemap, line: int, file: &str) -> str {
+fn get_line(fm: filemap, line: int, file: str) -> str {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end: uint;
     if line as uint < vec::len(fm.lines) - 1u {

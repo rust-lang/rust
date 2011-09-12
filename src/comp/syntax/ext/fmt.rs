@@ -15,8 +15,8 @@ import base::*;
 import codemap::span;
 export expand_syntax_ext;
 
-fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
-                     _body: &option::t<str>) -> @ast::expr {
+fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
+                     _body: option::t<str>) -> @ast::expr {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -33,7 +33,7 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
     let fmtspan = args[0].span;
     log "Format string:";
     log fmt;
-    fn parse_fmt_err_(cx: &ext_ctxt, sp: span, msg: &str) -> ! {
+    fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: str) -> ! {
         cx.span_fatal(sp, msg);
     }
     let parse_fmt_err = bind parse_fmt_err_(cx, fmtspan, _);
@@ -44,49 +44,49 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
 // FIXME: A lot of these functions for producing expressions can probably
 // be factored out in common with other code that builds expressions.
 // FIXME: Cleanup the naming of these functions
-fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
-                  args: &[@ast::expr]) -> @ast::expr {
-    fn make_new_lit(cx: &ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
+fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
+   -> @ast::expr {
+    fn make_new_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
         let sp_lit = @{node: lit, span: sp};
         ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
     }
-    fn make_new_str(cx: &ext_ctxt, sp: span, s: &str) -> @ast::expr {
+    fn make_new_str(cx: ext_ctxt, sp: span, s: str) -> @ast::expr {
         let lit = ast::lit_str(s);
         ret make_new_lit(cx, sp, lit);
     }
-    fn make_new_int(cx: &ext_ctxt, sp: span, i: int) -> @ast::expr {
+    fn make_new_int(cx: ext_ctxt, sp: span, i: int) -> @ast::expr {
         let lit = ast::lit_int(i);
         ret make_new_lit(cx, sp, lit);
     }
-    fn make_new_uint(cx: &ext_ctxt, sp: span, u: uint) -> @ast::expr {
+    fn make_new_uint(cx: ext_ctxt, sp: span, u: uint) -> @ast::expr {
         let lit = ast::lit_uint(u);
         ret make_new_lit(cx, sp, lit);
     }
-    fn make_add_expr(cx: &ext_ctxt, sp: span, lhs: @ast::expr,
-                     rhs: @ast::expr) -> @ast::expr {
+    fn make_add_expr(cx: ext_ctxt, sp: span, lhs: @ast::expr, rhs: @ast::expr)
+       -> @ast::expr {
         let binexpr = ast::expr_binary(ast::add, lhs, rhs);
         ret @{id: cx.next_id(), node: binexpr, span: sp};
     }
-    fn make_path_expr(cx: &ext_ctxt, sp: span, idents: &[ast::ident]) ->
+    fn make_path_expr(cx: ext_ctxt, sp: span, idents: [ast::ident]) ->
        @ast::expr {
         let path = {global: false, idents: idents, types: []};
         let sp_path = {node: path, span: sp};
         let pathexpr = ast::expr_path(sp_path);
         ret @{id: cx.next_id(), node: pathexpr, span: sp};
     }
-    fn make_vec_expr(cx: &ext_ctxt, sp: span, exprs: &[@ast::expr]) ->
+    fn make_vec_expr(cx: ext_ctxt, sp: span, exprs: [@ast::expr]) ->
        @ast::expr {
         let vecexpr = ast::expr_vec(exprs, ast::imm);
         ret @{id: cx.next_id(), node: vecexpr, span: sp};
     }
-    fn make_call(cx: &ext_ctxt, sp: span, fn_path: &[ast::ident],
-                 args: &[@ast::expr]) -> @ast::expr {
+    fn make_call(cx: ext_ctxt, sp: span, fn_path: [ast::ident],
+                 args: [@ast::expr]) -> @ast::expr {
         let pathexpr = make_path_expr(cx, sp, fn_path);
         let callexpr = ast::expr_call(pathexpr, args);
         ret @{id: cx.next_id(), node: callexpr, span: sp};
     }
-    fn make_rec_expr(cx: &ext_ctxt, sp: span,
-                     fields: &[{ident: ast::ident, ex: @ast::expr}]) ->
+    fn make_rec_expr(cx: ext_ctxt, sp: span,
+                     fields: [{ident: ast::ident, ex: @ast::expr}]) ->
        @ast::expr {
         let astfields: [ast::field] = [];
         for field: {ident: ast::ident, ex: @ast::expr} in fields {
@@ -99,23 +99,23 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
         let recexpr = ast::expr_rec(astfields, option::none::<@ast::expr>);
         ret @{id: cx.next_id(), node: recexpr, span: sp};
     }
-    fn make_path_vec(cx: &ext_ctxt, ident: &ast::ident) -> [ast::ident] {
-        fn compiling_std(cx: &ext_ctxt) -> bool {
+    fn make_path_vec(cx: ext_ctxt, ident: ast::ident) -> [ast::ident] {
+        fn compiling_std(cx: ext_ctxt) -> bool {
             ret str::find(cx.crate_file_name(), "std.rc") >= 0;
         }
         if compiling_std(cx) {
             ret ["extfmt", "rt", ident];
         } else { ret ["std", "extfmt", "rt", ident]; }
     }
-    fn make_rt_path_expr(cx: &ext_ctxt, sp: span, ident: &str) -> @ast::expr {
+    fn make_rt_path_expr(cx: ext_ctxt, sp: span, ident: str) -> @ast::expr {
         let path = make_path_vec(cx, ident);
         ret make_path_expr(cx, sp, path);
     }
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
 
-    fn make_rt_conv_expr(cx: &ext_ctxt, sp: span, cnv: &conv) -> @ast::expr {
-        fn make_flags(cx: &ext_ctxt, sp: span, flags: &[flag]) -> @ast::expr {
+    fn make_rt_conv_expr(cx: ext_ctxt, sp: span, cnv: conv) -> @ast::expr {
+        fn make_flags(cx: ext_ctxt, sp: span, flags: [flag]) -> @ast::expr {
             let flagexprs: [@ast::expr] = [];
             for f: flag in flags {
                 let fstr;
@@ -137,7 +137,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
             }
             ret make_vec_expr(cx, sp, flagexprs);
         }
-        fn make_count(cx: &ext_ctxt, sp: span, cnt: &count) -> @ast::expr {
+        fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
             alt cnt {
               count_implied. {
                 ret make_rt_path_expr(cx, sp, "count_implied");
@@ -151,7 +151,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
               _ { cx.span_unimpl(sp, "unimplemented #fmt conversion"); }
             }
         }
-        fn make_ty(cx: &ext_ctxt, sp: span, t: &ty) -> @ast::expr {
+        fn make_ty(cx: ext_ctxt, sp: span, t: ty) -> @ast::expr {
             let rt_type;
             alt t {
               ty_hex(c) {
@@ -166,7 +166,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
             }
             ret make_rt_path_expr(cx, sp, rt_type);
         }
-        fn make_conv_rec(cx: &ext_ctxt, sp: span, flags_expr: @ast::expr,
+        fn make_conv_rec(cx: ext_ctxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             ret make_rec_expr(cx, sp,
@@ -182,7 +182,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
         ret make_conv_rec(cx, sp, rt_conv_flags, rt_conv_width,
                           rt_conv_precision, rt_conv_ty);
     }
-    fn make_conv_call(cx: &ext_ctxt, sp: span, conv_type: &str, cnv: &conv,
+    fn make_conv_call(cx: ext_ctxt, sp: span, conv_type: str, cnv: conv,
                       arg: @ast::expr) -> @ast::expr {
         let fname = "conv_" + conv_type;
         let path = make_path_vec(cx, fname);
@@ -190,7 +190,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
         let args = [cnv_expr, arg];
         ret make_call(cx, arg.span, path, args);
     }
-    fn make_new_conv(cx: &ext_ctxt, sp: span, cnv: conv, arg: @ast::expr) ->
+    fn make_new_conv(cx: ext_ctxt, sp: span, cnv: conv, arg: @ast::expr) ->
        @ast::expr {
         // FIXME: Extract all this validation into extfmt::ct
 
@@ -334,10 +334,9 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     let expected_nargs = n + 1u; // n conversions + the fmt string
 
     if expected_nargs < nargs {
-        cx.span_fatal(
-            sp,
-            #fmt["too many arguments to #fmt. found %u, expected %u",
-                 nargs, expected_nargs]);
+        cx.span_fatal(sp,
+       #fmt["too many arguments to #fmt. found %u, expected %u",
+                           nargs, expected_nargs]);
     }
     ret tmp_expr;
 }

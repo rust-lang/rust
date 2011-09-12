@@ -20,7 +20,7 @@ export parse_ty_data;
 // data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
-type str_def = fn(&str) -> ast::def_id;
+type str_def = fn(str) -> ast::def_id;
 
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
@@ -401,7 +401,7 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
 
 
 // Rust metadata parsing
-fn parse_def_id(buf: &[u8]) -> ast::def_id {
+fn parse_def_id(buf: [u8]) -> ast::def_id {
     let colon_idx = 0u;
     let len = vec::len::<u8>(buf);
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }

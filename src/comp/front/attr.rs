@@ -30,7 +30,7 @@ export mk_attr;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
-fn find_linkage_metas(attrs: &[ast::attribute]) -> [@ast::meta_item] {
+fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
     let metas: [@ast::meta_item] = [];
     for attr: ast::attribute in find_attrs_by_name(attrs, "link") {
         alt attr.node.value.node {
@@ -42,10 +42,10 @@ fn find_linkage_metas(attrs: &[ast::attribute]) -> [@ast::meta_item] {
 }
 
 // Search a list of attributes and return only those with a specific name
-fn find_attrs_by_name(attrs: &[ast::attribute], name: ast::ident) ->
+fn find_attrs_by_name(attrs: [ast::attribute], name: ast::ident) ->
    [ast::attribute] {
     let filter =
-        bind fn (a: &ast::attribute, name: ast::ident) ->
+        bind fn (a: ast::attribute, name: ast::ident) ->
                 option::t<ast::attribute> {
                  if get_attr_name(a) == name {
                      option::some(a)
@@ -54,14 +54,14 @@ fn find_attrs_by_name(attrs: &[ast::attribute], name: ast::ident) ->
     ret vec::filter_map(filter, attrs);
 }
 
-fn get_attr_name(attr: &ast::attribute) -> ast::ident {
+fn get_attr_name(attr: ast::attribute) -> ast::ident {
     get_meta_item_name(@attr.node.value)
 }
 
-fn find_meta_items_by_name(metas: &[@ast::meta_item], name: ast::ident) ->
+fn find_meta_items_by_name(metas: [@ast::meta_item], name: ast::ident) ->
    [@ast::meta_item] {
     let filter =
-        bind fn (m: &@ast::meta_item, name: ast::ident) ->
+        bind fn (m: @ast::meta_item, name: ast::ident) ->
                 option::t<@ast::meta_item> {
                  if get_meta_item_name(m) == name {
                      option::some(m)
@@ -70,7 +70,7 @@ fn find_meta_items_by_name(metas: &[@ast::meta_item], name: ast::ident) ->
     ret vec::filter_map(filter, metas);
 }
 
-fn get_meta_item_name(meta: &@ast::meta_item) -> ast::ident {
+fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
     alt meta.node {
       ast::meta_word(n) { n }
       ast::meta_name_value(n, _) { n }
@@ -80,7 +80,7 @@ fn get_meta_item_name(meta: &@ast::meta_item) -> ast::ident {
 
 // Gets the string value if the meta_item is a meta_name_value variant
 // containing a string, otherwise none
-fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t<str> {
+fn get_meta_item_value_str(meta: @ast::meta_item) -> option::t<str> {
     alt meta.node {
       ast::meta_name_value(_, v) {
         alt v.node { ast::lit_str(s) { option::some(s) } _ { option::none } }
@@ -89,10 +89,10 @@ fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t<str> {
     }
 }
 
-fn attr_meta(attr: &ast::attribute) -> @ast::meta_item { @attr.node.value }
+fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 
 // Get the meta_items from inside a vector of attributes
-fn attr_metas(attrs: &[ast::attribute]) -> [@ast::meta_item] {
+fn attr_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
     let mitems = [];
     for a: ast::attribute in attrs { mitems += [attr_meta(a)]; }
     ret mitems;
@@ -119,7 +119,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
         }
 }
 
-fn contains(haystack: &[@ast::meta_item], needle: @ast::meta_item) -> bool {
+fn contains(haystack: [@ast::meta_item], needle: @ast::meta_item) -> bool {
     log #fmt["looking for %s",
              syntax::print::pprust::meta_item_to_str(*needle)];
     for item: @ast::meta_item in haystack {
@@ -131,15 +131,15 @@ fn contains(haystack: &[@ast::meta_item], needle: @ast::meta_item) -> bool {
     ret false;
 }
 
-fn contains_name(metas: &[@ast::meta_item], name: ast::ident) -> bool {
+fn contains_name(metas: [@ast::meta_item], name: ast::ident) -> bool {
     let matches = find_meta_items_by_name(metas, name);
     ret vec::len(matches) > 0u;
 }
 
 // FIXME: This needs to sort by meta_item variant in addition to the item name
-fn sort_meta_items(items: &[@ast::meta_item]) -> [@ast::meta_item] {
-    fn lteq(ma: &@ast::meta_item, mb: &@ast::meta_item) -> bool {
-        fn key(m: &@ast::meta_item) -> ast::ident {
+fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
+    fn lteq(ma: @ast::meta_item, mb: @ast::meta_item) -> bool {
+        fn key(m: @ast::meta_item) -> ast::ident {
             alt m.node {
               ast::meta_word(name) { name }
               ast::meta_name_value(name, _) { name }
@@ -160,11 +160,11 @@ fn sort_meta_items(items: &[@ast::meta_item]) -> [@ast::meta_item] {
     ret v2;
 }
 
-fn remove_meta_items_by_name(items: &[@ast::meta_item], name: &str) ->
+fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
    [@ast::meta_item] {
 
     let filter =
-        bind fn (item: &@ast::meta_item, name: &str) ->
+        bind fn (item: @ast::meta_item, name: str) ->
                 option::t<@ast::meta_item> {
                  if get_meta_item_name(item) != name {
                      option::some(item)
@@ -174,7 +174,7 @@ fn remove_meta_items_by_name(items: &[@ast::meta_item], name: &str) ->
     ret vec::filter_map(filter, items);
 }
 
-fn require_unique_names(sess: &session::session, metas: &[@ast::meta_item]) {
+fn require_unique_names(sess: session::session, metas: [@ast::meta_item]) {
     let map = map::new_str_hash();
     for meta: @ast::meta_item in metas {
         let name = get_meta_item_name(meta);
@@ -186,11 +186,11 @@ fn require_unique_names(sess: &session::session, metas: &[@ast::meta_item]) {
     }
 }
 
-fn span<@T>(item: &T) -> ast::spanned<T> {
+fn span<@T>(item: T) -> ast::spanned<T> {
     ret {node: item, span: ast_util::dummy_sp()};
 }
 
-fn mk_name_value_item_str(name: ast::ident, value: &str) -> @ast::meta_item {
+fn mk_name_value_item_str(name: ast::ident, value: str) -> @ast::meta_item {
     let value_lit = span(ast::lit_str(value));
     ret mk_name_value_item(name, value_lit);
 }
@@ -199,7 +199,7 @@ fn mk_name_value_item(name: ast::ident, value: ast::lit) -> @ast::meta_item {
     ret @span(ast::meta_name_value(name, value));
 }
 
-fn mk_list_item(name: ast::ident, items: &[@ast::meta_item]) ->
+fn mk_list_item(name: ast::ident, items: [@ast::meta_item]) ->
    @ast::meta_item {
     ret @span(ast::meta_list(name, items));
 }

@@ -29,15 +29,15 @@ type freevar_map = hashmap<ast::node_id, freevar_info>;
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: &resolve::def_map, walker: &fn(&visit::vt<int>))
-   -> freevar_info {
+fn collect_freevars(def_map: resolve::def_map, walker: fn(visit::vt<int>)) ->
+   freevar_info {
     let seen = new_int_hash();
     let refs = @mutable [];
 
-    fn ignore_item(_i: &@ast::item, _depth: &int, _v: &visit::vt<int>) { }
+    fn ignore_item(_i: @ast::item, _depth: int, _v: visit::vt<int>) { }
 
     let walk_expr =
-        lambda (expr: &@ast::expr, depth: &int, v: &visit::vt<int>) {
+        lambda (expr: @ast::expr, depth: int, v: visit::vt<int>) {
             alt expr.node {
               ast::expr_fn(f) {
                 if f.proto == ast::proto_block ||
@@ -81,28 +81,26 @@ fn collect_freevars(def_map: &resolve::def_map, walker: &fn(&visit::vt<int>))
 // efficient as it fully recomputes the free variables at every
 // node of interest rather than building up the free variables in
 // one pass. This could be improved upon if it turns out to matter.
-fn annotate_freevars(def_map: &resolve::def_map, crate: &@ast::crate) ->
+fn annotate_freevars(def_map: resolve::def_map, crate: @ast::crate) ->
    freevar_map {
     let freevars = new_int_hash();
 
     let walk_fn =
-        lambda (f: &ast::_fn, tps: &[ast::ty_param], sp: &span,
-                i: &ast::fn_ident, nid: ast::node_id) {
+        lambda (f: ast::_fn, tps: [ast::ty_param], sp: span, i: ast::fn_ident,
+                nid: ast::node_id) {
             let start_walk =
-                lambda (v: &visit::vt<int>) {
+                lambda (v: visit::vt<int>) {
                     v.visit_fn(f, tps, sp, i, nid, 1, v);
                 };
             let vars = collect_freevars(def_map, start_walk);
             freevars.insert(nid, vars);
         };
     let walk_expr =
-        lambda (expr: &@ast::expr) {
+        lambda (expr: @ast::expr) {
             alt expr.node {
               ast::expr_for_each(local, _, body) {
                 let start_walk =
-                    lambda (v: &visit::vt<int>) {
-                        v.visit_block(body, 1, v);
-                    };
+                    lambda (v: visit::vt<int>) { v.visit_block(body, 1, v); };
                 let vars = collect_freevars(def_map, start_walk);
                 freevars.insert(body.node.id, vars);
               }
@@ -118,13 +116,13 @@ fn annotate_freevars(def_map: &resolve::def_map, crate: &@ast::crate) ->
     ret freevars;
 }
 
-fn get_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_info {
+fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     alt tcx.freevars.find(fid) {
       none. { fail "get_freevars: " + int::str(fid) + " has no freevars"; }
       some(d) { ret d; }
     }
 }
-fn has_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> bool {
+fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
     ret std::vec::len(*get_freevars(tcx, fid)) != 0u;
 }
 

@@ -20,22 +20,22 @@ import rustc::syntax::codemap;
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
-fn write_file(filename: &str, content: &str) {
+fn write_file(filename: str, content: str) {
     io::file_writer(filename, [io::create, io::truncate]).write_str(content);
     // Work around https://github.com/graydon/rust/issues/726
     std::run::run_program("chmod", ["644", filename]);
 }
 
-fn file_contains(filename: &str, needle: &str) -> bool {
+fn file_contains(filename: str, needle: str) -> bool {
     let contents = io::read_whole_file_str(filename);
     ret str::find(contents, needle) != -1;
 }
 
-fn contains(haystack: &str, needle: &str) -> bool {
+fn contains(haystack: str, needle: str) -> bool {
     str::find(haystack, needle) != -1
 }
 
-fn find_rust_files(files: &mutable [str], path: &str) {
+fn find_rust_files(files: &[str], path: str) {
     if str::ends_with(path, ".rs") {
         if file_contains(path, "xfail-test") {
             //log_err "Skipping " + path + " because it is marked as xfail-test";
@@ -48,7 +48,7 @@ fn find_rust_files(files: &mutable [str], path: &str) {
     }
 }
 
-fn safe_to_steal_expr(e: &@ast::expr) -> bool {
+fn safe_to_steal_expr(e: @ast::expr) -> bool {
     alt e.node {
 
       // https://github.com/graydon/rust/issues/890
@@ -89,19 +89,19 @@ fn safe_to_steal_expr(e: &@ast::expr) -> bool {
     }
 }
 
-fn safe_to_steal_ty(t: &@ast::ty) -> bool {
+fn safe_to_steal_ty(t: @ast::ty) -> bool {
     // Same restrictions
     safe_to_replace_ty(t.node)
 }
 
 // Not type-parameterized: https://github.com/graydon/rust/issues/898
-fn stash_expr_if(c: fn(&@ast::expr)->bool, es: @mutable [ast::expr], e: &@ast::expr) {
+fn stash_expr_if(c: fn(@ast::expr)->bool, es: @mutable [ast::expr], e: @ast::expr) {
     if c(e) {
         *es += [*e];
     } else {/* now my indices are wrong :( */ }
 }
 
-fn stash_ty_if(c: fn(&@ast::ty)->bool, es: @mutable [ast::ty], e: &@ast::ty) {
+fn stash_ty_if(c: fn(@ast::ty)->bool, es: @mutable [ast::ty], e: @ast::ty) {
     if c(e) {
         *es += [*e];
     } else {/* now my indices are wrong :( */ }
@@ -109,7 +109,7 @@ fn stash_ty_if(c: fn(&@ast::ty)->bool, es: @mutable [ast::ty], e: &@ast::ty) {
 
 type stolen_stuff = {exprs: [ast::expr], tys: [ast::ty]};
 
-fn steal(crate: &ast::crate) -> stolen_stuff {
+fn steal(crate: ast::crate) -> stolen_stuff {
     let exprs = @mutable [];
     let tys = @mutable [];
     let v = visit::mk_simple_visitor(@{
@@ -140,11 +140,11 @@ fn safe_to_replace_ty(t: ast::ty_) -> bool {
 }
 
 // Replace the |i|th expr (in fold order) of |crate| with |newexpr|.
-fn replace_expr_in_crate(crate: &ast::crate, i: uint, newexpr: &ast::expr) ->
+fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr) ->
    ast::crate {
     let j: @mutable uint = @mutable 0u;
-    fn fold_expr_rep(j_: @mutable uint, i_: uint, newexpr_: &ast::expr_,
-                     original: &ast::expr_, fld: fold::ast_fold) ->
+    fn fold_expr_rep(j_: @mutable uint, i_: uint, newexpr_: ast::expr_,
+                     original: ast::expr_, fld: fold::ast_fold) ->
        ast::expr_ {
         *j_ += 1u;
         if i_ + 1u == *j_ && safe_to_replace_expr(original) {
@@ -161,11 +161,11 @@ fn replace_expr_in_crate(crate: &ast::crate, i: uint, newexpr: &ast::expr) ->
 }
 
 // Replace the |i|th ty (in fold order) of |crate| with |newty|.
-fn replace_ty_in_crate(crate: &ast::crate, i: uint, newty: &ast::ty) ->
+fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty) ->
    ast::crate {
     let j: @mutable uint = @mutable 0u;
-    fn fold_ty_rep(j_: @mutable uint, i_: uint, newty_: &ast::ty_,
-                     original: &ast::ty_, fld: fold::ast_fold) ->
+    fn fold_ty_rep(j_: @mutable uint, i_: uint, newty_: ast::ty_,
+                     original: ast::ty_, fld: fold::ast_fold) ->
        ast::ty_ {
         *j_ += 1u;
         if i_ + 1u == *j_ && safe_to_replace_ty(original) {
@@ -194,21 +194,21 @@ fn as_str(f: fn(io::writer)) -> str {
     ret w.get_str();
 }
 
-fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap,
-                         filename: &str) {
+fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
+                         filename: str) {
     let stolen = steal(crate);
     check_variants_T(crate, codemap, filename, "expr", stolen.exprs, pprust::expr_to_str, replace_expr_in_crate);
     check_variants_T(crate, codemap, filename, "ty", stolen.tys, pprust::ty_to_str, replace_ty_in_crate);
 }
 
 fn check_variants_T<T>(
-  crate: &ast::crate,
-  codemap: &codemap::codemap,
-  filename: &str,
-  thing_label: &str,
+  crate: ast::crate,
+  codemap: codemap::codemap,
+  filename: str,
+  thing_label: str,
   things: [T],
-  stringifier: fn(&@T) -> str,
-  replacer: fn(&ast::crate, uint, &T) -> ast::crate
+  stringifier: fn(@T) -> str,
+  replacer: fn(ast::crate, uint, T) -> ast::crate
   ) {
     log_err #fmt("%s contains %u %s objects", filename, vec::len(things), thing_label);
 
@@ -235,7 +235,7 @@ fn check_variants_T<T>(
     }
 }
 
-fn last_part(filename: &str) -> str {
+fn last_part(filename: str) -> str {
   let ix = str::rindex(filename, 47u8 /* '/' */);
   assert ix >= 0;
   str::slice(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
@@ -247,7 +247,7 @@ tag compile_result { known_bug(str); passed(str); failed(str); }
 // - that would find many "false positives" or unimportant bugs
 // - that would be tricky, requiring use of tasks or serialization or randomness.
 // This seems to find plenty of bugs as it is :)
-fn check_whole_compiler(code: &str, suggested_filename: &str) {
+fn check_whole_compiler(code: str, suggested_filename: str) {
     let filename = "test.rs";
     write_file(filename, code);
     alt check_whole_compiler_inner(filename) {
@@ -263,7 +263,7 @@ fn check_whole_compiler(code: &str, suggested_filename: &str) {
     }
 }
 
-fn check_whole_compiler_inner(filename: &str) -> compile_result {
+fn check_whole_compiler_inner(filename: str) -> compile_result {
     let p = std::run::program_output(
             "/Users/jruderman/code/rust/build/stage1/rustc",
             ["-c", filename]);
@@ -312,7 +312,7 @@ fn check_whole_compiler_inner(filename: &str) -> compile_result {
 }
 
 
-fn parse_and_print(code: &str) -> str {
+fn parse_and_print(code: str) -> str {
     let filename = "tmp.rs";
     let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
     //write_file(filename, code);
@@ -324,7 +324,7 @@ fn parse_and_print(code: &str) -> str {
                                         pprust::no_ann()));
 }
 
-fn content_is_dangerous_to_modify(code: &str) -> bool {
+fn content_is_dangerous_to_modify(code: str) -> bool {
     let dangerous_patterns =
         ["#macro", // not safe to steal things inside of it, because they have a special syntax
          "#",      // strange representation of the arguments to #fmt, for example
@@ -335,7 +335,7 @@ fn content_is_dangerous_to_modify(code: &str) -> bool {
     ret false;
 }
 
-fn content_is_confusing(code: &str) -> bool {
+fn content_is_confusing(code: str) -> bool {
     let confusing_patterns =
         ["self",       // crazy rules enforced by parser rather than typechecker?
         "spawn",       // precedence issues?
@@ -347,7 +347,7 @@ fn content_is_confusing(code: &str) -> bool {
     ret false;
 }
 
-fn file_is_confusing(filename: &str) -> bool {
+fn file_is_confusing(filename: str) -> bool {
     let confusing_files = [];
 
     for f in confusing_files { if contains(filename, f) { ret true; } }
@@ -355,7 +355,7 @@ fn file_is_confusing(filename: &str) -> bool {
     ret false;
 }
 
-fn check_roundtrip_convergence(code: &str, maxIters: uint) {
+fn check_roundtrip_convergence(code: str, maxIters: uint) {
 
     let i = 0u;
     let new = code;
@@ -382,7 +382,7 @@ fn check_roundtrip_convergence(code: &str, maxIters: uint) {
     }
 }
 
-fn check_convergence(files: &[str]) {
+fn check_convergence(files: [str]) {
     log_err #fmt["pp convergence tests: %u files", vec::len(files)];
     for file in files {
         if !file_is_confusing(file) {
@@ -396,7 +396,7 @@ fn check_convergence(files: &[str]) {
     }
 }
 
-fn check_variants(files: &[str]) {
+fn check_variants(files: [str]) {
     for file in files {
         if !file_is_confusing(file) {
             let s = io::read_whole_file_str(file);

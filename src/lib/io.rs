@@ -174,7 +174,7 @@ fn stdin() -> reader {
     ret new_reader(FILE_buf_reader(rustrt::rust_get_stdin(), option::none));
 }
 
-fn file_reader(path: &str) -> reader {
+fn file_reader(path: str) -> reader {
     let f =
         str::as_buf(path,
                     {|pathbuf|
@@ -218,11 +218,11 @@ obj byte_buf_reader(bbuf: byte_buf) {
     fn tell() -> uint { ret bbuf.pos; }
 }
 
-fn new_byte_buf_reader(buf: &[u8]) -> buf_reader {
+fn new_byte_buf_reader(buf: [u8]) -> buf_reader {
     ret byte_buf_reader(@{buf: buf, mutable pos: 0u});
 }
 
-fn string_reader(s: &str) -> reader {
+fn string_reader(s: str) -> reader {
     ret new_reader(new_byte_buf_reader(str::bytes(s)));
 }
 
@@ -236,13 +236,13 @@ type buf_writer =
     // FIXME: eventually u64
 
     obj {
-        fn write(&[u8]);
+        fn write([u8]);
         fn seek(int, seek_style);
         fn tell() -> uint;
     };
 
 obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
-    fn write(v: &[u8]) {
+    fn write(v: [u8]) {
         let len = vec::len::<u8>(v);
         let vbuf = vec::unsafe::to_ptr::<u8>(v);
         let nout = os::libc::fwrite(vbuf, len, 1u, f);
@@ -257,7 +257,7 @@ obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
 resource fd_res(fd: int) { os::libc::close(fd); }
 
 obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
-    fn write(v: &[u8]) {
+    fn write(v: [u8]) {
         let len = vec::len::<u8>(v);
         let count = 0u;
         let vbuf;
@@ -282,7 +282,7 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
     }
 }
 
-fn file_buf_writer(path: &str, flags: &[fileflag]) -> buf_writer {
+fn file_buf_writer(path: str, flags: [fileflag]) -> buf_writer {
     let fflags: int =
         os::libc_constants::O_WRONLY() | os::libc_constants::O_BINARY();
     for f: fileflag in flags {
@@ -313,12 +313,12 @@ type writer =
     // function will be provided for general encoded string output
     obj {
         fn get_buf_writer() -> buf_writer;
-        fn write_str(&str);
-        fn write_line(&str);
+        fn write_str(str);
+        fn write_line(str);
         fn write_char(char);
         fn write_int(int);
         fn write_uint(uint);
-        fn write_bytes(&[u8]);
+        fn write_bytes([u8]);
         fn write_le_uint(uint, uint);
         fn write_le_int(int, uint);
         fn write_be_uint(uint, uint);
@@ -339,8 +339,8 @@ fn uint_to_be_bytes(n: uint, size: uint) -> [u8] {
 
 obj new_writer(out: buf_writer) {
     fn get_buf_writer() -> buf_writer { ret out; }
-    fn write_str(s: &str) { out.write(str::bytes(s)); }
-    fn write_line(s: &str) {
+    fn write_str(s: str) { out.write(str::bytes(s)); }
+    fn write_line(s: str) {
         out.write(str::bytes(s));
         out.write(str::bytes("\n"));
     }
@@ -351,7 +351,7 @@ obj new_writer(out: buf_writer) {
     }
     fn write_int(n: int) { out.write(str::bytes(int::to_str(n, 10u))); }
     fn write_uint(n: uint) { out.write(str::bytes(uint::to_str(n, 10u))); }
-    fn write_bytes(bytes: &[u8]) { out.write(bytes); }
+    fn write_bytes(bytes: [u8]) { out.write(bytes); }
     fn write_le_uint(n: uint, size: uint) {
         out.write(uint_to_le_bytes(n, size));
     }
@@ -363,13 +363,13 @@ obj new_writer(out: buf_writer) {
     }
 }
 
-fn file_writer(path: &str, flags: &[fileflag]) -> writer {
+fn file_writer(path: str, flags: [fileflag]) -> writer {
     ret new_writer(file_buf_writer(path, flags));
 }
 
 
 // FIXME: fileflags
-fn buffered_file_buf_writer(path: &str) -> buf_writer {
+fn buffered_file_buf_writer(path: str) -> buf_writer {
     let f =
         str::as_buf(path,
                     {|pathbuf|
@@ -396,7 +396,7 @@ type str_writer =
 type mutable_byte_buf = @{mutable buf: [mutable u8], mutable pos: uint};
 
 obj byte_buf_writer(buf: mutable_byte_buf) {
-    fn write(v: &[u8]) {
+    fn write(v: [u8]) {
         // Fast path.
 
         if buf.pos == vec::len(buf.buf) {
@@ -453,11 +453,11 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
     ret bpos as uint;
 }
 
-fn read_whole_file_str(file: &str) -> str {
+fn read_whole_file_str(file: str) -> str {
     str::unsafe_from_bytes(read_whole_file(file))
 }
 
-fn read_whole_file(file: &str) -> [u8] {
+fn read_whole_file(file: str) -> [u8] {
 
     // FIXME: There's a lot of copying here
     file_reader(file).read_whole_stream()

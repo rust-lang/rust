@@ -27,7 +27,7 @@ fn main(args: [str]) {
     run_tests(config);
 }
 
-fn parse_config(args: &[str]) -> config {
+fn parse_config(args: [str]) -> config {
     let opts =
         [getopts::reqopt("compile-lib-path"), getopts::reqopt("run-lib-path"),
          getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
@@ -61,7 +61,7 @@ fn parse_config(args: &[str]) -> config {
          verbose: getopts::opt_present(match, "verbose")};
 }
 
-fn log_config(config: &config) {
+fn log_config(config: config) {
     let c = config;
     logv(c, #fmt["configuration:"]);
     logv(c, #fmt["compile_lib_path: %s", config.compile_lib_path]);
@@ -83,11 +83,11 @@ fn opt_str(maybestr: option::t<str>) -> str {
     alt maybestr { option::some(s) { s } option::none. { "(none)" } }
 }
 
-fn str_opt(maybestr: &str) -> option::t<str> {
+fn str_opt(maybestr: str) -> option::t<str> {
     if maybestr != "(none)" { option::some(maybestr) } else { option::none }
 }
 
-fn str_mode(s: &str) -> mode {
+fn str_mode(s: str) -> mode {
     alt s {
       "compile-fail" { mode_compile_fail }
       "run-fail" { mode_run_fail }
@@ -106,7 +106,7 @@ fn mode_str(mode: mode) -> str {
     }
 }
 
-fn run_tests(config: &config) {
+fn run_tests(config: config) {
     let opts = test_opts(config);
     let cx = {config: config, procsrv: procsrv::mk()};
     let tests = make_tests(cx);
@@ -114,7 +114,7 @@ fn run_tests(config: &config) {
     procsrv::close(cx.procsrv);
 }
 
-fn test_opts(config: &config) -> test::test_opts {
+fn test_opts(config: config) -> test::test_opts {
     {filter:
          alt config.filter {
            option::some(s) { option::some(s) }
@@ -124,9 +124,9 @@ fn test_opts(config: &config) -> test::test_opts {
 }
 
 type tests_and_conv_fn =
-    {tests: [test::test_desc], to_task: fn(&fn()) -> test::joinable};
+    {tests: [test::test_desc], to_task: fn(fn()) -> test::joinable};
 
-fn make_tests(cx: &cx) -> tests_and_conv_fn {
+fn make_tests(cx: cx) -> tests_and_conv_fn {
     log #fmt["making tests from %s", cx.config.src_base];
     let configport = port::<[u8]>();
     let tests = [];
@@ -140,7 +140,7 @@ fn make_tests(cx: &cx) -> tests_and_conv_fn {
     ret {tests: tests, to_task: bind closure_to_task(cx, configport, _)};
 }
 
-fn is_test(config: &config, testfile: &str) -> bool {
+fn is_test(config: config, testfile: str) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         alt config.mode { mode_pretty. { [".rs"] } _ { [".rc", ".rs"] } };
@@ -160,14 +160,14 @@ fn is_test(config: &config, testfile: &str) -> bool {
     ret valid;
 }
 
-fn make_test(cx: &cx, testfile: &str, configport: &port<[u8]>) ->
+fn make_test(cx: cx, testfile: str, configport: port<[u8]>) ->
    test::test_desc {
     {name: make_test_name(cx.config, testfile),
      fn: make_test_closure(testfile, chan(configport)),
      ignore: header::is_test_ignored(cx.config, testfile)}
 }
 
-fn make_test_name(config: &config, testfile: &str) -> str {
+fn make_test_name(config: config, testfile: str) -> str {
     #fmt["[%s] %s", mode_str(config.mode), testfile]
 }
 
@@ -190,8 +190,7 @@ up. Then we'll spawn that data into another task and return the task.
 Really convoluted. Need to think up of a better definition for tests.
 */
 
-fn make_test_closure(testfile: &str, configchan: chan<[u8]>) ->
-   test::test_fn {
+fn make_test_closure(testfile: str, configchan: chan<[u8]>) -> test::test_fn {
     bind send_config(testfile, configchan)
 }
 
@@ -209,7 +208,7 @@ break up the config record and pass everything individually to the spawned
 function.
 */
 
-fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: &fn()) ->
+fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn()) ->
    test::joinable {
     testfn();
     let testfile = recv(configport);

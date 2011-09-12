@@ -293,10 +293,11 @@ tag ty_ {
              for this type. */
 
 
+
      /* bot represents the value of functions that don't return a value
         locally to their context. in contrast, things like log that do
         return, but don't return a meaningful value, have result type nil. */
-    ty_bool;
+     ty_bool;
     ty_int;
     ty_uint;
     ty_float;
@@ -379,6 +380,7 @@ tag purity {
 tag controlflow {
     noreturn; // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
+
 
 
     return; // everything else

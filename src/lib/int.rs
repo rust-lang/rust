@@ -32,9 +32,9 @@ pure fn nonnegative(x: int) -> bool { ret x >= 0; }
 
 
 // FIXME: Make sure this works with negative integers.
-fn hash(x: &int) -> uint { ret x as uint; }
+fn hash(x: int) -> uint { ret x as uint; }
 
-fn eq_alias(x: &int, y: &int) -> bool { ret x == y; }
+fn eq_alias(x: int, y: int) -> bool { ret x == y; }
 
 iter range(lo: int, hi: int) -> int {
     let lo_: int = lo;

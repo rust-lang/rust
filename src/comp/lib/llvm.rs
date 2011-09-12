@@ -809,15 +809,19 @@ native "cdecl" mod llvm = "rustllvm" {
                                                    Value: Bool);
     fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: PassManagerBuilderRef,
                                                    Value: Bool);
-    fn LLVMPassManagerBuilderSetDisableSimplifyLibCalls(
-        PMB: PassManagerBuilderRef, Value: Bool);
-    fn LLVMPassManagerBuilderUseInlinerWithThreshold(
-        PMB: PassManagerBuilderRef, threshold: uint);
-    fn LLVMPassManagerBuilderPopulateModulePassManager(
-        PMB: PassManagerBuilderRef, PM: PassManagerRef);
+    fn LLVMPassManagerBuilderSetDisableSimplifyLibCalls
+        (PMB: PassManagerBuilderRef,
+                                                        Value: Bool);
+    fn LLVMPassManagerBuilderUseInlinerWithThreshold
+        (PMB: PassManagerBuilderRef,
+                                                     threshold: uint);
+    fn LLVMPassManagerBuilderPopulateModulePassManager(PMB:
+                                                        PassManagerBuilderRef,
+                                                       PM: PassManagerRef);
 
-    fn LLVMPassManagerBuilderPopulateFunctionPassManager(
-        PMB: PassManagerBuilderRef, PM: PassManagerRef);
+    fn LLVMPassManagerBuilderPopulateFunctionPassManager(PMB:
+                                                        PassManagerBuilderRef,
+                                                         PM: PassManagerRef);
 
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);
@@ -898,7 +902,7 @@ native "cdecl" mod llvm = "rustllvm" {
 obj type_names(type_names: std::map::hashmap<TypeRef, str>,
                named_types: std::map::hashmap<str, TypeRef>) {
 
-    fn associate(s: &str, t: TypeRef) {
+    fn associate(s: str, t: TypeRef) {
         assert (!named_types.contains_key(s));
         assert (!type_names.contains_key(t));
         type_names.insert(t, s);
@@ -909,17 +913,17 @@ obj type_names(type_names: std::map::hashmap<TypeRef, str>,
 
     fn get_name(t: TypeRef) -> str { ret type_names.get(t); }
 
-    fn name_has_type(s: &str) -> bool { ret named_types.contains_key(s); }
+    fn name_has_type(s: str) -> bool { ret named_types.contains_key(s); }
 
-    fn get_type(s: &str) -> TypeRef { ret named_types.get(s); }
+    fn get_type(s: str) -> TypeRef { ret named_types.get(s); }
 }
 
 fn mk_type_names() -> type_names {
     let nt = std::map::new_str_hash::<TypeRef>();
 
-    fn hash(t: &TypeRef) -> uint { ret t as uint; }
+    fn hash(t: TypeRef) -> uint { ret t as uint; }
 
-    fn eq(a: &TypeRef, b: &TypeRef) -> bool { ret a as uint == b as uint; }
+    fn eq(a: TypeRef, b: TypeRef) -> bool { ret a as uint == b as uint; }
 
     let hasher: std::map::hashfn<TypeRef> = hash;
     let eqer: std::map::eqfn<TypeRef> = eq;
@@ -932,7 +936,7 @@ fn type_to_str(names: type_names, ty: TypeRef) -> str {
     ret type_to_str_inner(names, [], ty);
 }
 
-fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
+fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
    str {
 
     if names.type_has_name(ty) { ret names.get_name(ty); }
@@ -941,7 +945,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
     let kind: int = llvm::LLVMGetTypeKind(ty);
 
-    fn tys_str(names: type_names, outer: &[TypeRef], tys: &[TypeRef]) -> str {
+    fn tys_str(names: type_names, outer: [TypeRef], tys: [TypeRef]) -> str {
         let s: str = "";
         let first: bool = true;
         for t: TypeRef in tys {
@@ -953,6 +957,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
 
     alt kind {
+
 
 
 
@@ -973,9 +978,11 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
 
 
+
       7 {
         ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
+
 
 
 
@@ -995,6 +1002,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
 
 
+
       9 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
@@ -1008,10 +1016,12 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
 
 
+
       10 {
         let el_ty = llvm::LLVMGetElementType(ty);
         ret "[" + type_to_str_inner(names, outer, el_ty) + "]";
       }
+
 
 
 
@@ -1028,6 +1038,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
         ret "*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
+
 
 
 
@@ -1066,7 +1077,7 @@ resource target_data_res(TD: TargetDataRef) {
 
 type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
 
-fn mk_target_data(string_rep: &str) -> target_data {
+fn mk_target_data(string_rep: str) -> target_data {
     let lltd =
         str::as_buf(string_rep, {|buf| llvm::LLVMCreateTargetData(buf) });
     ret {lltd: lltd, dtor: @target_data_res(lltd)};

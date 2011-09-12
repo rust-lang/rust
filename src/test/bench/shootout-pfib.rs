@@ -49,7 +49,7 @@ fn fib(n: int) -> int {
 
 type config = {stress: bool};
 
-fn parse_opts(argv: &[str]) -> config {
+fn parse_opts(argv: [str]) -> config {
     let opts = [getopts::optflag("stress")];
 
     let opt_args = vec::slice(argv, 1u, vec::len(argv));

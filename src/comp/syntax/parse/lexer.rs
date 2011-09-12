@@ -25,10 +25,10 @@ type reader =
         fn get_byte_pos() -> uint;
         fn get_col() -> uint;
         fn get_filemap() -> codemap::filemap;
-        fn err(&str);
+        fn err(str);
     };
 
-fn new_reader(cm: &codemap::codemap, src: &str, filemap: codemap::filemap,
+fn new_reader(cm: codemap::codemap, src: str, filemap: codemap::filemap,
               itr: @interner::interner<str>) -> reader {
     obj reader(cm: codemap::codemap,
                src: str,
@@ -77,7 +77,7 @@ fn new_reader(cm: &codemap::codemap, src: &str, filemap: codemap::filemap,
         fn get_interner() -> @interner::interner<str> { ret itr; }
         fn get_col() -> uint { ret col; }
         fn get_filemap() -> codemap::filemap { ret fm; }
-        fn err(m: &str) {
+        fn err(m: str) {
             codemap::emit_error(some(ast_util::mk_sp(chpos, chpos)), m, cm);
         }
     }
@@ -123,12 +123,12 @@ fn is_hex_digit(c: char) -> bool {
 
 fn is_bin_digit(c: char) -> bool { ret c == '0' || c == '1'; }
 
-fn consume_whitespace_and_comments(rdr: &reader) {
+fn consume_whitespace_and_comments(rdr: reader) {
     while is_whitespace(rdr.curr()) { rdr.bump(); }
     be consume_any_line_comment(rdr);
 }
 
-fn consume_any_line_comment(rdr: &reader) {
+fn consume_any_line_comment(rdr: reader) {
     if rdr.curr() == '/' {
         alt rdr.next() {
           '/' {
@@ -143,7 +143,7 @@ fn consume_any_line_comment(rdr: &reader) {
     }
 }
 
-fn consume_block_comment(rdr: &reader) {
+fn consume_block_comment(rdr: reader) {
     let level: int = 1;
     while level > 0 {
         if rdr.is_eof() { rdr.err("unterminated block comment"); fail; }
@@ -164,13 +164,13 @@ fn consume_block_comment(rdr: &reader) {
     be consume_whitespace_and_comments(rdr);
 }
 
-fn digits_to_string(s: &str) -> int {
+fn digits_to_string(s: str) -> int {
     let accum_int: int = 0;
     for c: u8 in s { accum_int *= 10; accum_int += dec_digit_val(c as char); }
     ret accum_int;
 }
 
-fn scan_exponent(rdr: &reader) -> option::t<str> {
+fn scan_exponent(rdr: reader) -> option::t<str> {
     let c = rdr.curr();
     let rslt = "";
     if c == 'e' || c == 'E' {
@@ -188,7 +188,7 @@ fn scan_exponent(rdr: &reader) -> option::t<str> {
     } else { ret none::<str>; }
 }
 
-fn scan_dec_digits(rdr: &reader) -> str {
+fn scan_dec_digits(rdr: reader) -> str {
     let c = rdr.curr();
     let rslt: str = "";
     while is_dec_digit(c) || c == '_' {
@@ -199,7 +199,7 @@ fn scan_dec_digits(rdr: &reader) -> str {
     ret rslt;
 }
 
-fn scan_number(c: char, rdr: &reader) -> token::token {
+fn scan_number(c: char, rdr: reader) -> token::token {
     let accum_int = 0;
     let dec_str: str = "";
     let is_dec_integer: bool = false;
@@ -312,7 +312,7 @@ fn scan_number(c: char, rdr: &reader) -> token::token {
     }
 }
 
-fn scan_numeric_escape(rdr: &reader, n_hex_digits: uint) -> char {
+fn scan_numeric_escape(rdr: reader, n_hex_digits: uint) -> char {
     let accum_int = 0;
     while n_hex_digits != 0u {
         let n = rdr.curr();
@@ -328,7 +328,7 @@ fn scan_numeric_escape(rdr: &reader, n_hex_digits: uint) -> char {
     ret accum_int as char;
 }
 
-fn next_token(rdr: &reader) -> {tok: token::token, chpos: uint, bpos: uint} {
+fn next_token(rdr: reader) -> {tok: token::token, chpos: uint, bpos: uint} {
     consume_whitespace_and_comments(rdr);
     let start_chpos = rdr.get_chpos();
     let start_bpos = rdr.get_byte_pos();
@@ -336,7 +336,7 @@ fn next_token(rdr: &reader) -> {tok: token::token, chpos: uint, bpos: uint} {
     ret {tok: tok, chpos: start_chpos, bpos: start_bpos};
 }
 
-fn next_token_inner(rdr: &reader) -> token::token {
+fn next_token_inner(rdr: reader) -> token::token {
     let accum_str = "";
     let c = rdr.curr();
     if is_alpha(c) || c == '_' {
@@ -351,7 +351,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
                                                  accum_str), is_mod_name);
     }
     if is_dec_digit(c) { ret scan_number(c, rdr); }
-    fn binop(rdr: &reader, op: token::binop) -> token::token {
+    fn binop(rdr: reader, op: token::binop) -> token::token {
         rdr.bump();
         if rdr.curr() == '=' {
             rdr.bump();
@@ -359,6 +359,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
         } else { ret token::BINOP(op); }
     }
     alt c {
+
 
 
 
@@ -399,6 +400,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
             ret token::MOD_SEP;
         } else { ret token::COLON; }
       }
+
 
 
 
@@ -551,7 +553,7 @@ tag cmnt_style {
 
 type cmnt = {style: cmnt_style, lines: [str], pos: uint};
 
-fn read_to_eol(rdr: &reader) -> str {
+fn read_to_eol(rdr: reader) -> str {
     let val = "";
     while rdr.curr() != '\n' && !rdr.is_eof() {
         str::push_char(val, rdr.curr());
@@ -561,29 +563,29 @@ fn read_to_eol(rdr: &reader) -> str {
     ret val;
 }
 
-fn read_one_line_comment(rdr: &reader) -> str {
+fn read_one_line_comment(rdr: reader) -> str {
     let val = read_to_eol(rdr);
     assert (val[0] == '/' as u8 && val[1] == '/' as u8);
     ret val;
 }
 
-fn consume_whitespace(rdr: &reader) {
+fn consume_whitespace(rdr: reader) {
     while is_whitespace(rdr.curr()) && !rdr.is_eof() { rdr.bump(); }
 }
 
-fn consume_non_eol_whitespace(rdr: &reader) {
+fn consume_non_eol_whitespace(rdr: reader) {
     while is_whitespace(rdr.curr()) && rdr.curr() != '\n' && !rdr.is_eof() {
         rdr.bump();
     }
 }
 
-fn push_blank_line_comment(rdr: &reader, comments: &mutable [cmnt]) {
+fn push_blank_line_comment(rdr: reader, comments: &mutable [cmnt]) {
     log ">>> blank-line comment";
     let v: [str] = [];
     comments += [{style: blank_line, lines: v, pos: rdr.get_chpos()}];
 }
 
-fn consume_whitespace_counting_blank_lines(rdr: &reader,
+fn consume_whitespace_counting_blank_lines(rdr: reader,
                                            comments: &mutable [cmnt]) {
     while is_whitespace(rdr.curr()) && !rdr.is_eof() {
         if rdr.get_col() == 0u && rdr.curr() == '\n' {
@@ -593,7 +595,7 @@ fn consume_whitespace_counting_blank_lines(rdr: &reader,
     }
 }
 
-fn read_line_comments(rdr: &reader, code_to_the_left: bool) -> cmnt {
+fn read_line_comments(rdr: reader, code_to_the_left: bool) -> cmnt {
     log ">>> line comments";
     let p = rdr.get_chpos();
     let lines: [str] = [];
@@ -609,13 +611,13 @@ fn read_line_comments(rdr: &reader, code_to_the_left: bool) -> cmnt {
          pos: p};
 }
 
-fn all_whitespace(s: &str, begin: uint, end: uint) -> bool {
+fn all_whitespace(s: str, begin: uint, end: uint) -> bool {
     let i: uint = begin;
     while i != end { if !is_whitespace(s[i] as char) { ret false; } i += 1u; }
     ret true;
 }
 
-fn trim_whitespace_prefix_and_push_line(lines: &mutable [str], s: &str,
+fn trim_whitespace_prefix_and_push_line(lines: &mutable [str], s: str,
                                         col: uint) {
     let s1;
     if all_whitespace(s, 0u, col) {
@@ -627,7 +629,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mutable [str], s: &str,
     lines += [s1];
 }
 
-fn read_block_comment(rdr: &reader, code_to_the_left: bool) -> cmnt {
+fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
     log ">>> block comment";
     let p = rdr.get_chpos();
     let lines: [str] = [];
@@ -672,12 +674,12 @@ fn read_block_comment(rdr: &reader, code_to_the_left: bool) -> cmnt {
     ret {style: style, lines: lines, pos: p};
 }
 
-fn peeking_at_comment(rdr: &reader) -> bool {
+fn peeking_at_comment(rdr: reader) -> bool {
     ret rdr.curr() == '/' && rdr.next() == '/' ||
             rdr.curr() == '/' && rdr.next() == '*';
 }
 
-fn consume_comment(rdr: &reader, code_to_the_left: bool,
+fn consume_comment(rdr: reader, code_to_the_left: bool,
                    comments: &mutable [cmnt]) {
     log ">>> consume comment";
     if rdr.curr() == '/' && rdr.next() == '/' {
@@ -688,7 +690,7 @@ fn consume_comment(rdr: &reader, code_to_the_left: bool,
     log "<<< consume comment";
 }
 
-fn is_lit(t: &token::token) -> bool {
+fn is_lit(t: token::token) -> bool {
     ret alt t {
           token::LIT_INT(_) { true }
           token::LIT_UINT(_) { true }
@@ -704,7 +706,7 @@ fn is_lit(t: &token::token) -> bool {
 
 type lit = {lit: str, pos: uint};
 
-fn gather_comments_and_literals(cm: &codemap::codemap, path: &str,
+fn gather_comments_and_literals(cm: codemap::codemap, path: str,
                                 srdr: io::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
     let src = str::unsafe_from_bytes(srdr.read_whole_stream());

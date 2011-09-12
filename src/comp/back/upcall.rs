@@ -41,14 +41,14 @@ type upcalls =
 
 fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
                    taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
-    fn decl(llmod: ModuleRef, name: &str, tys: [TypeRef], rv: TypeRef) ->
+    fn decl(llmod: ModuleRef, name: str, tys: [TypeRef], rv: TypeRef) ->
        ValueRef {
         let arg_tys: [TypeRef] = [];
         for t: TypeRef in tys { arg_tys += [t]; }
         let fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
-    fn decl_with_taskptr(taskptr_type: TypeRef, llmod: ModuleRef, name: &str,
+    fn decl_with_taskptr(taskptr_type: TypeRef, llmod: ModuleRef, name: str,
                          tys: [TypeRef], rv: TypeRef) -> ValueRef {
         ret decl(llmod, name, [taskptr_type] + tys, rv);
     }

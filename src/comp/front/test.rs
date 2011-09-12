@@ -55,14 +55,13 @@ fn modify_for_testing(crate: @ast::crate) -> @ast::crate {
     ret res;
 }
 
-fn fold_mod(_cx: &test_ctxt, m: &ast::_mod, fld: fold::ast_fold) ->
-   ast::_mod {
+fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
 
     // Remove any defined main function from the AST so it doesn't clash with
     // the one we're going to add.  FIXME: This is sloppy. Instead we should
     // have some mechanism to indicate to the translation pass which function
     // we want to be main.
-    fn nomain(item: &@ast::item) -> option::t<@ast::item> {
+    fn nomain(item: @ast::item) -> option::t<@ast::item> {
         alt item.node {
           ast::item_fn(f, _) {
             if item.ident == "main" {
@@ -78,7 +77,7 @@ fn fold_mod(_cx: &test_ctxt, m: &ast::_mod, fld: fold::ast_fold) ->
     ret fold::noop_fold_mod(mod_nomain, fld);
 }
 
-fn fold_crate(cx: &test_ctxt, c: &ast::crate_, fld: fold::ast_fold) ->
+fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
    ast::crate_ {
     let folded = fold::noop_fold_crate(c, fld);
 
@@ -88,7 +87,7 @@ fn fold_crate(cx: &test_ctxt, c: &ast::crate_, fld: fold::ast_fold) ->
 }
 
 
-fn fold_item(cx: &test_ctxt, i: &@ast::item, fld: fold::ast_fold) ->
+fn fold_item(cx: test_ctxt, i: @ast::item, fld: fold::ast_fold) ->
    @ast::item {
 
     cx.path += [i.ident];
@@ -106,11 +105,11 @@ fn fold_item(cx: &test_ctxt, i: &@ast::item, fld: fold::ast_fold) ->
     ret res;
 }
 
-fn is_test_fn(i: &@ast::item) -> bool {
+fn is_test_fn(i: @ast::item) -> bool {
     let has_test_attr =
         vec::len(attr::find_attrs_by_name(i.attrs, "test")) > 0u;
 
-    fn has_test_signature(i: &@ast::item) -> bool {
+    fn has_test_signature(i: @ast::item) -> bool {
         alt i.node {
           ast::item_fn(f, tps) {
             let input_cnt = vec::len(f.decl.inputs);
@@ -125,11 +124,11 @@ fn is_test_fn(i: &@ast::item) -> bool {
     ret has_test_attr && has_test_signature(i);
 }
 
-fn is_ignored(i: &@ast::item) -> bool {
+fn is_ignored(i: @ast::item) -> bool {
     attr::contains_name(attr::attr_metas(i.attrs), "ignore")
 }
 
-fn add_test_module(cx: &test_ctxt, m: &ast::_mod) -> ast::_mod {
+fn add_test_module(cx: test_ctxt, m: ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
     ret {items: m.items + [testmod] with m};
 }
@@ -151,7 +150,7 @@ mod __test {
 
 */
 
-fn mk_test_module(cx: &test_ctxt) -> @ast::item {
+fn mk_test_module(cx: test_ctxt) -> @ast::item {
     // A function that generates a vector of test descriptors to feed to the
     // test runner
     let testsfn = mk_tests(cx);
@@ -172,9 +171,9 @@ fn mk_test_module(cx: &test_ctxt) -> @ast::item {
     ret @item;
 }
 
-fn nospan<@T>(t: &T) -> ast::spanned<T> { ret {node: t, span: dummy_sp()}; }
+fn nospan<@T>(t: T) -> ast::spanned<T> { ret {node: t, span: dummy_sp()}; }
 
-fn mk_tests(cx: &test_ctxt) -> @ast::item {
+fn mk_tests(cx: test_ctxt) -> @ast::item {
     let ret_ty = mk_test_desc_vec_ty(cx);
 
     let decl: ast::fn_decl =
@@ -215,7 +214,7 @@ fn empty_fn_ty() -> ast::ty {
 }
 
 // The ast::ty of [std::test::test_desc]
-fn mk_test_desc_vec_ty(cx: &test_ctxt) -> @ast::ty {
+fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
     let test_desc_ty_path: ast::path =
         nospan({global: false,
                 idents: ["std", "test", "test_desc"],
@@ -229,7 +228,7 @@ fn mk_test_desc_vec_ty(cx: &test_ctxt) -> @ast::ty {
     ret @nospan(ast::ty_vec(vec_mt));
 }
 
-fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
+fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
     log #fmt["building test vector from %u tests", vec::len(cx.testfns)];
     let descs = [];
     for test: test in cx.testfns {
@@ -242,7 +241,7 @@ fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
           span: dummy_sp()};
 }
 
-fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
+fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let path = test.path;
 
     log #fmt["encoding %s", ast_util::path_name_i(path)];
@@ -284,13 +283,15 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
     ret @desc_rec;
 }
 
-fn mk_main(cx: &test_ctxt) -> @ast::item {
+fn mk_main(cx: test_ctxt) -> @ast::item {
 
     let args_mt: ast::mt = {ty: @nospan(ast::ty_str), mut: ast::imm};
     let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
 
     let args_arg: ast::arg =
-        {mode: ast::by_ref, ty: @args_ty, ident: "args",
+        {mode: ast::by_ref,
+         ty: @args_ty,
+         ident: "args",
          id: cx.next_node_id()};
 
     let ret_ty = nospan(ast::ty_nil);
@@ -322,7 +323,7 @@ fn mk_main(cx: &test_ctxt) -> @ast::item {
     ret @item;
 }
 
-fn mk_test_main_call(cx: &test_ctxt) -> @ast::expr {
+fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
 
     // Get the args passed to main so we can pass the to test_main
     let args_path: ast::path =

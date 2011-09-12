@@ -11,18 +11,18 @@ export lookup_defs;
 export get_tag_variants;
 export get_type;
 
-fn get_symbol(cstore: &cstore::cstore, def: ast::def_id) -> str {
+fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     ret decoder::get_symbol(cdata, def.node);
 }
 
-fn get_type_param_count(cstore: &cstore::cstore, def: &ast::def_id) -> uint {
+fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     ret decoder::get_type_param_count(cdata, def.node);
 }
 
-fn lookup_defs(cstore: &cstore::cstore, cnum: ast::crate_num,
-               path: &[ast::ident]) -> [ast::def] {
+fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
+               path: [ast::ident]) -> [ast::def] {
     let cdata = cstore::get_crate_data(cstore, cnum).data;
     ret decoder::lookup_defs(cdata, cnum, path);
 }
@@ -48,8 +48,8 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_kinds_and_ty {
 // external crates - if those types further refer to types in other crates
 // then we must translate the crate number from that encoded in the external
 // crate to the correct local crate number.
-fn translate_def_id(sess: &session::session, searched_crate: ast::crate_num,
-                    def_id: &ast::def_id) -> ast::def_id {
+fn translate_def_id(sess: session::session, searched_crate: ast::crate_num,
+                    def_id: ast::def_id) -> ast::def_id {
 
     let ext_cnum = def_id.crate;
     let node_id = def_id.node;

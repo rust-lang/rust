@@ -29,7 +29,7 @@ import std::comm::port;
 import std::comm::recv;
 import std::comm::send;
 
-fn map(filename: &[u8], emit: &map_reduce::putter<[u8], int>) {
+fn map(filename: [u8], emit: map_reduce::putter<[u8], int>) {
     let f = io::file_reader(str::unsafe_from_bytes(filename));
 
     while true {
@@ -40,7 +40,7 @@ fn map(filename: &[u8], emit: &map_reduce::putter<[u8], int>) {
     }
 }
 
-fn reduce(word: &[u8], get: &map_reduce::getter<int>) {
+fn reduce(word: [u8], get: map_reduce::getter<int>) {
     let count = 0;
 
     while true { alt get() { some(_) { count += 1; } none. { break } } }
@@ -53,15 +53,15 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter<~K, ~V> = fn(&K, &V);
+    type putter<~K, ~V> = fn(K, V);
 
     // FIXME: the first K1 parameter should probably be a -, but that
     // doesn't parse at the moment.
-    type mapper<~K1, ~K2, ~V> = fn(&K1, &putter<K2, V>);
+    type mapper<~K1, ~K2, ~V> = fn(K1, putter<K2, V>);
 
     type getter<~V> = fn() -> option<V>;
 
-    type reducer<~K, ~V> = fn(&K, &getter<V>);
+    type reducer<~K, ~V> = fn(K, getter<V>);
 
     tag ctrl_proto<~K, ~V> {
         find_reducer(K, chan<chan<reduce_proto<V>>>);
@@ -72,7 +72,7 @@ mod map_reduce {
 
     fn start_mappers<~K1, ~K2,
                      ~V>(map: mapper<K1, K2, V>,
-                         ctrl: chan<ctrl_proto<K2, V>>, inputs: &[K1]) ->
+                         ctrl: chan<ctrl_proto<K2, V>>, inputs: [K1]) ->
        [joinable_task] {
         let tasks = [];
         for i in inputs {
@@ -89,8 +89,8 @@ mod map_reduce {
         let intermediates = treemap::init();
 
         fn emit<~K2,
-                ~V>(im: &treemap::treemap<K2, chan<reduce_proto<V>>>,
-                    ctrl: &chan<ctrl_proto<K2, V>>, key: &K2, val: &V) {
+                ~V>(im: treemap::treemap<K2, chan<reduce_proto<V>>>,
+                    ctrl: chan<ctrl_proto<K2, V>>, key: K2, val: V) {
             let c;
             alt treemap::find(im, key) {
               some(_c) { c = _c }
@@ -107,7 +107,7 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        fn finish<~K, ~V>(k: &K, v: &chan<reduce_proto<V>>) {
+        fn finish<~K, ~V>(k: K, v: chan<reduce_proto<V>>) {
             send(v, release);
         }
         treemap::traverse(intermediates, finish);
@@ -124,7 +124,7 @@ mod map_reduce {
         let ref_count = 0;
         let is_done = false;
 
-        fn get<~V>(p: &port<reduce_proto<V>>, ref_count: &mutable int,
+        fn get<~V>(p: port<reduce_proto<V>>, ref_count: &mutable int,
                    is_done: &mutable bool) -> option<V> {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
@@ -148,7 +148,7 @@ mod map_reduce {
 
     fn map_reduce<~K1, ~K2,
                   ~V>(map: mapper<K1, K2, V>, reduce: reducer<K2, V>,
-                      inputs: &[K1]) {
+                      inputs: [K1]) {
         let ctrl = port();
 
         // This task becomes the master control task. It task::_spawns
@@ -190,7 +190,7 @@ mod map_reduce {
             }
         }
 
-        fn finish<~K, ~V>(k: &K, v: &chan<reduce_proto<V>>) { send(v, done); }
+        fn finish<~K, ~V>(k: K, v: chan<reduce_proto<V>>) { send(v, done); }
         treemap::traverse(reducers, finish);
 
         for t in tasks { task::join(t); }

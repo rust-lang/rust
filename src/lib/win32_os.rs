@@ -49,7 +49,7 @@ fn exec_suffix() -> str { ret ".exe"; }
 
 fn target_os() -> str { ret "win32"; }
 
-fn dylib_filename(base: &str) -> str { ret base + ".dll"; }
+fn dylib_filename(base: str) -> str { ret base + ".dll"; }
 
 fn pipe() -> {in: int, out: int} {
     // Windows pipes work subtly differently than unix pipes, and their

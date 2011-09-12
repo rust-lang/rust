@@ -5,7 +5,7 @@ import std::str;
 
 import common::config;
 
-fn make_new_path(path: &str) -> str {
+fn make_new_path(path: str) -> str {
 
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
@@ -24,7 +24,7 @@ fn lib_path_env_var() -> str { "DYLD_LIBRARY_PATH" }
 #[cfg(target_os = "win32")]
 fn lib_path_env_var() -> str { "PATH" }
 
-fn logv(config: &config, s: &str) {
+fn logv(config: config, s: str) {
     log s;
     if config.verbose { io::stdout().write_line(s); }
 }

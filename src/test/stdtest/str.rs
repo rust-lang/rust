@@ -39,7 +39,7 @@ fn test_index_and_rindex() {
 
 #[test]
 fn test_split() {
-    fn t(s: &str, c: char, i: int, k: &str) {
+    fn t(s: str, c: char, i: int, k: str) {
         log "splitting: " + s;
         log i;
         let v = str::split(s, c as u8);
@@ -59,7 +59,7 @@ fn test_split() {
 
 #[test]
 fn test_find() {
-    fn t(haystack: &str, needle: &str, i: int) {
+    fn t(haystack: str, needle: str, i: int) {
         let j: int = str::find(haystack, needle);
         log "searched for " + needle;
         log j;
@@ -74,7 +74,7 @@ fn test_find() {
 
 #[test]
 fn test_substr() {
-    fn t(a: &str, b: &str, start: int) {
+    fn t(a: str, b: str, start: int) {
         assert (str::eq(str::substr(a, start as uint, str::byte_len(b)), b));
     }
     t("hello", "llo", 2);
@@ -84,7 +84,7 @@ fn test_substr() {
 
 #[test]
 fn test_concat() {
-    fn t(v: &[str], s: &str) { assert (str::eq(str::concat(v), s)); }
+    fn t(v: [str], s: str) { assert (str::eq(str::concat(v), s)); }
     t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
     let v: [str] = [];
     t(v, "");
@@ -93,7 +93,7 @@ fn test_concat() {
 
 #[test]
 fn test_connect() {
-    fn t(v: &[str], sep: &str, s: &str) {
+    fn t(v: [str], sep: str, s: str) {
         assert (str::eq(str::connect(v, sep), s));
     }
     t(["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");

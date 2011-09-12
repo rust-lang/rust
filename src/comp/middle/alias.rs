@@ -45,7 +45,7 @@ type ctx =
      mutable next_local: uint,
      copy_map: copy_map};
 
-fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) -> copy_map {
+fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
     let cx =
@@ -63,16 +63,18 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) -> copy_map {
     ret cx.copy_map;
 }
 
-fn visit_fn(f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span, _name: &fn_ident,
-            _id: ast::node_id, sc: &scope, v: &vt<scope>) {
+fn visit_fn(f: ast::_fn, _tp: [ast::ty_param], _sp: span, _name: fn_ident,
+            _id: ast::node_id, sc: scope, v: vt<scope>) {
     visit::visit_fn_decl(f.decl, sc, v);
     let scope =
         alt f.proto {
+
 
           // Blocks need to obey any restrictions from the enclosing scope.
           ast::proto_block. | ast::proto_closure. {
             sc
           }
+
 
           // Non capturing functions start out fresh.
           _ {
@@ -82,7 +84,7 @@ fn visit_fn(f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span, _name: &fn_ident,
     v.visit_block(f.body, scope, v);
 }
 
-fn visit_expr(cx: &@ctx, ex: &@ast::expr, sc: &scope, v: &vt<scope>) {
+fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
     let handled = true;
     alt ex.node {
       ast::expr_call(f, args) {
@@ -129,14 +131,14 @@ fn visit_expr(cx: &@ctx, ex: &@ast::expr, sc: &scope, v: &vt<scope>) {
     if !handled { visit::visit_expr(ex, sc, v); }
 }
 
-fn register_locals(cx: &ctx, pat: &@ast::pat) {
+fn register_locals(cx: ctx, pat: @ast::pat) {
     for each pat in ast_util::pat_bindings(pat) {
         cx.local_map.insert(pat.id, local(cx.next_local));
         cx.next_local += 1u;
     }
 }
 
-fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt<scope>) {
+fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
     visit::visit_decl(d, sc, v);
     alt d.node {
       ast::decl_local(locs) {
@@ -156,22 +158,21 @@ fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt<scope>) {
     }
 }
 
-fn cant_copy(cx: &ctx, r: &restrict) -> bool {
+fn cant_copy(cx: ctx, r: restrict) -> bool {
     if r.given_up { ret false; }
     // FIXME alt contexts copying not supported yet
     if r.node_id == 0 { ret true; }
+
     // FIXME warn when copy is expensive
     if ty::type_allows_implicit_copy(cx.tcx, r.ty) {
         r.given_up = true;
         cx.copy_map.insert(r.node_id, ());
         ret false;
-    } else {
-        ret true;
-    }
+    } else { ret true; }
 }
 
-fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
-    -> [restrict] {
+fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
+   [restrict] {
     let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
     let arg_ts = ty::ty_fn_args(cx.tcx, fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
@@ -193,7 +194,9 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
         let unsafe_t =
             alt inner_mut(root.ds) { some(t) { some(t) } _ { none } };
         restricts +=
-            [@{root_var: root_var,
+            [
+             // FIXME kludge
+             @{root_var: root_var,
                node_id: arg_t.mode == ast::by_mut_ref ? 0 : arg.id,
                ty: arg_t.ty,
                local_id: cx.next_local,
@@ -201,7 +204,6 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
                unsafe_ty: unsafe_t,
                depends_on: deps(sc, root_var),
                mutable ok: valid,
-               // FIXME kludge
                mutable given_up: arg_t.mode == ast::by_move}];
         i += 1u;
     }
@@ -230,12 +232,12 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
             for arg_t: ty::arg in arg_ts {
                 let mut_alias = arg_t.mode == ast::by_mut_ref;
                 if i != j &&
-                   ty_can_unsafely_include(cx, ty, arg_t.ty, mut_alias) &&
-                   cant_copy(cx, r) {
-                    cx.tcx.sess.span_err(
-                        args[i].span,
-                        #fmt["argument %u may alias with argument %u, \
-                              which is not immutably rooted", i, j]);
+                       ty_can_unsafely_include(cx, ty, arg_t.ty, mut_alias) &&
+                       cant_copy(cx, r) {
+                    cx.tcx.sess.span_err(args[i].span,
+                               #fmt["argument %u may alias with argument %u, \
+                              which is not immutably rooted",
+                                              i, j]);
                 }
                 i += 1u;
             }
@@ -253,8 +255,8 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
                 alt r.root_var {
                   some(root) {
                     if node == root && cant_copy(cx, r) {
-                        cx.tcx.sess.span_err(
-                            args[arg].span, "passing a mutable alias to a \
+                        cx.tcx.sess.span_err(args[arg].span,
+                                             "passing a mutable alias to a \
                             variable that roots another alias");
                         break;
                     }
@@ -268,8 +270,8 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
     ret restricts;
 }
 
-fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
-             v: &vt<scope>) {
+fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
+             v: vt<scope>) {
     v.visit_expr(input, sc, v);
     let root = expr_root(cx.tcx, input, true);
     for a: ast::arm in arms {
@@ -279,8 +281,9 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
             let root_var = path_def_id(cx, root.ex);
             new_sc =
                 @(*sc +
-                      [@{root_var: root_var,
-                     // FIXME need to use separate restrict for each binding
+                      [
+                       // FIXME need to use separate restrict for each binding
+                       @{root_var: root_var,
                          node_id: 0,
                          ty: ty::mk_int(cx.tcx),
                          local_id: cx.next_local,
@@ -295,8 +298,8 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
     }
 }
 
-fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
-                  blk: &ast::blk, sc: &scope, v: &vt<scope>) {
+fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
+                  blk: ast::blk, sc: scope, v: vt<scope>) {
     v.visit_expr(call, sc, v);
     alt call.node {
       ast::expr_call(f, args) {
@@ -307,8 +310,8 @@ fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
     }
 }
 
-fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
-             sc: &scope, v: &vt<scope>) {
+fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
+             sc: scope, v: vt<scope>) {
     v.visit_expr(seq, sc, v);
     let root = expr_root(cx.tcx, seq, false);
     let unsafe = inner_mut(root.ds);
@@ -321,13 +324,12 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
         if mt.mut != ast::imm { unsafe = some(seq_t); }
         elt_t = mt.ty;
       }
-      ty::ty_str. {
-        elt_t = ty::mk_mach(cx.tcx, ast::ty_u8);
-      }
+      ty::ty_str. { elt_t = ty::mk_mach(cx.tcx, ast::ty_u8); }
     }
     let root_var = path_def_id(cx, root.ex);
     let new_sc =
         @{root_var: root_var,
+
           // FIXME reenable when trans knows how to copy for vars
           node_id: 0, // blk.node.id,
           ty: elt_t,
@@ -341,8 +343,8 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
     visit::visit_block(blk, @(*sc + [new_sc]), v);
 }
 
-fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
-             assign: bool, sc: &scope) {
+fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
+             assign: bool, sc: scope) {
     let def = cx.tcx.def_map.get(id);
     if !def_is_local(def, true) { ret; }
     let my_defnum = ast_util::def_id_of_def(def).node;
@@ -350,6 +352,7 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
         alt cx.local_map.find(my_defnum) { some(local(id)) { id } _ { 0u } };
     let var_t = ty::expr_ty(cx.tcx, ex);
     for r: restrict in *sc {
+
         // excludes variables introduced since the alias was made
         if my_local_id < r.local_id {
             alt r.unsafe_ty {
@@ -366,7 +369,7 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
     }
 }
 
-fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt<scope>) {
+fn check_lval(cx: @ctx, dest: @ast::expr, sc: scope, v: vt<scope>) {
     alt dest.node {
       ast::expr_path(p) {
         let def = cx.tcx.def_map.get(dest.id);
@@ -379,27 +382,29 @@ fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt<scope>) {
     }
 }
 
-fn check_assign(cx: &@ctx, dest: &@ast::expr, src: &@ast::expr, sc: &scope,
-                v: &vt<scope>) {
+fn check_assign(cx: @ctx, dest: @ast::expr, src: @ast::expr, sc: scope,
+                v: vt<scope>) {
     visit_expr(cx, src, sc, v);
     check_lval(cx, dest, sc, v);
 }
 
-fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
+fn test_scope(cx: ctx, sc: scope, r: restrict, p: ast::path) {
     let prob = r.ok;
     for dep: uint in r.depends_on {
         if prob != valid { break; }
         prob = sc[dep].ok;
     }
     if prob != valid && cant_copy(cx, r) {
-        let msg = alt prob {
-          overwritten(sp, wpt) {
-            {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
-          }
-          val_taken(sp, vpt) {
-            {span: sp, msg: "taking the value of " + ast_util::path_name(vpt)}
-          }
-        };
+        let msg =
+            alt prob {
+              overwritten(sp, wpt) {
+                {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
+              }
+              val_taken(sp, vpt) {
+                {span: sp,
+                 msg: "taking the value of " + ast_util::path_name(vpt)}
+              }
+            };
         cx.tcx.sess.span_err(msg.span,
                              msg.msg + " will invalidate alias " +
                                  ast_util::path_name(p) +
@@ -407,7 +412,7 @@ fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
     }
 }
 
-fn deps(sc: &scope, root: &option::t<node_id>) -> [uint] {
+fn deps(sc: scope, root: option::t<node_id>) -> [uint] {
     let result = [];
     alt root {
       some(dn) {
@@ -422,14 +427,14 @@ fn deps(sc: &scope, root: &option::t<node_id>) -> [uint] {
     ret result;
 }
 
-fn path_def(cx: &ctx, ex: &@ast::expr) -> option::t<ast::def> {
+fn path_def(cx: ctx, ex: @ast::expr) -> option::t<ast::def> {
     ret alt ex.node {
           ast::expr_path(_) { some(cx.tcx.def_map.get(ex.id)) }
           _ { none }
         }
 }
 
-fn path_def_id(cx: &ctx, ex: &@ast::expr) -> option::t<ast::node_id> {
+fn path_def_id(cx: ctx, ex: @ast::expr) -> option::t<ast::node_id> {
     alt ex.node {
       ast::expr_path(_) {
         ret some(ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id)).node);
@@ -438,12 +443,12 @@ fn path_def_id(cx: &ctx, ex: &@ast::expr) -> option::t<ast::node_id> {
     }
 }
 
-fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
-                           mut: bool) -> bool {
-    fn get_mut(cur: bool, mt: &ty::mt) -> bool {
+fn ty_can_unsafely_include(cx: ctx, needle: ty::t, haystack: ty::t, mut: bool)
+   -> bool {
+    fn get_mut(cur: bool, mt: ty::mt) -> bool {
         ret cur || mt.mut != ast::imm;
     }
-    fn helper(tcx: &ty::ctxt, needle: ty::t, haystack: ty::t, mut: bool) ->
+    fn helper(tcx: ty::ctxt, needle: ty::t, haystack: ty::t, mut: bool) ->
        bool {
         if needle == haystack { ret true; }
         alt ty::struct(tcx, haystack) {
@@ -472,11 +477,13 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
 
 
 
+
           // These may contain anything.
           ty::ty_fn(_, _, _, _, _) {
             ret true;
           }
           ty::ty_obj(_) { ret true; }
+
 
 
 
@@ -493,7 +500,7 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
     ret helper(cx.tcx, needle, haystack, mut);
 }
 
-fn def_is_local(d: &ast::def, objfields_count: bool) -> bool {
+fn def_is_local(d: ast::def, objfields_count: bool) -> bool {
     ret alt d {
           ast::def_local(_) | ast::def_arg(_, _) | ast::def_binding(_) |
           ast::def_upvar(_, _, _) {

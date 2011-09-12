@@ -6,8 +6,8 @@ obj buf<@T>(data: {_0: T, _1: T, _2: T}) {
             ret data._0;
         } else { if i == 1 { ret data._1; } else { ret data._2; } }
     }
-    fn take(t: &T) { }
-    fn take2(t: &T) { }
+    fn take(t: T) { }
+    fn take2(t: T) { }
 }
 
 fn main() {

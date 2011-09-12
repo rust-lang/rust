@@ -41,7 +41,7 @@ import back::link::output_type;
 
 tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
 
-fn default_configuration(sess: session::session, argv0: &str, input: &str) ->
+fn default_configuration(sess: session::session, argv0: str, input: str) ->
    ast::crate_cfg {
     let libc =
         alt sess.get_targ_cfg().os {
@@ -60,7 +60,7 @@ fn default_configuration(sess: session::session, argv0: &str, input: &str) ->
          mk("build_compiler", argv0), mk("build_input", input)];
 }
 
-fn build_configuration(sess: session::session, argv0: &str, input: &str) ->
+fn build_configuration(sess: session::session, argv0: str, input: str) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -78,7 +78,7 @@ fn build_configuration(sess: session::session, argv0: &str, input: &str) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: &[str]) -> ast::crate_cfg {
+fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
     let words = [];
@@ -86,16 +86,16 @@ fn parse_cfgspecs(cfgspecs: &[str]) -> ast::crate_cfg {
     ret words;
 }
 
-fn input_is_stdin(filename: &str) -> bool { filename == "-" }
+fn input_is_stdin(filename: str) -> bool { filename == "-" }
 
-fn parse_input(sess: session::session, cfg: &ast::crate_cfg, input: &str) ->
+fn parse_input(sess: session::session, cfg: ast::crate_cfg, input: str) ->
    @ast::crate {
     if !input_is_stdin(input) {
         parser::parse_crate_from_file(input, cfg, sess.get_parse_sess())
     } else { parse_input_src(sess, cfg, input).crate }
 }
 
-fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg, infile: &str)
+fn parse_input_src(sess: session::session, cfg: ast::crate_cfg, infile: str)
    -> {crate: @ast::crate, src: str} {
     let srcbytes =
         if infile != "-" {
@@ -108,7 +108,7 @@ fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg, infile: &str)
     ret {crate: crate, src: src};
 }
 
-fn time<@T>(do_it: bool, what: &str, thunk: fn() -> T) -> T {
+fn time<@T>(do_it: bool, what: str, thunk: fn() -> T) -> T {
     if !do_it { ret thunk(); }
     let start = std::time::precise_time_s();
     let rv = thunk();
@@ -118,8 +118,8 @@ fn time<@T>(do_it: bool, what: &str, thunk: fn() -> T) -> T {
     ret rv;
 }
 
-fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: &str,
-                 output: &str) {
+fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
+                 output: str) {
     let time_passes = sess.get_opts().time_passes;
     let crate =
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
@@ -158,8 +158,9 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: &str,
     let mut_map =
         time(time_passes, "mutability checking",
              bind middle::mut::check_crate(ty_cx, crate));
-    let copy_map = time(time_passes, "alias checking",
-                        bind middle::alias::check_crate(ty_cx, crate));
+    let copy_map =
+        time(time_passes, "alias checking",
+             bind middle::alias::check_crate(ty_cx, crate));
     time(time_passes, "kind checking", bind kind::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
     let llmod =
@@ -170,12 +171,12 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: &str,
          bind link::write::run_passes(sess, llmod, output));
 }
 
-fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg,
-                      input: &str, ppm: pp_mode) {
-    fn ann_paren_for_expr(node: &pprust::ann_node) {
+fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
+                      ppm: pp_mode) {
+    fn ann_paren_for_expr(node: pprust::ann_node) {
         alt node { pprust::node_expr(s, expr) { pprust::popen(s); } _ { } }
     }
-    fn ann_typed_post(tcx: &ty::ctxt, node: &pprust::ann_node) {
+    fn ann_typed_post(tcx: ty::ctxt, node: pprust::ann_node) {
         alt node {
           pprust::node_expr(s, expr) {
             pp::space(s.s);
@@ -187,7 +188,7 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg,
           _ { }
         }
     }
-    fn ann_identified_post(node: &pprust::ann_node) {
+    fn ann_identified_post(node: pprust::ann_node) {
         alt node {
           pprust::node_item(s, item) {
             pp::space(s.s);
@@ -240,14 +241,14 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg,
                         io::string_reader(src), io::stdout(), ann);
 }
 
-fn version(argv0: &str) {
+fn version(argv0: str) {
     let vers = "unknown version";
     let env_vers = #env["CFG_VERSION"];
     if str::byte_len(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(#fmt["%s %s\n", argv0, vers]);
 }
 
-fn usage(argv0: &str) {
+fn usage(argv0: str) {
     io::stdout().write_str(#fmt["usage: %s [options] <input>\n", argv0] +
                                "
 options:
@@ -285,7 +286,7 @@ options:
 ");
 }
 
-fn get_os(triple: &str) -> session::os {
+fn get_os(triple: str) -> session::os {
     ret if str::find(triple, "win32") >= 0 ||
                str::find(triple, "mingw32") >= 0 {
             session::os_win32
@@ -296,7 +297,7 @@ fn get_os(triple: &str) -> session::os {
         } else { log_err "Unknown operating system!"; fail };
 }
 
-fn get_arch(triple: &str) -> session::arch {
+fn get_arch(triple: str) -> session::arch {
     ret if str::find(triple, "i386") >= 0 || str::find(triple, "i486") >= 0 ||
                str::find(triple, "i586") >= 0 ||
                str::find(triple, "i686") >= 0 ||
@@ -310,7 +311,7 @@ fn get_arch(triple: &str) -> session::arch {
         } else { log_err "Unknown architecture! " + triple; fail };
 }
 
-fn get_default_sysroot(binary: &str) -> str {
+fn get_default_sysroot(binary: str) -> str {
     let dirname = fs::dirname(binary);
     if str::eq(dirname, binary) { ret "."; }
     ret dirname;
@@ -327,8 +328,8 @@ fn build_target_config() -> @session::config {
     ret target_cfg;
 }
 
-fn build_session_options(binary: &str, match: &getopts::match,
-                         binary_dir: &str) -> @session::options {
+fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
+   -> @session::options {
     let library = opt_present(match, "lib");
     let static = opt_present(match, "static");
 
@@ -415,7 +416,7 @@ fn build_session(sopts: @session::options) -> session::session {
                          none, 0u);
 }
 
-fn parse_pretty(sess: session::session, name: &str) -> pp_mode {
+fn parse_pretty(sess: session::session, name: str) -> pp_mode {
     if str::eq(name, "normal") {
         ret ppm_normal;
     } else if str::eq(name, "expanded") {
@@ -513,6 +514,7 @@ fn main(args: [str]) {
               link::output_type_assembly. { "s" }
 
 
+
               // Object and exe output both use the '.o' extension here
               link::output_type_object. | link::output_type_exe. {
                 "o"
@@ -554,9 +556,9 @@ fn main(args: [str]) {
     } else { lib_cmd = "-shared"; }
 
     // Converts a library file name into a gcc -l argument
-    fn unlib(config: @session::config, filename: &str) -> str {
+    fn unlib(config: @session::config, filename: str) -> str {
         let rmlib =
-            bind fn (config: @session::config, filename: &str) -> str {
+            bind fn (config: @session::config, filename: str) -> str {
                      if config.os == session::os_macos ||
                             config.os == session::os_linux &&
                                 str::find(filename, "lib") == 0 {
@@ -564,7 +566,7 @@ fn main(args: [str]) {
                                         str::byte_len(filename));
                      } else { ret filename; }
                  }(config, _);
-        fn rmext(filename: &str) -> str {
+        fn rmext(filename: str) -> str {
             let parts = str::split(filename, '.' as u8);
             vec::pop(parts);
             ret str::connect(parts, ".");

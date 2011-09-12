@@ -33,7 +33,7 @@ import ast::mac_invoc;
 
 export add_new_extension;
 
-fn path_to_ident(pth: &path) -> option::t<ident> {
+fn path_to_ident(pth: path) -> option::t<ident> {
     if vec::len(pth.node.idents) == 1u && vec::len(pth.node.types) == 0u {
         ret some(pth.node.idents[0u]);
     }
@@ -57,7 +57,7 @@ tag matchable {
 }
 
 /* for when given an incompatible bit of AST */
-fn match_error(cx: &ext_ctxt, m: &matchable, expected: &str) -> ! {
+fn match_error(cx: ext_ctxt, m: matchable, expected: str) -> ! {
     alt m {
       match_expr(x) {
         cx.span_fatal(x.span,
@@ -90,9 +90,9 @@ fn match_error(cx: &ext_ctxt, m: &matchable, expected: &str) -> ! {
 // we'll want to return something indicating amount of progress and location
 // of failure instead of `none`.
 type match_result = option::t<arb_depth<matchable>>;
-type selector = fn(&matchable) -> match_result;
+type selector = fn(matchable) -> match_result;
 
-fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr]) ->
+fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
    {pre: [@expr], rep: option::t<@expr>, post: [@expr]} {
     let idx: uint = 0u;
     let res = none;
@@ -122,7 +122,7 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr]) ->
         }
 }
 
-fn option_flatten_map<T, U>(f: &fn(&T) -> option::t<U>, v: &[T]) ->
+fn option_flatten_map<T, U>(f: fn(T) -> option::t<U>, v: [T]) ->
    option::t<[U]> {
     let res = [];
     for elem: T in v {
@@ -131,7 +131,7 @@ fn option_flatten_map<T, U>(f: &fn(&T) -> option::t<U>, v: &[T]) ->
     ret some(res);
 }
 
-fn a_d_map(ad: &arb_depth<matchable>, f: &selector) -> match_result {
+fn a_d_map(ad: arb_depth<matchable>, f: selector) -> match_result {
     alt ad {
       leaf(x) { ret f(x); }
       seq(ads, span) {
@@ -144,7 +144,7 @@ fn a_d_map(ad: &arb_depth<matchable>, f: &selector) -> match_result {
 }
 
 fn compose_sels(s1: selector, s2: selector) -> selector {
-    fn scomp(s1: selector, s2: selector, m: &matchable) -> match_result {
+    fn scomp(s1: selector, s2: selector, m: matchable) -> match_result {
         ret alt s1(m) {
               none. { none }
               some(matches) { a_d_map(matches, s2) }
@@ -160,19 +160,19 @@ type binders =
      mutable literal_ast_matchers: [selector]};
 type bindings = hashmap<ident, arb_depth<matchable>>;
 
-fn acumm_bindings(_cx: &ext_ctxt, _b_dest: &bindings, _b_src: &bindings) { }
+fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
 
 /* these three functions are the big moving parts */
 
 /* create the selectors needed to bind and verify the pattern */
 
-fn pattern_to_selectors(cx: &ext_ctxt, e: @expr) -> binders {
+fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
     let res: binders =
         {real_binders: new_str_hash::<selector>(),
          mutable literal_ast_matchers: []};
     //this oughta return binders instead, but macro args are a sequence of
     //expressions, rather than a single expression
-    fn trivial_selector(m: &matchable) -> match_result { ret some(leaf(m)); }
+    fn trivial_selector(m: matchable) -> match_result { ret some(leaf(m)); }
     p_t_s_rec(cx, match_expr(e), trivial_selector, res);
     ret res;
 }
@@ -183,7 +183,7 @@ fn pattern_to_selectors(cx: &ext_ctxt, e: @expr) -> binders {
 bindings. Most of the work is done in p_t_s, which generates the
 selectors. */
 
-fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t<bindings> {
+fn use_selectors_to_bind(b: binders, e: @expr) -> option::t<bindings> {
     let res = new_str_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
     for sel: selector in b.literal_ast_matchers {
@@ -203,10 +203,10 @@ fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t<bindings> {
 
 /* use the bindings on the body to generate the expanded code */
 
-fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
+fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
     let idx_path: @mutable [uint] = @mutable [];
-    fn new_id(_old: node_id, cx: &ext_ctxt) -> node_id { ret cx.next_id(); }
-    fn new_span(cx: &ext_ctxt, sp: &span) -> span {
+    fn new_id(_old: node_id, cx: ext_ctxt) -> node_id { ret cx.next_id(); }
+    fn new_span(cx: ext_ctxt, sp: span) -> span {
         /* this discards information in the case of macro-defining macros */
         ret {lo: sp.lo, hi: sp.hi, expanded_from: cx.backtrace()};
     }
@@ -231,7 +231,7 @@ fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
 
 
 /* helper: descend into a matcher */
-fn follow(m: &arb_depth<matchable>, idx_path: @mutable [uint]) ->
+fn follow(m: arb_depth<matchable>, idx_path: @mutable [uint]) ->
    arb_depth<matchable> {
     let res: arb_depth<matchable> = m;
     for idx: uint in *idx_path {
@@ -243,7 +243,7 @@ fn follow(m: &arb_depth<matchable>, idx_path: @mutable [uint]) ->
     ret res;
 }
 
-fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t<arb_depth<matchable>>,
+fn follow_for_trans(cx: ext_ctxt, mmaybe: option::t<arb_depth<matchable>>,
                     idx_path: @mutable [uint]) -> option::t<matchable> {
     alt mmaybe {
       none. { ret none }
@@ -262,10 +262,10 @@ fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t<arb_depth<matchable>>,
 }
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
-iter free_vars(b: &bindings, e: @expr) -> ident {
+iter free_vars(b: bindings, e: @expr) -> ident {
     let idents: hashmap<ident, ()> = new_str_hash::<()>();
-    fn mark_ident(i: &ident, _fld: ast_fold, b: &bindings,
-                  idents: &hashmap<ident, ()>) -> ident {
+    fn mark_ident(i: ident, _fld: ast_fold, b: bindings,
+                  idents: hashmap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }
         ret i;
     }
@@ -282,8 +282,8 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
 
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
-fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
-                    recur: fn(&@expr) -> @expr, exprs: [@expr]) -> [@expr] {
+fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+                    recur: fn(@expr) -> @expr, exprs: [@expr]) -> [@expr] {
     alt elts_to_ell(cx, exprs) {
       {pre: pre, rep: repeat_me_maybe, post: post} {
         let res = vec::map(recur, pre);
@@ -344,8 +344,8 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 
 
 // substitute, in a position that's required to be an ident
-fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
-                    i: &ident, _fld: ast_fold) -> ident {
+fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+                    i: ident, _fld: ast_fold) -> ident {
     ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
           some(m) { match_error(cx, m, "an identifier") }
@@ -354,8 +354,8 @@ fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 }
 
 
-fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
-                   p: &path_, _fld: ast_fold) -> path_ {
+fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+                   p: path_, _fld: ast_fold) -> path_ {
     // Don't substitute into qualified names.
     if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret p; }
     ret alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
@@ -369,9 +369,9 @@ fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 }
 
 
-fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
-                   e: &ast::expr_, fld: ast_fold,
-                   orig: fn(&ast::expr_, ast_fold) -> ast::expr_) ->
+fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+                   e: ast::expr_, fld: ast_fold,
+                   orig: fn(ast::expr_, ast_fold) -> ast::expr_) ->
    ast::expr_ {
     ret alt e {
           expr_path(p) {
@@ -396,9 +396,9 @@ fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
         }
 }
 
-fn transcribe_type(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
-                   t: &ast::ty_, fld: ast_fold,
-                   orig: fn(&ast::ty_, ast_fold) -> ast::ty_) -> ast::ty_ {
+fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+                   t: ast::ty_, fld: ast_fold,
+                   orig: fn(ast::ty_, ast_fold) -> ast::ty_) -> ast::ty_ {
     ret alt t {
           ast::ty_path(pth, _) {
             alt path_to_ident(pth) {
@@ -420,13 +420,14 @@ fn transcribe_type(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 /* for parsing reasons, syntax variables bound to blocks must be used like
 `{v}` */
 
-fn transcribe_block(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
-                    blk: &blk_, fld: ast_fold,
-                    orig: fn(&blk_, ast_fold) -> blk_) -> blk_ {
+fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+                    blk: blk_, fld: ast_fold,
+                    orig: fn(blk_, ast_fold) -> blk_) -> blk_ {
     ret alt block_to_ident(blk) {
           some(id) {
             alt follow_for_trans(cx, b.find(id), idx_path) {
               some(match_block(new_blk)) { new_blk.node }
+
 
 
 
@@ -444,7 +445,7 @@ fn transcribe_block(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 
 /* traverse the pattern, building instructions on how to bind the actual
 argument. ps accumulates instructions on navigating the tree.*/
-fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
+fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
 
     //it might be possible to traverse only exprs, not matchables
     alt m {
@@ -478,12 +479,13 @@ fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
 
 
 
+
           /* TODO: handle embedded types and blocks, at least */
           expr_mac(mac) {
             p_t_s_r_mac(cx, mac, s, b);
           }
           _ {
-            fn select(cx: &ext_ctxt, m: &matchable, pat: @expr) ->
+            fn select(cx: ext_ctxt, m: matchable, pat: @expr) ->
                match_result {
                 ret alt m {
                       match_expr(e) {
@@ -501,7 +503,7 @@ fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
 
 
 /* make a match more precise */
-fn specialize_match(m: &matchable) -> matchable {
+fn specialize_match(m: matchable) -> matchable {
     ret alt m {
           match_expr(e) {
             alt e.node {
@@ -519,10 +521,10 @@ fn specialize_match(m: &matchable) -> matchable {
 }
 
 /* pattern_to_selectors helper functions */
-fn p_t_s_r_path(cx: &ext_ctxt, p: &path, s: &selector, b: &binders) {
+fn p_t_s_r_path(cx: ext_ctxt, p: path, s: selector, b: binders) {
     alt path_to_ident(p) {
       some(p_id) {
-        fn select(cx: &ext_ctxt, m: &matchable) -> match_result {
+        fn select(cx: ext_ctxt, m: matchable) -> match_result {
             ret alt m {
                   match_expr(e) { some(leaf(specialize_match(m))) }
                   _ { cx.bug("broken traversal in p_t_s_r") }
@@ -537,7 +539,7 @@ fn p_t_s_r_path(cx: &ext_ctxt, p: &path, s: &selector, b: &binders) {
     }
 }
 
-fn block_to_ident(blk: &blk_) -> option::t<ident> {
+fn block_to_ident(blk: blk_) -> option::t<ident> {
     if vec::len(blk.stmts) != 0u { ret none; }
     ret alt blk.expr {
           some(expr) {
@@ -547,9 +549,9 @@ fn block_to_ident(blk: &blk_) -> option::t<ident> {
         }
 }
 
-fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
-    fn select_pt_1(cx: &ext_ctxt, m: &matchable,
-                   fn_m: fn(&ast::mac) -> match_result) -> match_result {
+fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
+    fn select_pt_1(cx: ext_ctxt, m: matchable,
+                   fn_m: fn(ast::mac) -> match_result) -> match_result {
         ret alt m {
               match_expr(e) {
                 alt e.node { expr_mac(mac) { fn_m(mac) } _ { none } }
@@ -557,7 +559,7 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
               _ { cx.bug("broken traversal in p_t_s_r") }
             }
     }
-    fn no_des(cx: &ext_ctxt, sp: &span, syn: &str) -> ! {
+    fn no_des(cx: ext_ctxt, sp: span, syn: str) -> ! {
         cx.span_fatal(sp, "destructuring " + syn + " is not yet supported");
     }
     alt mac.node {
@@ -569,7 +571,7 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
             alt path_to_ident(pth) {
               some(id) {
                 /* look for an embedded type */
-                fn select_pt_2(m: &ast::mac) -> match_result {
+                fn select_pt_2(m: ast::mac) -> match_result {
                     ret alt m.node {
                           ast::mac_embed_type(t) { some(leaf(match_ty(t))) }
                           _ { none }
@@ -587,7 +589,7 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
       ast::mac_embed_block(blk) {
         alt block_to_ident(blk.node) {
           some(id) {
-            fn select_pt_2(m: &ast::mac) -> match_result {
+            fn select_pt_2(m: ast::mac) -> match_result {
                 ret alt m.node {
                       ast::mac_embed_block(blk) {
                         some(leaf(match_block(blk)))
@@ -604,9 +606,9 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
     }
 }
 
-fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
-                    s: &selector, b: &binders) {
-    fn select(cx: &ext_ctxt, repeat_me: @expr, offset: uint, m: &matchable) ->
+fn p_t_s_r_ellipses(cx: ext_ctxt, repeat_me: @expr, offset: uint, s: selector,
+                    b: binders) {
+    fn select(cx: ext_ctxt, repeat_me: @expr, offset: uint, m: matchable) ->
        match_result {
         ret alt m {
               match_expr(e) {
@@ -634,9 +636,9 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
 }
 
 
-fn p_t_s_r_length(cx: &ext_ctxt, len: uint, at_least: bool, s: selector,
-                  b: &binders) {
-    fn len_select(_cx: &ext_ctxt, m: &matchable, at_least: bool, len: uint) ->
+fn p_t_s_r_length(cx: ext_ctxt, len: uint, at_least: bool, s: selector,
+                  b: binders) {
+    fn len_select(_cx: ext_ctxt, m: matchable, at_least: bool, len: uint) ->
        match_result {
         ret alt m {
               match_expr(e) {
@@ -657,11 +659,11 @@ fn p_t_s_r_length(cx: &ext_ctxt, len: uint, at_least: bool, s: selector,
         [compose_sels(s, bind len_select(cx, _, at_least, len))];
 }
 
-fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], _repeat_after: bool,
-                         s: &selector, b: &binders) {
+fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,
+                         s: selector, b: binders) {
     let idx: uint = 0u;
     while idx < vec::len(elts) {
-        fn select(cx: &ext_ctxt, m: &matchable, idx: uint) -> match_result {
+        fn select(cx: ext_ctxt, m: matchable, idx: uint) -> match_result {
             ret alt m {
                   match_expr(e) {
                     alt e.node {
@@ -680,8 +682,8 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], _repeat_after: bool,
     }
 }
 
-fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                     _body: &option::t<str>) -> base::macro_def {
+fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
+                     _body: option::t<str>) -> base::macro_def {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -760,9 +762,8 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
              },
          ext: normal(ext)};
 
-    fn generic_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                         _body: &option::t<str>, clauses: [@clause]) ->
-       @expr {
+    fn generic_extension(cx: ext_ctxt, sp: span, arg: @expr,
+                         _body: option::t<str>, clauses: [@clause]) -> @expr {
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) { ret transcribe(cx, bindings, c.body) }

@@ -14,7 +14,7 @@ tag ast_node {
 
 type map = std::map::hashmap<node_id, ast_node>;
 
-fn map_crate(c: &crate) -> map {
+fn map_crate(c: crate) -> map {
     // FIXME: This is using an adapter to convert the smallintmap
     // interface to the hashmap interface. It would be better to just
     // convert everything to use the smallintmap.
@@ -29,7 +29,7 @@ fn map_crate(c: &crate) -> map {
     ret map;
 }
 
-fn map_item(map: &map, i: &@item, e: &(), v: &vt<()>) {
+fn map_item(map: map, i: @item, e: (), v: vt<()>) {
     map.insert(i.id, node_item(i));
     alt i.node {
       item_obj(_, _, ctor_id) { map.insert(ctor_id, node_obj_ctor(i)); }
@@ -38,19 +38,19 @@ fn map_item(map: &map, i: &@item, e: &(), v: &vt<()>) {
     visit::visit_item(i, e, v);
 }
 
-fn map_native_item(map: &map, i: &@native_item, e: &(), v: &vt<()>) {
+fn map_native_item(map: map, i: @native_item, e: (), v: vt<()>) {
     map.insert(i.id, node_native_item(i));
     visit::visit_native_item(i, e, v);
 }
 
-fn map_expr(map: &map, ex: &@expr, e: &(), v: &vt<()>) {
+fn map_expr(map: map, ex: @expr, e: (), v: vt<()>) {
     map.insert(ex.id, node_expr(ex));
     visit::visit_expr(ex, e, v);
 }
 
 fn new_smallintmap_int_adapter<@V>() -> std::map::hashmap<int, V> {
-    let key_idx = fn (key: &int) -> uint { key as uint };
-    let idx_key = fn (idx: &uint) -> int { idx as int };
+    let key_idx = fn (key: int) -> uint { key as uint };
+    let idx_key = fn (idx: uint) -> int { idx as int };
     ret new_smallintmap_adapter(key_idx, idx_key);
 }
 
@@ -60,34 +60,33 @@ fn new_smallintmap_int_adapter<@V>() -> std::map::hashmap<int, V> {
 // interface.
 // FIXME: hashmap and smallintmap should support the same interface.
 fn new_smallintmap_adapter<@K,
-                           @V>(key_idx: fn(&K) -> uint,
-                               idx_key: fn(&uint) -> K) ->
-   std::map::hashmap<K, V> {
+                           @V>(key_idx: fn(K) -> uint, idx_key: fn(uint) -> K)
+   -> std::map::hashmap<K, V> {
 
     obj adapter<@K,
                 @V>(map: smallintmap::smallintmap<V>,
-                    key_idx: fn(&K) -> uint,
-                    idx_key: fn(&uint) -> K) {
+                    key_idx: fn(K) -> uint,
+                    idx_key: fn(uint) -> K) {
 
         fn size() -> uint { fail }
 
-        fn insert(key: &K, value: &V) -> bool {
+        fn insert(key: K, value: V) -> bool {
             let exists = smallintmap::contains_key(map, key_idx(key));
             smallintmap::insert(map, key_idx(key), value);
             ret !exists;
         }
 
-        fn contains_key(key: &K) -> bool {
+        fn contains_key(key: K) -> bool {
             ret smallintmap::contains_key(map, key_idx(key));
         }
 
-        fn get(key: &K) -> V { ret smallintmap::get(map, key_idx(key)); }
+        fn get(key: K) -> V { ret smallintmap::get(map, key_idx(key)); }
 
-        fn find(key: &K) -> option::t<V> {
+        fn find(key: K) -> option::t<V> {
             ret smallintmap::find(map, key_idx(key));
         }
 
-        fn remove(_key: &K) -> option::t<V> { fail }
+        fn remove(_key: K) -> option::t<V> { fail }
 
         fn rehash() { fail }
 
@@ -114,7 +113,7 @@ fn new_smallintmap_adapter<@K,
     ret adapter(map, key_idx, idx_key);
 }
 
-fn node_span(node: &ast_node) -> codemap::span {
+fn node_span(node: ast_node) -> codemap::span {
     alt node {
       node_item(item) { item.span }
       node_obj_ctor(item) { item.span }

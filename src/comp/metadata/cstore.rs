@@ -49,7 +49,7 @@ type cstore_private =
 type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
 
 // Internal method to retrieve the data from the cstore
-fn p(cstore: &cstore) -> cstore_private { alt cstore { private(p) { p } } }
+fn p(cstore: cstore) -> cstore_private { alt cstore { private(p) { p } } }
 
 fn mk_cstore() -> cstore {
     let meta_cache = map::new_int_hash::<crate_metadata>();
@@ -61,20 +61,20 @@ fn mk_cstore() -> cstore {
                   mutable used_link_args: []});
 }
 
-fn get_crate_data(cstore: &cstore, cnum: ast::crate_num) -> crate_metadata {
+fn get_crate_data(cstore: cstore, cnum: ast::crate_num) -> crate_metadata {
     ret p(cstore).metas.get(cnum);
 }
 
-fn set_crate_data(cstore: &cstore, cnum: ast::crate_num,
-                  data: &crate_metadata) {
+fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
+                  data: crate_metadata) {
     p(cstore).metas.insert(cnum, data);
 }
 
-fn have_crate_data(cstore: &cstore, cnum: ast::crate_num) -> bool {
+fn have_crate_data(cstore: cstore, cnum: ast::crate_num) -> bool {
     ret p(cstore).metas.contains_key(cnum);
 }
 
-iter iter_crate_data(cstore: &cstore) ->
+iter iter_crate_data(cstore: cstore) ->
      @{key: ast::crate_num, val: crate_metadata} {
     for each kv: @{key: ast::crate_num, val: crate_metadata} in
              p(cstore).metas.items() {
@@ -82,17 +82,17 @@ iter iter_crate_data(cstore: &cstore) ->
     }
 }
 
-fn add_used_crate_file(cstore: &cstore, lib: &str) {
+fn add_used_crate_file(cstore: cstore, lib: str) {
     if !vec::member(lib, p(cstore).used_crate_files) {
         p(cstore).used_crate_files += [lib];
     }
 }
 
-fn get_used_crate_files(cstore: &cstore) -> [str] {
+fn get_used_crate_files(cstore: cstore) -> [str] {
     ret p(cstore).used_crate_files;
 }
 
-fn add_used_library(cstore: &cstore, lib: &str) -> bool {
+fn add_used_library(cstore: cstore, lib: str) -> bool {
     if lib == "" { ret false; }
 
     if vec::member(lib, p(cstore).used_libraries) { ret false; }
@@ -101,25 +101,24 @@ fn add_used_library(cstore: &cstore, lib: &str) -> bool {
     ret true;
 }
 
-fn get_used_libraries(cstore: &cstore) -> [str] {
+fn get_used_libraries(cstore: cstore) -> [str] {
     ret p(cstore).used_libraries;
 }
 
-fn add_used_link_args(cstore: &cstore, args: &str) {
+fn add_used_link_args(cstore: cstore, args: str) {
     p(cstore).used_link_args += str::split(args, ' ' as u8);
 }
 
-fn get_used_link_args(cstore: &cstore) -> [str] {
+fn get_used_link_args(cstore: cstore) -> [str] {
     ret p(cstore).used_link_args;
 }
 
-fn add_use_stmt_cnum(cstore: &cstore, use_id: ast::node_id,
+fn add_use_stmt_cnum(cstore: cstore, use_id: ast::node_id,
                      cnum: ast::crate_num) {
     p(cstore).use_crate_map.insert(use_id, cnum);
 }
 
-fn get_use_stmt_cnum(cstore: &cstore, use_id: ast::node_id) ->
-   ast::crate_num {
+fn get_use_stmt_cnum(cstore: cstore, use_id: ast::node_id) -> ast::crate_num {
     ret p(cstore).use_crate_map.get(use_id);
 }
 

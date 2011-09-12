@@ -28,8 +28,8 @@ export trans_obj;
 
 // trans_obj: create an LLVM function that is the object constructor for the
 // object being translated.
-fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
-             ctor_id: ast::node_id, ty_params: &[ast::ty_param]) {
+fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
+             ty_params: [ast::ty_param]) {
 
     // To make a function, we have to create a function context and, inside
     // that, a number of block contexts for which code is generated.
@@ -48,8 +48,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     // we're creating.
     let fn_args: [ast::arg] = [];
     for f: ast::obj_field in ob.fields {
-        fn_args +=
-            [{mode: ast::by_ref, ty: f.ty, ident: f.ident, id: f.id}];
+        fn_args += [{mode: ast::by_ref, ty: f.ty, ident: f.ident, id: f.id}];
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
 
@@ -205,7 +204,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
 // function and putting it in the generated code as an object item, we are
 // instead "inlining" the construction of the object and returning the object
 // itself.
-fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
+fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
                   id: ast::node_id) -> result {
 
     let ccx = bcx_ccx(bcx);
@@ -394,12 +393,12 @@ tag vtbl_mthd {
 }
 
 // Alphabetize ast::methods by ident.  A helper for create_vtbl.
-fn ast_mthd_lteq(a: &@ast::method, b: &@ast::method) -> bool {
+fn ast_mthd_lteq(a: @ast::method, b: @ast::method) -> bool {
     ret str::lteq(a.node.ident, b.node.ident);
 }
 
 // Alphabetize vtbl_mthds by ident.  A helper for create_vtbl.
-fn vtbl_mthd_lteq(a: &vtbl_mthd, b: &vtbl_mthd) -> bool {
+fn vtbl_mthd_lteq(a: vtbl_mthd, b: vtbl_mthd) -> bool {
     alt a {
       normal_mthd(ma) {
         alt b {
@@ -418,8 +417,8 @@ fn vtbl_mthd_lteq(a: &vtbl_mthd, b: &vtbl_mthd) -> bool {
 
 // filtering_fn: Used by create_vtbl to filter a list of methods to remove the
 // ones that we don't need forwarding slots for.
-fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd, addtl_meths: [@ast::method])
-   -> option::t<vtbl_mthd> {
+fn filtering_fn(cx: @local_ctxt, m: vtbl_mthd, addtl_meths: [@ast::method]) ->
+   option::t<vtbl_mthd> {
 
     // Since m is a fwding_mthd, and we're checking to see if it's in
     // addtl_meths (which only contains normal_mthds), we can't just check if
@@ -442,10 +441,9 @@ fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd, addtl_meths: [@ast::method])
 
 // create_vtbl: Create a vtable for a regular object or for an outer anonymous
 // object, and return a pointer to it.
-fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
-               ob: &ast::_obj, ty_params: &[ast::ty_param],
-               inner_obj_ty: option::t<ty::t>, additional_field_tys: &[ty::t])
-   -> ValueRef {
+fn create_vtbl(cx: @local_ctxt, sp: span, outer_obj_ty: ty::t, ob: ast::_obj,
+               ty_params: [ast::ty_param], inner_obj_ty: option::t<ty::t>,
+               additional_field_tys: [ty::t]) -> ValueRef {
 
     let llmethods: [ValueRef] = [];
 
@@ -531,7 +529,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
 // create_backwarding_vtbl: Create a vtable for the inner object of an
 // anonymous object, so that any self-calls made from the inner object's
 // methods get redirected appropriately.
-fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
+fn create_backwarding_vtbl(cx: @local_ctxt, sp: span, inner_obj_ty: ty::t,
                            outer_obj_ty: ty::t) -> ValueRef {
 
     // This vtbl needs to have slots for all of the methods on an inner
@@ -564,7 +562,7 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
 
 // finish_vtbl: Given a vector of vtable entries, create the table in
 // read-only memory and return a pointer to it.
-fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: &str) ->
+fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: str) ->
    ValueRef {
     let vtbl = C_struct(llmethods);
     let vtbl_name = mangle_internal_name_by_path(cx.ccx, cx.path + [name]);
@@ -594,9 +592,9 @@ fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: &str) ->
 // one for each method on inner, each of which takes all the same arguments as
 // the corresponding method on inner does, calls that method on outer, and
 // returns the value returned from that call.
-fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
-                        ty_params: &[ast::ty_param], outer_obj_ty: ty::t,
-                        _additional_field_tys: &[ty::t]) -> ValueRef {
+fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
+                        ty_params: [ast::ty_param], outer_obj_ty: ty::t,
+                        _additional_field_tys: [ty::t]) -> ValueRef {
 
     // Create a local context that's aware of the name of the method we're
     // creating.
@@ -717,10 +715,10 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 // calls inner.foo() with those arguments, and then returns the value returned
 // from that call.  (The inner object won't exist until run-time, but we know
 // its type statically.)
-fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
-                       ty_params: &[ast::ty_param], inner_obj_ty: ty::t,
+fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
+                       ty_params: [ast::ty_param], inner_obj_ty: ty::t,
                        backwarding_vtbl: ValueRef,
-                       additional_field_tys: &[ty::t]) -> ValueRef {
+                       additional_field_tys: [ty::t]) -> ValueRef {
 
     // Create a local context that's aware of the name of the method we're
     // creating.
@@ -783,11 +781,11 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // create_object_body_type maybe should have a postcondition...
 
     let cx_ccx = cx.ccx;
-    check type_has_static_size(cx_ccx, body_ty);
+    check (type_has_static_size(cx_ccx, body_ty));
 
     llself_obj_body =
         PointerCast(bcx, llself_obj_body,
-                              T_ptr(type_of(cx_ccx, sp, body_ty)));
+                    T_ptr(type_of(cx_ccx, sp, body_ty)));
 
     // Now, reach into the body and grab the inner_obj.
     let llinner_obj =
@@ -873,8 +871,8 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
 // create_object_body_type: Synthesize a big structural tuple type for an
 // object body: [tydesc, [typaram, ...], [field, ...], inner_obj].
-fn create_object_body_type(tcx: &ty::ctxt, fields_ty: &[ty::t],
-                           typarams_ty: &[ty::t],
+fn create_object_body_type(tcx: ty::ctxt, fields_ty: [ty::t],
+                           typarams_ty: [ty::t],
                            maybe_inner_obj_ty: option::t<ty::t>) -> ty::t {
 
     let tydesc_ty: ty::t = ty::mk_type(tcx);
@@ -901,7 +899,7 @@ fn create_object_body_type(tcx: &ty::ctxt, fields_ty: &[ty::t],
 // process_normal_mthd: Create the contents of a normal vtable slot.  A helper
 // function for create_vtbl.
 fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
-                       ty_params: &[ast::ty_param]) -> ValueRef {
+                       ty_params: [ast::ty_param]) -> ValueRef {
 
     let llfnty = T_nil();
     alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.node.id)) {

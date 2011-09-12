@@ -69,7 +69,7 @@ const shape_uniq: u8 = 22u8;
 // FIXME: This is a bad API in trans_common.
 fn C_u8(n: u8) -> ValueRef { ret trans_common::C_u8(n as uint); }
 
-fn hash_res_info(ri: &res_info) -> uint {
+fn hash_res_info(ri: res_info) -> uint {
     let h = 5381u;
     h *= 33u;
     h += ri.did.crate as uint;
@@ -80,12 +80,12 @@ fn hash_res_info(ri: &res_info) -> uint {
     ret h;
 }
 
-fn eq_res_info(a: &res_info, b: &res_info) -> bool {
+fn eq_res_info(a: res_info, b: res_info) -> bool {
     ret a.did.crate == b.did.crate && a.did.node == b.did.node && a.t == b.t;
 }
 
-fn mk_global(ccx: &@crate_ctxt, name: &str, llval: ValueRef, internal: bool)
-   -> ValueRef {
+fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
+   ValueRef {
     let llglobal =
         str::as_buf(name,
                     {|buf|
@@ -111,7 +111,7 @@ fn mk_global(ccx: &@crate_ctxt, name: &str, llval: ValueRef, internal: bool)
 //
 // TODO: Use this in dynamic_size_of() as well.
 
-fn largest_variants(ccx: &@crate_ctxt, tag_id: &ast::def_id) -> [uint] {
+fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     // Compute the minimum and maximum size and alignment for each variant.
     //
     // TODO: We could do better here; e.g. we know that any variant that
@@ -133,7 +133,7 @@ fn largest_variants(ccx: &@crate_ctxt, tag_id: &ast::def_id) -> [uint] {
                 // follow from how elem_t doesn't contain params.
                 // (Could add a postcondition to type_contains_params,
                 // once we implement Issue #586.)
-                check trans_common::type_has_static_size(ccx, elem_t);
+                check (trans_common::type_has_static_size(ccx, elem_t));
                 let llty = trans::type_of(ccx, dummy_sp(), elem_t);
                 min_size += trans::llsize_of_real(ccx, llty);
                 min_align += trans::llalign_of_real(ccx, llty);
@@ -200,8 +200,8 @@ fn round_up(size: u16, align: u8) -> u16 {
 
 type size_align = {size: u16, align: u8};
 
-fn compute_static_tag_size(ccx: &@crate_ctxt, largest_variants: &[uint],
-                           did: &ast::def_id) -> size_align {
+fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
+                           did: ast::def_id) -> size_align {
     let max_size = 0u16;
     let max_align = 1u8;
     let variants = ty::tag_variants(ccx.tcx, did);
@@ -212,7 +212,7 @@ fn compute_static_tag_size(ccx: &@crate_ctxt, largest_variants: &[uint],
             // FIXME: there should really be a postcondition
             // on tag_variants that would obviate the need for
             // this check. (Issue #586)
-            check trans_common::type_has_static_size(ccx, typ);
+            check (trans_common::type_has_static_size(ccx, typ));
             lltys += [trans::type_of(ccx, dummy_sp(), typ)];
         }
 
@@ -234,7 +234,7 @@ fn compute_static_tag_size(ccx: &@crate_ctxt, largest_variants: &[uint],
 
 tag tag_kind { tk_unit; tk_enum; tk_complex; }
 
-fn tag_kind(ccx: &@crate_ctxt, did: &ast::def_id) -> tag_kind {
+fn tag_kind(ccx: @crate_ctxt, did: ast::def_id) -> tag_kind {
     let variants = ty::tag_variants(ccx.tcx, did);
     if vec::len(variants) == 0u { ret tk_complex; }
     for v: ty::variant_info in variants {
@@ -246,15 +246,15 @@ fn tag_kind(ccx: &@crate_ctxt, did: &ast::def_id) -> tag_kind {
 
 
 // Returns the code corresponding to the pointer size on this architecture.
-fn s_int(_tcx: &ty_ctxt) -> u8 {
+fn s_int(_tcx: ty_ctxt) -> u8 {
     ret shape_i32; // TODO: x86-64
 }
 
-fn s_uint(_tcx: &ty_ctxt) -> u8 {
+fn s_uint(_tcx: ty_ctxt) -> u8 {
     ret shape_u32; // TODO: x86-64
 }
 
-fn s_float(_tcx: &ty_ctxt) -> u8 {
+fn s_float(_tcx: ty_ctxt) -> u8 {
     ret shape_f64; // TODO: x86-64
 }
 
@@ -284,18 +284,19 @@ fn add_u16(dest: &mutable [u8], val: u16) {
     dest += [val & 0xffu16 as u8, val >> 8u16 as u8];
 }
 
-fn add_substr(dest: &mutable [u8], src: &[u8]) {
+fn add_substr(dest: &mutable [u8], src: [u8]) {
     add_u16(dest, vec::len(src) as u16);
     dest += src;
 }
 
-fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
+fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
     let s = [];
 
     alt ty::struct(ccx.tcx, t) {
       ty::ty_nil. | ty::ty_bool. | ty::ty_machine(ast::ty_u8.) | ty::ty_bot. {
         s += [shape_u8];
       }
+
 
 
 
@@ -306,9 +307,11 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
 
 
 
+
       ty::ty_uint. | ty::ty_ptr(_) | ty::ty_type. | ty::ty_native(_) {
         s += [s_uint(ccx.tcx)];
       }
+
 
 
 
@@ -324,12 +327,14 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
 
 
 
+
       ty::ty_str. {
         s += [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
         add_substr(s, shape_of(ccx, unit_ty, ty_param_map));
       }
+
 
 
       ty::ty_tag(did, tps) {
@@ -370,6 +375,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
 
 
 
+
       ty::ty_box(mt) {
         s += [shape_box];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
@@ -400,11 +406,13 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
 
 
 
+
       ty::ty_fn(_, _, _, _, _) {
         s += [shape_fn];
       }
       ty::ty_native_fn(_, _, _) { s += [shape_u32]; }
       ty::ty_obj(_) { s += [shape_obj]; }
+
 
 
 
@@ -424,9 +432,11 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
       }
 
 
+
       ty::ty_var(n) {
         fail "shape_of ty_var";
       }
+
 
 
       ty::ty_param(n, _) {
@@ -449,7 +459,7 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t, ty_param_map: &[uint]) -> [u8] {
 }
 
 // FIXME: We might discover other variants as we traverse these. Handle this.
-fn shape_of_variant(ccx: &@crate_ctxt, v: &ty::variant_info,
+fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info,
                     ty_param_count: uint) -> [u8] {
     let ty_param_map = [];
     let i = 0u;
@@ -460,7 +470,7 @@ fn shape_of_variant(ccx: &@crate_ctxt, v: &ty::variant_info,
     ret s;
 }
 
-fn gen_tag_shapes(ccx: &@crate_ctxt) -> ValueRef {
+fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
     // Loop over all the tag variants and write their shapes into a data
     // buffer. As we do this, it's possible for us to discover new tags, so we
     // must do this first.
@@ -555,7 +565,7 @@ fn gen_tag_shapes(ccx: &@crate_ctxt) -> ValueRef {
     ret mk_global(ccx, "tag_shapes", C_bytes(header), true);
 }
 
-fn gen_resource_shapes(ccx: &@crate_ctxt) -> ValueRef {
+fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let dtors = [];
     let i = 0u;
     let len = interner::len(ccx.shape_cx.resources);
@@ -568,7 +578,7 @@ fn gen_resource_shapes(ccx: &@crate_ctxt) -> ValueRef {
     ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }
 
-fn gen_shape_tables(ccx: &@crate_ctxt) {
+fn gen_shape_tables(ccx: @crate_ctxt) {
     let lltagstable = gen_tag_shapes(ccx);
     let llresourcestable = gen_resource_shapes(ccx);
     trans_common::set_struct_body(ccx.shape_cx.llshapetablesty,

@@ -1,7 +1,7 @@
 use std;
 import std::str;
 
-fn test(actual: &str, expected: &str) {
+fn test(actual: str, expected: str) {
     log actual;
     log expected;
     assert (str::eq(actual, expected));

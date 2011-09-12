@@ -30,7 +30,7 @@ export list_file_metadata;
 
 // Traverses an AST, reading all the information about use'd crates and native
 // libraries necessary for later resolving, typechecking, linking, etc.
-fn read_crates(sess: session::session, crate: &ast::crate) {
+fn read_crates(sess: session::session, crate: ast::crate) {
     let e =
         @{sess: sess,
           crate_cache: @std::map::new_str_hash::<int>(),
@@ -50,7 +50,7 @@ type env =
       library_search_paths: [str],
       mutable next_crate_num: ast::crate_num};
 
-fn visit_view_item(e: env, i: &@ast::view_item) {
+fn visit_view_item(e: env, i: @ast::view_item) {
     alt i.node {
       ast::view_item_use(ident, meta_items, id) {
         let cnum = resolve_crate(e, ident, meta_items, i.span);
@@ -60,7 +60,7 @@ fn visit_view_item(e: env, i: &@ast::view_item) {
     }
 }
 
-fn visit_item(e: env, i: &@ast::item) {
+fn visit_item(e: env, i: @ast::item) {
     alt i.node {
       ast::item_native_mod(m) {
         if m.abi != ast::native_abi_rust && m.abi != ast::native_abi_cdecl {
@@ -81,7 +81,7 @@ fn visit_item(e: env, i: &@ast::item) {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(path: &str, out: io::writer) {
+fn list_file_metadata(path: str, out: io::writer) {
     alt get_metadata_section(path) {
       option::some(bytes) { decoder::list_crate_metadata(bytes, out); }
       option::none. {
@@ -90,7 +90,7 @@ fn list_file_metadata(path: &str, out: io::writer) {
     }
 }
 
-fn metadata_matches(crate_data: &@[u8], metas: &[@ast::meta_item]) -> bool {
+fn metadata_matches(crate_data: @[u8], metas: [@ast::meta_item]) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
 
@@ -116,8 +116,8 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
     }
 }
 
-fn find_library_crate(sess: &session::session, ident: &ast::ident,
-                      metas: &[@ast::meta_item], library_search_paths: &[str])
+fn find_library_crate(sess: session::session, ident: ast::ident,
+                      metas: [@ast::meta_item], library_search_paths: [str])
    -> option::t<{ident: str, data: @[u8]}> {
 
     attr::require_unique_names(sess, metas);
@@ -146,9 +146,9 @@ fn find_library_crate(sess: &session::session, ident: &ast::ident,
     ret find_library_crate_aux(nn2, crate_name, metas, library_search_paths);
 }
 
-fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: &str,
-                          metas: &[@ast::meta_item],
-                          library_search_paths: &[str]) ->
+fn find_library_crate_aux(nn: {prefix: str, suffix: str}, crate_name: str,
+                          metas: [@ast::meta_item],
+                          library_search_paths: [str]) ->
    option::t<{ident: str, data: @[u8]}> {
     let prefix: str = nn.prefix + crate_name;
     let suffix: str = nn.suffix;
@@ -184,11 +184,11 @@ fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: &str,
     ret none;
 }
 
-fn get_metadata_section(filename: &str) -> option::t<@[u8]> {
+fn get_metadata_section(filename: str) -> option::t<@[u8]> {
     let mb =
         str::as_buf(filename, {|buf|
-            llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-        });
+                llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
+                    });
     if mb as int == 0 { ret option::none::<@[u8]>; }
     let of = mk_object_file(mb);
     let si = mk_section_iter(of.llof);
@@ -206,8 +206,8 @@ fn get_metadata_section(filename: &str) -> option::t<@[u8]> {
     ret option::none::<@[u8]>;
 }
 
-fn load_library_crate(sess: &session::session, span: span, ident: &ast::ident,
-                      metas: &[@ast::meta_item], library_search_paths: &[str])
+fn load_library_crate(sess: session::session, span: span, ident: ast::ident,
+                      metas: [@ast::meta_item], library_search_paths: [str])
    -> {ident: str, data: @[u8]} {
 
 
@@ -219,7 +219,7 @@ fn load_library_crate(sess: &session::session, span: span, ident: &ast::ident,
     }
 }
 
-fn resolve_crate(e: env, ident: &ast::ident, metas: [@ast::meta_item],
+fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
                  span: span) -> ast::crate_num {
     if !e.crate_cache.contains_key(ident) {
         let cinfo =
@@ -247,7 +247,7 @@ fn resolve_crate(e: env, ident: &ast::ident, metas: [@ast::meta_item],
 }
 
 // Go through the crate metadata and load any crates that it references
-fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
+fn resolve_crate_deps(e: env, cdata: @[u8]) -> cstore::cnum_map {
     log "resolving deps of external crate";
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers

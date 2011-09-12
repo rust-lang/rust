@@ -21,7 +21,7 @@ type ctxt = @{mutable next_tydesc_num: uint};
 
 fn mk_ctxt() -> ctxt { ret @{mutable next_tydesc_num: 0u}; }
 
-fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: &str) -> ValueRef {
+fn add_global(ccx: @crate_ctxt, llval: ValueRef, name: str) -> ValueRef {
     let llglobal =
         str::as_buf(name,
                     {|buf|
@@ -32,7 +32,7 @@ fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: &str) -> ValueRef {
     ret llglobal;
 }
 
-fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
+fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     let bcx = cx;
     if !type_is_gc_relevant(bcx_tcx(cx), ty) ||
            ty::type_has_dynamic_size(bcx_tcx(cx), ty) {
@@ -102,7 +102,7 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     ret bcx;
 }
 
-fn type_is_gc_relevant(cx: &ty::ctxt, ty: ty::t) -> bool {
+fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
     alt ty::struct(cx, ty) {
       ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int. | ty::ty_float. |
       ty::ty_uint. | ty::ty_machine(_) | ty::ty_char. | ty::ty_str. |
@@ -110,6 +110,7 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: ty::t) -> bool {
       ty::ty_native(_) {
         ret false;
       }
+
 
 
 
@@ -121,6 +122,7 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: ty::t) -> bool {
         for elt in elts { if type_is_gc_relevant(cx, elt) { ret true; } }
         ret false;
       }
+
 
 
 
@@ -137,10 +139,12 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: ty::t) -> bool {
 
 
 
+
       ty::ty_vec(tm) {
         ret type_is_gc_relevant(cx, tm.ty);
       }
       ty::ty_constr(sub, _) { ret type_is_gc_relevant(cx, sub); }
+
 
 
 
@@ -149,6 +153,7 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: ty::t) -> bool {
       ty::ty_res(_, _, _) {
         ret true;
       }
+
 
 
 

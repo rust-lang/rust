@@ -8,10 +8,10 @@ import std::map::new_str_hash;
 import codemap;
 
 type syntax_expander =
-    fn(&ext_ctxt, span, @ast::expr, &option::t<str>) -> @ast::expr;
+    fn(ext_ctxt, span, @ast::expr, option::t<str>) -> @ast::expr;
 type macro_def = {ident: str, ext: syntax_extension};
 type macro_definer =
-    fn(&ext_ctxt, span, @ast::expr, &option::t<str>) -> macro_def;
+    fn(ext_ctxt, span, @ast::expr, option::t<str>) -> macro_def;
 
 tag syntax_extension {
     normal(syntax_expander);
@@ -83,7 +83,7 @@ obj ext_ctxt(sess: @session,
 
 }
 
-fn mk_ctxt(sess: &session) -> ext_ctxt {
+fn mk_ctxt(sess: session) -> ext_ctxt {
     // FIXME: Some extensions work by building ASTs with paths to functions
     // they need to call at runtime. As those functions live in the std crate,
     // the paths are prefixed with "std::". Unfortunately, these paths can't
@@ -96,7 +96,7 @@ fn mk_ctxt(sess: &session) -> ext_ctxt {
     ret ext_ctxt(@sess, crate_file_name_hack, codemap::os_none);
 }
 
-fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: &str) -> str {
+fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {
     alt expr.node {
       ast::expr_lit(l) {
         alt l.node {
@@ -108,7 +108,7 @@ fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: &str) -> str {
     }
 }
 
-fn expr_to_ident(cx: &ext_ctxt, expr: @ast::expr, error: &str) -> ast::ident {
+fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
     alt expr.node {
       ast::expr_path(p) {
         if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u {
@@ -119,7 +119,7 @@ fn expr_to_ident(cx: &ext_ctxt, expr: @ast::expr, error: &str) -> ast::ident {
     }
 }
 
-fn make_new_lit(cx: &ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
+fn make_new_lit(cx: ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
    @ast::expr {
     let sp_lit = @{node: lit, span: sp};
     ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};

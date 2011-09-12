@@ -21,7 +21,7 @@ export enc_ty;
 type ctxt =
     // Def -> str Callback:
     // The type context.
-    {ds: fn(&def_id) -> str, tcx: ty::ctxt, abbrevs: abbrev_ctxt};
+    {ds: fn(def_id) -> str, tcx: ty::ctxt, abbrevs: abbrev_ctxt};
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
@@ -30,14 +30,14 @@ type ty_abbrev = {pos: uint, len: uint, s: @str};
 
 tag abbrev_ctxt { ac_no_abbrevs; ac_use_abbrevs(hashmap<ty::t, ty_abbrev>); }
 
-fn cx_uses_abbrevs(cx: &@ctxt) -> bool {
+fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     alt cx.abbrevs {
       ac_no_abbrevs. { ret false; }
       ac_use_abbrevs(_) { ret true; }
     }
 }
 
-fn enc_ty(w: &io::writer, cx: &@ctxt, t: ty::t) {
+fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
     alt cx.abbrevs {
       ac_no_abbrevs. {
         let result_str: @str;
@@ -82,7 +82,7 @@ fn enc_ty(w: &io::writer, cx: &@ctxt, t: ty::t) {
       }
     }
 }
-fn enc_mt(w: &io::writer, cx: &@ctxt, mt: &ty::mt) {
+fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
     alt mt.mut {
       imm. { }
       mut. { w.write_char('m'); }
@@ -90,7 +90,7 @@ fn enc_mt(w: &io::writer, cx: &@ctxt, mt: &ty::mt) {
     }
     enc_ty(w, cx, mt.ty);
 }
-fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
+fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
     alt st {
       ty::ty_nil. { w.write_char('n'); }
       ty::ty_bot. { w.write_char('z'); }
@@ -194,7 +194,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       }
     }
 }
-fn enc_proto(w: &io::writer, proto: proto) {
+fn enc_proto(w: io::writer, proto: proto) {
     alt proto {
       proto_iter. { w.write_char('W'); }
       proto_fn. { w.write_char('F'); }
@@ -202,8 +202,8 @@ fn enc_proto(w: &io::writer, proto: proto) {
     }
 }
 
-fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: ty::t,
-             cf: &controlflow, constrs: &[@ty::constr]) {
+fn enc_ty_fn(w: io::writer, cx: @ctxt, args: [ty::arg], out: ty::t,
+             cf: controlflow, constrs: [@ty::constr]) {
     w.write_char('[');
     for arg: ty::arg in args {
         alt arg.mode {
@@ -227,7 +227,7 @@ fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: ty::t,
 }
 
 // FIXME less copy-and-paste
-fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
+fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
@@ -244,7 +244,7 @@ fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
     w.write_char(')');
 }
 
-fn enc_ty_constr(w: &io::writer, cx: &@ctxt, c: &@ty::type_constr) {
+fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));

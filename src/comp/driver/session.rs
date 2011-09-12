@@ -58,46 +58,46 @@ obj session(targ_cfg: @config,
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
     fn get_cstore() -> metadata::cstore::cstore { cstore }
-    fn span_fatal(sp: span, msg: &str) -> ! {
+    fn span_fatal(sp: span, msg: str) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         codemap::emit_error(some(sp), msg, parse_sess.cm);
         fail;
     }
-    fn fatal(msg: &str) -> ! {
+    fn fatal(msg: str) -> ! {
         codemap::emit_error(none, msg, parse_sess.cm);
         fail;
     }
-    fn span_err(sp: span, msg: &str) {
+    fn span_err(sp: span, msg: str) {
         codemap::emit_error(some(sp), msg, parse_sess.cm);
         err_count += 1u;
     }
-    fn err(msg: &str) {
+    fn err(msg: str) {
         codemap::emit_error(none, msg, parse_sess.cm);
         err_count += 1u;
     }
     fn abort_if_errors() {
         if err_count > 0u { self.fatal("aborting due to previous errors"); }
     }
-    fn span_warn(sp: span, msg: &str) {
+    fn span_warn(sp: span, msg: str) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         codemap::emit_warning(some(sp), msg, parse_sess.cm);
     }
-    fn warn(msg: &str) { codemap::emit_warning(none, msg, parse_sess.cm); }
-    fn span_note(sp: span, msg: &str) {
+    fn warn(msg: str) { codemap::emit_warning(none, msg, parse_sess.cm); }
+    fn span_note(sp: span, msg: str) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         codemap::emit_note(some(sp), msg, parse_sess.cm);
     }
-    fn note(msg: &str) { codemap::emit_note(none, msg, parse_sess.cm); }
-    fn span_bug(sp: span, msg: &str) -> ! {
+    fn note(msg: str) { codemap::emit_note(none, msg, parse_sess.cm); }
+    fn span_bug(sp: span, msg: str) -> ! {
         self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
     }
-    fn bug(msg: &str) -> ! {
+    fn bug(msg: str) -> ! {
         self.fatal(#fmt["internal compiler error %s", msg]);
     }
-    fn span_unimpl(sp: span, msg: &str) -> ! {
+    fn span_unimpl(sp: span, msg: str) -> ! {
         self.span_bug(sp, "unimplemented " + msg);
     }
-    fn unimpl(msg: &str) -> ! { self.bug("unimplemented " + msg); }
+    fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
     fn get_codemap() -> codemap::codemap { ret parse_sess.cm; }
     fn lookup_pos(pos: uint) -> codemap::loc {
         ret codemap::lookup_char_pos(parse_sess.cm, pos);

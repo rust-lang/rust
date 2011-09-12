@@ -15,9 +15,8 @@ import syntax::fold::*;
 import syntax::ext::base::*;
 
 
-fn expand_expr(exts: &hashmap<str, syntax_extension>, cx: &ext_ctxt,
-               e: &expr_, fld: ast_fold, orig: &fn(&expr_, ast_fold) -> expr_)
-   -> expr_ {
+fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
+               fld: ast_fold, orig: fn(expr_, ast_fold) -> expr_) -> expr_ {
     ret alt e {
           expr_mac(mac) {
             alt mac.node {
@@ -53,7 +52,7 @@ fn expand_expr(exts: &hashmap<str, syntax_extension>, cx: &ext_ctxt,
         };
 }
 
-fn expand_crate(sess: &session::session, c: &@crate) -> @crate {
+fn expand_crate(sess: session::session, c: @crate) -> @crate {
     let exts = syntax_expander_table();
     let afp = default_ast_fold();
     let cx: ext_ctxt = mk_ctxt(sess);

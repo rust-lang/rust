@@ -12,19 +12,19 @@ native "rust" mod rustrt {
        int;
 }
 
-fn arg_vec(prog: &str, args: &[@str]) -> [sbuf] {
+fn arg_vec(prog: str, args: [@str]) -> [sbuf] {
     let argptrs = str::as_buf(prog, {|buf| [buf] });
     for arg in args { argptrs += str::as_buf(*arg, {|buf| [buf] }); }
     argptrs += [unsafe::reinterpret_cast(0)];
     ret argptrs;
 }
 
-fn spawn_process(prog: &str, args: &[str], in_fd: int, out_fd: int,
-                 err_fd: int) -> int {
+fn spawn_process(prog: str, args: [str], in_fd: int, out_fd: int, err_fd: int)
+   -> int {
     // Note: we have to hold on to these vector references while we hold a
     // pointer to their buffers
     let prog = prog;
-    let args = vec::map({|&arg| @arg }, args);
+    let args = vec::map({|arg| @arg }, args);
     let argv = arg_vec(prog, args);
     let pid =
         rustrt::rust_run_program(vec::unsafe::to_ptr(argv), in_fd, out_fd,
@@ -32,7 +32,7 @@ fn spawn_process(prog: &str, args: &[str], in_fd: int, out_fd: int,
     ret pid;
 }
 
-fn run_program(prog: &str, args: &[str]) -> int {
+fn run_program(prog: str, args: [str]) -> int {
     ret os::waitpid(spawn_process(prog, args, 0, 0, 0));
 }
 
@@ -49,7 +49,7 @@ type program =
 
 resource program_res(p: program) { p.destroy(); }
 
-fn start_program(prog: &str, args: &[str]) -> @program_res {
+fn start_program(prog: str, args: [str]) -> @program_res {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -100,7 +100,7 @@ fn start_program(prog: &str, args: &[str]) -> @program_res {
                                  os::fd_FILE(pipe_err.in), false));
 }
 
-fn read_all(rd: &io::reader) -> str {
+fn read_all(rd: io::reader) -> str {
     let buf = "";
     while !rd.eof() {
         let bytes = rd.read_bytes(4096u);
@@ -109,7 +109,7 @@ fn read_all(rd: &io::reader) -> str {
     ret buf;
 }
 
-fn program_output(prog: &str, args: &[str]) ->
+fn program_output(prog: str, args: [str]) ->
    {status: int, out: str, err: str} {
     let pr = start_program(prog, args);
     pr.close_input();

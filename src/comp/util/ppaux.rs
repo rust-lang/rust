@@ -21,7 +21,7 @@ import syntax::ast;
 import middle::ast_map;
 import metadata::csearch;
 
-fn mode_str(m: &ty::mode) -> str {
+fn mode_str(m: ty::mode) -> str {
     alt m {
       ast::by_ref. { "" }
       ast::by_mut_ref. { "&" }
@@ -29,15 +29,15 @@ fn mode_str(m: &ty::mode) -> str {
     }
 }
 
-fn mode_str_1(m: &ty::mode) -> str {
+fn mode_str_1(m: ty::mode) -> str {
     alt m { ast::by_ref. { "ref" } _ { mode_str(m) } }
 }
 
-fn fn_ident_to_string(id: ast::node_id, i: &ast::fn_ident) -> str {
+fn fn_ident_to_string(id: ast::node_id, i: ast::fn_ident) -> str {
     ret alt i { none. { "anon" + int::str(id) } some(s) { s } };
 }
 
-fn get_id_ident(cx: &ctxt, id: ast::def_id) -> str {
+fn get_id_ident(cx: ctxt, id: ast::def_id) -> str {
     if id.crate != ast::local_crate {
         alt cx.ext_map.find(id) {
           some(j) { str::connect(j, "::") }
@@ -54,15 +54,15 @@ fn get_id_ident(cx: &ctxt, id: ast::def_id) -> str {
     }
 }
 
-fn ty_to_str(cx: &ctxt, typ: &t) -> str {
-    fn fn_input_to_str(cx: &ctxt, input: &{mode: middle::ty::mode, ty: t}) ->
+fn ty_to_str(cx: ctxt, typ: t) -> str {
+    fn fn_input_to_str(cx: ctxt, input: {mode: middle::ty::mode, ty: t}) ->
        str {
         let s = mode_str(input.mode);
         ret s + ty_to_str(cx, input.ty);
     }
-    fn fn_to_str(cx: &ctxt, proto: ast::proto, ident: option::t<ast::ident>,
-                 inputs: &[arg], output: t, cf: ast::controlflow,
-                 constrs: &[@constr]) -> str {
+    fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option::t<ast::ident>,
+                 inputs: [arg], output: t, cf: ast::controlflow,
+                 constrs: [@constr]) -> str {
         let s = proto_to_str(proto);
         alt ident { some(i) { s += " "; s += i; } _ { } }
         s += "(";
@@ -79,14 +79,14 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         s += constrs_str(constrs);
         ret s;
     }
-    fn method_to_str(cx: &ctxt, m: &method) -> str {
+    fn method_to_str(cx: ctxt, m: method) -> str {
         ret fn_to_str(cx, m.proto, some::<ast::ident>(m.ident), m.inputs,
                       m.output, m.cf, m.constrs) + ";";
     }
-    fn field_to_str(cx: &ctxt, f: &field) -> str {
+    fn field_to_str(cx: ctxt, f: field) -> str {
         ret f.ident + ": " + mt_to_str(cx, f.mt);
     }
-    fn mt_to_str(cx: &ctxt, m: &mt) -> str {
+    fn mt_to_str(cx: ctxt, m: mt) -> str {
         let mstr;
         alt m.mut {
           ast::mut. { mstr = "mutable "; }
@@ -151,18 +151,18 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         }
 }
 
-fn ty_to_short_str(cx: &ctxt, typ: t) -> str {
+fn ty_to_short_str(cx: ctxt, typ: t) -> str {
     let s = encoder::encoded_ty(cx, typ);
     if str::byte_len(s) >= 32u { s = str::substr(s, 0u, 32u); }
     ret s;
 }
 
-fn constr_to_str(c: &@constr) -> str {
+fn constr_to_str(c: @constr) -> str {
     ret path_to_str(c.node.path) +
             pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
 }
 
-fn constrs_str(constrs: &[@constr]) -> str {
+fn constrs_str(constrs: [@constr]) -> str {
     let s = "";
     let colon = true;
     for c: @constr in constrs {
@@ -172,7 +172,7 @@ fn constrs_str(constrs: &[@constr]) -> str {
     ret s;
 }
 
-fn ty_constr_to_str<Q>(c: &@ast::spanned<ast::constr_general_<ast::path, Q>>)
+fn ty_constr_to_str<Q>(c: @ast::spanned<ast::constr_general_<ast::path, Q>>)
    -> str {
     ret path_to_str(c.node.path) +
             constr_args_to_str::<ast::path>(path_to_str, c.node.args);

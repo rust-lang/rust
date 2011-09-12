@@ -23,7 +23,7 @@ type treemap<@K, @V> = @mutable tree_node<K, V>;
 
 fn init<@K, @V>() -> treemap<K, V> { @mutable empty }
 
-fn insert<@K, @V>(m: &treemap<K, V>, k: &K, v: &V) {
+fn insert<@K, @V>(m: treemap<K, V>, k: K, v: V) {
     alt m {
       @empty. { *m = node(@k, @v, @mutable empty, @mutable empty); }
       @node(@kk, _, _, _) {
@@ -37,13 +37,14 @@ fn insert<@K, @V>(m: &treemap<K, V>, k: &K, v: &V) {
     }
 }
 
-fn find<@K, @V>(m: &treemap<K, V>, k: &K) -> option<V> {
+fn find<@K, @V>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
       empty. { none }
       node(@kk, @v, _, _) {
         if k == kk {
             some(v)
         } else if k < kk {
+
             // Again, ugliness to unpack left and right individually.
             alt *m { node(_, _, left, _) { find(left, k) } }
         } else { alt *m { node(_, _, _, right) { find(right, k) } } }
@@ -52,7 +53,7 @@ fn find<@K, @V>(m: &treemap<K, V>, k: &K) -> option<V> {
 }
 
 // Performs an in-order traversal
-fn traverse<@K, @V>(m: &treemap<K, V>, f: fn(&K, &V)) {
+fn traverse<@K, @V>(m: treemap<K, V>, f: fn(K, V)) {
     alt *m {
       empty. { }
       node(k, v, _, _) {

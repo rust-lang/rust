@@ -3,7 +3,7 @@ import str::sbuf;
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-fn getenv(n: &str) -> option::t<str> {
+fn getenv(n: str) -> option::t<str> {
     let s = str::as_buf(n, {|buf| os::libc::getenv(buf) });
     ret if unsafe::reinterpret_cast(s) == 0 {
             option::none::<str>
@@ -15,7 +15,7 @@ fn getenv(n: &str) -> option::t<str> {
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-fn setenv(n: &str, v: &str) {
+fn setenv(n: str, v: str) {
     // FIXME (868)
     let _: () =
         str::as_buf(n,
@@ -30,7 +30,7 @@ fn setenv(n: &str, v: &str) {
 }
 
 #[cfg(target_os = "win32")]
-fn getenv(n: &str) -> option::t<str> {
+fn getenv(n: str) -> option::t<str> {
     let nsize = 256u;
     while true {
         let v: [u8] = [];
@@ -53,13 +53,18 @@ fn getenv(n: &str) -> option::t<str> {
 }
 
 #[cfg(target_os = "win32")]
-fn setenv(n: &str, v: &str) {
+fn setenv(n: str, v: str) {
     // FIXME (868)
-    let _: () = str::as_buf(n, {|nbuf|
-        let _: () = str::as_buf(v, {|vbuf|
-            os::kernel32::SetEnvironmentVariableA(nbuf, vbuf);
-        });
-    });
+    let _: () =
+        str::as_buf(n,
+                    {|nbuf|
+                        let _: () =
+                            str::as_buf(v,
+                                        {|vbuf|
+                      os::kernel32::SetEnvironmentVariableA(nbuf,
+                                                            vbuf);
+                                        });
+                    });
 }
 
 // Local Variables:
