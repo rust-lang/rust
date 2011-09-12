@@ -285,11 +285,7 @@ fn parse_ty_fn(proto: ast::proto, p: &parser) -> ast::ty_ {
             p.bump();
             p.bump();
         }
-        let mode = ast::val;
-        if p.peek() == token::BINOP(token::AND) {
-            p.bump();
-            mode = ast::alias(eat_word(p, "mutable"));
-        }
+        let mode = parse_arg_mode(p);
         let t = parse_ty(p, false);
         ret spanned(lo, t.span.hi, {mode: mode, ty: t});
     }
@@ -583,11 +579,13 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
 }
 
 fn parse_arg_mode(p: &parser) -> ast::mode {
+    let mode = ast::by_ref;
     if eat(p, token::BINOP(token::AND)) {
-        ast::alias(eat_word(p, "mutable"))
+        if eat_word(p, "mutable") { mode = ast::by_mut_ref; }
     } else if eat(p, token::BINOP(token::MINUS)) {
-        ast::move
-    } else { ast::val }
+        mode = ast::by_move;
+    }
+    ret mode;
 }
 
 fn parse_arg(p: &parser) -> ast::arg {
@@ -1868,7 +1866,7 @@ fn parse_item_res(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let dtor = parse_block(p);
     let decl =
         {inputs:
-             [{mode: ast::alias(false),
+             [{mode: ast::by_ref,
                ty: t,
                ident: arg_ident,
                id: p.get_id()}],

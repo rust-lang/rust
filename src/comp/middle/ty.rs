@@ -86,9 +86,6 @@ export mk_uniq;
 export mk_var;
 export mk_iter_body_fn;
 export mode;
-export mo_val;
-export mo_alias;
-export mo_move;
 export mt;
 export node_type_table;
 export pat_ty;
@@ -177,7 +174,6 @@ export walk_ty;
 export occurs_check_fails;
 
 // Data types
-tag mode { mo_val; mo_alias(bool); mo_move; }
 
 type arg = {mode: mode, ty: t};
 
@@ -587,7 +583,7 @@ fn mk_type(_cx: &ctxt) -> t { ret idx_type; }
 fn mk_native(cx: &ctxt, did: &def_id) -> t { ret gen_ty(cx, ty_native(did)); }
 
 fn mk_iter_body_fn(cx: &ctxt, output: t) -> t {
-    ret mk_fn(cx, ast::proto_block, [{mode: ty::mo_alias(false), ty: output}],
+    ret mk_fn(cx, ast::proto_block, [{mode: ast::by_ref, ty: output}],
               ty::mk_nil(cx), ast::return, []);
 }
 

@@ -193,7 +193,9 @@ fn check_lval(cx: &@ctx, dest: &@expr, msg: msg) {
       _ {
         let root = expr_root(cx.tcx, dest, false);
         if vec::len(*root.ds) == 0u {
-            mk_err(cx, dest.span, msg, "non-lvalue");
+            if msg == msg_assign {
+                mk_err(cx, dest.span, msg, "non-lvalue");
+            }
         } else if !root.ds[0].mut {
             let name =
                 alt root.ds[0].kind {
@@ -235,7 +237,7 @@ fn check_call(cx: &@ctx, f: &@expr, args: &[@expr]) {
                        ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f)));
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
-        if arg_t.mode == ty::mo_alias(true) {
+        if arg_t.mode != by_ref {
             check_lval(cx, args[i], msg_mut_alias);
         }
         i += 1u;
@@ -249,7 +251,6 @@ fn is_immutable_def(def: &def) -> option::t<str> {
         some("static item")
       }
       def_obj_field(_, imm.) { some("immutable object field") }
-      def_arg(_, alias(false)) { some("immutable alias") }
       def_upvar(_, inner, mut) {
         if !mut { some("upvar") } else { is_immutable_def(*inner) }
       }

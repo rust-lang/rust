@@ -23,15 +23,14 @@ import metadata::csearch;
 
 fn mode_str(m: &ty::mode) -> str {
     alt m {
-      mo_val. { "" }
-      mo_alias(false) { "&" }
-      mo_alias(true) { "&mutable " }
-      mo_move. { "-" }
+      ast::by_ref. { "" }
+      ast::by_mut_ref. { "&" }
+      ast::by_move. { "-" }
     }
 }
 
 fn mode_str_1(m: &ty::mode) -> str {
-    alt m { mo_val. { "val" } _ { mode_str(m) } }
+    alt m { ast::by_ref. { "ref" } _ { mode_str(m) } }
 }
 
 fn fn_ident_to_string(id: ast::node_id, i: &ast::fn_ident) -> str {

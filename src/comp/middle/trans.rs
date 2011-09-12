@@ -3516,7 +3516,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
         // be inspected. It's important for the value
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
-    } else if arg.mode == ty::mo_val || arg.mode == ty::mo_alias(false) {
+    } else if arg.mode == ast::by_ref {
         let copied = false;
         if !lv.is_mem && type_is_immediate(ccx, e_ty) {
             val = do_spill_noroot(bcx, val);
@@ -3545,7 +3545,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
     }
 
     // Collect arg for later if it happens to be one we've moving out.
-    if arg.mode == ty::mo_move {
+    if arg.mode == ast::by_move {
         if lv.is_mem {
             // Use actual ty, not declared ty -- anything else doesn't make
             // sense if declared ty is a ty param
@@ -4241,7 +4241,7 @@ fn trans_put(in_cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
       none. { }
       some(x) {
         let e_ty = ty::expr_ty(bcx_tcx(cx), x);
-        let arg = {mode: ty::mo_alias(false), ty: e_ty};
+        let arg = {mode: ast::by_ref, ty: e_ty};
         let arg_tys = type_of_explicit_args(bcx_ccx(cx), x.span, [arg]);
         let z = [];
         let k = [];
@@ -4867,7 +4867,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt, args: &[ast::arg],
     for aarg: ast::arg in args {
         let arg_ty = arg_tys[arg_n].ty;
         alt aarg.mode {
-          ast::val. | ast::alias(false) {
+          ast::by_ref. {
             let mutated = !ignore_mut &&
                 fcx.lcx.ccx.mut_map.contains_key(aarg.id);
             // Overwrite the llargs entry for locally mutated params
@@ -4881,7 +4881,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt, args: &[ast::arg],
                 add_clean(scope, alloc, arg_ty);
             }
           }
-          ast::move. {
+          ast::by_move. {
             add_clean(scope, bcx.fcx.llargs.get(aarg.id), arg_ty);
           }
           _ { }
@@ -5109,7 +5109,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     let i = 0u;
     for varg: ast::variant_arg in variant.node.args {
         fn_args +=
-            [{mode: ast::alias(false),
+            [{mode: ast::by_ref,
               ty: varg.ty,
               ident: "arg" + uint::to_str(i, 10u),
               id: varg.id}];
@@ -5334,7 +5334,7 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
                    takes_argv: bool) -> ValueRef {
         let unit_ty = ty::mk_str(ccx.tcx);
         let vecarg_ty: ty::arg =
-            {mode: ty::mo_val,
+            {mode: ast::by_ref,
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
         let llfty =
             type_of_fn(ccx, sp, ast::proto_fn, [vecarg_ty],
@@ -5528,7 +5528,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     }
     fn convert_arg_to_i32(cx: &@block_ctxt, v: ValueRef, t: ty::t,
                           mode: ty::mode) -> ValueRef {
-        if mode == ty::mo_val {
+        if mode == ast::by_ref {
             if ty::type_is_integral(bcx_tcx(cx), t) {
                 // FIXME: would be nice to have a postcondition that says
                 // if a type is integral, then it has static size (#586)
@@ -5582,7 +5582,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     let i = arg_n;
     for arg: ty::arg in args {
         let llarg = llvm::LLVMGetParam(fcx.llfn, i);
-        if arg.mode == ty::mo_val {
+        if arg.mode == ast::by_ref {
             llarg = load_if_immediate(bcx, llarg, arg.ty);
         }
         assert (llarg as int != 0);

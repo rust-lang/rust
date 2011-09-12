@@ -49,7 +49,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     let fn_args: [ast::arg] = [];
     for f: ast::obj_field in ob.fields {
         fn_args +=
-            [{mode: ast::alias(false), ty: f.ty, ident: f.ident, id: f.id}];
+            [{mode: ast::by_ref, ty: f.ty, ident: f.ident, id: f.id}];
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
 
@@ -689,12 +689,8 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // function (they're in fcx.llargs) to llouter_mthd_args.
 
     let a: uint = 3u; // retptr, task ptr, env come first
-    let passed_arg: ValueRef = llvm::LLVMGetParam(llbackwarding_fn, a);
     for arg: ty::arg in m.inputs {
-        if arg.mode == ty::mo_val {
-            passed_arg = load_if_immediate(bcx, passed_arg, arg.ty);
-        }
-        llouter_mthd_args += [passed_arg];
+        llouter_mthd_args += [llvm::LLVMGetParam(llbackwarding_fn, a)];
         a += 1u;
     }
 
@@ -861,12 +857,8 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // function (they're in fcx.llargs) to llorig_mthd_args.
 
     let a: uint = 3u; // retptr, task ptr, env come first
-    let passed_arg: ValueRef = llvm::LLVMGetParam(llforwarding_fn, a);
     for arg: ty::arg in m.inputs {
-        if arg.mode == ty::mo_val {
-            passed_arg = load_if_immediate(bcx, passed_arg, arg.ty);
-        }
-        llorig_mthd_args += [passed_arg];
+        llorig_mthd_args += [llvm::LLVMGetParam(llforwarding_fn, a)];
         a += 1u;
     }
 

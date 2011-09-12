@@ -127,7 +127,7 @@ tag binop {
 
 tag unop { box(mutability); deref; not; neg; }
 
-tag mode { val; alias(bool); move; }
+tag mode { by_ref; by_mut_ref; by_move; }
 
 type stmt = spanned<stmt_>;
 
@@ -296,7 +296,7 @@ tag ty_ {
      /* bot represents the value of functions that don't return a value
         locally to their context. in contrast, things like log that do
         return, but don't return a meaningful value, have result type nil. */
-     ty_bool;
+    ty_bool;
     ty_int;
     ty_uint;
     ty_float;

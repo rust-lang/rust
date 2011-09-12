@@ -20,9 +20,6 @@ import middle::ty::block_ty;
 import middle::ty::expr_ty;
 import middle::ty::field;
 import middle::ty::method;
-import middle::ty::mo_val;
-import middle::ty::mo_alias;
-import middle::ty::mo_move;
 import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::ty_param_substs_opt_and_ty;
@@ -213,15 +210,6 @@ fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
     ret {substs: ty_substs_opt, ty: tpt.ty};
 }
 
-fn ast_mode_to_mode(mode: ast::mode) -> ty::mode {
-    alt mode {
-      ast::val. { mo_val }
-      ast::alias(mut) { mo_alias(mut) }
-      ast::move. { mo_move }
-    }
-}
-
-
 // Type tests
 fn structurally_resolved_type(fcx: &@fn_ctxt, sp: &span, tp: ty::t) -> ty::t {
     alt ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, tp) {
@@ -282,8 +270,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
     tcx.ast_ty_to_ty_cache.insert(ast_ty, none::<ty::t>);
     fn ast_arg_to_arg(tcx: &ty::ctxt, getter: &ty_getter, arg: &ast::ty_arg)
        -> {mode: ty::mode, ty: ty::t} {
-        let ty_mode = ast_mode_to_mode(arg.node.mode);
-        ret {mode: ty_mode, ty: ast_ty_to_ty(tcx, getter, arg.node.ty)};
+        ret {mode: arg.node.mode, ty: ast_ty_to_ty(tcx, getter, arg.node.ty)};
     }
     fn ast_mt_to_mt(tcx: &ty::ctxt, getter: &ty_getter, mt: &ast::mt) ->
        ty::mt {
@@ -592,10 +579,9 @@ mod collect {
         ret tpt;
     }
     fn ty_of_arg(cx: @ctxt, a: &ast::arg) -> ty::arg {
-        let ty_mode = ast_mode_to_mode(a.mode);
         let f = bind getter(cx, _);
         let tt = ast_ty_to_ty(cx.tcx, f, a.ty);
-        ret {mode: ty_mode, ty: tt};
+        ret {mode: a.mode, ty: tt};
     }
     fn ty_of_method(cx: @ctxt, m: &@ast::method) -> ty::method {
         let get = bind getter(cx, _);
@@ -635,7 +621,7 @@ mod collect {
         for f: ast::obj_field in ob.fields {
             let g = bind getter(cx, _);
             let t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
-            t_inputs += [{mode: ty::mo_alias(false), ty: t_field}];
+            t_inputs += [{mode: ast::by_ref, ty: t_field}];
         }
 
         let t_fn =
@@ -745,7 +731,7 @@ mod collect {
                 let args: [arg] = [];
                 for va: ast::variant_arg in variant.node.args {
                     let arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
-                    args += [{mode: ty::mo_alias(false), ty: arg_ty}];
+                    args += [{mode: ast::by_ref, ty: arg_ty}];
                 }
                 let tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
@@ -1605,7 +1591,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                                            } else { "s were" }]);
             // HACK: build an arguments list with dummy arguments to
             // check against
-            let dummy = {mode: ty::mo_val, ty: ty::mk_bot(fcx.ccx.tcx)};
+            let dummy = {mode: ast::by_ref, ty: ty::mk_bot(fcx.ccx.tcx)};
             arg_tys = vec::init_elt(dummy, supplied_arg_count);
         }
 
@@ -2018,9 +2004,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         let convert = bind ast_ty_to_ty_crate_tyvar(fcx, _);
         let ty_of_arg =
             lambda (a: &ast::arg) -> ty::arg {
-                let ty_mode = ast_mode_to_mode(a.mode);
                 let tt = ast_ty_to_ty_crate_tyvar(fcx, a.ty);
-                ret {mode: ty_mode, ty: tt};
+                ret {mode: a.mode, ty: tt};
             };
         let fty =
             collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl, f.proto,
@@ -2292,8 +2277,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         // FIXME: These next three functions are largely ripped off from
         // similar ones in collect::.  Is there a better way to do this?
         fn ty_of_arg(ccx: @crate_ctxt, a: &ast::arg) -> ty::arg {
-            let ty_mode = ast_mode_to_mode(a.mode);
-            ret {mode: ty_mode, ty: ast_ty_to_ty_crate(ccx, a.ty)};
+            ret {mode: a.mode, ty: ast_ty_to_ty_crate(ccx, a.ty)};
         }
 
         fn ty_of_method(ccx: @crate_ctxt, m: &@ast::method) -> ty::method {

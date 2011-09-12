@@ -358,7 +358,7 @@ fn get_res_dtor(ccx: &@crate_ctxt, sp: &span, did: &ast::def_id,
     let params = csearch::get_type_param_count(ccx.sess.get_cstore(), did);
     let f_t =
         trans::type_of_fn(ccx, sp, ast::proto_fn,
-                          [{mode: ty::mo_alias(false), ty: inner_t}],
+                          [{mode: ast::by_ref, ty: inner_t}],
                           ty::mk_nil(ccx.tcx), params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.get_cstore(),

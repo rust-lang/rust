@@ -207,12 +207,9 @@ fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: ty::t,
     w.write_char('[');
     for arg: ty::arg in args {
         alt arg.mode {
-          ty::mo_alias(mut) {
-            w.write_char('&');
-            if mut { w.write_char('m'); }
-          }
-          ty::mo_move. { w.write_char('-'); }
-          ty::mo_val. { }
+          by_mut_ref. { w.write_char('&'); }
+          by_move. { w.write_char('-'); }
+          by_ref. { }
         }
         enc_ty(w, cx, arg.ty);
     }

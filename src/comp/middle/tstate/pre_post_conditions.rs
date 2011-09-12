@@ -311,7 +311,7 @@ fn forget_args_moved_in(fcx: &fn_ctxt, parent: &@expr, modes: &[ty::mode],
                         operands: &[@expr]) {
     let i = 0u;
     for mode: ty::mode in modes {
-        if mode == ty::mo_move {
+        if mode == by_move {
             forget_in_postcond(fcx, parent.id, operands[i].id);
         }
         i += 1u;

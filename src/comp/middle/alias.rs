@@ -180,7 +180,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
     for arg_t: ty::arg in arg_ts {
         let arg = args[i];
         let root = expr_root(cx.tcx, arg, false);
-        if arg_t.mode == ty::mo_alias(true) {
+        if arg_t.mode == ast::by_mut_ref {
             alt path_def(cx, arg) {
               some(def) {
                 let dnum = ast_util::def_id_of_def(def).node;
@@ -202,7 +202,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
                depends_on: deps(sc, root_var),
                mutable ok: valid,
                // FIXME kludge
-               mutable given_up: arg_t.mode == ty::mo_move}];
+               mutable given_up: arg_t.mode == ast::by_move}];
         i += 1u;
     }
     let f_may_close =
@@ -228,7 +228,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope)
           some(ty) {
             let i = 0u;
             for arg_t: ty::arg in arg_ts {
-                let mut_alias = arg_t.mode == ty::mo_alias(true);
+                let mut_alias = arg_t.mode == ast::by_mut_ref;
                 if i != j &&
                    ty_can_unsafely_include(cx, ty, arg_t.ty, mut_alias) &&
                    cant_copy(cx, r) {

@@ -290,7 +290,8 @@ fn mk_main(cx: &test_ctxt) -> @ast::item {
     let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
 
     let args_arg: ast::arg =
-        {mode: ast::val, ty: @args_ty, ident: "args", id: cx.next_node_id()};
+        {mode: ast::by_ref, ty: @args_ty, ident: "args",
+         id: cx.next_node_id()};
 
     let ret_ty = nospan(ast::ty_nil);
 
