@@ -26,6 +26,7 @@ type restrict =
     @{root_var: option::t<node_id>,
       node_id: node_id,
       ty: ty::t,
+      span: span,
       local_id: uint,
       bindings: [node_id],
       unsafe_ty: option::t<ty::t>,
@@ -169,6 +170,12 @@ fn cant_copy(cx: ctx, r: restrict) -> bool {
     if ty::type_allows_implicit_copy(cx.tcx, r.ty) {
         r.given_up = true;
         cx.copy_map.insert(r.node_id, ());
+        if copy_is_expensive(cx.tcx, r.ty) {
+            // FIXME better message
+            cx.tcx.sess.span_warn(r.span,
+                                  "inserting an implicit copy for type " +
+                                  util::ppaux::ty_to_str(cx.tcx, r.ty));
+        }
         ret false;
     } else { ret true; }
 }
@@ -201,6 +208,7 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
              @{root_var: root_var,
                node_id: arg_t.mode == ast::by_mut_ref ? 0 : arg.id,
                ty: arg_t.ty,
+               span: arg.span,
                local_id: cx.next_local,
                bindings: [arg.id],
                unsafe_ty: unsafe_t,
@@ -282,19 +290,17 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         let new_sc = sc;
         if vec::len(dnums) > 0u {
             let root_var = path_def_id(cx, root.ex);
-            new_sc =
-                @(*sc +
-                      [
-                       // FIXME need to use separate restrict for each binding
-                       @{root_var: root_var,
-                         node_id: 0,
-                         ty: ty::mk_int(cx.tcx),
-                         local_id: cx.next_local,
-                         bindings: dnums,
-                         unsafe_ty: inner_mut(root.ds),
-                         depends_on: deps(sc, root_var),
-                         mutable ok: valid,
-                         mutable given_up: false}]);
+            // FIXME need to use separate restrict for each binding
+            new_sc = @(*sc + [@{root_var: root_var,
+                                node_id: 0,
+                                ty: ty::mk_int(cx.tcx),
+                                span: a.pats[0].span,
+                                local_id: cx.next_local,
+                                bindings: dnums,
+                                unsafe_ty: inner_mut(root.ds),
+                                depends_on: deps(sc, root_var),
+                                mutable ok: valid,
+                                mutable given_up: false}]);
         }
         register_locals(cx, a.pats[0]);
         visit::visit_arm(a, new_sc, v);
@@ -332,10 +338,10 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
     let root_var = path_def_id(cx, root.ex);
     let new_sc =
         @{root_var: root_var,
-
           // FIXME reenable when trans knows how to copy for vars
           node_id: 0, // blk.node.id,
           ty: elt_t,
+          span: local.node.pat.span,
           local_id: cx.next_local,
           bindings: ast_util::pat_binding_ids(local.node.pat),
           unsafe_ty: unsafe,
@@ -514,6 +520,37 @@ fn def_is_local(d: ast::def, objfields_count: bool) -> bool {
           ast::def_obj_field(_, _) { objfields_count }
           _ { false }
         };
+}
+
+// Heuristic, somewhat random way to decide whether to warn when inserting an
+// implicit copy.
+fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
+    fn score_ty(tcx: ty::ctxt, ty: ty::t) -> uint {
+        ret alt ty::struct(tcx, ty) {
+          ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int. |
+          ty::ty_uint. | ty::ty_float. | ty::ty_machine(_) |
+          ty::ty_char. | ty::ty_type. | ty::ty_native(_) |
+          ty::ty_ptr(_) { 1u }
+          ty::ty_box(_) { 3u }
+          ty::ty_constr(t, _) | ty::ty_res(_, t, _) { score_ty(tcx, t) }
+          ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) |
+          ty::ty_obj(_) { 4u }
+          ty::ty_str. | ty::ty_vec(_) { 50u }
+          ty::ty_uniq(t) { 1u + score_ty(tcx, t) }
+          ty::ty_tag(_, ts) | ty::ty_tup(ts) {
+            let sum = 0u;
+            for t in ts { sum += score_ty(tcx, t); }
+            sum
+          }
+          ty::ty_rec(fs) {
+            let sum = 0u;
+            for f in fs { sum += score_ty(tcx, f.mt.ty); }
+            sum
+          }
+          ty::ty_param(_, _) { 5u }
+        };
+    }
+    ret score_ty(tcx, ty) > 8u;
 }
 
 // Local Variables:

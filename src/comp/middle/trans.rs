@@ -2604,8 +2604,8 @@ fn build_closure(cx: @block_ctxt, upvars: @[ast::def], copying: bool) ->
         closure_tys += [ty];
     }
 
-    ret build_environment(cx, cx.fcx.lltydescs, closure_tys, closure_vals,
-                          copying);
+    ret build_environment(cx, copy cx.fcx.lltydescs, closure_tys,
+                          closure_vals, copying);
 }
 
 // Return a pointer to the stored typarams in a closure.
