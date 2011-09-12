@@ -2636,7 +2636,6 @@ let rng2: ordered_range = @{low: 15, high: 17@};
 
 
 
-* Ref.Typestate::            The static system of predicate analysis.
 @node       Ref.Typestate
 @section    Ref.Typestate
 @c * Ref.Typestate::         The static system of predicate analysis.
