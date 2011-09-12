@@ -1212,8 +1212,8 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl, constrs: [@ast::constr]) {
     popen(s);
     fn print_arg(s: ps, x: ast::arg) {
         ibox(s, indent_unit);
-        word_space(s, x.ident + ":");
         print_alias(s, x.mode);
+        word_space(s, x.ident + ":");
         print_type(s, x.ty);
         end(s);
     }
@@ -1243,7 +1243,7 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
 
 fn print_alias(s: ps, m: ast::mode) {
     alt m {
-      ast::by_mut_ref. { word_space(s, "&mutable"); }
+      ast::by_mut_ref. { word(s.s, "&"); }
       ast::by_move. { word(s.s, "-"); }
       ast::by_ref. { }
     }
