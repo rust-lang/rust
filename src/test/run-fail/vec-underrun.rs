@@ -1,7 +1,6 @@
 // -*- rust -*-
 
 // error-pattern:bounds check
-// no-valgrind
 fn main() {
     let v: [int] = [10, 20];
     let x: int = 0;

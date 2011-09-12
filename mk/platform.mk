@@ -114,7 +114,7 @@ ifdef CFG_UNIXY
   endif
   ifdef CFG_VALGRIND
     CFG_VALGRIND += --leak-check=full \
-                    --error-exitcode=1 \
+                    --error-exitcode=100 \
                     --quiet --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp
   endif
 endif

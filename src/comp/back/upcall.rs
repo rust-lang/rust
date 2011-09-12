@@ -37,7 +37,8 @@ type upcalls =
      log_type: ValueRef,
      dynastack_mark: ValueRef,
      dynastack_alloc: ValueRef,
-     dynastack_free: ValueRef};
+     dynastack_free: ValueRef,
+     rust_personality: ValueRef};
 
 fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
                    taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
@@ -89,7 +90,9 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
           dynastack_alloc:
               d("dynastack_alloc_2", [T_size_t(), T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
-          dynastack_free: d("dynastack_free", [T_ptr(T_i8())], T_void())};
+          dynastack_free: d("dynastack_free", [T_ptr(T_i8())], T_void()),
+          rust_personality: dr("rust_personality", [], T_i32())
+         };
 }
 //
 // Local Variables:

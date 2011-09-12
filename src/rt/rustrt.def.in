@@ -28,7 +28,6 @@ get_task_id
 get_task_pointer
 get_task_trampoline
 get_time
-hack_allow_leaks
 last_os_error
 leak
 migrate_alloc
@@ -78,5 +77,6 @@ upcall_vec_grow
 upcall_vec_push
 upcall_log_type
 upcall_malloc
+upcall_rust_personality
 upcall_shared_malloc
 upcall_shared_free

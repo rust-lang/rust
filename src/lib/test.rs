@@ -26,7 +26,6 @@ export configure_test_task;
 export joinable;
 
 native "rust" mod rustrt {
-    fn hack_allow_leaks();
     fn sched_threads() -> uint;
 }
 
@@ -324,12 +323,6 @@ fn configure_test_task() {
     // If this task fails we don't want that failure to propagate to the
     // test runner or else we couldn't keep running tests
     task::unsupervise();
-
-    // FIXME (236): Hack supreme - unwinding doesn't work yet so if this
-    // task fails memory will not be freed correctly. This turns off the
-    // sanity checks in the runtime's memory region for the task, so that
-    // the test runner can continue.
-    rustrt::hack_allow_leaks();
 }
 
 // Local Variables:

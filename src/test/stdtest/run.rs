@@ -65,3 +65,10 @@ fn test_pipes() {
         ret buf;
     }
 }
+
+#[test]
+fn waitpid() {
+    let pid = run::spawn_process("false", [], 0, 0, 0);
+    let status = run::waitpid(pid);
+    assert status == 1;
+}

@@ -27,7 +27,8 @@ for t in os.listdir(run_pass):
         f = codecs.open(os.path.join(run_pass, t), "r", "utf8")
         s = f.read()
         if not ("xfail-test" in s or
-                "xfail-fast" in s):
+                "xfail-fast" in s or
+                "xfail-win32" in s):
             stage2_tests.append(t)
             if "main(args: [str])" in s:
                 take_args[t] = True

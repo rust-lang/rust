@@ -68,6 +68,21 @@ fn Invoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
                     });
 }
 
+fn FastInvoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
+              Then: BasicBlockRef, Catch: BasicBlockRef) -> ValueRef {
+    assert (!cx.terminated);
+    cx.terminated = true;
+    let v = str::as_buf("",
+                        {|buf|
+                            llvm::LLVMBuildInvoke(B(cx), Fn,
+                                                  vec::to_ptr(Args),
+                                                  vec::len(Args), Then,
+                                                  Catch, buf)
+                        });
+    llvm::LLVMSetInstructionCallConv(v, lib::llvm::LLVMFastCallConv);
+    ret v;
+}
+
 fn Unreachable(cx: @block_ctxt) -> ValueRef {
     assert (!cx.terminated);
     cx.terminated = true;
@@ -525,6 +540,29 @@ fn Trap(cx: @block_ctxt) -> ValueRef {
                         llvm::LLVMBuildCall(b, T, vec::to_ptr(Args),
                                             vec::len(Args), buf)
                     });
+}
+
+fn LandingPad(cx: @block_ctxt, Ty: TypeRef, PersFn: ValueRef,
+              NumClauses: uint) -> ValueRef {
+    assert (!cx.terminated);
+    ret str::as_buf("",
+                    {|buf|
+                        llvm::LLVMBuildLandingPad(B(cx),
+                                                  Ty,
+                                                  PersFn,
+                                                  NumClauses,
+                                                  buf)
+                    });
+}
+
+fn SetCleanup(_cx: @block_ctxt, LandingPad: ValueRef) {
+    llvm::LLVMSetCleanup(LandingPad, lib::llvm::True);
+}
+
+fn Resume(cx: @block_ctxt, Exn: ValueRef) -> ValueRef {
+    assert (!cx.terminated);
+    cx.terminated = true;
+    ret llvm::LLVMBuildResume(B(cx), Exn);
 }
 
 //

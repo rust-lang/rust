@@ -16,10 +16,7 @@ type test_props = {
     compile_flags: option::t<str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pp_exact: option::t<str>,
-    // FIXME: no-valgrind is a temporary directive until all of run-fail
-    // is valgrind-clean
-    no_valgrind: bool
+    pp_exact: option::t<str>
 };
 
 // Load any test directives embedded in the file
@@ -27,7 +24,6 @@ fn load_props(testfile: str) -> test_props {
     let error_patterns = [];
     let compile_flags = option::none;
     let pp_exact = option::none;
-    let no_valgrind = false;
     for each ln: str in iter_header(testfile) {
         alt parse_error_pattern(ln) {
           option::some(ep) { error_patterns += [ep]; }
@@ -41,16 +37,11 @@ fn load_props(testfile: str) -> test_props {
         if option::is_none(pp_exact) {
             pp_exact = parse_pp_exact(ln, testfile);
         }
-
-        if no_valgrind == false {
-            no_valgrind = parse_name_directive(ln, "no-valgrind");
-        }
     }
     ret {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
-        pp_exact: pp_exact,
-        no_valgrind: no_valgrind
+        pp_exact: pp_exact
     };
 }
 
@@ -59,11 +50,16 @@ fn is_test_ignored(config: config, testfile: str) -> bool {
     for each ln: str in iter_header(testfile) {
         // FIXME: Can't return or break from iterator
         found = found || parse_name_directive(ln, "xfail-test");
+        found = found || parse_name_directive(ln, xfail_target());
         if (config.mode == common::mode_pretty) {
             found = found || parse_name_directive(ln, "xfail-pretty");
         }
     }
     ret found;
+
+    fn xfail_target() -> str {
+        "xfail-" + std::os::target_os()
+    }
 }
 
 iter iter_header(testfile: str) -> str {

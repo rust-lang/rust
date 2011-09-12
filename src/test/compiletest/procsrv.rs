@@ -66,7 +66,7 @@ fn run(handle: handle, lib_path: str, prog: str, args: [str],
     writeclose(resp.infd, input);
     let output = readclose(resp.outfd);
     let errput = readclose(resp.errfd);
-    let status = os::waitpid(resp.pid);
+    let status = run::waitpid(resp.pid);
     ret {status: status, out: output, err: errput};
 }
 

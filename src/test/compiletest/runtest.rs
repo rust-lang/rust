@@ -51,17 +51,19 @@ fn run_rfail_test(cx: cx, props: test_props, testfile: str) {
 
     procres = exec_compiled_test(cx, props, testfile);
 
-    if procres.status == 0 {
-        fatal_procres("run-fail test didn't produce an error!", procres);
-    }
-
-    // This is the value valgrind returns on failure
-    // FIXME: Why is this value neither the value we pass to
-    // valgrind as --error-exitcode (1), nor the value we see as the
-    // exit code on the command-line (137)?
-    const valgrind_err: int = 9;
+    // The value our Makefile configures valgrind to return on failure
+    const valgrind_err: int = 100;
     if procres.status == valgrind_err {
         fatal_procres("run-fail test isn't valgrind-clean!", procres);
+    }
+
+    // The value the rust runtime returns on failure
+    const rust_err: int = 101;
+    if procres.status != rust_err {
+        fatal_procres(
+            #fmt("run-fail test produced the wrong error code: %d",
+                 procres.status),
+            procres);
     }
 
     check_error_patterns(props, testfile, procres);
@@ -251,10 +253,9 @@ fn make_exe_name(config: config, testfile: str) -> str {
     output_base_name(config, testfile) + os::exec_suffix()
 }
 
-fn make_run_args(config: config, props: test_props, testfile: str) ->
+fn make_run_args(config: config, _props: test_props, testfile: str) ->
    procargs {
-    let toolargs =
-        if !props.no_valgrind {
+    let toolargs = {
             // If we've got another tool to run under (valgrind),
             // then split apart its command
             let runtool =
@@ -263,7 +264,7 @@ fn make_run_args(config: config, props: test_props, testfile: str) ->
                   option::none. { option::none }
                 };
             split_maybe_args(runtool)
-        } else { [] };
+        };
 
     let args = toolargs + [make_exe_name(config, testfile)];
     ret {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};

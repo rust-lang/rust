@@ -224,13 +224,6 @@ debug_opaque(rust_task *task, type_desc *t, uint8_t *front)
     }
 }
 
-extern "C" CDECL void
-hack_allow_leaks(rust_task *task)
-{
-    LOG(task, stdlib, "hack_allow_leaks");
-    task->local_region.hack_allow_leaks();
-}
-
 struct rust_box {
     RUST_REFCOUNTED(rust_box)
 

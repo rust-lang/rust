@@ -6,6 +6,7 @@ export run_program;
 export start_program;
 export program_output;
 export spawn_process;
+export waitpid;
 
 native "rust" mod rustrt {
     fn rust_run_program(argv: *sbuf, in_fd: int, out_fd: int, err_fd: int) ->
@@ -33,7 +34,7 @@ fn spawn_process(prog: str, args: [str], in_fd: int, out_fd: int, err_fd: int)
 }
 
 fn run_program(prog: str, args: [str]) -> int {
-    ret os::waitpid(spawn_process(prog, args, 0, 0, 0));
+    ret waitpid(spawn_process(prog, args, 0, 0, 0));
 }
 
 type program =
@@ -87,7 +88,7 @@ fn start_program(prog: str, args: [str]) -> @program_res {
             if finished { ret 0; }
             finished = true;
             self.close_input();
-            ret os::waitpid(pid);
+            ret waitpid(pid);
         }
         fn destroy() {
             self.finish();
@@ -117,6 +118,44 @@ fn program_output(prog: str, args: [str]) ->
          out: read_all(pr.output()),
          err: read_all(pr.err())};
 }
+
+/* Returns an exit status */
+#[cfg(target_os = "win32")]
+fn waitpid(pid: int) -> int {
+    os::waitpid(pid)
+}
+
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+fn waitpid(pid: int) -> int {
+    #[cfg(target_os = "linux")]
+    fn WIFEXITED(status: int) -> bool {
+        (status & 0xff) == 0
+    }
+
+    #[cfg(target_os = "macos")]
+    fn WIFEXITED(status: int) -> bool {
+        (status & 0x7f) == 0
+    }
+
+    #[cfg(target_os = "linux")]
+    fn WEXITSTATUS(status: int) -> int {
+        (status >> 8) & 0xff
+    }
+
+    #[cfg(target_os = "macos")]
+    fn WEXITSTATUS(status: int) -> int {
+        status >> 8
+    }
+
+    let status = os::waitpid(pid);
+    ret if WIFEXITED(status) {
+        WEXITSTATUS(status)
+    } else {
+        1
+    };
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

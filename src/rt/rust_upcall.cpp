@@ -1,6 +1,8 @@
 #include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_upcall.h"
+#include <stdint.h>
+#include <unwind.h>
 
 // Upcalls.
 
@@ -188,6 +190,26 @@ upcall_dynastack_alloc_2(rust_task *task, size_t sz, type_desc *ty) {
 extern "C" CDECL void
 upcall_dynastack_free(rust_task *task, void *ptr) {
     return task->dynastack.free(ptr);
+}
+
+extern "C" _Unwind_Reason_Code
+__gxx_personality_v0(int version,
+                     _Unwind_Action actions,
+                     uint64_t exception_class,
+                     _Unwind_Exception *ue_header,
+                     _Unwind_Context *context);
+
+extern "C" _Unwind_Reason_Code
+upcall_rust_personality(int version,
+                        _Unwind_Action actions,
+                        uint64_t exception_class,
+                        _Unwind_Exception *ue_header,
+                        _Unwind_Context *context) {
+    return __gxx_personality_v0(version,
+                                actions,
+                                exception_class,
+                                ue_header,
+                                context);
 }
 
 //

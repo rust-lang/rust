@@ -3715,7 +3715,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
        for the call itself is unreachable. */
     let retval = C_nil();
     if !is_terminated(bcx) {
-        FastCall(bcx, faddr, llargs);
+        bcx = invoke_fastcall(bcx, faddr, llargs).bcx;
         alt lliterbody {
           none. {
             if !ty::type_is_nil(bcx_tcx(cx), ret_ty) {
@@ -3746,6 +3746,67 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         bcx = next_cx;
     }
     ret rslt(bcx, retval);
+}
+
+fn invoke(bcx: @block_ctxt, llfn: ValueRef,
+          llargs: [ValueRef]) -> result {
+    ret invoke_(bcx, llfn, llargs, Invoke);
+}
+
+fn invoke_fastcall(bcx: @block_ctxt, llfn: ValueRef,
+                   llargs: [ValueRef]) -> result {
+    ret invoke_(bcx, llfn, llargs, FastInvoke);
+}
+
+fn invoke_(bcx: @block_ctxt, llfn: ValueRef,
+           llargs: [ValueRef],
+           invoker: fn(@block_ctxt, ValueRef, [ValueRef],
+                       BasicBlockRef, BasicBlockRef) -> ValueRef) -> result {
+    // FIXME: May be worth turning this into a plain call when there are no
+    // cleanups to run
+    let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
+    let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
+    let retval = invoker(bcx, llfn, llargs,
+                         normal_bcx.llbb,
+                         unwind_bcx.llbb);
+    trans_landing_pad(unwind_bcx);
+    ret rslt(normal_bcx, retval);
+}
+
+fn trans_landing_pad(bcx: @block_ctxt) {
+    // The landing pad return type (the type being propagated). Not sure what
+    // this represents but it's determined by the personality function and
+    // this is what the EH proposal example uses.
+    let llretty = T_struct([T_ptr(T_i8()), T_i32()]);
+    // The exception handling personality function. This is the C++
+    // personality function __gxx_personality_v0, wrapped in our naming
+    // convention.
+    let personality = bcx_ccx(bcx).upcalls.rust_personality;
+    // The only landing pad clause will be 'cleanup'
+    let clauses = 1u;
+    let llpad = LandingPad(bcx, llretty, personality, clauses);
+    // The landing pad result is used both for modifying the landing pad
+    // in the C API and as the exception value
+    let llretval = llpad;
+    // The landing pad block is a cleanup
+    SetCleanup(bcx, llpad);
+
+    // FIXME: This seems like a very naive and redundant way to generate the
+    // landing pads, as we're re-generating all in-scope cleanups for each
+    // function call. Probably good optimization opportunities here.
+    let bcx = bcx;
+    let scope_cx = bcx;
+    while true {
+        scope_cx = find_scope_cx(scope_cx);
+        bcx = trans_block_cleanups(bcx, scope_cx);
+        scope_cx = alt scope_cx.parent {
+          parent_some(b) { b }
+          parent_none. { break; }
+        };
+    }
+
+    // Continue unwinding
+    Resume(bcx, llretval);
 }
 
 fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
@@ -4211,7 +4272,7 @@ fn trans_fail_value(cx: @block_ctxt, sp_opt: option::t<span>,
     let V_str = PointerCast(cx, V_fail_str, T_ptr(T_i8()));
     V_filename = PointerCast(cx, V_filename, T_ptr(T_i8()));
     let args = [cx.fcx.lltaskptr, V_str, V_filename, C_int(V_line)];
-    Call(cx, bcx_ccx(cx).upcalls._fail, args);
+    let cx = invoke(cx, bcx_ccx(cx).upcalls._fail, args).bcx;
     Unreachable(cx);
     ret rslt(cx, C_nil());
 }
@@ -4247,7 +4308,7 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
         llargs += [r.val];
       }
     }
-    FastCall(bcx, llcallee, llargs);
+    bcx = invoke_fastcall(bcx, llcallee, llargs).bcx;
     bcx = trans_block_cleanups(bcx, cx);
     let next_cx = new_sub_block_ctxt(in_cx, "next");
     Br(bcx, next_cx.llbb);
@@ -4379,7 +4440,9 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> result {
     // Make a note to drop this slot on the way out.
     add_clean(bcx, llptr, ty);
 
-    if must_zero(local) { bcx = zero_alloca(bcx, llptr, ty).bcx; }
+    if must_zero(bcx_ccx(bcx), local) {
+        bcx = zero_alloca(bcx, llptr, ty).bcx;
+    }
 
     alt local.node.init {
       some(init) {
@@ -4405,35 +4468,38 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> result {
                                         bcx.fcx.lllocals, false);
     ret rslt(bcx, llptr);
 
-    fn must_zero(local: @ast::local) -> bool {
+    fn must_zero(ccx: @crate_ctxt, local: @ast::local) -> bool {
         alt local.node.init {
-          some(init) { might_not_init(init.expr) }
+          some(init) { might_not_init(ccx, init.expr) }
           none. { true }
         }
     }
 
-    fn might_not_init(expr: @ast::expr) -> bool {
-        type env = @mutable bool;
-        let e = @mutable false;
-        // FIXME: Probably also need to account for expressions that
-        // fail but since we don't unwind yet, it doesn't seem to be a
-        // problem
+    fn might_not_init(ccx: @crate_ctxt, expr: @ast::expr) -> bool {
+        type env = {mutable mightnt: bool,
+                    ccx: @crate_ctxt};
+        let e = {mutable mightnt: false,
+                 ccx: ccx};
+        fn visit_expr(ex: @ast::expr, e: env, v: vt<env>) {
+            let might_not_init = alt ex.node {
+              ast::expr_ret(_) { true }
+              ast::expr_break. { true }
+              ast::expr_cont. { true }
+              ast::expr_call(_, _) { true }
+              _ {
+                let ex_ty = ty::expr_ty(e.ccx.tcx, ex);
+                ty::type_is_bot(e.ccx.tcx, ex_ty)
+              }
+            };
+            if might_not_init {
+                e.mightnt = true;
+            } else { visit::visit_expr(ex, e, v); }
+        }
         let visitor =
-            visit::mk_vt(@{visit_expr:
-                               fn (ex: @ast::expr, e: env, v: vt<env>) {
-                                   let might_not_init =
-                                       alt ex.node {
-                                         ast::expr_ret(_) { true }
-                                         ast::expr_break. { true }
-                                         ast::expr_cont. { true }
-                                         _ { false }
-                                       };
-                                   if might_not_init {
-                                       *e = true;
-                                   } else { visit::visit_expr(ex, e, v); }
-                               } with *visit::default_visitor()});
+            visit::mk_vt(@{visit_expr: visit_expr
+                           with *visit::default_visitor()});
         visitor.visit_expr(expr, e, visitor);
-        ret *e;
+        ret e.mightnt;
     }
 }
 

@@ -25,6 +25,7 @@ LLVMAddAttribute
 LLVMAddBasicAliasAnalysisPass
 LLVMAddCFGSimplificationPass
 LLVMAddCase
+LLVMAddClause
 LLVMAddConstantMergePass
 LLVMAddConstantPropagationPass
 LLVMAddCorrelatedValuePropagationPass
@@ -122,6 +123,7 @@ LLVMBuildIntToPtr
 LLVMBuildInvoke
 LLVMBuildIsNotNull
 LLVMBuildIsNull
+LLVMBuildLandingPad
 LLVMBuildLShr
 LLVMBuildLoad
 LLVMBuildMalloc
@@ -141,6 +143,7 @@ LLVMBuildPhi
 LLVMBuildPointerCast
 LLVMBuildPtrDiff
 LLVMBuildPtrToInt
+LLVMBuildResume
 LLVMBuildRet
 LLVMBuildRetVoid
 LLVMBuildSDiv
@@ -548,6 +551,7 @@ LLVMRunPassManager
 LLVMRunStaticConstructors
 LLVMRunStaticDestructors
 LLVMSetAlignment
+LLVMSetCleanup
 LLVMSetCurrentDebugLocation
 LLVMSetDataLayout
 LLVMSetFunctionCallConv

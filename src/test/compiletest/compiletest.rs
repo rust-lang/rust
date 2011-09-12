@@ -110,8 +110,9 @@ fn run_tests(config: config) {
     let opts = test_opts(config);
     let cx = {config: config, procsrv: procsrv::mk()};
     let tests = make_tests(cx);
-    test::run_tests_console_(opts, tests.tests, tests.to_task);
+    let res = test::run_tests_console_(opts, tests.tests, tests.to_task);
     procsrv::close(cx.procsrv);
+    if !res { fail "Some tests failed"; }
 }
 
 fn test_opts(config: config) -> test::test_opts {
