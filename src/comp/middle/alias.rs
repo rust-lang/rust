@@ -13,18 +13,17 @@ import std::option::{some, none, is_none};
 // whether aliases are used in a safe way.
 
 tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
+tag copied { not_allowed; copied; not_copied; }
 
-type restrict =
-    @{root_var: option::t<node_id>,
-      node_id: node_id,
-      ty: ty::t,
-      span: span,
-      local_id: uint,
-      bindings: [node_id],
-      unsafe_tys: [ty::t],
-      depends_on: [uint],
-      mutable ok: valid,
-      mutable given_up: bool};
+type restrict = @{root_var: option::t<node_id>,
+                  node_id: node_id,
+                  span: span,
+                  local_id: uint,
+                  binding: option::t<node_id>,
+                  unsafe_tys: [ty::t],
+                  depends_on: [uint],
+                  mutable ok: valid,
+                  mutable copied: copied};
 
 type scope = @[restrict];
 
@@ -143,19 +142,19 @@ fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
 }
 
 fn cant_copy(cx: ctx, r: restrict) -> bool {
-    if r.given_up { ret false; }
-    // FIXME alt contexts copying not supported yet
-    if r.node_id == 0 { ret true; }
-
-    // FIXME warn when copy is expensive
-    if ty::type_allows_implicit_copy(cx.tcx, r.ty) {
-        r.given_up = true;
+    alt r.copied {
+      not_allowed. { ret true; }
+      copied. { ret false; }
+      not_copied. {}
+    }
+    let ty = ty::node_id_to_type(cx.tcx, r.node_id);
+    if ty::type_allows_implicit_copy(cx.tcx, ty) {
+        r.copied = copied;
         cx.copy_map.insert(r.node_id, ());
-        if copy_is_expensive(cx.tcx, r.ty) {
-            // FIXME better message
+        if copy_is_expensive(cx.tcx, ty) {
             cx.tcx.sess.span_warn(r.span,
                                   "inserting an implicit copy for type " +
-                                  util::ppaux::ty_to_str(cx.tcx, r.ty));
+                                  util::ppaux::ty_to_str(cx.tcx, ty));
         }
         ret false;
     } else { ret true; }
@@ -182,16 +181,18 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
         }
         let root_var = path_def_id(cx, root.ex);
         restricts += [@{root_var: root_var,
-                        // FIXME kludge
-                        node_id: arg_t.mode == ast::by_mut_ref ? 0 : arg.id,
-                        ty: arg_t.ty,
+                        node_id: arg.id,
                         span: arg.span,
                         local_id: cx.next_local,
-                        bindings: [arg.id],
+                        binding: none::<node_id>,
                         unsafe_tys: inner_mut(root.ds),
                         depends_on: deps(sc, root_var),
                         mutable ok: valid,
-                        mutable given_up: arg_t.mode == ast::by_move}];
+                        mutable copied: alt arg_t.mode {
+                          ast::by_move. { copied }
+                          ast::by_ref. { not_copied }
+                          ast::by_mut_ref. { not_allowed }
+                        }}];
         i += 1u;
     }
     let f_may_close =
@@ -261,7 +262,6 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
     v.visit_expr(input, sc, v);
     let root = expr_root(cx.tcx, input, true);
     for a: ast::arm in arms {
-        // FIXME handle other | patterns
         let new_sc = *sc;
         let root_var = path_def_id(cx, root.ex);
         let pat_id_map = ast_util::pat_id_map(a.pats[0]);
@@ -286,14 +286,13 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         for info in binding_info {
             new_sc += [@{root_var: root_var,
                          node_id: info.id,
-                         ty: ty::node_id_to_type(cx.tcx, info.id),
                          span: info.span,
                          local_id: cx.next_local,
-                         bindings: [info.id],
+                         binding: some(info.id),
                          unsafe_tys: info.unsafe,
                          depends_on: deps(sc, root_var),
                          mutable ok: valid,
-                         mutable given_up: false}];
+                         mutable copied: not_copied}];
         }
         register_locals(cx, a.pats[0]);
         visit::visit_arm(a, @new_sc, v);
@@ -333,14 +332,13 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
     for proot in *pattern_roots(cx.tcx, ext_ds, local.node.pat) {
         new_sc += [@{root_var: root_var,
                      node_id: proot.id,
-                     ty: ty::node_id_to_type(cx.tcx, proot.id),
                      span: proot.span,
                      local_id: cx.next_local,
-                     bindings: [proot.id],
+                     binding: some(proot.id),
                      unsafe_tys: inner_mut(proot.ds),
                      depends_on: deps(sc, root_var),
                      mutable ok: valid,
-                     mutable given_up: false}];
+                     mutable copied: not_copied}];
     }
     register_locals(cx, local.node.pat);
     visit::visit_block(blk, @new_sc, v);
@@ -362,7 +360,7 @@ fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
                     r.ok = val_taken(ex.span, p);
                 }
             }
-        } else if vec::member(my_defnum, r.bindings) {
+        } else if r.binding == some(my_defnum) {
             test_scope(cx, sc, r, p);
         }
     }
@@ -417,7 +415,7 @@ fn deps(sc: scope, root: option::t<node_id>) -> [uint] {
       some(dn) {
         let i = 0u;
         for r: restrict in *sc {
-            if vec::member(dn, r.bindings) { result += [i]; }
+            if r.binding == some(dn) { result += [i]; }
             i += 1u;
         }
       }
