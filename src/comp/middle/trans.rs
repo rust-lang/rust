@@ -3739,11 +3739,11 @@ fn invoke_(bcx: @block_ctxt, llfn: ValueRef,
 
 fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
     let scope_bcx = find_scope_cx(bcx);
-    if scope_bcx.cleanups_dirty {
+    if scope_bcx.need_new_lpad {
         let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
         let lpadbb = trans_landing_pad(unwind_bcx);
         scope_bcx.lpad = some(lpadbb);
-        scope_bcx.cleanups_dirty = false;
+        scope_bcx.need_new_lpad = false;
     }
     assert option::is_some(scope_bcx.lpad);
     ret option::get(scope_bcx.lpad);
@@ -4533,7 +4533,7 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
           parent: parent,
           kind: kind,
           mutable cleanups: [],
-          mutable cleanups_dirty: true,
+          mutable need_new_lpad: true,
           mutable lpad: option::none,
           sp: cx.sp,
           fcx: cx};
@@ -4569,7 +4569,7 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
           parent: parent_none,
           kind: NON_SCOPE_BLOCK,
           mutable cleanups: [],
-          mutable cleanups_dirty: true,
+          mutable need_new_lpad: true,
           mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
@@ -4637,7 +4637,7 @@ fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
-          mutable cleanups_dirty: true,
+          mutable need_new_lpad: true,
           mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
@@ -4649,7 +4649,7 @@ fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
-          mutable cleanups_dirty: true,
+          mutable need_new_lpad: true,
           mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
