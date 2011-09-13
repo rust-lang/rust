@@ -802,7 +802,7 @@ fn print_expr(s: ps, expr: @ast::expr) {
         pclose(s);
       }
       ast::expr_call(func, args) {
-        print_expr_parens_if_unary(s, func);
+        print_expr_parens_if_unary_or_ret(s, func);
         popen(s);
         commasep_exprs(s, inconsistent, args);
         pclose(s);
@@ -826,18 +826,18 @@ fn print_expr(s: ps, expr: @ast::expr) {
       }
       ast::expr_binary(op, lhs, rhs) {
         let prec = operator_prec(op);
-        print_maybe_parens(s, lhs, prec);
+        print_op_maybe_parens(s, lhs, prec);
         space(s.s);
         word_space(s, ast_util::binop_to_str(op));
-        print_maybe_parens(s, rhs, prec + 1);
+        print_op_maybe_parens(s, rhs, prec + 1);
       }
       ast::expr_unary(op, expr) {
         word(s.s, ast_util::unop_to_str(op));
-        print_maybe_parens(s, expr, parse::parser::unop_prec);
+        print_op_maybe_parens(s, expr, parse::parser::unop_prec);
       }
       ast::expr_lit(lit) { print_literal(s, lit); }
       ast::expr_cast(expr, ty) {
-        print_maybe_parens(s, expr, parse::parser::as_prec);
+        print_op_maybe_parens(s, expr, parse::parser::as_prec);
         space(s.s);
         word_space(s, "as");
         print_type(s, ty);
@@ -965,12 +965,12 @@ fn print_expr(s: ps, expr: @ast::expr) {
         print_expr(s, rhs);
       }
       ast::expr_field(expr, id) {
-        print_expr_parens_if_unary(s, expr);
+        print_expr_parens_if_unary_or_ret(s, expr);
         word(s.s, ".");
         word(s.s, id);
       }
       ast::expr_index(expr, index) {
-        print_expr_parens_if_unary(s, expr);
+        print_expr_parens_if_unary_or_ret(s, expr);
         word(s.s, "[");
         print_expr(s, index);
         word(s.s, "]");
@@ -1072,8 +1072,12 @@ fn print_expr(s: ps, expr: @ast::expr) {
     end(s);
 }
 
-fn print_expr_parens_if_unary(s: ps, ex: @ast::expr) {
-    let parens = alt ex.node { ast::expr_unary(_, _) { true } _ { false } };
+fn print_expr_parens_if_unary_or_ret(s: ps, ex: @ast::expr) {
+    let parens = alt ex.node {
+      ast::expr_fail(_) | ast::expr_ret(_) | ast::expr_put(_) |
+      ast::expr_unary(_, _) { true }
+      _ { false }
+    };
     if parens { popen(s); }
     print_expr(s, ex);
     if parens { pclose(s); }
@@ -1368,7 +1372,7 @@ fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
     }
 }
 
-fn print_maybe_parens(s: ps, expr: @ast::expr, outer_prec: int) {
+fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: int) {
     let add_them = need_parens(expr, outer_prec);
     if add_them { popen(s); }
     print_expr(s, expr);
