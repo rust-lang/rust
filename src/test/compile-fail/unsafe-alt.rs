@@ -1,8 +1,8 @@
 // error-pattern:invalidate reference i
 
-tag foo { left(int); right(bool); }
+tag foo { left({mutable x: int}); right(bool); }
 
 fn main() {
-    let x = left(10);
+    let x = left({mutable x: 10});
     alt x { left(i) { x = right(false); log i; } _ { } }
 }

@@ -45,6 +45,7 @@ export expr_ty_params_and_ty;
 export fold_ty;
 export field;
 export field_idx;
+export get_field;
 export fm_general;
 export get_element_type;
 export hash_ty;
@@ -1678,6 +1679,16 @@ fn field_idx(sess: session::session, sp: span, id: ast::ident,
     let i: uint = 0u;
     for f: field in fields { if str::eq(f.ident, id) { ret i; } i += 1u; }
     sess.span_fatal(sp, "unknown field '" + id + "' of record");
+}
+
+fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
+    alt struct(tcx, rec_ty) {
+      ty_rec(fields) {
+        alt vec::find({|f| str::eq(f.ident, id) }, fields) {
+            some(f) { ret f; }
+        }
+      }
+    }
 }
 
 fn method_idx(sess: session::session, sp: span, id: ast::ident,

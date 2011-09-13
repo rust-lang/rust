@@ -1,7 +1,7 @@
 
 import syntax::{ast, ast_util};
 import ast::{ident, fn_ident, node_id, def_id};
-import mut::{expr_root, mut_field, inner_mut};
+import mut::{expr_root, mut_field, deref, field, index, unbox};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
@@ -21,7 +21,7 @@ type restrict =
       span: span,
       local_id: uint,
       bindings: [node_id],
-      unsafe_ty: option::t<ty::t>,
+      unsafe_tys: [ty::t],
       depends_on: [uint],
       mutable ok: valid,
       mutable given_up: bool};
@@ -192,21 +192,17 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
             }
         }
         let root_var = path_def_id(cx, root.ex);
-        let unsafe_t =
-            alt inner_mut(root.ds) { some(t) { some(t) } _ { none } };
-        restricts +=
-            [
-             // FIXME kludge
-             @{root_var: root_var,
-               node_id: arg_t.mode == ast::by_mut_ref ? 0 : arg.id,
-               ty: arg_t.ty,
-               span: arg.span,
-               local_id: cx.next_local,
-               bindings: [arg.id],
-               unsafe_ty: unsafe_t,
-               depends_on: deps(sc, root_var),
-               mutable ok: valid,
-               mutable given_up: arg_t.mode == ast::by_move}];
+        restricts += [@{root_var: root_var,
+                        // FIXME kludge
+                        node_id: arg_t.mode == ast::by_mut_ref ? 0 : arg.id,
+                        ty: arg_t.ty,
+                        span: arg.span,
+                        local_id: cx.next_local,
+                        bindings: [arg.id],
+                        unsafe_tys: inner_mut(root.ds),
+                        depends_on: deps(sc, root_var),
+                        mutable ok: valid,
+                        mutable given_up: arg_t.mode == ast::by_move}];
         i += 1u;
     }
     let f_may_close =
@@ -217,7 +213,7 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
     if f_may_close {
         let i = 0u;
         for r in restricts {
-            if !option::is_none(r.unsafe_ty) && cant_copy(cx, r) {
+            if vec::len(r.unsafe_tys) > 0u && cant_copy(cx, r) {
                 cx.tcx.sess.span_err(f.span,
                                      #fmt["function may alias with argument \
                                            %u, which is not immutably rooted",
@@ -228,8 +224,7 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
     }
     let j = 0u;
     for r in restricts {
-        alt r.unsafe_ty {
-          some(ty) {
+        for ty in r.unsafe_tys {
             let i = 0u;
             for arg_t: ty::arg in arg_ts {
                 let mut_alias = arg_t.mode == ast::by_mut_ref;
@@ -244,8 +239,6 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
                 }
                 i += 1u;
             }
-          }
-          _ { }
         }
         j += 1u;
     }
@@ -279,24 +272,42 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
     v.visit_expr(input, sc, v);
     let root = expr_root(cx.tcx, input, true);
     for a: ast::arm in arms {
-        let dnums = ast_util::pat_binding_ids(a.pats[0]);
-        let new_sc = sc;
-        if vec::len(dnums) > 0u {
-            let root_var = path_def_id(cx, root.ex);
-            // FIXME need to use separate restrict for each binding
-            new_sc = @(*sc + [@{root_var: root_var,
-                                node_id: 0,
-                                ty: ty::mk_int(cx.tcx),
-                                span: a.pats[0].span,
-                                local_id: cx.next_local,
-                                bindings: dnums,
-                                unsafe_ty: inner_mut(root.ds),
-                                depends_on: deps(sc, root_var),
-                                mutable ok: valid,
-                                mutable given_up: false}]);
+        // FIXME handle other | patterns
+        let new_sc = *sc;
+        let root_var = path_def_id(cx, root.ex);
+        let pat_id_map = ast_util::pat_id_map(a.pats[0]);
+        type info = {id: node_id, mutable unsafe: [ty::t], span: span};
+        let binding_info: [info] = [];
+        for pat in a.pats {
+            for proot in *pattern_roots(cx.tcx, root.ds, pat) {
+                let canon_id = pat_id_map.get(proot.name);
+                // FIXME I wanted to use a block, but that hit a
+                // typestate bug.
+                fn match(x: info, canon: node_id) -> bool { x.id == canon }
+                alt vec::find(bind match(_, canon_id), binding_info) {
+                  some(s) { s.unsafe += inner_mut(proot.ds); }
+                  none. {
+                      binding_info += [{id: canon_id,
+                                        mutable unsafe: inner_mut(proot.ds),
+                                        span: proot.span}];
+                  }
+                }
+            }
+        }
+        for info in binding_info {
+            new_sc += [@{root_var: root_var,
+                         node_id: info.id,
+                         ty: ty::node_id_to_type(cx.tcx, info.id),
+                         span: info.span,
+                         local_id: cx.next_local,
+                         bindings: [info.id],
+                         unsafe_tys: info.unsafe,
+                         depends_on: deps(sc, root_var),
+                         mutable ok: valid,
+                         mutable given_up: false}];
         }
         register_locals(cx, a.pats[0]);
-        visit::visit_arm(a, new_sc, v);
+        visit::visit_arm(a, @new_sc, v);
     }
 }
 
@@ -323,7 +334,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
     let elt_t;
     alt ty::struct(cx.tcx, seq_t) {
       ty::ty_vec(mt) {
-        if mt.mut != ast::imm { unsafe = some(seq_t); }
+        if mt.mut != ast::imm { unsafe = [seq_t]; }
         elt_t = mt.ty;
       }
       ty::ty_str. { elt_t = ty::mk_mach(cx.tcx, ast::ty_u8); }
@@ -337,7 +348,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
           span: local.node.pat.span,
           local_id: cx.next_local,
           bindings: ast_util::pat_binding_ids(local.node.pat),
-          unsafe_ty: unsafe,
+          unsafe_tys: unsafe,
           depends_on: deps(sc, root_var),
           mutable ok: valid,
           mutable given_up: false};
@@ -354,16 +365,12 @@ fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
         alt cx.local_map.find(my_defnum) { some(local(id)) { id } _ { 0u } };
     let var_t = ty::expr_ty(cx.tcx, ex);
     for r: restrict in *sc {
-
         // excludes variables introduced since the alias was made
         if my_local_id < r.local_id {
-            alt r.unsafe_ty {
-              some(ty) {
+            for ty in r.unsafe_tys {
                 if ty_can_unsafely_include(cx, ty, var_t, assign) {
                     r.ok = val_taken(ex.span, p);
                 }
-              }
-              _ { }
             }
         } else if vec::member(my_defnum, r.bindings) {
             test_scope(cx, sc, r, p);
@@ -544,6 +551,49 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
         };
     }
     ret score_ty(tcx, ty) > 8u;
+}
+
+type pattern_root = {id: node_id, name: ident, ds: @[deref], span: span};
+
+fn pattern_roots(tcx: ty::ctxt, base: @[deref], pat: @ast::pat)
+    -> @[pattern_root] {
+    fn walk(tcx: ty::ctxt, base: [deref], pat: @ast::pat,
+            &set: [pattern_root]) {
+        alt pat.node {
+          ast::pat_wild. | ast::pat_lit(_) {}
+          ast::pat_bind(nm) {
+            set += [{id: pat.id, name: nm, ds: @base, span: pat.span}];
+          }
+          ast::pat_tag(_, ps) | ast::pat_tup(ps) {
+            let base = base + [@{mut: false, kind: field,
+                                 outer_t: ty::node_id_to_type(tcx, pat.id)}];
+            for p in ps { walk(tcx, base, p, set); }
+          }
+          ast::pat_rec(fs, _) {
+            let ty = ty::node_id_to_type(tcx, pat.id);
+            for f in fs {
+                let mut = ty::get_field(tcx, ty, f.ident).mt.mut != ast::imm;
+                let base = base + [@{mut: mut, kind: field, outer_t: ty}];
+                walk(tcx, base, f.pat, set);
+            }
+          }
+          ast::pat_box(p) {
+            let ty = ty::node_id_to_type(tcx, pat.id);
+            let mut = alt ty::struct(tcx, ty) {
+              ty::ty_box(mt) { mt.mut != ast::imm }
+            };
+            walk(tcx, base + [@{mut: mut, kind: unbox, outer_t: ty}], p, set);
+          }
+        }
+    }
+    let set = [];
+    walk(tcx, *base, pat, set);
+    ret @set;
+}
+
+fn inner_mut(ds: @[deref]) -> [ty::t] {
+    for d: deref in *ds { if d.mut { ret [d.outer_t]; } }
+    ret [];
 }
 
 // Local Variables:

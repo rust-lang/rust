@@ -110,11 +110,6 @@ fn mut_field(ds: @[deref]) -> bool {
     ret false;
 }
 
-fn inner_mut(ds: @[deref]) -> option::t<ty::t> {
-    for d: deref in *ds { if d.mut { ret some(d.outer_t); } }
-    ret none;
-}
-
 // Actual mut-checking pass
 
 type mut_map = std::map::hashmap<node_id, ()>;

@@ -471,21 +471,36 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
                      ids: ast_util::pat_id_map) -> bool {
     let our_block = bcx.llbb as uint;
     let success = true;
-    for each item: @{key: ast::ident, val: ast::node_id} in ids.items() {
+    for each @{key: name, val: node_id} in ids.items() {
         let llbbs = [];
         let vals = [];
         for ex: exit_node in map {
             if ex.to as uint == our_block {
-                alt assoc(item.key, ex.bound) {
+                alt assoc(name, ex.bound) {
                   some(val) { llbbs += [ex.from]; vals += [val]; }
                   none. { }
                 }
             }
         }
         if vec::len(vals) > 0u {
-            let phi = Phi(bcx, val_ty(vals[0]), vals, llbbs);
-            bcx.fcx.lllocals.insert(item.val, phi);
+            let local = Phi(bcx, val_ty(vals[0]), vals, llbbs);
+            bcx.fcx.lllocals.insert(node_id, local);
         } else { success = false; }
+    }
+    if success {
+        // Copy references that the alias analysis considered unsafe
+        for each @{val: node_id, _} in ids.items() {
+            if bcx_ccx(bcx).copy_map.contains_key(node_id) {
+                let local = bcx.fcx.lllocals.get(node_id);
+                let e_ty = ty::node_id_to_type(bcx_tcx(bcx), node_id);
+                let {bcx: abcx, val: alloc} = trans::alloc_ty(bcx, e_ty);
+                bcx = trans::copy_val(abcx, trans::INIT, alloc,
+                                      load_if_immediate(abcx, local, e_ty),
+                                      e_ty);
+                add_clean(bcx, alloc, e_ty);
+                bcx.fcx.lllocals.insert(node_id, alloc);
+            }
+        }
     }
     ret success;
 }
