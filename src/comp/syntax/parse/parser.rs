@@ -1571,8 +1571,42 @@ fn parse_source_stmt(p: parser) -> @ast::stmt {
     }
 }
 
+fn stmt_is_expr(stmt: @ast::stmt) -> bool {
+    fn expr_is_expr(e: @ast::expr) -> bool {
+        alt e.node {
+          ast::expr_if(_, th, els) | ast::expr_if_check(_, th, els) {
+            if option::is_none(els) { false }
+            else { !option::is_none(th.node.expr) ||
+                       expr_is_expr(option::get(els)) }
+          }
+          ast::expr_alt(_, arms) {
+            let found_expr = false;
+            for arm in arms {
+                if !option::is_none(arm.body.node.expr) { found_expr = true; }
+            }
+            found_expr
+          }
+          ast::expr_block(blk) | ast::expr_while(_, blk) |
+          ast::expr_for(_, _, blk) | ast::expr_for_each(_, _, blk) |
+          ast::expr_do_while(blk, _) {
+            !option::is_none(blk.node.expr)
+          }
+          _ { true }
+        }
+    }
+
+    ret alt stmt.node {
+      ast::stmt_expr(e, _) { expr_is_expr(e) }
+      _ { false }
+    };
+}
+
 fn stmt_to_expr(stmt: @ast::stmt) -> option::t<@ast::expr> {
-    ret alt stmt.node { ast::stmt_expr(e, _) { some(e) } _ { none } };
+    ret if stmt_is_expr(stmt) {
+        alt stmt.node {
+          ast::stmt_expr(e, _) { some(e) }
+        }
+    } else { none };
 }
 
 fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
@@ -1627,10 +1661,6 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
             }
       }
 
-
-
-
-
       // We should not be calling this on a cdir.
       ast::stmt_crate_directive(cdir) {
         fail;
@@ -1680,7 +1710,6 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::check_mode) -> ast::blk {
               none. {
                 // Not an expression statement.
                 stmts += [stmt];
-
 
                 if p.get_file_type() == SOURCE_FILE &&
                        stmt_ends_with_semi(*stmt) {

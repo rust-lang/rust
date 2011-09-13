@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern: mismatched types
+// error-pattern: not all control paths return a value
 
 fn god_exists(a: int) -> bool { be god_exists(a); }
 
