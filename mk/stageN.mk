@@ -46,6 +46,10 @@ STAGE$(2) := $$(Q)$$(call CFG_RUN_TARG,stage$(2), \
                 $$(CFG_VALGRIND_COMPILE) stage$(2)/rustc$$(X) \
                 $$(CFG_RUSTC_FLAGS))
 
+PERF_STAGE$(2) := $$(Q)$$(call CFG_RUN_TARG,stage$(2), \
+                $$(CFG_PERF_TOOL) stage$(2)/rustc$$(X) \
+                $$(CFG_RUSTC_FLAGS))
+
 stage$(2)/%.o: stage$(2)/%.s
 	@$$(call E, assemble [gcc]: $$@)
 	$$(Q)gcc $$(CFG_GCCISH_CFLAGS) -o $$@ -c $$<

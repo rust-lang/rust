@@ -54,7 +54,7 @@ ifeq ($(CFG_OSTYPE), Linux)
 	  -e sched:sched_switch \
 	  -e fs:do_sys_open \
 	  -i \
-	  -r 10
+	  -r 3
   else
     ifdef CFG_VALGRIND
       CFG_PERF_TOOL :=\
