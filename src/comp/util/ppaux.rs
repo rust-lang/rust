@@ -31,10 +31,7 @@ fn get_id_ident(cx: ctxt, id: ast::def_id) -> str {
     if id.crate != ast::local_crate {
         alt cx.ext_map.find(id) {
           some(j) { str::connect(j, "::") }
-          _ {
-            fail "get_id_ident: can't find item in ext_map, id.crate = " +
-                     int::str(id.crate)
-          }
+          none. { "<#" + int::str(id.crate) + ":" + int::str(id.node) + ">" }
         }
     } else {
         alt cx.items.find(id.node) {
