@@ -399,16 +399,15 @@ fn test_scope(cx: ctx, sc: scope, r: restrict, p: ast::path) {
       _ {}
     }
     if prob != valid && cant_copy(cx, r) {
-        let msg =
-            alt prob {
-              overwritten(sp, wpt) {
-                {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
-              }
-              val_taken(sp, vpt) {
-                {span: sp,
-                 msg: "taking the value of " + ast_util::path_name(vpt)}
-              }
-            };
+        let msg = alt prob {
+          overwritten(sp, wpt) {
+            {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
+          }
+          val_taken(sp, vpt) {
+            {span: sp,
+             msg: "taking the value of " + ast_util::path_name(vpt)}
+          }
+        };
         cx.tcx.sess.span_err(msg.span,
                              msg.msg + " will invalidate reference " +
                                  ast_util::path_name(p) +
@@ -515,7 +514,7 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_constr(t, _) | ty::ty_res(_, t, _) { score_ty(tcx, t) }
           ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) |
           ty::ty_obj(_) { 4u }
-          ty::ty_str. | ty::ty_vec(_) { 50u }
+          ty::ty_str. | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
           ty::ty_uniq(t) { 1u + score_ty(tcx, t) }
           ty::ty_tag(_, ts) | ty::ty_tup(ts) {
             let sum = 0u;
@@ -527,7 +526,6 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
             for f in fs { sum += score_ty(tcx, f.mt.ty); }
             sum
           }
-          ty::ty_param(_, _) { 5u }
         };
     }
     ret score_ty(tcx, ty) > 8u;
