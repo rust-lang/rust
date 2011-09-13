@@ -2418,22 +2418,16 @@ fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
 
 fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
              body: ast::blk) -> result {
-    fn inner(cx: @block_ctxt, local: @ast::local, curr: ValueRef, t: ty::t,
+    fn inner(bcx: @block_ctxt, local: @ast::local, curr: ValueRef, t: ty::t,
              body: ast::blk, outer_next_cx: @block_ctxt) -> @block_ctxt {
-        let next_cx = new_sub_block_ctxt(cx, "next");
+        let next_cx = new_sub_block_ctxt(bcx, "next");
         let scope_cx =
-            new_loop_scope_block_ctxt(cx,
-                                      option::some::<@block_ctxt>(next_cx),
+            new_loop_scope_block_ctxt(bcx, option::some(next_cx),
                                       outer_next_cx, "for loop scope");
-        Br(cx, scope_cx.llbb);
-        let {bcx: bcx, val: dst} = alloc_local(scope_cx, local);
-        let val =
-            load_if_immediate(bcx, PointerCast(bcx, curr, val_ty(dst)), t);
-        let bcx = copy_val(bcx, INIT, dst, val, t);
-        add_clean(scope_cx, dst, t);
-        let bcx =
-            trans_alt::bind_irrefutable_pat(bcx, local.node.pat, dst,
-                                            cx.fcx.lllocals, false);
+        Br(bcx, scope_cx.llbb);
+        curr = PointerCast(bcx, curr, T_ptr(type_of_or_i8(bcx, t)));
+        bcx = trans_alt::bind_irrefutable_pat(scope_cx, local.node.pat, curr,
+                                              bcx.fcx.lllocals, false);
         bcx = trans_block(bcx, body, return).bcx;
         if !is_terminated(bcx) {
             Br(bcx, next_cx.llbb);

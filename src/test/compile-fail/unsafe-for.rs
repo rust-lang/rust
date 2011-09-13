@@ -1,6 +1,6 @@
 // error-pattern:invalidate reference x
 
 fn main() {
-    let v: [mutable int] = [mutable 1, 2, 3];
-    for x: int in v { v[0] = 10; log x; }
+    let v: [mutable {mutable x: int}] = [mutable {mutable x: 1}];
+    for x in v { v[0] = {mutable x: 2}; log x; }
 }

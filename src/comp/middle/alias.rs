@@ -59,23 +59,12 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
 fn visit_fn(f: ast::_fn, _tp: [ast::ty_param], _sp: span, _name: fn_ident,
             _id: ast::node_id, sc: scope, v: vt<scope>) {
     visit::visit_fn_decl(f.decl, sc, v);
-    let scope =
-        alt f.proto {
-
-
-
-          // Blocks need to obey any restrictions from the enclosing scope.
-          ast::proto_block. | ast::proto_closure. {
-            sc
-          }
-
-
-
-          // Non capturing functions start out fresh.
-          _ {
-            @[]
-          }
-        };
+    let scope = alt f.proto {
+      // Blocks need to obey any restrictions from the enclosing scope.
+      ast::proto_block. | ast::proto_closure. { sc }
+      // Non capturing functions start out fresh.
+      _ { @[] }
+    };
     v.visit_block(f.body, scope, v);
 }
 
@@ -279,7 +268,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         type info = {id: node_id, mutable unsafe: [ty::t], span: span};
         let binding_info: [info] = [];
         for pat in a.pats {
-            for proot in *pattern_roots(cx.tcx, root.ds, pat) {
+            for proot in *pattern_roots(cx.tcx, *root.ds, pat) {
                 let canon_id = pat_id_map.get(proot.name);
                 // FIXME I wanted to use a block, but that hit a
                 // typestate bug.
@@ -327,33 +316,34 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
              sc: scope, v: vt<scope>) {
     v.visit_expr(seq, sc, v);
     let root = expr_root(cx.tcx, seq, false);
-    let unsafe = inner_mut(root.ds);
 
     // If this is a mutable vector, don't allow it to be touched.
     let seq_t = ty::expr_ty(cx.tcx, seq);
-    let elt_t;
+    let ext_ds = *root.ds;
     alt ty::struct(cx.tcx, seq_t) {
       ty::ty_vec(mt) {
-        if mt.mut != ast::imm { unsafe = [seq_t]; }
-        elt_t = mt.ty;
+        if mt.mut != ast::imm {
+            ext_ds += [@{mut: true, kind: index, outer_t: seq_t}];
+        }
       }
-      ty::ty_str. { elt_t = ty::mk_mach(cx.tcx, ast::ty_u8); }
+      _ {}
     }
     let root_var = path_def_id(cx, root.ex);
-    let new_sc =
-        @{root_var: root_var,
-          // FIXME reenable when trans knows how to copy for vars
-          node_id: 0, // blk.node.id,
-          ty: elt_t,
-          span: local.node.pat.span,
-          local_id: cx.next_local,
-          bindings: ast_util::pat_binding_ids(local.node.pat),
-          unsafe_tys: unsafe,
-          depends_on: deps(sc, root_var),
-          mutable ok: valid,
-          mutable given_up: false};
+    let new_sc = *sc;
+    for proot in *pattern_roots(cx.tcx, ext_ds, local.node.pat) {
+        new_sc += [@{root_var: root_var,
+                     node_id: proot.id,
+                     ty: ty::node_id_to_type(cx.tcx, proot.id),
+                     span: proot.span,
+                     local_id: cx.next_local,
+                     bindings: [proot.id],
+                     unsafe_tys: inner_mut(proot.ds),
+                     depends_on: deps(sc, root_var),
+                     mutable ok: valid,
+                     mutable given_up: false}];
+    }
     register_locals(cx, local.node.pat);
-    visit::visit_block(blk, @(*sc + [new_sc]), v);
+    visit::visit_block(blk, @new_sc, v);
 }
 
 fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
@@ -555,7 +545,7 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
 
 type pattern_root = {id: node_id, name: ident, ds: @[deref], span: span};
 
-fn pattern_roots(tcx: ty::ctxt, base: @[deref], pat: @ast::pat)
+fn pattern_roots(tcx: ty::ctxt, base: [deref], pat: @ast::pat)
     -> @[pattern_root] {
     fn walk(tcx: ty::ctxt, base: [deref], pat: @ast::pat,
             &set: [pattern_root]) {
@@ -587,7 +577,7 @@ fn pattern_roots(tcx: ty::ctxt, base: @[deref], pat: @ast::pat)
         }
     }
     let set = [];
-    walk(tcx, *base, pat, set);
+    walk(tcx, base, pat, set);
     ret @set;
 }
 

@@ -571,7 +571,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
     let ccx = bcx.fcx.lcx.ccx;
     alt pat.node {
       ast::pat_bind(_) {
-        if make_copy {
+        if make_copy || ccx.copy_map.contains_key(pat.id) {
             let ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
             // FIXME: Could constrain pat_bind to make this
             // check unnecessary.
