@@ -15,13 +15,11 @@ import std::option::{some, none, is_none};
 tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 tag copied { not_allowed; copied; not_copied; }
 
-type restrict = @{root_var: option::t<node_id>,
-                  node_id: node_id,
+type restrict = @{node_id: node_id,
                   span: span,
                   local_id: uint,
-                  binding: option::t<node_id>,
+                  root_var: option::t<node_id>,
                   unsafe_tys: [ty::t],
-                  depends_on: [uint],
                   mutable ok: valid,
                   mutable copied: copied};
 
@@ -71,7 +69,7 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
     let handled = true;
     alt ex.node {
       ast::expr_call(f, args) {
-        check_call(*cx, f, args, sc);
+        check_call(*cx, f, args);
         handled = false;
       }
       ast::expr_alt(input, arms) { check_alt(*cx, input, arms, sc, v); }
@@ -160,8 +158,7 @@ fn cant_copy(cx: ctx, r: restrict) -> bool {
     } else { ret true; }
 }
 
-fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
-   [restrict] {
+fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [restrict] {
     let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
     let arg_ts = ty::ty_fn_args(cx.tcx, fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
@@ -180,13 +177,11 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr], sc: scope) ->
             }
         }
         let root_var = path_def_id(cx, root.ex);
-        restricts += [@{root_var: root_var,
-                        node_id: arg.id,
+        restricts += [@{node_id: arg.id,
                         span: arg.span,
                         local_id: cx.next_local,
-                        binding: none::<node_id>,
+                        root_var: root_var,
                         unsafe_tys: inner_mut(root.ds),
-                        depends_on: deps(sc, root_var),
                         mutable ok: valid,
                         mutable copied: alt arg_t.mode {
                           ast::by_move. { copied }
@@ -284,13 +279,11 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
             }
         }
         for info in binding_info {
-            new_sc += [@{root_var: root_var,
-                         node_id: info.id,
+            new_sc += [@{node_id: info.id,
                          span: info.span,
                          local_id: cx.next_local,
-                         binding: some(info.id),
+                         root_var: root_var,
                          unsafe_tys: info.unsafe,
-                         depends_on: deps(sc, root_var),
                          mutable ok: valid,
                          mutable copied: not_copied}];
         }
@@ -304,9 +297,18 @@ fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
     v.visit_expr(call, sc, v);
     alt call.node {
       ast::expr_call(f, args) {
-        let restricts = check_call(cx, f, args, sc);
+        let new_sc = *sc + check_call(cx, f, args);
+        for proot in *pattern_roots(cx.tcx, [], local.node.pat) {
+            new_sc += [@{node_id: proot.id,
+                         span: proot.span,
+                         local_id: cx.next_local,
+                         root_var: none::<node_id>,
+                         unsafe_tys: inner_mut(proot.ds),
+                         mutable ok: valid,
+                         mutable copied: not_copied}];
+        }
         register_locals(cx, local.node.pat);
-        visit::visit_block(blk, @(*sc + restricts), v);
+        visit::visit_block(blk, @new_sc, v);
       }
     }
 }
@@ -330,13 +332,11 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
     let root_var = path_def_id(cx, root.ex);
     let new_sc = *sc;
     for proot in *pattern_roots(cx.tcx, ext_ds, local.node.pat) {
-        new_sc += [@{root_var: root_var,
-                     node_id: proot.id,
+        new_sc += [@{node_id: proot.id,
                      span: proot.span,
                      local_id: cx.next_local,
-                     binding: some(proot.id),
+                     root_var: root_var,
                      unsafe_tys: inner_mut(proot.ds),
-                     depends_on: deps(sc, root_var),
                      mutable ok: valid,
                      mutable copied: not_copied}];
     }
@@ -360,7 +360,7 @@ fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
                     r.ok = val_taken(ex.span, p);
                 }
             }
-        } else if r.binding == some(my_defnum) {
+        } else if r.node_id == my_defnum {
             test_scope(cx, sc, r, p);
         }
     }
@@ -387,9 +387,16 @@ fn check_assign(cx: @ctx, dest: @ast::expr, src: @ast::expr, sc: scope,
 
 fn test_scope(cx: ctx, sc: scope, r: restrict, p: ast::path) {
     let prob = r.ok;
-    for dep: uint in r.depends_on {
-        if prob != valid { break; }
-        prob = sc[dep].ok;
+    alt r.root_var {
+      some(dn) {
+        for other in *sc {
+            if other.node_id == dn {
+                prob = other.ok;
+                if prob != valid { break; }
+            }
+        }
+      }
+      _ {}
     }
     if prob != valid && cant_copy(cx, r) {
         let msg =
@@ -407,21 +414,6 @@ fn test_scope(cx: ctx, sc: scope, r: restrict, p: ast::path) {
                                  ast_util::path_name(p) +
                                  ", which is still used");
     }
-}
-
-fn deps(sc: scope, root: option::t<node_id>) -> [uint] {
-    let result = [];
-    alt root {
-      some(dn) {
-        let i = 0u;
-        for r: restrict in *sc {
-            if r.binding == some(dn) { result += [i]; }
-            i += 1u;
-        }
-      }
-      _ { }
-    }
-    ret result;
 }
 
 fn path_def(cx: ctx, ex: @ast::expr) -> option::t<ast::def> {
