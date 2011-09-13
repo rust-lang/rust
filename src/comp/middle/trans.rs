@@ -3738,7 +3738,7 @@ fn invoke_(bcx: @block_ctxt, llfn: ValueRef,
 }
 
 fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
-    let scope_bcx = find_scope_cx(bcx);
+    let scope_bcx = find_scope_for_lpad(bcx);
     if scope_bcx.need_new_lpad {
         let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
         let lpadbb = trans_landing_pad(unwind_bcx);
@@ -3747,6 +3747,24 @@ fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
     }
     assert option::is_some(scope_bcx.lpad);
     ret option::get(scope_bcx.lpad);
+
+    fn find_scope_for_lpad(bcx: @block_ctxt) -> @block_ctxt {
+        let scope_bcx = bcx;
+        while true {
+            scope_bcx = find_scope_cx(scope_bcx);
+            if vec::is_not_empty(scope_bcx.cleanups) {
+                ret scope_bcx;
+            } else {
+                scope_bcx = alt scope_bcx.parent {
+                  parent_some(b) { b }
+                  parent_none. {
+                    ret scope_bcx;
+                  }
+                }
+            }
+        }
+        fail;
+    }
 }
 
 fn trans_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
