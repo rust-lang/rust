@@ -965,7 +965,15 @@ fn print_expr(s: ps, expr: @ast::expr) {
         print_expr(s, rhs);
       }
       ast::expr_field(expr, id) {
-        print_expr_parens_if_unary_or_ret(s, expr);
+        // Deal with '10.x'
+        alt expr.node {
+          ast::expr_lit(@{node: ast::lit_int(_), _}) {
+            popen(s); print_expr(s, expr); pclose(s);
+          }
+          _ {
+            print_expr_parens_if_unary_or_ret(s, expr);
+          }
+        }
         word(s.s, ".");
         word(s.s, id);
       }
