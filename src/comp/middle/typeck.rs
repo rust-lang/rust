@@ -2479,6 +2479,9 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           mutable fixups: fixups,
           ccx: ccx};
     check_expr(fcx, e);
+    let cty = expr_ty(fcx.ccx.tcx, e);
+    let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
+    demand::simple(fcx, e.span, declty, cty);
 }
 
 // A generic function for checking the pred in a check
