@@ -195,7 +195,7 @@ fn scan_dec_digits(rdr: reader) -> str {
 
 fn scan_number(c: char, rdr: reader) -> token::token {
     let accum_int = 0;
-    let dec_str: str = "";
+    let num_str: str = "";
     let is_dec_integer: bool = false;
     let n = rdr.next();
     if c == '0' && n == 'x' {
@@ -216,8 +216,8 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             rdr.bump();
             c = rdr.curr();
         }
-    } else { dec_str = scan_dec_digits(rdr); is_dec_integer = true; }
-    if is_dec_integer { accum_int = digits_to_string(dec_str); }
+    } else { num_str = scan_dec_digits(rdr); is_dec_integer = true; }
+    if is_dec_integer { accum_int = digits_to_string(num_str); }
     c = rdr.curr();
     n = rdr.next();
     if c == 'u' || c == 'i' {
@@ -256,53 +256,50 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             ret token::LIT_INT(accum_int);
         } else {
             // FIXME: should cast in the target bit-width.
-
             ret token::LIT_UINT(accum_int as uint);
         }
     }
-    c = rdr.curr();
-    if c == '.' {
-        // Parse a floating-point number.
-
+    let is_float = false;
+    if rdr.curr() == '.' {
+        is_float = true;
         rdr.bump();
         let dec_part = scan_dec_digits(rdr);
-        let float_str = dec_str + "." + dec_part;
+        num_str += "." + dec_part;
+    }
+    alt scan_exponent(rdr) {
+      some(s) {
+        is_float = true;
+        num_str += s;
+      }
+      none. {}
+    }
+    if rdr.curr() == 'f' {
+        rdr.bump();
         c = rdr.curr();
-        let exponent_str = scan_exponent(rdr);
-        alt exponent_str { some(s) { float_str += s; } none. { } }
-        c = rdr.curr();
-        if c == 'f' {
+        n = rdr.next();
+        if c == '3' && n == '2' {
             rdr.bump();
-            c = rdr.curr();
-            n = rdr.next();
-            if c == '3' && n == '2' {
-                rdr.bump();
-                rdr.bump();
-                ret token::LIT_MACH_FLOAT(ast::ty_f32,
-                                          intern(*rdr.get_interner(),
-                                                 float_str));
-            } else if c == '6' && n == '4' {
-                rdr.bump();
-                rdr.bump();
-                ret token::LIT_MACH_FLOAT(ast::ty_f64,
-                                          intern(*rdr.get_interner(),
-                                                 float_str));
-                /* FIXME: if this is out of range for either a 32-bit or
-                   64-bit float, it won't be noticed till the back-end */
-
-            }
+            rdr.bump();
+            ret token::LIT_MACH_FLOAT(ast::ty_f32,
+                                      intern(*rdr.get_interner(),
+                                             num_str));
+        } else if c == '6' && n == '4' {
+            rdr.bump();
+            rdr.bump();
+            ret token::LIT_MACH_FLOAT(ast::ty_f64,
+                                      intern(*rdr.get_interner(),
+                                             num_str));
+            /* FIXME: if this is out of range for either a 32-bit or
+            64-bit float, it won't be noticed till the back-end */
         } else {
-            ret token::LIT_FLOAT(interner::intern::<str>(*rdr.get_interner(),
-                                                         float_str));
+            is_float = true;
         }
     }
-    let maybe_exponent = scan_exponent(rdr);
-    alt maybe_exponent {
-      some(s) {
+    if is_float {
         ret token::LIT_FLOAT(interner::intern::<str>(*rdr.get_interner(),
-                                                     dec_str + s));
-      }
-      none. { ret token::LIT_INT(accum_int); }
+                                                     num_str));
+    } else {
+        ret token::LIT_INT(accum_int);
     }
 }
 
