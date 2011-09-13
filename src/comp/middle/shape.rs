@@ -313,9 +313,8 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_machine(ast::ty_u64.) { s += [shape_u64]; }
       ty::ty_machine(ast::ty_i64.) { s += [shape_i64]; }
 
-
-
-
+      ty::ty_machine(ast::ty_f32.) { s += [shape_f32]; }
+      ty::ty_machine(ast::ty_f64.) { s += [shape_f64]; }
 
       ty::ty_str. {
         s += [shape_vec];
