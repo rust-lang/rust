@@ -3731,15 +3731,25 @@ fn invoke_(bcx: @block_ctxt, llfn: ValueRef,
     // FIXME: May be worth turning this into a plain call when there are no
     // cleanups to run
     let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
-    let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
     let retval = invoker(bcx, llfn, llargs,
                          normal_bcx.llbb,
-                         unwind_bcx.llbb);
-    trans_landing_pad(unwind_bcx);
+                         get_landing_pad(bcx));
     ret rslt(normal_bcx, retval);
 }
 
-fn trans_landing_pad(bcx: @block_ctxt) {
+fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
+    let scope_bcx = find_scope_cx(bcx);
+    if scope_bcx.cleanups_dirty {
+        let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
+        let lpadbb = trans_landing_pad(unwind_bcx);
+        scope_bcx.lpad = some(lpadbb);
+        scope_bcx.cleanups_dirty = false;
+    }
+    assert option::is_some(scope_bcx.lpad);
+    ret option::get(scope_bcx.lpad);
+}
+
+fn trans_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
@@ -3773,6 +3783,7 @@ fn trans_landing_pad(bcx: @block_ctxt) {
 
     // Continue unwinding
     Resume(bcx, llretval);
+    ret bcx.llbb;
 }
 
 fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
@@ -4522,6 +4533,8 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
           parent: parent,
           kind: kind,
           mutable cleanups: [],
+          mutable cleanups_dirty: true,
+          mutable lpad: option::none,
           sp: cx.sp,
           fcx: cx};
 }
@@ -4556,6 +4569,8 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
           parent: parent_none,
           kind: NON_SCOPE_BLOCK,
           mutable cleanups: [],
+          mutable cleanups_dirty: true,
+          mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
 }
@@ -4622,6 +4637,8 @@ fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
+          mutable cleanups_dirty: true,
+          mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
 }
@@ -4632,6 +4649,8 @@ fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
+          mutable cleanups_dirty: true,
+          mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
 }
