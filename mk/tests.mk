@@ -15,10 +15,15 @@ CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
 BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 
+# perf tests are the same as bench tests only they run under
+# a performance monitor.
+PERF_RS := $(wildcard $(S)src/test/bench/*.rs)
+
 RPASS_TESTS := $(RPASS_RC) $(RPASS_RS)
 RFAIL_TESTS := $(RFAIL_RC) $(RFAIL_RS)
 CFAIL_TESTS := $(CFAIL_RC) $(CFAIL_RS)
 BENCH_TESTS := $(BENCH_RS)
+PERF_TESTS := $(PERF_RS)
 PRETTY_TESTS := $(PRETTY_RS)
 
 FT := run_pass_stage2
@@ -38,6 +43,11 @@ endif
 # Arguments to the cfail/rfail/rpass/bench tests
 ifdef CFG_VALGRIND
   CTEST_RUNTOOL = --runtool "$(CFG_VALGRIND)"
+endif
+
+# Arguments to the perf tests
+ifdef CFG_PERF_TOOL
+  CTEST_PERF_RUNTOOL = --runtool "$(CFG_PERF_TOOL)"
 endif
 
 CTEST_TESTARGS := $(TESTARGS)
@@ -150,7 +160,7 @@ test/rustctest.stage$(2).out.tmp: test/rustctest.stage$(2)$$(X)
 	$$(Q)touch $$@
 
 
-# Rules for the cfail/rfail/rpass/bench test runner
+# Rules for the cfail/rfail/rpass/bench/perf test runner
 
 check-stage$(2)-cfail: test/compile-fail.stage$(2).out \
 
@@ -159,6 +169,8 @@ check-stage$(2)-rfail: test/run-fail.stage$(2).out \
 check-stage$(2)-rpass: test/run-pass.stage$(2).out \
 
 check-stage$(2)-bench: test/bench.stage$(2).out \
+
+check-stage$(2)-perf: test/perf.stage$(2).out \
 
 check-stage$(2)-pretty-rpass: test/pretty-rpass.stage$(2).out \
 
@@ -202,6 +214,12 @@ BENCH_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                   --build-base test/bench/ \
                   --mode run-pass \
                   $$(CTEST_RUNTOOL) \
+
+PERF_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
+                  --src-base $(S)src/test/bench/ \
+                  --build-base test/perf/ \
+                  --mode run-pass \
+                  $$(CTEST_PERF_RUNTOOL) \
 
 PRETTY_RPASS_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                          --src-base $$(S)src/test/run-pass/ \
@@ -251,6 +269,12 @@ test/bench.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
                             $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(BENCH_ARGS$(2))
+	$$(Q)touch $$@
+
+test/perf.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+                            $$(BENCH_TESTS)
+	@$$(call E, perf: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PERF_ARGS$(2))
 	$$(Q)touch $$@
 
 test/pretty-rpass.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \

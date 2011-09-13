@@ -34,6 +34,35 @@ ifeq ($(CFG_OSTYPE), Linux)
   CFG_UNIXY := 1
   CFG_LDENV := LD_LIBRARY_PATH
   CFG_DEF_SUFFIX := .linux.def
+  ifdef CFG_PERF
+	CFG_PERF_TOOL :=\
+	  $(CFG_PERF) \
+	  stat \
+	  -e cycles \
+	  -e instructions \
+	  -e cache-references \
+	  -e cache-misses \
+	  -e branches \
+	  -e branch-misses \
+	  -e bus-cycles \
+	  -e task-clock \
+	  -e page-faults \
+	  -e context-switches \
+	  -e cpu-migrations \
+	  -e kmem:mm_page_alloc \
+	  -e syscalls:sys_enter \
+	  -e sched:sched_switch \
+	  -e fs:do_sys_open \
+	  -i \
+	  -r 10
+  else
+    ifdef CFG_VALGRIND
+      CFG_PERF_TOOL :=\
+        $(CFG_VALGRIND) --tool=cachegrind --cache-sim=yes --branch-sim=yes
+    else
+      CFG_PERF_TOOL := /usr/bin/time --verbose
+    endif
+  endif
 endif
 
 ifeq ($(CFG_OSTYPE), Darwin)

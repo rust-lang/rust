@@ -183,7 +183,8 @@ for i in \
     rustllvm \
     dl stage0 stage1 stage2 stage3 \
     stage0/lib stage1/lib stage2/lib stage3/lib \
-    test/run-pass test/run-fail test/compile-fail test/bench test/pretty
+    test/run-pass test/run-fail test/compile-fail \
+    test/bench test/perf test/pretty
 do
     make_dir $i
 done
@@ -205,6 +206,7 @@ probe CFG_CLANG            clang++
 probe CFG_GCC              gcc
 probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
+probe CFG_PERF             perf
 probe CFG_MAKEINFO         makeinfo
 probe CFG_TEXI2PDF         texi2pdf
 probe CFG_TEX              tex
