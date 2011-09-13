@@ -29,7 +29,7 @@ import std::comm::port;
 import std::comm::recv;
 import std::comm::send;
 
-fn map(filename: &[u8], emit: &map_reduce::putter<[u8], int>) {
+fn map(filename: [u8], emit: map_reduce::putter<[u8], int>) {
     let f = io::file_reader(str::unsafe_from_bytes(filename));
 
     while true {
@@ -40,7 +40,7 @@ fn map(filename: &[u8], emit: &map_reduce::putter<[u8], int>) {
     }
 }
 
-fn reduce(word: &[u8], get: &map_reduce::getter<int>) {
+fn reduce(word: [u8], get: map_reduce::getter<int>) {
     let count = 0;
 
     while true { alt get() { some(_) { count += 1; } none. { break } } }
@@ -53,15 +53,15 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter<~K, ~V> = fn(&K, &V);
+    type putter<~K, ~V> = fn(K, V);
 
     // FIXME: the first K1 parameter should probably be a -, but that
     // doesn't parse at the moment.
-    type mapper<~K1, ~K2, ~V> = fn(&K1, &putter<K2, V>);
+    type mapper<~K1, ~K2, ~V> = fn(K1, putter<K2, V>);
 
     type getter<~V> = fn() -> option<V>;
 
-    type reducer<~K, ~V> = fn(&K, &getter<V>);
+    type reducer<~K, ~V> = fn(K, getter<V>);
 
     tag ctrl_proto<~K, ~V> {
         find_reducer(K, chan<chan<reduce_proto<V>>>);
@@ -70,9 +70,10 @@ mod map_reduce {
 
     tag reduce_proto<~V> { emit_val(V); done; ref; release; }
 
-    fn start_mappers<~K1, ~K2, ~V>(map : mapper<K1, K2, V>,
-                             ctrl: chan<ctrl_proto<K2, V>>, inputs: &[K1])
-        -> [joinable_task] {
+    fn start_mappers<~K1, ~K2,
+                     ~V>(map: mapper<K1, K2, V>,
+                         ctrl: chan<ctrl_proto<K2, V>>, inputs: [K1]) ->
+       [joinable_task] {
         let tasks = [];
         for i in inputs {
             let m = map, c = ctrl, ii = i;
@@ -81,18 +82,18 @@ mod map_reduce {
         ret tasks;
     }
 
-    fn map_task<~K1, ~K2, ~V>(map : -mapper<K1,K2,V>,
-                              ctrl: -chan<ctrl_proto<K2,V>>, input: -K1) {
+    fn map_task<~K1, ~K2,
+                ~V>(-map: mapper<K1, K2, V>, -ctrl: chan<ctrl_proto<K2, V>>,
+                    -input: K1) {
         // log_err "map_task " + input;
         let intermediates = treemap::init();
 
-        fn emit<~K2, ~V>(im: &treemap::treemap<K2, chan<reduce_proto<V>>>,
-                         ctrl: &chan<ctrl_proto<K2,V>>, key: &K2, val: &V) {
+        fn emit<~K2,
+                ~V>(im: treemap::treemap<K2, chan<reduce_proto<V>>>,
+                    ctrl: chan<ctrl_proto<K2, V>>, key: K2, val: V) {
             let c;
             alt treemap::find(im, key) {
-              some(_c) {
-                c = _c
-              }
+              some(_c) { c = _c }
               none. {
                 let p = port();
                 send(ctrl, find_reducer(key, chan(p)));
@@ -106,15 +107,16 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        fn finish<~K, ~V>(k : &K, v : &chan<reduce_proto<V>>) {
+        fn finish<~K, ~V>(k: K, v: chan<reduce_proto<V>>) {
             send(v, release);
         }
         treemap::traverse(intermediates, finish);
         send(ctrl, mapper_done);
     }
 
-    fn reduce_task<~K, ~V>(reduce : -reducer<K,V>,
-                           key: -K, out: -chan<chan<reduce_proto<V>>>) {
+    fn reduce_task<~K,
+                   ~V>(-reduce: reducer<K, V>, -key: K,
+                       -out: chan<chan<reduce_proto<V>>>) {
         let p = port();
 
         send(out, chan(p));
@@ -122,8 +124,8 @@ mod map_reduce {
         let ref_count = 0;
         let is_done = false;
 
-        fn get<~V>(p: &port<reduce_proto<V>>, ref_count: &mutable int,
-               is_done: &mutable bool) -> option<V> {
+        fn get<~V>(p: port<reduce_proto<V>>, &ref_count: int, &is_done: bool)
+           -> option<V> {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {
@@ -144,9 +146,9 @@ mod map_reduce {
         reduce(key, bind get(p, ref_count, is_done));
     }
 
-    fn map_reduce<~K1, ~K2, ~V>(map : mapper<K1,K2,V>,
-                               reduce : reducer<K2, V>,
-                               inputs: &[K1]) {
+    fn map_reduce<~K1, ~K2,
+                  ~V>(map: mapper<K1, K2, V>, reduce: reducer<K2, V>,
+                      inputs: [K1]) {
         let ctrl = port();
 
         // This task becomes the master control task. It task::_spawns
@@ -177,8 +179,8 @@ mod map_reduce {
                     let p = port();
                     let r = reduce, kk = k;
                     tasks +=
-                        [task::spawn_joinable(bind reduce_task(r,
-                                                               kk, chan(p)))];
+                        [task::spawn_joinable(bind reduce_task(r, kk,
+                                                               chan(p)))];
                     c = recv(p);
                     treemap::insert(reducers, k, c);
                   }
@@ -188,21 +190,18 @@ mod map_reduce {
             }
         }
 
-        fn finish<~K, ~V>(k : &K, v : &chan<reduce_proto<V>>) {
-            send(v, done);
-        }
+        fn finish<~K, ~V>(k: K, v: chan<reduce_proto<V>>) { send(v, done); }
         treemap::traverse(reducers, finish);
 
         for t in tasks { task::join(t); }
     }
 }
 
-fn main(argv: [istr]) {
+fn main(argv: [str]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 
-        out.write_line(
-            #fmt["Usage: %s <filename> ...", argv[0]]);
+        out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.
@@ -227,12 +226,11 @@ fn main(argv: [istr]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_err ~"MapReduce completed in " +
-        u64::str(elapsed) + ~"ms";
+    log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
 }
 
-fn read_word(r: io::reader) -> option<istr> {
-    let w = ~"";
+fn read_word(r: io::reader) -> option<str> {
+    let w = "";
 
     while !r.eof() {
         let c = r.read_char();
@@ -240,7 +238,7 @@ fn read_word(r: io::reader) -> option<istr> {
 
         if is_word_char(c) {
             w += str::from_char(c);
-        } else { if w != ~"" { ret some(w); } }
+        } else { if w != "" { ret some(w); } }
     }
     ret none;
 }

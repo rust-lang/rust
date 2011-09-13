@@ -2,10 +2,7 @@ import task;
 import vec;
 
 import comm;
-import comm::chan;
-import comm::port;
-import comm::send;
-import comm::recv;
+import comm::{chan, port, send, recv};
 import net;
 
 native "rust" mod rustrt {
@@ -14,11 +11,11 @@ native "rust" mod rustrt {
     fn aio_init();
     fn aio_run();
     fn aio_stop();
-    fn aio_connect(host: *u8, port: int, connected: &chan<socket>);
-    fn aio_serve(host: *u8, port: int, acceptChan: &chan<socket>) -> server;
-    fn aio_writedata(s: socket, buf: *u8, size: uint, status: &chan<bool>);
-    fn aio_read(s: socket, reader: &chan<[u8]>);
-    fn aio_close_server(s: server, status: &chan<bool>);
+    fn aio_connect(host: *u8, port: int, connected: chan<socket>);
+    fn aio_serve(host: *u8, port: int, acceptChan: chan<socket>) -> server;
+    fn aio_writedata(s: socket, buf: *u8, size: uint, status: chan<bool>);
+    fn aio_read(s: socket, reader: chan<[u8]>);
+    fn aio_close_server(s: server, status: chan<bool>);
     fn aio_close_socket(s: socket);
     fn aio_is_null_client(s: socket) -> bool;
 }
@@ -45,6 +42,7 @@ tag request {
 type ctx = chan<request>;
 
 fn ip_to_sbuf(ip: net::ip_addr) -> *u8 {
+
     // FIXME: This is broken. We're creating a vector, getting a pointer
     // to its buffer, then dropping the vector. On top of that, the vector
     // created by str::bytes is not null-terminated.
@@ -97,8 +95,7 @@ fn accept_task(client: client, events: chan<server_event>) {
 fn server_task(ip: net::ip_addr, portnum: int, events: chan<server_event>,
                server: chan<server>) {
     let accepter = port();
-    send(server,
-         rustrt::aio_serve(ip_to_sbuf(ip), portnum, chan(accepter)));
+    send(server, rustrt::aio_serve(ip_to_sbuf(ip), portnum, chan(accepter)));
 
     let client: client;
     while true {

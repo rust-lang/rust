@@ -8,15 +8,15 @@ import std::option::some;
 
 fn square(n: uint) -> uint { ret n * n; }
 
-fn square_alias(n: &uint) -> uint { ret n * n; }
+fn square_alias(n: uint) -> uint { ret n * n; }
 
-pure fn is_three(n: &uint) -> bool { ret n == 3u; }
+pure fn is_three(n: uint) -> bool { ret n == 3u; }
 
-fn square_if_odd(n: &uint) -> option::t<uint> {
+fn square_if_odd(n: uint) -> option::t<uint> {
     ret if n % 2u == 1u { some(n * n) } else { none };
 }
 
-fn add(x: &uint, y: &uint) -> uint { ret x + y; }
+fn add(x: uint, y: uint) -> uint { ret x + y; }
 
 #[test]
 fn test_unsafe_ptrs() {
@@ -228,7 +228,7 @@ fn test_map() {
 
 #[test]
 fn test_map2() {
-    fn times(x: &int, y: &int) -> int { ret x * y; }
+    fn times(x: int, y: int) -> int { ret x * y; }
     let f = times;
     let v0 = [1, 2, 3, 4, 5];
     let v1 = [5, 4, 3, 2, 1];
@@ -254,12 +254,12 @@ fn test_filter_map() {
     assert (w[1] == 9u);
     assert (w[2] == 25u);
 
-    fn halve(i: &int) -> option::t<int> {
+    fn halve(i: int) -> option::t<int> {
         if i % 2 == 0 {
             ret option::some::<int>(i / 2);
         } else { ret option::none::<int>; }
     }
-    fn halve_for_sure(i: &int) -> int { ret i / 2; }
+    fn halve_for_sure(i: int) -> int { ret i / 2; }
     let all_even: [int] = [0, 2, 8, 6];
     let all_odd1: [int] = [1, 7, 3];
     let all_odd2: [int] = [];
@@ -303,7 +303,7 @@ fn test_zip_unzip() {
     let v1 = [1, 2, 3];
     let v2 = [4, 5, 6];
 
-    check same_length(v1, v2); // Silly, but what else can we do?
+    check (same_length(v1, v2)); // Silly, but what else can we do?
     let z1 = vec::zip(v1, v2);
 
     assert ((1, 4) == z1[0]);
@@ -328,8 +328,8 @@ fn test_position() {
 
 #[test]
 fn test_position_pred() {
-    fn less_than_three(i: &int) -> bool { ret i < 3; }
-    fn is_eighteen(i: &int) -> bool { ret i == 18; }
+    fn less_than_three(i: int) -> bool { ret i < 3; }
+    fn is_eighteen(i: int) -> bool { ret i == 18; }
     let v1: [int] = [5, 4, 3, 2, 1];
     assert (position_pred(less_than_three, v1) == option::some::<uint>(3u));
     assert (position_pred(is_eighteen, v1) == option::none::<uint>);
@@ -351,7 +351,7 @@ fn reverse_and_reversed() {
     // Make sure they work with 0-length vectors too.
 
     let v4 = vec::reversed::<int>([]);
-    assert v4 == [];
+    assert (v4 == []);
     let v3: [mutable int] = [mutable];
     vec::reverse::<int>(v3);
 }

@@ -48,10 +48,10 @@ void
 rust_scheduler::activate(rust_task *task) {
     context ctx;
 
-    task->user.ctx.next = &ctx;
+    task->ctx.next = &ctx;
     DLOG(this, task, "descheduling...");
     lock.unlock();
-    task->user.ctx.swap(ctx);
+    task->ctx.swap(ctx);
     lock.lock();
     DLOG(this, task, "task has returned");
 }
@@ -71,7 +71,7 @@ rust_scheduler::fail() {
     log(NULL, log_err, "domain %s @0x%" PRIxPTR " root task failed",
         name, this);
     I(this, kernel->rval == 0);
-    kernel->rval = 1;
+    kernel->rval = PROC_FAIL_CODE;
     kernel->fail();
 }
 

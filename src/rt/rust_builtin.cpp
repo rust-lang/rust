@@ -39,23 +39,16 @@ last_os_error(rust_task *task) {
         return NULL;
     }
 #endif
-    size_t fill = strlen(buf) + 1;
-    size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc, "rust_str(last_os_error)");
-    if (!mem) {
-        task->fail();
-        return NULL;
-    }
-    rust_str *st = new (mem) rust_str(alloc, fill,
-                                      (const uint8_t *)buf);
 
+    rust_str * st = make_str(task->kernel, buf, strlen(buf),
+                             "last_os_error");
 #ifdef __WIN32__
     LocalFree((HLOCAL)buf);
 #endif
     return st;
 }
 
-extern "C" CDECL rust_vec *
+extern "C" CDECL rust_str *
 rust_getcwd(rust_task *task) {
     LOG(task, task, "rust_getcwd()");
 
@@ -70,7 +63,7 @@ rust_getcwd(rust_task *task) {
         return NULL;
     }
 
-    return make_istr(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
+    return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
 }
 
 extern "C" CDECL
@@ -97,9 +90,6 @@ leak(rust_task *task, type_desc *t, void *thing) {
 extern "C" CDECL intptr_t
 refcount(rust_task *task, type_desc *t, intptr_t *v) {
 
-    if (*v == CONST_REFCOUNT)
-        return CONST_REFCOUNT;
-
     // Passed-in value has refcount 1 too high
     // because it was ref'ed while making the call.
     return (*v) - 1;
@@ -113,43 +103,6 @@ do_gc(rust_task *task) {
 extern "C" CDECL void
 unsupervise(rust_task *task) {
     task->unsupervise();
-}
-
-/* Helper for str_alloc and str_from_vec.  Returns NULL as failure. */
-static rust_evec*
-vec_alloc_with_data(rust_task *task,
-                    size_t n_elts,
-                    size_t fill,
-                    size_t elt_size,
-                    void *d)
-{
-    size_t alloc = next_power_of_two(sizeof(rust_evec) + (n_elts * elt_size));
-    void *mem = task->malloc(alloc, "rust_evec (with data)");
-    if (!mem) return NULL;
-    return new (mem) rust_evec(alloc, fill * elt_size, (uint8_t*)d);
-}
-
-extern "C" CDECL char const *
-str_buf(rust_task *task, rust_str *s)
-{
-    return (char const *)&s->data[0];
-}
-
-extern "C" CDECL rust_str *
-str_from_vec(rust_task *task, rust_vec **vp)
-{
-    rust_vec* v = *vp;
-    rust_str *st = vec_alloc_with_data(task,
-                                       v->fill + 1, // +1 for \0
-                                       v->fill,
-                                       1,
-                                       &v->data[0]);
-    if (!st) {
-        task->fail();
-        return NULL;
-    }
-    st->data[st->fill++] = '\0';
-    return st;
 }
 
 extern "C" CDECL void
@@ -174,7 +127,7 @@ vec_from_buf_shared(rust_task *task, type_desc *ty,
 }
 
 extern "C" CDECL void
-rust_istr_push(rust_task* task, rust_vec** sp, uint8_t byte) {
+rust_str_push(rust_task* task, rust_vec** sp, uint8_t byte) {
     size_t fill = (*sp)->fill;
     reserve_vec(task, sp, fill + 1);
     (*sp)->data[fill-1] = byte;
@@ -207,11 +160,9 @@ rand_free(rust_task *task, randctx *rctx)
     task->free(rctx);
 }
 
-extern "C" CDECL void upcall_sleep(rust_task *task, size_t time_in_us);
-
 extern "C" CDECL void
 task_sleep(rust_task *task, size_t time_in_us) {
-    upcall_sleep(task, time_in_us);
+    task->yield(time_in_us);
 }
 
 extern "C" CDECL void
@@ -273,13 +224,6 @@ debug_opaque(rust_task *task, type_desc *t, uint8_t *front)
     }
 }
 
-extern "C" CDECL void
-hack_allow_leaks(rust_task *task)
-{
-    LOG(task, stdlib, "hack_allow_leaks");
-    task->local_region.hack_allow_leaks();
-}
-
 struct rust_box {
     RUST_REFCOUNTED(rust_box)
 
@@ -293,9 +237,7 @@ debug_box(rust_task *task, type_desc *t, rust_box *box)
     LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
     debug_tydesc_helper(task, t);
     LOG(task, stdlib, "  refcount %" PRIdPTR,
-        box->ref_count == CONST_REFCOUNT
-        ? CONST_REFCOUNT
-        : box->ref_count - 1);  // -1 because we ref'ed for this call
+        box->ref_count - 1);  // -1 because we ref'ed for this call
     for (uintptr_t i = 0; i < t->size; ++i) {
         LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, box->data[i]);
     }
@@ -370,30 +312,17 @@ debug_ptrcast(rust_task *task,
     return ptr;
 }
 
-extern "C" CDECL void
-debug_trap(rust_task *task, rust_str *s)
-{
-    LOG(task, stdlib, "trapping: %s", s->data);
-    // FIXME: x86-ism.
-    __asm__("int3");
-}
-
-rust_str* c_str_to_rust(rust_task *task, char const *str) {
-    size_t len = strlen(str) + 1;
-    return vec_alloc_with_data(task, len, len, 1, (void*)str);
-}
-
 extern "C" CDECL rust_vec*
 rust_list_files(rust_task *task, rust_vec **path) {
-    array_list<rust_vec*> strings;
+    array_list<rust_str*> strings;
 #if defined(__WIN32__)
     WIN32_FIND_DATA FindFileData;
     HANDLE hFind = FindFirstFile((char*)(*path)->data, &FindFileData);
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
-            rust_vec *str = make_istr(task->kernel, FindFileData.cFileName,
-                                      strlen(FindFileData.cFileName),
-                                      "list_files_str");
+            rust_str *str = make_str(task->kernel, FindFileData.cFileName,
+                                     strlen(FindFileData.cFileName),
+                                     "list_files_str");
             strings.push(str);
         } while (FindNextFile(hFind, &FindFileData));
         FindClose(hFind);
@@ -403,7 +332,7 @@ rust_list_files(rust_task *task, rust_vec **path) {
   if (dirp) {
       struct dirent *dp;
       while ((dp = readdir(dirp))) {
-          rust_vec *str = make_istr(task->kernel, dp->d_name,
+          rust_vec *str = make_str(task->kernel, dp->d_name,
                                     strlen(dp->d_name),
                                     "list_files_str");
           strings.push(str);
@@ -420,18 +349,6 @@ rust_list_files(rust_task *task, rust_vec **path) {
   memcpy(&vec->data[0], strings.data(), alloc_sz);
   return vec;
 }
-
-#if defined(__WIN32__)
-extern "C" CDECL rust_str *
-rust_dirent_filename(rust_task *task, void* ent) {
-    return NULL;
-}
-#else
-extern "C" CDECL rust_str *
-rust_dirent_filename(rust_task *task, dirent* ent) {
-    return c_str_to_rust(task, ent->d_name);
-}
-#endif
 
 extern "C" CDECL int
 rust_file_is_dir(rust_task *task, char *path) {
@@ -514,18 +431,24 @@ get_task_pointer(rust_task *task, rust_task_id id) {
     return task->kernel->get_task_by_id(id);
 }
 
-extern "C" CDECL void
-start_task(rust_task *task, rust_task_id id) {
-    rust_task * target = task->kernel->get_task_by_id(id);
-    target->start();
-    target->deref();
-}
-
-extern "C" void *task_trampoline asm("task_trampoline");
-
+// FIXME: Transitional. Remove
 extern "C" CDECL void **
 get_task_trampoline(rust_task *task) {
-    return &task_trampoline;
+    return NULL;
+}
+
+struct fn_env_pair {
+    intptr_t f;
+    intptr_t env;
+};
+
+extern "C" CDECL uintptr_t get_spawn_wrapper();
+
+extern "C" CDECL void
+start_task(rust_task *task, rust_task_id id, fn_env_pair *f) {
+    rust_task *target = task->kernel->get_task_by_id(id);
+    target->start(get_spawn_wrapper(), f->f, f->env);
+    target->deref();
 }
 
 extern "C" CDECL void

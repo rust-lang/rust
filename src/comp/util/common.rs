@@ -1,40 +1,23 @@
-import std::str;
-import std::map;
+import std::{str, map, uint, int, option};
 import std::map::hashmap;
-import std::uint;
-import std::int;
-import std::option;
-import std::option::none;
-import std::option::some;
+import std::option::{none, some};
 import syntax::ast;
-import ast::ty;
-import ast::pat;
-import syntax::codemap::codemap;
-import syntax::codemap::span;
-import ast::lit;
-import ast::path;
+import ast::{ty, pat, lit, path};
+import syntax::codemap::{codemap, span};
 import syntax::visit;
-import std::io::stdout;
-import std::io::str_writer;
-import std::io::string_writer;
+import std::io::{stdout, str_writer, string_writer};
 import syntax::print;
-import print::pprust::print_block;
-import print::pprust::print_item;
-import print::pprust::print_expr;
-import print::pprust::print_path;
-import print::pprust::print_decl;
-import print::pprust::print_fn;
-import print::pprust::print_type;
-import print::pprust::print_literal;
+import print::pprust::{print_block, print_item, print_expr, print_path,
+                       print_decl, print_fn, print_type, print_literal};
 import print::pp::mk_printer;
 
 type flag = hashmap<str, ()>;
 
-fn def_eq(a: &ast::def_id, b: &ast::def_id) -> bool {
+fn def_eq(a: ast::def_id, b: ast::def_id) -> bool {
     ret a.crate == b.crate && a.node == b.node;
 }
 
-fn hash_def(d: &ast::def_id) -> uint {
+fn hash_def(d: ast::def_id) -> uint {
     let h = 5381u;
     h = (h << 5u) + h ^ (d.crate as uint);
     h = (h << 5u) + h ^ (d.node as uint);
@@ -47,43 +30,43 @@ fn new_def_hash<@V>() -> std::map::hashmap<ast::def_id, V> {
     ret std::map::mk_hashmap::<ast::def_id, V>(hasher, eqer);
 }
 
-fn field_expr(f: &ast::field) -> @ast::expr { ret f.node.expr; }
+fn field_expr(f: ast::field) -> @ast::expr { ret f.node.expr; }
 
-fn field_exprs(fields: &[ast::field]) -> [@ast::expr] {
+fn field_exprs(fields: [ast::field]) -> [@ast::expr] {
     let es = [];
     for f: ast::field in fields { es += [f.node.expr]; }
     ret es;
 }
 
-fn log_expr(e: &ast::expr) { log print::pprust::expr_to_str(@e); }
+fn log_expr(e: ast::expr) { log print::pprust::expr_to_str(@e); }
 
-fn log_expr_err(e: &ast::expr) { log_err print::pprust::expr_to_str(@e); }
+fn log_expr_err(e: ast::expr) { log_err print::pprust::expr_to_str(@e); }
 
-fn log_ty_err(t: &@ty) { log_err print::pprust::ty_to_str(t); }
+fn log_ty_err(t: @ty) { log_err print::pprust::ty_to_str(t); }
 
-fn log_pat_err(p: &@pat) { log_err print::pprust::pat_to_str(p); }
+fn log_pat_err(p: @pat) { log_err print::pprust::pat_to_str(p); }
 
-fn log_block(b: &ast::blk) { log print::pprust::block_to_str(b); }
+fn log_block(b: ast::blk) { log print::pprust::block_to_str(b); }
 
-fn log_block_err(b: &ast::blk) { log_err print::pprust::block_to_str(b); }
+fn log_block_err(b: ast::blk) { log_err print::pprust::block_to_str(b); }
 
-fn log_item_err(i: &@ast::item) { log_err print::pprust::item_to_str(i); }
+fn log_item_err(i: @ast::item) { log_err print::pprust::item_to_str(i); }
 
-fn log_fn(f: &ast::_fn, name: &ast::ident, params: &[ast::ty_param]) {
+fn log_fn(f: ast::_fn, name: ast::ident, params: [ast::ty_param]) {
     log print::pprust::fun_to_str(f, name, params);
 }
 
-fn log_fn_err(f: &ast::_fn, name: &ast::ident, params: &[ast::ty_param]) {
+fn log_fn_err(f: ast::_fn, name: ast::ident, params: [ast::ty_param]) {
     log_err print::pprust::fun_to_str(f, name, params);
 }
 
-fn log_stmt(st: &ast::stmt) { log print::pprust::stmt_to_str(st); }
+fn log_stmt(st: ast::stmt) { log print::pprust::stmt_to_str(st); }
 
-fn log_stmt_err(st: &ast::stmt) { log_err print::pprust::stmt_to_str(st); }
+fn log_stmt_err(st: ast::stmt) { log_err print::pprust::stmt_to_str(st); }
 
-fn has_nonlocal_exits(b: &ast::blk) -> bool {
+fn has_nonlocal_exits(b: ast::blk) -> bool {
     let has_exits = @mutable false;
-    fn visit_expr(flag: @mutable bool, e: &@ast::expr) {
+    fn visit_expr(flag: @mutable bool, e: @ast::expr) {
         alt e.node {
           ast::expr_break. { *flag = true; }
           ast::expr_cont. { *flag = true; }
@@ -97,17 +80,14 @@ fn has_nonlocal_exits(b: &ast::blk) -> bool {
     ret *has_exits;
 }
 
-fn local_rhs_span(l: &@ast::local, def: &span) -> span {
+fn local_rhs_span(l: @ast::local, def: span) -> span {
     alt l.node.init { some(i) { ret i.expr.span; } _ { ret def; } }
 }
 
-fn lit_eq(l: &@ast::lit, m: &@ast::lit) -> bool {
+fn lit_eq(l: @ast::lit, m: @ast::lit) -> bool {
     alt l.node {
       ast::lit_str(s) {
-        alt m.node {
-          ast::lit_str(t) { ret s == t }
-          _ { ret false; }
-        }
+        alt m.node { ast::lit_str(t) { ret s == t } _ { ret false; } }
       }
       ast::lit_char(c) {
         alt m.node { ast::lit_char(d) { ret c == d; } _ { ret false; } }
@@ -144,28 +124,28 @@ fn lit_eq(l: &@ast::lit, m: &@ast::lit) -> bool {
 
 tag call_kind { kind_call; kind_spawn; kind_bind; kind_for_each; }
 
-fn call_kind_str(c: call_kind) -> istr {
+fn call_kind_str(c: call_kind) -> str {
     alt c {
-      kind_call. { ~"Call" }
-      kind_spawn. { ~"Spawn" }
-      kind_bind. { ~"Bind" }
-      kind_for_each. { ~"For-Each" }
+      kind_call. { "Call" }
+      kind_spawn. { "Spawn" }
+      kind_bind. { "Bind" }
+      kind_for_each. { "For-Each" }
     }
 }
 
-fn is_main_name(path: &[ast::ident]) -> bool {
-    str::eq(option::get(std::vec::last(path)), ~"main")
+fn is_main_name(path: [ast::ident]) -> bool {
+    str::eq(option::get(std::vec::last(path)), "main")
 }
 
 // FIXME mode this to std::float when editing the stdlib no longer
 // requires a snapshot
-fn float_to_str(num: float, digits: uint) -> istr {
-    let accum = if num < 0.0 { num = -num; ~"-" } else { ~"" };
+fn float_to_str(num: float, digits: uint) -> str {
+    let accum = if num < 0.0 { num = -num; "-" } else { "" };
     let trunc = num as uint;
     let frac = num - (trunc as float);
     accum += uint::str(trunc);
     if frac == 0.0 || digits == 0u { ret accum; }
-    accum += ~".";
+    accum += ".";
     while digits > 0u && frac > 0.0 {
         frac *= 10.0;
         let digit = frac as uint;

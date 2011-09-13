@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern: Pure function calls function not known to be pure
+// error-pattern: pure function calls function not known to be pure
 
 fn g() { }
 

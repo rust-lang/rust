@@ -15,13 +15,13 @@ memory_region::alloc_header *memory_region::get_header(void *mem) {
 memory_region::memory_region(rust_srv *srv, bool synchronized) :
     _srv(srv), _parent(NULL), _live_allocations(0),
     _detailed_leaks(srv->env->detailed_leaks),
-    _synchronized(synchronized), _hack_allow_leaks(false) {
+    _synchronized(synchronized) {
 }
 
 memory_region::memory_region(memory_region *parent) :
     _srv(parent->_srv), _parent(parent), _live_allocations(0),
     _detailed_leaks(parent->_detailed_leaks),
-    _synchronized(parent->_synchronized), _hack_allow_leaks(false) {
+    _synchronized(parent->_synchronized) {
 }
 
 void memory_region::add_alloc() {
@@ -43,6 +43,7 @@ void memory_region::free(void *mem) {
         _srv->fatal("live_allocs < 1", __FILE__, __LINE__, "");
     }
     release_alloc(mem);
+    maybe_poison(mem);
     _srv->free(alloc);
 }
 
@@ -52,9 +53,11 @@ memory_region::realloc(void *mem, size_t size) {
     if (!mem) {
         add_alloc();
     }
+    size_t old_size = size;
     size += sizeof(alloc_header);
     alloc_header *alloc = get_header(mem);
     assert(alloc->magic == MAGIC);
+    alloc->size = old_size;
     alloc_header *newMem = (alloc_header *)_srv->realloc(alloc, size);
 #ifdef TRACK_ALLOCATIONS
     if (_allocation_list[newMem->index] != alloc) {
@@ -82,6 +85,7 @@ memory_region::malloc(size_t size, const char *tag, bool zero) {
     mem->magic = MAGIC;
     mem->tag = tag;
     mem->index = -1;
+    mem->size = old_size;
     claim_alloc(mem->data);
 
     if(zero) {
@@ -123,16 +127,11 @@ memory_region::~memory_region() {
         assert(leak_count == _live_allocations);
     }
 #endif
-    if (!_hack_allow_leaks && _live_allocations > 0) {
+    if (_live_allocations > 0) {
         _srv->fatal(msg, __FILE__, __LINE__,
                     "%d objects", _live_allocations);
     }
     if (_synchronized) { _lock.unlock(); }
-}
-
-void
-memory_region::hack_allow_leaks() {
-    _hack_allow_leaks = true;
 }
 
 void
@@ -167,6 +166,22 @@ memory_region::claim_alloc(void *mem) {
     if (_synchronized) { _lock.unlock(); }
 #endif
     add_alloc();
+}
+
+void
+memory_region::maybe_poison(void *mem) {
+    // TODO: We should lock this, in case the compiler doesn't.
+    static int poison = -1;
+    if (poison < 0) {
+        char *env_str = getenv("RUST_POISON_ON_FREE");
+        poison = env_str != NULL && env_str[0] != '\0';
+    }
+
+    if (!poison)
+        return;
+
+    alloc_header *alloc = get_header(mem);
+    memset(mem, '\xcd', alloc->size);
 }
 
 //

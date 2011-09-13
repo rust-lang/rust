@@ -1,6 +1,6 @@
 resource shrinky_pointer(i: @mutable int) { *i -= 1; }
 
-fn look_at(pt: &shrinky_pointer) -> int { ret **pt; }
+fn look_at(pt: shrinky_pointer) -> int { ret **pt; }
 
 fn main() {
     let my_total = @mutable 10;

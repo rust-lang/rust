@@ -95,16 +95,12 @@ struct chan_handle {
 
 static size_t const TIME_SLICE_IN_MS = 10;
 
-// Since every refcounted object is > 4 bytes, any refcount with any of the
-// top two bits set is invalid. We reserve a particular bit pattern in this
-// set for indicating objects that are "constant" as far as the memory model
-// knows.
-
-static intptr_t const CONST_REFCOUNT = 0x7badface;
-
 // This accounts for logging buffers.
 
 static size_t const BUF_BYTES = 2048;
+
+// The error status to use when the process fails
+#define PROC_FAIL_CODE 101;
 
 // Every reference counted object should use this macro and initialize
 // ref_count.

@@ -1,8 +1,8 @@
 
 
 native "rust" mod rustrt {
-    fn get_time(sec: &mutable u32, usec: &mutable u32);
-    fn nano_time(ns: &mutable u64);
+    fn get_time(&sec: u32, &usec: u32);
+    fn nano_time(&ns: u64);
 }
 
 type timeval = {sec: u32, usec: u32};

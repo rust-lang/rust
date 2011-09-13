@@ -1,3 +1,4 @@
+// xfail-win32
 use std;
 import std::comm;
 import std::task;

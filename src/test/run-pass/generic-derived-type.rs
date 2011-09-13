@@ -1,8 +1,8 @@
 
 
-fn g<@X>(x: &X) -> X { ret x; }
+fn g<@X>(x: X) -> X { ret x; }
 
-fn f<@T>(t: &T) -> {a: T, b: T} {
+fn f<@T>(t: T) -> {a: T, b: T} {
     type pair = {a: T, b: T};
 
     let x: pair = {a: t, b: t};

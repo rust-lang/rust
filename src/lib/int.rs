@@ -32,22 +32,22 @@ pure fn nonnegative(x: int) -> bool { ret x >= 0; }
 
 
 // FIXME: Make sure this works with negative integers.
-fn hash(x: &int) -> uint { ret x as uint; }
+fn hash(x: int) -> uint { ret x as uint; }
 
-fn eq_alias(x: &int, y: &int) -> bool { ret x == y; }
+fn eq_alias(x: int, y: int) -> bool { ret x == y; }
 
 iter range(lo: int, hi: int) -> int {
     let lo_: int = lo;
     while lo_ < hi { put lo_; lo_ += 1; }
 }
 
-fn to_str(n: int, radix: uint) -> istr {
+fn to_str(n: int, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
     ret if n < 0 {
-            ~"-" + uint::to_str(-n as uint, radix)
+            "-" + uint::to_str(-n as uint, radix)
         } else { uint::to_str(n as uint, radix) };
 }
-fn str(i: int) -> istr { ret to_str(i, 10u); }
+fn str(i: int) -> str { ret to_str(i, 10u); }
 
 fn pow(base: int, exponent: uint) -> int {
     ret if exponent == 0u {

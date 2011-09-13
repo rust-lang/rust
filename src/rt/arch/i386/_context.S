@@ -75,11 +75,3 @@ swap_registers:
     jmp *48(%eax)
 
 
-.globl task_trampoline
-task_trampoline:
-    // This gets set up by std::task::_spawn.
-#if defined(__APPLE__) || defined(__WIN32__)
-    call _task_exit
-#else
-    call task_exit
-#endif

@@ -1,11 +1,7 @@
 // Type decoding
 
-import std::vec;
-import std::str;
-import std::uint;
-import std::option;
-import std::option::none;
-import std::option::some;
+import std::{vec, str, uint, option};
+import std::option::{none, some};
 import syntax::ast;
 import syntax::ast::*;
 import syntax::ast_util;
@@ -20,7 +16,7 @@ export parse_ty_data;
 // data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
-type str_def = fn(&istr) -> ast::def_id;
+type str_def = fn(str) -> ast::def_id;
 
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
@@ -42,7 +38,7 @@ fn parse_ident(st: @pstate, sd: str_def, last: char) -> ast::ident {
 
 fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool) ->
    ast::ident {
-    let rslt = ~"";
+    let rslt = "";
     while !is_last(peek(st) as char) {
         rslt += str::unsafe_from_byte(next(st));
     }
@@ -193,7 +189,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         }
       }
       'c' { ret ty::mk_char(st.tcx); }
-      'S' { ret ty::mk_istr(st.tcx); }
+      'S' { ret ty::mk_str(st.tcx); }
       't' {
         assert (next(st) as char == '[');
         let def = parse_def(st, sd);
@@ -224,7 +220,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         assert (next(st) as char == '[');
         let fields: [ty::field] = [];
         while peek(st) as char != ']' {
-            let name = ~"";
+            let name = "";
             while peek(st) as char != '=' {
                 name += str::unsafe_from_byte(next(st));
             }
@@ -277,7 +273,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
               'W' { proto = ast::proto_iter; }
               'F' { proto = ast::proto_fn; }
             }
-            let name = ~"";
+            let name = "";
             while peek(st) as char != '[' {
                 name += str::unsafe_from_byte(next(st));
             }
@@ -342,10 +338,8 @@ fn parse_mt(st: @pstate, sd: str_def) -> ty::mt {
 }
 
 fn parse_def(st: @pstate, sd: str_def) -> ast::def_id {
-    let def = ~"";
-    while peek(st) as char != '|' {
-        def += str::unsafe_from_byte(next(st));
-    }
+    let def = "";
+    while peek(st) as char != '|' { def += str::unsafe_from_byte(next(st)); }
     st.pos = st.pos + 1u;
     ret sd(def);
 }
@@ -381,16 +375,12 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
     assert (next(st) as char == '[');
     let inputs: [ty::arg] = [];
     while peek(st) as char != ']' {
-        let mode = ty::mo_val;
+        let mode = ast::by_ref;
         if peek(st) as char == '&' {
-            mode = ty::mo_alias(false);
+            mode = ast::by_mut_ref;
             st.pos += 1u;
-            if peek(st) as char == 'm' {
-                mode = ty::mo_alias(true);
-                st.pos += 1u;
-            }
         } else if peek(st) as char == '-' {
-            mode = ty::mo_move;
+            mode = ast::by_move;
             st.pos += 1u;
         }
         inputs += [{mode: mode, ty: parse_ty(st, sd)}];
@@ -407,7 +397,7 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
 
 
 // Rust metadata parsing
-fn parse_def_id(buf: &[u8]) -> ast::def_id {
+fn parse_def_id(buf: [u8]) -> ast::def_id {
     let colon_idx = 0u;
     let len = vec::len::<u8>(buf);
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }

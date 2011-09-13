@@ -1,40 +1,42 @@
 import syntax::print::pprust::path_to_str;
 import util::ppaux::ty_to_str;
-import std::vec;
-import std::str;
-import std::option;
-import std::option::get;
-import std::option::is_none;
-import std::option::none;
-import std::option::some;
-import std::option::maybe;
+import std::{vec, str, option};
+import std::option::{get, is_none, none, some, maybe};
 import ann::*;
 import aux::*;
-import tritv::tritv_clone;
-import tritv::tritv_set;
-import tritv::ttrue;
+import tritv::{tritv_clone, tritv_set, ttrue};
 
 import bitvectors::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
-import middle::ty::expr_ty;
-import middle::ty::type_is_nil;
-import middle::ty::type_is_bot;
-import util::common::new_def_hash;
-import util::common::log_expr;
-import util::common::log_block;
-import util::common::log_block_err;
-import util::common::log_fn;
-import util::common::field_exprs;
-import util::common::has_nonlocal_exits;
-import util::common::log_stmt;
-import util::common::log_stmt_err;
-import util::common::log_expr_err;
+import syntax::codemap::span;
+import middle::ty::{expr_ty, type_is_nil, type_is_bot};
+import util::common::{new_def_hash, log_expr, log_block, log_block_err,
+                      log_fn, field_exprs, has_nonlocal_exits, log_stmt,
+                      log_stmt_err, log_expr_err};
 
-fn handle_move_or_copy(fcx: &fn_ctxt, post: &poststate, rhs_path: &path,
-                       rhs_id: &node_id, instlhs: &inst, init_op: &init_op) {
-    let rhs_d = local_node_id_to_def_id(fcx, rhs_id);
-    alt rhs_d {
+fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
+    alt t {
+      oper_move. {
+        alt local_node_id_to_def(fcx, rhs_id) {
+          some(def_upvar(_, _, _)) {
+            fcx.ccx.tcx.sess.span_err(sp,
+                                      "Tried to deinitialize a variable \
+              declared in a different scope");
+          }
+          _ { }
+        }
+      }
+      _ {/* do nothing */ }
+    }
+}
+
+fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: path,
+                       rhs_id: node_id, instlhs: inst, init_op: init_op) {
+    forbid_upvar(fcx, rhs_id, rhs_path.span, op_to_oper_ty(init_op));
+
+    let rhs_d_id = local_node_id_to_def_id(fcx, rhs_id);
+    alt rhs_d_id {
       some(rhsid) {
         // RHS is a local var
         let instrhs =
@@ -48,7 +50,7 @@ fn handle_move_or_copy(fcx: &fn_ctxt, post: &poststate, rhs_path: &path,
     }
 }
 
-fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &[binding]) ->
+fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
    {changed: bool, post: poststate} {
     let changed = false;
     let post = tritv_clone(pres);
@@ -86,7 +88,7 @@ fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &[binding]) ->
     ret {changed: changed, post: post};
 }
 
-fn find_pre_post_state_sub(fcx: &fn_ctxt, pres: &prestate, e: &@expr,
+fn find_pre_post_state_sub(fcx: fn_ctxt, pres: prestate, e: @expr,
                            parent: node_id, c: option::t<tsconstr>) -> bool {
     let changed = find_pre_post_state_expr(fcx, pres, e);
 
@@ -102,14 +104,15 @@ fn find_pre_post_state_sub(fcx: &fn_ctxt, pres: &prestate, e: &@expr,
     ret changed;
 }
 
-fn find_pre_post_state_two(fcx: &fn_ctxt, pres: &prestate, lhs: &@expr,
-                           rhs: &@expr, parent: node_id, ty: oper_type) ->
+fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
+                           rhs: @expr, parent: node_id, ty: oper_type) ->
    bool {
     let changed = set_prestate_ann(fcx.ccx, parent, pres);
     changed = find_pre_post_state_expr(fcx, pres, lhs) || changed;
     changed =
         find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, lhs), rhs) ||
             changed;
+    forbid_upvar(fcx, rhs.id, rhs.span, ty);
 
     let post = tritv_clone(expr_poststate(fcx.ccx, rhs));
 
@@ -164,8 +167,8 @@ fn find_pre_post_state_two(fcx: &fn_ctxt, pres: &prestate, lhs: &@expr,
     ret changed;
 }
 
-fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
-                            id: node_id, ops: &[init_op], bs: &[@expr],
+fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
+                            id: node_id, ops: [init_op], bs: [@expr],
                             cf: controlflow) -> bool {
     let changed = find_pre_post_state_expr(fcx, pres, a);
     // FIXME: This could be a typestate constraint
@@ -179,9 +182,9 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
                                   bs, cf) || changed;
 }
 
-fn find_pre_post_state_exprs(fcx: &fn_ctxt, pres: &prestate, id: node_id,
-                             ops: &[init_op], es: &[@expr], cf: controlflow)
-   -> bool {
+fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
+                             ops: [init_op], es: [@expr], cf: controlflow) ->
+   bool {
     let rs = seq_states(fcx, pres, anon_bindings(ops, es));
     let changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
@@ -195,8 +198,8 @@ fn find_pre_post_state_exprs(fcx: &fn_ctxt, pres: &prestate, id: node_id,
     ret changed;
 }
 
-fn find_pre_post_state_loop(fcx: &fn_ctxt, pres: prestate, l: &@local,
-                            index: &@expr, body: &blk, id: node_id) -> bool {
+fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
+                            index: @expr, body: blk, id: node_id) -> bool {
     let loop_pres = intersect_states(pres, block_poststate(fcx.ccx, body));
 
     let changed =
@@ -225,7 +228,7 @@ fn find_pre_post_state_loop(fcx: &fn_ctxt, pres: prestate, l: &@local,
     }
 }
 
-fn gen_if_local(fcx: &fn_ctxt, p: &poststate, e: &@expr) -> bool {
+fn gen_if_local(fcx: fn_ctxt, p: poststate, e: @expr) -> bool {
     alt e.node {
       expr_path(pth) {
         alt fcx.ccx.tcx.def_map.find(e.id) {
@@ -240,9 +243,9 @@ fn gen_if_local(fcx: &fn_ctxt, p: &poststate, e: &@expr) -> bool {
     }
 }
 
-fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
-                  maybe_alt: &option::t<@expr>, id: node_id, chk: &if_ty,
-                  pres: &prestate) -> bool {
+fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
+                  maybe_alt: option::t<@expr>, id: node_id, chk: if_ty,
+                  pres: prestate) -> bool {
     let changed =
         set_prestate_ann(fcx.ccx, id, pres) |
             find_pre_post_state_expr(fcx, pres, antec);
@@ -264,11 +267,24 @@ fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
 
     alt maybe_alt {
       none. {
-        changed |=
-            find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, antec),
-                                      conseq) |
-                set_poststate_ann(fcx.ccx, id,
-                                  expr_poststate(fcx.ccx, antec));
+        alt chk {
+          if_check. {
+            let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
+            let conseq_prestate = tritv_clone(expr_poststate(fcx.ccx, antec));
+            tritv_set(bit_num(fcx, c.node), conseq_prestate, ttrue);
+            changed |=
+                find_pre_post_state_block(fcx, conseq_prestate, conseq) |
+                    set_poststate_ann(fcx.ccx, id,
+                                      expr_poststate(fcx.ccx, antec));
+          }
+          _ {
+            changed |=
+                find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, antec),
+                                          conseq) |
+                    set_poststate_ann(fcx.ccx, id,
+                                      expr_poststate(fcx.ccx, antec));
+          }
+        }
       }
       some(altern) {
         changed |=
@@ -308,8 +324,7 @@ fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
     ret changed;
 }
 
-fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
-   bool {
+fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
     let num_constrs = num_constraints(fcx.enclosing);
 
 
@@ -345,7 +360,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       expr_log(_, ex) {
         ret find_pre_post_state_sub(fcx, pres, ex, e.id, none);
       }
-      expr_mac(_) { fcx.ccx.tcx.sess.bug(~"unexpanded macro"); }
+      expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
       expr_put(maybe_e) {
         alt maybe_e {
           some(arg) {
@@ -597,8 +612,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
     }
 }
 
-fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt) ->
-   bool {
+fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
 
     /*
@@ -672,8 +686,7 @@ fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt) ->
 
 /* Updates the pre- and post-states of statements in the block,
    returns a boolean flag saying whether any pre- or poststates changed */
-fn find_pre_post_state_block(fcx: &fn_ctxt, pres0: &prestate, b: &blk) ->
-   bool {
+fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
     /* First, set the pre-states and post-states for every expression */
 
     let pres = pres0;
@@ -715,7 +728,7 @@ fn find_pre_post_state_block(fcx: &fn_ctxt, pres0: &prestate, b: &blk) ->
     ret changed;
 }
 
-fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
+fn find_pre_post_state_fn(fcx: fn_ctxt, f: _fn) -> bool {
     let num_constrs = num_constraints(fcx.enclosing);
     // All constraints are considered false until proven otherwise.
     // This ensures that intersect works correctly.
@@ -738,6 +751,7 @@ fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
     // Treat the tail expression as a return statement
     alt f.body.node.expr {
       some(tailexpr) {
+
         // We don't want to clear the diverges bit for bottom typed things,
         // which really do diverge. I feel like there is a cleaner way
         // to do this than checking the type.

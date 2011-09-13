@@ -271,9 +271,15 @@ endif
 
 ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
                $(findstring test,$(MAKECMDGOALS))  \
+               $(findstring perf,$(MAKECMDGOALS))  \
                $(findstring tidy,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including test rules)
   include $(CFG_SRC_DIR)/mk/tests.mk
+endif
+
+ifneq ($(findstring perf,$(MAKECMDGOALS)),)
+  CFG_INFO := $(info cfg: including perf rules)
+  include $(CFG_SRC_DIR)/mk/perf.mk
 endif
 
 ifneq ($(findstring clean,$(MAKECMDGOALS)),)

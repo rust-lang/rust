@@ -1,5 +1,8 @@
-// error-pattern:mutable alias to a variable that roots another alias
+// error-pattern:mutable reference to a variable that roots another reference
 
-fn f(a: &int, b: &mutable int) -> int { b += 1; ret a + b; }
+fn f(a: {mutable x: int}, &b: {mutable x: int}) -> int {
+    b.x += 1;
+    ret a.x + b.x;
+}
 
-fn main() { let i = 4; log f(i, i); }
+fn main() { let i = {mutable x: 4}; log f(i, i); }

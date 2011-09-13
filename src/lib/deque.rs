@@ -7,8 +7,8 @@
 type t<T> =
     obj {
         fn size() -> uint;
-        fn add_front(&T);
-        fn add_back(&T);
+        fn add_front(T);
+        fn add_back(T);
         fn pop_front() -> T;
         fn pop_back() -> T;
         fn peek_front() -> T;
@@ -27,7 +27,10 @@ fn create<@T>() -> t<T> {
 
 
 
-    fn grow<@T>(nelts: uint, lo: uint, elts: &[mutable cell<T>]) ->
+
+
+
+    fn grow<@T>(nelts: uint, lo: uint, elts: [mutable cell<T>]) ->
        [mutable cell<T>] {
         assert (nelts == vec::len(elts));
         let rv = [mutable];
@@ -43,7 +46,7 @@ fn create<@T>() -> t<T> {
 
         ret rv;
     }
-    fn get<@T>(elts: &[mutable cell<T>], i: uint) -> T {
+    fn get<@T>(elts: [mutable cell<T>], i: uint) -> T {
         ret alt elts[i] { option::some(t) { t } _ { fail } };
     }
     obj deque<@T>(mutable nelts: uint,
@@ -51,7 +54,7 @@ fn create<@T>() -> t<T> {
                   mutable hi: uint,
                   mutable elts: [mutable cell<T>]) {
         fn size() -> uint { ret nelts; }
-        fn add_front(t: &T) {
+        fn add_front(t: T) {
             let oldlo: uint = lo;
             if lo == 0u {
                 lo = vec::len::<cell<T>>(elts) - 1u;
@@ -64,7 +67,7 @@ fn create<@T>() -> t<T> {
             elts[lo] = option::some::<T>(t);
             nelts += 1u;
         }
-        fn add_back(t: &T) {
+        fn add_back(t: T) {
             if lo == hi && nelts != 0u {
                 elts = grow::<T>(nelts, lo, elts);
                 lo = 0u;

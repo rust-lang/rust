@@ -3,7 +3,7 @@
 // -*- rust -*-
 use std;
 
-fn grow(v: &mutable [int]) { v += [1]; }
+fn grow(&v: [int]) { v += [1]; }
 
 fn main() {
     let v: [int] = [];

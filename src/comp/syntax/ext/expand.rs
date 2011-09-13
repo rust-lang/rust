@@ -1,23 +1,17 @@
 import driver::session;
 
-import std::option::none;
-import std::option::some;
+import std::option::{none, some};
 
 import std::map::hashmap;
-import std::vec;
-import std::str;
+import std::{vec, str};
 
-import syntax::ast::crate;
-import syntax::ast::expr_;
-import syntax::ast::expr_mac;
-import syntax::ast::mac_invoc;
+import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
 import syntax::fold::*;
 import syntax::ext::base::*;
 
 
-fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
-               e: &expr_, fld: ast_fold, orig: &fn(&expr_, ast_fold) -> expr_)
-   -> expr_ {
+fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
+               fld: ast_fold, orig: fn(expr_, ast_fold) -> expr_) -> expr_ {
     ret alt e {
           expr_mac(mac) {
             alt mac.node {
@@ -27,8 +21,7 @@ fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
                 alt exts.find(extname) {
                   none. {
                     cx.span_fatal(pth.span,
-                                  #fmt["macro undefined: '%s'",
-                                       extname])
+                                  #fmt["macro undefined: '%s'", extname])
                   }
                   some(normal(ext)) {
                     let expanded = ext(cx, pth.span, args, body);
@@ -42,21 +35,19 @@ fn expand_expr(exts: &hashmap<istr, syntax_extension>, cx: &ext_ctxt,
                   }
                   some(macro_defining(ext)) {
                     let named_extension = ext(cx, pth.span, args, body);
-                    exts.insert(
-                        named_extension.ident,
-                        named_extension.ext);
+                    exts.insert(named_extension.ident, named_extension.ext);
                     ast::expr_rec([], none)
                   }
                 }
               }
-              _ { cx.span_bug(mac.span, ~"naked syntactic bit") }
+              _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }
           _ { orig(e, fld) }
         };
 }
 
-fn expand_crate(sess: &session::session, c: &@crate) -> @crate {
+fn expand_crate(sess: session::session, c: @crate) -> @crate {
     let exts = syntax_expander_table();
     let afp = default_ast_fold();
     let cx: ext_ctxt = mk_ctxt(sess);

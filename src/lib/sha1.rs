@@ -6,20 +6,21 @@
 export sha1;
 export mk_sha1;
 
-type sha1 = obj {
+type sha1 =
     // Provide message input as bytes
-    fn input(&[u8]);
     // Provide message input as string
-    fn input_str(&istr);
     // Read the digest as a vector of 20 bytes. After calling this no further
     // input may provided until reset is called
-    fn result() -> [u8];
     // Same as above, just a hex-string version.
-    fn result_str() -> istr;
     // Reset the sha1 state for reuse. This is called
     // automatically during construction
-    fn reset();
-};
+    obj {
+        fn input([u8]);
+        fn input_str(str);
+        fn result() -> [u8];
+        fn result_str() -> str;
+        fn reset();
+    };
 
 
 // Some unexported constants
@@ -43,7 +44,7 @@ fn mk_sha1() -> sha1 {
          mutable computed: bool,
          work_buf: [mutable u32]};
 
-    fn add_input(st: &sha1state, msg: &[u8]) {
+    fn add_input(st: sha1state, msg: [u8]) {
         // FIXME: Should be typestate precondition
         assert (!st.computed);
         for element: u8 in msg {
@@ -61,7 +62,7 @@ fn mk_sha1() -> sha1 {
             if st.msg_block_idx == msg_block_len { process_msg_block(st); }
         }
     }
-    fn process_msg_block(st: &sha1state) {
+    fn process_msg_block(st: sha1state) {
         // FIXME: Make precondition
         assert (vec::len(st.h) == digest_buf_len);
         assert (vec::len(st.work_buf) == work_buf_len);
@@ -141,7 +142,7 @@ fn mk_sha1() -> sha1 {
     fn circular_shift(bits: u32, word: u32) -> u32 {
         ret word << bits | word >> 32u32 - bits;
     }
-    fn mk_result(st: &sha1state) -> [u8] {
+    fn mk_result(st: sha1state) -> [u8] {
         if !st.computed { pad_msg(st); st.computed = true; }
         let rs: [u8] = [];
         for hpart: u32 in st.h {
@@ -163,7 +164,7 @@ fn mk_sha1() -> sha1 {
      * call process_msg_block() appropriately.  When it returns, it
      * can be assumed that the message digest has been computed.
      */
-    fn pad_msg(st: &sha1state) {
+    fn pad_msg(st: sha1state) {
         // FIXME: Should be a precondition
         assert (vec::len(st.msg_block) == msg_block_len);
 
@@ -214,15 +215,13 @@ fn mk_sha1() -> sha1 {
             st.h[4] = 0xC3D2E1F0u32;
             st.computed = false;
         }
-        fn input(msg: &[u8]) { add_input(st, msg); }
-        fn input_str(msg: &istr) { add_input(st, str::bytes(msg)); }
+        fn input(msg: [u8]) { add_input(st, msg); }
+        fn input_str(msg: str) { add_input(st, str::bytes(msg)); }
         fn result() -> [u8] { ret mk_result(st); }
-        fn result_str() -> istr {
+        fn result_str() -> str {
             let r = mk_result(st);
-            let s = ~"";
-            for b: u8 in r {
-                s += uint::to_str(b as uint, 16u);
-            }
+            let s = "";
+            for b: u8 in r { s += uint::to_str(b as uint, 16u); }
             ret s;
         }
     }

@@ -1,4 +1,4 @@
-fn test(foo: -@[int]) { assert (foo[0] == 10); }
+fn test(-foo: @[int]) { assert (foo[0] == 10); }
 
 fn main() {
     let x = @[10];

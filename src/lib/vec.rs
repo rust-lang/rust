@@ -1,29 +1,28 @@
 // Interior vector utility functions.
 
-import option::none;
-import option::some;
+import option::{some, none};
 import uint::next_power_of_two;
 import ptr::addr_of;
 
 native "rust-intrinsic" mod rusti {
-    fn vec_len<T>(v: &[T]) -> uint;
+    fn vec_len<T>(v: [T]) -> uint;
 }
 
 native "rust" mod rustrt {
-    fn vec_reserve_shared<T>(v: &mutable [mutable? T], n: uint);
+    fn vec_reserve_shared<T>(&v: [mutable? T], n: uint);
     fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
 }
 
 /// Reserves space for `n` elements in the given vector.
-fn reserve<@T>(v: &mutable [mutable? T], n: uint) {
+fn reserve<@T>(&v: [mutable? T], n: uint) {
     rustrt::vec_reserve_shared(v, n);
 }
 
-fn len<T>(v: &[mutable? T]) -> uint { ret rusti::vec_len(v); }
+fn len<T>(v: [mutable? T]) -> uint { ret rusti::vec_len(v); }
 
 type init_op<T> = fn(uint) -> T;
 
-fn init_fn<@T>(op: &init_op<T>, n_elts: uint) -> [T] {
+fn init_fn<@T>(op: init_op<T>, n_elts: uint) -> [T] {
     let v = [];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -32,7 +31,7 @@ fn init_fn<@T>(op: &init_op<T>, n_elts: uint) -> [T] {
 }
 
 // TODO: Remove me once we have slots.
-fn init_fn_mut<@T>(op: &init_op<T>, n_elts: uint) -> [mutable T] {
+fn init_fn_mut<@T>(op: init_op<T>, n_elts: uint) -> [mutable T] {
     let v = [mutable];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -40,7 +39,7 @@ fn init_fn_mut<@T>(op: &init_op<T>, n_elts: uint) -> [mutable T] {
     ret v;
 }
 
-fn init_elt<@T>(t: &T, n_elts: uint) -> [T] {
+fn init_elt<@T>(t: T, n_elts: uint) -> [T] {
     let v = [];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -49,7 +48,7 @@ fn init_elt<@T>(t: &T, n_elts: uint) -> [T] {
 }
 
 // TODO: Remove me once we have slots.
-fn init_elt_mut<@T>(t: &T, n_elts: uint) -> [mutable T] {
+fn init_elt_mut<@T>(t: T, n_elts: uint) -> [mutable T] {
     let v = [mutable];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -59,51 +58,51 @@ fn init_elt_mut<@T>(t: &T, n_elts: uint) -> [mutable T] {
 
 // FIXME: Possible typestate postcondition:
 // len(result) == len(v) (needs issue #586)
-fn to_mut<@T>(v: &[T]) -> [mutable T] {
+fn to_mut<@T>(v: [T]) -> [mutable T] {
     let vres = [mutable];
     for t: T in v { vres += [mutable t]; }
     ret vres;
 }
 
 // Same comment as from_mut
-fn from_mut<@T>(v: &[mutable T]) -> [T] {
+fn from_mut<@T>(v: [mutable T]) -> [T] {
     let vres = [];
     for t: T in v { vres += [t]; }
     ret vres;
 }
 
 // Predicates
-pure fn is_empty<T>(v: &[mutable? T]) -> bool {
+pure fn is_empty<T>(v: [mutable? T]) -> bool {
     // FIXME: This would be easier if we could just call len
     for t: T in v { ret false; }
     ret true;
 }
 
-pure fn is_not_empty<T>(v: &[mutable? T]) -> bool { ret !is_empty(v); }
+pure fn is_not_empty<T>(v: [mutable? T]) -> bool { ret !is_empty(v); }
 
 // Accessors
 
 /// Returns the first element of a vector
-fn head<@T>(v: &[mutable? T]) : is_not_empty(v) -> T { ret v[0]; }
+fn head<@T>(v: [mutable? T]) : is_not_empty(v) -> T { ret v[0]; }
 
 /// Returns all but the first element of a vector
-fn tail<@T>(v: &[mutable? T]) : is_not_empty(v) -> [mutable? T] {
+fn tail<@T>(v: [mutable? T]) : is_not_empty(v) -> [mutable? T] {
     ret slice(v, 1u, len(v));
 }
 
 /// Returns the last element of `v`.
-fn last<@T>(v: &[mutable? T]) -> option::t<T> {
+fn last<@T>(v: [mutable? T]) -> option::t<T> {
     if len(v) == 0u { ret none; }
     ret some(v[len(v) - 1u]);
 }
 
 /// Returns the last element of a non-empty vector `v`.
-fn last_total<@T>(v: &[mutable? T]) : is_not_empty(v) -> T {
+fn last_total<@T>(v: [mutable? T]) : is_not_empty(v) -> T {
     ret v[len(v) - 1u];
 }
 
 /// Returns a copy of the elements from [`start`..`end`) from `v`.
-fn slice<@T>(v: &[mutable? T], start: uint, end: uint) -> [T] {
+fn slice<@T>(v: [mutable? T], start: uint, end: uint) -> [T] {
     assert (start <= end);
     assert (end <= len(v));
     let result = [];
@@ -114,7 +113,7 @@ fn slice<@T>(v: &[mutable? T], start: uint, end: uint) -> [T] {
 }
 
 // TODO: Remove me once we have slots.
-fn slice_mut<@T>(v: &[mutable? T], start: uint, end: uint) -> [mutable T] {
+fn slice_mut<@T>(v: [mutable? T], start: uint, end: uint) -> [mutable T] {
     assert (start <= end);
     assert (end <= len(v));
     let result = [mutable];
@@ -127,7 +126,7 @@ fn slice_mut<@T>(v: &[mutable? T], start: uint, end: uint) -> [mutable T] {
 
 // Mutators
 
-fn shift<@T>(v: &mutable [mutable? T]) -> T {
+fn shift<@T>(&v: [mutable? T]) -> T {
     let ln = len::<T>(v);
     assert (ln > 0u);
     let e = v[0];
@@ -136,7 +135,7 @@ fn shift<@T>(v: &mutable [mutable? T]) -> T {
 }
 
 // TODO: Write this, unsafely, in a way that's not O(n).
-fn pop<@T>(v: &mutable [mutable? T]) -> T {
+fn pop<@T>(&v: [mutable? T]) -> T {
     let ln = len(v);
     assert (ln > 0u);
     ln -= 1u;
@@ -151,14 +150,14 @@ fn pop<@T>(v: &mutable [mutable? T]) -> T {
 // Appending
 
 /// Expands the given vector in-place by appending `n` copies of `initval`.
-fn grow<@T>(v: &mutable [T], n: uint, initval: &T) {
+fn grow<@T>(&v: [T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [initval]; i += 1u; }
 }
 
 // TODO: Remove me once we have slots.
-fn grow_mut<@T>(v: &mutable [mutable T], n: uint, initval: &T) {
+fn grow_mut<@T>(&v: [mutable T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [mutable initval]; i += 1u; }
@@ -166,7 +165,7 @@ fn grow_mut<@T>(v: &mutable [mutable T], n: uint, initval: &T) {
 
 /// Calls `f` `n` times and appends the results of these calls to the given
 /// vector.
-fn grow_fn<@T>(v: &mutable [T], n: uint, init_fn: fn(uint) -> T) {
+fn grow_fn<@T>(&v: [T], n: uint, init_fn: fn(uint) -> T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [init_fn(i)]; i += 1u; }
@@ -175,7 +174,7 @@ fn grow_fn<@T>(v: &mutable [T], n: uint, init_fn: fn(uint) -> T) {
 /// Sets the element at position `index` to `val`. If `index` is past the end
 /// of the vector, expands the vector by replicating `initval` to fill the
 /// intervening space.
-fn grow_set<@T>(v: &mutable [mutable T], index: uint, initval: &T, val: &T) {
+fn grow_set<@T>(&v: [mutable T], index: uint, initval: T, val: T) {
     if index >= len(v) { grow_mut(v, index - len(v) + 1u, initval); }
     v[index] = val;
 }
@@ -183,7 +182,7 @@ fn grow_set<@T>(v: &mutable [mutable T], index: uint, initval: &T, val: &T) {
 
 // Functional utilities
 
-fn map<@T, @U>(f: &block(&T) -> U, v: &[mutable? T]) -> [U] {
+fn map<@T, @U>(f: block(T) -> U, v: [mutable? T]) -> [U] {
     let result = [];
     reserve(result, len(v));
     for elem: T in v {
@@ -193,7 +192,7 @@ fn map<@T, @U>(f: &block(&T) -> U, v: &[mutable? T]) -> [U] {
     ret result;
 }
 
-fn map2<@T, @U, @V>(f: &block(&T, &U) -> V, v0: &[T], v1: &[U]) -> [V] {
+fn map2<@T, @U, @V>(f: block(T, U) -> V, v0: [T], v1: [U]) -> [V] {
     let v0_len = len::<T>(v0);
     if v0_len != len::<U>(v1) { fail; }
     let u: [V] = [];
@@ -202,8 +201,7 @@ fn map2<@T, @U, @V>(f: &block(&T, &U) -> V, v0: &[T], v1: &[U]) -> [V] {
     ret u;
 }
 
-fn filter_map<@T, @U>(f: &block(&T) -> option::t<U>, v: &[mutable? T]) ->
-   [U] {
+fn filter_map<@T, @U>(f: block(T) -> option::t<U>, v: [mutable? T]) -> [U] {
     let result = [];
     for elem: T in v {
         let elem2 = elem; // satisfies alias checker
@@ -215,7 +213,7 @@ fn filter_map<@T, @U>(f: &block(&T) -> option::t<U>, v: &[mutable? T]) ->
     ret result;
 }
 
-fn foldl<@T, @U>(p: &block(&U, &T) -> U, z: &U, v: &[mutable? T]) -> U {
+fn foldl<@T, @U>(p: block(U, T) -> U, z: U, v: [mutable? T]) -> U {
     let sz = len(v);
     if sz == 0u { ret z; }
     let first = v[0];
@@ -223,47 +221,47 @@ fn foldl<@T, @U>(p: &block(&U, &T) -> U, z: &U, v: &[mutable? T]) -> U {
     ret p(foldl(p, z, rest), first);
 }
 
-fn any<T>(f: &block(&T) -> bool, v: &[T]) -> bool {
+fn any<T>(f: block(T) -> bool, v: [T]) -> bool {
     for elem: T in v { if f(elem) { ret true; } }
     ret false;
 }
 
-fn all<T>(f: &block(&T) -> bool, v: &[T]) -> bool {
+fn all<T>(f: block(T) -> bool, v: [T]) -> bool {
     for elem: T in v { if !f(elem) { ret false; } }
     ret true;
 }
 
-fn member<T>(x: &T, v: &[T]) -> bool {
+fn member<T>(x: T, v: [T]) -> bool {
     for elt: T in v { if x == elt { ret true; } }
     ret false;
 }
 
-fn count<T>(x: &T, v: &[mutable? T]) -> uint {
+fn count<T>(x: T, v: [mutable? T]) -> uint {
     let cnt = 0u;
     for elt: T in v { if x == elt { cnt += 1u; } }
     ret cnt;
 }
 
-fn find<@T>(f: &block(&T) -> bool, v: &[T]) -> option::t<T> {
+fn find<@T>(f: block(T) -> bool, v: [T]) -> option::t<T> {
     for elt: T in v { if f(elt) { ret some(elt); } }
     ret none;
 }
 
-fn position<@T>(x: &T, v: &[T]) -> option::t<uint> {
+fn position<@T>(x: T, v: [T]) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if x == v[i] { ret some::<uint>(i); } i += 1u; }
     ret none;
 }
 
-fn position_pred<T>(f: fn(&T) -> bool, v: &[T]) -> option::t<uint> {
+fn position_pred<T>(f: fn(T) -> bool, v: [T]) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;
 }
 
-pure fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
-    let xlen = unchecked { vec::len(xs) };
-    let ylen = unchecked { vec::len(ys) };
+pure fn same_length<T, U>(xs: [T], ys: [U]) -> bool {
+    let xlen = unchecked{ vec::len(xs) };
+    let ylen = unchecked{ vec::len(ys) };
     xlen == ylen
 }
 
@@ -271,13 +269,13 @@ pure fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
 // saying the two result lists have the same length -- or, could
 // return a nominal record with a constraint saying that, instead of
 // returning a tuple (contingent on issue #869)
-fn unzip<@T, @U>(v: &[(T, U)]) -> ([T], [U]) {
+fn unzip<@T, @U>(v: [(T, U)]) -> ([T], [U]) {
     let as = [], bs = [];
     for (a, b) in v { as += [a]; bs += [b]; }
     ret (as, bs);
 }
 
-fn zip<@T, @U>(v: &[T], u: &[U]) : same_length(v, u) -> [(T, U)] {
+fn zip<@T, @U>(v: [T], u: [U]) : same_length(v, u) -> [(T, U)] {
     let zipped = [];
     let sz = len(v), i = 0u;
     assert (sz == len(u));
@@ -286,14 +284,14 @@ fn zip<@T, @U>(v: &[T], u: &[U]) : same_length(v, u) -> [(T, U)] {
 }
 
 // Swaps two elements in a vector
-fn swap<@T>(v: &[mutable T], a: uint, b: uint) {
+fn swap<@T>(v: [mutable T], a: uint, b: uint) {
     let t: T = v[a];
     v[a] = v[b];
     v[b] = t;
 }
 
 // In place vector reversal
-fn reverse<@T>(v: &[mutable T]) {
+fn reverse<@T>(v: [mutable T]) {
     let i: uint = 0u;
     let ln = len::<T>(v);
     while i < ln / 2u { swap(v, i, ln - i - 1u); i += 1u; }
@@ -301,7 +299,7 @@ fn reverse<@T>(v: &[mutable T]) {
 
 
 // Functional vector reversal. Returns a reversed copy of v.
-fn reversed<@T>(v: &[T]) -> [T] {
+fn reversed<@T>(v: [T]) -> [T] {
     let rs: [T] = [];
     let i = len::<T>(v);
     if i == 0u { ret rs; } else { i -= 1u; }
@@ -311,58 +309,45 @@ fn reversed<@T>(v: &[T]) -> [T] {
 }
 
 // Generating vecs.
-fn enum_chars(start:u8, end:u8) : u8::le(start, end) -> [char] {
+fn enum_chars(start: u8, end: u8) : u8::le(start, end) -> [char] {
     let i = start;
     let r = [];
-    while (i <= end) {
-        r += [i as char];
-        i += (1u as u8);
-    }
+    while i <= end { r += [i as char]; i += 1u as u8; }
     ret r;
 }
 
-fn enum_uints(start:uint, end:uint) : uint::le(start, end) -> [uint] {
+fn enum_uints(start: uint, end: uint) : uint::le(start, end) -> [uint] {
     let i = start;
     let r = [];
-    while (i <= end) {
-        r += [i];
-        i += 1u;
-    }
+    while i <= end { r += [i]; i += 1u; }
     ret r;
 }
 
 // Iterate over a list with with the indexes
-iter iter2<@T>(v: &[T]) -> (uint, T) {
+iter iter2<@T>(v: [T]) -> (uint, T) {
     let i = 0u;
-    for x in v {
-        put (i, x);
-        i += 1u;
-    }
+    for x in v { put (i, x); i += 1u; }
 }
 
 mod unsafe {
-    type ivec_repr = {mutable fill: uint,
-                      mutable alloc: uint,
-                      data: u8};
+    type vec_repr = {mutable fill: uint, mutable alloc: uint, data: u8};
 
     fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
         ret rustrt::vec_from_buf_shared(ptr, elts);
     }
 
-    fn set_len<T>(v: &mutable [T], new_len: uint) {
-        let repr: **ivec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+    fn set_len<T>(&v: [T], new_len: uint) {
+        let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
-    fn to_ptr<T>(v: &[T]) -> *T {
-        let repr: **ivec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+    fn to_ptr<T>(v: [T]) -> *T {
+        let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
 }
 
-fn to_ptr<T>(v: &[T]) -> *T {
-    ret unsafe::to_ptr(v);
-}
+fn to_ptr<T>(v: [T]) -> *T { ret unsafe::to_ptr(v); }
 
 // Local Variables:
 // mode: rust;

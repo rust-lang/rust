@@ -5,9 +5,9 @@ import std::sort;
 import std::vec;
 import std::int;
 
-fn check_sort(v1: &[mutable int], v2: &[mutable int]) {
+fn check_sort(v1: [mutable int], v2: [mutable int]) {
     let len = std::vec::len::<int>(v1);
-    fn ltequal(a: &int, b: &int) -> bool { ret a <= b; }
+    fn ltequal(a: int, b: int) -> bool { ret a <= b; }
     let f = ltequal;
     std::sort::quick_sort::<int>(f, v1);
     let i = 0u;
@@ -46,13 +46,13 @@ fn test_simple() {
 
     let expected = [1, 2, 3];
 
-    fn lteq(a: &int, b: &int) -> bool { int::le(a, b) }
+    fn lteq(a: int, b: int) -> bool { int::le(a, b) }
     sort::quick_sort(lteq, names);
 
     let immut_names = vec::from_mut(names);
 
- // Silly, but what else can we do?
-    check vec::same_length(expected, immut_names);
+    // Silly, but what else can we do?
+    check (vec::same_length(expected, immut_names));
     let pairs = vec::zip(expected, immut_names);
     for (a, b) in pairs { log #fmt["%d %d", a, b]; assert (a == b); }
 }

@@ -2,30 +2,30 @@
 
 tag t<@T> { none; some(T); }
 
-fn get<@T>(opt: &t<T>) -> T {
+fn get<@T>(opt: t<T>) -> T {
     alt opt { some(x) { x } none. { fail "option none" } }
 }
 
-fn map<@T, @U>(f: &block(&T) -> U, opt: &t<T>) -> t<U> {
+fn map<@T, @U>(f: block(T) -> U, opt: t<T>) -> t<U> {
     alt opt { some(x) { some(f(x)) } none. { none } }
 }
 
-fn is_none<@T>(opt: &t<T>) -> bool {
+fn is_none<@T>(opt: t<T>) -> bool {
     alt opt { none. { true } some(_) { false } }
 }
 
-fn is_some<@T>(opt: &t<T>) -> bool { !is_none(opt) }
+fn is_some<@T>(opt: t<T>) -> bool { !is_none(opt) }
 
-fn from_maybe<@T>(def: &T, opt: &t<T>) -> T {
+fn from_maybe<@T>(def: T, opt: t<T>) -> T {
     alt opt { some(x) { x } none. { def } }
 }
 
-fn maybe<@T, @U>(def: &U, f: &block(&T) -> U, opt: &t<T>) -> U {
+fn maybe<@T, @U>(def: U, f: block(T) -> U, opt: t<T>) -> U {
     alt opt { none. { def } some(t) { f(t) } }
 }
 
 // Can be defined in terms of the above when/if we have const bind.
-fn may<@T>(f: &block(&T), opt: &t<T>) {
+fn may<@T>(f: block(T), opt: t<T>) {
     alt opt { none. {/* nothing */ } some(t) { f(t); } }
 }
 

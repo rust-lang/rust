@@ -2,7 +2,7 @@
 
 type box<T> = {c: @T};
 
-fn unbox<@T>(b: &box<T>) -> T { ret *b.c; }
+fn unbox<@T>(b: box<T>) -> T { ret *b.c; }
 
 fn main() {
     let foo: int = 17;

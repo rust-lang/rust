@@ -3,7 +3,7 @@ import std::str;
 
 fn main() {
     // Make sure we properly handle repeated self-appends.
-    let a: istr = ~"A";
+    let a: str = "A";
     let i = 20;
     let expected_len = 1u;
     while i > 0 {

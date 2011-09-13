@@ -4,10 +4,6 @@
 // FIXME: Most of these should be uints.
 const rc_base_field_refcnt: int = 0;
 
-
-// FIXME: import from std::dbg when imported consts work.
-const const_refcount: uint = 0x7bad_face_u;
-
 const task_field_refcnt: int = 0;
 
 const task_field_stk: int = 2;
@@ -92,13 +88,13 @@ const worst_case_glue_call_args: int = 7;
 
 const abi_version: uint = 1u;
 
-fn memcpy_glue_name() -> istr { ret ~"rust_memcpy_glue"; }
+fn memcpy_glue_name() -> str { ret "rust_memcpy_glue"; }
 
-fn bzero_glue_name() -> istr { ret ~"rust_bzero_glue"; }
+fn bzero_glue_name() -> str { ret "rust_bzero_glue"; }
 
-fn yield_glue_name() -> istr { ret ~"rust_yield_glue"; }
+fn yield_glue_name() -> str { ret "rust_yield_glue"; }
 
-fn no_op_type_glue_name() -> istr { ret ~"rust_no_op_type_glue"; }
+fn no_op_type_glue_name() -> str { ret "rust_no_op_type_glue"; }
 //
 // Local Variables:
 // mode: rust

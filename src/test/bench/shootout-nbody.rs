@@ -1,3 +1,4 @@
+// xfail-test
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 
@@ -56,7 +57,7 @@ mod NBodySystem {
         ret bodies;
     }
 
-    fn advance(bodies: &[Body::props], dt: float) {
+    fn advance(bodies: [Body::props], dt: float) {
 
         let i: int = 0;
         while i < 5 {
@@ -70,7 +71,7 @@ mod NBodySystem {
         while i < 5 { move(bodies[i], dt); i += 1; }
     }
 
-    fn advance_one(bi: &Body::props, bj: &Body::props, dt: float) {
+    fn advance_one(bi: Body::props, bj: Body::props, dt: float) {
         let dx: float = bi.x - bj.x;
         let dy: float = bi.y - bj.y;
         let dz: float = bi.z - bj.z;
@@ -89,13 +90,13 @@ mod NBodySystem {
         bj.vz += dz * bi.mass * mag;
     }
 
-    fn move(b: &Body::props, dt: float) {
+    fn move(b: Body::props, dt: float) {
         b.x += dt * b.vx;
         b.y += dt * b.vy;
         b.z += dt * b.vz;
     }
 
-    fn energy(bodies: &[Body::props]) -> float {
+    fn energy(bodies: [Body::props]) -> float {
         let dx: float;
         let dy: float;
         let dz: float;
@@ -194,7 +195,7 @@ mod Body {
              mass: SOLAR_MASS};
     }
 
-    fn offsetMomentum(props: &Body::props, px: float, py: float, pz: float) {
+    fn offsetMomentum(props: Body::props, px: float, py: float, pz: float) {
         props.vx = -px / SOLAR_MASS;
         props.vy = -py / SOLAR_MASS;
         props.vz = -pz / SOLAR_MASS;

@@ -1,12 +1,11 @@
 // The Rust abstract syntax tree.
 
 import std::option;
-import codemap::span;
-import codemap::filename;
+import codemap::{span, filename};
 
 type spanned<T> = {node: T, span: span};
 
-type ident = istr;
+type ident = str;
 
 // Functions may or may not have names.
 type fn_ident = option::t<ident>;
@@ -43,7 +42,7 @@ tag def {
     def_use(def_id);
     def_native_ty(def_id);
     def_native_fn(def_id);
-    def_upvar(def_id, @def, bool /* writable */);
+    def_upvar(def_id, @def, /* writable */bool);
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -78,8 +77,8 @@ tag meta_item_ {
 
 type blk = spanned<blk_>;
 
-type blk_ = {stmts: [@stmt], expr: option::t<@expr>,
-    id: node_id, rules: check_mode};
+type blk_ =
+    {stmts: [@stmt], expr: option::t<@expr>, id: node_id, rules: check_mode};
 
 type pat = {id: node_id, node: pat_, span: span};
 
@@ -127,7 +126,7 @@ tag binop {
 
 tag unop { box(mutability); deref; not; neg; }
 
-tag mode { val; alias(bool); move; }
+tag mode { by_ref; by_mut_ref; by_move; }
 
 type stmt = spanned<stmt_>;
 
@@ -229,7 +228,7 @@ tag blk_sort {
 type mac = spanned<mac_>;
 
 tag mac_ {
-    mac_invoc(path, @expr, option::t<istr>);
+    mac_invoc(path, @expr, option::t<str>);
     mac_embed_type(@ty);
     mac_embed_block(blk);
     mac_ellipsis;
@@ -238,13 +237,13 @@ tag mac_ {
 type lit = spanned<lit_>;
 
 tag lit_ {
-    lit_str(istr);
+    lit_str(str);
     lit_char(char);
     lit_int(int);
     lit_uint(uint);
     lit_mach_int(ty_mach, int);
-    lit_float(istr);
-    lit_mach_float(ty_mach, istr);
+    lit_float(str);
+    lit_mach_float(ty_mach, str);
     lit_nil;
     lit_bool(bool);
 }
@@ -292,6 +291,9 @@ tag ty_ {
              ret/fail/break/cont. there is no syntax
              for this type. */
 
+
+
+
      /* bot represents the value of functions that don't return a value
         locally to their context. in contrast, things like log that do
         return, but don't return a meaningful value, have result type nil. */
@@ -301,7 +303,7 @@ tag ty_ {
     ty_float;
     ty_machine(ty_mach);
     ty_char;
-    ty_istr;
+    ty_str;
     ty_box(mt);
     ty_vec(mt);
     ty_ptr(mt);
@@ -379,6 +381,9 @@ tag controlflow {
     noreturn; // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
 
+
+
+
     return; // everything else
 }
 
@@ -412,7 +417,7 @@ tag native_abi {
 }
 
 type native_mod =
-    {native_name: istr,
+    {native_name: str,
      abi: native_abi,
      view_items: [@view_item],
      items: [@native_item]};
@@ -467,9 +472,11 @@ tag item_ {
     item_tag([variant], [ty_param]);
     item_obj(_obj, [ty_param], /* constructor id */node_id);
     item_res(_fn,
-              /* dtor */
+
+             /* dtor */
              node_id,
-              /* dtor id */
+
+             /* dtor id */
              [ty_param],
 
              /* ctor id */
@@ -485,7 +492,7 @@ type native_item =
 
 tag native_item_ {
     native_item_ty;
-    native_item_fn(option::t<istr>, fn_decl, [ty_param]);
+    native_item_fn(option::t<str>, fn_decl, [ty_param]);
 }
 
 //

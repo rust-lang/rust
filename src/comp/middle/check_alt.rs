@@ -1,9 +1,8 @@
 import syntax::ast::*;
-import syntax::ast_util::variant_def_ids;
-import syntax::ast_util::dummy_sp;
+import syntax::ast_util::{variant_def_ids, dummy_sp};
 import syntax::visit;
 
-fn check_crate(tcx: &ty::ctxt, crate: &@crate) {
+fn check_crate(tcx: ty::ctxt, crate: @crate) {
     let v =
         @{visit_expr: bind check_expr(tcx, _, _, _),
           visit_local: bind check_local(tcx, _, _, _)
@@ -12,12 +11,12 @@ fn check_crate(tcx: &ty::ctxt, crate: &@crate) {
     tcx.sess.abort_if_errors();
 }
 
-fn check_expr(tcx: &ty::ctxt, ex: &@expr, s: &(), v: &visit::vt<()>) {
+fn check_expr(tcx: ty::ctxt, ex: @expr, s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     alt ex.node { expr_alt(_, arms) { check_arms(tcx, arms); } _ { } }
 }
 
-fn check_arms(tcx: &ty::ctxt, arms: &[arm]) {
+fn check_arms(tcx: ty::ctxt, arms: [arm]) {
     let i = 0;
     for arm: arm in arms {
         for arm_pat: @pat in arm.pats {
@@ -34,15 +33,15 @@ fn check_arms(tcx: &ty::ctxt, arms: &[arm]) {
                 j += 1;
             }
             if !reachable {
-                tcx.sess.span_err(arm_pat.span, ~"unreachable pattern");
+                tcx.sess.span_err(arm_pat.span, "unreachable pattern");
             }
         }
         i += 1;
     }
 }
 
-fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
-    fn patterns_supersede(tcx: &ty::ctxt, as: &[@pat], bs: &[@pat]) -> bool {
+fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
+    fn patterns_supersede(tcx: ty::ctxt, as: [@pat], bs: [@pat]) -> bool {
         let i = 0;
         for a: @pat in as {
             if !pattern_supersedes(tcx, a, bs[i]) { ret false; }
@@ -50,8 +49,8 @@ fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
         }
         ret true;
     }
-    fn field_patterns_supersede(tcx: &ty::ctxt, fas: &[field_pat],
-                                fbs: &[field_pat]) -> bool {
+    fn field_patterns_supersede(tcx: ty::ctxt, fas: [field_pat],
+                                fbs: [field_pat]) -> bool {
         let wild = @{id: 0, node: pat_wild, span: dummy_sp()};
         for fa: field_pat in fas {
             let pb = wild;
@@ -102,15 +101,15 @@ fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
     }
 }
 
-fn check_local(tcx: &ty::ctxt, loc: &@local, s: &(), v: &visit::vt<()>) {
+fn check_local(tcx: ty::ctxt, loc: @local, s: (), v: visit::vt<()>) {
     visit::visit_local(loc, s, v);
     if is_refutable(tcx, loc.node.pat) {
         tcx.sess.span_err(loc.node.pat.span,
-                          ~"refutable pattern in local binding");
+                          "refutable pattern in local binding");
     }
 }
 
-fn is_refutable(tcx: &ty::ctxt, pat: &@pat) -> bool {
+fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     alt pat.node {
       pat_wild. | pat_bind(_) { ret false; }
       pat_lit(_) { ret true; }

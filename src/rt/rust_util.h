@@ -164,36 +164,6 @@ isaac_init(sched_or_kernel *sched, randctx *rctx)
         randinit(rctx, 1);
 }
 
-// Vectors (rust-user-code level).
-
-struct
-rust_evec
-{
-    RUST_REFCOUNTED(rust_evec)
-
-    size_t alloc;
-    size_t fill;
-    size_t pad; // Pad to align data[0] to 16 bytes.
-    uint8_t data[];
-    rust_evec(size_t alloc, size_t fill,
-             uint8_t const *d)
-        : ref_count(1),
-          alloc(alloc),
-          fill(fill)
-    {
-        if (d)
-            memcpy(&data[0], d, fill);
-    }
-    ~rust_evec() {}
-
-    inline void *operator new(size_t size, void *mem) {
-        return mem;
-    }
-};
-
-// Strings are just exterior vecs
-typedef rust_evec rust_str;
-
 // Interior vectors (rust-user-code level).
 
 struct
@@ -218,11 +188,13 @@ inline void reserve_vec(rust_task* task, rust_vec** vpp, size_t size) {
     }
 }
 
-inline rust_vec *
-make_istr(rust_kernel* kernel, char* c, size_t strlen, const char* name) {
+typedef rust_vec rust_str;
+
+inline rust_str *
+make_str(rust_kernel* kernel, char* c, size_t strlen, const char* name) {
     size_t str_fill = strlen + 1;
     size_t str_alloc = str_fill;
-    rust_vec *str = (rust_vec *)
+    rust_str *str = (rust_str *)
         kernel->malloc(vec_size<char>(str_fill), name);
     str->fill = str_fill;
     str->alloc = str_alloc;

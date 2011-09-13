@@ -1,6 +1,6 @@
 
 
-fn id<@T>(x: &T) -> T { ret x; }
+fn id<@T>(x: T) -> T { ret x; }
 
 
 /* FIXME (issue #141):  See test/run-pass/constrained-type.rs.  Uncomment
@@ -9,13 +9,13 @@ type rational = {num: int, den: int};
 
 
 // : int::positive(*.den);
-fn rational_leq(x: &rational, y: &rational) -> bool {
+fn rational_leq(x: rational, y: rational) -> bool {
     // NB: Uses the fact that rationals have positive denominators WLOG:
 
     ret x.num * y.den <= y.num * x.den;
 }
 
-fn orb(a: &bool, b: &bool) -> bool { ret a || b; }
+fn orb(a: bool, b: bool) -> bool { ret a || b; }
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

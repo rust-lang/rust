@@ -31,3 +31,5 @@ fn test10() -> int {
     alt true { true { } };
     (*regs)[0]
 }
+
+fn test11() -> [int] { if true { }; [1, 2] }

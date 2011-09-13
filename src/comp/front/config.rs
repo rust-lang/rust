@@ -1,7 +1,5 @@
-import std::vec;
-import std::option;
-import syntax::ast;
-import syntax::fold;
+import std::{vec, option};
+import syntax::{ast, fold};
 import attr;
 
 export strip_unconfigured_items;
@@ -24,12 +22,12 @@ fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
     ret res;
 }
 
-fn filter_item(cfg: &ast::crate_cfg, item: &@ast::item) ->
+fn filter_item(cfg: ast::crate_cfg, item: @ast::item) ->
    option::t<@ast::item> {
     if item_in_cfg(cfg, item) { option::some(item) } else { option::none }
 }
 
-fn fold_mod(cfg: &ast::crate_cfg, m: &ast::_mod, fld: fold::ast_fold) ->
+fn fold_mod(cfg: ast::crate_cfg, m: ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
     let filter = bind filter_item(cfg, _);
     let filtered_items = vec::filter_map(filter, m.items);
@@ -37,14 +35,14 @@ fn fold_mod(cfg: &ast::crate_cfg, m: &ast::_mod, fld: fold::ast_fold) ->
          items: vec::map(fld.fold_item, filtered_items)};
 }
 
-fn filter_native_item(cfg: &ast::crate_cfg, item: &@ast::native_item) ->
+fn filter_native_item(cfg: ast::crate_cfg, item: @ast::native_item) ->
    option::t<@ast::native_item> {
     if native_item_in_cfg(cfg, item) {
         option::some(item)
     } else { option::none }
 }
 
-fn fold_native_mod(cfg: &ast::crate_cfg, nm: &ast::native_mod,
+fn fold_native_mod(cfg: ast::crate_cfg, nm: ast::native_mod,
                    fld: fold::ast_fold) -> ast::native_mod {
     let filter = bind filter_native_item(cfg, _);
     let filtered_items = vec::filter_map(filter, nm.items);
@@ -54,7 +52,7 @@ fn fold_native_mod(cfg: &ast::crate_cfg, nm: &ast::native_mod,
          items: filtered_items};
 }
 
-fn filter_stmt(cfg: &ast::crate_cfg, stmt: &@ast::stmt) ->
+fn filter_stmt(cfg: ast::crate_cfg, stmt: @ast::stmt) ->
    option::t<@ast::stmt> {
     alt stmt.node {
       ast::stmt_decl(decl, _) {
@@ -71,30 +69,30 @@ fn filter_stmt(cfg: &ast::crate_cfg, stmt: &@ast::stmt) ->
     }
 }
 
-fn fold_block(cfg: &ast::crate_cfg, b: &ast::blk_, fld: fold::ast_fold) ->
+fn fold_block(cfg: ast::crate_cfg, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
     let filter = bind filter_stmt(cfg, _);
     let filtered_stmts = vec::filter_map(filter, b.stmts);
     ret {stmts: vec::map(fld.fold_stmt, filtered_stmts),
          expr: option::map(fld.fold_expr, b.expr),
-         id: b.id, rules: b.rules};
+         id: b.id,
+         rules: b.rules};
 }
 
-fn item_in_cfg(cfg: &ast::crate_cfg, item: &@ast::item) -> bool {
+fn item_in_cfg(cfg: ast::crate_cfg, item: @ast::item) -> bool {
     ret in_cfg(cfg, item.attrs);
 }
 
-fn native_item_in_cfg(cfg: &ast::crate_cfg, item: &@ast::native_item) ->
-   bool {
+fn native_item_in_cfg(cfg: ast::crate_cfg, item: @ast::native_item) -> bool {
     ret in_cfg(cfg, item.attrs);
 }
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
+fn in_cfg(cfg: ast::crate_cfg, attrs: [ast::attribute]) -> bool {
 
     // The "cfg" attributes on the item
-    let item_cfg_attrs = attr::find_attrs_by_name(attrs, ~"cfg");
+    let item_cfg_attrs = attr::find_attrs_by_name(attrs, "cfg");
     let item_has_cfg_attrs = vec::len(item_cfg_attrs) > 0u;
     if !item_has_cfg_attrs { ret true; }
 
@@ -103,12 +101,11 @@ fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
     // which the item is valid
     let item_cfg_metas =
         {
-            fn extract_metas(inner_items: &[@ast::meta_item],
-                             cfg_item: &@ast::meta_item) ->
-               [@ast::meta_item] {
+            fn extract_metas(inner_items: [@ast::meta_item],
+                             cfg_item: @ast::meta_item) -> [@ast::meta_item] {
                 alt cfg_item.node {
                   ast::meta_list(name, items) {
-                    assert (name == ~"cfg");
+                    assert (name == "cfg");
                     inner_items + items
                   }
                   _ { inner_items }

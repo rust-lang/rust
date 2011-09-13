@@ -36,8 +36,7 @@ fn packager(cb: chan<chan<[u8]>>, msg: chan<msg>) {
 fn main() {
     let p: port<msg> = port();
     let recv_reader: port<chan<[u8]>> = port();
-    let pack =
-        task::spawn(bind packager(chan(recv_reader), chan(p)));
+    let pack = task::spawn(bind packager(chan(recv_reader), chan(p)));
 
     let source_chan: chan<[u8]> = recv(recv_reader);
     let prod = task::spawn(bind producer(source_chan));

@@ -1,7 +1,4 @@
-import comm::port;
-import comm::chan;
-import comm::send;
-import comm::recv;
+import comm::{port, chan, send, recv};
 
 import net;
 

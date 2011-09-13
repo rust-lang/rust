@@ -1,9 +1,8 @@
-import std::str;
-import std::option;
+import std::{str, option};
 import codemap::span;
 import ast::*;
 
-fn respan<@T>(sp: &span, t: &T) -> spanned<T> { ret {node: t, span: sp}; }
+fn respan<@T>(sp: span, t: T) -> spanned<T> { ret {node: t, span: sp}; }
 
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {
@@ -13,15 +12,13 @@ fn mk_sp(lo: uint, hi: uint) -> span {
 // make this a const, once the compiler supports it
 fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
-fn path_name(p: &path) -> istr { path_name_i(p.node.idents) }
+fn path_name(p: path) -> str { path_name_i(p.node.idents) }
 
-fn path_name_i(idents: &[ident]) -> istr {
-    str::connect(idents, ~"::")
-}
+fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
-fn variant_def_ids(d: &def) -> {tg: def_id, var: def_id} {
+fn variant_def_ids(d: def) -> {tg: def_id, var: def_id} {
     alt d { def_variant(tag_id, var_id) { ret {tg: tag_id, var: var_id}; } }
 }
 
@@ -45,11 +42,11 @@ fn def_id_of_def(d: def) -> def_id {
     }
 }
 
-type pat_id_map = std::map::hashmap<istr, node_id>;
+type pat_id_map = std::map::hashmap<str, node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
-fn pat_id_map(pat: &@pat) -> pat_id_map {
+fn pat_id_map(pat: @pat) -> pat_id_map {
     let map = std::map::new_str_hash::<node_id>();
     for each bound in pat_bindings(pat) {
         let name = alt bound.node { pat_bind(n) { n } };
@@ -59,7 +56,7 @@ fn pat_id_map(pat: &@pat) -> pat_id_map {
 }
 
 // FIXME: could return a constrained type
-iter pat_bindings(pat: &@pat) -> @pat {
+iter pat_bindings(pat: @pat) -> @pat {
     alt pat.node {
       pat_bind(_) { put pat; }
       pat_tag(_, sub) {
@@ -76,33 +73,33 @@ iter pat_bindings(pat: &@pat) -> @pat {
     }
 }
 
-fn pat_binding_ids(pat: &@pat) -> [node_id] {
+fn pat_binding_ids(pat: @pat) -> [node_id] {
     let found = [];
     for each b in pat_bindings(pat) { found += [b.id]; }
     ret found;
 }
 
-fn binop_to_str(op: binop) -> istr {
+fn binop_to_str(op: binop) -> str {
     alt op {
-      add. { ret ~"+"; }
-      sub. { ret ~"-"; }
-      mul. { ret ~"*"; }
-      div. { ret ~"/"; }
-      rem. { ret ~"%"; }
-      and. { ret ~"&&"; }
-      or. { ret ~"||"; }
-      bitxor. { ret ~"^"; }
-      bitand. { ret ~"&"; }
-      bitor. { ret ~"|"; }
-      lsl. { ret ~"<<"; }
-      lsr. { ret ~">>"; }
-      asr. { ret ~">>>"; }
-      eq. { ret ~"=="; }
-      lt. { ret ~"<"; }
-      le. { ret ~"<="; }
-      ne. { ret ~"!="; }
-      ge. { ret ~">="; }
-      gt. { ret ~">"; }
+      add. { ret "+"; }
+      sub. { ret "-"; }
+      mul. { ret "*"; }
+      div. { ret "/"; }
+      rem. { ret "%"; }
+      and. { ret "&&"; }
+      or. { ret "||"; }
+      bitxor. { ret "^"; }
+      bitand. { ret "&"; }
+      bitor. { ret "|"; }
+      lsl. { ret "<<"; }
+      lsr. { ret ">>"; }
+      asr. { ret ">>>"; }
+      eq. { ret "=="; }
+      lt. { ret "<"; }
+      le. { ret "<="; }
+      ne. { ret "!="; }
+      ge. { ret ">="; }
+      gt. { ret ">"; }
     }
 }
 
@@ -110,31 +107,31 @@ pure fn lazy_binop(b: binop) -> bool {
     alt b { and. { true } or. { true } _ { false } }
 }
 
-fn unop_to_str(op: unop) -> istr {
+fn unop_to_str(op: unop) -> str {
     alt op {
-      box(mt) { if mt == mut { ret ~"@mutable "; } ret ~"@"; }
-      deref. { ret ~"*"; }
-      not. { ret ~"!"; }
-      neg. { ret ~"-"; }
+      box(mt) { if mt == mut { ret "@mutable "; } ret "@"; }
+      deref. { ret "*"; }
+      not. { ret "!"; }
+      neg. { ret "-"; }
     }
 }
 
-fn is_path(e: &@expr) -> bool {
+fn is_path(e: @expr) -> bool {
     ret alt e.node { expr_path(_) { true } _ { false } };
 }
 
-fn ty_mach_to_str(tm: ty_mach) -> istr {
+fn ty_mach_to_str(tm: ty_mach) -> str {
     alt tm {
-      ty_u8. { ret ~"u8"; }
-      ty_u16. { ret ~"u16"; }
-      ty_u32. { ret ~"u32"; }
-      ty_u64. { ret ~"u64"; }
-      ty_i8. { ret ~"i8"; }
-      ty_i16. { ret ~"i16"; }
-      ty_i32. { ret ~"i32"; }
-      ty_i64. { ret ~"i64"; }
-      ty_f32. { ret ~"f32"; }
-      ty_f64. { ret ~"f64"; }
+      ty_u8. { ret "u8"; }
+      ty_u16. { ret "u16"; }
+      ty_u32. { ret "u32"; }
+      ty_u64. { ret "u64"; }
+      ty_i8. { ret "i8"; }
+      ty_i16. { ret "i16"; }
+      ty_i32. { ret "i32"; }
+      ty_i64. { ret "i64"; }
+      ty_f32. { ret "f32"; }
+      ty_f64. { ret "f64"; }
     }
 }
 
@@ -181,27 +178,27 @@ fn is_constraint_arg(e: @expr) -> bool {
     }
 }
 
-fn eq_ty(a: &@ty, b: &@ty) -> bool { ret std::box::ptr_eq(a, b); }
+fn eq_ty(a: @ty, b: @ty) -> bool { ret std::box::ptr_eq(a, b); }
 
-fn hash_ty(t: &@ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
+fn hash_ty(t: @ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
 
 fn block_from_expr(e: @expr) -> blk {
     let blk_ = checked_blk([], option::some::<@expr>(e), e.id);
     ret {node: blk_, span: e.span};
 }
 
-fn checked_blk(stmts1: [@stmt], expr1: option::t<@expr>, id1: node_id)
-    -> blk_ {
+fn checked_blk(stmts1: [@stmt], expr1: option::t<@expr>, id1: node_id) ->
+   blk_ {
     ret {stmts: stmts1, expr: expr1, id: id1, rules: checked};
 }
 
-fn obj_field_from_anon_obj_field(f: &anon_obj_field) -> obj_field {
+fn obj_field_from_anon_obj_field(f: anon_obj_field) -> obj_field {
     ret {mut: f.mut, ty: f.ty, ident: f.ident, id: f.id};
 }
 
 // This is a convenience function to transfor ternary expressions to if
 // expressions so that they can be treated the same
-fn ternary_to_if(e: &@expr) -> @expr {
+fn ternary_to_if(e: @expr) -> @expr {
     alt e.node {
       expr_ternary(cond, then, els) {
         let then_blk = block_from_expr(then);

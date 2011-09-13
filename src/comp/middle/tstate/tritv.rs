@@ -55,6 +55,9 @@ fn trit_minus(a: trit, b: trit) -> trit {
           ttrue. { dont_care }
           tfalse. { ttrue }
 
+
+
+
           /* internally contradictory, but
              I guess it'll get flagged? */
           dont_care. {
@@ -65,6 +68,9 @@ fn trit_minus(a: trit, b: trit) -> trit {
       tfalse. {
         alt b {
           ttrue. { tfalse }
+
+
+
 
           /* see above comment */
           _ {
@@ -82,6 +88,9 @@ fn trit_or(a: trit, b: trit) -> trit {
       tfalse. {
         alt b {
           ttrue. { dont_care }
+
+
+
 
           /* FIXME: ?????? */
           _ {
@@ -101,15 +110,24 @@ fn trit_and(a: trit, b: trit) -> trit {
     alt a {
       dont_care. { b }
 
+
+
+
       // also seems wrong for case b = ttrue
       ttrue. {
         alt b {
           dont_care. { ttrue }
 
+
+
+
           // ??? Seems wrong
           ttrue. {
             ttrue
           }
+
+
+
 
 
           // false wins, since if something is uninit
@@ -122,6 +140,9 @@ fn trit_and(a: trit, b: trit) -> trit {
           }
         }
       }
+
+
+
 
 
       // Rationale: if it's uninit on one path,
@@ -138,7 +159,7 @@ fn change(changed: bool, old: trit, new: trit) -> bool {
     changed || new != old
 }
 
-fn tritv_difference(p1: &t, p2: &t) -> bool {
+fn tritv_difference(p1: t, p2: t) -> bool {
     let i: uint = 0u;
     assert (p1.nbits == p2.nbits);
     let sz: uint = p1.nbits;
@@ -153,7 +174,7 @@ fn tritv_difference(p1: &t, p2: &t) -> bool {
     ret changed;
 }
 
-fn tritv_union(p1: &t, p2: &t) -> bool {
+fn tritv_union(p1: t, p2: t) -> bool {
     let i: uint = 0u;
     assert (p1.nbits == p2.nbits);
     let sz: uint = p1.nbits;
@@ -168,7 +189,7 @@ fn tritv_union(p1: &t, p2: &t) -> bool {
     ret changed;
 }
 
-fn tritv_intersect(p1: &t, p2: &t) -> bool {
+fn tritv_intersect(p1: t, p2: t) -> bool {
     let i: uint = 0u;
     assert (p1.nbits == p2.nbits);
     let sz: uint = p1.nbits;
@@ -183,14 +204,14 @@ fn tritv_intersect(p1: &t, p2: &t) -> bool {
     ret changed;
 }
 
-fn tritv_get(v: &t, i: uint) -> trit {
+fn tritv_get(v: t, i: uint) -> trit {
     let b1 = bitv::get(v.uncertain, i);
     let b2 = bitv::get(v.val, i);
     assert (!(b1 && b2));
     if b1 { dont_care } else if b2 { ttrue } else { tfalse }
 }
 
-fn tritv_set(i: uint, v: &t, t: trit) -> bool {
+fn tritv_set(i: uint, v: t, t: trit) -> bool {
     let old = tritv_get(v, i);
     alt t {
       dont_care. {
@@ -206,7 +227,7 @@ fn tritv_set(i: uint, v: &t, t: trit) -> bool {
     ret change(false, old, t);
 }
 
-fn tritv_copy(target: &t, source: &t) -> bool {
+fn tritv_copy(target: t, source: t) -> bool {
     assert (target.nbits == source.nbits);
     let changed =
         !bitv::equal(target.uncertain, source.uncertain) ||
@@ -216,28 +237,28 @@ fn tritv_copy(target: &t, source: &t) -> bool {
     ret changed;
 }
 
-fn tritv_set_all(v: &t) {
+fn tritv_set_all(v: t) {
     let i: uint = 0u;
     while i < v.nbits { tritv_set(i, v, ttrue); i += 1u; }
 }
 
-fn tritv_clear(v: &t) {
+fn tritv_clear(v: t) {
     let i: uint = 0u;
     while i < v.nbits { tritv_set(i, v, dont_care); i += 1u; }
 }
 
-fn tritv_kill(v: &t) {
+fn tritv_kill(v: t) {
     let i: uint = 0u;
     while i < v.nbits { tritv_set(i, v, tfalse); i += 1u; }
 }
 
-fn tritv_clone(v: &t) -> t {
+fn tritv_clone(v: t) -> t {
     ret {uncertain: bitv::clone(v.uncertain),
          val: bitv::clone(v.val),
          nbits: v.nbits};
 }
 
-fn tritv_doesntcare(v: &t) -> bool {
+fn tritv_doesntcare(v: t) -> bool {
     let i: uint = 0u;
     while i < v.nbits {
         if tritv_get(v, i) != dont_care { ret false; }
@@ -246,7 +267,7 @@ fn tritv_doesntcare(v: &t) -> bool {
     ret true;
 }
 
-fn to_vec(v: &t) -> [uint] {
+fn to_vec(v: t) -> [uint] {
     let i: uint = 0u;
     let rslt: [uint] = [];
     while i < v.nbits {
@@ -261,15 +282,15 @@ fn to_vec(v: &t) -> [uint] {
     ret rslt;
 }
 
-fn to_str(v: &t) -> istr {
+fn to_str(v: t) -> str {
     let i: uint = 0u;
-    let rs: istr = ~"";
+    let rs: str = "";
     while i < v.nbits {
         rs +=
             alt tritv_get(v, i) {
-              dont_care. { ~"?" }
-              ttrue. { ~"1" }
-              tfalse. { ~"0" }
+              dont_care. { "?" }
+              ttrue. { "1" }
+              tfalse. { "0" }
             };
         i += 1u;
     }

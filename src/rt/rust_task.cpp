@@ -86,6 +86,9 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
 
     stk = new_stk(sched, this, 0);
     user.rust_sp = stk->limit;
+    if (supervisor) {
+        supervisor->ref();
+    }
 }
 
 rust_task::~rust_task()
@@ -107,6 +110,10 @@ rust_task::~rust_task()
         }
     }
 
+    if (supervisor) {
+        supervisor->deref();
+    }
+
     kernel->release_task_id(user.id);
 
     /* FIXME: tighten this up, there are some more
@@ -125,28 +132,10 @@ struct spawn_args {
                        uintptr_t, uintptr_t);
 };
 
-struct rust_closure {
+struct rust_closure_env {
     intptr_t ref_count;
     type_desc *td;
 };
-
-extern "C" CDECL
-void task_exit(rust_closure *env, int rval, rust_task *task) {
-    LOG(task, task, "task exited with value %d", rval);
-    if(env) {
-        // free the environment.
-        I(task->sched, 1 == env->ref_count); // the ref count better be 1
-        //env->td->drop_glue(NULL, task, NULL, env->td->first_param, env);
-        //env->td->free_glue(NULL, task, NULL, env->td->first_param, env);
-        task->free(env);
-    }
-    task->die();
-    task->lock.lock();
-    task->notify_tasks_waiting_to_join();
-    task->lock.unlock();
-
-    task->yield(1);
-}
 
 extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
@@ -154,15 +143,62 @@ void task_start_wrapper(spawn_args *a)
     rust_task *task = a->task;
     int rval = 42;
 
-    a->f(&rval, task, a->a3, a->a4);
-    task_exit(NULL, rval, task);
+    bool failed = false;
+    try {
+        a->f(&rval, task, a->a3, a->a4);
+    } catch (rust_task *ex) {
+        A(task->sched, ex == task,
+          "Expected this task to be thrown for unwinding");
+        failed = true;
+    }
+
+    rust_closure_env* env = (rust_closure_env*)a->a3;
+    if(env) {
+        // free the environment.
+        I(task->sched, 1 == env->ref_count); // the ref count better be 1
+        //env->td->drop_glue(NULL, task, NULL, env->td->first_param, env);
+        //env->td->free_glue(NULL, task, NULL, env->td->first_param, env);
+        task->free(env);
+    }
+
+    if (failed) {
+#ifndef __WIN32__
+        task->conclude_failure();
+#else
+        A(task->sched, false, "Shouldn't happen");
+#endif
+    } else {
+        task->die();
+        task->lock.lock();
+        task->notify_tasks_waiting_to_join();
+        task->lock.unlock();
+        task->yield(1);
+    }
+}
+
+/* We spawn a rust (fastcc) function through a CDECL function
+   defined in main.ll, which is built as part of each crate. These accessors
+   allow each rust program to install that function at startup */
+
+uintptr_t spawn_wrapper;
+
+extern "C" CDECL void
+set_spawn_wrapper(uintptr_t f) {
+    spawn_wrapper = f;
+}
+
+extern "C" CDECL uintptr_t
+get_spawn_wrapper() {
+    return spawn_wrapper;
 }
 
 void
 rust_task::start(uintptr_t spawnee_fn,
-                 uintptr_t args)
+                 uintptr_t args,
+                 uintptr_t env)
 {
-    LOGPTR(sched, "from spawnee", spawnee_fn);
+    LOG(this, task, "starting task from fn 0x%" PRIxPTR
+        " with args 0x%" PRIxPTR, spawnee_fn, args);
 
     I(sched, stk->data != NULL);
 
@@ -173,14 +209,21 @@ rust_task::start(uintptr_t spawnee_fn,
     spawn_args *a = (spawn_args *)sp;
 
     a->task = this;
-    a->a3 = 0;
+    a->a3 = env;
     a->a4 = args;
     void **f = (void **)&a->f;
     *f = (void *)spawnee_fn;
 
-    user.ctx.call((void *)task_start_wrapper, a, sp);
+    ctx.call((void *)task_start_wrapper, a, sp);
 
     this->start();
+}
+
+void
+rust_task::start(uintptr_t spawnee_fn,
+                 uintptr_t args)
+{
+    start(spawnee_fn, args, 0);
 }
 
 void rust_task::start()
@@ -213,7 +256,7 @@ rust_task::yield(size_t time_in_us) {
     yield_timer.reset_us(time_in_us);
 
     // Return to the scheduler.
-    user.ctx.next->swap(user.ctx);
+    ctx.next->swap(ctx);
 }
 
 void
@@ -244,6 +287,16 @@ rust_task::fail() {
     // See note in ::kill() regarding who should call this.
     DLOG(sched, task, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
+#ifndef __WIN32__
+    throw this;
+#else
+    conclude_failure();
+#endif
+}
+
+void
+rust_task::conclude_failure() {
+    die();
     // Unblock the task so it can unwind.
     unblock();
     if (supervisor) {
@@ -257,6 +310,8 @@ rust_task::fail() {
     if (NULL == supervisor && propagate_failure)
         sched->fail();
     failed = true;
+    notify_tasks_waiting_to_join();
+    yield(4);
 }
 
 void
@@ -266,6 +321,9 @@ rust_task::unsupervise()
              "task %s @0x%" PRIxPTR
              " disconnecting from supervisor %s @0x%" PRIxPTR,
              name, this, supervisor->name, supervisor);
+    if (supervisor) {
+        supervisor->deref();
+    }
     supervisor = NULL;
     propagate_failure = false;
 }
