@@ -22,7 +22,7 @@ type binding = @{node_id: node_id,
                  unsafe_tys: [ty::t],
                  mutable ok: valid,
                  mutable copied: copied};
-type scope = [binding]; // {bs: [binding], ret_style: ast::ret_style}
+type scope = {bs: [binding], ret_style: ast::ret_style};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
               unsafe: [ty::t]) -> binding {
@@ -47,25 +47,32 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
                local_map: std::map::new_int_hash(),
                mutable next_local: 0u,
                copy_map: std::map::new_int_hash()};
-    let v = @{visit_fn: visit_fn,
+    let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_decl: bind visit_decl(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
-    visit::visit_crate(*crate, [], visit::mk_vt(v));
+    visit::visit_crate(*crate, {bs: [], ret_style: ast::return_val},
+                       visit::mk_vt(v));
     tcx.sess.abort_if_errors();
     ret cx.copy_map;
 }
 
-fn visit_fn(f: ast::_fn, _tp: [ast::ty_param], _sp: span, _name: fn_ident,
-            _id: ast::node_id, sc: scope, v: vt<scope>) {
+fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], _sp: span,
+            _name: fn_ident, _id: ast::node_id, sc: scope, v: vt<scope>) {
     visit::visit_fn_decl(f.decl, sc, v);
-    let scope = alt f.proto {
+    let bs = alt f.proto {
       // Blocks need to obey any restrictions from the enclosing scope.
-      ast::proto_block. | ast::proto_closure. { sc }
+      ast::proto_block. | ast::proto_closure. { sc.bs }
       // Non capturing functions start out fresh.
       _ { [] }
     };
-    v.visit_block(f.body, scope, v);
+    if f.decl.cf == ast::return_ref && !is_none(f.body.node.expr) {
+        // FIXME this will be easier to lift once have DPS
+        cx.tcx.sess.span_err(option::get(f.body.node.expr).span,
+                             "reference-returning functions may not " +
+                             "return implicitly");
+    }
+    v.visit_block(f.body, {bs: bs, ret_style: f.decl.cf}, v);
 }
 
 fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
@@ -111,7 +118,9 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
         check_assign(cx, dest, src, sc, v);
       }
       ast::expr_ret(oexpr) {
-        
+        if sc.ret_style == ast::return_ref && !is_none(oexpr) {
+            check_ret_ref(*cx, option::get(oexpr));
+        }
         handled = false;
       }
       _ { handled = false; }
@@ -256,12 +265,33 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     ret bindings;
 }
 
+fn check_ret_ref(cx: ctx, expr: @ast::expr) {
+    let root = expr_root(cx.tcx, expr, false);
+    let bad = none;
+    alt path_def(cx, root.ex) {
+      none. { bad = some("temporary"); }
+      some(ast::def_arg(_, mode)) {
+        if mode == ast::by_move { bad = some("move-mode parameter"); }
+        if mut_field(root.ds) { bad = some("mutable field"); }
+      }
+      // FIXME allow references to constants and static items?
+      _ { bad = some("non-argument value"); }
+    }
+    alt bad {
+      some(name) {
+        cx.tcx.sess.span_err(expr.span, "can not return a reference " +
+                             "to a " + name);
+      }
+      _ {}
+    }
+}
+
 fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
              v: vt<scope>) {
     v.visit_expr(input, sc, v);
     let root = expr_root(cx.tcx, input, true);
     for a: ast::arm in arms {
-        let new_sc = sc;
+        let new_bs = sc.bs;
         let root_var = path_def_id(cx, root.ex);
         let pat_id_map = ast_util::pat_id_map(a.pats[0]);
         type info = {id: node_id, mutable unsafe: [ty::t], span: span};
@@ -283,11 +313,11 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
             }
         }
         for info in binding_info {
-            new_sc += [mk_binding(cx, info.id, info.span, root_var,
-                                  info.unsafe)];
+            new_bs += [mk_binding(cx, info.id, info.span, root_var,
+                                  copy info.unsafe)];
         }
         register_locals(cx, a.pats[0]);
-        visit::visit_arm(a, new_sc, v);
+        visit::visit_arm(a, {bs: new_bs with sc}, v);
     }
 }
 
@@ -296,13 +326,13 @@ fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
     v.visit_expr(call, sc, v);
     alt call.node {
       ast::expr_call(f, args) {
-        let new_sc = sc + check_call(cx, f, args);
+        let new_bs = sc.bs + check_call(cx, f, args);
         for proot in *pattern_roots(cx.tcx, [], local.node.pat) {
-            new_sc += [mk_binding(cx, proot.id, proot.span, none,
+            new_bs += [mk_binding(cx, proot.id, proot.span, none,
                                   inner_mut(proot.ds))];
         }
         register_locals(cx, local.node.pat);
-        visit::visit_block(blk, new_sc, v);
+        visit::visit_block(blk, {bs: new_bs with sc}, v);
       }
     }
 }
@@ -324,13 +354,13 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
       _ {}
     }
     let root_var = path_def_id(cx, root.ex);
-    let new_sc = sc;
+    let new_bs = sc.bs;
     for proot in *pattern_roots(cx.tcx, ext_ds, local.node.pat) {
-        new_sc += [mk_binding(cx, proot.id, proot.span, root_var,
+        new_bs += [mk_binding(cx, proot.id, proot.span, root_var,
                               inner_mut(proot.ds))];
     }
     register_locals(cx, local.node.pat);
-    visit::visit_block(blk, new_sc, v);
+    visit::visit_block(blk, {bs: new_bs with sc}, v);
 }
 
 fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
@@ -341,7 +371,7 @@ fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
     let my_local_id =
         alt cx.local_map.find(my_defnum) { some(local(id)) { id } _ { 0u } };
     let var_t = ty::expr_ty(cx.tcx, ex);
-    for b in sc {
+    for b in sc.bs {
         // excludes variables introduced since the alias was made
         if my_local_id < b.local_id {
             for ty in b.unsafe_tys {
@@ -360,7 +390,7 @@ fn check_lval(cx: @ctx, dest: @ast::expr, sc: scope, v: vt<scope>) {
       ast::expr_path(p) {
         let def = cx.tcx.def_map.get(dest.id);
         let dnum = ast_util::def_id_of_def(def).node;
-        for b in sc {
+        for b in sc.bs {
             if b.root_var == some(dnum) { b.ok = overwritten(dest.span, p); }
         }
       }
@@ -378,7 +408,7 @@ fn test_scope(cx: ctx, sc: scope, b: binding, p: ast::path) {
     let prob = b.ok;
     alt b.root_var {
       some(dn) {
-        for other in sc {
+        for other in sc.bs {
             if other.node_id == dn {
                 prob = other.ok;
                 if prob != valid { break; }
@@ -461,11 +491,6 @@ fn ty_can_unsafely_include(cx: ctx, needle: ty::t, haystack: ty::t, mut: bool)
             ret true;
           }
           ty::ty_obj(_) { ret true; }
-
-
-
-
-
           // A type param may include everything, but can only be
           // treated as opaque downstream, and is thus safe unless we
           // saw mutable fields, in which case the whole thing can be
