@@ -23,7 +23,7 @@ type restrict = @{node_id: node_id,
                   mutable ok: valid,
                   mutable copied: copied};
 
-type scope = @[restrict];
+type scope = [restrict];
 
 tag local_info { local(uint); }
 
@@ -38,17 +38,15 @@ type ctx =
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
-    let cx =
-        @{tcx: tcx,
-          local_map: std::map::new_int_hash(),
-          mutable next_local: 0u,
-          copy_map: std::map::new_int_hash()};
-    let v =
-        @{visit_fn: visit_fn,
-          visit_expr: bind visit_expr(cx, _, _, _),
-          visit_decl: bind visit_decl(cx, _, _, _)
-             with *visit::default_visitor::<scope>()};
-    visit::visit_crate(*crate, @[], visit::mk_vt(v));
+    let cx = @{tcx: tcx,
+               local_map: std::map::new_int_hash(),
+               mutable next_local: 0u,
+               copy_map: std::map::new_int_hash()};
+    let v = @{visit_fn: visit_fn,
+              visit_expr: bind visit_expr(cx, _, _, _),
+              visit_decl: bind visit_decl(cx, _, _, _)
+              with *visit::default_visitor::<scope>()};
+    visit::visit_crate(*crate, [], visit::mk_vt(v));
     tcx.sess.abort_if_errors();
     ret cx.copy_map;
 }
@@ -60,7 +58,7 @@ fn visit_fn(f: ast::_fn, _tp: [ast::ty_param], _sp: span, _name: fn_ident,
       // Blocks need to obey any restrictions from the enclosing scope.
       ast::proto_block. | ast::proto_closure. { sc }
       // Non capturing functions start out fresh.
-      _ { @[] }
+      _ { [] }
     };
     v.visit_block(f.body, scope, v);
 }
@@ -257,7 +255,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
     v.visit_expr(input, sc, v);
     let root = expr_root(cx.tcx, input, true);
     for a: ast::arm in arms {
-        let new_sc = *sc;
+        let new_sc = sc;
         let root_var = path_def_id(cx, root.ex);
         let pat_id_map = ast_util::pat_id_map(a.pats[0]);
         type info = {id: node_id, mutable unsafe: [ty::t], span: span};
@@ -288,7 +286,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
                          mutable copied: not_copied}];
         }
         register_locals(cx, a.pats[0]);
-        visit::visit_arm(a, @new_sc, v);
+        visit::visit_arm(a, new_sc, v);
     }
 }
 
@@ -297,7 +295,7 @@ fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
     v.visit_expr(call, sc, v);
     alt call.node {
       ast::expr_call(f, args) {
-        let new_sc = *sc + check_call(cx, f, args);
+        let new_sc = sc + check_call(cx, f, args);
         for proot in *pattern_roots(cx.tcx, [], local.node.pat) {
             new_sc += [@{node_id: proot.id,
                          span: proot.span,
@@ -308,7 +306,7 @@ fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
                          mutable copied: not_copied}];
         }
         register_locals(cx, local.node.pat);
-        visit::visit_block(blk, @new_sc, v);
+        visit::visit_block(blk, new_sc, v);
       }
     }
 }
@@ -330,7 +328,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
       _ {}
     }
     let root_var = path_def_id(cx, root.ex);
-    let new_sc = *sc;
+    let new_sc = sc;
     for proot in *pattern_roots(cx.tcx, ext_ds, local.node.pat) {
         new_sc += [@{node_id: proot.id,
                      span: proot.span,
@@ -341,7 +339,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
                      mutable copied: not_copied}];
     }
     register_locals(cx, local.node.pat);
-    visit::visit_block(blk, @new_sc, v);
+    visit::visit_block(blk, new_sc, v);
 }
 
 fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
@@ -352,7 +350,7 @@ fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
     let my_local_id =
         alt cx.local_map.find(my_defnum) { some(local(id)) { id } _ { 0u } };
     let var_t = ty::expr_ty(cx.tcx, ex);
-    for r: restrict in *sc {
+    for r: restrict in sc {
         // excludes variables introduced since the alias was made
         if my_local_id < r.local_id {
             for ty in r.unsafe_tys {
@@ -371,7 +369,7 @@ fn check_lval(cx: @ctx, dest: @ast::expr, sc: scope, v: vt<scope>) {
       ast::expr_path(p) {
         let def = cx.tcx.def_map.get(dest.id);
         let dnum = ast_util::def_id_of_def(def).node;
-        for r: restrict in *sc {
+        for r: restrict in sc {
             if r.root_var == some(dnum) { r.ok = overwritten(dest.span, p); }
         }
       }
@@ -389,7 +387,7 @@ fn test_scope(cx: ctx, sc: scope, r: restrict, p: ast::path) {
     let prob = r.ok;
     alt r.root_var {
       some(dn) {
-        for other in *sc {
+        for other in sc {
             if other.node_id == dn {
                 prob = other.ok;
                 if prob != valid { break; }
