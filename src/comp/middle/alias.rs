@@ -15,25 +15,30 @@ import std::option::{some, none, is_none};
 tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 tag copied { not_allowed; copied; not_copied; }
 
-type restrict = @{node_id: node_id,
-                  span: span,
-                  local_id: uint,
-                  root_var: option::t<node_id>,
-                  unsafe_tys: [ty::t],
-                  mutable ok: valid,
-                  mutable copied: copied};
+type binding = @{node_id: node_id,
+                 span: span,
+                 local_id: uint,
+                 root_var: option::t<node_id>,
+                 unsafe_tys: [ty::t],
+                 mutable ok: valid,
+                 mutable copied: copied};
+type scope = [binding]; // {bs: [binding], ret_style: ast::ret_style}
 
-type scope = [restrict];
+fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
+              unsafe: [ty::t]) -> binding {
+    ret @{node_id: id, span: span, local_id: cx.next_local,
+          root_var: root_var, unsafe_tys: unsafe,
+          mutable ok: valid, mutable copied: not_copied};
+}
 
 tag local_info { local(uint); }
 
 type copy_map = std::map::hashmap<node_id, ()>;
 
-type ctx =
-    {tcx: ty::ctxt,
-     local_map: std::map::hashmap<node_id, local_info>,
-     mutable next_local: uint,
-     copy_map: copy_map};
+type ctx = {tcx: ty::ctxt,
+            local_map: std::map::hashmap<node_id, local_info>,
+            mutable next_local: uint,
+            copy_map: copy_map};
 
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
     // Stores information about object fields and function
@@ -105,6 +110,10 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
       ast::expr_assign(dest, src) | ast::expr_assign_op(_, dest, src) {
         check_assign(cx, dest, src, sc, v);
       }
+      ast::expr_ret(oexpr) {
+        
+        handled = false;
+      }
       _ { handled = false; }
     }
     if !handled { visit::visit_expr(ex, sc, v); }
@@ -137,18 +146,18 @@ fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
     }
 }
 
-fn cant_copy(cx: ctx, r: restrict) -> bool {
-    alt r.copied {
+fn cant_copy(cx: ctx, b: binding) -> bool {
+    alt b.copied {
       not_allowed. { ret true; }
       copied. { ret false; }
       not_copied. {}
     }
-    let ty = ty::node_id_to_type(cx.tcx, r.node_id);
+    let ty = ty::node_id_to_type(cx.tcx, b.node_id);
     if ty::type_allows_implicit_copy(cx.tcx, ty) {
-        r.copied = copied;
-        cx.copy_map.insert(r.node_id, ());
+        b.copied = copied;
+        cx.copy_map.insert(b.node_id, ());
         if copy_is_expensive(cx.tcx, ty) {
-            cx.tcx.sess.span_warn(r.span,
+            cx.tcx.sess.span_warn(b.span,
                                   "inserting an implicit copy for type " +
                                   util::ppaux::ty_to_str(cx.tcx, ty));
         }
@@ -156,11 +165,11 @@ fn cant_copy(cx: ctx, r: restrict) -> bool {
     } else { ret true; }
 }
 
-fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [restrict] {
+fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
     let arg_ts = ty::ty_fn_args(cx.tcx, fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
-    let restricts = [];
+    let bindings = [];
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
         let arg = args[i];
@@ -175,17 +184,14 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [restrict] {
             }
         }
         let root_var = path_def_id(cx, root.ex);
-        restricts += [@{node_id: arg.id,
-                        span: arg.span,
-                        local_id: cx.next_local,
-                        root_var: root_var,
-                        unsafe_tys: inner_mut(root.ds),
-                        mutable ok: valid,
-                        mutable copied: alt arg_t.mode {
-                          ast::by_move. { copied }
-                          ast::by_ref. { not_copied }
-                          ast::by_mut_ref. { not_allowed }
-                        }}];
+        let new_bnd = mk_binding(cx, arg.id, arg.span, root_var,
+                                 inner_mut(root.ds));
+        new_bnd.copied = alt arg_t.mode {
+          ast::by_move. { copied }
+          ast::by_ref. { not_copied }
+          ast::by_mut_ref. { not_allowed }
+        };
+        bindings += [new_bnd];
         i += 1u;
     }
     let f_may_close =
@@ -195,8 +201,8 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [restrict] {
         };
     if f_may_close {
         let i = 0u;
-        for r in restricts {
-            if vec::len(r.unsafe_tys) > 0u && cant_copy(cx, r) {
+        for b in bindings {
+            if vec::len(b.unsafe_tys) > 0u && cant_copy(cx, b) {
                 cx.tcx.sess.span_err(f.span,
                                      #fmt["function may alias with argument \
                                            %u, which is not immutably rooted",
@@ -206,14 +212,14 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [restrict] {
         }
     }
     let j = 0u;
-    for r in restricts {
-        for ty in r.unsafe_tys {
+    for b in bindings {
+        for ty in b.unsafe_tys {
             let i = 0u;
             for arg_t: ty::arg in arg_ts {
                 let mut_alias = arg_t.mode == ast::by_mut_ref;
                 if i != j &&
                        ty_can_unsafely_include(cx, ty, arg_t.ty, mut_alias) &&
-                       cant_copy(cx, r) {
+                       cant_copy(cx, b) {
                     cx.tcx.sess.span_err
                         (args[i].span,
                          #fmt["argument %u may alias with argument %u, \
@@ -229,11 +235,11 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [restrict] {
 
     for {node: node, arg: arg} in mut_roots {
         let i = 0u;
-        for r in restricts {
+        for b in bindings {
             if i != arg {
-                alt r.root_var {
+                alt b.root_var {
                   some(root) {
-                    if node == root && cant_copy(cx, r) {
+                    if node == root && cant_copy(cx, b) {
                         cx.tcx.sess.span_err
                             (args[arg].span,
                              "passing a mutable reference to a \
@@ -247,7 +253,7 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [restrict] {
             i += 1u;
         }
     }
-    ret restricts;
+    ret bindings;
 }
 
 fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
@@ -277,13 +283,8 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
             }
         }
         for info in binding_info {
-            new_sc += [@{node_id: info.id,
-                         span: info.span,
-                         local_id: cx.next_local,
-                         root_var: root_var,
-                         unsafe_tys: info.unsafe,
-                         mutable ok: valid,
-                         mutable copied: not_copied}];
+            new_sc += [mk_binding(cx, info.id, info.span, root_var,
+                                  info.unsafe)];
         }
         register_locals(cx, a.pats[0]);
         visit::visit_arm(a, new_sc, v);
@@ -297,13 +298,8 @@ fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
       ast::expr_call(f, args) {
         let new_sc = sc + check_call(cx, f, args);
         for proot in *pattern_roots(cx.tcx, [], local.node.pat) {
-            new_sc += [@{node_id: proot.id,
-                         span: proot.span,
-                         local_id: cx.next_local,
-                         root_var: none::<node_id>,
-                         unsafe_tys: inner_mut(proot.ds),
-                         mutable ok: valid,
-                         mutable copied: not_copied}];
+            new_sc += [mk_binding(cx, proot.id, proot.span, none,
+                                  inner_mut(proot.ds))];
         }
         register_locals(cx, local.node.pat);
         visit::visit_block(blk, new_sc, v);
@@ -330,13 +326,8 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
     let root_var = path_def_id(cx, root.ex);
     let new_sc = sc;
     for proot in *pattern_roots(cx.tcx, ext_ds, local.node.pat) {
-        new_sc += [@{node_id: proot.id,
-                     span: proot.span,
-                     local_id: cx.next_local,
-                     root_var: root_var,
-                     unsafe_tys: inner_mut(proot.ds),
-                     mutable ok: valid,
-                     mutable copied: not_copied}];
+        new_sc += [mk_binding(cx, proot.id, proot.span, root_var,
+                              inner_mut(proot.ds))];
     }
     register_locals(cx, local.node.pat);
     visit::visit_block(blk, new_sc, v);
@@ -350,16 +341,16 @@ fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
     let my_local_id =
         alt cx.local_map.find(my_defnum) { some(local(id)) { id } _ { 0u } };
     let var_t = ty::expr_ty(cx.tcx, ex);
-    for r: restrict in sc {
+    for b in sc {
         // excludes variables introduced since the alias was made
-        if my_local_id < r.local_id {
-            for ty in r.unsafe_tys {
+        if my_local_id < b.local_id {
+            for ty in b.unsafe_tys {
                 if ty_can_unsafely_include(cx, ty, var_t, assign) {
-                    r.ok = val_taken(ex.span, p);
+                    b.ok = val_taken(ex.span, p);
                 }
             }
-        } else if r.node_id == my_defnum {
-            test_scope(cx, sc, r, p);
+        } else if b.node_id == my_defnum {
+            test_scope(cx, sc, b, p);
         }
     }
 }
@@ -369,8 +360,8 @@ fn check_lval(cx: @ctx, dest: @ast::expr, sc: scope, v: vt<scope>) {
       ast::expr_path(p) {
         let def = cx.tcx.def_map.get(dest.id);
         let dnum = ast_util::def_id_of_def(def).node;
-        for r: restrict in sc {
-            if r.root_var == some(dnum) { r.ok = overwritten(dest.span, p); }
+        for b in sc {
+            if b.root_var == some(dnum) { b.ok = overwritten(dest.span, p); }
         }
       }
       _ { visit_expr(cx, dest, sc, v); }
@@ -383,9 +374,9 @@ fn check_assign(cx: @ctx, dest: @ast::expr, src: @ast::expr, sc: scope,
     check_lval(cx, dest, sc, v);
 }
 
-fn test_scope(cx: ctx, sc: scope, r: restrict, p: ast::path) {
-    let prob = r.ok;
-    alt r.root_var {
+fn test_scope(cx: ctx, sc: scope, b: binding, p: ast::path) {
+    let prob = b.ok;
+    alt b.root_var {
       some(dn) {
         for other in sc {
             if other.node_id == dn {
@@ -396,7 +387,7 @@ fn test_scope(cx: ctx, sc: scope, r: restrict, p: ast::path) {
       }
       _ {}
     }
-    if prob != valid && cant_copy(cx, r) {
+    if prob != valid && cant_copy(cx, b) {
         let msg = alt prob {
           overwritten(sp, wpt) {
             {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
