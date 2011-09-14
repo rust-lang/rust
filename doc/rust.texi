@@ -205,7 +205,6 @@ messages over channels to ports.
 
 @sp 1
 @item Predictable native code, simple runtime
-@cindex DWARF
 
 The meaning and cost of every operation within a Rust program is intended to
 be easy to model for the reader. The code should not ``surprise'' the
@@ -978,7 +977,7 @@ m::map<int,str>;
 @section Ref.Gram
 @c * Ref.Gram::                    Grammar.
 
-@emph{TODO: mostly LL(1), it reads like C, Alef and bits of Napier;
+@emph{TODO: mostly LL(1), it reads like C++, Alef and bits of Napier;
 formalize here}.
 
 @page
@@ -1000,7 +999,7 @@ successful produces a single crate in executable form.
 
 @menu
 * Ref.Comp.Crate::              Units of compilation and linking.
-* Ref.Comp.Meta::               Metadata about a crate.
+* Ref.Comp.Attr::               Attributes of crates, modules and items.
 * Ref.Comp.Syntax::             Syntax extensions.
 @end menu
 
@@ -1053,15 +1052,15 @@ symbolic name and leave the task of locating and binding an appropriate crate
 to a compile-time heuristic. In a more controlled case, a @code{use} directive
 may specify any metadata as matching criteria, such as a URI, an author name
 or version number, a checksum or even a cryptographic signature, in order to
-select an an appropriate imported crate. @xref{Ref.Comp.Meta}.
+select an an appropriate imported crate. @xref{Ref.Comp.Attr}.
 
 The compiled form of a crate is a loadable and executable object file full of
 machine code, in a standard loadable operating-system format such as ELF, PE
-or Mach-O. The loadable object contains extensive DWARF metadata, describing:
+or Mach-O. The loadable object contains metadata, describing:
 @itemize
 @item Metadata required for type reflection.
 @item The publicly exported module structure of the crate.
-@item Any metadata about the crate, defined by @code{meta} directives.
+@item Any metadata about the crate, defined by attributes.
 @item The crates to dynamically link with at run-time, with matching criteria
 derived from the same @code{use} directives that guided compile-time imports.
 @end itemize
@@ -1077,11 +1076,15 @@ derived from the same @code{use} directives that guided compile-time imports.
 An example of a crate:
 
 @example
-// Metadata about this crate
-meta (author = "Jane Doe",
-      name = "projx"
-      desc = "Project X",
-      ver = "2.5");
+// Linkage attributes
+#[ link(name = "projx"
+        vers = "2.5",
+        uuid = "9cccc5d5-aceb-4af5-8285-811211826b82") ];
+
+// Additional metadata attributes
+#[ desc = "Project X",
+   license = "BSD" ];
+   author = "Jane Doe" ];
 
 // Import a module.
 use std (ver = "1.0");
@@ -1093,34 +1096,77 @@ mod bar @{
 @}
 @end example
 
-@node       Ref.Comp.Meta
-@subsection Ref.Comp.Meta
-@cindex Metadata, in crates
+@node       Ref.Comp.Attr
+@subsection Ref.Comp.Attr
+@cindex Attributes
 
-@c FIXME: This section is out of date. The @code{meta} keyword has been replaced
-@c by general crate/item attributes.
+Static entities in Rust -- crates, modules and items -- may have attributes
+applied to them.@footnote{Attributes in Rust are modeled on Attributes in
+ECMA-335, C#} An attribute is a general, free-form piece of metadata that is
+interpreted according to name, convention, and language and compiler version.
+Attributes may appear as any of:
+@itemize
+@item A single identifier, the attribute name
+@item An identifier followed by the equals sign '=' and a literal, providing a key/value pair
+@item An identifier followed by a parenthesized list of sub-attribute arguments
+@end itemize
 
-In a crate, a @code{meta} directive associates free form key-value metadata
-with the crate. This metadata can, in turn, be used in providing partial
-matching parameters to crate importing directives, denoted by the @code{use}
-keyword.
+Attributes are applied to an entity by placing them within a hash-list
+(@code{#[...]}) as either a prefix to the entity or as a semicolon-delimited
+declaration within the entity body.
 
-Alternatively, metadata can serve as a simple form of documentation.
+An example of attributes:
+
+@example
+// A function marked as a unit test
+#[test]
+fn test_foo() @{
+  ...
+@}
+
+// General metadata applied to the enclosing module or crate.
+#[license = "BSD"];
+
+// A conditionally-compiled module
+#[cfg(target_os="linux")]
+module bar @{
+  ...
+@}
+
+@end example
+
+In future versions of Rust, user-provided extensions to the compiler will be able
+to use interpret attributes. When this facility is provided, a distinction will be
+made between language-reserved and user-available attributes.
+
+At present, only the Rust compiler interprets attributes, so all attribute
+names are effectively reserved. Some significant attributes include:
+
+@itemize
+@item The @code{cfg} attribute, for conditional-compilation by build-configuration
+@item The @code{link} attribute, describing linkage metadata for a crate
+@item The @code{test} attribute, for marking functions as unit tests.
+@end itemize
+
+Other attributes may be added or removed during development of the language.
 
 @node          Ref.Comp.Syntax
 @subsection    Ref.Comp.Syntax
 @c * Ref.Comp.Syntax::        Syntax extension.
 @cindex Syntax extension
 
-@c , statement or item
-Rust provides a notation for @dfn{syntax extension}. The notation is a marked
-syntactic form that can appear as an expression in the body of a Rust
-program. Syntax extensions make use of bracketed lists, which are
-syntactically vector literals, but which have no run-time semantics. After
-parsing, the notation is translated into Rust expressions. The name of the
-extension determines the translation performed. The name may be one of the
-built-in extensions listed below, or a user-defined extension, defined using
-@code{macro}.
+Rust provides a notation for @dfn{syntax extension}. The notation for invoking
+a syntax extension is a marked syntactic form that can appear as an expression
+in the body of a Rust program. @xref{Ref.Lex.Syntax}.
+
+After parsing, a syntax-extension incovation is expanded into a Rust
+expression. The name of the extension determines the translation performed. In
+future versions of Rust, user-provided syntax extensions aside from macros
+will be provided via external crates.
+
+At present, only a set of built-in syntax extensions, as well as macros
+introduced inline in source code using the @code{macro} extension, may be
+used. The current built-in syntax extensions are:
 
 @itemize
 @item @code{fmt} expands into code to produce a formatted string, similar to 
@@ -3660,16 +3706,6 @@ the system of task-lifecycle state transitions depending on the contents of
 queues, as well as code to copy values between queues and their recipients and
 to serialize values for transmission over operating-system inter-process
 communication facilities.
-
-@node       Ref.Run.Refl
-@subsection Ref.Run.Refl
-@c * Ref.Run.Refl::                Runtime reflection system.
-@cindex Reflection
-@cindex DWARF
-
-The runtime reflection system is driven by the DWARF tables emitted into a
-crate at compile-time. Reflecting on a slot or item allocates a Rust data
-structure corresponding to the DWARF DIE for that slot or item.
 
 @node       Ref.Run.Log
 @subsection Ref.Run.Log
