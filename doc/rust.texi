@@ -2189,7 +2189,6 @@ Rust; they cannot be used as user-defined identifiers in any context.
 @subsection Ref.Type.Any
 @cindex Any type
 @cindex Dynamic type, see @i{Any type}
-@cindex Reflection
 @cindex Alt type expression
 
 The type @code{any} is the union of all possible Rust types. A value of type
@@ -3662,7 +3661,6 @@ communication, reflection, logging and signal handling.
 * Ref.Run.Mem::                 Runtime memory management service.
 * Ref.Run.Type::                Runtime built-in type services.
 * Ref.Run.Comm::                Runtime communication service.
-* Ref.Run.Refl::                Runtime reflection system.
 * Ref.Run.Log::                 Runtime logging system.
 * Ref.Run.Sig::                 Runtime signal handler.
 @end menu
