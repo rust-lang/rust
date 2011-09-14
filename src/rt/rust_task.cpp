@@ -273,6 +273,7 @@ void
 rust_task::kill() {
     if (dead()) {
         // Task is already dead, can't kill what's already dead.
+        fail_parent();
         return;
     }
 
@@ -308,6 +309,14 @@ rust_task::conclude_failure() {
     die();
     // Unblock the task so it can unwind.
     unblock();
+    fail_parent();
+    failed = true;
+    notify_tasks_waiting_to_join();
+    yield(4);
+}
+
+void
+rust_task::fail_parent() {
     if (supervisor) {
         DLOG(sched, task,
              "task %s @0x%" PRIxPTR
@@ -318,9 +327,6 @@ rust_task::conclude_failure() {
     // FIXME: implement unwinding again.
     if (NULL == supervisor && propagate_failure)
         sched->fail();
-    failed = true;
-    notify_tasks_waiting_to_join();
-    yield(4);
 }
 
 void

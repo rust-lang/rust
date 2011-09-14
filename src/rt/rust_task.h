@@ -158,6 +158,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Fail self, assuming caller-on-stack is this task.
     void fail();
     void conclude_failure();
+    void fail_parent();
 
     // Disconnect from our supervisor.
     void unsupervise();
