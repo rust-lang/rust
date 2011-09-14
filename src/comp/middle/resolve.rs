@@ -1086,33 +1086,17 @@ fn index_mod(md: ast::_mod) -> mod_index {
           ast::view_item_use(ident, _, _) {
             add_to_index(index, ident, mie_view_item(it));
           }
-
-
-
-
-
           ast::view_item_import(ident, _, id) {
             add_to_index(index, ident, mie_import_ident(id, it.span));
           }
-
-
-
-
-
           ast::view_item_import_from(_, idents, _) {
             for ident in idents {
                 add_to_index(index, ident.node.name,
                              mie_import_ident(ident.node.id, ident.span));
             }
           }
-
-
-
-
-
           //globbed imports have to be resolved lazily.
-          ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) {
-          }
+          ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) {}
         }
     }
     for it: @ast::item in md.items {
