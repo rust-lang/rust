@@ -1474,6 +1474,15 @@ Each channel is bound to a port when the channel is constructed, so the
 destination port for a channel must exist before the channel itself. A channel
 cannot be rebound to a different port from the one it was constructed with.
 
+Channels are weak: a channel does not keep the port it is bound to
+alive. Ports are owned by their allocating task and cannot be sent over
+channels; if a task dies its ports die with it, and all channels bound to
+those ports no longer function. Messages sent to a channel connected to a dead
+port will be dropped.
+
+Channels are immutable types with meaning known to the runtime; channels can
+be sent over channels.
+
 Many channels can be bound to the same port, but each channel is bound to a
 single port. In other words, channels and ports exist in an N:1 relationship,
 N channels to 1 port. @footnote{It may help to remember nautical terminology
@@ -1482,19 +1491,13 @@ channels -- may lead to the same port.}
 
 Each port and channel can carry only one type of message. The message type is
 encoded as a parameter of the channel or port type. The message type of a
-channel is equal to the message type of the port it is bound to.
+channel is equal to the message type of the port it is bound to. The types of
+messages must be of @emph{unique} kind.
 
 Messages are generally sent asynchronously, with optional rate-limiting on the
 transmit side. A channel contains a message queue and asynchronously sending a
 message merely inserts it into the sending channel's queue; message receipt is
 the responsibility of the receiving task.
-
-Queued messages in channels are charged to the @emph{sending} task. If too
-many messages are queued for transmission from a single sending task, without
-being received by a receiving task, the sending task may exceed its memory
-budget, which causes a run-time signal. To help control this possibility, a
-semi-synchronous send operation is possible, which blocks until there is room
-in the existing queue before sending send.
 
 Messages are sent on channels and received on ports using standard library
 functions.
@@ -2166,9 +2169,6 @@ Rust; they cannot be used as user-defined identifiers in any context.
 * Ref.Type.Tag::                Disjoint unions of heterogeneous types.
 * Ref.Type.Fn::                 Subroutine types.
 * Ref.Type.Iter::               Scoped coroutine types.
-* Ref.Type.Port::               Unique inter-task message-receipt endpoints.
-* Ref.Type.Chan::               Copyable inter-task message-send capabilities.
-* Ref.Type.Task::               General coroutine-instance types.
 * Ref.Type.Obj::                Abstract types.
 * Ref.Type.Constr::             Constrained types.
 * Ref.Type.Type::               Types describing types.
@@ -2471,92 +2471,6 @@ for each (i: int in range(5,7)) @{
   @dots{};
 @}
 @end example
-
-
-@node       Ref.Type.Port
-@subsection Ref.Type.Port
-@cindex Port types
-@cindex Communication
-
-The port type-constructor @code{port} forms types that describe ports. A port
-is the @emph{receiving end} of a typed, asynchronous, simplex inter-task
-communication facility. @xref{Ref.Task.Comm}. A @code{port} type takes a
-single type parameter, denoting the type of value that can be received from a
-@code{port} value of that type.
-
-Ports are modeled as stateful native types, with built-in meaning to the
-language. They cannot be transmitted over channels or otherwise replicated,
-and are always local to the task that creates them.
-
-Ports (like channels) can only be carry types of unique kind. No shared or
-pinned values can pass over a port or channel.
-
-An example of a @code{port} type:
-@example
-type svp = port<[str]>;
-let p: svp = get_port();
-let v: [str] = p.recv();
-@end example
-
-@node       Ref.Type.Chan
-@subsection Ref.Type.Chan
-@cindex Channel types
-@cindex Communication
-
-The channel type-constructor @code{chan} forms types that describe channels. A
-channel is the @emph{sending end} of a typed, asynchronous, simplex inter-task
-communication facility. @xref{Ref.Task.Comm}. A @code{chan} type takes a
-single type parameter, denoting the type of value that can be sent to a
-channel of that type.
-
-Channels are immutable, and can be transmitted over channels to other
-tasks. They are modeled as immutable native types with built-in meaning to the
-language.
-
-Channels (like ports) can only be carry types of unique kind. No
-pinned or shared values can pass over a port or channel.
-
-When a task sends a message into a channel, the task forms an outgoing queue
-associated with that channel. The per-task queue @emph{associated} with a
-channel can be indirectly manipulated by the task, but is @emph{not} otherwise
-considered ``part of'' to the channel: the queue is ``part of'' the
-@emph{sending task}. Sending a channel to another task does not copy the queue
-associated with the channel.
-
-Channels are also @emph{weak}: a channel is directly coupled to a particular
-destination port on a particular task, but does not keep that port or task
-@emph{alive}. A channel may therefore fail to operate at any moment. If a task
-sends a message to a channel that is connected to a nonexistent port, the
-message is dropped.
-
-An example of a @code{chan} type:
-@example
-type svc = chan<[str]>;
-let c: svc = get_chan();
-let v: [str] = ["hello", "world"];
-std::comm::send(c, v);
-@end example
-
-@node       Ref.Type.Task
-@subsection Ref.Type.Task
-@cindex Task type
-
-The task type @code{task} describes values that are @emph{live
-tasks}.
-
-Tasks form an @emph{ownership tree} in which each task (except the root task)
-is directly owned by exactly one parent task. The purpose of a variable of
-@code{task} type is to manage the lifecycle of the associated
-task. Communication is carried out solely using channels and ports.
-
-Like ports, tasks are modeled as mutable native types with built-in meaning to
-the language. They cannot be transmitted over channels or otherwise
-replicated, and are always local to the task that spawns them.
-
-If all references to a task are dropped (due to the release of any structure
-holding those references), the runtime signals the un-referenced task, which
-then fails. @xref{Ref.Task.Life}.
-
 
 @node       Ref.Type.Obj
 @subsection Ref.Type.Obj
