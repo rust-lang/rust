@@ -4823,23 +4823,11 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - trans_args
 fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
                     id: ast::node_id) -> @fn_ctxt {
-    let llretptr: ValueRef = llvm::LLVMGetParam(llfndecl, 0u);
-    let lltaskptr: ValueRef = llvm::LLVMGetParam(llfndecl, 1u);
-    let llenv: ValueRef = llvm::LLVMGetParam(llfndecl, 2u);
-    let llargs: hashmap<ast::node_id, ValueRef> = new_int_hash::<ValueRef>();
-    let llobjfields: hashmap<ast::node_id, ValueRef> =
-        new_int_hash::<ValueRef>();
-    let lllocals: hashmap<ast::node_id, ValueRef> =
-        new_int_hash::<ValueRef>();
-    let llupvars: hashmap<ast::node_id, ValueRef> =
-        new_int_hash::<ValueRef>();
-    let derived_tydescs =
-        map::mk_hashmap::<ty::t, derived_tydesc_info>(ty::hash_ty, ty::eq_ty);
     let llbbs = mk_standard_basic_blocks(llfndecl);
     ret @{llfn: llfndecl,
-          lltaskptr: lltaskptr,
-          llenv: llenv,
-          llretptr: llretptr,
+          lltaskptr: llvm::LLVMGetParam(llfndecl, 1u),
+          llenv: llvm::LLVMGetParam(llfndecl, 2u),
+          llretptr: llvm::LLVMGetParam(llfndecl, 0u),
           mutable llstaticallocas: llbbs.sa,
           mutable llcopyargs: llbbs.ca,
           mutable llderivedtydescs_first: llbbs.dt,
@@ -4850,12 +4838,12 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
           mutable llself: none::<val_self_pair>,
           mutable lliterbody: none::<ValueRef>,
           mutable iterbodyty: none::<ty::t>,
-          llargs: llargs,
-          llobjfields: llobjfields,
-          lllocals: lllocals,
-          llupvars: llupvars,
+          llargs: new_int_hash::<ValueRef>(),
+          llobjfields: new_int_hash::<ValueRef>(),
+          lllocals: new_int_hash::<ValueRef>(),
+          llupvars: new_int_hash::<ValueRef>(),
           mutable lltydescs: [],
-          derived_tydescs: derived_tydescs,
+          derived_tydescs: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           id: id,
           sp: sp,
           lcx: cx};
