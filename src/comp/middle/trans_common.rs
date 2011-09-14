@@ -261,6 +261,7 @@ type fn_ctxt =
      mutable lltydescs: [ValueRef],
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
      id: ast::node_id,
+     ret_style: ast::ret_style,
      sp: span,
      lcx: @local_ctxt};
 

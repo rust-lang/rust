@@ -2706,7 +2706,8 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
                            ty::mk_iter_body_fn(lcx.ccx.tcx, decl_ty), 0u);
     let lliterbody: ValueRef =
         decl_internal_fastcall_fn(lcx.ccx.llmod, s, iter_body_llty);
-    let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id);
+    let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id,
+                               ast::return_val);
     fcx.iterbodyty = cx.fcx.iterbodyty;
 
     // Generate code to load the environment out of the
@@ -4383,8 +4384,11 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
         let t = ty::expr_ty(bcx_tcx(cx), x);
         let lv = trans_lval(cx, x);
         bcx = lv.res.bcx;
-        let is_local =
-            alt x.node {
+        if cx.fcx.ret_style == ast::return_ref {
+            assert lv.is_mem;
+            Store(bcx, cx.fcx.llretptr, lv.res.val);
+        } else {
+            let is_local = alt x.node {
               ast::expr_path(p) {
                 alt bcx_tcx(bcx).def_map.get(x.id) {
                   ast::def_local(_) { true }
@@ -4393,9 +4397,12 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
               }
               _ { false }
             };
-        if is_local {
-            bcx = move_val(bcx, INIT, cx.fcx.llretptr, lv, t);
-        } else { bcx = move_val_if_temp(bcx, INIT, cx.fcx.llretptr, lv, t); }
+            if is_local {
+                bcx = move_val(bcx, INIT, cx.fcx.llretptr, lv, t);
+            } else {
+                bcx = move_val_if_temp(bcx, INIT, cx.fcx.llretptr, lv, t);
+            }
+        }
       }
       _ {
         let t = llvm::LLVMGetElementType(val_ty(cx.fcx.llretptr));
@@ -4822,7 +4829,8 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - new_fn_ctxt
 //  - trans_args
 fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
-                    id: ast::node_id) -> @fn_ctxt {
+                    id: ast::node_id, rstyle: ast::ret_style)
+    -> @fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
     ret @{llfn: llfndecl,
           lltaskptr: llvm::LLVMGetParam(llfndecl, 1u),
@@ -4845,12 +4853,13 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
           mutable lltydescs: [],
           derived_tydescs: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           id: id,
+          ret_style: rstyle,
           sp: sp,
           lcx: cx};
 }
 
 fn new_fn_ctxt(cx: @local_ctxt, sp: span, llfndecl: ValueRef) -> @fn_ctxt {
-    be new_fn_ctxt_w_id(cx, sp, llfndecl, -1);
+    ret new_fn_ctxt_w_id(cx, sp, llfndecl, -1, ast::return_val);
 }
 
 // NB: must keep 4 fns in sync:
@@ -5024,7 +5033,7 @@ fn trans_closure(bcx_maybe: option::t<@block_ctxt>,
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(cx, sp, llfndecl, id);
+    let fcx = new_fn_ctxt_w_id(cx, sp, llfndecl, id, f.decl.cf);
     create_llargs_for_fn_args(fcx, f.proto, ty_self,
                               ty::ret_ty_of_fn(cx.ccx.tcx, id), f.decl.inputs,
                               ty_params);
