@@ -102,6 +102,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     // Indicates that the task ended in failure
     bool failed;
+    // Indicates that the task was killed and needs to unwind
+    bool killed;
     bool propagate_failure;
 
     lock_and_signal lock;

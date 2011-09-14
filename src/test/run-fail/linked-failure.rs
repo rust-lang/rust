@@ -1,7 +1,6 @@
 // -*- rust -*-
 
 // error-pattern:1 == 2
-// xfail-test
 use std;
 import std::task;
 import std::comm::port;

@@ -74,6 +74,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     local_region(&sched->srv->local_region),
     _on_wakeup(NULL),
     failed(false),
+    killed(false),
     propagate_failure(true),
     dynastack(this)
 {
@@ -253,10 +254,19 @@ rust_task::yield(size_t time_in_us) {
     LOG(this, task, "task %s @0x%" PRIxPTR " yielding for %d us",
         name, this, time_in_us);
 
+    if (killed) {
+        killed = false;
+        fail();
+    }
     yield_timer.reset_us(time_in_us);
 
     // Return to the scheduler.
     ctx.next->swap(ctx);
+
+    if (killed) {
+        killed = false;
+        fail();
+    }
 }
 
 void
@@ -270,11 +280,10 @@ rust_task::kill() {
     // from task A and want to force-fail task B, you do B->kill().
     // If you want to fail yourself you do self->fail().
     LOG(this, task, "killing task %s @0x%" PRIxPTR, name, this);
+    // When the task next goes to yield or resume it will fail
+    killed = true;
     // Unblock the task so it can unwind.
     unblock();
-
-    if (NULL == supervisor && propagate_failure)
-        sched->fail();
 
     sched->lock.signal();
 
