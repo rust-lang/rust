@@ -176,6 +176,7 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
 
 fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
+    let ret_ref = ty::ty_fn_ret_style(cx.tcx, fty) == ast::return_ref;
     let arg_ts = ty::ty_fn_args(cx.tcx, fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
     let bindings = [];
@@ -197,7 +198,7 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
                                  inner_mut(root.ds));
         new_bnd.copied = alt arg_t.mode {
           ast::by_move. { copied }
-          ast::by_ref. { not_copied }
+          ast::by_ref. { ret_ref ? not_allowed : not_copied }
           ast::by_mut_ref. { not_allowed }
         };
         bindings += [new_bnd];
