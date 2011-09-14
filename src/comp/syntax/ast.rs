@@ -261,7 +261,7 @@ type ty_method_ =
      ident: ident,
      inputs: [ty_arg],
      output: @ty,
-     cf: controlflow,
+     cf: ret_style,
      constrs: [@constr]};
 
 type ty_field = spanned<ty_field_>;
@@ -311,7 +311,7 @@ tag ty_ {
     ty_port(@ty);
     ty_chan(@ty);
     ty_rec([ty_field]);
-    ty_fn(proto, [ty_arg], @ty, controlflow, [@constr]);
+    ty_fn(proto, [ty_arg], @ty, ret_style, [@constr]);
     ty_obj([ty_method]);
     ty_tup([@ty]);
     ty_path(path, node_id);
@@ -369,7 +369,7 @@ type fn_decl =
      output: @ty,
      purity: purity,
      il: inlineness,
-     cf: controlflow,
+     cf: ret_style,
      constraints: [@constr]};
 
 tag purity {
@@ -377,14 +377,11 @@ tag purity {
     impure_fn; // declared with "fn"
 }
 
-tag controlflow {
+tag ret_style {
     noreturn; // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
-
-
-
-
-    return; // everything else
+    return_val; // everything else
+    return_alias;
 }
 
 type _fn = {decl: fn_decl, proto: proto, body: blk};

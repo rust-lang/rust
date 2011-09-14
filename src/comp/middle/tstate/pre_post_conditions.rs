@@ -52,7 +52,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
              enclosing:
                  {constrs: @new_def_hash::<constraint>(),
                   num_constraints: 0u,
-                  cf: return,
+                  cf: return_val,
                   i_return: ninit(0, ""),
                   i_diverge: ninit(0, ""),
                   used_vars: v},

@@ -1,7 +1,7 @@
 
 import syntax::ast;
 import ast::{method, item, item_fn, _fn, obj_field, _obj, stmt, ident,
-             fn_ident, node_id, def_id, ty_param, crate, return, noreturn,
+             fn_ident, node_id, def_id, ty_param, crate, return_val, noreturn,
              expr};
 import syntax::ast_util::local_def;
 import syntax::visit;
@@ -119,7 +119,7 @@ fn check_states_against_conditions(fcx: fn_ctxt, f: _fn, tps: [ast::ty_param],
     if f.proto != ast::proto_iter &&
            !promises(fcx, post, fcx.enclosing.i_return) &&
            !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
-           f.decl.cf == return {
+           f.decl.cf == return_val {
         fcx.ccx.tcx.sess.span_err(f.body.span,
                                   "In function " + fcx.name +
                                       ", not all control paths \

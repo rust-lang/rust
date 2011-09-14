@@ -148,7 +148,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
           native_abi_llvm. { w.write_char('l'); }
           native_abi_x86stdcall. { w.write_char('s'); }
         }
-        enc_ty_fn(w, cx, args, out, return, []);
+        enc_ty_fn(w, cx, args, out, return_val, []);
       }
       ty::ty_obj(methods) {
         w.write_str("O[");
@@ -199,7 +199,7 @@ fn enc_proto(w: io::writer, proto: proto) {
 }
 
 fn enc_ty_fn(w: io::writer, cx: @ctxt, args: [ty::arg], out: ty::t,
-             cf: controlflow, constrs: [@ty::constr]) {
+             cf: ret_style, constrs: [@ty::constr]) {
     w.write_char('[');
     for arg: ty::arg in args {
         alt arg.mode {
@@ -219,7 +219,6 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, args: [ty::arg], out: ty::t,
         enc_constr(w, cx, c);
     }
     alt cf { noreturn. { w.write_char('!'); } _ { enc_ty(w, cx, out); } }
-
 }
 
 // FIXME less copy-and-paste

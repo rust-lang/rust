@@ -1401,7 +1401,7 @@ fn print_mt(s: ps, mt: ast::mt) {
 }
 
 fn print_ty_fn(s: ps, proto: ast::proto, id: option::t<ast::ident>,
-               inputs: [ast::ty_arg], output: @ast::ty, cf: ast::controlflow,
+               inputs: [ast::ty_arg], output: @ast::ty, cf: ast::ret_style,
                constrs: [@ast::constr]) {
     ibox(s, indent_unit);
     word(s.s, proto_to_str(proto));
@@ -1420,7 +1420,7 @@ fn print_ty_fn(s: ps, proto: ast::proto, id: option::t<ast::ident>,
         ibox(s, indent_unit);
         word_space(s, "->");
         alt cf {
-          ast::return. { print_type(s, output); }
+          ast::return_val. { print_type(s, output); }
           ast::noreturn. { word_nbsp(s, "!"); }
         }
         end(s);

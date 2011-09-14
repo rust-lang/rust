@@ -371,7 +371,7 @@ fn parse_hex(st: @pstate) -> uint {
 }
 
 fn parse_ty_fn(st: @pstate, sd: str_def) ->
-   {args: [ty::arg], ty: ty::t, cf: ast::controlflow, cs: [@ty::constr]} {
+   {args: [ty::arg], ty: ty::t, cf: ast::ret_style, cs: [@ty::constr]} {
     assert (next(st) as char == '[');
     let inputs: [ty::arg] = [];
     while peek(st) as char != ']' {
@@ -391,7 +391,7 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
       a_bang. {
         ret {args: inputs, ty: ty::mk_bot(st.tcx), cf: ast::noreturn, cs: cs};
       }
-      a_ty(t) { ret {args: inputs, ty: t, cf: ast::return, cs: cs}; }
+      a_ty(t) { ret {args: inputs, ty: t, cf: ast::return_val, cs: cs}; }
     }
 }
 

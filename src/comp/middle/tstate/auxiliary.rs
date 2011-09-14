@@ -254,7 +254,7 @@ type fn_info =
     // Doesn't seem to work without the @ -- bug
     {constrs: constr_map,
      num_constraints: uint,
-     cf: controlflow,
+     cf: ret_style,
      i_return: tsconstr,
      i_diverge: tsconstr,
      used_vars: @mutable [node_id]};
@@ -489,10 +489,10 @@ fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
 /* Use e's type to determine whether it returns.
  If it has a function type with a ! annotation,
 the answer is noreturn. */
-fn controlflow_expr(ccx: crate_ctxt, e: @expr) -> controlflow {
+fn controlflow_expr(ccx: crate_ctxt, e: @expr) -> ret_style {
     alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, e.id)) {
       ty::ty_fn(_, _, _, cf, _) { ret cf; }
-      _ { ret return; }
+      _ { ret return_val; }
     }
 }
 

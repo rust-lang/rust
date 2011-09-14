@@ -289,10 +289,10 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
     //  auto constrs = parse_constrs(~[], p);
     let constrs: [@ast::constr] = [];
     let output: @ast::ty;
-    let cf = ast::return;
+    let cf = ast::return_val;
     if p.peek() == token::RARROW {
         p.bump();
-        let tmp = parse_ty_or_bang(p);
+        let tmp = parse_ret_ty(p);
         alt tmp {
           a_ty(t) { output = t; }
           a_bang. {
@@ -452,7 +452,12 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool)
     }
 }
 
-fn parse_ty_or_bang(p: parser) -> ty_or_bang {
+fn parse_ret_ty(p: parser) -> ty_or_bang {
+/*    if eat(p, token::RARROW) {
+
+    } else {
+
+    }*/
     alt p.peek() {
       token::NOT. { p.bump(); ret a_bang; }
       _ { ret a_ty(parse_ty(p, false)); }
@@ -1766,7 +1771,7 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
     }
     if p.peek() == token::RARROW {
         p.bump();
-        rslt = parse_ty_or_bang(p);
+        rslt = parse_ret_ty(p);
     } else {
         rslt = a_ty(@spanned(inputs.span.lo, inputs.span.hi, ast::ty_nil));
     }
@@ -1776,7 +1781,7 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
              output: t,
              purity: purity,
              il: il,
-             cf: ast::return,
+             cf: ast::return_val,
              constraints: constrs};
       }
       a_bang. {
@@ -1803,7 +1808,7 @@ fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
          output: @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer),
          purity: ast::impure_fn,
          il: ast::il_normal,
-         cf: ast::return,
+         cf: ast::return_val,
          constraints: []};
 }
 
@@ -1899,7 +1904,7 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
          output: @spanned(lo, lo, ast::ty_nil),
          purity: ast::impure_fn,
          il: ast::il_normal,
-         cf: ast::return,
+         cf: ast::return_val,
          constraints: []};
     let f = {decl: decl, proto: ast::proto_fn, body: dtor};
     ret mk_item(p, lo, dtor.span.hi, ident,

@@ -178,7 +178,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
          output: ret_ty,
          purity: ast::impure_fn,
          il: ast::il_normal,
-         cf: ast::return,
+         cf: ast::return_val,
          constraints: []};
     let proto = ast::proto_fn;
 
@@ -205,7 +205,7 @@ fn empty_fn_ty() -> ast::ty {
     let proto = ast::proto_fn;
     let input_ty = [];
     let ret_ty = @nospan(ast::ty_nil);
-    let cf = ast::return;
+    let cf = ast::return_val;
     let constrs = [];
     ret nospan(ast::ty_fn(proto, input_ty, ret_ty, cf, constrs));
 }
@@ -298,7 +298,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
          output: @ret_ty,
          purity: ast::impure_fn,
          il: ast::il_normal,
-         cf: ast::return,
+         cf: ast::return_val,
          constraints: []};
     let proto = ast::proto_fn;
 

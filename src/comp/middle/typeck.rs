@@ -593,8 +593,8 @@ mod collect {
         }
 
         let t_fn =
-            ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj.ty, ast::return,
-                      []);
+            ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj.ty,
+                      ast::return_val, []);
         let tpt = {kinds: ty_param_kinds(ty_params), ty: t_fn};
         cx.tcx.tcache.insert(local_def(ctor_id), tpt);
         ret tpt;
@@ -704,8 +704,8 @@ mod collect {
                 let tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
                 result_ty =
-                    ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t, ast::return,
-                              []);
+                    ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t,
+                              ast::return_val, []);
             }
             let tpt = {kinds: ty_param_kinds(ty_params), ty: result_ty};
             cx.tcx.tcache.insert(local_def(variant.node.id), tpt);
@@ -774,11 +774,11 @@ mod collect {
                 ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
                            mk_ty_params(cx, tps));
             let t_ctor =
-                ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg], t_res, ast::return,
-                          []);
+                ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg], t_res,
+                          ast::return_val, []);
             let t_dtor =
                 ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg], ty::mk_nil(cx.tcx),
-                          ast::return, []);
+                          ast::return_val, []);
             write::ty_only(cx.tcx, it.id, t_res);
             write::ty_only(cx.tcx, ctor_id, t_ctor);
             cx.tcx.tcache.insert(local_def(ctor_id),
@@ -2010,7 +2010,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             proto = ast::proto_fn;
             arg_tys = arg_tys_;
             rt = rt_;
-            cf = ast::return;
+            cf = ast::return_val;
             constrs = [];
           }
           _ { fail "LHS of bind expr didn't have a function type?!"; }
@@ -2685,7 +2685,7 @@ fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
 fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
     let main_t = ty::node_id_to_monotype(tcx, main_id);
     alt ty::struct(tcx, main_t) {
-      ty::ty_fn(ast::proto_fn., args, rs, ast::return., constrs) {
+      ty::ty_fn(ast::proto_fn., args, rs, ast::return_val., constrs) {
         let ok = vec::len(constrs) == 0u;
         ok &= ty::type_is_nil(tcx, rs);
         let num_args = vec::len(args);

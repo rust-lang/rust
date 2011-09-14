@@ -48,7 +48,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         ret s + ty_to_str(cx, input.ty);
     }
     fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option::t<ast::ident>,
-                 inputs: [arg], output: t, cf: ast::controlflow,
+                 inputs: [arg], output: t, cf: ast::ret_style,
                  constrs: [@constr]) -> str {
         let s = proto_to_str(proto);
         alt ident { some(i) { s += " "; s += i; } _ { } }
@@ -60,7 +60,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         if struct(cx, output) != ty_nil {
             alt cf {
               ast::noreturn. { s += " -> !"; }
-              ast::return. { s += " -> " + ty_to_str(cx, output); }
+              ast::return_val. { s += " -> " + ty_to_str(cx, output); }
             }
         }
         s += constrs_str(constrs);
@@ -121,8 +121,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
             fn_to_str(cx, proto, none, inputs, output, cf, constrs)
           }
           ty_native_fn(_, inputs, output) {
-            fn_to_str(cx, ast::proto_fn, none, inputs, output, ast::return,
-                      [])
+            fn_to_str(cx, ast::proto_fn, none, inputs, output,
+                      ast::return_val, [])
           }
           ty_obj(meths) {
             let strs = [];

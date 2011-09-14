@@ -185,7 +185,7 @@ type method =
      ident: ast::ident,
      inputs: [arg],
      output: t,
-     cf: controlflow,
+     cf: ret_style,
      constrs: [@constr]};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
@@ -255,7 +255,7 @@ tag sty {
     ty_vec(mt);
     ty_ptr(mt);
     ty_rec([field]);
-    ty_fn(ast::proto, [arg], t, controlflow, [@constr]);
+    ty_fn(ast::proto, [arg], t, ret_style, [@constr]);
     ty_native_fn(ast::native_abi, [arg], t);
     ty_obj([method]);
     ty_res(def_id, t, [t]);
@@ -556,7 +556,7 @@ fn mk_constr(cx: ctxt, t: t, cs: [@type_constr]) -> t {
 
 fn mk_tup(cx: ctxt, ts: [t]) -> t { ret gen_ty(cx, ty_tup(ts)); }
 
-fn mk_fn(cx: ctxt, proto: ast::proto, args: [arg], ty: t, cf: controlflow,
+fn mk_fn(cx: ctxt, proto: ast::proto, args: [arg], ty: t, cf: ret_style,
          constrs: [@constr]) -> t {
     ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
 }
@@ -583,7 +583,7 @@ fn mk_native(cx: ctxt, did: def_id) -> t { ret gen_ty(cx, ty_native(did)); }
 
 fn mk_iter_body_fn(cx: ctxt, output: t) -> t {
     ret mk_fn(cx, ast::proto_block, [{mode: ast::by_ref, ty: output}],
-              ty::mk_nil(cx), ast::return, []);
+              ty::mk_nil(cx), ast::return_val, []);
 }
 
 // Returns the one-level-deep type structure of the given type.
@@ -1948,16 +1948,12 @@ mod unify {
     fn unify_fn(cx: @ctxt, e_proto: ast::proto, a_proto: ast::proto,
                 expected: t, actual: t, expected_inputs: [arg],
                 expected_output: t, actual_inputs: [arg], actual_output: t,
-                expected_cf: controlflow, actual_cf: controlflow,
+                expected_cf: ret_style, actual_cf: ret_style,
                 _expected_constrs: [@constr], actual_constrs: [@constr]) ->
        result {
         if e_proto != a_proto { ret ures_err(terr_mismatch); }
         alt expected_cf {
-          ast::return. { }
-
-
-
-
+          ast::return_val. { }
           // ok
           ast::noreturn. {
             alt actual_cf {

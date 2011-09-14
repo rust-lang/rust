@@ -169,7 +169,7 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
 
 fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
                             id: node_id, ops: [init_op], bs: [@expr],
-                            cf: controlflow) -> bool {
+                            cf: ret_style) -> bool {
     let changed = find_pre_post_state_expr(fcx, pres, a);
     // FIXME: This could be a typestate constraint
     if vec::len(bs) != vec::len(ops) {
@@ -183,7 +183,7 @@ fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
 }
 
 fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
-                             ops: [init_op], es: [@expr], cf: controlflow) ->
+                             ops: [init_op], es: [@expr], cf: ret_style) ->
    bool {
     let rs = seq_states(fcx, pres, anon_bindings(ops, es));
     let changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
@@ -333,7 +333,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
                                       vec::init_elt(init_assign,
                                                     vec::len(elts)), elts,
-                                      return);
+                                      return_val);
       }
       expr_call(operator, operands) {
         ret find_pre_post_state_call(fcx, pres, operator, e.id,
@@ -354,7 +354,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
             i += 1;
         }
         ret find_pre_post_state_call(fcx, pres, operator, e.id, ops, args,
-                                     return);
+                                     return_val);
       }
       expr_path(_) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_log(_, ex) {
@@ -381,7 +381,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
             find_pre_post_state_exprs(fcx, pres, e.id,
                                       vec::init_elt(init_assign,
                                                     vec::len(fields)),
-                                      field_exprs(fields), return);
+                                      field_exprs(fields), return_val);
         alt maybe_base {
           none. {/* do nothing */ }
           some(base) {
@@ -397,7 +397,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
                                       vec::init_elt(init_assign,
                                                     vec::len(elts)), elts,
-                                      return);
+                                      return_val);
       }
       expr_copy(a) { ret find_pre_post_state_sub(fcx, pres, a, e.id, none); }
       expr_move(lhs, rhs) {
