@@ -2399,15 +2399,11 @@ The vector type-constructor represents a homogeneous array of values of a
 given type. A vector has a fixed size. The kind of a vector type depends on
 the kind of its member type, as with other simple structural types.
 
-Vectors can be sliced. A slice expression builds a new vector by copying a
-contiguous range -- given by a pair of indices representing a half-open
-interval -- out of the sliced vector.
-
 An example of a vector type and its use:
 @example
 let v: [int] = [7, 5, 3];
-let i: int = v.(2);
-let v2: [int] = v.(0,1); // Form a slice.
+let i: int = v[2];
+assert (i == 3);
 @end example
 
 Vectors always @emph{allocate} a storage region sufficient to store the first
@@ -3368,25 +3364,11 @@ A @code{cont} expression is only permitted in the body of a loop.
 A @dfn{for loop} is controlled by a vector or string. The for loop
 bounds-checks the underlying sequence @emph{once} when initiating the loop,
 then repeatedly copies each value of the underlying sequence into the element
-variable, executing the loop body once per copy. To perform a for loop on a
-sub-range of a vector or string, form a temporary slice over the sub-range and
-run the loop over the slice.
+variable, executing the loop body once per copy.
 
-Example of 4 for loops, all identical:
+Example a for loop:
 @example
 let v: [foo] = [a, b, c];
-
-for (foo e in v.(0, vec::len(v))) @{
-    bar(e);
-@}
-
-for (foo e in v.(0,)) @{
-    bar(e);
-@}
-
-for (foo e in v.(,)) @{
-    bar(e);
-@}
 
 for (foo e in v) @{
     bar(e);
