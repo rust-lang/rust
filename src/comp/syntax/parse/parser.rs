@@ -13,8 +13,6 @@ tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; }
 
 tag file_type { CRATE_FILE; SOURCE_FILE; }
 
-tag ty_or_bang { a_ty(@ast::ty); a_bang; }
-
 type parse_sess = @{cm: codemap::codemap, mutable next_id: node_id};
 
 fn next_node_id(sess: parse_sess) -> node_id {
@@ -281,27 +279,14 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
         let t = parse_ty(p, false);
         ret spanned(lo, t.span.hi, {mode: mode, ty: t});
     }
-    let lo = p.get_lo_pos();
     let inputs =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                   parse_fn_input_ty, p);
     // FIXME: there's no syntax for this right now anyway
     //  auto constrs = parse_constrs(~[], p);
     let constrs: [@ast::constr] = [];
-    let output: @ast::ty;
-    let cf = ast::return_val;
-    if p.peek() == token::RARROW {
-        p.bump();
-        let tmp = parse_ret_ty(p);
-        alt tmp {
-          a_ty(t) { output = t; }
-          a_bang. {
-            output = @spanned(lo, inputs.span.hi, ast::ty_bot);
-            cf = ast::noreturn;
-          }
-        }
-    } else { output = @spanned(lo, inputs.span.hi, ast::ty_nil); }
-    ret ast::ty_fn(proto, inputs.node, output, cf, constrs);
+    let (ret_style, ret_ty) = parse_ret_ty(p);
+    ret ast::ty_fn(proto, inputs.node, ret_ty, ret_style, constrs);
 }
 
 fn parse_proto(p: parser) -> ast::proto {
@@ -452,15 +437,21 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool)
     }
 }
 
-fn parse_ret_ty(p: parser) -> ty_or_bang {
-/*    if eat(p, token::RARROW) {
-
+fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
+    ret if eat(p, token::RARROW) {
+        let lo = p.get_lo_pos();
+        if eat(p, token::NOT) {
+            (ast::noreturn, @spanned(lo, p.get_last_hi_pos(), ast::ty_bot))
+        } else {
+            let style = ast::return_val;
+            if eat(p, token::BINOP(token::AND)) {
+                style = ast::return_ref;
+            };
+            (style, parse_ty(p, false))
+        }
     } else {
-
-    }*/
-    alt p.peek() {
-      token::NOT. { p.bump(); ret a_bang; }
-      _ { ret a_ty(parse_ty(p, false)); }
+        let pos = p.get_lo_pos();
+        (ast::return_val, @spanned(pos, pos, ast::ty_nil))
     }
 }
 
@@ -1760,7 +1751,6 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
     let inputs: ast::spanned<[ast::arg]> =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), parse_arg,
                   p);
-    let rslt: ty_or_bang;
     // Use the args list to translate each bound variable
     // mentioned in a constraint to an arg index.
     // Seems weird to do this in the parser, but I'm not sure how else to.
@@ -1769,30 +1759,13 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
         p.bump();
         constrs = parse_constrs(bind parse_ty_constr(inputs.node, _), p);
     }
-    if p.peek() == token::RARROW {
-        p.bump();
-        rslt = parse_ret_ty(p);
-    } else {
-        rslt = a_ty(@spanned(inputs.span.lo, inputs.span.hi, ast::ty_nil));
-    }
-    alt rslt {
-      a_ty(t) {
-        ret {inputs: inputs.node,
-             output: t,
-             purity: purity,
-             il: il,
-             cf: ast::return_val,
-             constraints: constrs};
-      }
-      a_bang. {
-        ret {inputs: inputs.node,
-             output: @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_bot),
-             purity: purity,
-             il: il,
-             cf: ast::noreturn,
-             constraints: constrs};
-      }
-    }
+    let (ret_style, ret_ty) = parse_ret_ty(p);
+    ret {inputs: inputs.node,
+         output: ret_ty,
+         purity: purity,
+         il: il,
+         cf: ret_style,
+         constraints: constrs};
 }
 
 fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
