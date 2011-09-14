@@ -1248,7 +1248,6 @@ consist of @emph{boxes}.
 * Ref.Mem.Own::                 Memory ownership model.
 * Ref.Mem.Slot::                Stack memory model.
 * Ref.Mem.Box::                 Heap memory model.
-* Ref.Mem.Acct::                Memory accounting model.
 @end menu
 
 @node       Ref.Mem.Alloc
@@ -1402,28 +1401,6 @@ fn main() @{
     takes_unboxed(*x);
 @}
 @end example
-
-
-@node       Ref.Mem.Acct
-@subsection Ref.Mem.Acct
-@c * Ref.Mem.Acct::                Memory accounting model.
-@cindex Accounting
-@cindex Memory budget
-
-Every task tracks the amount of memory allocated and not yet released. Each
-task may have a memory budget. The @dfn{budget} of a task is the maximum
-amount of memory that can be simultaneously allocated in the task. If a task
-tries to allocate memory with an exceeded budget, the task will receive a
-signal.
-
-Within a task, accounting is strictly enforced: all memory allocated through
-the runtime library, both user data and runtime-support structures such as
-channel and signal queues, are charged to a task.
-
-When a communication channel crosses from one task to another, any value
-sent over the channel is guaranteed to have been @emph{detached} from the
-task's memory graph (singly referenced, and/or deep-copied), so its memory
-cost is transferred to the receiving task.
 
 
 @page
