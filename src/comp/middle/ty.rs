@@ -2471,7 +2471,7 @@ fn type_err_to_str(err: ty::type_err) -> str {
             alt s {
               ast::noreturn. { "non-returning" }
               ast::return_val. { "return-by-value" }
-              ast::return_ref. { "return-by-reference" }
+              ast::return_ref(_) { "return-by-reference" }
             }
         }
         ret to_str(actual) + " function found where " + to_str(expect) +

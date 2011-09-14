@@ -882,7 +882,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.node.id)) {
       ty::ty_fn(proto, inputs, output, rs, _) {
         llfnty = type_of_fn(cx.ccx, m.span, proto, true,
-                            rs == ast::return_ref, inputs, output,
+                            ast_util::ret_by_ref(rs), inputs, output,
                             vec::len(ty_params));
       }
     }
@@ -933,7 +933,7 @@ fn populate_self_stack(bcx: @block_ctxt, self_stack: ValueRef,
 
 fn type_of_meth(ccx: @crate_ctxt, sp: span, m: @ty::method,
                 tps: [ast::ty_param]) -> TypeRef {
-    type_of_fn(ccx, sp, m.proto, true, m.cf == ast::return_ref,
+    type_of_fn(ccx, sp, m.proto, true, ast_util::ret_by_ref(m.cf),
                m.inputs, m.output, vec::len(tps))
 }
 

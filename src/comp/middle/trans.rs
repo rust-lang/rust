@@ -101,7 +101,7 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
 // Given a function type and a count of ty params, construct an llvm type
 fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
                       ty_param_count: uint) -> TypeRef {
-    let by_ref = ty::ty_fn_ret_style(cx.tcx, fty) == ast::return_ref;
+    let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(cx.tcx, fty));
     ret type_of_fn(cx, sp, ty::ty_fn_proto(cx.tcx, fty),
                    false, by_ref, ty::ty_fn_args(cx.tcx, fty),
                    ty::ty_fn_ret(cx.tcx, fty), ty_param_count);
@@ -2969,7 +2969,7 @@ fn trans_field(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
         let v = GEP(r.bcx, vtbl, [C_int(0), C_int(ix as int)]);
         let tcx = bcx_tcx(cx);
         let fn_ty: ty::t = ty::method_ty_to_fn_ty(tcx, methods[ix]);
-        let ret_ref = ty::ty_fn_ret_style(tcx, fn_ty) == ast::return_ref;
+        let ret_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_ty));
         let ll_fn_ty =
             type_of_fn(bcx_ccx(cx), sp, ty::ty_fn_proto(tcx, fn_ty),
                        true, ret_ref, ty::ty_fn_args(tcx, fn_ty),
@@ -3532,7 +3532,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
     let ccx = bcx_ccx(cx);
     let tcx = ccx.tcx;
     let bcx: @block_ctxt = cx;
-    let by_ref = ty::ty_fn_ret_style(tcx, fn_ty) == ast::return_ref;
+    let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_ty));
     // Arg 0: Output pointer.
 
     // FIXME: test case looks like
@@ -3629,7 +3629,8 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     // with trans_call.
     let fn_expr_ty = ty::expr_ty(bcx_tcx(in_cx), f);
     let fn_ty = ty::type_autoderef(bcx_tcx(in_cx), fn_expr_ty);
-    let by_ref = ty::ty_fn_ret_style(bcx_tcx(in_cx), fn_ty) == ast::return_ref;
+    let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(bcx_tcx(in_cx),
+                                                          fn_ty));
     // Things that return by reference must put their arguments (FIXME only
     // the referenced arguments) into the outer scope, so that they are still
     // alive when the return value is used.
@@ -4391,7 +4392,7 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
         let t = ty::expr_ty(bcx_tcx(cx), x);
         let lv = trans_lval(cx, x);
         bcx = lv.res.bcx;
-        if cx.fcx.ret_style == ast::return_ref {
+        if ast_util::ret_by_ref(cx.fcx.ret_style) {
             assert lv.is_mem;
             Store(bcx, lv.res.val, cx.fcx.llretptr);
         } else {
@@ -5364,7 +5365,7 @@ fn decl_fn_and_pair_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
     alt ty::struct(ccx.tcx, node_type) {
       ty::ty_fn(proto, inputs, output, rs, _) {
         llfty = type_of_fn(ccx, sp, proto, false,
-                           rs == ast::return_ref, inputs, output,
+                           ast_util::ret_by_ref(rs), inputs, output,
                            vec::len(ty_params));
       }
       _ { ccx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type!"); }

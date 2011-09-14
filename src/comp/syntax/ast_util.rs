@@ -213,6 +213,13 @@ fn ternary_to_if(e: @expr) -> @expr {
     }
 }
 
+fn ret_by_ref(style: ret_style) -> bool {
+    alt style {
+      return_ref(_) { true }
+      _ { false }
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

@@ -445,7 +445,7 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
         } else {
             let style = ast::return_val;
             if eat(p, token::BINOP(token::AND)) {
-                style = ast::return_ref;
+                style = ast::return_ref(eat(p, token::NOT));
             };
             (style, parse_ty(p, false))
         }

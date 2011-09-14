@@ -220,6 +220,10 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, args: [ty::arg], out: ty::t,
     }
     alt cf {
       noreturn. { w.write_char('!'); }
+      return_ref(mut) {
+        w.write_char(mut ? '^' : '&');
+        enc_ty(w, cx, out);
+      }
       _ { enc_ty(w, cx, out); }
     }
 }

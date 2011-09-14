@@ -66,7 +66,7 @@ fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], _sp: span,
       // Non capturing functions start out fresh.
       _ { [] }
     };
-    if f.decl.cf == ast::return_ref && !is_none(f.body.node.expr) {
+    if ast_util::ret_by_ref(f.decl.cf) && !is_none(f.body.node.expr) {
         // FIXME this will be easier to lift once have DPS
         cx.tcx.sess.span_err(option::get(f.body.node.expr).span,
                              "reference-returning functions may not " +
@@ -118,8 +118,13 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
         check_assign(cx, dest, src, sc, v);
       }
       ast::expr_ret(oexpr) {
-        if sc.ret_style == ast::return_ref && !is_none(oexpr) {
-            check_ret_ref(*cx, sc, option::get(oexpr));
+        if !is_none(oexpr) {
+            alt sc.ret_style {
+              ast::return_ref(mut) {
+                check_ret_ref(*cx, sc, mut, option::get(oexpr));
+              }
+              _ {}
+            }
         }
         handled = false;
       }
@@ -176,7 +181,7 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
 
 fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
-    let ret_ref = ty::ty_fn_ret_style(cx.tcx, fty) == ast::return_ref;
+    let ret_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(cx.tcx, fty));
     let arg_ts = ty::ty_fn_args(cx.tcx, fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
     let bindings = [];
@@ -266,7 +271,7 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     ret bindings;
 }
 
-fn check_ret_ref(cx: ctx, sc: scope, expr: @ast::expr) {
+fn check_ret_ref(cx: ctx, sc: scope, mut: bool, expr: @ast::expr) {
     let root = expr_root(cx.tcx, expr, false);
     let bad = none;
     let mut_field = mut_field(root.ds);
@@ -312,7 +317,7 @@ fn check_ret_ref(cx: ctx, sc: scope, expr: @ast::expr) {
       // FIXME allow references to constants and static items?
       _ { bad = some("non-local value"); }
     }
-      if mut_field { bad = some("mutable field"); }
+    if mut_field && !mut { bad = some("mutable field"); }
     alt bad {
       some(name) {
         cx.tcx.sess.span_err(expr.span, "can not return a reference " +

@@ -21,8 +21,6 @@ type str_def = fn(str) -> ast::def_id;
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
 
-tag ty_or_bang { a_ty(ty::t); a_bang; }
-
 fn peek(st: @pstate) -> u8 { ret st.data[st.pos]; }
 
 fn next(st: @pstate) -> u8 {
@@ -54,10 +52,12 @@ fn parse_ty_data(data: @[u8], crate_num: int, pos: uint, len: uint,
     ret result;
 }
 
-fn parse_ty_or_bang(st: @pstate, sd: str_def) -> ty_or_bang {
+fn parse_ret_ty(st: @pstate, sd: str_def) -> (ast::ret_style, ty::t) {
     alt peek(st) as char {
-      '!' { next(st); ret a_bang; }
-      _ { ret a_ty(parse_ty(st, sd)); }
+      '!' { next(st); (ast::noreturn, ty::mk_bot(st.tcx)) }
+      '&' { next(st); (ast::return_ref(false), parse_ty(st, sd)) }
+      '^' { next(st); (ast::return_ref(true), parse_ty(st, sd)) }
+      _ { (ast::return_val, parse_ty(st, sd)) }
     }
 }
 
@@ -387,12 +387,8 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
     }
     st.pos += 1u; // eat the ']'
     let cs = parse_constrs(st, sd);
-    alt parse_ty_or_bang(st, sd) {
-      a_bang. {
-        ret {args: inputs, ty: ty::mk_bot(st.tcx), cf: ast::noreturn, cs: cs};
-      }
-      a_ty(t) { ret {args: inputs, ty: t, cf: ast::return_val, cs: cs}; }
-    }
+    let (ret_style, ret_ty) = parse_ret_ty(st, sd);
+    ret {args: inputs, ty: ret_ty, cf: ret_style, cs: cs};
 }
 
 
