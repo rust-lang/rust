@@ -8,6 +8,7 @@ tag ast_node {
     node_obj_ctor(@item);
     node_native_item(@native_item);
     node_expr(@expr);
+    node_arg(arg);
 }
 
 type map = std::map::hashmap<node_id, ast_node>;
@@ -18,32 +19,35 @@ fn map_crate(c: crate) -> map {
     // convert everything to use the smallintmap.
     let map = new_smallintmap_int_adapter::<ast_node>();
 
-    let v_map =
-        @{visit_item: bind map_item(map, _, _, _),
-          visit_native_item: bind map_native_item(map, _, _, _),
-          visit_expr: bind map_expr(map, _, _, _)
-             with *visit::default_visitor::<()>()};
-    visit::visit_crate(c, (), visit::mk_vt(v_map));
+    let v_map = visit::mk_simple_visitor
+        (@{visit_item: bind map_item(map, _),
+           visit_native_item: bind map_native_item(map, _),
+           visit_expr: bind map_expr(map, _),
+           visit_fn: bind map_fn(map, _, _, _, _, _)
+               with *visit::default_simple_visitor()});
+    visit::visit_crate(c, (), v_map);
     ret map;
 }
 
-fn map_item(map: map, i: @item, e: (), v: vt<()>) {
+fn map_fn(map: map, f: _fn, _tp: [ty_param], _sp: codemap::span,
+          _name: fn_ident, _id: node_id) {
+    for a in f.decl.inputs { map.insert(a.id, node_arg(a)); }
+}
+
+fn map_item(map: map, i: @item) {
     map.insert(i.id, node_item(i));
     alt i.node {
       item_obj(_, _, ctor_id) { map.insert(ctor_id, node_obj_ctor(i)); }
       _ { }
     }
-    visit::visit_item(i, e, v);
 }
 
-fn map_native_item(map: map, i: @native_item, e: (), v: vt<()>) {
+fn map_native_item(map: map, i: @native_item) {
     map.insert(i.id, node_native_item(i));
-    visit::visit_native_item(i, e, v);
 }
 
-fn map_expr(map: map, ex: @expr, e: (), v: vt<()>) {
+fn map_expr(map: map, ex: @expr) {
     map.insert(ex.id, node_expr(ex));
-    visit::visit_expr(ex, e, v);
 }
 
 fn new_smallintmap_int_adapter<@V>() -> std::map::hashmap<int, V> {
