@@ -218,7 +218,10 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, args: [ty::arg], out: ty::t,
         } else { w.write_char(';'); }
         enc_constr(w, cx, c);
     }
-    alt cf { noreturn. { w.write_char('!'); } _ { enc_ty(w, cx, out); } }
+    alt cf {
+      noreturn. { w.write_char('!'); }
+      _ { enc_ty(w, cx, out); }
+    }
 }
 
 // FIXME less copy-and-paste

@@ -58,9 +58,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         s += str::connect(strs, ", ");
         s += ")";
         if struct(cx, output) != ty_nil {
-            alt cf {
-              ast::noreturn. { s += " -> !"; }
-              ast::return_val. { s += " -> " + ty_to_str(cx, output); }
+            s += " -> ";
+            if cf == ast::noreturn {
+                s += "!";
+            } else {
+                if cf == ast::return_ref { s += "&"; }
+                s += ty_to_str(cx, output);
             }
         }
         s += constrs_str(constrs);

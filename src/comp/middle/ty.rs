@@ -279,7 +279,7 @@ type constr = constr_general<uint>;
 // Data structures used in type unification
 tag type_err {
     terr_mismatch;
-    terr_controlflow_mismatch;
+    terr_ret_style_mismatch(ast::ret_style, ast::ret_style);
     terr_box_mutability;
     terr_vec_mutability;
     terr_tuple_size(uint, uint);
@@ -1952,26 +1952,13 @@ mod unify {
                 _expected_constrs: [@constr], actual_constrs: [@constr]) ->
        result {
         if e_proto != a_proto { ret ures_err(terr_mismatch); }
-        alt expected_cf {
-          ast::return_val. { }
-          // ok
-          ast::noreturn. {
-            alt actual_cf {
-              ast::noreturn. {
-                // ok
-
-              }
-              _ {
-                /* even though typestate checking is mostly
-                   responsible for checking control flow annotations,
-                   this check is necessary to ensure that the
-                   annotation in an object method matches the
-                   declared object type */
-
-                ret ures_err(terr_controlflow_mismatch);
-              }
-            }
-          }
+        if actual_cf != ast::noreturn && actual_cf != expected_cf {
+            /* even though typestate checking is mostly
+               responsible for checking control flow annotations,
+               this check is necessary to ensure that the
+               annotation in an object method matches the
+               declared object type */
+            ret ures_err(terr_ret_style_mismatch(expected_cf, actual_cf));
         }
         let t =
             unify_fn_common(cx, expected, actual, expected_inputs,
@@ -2470,9 +2457,16 @@ mod unify {
 fn type_err_to_str(err: ty::type_err) -> str {
     alt err {
       terr_mismatch. { ret "types differ"; }
-      terr_controlflow_mismatch. {
-        ret "returning function used where non-returning function" +
-                " was expected";
+      terr_ret_style_mismatch(expect, actual) {
+        fn to_str(s: ast::ret_style) -> str {
+            alt s {
+              ast::noreturn. { "non-returning" }
+              ast::return_val. { "return-by-value" }
+              ast::return_ref. { "return-by-reference" }
+            }
+        }
+        ret to_str(actual) + " function found where " + to_str(expect) +
+            " function was expected";
       }
       terr_box_mutability. { ret "boxed values differ in mutability"; }
       terr_vec_mutability. { ret "vectors differ in mutability"; }
