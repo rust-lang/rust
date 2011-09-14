@@ -2366,20 +2366,27 @@ let px: int = p.x;
 @subsection Ref.Type.Tup
 @cindex Tuple types
 
-The tuple type-constructor @code{tup} forms a new heterogeneous product of
-values exactly as the record type-constructor does, with the difference
-that tuple members are automatically assigned implicit field names, given by
-ascending integers prefixed by the underscore character: @code{_0}, @code{_1},
-@code{_2}, etc. The members of a tuple are laid out in memory contiguously,
-like a record, in order specified by the tuple type.
+The tuple type-constructor forms a new heterogeneous product of
+values similar to the record type-constructor. The differences are as follows:
+
+@itemize
+@item tuple elements cannot be mutable, unlike record fields
+@item tuple elements are not named, and can only be accessed by pattern-matching
+@end itemize
+
+Tuple types and values are denoted by listing the types or values of
+their elements, respectively, in a parenthesized, comma-separated
+list. Single-element tuples are not legal; all tuples have two or more values.
+
+The members of a tuple are laid out in memory contiguously, like a record, in
+order specified by the tuple type.
 
 An example of a tuple type and its use:
 @example
-type pair = tup(int,str);
-let p: pair = tup(10,"hello");
-assert (p._0 == 10);
-p._1 = "world";
-assert (p._1 == "world");
+type pair = (int,str);
+let p: pair = (10,"hello");
+let (a, b) = p;
+assert (b == "world");
 @end example
 
 
