@@ -201,9 +201,7 @@ local memory. Breaking the rule of task isolation is only possible by calling
 external (C/C++) code.
 
 Inter-task communication is typed, asynchronous and simplex, based on passing
-messages over channels to ports. Transmission can be rate-limited or
-rate-unlimited. Selection between multiple senders is pseudo-randomized on the
-receiver side.
+messages over channels to ports.
 
 @sp 1
 @item Predictable native code, simple runtime
