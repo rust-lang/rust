@@ -118,6 +118,7 @@ export ty_fn;
 export ty_fn_abi;
 export ty_fn_proto;
 export ty_fn_ret;
+export ty_fn_ret_style;
 export ty_int;
 export ty_str;
 export ty_vec;
@@ -1606,6 +1607,14 @@ fn ty_fn_ret(cx: ctxt, fty: t) -> t {
       ty::ty_fn(_, _, r, _, _) { ret r; }
       ty::ty_native_fn(_, _, r) { ret r; }
       _ { cx.sess.bug("ty_fn_ret() called on non-fn type"); }
+    }
+}
+
+fn ty_fn_ret_style(cx: ctxt, fty: t) -> ast::ret_style {
+    alt struct(cx, fty) {
+      ty::ty_fn(_, _, _, rs, _) { rs }
+      ty::ty_native_fn(_, _, _) { ast::return_val }
+      _ { cx.sess.bug("ty_fn_ret_style() called on non-fn type"); }
     }
 }
 

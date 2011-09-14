@@ -61,17 +61,18 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
 
 // NB: must keep 4 fns in sync:
 //
-//  - type_of_fn_full
+//  - type_of_fn
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn type_of_fn_full(cx: @crate_ctxt, sp: span, proto: ast::proto,
-                   is_method: bool, inputs: [ty::arg], output: ty::t,
-                   ty_param_count: uint) -> TypeRef {
+fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
+              is_method: bool, ret_ref: bool, inputs: [ty::arg],
+              output: ty::t, ty_param_count: uint) -> TypeRef {
     let atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
-    atys += [T_ptr(type_of_inner(cx, sp, output))];
+    let out_ty = T_ptr(type_of_inner(cx, sp, output));
+    atys += [ret_ref ? T_ptr(out_ty) : out_ty];
 
     // Arg 1: task pointer.
     atys += [T_taskptr(*cx)];
@@ -97,17 +98,13 @@ fn type_of_fn_full(cx: @crate_ctxt, sp: span, proto: ast::proto,
     ret T_fn(atys, llvm::LLVMVoidType());
 }
 
-fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto, inputs: [ty::arg],
-              output: ty::t, ty_param_count: uint) -> TypeRef {
-    ret type_of_fn_full(cx, sp, proto, false, inputs, output, ty_param_count);
-}
-
 // Given a function type and a count of ty params, construct an llvm type
 fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
                       ty_param_count: uint) -> TypeRef {
+    let by_ref = ty::ty_fn_ret_style(cx.tcx, fty) == ast::return_ref;
     ret type_of_fn(cx, sp, ty::ty_fn_proto(cx.tcx, fty),
-                   ty::ty_fn_args(cx.tcx, fty), ty::ty_fn_ret(cx.tcx, fty),
-                   ty_param_count);
+                   false, by_ref, ty::ty_fn_args(cx.tcx, fty),
+                   ty::ty_fn_ret(cx.tcx, fty), ty_param_count);
 }
 
 fn type_of_native_fn(cx: @crate_ctxt, sp: span, abi: ast::native_abi,
@@ -2970,12 +2967,13 @@ fn trans_field(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
         vtbl = PointerCast(cx, vtbl, vtbl_type);
 
         let v = GEP(r.bcx, vtbl, [C_int(0), C_int(ix as int)]);
-        let fn_ty: ty::t = ty::method_ty_to_fn_ty(bcx_tcx(cx), methods[ix]);
         let tcx = bcx_tcx(cx);
+        let fn_ty: ty::t = ty::method_ty_to_fn_ty(tcx, methods[ix]);
+        let ret_ref = ty::ty_fn_ret_style(tcx, fn_ty) == ast::return_ref;
         let ll_fn_ty =
-            type_of_fn_full(bcx_ccx(cx), sp, ty::ty_fn_proto(tcx, fn_ty),
-                            true, ty::ty_fn_args(tcx, fn_ty),
-                            ty::ty_fn_ret(tcx, fn_ty), 0u);
+            type_of_fn(bcx_ccx(cx), sp, ty::ty_fn_proto(tcx, fn_ty),
+                       true, ret_ref, ty::ty_fn_args(tcx, fn_ty),
+                       ty::ty_fn_ret(tcx, fn_ty), 0u);
         v = PointerCast(r.bcx, v, T_ptr(T_ptr(ll_fn_ty)));
         let lvo = lval_mem(r.bcx, v);
         ret {llobj: some::<ValueRef>(r.val), method_ty: some::<ty::t>(fn_ty)
@@ -3513,18 +3511,18 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
 
 // NB: must keep 4 fns in sync:
 //
-//  - type_of_fn_full
+//  - type_of_fn
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
               lliterbody: option::t<ValueRef>, es: [@ast::expr], fn_ty: ty::t)
-   ->
-   {bcx: @block_ctxt,
-    args: [ValueRef],
-    retslot: ValueRef,
-    to_zero: [{v: ValueRef, t: ty::t}],
-    to_revoke: [{v: ValueRef, t: ty::t}]} {
+   -> {bcx: @block_ctxt,
+       args: [ValueRef],
+       retslot: ValueRef,
+       to_zero: [{v: ValueRef, t: ty::t}],
+       to_revoke: [{v: ValueRef, t: ty::t}],
+       by_ref: bool} {
 
     let args: [ty::arg] = ty::ty_fn_args(bcx_tcx(cx), fn_ty);
     let llargs: [ValueRef] = [];
@@ -3532,7 +3530,9 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
     let to_zero = [];
     let to_revoke = [];
 
+    let tcx = bcx_tcx(cx);
     let bcx: @block_ctxt = cx;
+    let by_ref = ty::ty_fn_ret_style(tcx, fn_ty) == ast::return_ref;
     // Arg 0: Output pointer.
 
     // FIXME: test case looks like
@@ -3544,22 +3544,25 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
              args: [],
              retslot: C_nil(),
              to_zero: to_zero,
-             to_revoke: to_revoke};
+             to_revoke: to_revoke,
+             by_ref: by_ref};
     }
-    let retty = ty::ty_fn_ret(bcx_tcx(cx), fn_ty);
-    let llretslot_res = alloc_ty(bcx, retty);
+    let retty = ty::ty_fn_ret(tcx, fn_ty);
+    let llretslot_res = if by_ref {
+        rslt(cx, alloca(cx, T_ptr(type_of_or_i8(cx, retty))))
+    } else { alloc_ty(bcx, retty) };
     bcx = llretslot_res.bcx;
     let llretslot = llretslot_res.val;
     alt gen {
       some(g) {
         lazily_emit_all_generic_info_tydesc_glues(cx, g);
         lltydescs = g.tydescs;
-        args = ty::ty_fn_args(bcx_tcx(cx), g.item_type);
-        retty = ty::ty_fn_ret(bcx_tcx(cx), g.item_type);
+        args = ty::ty_fn_args(tcx, g.item_type);
+        retty = ty::ty_fn_ret(tcx, g.item_type);
       }
       _ { }
     }
-    if ty::type_contains_params(bcx_tcx(cx), retty) {
+    if ty::type_contains_params(tcx, retty) {
         // It's possible that the callee has some generic-ness somewhere in
         // its return value -- say a method signature within an obj or a fn
         // type deep in a structure -- which the caller has a concrete view
@@ -3583,8 +3586,8 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
       none. { }
       some(lli) {
         let lli =
-            if ty::type_contains_params(bcx_tcx(cx), retty) {
-                let body_ty = ty::mk_iter_body_fn(bcx_tcx(cx), retty);
+            if ty::type_contains_params(tcx, retty) {
+                let body_ty = ty::mk_iter_body_fn(tcx, retty);
                 let body_llty = type_of_inner(bcx_ccx(cx), cx.sp, body_ty);
                 PointerCast(bcx, lli, T_ptr(body_llty))
             } else { lli };
@@ -3615,7 +3618,8 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
          args: llargs,
          retslot: llretslot,
          to_zero: to_zero,
-         to_revoke: to_revoke};
+         to_revoke: to_revoke,
+         by_ref: by_ref};
 }
 
 fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
@@ -3686,11 +3690,16 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         alt lliterbody {
           none. {
             if !ty::type_is_nil(bcx_tcx(cx), ret_ty) {
-                retval = load_if_immediate(bcx, llretslot, ret_ty);
-                // Retval doesn't correspond to anything really tangible
-                // in the frame, but it's a ref all the same, so we put a
-                // note here to drop it when we're done in this scope.
-                add_clean_temp(in_cx, retval, ret_ty);
+                if args_res.by_ref {
+                    let retptr = Load(bcx, llretslot);
+                    retval = load_if_immediate(bcx, retptr, ret_ty);
+                } else {
+                    retval = load_if_immediate(bcx, llretslot, ret_ty);
+                    // Retval doesn't correspond to anything really tangible
+                    // in the frame, but it's a ref all the same, so we put a
+                    // note here to drop it when we're done in this scope.
+                    add_clean_temp(in_cx, retval, ret_ty);
+                }
             }
           }
           some(_) {
@@ -4386,7 +4395,7 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
         bcx = lv.res.bcx;
         if cx.fcx.ret_style == ast::return_ref {
             assert lv.is_mem;
-            Store(bcx, cx.fcx.llretptr, lv.res.val);
+            Store(bcx, lv.res.val, cx.fcx.llretptr);
         } else {
             let is_local = alt x.node {
               ast::expr_path(p) {
@@ -4824,7 +4833,7 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 
 // NB: must keep 4 fns in sync:
 //
-//  - type_of_fn_full
+//  - type_of_fn
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
@@ -4864,7 +4873,7 @@ fn new_fn_ctxt(cx: @local_ctxt, sp: span, llfndecl: ValueRef) -> @fn_ctxt {
 
 // NB: must keep 4 fns in sync:
 //
-//  - type_of_fn_full
+//  - type_of_fn
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
@@ -5355,10 +5364,10 @@ fn decl_fn_and_pair_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
     let llfty =
         type_of_fn_from_ty(ccx, sp, node_type, std::vec::len(ty_params));
     alt ty::struct(ccx.tcx, node_type) {
-      ty::ty_fn(proto, inputs, output, _, _) {
-        llfty =
-            type_of_fn(ccx, sp, proto, inputs, output,
-                       std::vec::len::<ast::ty_param>(ty_params));
+      ty::ty_fn(proto, inputs, output, rs, _) {
+        llfty = type_of_fn(ccx, sp, proto, false,
+                           rs == ast::return_ref, inputs, output,
+                           vec::len(ty_params));
       }
       _ { ccx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type!"); }
     }
@@ -5396,9 +5405,8 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let vecarg_ty: ty::arg =
             {mode: ast::by_ref,
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
-        let llfty =
-            type_of_fn(ccx, sp, ast::proto_fn, [vecarg_ty],
-                       ty::mk_nil(ccx.tcx), 0u);
+        let llfty = type_of_fn(ccx, sp, ast::proto_fn, false, false,
+                               [vecarg_ty], ty::mk_nil(ccx.tcx), 0u);
         let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main", llfty);
 
         let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
@@ -5499,7 +5507,8 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
       ty::ty_native_fn(abi, args, out) {
-        ret type_of_fn(cx, sp, ast::proto_fn, args, out, ty_param_count);
+        ret type_of_fn(cx, sp, ast::proto_fn, false, false, args, out,
+                       ty_param_count);
       }
     }
 }

@@ -33,7 +33,7 @@ import syntax::print::pprust::{expr_to_str, path_to_str};
 import bld = trans_build;
 
 // FIXME: These should probably be pulled in here too.
-import trans::{type_of_fn_full, drop_ty};
+import trans::{type_of_fn, drop_ty};
 
 obj namegen(mutable i: int) {
     fn next(prefix: str) -> str { i += 1; ret prefix + int::str(i); }
@@ -336,10 +336,9 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
     }
 
     let params = csearch::get_type_param_count(ccx.sess.get_cstore(), did);
-    let f_t =
-        trans::type_of_fn(ccx, sp, ast::proto_fn,
-                          [{mode: ast::by_ref, ty: inner_t}],
-                          ty::mk_nil(ccx.tcx), params);
+    let f_t = type_of_fn(ccx, sp, ast::proto_fn, false, false,
+                         [{mode: ast::by_ref, ty: inner_t}],
+                         ty::mk_nil(ccx.tcx), params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.get_cstore(),
                                                     did),
