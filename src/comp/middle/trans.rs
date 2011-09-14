@@ -3521,8 +3521,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
        args: [ValueRef],
        retslot: ValueRef,
        to_zero: [{v: ValueRef, t: ty::t}],
-       to_revoke: [{v: ValueRef, t: ty::t}],
-       by_ref: bool} {
+       to_revoke: [{v: ValueRef, t: ty::t}]} {
 
     let args: [ty::arg] = ty::ty_fn_args(bcx_tcx(cx), fn_ty);
     let llargs: [ValueRef] = [];
@@ -3545,8 +3544,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
              args: [],
              retslot: C_nil(),
              to_zero: to_zero,
-             to_revoke: to_revoke,
-             by_ref: by_ref};
+             to_revoke: to_revoke};
     }
     let retty = ty::ty_fn_ret(tcx, fn_ty);
     let llretslot_res = if by_ref {
@@ -3620,8 +3618,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
          args: llargs,
          retslot: llretslot,
          to_zero: to_zero,
-         to_revoke: to_revoke,
-         by_ref: by_ref};
+         to_revoke: to_revoke};
 }
 
 fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
@@ -3630,10 +3627,18 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
-    let cx = new_scope_block_ctxt(in_cx, "call");
-    Br(in_cx, cx.llbb);
+    let fn_expr_ty = ty::expr_ty(bcx_tcx(in_cx), f);
+    let fn_ty = ty::type_autoderef(bcx_tcx(in_cx), fn_expr_ty);
+    let by_ref = ty::ty_fn_ret_style(bcx_tcx(in_cx), fn_ty) == ast::return_ref;
+    // Things that return by reference must put their arguments (FIXME only
+    // the referenced arguments) into the outer scope, so that they are still
+    // alive when the return value is used.
+    let cx = if by_ref { in_cx } else {
+        let cx = new_scope_block_ctxt(in_cx, "call");
+        Br(in_cx, cx.llbb);
+        cx
+    };
     let f_res = trans_lval_gen(cx, f);
-    let fn_ty = ty::expr_ty(bcx_tcx(cx), f);
     let bcx = f_res.res.bcx;
 
     let faddr = f_res.res.val;
@@ -3646,10 +3651,9 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
       }
       none. {
         // It's a closure. We have to autoderef.
-        if f_res.is_mem { faddr = load_if_immediate(bcx, faddr, fn_ty); }
-        let res = autoderef(bcx, faddr, fn_ty);
+        if f_res.is_mem { faddr = load_if_immediate(bcx, faddr, fn_expr_ty); }
+        let res = autoderef(bcx, faddr, fn_expr_ty);
         bcx = res.bcx;
-        fn_ty = res.ty;
 
         let pair = res.val;
         faddr = GEP(bcx, pair, [C_int(0), C_int(abi::fn_field_code)]);
@@ -3684,7 +3688,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         alt lliterbody {
           none. {
             if !ty::type_is_nil(bcx_tcx(cx), ret_ty) {
-                if args_res.by_ref {
+                if by_ref {
                     let retptr = Load(bcx, llretslot);
                     retval = load_if_immediate(bcx, retptr, ret_ty);
                 } else {
@@ -3710,7 +3714,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         for {v: v, t: t} in args_res.to_revoke {
             bcx = revoke_clean(bcx, v, t);
         }
-        bcx = trans_block_cleanups(bcx, cx);
+        if !by_ref { bcx = trans_block_cleanups(bcx, cx); }
         let next_cx = new_sub_block_ctxt(in_cx, "next");
         Br(bcx, next_cx.llbb);
         bcx = next_cx;
