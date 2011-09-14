@@ -1269,14 +1269,11 @@ entry to each function as the task executes. A stack allocation is reclaimed
 when control leaves the frame containing it.
 
 The @dfn{heap} is a general term that describes two separate sets of boxes:
-@emph{task-local} state and GC boxes, and the @emph{shared} immutable boxes.
-
-State and GC boxes are @dfn{task-local}, owned by the task. Like any other
-state or GC value, they cannot pass over channels. State and GC boxes do not
-outlive the task that owns them. When unreferenced, they are either
-immediately destructed (if acyclic) or else collected using a general
-(cycle-aware) garbage-collector local to each task. Garbage collection within
-a local heap does not interrupt execution of other tasks.
+shared boxes -- which may be subject to garbage collection -- and unique
+boxes.  The lifetime of an allocation in the heap depends on the lifetime of
+the box values pointing to it. Since box values may themselves be passed in
+and out of frames, or stored in the heap, heap allocations may outlive the
+frame they are allocated within.
 
 
 @node       Ref.Mem.Own
@@ -1284,23 +1281,27 @@ a local heap does not interrupt execution of other tasks.
 @c * Ref.Mem.Own::                 Memory ownership model.
 @cindex Ownership
 
-A task @emph{owns} all the @emph{stack-local} slot allocations in its stack
-and @emph{task-local} boxes accessible from its stack. A task @emph{shares}
-ownership of @emph{shared} boxes accessible from its stack. A task does not
-own any items.
+A task owns all memory it can @emph{safely} reach through local variables,
+shared or unique boxes, and/or references. Sharing memory between tasks can
+only be accomplished using @emph{unsafe} constructs, such as raw pointer
+operations or calling C code.
 
-@dfn{Ownership} of an allocation means that the owning task is the only task
-that can access the allocation.
-
-@dfn{Sharing} of an allocation means that the same allocation may be
-concurrently read by multiple tasks. The only shared allocations are those
-that are non-state.
+When a task sends a value of @emph{unique} kind over a channel, it loses
+ownership of the value sent and can no longer refer to it. This is statically
+guaranteed by the combined use of ``move semantics'' and unique kinds, within
+the communication system.
 
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes (both shared and owned) are dropped.
 
+A shared box may (in the case of a recursive, mutable shared type) be cyclic;
+in this case the release of memory inside the shared structure may be deferred
+until task-local garbage collection can reclaim it. Code can ensure no such
+delayed deallocation occurs by restricting itself to unique boxes and similar
+unshared kinds of data.
+
 When a task finishes, its stack is necessarily empty and it therefore has no
-references to any boxes.
+references to any boxes; the remainder of its heap is immediately freed.
 
 @node       Ref.Mem.Slot
 @subsection Ref.Mem.Slot
@@ -1352,14 +1353,26 @@ fn incr(&i: int) @{
 @cindex Box
 @cindex Dereference operator
 
-A @dfn{box} is a reference to a reference-counted heap allocation holding
-another value.
+A @dfn{box} is a reference to a heap allocation holding another value. There
+are two kinds of boxes: @emph{shared boxes} and @emph{unique boxes}.
 
-Box types and values are constructed by the @emph{at} sigil @code{@@}.
+A @dfn{shared box} type or value is constructed by the prefix @emph{at} sigil @code{@@}.
 
-An example of constructing a box type and value:
+A @dfn{unique box} type or value is constructed by the prefix @emph{tilde} sigil @code{~}.
+
+Multiple shared box values can point to the same heap allocation; copying a
+shared box value makes a shallow copy of the pointer (optionally incrementing
+a reference count, if the shared box is implemented through
+reference-counting).
+
+Unique box values exist in 1:1 correspondence with their heap allocation;
+copying a unique box value makes a deep copy of the heap allocation and
+produces a pointer to the new allocation.
+
+An example of constructing one shared box type and value, and one unique box type and value:
 @example
 let x: @@int = @@10;
+let x: ~int = ~10;
 @end example
 
 Some operations implicitly dereference boxes. Examples of such @dfn{implicit
@@ -1376,12 +1389,11 @@ let y: @@int = @@12;
 assert (x + y == 22);
 @end example
 
-Other operations act on box values as single-word-sized address values,
-automatically adjusting reference counts on the associated heap
-allocation. For these operations, to access the value held in the box requires
-an explicit dereference of the box value. Explicitly dereferencing a box is
-indicated with the unary @emph{star} operator @code{*}. Examples of such
-@dfn{explicit dereference} operations are:
+Other operations act on box values as single-word-sized address values. For
+these operations, to access the value held in the box requires an explicit
+dereference of the box value. Explicitly dereferencing a box is indicated with
+the unary @emph{star} operator @code{*}. Examples of such @dfn{explicit
+dereference} operations are:
 @itemize
 @item copying box values (@code{x = y})
 @item passing box values to functions (@code{f(x,y)})
