@@ -214,9 +214,10 @@ programmer once it has been compiled.
 Rust compiles to native code. Rust compilation units are large and the
 compilation model is designed around multi-file, whole-library or
 whole-program optimization. The compiled units are standard loadable objects
-(ELF, PE, Mach-O) containing standard metadata (DWARF) and are compatible with
-existing, standard low-level tools (disassemblers, debuggers, profilers,
-dynamic loaders).
+(ELF, PE, Mach-O) containing standard debug information (DWARF) and are
+compatible with existing, standard low-level tools (disassemblers, debuggers,
+profilers, dynamic loaders). The compiled units include custom metadata that
+carries full type and version information.
 
 The Rust runtime library is a small collection of support code for scheduling,
 memory management, inter-task communication, reflection and runtime
@@ -245,14 +246,14 @@ roles.
 @item Static control over memory allocation, packing and aliasing.
 
 Many values in Rust are allocated @emph{within} their containing stack-frame
-or parent structure. Numbers, records and tags are all allocated this
+or parent structure. Numbers, records, tuples and tags are all allocated this
 way. To allocate such values in the heap, they must be explicitly
 @emph{boxed}. A @dfn{box} is a pointer to a heap allocation that holds another
 value, its @emph{content}. Boxes may be either shared or unique, depending
 on which sort of storage management is desired.
 
-Boxing and unboxing in Rust is explicit, though in many cases (such as
-name-component dereferencing) Rust will automatically ``reach through'' the
+Boxing and unboxing in Rust is explicit, though in some cases (such as
+name-component dereferencing) Rust will automatically dereference a
 box to access its content. Box values can be passed and assigned
 independently, like pointers in C; the difference is that in Rust they always
 point to live contents, and are not subject to pointer arithmetic.
@@ -352,21 +353,6 @@ little more than order-insensitive records of methods sharing a common private
 value.
 
 @sp 1
-@item Dynamic type
-
-Rust includes support for values of a top type, @code{any}, that can hold any
-type of value whatsoever. An @code{any} value is a pair of a type code and a
-boxed value of that type. Injection into an @code{any} and projection by
-type-case-selection is integrated into the language.
-
-@sp 1
-@item Dynamic metaprogramming (reflection)
-
-Rust supports run-time reflection on the structure of a crate, using a
-combination of custom descriptor structures and the DWARF metadata tables used
-to support crate linkage and other runtime services.
-
-@sp 1
 @item Static metaprogramming (syntactic extension)
 
 Rust supports a system for syntactic extensions that can be loaded into the
@@ -384,13 +370,10 @@ control stack, frees all of its owned resources (executing destructors) and
 enters the @emph{dead} state. Failure is idempotent and non-recoverable.
 
 @sp 1
-@item Signal handling
+@item Supervision hierarchy
 
-Rust has a system for propagating task-failures and other spontaneous
-events between tasks. Some signals can be trapped and redirected to
-channels; other signals are fatal and result in task-failure. Tasks
-can designate other tasks to handle signals for them. This permits
-organizing tasks into mutually-supervising or mutually-failing groups.
+Rust has a system for propagating task-failures, either directly to a
+supervisor task, or indirectly by sending a message into a channel.
 
 @sp 1
 @item Resource types with deterministic destruction
@@ -510,7 +493,6 @@ of St. Andrews (St. Andrews, Fife, UK).
 Additional specific influences can be seen from the following languages:
 @itemize
 @item The structural algebraic types and compilation manager of SML.
-@c @item The syntax-extension systems of Camlp4 and the Common Lisp readtable.
 @item The deterministic destructor system of C++.
 @end itemize
 
