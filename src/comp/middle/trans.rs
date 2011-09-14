@@ -3530,7 +3530,8 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
     let to_zero = [];
     let to_revoke = [];
 
-    let tcx = bcx_tcx(cx);
+    let ccx = bcx_ccx(cx);
+    let tcx = ccx.tcx;
     let bcx: @block_ctxt = cx;
     let by_ref = ty::ty_fn_ret_style(tcx, fn_ty) == ast::return_ref;
     // Arg 0: Output pointer.
@@ -3549,7 +3550,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
     }
     let retty = ty::ty_fn_ret(tcx, fn_ty);
     let llretslot_res = if by_ref {
-        rslt(cx, alloca(cx, T_ptr(type_of_or_i8(cx, retty))))
+        rslt(cx, alloca(cx, T_ptr(type_of_or_i8(bcx, retty))))
     } else { alloc_ty(bcx, retty) };
     bcx = llretslot_res.bcx;
     let llretslot = llretslot_res.val;
@@ -3568,7 +3569,8 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
         // type deep in a structure -- which the caller has a concrete view
         // of. If so, cast the caller's view of the restlot to the callee's
         // view, for the sake of making a type-compatible call.
-        let llretty = T_ptr(type_of_inner(bcx_ccx(bcx), bcx.sp, retty));
+        let llretty = T_ptr(type_of_inner(ccx, bcx.sp, retty));
+        if by_ref { llretty = T_ptr(llretty); }
         llargs += [PointerCast(cx, llretslot, llretty)];
     } else { llargs += [llretslot]; }
 
@@ -3588,7 +3590,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
         let lli =
             if ty::type_contains_params(tcx, retty) {
                 let body_ty = ty::mk_iter_body_fn(tcx, retty);
-                let body_llty = type_of_inner(bcx_ccx(cx), cx.sp, body_ty);
+                let body_llty = type_of_inner(ccx, cx.sp, body_ty);
                 PointerCast(bcx, lli, T_ptr(body_llty))
             } else { lli };
         llargs += [Load(cx, lli)];
@@ -3600,7 +3602,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
     // First we figure out the caller's view of the types of the arguments.
     // This will be needed if this is a generic call, because the callee has
     // to cast her view of the arguments to the caller's view.
-    let arg_tys = type_of_explicit_args(bcx_ccx(cx), cx.sp, args);
+    let arg_tys = type_of_explicit_args(ccx, cx.sp, args);
     let i = 0u;
     for e: @ast::expr in es {
         if is_terminated(bcx) {
@@ -3631,15 +3633,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let cx = new_scope_block_ctxt(in_cx, "call");
     Br(in_cx, cx.llbb);
     let f_res = trans_lval_gen(cx, f);
-    let fn_ty: ty::t;
-    alt f_res.method_ty {
-      some(meth) {
-        // self-call
-        fn_ty = meth;
-      }
-      _ { fn_ty = ty::expr_ty(bcx_tcx(cx), f); }
-    }
-
+    let fn_ty = ty::expr_ty(bcx_tcx(cx), f);
     let bcx = f_res.res.bcx;
 
     let faddr = f_res.res.val;

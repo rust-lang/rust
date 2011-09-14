@@ -347,7 +347,6 @@ fn visit_fn_with_scope(e: @env, f: ast::_fn, tp: [ast::ty_param], sp: span,
 
     // here's where we need to set up the mapping
     // for f's constrs in the table.
-
     for c: @ast::constr in f.decl.constraints { resolve_constr(e, c, sc, v); }
     visit::visit_fn(f, tp, sp, name, id,
                     cons(scope_fn(f.decl, f.proto, tp), @sc), v);

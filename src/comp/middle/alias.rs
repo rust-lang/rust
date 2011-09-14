@@ -119,7 +119,7 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
       }
       ast::expr_ret(oexpr) {
         if sc.ret_style == ast::return_ref && !is_none(oexpr) {
-            check_ret_ref(*cx, option::get(oexpr));
+            check_ret_ref(*cx, sc, option::get(oexpr));
         }
         handled = false;
       }
@@ -266,18 +266,53 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     ret bindings;
 }
 
-fn check_ret_ref(cx: ctx, expr: @ast::expr) {
+fn check_ret_ref(cx: ctx, sc: scope, expr: @ast::expr) {
     let root = expr_root(cx.tcx, expr, false);
     let bad = none;
+    let mut_field = mut_field(root.ds);
     alt path_def(cx, root.ex) {
       none. { bad = some("temporary"); }
-      some(ast::def_arg(_, mode)) {
-        if mode == ast::by_move { bad = some("move-mode parameter"); }
-        if mut_field(root.ds) { bad = some("mutable field"); }
+      some(ast::def_local(did)) | some(ast::def_binding(did)) |
+      some(ast::def_arg(did, _)) {
+        let cur_node = did.node;
+        while true {
+            alt cx.tcx.items.find(cur_node) {
+              some(ast_map::node_arg(arg)) {
+                if arg.mode == ast::by_move {
+                    bad = some("move-mode parameter");
+                }
+                break;
+              }
+              _ {}
+            }
+            alt vec::find({|b| b.node_id == cur_node}, sc.bs) {
+              some(b) {
+                if vec::len(b.unsafe_tys) > 0u {
+                    mut_field = true;
+                    break;
+                }
+                if is_none(b.root_var) {
+                    bad = some("function-local value");
+                    break;
+                }
+                if b.copied == copied {
+                    bad = some("implicitly copied reference");
+                    break;
+                }
+                b.copied = not_allowed;
+                cur_node = option::get(b.root_var);
+              }
+              none. {
+                bad = some("function-local value");
+                break;
+              }
+            }
+        }
       }
       // FIXME allow references to constants and static items?
-      _ { bad = some("non-argument value"); }
+      _ { bad = some("non-local value"); }
     }
+      if mut_field { bad = some("mutable field"); }
     alt bad {
       some(name) {
         cx.tcx.sess.span_err(expr.span, "can not return a reference " +
