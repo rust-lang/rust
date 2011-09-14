@@ -88,8 +88,8 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
     // typarams, and fields.
     let llbox_ty: TypeRef = T_ptr(T_empty_struct());
 
-    if std::vec::len::<ast::ty_param>(ty_params) == 0u &&
-           std::vec::len::<ty::arg>(arg_tys) == 0u {
+    if vec::len(ty_params) == 0u &&
+           vec::len(arg_tys) == 0u {
         // If the object we're translating has no fields or type parameters,
         // there's not much to do.
 
@@ -124,7 +124,7 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         let body_tydesc =
             GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
-        let ti = none::<@tydesc_info>;
+        let ti = none;
 
         let r =
             GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_typarams]);
@@ -229,7 +229,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
     // methods, not inner ones.
     let wrapper_obj: ast::_obj =
         {fields:
-             std::vec::map(ast_util::obj_field_from_anon_obj_field,
+             vec::map(ast_util::obj_field_from_anon_obj_field,
                            additional_fields),
          methods: anon_obj.methods};
 
@@ -287,7 +287,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
     // typarams, fields, and a pointer to our inner_obj.
     let llbox_ty: TypeRef = T_ptr(T_empty_struct());
 
-    if std::vec::len::<ast::anon_obj_field>(additional_fields) == 0u &&
+    if vec::len(additional_fields) == 0u &&
            anon_obj.inner_obj == none {
 
         // If the object we're translating has no fields and no inner_obj,
@@ -317,7 +317,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
         let body_tydesc =
             GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
-        let ti = none::<@tydesc_info>;
+        let ti = none;
         let body_td = get_tydesc(bcx, body_ty, true, tps_normal, ti).result;
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
@@ -447,8 +447,7 @@ fn create_vtbl(cx: @local_ctxt, sp: span, outer_obj_ty: ty::t, ob: ast::_obj,
 
         // Sort and process all the methods.
         let meths =
-            std::sort::merge_sort::<@ast::method>(bind ast_mthd_lteq(_, _),
-                                                  ob.methods);
+            std::sort::merge_sort(bind ast_mthd_lteq(_, _), ob.methods);
 
         for m: @ast::method in meths {
             llmethods +=
@@ -483,7 +482,7 @@ fn create_vtbl(cx: @local_ctxt, sp: span, outer_obj_ty: ty::t, ob: ast::_obj,
         // Filter out any methods that we don't need forwarding slots for
         // because they're being overridden.
         let f = bind filtering_fn(cx, _, ob.methods);
-        meths = std::vec::filter_map::<vtbl_mthd, vtbl_mthd>(f, meths);
+        meths = vec::filter_map(f, meths);
 
         // And now add the additional ones, both overriding ones and entirely
         // new ones.  These will just be normal methods.
@@ -491,8 +490,7 @@ fn create_vtbl(cx: @local_ctxt, sp: span, outer_obj_ty: ty::t, ob: ast::_obj,
 
         // Sort all the methods and process them.
         meths =
-            std::sort::merge_sort::<vtbl_mthd>(bind vtbl_mthd_lteq(_, _),
-                                               meths);
+            std::sort::merge_sort(bind vtbl_mthd_lteq(_, _), meths);
 
         // To create forwarding methods, we'll need a "backwarding" vtbl.  See
         // create_backwarding_vtbl and process_bkwding_method for details.
@@ -599,9 +597,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
         mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
 
     // Get the backwarding function's type and declare it.
-    let llbackwarding_fn_ty: TypeRef =
-        type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
-                        std::vec::len::<ast::ty_param>(ty_params));
+    let llbackwarding_fn_ty: TypeRef = type_of_meth(cx.ccx, sp, m, ty_params);
     let llbackwarding_fn: ValueRef =
         decl_internal_fastcall_fn(cx.ccx.llmod, s, llbackwarding_fn_ty);
 
@@ -661,12 +657,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
         GEP(bcx, llouter_obj_vtbl, [C_int(0), C_int(ix as int)]);
 
     // Set up the outer method to be called.
-    let outer_mthd_ty = ty::method_ty_to_fn_ty(cx.ccx.tcx, *m);
-    let llouter_mthd_ty =
-        type_of_fn_full(bcx_ccx(bcx), sp,
-                        ty::ty_fn_proto(bcx_tcx(bcx), outer_mthd_ty), true,
-                        m.inputs, m.output,
-                        std::vec::len::<ast::ty_param>(ty_params));
+    let llouter_mthd_ty = type_of_meth(bcx_ccx(bcx), sp, m, ty_params);
     llouter_mthd =
         PointerCast(bcx, llouter_mthd, T_ptr(T_ptr(llouter_mthd_ty)));
     llouter_mthd = Load(bcx, llouter_mthd);
@@ -723,9 +714,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
         mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
 
     // Get the forwarding function's type and declare it.
-    let llforwarding_fn_ty: TypeRef =
-        type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
-                        std::vec::len::<ast::ty_param>(ty_params));
+    let llforwarding_fn_ty = type_of_meth(cx.ccx, sp, m, ty_params);
     let llforwarding_fn: ValueRef =
         decl_internal_fastcall_fn(cx.ccx.llmod, s, llforwarding_fn_ty);
 
@@ -819,12 +808,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
         GEP(bcx, llinner_obj_vtbl, [C_int(0), C_int(ix as int)]);
 
     // Set up the original method to be called.
-    let orig_mthd_ty = ty::method_ty_to_fn_ty(cx.ccx.tcx, *m);
-    let llorig_mthd_ty =
-        type_of_fn_full(bcx_ccx(bcx), sp,
-                        ty::ty_fn_proto(bcx_tcx(bcx), orig_mthd_ty), true,
-                        m.inputs, m.output,
-                        std::vec::len::<ast::ty_param>(ty_params));
+    let llorig_mthd_ty = type_of_meth(bcx_ccx(bcx), sp, m, ty_params);
     llorig_mthd = PointerCast(bcx, llorig_mthd, T_ptr(T_ptr(llorig_mthd_ty)));
     llorig_mthd = Load(bcx, llorig_mthd);
 
@@ -899,7 +883,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
       ty::ty_fn(proto, inputs, output, _, _) {
         llfnty =
             type_of_fn_full(cx.ccx, m.span, proto, true, inputs, output,
-                            std::vec::len::<ast::ty_param>(ty_params));
+                            vec::len(ty_params));
       }
     }
     let mcx: @local_ctxt =
@@ -946,6 +930,13 @@ fn populate_self_stack(bcx: @block_ctxt, self_stack: ValueRef,
 
     ret self_stack;
 }
+
+fn type_of_meth(ccx: @crate_ctxt, sp: span, m: @ty::method,
+                tps: [ast::ty_param]) -> TypeRef {
+    type_of_fn_full(ccx, sp, m.proto, true, m.inputs, m.output,
+                    vec::len(tps))
+}
+
 //
 // Local Variables:
 // mode: rust
