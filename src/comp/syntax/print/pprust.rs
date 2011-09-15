@@ -576,15 +576,11 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
       block_normal. { bopen(s); }
     }
 
-    let last_stmt = option::none;
     for st: @ast::stmt in blk.node.stmts {
-        maybe_protect_block(s, last_stmt, stmt_(st));
         print_stmt(s, *st);
-        last_stmt = option::some(st);
     }
     alt blk.node.expr {
       some(expr) {
-        maybe_protect_block(s, last_stmt, expr_(expr));
         space_if_not_bol(s);
         print_expr(s, expr);
         maybe_print_trailing_comment(s, expr.span, some(blk.span.hi));
@@ -593,88 +589,6 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
     }
     bclose_(s, blk.span, indented);
     s.ann.post(ann_node);
-
-    tag expr_or_stmt { stmt_(@ast::stmt); expr_(@ast::expr); }
-
-    // The Rust syntax has an ambiguity when an if, alt, or block statement is
-    // followed by a unary op, square bracket, or paren. In those cases we
-    // have to add an extra semi to make sure the output retains the same
-    // meaning.
-    fn maybe_protect_block(s: ps, last: option::t<@ast::stmt>,
-                           next: expr_or_stmt) {
-        let last_expr_is_block =
-            alt last {
-              option::some(@{node: ast::stmt_expr(e, _), _}) {
-                alt e.node {
-                  ast::expr_if(_, _, _) | ast::expr_alt(_, _) |
-                  ast::expr_block(_) {
-                    true
-                  }
-                  _ { false }
-                }
-              }
-              _ { false }
-            };
-
-        if !last_expr_is_block { ret; }
-
-        let next_expr_is_ambig =
-            alt next {
-              expr_(e) { expr_is_ambig(e) }
-              stmt_(@{node: ast::stmt_expr(e, _), _}) { expr_is_ambig(e) }
-              _ { false }
-            };
-
-        if last_expr_is_block && next_expr_is_ambig { word(s.s, ";"); }
-
-        fn expr_is_ambig(ex: @ast::expr) -> bool {
-            // We're going to walk the expression to the 'left' looking for
-            // various properties that might indicate ambiguity
-
-            type env = @mutable bool;
-            let visitor =
-                visit::mk_vt(@{visit_expr: visit_expr
-                                  with *visit::default_visitor()});
-            let env = @mutable false;
-            visit_expr(ex, env, visitor);
-            ret *env;
-
-            fn visit_expr(ex: @ast::expr, e: env, v: visit::vt<env>) {
-                assert (*e == false);
-
-                if expr_is_ambig(ex) { *e = true; ret; }
-
-                alt ex.node {
-                  ast::expr_assign(x, _) { v.visit_expr(x, e, v); }
-                  ast::expr_assign_op(_, x, _) { visit_expr(x, e, v); }
-                  ast::expr_move(x, _) { v.visit_expr(x, e, v); }
-                  ast::expr_field(x, _) { v.visit_expr(x, e, v); }
-                  ast::expr_index(x, _) { v.visit_expr(x, e, v); }
-                  ast::expr_binary(op, x, _) {
-                    if need_parens(x, operator_prec(op)) { *e = true; ret; }
-                    v.visit_expr(x, e, v);
-                  }
-                  ast::expr_cast(x, _) {
-                    if need_parens(x, parse::parser::as_prec) {
-                        *e = true;
-                        ret;
-                    }
-                  }
-                  ast::expr_ternary(x, _, _) { v.visit_expr(x, e, v); }
-                  _ { }
-                }
-            }
-
-            fn expr_is_ambig(ex: @ast::expr) -> bool {
-                alt ex.node {
-                  ast::expr_unary(_, _) { true }
-                  ast::expr_tup(_) { true }
-                  ast::expr_vec(_, _) { true }
-                  _ { false }
-                }
-            }
-        }
-    }
 }
 
 // ret and fail, without arguments cannot appear is the discriminant of if,

@@ -2,6 +2,7 @@
 // reproduce so we don't want to automatically reformat it
 
 // no-reformat
+// xfail-pretty
 
 /*
  *
