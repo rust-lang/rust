@@ -95,6 +95,9 @@ mod test;
 mod unsafe;
 mod term;
 
+#[cfg(unicode)]
+mod unicode;
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
