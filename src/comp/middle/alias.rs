@@ -22,6 +22,7 @@ type binding = @{node_id: node_id,
                  unsafe_tys: [ty::t],
                  mutable ok: valid,
                  mutable copied: copied};
+// FIXME it may be worthwhile to use a linked list of bindings instead
 type scope = {bs: [binding], ret_style: ast::ret_style};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
@@ -46,7 +47,8 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
                copy_map: std::map::new_int_hash()};
     let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
-              visit_decl: bind visit_decl(cx, _, _, _)
+              visit_decl: bind visit_decl(cx, _, _, _),
+              visit_block: bind visit_block(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
     visit::visit_crate(*crate, {bs: [], ret_style: ast::return_val},
                        visit::mk_vt(v));
@@ -134,8 +136,7 @@ fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
     visit::visit_decl(d, sc, v);
     alt d.node {
       ast::decl_local(locs) {
-        // FIXME check that init is lvalue
-        for (style, loc) in locs {
+        for (_, loc) in locs {
             alt loc.node.init {
               some(init) {
                 if init.op == ast::init_move {
@@ -149,6 +150,59 @@ fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
       _ { }
     }
 }
+
+fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
+    let ref_locs = [];
+    for stmt in b.node.stmts {
+        alt stmt.node {
+          ast::stmt_decl(@{node: ast::decl_local(ls), _}, _) {
+            for (st, loc) in ls {
+                if st == ast::let_ref {
+                    ref_locs += [loc];
+                }
+            }
+          }
+          _ {}
+        }
+    }
+    if vec::len(ref_locs) > 0u {
+        let bindings = sc.bs;
+        for loc in ref_locs { add_bindings_for_let(*cx, bindings, loc); }
+        visit::visit_block(b, {bs: bindings with sc}, v);
+    } else {
+        visit::visit_block(b, sc, v);
+    }
+}
+
+fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
+    alt loc.node.init {
+      some(init) {
+        if init.op == ast::init_move {
+            cx.tcx.sess.span_err
+                (loc.span, "can not move into a by-reference binding");
+        }
+        let root = expr_root(cx.tcx, init.expr, false);
+        let root_var = path_def_id(cx, root.ex);
+        // FIXME also allow by-ref function calls
+        if is_none(root_var) {
+            cx.tcx.sess.span_err(loc.span, "a reference binding can't be \
+                                            rooted in a temporary");
+        }
+        for proot in *pattern_roots(cx.tcx, *root.ds, loc.node.pat) {
+            let bnd = mk_binding(cx, proot.id, proot.span, root_var,
+                                 inner_mut(proot.ds));
+            // Don't implicitly copy explicit references
+            bnd.copied = not_allowed;
+            bs += [bnd];
+        }
+      }
+      _ {
+        cx.tcx.sess.span_err
+            (loc.span, "by-reference bindings must be initialized");
+      }
+    }
+}
+
 
 fn cant_copy(cx: ctx, b: binding) -> bool {
     alt b.copied {
