@@ -296,7 +296,10 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
 
 fn noop_fold_decl(d: decl_, fld: ast_fold) -> decl_ {
     ret alt d {
-          decl_local(ls) { decl_local(vec::map(fld.fold_local, ls)) }
+          decl_local(ls) {
+            decl_local(vec::map({|l| let (st, lc) = l;
+                                 (st, fld.fold_local(lc))}, ls))
+          }
           decl_item(it) { decl_item(fld.fold_item(it)) }
         }
 }

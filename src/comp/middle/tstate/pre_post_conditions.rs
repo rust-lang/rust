@@ -572,7 +572,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
           decl_local(alocals) {
             let e_pp;
             let prev_pp = empty_pre_post(num_constraints(fcx.enclosing));
-            for alocal: @local in alocals {
+            for (_, alocal) in alocals {
                 alt alocal.node.init {
                   some(an_init) {
                     /* LHS always becomes initialized,

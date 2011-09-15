@@ -1505,11 +1505,13 @@ fn parse_local(p: parser, allow_init: bool) -> @ast::local {
 }
 
 fn parse_let(p: parser) -> @ast::decl {
+    fn parse_let_style(p: parser) -> ast::let_style {
+        eat(p, token::BINOP(token::AND)) ? ast::let_ref : ast::let_copy
+    }
     let lo = p.get_lo_pos();
-    let locals = [parse_local(p, true)];
-    while p.peek() == token::COMMA {
-        p.bump();
-        locals += [parse_local(p, true)];
+    let locals = [(parse_let_style(p), parse_local(p, true))];
+    while eat(p, token::COMMA) {
+        locals += [(parse_let_style(p), parse_local(p, true))];
     }
     ret @spanned(lo, p.get_last_hi_pos(), ast::decl_local(locals));
 }

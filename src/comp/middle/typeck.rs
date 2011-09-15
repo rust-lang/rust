@@ -2418,7 +2418,7 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
         node_id = id;
         alt decl.node {
           ast::decl_local(ls) {
-            for l: @ast::local in ls { bot |= check_decl_local(fcx, l); }
+            for (_, l) in ls { bot |= check_decl_local(fcx, l); }
           }
           ast::decl_item(_) {/* ignore for now */ }
         }

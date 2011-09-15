@@ -4538,7 +4538,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> result {
       ast::stmt_decl(d, _) {
         alt d.node {
           ast::decl_local(locals) {
-            for local: @ast::local in locals {
+            for (_, local) in locals {
                 bcx = init_local(bcx, local).bcx;
             }
           }
@@ -4654,7 +4654,7 @@ iter block_locals(b: ast::blk) -> @ast::local {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locals) {
-                for local: @ast::local in locals { put local; }
+                for (_, local) in locals { put local; }
               }
               _ {/* fall through */ }
             }

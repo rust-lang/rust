@@ -371,7 +371,7 @@ fn visit_decl_with_scope(d: @decl, sc: scopes, v: vt<scopes>) {
         };
     alt d.node {
       decl_local(locs) {
-        for loc in locs { v.visit_local(loc, sc, v);; *loc_pos += 1u; }
+        for (_, loc) in locs { v.visit_local(loc, sc, v);; *loc_pos += 1u; }
       }
       decl_item(it) { v.visit_item(it, sc, v); }
     }
@@ -797,7 +797,7 @@ fn lookup_in_block(name: ident, b: ast::blk_, pos: uint, loc_pos: uint,
                     let j = vec::len(locs);
                     while j > 0u {
                         j -= 1u;
-                        let loc = locs[j];
+                        let (_, loc) = locs[j];
                         if ns == ns_value && (i < pos || j < loc_pos) {
                             alt lookup_in_pat(name, loc.node.pat) {
                               some(did) { ret some(ast::def_local(did)); }
@@ -1315,7 +1315,7 @@ fn check_block(e: @env, b: ast::blk, x: (), v: vt<()>) {
             alt d.node {
               ast::decl_local(locs) {
                 let local_values = checker(*e, "value");
-                for loc in locs {
+                for (_, loc) in locs {
                     for each p in ast_util::pat_bindings(loc.node.pat) {
                         let ident = alt p.node { pat_bind(n) { n } };
                         add_name(local_values, p.span, ident);

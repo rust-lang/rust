@@ -144,7 +144,8 @@ fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
     visit::visit_decl(d, sc, v);
     alt d.node {
       ast::decl_local(locs) {
-        for loc: @ast::local in locs {
+        // FIXME check that init is lvalue
+        for (style, loc) in locs {
             alt loc.node.init {
               some(init) {
                 if init.op == ast::init_move {

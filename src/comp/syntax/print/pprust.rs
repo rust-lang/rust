@@ -1024,8 +1024,10 @@ fn print_decl(s: ps, decl: @ast::decl) {
         space_if_not_bol(s);
         ibox(s, indent_unit);
         word_nbsp(s, "let");
-        fn print_local(s: ps, loc: @ast::local) {
+        fn print_local(s: ps, loc_st: (ast::let_style, @ast::local)) {
+            let (st, loc) = loc_st;
             ibox(s, indent_unit);
+            if st == ast::let_ref { word(s.s, "&"); }
             print_local_decl(s, loc);
             end(s);
             alt loc.node.init {

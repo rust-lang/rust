@@ -1063,8 +1063,10 @@ fn local_to_bindings(loc: @local) -> binding {
     {lhs: lhs, rhs: loc.node.init}
 }
 
-fn locals_to_bindings(locals: [@local]) -> [binding] {
-    vec::map(local_to_bindings, locals)
+fn locals_to_bindings(locals: [(let_style, @local)]) -> [binding] {
+    let rslt = [];
+    for (_, loc) in locals { rslt += [local_to_bindings(loc)]; }
+    ret rslt;
 }
 
 fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [ty::mode] {

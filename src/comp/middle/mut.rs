@@ -142,7 +142,7 @@ fn visit_decl(cx: @ctx, d: @decl, e: (), v: visit::vt<()>) {
     visit::visit_decl(d, e, v);
     alt d.node {
       decl_local(locs) {
-        for loc: @local in locs {
+        for (_, loc) in locs {
             alt loc.node.init {
               some(init) {
                 if init.op == init_move { check_move_rhs(cx, init.expr); }

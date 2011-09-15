@@ -149,7 +149,9 @@ type local = spanned<local_>;
 
 type decl = spanned<decl_>;
 
-tag decl_ { decl_local([@local]); decl_item(@item); }
+tag let_style { let_copy; let_ref; }
+
+tag decl_ { decl_local([(let_style, @local)]); decl_item(@item); }
 
 type arm = {pats: [@pat], guard: option::t<@expr>, body: blk};
 
