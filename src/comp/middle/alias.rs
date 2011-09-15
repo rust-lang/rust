@@ -17,8 +17,8 @@ tag copied { not_allowed; copied; not_copied; }
 
 type binding = @{node_id: node_id,
                  span: span,
-                 local_id: uint,
                  root_var: option::t<node_id>,
+                 local_id: uint,
                  unsafe_tys: [ty::t],
                  mutable ok: valid,
                  mutable copied: copied};
@@ -26,9 +26,10 @@ type scope = {bs: [binding], ret_style: ast::ret_style};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
               unsafe: [ty::t]) -> binding {
-    ret @{node_id: id, span: span, local_id: cx.next_local,
-          root_var: root_var, unsafe_tys: unsafe,
-          mutable ok: valid, mutable copied: not_copied};
+    ret @{node_id: id, span: span, root_var: root_var,
+          local_id: local_id_of_node(cx, id),
+          unsafe_tys: unsafe, mutable ok: valid,
+          mutable copied: not_copied};
 }
 
 tag local_info { local(uint); }
@@ -36,16 +37,12 @@ tag local_info { local(uint); }
 type copy_map = std::map::hashmap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
-            local_map: std::map::hashmap<node_id, local_info>,
-            mutable next_local: uint,
             copy_map: copy_map};
 
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
     let cx = @{tcx: tcx,
-               local_map: std::map::new_int_hash(),
-               mutable next_local: 0u,
                copy_map: std::map::new_int_hash()};
     let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
@@ -133,13 +130,6 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
     if !handled { visit::visit_expr(ex, sc, v); }
 }
 
-fn register_locals(cx: ctx, pat: @ast::pat) {
-    for each pat in ast_util::pat_bindings(pat) {
-        cx.local_map.insert(pat.id, local(cx.next_local));
-        cx.next_local += 1u;
-    }
-}
-
 fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
     visit::visit_decl(d, sc, v);
     alt d.node {
@@ -154,7 +144,6 @@ fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
               }
               none. { }
             }
-            register_locals(*cx, loc.node.pat);
         }
       }
       _ { }
@@ -200,14 +189,17 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
             }
         }
         let root_var = path_def_id(cx, root.ex);
-        let new_bnd = mk_binding(cx, arg.id, arg.span, root_var,
-                                 inner_mut(root.ds));
-        new_bnd.copied = alt arg_t.mode {
-          ast::by_move. { copied }
-          ast::by_ref. { ret_ref ? not_allowed : not_copied }
-          ast::by_mut_ref. { not_allowed }
-        };
-        bindings += [new_bnd];
+        bindings += [@{node_id: arg.id,
+                       span: arg.span,
+                       root_var: root_var,
+                       local_id: 0u,
+                       unsafe_tys: inner_mut(root.ds),
+                       mutable ok: valid,
+                       mutable copied: alt arg_t.mode {
+                         ast::by_move. { copied }
+                         ast::by_ref. { ret_ref ? not_allowed : not_copied }
+                         ast::by_mut_ref. { not_allowed }
+                       }}];
         i += 1u;
     }
     let f_may_close =
@@ -283,7 +275,7 @@ fn check_ret_ref(cx: ctx, sc: scope, mut: bool, expr: @ast::expr) {
         let cur_node = did.node;
         while true {
             alt cx.tcx.items.find(cur_node) {
-              some(ast_map::node_arg(arg)) {
+              some(ast_map::node_arg(arg, _)) {
                 if arg.mode == ast::by_move {
                     bad = some("move-mode parameter");
                 }
@@ -358,7 +350,6 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
             new_bs += [mk_binding(cx, info.id, info.span, root_var,
                                   copy info.unsafe)];
         }
-        register_locals(cx, a.pats[0]);
         visit::visit_arm(a, {bs: new_bs with sc}, v);
     }
 }
@@ -373,7 +364,6 @@ fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
             new_bs += [mk_binding(cx, proot.id, proot.span, none,
                                   inner_mut(proot.ds))];
         }
-        register_locals(cx, local.node.pat);
         visit::visit_block(blk, {bs: new_bs with sc}, v);
       }
     }
@@ -401,17 +391,15 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
         new_bs += [mk_binding(cx, proot.id, proot.span, root_var,
                               inner_mut(proot.ds))];
     }
-    register_locals(cx, local.node.pat);
     visit::visit_block(blk, {bs: new_bs with sc}, v);
 }
 
 fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
              assign: bool, sc: scope) {
     let def = cx.tcx.def_map.get(id);
-    if !def_is_local(def, true) { ret; }
+    if !def_is_local(def, false) { ret; }
     let my_defnum = ast_util::def_id_of_def(def).node;
-    let my_local_id =
-        alt cx.local_map.find(my_defnum) { some(local(id)) { id } _ { 0u } };
+    let my_local_id = local_id_of_node(cx, my_defnum);
     let var_t = ty::expr_ty(cx.tcx, ex);
     for b in sc.bs {
         // excludes variables introduced since the alias was made
@@ -555,6 +543,12 @@ fn def_is_local(d: ast::def, objfields_count: bool) -> bool {
           ast::def_obj_field(_, _) { objfields_count }
           _ { false }
         };
+}
+
+fn local_id_of_node(cx: ctx, id: node_id) -> uint {
+    alt cx.tcx.items.get(id) {
+      ast_map::node_arg(_, id) | ast_map::node_local(id) { id }
+    }
 }
 
 // Heuristic, somewhat random way to decide whether to warn when inserting an
