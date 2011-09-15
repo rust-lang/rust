@@ -47,7 +47,6 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
                copy_map: std::map::new_int_hash()};
     let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
-              visit_decl: bind visit_decl(cx, _, _, _),
               visit_block: bind visit_block(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
     visit::visit_crate(*crate, {bs: [], ret_style: ast::return_val},
@@ -132,46 +131,38 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
     if !handled { visit::visit_expr(ex, sc, v); }
 }
 
-fn visit_decl(cx: @ctx, d: @ast::decl, sc: scope, v: vt<scope>) {
-    visit::visit_decl(d, sc, v);
-    alt d.node {
-      ast::decl_local(locs) {
-        for (_, loc) in locs {
-            alt loc.node.init {
-              some(init) {
-                if init.op == ast::init_move {
-                    check_lval(cx, init.expr, sc, v);
-                }
-              }
-              none. { }
-            }
-        }
-      }
-      _ { }
-    }
-}
-
 fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
-    let ref_locs = [];
+    let bs = sc.bs;
     for stmt in b.node.stmts {
         alt stmt.node {
-          ast::stmt_decl(@{node: ast::decl_local(ls), _}, _) {
-            for (st, loc) in ls {
+          ast::stmt_decl(@{node: ast::decl_item(it), _}, _) {
+            v.visit_item(it, sc, v);
+          }
+          ast::stmt_decl(@{node: ast::decl_local(locs), _}, _) {
+            for (st, loc) in locs {
                 if st == ast::let_ref {
-                    ref_locs += [loc];
+                    add_bindings_for_let(*cx, bs, loc);
+                    sc = {bs: bs with sc};
+                }
+                alt loc.node.init {
+                  some(init) {
+                    if init.op == ast::init_move {
+                        check_lval(cx, init.expr, sc, v);
+                    }
+                  }
+                  none. { }
                 }
             }
           }
-          _ {}
+          ast::stmt_expr(ex, _) {
+            v.visit_expr(ex, sc, v);
+          }
+          ast::stmt_crate_directive(cd) {
+            visit::visit_crate_directive(cd, sc, v);
+          }
         }
     }
-    if vec::len(ref_locs) > 0u {
-        let bindings = sc.bs;
-        for loc in ref_locs { add_bindings_for_let(*cx, bindings, loc); }
-        visit::visit_block(b, {bs: bindings with sc}, v);
-    } else {
-        visit::visit_block(b, sc, v);
-    }
+    visit::visit_expr_opt(b.node.expr, sc, v);
 }
 
 fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
@@ -192,12 +183,14 @@ fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
                 let ret_style = ty::ty_fn_ret_style(cx.tcx, fty);
                 if ast_util::ret_by_ref(ret_style) {
                     // FIXME pick right arg
-                    let arg_root = expr_root(cx.tcx, args[0], false);
+                    let arg = args[0];
+                    let arg_root = expr_root(cx.tcx, arg, false);
                     root_var = path_def_id(cx, arg_root.ex);
                     if !is_none(root_var) {
                         is_temp = false;
                         if ret_style == ast::return_ref(true) {
-                            outer_ds = [@{mut: true with *arg_root.ds[0]}];
+                            outer_ds = [@{mut: true, kind: unbox,
+                                          outer_t: ty::expr_ty(cx.tcx, arg)}];
                         }
                         outer_ds = *arg_root.ds + outer_ds;
                     }
