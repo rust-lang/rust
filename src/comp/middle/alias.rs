@@ -1,7 +1,7 @@
 
 import syntax::{ast, ast_util};
 import ast::{ident, fn_ident, node_id, def_id};
-import mut::{expr_root, mut_field, deref, field, index, unbox};
+import mut::{mut_field, deref, field, index, unbox};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
@@ -89,7 +89,7 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
       ast::expr_put(val) {
         alt val {
           some(ex) {
-            let root = expr_root(cx.tcx, ex, false);
+            let root = expr_root(*cx, ex, false);
             if mut_field(root.ds) {
                 cx.tcx.sess.span_err(ex.span,
                                      "result of put must be" +
@@ -177,38 +177,13 @@ fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
             cx.tcx.sess.span_err
                 (loc.span, "can not move into a by-reference binding");
         }
-        let root = expr_root(cx.tcx, init.expr, false);
-        let outer_ds = *root.ds;
+        let root = expr_root(cx, init.expr, false);
         let root_var = path_def_id(cx, root.ex);
-        let is_temp = is_none(root_var);
-        if is_temp {
-            alt root.ex.node {
-              ast::expr_call(f, args) {
-                let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
-                alt ty::ty_fn_ret_style(cx.tcx, fty) {
-                  ast::return_ref(mut, arg_n) {
-                    let arg = args[arg_n];
-                    let arg_root = expr_root(cx.tcx, arg, false);
-                    root_var = path_def_id(cx, arg_root.ex);
-                    if !is_none(root_var) {
-                        is_temp = false;
-                        if mut {
-                            outer_ds = [@{mut: true, kind: unbox,
-                                          outer_t: ty::expr_ty(cx.tcx, arg)}];
-                        }
-                        outer_ds = *arg_root.ds + outer_ds;
-                    }
-                  }
-                }
-              }
-              _ {}
-            }
-        }
-        if is_temp {
+        if is_none(root_var) {
             cx.tcx.sess.span_err(loc.span, "a reference binding can't be \
                                             rooted in a temporary");
         }
-        for proot in *pattern_roots(cx.tcx, outer_ds, loc.node.pat) {
+        for proot in *pattern_roots(cx.tcx, *root.ds, loc.node.pat) {
             let bnd = mk_binding(cx, proot.id, proot.span, root_var,
                                  inner_mut(proot.ds));
             // Don't implicitly copy explicit references
@@ -252,7 +227,7 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
         let arg = args[i];
-        let root = expr_root(cx.tcx, arg, false);
+        let root = expr_root(cx, arg, false);
         if arg_t.mode == ast::by_mut_ref {
             alt path_def(cx, arg) {
               some(def) {
@@ -340,11 +315,13 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
 
 fn check_ret_ref(cx: ctx, sc: scope, mut: bool, arg_node_id: node_id,
                  expr: @ast::expr) {
-    let root = expr_root(cx.tcx, expr, false);
+    let root = expr_root(cx, expr, false);
     let bad = none;
     let mut_field = mut_field(root.ds);
     alt path_def(cx, root.ex) {
-      none. { bad = some("a temporary"); }
+      none. {
+        bad = some("a temporary");
+      }
       some(ast::def_local(did, _)) | some(ast::def_binding(did)) |
       some(ast::def_arg(did, _)) {
         let cur_node = did.node;
@@ -400,7 +377,7 @@ fn check_ret_ref(cx: ctx, sc: scope, mut: bool, arg_node_id: node_id,
 fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
              v: vt<scope>) {
     v.visit_expr(input, sc, v);
-    let root = expr_root(cx.tcx, input, true);
+    let root = expr_root(cx, input, true);
     for a: ast::arm in arms {
         let new_bs = sc.bs;
         let root_var = path_def_id(cx, root.ex);
@@ -448,7 +425,7 @@ fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
 fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
              sc: scope, v: vt<scope>) {
     v.visit_expr(seq, sc, v);
-    let root = expr_root(cx.tcx, seq, false);
+    let root = expr_root(cx, seq, false);
 
     // If this is a mutable vector, don't allow it to be touched.
     let seq_t = ty::expr_ty(cx.tcx, seq);
@@ -693,6 +670,34 @@ fn pattern_roots(tcx: ty::ctxt, base: [deref], pat: @ast::pat)
     let set = [];
     walk(tcx, base, pat, set);
     ret @set;
+}
+
+// Wraps the expr_root in mut.rs to also handle roots that exist through
+// return-by-reference
+fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool) ->
+   {ex: @ast::expr, ds: @[deref]} {
+    let base_root = mut::expr_root(cx.tcx, ex, autoderef);
+    if is_none(path_def_id(cx, base_root.ex)) {
+        alt base_root.ex.node {
+          ast::expr_call(f, args) {
+            let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
+            alt ty::ty_fn_ret_style(cx.tcx, fty) {
+              ast::return_ref(mut, arg_n) {
+                let arg = args[arg_n];
+                let arg_root = expr_root(cx, arg, false);
+                ret {ex: arg_root.ex,
+                     ds: @(*arg_root.ds +
+                           (mut ? [@{mut: true, kind: unbox,
+                                     outer_t: ty::expr_ty(cx.tcx, arg)}] : [])
+                           + *base_root.ds)};
+              }
+              _ {}
+            }
+          }
+          _ {}
+        }
+    }
+    ret base_root;
 }
 
 fn inner_mut(ds: @[deref]) -> [ty::t] {

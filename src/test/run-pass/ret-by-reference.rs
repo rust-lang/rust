@@ -10,6 +10,10 @@ fn get_mut(a: {mutable x: @int}, _b: int) -> &!0 @int {
     ret a.x;
 }
 
+fn get_deep(a: {mutable y: {mutable x: @int}}) -> &!@int {
+    ret get_mut(a.y, 1);
+}
+
 fn main() {
     let x = some(@50);
     let &y = get(x);
@@ -20,4 +24,9 @@ fn main() {
     let &box = get_mut(y, 4);
     assert *box == 50;
     assert *get_mut({mutable x: @70}, 5) == 70;
+
+    let u = {mutable y: {mutable x: @10}};
+    let &deep = get_deep(u);
+    assert *deep == 10;
+    assert *get_deep({mutable y: {mutable x: @11}}) + 2 == 13;
 }
