@@ -1188,6 +1188,7 @@ const ternary_prec: int = 0;
 
 fn parse_more_binops(p: parser, lhs: @ast::expr, min_prec: int) ->
    @ast::expr {
+    if !expr_has_value(lhs) { ret lhs; }
     let peeked = p.peek();
     for cur: op_spec in *p.get_prec_table() {
         if cur.prec > min_prec && cur.tok == peeked {
