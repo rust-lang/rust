@@ -1,8 +1,8 @@
 #include "rust_gc.h"
 #include "rust_internal.h"
+#include "rust_unwind.h"
 #include "rust_upcall.h"
 #include <stdint.h>
-#include <unwind.h>
 
 // Upcalls.
 
