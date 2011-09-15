@@ -718,7 +718,7 @@ fn print_expr(s: ps, expr: @ast::expr) {
         pclose(s);
       }
       ast::expr_call(func, args) {
-        print_expr_parens_if_unary_or_ret(s, func);
+        print_expr_parens_if_not_bot(s, func);
         popen(s);
         commasep_exprs(s, inconsistent, args);
         pclose(s);
@@ -885,13 +885,13 @@ fn print_expr(s: ps, expr: @ast::expr) {
         if ends_in_lit_int(expr) {
             popen(s); print_expr(s, expr); pclose(s);
         } else {
-            print_expr_parens_if_unary_or_ret(s, expr);
+            print_expr_parens_if_not_bot(s, expr);
         }
         word(s.s, ".");
         word(s.s, id);
       }
       ast::expr_index(expr, index) {
-        print_expr_parens_if_unary_or_ret(s, expr);
+        print_expr_parens_if_not_bot(s, expr);
         word(s.s, "[");
         print_expr(s, index);
         word(s.s, "]");
@@ -993,10 +993,15 @@ fn print_expr(s: ps, expr: @ast::expr) {
     end(s);
 }
 
-fn print_expr_parens_if_unary_or_ret(s: ps, ex: @ast::expr) {
+fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
     let parens = alt ex.node {
       ast::expr_fail(_) | ast::expr_ret(_) | ast::expr_put(_) |
-      ast::expr_unary(_, _) { true }
+      ast::expr_binary(_, _, _) | ast::expr_unary(_, _) |
+      ast::expr_ternary(_, _, _) | ast::expr_move(_, _) |
+      ast::expr_copy(_) | ast::expr_assign(_, _) | ast::expr_be(_) |
+      ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
+      ast::expr_log(_, _) | ast::expr_assert(_) | ast::expr_uniq(_) |
+      ast::expr_check(_, _) { true }
       _ { false }
     };
     if parens { popen(s); }
