@@ -882,13 +882,10 @@ fn print_expr(s: ps, expr: @ast::expr) {
       }
       ast::expr_field(expr, id) {
         // Deal with '10.x'
-        alt expr.node {
-          ast::expr_lit(@{node: ast::lit_int(_), _}) {
+        if ends_in_lit_int(expr) {
             popen(s); print_expr(s, expr); pclose(s);
-          }
-          _ {
+        } else {
             print_expr_parens_if_unary_or_ret(s, expr);
-          }
         }
         word(s.s, ".");
         word(s.s, id);
@@ -1636,6 +1633,25 @@ fn ast_ty_constrs_str(constrs: [@ast::ty_constr]) -> str {
         s += ty_constr_to_str(c);
     }
     ret s;
+}
+
+fn ends_in_lit_int(ex: @ast::expr) -> bool {
+    alt ex.node {
+      ast::expr_lit(@{node: ast::lit_int(_), _}) { true }
+      ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
+      ast::expr_ternary(_, _, sub) | ast::expr_move(_, sub) |
+      ast::expr_copy(sub) | ast::expr_assign(_, sub) | ast::expr_be(sub) |
+      ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
+      ast::expr_log(_, sub) | ast::expr_assert(sub) | ast::expr_uniq(sub) |
+      ast::expr_check(_, sub) { ends_in_lit_int(sub) }
+      ast::expr_fail(osub) | ast::expr_ret(osub) | ast::expr_put(osub) {
+        alt osub {
+          some(ex) { ends_in_lit_int(ex) }
+          _ { false }
+        }
+      }
+      _ { false }
+    }
 }
 
 //
