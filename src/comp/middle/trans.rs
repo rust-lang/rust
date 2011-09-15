@@ -4444,7 +4444,7 @@ fn trans_be(cx: @block_ctxt, e: @ast::expr) : ast_util::is_call_expr(e) ->
     ret trans_ret(cx, some(e));
 }
 
-fn init_local(bcx: @block_ctxt, local: @ast::local) -> result {
+fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let ty = node_id_type(bcx_ccx(bcx), local.node.id);
     let llptr = bcx.fcx.lllocals.get(local.node.id);
     // Make a note to drop this slot on the way out.
@@ -4476,7 +4476,7 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> result {
     bcx =
         trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr,
                                         bcx.fcx.lllocals, false);
-    ret rslt(bcx, llptr);
+    ret bcx;
 
     fn must_zero(ccx: @crate_ctxt, local: @ast::local) -> bool {
         alt local.node.init {
@@ -4513,6 +4513,14 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> result {
     }
 }
 
+fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
+    let init_expr = option::get(local.node.init).expr;
+    let val = trans_lval(bcx, init_expr);
+    assert val.is_mem;
+    ret trans_alt::bind_irrefutable_pat(bcx, local.node.pat, val.res.val,
+                                        bcx.fcx.lllocals, false);
+}
+
 fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t) -> result {
     let bcx = cx;
     let ccx = bcx_ccx(cx);
@@ -4538,8 +4546,12 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> result {
       ast::stmt_decl(d, _) {
         alt d.node {
           ast::decl_local(locals) {
-            for (_, local) in locals {
-                bcx = init_local(bcx, local).bcx;
+            for (style, local) in locals {
+                if style == ast::let_copy {
+                    bcx = init_local(bcx, local);
+                } else {
+                    bcx = init_ref_local(bcx, local);
+                }
             }
           }
           ast::decl_item(i) { trans_item(cx.fcx.lcx, *i); }
@@ -4646,15 +4658,14 @@ fn trans_fn_cleanups(fcx: @fn_ctxt, cx: @block_ctxt) {
 }
 
 iter block_locals(b: ast::blk) -> @ast::local {
-
-    // FIXME: putting from inside an iter block doesn't work, so we can't
-    // use the index here.
     for s: @ast::stmt in b.node.stmts {
         alt s.node {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locals) {
-                for (_, local) in locals { put local; }
+                for (style, local) in locals {
+                    if style == ast::let_copy { put local; }
+                }
               }
               _ {/* fall through */ }
             }
