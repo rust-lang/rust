@@ -2871,7 +2871,7 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> lval_result {
         assert (cx.fcx.llargs.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.llargs.get(did.node));
       }
-      ast::def_local(did) {
+      ast::def_local(did, _) {
         assert (cx.fcx.lllocals.contains_key(did.node));
         ret lval_mem(cx, cx.fcx.lllocals.get(did.node));
       }
@@ -4399,7 +4399,7 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
             let is_local = alt x.node {
               ast::expr_path(p) {
                 alt bcx_tcx(bcx).def_map.get(x.id) {
-                  ast::def_local(_) { true }
+                  ast::def_local(_, _) { true }
                   _ { false }
                 }
               }

@@ -2559,7 +2559,7 @@ fn def_has_ty_params(def: ast::def) -> bool {
       ast::def_mod(_) { ret false; }
       ast::def_const(_) { ret false; }
       ast::def_arg(_, _) { ret false; }
-      ast::def_local(_) { ret false; }
+      ast::def_local(_, _) { ret false; }
       ast::def_upvar(_, _, _) { ret false; }
       ast::def_variant(_, _) { ret true; }
       ast::def_ty(_) { ret false; }

@@ -324,7 +324,7 @@ fn check_ret_ref(cx: ctx, sc: scope, mut: bool, expr: @ast::expr) {
     let mut_field = mut_field(root.ds);
     alt path_def(cx, root.ex) {
       none. { bad = some("temporary"); }
-      some(ast::def_local(did)) | some(ast::def_binding(did)) |
+      some(ast::def_local(did, _)) | some(ast::def_binding(did)) |
       some(ast::def_arg(did, _)) {
         let cur_node = did.node;
         while true {
@@ -590,7 +590,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: ty::t, haystack: ty::t, mut: bool)
 
 fn def_is_local(d: ast::def, objfields_count: bool) -> bool {
     ret alt d {
-          ast::def_local(_) | ast::def_arg(_, _) | ast::def_binding(_) |
+          ast::def_local(_, _) | ast::def_arg(_, _) | ast::def_binding(_) |
           ast::def_upvar(_, _, _) {
             true
           }

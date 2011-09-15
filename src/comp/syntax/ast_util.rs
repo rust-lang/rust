@@ -30,7 +30,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_native_mod(id) { ret id; }
       def_const(id) { ret id; }
       def_arg(id, _) { ret id; }
-      def_local(id) { ret id; }
+      def_local(id, _) { ret id; }
       def_variant(_, id) { ret id; }
       def_ty(id) { ret id; }
       def_ty_arg(_, _) { fail; }

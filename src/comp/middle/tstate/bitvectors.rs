@@ -184,7 +184,7 @@ fn clear_in_poststate_expr(fcx: fn_ctxt, e: @expr, t: poststate) {
         alt vec::last(p.node.idents) {
           some(i) {
             alt local_node_id_to_def(fcx, e.id) {
-              some(def_local(d_id)) {
+              some(def_local(d_id, _)) {
                 clear_in_poststate_(bit_num(fcx, ninit(d_id.node, i)), t);
               }
               some(_) {/* ignore args (for now...) */ }

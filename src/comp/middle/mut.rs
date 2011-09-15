@@ -245,6 +245,7 @@ fn is_immutable_def(def: def) -> option::t<str> {
         if !mut { some("upvar") } else { is_immutable_def(*inner) }
       }
       def_binding(_) { some("binding") }
+      def_local(_, let_ref.) { some("by-reference binding") }
       _ { none }
     }
 }

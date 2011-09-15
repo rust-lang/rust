@@ -32,7 +32,7 @@ tag def {
     def_native_mod(def_id);
     def_const(def_id);
     def_arg(def_id, mode);
-    def_local(def_id);
+    def_local(def_id, let_style);
     def_variant(def_id, /* tag */def_id);
 
     /* variant */

@@ -92,7 +92,7 @@ fn ty_param_kinds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {kinds: no_kinds, ty: typ};
       }
-      ast::def_local(id) {
+      ast::def_local(id, _) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {kinds: no_kinds, ty: typ};

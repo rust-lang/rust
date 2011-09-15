@@ -608,7 +608,7 @@ fn scope_closes(sc: scope) -> option::t<bool> {
 
 fn def_is_local(d: def) -> bool {
     ret alt d {
-          ast::def_arg(_, _) | ast::def_local(_) | ast::def_binding(_) |
+          ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_binding(_) |
           ast::def_upvar(_, _, _) {
             true
           }
@@ -797,10 +797,12 @@ fn lookup_in_block(name: ident, b: ast::blk_, pos: uint, loc_pos: uint,
                     let j = vec::len(locs);
                     while j > 0u {
                         j -= 1u;
-                        let (_, loc) = locs[j];
+                        let (style, loc) = locs[j];
                         if ns == ns_value && (i < pos || j < loc_pos) {
                             alt lookup_in_pat(name, loc.node.pat) {
-                              some(did) { ret some(ast::def_local(did)); }
+                              some(did) {
+                                ret some(ast::def_local(did, style));
+                              }
                               _ { }
                             }
                         }
@@ -1154,7 +1156,7 @@ fn ns_for_def(d: def) -> namespace {
           ast::def_native_mod(_) { ns_module }
           ast::def_const(_) { ns_value }
           ast::def_arg(_, _) { ns_value }
-          ast::def_local(_) { ns_value }
+          ast::def_local(_, _) { ns_value }
           ast::def_upvar(_, _, _) { ns_value }
           ast::def_variant(_, _) { ns_value }
           ast::def_ty(_) { ns_type }
