@@ -594,8 +594,11 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
 // ret and fail, without arguments cannot appear is the discriminant of if,
 // alt, do, & while unambiguously without being parenthesized
 fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
-    let disambig =
-        alt e.node { ast::expr_ret(option::none.) { true } _ { false } };
+    let disambig = alt e.node {
+      ast::expr_ret(none.) | ast::expr_put(none.) |
+      ast::expr_fail(none.) { true }
+      _ { false }
+    };
     if disambig { popen(s) }
     print_expr(s, e);
     if disambig { pclose(s) }
