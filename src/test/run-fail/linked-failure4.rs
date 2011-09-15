@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-test
 // error-pattern:1 == 2
 use std;
 import std::task;
@@ -24,8 +23,8 @@ fn sleeper() {
 }
 
 fn main() {
-    let f = parent;
     let g = sleeper;
-    task::spawn(f);
     task::spawn(g);
+    let f = parent;
+    task::spawn(f);
 }

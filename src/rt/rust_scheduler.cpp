@@ -81,10 +81,14 @@ rust_scheduler::kill_all_tasks() {
     scoped_lock with(lock);
 
     for (size_t i = 0; i < running_tasks.length(); i++) {
+        // We don't want the failure of these tasks to propagate back
+        // to the kernel again since we're already failing everything
+        running_tasks[i]->unsupervise();
         running_tasks[i]->kill();
     }
 
     for (size_t i = 0; i < blocked_tasks.length(); i++) {
+        blocked_tasks[i]->unsupervise();
         blocked_tasks[i]->kill();
     }
 }
