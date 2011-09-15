@@ -1,5 +1,5 @@
 // -*- rust -*-
-
+// xfail-fast
 // error-pattern:1 == 2
 use std;
 import std::task;
