@@ -383,7 +383,7 @@ tag ret_style {
     noreturn; // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
     return_val; // everything else
-    return_ref(bool);
+    return_ref(bool, uint);
 }
 
 type _fn = {decl: fn_decl, proto: proto, body: blk};

@@ -22,8 +22,10 @@ type binding = @{node_id: node_id,
                  unsafe_tys: [ty::t],
                  mutable ok: valid,
                  mutable copied: copied};
+
+tag ret_info { by_ref(bool, node_id); other; }
 // FIXME it may be worthwhile to use a linked list of bindings instead
-type scope = {bs: [binding], ret_style: ast::ret_style};
+type scope = {bs: [binding], ret_info: ret_info};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
               unsafe: [ty::t]) -> binding {
@@ -49,8 +51,7 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_block: bind visit_block(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
-    visit::visit_crate(*crate, {bs: [], ret_style: ast::return_val},
-                       visit::mk_vt(v));
+    visit::visit_crate(*crate, {bs: [], ret_info: other}, visit::mk_vt(v));
     tcx.sess.abort_if_errors();
     ret cx.copy_map;
 }
@@ -70,7 +71,11 @@ fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], _sp: span,
                              "reference-returning functions may not " +
                              "return implicitly");
     }
-    v.visit_block(f.body, {bs: bs, ret_style: f.decl.cf}, v);
+    let ret_info = alt f.decl.cf {
+      ast::return_ref(mut, n_arg) { by_ref(mut, f.decl.inputs[n_arg].id) }
+      _ { other }
+    };
+    v.visit_block(f.body, {bs: bs, ret_info: ret_info}, v);
 }
 
 fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
@@ -117,9 +122,9 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
       }
       ast::expr_ret(oexpr) {
         if !is_none(oexpr) {
-            alt sc.ret_style {
-              ast::return_ref(mut) {
-                check_ret_ref(*cx, sc, mut, option::get(oexpr));
+            alt sc.ret_info {
+              by_ref(mut, arg_node_id) {
+                check_ret_ref(*cx, sc, mut, arg_node_id, option::get(oexpr));
               }
               _ {}
             }
@@ -180,20 +185,20 @@ fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
             alt root.ex.node {
               ast::expr_call(f, args) {
                 let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
-                let ret_style = ty::ty_fn_ret_style(cx.tcx, fty);
-                if ast_util::ret_by_ref(ret_style) {
-                    // FIXME pick right arg
-                    let arg = args[0];
+                alt ty::ty_fn_ret_style(cx.tcx, fty) {
+                  ast::return_ref(mut, arg_n) {
+                    let arg = args[arg_n];
                     let arg_root = expr_root(cx.tcx, arg, false);
                     root_var = path_def_id(cx, arg_root.ex);
                     if !is_none(root_var) {
                         is_temp = false;
-                        if ret_style == ast::return_ref(true) {
+                        if mut {
                             outer_ds = [@{mut: true, kind: unbox,
                                           outer_t: ty::expr_ty(cx.tcx, arg)}];
                         }
                         outer_ds = *arg_root.ds + outer_ds;
                     }
+                  }
                 }
               }
               _ {}
@@ -333,12 +338,13 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     ret bindings;
 }
 
-fn check_ret_ref(cx: ctx, sc: scope, mut: bool, expr: @ast::expr) {
+fn check_ret_ref(cx: ctx, sc: scope, mut: bool, arg_node_id: node_id,
+                 expr: @ast::expr) {
     let root = expr_root(cx.tcx, expr, false);
     let bad = none;
     let mut_field = mut_field(root.ds);
     alt path_def(cx, root.ex) {
-      none. { bad = some("temporary"); }
+      none. { bad = some("a temporary"); }
       some(ast::def_local(did, _)) | some(ast::def_binding(did)) |
       some(ast::def_arg(did, _)) {
         let cur_node = did.node;
@@ -346,7 +352,10 @@ fn check_ret_ref(cx: ctx, sc: scope, mut: bool, expr: @ast::expr) {
             alt cx.tcx.items.find(cur_node) {
               some(ast_map::node_arg(arg, _)) {
                 if arg.mode == ast::by_move {
-                    bad = some("move-mode parameter");
+                    bad = some("a move-mode parameter");
+                }
+                if cur_node != arg_node_id {
+                    bad = some("the wrong parameter");
                 }
                 break;
               }
@@ -359,31 +368,30 @@ fn check_ret_ref(cx: ctx, sc: scope, mut: bool, expr: @ast::expr) {
                     break;
                 }
                 if is_none(b.root_var) {
-                    bad = some("function-local value");
+                    bad = some("a function-local value");
                     break;
                 }
                 if b.copied == copied {
-                    bad = some("implicitly copied reference");
+                    bad = some("an implicitly copied reference");
                     break;
                 }
                 b.copied = not_allowed;
                 cur_node = option::get(b.root_var);
               }
               none. {
-                bad = some("function-local value");
+                bad = some("a function-local value");
                 break;
               }
             }
         }
       }
-      // FIXME allow references to constants and static items?
-      _ { bad = some("non-local value"); }
+      _ { bad = some("a non-local value"); }
     }
-    if mut_field && !mut { bad = some("mutable field"); }
+    if mut_field && !mut { bad = some("a mutable field"); }
     alt bad {
       some(name) {
-        cx.tcx.sess.span_err(expr.span, "can not return a reference " +
-                             "to a " + name);
+        cx.tcx.sess.span_err(expr.span, "can not return a reference to " +
+                             name);
       }
       _ {}
     }
@@ -402,8 +410,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         for pat in a.pats {
             for proot in *pattern_roots(cx.tcx, *root.ds, pat) {
                 let canon_id = pat_id_map.get(proot.name);
-                // FIXME I wanted to use a block, but that hit a
-                // typestate bug.
+                // FIXME I wanted to use a block here, but that hit bug #913
                 fn match(x: info, canon: node_id) -> bool { x.id == canon }
                 alt vec::find(bind match(_, canon_id), binding_info) {
                   some(s) { s.unsafe += inner_mut(proot.ds); }

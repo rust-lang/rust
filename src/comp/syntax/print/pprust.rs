@@ -1145,7 +1145,12 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl, constrs: [@ast::constr]) {
         space_if_not_bol(s);
         word_space(s, "->");
         alt decl.cf {
-          ast::return_ref(mut) { word(s.s, mut ? "&!" : "&"); }
+          ast::return_ref(mut, arg) {
+            word(s.s, mut ? "&!" : "&");
+            if vec::len(decl.inputs) > 1u {
+                word(s.s, std::uint::str(arg));
+            }
+          }
           _ {}
         }
         print_type(s, decl.output);
@@ -1347,7 +1352,10 @@ fn print_ty_fn(s: ps, proto: ast::proto, id: option::t<ast::ident>,
             word_nbsp(s, "!");
         } else {
             alt cf {
-              ast::return_ref(mut) { word(s.s, mut ? "&!" : "&"); }
+              ast::return_ref(mut, arg) {
+                word(s.s, mut ? "&!" : "&");
+                if vec::len(inputs) > 1u { word(s.s, std::uint::str(arg)); }
+              }
               _ {}
             }
             print_type(s, output);
