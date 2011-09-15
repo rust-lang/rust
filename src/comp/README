@@ -12,7 +12,8 @@ High-level concepts
 
 Rustc consists of the following subdirectories:
 
-front/    - front-end: lexer, parser, AST.
+syntax/   - pure syntax concerns: lexer, parser, AST.
+front/    - front-end: attributes, conditional compilation
 middle/   - middle-end: resolving, typechecking, translating
 back/     - back-end: linking and ABI
 driver/   - command-line processing, main() entrypoint
@@ -27,7 +28,7 @@ this file sequences the various parts together.
 The 3 central data structures:
 ------------------------------
 
-#1: front/ast.rs defines the AST. The AST is treated as immutable
+#1: syntax/ast.rs defines the AST. The AST is treated as immutable
     after parsing despite containing some mutable types (hashtables
     and such).  There are three interesting details to know about this
     structure:
