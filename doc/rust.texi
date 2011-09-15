@@ -1984,7 +1984,7 @@ definition of @code{pure_length}.
 @cindex Foreach expression
 
 Iterators are function-like items that can @code{put} multiple values during
-their execution before returning or tail-calling.
+their execution before returning.
 
 Putting a value is similar to returning a value -- the argument to @code{put}
 is copied into the caller's frame and control transfers back to the caller --
@@ -2931,7 +2931,7 @@ effects of the expression's evaluation.
 * Ref.Expr.Call::               Expression for calling a function.
 * Ref.Expr.Bind::               Expression for binding arguments to functions.
 * Ref.Expr.Ret::                Expression for stopping and producing a value.
-* Ref.Expr.Be::                 Expression for stopping and executing a tail call.
+@c * Ref.Expr.Be::                 Expression for stopping and executing a tail call.
 * Ref.Expr.Put::                Expression for pausing and producing a value.
 * Ref.Expr.Fail::               Expression for causing task failure.
 * Ref.Expr.Log::                Expression for logging values to diagnostic buffers.
@@ -3066,6 +3066,7 @@ fn max(a: int, b: int) -> int @{
 @}
 @end example
 
+@ignore
 @node       Ref.Expr.Be
 @subsection Ref.Expr.Be
 @c * Ref.Expr.Be::                 Expression for stopping and executing a tail call.
@@ -3094,7 +3095,7 @@ fn print_loop(n: int) @{
 
 The above example executes in constant space, replacing each frame with a new
 copy of itself.
-
+@end ignore
 
 
 @node       Ref.Expr.Put
