@@ -853,14 +853,14 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         expect(p, token::GT);
 
         /* hack: early return to take advantage of specialized function */
-        ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_embed_type(ty))
+        ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_embed_type(ty));
     } else if p.peek() == token::POUND_LBRACE {
         p.bump();
         let blk = ast::mac_embed_block(parse_block_tail(p, lo, ast::checked));
         ret mk_mac_expr(p, lo, p.get_hi_pos(), blk);
     } else if p.peek() == token::ELLIPSIS {
         p.bump();
-        ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_ellipsis)
+        ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_ellipsis);
     } else if p.peek() == token::TILDE {
         p.bump();
         ex = ast::expr_uniq(parse_expr(p));
@@ -1033,7 +1033,9 @@ fn parse_self_method(p: parser) -> @ast::expr {
 }
 
 fn parse_dot_or_call_expr(p: parser) -> @ast::expr {
-    ret parse_dot_or_call_expr_with(p, parse_bottom_expr(p));
+    let b = parse_bottom_expr(p);
+    if expr_has_value(b) { parse_dot_or_call_expr_with(p, b) }
+    else { b }
 }
 
 fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
@@ -1296,7 +1298,7 @@ fn parse_for_expr(p: parser) -> @ast::expr {
     let decl = parse_local(p, false);
     expect_word(p, "in");
     let seq = parse_expr(p);
-    let body = parse_block(p);
+    let body = parse_block_no_value(p);
     let hi = body.span.hi;
     if is_each {
         ret mk_expr(p, lo, hi, ast::expr_for_each(decl, seq, body));
@@ -1306,14 +1308,14 @@ fn parse_for_expr(p: parser) -> @ast::expr {
 fn parse_while_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let cond = parse_expr(p);
-    let body = parse_block(p);
+    let body = parse_block_no_value(p);
     let hi = body.span.hi;
     ret mk_expr(p, lo, hi, ast::expr_while(cond, body));
 }
 
 fn parse_do_while_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
-    let body = parse_block(p);
+    let body = parse_block_no_value(p);
     expect_word(p, "while");
     let cond = parse_expr(p);
     let hi = cond.span.hi;
@@ -1567,32 +1569,32 @@ fn parse_source_stmt(p: parser) -> @ast::stmt {
     }
 }
 
-fn stmt_is_expr(stmt: @ast::stmt) -> bool {
-    fn expr_is_expr(e: @ast::expr) -> bool {
-        alt e.node {
-          ast::expr_if(_, th, els) | ast::expr_if_check(_, th, els) {
-            if option::is_none(els) { false }
-            else { !option::is_none(th.node.expr) ||
-                       expr_is_expr(option::get(els)) }
-          }
-          ast::expr_alt(_, arms) {
-            let found_expr = false;
-            for arm in arms {
-                if !option::is_none(arm.body.node.expr) { found_expr = true; }
-            }
-            found_expr
-          }
-          ast::expr_block(blk) | ast::expr_while(_, blk) |
-          ast::expr_for(_, _, blk) | ast::expr_for_each(_, _, blk) |
-          ast::expr_do_while(blk, _) {
-            !option::is_none(blk.node.expr)
-          }
-          _ { true }
+fn expr_has_value(e: @ast::expr) -> bool {
+    alt e.node {
+      ast::expr_if(_, th, els) | ast::expr_if_check(_, th, els) {
+        if option::is_none(els) { false }
+        else { !option::is_none(th.node.expr) ||
+            expr_has_value(option::get(els)) }
+      }
+      ast::expr_alt(_, arms) {
+        let found_expr = false;
+        for arm in arms {
+            if !option::is_none(arm.body.node.expr) { found_expr = true; }
         }
+        found_expr
+      }
+      ast::expr_block(blk) | ast::expr_while(_, blk) |
+      ast::expr_for(_, _, blk) | ast::expr_for_each(_, _, blk) |
+      ast::expr_do_while(blk, _) {
+        !option::is_none(blk.node.expr)
+      }
+      _ { true }
     }
+}
 
+fn stmt_is_expr(stmt: @ast::stmt) -> bool {
     ret alt stmt.node {
-      ast::stmt_expr(e, _) { expr_is_expr(e) }
+      ast::stmt_expr(e, _) { expr_has_value(e) }
       _ { false }
     };
 }
@@ -1614,49 +1616,8 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
             }
       }
       ast::stmt_expr(e, _) {
-        ret alt e.node {
-              ast::expr_vec(_, _) { true }
-              ast::expr_rec(_, _) { true }
-              ast::expr_tup(_) { true }
-              ast::expr_call(_, _) { true }
-              ast::expr_self_method(_) { false }
-              ast::expr_bind(_, _) { true }
-              ast::expr_binary(_, _, _) { true }
-              ast::expr_unary(_, _) { true }
-              ast::expr_lit(_) { true }
-              ast::expr_cast(_, _) { true }
-              ast::expr_if(_, _, _) { false }
-              ast::expr_ternary(_, _, _) { true }
-              ast::expr_for(_, _, _) { false }
-              ast::expr_for_each(_, _, _) { false }
-              ast::expr_while(_, _) { false }
-              ast::expr_do_while(_, _) { false }
-              ast::expr_alt(_, _) { false }
-              ast::expr_fn(_) { false }
-              ast::expr_block(_) { false }
-              ast::expr_copy(_) { true }
-              ast::expr_move(_, _) { true }
-              ast::expr_assign(_, _) { true }
-              ast::expr_swap(_, _) { true }
-              ast::expr_assign_op(_, _, _) { true }
-              ast::expr_field(_, _) { true }
-              ast::expr_index(_, _) { true }
-              ast::expr_path(_) { true }
-              ast::expr_mac(_) { true }
-              ast::expr_fail(_) { true }
-              ast::expr_break. { true }
-              ast::expr_cont. { true }
-              ast::expr_ret(_) { true }
-              ast::expr_put(_) { true }
-              ast::expr_be(_) { true }
-              ast::expr_log(_, _) { true }
-              ast::expr_check(_, _) { true }
-              ast::expr_if_check(_, _, _) { false }
-              ast::expr_anon_obj(_) { false }
-              ast::expr_assert(_) { true }
-            }
+        ret expr_has_value(e);
       }
-
       // We should not be calling this on a cdir.
       ast::stmt_crate_directive(cdir) {
         fail;
@@ -1672,6 +1633,18 @@ fn parse_block(p: parser) -> ast::blk {
         expect(p, token::LBRACE);
         be parse_block_tail(p, lo, ast::checked);
     }
+}
+
+fn parse_block_no_value(p: parser) -> ast::blk {
+    let blk = parse_block(p);
+    if !option::is_none(blk.node.expr) {
+        let sp = option::get(blk.node.expr).span;
+        codemap::emit_error(some(sp),
+                            "this block must not return a value",
+                            p.get_sess().cm);
+        fail;
+    }
+    ret blk;
 }
 
 // Precondition: already parsed the '{' or '#{'
@@ -1870,7 +1843,7 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
     expect(p, token::COLON);
     let t = parse_ty(p, false);
     expect(p, token::RPAREN);
-    let dtor = parse_block(p);
+    let dtor = parse_block_no_value(p);
     let decl =
         {inputs:
              [{mode: ast::by_ref, ty: t, ident: arg_ident, id: p.get_id()}],
