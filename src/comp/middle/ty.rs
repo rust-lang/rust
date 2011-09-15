@@ -991,12 +991,11 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // FIXME: the environment capture mode is not fully encoded
       // here yet, leading to weirdness around closure.
       ty_fn(proto, _, _, _, _) {
-        result =
-            alt proto {
-              ast::proto_block. { ast::kind_pinned }
-              ast::proto_closure. { ast::kind_shared }
-              _ { ast::kind_unique }
-            }
+        result = alt proto {
+          ast::proto_block. { ast::kind_pinned }
+          ast::proto_closure. { ast::kind_shared }
+          _ { ast::kind_unique }
+        };
       }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
@@ -1007,7 +1006,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // otherwise pass through their pointee kind.
       ty_ptr(tm) | ty_vec(tm) {
         let k = type_kind(cx, tm.ty);
-        if k == ast::kind_pinned { k = ast::kind_shared }
+        if k == ast::kind_pinned { k = ast::kind_shared; }
         result = kind::lower_kind(result, k);
       }
       // Records lower to the lowest of their members.

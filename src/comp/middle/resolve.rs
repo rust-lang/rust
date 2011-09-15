@@ -1240,7 +1240,7 @@ fn mie_span(mie: mod_index_entry) -> span {
 fn check_item(e: @env, i: @ast::item, x: (), v: vt<()>) {
     fn typaram_names(tps: [ast::ty_param]) -> [ident] {
         let x: [ast::ident] = [];
-        for tp: ast::ty_param in tps { x += [tp.ident] }
+        for tp: ast::ty_param in tps { x += [tp.ident]; }
         ret x;
     }
     visit::visit_item(i, x, v);

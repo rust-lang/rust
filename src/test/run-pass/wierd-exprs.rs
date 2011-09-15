@@ -13,7 +13,7 @@ fn odd() {
 }
 
 fn what() {
-    fn the(x: @mutable bool) { ret while !*x { *x = true }; }
+    fn the(x: @mutable bool) { ret while !*x { *x = true; }; }
     let i = @mutable false;
     let dont = bind the(i);
     dont();

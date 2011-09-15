@@ -71,7 +71,7 @@ fn is_whitespace(s: str) -> bool {
     let len = char_len(s);
     while i < len {
         if !char::is_whitespace(char_at(s, i)) { ret false; }
-        i += 1u
+        i += 1u;
     }
     ret true;
 }

@@ -492,7 +492,7 @@ mod collect {
 
     fn ty_param_kinds(tps: [ast::ty_param]) -> [ast::kind] {
         let k: [ast::kind] = [];
-        for p: ast::ty_param in tps { k += [p.kind] }
+        for p: ast::ty_param in tps { k += [p.kind]; }
         ret k;
     }
 
@@ -2539,8 +2539,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
     for c: @ast::constr in cs {
         c_args = [];
         for a: @spanned<ast::fn_constr_arg> in c.node.args {
-            c_args +=
-                [
+            c_args += [
                  // "base" should not occur in a fn type thing, as of
                  // yet, b/c we don't allow constraints on the return type
 
@@ -2582,7 +2581,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
                      carg_ident index out of bounds");
                       }
                     }
-                  }]
+                  }];
         }
         let p_op: ast::expr_ = ast::expr_path(c.node.path);
         let oper: @ast::expr = @{id: c.node.id, node: p_op, span: c.span};

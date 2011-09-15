@@ -612,7 +612,6 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
                   }
                   _ { false }
                 }
-                true
               }
               _ { false }
             };
@@ -1424,7 +1423,7 @@ fn print_ty_fn(s: ps, proto: ast::proto, id: option::t<ast::ident>,
         ibox(s, indent_unit);
         word_space(s, "->");
         if cf == ast::noreturn {
-            word_nbsp(s, "!")
+            word_nbsp(s, "!");
         } else {
             alt cf {
               ast::return_ref(mut) { word(s.s, mut ? "&!" : "&"); }

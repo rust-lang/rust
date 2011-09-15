@@ -13,7 +13,7 @@ fn either<T, U,
 fn lefts<T, U>(eithers: [t<T, U>]) -> [T] {
     let result: [T] = [];
     for elt: t<T, U> in eithers {
-        alt elt { left(l) { result += [l] } _ {/* fallthrough */ } }
+        alt elt { left(l) { result += [l]; } _ {/* fallthrough */ } }
     }
     ret result;
 }
@@ -21,7 +21,7 @@ fn lefts<T, U>(eithers: [t<T, U>]) -> [T] {
 fn rights<T, U>(eithers: [t<T, U>]) -> [U] {
     let result: [U] = [];
     for elt: t<T, U> in eithers {
-        alt elt { right(r) { result += [r] } _ {/* fallthrough */ } }
+        alt elt { right(r) { result += [r]; } _ {/* fallthrough */ } }
     }
     ret result;
 }
@@ -30,7 +30,7 @@ fn partition<T, U>(eithers: [t<T, U>]) -> {lefts: [T], rights: [U]} {
     let lefts: [T] = [];
     let rights: [U] = [];
     for elt: t<T, U> in eithers {
-        alt elt { left(l) { lefts += [l] } right(r) { rights += [r] } }
+        alt elt { left(l) { lefts += [l]; } right(r) { rights += [r]; } }
     }
     ret {lefts: lefts, rights: rights};
 }

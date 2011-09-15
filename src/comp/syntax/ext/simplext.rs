@@ -750,7 +750,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
                          _body: option::t<str>, clauses: [@clause]) -> @expr {
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
-              some(bindings) { ret transcribe(cx, bindings, c.body) }
+              some(bindings) { ret transcribe(cx, bindings, c.body); }
               none. { cont; }
             }
         }

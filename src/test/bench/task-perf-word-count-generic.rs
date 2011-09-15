@@ -40,10 +40,10 @@ fn map(filename: [u8], emit: map_reduce::putter<[u8], int>) {
     }
 }
 
-fn reduce(word: [u8], get: map_reduce::getter<int>) {
+fn reduce(_word: [u8], get: map_reduce::getter<int>) {
     let count = 0;
 
-    while true { alt get() { some(_) { count += 1; } none. { break } } }
+    while true { alt get() { some(_) { count += 1; } none. { break; } } }
 }
 
 mod map_reduce {
@@ -93,7 +93,7 @@ mod map_reduce {
                     ctrl: chan<ctrl_proto<K2, V>>, key: K2, val: V) {
             let c;
             alt treemap::find(im, key) {
-              some(_c) { c = _c }
+              some(_c) { c = _c; }
               none. {
                 let p = port();
                 send(ctrl, find_reducer(key, chan(p)));
@@ -107,7 +107,7 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        fn finish<~K, ~V>(k: K, v: chan<reduce_proto<V>>) {
+        fn finish<~K, ~V>(_k: K, v: chan<reduce_proto<V>>) {
             send(v, release);
         }
         treemap::traverse(intermediates, finish);
@@ -190,7 +190,7 @@ mod map_reduce {
             }
         }
 
-        fn finish<~K, ~V>(k: K, v: chan<reduce_proto<V>>) { send(v, done); }
+        fn finish<~K, ~V>(_k: K, v: chan<reduce_proto<V>>) { send(v, done); }
         treemap::traverse(reducers, finish);
 
         for t in tasks { task::join(t); }

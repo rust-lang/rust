@@ -38,11 +38,10 @@ fn map(filename: str, emit: map_reduce::putter) {
     }
 }
 
-fn reduce(word: str, get: map_reduce::getter) {
+fn reduce(_word: str, get: map_reduce::getter) {
     let count = 0;
 
-
-    while true { alt get() { some(_) { count += 1; } none. { break } } }
+    while true { alt get() { some(_) { count += 1; } none. { break; } } }
 }
 
 mod map_reduce {
@@ -85,8 +84,7 @@ mod map_reduce {
             let c;
             alt im.find(key) {
               some(_c) {
-
-                c = _c
+                c = _c;
               }
               none. {
                 let p = port();

@@ -3769,7 +3769,7 @@ fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
                   parent_none. {
                     ret scope_bcx;
                   }
-                }
+                };
             }
         }
         fail;

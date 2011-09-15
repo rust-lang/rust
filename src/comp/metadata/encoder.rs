@@ -521,7 +521,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> [attribute] {
                   }
                   _ { [attr] }
                 }
-            }
+            };
     }
 
     if !found_link_attr { attrs += [synthesize_link_attr(ecx, [])]; }
