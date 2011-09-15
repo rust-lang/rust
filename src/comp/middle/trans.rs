@@ -2731,7 +2731,7 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
       ast::expr_call(f, args) {
         let pair =
             create_real_fn_pair(cx, iter_body_llty, lliterbody, llenv.ptr);
-        r = trans_call(cx, f, some(pair), args, seq.id);
+        r = trans_call(cx, f, some(pair), args, seq.id).res;
         ret rslt(r.bcx, C_nil());
       }
     }
@@ -3088,6 +3088,12 @@ fn trans_lval_gen(cx: @block_ctxt, e: @ast::expr) -> lval_result {
                                          a context without llself");
           }
         }
+      }
+      ast::expr_call(f, args) {
+        let {res: {bcx, val}, by_ref} =
+            trans_call(cx, f, none, args, e.id);
+        if by_ref { ret lval_mem(bcx, val); }
+        else { ret lval_val(bcx, val); }
       }
       _ {
         ret {res: trans_expr(cx, e),
@@ -3623,7 +3629,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
 
 fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
               lliterbody: option::t<ValueRef>, args: [@ast::expr],
-              id: ast::node_id) -> result {
+              id: ast::node_id) -> {res: result, by_ref: bool} {
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
@@ -3690,8 +3696,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
           none. {
             if !ty::type_is_nil(bcx_tcx(cx), ret_ty) {
                 if by_ref {
-                    let retptr = Load(bcx, llretslot);
-                    retval = load_if_immediate(bcx, retptr, ret_ty);
+                    retval = Load(bcx, llretslot);
                 } else {
                     retval = load_if_immediate(bcx, llretslot, ret_ty);
                     // Retval doesn't correspond to anything really tangible
@@ -3720,7 +3725,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         Br(bcx, next_cx.llbb);
         bcx = next_cx;
     }
-    ret rslt(bcx, retval);
+    ret {res: rslt(bcx, retval), by_ref: by_ref};
 }
 
 fn invoke(bcx: @block_ctxt, llfn: ValueRef,
@@ -3887,9 +3892,6 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
     // Fixme Fill in cx.sp
     alt e.node {
       ast::expr_lit(lit) { ret trans_lit(cx, *lit); }
-      ast::expr_unary(op, x) {
-        if op != ast::deref { ret trans_unary(cx, op, x, e.id); }
-      }
       ast::expr_binary(op, x, y) { ret trans_binary(cx, op, x, y); }
       ast::expr_if(cond, thn, els) {
         ret with_out_method(bind trans_if(cx, cond, thn, els, _), cx, e.id,
@@ -4044,9 +4046,6 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
         ret rslt(bcx, C_nil());
       }
       ast::expr_bind(f, args) { ret trans_bind(cx, f, args, e.id); }
-      ast::expr_call(f, args) {
-        ret trans_call(cx, f, none::<ValueRef>, args, e.id);
-      }
       ast::expr_cast(val, _) { ret trans_cast(cx, val, e.id); }
       ast::expr_vec(args, _) { ret tvec::trans_vec(cx, args, e.id); }
       ast::expr_rec(args, base) { ret trans_rec(cx, args, base, e.id); }
@@ -4092,21 +4091,18 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(cx, e.span, anon_obj, e.id);
       }
-      _ {
-        // The expression is an lvalue. Fall through.
-        assert (ty::is_lval(e));
-        // make sure it really is and that we
-        // didn't forget to add a case for a new expr!
+      ast::expr_call(_, _) | ast::expr_field(_, _) | ast::expr_index(_, _) |
+      ast::expr_path(_) | ast::expr_unary(ast::deref., _) {
+        let t = ty::expr_ty(bcx_tcx(cx), e);
+        let sub = trans_lval(cx, e);
+        let v = sub.res.val;
+        if sub.is_mem { v = load_if_immediate(sub.res.bcx, v, t); }
+        ret rslt(sub.res.bcx, v);
+      }
+      ast::expr_unary(op, x) {
+        ret trans_unary(cx, op, x, e.id);
       }
     }
-    // lval cases fall through to trans_lval and then
-    // possibly load the result (if it's non-structural).
-
-    let t = ty::expr_ty(bcx_tcx(cx), e);
-    let sub = trans_lval(cx, e);
-    let v = sub.res.val;
-    if sub.is_mem { v = load_if_immediate(sub.res.bcx, v, t); }
-    ret rslt(sub.res.bcx, v);
 }
 
 fn with_out_method(work: fn(out_method) -> result, cx: @block_ctxt,
@@ -4517,7 +4513,8 @@ fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let init_expr = option::get(local.node.init).expr;
     let val = trans_lval(bcx, init_expr);
     assert val.is_mem;
-    ret trans_alt::bind_irrefutable_pat(bcx, local.node.pat, val.res.val,
+    ret trans_alt::bind_irrefutable_pat(val.res.bcx, local.node.pat,
+                                        val.res.val,
                                         bcx.fcx.lllocals, false);
 }
 

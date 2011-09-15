@@ -182,13 +182,35 @@ fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
                 (loc.span, "can not move into a by-reference binding");
         }
         let root = expr_root(cx.tcx, init.expr, false);
+        let outer_ds = *root.ds;
         let root_var = path_def_id(cx, root.ex);
-        // FIXME also allow by-ref function calls
-        if is_none(root_var) {
+        let is_temp = is_none(root_var);
+        if is_temp {
+            alt root.ex.node {
+              ast::expr_call(f, args) {
+                let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
+                let ret_style = ty::ty_fn_ret_style(cx.tcx, fty);
+                if ast_util::ret_by_ref(ret_style) {
+                    // FIXME pick right arg
+                    let arg_root = expr_root(cx.tcx, args[0], false);
+                    root_var = path_def_id(cx, arg_root.ex);
+                    if !is_none(root_var) {
+                        is_temp = false;
+                        if ret_style == ast::return_ref(true) {
+                            outer_ds = [@{mut: true with *arg_root.ds[0]}];
+                        }
+                        outer_ds = *arg_root.ds + outer_ds;
+                    }
+                }
+              }
+              _ {}
+            }
+        }
+        if is_temp {
             cx.tcx.sess.span_err(loc.span, "a reference binding can't be \
                                             rooted in a temporary");
         }
-        for proot in *pattern_roots(cx.tcx, *root.ds, loc.node.pat) {
+        for proot in *pattern_roots(cx.tcx, outer_ds, loc.node.pat) {
             let bnd = mk_binding(cx, proot.id, proot.span, root_var,
                                  inner_mut(proot.ds));
             // Don't implicitly copy explicit references

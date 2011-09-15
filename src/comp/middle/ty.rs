@@ -50,7 +50,6 @@ export fm_general;
 export get_element_type;
 export hash_ty;
 export idx_nil;
-export is_lval;
 export is_binopable;
 export is_pred_ty;
 export lookup_item_type;
@@ -1711,16 +1710,6 @@ fn sort_methods(meths: [method]) -> [method] {
         ret str::lteq(a.ident, b.ident);
     }
     ret std::sort::merge_sort::<method>(bind method_lteq(_, _), meths);
-}
-
-fn is_lval(expr: @ast::expr) -> bool {
-    alt expr.node {
-      ast::expr_field(_, _) { ret true; }
-      ast::expr_index(_, _) { ret true; }
-      ast::expr_path(_) { ret true; }
-      ast::expr_unary(ast::deref., _) { ret true; }
-      _ { ret false; }
-    }
 }
 
 fn occurs_check_fails(tcx: ctxt, sp: option::t<span>, vid: int, rt: t) ->
