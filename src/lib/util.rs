@@ -1,21 +1,22 @@
 
+pure fn id<@T>(x: T) -> T { x }
 
-fn id<@T>(x: T) -> T { ret x; }
-
+fn unreachable() -> ! {
+    fail "Internal error: entered unreachable code";
+}
 
 /* FIXME (issue #141):  See test/run-pass/constrained-type.rs.  Uncomment
  * the constraint once fixed. */
-type rational = {num: int, den: int};
-
+type rational = {num: int, den: int}; // : int::positive(*.den);
 
 // : int::positive(*.den);
-fn rational_leq(x: rational, y: rational) -> bool {
+pure fn rational_leq(x: rational, y: rational) -> bool {
     // NB: Uses the fact that rationals have positive denominators WLOG:
 
-    ret x.num * y.den <= y.num * x.den;
+    x.num * y.den <= y.num * x.den
 }
 
-fn orb(a: bool, b: bool) -> bool { ret a || b; }
+pure fn orb(a: bool, b: bool) -> bool { a || b }
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
