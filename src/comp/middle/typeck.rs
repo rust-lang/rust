@@ -2494,7 +2494,7 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     alt e.node {
       ast::expr_call(operator, operands) {
         if !ty::is_pred_ty(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, operator)) {
-            fcx.ccx.tcx.sess.span_fatal
+            fcx.ccx.tcx.sess.span_err
                 (operator.span,
                  "operator in constraint has non-boolean return type");
         }
@@ -2506,7 +2506,7 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
                 // do nothing
               }
               _ {
-                fcx.ccx.tcx.sess.span_fatal(operator.span,
+                fcx.ccx.tcx.sess.span_err(operator.span,
                                             "Impure function as operator \
 in constraint");
               }
@@ -2516,7 +2516,7 @@ in constraint");
                     let s =
                         "Constraint args must be \
 slot variables or literals";
-                    fcx.ccx.tcx.sess.span_fatal(e.span, s);
+                    fcx.ccx.tcx.sess.span_err(e.span, s);
                 }
             }
           }
@@ -2524,11 +2524,11 @@ slot variables or literals";
             let s =
                 "In a constraint, expected the \
 constraint name to be an explicit name";
-            fcx.ccx.tcx.sess.span_fatal(e.span, s);
+            fcx.ccx.tcx.sess.span_err(e.span, s);
           }
         }
       }
-      _ { fcx.ccx.tcx.sess.span_fatal(e.span, "check on non-predicate"); }
+      _ { fcx.ccx.tcx.sess.span_err(e.span, "check on non-predicate"); }
     }
     ret bot;
 }
