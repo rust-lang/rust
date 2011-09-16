@@ -2816,23 +2816,20 @@ type lval_result =
     {res: result,
      is_mem: bool,
      generic: option::t<generic_info>,
-     llobj: option::t<ValueRef>,
-     method_ty: option::t<ty::t>};
+     llobj: option::t<ValueRef>};
 
 fn lval_mem(cx: @block_ctxt, val: ValueRef) -> lval_result {
     ret {res: rslt(cx, val),
          is_mem: true,
          generic: none::<generic_info>,
-         llobj: none::<ValueRef>,
-         method_ty: none::<ty::t>};
+         llobj: none::<ValueRef>};
 }
 
 fn lval_val(cx: @block_ctxt, val: ValueRef) -> lval_result {
     ret {res: rslt(cx, val),
          is_mem: false,
          generic: none::<generic_info>,
-         llobj: none::<ValueRef>,
-         method_ty: none::<ty::t>};
+         llobj: none::<ValueRef>};
 }
 
 fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
@@ -3010,8 +3007,7 @@ fn trans_field(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
                        ty::ty_fn_ret(tcx, fn_ty), 0u);
         v = PointerCast(r.bcx, v, T_ptr(T_ptr(ll_fn_ty)));
         let lvo = lval_mem(r.bcx, v);
-        ret {llobj: some::<ValueRef>(r.val), method_ty: some::<ty::t>(fn_ty)
-                with lvo};
+        ret {llobj: some::<ValueRef>(r.val) with lvo};
       }
       _ { bcx_ccx(cx).sess.unimpl("field variant in trans_field"); }
     }
@@ -3133,8 +3129,7 @@ fn trans_lval_gen(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         ret {res: trans_expr(cx, e),
              is_mem: false,
              generic: none,
-             llobj: none,
-             method_ty: none};
+             llobj: none};
       }
     }
 }
