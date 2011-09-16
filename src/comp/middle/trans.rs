@@ -2048,7 +2048,7 @@ fn copy_val_no_check(cx: @block_ctxt, action: copy_action, dst: ValueRef,
 // doesn't need to be dropped.
 fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> @block_ctxt {
-    let src_val = src.res.val;
+    let src_val = src.val;
     let tcx = bcx_tcx(cx);
     if ty::type_is_scalar(tcx, t) || ty::type_is_native(tcx, t) {
         if src.is_mem { src_val = Load(cx, src_val); }
@@ -2060,7 +2060,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         if src.is_mem { src_val = Load(cx, src_val); }
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         Store(cx, src_val, dst);
-        if src.is_mem { ret zero_alloca(cx, src.res.val, t).bcx; }
+        if src.is_mem { ret zero_alloca(cx, src.val, t).bcx; }
 
         // If we're here, it must be a temporary.
         ret revoke_clean(cx, src_val, t);
@@ -2082,7 +2082,7 @@ fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
 
     // Lvals in memory are not temporaries. Copy them.
     if src.is_mem {
-        ret copy_val(cx, action, dst, load_if_immediate(cx, src.res.val, t),
+        ret copy_val(cx, action, dst, load_if_immediate(cx, src.val, t),
                      t);
     }
     ret move_val(cx, action, dst, src, t);
@@ -2164,8 +2164,8 @@ fn trans_unary(cx: @block_ctxt, op: ast::unop, e: @ast::expr,
       }
       ast::box(_) {
         let lv = trans_lval(cx, e);
-        let box_ty = node_id_type(bcx_ccx(lv.res.bcx), id);
-        let sub = trans_malloc_boxed(lv.res.bcx, e_ty);
+        let box_ty = node_id_type(bcx_ccx(lv.bcx), id);
+        let sub = trans_malloc_boxed(lv.bcx, e_ty);
         let body = sub.body;
         add_clean_temp(cx, sub.box, box_ty);
 
@@ -2561,7 +2561,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         bcx = bound.bcx;
         if copying {
             bcx = move_val_if_temp(bcx, INIT, bound.val, lv, bound_tys[i]);
-        } else { Store(bcx, lv.res.val, bound.val); }
+        } else { Store(bcx, lv.val, bound.val); }
         i += 1u;
     }
 
@@ -2765,8 +2765,8 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
       ast::expr_call(f, args) {
         let pair =
             create_real_fn_pair(cx, iter_body_llty, lliterbody, llenv.ptr);
-        r = trans_call(cx, f, some(pair), args, seq.id).res;
-        ret rslt(r.bcx, C_nil());
+        let r = trans_call(cx, f, some(pair), args, seq.id);
+        ret rslt(r.res.bcx, C_nil());
       }
     }
 }
@@ -2812,24 +2812,26 @@ type generic_info =
      static_tis: [option::t<@tydesc_info>],
      tydescs: [ValueRef]};
 
-type lval_result =
-    {res: result,
-     is_mem: bool,
-     generic: option::t<generic_info>,
-     llobj: option::t<ValueRef>};
+type lval_result = {bcx: @block_ctxt,
+                    val: ValueRef,
+                    is_mem: bool};
+tag callee_env { some_env(ValueRef); null_env; is_closure; }
+type lval_maybe_callee = {bcx: @block_ctxt,
+                          val: ValueRef,
+                          is_mem: bool,
+                          env: callee_env,
+                          generic: option::t<generic_info>};
 
-fn lval_mem(cx: @block_ctxt, val: ValueRef) -> lval_result {
-    ret {res: rslt(cx, val),
-         is_mem: true,
-         generic: none::<generic_info>,
-         llobj: none::<ValueRef>};
+fn lval_mem(bcx: @block_ctxt, val: ValueRef) -> lval_result {
+    ret {bcx: bcx, val: val, is_mem: true};
+}
+fn lval_val(bcx: @block_ctxt, val: ValueRef) -> lval_result {
+    ret {bcx: bcx, val: val, is_mem: false};
 }
 
-fn lval_val(cx: @block_ctxt, val: ValueRef) -> lval_result {
-    ret {res: rslt(cx, val),
-         is_mem: false,
-         generic: none::<generic_info>,
-         llobj: none::<ValueRef>};
+fn lval_no_env(bcx: @block_ctxt, val: ValueRef, is_mem: bool)
+    -> lval_maybe_callee {
+    ret {bcx: bcx, val: val, is_mem: is_mem, env: is_closure, generic: none};
 }
 
 fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
@@ -2840,35 +2842,31 @@ fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
                          type_of_ty_param_kinds_and_ty(lcx, cx.sp, tpt));
 }
 
-fn lval_generic_fn(cx: @block_ctxt, tpt: ty::ty_param_kinds_and_ty,
-                   fn_id: ast::def_id, id: ast::node_id) -> lval_result {
-    let lv;
-    if fn_id.crate == ast::local_crate {
+fn lval_static_fn(bcx: @block_ctxt, tpt: ty::ty_param_kinds_and_ty,
+                  fn_id: ast::def_id, id: ast::node_id) -> lval_maybe_callee {
+    let val = if fn_id.crate == ast::local_crate {
         // Internal reference.
-        assert (bcx_ccx(cx).fn_pairs.contains_key(fn_id.node));
-        lv = lval_val(cx, bcx_ccx(cx).fn_pairs.get(fn_id.node));
+        assert (bcx_ccx(bcx).fn_pairs.contains_key(fn_id.node));
+        bcx_ccx(bcx).fn_pairs.get(fn_id.node)
     } else {
         // External reference.
-        lv = lval_val(cx, trans_external_path(cx, fn_id, tpt));
-    }
-    let tys = ty::node_id_to_type_params(bcx_tcx(cx), id);
+        trans_external_path(bcx, fn_id, tpt)
+    };
+    let tys = ty::node_id_to_type_params(bcx_tcx(bcx), id);
+    let gen = none;
     if std::vec::len::<ty::t>(tys) != 0u {
-        let bcx = lv.res.bcx;
-        let tydescs: [ValueRef] = [];
-        let tis: [option::t<@tydesc_info>] = [];
-        for t: ty::t in tys {
+        let tydescs = [], tis = [];
+        for t in tys {
             // TODO: Doesn't always escape.
-
-            let ti = none::<@tydesc_info>;
+            let ti = none;
             let td = get_tydesc(bcx, t, true, tps_normal, ti).result;
             tis += [ti];
             bcx = td.bcx;
             tydescs += [td.val];
         }
-        let gen = {item_type: tpt.ty, static_tis: tis, tydescs: tydescs};
-        lv = {res: rslt(bcx, lv.res.val), generic: some(gen) with lv};
+        gen = some({item_type: tpt.ty, static_tis: tis, tydescs: tydescs});
     }
-    ret lv;
+    ret {bcx: bcx, val: val, is_mem: true, env: is_closure, generic: gen};
 }
 
 fn lookup_discriminant(lcx: @local_ctxt, vid: ast::def_id) -> ValueRef {
@@ -2921,21 +2919,25 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> lval_result {
     }
 }
 
-fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id) ->
-   lval_result {
+fn trans_path(cx: @block_ctxt, p: ast::path, id: ast::node_id)
+    -> lval_maybe_callee {
+    ret trans_var(cx, p.span, bcx_tcx(cx).def_map.get(id), id);
+}
+
+fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
+    -> lval_maybe_callee {
     let ccx = bcx_ccx(cx);
     alt def {
       ast::def_fn(did, _) | ast::def_native_fn(did) {
         let tyt = ty::lookup_item_type(ccx.tcx, did);
-        ret lval_generic_fn(cx, tyt, did, id);
+        ret lval_static_fn(cx, tyt, did, id);
       }
       ast::def_variant(tid, vid) {
         let v_tyt = ty::lookup_item_type(ccx.tcx, vid);
         alt ty::struct(ccx.tcx, v_tyt.ty) {
           ty::ty_fn(_, _, _, _, _) {
             // N-ary variant.
-
-            ret lval_generic_fn(cx, v_tyt, vid, id);
+            ret lval_static_fn(cx, v_tyt, vid, id);
           }
           _ {
             // Nullary variant.
@@ -2951,43 +2953,44 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id) ->
                 let lldiscrimptr = GEP(bcx, lltagptr, [C_int(0), C_int(0)]);
                 Store(bcx, lldiscrim, lldiscrimptr);
             }
-            ret lval_val(bcx, lltagptr);
+            ret lval_no_env(bcx, lltagptr, false);
           }
         }
       }
       ast::def_const(did) {
         if did.crate == ast::local_crate {
             assert (ccx.consts.contains_key(did.node));
-            ret lval_mem(cx, ccx.consts.get(did.node));
+            ret lval_no_env(cx, ccx.consts.get(did.node), true);
         } else {
             let tp = ty::node_id_to_monotype(ccx.tcx, id);
             let k: [ast::kind] = [];
-            ret lval_val(cx,
-                         load_if_immediate(cx,
-                                           trans_external_path(cx, did,
-                                                               {kinds: k,
-                                                                ty: tp}),
-                                           tp));
+            let val = trans_external_path(cx, did, {kinds: k, ty: tp});
+            ret lval_no_env(cx, load_if_immediate(cx, val, tp), false);
         }
       }
-      _ { ret trans_local_var(cx, def); }
+      _ {
+        let loc = trans_local_var(cx, def);
+        ret lval_no_env(loc.bcx, loc.val, loc.is_mem);
+      }
     }
 }
 
-fn trans_path(cx: @block_ctxt, p: ast::path, id: ast::node_id) ->
-   lval_result {
-    ret trans_var(cx, p.span, bcx_tcx(cx).def_map.get(id), id);
+fn trans_field(cx: @block_ctxt, sp: span, base: @ast::expr,
+               field: ast::ident) -> lval_maybe_callee {
+    let {bcx, val} = trans_expr(cx, base);
+    ret trans_field_inner(bcx, sp, val, ty::expr_ty(bcx_tcx(cx), base),
+                          field);
 }
 
-fn trans_field(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
-               field: ast::ident) -> lval_result {
+fn trans_field_inner(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
+                     field: ast::ident) -> lval_maybe_callee {
     let r = autoderef(cx, v, t0);
     let t = r.ty;
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_rec(fields) {
         let ix: uint = ty::field_idx(bcx_ccx(cx).sess, sp, field, fields);
         let v = GEP_tup_like(r.bcx, t, r.val, [0, ix as int]);
-        ret lval_mem(v.bcx, v.val);
+        ret lval_no_env(v.bcx, v.val, true);
       }
       ty::ty_obj(methods) {
         let ix: uint = ty::method_idx(bcx_ccx(cx).sess, sp, field, methods);
@@ -3005,9 +3008,9 @@ fn trans_field(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
             type_of_fn(bcx_ccx(cx), sp, ty::ty_fn_proto(tcx, fn_ty),
                        true, ret_ref, ty::ty_fn_args(tcx, fn_ty),
                        ty::ty_fn_ret(tcx, fn_ty), 0u);
-        v = PointerCast(r.bcx, v, T_ptr(T_ptr(ll_fn_ty)));
-        let lvo = lval_mem(r.bcx, v);
-        ret {llobj: some::<ValueRef>(r.val) with lvo};
+        v = Load(r.bcx, PointerCast(r.bcx, v, T_ptr(T_ptr(ll_fn_ty))));
+        ret {bcx: r.bcx, val: v, is_mem: true,
+             env: some_env(r.val), generic: none};
       }
       _ { bcx_ccx(cx).sess.unimpl("field variant in trans_field"); }
     }
@@ -3062,16 +3065,38 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
     ret lval_mem(next_cx, elt);
 }
 
-// The additional bool returned indicates whether it's mem (that is
-// represented as an alloca or heap, hence needs a 'load' to be used as an
-// immediate).
-fn trans_lval_gen(cx: @block_ctxt, e: @ast::expr) -> lval_result {
+fn trans_callee(cx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     alt e.node {
       ast::expr_path(p) { ret trans_path(cx, p, e.id); }
       ast::expr_field(base, ident) {
-        let r = trans_expr(cx, base);
-        let t = ty::expr_ty(bcx_tcx(cx), base);
-        ret trans_field(r.bcx, e.span, r.val, t, ident);
+        ret trans_field(cx, e.span, base, ident);
+      }
+      ast::expr_self_method(ident) {
+        alt cx.fcx.llself {
+          some(pair) {
+            ret trans_field_inner(cx, e.span, pair.v, pair.t, ident);
+          }
+        }
+      }
+      _ {
+        let lv = trans_lval(cx, e);
+        ret lval_no_env(lv.bcx, lv.val, lv.is_mem);
+      }
+    }
+}
+
+// The additional bool returned indicates whether it's mem (that is
+// represented as an alloca or heap, hence needs a 'load' to be used as an
+// immediate).
+fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
+    alt e.node {
+      ast::expr_path(p) {
+        let v = trans_path(cx, p, e.id);
+        ret lval_maybe_callee_to_lval(v, ty::expr_ty(bcx_tcx(cx), e));
+      }
+      ast::expr_field(base, ident) {
+        let f = trans_field(cx, e.span, base, ident);
+        ret lval_maybe_callee_to_lval(f, ty::expr_ty(bcx_tcx(cx), e));
       }
       ast::expr_index(base, idx) {
         ret trans_index(cx, e.span, base, idx, e.id);
@@ -3103,13 +3128,6 @@ fn trans_lval_gen(cx: @block_ctxt, e: @ast::expr) -> lval_result {
             };
         ret lval_mem(sub.bcx, val);
       }
-      ast::expr_self_method(ident) {
-        alt copy cx.fcx.llself {
-          some(pair) {
-            ret trans_field(cx, e.span, pair.v, pair.t, ident);
-          }
-        }
-      }
       ast::expr_call(f, args) {
         let {res: {bcx, val}, by_ref} =
             trans_call(cx, f, none, args, e.id);
@@ -3117,25 +3135,38 @@ fn trans_lval_gen(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         else { ret lval_val(bcx, val); }
       }
       _ {
-        ret {res: trans_expr(cx, e),
-             is_mem: false,
-             generic: none,
-             llobj: none};
+        let res = trans_expr(cx, e);
+        ret lval_val(res.bcx, res.val);
       }
     }
 }
 
-fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
-    let lv = trans_lval_gen(cx, e);
-    alt lv.generic {
+fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
+    -> (bool, ValueRef) {
+    if c.env == is_closure {
+        (c.is_mem, c.val)
+    } else {
+        let env = alt c.env {
+          null_env. { C_null(T_opaque_closure_ptr(*bcx_ccx(bcx))) }
+          some_env(e) { e }
+        };
+        let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
+        (false, create_real_fn_pair(bcx, llfnty, c.val, env))
+    }
+}
+
+fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
+    alt c.generic {
       some(gi) {
-        let t = ty::expr_ty(bcx_tcx(cx), e);
-        let n_args = std::vec::len(ty::ty_fn_args(bcx_tcx(cx), t));
+        let n_args = std::vec::len(ty::ty_fn_args(bcx_tcx(c.bcx), ty));
         let args = std::vec::init_elt(none::<@ast::expr>, n_args);
-        let bound = trans_bind_1(lv.res.bcx, e, lv, args, e.id);
-        ret lval_val(bound.bcx, bound.val);
+        let {bcx, val} = trans_bind_1(c.bcx, ty, c, args, ty);
+        ret lval_val(bcx, val);
       }
-      none. { ret lv; }
+      none. {
+        let (is_mem, val) = maybe_add_env(c.bcx, c);
+        ret {bcx: c.bcx, val: val, is_mem: is_mem};
+      }
     }
 }
 
@@ -3287,24 +3318,26 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // creating.  (In our running example, target is the function f.)  Pick
     // out the pointer to the target function from the environment. The
     // target function lives in the first binding spot.
-    let (lltarget, starting_idx) =
-        alt target_fn {
-          some(lltarget) { (lltarget, 0) }
-          none. {
-            let lltarget =
-                GEP_tup_like(bcx, closure_ty, llclosure,
-                             [0, abi::box_rc_field_body,
-                              abi::closure_elt_bindings, 0]);
-            bcx = lltarget.bcx;;
-            (lltarget.val, 1)
-          }
-        };
+    let (lltargetfn, lltargetenv, starting_idx) = alt target_fn {
+      some(fptr) {
+        (fptr, C_null(T_opaque_closure_ptr(*bcx_ccx(bcx))), 0)
+      }
+      none. {
+        let {bcx: cx, val: pair} =
+            GEP_tup_like(bcx, closure_ty, llclosure,
+                         [0, abi::box_rc_field_body,
+                          abi::closure_elt_bindings, 0]);
+        let lltargetenv =
+            Load(cx, GEP(cx, pair, [C_int(0), C_int(abi::fn_field_box)]));
+        let lltargetfn = Load
+            (cx, GEP(cx, pair, [C_int(0), C_int(abi::fn_field_code)]));
+        bcx = cx;
+        (lltargetfn, lltargetenv, 1)
+      }
+    };
 
     // And then, pick out the target function's own environment.  That's what
     // we'll use as the environment the thunk gets.
-    let lltargetclosure =
-        GEP(bcx, lltarget, [C_int(0), C_int(abi::fn_field_box)]);
-    lltargetclosure = Load(bcx, lltargetclosure);
 
     // Get f's return type, which will also be the return type of the entire
     // bind expression.
@@ -3324,7 +3357,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     }
 
     // Set up the three implicit arguments to the thunk.
-    let llargs: [ValueRef] = [llretptr, fcx.lltaskptr, lltargetclosure];
+    let llargs: [ValueRef] = [llretptr, fcx.lltaskptr, lltargetenv];
 
     // Copy in the type parameters.
     let i: uint = 0u;
@@ -3349,10 +3382,6 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
         let out_arg = outgoing_args[outgoing_arg_index];
         let llout_arg_ty = llout_arg_tys[outgoing_arg_index];
         alt arg {
-
-
-
-
           // Arg provided at binding time; thunk copies it from
           // closure.
           some(e) {
@@ -3371,8 +3400,6 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
             b += 1;
           }
 
-
-
           // Arg will be provided when the thunk is invoked.
           none. {
             let arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
@@ -3386,18 +3413,13 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
         outgoing_arg_index += 1u;
     }
 
-    let lltargetfn =
-        GEP(bcx, lltarget, [C_int(0), C_int(abi::fn_field_code)]);
-
     // Cast the outgoing function to the appropriate type.
     // This is necessary because the type of the function that we have
     // in the closure does not know how many type descriptors the function
     // needs to take.
     let lltargetty =
         type_of_fn_from_ty(bcx_ccx(bcx), sp, outgoing_fty, ty_param_count);
-    lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(T_ptr(lltargetty)));
-    lltargetfn = Load(bcx, lltargetfn);
-
+    lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
     FastCall(bcx, lltargetfn, llargs);
     build_return(bcx);
     finish_fn(fcx, lltop);
@@ -3406,19 +3428,20 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
 
 fn trans_bind(cx: @block_ctxt, f: @ast::expr, args: [option::t<@ast::expr>],
               id: ast::node_id) -> result {
-    let f_res = trans_lval_gen(cx, f);
-    ret trans_bind_1(cx, f, f_res, args, id);
+    let f_res = trans_callee(cx, f);
+    ret trans_bind_1(cx, ty::expr_ty(bcx_tcx(cx), f), f_res, args,
+                     ty::node_id_to_type(bcx_tcx(cx), id));
 }
 
-fn trans_bind_1(cx: @block_ctxt, f: @ast::expr, f_res: lval_result,
-                args: [option::t<@ast::expr>], id: ast::node_id) -> result {
+fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
+                f_res: lval_maybe_callee,
+                args: [option::t<@ast::expr>], pair_ty: ty::t) -> result {
     let bound: [@ast::expr] = [];
     for argopt: option::t<@ast::expr> in args {
         alt argopt { none. { } some(e) { bound += [e]; } }
     }
 
     // Figure out which tydescs we need to pass, if any.
-    let outgoing_fty: ty::t = ty::expr_ty(bcx_tcx(cx), f);
     let outgoing_fty_real; // the type with typarams still in it
     let lltydescs: [ValueRef];
     alt f_res.generic {
@@ -3432,10 +3455,15 @@ fn trans_bind_1(cx: @block_ctxt, f: @ast::expr, f_res: lval_result,
 
     let ty_param_count = std::vec::len(lltydescs);
     if std::vec::len(bound) == 0u && ty_param_count == 0u {
-        // Trivial 'binding': just return the static pair-ptr.
-        ret f_res.res;
+        // Trivial 'binding': just return the closure
+        let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
+        ret rslt(lv.bcx, lv.val);
     }
-    let bcx = f_res.res.bcx;
+    let bcx = f_res.bcx;
+    let (is_mem, closure) = alt f_res.env {
+      null_env. { (true, none) }
+      _ { let (mem, cl) = maybe_add_env(cx, f_res); (mem, some(cl)) }
+    };
 
     // FIXME: should follow from a precondition on trans_bind_1
     let ccx = bcx_ccx(cx);
@@ -3443,22 +3471,24 @@ fn trans_bind_1(cx: @block_ctxt, f: @ast::expr, f_res: lval_result,
 
     // Arrange for the bound function to live in the first binding spot
     // if the function is not statically known.
-    let (bound_tys, bound_vals, target_res) =
-        if f_res.is_mem {
-            // Cast the function we are binding to be the type that the
-            // closure will expect it to have. The type the closure knows
-            // about has the type parameters substituted with the real types.
-            let sp = cx.sp;
-            let llclosurety = T_ptr(type_of(ccx, sp, outgoing_fty));
-            let src_loc = PointerCast(bcx, f_res.res.val, llclosurety);
-            let bound_f = {res: {bcx: bcx, val: src_loc} with f_res};
-            ([outgoing_fty], [bound_f], none)
-        } else { ([], [], some(f_res.res.val)) };
+    let (bound_tys, bound_vals, target_res) = alt closure {
+      some(cl) {
+        // Cast the function we are binding to be the type that the
+        // closure will expect it to have. The type the closure knows
+        // about has the type parameters substituted with the real types.
+        let sp = cx.sp;
+        let llclosurety = T_ptr(type_of(ccx, sp, outgoing_fty));
+        let src_loc = PointerCast(bcx, cl, llclosurety);
+        let bound_f = {bcx: bcx, val: src_loc, is_mem: is_mem};
+        ([outgoing_fty], [bound_f], none)
+      }
+      none. { ([], [], some(f_res.val)) }
+    };
 
     // Translate the bound expressions.
     for e: @ast::expr in bound {
         let lv = trans_lval(bcx, e);
-        bcx = lv.res.bcx;
+        bcx = lv.bcx;
         bound_vals += [lv];
         bound_tys += [ty::expr_ty(bcx_tcx(cx), e)];
     }
@@ -3469,8 +3499,6 @@ fn trans_bind_1(cx: @block_ctxt, f: @ast::expr, f_res: lval_result,
     bcx = closure.bcx;
 
     // Make thunk
-    // The type of the entire bind expression.
-    let pair_ty = node_id_type(bcx_ccx(cx), id);
     let llthunk =
         trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real, args,
                          closure.ptrty, ty_param_count, target_res);
@@ -3490,8 +3518,8 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
     let e_ty = ty::expr_ty(ccx.tcx, e);
     let is_bot = ty::type_is_bot(ccx.tcx, e_ty);
     let lv = trans_lval(cx, e);
-    let bcx = lv.res.bcx;
-    let val = lv.res.val;
+    let bcx = lv.bcx;
+    let val = lv.val;
     if is_bot {
         // For values of type _|_, we generate an
         // "undef" value, as such a value should never
@@ -3530,8 +3558,8 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
         if lv.is_mem {
             // Use actual ty, not declared ty -- anything else doesn't make
             // sense if declared ty is a ty param
-            to_zero += [{v: lv.res.val, t: e_ty}];
-        } else { to_revoke += [{v: lv.res.val, t: e_ty}]; }
+            to_zero += [{v: lv.val, t: e_ty}];
+        } else { to_revoke += [{v: lv.val, t: e_ty}]; }
     }
     ret rslt(bcx, val);
 }
@@ -3670,27 +3698,23 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(bcx_tcx(in_cx),
                                                           fn_expr_ty));
     let cx = new_scope_block_ctxt(in_cx, "call");
-    let f_res = trans_lval_gen(cx, f);
-    let bcx = f_res.res.bcx;
+    let f_res = trans_callee(cx, f);
+    let bcx = f_res.bcx;
 
-    let faddr = f_res.res.val;
-    let llenv = C_null(T_opaque_closure_ptr(*bcx_ccx(cx)));
-    alt f_res.llobj {
-      some(ob) {
-        // It's a vtbl entry.
-        faddr = Load(bcx, faddr);
-        llenv = ob;
-      }
-      none. {
-        // It's a closure. We have to autoderef.
+    let faddr = f_res.val;
+    let llenv = alt f_res.env {
+      null_env. { C_null(T_opaque_closure_ptr(*bcx_ccx(cx))) }
+      some_env(e) { e }
+      is_closure. {
+        // It's a closure. Have to fetch the elements
         if f_res.is_mem { faddr = load_if_immediate(bcx, faddr, fn_expr_ty); }
         let pair = faddr;
         faddr = GEP(bcx, pair, [C_int(0), C_int(abi::fn_field_code)]);
         faddr = Load(bcx, faddr);
         let llclosure = GEP(bcx, pair, [C_int(0), C_int(abi::fn_field_box)]);
-        llenv = Load(bcx, llclosure);
+        Load(bcx, llclosure)
       }
-    }
+    };
 
     let ret_ty = ty::node_id_to_type(bcx_tcx(cx), id);
     let args_res =
@@ -3854,7 +3878,7 @@ fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
     for e in elts {
         let e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
         let src = trans_lval(bcx, e);
-        bcx = src.res.bcx;
+        bcx = src.bcx;
         let dst_res = GEP_tup_like(bcx, t, tup_val, [0, i]);
         bcx = move_val_if_temp(dst_res.bcx, INIT, dst_res.val, src, e_ty);
         i += 1;
@@ -3892,7 +3916,7 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
                 expr_provided = true;
                 let lv = trans_lval(bcx, f.node.expr);
                 bcx =
-                    move_val_if_temp(lv.res.bcx, INIT, dst_res.val, lv, e_ty);
+                    move_val_if_temp(lv.bcx, INIT, dst_res.val, lv, e_ty);
                 break;
             }
         }
@@ -3972,13 +3996,13 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
       ast::expr_copy(a) {
         let e_ty = ty::expr_ty(bcx_tcx(cx), a);
         let lv = trans_lval(cx, a);
-        let bcx = lv.res.bcx;
-        if !lv.is_mem { ret lv.res; }
+        let bcx = lv.bcx;
+        if !lv.is_mem { ret {bcx: lv.bcx, val: lv.val}; }
         let r = if type_is_immediate(bcx_ccx(cx), e_ty) {
-            rslt(bcx, Load(bcx, lv.res.val))
+            rslt(bcx, Load(bcx, lv.val))
         } else {
             let {bcx, val: dest} = alloc_ty(bcx, e_ty);
-            bcx = copy_val(bcx, INIT, dest, lv.res.val, e_ty);
+            bcx = copy_val(bcx, INIT, dest, lv.val, e_ty);
             rslt(bcx, dest)
         };
         add_clean_temp(bcx, r.val, e_ty);
@@ -3987,43 +4011,43 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
       ast::expr_move(dst, src) {
         let lhs_res = trans_lval(cx, dst);
         assert (lhs_res.is_mem);
-        // FIXME Fill in lhs_res.res.bcx.sp
+        // FIXME Fill in lhs_res.bcx.sp
 
-        let rhs_res = trans_lval(lhs_res.res.bcx, src);
+        let rhs_res = trans_lval(lhs_res.bcx, src);
         let t = ty::expr_ty(bcx_tcx(cx), src);
         // FIXME: calculate copy init-ness in typestate.
 
         let bcx =
-            move_val(rhs_res.res.bcx, DROP_EXISTING, lhs_res.res.val, rhs_res,
+            move_val(rhs_res.bcx, DROP_EXISTING, lhs_res.val, rhs_res,
                      t);
         ret rslt(bcx, C_nil());
       }
       ast::expr_assign(dst, src) {
         let lhs_res = trans_lval(cx, dst);
         assert (lhs_res.is_mem);
-        // FIXME Fill in lhs_res.res.bcx.sp
-        let rhs = trans_lval(lhs_res.res.bcx, src);
+        // FIXME Fill in lhs_res.bcx.sp
+        let rhs = trans_lval(lhs_res.bcx, src);
         let t = ty::expr_ty(bcx_tcx(cx), src);
         // FIXME: calculate copy init-ness in typestate.
         let bcx =
-            move_val_if_temp(rhs.res.bcx, DROP_EXISTING, lhs_res.res.val, rhs,
+            move_val_if_temp(rhs.bcx, DROP_EXISTING, lhs_res.val, rhs,
                              t);
         ret rslt(bcx, C_nil());
       }
       ast::expr_swap(dst, src) {
         let lhs_res = trans_lval(cx, dst);
         assert (lhs_res.is_mem);
-        // FIXME Fill in lhs_res.res.bcx.sp
+        // FIXME Fill in lhs_res.bcx.sp
 
-        let rhs_res = trans_lval(lhs_res.res.bcx, src);
+        let rhs_res = trans_lval(lhs_res.bcx, src);
         let t = ty::expr_ty(bcx_tcx(cx), src);
-        let {bcx: bcx, val: tmp_alloc} = alloc_ty(rhs_res.res.bcx, t);
+        let {bcx: bcx, val: tmp_alloc} = alloc_ty(rhs_res.bcx, t);
         // Swap through a temporary.
 
         bcx = move_val(bcx, INIT, tmp_alloc, lhs_res, t);
-        bcx = move_val(bcx, INIT, lhs_res.res.val, rhs_res, t);
+        bcx = move_val(bcx, INIT, lhs_res.val, rhs_res, t);
         bcx =
-            move_val(bcx, INIT, rhs_res.res.val, lval_mem(bcx, tmp_alloc), t);
+            move_val(bcx, INIT, rhs_res.val, lval_mem(bcx, tmp_alloc), t);
         ret rslt(bcx, C_nil());
       }
       ast::expr_assign_op(op, dst, src) {
@@ -4038,8 +4062,8 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
             alt src.node {
               ast::expr_vec(args, _) {
                 let bcx =
-                    tvec::trans_append_literal(lhs_res.res.bcx,
-                                               lhs_res.res.val, t, args);
+                    tvec::trans_append_literal(lhs_res.bcx,
+                                               lhs_res.val, t, args);
                 ret rslt(bcx, C_nil());
               }
               _ { }
@@ -4048,24 +4072,24 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
           _ { }
         }
 
-        // FIXME Fill in lhs_res.res.bcx.sp
-        let rhs_res = trans_expr(lhs_res.res.bcx, src);
+        // FIXME Fill in lhs_res.bcx.sp
+        let rhs_res = trans_expr(lhs_res.bcx, src);
         if ty::type_is_sequence(tcx, t) {
             alt op {
               ast::add. {
-                ret tvec::trans_append(rhs_res.bcx, t, lhs_res.res.val,
+                ret tvec::trans_append(rhs_res.bcx, t, lhs_res.val,
                                        rhs_res.val);
               }
               _ { }
             }
         }
-        let lhs_val = load_if_immediate(rhs_res.bcx, lhs_res.res.val, t);
+        let lhs_val = load_if_immediate(rhs_res.bcx, lhs_res.val, t);
         let v =
             trans_eager_binop(rhs_res.bcx, op, lhs_val, t, rhs_res.val, t);
         // FIXME: calculate copy init-ness in typestate.
         // This is always a temporary, so can always be safely moved
         let bcx =
-            move_val(v.bcx, DROP_EXISTING, lhs_res.res.val,
+            move_val(v.bcx, DROP_EXISTING, lhs_res.val,
                      lval_val(v.bcx, v.val), t);
         ret rslt(bcx, C_nil());
       }
@@ -4120,9 +4144,9 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
       ast::expr_path(_) | ast::expr_unary(ast::deref., _) {
         let t = ty::expr_ty(bcx_tcx(cx), e);
         let sub = trans_lval(cx, e);
-        let v = sub.res.val;
-        if sub.is_mem { v = load_if_immediate(sub.res.bcx, v, t); }
-        ret rslt(sub.res.bcx, v);
+        let v = sub.val;
+        if sub.is_mem { v = load_if_immediate(sub.bcx, v, t); }
+        ret rslt(sub.bcx, v);
       }
       ast::expr_unary(op, x) {
         ret trans_unary(cx, op, x, e.id);
@@ -4412,10 +4436,10 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
       some(x) {
         let t = ty::expr_ty(bcx_tcx(cx), x);
         let lv = trans_lval(cx, x);
-        bcx = lv.res.bcx;
+        bcx = lv.bcx;
         if ast_util::ret_by_ref(cx.fcx.ret_style) {
             assert lv.is_mem;
-            Store(bcx, lv.res.val, cx.fcx.llretptr);
+            Store(bcx, lv.val, cx.fcx.llretptr);
         } else {
             let is_local = alt x.node {
               ast::expr_path(p) {
@@ -4484,11 +4508,11 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
             // the value.
             ty = node_id_type(bcx_ccx(bcx), init.expr.id);
             let sub = trans_lval(bcx, init.expr);
-            bcx = move_val_if_temp(sub.res.bcx, INIT, llptr, sub, ty);
+            bcx = move_val_if_temp(sub.bcx, INIT, llptr, sub, ty);
           }
           ast::init_move. {
             let sub = trans_lval(bcx, init.expr);
-            bcx = move_val(sub.res.bcx, INIT, llptr, sub, ty);
+            bcx = move_val(sub.bcx, INIT, llptr, sub, ty);
           }
         }
       }
@@ -4538,9 +4562,8 @@ fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let init_expr = option::get(local.node.init).expr;
     let val = trans_lval(bcx, init_expr);
     assert val.is_mem;
-    ret trans_alt::bind_irrefutable_pat(val.res.bcx, local.node.pat,
-                                        val.res.val,
-                                        bcx.fcx.lllocals, false);
+    ret trans_alt::bind_irrefutable_pat(val.bcx, local.node.pat,
+                                        val.val, bcx.fcx.lllocals, false);
 }
 
 fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t) -> result {
@@ -4806,7 +4829,7 @@ fn trans_block(cx: @block_ctxt, b: ast::blk, output: out_method) -> result {
             if is_terminated(bcx) || ty::type_is_bot(ccx.tcx, r_ty) { ret r; }
         } else {
             let lv = trans_lval(bcx, e);
-            r = lv.res;
+            r = {bcx: lv.bcx, val: lv.val};
             bcx = r.bcx;
             if is_terminated(bcx) || ty::type_is_bot(ccx.tcx, r_ty) { ret r; }
             alt output {
