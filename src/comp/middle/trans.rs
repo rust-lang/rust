@@ -129,20 +129,6 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
                    ret_ty, ty_param_count);
 }
 
-fn type_of_native_fn(cx: @crate_ctxt, sp: span, abi: ast::native_abi,
-                     inputs: [ty::arg], output: ty::t, ty_param_count: uint)
-   -> TypeRef {
-    let atys: [TypeRef] = [];
-    if abi == ast::native_abi_rust {
-        atys += [T_taskptr(*cx)];
-        let i = 0u;
-        while i < ty_param_count { atys += [T_ptr(cx.tydesc_type)]; i += 1u; }
-    }
-    atys += type_of_explicit_args(cx, sp, inputs);
-    check non_ty_var(cx, output);
-    ret T_fn(atys, type_of_inner(cx, sp, output));
-}
-
 fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
     : non_ty_var(cx, t) -> TypeRef {
     // Check the cache.
