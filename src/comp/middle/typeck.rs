@@ -1488,14 +1488,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Get the function type.
         let fty = expr_ty(fcx.ccx.tcx, f);
 
-        // We want to autoderef calls but not binds
-        let fty_stripped =
-            alt call_kind {
-              kind_call. { do_autoderef(fcx, sp, fty) }
-              _ { fty }
-            };
-
-        let sty = structure_of(fcx, sp, fty_stripped);
+        let sty = structure_of(fcx, sp, fty);
 
         // Check that we aren't confusing iter calls and fn calls
         alt sty {
@@ -1620,14 +1613,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         // Pull the return type out of the type of the function.
         let rt_1;
-        let fty = do_autoderef(fcx, sp, ty::expr_ty(fcx.ccx.tcx, f));
+        let fty = ty::expr_ty(fcx.ccx.tcx, f);
         alt structure_of(fcx, sp, fty) {
           ty::ty_fn(_, _, rt, cf, _) {
             bot |= cf == ast::noreturn;
             rt_1 = rt;
           }
           ty::ty_native_fn(_, _, rt) { rt_1 = rt; }
-          _ { fail "LHS of call expr didn't have a function type?!"; }
+          _ { fcx.ccx.tcx.sess.span_fatal(sp, "calling non-function"); }
         }
         write::ty_only_fixup(fcx, id, rt_1);
         ret bot;

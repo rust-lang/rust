@@ -10,7 +10,7 @@ import front::attr;
 
 export modify_for_testing;
 
-type node_id_gen = @fn() -> ast::node_id;
+type node_id_gen = fn() -> ast::node_id;
 
 type test = {path: [ast::ident], ignore: bool};
 
@@ -29,7 +29,7 @@ fn modify_for_testing(crate: @ast::crate) -> @ast::crate {
     // access to the real next node_id.
     let next_node_id = @mutable 200000;
     let next_node_id_fn =
-        @bind fn (next_node_id: @mutable ast::node_id) -> ast::node_id {
+        bind fn (next_node_id: @mutable ast::node_id) -> ast::node_id {
                   let this_node_id = *next_node_id;
                   *next_node_id += 1;
                   ret this_node_id;

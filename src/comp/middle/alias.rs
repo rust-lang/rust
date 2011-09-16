@@ -222,7 +222,7 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
 }
 
 fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
-    let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
+    let fty = ty::expr_ty(cx.tcx, f);
     let by_ref = alt ty::ty_fn_ret_style(cx.tcx, fty) {
       ast::return_ref(_, arg_n) { arg_n } _ { 0u }
     };
@@ -685,7 +685,7 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     if is_none(path_def_id(cx, base_root.ex)) {
         alt base_root.ex.node {
           ast::expr_call(f, args) {
-            let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
+            let fty = ty::expr_ty(cx.tcx, f);
             alt ty::ty_fn_ret_style(cx.tcx, fty) {
               ast::return_ref(mut, arg_n) {
                 let arg = args[arg_n - 1u];

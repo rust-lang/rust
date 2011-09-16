@@ -3676,9 +3676,8 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
     let fn_expr_ty = ty::expr_ty(bcx_tcx(in_cx), f);
-    let fn_ty = ty::type_autoderef(bcx_tcx(in_cx), fn_expr_ty);
     let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(bcx_tcx(in_cx),
-                                                          fn_ty));
+                                                          fn_expr_ty));
     let cx = new_scope_block_ctxt(in_cx, "call");
     let f_res = trans_lval_gen(cx, f);
     let bcx = f_res.res.bcx;
@@ -3694,10 +3693,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
       none. {
         // It's a closure. We have to autoderef.
         if f_res.is_mem { faddr = load_if_immediate(bcx, faddr, fn_expr_ty); }
-        let res = autoderef(bcx, faddr, fn_expr_ty);
-        bcx = res.bcx;
-
-        let pair = res.val;
+        let pair = faddr;
         faddr = GEP(bcx, pair, [C_int(0), C_int(abi::fn_field_code)]);
         faddr = Load(bcx, faddr);
         let llclosure = GEP(bcx, pair, [C_int(0), C_int(abi::fn_field_box)]);
@@ -3707,7 +3703,8 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
 
     let ret_ty = ty::node_id_to_type(bcx_tcx(cx), id);
     let args_res =
-        trans_args(bcx, in_cx, llenv, f_res.generic, lliterbody, args, fn_ty);
+        trans_args(bcx, in_cx, llenv, f_res.generic, lliterbody, args,
+                   fn_expr_ty);
     Br(args_res.outer_cx, cx.llbb);
     bcx = args_res.bcx;
     let llargs = args_res.args;

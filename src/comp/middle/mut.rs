@@ -219,9 +219,7 @@ fn check_move_rhs(cx: @ctx, src: @expr) {
 }
 
 fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
-    let arg_ts =
-        ty::ty_fn_args(cx.tcx,
-                       ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f)));
+    let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
         if arg_t.mode != by_ref { check_lval(cx, args[i], msg_mut_ref); }
