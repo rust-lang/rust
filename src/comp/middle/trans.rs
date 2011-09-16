@@ -210,9 +210,11 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         ret T_struct([T_i32(), type_of_inner(cx, sp, sub1)]);
       }
       ty::ty_var(_) {
-        // FIXME should be a constraint that makes this impossible
-        // (use unreachable())
-        cx.tcx.sess.span_fatal(sp, "trans::type_of called on ty_var");
+        // Should be unreachable b/c of precondition.
+        // FIXME: would be nice to have a way of expressing this
+        // through postconditions, and then making it sound to omit
+        // cases in the alt
+        std::util::unreachable()
       }
       ty::ty_param(_, _) { T_typaram(cx.tn) }
       ty::ty_type. { T_ptr(cx.tydesc_type) }
