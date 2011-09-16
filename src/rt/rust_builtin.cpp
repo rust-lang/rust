@@ -551,6 +551,7 @@ chan_id_send(rust_task *task, type_desc *t, rust_task_id target_task_id,
             port->remote_chan->send(sptr);
         }
         target_task->deref();
+        task->yield();
     }
 }
 
