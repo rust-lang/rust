@@ -28,6 +28,7 @@ type parser =
         fn swap(token::token, uint, uint);
         fn look_ahead(uint) -> token::token;
         fn fatal(str) -> ! ;
+        fn span_fatal(span, str) -> ! ;
         fn warn(str);
         fn restrict(restriction);
         fn get_restriction() -> restriction;
@@ -99,7 +100,10 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
             ret buffer[distance - 1u].tok;
         }
         fn fatal(m: str) -> ! {
-            codemap::emit_error(some(self.get_span()), m, sess.cm);
+            self.span_fatal(self.get_span(), m);
+        }
+        fn span_fatal(sp: span, m: str) -> ! {
+            codemap::emit_error(some(sp), m, sess.cm);
             fail;
         }
         fn warn(m: str) {
@@ -1270,6 +1274,9 @@ fn parse_if_expr_1(p: parser) ->
         let elexpr = parse_else_expr(p);
         els = some(elexpr);
         hi = elexpr.span.hi;
+    } else if !option::is_none(thn.node.expr) {
+        let sp = option::get(thn.node.expr).span;
+        p.span_fatal(sp, "if without else can not return a value");
     }
     ret {cond: cond, then: thn, els: els, lo: lo, hi: hi};
 }
@@ -1658,10 +1665,7 @@ fn parse_block_no_value(p: parser) -> ast::blk {
     let blk = parse_block(p);
     if !option::is_none(blk.node.expr) {
         let sp = option::get(blk.node.expr).span;
-        codemap::emit_error(some(sp),
-                            "this block must not return a value",
-                            p.get_sess().cm);
-        fail;
+        p.span_fatal(sp, "this block must not return a value");
     }
     ret blk;
 }

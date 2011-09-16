@@ -151,11 +151,11 @@ fn is_test(config: config, testfile: str) -> bool {
     let valid = false;
 
     for ext in valid_extensions {
-        if str::ends_with(name, ext) { valid = true }
+        if str::ends_with(name, ext) { valid = true; }
     }
 
     for pre in invalid_prefixes {
-        if str::starts_with(name, pre) { valid = false }
+        if str::starts_with(name, pre) { valid = false; }
     }
 
     ret valid;

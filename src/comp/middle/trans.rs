@@ -5130,7 +5130,7 @@ fn trans_closure(bcx_maybe: option::t<@block_ctxt>,
                 create_real_fn_pair(env.bcx, option::get(llfnty), llfndecl,
                                     env.ptr);
             if copying {
-                add_clean_temp(bcx, closure, node_id_type(cx.ccx, id))
+                add_clean_temp(bcx, closure, node_id_type(cx.ccx, id));
             }
             some({fn_pair: closure, bcx: env.bcx})
           }

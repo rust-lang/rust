@@ -51,7 +51,7 @@ fn main() {
 
   assert if (true) { 12 } else { 12 } - num == 0;
   assert 12 - if (true) { 12 } else { 12 } == 0;
-  if (true) { 12 } {-num};
-  if (true) { 12 }; {-num};
-  if (true) { 12 };;; -num;
+  if (true) { 12; } {-num};
+  if (true) { 12; }; {-num};
+  if (true) { 12; };;; -num;
 }

@@ -194,7 +194,7 @@ fn scan_dec_digits_with_prefix(rdr: reader) -> str {
         rdr.bump();
     }
     let digits = scan_dec_digits(rdr);
-    if negative { str::unshift_char(digits, '-') }
+    if negative { str::unshift_char(digits, '-'); }
     ret digits;
 }
 

@@ -599,9 +599,9 @@ fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
       ast::expr_fail(none.) { true }
       _ { false }
     };
-    if disambig { popen(s) }
+    if disambig { popen(s); }
     print_expr(s, e);
-    if disambig { pclose(s) }
+    if disambig { pclose(s); }
 }
 
 fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
@@ -1504,7 +1504,7 @@ fn print_comment(s: ps, cmnt: lexer::cmnt) {
               pp::STRING(s, _) { s == ";" }
               _ { false }
             };
-        if is_semi || is_begin(s) || is_end(s) { hardbreak(s.s) }
+        if is_semi || is_begin(s) || is_end(s) { hardbreak(s.s); }
         hardbreak(s.s);
       }
     }

@@ -359,7 +359,7 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
           expr_path(p) {
             // Don't substitute into qualified names.
             if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u {
-                e
+                e;
             }
             alt follow_for_trans(cx, b.find(p.node.idents[0]), idx_path) {
               some(match_ident(id)) {
