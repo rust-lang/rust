@@ -625,7 +625,7 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
                 cbox(s, indent_unit - 1u);
                 ibox(s, 0u);
                 word(s.s, " else if ");
-                print_expr(s, i);
+                print_maybe_parens_discrim(s, i);
                 space(s.s);
                 print_block(s, t);
                 do_else(s, e);

@@ -21,8 +21,15 @@ fn what() {
 }
 
 fn zombiejesus() {
-    do  { while (ret) { if (ret) { alt (ret) { _ { ret ? ret : ret } } } } }
-        while ret
+    do  {
+        while (ret) {
+            if (ret) {
+                alt (ret) { _ { ret ? ret : ret } };
+            } else if (ret) {
+                ret;
+            }
+        }
+    } while ret
 }
 
 fn notsure() {
