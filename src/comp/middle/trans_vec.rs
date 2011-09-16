@@ -117,7 +117,7 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id) ->
     let i = 0u;
     for e in args {
         let lv = trans_lval(bcx, e);
-        bcx = lv.bcx;
+        bcx = lv.res.bcx;
         let lleltptr =
             if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
                 InBoundsGEP(bcx, dataptr, [Mul(bcx, C_uint(i), llunitsz)])
