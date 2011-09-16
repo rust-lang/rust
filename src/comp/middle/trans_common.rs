@@ -273,7 +273,7 @@ tag cleanup {
 fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups += [clean(bind drop_ty(_, val, ty))];
-    scope_cx.cleanups_dirty = true;
+    scope_cx.lpad_dirty = true;
 }
 fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     fn spill_and_drop(cx: @block_ctxt, val: ValueRef, ty: ty::t) ->
@@ -287,7 +287,7 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups +=
         [clean_temp(val, bind spill_and_drop(_, val, ty))];
-    scope_cx.cleanups_dirty = true;
+    scope_cx.lpad_dirty = true;
 }
 
 // Note that this only works for temporaries. We should, at some point, move
@@ -321,7 +321,7 @@ fn revoke_clean(cx: @block_ctxt, val: ValueRef, t: ty::t) -> @block_ctxt {
         std::vec::slice(sc_cx.cleanups, 0u, found as uint) +
             std::vec::slice(sc_cx.cleanups, (found as uint) + 1u,
                             std::vec::len(sc_cx.cleanups));
-    sc_cx.cleanups_dirty = true;
+    sc_cx.lpad_dirty = true;
     ret cx;
 }
 
@@ -396,7 +396,7 @@ type block_ctxt =
      parent: block_parent,
      kind: block_kind,
      mutable cleanups: [cleanup],
-     mutable cleanups_dirty: bool,
+     mutable lpad_dirty: bool,
      mutable lpad: option::t<BasicBlockRef>,
      sp: span,
      fcx: @fn_ctxt};

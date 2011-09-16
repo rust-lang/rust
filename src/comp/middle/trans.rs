@@ -3752,7 +3752,8 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
        for the call itself is unreachable. */
     let retval = C_nil();
     if !is_terminated(bcx) {
-        bcx = invoke_fastcall(bcx, faddr, llargs).bcx;
+        bcx = invoke_fastcall(bcx, faddr, llargs,
+                              args_res.to_zero, args_res.to_revoke).bcx;
         alt lliterbody {
           none. {
             if !ty::type_is_nil(bcx_tcx(cx), ret_ty) {
@@ -3775,12 +3776,8 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         }
 
         // Forget about anything we moved out.
-        for {v: v, t: t}: {v: ValueRef, t: ty::t} in args_res.to_zero {
-            bcx = zero_alloca(bcx, v, t).bcx;
-        }
-        for {v: v, t: t} in args_res.to_revoke {
-            bcx = revoke_clean(bcx, v, t);
-        }
+        bcx = zero_and_revoke(bcx, args_res.to_zero, args_res.to_revoke);
+
         if !by_ref { bcx = trans_block_cleanups(bcx, cx); }
         let next_cx = new_sub_block_ctxt(in_cx, "next");
         Br(bcx, next_cx.llbb);
@@ -3789,18 +3786,36 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     ret {res: rslt(bcx, retval), by_ref: by_ref};
 }
 
+fn zero_and_revoke(bcx: @block_ctxt,
+                   to_zero: [{v: ValueRef, t: ty::t}],
+                   to_revoke: [{v: ValueRef, t: ty::t}]) -> @block_ctxt {
+    let bcx = bcx;
+    for {v, t} in to_zero {
+        bcx = zero_alloca(bcx, v, t).bcx;
+    }
+    for {v, t} in to_revoke {
+        bcx = revoke_clean(bcx, v, t);
+    }
+    ret bcx;
+}
+
 fn invoke(bcx: @block_ctxt, llfn: ValueRef,
           llargs: [ValueRef]) -> result {
-    ret invoke_(bcx, llfn, llargs, Invoke);
+    ret invoke_(bcx, llfn, llargs, [], [], Invoke);
 }
 
 fn invoke_fastcall(bcx: @block_ctxt, llfn: ValueRef,
-                   llargs: [ValueRef]) -> result {
-    ret invoke_(bcx, llfn, llargs, FastInvoke);
+                   llargs: [ValueRef],
+                   to_zero: [{v: ValueRef, t: ty::t}],
+                   to_revoke: [{v: ValueRef, t: ty::t}]) -> result {
+    ret invoke_(bcx, llfn, llargs,
+                to_zero, to_revoke,
+                FastInvoke);
 }
 
-fn invoke_(bcx: @block_ctxt, llfn: ValueRef,
-           llargs: [ValueRef],
+fn invoke_(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
+           to_zero: [{v: ValueRef, t: ty::t}],
+           to_revoke: [{v: ValueRef, t: ty::t}],
            invoker: fn(@block_ctxt, ValueRef, [ValueRef],
                        BasicBlockRef, BasicBlockRef) -> ValueRef) -> result {
     // FIXME: May be worth turning this into a plain call when there are no
@@ -3808,26 +3823,33 @@ fn invoke_(bcx: @block_ctxt, llfn: ValueRef,
     let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
     let retval = invoker(bcx, llfn, llargs,
                          normal_bcx.llbb,
-                         get_landing_pad(bcx));
+                         get_landing_pad(bcx, to_zero, to_revoke));
     ret rslt(normal_bcx, retval);
 }
 
-fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
-    let scope_bcx = find_scope_for_lpad(bcx);
-    if scope_bcx.cleanups_dirty {
+fn get_landing_pad(bcx: @block_ctxt,
+                   to_zero: [{v: ValueRef, t: ty::t}],
+                   to_revoke: [{v: ValueRef, t: ty::t}]
+                  ) -> BasicBlockRef {
+    let have_zero_or_revoke = vec::is_not_empty(to_zero)
+        || vec::is_not_empty(to_revoke);
+    let scope_bcx = find_scope_for_lpad(bcx, have_zero_or_revoke);
+    if scope_bcx.lpad_dirty || have_zero_or_revoke {
         let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
-        let lpadbb = trans_landing_pad(unwind_bcx);
+        let lpadbb = trans_landing_pad(unwind_bcx, to_zero, to_revoke);
         scope_bcx.lpad = some(lpadbb);
-        scope_bcx.cleanups_dirty = false;
+        scope_bcx.lpad_dirty = have_zero_or_revoke;
     }
     assert option::is_some(scope_bcx.lpad);
     ret option::get(scope_bcx.lpad);
 
-    fn find_scope_for_lpad(bcx: @block_ctxt) -> @block_ctxt {
+    fn find_scope_for_lpad(bcx: @block_ctxt,
+                           have_zero_or_revoke: bool) -> @block_ctxt {
         let scope_bcx = bcx;
         while true {
             scope_bcx = find_scope_cx(scope_bcx);
-            if vec::is_not_empty(scope_bcx.cleanups) {
+            if vec::is_not_empty(scope_bcx.cleanups)
+                || have_zero_or_revoke {
                 ret scope_bcx;
             } else {
                 scope_bcx = alt scope_bcx.parent {
@@ -3842,7 +3864,10 @@ fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
     }
 }
 
-fn trans_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
+fn trans_landing_pad(bcx: @block_ctxt,
+                     to_zero: [{v: ValueRef, t: ty::t}],
+                     to_revoke: [{v: ValueRef, t: ty::t}]
+                    ) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
@@ -3863,7 +3888,7 @@ fn trans_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
     // FIXME: This seems like a very naive and redundant way to generate the
     // landing pads, as we're re-generating all in-scope cleanups for each
     // function call. Probably good optimization opportunities here.
-    let bcx = bcx;
+    let bcx = zero_and_revoke(bcx, to_zero, to_revoke);
     let scope_cx = bcx;
     while true {
         scope_cx = find_scope_cx(scope_cx);
@@ -4372,7 +4397,7 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
         llargs += [r.val];
       }
     }
-    bcx = invoke_fastcall(bcx, llcallee, llargs).bcx;
+    bcx = invoke_fastcall(bcx, llcallee, llargs, [], []).bcx;
     bcx = trans_block_cleanups(bcx, cx);
     let next_cx = new_sub_block_ctxt(in_cx, "next");
     Br(bcx, next_cx.llbb);
@@ -4638,7 +4663,7 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
           parent: parent,
           kind: kind,
           mutable cleanups: [],
-          mutable cleanups_dirty: true,
+          mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: cx.sp,
           fcx: cx};
@@ -4674,7 +4699,7 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
           parent: parent_none,
           kind: NON_SCOPE_BLOCK,
           mutable cleanups: [],
-          mutable cleanups_dirty: true,
+          mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
@@ -4741,7 +4766,7 @@ fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
-          mutable cleanups_dirty: true,
+          mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
@@ -4753,7 +4778,7 @@ fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
-          mutable cleanups_dirty: true,
+          mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
           fcx: fcx};
