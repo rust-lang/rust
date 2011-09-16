@@ -105,11 +105,6 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
     ret {ex: ex, ds: @ds};
 }
 
-fn mut_field(ds: @[deref]) -> bool {
-    for d: deref in *ds { if d.mut { ret true; } }
-    ret false;
-}
-
 // Actual mut-checking pass
 
 type mut_map = std::map::hashmap<node_id, ()>;
