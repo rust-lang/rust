@@ -3557,9 +3557,11 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
+fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
+              gen: option::t<generic_info>,
               lliterbody: option::t<ValueRef>, es: [@ast::expr], fn_ty: ty::t)
    -> {bcx: @block_ctxt,
+       outer_cx: @block_ctxt,
        args: [ValueRef],
        retslot: ValueRef,
        to_zero: [{v: ValueRef, t: ty::t}],
@@ -3574,7 +3576,8 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
     let ccx = bcx_ccx(cx);
     let tcx = ccx.tcx;
     let bcx: @block_ctxt = cx;
-    let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_ty));
+    let ret_style = ty::ty_fn_ret_style(tcx, fn_ty);
+    let by_ref = ast_util::ret_by_ref(ret_style);
     // Arg 0: Output pointer.
 
     // FIXME: test case looks like
@@ -3583,6 +3586,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
         // This means an earlier arg was divergent.
         // So this arg can't be evaluated.
         ret {bcx: bcx,
+             outer_cx: outer_cx,
              args: [],
              retslot: C_nil(),
              to_zero: to_zero,
@@ -3652,13 +3656,18 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
             // So this arg can't be evaluated.
             break;
         }
-        let r =
-            trans_arg_expr(bcx, args[i], arg_tys[i], to_zero, to_revoke, e);
-        bcx = r.bcx;
+        let is_referenced = alt ret_style {
+          ast::return_ref(_, arg_n) { i + 1u == arg_n }
+          _ { false }
+        };
+        let r = trans_arg_expr(is_referenced ? outer_cx : bcx,
+                               args[i], arg_tys[i], to_zero, to_revoke, e);
+        if is_referenced { outer_cx = r.bcx; } else { bcx = r.bcx; }
         llargs += [r.val];
         i += 1u;
     }
     ret {bcx: bcx,
+         outer_cx: outer_cx,
          args: llargs,
          retslot: llretslot,
          to_zero: to_zero,
@@ -3675,14 +3684,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let fn_ty = ty::type_autoderef(bcx_tcx(in_cx), fn_expr_ty);
     let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(bcx_tcx(in_cx),
                                                           fn_ty));
-    // Things that return by reference must put their arguments (FIXME only
-    // the referenced arguments) into the outer scope, so that they are still
-    // alive when the return value is used.
-    let cx = if by_ref { in_cx } else {
-        let cx = new_scope_block_ctxt(in_cx, "call");
-        Br(in_cx, cx.llbb);
-        cx
-    };
+    let cx = new_scope_block_ctxt(in_cx, "call");
     let f_res = trans_lval_gen(cx, f);
     let bcx = f_res.res.bcx;
 
@@ -3710,7 +3712,8 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
 
     let ret_ty = ty::node_id_to_type(bcx_tcx(cx), id);
     let args_res =
-        trans_args(bcx, llenv, f_res.generic, lliterbody, args, fn_ty);
+        trans_args(bcx, in_cx, llenv, f_res.generic, lliterbody, args, fn_ty);
+    Br(args_res.outer_cx, cx.llbb);
     bcx = args_res.bcx;
     let llargs = args_res.args;
     let llretslot = args_res.retslot;

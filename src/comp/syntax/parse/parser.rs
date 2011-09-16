@@ -448,15 +448,18 @@ fn parse_ret_ty(p: parser, n_args: uint) -> (ast::ret_style, @ast::ty) {
                 if n_args == 0u {
                     p.fatal("can not return reference from argument-less fn");
                 }
-                let mut_root = eat(p, token::NOT), arg = 0u;
+                let mut_root = eat(p, token::NOT), arg = 1u;
                 alt p.peek() {
                   token::LIT_INT(val) { p.bump(); arg = val as uint; }
                   _ { if n_args > 1u {
                       p.fatal("must specify referenced parameter");
                   } }
                 }
-                if arg >= n_args {
+                if arg > n_args {
                     p.fatal("referenced argument does not exist");
+                }
+                if arg == 0u {
+                    p.fatal("referenced argument can't be 0");
                 }
                 style = ast::return_ref(mut_root, arg);
             };

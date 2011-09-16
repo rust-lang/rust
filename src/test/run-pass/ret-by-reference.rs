@@ -6,7 +6,7 @@ fn get<@T>(opt: option<T>) -> &T {
     }
 }
 
-fn get_mut(a: {mutable x: @int}, _b: int) -> &!0 @int {
+fn get_mut(a: {mutable x: @int}, _b: int) -> &!1 @int {
     ret a.x;
 }
 

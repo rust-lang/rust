@@ -72,7 +72,9 @@ fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], _sp: span,
                              "return implicitly");
     }
     let ret_info = alt f.decl.cf {
-      ast::return_ref(mut, n_arg) { by_ref(mut, f.decl.inputs[n_arg].id) }
+      ast::return_ref(mut, n_arg) {
+        by_ref(mut, f.decl.inputs[n_arg - 1u].id)
+      }
       _ { other }
     };
     v.visit_block(f.body, {bs: bs, ret_info: ret_info}, v);
@@ -220,7 +222,9 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
 
 fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
-    let ret_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(cx.tcx, fty));
+    let by_ref = alt ty::ty_fn_ret_style(cx.tcx, fty) {
+      ast::return_ref(_, arg_n) { arg_n } _ { 0u }
+    };
     let arg_ts = ty::ty_fn_args(cx.tcx, fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
     let bindings = [];
@@ -246,7 +250,9 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
                        mutable ok: valid,
                        mutable copied: alt arg_t.mode {
                          ast::by_move. { copied }
-                         ast::by_ref. { ret_ref ? not_allowed : not_copied }
+                         ast::by_ref. {
+                           i + 1u == by_ref ? not_allowed : not_copied
+                         }
                          ast::by_mut_ref. { not_allowed }
                        }}];
         i += 1u;
@@ -683,7 +689,7 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool) ->
             let fty = ty::type_autoderef(cx.tcx, ty::expr_ty(cx.tcx, f));
             alt ty::ty_fn_ret_style(cx.tcx, fty) {
               ast::return_ref(mut, arg_n) {
-                let arg = args[arg_n];
+                let arg = args[arg_n - 1u];
                 let arg_root = expr_root(cx, arg, false);
                 ret {ex: arg_root.ex,
                      ds: @(*arg_root.ds +
