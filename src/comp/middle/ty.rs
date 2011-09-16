@@ -92,7 +92,6 @@ export pat_ty;
 export cname;
 export rename;
 export ret_ty_of_fn;
-export ret_ty_of_fn_ty;
 export sequence_element_type;
 export struct;
 export sort_methods;
@@ -1600,11 +1599,21 @@ fn ty_fn_abi(cx: ctxt, fty: t) -> ast::native_abi {
     }
 }
 
-fn ty_fn_ret(cx: ctxt, fty: t) -> t {
-    alt struct(cx, fty) {
+pure fn ty_fn_ret(cx: ctxt, fty: t) -> t {
+    // Should be pure, as type interner contents
+    // shouldn't change once set...
+    let sty = unchecked { struct(cx, fty) };
+    alt sty {
       ty::ty_fn(_, _, r, _, _) { ret r; }
       ty::ty_native_fn(_, _, r) { ret r; }
-      _ { cx.sess.bug("ty_fn_ret() called on non-fn type"); }
+      _ {
+        // Unchecked is ok since we diverge here
+        // (might want to change the typechecker to allow
+        // it without an unchecked)
+        // Or, it wouldn't be necessary if we had the right
+        // typestate constraint on cx and t (then we could
+        // call unreachable() instead)
+        unchecked { cx.sess.bug("ty_fn_ret() called on non-fn type"); }}
     }
 }
 
@@ -2634,19 +2643,8 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_kinds_and_ty {
     }
 }
 
-fn ret_ty_of_fn_ty(cx: ctxt, a_ty: t) -> t {
-    alt ty::struct(cx, a_ty) {
-      ty::ty_fn(_, _, ret_ty, _, _) { ret ret_ty; }
-      ty::ty_native_fn(_, _, ret_ty) { ret ret_ty; }
-      _ {
-        cx.sess.bug("ret_ty_of_fn_ty() called on non-function type: " +
-                        ty_to_str(cx, a_ty));
-      }
-    }
-}
-
 fn ret_ty_of_fn(cx: ctxt, id: ast::node_id) -> t {
-    ret ret_ty_of_fn_ty(cx, node_id_to_type(cx, id));
+    ty_fn_ret(cx, node_id_to_type(cx, id))
 }
 
 fn is_binopable(cx: ctxt, ty: t, op: ast::binop) -> bool {
