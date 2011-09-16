@@ -3103,19 +3103,10 @@ fn trans_lval_gen(cx: @block_ctxt, e: @ast::expr) -> lval_result {
             };
         ret lval_mem(sub.bcx, val);
       }
-      ast::expr_uniq(contents) { ret trans_uniq(cx, contents); }
       ast::expr_self_method(ident) {
         alt copy cx.fcx.llself {
           some(pair) {
-            let r = pair.v;
-            let t = pair.t;
-            ret trans_field(cx, e.span, r, t, ident);
-          }
-          _ {
-            // Shouldn't happen.
-            bcx_ccx(cx).sess.bug("trans_lval called on \
-                                         expr_self_method in \
-                                         a context without llself");
+            ret trans_field(cx, e.span, pair.v, pair.t, ident);
           }
         }
       }
@@ -4109,6 +4100,7 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
         CondBr(cx, cond, then_cx.llbb, else_cx.llbb);
         ret rslt(join_branches(cx, [check_res, els]), C_nil());
       }
+      ast::expr_uniq(contents) { ret trans_uniq(cx, contents); }
       ast::expr_break. { ret trans_break(e.span, cx); }
       ast::expr_cont. { ret trans_cont(e.span, cx); }
       ast::expr_ret(ex) { ret trans_ret(cx, ex); }
@@ -4348,7 +4340,7 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     ret rslt(next_cx, C_nil());
 }
 
-fn trans_uniq(cx: @block_ctxt, contents: @ast::expr) -> lval_result {
+fn trans_uniq(cx: @block_ctxt, contents: @ast::expr) -> result {
     let bcx = cx;
 
     let contents_ty = ty::expr_ty(bcx_tcx(bcx), contents);
@@ -4364,7 +4356,7 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr) -> lval_result {
 
     let llptr = Load(bcx, llptrptr);
     r = trans_expr_out(bcx, contents, save_in(llptr));
-    ret lval_val(r.bcx, llptrptr);
+    ret rslt(r.bcx, llptrptr);
 }
 
 fn trans_break_cont(sp: span, cx: @block_ctxt, to_end: bool) -> result {
