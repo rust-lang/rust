@@ -3709,9 +3709,10 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let bcx = f_res.bcx;
 
     let faddr = f_res.val;
-    let llenv = alt f_res.env {
-      null_env. { C_null(T_opaque_closure_ptr(*bcx_ccx(cx))) }
-      some_env(e) { e }
+    let llenv;
+    alt f_res.env {
+      null_env. { llenv = C_null(T_opaque_closure_ptr(*bcx_ccx(cx))); }
+      some_env(e) { llenv = e; }
       is_closure. {
         // It's a closure. Have to fetch the elements
         if f_res.is_mem { faddr = load_if_immediate(bcx, faddr, fn_expr_ty); }
@@ -3719,9 +3720,9 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         faddr = GEP(bcx, pair, [C_int(0), C_int(abi::fn_field_code)]);
         faddr = Load(bcx, faddr);
         let llclosure = GEP(bcx, pair, [C_int(0), C_int(abi::fn_field_box)]);
-        Load(bcx, llclosure)
+        llenv = Load(bcx, llclosure);
       }
-    };
+    }
 
     let ret_ty = ty::node_id_to_type(bcx_tcx(cx), id);
     let args_res =
