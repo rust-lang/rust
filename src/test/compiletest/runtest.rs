@@ -41,6 +41,7 @@ fn run_cfail_test(cx: cx, props: test_props, testfile: str) {
         fatal_procres("compile-fail test compiled successfully!", procres);
     }
 
+    check_correct_failure_status(procres);
     check_error_patterns(props, testfile, procres);
 }
 
@@ -57,16 +58,19 @@ fn run_rfail_test(cx: cx, props: test_props, testfile: str) {
         fatal_procres("run-fail test isn't valgrind-clean!", procres);
     }
 
+    check_correct_failure_status(procres);
+    check_error_patterns(props, testfile, procres);
+}
+
+fn check_correct_failure_status(procres: procres) {
     // The value the rust runtime returns on failure
     const rust_err: int = 101;
     if procres.status != rust_err {
         fatal_procres(
-            #fmt("run-fail test produced the wrong error code: %d",
+            #fmt("failure produced the wrong error code: %d",
                  procres.status),
             procres);
     }
-
-    check_error_patterns(props, testfile, procres);
 }
 
 fn run_rpass_test(cx: cx, props: test_props, testfile: str) {
