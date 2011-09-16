@@ -48,13 +48,20 @@ import tvec = trans_vec;
 
 fn type_of(cx: @crate_ctxt, sp: span, t: ty::t) : type_has_static_size(cx, t)
    -> TypeRef {
+    // Should follow from type_has_static_size -- argh.
+    // FIXME
+    check non_ty_var(cx, t);
     type_of_inner(cx, sp, t)
 }
 
 fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
    [TypeRef] {
     let atys = [];
-    for arg in inputs { atys += [T_ptr(type_of_inner(cx, sp, arg.ty))]; }
+    for arg in inputs {
+        let arg_ty = arg.ty;
+        check non_ty_var(cx, arg_ty);
+        atys += [T_ptr(type_of_inner(cx, sp, arg_ty))];
+    }
     ret atys;
 }
 
@@ -71,6 +78,7 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
     let atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
+    check non_ty_var(cx, output);
     let out_ty = T_ptr(type_of_inner(cx, sp, output));
     atys += [ret_ref ? T_ptr(out_ty) : out_ty];
 
@@ -91,7 +99,13 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
         // If it's an iter, the 'output' type of the iter is actually the
         // *input* type of the function we're given as our iter-block
         // argument.
-        atys += [type_of_inner(cx, sp, ty::mk_iter_body_fn(cx.tcx, output))];
+        let iter_body_ty = ty::mk_iter_body_fn(cx.tcx, output);
+        // FIXME: this check could be avoided pretty easily if we had
+        // postconditions
+        // (or better yet, just use a constraiend type that expresses
+        // non-ty-var things)
+        check non_ty_var(cx, iter_body_ty);
+        atys += [type_of_inner(cx, sp, iter_body_ty)];
     }
     // ... then explicit args.
     atys += type_of_explicit_args(cx, sp, inputs);
@@ -102,9 +116,12 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
 fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
                       ty_param_count: uint) -> TypeRef {
     let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(cx.tcx, fty));
+    // FIXME: constraint?
+    let ret_ty = ty::ty_fn_ret(cx.tcx, fty);
+    check non_ty_var(cx, ret_ty);
     ret type_of_fn(cx, sp, ty::ty_fn_proto(cx.tcx, fty),
                    false, by_ref, ty::ty_fn_args(cx.tcx, fty),
-                   ty::ty_fn_ret(cx.tcx, fty), ty_param_count);
+                   ret_ty, ty_param_count);
 }
 
 fn type_of_native_fn(cx: @crate_ctxt, sp: span, abi: ast::native_abi,
@@ -117,83 +134,97 @@ fn type_of_native_fn(cx: @crate_ctxt, sp: span, abi: ast::native_abi,
         while i < ty_param_count { atys += [T_ptr(cx.tydesc_type)]; i += 1u; }
     }
     atys += type_of_explicit_args(cx, sp, inputs);
+    check non_ty_var(cx, output);
     ret T_fn(atys, type_of_inner(cx, sp, output));
 }
 
-/* FIXME: could add type_has_static_size as a constraint,
-   allowing us to get rid of some impossible cases. */
-fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t) -> TypeRef {
+fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
+    : non_ty_var(cx, t) -> TypeRef {
     // Check the cache.
 
     if cx.lltypes.contains_key(t) { ret cx.lltypes.get(t); }
-    let llty: TypeRef = 0 as TypeRef;
+    let llty =
     alt ty::struct(cx.tcx, t) {
-      ty::ty_native(_) { llty = T_ptr(T_i8()); }
-      ty::ty_nil. { llty = T_nil(); }
+      ty::ty_native(_) { T_ptr(T_i8()) }
+      ty::ty_nil. { T_nil() }
       ty::ty_bot. {
-        llty = T_nil(); /* ...I guess? */
-
+        T_nil() /* ...I guess? */
       }
-      ty::ty_bool. { llty = T_bool(); }
-      ty::ty_int. { llty = T_int(); }
-      ty::ty_float. { llty = T_float(); }
-      ty::ty_uint. { llty = T_int(); }
+      ty::ty_bool. { T_bool() }
+      ty::ty_int. { T_int() }
+      ty::ty_float. { T_float() }
+      ty::ty_uint. { T_int() }
       ty::ty_machine(tm) {
         alt tm {
-          ast::ty_i8. { llty = T_i8(); }
-          ast::ty_u8. { llty = T_i8(); }
-          ast::ty_i16. { llty = T_i16(); }
-          ast::ty_u16. { llty = T_i16(); }
-          ast::ty_i32. { llty = T_i32(); }
-          ast::ty_u32. { llty = T_i32(); }
-          ast::ty_i64. { llty = T_i64(); }
-          ast::ty_u64. { llty = T_i64(); }
-          ast::ty_f32. { llty = T_f32(); }
-          ast::ty_f64. { llty = T_f64(); }
+          ast::ty_i8. | ast::ty_u8. { T_i8() }
+          ast::ty_i16. | ast::ty_u16. { T_i16() }
+          ast::ty_i32. | ast::ty_u32. { T_i32() }
+          ast::ty_i64. | ast::ty_u64. { T_i64() }
+          ast::ty_f32. { T_f32() }
+          ast::ty_f64. { T_f64() }
         }
       }
-      ty::ty_char. { llty = T_char(); }
-      ty::ty_str. { llty = T_ptr(T_vec(T_i8())); }
-      ty::ty_tag(did, _) { llty = type_of_tag(cx, sp, did, t); }
-      ty::ty_box(mt) { llty = T_ptr(T_box(type_of_inner(cx, sp, mt.ty))); }
-      ty::ty_uniq(t) { llty = T_ptr(type_of_inner(cx, sp, t)); }
+      ty::ty_char. { T_char() }
+      ty::ty_str. { T_ptr(T_vec(T_i8())) }
+      ty::ty_tag(did, _) { type_of_tag(cx, sp, did, t) }
+      ty::ty_box(mt) {
+        let mt_ty = mt.ty;
+        check non_ty_var(cx, mt_ty);
+        T_ptr(T_box(type_of_inner(cx, sp, mt_ty))) }
+      ty::ty_uniq(t) {
+        check non_ty_var(cx, t);
+        T_ptr(type_of_inner(cx, sp, t)) }
       ty::ty_vec(mt) {
-        if ty::type_has_dynamic_size(cx.tcx, mt.ty) {
-            llty = T_ptr(T_opaque_vec());
-        } else { llty = T_ptr(T_vec(type_of_inner(cx, sp, mt.ty))); }
+        let mt_ty = mt.ty;
+        if ty::type_has_dynamic_size(cx.tcx, mt_ty) {
+            T_ptr(T_opaque_vec())
+        } else {
+            // should be unnecessary
+            check non_ty_var(cx, mt_ty);
+            T_ptr(T_vec(type_of_inner(cx, sp, mt_ty))) }
       }
-      ty::ty_ptr(mt) { llty = T_ptr(type_of_inner(cx, sp, mt.ty)); }
+      ty::ty_ptr(mt) {
+        let mt_ty = mt.ty;
+        check non_ty_var(cx, mt_ty);
+        T_ptr(type_of_inner(cx, sp, mt_ty)) }
       ty::ty_rec(fields) {
         let tys: [TypeRef] = [];
         for f: ty::field in fields {
-            tys += [type_of_inner(cx, sp, f.mt.ty)];
+            let mt_ty = f.mt.ty;
+            check non_ty_var(cx, mt_ty);
+            tys += [type_of_inner(cx, sp, mt_ty)];
         }
-        llty = T_struct(tys);
+        T_struct(tys)
       }
       ty::ty_fn(_, _, _, _, _) {
-        llty = T_fn_pair(*cx, type_of_fn_from_ty(cx, sp, t, 0u));
+        T_fn_pair(*cx, type_of_fn_from_ty(cx, sp, t, 0u))
       }
       ty::ty_native_fn(abi, args, out) {
         let nft = native_fn_wrapper_type(cx, sp, 0u, t);
-        llty = T_fn_pair(*cx, nft);
+        T_fn_pair(*cx, nft)
       }
-      ty::ty_obj(meths) { llty = cx.rust_object_type; }
+      ty::ty_obj(meths) { cx.rust_object_type }
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
+        check non_ty_var(cx, sub1);
         ret T_struct([T_i32(), type_of_inner(cx, sp, sub1)]);
       }
       ty::ty_var(_) {
+        // FIXME should be a constraint that makes this impossible
+        // (use unreachable())
         cx.tcx.sess.span_fatal(sp, "trans::type_of called on ty_var");
       }
-      ty::ty_param(_, _) { llty = T_typaram(cx.tn); }
-      ty::ty_type. { llty = T_ptr(cx.tydesc_type); }
+      ty::ty_param(_, _) { T_typaram(cx.tn) }
+      ty::ty_type. { T_ptr(cx.tydesc_type) }
       ty::ty_tup(elts) {
         let tys = [];
-        for elt in elts { tys += [type_of_inner(cx, sp, elt)]; }
-        llty = T_struct(tys);
+        for elt in elts {
+            check non_ty_var(cx, elt);
+            tys += [type_of_inner(cx, sp, elt)];
+        }
+        T_struct(tys)
       }
-    }
-    assert (llty as int != 0);
+    };
     cx.lltypes.insert(t, llty);
     ret llty;
 }
@@ -1131,6 +1162,7 @@ fn declare_generic_glue(cx: @local_ctxt, t: ty::t, llfnty: TypeRef, name: str)
     ret llfn;
 }
 
+// FIXME: was this causing the leak?
 fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
                            llfn: ValueRef, helper: glue_helper,
                            ty_params: [uint]) -> ValueRef {
@@ -3296,8 +3328,10 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // The 'llretptr' that will arrive in the thunk we're creating also needs
     // to be the correct type.  Cast it to f's return type, if necessary.
     let llretptr = fcx.llretptr;
-    if ty::type_contains_params(cx.ccx.tcx, outgoing_ret_ty) {
-        let llretty = type_of_inner(cx.ccx, sp, outgoing_ret_ty);
+    let ccx = cx.ccx;
+    if ty::type_contains_params(ccx.tcx, outgoing_ret_ty) {
+        check non_ty_var(ccx, outgoing_ret_ty);
+        let llretty = type_of_inner(ccx, sp, outgoing_ret_ty);
         llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
     }
 
@@ -3573,6 +3607,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
         // type deep in a structure -- which the caller has a concrete view
         // of. If so, cast the caller's view of the restlot to the callee's
         // view, for the sake of making a type-compatible call.
+        check non_ty_var(ccx, retty);
         let llretty = T_ptr(type_of_inner(ccx, bcx.sp, retty));
         if by_ref { llretty = T_ptr(llretty); }
         llargs += [PointerCast(cx, llretslot, llretty)];
@@ -3594,6 +3629,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef, gen: option::t<generic_info>,
         let lli =
             if ty::type_contains_params(tcx, retty) {
                 let body_ty = ty::mk_iter_body_fn(tcx, retty);
+                check non_ty_var(ccx, body_ty);
                 let body_llty = type_of_inner(ccx, cx.sp, body_ty);
                 PointerCast(bcx, lli, T_ptr(body_llty))
             } else { lli };
@@ -3884,7 +3920,7 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
 }
 
 fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
-    ret trans_expr_out(cx, e, return);
+    trans_expr_out(cx, e, return)
 }
 
 fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
@@ -4531,7 +4567,7 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t) -> result {
         // let llalign = align_of(llsz.bcx, t);
         bcx = call_bzero(llsz.bcx, llptr, llsz.val, C_int(0)).bcx;
     }
-    ret rslt(bcx, llptr);
+    rslt(bcx, llptr)
 }
 
 fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> result {
@@ -5372,6 +5408,7 @@ fn decl_fn_and_pair_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
         type_of_fn_from_ty(ccx, sp, node_type, std::vec::len(ty_params));
     alt ty::struct(ccx.tcx, node_type) {
       ty::ty_fn(proto, inputs, output, rs, _) {
+        check non_ty_var(ccx, output);
         llfty = type_of_fn(ccx, sp, proto, false,
                            ast_util::ret_by_ref(rs), inputs, output,
                            vec::len(ty_params));
@@ -5412,8 +5449,12 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let vecarg_ty: ty::arg =
             {mode: ast::by_ref,
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
+        // FIXME: mk_nil should have a post condition
+        let nt = ty::mk_nil(ccx.tcx);
+        check non_ty_var(ccx, nt);
+
         let llfty = type_of_fn(ccx, sp, ast::proto_fn, false, false,
-                               [vecarg_ty], ty::mk_nil(ccx.tcx), 0u);
+                               [vecarg_ty], nt, 0u);
         let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main", llfty);
 
         let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
@@ -5514,6 +5555,7 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
       ty::ty_native_fn(abi, args, out) {
+        check non_ty_var(cx, out);
         ret type_of_fn(cx, sp, ast::proto_fn, false, false, args, out,
                        ty_param_count);
       }

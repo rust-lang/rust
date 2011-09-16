@@ -627,8 +627,11 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     // creating also needs to be the correct type.  Cast it to the method's
     // return type, if necessary.
     let llretptr = fcx.llretptr;
-    if ty::type_contains_params(cx.ccx.tcx, m.output) {
-        let llretty = type_of_inner(cx.ccx, sp, m.output);
+    let ccx = cx.ccx;
+    if ty::type_contains_params(ccx.tcx, m.output) {
+        let m_output = m.output;
+        check non_ty_var(ccx, m_output);
+        let llretty = type_of_inner(ccx, sp, m_output);
         llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
     }
 
@@ -732,8 +735,11 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     // creating also needs to be the correct type.  Cast it to the method's
     // return type, if necessary.
     let llretptr = fcx.llretptr;
-    if ty::type_contains_params(cx.ccx.tcx, m.output) {
-        let llretty = type_of_inner(cx.ccx, sp, m.output);
+    let ccx = cx.ccx;
+    if ty::type_contains_params(ccx.tcx, m.output) {
+        let m_output = m.output;
+        check non_ty_var(ccx, m_output);
+        let llretty = type_of_inner(ccx, sp, m_output);
         llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
     }
 
@@ -881,7 +887,9 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     let llfnty = T_nil();
     alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.node.id)) {
       ty::ty_fn(proto, inputs, output, rs, _) {
-        llfnty = type_of_fn(cx.ccx, m.span, proto, true,
+        let ccx = cx.ccx;
+        check non_ty_var(ccx, output);
+        llfnty = type_of_fn(ccx, m.span, proto, true,
                             ast_util::ret_by_ref(rs), inputs, output,
                             vec::len(ty_params));
       }
@@ -933,8 +941,10 @@ fn populate_self_stack(bcx: @block_ctxt, self_stack: ValueRef,
 
 fn type_of_meth(ccx: @crate_ctxt, sp: span, m: @ty::method,
                 tps: [ast::ty_param]) -> TypeRef {
+    let out_ty = m.output;
+    check non_ty_var(ccx, out_ty);
     type_of_fn(ccx, sp, m.proto, true, ast_util::ret_by_ref(m.cf),
-               m.inputs, m.output, vec::len(tps))
+               m.inputs, out_ty, vec::len(tps))
 }
 
 //
