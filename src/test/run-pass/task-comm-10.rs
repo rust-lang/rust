@@ -1,29 +1,27 @@
-// FIXME: this test is xfailed until sending strings is legal again.
-
-//xfail-test
-
 use std;
 import std::task;
 import std::comm;
 
-fn start(c: comm::_chan<str>) {
-    let p = comm::mk_port::<str>();
-    c.send(p.mk_chan().unsafe_ptr());
+fn start(c: comm::chan<comm::chan<str>>) {
+    let p = comm::port();
+    comm::send(c, comm::chan(p));
 
     let a;
     let b;
-    a = p.recv();
+    a = comm::recv(p);
+    assert a == "A";
     log_err a;
-    b = p.recv();
+    b = comm::recv(p);
+    assert b == "B";
     log_err b;
 }
 
 fn main() {
-    let p = comm::mk_port();
-    let child = task::_spawn(bind start(p.mk_chan()));
+    let p = comm::port();
+    let child = task::spawn(bind start(comm::chan(p)));
 
-    let c = p.recv();
-    c.send("A");
-    c.send("B");
+    let c = comm::recv(p);
+    comm::send(c, "A");
+    comm::send(c, "B");
     task::yield();
 }

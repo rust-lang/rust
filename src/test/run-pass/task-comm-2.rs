@@ -1,6 +1,4 @@
-// Broken under win
-// xfail-test
-
+// xfail-win32
 use std;
 
 import std::task;
@@ -21,10 +19,10 @@ fn test00() {
     let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [task::_spawn(bind start(i))];
+        tasks += [task::spawn_joinable(bind start(i))];
     }
 
-    for t: task::task_id in tasks { task::join_id(t); }
+    for t in tasks { task::join(t); }
 
     log "Joined all task.";
 }
