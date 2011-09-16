@@ -857,6 +857,10 @@ pure fn non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
     }
 }
 
+pure fn returns_non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
+    non_ty_var(cx, ty::ty_fn_ret(cx.tcx, t))
+}
+
 //
 // Local Variables:
 // mode: rust
