@@ -49,7 +49,7 @@ import tvec = trans_vec;
 fn type_of(cx: @crate_ctxt, sp: span, t: ty::t) : type_has_static_size(cx, t)
    -> TypeRef {
     // Should follow from type_has_static_size -- argh.
-    // FIXME
+    // FIXME (requires Issue #586)
     check non_ty_var(cx, t);
     type_of_inner(cx, sp, t)
 }
@@ -59,6 +59,8 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
     let atys = [];
     for arg in inputs {
         let arg_ty = arg.ty;
+        // FIXME: would be nice to have a constraint on arg
+        // that would obviate the need for this check
         check non_ty_var(cx, arg_ty);
         atys += [T_ptr(type_of_inner(cx, sp, arg_ty))];
     }
@@ -114,9 +116,12 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
 
 // Given a function type and a count of ty params, construct an llvm type
 fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
-                      ty_param_count: uint) -> TypeRef {
+                      ty_param_count: uint)
+    : returns_non_ty_var(cx, fty) -> TypeRef {
     let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(cx.tcx, fty));
-    // FIXME: constraint?
+    // FIXME: Check should be unnecessary, b/c it's implied
+    // by returns_non_ty_var(t). Make that a postcondition
+    // (see Issue #586)
     let ret_ty = ty::ty_fn_ret(cx.tcx, fty);
     check non_ty_var(cx, ret_ty);
     ret type_of_fn(cx, sp, ty::ty_fn_proto(cx.tcx, fty),
@@ -197,6 +202,8 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         T_struct(tys)
       }
       ty::ty_fn(_, _, _, _, _) {
+        // FIXME: could be a constraint on ty_fn
+        check returns_non_ty_var(cx, t);
         T_fn_pair(*cx, type_of_fn_from_ty(cx, sp, t, 0u))
       }
       ty::ty_native_fn(abi, args, out) {
@@ -251,6 +258,7 @@ fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: span,
     let t = tpt.ty;
     alt ty::struct(cx.tcx, t) {
       ty::ty_fn(_, _, _, _, _) {
+        check returns_non_ty_var(cx, t);
         let llfnty = type_of_fn_from_ty(cx, sp, t, std::vec::len(tpt.kinds));
         ret T_fn_pair(*cx, llfnty);
       }
@@ -2717,27 +2725,30 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
     // Step 1: Generate code to build an environment containing pointers
     // to all of the upvars
     let lcx = cx.fcx.lcx;
+    let ccx = lcx.ccx;
 
     // FIXME: possibly support alias-mode here?
-    let decl_ty = node_id_type(lcx.ccx, local.node.id);
-    let upvars = get_freevars(lcx.ccx.tcx, body.node.id);
+    let decl_ty = node_id_type(ccx, local.node.id);
+    let upvars = get_freevars(ccx.tcx, body.node.id);
 
     let llenv = build_closure(cx, upvars, false);
 
     // Step 2: Declare foreach body function.
     let s: str =
-        mangle_internal_name_by_path_and_seq(lcx.ccx, lcx.path, "foreach");
+        mangle_internal_name_by_path_and_seq(ccx, lcx.path, "foreach");
 
     // The 'env' arg entering the body function is a fake env member (as in
     // the env-part of the normal rust calling convention) that actually
     // points to a stack allocated env in this frame. We bundle that env
     // pointer along with the foreach-body-fn pointer into a 'normal' fn pair
     // and pass it in as a first class fn-arg to the iterator.
+    let iter_body_fn = ty::mk_iter_body_fn(ccx.tcx, decl_ty);
+    // FIXME: should be a postcondition on mk_iter_body_fn
+    check returns_non_ty_var(ccx, iter_body_fn);
     let iter_body_llty =
-        type_of_fn_from_ty(lcx.ccx, cx.sp,
-                           ty::mk_iter_body_fn(lcx.ccx.tcx, decl_ty), 0u);
+        type_of_fn_from_ty(ccx, cx.sp, iter_body_fn, 0u);
     let lliterbody: ValueRef =
-        decl_internal_fastcall_fn(lcx.ccx.llmod, s, iter_body_llty);
+        decl_internal_fastcall_fn(ccx.llmod, s, iter_body_llty);
     let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id,
                                ast::return_val);
     fcx.iterbodyty = cx.fcx.iterbodyty;
@@ -3258,16 +3269,21 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id) -> result {
     ret rslt(e_res.bcx, newval);
 }
 
+// pth is cx.path
 fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
                     outgoing_fty: ty::t, args: [option::t<@ast::expr>],
                     env_ty: ty::t, ty_param_count: uint,
-                    target_fn: option::t<ValueRef>) ->
-   {val: ValueRef, ty: TypeRef} {
-    // FIXME
-    // This should be a precondition on trans_bind_thunk, but we would need
-    // to support record fields as constraint args
-    let ccx = cx.ccx;
-    check (type_has_static_size(ccx, incoming_fty));
+                    target_fn: option::t<ValueRef>)
+    -> {val: ValueRef, ty: TypeRef} {
+// If we supported constraints on record fields, we could make the
+// constraints for this function:
+/*
+    : returns_non_ty_var(ccx, outgoing_fty),
+      type_has_static_size(ccx, incoming_fty) ->
+*/
+// but since we don't, we have to do the checks at the beginning.
+          let ccx = cx.ccx;
+          check type_has_static_size(ccx, incoming_fty);
 
     // Here we're not necessarily constructing a thunk in the sense of
     // "function with no arguments".  The result of compiling 'bind f(foo,
@@ -3424,8 +3440,11 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // This is necessary because the type of the function that we have
     // in the closure does not know how many type descriptors the function
     // needs to take.
+    let ccx = bcx_ccx(bcx);
+
+    check returns_non_ty_var(ccx, outgoing_fty);
     let lltargetty =
-        type_of_fn_from_ty(bcx_ccx(bcx), sp, outgoing_fty, ty_param_count);
+        type_of_fn_from_ty(ccx, sp, outgoing_fty, ty_param_count);
     lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
     FastCall(bcx, lltargetfn, llargs);
     build_return(bcx);
@@ -3972,8 +3991,10 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
       }
       ast::expr_fn(f) {
         let ccx = bcx_ccx(cx);
+        let fty = node_id_type(ccx, e.id);
+        check returns_non_ty_var(ccx, fty);
         let llfnty: TypeRef =
-            type_of_fn_from_ty(ccx, e.span, node_id_type(ccx, e.id), 0u);
+            type_of_fn_from_ty(ccx, e.span, fty, 0u);
         let sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
         let s = mangle_internal_name_by_path(ccx, sub_cx.path);
         let llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
@@ -5416,13 +5437,16 @@ fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
 
 fn decl_fn_and_pair(ccx: @crate_ctxt, sp: span, path: [str], flav: str,
                     ty_params: [ast::ty_param], node_id: ast::node_id) {
-    decl_fn_and_pair_full(ccx, sp, path, flav, ty_params, node_id,
-                          node_id_type(ccx, node_id));
+    // FIXME: pull this out
+    let t = node_id_type(ccx, node_id);
+    check returns_non_ty_var(ccx, t);
+    decl_fn_and_pair_full(ccx, sp, path, flav, ty_params, node_id, t);
 }
 
 fn decl_fn_and_pair_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
                          ty_params: [ast::ty_param], node_id: ast::node_id,
-                         node_type: ty::t) {
+                         node_type: ty::t)
+    : returns_non_ty_var(ccx, node_type) {
     let path = path;
     let llfty =
         type_of_fn_from_ty(ccx, sp, node_type, std::vec::len(ty_params));
@@ -5830,8 +5854,10 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, pt: [str], v: vt<[str]>) {
         // the dtor_id. This is a bit counter-intuitive, but simplifies
         // ty_res, which would have to carry around two def_ids otherwise
         // -- one to identify the type, and one to find the dtor symbol.
-        decl_fn_and_pair_full(ccx, i.span, new_pt, "res_dtor", tps, i.id,
-                              node_id_type(ccx, dtor_id));
+        let t = node_id_type(ccx, dtor_id);
+        // FIXME: how to get rid of this check?
+        check returns_non_ty_var(ccx, t);
+        decl_fn_and_pair_full(ccx, i.span, new_pt, "res_dtor", tps, i.id, t);
       }
       _ { }
     }
