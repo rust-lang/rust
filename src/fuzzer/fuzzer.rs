@@ -39,40 +39,39 @@ fn find_rust_files(&files: [str], path: str) {
 
 fn safe_to_steal_expr(e: @ast::expr) -> bool {
     alt e.node {
+      /*
+      // For compiling (rather than pretty-printing)
+      // combination of https://github.com/graydon/rust/issues/924 with unwind hang?
+      ast::expr_ret(option::none.) { false }
+      */
 
-      // https://github.com/graydon/rust/issues/890
-      ast::expr_lit(lit) {
-        alt lit.node {
-          ast::lit_str(_) { true }
-          ast::lit_char(_) { true }
-          ast::lit_int(_) { false }
-          ast::lit_uint(_) { true }
-          ast::lit_mach_int(_, _) { false }
-          ast::lit_float(_) { false }
-          ast::lit_mach_float(_, _) { false }
-          ast::lit_nil. { true }
-          ast::lit_bool(_) { true }
-        }
-      }
+      // If the fuzzer moves a block-ending-in-semicolon into callee position,
+      // the pretty-printer can't preserve this even by parenthesizing!!
+      // See email to marijn.
+      ast::expr_if(_, _, _) { false }
+      ast::expr_block(_) { false }
+      ast::expr_alt(_, _) { false }
+      ast::expr_for(_, _, _) { false }
+      ast::expr_for_each(_, _, _) { false }
+      ast::expr_while(_, _) { false }
 
-      // https://github.com/graydon/rust/issues/890
+      // https://github.com/graydon/rust/issues/929
       ast::expr_cast(_, _) { false }
       ast::expr_assert(_) { false }
       ast::expr_binary(_, _, _) { false }
       ast::expr_assign(_, _) { false }
       ast::expr_assign_op(_, _, _) { false }
 
-      // https://github.com/graydon/rust/issues/764
       ast::expr_fail(option::none.) { false }
       ast::expr_ret(option::none.) { false }
       ast::expr_put(option::none.) { false }
 
-      // These prefix-operator keywords are not being parenthesized when in callee positions.
-      // https://github.com/graydon/rust/issues/891
-      ast::expr_ret(_) { false }
-      ast::expr_put(_) { false }
+      // https://github.com/graydon/rust/issues/927
+      //ast::expr_assert(_) { false }
       ast::expr_check(_, _) { false }
-      ast::expr_log(_, _) { false }
+
+      // https://github.com/graydon/rust/issues/928
+      //ast::expr_cast(_, _) { false }
 
       _ { true }
     }
@@ -138,7 +137,12 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr) ->
         *j_ += 1u;
         if i_ + 1u == *j_ && safe_to_replace_expr(original) {
             newexpr_
-        } else { fold::noop_fold_expr(original, fld) }
+        } else {
+            alt(original) {
+              ast::expr_fail(_) { original /* Don't replace inside fail: https://github.com/graydon/rust/issues/930 */ }
+              _ { fold::noop_fold_expr(original, fld) }
+            }
+        }
     }
     let afp =
         {fold_expr: bind fold_expr_rep(j, i, newexpr.node, _, _)
@@ -253,9 +257,13 @@ fn check_whole_compiler(code: str, suggested_filename: str) {
 }
 
 fn check_whole_compiler_inner(filename: str) -> compile_result {
+    /*
     let p = std::run::program_output(
             "/Users/jruderman/code/rust/build/stage1/rustc",
             ["-c", filename]);
+    */
+
+    let p = std::run::program_output("bash", ["-c", "DYLD_LIBRARY_PATH=/Users/jruderman/code/rust/build/stage0/lib:/Users/jruderman/code/rust/build/rustllvm/ /Users/jruderman/code/rust/build/stage1/rustc -c " + filename]);
 
     //log_err #fmt("Status: %d", p.status);
     if p.err != "" {
@@ -263,40 +271,51 @@ fn check_whole_compiler_inner(filename: str) -> compile_result {
             known_bug("https://github.com/graydon/rust/issues/892")
         } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\")") {
             known_bug("https://github.com/graydon/rust/issues/895")
-        } else if contains(p.err, "Initializer type must match GlobalVariable type") {
-            known_bug("https://github.com/graydon/rust/issues/899")
         } else if contains(p.err, "(castIsValid(op, S, Ty) && \"Invalid cast!\"), function Create") {
             known_bug("https://github.com/graydon/rust/issues/901")
         } else {
             log_err "Stderr: " + p.err;
             failed("Unfamiliar error message")
         }
-    } else if p.status == 256 {
-        if contains(p.out, "Out of stack space, sorry") {
-            known_bug("Recursive types - https://github.com/graydon/rust/issues/742")
-        } else {
-            log_err "Stdout: " + p.out;
-            failed("Unfamiliar sudden exit")
-        }
-    } else if p.status == 6 {
-        if contains(p.out, "get_id_ident: can't find item in ext_map") {
-            known_bug("https://github.com/graydon/rust/issues/876")
-        } else if contains(p.out, "Assertion !cx.terminated failed") {
-            known_bug("https://github.com/graydon/rust/issues/893 or https://github.com/graydon/rust/issues/894")
-        } else if !contains(p.out, "error:") {
-            log_err "Stdout: " + p.out;
-            failed("Rejected the input program without a span-error explanation")
-        } else {
-            passed("Rejected the input program cleanly")
-        }
-    } else if p.status == 11 {
-        failed("Crashed!?")
     } else if p.status == 0 {
         passed("Accepted the input program")
+    } else if contains(p.out, "Out of stack space, sorry") {
+        known_bug("Recursive types - https://github.com/graydon/rust/issues/742")
+    } else if contains(p.out, "Assertion !cx.terminated failed") {
+        known_bug("https://github.com/graydon/rust/issues/893 or https://github.com/graydon/rust/issues/894")
+//  } else if contains(p.out, "upcall fail 'non-exhaustive match failure', ../src/comp/middle/trans.rs") {
+    } else if contains(p.out, "trans_rec expected a rec but found _|_") {
+        known_bug("https://github.com/graydon/rust/issues/924")
+    } else if contains(p.out, "Assertion failed: (alloc->magic == MAGIC)") {
+        known_bug("https://github.com/graydon/rust/issues/934")
+    } else if contains(p.out, "Assertion failed: (S->getType()->isPointerTy() && \"Invalid cast\")") {
+        known_bug("https://github.com/graydon/rust/issues/935")
+    } else if contains(p.out, "Ptr must be a pointer to Val type") {
+        known_bug("https://github.com/graydon/rust/issues/897")
+    } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
+        log_err "Stdout: " + p.out;
+        failed("Looks like an llvm assertion failure")
+
+    } else if contains(p.out, "internal compiler error fail called with unsupported type _|_") {
+        known_bug("https://github.com/graydon/rust/issues/930")
+    } else if contains(p.out, "internal compiler error Translating unsupported cast") {
+        known_bug("https://github.com/graydon/rust/issues/932")
+    } else if contains(p.out, "internal compiler error sequence_element_type called on non-sequence value") {
+        known_bug("https://github.com/graydon/rust/issues/931")
+    } else if contains(p.out, "internal compiler error bit_num: asked for pred constraint, found an init constraint") {
+        known_bug("https://github.com/graydon/rust/issues/933")
+    } else if contains(p.out, "internal compiler error unimplemented") {
+        known_bug("Something unimplemented")
+    } else if contains(p.out, "internal compiler error") {
+        log_err "Stdout: " + p.out;
+        failed("internal compiler error")
+
+    } else if contains(p.out, "error:") {
+        passed("Rejected the input program cleanly")
     } else {
         log_err p.status;
         log_err "!Stdout: " + p.out;
-        failed("Unfamiliar status code")
+        failed("What happened?")
     }
 }
 
@@ -317,7 +336,7 @@ fn content_is_dangerous_to_modify(code: str) -> bool {
     let dangerous_patterns =
         ["#macro", // not safe to steal things inside of it, because they have a special syntax
          "#",      // strange representation of the arguments to #fmt, for example
-         "tag",    // typeck hang: https://github.com/graydon/rust/issues/900
+         "tag",    // typeck hang: https://github.com/graydon/rust/issues/742 (from dup #900)
          " be "];  // don't want to replace its child with a non-call: "Non-call expression in tail call"
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
@@ -337,7 +356,7 @@ fn content_is_confusing(code: str) -> bool {
 }
 
 fn file_is_confusing(filename: str) -> bool {
-    let confusing_files = [];
+    let confusing_files = ["expr-alt.rs"]; // pretty-printing "(a = b) = c" vs "a = b = c" and wrapping
 
     for f in confusing_files { if contains(filename, f) { ret true; } }
 
@@ -418,6 +437,7 @@ fn main(args: [str]) {
     find_rust_files(files, root);
     check_convergence(files);
     check_variants(files);
+
     log_err "Fuzzer done";
 }
 
