@@ -885,9 +885,9 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
                        ty_params: [ast::ty_param]) -> ValueRef {
 
     let llfnty = T_nil();
+    let ccx = cx.ccx;
     alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.node.id)) {
       ty::ty_fn(proto, inputs, output, rs, _) {
-        let ccx = cx.ccx;
         check non_ty_var(ccx, output);
         llfnty = type_of_fn(ccx, m.span, proto, true,
                             ast_util::ret_by_ref(rs), inputs, output,
@@ -897,13 +897,13 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     let mcx: @local_ctxt =
         @{path: cx.path + ["method", m.node.ident] with *cx};
     let s: str = mangle_internal_name_by_path(mcx.ccx, mcx.path);
-    let llfn: ValueRef = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
+    let llfn: ValueRef = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
 
     // Every method on an object gets its node_id inserted into the crate-wide
     // item_ids map, together with the ValueRef that points to where that
     // method's definition will be in the executable.
-    cx.ccx.item_ids.insert(m.node.id, llfn);
-    cx.ccx.item_symbols.insert(m.node.id, s);
+    ccx.item_ids.insert(m.node.id, llfn);
+    ccx.item_symbols.insert(m.node.id, s);
     trans_fn(mcx, m.span, m.node.meth, llfn, some(self_ty), ty_params,
              m.node.id);
 

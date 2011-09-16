@@ -74,11 +74,11 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
 //  - trans_args
 fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
               is_method: bool, ret_ref: bool, inputs: [ty::arg],
-              output: ty::t, ty_param_count: uint) -> TypeRef {
+              output: ty::t, ty_param_count: uint)
+   : non_ty_var(cx, output) -> TypeRef {
     let atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
-    check non_ty_var(cx, output);
     let out_ty = T_ptr(type_of_inner(cx, sp, output));
     atys += [ret_ref ? T_ptr(out_ty) : out_ty];
 
@@ -2073,6 +2073,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         // If we're here, it must be a temporary.
         ret revoke_clean(cx, src_val, t);
     }
+    /* FIXME: suggests a type constraint */
     bcx_ccx(cx).sess.bug("unexpected type in trans::move_val: " +
                              ty_to_str(tcx, t));
 }
@@ -2999,12 +3000,18 @@ fn trans_field(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
 
         let v = GEP(r.bcx, vtbl, [C_int(0), C_int(ix as int)]);
         let tcx = bcx_tcx(cx);
+        let ccx = bcx_ccx(cx);
+
         let fn_ty: ty::t = ty::method_ty_to_fn_ty(tcx, methods[ix]);
+        let ret_ty = ty::ty_fn_ret(tcx, fn_ty);
         let ret_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_ty));
+        // FIXME: constrain ty_obj?
+        check non_ty_var(ccx, ret_ty);
+
         let ll_fn_ty =
-            type_of_fn(bcx_ccx(cx), sp, ty::ty_fn_proto(tcx, fn_ty),
+            type_of_fn(ccx, sp, ty::ty_fn_proto(tcx, fn_ty),
                        true, ret_ref, ty::ty_fn_args(tcx, fn_ty),
-                       ty::ty_fn_ret(tcx, fn_ty), 0u);
+                       ret_ty, 0u);
         v = PointerCast(r.bcx, v, T_ptr(T_ptr(ll_fn_ty)));
         let lvo = lval_mem(r.bcx, v);
         ret {llobj: some::<ValueRef>(r.val) with lvo};
@@ -4581,7 +4588,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> result {
       }
       _ { bcx_ccx(cx).sess.unimpl("stmt variant"); }
     }
-    ret rslt(bcx, C_nil());
+    rslt(bcx, C_nil())
 }
 
 // You probably don't want to use this one. See the
@@ -5438,7 +5445,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let vecarg_ty: ty::arg =
             {mode: ast::by_ref,
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
-        // FIXME: mk_nil should have a post condition
+        // FIXME: mk_nil should have a postcondition
         let nt = ty::mk_nil(ccx.tcx);
         check non_ty_var(ccx, nt);
 
