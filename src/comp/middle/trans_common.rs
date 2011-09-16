@@ -335,9 +335,12 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
     }
 
     let params = csearch::get_type_param_count(ccx.sess.get_cstore(), did);
+    let nil_res = ty::mk_nil(ccx.tcx);
+    // FIXME: Silly check -- mk_nil should have a postcondition
+    check non_ty_var(ccx, nil_res);
     let f_t = type_of_fn(ccx, sp, ast::proto_fn, false, false,
                          [{mode: ast::by_ref, ty: inner_t}],
-                         ty::mk_nil(ccx.tcx), params);
+                         nil_res, params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.get_cstore(),
                                                     did),
@@ -412,7 +415,7 @@ fn extend_path(cx: @local_ctxt, name: str) -> @local_ctxt {
 }
 
 fn rslt(bcx: @block_ctxt, val: ValueRef) -> result {
-    ret {bcx: bcx, val: val};
+    {bcx: bcx, val: val}
 }
 
 fn ty_str(tn: type_names, t: TypeRef) -> str {
@@ -841,6 +844,17 @@ pure fn valid_variant_index(ix: uint, cx: @block_ctxt, tag_id: ast::def_id,
 
 pure fn type_has_static_size(cx: @crate_ctxt, t: ty::t) -> bool {
     !ty::type_has_dynamic_size(cx.tcx, t)
+}
+
+pure fn non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
+    // Not obviously referentially transparent, but
+    // type interner shouldn't be changing at this point.
+    // FIXME: how to make that clearer?
+    let st = unchecked { ty::struct(cx.tcx, t) };
+    alt st {
+      ty::ty_var(_) { false }
+      _          { true }
+    }
 }
 
 //
