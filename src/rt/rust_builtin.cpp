@@ -224,15 +224,15 @@ debug_opaque(rust_task *task, type_desc *t, uint8_t *front)
     }
 }
 
-struct rust_box {
-    RUST_REFCOUNTED(rust_box)
+struct rust_box_legacy {
+    RUST_REFCOUNTED(rust_box_legacy)
 
     // FIXME `data` could be aligned differently from the actual box body data
     uint8_t data[];
 };
 
 extern "C" CDECL void
-debug_box(rust_task *task, type_desc *t, rust_box *box)
+debug_box(rust_task *task, type_desc *t, rust_box_legacy *box)
 {
     LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
     debug_tydesc_helper(task, t);
@@ -262,7 +262,7 @@ debug_tag(rust_task *task, type_desc *t, rust_tag *tag)
 
 struct rust_obj {
     uintptr_t *vtbl;
-    rust_box *body;
+    rust_box_legacy *body;
 };
 
 extern "C" CDECL void
@@ -284,7 +284,7 @@ debug_obj(rust_task *task, type_desc *t, rust_obj *obj,
 
 struct rust_fn {
     uintptr_t *thunk;
-    rust_box *closure;
+    rust_box_legacy *closure;
 };
 
 extern "C" CDECL void
@@ -364,7 +364,8 @@ extern "C" CDECL FILE* rust_get_stdout() {return stdout;}
 extern "C" CDECL FILE* rust_get_stderr() {return stderr;}
 
 extern "C" CDECL int
-rust_ptr_eq(rust_task *task, type_desc *t, rust_box *a, rust_box *b) {
+rust_ptr_eq(rust_task *task, type_desc *t, rust_box_legacy *a,
+            rust_box_legacy *b) {
     return a == b;
 }
 
