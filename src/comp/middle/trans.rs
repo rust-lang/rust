@@ -224,17 +224,18 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
     ret llty;
 }
 
-fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t) ->
-   TypeRef {
+fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
+    -> TypeRef {
     let degen = std::vec::len(ty::tag_variants(cx.tcx, did)) == 1u;
-    if ty::type_has_dynamic_size(cx.tcx, t) {
-        if degen { ret T_i8(); } else { ret T_opaque_tag(cx.tn); }
-    } else {
+    if check type_has_static_size(cx, t) {
         let size = static_size_of_tag(cx, sp, t);
         if !degen { ret T_tag(cx.tn, size); }
         // LLVM does not like 0-size arrays, apparently
         if size == 0u { size = 1u; }
         ret T_array(T_i8(), size);
+    }
+    else {
+        if degen { ret T_i8(); } else { ret T_opaque_tag(cx.tn); }
     }
 }
 
@@ -503,12 +504,8 @@ fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
 
 
 // Computes the size of the data part of a non-dynamically-sized tag.
-fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t) -> uint {
-    if ty::type_has_dynamic_size(cx.tcx, t) {
-        cx.tcx.sess.span_fatal(sp,
-                               "dynamically sized type passed to \
-                               static_size_of_tag()");
-    }
+fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
+    : type_has_static_size(cx, t) -> uint {
     if cx.tag_sizes.contains_key(t) { ret cx.tag_sizes.get(t); }
     alt ty::struct(cx.tcx, t) {
       ty::ty_tag(tid, subtys) {
