@@ -342,6 +342,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         for field_name: ast::ident in rec_fields {
             let ix: uint =
                 ty::field_idx(ccx.sess, dummy_sp(), field_name, fields);
+            // not sure how to get rid of this check
+            check type_is_tup_like(bcx, rec_ty);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
             rec_vals += [r.val];
             bcx = r.bcx;
@@ -359,6 +361,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             };
         let tup_vals = [], i = 0u;
         while i < n_tup_elts {
+            // how to get rid of this check?
+            check type_is_tup_like(bcx, tup_ty);
             let r = trans::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
             tup_vals += [r.val];
             bcx = r.bcx;
@@ -603,6 +607,8 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         for f: ast::field_pat in fields {
             let ix: uint =
                 ty::field_idx(ccx.sess, pat.span, f.ident, rec_fields);
+            // how to get rid of this check?
+            check type_is_tup_like(bcx, rec_ty);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
             bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, table, make_copy);
         }
@@ -611,6 +617,8 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         let tup_ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
         let i = 0u;
         for elem in elems {
+            // how to get rid of this check?
+            check type_is_tup_like(bcx, tup_ty);
             let r = trans::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
             bcx = bind_irrefutable_pat(r.bcx, elem, r.val, table, make_copy);
             i += 1u;

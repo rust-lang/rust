@@ -610,6 +610,8 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
 }
 
 fn dynamic_align_of(cx: @block_ctxt, t: ty::t) -> result {
+// FIXME: Typestate constraint that shows this alt is
+// exhaustive
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_param(p, _) {
         let aptr = field_of_tydesc(cx, t, false, abi::tydesc_field_align);
@@ -668,9 +670,8 @@ fn bump_ptr(bcx: @block_ctxt, t: ty::t, base: ValueRef, sz: ValueRef) ->
 // ty::struct and knows what to do when it runs into a ty_param stuck in the
 // middle of the thing it's GEP'ing into. Much like size_of and align_of,
 // above.
-fn GEP_tup_like(cx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int]) ->
-   result {
-    assert (ty::type_is_tup_like(bcx_tcx(cx), t));
+fn GEP_tup_like(cx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
+    : type_is_tup_like(cx, t) -> result {
     // It might be a static-known type. Handle this.
     if !ty::type_has_dynamic_size(bcx_tcx(cx), t) {
         ret rslt(cx, GEPi(cx, base, ixs));
@@ -785,6 +786,8 @@ fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: ast::def_id,
     } else { llunionptr = llblobptr; }
 
     // Do the GEP_tup_like().
+    // Silly check -- postcondition on mk_tup?
+    check type_is_tup_like(cx, tup_ty);
     let rs = GEP_tup_like(cx, tup_ty, llunionptr, [0, ix as int]);
     // Cast the result to the appropriate type, if necessary.
 
@@ -1403,12 +1406,15 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     let drop_cx = new_sub_block_ctxt(cx, "drop res");
     let next_cx = new_sub_block_ctxt(cx, "next");
 
+    // Silly check
+    check type_is_tup_like(cx, tup_ty);
     let drop_flag = GEP_tup_like(cx, tup_ty, rs, [0, 0]);
     cx = drop_flag.bcx;
     let null_test = IsNull(cx, Load(cx, drop_flag.val));
     CondBr(cx, null_test, next_cx.llbb, drop_cx.llbb);
     cx = drop_cx;
 
+    check type_is_tup_like(cx, tup_ty);
     let val = GEP_tup_like(cx, tup_ty, rs, [0, 1]);
     cx = val.bcx;
     // Find and call the actual destructor.
@@ -1641,10 +1647,15 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         ret cx;
     }
 
+    /*
+    Typestate constraint that shows the unimpl case doesn't happen?
+    */
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_rec(fields) {
         let i: int = 0;
         for fld: ty::field in fields {
+            // Silly check
+            check type_is_tup_like(cx, t);
             let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, t, av, [0, i]);
             cx = f(bcx, llfld_a, fld.mt.ty);
             i += 1;
@@ -1653,6 +1664,8 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
       ty::ty_tup(args) {
         let i = 0;
         for arg in args {
+            // Silly check
+            check type_is_tup_like(cx, t);
             let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, t, av, [0, i]);
             cx = f(bcx, llfld_a, arg);
             i += 1;
@@ -1663,6 +1676,8 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         let inner1 = ty::substitute_type_params(tcx, tps, inner);
         let inner_t_s = ty::substitute_type_params(tcx, tps, inner);
         let tup_t = ty::mk_tup(tcx, [ty::mk_int(tcx), inner_t_s]);
+        // Silly check
+        check type_is_tup_like(cx, tup_t);
         let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, tup_t, av, [0, 1]);
         ret f(bcx, llfld_a, inner1);
       }
@@ -2543,11 +2558,15 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
 
     // Copy expr values into boxed bindings.
     let i = 0u;
+    // Silly check
+    check type_is_tup_like(bcx, closure_ty);
     let bindings =
         GEP_tup_like(bcx, closure_ty, closure,
                      [0, abi::closure_elt_bindings]);
     bcx = bindings.bcx;
     for lv: lval_result in bound_vals {
+        // Also a silly check
+        check type_is_tup_like(bcx, bindings_ty);
         let bound =
             GEP_tup_like(bcx, bindings_ty, bindings.val, [0, i as int]);
         bcx = bound.bcx;
@@ -2559,6 +2578,8 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
 
     // If necessary, copy tydescs describing type parameters into the
     // appropriate slot in the closure.
+    // Silly check as well
+    check type_is_tup_like(bcx, closure_ty);
     let ty_params_slot =
         GEP_tup_like(bcx, closure_ty, closure,
                      [0, abi::closure_elt_ty_params]);
@@ -2663,6 +2684,8 @@ fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
     // If this is an aliasing closure/for-each body, we need to load
     // the iterbody.
     if !copying && !option::is_none(enclosing_cx.fcx.lliterbody) {
+        // Silly check
+        check type_is_tup_like(bcx, ty);
         let iterbodyptr = GEP_tup_like(bcx, ty, llclosure, path + [0]);
         fcx.lliterbody = some(Load(bcx, iterbodyptr.val));
         bcx = iterbodyptr.bcx;
@@ -2671,6 +2694,8 @@ fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
 
     // Load the actual upvars.
     for upvar_def in *upvars {
+        // Silly check
+        check type_is_tup_like(bcx, ty);
         let upvarptr = GEP_tup_like(bcx, ty, llclosure, path + [i as int]);
         bcx = upvarptr.bcx;
         let llupvarptr = upvarptr.val;
@@ -2984,7 +3009,10 @@ fn trans_field_inner(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_rec(fields) {
         let ix: uint = ty::field_idx(bcx_ccx(cx).sess, sp, field, fields);
-        let v = GEP_tup_like(r.bcx, t, r.val, [0, ix as int]);
+        let r_bcx = r.bcx;
+        // Silly check
+        check type_is_tup_like(r_bcx, t);
+        let v = GEP_tup_like(r_bcx, t, r.val, [0, ix as int]);
         ret lval_no_env(v.bcx, v.val, true);
       }
       ty::ty_obj(methods) {
@@ -3329,6 +3357,8 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
         (fptr, C_null(T_opaque_closure_ptr(*bcx_ccx(bcx))), 0)
       }
       none. {
+        // Silly check
+        check type_is_tup_like(bcx, closure_ty);
         let {bcx: cx, val: pair} =
             GEP_tup_like(bcx, closure_ty, llclosure,
                          [0, abi::box_rc_field_body,
@@ -3368,6 +3398,8 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // Copy in the type parameters.
     let i: uint = 0u;
     while i < ty_param_count {
+        // Silly check
+        check type_is_tup_like(copy_args_bcx, closure_ty);
         let lltyparam_ptr =
             GEP_tup_like(copy_args_bcx, closure_ty, llclosure,
                          [0, abi::box_rc_field_body,
@@ -3391,6 +3423,8 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
           // Arg provided at binding time; thunk copies it from
           // closure.
           some(e) {
+            // Silly check
+            check type_is_tup_like(bcx, closure_ty);
             let bound_arg =
                 GEP_tup_like(bcx, closure_ty, llclosure,
                              [0, abi::box_rc_field_body,
@@ -3914,6 +3948,8 @@ fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
         let e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
         let src = trans_lval(bcx, e);
         bcx = src.bcx;
+        // FIXME: constraint on argument?
+        check type_is_tup_like(bcx, t);
         let dst_res = GEP_tup_like(bcx, t, tup_val, [0, i]);
         bcx = move_val_if_temp(dst_res.bcx, INIT, dst_res.val, src, e_ty);
         i += 1;
@@ -3943,6 +3979,8 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
     alt ty::struct(bcx_tcx(cx), t) { ty::ty_rec(flds) { ty_fields = flds; } }
     for tf: ty::field in ty_fields {
         let e_ty = tf.mt.ty;
+        // FIXME: constraint on argument?
+        check type_is_tup_like(bcx, t);
         let dst_res = GEP_tup_like(bcx, t, rec_val, [0, i]);
         bcx = dst_res.bcx;
         let expr_provided = false;
@@ -3956,6 +3994,8 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
             }
         }
         if !expr_provided {
+            // FIXME: constraint on argument?
+            check type_is_tup_like(bcx, t);
             let src_res = GEP_tup_like(bcx, t, base_val, [0, i]);
             src_res =
                 rslt(src_res.bcx, load_if_immediate(bcx, src_res.val, e_ty));
@@ -5100,6 +5140,8 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
     }
     i = 0;
     for f: ast::obj_field in fcx.lcx.obj_fields {
+        // FIXME: silly check
+        check type_is_tup_like(bcx, fields_tup_ty);
         let rslt = GEP_tup_like(bcx, fields_tup_ty, obj_fields, [0, i]);
         bcx = llstaticallocas_block_ctxt(fcx);
         let llfield = rslt.val;
@@ -5248,9 +5290,12 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
         llretptr = BitCast(bcx, llretptr, llret_t);
     }
 
+    // FIXME: silly checks
+    check type_is_tup_like(bcx, tup_t);
     let dst = GEP_tup_like(bcx, tup_t, llretptr, [0, 1]);
     bcx = dst.bcx;
     bcx = copy_val(bcx, INIT, dst.val, arg, arg_t);
+    check type_is_tup_like(bcx, tup_t);
     let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
     Store(bcx, C_int(1), flag.val);
