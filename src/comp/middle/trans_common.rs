@@ -449,14 +449,14 @@ fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
 // Accessors
 // TODO: When we have overloading, simplify these names!
 
-fn bcx_tcx(bcx: @block_ctxt) -> ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
-fn bcx_ccx(bcx: @block_ctxt) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
-fn bcx_lcx(bcx: @block_ctxt) -> @local_ctxt { ret bcx.fcx.lcx; }
-fn bcx_fcx(bcx: @block_ctxt) -> @fn_ctxt { ret bcx.fcx; }
-fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { ret fcx.lcx.ccx; }
-fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { ret fcx.lcx.ccx.tcx; }
-fn lcx_ccx(lcx: @local_ctxt) -> @crate_ctxt { ret lcx.ccx; }
-fn ccx_tcx(ccx: @crate_ctxt) -> ty::ctxt { ret ccx.tcx; }
+pure fn bcx_tcx(bcx: @block_ctxt) -> ty::ctxt { bcx.fcx.lcx.ccx.tcx }
+pure fn bcx_ccx(bcx: @block_ctxt) -> @crate_ctxt { bcx.fcx.lcx.ccx }
+pure fn bcx_lcx(bcx: @block_ctxt) -> @local_ctxt { bcx.fcx.lcx }
+pure fn bcx_fcx(bcx: @block_ctxt) -> @fn_ctxt { bcx.fcx }
+pure fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { fcx.lcx.ccx }
+pure fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { fcx.lcx.ccx.tcx }
+pure fn lcx_ccx(lcx: @local_ctxt) -> @crate_ctxt { lcx.ccx }
+pure fn ccx_tcx(ccx: @crate_ctxt) -> ty::ctxt { ccx.tcx }
 
 // LLVM type constructors.
 fn T_void() -> TypeRef {
@@ -859,6 +859,11 @@ pure fn non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
 
 pure fn returns_non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
     non_ty_var(cx, ty::ty_fn_ret(cx.tcx, t))
+}
+
+pure fn type_is_tup_like(cx: @block_ctxt, t: ty::t) -> bool {
+    let tcx = bcx_tcx(cx);
+    ty::type_is_tup_like(tcx, t)
 }
 
 //

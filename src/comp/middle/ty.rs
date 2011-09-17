@@ -832,13 +832,11 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
     }
 }
 
-fn type_is_tup_like(cx: ctxt, ty: t) -> bool {
-    alt struct(cx, ty) {
-      ty_box(_) { ret true; }
-      ty_rec(_) { ret true; }
-      ty_tup(_) { ret true; }
-      ty_tag(_, _) { ret true; }
-      _ { ret false; }
+pure fn type_is_tup_like(cx: ctxt, ty: t) -> bool {
+    let sty = unchecked { struct(cx, ty) };
+    alt sty {
+      ty_box(_) | ty_rec(_) | ty_tup(_) | ty_tag(_,_) { true }
+      _ { false }
     }
 }
 
