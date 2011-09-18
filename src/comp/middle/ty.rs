@@ -1586,6 +1586,7 @@ fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
 fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
     alt struct(cx, fty) {
       ty::ty_fn(p, _, _, _, _) { ret p; }
+      ty::ty_native_fn(_, _, _) { ret ast::proto_fn; }
       _ { cx.sess.bug("ty_fn_proto() called on non-fn type"); }
     }
 }

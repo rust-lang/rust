@@ -244,10 +244,9 @@ fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: span,
     let cx = lcx.ccx;
     let t = tpt.ty;
     alt ty::struct(cx.tcx, t) {
-      ty::ty_fn(_, _, _, _, _) {
+      ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) {
         check returns_non_ty_var(cx, t);
-        let llfnty = type_of_fn_from_ty(cx, sp, t, std::vec::len(tpt.kinds));
-        ret T_fn_pair(*cx, llfnty);
+        ret type_of_fn_from_ty(cx, sp, t, std::vec::len(tpt.kinds));
       }
       _ {
         // fall through
@@ -328,10 +327,9 @@ fn decl_fastcall_fn(llmod: ModuleRef, name: str, llty: TypeRef) -> ValueRef {
 // not valid to simply declare a function as internal.
 fn decl_internal_fastcall_fn(llmod: ModuleRef, name: str, llty: TypeRef) ->
    ValueRef {
-    let llfn = decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
+    let llfn = decl_fastcall_fn(llmod, name, llty);
     llvm::LLVMSetLinkage(llfn,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
-    let _: () = str::as_buf("rust", {|buf| llvm::LLVMSetGC(llfn, buf) });
     ret llfn;
 }
 
@@ -1418,12 +1416,8 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     let val = GEP_tup_like(cx, tup_ty, rs, [0, 1]);
     cx = val.bcx;
     // Find and call the actual destructor.
-    let dtor_pair = trans_common::get_res_dtor(ccx, cx.sp, did, inner_t);
-    let dtor_addr =
-        Load(cx, GEP(cx, dtor_pair, [C_int(0), C_int(abi::fn_field_code)]));
-    let dtor_env =
-        Load(cx, GEP(cx, dtor_pair, [C_int(0), C_int(abi::fn_field_box)]));
-    let args = [cx.fcx.llretptr, cx.fcx.lltaskptr, dtor_env];
+    let dtor_addr = trans_common::get_res_dtor(ccx, cx.sp, did, inner_t);
+    let args = [cx.fcx.llretptr, cx.fcx.lltaskptr, null_env_ptr(cx)];
     for tp: ty::t in tps {
         let ti: option::t<@tydesc_info> = none;
         let td = get_tydesc(cx, tp, false, tps_normal, ti).result;
@@ -2842,6 +2836,10 @@ type lval_maybe_callee = {bcx: @block_ctxt,
                           env: callee_env,
                           generic: option::t<generic_info>};
 
+fn null_env_ptr(bcx: @block_ctxt) -> ValueRef {
+    C_null(T_opaque_closure_ptr(*bcx_ccx(bcx)))
+}
+
 fn lval_mem(bcx: @block_ctxt, val: ValueRef) -> lval_result {
     ret {bcx: bcx, val: val, is_mem: true};
 }
@@ -2866,8 +2864,8 @@ fn lval_static_fn(bcx: @block_ctxt, tpt: ty::ty_param_kinds_and_ty,
                   fn_id: ast::def_id, id: ast::node_id) -> lval_maybe_callee {
     let val = if fn_id.crate == ast::local_crate {
         // Internal reference.
-        assert (bcx_ccx(bcx).fn_pairs.contains_key(fn_id.node));
-        bcx_ccx(bcx).fn_pairs.get(fn_id.node)
+        assert (bcx_ccx(bcx).item_ids.contains_key(fn_id.node));
+        bcx_ccx(bcx).item_ids.get(fn_id.node)
     } else {
         // External reference.
         trans_external_path(bcx, fn_id, tpt)
@@ -2886,7 +2884,7 @@ fn lval_static_fn(bcx: @block_ctxt, tpt: ty::ty_param_kinds_and_ty,
         }
         gen = some({item_type: tpt.ty, static_tis: tis, tydescs: tydescs});
     }
-    ret {bcx: bcx, val: val, is_mem: true, env: is_closure, generic: gen};
+    ret {bcx: bcx, val: val, is_mem: true, env: null_env, generic: gen};
 }
 
 fn lookup_discriminant(lcx: @local_ctxt, vid: ast::def_id) -> ValueRef {
@@ -3176,7 +3174,7 @@ fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
         (c.is_mem, c.val)
     } else {
         let env = alt c.env {
-          null_env. { C_null(T_opaque_closure_ptr(*bcx_ccx(bcx))) }
+          null_env. { null_env_ptr(bcx) }
           some_env(e) { e }
         };
         let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
@@ -3353,8 +3351,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // out the pointer to the target function from the environment. The
     // target function lives in the first binding spot.
     let (lltargetfn, lltargetenv, starting_idx) = alt target_fn {
-      some(fptr) {
-        (fptr, C_null(T_opaque_closure_ptr(*bcx_ccx(bcx))), 0)
+      some(fptr) { (fptr, null_env_ptr(bcx), 0)
       }
       none. {
         // Silly check
@@ -3747,7 +3744,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let faddr = f_res.val;
     let llenv;
     alt f_res.env {
-      null_env. { llenv = C_null(T_opaque_closure_ptr(*bcx_ccx(cx))); }
+      null_env. { llenv = null_env_ptr(cx); }
       some_env(e) { llenv = e; }
       is_closure. {
         // It's a closure. Have to fetch the elements
@@ -4054,7 +4051,8 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
             alt fn_res {
               some(fn_pair) { fn_pair }
               none. {
-                {fn_pair: create_fn_pair(ccx, s, llfnty, llfn, false),
+                {fn_pair: create_real_fn_pair(cx, llfnty, llfn,
+                                              null_env_ptr(cx)),
                  bcx: cx}
               }
             };
@@ -5488,17 +5486,17 @@ fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
     ret struct_elt(llpairty, 0u);
 }
 
-fn decl_fn_and_pair(ccx: @crate_ctxt, sp: span, path: [str], flav: str,
-                    ty_params: [ast::ty_param], node_id: ast::node_id) {
+fn register_fn(ccx: @crate_ctxt, sp: span, path: [str], flav: str,
+               ty_params: [ast::ty_param], node_id: ast::node_id) {
     // FIXME: pull this out
     let t = node_id_type(ccx, node_id);
     check returns_non_ty_var(ccx, t);
-    decl_fn_and_pair_full(ccx, sp, path, flav, ty_params, node_id, t);
+    register_fn_full(ccx, sp, path, flav, ty_params, node_id, t);
 }
 
-fn decl_fn_and_pair_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
-                         ty_params: [ast::ty_param], node_id: ast::node_id,
-                         node_type: ty::t)
+fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
+                    ty_params: [ast::ty_param], node_id: ast::node_id,
+                    node_type: ty::t)
     : returns_non_ty_var(ccx, node_type) {
     let path = path;
     let llfty =
@@ -5510,14 +5508,12 @@ fn decl_fn_and_pair_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
                            ast_util::ret_by_ref(rs), inputs, output,
                            vec::len(ty_params));
       }
-      _ { ccx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type!"); }
+      _ { ccx.sess.bug("register_fn(): fn item doesn't have fn type!"); }
     }
-    let s: str = mangle_internal_name_by_path(ccx, path);
-    let llfn: ValueRef = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
-    // Declare the global constant pair that points to it.
-
     let ps: str = mangle_exported_name(ccx, path, node_type);
-    register_fn_pair(ccx, ps, llfty, llfn, node_id);
+    let llfn: ValueRef = decl_fastcall_fn(ccx.llmod, ps, llfty);
+    ccx.item_ids.insert(node_id, llfn);
+    ccx.item_symbols.insert(node_id, ps);
 
     let is_main: bool = is_main_name(path) && !ccx.sess.get_opts().library;
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
@@ -5580,28 +5576,6 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
     }
 }
 
-
-// Create a closure: a pair containing (1) a ValueRef, pointing to where the
-// fn's definition is in the executable we're creating, and (2) a pointer to
-// space for the function's environment.
-fn create_fn_pair(cx: @crate_ctxt, ps: str, llfnty: TypeRef, llfn: ValueRef,
-                  external: bool) -> ValueRef {
-    let gvar =
-        str::as_buf(ps,
-                    {|buf|
-                        llvm::LLVMAddGlobal(cx.llmod, T_fn_pair(*cx, llfnty),
-                                            buf)
-                    });
-    let pair = C_struct([llfn, C_null(T_opaque_closure_ptr(*cx))]);
-    llvm::LLVMSetInitializer(gvar, pair);
-    llvm::LLVMSetGlobalConstant(gvar, True);
-    if !external {
-        llvm::LLVMSetLinkage(gvar,
-                             lib::llvm::LLVMInternalLinkage as llvm::Linkage);
-    }
-    ret gvar;
-}
-
 // Create a /real/ closure: this is like create_fn_pair, but creates a
 // a fn value on the stack with a specified environment (which need not be
 // on the stack).
@@ -5619,18 +5593,6 @@ fn create_real_fn_pair(cx: @block_ctxt, llfnty: TypeRef, llfn: ValueRef,
     ret pair;
 }
 
-fn register_fn_pair(cx: @crate_ctxt, ps: str, llfnty: TypeRef, llfn: ValueRef,
-                    id: ast::node_id) {
-    // FIXME: We should also hide the unexported pairs in crates.
-
-    let gvar =
-        create_fn_pair(cx, ps, llfnty, llfn, cx.sess.get_opts().library);
-    cx.item_ids.insert(id, llfn);
-    cx.item_symbols.insert(id, ps);
-    cx.fn_pairs.insert(id, gvar);
-}
-
-
 // Returns the number of type parameters that the given native function has.
 fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
     let count;
@@ -5638,7 +5600,7 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
         alt cx.ast_map.find(id) { some(ast_map::node_native_item(i)) { i } };
     alt native_item.node {
       ast::native_item_ty. {
-        cx.sess.bug("decl_native_fn_and_pair(): native fn isn't \
+        cx.sess.bug("register_native_fn(): native fn isn't \
                         actually a fn");
       }
       ast::native_item_fn(_, _, tps) {
@@ -5659,7 +5621,7 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
     }
 }
 
-fn decl_native_fn_and_pair(ccx: @crate_ctxt, sp: span, path: [str], name: str,
+fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
                            id: ast::node_id) {
     let path = path;
     let num_ty_param = native_fn_ty_param_count(ccx, id);
@@ -5667,15 +5629,12 @@ fn decl_native_fn_and_pair(ccx: @crate_ctxt, sp: span, path: [str], name: str,
 
     let t = node_id_type(ccx, id);
     let wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
-    let s: str = mangle_internal_name_by_path(ccx, path);
-    let wrapper_fn: ValueRef =
-        decl_internal_fastcall_fn(ccx.llmod, s, wrapper_type);
-    // Declare the global constant pair that points to it.
-
     let ps: str = mangle_exported_name(ccx, path, node_id_type(ccx, id));
-    register_fn_pair(ccx, ps, wrapper_type, wrapper_fn, id);
-    // Build the wrapper.
+    let wrapper_fn = decl_fastcall_fn(ccx.llmod, ps, wrapper_type);
+    ccx.item_ids.insert(id, wrapper_fn);
+    ccx.item_symbols.insert(id, ps);
 
+    // Build the wrapper.
     let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, wrapper_fn);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
@@ -5858,7 +5817,7 @@ fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, pt: [str],
     alt i.node {
       ast::native_item_fn(_, _, _) {
         if !ccx.obj_methods.contains_key(i.id) {
-            decl_native_fn_and_pair(ccx, i.span, pt, i.ident, i.id);
+            register_native_fn(ccx, i.span, pt, i.ident, i.id);
         }
       }
       _ { }
@@ -5892,17 +5851,17 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, pt: [str], v: vt<[str]>) {
     alt i.node {
       ast::item_fn(f, tps) {
         if !ccx.obj_methods.contains_key(i.id) {
-            decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.id);
+            register_fn(ccx, i.span, new_pt, "fn", tps, i.id);
         }
       }
       ast::item_obj(ob, tps, ctor_id) {
-        decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
+        register_fn(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
         for m: @ast::method in ob.methods {
             ccx.obj_methods.insert(m.node.id, ());
         }
       }
       ast::item_res(_, dtor_id, tps, ctor_id) {
-        decl_fn_and_pair(ccx, i.span, new_pt, "res_ctor", tps, ctor_id);
+        register_fn(ccx, i.span, new_pt, "res_ctor", tps, ctor_id);
         // Note that the destructor is associated with the item's id, not
         // the dtor_id. This is a bit counter-intuitive, but simplifies
         // ty_res, which would have to carry around two def_ids otherwise
@@ -5910,7 +5869,7 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, pt: [str], v: vt<[str]>) {
         let t = node_id_type(ccx, dtor_id);
         // FIXME: how to get rid of this check?
         check returns_non_ty_var(ccx, t);
-        decl_fn_and_pair_full(ccx, i.span, new_pt, "res_dtor", tps, i.id, t);
+        register_fn_full(ccx, i.span, new_pt, "res_dtor", tps, i.id, t);
       }
       _ { }
     }
@@ -5935,8 +5894,8 @@ fn collect_tag_ctor(ccx: @crate_ctxt, i: @ast::item, pt: [str],
       ast::item_tag(variants, tps) {
         for variant: ast::variant in variants {
             if std::vec::len(variant.node.args) != 0u {
-                decl_fn_and_pair(ccx, i.span, new_pt + [variant.node.name],
-                                 "tag", tps, variant.node.id);
+                register_fn(ccx, i.span, new_pt + [variant.node.name],
+                            "tag", tps, variant.node.id);
             }
         }
       }
@@ -6209,7 +6168,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tag_sizes: tag_sizes,
           discrims: new_int_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
-          fn_pairs: new_int_hash::<ValueRef>(),
           consts: new_int_hash::<ValueRef>(),
           obj_methods: new_int_hash::<()>(),
           tydescs: tydescs,

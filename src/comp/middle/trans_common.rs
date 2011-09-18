@@ -105,7 +105,6 @@ type crate_ctxt =
      tag_sizes: hashmap<ty::t, uint>,
      discrims: hashmap<ast::node_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
-     fn_pairs: hashmap<ast::node_id, ValueRef>,
      consts: hashmap<ast::node_id, ValueRef>,
      obj_methods: hashmap<ast::node_id, ()>,
      tydescs: hashmap<ty::t, @tydesc_info>,
@@ -328,7 +327,7 @@ fn revoke_clean(cx: @block_ctxt, val: ValueRef, t: ty::t) -> @block_ctxt {
 fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
    -> ValueRef {
     if did.crate == ast::local_crate {
-        alt ccx.fn_pairs.find(did.node) {
+        alt ccx.item_ids.find(did.node) {
           some(x) { ret x; }
           _ { ccx.tcx.sess.bug("get_res_dtor: can't find resource dtor!"); }
         }
@@ -343,8 +342,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
                          nil_res, params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.get_cstore(),
-                                                    did),
-                                T_fn_pair(*ccx, f_t));
+                                                    did), f_t);
 }
 
 tag block_kind {
