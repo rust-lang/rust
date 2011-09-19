@@ -3961,7 +3961,6 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
     let rec_res = alloc_ty(bcx, t);
     let rec_val = rec_res.val;
     bcx = rec_res.bcx;
-    add_clean_temp(cx, rec_val, t);
     let i: int = 0;
     let base_val = C_nil();
     alt base {
@@ -4000,6 +3999,7 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
         }
         i += 1;
     }
+    add_clean_temp(cx, rec_val, t);
     ret rslt(bcx, rec_val);
 }
 
