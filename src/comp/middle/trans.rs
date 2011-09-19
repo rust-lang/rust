@@ -3973,6 +3973,21 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
     }
     let ty_fields: [ty::field] = [];
     alt ty::struct(bcx_tcx(cx), t) { ty::ty_rec(flds) { ty_fields = flds; } }
+
+    tag fieldsrc {
+        provided(lval_result);
+        inherited(ValueRef);
+    }
+    type fieldval = {
+        dst: ValueRef,
+        src: fieldsrc,
+        ty: ty::t
+    };
+    let fieldvals: [fieldval] = [];
+
+    // We build the record in two stages so that we don't have to clean up a
+    // partial record if we fail: first collect all the values, then construct
+    // the record.
     for tf: ty::field in ty_fields {
         let e_ty = tf.mt.ty;
         // FIXME: constraint on argument?
@@ -3984,8 +3999,12 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
             if str::eq(f.node.ident, tf.ident) {
                 expr_provided = true;
                 let lv = trans_lval(bcx, f.node.expr);
-                bcx =
-                    move_val_if_temp(lv.bcx, INIT, dst_res.val, lv, e_ty);
+                bcx = lv.bcx;
+                fieldvals += [{
+                    dst: dst_res.val,
+                    src: provided(lv),
+                    ty: e_ty
+                }];
                 break;
             }
         }
@@ -3993,12 +4012,30 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
             // FIXME: constraint on argument?
             check type_is_tup_like(bcx, t);
             let src_res = GEP_tup_like(bcx, t, base_val, [0, i]);
-            src_res =
-                rslt(src_res.bcx, load_if_immediate(bcx, src_res.val, e_ty));
-            bcx = copy_val(src_res.bcx, INIT, dst_res.val, src_res.val, e_ty);
+            bcx = src_res.bcx;
+            fieldvals += [{
+                dst: dst_res.val,
+                src: inherited(src_res.val),
+                ty: e_ty
+            }];
         }
         i += 1;
     }
+
+    // Now build the record
+    for fieldval in fieldvals {
+        alt fieldval.src {
+          provided(lv) {
+            bcx = move_val_if_temp(bcx, INIT, fieldval.dst,
+                                   lv, fieldval.ty);
+          }
+          inherited(val) {
+            let val = load_if_immediate(bcx, val, fieldval.ty);
+            bcx = copy_val(bcx, INIT, fieldval.dst, val, fieldval.ty);
+          }
+        }
+    }
+
     add_clean_temp(cx, rec_val, t);
     ret rslt(bcx, rec_val);
 }
