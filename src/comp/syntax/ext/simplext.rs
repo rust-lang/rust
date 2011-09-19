@@ -206,7 +206,6 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
          new_span: bind new_span(cx, _) with *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
-    dummy_out(f); //temporary: kill circular reference
     ret result;
 }
 
@@ -258,7 +257,6 @@ iter free_vars(b: bindings, e: @expr) -> ident {
             with *default_ast_fold()};
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
-    dummy_out(f);
     for each id: ident in idents.keys() { put id; }
 }
 

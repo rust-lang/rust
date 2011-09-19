@@ -17,8 +17,6 @@ fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
-    // FIXME: This is necessary to break a circular reference
-    fold::dummy_out(fold);
     ret res;
 }
 

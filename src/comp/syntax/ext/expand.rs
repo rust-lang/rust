@@ -56,7 +56,6 @@ fn expand_crate(sess: session::session, c: @crate) -> @crate {
             with *afp};
     let f = make_fold(f_pre);
     let res = @f.fold_crate(*c);
-    dummy_out(f); //temporary: kill circular reference
     ret res;
 
 }

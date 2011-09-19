@@ -563,8 +563,13 @@ fn dummy_out(a: ast_fold) {
          new_span: noop_span};
 }
 
+// FIXME: Fold has a circular reference that has to be broken. With GC this
+// can go away
+resource foldres(f: ast_fold) {
+    dummy_out(f);
+}
 
-fn make_fold(afp: ast_fold_precursor) -> ast_fold {
+fn make_fold(afp: ast_fold_precursor) -> @foldres {
     let result: ast_fold =
         @mutable {fold_crate: nf_crate_dummy,
                   fold_crate_directive: nf_crate_directive_dummy,
@@ -699,7 +704,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
          map_exprs: afp.map_exprs,
          new_id: afp.new_id,
          new_span: afp.new_span};
-    ret result;
+    ret @foldres(result);
 }
 
 

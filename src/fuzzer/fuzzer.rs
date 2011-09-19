@@ -149,7 +149,6 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr) ->
             with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
-    fold::dummy_out(af); // work around a leak (https://github.com/graydon/rust/issues/651)
     *crate2
 }
 
@@ -170,7 +169,6 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty) ->
             with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
-    fold::dummy_out(af); // work around a leak (https://github.com/graydon/rust/issues/651)
     *crate2
 }
 
