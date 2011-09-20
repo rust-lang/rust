@@ -799,19 +799,6 @@ fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: ast::def_id,
     ret rslt(rs.bcx, val);
 }
 
-// trans_raw_malloc: expects a type indicating which pointer type we want and
-// a size indicating how much space we want malloc'd.
-fn trans_raw_malloc(cx: @block_ctxt, llptr_ty: TypeRef, llsize: ValueRef) ->
-   result {
-    // FIXME: need a table to collect tydesc globals.
-
-    let tydesc = C_null(T_ptr(bcx_ccx(cx).tydesc_type));
-    let rval =
-        Call(cx, bcx_ccx(cx).upcalls.malloc,
-             [cx.fcx.lltaskptr, llsize, tydesc]);
-    ret rslt(cx, PointerCast(cx, rval, llptr_ty));
-}
-
 // trans_shared_malloc: expects a type indicating which pointer type we want
 // and a size indicating how much space we want malloc'd.
 fn trans_shared_malloc(cx: @block_ctxt, llptr_ty: TypeRef, llsize: ValueRef)
@@ -829,6 +816,8 @@ fn trans_shared_malloc(cx: @block_ctxt, llptr_ty: TypeRef, llsize: ValueRef)
 // enough space for something of that type, along with space for a reference
 // count; in other words, it allocates a box for something of that type.
 fn trans_malloc_boxed_raw(cx: @block_ctxt, t: ty::t) -> result {
+    let bcx = cx;
+
     // Synthesize a fake box type structurally so we have something
     // to measure the size of.
 
@@ -839,9 +828,10 @@ fn trans_malloc_boxed_raw(cx: @block_ctxt, t: ty::t) -> result {
 
     // The mk_int here is the space being
     // reserved for the refcount.
-    let boxed_body = ty::mk_tup(bcx_tcx(cx), [ty::mk_int(bcx_tcx(cx)), t]);
-    let box_ptr = ty::mk_imm_box(bcx_tcx(cx), t);
-    let sz = size_of(cx, boxed_body);
+    let boxed_body = ty::mk_tup(bcx_tcx(bcx), [ty::mk_int(bcx_tcx(cx)), t]);
+    let box_ptr = ty::mk_imm_box(bcx_tcx(bcx), t);
+    let r = size_of(cx, boxed_body);
+    let llsz = r.val; bcx = r.bcx;
 
     // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
     // wants.
@@ -851,7 +841,10 @@ fn trans_malloc_boxed_raw(cx: @block_ctxt, t: ty::t) -> result {
     let sp = cx.sp;
     check (type_has_static_size(ccx, box_ptr));
     let llty = type_of(ccx, sp, box_ptr);
-    ret trans_raw_malloc(sz.bcx, llty, sz.val);
+
+    let tydesc = C_null(T_ptr(ccx.tydesc_type));
+    let rval = Call(cx, ccx.upcalls.malloc, [cx.fcx.lltaskptr, llsz, tydesc]);
+    ret rslt(cx, PointerCast(cx, rval, llty));
 }
 
 // trans_malloc_boxed: usefully wraps trans_malloc_box_raw; allocates a box,
