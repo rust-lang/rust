@@ -37,6 +37,28 @@ fn find_rust_files(&files: [str], path: str) {
     }
 }
 
+
+fn common_exprs() -> [ast::expr] {
+    fn dse(e: ast::expr_) -> ast::expr {
+        { id: 0, node: e, span: ast_util::dummy_sp() }
+    }
+
+    fn dsl(l: ast::lit_) -> ast::lit {
+        { node: l, span: ast_util::dummy_sp() }
+    }
+
+    [dse(ast::expr_break),
+     dse(ast::expr_cont),
+     dse(ast::expr_fail(option::none)),
+     dse(ast::expr_fail(option::some(@dse(ast::expr_lit(@dsl(ast::lit_str("boo"))))))),
+     dse(ast::expr_ret(option::none)),
+     dse(ast::expr_put(option::none)),
+     dse(ast::expr_lit(@dsl(ast::lit_nil))),
+     dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
+     dse(ast::expr_lit(@dsl(ast::lit_bool(true))))
+    ]
+}
+
 fn safe_to_steal_expr(e: @ast::expr) -> bool {
     alt e.node {
       /*
@@ -189,7 +211,7 @@ fn as_str(f: fn(io::writer)) -> str {
 fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
                          filename: str) {
     let stolen = steal(crate);
-    check_variants_T(crate, codemap, filename, "expr", stolen.exprs, pprust::expr_to_str, replace_expr_in_crate);
+    check_variants_T(crate, codemap, filename, "expr", /*common_exprs() +*/ stolen.exprs, pprust::expr_to_str, replace_expr_in_crate);
     check_variants_T(crate, codemap, filename, "ty", stolen.tys, pprust::ty_to_str, replace_ty_in_crate);
 }
 
@@ -207,9 +229,9 @@ fn check_variants_T<T>(
     let L = vec::len(things);
 
     if L < 100u {
-        for each i: uint in under(uint::min(L, 10u)) {
-            log_err "Replacing... " + stringifier(@things[i]);
-            for each j: uint in under(uint::min(L, 10u)) {
+        for each i: uint in under(uint::min(L, 20u)) {
+            log_err "Replacing... #" + uint::str(i);
+            for each j: uint in under(uint::min(L, 30u)) {
                 log_err "With... " + stringifier(@things[j]);
                 let crate2 = @replacer(crate, i, things[j]);
                 // It would be best to test the *crate* for stability, but testing the
@@ -283,8 +305,12 @@ fn check_running(exe_filename: str) -> happiness {
         log_err "comb comb comb: " + comb;
     }
 
-    if contains(comb, "Assertion failed:") {
+    if contains(comb, "Assertion failed: (0), function alloc, file ../src/rt/rust_obstack.cpp") {
+        known_bug("https://github.com/graydon/rust/issues/32 / https://github.com/graydon/rust/issues/445")
+    } else if contains(comb, "Assertion failed:") {
         failed("C++ assertion failure")
+    } else if contains(comb, "src/rt/") {
+        failed("Mentioned src/rt/")
     } else if contains(comb, "malloc") {
         failed("Mentioned malloc")
     } else if contains(comb, "leaked memory in rust main loop") {
@@ -295,7 +321,8 @@ fn check_running(exe_filename: str) -> happiness {
             100       { cleanly_rejected("running: explicit fail") }
             101 | 247 { cleanly_rejected("running: timed out") }
             245 | 246 { known_bug("https://github.com/graydon/rust/issues/32 ??") }
-            rc        { failed("exited with status " + int::str(rc)) }
+            136 | 248 { known_bug("SIGFPE - https://github.com/graydon/rust/issues/944") }
+            rc        { failed("Rust program ran but exited with status " + int::str(rc)) }
         }
     }
 }
@@ -312,11 +339,17 @@ fn check_compiling(filename: str) -> happiness {
     //log_err #fmt("Status: %d", p.status);
     if p.err != "" {
         if contains(p.err, "May only branch on boolean predicates") {
-            known_bug("https://github.com/graydon/rust/issues/892")
+            known_bug("https://github.com/graydon/rust/issues/892 or https://github.com/graydon/rust/issues/943")
+        } else if contains(p.err, "All operands to PHI node must be the same type as the PHI node!") {
+            known_bug("https://github.com/graydon/rust/issues/943")
         } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\")") {
             known_bug("https://github.com/graydon/rust/issues/895")
+        } else if contains(p.out, "Ptr must be a pointer to Val type") {
+            known_bug("https://github.com/graydon/rust/issues/897")
         } else if contains(p.err, "(castIsValid(op, S, Ty) && \"Invalid cast!\"), function Create") {
             known_bug("https://github.com/graydon/rust/issues/901")
+        } else if contains(p.err, "Invoking a function with a bad signature!") {
+            known_bug("https://github.com/graydon/rust/issues/946")
         } else {
             log_err "Stderr: " + p.err;
             failed("Unfamiliar error message")
@@ -332,8 +365,6 @@ fn check_compiling(filename: str) -> happiness {
         known_bug("https://github.com/graydon/rust/issues/924")
     } else if contains(p.out, "Assertion failed: (S->getType()->isPointerTy() && \"Invalid cast\")") {
         known_bug("https://github.com/graydon/rust/issues/935")
-    } else if contains(p.out, "Ptr must be a pointer to Val type") {
-        known_bug("https://github.com/graydon/rust/issues/897")
     } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
         log_err "Stdout: " + p.out;
         failed("Looks like an llvm assertion failure")
@@ -393,7 +424,9 @@ fn content_is_dangerous_to_run(code: str) -> bool {
     let dangerous_patterns =
         ["import", // espeically fs, run
          "native",
-         "unsafe"];
+         "unsafe",
+         "with", // tstate hang: https://github.com/graydon/rust/issues/948
+         "log"]; // python --> rust pipe deadlock?
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
     ret false;
