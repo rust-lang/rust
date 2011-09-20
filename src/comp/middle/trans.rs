@@ -4664,6 +4664,7 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
                  ccx: ccx};
         fn visit_expr(ex: @ast::expr, e: env, v: vt<env>) {
             let might_not_init = alt ex.node {
+              ast::expr_alt(_, _) { true }
               ast::expr_ret(_) { true }
               ast::expr_break. { true }
               ast::expr_cont. { true }
