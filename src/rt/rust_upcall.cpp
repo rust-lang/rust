@@ -67,6 +67,8 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
 
     void *p = task->malloc(nbytes, "tdesc", td);
 
+    task->local_allocs[p] = td;
+
     LOG(task, mem,
         "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ") = 0x%" PRIxPTR,
         nbytes, td, (uintptr_t)p);
@@ -84,6 +86,8 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
     DLOG(sched, mem,
              "upcall free(0x%" PRIxPTR ", is_gc=%" PRIdPTR ")",
              (uintptr_t)ptr, is_gc);
+
+    task->local_allocs.erase(ptr);
     task->free(ptr, (bool) is_gc);
 }
 
