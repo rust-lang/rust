@@ -1,5 +1,3 @@
-// FIXME #937
-// xfail-fast
 use std;
 import std::task;
 import std::comm;
