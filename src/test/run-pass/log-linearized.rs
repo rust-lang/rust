@@ -1,5 +1,3 @@
-// xfail-test
-
 // Tests that shapes respect linearize_ty_params().
 
 tag option<T> {
