@@ -4470,7 +4470,9 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     let dummy_retslot = alloca(bcx, T_nil());
     let llargs: [ValueRef] = [dummy_retslot, cx.fcx.lltaskptr, llenv];
     alt e {
-      none. { }
+      none. {
+        llargs += [C_null(T_ptr(T_nil()))];
+      }
       some(x) {
         let e_ty = ty::expr_ty(bcx_tcx(cx), x);
         let arg = {mode: ast::by_ref, ty: e_ty};
