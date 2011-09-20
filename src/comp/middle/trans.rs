@@ -837,13 +837,17 @@ fn trans_malloc_boxed_raw(cx: @block_ctxt, t: ty::t) -> result {
     // wants.
     // FIXME: Could avoid this check with a postcondition on mk_imm_box?
     // (requires Issue #586)
-    let ccx = bcx_ccx(cx);
-    let sp = cx.sp;
+    let ccx = bcx_ccx(bcx);
+    let sp = bcx.sp;
     check (type_has_static_size(ccx, box_ptr));
     let llty = type_of(ccx, sp, box_ptr);
 
-    let tydesc = C_null(T_ptr(ccx.tydesc_type));
-    let rval = Call(cx, ccx.upcalls.malloc, [cx.fcx.lltaskptr, llsz, tydesc]);
+    let ti = none;
+    let tydesc_result = get_tydesc(bcx, t, true, tps_normal, ti);
+    let lltydesc = tydesc_result.result.val; bcx = tydesc_result.result.bcx;
+
+    let rval = Call(cx, ccx.upcalls.malloc,
+                    [cx.fcx.lltaskptr, llsz, lltydesc]);
     ret rslt(cx, PointerCast(cx, rval, llty));
 }
 
