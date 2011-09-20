@@ -1,5 +1,4 @@
 // FIXME: Importing std::task doesn't work under check-fast?!
-// xfail-fast
 use std;
 import std::task;
 import std::comm;
