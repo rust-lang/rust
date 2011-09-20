@@ -3939,6 +3939,11 @@ fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
     let tup_res = alloc_ty(bcx, t);
     let tup_val = tup_res.val;
     bcx = tup_res.bcx;
+
+    // Like trans_rec, we'll collect the fields of the tuple then build it, so
+    // that if we fail in between we don't have to deal with cleaning up a
+    // partial tuple
+    let tupfields: [(ValueRef, lval_result, ty::t)] = [];
     let i: int = 0;
     for e in elts {
         let e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
@@ -3947,8 +3952,14 @@ fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
         // FIXME: constraint on argument?
         check type_is_tup_like(bcx, t);
         let dst_res = GEP_tup_like(bcx, t, tup_val, [0, i]);
-        bcx = move_val_if_temp(dst_res.bcx, INIT, dst_res.val, src, e_ty);
+        tupfields += [(dst_res.val, src, e_ty)];
+        bcx = dst_res.bcx;
         i += 1;
+    }
+
+    // Fill in the tuple fields
+    for (dst, src, t) in tupfields {
+        bcx = move_val_if_temp(bcx, INIT, dst, src, t);
     }
 
     // Only register the cleanups after the tuple is built
