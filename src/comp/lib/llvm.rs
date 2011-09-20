@@ -943,41 +943,19 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         ret s;
     }
 
-
     alt kind {
-
-
-
-
-
-
       // FIXME: more enum-as-int constants determined from Core::h;
       // horrible, horrible. Complete as needed.
-
-      0 {
-        ret "Void";
-      }
+      0 { ret "Void"; }
       1 { ret "Float"; }
       2 { ret "Double"; }
       3 { ret "X86_FP80"; }
       4 { ret "FP128"; }
       5 { ret "PPC_FP128"; }
       6 { ret "Label"; }
-
-
-
-
-
-
       7 {
         ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
-
-
-
-
-
-
       8 {
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
@@ -989,12 +967,6 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         s += type_to_str_inner(names, outer, out_ty);
         ret s;
       }
-
-
-
-
-
-
       9 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
@@ -1004,22 +976,10 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         s += "}";
         ret s;
       }
-
-
-
-
-
-
       10 {
         let el_ty = llvm::LLVMGetElementType(ty);
         ret "[" + type_to_str_inner(names, outer, el_ty) + "]";
       }
-
-
-
-
-
-
       11 {
         let i: uint = 0u;
         for tout: TypeRef in outer0 {
@@ -1032,15 +992,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         ret "*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
-
-
-
-
-
-
-      12 {
-        ret "Opaque";
-      }
+      12 { ret "Opaque"; }
       13 { ret "Vector"; }
       14 { ret "Metadata"; }
       _ { log_err #fmt["unknown TypeKind %d", kind as int]; fail; }
