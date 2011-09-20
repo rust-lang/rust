@@ -512,95 +512,9 @@ fn main(args: [str]) {
       }
     }
 
-    // If the user wants an exe generated we need to invoke
-    // gcc to link the object file with some libs
-    //
-    // TODO: Factor this out of main.
     if stop_after_codegen { ret; }
 
-    let glu: str = binary_dir + "/lib/glue.o";
-    let main: str = binary_dir + "/lib/main.o";
-    let stage: str = "-L" + binary_dir + "/lib";
-    let prog: str = "gcc";
-    // The invocations of gcc share some flags across platforms
-
-    let gcc_args =
-        [stage, "-Lrt", "-lrustrt", glu, "-m32", "-o", saved_out_filename,
-         saved_out_filename + ".o"];
-    let lib_cmd;
-
-    let os = sess.get_targ_cfg().os;
-    if os == session::os_macos {
-        lib_cmd = "-dynamiclib";
-    } else { lib_cmd = "-shared"; }
-
-    // Converts a library file name into a gcc -l argument
-    fn unlib(config: @session::config, filename: str) -> str {
-        let rmlib =
-            bind fn (config: @session::config, filename: str) -> str {
-                     if config.os == session::os_macos ||
-                            config.os == session::os_linux &&
-                                str::find(filename, "lib") == 0 {
-                         ret str::slice(filename, 3u,
-                                        str::byte_len(filename));
-                     } else { ret filename; }
-                 }(config, _);
-        fn rmext(filename: str) -> str {
-            let parts = str::split(filename, '.' as u8);
-            vec::pop(parts);
-            ret str::connect(parts, ".");
-        }
-        ret alt config.os {
-              session::os_macos. { rmext(rmlib(filename)) }
-              session::os_linux. { rmext(rmlib(filename)) }
-              _ { rmext(filename) }
-            };
-    }
-
-    let cstore = sess.get_cstore();
-    for cratepath: str in cstore::get_used_crate_files(cstore) {
-        if str::ends_with(cratepath, ".rlib") {
-            gcc_args += [cratepath];
-            cont;
-        }
-        let cratepath = cratepath;
-        let dir = fs::dirname(cratepath);
-        if dir != "" { gcc_args += ["-L" + dir]; }
-        let libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
-        gcc_args += ["-l" + libarg];
-    }
-
-    let ula = cstore::get_used_link_args(cstore);
-    for arg: str in ula { gcc_args += [arg]; }
-
-    let used_libs = cstore::get_used_libraries(cstore);
-    for l: str in used_libs { gcc_args += ["-l" + l]; }
-
-    if sopts.library {
-        gcc_args += [lib_cmd];
-    } else {
-        // FIXME: why do we hardcode -lm?
-        gcc_args += ["-lm", main];
-    }
-    // We run 'gcc' here
-
-    let err_code = run::run_program(prog, gcc_args);
-    if 0 != err_code {
-        sess.err(#fmt["linking with gcc failed with code %d", err_code]);
-        sess.note(#fmt["gcc arguments: %s", str::connect(gcc_args, " ")]);
-        sess.abort_if_errors();
-    }
-    // Clean up on Darwin
-
-    if sess.get_targ_cfg().os == session::os_macos {
-        run::run_program("dsymutil", [saved_out_filename]);
-    }
-
-
-    // Remove the temporary object file if we aren't saving temps
-    if !sopts.save_temps {
-        run::run_program("rm", [saved_out_filename + ".o"]);
-    }
+    link::link_binary(sess, binary_dir, saved_out_filename);
 }
 
 #[cfg(test)]
