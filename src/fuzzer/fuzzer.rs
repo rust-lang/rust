@@ -346,7 +346,7 @@ fn check_compiling(filename: str) -> happiness {
         } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\")") {
             known_bug("https://github.com/graydon/rust/issues/895")
         } else if contains(p.err, "Ptr must be a pointer to Val type") {
-            known_bug("https://github.com/graydon/rust/issues/897")
+            known_bug("https://github.com/graydon/rust/issues/897 or https://github.com/graydon/rust/issues/949")
         } else if contains(p.err, "(castIsValid(op, S, Ty) && \"Invalid cast!\"), function Create") {
             known_bug("https://github.com/graydon/rust/issues/901")
         } else if contains(p.err, "Invoking a function with a bad signature!") {
