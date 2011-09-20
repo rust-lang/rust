@@ -12,7 +12,7 @@
 This manual is for the ``Rust'' programming language.
 
 
-@uref{http://github.com/graydon/rust}
+@uref{http://www.rust-lang.org}
 
 Version: @gitversion
 
