@@ -1,3 +1,4 @@
+#include "rust_cc.h"
 #include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_unwind.h"
@@ -61,6 +62,7 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
         nbytes, td);
 
     gc::maybe_gc(task);
+    cc::maybe_cc(task);
 
     // TODO: Maybe use dladdr here to find a more useful name for the
     // type_desc.
