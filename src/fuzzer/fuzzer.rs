@@ -55,7 +55,8 @@ fn common_exprs() -> [ast::expr] {
      dse(ast::expr_put(option::none)),
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
-     dse(ast::expr_lit(@dsl(ast::lit_bool(true))))
+     dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
+     dse(ast::expr_unary(ast::box(ast::imm), @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
     ]
 }
 
@@ -344,7 +345,7 @@ fn check_compiling(filename: str) -> happiness {
             known_bug("https://github.com/graydon/rust/issues/943")
         } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\")") {
             known_bug("https://github.com/graydon/rust/issues/895")
-        } else if contains(p.out, "Ptr must be a pointer to Val type") {
+        } else if contains(p.err, "Ptr must be a pointer to Val type") {
             known_bug("https://github.com/graydon/rust/issues/897")
         } else if contains(p.err, "(castIsValid(op, S, Ty) && \"Invalid cast!\"), function Create") {
             known_bug("https://github.com/graydon/rust/issues/901")
@@ -425,7 +426,6 @@ fn content_is_dangerous_to_run(code: str) -> bool {
         ["import", // espeically fs, run
          "native",
          "unsafe",
-         "with", // tstate hang: https://github.com/graydon/rust/issues/948
          "log"]; // python --> rust pipe deadlock?
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
@@ -437,6 +437,7 @@ fn content_is_dangerous_to_modify(code: str) -> bool {
         ["#macro", // not safe to steal things inside of it, because they have a special syntax
          "#",      // strange representation of the arguments to #fmt, for example
          "tag",    // typeck hang: https://github.com/graydon/rust/issues/742 (from dup #900)
+         "with",   // tstate hang: https://github.com/graydon/rust/issues/948
          " be "];  // don't want to replace its child with a non-call: "Non-call expression in tail call"
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
