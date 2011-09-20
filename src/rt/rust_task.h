@@ -59,7 +59,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     context ctx;
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
-    rust_box *gc_alloc_chain;      // Linked list of GC allocations.
     rust_scheduler *sched;
     rust_crate_cache *cache;
 

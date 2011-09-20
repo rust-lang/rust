@@ -57,9 +57,8 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     LOG_UPCALL_ENTRY(task);
 
     LOG(task, mem,
-        "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ")"
-        " with gc-chain head = 0x%" PRIxPTR,
-        nbytes, td, task->gc_alloc_chain);
+        "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ")",
+        nbytes, td);
 
     gc::maybe_gc(task);
 
@@ -69,10 +68,8 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     void *p = task->malloc(nbytes, "tdesc", td);
 
     LOG(task, mem,
-        "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR
-        ") = 0x%" PRIxPTR
-        " with gc-chain head = 0x%" PRIxPTR,
-        nbytes, td, (uintptr_t)p, task->gc_alloc_chain);
+        "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ") = 0x%" PRIxPTR,
+        nbytes, td, (uintptr_t)p);
     return (uintptr_t) p;
 }
 
