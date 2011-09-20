@@ -150,7 +150,7 @@ rust_kernel::fail() {
 
 rust_task_id
 rust_kernel::create_task(rust_task *spawner, const char *name) {
-    rust_scheduler *thread = threads[rand(&rctx) % num_threads];
+    rust_scheduler *thread = threads[isaac_rand(&rctx) % num_threads];
     rust_task *t = thread->create_task(spawner, name);
     {
         scoped_lock with(_kernel_lock);

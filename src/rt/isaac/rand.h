@@ -43,10 +43,10 @@ void isaac(randctx *r);
 
 /*
 ------------------------------------------------------------------------------
- Call rand(/o_ randctx *r _o/) to retrieve a single 32-bit random value
+ Call isaac_rand(/o_ randctx *r _o/) to retrieve a single 32-bit random value
 ------------------------------------------------------------------------------
 */
-#define rand(r) \
+#define isaac_rand(r) \
    (!(r)->randcnt-- ? \
      (isaac(r), (r)->randcnt=RANDSIZ-1, (r)->randrsl[(r)->randcnt]) : \
      (r)->randrsl[(r)->randcnt])

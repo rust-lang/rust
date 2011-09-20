@@ -151,7 +151,7 @@ rand_new(rust_task *task)
 extern "C" CDECL size_t
 rand_next(rust_task *task, randctx *rctx)
 {
-    return rand(rctx);
+    return isaac_rand(rctx);
 }
 
 extern "C" CDECL void

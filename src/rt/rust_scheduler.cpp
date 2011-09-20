@@ -179,7 +179,7 @@ rust_scheduler::schedule_task(int id) {
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);
     if (running_tasks.length() > 0) {
-        size_t k = rand(&rctx);
+        size_t k = isaac_rand(&rctx);
         // Look around for a runnable task, starting at k.
         for(size_t j = 0; j < running_tasks.length(); ++j) {
             size_t  i = (j + k) % running_tasks.length();
