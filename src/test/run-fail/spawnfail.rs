@@ -1,4 +1,3 @@
-// Currently failure doesn't propagate correctly to owning tasks so xfailed
 // error-pattern:explicit
 use std;
 import std::task;
