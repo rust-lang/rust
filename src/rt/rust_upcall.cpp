@@ -1,4 +1,3 @@
-#include "rust_box.h"
 #include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_unwind.h"
