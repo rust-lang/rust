@@ -1,5 +1,3 @@
-// xfail for now, due to some problem with polymorphic types.
-
 use std;
 import std::task;
 import std::comm;
