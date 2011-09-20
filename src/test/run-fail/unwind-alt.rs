@@ -5,6 +5,7 @@ fn test_box() {
 }
 fn test_str() {
     let res = alt false { true { "happy" } };
+    assert res == "happy";
 }
 fn main() {
     test_box();
