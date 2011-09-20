@@ -77,25 +77,6 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     return (uintptr_t) p;
 }
 
-extern "C" CDECL rust_box *
-upcall_malloc_box(rust_task *task, size_t nbytes, type_desc *td) {
-    LOG_UPCALL_ENTRY(task);
-
-    gc::maybe_gc(task);
-
-    rust_box *box = reinterpret_cast<rust_box *>
-        (task->malloc(nbytes + sizeof(rust_box), "tdesc", td));
-    box->ref_count = 1;
-    box->tydesc = td;
-
-    box->gc_prev = NULL;
-    if ((box->gc_next = task->gc_alloc_chain) != NULL)
-        box->gc_next->gc_prev = box;
-    task->gc_alloc_chain = box;
-
-    return box;
-}
-
 /**
  * Called whenever an object's ref count drops to zero.
  */
@@ -108,24 +89,6 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
              "upcall free(0x%" PRIxPTR ", is_gc=%" PRIdPTR ")",
              (uintptr_t)ptr, is_gc);
     task->free(ptr, (bool) is_gc);
-}
-
-extern "C" CDECL void
-upcall_free_box(rust_task *task, rust_box *box) {
-    LOG_UPCALL_ENTRY(task);
-
-    assert(!box->ref_count && "Box reference count is nonzero on free!");
-
-    if (box->gc_prev)
-        box->gc_prev->gc_next = box->gc_next;
-    else
-        task->gc_alloc_chain = box->gc_next;
-    if (box->gc_next)
-        box->gc_next->gc_prev = box->gc_prev;
-
-    box->tydesc->drop_glue(NULL, task, (void *)box->tydesc,
-                           box->tydesc->first_param, box->data);
-    task->free(box, false);
 }
 
 extern "C" CDECL uintptr_t
