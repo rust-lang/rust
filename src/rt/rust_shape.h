@@ -4,6 +4,11 @@
 #ifndef RUST_SHAPE_H
 #define RUST_SHAPE_H
 
+// Tell ISAAC to let go of max() and min() defines.
+#undef max
+#undef min
+
+#include <iostream>
 #include "rust_internal.h"
 
 // ISAAC pollutes our namespace.
@@ -128,7 +133,7 @@ struct size_align {
 
     inline void add(size_t extra_size, size_t extra_align) {
         size += extra_size;
-        alignment = max(alignment, extra_align);
+        alignment = std::max(alignment, extra_align);
     }
 
     static inline size_align make(size_t in_size) {
