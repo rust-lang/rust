@@ -3939,7 +3939,6 @@ fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
     let tup_res = alloc_ty(bcx, t);
     let tup_val = tup_res.val;
     bcx = tup_res.bcx;
-    add_clean_temp(cx, tup_val, t);
     let i: int = 0;
     for e in elts {
         let e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
@@ -3951,6 +3950,9 @@ fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
         bcx = move_val_if_temp(dst_res.bcx, INIT, dst_res.val, src, e_ty);
         i += 1;
     }
+
+    // Only register the cleanups after the tuple is built
+    add_clean_temp(cx, tup_val, t);
     ret rslt(bcx, tup_val);
 }
 
