@@ -1,12 +1,16 @@
 // xfail-test
-io fn main() {
-    let port<int> po = port();
+use std;
+import std::comm;
+import std::task;
+
+fn main() {
+    let po = comm::port();
 
     // Spawn 10 tasks each sending us back one int.
-    let int i = 10;
+    let i = 10;
     while (i > 0) {
         log i;
-        spawn "child" child(i, chan(po));
+        task::spawn(bind child(i, comm::chan(po)));
         i = i - 1;
     }
 
@@ -14,17 +18,17 @@ io fn main() {
     // anything back, so we deadlock here.
 
     i = 10;
-    let int value = 0;
+    let value = 0;
     while (i > 0) {
         log i;
-        po |> value;
+        value = comm::recv(po);
         i = i - 1;
     }
 
     log "main thread exiting";
 }
 
-io fn child(int x, chan<int> ch) {
+fn child(x: int, ch: comm::chan<int>) {
     log x;
-    ch <| x;
+    comm::send(ch, x);
 }
