@@ -84,7 +84,7 @@ fn vec_to_str(v: [int]) -> str {
     let s = "[";
     while i < len(v) {
         s += int::str(v[i]);
-        if i + 1u < len(v) { s += ", " }
+        if i + 1u < len(v) { s += ", "; }
         i += 1u;
     }
     ret s + "]";
