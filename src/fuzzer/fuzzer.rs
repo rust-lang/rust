@@ -1,11 +1,11 @@
 use std;
 use rustc;
 
-import std::{fs, io, getopts, vec, str, uint, option};
+import std::{fs, io, getopts, vec, str, int, uint, option};
 import std::getopts::{optopt, opt_present, opt_str};
 import std::io::stdout;
 
-import rustc::syntax::{ast, fold, visit, codemap};
+import rustc::syntax::{ast, ast_util, fold, visit, codemap};
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
@@ -152,6 +152,7 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr) ->
     *crate2
 }
 
+
 // Replace the |i|th ty (in fold order) of |crate| with |newty|.
 fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty) ->
    ast::crate {
@@ -206,9 +207,9 @@ fn check_variants_T<T>(
     let L = vec::len(things);
 
     if L < 100u {
-        for each i: uint in under(uint::min(L, 20u)) {
+        for each i: uint in under(uint::min(L, 10u)) {
             log_err "Replacing... " + stringifier(@things[i]);
-            for each j: uint in under(uint::min(L, 5u)) {
+            for each j: uint in under(uint::min(L, 10u)) {
                 log_err "With... " + stringifier(@things[j]);
                 let crate2 = @replacer(crate, i, things[j]);
                 // It would be best to test the *crate* for stability, but testing the
@@ -219,8 +220,9 @@ fn check_variants_T<T>(
                                                     io::string_reader(""), _,
                                                     pprust::no_ann()));
                 check_roundtrip_convergence(str3, 1u);
-                //let file_label = #fmt("buggy_%s_%s_%u_%u.rs", last_part(filename), thing_label, i, j);
-                //check_whole_compiler(str3, file_label);
+                //let file_label = #fmt("rusttmp/%s_%s_%u_%u", last_part(filename), thing_label, i, j);
+                //let safe_to_run = !(content_is_dangerous_to_run(str3) || has_raw_pointers(*crate2));
+                //check_whole_compiler(str3, file_label, safe_to_run);
             }
         }
     }
@@ -232,36 +234,80 @@ fn last_part(filename: str) -> str {
   str::slice(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
 }
 
-tag compile_result { known_bug(str); passed(str); failed(str); }
+tag happiness { passed; cleanly_rejected(str); known_bug(str); failed(str); }
 
 // We'd find more bugs if we could take an AST here, but
 // - that would find many "false positives" or unimportant bugs
 // - that would be tricky, requiring use of tasks or serialization or randomness.
 // This seems to find plenty of bugs as it is :)
-fn check_whole_compiler(code: str, suggested_filename: str) {
-    let filename = "test.rs";
+fn check_whole_compiler(code: str, suggested_filename_prefix: str, allow_running: bool) {
+    let filename = suggested_filename_prefix + ".rs";
     write_file(filename, code);
-    alt check_whole_compiler_inner(filename) {
-      known_bug(s) {
-        log_err "Ignoring known bug: " + s;
+
+    let compile_result = check_compiling(filename);
+
+    let run_result = alt (compile_result, allow_running) {
+      (passed., true) { check_running(suggested_filename_prefix) }
+      (h, _) { h }
+    };
+
+    alt run_result {
+      passed. | cleanly_rejected(_) | known_bug(_) {
+        removeIfExists(suggested_filename_prefix);
+        removeIfExists(suggested_filename_prefix + ".rs");
+        removeDirIfExists(suggested_filename_prefix + ".dSYM");
       }
       failed(s) {
         log_err "check_whole_compiler failure: " + s;
-        write_file(suggested_filename, code);
-        log_err "Saved as: " + suggested_filename;
+        log_err "Saved as: " + filename;
       }
-      passed(_) { }
     }
 }
 
-fn check_whole_compiler_inner(filename: str) -> compile_result {
+fn removeIfExists(filename: str) {
+    // So sketchy!
+    assert !contains(filename, " ");
+    std::run::program_output("bash", ["-c", "rm " + filename]);
+}
+
+fn removeDirIfExists(filename: str) {
+    // So sketchy!
+    assert !contains(filename, " ");
+    std::run::program_output("bash", ["-c", "rm -r " + filename]);
+}
+
+fn check_running(exe_filename: str) -> happiness {
+    let p = std::run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
+    let comb = p.out + "\n" + p.err;
+    if str::byte_len(comb) > 1u {
+        log_err "comb comb comb: " + comb;
+    }
+
+    if contains(comb, "Assertion failed:") {
+        failed("C++ assertion failure")
+    } else if contains(comb, "malloc") {
+        failed("Mentioned malloc")
+    } else if contains(comb, "leaked memory in rust main loop") {
+        failed("Leaked") // might also use exit code 134
+    } else {
+        alt p.status {
+            0         { passed }
+            100       { cleanly_rejected("running: explicit fail") }
+            101 | 247 { cleanly_rejected("running: timed out") }
+            245 | 246 { known_bug("https://github.com/graydon/rust/issues/32 ??") }
+            rc        { failed("exited with status " + int::str(rc)) }
+        }
+    }
+}
+
+fn check_compiling(filename: str) -> happiness {
     /*
     let p = std::run::program_output(
             "/Users/jruderman/code/rust/build/stage1/rustc",
             ["-c", filename]);
     */
 
-    let p = std::run::program_output("bash", ["-c", "DYLD_LIBRARY_PATH=/Users/jruderman/code/rust/build/stage0/lib:/Users/jruderman/code/rust/build/rustllvm/ /Users/jruderman/code/rust/build/stage1/rustc -c " + filename]);
+    let p = std::run::program_output("bash", ["-c", "DYLD_LIBRARY_PATH=/Users/jruderman/code/rust/build/stage0/lib:/Users/jruderman/code/rust/build/rustllvm/ /Users/jruderman/code/rust/build/stage1/rustc " + filename]);
 
     //log_err #fmt("Status: %d", p.status);
     if p.err != "" {
@@ -276,7 +322,7 @@ fn check_whole_compiler_inner(filename: str) -> compile_result {
             failed("Unfamiliar error message")
         }
     } else if p.status == 0 {
-        passed("Accepted the input program")
+        passed
     } else if contains(p.out, "Out of stack space, sorry") {
         known_bug("Recursive types - https://github.com/graydon/rust/issues/742")
     } else if contains(p.out, "Assertion !cx.terminated failed") {
@@ -284,8 +330,6 @@ fn check_whole_compiler_inner(filename: str) -> compile_result {
 //  } else if contains(p.out, "upcall fail 'non-exhaustive match failure', ../src/comp/middle/trans.rs") {
     } else if contains(p.out, "trans_rec expected a rec but found _|_") {
         known_bug("https://github.com/graydon/rust/issues/924")
-    } else if contains(p.out, "Assertion failed: (alloc->magic == MAGIC)") {
-        known_bug("https://github.com/graydon/rust/issues/934")
     } else if contains(p.out, "Assertion failed: (S->getType()->isPointerTy() && \"Invalid cast\")") {
         known_bug("https://github.com/graydon/rust/issues/935")
     } else if contains(p.out, "Ptr must be a pointer to Val type") {
@@ -295,7 +339,7 @@ fn check_whole_compiler_inner(filename: str) -> compile_result {
         failed("Looks like an llvm assertion failure")
 
     } else if contains(p.out, "internal compiler error fail called with unsupported type _|_") {
-        known_bug("https://github.com/graydon/rust/issues/930")
+        known_bug("https://github.com/graydon/rust/issues/942")
     } else if contains(p.out, "internal compiler error Translating unsupported cast") {
         known_bug("https://github.com/graydon/rust/issues/932")
     } else if contains(p.out, "internal compiler error sequence_element_type called on non-sequence value") {
@@ -309,7 +353,7 @@ fn check_whole_compiler_inner(filename: str) -> compile_result {
         failed("internal compiler error")
 
     } else if contains(p.out, "error:") {
-        passed("Rejected the input program cleanly")
+        cleanly_rejected("rejected with span_error")
     } else {
         log_err p.status;
         log_err "!Stdout: " + p.out;
@@ -328,6 +372,31 @@ fn parse_and_print(code: str) -> str {
                                         filename,
                                         io::string_reader(code), _,
                                         pprust::no_ann()));
+}
+
+fn has_raw_pointers(c: ast::crate) -> bool {
+    let has_rp = @mutable false;
+    fn visit_ty(flag: @mutable bool, t: @ast::ty) {
+        alt t.node {
+          ast::ty_ptr(_) { *flag = true; }
+          _ { }
+        }
+    }
+    let v =
+        visit::mk_simple_visitor(@{visit_ty: bind visit_ty(has_rp, _)
+                                      with *visit::default_simple_visitor()});
+    visit::visit_crate(c, (), v);
+    ret *has_rp;
+}
+
+fn content_is_dangerous_to_run(code: str) -> bool {
+    let dangerous_patterns =
+        ["import", // espeically fs, run
+         "native",
+         "unsafe"];
+
+    for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
+    ret false;
 }
 
 fn content_is_dangerous_to_modify(code: str) -> bool {
