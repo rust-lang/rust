@@ -307,6 +307,7 @@ tag ty_ {
     ty_char;
     ty_str;
     ty_box(mt);
+    ty_uniq(mt);
     ty_vec(mt);
     ty_ptr(mt);
     ty_task;

@@ -285,6 +285,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
       ast::ty_box(mt) {
         typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
+      ast::ty_uniq(mt) {
+        typ = ty::mk_uniq(tcx, ast_ty_to_ty(tcx, getter, mt.ty));
+      }
       ast::ty_vec(mt) {
         typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
       }

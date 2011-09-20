@@ -540,6 +540,11 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         let mt = parse_mt(p);
         hi = mt.ty.span.hi;
         t = ast::ty_box(mt);
+    } else if p.peek() == token::TILDE {
+        p.bump();
+        let mt = parse_mt(p);
+        hi = mt.ty.span.hi;
+        t = ast::ty_uniq(mt);
     } else if p.peek() == token::BINOP(token::STAR) {
         p.bump();
         let mt = parse_mt(p);
