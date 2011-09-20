@@ -1229,22 +1229,22 @@ fn emit_tydescs(ccx: @crate_ctxt) {
         let cmp_fn_ty = T_ptr(T_cmp_glue_fn(*ccx));
         let ti = pair.val;
         let take_glue =
-            alt copy ti.take_glue {
+            alt ti.take_glue {
               none. { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
         let drop_glue =
-            alt copy ti.drop_glue {
+            alt ti.drop_glue {
               none. { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
         let free_glue =
-            alt copy ti.free_glue {
+            alt ti.free_glue {
               none. { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
         let cmp_glue =
-            alt copy ti.cmp_glue {
+            alt ti.cmp_glue {
               none. { ccx.stats.n_null_glues += 1u; C_null(cmp_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
@@ -1745,7 +1745,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
       none. { }
       some(ti) {
         if field == abi::tydesc_field_take_glue {
-            alt copy ti.take_glue {
+            alt ti.take_glue {
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue TAKE %s",
@@ -1763,7 +1763,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
               }
             }
         } else if field == abi::tydesc_field_drop_glue {
-            alt copy ti.drop_glue {
+            alt ti.drop_glue {
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue DROP %s",
@@ -1781,7 +1781,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
               }
             }
         } else if field == abi::tydesc_field_free_glue {
-            alt copy ti.free_glue {
+            alt ti.free_glue {
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue FREE %s",
@@ -1799,7 +1799,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
               }
             }
         } else if field == abi::tydesc_field_cmp_glue {
-            alt copy ti.cmp_glue {
+            alt ti.cmp_glue {
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue CMP %s",
@@ -4456,7 +4456,7 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     Br(in_cx, cx.llbb);
     let llcallee = C_nil();
     let llenv = C_nil();
-    alt copy cx.fcx.lliterbody {
+    alt cx.fcx.lliterbody {
       some(lli) {
         let slot = alloca(cx, val_ty(lli));
         Store(cx, lli, slot);
@@ -4531,7 +4531,7 @@ fn trans_break_cont(sp: span, cx: @block_ctxt, to_end: bool) -> result {
                      C_nil());
           }
           _ {
-            alt copy cleanup_cx.parent {
+            alt cleanup_cx.parent {
               parent_some(cx) { cleanup_cx = cx; }
               parent_none. {
                 bcx_ccx(cx).sess.span_fatal(sp,
@@ -4595,7 +4595,7 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     let cleanup_cx = cx;
     while more_cleanups {
         bcx = trans_block_cleanups(bcx, cleanup_cx);
-        alt copy cleanup_cx.parent {
+        alt cleanup_cx.parent {
           parent_some(b) { cleanup_cx = b; }
           parent_none. { more_cleanups = false; }
         }
@@ -5230,7 +5230,7 @@ fn trans_closure(bcx_maybe: option::t<@block_ctxt>,
     create_llargs_for_fn_args(fcx, f.proto, ty_self,
                               ty::ret_ty_of_fn(cx.ccx.tcx, id), f.decl.inputs,
                               ty_params);
-    alt copy fcx.llself {
+    alt fcx.llself {
       some(llself) { populate_fn_ctxt_from_llself(fcx, llself); }
       _ { }
     }
