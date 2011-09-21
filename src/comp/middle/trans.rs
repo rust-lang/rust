@@ -1512,17 +1512,11 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
         }
       }
       ty::ty_type. {
-        trans_fail(cx, none, "attempt to compare values of type type");
-
-        // This is a bit lame, because we return a dummy block to the
-        // caller that's actually unreachable, but I don't think it
-        // matters.
-        ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"), C_bool(false));
+        ret trans_fail(cx, none, "attempt to compare values of type type");
       }
       ty::ty_native(_) {
-        trans_fail(cx, none::<span>,
+        ret trans_fail(cx, none::<span>,
                    "attempt to compare values of type native");
-        ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"), C_bool(false));
       }
       _ {
         // Should never get here, because t is scalar.
@@ -1592,9 +1586,9 @@ fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
     let unreach_cx = new_sub_block_ctxt(cx, "unreach");
     Unreachable(unreach_cx);
     let llswitch = Switch(cx, llop, unreach_cx.llbb, 3u);
-    llvm::LLVMAddCase(llswitch, C_u8(abi::cmp_glue_op_eq), eq_cx.llbb);
-    llvm::LLVMAddCase(llswitch, C_u8(abi::cmp_glue_op_lt), lt_cx.llbb);
-    llvm::LLVMAddCase(llswitch, C_u8(abi::cmp_glue_op_le), le_cx.llbb);
+    AddCase(llswitch, C_u8(abi::cmp_glue_op_eq), eq_cx.llbb);
+    AddCase(llswitch, C_u8(abi::cmp_glue_op_lt), lt_cx.llbb);
+    AddCase(llswitch, C_u8(abi::cmp_glue_op_le), le_cx.llbb);
     let last_result =
         Phi(last_cx, T_i1(), [eq_result, lt_result, le_result],
             [eq_cx.llbb, lt_cx.llbb, le_cx.llbb]);
@@ -1716,7 +1710,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
                 new_sub_block_ctxt(cx,
                                    "tag-iter-variant-" +
                                        uint::to_str(i, 10u));
-            llvm::LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
+            AddCase(llswitch, C_int(i as int), variant_cx.llbb);
             variant_cx =
                 iter_variant(variant_cx, llunion_a_ptr, variant, tps, tid, f);
             Br(variant_cx, next_cx.llbb);
@@ -1984,20 +1978,20 @@ fn call_bzero(cx: @block_ctxt, dst: ValueRef, n_bytes: ValueRef,
 }
 
 fn memmove_ty(cx: @block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
-   result {
+    @block_ctxt {
     let ccx = bcx_ccx(cx);
     if check type_has_static_size(ccx, t) {
         if ty::type_is_structural(bcx_tcx(cx), t) {
             let sp = cx.sp;
             let llsz = llsize_of(type_of(ccx, sp, t));
-            ret call_memmove(cx, dst, src, llsz);
+            ret call_memmove(cx, dst, src, llsz).bcx;
         }
-
-        ret rslt(cx, Store(cx, Load(cx, src), dst));
+        Store(cx, Load(cx, src), dst);
+        ret cx;
     }
 
     let llsz = size_of(cx, t);
-    ret call_memmove(llsz.bcx, dst, src, llsz.val);
+    ret call_memmove(llsz.bcx, dst, src, llsz.val).bcx;
 }
 
 tag copy_action { INIT; DROP_EXISTING; }
@@ -2052,7 +2046,7 @@ fn copy_val_no_check(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         {
         let bcx = cx;
         if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
-        bcx = memmove_ty(bcx, dst, src, t).bcx;
+        bcx = memmove_ty(bcx, dst, src, t);
         ret take_ty(bcx, dst, t);
     }
     ccx.sess.bug("unexpected type in trans::copy_val_no_check: " +
@@ -2086,7 +2080,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
     } else if ty::type_is_unique(tcx, t) ||
                   type_is_structural_or_param(tcx, t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
-        cx = memmove_ty(cx, dst, src_val, t).bcx;
+        cx = memmove_ty(cx, dst, src_val, t);
         if src.is_mem { ret zero_alloca(cx, src_val, t).bcx; }
 
         // If we're here, it must be a temporary.
@@ -2242,13 +2236,6 @@ fn trans_compare(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
 fn trans_eager_binop(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
                      lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t) -> result {
 
-    // If either is bottom, it diverges. So no need to do the
-    // operation.
-    if ty::type_is_bot(bcx_tcx(cx), lhs_t) ||
-           ty::type_is_bot(bcx_tcx(cx), rhs_t) {
-        ret rslt(cx, Unreachable(cx));
-    }
-
     let is_float = false;
     let intype = lhs_t;
     if ty::type_is_bot(bcx_tcx(cx), intype) { intype = rhs_t; }
@@ -2355,10 +2342,10 @@ fn trans_binary(cx: @block_ctxt, op: ast::binop, a: @ast::expr, b: @ast::expr)
       ast::and. {
         // Lazy-eval and
         let lhs_res = trans_expr(cx, a);
-        let rhs_cx = new_scope_block_ctxt(cx, "rhs");
+        let rhs_cx = new_scope_block_ctxt(lhs_res.bcx, "rhs");
         let rhs_res = trans_expr(rhs_cx, b);
 
-        let lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
+        let lhs_false_cx = new_scope_block_ctxt(lhs_res.bcx, "lhs false");
         let lhs_false_res = rslt(lhs_false_cx, C_bool(false));
 
         // The following line ensures that any cleanups for rhs
@@ -2373,9 +2360,9 @@ fn trans_binary(cx: @block_ctxt, op: ast::binop, a: @ast::expr, b: @ast::expr)
       ast::or. {
         // Lazy-eval or
         let lhs_res = trans_expr(cx, a);
-        let rhs_cx = new_scope_block_ctxt(cx, "rhs");
+        let rhs_cx = new_scope_block_ctxt(lhs_res.bcx, "rhs");
         let rhs_res = trans_expr(rhs_cx, b);
-        let lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
+        let lhs_true_cx = new_scope_block_ctxt(lhs_res.bcx, "lhs true");
         let lhs_true_res = rslt(lhs_true_cx, C_bool(true));
 
         // see the and case for an explanation
@@ -2401,7 +2388,7 @@ fn join_results(parent_cx: @block_ctxt, t: TypeRef, ins: [result]) -> result {
     let vals: [ValueRef] = [];
     let bbs: [BasicBlockRef] = [];
     for r: result in ins {
-        if !is_terminated(r.bcx) {
+        if !r.bcx.unreachable {
             live += [r];
             vals += [r.val];
             bbs += [r.bcx.llbb];
@@ -2412,7 +2399,6 @@ fn join_results(parent_cx: @block_ctxt, t: TypeRef, ins: [result]) -> result {
         // No incoming edges are live, so we're in dead-code-land.
         // Arbitrarily pick the first dead edge, since the caller
         // is just going to propagate it outward.
-
         assert (std::vec::len::<result>(ins) >= 1u);
         ret ins[0];
       }
@@ -2428,7 +2414,11 @@ fn join_results(parent_cx: @block_ctxt, t: TypeRef, ins: [result]) -> result {
 
 fn join_branches(parent_cx: @block_ctxt, ins: [result]) -> @block_ctxt {
     let out = new_sub_block_ctxt(parent_cx, "join");
-    for r: result in ins { if !is_terminated(r.bcx) { Br(r.bcx, out.llbb); } }
+    let branched = false;
+    for r: result in ins {
+        if !r.bcx.unreachable { Br(r.bcx, out.llbb); branched = true; }
+    }
+    if !branched { Unreachable(out); }
     ret out;
 }
 
@@ -2436,20 +2426,11 @@ tag out_method { return; save_in(ValueRef); }
 
 fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
             els: option::t<@ast::expr>, output: out_method) -> result {
-    let cond_res = trans_expr(cx, cond);
+    let {bcx, val: cond_val} = trans_expr(cx, cond);
 
-    if ty::type_is_bot(bcx_tcx(cx), ty::expr_ty(bcx_tcx(cx), cond)) {
-
-        // No need to generate code for comparison,
-        // since the cond diverges.
-        if !is_terminated(cx) {
-            ret rslt(cx, Unreachable(cx));
-        } else { ret cond_res; }
-    }
-
-    let then_cx = new_scope_block_ctxt(cx, "then");
+    let then_cx = new_scope_block_ctxt(bcx, "then");
     let then_res = trans_block(then_cx, thn, output);
-    let else_cx = new_scope_block_ctxt(cx, "else");
+    let else_cx = new_scope_block_ctxt(bcx, "else");
     // Synthesize a block here to act as the else block
     // containing an if expression. Needed in order for the
     // else scope to behave like a normal block scope. A tad
@@ -2471,7 +2452,7 @@ fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
           }
           _ { rslt(else_cx, C_nil()) }
         };
-    CondBr(cond_res.bcx, cond_res.val, then_cx.llbb, else_cx.llbb);
+    CondBr(bcx, cond_val, then_cx.llbb, else_cx.llbb);
     ret rslt(join_branches(cx, [then_res, else_res]), C_nil());
 }
 
@@ -2488,10 +2469,7 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
         bcx = trans_alt::bind_irrefutable_pat(scope_cx, local.node.pat, curr,
                                               bcx.fcx.lllocals, false);
         bcx = trans_block(bcx, body, return).bcx;
-        if !is_terminated(bcx) {
-            Br(bcx, next_cx.llbb);
-            // otherwise, this code is unreachable
-        }
+        Br(bcx, next_cx.llbb);
         ret next_cx;
     }
     let next_cx = new_sub_block_ctxt(cx, "next");
@@ -2796,10 +2774,7 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
     let r = trans_block(bcx, body, return);
     finish_fn(fcx, lltop);
 
-    if !is_terminated(r.bcx) {
-        // if terminated is true, no need for the ret-fail
-        build_return(r.bcx);
-    }
+    build_return(r.bcx);
 
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
     alt seq.node {
@@ -2834,14 +2809,6 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
                                   "do-while loop body");
     let body_res = trans_block(body_cx, body, return);
-    if is_terminated(body_res.bcx) {
-        // This is kind of ridiculous, but no permutations
-        // involving body_res or body_cx.val worked.
-        let rs = trans_block(cx, body, return);
-        if !is_terminated(next_cx) { Unreachable(next_cx); }
-        if !is_terminated(body_cx) { Unreachable(body_cx); }
-        ret rs;
-    }
     let cond_res = trans_expr(body_res.bcx, cond);
     CondBr(cond_res.bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
     Br(cx, body_cx.llbb);
@@ -3657,20 +3624,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
     let bcx: @block_ctxt = cx;
     let ret_style = ty::ty_fn_ret_style(tcx, fn_ty);
     let by_ref = ast_util::ret_by_ref(ret_style);
-    // Arg 0: Output pointer.
 
-    // FIXME: test case looks like
-    // f(1, fail, @42);
-    if is_terminated(bcx) {
-        // This means an earlier arg was divergent.
-        // So this arg can't be evaluated.
-        ret {bcx: bcx,
-             outer_cx: outer_cx,
-             args: [],
-             retslot: C_nil(),
-             to_zero: to_zero,
-             to_revoke: to_revoke};
-    }
     let retty = ty::ty_fn_ret(tcx, fn_ty), full_retty = retty;
     alt gen {
       some(g) {
@@ -3681,6 +3635,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
       }
       _ { }
     }
+    // Arg 0: Output pointer.
     let llretslot_res = if ty::type_is_nil(tcx, retty) {
         rslt(cx, llvm::LLVMGetUndef(T_ptr(T_nil())))
     } else if by_ref {
@@ -3732,11 +3687,6 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
     let arg_tys = type_of_explicit_args(ccx, cx.sp, args);
     let i = 0u;
     for e: @ast::expr in es {
-        if is_terminated(bcx) {
-            // This means an earlier arg was divergent.
-            // So this arg can't be evaluated.
-            break;
-        }
         let is_referenced = alt ret_style {
           ast::return_ref(_, arg_n) { i + 1u == arg_n }
           _ { false }
@@ -3761,9 +3711,9 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
-    let fn_expr_ty = ty::expr_ty(bcx_tcx(in_cx), f);
-    let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(bcx_tcx(in_cx),
-                                                          fn_expr_ty));
+    let tcx = bcx_tcx(in_cx);
+    let fn_expr_ty = ty::expr_ty(tcx, f);
+    let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_expr_ty));
     let cx = new_scope_block_ctxt(in_cx, "call");
     let f_res = trans_callee(cx, f);
     let bcx = f_res.bcx;
@@ -3786,7 +3736,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
       }
     }
 
-    let ret_ty = ty::node_id_to_type(bcx_tcx(cx), id);
+    let ret_ty = ty::node_id_to_type(tcx, id);
     let args_res =
         trans_args(bcx, in_cx, llenv, f_res.generic, lliterbody, args,
                    fn_expr_ty);
@@ -3808,38 +3758,38 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
        type _|_. Since that means it diverges, the code
        for the call itself is unreachable. */
     let retval = C_nil();
-    if !is_terminated(bcx) {
-        bcx = invoke_fastcall(bcx, faddr, llargs,
-                              args_res.to_zero, args_res.to_revoke).bcx;
-        alt lliterbody {
-          none. {
-            if !ty::type_is_nil(bcx_tcx(cx), ret_ty) {
-                if by_ref {
-                    retval = Load(bcx, llretslot);
-                } else {
-                    retval = load_if_immediate(bcx, llretslot, ret_ty);
-                    // Retval doesn't correspond to anything really tangible
-                    // in the frame, but it's a ref all the same, so we put a
-                    // note here to drop it when we're done in this scope.
-                    add_clean_temp(in_cx, retval, ret_ty);
-                }
+    bcx = invoke_fastcall(bcx, faddr, llargs,
+                          args_res.to_zero, args_res.to_revoke);
+    alt lliterbody {
+      none. {
+        if !ty::type_is_nil(tcx, ret_ty) {
+            if by_ref {
+                retval = Load(bcx, llretslot);
+            } else {
+                retval = load_if_immediate(bcx, llretslot, ret_ty);
+                // Retval doesn't correspond to anything really tangible
+                // in the frame, but it's a ref all the same, so we put a
+                // note here to drop it when we're done in this scope.
+                add_clean_temp(in_cx, retval, ret_ty);
             }
-          }
-          some(_) {
-            // If there was an lliterbody, it means we were calling an
-            // iter, and we are *not* the party using its 'output' value,
-            // we should ignore llretslot.
-          }
         }
-
-        // Forget about anything we moved out.
-        bcx = zero_and_revoke(bcx, args_res.to_zero, args_res.to_revoke);
-
-        if !by_ref { bcx = trans_block_cleanups(bcx, cx); }
-        let next_cx = new_sub_block_ctxt(in_cx, "next");
-        Br(bcx, next_cx.llbb);
-        bcx = next_cx;
+      }
+      some(_) {
+        // If there was an lliterbody, it means we were calling an
+        // iter, and we are *not* the party using its 'output' value,
+        // we should ignore llretslot.
+      }
     }
+    // Forget about anything we moved out.
+    bcx = zero_and_revoke(bcx, args_res.to_zero, args_res.to_revoke);
+
+    if !by_ref { bcx = trans_block_cleanups(bcx, cx); }
+    let next_cx = new_sub_block_ctxt(in_cx, "next");
+    if bcx.unreachable || ty::type_is_bot(tcx, ret_ty) {
+        Unreachable(next_cx);
+    }
+    Br(bcx, next_cx.llbb);
+    bcx = next_cx;
     ret {res: rslt(bcx, retval), by_ref: by_ref};
 }
 
@@ -3857,14 +3807,15 @@ fn zero_and_revoke(bcx: @block_ctxt,
 }
 
 fn invoke(bcx: @block_ctxt, llfn: ValueRef,
-          llargs: [ValueRef]) -> result {
+          llargs: [ValueRef]) -> @block_ctxt {
     ret invoke_(bcx, llfn, llargs, [], [], Invoke);
 }
 
 fn invoke_fastcall(bcx: @block_ctxt, llfn: ValueRef,
                    llargs: [ValueRef],
                    to_zero: [{v: ValueRef, t: ty::t}],
-                   to_revoke: [{v: ValueRef, t: ty::t}]) -> result {
+                   to_revoke: [{v: ValueRef, t: ty::t}])
+    -> @block_ctxt {
     ret invoke_(bcx, llfn, llargs,
                 to_zero, to_revoke,
                 FastInvoke);
@@ -3874,14 +3825,15 @@ fn invoke_(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
            to_zero: [{v: ValueRef, t: ty::t}],
            to_revoke: [{v: ValueRef, t: ty::t}],
            invoker: fn(@block_ctxt, ValueRef, [ValueRef],
-                       BasicBlockRef, BasicBlockRef) -> ValueRef) -> result {
+                       BasicBlockRef, BasicBlockRef)) -> @block_ctxt {
     // FIXME: May be worth turning this into a plain call when there are no
     // cleanups to run
+    if bcx.unreachable { ret bcx; }
     let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
-    let retval = invoker(bcx, llfn, llargs,
-                         normal_bcx.llbb,
-                         get_landing_pad(bcx, to_zero, to_revoke));
-    ret rslt(normal_bcx, retval);
+    invoker(bcx, llfn, llargs,
+            normal_bcx.llbb,
+            get_landing_pad(bcx, to_zero, to_revoke));
+    ret normal_bcx;
 }
 
 fn get_landing_pad(bcx: @block_ctxt,
@@ -3923,8 +3875,7 @@ fn get_landing_pad(bcx: @block_ctxt,
 
 fn trans_landing_pad(bcx: @block_ctxt,
                      to_zero: [{v: ValueRef, t: ty::t}],
-                     to_revoke: [{v: ValueRef, t: ty::t}]
-                    ) -> BasicBlockRef {
+                     to_revoke: [{v: ValueRef, t: ty::t}]) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
@@ -4144,7 +4095,8 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
             with_out_method(bind trans_block(sub_cx, blk, _), cx, e.id,
                             output);
         Br(cx, sub_cx.llbb);
-        if !is_terminated(sub.bcx) { Br(sub.bcx, next_cx.llbb); }
+        Br(sub.bcx, next_cx.llbb);
+        if sub.bcx.unreachable { Unreachable(next_cx); }
         ret rslt(next_cx, sub.val);
       }
       ast::expr_copy(a) {
@@ -4479,7 +4431,7 @@ fn trans_fail_value(cx: @block_ctxt, sp_opt: option::t<span>,
     let V_str = PointerCast(cx, V_fail_str, T_ptr(T_i8()));
     V_filename = PointerCast(cx, V_filename, T_ptr(T_i8()));
     let args = [cx.fcx.lltaskptr, V_str, V_filename, C_int(V_line)];
-    let cx = invoke(cx, bcx_ccx(cx).upcalls._fail, args).bcx;
+    let cx = invoke(cx, bcx_ccx(cx).upcalls._fail, args);
     Unreachable(cx);
     ret rslt(cx, C_nil());
 }
@@ -4517,9 +4469,10 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
         llargs += [r.val];
       }
     }
-    bcx = invoke_fastcall(bcx, llcallee, llargs, [], []).bcx;
+    bcx = invoke_fastcall(bcx, llcallee, llargs, [], []);
     bcx = trans_block_cleanups(bcx, cx);
     let next_cx = new_sub_block_ctxt(in_cx, "next");
+    if bcx.unreachable { Unreachable(next_cx); }
     Br(bcx, next_cx.llbb);
     ret rslt(next_cx, C_nil());
 }
@@ -4541,8 +4494,8 @@ fn trans_break_cont(sp: span, cx: @block_ctxt, to_end: bool) -> result {
                   _ { Br(bcx, cleanup_cx.llbb); }
                 }
             }
-            ret rslt(new_sub_block_ctxt(bcx, "break_cont.unreachable"),
-                     C_nil());
+            Unreachable(bcx);
+            ret rslt(bcx, C_nil());
           }
           _ {
             alt cleanup_cx.parent {
@@ -4614,7 +4567,8 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
         }
     }
     build_return(bcx);
-    ret rslt(new_sub_block_ctxt(bcx, "ret.unreachable"), C_nil());
+    Unreachable(bcx);
+    ret rslt(bcx, C_nil());
 }
 
 fn build_return(bcx: @block_ctxt) { Br(bcx, bcx_fcx(bcx).llreturn); }
@@ -4759,15 +4713,23 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
     }
     let llbb: BasicBlockRef =
         str::as_buf(s, {|buf| llvm::LLVMAppendBasicBlock(cx.llfn, buf) });
-    ret @{llbb: llbb,
-          mutable terminated: false,
-          parent: parent,
-          kind: kind,
-          mutable cleanups: [],
-          mutable lpad_dirty: true,
-          mutable lpad: option::none,
-          sp: cx.sp,
-          fcx: cx};
+    let bcx = @{llbb: llbb,
+                mutable terminated: false,
+                mutable unreachable: false,
+                parent: parent,
+                kind: kind,
+                mutable cleanups: [],
+                mutable lpad_dirty: true,
+                mutable lpad: option::none,
+                sp: cx.sp,
+                fcx: cx};
+    alt parent {
+      parent_some(cx) {
+        if cx.unreachable { Unreachable(bcx); }
+      }
+      _ {}
+    }
+    ret bcx;
 }
 
 
@@ -4797,6 +4759,7 @@ fn new_sub_block_ctxt(bcx: @block_ctxt, n: str) -> @block_ctxt {
 fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
     ret @{llbb: llbb,
           mutable terminated: false,
+          mutable unreachable: false,
           parent: parent_none,
           kind: NON_SCOPE_BLOCK,
           mutable cleanups: [],
@@ -4814,9 +4777,9 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
 // need to make sure those variables go out of scope when the block ends.  We
 // do that by running a 'cleanup' function for each variable.
 // trans_block_cleanups runs all the cleanup functions for the block.
-fn trans_block_cleanups(cx: @block_ctxt, cleanup_cx: @block_ctxt) ->
+fn trans_block_cleanups(bcx: @block_ctxt, cleanup_cx: @block_ctxt) ->
    @block_ctxt {
-    let bcx = cx;
+    if bcx.unreachable { ret bcx; }
     if cleanup_cx.kind == NON_SCOPE_BLOCK {
         assert (std::vec::len::<cleanup>(cleanup_cx.cleanups) == 0u);
     }
@@ -4864,6 +4827,7 @@ iter block_locals(b: ast::blk) -> @ast::local {
 fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
     ret @{llbb: fcx.llstaticallocas,
           mutable terminated: false,
+          mutable unreachable: false,
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
@@ -4876,6 +4840,7 @@ fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
 fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
     ret @{llbb: fcx.llderivedtydescs,
           mutable terminated: false,
+          mutable unreachable: false,
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
@@ -4946,10 +4911,6 @@ fn trans_block(cx: @block_ctxt, b: ast::blk, output: out_method) -> result {
     for s: @ast::stmt in b.node.stmts {
         r = trans_stmt(bcx, *s);
         bcx = r.bcx;
-
-        // If we hit a terminator, control won't go any further so
-        // we're in dead-code land. Stop here.
-        if is_terminated(bcx) { ret r; }
     }
     fn accept_out_method(expr: @ast::expr) -> bool {
         ret alt expr.node {
@@ -4967,12 +4928,10 @@ fn trans_block(cx: @block_ctxt, b: ast::blk, output: out_method) -> result {
         if pass {
             r = trans_expr_out(bcx, e, output);
             bcx = r.bcx;
-            if is_terminated(bcx) || ty::type_is_bot(ccx.tcx, r_ty) { ret r; }
         } else {
             let lv = trans_lval(bcx, e);
             r = {bcx: lv.bcx, val: lv.val};
             bcx = r.bcx;
-            if is_terminated(bcx) || ty::type_is_bot(ccx.tcx, r_ty) { ret r; }
             alt output {
               save_in(target) {
                 // The output method is to save the value at target,
@@ -5157,11 +5116,6 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt, args: [ast::arg],
     fcx.llcopyargs = llcopyargs.llbb;
 }
 
-fn is_terminated(cx: @block_ctxt) -> bool {
-    let inst = llvm::LLVMGetLastInstruction(cx.llbb);
-    ret llvm::LLVMIsATerminatorInst(inst) as int != 0;
-}
-
 fn arg_tys_of_fn(ccx: @crate_ctxt, id: ast::node_id) -> [ty::arg] {
     alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)) {
       ty::ty_fn(_, arg_tys, _, _, _) { ret arg_tys; }
@@ -5293,7 +5247,7 @@ fn trans_closure(bcx_maybe: option::t<@block_ctxt>,
         } else { trans_block(bcx, f.body, return) };
     bcx = rslt.bcx;
 
-    if !is_terminated(bcx) {
+    if !bcx.unreachable {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.
         build_return(bcx);

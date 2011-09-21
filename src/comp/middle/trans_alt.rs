@@ -294,8 +294,6 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         alt data.guard {
           some(e) {
             let guard_cx = new_scope_block_ctxt(bcx, "submatch_guard");
-            let next_cx = new_sub_block_ctxt(bcx, "submatch_next");
-            let else_cx = new_sub_block_ctxt(bcx, "submatch_else");
             Br(bcx, guard_cx.llbb);
             // Temporarily set bindings. They'll be rewritten to PHI nodes for
             // the actual arm block.
@@ -306,6 +304,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             let {bcx: guard_bcx, val: guard_val} =
                 trans::trans_expr(guard_cx, e);
             guard_bcx = trans::trans_block_cleanups(guard_bcx, guard_cx);
+            let next_cx = new_sub_block_ctxt(guard_cx, "submatch_next");
+            let else_cx = new_sub_block_ctxt(guard_cx, "submatch_else");
             CondBr(guard_bcx, guard_val, next_cx.llbb, else_cx.llbb);
             compile_submatch(else_cx, vec::slice(m, 1u, vec::len(m)), vals, f,
                              exits);
@@ -313,7 +313,9 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           }
           _ { }
         }
-        exits += [{bound: m[0].bound, from: bcx.llbb, to: data.body}];
+        if !bcx.unreachable {
+            exits += [{bound: m[0].bound, from: bcx.llbb, to: data.body}];
+        }
         Br(bcx, data.body);
         ret;
     }
@@ -417,10 +419,15 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           no_branch. | single. { bcx }
           _ { new_sub_block_ctxt(bcx, "match_else") }
         };
-    let sw =
-        if kind == switch {
-            Switch(bcx, test_val, else_cx.llbb, vec::len(opts))
-        } else { C_int(0) }; // Placeholder for when not using a switch
+    let sw;
+    if kind == switch {
+        sw = Switch(bcx, test_val, else_cx.llbb, vec::len(opts));
+        // FIXME This statement is purely here as a work-around for a bug that
+        // I expect to be the same as issue #951. If I remove it, sw ends up
+        // holding a corrupted value (when the compiler is optimized).
+        // This can be removed after our next LLVM upgrade.
+        val_ty(sw);
+    } else { sw = C_int(0); } // Placeholder for when not using a switch
 
      // Compile subtrees for each option
     for opt: opt in opts {
@@ -430,7 +437,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           switch. {
             let r = trans_opt(bcx, opt);
             bcx = r.bcx;
-            llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
+            AddCase(sw, r.val, opt_cx.llbb);
           }
           compare. {
             let compare_cx = new_scope_block_ctxt(bcx, "compare_scope");
@@ -514,17 +521,10 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
     let bodies = [];
     let match: match = [];
     let er = trans::trans_expr(cx, expr);
-    if ty::type_is_bot(bcx_tcx(cx), ty::expr_ty(bcx_tcx(cx), expr)) {
-
-        // No need to generate code for alt,
-        // since the disc diverges.
-        if !is_terminated(cx) {
-            ret rslt(cx, Unreachable(cx));
-        } else { ret er; }
-    }
+    if er.bcx.unreachable { ret er; }
 
     for a: ast::arm in arms {
-        let body = new_scope_block_ctxt(cx, "case_body");
+        let body = new_scope_block_ctxt(er.bcx, "case_body");
         let id_map = ast_util::pat_id_map(a.pats[0]);
         bodies += [body];
         for p: @ast::pat in a.pats {

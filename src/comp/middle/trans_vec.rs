@@ -281,8 +281,8 @@ fn iter_vec_raw(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     let data_ptr = Phi(header_cx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
     let not_yet_at_end =
         ICmp(header_cx, lib::llvm::LLVMIntULT, data_ptr, data_end_ptr);
-    let body_cx = new_sub_block_ctxt(bcx, "iter_vec_loop_body");
-    let next_cx = new_sub_block_ctxt(bcx, "iter_vec_next");
+    let body_cx = new_sub_block_ctxt(header_cx, "iter_vec_loop_body");
+    let next_cx = new_sub_block_ctxt(header_cx, "iter_vec_next");
     CondBr(header_cx, not_yet_at_end, body_cx.llbb, next_cx.llbb);
     body_cx = f(body_cx, data_ptr, unit_ty);
     let increment =

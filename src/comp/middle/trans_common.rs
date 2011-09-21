@@ -386,6 +386,7 @@ type block_ctxt =
     // attached.
     {llbb: BasicBlockRef,
      mutable terminated: bool,
+     mutable unreachable: bool,
      parent: block_parent,
      kind: block_kind,
      mutable cleanups: [cleanup],
@@ -393,8 +394,6 @@ type block_ctxt =
      mutable lpad: option::t<BasicBlockRef>,
      sp: span,
      fcx: @fn_ctxt};
-
-fn is_terminated(cx: @block_ctxt) -> bool { ret cx.terminated; }
 
 // FIXME: we should be able to use option::t<@block_parent> here but
 // the infinite-tag check in rustboot gets upset.
