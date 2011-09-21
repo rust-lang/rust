@@ -163,6 +163,8 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
                                            end(task->local_allocs.end());
     while (begin != end) {
         uint8_t *p = reinterpret_cast<uint8_t *>(begin->first);
+        p += sizeof(uintptr_t); // Skip over the reference count.
+
         type_desc *tydesc = begin->second;
 
         DPRINT("determining internal ref counts: %p, tydesc=%p\n", p, tydesc);
