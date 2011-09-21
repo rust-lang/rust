@@ -424,7 +424,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           }
           expr_anon_obj(ao) { expr_anon_obj(fold_anon_obj(ao)) }
           expr_mac(mac) { expr_mac(fold_mac(mac)) }
-          expr_uniq(e) { expr_uniq(fld.fold_expr(e)) }
         }
 }
 

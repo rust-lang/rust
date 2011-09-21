@@ -1719,6 +1719,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let oper_t = expr_ty(tcx, oper);
         alt unop {
           ast::box(mut) { oper_t = ty::mk_box(tcx, {ty: oper_t, mut: mut}); }
+          ast::uniq(mut) {
+            oper_t = ty::mk_uniq(tcx, oper_t);
+          }
           ast::deref. {
             alt structure_of(fcx, expr.span, oper_t) {
               ty::ty_box(inner) { oper_t = inner.ty; }
@@ -2348,11 +2351,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         // Now remove the info from the stack.
         vec::pop::<obj_info>(fcx.ccx.obj_infos);
-      }
-      ast::expr_uniq(x) {
-        let t = next_ty_var(fcx);
-        check_expr_with(fcx, x, t);
-        write::ty_only_fixup(fcx, id, ty::mk_uniq(tcx, t));
       }
       _ { tcx.sess.unimpl("expr type in typeck::check_expr"); }
     }

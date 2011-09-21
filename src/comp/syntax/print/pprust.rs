@@ -988,7 +988,6 @@ fn print_expr(s: ps, expr: @ast::expr) {
         }
         bclose(s, expr.span);
       }
-      ast::expr_uniq(expr) { word(s.s, "~"); print_expr(s, expr); }
     }
     s.ann.post(ann_node);
     end(s);
@@ -1001,7 +1000,7 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
       ast::expr_ternary(_, _, _) | ast::expr_move(_, _) |
       ast::expr_copy(_) | ast::expr_assign(_, _) | ast::expr_be(_) |
       ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
-      ast::expr_log(_, _) | ast::expr_assert(_) | ast::expr_uniq(_) |
+      ast::expr_log(_, _) | ast::expr_assert(_) |
       ast::expr_check(_, _) { true }
       _ { false }
     };
@@ -1658,7 +1657,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
       ast::expr_ternary(_, _, sub) | ast::expr_move(_, sub) |
       ast::expr_copy(sub) | ast::expr_assign(_, sub) | ast::expr_be(sub) |
       ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
-      ast::expr_log(_, sub) | ast::expr_assert(sub) | ast::expr_uniq(sub) |
+      ast::expr_log(_, sub) | ast::expr_assert(sub) |
       ast::expr_check(_, sub) { ends_in_lit_int(sub) }
       ast::expr_fail(osub) | ast::expr_ret(osub) | ast::expr_put(osub) {
         alt osub {

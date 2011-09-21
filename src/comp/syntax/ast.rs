@@ -124,7 +124,11 @@ tag binop {
     gt;
 }
 
-tag unop { box(mutability); deref; not; neg; }
+tag unop {
+    box(mutability);
+    uniq(mutability);
+    deref; not; neg;
+}
 
 tag mode { by_ref; by_mut_ref; by_move; }
 
@@ -215,7 +219,6 @@ tag expr_ {
     expr_if_check(@expr, blk, option::t<@expr>);
     expr_anon_obj(anon_obj);
     expr_mac(mac);
-    expr_uniq(@expr);
 }
 
 /*

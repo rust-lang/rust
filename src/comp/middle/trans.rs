@@ -2183,6 +2183,9 @@ fn trans_unary(cx: @block_ctxt, op: ast::unop, e: @ast::expr,
         let bcx = move_val_if_temp(sub.bcx, INIT, body, lv, e_ty);
         ret rslt(bcx, sub.box);
       }
+      ast::uniq(_) {
+        ret trans_uniq(cx, e, id);
+      }
       ast::deref. {
         bcx_ccx(cx).sess.bug("deref expressions should have been \
                                  translated using trans_lval(), not \
@@ -4245,9 +4248,6 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
 
         CondBr(cx, cond, then_cx.llbb, else_cx.llbb);
         ret rslt(join_branches(cx, [check_res, els]), C_nil());
-      }
-      ast::expr_uniq(contents) {
-        ret trans_uniq(cx, contents, e.id);
       }
       ast::expr_break. { ret trans_break(e.span, cx); }
       ast::expr_cont. { ret trans_cont(e.span, cx); }

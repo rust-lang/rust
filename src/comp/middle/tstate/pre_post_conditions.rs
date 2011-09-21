@@ -559,7 +559,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
           none. { clear_pp(expr_pp(fcx.ccx, e)); }
         }
       }
-      expr_uniq(sub) { find_pre_post_exprs(fcx, [sub], e.id); }
     }
 }
 

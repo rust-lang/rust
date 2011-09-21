@@ -110,6 +110,7 @@ pure fn lazy_binop(b: binop) -> bool {
 fn unop_to_str(op: unop) -> str {
     alt op {
       box(mt) { if mt == mut { ret "@mutable "; } ret "@"; }
+      uniq(mt) { if mt == mut { ret "~mutable "; } ret "~"; }
       deref. { ret "*"; }
       not. { ret "!"; }
       neg. { ret "-"; }

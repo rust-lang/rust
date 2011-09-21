@@ -886,9 +886,6 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
     } else if p.peek() == token::ELLIPSIS {
         p.bump();
         ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_ellipsis);
-    } else if p.peek() == token::TILDE {
-        p.bump();
-        ex = ast::expr_uniq(parse_expr(p));
     } else if eat_word(p, "obj") {
         // Anonymous object
 
@@ -1144,6 +1141,13 @@ fn parse_prefix_expr(p: parser) -> @ast::expr {
         let e = parse_prefix_expr(p);
         hi = e.span.hi;
         ex = ast::expr_unary(ast::box(m), e);
+      }
+      token::TILDE. {
+        p.bump();
+        let m = parse_mutability(p);
+        let e = parse_prefix_expr(p);
+        hi = e.span.hi;
+        ex = ast::expr_unary(ast::uniq(m), e);
       }
       _ { ret parse_dot_or_call_expr(p); }
     }
