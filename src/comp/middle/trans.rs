@@ -3351,8 +3351,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // out the pointer to the target function from the environment. The
     // target function lives in the first binding spot.
     let (lltargetfn, lltargetenv, starting_idx) = alt target_fn {
-      some(fptr) { (fptr, null_env_ptr(bcx), 0)
-      }
+      some(fptr) { (fptr, llvm::LLVMGetUndef(T_opaque_closure_ptr(*ccx)), 0) }
       none. {
         // Silly check
         check type_is_tup_like(bcx, closure_ty);
@@ -3646,12 +3645,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
              to_zero: to_zero,
              to_revoke: to_revoke};
     }
-    let retty = ty::ty_fn_ret(tcx, fn_ty);
-    let llretslot_res = if by_ref {
-        rslt(cx, alloca(cx, T_ptr(type_of_or_i8(bcx, retty))))
-    } else { alloc_ty(bcx, retty) };
-    bcx = llretslot_res.bcx;
-    let llretslot = llretslot_res.val;
+    let retty = ty::ty_fn_ret(tcx, fn_ty), full_retty = retty;
     alt gen {
       some(g) {
         lazily_emit_all_generic_info_tydesc_glues(cx, g);
@@ -3661,6 +3655,13 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
       }
       _ { }
     }
+    let llretslot_res = if ty::type_is_nil(tcx, retty) {
+        rslt(cx, llvm::LLVMGetUndef(T_ptr(T_nil())))
+    } else if by_ref {
+        rslt(cx, alloca(cx, T_ptr(type_of_or_i8(bcx, full_retty))))
+    } else { alloc_ty(bcx, full_retty) };
+    bcx = llretslot_res.bcx;
+    let llretslot = llretslot_res.val;
     if ty::type_contains_params(tcx, retty) {
         // It's possible that the callee has some generic-ness somewhere in
         // its return value -- say a method signature within an obj or a fn
@@ -3744,7 +3745,9 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let faddr = f_res.val;
     let llenv;
     alt f_res.env {
-      null_env. { llenv = null_env_ptr(cx); }
+      null_env. {
+        llenv = llvm::LLVMGetUndef(T_opaque_closure_ptr(*bcx_ccx(cx)));
+      }
       some_env(e) { llenv = e; }
       is_closure. {
         // It's a closure. Have to fetch the elements
@@ -4570,7 +4573,9 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
         let t = ty::expr_ty(bcx_tcx(cx), x);
         let lv = trans_lval(cx, x);
         bcx = lv.bcx;
-        if ast_util::ret_by_ref(cx.fcx.ret_style) {
+        if ty::type_is_nil(bcx_tcx(cx), t) {
+            // Don't write nil
+        } else if ast_util::ret_by_ref(cx.fcx.ret_style) {
             assert lv.is_mem;
             Store(bcx, lv.val, cx.fcx.llretptr);
         } else {
@@ -4590,10 +4595,7 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
             }
         }
       }
-      _ {
-        let t = llvm::LLVMGetElementType(val_ty(cx.fcx.llretptr));
-        Store(bcx, C_null(t), cx.fcx.llretptr);
-      }
+      _ {}
     }
     // run all cleanups and back out.
 
@@ -5280,7 +5282,8 @@ fn trans_closure(bcx_maybe: option::t<@block_ctxt>,
     // (trans_block, trans_expr, et cetera).
     let rslt =
         if !ty::type_is_bot(cx.ccx.tcx, block_ty) &&
-               f.proto != ast::proto_iter {
+           !ty::type_is_nil(cx.ccx.tcx, block_ty) &&
+           f.proto != ast::proto_iter {
             trans_block(bcx, f.body, save_in(fcx.llretptr))
         } else { trans_block(bcx, f.body, return) };
     bcx = rslt.bcx;
