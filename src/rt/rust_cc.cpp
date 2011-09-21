@@ -167,7 +167,6 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
 
         DPRINT("determining internal ref counts: %p, tydesc=%p\n", p, tydesc);
 
-        // Prevents warnings for now
         shape::arena arena;
         shape::type_param *params =
             shape::type_param::from_tydesc(tydesc, arena);
