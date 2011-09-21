@@ -2053,7 +2053,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         ret cx;
     } else if ty::type_is_nil(tcx, t) || ty::type_is_bot(tcx, t) {
         ret cx;
-    } else if ty::type_is_boxed(tcx, t) {
+    } else if ty::type_is_boxed(tcx, t) || ty::type_is_unique_box(tcx, t) {
         if src.is_mem { src_val = Load(cx, src_val); }
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         Store(cx, src_val, dst);
@@ -3138,7 +3138,6 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
                 InBoundsGEP(sub.bcx, sub.val,
                             [C_int(0), C_int(abi::box_rc_field_body)])
               }
-              ty::ty_uniq(_) { fail "uniq lval translation unimplemented" }
               ty::ty_res(_, _, _) {
                 InBoundsGEP(sub.bcx, sub.val, [C_int(0), C_int(1)])
               }
@@ -3151,7 +3150,7 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
                     } else { T_typaram_ptr(ccx.tn) };
                 PointerCast(sub.bcx, sub.val, ellty)
               }
-              ty::ty_ptr(_) { sub.val }
+              ty::ty_ptr(_) | ty::ty_uniq(_) { sub.val }
             };
         ret lval_mem(sub.bcx, val);
       }
@@ -4306,7 +4305,7 @@ fn with_out_method(work: fn(out_method) -> result, cx: @block_ctxt,
 // immediate-ness of the type.
 fn type_is_immediate(ccx: @crate_ctxt, t: ty::t) -> bool {
     ret ty::type_is_scalar(ccx.tcx, t) || ty::type_is_boxed(ccx.tcx, t) ||
-            ty::type_is_native(ccx.tcx, t);
+        ty::type_is_unique_box(ccx.tcx, t) || ty::type_is_native(ccx.tcx, t);
 }
 
 fn do_spill(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
@@ -4502,6 +4501,9 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
               node_id: ast::node_id) -> result {
     let bcx = cx;
 
+    let lv = trans_lval(bcx, contents);
+    bcx = lv.bcx;
+
     let contents_ty = ty::expr_ty(bcx_tcx(bcx), contents);
     let r = size_of(bcx, contents_ty);
     bcx = r.bcx;
@@ -4513,15 +4515,11 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
     bcx = r.bcx;
     let llptr = r.val;
 
-    let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
-    r = alloc_ty(bcx, uniq_ty);
-    let llptrptr = r.val;
-    bcx = r.bcx;
-    Store(bcx, llptr, llptrptr);
+    bcx = move_val_if_temp(bcx, INIT, llptr, lv, contents_ty);
 
-    r = trans_expr_out(bcx, contents, save_in(llptr));
-    add_clean_temp(r.bcx, llptrptr, uniq_ty);
-    ret rslt(r.bcx, llptrptr);
+    let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
+    add_clean_temp(r.bcx, llptr, uniq_ty);
+    ret rslt(r.bcx, llptr);
 }
 
 fn trans_break_cont(sp: span, cx: @block_ctxt, to_end: bool) -> result {

@@ -1725,6 +1725,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           ast::deref. {
             alt structure_of(fcx, expr.span, oper_t) {
               ty::ty_box(inner) { oper_t = inner.ty; }
+              ty::ty_uniq(inner) { oper_t = inner; }
               ty::ty_res(_, inner, _) { oper_t = inner; }
               ty::ty_tag(id, tps) {
                 let variants = ty::tag_variants(tcx, id);

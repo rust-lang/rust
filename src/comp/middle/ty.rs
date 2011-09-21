@@ -150,6 +150,7 @@ export type_is_bool;
 export type_is_bot;
 export type_is_box;
 export type_is_boxed;
+export type_is_unique_box;
 export type_is_vec;
 export type_is_fp;
 export type_allows_implicit_copy;
@@ -855,11 +856,24 @@ fn get_element_type(cx: ctxt, ty: t, i: uint) -> t {
 }
 
 fn type_is_box(cx: ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_box(_) { ret true; } _ { ret false; } }
+    alt struct(cx, ty) {
+      ty_box(_) { ret true; }
+      _ { ret false; }
+    }
 }
 
 fn type_is_boxed(cx: ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_box(_) { ret true; } _ { ret false; } }
+    alt struct(cx, ty) {
+      ty_box(_) { ret true; }
+      _ { ret false; }
+    }
+}
+
+fn type_is_unique_box(cx: ctxt, ty: t) -> bool {
+    alt struct(cx, ty) {
+      ty_uniq(_) { ret true; }
+      _ { ret false; }
+    }
 }
 
 fn type_is_vec(cx: ctxt, ty: t) -> bool {

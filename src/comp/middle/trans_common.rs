@@ -294,12 +294,6 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
 fn revoke_clean(cx: @block_ctxt, val: ValueRef, t: ty::t) -> @block_ctxt {
-    if ty::type_is_unique(bcx_tcx(cx), t) {
-        // Just zero out the allocation. This ensures that the GC won't try to
-        // traverse dangling pointers.
-        ret trans::zero_alloca(cx, val, t).bcx;
-    }
-
     let sc_cx = find_scope_cx(cx);
     let found = -1;
     let i = 0;
