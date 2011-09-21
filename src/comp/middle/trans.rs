@@ -4306,7 +4306,7 @@ fn with_out_method(work: fn(out_method) -> result, cx: @block_ctxt,
 // immediate-ness of the type.
 fn type_is_immediate(ccx: @crate_ctxt, t: ty::t) -> bool {
     ret ty::type_is_scalar(ccx.tcx, t) || ty::type_is_boxed(ccx.tcx, t) ||
-            ty::type_is_native(ccx.tcx, t);
+            ty::type_is_native(ccx.tcx, t) || ty::type_is_bot(ccx.tcx, t);
 }
 
 fn do_spill(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
