@@ -68,6 +68,7 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     // type_desc.
 
     void *p = task->malloc(nbytes, "tdesc", td);
+    memset(p, '\0', nbytes);
 
     task->local_allocs[p] = td;
 
@@ -101,6 +102,7 @@ upcall_shared_malloc(rust_task *task, size_t nbytes, type_desc *td) {
                    "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR ")",
                    nbytes, td);
     void *p = task->kernel->malloc(nbytes, "shared malloc");
+    memset(p, '\0', nbytes);
     LOG(task, mem,
                    "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR
                    ") = 0x%" PRIxPTR,
