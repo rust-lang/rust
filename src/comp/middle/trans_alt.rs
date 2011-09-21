@@ -1,4 +1,4 @@
-import std::{str, vec, option, int};
+import std::{str, vec, option};
 import option::{some, none};
 import std::map::hashmap;
 
@@ -16,42 +16,25 @@ import util::common::lit_eq;
 
 import trans_common::*;
 
-// An option identifying a branch (either a literal, a tag variant or a range)
+// An option identifying a branch (either a literal or a tag variant)
 tag opt {
     lit(@ast::lit);
     var(/* variant id */uint, /* variant dids */{tg: def_id, var: def_id});
-    range(@ast::lit, @ast::lit);
 }
 fn opt_eq(a: opt, b: opt) -> bool {
     alt a {
       lit(la) {
-        ret alt b { lit(lb) { lit_eq(la, lb) } _ { false } };
+        ret alt b { lit(lb) { lit_eq(la, lb) } var(_, _) { false } };
       }
       var(ida, _) {
-        ret alt b { var(idb, _) { ida == idb } _ { false } };
-      }
-      range(la1, la2) {
-        ret alt b {
-          range(lb1, lb2) { lit_eq(la1, lb1) && lit_eq(la2, lb2) }
-          _ { false }
-        };
+        ret alt b { lit(_) { false } var(idb, _) { ida == idb } };
       }
     }
 }
-
-tag opt_result {
-    single_result(result);
-    range_result(result, result);
-}
-fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
+fn trans_opt(bcx: @block_ctxt, o: opt) -> result {
     alt o {
-      lit(l) { ret single_result(trans::trans_lit(bcx, *l)); }
-      var(id, _) { ret single_result(rslt(bcx, C_int(id as int))); }
-      range(l1, l2) {
-        let r1 = trans::trans_lit(bcx, *l1);
-        let r2 = trans::trans_lit(r1.bcx, *l2);
-        ret range_result(r1, r2);
-      }
+      lit(l) { ret trans::trans_lit(bcx, *l); }
+      var(id, _) { ret rslt(bcx, C_int(id as int)); }
     }
 }
 
@@ -141,9 +124,6 @@ fn enter_opt(ccx: @crate_ctxt, m: match, opt: opt, col: uint, tag_size: uint,
           ast::pat_lit(l) {
             ret if opt_eq(lit(l), opt) { some([]) } else { none };
           }
-          ast::pat_range(l1, l2) {
-            ret if opt_eq(range(l1, l2), opt) { some([]) } else { none };
-          }
           _ { ret some(vec::init_elt(dummy, size)); }
         }
     }
@@ -206,9 +186,6 @@ fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
     for br: match_branch in m {
         alt br.pats[col].node {
           ast::pat_lit(l) { add_to_set(found, lit(l)); }
-          ast::pat_range(l1, l2) {
-            add_to_set(found, range(l1, l2));
-          }
           ast::pat_tag(_, _) {
             add_to_set(found, variant_opt(ccx, br.pats[col].id));
           }
@@ -288,9 +265,7 @@ fn pick_col(m: match) -> uint {
         let i = 0u;
         for p: @ast::pat in br.pats {
             alt p.node {
-              ast::pat_lit(_) | ast::pat_tag(_, _) | ast::pat_range(_, _) {
-                scores[i] += 1u;
-              }
+              ast::pat_lit(_) | ast::pat_tag(_, _) { scores[i] += 1u; }
               _ { }
             }
             i += 1u;
@@ -435,16 +410,6 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                   _ { test_val = Load(bcx, val); switch }
                 };
           }
-          range(_, _) {
-            test_val = Load(bcx, val);
-            kind = compare;
-          }
-        }
-    }
-    for o: opt in opts {
-        alt o {
-          range(_, _) { kind = compare; break; }
-          _ { }
         }
     }
     let else_cx =
@@ -463,44 +428,22 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         alt kind {
           single. { Br(bcx, opt_cx.llbb); }
           switch. {
-            let res = trans_opt(bcx, opt);
-            alt res {
-              single_result(r) {
-                llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
-                bcx = r.bcx;
-              }
-            }
+            let r = trans_opt(bcx, opt);
+            bcx = r.bcx;
+            llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
           }
           compare. {
             let compare_cx = new_scope_block_ctxt(bcx, "compare_scope");
             Br(bcx, compare_cx.llbb);
             bcx = compare_cx;
+            let r = trans_opt(bcx, opt);
+            bcx = r.bcx;
             let t = ty::node_id_to_type(ccx.tcx, pat_id);
-            let res = trans_opt(bcx, opt);
-            alt res {
-              single_result(r) {
-                bcx = r.bcx;
-                let eq =
-                    trans::trans_compare(bcx, ast::eq, test_val, t, r.val, t);
-                /*let*/ bcx = eq.bcx; //XXX uncomment for assertion
-                let cleanup_cx = trans::trans_block_cleanups(bcx, compare_cx);
-                bcx = new_sub_block_ctxt(bcx, "compare_next");
-                CondBr(cleanup_cx, eq.val, opt_cx.llbb, bcx.llbb);
-              }
-              range_result(rbegin, rend) {
-                bcx = rend.bcx;
-                let ge = trans::trans_compare(bcx, ast::ge, test_val, t,
-                                              rbegin.val, t);
-                let le = trans::trans_compare(ge.bcx, ast::le, test_val, t,
-                                              rend.val, t);
-                let in_range = rslt(le.bcx, And(le.bcx, ge.val, le.val));
-                /*let*/ bcx = in_range.bcx; //XXX uncomment for assertion
-                let cleanup_cx =
-                    trans::trans_block_cleanups(bcx, compare_cx);
-                bcx = new_sub_block_ctxt(bcx, "compare_next");
-                CondBr(cleanup_cx, in_range.val, opt_cx.llbb, bcx.llbb);
-              }
-            }
+            let eq =
+                trans::trans_compare(bcx, ast::eq, test_val, t, r.val, t);
+            let cleanup_cx = trans::trans_block_cleanups(bcx, compare_cx);
+            bcx = new_sub_block_ctxt(bcx, "compare_next");
+            CondBr(cleanup_cx, eq.val, opt_cx.llbb, bcx.llbb);
           }
           _ { }
         }
@@ -513,7 +456,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             unpacked = args.vals;
             opt_cx = args.bcx;
           }
-          lit(_) | range(_, _) { }
+          lit(_) { }
         }
         compile_submatch(opt_cx, enter_opt(ccx, m, opt, col, size, val),
                          unpacked + vals_left, f, exits);
@@ -688,13 +631,12 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
                         [C_int(0), C_int(back::abi::box_rc_field_body)]);
         bcx = bind_irrefutable_pat(bcx, inner, unboxed, table, true);
       }
-      ast::pat_wild. | ast::pat_lit(_) | ast::pat_range(_, _) { }
+      ast::pat_wild. | ast::pat_lit(_) { }
     }
     ret bcx;
 }
 
 // Local Variables:
-// mode: rust
 // fill-column: 78;
 // indent-tabs-mode: nil
 // c-basic-offset: 4

@@ -62,15 +62,12 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
         ret true;
     }
 
+
     alt a.node {
       pat_wild. | pat_bind(_) { ret true; }
       pat_lit(la) {
         alt b.node {
           pat_lit(lb) { ret util::common::lit_eq(la, lb); }
-          pat_range(beginb, endb) {
-            ret util::common::lit_type_eq(la, beginb) &&
-                util::common::lit_in_range(la, beginb, endb);
-          }
           _ { ret false; }
         }
       }
@@ -99,19 +96,6 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
         alt b.node {
           pat_box(subb) { ret pattern_supersedes(tcx, suba, subb); }
           _ { ret pattern_supersedes(tcx, suba, b); }
-        }
-      }
-      pat_range(begina, enda) {
-        alt b.node {
-          pat_lit(lb) {
-            ret util::common::lit_type_eq(lb, begina) &&
-                util::common::lit_in_range(lb, begina, enda);
-          }
-          pat_range(beginb, endb) {
-            ret util::common::lit_type_eq(begina, beginb) &&
-                util::common::lit_ranges_overlap(begina, enda, beginb, endb);
-          }
-          _ { ret false; }
         }
       }
     }

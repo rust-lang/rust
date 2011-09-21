@@ -1494,14 +1494,8 @@ fn parse_pat(p: parser) -> @ast::pat {
       tok {
         if !is_ident(tok) || is_word(p, "true") || is_word(p, "false") {
             let lit = parse_lit(p);
-            if eat_word(p, "to") {
-                let end = parse_lit(p);
-                hi = end.span.hi;
-                pat = ast::pat_range(@lit, @end);
-            } else {
-                hi = lit.span.hi;
-                pat = ast::pat_lit(@lit);
-            }
+            hi = lit.span.hi;
+            pat = ast::pat_lit(@lit);
         } else if is_plain_ident(p) &&
                       alt p.look_ahead(1u) {
                         token::DOT. | token::LPAREN. | token::LBRACKET. {
