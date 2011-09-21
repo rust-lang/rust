@@ -34,6 +34,7 @@ type options =
      output_type: back::link::output_type,
      library_search_paths: [str],
      sysroot: str,
+     target_triple: str,
      cfg: ast::crate_cfg,
      test: bool,
      parse_only: bool,

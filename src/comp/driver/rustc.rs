@@ -32,10 +32,12 @@ fn default_configuration(sess: session::session, argv0: str, input: str) ->
     let mk = attr::mk_name_value_item_str;
 
     ret [ // Target bindings.
-         mk("target_os", std::os::target_os()), mk("target_arch", "x86"),
+         mk("target_os", std::os::target_os()),
+         mk("target_arch", "x86"),
          mk("target_libc", libc),
          // Build bindings.
-         mk("build_compiler", argv0), mk("build_input", input)];
+         mk("build_compiler", argv0),
+         mk("build_input", input)];
 }
 
 fn build_configuration(sess: session::session, argv0: str, input: str) ->
@@ -224,6 +226,7 @@ fn version(argv0: str) {
     let env_vers = #env["CFG_VERSION"];
     if str::byte_len(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(#fmt["%s %s\n", argv0, vers]);
+    io::stdout().write_str(#fmt["host: %s\n", host_triple()]);
 }
 
 fn usage(argv0: str) {
@@ -257,6 +260,7 @@ options:
     --time-passes      time the individual phases of the compiler
     --time-llvm-passes time the individual phases of the LLVM backend
     --sysroot <path>   override the system root (default: rustc's directory)
+    --target <triple>  target to compile for (default: host triple)
     --no-typestate     don't run the typestate pass (unsafe!)
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
@@ -295,25 +299,24 @@ fn get_default_sysroot(binary: str) -> str {
     ret dirname;
 }
 
-fn build_target_config() -> @session::config {
-    let triple: str = str::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple());
+fn build_target_config(sopts: @session::options) -> @session::config {
     let target_cfg: @session::config =
-        @{os: get_os(triple),
-          arch: get_arch(triple),
+        @{os: get_os(sopts.target_triple),
+          arch: get_arch(sopts.target_triple),
           int_type: ast::ty_i32,
           uint_type: ast::ty_u32,
           float_type: ast::ty_f64};
     ret target_cfg;
 }
 
+fn host_triple() -> str {
+    str::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple())
+}
+
 fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
    -> @session::options {
     let library = opt_present(match, "lib");
     let static = opt_present(match, "static");
-
-    let library_search_paths = [binary_dir + "/lib"];
-    let lsp_vec = getopts::opt_strs(match, "L");
-    for lsp: str in lsp_vec { library_search_paths += [lsp]; }
 
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
@@ -336,6 +339,7 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
     let time_llvm_passes = opt_present(match, "time-llvm-passes");
     let run_typestate = !opt_present(match, "no-typestate");
     let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
+    let target_opt = getopts::opt_maybe_str(match, "target");
     let opt_level: uint =
         if opt_present(match, "O") {
             if opt_present(match, "OptLevel") {
@@ -361,6 +365,17 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
           none. { get_default_sysroot(binary) }
           some(s) { s }
         };
+    let target =
+        alt target_opt {
+            none. { host_triple() }
+            some(s) { s }
+        };
+
+    let library_search_paths = [binary_dir + "/lib", // FIXME: legacy
+                                binary_dir + "/lib/" + target ];
+    let lsp_vec = getopts::opt_strs(match, "L");
+    for lsp: str in lsp_vec { library_search_paths += [lsp]; }
+
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let do_gc = opt_present(match, "gc");
@@ -378,6 +393,7 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
           output_type: output_type,
           library_search_paths: library_search_paths,
           sysroot: sysroot,
+          target_triple: target,
           cfg: cfg,
           test: test,
           parse_only: parse_only,
@@ -387,7 +403,7 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
 }
 
 fn build_session(sopts: @session::options) -> session::session {
-    let target_cfg = build_target_config();
+    let target_cfg = build_target_config(sopts);
     let cstore = cstore::mk_cstore();
     ret session::session(target_cfg, sopts, cstore,
                          @{cm: codemap::new_codemap(), mutable next_id: 0},
@@ -412,9 +428,10 @@ fn opts() -> [getopts::opt] {
          optflag("ls"), optflag("parse-only"), optflag("no-trans"),
          optflag("O"), optopt("OptLevel"), optmulti("L"), optflag("S"),
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
-         optopt("sysroot"), optflag("stats"), optflag("time-passes"),
-         optflag("time-llvm-passes"), optflag("no-typestate"),
-         optflag("noverify"), optmulti("cfg"), optflag("test"),
+         optopt("sysroot"), optopt("target"), optflag("stats"),
+         optflag("time-passes"), optflag("time-llvm-passes"),
+         optflag("no-typestate"), optflag("noverify"),
+         optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static"), optflag("gc")];
 }
 

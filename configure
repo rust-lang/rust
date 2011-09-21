@@ -175,20 +175,6 @@ then
     exit 0
 fi
 
-step_msg "making directories"
-for i in \
-    doc \
-    rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
-    rt/libuv rt/libuv/src/ares rt/libuv/src/eio rt/libuv/src/ev \
-    rustllvm \
-    dl stage0 stage1 stage2 stage3 \
-    stage0/lib stage1/lib stage2/lib stage3/lib \
-    test/run-pass test/run-fail test/compile-fail \
-    test/bench test/perf test/pretty
-do
-    make_dir $i
-done
-
 step_msg "writing out basic parameters"
 putvar CFG_SRC_DIR
 putvar CFG_BUILD_DIR
@@ -315,6 +301,19 @@ putvar CFG_LLVM_TRIPLE
 perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
                -e 's@\\@/@go;' config.mk
 rm -f config.mk.bak
+
+step_msg "making directories"
+for i in \
+    doc \
+    rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
+    rt/libuv rt/libuv/src/ares rt/libuv/src/eio rt/libuv/src/ev \
+    rustllvm \
+    dl stage{0,1,2,3}{,/lib,/lib/$CFG_LLVM_TRIPLE} \
+    test/run-pass test/run-fail test/compile-fail \
+    test/bench test/perf test/pretty
+do
+    make_dir $i
+done
 
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
 
