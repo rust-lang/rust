@@ -7,7 +7,7 @@ CFG_GCCISH_LINK_FLAGS :=
 # embedded into the executable, so use a no-op command.
 CFG_DSYMUTIL := true
 
-ifeq ($(findstring freebsd,$(CFG_OSTYPE)),)
+ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
   CFG_GCCISH_CFLAGS += -fPIC -march=i686 -I/usr/local/include
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
