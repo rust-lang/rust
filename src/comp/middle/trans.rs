@@ -4246,7 +4246,9 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
         CondBr(cx, cond, then_cx.llbb, else_cx.llbb);
         ret rslt(join_branches(cx, [check_res, els]), C_nil());
       }
-      ast::expr_uniq(contents) { ret trans_uniq(cx, contents); }
+      ast::expr_uniq(contents) {
+        ret trans_uniq(cx, contents, e.id);
+      }
       ast::expr_break. { ret trans_break(e.span, cx); }
       ast::expr_cont. { ret trans_cont(e.span, cx); }
       ast::expr_ret(ex) { ret trans_ret(cx, ex); }
@@ -4488,7 +4490,8 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     ret rslt(next_cx, C_nil());
 }
 
-fn trans_uniq(cx: @block_ctxt, contents: @ast::expr) -> result {
+fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
+              node_id: ast::node_id) -> result {
     let bcx = cx;
 
     let contents_ty = ty::expr_ty(bcx_tcx(bcx), contents);
@@ -4500,10 +4503,16 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr) -> result {
 
     r = trans_shared_malloc(bcx, llptrty, llsz);
     bcx = r.bcx;
-    let llptrptr = r.val;
+    let llptr = r.val;
 
-    let llptr = Load(bcx, llptrptr);
+    let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
+    r = alloc_ty(bcx, uniq_ty);
+    let llptrptr = r.val;
+    bcx = r.bcx;
+    Store(bcx, llptr, llptrptr);
+
     r = trans_expr_out(bcx, contents, save_in(llptr));
+    add_clean_temp(r.bcx, llptrptr, uniq_ty);
     ret rslt(r.bcx, llptrptr);
 }
 
