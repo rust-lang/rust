@@ -2060,7 +2060,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         if src.is_mem { ret zero_alloca(cx, src.val, t).bcx; }
 
         // If we're here, it must be a temporary.
-        ret revoke_clean(cx, src_val, t);
+        ret revoke_clean(cx, src_val);
     } else if ty::type_is_unique(tcx, t) ||
                   type_is_structural_or_param(tcx, t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
@@ -2068,7 +2068,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         if src.is_mem { ret zero_alloca(cx, src_val, t).bcx; }
 
         // If we're here, it must be a temporary.
-        ret revoke_clean(cx, src_val, t);
+        ret revoke_clean(cx, src_val);
     }
     /* FIXME: suggests a type constraint */
     bcx_ccx(cx).sess.bug("unexpected type in trans::move_val: " +
@@ -3823,8 +3823,8 @@ fn zero_and_revoke(bcx: @block_ctxt,
     for {v, t} in to_zero {
         bcx = zero_alloca(bcx, v, t).bcx;
     }
-    for {v, t} in to_revoke {
-        bcx = revoke_clean(bcx, v, t);
+    for {v, _} in to_revoke {
+        bcx = revoke_clean(bcx, v);
     }
     ret bcx;
 }

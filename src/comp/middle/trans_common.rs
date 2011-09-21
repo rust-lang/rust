@@ -293,7 +293,7 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
 // to a system where we can also cancel the cleanup on local variables, but
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
-fn revoke_clean(cx: @block_ctxt, val: ValueRef, t: ty::t) -> @block_ctxt {
+fn revoke_clean(cx: @block_ctxt, val: ValueRef) -> @block_ctxt {
     let sc_cx = find_scope_cx(cx);
     let found = -1;
     let i = 0;
