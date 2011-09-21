@@ -177,8 +177,8 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
         irc.walk();
 
 #if 0
-        shape::log log(task, true, tydesc->shape, params, tydesc->shape_tables,
-                       p, std::cerr);
+        shape::log log(task, true, tydesc->shape, params,
+                       tydesc->shape_tables, p, std::cerr);
         log.walk();
 #endif
 
