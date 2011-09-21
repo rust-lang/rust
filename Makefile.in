@@ -11,7 +11,8 @@ ifneq ($(MAKE_RESTARTS),)
 CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
 endif
 
-CFG_INFO := $(info cfg: building on $(CFG_OSTYPE) $(CFG_CPUTYPE))
+CFG_INFO := $(info cfg: shell host triple $(CFG_HOST_TRIPLE))
+CFG_INFO := $(info cfg: llvm host triple $(CFG_LLVM_TRIPLE))
 
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))

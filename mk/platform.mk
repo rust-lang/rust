@@ -7,7 +7,7 @@ CFG_GCCISH_LINK_FLAGS :=
 # embedded into the executable, so use a no-op command.
 CFG_DSYMUTIL := true
 
-ifeq ($(CFG_OSTYPE), FreeBSD)
+ifeq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
   CFG_GCCISH_CFLAGS += -fPIC -march=i686 -I/usr/local/include
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
@@ -20,7 +20,7 @@ ifeq ($(CFG_OSTYPE), FreeBSD)
   CFG_DEF_SUFFIX := .bsd.def
 endif
 
-ifeq ($(CFG_OSTYPE), Linux)
+ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
   CFG_GCCISH_CFLAGS += -fPIC -march=i686
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
@@ -46,7 +46,7 @@ ifeq ($(CFG_OSTYPE), Linux)
   endif
 endif
 
-ifeq ($(CFG_OSTYPE), Darwin)
+ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).dylib
   CFG_UNIXY := 1
   CFG_LDENV := DYLD_LIBRARY_PATH
@@ -69,7 +69,7 @@ ifeq ($(CFG_OSTYPE), Darwin)
   CFG_DEF_SUFFIX := .darwin.def
 endif
 
-ifneq ($(findstring MINGW,$(CFG_OSTYPE)),)
+ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
   CFG_WINDOWSY := 1
 endif
 

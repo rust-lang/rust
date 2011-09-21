@@ -127,8 +127,8 @@ need_cmd sed
 msg "inspecting environment"
 
 CFG_OSTYPE=$(uname -s)
-
 CFG_CPUTYPE=$(uname -m)
+
 if [ $CFG_OSTYPE = Darwin -a $CFG_CPUTYPE = i386 ]
 then
     # Darwin's `uname -s` lies and always returns i386. We have to use sysctl
@@ -138,6 +138,54 @@ then
         CFG_CPUTYPE=x86_64
     fi
 fi
+
+
+# The goal here is to come up with the same triple as LLVM would,
+# at least for the subset of platforms we're willing to target.
+
+case $CFG_OSTYPE in
+
+    Linux)
+        CFG_OSTYPE=unknown-linux-gnu
+        ;;
+
+    FreeBSD)
+        CFG_OSTYPE=unknown-freebsd
+        ;;
+
+    Darwin)
+        CFG_OSTYPE=apple-darwin
+        ;;
+
+    MINGW32*)
+        CFG_OSTYPE=pc-mingw32
+        ;;
+
+    *)
+        err "unknown OS type: $CFG_OSTYPE"
+        ;;
+esac
+
+
+case $CFG_CPUTYPE in
+
+    i386 | i486 | i686 | i786 | x86)
+        CFG_CPUTYPE=i686
+        ;;
+
+    xscale | arm)
+        CFG_CPUTYPE=arm
+        ;;
+
+    x86_64 | x86-64 | x64)
+        CFG_CPUTYPE=x86_64
+        ;;
+
+    *)
+        err "unknown CPU type: $CFG_CPUTYPE"
+esac
+
+CFG_HOST_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SELF=$(echo $0 | tr '\\' '/')
 CFG_SRC_DIR=${CFG_SELF%${CFG_SELF##*/}}
@@ -180,6 +228,7 @@ putvar CFG_SRC_DIR
 putvar CFG_BUILD_DIR
 putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
+putvar CFG_HOST_TRIPLE
 putvar CFG_CONFIGURE_ARGS
 
 step_msg "looking for build programs"
