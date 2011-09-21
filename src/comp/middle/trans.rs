@@ -4312,6 +4312,11 @@ fn type_is_immediate(ccx: @crate_ctxt, t: ty::t) -> bool {
 fn do_spill(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
     // We have a value but we have to spill it, and root it, to pass by alias.
     let bcx = cx;
+
+    if ty::type_is_bot(bcx_tcx(bcx), t) {
+        ret rslt(bcx, C_null(T_ptr(T_i8())));
+    }
+
     let r = alloc_ty(bcx, t);
     bcx = r.bcx;
     let llptr = r.val;
