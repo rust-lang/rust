@@ -17,6 +17,9 @@
 #undef max
 #endif
 
+#undef DPRINT
+#define DPRINT(fmt, ...)
+
 //const size_t DEFAULT_CHUNK_SIZE = 4096;
 const size_t DEFAULT_CHUNK_SIZE = 500000;
 const size_t DEFAULT_ALIGNMENT = 16;
@@ -88,8 +91,6 @@ rust_obstack::alloc(size_t len, type_desc *tydesc) {
     if (!chunk)
         return alloc_new(len, tydesc);
 
-    DPRINT("alloc sz %u\n", (uint32_t)len);
-
     void *ptr = chunk->alloc(len, tydesc);
     ptr = ptr ? ptr : alloc_new(len, tydesc);
 
@@ -100,8 +101,6 @@ void
 rust_obstack::free(void *ptr) {
     if (!ptr)
         return;
-
-    DPRINT("free ptr %p\n", ptr);
 
     assert(chunk);
     while (!chunk->free(ptr)) {
