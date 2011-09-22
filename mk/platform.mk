@@ -35,7 +35,7 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_LDENV := LD_LIBRARY_PATH
   CFG_DEF_SUFFIX := .linux.def
   ifdef CFG_PERF
-	CFG_PERF_TOOL := $(CFG_PERF) stat -i -r 3
+	CFG_PERF_TOOL := $(CFG_PERF) stat -r 3
   else
     ifdef CFG_VALGRIND
       CFG_PERF_TOOL :=\
