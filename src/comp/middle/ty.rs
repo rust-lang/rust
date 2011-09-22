@@ -2195,11 +2195,10 @@ mod unify {
             alt struct(cx.tcx, actual) {
               ty::ty_uniq(actual_mt) {
                 let mut = expected_mt.mut;
-                // FIXME (409) Write a test then uncomment
-                /*alt unify_mut(expected_mt.mut, actual_mt.mut) {
+                alt unify_mut(expected_mt.mut, actual_mt.mut) {
                   none. { ret ures_err(terr_box_mutability); }
                   some(m) { mut = m; }
-                }*/
+                }
                 let result = unify_step(cx, expected_mt.ty, actual_mt.ty);
                 alt result {
                   ures_ok(result_mt) {
