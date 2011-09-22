@@ -1317,6 +1317,7 @@ fn make_free_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
             } else { bcx }
           }
           ty::ty_uniq(content_mt) {
+            check trans_uniq::type_is_unique_box(bcx, t);
             trans_uniq::make_free_glue(bcx, v0, t)
           }
           ty::ty_obj(_) {
@@ -2029,7 +2030,7 @@ fn copy_val_no_check(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         ret take_ty(bcx, dst, t);
     }
     if ty::type_is_unique_box(ccx.tcx, t) {
-        let bcx = cx;
+        //let bcx = cx;
         // FIXME (409): Write a test and uncomment
         //if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
         //ret trans_uniq::copy_val(bcx, dst, src, t);

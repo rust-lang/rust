@@ -15,7 +15,13 @@ import trans::{
     new_sub_block_ctxt
 };
 
-export trans_uniq, make_free_glue;
+export trans_uniq, make_free_glue, type_is_unique_box;
+
+pure fn type_is_unique_box(bcx: @block_ctxt, ty: ty::t) -> bool {
+    unchecked {
+        ty::type_is_unique_box(bcx_tcx(bcx), ty)
+    }
+}
 
 fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
               node_id: ast::node_id) -> result {
@@ -25,17 +31,18 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
     bcx = lv.bcx;
 
     let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
-    assert ty::type_is_unique_box(bcx_tcx(cx), uniq_ty);
+    check type_is_unique_box(bcx, uniq_ty);
+    let content_ty = content_ty(bcx, uniq_ty);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
 
     bcx = move_val_if_temp(bcx, INIT, llptr, lv,
-                           content_ty(bcx, uniq_ty));
+                           content_ty);
 
     ret rslt(bcx, llptr);
 }
 
-fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t) -> result {
-    assert ty::type_is_unique_box(bcx_tcx(cx), uniq_ty);
+fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)
+    : type_is_unique_box(cx, uniq_ty) -> result {
 
     let bcx = cx;
     let contents_ty = content_ty(bcx, uniq_ty);
@@ -54,9 +61,10 @@ fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t) -> result {
     ret rslt(bcx, llptr);
 }
 
-fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
-    assert ty::type_is_unique_box(bcx_tcx(bcx), t);
+fn make_free_glue(cx: @block_ctxt, v: ValueRef, t: ty::t)
+    : type_is_unique_box(cx, t) -> @block_ctxt {
 
+    let bcx = cx;
     let free_cx = new_sub_block_ctxt(bcx, "uniq_free");
     let next_cx = new_sub_block_ctxt(bcx, "uniq_free_next");
     let vptr = Load(bcx, v);
@@ -64,7 +72,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
     CondBr(bcx, null_test, next_cx.llbb, free_cx.llbb);
 
     let bcx = free_cx;
-    let bcx = drop_ty(bcx, vptr, content_ty(bcx, t));
+    let bcx = drop_ty(bcx, vptr, content_ty(cx, t));
     let bcx = trans_shared_free(bcx, vptr);
     Store(bcx, C_null(val_ty(vptr)), v);
     Br(bcx, next_cx.llbb);
@@ -72,8 +80,8 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
     next_cx
 }
 
-fn content_ty(bcx: @block_ctxt, t: ty::t) -> ty::t {
-    assert ty::type_is_unique_box(bcx_tcx(bcx), t);
+fn content_ty(bcx: @block_ctxt, t: ty::t)
+    : type_is_unique_box(bcx, t) -> ty::t {
 
     alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_uniq({ty: ct, _}) { ct }
