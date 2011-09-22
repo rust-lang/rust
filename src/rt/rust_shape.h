@@ -46,6 +46,7 @@ const uint8_t SHAPE_FN = 18u;
 const uint8_t SHAPE_OBJ = 19u;
 const uint8_t SHAPE_RES = 20u;
 const uint8_t SHAPE_VAR = 21u;
+const uint8_t SHAPE_UNIQ = 22u;
 
 #ifdef _LP64
 const uint8_t SHAPE_PTR = SHAPE_U64;
@@ -244,6 +245,7 @@ private:
     void walk_vec();
     void walk_tag();
     void walk_box();
+    void walk_uniq();
     void walk_struct();
     void walk_res();
     void walk_var();
@@ -346,6 +348,7 @@ ctxt<T>::walk() {
     case SHAPE_OBJ:     WALK_SIMPLE(walk_obj);  break;
     case SHAPE_RES:     walk_res();             break;
     case SHAPE_VAR:     walk_var();             break;
+    case SHAPE_UNIQ:    walk_uniq();            break;
     default:            abort();
     }
 }
@@ -437,6 +440,17 @@ ctxt<T>::walk_box() {
     const uint8_t *end_sp = sp + sp_size;
 
     static_cast<T *>(this)->walk_box();
+
+    sp = end_sp;
+}
+
+template<typename T>
+void
+ctxt<T>::walk_uniq() {
+    uint16_t sp_size = get_u16_bump(sp);
+    const uint8_t *end_sp = sp + sp_size;
+
+    static_cast<T *>(this)->walk_uniq();
 
     sp = end_sp;
 }
@@ -760,6 +774,7 @@ protected:
     U end_dp;
 
     void walk_box_contents();
+    void walk_uniq_contents();
     void walk_fn_contents(ptr &dp);
     void walk_obj_contents(ptr &dp);
     void walk_variant(tag_info &tinfo, uint32_t variant);
@@ -789,6 +804,8 @@ public:
     }
 
     void walk_box()     { DATA_SIMPLE(void *, walk_box()); }
+
+    void walk_uniq() { DATA_SIMPLE(void *, walk_uniq()); }
 
     void walk_fn() {
         ALIGN_TO(alignof<void *>());
@@ -832,6 +849,15 @@ data<T,U>::walk_box_contents() {
     U ref_count_dp(box_ptr);
     T sub(*static_cast<T *>(this), ref_count_dp + sizeof(uint32_t));
     static_cast<T *>(this)->walk_box_contents(sub, ref_count_dp);
+}
+
+template<typename T,typename U>
+void
+data<T,U>::walk_uniq_contents() {
+    typename U::template data<uint8_t *>::t box_ptr = bump_dp<uint8_t *>(dp);
+    U data_ptr(box_ptr);
+    T sub(*static_cast<T *>(this), data_ptr);
+    static_cast<T *>(this)->walk_uniq_contents(sub);
 }
 
 template<typename T,typename U>
@@ -993,6 +1019,12 @@ private:
         data<log,ptr>::walk_box_contents();
     }
 
+    void walk_uniq() {
+	out << prefix << "~";
+	prefix = "";
+	data<log,ptr>::walk_uniq_contents();
+    }
+
     void walk_fn() {
         out << prefix << "fn";
         prefix = "";
@@ -1015,6 +1047,12 @@ private:
             sub.align = true;
             sub.walk();
         }
+    }
+
+    void walk_uniq_contents(log &sub) {
+	out << prefix;
+	sub.align = true;
+	sub.walk();
     }
 
     void walk_struct(const uint8_t *end_sp);

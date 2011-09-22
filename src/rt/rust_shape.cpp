@@ -279,6 +279,12 @@ private:
         result = sub.result;
     }
 
+    inline void walk_uniq_contents(cmp &sub) {
+        sub.align = true;
+        sub.walk();
+        result = sub.result;
+    }
+
     inline void cmp_two_pointers() {
         ALIGN_TO(alignof<void *>() * 2);
         data_pair<uint8_t *> fst = bump_dp<uint8_t *>(dp);
@@ -339,6 +345,10 @@ public:
 
     void walk_box() {
         data<cmp,ptr_pair>::walk_box_contents();
+    }
+
+    void walk_uniq() {
+        data<cmp,ptr_pair>::walk_uniq_contents();
     }
 
     void walk_fn()  { return cmp_two_pointers(); }
