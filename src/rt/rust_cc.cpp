@@ -417,7 +417,8 @@ sweep(rust_task *task, const std::set<void *> &marked) {
 
 void
 do_cc(rust_task *task) {
-    DPRINT("cc; n allocs = %lu\n", (long unsigned int)task->local_allocs.size());
+    DPRINT("cc; n allocs = %lu\n",
+           (long unsigned int)task->local_allocs.size());
 
     irc_map ircs;
     irc::compute_ircs(task, ircs);
