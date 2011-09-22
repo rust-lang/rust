@@ -2041,7 +2041,7 @@ fn copy_val_no_check(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         ret take_ty(bcx, dst, t);
     }
     if type_is_structural_or_param(ccx.tcx, t) || ty::type_is_vec(ccx.tcx, t)
-       {
+        {
         let bcx = cx;
         if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
         bcx = memmove_ty(bcx, dst, src, t).bcx;
@@ -4518,7 +4518,24 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
     let lv = trans_lval(bcx, contents);
     bcx = lv.bcx;
 
-    let contents_ty = ty::expr_ty(bcx_tcx(bcx), contents);
+    let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
+    let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
+
+    bcx = move_val_if_temp(bcx, INIT, llptr, lv,
+                           ty_uniq_contents(bcx, uniq_ty));
+
+    ret rslt(bcx, llptr);
+}
+
+fn ty_uniq_contents(cx: @block_ctxt, uniq_ty: ty::t) -> ty::t {
+    alt ty::struct(bcx_tcx(cx), uniq_ty) {
+      ty::ty_uniq({ty: ct, _}) { ct }
+    }
+}
+
+fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t) -> result {
+    let bcx = cx;
+    let contents_ty = ty_uniq_contents(cx, uniq_ty);
     let r = size_of(bcx, contents_ty);
     bcx = r.bcx;
     let llsz = r.val;
@@ -4529,11 +4546,9 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
     bcx = r.bcx;
     let llptr = r.val;
 
-    bcx = move_val_if_temp(bcx, INIT, llptr, lv, contents_ty);
+    add_clean_temp(bcx, llptr, uniq_ty);
 
-    let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
-    add_clean_temp(r.bcx, llptr, uniq_ty);
-    ret rslt(r.bcx, llptr);
+    ret rslt(bcx, llptr);
 }
 
 fn trans_break_cont(sp: span, cx: @block_ctxt, to_end: bool) -> result {
