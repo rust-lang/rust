@@ -1313,7 +1313,21 @@ fn make_free_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
                 trans_non_gc_free(bcx, v)
             } else { bcx }
           }
-          ty::ty_uniq(_) { fail "free uniq unimplemented"; }
+          ty::ty_uniq(content_t) {
+            let free_cx = new_sub_block_ctxt(bcx, "uniq_free");
+            let next_cx = new_sub_block_ctxt(bcx, "uniq_free_next");
+            let vptr = Load(bcx, v0);
+            let null_test = IsNull(bcx, vptr);
+            CondBr(bcx, null_test, next_cx.llbb, free_cx.llbb);
+
+            let bcx = free_cx;
+            let bcx = drop_ty(bcx, vptr, content_t);
+            let bcx = trans_shared_free(bcx, vptr);
+            Store(bcx, C_null(val_ty(vptr)), v0);
+            Br(bcx, next_cx.llbb);
+
+            next_cx
+          }
           ty::ty_obj(_) {
             // Call through the obj's own fields-drop glue first.
             // Then free the body.
@@ -1366,10 +1380,7 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
           ty::ty_str. { tvec::make_drop_glue(bcx, v0, t) }
           ty::ty_box(_) { decr_refcnt_maybe_free(bcx, v0, v0, t) }
           ty::ty_uniq(_) {
-            let vptr = Load(bcx, v0);
-            let bcx = trans_shared_free(bcx, vptr);
-            Store(bcx, C_null(val_ty(vptr)), v0);
-            bcx
+            free_ty(bcx, v0, t)
           }
           ty::ty_obj(_) {
             let box_cell =
