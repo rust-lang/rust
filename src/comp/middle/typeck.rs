@@ -1266,6 +1266,44 @@ fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
     }
 }
 
+fn lit_as_uint(l: @ast::lit) -> uint {
+    alt l.node {
+      ast::lit_uint(u) { u }
+      ast::lit_char(c) { c as uint }
+    }
+}
+fn lit_as_int(l: @ast::lit) -> int {
+    alt l.node {
+      ast::lit_int(i) | ast::lit_mach_int(_, i) { i }
+    }
+}
+fn lit_as_float(l: @ast::lit) -> str {
+    alt l.node {
+      ast::lit_float(f) | ast::lit_mach_float(_, f) { f }
+    }
+}
+
+fn valid_range_bounds(l1: @ast::lit, l2: @ast::lit) -> bool {
+    alt l1.node {
+      ast::lit_float(s1) | ast::lit_mach_float(_, s1) {
+        let s2 = lit_as_float(l2);
+        let f1 = util::common::str_to_float(s1);
+        let f2 = util::common::str_to_float(s2);
+        ret *util::common::min(f1, f2) == f1
+      }
+      ast::lit_uint(_) | ast::lit_char(_) {
+        let u1 = lit_as_uint(l1);
+        let u2 = lit_as_uint(l2);
+        ret *util::common::min(u1, u2) == u1
+      }
+      _ {
+        let i1 = lit_as_int(l1);
+        let i2 = lit_as_int(l2);
+        ret *util::common::min(i1, i2) == i1
+      }
+    }
+}
+
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
 fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
@@ -1276,6 +1314,23 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
         let typ = check_lit(fcx.ccx, lt);
         typ = demand::simple(fcx, pat.span, expected, typ);
         write::ty_only_fixup(fcx, pat.id, typ);
+      }
+      ast::pat_range(begin, end) {
+        if !util::common::lit_is_numeric(begin) ||
+           !util::common::lit_is_numeric(end) {
+            fcx.ccx.tcx.sess.span_err(pat.span,
+                                      "non-numeric type used in range");
+        } else if !valid_range_bounds(begin, end) {
+            fcx.ccx.tcx.sess.span_err(begin.span,
+                                      "lower range bound must be less \
+                                       than upper");
+        }
+        let typ1 = check_lit(fcx.ccx, begin);
+        typ1 = demand::simple(fcx, pat.span, expected, typ1);
+        write::ty_only_fixup(fcx, pat.id, typ1);
+        let typ2 = check_lit(fcx.ccx, end);
+        typ2 = demand::simple(fcx, pat.span, typ1, typ2);
+        write::ty_only_fixup(fcx, pat.id, typ2);
       }
       ast::pat_bind(name) {
         let vid = lookup_local(fcx, pat.span, pat.id);

@@ -41,6 +41,29 @@ iter range(lo: int, hi: int) -> int {
     while lo_ < hi { put lo_; lo_ += 1; }
 }
 
+fn parse_buf(buf: [u8], radix: uint) -> int {
+    if vec::len::<u8>(buf) == 0u {
+        log_err "parse_buf(): buf is empty";
+        fail;
+    }
+    let i = vec::len::<u8>(buf) - 1u;
+    let power = 1;
+    if buf[0] == ('-' as u8) {
+        power = -1;
+        i -= 1u;
+    }
+    let n = 0;
+    while true {
+        n += (buf[i] - ('0' as u8) as int) * power;
+        power *= radix as int;
+        if i == 0u { ret n; }
+        i -= 1u;
+    }
+    fail;
+}
+
+fn from_str(s: str) -> int { parse_buf(str::bytes(s), 10u) }
+
 fn to_str(n: int, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
     ret if n < 0 {
