@@ -15,7 +15,7 @@ import trans::{
     new_sub_block_ctxt
 };
 
-export trans_uniq, make_free_glue, type_is_unique_box;
+export trans_uniq, make_free_glue, type_is_unique_box, copy_val;
 
 pure fn type_is_unique_box(bcx: @block_ctxt, ty: ty::t) -> bool {
     unchecked {
@@ -34,6 +34,8 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
     check type_is_unique_box(bcx, uniq_ty);
     let content_ty = content_ty(bcx, uniq_ty);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
+
+    add_clean_temp(bcx, llptr, uniq_ty);
 
     bcx = move_val_if_temp(bcx, INIT, llptr, lv,
                            content_ty);
@@ -55,8 +57,6 @@ fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)
     r = trans_shared_malloc(bcx, llptrty, llsz);
     bcx = r.bcx;
     let llptr = r.val;
-
-    add_clean_temp(bcx, llptr, uniq_ty);
 
     ret rslt(bcx, llptr);
 }
@@ -86,4 +86,18 @@ fn content_ty(bcx: @block_ctxt, t: ty::t)
     alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_uniq({ty: ct, _}) { ct }
     }
+}
+
+fn copy_val(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
+            ty: ty::t) : type_is_unique_box(cx, ty) -> @block_ctxt {
+
+    let content_ty = content_ty(cx, ty);
+    let {bcx, val: llptr} = alloc_uniq(cx, ty);
+    Store(bcx, llptr, dst);
+
+    let src = Load(bcx, src);
+    let dst = Load(bcx, dst);
+    let bcx = trans::copy_val(bcx, INIT, dst, src, content_ty);
+    Store(bcx, src, llptr);
+    ret bcx;
 }
