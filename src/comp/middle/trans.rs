@@ -2031,8 +2031,7 @@ fn copy_val_no_check(cx: @block_ctxt, action: copy_action, dst: ValueRef,
     }
     if ty::type_is_unique_box(ccx.tcx, t) {
         let bcx = cx;
-        // FIXME (409): Write a test and uncomment
-        //if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
+        if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
         check trans_uniq::type_is_unique_box(bcx, t);
         ret trans_uniq::copy_val(bcx, dst, src, t);
     }
