@@ -1317,19 +1317,7 @@ fn make_free_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
             } else { bcx }
           }
           ty::ty_uniq(content_mt) {
-            let free_cx = new_sub_block_ctxt(bcx, "uniq_free");
-            let next_cx = new_sub_block_ctxt(bcx, "uniq_free_next");
-            let vptr = Load(bcx, v0);
-            let null_test = IsNull(bcx, vptr);
-            CondBr(bcx, null_test, next_cx.llbb, free_cx.llbb);
-
-            let bcx = free_cx;
-            let bcx = drop_ty(bcx, vptr, content_mt.ty);
-            let bcx = trans_shared_free(bcx, vptr);
-            Store(bcx, C_null(val_ty(vptr)), v0);
-            Br(bcx, next_cx.llbb);
-
-            next_cx
+            trans_uniq::make_free_glue(bcx, v0, t)
           }
           ty::ty_obj(_) {
             // Call through the obj's own fields-drop glue first.
@@ -2198,7 +2186,7 @@ fn trans_unary(cx: @block_ctxt, op: ast::unop, e: @ast::expr,
         ret rslt(bcx, sub.box);
       }
       ast::uniq(_) {
-        ret trans_uniq(cx, e, id);
+        ret trans_uniq::trans_uniq(cx, e, id);
       }
       ast::deref. {
         bcx_ccx(cx).sess.bug("deref expressions should have been \
@@ -4509,46 +4497,6 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     let next_cx = new_sub_block_ctxt(in_cx, "next");
     Br(bcx, next_cx.llbb);
     ret rslt(next_cx, C_nil());
-}
-
-fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
-              node_id: ast::node_id) -> result {
-    let bcx = cx;
-
-    let lv = trans_lval(bcx, contents);
-    bcx = lv.bcx;
-
-    let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
-    let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
-
-    bcx = move_val_if_temp(bcx, INIT, llptr, lv,
-                           ty_uniq_contents(bcx, uniq_ty));
-
-    ret rslt(bcx, llptr);
-}
-
-fn ty_uniq_contents(cx: @block_ctxt, uniq_ty: ty::t) -> ty::t {
-    alt ty::struct(bcx_tcx(cx), uniq_ty) {
-      ty::ty_uniq({ty: ct, _}) { ct }
-    }
-}
-
-fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t) -> result {
-    let bcx = cx;
-    let contents_ty = ty_uniq_contents(cx, uniq_ty);
-    let r = size_of(bcx, contents_ty);
-    bcx = r.bcx;
-    let llsz = r.val;
-
-    let llptrty = T_ptr(type_of_or_i8(bcx, contents_ty));
-
-    r = trans_shared_malloc(bcx, llptrty, llsz);
-    bcx = r.bcx;
-    let llptr = r.val;
-
-    add_clean_temp(bcx, llptr, uniq_ty);
-
-    ret rslt(bcx, llptr);
 }
 
 fn trans_break_cont(sp: span, cx: @block_ctxt, to_end: bool) -> result {
