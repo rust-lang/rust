@@ -15,7 +15,7 @@ import trans::{
     new_sub_block_ctxt
 };
 
-export trans_uniq, make_free_glue, type_is_unique_box, copy_val;
+export trans_uniq, make_free_glue, type_is_unique_box, copy_val, autoderef;
 
 pure fn type_is_unique_box(bcx: @block_ctxt, ty: ty::t) -> bool {
     unchecked {
@@ -100,4 +100,11 @@ fn copy_val(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
     let bcx = trans::copy_val(bcx, INIT, dst, src, content_ty);
     Store(bcx, src, llptr);
     ret bcx;
+}
+
+fn autoderef(bcx: @block_ctxt, v: ValueRef, t: ty::t)
+    : type_is_unique_box(bcx, t) -> {v: ValueRef, t: ty::t} {
+
+    let content_ty = content_ty(bcx, t);
+    ret {v: v, t: content_ty};
 }

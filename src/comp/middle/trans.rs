@@ -2305,7 +2305,12 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
                 v1 = PointerCast(cx, body, T_ptr(llty));
             } else { v1 = body; }
           }
-          ty::ty_uniq(t) { fail "autoderef uniq unimplemented"; }
+          ty::ty_uniq(_) {
+            check trans_uniq::type_is_unique_box(cx, t1);
+            let derefed = trans_uniq::autoderef(cx, v1, t1);
+            t1 = derefed.t;
+            v1 = derefed.v;
+          }
           ty::ty_res(did, inner, tps) {
             t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
             v1 = GEP(cx, v1, [C_int(0), C_int(1)]);
