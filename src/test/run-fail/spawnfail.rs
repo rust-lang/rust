@@ -1,3 +1,4 @@
+// xfail-test
 // error-pattern:explicit
 use std;
 import std::task;

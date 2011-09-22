@@ -1,3 +1,4 @@
+// xfail-test
 // xfail-win32
 use std;
 import std::comm;
