@@ -86,7 +86,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                 let mut = false;
                 alt ty::struct(tcx, base_t) {
                   ty::ty_box(mt) { mut = mt.mut != imm; }
-                  ty::ty_uniq(_) { }
+                  ty::ty_uniq(mt) { mut = mt.mut != imm; }
                   ty::ty_res(_, _, _) { }
                   ty::ty_tag(_, _) { }
                   ty::ty_ptr(mt) { mut = mt.mut != imm; }
