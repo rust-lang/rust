@@ -25,6 +25,7 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
     bcx = lv.bcx;
 
     let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
+    assert ty::type_is_unique_box(bcx_tcx(cx), uniq_ty);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
 
     bcx = move_val_if_temp(bcx, INIT, llptr, lv,
@@ -34,6 +35,8 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
 }
 
 fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t) -> result {
+    assert ty::type_is_unique_box(bcx_tcx(cx), uniq_ty);
+
     let bcx = cx;
     let contents_ty = content_ty(bcx, uniq_ty);
     let r = size_of(bcx, contents_ty);
@@ -52,6 +55,8 @@ fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t) -> result {
 }
 
 fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
+    assert ty::type_is_unique_box(bcx_tcx(bcx), t);
+
     let free_cx = new_sub_block_ctxt(bcx, "uniq_free");
     let next_cx = new_sub_block_ctxt(bcx, "uniq_free_next");
     let vptr = Load(bcx, v);
@@ -68,6 +73,8 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
 }
 
 fn content_ty(bcx: @block_ctxt, t: ty::t) -> ty::t {
+    assert ty::type_is_unique_box(bcx_tcx(bcx), t);
+
     alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_uniq({ty: ct, _}) { ct }
     }
