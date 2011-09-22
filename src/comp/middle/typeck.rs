@@ -286,7 +286,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
         typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
       ast::ty_uniq(mt) {
-        typ = ty::mk_uniq(tcx, ast_ty_to_ty(tcx, getter, mt.ty));
+        typ = ty::mk_uniq(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
       ast::ty_vec(mt) {
         typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
@@ -1720,12 +1720,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         alt unop {
           ast::box(mut) { oper_t = ty::mk_box(tcx, {ty: oper_t, mut: mut}); }
           ast::uniq(mut) {
-            oper_t = ty::mk_uniq(tcx, oper_t);
+            oper_t = ty::mk_uniq(tcx, {ty: oper_t, mut: mut});
           }
           ast::deref. {
             alt structure_of(fcx, expr.span, oper_t) {
               ty::ty_box(inner) { oper_t = inner.ty; }
-              ty::ty_uniq(inner) { oper_t = inner; }
+              ty::ty_uniq(inner) { oper_t = inner.ty; }
               ty::ty_res(_, inner, _) { oper_t = inner; }
               ty::ty_tag(id, tps) {
                 let variants = ty::tag_variants(tcx, id);

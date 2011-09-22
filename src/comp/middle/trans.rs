@@ -162,9 +162,10 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         let mt_ty = mt.ty;
         check non_ty_var(cx, mt_ty);
         T_ptr(T_box(type_of_inner(cx, sp, mt_ty))) }
-      ty::ty_uniq(t) {
-        check non_ty_var(cx, t);
-        T_ptr(type_of_inner(cx, sp, t)) }
+      ty::ty_uniq(mt) {
+        let mt_ty = mt.ty;
+        check non_ty_var(cx, mt_ty);
+        T_ptr(type_of_inner(cx, sp, mt_ty)) }
       ty::ty_vec(mt) {
         let mt_ty = mt.ty;
         if ty::type_has_dynamic_size(cx.tcx, mt_ty) {
@@ -478,7 +479,9 @@ fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
     fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
         alt ty::struct(ccx.tcx, typ) {
           ty::ty_box(_) { ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)); }
-          ty::ty_uniq(_) { ret ty::mk_uniq(ccx.tcx, ty::mk_nil(ccx.tcx)); }
+          ty::ty_uniq(_) {
+            ret ty::mk_imm_uniq(ccx.tcx, ty::mk_nil(ccx.tcx));
+          }
           ty::ty_fn(_, _, _, _, _) {
             ret ty::mk_tup(ccx.tcx,
                            [ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)),
@@ -1313,7 +1316,7 @@ fn make_free_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
                 trans_non_gc_free(bcx, v)
             } else { bcx }
           }
-          ty::ty_uniq(content_t) {
+          ty::ty_uniq(content_mt) {
             let free_cx = new_sub_block_ctxt(bcx, "uniq_free");
             let next_cx = new_sub_block_ctxt(bcx, "uniq_free_next");
             let vptr = Load(bcx, v0);
@@ -1321,7 +1324,7 @@ fn make_free_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
             CondBr(bcx, null_test, next_cx.llbb, free_cx.llbb);
 
             let bcx = free_cx;
-            let bcx = drop_ty(bcx, vptr, content_t);
+            let bcx = drop_ty(bcx, vptr, content_mt.ty);
             let bcx = trans_shared_free(bcx, vptr);
             Store(bcx, C_null(val_ty(vptr)), v0);
             Br(bcx, next_cx.llbb);

@@ -559,10 +559,9 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
             }
             ret false;
           }
-          ty::ty_box(mt) | ty::ty_ptr(mt) {
+          ty::ty_box(mt) | ty::ty_ptr(mt) | ty::ty_uniq(mt) {
             ret helper(tcx, needle, mt.ty, get_mut(mut, mt));
           }
-          ty::ty_uniq(t) { ret helper(tcx, needle, t, false); }
           ty::ty_rec(fields) {
             for f: ty::field in fields {
                 if helper(tcx, needle, f.mt.ty, get_mut(mut, f.mt)) {
@@ -619,7 +618,7 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) |
           ty::ty_obj(_) { 4u }
           ty::ty_str. | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
-          ty::ty_uniq(t) { 1u + score_ty(tcx, t) }
+          ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }
           ty::ty_tag(_, ts) | ty::ty_tup(ts) {
             let sum = 0u;
             for t in ts { sum += score_ty(tcx, t); }

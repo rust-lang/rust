@@ -65,6 +65,7 @@ export mk_ctxt;
 export mk_float;
 export mk_fn;
 export mk_imm_box;
+export mk_imm_uniq;
 export mk_mut_ptr;
 export mk_int;
 export mk_str;
@@ -251,7 +252,7 @@ tag sty {
     ty_str;
     ty_tag(def_id, [t]);
     ty_box(mt);
-    ty_uniq(t);
+    ty_uniq(mt);
     ty_vec(mt);
     ty_ptr(mt);
     ty_rec([field]);
@@ -448,7 +449,7 @@ fn mk_raw_ty(cx: ctxt, st: sty, _in_cname: option::t<str>) -> @raw_t {
         for tt: t in tys { derive_flags_t(cx, has_params, has_vars, tt); }
       }
       ty_box(m) { derive_flags_mt(cx, has_params, has_vars, m); }
-      ty_uniq(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
+      ty_uniq(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_vec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_ptr(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_rec(flds) {
@@ -534,7 +535,11 @@ fn mk_tag(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
 
 fn mk_box(cx: ctxt, tm: mt) -> t { ret gen_ty(cx, ty_box(tm)); }
 
-fn mk_uniq(cx: ctxt, typ: t) -> t { ret gen_ty(cx, ty_uniq(typ)); }
+fn mk_uniq(cx: ctxt, tm: mt) -> t { ret gen_ty(cx, ty_uniq(tm)); }
+
+fn mk_imm_uniq(cx: ctxt, ty: t) -> t {
+    ret mk_uniq(cx, {ty: ty, mut: ast::imm});
+}
 
 fn mk_ptr(cx: ctxt, tm: mt) -> t { ret gen_ty(cx, ty_ptr(tm)); }
 
@@ -643,7 +648,7 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
       ty_constr(sub, _) { walk_ty(cx, walker, sub); }
       ty_var(_) {/* no-op */ }
       ty_param(_, _) {/* no-op */ }
-      ty_uniq(sub) { walk_ty(cx, walker, sub); }
+      ty_uniq(tm) { walk_ty(cx, walker, tm.ty); }
     }
     walker(ty);
 }
@@ -678,7 +683,9 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_box(tm) {
         ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
-      ty_uniq(subty) { ty = mk_uniq(cx, fold_ty(cx, fld, subty)); }
+      ty_uniq(tm) {
+        ty = mk_uniq(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
+      }
       ty_ptr(tm) {
         ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
@@ -1420,7 +1427,7 @@ fn hash_type_structure(st: sty) -> uint {
         for c: @type_constr in cs { h += h << 5u + hash_type_constr(h, c); }
         ret h;
       }
-      ty_uniq(t) { let h = 37u; h += h << 5u + hash_ty(t); ret h; }
+      ty_uniq(mt) { let h = 37u; h += h << 5u + hash_ty(mt.ty); ret h; }
     }
 }
 
@@ -2184,13 +2191,20 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_uniq(expected_sub) {
+          ty::ty_uniq(expected_mt) {
             alt struct(cx.tcx, actual) {
-              ty::ty_uniq(actual_sub) {
-                let result = unify_step(cx, expected_sub, actual_sub);
+              ty::ty_uniq(actual_mt) {
+                let mut = expected_mt.mut;
+                // FIXME (409) Write a test then uncomment
+                /*alt unify_mut(expected_mt.mut, actual_mt.mut) {
+                  none. { ret ures_err(terr_box_mutability); }
+                  some(m) { mut = m; }
+                }*/
+                let result = unify_step(cx, expected_mt.ty, actual_mt.ty);
                 alt result {
-                  ures_ok(result_sub) {
-                    ret ures_ok(mk_uniq(cx.tcx, result_sub));
+                  ures_ok(result_mt) {
+                    let mt = {ty: result_mt, mut: mut};
+                    ret ures_ok(mk_uniq(cx.tcx, mt));
                   }
                   _ { ret result; }
                 }

@@ -370,9 +370,9 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         s += [shape_box];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
       }
-      ty::ty_uniq(subt) {
+      ty::ty_uniq(mt) {
         s += [shape_uniq];
-        add_substr(s, shape_of(ccx, subt, ty_param_map));
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
       }
       ty::ty_vec(mt) {
         s += [shape_vec];

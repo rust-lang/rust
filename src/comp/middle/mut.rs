@@ -23,7 +23,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                 t = mt.ty;
               }
               ty::ty_uniq(mt) {
-                ds += [@{mut: false, kind: unbox, outer_t: t}];
+                ds += [@{mut: mt.mut != imm, kind: unbox, outer_t: t}];
               }
               ty::ty_res(_, inner, tps) {
                 ds += [@{mut: false, kind: unbox, outer_t: t}];
