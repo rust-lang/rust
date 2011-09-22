@@ -108,6 +108,18 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         // refcount.
         let body_ty: ty::t =
             create_object_body_type(ccx.tcx, obj_fields, tps, none);
+
+        // We have to get this type descriptor now so that
+        // trans_malloc_boxed() doesn't generate a type descriptor with the
+        // wrong storage type and override the type descriptor we're about to
+        // generate.
+        let ti = none;
+        let storage = tps_obj(vec::len(ty_params));
+        let body_td = get_tydesc(bcx, body_ty, true, storage, ti).result;
+        bcx = body_td.bcx;
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
+
         let box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
         let body = box.body;
@@ -126,7 +138,6 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         let body_tydesc =
             GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
-        let ti = none;
 
         check type_is_tup_like(bcx, body_ty);
         let r =
@@ -134,11 +145,6 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         bcx = r.bcx;
         let body_typarams = r.val;
 
-        let storage = tps_obj(vec::len(ty_params));
-        let body_td = get_tydesc(bcx, body_ty, true, storage, ti).result;
-        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
-        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
-        bcx = body_td.bcx;
         Store(bcx, body_td.val, body_tydesc.val);
 
         // Copy the object's type parameters and fields into the space we

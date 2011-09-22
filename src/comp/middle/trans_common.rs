@@ -58,7 +58,8 @@ type tydesc_info =
      mutable drop_glue: option::t<ValueRef>,
      mutable free_glue: option::t<ValueRef>,
      mutable cmp_glue: option::t<ValueRef>,
-     ty_params: [uint]};
+     ty_params: [uint],
+     is_obj_body: bool};
 
 /*
  * A note on nomenclature of linking: "upcall", "extern" and "native".

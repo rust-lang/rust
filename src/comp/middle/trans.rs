@@ -951,10 +951,16 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
       none. {/* fall through */ }
     }
 
+    let is_obj_body;
+    alt storage {
+        tps_normal. { is_obj_body = false; }
+        tps_obj(_) | tps_fn(_) { is_obj_body = true; }
+    }
+
     bcx_ccx(cx).stats.n_derived_tydescs += 1u;
     let bcx = new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs);
     let tys = linearize_ty_params(bcx, t);
-    let root_ti = get_static_tydesc(bcx, t, tys.params);
+    let root_ti = get_static_tydesc(bcx, t, tys.params, is_obj_body);
     static_ti = some::<@tydesc_info>(root_ti);
     lazily_emit_all_tydesc_glue(cx, static_ti);
     let root = root_ti.tydesc;
@@ -1048,13 +1054,13 @@ fn get_tydesc(cx: @block_ctxt, orig_t: ty::t, escapes: bool,
              result: get_derived_tydesc(cx, t, escapes, storage, static_ti)};
     }
     // Otherwise, generate a tydesc if necessary, and return it.
-    let info = get_static_tydesc(cx, t, []);
+    let info = get_static_tydesc(cx, t, [], false);
     static_ti = some::<@tydesc_info>(info);
     ret {kind: tk_static, result: rslt(cx, info.tydesc)};
 }
 
-fn get_static_tydesc(cx: @block_ctxt, orig_t: ty::t, ty_params: [uint]) ->
-   @tydesc_info {
+fn get_static_tydesc(cx: @block_ctxt, orig_t: ty::t, ty_params: [uint],
+                     is_obj_body: bool) -> @tydesc_info {
     let t = ty::strip_cname(bcx_tcx(cx), orig_t);
 
 
@@ -1062,7 +1068,8 @@ fn get_static_tydesc(cx: @block_ctxt, orig_t: ty::t, ty_params: [uint]) ->
       some(info) { ret info; }
       none. {
         bcx_ccx(cx).stats.n_static_tydescs += 1u;
-        let info = declare_tydesc(cx.fcx.lcx, cx.sp, t, ty_params);
+        let info = declare_tydesc(cx.fcx.lcx, cx.sp, t, ty_params,
+                                  is_obj_body);
         bcx_ccx(cx).tydescs.insert(t, info);
         ret info;
       }
@@ -1097,7 +1104,8 @@ fn set_glue_inlining(cx: @local_ctxt, f: ValueRef, t: ty::t) {
 
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint]) ->
+fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
+                  is_obj_body: bool) ->
    @tydesc_info {
     log "+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
     let ccx = cx.ccx;
@@ -1133,7 +1141,8 @@ fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint]) ->
           mutable drop_glue: none::<ValueRef>,
           mutable free_glue: none::<ValueRef>,
           mutable cmp_glue: none::<ValueRef>,
-          ty_params: ty_params};
+          ty_params: ty_params,
+          is_obj_body: is_obj_body};
     log "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
     ret info;
 }
@@ -1249,7 +1258,8 @@ fn emit_tydescs(ccx: @crate_ctxt) {
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
 
-        let shape = shape::shape_of(ccx, pair.key, ti.ty_params);
+        let shape = shape::shape_of(ccx, pair.key, ti.ty_params,
+                                    ti.is_obj_body);
         let shape_tables =
             llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
                                        T_ptr(T_i8()));
