@@ -1235,7 +1235,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         result = true;
       }
       // Boxed types
-      ty_str. | ty_box(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
+      ty_str. | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
       ty_native_fn(_, _, _) | ty_obj(_) {
         result = false;
       }
