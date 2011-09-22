@@ -38,11 +38,11 @@ struct frame {
 struct root_info {
     intptr_t frame_offset;
     uintptr_t dynamic;  // 0 = static, 1 = dynamic
-    type_desc *tydesc;
+    const type_desc *tydesc;
 };
 
 struct root {
-    type_desc *tydesc;
+    const type_desc *tydesc;
     uint8_t *data;
 
     root(const root_info &info, const frame &frame)
@@ -117,8 +117,8 @@ gc::mark(std::vector<root> &roots) {
         DPRINT("root: %p\n", ri->data);
 
         shape::arena arena;
-        shape::type_param *params = shape::type_param::from_tydesc(ri->tydesc,
-                                                                   arena);
+        shape::type_param *params =
+            shape::type_param::from_tydesc(&ri->tydesc, arena);
         shape::log log(task, true, ri->tydesc->shape, params,
                        ri->tydesc->shape_tables, ri->data, std::cerr);
         log.walk();

@@ -161,8 +161,8 @@ rust_obstack::dump() const {
     while (b != e) {
         std::pair<const type_desc *,void *> data = *b;
         shape::arena arena;
-        shape::type_param *params = shape::type_param::from_tydesc(data.first,
-                                                                   arena);
+        shape::type_param *params =
+            shape::type_param::from_tydesc(&data.first, arena);
         shape::log log(task, true, data.first->shape, params,
                        data.first->shape_tables,
                        reinterpret_cast<uint8_t *>(data.second), std::cerr);

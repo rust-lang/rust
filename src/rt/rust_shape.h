@@ -310,12 +310,27 @@ public:
     }
 
     // Creates type parameters from a type descriptor.
-    static inline type_param *from_tydesc(const type_desc *tydesc,
+    static inline type_param *from_tydesc(const type_desc **tydesc,
                                           arena &arena) {
-        if (tydesc->n_obj_params) {
-            // TODO
+        if ((*tydesc)->n_obj_params) {
+            uintptr_t n_obj_params = (*tydesc)->n_obj_params;
+            const type_desc **first_param;
+            if (n_obj_params & 0x80000000) {
+                // Function closure.
+                DPRINT("n_obj_params FN %lu, tydesc %p, starting at %p\n",
+                       n_obj_params, tydesc, tydesc + 4);
+                n_obj_params &= 0x7fffffff;
+                first_param = (const type_desc **)
+                    ((uint8_t *)(tydesc + 4) + (*tydesc)->size);
+            } else {
+                // Object closure.
+                DPRINT("n_obj_params OBJ %lu, tydesc %p, starting at %p\n",
+                       n_obj_params, tydesc, tydesc + 4);
+                first_param = tydesc + 4;
+            }
         }
-        return make(tydesc->first_param, tydesc->n_params, arena);
+
+        return make((*tydesc)->first_param, (*tydesc)->n_params, arena);
     }
 };
 

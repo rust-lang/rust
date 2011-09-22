@@ -115,7 +115,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     rust_obstack dynastack;
 
-    std::map<void *,type_desc *> local_allocs;
+    std::map<void *,const type_desc *> local_allocs;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_scheduler *sched,

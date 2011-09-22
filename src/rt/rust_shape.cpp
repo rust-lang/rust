@@ -37,7 +37,7 @@ type_param::make(const type_desc **tydescs, unsigned n_tydescs,
         const type_desc *subtydesc = tydescs[i];
         ptrs[i].shape = subtydesc->shape;
         ptrs[i].tables = subtydesc->shape_tables;
-        ptrs[i].params = from_tydesc(subtydesc, arena);
+        ptrs[i].params = from_tydesc(&subtydesc, arena);
     }
     return ptrs;
 }
@@ -527,11 +527,12 @@ log::walk_res(const rust_fn *dtor, unsigned n_params,
 } // end namespace shape
 
 extern "C" void
-upcall_cmp_type(int8_t *result, rust_task *task, type_desc *tydesc,
+upcall_cmp_type(int8_t *result, rust_task *task, const type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
     shape::arena arena;
-    shape::type_param *params = shape::type_param::from_tydesc(tydesc, arena);
+    shape::type_param *params =
+        shape::type_param::from_tydesc(&tydesc, arena);
     shape::cmp cmp(task, true, tydesc->shape, params, tydesc->shape_tables,
                    data_0, data_1);
     cmp.walk();
@@ -544,13 +545,14 @@ upcall_cmp_type(int8_t *result, rust_task *task, type_desc *tydesc,
 }
 
 extern "C" void
-upcall_log_type(rust_task *task, type_desc *tydesc, uint8_t *data,
+upcall_log_type(rust_task *task, const type_desc *tydesc, uint8_t *data,
                 uint32_t level) {
     if (task->sched->log_lvl < level)
         return;     // TODO: Don't evaluate at all?
 
     shape::arena arena;
-    shape::type_param *params = shape::type_param::from_tydesc(tydesc, arena);
+    shape::type_param *params =
+        shape::type_param::from_tydesc(&tydesc, arena);
 
     std::stringstream ss;
     shape::log log(task, true, tydesc->shape, params, tydesc->shape_tables,
