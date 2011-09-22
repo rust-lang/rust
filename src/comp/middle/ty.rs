@@ -1019,13 +1019,9 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       ty_box(mt) {
         result = ast::kind_shared;
       }
-      ty_uniq(mt) {
-        // FIXME (409): Calculate kind
-        result = ast::kind_unique;
-      }
       // Pointers and unique boxes / vecs raise pinned to shared,
       // otherwise pass through their pointee kind.
-      ty_ptr(tm) | ty_vec(tm) {
+      ty_ptr(tm) | ty_vec(tm) | ty_uniq(tm) {
         let k = type_kind(cx, tm.ty);
         if k == ast::kind_pinned { k = ast::kind_shared; }
         result = kind::lower_kind(result, k);
