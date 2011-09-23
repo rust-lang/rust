@@ -1,7 +1,10 @@
+// ABI-specific routines.
+
 #ifndef RUST_ABI_H
 #define RUST_ABI_H
 
 #include <cstdlib>
+#include <vector>
 
 #ifdef __WIN32__
 #include <windows.h>
@@ -35,6 +38,25 @@ public:
 
     T *&operator*() { fill(); return data; }
 };
+
+namespace stack_walk {
+
+struct frame {
+    uint8_t *bp;    // The frame pointer.
+    void (*ra)();   // The return address.
+
+    frame(void *in_bp, void (*in_ra)()) : bp((uint8_t *)in_bp), ra(in_ra) {}
+
+    inline void next() {
+        ra = *(void (**)())(bp + sizeof(void *));
+        bp = *(uint8_t **)bp;
+    }
+};
+
+std::vector<frame> backtrace();
+
+}   // end namespace stack_walk
+
 
 uint32_t get_abi_version();
 

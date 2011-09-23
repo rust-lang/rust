@@ -18,23 +18,11 @@
 #include <dlfcn.h>
 #endif
 
-#define END_OF_STACK_RA     (void (*)())0xdeadbeef
+using namespace stack_walk;
 
 namespace gc {
 
 weak_symbol<const uintptr_t> safe_point_data("rust_gc_safe_points");
-
-struct frame {
-    uint8_t *bp;    // The frame pointer.
-    void (*ra)();   // The return address.
-
-    frame(void *in_bp, void (*in_ra)()) : bp((uint8_t *)in_bp), ra(in_ra) {}
-
-    inline void next() {
-        ra = *(void (**)())(bp + sizeof(void *));
-        bp = *(uint8_t **)bp;
-    }
-};
 
 struct root_info {
     intptr_t frame_offset;
@@ -98,9 +86,7 @@ private:
 
 public:
     gc(rust_task *in_task) : task(in_task) {}
-
     void run();
-    std::vector<frame> backtrace();
 };
 
 const safe_point *
@@ -133,22 +119,6 @@ gc::mark(std::vector<root> &roots) {
 void
 gc::sweep() {
     // TODO
-}
-
-std::vector<frame>
-gc::backtrace() {
-    std::vector<frame> frames;
-
-    // Ideally we would use the current value of EIP here, but there's no
-    // portable way to get that and there are never any GC roots in our C++
-    // frames anyhow.
-    frame f(__builtin_frame_address(0), (void (*)())NULL);
-
-    while (f.ra != END_OF_STACK_RA) {
-        frames.push_back(f);
-        f.next();
-    }
-    return frames;
 }
 
 void
