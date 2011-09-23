@@ -5,6 +5,6 @@ fn failfn() {
 }
 
 fn main() {
-    @0;
+    ~0;
     failfn();
 }
