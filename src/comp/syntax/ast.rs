@@ -92,6 +92,7 @@ tag pat_ {
     pat_rec([field_pat], bool);
     pat_tup([@pat]);
     pat_box(@pat);
+    pat_uniq(@pat);
 }
 
 tag mutability { mut; imm; maybe_mut; }

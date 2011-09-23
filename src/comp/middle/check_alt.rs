@@ -98,6 +98,12 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
           _ { ret pattern_supersedes(tcx, suba, b); }
         }
       }
+      pat_uniq(suba) {
+        alt b.node {
+          pat_uniq(subb) { ret pattern_supersedes(tcx, suba, subb); }
+          _ { ret pattern_supersedes(tcx, suba, b); }
+        }
+      }
     }
 }
 

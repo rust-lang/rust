@@ -69,6 +69,7 @@ iter pat_bindings(pat: @pat) -> @pat {
         for elt in elts { for each b in pat_bindings(elt) { put b; } }
       }
       pat_box(sub) { for each b in pat_bindings(sub) { put b; } }
+      pat_uniq(sub) { for each b in pat_bindings(sub) { put b; } }
       pat_wild. | pat_lit(_) { }
     }
 }

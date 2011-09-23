@@ -176,6 +176,17 @@ fn enter_box(m: match, col: uint, val: ValueRef) -> match {
     ret enter_match(m, col, val, bind e(dummy, _));
 }
 
+fn enter_uniq(m: match, col: uint, val: ValueRef) -> match {
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    fn e(dummy: @ast::pat, p: @ast::pat) -> option::t<[@ast::pat]> {
+        alt p.node {
+          ast::pat_uniq(sub) { ret some([sub]); }
+          _ { ret some([dummy]); }
+        }
+    }
+    ret enter_match(m, col, val, bind e(dummy, _));
+}
+
 fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
     fn add_to_set(&set: [opt], val: opt) {
         for l: opt in set { if opt_eq(l, val) { ret; } }
@@ -245,6 +256,13 @@ fn collect_record_fields(m: match, col: uint) -> [ast::ident] {
 fn any_box_pat(m: match, col: uint) -> bool {
     for br: match_branch in m {
         alt br.pats[col].node { ast::pat_box(_) { ret true; } _ { } }
+    }
+    ret false;
+}
+
+fn any_uniq_pat(m: match, col: uint) -> bool {
+    for br: match_branch in m {
+        alt br.pats[col].node { ast::pat_uniq(_) { ret true; } _ { } }
     }
     ret false;
 }
@@ -383,6 +401,13 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                         [C_int(0), C_int(back::abi::box_rc_field_body)]);
         compile_submatch(bcx, enter_box(m, col, val), [unboxed] + vals_left,
                          f, exits);
+        ret;
+    }
+
+    if any_uniq_pat(m, col) {
+        let unboxed = Load(bcx, val);
+        compile_submatch(bcx, enter_uniq(m, col, val),
+                         [unboxed] + vals_left, f, exits);
         ret;
     }
 

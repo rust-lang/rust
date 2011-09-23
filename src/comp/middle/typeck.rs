@@ -1435,6 +1435,20 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
           }
         }
       }
+      ast::pat_uniq(inner) {
+        alt structure_of(fcx, pat.span, expected) {
+          ty::ty_uniq(e_inner) {
+            check_pat(fcx, map, inner, e_inner.ty);
+            write::ty_only_fixup(fcx, pat.id, expected);
+          }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                        "mismatched types: expected " +
+                                            ty_to_str(fcx.ccx.tcx, expected) +
+                                            " found uniq");
+          }
+        }
+      }
     }
 }
 

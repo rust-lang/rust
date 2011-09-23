@@ -665,6 +665,13 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
             };
             walk(tcx, m ? some(contains(ty)) : mut, p, set);
           }
+          ast::pat_uniq(p) {
+            let ty = ty::node_id_to_type(tcx, pat.id);
+            let m = alt ty::struct(tcx, ty) {
+              ty::ty_uniq(mt) { mt.mut != ast::imm }
+            };
+            walk(tcx, m ? some(contains(ty)) : mut, p, set);
+          }
         }
     }
     let set = [];

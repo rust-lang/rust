@@ -1425,6 +1425,12 @@ fn parse_pat(p: parser) -> @ast::pat {
         pat = ast::pat_box(sub);
         hi = sub.span.hi;
       }
+      token::TILDE. {
+        p.bump();
+        let sub = parse_pat(p);
+        pat = ast::pat_uniq(sub);
+        hi = sub.span.hi;
+      }
       token::LBRACE. {
         p.bump();
         let fields = [];
