@@ -1920,7 +1920,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         write::ty_only_fixup(fcx, id, ty::mk_nil(tcx));
       }
       ast::expr_do_while(body, cond) {
-        bot = check_expr(fcx, cond) | check_block(fcx, body);
+        bot = check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
+              check_block(fcx, body);
         write::ty_only_fixup(fcx, id, block_ty(tcx, body));
       }
       ast::expr_alt(expr, arms) {
