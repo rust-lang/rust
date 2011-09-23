@@ -201,8 +201,8 @@ static void
 debug_tydesc_helper(rust_task *task, type_desc *t)
 {
     LOG(task, stdlib, "  size %" PRIdPTR ", align %" PRIdPTR
-        ", stateful %" PRIdPTR ", first_param 0x%" PRIxPTR,
-        t->size, t->align, t->is_stateful, t->first_param);
+        ", first_param 0x%" PRIxPTR,
+        t->size, t->align, t->first_param);
 }
 
 extern "C" CDECL void

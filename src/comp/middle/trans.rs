@@ -1275,7 +1275,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
                             C_null(T_ptr(T_i8())), // unused
                             C_null(glue_fn_ty), // sever_glue
                             C_null(glue_fn_ty), // mark_glue
-                            C_null(glue_fn_ty), // is_stateful
+                            C_null(glue_fn_ty), // unused
                             cmp_glue, // cmp_glue
                             C_shape(ccx, shape), // shape
                             shape_tables, // shape_tables

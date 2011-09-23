@@ -274,7 +274,7 @@ struct type_desc {
     void *unused;
     glue_fn *sever_glue;    // For GC.
     glue_fn *mark_glue;     // For GC.
-    uintptr_t is_stateful;
+    uintptr_t unused2;
     cmp_glue_fn *cmp_glue;
     const uint8_t *shape;
     const rust_shape_tables *shape_tables;
