@@ -2455,7 +2455,7 @@ fn join_returns(parent_cx: @block_ctxt, in_cxs: [@block_ctxt],
                 if option::is_none(phi) {
                     phi = some(EmptyPhi(out, val_ty(*cell)));
                 }
-                AddIncomingToPhi(option::get(phi), [*cell], [cx.llbb]);
+                AddIncomingToPhi(option::get(phi), *cell, cx.llbb);
               }
               _ {}
             }

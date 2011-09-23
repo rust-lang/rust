@@ -289,8 +289,8 @@ fn iter_vec_raw(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
         if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
             unit_sz
         } else { C_int(1) };
-    AddIncomingToPhi(data_ptr, [InBoundsGEP(body_cx, data_ptr, [increment])],
-                     [body_cx.llbb]);
+    AddIncomingToPhi(data_ptr, InBoundsGEP(body_cx, data_ptr, [increment]),
+                     body_cx.llbb);
     Br(body_cx, header_cx.llbb);
     ret next_cx;
 }

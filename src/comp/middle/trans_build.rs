@@ -465,13 +465,11 @@ fn Phi(cx: @block_ctxt, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
     ret phi;
 }
 
-// FIXME we typically need only a single val and bb. With std::ptr::addr_of
-// and a count of 1, we should be able to avoid the overhead of creating vecs.
-fn AddIncomingToPhi(phi: ValueRef, vals: [ValueRef], bbs: [BasicBlockRef]) {
+fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     if llvm::LLVMIsUndef(phi) == lib::llvm::True { ret; }
-    assert (vec::len::<ValueRef>(vals) == vec::len::<BasicBlockRef>(bbs));
-    llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
-                          vec::len(vals));
+    let valptr = std::unsafe::reinterpret_cast(std::ptr::addr_of(val));
+    let bbptr = std::unsafe::reinterpret_cast(std::ptr::addr_of(bb));
+    llvm::LLVMAddIncoming(phi, valptr, bbptr, 1u);
 }
 
 fn _UndefReturn(Fn: ValueRef) -> ValueRef {
