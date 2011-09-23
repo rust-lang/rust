@@ -23,20 +23,32 @@ debug::flag track_origins("RUST_TRACK_ORIGINS");
 
 namespace debug {
 
+#ifdef HAVE_BACKTRACE
 std::string
 backtrace() {
-    void *call_stack[256];
-    int n_frames = ::backtrace(call_stack, 256);
+    void *call_stack[128];
+    int n_frames = ::backtrace(call_stack, 128);
     char **syms = backtrace_symbols(call_stack, n_frames);
 
+    std::cerr << "n_frames: " << n_frames << std::endl;
+
     std::stringstream ss;
-    for (int i = 0; i < n_frames; i++)
+    for (int i = 0; i < n_frames; i++) {
+        std::cerr << syms[i] << std::endl;
         ss << syms[i] << std::endl;
+    }
 
     free(syms);
 
     return ss.str();
 }
+#else
+std::string
+backtrace() {
+    std::string s;
+    return s;
+}
+#endif
 
 void
 maybe_track_origin(rust_task *task, void *ptr) {
