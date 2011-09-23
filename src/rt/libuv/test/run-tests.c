@@ -28,59 +28,53 @@
 /* Actual tests and helpers are defined in test-list.h */
 #include "test-list.h"
 
-
 /* The time in milliseconds after which a single test times out. */
 #define TEST_TIMEOUT  5000
 
-
-static void log_progress(int total, int passed, int failed, char* name) {
-  LOGF("[%% %3d|+ %3d|- %3d]: %s", (passed + failed) / total * 100,
-      passed, failed, name);
-}
+static int maybe_run_test(int argc, char **argv);
 
 
 int main(int argc, char **argv) {
-  int total, passed, failed;
-  task_entry_t* task;
-
   platform_init(argc, argv);
 
-  if (argc > 1) {
-    /* A specific process was requested. */
-    return run_process(argv[1]);
+  switch (argc) {
+  case 1: return run_tests(TEST_TIMEOUT, 0);
+  case 2: return maybe_run_test(argc, argv);
+  case 3: return run_test_part(argv[1], argv[2]);
+  default:
+    LOGF("Too many arguments.\n");
+    return 1;
+  }
+}
 
-  } else {
-    /* Count the number of tests. */
-    total = 0;
-    task = (task_entry_t*)&TASKS;
-    for (task = (task_entry_t*)&TASKS; task->main; task++) {
-      if (!task->is_helper) {
-        total++;
-      }
-    }
 
-    /* Run all tests. */
-    passed = 0;
-    failed = 0;
-    task = (task_entry_t*)&TASKS;
-    for (task = (task_entry_t*)&TASKS; task->main; task++) {
-      if (task->is_helper) {
-        continue;
-      }
-
-      rewind_cursor();
-      log_progress(total, passed, failed, task->task_name);
-
-      if (run_task(task, TEST_TIMEOUT, 0)) {
-        passed++;
-      } else {
-        failed++;
-      }
-    }
-
-    rewind_cursor();
-    log_progress(total, passed, failed, "Done.\n");
-
+static int maybe_run_test(int argc, char **argv) {
+  if (strcmp(argv[1], "--list") == 0) {
+    print_tests(stdout);
     return 0;
   }
+
+  if (strcmp(argv[1], "spawn_helper1") == 0) {
+    return 1;
+  }
+
+  if (strcmp(argv[1], "spawn_helper2") == 0) {
+    printf("hello world\n");
+    return 1;
+  }
+
+  if (strcmp(argv[1], "spawn_helper3") == 0) {
+    char buffer[256];
+    fgets(buffer, sizeof(buffer) - 1, stdin);
+    buffer[sizeof(buffer) - 1] = '\0';
+    fputs(buffer, stdout);
+    return 1;
+  }
+
+  if (strcmp(argv[1], "spawn_helper4") == 0) {
+    /* Never surrender, never return! */
+    while (1) uv_sleep(10000);
+  }
+
+  return run_test(argv[1], TEST_TIMEOUT, 0);
 }

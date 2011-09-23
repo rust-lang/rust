@@ -26,7 +26,9 @@
 
 static uv_timer_t timer;
 static uv_tcp_t tcp;
-static uv_req_t connect_req, write_req, shutdown_req;
+static uv_connect_t connect_req;
+static uv_write_t write_req;
+static uv_shutdown_t shutdown_req;
 static uv_buf_t qbuf;
 static int got_q;
 static int got_eof;
@@ -37,7 +39,7 @@ static int called_timer_close_cb;
 static int called_timer_cb;
 
 
-static uv_buf_t alloc_cb(uv_stream_t* tcp, size_t size) {
+static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
   uv_buf_t buf;
   buf.base = (char*)malloc(size);
   buf.len = size;
@@ -46,7 +48,7 @@ static uv_buf_t alloc_cb(uv_stream_t* tcp, size_t size) {
 
 
 static void read_cb(uv_stream_t* t, ssize_t nread, uv_buf_t buf) {
-  uv_err_t err = uv_last_error();
+  uv_err_t err = uv_last_error(uv_default_loop());
 
   ASSERT((uv_tcp_t*)t == &tcp);
 
@@ -74,7 +76,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, uv_buf_t buf) {
 }
 
 
-static void shutdown_cb(uv_req_t *req, int status) {
+static void shutdown_cb(uv_shutdown_t *req, int status) {
   ASSERT(req == &shutdown_req);
 
   ASSERT(called_connect_cb == 1);
@@ -87,7 +89,7 @@ static void shutdown_cb(uv_req_t *req, int status) {
 }
 
 
-static void connect_cb(uv_req_t *req, int status) {
+static void connect_cb(uv_connect_t *req, int status) {
   ASSERT(status == 0);
   ASSERT(req == &connect_req);
 
@@ -98,12 +100,10 @@ static void connect_cb(uv_req_t *req, int status) {
    * Write the letter 'Q' to gracefully kill the echo-server. This will not
    * effect our connection.
    */
-  uv_req_init(&write_req, (uv_handle_t*)&tcp, NULL);
-  uv_write(&write_req, &qbuf, 1);
+  uv_write(&write_req, (uv_stream_t*) &tcp, &qbuf, 1, NULL);
 
   /* Shutdown our end of the connection.  */
-  uv_req_init(&shutdown_req, (uv_handle_t*)&tcp, (void *(*)(void *))shutdown_cb);
-  uv_shutdown(&shutdown_req);
+  uv_shutdown(&shutdown_req, (uv_stream_t*) &tcp, shutdown_cb);
 
   called_connect_cb++;
   ASSERT(called_shutdown_cb == 0);
@@ -153,23 +153,22 @@ TEST_IMPL(shutdown_eof) {
   struct sockaddr_in server_addr;
   int r;
 
-  uv_init();
-
   qbuf.base = "Q";
   qbuf.len = 1;
 
-  uv_timer_init(&timer);
+  r = uv_timer_init(uv_default_loop(), &timer);
+  ASSERT(r == 0);
+
   uv_timer_start(&timer, timer_cb, 100, 0);
 
   server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
-  r = uv_tcp_init(&tcp);
+  r = uv_tcp_init(uv_default_loop(), &tcp);
   ASSERT(!r);
 
-  uv_req_init(&connect_req, (uv_handle_t*) &tcp, (void *(*)(void *))connect_cb);
-  r = uv_tcp_connect(&connect_req, server_addr);
+  r = uv_tcp_connect(&connect_req, &tcp, server_addr, connect_cb);
   ASSERT(!r);
 
-  uv_run();
+  uv_run(uv_default_loop());
 
   ASSERT(called_connect_cb == 1);
   ASSERT(called_shutdown_cb == 1);

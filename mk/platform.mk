@@ -50,7 +50,7 @@ ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).dylib
   CFG_UNIXY := 1
   CFG_LDENV := DYLD_LIBRARY_PATH
-  CFG_GCCISH_LINK_FLAGS += -dynamiclib -lpthread
+  CFG_GCCISH_LINK_FLAGS += -dynamiclib -lpthread -framework CoreServices
   CFG_GCCISH_DEF_FLAG := -Wl,-exported_symbols_list,
   # Darwin has a very blurry notion of "64 bit", and claims it's running
   # "on an i386" when the whole userspace is 64-bit and the compiler

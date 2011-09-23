@@ -52,7 +52,7 @@ rustc
 TAGS
 version.ml
 version.texi
-Makefile
+./Makefile
 config.mk
 /rt/
 /rustllvm/

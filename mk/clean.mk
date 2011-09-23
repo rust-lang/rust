@@ -54,3 +54,4 @@ clean:
                  aux cp fn ky log pdf html pg toc tp vr cps, \
                  $(wildcard doc/*.$(ext)))
 	$(Q)rm -Rf doc/version.texi
+	$(Q)rm -rf rt/libuv

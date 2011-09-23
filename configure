@@ -406,8 +406,4 @@ done
 
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
 
-copy ${CFG_SRC_DIR}src/rt/libuv/Makefile rt/libuv/Makefile
-copy ${CFG_SRC_DIR}src/rt/libuv/config-unix.mk rt/libuv/config-unix.mk
-copy ${CFG_SRC_DIR}src/rt/libuv/config-mingw.mk rt/libuv/config-mingw.mk
-
 step_msg "complete"

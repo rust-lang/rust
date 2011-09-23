@@ -47,8 +47,6 @@ static uintptr_t thread3_id = 0;
 
 /* Thread 1 makes sure that async1_cb_called reaches 3 before exiting. */
 void thread1_entry(void *arg) {
-  int state = 0;
-
   uv_sleep(50);
 
   while (1) {
@@ -148,8 +146,6 @@ static void async2_cb(uv_handle_t* handle, int status) {
 
 
 static void prepare_cb(uv_prepare_t* handle, int status) {
-  int r;
-
   ASSERT(handle == &prepare_handle);
   ASSERT(status == 0);
 
@@ -172,8 +168,7 @@ static void prepare_cb(uv_prepare_t* handle, int status) {
 #endif
 
     case 1:
-      r = uv_close((uv_handle_t*)handle, close_cb);
-      ASSERT(r == 0);
+      uv_close((uv_handle_t*)handle, close_cb);
       break;
 
     default:
@@ -187,14 +182,12 @@ static void prepare_cb(uv_prepare_t* handle, int status) {
 TEST_IMPL(async) {
   int r;
 
-  uv_init();
-
-  r = uv_prepare_init(&prepare_handle);
+  r = uv_prepare_init(uv_default_loop(), &prepare_handle);
   ASSERT(r == 0);
   r = uv_prepare_start(&prepare_handle, prepare_cb);
   ASSERT(r == 0);
 
-  r = uv_async_init(&async1_handle, async1_cb);
+  r = uv_async_init(uv_default_loop(), &async1_handle, async1_cb);
   ASSERT(r == 0);
 
 #if 0
@@ -202,7 +195,7 @@ TEST_IMPL(async) {
   ASSERT(r == 0);
 #endif
 
-  r = uv_run();
+  r = uv_run(uv_default_loop());
   ASSERT(r == 0);
 
   r = uv_wait_thread(thread1_id);

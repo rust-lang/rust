@@ -22,6 +22,8 @@
 #ifndef RUNNER_H_
 #define RUNNER_H_
 
+#include <stdio.h> /* FILE */
+
 
 /*
  * The maximum number of processes (main + helpers) that a test / benchmark
@@ -39,13 +41,6 @@ typedef struct {
   int (*main)();
   int is_helper;
 } task_entry_t, bench_entry_t;
-
-
-/* Runs an individual task; returns 1 if the test succeeded, 0 if it failed. */
-/* If the test fails it prints diagnostic information. */
-/* If benchmark_output is nonzero, the output from the main process is
-/* always shown. */
-int run_task(task_entry_t *test, int timeout, int benchmark_output);
 
 
 /*
@@ -95,13 +90,26 @@ extern char executable_path[PATHMAX];
 /* The array that is filled by test-list.h or benchmark-list.h */
 extern task_entry_t TASKS[];
 
-/* Start a specific process declared by TEST_ENTRY or TEST_HELPER. */
-/* Returns the exit code of the specific process. */
-int run_task(task_entry_t *test, int timeout, int benchmark_output);
+/*
+ * Run all tests.
+ */
+int run_tests(int timeout, int benchmark_output);
 
-/* Start a specific process declared by TEST_ENTRY or TEST_HELPER. */
-/* Returns the exit code of the specific process. */
-int run_process(char* name);
+/*
+ * Run a single test. Starts up any helpers.
+ */
+int run_test(const char* test, int timeout, int benchmark_output);
+
+/*
+ * Run a test part, i.e. the test or one of its helpers.
+ */
+int run_test_part(const char* test, const char* part);
+
+
+/*
+ * Print tests in sorted order to `stream`. Used by `./run-tests --list`.
+ */
+void print_tests(FILE* stream);
 
 
 /*
@@ -113,9 +121,9 @@ int run_process(char* name);
 /* Do platform-specific initialization. */
 void platform_init();
 
-/* Invoke "arv[0] test-name". Store process info in *p. */
+/* Invoke "argv[0] test-name [test-part]". Store process info in *p. */
 /* Make sure that all stdio output of the processes is buffered up. */
-int process_start(char *name, process_info_t *p);
+int process_start(char *name, char* part, process_info_t *p);
 
 /* Wait for all `n` processes in `vec` to terminate. */
 /* Time out after `timeout` msec, or never if timeout == -1 */

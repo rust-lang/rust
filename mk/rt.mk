@@ -68,11 +68,22 @@ RUNTIME_HDR := rt/globals.h \
                rt/test/rust_test_util.h \
                rt/arch/i386/context.h \
 
+ifeq ($(CFG_WINDOWSY), 1)
+  LIBUV_OSTYPE := win
+  LIBUV_LIB := rt/libuv/Default/obj.target/src/rt/libuv/libuv.a
+else ifeq ($(CFG_OSTYPE), apple-darwin)
+  LIBUV_OSTYPE := mac
+  LIBUV_LIB := rt/libuv/Default/libuv.a
+else
+  LIBUV_OSTYPE := unix
+  LIBUV_LIB := rt/libuv/Default/obj.target/src/rt/libuv/libuv.a
+endif
+
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
                 -I $(S)src/rt/arch/i386 -I $(S)src/rt/libuv/include
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.S=.o)
-RUNTIME_LIBS := rt/libuv/uv.a
+RUNTIME_LIBS := $(LIBUV_LIB)
 
 rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call E, compile: $@)
@@ -105,12 +116,18 @@ rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF) $(RU
 # FIXME: For some reason libuv's makefiles can't figure out the correct definition
 # of CC on the mingw I'm using, so we are explicitly using gcc. Also, we
 # have to list environment variables first on windows... mysterious
-rt/libuv/uv.a: $(wildcard \
+$(LIBUV_LIB): $(wildcard \
                      $(S)src/rt/libuv/* \
                      $(S)src/rt/libuv/*/* \
                      $(S)src/rt/libuv/*/*/* \
                      $(S)src/rt/libuv/*/*/*/*)
-	$(Q)CFLAGS=\"-m32\" LDFLAGS=\"-m32\" CC=$(CC) $(MAKE) -C rt/libuv
+	$(Q)$(MAKE) -C $(S)mk/libuv/$(LIBUV_OSTYPE) \
+		CFLAGS="-m32" LDFLAGS="-m32" \
+		CC="$(CFG_GCCISH_CROSS)$(CC)" \
+		CXX="$(CFG_GCCISH_CROSS)$(CXX)" \
+		AR="$(CFG_GCCISH_CROSS)$(AR)" \
+		builddir_name="$(CFG_BUILD_DIR)/rt/libuv" \
+		V=$(VERBOSE) FLOCK= uv
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 

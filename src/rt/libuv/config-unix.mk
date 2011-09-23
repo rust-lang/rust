@@ -18,95 +18,127 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-CC ?= $(PREFIX)gcc
-AR ?= $(PREFIX)ar
+CC = $(PREFIX)gcc
+AR = $(PREFIX)ar
 E=
-CSTDFLAG=--std=c89 -pedantic
-CFLAGS+=-g
-CPPFLAGS += -I$(S)/src/ev
+CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
+CFLAGS += -g
+CPPFLAGS += -Isrc/unix/ev
 LINKFLAGS=-lm
 
 CPPFLAGS += -D_LARGEFILE_SOURCE
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
+OBJS += src/unix/core.o
+OBJS += src/unix/fs.o
+OBJS += src/unix/cares.o
+OBJS += src/unix/udp.o
+OBJS += src/unix/error.o
+OBJS += src/unix/process.o
+OBJS += src/unix/tcp.o
+OBJS += src/unix/pipe.o
+OBJS += src/unix/tty.o
+OBJS += src/unix/stream.o
+
 ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
 EIO_CONFIG=config_sunos.h
-CPPFLAGS += -I$(S)/src/ares/config_sunos
+CPPFLAGS += -Isrc/ares/config_sunos -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
 LINKFLAGS+=-lsocket -lnsl
-UV_OS_FILE=uv-sunos.c
+OBJS += src/unix/sunos.o
 endif
 
 ifeq (Darwin,$(uname_S))
 EV_CONFIG=config_darwin.h
 EIO_CONFIG=config_darwin.h
-CPPFLAGS += -I$(S)/src/ares/config_darwin
+CPPFLAGS += -Isrc/ares/config_darwin
 LINKFLAGS+=-framework CoreServices
-UV_OS_FILE=uv-darwin.c
+OBJS += src/unix/darwin.o
 endif
 
 ifeq (Linux,$(uname_S))
 EV_CONFIG=config_linux.h
 EIO_CONFIG=config_linux.h
-CSTDFLAG += -D_XOPEN_SOURCE=600
-CPPFLAGS += -I$(S)/src/ares/config_linux
+CSTDFLAG += -D_GNU_SOURCE
+CPPFLAGS += -Isrc/ares/config_linux
 LINKFLAGS+=-lrt
-UV_OS_FILE=uv-linux.c
+OBJS += src/unix/linux.o
 endif
 
 ifeq (FreeBSD,$(uname_S))
 EV_CONFIG=config_freebsd.h
 EIO_CONFIG=config_freebsd.h
-CPPFLAGS += -I$(S)/src/ares/config_freebsd
+CPPFLAGS += -Isrc/ares/config_freebsd
 LINKFLAGS+=
-UV_OS_FILE=uv-freebsd.c
+OBJS += src/unix/freebsd.o
+endif
+
+ifeq (NetBSD,$(uname_S))
+EV_CONFIG=config_netbsd.h
+EIO_CONFIG=config_netbsd.h
+CPPFLAGS += -Isrc/ares/config_netbsd
+LINKFLAGS+=
+OBJS += src/unix/netbsd.o
 endif
 
 ifneq (,$(findstring CYGWIN,$(uname_S)))
 EV_CONFIG=config_cygwin.h
 EIO_CONFIG=config_cygwin.h
-CPPFLAGS += -I$(S)/src/ares/config_cygwin
+# We drop the --std=c89, it hides CLOCK_MONOTONIC on cygwin
+CSTDFLAG = -D_GNU_SOURCE
+CPPFLAGS += -Isrc/ares/config_cygwin
 LINKFLAGS+=
-UV_OS_FILE=uv-cygwin.c
+OBJS += src/unix/cygwin.o
 endif
 
 # Need _GNU_SOURCE for strdup?
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE
+RUNNER_LINKFLAGS=$(LINKFLAGS)
 
-RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
+ifeq (SunOS,$(uname_S))
+RUNNER_LINKFLAGS += -pthreads
+else
+RUNNER_LINKFLAGS += -pthread
+endif
+
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
-uv.a: src/uv-unix.o src/uv-common.o src/uv-platform.o src/ev/ev.o src/uv-eio.o src/eio/eio.o $(CARES_OBJS)
-	@$(call EE, ar: $@)
-	$(Q)$(AR) rcs uv.a $^
+uv.a: $(OBJS) src/uv-common.o src/unix/ev/ev.o src/unix/uv-eio.o src/unix/eio/eio.o $(CARES_OBJS)
+	$(AR) rcs uv.a $(OBJS) src/uv-common.o src/unix/uv-eio.o src/unix/ev/ev.o src/unix/eio/eio.o $(CARES_OBJS)
 
-src/uv-platform.o: src/$(UV_OS_FILE) include/uv.h include/uv-unix.h
-	@$(call EE, compile: $@)
-	$(Q)$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+src/unix/%.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
+	$(CC) $(CSTDFLAG) $(CPPFLAGS) -Isrc  $(CFLAGS) -c $< -o $@
 
-src/uv-unix.o: src/uv-unix.c include/uv.h include/uv-unix.h
-	@$(call EE, compile: $@)
-	$(Q)$(CC) $(CSTDFLAG) $(CPPFLAGS) -I$(S)/eio $(CFLAGS) -c $< -o $@
+src/uv-common.o: src/uv-common.c include/uv.h include/uv-private/uv-unix.h
+	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/uv-common.c -o src/uv-common.o
 
-src/uv-common.o: src/uv-common.c include/uv.h include/uv-unix.h
-	@$(call EE, compile: $@)
-	$(Q)$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
-
-src/ev/ev.o: src/ev/ev.c
-	@$(call EE, compile: $@)
-	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@ -DEV_CONFIG_H=\"$(EV_CONFIG)\"
+src/unix/ev/ev.o: src/unix/ev/ev.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c src/unix/ev/ev.c -o src/unix/ev/ev.o -DEV_CONFIG_H=\"$(EV_CONFIG)\"
 
 
 EIO_CPPFLAGS += $(CPPFLAGS)
 EIO_CPPFLAGS += -DEIO_CONFIG_H=\"$(EIO_CONFIG)\"
-EIO_CPPFLAGS += -DEIO_STACKSIZE=65536
+EIO_CPPFLAGS += -DEIO_STACKSIZE=262144
 EIO_CPPFLAGS += -D_GNU_SOURCE
 
-src/eio/eio.o: src/eio/eio.c
-	@$(call EE, compile: $@)
-	$(Q)$(CC) $(EIO_CPPFLAGS) $(CFLAGS) -c $< -o $@
+src/unix/eio/eio.o: src/unix/eio/eio.c
+	$(CC) $(EIO_CPPFLAGS) $(CFLAGS) -c src/unix/eio/eio.c -o src/unix/eio/eio.o
 
-src/uv-eio.o: src/uv-eio.c
-	@$(call EE, compile: $@)
-	$(Q)$(CC) $(CPPFLAGS) -I$(S)/src/eio/ $(CSTDFLAG) $(CFLAGS) -c $< -o $@
+src/unix/uv-eio.o: src/unix/uv-eio.c
+	$(CC) $(CPPFLAGS) -Isrc/unix/eio/ $(CSTDFLAG) $(CFLAGS) -c src/unix/uv-eio.c -o src/unix/uv-eio.o
+
+
+clean-platform:
+	-rm -f src/ares/*.o
+	-rm -f src/unix/ev/*.o
+	-rm -f src/unix/eio/*.o
+	-rm -f src/unix/*.o
+	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
+
+distclean-platform:
+	-rm -f src/ares/*.o
+	-rm -f src/unix/ev/*.o
+	-rm -f src/unix/*.o
+	-rm -f src/unix/eio/*.o
+	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM

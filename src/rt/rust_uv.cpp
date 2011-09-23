@@ -1,9 +1,10 @@
-#include "rust_internal.h"
-#include "rust_upcall.h"
 // Disable libev prototypes - they will make inline compatability functions
 // which are unused and so trigger a warning in gcc since -Wall is on.
 #define EV_PROTOTYPES 0
 #include "uv.h"
+
+#include "rust_internal.h"
+#include "rust_upcall.h"
 
 #ifdef __GNUC__
 #define LOG_CALLBACK_ENTRY(p) \
@@ -37,28 +38,16 @@ struct socket_data : public task_owned<socket_data> {
     if (reader)
       reader->deref();
   }
-};
 
-struct request : public uv_req_t, public task_owned<request> {
-  rust_task *task;
-  // Used for notifying about completion of connections, writes
-  rust_chan *chan;
-  request(socket_data *data, rust_chan *chan,
-          void (*cb)(request *req, int status)) {
-    uv_req_init(this, (uv_handle_t*)&data->socket, (void*(*)(void*))cb);
-    this->data = data;
-    this->task = data->task;
-    this->chan = chan->clone(iotask);
-  }
-  socket_data *socket() {
-    return (socket_data*)data;
-  }
   void send_result(void *data) {
     chan->send(&data);
     chan->deref();
     chan = NULL;
   }
 };
+
+struct req_connect : public uv_connect_t, public task_owned<req_connect> {};
+struct req_write : public uv_write_t, public task_owned<req_write> {};
 
 extern "C" CDECL void aio_close_socket(rust_task *task, socket_data *);
 
@@ -72,15 +61,14 @@ static void idle_callback(uv_idle_t* handle, int status) {
 extern "C" CDECL void aio_init(rust_task *task) {
   LOG_UPCALL_ENTRY(task);
   iotask = task;
-  uv_init();
-  uv_idle_init(&idle_handler);
+  uv_idle_init(uv_default_loop(), &idle_handler);
   uv_idle_start(&idle_handler, idle_callback);
 }
 
 extern "C" CDECL void aio_run(rust_task *task) {
   LOG_UPCALL_ENTRY(task);
   idle_handler.data = task;
-  uv_run();
+  uv_run(uv_default_loop());
 }
 
 void nop_close(uv_handle_t* handle) {}
@@ -93,9 +81,10 @@ extern "C" CDECL void aio_stop(rust_task *task) {
 static socket_data *make_socket(rust_task *task, rust_chan *chan) {
   socket_data *data = new (task, "make_socket") socket_data;
   if (!data ||
-      uv_tcp_init(&data->socket)) {
+      uv_tcp_init(uv_default_loop(), &data->socket)) {
     return NULL;
   }
+  data->socket.data = data;
   data->task = task;
   // Connections from servers don't have a channel
   if (chan) {
@@ -110,7 +99,7 @@ static socket_data *make_socket(rust_task *task, rust_chan *chan) {
 
 // We allocate the requested space + rust_vec but return a pointer at a
 // +rust_vec offset so that it writes the bytes to the correct location.
-static uv_buf_t alloc_buffer(uv_stream_t *socket, size_t suggested_size) {
+static uv_buf_t alloc_buffer(uv_handle_t *socket, size_t suggested_size) {
   LOG_CALLBACK_ENTRY(socket);
   uv_buf_t buf;
   size_t actual_size = suggested_size + sizeof (rust_vec);
@@ -148,7 +137,7 @@ static void read_progress(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
   data->reader->send(v);
 }
 
-static void new_connection(uv_handle_t *socket, int status) {
+static void new_connection(uv_stream_t *socket, int status) {
   LOG_CALLBACK_ENTRY(socket);
   socket_data *server = (socket_data*)socket->data;
   I(server->task->sched, (uv_tcp_t*)socket == &server->socket);
@@ -176,7 +165,7 @@ extern "C" CDECL socket_data *aio_serve(rust_task *task, const char *ip,
   if (!server)
     goto oom;
   if (uv_tcp_bind(&server->socket, addr) ||
-      uv_tcp_listen(&server->socket, 128, new_connection)) {
+      uv_listen((uv_stream_t*)&server->socket, 128, new_connection)) {
     aio_close_socket(task, server);
     chan->deref();
     return NULL;
@@ -198,7 +187,7 @@ static void free_socket(uv_handle_t *handle) {
   // reading and should send the close notification.
   if (data->reader) {
     if (data->reader->is_associated()) {
-      uv_buf_t buf = alloc_buffer((uv_stream_t*)socket, 0);
+      uv_buf_t buf = alloc_buffer((uv_handle_t*)socket, 0);
       read_progress((uv_stream_t*)socket, -1, buf);
       uv_read_stop((uv_stream_t*)socket);
     }
@@ -214,9 +203,7 @@ static void free_socket(uv_handle_t *handle) {
 
 extern "C" CDECL void aio_close_socket(rust_task *task, socket_data *client) {
   LOG_UPCALL_ENTRY(task);
-  if (uv_close((uv_handle_t*)&client->socket, free_socket)) {
-    task->fail();
-  }
+  uv_close((uv_handle_t*)&client->socket, free_socket);
 }
 
 extern "C" CDECL void aio_close_server(rust_task *task, socket_data *server,
@@ -240,33 +227,35 @@ extern "C" CDECL bool aio_is_null_client(rust_task *task,
   return server == NULL;
 }
 
-static void connection_complete(request *req, int status) {
+static void connection_complete(uv_connect_t *req, int status) {
   LOG_CALLBACK_ENTRY(socket);
-  socket_data *client = req->socket();
-  req->send_result(client);
-  delete req;
+  socket_data *client = (socket_data*)req->data;
+  client->send_result(client);
+  free(req);
 }
 
 extern "C" CDECL void aio_connect(rust_task *task, const char *host,
                                   int port, chan_handle *_chan) {
   LOG_UPCALL_ENTRY(task);
   rust_chan *chan = task->get_chan_by_handle(_chan);
+  uv_connect_t *req = NULL;
   if(!chan) return;
   struct sockaddr_in addr = uv_ip4_addr(const_cast<char*>(host), port);
-  request *req;
   socket_data *client = make_socket(iotask, NULL);
   if (!client) {
     goto oom_client;
   }
-  req = new (client->task, "connection request")
-    request(client, chan, connection_complete);
+  req = (uv_connect_t*)client->task->malloc(
+      sizeof(uv_connect_t), "connection request");
   if (!req) {
     goto oom_req;
   }
-  if (0 == uv_tcp_connect(req, addr)) {
+  req->data = client;
+  if (0 == uv_tcp_connect(req, &client->socket, addr, connection_complete)) {
       chan->deref();
       return;
   }
+  free(req);
 oom_req:
   aio_close_socket(task, client);
 oom_client:
@@ -275,11 +264,12 @@ oom_client:
   return;
 }
 
-static void write_complete(request *req, int status) {
+static void write_complete(uv_write_t *req, int status) {
   LOG_CALLBACK_ENTRY(socket);
   bool success = status == 0;
-  req->send_result(&success);
-  delete req;
+  socket_data *client = (socket_data*)req->data;
+  client->send_result(&success);
+  free(req);
 }
 
 extern "C" CDECL void aio_writedata(rust_task *task, socket_data *data,
@@ -287,6 +277,7 @@ extern "C" CDECL void aio_writedata(rust_task *task, socket_data *data,
                                     chan_handle *_chan) {
   LOG_UPCALL_ENTRY(task);
   rust_chan *chan = task->get_chan_by_handle(_chan);
+  uv_write_t *req;
   if(!chan) return;
 
   // uv_buf_t is defined backwards on win32...
@@ -297,13 +288,14 @@ extern "C" CDECL void aio_writedata(rust_task *task, socket_data *data,
   uv_buf_t buffer = { buf, size };
 #endif
 
-  request *req = new (data->task, "write request")
-    request(data, chan, write_complete);
+  req = (uv_write_t*)data->task->malloc(sizeof(uv_write_t), "write request");
   if (!req) {
     goto fail;
   }
-  if (uv_write(req, &buffer, 1)) {
-    delete req;
+  req->data = data;
+  if (uv_write(req, (uv_stream_t*)&data->socket, &buffer, 1,
+               write_complete)) {
+    free(req);
     goto fail;
   }
   chan->deref();

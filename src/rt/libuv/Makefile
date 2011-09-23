@@ -18,30 +18,13 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-include ../../config.mk
-CFLAGS=-m32
-LDFLAGS=-m32
-CC=gcc 
-
-S:=$(shell cd ../../; cd $(CFG_SRC_DIR)src/rt/libuv; pwd)
-
-ifdef VERBOSE
-  Q :=
-  EE =
-else
-  Q := @
-  EE = echo $(1)
-endif
-
-VPATH:=$(S)
-
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 ifdef MSVC
 uname_S := MINGW
 endif
 
-CPPFLAGS += -I$(S)/include
+CPPFLAGS += -Iinclude -Iinclude/uv-private
 
 CARES_OBJS =
 CARES_OBJS += src/ares/ares__close_sockets.o
@@ -94,8 +77,43 @@ else
 include config-unix.mk
 endif
 
-all: uv.a
+TESTS=test/echo-server.c test/test-*.c
+BENCHMARKS=test/echo-server.c test/dns-server.c test/benchmark-*.c
+
+all: uv.a test/run-tests$(E) test/run-benchmarks$(E)
 
 $(CARES_OBJS): %.o: %.c
-	@$(call EE, compile: $@)
-	$(Q)$(CC) -o $*.o -c $(CFLAGS) $(CPPFLAGS) $< -DHAVE_CONFIG_H
+	$(CC) -o $*.o -c $(CFLAGS) $(CPPFLAGS) $< -DHAVE_CONFIG_H
+
+test/run-tests$(E): test/*.h test/run-tests.c $(RUNNER_SRC) test/runner-unix.c $(TESTS) uv.a
+	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o test/run-tests test/run-tests.c \
+		test/runner.c $(RUNNER_SRC) $(TESTS) uv.a $(RUNNER_LIBS) $(RUNNER_LINKFLAGS)
+
+test/run-benchmarks$(E): test/*.h test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) uv.a
+	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
+		 test/runner.c $(RUNNER_SRC) $(BENCHMARKS) uv.a $(RUNNER_LIBS) $(RUNNER_LINKFLAGS)
+
+test/echo.o: test/echo.c test/echo.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c test/echo.c -o test/echo.o
+
+
+.PHONY: clean clean-platform distclean distclean-platform test bench
+
+
+test: test/run-tests$(E)
+	test/run-tests
+
+#test-%:	test/run-tests$(E)
+#	test/run-tests $(@:test-%=%)
+
+bench: test/run-benchmarks$(E)
+	test/run-benchmarks
+
+#bench-%:	test/run-benchmarks$(E)
+#	test/run-benchmarks $(@:bench-%=%)
+
+clean: clean-platform
+	$(RM) -f src/*.o *.a test/run-tests$(E) test/run-benchmarks$(E)
+
+distclean: distclean-platform
+	$(RM) -f src/*.o *.a test/run-tests$(E) test/run-benchmarks$(E)
