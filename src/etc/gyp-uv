@@ -1,5 +1,18 @@
 #!/bin/sh
 
+# This script generates rust compatible makefiles from libuv. When upgrading
+# libuv, do:
+#
+# cd $LIBUV_DIR
+# git archive --prefix libuv/ $REVISION > libuv.tar.gz
+# cd $RUST_DIR/src/rt
+# rm -r libuv
+# tar -xvf $LIBUV_DIR/libuv.tar.gz
+# mkdir -p libuv/build
+# svn co http://gyp.googlecode.com/svn build/gyp
+# cd ../..
+# ./etc/src/gyp_uv
+
 set -e
 
 cd `dirname $0`
