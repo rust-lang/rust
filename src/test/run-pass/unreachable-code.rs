@@ -1,3 +1,5 @@
+// xfail-pretty
+
 fn id(x: bool) -> bool { x }
 
 fn call_id() {
