@@ -96,9 +96,8 @@ fn copy_val(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
     Store(bcx, llptr, dst);
 
     let src = Load(bcx, src);
-    let dst = Load(bcx, dst);
+    let dst = llptr;
     let bcx = trans::copy_val(bcx, INIT, dst, src, content_ty);
-    Store(bcx, src, llptr);
     ret bcx;
 }
 
