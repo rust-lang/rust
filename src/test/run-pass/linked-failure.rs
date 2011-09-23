@@ -1,4 +1,5 @@
 // -*- rust -*-
+// xfail-win32
 use std;
 import std::task;
 import std::comm::port;
