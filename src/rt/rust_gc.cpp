@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "rust_abi.h"
+#include "rust_debug.h"
 #include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_shape.h"
@@ -180,14 +181,9 @@ maybe_gc(rust_task *task) {
     if (*safe_point_data == NULL)
         return;
 
-    // FIXME: We ought to lock this.
-    static int zeal = -1;
-    if (zeal == -1) {
-        char *ev = getenv("RUST_GC_ZEAL");
-        zeal = ev && ev[0] != '\0' && ev[0] != '0';
-    }
+    static debug::flag zeal("RUST_GC_ZEAL");
 
-    if (zeal) {
+    if (*zeal) {
         gc gc(task);
         gc.run();
     }

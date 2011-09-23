@@ -1,6 +1,7 @@
 // Rust cycle collector. Temporary, but will probably stick around for some
 // time until LLVM's GC infrastructure is more mature.
 
+#include "rust_debug.h"
 #include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_shape.h"
@@ -434,14 +435,8 @@ do_cc(rust_task *task) {
 
 void
 maybe_cc(rust_task *task) {
-    // FIXME: We ought to lock this.
-    static int zeal = -1;
-    if (zeal == -1) {
-        char *ev = getenv("RUST_CC_ZEAL");
-        zeal = ev && ev[0] != '\0' && ev[0] != '0';
-    }
-
-    if (zeal)
+    static debug::flag zeal("RUST_CC_ZEAL");
+    if (*zeal)
         do_cc(task);
 }
 
