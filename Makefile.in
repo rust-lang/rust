@@ -13,6 +13,7 @@ endif
 
 CFG_INFO := $(info cfg: shell host triple $(CFG_HOST_TRIPLE))
 CFG_INFO := $(info cfg: llvm host triple $(CFG_LLVM_TRIPLE))
+CFG_INFO := $(info cfg: llvm target triples $(CFG_LLVM_TRIPLES))
 
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))

@@ -17,16 +17,9 @@ stage0/$(CFG_STDLIB): stage0/rustc$(X)
 stage0/$(CFG_RUSTLLVM): stage0/rustc$(X)
 	$(Q)touch $@
 
-# Target libs will be made in the process of making rustc above.
-
-stage0/lib/glue.o: stage0/rustc$(X)
-	$(Q)touch $@
-
-stage0/lib/main.o: stage0/rustc$(X)
-	$(Q)touch $@
-
 # Instantiate template (in stageN.mk) for building
-# stage0/lib/$(CFG_STDLIB) and stage0/lib/libstd.rlib.
+# target libraries.
+
 SREQpre = stage0/lib/main.o $(MKFILES)
-$(eval $(call LIBGEN,pre,0))
+$(eval $(call TARGET_LIBS,pre,0,$(CFG_HOST_TRIPLE)))
 

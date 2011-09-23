@@ -372,7 +372,7 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
         };
 
     let library_search_paths = [binary_dir + "/lib", // FIXME: legacy
-                                binary_dir + "/lib/" + target ];
+                                binary_dir + "/lib/rustc/" + target ];
     let lsp_vec = getopts::opt_strs(match, "L");
     for lsp: str in lsp_vec { library_search_paths += [lsp]; }
 

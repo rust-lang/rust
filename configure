@@ -10,6 +10,10 @@ step_msg() {
     msg
 }
 
+warn() {
+    echo "configure: WARNING: $1"
+}
+
 err() {
     echo "configure: error: $1"
     exit 1
@@ -228,7 +232,6 @@ putvar CFG_SRC_DIR
 putvar CFG_BUILD_DIR
 putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
-putvar CFG_HOST_TRIPLE
 putvar CFG_CONFIGURE_ARGS
 
 step_msg "looking for build programs"
@@ -335,6 +338,26 @@ then
 else
     CFG_C_COMPILER="gcc"
 fi
+
+if [ ! -z "$CFG_LLVM_TRIPLE" ]
+then
+    if [ $CFG_HOST_TRIPLE != $CFG_LLVM_TRIPLE ]
+    then
+        warn "LLVM host-triple $CFG_LLVM_TRIPLE differs from"
+        warn "detected host triple $CFG_HOST_TRIPLE"
+        warn "choosing LLVM host-triple instead"
+        msg ""
+        CFG_HOST_TRIPLE=$CFG_LLVM_TRIPLE
+    fi
+fi
+
+# FIXME: add support for extending the target-triples list
+CFG_TARGET_TRIPLES="${CFG_HOST_TRIPLE}"
+
+putvar CFG_HOST_TRIPLE
+putvar CFG_TARGET_TRIPLES
+
+
 putvar CFG_C_COMPILER
 
 putvar CFG_LLVM_ROOT
@@ -356,12 +379,29 @@ for i in \
     doc \
     rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
     rt/libuv rt/libuv/src/ares rt/libuv/src/eio rt/libuv/src/ev \
-    rustllvm \
-    dl stage{0,1,2,3}{,/lib,/lib/$CFG_LLVM_TRIPLE} \
+    rustllvm dl \
     test/run-pass test/run-fail test/compile-fail \
     test/bench test/perf test/pretty
 do
     make_dir $i
+done
+
+for t in $CFG_TARGET_TRIPLES
+do
+    for i in 0 1 2 3
+    do
+        # old-style "bin" dir
+        make_dir stage$i
+
+        # new-style bin dir, not yet used
+        make_dir stage$i/bin
+
+        # old-style non-arch libs
+        make_dir stage$i/lib
+
+        # new-style arch-prefixed libs, not yet used
+        make_dir stage$i/lib/rustc/$t
+    done
 done
 
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
