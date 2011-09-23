@@ -38,7 +38,7 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
 
     // FIXME (issue #839): For now, we are unconditionally zeroing out all
     // GC-relevant types. Eventually we should use typestate for this.
-    bcx = trans::zero_alloca(bcx, llval, ty).bcx;
+    bcx = trans::zero_alloca(bcx, llval, ty);
 
     let ti = none;
     let td_r = get_tydesc(bcx, ty, false, tps_normal, ti);

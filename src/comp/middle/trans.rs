@@ -2073,7 +2073,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         if src.is_mem { src_val = Load(cx, src_val); }
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         Store(cx, src_val, dst);
-        if src.is_mem { ret zero_alloca(cx, src.val, t).bcx; }
+        if src.is_mem { ret zero_alloca(cx, src.val, t); }
 
         // If we're here, it must be a temporary.
         ret revoke_clean(cx, src_val);
@@ -2081,7 +2081,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
                   type_is_structural_or_param(tcx, t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         cx = memmove_ty(cx, dst, src_val, t);
-        if src.is_mem { ret zero_alloca(cx, src_val, t).bcx; }
+        if src.is_mem { ret zero_alloca(cx, src_val, t); }
 
         // If we're here, it must be a temporary.
         ret revoke_clean(cx, src_val);
@@ -3798,7 +3798,7 @@ fn zero_and_revoke(bcx: @block_ctxt,
                    to_revoke: [{v: ValueRef, t: ty::t}]) -> @block_ctxt {
     let bcx = bcx;
     for {v, t} in to_zero {
-        bcx = zero_alloca(bcx, v, t).bcx;
+        bcx = zero_alloca(bcx, v, t);
     }
     for {v, _} in to_revoke {
         bcx = revoke_clean(bcx, v);
@@ -4268,7 +4268,7 @@ fn with_out_method(work: fn(out_method) -> result, cx: @block_ctxt,
         let tp = node_id_type(ccx, id);
         if ty::type_is_nil(ccx.tcx, tp) { ret work(return); }
         let res_alloca = alloc_ty(cx, tp);
-        cx = zero_alloca(res_alloca.bcx, res_alloca.val, tp).bcx;
+        cx = zero_alloca(res_alloca.bcx, res_alloca.val, tp);
         let done = work(save_in(res_alloca.val));
         let loaded = load_if_immediate(done.bcx, res_alloca.val, tp);
         add_clean_temp(cx, loaded, tp);
@@ -4590,7 +4590,7 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     add_clean(bcx, llptr, ty);
 
     if must_zero(bcx_ccx(bcx), local) {
-        bcx = zero_alloca(bcx, llptr, ty).bcx;
+        bcx = zero_alloca(bcx, llptr, ty);
     }
 
     alt local.node.init {
@@ -4661,7 +4661,8 @@ fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
                                         val.val, bcx.fcx.lllocals, false);
 }
 
-fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t) -> result {
+fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
+    -> @block_ctxt {
     let bcx = cx;
     let ccx = bcx_ccx(cx);
     if check type_has_static_size(ccx, t) {
@@ -4674,10 +4675,10 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t) -> result {
         // let llalign = align_of(llsz.bcx, t);
         bcx = call_bzero(llsz.bcx, llptr, llsz.val, C_int(0)).bcx;
     }
-    rslt(bcx, llptr)
+    ret bcx;
 }
 
-fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> result {
+fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     // FIXME Fill in cx.sp
 
     let bcx = cx;
@@ -4699,7 +4700,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> result {
       }
       _ { bcx_ccx(cx).sess.unimpl("stmt variant"); }
     }
-    rslt(bcx, C_nil())
+    ret bcx;
 }
 
 // You probably don't want to use this one. See the
@@ -4909,8 +4910,7 @@ fn trans_block(cx: @block_ctxt, b: ast::blk, output: out_method) -> result {
     }
     let r = rslt(bcx, C_nil());
     for s: @ast::stmt in b.node.stmts {
-        r = trans_stmt(bcx, *s);
-        bcx = r.bcx;
+        bcx = trans_stmt(bcx, *s);
     }
     fn accept_out_method(expr: @ast::expr) -> bool {
         ret alt expr.node {
