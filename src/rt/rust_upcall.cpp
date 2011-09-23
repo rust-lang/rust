@@ -67,10 +67,13 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     // TODO: Maybe use dladdr here to find a more useful name for the
     // type_desc.
 
+    // TODO: Implement RUST_TRACK_ORIGINS
+
     void *p = task->malloc(nbytes, "tdesc", td);
     memset(p, '\0', nbytes);
 
     task->local_allocs[p] = td;
+    debug::maybe_track_origin(task, p);
 
     LOG(task, mem,
         "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ") = 0x%" PRIxPTR,
@@ -91,6 +94,8 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
              (uintptr_t)ptr, is_gc);
 
     task->local_allocs.erase(ptr);
+    debug::maybe_untrack_origin(task, ptr);
+
     task->free(ptr, (bool) is_gc);
 }
 

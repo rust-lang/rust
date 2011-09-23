@@ -3,7 +3,11 @@
 #ifndef RUST_DEBUG_H
 #define RUST_DEBUG_H
 
+#include <map>
+#include <string>
 #include <cstdlib>
+
+struct rust_task;
 
 namespace debug {
 
@@ -26,6 +30,19 @@ public:
         return value;
     }
 };
+
+class task_debug_info {
+public:
+    std::map<void *,std::string> origins;
+};
+
+std::string backtrace();
+
+void maybe_track_origin(rust_task *task, void *ptr);
+void maybe_untrack_origin(rust_task *task, void *ptr);
+
+// This function is intended to be called by the debugger.
+void dump_origin(rust_task *task, void *ptr);
 
 }   // end namespace debug
 

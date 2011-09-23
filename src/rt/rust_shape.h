@@ -16,11 +16,11 @@
 
 #define ARENA_SIZE          256
 
-//#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
-//#define DPRINTCX(cx)        shape::print::print_cx(cx)
+#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
+#define DPRINTCX(cx)        shape::print::print_cx(cx)
 
-#define DPRINT(fmt,...)
-#define DPRINTCX(cx)
+//#define DPRINT(fmt,...)
+//#define DPRINTCX(cx)
 
 
 namespace shape {
@@ -525,6 +525,13 @@ public:
           const type_param *in_params = NULL,
           const rust_shape_tables *in_tables = NULL)
     : ctxt<print>(other, in_sp, in_params, in_tables) {}
+
+    print(rust_task *in_task,
+          bool in_align,
+          const uint8_t *in_sp,
+          const type_param *in_params,
+          const rust_shape_tables *in_tables)
+    : ctxt<print>(in_task, in_align, in_sp, in_params, in_tables) {}
 
     void walk_tag(tag_info &tinfo);
     void walk_struct(const uint8_t *end_sp);

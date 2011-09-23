@@ -2,6 +2,11 @@
 #ifndef RUST_KERNEL_H
 #define RUST_KERNEL_H
 
+#include "memory_region.h"
+#include "rust_log.h"
+
+struct rust_scheduler;
+
 /**
  * A global object shared by all thread domains. Most of the data structures
  * in this class are synchronized since they are accessed from multiple

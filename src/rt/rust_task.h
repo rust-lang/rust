@@ -10,7 +10,16 @@
 #include "util/array_list.h"
 
 #include "context.h"
+#include "rust_debug.h"
+#include "rust_internal.h"
+#include "rust_kernel.h"
 #include "rust_obstack.h"
+
+// Corresponds to the rust chan (currently _chan) type.
+struct chan_handle {
+    rust_task_id task;
+    rust_port_id port;
+};
 
 struct rust_box;
 
@@ -116,6 +125,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     rust_obstack dynastack;
 
     std::map<void *,const type_desc *> local_allocs;
+
+    debug::task_debug_info debug;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_scheduler *sched,

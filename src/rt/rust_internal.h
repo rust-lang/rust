@@ -67,12 +67,6 @@ struct frame_glue_fns;
 typedef intptr_t rust_task_id;
 typedef intptr_t rust_port_id;
 
-// Corresponds to the rust chan (currently _chan) type.
-struct chan_handle {
-    rust_task_id task;
-    rust_port_id port;
-};
-
 #ifndef __i386__
 #error "Target CPU not supported."
 #endif
