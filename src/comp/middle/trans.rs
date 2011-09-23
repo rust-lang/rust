@@ -1295,6 +1295,9 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
     // NB: v is an *alias* of type t here, not a direct value.
     if ty::type_is_boxed(bcx_tcx(bcx), t) {
         bcx = incr_refcnt_of_boxed(bcx, Load(bcx, v));
+    } else if ty::type_is_unique_box(bcx_tcx(bcx), t) {
+        check trans_uniq::type_is_unique_box(bcx, t);
+        bcx = trans_uniq::duplicate(bcx, v, t);
     } else if ty::type_is_structural(bcx_tcx(bcx), t) {
         bcx = iter_structural_ty(bcx, v, t, take_ty);
     } else if ty::type_is_vec(bcx_tcx(bcx), t) {
