@@ -318,14 +318,14 @@ public:
             if (n_obj_params & 0x80000000) {
                 // Function closure.
                 DPRINT("n_obj_params FN %lu, tydesc %p, starting at %p\n",
-                       n_obj_params, tydesc, tydesc + 4);
+                       (unsigned long)n_obj_params, tydesc, tydesc + 4);
                 n_obj_params &= 0x7fffffff;
                 first_param = (const type_desc **)
                     ((uint8_t *)(tydesc + 4) + (*tydesc)->size);
             } else {
                 // Object closure.
                 DPRINT("n_obj_params OBJ %lu, tydesc %p, starting at %p\n",
-                       n_obj_params, tydesc, tydesc + 4);
+                       (unsigned long)n_obj_params, tydesc, tydesc + 4);
                 first_param = tydesc + 4;
             }
         }
