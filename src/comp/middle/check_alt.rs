@@ -120,6 +120,7 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       pat_wild. | pat_bind(_) { ret false; }
       pat_lit(_) { ret true; }
       pat_box(sub) { ret is_refutable(tcx, sub); }
+      pat_uniq(sub) { ret is_refutable(tcx, sub); }
       pat_rec(fields, _) {
         for field: field_pat in fields {
             if is_refutable(tcx, field.pat) { ret true; }

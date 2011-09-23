@@ -656,6 +656,10 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
                         [C_int(0), C_int(back::abi::box_rc_field_body)]);
         bcx = bind_irrefutable_pat(bcx, inner, unboxed, table, true);
       }
+      ast::pat_uniq(inner) {
+        let val = Load(bcx, val);
+        bcx = bind_irrefutable_pat(bcx, inner, val, table, true);
+      }
       ast::pat_wild. | ast::pat_lit(_) { }
     }
     ret bcx;
