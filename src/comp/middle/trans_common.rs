@@ -183,12 +183,6 @@ type fn_ctxt =
     // after llderivedtydescs, because these sometimes depend on
     // information computed from derived tydescs.
 
-    // FIXME: Is llcopyargs actually the block containing the allocas
-    // for incoming function arguments?  Or is it merely the block
-    // containing code that copies incoming args to space already
-    // alloca'd by code in llallocas?
-
-
     // The token used to clear the dynamic allocas at the end of this frame.
 
     // The 'self' object currently in use in this function, if there
@@ -245,7 +239,7 @@ type fn_ctxt =
      llenv: ValueRef,
      llretptr: ValueRef,
      mutable llstaticallocas: BasicBlockRef,
-     mutable llcopyargs: BasicBlockRef,
+     mutable llloadenv: BasicBlockRef,
      mutable llderivedtydescs_first: BasicBlockRef,
      mutable llderivedtydescs: BasicBlockRef,
      mutable lldynamicallocas: BasicBlockRef,

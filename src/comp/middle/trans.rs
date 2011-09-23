@@ -1186,17 +1186,17 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
 
     let ty_param_count = std::vec::len::<uint>(ty_params);
     let lltyparams = llvm::LLVMGetParam(llfn, 3u);
-    let copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+    let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
     let lltydescs = [mutable];
     let p = 0u;
     while p < ty_param_count {
-        let llparam = GEP(copy_args_bcx, lltyparams, [C_int(p as int)]);
-        llparam = Load(copy_args_bcx, llparam);
+        let llparam = GEP(load_env_bcx, lltyparams, [C_int(p as int)]);
+        llparam = Load(load_env_bcx, llparam);
         std::vec::grow_set(lltydescs, ty_params[p], 0 as ValueRef, llparam);
         p += 1u;
     }
 
-    // TODO: Implement some kind of freeze operation in the standard library.
+    // FIXME: Implement some kind of freeze operation in the standard library.
     let lltydescs_frozen = [];
     for lltydesc: ValueRef in lltydescs { lltydescs_frozen += [lltydesc]; }
     fcx.lltydescs = lltydescs_frozen;
@@ -2653,7 +2653,7 @@ fn find_environment_tydescs(bcx: @block_ctxt, envty: ty::t, closure: ValueRef)
 // with the upvars and type descriptors.
 fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
                     upvars: @[ast::def], copying: bool) {
-    let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+    let bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
 
     let ty = ty::mk_imm_box(bcx_tcx(bcx), envty);
 
@@ -3322,8 +3322,8 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // Since we might need to construct derived tydescs that depend on
     // our bound tydescs, we need to load tydescs out of the environment
     // before derived tydescs are constructed. To do this, we load them
-    // in the copy_args block.
-    let copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+    // in the load_env block.
+    let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
 
     // The 'llenv' that will arrive in the thunk we're creating is an
     // environment that will contain the values of its arguments and a pointer
@@ -3336,7 +3336,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // (Issue #586)
     check (type_has_static_size(ccx, closure_ty));
     let llclosure_ptr_ty = type_of(ccx, sp, closure_ty);
-    let llclosure = PointerCast(copy_args_bcx, fcx.llenv, llclosure_ptr_ty);
+    let llclosure = PointerCast(load_env_bcx, fcx.llenv, llclosure_ptr_ty);
 
     // "target", in this context, means the function that's having some of its
     // arguments bound and that will be called inside the thunk we're
@@ -3388,13 +3388,13 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     let i: uint = 0u;
     while i < ty_param_count {
         // Silly check
-        check type_is_tup_like(copy_args_bcx, closure_ty);
+        check type_is_tup_like(load_env_bcx, closure_ty);
         let lltyparam_ptr =
-            GEP_tup_like(copy_args_bcx, closure_ty, llclosure,
+            GEP_tup_like(load_env_bcx, closure_ty, llclosure,
                          [0, abi::box_rc_field_body,
                           abi::closure_elt_ty_params, i as int]);
-        copy_args_bcx = lltyparam_ptr.bcx;
-        let td = Load(copy_args_bcx, lltyparam_ptr.val);
+        load_env_bcx = lltyparam_ptr.bcx;
+        let td = Load(load_env_bcx, lltyparam_ptr.val);
         llargs += [td];
         fcx.lltydescs += [td];
         i += 1u;
@@ -4972,7 +4972,7 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
              str::as_buf("static_allocas",
                          {|buf| llvm::LLVMAppendBasicBlock(llfn, buf) }),
          ca:
-             str::as_buf("copy_args",
+             str::as_buf("load_env",
                          {|buf| llvm::LLVMAppendBasicBlock(llfn, buf) }),
          dt:
              str::as_buf("derived_tydescs",
@@ -5001,7 +5001,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
           llenv: llvm::LLVMGetParam(llfndecl, 2u),
           llretptr: llvm::LLVMGetParam(llfndecl, 0u),
           mutable llstaticallocas: llbbs.sa,
-          mutable llcopyargs: llbbs.ca,
+          mutable llloadenv: llbbs.ca,
           mutable llderivedtydescs_first: llbbs.dt,
           mutable llderivedtydescs: llbbs.dt,
           mutable lldynamicallocas: llbbs.da,
@@ -5082,10 +5082,9 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, proto: ast::proto,
     }
 }
 
-fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt, args: [ast::arg],
-                        arg_tys: [ty::arg], ignore_mut: bool) {
-    let llcopyargs = new_raw_block_ctxt(fcx, fcx.llcopyargs);
-    let bcx = llcopyargs;
+fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
+                        arg_tys: [ty::arg], ignore_mut: bool)
+    -> @block_ctxt {
     let arg_n: uint = 0u;
     for aarg: ast::arg in args {
         let arg_ty = arg_tys[arg_n].ty;
@@ -5097,23 +5096,23 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt, args: [ast::arg],
             // Overwrite the llargs entry for locally mutated params
             // with a local alloca.
             if mutated {
-                let aptr = bcx.fcx.llargs.get(aarg.id);
+                let aptr = fcx.llargs.get(aarg.id);
                 let {bcx: bcx, val: alloc} = alloc_ty(bcx, arg_ty);
                 bcx =
                     copy_val(bcx, INIT, alloc,
                              load_if_immediate(bcx, aptr, arg_ty), arg_ty);
-                bcx.fcx.llargs.insert(aarg.id, alloc);
-                add_clean(scope, alloc, arg_ty);
+                fcx.llargs.insert(aarg.id, alloc);
+                add_clean(bcx, alloc, arg_ty);
             }
           }
           ast::by_move. {
-            add_clean(scope, bcx.fcx.llargs.get(aarg.id), arg_ty);
+            add_clean(bcx, fcx.llargs.get(aarg.id), arg_ty);
           }
           _ { }
         }
         arg_n += 1u;
     }
-    fcx.llcopyargs = llcopyargs.llbb;
+    ret bcx;
 }
 
 fn arg_tys_of_fn(ccx: @crate_ctxt, id: ast::node_id) -> [ty::arg] {
@@ -5170,11 +5169,11 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
 }
 
 
-// Ties up the llstaticallocas -> llcopyargs -> llderivedtydescs ->
+// Ties up the llstaticallocas -> llloadenv -> llderivedtydescs ->
 // lldynamicallocas -> lltop edges, and builds the return block.
 fn finish_fn(fcx: @fn_ctxt, lltop: BasicBlockRef) {
-    Br(new_raw_block_ctxt(fcx, fcx.llstaticallocas), fcx.llcopyargs);
-    Br(new_raw_block_ctxt(fcx, fcx.llcopyargs), fcx.llderivedtydescs_first);
+    Br(new_raw_block_ctxt(fcx, fcx.llstaticallocas), fcx.llloadenv);
+    Br(new_raw_block_ctxt(fcx, fcx.llloadenv), fcx.llderivedtydescs_first);
     Br(new_raw_block_ctxt(fcx, fcx.llderivedtydescs), fcx.lldynamicallocas);
     Br(new_raw_block_ctxt(fcx, fcx.lldynamicallocas), lltop);
 
@@ -5210,7 +5209,7 @@ fn trans_closure(bcx_maybe: option::t<@block_ctxt>,
     let block_ty = node_id_type(cx.ccx, f.body.node.id);
 
     let arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
-    copy_args_to_allocas(fcx, bcx, f.decl.inputs, arg_tys, false);
+    bcx = copy_args_to_allocas(fcx, bcx, f.decl.inputs, arg_tys, false);
 
     // Figure out if we need to build a closure and act accordingly
     let res =
@@ -5362,8 +5361,8 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     }
     let arg_tys = arg_tys_of_fn(cx.ccx, variant.node.id);
     let bcx = new_top_block_ctxt(fcx);
-    copy_args_to_allocas(fcx, bcx, fn_args, arg_tys, true);
     let lltop = bcx.llbb;
+    bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys, true);
 
     // Cast the tag to a type we can GEP into.
     let llblobptr =
