@@ -2412,6 +2412,7 @@ fn join_results(parent_cx: @block_ctxt, t: TypeRef, ins: [result]) -> result {
     ret rslt(join_cx, phi);
 }
 
+// FIXME remove once all uses have been converted to join_returns
 fn join_branches(parent_cx: @block_ctxt, ins: [result]) -> @block_ctxt {
     let out = new_sub_block_ctxt(parent_cx, "join");
     let branched = false;
@@ -2422,38 +2423,107 @@ fn join_branches(parent_cx: @block_ctxt, ins: [result]) -> @block_ctxt {
     ret out;
 }
 
-tag out_method { return; save_in(ValueRef); }
+tag dest {
+    by_val(@mutable ValueRef);
+    by_ref(@mutable ValueRef);
+    save_in(ValueRef);
+    ignore;
+}
+
+fn empty_dest_cell() -> @mutable ValueRef {
+    ret @mutable llvm::LLVMGetUndef(T_nil());
+}
+
+fn dup_for_join(dest: dest) -> dest {
+    alt dest {
+      by_val(_) { by_val(empty_dest_cell()) }
+      by_ref(_) { by_ref(empty_dest_cell()) }
+      _ { dest }
+    }
+}
+
+fn join_returns(parent_cx: @block_ctxt, in_cxs: [@block_ctxt],
+                in_ds: [dest], out_dest: dest) -> @block_ctxt {
+    let out = new_sub_block_ctxt(parent_cx, "join");
+    let reachable = false, i = 0u, phi = none;
+    for cx in in_cxs {
+        if !cx.unreachable {
+            Br(cx, out.llbb);
+            reachable = true;
+            alt in_ds[i] {
+              by_val(cell) | by_ref(cell) {
+                if option::is_none(phi) {
+                    phi = some(EmptyPhi(out, val_ty(*cell)));
+                }
+                AddIncomingToPhi(option::get(phi), [*cell], [cx.llbb]);
+              }
+              _ {}
+            }
+        }
+        i += 1u;
+    }
+    if !reachable {
+        Unreachable(out);
+    } else {
+        alt out_dest {
+          by_val(cell) | by_ref(cell) { *cell = option::get(phi); }
+          _ {}
+        }
+    }
+    ret out;
+}
+
+// Wrapper through which legacy non-DPS code can use DPS functions
+fn dps_to_result(bcx: @block_ctxt,
+                 work: block(@block_ctxt, dest) -> @block_ctxt,
+                 ty: ty::t) -> result {
+    let tcx = bcx_tcx(bcx);
+    if ty::type_is_nil(tcx, ty) || ty::type_is_bot(tcx, ty) {
+        ret rslt(work(bcx, ignore), C_nil());
+    } else if type_is_immediate(bcx_ccx(bcx), ty) {
+        let cell = empty_dest_cell();
+        bcx = work(bcx, by_val(cell));
+        add_clean_temp(bcx, *cell, ty);
+        ret rslt(bcx, *cell);
+    } else {
+        let {bcx, val: alloca} = alloc_ty(bcx, ty);
+        bcx = zero_alloca(bcx, alloca, ty);
+        bcx = work(bcx, save_in(alloca));
+        add_clean_temp(bcx, alloca, ty);
+        ret rslt(bcx, alloca);
+    }
+}
 
 fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
-            els: option::t<@ast::expr>, output: out_method) -> result {
+            els: option::t<@ast::expr>, dest: dest)
+    -> @block_ctxt {
     let {bcx, val: cond_val} = trans_expr(cx, cond);
 
+    let then_dest = dup_for_join(dest);
+    let else_dest = dup_for_join(dest);
     let then_cx = new_scope_block_ctxt(bcx, "then");
-    let then_res = trans_block(then_cx, thn, output);
     let else_cx = new_scope_block_ctxt(bcx, "else");
-    // Synthesize a block here to act as the else block
-    // containing an if expression. Needed in order for the
-    // else scope to behave like a normal block scope. A tad
-    // ugly.
+    CondBr(bcx, cond_val, then_cx.llbb, else_cx.llbb);
+    then_cx = trans_block_dps(then_cx, thn, then_dest);
     // Calling trans_block directly instead of trans_expr
     // because trans_expr will create another scope block
     // context for the block, but we've already got the
     // 'else' context
-    let else_res =
-        alt els {
-          some(elexpr) {
-            alt elexpr.node {
-              ast::expr_if(_, _, _) {
-                let elseif_blk = ast_util::block_from_expr(elexpr);
-                trans_block(else_cx, elseif_blk, output)
-              }
-              ast::expr_block(blk) { trans_block(else_cx, blk, output) }
-            }
+    alt els {
+      some(elexpr) {
+        alt elexpr.node {
+          ast::expr_if(_, _, _) {
+            let elseif_blk = ast_util::block_from_expr(elexpr);
+            else_cx = trans_block_dps(else_cx, elseif_blk, else_dest);
           }
-          _ { rslt(else_cx, C_nil()) }
-        };
-    CondBr(bcx, cond_val, then_cx.llbb, else_cx.llbb);
-    ret rslt(join_branches(cx, [then_res, else_res]), C_nil());
+          ast::expr_block(blk) {
+            else_cx = trans_block_dps(else_cx, blk, else_dest);
+          }
+        }
+      }
+      _ {}
+    }
+    ret join_returns(cx, [then_cx, else_cx], [then_dest, else_dest], dest);
 }
 
 fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
@@ -2468,7 +2538,7 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
         curr = PointerCast(bcx, curr, T_ptr(type_of_or_i8(bcx, t)));
         bcx = trans_alt::bind_irrefutable_pat(scope_cx, local.node.pat, curr,
                                               bcx.fcx.lllocals, false);
-        bcx = trans_block(bcx, body, return).bcx;
+        bcx = trans_block_dps(bcx, body, ignore);
         Br(bcx, next_cx.llbb);
         ret next_cx;
     }
@@ -2771,7 +2841,7 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
                                         llvm::LLVMGetParam(fcx.llfn, 3u),
                                         bcx.fcx.lllocals, false);
     let lltop = bcx.llbb;
-    let r = trans_block(bcx, body, return);
+    let r = trans_block(bcx, body);
     finish_fn(fcx, lltop);
 
     build_return(r.bcx);
@@ -2793,7 +2863,7 @@ fn trans_while(cx: @block_ctxt, cond: @ast::expr, body: ast::blk) -> result {
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
                                   "while cond");
     let body_cx = new_scope_block_ctxt(cond_cx, "while loop body");
-    let body_res = trans_block(body_cx, body, return);
+    let body_res = trans_block(body_cx, body);
     let cond_res = trans_expr(cond_cx, cond);
     Br(body_res.bcx, cond_cx.llbb);
     let cond_bcx = trans_block_cleanups(cond_res.bcx, cond_cx);
@@ -2808,7 +2878,7 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
     let body_cx =
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
                                   "do-while loop body");
-    let body_res = trans_block(body_cx, body, return);
+    let body_res = trans_block(body_cx, body);
     let cond_res = trans_expr(body_res.bcx, cond);
     CondBr(cond_res.bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
     Br(cx, body_cx.llbb);
@@ -4034,36 +4104,16 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
 }
 
 fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
-    trans_expr_out(cx, e, return)
-}
-
-fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
-   result {
     // Fixme Fill in cx.sp
     alt e.node {
       ast::expr_lit(lit) { ret trans_lit(cx, *lit); }
       ast::expr_binary(op, x, y) { ret trans_binary(cx, op, x, y); }
-      ast::expr_if(cond, thn, els) {
-        ret with_out_method(bind trans_if(cx, cond, thn, els, _), cx, e.id,
-                            output);
-      }
-      ast::expr_if_check(cond, thn, els) {
-        ret with_out_method(bind trans_if(cx, cond, thn, els, _), cx, e.id,
-                            output);
-      }
-      ast::expr_ternary(_, _, _) {
-        ret trans_expr_out(cx, ast_util::ternary_to_if(e), output);
-      }
       ast::expr_for(decl, seq, body) { ret trans_for(cx, decl, seq, body); }
       ast::expr_for_each(decl, seq, body) {
         ret trans_for_each(cx, decl, seq, body);
       }
       ast::expr_while(cond, body) { ret trans_while(cx, cond, body); }
       ast::expr_do_while(body, cond) { ret trans_do_while(cx, body, cond); }
-      ast::expr_alt(expr, arms) {
-        ret with_out_method(bind trans_alt::trans_alt(cx, expr, arms, _), cx,
-                            e.id, output);
-      }
       ast::expr_fn(f) {
         let ccx = bcx_ccx(cx);
         let fty = node_id_type(ccx, e.id);
@@ -4087,17 +4137,6 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
               }
             };
         ret rslt(fn_pair.bcx, fn_pair.fn_pair);
-      }
-      ast::expr_block(blk) {
-        let sub_cx = new_scope_block_ctxt(cx, "block-expr body");
-        let next_cx = new_sub_block_ctxt(cx, "next");
-        let sub =
-            with_out_method(bind trans_block(sub_cx, blk, _), cx, e.id,
-                            output);
-        Br(cx, sub_cx.llbb);
-        Br(sub.bcx, next_cx.llbb);
-        if sub.bcx.unreachable { Unreachable(next_cx); }
-        ret rslt(next_cx, sub.val);
       }
       ast::expr_copy(a) {
         let e_ty = ty::expr_ty(bcx_tcx(cx), a);
@@ -4256,26 +4295,61 @@ fn trans_expr_out(cx: @block_ctxt, e: @ast::expr, output: out_method) ->
       ast::expr_unary(op, x) {
         ret trans_unary(cx, op, x, e.id);
       }
+      // Fall through to DPS-style
+      _ {
+        ret dps_to_result(cx, {|bcx, dest| trans_expr_dps(bcx, e, dest)},
+                          ty::expr_ty(bcx_tcx(cx), e));
+      }
     }
 }
 
-fn with_out_method(work: fn(out_method) -> result, cx: @block_ctxt,
-                   id: ast::node_id, outer_output: out_method) -> result {
-    let ccx = bcx_ccx(cx);
-    if outer_output != return {
-        ret work(outer_output);
-    } else {
-        let tp = node_id_type(ccx, id);
-        if ty::type_is_nil(ccx.tcx, tp) { ret work(return); }
-        let res_alloca = alloc_ty(cx, tp);
-        cx = zero_alloca(res_alloca.bcx, res_alloca.val, tp);
-        let done = work(save_in(res_alloca.val));
-        let loaded = load_if_immediate(done.bcx, res_alloca.val, tp);
-        add_clean_temp(cx, loaded, tp);
-        ret rslt(done.bcx, loaded);
+fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
+    -> @block_ctxt {
+    alt e.node {
+      ast::expr_if(cond, thn, els) | ast::expr_if_check(cond, thn, els) {
+        ret trans_if(bcx, cond, thn, els, dest);
+      }
+      ast::expr_ternary(_, _, _) {
+        ret trans_expr_dps(bcx, ast_util::ternary_to_if(e), dest);
+      }
+      ast::expr_alt(expr, arms) {
+        ret trans_alt::trans_alt(bcx, expr, arms, dest);
+      }
+      ast::expr_block(blk) {
+        let sub_cx = new_scope_block_ctxt(bcx, "block-expr body");
+        Br(bcx, sub_cx.llbb);
+        sub_cx = trans_block_dps(sub_cx, blk, dest);
+        let next_cx = new_sub_block_ctxt(bcx, "next");
+        Br(sub_cx, next_cx.llbb);
+        if sub_cx.unreachable { Unreachable(next_cx); }
+        ret next_cx;
+      }
+      // Convert back from result to DPS
+      _ {
+        let lv = trans_lval(bcx, e);
+        let {bcx, val, is_mem} = lv;
+        let ty = ty::expr_ty(bcx_tcx(bcx), e);
+        alt dest {
+          by_val(cell) {
+            if is_mem {
+                bcx = take_ty(bcx, val, ty);
+                *cell = Load(bcx, val);
+            } else {
+                revoke_clean(bcx, val);
+                *cell = val;
+            }
+          }
+          by_ref(cell) {
+            assert is_mem;
+            *cell = val;
+          }
+          save_in(loc) { bcx = move_val_if_temp(bcx, INIT, loc, lv, ty); }
+          ignore. {}
+        }
+        ret bcx;
+      }
     }
 }
-
 
 // We pass structural values around the compiler "by pointer" and
 // non-structural values (scalars, boxes, pointers) "by value". We call the
@@ -4900,54 +4974,27 @@ fn alloc_local(cx: @block_ctxt, local: @ast::local) -> result {
     ret r;
 }
 
-fn trans_block(cx: @block_ctxt, b: ast::blk, output: out_method) -> result {
-    let bcx = cx;
+fn trans_block(bcx: @block_ctxt, b: ast::blk) -> result {
+    dps_to_result(bcx, {|bcx, dest| trans_block_dps(bcx, b, dest)},
+                  ty::node_id_to_type(bcx_tcx(bcx), b.node.id))
+}
+
+fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
+    -> @block_ctxt {
     for each local: @ast::local in block_locals(b) {
         // FIXME Update bcx.sp
         let r = alloc_local(bcx, local);
         bcx = r.bcx;
         bcx.fcx.lllocals.insert(local.node.id, r.val);
     }
-    let r = rslt(bcx, C_nil());
     for s: @ast::stmt in b.node.stmts {
         bcx = trans_stmt(bcx, *s);
     }
-    fn accept_out_method(expr: @ast::expr) -> bool {
-        ret alt expr.node {
-              ast::expr_if(_, _, _) { true }
-              ast::expr_alt(_, _) { true }
-              ast::expr_block(_) { true }
-              _ { false }
-            };
-    }
     alt b.node.expr {
-      some(e) {
-        let ccx = bcx_ccx(cx);
-        let r_ty = ty::expr_ty(ccx.tcx, e);
-        let pass = output != return && accept_out_method(e);
-        if pass {
-            r = trans_expr_out(bcx, e, output);
-            bcx = r.bcx;
-        } else {
-            let lv = trans_lval(bcx, e);
-            r = {bcx: lv.bcx, val: lv.val};
-            bcx = r.bcx;
-            alt output {
-              save_in(target) {
-                // The output method is to save the value at target,
-                // and we didn't pass it to the recursive trans_expr
-                // call.
-                bcx = move_val_if_temp(bcx, INIT, target, lv, r_ty);
-                r = rslt(bcx, C_nil());
-              }
-              return. { }
-            }
-        }
-      }
-      none. { r = rslt(bcx, C_nil()); }
+      some(e) { bcx = trans_expr_dps(bcx, e, dest); }
+      _ { assert dest == ignore || bcx.unreachable; }
     }
-    bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
-    ret rslt(bcx, r.val);
+    ret trans_block_cleanups(bcx, find_scope_cx(bcx));
 }
 
 fn new_local_ctxt(ccx: @crate_ctxt) -> @local_ctxt {
@@ -5238,13 +5285,13 @@ fn trans_closure(bcx_maybe: option::t<@block_ctxt>,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, trans_obj, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    let rslt =
-        if !ty::type_is_bot(cx.ccx.tcx, block_ty) &&
-           !ty::type_is_nil(cx.ccx.tcx, block_ty) &&
-           f.proto != ast::proto_iter {
-            trans_block(bcx, f.body, save_in(fcx.llretptr))
-        } else { trans_block(bcx, f.body, return) };
-    bcx = rslt.bcx;
+    let dest = if !ty::type_is_bot(cx.ccx.tcx, block_ty) &&
+                  !ty::type_is_nil(cx.ccx.tcx, block_ty) &&
+                  f.proto != ast::proto_iter &&
+                  option::is_some(f.body.node.expr) {
+        save_in(fcx.llretptr)
+    } else { ignore };
+    bcx = trans_block_dps(bcx, f.body, dest);
 
     if !bcx.unreachable {
         // FIXME: until LLVM has a unit type, we are moving around

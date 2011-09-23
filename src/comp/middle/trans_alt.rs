@@ -517,11 +517,11 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
 }
 
 fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
-             output: trans::out_method) -> result {
+             dest: trans::dest) -> @block_ctxt {
     let bodies = [];
     let match: match = [];
     let er = trans::trans_expr(cx, expr);
-    if er.bcx.unreachable { ret er; }
+    if er.bcx.unreachable { ret er.bcx; }
 
     for a: ast::arm in arms {
         let body = new_scope_block_ctxt(er.bcx, "case_body");
@@ -552,20 +552,18 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
     compile_submatch(vr.bcx, match, [vr.val],
                      bind mk_fail(cx, expr.span, fail_cx), exit_map);
 
-    let i = 0u;
-    let arm_results = [];
+    let arm_cxs = [], arm_dests = [], i = 0u;
     for a: ast::arm in arms {
         let body_cx = bodies[i];
         if make_phi_bindings(body_cx, exit_map,
                              ast_util::pat_id_map(a.pats[0])) {
-            let block_res = trans::trans_block(body_cx, a.body, output);
-            arm_results += [block_res];
-        } else { // Unreachable
-            arm_results += [rslt(body_cx, C_nil())];
+            let arm_dest = trans::dup_for_join(dest);
+            arm_dests += [arm_dest];
+            arm_cxs += [trans::trans_block_dps(body_cx, a.body, arm_dest)];
         }
         i += 1u;
     }
-    ret rslt(trans::join_branches(cx, arm_results), C_nil());
+    ret trans::join_returns(cx, arm_cxs, arm_dests, dest);
 }
 
 // Not alt-related, but similar to the pattern-munging code above

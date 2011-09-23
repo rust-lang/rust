@@ -449,18 +449,24 @@ fn FCmp(cx: @block_ctxt, Op: uint, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
     ret llvm::LLVMBuildFCmp(B(cx), Op, LHS, RHS, noname());
 }
 
-
 /* Miscellaneous instructions */
+fn EmptyPhi(cx: @block_ctxt, Ty: TypeRef) -> ValueRef {
+    if cx.unreachable { ret llvm::LLVMGetUndef(Ty); }
+    ret llvm::LLVMBuildPhi(B(cx), Ty, noname());
+}
+
 fn Phi(cx: @block_ctxt, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
    -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(Ty); }
-    let phi = llvm::LLVMBuildPhi(B(cx), Ty, noname());
     assert (vec::len::<ValueRef>(vals) == vec::len::<BasicBlockRef>(bbs));
+    let phi = EmptyPhi(cx, Ty);
     llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
                           vec::len(vals));
     ret phi;
 }
 
+// FIXME we typically need only a single val and bb. With std::ptr::addr_of
+// and a count of 1, we should be able to avoid the overhead of creating vecs.
 fn AddIncomingToPhi(phi: ValueRef, vals: [ValueRef], bbs: [BasicBlockRef]) {
     if llvm::LLVMIsUndef(phi) == lib::llvm::True { ret; }
     assert (vec::len::<ValueRef>(vals) == vec::len::<BasicBlockRef>(bbs));
