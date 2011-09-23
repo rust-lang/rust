@@ -40,7 +40,7 @@ frame::symbol() const {
 }
 #else
 std::string
-frame::symbol() {
+frame::symbol() const {
     std::stringstream ss;
     ss << std::hex << (uintptr_t)ra;
     return ss.str();
