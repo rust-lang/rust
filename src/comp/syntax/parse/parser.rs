@@ -578,11 +578,6 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
     } else if eat_word(p, "obj") {
         t = parse_ty_obj(p, hi);
-    } else if eat_word(p, "mutable") {
-        p.warn("ignoring deprecated 'mutable' type constructor");
-        let typ = parse_ty(p, false);
-        t = typ.node;
-        hi = typ.span.hi;
     } else if p.peek() == token::MOD_SEP || is_ident(p.peek()) {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
@@ -1104,9 +1099,6 @@ fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
 }
 
 fn parse_prefix_expr(p: parser) -> @ast::expr {
-    if eat_word(p, "mutable") {
-        p.warn("ignoring deprecated 'mutable' prefix operator");
-    }
     let lo = p.get_lo_pos();
     let hi = p.get_hi_pos();
 
