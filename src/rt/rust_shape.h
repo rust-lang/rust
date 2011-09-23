@@ -310,27 +310,44 @@ public:
     }
 
     // Creates type parameters from a type descriptor.
-    static inline type_param *from_tydesc(const type_desc **tydesc,
+    static inline type_param *from_tydesc(const type_desc *tydesc,
                                           arena &arena) {
-        if ((*tydesc)->n_obj_params) {
-            uintptr_t n_obj_params = (*tydesc)->n_obj_params;
+        // In order to find the type parameters of objects and functions, we
+        // have to actually have the data pointer, since we don't statically
+        // know from the type of an object or function which type parameters
+        // it closes over.
+        assert(!tydesc->n_obj_params && "Type-parametric objects and "
+               "functions must go through from_tydesc_and_data() instead!");
+
+        return make(tydesc->first_param, tydesc->n_params, arena);
+    }
+
+    static type_param *from_tydesc_and_data(const type_desc *tydesc,
+                                            uint8_t *dp, arena &arena) {
+        if (tydesc->n_obj_params) {
+            uintptr_t n_obj_params = tydesc->n_obj_params;
             const type_desc **first_param;
             if (n_obj_params & 0x80000000) {
                 // Function closure.
                 DPRINT("n_obj_params FN %lu, tydesc %p, starting at %p\n",
-                       (unsigned long)n_obj_params, tydesc, tydesc + 4);
+                       (unsigned long)n_obj_params, tydesc,
+                       dp + sizeof(uintptr_t) + tydesc->size);
                 n_obj_params &= 0x7fffffff;
+                // FIXME: Is this right?
                 first_param = (const type_desc **)
-                    ((uint8_t *)(tydesc + 4) + (*tydesc)->size);
+                    (dp + sizeof(uintptr_t) + tydesc->size);
             } else {
                 // Object closure.
                 DPRINT("n_obj_params OBJ %lu, tydesc %p, starting at %p\n",
-                       (unsigned long)n_obj_params, tydesc, tydesc + 4);
-                first_param = tydesc + 4;
+                       (unsigned long)n_obj_params, tydesc,
+                       dp + sizeof(uintptr_t) * 2);
+                first_param = (const type_desc **)
+                    (dp + sizeof(uintptr_t) * 2);
             }
+            return make(first_param, n_obj_params, arena);
         }
 
-        return make((*tydesc)->first_param, (*tydesc)->n_params, arena);
+        return make(tydesc->first_param, tydesc->n_params, arena);
     }
 };
 

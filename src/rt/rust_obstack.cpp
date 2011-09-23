@@ -160,12 +160,13 @@ rust_obstack::dump() const {
     iterator b = begin(), e = end();
     while (b != e) {
         std::pair<const type_desc *,void *> data = *b;
+        uint8_t *dp = reinterpret_cast<uint8_t *>(data.second);
+
         shape::arena arena;
         shape::type_param *params =
-            shape::type_param::from_tydesc(&data.first, arena);
+            shape::type_param::from_tydesc_and_data(data.first, dp, arena);
         shape::log log(task, true, data.first->shape, params,
-                       data.first->shape_tables,
-                       reinterpret_cast<uint8_t *>(data.second), std::cerr);
+                       data.first->shape_tables, dp, std::cerr);
         log.walk();
         std::cerr << "\n";
 

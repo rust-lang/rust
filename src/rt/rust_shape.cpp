@@ -37,7 +37,10 @@ type_param::make(const type_desc **tydescs, unsigned n_tydescs,
         const type_desc *subtydesc = tydescs[i];
         ptrs[i].shape = subtydesc->shape;
         ptrs[i].tables = subtydesc->shape_tables;
-        ptrs[i].params = from_tydesc(&subtydesc, arena);
+
+        // FIXME: Doesn't handle a type-parametric object closing over a
+        // type-parametric object type properly.
+        ptrs[i].params = from_tydesc(subtydesc, arena);
     }
     return ptrs;
 }
@@ -531,8 +534,12 @@ upcall_cmp_type(int8_t *result, rust_task *task, const type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
     shape::arena arena;
+
+    // FIXME: This may well be broken when comparing two closures or objects
+    // that close over different sets of type parameters.
     shape::type_param *params =
-        shape::type_param::from_tydesc(&tydesc, arena);
+        shape::type_param::from_tydesc_and_data(tydesc, data_0, arena);
+
     shape::cmp cmp(task, true, tydesc->shape, params, tydesc->shape_tables,
                    data_0, data_1);
     cmp.walk();
@@ -552,7 +559,7 @@ upcall_log_type(rust_task *task, const type_desc *tydesc, uint8_t *data,
 
     shape::arena arena;
     shape::type_param *params =
-        shape::type_param::from_tydesc(&tydesc, arena);
+        shape::type_param::from_tydesc_and_data(tydesc, data, arena);
 
     std::stringstream ss;
     shape::log log(task, true, tydesc->shape, params, tydesc->shape_tables,

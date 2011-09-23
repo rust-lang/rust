@@ -169,7 +169,6 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
         begin(task->local_allocs.begin()), end(task->local_allocs.end());
     while (begin != end) {
         uint8_t *p = reinterpret_cast<uint8_t *>(begin->first);
-        p += sizeof(uintptr_t); // Skip over the reference count.
 
         const type_desc *tydesc = begin->second;
 
@@ -178,9 +177,9 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
 
         shape::arena arena;
         shape::type_param *params =
-            shape::type_param::from_tydesc(&tydesc, arena);
-        irc irc(task, true, tydesc->shape, params, tydesc->shape_tables, p,
-                ircs);
+            shape::type_param::from_tydesc_and_data(tydesc, p, arena);
+        irc irc(task, true, tydesc->shape, params, tydesc->shape_tables,
+                p + sizeof(uintptr_t), ircs);
         irc.walk();
 
 #if 0
@@ -374,26 +373,25 @@ mark::do_mark(rust_task *task, const std::vector<void *> &roots,
         if (marked.find(alloc) == marked.end()) {
             marked.insert(alloc);
 
-            uint8_t *p = reinterpret_cast<uint8_t *>(alloc);
-            p += sizeof(uintptr_t); // Skip over the reference count.
-
-            const type_desc *tydesc = task->local_allocs[*begin];
+            const type_desc *tydesc = task->local_allocs[alloc];
 
             //DPRINT("marking: %p, tydesc=%p\n", p, tydesc);
 
+            uint8_t *p = reinterpret_cast<uint8_t *>(alloc);
             shape::arena arena;
             shape::type_param *params =
-                shape::type_param::from_tydesc(&tydesc, arena);
+                shape::type_param::from_tydesc_and_data(tydesc, p, arena);
 
-#if 0
+            // We skip over the reference count here.
             shape::log log(task, true, tydesc->shape, params,
-                           tydesc->shape_tables, p, std::cerr);
+                           tydesc->shape_tables, p + sizeof(uintptr_t),
+                           std::cerr);
             log.walk();
             DPRINT("\n");
-#endif
 
+            // We skip over the reference count here.
             mark mark(task, true, tydesc->shape, params, tydesc->shape_tables,
-                      p, marked);
+                      p + sizeof(uintptr_t), marked);
             mark.walk();
         }
 
