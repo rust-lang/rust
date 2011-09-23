@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <stdint.h>
 
 #ifdef __WIN32__
 #include <windows.h>
