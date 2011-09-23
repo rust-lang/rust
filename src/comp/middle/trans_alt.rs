@@ -512,6 +512,8 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
                 bcx.fcx.lllocals.insert(node_id, alloc);
             }
         }
+    } else {
+        Unreachable(bcx);
     }
     ret success;
 }
