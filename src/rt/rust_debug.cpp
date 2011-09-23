@@ -71,10 +71,11 @@ dump_origin(rust_task *task, void *ptr) {
         std::cerr << "Try again with RUST_TRACK_ORIGINS=1." << std::endl;
     } else if (task->debug.origins.find(ptr) == task->debug.origins.end()) {
         std::cerr << "Pointer " << std::hex << (uintptr_t)ptr <<
-                     " does not have a tracked origin.";
+                     " does not have a tracked origin." << std::endl;
     } else {
-        std::cerr << "Origin of pointer " << std::hex << ":" << std::endl <<
-                     task->debug.origins[ptr];
+        std::cerr << "Origin of pointer " << std::hex << (uintptr_t)ptr <<
+                     ":" << std::endl << task->debug.origins[ptr] <<
+                     std::endl;
     }
 }
 
