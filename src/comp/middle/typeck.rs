@@ -1141,7 +1141,7 @@ mod writeback {
                            visit_pat: visit_pat,
                            visit_local: visit_local
                               with *visit::default_visitor()});
-        visit::visit_block(blk, wbcx, visit);
+        visit.visit_block(blk, wbcx, visit);
         ret wbcx.success;
     }
 }
