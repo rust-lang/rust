@@ -172,6 +172,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
       }
       pat_tup(elts) { for elt in elts { v.visit_pat(elt, e, v); } }
       pat_box(inner) { v.visit_pat(inner, e, v); }
+      pat_uniq(inner) { v.visit_pat(inner, e, v); }
       _ { }
     }
 }

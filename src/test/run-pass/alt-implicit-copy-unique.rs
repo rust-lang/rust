@@ -1,4 +1,3 @@
-// xfail-test
 fn main() {
     let x = ~{mutable a: ~10, b: ~20};
     alt x {
