@@ -4,6 +4,7 @@
 #define RUST_ABI_H
 
 #include <cstdlib>
+#include <string>
 #include <vector>
 
 #ifdef __WIN32__
@@ -51,9 +52,12 @@ struct frame {
         ra = *(void (**)())(bp + sizeof(void *));
         bp = *(uint8_t **)bp;
     }
+
+    std::string symbol() const;
 };
 
 std::vector<frame> backtrace();
+std::string symbolicate(const std::vector<frame> &frames);
 
 }   // end namespace stack_walk
 
