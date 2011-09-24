@@ -18,7 +18,7 @@ fn reserve<@T>(&v: [mutable? T], n: uint) {
     rustrt::vec_reserve_shared(v, n);
 }
 
-fn len<T>(v: [mutable? T]) -> uint { ret rusti::vec_len(v); }
+pure fn len<T>(v: [mutable? T]) -> uint { unchecked { rusti::vec_len(v) } }
 
 type init_op<T> = fn(uint) -> T;
 
@@ -271,9 +271,7 @@ fn position_pred<T>(f: fn(T) -> bool, v: [T]) -> option::t<uint> {
 }
 
 pure fn same_length<T, U>(xs: [T], ys: [U]) -> bool {
-    let xlen = unchecked{ vec::len(xs) };
-    let ylen = unchecked{ vec::len(ys) };
-    xlen == ylen
+    vec::len(xs) == vec::len(ys)
 }
 
 // FIXME: if issue #586 gets implemented, could have a postcondition
