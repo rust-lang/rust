@@ -9,15 +9,13 @@ import rustc::syntax::{ast, ast_util, fold, visit, codemap};
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
+tag test_mode { tm_converge; tm_run; }
+type context = { mode: test_mode }; // + rng
+
 fn write_file(filename: str, content: str) {
     io::file_writer(filename, [io::create, io::truncate]).write_str(content);
     // Work around https://github.com/graydon/rust/issues/726
     std::run::run_program("chmod", ["644", filename]);
-}
-
-fn file_contains(filename: str, needle: str) -> bool {
-    let contents = io::read_whole_file_str(filename);
-    ret str::find(contents, needle) != -1;
 }
 
 fn contains(haystack: str, needle: str) -> bool {
@@ -26,11 +24,10 @@ fn contains(haystack: str, needle: str) -> bool {
 
 fn find_rust_files(&files: [str], path: str) {
     if str::ends_with(path, ".rs") {
-        if file_contains(path, "xfail-test") {
-            //log_err "Skipping " + path + " because it is marked as xfail-test";
-        } else { files += [path]; }
+        files += [path];
     } else if fs::file_is_dir(path)
-        && str::find(path, "compile-fail") == -1 {
+        && !contains(path, "compile-fail")
+        && !contains(path, "build") {
         for p in fs::list_dir(path) {
             find_rust_files(files, p);
         }
@@ -56,76 +53,92 @@ fn common_exprs() -> [ast::expr] {
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
-     dse(ast::expr_unary(ast::box(ast::imm), @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
+     dse(ast::expr_unary(ast::box(ast::imm), @dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
+     dse(ast::expr_unary(ast::uniq(ast::imm), @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
     ]
 }
 
-fn safe_to_steal_expr(e: @ast::expr) -> bool {
-    alt e.node {
-      /*
-      // For compiling (rather than pretty-printing)
-      // combination of https://github.com/graydon/rust/issues/924 with unwind hang?
-      ast::expr_ret(option::none.) { false }
-      */
+pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
+    safe_to_use_expr(*e, tm)
+}
 
-      // If the fuzzer moves a block-ending-in-semicolon into callee position,
-      // the pretty-printer can't preserve this even by parenthesizing!!
-      // See email to marijn.
-      ast::expr_if(_, _, _) { false }
-      ast::expr_block(_) { false }
-      ast::expr_alt(_, _) { false }
-      ast::expr_for(_, _, _) { false }
-      ast::expr_for_each(_, _, _) { false }
-      ast::expr_while(_, _) { false }
+pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
+    alt tm {
+      tm_converge. {
+        alt e.node {
+          // If the fuzzer moves a block-ending-in-semicolon into callee position,
+          // the pretty-printer can't preserve this even by parenthesizing!!
+          // See email to marijn.
+          ast::expr_if(_, _, _) { false }
+          ast::expr_if_check(_, _, _) { false }
+          ast::expr_block(_) { false }
+          ast::expr_alt(_, _) { false }
+          ast::expr_for(_, _, _) { false }
+          ast::expr_for_each(_, _, _) { false }
+          ast::expr_while(_, _) { false }
 
-      // https://github.com/graydon/rust/issues/929
-      ast::expr_cast(_, _) { false }
-      ast::expr_assert(_) { false }
-      ast::expr_binary(_, _, _) { false }
-      ast::expr_assign(_, _) { false }
-      ast::expr_assign_op(_, _, _) { false }
+          // https://github.com/graydon/rust/issues/955
+          ast::expr_do_while(_, _) { false }
 
-      ast::expr_fail(option::none.) { false }
-      ast::expr_ret(option::none.) { false }
-      ast::expr_put(option::none.) { false }
+          // https://github.com/graydon/rust/issues/929
+          ast::expr_cast(_, _) { false }
+          ast::expr_assert(_) { false }
+          ast::expr_binary(_, _, _) { false }
+          ast::expr_assign(_, _) { false }
+          ast::expr_assign_op(_, _, _) { false }
 
-      // https://github.com/graydon/rust/issues/927
-      //ast::expr_assert(_) { false }
-      ast::expr_check(_, _) { false }
+          ast::expr_fail(option::none.) { false }
+          ast::expr_ret(option::none.) { false }
+          ast::expr_put(option::none.) { false }
 
-      // https://github.com/graydon/rust/issues/928
-      //ast::expr_cast(_, _) { false }
+          // https://github.com/graydon/rust/issues/953
+          ast::expr_fail(option::some(_)) { false }
 
-      _ { true }
+          // https://github.com/graydon/rust/issues/927
+          //ast::expr_assert(_) { false }
+          ast::expr_check(_, _) { false }
+
+          // https://github.com/graydon/rust/issues/928
+          //ast::expr_cast(_, _) { false }
+
+          _ { true }
+        }
+      }
+      tm_run. { true }
     }
 }
 
-fn safe_to_steal_ty(t: @ast::ty) -> bool {
-    // Same restrictions
-    safe_to_replace_ty(t.node)
+fn safe_to_steal_ty(t: @ast::ty, tm: test_mode) -> bool {
+    alt t.node {
+        // https://github.com/graydon/rust/issues/971
+        ast::ty_constr(_, _) { false }
+
+        // Other restrictions happen to be the same.
+        _ { safe_to_replace_ty(t.node, tm) }
+    }
 }
 
 // Not type-parameterized: https://github.com/graydon/rust/issues/898
-fn stash_expr_if(c: fn(@ast::expr)->bool, es: @mutable [ast::expr], e: @ast::expr) {
-    if c(e) {
+fn stash_expr_if(c: fn(@ast::expr, test_mode)->bool, es: @mutable [ast::expr], e: @ast::expr, tm: test_mode) {
+    if c(e, tm) {
         *es += [*e];
     } else {/* now my indices are wrong :( */ }
 }
 
-fn stash_ty_if(c: fn(@ast::ty)->bool, es: @mutable [ast::ty], e: @ast::ty) {
-    if c(e) {
+fn stash_ty_if(c: fn(@ast::ty, test_mode)->bool, es: @mutable [ast::ty], e: @ast::ty, tm: test_mode) {
+    if c(e, tm) {
         *es += [*e];
     } else {/* now my indices are wrong :( */ }
 }
 
 type stolen_stuff = {exprs: [ast::expr], tys: [ast::ty]};
 
-fn steal(crate: ast::crate) -> stolen_stuff {
+fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
     let exprs = @mutable [];
     let tys = @mutable [];
     let v = visit::mk_simple_visitor(@{
-        visit_expr: bind stash_expr_if(safe_to_steal_expr, exprs, _),
-        visit_ty: bind stash_ty_if(safe_to_steal_ty, tys, _)
+        visit_expr: bind stash_expr_if(safe_to_steal_expr, exprs, _, tm),
+        visit_ty: bind stash_ty_if(safe_to_steal_ty, tys, _, tm)
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(crate, (), v);
@@ -133,7 +146,7 @@ fn steal(crate: ast::crate) -> stolen_stuff {
 }
 
 // https://github.com/graydon/rust/issues/652
-fn safe_to_replace_expr(e: ast::expr_) -> bool {
+fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
     alt e {
       ast::expr_if(_, _, _) { false }
       ast::expr_block(_) { false }
@@ -141,7 +154,7 @@ fn safe_to_replace_expr(e: ast::expr_) -> bool {
     }
 }
 
-fn safe_to_replace_ty(t: ast::ty_) -> bool {
+fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
     alt t {
       ast::ty_infer. { false } // always implicit, always top level
       ast::ty_bot. { false }   // in source, can only appear as the out type of a function
@@ -151,14 +164,14 @@ fn safe_to_replace_ty(t: ast::ty_) -> bool {
 }
 
 // Replace the |i|th expr (in fold order) of |crate| with |newexpr|.
-fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr) ->
+fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr, tm: test_mode) ->
    ast::crate {
     let j: @mutable uint = @mutable 0u;
     fn fold_expr_rep(j_: @mutable uint, i_: uint, newexpr_: ast::expr_,
-                     original: ast::expr_, fld: fold::ast_fold) ->
+                     original: ast::expr_, fld: fold::ast_fold, tm_: test_mode) ->
        ast::expr_ {
         *j_ += 1u;
-        if i_ + 1u == *j_ && safe_to_replace_expr(original) {
+        if i_ + 1u == *j_ && safe_to_replace_expr(original, tm_) {
             newexpr_
         } else {
             alt(original) {
@@ -168,7 +181,7 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr) ->
         }
     }
     let afp =
-        {fold_expr: bind fold_expr_rep(j, i, newexpr.node, _, _)
+        {fold_expr: bind fold_expr_rep(j, i, newexpr.node, _, _, tm)
             with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
@@ -177,19 +190,19 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr) ->
 
 
 // Replace the |i|th ty (in fold order) of |crate| with |newty|.
-fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty) ->
+fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty, tm: test_mode) ->
    ast::crate {
     let j: @mutable uint = @mutable 0u;
     fn fold_ty_rep(j_: @mutable uint, i_: uint, newty_: ast::ty_,
-                     original: ast::ty_, fld: fold::ast_fold) ->
+                     original: ast::ty_, fld: fold::ast_fold, tm_: test_mode) ->
        ast::ty_ {
         *j_ += 1u;
-        if i_ + 1u == *j_ && safe_to_replace_ty(original) {
+        if i_ + 1u == *j_ && safe_to_replace_ty(original, tm_) {
             newty_
         } else { fold::noop_fold_ty(original, fld) }
     }
     let afp =
-        {fold_ty: bind fold_ty_rep(j, i, newty.node, _, _)
+        {fold_ty: bind fold_ty_rep(j, i, newty.node, _, _, tm)
             with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
@@ -210,10 +223,11 @@ fn as_str(f: fn(io::writer)) -> str {
 }
 
 fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
-                         filename: str) {
-    let stolen = steal(crate);
-    check_variants_T(crate, codemap, filename, "expr", /*common_exprs() +*/ stolen.exprs, pprust::expr_to_str, replace_expr_in_crate);
-    check_variants_T(crate, codemap, filename, "ty", stolen.tys, pprust::ty_to_str, replace_ty_in_crate);
+                         filename: str, cx: context) {
+    let stolen = steal(crate, cx.mode);
+    let extra_exprs = vec::filter(bind safe_to_use_expr(_, cx.mode), common_exprs());
+    check_variants_T(crate, codemap, filename, "expr", extra_exprs + stolen.exprs, pprust::expr_to_str, replace_expr_in_crate, cx);
+    check_variants_T(crate, codemap, filename, "ty", stolen.tys, pprust::ty_to_str, replace_ty_in_crate, cx);
 }
 
 fn check_variants_T<T>(
@@ -223,7 +237,8 @@ fn check_variants_T<T>(
   thing_label: str,
   things: [T],
   stringifier: fn(@T) -> str,
-  replacer: fn(ast::crate, uint, T) -> ast::crate
+  replacer: fn(ast::crate, uint, T, test_mode) -> ast::crate,
+  cx: context
   ) {
     log_err #fmt("%s contains %u %s objects", filename, vec::len(things), thing_label);
 
@@ -234,7 +249,7 @@ fn check_variants_T<T>(
             log_err "Replacing... #" + uint::str(i);
             for each j: uint in under(uint::min(L, 30u)) {
                 log_err "With... " + stringifier(@things[j]);
-                let crate2 = @replacer(crate, i, things[j]);
+                let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
                 let str3 =
@@ -242,10 +257,16 @@ fn check_variants_T<T>(
                                                     filename,
                                                     io::string_reader(""), _,
                                                     pprust::no_ann()));
-                check_roundtrip_convergence(str3, 1u);
-                //let file_label = #fmt("rusttmp/%s_%s_%u_%u", last_part(filename), thing_label, i, j);
-                //let safe_to_run = !(content_is_dangerous_to_run(str3) || has_raw_pointers(*crate2));
-                //check_whole_compiler(str3, file_label, safe_to_run);
+                alt cx.mode {
+                  tm_converge. {
+                    check_roundtrip_convergence(str3, 1u);
+                  }
+                  tm_run. {
+                    let file_label = #fmt("rusttmp/%s_%s_%u_%u", last_part(filename), thing_label, i, j);
+                    let safe_to_run = !(content_is_dangerous_to_run(str3) || has_raw_pointers(*crate2));
+                    check_whole_compiler(str3, file_label, safe_to_run);
+                  }
+                }
             }
         }
     }
@@ -310,18 +331,20 @@ fn check_running(exe_filename: str) -> happiness {
         known_bug("https://github.com/graydon/rust/issues/32 / https://github.com/graydon/rust/issues/445")
     } else if contains(comb, "Assertion failed:") {
         failed("C++ assertion failure")
+    } else if contains(comb, "leaked memory in rust main loop") {
+        // might also use exit code 134
+        //failed("Leaked")
+        known_bug("https://github.com/graydon/rust/issues/910")
     } else if contains(comb, "src/rt/") {
         failed("Mentioned src/rt/")
     } else if contains(comb, "malloc") {
         failed("Mentioned malloc")
-    } else if contains(comb, "leaked memory in rust main loop") {
-        failed("Leaked") // might also use exit code 134
     } else {
         alt p.status {
             0         { passed }
             100       { cleanly_rejected("running: explicit fail") }
             101 | 247 { cleanly_rejected("running: timed out") }
-            245 | 246 { known_bug("https://github.com/graydon/rust/issues/32 ??") }
+            245 | 246 | 138 | 252 { known_bug("https://github.com/graydon/rust/issues/32 ??") }
             136 | 248 { known_bug("SIGFPE - https://github.com/graydon/rust/issues/944") }
             rc        { failed("Rust program ran but exited with status " + int::str(rc)) }
         }
@@ -339,18 +362,14 @@ fn check_compiling(filename: str) -> happiness {
 
     //log_err #fmt("Status: %d", p.status);
     if p.err != "" {
-        if contains(p.err, "May only branch on boolean predicates") {
-            known_bug("https://github.com/graydon/rust/issues/892 or https://github.com/graydon/rust/issues/943")
-        } else if contains(p.err, "All operands to PHI node must be the same type as the PHI node!") {
-            known_bug("https://github.com/graydon/rust/issues/943")
-        } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\")") {
-            known_bug("https://github.com/graydon/rust/issues/895")
-        } else if contains(p.err, "Ptr must be a pointer to Val type") {
-            known_bug("https://github.com/graydon/rust/issues/897 or https://github.com/graydon/rust/issues/949")
+        if contains(p.err, "Ptr must be a pointer to Val type") {
+            known_bug("https://github.com/graydon/rust/issues/897")
         } else if contains(p.err, "(castIsValid(op, S, Ty) && \"Invalid cast!\"), function Create") {
             known_bug("https://github.com/graydon/rust/issues/901")
-        } else if contains(p.err, "Invoking a function with a bad signature!") {
-            known_bug("https://github.com/graydon/rust/issues/946")
+        } else if contains(p.err, "cast() argument of incompatible type!") {
+            known_bug("https://github.com/graydon/rust/issues/973")
+        } else if contains(p.err, "cast<Ty>() argument of incompatible type!") {
+            known_bug("https://github.com/graydon/rust/issues/973")
         } else {
             log_err "Stderr: " + p.err;
             failed("Unfamiliar error message")
@@ -360,12 +379,10 @@ fn check_compiling(filename: str) -> happiness {
     } else if contains(p.out, "Out of stack space, sorry") {
         known_bug("Recursive types - https://github.com/graydon/rust/issues/742")
     } else if contains(p.out, "Assertion !cx.terminated failed") {
-        known_bug("https://github.com/graydon/rust/issues/893 or https://github.com/graydon/rust/issues/894")
+        known_bug("https://github.com/graydon/rust/issues/893")
 //  } else if contains(p.out, "upcall fail 'non-exhaustive match failure', ../src/comp/middle/trans.rs") {
     } else if contains(p.out, "trans_rec expected a rec but found _|_") {
         known_bug("https://github.com/graydon/rust/issues/924")
-    } else if contains(p.out, "Assertion failed: (S->getType()->isPointerTy() && \"Invalid cast\")") {
-        known_bug("https://github.com/graydon/rust/issues/935")
     } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
         log_err "Stdout: " + p.out;
         failed("Looks like an llvm assertion failure")
@@ -384,6 +401,9 @@ fn check_compiling(filename: str) -> happiness {
         log_err "Stdout: " + p.out;
         failed("internal compiler error")
 
+    } else if contains(p.out, "Predicate type_is_unique_box(bcx, uniq_ty) failed") {
+        known_bug("https://github.com/graydon/rust/issues/968")
+
     } else if contains(p.out, "error:") {
         cleanly_rejected("rejected with span_error")
     } else {
@@ -397,7 +417,7 @@ fn check_compiling(filename: str) -> happiness {
 fn parse_and_print(code: str) -> str {
     let filename = "tmp.rs";
     let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
-    //write_file(filename, code);
+    write_file(filename, code);
     let crate = parser::parse_crate_from_source_str(
         filename, code, [], sess);
     ret as_str(bind pprust::print_crate(sess.cm, crate,
@@ -423,32 +443,38 @@ fn has_raw_pointers(c: ast::crate) -> bool {
 
 fn content_is_dangerous_to_run(code: str) -> bool {
     let dangerous_patterns =
-        ["import", // espeically fs, run
+        ["xfail-test",
+         "-> !",    // https://github.com/graydon/rust/issues/897
+         "import",  // espeically fs, run
          "native",
          "unsafe",
-         "log"]; // python --> rust pipe deadlock?
+         "log"];    // python --> rust pipe deadlock?
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
     ret false;
 }
 
-fn content_is_dangerous_to_modify(code: str) -> bool {
+fn content_is_dangerous_to_compile(code: str) -> bool {
     let dangerous_patterns =
-        ["#macro", // not safe to steal things inside of it, because they have a special syntax
-         "#",      // strange representation of the arguments to #fmt, for example
-         "tag",    // typeck hang: https://github.com/graydon/rust/issues/742 (from dup #900)
-         "with",   // tstate hang: https://github.com/graydon/rust/issues/948
-         " be "];  // don't want to replace its child with a non-call: "Non-call expression in tail call"
+        ["xfail-test",
+         "-> !",    // https://github.com/graydon/rust/issues/897
+         "tag",     // typeck hang with ty variants:   https://github.com/graydon/rust/issues/742 (from dup #900)
+         "with"     // tstate hang with expr variants: https://github.com/graydon/rust/issues/948
+         ];
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
     ret false;
 }
 
-fn content_is_confusing(code: str) -> bool {
+fn content_might_not_converge(code: str) -> bool {
     let confusing_patterns =
-        ["self",       // crazy rules enforced by parser rather than typechecker?
-        "spawn",       // precedence issues?
+        ["xfail-test",
+         "xfail-pretty",
+         "self",       // crazy rules enforced by parser rather than typechecker?
+         "spawn",      // precedence issues?
          "bind",       // precedence issues?
+         " be ",       // don't want to replace its child with a non-call: "Non-call expression in tail call"
+         "&!",         // https://github.com/graydon/rust/issues/972
          "\n\n\n\n\n"  // https://github.com/graydon/rust/issues/850
         ];
 
@@ -456,7 +482,7 @@ fn content_is_confusing(code: str) -> bool {
     ret false;
 }
 
-fn file_is_confusing(filename: str) -> bool {
+fn file_might_not_converge(filename: str) -> bool {
     let confusing_files = ["expr-alt.rs"]; // pretty-printing "(a = b) = c" vs "a = b = c" and wrapping
 
     for f in confusing_files { if contains(filename, f) { ret true; } }
@@ -472,7 +498,7 @@ fn check_roundtrip_convergence(code: str, maxIters: uint) {
 
     while i < maxIters {
         old = new;
-        if content_is_confusing(old) { ret; }
+        if content_might_not_converge(old) { ret; }
         new = parse_and_print(old);
         if old == new { break; }
         i += 1u;
@@ -494,9 +520,9 @@ fn check_roundtrip_convergence(code: str, maxIters: uint) {
 fn check_convergence(files: [str]) {
     log_err #fmt["pp convergence tests: %u files", vec::len(files)];
     for file in files {
-        if !file_is_confusing(file) {
+        if !file_might_not_converge(file) {
             let s = io::read_whole_file_str(file);
-            if !content_is_confusing(s) {
+            if !content_might_not_converge(s) {
                 log_err #fmt["pp converge: %s", file];
                 // Change from 7u to 2u once https://github.com/graydon/rust/issues/850 is fixed
                 check_roundtrip_convergence(s, 7u);
@@ -505,25 +531,34 @@ fn check_convergence(files: [str]) {
     }
 }
 
-fn check_variants(files: [str]) {
+fn check_variants(files: [str], cx: context) {
     for file in files {
-        if !file_is_confusing(file) {
-            let s = io::read_whole_file_str(file);
-            if content_is_dangerous_to_modify(s) || content_is_confusing(s) {
-                cont;
-            }
-            log_err "check_variants: " + file;
-            let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
-            let crate =
-                parser::parse_crate_from_source_str(
-                    file,
-                    s, [], sess);
-            log_err as_str(bind pprust::print_crate(sess.cm, crate,
-                                                    file,
-                                                    io::string_reader(s), _,
-                                                    pprust::no_ann()));
-            check_variants_of_ast(*crate, sess.cm, file);
+        if cx.mode == tm_converge && file_might_not_converge(file) {
+            cont;
         }
+
+        let s = io::read_whole_file_str(file);
+        if contains(s, "#") {
+            cont; // Macros are confusing
+        }
+        if cx.mode == tm_converge && content_might_not_converge(s) {
+            cont;
+        }
+        if cx.mode == tm_run && content_is_dangerous_to_compile(s) {
+            cont;
+        }
+
+        log_err "check_variants: " + file;
+        let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
+        let crate =
+            parser::parse_crate_from_source_str(
+                file,
+                s, [], sess);
+        log_err as_str(bind pprust::print_crate(sess.cm, crate,
+                                                file,
+                                                io::string_reader(s), _,
+                                                pprust::no_ann()));
+        check_variants_of_ast(*crate, sess.cm, file, cx);
     }
 }
 
@@ -537,7 +572,8 @@ fn main(args: [str]) {
 
     find_rust_files(files, root);
     check_convergence(files);
-    check_variants(files);
+    check_variants(files, { mode: tm_converge });
+    check_variants(files, { mode: tm_run });
 
     log_err "Fuzzer done";
 }
