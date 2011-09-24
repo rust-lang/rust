@@ -125,6 +125,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     rust_obstack dynastack;
 
     std::map<void *,const type_desc *> local_allocs;
+    uint32_t cc_counter;
 
     debug::task_debug_info debug;
 

@@ -17,6 +17,10 @@
 #undef DPRINT
 #define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
 
+// The number of allocations Rust code performs before performing cycle
+// collection.
+#define RUST_CC_FREQUENCY   5000
+
 namespace cc {
 
 // Internal reference count computation
@@ -417,7 +421,7 @@ sweep(rust_task *task, const std::set<void *> &marked) {
         if (marked.find(alloc) == marked.end()) {
             const type_desc *tydesc = begin->second;
 
-            DPRINT("object is part of a cycle: %p\n", alloc);
+            //DPRINT("object is part of a cycle: %p\n", alloc);
 
             // Run the destructor.
             // TODO: What if it fails?
@@ -453,8 +457,18 @@ do_cc(rust_task *task) {
 void
 maybe_cc(rust_task *task) {
     static debug::flag zeal("RUST_CC_ZEAL");
-    if (*zeal)
+    if (*zeal) {
         do_cc(task);
+        return;
+    }
+
+    // FIXME: Needs a snapshot.
+#if 0
+    if (task->cc_counter++ > RUST_CC_FREQUENCY) {
+        task->cc_counter = 0;
+        do_cc(task);
+    }
+#endif
 }
 
 }   // end namespace cc

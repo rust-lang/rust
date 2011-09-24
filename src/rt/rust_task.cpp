@@ -1,5 +1,6 @@
 
 #include "rust_internal.h"
+#include "rust_cc.h"
 
 #include "valgrind.h"
 #include "memcheck.h"
@@ -75,7 +76,8 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     failed(false),
     killed(false),
     propagate_failure(true),
-    dynastack(this)
+    dynastack(this),
+    cc_counter(0)
 {
     LOGPTR(sched, "new task", (uintptr_t)this);
     DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
