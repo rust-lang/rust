@@ -20,9 +20,7 @@ export trans_uniq, make_free_glue, type_is_unique_box, copy_val,
 autoderef, duplicate;
 
 pure fn type_is_unique_box(bcx: @block_ctxt, ty: ty::t) -> bool {
-    unchecked {
-        ty::type_is_unique_box(bcx_tcx(bcx), ty)
-    }
+    ty::type_is_unique_box(bcx_tcx(bcx), ty)
 }
 
 fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,

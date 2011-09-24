@@ -592,7 +592,7 @@ fn mk_iter_body_fn(cx: ctxt, output: t) -> t {
 }
 
 // Returns the one-level-deep type structure of the given type.
-fn struct(cx: ctxt, typ: t) -> sty { ret interner::get(*cx.ts, typ).struct; }
+pure fn struct(cx: ctxt, typ: t) -> sty { interner::get(*cx.ts, typ).struct }
 
 
 // Returns the canonical name of the given type.
@@ -862,28 +862,28 @@ fn get_element_type(cx: ctxt, ty: t, i: uint) -> t {
     // tag.
 }
 
-fn type_is_box(cx: ctxt, ty: t) -> bool {
+pure fn type_is_box(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_box(_) { ret true; }
       _ { ret false; }
     }
 }
 
-fn type_is_boxed(cx: ctxt, ty: t) -> bool {
+pure fn type_is_boxed(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_box(_) { ret true; }
       _ { ret false; }
     }
 }
 
-fn type_is_unique_box(cx: ctxt, ty: t) -> bool {
+pure fn type_is_unique_box(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_uniq(_) { ret true; }
       _ { ret false; }
     }
 }
 
-fn type_is_vec(cx: ctxt, ty: t) -> bool {
+pure fn type_is_vec(cx: ctxt, ty: t) -> bool {
     ret alt struct(cx, ty) {
           ty_vec(_) { true }
           ty_str. { true }
@@ -891,7 +891,7 @@ fn type_is_vec(cx: ctxt, ty: t) -> bool {
         };
 }
 
-fn type_is_unique(cx: ctxt, ty: t) -> bool {
+pure fn type_is_unique(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_uniq(_) { ret true; }
       ty_vec(_) { true }
@@ -900,7 +900,7 @@ fn type_is_unique(cx: ctxt, ty: t) -> bool {
     }
 }
 
-fn type_is_scalar(cx: ctxt, ty: t) -> bool {
+pure fn type_is_scalar(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_nil. { ret true; }
       ty_bool. { ret true; }
