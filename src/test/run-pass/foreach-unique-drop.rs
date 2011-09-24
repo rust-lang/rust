@@ -1,4 +1,3 @@
-// xfail-test
 
 obj ob<K>(k: K) {
     iter foo() -> ~{a: K} { put ~{a: k}; }

@@ -4,7 +4,7 @@ import trans_common::*;
 import trans_build::*;
 import trans::{
     trans_shared_malloc,
-    type_of_or_i8,
+    type_of_inner,
     size_of,
     move_val_if_temp,
     node_id_type,
@@ -54,7 +54,9 @@ fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)
     bcx = r.bcx;
     let llsz = r.val;
 
-    let llptrty = T_ptr(type_of_or_i8(bcx, contents_ty));
+    let ccx = bcx_ccx(bcx);
+    check non_ty_var(ccx, contents_ty);
+    let llptrty = T_ptr(type_of_inner(ccx, bcx.sp, contents_ty));
 
     r = trans_shared_malloc(bcx, llptrty, llsz);
     bcx = r.bcx;
