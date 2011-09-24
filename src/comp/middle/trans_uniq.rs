@@ -12,7 +12,8 @@ import trans::{
     INIT,
     trans_shared_free,
     drop_ty,
-    new_sub_block_ctxt
+    new_sub_block_ctxt,
+    load_if_immediate
 };
 
 export trans_uniq, make_free_glue, type_is_unique_box, copy_val,
@@ -115,7 +116,8 @@ fn duplicate(bcx: @block_ctxt, v: ValueRef, t: ty::t)
     let content_ty = content_ty(bcx, t);
     let {bcx, val: llptr} = alloc_uniq(bcx, t);
 
-    let src = Load(bcx, Load(bcx, v));
+    let src = Load(bcx, v);
+    let src = load_if_immediate(bcx, src, content_ty);
     let dst = llptr;
     let bcx = trans::copy_val(bcx, INIT, dst, src, content_ty);
     Store(bcx, dst, v);
