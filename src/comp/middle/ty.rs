@@ -841,7 +841,7 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
 }
 
 pure fn type_is_tup_like(cx: ctxt, ty: t) -> bool {
-    let sty = unchecked { struct(cx, ty) };
+    let sty = struct(cx, ty);
     alt sty {
       ty_box(_) | ty_rec(_) | ty_tup(_) | ty_tag(_,_) { true }
       _ { false }
@@ -1624,9 +1624,7 @@ fn ty_fn_abi(cx: ctxt, fty: t) -> ast::native_abi {
 }
 
 pure fn ty_fn_ret(cx: ctxt, fty: t) -> t {
-    // Should be pure, as type interner contents
-    // shouldn't change once set...
-    let sty = unchecked { struct(cx, fty) };
+    let sty = struct(cx, fty);
     alt sty {
       ty::ty_fn(_, _, r, _, _) { ret r; }
       ty::ty_native_fn(_, _, r) { ret r; }

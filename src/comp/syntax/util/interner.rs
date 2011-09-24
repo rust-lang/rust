@@ -28,7 +28,13 @@ fn intern<@T>(itr: interner<T>, val: T) -> uint {
     }
 }
 
-pure fn get<@T>(itr: interner<T>, idx: uint) -> T { ret itr.vect[idx]; }
+// |get| isn't "pure" in the traditional sense, because it can go from
+// failing to returning a value as items are interned. But for typestate,
+// where we first check a pred and then rely on it, ceasing to fail is ok.
+pure fn get<@T>(itr: interner<T>, idx: uint) -> T {
+    unchecked {
+        itr.vect[idx]
+    }
+}
 
-pure fn len<T>(itr: interner<T>) -> uint { ret vec::len(itr.vect); }
-
+fn len<T>(itr: interner<T>) -> uint { ret vec::len(itr.vect); }

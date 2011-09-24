@@ -833,10 +833,7 @@ pure fn type_has_static_size(cx: @crate_ctxt, t: ty::t) -> bool {
 }
 
 pure fn non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
-    // Not obviously referentially transparent, but
-    // type interner shouldn't be changing at this point.
-    // FIXME: how to make that clearer?
-    let st = unchecked { ty::struct(cx.tcx, t) };
+    let st = ty::struct(cx.tcx, t);
     alt st {
       ty::ty_var(_) { false }
       _          { true }
