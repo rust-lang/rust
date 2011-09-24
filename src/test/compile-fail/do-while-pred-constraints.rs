@@ -9,6 +9,6 @@ fn main() {
     check (even(y));
     do  {
         print_even(y);
-        do  { do  { do  { y += 1; } while true } while true } while true
+        do  { do  { do  { y += 1; } while false } while false } while false
     } while true
 }
