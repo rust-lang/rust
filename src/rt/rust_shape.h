@@ -1059,9 +1059,9 @@ private:
     }
 
     void walk_uniq() {
-	out << prefix << "~";
-	prefix = "";
-	data<log,ptr>::walk_uniq_contents();
+        out << prefix << "~";
+        prefix = "";
+        data<log,ptr>::walk_uniq_contents();
     }
 
     void walk_fn() {
@@ -1089,9 +1089,9 @@ private:
     }
 
     void walk_uniq_contents(log &sub) {
-	out << prefix;
-	sub.align = true;
-	sub.walk();
+        out << prefix;
+        sub.align = true;
+        sub.walk();
     }
 
     void walk_struct(const uint8_t *end_sp);
