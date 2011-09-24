@@ -213,6 +213,17 @@ fn filter_map<@T, @U>(f: block(T) -> option::t<U>, v: [mutable? T]) -> [U] {
     ret result;
 }
 
+fn filter<@T>(f: block(T) -> bool, v: [mutable? T]) -> [T] {
+    let result = [];
+    for elem: T in v {
+        let elem2 = elem; // satisfies alias checker
+        if f(elem2) {
+            result += [elem2];
+        }
+    }
+    ret result;
+}
+
 fn foldl<@T, @U>(p: block(U, T) -> U, z: U, v: [mutable? T]) -> U {
     let sz = len(v);
     if sz == 0u { ret z; }

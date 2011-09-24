@@ -12,6 +12,8 @@ fn square_alias(n: uint) -> uint { ret n * n; }
 
 pure fn is_three(n: uint) -> bool { ret n == 3u; }
 
+pure fn is_odd(n: uint) -> bool { ret n % 2u == 1u; }
+
 fn square_if_odd(n: uint) -> option::t<uint> {
     ret if n % 2u == 1u { some(n * n) } else { none };
 }
@@ -269,7 +271,12 @@ fn test_filter_map() {
     assert (filter_map(halve, all_odd1) == []);
     assert (filter_map(halve, all_odd2) == []);
     assert (filter_map(halve, mix) == mix_dest);
+}
 
+#[test]
+fn test_filter() {
+    assert filter(is_odd, [1u, 2u, 3u]) == [1u, 3u];
+    assert filter(is_three, [1u, 2u, 4u, 8u, 16u]) == [];
 }
 
 #[test]
