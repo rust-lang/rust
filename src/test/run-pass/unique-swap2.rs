@@ -1,3 +1,9 @@
+// xfail-test
+
+// This no longer works because ~r() is lowered to a pinned type
+// (which can't be swapped). Should probably be a compile-fail
+// test.
+
 resource r(i: @mutable int) {
     *i += 1;
 }

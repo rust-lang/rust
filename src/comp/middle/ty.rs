@@ -1021,9 +1021,16 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       }
       // Pointers and unique boxes / vecs raise pinned to shared,
       // otherwise pass through their pointee kind.
-      ty_ptr(tm) | ty_vec(tm) | ty_uniq(tm) {
+      ty_ptr(tm) | ty_vec(tm) {
         let k = type_kind(cx, tm.ty);
         if k == ast::kind_pinned { k = ast::kind_shared; }
+        result = kind::lower_kind(result, k);
+      }
+      // Unique boxes pass through their pointee kind. FIXME: Shouldn't
+      // pointers and vecs do this too to avoid copying vectors of pinned
+      // things?
+      ty_uniq(tm) {
+        let k = type_kind(cx, tm.ty);
         result = kind::lower_kind(result, k);
       }
       // Records lower to the lowest of their members.
