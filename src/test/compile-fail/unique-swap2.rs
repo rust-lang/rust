@@ -1,8 +1,4 @@
-// xfail-test
-
-// This no longer works because ~r() is lowered to a pinned type
-// (which can't be swapped). Should probably be a compile-fail
-// test.
+// error-pattern: mismatched kinds
 
 resource r(i: @mutable int) {
     *i += 1;
@@ -14,6 +10,8 @@ fn test1() {
     {
         let x = ~r(i);
         let y = ~r(j);
+        // Unique boxes containing resources are lowered to pinned kinds,
+        // which can't be swapped
         x <-> y;
         assert ***x == 200;
         assert ***y == 100;
