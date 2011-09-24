@@ -409,7 +409,18 @@ sweep(rust_task *task, const std::set<void *> &marked) {
     while (begin != end) {
         void *alloc = begin->first;
         if (marked.find(alloc) == marked.end()) {
+            const type_desc *tydesc = begin->second;
+
             DPRINT("object is part of a cycle: %p\n", alloc);
+
+            // Run the destructor.
+            // TODO: What if it fails?
+            if (tydesc->drop_glue) {
+                tydesc->drop_glue(NULL, task, (void *)tydesc,
+                                  tydesc->first_param, alloc);
+            }
+
+            task->free(alloc);
         }
         ++begin;
     }
@@ -418,8 +429,8 @@ sweep(rust_task *task, const std::set<void *> &marked) {
 
 void
 do_cc(rust_task *task) {
-    DPRINT("cc; n allocs = %lu\n",
-           (long unsigned int)task->local_allocs.size());
+    //DPRINT("cc; n allocs = %lu\n",
+    //       (long unsigned int)task->local_allocs.size());
 
     irc_map ircs;
     irc::compute_ircs(task, ircs);
