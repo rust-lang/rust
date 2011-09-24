@@ -609,8 +609,9 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
 
-fn parse_seq_to_before_gt<T>(sep: option::t<token::token>, f: fn(parser) -> T,
-                             p: parser) -> [T] {
+fn parse_seq_to_before_gt<@T>(sep: option::t<token::token>,
+                              f: fn(parser) -> T,
+                              p: parser) -> [T] {
     let first = true;
     let v = [];
     while p.peek() != token::GT && p.peek() != token::BINOP(token::LSR) &&
@@ -625,7 +626,7 @@ fn parse_seq_to_before_gt<T>(sep: option::t<token::token>, f: fn(parser) -> T,
     ret v;
 }
 
-fn parse_seq_to_gt<T>(sep: option::t<token::token>, f: fn(parser) -> T,
+fn parse_seq_to_gt<@T>(sep: option::t<token::token>, f: fn(parser) -> T,
                       p: parser) -> [T] {
     let v = parse_seq_to_before_gt(sep, f, p);
     expect_gt(p);
@@ -633,7 +634,7 @@ fn parse_seq_to_gt<T>(sep: option::t<token::token>, f: fn(parser) -> T,
     ret v;
 }
 
-fn parse_seq_lt_gt<T>(sep: option::t<token::token>, f: fn(parser) -> T,
+fn parse_seq_lt_gt<@T>(sep: option::t<token::token>, f: fn(parser) -> T,
                       p: parser) -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, token::LT);
@@ -643,15 +644,16 @@ fn parse_seq_lt_gt<T>(sep: option::t<token::token>, f: fn(parser) -> T,
     ret spanned(lo, hi, result);
 }
 
-fn parse_seq_to_end<T>(ket: token::token, sep: option::t<token::token>,
+fn parse_seq_to_end<@T>(ket: token::token, sep: option::t<token::token>,
                        f: fn(parser) -> T, p: parser) -> [T] {
     let val = parse_seq_to_before_end(ket, sep, f, p);
     p.bump();
     ret val;
 }
 
-fn parse_seq_to_before_end<T>(ket: token::token, sep: option::t<token::token>,
-                              f: fn(parser) -> T, p: parser) -> [T] {
+fn parse_seq_to_before_end<@T>(ket: token::token,
+                               sep: option::t<token::token>,
+                               f: fn(parser) -> T, p: parser) -> [T] {
     let first: bool = true;
     let v: [T] = [];
     while p.peek() != ket {
@@ -665,7 +667,7 @@ fn parse_seq_to_before_end<T>(ket: token::token, sep: option::t<token::token>,
 }
 
 
-fn parse_seq<T>(bra: token::token, ket: token::token,
+fn parse_seq<@T>(bra: token::token, ket: token::token,
                 sep: option::t<token::token>, f: fn(parser) -> T, p: parser)
    -> spanned<[T]> {
     let lo = p.get_lo_pos();

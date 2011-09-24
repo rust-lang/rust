@@ -343,7 +343,7 @@ iter iter2<@T>(v: [T]) -> (uint, T) {
 mod unsafe {
     type vec_repr = {mutable fill: uint, mutable alloc: uint, data: u8};
 
-    fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
+    fn from_buf<@T>(ptr: *T, elts: uint) -> [T] {
         ret rustrt::vec_from_buf_shared(ptr, elts);
     }
 

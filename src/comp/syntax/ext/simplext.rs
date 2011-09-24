@@ -104,7 +104,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
         }
 }
 
-fn option_flatten_map<T, U>(f: fn(T) -> option::t<U>, v: [T]) ->
+fn option_flatten_map<T, @U>(f: fn(T) -> option::t<U>, v: [T]) ->
    option::t<[U]> {
     let res = [];
     for elem: T in v {

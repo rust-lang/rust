@@ -385,7 +385,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer) ->
 
 // Path and definition ID indexing
 
-fn create_index<T>(index: [entry<T>], hash_fn: fn(T) -> uint) ->
+fn create_index<@T>(index: [entry<T>], hash_fn: fn(T) -> uint) ->
    [@[entry<T>]] {
     let buckets: [@mutable [entry<T>]] = [];
     for each i: uint in uint::range(0u, 256u) { buckets += [@mutable []]; }
