@@ -382,12 +382,14 @@ mark::do_mark(rust_task *task, const std::vector<void *> &roots,
             shape::type_param *params =
                 shape::type_param::from_tydesc_and_data(tydesc, p, arena);
 
+#if 0
             // We skip over the reference count here.
             shape::log log(task, true, tydesc->shape, params,
                            tydesc->shape_tables, p + sizeof(uintptr_t),
                            std::cerr);
             log.walk();
             DPRINT("\n");
+#endif
 
             // We skip over the reference count here.
             mark mark(task, true, tydesc->shape, params, tydesc->shape_tables,
