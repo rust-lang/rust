@@ -30,20 +30,28 @@
 * you write fn<@T>(...). And if you need neither -- can work with any sort of
 * pinned data at all -- then you write fn<T>(...).
 *
-*
 * Most types are unique or shared. Other possible name combinations for these
 * two: (tree, graph; pruned, pooled; message, local; owned, common) are
 * plausible but nothing stands out as completely pithy-and-obvious.
 *
-* Resources cannot be copied or sent; they're pinned. They can't be copied
-* because it would interfere with destruction (multiple destruction?) They
-* cannot be sent because we don't want to oblige the communication system to
-* run destructors in some weird limbo context of messages-in-transit. It
-* should always be ok to just free messages it's dropping.
+* Pinned values arise in 2 contexts: resources and &-closures (blocks). The
+* latter absolutely must not be moved, since they could escape to the heap;
+* the former must not be copied, since they'd then be multiply-destructed.
+* We achieve the no-copy restriction by recycling the no-move restriction
+* in place on pinned kinds for &-closures; and as a benefit we can guarantee
+* that a resource passed by reference to C will never move during its life,
+* occasionally useful for FFI-code.
+*
+* Resources cannot be sent because we don't want to oblige the communication
+* system to run destructors in some weird limbo context of
+* messages-in-transit. It should always be ok to just free messages it's
+* dropping. Even if you wanted to send them, you'd need a new sigil for the
+* NOMOVE + SEND combination, and you couldn't use the move-mode library
+* interface to chan.send in that case (NOMOVE after all), so the whole thing
+* wouldn't really work as minimally as the encoding we have here.
 *
 * Note that obj~ and fn~ -- those that capture a unique environment -- can be
-* sent, so satisfy ~T. So can plain obj and fn.
-*
+* sent, so satisfy ~T. So can plain obj and fn. They can all also be copied.
 *
 * Further notes on copying and moving; sending is accomplished by calling a
 * move-in operator on something constrained to a unique type ~T.
@@ -53,20 +61,26 @@
 * --------
 *
 *   A copy is made any time you pass-by-value or execute the = operator in a
-*   non-init expression.
+*   non-init expression. Copying requires discriminating on type constructor.
 *
-*   @ copies shallow, is always legal
-*   ~ copies deep, is only legal if pointee is unique.
-*     pinned values (pinned resources, alias-closures) can't be copied
-*     all other unique (eg. interior) values copy shallow
+*   @-boxes copy shallow, copying is always legal.
 *
-*   Note this means that only type parameters constrained to ~T can be copied.
+*   ~-boxes copy deep, copying is only legal if pointee is unique-kind.
+*
+*     Pinned-kind values (resources, &-closures) can't be copied. All other
+*     unique-kind (eg. interior) values can be copied, and copy shallow.
+*
+*   Note: If you have no type constructor -- only an opaque typaram -- then
+*   you can only copy if the typaram is constrained to ~T; this is because @T
+*   might be a "~resource" box, and making a copy would cause a deep
+*   resource-copy.
+*
 *
 * MOVING:
 * -------
 *
-*  A move is made any time you pass-by-move (that is, with 'move' mode) or
-*  execute the <- operator.
+*  A move is made any time you pass-by-move (that is, with move mode '-') or
+*  execute the move ('<-') or swap ('<->') operators.
 *
 */
 
@@ -124,6 +138,12 @@ fn need_shared_lhs_rhs(tcx: ty::ctxt, a: @ast::expr, b: @ast::expr, op: str) {
 
 fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
     alt e.node {
+
+      // FIXME: These rules do not implement the copy type-constructor
+      // discrimination described by the block comment at the top of
+      // this file. This code is wrong; it lets you copy anything
+      // shared-kind.
+
       ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
       ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
       ast::expr_assign_op(_, a, b) { need_shared_lhs_rhs(tcx, a, b, "op="); }

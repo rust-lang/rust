@@ -1026,6 +1026,11 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
         result = kind::lower_kind(result, k);
       }
       // Unique containers pass through their pointee kind.
+      //
+      // FIXME: These rules do not implement the ~ rules given in
+      // the block comment describing the kind system in kind.rs.
+      // This code is wrong; it makes ~resource into ~-kind, not
+      // @-kind as it should be.
       ty_vec(tm) | ty_uniq(tm) {
         let k = type_kind(cx, tm.ty);
         result = kind::lower_kind(result, k);
