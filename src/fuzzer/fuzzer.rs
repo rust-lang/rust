@@ -368,8 +368,6 @@ fn check_compiling(filename: str) -> happiness {
             known_bug("https://github.com/graydon/rust/issues/897")
         } else if contains(p.err, "(castIsValid(op, S, Ty) && \"Invalid cast!\"), function Create") {
             known_bug("https://github.com/graydon/rust/issues/901")
-        } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\"), function CreatePointerCast") {
-            known_bug("https://github.com/graydon/rust/issues/976")
         } else if contains(p.err, "cast() argument of incompatible type!") {
             known_bug("https://github.com/graydon/rust/issues/973")
         } else if contains(p.err, "cast<Ty>() argument of incompatible type!") {
@@ -404,9 +402,6 @@ fn check_compiling(filename: str) -> happiness {
     } else if contains(p.out, "internal compiler error") {
         log_err "Stdout: " + p.out;
         failed("internal compiler error")
-
-    } else if contains(p.out, "Predicate type_is_unique_box(bcx, uniq_ty) failed") {
-        known_bug("https://github.com/graydon/rust/issues/968")
 
     } else if contains(p.out, "error:") {
         cleanly_rejected("rejected with span_error")
