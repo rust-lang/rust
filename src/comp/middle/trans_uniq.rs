@@ -97,7 +97,7 @@ fn copy_val(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
     let {bcx, val: llptr} = alloc_uniq(cx, ty);
     Store(bcx, llptr, dst);
 
-    let src = Load(bcx, src);
+    let src = load_if_immediate(bcx, src, content_ty);
     let dst = llptr;
     let bcx = trans::copy_val(bcx, INIT, dst, src, content_ty);
     ret bcx;
