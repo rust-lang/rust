@@ -31,6 +31,13 @@ fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
     bcx = lv.bcx;
 
     let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
+
+    if ty::type_is_bot(bcx_tcx(bcx), uniq_ty) {
+        // FIXME: Seems to work, obviously not 'right'. Story of my life.
+        // Probably works because the builder turns lv.val into undef
+        ret rslt(bcx, lv.val);
+    }
+
     check type_is_unique_box(bcx, uniq_ty);
     let content_ty = content_ty(bcx, uniq_ty);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
