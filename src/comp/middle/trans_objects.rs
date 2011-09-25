@@ -590,6 +590,26 @@ fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: str) ->
     ret gvar;
 }
 
+// begin_fn: Set up an LLVM function for backwarding and forwarding functions.
+fn begin_fn(cx: @local_ctxt, sp: span, m: @ty::method,
+            ty_params: [ast::ty_param], fn_name: str) -> ValueRef {
+
+    // Create a local context that's aware of the name of the method we're
+    // creating.
+    let mcx: @local_ctxt = @{path: cx.path + ["method", m.ident] with *cx};
+
+    // Make up a name for the function.
+    let s: str =
+        mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
+
+    // Get the function's type and declare it.
+    let llfn_ty: TypeRef = type_of_meth(cx.ccx, sp, m, ty_params);
+    let llfn: ValueRef =
+        decl_internal_fastcall_fn(cx.ccx.llmod, s, llfn_ty);
+
+    ret llfn;
+}
+
 // process_bkwding_mthd: Create the backwarding function that appears in a
 // backwarding vtable slot.
 //
@@ -608,22 +628,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
                         ty_params: [ast::ty_param], outer_obj_ty: ty::t,
                         _additional_field_tys: [ty::t]) -> ValueRef {
 
-    // Create a local context that's aware of the name of the method we're
-    // creating.
-    let mcx: @local_ctxt = @{path: cx.path + ["method", m.ident] with *cx};
-
-    // Make up a name for the backwarding function.
-    let fn_name: str = "backwarding_fn";
-    let s: str =
-        mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
-
-    // Get the backwarding function's type and declare it.
-    let llbackwarding_fn_ty: TypeRef = type_of_meth(cx.ccx, sp, m, ty_params);
-    let llbackwarding_fn: ValueRef =
-        decl_internal_fastcall_fn(cx.ccx.llmod, s, llbackwarding_fn_ty);
-
-    // Create a new function context and block context for the backwarding
-    // function, holding onto a pointer to the first block.
+    let llbackwarding_fn = begin_fn(cx, sp, m, ty_params, "backwarding_fn");
     let fcx = new_fn_ctxt(cx, sp, llbackwarding_fn);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
@@ -688,8 +693,8 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
 
     // Set up the three implicit arguments to the outer method we'll need to
     // call.
-    let self_arg = llself_obj_ptr;
-    let llouter_mthd_args: [ValueRef] = [llretptr, fcx.lltaskptr, self_arg];
+    let llouter_mthd_args: [ValueRef] = [llretptr, fcx.lltaskptr,
+                                         llself_obj_ptr];
 
     // Copy the explicit arguments that are being passed into the forwarding
     // function (they're in fcx.llargs) to llouter_mthd_args.
@@ -728,22 +733,9 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
                        backwarding_vtbl: ValueRef,
                        additional_field_tys: [ty::t]) -> ValueRef {
 
-    // Create a local context that's aware of the name of the method we're
-    // creating.
-    let mcx: @local_ctxt = @{path: cx.path + ["method", m.ident] with *cx};
-
-    // Make up a name for the forwarding function.
-    let fn_name: str = "forwarding_fn";
-    let s: str =
-        mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path, fn_name);
-
-    // Get the forwarding function's type and declare it.
-    let llforwarding_fn_ty = type_of_meth(cx.ccx, sp, m, ty_params);
-    let llforwarding_fn: ValueRef =
-        decl_internal_fastcall_fn(cx.ccx.llmod, s, llforwarding_fn_ty);
-
-    // Create a new function context and block context for the forwarding
-    // function, holding onto a pointer to the first block.
+    // Create a new function context and block context for the function,
+    // holding onto a pointer to the first block.
+    let llforwarding_fn = begin_fn(cx, sp, m, ty_params, "forwarding_fn");
     let fcx = new_fn_ctxt(cx, sp, llforwarding_fn);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
