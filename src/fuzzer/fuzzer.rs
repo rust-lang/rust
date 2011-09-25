@@ -339,6 +339,8 @@ fn check_running(exe_filename: str) -> happiness {
         failed("Mentioned src/rt/")
     } else if contains(comb, "malloc") {
         failed("Mentioned malloc")
+    } else if contains(comb, "Out of stack space, sorry") {
+        known_bug("https://github.com/graydon/rust/issues/32 / https://github.com/graydon/rust/issues/445")
     } else {
         alt p.status {
             0         { passed }
@@ -366,6 +368,8 @@ fn check_compiling(filename: str) -> happiness {
             known_bug("https://github.com/graydon/rust/issues/897")
         } else if contains(p.err, "(castIsValid(op, S, Ty) && \"Invalid cast!\"), function Create") {
             known_bug("https://github.com/graydon/rust/issues/901")
+        } else if contains(p.err, "(S->getType()->isPointerTy() && \"Invalid cast\"), function CreatePointerCast") {
+            known_bug("https://github.com/graydon/rust/issues/976")
         } else if contains(p.err, "cast() argument of incompatible type!") {
             known_bug("https://github.com/graydon/rust/issues/973")
         } else if contains(p.err, "cast<Ty>() argument of incompatible type!") {
