@@ -438,11 +438,13 @@ fn align_of(cx: @block_ctxt, t: ty::t) -> result {
 }
 
 fn alloca(cx: @block_ctxt, t: TypeRef) -> ValueRef {
+    if cx.unreachable { ret llvm::LLVMGetUndef(t); }
     ret Alloca(new_raw_block_ctxt(cx.fcx, cx.fcx.llstaticallocas), t);
 }
 
 fn dynastack_alloca(cx: @block_ctxt, t: TypeRef, n: ValueRef, ty: ty::t) ->
    ValueRef {
+    if cx.unreachable { ret llvm::LLVMGetUndef(t); }
     let bcx = cx;
     let dy_cx = new_raw_block_ctxt(cx.fcx, cx.fcx.lldynamicallocas);
     let lltaskptr = bcx_fcx(bcx).lltaskptr;
@@ -4474,6 +4476,8 @@ fn trans_fail_expr(cx: @block_ctxt, sp_opt: option::t<span>,
                                                 ty::mk_mach(tcx,
                                                             ast::ty_u8)));
             ret trans_fail_value(bcx, sp_opt, data);
+        } else if bcx.unreachable {
+            ret rslt(bcx, C_nil());
         } else {
             bcx_ccx(cx).sess.span_bug(expr.span,
                                       "fail called with unsupported type " +
