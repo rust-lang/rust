@@ -36,9 +36,7 @@ fn notsure() {
 }
 
 fn hammertime() -> int {
-    // FIXME: Doesn't compile
-    //let _x = log true == (ret 0);
-    ret 0;
+    let _x = log true == (ret 0);
 }
 
 fn canttouchthis() -> uint {
