@@ -67,8 +67,6 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     // TODO: Maybe use dladdr here to find a more useful name for the
     // type_desc.
 
-    // TODO: Implement RUST_TRACK_ORIGINS
-
     void *p = task->malloc(nbytes, "tdesc", td);
     memset(p, '\0', nbytes);
 
