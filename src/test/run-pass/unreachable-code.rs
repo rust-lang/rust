@@ -17,6 +17,8 @@ iter put_break() -> int {
     while true { put break; }
 }
 
+fn fail_fail() { fail fail; }
+
 fn log_fail() { log_err fail; }
 
 fn log_ret() { log_err ret; }
