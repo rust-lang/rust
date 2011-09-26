@@ -5459,8 +5459,11 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         let arg_ty = arg_tys[i].ty;
         let llargval;
         if ty::type_is_structural(cx.ccx.tcx, arg_ty) ||
-               ty::type_has_dynamic_size(cx.ccx.tcx, arg_ty) ||
-               ty::type_is_unique(cx.ccx.tcx, arg_ty) {
+            ty::type_has_dynamic_size(cx.ccx.tcx, arg_ty) ||
+            (ty::type_is_unique(cx.ccx.tcx, arg_ty)
+             && !ty::type_is_unique_box(cx.ccx.tcx, arg_ty)) {
+            // FIXME: Why do we do this for other unique pointer types but not
+            // unique boxes? Something's not quite right.
             llargval = llargptr;
         } else { llargval = Load(bcx, llargptr); }
         bcx = copy_val(bcx, INIT, lldestptr, llargval, arg_ty);

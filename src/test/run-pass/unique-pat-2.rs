@@ -1,4 +1,3 @@
-// xfail-test
 
 type foo = {a: int, b: uint};
 tag bar { u(~foo); w(int); }
