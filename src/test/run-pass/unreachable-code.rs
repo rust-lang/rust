@@ -13,6 +13,10 @@ fn call_id_3() { id(ret) && id(ret); }
 
 fn call_id_4() { while id(break) { } }
 
+fn bind_id_1() { bind id(fail); }
+
+fn bind_id_2() { bind id(ret); }
+
 iter put_break() -> int {
     while true { put break; }
 }
