@@ -124,14 +124,11 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) -> mut_map {
 tag msg { msg_assign; msg_move_out; msg_mut_ref; }
 
 fn mk_err(cx: @ctx, span: syntax::codemap::span, msg: msg, name: str) {
-    cx.tcx.sess.span_err(span,
-                         alt msg {
-                           msg_assign. { "assigning to " + name }
-                           msg_move_out. { "moving out of " + name }
-                           msg_mut_ref. {
-                             "passing " + name + " by mutable reference"
-                           }
-                         });
+    cx.tcx.sess.span_err(span, alt msg {
+      msg_assign. { "assigning to " + name }
+      msg_move_out. { "moving out of " + name }
+      msg_mut_ref. { "passing " + name + " by mutable reference" }
+    });
 }
 
 fn visit_decl(cx: @ctx, d: @decl, e: (), v: visit::vt<()>) {
@@ -183,7 +180,9 @@ fn check_lval(cx: @ctx, dest: @expr, msg: msg) {
       _ {
         let root = expr_root(cx.tcx, dest, false);
         if vec::len(*root.ds) == 0u {
-            if msg == msg_assign { mk_err(cx, dest.span, msg, "non-lvalue"); }
+            if msg != msg_move_out {
+                mk_err(cx, dest.span, msg, "non-lvalue");
+            }
         } else if !root.ds[0].mut {
             let name =
                 alt root.ds[0].kind {
@@ -223,7 +222,11 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
     let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
-        if arg_t.mode != by_ref { check_lval(cx, args[i], msg_mut_ref); }
+        alt arg_t.mode {
+          by_mut_ref. { check_lval(cx, args[i], msg_mut_ref); }
+          by_move. { check_lval(cx, args[i], msg_move_out); }
+          by_ref. {}
+        }
         i += 1u;
     }
 }
