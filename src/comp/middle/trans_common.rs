@@ -283,6 +283,11 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
         [clean_temp(val, bind spill_and_drop(_, val, ty))];
     scope_cx.lpad_dirty = true;
 }
+fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+    let scope_cx = find_scope_cx(cx);
+    scope_cx.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
+    scope_cx.lpad_dirty = true;
+}
 
 // Note that this only works for temporaries. We should, at some point, move
 // to a system where we can also cancel the cleanup on local variables, but

@@ -4002,24 +4002,23 @@ fn trans_landing_pad(bcx: @block_ctxt,
 fn trans_tup(bcx: @block_ctxt, elts: [@ast::expr], id: ast::node_id,
              dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx.fcx.lcx.ccx, id);
-    let dst = alt dest { save_in(addr) { addr } };
-
-    // Like trans_rec, we'll collect the fields of the tuple then build it, so
-    // that if we fail in between we don't have to deal with cleaning up a
-    // partial tuple
-    let tupfields = [], i = 0;
+    let temp_cleanups = [], i = 0;
     for e in elts {
-        let e_ty = ty::expr_ty(bcx_tcx(bcx), e);
-        let src = trans_lval(bcx, e);
-        let dst_res = GEP_tup_like_1(src.bcx, t, dst, [0, i]);
-        bcx = dst_res.bcx;
-        tupfields += [(dst_res.val, src, e_ty)];
+        alt dest {
+          save_in(addr) {
+            let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
+            let e_ty = ty::expr_ty(bcx_tcx(bcx), e);
+            bcx = trans_expr_save_in(dst.bcx, e, dst.val);
+            add_clean_temp_mem(bcx, dst.val, e_ty);
+            temp_cleanups += [dst.val];
+          }
+          ignore. {
+            bcx = trans_expr_dps(bcx, e, ignore);
+          }
+        }
         i += 1;
     }
-    // Fill in the tuple fields
-    for (dst, src, t) in tupfields {
-        bcx = move_val_if_temp(bcx, INIT, dst, src, t);
-    }
+    for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
     ret bcx;
 }
 
@@ -4027,7 +4026,6 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
              base: option::t<@ast::expr>, id: ast::node_id,
              dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx_ccx(bcx), id);
-    let dst = alt dest { save_in(addr) { addr } };
 
     let base_val = alt base {
       some(bexp) {
@@ -4038,58 +4036,50 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
       none. { C_nil() }
     };
 
-    tag fieldsrc {
-        provided(lval_result);
-        inherited(ValueRef);
-    }
-    type fieldval = {
-        dst: ValueRef,
-        src: fieldsrc,
-        ty: ty::t
-    };
-
     let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
-    let fieldvals = [], i = 0;
-    // We build the record in two stages so that we don't have to clean up a
-    // partial record if we fail: first collect all the values, then construct
-    // the record.
+    let temp_cleanups = [], i = 0;
     for tf in ty_fields {
-        let {bcx: a_bcx, val: addr} = GEP_tup_like_1(bcx, t, dst, [0, i]);
-        bcx = a_bcx;
-        // FIXME make this happen in a single pass, again, somehow make the
-        // dps helpers tie the cleanups together in the right way (we do not
-        // want to create intermediates for these and then move them again)
-        fn test(n: str, f: ast::field) -> bool { str::eq(f.node.ident, n) }
+        let fdest = alt dest {
+          save_in(addr) {
+            let gep = GEP_tup_like_1(bcx, t, addr, [0, i]);
+            bcx = gep.bcx;
+            some(gep.val)
+          }
+          ignore. { none }
+        };
         // FIXME make this {|f| str::eq(f.node.ident, tf.ident)} again when
         // bug #913 is fixed
-        let s = alt vec::find(bind test(tf.ident, _), fields) {
-            some(f) {
-                let lv = trans_lval(bcx, f.node.expr);
-                bcx = lv.bcx;
-                provided(lv)
+        fn test(n: str, f: ast::field) -> bool { str::eq(f.node.ident, n) }
+        alt vec::find(bind test(tf.ident, _), fields) {
+          some(f) {
+            alt fdest {
+              some(x) { bcx = trans_expr_save_in(bcx, f.node.expr, x); }
+              none. { bcx = trans_expr_dps(bcx, f.node.expr, ignore); }
             }
-            none. {
-                let src_res = GEP_tup_like_1(bcx, t, base_val, [0, i]);
-                bcx = src_res.bcx;
-                inherited(src_res.val)
-            }
-        };
-        fieldvals += [{dst: addr, src: s, ty: tf.mt.ty}];
-        i += 1;
-    }
-    // Now build the record
-    for fieldval in fieldvals {
-        alt fieldval.src {
-          provided(lv) {
-            bcx = move_val_if_temp(bcx, INIT, fieldval.dst,
-                                   lv, fieldval.ty);
           }
-          inherited(val) {
-            let val = load_if_immediate(bcx, val, fieldval.ty);
-            bcx = copy_val(bcx, INIT, fieldval.dst, val, fieldval.ty);
+          none. {
+            alt fdest {
+              some(addr) {
+                let gep = GEP_tup_like_1(bcx, t, base_val, [0, i]);
+                let val = load_if_immediate(gep.bcx, gep.val, tf.mt.ty);
+                bcx = copy_val(gep.bcx, INIT, addr, val, tf.mt.ty);
+              }
+              none. {}
+            }
           }
         }
+        alt fdest {
+          some(addr) {
+            add_clean_temp_mem(bcx, addr, tf.mt.ty);
+            temp_cleanups += [addr];
+          }
+          none. {}
+        }
+        i += 1;
     }
+    // Now revoke the cleanups as we pass responsibility for the data
+    // structure on to the caller
+    for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
     ret bcx;
 }
 
