@@ -3596,6 +3596,10 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
         bound_vals += [lv];
         bound_tys += [ty::expr_ty(bcx_tcx(cx), e)];
     }
+    if bcx.unreachable {
+        ret rslt(bcx, llvm::LLVMGetUndef(
+            T_ptr(type_of_or_i8(bcx, outgoing_fty))));
+    }
 
     // Actually construct the closure
     let closure =
