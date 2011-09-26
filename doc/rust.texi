@@ -185,7 +185,7 @@ features of Rust, relative to other languages.
 The initialization state of every slot is statically computed as part of the
 typestate system (see below), and requires that all slots are initialized
 before use. There is no @code{null} value; uninitialized slots are
-uninitialized, and can only be written to, not read.
+uninitialized and can only be written to, not read.
 
 The common use for @code{null} in other languages -- as a sentinel value -- is
 subsumed into the more general facility of disjoint union types. A program
@@ -197,10 +197,10 @@ must explicitly model its use of such types.
 Like many @emph{actor} languages, Rust provides an isolation (and concurrency)
 model based on lightweight tasks scheduled by the language runtime. These
 tasks are very inexpensive and statically unable to manipulate one another's
-local memory. Breaking the rule of task isolation is only possible by calling
+local memory. Breaking the rule of task isolation is possible only by calling
 external (C/C++) code.
 
-Inter-task communication is typed, asynchronous and simplex, based on passing
+Inter-task communication is typed, asynchronous, and simplex, based on passing
 messages over channels to ports.
 
 @sp 1
@@ -1136,7 +1136,7 @@ module bar @{
 @end example
 
 In future versions of Rust, user-provided extensions to the compiler will be able
-to use interpret attributes. When this facility is provided, a distinction will be
+to interpret attributes. When this facility is provided, a distinction will be
 made between language-reserved and user-available attributes.
 
 At present, only the Rust compiler interprets attributes, so all attribute
@@ -1328,13 +1328,13 @@ Local slots are always implicitly mutable.
 Local slots are not initialized when allocated; the entire frame worth of
 local slots are allocated at once, on frame-entry, in an uninitialized
 state. Subsequent statements within a function may or may not initialize the
-local slots. Local slots can only be used after they have been initialized;
+local slots. Local slots can be used only after they have been initialized;
 this condition is guaranteed by the typestate system.
 
 References are created for function arguments. If the compiler can not prove
 that the referred-to value will outlive the reference, it will try to set
 aside a copy of that value to refer to. If this is not sematically safe (for
-example, if the referred-to value contains mutable fields), it reject the
+example, if the referred-to value contains mutable fields), it will reject the
 program. If the compiler deems copying the value expensive, it will warn.
 
 A function can be declared to take an argument by mutable reference. This
@@ -1996,7 +1996,7 @@ The output type of an iterator is the type of value that the function will
 @code{put}, before it eventually evaluates a @code{ret} or @code{be} expression
 of type @code{()} and completes its execution.
 
-An iterator can only be called in the loop header of a matching @code{for
+An iterator can be called only in the loop header of a matching @code{for
 each} loop or as the argument in a @code{put each} expression.
 @xref{Ref.Expr.Foreach}.
 
@@ -2108,10 +2108,10 @@ The constructors of a @code{tag} type may be recursive: that is, each constructo
 may take an argument that refers, directly or indirectly, to the tag type the constructor
 is a member of. Such recursion has restrictions:
 @itemize
-@item Recursive types can only be introduced through @code{tag} constructors.
+@item Recursive types can be introduced only through @code{tag} constructors.
 @item A recursive @code{tag} item must have at least one non-recursive
 constructor (in order to give the recursion a basis case).
-@item The recursively argument of recursive tag constructors must be @emph{box}
+@item The recursive argument of recursive tag constructors must be @emph{box}
 values (in order to bound the in-memory size of the constructor).
 @item Recursive type definitions can cross module boundaries, but not module
 @emph{visibility} boundaries, nor crate boundaries (in order to simplify the
@@ -2360,7 +2360,7 @@ values similar to the record type-constructor. The differences are as follows:
 
 @itemize
 @item tuple elements cannot be mutable, unlike record fields
-@item tuple elements are not named, and can only be accessed by pattern-matching
+@item tuple elements are not named and can be accessed only by pattern-matching
 @end itemize
 
 Tuple types and values are denoted by listing the types or values of
