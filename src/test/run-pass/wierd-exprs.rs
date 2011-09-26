@@ -7,11 +7,6 @@ fn funny() {
     f(ret);
 }
 
-fn odd() {
-    // FIXME: This doesn't compile
-    // log ret;
-}
-
 fn what() {
     fn the(x: @mutable bool) { ret while !*x { *x = true; }; }
     let i = @mutable false;
@@ -64,7 +59,6 @@ fn evil_lincoln() { let evil <- log "lincoln"; }
 fn main() {
     strange();
     funny();
-    odd();
     what();
     zombiejesus();
     notsure();
