@@ -1149,7 +1149,7 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl, constrs: [@ast::constr]) {
           ast::return_ref(mut, arg) {
             word(s.s, mut ? "&!" : "&");
             if vec::len(decl.inputs) > 1u {
-                word(s.s, std::uint::str(arg));
+                word_space(s, std::uint::str(arg));
             }
           }
           _ {}
