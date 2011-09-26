@@ -1,4 +1,4 @@
-// Just a grab bug of stuff that you wouldn't want to actualy write
+// Just a grab bag of stuff that you wouldn't want to actually write.
 
 fn strange() -> bool { let _x = ret true; }
 
