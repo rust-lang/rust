@@ -668,6 +668,14 @@ fn bump_ptr(bcx: @block_ctxt, t: ty::t, base: ValueRef, sz: ValueRef) ->
     } else { bumped }
 }
 
+// GEP_tup_like is a pain to use if you always have to precede it with a
+// check.
+fn GEP_tup_like_1(cx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
+    -> result {
+    check type_is_tup_like(cx, t);
+    ret GEP_tup_like(cx, t, base, ixs);
+}
+
 // Replacement for the LLVM 'GEP' instruction when field-indexing into a
 // tuple-like structure (tup, rec) with a static index. This one is driven off
 // ty::struct and knows what to do when it runs into a ty_param stuck in the
@@ -1514,11 +1522,14 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
         }
       }
       ty::ty_type. {
-        ret trans_fail(cx, none, "attempt to compare values of type type");
+        ret rslt(trans_fail(cx, none,
+                            "attempt to compare values of type type"),
+                 C_nil());
       }
       ty::ty_native(_) {
-        ret trans_fail(cx, none::<span>,
-                   "attempt to compare values of type native");
+        let cx = trans_fail(cx, none::<span>,
+                            "attempt to compare values of type native");
+        ret rslt(cx, C_nil());
       }
       _ {
         // Should never get here, because t is scalar.
@@ -3988,60 +3999,44 @@ fn trans_landing_pad(bcx: @block_ctxt,
     ret bcx.llbb;
 }
 
-fn trans_tup(cx: @block_ctxt, elts: [@ast::expr], id: ast::node_id) ->
-   result {
-    let bcx = cx;
+fn trans_tup(bcx: @block_ctxt, elts: [@ast::expr], id: ast::node_id,
+             dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx.fcx.lcx.ccx, id);
-    let tup_res = alloc_ty(bcx, t);
-    let tup_val = tup_res.val;
-    bcx = tup_res.bcx;
+    let dst = alt dest { save_in(addr) { addr } };
 
     // Like trans_rec, we'll collect the fields of the tuple then build it, so
     // that if we fail in between we don't have to deal with cleaning up a
     // partial tuple
-    let tupfields: [(ValueRef, lval_result, ty::t)] = [];
-    let i: int = 0;
+    let tupfields = [], i = 0;
     for e in elts {
-        let e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
+        let e_ty = ty::expr_ty(bcx_tcx(bcx), e);
         let src = trans_lval(bcx, e);
-        bcx = src.bcx;
-        // FIXME: constraint on argument?
-        check type_is_tup_like(bcx, t);
-        let dst_res = GEP_tup_like(bcx, t, tup_val, [0, i]);
-        tupfields += [(dst_res.val, src, e_ty)];
+        let dst_res = GEP_tup_like_1(src.bcx, t, dst, [0, i]);
         bcx = dst_res.bcx;
+        tupfields += [(dst_res.val, src, e_ty)];
         i += 1;
     }
-
     // Fill in the tuple fields
     for (dst, src, t) in tupfields {
         bcx = move_val_if_temp(bcx, INIT, dst, src, t);
     }
-
-    // Only register the cleanups after the tuple is built
-    add_clean_temp(cx, tup_val, t);
-    ret rslt(bcx, tup_val);
+    ret bcx;
 }
 
-fn trans_rec(cx: @block_ctxt, fields: [ast::field],
-             base: option::t<@ast::expr>, id: ast::node_id) -> result {
-    let bcx = cx;
+fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
+             base: option::t<@ast::expr>, id: ast::node_id,
+             dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx_ccx(bcx), id);
-    let rec_res = alloc_ty(bcx, t);
-    let rec_val = rec_res.val;
-    bcx = rec_res.bcx;
-    let i: int = 0;
-    let base_val = C_nil();
-    alt base {
-      none. { }
+    let dst = alt dest { save_in(addr) { addr } };
+
+    let base_val = alt base {
       some(bexp) {
         let base_res = trans_expr(bcx, bexp);
         bcx = base_res.bcx;
-        base_val = base_res.val;
+        base_res.val
       }
-    }
-    let ty_fields: [ty::field] = [];
-    alt ty::struct(bcx_tcx(cx), t) { ty::ty_rec(flds) { ty_fields = flds; } }
+      none. { C_nil() }
+    };
 
     tag fieldsrc {
         provided(lval_result);
@@ -4052,45 +4047,36 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
         src: fieldsrc,
         ty: ty::t
     };
-    let fieldvals: [fieldval] = [];
 
+    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
+    let fieldvals = [], i = 0;
     // We build the record in two stages so that we don't have to clean up a
     // partial record if we fail: first collect all the values, then construct
     // the record.
-    for tf: ty::field in ty_fields {
-        let e_ty = tf.mt.ty;
-        // FIXME: constraint on argument?
-        check type_is_tup_like(bcx, t);
-        let dst_res = GEP_tup_like(bcx, t, rec_val, [0, i]);
-        bcx = dst_res.bcx;
-        let expr_provided = false;
-        for f: ast::field in fields {
-            if str::eq(f.node.ident, tf.ident) {
-                expr_provided = true;
+    for tf in ty_fields {
+        let {bcx: a_bcx, val: addr} = GEP_tup_like_1(bcx, t, dst, [0, i]);
+        bcx = a_bcx;
+        // FIXME make this happen in a single pass, again, somehow make the
+        // dps helpers tie the cleanups together in the right way (we do not
+        // want to create intermediates for these and then move them again)
+        fn test(n: str, f: ast::field) -> bool { str::eq(f.node.ident, n) }
+        // FIXME make this {|f| str::eq(f.node.ident, tf.ident)} again when
+        // bug #913 is fixed
+        let s = alt vec::find(bind test(tf.ident, _), fields) {
+            some(f) {
                 let lv = trans_lval(bcx, f.node.expr);
                 bcx = lv.bcx;
-                fieldvals += [{
-                    dst: dst_res.val,
-                    src: provided(lv),
-                    ty: e_ty
-                }];
-                break;
+                provided(lv)
             }
-        }
-        if !expr_provided {
-            // FIXME: constraint on argument?
-            check type_is_tup_like(bcx, t);
-            let src_res = GEP_tup_like(bcx, t, base_val, [0, i]);
-            bcx = src_res.bcx;
-            fieldvals += [{
-                dst: dst_res.val,
-                src: inherited(src_res.val),
-                ty: e_ty
-            }];
-        }
+            none. {
+                let src_res = GEP_tup_like_1(bcx, t, base_val, [0, i]);
+                bcx = src_res.bcx;
+                inherited(src_res.val)
+            }
+        };
+        fieldvals += [{dst: addr, src: s, ty: tf.mt.ty}];
         i += 1;
     }
-
     // Now build the record
     for fieldval in fieldvals {
         alt fieldval.src {
@@ -4104,9 +4090,7 @@ fn trans_rec(cx: @block_ctxt, fields: [ast::field],
           }
         }
     }
-
-    add_clean_temp(cx, rec_val, t);
-    ret rslt(bcx, rec_val);
+    ret bcx;
 }
 
 fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
@@ -4247,46 +4231,6 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
       ast::expr_bind(f, args) { ret trans_bind(cx, f, args, e.id); }
       ast::expr_cast(val, _) { ret trans_cast(cx, val, e.id); }
       ast::expr_vec(args, _) { ret tvec::trans_vec(cx, args, e.id); }
-      ast::expr_rec(args, base) { ret trans_rec(cx, args, base, e.id); }
-      ast::expr_tup(args) { ret trans_tup(cx, args, e.id); }
-      ast::expr_mac(_) { ret bcx_ccx(cx).sess.bug("unexpanded macro"); }
-      ast::expr_fail(expr) { ret trans_fail_expr(cx, some(e.span), expr); }
-      ast::expr_log(lvl, a) { ret trans_log(lvl, cx, a); }
-      ast::expr_assert(a) { ret trans_check_expr(cx, a, "Assertion"); }
-      ast::expr_check(ast::checked., a) {
-        ret trans_check_expr(cx, a, "Predicate");
-      }
-      ast::expr_check(ast::unchecked., a) {
-        /* Claims are turned on and off by a global variable
-           that the RTS sets. This case generates code to
-           check the value of that variable, doing nothing
-           if it's set to false and acting like a check
-           otherwise. */
-        let c =
-            get_extern_const(bcx_ccx(cx).externs, bcx_ccx(cx).llmod,
-                             "check_claims", T_bool());
-        let cond = Load(cx, c);
-
-        let then_cx = new_scope_block_ctxt(cx, "claim_then");
-        let check_res = trans_check_expr(then_cx, a, "Claim");
-        let else_cx = new_scope_block_ctxt(cx, "else");
-        let els = rslt(else_cx, C_nil());
-
-        CondBr(cx, cond, then_cx.llbb, else_cx.llbb);
-        ret rslt(join_branches(cx, [check_res, els]), C_nil());
-      }
-      ast::expr_break. { ret trans_break(e.span, cx); }
-      ast::expr_cont. { ret trans_cont(e.span, cx); }
-      ast::expr_ret(ex) { ret trans_ret(cx, ex); }
-      ast::expr_put(ex) { ret trans_put(cx, ex); }
-      ast::expr_be(ex) {
-        // Ideally, the expr_be tag would have a precondition
-        // that is_call_expr(ex) -- but we don't support that
-        // yet
-        // FIXME
-        check (ast_util::is_call_expr(ex));
-        ret trans_be(cx, ex);
-      }
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(cx, e.span, anon_obj, e.id);
       }
@@ -4309,6 +4253,33 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
     }
 }
 
+// FIXME add support for INIT/DROP_EXISTING
+fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
+    -> @block_ctxt {
+    let tcx = bcx_tcx(bcx), t = ty::expr_ty(tcx, e);
+    if ty::type_is_bot(tcx, t) || ty::type_is_nil(tcx, t) {
+        ret trans_expr_dps(bcx, e, ignore);
+    } else if type_is_immediate(bcx_ccx(bcx), t) {
+        let cell = empty_dest_cell();
+        bcx = trans_expr_dps(bcx, e, by_val(cell));
+        Store(bcx, *cell, dest);
+        ret bcx;
+    } else {
+        ret trans_expr_dps(bcx, e, save_in(dest));
+    }
+}
+
+fn trans_expr_by_ref(bcx: @block_ctxt, e: @ast::expr) -> result {
+    let cell = empty_dest_cell();
+    bcx = trans_expr_dps(bcx, e, by_ref(cell));
+    ret rslt(bcx, *cell);
+}
+
+// Invariants:
+// - things returning nil get dest=ignore
+// - any lvalue expr may be given dest=by_ref
+// - exprs returning an immediate get by_val (or by_ref when lval)
+// - exprs returning non-immediates get save_in (or by_ref when lval)
 fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
     -> @block_ctxt {
     alt e.node {
@@ -4330,6 +4301,72 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         if sub_cx.unreachable { Unreachable(next_cx); }
         ret next_cx;
       }
+      ast::expr_rec(args, base) {
+        ret trans_rec(bcx, args, base, e.id, dest);
+      }
+      ast::expr_tup(args) { ret trans_tup(bcx, args, e.id, dest); }
+      ast::expr_break. {
+        assert dest == ignore;
+        ret trans_break(e.span, bcx);
+      }
+      ast::expr_cont. {
+        assert dest == ignore;
+        ret trans_cont(e.span, bcx);
+      }
+      ast::expr_ret(ex) {
+        assert dest == ignore;
+        ret trans_ret(bcx, ex);
+      }
+      ast::expr_be(ex) {
+        // Ideally, the expr_be tag would have a precondition
+        // that is_call_expr(ex) -- but we don't support that
+        // yet
+        // FIXME
+        check (ast_util::is_call_expr(ex));
+        ret trans_be(bcx, ex);
+      }
+      ast::expr_put(ex) {
+        assert dest == ignore;
+        ret trans_put(bcx, ex);
+      }
+      ast::expr_fail(expr) {
+        assert dest == ignore;
+        ret trans_fail_expr(bcx, some(e.span), expr);
+      }
+      ast::expr_log(lvl, a) {
+        assert dest == ignore;
+        ret trans_log(lvl, bcx, a);
+      }
+      ast::expr_assert(a) {
+        assert dest == ignore;
+        ret trans_check_expr(bcx, a, "Assertion");
+      }
+      ast::expr_check(ast::checked., a) {
+        assert dest == ignore;
+        ret trans_check_expr(bcx, a, "Predicate");
+      }
+      ast::expr_check(ast::unchecked., a) {
+        assert dest == ignore;
+        /* Claims are turned on and off by a global variable
+           that the RTS sets. This case generates code to
+           check the value of that variable, doing nothing
+           if it's set to false and acting like a check
+           otherwise. */
+        let c =
+            get_extern_const(bcx_ccx(bcx).externs, bcx_ccx(bcx).llmod,
+                             "check_claims", T_bool());
+        let cond = Load(bcx, c);
+
+        let then_cx = new_scope_block_ctxt(bcx, "claim_then");
+        let check_cx = trans_check_expr(then_cx, a, "Claim");
+        let else_cx = new_scope_block_ctxt(bcx, "else");
+
+        CondBr(bcx, cond, then_cx.llbb, else_cx.llbb);
+        ret join_branches(bcx, [rslt(check_cx, C_nil()),
+                                rslt(else_cx, C_nil())]);
+      }
+
+      ast::expr_mac(_) { ret bcx_ccx(bcx).sess.bug("unexpanded macro"); }
       // Convert back from result to DPS
       _ {
         let lv = trans_lval(bcx, e);
@@ -4337,12 +4374,19 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         let ty = ty::expr_ty(bcx_tcx(bcx), e);
         alt dest {
           by_val(cell) {
-            if is_mem {
-                bcx = take_ty(bcx, val, ty);
-                *cell = Load(bcx, val);
-            } else {
+            if !is_mem {
                 revoke_clean(bcx, val);
                 *cell = val;
+            } else if ty::type_is_unique(bcx_tcx(bcx), ty) {
+                // Do a song and a dance to work around the fact that take_ty
+                // for unique boxes overwrites the pointer.
+                let oldval = Load(bcx, val);
+                bcx = take_ty(bcx, val, ty);
+                *cell = Load(bcx, val);
+                Store(bcx, oldval, val);
+            } else {
+                bcx = take_ty(bcx, val, ty);
+                *cell = Load(bcx, val);
             }
           }
           by_ref(cell) {
@@ -4402,28 +4446,24 @@ fn load_if_immediate(cx: @block_ctxt, v: ValueRef, t: ty::t) -> ValueRef {
     ret v;
 }
 
-fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> result {
+fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let lcx = cx.fcx.lcx;
     let modname = str::connect(lcx.module_path, "::");
-    let global;
-    if lcx.ccx.module_data.contains_key(modname) {
-        global = lcx.ccx.module_data.get(modname);
+    let global = if lcx.ccx.module_data.contains_key(modname) {
+        lcx.ccx.module_data.get(modname)
     } else {
-        let s =
-            link::mangle_internal_name_by_path_and_seq(lcx.ccx,
-                                                       lcx.module_path,
-                                                       "loglevel");
-        global =
-            str::as_buf(s,
-                        {|buf|
-                            llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), buf)
-                        });
+        let s = link::mangle_internal_name_by_path_and_seq(
+            lcx.ccx, lcx.module_path, "loglevel");
+        let global = str::as_buf(s, {|buf|
+            llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), buf)
+        });
         llvm::LLVMSetGlobalConstant(global, False);
         llvm::LLVMSetInitializer(global, C_null(T_int()));
         llvm::LLVMSetLinkage(global,
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
         lcx.ccx.module_data.insert(modname, global);
-    }
+        global
+    };
     let log_cx = new_scope_block_ctxt(cx, "log");
     let after_cx = new_sub_block_ctxt(cx, "after");
     let load = Load(cx, global);
@@ -4442,7 +4482,6 @@ fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> result {
     r = spill_if_immediate(log_bcx, sub.val, e_ty);
     log_bcx = r.bcx;
     let llvalptr = r.val;
-
     let llval_i8 = PointerCast(log_bcx, llvalptr, T_ptr(T_i8()));
 
     Call(log_bcx, bcx_ccx(log_bcx).upcalls.log_type,
@@ -4450,22 +4489,21 @@ fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> result {
 
     log_bcx = trans_block_cleanups(log_bcx, log_cx);
     Br(log_bcx, after_cx.llbb);
-    ret rslt(after_cx, C_nil());
+    ret after_cx;
 }
 
-fn trans_check_expr(cx: @block_ctxt, e: @ast::expr, s: str) -> result {
+fn trans_check_expr(cx: @block_ctxt, e: @ast::expr, s: str) -> @block_ctxt {
     let cond_res = trans_expr(cx, e);
     let expr_str = s + " " + expr_to_str(e) + " failed";
     let fail_cx = new_sub_block_ctxt(cx, "fail");
     trans_fail(fail_cx, some::<span>(e.span), expr_str);
     let next_cx = new_sub_block_ctxt(cx, "next");
     CondBr(cond_res.bcx, cond_res.val, next_cx.llbb, fail_cx.llbb);
-    ret rslt(next_cx, C_nil());
+    ret next_cx;
 }
 
-fn trans_fail_expr(cx: @block_ctxt, sp_opt: option::t<span>,
-                   fail_expr: option::t<@ast::expr>) -> result {
-    let bcx = cx;
+fn trans_fail_expr(bcx: @block_ctxt, sp_opt: option::t<span>,
+                   fail_expr: option::t<@ast::expr>) -> @block_ctxt {
     alt fail_expr {
       some(expr) {
         let tcx = bcx_tcx(bcx);
@@ -4474,51 +4512,49 @@ fn trans_fail_expr(cx: @block_ctxt, sp_opt: option::t<span>,
         bcx = expr_res.bcx;
 
         if ty::type_is_str(tcx, e_ty) {
-            let data =
-                tvec::get_dataptr(bcx, expr_res.val,
-                                  type_of_or_i8(bcx,
-                                                ty::mk_mach(tcx,
-                                                            ast::ty_u8)));
+            let data = tvec::get_dataptr(
+                bcx, expr_res.val, type_of_or_i8(
+                    bcx, ty::mk_mach(tcx, ast::ty_u8)));
             ret trans_fail_value(bcx, sp_opt, data);
         } else if bcx.unreachable {
-            ret rslt(bcx, C_nil());
+            ret bcx;
         } else {
-            bcx_ccx(cx).sess.span_bug(expr.span,
-                                      "fail called with unsupported type " +
-                                          ty_to_str(tcx, e_ty));
+            bcx_ccx(bcx).sess.span_bug(
+                expr.span, "fail called with unsupported type " +
+                ty_to_str(tcx, e_ty));
         }
       }
       _ { ret trans_fail(bcx, sp_opt, "explicit failure"); }
     }
 }
 
-fn trans_fail(cx: @block_ctxt, sp_opt: option::t<span>, fail_str: str) ->
-   result {
-    let V_fail_str = C_cstr(bcx_ccx(cx), fail_str);
-    ret trans_fail_value(cx, sp_opt, V_fail_str);
+fn trans_fail(bcx: @block_ctxt, sp_opt: option::t<span>, fail_str: str) ->
+    @block_ctxt {
+    let V_fail_str = C_cstr(bcx_ccx(bcx), fail_str);
+    ret trans_fail_value(bcx, sp_opt, V_fail_str);
 }
 
-fn trans_fail_value(cx: @block_ctxt, sp_opt: option::t<span>,
-                    V_fail_str: ValueRef) -> result {
+fn trans_fail_value(bcx: @block_ctxt, sp_opt: option::t<span>,
+                    V_fail_str: ValueRef) -> @block_ctxt {
     let V_filename;
     let V_line;
     alt sp_opt {
       some(sp) {
-        let loc = bcx_ccx(cx).sess.lookup_pos(sp.lo);
-        V_filename = C_cstr(bcx_ccx(cx), loc.filename);
+        let loc = bcx_ccx(bcx).sess.lookup_pos(sp.lo);
+        V_filename = C_cstr(bcx_ccx(bcx), loc.filename);
         V_line = loc.line as int;
       }
-      none. { V_filename = C_cstr(bcx_ccx(cx), "<runtime>"); V_line = 0; }
+      none. { V_filename = C_cstr(bcx_ccx(bcx), "<runtime>"); V_line = 0; }
     }
-    let V_str = PointerCast(cx, V_fail_str, T_ptr(T_i8()));
-    V_filename = PointerCast(cx, V_filename, T_ptr(T_i8()));
-    let args = [cx.fcx.lltaskptr, V_str, V_filename, C_int(V_line)];
-    let cx = invoke(cx, bcx_ccx(cx).upcalls._fail, args);
-    Unreachable(cx);
-    ret rslt(cx, C_nil());
+    let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
+    V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
+    let args = [bcx.fcx.lltaskptr, V_str, V_filename, C_int(V_line)];
+    let bcx = invoke(bcx, bcx_ccx(bcx).upcalls._fail, args);
+    Unreachable(bcx);
+    ret bcx;
 }
 
-fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
+fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
     let cx = new_scope_block_ctxt(in_cx, "put");
     Br(in_cx, cx.llbb);
     let llcallee = C_nil();
@@ -4556,14 +4592,13 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     let next_cx = new_sub_block_ctxt(in_cx, "next");
     if bcx.unreachable { Unreachable(next_cx); }
     Br(bcx, next_cx.llbb);
-    ret rslt(next_cx, C_nil());
+    ret next_cx;
 }
 
-fn trans_break_cont(sp: span, cx: @block_ctxt, to_end: bool) -> result {
-    let bcx = cx;
+fn trans_break_cont(sp: span, bcx: @block_ctxt, to_end: bool)
+    -> @block_ctxt {
     // Locate closest loop block, outputting cleanup as we go.
-
-    let cleanup_cx = cx;
+    let cleanup_cx = bcx;
     while true {
         bcx = trans_block_cleanups(bcx, cleanup_cx);
         alt copy cleanup_cx.kind {
@@ -4577,62 +4612,42 @@ fn trans_break_cont(sp: span, cx: @block_ctxt, to_end: bool) -> result {
                 }
             }
             Unreachable(bcx);
-            ret rslt(bcx, C_nil());
+            ret bcx;
           }
           _ {
             alt cleanup_cx.parent {
               parent_some(cx) { cleanup_cx = cx; }
               parent_none. {
-                bcx_ccx(cx).sess.span_fatal(sp,
-                                            if to_end {
-                                                "Break"
-                                            } else { "Cont" } +
-                                                " outside a loop");
+                bcx_ccx(bcx).sess.span_fatal
+                    (sp, if to_end { "Break" } else { "Cont" } +
+                     " outside a loop");
               }
             }
           }
         }
     }
     // If we get here without returning, it's a bug
-
-    bcx_ccx(cx).sess.bug("in trans::trans_break_cont()");
+    bcx_ccx(bcx).sess.bug("in trans::trans_break_cont()");
 }
 
-fn trans_break(sp: span, cx: @block_ctxt) -> result {
+fn trans_break(sp: span, cx: @block_ctxt) -> @block_ctxt {
     ret trans_break_cont(sp, cx, true);
 }
 
-fn trans_cont(sp: span, cx: @block_ctxt) -> result {
+fn trans_cont(sp: span, cx: @block_ctxt) -> @block_ctxt {
     ret trans_break_cont(sp, cx, false);
 }
 
-fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
-    let bcx = cx;
+fn trans_ret(bcx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
+    let cleanup_cx = bcx;
     alt e {
       some(x) {
-        let t = ty::expr_ty(bcx_tcx(cx), x);
-        let lv = trans_lval(cx, x);
-        bcx = lv.bcx;
-        if ty::type_is_nil(bcx_tcx(cx), t) {
-            // Don't write nil
-        } else if ast_util::ret_by_ref(cx.fcx.ret_style) {
-            assert lv.is_mem;
-            Store(bcx, lv.val, cx.fcx.llretptr);
+        if ast_util::ret_by_ref(bcx.fcx.ret_style) {
+            let {bcx: cx, val} = trans_expr_by_ref(bcx, x);
+            Store(cx, val, bcx.fcx.llretptr);
+            bcx = cx;
         } else {
-            let is_local = alt x.node {
-              ast::expr_path(p) {
-                alt bcx_tcx(bcx).def_map.get(x.id) {
-                  ast::def_local(_, _) { true }
-                  _ { false }
-                }
-              }
-              _ { false }
-            };
-            if is_local {
-                bcx = move_val(bcx, INIT, cx.fcx.llretptr, lv, t);
-            } else {
-                bcx = move_val_if_temp(bcx, INIT, cx.fcx.llretptr, lv, t);
-            }
+            bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr);
         }
       }
       _ {}
@@ -4640,7 +4655,6 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     // run all cleanups and back out.
 
     let more_cleanups: bool = true;
-    let cleanup_cx = cx;
     while more_cleanups {
         bcx = trans_block_cleanups(bcx, cleanup_cx);
         alt cleanup_cx.parent {
@@ -4650,18 +4664,16 @@ fn trans_ret(cx: @block_ctxt, e: option::t<@ast::expr>) -> result {
     }
     build_return(bcx);
     Unreachable(bcx);
-    ret rslt(bcx, C_nil());
+    ret bcx;
 }
 
 fn build_return(bcx: @block_ctxt) { Br(bcx, bcx_fcx(bcx).llreturn); }
 
 // fn trans_be(cx: &@block_ctxt, e: &@ast::expr) -> result {
 fn trans_be(cx: @block_ctxt, e: @ast::expr) : ast_util::is_call_expr(e) ->
-   result {
-
+   @block_ctxt {
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled
-
     ret trans_ret(cx, some(e));
 }
 
@@ -4999,7 +5011,10 @@ fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
         bcx = trans_stmt(bcx, *s);
     }
     alt b.node.expr {
-      some(e) { bcx = trans_expr_dps(bcx, e, dest); }
+      some(e) {
+        let bt = ty::type_is_bot(bcx_tcx(bcx), ty::expr_ty(bcx_tcx(bcx), e));
+        bcx = trans_expr_dps(bcx, e, bt ? ignore : dest);
+      }
       _ { assert dest == ignore || bcx.unreachable; }
     }
     ret trans_block_cleanups(bcx, find_scope_cx(bcx));
