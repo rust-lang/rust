@@ -204,6 +204,11 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     intptr_t get_ref_count() const { return ref_count; }
 
     rust_chan *get_chan_by_handle(chan_handle *handle);
+
+    // FIXME: These functions only exist to get the tasking system off the
+    // ground. We should never be migrating shared boxes between tasks.
+    const type_desc *release_alloc(void *alloc);
+    void claim_alloc(void *alloc, const type_desc *tydesc);
 };
 
 //

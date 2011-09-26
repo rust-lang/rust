@@ -152,6 +152,8 @@ void task_start_wrapper(spawn_args *a)
         failed = true;
     }
 
+    cc::do_cc(task);
+
     rust_closure_env* env = (rust_closure_env*)a->a3;
     if(env) {
         // free the environment.
@@ -549,6 +551,35 @@ rust_chan *rust_task::get_chan_by_handle(chan_handle *handle) {
         return port->remote_chan;
     }
     return NULL;
+}
+
+// Temporary routine to allow boxes on one task's shared heap to be reparented
+// to another.
+const type_desc *
+rust_task::release_alloc(void *alloc) {
+    lock.lock();
+
+    assert(local_allocs.find(alloc) != local_allocs.end());
+    const type_desc *tydesc = local_allocs[alloc];
+    local_allocs.erase(alloc);
+
+    local_region.release_alloc(alloc);
+
+    lock.unlock();
+    return tydesc;
+}
+
+// Temporary routine to allow boxes from one task's shared heap to be
+// reparented to this one.
+void
+rust_task::claim_alloc(void *alloc, const type_desc *tydesc) {
+    lock.lock();
+
+    assert(local_allocs.find(alloc) == local_allocs.end());
+    local_allocs[alloc] = tydesc;
+    local_region.claim_alloc(alloc);
+
+    lock.unlock();
 }
 
 //

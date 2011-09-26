@@ -456,8 +456,8 @@ migrate_alloc(rust_task *task, void *alloc, rust_task_id tid) {
     if(!alloc) return;
     rust_task *target = task->kernel->get_task_by_id(tid);
     if(target) {
-        task->local_region.release_alloc(alloc);
-        target->local_region.claim_alloc(alloc);
+        const type_desc *tydesc = task->release_alloc(alloc);
+        target->claim_alloc(alloc, tydesc);
         target->deref();
     }
     else {

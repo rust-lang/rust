@@ -178,15 +178,21 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
         shape::arena arena;
         shape::type_param *params =
             shape::type_param::from_tydesc_and_data(tydesc, p, arena);
+
+#if 0
+        shape::print print(task, true, tydesc->shape, params,
+                           tydesc->shape_tables);
+        print.walk();
+
+        shape::log log(task, true, tydesc->shape, params,
+                       tydesc->shape_tables, p + sizeof(uintptr_t),
+                       std::cerr);
+        log.walk();
+#endif
+
         irc irc(task, true, tydesc->shape, params, tydesc->shape_tables,
                 p + sizeof(uintptr_t), ircs);
         irc.walk();
-
-#if 0
-        shape::log log(task, true, tydesc->shape, params,
-                       tydesc->shape_tables, p, std::cerr);
-        log.walk();
-#endif
 
         ++begin;
     }
