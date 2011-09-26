@@ -1,4 +1,3 @@
-// error-pattern: mismatched kinds
 
 resource r(i: @mutable int) {
     *i += 1;
@@ -10,8 +9,6 @@ fn test1() {
     {
         let x = ~r(i);
         let y = ~r(j);
-        // Unique boxes containing resources are lowered to pinned kinds,
-        // which can't be swapped
         x <-> y;
         assert ***x == 200;
         assert ***y == 100;

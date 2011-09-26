@@ -1019,20 +1019,10 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       ty_box(mt) {
         result = ast::kind_shared;
       }
-      // Pointers raise pinned to shared.
-      ty_ptr(tm) {
+      // Pointers and unique containers raise pinned to shared.
+      ty_ptr(tm) | ty_vec(tm) | ty_uniq(tm) {
         let k = type_kind(cx, tm.ty);
         if k == ast::kind_pinned { k = ast::kind_shared; }
-        result = kind::lower_kind(result, k);
-      }
-      // Unique containers pass through their pointee kind.
-      //
-      // FIXME: These rules do not implement the ~ rules given in
-      // the block comment describing the kind system in kind.rs.
-      // This code is wrong; it makes ~resource into ~-kind, not
-      // @-kind as it should be.
-      ty_vec(tm) | ty_uniq(tm) {
-        let k = type_kind(cx, tm.ty);
         result = kind::lower_kind(result, k);
       }
       // Records lower to the lowest of their members.
