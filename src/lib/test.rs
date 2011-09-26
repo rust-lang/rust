@@ -31,9 +31,9 @@ native "rust" mod rustrt {
 
 
 // The name of a test. By convention this follows the rules for rust
-// paths, i.e it should be a series of identifiers seperated by double
+// paths; i.e. it should be a series of identifiers seperated by double
 // colons. This way if some test runner wants to arrange the tests
-// heirarchically it may.
+// hierarchically it may.
 type test_name = str;
 
 // A function that runs a test. If the function returns successfully,
@@ -90,7 +90,7 @@ tag test_result { tr_ok; tr_failed; tr_ignored; }
 type joinable = (task, comm::port<task::task_notification>);
 
 // To get isolation and concurrency tests have to be run in their own tasks.
-// In cases where test functions and closures it is not ok to just dump them
+// In cases where test functions are closures it is not ok to just dump them
 // into a task and run them, so this transformation gives the caller a chance
 // to create the test task.
 type test_to_task = fn(fn()) -> joinable;
