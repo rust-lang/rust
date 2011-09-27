@@ -177,6 +177,7 @@ fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
       ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
       ast::expr_copy(a) {
         need_expr_kind(tcx, a, ast::kind_shared, "'copy' operand");
+        check_copy(tcx, a);
       }
       ast::expr_ret(option::some(a)) {
         need_expr_kind(tcx, a, ast::kind_shared, "'ret' operand");
