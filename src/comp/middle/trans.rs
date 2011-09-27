@@ -2208,7 +2208,7 @@ fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
             let llety = T_ptr(type_of(ccx, e_sp, e_ty));
             body = PointerCast(bcx, body, llety);
         }
-        bcx = trans_expr_save_in(bcx, e, body);
+        bcx = trans_expr_save_in(bcx, e, body, INIT);
         revoke_clean(bcx, box);
         ret store_in_dest(bcx, box, dest);
       }
@@ -4033,7 +4033,7 @@ fn trans_tup(bcx: @block_ctxt, elts: [@ast::expr], id: ast::node_id,
       }
       save_in(pos) { (pos, none) }
       overwrite(pos, _) {
-        let scratch = alloca(bcx, val_ty(pos));
+        let scratch = alloca(bcx, llvm::LLVMGetElementType(val_ty(pos)));
         (scratch, some(pos))
       }
     };
@@ -4041,7 +4041,7 @@ fn trans_tup(bcx: @block_ctxt, elts: [@ast::expr], id: ast::node_id,
     for e in elts {
         let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
         let e_ty = ty::expr_ty(bcx_tcx(bcx), e);
-        bcx = trans_expr_save_in(dst.bcx, e, dst.val);
+        bcx = trans_expr_save_in(dst.bcx, e, dst.val, INIT);
         add_clean_temp_mem(bcx, dst.val, e_ty);
         temp_cleanups += [dst.val];
         i += 1;
@@ -4072,7 +4072,7 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
       // The expressions that populate the fields might still use the old
       // record, so we build the new on in a scratch area
       overwrite(pos, _) {
-        let scratch = alloca(bcx, val_ty(pos));
+        let scratch = alloca(bcx, llvm::LLVMGetElementType(val_ty(pos)));
         (scratch, some(pos))
       }
     };
@@ -4096,7 +4096,7 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
         fn test(n: str, f: ast::field) -> bool { str::eq(f.node.ident, n) }
         alt vec::find(bind test(tf.ident, _), fields) {
           some(f) {
-            bcx = trans_expr_save_in(bcx, f.node.expr, dst.val);
+            bcx = trans_expr_save_in(bcx, f.node.expr, dst.val, INIT);
           }
           none. {
             let base = GEP_tup_like_1(bcx, t, base_val, [0, i]);
@@ -4198,20 +4198,17 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
     }
 }
 
-// FIXME add support for INIT/DROP_EXISTING
-fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
-    -> @block_ctxt {
+fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef,
+                      kind: copy_action) -> @block_ctxt {
     let tcx = bcx_tcx(bcx), t = ty::expr_ty(tcx, e);
-    if ty::type_is_bot(tcx, t) || ty::type_is_nil(tcx, t) {
-        ret trans_expr_dps(bcx, e, ignore);
-    } else if type_is_immediate(bcx_ccx(bcx), t) {
-        let cell = empty_dest_cell();
-        bcx = trans_expr_dps(bcx, e, by_val(cell));
-        Store(bcx, *cell, dest);
-        ret bcx;
+    let dst = if ty::type_is_bot(tcx, t) || ty::type_is_nil(tcx, t) {
+        ignore
+    } else if kind == INIT {
+        save_in(dest)
     } else {
-        ret trans_expr_dps(bcx, e, save_in(dest));
-    }
+        overwrite(dest, t)
+    };
+    ret trans_expr_dps(bcx, e, dst);
 }
 
 fn trans_expr_by_ref(bcx: @block_ctxt, e: @ast::expr) -> result {
@@ -4338,13 +4335,9 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
       }
       ast::expr_assign(dst, src) {
         assert dest == ignore;
-        let lhs_res = trans_lval(bcx, dst);
-        assert (lhs_res.is_mem);
-        let rhs = trans_lval(lhs_res.bcx, src);
-        let t = ty::expr_ty(bcx_tcx(bcx), src);
-        // FIXME: calculate copy init-ness in typestate.
-        ret move_val_if_temp(rhs.bcx, DROP_EXISTING, lhs_res.val,
-                             rhs, t);
+        let {bcx, val: lhs_addr, is_mem} = trans_lval(bcx, dst);
+        assert is_mem;
+        ret trans_expr_save_in(bcx, src, lhs_addr, DROP_EXISTING);
       }
       ast::expr_swap(dst, src) {
         assert dest == ignore;
@@ -4650,7 +4643,7 @@ fn trans_ret(bcx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
             Store(cx, val, bcx.fcx.llretptr);
             bcx = cx;
         } else {
-            bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr);
+            bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr, INIT);
         }
       }
       _ {}
@@ -4694,13 +4687,9 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
       some(init) {
         alt init.op {
           ast::init_assign. {
-            // Use the type of the RHS because if it's _|_, the LHS
-            // type might be something else, but we don't want to copy
-            // the value.
-            ty = node_id_type(bcx_ccx(bcx), init.expr.id);
-            let sub = trans_lval(bcx, init.expr);
-            bcx = move_val_if_temp(sub.bcx, INIT, llptr, sub, ty);
+            bcx = trans_expr_save_in(bcx, init.expr, llptr, INIT);
           }
+          // FIXME[DPS] do a save_in when expr isn't lval
           ast::init_move. {
             let sub = trans_lval(bcx, init.expr);
             bcx = move_val(sub.bcx, INIT, llptr, sub, ty);
