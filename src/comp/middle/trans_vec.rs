@@ -141,7 +141,7 @@ fn trans_str(bcx: @block_ctxt, s: str) -> result {
 }
 
 fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
-                rhsptr: ValueRef) -> result {
+                rhsptr: ValueRef) -> @block_ctxt {
     // Cast to opaque interior vector types if necessary.
     let unit_ty = ty::sequence_element_type(bcx_tcx(cx), vec_ty);
     let dynamic = ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty);
@@ -190,7 +190,7 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
                                write_ptr_ptr);
                          ret bcx;
                      });
-    ret rslt(bcx, C_nil());
+    ret bcx;
 }
 
 fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,

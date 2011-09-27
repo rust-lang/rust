@@ -2298,6 +2298,43 @@ fn trans_eager_binop(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
     }
 }
 
+fn trans_assign_op(bcx: @block_ctxt, op: ast::binop, dst: @ast::expr,
+                   src: @ast::expr) -> @block_ctxt {
+    let tcx = bcx_tcx(bcx);
+    let t = ty::expr_ty(tcx, src);
+    let lhs_res = trans_lval(bcx, dst);
+    assert (lhs_res.is_mem);
+    // Special case for `+= [x]`
+    alt ty::struct(tcx, t) {
+      ty::ty_vec(_) {
+        alt src.node {
+          ast::expr_vec(args, _) {
+            ret tvec::trans_append_literal(lhs_res.bcx,
+                                           lhs_res.val, t, args);
+          }
+          _ { }
+        }
+      }
+      _ { }
+    }
+    let rhs_res = trans_expr(lhs_res.bcx, src);
+    if ty::type_is_sequence(tcx, t) {
+        alt op {
+          ast::add. {
+            ret tvec::trans_append(rhs_res.bcx, t, lhs_res.val,
+                                   rhs_res.val);
+          }
+          _ { }
+        }
+    }
+    let lhs_val = load_if_immediate(rhs_res.bcx, lhs_res.val, t);
+    let v = trans_eager_binop(rhs_res.bcx, op, lhs_val, t, rhs_res.val, t);
+    // FIXME: calculate copy init-ness in typestate.
+    // This is always a temporary, so can always be safely moved
+    ret move_val(v.bcx, DROP_EXISTING, lhs_res.val,
+                 lval_val(v.bcx, v.val), t);
+}
+
 fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
     let v1: ValueRef = v;
     let t1: ty::t = t;
@@ -2540,7 +2577,7 @@ fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
 }
 
 fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
-             body: ast::blk) -> result {
+             body: ast::blk) -> @block_ctxt {
     fn inner(bcx: @block_ctxt, local: @ast::local, curr: ValueRef, t: ty::t,
              body: ast::blk, outer_next_cx: @block_ctxt) -> @block_ctxt {
         let next_cx = new_sub_block_ctxt(bcx, "next");
@@ -2567,7 +2604,7 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
         tvec::iter_vec_raw(bcx, seq, seq_ty, fill,
                            bind inner(_, local, _, _, body, next_cx));
     Br(bcx, next_cx.llbb);
-    ret rslt(next_cx, C_nil());
+    ret next_cx;
 }
 
 
@@ -2789,7 +2826,7 @@ fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
 }
 
 fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
-                  body: ast::blk) -> result {
+                  body: ast::blk) -> @block_ctxt {
     /*
      * The translation is a little .. complex here. Code like:
      *
@@ -2865,12 +2902,13 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
         let pair =
             create_real_fn_pair(cx, iter_body_llty, lliterbody, llenv.ptr);
         let r = trans_call(cx, f, some(pair), args, seq.id);
-        ret rslt(r.res.bcx, C_nil());
+        ret r.res.bcx;
       }
     }
 }
 
-fn trans_while(cx: @block_ctxt, cond: @ast::expr, body: ast::blk) -> result {
+fn trans_while(cx: @block_ctxt, cond: @ast::expr, body: ast::blk)
+    -> @block_ctxt {
     let next_cx = new_sub_block_ctxt(cx, "while next");
     let cond_cx =
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
@@ -2882,11 +2920,11 @@ fn trans_while(cx: @block_ctxt, cond: @ast::expr, body: ast::blk) -> result {
     let cond_bcx = trans_block_cleanups(cond_res.bcx, cond_cx);
     CondBr(cond_bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
     Br(cx, cond_cx.llbb);
-    ret rslt(next_cx, C_nil());
+    ret next_cx;
 }
 
 fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
-   result {
+    @block_ctxt {
     let next_cx = new_sub_block_ctxt(cx, "next");
     let body_cx =
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
@@ -2895,7 +2933,7 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
     let cond_res = trans_expr(body_res.bcx, cond);
     CondBr(cond_res.bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
     Br(cx, body_cx.llbb);
-    ret rslt(next_cx, body_res.val);
+    ret next_cx;
 }
 
 type generic_info =
@@ -4093,12 +4131,6 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
     alt e.node {
       ast::expr_lit(lit) { ret trans_lit(cx, *lit); }
       ast::expr_binary(op, x, y) { ret trans_binary(cx, op, x, y); }
-      ast::expr_for(decl, seq, body) { ret trans_for(cx, decl, seq, body); }
-      ast::expr_for_each(decl, seq, body) {
-        ret trans_for_each(cx, decl, seq, body);
-      }
-      ast::expr_while(cond, body) { ret trans_while(cx, cond, body); }
-      ast::expr_do_while(body, cond) { ret trans_do_while(cx, body, cond); }
       ast::expr_fn(f) {
         let ccx = bcx_ccx(cx);
         let fty = node_id_type(ccx, e.id);
@@ -4150,77 +4182,6 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
         let bcx =
             move_val(rhs_res.bcx, DROP_EXISTING, lhs_res.val, rhs_res,
                      t);
-        ret rslt(bcx, C_nil());
-      }
-      ast::expr_assign(dst, src) {
-        let lhs_res = trans_lval(cx, dst);
-        assert (lhs_res.is_mem);
-        // FIXME Fill in lhs_res.bcx.sp
-        let rhs = trans_lval(lhs_res.bcx, src);
-        let t = ty::expr_ty(bcx_tcx(cx), src);
-        // FIXME: calculate copy init-ness in typestate.
-        let bcx =
-            move_val_if_temp(rhs.bcx, DROP_EXISTING, lhs_res.val, rhs,
-                             t);
-        ret rslt(bcx, C_nil());
-      }
-      ast::expr_swap(dst, src) {
-        let lhs_res = trans_lval(cx, dst);
-        assert (lhs_res.is_mem);
-        // FIXME Fill in lhs_res.bcx.sp
-
-        let rhs_res = trans_lval(lhs_res.bcx, src);
-        let t = ty::expr_ty(bcx_tcx(cx), src);
-        let {bcx: bcx, val: tmp_alloc} = alloc_ty(rhs_res.bcx, t);
-        // Swap through a temporary.
-
-        bcx = move_val(bcx, INIT, tmp_alloc, lhs_res, t);
-        bcx = move_val(bcx, INIT, lhs_res.val, rhs_res, t);
-        bcx =
-            move_val(bcx, INIT, rhs_res.val, lval_mem(bcx, tmp_alloc), t);
-        ret rslt(bcx, C_nil());
-      }
-      ast::expr_assign_op(op, dst, src) {
-        let tcx = bcx_tcx(cx);
-        let t = ty::expr_ty(tcx, src);
-        let lhs_res = trans_lval(cx, dst);
-        assert (lhs_res.is_mem);
-
-        // Special case for `+= [x]`
-        alt ty::struct(tcx, t) {
-          ty::ty_vec(_) {
-            alt src.node {
-              ast::expr_vec(args, _) {
-                let bcx =
-                    tvec::trans_append_literal(lhs_res.bcx,
-                                               lhs_res.val, t, args);
-                ret rslt(bcx, C_nil());
-              }
-              _ { }
-            }
-          }
-          _ { }
-        }
-
-        // FIXME Fill in lhs_res.bcx.sp
-        let rhs_res = trans_expr(lhs_res.bcx, src);
-        if ty::type_is_sequence(tcx, t) {
-            alt op {
-              ast::add. {
-                ret tvec::trans_append(rhs_res.bcx, t, lhs_res.val,
-                                       rhs_res.val);
-              }
-              _ { }
-            }
-        }
-        let lhs_val = load_if_immediate(rhs_res.bcx, lhs_res.val, t);
-        let v =
-            trans_eager_binop(rhs_res.bcx, op, lhs_val, t, rhs_res.val, t);
-        // FIXME: calculate copy init-ness in typestate.
-        // This is always a temporary, so can always be safely moved
-        let bcx =
-            move_val(v.bcx, DROP_EXISTING, lhs_res.val,
-                     lval_val(v.bcx, v.val), t);
         ret rslt(bcx, C_nil());
       }
       ast::expr_bind(f, args) { ret trans_bind(cx, f, args, e.id); }
@@ -4359,6 +4320,48 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         CondBr(bcx, cond, then_cx.llbb, else_cx.llbb);
         ret join_branches(bcx, [rslt(check_cx, C_nil()),
                                 rslt(else_cx, C_nil())]);
+      }
+      ast::expr_for(decl, seq, body) {
+        assert dest == ignore;
+        ret trans_for(bcx, decl, seq, body);
+      }
+      ast::expr_for_each(decl, seq, body) {
+        assert dest == ignore;
+        ret trans_for_each(bcx, decl, seq, body);
+      }
+      ast::expr_while(cond, body) {
+        assert dest == ignore;
+        ret trans_while(bcx, cond, body);
+      }
+      ast::expr_do_while(body, cond) {
+        assert dest == ignore;
+        ret trans_do_while(bcx, body, cond);
+      }
+      ast::expr_assign(dst, src) {
+        assert dest == ignore;
+        let lhs_res = trans_lval(bcx, dst);
+        assert (lhs_res.is_mem);
+        let rhs = trans_lval(lhs_res.bcx, src);
+        let t = ty::expr_ty(bcx_tcx(bcx), src);
+        // FIXME: calculate copy init-ness in typestate.
+        ret move_val_if_temp(rhs.bcx, DROP_EXISTING, lhs_res.val,
+                             rhs, t);
+      }
+      ast::expr_swap(dst, src) {
+        assert dest == ignore;
+        let lhs_res = trans_lval(bcx, dst);
+        assert (lhs_res.is_mem);
+        let rhs_res = trans_lval(lhs_res.bcx, src);
+        let t = ty::expr_ty(bcx_tcx(bcx), src);
+        let {bcx: bcx, val: tmp_alloc} = alloc_ty(rhs_res.bcx, t);
+        // Swap through a temporary.
+        bcx = move_val(bcx, INIT, tmp_alloc, lhs_res, t);
+        bcx = move_val(bcx, INIT, lhs_res.val, rhs_res, t);
+        ret move_val(bcx, INIT, rhs_res.val, lval_mem(bcx, tmp_alloc), t);
+      }
+      ast::expr_assign_op(op, dst, src) {
+        assert dest == ignore;
+        ret trans_assign_op(bcx, op, dst, src);
       }
 
       ast::expr_mac(_) { ret bcx_ccx(bcx).sess.bug("unexpanded macro"); }
