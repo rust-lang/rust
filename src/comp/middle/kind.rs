@@ -84,7 +84,7 @@
 *
 */
 
-import syntax::{ast, ast_util, visit};
+import syntax::{ast, ast_util, visit, codemap};
 import std::{vec, option, str};
 import ast::{kind, kind_unique, kind_shared, kind_pinned};
 
@@ -122,12 +122,18 @@ fn need_expr_kind(tcx: ty::ctxt, e: @ast::expr, k_need: ast::kind,
              kind_to_str(k_need), kind_to_str(tk.kind),
              util::ppaux::ty_to_str(tcx, tk.ty)];
 
-    if !kind_lteq(k_need, tk.kind) {
+    demand_kind(tcx, e.span, tk.ty, k_need, descr);
+}
+
+fn demand_kind(tcx: ty::ctxt, sp: codemap::span, t: ty::t,
+               k_need: ast::kind, descr: str) {
+    let k = ty::type_kind(tcx, t);
+    if !kind_lteq(k_need, k) {
         let s =
             #fmt["mismatched kinds for %s: needed %s type, got %s type %s",
-                 descr, kind_to_str(k_need), kind_to_str(tk.kind),
-                 util::ppaux::ty_to_str(tcx, tk.ty)];
-        tcx.sess.span_err(e.span, s);
+                 descr, kind_to_str(k_need), kind_to_str(k),
+                 util::ppaux::ty_to_str(tcx, t)];
+        tcx.sess.span_err(sp, s);
     }
 }
 
@@ -136,16 +142,30 @@ fn need_shared_lhs_rhs(tcx: ty::ctxt, a: @ast::expr, b: @ast::expr, op: str) {
     need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
 }
 
+// Additional checks for copyability that require a little more nuance
+fn check_copy(tcx: ty::ctxt, e: @ast::expr) {
+    alt ty::struct(tcx, ty::expr_ty(tcx, e)) {
+      // Unique boxes most not contain pinned kinds
+      ty::ty_uniq(mt) {
+        demand_kind(tcx, e.span, mt.ty, ast::kind_shared,
+                    "unique box interior");
+      }
+      _ { }
+    }
+}
+
 fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
     alt e.node {
 
-      // FIXME: These rules do not implement the copy type-constructor
-      // discrimination described by the block comment at the top of
-      // this file. This code is wrong; it lets you copy anything
-      // shared-kind.
+      // FIXME: These rules do not fully implement the copy type-constructor
+      // discrimination described by the block comment at the top of this
+      // file. This code is wrong; it lets you copy anything shared-kind.
 
       ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
-      ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
+      ast::expr_assign(a, b) {
+        need_shared_lhs_rhs(tcx, a, b, "=");
+        check_copy(tcx, b);
+      }
       ast::expr_assign_op(_, a, b) { need_shared_lhs_rhs(tcx, a, b, "op="); }
       ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
       ast::expr_copy(a) {
@@ -174,15 +194,8 @@ fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
             assert (vec::len(item_tk.kinds) == vec::len(tpt.params));
             for k_need: ast::kind in item_tk.kinds {
                 let t = tpt.params[i];
-                let k = ty::type_kind(tcx, t);
-                if !kind_lteq(k_need, k) {
-                    let s =
-                        #fmt["mismatched kinds for typaram %d: \
-                                  needed %s type, got %s type %s",
-                             i, kind_to_str(k_need), kind_to_str(k),
-                             util::ppaux::ty_to_str(tcx, t)];
-                    tcx.sess.span_err(e.span, s);
-                }
+                demand_kind(tcx, e.span, t, k_need,
+                            #fmt("typaram %d", i));
                 i += 1;
             }
         }
