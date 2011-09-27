@@ -4036,7 +4036,12 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
       none. { C_nil() }
     };
 
-    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
+    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) {
+        ty::ty_rec(f) { f }
+        ty::ty_bot. {
+          bcx_ccx(bcx).sess.bug("https://github.com/graydon/rust/issues/924")
+        }
+    };
     let temp_cleanups = [], i = 0;
     for tf in ty_fields {
         let fdest = alt dest {
