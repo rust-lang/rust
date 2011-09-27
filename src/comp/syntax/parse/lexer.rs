@@ -490,8 +490,15 @@ fn next_token_inner(rdr: reader) -> token::token {
         ret token::LIT_CHAR(c2);
       }
       '"' {
+        let n = rdr.get_chpos();
         rdr.bump();
         while rdr.curr() != '"' {
+            if rdr.is_eof() {
+                rdr.err(#fmt["unterminated double quote string: %s",
+                             rdr.get_str_from(n)]);
+                fail;
+            }
+
             let ch = rdr.curr();
             rdr.bump();
             alt ch {
