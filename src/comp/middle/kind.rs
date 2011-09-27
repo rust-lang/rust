@@ -150,6 +150,10 @@ fn check_copy(tcx: ty::ctxt, e: @ast::expr) {
         demand_kind(tcx, e.span, mt.ty, ast::kind_shared,
                     "unique box interior");
       }
+      ty::ty_vec(mt) {
+        demand_kind(tcx, e.span, mt.ty, ast::kind_shared,
+                    "vector interior");
+      }
       _ { }
     }
 }
