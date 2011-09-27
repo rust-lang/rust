@@ -444,11 +444,11 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             }
           }
           lit(l) {
-            kind =
-                alt l.node {
-                  ast::lit_str(_) { compare }
-                  _ { test_val = Load(bcx, val); switch }
-                };
+            kind = alt l.node {
+              ast::lit_str(_) { compare }
+              ast::lit_nil. { test_val = Load(bcx, val); compare }
+              _ { test_val = Load(bcx, val); switch }
+            };
           }
         }
     }
@@ -486,7 +486,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             let t = ty::node_id_to_type(ccx.tcx, pat_id);
             let eq =
                 trans::trans_compare(bcx, ast::eq, test_val, t, r.val, t);
-            let cleanup_cx = trans::trans_block_cleanups(bcx, compare_cx);
+            let cleanup_cx = trans::trans_block_cleanups(eq.bcx, compare_cx);
             bcx = new_sub_block_ctxt(bcx, "compare_next");
             CondBr(cleanup_cx, eq.val, opt_cx.llbb, bcx.llbb);
           }
