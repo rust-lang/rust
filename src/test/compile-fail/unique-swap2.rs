@@ -1,3 +1,4 @@
+// error-pattern:mismatched kinds
 
 resource r(i: @mutable int) {
     *i += 1;
@@ -9,6 +10,8 @@ fn test1() {
     {
         let x <- ~r(i);
         let y <- ~r(j);
+        // This is currently not allowed because ~resource is pinned.
+        // Note that ~resource is supposed to be shared.
         x <-> y;
         assert ***x == 200;
         assert ***y == 100;

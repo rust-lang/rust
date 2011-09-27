@@ -1,5 +1,4 @@
-// xfail-test
-// expected error: mismatched kinds
+// error-pattern: mismatched kinds
 
 resource r(i: @mutable int) {
     *i = *i + 1;

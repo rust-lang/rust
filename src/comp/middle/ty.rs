@@ -1022,7 +1022,14 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // Pointers and unique containers raise pinned to shared.
       ty_ptr(tm) | ty_vec(tm) | ty_uniq(tm) {
         let k = type_kind(cx, tm.ty);
-        if k == ast::kind_pinned { k = ast::kind_shared; }
+
+        // FIXME (984) Doing this implies a lot of subtle rules about what can
+        // and can't be copied, so I'm going to start by not raising unique of
+        // pinned to shared, make sure that's relatively safe, then we can try
+        // to make this work.
+
+        // if k == ast::kind_pinned { k = ast::kind_shared; }
+
         result = kind::lower_kind(result, k);
       }
       // Records lower to the lowest of their members.

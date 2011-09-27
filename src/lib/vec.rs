@@ -345,18 +345,18 @@ mod unsafe {
         ret rustrt::vec_from_buf_shared(ptr, elts);
     }
 
-    fn set_len<T>(&v: [T], new_len: uint) {
+    fn set_len<@T>(&v: [T], new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
-    fn to_ptr<T>(v: [T]) -> *T {
+    fn to_ptr<@T>(v: [T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
 }
 
-fn to_ptr<T>(v: [T]) -> *T { ret unsafe::to_ptr(v); }
+fn to_ptr<@T>(v: [T]) -> *T { ret unsafe::to_ptr(v); }
 
 // Local Variables:
 // mode: rust;

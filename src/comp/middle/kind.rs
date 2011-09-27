@@ -142,22 +142,6 @@ fn need_shared_lhs_rhs(tcx: ty::ctxt, a: @ast::expr, b: @ast::expr, op: str) {
     need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
 }
 
-// Additional checks for copyability that require a little more nuance
-fn check_copy(tcx: ty::ctxt, e: @ast::expr) {
-    alt ty::struct(tcx, ty::expr_ty(tcx, e)) {
-      // Unique boxes most not contain pinned kinds
-      ty::ty_uniq(mt) {
-        demand_kind(tcx, e.span, mt.ty, ast::kind_shared,
-                    "unique box interior");
-      }
-      ty::ty_vec(mt) {
-        demand_kind(tcx, e.span, mt.ty, ast::kind_shared,
-                    "vector interior");
-      }
-      _ { }
-    }
-}
-
 fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
     alt e.node {
 
@@ -168,16 +152,13 @@ fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
       ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
       ast::expr_assign(a, b) {
         need_shared_lhs_rhs(tcx, a, b, "=");
-        check_copy(tcx, b);
       }
       ast::expr_assign_op(_, a, b) {
         need_shared_lhs_rhs(tcx, a, b, "op=");
-        check_copy(tcx, b);
       }
       ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
       ast::expr_copy(a) {
         need_expr_kind(tcx, a, ast::kind_shared, "'copy' operand");
-        check_copy(tcx, a);
       }
       ast::expr_ret(option::some(a)) {
         need_expr_kind(tcx, a, ast::kind_shared, "'ret' operand");
@@ -221,9 +202,11 @@ fn check_stmt(tcx: ty::ctxt, stmt: @ast::stmt) {
                 need_expr_kind(tcx, expr,
                                ast::kind_shared,
                                "local initializer");
-                check_copy(tcx, expr);
               }
-              _ { /* fall through */ }
+              option::some({op: ast::init_move., expr}) {
+                // FIXME: Same as above
+              }
+              option::none. { /* fall through */ }
             }
         }
       }

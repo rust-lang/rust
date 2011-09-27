@@ -1,7 +1,4 @@
-// error-pattern:Copying a non-copyable type
-
-// This is still not properly checked
-// xfail-test
+// error-pattern:mismatched kinds
 
 resource foo(i: int) { }
 
