@@ -419,16 +419,9 @@ sweep(rust_task *task, const std::set<void *> &marked) {
     while (begin != end) {
         void *alloc = begin->first;
         if (marked.find(alloc) == marked.end()) {
-            const type_desc *tydesc = begin->second;
-
             //DPRINT("object is part of a cycle: %p\n", alloc);
 
-            // Run the destructor.
-            // TODO: What if it fails?
-            if (tydesc->drop_glue) {
-                tydesc->drop_glue(NULL, task, (void *)tydesc,
-                                  tydesc->first_param, alloc);
-            }
+            // FIXME: Run the destructor, *if* it's a resource.
 
             task->free(alloc);
         }
