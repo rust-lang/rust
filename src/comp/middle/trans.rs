@@ -2158,10 +2158,7 @@ fn trans_lit(cx: @block_ctxt, lit: ast::lit, dest: dest) -> @block_ctxt {
     alt lit.node {
       ast::lit_str(s) { ret tvec::trans_str(cx, s, dest); }
       _ {
-        let cell = alt dest { by_val(c) { c }
-                             _ { bcx_ccx(cx).sess.span_note(lit.span, "here"); fail; }};
-        *cell = trans_crate_lit(bcx_ccx(cx), lit);
-        ret cx;
+        ret store_in_dest(cx, trans_crate_lit(bcx_ccx(cx), lit), dest);
       }
     }
 }
@@ -2253,8 +2250,9 @@ fn trans_compare(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
 // Important to get types for both lhs and rhs, because one might be _|_
 // and the other not.
 fn trans_eager_binop(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
-                     lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t) -> result {
-
+                     lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t, dest: dest)
+    -> @block_ctxt {
+    if dest == ignore { ret cx; }
     let is_float = false;
     let intype = lhs_t;
     if ty::type_is_bot(bcx_tcx(cx), intype) { intype = rhs_t; }
@@ -2263,45 +2261,47 @@ fn trans_eager_binop(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
       ty::ty_float. { is_float = true; }
       _ { is_float = false; }
     }
-    alt op {
+    if op == ast::add && ty::type_is_sequence(bcx_tcx(cx), intype) {
+        ret tvec::trans_add(cx, intype, lhs, rhs, dest);
+    }
+    let val = alt op {
       ast::add. {
-        if ty::type_is_sequence(bcx_tcx(cx), intype) {
-            ret tvec::trans_add(cx, intype, lhs, rhs);
-        }
-        if is_float {
-            ret rslt(cx, FAdd(cx, lhs, rhs));
-        } else { ret rslt(cx, Add(cx, lhs, rhs)); }
+        if is_float { FAdd(cx, lhs, rhs) }
+        else { Add(cx, lhs, rhs) }
       }
       ast::sub. {
-        if is_float {
-            ret rslt(cx, FSub(cx, lhs, rhs));
-        } else { ret rslt(cx, Sub(cx, lhs, rhs)); }
+        if is_float { FSub(cx, lhs, rhs) }
+        else { Sub(cx, lhs, rhs) }
       }
       ast::mul. {
-        if is_float {
-            ret rslt(cx, FMul(cx, lhs, rhs));
-        } else { ret rslt(cx, Mul(cx, lhs, rhs)); }
+        if is_float { FMul(cx, lhs, rhs) }
+        else { Mul(cx, lhs, rhs) }
       }
       ast::div. {
-        if is_float { ret rslt(cx, FDiv(cx, lhs, rhs)); }
-        if ty::type_is_signed(bcx_tcx(cx), intype) {
-            ret rslt(cx, SDiv(cx, lhs, rhs));
-        } else { ret rslt(cx, UDiv(cx, lhs, rhs)); }
+        if is_float { FDiv(cx, lhs, rhs) }
+        else if ty::type_is_signed(bcx_tcx(cx), intype) {
+            SDiv(cx, lhs, rhs)
+        } else { UDiv(cx, lhs, rhs) }
       }
       ast::rem. {
-        if is_float { ret rslt(cx, FRem(cx, lhs, rhs)); }
-        if ty::type_is_signed(bcx_tcx(cx), intype) {
-            ret rslt(cx, SRem(cx, lhs, rhs));
-        } else { ret rslt(cx, URem(cx, lhs, rhs)); }
+        if is_float { FRem(cx, lhs, rhs) }
+        else if ty::type_is_signed(bcx_tcx(cx), intype) {
+            SRem(cx, lhs, rhs)
+        } else { URem(cx, lhs, rhs) }
       }
-      ast::bitor. { ret rslt(cx, Or(cx, lhs, rhs)); }
-      ast::bitand. { ret rslt(cx, And(cx, lhs, rhs)); }
-      ast::bitxor. { ret rslt(cx, Xor(cx, lhs, rhs)); }
-      ast::lsl. { ret rslt(cx, Shl(cx, lhs, rhs)); }
-      ast::lsr. { ret rslt(cx, LShr(cx, lhs, rhs)); }
-      ast::asr. { ret rslt(cx, AShr(cx, lhs, rhs)); }
-      _ { ret trans_compare(cx, op, lhs, lhs_t, rhs, rhs_t); }
-    }
+      ast::bitor. { Or(cx, lhs, rhs) }
+      ast::bitand. { And(cx, lhs, rhs) }
+      ast::bitxor. { Xor(cx, lhs, rhs) }
+      ast::lsl. { Shl(cx, lhs, rhs) }
+      ast::lsr. { LShr(cx, lhs, rhs) }
+      ast::asr. { AShr(cx, lhs, rhs) }
+      _ {
+        let cmpr = trans_compare(cx, op, lhs, lhs_t, rhs, rhs_t);
+        cx = cmpr.bcx;
+        cmpr.val
+      }
+    };
+    ret store_in_dest(cx, val, dest);
 }
 
 fn trans_assign_op(bcx: @block_ctxt, op: ast::binop, dst: @ast::expr,
@@ -2334,11 +2334,8 @@ fn trans_assign_op(bcx: @block_ctxt, op: ast::binop, dst: @ast::expr,
         }
     }
     let lhs_val = load_if_immediate(rhs_res.bcx, lhs_res.val, t);
-    let v = trans_eager_binop(rhs_res.bcx, op, lhs_val, t, rhs_res.val, t);
-    // FIXME: calculate copy init-ness in typestate.
-    // This is always a temporary, so can always be safely moved
-    ret move_val(v.bcx, DROP_EXISTING, lhs_res.val,
-                 lval_val(v.bcx, v.val), t);
+    ret trans_eager_binop(rhs_res.bcx, op, lhs_val, t, rhs_res.val, t,
+                          overwrite(lhs_res.val, t));
 }
 
 fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
@@ -2390,82 +2387,53 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
     ret {bcx: cx, val: v1, ty: t1};
 }
 
-fn trans_binary(cx: @block_ctxt, op: ast::binop, a: @ast::expr, b: @ast::expr)
-   -> result {
+fn trans_lazy_binop(bcx: @block_ctxt, op: ast::binop, a: @ast::expr,
+                    b: @ast::expr, dest: dest) -> @block_ctxt {
+    let is_and = alt op { ast::and. { true } ast::or. { false } };
+    let lhs_res = trans_expr(bcx, a);
+    if lhs_res.bcx.unreachable { ret lhs_res.bcx; }
+    let rhs_cx = new_scope_block_ctxt(lhs_res.bcx, "rhs");
+    let rhs_res = trans_expr(rhs_cx, b);
 
+    let lhs_past_cx = new_scope_block_ctxt(lhs_res.bcx, "lhs");
+    // The following line ensures that any cleanups for rhs
+    // are done within the block for rhs. This is necessary
+    // because and/or are lazy. So the rhs may never execute,
+    // and the cleanups can't be pushed into later code.
+    let rhs_bcx = trans_block_cleanups(rhs_res.bcx, rhs_cx);
+    if is_and {
+        CondBr(lhs_res.bcx, lhs_res.val, rhs_cx.llbb, lhs_past_cx.llbb);
+    } else {
+        CondBr(lhs_res.bcx, lhs_res.val, lhs_past_cx.llbb, rhs_cx.llbb);
+    }
+
+    let join_cx = new_sub_block_ctxt(bcx, "join");
+    Br(lhs_past_cx, join_cx.llbb);
+    if rhs_bcx.unreachable {
+        ret store_in_dest(join_cx, C_bool(!is_and), dest);
+    }
+    Br(rhs_bcx, join_cx.llbb);
+    let phi = Phi(join_cx, T_bool(), [C_bool(!is_and), rhs_res.val],
+                  [lhs_past_cx.llbb, rhs_bcx.llbb]);
+    ret store_in_dest(join_cx, phi, dest);
+}
+
+fn trans_binary(cx: @block_ctxt, op: ast::binop, a: @ast::expr, b: @ast::expr,
+                dest: dest) -> @block_ctxt {
     // First couple cases are lazy:
     alt op {
-      ast::and. {
-        // Lazy-eval and
-        let lhs_res = trans_expr(cx, a);
-        let rhs_cx = new_scope_block_ctxt(lhs_res.bcx, "rhs");
-        let rhs_res = trans_expr(rhs_cx, b);
-
-        let lhs_false_cx = new_scope_block_ctxt(lhs_res.bcx, "lhs false");
-        let lhs_false_res = rslt(lhs_false_cx, C_bool(false));
-
-        // The following line ensures that any cleanups for rhs
-        // are done within the block for rhs. This is necessary
-        // because and/or are lazy. So the rhs may never execute,
-        // and the cleanups can't be pushed into later code.
-        let rhs_bcx = trans_block_cleanups(rhs_res.bcx, rhs_cx);
-        CondBr(lhs_res.bcx, lhs_res.val, rhs_cx.llbb, lhs_false_cx.llbb);
-        ret join_results(cx, T_bool(),
-                         [lhs_false_res, {bcx: rhs_bcx, val: rhs_res.val}]);
-      }
-      ast::or. {
-        // Lazy-eval or
-        let lhs_res = trans_expr(cx, a);
-        let rhs_cx = new_scope_block_ctxt(lhs_res.bcx, "rhs");
-        let rhs_res = trans_expr(rhs_cx, b);
-        let lhs_true_cx = new_scope_block_ctxt(lhs_res.bcx, "lhs true");
-        let lhs_true_res = rslt(lhs_true_cx, C_bool(true));
-
-        // see the and case for an explanation
-        let rhs_bcx = trans_block_cleanups(rhs_res.bcx, rhs_cx);
-        CondBr(lhs_res.bcx, lhs_res.val, lhs_true_cx.llbb, rhs_cx.llbb);
-        ret join_results(cx, T_bool(),
-                         [lhs_true_res, {bcx: rhs_bcx, val: rhs_res.val}]);
+      ast::and. | ast::or. {
+        ret trans_lazy_binop(cx, op, a, b, dest);
       }
       _ {
         // Remaining cases are eager:
         let lhs = trans_expr(cx, a);
         let rhs = trans_expr(lhs.bcx, b);
-
         ret trans_eager_binop(rhs.bcx, op, lhs.val,
                               ty::expr_ty(bcx_tcx(cx), a), rhs.val,
-                              ty::expr_ty(bcx_tcx(cx), b));
+                              ty::expr_ty(bcx_tcx(cx), b), dest);
       }
     }
-}
-
-fn join_results(parent_cx: @block_ctxt, t: TypeRef, ins: [result]) -> result {
-    let live: [result] = [];
-    let vals: [ValueRef] = [];
-    let bbs: [BasicBlockRef] = [];
-    for r: result in ins {
-        if !r.bcx.unreachable {
-            live += [r];
-            vals += [r.val];
-            bbs += [r.bcx.llbb];
-        }
-    }
-    alt std::vec::len::<result>(live) {
-      0u {
-        // No incoming edges are live, so we're in dead-code-land.
-        // Arbitrarily pick the first dead edge, since the caller
-        // is just going to propagate it outward.
-        assert (std::vec::len::<result>(ins) >= 1u);
-        ret ins[0];
-      }
-      _ {/* fall through */ }
-    }
-    // We have >1 incoming edges. Make a join block and br+phi them into it.
-
-    let join_cx = new_sub_block_ctxt(parent_cx, "join");
-    for r: result in live { Br(r.bcx, join_cx.llbb); }
-    let phi = Phi(join_cx, t, vals, bbs);
-    ret rslt(join_cx, phi);
 }
 
 // FIXME remove once all uses have been converted to join_returns
@@ -2483,6 +2451,7 @@ tag dest {
     by_val(@mutable ValueRef);
     by_ref(@mutable ValueRef);
     save_in(ValueRef);
+    overwrite(ValueRef, ty::t);
     ignore;
 }
 
@@ -2527,6 +2496,20 @@ fn join_returns(parent_cx: @block_ctxt, in_cxs: [@block_ctxt],
         }
     }
     ret out;
+}
+
+// Used to put an immediate value in a dest
+fn store_in_dest(bcx: @block_ctxt, val: ValueRef, dest: dest) -> @block_ctxt {
+    alt dest {
+      ignore. {}
+      by_val(cell) { *cell = val; }
+      save_in(addr) { Store(bcx, val, addr); }
+      overwrite(addr, tp) {
+        bcx = drop_ty(bcx, addr, tp);
+        Store(bcx, val, addr);
+      }
+    }
+    ret bcx;
 }
 
 // Wrapper through which legacy non-DPS code can use DPS functions
@@ -4135,7 +4118,6 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
 fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
     // Fixme Fill in cx.sp
     alt e.node {
-      ast::expr_binary(op, x, y) { ret trans_binary(cx, op, x, y); }
       ast::expr_fn(f) {
         let ccx = bcx_ccx(cx);
         let fty = node_id_type(ccx, e.id);
@@ -4267,6 +4249,7 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
       ast::expr_tup(args) { ret trans_tup(bcx, args, e.id, dest); }
       ast::expr_lit(lit) { ret trans_lit(bcx, *lit, dest); }
       ast::expr_vec(args, _) { ret tvec::trans_vec(bcx, args, e.id, dest); }
+      ast::expr_binary(op, x, y) { ret trans_binary(bcx, op, x, y, dest); }
 
       ast::expr_break. {
         assert dest == ignore;
@@ -4399,6 +4382,9 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
             *cell = val;
           }
           save_in(loc) { bcx = move_val_if_temp(bcx, INIT, loc, lv, ty); }
+          overwrite(loc, _) {
+            bcx = move_val_if_temp(bcx, DROP_EXISTING, loc, lv, ty);
+          }
           ignore. {}
         }
         ret bcx;

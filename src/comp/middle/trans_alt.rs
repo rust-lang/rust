@@ -36,9 +36,10 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> result {
       lit(l) {
         alt l.node {
           ast::lit_str(s) {
-            let {bcx, val: dst} =
-                trans::alloc_ty(bcx, ty::mk_str(bcx_tcx(bcx)));
+            let strty = ty::mk_str(bcx_tcx(bcx));
+            let {bcx, val: dst} = trans::alloc_ty(bcx, strty);
             bcx = trans_vec::trans_str(bcx, s, trans::save_in(dst));
+            add_clean_temp(bcx, dst, strty);
             ret rslt(bcx, dst);
           }
           _ {
