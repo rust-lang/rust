@@ -33,7 +33,19 @@ fn opt_eq(a: opt, b: opt) -> bool {
 }
 fn trans_opt(bcx: @block_ctxt, o: opt) -> result {
     alt o {
-      lit(l) { ret trans::trans_lit(bcx, *l); }
+      lit(l) {
+        alt l.node {
+          ast::lit_str(s) {
+            let {bcx, val: dst} =
+                trans::alloc_ty(bcx, ty::mk_str(bcx_tcx(bcx)));
+            bcx = trans_vec::trans_str(bcx, s, trans::save_in(dst));
+            ret rslt(bcx, dst);
+          }
+          _ {
+            ret rslt(bcx, trans::trans_crate_lit(bcx_ccx(bcx), *l));
+          }
+        }
+      }
       var(id, _) { ret rslt(bcx, C_int(id as int)); }
     }
 }

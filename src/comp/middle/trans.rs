@@ -2153,10 +2153,16 @@ fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
     }
 }
 
-fn trans_lit(cx: @block_ctxt, lit: ast::lit) -> result {
+fn trans_lit(cx: @block_ctxt, lit: ast::lit, dest: dest) -> @block_ctxt {
+    if dest == ignore { ret cx; }
     alt lit.node {
-      ast::lit_str(s) { ret tvec::trans_str(cx, s); }
-      _ { ret rslt(cx, trans_crate_lit(bcx_ccx(cx), lit)); }
+      ast::lit_str(s) { ret tvec::trans_str(cx, s, dest); }
+      _ {
+        let cell = alt dest { by_val(c) { c }
+                             _ { bcx_ccx(cx).sess.span_note(lit.span, "here"); fail; }};
+        *cell = trans_crate_lit(bcx_ccx(cx), lit);
+        ret cx;
+      }
     }
 }
 
@@ -4129,7 +4135,6 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
 fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
     // Fixme Fill in cx.sp
     alt e.node {
-      ast::expr_lit(lit) { ret trans_lit(cx, *lit); }
       ast::expr_binary(op, x, y) { ret trans_binary(cx, op, x, y); }
       ast::expr_fn(f) {
         let ccx = bcx_ccx(cx);
@@ -4186,7 +4191,6 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
       }
       ast::expr_bind(f, args) { ret trans_bind(cx, f, args, e.id); }
       ast::expr_cast(val, _) { ret trans_cast(cx, val, e.id); }
-      ast::expr_vec(args, _) { ret tvec::trans_vec(cx, args, e.id); }
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(cx, e.span, anon_obj, e.id);
       }
@@ -4261,6 +4265,9 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         ret trans_rec(bcx, args, base, e.id, dest);
       }
       ast::expr_tup(args) { ret trans_tup(bcx, args, e.id, dest); }
+      ast::expr_lit(lit) { ret trans_lit(bcx, *lit, dest); }
+      ast::expr_vec(args, _) { ret tvec::trans_vec(bcx, args, e.id, dest); }
+
       ast::expr_break. {
         assert dest == ignore;
         ret trans_break(e.span, bcx);
@@ -5306,13 +5313,18 @@ fn trans_closure(bcx_maybe: option::t<@block_ctxt>,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, trans_obj, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    let dest = if !ty::type_is_bot(cx.ccx.tcx, block_ty) &&
-                  !ty::type_is_nil(cx.ccx.tcx, block_ty) &&
-                  f.proto != ast::proto_iter &&
-                  option::is_some(f.body.node.expr) {
-        save_in(fcx.llretptr)
-    } else { ignore };
-    bcx = trans_block_dps(bcx, f.body, dest);
+    if ty::type_is_bot(cx.ccx.tcx, block_ty) ||
+       ty::type_is_nil(cx.ccx.tcx, block_ty) ||
+       f.proto == ast::proto_iter ||
+       option::is_none(f.body.node.expr) {
+        bcx = trans_block_dps(bcx, f.body, ignore);
+    } else if type_is_immediate(cx.ccx, block_ty) {
+        let cell = empty_dest_cell();
+        bcx = trans_block_dps(bcx, f.body, by_val(cell));
+        Store(bcx, *cell, fcx.llretptr);
+    } else {
+        bcx = trans_block_dps(bcx, f.body, save_in(fcx.llretptr));
+    }
 
     if !bcx.unreachable {
         // FIXME: until LLVM has a unit type, we are moving around

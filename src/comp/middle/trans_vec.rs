@@ -8,7 +8,7 @@ import trans::{call_memmove, trans_shared_malloc, llsize_of, type_of_or_i8,
                llderivedtydescs_block_ctxt, lazily_emit_tydesc_glue,
                get_tydesc, load_inbounds, move_val_if_temp, trans_lval,
                node_id_type, new_sub_block_ctxt, tps_normal, do_spill_noroot,
-               GEPi, alloc_ty};
+               GEPi, alloc_ty, dest};
 import trans_build::*;
 import trans_common::*;
 
@@ -49,7 +49,8 @@ type alloc_result =
      llunitsz: ValueRef,
      llunitty: TypeRef};
 
-fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint) -> alloc_result {
+fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint, dest: dest)
+    -> alloc_result {
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
     let llvecty = T_vec(llunitty);
@@ -60,12 +61,9 @@ fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint) -> alloc_result {
     let {bcx: bcx, val: vptr} = alloc_raw(bcx, fill, alloc);
     let vptr = PointerCast(bcx, vptr, T_ptr(llvecty));
 
-    let r = alloc_ty(bcx, vec_ty);
-    let vptrptr = r.val;
-    bcx = r.bcx;
-
+    let vptrptr = alt dest { trans::save_in(a) { a } };
     Store(bcx, vptr, vptrptr);
-    add_clean_temp(bcx, vptrptr, vec_ty);
+//    add_clean_temp(bcx, vptrptr, vec_ty);
     ret {bcx: bcx,
          val: vptrptr,
          unit_ty: unit_ty,
@@ -102,18 +100,19 @@ fn make_drop_glue(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t) ->
     ret next_cx;
 }
 
-fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id) ->
-   result {
+// FIXME handle dest == ignore
+fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
+             dest: dest) -> @block_ctxt {
     let vec_ty = node_id_type(bcx_ccx(bcx), id);
     let {bcx: bcx,
-         val: vptr,
+         val: vptrptr,
          llunitsz: llunitsz,
          unit_ty: unit_ty,
          llunitty: llunitty} =
-        alloc(bcx, vec_ty, vec::len(args));
+        alloc(bcx, vec_ty, vec::len(args), dest);
 
     // Store the individual elements.
-    let dataptr = get_dataptr(bcx, vptr, llunitty);
+    let dataptr = get_dataptr(bcx, vptrptr, llunitty);
     let i = 0u;
     for e in args {
         let lv = trans_lval(bcx, e);
@@ -125,19 +124,18 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id) ->
         bcx = move_val_if_temp(bcx, INIT, lleltptr, lv, unit_ty);
         i += 1u;
     }
-    ret rslt(bcx, vptr);
+    ret bcx;
 }
-fn trans_str(bcx: @block_ctxt, s: str) -> result {
+fn trans_str(bcx: @block_ctxt, s: str, dest: dest) -> @block_ctxt {
     let veclen = std::str::byte_len(s) + 1u; // +1 for \0
-    let {bcx: bcx, val: sptr, _} =
-        alloc(bcx, ty::mk_str(bcx_tcx(bcx)), veclen);
+    let {bcx: bcx, val: sptrptr, _} =
+        alloc(bcx, ty::mk_str(bcx_tcx(bcx)), veclen, dest);
 
     let llcstr = C_cstr(bcx_ccx(bcx), s);
     let bcx =
-        call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()), llcstr,
+        call_memmove(bcx, get_dataptr(bcx, sptrptr, T_i8()), llcstr,
                      C_uint(veclen)).bcx;
-
-    ret rslt(bcx, sptr);
+    ret bcx;
 }
 
 fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
