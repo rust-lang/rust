@@ -13,7 +13,8 @@ import trans::{
     trans_shared_free,
     drop_ty,
     new_sub_block_ctxt,
-    load_if_immediate
+    load_if_immediate,
+    dest
 };
 
 export trans_uniq, make_free_glue, type_is_unique_box, copy_val,
@@ -23,31 +24,15 @@ pure fn type_is_unique_box(bcx: @block_ctxt, ty: ty::t) -> bool {
     ty::type_is_unique_box(bcx_tcx(bcx), ty)
 }
 
-fn trans_uniq(cx: @block_ctxt, contents: @ast::expr,
-              node_id: ast::node_id) -> result {
-    let bcx = cx;
-
-    let lv = trans_lval(bcx, contents);
-    bcx = lv.bcx;
-
-    let uniq_ty = node_id_type(bcx_ccx(cx), node_id);
-
-    if ty::type_is_bot(bcx_tcx(bcx), uniq_ty) {
-        // FIXME: Seems to work, obviously not 'right'. Story of my life.
-        // Probably works because the builder turns lv.val into undef
-        ret rslt(bcx, lv.val);
-    }
-
+fn trans_uniq(bcx: @block_ctxt, contents: @ast::expr,
+              node_id: ast::node_id, dest: dest) -> @block_ctxt {
+    let uniq_ty = node_id_type(bcx_ccx(bcx), node_id);
     check type_is_unique_box(bcx, uniq_ty);
-    let content_ty = content_ty(bcx, uniq_ty);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
-
-    add_clean_temp(bcx, llptr, uniq_ty);
-
-    bcx = move_val_if_temp(bcx, INIT, llptr, lv,
-                           content_ty);
-
-    ret rslt(bcx, llptr);
+    add_clean_free(bcx, llptr, true);
+    bcx = trans::trans_expr_save_in(bcx, contents, llptr);
+    revoke_clean(bcx, llptr);
+    ret trans::store_in_dest(bcx, llptr, dest);
 }
 
 fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)

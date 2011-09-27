@@ -2178,50 +2178,45 @@ fn node_type(cx: @crate_ctxt, sp: span, id: ast::node_id) -> TypeRef {
     type_of(cx, sp, ty)
 }
 
-fn trans_unary(cx: @block_ctxt, op: ast::unop, e: @ast::expr,
-               id: ast::node_id) -> result {
-    let e_ty = ty::expr_ty(bcx_tcx(cx), e);
+fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
+               id: ast::node_id, dest: dest) -> @block_ctxt {
+    if dest == ignore { ret trans_expr_dps(bcx, e, ignore); }
+    let e_ty = ty::expr_ty(bcx_tcx(bcx), e);
     alt op {
       ast::not. {
-        let sub = trans_expr(cx, e);
-        ret rslt(sub.bcx, Not(sub.bcx, sub.val));
+        let {bcx, val} = trans_expr(bcx, e);
+        ret store_in_dest(bcx, Not(bcx, val), dest);
       }
       ast::neg. {
-        let sub = trans_expr(cx, e);
-        if ty::struct(bcx_tcx(cx), e_ty) == ty::ty_float {
-            ret rslt(sub.bcx, FNeg(sub.bcx, sub.val));
-        } else { ret rslt(sub.bcx, Neg(sub.bcx, sub.val)); }
+        let {bcx, val} = trans_expr(bcx, e);
+        let neg = if ty::struct(bcx_tcx(bcx), e_ty) == ty::ty_float {
+            FNeg(bcx, val)
+        } else { Neg(bcx, val) };
+        ret store_in_dest(bcx, neg, dest);
       }
       ast::box(_) {
-        let lv = trans_lval(cx, e);
-        let box_ty = node_id_type(bcx_ccx(lv.bcx), id);
-        let sub = trans_malloc_boxed(lv.bcx, e_ty);
-        let body = sub.body;
-        add_clean_temp(cx, sub.box, box_ty);
-
+        let {bcx, box, body} = trans_malloc_boxed(bcx, e_ty);
+        add_clean_free(bcx, box, false);
         // Cast the body type to the type of the value. This is needed to
         // make tags work, since tags have a different LLVM type depending
         // on whether they're boxed or not.
-        let sub_ccx = bcx_ccx(sub.bcx);
-        if check type_has_static_size(sub_ccx, e_ty) {
+        let ccx = bcx_ccx(bcx);
+        if check type_has_static_size(ccx, e_ty) {
             let e_sp = e.span;
-            let llety = T_ptr(type_of(sub_ccx, e_sp, e_ty));
-            body = PointerCast(sub.bcx, body, llety);
-        } else {
-        } // FIXME: can remove the else{} once we have
-          // a new snapshot
-
-
-        let bcx = move_val_if_temp(sub.bcx, INIT, body, lv, e_ty);
-        ret rslt(bcx, sub.box);
+            let llety = T_ptr(type_of(ccx, e_sp, e_ty));
+            body = PointerCast(bcx, body, llety);
+        }
+        bcx = trans_expr_save_in(bcx, e, body);
+        revoke_clean(bcx, box);
+        ret store_in_dest(bcx, box, dest);
       }
       ast::uniq(_) {
-        ret trans_uniq::trans_uniq(cx, e, id);
+        ret trans_uniq::trans_uniq(bcx, e, id, dest);
       }
       ast::deref. {
-        bcx_ccx(cx).sess.bug("deref expressions should have been \
-                                 translated using trans_lval(), not \
-                                 trans_unary()");
+        bcx_ccx(bcx).sess.bug("deref expressions should have been \
+                               translated using trans_lval(), not \
+                               trans_unary()");
       }
     }
 }
@@ -2498,7 +2493,7 @@ fn join_returns(parent_cx: @block_ctxt, in_cxs: [@block_ctxt],
     ret out;
 }
 
-// Used to put an immediate value in a dest
+// Used to put an immediate value in a dest.
 fn store_in_dest(bcx: @block_ctxt, val: ValueRef, dest: dest) -> @block_ctxt {
     alt dest {
       ignore. {}
@@ -4092,23 +4087,23 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
     let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
     let temp_cleanups = [], i = 0;
     for tf in ty_fields {
-        let gep = GEP_tup_like_1(bcx, t, addr, [0, i]);
-        bcx = gep.bcx;
+        let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
+        bcx = dst.bcx;
         // FIXME make this {|f| str::eq(f.node.ident, tf.ident)} again when
         // bug #913 is fixed
         fn test(n: str, f: ast::field) -> bool { str::eq(f.node.ident, n) }
         alt vec::find(bind test(tf.ident, _), fields) {
           some(f) {
-            bcx = trans_expr_save_in(bcx, f.node.expr, gep.val);
+            bcx = trans_expr_save_in(bcx, f.node.expr, dst.val);
           }
           none. {
             let base = GEP_tup_like_1(bcx, t, base_val, [0, i]);
             let val = load_if_immediate(base.bcx, base.val, tf.mt.ty);
-            bcx = copy_val(base.bcx, INIT, gep.val, val, tf.mt.ty);
+            bcx = copy_val(base.bcx, INIT, dst.val, val, tf.mt.ty);
           }
         }
-        add_clean_temp_mem(bcx, addr, tf.mt.ty);
-        temp_cleanups += [addr];
+        add_clean_temp_mem(bcx, dst.val, tf.mt.ty);
+        temp_cleanups += [dst.val];
         i += 1;
     }
     // Now revoke the cleanups as we pass responsibility for the data
@@ -4193,9 +4188,6 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
         if sub.is_mem { v = load_if_immediate(sub.bcx, v, t); }
         ret rslt(sub.bcx, v);
       }
-      ast::expr_unary(op, x) {
-        ret trans_unary(cx, op, x, e.id);
-      }
       // Fall through to DPS-style
       _ {
         ret dps_to_result(cx, {|bcx, dest| trans_expr_dps(bcx, e, dest)},
@@ -4259,6 +4251,12 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
       ast::expr_lit(lit) { ret trans_lit(bcx, *lit, dest); }
       ast::expr_vec(args, _) { ret tvec::trans_vec(bcx, args, e.id, dest); }
       ast::expr_binary(op, x, y) { ret trans_binary(bcx, op, x, y, dest); }
+      ast::expr_unary(op, x) {
+        if op == ast::deref {
+            ret trans_expr_backwards_compat(bcx, e, dest);
+        }
+        ret trans_unary(bcx, op, x, e.id, dest);
+      }
 
       ast::expr_break. {
         assert dest == ignore;
@@ -4365,40 +4363,43 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
 
       ast::expr_mac(_) { ret bcx_ccx(bcx).sess.bug("unexpanded macro"); }
       // Convert back from result to DPS
-      _ {
-        let lv = trans_lval(bcx, e);
-        let {bcx, val, is_mem} = lv;
-        let ty = ty::expr_ty(bcx_tcx(bcx), e);
-        alt dest {
-          by_val(cell) {
-            if !is_mem {
-                revoke_clean(bcx, val);
-                *cell = val;
-            } else if ty::type_is_unique(bcx_tcx(bcx), ty) {
-                // Do a song and a dance to work around the fact that take_ty
-                // for unique boxes overwrites the pointer.
-                let oldval = Load(bcx, val);
-                bcx = take_ty(bcx, val, ty);
-                *cell = Load(bcx, val);
-                Store(bcx, oldval, val);
-            } else {
-                bcx = take_ty(bcx, val, ty);
-                *cell = Load(bcx, val);
-            }
-          }
-          by_ref(cell) {
-            assert is_mem;
-            *cell = val;
-          }
-          save_in(loc) { bcx = move_val_if_temp(bcx, INIT, loc, lv, ty); }
-          overwrite(loc, _) {
-            bcx = move_val_if_temp(bcx, DROP_EXISTING, loc, lv, ty);
-          }
-          ignore. {}
-        }
-        ret bcx;
-      }
+      _ { ret trans_expr_backwards_compat(bcx, e, dest); }
     }
+}
+
+fn trans_expr_backwards_compat(bcx: @block_ctxt, e: @ast::expr, dest: dest)
+    -> @block_ctxt {
+    let lv = trans_lval(bcx, e);
+    let {bcx, val, is_mem} = lv;
+    let ty = ty::expr_ty(bcx_tcx(bcx), e);
+    alt dest {
+      by_val(cell) {
+        if !is_mem {
+            revoke_clean(bcx, val);
+            *cell = val;
+        } else if ty::type_is_unique(bcx_tcx(bcx), ty) {
+            // Do a song and a dance to work around the fact that take_ty
+            // for unique boxes overwrites the pointer.
+            let oldval = Load(bcx, val);
+            bcx = take_ty(bcx, val, ty);
+            *cell = Load(bcx, val);
+            Store(bcx, oldval, val);
+        } else {
+            bcx = take_ty(bcx, val, ty);
+            *cell = Load(bcx, val);
+        }
+      }
+      by_ref(cell) {
+        assert is_mem;
+        *cell = val;
+      }
+      save_in(loc) { bcx = move_val_if_temp(bcx, INIT, loc, lv, ty); }
+      overwrite(loc, _) {
+        bcx = move_val_if_temp(bcx, DROP_EXISTING, loc, lv, ty);
+      }
+      ignore. {}
+    }
+    ret bcx;
 }
 
 // We pass structural values around the compiler "by pointer" and

@@ -288,6 +288,13 @@ fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     scope_cx.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
     scope_cx.lpad_dirty = true;
 }
+fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
+    let scope_cx = find_scope_cx(cx);
+    let free_fn = if shared { bind trans::trans_shared_free(_, ptr) }
+                  else { bind trans::trans_non_gc_free(_, ptr) };
+    scope_cx.cleanups += [clean_temp(ptr, free_fn)];
+    scope_cx.lpad_dirty = true;
+}
 
 // Note that this only works for temporaries. We should, at some point, move
 // to a system where we can also cancel the cleanup on local variables, but

@@ -116,10 +116,11 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
          llunitty: llunitty} =
         alloc(bcx, vec_ty, vec::len(args), dest);
 
+    let vptr = Load(bcx, vptrptr);
+    add_clean_free(bcx, vptr, true);
     // Store the individual elements.
     let dataptr = get_dataptr(bcx, vptrptr, llunitty);
-    add_clean_temp_mem(bcx, vptrptr, vec_ty);
-    let i = 0u, temp_cleanups = [vptrptr];
+    let i = 0u, temp_cleanups = [vptr];
     for e in args {
         let lv = trans_lval(bcx, e);
         bcx = lv.bcx;
