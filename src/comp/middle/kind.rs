@@ -212,9 +212,29 @@ fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
     }
 }
 
+fn check_stmt(tcx: ty::ctxt, stmt: @ast::stmt) {
+    alt stmt.node {
+      ast::stmt_decl(@{node: ast::decl_local(locals), _}, _) {
+        for (let_style, local) in locals {
+            alt local.node.init {
+              option::some({op: ast::init_assign., expr}) {
+                need_expr_kind(tcx, expr,
+                               ast::kind_shared,
+                               "local initializer");
+                check_copy(tcx, expr);
+              }
+              _ { /* fall through */ }
+            }
+        }
+      }
+      _ { /* fall through */ }
+    }
+}
+
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     let visit =
-        visit::mk_simple_visitor(@{visit_expr: bind check_expr(tcx, _)
+        visit::mk_simple_visitor(@{visit_expr: bind check_expr(tcx, _),
+                                   visit_stmt: bind check_stmt(tcx, _)
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visit);
     tcx.sess.abort_if_errors();

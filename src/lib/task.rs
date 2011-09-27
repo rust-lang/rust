@@ -114,7 +114,7 @@ fn spawn_inner(-thunk: fn(), notify: option<comm::chan<task_notification>>) ->
     let raw_thunk: {code: u32, env: u32} = cast(thunk);
 
     // set up the task pointer
-    let task_ptr = rust_task_ptr(rustrt::get_task_pointer(id));
+    let task_ptr <- rust_task_ptr(rustrt::get_task_pointer(id));
 
     assert (ptr::null() != (**task_ptr).stack_ptr);
 

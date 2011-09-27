@@ -7,8 +7,8 @@ fn test1() {
     let i = @mutable 100;
     let j = @mutable 200;
     {
-        let x = ~r(i);
-        let y = ~r(j);
+        let x <- ~r(i);
+        let y <- ~r(j);
         x <-> y;
         assert ***x == 200;
         assert ***y == 100;
@@ -20,8 +20,8 @@ fn test1() {
 fn test2() {
     let i = @mutable 0;
     {
-        let x = ~r(i);
-        let y = ~r(i);
+        let x <- ~r(i);
+        let y <- ~r(i);
         x <-> y;
     }
     assert *i == 2;
