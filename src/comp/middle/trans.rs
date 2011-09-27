@@ -4029,23 +4029,34 @@ fn trans_landing_pad(bcx: @block_ctxt,
 fn trans_tup(bcx: @block_ctxt, elts: [@ast::expr], id: ast::node_id,
              dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx.fcx.lcx.ccx, id);
+    let (addr, overwrite) = alt dest {
+      ignore. {
+        for ex in elts { bcx = trans_expr_dps(bcx, ex, ignore); }
+        ret bcx;
+      }
+      save_in(pos) { (pos, none) }
+      overwrite(pos, _) {
+        let scratch = alloca(bcx, val_ty(pos));
+        (scratch, some(pos))
+      }
+    };
     let temp_cleanups = [], i = 0;
     for e in elts {
-        alt dest {
-          save_in(addr) {
-            let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
-            let e_ty = ty::expr_ty(bcx_tcx(bcx), e);
-            bcx = trans_expr_save_in(dst.bcx, e, dst.val);
-            add_clean_temp_mem(bcx, dst.val, e_ty);
-            temp_cleanups += [dst.val];
-          }
-          ignore. {
-            bcx = trans_expr_dps(bcx, e, ignore);
-          }
-        }
+        let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
+        let e_ty = ty::expr_ty(bcx_tcx(bcx), e);
+        bcx = trans_expr_save_in(dst.bcx, e, dst.val);
+        add_clean_temp_mem(bcx, dst.val, e_ty);
+        temp_cleanups += [dst.val];
         i += 1;
     }
     for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
+    alt overwrite {
+      some(pos) {
+        bcx = drop_ty(bcx, pos, t);
+        bcx = memmove_ty(bcx, pos, addr, t);
+      }
+      none. {}
+    }
     ret bcx;
 }
 
@@ -4053,6 +4064,21 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
              base: option::t<@ast::expr>, id: ast::node_id,
              dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx_ccx(bcx), id);
+    let (addr, overwrite) = alt dest {
+      ignore. {
+        for fld in fields {
+            bcx = trans_expr_dps(bcx, fld.node.expr, ignore);
+        }
+        ret bcx;
+      }
+      save_in(pos) { (pos, none) }
+      // The expressions that populate the fields might still use the old
+      // record, so we build the new on in a scratch area
+      overwrite(pos, _) {
+        let scratch = alloca(bcx, val_ty(pos));
+        (scratch, some(pos))
+      }
+    };
 
     let base_val = alt base {
       some(bexp) {
@@ -4063,55 +4089,38 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
       none. { C_nil() }
     };
 
-    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) {
-        ty::ty_rec(f) { f }
-        ty::ty_bot. {
-          bcx_ccx(bcx).sess.bug("https://github.com/graydon/rust/issues/924")
-        }
-    };
+    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
     let temp_cleanups = [], i = 0;
     for tf in ty_fields {
-        let fdest = alt dest {
-          save_in(addr) {
-            let gep = GEP_tup_like_1(bcx, t, addr, [0, i]);
-            bcx = gep.bcx;
-            some(gep.val)
-          }
-          ignore. { none }
-        };
+        let gep = GEP_tup_like_1(bcx, t, addr, [0, i]);
+        bcx = gep.bcx;
         // FIXME make this {|f| str::eq(f.node.ident, tf.ident)} again when
         // bug #913 is fixed
         fn test(n: str, f: ast::field) -> bool { str::eq(f.node.ident, n) }
         alt vec::find(bind test(tf.ident, _), fields) {
           some(f) {
-            alt fdest {
-              some(x) { bcx = trans_expr_save_in(bcx, f.node.expr, x); }
-              none. { bcx = trans_expr_dps(bcx, f.node.expr, ignore); }
-            }
+            bcx = trans_expr_save_in(bcx, f.node.expr, gep.val);
           }
           none. {
-            alt fdest {
-              some(addr) {
-                let gep = GEP_tup_like_1(bcx, t, base_val, [0, i]);
-                let val = load_if_immediate(gep.bcx, gep.val, tf.mt.ty);
-                bcx = copy_val(gep.bcx, INIT, addr, val, tf.mt.ty);
-              }
-              none. {}
-            }
+            let base = GEP_tup_like_1(bcx, t, base_val, [0, i]);
+            let val = load_if_immediate(base.bcx, base.val, tf.mt.ty);
+            bcx = copy_val(base.bcx, INIT, gep.val, val, tf.mt.ty);
           }
         }
-        alt fdest {
-          some(addr) {
-            add_clean_temp_mem(bcx, addr, tf.mt.ty);
-            temp_cleanups += [addr];
-          }
-          none. {}
-        }
+        add_clean_temp_mem(bcx, addr, tf.mt.ty);
+        temp_cleanups += [addr];
         i += 1;
     }
     // Now revoke the cleanups as we pass responsibility for the data
     // structure on to the caller
     for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
+    alt overwrite {
+      some(pos) {
+        bcx = drop_ty(bcx, pos, t);
+        bcx = memmove_ty(bcx, pos, addr, t);
+      }
+      none. {}
+    }
     ret bcx;
 }
 
