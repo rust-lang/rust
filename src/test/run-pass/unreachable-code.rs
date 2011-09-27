@@ -39,6 +39,10 @@ fn ret_guard() {
     }
 }
 
+fn rec_ret() { let _r = {c: ret}; }
+
+fn vec_ret() { let _v = [1, 2, ret, 4]; }
+
 fn fail_then_concat() {
     let x = [], y = [3];
     fail;
@@ -46,4 +50,15 @@ fn fail_then_concat() {
     "good" + "bye";
 }
 
-fn main() {}
+fn main() {
+  // Call the functions that don't fail.
+  rec_ret();
+  vec_ret();
+  ret_ret();
+  log_ret();
+  call_id_2();
+  call_id_3();
+  call_id_4();
+  bind_id_2();
+  ret_guard();
+}
