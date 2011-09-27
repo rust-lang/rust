@@ -2020,13 +2020,15 @@ fn type_is_structural_or_param(tcx: ty::ctxt, t: ty::t) -> bool {
 
 fn copy_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
             src: ValueRef, t: ty::t) -> @block_ctxt {
-    if type_is_structural_or_param(bcx_ccx(cx).tcx, t) &&
-           action == DROP_EXISTING {
+    if action == DROP_EXISTING &&
+        (type_is_structural_or_param(bcx_tcx(cx), t) ||
+         ty::type_is_unique(bcx_tcx(cx), t)) {
         let do_copy_cx = new_sub_block_ctxt(cx, "do_copy");
         let next_cx = new_sub_block_ctxt(cx, "next");
+        let dstcmp = load_if_immediate(cx, dst, t);
         let self_assigning =
-            ICmp(cx, lib::llvm::LLVMIntNE, PointerCast(cx, dst, val_ty(src)),
-                 src);
+            ICmp(cx, lib::llvm::LLVMIntNE,
+                 PointerCast(cx, dstcmp, val_ty(src)), src);
         CondBr(cx, self_assigning, do_copy_cx.llbb, next_cx.llbb);
         do_copy_cx = copy_val_no_check(do_copy_cx, action, dst, src, t);
         Br(do_copy_cx, next_cx.llbb);
