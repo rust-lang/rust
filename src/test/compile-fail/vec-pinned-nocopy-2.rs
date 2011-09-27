@@ -4,6 +4,6 @@ resource r(b: bool) {
 }
 
 fn main() {
-    let i = [r(true)];
+    let i <- [r(true)];
     i += [r(true)];
 }

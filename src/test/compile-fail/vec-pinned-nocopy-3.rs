@@ -4,7 +4,7 @@ resource r(b: bool) {
 }
 
 fn main() {
-    let i = [r(true)];
+    let i <- [r(true)];
     let j;
     j <- copy [r(true)];
 }
