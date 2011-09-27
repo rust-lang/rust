@@ -170,7 +170,10 @@ fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
         need_shared_lhs_rhs(tcx, a, b, "=");
         check_copy(tcx, b);
       }
-      ast::expr_assign_op(_, a, b) { need_shared_lhs_rhs(tcx, a, b, "op="); }
+      ast::expr_assign_op(_, a, b) {
+        need_shared_lhs_rhs(tcx, a, b, "op=");
+        check_copy(tcx, b);
+      }
       ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
       ast::expr_copy(a) {
         need_expr_kind(tcx, a, ast::kind_shared, "'copy' operand");
