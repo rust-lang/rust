@@ -204,7 +204,9 @@ fn check_stmt(tcx: ty::ctxt, stmt: @ast::stmt) {
                                "local initializer");
               }
               option::some({op: ast::init_move., expr}) {
-                // FIXME: Same as above
+                // FIXME: Should be as above but moving may be the
+                // only way available currently to assign a resource
+                // to a local.
               }
               option::none. { /* fall through */ }
             }
