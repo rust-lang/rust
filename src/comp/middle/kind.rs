@@ -189,6 +189,9 @@ fn need_shared_or_pinned_ctor(tcx: ty::ctxt, a: @ast::expr, descr: str) {
           ast::expr_tup(_) {
             true
           }
+          ast::expr_vec(exprs, _) {
+            true
+          }
           _ { false }
         }
     }
@@ -260,6 +263,13 @@ fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
       ast::expr_tup(exprs) {
         for expr in exprs {
             need_shared_or_pinned_ctor(tcx, expr, "tuple parameter");
+        }
+      }
+      ast::expr_vec(exprs, _) {
+        // Putting pinned things into vectors is pretty useless since vector
+        // addition can't work (it's a copy)
+        for expr in exprs {
+            need_expr_kind(tcx, expr, ast::kind_shared, "vector element");
         }
       }
       _ { }
