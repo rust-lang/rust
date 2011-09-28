@@ -4677,10 +4677,6 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let ty = node_id_type(bcx_ccx(bcx), local.node.id);
     let llptr = bcx.fcx.lllocals.get(local.node.id);
 
-    if must_zero(bcx_ccx(bcx), local) {
-        bcx = zero_alloca(bcx, llptr, ty);
-    }
-
     alt local.node.init {
       some(init) {
         alt init.op {
@@ -4694,48 +4690,12 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
           }
         }
       }
-      _ { }
+      _ { bcx = zero_alloca(bcx, llptr, ty); }
     }
     // Make a note to drop this slot on the way out.
     add_clean(bcx, llptr, ty);
-    bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr,
-                                          bcx.fcx.lllocals, false);
-    ret bcx;
-
-    fn must_zero(ccx: @crate_ctxt, local: @ast::local) -> bool {
-        alt local.node.init {
-          some(init) { might_not_init(ccx, init.expr) }
-          none. { true }
-        }
-    }
-
-    fn might_not_init(ccx: @crate_ctxt, expr: @ast::expr) -> bool {
-        type env = {mutable mightnt: bool,
-                    ccx: @crate_ctxt};
-        let e = {mutable mightnt: false,
-                 ccx: ccx};
-        fn visit_expr(ex: @ast::expr, e: env, v: vt<env>) {
-            let might_not_init = alt ex.node {
-              ast::expr_alt(_, _) { true }
-              ast::expr_ret(_) { true }
-              ast::expr_break. { true }
-              ast::expr_cont. { true }
-              ast::expr_call(_, _) { true }
-              _ {
-                let ex_ty = ty::expr_ty(e.ccx.tcx, ex);
-                ty::type_is_bot(e.ccx.tcx, ex_ty)
-              }
-            };
-            if might_not_init {
-                e.mightnt = true;
-            } else { visit::visit_expr(ex, e, v); }
-        }
-        let visitor =
-            visit::mk_vt(@{visit_expr: visit_expr
-                           with *visit::default_visitor()});
-        visitor.visit_expr(expr, e, visitor);
-        ret e.mightnt;
-    }
+    ret trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr,
+                                        bcx.fcx.lllocals, false);
 }
 
 fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
