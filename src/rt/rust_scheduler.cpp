@@ -1,7 +1,16 @@
 
 #include <stdarg.h>
+#include <cassert>
 #include "rust_internal.h"
 #include "globals.h"
+
+#ifndef _WIN32
+pthread_key_t rust_scheduler::task_key;
+#else
+DWORD rust_scheduler::task_key;
+#endif
+
+bool rust_scheduler::tls_initialized = false;
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                rust_srv *srv,
@@ -30,6 +39,9 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     pthread_attr_setstacksize(&attr, 1024 * 1024);
     pthread_attr_setdetachstate(&attr, true);
 #endif
+
+    if (!tls_initialized)
+        init_tls();
 }
 
 rust_scheduler::~rust_scheduler() {
@@ -275,6 +287,8 @@ rust_scheduler::start_main_loop() {
              scheduled_task->user.rust_sp,
              scheduled_task->state->name);
 
+        place_task_in_tls(scheduled_task);
+
         interrupt_flag = 0;
 
         DLOG(this, task,
@@ -346,6 +360,49 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
 void rust_scheduler::run() {
     this->start_main_loop();
 }
+
+#ifndef _WIN32
+void
+rust_scheduler::init_tls() {
+    int result = pthread_key_create(&task_key, NULL);
+    assert(!result && "Couldn't create the TLS key!");
+    tls_initialized = true;
+}
+
+void
+rust_scheduler::place_task_in_tls(rust_task *task) {
+    int result = pthread_setspecific(task_key, task);
+    assert(!result && "Couldn't place the task in TLS!");
+}
+
+rust_task *
+rust_scheduler::get_task() {
+    rust_task *task = reinterpret_cast<rust_task *>
+        (pthread_getspecific(task_key));
+    assert(task && "Couldn't get the task from TLS!");
+    return task;
+}
+#else
+void
+rust_scheduler::init_tls() {
+    task_key = TlsAlloc();
+    assert(task_key != TLS_OUT_OF_INDEXES && "Couldn't create the TLS key!");
+    tls_initialized = true;
+}
+
+void
+rust_scheduler::place_task_in_tls(rust_task *task) {
+    BOOL result = TlsSetValue(task_key, task);
+    assert(result && "Couldn't place the task in TLS!");
+}
+
+rust_task *
+rust_scheduler::get_task() {
+    rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
+    assert(task && "Couldn't get the task from TLS!");
+    return task;
+}
+#endif
 
 //
 // Local Variables:

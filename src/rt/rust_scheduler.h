@@ -1,6 +1,12 @@
 #ifndef RUST_SCHEDULER_H
 #define RUST_SCHEDULER_H
 
+#ifndef _WIN32
+#include <pthread.h>
+#else
+#include <windows.h>
+#endif
+
 struct rust_scheduler;
 
 class rust_crate_cache {
@@ -58,7 +64,12 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
 
 #ifndef __WIN32__
     pthread_attr_t attr;
+    static pthread_key_t task_key;
+#else
+    static DWORD task_key;
 #endif
+
+    static bool tls_initialized;
 
     rust_env *env;
 
@@ -92,6 +103,11 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
         kernel->win32_require(fn, ok);
     }
 #endif
+
+    void init_tls();
+    void place_task_in_tls(rust_task *task);
+
+    static rust_task *get_task();
 };
 
 inline rust_log &

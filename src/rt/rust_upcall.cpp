@@ -1,6 +1,7 @@
 #include "rust_cc.h"
 #include "rust_gc.h"
 #include "rust_internal.h"
+#include "rust_scheduler.h"
 #include "rust_unwind.h"
 #include "rust_upcall.h"
 #include <stdint.h>
@@ -54,7 +55,8 @@ upcall_fail(rust_task *task,
 }
 
 extern "C" CDECL uintptr_t
-upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
+upcall_malloc(rust_task *unused_task, size_t nbytes, type_desc *td) {
+    rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
 
     LOG(task, mem,
