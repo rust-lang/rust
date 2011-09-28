@@ -3207,6 +3207,25 @@ fn trans_callee(cx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     }
 }
 
+fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
+    alt e.node {
+      ast::expr_path(_) | ast::expr_index(_, _) |
+      ast::expr_unary(ast::deref., _) { true }
+      ast::expr_field(base, ident) {
+        let basety = ty::type_autoderef(tcx, ty::expr_ty(tcx, base));
+        alt ty::struct(tcx, basety) {
+          ty::ty_obj(_) { false }
+          ty::ty_rec(_) { true }
+        }
+      }
+      ast::expr_call(f, _) {
+          let fty = ty::expr_ty(tcx, f);
+          ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fty))
+      }
+      _ { false }
+    }
+}
+
 // The additional bool returned indicates whether it's mem (that is
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
@@ -4149,20 +4168,6 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
         add_clean_temp(bcx, r.val, e_ty);
         ret r;
       }
-      ast::expr_move(dst, src) {
-        let lhs_res = trans_lval(cx, dst);
-        assert (lhs_res.is_mem);
-        // FIXME Fill in lhs_res.bcx.sp
-
-        let rhs_res = trans_lval(lhs_res.bcx, src);
-        let t = ty::expr_ty(bcx_tcx(cx), src);
-        // FIXME: calculate copy init-ness in typestate.
-
-        let bcx =
-            move_val(rhs_res.bcx, DROP_EXISTING, lhs_res.val, rhs_res,
-                     t);
-        ret rslt(bcx, C_nil());
-      }
       ast::expr_bind(f, args) { ret trans_bind(cx, f, args, e.id); }
       ast::expr_cast(val, _) { ret trans_cast(cx, val, e.id); }
       ast::expr_anon_obj(anon_obj) {
@@ -4324,6 +4329,19 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         let {bcx, val: lhs_addr, is_mem} = trans_lval(bcx, dst);
         assert is_mem;
         ret trans_expr_save_in(bcx, src, lhs_addr, DROP_EXISTING);
+      }
+      ast::expr_move(dst, src) {
+        assert dest == ignore;
+        let {bcx, val: addr, is_mem} = trans_lval(bcx, dst);
+        assert is_mem;
+        // FIXME: calculate copy init-ness in typestate.
+        if expr_is_lval(bcx_tcx(bcx), src) {
+            ret trans_expr_save_in(bcx, src, addr, DROP_EXISTING);
+        } else {
+            let srclv = trans_lval(bcx, src);
+            let t = ty::expr_ty(bcx_tcx(bcx), src);
+            ret move_val(srclv.bcx, DROP_EXISTING, addr, srclv, t);
+        }
       }
       ast::expr_swap(dst, src) {
         assert dest == ignore;
@@ -4665,15 +4683,12 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
 
     alt local.node.init {
       some(init) {
-        alt init.op {
-          ast::init_assign. {
+        if init.op == ast::init_assign ||
+           !expr_is_lval(bcx_tcx(bcx), init.expr) {
             bcx = trans_expr_save_in(bcx, init.expr, llptr, INIT);
-          }
-          // FIXME[DPS] do a save_in when expr isn't lval
-          ast::init_move. {
+        } else { // This is a move from an lval, must perform an actual move
             let sub = trans_lval(bcx, init.expr);
             bcx = move_val(sub.bcx, INIT, llptr, sub, ty);
-          }
         }
       }
       _ { bcx = zero_alloca(bcx, llptr, ty); }
