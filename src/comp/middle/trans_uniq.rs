@@ -6,7 +6,6 @@ import trans::{
     trans_shared_malloc,
     type_of_inner,
     size_of,
-    move_val_if_temp,
     node_id_type,
     trans_lval,
     INIT,

@@ -6,7 +6,7 @@ import back::abi;
 import trans::{call_memmove, trans_shared_malloc, llsize_of, type_of_or_i8,
                INIT, copy_val, load_if_immediate, alloca, size_of,
                llderivedtydescs_block_ctxt, lazily_emit_tydesc_glue,
-               get_tydesc, load_inbounds, move_val_if_temp, trans_lval,
+               get_tydesc, load_inbounds, trans_lval,
                node_id_type, new_sub_block_ctxt, tps_normal, do_spill_noroot,
                GEPi, alloc_ty, dest};
 import trans_build::*;
@@ -121,12 +121,10 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
     let dataptr = get_dataptr_simple(bcx, vptr, llunitty);
     let i = 0u, temp_cleanups = [vptr];
     for e in args {
-        let lv = trans_lval(bcx, e);
-        bcx = lv.bcx;
         let lleltptr = if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
             InBoundsGEP(bcx, dataptr, [Mul(bcx, C_uint(i), llunitsz)])
         } else { InBoundsGEP(bcx, dataptr, [C_uint(i)]) };
-        bcx = move_val_if_temp(bcx, INIT, lleltptr, lv, unit_ty);
+        bcx = trans::trans_expr_save_in(bcx, e, lleltptr, INIT);
         add_clean_temp_mem(bcx, lleltptr, unit_ty);
         temp_cleanups += [lleltptr];
         i += 1u;

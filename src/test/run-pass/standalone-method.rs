@@ -1,3 +1,5 @@
+// xfail-test
+
 // Test case for issue #435.
 obj foo(x: int) {
     fn add5(n: int) -> int { ret n + x; }
