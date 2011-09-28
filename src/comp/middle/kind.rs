@@ -183,6 +183,12 @@ fn need_shared_or_pinned_ctor(tcx: ty::ctxt, a: @ast::expr, descr: str) {
           ast::expr_rec(_, _) {
             true
           }
+          ast::expr_unary(ast::uniq(_), _) {
+            true
+          }
+          ast::expr_tup(_) {
+            true
+          }
           _ { false }
         }
     }
@@ -266,14 +272,12 @@ fn check_stmt(tcx: ty::ctxt, stmt: @ast::stmt) {
         for (let_style, local) in locals {
             alt local.node.init {
               option::some({op: ast::init_assign., expr}) {
-                need_expr_kind(tcx, expr,
-                               ast::kind_shared,
-                               "local initializer");
+                need_shared_or_pinned_ctor(tcx, expr,
+                                           "local initializer");
               }
               option::some({op: ast::init_move., expr}) {
-                // FIXME: Should be as above but moving may be the
-                // only way available currently to assign a resource
-                // to a local.
+                need_shared_or_pinned_ctor(tcx, expr,
+                                           "local initializer");
               }
               option::none. { /* fall through */ }
             }
