@@ -1,4 +1,4 @@
-// error-pattern: mismatched kinds
+// error-pattern: cannot copy pinned type ~~~{y: r}
 
 resource r(i: @mutable int) {
     *i = *i + 1;

@@ -1,4 +1,4 @@
-// error-pattern: mismatched kinds
+// error-pattern: needed shared type, got pinned type ~r
 
 resource r(i: @mutable int) {
     *i = *i + 1;

@@ -1,4 +1,4 @@
-// error-pattern:mismatched kinds
+// error-pattern:cannot copy pinned type foo
 
 resource foo(i: int) { }
 
