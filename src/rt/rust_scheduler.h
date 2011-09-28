@@ -1,6 +1,8 @@
 #ifndef RUST_SCHEDULER_H
 #define RUST_SCHEDULER_H
 
+#include "context.h"
+
 #ifndef _WIN32
 #include <pthread.h>
 #else
@@ -72,6 +74,7 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     static bool tls_initialized;
 
     rust_env *env;
+    context c_context;
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
