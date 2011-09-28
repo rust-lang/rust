@@ -2,6 +2,7 @@
 //      -I../arch/i386 -fno-stack-protector -o intrinsics.ll intrinsics.cpp`
 
 #include "../rust_internal.h"
+#include "../rust_scheduler.h"
 #include <cstdlib>
 #include <cstring>
 
@@ -46,3 +47,4 @@ rust_intrinsic_recv(rust_task *task, void **retptr, type_desc *ty,
                     rust_port *port) {
     port_recv(task, (uintptr_t*)retptr, port);
 }
+

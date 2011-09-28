@@ -202,6 +202,16 @@ upcall_dynastack_free(rust_task *task, void *ptr) {
     return task->dynastack.free(ptr);
 }
 
+/**
+ * Allocates |nbytes| bytes in the C stack and returns a pointer to the start
+ * of the allocated space.
+ */
+extern "C" CDECL void *
+upcall_alloc_c_stack(size_t nbytes) {
+    rust_scheduler *sched = rust_scheduler::get_task()->sched;
+    return sched->c_context.alloc_stack(nbytes);
+}
+
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,
