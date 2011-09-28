@@ -29,7 +29,7 @@ define void @_rust_main_wrap(i1* nocapture, %task *, %2* nocapture, %vec *)
 define void @_rust_spawn_wrap(
        i1* nocapture, %task*, %2* nocapture, %nullary_fn* %f)
 {
-  call fastcc void %f(i1* %0, %task *%1, %2* nocapture %2)
+  call void %f(i1* %0, %task *%1, %2* nocapture %2)
   ret void
 }
 

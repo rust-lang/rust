@@ -317,18 +317,12 @@ fn decl_cdecl_fn(llmod: ModuleRef, name: str, llty: TypeRef) -> ValueRef {
     ret decl_fn(llmod, name, lib::llvm::LLVMCCallConv, llty);
 }
 
-fn decl_fastcall_fn(llmod: ModuleRef, name: str, llty: TypeRef) -> ValueRef {
-    let llfn = decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
-    let _: () = str::as_buf("rust", {|buf| llvm::LLVMSetGC(llfn, buf) });
-    ret llfn;
-}
-
 
 // Only use this if you are going to actually define the function. It's
 // not valid to simply declare a function as internal.
-fn decl_internal_fastcall_fn(llmod: ModuleRef, name: str, llty: TypeRef) ->
+fn decl_internal_cdecl_fn(llmod: ModuleRef, name: str, llty: TypeRef) ->
    ValueRef {
-    let llfn = decl_fastcall_fn(llmod, name, llty);
+    let llfn = decl_cdecl_fn(llmod, name, llty);
     llvm::LLVMSetLinkage(llfn,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     ret llfn;
@@ -1454,7 +1448,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
         (llvm::LLVMGetElementType
          (llvm::LLVMTypeOf(dtor_addr)))[std::vec::len(args)];
     let val_cast = BitCast(cx, val.val, val_llty);
-    FastCall(cx, dtor_addr, args + [val_cast]);
+    Call(cx, dtor_addr, args + [val_cast]);
 
     cx = drop_ty(cx, val.val, inner_t_s);
     Store(cx, C_int(0), drop_flag.val);
@@ -2861,7 +2855,7 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
     let iter_body_llty =
         type_of_fn_from_ty(ccx, cx.sp, iter_body_fn, 0u);
     let lliterbody: ValueRef =
-        decl_internal_fastcall_fn(ccx.llmod, s, iter_body_llty);
+        decl_internal_cdecl_fn(ccx.llmod, s, iter_body_llty);
     let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id,
                                ast::return_val);
     fcx.iterbodyty = cx.fcx.iterbodyty;
@@ -3418,8 +3412,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     // Give the thunk a name, type, and value.
     let s: str = mangle_internal_name_by_path_and_seq(ccx, cx.path, "thunk");
     let llthunk_ty: TypeRef = get_pair_fn_ty(type_of(ccx, sp, incoming_fty));
-    let llthunk: ValueRef =
-        decl_internal_fastcall_fn(ccx.llmod, s, llthunk_ty);
+    let llthunk: ValueRef = decl_internal_cdecl_fn(ccx.llmod, s, llthunk_ty);
 
     // Create a new function context and block context for the thunk, and hold
     // onto a pointer to the first block in the function for later use.
@@ -3559,7 +3552,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     let lltargetty =
         type_of_fn_from_ty(ccx, sp, outgoing_fty, ty_param_count);
     lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
-    FastCall(bcx, lltargetfn, llargs);
+    Call(bcx, lltargetfn, llargs);
     build_return(bcx);
     finish_fn(fcx, lltop);
     ret {val: llthunk, ty: llthunk_ty};
@@ -3869,8 +3862,8 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
        type _|_. Since that means it diverges, the code
        for the call itself is unreachable. */
     let retval = C_nil();
-    bcx = invoke_fastcall(bcx, faddr, llargs,
-                          args_res.to_zero, args_res.to_revoke);
+    bcx = invoke_full(bcx, faddr, llargs, args_res.to_zero,
+                      args_res.to_revoke);
     alt lliterbody {
       none. {
         if !ty::type_is_nil(tcx, ret_ty) {
@@ -3922,14 +3915,10 @@ fn invoke(bcx: @block_ctxt, llfn: ValueRef,
     ret invoke_(bcx, llfn, llargs, [], [], Invoke);
 }
 
-fn invoke_fastcall(bcx: @block_ctxt, llfn: ValueRef,
-                   llargs: [ValueRef],
-                   to_zero: [{v: ValueRef, t: ty::t}],
-                   to_revoke: [{v: ValueRef, t: ty::t}])
-    -> @block_ctxt {
-    ret invoke_(bcx, llfn, llargs,
-                to_zero, to_revoke,
-                FastInvoke);
+fn invoke_full(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
+               to_zero: [{v: ValueRef, t: ty::t}],
+               to_revoke: [{v: ValueRef, t: ty::t}]) -> @block_ctxt {
+    ret invoke_(bcx, llfn, llargs, to_zero, to_revoke, Invoke);
 }
 
 fn invoke_(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
@@ -4129,7 +4118,7 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
             type_of_fn_from_ty(ccx, e.span, fty, 0u);
         let sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
         let s = mangle_internal_name_by_path(ccx, sub_cx.path);
-        let llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
+        let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
         let fn_res =
             trans_closure(some(cx), some(llfnty), sub_cx, e.span, f, llfn,
@@ -4580,7 +4569,7 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
         llargs += [r.val];
       }
     }
-    bcx = invoke_fastcall(bcx, llcallee, llargs, [], []);
+    bcx = invoke(bcx, llcallee, llargs);
     bcx = trans_block_cleanups(bcx, cx);
     let next_cx = new_sub_block_ctxt(in_cx, "next");
     if bcx.unreachable { Unreachable(next_cx); }
@@ -5557,7 +5546,7 @@ fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
       _ { ccx.sess.bug("register_fn(): fn item doesn't have fn type!"); }
     }
     let ps: str = mangle_exported_name(ccx, path, node_type);
-    let llfn: ValueRef = decl_fastcall_fn(ccx.llmod, ps, llfty);
+    let llfn: ValueRef = decl_cdecl_fn(ccx.llmod, ps, llfty);
     ccx.item_ids.insert(node_id, llfn);
     ccx.item_symbols.insert(node_id, ps);
 
@@ -5594,7 +5583,8 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
 
         let llfty = type_of_fn(ccx, sp, ast::proto_fn, false, false,
                                [vecarg_ty], nt, 0u);
-        let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main", llfty);
+        let llfdecl = decl_fn(ccx.llmod, "_rust_main",
+                              lib::llvm::LLVMFastCallConv, llfty);
 
         let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
 
@@ -5613,7 +5603,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
             llargvarg = PointerCast(bcx, llargvarg, minus_ptr);
             args += [do_spill_noroot(bcx, llargvarg)];
         }
-        FastCall(bcx, main_llfn, args);
+        Call(bcx, main_llfn, args);
         build_return(bcx);
 
         finish_fn(fcx, lltop);
@@ -5676,7 +5666,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     let t = node_id_type(ccx, id);
     let wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
     let ps: str = mangle_exported_name(ccx, path, node_id_type(ccx, id));
-    let wrapper_fn = decl_fastcall_fn(ccx.llmod, ps, wrapper_type);
+    let wrapper_fn = decl_cdecl_fn(ccx.llmod, ps, wrapper_type);
     ccx.item_ids.insert(id, wrapper_fn);
     ccx.item_symbols.insert(id, ps);
 
@@ -6048,7 +6038,7 @@ fn trap(bcx: @block_ctxt) {
 
 fn decl_no_op_type_glue(llmod: ModuleRef, taskptr_type: TypeRef) -> ValueRef {
     let ty = T_fn([taskptr_type, T_ptr(T_i8())], T_void());
-    ret decl_fastcall_fn(llmod, abi::no_op_type_glue_name(), ty);
+    ret decl_cdecl_fn(llmod, abi::no_op_type_glue_name(), ty);
 }
 
 fn make_glues(llmod: ModuleRef, taskptr_type: TypeRef) -> @glue_fns {

@@ -604,8 +604,7 @@ fn begin_fn(cx: @local_ctxt, sp: span, m: @ty::method,
 
     // Get the function's type and declare it.
     let llfn_ty: TypeRef = type_of_meth(cx.ccx, sp, m, ty_params);
-    let llfn: ValueRef =
-        decl_internal_fastcall_fn(cx.ccx.llmod, s, llfn_ty);
+    let llfn: ValueRef = decl_internal_cdecl_fn(cx.ccx.llmod, s, llfn_ty);
 
     ret llfn;
 }
@@ -706,7 +705,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     }
 
     // And, finally, call the outer method.
-    FastCall(bcx, llouter_mthd, llouter_mthd_args);
+    Call(bcx, llouter_mthd, llouter_mthd_args);
 
     build_return(bcx);
     finish_fn(fcx, lltop);
@@ -858,7 +857,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     }
 
     // And, finally, call the original (inner) method.
-    FastCall(bcx, llorig_mthd, llorig_mthd_args);
+    Call(bcx, llorig_mthd, llorig_mthd_args);
 
     build_return(bcx);
     finish_fn(fcx, lltop);
@@ -911,7 +910,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     let mcx: @local_ctxt =
         @{path: cx.path + ["method", m.node.ident] with *cx};
     let s: str = mangle_internal_name_by_path(mcx.ccx, mcx.path);
-    let llfn: ValueRef = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
+    let llfn: ValueRef = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
     // Every method on an object gets its node_id inserted into the crate-wide
     // item_ids map, together with the ValueRef that points to where that
