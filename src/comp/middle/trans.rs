@@ -4091,7 +4091,7 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
     for tf in ty_fields {
         let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
         bcx = dst.bcx;
-        // FIXME make this {|f| str::eq(f.node.ident, tf.ident)} again when
+        // FIXME make this  again when
         // bug #913 is fixed
         fn test(n: str, f: ast::field) -> bool { str::eq(f.node.ident, n) }
         alt vec::find(bind test(tf.ident, _), fields) {

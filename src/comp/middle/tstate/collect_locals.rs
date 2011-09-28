@@ -130,19 +130,14 @@ fn mk_fn_info(ccx: crate_ctxt, f: _fn, tp: [ty_param], f_sp: span,
     // "diverges" constraint
     let diverges_id = ccx.tcx.sess.next_node_id();
     let diverges_name = name + "!";
-    add_constraint(cx.tcx, respan(f_sp, ninit(diverges_id, diverges_name)),
-                   next, res_map);
+    next = add_constraint(cx.tcx, respan(f_sp, ninit(diverges_id,
+                                                     diverges_name)),
+                          next, res_map);
 
     let v: @mutable [node_id] = @mutable [];
     let rslt =
         {constrs: res_map,
-
-         // add 2 to account for the i_return and i_diverge constraints
-         // FIXME the 1u here is a kludge to make bug #913's impact somewhat
-         // smaller. it should be removed once the bug is really fixed
-         num_constraints:
-             vec::len(*cx.cs) + vec::len(f.decl.constraints) +
-                 vec::len(f.decl.inputs) + 2u + 1u,
+         num_constraints: next,
          cf: f.decl.cf,
          i_return: ninit(id, name),
          i_diverge: ninit(diverges_id, diverges_name),
