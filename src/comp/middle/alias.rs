@@ -395,9 +395,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         for pat in a.pats {
             for proot in pattern_roots(cx.tcx, root.mut, pat) {
                 let canon_id = pat_id_map.get(proot.name);
-                // FIXME I wanted to use a block here, but that hit bug #913
-                fn match(x: info, canon: node_id) -> bool { x.id == canon }
-                alt vec::find(bind match(_, canon_id), binding_info) {
+                alt vec::find({|x| x.id == canon_id}, binding_info) {
                   some(s) { s.unsafe += unsafe_set(proot.mut); }
                   none. {
                       binding_info += [{id: canon_id,
