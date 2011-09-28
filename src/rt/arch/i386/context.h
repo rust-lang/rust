@@ -37,6 +37,7 @@ public:
 
   void swap(context &out);
   void call(void *f, void *arg, void *sp);
+  void call(void *f, void *sp);
 
   // Note that this doesn't actually adjust esp. Instead, we adjust esp when
   // we actually do the call. This is needed for exception safety -- if the
