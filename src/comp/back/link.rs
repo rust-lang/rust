@@ -497,14 +497,13 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 fn link_binary(sess: session::session,
                binary_dir: str,
                saved_out_filename: str) {
-    let glu: str = binary_dir + "/lib/glue.o";
     let main: str = binary_dir + "/lib/main.o";
     let stage: str = "-L" + binary_dir + "/lib";
     let prog: str = "gcc";
     // The invocations of gcc share some flags across platforms
 
     let gcc_args =
-        [stage, "-Lrt", "-lrustrt", glu, "-m32", "-o", saved_out_filename,
+        [stage, "-Lrt", "-lrustrt", "-m32", "-o", saved_out_filename,
          saved_out_filename + ".o"];
     let lib_cmd;
 

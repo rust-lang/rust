@@ -6044,35 +6044,6 @@ fn decl_no_op_type_glue(llmod: ModuleRef, taskptr_type: TypeRef) -> ValueRef {
     ret decl_cdecl_fn(llmod, abi::no_op_type_glue_name(), ty);
 }
 
-fn make_glues(llmod: ModuleRef, taskptr_type: TypeRef) -> @glue_fns {
-    ret @{no_op_type_glue: decl_no_op_type_glue(llmod, taskptr_type)};
-}
-
-fn make_common_glue(sess: session::session, output: str) {
-    // FIXME: part of this is repetitive and is probably a good idea
-    // to autogen it.
-    let task_type = T_task();
-    let taskptr_type = T_ptr(task_type);
-
-    let llmod = str::as_buf("rust_out", {|buf|
-        llvm::LLVMModuleCreateWithNameInContext
-            (buf, llvm::LLVMGetGlobalContext())
-    });
-    let _: () =
-        str::as_buf(x86::get_data_layout(),
-                    {|buf| llvm::LLVMSetDataLayout(llmod, buf) });
-    let _: () =
-        str::as_buf(x86::get_target_triple(),
-                    {|buf| llvm::LLVMSetTarget(llmod, buf) });
-    mk_target_data(x86::get_data_layout());
-    declare_intrinsics(llmod);
-    let _: () =
-        str::as_buf(x86::get_module_asm(),
-                    {|buf| llvm::LLVMSetModuleInlineAsm(llmod, buf) });
-    make_glues(llmod, taskptr_type);
-    link::write::run_passes(sess, llmod, output);
-}
-
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct([T_int(), T_int()]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
@@ -6183,7 +6154,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     tn.associate("taskptr", taskptr_type);
     let tydesc_type = T_tydesc(taskptr_type);
     tn.associate("tydesc", tydesc_type);
-    let glues = make_glues(llmod, taskptr_type);
     let hasher = ty::hash_ty;
     let eqer = ty::eq_ty;
     let tag_sizes = map::mk_hashmap::<ty::t, uint>(hasher, eqer);
@@ -6212,7 +6182,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tydescs: tydescs,
           module_data: new_str_hash::<ValueRef>(),
           lltypes: lltypes,
-          glues: glues,
           names: namegen(0),
           sha: sha,
           type_sha1s: sha1s,

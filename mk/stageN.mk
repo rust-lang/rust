@@ -63,14 +63,6 @@ stage$(2)/lib/intrinsics.bc: $$(INTRINSICS_BC)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/lib/glue.o: stage$(2)/rustc$$(X)        \
-                      stage$(2)/$$(CFG_RUNTIME)   \
-                      stage$(2)/$$(CFG_RUSTLLVM)  \
-                      stage$(2)/lib/intrinsics.bc \
-                      $$(SREQ$(1))
-	@$$(call E, generate: $$@)
-	$$(STAGE$(2)) -c -o $$@ --glue
-
 stage$(2)/lib/main.o: rt/main.o
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
@@ -84,7 +76,7 @@ stage$(2)/lib/$$(CFG_STDLIB): $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
                               stage$(2)/rustc$$(X)               \
                               stage$(2)/$$(CFG_RUNTIME)          \
                               stage$(2)/$$(CFG_RUSTLLVM)         \
-                              stage$(2)/lib/glue.o               \
+                              stage$(2)/lib/intrinsics.bc        \
                               $$(SREQ$(1))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2))  --lib -o $$@ $$<
@@ -93,7 +85,7 @@ stage$(2)/lib/libstd.rlib: $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
                            stage$(2)/rustc$$(X)               \
                            stage$(2)/$$(CFG_RUNTIME)          \
                            stage$(2)/$$(CFG_RUSTLLVM)         \
-                           stage$(2)/lib/glue.o               \
+                           stage$(2)/lib/intrinsics.bc        \
                            $$(SREQ$(1))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) --lib --static -o $$@ $$<
@@ -111,15 +103,6 @@ stage$(2)/lib/rustc/$(3)/intrinsics.bc: $$(INTRINSICS_BC)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/lib/rustc/$(3)/glue.o: \
-         stage$(2)/rustc$$(X)        \
-         stage$(2)/$$(CFG_RUNTIME)   \
-         stage$(2)/$$(CFG_RUSTLLVM)  \
-         stage$(2)/lib/intrinsics.bc \
-         $$(SREQ$(1))
-	@$$(call E, generate: $$@)
-	$$(STAGE$(2)) -c -o $$@ --glue
-
 stage$(2)/lib/rustc/$(3)/main.o: rt/main.o
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
@@ -135,7 +118,7 @@ stage$(2)/lib/rustc/$(3)/$$(CFG_STDLIB): \
         stage$(2)/rustc$$(X)               \
         stage$(2)/$$(CFG_RUNTIME)          \
         stage$(2)/$$(CFG_RUSTLLVM)         \
-        stage$(2)/lib/rustc/$(3)/glue.o     \
+        stage$(2)/lib/intrinsics.bc        \
         $$(SREQ$(1))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2))  --lib -o $$@ $$<
@@ -145,7 +128,7 @@ stage$(2)/lib/rustc/$(3)/libstd.rlib: \
         stage$(2)/rustc$$(X)               \
         stage$(2)/$$(CFG_RUNTIME)          \
         stage$(2)/$$(CFG_RUSTLLVM)         \
-        stage$(2)/lib/rustc/$(3)/glue.o     \
+        stage$(2)/lib/intrinsics.bc        \
         $$(SREQ$(1))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) --lib --static -o $$@ $$<

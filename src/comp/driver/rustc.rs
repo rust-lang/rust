@@ -238,7 +238,6 @@ options:
     -v --version       print version info and exit
 
     -o <filename>      write output to <filename>
-    --glue             generate glue.bc file
     --lib              compile a library crate
     --static           use or produce static libraries
     --pretty [type]    pretty-print the input instead of compiling
@@ -424,7 +423,7 @@ fn parse_pretty(sess: session::session, name: str) -> pp_mode {
 
 fn opts() -> [getopts::opt] {
     ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
-         optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
+         optflag("emit-llvm"), optflagopt("pretty"),
          optflag("ls"), optflag("parse-only"), optflag("no-trans"),
          optflag("O"), optopt("OptLevel"), optmulti("L"), optflag("S"),
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
@@ -458,15 +457,6 @@ fn main(args: [str]) {
     let sess = build_session(sopts);
     let n_inputs = vec::len::<str>(match.free);
     let output_file = getopts::opt_maybe_str(match, "o");
-    let glue = opt_present(match, "glue");
-    if glue {
-        if n_inputs > 0u {
-            sess.fatal("No input files allowed with --glue.");
-        }
-        let out = option::from_maybe::<str>("glue.bc", output_file);
-        middle::trans::make_common_glue(sess, out);
-        ret;
-    }
     if n_inputs == 0u {
         sess.fatal("No input filename given.");
     } else if n_inputs > 1u {

@@ -41,8 +41,6 @@ obj namegen(mutable i: int) {
 
 type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
 
-type glue_fns = {no_op_type_glue: ValueRef};
-
 tag tydesc_kind {
     tk_static; // Static (monomorphic) type descriptor.
     tk_param; // Type parameter.
@@ -111,7 +109,6 @@ type crate_ctxt =
      tydescs: hashmap<ty::t, @tydesc_info>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
-     glues: @glue_fns,
      names: namegen,
      sha: std::sha1::sha1,
      type_sha1s: hashmap<ty::t, str>,
