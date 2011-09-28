@@ -70,7 +70,7 @@ iter pat_bindings(pat: @pat) -> @pat {
       }
       pat_box(sub) { for each b in pat_bindings(sub) { put b; } }
       pat_uniq(sub) { for each b in pat_bindings(sub) { put b; } }
-      pat_wild. | pat_lit(_) { }
+      pat_wild. | pat_lit(_) | pat_range(_, _) { }
     }
 }
 
@@ -230,3 +230,4 @@ fn ret_by_ref(style: ret_style) -> bool {
 // buffer-file-coding-system: utf-8-unix
 // compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
+

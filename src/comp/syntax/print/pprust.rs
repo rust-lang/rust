@@ -1114,6 +1114,12 @@ fn print_pat(s: ps, pat: @ast::pat) {
       }
       ast::pat_box(inner) { word(s.s, "@"); print_pat(s, inner); }
       ast::pat_uniq(inner) { word(s.s, "~"); print_pat(s, inner); }
+      ast::pat_range(begin, end) {
+        print_literal(s, begin);
+        space(s.s);
+        word_space(s, "to");
+        print_literal(s, end);
+      }
     }
     s.ann.post(ann_node);
 }

@@ -93,6 +93,7 @@ tag pat_ {
     pat_tup([@pat]);
     pat_box(@pat);
     pat_uniq(@pat);
+    pat_range(@lit, @lit);
 }
 
 tag mutability { mut; imm; maybe_mut; }
