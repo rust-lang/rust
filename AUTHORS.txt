@@ -34,3 +34,4 @@ Rafael Ávila de Espíndola <respindola@mozilla.com>
 Rob Arnold <robarnold@cs.cmu.edu>
 Roy Frostig <rfrostig@mozilla.com>
 Tim Chevalier <chevalier@alum.wellesley.edu>
+Wade Mealing <wmealing@gmail.com>
