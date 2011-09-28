@@ -408,6 +408,9 @@ fn print_item(s: ps, item: @ast::item) {
             word_nbsp(s, "\"rust-intrinsic\"");
           }
           ast::native_abi_x86stdcall. { word_nbsp(s, "\"x86stdcall\""); }
+          ast::native_abi_c_stack_cdecl. {
+            word_nbsp(s, "\"c-stack-cdecl\"");
+          }
         }
         word_nbsp(s, "mod");
         word_nbsp(s, item.ident);

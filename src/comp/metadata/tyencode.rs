@@ -147,6 +147,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
           native_abi_cdecl. { w.write_char('c'); }
           native_abi_llvm. { w.write_char('l'); }
           native_abi_x86stdcall. { w.write_char('s'); }
+          native_abi_c_stack_cdecl. { w.write_char('C'); }
         }
         enc_ty_fn(w, cx, args, out, return_val, []);
       }

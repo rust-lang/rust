@@ -419,6 +419,7 @@ tag native_abi {
     native_abi_llvm;
     native_abi_rust_intrinsic;
     native_abi_x86stdcall;
+    native_abi_c_stack_cdecl;
 }
 
 type native_mod =

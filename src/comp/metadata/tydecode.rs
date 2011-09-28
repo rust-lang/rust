@@ -263,6 +263,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
           'c' { abi = ast::native_abi_cdecl; }
           'l' { abi = ast::native_abi_llvm; }
           's' { abi = ast::native_abi_x86stdcall; }
+          'C' { abi = ast::native_abi_c_stack_cdecl; }
         }
         let func = parse_ty_fn(st, sd);
         ret ty::mk_native_fn(st.tcx, abi, func.args, func.ty);

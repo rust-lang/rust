@@ -5715,6 +5715,9 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         uses_retptr = false;
         cast_to_i32 = true;
       }
+      ast::native_abi_c_stack_cdecl. {
+        fail "C stack cdecl ABI shouldn't have a wrapper";
+      }
     }
 
     let lltaskptr;

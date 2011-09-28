@@ -2012,7 +2012,11 @@ fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
             abi = ast::native_abi_rust_intrinsic;
         } else if str::eq(t, "x86stdcall") {
             abi = ast::native_abi_x86stdcall;
-        } else { p.fatal("unsupported abi: " + t); }
+        } else if str::eq(t, "c-stack-cdecl") {
+            abi = ast::native_abi_c_stack_cdecl;
+        } else {
+            p.fatal("unsupported abi: " + t);
+        }
     }
     expect_word(p, "mod");
     let id = parse_ident(p);
