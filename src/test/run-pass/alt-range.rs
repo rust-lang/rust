@@ -1,3 +1,5 @@
+// xfail-fast - more windows randomness under check-fast
+
 fn main() {
     alt 5u {
       1u to 5u {}
