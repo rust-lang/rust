@@ -4676,8 +4676,6 @@ fn trans_be(cx: @block_ctxt, e: @ast::expr) : ast_util::is_call_expr(e) ->
 fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let ty = node_id_type(bcx_ccx(bcx), local.node.id);
     let llptr = bcx.fcx.lllocals.get(local.node.id);
-    // Make a note to drop this slot on the way out.
-    add_clean(bcx, llptr, ty);
 
     if must_zero(bcx_ccx(bcx), local) {
         bcx = zero_alloca(bcx, llptr, ty);
@@ -4698,9 +4696,10 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
       }
       _ { }
     }
-    bcx =
-        trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr,
-                                        bcx.fcx.lllocals, false);
+    // Make a note to drop this slot on the way out.
+    add_clean(bcx, llptr, ty);
+    bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr,
+                                          bcx.fcx.lllocals, false);
     ret bcx;
 
     fn must_zero(ccx: @crate_ctxt, local: @ast::local) -> bool {
