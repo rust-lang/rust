@@ -1,5 +1,4 @@
-// xfail-test
-// error-pattern:mismatched kinds
+// error-pattern:mismatched kinds for record field
 resource r(i: @mutable int) {
     *i = *i + 1;
 }

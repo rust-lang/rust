@@ -1,5 +1,4 @@
-// xfail-test
-// error-pattern:mismatched kinds
+// error-pattern:mismatched kinds for tuple parameter
 resource r(i: @mutable int) {
     *i = *i + 1;
 }

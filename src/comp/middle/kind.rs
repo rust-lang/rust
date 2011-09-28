@@ -142,6 +142,52 @@ fn need_shared_lhs_rhs(tcx: ty::ctxt, a: @ast::expr, b: @ast::expr, op: str) {
     need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
 }
 
+/*
+This ... is a hack (I find myself writing that too often *sadface*).
+
+We need to be able to put pinned kinds into other types but such operations
+are conceptually copies, and pinned kinds can't do that, e.g.
+
+let a = my_resource(x);
+let b = @a; // no-go
+
+So this function attempts to make a loophole where resources can be put into
+other types as long as it's done in a safe way, specifically like
+
+let b = @my_resource(x);
+*/
+fn need_shared_or_pinned_ctor(tcx: ty::ctxt, a: @ast::expr, descr: str) {
+    let tk = type_and_kind(tcx, a);
+    if tk.kind == ast::kind_pinned && !pinned_ctor(a) {
+        let err =
+            #fmt["mismatched kinds for %s: cannot copy pinned type %s",
+                 descr, util::ppaux::ty_to_str(tcx, tk.ty)];
+        tcx.sess.span_err(a.span, err);
+        let note =
+            #fmt["try constructing %s directly into %s",
+                 util::ppaux::ty_to_str(tcx, tk.ty), descr];
+        tcx.sess.span_note(a.span, note);
+    } else if tk.kind != ast::kind_pinned {
+        need_expr_kind(tcx, a, ast::kind_shared, descr);
+    }
+
+    fn pinned_ctor(a: @ast::expr) -> bool {
+        // FIXME: Technically a lambda block is also a pinned ctor
+        alt a.node {
+          ast::expr_call(cexpr, _) {
+            // Assuming that if it's a call that it's safe to move in, mostly
+            // because I don't know offhand how to ensure that it's a call
+            // specifically to a resource constructor
+            true
+          }
+          ast::expr_rec(_, _) {
+            true
+          }
+          _ { false }
+        }
+    }
+}
+
 fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
     alt e.node {
 
@@ -187,6 +233,27 @@ fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
                             #fmt("typaram %d", i));
                 i += 1;
             }
+        }
+      }
+      ast::expr_unary(op, a) {
+        alt op {
+          ast::box(_) {
+            need_shared_or_pinned_ctor(tcx, a, "'@' operand");
+          }
+          ast::uniq(_) {
+            need_shared_or_pinned_ctor(tcx, a, "'~' operand");
+          }
+          _ { /* fall through */ }
+        }
+      }
+      ast::expr_rec(fields, _) {
+        for field in fields {
+            need_shared_or_pinned_ctor(tcx, field.node.expr, "record field");
+        }
+      }
+      ast::expr_tup(exprs) {
+        for expr in exprs {
+            need_shared_or_pinned_ctor(tcx, expr, "tuple parameter");
         }
       }
       _ { }

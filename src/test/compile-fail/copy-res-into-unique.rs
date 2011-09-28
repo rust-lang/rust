@@ -1,4 +1,4 @@
-// error-pattern:mismatched kinds for '@' operand
+// error-pattern:mismatched kinds for '~' operand
 resource r(i: @mutable int) {
     *i = *i + 1;
 }
@@ -8,7 +8,7 @@ fn main() {
     {
         let j <- r(i);
         // No no no no no
-        let k <- @j;
+        let k <- ~j;
     }
     log_err *i;
     assert *i == 2;

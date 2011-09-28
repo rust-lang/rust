@@ -1,6 +1,6 @@
 
 
-fn box<T>(x: {x: T, y: T, z: T}) -> @{x: T, y: T, z: T} { ret @x; }
+fn box<@T>(x: {x: T, y: T, z: T}) -> @{x: T, y: T, z: T} { ret @x; }
 
 fn main() {
     let x: @{x: int, y: int, z: int} = box::<int>({x: 1, y: 2, z: 3});
