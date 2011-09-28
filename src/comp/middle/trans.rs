@@ -194,8 +194,12 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         T_fn_pair(*cx, type_of_fn_from_ty(cx, sp, t, 0u))
       }
       ty::ty_native_fn(abi, args, out) {
-        let nft = native_fn_wrapper_type(cx, sp, 0u, t);
-        T_fn_pair(*cx, nft)
+        if native_abi_requires_pair(abi) {
+            let nft = native_fn_wrapper_type(cx, sp, 0u, t);
+            T_fn_pair(*cx, nft)
+        } else {
+            raw_native_fn_type(cx, sp, args, out)
+        }
       }
       ty::ty_obj(meths) { cx.rust_object_type }
       ty::ty_res(_, sub, tps) {
@@ -5658,6 +5662,15 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
     ret count;
 }
 
+fn native_abi_requires_pair(abi: ast::native_abi) -> bool {
+    alt abi {
+        ast::native_abi_rust. | ast::native_abi_cdecl. |
+        ast::native_abi_llvm. | ast::native_abi_rust_intrinsic. |
+        ast::native_abi_x86stdcall. { ret true; }
+        ast::native_abi_c_stack_cdecl. { ret false; }
+    }
+}
+
 fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
@@ -5667,6 +5680,12 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
                        ty_param_count);
       }
     }
+}
+
+fn raw_native_fn_type(ccx: @crate_ctxt, sp: span, args: [ty::arg],
+                      ret_ty: ty::t) -> TypeRef {
+    check type_has_static_size(ccx, ret_ty);
+    ret T_fn(type_of_explicit_args(ccx, sp, args), type_of(ccx, sp, ret_ty));
 }
 
 fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
