@@ -1299,14 +1299,14 @@ fn vars_in_type(cx: ctxt, ty: t) -> [int] {
 }
 
 fn type_autoderef(cx: ctxt, t: ty::t) -> ty::t {
-    let t1: ty::t = t;
+    let t1 = t;
     while true {
         alt struct(cx, t1) {
-          ty::ty_box(mt) { t1 = mt.ty; }
-          ty::ty_res(_, inner, tps) {
+          ty_box(mt) | ty_uniq(mt) { t1 = mt.ty; }
+          ty_res(_, inner, tps) {
             t1 = substitute_type_params(cx, tps, inner);
           }
-          ty::ty_tag(did, tps) {
+          ty_tag(did, tps) {
             let variants = tag_variants(cx, did);
             if vec::len(variants) != 1u || vec::len(variants[0].args) != 1u {
                 break;

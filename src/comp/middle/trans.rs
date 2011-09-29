@@ -2243,10 +2243,7 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
         trans_closure(sub_cx, sp, f, llfn, none, [], id, {|_fcx|});
       }
     };
-    let addr = alt dest {
-      save_in(a) { a }
-      overwrite(a, ty) { bcx = drop_ty(bcx, a, ty); a }
-    };
+    let {bcx, val: addr} = get_dest_addr(bcx, dest);
     fill_fn_pair(bcx, addr, llfn, env);
     ret bcx;
 }
@@ -2535,6 +2532,13 @@ fn store_in_dest(bcx: @block_ctxt, val: ValueRef, dest: dest) -> @block_ctxt {
       }
     }
     ret bcx;
+}
+
+fn get_dest_addr(bcx: @block_ctxt, dest: dest) -> result {
+    alt dest {
+      save_in(a) { rslt(bcx, a) }
+      overwrite(a, t) { rslt(drop_ty(bcx, a, t), a) }
+    }
 }
 
 // Wrapper through which legacy non-DPS code can use DPS functions
@@ -3675,12 +3679,8 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
         let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
         bcx = lv.bcx;
         // FIXME[DPS] factor this out
-        let addr = alt dest {
-          save_in(a) { a }
-          overwrite(a, ty) { bcx = drop_ty(bcx, a, ty); a }
-        };
-        bcx = memmove_ty(bcx, addr, lv.val, pair_ty);
-        ret bcx;
+        let {bcx, val: addr} = get_dest_addr(bcx, dest);
+        ret memmove_ty(bcx, addr, lv.val, pair_ty);
     }
     let closure = alt f_res.env {
       null_env. { none }
@@ -3717,10 +3717,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
                          closure.ptrty, ty_param_count, target_res);
 
     // Fill the function pair
-    let addr = alt dest {
-      save_in(a) { a }
-      overwrite(a, ty) { bcx = drop_ty(bcx, a, ty); a }
-    };
+    let {bcx, val: addr} = get_dest_addr(bcx, dest);
     fill_fn_pair(bcx, addr, llthunk.val, closure.ptr);
     ret bcx;
 }
@@ -4186,25 +4183,18 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
     ret bcx;
 }
 
+// FIXME[DPS] remove this entirely, rename trans_expr_dps to trans_expr
 fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
-    // Fixme Fill in cx.sp
-    alt e.node {
-      ast::expr_anon_obj(anon_obj) {
-        ret trans_anon_obj(cx, e.span, anon_obj, e.id);
-      }
-      ast::expr_call(_, _) | ast::expr_field(_, _) | ast::expr_index(_, _) |
-      ast::expr_path(_) | ast::expr_unary(ast::deref., _) {
+    if expr_is_lval(bcx_tcx(cx), e) {
         let t = ty::expr_ty(bcx_tcx(cx), e);
         let sub = trans_lval(cx, e);
         let v = sub.val;
         if sub.is_mem { v = load_if_immediate(sub.bcx, v, t); }
         ret rslt(sub.bcx, v);
-      }
-      // Fall through to DPS-style
-      _ {
+    } else {
+        // Fall through to DPS-style
         ret dps_to_result(cx, {|bcx, dest| trans_expr_dps(bcx, e, dest)},
                           ty::expr_ty(bcx_tcx(cx), e));
-      }
     }
 }
 
@@ -4234,6 +4224,9 @@ fn trans_expr_by_ref(bcx: @block_ctxt, e: @ast::expr) -> result {
 // - exprs returning non-immediates get save_in (or by_ref when lval)
 fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
     -> @block_ctxt {
+    let tcx = bcx_tcx(bcx);
+    if expr_is_lval(tcx, e) { ret lval_to_dps(bcx, e, dest); }
+
     alt e.node {
       ast::expr_if(cond, thn, els) | ast::expr_if_check(cond, thn, els) {
         ret trans_if(bcx, cond, thn, els, dest);
@@ -4261,22 +4254,23 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
       ast::expr_vec(args, _) { ret tvec::trans_vec(bcx, args, e.id, dest); }
       ast::expr_binary(op, x, y) { ret trans_binary(bcx, op, x, y, dest); }
       ast::expr_unary(op, x) {
-        if op == ast::deref {
-            ret trans_expr_backwards_compat(bcx, e, dest);
-        }
+        assert op != ast::deref; // lvals are handled above
         ret trans_unary(bcx, op, x, e.id, dest);
       }
       ast::expr_fn(f) { ret trans_expr_fn(bcx, f, e.span, e.id, dest); }
       ast::expr_bind(f, args) { ret trans_bind(bcx, f, args, e.id, dest); }
       ast::expr_copy(a) {
-        if !expr_is_lval(bcx_tcx(bcx), a) {
-            ret trans_expr_dps(bcx, a, dest);
-        } else {
-            // FIXME[DPS] give this a name that makes more sense
-            ret trans_expr_backwards_compat(bcx, e, dest);
-        }
+        if !expr_is_lval(tcx, a) { ret trans_expr_dps(bcx, a, dest); }
+        else { ret lval_to_dps(bcx, a, dest); }
       }
       ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
+      ast::expr_anon_obj(anon_obj) {
+        ret trans_anon_obj(bcx, e.span, anon_obj, e.id, dest);
+      }
+      // FIXME[DPS] untangle non-lval calls and fields from trans_lval
+      ast::expr_call(_, _) | ast::expr_field(_, _) {
+        ret lval_to_dps(bcx, e, dest);
+      }
 
       // These return nothing
       ast::expr_break. {
@@ -4366,11 +4360,11 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         let {bcx, val: addr, is_mem} = trans_lval(bcx, dst);
         assert is_mem;
         // FIXME: calculate copy init-ness in typestate.
-        if expr_is_lval(bcx_tcx(bcx), src) {
+        if expr_is_lval(tcx, src) {
             ret trans_expr_save_in(bcx, src, addr, DROP_EXISTING);
         } else {
             let srclv = trans_lval(bcx, src);
-            let t = ty::expr_ty(bcx_tcx(bcx), src);
+            let t = ty::expr_ty(tcx, src);
             ret move_val(srclv.bcx, DROP_EXISTING, addr, srclv, t);
         }
       }
@@ -4379,7 +4373,7 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         let lhs_res = trans_lval(bcx, dst);
         assert (lhs_res.is_mem);
         let rhs_res = trans_lval(lhs_res.bcx, src);
-        let t = ty::expr_ty(bcx_tcx(bcx), src);
+        let t = ty::expr_ty(tcx, src);
         let {bcx: bcx, val: tmp_alloc} = alloc_ty(rhs_res.bcx, t);
         // Swap through a temporary.
         bcx = move_val(bcx, INIT, tmp_alloc, lhs_res, t);
@@ -4390,15 +4384,10 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         assert dest == ignore;
         ret trans_assign_op(bcx, op, dst, src);
       }
-
-      ast::expr_mac(_) { ret bcx_ccx(bcx).sess.bug("unexpanded macro"); }
-      // Convert back from result to DPS
-      _ { ret trans_expr_backwards_compat(bcx, e, dest); }
     }
 }
 
-fn trans_expr_backwards_compat(bcx: @block_ctxt, e: @ast::expr, dest: dest)
-    -> @block_ctxt {
+fn lval_to_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let lv = trans_lval(bcx, e);
     let {bcx, val, is_mem} = lv;
     let ty = ty::expr_ty(bcx_tcx(bcx), e);

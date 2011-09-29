@@ -213,7 +213,13 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
 // instead "inlining" the construction of the object and returning the object
 // itself.
 fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
-                  id: ast::node_id) -> result {
+                  id: ast::node_id, dest: trans::dest) -> @block_ctxt {
+    if dest == trans::ignore {
+        alt anon_obj.inner_obj {
+          some(e) { ret trans::trans_expr_dps(bcx, e, trans::ignore); }
+          none. { ret bcx; }
+        }
+    }
 
     let ccx = bcx_ccx(bcx);
 
@@ -283,43 +289,26 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
       }
     }
 
-    // Allocate the object that we're going to return.
-    let pair = alloca(bcx, ccx.rust_object_type);
-
-    // Take care of cleanups.
-    let t = node_id_type(ccx, id);
-    add_clean_temp(bcx, pair, t);
-
-    // Grab onto the first and second elements of the pair.
-    let pair_vtbl = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
-    let pair_box = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_box)]);
-
     vtbl = PointerCast(bcx, vtbl, T_ptr(T_empty_struct()));
-    Store(bcx, vtbl, pair_vtbl);
 
     // Next we have to take care of the other half of the pair we're
     // returning: a boxed (reference-counted) tuple containing a tydesc,
     // typarams, fields, and a pointer to our inner_obj.
     let llbox_ty: TypeRef = T_ptr(T_empty_struct());
 
-    if vec::len(additional_fields) == 0u &&
-           anon_obj.inner_obj == none {
-
-        // If the object we're translating has no fields and no inner_obj,
-        // there's not much to do.
-        Store(bcx, C_null(llbox_ty), pair_box);
-
-    } else {
-
+    let box = C_null(llbox_ty);
+    if vec::len(additional_fields) > 0u || anon_obj.inner_obj != none {
         // Synthesize a type for the object body and hand it off to
         // trans_malloc_boxed, which allocates a box, including space for a
         // refcount.
         let body_ty: ty::t =
             create_object_body_type(ccx.tcx, additional_field_tys, [],
                                     some(inner_obj_ty));
-        let box = trans_malloc_boxed(bcx, body_ty);
-        bcx = box.bcx;
-        let body = box.body;
+        let box_r = trans_malloc_boxed(bcx, body_ty);
+        box = box_r.box;
+        bcx = box_r.bcx;
+        add_clean_free(bcx, box, false);
+        let body = box_r.body;
 
         // Put together a tydesc for the body, so that the object can later be
         // freed by calling through its tydesc.
@@ -386,14 +375,15 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
                          inner_obj_ty);
           }
         }
-
-        // Store box ptr in outer pair.
-        let p = PointerCast(bcx, box.box, llbox_ty);
-        Store(bcx, p, pair_box);
+        revoke_clean(bcx, box);
+        box = PointerCast(bcx, box, llbox_ty);
     }
-
-    // return the object we built.
-    ret rslt(bcx, pair);
+    let {bcx, val: pair} = trans::get_dest_addr(bcx, dest);
+    let pair_vtbl = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
+    Store(bcx, vtbl, pair_vtbl);
+    let pair_box = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_box)]);
+    Store(bcx, box, pair_box);
+    ret bcx;
 }
 
 // Used only inside create_vtbl and create_backwarding_vtbl to distinguish
