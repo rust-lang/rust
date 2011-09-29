@@ -2983,7 +2983,7 @@ type generic_info =
 type lval_result = {bcx: @block_ctxt,
                     val: ValueRef,
                     is_mem: bool};
-tag callee_env { some_env(ValueRef); null_env; is_closure; }
+tag callee_env { obj_env(ValueRef); null_env; is_closure; }
 type lval_maybe_callee = {bcx: @block_ctxt,
                           val: ValueRef,
                           is_mem: bool,
@@ -3191,7 +3191,7 @@ fn trans_field_inner(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
                        ret_ty, 0u);
         v = Load(r.bcx, PointerCast(r.bcx, v, T_ptr(T_ptr(ll_fn_ty))));
         ret {bcx: r.bcx, val: v, is_mem: true,
-             env: some_env(r.val), generic: none};
+             env: obj_env(r.val), generic: none};
       }
       _ { bcx_ccx(cx).sess.unimpl("field variant in trans_field"); }
     }
@@ -3342,15 +3342,15 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
 
 fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
     -> (bool, ValueRef) {
-    if c.env == is_closure {
-        (c.is_mem, c.val)
-    } else {
-        let env = alt c.env {
-          null_env. { null_env_ptr(bcx) }
-          some_env(e) { e }
-        };
+    alt c.env {
+      is_closure. { (c.is_mem, c.val) }
+      obj_env(_) {
+        fail "Taking the value of a method does not work yet (issue #435)";
+      }
+      null_env. {
         let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
-        (false, create_real_fn_pair(bcx, llfnty, c.val, env))
+        (false, create_real_fn_pair(bcx, llfnty, c.val, null_env_ptr(bcx)))
+      }
     }
 }
 
@@ -3904,7 +3904,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
       null_env. {
         llenv = llvm::LLVMGetUndef(T_opaque_closure_ptr(*bcx_ccx(cx)));
       }
-      some_env(e) { llenv = e; }
+      obj_env(e) { llenv = e; }
       is_closure. {
         // It's a closure. Have to fetch the elements
         if f_res.is_mem { faddr = load_if_immediate(bcx, faddr, fn_expr_ty); }
