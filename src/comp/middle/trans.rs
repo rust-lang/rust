@@ -3392,7 +3392,8 @@ fn float_cast(bcx: @block_ctxt, lldsttype: TypeRef, llsrctype: TypeRef,
         } else { llsrc };
 }
 
-fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id) -> result {
+fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
+              dest: dest) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
     let e_res = trans_expr(cx, e);
     let ll_t_in = val_ty(e_res.val);
@@ -3446,7 +3447,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id) -> result {
           }
           _ { ccx.sess.bug("Translating unsupported cast.") }
         };
-    ret rslt(e_res.bcx, newval);
+    ret store_in_dest(e_res.bcx, newval, dest);
 }
 
 // pth is cx.path
@@ -4188,22 +4189,6 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
 fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
     // Fixme Fill in cx.sp
     alt e.node {
-      ast::expr_copy(a) {
-        let e_ty = ty::expr_ty(bcx_tcx(cx), a);
-        let lv = trans_lval(cx, a);
-        let bcx = lv.bcx;
-        if !lv.is_mem { ret {bcx: lv.bcx, val: lv.val}; }
-        let r = if type_is_immediate(bcx_ccx(cx), e_ty) {
-            rslt(bcx, Load(bcx, lv.val))
-        } else {
-            let {bcx, val: dest} = alloc_ty(bcx, e_ty);
-            bcx = copy_val(bcx, INIT, dest, lv.val, e_ty);
-            rslt(bcx, dest)
-        };
-        add_clean_temp(bcx, r.val, e_ty);
-        ret r;
-      }
-      ast::expr_cast(val, _) { ret trans_cast(cx, val, e.id); }
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(cx, e.span, anon_obj, e.id);
       }
@@ -4283,6 +4268,15 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
       }
       ast::expr_fn(f) { ret trans_expr_fn(bcx, f, e.span, e.id, dest); }
       ast::expr_bind(f, args) { ret trans_bind(bcx, f, args, e.id, dest); }
+      ast::expr_copy(a) {
+        if !expr_is_lval(bcx_tcx(bcx), a) {
+            ret trans_expr_dps(bcx, a, dest);
+        } else {
+            // FIXME[DPS] give this a name that makes more sense
+            ret trans_expr_backwards_compat(bcx, e, dest);
+        }
+      }
+      ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
 
       // These return nothing
       ast::expr_break. {
