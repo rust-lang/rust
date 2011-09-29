@@ -5,7 +5,6 @@
 @setchapternewpage odd
 @c %**end of header
 
-@syncodeindex fn cp
 @include version.texi
 
 @ifinfo
