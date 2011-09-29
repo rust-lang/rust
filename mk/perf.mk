@@ -1,11 +1,11 @@
 
 ifdef CFG_PERF_TOOL
-rustc-perf$(X): stage2/rustc$(X)
+rustc-perf$(X): stage2/bin/rustc$(X)
 	@$(call E, perf compile: $@)
 	$(PERF_STAGE1) -L stage2 -o $@ $(COMPILER_CRATE) >rustc-perf.err 2>&1
 	$(Q)rm -f $@
 else
-rustc-perf$(X): stage2/rustc$(X)
+rustc-perf$(X): stage2/bin/rustc$(X)
 	$(Q)touch $@
 endif
 

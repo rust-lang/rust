@@ -1,5 +1,5 @@
-# FIXME: temporary hack: stdlib and rustrt come in the lib/ directory,
-# but we want them in the base directory, so we move them out.
+# FIXME: We're temorarily moving stuff all over the place here to make
+# the old snapshot compatible with the new build rules
 stage0/bin/rustc$(X): $(S)src/snapshots.txt $(S)src/etc/get-snapshot.py $(MKFILES)
 	@$(call E, fetch: $@)
 	$(Q)$(S)src/etc/get-snapshot.py

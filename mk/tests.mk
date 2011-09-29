@@ -68,7 +68,7 @@ STDTEST_INPUTS := $(wildcard $(S)src/test/stdtest/*rs)
 ifdef CTEST_VALGRIND
   CFG_RUN_CTEST=$(call CFG_RUN_TEST,$(2))
 else
-  CFG_RUN_CTEST=$(call CFG_RUN,stage$(1)/lib,$(2))
+  CFG_RUN_CTEST=$(call CFG_RUN,stage$(1)/lib/rustc/$(CFG_HOST_TRIPLE),$(2))
 endif
 
 ######################################################################
