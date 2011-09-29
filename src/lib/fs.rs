@@ -41,6 +41,16 @@ fn connect(pre: path, post: path) -> path {
         } else { pre + path_sep() + post };
 }
 
+fn connect_many(paths: [path]) : vec::is_not_empty(paths) -> path {
+    ret if vec::len(paths) == 1u {
+        paths[0]
+    } else {
+        let rest = vec::slice(paths, 1u, vec::len(paths));
+        check vec::is_not_empty(rest);
+        connect(paths[0], connect_many(rest))
+    }
+}
+
 fn file_is_dir(p: path) -> bool {
     ret str::as_buf(p, {|buf| rustrt::rust_file_is_dir(buf) != 0 });
 }

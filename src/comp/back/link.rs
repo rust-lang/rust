@@ -39,8 +39,23 @@ fn llvm_err(sess: session::session, msg: str) {
     } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
 }
 
+fn get_target_lib_path(sess: session::session) -> fs::path {
+    let path = [
+        sess.get_opts().sysroot,
+        "lib/rustc",
+        sess.get_opts().target_triple];
+    check vec::is_not_empty(path);
+    let path = fs::connect_many(path);
+    ret path;
+}
+
+fn get_target_lib_file_path(sess: session::session,
+                            file: fs::path) -> fs::path {
+    fs::connect(get_target_lib_path(sess), file)
+}
+
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
-    let path = fs::connect(sess.get_opts().sysroot, "lib/intrinsics.bc");
+    let path = get_target_lib_file_path(sess, "intrinsics.bc");
     let membuf = str::as_buf(path, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
     });
@@ -495,10 +510,9 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 // If the user wants an exe generated we need to invoke
 // gcc to link the object file with some libs
 fn link_binary(sess: session::session,
-               binary_dir: str,
                saved_out_filename: str) {
-    let main: str = binary_dir + "/lib/main.o";
-    let stage: str = "-L" + binary_dir + "/lib";
+    let main: str = get_target_lib_file_path(sess, "main.o");
+    let stage: str = "-L" + get_target_lib_path(sess);
     let prog: str = "gcc";
     // The invocations of gcc share some flags across platforms
 

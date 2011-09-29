@@ -20,34 +20,41 @@ define STAGE_N
 # compiler that relies on a .o file.
 
 STAGE$(2) := $$(Q)$$(call CFG_RUN_TARG,stage$(2), \
-                $$(CFG_VALGRIND_COMPILE) stage$(2)/rustc$$(X) \
-                $$(CFG_RUSTC_FLAGS))
+                $$(CFG_VALGRIND_COMPILE) stage$(2)/bin/rustc$$(X) \
+                $$(CFG_RUSTC_FLAGS) --target=$(3))
 
 PERF_STAGE$(2) := $$(Q)$$(call CFG_RUN_TARG,stage$(2), \
-                $$(CFG_PERF_TOOL) stage$(2)/rustc$$(X) \
-                $$(CFG_RUSTC_FLAGS))
+                $$(CFG_PERF_TOOL) stage$(2)/bin/rustc$$(X) \
+                $$(CFG_RUSTC_FLAGS) --target=$(3))
 
-stage$(2)/%.o: stage$(2)/%.s
+stage$(2)/bin/%.o: stage$(2)/bin/%.s
 	@$$(call E, assemble [gcc]: $$@)
 	$$(Q)gcc $$(CFG_GCCISH_CFLAGS) -o $$@ -c $$<
 
-stage$(2)/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS)          \
-                      stage$(2)/$$(CFG_RUNTIME)                       \
-                      $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
-                      stage$(2)/$$(CFG_RUSTLLVM)                      \
-                      $$(SREQ$(1))
+stage$(2)/lib/%.o: stage$(2)/lib/%.s
+	@$$(call E, assemble [gcc]: $$@)
+	$$(Q)gcc $$(CFG_GCCISH_CFLAGS) -o $$@ -c $$<
+
+# FIXME: the bin/lib/libstd.so dep is transitional
+
+stage$(2)/bin/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS)          \
+                          stage$(2)/lib/$$(CFG_RUNTIME)                       \
+                          $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
+                          stage$(2)/lib/$$(CFG_RUSTLLVM)                      \
+                          stage$(1)/bin/lib/$$(CFG_STDLIB) \
+                          $$(SREQ$(1)$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) -L stage$(2) -o $$@ $$<
 
-stage$(2)/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
+stage$(2)/lib/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/$$(CFG_STDLIB): stage$(1)/lib/$$(CFG_STDLIB)
+stage$(2)/lib/$$(CFG_STDLIB): stage$(1)/lib/rustc/$$(CFG_HOST_TRIPLE)/$$(CFG_STDLIB)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/$$(CFG_RUSTLLVM): rustllvm/$$(CFG_RUSTLLVM)
+stage$(2)/lib/$$(CFG_RUSTLLVM): rustllvm/$$(CFG_RUSTLLVM)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
@@ -59,41 +66,6 @@ endef
 
 
 define TARGET_LIBS
-stage$(2)/lib/intrinsics.bc: $$(INTRINSICS_BC)
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-stage$(2)/lib/main.o: rt/main.o
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-stage$(2)/lib/$$(CFG_LIBRUSTC): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-                                $$(SREQ$(2))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(2)) --lib -o $$@ $$<
-
-stage$(2)/lib/$$(CFG_STDLIB): $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-                              stage$(2)/rustc$$(X)               \
-                              stage$(2)/$$(CFG_RUNTIME)          \
-                              stage$(2)/$$(CFG_RUSTLLVM)         \
-                              stage$(2)/lib/intrinsics.bc        \
-                              $$(SREQ$(1))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(2))  --lib -o $$@ $$<
-
-stage$(2)/lib/libstd.rlib: $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-                           stage$(2)/rustc$$(X)               \
-                           stage$(2)/$$(CFG_RUNTIME)          \
-                           stage$(2)/$$(CFG_RUSTLLVM)         \
-                           stage$(2)/lib/intrinsics.bc        \
-                           $$(SREQ$(1))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(2)) --lib --static -o $$@ $$<
-
-stage$(2)/lib/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
 
 # New per-target-arch target libraries; when we've transitioned to
 # using these exclusively, you should delete the non-arch-prefixed
@@ -109,29 +81,35 @@ stage$(2)/lib/rustc/$(3)/main.o: rt/main.o
 
 stage$(2)/lib/rustc/$(3)/$$(CFG_LIBRUSTC): \
           $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-          $$(SREQ$(2))
+          $$(SREQ$(2)$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) --lib -o $$@ $$<
 
 stage$(2)/lib/rustc/$(3)/$$(CFG_STDLIB): \
         $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-        stage$(2)/rustc$$(X)               \
-        stage$(2)/$$(CFG_RUNTIME)          \
-        stage$(2)/$$(CFG_RUSTLLVM)         \
-        stage$(2)/lib/intrinsics.bc        \
-        $$(SREQ$(1))
+        stage$(2)/bin/rustc$$(X)               \
+        stage$(2)/lib/$$(CFG_RUNTIME)          \
+        stage$(2)/lib/$$(CFG_RUSTLLVM)         \
+        stage$(2)/lib/rustc/$(3)/intrinsics.bc        \
+        $$(SREQ$(1)$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2))  --lib -o $$@ $$<
 
 stage$(2)/lib/rustc/$(3)/libstd.rlib: \
         $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-        stage$(2)/rustc$$(X)               \
-        stage$(2)/$$(CFG_RUNTIME)          \
-        stage$(2)/$$(CFG_RUSTLLVM)         \
-        stage$(2)/lib/intrinsics.bc        \
-        $$(SREQ$(1))
+        stage$(2)/bin/rustc$$(X)               \
+        stage$(2)/lib/$$(CFG_RUNTIME)          \
+        stage$(2)/lib/$$(CFG_RUSTLLVM)         \
+        stage$(2)/lib/rustc/$(3)/intrinsics.bc        \
+        $$(SREQ$(1)$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) --lib --static -o $$@ $$<
+
+# FIXME: Transitional so that stage0 can find std when building stage1/rustc
+stage$(2)/bin/lib/$$(CFG_STDLIB): stage$(2)/lib/rustc/$(3)/$$(CFG_STDLIB)
+	@$$(call E, cp: $$@)
+	$$(Q)mkdir -p stage$(2)/bin/lib
+	$$(Q)cp $$< $$@
 
 stage$(2)/lib/rustc/$(3)/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)

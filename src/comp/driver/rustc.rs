@@ -294,8 +294,8 @@ fn get_arch(triple: str) -> session::arch {
 
 fn get_default_sysroot(binary: str) -> str {
     let dirname = fs::dirname(binary);
-    if str::eq(dirname, binary) { ret "."; }
-    ret dirname;
+    if str::eq(dirname, binary) { ret "../"; }
+    ret fs::connect(dirname, "../");
 }
 
 fn build_target_config(sopts: @session::options) -> @session::config {
@@ -312,7 +312,7 @@ fn host_triple() -> str {
     str::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple())
 }
 
-fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
+fn build_session_options(binary: str, match: getopts::match)
    -> @session::options {
     let library = opt_present(match, "lib");
     let static = opt_present(match, "static");
@@ -370,8 +370,9 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
             some(s) { s }
         };
 
-    let library_search_paths = [binary_dir + "/lib", // FIXME: legacy
-                                binary_dir + "/lib/rustc/" + target ];
+    let library_search_paths = [
+        fs::connect(sysroot, "lib"), // FIXME: legacy
+        fs::connect(sysroot, "lib/rustc/" + target )];
     let lsp_vec = getopts::opt_strs(match, "L");
     for lsp: str in lsp_vec { library_search_paths += [lsp]; }
 
@@ -436,7 +437,6 @@ fn opts() -> [getopts::opt] {
 
 fn main(args: [str]) {
     let binary = vec::shift(args);
-    let binary_dir = fs::dirname(binary);
     let match =
         alt getopts::getopts(args, opts()) {
           getopts::success(m) { m }
@@ -453,7 +453,7 @@ fn main(args: [str]) {
         version(binary);
         ret;
     }
-    let sopts = build_session_options(binary, match, binary_dir);
+    let sopts = build_session_options(binary, match);
     let sess = build_session(sopts);
     let n_inputs = vec::len::<str>(match.free);
     let output_file = getopts::opt_maybe_str(match, "o");
@@ -521,7 +521,7 @@ fn main(args: [str]) {
 
     if stop_after_codegen { ret; }
 
-    link::link_binary(sess, binary_dir, saved_out_filename);
+    link::link_binary(sess, saved_out_filename);
 }
 
 #[cfg(test)]
@@ -534,7 +534,7 @@ mod test {
             alt getopts::getopts(["--test"], opts()) {
               getopts::success(m) { m }
             };
-        let sessopts = build_session_options("whatever", match, "whatever");
+        let sessopts = build_session_options("whatever", match);
         let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         assert (attr::contains_name(cfg, "test"));
@@ -548,7 +548,7 @@ mod test {
             alt getopts::getopts(["--test", "--cfg=test"], opts()) {
               getopts::success(m) { m }
             };
-        let sessopts = build_session_options("whatever", match, "whatever");
+        let sessopts = build_session_options("whatever", match);
         let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         let test_items = attr::find_meta_items_by_name(cfg, "test");

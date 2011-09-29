@@ -131,7 +131,7 @@ check-stage$(2): tidy \
 check-stage$(2)-std: test/stdtest.stage$(2).out \
 
 test/stdtest.stage$(2)$$(X): $$(STDTEST_CRATE) $$(STDTEST_INPUTS) \
-                             $$(SREQ$(2))
+                             $$(SREQ$(2)$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) -o $$@ $$< --test
 
@@ -146,16 +146,16 @@ test/stdtest.stage$(2).out.tmp: test/stdtest.stage$(2)$$(X)
 check-stage$(2)-rustc: test/rustctest.stage$(2).out \
 
 test/rustctest.stage$(2)$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-                           stage$(2)/$$(CFG_RUNTIME) \
+                           stage$(2)/lib/$$(CFG_RUNTIME) \
                            $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
-                           stage$(2)/$$(CFG_RUSTLLVM) \
-                           $$(SREQ$(1))
+                           stage$(2)/lib/$$(CFG_RUSTLLVM) \
+                           $$(SREQ$(1)$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) -o $$@ $$< --test
 
 test/rustctest.stage$(2).out.tmp: test/rustctest.stage$(2)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN,stage$(2),$$(CFG_VALGRIND) $$<) \
+	$$(Q)$$(call CFG_RUN,$(CFG_BUILD_DIR)/stage$(2)/lib,$$(CFG_VALGRIND) $$<) \
 	  $$(TESTARGS)
 	$$(Q)touch $$@
 
@@ -185,11 +185,11 @@ check-stage$(2)-pretty: check-stage$(2)-pretty-rpass \
                         check-stage$(2)-pretty-bench \
                         check-stage$(2)-pretty-pretty \
 
-CTEST_COMMON_ARGS$(2) := --compile-lib-path stage$(2) \
-                         --run-lib-path stage$(2)/lib \
-                         --rustc-path stage$(2)/rustc$$(X) \
+CTEST_COMMON_ARGS$(2) := --compile-lib-path stage$(2)/lib \
+                         --run-lib-path stage$(2)/lib/$$(CFG_HOST_TRIPLE) \
+                         --rustc-path stage$(2)/bin/rustc$$(X) \
                          --stage-id stage$(2) \
-                         --rustcflags "$$(CFG_RUSTC_FLAGS)" \
+                         --rustcflags "--target=$$(CFG_HOST_TRIPLE) $$(CFG_RUSTC_FLAGS)" \
                          $$(CTEST_TESTARGS) \
 
 CFAIL_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
@@ -243,7 +243,7 @@ PRETTY_PRETTY_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
 
 test/compiletest.stage$(2)$$(X): $$(COMPILETEST_CRATE) \
                                  $$(COMPILETEST_INPUTS) \
-                                 $$(SREQ$(2))
+                                 $$(SREQ$(2)$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) -o $$@ $$<
 
@@ -320,13 +320,13 @@ test/$(FT).rc test/$(FT_DRIVER).rs: $(TEST_RPASS_SOURCES_STAGE2) \
 	@$(call E, check: building combined stage2 test runner)
 	$(Q)$(S)src/etc/combine-tests.py
 
-stage2/lib/$(FT_LIB): test/$(FT).rc $(SREQ2)
+stage2/lib/$(FT_LIB): test/$(FT).rc $(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) --lib -o $@ $<
 
-test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs stage2/lib/$(FT_LIB) $(SREQ2)
+test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs stage2/lib/$(FT_LIB) $(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) -o $@ $<
 
-test/$(FT_DRIVER).out: test/$(FT_DRIVER)$(X) $(SREQ2)
+test/$(FT_DRIVER).out: test/$(FT_DRIVER)$(X) $(SREQ2$(CFG_HOST_TRIPLE))
 	$(Q)$(call CFG_RUN_TEST, $<)

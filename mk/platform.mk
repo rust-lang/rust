@@ -98,7 +98,7 @@ ifdef CFG_UNIXY
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=
   CFG_RUN=$(CFG_LDENV)=$(1) $(2)
-  CFG_RUN_TARG=$(call CFG_RUN,$(CFG_BUILD_DIR)/$(1),$(2))
+  CFG_RUN_TARG=$(call CFG_RUN,$(CFG_BUILD_DIR)/$(1)/lib,$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1)),\
       $(CFG_VALGRIND) $(1))
   CFG_LIBUV_LINK_FLAGS=-lpthread
