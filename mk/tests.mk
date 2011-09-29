@@ -189,7 +189,7 @@ CTEST_COMMON_ARGS$(2) := --compile-lib-path stage$(2)/lib \
                          --run-lib-path stage$(2)/lib/$$(CFG_HOST_TRIPLE) \
                          --rustc-path stage$(2)/bin/rustc$$(X) \
                          --stage-id stage$(2) \
-                         --rustcflags "--target=$$(CFG_HOST_TRIPLE) $$(CFG_RUSTC_FLAGS)" \
+                         --rustcflags "$$(CFG_RUSTC_FLAGS)" \
                          $$(CTEST_TESTARGS) \
 
 CFAIL_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \

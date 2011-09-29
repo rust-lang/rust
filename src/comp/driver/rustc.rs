@@ -309,7 +309,15 @@ fn build_target_config(sopts: @session::options) -> @session::config {
 }
 
 fn host_triple() -> str {
-    str::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple())
+    // Get the host triple out of the build environment. This ensures that our
+    // idea of the host triple is the same as for the set of libraries we've
+    // actually built.  We can't just take LLVM's host triple because they
+    // normalize all ix86 architectures to i386.
+    // FIXME: Instead of grabbing the host triple we really should be
+    // grabbing (at compile time) the target triple that this rustc is
+    // built with and calling that (at runtime) the host triple.
+    let ht = #env("CFG_HOST_TRIPLE");
+    ret ht != "" ? ht : fail "rustc built without CFG_HOST_TRIPLE";
 }
 
 fn build_session_options(binary: str, match: getopts::match)

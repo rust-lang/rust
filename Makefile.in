@@ -198,7 +198,7 @@ endif
 
 STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,stage$(1), \
                 $$(CFG_VALGRIND_COMPILE$(1)) stage$(1)/bin/rustc$$(X) \
-                $$(CFG_RUSTC_FLAGS) --target=$(2))
+                $$(CFG_RUSTC_FLAGS))
 endef
 
 FUZZ := stage1/bin/fuzzer$(X)
