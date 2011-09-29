@@ -38,6 +38,8 @@ type upcalls =
      dynastack_mark: ValueRef,
      dynastack_alloc: ValueRef,
      dynastack_free: ValueRef,
+     alloc_c_stack: ValueRef,
+     call_c_stack: ValueRef,
      rust_personality: ValueRef};
 
 fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
@@ -91,6 +93,9 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
               d("dynastack_alloc_2", [T_size_t(), T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
           dynastack_free: d("dynastack_free", [T_ptr(T_i8())], T_void()),
+          alloc_c_stack: dr("alloc_c_stack", [T_size_t()], T_ptr(T_i8())),
+          call_c_stack: dr("call_c_stack", [T_ptr(T_i8()), T_ptr(T_i8())],
+                           T_void()),
           rust_personality: dr("rust_personality", [], T_i32())
          };
 }
