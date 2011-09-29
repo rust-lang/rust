@@ -4749,7 +4749,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
 
     let bcx = cx;
     alt s.node {
-      ast::stmt_expr(e, _) { bcx = trans_expr(cx, e).bcx; }
+      ast::stmt_expr(e, _) { bcx = trans_expr_dps(cx, e, ignore); }
       ast::stmt_decl(d, _) {
         alt d.node {
           ast::decl_local(locals) {
