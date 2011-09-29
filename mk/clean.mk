@@ -2,9 +2,15 @@
 # Cleanup
 ######################################################################
 
+CLEAN_STAGE_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
+ clean0$(target) clean1$(target) clean2$(target) clean3$(target))
+
+
 .PHONY: clean
 
-clean:
+clean: clean-misc $(CLEAN_STAGE_RULES)
+
+clean-misc:
 	@$(call E, cleaning)
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
@@ -55,3 +61,25 @@ clean:
                  $(wildcard doc/*.$(ext)))
 	$(Q)rm -Rf doc/version.texi
 	$(Q)rm -rf rt/libuv
+
+define CLEAN_STAGE_N
+
+clean$(1)$(2):
+	$(Q)rm -f stage$(1)/bin/rustc
+	$(Q)rm -f stage$(1)/bin/fuzzer
+	$(Q)rm -f stage$(1)/lib/$(CFG_RUNTIME)
+	$(Q)rm -f stage$(1)/lib/$(CFG_STDLIB)
+	$(Q)rm -f stage$(1)/lib/$(CFG_RUSTLLVM)
+	$(Q)rm -f stage$(1)/lib/rustc/$(2)/$(CFG_RUNTIME)
+	$(Q)rm -f stage$(1)/lib/rustc/$(2)/$(CFG_STDLIB)
+	$(Q)rm -f stage$(1)/lib/rustc/$(2)/libstd.rlib
+	$(Q)rm -f stage$(1)/lib/rustc/$(2)/intrinsics.bc
+	$(Q)rm -f stage$(1)/lib/rustc/$(2)/main.o
+
+endef
+
+$(foreach target, $(CFG_TARGET_TRIPLES), \
+ $(eval $(call CLEAN_STAGE_N,0,$(target))) \
+ $(eval $(call CLEAN_STAGE_N,1,$(target))) \
+ $(eval $(call CLEAN_STAGE_N,2,$(target))) \
+ $(eval $(call CLEAN_STAGE_N,3,$(target))))
