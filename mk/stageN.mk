@@ -19,14 +19,6 @@ define STAGE_N
 # for different directories, to handle cases where (say) a test relies on a
 # compiler that relies on a .o file.
 
-STAGE$(2) := $$(Q)$$(call CFG_RUN_TARG,stage$(2), \
-                $$(CFG_VALGRIND_COMPILE) stage$(2)/bin/rustc$$(X) \
-                $$(CFG_RUSTC_FLAGS) --target=$(3))
-
-PERF_STAGE$(2) := $$(Q)$$(call CFG_RUN_TARG,stage$(2), \
-                $$(CFG_PERF_TOOL) stage$(2)/bin/rustc$$(X) \
-                $$(CFG_RUSTC_FLAGS) --target=$(3))
-
 stage$(2)/bin/%.o: stage$(2)/bin/%.s
 	@$$(call E, assemble [gcc]: $$@)
 	$$(Q)gcc $$(CFG_GCCISH_CFLAGS) -o $$@ -c $$<

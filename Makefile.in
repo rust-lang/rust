@@ -197,8 +197,13 @@ CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)
 endif
 
 STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,stage$(1), \
-                $$(CFG_VALGRIND_COMPILE$(1)) stage$(1)/bin/rustc$$(X) \
-                $$(CFG_RUSTC_FLAGS))
+                $$(CFG_VALGRIND_COMPILE) stage$(1)/bin/rustc$$(X) \
+                $$(CFG_RUSTC_FLAGS) --target=$(2))
+
+PERF_STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,stage$(1), \
+                $$(CFG_PERF_TOOL) stage$(1)/bin/rustc$$(X) \
+                $$(CFG_RUSTC_FLAGS) --target=$(2))
+
 endef
 
 FUZZ := stage1/bin/fuzzer$(X)
