@@ -326,7 +326,7 @@ stage2/lib/$(FT_LIB): test/$(FT).rc $(SREQ2$(CFG_HOST_TRIPLE))
 
 test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs stage2/lib/$(FT_LIB) $(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
-	$(STAGE2) -o $@ $<
+	$(STAGE2) -L stage2/lib -o $@ $<
 
 test/$(FT_DRIVER).out: test/$(FT_DRIVER)$(X) $(SREQ2$(CFG_HOST_TRIPLE))
 	$(Q)$(call CFG_RUN_TEST, $<)

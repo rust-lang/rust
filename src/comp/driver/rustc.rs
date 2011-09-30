@@ -379,9 +379,9 @@ fn build_session_options(binary: str, match: getopts::match)
         };
 
     let library_search_paths = [
-        fs::connect(sysroot, "lib"), // FIXME: legacy
         fs::connect(sysroot, "lib/rustc/" + target )];
     let lsp_vec = getopts::opt_strs(match, "L");
+    // FIXME: These should probably go in front of the defaults
     for lsp: str in lsp_vec { library_search_paths += [lsp]; }
 
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
