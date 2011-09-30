@@ -4029,8 +4029,6 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     let ret_ty = ty::ty_fn_ret(bcx_tcx(bcx), fn_ty);
     check type_has_static_size(ccx, ret_ty);
     let llretty = type_of(ccx, f.span, ret_ty);
-    log_err "casting " + val_str(ccx.tn, llrawretval) + " to " +
-        lib::llvm::type_to_str(ccx.tn, llretty);
 
     let llretval;
     if lib::llvm::llvm::LLVMGetTypeKind(llretty) as int == 11 { // pointer
