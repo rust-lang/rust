@@ -36,7 +36,13 @@ stage$(2)/bin/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS)          \
                           stage$(1)/bin/lib/$$(CFG_STDLIB) \
                           $$(SREQ$(1)$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -L stage$(2) -o $$@ $$<
+	$$(STAGE$(1)) -L stage$(2)/lib -o $$@ $$<
+
+stage$(2)/lib/$$(CFG_LIBRUSTC): \
+          $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
+          $$(SREQ$(2)$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)) -L stage$(2)/lib --lib -o $$@ $$<
 
 stage$(2)/lib/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
@@ -70,12 +76,6 @@ stage$(2)/lib/rustc/$(3)/intrinsics.bc: $$(INTRINSICS_BC)
 stage$(2)/lib/rustc/$(3)/main.o: rt/main.o
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-
-stage$(2)/lib/rustc/$(3)/$$(CFG_LIBRUSTC): \
-          $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-          $$(SREQ$(2)$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(2)) --lib -o $$@ $$<
 
 stage$(2)/lib/rustc/$(3)/$$(CFG_STDLIB): \
         $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
