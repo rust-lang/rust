@@ -3897,6 +3897,11 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     // with trans_call.
     let tcx = bcx_tcx(in_cx);
     let fn_expr_ty = ty::expr_ty(tcx, f);
+
+    if check type_is_native_fn_on_c_stack(tcx, fn_expr_ty) {
+        ret trans_c_stack_native_call(in_cx, f, args);
+    }
+
     let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_expr_ty));
     let cx = new_scope_block_ctxt(in_cx, "call");
     let f_res = trans_callee(cx, f);
@@ -3975,6 +3980,63 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     Br(bcx, next_cx.llbb);
     bcx = next_cx;
     ret {res: rslt(bcx, retval), by_ref: by_ref};
+}
+
+// Translates a native call on the C stack. Calls into the runtime to perform
+// the stack switching operation.
+fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
+                             args: [@ast::expr])
+        -> {res: result, by_ref: bool} {
+    let ccx = bcx_ccx(bcx);
+    let f_res = trans_callee(bcx, f);
+    let llfn = f_res.val; bcx = f_res.bcx;
+
+    // Translate the callee.
+    let fn_ty = ty::expr_ty(bcx_tcx(bcx), f);
+    let fn_arg_tys = ty::ty_fn_args(bcx_tcx(bcx), fn_ty);
+
+    // Translate arguments.
+    let (to_zero, to_revoke) = ([], []);
+    let llargs = vec::map2({ |ty_arg, arg|
+        let arg_ty = ty_arg.ty;
+        check type_has_static_size(ccx, arg_ty);
+        let llargty = type_of(ccx, f.span, arg_ty);
+        let r = trans_arg_expr(bcx, ty_arg, llargty, to_zero, to_revoke, arg);
+        let llargval = r.val; bcx = r.bcx;
+        { llval: llargval, llty: llargty }
+    }, fn_arg_tys, args);
+
+    // Allocate the argument bundle.
+    let llargbundlety = T_struct(vec::map({ |r| r.llty }, llargs));
+    let llargbundlesz = llsize_of(llargbundlety);
+    let llrawargbundle = Call(bcx, ccx.upcalls.alloc_c_stack,
+                              [llargbundlesz]);
+    let llargbundle = PointerCast(bcx, llrawargbundle, T_ptr(llargbundlety));
+
+    // Copy in arguments.
+    log_err ("bundle type", val_str(ccx.tn, llargbundle));
+    vec::eachi({ |llarg, i|
+        // FIXME: This load is unfortunate.
+        let llargval = Load(bcx, llarg.llval);
+        log_err ("llarg type", val_str(ccx.tn, llargval), i);
+        store_inbounds(bcx, llargval, llargbundle, [C_int(0), C_uint(i)]);
+    }, llargs);
+
+    // Call.
+    // TODO: Invoke instead.
+    let llrawretval = Call(bcx, ccx.upcalls.call_c_stack,
+                           [llfn, llrawargbundle]);
+
+    // Cast return type.
+    let ret_ty = ty::ty_fn_ret(bcx_tcx(bcx), fn_ty);
+    check type_has_static_size(ccx, ret_ty);
+    let llretty = type_of(ccx, f.span, ret_ty);
+    let llretval = TruncOrBitCast(bcx, llrawretval, llretty);
+
+    // Forget about anything we moved out.
+    bcx = zero_and_revoke(bcx, to_zero, to_revoke);
+
+    ret {res: rslt(bcx, llretval), by_ref: false};
 }
 
 fn zero_and_revoke(bcx: @block_ctxt,
@@ -5662,12 +5724,19 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
     ret count;
 }
 
-fn native_abi_requires_pair(abi: ast::native_abi) -> bool {
+pure fn native_abi_requires_pair(abi: ast::native_abi) -> bool {
     alt abi {
         ast::native_abi_rust. | ast::native_abi_cdecl. |
         ast::native_abi_llvm. | ast::native_abi_rust_intrinsic. |
         ast::native_abi_x86stdcall. { ret true; }
         ast::native_abi_c_stack_cdecl. { ret false; }
+    }
+}
+
+pure fn type_is_native_fn_on_c_stack(tcx: ty::ctxt, t: ty::t) -> bool {
+    alt ty::struct(tcx, t) {
+        ty::ty_native_fn(abi, _, _) { ret !native_abi_requires_pair(abi); }
+        _ { ret false; }
     }
 }
 
@@ -5690,32 +5759,8 @@ fn raw_native_fn_type(ccx: @crate_ctxt, sp: span, args: [ty::arg],
 
 fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
                            id: ast::node_id) {
-    let path = path;
-    let num_ty_param = native_fn_ty_param_count(ccx, id);
-    // Declare the wrapper.
-
-    let t = node_id_type(ccx, id);
-    let wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
-    let ps: str = mangle_exported_name(ccx, path, node_id_type(ccx, id));
-    let wrapper_fn = decl_cdecl_fn(ccx.llmod, ps, wrapper_type);
-    ccx.item_ids.insert(id, wrapper_fn);
-    ccx.item_symbols.insert(id, ps);
-
-    // Build the wrapper.
-    let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, wrapper_fn);
-    let bcx = new_top_block_ctxt(fcx);
-    let lltop = bcx.llbb;
-
-    // Declare the function itself.
     let fn_type = node_id_type(ccx, id); // NB: has no type params
-
     let abi = ty::ty_fn_abi(ccx.tcx, fn_type);
-    // FIXME: If the returned type is not nil, then we assume it's 32 bits
-    // wide. This is obviously wildly unsafe. We should have a better FFI
-    // that allows types of different sizes to be returned.
-
-    let rty = ty::ty_fn_ret(ccx.tcx, fn_type);
-    let rty_is_nil = ty::type_is_nil(ccx.tcx, rty);
 
     let pass_task;
     let uses_retptr;
@@ -5747,9 +5792,36 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         cast_to_i32 = true;
       }
       ast::native_abi_c_stack_cdecl. {
-        fail "C stack cdecl ABI shouldn't have a wrapper";
+        let llfn = decl_cdecl_fn(ccx.llmod, name, T_fn([], T_void()));
+        ccx.item_ids.insert(id, llfn);
+        ccx.item_symbols.insert(id, name);
+        ret;
       }
     }
+
+    let path = path;
+    let num_ty_param = native_fn_ty_param_count(ccx, id);
+    // Declare the wrapper.
+
+    let t = node_id_type(ccx, id);
+    let wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
+    let ps: str = mangle_exported_name(ccx, path, node_id_type(ccx, id));
+    let wrapper_fn = decl_cdecl_fn(ccx.llmod, ps, wrapper_type);
+    ccx.item_ids.insert(id, wrapper_fn);
+    ccx.item_symbols.insert(id, ps);
+
+    // Build the wrapper.
+    let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, wrapper_fn);
+    let bcx = new_top_block_ctxt(fcx);
+    let lltop = bcx.llbb;
+
+    // Declare the function itself.
+    // FIXME: If the returned type is not nil, then we assume it's 32 bits
+    // wide. This is obviously wildly unsafe. We should have a better FFI
+    // that allows types of different sizes to be returned.
+
+    let rty = ty::ty_fn_ret(ccx.tcx, fn_type);
+    let rty_is_nil = ty::type_is_nil(ccx.tcx, rty);
 
     let lltaskptr;
     if cast_to_i32 {
