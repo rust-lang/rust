@@ -332,6 +332,16 @@ fn enum_uints(start: uint, end: uint) : uint::le(start, end) -> [uint] {
     ret r;
 }
 
+fn eachi<@T>(f: block(T, uint) -> (), v: [mutable? T]) {
+    let i = 0u;
+    let l = len(v);
+    while (i < l) {
+        let elem = v[i];    // Satisfy alias checker
+        f(elem, i);
+        i += 1u;
+    }
+}
+
 // Iterate over a list with with the indexes
 iter iter2<@T>(v: [T]) -> (uint, T) {
     let i = 0u;
