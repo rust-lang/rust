@@ -4014,11 +4014,9 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     let llargbundle = PointerCast(bcx, llrawargbundle, T_ptr(llargbundlety));
 
     // Copy in arguments.
-    log_err ("bundle type", val_str(ccx.tn, llargbundle));
     vec::eachi({ |llarg, i|
         // FIXME: This load is unfortunate.
         let llargval = Load(bcx, llarg.llval);
-        log_err ("llarg type", val_str(ccx.tn, llargval), i);
         store_inbounds(bcx, llargval, llargbundle, [C_int(0), C_uint(i)]);
     }, llargs);
 
