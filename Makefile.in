@@ -224,8 +224,6 @@ PERF_STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,$(1), \
 
 endef
 
-FUZZ := $(HOST_BIN$(1))/fuzzer$(X)
-
 $(foreach target,$(CFG_TARGET_TRIPLES), \
  $(eval $(call SREQ,0,$(target))) \
  $(eval $(call SREQ,1,$(target))) \
@@ -242,6 +240,8 @@ CFG_INFO := $(info cfg:)
 CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
 CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
 CFG_INFO := $(info cfg:)
+
+FUZZ := $(HOST_BIN1)/fuzzer$(X)
 
 all: $(SREQ0$(CFG_HOST_TRIPLE)) $(SREQ1$(CFG_HOST_TRIPLE)) \
      $(GENERATED) $(DOCS) $(FUZZ)
