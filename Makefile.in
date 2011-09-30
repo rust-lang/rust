@@ -226,9 +226,13 @@ CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
 CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
 CFG_INFO := $(info cfg:)
 
-all: $(SREQ0) $(SREQ1) $(GENERATED) $(DOCS) $(FUZZ)
+all: $(SREQ0$(CFG_HOST_TRIPLE)) $(SREQ1$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS) $(FUZZ)
 else
-all: $(SREQ0) $(SREQ1) $(SREQ2) $(SREQ3) $(GENERATED) $(DOCS) $(FUZZ)
+
+ALL_SREQS = $(foreach target,$(CFG_TARGET_TRIPLES), \
+ $(SREQ0$(target)) $(SREQ1$(target)) $(SREQ2$(target)) $(SREQ3$(target)))
+
+all: $(ALL_SREQS) $(GENERATED) $(DOCS) $(FUZZ)
 endif
 
 
