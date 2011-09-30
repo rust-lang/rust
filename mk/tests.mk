@@ -131,7 +131,7 @@ check-stage$(2): tidy \
 check-stage$(2)-std: test/stdtest.stage$(2).out \
 
 test/stdtest.stage$(2)$$(X): $$(STDTEST_CRATE) $$(STDTEST_INPUTS) \
-                             $$(SREQ$(2)$(CFG_HOST_TRIPLE))
+                             $$(SREQ$(2)$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) -o $$@ $$< --test
 
@@ -149,7 +149,7 @@ test/rustctest.stage$(2)$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
                            stage$(2)/lib/$$(CFG_RUNTIME) \
                            $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
                            stage$(2)/lib/$$(CFG_RUSTLLVM) \
-                           $$(SREQ$(1)$(CFG_HOST_TRIPLE))
+                           $$(SREQ$(1)$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) -o $$@ $$< --test
 
@@ -243,7 +243,7 @@ PRETTY_PRETTY_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
 
 test/compiletest.stage$(2)$$(X): $$(COMPILETEST_CRATE) \
                                  $$(COMPILETEST_INPUTS) \
-                                 $$(SREQ$(2)$(CFG_HOST_TRIPLE))
+                                 $$(SREQ$(2)$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) -o $$@ $$<
 

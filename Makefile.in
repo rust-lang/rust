@@ -168,25 +168,33 @@ LLC := $(CFG_LLVM_BINDIR)/llc$(X)
 ######################################################################
 
 define SREQ
+
+TARGET_ROOT$(1)$(2) = stage$(1)/lib/rustc/$(2)
+TARGET_BIN$(1)$(2) = $(TARGET_ROOT$(1)$(2))/bin
+TARGET_LIB$(1)$(2) = $(TARGET_ROOT$(1)$(2))/lib
+HOST_ROOT$(1) = $(TARGET_ROOT$(1)$$(CFG_HOST_TRIPLE))
+HOST_BIN$(1) = $(TARGET_BIN$(1)$$(CFG_HOST_TRIPLE))
+HOST_LIB$(1) = $(TARGET_LIB$(1)$$(CFG_HOST_TRIPLE))
+
 ifdef CFG_DISABLE_SHAREDSTD
-SREQ$(1)$(2) = stage$(1)/bin/rustc$(X)          \
-           stage$(1)/lib/$$(CFG_RUNTIME)     \
+SREQ$(1)$(2) = $(HOST_BIN$(1))/rustc$(X)          \
+           $(HOST_LIB$(1))/$$(CFG_RUNTIME)     \
            $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(1)) \
-           stage$(1)/lib/$$(CFG_RUSTLLVM)    \
-           stage$(1)/lib/rustc/$(2)/$$(CFG_RUNTIME) \
-           stage$(1)/lib/rustc/$(2)/$$(CFG_STDLIB) \
-           stage$(1)/lib/rustc/$(2)/intrinsics.bc \
-           stage$(1)/lib/rustc/$(2)/main.o \
+           $(HOST_LIB$(1))/$$(CFG_RUSTLLVM)    \
+           $(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME) \
+           $(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB) \
+           $(TARGET_LIB$(1)$(2))/intrinsics.bc \
+           $(TARGET_LIB$(1)$(2))/main.o \
            $$(MKFILES)
 else
-SREQ$(1)$(2) = stage$(1)/bin/rustc$(X)          \
-           stage$(1)/lib/$$(CFG_RUNTIME)     \
+SREQ$(1)$(2) = $(HOST_BIN$(1))/rustc$(X)          \
+           $(HOST_LIB$(1))/$$(CFG_RUNTIME)     \
            $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(1)) \
-           stage$(1)/lib/$$(CFG_RUSTLLVM)    \
-           stage$(1)/lib/rustc/$(2)/$$(CFG_RUNTIME) \
-           stage$(1)/lib/rustc/$(2)/$$(CFG_STDLIB) \
-           stage$(1)/lib/rustc/$(2)/intrinsics.bc \
-           stage$(1)/lib/rustc/$(2)/main.o \
+           $(HOST_LIB$(1))/$$(CFG_RUSTLLVM)    \
+           $(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME) \
+           $(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB) \
+           $(TARGET_LIB$(1)$(2))/intrinsics.bc \
+           $(TARGET_LIB$(1)$(2))/main.o \
            $$(MKFILES)
 endif
 
