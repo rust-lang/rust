@@ -1,14 +1,17 @@
     .text
 
 // upcall_call_c_stack(void (*fn)(), void *new_esp)
+//
+// Note that we could use |enter| and |leave| but the manuals tell me they're
+// slower.
 .globl _upcall_call_c_stack
 _upcall_call_c_stack:
-    movl %esp,%ecx          // grab esp
-    movl 8(%esp),%eax       // save fn
+    pushl %ebp
+    movl %esp,%ebp          // save esp
+    movl 8(%esp),%eax       // eax = callee
     movl 12(%esp),%esp      // switch stack
-    pushl %ecx              // save esp on stack
     calll *%eax
-    popl %esp               // restore esp
+    movl %ebp,%esp          // would like to use "leave" but it's slower
+    popl %ebp
     ret
-
 
