@@ -19,37 +19,37 @@ define STAGE_N
 # for different directories, to handle cases where (say) a test relies on a
 # compiler that relies on a .o file.
 
-stage$(2)/bin/%.o: stage$(2)/bin/%.s
+$$(HOST_BIN$(2))/%.o: $$(HOST_BIN$(2))/%.s
 	@$$(call E, assemble [gcc]: $$@)
 	$$(Q)gcc $$(CFG_GCCISH_CFLAGS) -o $$@ -c $$<
 
-stage$(2)/lib/%.o: stage$(2)/lib/%.s
+$$(HOST_LIB$(2))/%.o: $$(HOST_LIB$(2))/%.s
 	@$$(call E, assemble [gcc]: $$@)
 	$$(Q)gcc $$(CFG_GCCISH_CFLAGS) -o $$@ -c $$<
 
-stage$(2)/bin/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS)          \
-                          stage$(2)/lib/$$(CFG_RUNTIME)                       \
+$$(HOST_BIN$(2))/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS)          \
+                          $$(HOST_LIB$(2))/$$(CFG_RUNTIME)                       \
                           $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
-                          stage$(2)/lib/$$(CFG_RUSTLLVM)                      \
+                          $$(HOST_LIB$(2))/$$(CFG_RUSTLLVM)                      \
                           $$(SREQ$(1)$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -L stage$(2)/lib -o $$@ $$<
+	$$(STAGE$(1)) -L $$(HOST_LIB$(2)) -o $$@ $$<
 
-stage$(2)/lib/$$(CFG_LIBRUSTC): \
+$$(HOST_LIB$(2))/$$(CFG_LIBRUSTC): \
           $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
           $$(SREQ$(2)$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -L stage$(2)/lib --lib -o $$@ $$<
+	$$(STAGE$(1)) -L $$(HOST_LIB$(2)) --lib -o $$@ $$<
 
-stage$(2)/lib/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
+$$(HOST_LIB$(2))/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/lib/$$(CFG_STDLIB): stage$(1)/lib/rustc/$$(CFG_HOST_TRIPLE)/$$(CFG_STDLIB)
+$$(HOST_LIB$(2))/$$(CFG_STDLIB): $$(TARGET_HOST_LIB$(1))/$$(CFG_STDLIB)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/lib/$$(CFG_RUSTLLVM): rustllvm/$$(CFG_RUSTLLVM)
+$$(HOST_LIB$(2))/$$(CFG_RUSTLLVM): rustllvm/$$(CFG_RUSTLLVM)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
@@ -66,35 +66,35 @@ define TARGET_LIBS
 # using these exclusively, you should delete the non-arch-prefixed
 # rules above. They're duplicates, redundant.
 
-stage$(2)/lib/rustc/$(3)/intrinsics.bc: $$(INTRINSICS_BC)
+$$(TARGET_LIB$(2)$(3))/intrinsics.bc: $$(INTRINSICS_BC)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/lib/rustc/$(3)/main.o: rt/main.o
+$$(TARGET_LIB$(2)$(3))/main.o: rt/main.o
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-stage$(2)/lib/rustc/$(3)/$$(CFG_STDLIB): \
+$$(TARGET_LIB$(2)$(3))/$$(CFG_STDLIB): \
         $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-        stage$(2)/bin/rustc$$(X)               \
-        stage$(2)/lib/$$(CFG_RUNTIME)          \
-        stage$(2)/lib/$$(CFG_RUSTLLVM)         \
-        stage$(2)/lib/rustc/$(3)/intrinsics.bc        \
+        $$(HOST_BIN$(2))/rustc$$(X)               \
+        $$(HOST_LIB$(2))/$$(CFG_RUNTIME)          \
+        $$(HOST_LIB$(2))/$$(CFG_RUSTLLVM)         \
+        $$(TARGET_LIB$(2)$(3))/intrinsics.bc        \
         $$(SREQ$(1)$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2))  --lib -o $$@ $$<
 
-stage$(2)/lib/rustc/$(3)/libstd.rlib: \
+$$(TARGET_LIB$(2)$(3))/libstd.rlib: \
         $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-        stage$(2)/bin/rustc$$(X)               \
-        stage$(2)/lib/$$(CFG_RUNTIME)          \
-        stage$(2)/lib/$$(CFG_RUSTLLVM)         \
-        stage$(2)/lib/rustc/$(3)/intrinsics.bc        \
+        $$(HOST_BIN$(2))/rustc$$(X)               \
+        $$(HOST_LIB$(2))/$$(CFG_RUNTIME)          \
+        $$(HOST_LIB$(2))/$$(CFG_RUSTLLVM)         \
+        $$(TARGET_LIB$(2)$(3))/intrinsics.bc        \
         $$(SREQ$(1)$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) --lib --static -o $$@ $$<
 
-stage$(2)/lib/rustc/$(3)/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
+$$(TARGET_LIB$(2)$(3))/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 

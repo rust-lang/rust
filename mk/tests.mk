@@ -68,7 +68,7 @@ STDTEST_INPUTS := $(wildcard $(S)src/test/stdtest/*rs)
 ifdef CTEST_VALGRIND
   CFG_RUN_CTEST=$(call CFG_RUN_TEST,$(2))
 else
-  CFG_RUN_CTEST=$(call CFG_RUN,stage$(1)/lib/rustc/$(CFG_HOST_TRIPLE),$(2))
+  CFG_RUN_CTEST=$(call CFG_RUN,$(TARGET_HOST_LIB$(1)),$(2))
 endif
 
 ######################################################################
@@ -146,16 +146,16 @@ test/stdtest.stage$(2).out.tmp: test/stdtest.stage$(2)$$(X)
 check-stage$(2)-rustc: test/rustctest.stage$(2).out \
 
 test/rustctest.stage$(2)$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-                           stage$(2)/lib/$$(CFG_RUNTIME) \
+                           $$(HOST_LIB$(2))/$$(CFG_RUNTIME) \
                            $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
-                           stage$(2)/lib/$$(CFG_RUSTLLVM) \
+                           $$(HOST_LIB$(2))/$$(CFG_RUSTLLVM) \
                            $$(SREQ$(1)$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) -o $$@ $$< --test
 
 test/rustctest.stage$(2).out.tmp: test/rustctest.stage$(2)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN,$(CFG_BUILD_DIR)/stage$(2)/lib,$$(CFG_VALGRIND) $$<) \
+	$$(Q)$$(call CFG_RUN,$$(HOST_LIB$(2)),$$(CFG_VALGRIND) $$<) \
 	  $$(TESTARGS)
 	$$(Q)touch $$@
 
@@ -185,9 +185,9 @@ check-stage$(2)-pretty: check-stage$(2)-pretty-rpass \
                         check-stage$(2)-pretty-bench \
                         check-stage$(2)-pretty-pretty \
 
-CTEST_COMMON_ARGS$(2) := --compile-lib-path stage$(2)/lib \
-                         --run-lib-path stage$(2)/lib/$$(CFG_HOST_TRIPLE) \
-                         --rustc-path stage$(2)/bin/rustc$$(X) \
+CTEST_COMMON_ARGS$(2) := --compile-lib-path $$(HOST_LIB$(2)) \
+                         --run-lib-path $$(TARGET_LIB$(2)$$(CFG_HOST_TRIPLE)) \
+                         --rustc-path $$(HOST_BIN$(2))/rustc$$(X) \
                          --stage-id stage$(2) \
                          --rustcflags "$$(CFG_RUSTC_FLAGS)" \
                          $$(CTEST_TESTARGS) \
@@ -204,19 +204,19 @@ RFAIL_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                   $$(CTEST_RUNTOOL) \
 
 RPASS_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
-                  --src-base $(S)src/test/run-pass/ \
+                  --src-base $$(S)src/test/run-pass/ \
                   --build-base test/run-pass/ \
                   --mode run-pass \
                   $$(CTEST_RUNTOOL) \
 
 BENCH_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
-                  --src-base $(S)src/test/bench/ \
+                  --src-base $$(S)src/test/bench/ \
                   --build-base test/bench/ \
                   --mode run-pass \
                   $$(CTEST_RUNTOOL) \
 
 PERF_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
-                  --src-base $(S)src/test/bench/ \
+                  --src-base $$(S)src/test/bench/ \
                   --build-base test/perf/ \
                   --mode run-pass \
                   $$(CTEST_PERF_RUNTOOL) \
@@ -324,9 +324,9 @@ stage2/lib/$(FT_LIB): test/$(FT).rc $(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) --lib -o $@ $<
 
-test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs stage2/lib/$(FT_LIB) $(SREQ2$(CFG_HOST_TRIPLE))
+test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs $(HOST_LIB2)/$(FT_LIB) $(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
-	$(STAGE2) -L stage2/lib -o $@ $<
+	$(STAGE2) -L $(HOST_LIB2) -o $@ $<
 
 test/$(FT_DRIVER).out: test/$(FT_DRIVER)$(X) $(SREQ2$(CFG_HOST_TRIPLE))
 	$(Q)$(call CFG_RUN_TEST, $<)

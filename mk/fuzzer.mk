@@ -4,13 +4,13 @@ FUZZER_INPUTS := $(wildcard $(addprefix $(S)src/fuzzer/, *.rs))
 define FUZZ_STAGE_N
 
 stage$(2)/bin/fuzzer$$(X): $$(FUZZER_CRATE) $$(FUZZER_INPUTS) \
-                          $$(SREQ$(2)$(CFG_HOST_TRIPLE)) \
-                          stage$(2)/lib/$$(CFG_RUNTIME)                       \
-                          stage$(2)/lib/$$(CFG_RUSTLLVM)                      \
-                          stage$(2)/lib/$$(CFG_STDLIB) \
-                          stage$(2)/lib/$$(CFG_LIBRUSTC)
+                          $$(SREQ$(2)$$(CFG_HOST_TRIPLE)) \
+                          $$(HOST_LIB$(2))/$$(CFG_RUNTIME) \
+                          $$(HOST_LIB$(2))/$$(CFG_RUSTLLVM) \
+                          $$(HOST_LIB$(2))/$$(CFG_STDLIB) \
+                          $$(HOST_LIB$(2))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -L stage1/lib -o $$@ $$<
+	$$(STAGE$(1)) -L $$(HOST_LIB$(2)) -o $$@ $$<
 
 endef
 
