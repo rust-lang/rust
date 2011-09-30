@@ -147,7 +147,7 @@ check-stage$(2)-rustc: test/rustctest.stage$(2).out \
 
 test/rustctest.stage$(2)$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
                            $$(HOST_LIB$(2))/$$(CFG_RUNTIME) \
-                           $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
+                           $$(HOST_STDLIB_DEFAULT$(2)) \
                            $$(HOST_LIB$(2))/$$(CFG_RUSTLLVM) \
                            $$(SREQ$(1)$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)

@@ -53,12 +53,6 @@ CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
 
-ifdef CFG_DISABLE_SHAREDSTD
-  CFG_STDLIB_DEFAULT = $(1)/lib/libstd.rlib
-else
-  CFG_STDLIB_DEFAULT = $(2)/lib/$(CFG_STDLIB)
-endif
-
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
 CFG_VERSION = prerelease
@@ -186,9 +180,15 @@ TARGET_HOST_BIN$(1) = $$(TARGET_BIN$(1)$$(CFG_HOST_TRIPLE))
 TARGET_HOST_LIB$(1) = $$(TARGET_LIB$(1)$$(CFG_HOST_TRIPLE))
 
 ifdef CFG_DISABLE_SHAREDSTD
+  HOST_STDLIB_DEFAULT$(1) = $$(HOST_LIB$(1))/libstd.rlib
+else
+  HOST_STDLIB_DEFAULT$(1) = $$(HOST_LIB$(1))/$(CFG_STDLIB)
+endif
+
+ifdef CFG_DISABLE_SHAREDSTD
 SREQ$(1)$(2) = $$(HOST_BIN$(1))/rustc$(X)          \
            $$(HOST_LIB$(1))/$$(CFG_RUNTIME)     \
-           $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(1)) \
+           $$(HOST_STDLIB_DEFAULT$(1)) \
            $$(HOST_LIB$(1))/$$(CFG_RUSTLLVM)    \
            $$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME) \
            $$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB) \
@@ -198,7 +198,7 @@ SREQ$(1)$(2) = $$(HOST_BIN$(1))/rustc$(X)          \
 else
 SREQ$(1)$(2) = $$(HOST_BIN$(1))/rustc$(X)          \
            $$(HOST_LIB$(1))/$$(CFG_RUNTIME)     \
-           $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(1)) \
+           $$(HOST_STDLIB_DEFAULT$(1)) \
            $$(HOST_LIB$(1))/$$(CFG_RUSTLLVM)    \
            $$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME) \
            $$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB) \

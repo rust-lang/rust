@@ -29,7 +29,7 @@ $$(HOST_LIB$(2))/%.o: $$(HOST_LIB$(2))/%.s
 
 $$(HOST_BIN$(2))/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS)          \
                           $$(HOST_LIB$(2))/$$(CFG_RUNTIME)                       \
-                          $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
+                          $$(HOST_STDLIB_DEFAULT$(2)) \
                           $$(HOST_LIB$(2))/$$(CFG_RUSTLLVM)                      \
                           $$(SREQ$(1)$(3))
 	@$$(call E, compile_and_link: $$@)
@@ -46,6 +46,10 @@ $$(HOST_LIB$(2))/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	$$(Q)cp $$< $$@
 
 $$(HOST_LIB$(2))/$$(CFG_STDLIB): $$(TARGET_HOST_LIB$(1))/$$(CFG_STDLIB)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
+$$(HOST_LIB$(2))/libstd.rlib: $$(TARGET_HOST_LIB$(1))/libstd.rlib
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
