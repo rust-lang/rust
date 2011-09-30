@@ -26,12 +26,12 @@ old_snapshot_files = {
     }
 
 snapshot_files = {
-    "linux": ["rustc", "lib/libstd.so", "lib/main.o",
-              "librustrt.so", "librustllvm.so", "lib/intrinsics.bc"],
-    "macos": ["rustc", "lib/libstd.dylib", "lib/main.o",
-              "librustrt.dylib", "librustllvm.dylib", "lib/intrinsics.bc"],
-    "winnt": ["rustc.exe", "lib/std.dll", "lib/main.o",
-              "rustrt.dll", "rustllvm.dll", "lib/intrinsics.bc"]
+    "linux": ["bin/rustc", "lib/libstd.so",
+              "lib/librustrt.so", "lib/librustllvm.so"],
+    "macos": ["bin/rustc", "lib/libstd.dylib",
+              "lib/librustrt.dylib", "lib/librustllvm.dylib"],
+    "winnt": ["bin/rustc.exe", "lib/std.dll",
+              "lib/rustrt.dll", "lib/rustllvm.dll"]
     }
 
 def parse_line(n, line):
