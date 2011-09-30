@@ -390,17 +390,17 @@ for t in $CFG_TARGET_TRIPLES
 do
     for i in 0 1 2 3
     do
-        # old-style "bin" dir
-        make_dir stage$i
-
-        # new-style bin dir, not yet used
+        # host bin dir
         make_dir stage$i/bin
 
-        # old-style non-arch libs
+        # host lib dir
         make_dir stage$i/lib
 
-        # new-style arch-prefixed libs, not yet used
-        make_dir stage$i/lib/rustc/$t
+        # target bin dir
+        make_dir stage$i/lib/rustc/$t/bin
+
+        # target lib dir
+        make_dir stage$i/lib/rustc/$t/lib
     done
 done
 

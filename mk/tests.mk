@@ -151,7 +151,7 @@ test/rustctest.stage$(2)$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
                            $$(HOST_LIB$(2))/$$(CFG_RUSTLLVM) \
                            $$(SREQ$(1)$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -o $$@ $$< --test
+	$$(STAGE$(1)) -L $$(HOST_LIB$(2)) -o $$@ $$< --test
 
 test/rustctest.stage$(2).out.tmp: test/rustctest.stage$(2)$$(X)
 	@$$(call E, run: $$<)

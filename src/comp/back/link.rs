@@ -39,14 +39,21 @@ fn llvm_err(sess: session::session, msg: str) {
     } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
 }
 
-fn get_target_lib_path(sess: session::session) -> fs::path {
+fn make_target_lib_path(sysroot: fs::path, target_triple: str) -> fs::path {
     let path = [
-        sess.get_opts().sysroot,
+        sysroot,
         "lib/rustc",
-        sess.get_opts().target_triple];
+        target_triple,
+        "lib"
+    ];
     check vec::is_not_empty(path);
     let path = fs::connect_many(path);
     ret path;
+}
+
+fn get_target_lib_path(sess: session::session) -> fs::path {
+    make_target_lib_path(sess.get_opts().sysroot,
+                         sess.get_opts().target_triple)
 }
 
 fn get_target_lib_file_path(sess: session::session,
