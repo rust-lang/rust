@@ -4,8 +4,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len, index,
        unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars,
        to_chars, char_len, char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
-       str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
-       buf;
+       str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice;
 
 native "rust" mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
@@ -420,6 +419,8 @@ fn trim(s: str) -> str { trim_left(trim_right(s)) }
 
 type sbuf = *u8;
 
+// NB: This is intentionally unexported because it's easy to misuse (there's
+// no guarantee that the string is rooted). Instead, use as_buf below.
 fn buf(s: str) -> sbuf {
     let saddr = ptr::addr_of(s);
     let vaddr: *[u8] = unsafe::reinterpret_cast(saddr);
