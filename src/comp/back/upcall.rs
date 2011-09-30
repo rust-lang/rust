@@ -83,7 +83,7 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
           dynastack_free: d("dynastack_free", [T_ptr(T_i8())], T_void()),
           alloc_c_stack: dr("alloc_c_stack", [T_size_t()], T_ptr(T_i8())),
           call_c_stack: dr("call_c_stack",
-                           [T_ptr(T_fn([], T_void())), T_ptr(T_i8())],
+                           [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
                            T_int()),
           rust_personality: dr("rust_personality", [], T_i32())
          };

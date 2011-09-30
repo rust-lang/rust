@@ -5792,7 +5792,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         cast_to_i32 = true;
       }
       ast::native_abi_c_stack_cdecl. {
-        let llfn = decl_cdecl_fn(ccx.llmod, name, T_fn([], T_void()));
+        let llfn = decl_cdecl_fn(ccx.llmod, name, T_fn([], T_int()));
         ccx.item_ids.insert(id, llfn);
         ccx.item_symbols.insert(id, name);
         ret;
