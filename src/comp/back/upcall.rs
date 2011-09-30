@@ -2,22 +2,10 @@
 import std::str;
 import middle::trans;
 import trans::decl_cdecl_fn;
-import middle::trans_common::T_f32;
-import middle::trans_common::T_f64;
-import middle::trans_common::T_fn;
-import middle::trans_common::T_bool;
-import middle::trans_common::T_i1;
-import middle::trans_common::T_i8;
-import middle::trans_common::T_i32;
-import middle::trans_common::T_int;
-import middle::trans_common::T_vec;
-import middle::trans_common::T_nil;
-import middle::trans_common::T_opaque_chan_ptr;
-import middle::trans_common::T_opaque_vec;
-import middle::trans_common::T_opaque_port_ptr;
-import middle::trans_common::T_ptr;
-import middle::trans_common::T_size_t;
-import middle::trans_common::T_void;
+import middle::trans_common::{T_f32, T_f64, T_fn, T_bool, T_i1, T_i8, T_i32,
+                              T_int, T_vec, T_nil, T_opaque_chan_ptr,
+                              T_opaque_vec, T_opaque_port_ptr, T_ptr,
+                              T_size_t, T_void};
 import lib::llvm::type_names;
 import lib::llvm::llvm::ModuleRef;
 import lib::llvm::llvm::ValueRef;
@@ -94,8 +82,9 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
                 T_ptr(T_i8())),
           dynastack_free: d("dynastack_free", [T_ptr(T_i8())], T_void()),
           alloc_c_stack: dr("alloc_c_stack", [T_size_t()], T_ptr(T_i8())),
-          call_c_stack: dr("call_c_stack", [T_ptr(T_i8()), T_ptr(T_i8())],
-                           T_void()),
+          call_c_stack: dr("call_c_stack",
+                           [T_ptr(T_fn([], T_void())), T_ptr(T_i8())],
+                           T_int()),
           rust_personality: dr("rust_personality", [], T_i32())
          };
 }
