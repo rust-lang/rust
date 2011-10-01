@@ -163,15 +163,15 @@ LLC := $(CFG_LLVM_BINDIR)/llc$(X)
 
 define SREQ
 
-# Destinations of artifacts for target architectures
-TARGET_ROOT$(1)$(2) = stage$(1)/lib/rustc/$(2)
-TARGET_BIN$(1)$(2) = $$(TARGET_ROOT$(1)$(2))/bin
-TARGET_LIB$(1)$(2) = $$(TARGET_ROOT$(1)$(2))/lib
-
 # Destinations of artifacts for the host compiler
 HOST_ROOT$(1) = stage$(1)
 HOST_BIN$(1) = $$(HOST_ROOT$(1))/bin
 HOST_LIB$(1) = $$(HOST_ROOT$(1))/lib
+
+# Destinations of artifacts for target architectures
+TARGET_ROOT$(1)$(2) = $$(HOST_LIB$(1))/rustc/$(2)
+TARGET_BIN$(1)$(2) = $$(TARGET_ROOT$(1)$(2))/bin
+TARGET_LIB$(1)$(2) = $$(TARGET_ROOT$(1)$(2))/lib
 
 # The target locations of artifacts for the host architecture (used for
 # promoting target binaries to host binaries)
@@ -317,4 +317,9 @@ endif
 ifneq ($(findstring clean,$(MAKECMDGOALS)),)
   CFG_INFO := $(info cfg: including clean rules)
   include $(CFG_SRC_DIR)/mk/clean.mk
+endif
+
+ifneq ($(findstring install,$(MAKECMDGOALS)),)
+  CFG_INFO := $(info cfg: including install rules)
+  include $(CFG_SRC_DIR)/mk/install.mk
 endif

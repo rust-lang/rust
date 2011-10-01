@@ -339,6 +339,11 @@ else
     CFG_C_COMPILER="gcc"
 fi
 
+if [ -z "$CFG_PREFIX" ]
+then
+    CFG_PREFIX=/usr/local
+fi
+
 if [ ! -z "$CFG_LLVM_TRIPLE" ]
 then
     if [ $CFG_HOST_TRIPLE != $CFG_LLVM_TRIPLE ]
@@ -357,8 +362,8 @@ CFG_TARGET_TRIPLES="${CFG_HOST_TRIPLE}"
 putvar CFG_HOST_TRIPLE
 putvar CFG_TARGET_TRIPLES
 
-
 putvar CFG_C_COMPILER
+putvar CFG_PREFIX
 
 putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_INCDIR
