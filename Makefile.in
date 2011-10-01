@@ -166,12 +166,7 @@ define SREQ
 # Destinations of artifacts for target architectures
 TARGET_ROOT$(1)$(2) = stage$(1)/lib/rustc/$(2)
 TARGET_BIN$(1)$(2) = $$(TARGET_ROOT$(1)$(2))/bin
-# FIXME: Transitional
-ifeq ($(1),0)
-TARGET_LIB$(1)$(2) = $$(TARGET_ROOT$(1)$(2))
-else
 TARGET_LIB$(1)$(2) = $$(TARGET_ROOT$(1)$(2))/lib
-endif
 
 # Destinations of artifacts for the host compiler
 HOST_ROOT$(1) = stage$(1)
