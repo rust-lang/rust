@@ -455,9 +455,9 @@ native "cdecl" mod llvm = "rustllvm" {
     fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: uint);
     fn LLVMGetGC(Fn: ValueRef) -> sbuf;
     fn LLVMSetGC(Fn: ValueRef, Name: sbuf);
-    fn LLVMAddFunctionAttr(Fn: ValueRef, PA: Attribute);
+    fn LLVMAddFunctionAttr(Fn: ValueRef, PA: Attribute, HighPA: uint);
     fn LLVMGetFunctionAttr(Fn: ValueRef) -> Attribute;
-    fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: Attribute);
+    fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: Attribute, HighPA: uint);
 
     /* Operations on parameters */
     fn LLVMCountParams(Fn: ValueRef) -> uint;

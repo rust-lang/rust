@@ -263,6 +263,7 @@ options:
     --no-typestate     don't run the typestate pass (unsafe!)
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
+    --stack-growth     perform stack checks (experimental)
 
 ");
 }
@@ -386,6 +387,7 @@ fn build_session_options(binary: str, match: getopts::match)
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let do_gc = opt_present(match, "gc");
+    let stack_growth = opt_present(match, "stack-growth");
     let sopts: @session::options =
         @{library: library,
           static: static,
@@ -405,7 +407,8 @@ fn build_session_options(binary: str, match: getopts::match)
           test: test,
           parse_only: parse_only,
           no_trans: no_trans,
-          do_gc: do_gc};
+          do_gc: do_gc,
+          stack_growth: stack_growth};
     ret sopts;
 }
 
@@ -439,7 +442,8 @@ fn opts() -> [getopts::opt] {
          optflag("time-passes"), optflag("time-llvm-passes"),
          optflag("no-typestate"), optflag("noverify"),
          optmulti("cfg"), optflag("test"),
-         optflag("lib"), optflag("static"), optflag("gc")];
+         optflag("lib"), optflag("static"), optflag("gc"),
+         optflag("stack-growth")];
 }
 
 fn main(args: [str]) {

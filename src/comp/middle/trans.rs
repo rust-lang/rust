@@ -1087,7 +1087,8 @@ fn get_static_tydesc(cx: @block_ctxt, orig_t: ty::t, ty_params: [uint],
 fn set_no_inline(f: ValueRef) {
     llvm::LLVMAddFunctionAttr(f,
                               lib::llvm::LLVMNoInlineAttribute as
-                                  lib::llvm::llvm::Attribute);
+                                  lib::llvm::llvm::Attribute,
+                              0u);
 }
 
 // Tell LLVM to emit the information necessary to unwind the stack for the
@@ -1095,13 +1096,20 @@ fn set_no_inline(f: ValueRef) {
 fn set_uwtable(f: ValueRef) {
     llvm::LLVMAddFunctionAttr(f,
                               lib::llvm::LLVMUWTableAttribute as
-                                  lib::llvm::llvm::Attribute);
+                                  lib::llvm::llvm::Attribute,
+                              0u);
 }
 
 fn set_always_inline(f: ValueRef) {
     llvm::LLVMAddFunctionAttr(f,
                               lib::llvm::LLVMAlwaysInlineAttribute as
-                                  lib::llvm::llvm::Attribute);
+                                  lib::llvm::llvm::Attribute,
+                              0u);
+}
+
+fn set_custom_stack_growth_fn(f: ValueRef) {
+    // TODO: Remove this hack to work around the lack of u64 in the FFI.
+    llvm::LLVMAddFunctionAttr(f, 0 as lib::llvm::llvm::Attribute, 1u);
 }
 
 fn set_glue_inlining(cx: @local_ctxt, f: ValueRef, t: ty::t) {
