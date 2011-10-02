@@ -224,6 +224,11 @@ opt mingw-cross 0 "cross-compile for win32 using mingw"
 if [ $HELP -eq 1 ]
 then
     echo ""
+    echo "Useful environment variables:"
+    echo ""
+    printf "    %-32s %s\n" "CFG_LLVM_ROOT" "The host LLVM install"
+    printf "    %-32s %s\n" "CFG_PREFIX" "The installation prefix"
+    echo ""
     exit 0
 fi
 

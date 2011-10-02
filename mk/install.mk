@@ -1,10 +1,11 @@
 ifdef VERBOSE
  INSTALL = cp $(1)/$(3) $(2)/$(3)
 else
- INSTALL = @$(call E, install $(2)/$(3)) && cp $(1)/$(3) $(2)/$(3)
+ INSTALL = @$(call E, install: $(2)/$(3)) && cp $(1)/$(3) $(2)/$(3)
 endif
 
-ISTAGE = 1
+# The stage we install from
+ISTAGE = 3
 
 PREFIX_ROOT = $(CFG_PREFIX)
 PREFIX_BIN = $(PREFIX_ROOT)/bin

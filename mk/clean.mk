@@ -3,7 +3,8 @@
 ######################################################################
 
 CLEAN_STAGE_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
- clean0$(target) clean1$(target) clean2$(target) clean3$(target))
+ clean0$(target) clean1$(target) clean2$(target) clean3$(target)) \
+ clean0 clean1 clean2 clean3
 
 
 .PHONY: clean
@@ -43,14 +44,20 @@ clean-misc:
 
 define CLEAN_STAGE_N
 
-clean$(1)$(2):
+clean$(1):
 	$(Q)rm -f $$(HOST_BIN$(1))/rustc
 	$(Q)rm -f $$(HOST_BIN$(1))/fuzzer
 	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_STDLIB)
 	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_RUSTLLVM)
+	$(Q)rm -f $$(HOST_LIB$(1))/libstd.rlib
+
+clean$(1)$(2):
+	$(Q)rm -f $$(TARGET_BIN$(1)$(2))/rustc
+	$(Q)rm -f $$(TARGET_BIN$(1)$(2))/fuzzer
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_STDLIB)
+	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/libstd.rlib
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/intrinsics.bc
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/main.o
