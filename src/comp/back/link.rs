@@ -524,7 +524,7 @@ fn link_binary(sess: session::session,
     // The invocations of gcc share some flags across platforms
 
     let gcc_args =
-        [stage, "-Lrt", "-lrustrt", "-m32", "-o", saved_out_filename,
+        [stage, "-m32", "-o", saved_out_filename,
          saved_out_filename + ".o"];
     let lib_cmd;
 
@@ -581,8 +581,10 @@ fn link_binary(sess: session::session,
         // FIXME: why do we hardcode -lm?
         gcc_args += ["-lm", main];
     }
-    // We run 'gcc' here
 
+    gcc_args += ["-Lrt", "-lrustrt"];
+
+    // We run 'gcc' here
     let err_code = run::run_program(prog, gcc_args);
     if 0 != err_code {
         sess.err(#fmt["linking with gcc failed with code %d", err_code]);
