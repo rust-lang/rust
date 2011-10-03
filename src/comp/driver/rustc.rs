@@ -536,8 +536,8 @@ mod test {
             alt getopts::getopts(["--test"], opts()) {
               getopts::success(m) { m }
             };
-        let sessopts = build_session_options("whatever", match);
-        let sess = build_session(sessopts);
+        let sessopts = build_session_options(match);
+        let sess = build_session("whatever", sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         assert (attr::contains_name(cfg, "test"));
     }
@@ -550,8 +550,8 @@ mod test {
             alt getopts::getopts(["--test", "--cfg=test"], opts()) {
               getopts::success(m) { m }
             };
-        let sessopts = build_session_options("whatever", match);
-        let sess = build_session(sessopts);
+        let sessopts = build_session_options(match);
+        let sess = build_session("whatever", sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         let test_items = attr::find_meta_items_by_name(cfg, "test");
         assert (vec::len(test_items) == 1u);

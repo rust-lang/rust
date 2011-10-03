@@ -24,7 +24,6 @@ fn read_crates(sess: session::session, crate: ast::crate) {
     let e =
         @{sess: sess,
           crate_cache: @std::map::new_str_hash::<int>(),
-          library_search_paths: sess.filesearch().lib_search_paths(),
           mutable next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
@@ -37,7 +36,6 @@ fn read_crates(sess: session::session, crate: ast::crate) {
 type env =
     @{sess: session::session,
       crate_cache: @hashmap<str, int>,
-      library_search_paths: [fs::path],
       mutable next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
@@ -109,7 +107,7 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
 }
 
 fn find_library_crate(sess: session::session, ident: ast::ident,
-                      metas: [@ast::meta_item], library_search_paths: [str])
+                      metas: [@ast::meta_item])
    -> option::t<{ident: str, data: @[u8]}> {
 
     attr::require_unique_names(sess, metas);
@@ -132,10 +130,12 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
 
     let nn = default_native_lib_naming(sess, sess.get_opts().static);
     let x =
-        find_library_crate_aux(nn, crate_name, metas, library_search_paths);
+        find_library_crate_aux(nn, crate_name, metas,
+                               sess.filesearch().lib_search_paths());
     if x != none || sess.get_opts().static { ret x; }
     let nn2 = default_native_lib_naming(sess, true);
-    ret find_library_crate_aux(nn2, crate_name, metas, library_search_paths);
+    ret find_library_crate_aux(nn2, crate_name, metas,
+                               sess.filesearch().lib_search_paths());
 }
 
 fn find_library_crate_aux(nn: {prefix: str, suffix: str}, crate_name: str,
@@ -198,11 +198,11 @@ fn get_metadata_section(filename: str) -> option::t<@[u8]> {
 }
 
 fn load_library_crate(sess: session::session, span: span, ident: ast::ident,
-                      metas: [@ast::meta_item], library_search_paths: [str])
+                      metas: [@ast::meta_item])
    -> {ident: str, data: @[u8]} {
 
 
-    alt find_library_crate(sess, ident, metas, library_search_paths) {
+    alt find_library_crate(sess, ident, metas) {
       some(t) { ret t; }
       none. {
         sess.span_fatal(span, #fmt["can't find crate for '%s'", ident]);
@@ -214,8 +214,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
                  span: span) -> ast::crate_num {
     if !e.crate_cache.contains_key(ident) {
         let cinfo =
-            load_library_crate(e.sess, span, ident, metas,
-                               e.library_search_paths);
+            load_library_crate(e.sess, span, ident, metas);
 
         let cfilename = cinfo.ident;
         let cdata = cinfo.data;
