@@ -56,10 +56,6 @@ ifdef VERBOSE
   CTEST_TESTARGS += --verbose
 endif
 
-# The test runner that runs the cfail/rfail/rpass and bench tests
-COMPILETEST_CRATE := $(S)src/test/compiletest/compiletest.rc
-COMPILETEST_INPUTS := $(wildcard $(S)src/test/compiletest/*rs)
-
 # The standard library test crate
 STDTEST_CRATE := $(S)src/test/stdtest/stdtest.rc
 STDTEST_INPUTS := $(wildcard $(S)src/test/stdtest/*rs)
@@ -241,61 +237,55 @@ PRETTY_PRETTY_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                           --build-base test/pretty/ \
                           --mode pretty \
 
-test/compiletest.stage$(2)$$(X): $$(COMPILETEST_CRATE) \
-                                 $$(COMPILETEST_INPUTS) \
-                                 $$(SREQ$(2)$$(CFG_HOST_TRIPLE))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(2)) -o $$@ $$<
-
-test/compile-fail.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/compile-fail.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                                    $$(CFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(CFAIL_ARGS$(2))
 	$$(Q)touch $$@
 
-test/run-fail.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/run-fail.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                                $$(RFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(RFAIL_ARGS$(2))
 	$$(Q)touch $$@
 
-test/run-pass.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/run-pass.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                                $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(RPASS_ARGS$(2))
 	$$(Q)touch $$@
 
-test/bench.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/bench.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                             $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(BENCH_ARGS$(2))
 	$$(Q)touch $$@
 
-test/perf.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/perf.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                             $$(BENCH_TESTS)
 	@$$(call E, perf: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PERF_ARGS$(2))
 	$$(Q)touch $$@
 
-test/pretty-rpass.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/pretty-rpass.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                                      $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_RPASS_ARGS$(2))
 	$$(Q)touch $$@
 
-test/pretty-rfail.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/pretty-rfail.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                                      $$(RFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_RFAIL_ARGS$(2))
 	$$(Q)touch $$@
 
-test/pretty-bench.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/pretty-bench.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                                      $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_BENCH_ARGS$(2))
 	$$(Q)touch $$@
 
-test/pretty-pretty.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+test/pretty-pretty.stage$(2).out.tmp: $$(HOST_BIN$(2))/compiletest$$(X) \
                                      $$(PRETTY_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_PRETTY_ARGS$(2))

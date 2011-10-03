@@ -321,7 +321,7 @@ include $(CFG_SRC_DIR)/mk/stage0.mk
 include $(CFG_SRC_DIR)/mk/rt.mk
 include $(CFG_SRC_DIR)/mk/rustllvm.mk
 include $(CFG_SRC_DIR)/mk/autodep.mk
-include $(CFG_SRC_DIR)/mk/fuzzer.mk
+include $(CFG_SRC_DIR)/mk/tools.mk
 include $(CFG_SRC_DIR)/mk/docs.mk
 
 
