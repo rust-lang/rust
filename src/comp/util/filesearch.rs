@@ -9,9 +9,15 @@ import back::link;
 export filesearch;
 export mk_filesearch;
 export pick;
+export pick_file;
 export search;
 
 type pick<@T> = block(path: fs::path) -> option::t<T>;
+
+fn pick_file(file: fs::path, path: fs::path) -> option::t<fs::path> {
+    if fs::basename(path) == file { option::some(path) }
+    else { option::none }
+}
 
 type filesearch = obj {
     fn sysroot() -> fs::path;

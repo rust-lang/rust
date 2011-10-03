@@ -60,6 +60,7 @@ fn visit_item(e: env, i: @ast::item) {
         if !cstore::add_used_library(cstore, m.native_name) { ret; }
         for a: ast::attribute in
             attr::find_attrs_by_name(i.attrs, "link_args") {
+
             alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
               some(linkarg) { cstore::add_used_link_args(cstore, linkarg); }
               none. {/* fallthrough */ }

@@ -23,6 +23,7 @@ import lib::llvm::mk_target_data;
 import lib::llvm::mk_type_names;
 import lib::llvm::False;
 import lib::llvm::True;
+import util::filesearch;
 
 tag output_type {
     output_type_none;
@@ -40,8 +41,12 @@ fn llvm_err(sess: session::session, msg: str) {
 }
 
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
-    let path = sess.filesearch()
-        .get_target_lib_file_path("intrinsics.bc");
+    let path = alt filesearch::search(
+        sess.filesearch(),
+        bind filesearch::pick_file("intrinsics.bc", _)) {
+      option::some(path) { path }
+      option::none. { sess.fatal("couldn't find intrinsics.bc") }
+    };
     let membuf = str::as_buf(path, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
     });
@@ -497,8 +502,12 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 // gcc to link the object file with some libs
 fn link_binary(sess: session::session,
                saved_out_filename: str) {
-    let main: str = sess.filesearch()
-        .get_target_lib_file_path("main.o");
+    let main: str = alt filesearch::search(
+        sess.filesearch(), bind filesearch::pick_file("main.o", _)) {
+      option::some(f) { f }
+      option::none. { sess.fatal("can't find main.o") }
+    };
+
     let stage: str = "-L" + sess.filesearch().get_target_lib_path();
     let prog: str = "gcc";
     // The invocations of gcc share some flags across platforms
