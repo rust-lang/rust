@@ -411,6 +411,9 @@ fn print_item(s: ps, item: @ast::item) {
           ast::native_abi_c_stack_cdecl. {
             word_nbsp(s, "\"c-stack-cdecl\"");
           }
+          ast::native_abi_c_stack_stdcall. {
+            word_nbsp(s, "\"c-stack-stdcall\"");
+          }
         }
         word_nbsp(s, "mod");
         word_nbsp(s, item.ident);

@@ -420,6 +420,7 @@ tag native_abi {
     native_abi_rust_intrinsic;
     native_abi_x86stdcall;
     native_abi_c_stack_cdecl;
+    native_abi_c_stack_stdcall;
 }
 
 type native_mod =

@@ -54,7 +54,8 @@ fn visit_item(e: env, i: @ast::item) {
     alt i.node {
       ast::item_native_mod(m) {
         if m.abi != ast::native_abi_rust && m.abi != ast::native_abi_cdecl &&
-                m.abi != ast::native_abi_c_stack_cdecl {
+                m.abi != ast::native_abi_c_stack_cdecl &&
+                m.abi != ast::native_abi_c_stack_stdcall {
             ret;
         }
         let cstore = e.sess.get_cstore();

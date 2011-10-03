@@ -5741,7 +5741,8 @@ pure fn native_abi_requires_pair(abi: ast::native_abi) -> bool {
         ast::native_abi_rust. | ast::native_abi_cdecl. |
         ast::native_abi_llvm. | ast::native_abi_rust_intrinsic. |
         ast::native_abi_x86stdcall. { ret true; }
-        ast::native_abi_c_stack_cdecl. { ret false; }
+        ast::native_abi_c_stack_cdecl. |
+        ast::native_abi_c_stack_stdcall. { ret false; }
     }
 }
 
@@ -5805,6 +5806,13 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
       }
       ast::native_abi_c_stack_cdecl. {
         let llfn = decl_cdecl_fn(ccx.llmod, name, T_fn([], T_int()));
+        ccx.item_ids.insert(id, llfn);
+        ccx.item_symbols.insert(id, name);
+        ret;
+      }
+      ast::native_abi_c_stack_stdcall. {
+        let llfn = decl_fn(ccx.llmod, name, lib::llvm::LLVMX86StdcallCallConv,
+                           T_fn([], T_int()));
         ccx.item_ids.insert(id, llfn);
         ccx.item_symbols.insert(id, name);
         ret;
