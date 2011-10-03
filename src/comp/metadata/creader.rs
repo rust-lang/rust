@@ -8,7 +8,7 @@ import middle::resolve;
 import syntax::visit;
 import syntax::codemap::span;
 import back::x86;
-import util::common;
+import util::{common, filesearch};
 import std::{vec, str, fs, io, option};
 import std::option::{none, some};
 import std::map::{hashmap, new_int_hash};
@@ -131,49 +131,41 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
     let nn = default_native_lib_naming(sess, sess.get_opts().static);
     let x =
         find_library_crate_aux(nn, crate_name, metas,
-                               sess.filesearch().lib_search_paths());
+                               sess.filesearch());
     if x != none || sess.get_opts().static { ret x; }
     let nn2 = default_native_lib_naming(sess, true);
     ret find_library_crate_aux(nn2, crate_name, metas,
-                               sess.filesearch().lib_search_paths());
+                               sess.filesearch());
 }
 
 fn find_library_crate_aux(nn: {prefix: str, suffix: str}, crate_name: str,
                           metas: [@ast::meta_item],
-                          library_search_paths: [str]) ->
+                          filesearch: filesearch::filesearch) ->
    option::t<{ident: str, data: @[u8]}> {
     let prefix: str = nn.prefix + crate_name;
     let suffix: str = nn.suffix;
-    // FIXME: we could probably use a 'glob' function in std::fs but it will
-    // be much easier to write once the unsafe module knows more about FFI
-    // tricks. Currently the glob(3) interface is a bit more than we can
-    // stomach from here, and writing a C++ wrapper is more work than just
-    // manually filtering fs::list_dir here.
 
-    for library_search_path: str in library_search_paths {
-        log #fmt["searching %s", library_search_path];
-        for path: str in fs::list_dir(library_search_path) {
-            log #fmt["searching %s", path];
-            let f: str = fs::basename(path);
-            if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
-                log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
-                         suffix];
-                cont;
-            }
+    ret filesearch::search(filesearch, { |path|
+        let f: str = fs::basename(path);
+        if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
+            log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
+                     suffix];
+            option::none
+        } else {
             alt get_metadata_section(path) {
               option::some(cvec) {
                 if !metadata_matches(cvec, metas) {
                     log #fmt["skipping %s, metadata doesn't match", path];
-                    cont;
+                    option::none
+                } else {
+                    log #fmt["found %s with matching metadata", path];
+                    option::some({ident: path, data: cvec})
                 }
-                log #fmt["found %s with matching metadata", path];
-                ret some({ident: path, data: cvec});
               }
-              _ { }
+              _ { option::none }
             }
         }
-    }
-    ret none;
+    });
 }
 
 fn get_metadata_section(filename: str) -> option::t<@[u8]> {
