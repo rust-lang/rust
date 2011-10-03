@@ -112,8 +112,6 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
 
     attr::require_unique_names(sess, metas);
 
-    // FIXME: Probably want a warning here since the user
-    // is using the wrong type of meta item
     let crate_name =
         {
             let name_items = attr::find_meta_items_by_name(metas, "name");
@@ -121,6 +119,8 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
               some(i) {
                 alt attr::get_meta_item_value_str(i) {
                   some(n) { n }
+                  // FIXME: Probably want a warning here since the user
+                  // is using the wrong type of meta item
                   _ { ident }
                 }
               }
