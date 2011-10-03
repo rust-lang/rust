@@ -8,7 +8,7 @@ import front::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck};
 import middle::tstate::ck;
 import syntax::print::{pp, pprust};
-import util::{ppaux, common};
+import util::{ppaux, common, filesearch};
 import back::link;
 import lib::llvm;
 import std::{fs, option, str, vec, int, io, run, getopts};
@@ -293,12 +293,6 @@ fn get_arch(triple: str) -> session::arch {
         } else { log_err "Unknown architecture! " + triple; fail };
 }
 
-fn get_default_sysroot(binary: str) -> str {
-    let dirname = fs::dirname(binary);
-    if str::eq(dirname, binary) { ret "../"; }
-    ret fs::connect(dirname, "../");
-}
-
 fn build_target_config(sopts: @session::options) -> @session::config {
     let target_cfg: @session::config =
         @{os: get_os(sopts.target_triple),
@@ -321,7 +315,7 @@ fn host_triple() -> str {
     ret ht != "" ? ht : fail "rustc built without CFG_HOST_TRIPLE";
 }
 
-fn build_session_options(binary: str, match: getopts::match)
+fn build_session_options(match: getopts::match)
    -> @session::options {
     let library = opt_present(match, "lib");
     let static = opt_present(match, "static");
@@ -368,22 +362,13 @@ fn build_session_options(binary: str, match: getopts::match)
               }
             }
         } else { 0u };
-    let sysroot =
-        alt sysroot_opt {
-          none. { get_default_sysroot(binary) }
-          some(s) { s }
-        };
     let target =
         alt target_opt {
             none. { host_triple() }
             some(s) { s }
         };
 
-    let library_search_paths = [link::make_target_lib_path(sysroot, target)];
-    let lsp_vec = getopts::opt_strs(match, "L");
-    // FIXME: These should probably go in front of the defaults
-    for lsp: str in lsp_vec { library_search_paths += [lsp]; }
-
+    let addl_lib_search_paths = getopts::opt_strs(match, "L");
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let do_gc = opt_present(match, "gc");
@@ -400,8 +385,8 @@ fn build_session_options(binary: str, match: getopts::match)
           time_passes: time_passes,
           time_llvm_passes: time_llvm_passes,
           output_type: output_type,
-          library_search_paths: library_search_paths,
-          sysroot: sysroot,
+          addl_lib_search_paths: addl_lib_search_paths,
+          maybe_sysroot: sysroot_opt,
           target_triple: target,
           cfg: cfg,
           test: test,
@@ -412,12 +397,18 @@ fn build_session_options(binary: str, match: getopts::match)
     ret sopts;
 }
 
-fn build_session(sopts: @session::options) -> session::session {
+fn build_session(binary: str,
+                 sopts: @session::options) -> session::session {
     let target_cfg = build_target_config(sopts);
     let cstore = cstore::mk_cstore();
+    let filesearch = filesearch::mk_filesearch(
+        binary,
+        sopts.maybe_sysroot,
+        sopts.target_triple,
+        sopts.addl_lib_search_paths);
     ret session::session(target_cfg, sopts, cstore,
                          @{cm: codemap::new_codemap(), mutable next_id: 0},
-                         none, 0u);
+                         none, 0u, filesearch);
 }
 
 fn parse_pretty(sess: session::session, name: str) -> pp_mode {
@@ -464,8 +455,8 @@ fn main(args: [str]) {
         version(binary);
         ret;
     }
-    let sopts = build_session_options(binary, match);
-    let sess = build_session(sopts);
+    let sopts = build_session_options(match);
+    let sess = build_session(binary, sopts);
     let n_inputs = vec::len::<str>(match.free);
     let output_file = getopts::opt_maybe_str(match, "o");
     if n_inputs == 0u {

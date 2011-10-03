@@ -24,7 +24,7 @@ fn read_crates(sess: session::session, crate: ast::crate) {
     let e =
         @{sess: sess,
           crate_cache: @std::map::new_str_hash::<int>(),
-          library_search_paths: sess.get_opts().library_search_paths,
+          library_search_paths: sess.filesearch().lib_search_paths(),
           mutable next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
@@ -37,7 +37,7 @@ fn read_crates(sess: session::session, crate: ast::crate) {
 type env =
     @{sess: session::session,
       crate_cache: @hashmap<str, int>,
-      library_search_paths: [str],
+      library_search_paths: [fs::path],
       mutable next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {

@@ -117,6 +117,7 @@ mod driver {
 mod util {
     mod common;
     mod ppaux;
+    mod filesearch;
 }
 
 auth middle::metadata = unsafe;
