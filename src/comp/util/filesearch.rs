@@ -1,4 +1,6 @@
 // A module for searching for libraries
+// FIXME: I'm not happy how this module turned out. Should probably
+// just be folded into cstore.
 
 import std::option;
 import std::fs;
@@ -12,6 +14,7 @@ export mk_filesearch;
 export pick;
 export pick_file;
 export search;
+export relative_target_lib_path;
 
 type pick<@T> = block(path: fs::path) -> option::t<T>;
 
@@ -71,9 +74,13 @@ fn search<@T>(filesearch: filesearch, pick: pick<T>) -> option::t<T> {
     ret option::none;
 }
 
+fn relative_target_lib_path(target_triple: str) -> [fs::path] {
+    ["lib", "rustc", target_triple, "lib"]
+}
+
 fn make_target_lib_path(sysroot: fs::path,
                         target_triple: str) -> fs::path {
-    let path = [sysroot, "lib/rustc", target_triple, "lib"];
+    let path = [sysroot] + relative_target_lib_path(target_triple);
     check vec::is_not_empty(path);
     let path = fs::connect_many(path);
     ret path;
@@ -81,7 +88,7 @@ fn make_target_lib_path(sysroot: fs::path,
 
 fn get_default_sysroot() -> fs::path {
     alt os::get_exe_path() {
-      option::some(p) { fs::connect(p, "../") }
+      option::some(p) { fs::connect(p, "..") }
       option::none. {
         fail "can't determine value for sysroot";
       }
