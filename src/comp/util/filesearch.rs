@@ -4,6 +4,7 @@ import std::option;
 import std::fs;
 import std::vec;
 import std::str;
+import std::os;
 import back::link;
 
 export filesearch;
@@ -26,8 +27,7 @@ type filesearch = obj {
     fn get_target_lib_file_path(file: fs::path) -> fs::path;
 };
 
-fn mk_filesearch(binary_name: fs::path,
-                 maybe_sysroot: option::t<fs::path>,
+fn mk_filesearch(maybe_sysroot: option::t<fs::path>,
                  target_triple: str,
                  addl_lib_search_paths: [fs::path]) -> filesearch {
     obj filesearch_impl(sysroot: fs::path,
@@ -48,7 +48,7 @@ fn mk_filesearch(binary_name: fs::path,
         }
     }
 
-    let sysroot = get_sysroot(maybe_sysroot, binary_name);
+    let sysroot = get_sysroot(maybe_sysroot);
     log #fmt("using sysroot = %s", sysroot);
     ret filesearch_impl(sysroot, addl_lib_search_paths, target_triple);
 }
@@ -79,16 +79,18 @@ fn make_target_lib_path(sysroot: fs::path,
     ret path;
 }
 
-fn get_default_sysroot(binary: fs::path) -> fs::path {
-    let dirname = fs::dirname(binary);
-    if str::eq(dirname, binary) { ret "../"; }
-    ret fs::connect(dirname, "../");
+fn get_default_sysroot() -> fs::path {
+    alt os::get_exe_path() {
+      option::some(p) { fs::connect(p, "../") }
+      option::none. {
+        fail "can't determine value for sysroot";
+      }
+    }
 }
 
-fn get_sysroot(maybe_sysroot: option::t<fs::path>,
-               binary: fs::path) -> fs::path {
+fn get_sysroot(maybe_sysroot: option::t<fs::path>) -> fs::path {
     alt maybe_sysroot {
       option::some(sr) { sr }
-      option::none. { get_default_sysroot(binary) }
+      option::none. { get_default_sysroot() }
     }
 }

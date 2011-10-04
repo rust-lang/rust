@@ -397,12 +397,10 @@ fn build_session_options(match: getopts::match)
     ret sopts;
 }
 
-fn build_session(binary: str,
-                 sopts: @session::options) -> session::session {
+fn build_session(sopts: @session::options) -> session::session {
     let target_cfg = build_target_config(sopts);
     let cstore = cstore::mk_cstore();
     let filesearch = filesearch::mk_filesearch(
-        binary,
         sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
@@ -456,7 +454,7 @@ fn main(args: [str]) {
         ret;
     }
     let sopts = build_session_options(match);
-    let sess = build_session(binary, sopts);
+    let sess = build_session(sopts);
     let n_inputs = vec::len::<str>(match.free);
     let output_file = getopts::opt_maybe_str(match, "o");
     if n_inputs == 0u {
@@ -537,7 +535,7 @@ mod test {
               getopts::success(m) { m }
             };
         let sessopts = build_session_options(match);
-        let sess = build_session("whatever", sessopts);
+        let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         assert (attr::contains_name(cfg, "test"));
     }
@@ -551,7 +549,7 @@ mod test {
               getopts::success(m) { m }
             };
         let sessopts = build_session_options(match);
-        let sess = build_session("whatever", sessopts);
+        let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         let test_items = attr::find_meta_items_by_name(cfg, "test");
         assert (vec::len(test_items) == 1u);
