@@ -1,4 +1,4 @@
-// Disable libev prototypes - they will make inline compatability functions
+// Disable libev prototypes - they will make inline compatibility functions
 // which are unused and so trigger a warning in gcc since -Wall is on.
 #define EV_PROTOTYPES 0
 #include "uv.h"
