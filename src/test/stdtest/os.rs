@@ -28,6 +28,21 @@ fn test_getenv_big() {
     assert (getenv("NAME3") == option::some(s));
 }
 
+#[test]
+fn get_exe_path() {
+    let path = std::os::get_exe_path();
+    assert option::is_some(path);
+    let path = option::get(path);
+    log path;
+
+    // Hard to test this function
+    if std::os::target_os() != "win32" {
+        assert std::str::starts_with(path, std::fs::path_sep());
+    } else {
+        assert path[1] == ':' as u8;
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
