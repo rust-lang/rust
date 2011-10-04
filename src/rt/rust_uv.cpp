@@ -50,7 +50,7 @@ struct socket_data : public task_owned<socket_data> {
 struct req_connect : public uv_connect_t, public task_owned<req_connect> {};
 struct req_write : public uv_write_t, public task_owned<req_write> {};
 
-extern "C" CDECL void aio_close_socket(void *, socket_data *);
+extern "C" CDECL void aio_close_socket(socket_data *);
 
 static uv_idle_s idle_handler;
 
@@ -59,7 +59,7 @@ static void idle_callback(uv_idle_t* handle, int status) {
   task->yield();
 }
 
-extern "C" CDECL void aio_init(void *) {
+extern "C" CDECL void aio_init() {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
   iotask = task;
@@ -67,7 +67,7 @@ extern "C" CDECL void aio_init(void *) {
   uv_idle_start(&idle_handler, idle_callback);
 }
 
-extern "C" CDECL void aio_run(void *) {
+extern "C" CDECL void aio_run() {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
   idle_handler.data = task;
@@ -76,14 +76,13 @@ extern "C" CDECL void aio_run(void *) {
 
 void nop_close(uv_handle_t* handle) {}
 
-extern "C" CDECL void aio_stop(void *) {
+extern "C" CDECL void aio_stop() {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
   uv_close((uv_handle_t*)&idle_handler, nop_close);
 }
 
-static socket_data *make_socket(void *, rust_chan *chan) {
-  rust_task *task = rust_scheduler::get_task();
+static socket_data *make_socket(rust_task *task, rust_chan *chan) {
   socket_data *data = new (task, "make_socket") socket_data;
   if (!data ||
       uv_tcp_init(uv_default_loop(), &data->socket)) {
@@ -153,14 +152,14 @@ static void new_connection(uv_stream_t *socket, int status) {
     return;
   }
   if (uv_accept(socket, (uv_stream_t*)&client->socket)) {
-    aio_close_socket(client->task, client);
+    aio_close_socket(client);
     server->task->fail();
     return;
   }
   server->chan->send(&client);
 }
 
-extern "C" CDECL socket_data *aio_serve(void *, const char *ip, int port,
+extern "C" CDECL socket_data *aio_serve(const char *ip, int port,
                                         chan_handle *_chan) {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
@@ -172,7 +171,7 @@ extern "C" CDECL socket_data *aio_serve(void *, const char *ip, int port,
     goto oom;
   if (uv_tcp_bind(&server->socket, addr) ||
       uv_listen((uv_stream_t*)&server->socket, 128, new_connection)) {
-    aio_close_socket(task, server);
+    aio_close_socket(server);
     chan->deref();
     return NULL;
   }
@@ -207,13 +206,13 @@ static void free_socket(uv_handle_t *handle) {
   delete data;
 }
 
-extern "C" CDECL void aio_close_socket(void *, socket_data *client) {
+extern "C" CDECL void aio_close_socket(socket_data *client) {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
   uv_close((uv_handle_t*)&client->socket, free_socket);
 }
 
-extern "C" CDECL void aio_close_server(void *, socket_data *server,
+extern "C" CDECL void aio_close_server(socket_data *server,
                                        chan_handle *_chan) {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
@@ -225,11 +224,11 @@ extern "C" CDECL void aio_close_server(void *, socket_data *server,
   server->chan->send(&null_client);
   server->chan->deref();
   server->chan = chan->clone(iotask);
-  aio_close_socket(task, server);
+  aio_close_socket(server);
   chan->deref();
 }
 
-extern "C" CDECL bool aio_is_null_client(void *, socket_data *server) {
+extern "C" CDECL bool aio_is_null_client(socket_data *server) {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
   return server == NULL;
@@ -242,7 +241,7 @@ static void connection_complete(uv_connect_t *req, int status) {
   free(req);
 }
 
-extern "C" CDECL void aio_connect(void *, const char *host, int port,
+extern "C" CDECL void aio_connect(const char *host, int port,
                                   chan_handle *_chan) {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
@@ -266,7 +265,7 @@ extern "C" CDECL void aio_connect(void *, const char *host, int port,
   }
   free(req);
 oom_req:
-  aio_close_socket(task, client);
+  aio_close_socket(client);
 oom_client:
   chan->deref();
   task->fail();
@@ -281,7 +280,7 @@ static void write_complete(uv_write_t *req, int status) {
   free(req);
 }
 
-extern "C" CDECL void aio_writedata(void *, socket_data *data, char *buf,
+extern "C" CDECL void aio_writedata(socket_data *data, char *buf,
                                     size_t size, chan_handle *_chan) {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
@@ -314,8 +313,7 @@ fail:
   task->fail();
 }
 
-extern "C" CDECL void aio_read(void *, socket_data *data,
-                               chan_handle *_chan) {
+extern "C" CDECL void aio_read(socket_data *data, chan_handle *_chan) {
   rust_task *task = rust_scheduler::get_task();
   LOG_UPCALL_ENTRY(task);
   rust_chan *reader = task->get_chan_by_handle(_chan);
