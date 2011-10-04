@@ -89,7 +89,7 @@ CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip \
                stage2/lib, \
                $(if $(findstring stage3,$(1)), \
                     stage3/lib, \
-               )))))
+               )))))/rustc/$(CFG_HOST_TRIPLE)/lib
 
 ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
