@@ -5,7 +5,7 @@ import std::option::none;
 import std::str;
 
 #[test]
-fn init_treemap() { let m = init::<int, int>(); }
+fn init_treemap() { let _m = init::<int, int>(); }
 
 #[test]
 fn insert_one() { let m = init(); insert(m, 1, 2); }
@@ -40,7 +40,7 @@ fn traverse_in_order() {
     insert(m, 1, ());
 
     let n = 0;
-    fn t(&n: int, k: int, v: ()) { assert (n == k); n += 1; }
+    fn t(&n: int, k: int, _v: ()) { assert (n == k); n += 1; }
     traverse(m, bind t(n, _, _));
 }
 
