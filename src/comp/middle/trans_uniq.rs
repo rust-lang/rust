@@ -29,7 +29,7 @@ fn trans_uniq(bcx: @block_ctxt, contents: @ast::expr,
     check type_is_unique_box(bcx, uniq_ty);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
     add_clean_free(bcx, llptr, true);
-    bcx = trans::trans_expr_save_in(bcx, contents, llptr, INIT);
+    bcx = trans::trans_expr_save_in(bcx, contents, llptr);
     revoke_clean(bcx, llptr);
     ret trans::store_in_dest(bcx, llptr, dest);
 }

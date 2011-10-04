@@ -378,7 +378,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
         revoke_clean(bcx, box);
         box = PointerCast(bcx, box, llbox_ty);
     }
-    let {bcx, val: pair} = trans::get_dest_addr(bcx, dest);
+    let pair = trans::get_dest_addr(dest);
     let pair_vtbl = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
     Store(bcx, vtbl, pair_vtbl);
     let pair_box = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_box)]);
