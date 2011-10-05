@@ -4000,18 +4000,26 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     let llfn = f_res.val; bcx = f_res.bcx;
 
     // Translate the callee.
-    let fn_ty = ty::expr_ty(bcx_tcx(bcx), f);
+    let { params: _, ty: fn_ty } = ty::expr_ty_params_and_ty(bcx_tcx(bcx), f);
     let fn_arg_tys = ty::ty_fn_args(bcx_tcx(bcx), fn_ty);
 
     // Translate arguments.
     let (to_zero, to_revoke) = ([], []);
     let llargs = vec::map2({ |ty_arg, arg|
         let arg_ty = ty_arg.ty;
-        check type_has_static_size(ccx, arg_ty);
-        let llargty = type_of(ccx, f.span, arg_ty);
+
+        let static, llargty;
+        if check type_has_static_size(ccx, arg_ty) {
+            static = true;
+            llargty = type_of(ccx, f.span, arg_ty);
+        } else {
+            static = false;
+            llargty = T_ptr(T_i8());
+        }
+
         let r = trans_arg_expr(bcx, ty_arg, llargty, to_zero, to_revoke, arg);
         let llargval = r.val; bcx = r.bcx;
-        { llval: llargval, llty: llargty }
+        { llval: llargval, llty: llargty, static: static }
     }, fn_arg_tys, args);
 
     // Allocate the argument bundle.
@@ -4023,8 +4031,14 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
 
     // Copy in arguments.
     vec::eachi({ |llarg, i|
-        // FIXME: This load is unfortunate.
-        let llargval = Load(bcx, llarg.llval);
+        let llargval;
+        if llarg.static {
+            // FIXME: This load is unfortunate. It won't be necessary once we
+            // have reference types again.
+            llargval = Load(bcx, llarg.llval);
+        } else {
+            llargval = llarg.llval;
+        }
         store_inbounds(bcx, llargval, llargbundle, [C_int(0), C_uint(i)]);
     }, llargs);
 
