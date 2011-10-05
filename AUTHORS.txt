@@ -27,6 +27,7 @@ Marijn Haverbeke <marijnh@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Michael Bebenita <mbebenita@mozilla.com>
 Michael Sullivan <sully@msully.net>
+Niko Matsakis <niko@alum.mit.edu>
 Or Brostovski <tohava@gmail.com>
 Patrick Walton <pwalton@mozilla.com>
 Paul Stansifer <paul.stansifer@gmail.com>
