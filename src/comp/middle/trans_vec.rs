@@ -104,7 +104,7 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
              dest: dest) -> @block_ctxt {
     if dest == trans::ignore {
         for arg in args {
-            bcx = trans::trans_expr_dps(bcx, arg, trans::ignore);
+            bcx = trans::trans_expr(bcx, arg, trans::ignore);
         }
         ret bcx;
     }
@@ -209,7 +209,7 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
     let opaque_v = PointerCast(bcx, vptrptr, T_ptr(T_ptr(T_opaque_vec())));
     for val in vals {
-        let {bcx: e_bcx, val: elt} = trans::trans_expr(bcx, val);
+        let {bcx: e_bcx, val: elt} = trans::trans_temp_expr(bcx, val);
         bcx = e_bcx;
         let r = trans::spill_if_immediate(bcx, elt, elt_ty);
         let spilled = r.val;

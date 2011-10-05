@@ -361,7 +361,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                                         option::get(assoc(key, m[0].bound)));
             }
             let {bcx: guard_bcx, val: guard_val} =
-                trans::trans_expr(guard_cx, e);
+                trans::trans_temp_expr(guard_cx, e);
             guard_bcx = trans::trans_block_cleanups(guard_bcx, guard_cx);
             let next_cx = new_sub_block_ctxt(guard_cx, "submatch_next");
             let else_cx = new_sub_block_ctxt(guard_cx, "submatch_else");
@@ -620,7 +620,7 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
              dest: trans::dest) -> @block_ctxt {
     let bodies = [];
     let match: match = [];
-    let er = trans::trans_expr(cx, expr);
+    let er = trans::trans_temp_expr(cx, expr);
     if er.bcx.unreachable { ret er.bcx; }
 
     for a: ast::arm in arms {
