@@ -2366,7 +2366,6 @@ fn trans_assign_op(bcx: @block_ctxt, op: ast::binop, dst: @ast::expr,
           _ { }
         }
     }
-    
     ret trans_eager_binop(bcx, op, Load(bcx, lhs_res.val), t, rhs_val, t,
                           save_in(lhs_res.val));
 }
@@ -3149,54 +3148,49 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
     }
 }
 
-fn trans_field(cx: @block_ctxt, sp: span, base: @ast::expr,
-               field: ast::ident) -> lval_maybe_callee {
-    let {bcx, val} = trans_expr(cx, base);
-    ret trans_field_inner(bcx, sp, val, ty::expr_ty(bcx_tcx(cx), base),
-                          field);
+fn trans_object_field(bcx: @block_ctxt, o: @ast::expr, field: ast::ident)
+    -> {bcx: @block_ctxt, mthptr: ValueRef, objptr: ValueRef} {
+    let {bcx, val} = trans_expr(bcx, o);
+    let {bcx, val, ty} = autoderef(bcx, val, ty::expr_ty(bcx_tcx(bcx), o));
+    ret trans_object_field_inner(bcx, val, field, ty);
 }
 
-fn trans_field_inner(cx: @block_ctxt, sp: span, v: ValueRef, t0: ty::t,
-                     field: ast::ident) -> lval_maybe_callee {
-    let r = autoderef(cx, v, t0);
-    let t = r.ty;
-    alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_rec(fields) {
-        let ix: uint = ty::field_idx(bcx_ccx(cx).sess, sp, field, fields);
-        let r_bcx = r.bcx;
-        // Silly check
-        check type_is_tup_like(r_bcx, t);
-        let v = GEP_tup_like(r_bcx, t, r.val, [0, ix as int]);
-        ret lval_no_env(v.bcx, v.val, true);
-      }
-      ty::ty_obj(methods) {
-        let ix: uint = ty::method_idx(bcx_ccx(cx).sess, sp, field, methods);
-        let vtbl = GEP(r.bcx, r.val, [C_int(0), C_int(abi::obj_field_vtbl)]);
-        vtbl = Load(r.bcx, vtbl);
+fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
+                            field: ast::ident, o_ty: ty::t)
+    -> {bcx: @block_ctxt, mthptr: ValueRef, objptr: ValueRef} {
+    let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
+    let mths = alt ty::struct(tcx, o_ty) { ty::ty_obj(ms) { ms } };
 
-        let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
-        vtbl = PointerCast(cx, vtbl, vtbl_type);
+    let ix = ty::method_idx(ccx.sess, bcx.sp, field, mths);
+    let vtbl = Load(bcx, GEP(bcx, o, [C_int(0), C_int(abi::obj_field_vtbl)]));
+    let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
+    vtbl = PointerCast(bcx, vtbl, vtbl_type);
 
-        let v = GEP(r.bcx, vtbl, [C_int(0), C_int(ix as int)]);
-        let tcx = bcx_tcx(cx);
-        let ccx = bcx_ccx(cx);
+    let v = GEP(bcx, vtbl, [C_int(0), C_int(ix as int)]);
+    let fn_ty: ty::t = ty::method_ty_to_fn_ty(tcx, mths[ix]);
+    let ret_ty = ty::ty_fn_ret(tcx, fn_ty);
+    let ret_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_ty));
+    // FIXME: constrain ty_obj?
+    check non_ty_var(ccx, ret_ty);
 
-        let fn_ty: ty::t = ty::method_ty_to_fn_ty(tcx, methods[ix]);
-        let ret_ty = ty::ty_fn_ret(tcx, fn_ty);
-        let ret_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_ty));
-        // FIXME: constrain ty_obj?
-        check non_ty_var(ccx, ret_ty);
+    let ll_fn_ty = type_of_fn(ccx, bcx.sp, ty::ty_fn_proto(tcx, fn_ty),
+                              true, ret_ref, ty::ty_fn_args(tcx, fn_ty),
+                              ret_ty, 0u);
+    v = Load(bcx, PointerCast(bcx, v, T_ptr(T_ptr(ll_fn_ty))));
+    ret {bcx: bcx, mthptr: v, objptr: o};
+}
 
-        let ll_fn_ty =
-            type_of_fn(ccx, sp, ty::ty_fn_proto(tcx, fn_ty),
-                       true, ret_ref, ty::ty_fn_args(tcx, fn_ty),
-                       ret_ty, 0u);
-        v = Load(r.bcx, PointerCast(r.bcx, v, T_ptr(T_ptr(ll_fn_ty))));
-        ret {bcx: r.bcx, val: v, is_mem: true,
-             env: obj_env(r.val), generic: none};
-      }
-      _ { bcx_ccx(cx).sess.unimpl("field variant in trans_field"); }
-    }
+
+fn trans_rec_field(bcx: @block_ctxt, base: @ast::expr,
+                   field: ast::ident) -> lval_result {
+    let {bcx, val} = trans_expr(bcx, base);
+    let {bcx, val, ty} = autoderef(bcx, val, ty::expr_ty(bcx_tcx(bcx), base));
+    let fields = alt ty::struct(bcx_tcx(bcx), ty) { ty::ty_rec(fs) { fs } };
+    let ix = ty::field_idx(bcx_ccx(bcx).sess, bcx.sp, field, fields);
+    // Silly check
+    check type_is_tup_like(bcx, ty);
+    let {bcx, val} = GEP_tup_like(bcx, ty, val, [0, ix as int]);
+    ret {bcx: bcx, val: val, is_mem: true};
 }
 
 fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
@@ -3248,24 +3242,30 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
     ret lval_mem(next_cx, elt);
 }
 
-fn trans_callee(cx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
+fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     alt e.node {
-      ast::expr_path(p) { ret trans_path(cx, p, e.id); }
+      ast::expr_path(p) { ret trans_path(bcx, p, e.id); }
       ast::expr_field(base, ident) {
-        ret trans_field(cx, e.span, base, ident);
+        // Lval means record field, so not a method
+        if !expr_is_lval(bcx_tcx(bcx), e) {
+            let of = trans_object_field(bcx, base, ident);
+            ret {bcx: of.bcx, val: of.mthptr, is_mem: true,
+                 env: obj_env(of.objptr), generic: none};
+        }
       }
       ast::expr_self_method(ident) {
-        alt cx.fcx.llself {
+        alt bcx.fcx.llself {
           some(pair) {
-            ret trans_field_inner(cx, e.span, pair.v, pair.t, ident);
+            let fld = trans_object_field_inner(bcx, pair.v, ident, pair.t);
+            ret {bcx: fld.bcx, val: fld.mthptr, is_mem: true,
+                 env: obj_env(fld.objptr), generic: none};
           }
         }
       }
-      _ {
-        let lv = trans_lval(cx, e);
-        ret lval_no_env(lv.bcx, lv.val, lv.is_mem);
-      }
+      _ {}
     }
+    let lv = trans_lval(bcx, e);
+    ret lval_no_env(lv.bcx, lv.val, lv.is_mem);
 }
 
 fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
@@ -3298,8 +3298,7 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         ret lval_maybe_callee_to_lval(v, ty::expr_ty(bcx_tcx(cx), e));
       }
       ast::expr_field(base, ident) {
-        let f = trans_field(cx, e.span, base, ident);
-        ret lval_maybe_callee_to_lval(f, ty::expr_ty(bcx_tcx(cx), e));
+        ret trans_rec_field(cx, base, ident);
       }
       ast::expr_index(base, idx) {
         ret trans_index(cx, e.span, base, idx, e.id);
@@ -4339,9 +4338,8 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
       ast::expr_call(f, args) {
         ret trans_call(bcx, f, none, args, e.id, dest);
       }
-      // FIXME[DPS] untangle non-lval fields from trans_lval
       ast::expr_field(_, _) {
-        ret lval_to_dps(bcx, e, dest);
+        fail "Taking the value of a method does not work yet (issue #435)";
       }
 
       // These return nothing
