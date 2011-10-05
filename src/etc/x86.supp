@@ -7,6 +7,15 @@
 }
 
 {
+   our-failure-to-setup-freeres-structure2
+   Memcheck:Free
+   fun:free
+   fun:free_mem
+   fun:__libc_freeres
+   fun:_vgnU_freeres
+}
+
+{
  leaked-TLS-chunk-x86-exit-path-fails-to-clean-up
  Memcheck:Leak
  fun:calloc
