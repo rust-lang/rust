@@ -2470,7 +2470,7 @@ fn trans_binary(cx: @block_ctxt, op: ast::binop, a: @ast::expr, b: @ast::expr,
     }
 }
 
-// FIXME remove once all uses have been converted to join_returns
+// FIXME[DPS] remove once all uses have been converted to join_returns
 fn join_branches(parent_cx: @block_ctxt, ins: [result]) -> @block_ctxt {
     let out = new_sub_block_ctxt(parent_cx, "join");
     let branched = false;
@@ -2952,8 +2952,7 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
       ast::expr_call(f, args) {
         let pair =
             create_real_fn_pair(cx, iter_body_llty, lliterbody, llenv.ptr);
-        let r = trans_call(cx, f, some(pair), args, seq.id);
-        ret r.res.bcx;
+        ret trans_call(cx, f, some(pair), args, seq.id, ignore);
       }
     }
 }
@@ -3300,6 +3299,7 @@ fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
 // The additional bool returned indicates whether it's mem (that is
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
+// FIXME[DPS] only allow this to be called on actual lvals
 fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
     alt e.node {
       ast::expr_path(p) {
@@ -3340,10 +3340,17 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         ret lval_mem(sub.bcx, val);
       }
       ast::expr_call(f, args) {
-        let {res: {bcx, val}, by_ref} =
-            trans_call(cx, f, none, args, e.id);
-        if by_ref { ret lval_mem(bcx, val); }
-        else { ret lval_val(bcx, val); }
+        // A by-ref returning function
+        if expr_is_lval(bcx_tcx(cx), e) {
+            let cell = empty_dest_cell();
+            let bcx = trans_call(cx, f, none, args, e.id, by_ref(cell));
+            ret lval_mem(bcx, *cell);
+        } else { // By-value return
+            let {bcx, val} = dps_to_result(cx, {|bcx, dest|
+                trans_call(bcx, f, none, args, e.id, dest) },
+                                           ty::expr_ty(bcx_tcx(cx), e));
+            ret lval_val(bcx, val);
+        }
       }
       _ {
         let res = trans_expr(cx, e);
@@ -3797,7 +3804,8 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
 //  - trans_args
 fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
               gen: option::t<generic_info>,
-              lliterbody: option::t<ValueRef>, es: [@ast::expr], fn_ty: ty::t)
+              lliterbody: option::t<ValueRef>, es: [@ast::expr], fn_ty: ty::t,
+              dest: dest)
    -> {bcx: @block_ctxt,
        outer_cx: @block_ctxt,
        args: [ValueRef],
@@ -3813,9 +3821,9 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
 
     let ccx = bcx_ccx(cx);
     let tcx = ccx.tcx;
-    let bcx: @block_ctxt = cx;
+    let bcx = cx;
     let ret_style = ty::ty_fn_ret_style(tcx, fn_ty);
-    let by_ref = ast_util::ret_by_ref(ret_style);
+    let ret_ref = ast_util::ret_by_ref(ret_style);
 
     let retty = ty::ty_fn_ret(tcx, fn_ty), full_retty = retty;
     alt gen {
@@ -3828,13 +3836,21 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
       _ { }
     }
     // Arg 0: Output pointer.
-    let llretslot_res = if ty::type_is_nil(tcx, retty) {
-        rslt(cx, llvm::LLVMGetUndef(T_ptr(T_nil())))
-    } else if by_ref {
-        rslt(cx, alloca(cx, T_ptr(type_of_or_i8(bcx, full_retty))))
-    } else { alloc_ty(bcx, full_retty) };
-    bcx = llretslot_res.bcx;
-    let llretslot = llretslot_res.val;
+    let llretty = type_of_or_i8(bcx, full_retty);
+    let dest_ref = false;
+    let llretslot = alt dest {
+      ignore. {
+        if ty::type_is_nil(tcx, full_retty) || !option::is_none(lliterbody) {
+            llvm::LLVMGetUndef(T_ptr(llretty))
+        } else { alloca(cx, llretty) }
+      }
+      save_in(dst) { dst }
+      overwrite(_, _) | by_val(_) { alloca(cx, llretty) }
+      by_ref(_) { dest_ref = true; alloca(cx, T_ptr(llretty)) }
+    };
+    // FIXME[DSP] does this always hold?
+    assert dest_ref == ret_ref;
+
     if ty::type_contains_params(tcx, retty) {
         // It's possible that the callee has some generic-ness somewhere in
         // its return value -- say a method signature within an obj or a fn
@@ -3843,7 +3859,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
         // view, for the sake of making a type-compatible call.
         check non_ty_var(ccx, retty);
         let llretty = T_ptr(type_of_inner(ccx, bcx.sp, retty));
-        if by_ref { llretty = T_ptr(llretty); }
+        if ret_ref { llretty = T_ptr(llretty); }
         llargs += [PointerCast(cx, llretslot, llretty)];
     } else { llargs += [llretslot]; }
 
@@ -3899,7 +3915,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
 
 fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
               lliterbody: option::t<ValueRef>, args: [@ast::expr],
-              id: ast::node_id) -> {res: result, by_ref: bool} {
+              id: ast::node_id, dest: dest) -> @block_ctxt {
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
@@ -3907,10 +3923,9 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let fn_expr_ty = ty::expr_ty(tcx, f);
 
     if check type_is_native_fn_on_c_stack(tcx, fn_expr_ty) {
-        ret trans_c_stack_native_call(in_cx, f, args);
+        ret trans_c_stack_native_call(in_cx, f, args, dest);
     }
 
-    let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_expr_ty));
     let cx = new_scope_block_ctxt(in_cx, "call");
     let f_res = trans_callee(cx, f);
     let bcx = f_res.bcx;
@@ -3936,65 +3951,49 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let ret_ty = ty::node_id_to_type(tcx, id);
     let args_res =
         trans_args(bcx, in_cx, llenv, f_res.generic, lliterbody, args,
-                   fn_expr_ty);
+                   fn_expr_ty, dest);
     Br(args_res.outer_cx, cx.llbb);
     bcx = args_res.bcx;
     let llargs = args_res.args;
     let llretslot = args_res.retslot;
 
-    /*
-    log_err "calling: " + val_str(bcx_ccx(cx).tn, faddr);
-
-    for arg: ValueRef in llargs {
-        log_err "arg: " + val_str(bcx_ccx(cx).tn, arg);
-    }
-    */
-
     /* If the block is terminated,
        then one or more of the args has
        type _|_. Since that means it diverges, the code
        for the call itself is unreachable. */
-    let retval = C_nil();
     bcx = invoke_full(bcx, faddr, llargs, args_res.to_zero,
                       args_res.to_revoke);
-    alt lliterbody {
-      none. {
-        if !ty::type_is_nil(tcx, ret_ty) {
-            if by_ref {
-                retval = Load(bcx, llretslot);
-            } else {
-                retval = load_if_immediate(bcx, llretslot, ret_ty);
-                // Retval doesn't correspond to anything really tangible
-                // in the frame, but it's a ref all the same, so we put a
-                // note here to drop it when we're done in this scope.
-                add_clean_temp(in_cx, retval, ret_ty);
-            }
+    alt dest {
+      ignore. {
+        if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
+            bcx = drop_ty(bcx, llretslot, ret_ty);
         }
       }
-      some(_) {
-        // If there was an lliterbody, it means we were calling an
-        // iter, and we are *not* the party using its 'output' value,
-        // we should ignore llretslot.
+      save_in(_) { } // Already saved by callee
+      overwrite(a, t) {
+        bcx = drop_ty(bcx, a, t);
+        bcx = memmove_ty(bcx, a, llretslot, ret_ty);
+      }
+      by_ref(cell) | by_val(cell) {
+        *cell = Load(bcx, llretslot);
       }
     }
     // Forget about anything we moved out.
     bcx = zero_and_revoke(bcx, args_res.to_zero, args_res.to_revoke);
 
-    if !by_ref { bcx = trans_block_cleanups(bcx, cx); }
+    bcx = trans_block_cleanups(bcx, cx);
     let next_cx = new_sub_block_ctxt(in_cx, "next");
     if bcx.unreachable || ty::type_is_bot(tcx, ret_ty) {
         Unreachable(next_cx);
     }
     Br(bcx, next_cx.llbb);
-    bcx = next_cx;
-    ret {res: rslt(bcx, retval), by_ref: by_ref};
+    ret next_cx;
 }
 
 // Translates a native call on the C stack. Calls into the runtime to perform
 // the stack switching operation.
 fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
-                             args: [@ast::expr])
-        -> {res: result, by_ref: bool} {
+                             args: [@ast::expr], dest: dest) -> @block_ctxt {
     let ccx = bcx_ccx(bcx);
     let f_res = trans_callee(bcx, f);
     let llfn = f_res.val; bcx = f_res.bcx;
@@ -4061,8 +4060,7 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
 
     // Forget about anything we moved out.
     bcx = zero_and_revoke(bcx, to_zero, to_revoke);
-
-    ret {res: rslt(bcx, llretval), by_ref: false};
+    ret store_in_dest(bcx, llretval, dest);
 }
 
 fn zero_and_revoke(bcx: @block_ctxt,
@@ -4359,8 +4357,11 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(bcx, e.span, anon_obj, e.id, dest);
       }
-      // FIXME[DPS] untangle non-lval calls and fields from trans_lval
-      ast::expr_call(_, _) | ast::expr_field(_, _) {
+      ast::expr_call(f, args) {
+        ret trans_call(bcx, f, none, args, e.id, dest);
+      }
+      // FIXME[DPS] untangle non-lval fields from trans_lval
+      ast::expr_field(_, _) {
         ret lval_to_dps(bcx, e, dest);
       }
 
