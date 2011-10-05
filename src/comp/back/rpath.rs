@@ -9,6 +9,8 @@ import metadata::cstore;
 import driver::session;
 import util::filesearch;
 
+// FIXME #721: Despite the compiler warning, test does exist and needs
+// to be exported
 export get_rpath_flags, test;
 
 #[cfg(target_os="linux")]
