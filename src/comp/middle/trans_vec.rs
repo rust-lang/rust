@@ -124,13 +124,17 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
         let lleltptr = if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
             InBoundsGEP(bcx, dataptr, [Mul(bcx, C_uint(i), llunitsz)])
         } else { InBoundsGEP(bcx, dataptr, [C_uint(i)]) };
-        bcx = trans::trans_expr_save_in(bcx, e, lleltptr);
+        bcx = trans::trans_expr_save_in(bcx, e, lleltptr, INIT);
         add_clean_temp_mem(bcx, lleltptr, unit_ty);
         temp_cleanups += [lleltptr];
         i += 1u;
     }
     for clean in temp_cleanups { revoke_clean(bcx, clean); }
-    Store(bcx, vptr, trans::get_dest_addr(dest));
+    let vptrptr = alt dest {
+      trans::save_in(a) { a }
+      trans::overwrite(a, t) { bcx = trans::drop_ty(bcx, a, t); a }
+    };
+    Store(bcx, vptr, vptrptr);
     ret bcx;
 }
 
@@ -143,7 +147,11 @@ fn trans_str(bcx: @block_ctxt, s: str, dest: dest) -> @block_ctxt {
     let bcx =
         call_memmove(bcx, get_dataptr_simple(bcx, sptr, T_i8()), llcstr,
                      C_uint(veclen)).bcx;
-    Store(bcx, sptr, trans::get_dest_addr(dest));
+    let sptrptr = alt dest {
+      trans::save_in(a) { a }
+      trans::overwrite(a, t) { bcx = trans::drop_ty(bcx, a, t); a }
+    };
+    Store(bcx, sptr, sptrptr);
     ret bcx;
 }
 
@@ -258,7 +266,13 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
 
     let bcx = iter_vec_raw(bcx, lhsptr, vec_ty, lhs_fill, copy_fn);
     bcx = iter_vec_raw(bcx, rhsptr, vec_ty, rhs_fill, copy_fn);
-    Store(bcx, new_vec_ptr, trans::get_dest_addr(dest));
+    alt dest {
+      trans::save_in(a) { Store(bcx, new_vec_ptr, a); }
+      trans::overwrite(a, t) {
+        bcx = trans::drop_ty(bcx, a, t);
+        Store(bcx, new_vec_ptr, a);
+      }
+    }
     ret bcx;
 }
 
