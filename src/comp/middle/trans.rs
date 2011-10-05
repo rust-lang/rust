@@ -2541,27 +2541,6 @@ fn get_dest_addr(dest: dest) -> ValueRef {
     alt dest { save_in(a) { a } }
 }
 
-// Wrapper through which legacy non-DPS code can use DPS functions
-fn dps_to_result(bcx: @block_ctxt,
-                 work: block(@block_ctxt, dest) -> @block_ctxt,
-                 ty: ty::t) -> result {
-    let tcx = bcx_tcx(bcx);
-    if ty::type_is_nil(tcx, ty) || ty::type_is_bot(tcx, ty) {
-        ret rslt(work(bcx, ignore), C_nil());
-    } else if type_is_immediate(bcx_ccx(bcx), ty) {
-        let cell = empty_dest_cell();
-        bcx = work(bcx, by_val(cell));
-        add_clean_temp(bcx, *cell, ty);
-        ret rslt(bcx, *cell);
-    } else {
-        let {bcx, val: alloca} = alloc_ty(bcx, ty);
-        bcx = zero_alloca(bcx, alloca, ty);
-        bcx = work(bcx, save_in(alloca));
-        add_clean_temp(bcx, alloca, ty);
-        ret rslt(bcx, alloca);
-    }
-}
-
 fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
             els: option::t<@ast::expr>, dest: dest)
     -> @block_ctxt {
@@ -3244,7 +3223,7 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     alt e.node {
       ast::expr_path(p) { ret trans_path(bcx, p, e.id); }
       ast::expr_field(base, ident) {
-        // Lval means record field, so not a method
+        // Lval means this is a record field, so not a method
         if !expr_is_lval(bcx_tcx(bcx), e) {
             let of = trans_object_field(bcx, base, ident);
             ret {bcx: of.bcx, val: of.mthptr, is_mem: true,
@@ -3262,7 +3241,7 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
       }
       _ {}
     }
-    let lv = trans_lval(bcx, e);
+    let lv = trans_temp_lval(bcx, e);
     ret lval_no_env(lv.bcx, lv.val, lv.is_mem);
 }
 
@@ -3288,7 +3267,6 @@ fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
 // The additional bool returned indicates whether it's mem (that is
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
-// FIXME[DPS] only allow this to be called on actual lvals
 fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
     alt e.node {
       ast::expr_path(p) {
@@ -3327,25 +3305,13 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
             };
         ret lval_mem(sub.bcx, val);
       }
+      // This is a by-ref returning call. Regular calls are not lval
       ast::expr_call(f, args) {
-        // A by-ref returning function
-        if expr_is_lval(bcx_tcx(cx), e) {
-            let cell = empty_dest_cell();
-            let bcx = trans_call(cx, f, none, args, e.id, by_val(cell));
-            ret lval_mem(bcx, *cell);
-        } else { // By-value return
-            // FIXME[DPS] this will disappear when trans_lval only handles
-            // lvals
-            let {bcx, val} = dps_to_result(cx, {|bcx, dest|
-                trans_call(bcx, f, none, args, e.id, dest) },
-                                           ty::expr_ty(bcx_tcx(cx), e));
-            ret lval_val(bcx, val);
-        }
+        let cell = empty_dest_cell();
+        let bcx = trans_call(cx, f, none, args, e.id, by_val(cell));
+        ret lval_mem(bcx, *cell);
       }
-      _ {
-        let res = trans_temp_expr(cx, e);
-        ret lval_val(res.bcx, res.val);
-      }
+      _ { bcx_ccx(cx).sess.span_bug(e.span, "non-lval in trans_lval"); }
     }
 }
 
@@ -3736,7 +3702,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
     let ccx = bcx_ccx(cx);
     let e_ty = ty::expr_ty(ccx.tcx, e);
     let is_bot = ty::type_is_bot(ccx.tcx, e_ty);
-    let lv = trans_lval(cx, e);
+    let lv = trans_temp_lval(cx, e);
     let bcx = lv.bcx;
     let val = lv.val;
     if is_bot {
@@ -5331,27 +5297,18 @@ fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     finish_fn(fcx, lltop);
 }
 
-fn trans_fn_inner(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
-                  ty_self: option::t<ty::t>, ty_params: [ast::ty_param],
-                  id: ast::node_id) {
-    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|_fcx|});
-}
-
-
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
             ty_self: option::t<ty::t>, ty_params: [ast::ty_param],
             id: ast::node_id) {
-    if !cx.ccx.sess.get_opts().stats {
-        trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
-        ret;
+    let do_time = cx.ccx.sess.get_opts().stats;
+    let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
+    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|_fcx|});
+    if do_time {
+        let end = time::get_time();
+        log_fn_time(cx.ccx, str::connect(cx.path, "::"), start, end);
     }
-
-    let start = time::get_time();
-    trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
-    let end = time::get_time();
-    log_fn_time(cx.ccx, str::connect(cx.path, "::"), start, end);
 }
 
 fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,

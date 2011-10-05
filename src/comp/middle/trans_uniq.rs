@@ -7,7 +7,6 @@ import trans::{
     type_of_inner,
     size_of,
     node_id_type,
-    trans_lval,
     INIT,
     trans_shared_free,
     drop_ty,

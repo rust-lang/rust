@@ -6,7 +6,7 @@ import back::abi;
 import trans::{call_memmove, trans_shared_malloc, llsize_of, type_of_or_i8,
                INIT, copy_val, load_if_immediate, alloca, size_of,
                llderivedtydescs_block_ctxt, lazily_emit_tydesc_glue,
-               get_tydesc, load_inbounds, trans_lval,
+               get_tydesc, load_inbounds,
                node_id_type, new_sub_block_ctxt, tps_normal, do_spill_noroot,
                GEPi, alloc_ty, dest};
 import trans_build::*;
