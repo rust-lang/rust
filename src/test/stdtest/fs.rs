@@ -64,3 +64,80 @@ fn split4() {
     let expected = ["a", "b", "c"];
     assert actual == expected;
 }
+
+#[test]
+fn normalize1() {
+    let actual = fs::normalize("a/b/..");
+    let expected = "a";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize2() {
+    let actual = fs::normalize("/a/b/..");
+    let expected = "/a";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize3() {
+    let actual = fs::normalize("a/../b");
+    let expected = "b";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize4() {
+    let actual = fs::normalize("/a/../b");
+    let expected = "/b";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize5() {
+    let actual = fs::normalize("a/.");
+    let expected = "a";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize6() {
+    let actual = fs::normalize("a/./b/");
+    let expected = "a/b/";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize7() {
+    let actual = fs::normalize("a/..");
+    let expected = ".";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize8() {
+    let actual = fs::normalize("../../..");
+    let expected = "../../..";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize9() {
+    let actual = fs::normalize("a/b/../../..");
+    let expected = "..";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize10() {
+    let actual = fs::normalize("/a/b/c/../d/./../../e/");
+    let expected = "/a/e/";
+    assert actual == expected;
+}
+
+#[test]
+fn normalize11() {
+    let actual = fs::normalize("/a/..");
+    let expected = "/";
+    assert actual == expected;
+}

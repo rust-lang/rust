@@ -85,6 +85,84 @@ fn split(p: path) -> [path] {
     ret split2;
 }
 
+fn normalize(p: path) -> path {
+    let s = split(p);
+    let s = strip_dots(s);
+    let s = rollup_doubledots(s);
+
+    let s = if check vec::is_not_empty(s) {
+        connect_many(s)
+    } else {
+        ""
+    };
+    let s = reabsolute(p, s);
+    let s = reterminate(p, s);
+
+    let s = if str::byte_len(s) == 0u {
+        "."
+    } else {
+        s
+    };
+
+    ret s;
+
+    fn strip_dots(s: [path]) -> [path] {
+        vec::filter_map({ |elem|
+            if elem == "." {
+                option::none
+            } else {
+                option::some(elem)
+            }
+        }, s)
+    }
+
+    fn rollup_doubledots(s: [path]) -> [path] {
+        if vec::is_empty(s) {
+            ret [];
+        }
+
+        let t = [];
+        let i = vec::len(s);
+        let skip = 0;
+        do {
+            i -= 1u;
+            if s[i] == ".." {
+                skip += 1;
+            } else {
+                if skip == 0 {
+                    t += [s[i]];
+                } else {
+                    skip -= 1;
+                }
+            }
+        } while i != 0u;
+        let t = vec::reversed(t);
+        while skip > 0 {
+            t += [".."];
+            skip -= 1;
+        }
+        ret t;
+    }
+
+    fn reabsolute(orig: path, new: path) -> path {
+        if path_is_absolute(orig) {
+            path_sep() + new
+        } else {
+            new
+        }
+    }
+
+    fn reterminate(orig: path, new: path) -> path {
+        let last = orig[str::byte_len(orig) - 1u];
+        if last == os_fs::path_sep as u8
+            || last == os_fs::path_sep as u8 {
+            ret new + path_sep();
+        } else {
+            ret new;
+        }
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
