@@ -13,20 +13,17 @@ export get_rpath_flags, test;
 
 #[cfg(target_os="linux")]
 #[cfg(target_os="macos")]
-fn get_rpath_flags(_sess: session::session, _out_filename: str) -> [str] {
+fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
     log "preparing the RPATH!";
 
-    // FIXME
-    /*
     let cwd = os::getcwd();
     let sysroot = sess.filesearch().sysroot();
     let output = out_filename;
     let libs = cstore::get_used_crate_files(sess.get_cstore());
     let target_triple = sess.get_opts().target_triple;
     let rpaths = get_rpaths(cwd, sysroot, output, libs, target_triple);
-    */
-    let rpaths = [];
-    rpaths_to_flags(rpaths)
+    rpaths_to_flags(rpaths);
+    [] // FIXME: activate RPATH!
 }
 
 #[cfg(target_os="win32")]
@@ -53,14 +50,27 @@ fn get_rpaths(cwd: fs::path, sysroot: fs::path,
     // Use relative paths to the libraries. Binaries can be moved
     // as long as they maintain the relative relationship to the
     // crates they depend on.
-    let rpaths = get_rpaths_relative_to_output(cwd, output, libs);
+    let rel_rpaths = get_rpaths_relative_to_output(cwd, output, libs);
 
     // Make backup absolute paths to the libraries. Binaries can
     // be moved as long as the crates they link against don't move.
-    rpaths += get_absolute_rpaths(cwd, libs);
+    let abs_rpaths = get_absolute_rpaths(cwd, libs);
 
     // And a final backup rpath to the global library location.
-    rpaths += [get_install_prefix_rpath(target_triple)];
+    let fallback_rpaths = [get_install_prefix_rpath(target_triple)];
+
+    fn log_rpaths(desc: str, rpaths: [str]) {
+        log #fmt("%s rpaths:", desc);
+        for rpath in rpaths {
+            log #fmt("    %s", rpath);
+        }
+    }
+
+    log_rpaths("relative", rel_rpaths);
+    log_rpaths("absolute", abs_rpaths);
+    log_rpaths("fallback", fallback_rpaths);
+
+    let rpaths = rel_rpaths + abs_rpaths + fallback_rpaths;
 
     // Remove duplicates
     let rpaths = minimize_rpaths(rpaths);
@@ -85,6 +95,8 @@ fn get_rpath_relative_to_output(cwd: fs::path,
 fn get_relative_to(abs1: fs::path, abs2: fs::path) -> fs::path {
     assert fs::path_is_absolute(abs1);
     assert fs::path_is_absolute(abs2);
+    log #fmt("finding relative path from %s to %s",
+             abs1, abs2);
     let normal1 = fs::normalize(abs1);
     let normal2 = fs::normalize(abs2);
     let split1 = str::split(normal1, os_fs::path_sep as u8);
@@ -109,8 +121,11 @@ fn get_relative_to(abs1: fs::path, abs2: fs::path) -> fs::path {
 
     path += vec::slice(split2, start_idx, len2 - 1u);
 
-    check vec::is_not_empty(path);
-    ret fs::connect_many(path);
+    if check vec::is_not_empty(path) {
+        ret fs::connect_many(path);
+    } else {
+        ret ".";
+    }
 }
 
 fn get_absolute_rpaths(cwd: fs::path, libs: [fs::path]) -> [str] {
@@ -118,7 +133,7 @@ fn get_absolute_rpaths(cwd: fs::path, libs: [fs::path]) -> [str] {
 }
 
 fn get_absolute_rpath(cwd: fs::path, lib: fs::path) -> str {
-    get_absolute(cwd, lib)
+    fs::dirname(get_absolute(cwd, lib))
 }
 
 fn get_absolute(cwd: fs::path, lib: fs::path) -> fs::path {
@@ -144,9 +159,13 @@ fn get_install_prefix_rpath(target_triple: str) -> str {
 
 fn minimize_rpaths(rpaths: [str]) -> [str] {
     let set = map::new_str_hash::<()>();
-    for rpath in rpaths { set.insert(rpath, ()); }
     let minimized = [];
-    for each rpath in set.keys() { minimized += [rpath]; }
+    for rpath in rpaths {
+        if !set.contains_key(rpath) {
+            minimized += [rpath];
+            set.insert(rpath, ());
+        }
+    }
     ret minimized;
 }
 
@@ -182,9 +201,16 @@ mod test {
     }
 
     #[test]
-    fn test_minimize() {
+    fn test_minimize1() {
         let res = minimize_rpaths(["rpath1", "rpath2", "rpath1"]);
         assert res == ["rpath1", "rpath2"];
+    }
+
+    #[test]
+    fn test_minimize2() {
+        let res = minimize_rpaths(["1a", "2", "2", "1a", "4a",
+                                   "1a", "2", "3", "4a", "3"]);
+        assert res == ["1a", "2", "4a", "3"];
     }
 
     #[test]
@@ -244,9 +270,25 @@ mod test {
     }
 
     #[test]
+    fn test_relative_to8() {
+        let p1 = "/home/brian/Dev/rust/build/"
+            + "stage2/lib/rustc/i686-unknown-linux-gnu/lib/librustc.so";
+        let p2 = "/home/brian/Dev/rust/build/stage2/bin/.."
+            + "/lib/rustc/i686-unknown-linux-gnu/lib/libstd.so";
+        let res = get_relative_to(p1, p2);
+        assert res == ".";
+    }
+
+    #[test]
     fn test_rpath_relative() {
         let res = get_rpath_relative_to_output(
             "/usr", "bin/rustc", "lib/libstd.so");
         assert res == "$ORIGIN/../lib";
+    }
+
+    #[test]
+    fn test_get_absolute_rpath() {
+        let res = get_absolute_rpath("/usr", "lib/libstd.so");
+        assert res == "/usr/lib";
     }
 }

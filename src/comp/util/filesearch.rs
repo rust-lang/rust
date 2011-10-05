@@ -88,7 +88,7 @@ fn make_target_lib_path(sysroot: fs::path,
 
 fn get_default_sysroot() -> fs::path {
     alt os::get_exe_path() {
-      option::some(p) { fs::connect(p, "..") }
+      option::some(p) { fs::normalize(fs::connect(p, "..")) }
       option::none. {
         fail "can't determine value for sysroot";
       }

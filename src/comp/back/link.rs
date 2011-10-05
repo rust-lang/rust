@@ -576,6 +576,7 @@ fn link_binary(sess: session::session,
 
     gcc_args += rpath::get_rpath_flags(sess, saved_out_filename);
 
+    log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
     // We run 'gcc' here
     let err_code = run::run_program(prog, gcc_args);
     if 0 != err_code {
