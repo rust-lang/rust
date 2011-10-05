@@ -76,6 +76,15 @@ fn make_absolute(p: path) -> path {
     if path_is_absolute(p) { ret p; } else { ret connect(getcwd(), p); }
 }
 
+fn split(p: path) -> [path] {
+    let split1 = str::split(p, os_fs::path_sep as u8);
+    let split2 = [];
+    for s in split1 {
+        split2 += str::split(s, os_fs::alt_path_sep as u8);
+    }
+    ret split2;
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
