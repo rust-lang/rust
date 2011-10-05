@@ -17,6 +17,11 @@ pure fn rational_leq(x: rational, y: rational) -> bool {
 }
 
 pure fn orb(a: bool, b: bool) -> bool { a || b }
+
+tag void {
+    void(@void);
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
