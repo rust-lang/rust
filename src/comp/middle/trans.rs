@@ -2112,6 +2112,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
                              ty_to_str(tcx, t));
 }
 
+// FIXME[DPS] rename to store_temp_expr
 fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
                     src: lval_result, t: ty::t) -> @block_ctxt {
     // Lvals in memory are not temporaries. Copy them.
@@ -2213,7 +2214,7 @@ fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
             let llety = T_ptr(type_of(ccx, e_sp, e_ty));
             body = PointerCast(bcx, body, llety);
         }
-        bcx = trans_expr_save_in(bcx, e, body, INIT);
+        bcx = trans_expr_save_in(bcx, e, body);
         revoke_clean(bcx, box);
         ret store_in_dest(bcx, box, dest);
       }
@@ -2255,8 +2256,7 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
         trans_closure(sub_cx, sp, f, llfn, none, [], id, {|_fcx|});
       }
     };
-    let {bcx, val: addr} = get_dest_addr(bcx, dest);
-    fill_fn_pair(bcx, addr, llfn, env);
+    fill_fn_pair(bcx, get_dest_addr(dest), llfn, env);
     ret bcx;
 }
 
@@ -2357,19 +2357,18 @@ fn trans_assign_op(bcx: @block_ctxt, op: ast::binop, dst: @ast::expr,
       }
       _ { }
     }
-    let rhs_res = trans_expr(lhs_res.bcx, src);
+    let {bcx, val: rhs_val} = trans_expr(lhs_res.bcx, src);
     if ty::type_is_sequence(tcx, t) {
         alt op {
           ast::add. {
-            ret tvec::trans_append(rhs_res.bcx, t, lhs_res.val,
-                                   rhs_res.val);
+            ret tvec::trans_append(bcx, t, lhs_res.val, rhs_val);
           }
           _ { }
         }
     }
-    let lhs_val = load_if_immediate(rhs_res.bcx, lhs_res.val, t);
-    ret trans_eager_binop(rhs_res.bcx, op, lhs_val, t, rhs_res.val, t,
-                          overwrite(lhs_res.val, t));
+    
+    ret trans_eager_binop(bcx, op, Load(bcx, lhs_res.val), t, rhs_val, t,
+                          save_in(lhs_res.val));
 }
 
 fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
@@ -2485,7 +2484,6 @@ tag dest {
     by_val(@mutable ValueRef);
     by_ref(@mutable ValueRef);
     save_in(ValueRef);
-    overwrite(ValueRef, ty::t);
     ignore;
 }
 
@@ -2538,19 +2536,12 @@ fn store_in_dest(bcx: @block_ctxt, val: ValueRef, dest: dest) -> @block_ctxt {
       ignore. {}
       by_val(cell) { *cell = val; }
       save_in(addr) { Store(bcx, val, addr); }
-      overwrite(addr, tp) {
-        bcx = drop_ty(bcx, addr, tp);
-        Store(bcx, val, addr);
-      }
     }
     ret bcx;
 }
 
-fn get_dest_addr(bcx: @block_ctxt, dest: dest) -> result {
-    alt dest {
-      save_in(a) { rslt(bcx, a) }
-      overwrite(a, t) { rslt(drop_ty(bcx, a, t), a) }
-    }
+fn get_dest_addr(dest: dest) -> ValueRef {
+    alt dest { save_in(a) { a } }
 }
 
 // Wrapper through which legacy non-DPS code can use DPS functions
@@ -2733,7 +2724,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         bcx = bound.bcx;
         alt bv {
           env_expr(e) {
-            bcx = trans_expr_save_in(bcx, e, bound.val, INIT);
+            bcx = trans_expr_save_in(bcx, e, bound.val);
             add_clean_temp_mem(bcx, bound.val, bound_tys[i]);
             temp_cleanups += [bound.val];
           }
@@ -3698,8 +3689,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
         let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
         bcx = lv.bcx;
         // FIXME[DPS] factor this out
-        let {bcx, val: addr} = get_dest_addr(bcx, dest);
-        ret memmove_ty(bcx, addr, lv.val, pair_ty);
+        ret memmove_ty(bcx, get_dest_addr(dest), lv.val, pair_ty);
     }
     let closure = alt f_res.env {
       null_env. { none }
@@ -3736,8 +3726,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
                          closure.ptrty, ty_param_count, target_res);
 
     // Fill the function pair
-    let {bcx, val: addr} = get_dest_addr(bcx, dest);
-    fill_fn_pair(bcx, addr, llthunk.val, closure.ptr);
+    fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, closure.ptr);
     ret bcx;
 }
 
@@ -3845,7 +3834,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
         } else { alloca(cx, llretty) }
       }
       save_in(dst) { dst }
-      overwrite(_, _) | by_val(_) { alloca(cx, llretty) }
+      by_val(_) { alloca(cx, llretty) }
       by_ref(_) { dest_ref = true; alloca(cx, T_ptr(llretty)) }
     };
     // FIXME[DSP] does this always hold?
@@ -3970,10 +3959,6 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         }
       }
       save_in(_) { } // Already saved by callee
-      overwrite(a, t) {
-        bcx = drop_ty(bcx, a, t);
-        bcx = memmove_ty(bcx, a, llretslot, ret_ty);
-      }
       by_ref(cell) | by_val(cell) {
         *cell = Load(bcx, llretslot);
       }
@@ -4181,34 +4166,23 @@ fn trans_landing_pad(bcx: @block_ctxt,
 fn trans_tup(bcx: @block_ctxt, elts: [@ast::expr], id: ast::node_id,
              dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx.fcx.lcx.ccx, id);
-    let (addr, overwrite) = alt dest {
+    let addr = alt dest {
       ignore. {
         for ex in elts { bcx = trans_expr_dps(bcx, ex, ignore); }
         ret bcx;
       }
-      save_in(pos) { (pos, none) }
-      overwrite(pos, _) {
-        let scratch = alloca(bcx, llvm::LLVMGetElementType(val_ty(pos)));
-        (scratch, some(pos))
-      }
+      save_in(pos) { pos }
     };
     let temp_cleanups = [], i = 0;
     for e in elts {
         let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
         let e_ty = ty::expr_ty(bcx_tcx(bcx), e);
-        bcx = trans_expr_save_in(dst.bcx, e, dst.val, INIT);
+        bcx = trans_expr_save_in(dst.bcx, e, dst.val);
         add_clean_temp_mem(bcx, dst.val, e_ty);
         temp_cleanups += [dst.val];
         i += 1;
     }
     for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
-    alt overwrite {
-      some(pos) {
-        bcx = drop_ty(bcx, pos, t);
-        bcx = memmove_ty(bcx, pos, addr, t);
-      }
-      none. {}
-    }
     ret bcx;
 }
 
@@ -4216,20 +4190,14 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
              base: option::t<@ast::expr>, id: ast::node_id,
              dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx_ccx(bcx), id);
-    let (addr, overwrite) = alt dest {
+    let addr = alt dest {
       ignore. {
         for fld in fields {
             bcx = trans_expr_dps(bcx, fld.node.expr, ignore);
         }
         ret bcx;
       }
-      save_in(pos) { (pos, none) }
-      // The expressions that populate the fields might still use the old
-      // record, so we build the new on in a scratch area
-      overwrite(pos, _) {
-        let scratch = alloca(bcx, llvm::LLVMGetElementType(val_ty(pos)));
-        (scratch, some(pos))
-      }
+      save_in(pos) { pos }
     };
 
     let base_val = alt base {
@@ -4248,7 +4216,7 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
         bcx = dst.bcx;
         alt vec::find({|f| str::eq(f.node.ident, tf.ident)}, fields) {
           some(f) {
-            bcx = trans_expr_save_in(bcx, f.node.expr, dst.val, INIT);
+            bcx = trans_expr_save_in(bcx, f.node.expr, dst.val);
           }
           none. {
             let base = GEP_tup_like_1(bcx, t, base_val, [0, i]);
@@ -4263,13 +4231,6 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
     // Now revoke the cleanups as we pass responsibility for the data
     // structure on to the caller
     for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
-    alt overwrite {
-      some(pos) {
-        bcx = drop_ty(bcx, pos, t);
-        bcx = memmove_ty(bcx, pos, addr, t);
-      }
-      none. {}
-    }
     ret bcx;
 }
 
@@ -4288,19 +4249,37 @@ fn trans_expr(cx: @block_ctxt, e: @ast::expr) -> result {
     }
 }
 
-fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef,
-                      kind: copy_action) -> @block_ctxt {
+fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
+    -> @block_ctxt {
     let tcx = bcx_tcx(bcx), t = ty::expr_ty(tcx, e);
     let dst = if ty::type_is_bot(tcx, t) || ty::type_is_nil(tcx, t) {
         ignore
-    } else if kind == INIT {
-        save_in(dest)
-    } else {
-        overwrite(dest, t)
-    };
+    } else { save_in(dest) };
     ret trans_expr_dps(bcx, e, dst);
 }
 
+fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> lval_result {
+    if expr_is_lval(bcx_tcx(bcx), e) {
+        ret trans_lval(bcx, e);
+    } else {
+        let tcx = bcx_tcx(bcx);
+        let ty = ty::expr_ty(tcx, e);
+        if ty::type_is_nil(tcx, ty) || ty::type_is_bot(tcx, ty) {
+            bcx = trans_expr_dps(bcx, e, ignore);
+            ret {bcx: bcx, val: C_nil(), is_mem: false};
+        } else if type_is_immediate(bcx_ccx(bcx), ty) {
+            let cell = empty_dest_cell();
+            bcx = trans_expr_dps(bcx, e, by_val(cell));
+            ret {bcx: bcx, val: *cell, is_mem: false};
+        } else {
+            let {bcx, val: scratch} = alloc_ty(bcx, ty);
+            bcx = trans_expr_dps(bcx, e, save_in(scratch));
+            ret {bcx: bcx, val: scratch, is_mem: false};
+        }
+    }
+}
+
+// FIXME[DPS] supersede by trans_temp_expr, get rid of by_ref dests
 fn trans_expr_by_ref(bcx: @block_ctxt, e: @ast::expr) -> result {
     let cell = empty_dest_cell();
     bcx = trans_expr_dps(bcx, e, by_ref(cell));
@@ -4444,22 +4423,20 @@ fn trans_expr_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest)
       }
       ast::expr_assign(dst, src) {
         assert dest == ignore;
-        let {bcx, val: lhs_addr, is_mem} = trans_lval(bcx, dst);
+        let src_r = trans_temp_expr(bcx, src);
+        let {bcx, val: addr, is_mem} = trans_lval(src_r.bcx, dst);
         assert is_mem;
-        ret trans_expr_save_in(bcx, src, lhs_addr, DROP_EXISTING);
+        ret move_val_if_temp(bcx, DROP_EXISTING, addr, src_r,
+                             ty::expr_ty(bcx_tcx(bcx), src));
       }
       ast::expr_move(dst, src) {
-        assert dest == ignore;
-        let {bcx, val: addr, is_mem} = trans_lval(bcx, dst);
-        assert is_mem;
         // FIXME: calculate copy init-ness in typestate.
-        if expr_is_lval(tcx, src) {
-            ret trans_expr_save_in(bcx, src, addr, DROP_EXISTING);
-        } else {
-            let srclv = trans_lval(bcx, src);
-            let t = ty::expr_ty(tcx, src);
-            ret move_val(srclv.bcx, DROP_EXISTING, addr, srclv, t);
-        }
+        assert dest == ignore;
+        let src_r = trans_temp_expr(bcx, src);
+        let {bcx, val: addr, is_mem} = trans_lval(src_r.bcx, dst);
+        assert is_mem;
+        ret move_val(bcx, DROP_EXISTING, addr, src_r,
+                     ty::expr_ty(bcx_tcx(bcx), src));
       }
       ast::expr_swap(dst, src) {
         assert dest == ignore;
@@ -4506,9 +4483,6 @@ fn lval_to_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         *cell = val;
       }
       save_in(loc) { bcx = move_val_if_temp(bcx, INIT, loc, lv, ty); }
-      overwrite(loc, _) {
-        bcx = move_val_if_temp(bcx, DROP_EXISTING, loc, lv, ty);
-      }
       ignore. {}
     }
     ret bcx;
@@ -4760,7 +4734,7 @@ fn trans_ret(bcx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
             Store(cx, val, bcx.fcx.llretptr);
             bcx = cx;
         } else {
-            bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr, INIT);
+            bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr);
         }
       }
       _ {}
@@ -4798,7 +4772,7 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
       some(init) {
         if init.op == ast::init_assign ||
            !expr_is_lval(bcx_tcx(bcx), init.expr) {
-            bcx = trans_expr_save_in(bcx, init.expr, llptr, INIT);
+            bcx = trans_expr_save_in(bcx, init.expr, llptr);
         } else { // This is a move from an lval, must perform an actual move
             let sub = trans_lval(bcx, init.expr);
             bcx = move_val(sub.bcx, INIT, llptr, sub, ty);
