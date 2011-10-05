@@ -28,8 +28,7 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
 
     let target_triple = sess.get_opts().target_triple;
     let rpaths = get_rpaths(cwd, sysroot, output, libs, target_triple);
-    rpaths_to_flags(rpaths);
-    [] // FIXME: Activate RPATH!
+    rpaths_to_flags(rpaths)
 }
 
 #[cfg(target_os="win32")]
