@@ -109,12 +109,6 @@ rust_start(uintptr_t main_fn, int argc, char **argv,
 
     free_env(env);
 
-#if !defined(__WIN32__)
-    // Don't take down the process if the main thread exits without an
-    // error.
-    if (!ret)
-        pthread_exit(NULL);
-#endif
     return ret;
 }
 
