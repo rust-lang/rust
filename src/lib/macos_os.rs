@@ -25,6 +25,8 @@ native "cdecl" mod libc = "" {
     fn unsetenv(n: str::sbuf) -> int;
     fn pipe(buf: *mutable int) -> int;
     fn waitpid(pid: int, &status: int, options: int) -> int;
+    fn _NSGetExecutablePath(buf: str::sbuf,
+                            bufsize: *mutable ctypes::uint32_t) -> int;
 }
 
 mod libc_constants {
@@ -75,6 +77,18 @@ native "rust" mod rustrt {
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 
+fn get_exe_path() -> option::t<fs::path> {
+    // FIXME: This doesn't handle the case where the buffer is too small
+    let bufsize = 1023u32;
+    let path = str::unsafe_from_bytes(vec::init_elt(0u8, bufsize as uint));
+    ret str::as_buf(path, { |path_buf|
+        if libc::_NSGetExecutablePath(path_buf, ptr::addr_of(bufsize)) == 0 {
+            option::some(fs::dirname(path) + fs::path_sep())
+        } else {
+            option::none
+        }
+    });
+}
 
 // Local Variables:
 // mode: rust;

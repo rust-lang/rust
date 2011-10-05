@@ -6,6 +6,7 @@ import syntax::ast::ty_mach;
 import std::{uint, map, option, str};
 import std::option::{some, none};
 import syntax::parse::parser::parse_sess;
+import util::filesearch;
 
 tag os { os_win32; os_macos; os_linux; }
 
@@ -32,8 +33,8 @@ type options =
      time_passes: bool,
      time_llvm_passes: bool,
      output_type: back::link::output_type,
-     library_search_paths: [str],
-     sysroot: str,
+     addl_lib_search_paths: [str],
+     maybe_sysroot: option::t<str>,
      target_triple: str,
      cfg: ast::crate_cfg,
      test: bool,
@@ -51,7 +52,8 @@ obj session(targ_cfg: @config,
 
             // For a library crate, this is always none
             mutable main_fn: option::t<node_id>,
-            mutable err_count: uint) {
+            mutable err_count: uint,
+            filesearch: filesearch::filesearch) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
     fn get_cstore() -> metadata::cstore::cstore { cstore }
@@ -108,6 +110,7 @@ obj session(targ_cfg: @config,
     }
     fn set_main_id(d: node_id) { main_fn = some(d); }
     fn get_main_id() -> option::t<node_id> { main_fn }
+    fn filesearch() -> filesearch::filesearch { filesearch }
 }
 // Local Variables:
 // fill-column: 78;

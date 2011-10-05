@@ -39,10 +39,17 @@ mod libc_constants {
     }
 }
 
+type DWORD = u32;
+type HMODULE = uint;
+type LPTSTR = str::sbuf;
+
 native "x86stdcall" mod kernel32 {
     fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: uint) ->
        uint;
     fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
+    fn GetModuleFileNameA(hModule: HMODULE,
+                          lpFilename: LPTSTR,
+                          nSize: DWORD) -> DWORD;
 }
 
 fn exec_suffix() -> str { ret ".exe"; }
@@ -80,6 +87,20 @@ native "rust" mod rustrt {
 fn waitpid(pid: int) -> int { ret rustrt::rust_process_wait(pid); }
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
+
+fn get_exe_path() -> option::t<fs::path> {
+    // FIXME: This doesn't handle the case where the buffer is too small
+    let bufsize = 1023u;
+    let path = str::unsafe_from_bytes(vec::init_elt(0u8, bufsize));
+    ret str::as_buf(path, { |path_buf|
+        if kernel32::GetModuleFileNameA(0u, path_buf,
+                                        bufsize as u32) != 0u32 {
+            option::some(fs::dirname(path) + fs::path_sep())
+        } else {
+            option::none
+        }
+    });
+}
 
 // Local Variables:
 // mode: rust;

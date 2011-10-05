@@ -216,7 +216,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
                   id: ast::node_id, dest: trans::dest) -> @block_ctxt {
     if dest == trans::ignore {
         alt anon_obj.inner_obj {
-          some(e) { ret trans::trans_expr_dps(bcx, e, trans::ignore); }
+          some(e) { ret trans::trans_expr(bcx, e, trans::ignore); }
           none. { ret bcx; }
         }
     }
@@ -234,7 +234,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
         additional_fields = fields;
         for f: ast::anon_obj_field in fields {
             additional_field_tys += [node_id_type(ccx, f.id)];
-            additional_field_vals += [trans_expr(bcx, f.expr)];
+            additional_field_vals += [trans_temp_expr(bcx, f.expr)];
         }
       }
     }
@@ -363,7 +363,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
             // If inner_obj (the object being extended) exists, translate it.
             // Translating inner_obj returns a ValueRef (pointer to a 2-word
             // value) wrapped in a result.
-            let inner_obj_val: result = trans_expr(bcx, e);
+            let inner_obj_val: result = trans_temp_expr(bcx, e);
 
             check type_is_tup_like(bcx, body_ty);
             let body_inner_obj =

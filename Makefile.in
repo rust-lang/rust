@@ -264,7 +264,7 @@ CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)
 endif
 
 STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,$(1), \
-                $$(CFG_VALGRIND_COMPILE) $$(HOST_BIN$(1))/rustc$$(X) \
+                $$(CFG_VALGRIND_COMPILE$(1)) $$(HOST_BIN$(1))/rustc$$(X) \
                 $$(CFG_RUSTC_FLAGS) --target=$(2))
 
 PERF_STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,$(1), \

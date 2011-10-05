@@ -8,7 +8,7 @@ import middle::resolve;
 import syntax::visit;
 import syntax::codemap::span;
 import back::x86;
-import util::common;
+import util::{common, filesearch};
 import std::{vec, str, fs, io, option};
 import std::option::{none, some};
 import std::map::{hashmap, new_int_hash};
@@ -24,7 +24,6 @@ fn read_crates(sess: session::session, crate: ast::crate) {
     let e =
         @{sess: sess,
           crate_cache: @std::map::new_str_hash::<int>(),
-          library_search_paths: sess.get_opts().library_search_paths,
           mutable next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
@@ -37,7 +36,6 @@ fn read_crates(sess: session::session, crate: ast::crate) {
 type env =
     @{sess: session::session,
       crate_cache: @hashmap<str, int>,
-      library_search_paths: [str],
       mutable next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
@@ -62,6 +60,7 @@ fn visit_item(e: env, i: @ast::item) {
         if !cstore::add_used_library(cstore, m.native_name) { ret; }
         for a: ast::attribute in
             attr::find_attrs_by_name(i.attrs, "link_args") {
+
             alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
               some(linkarg) { cstore::add_used_link_args(cstore, linkarg); }
               none. {/* fallthrough */ }
@@ -109,13 +108,11 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
 }
 
 fn find_library_crate(sess: session::session, ident: ast::ident,
-                      metas: [@ast::meta_item], library_search_paths: [str])
+                      metas: [@ast::meta_item])
    -> option::t<{ident: str, data: @[u8]}> {
 
     attr::require_unique_names(sess, metas);
 
-    // FIXME: Probably want a warning here since the user
-    // is using the wrong type of meta item
     let crate_name =
         {
             let name_items = attr::find_meta_items_by_name(metas, "name");
@@ -123,6 +120,8 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
               some(i) {
                 alt attr::get_meta_item_value_str(i) {
                   some(n) { n }
+                  // FIXME: Probably want a warning here since the user
+                  // is using the wrong type of meta item
                   _ { ident }
                 }
               }
@@ -132,48 +131,42 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
 
     let nn = default_native_lib_naming(sess, sess.get_opts().static);
     let x =
-        find_library_crate_aux(nn, crate_name, metas, library_search_paths);
+        find_library_crate_aux(nn, crate_name, metas,
+                               sess.filesearch());
     if x != none || sess.get_opts().static { ret x; }
     let nn2 = default_native_lib_naming(sess, true);
-    ret find_library_crate_aux(nn2, crate_name, metas, library_search_paths);
+    ret find_library_crate_aux(nn2, crate_name, metas,
+                               sess.filesearch());
 }
 
 fn find_library_crate_aux(nn: {prefix: str, suffix: str}, crate_name: str,
                           metas: [@ast::meta_item],
-                          library_search_paths: [str]) ->
+                          filesearch: filesearch::filesearch) ->
    option::t<{ident: str, data: @[u8]}> {
     let prefix: str = nn.prefix + crate_name;
     let suffix: str = nn.suffix;
-    // FIXME: we could probably use a 'glob' function in std::fs but it will
-    // be much easier to write once the unsafe module knows more about FFI
-    // tricks. Currently the glob(3) interface is a bit more than we can
-    // stomach from here, and writing a C++ wrapper is more work than just
-    // manually filtering fs::list_dir here.
 
-    for library_search_path: str in library_search_paths {
-        log #fmt["searching %s", library_search_path];
-        for path: str in fs::list_dir(library_search_path) {
-            log #fmt["searching %s", path];
-            let f: str = fs::basename(path);
-            if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
-                log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
-                         suffix];
-                cont;
-            }
+    ret filesearch::search(filesearch, { |path|
+        let f: str = fs::basename(path);
+        if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
+            log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
+                     suffix];
+            option::none
+        } else {
             alt get_metadata_section(path) {
               option::some(cvec) {
                 if !metadata_matches(cvec, metas) {
                     log #fmt["skipping %s, metadata doesn't match", path];
-                    cont;
+                    option::none
+                } else {
+                    log #fmt["found %s with matching metadata", path];
+                    option::some({ident: path, data: cvec})
                 }
-                log #fmt["found %s with matching metadata", path];
-                ret some({ident: path, data: cvec});
               }
-              _ { }
+              _ { option::none }
             }
         }
-    }
-    ret none;
+    });
 }
 
 fn get_metadata_section(filename: str) -> option::t<@[u8]> {
@@ -198,11 +191,11 @@ fn get_metadata_section(filename: str) -> option::t<@[u8]> {
 }
 
 fn load_library_crate(sess: session::session, span: span, ident: ast::ident,
-                      metas: [@ast::meta_item], library_search_paths: [str])
+                      metas: [@ast::meta_item])
    -> {ident: str, data: @[u8]} {
 
 
-    alt find_library_crate(sess, ident, metas, library_search_paths) {
+    alt find_library_crate(sess, ident, metas) {
       some(t) { ret t; }
       none. {
         sess.span_fatal(span, #fmt["can't find crate for '%s'", ident]);
@@ -214,8 +207,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
                  span: span) -> ast::crate_num {
     if !e.crate_cache.contains_key(ident) {
         let cinfo =
-            load_library_crate(e.sess, span, ident, metas,
-                               e.library_search_paths);
+            load_library_crate(e.sess, span, ident, metas);
 
         let cfilename = cinfo.ident;
         let cdata = cinfo.data;

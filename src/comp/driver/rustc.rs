@@ -8,7 +8,7 @@ import front::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck};
 import middle::tstate::ck;
 import syntax::print::{pp, pprust};
-import util::{ppaux, common};
+import util::{ppaux, common, filesearch};
 import back::link;
 import lib::llvm;
 import std::{fs, option, str, vec, int, io, run, getopts};
@@ -98,6 +98,19 @@ fn time<@T>(do_it: bool, what: str, thunk: fn() -> T) -> T {
     ret rv;
 }
 
+// FIXME (issue #1005): Needed to work around a segfault. If |time| is used
+// instead, we crash.
+fn time_unit(do_it: bool, what: str, thunk: fn()) {
+    if !do_it { ret thunk(); }
+    let start = std::time::precise_time_s();
+    let rv = thunk();
+    let end = std::time::precise_time_s();
+    log_err #fmt["time: %s took %s s", what,
+                 common::float_to_str(end - start, 3u)];
+    ret rv;
+}
+
+
 fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
                  output: str) {
     let time_passes = sess.get_opts().time_passes;
@@ -119,8 +132,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let ast_map =
         time(time_passes, "ast indexing",
              bind middle::ast_map::map_crate(*crate));
-    time(time_passes, "external crate/lib resolution",
-         bind creader::read_crates(sess, *crate));
+    time_unit(time_passes, "external crate/lib resolution",
+              bind creader::read_crates(sess, *crate));
     let {def_map: def_map, ext_map: ext_map} =
         time(time_passes, "resolution",
              bind resolve::resolve_crate(sess, ast_map, crate));
@@ -128,12 +141,13 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "freevar finding",
              bind freevars::annotate_freevars(def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
-    time(time_passes, "typechecking", bind typeck::check_crate(ty_cx, crate));
-    time(time_passes, "alt checking",
+    time_unit(time_passes, "typechecking", bind
+        typeck::check_crate(ty_cx, crate));
+    time_unit(time_passes, "alt checking",
          bind middle::check_alt::check_crate(ty_cx, crate));
     if sess.get_opts().run_typestate {
-        time(time_passes, "typestate checking",
-             bind middle::tstate::ck::check_crate(ty_cx, crate));
+        time_unit(time_passes, "typestate checking",
+                  bind middle::tstate::ck::check_crate(ty_cx, crate));
     }
     let mut_map =
         time(time_passes, "mutability checking",
@@ -141,14 +155,15 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let copy_map =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
-    time(time_passes, "kind checking", bind kind::check_crate(ty_cx, crate));
+    time_unit(time_passes, "kind checking",
+           bind kind::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
     let llmod =
         time(time_passes, "translation",
              bind trans::trans_crate(sess, crate, ty_cx, output, ast_map,
                                      mut_map, copy_map));
-    time(time_passes, "LLVM passes",
-         bind link::write::run_passes(sess, llmod, output));
+    time_unit(time_passes, "LLVM passes",
+              bind link::write::run_passes(sess, llmod, output));
 }
 
 fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
@@ -293,12 +308,6 @@ fn get_arch(triple: str) -> session::arch {
         } else { log_err "Unknown architecture! " + triple; fail };
 }
 
-fn get_default_sysroot(binary: str) -> str {
-    let dirname = fs::dirname(binary);
-    if str::eq(dirname, binary) { ret "../"; }
-    ret fs::connect(dirname, "../");
-}
-
 fn build_target_config(sopts: @session::options) -> @session::config {
     let target_cfg: @session::config =
         @{os: get_os(sopts.target_triple),
@@ -321,7 +330,7 @@ fn host_triple() -> str {
     ret ht != "" ? ht : fail "rustc built without CFG_HOST_TRIPLE";
 }
 
-fn build_session_options(binary: str, match: getopts::match)
+fn build_session_options(match: getopts::match)
    -> @session::options {
     let library = opt_present(match, "lib");
     let static = opt_present(match, "static");
@@ -368,22 +377,13 @@ fn build_session_options(binary: str, match: getopts::match)
               }
             }
         } else { 0u };
-    let sysroot =
-        alt sysroot_opt {
-          none. { get_default_sysroot(binary) }
-          some(s) { s }
-        };
     let target =
         alt target_opt {
             none. { host_triple() }
             some(s) { s }
         };
 
-    let library_search_paths = [link::make_target_lib_path(sysroot, target)];
-    let lsp_vec = getopts::opt_strs(match, "L");
-    // FIXME: These should probably go in front of the defaults
-    for lsp: str in lsp_vec { library_search_paths += [lsp]; }
-
+    let addl_lib_search_paths = getopts::opt_strs(match, "L");
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let do_gc = opt_present(match, "gc");
@@ -400,8 +400,8 @@ fn build_session_options(binary: str, match: getopts::match)
           time_passes: time_passes,
           time_llvm_passes: time_llvm_passes,
           output_type: output_type,
-          library_search_paths: library_search_paths,
-          sysroot: sysroot,
+          addl_lib_search_paths: addl_lib_search_paths,
+          maybe_sysroot: sysroot_opt,
           target_triple: target,
           cfg: cfg,
           test: test,
@@ -415,9 +415,13 @@ fn build_session_options(binary: str, match: getopts::match)
 fn build_session(sopts: @session::options) -> session::session {
     let target_cfg = build_target_config(sopts);
     let cstore = cstore::mk_cstore();
+    let filesearch = filesearch::mk_filesearch(
+        sopts.maybe_sysroot,
+        sopts.target_triple,
+        sopts.addl_lib_search_paths);
     ret session::session(target_cfg, sopts, cstore,
                          @{cm: codemap::new_codemap(), mutable next_id: 0},
-                         none, 0u);
+                         none, 0u, filesearch);
 }
 
 fn parse_pretty(sess: session::session, name: str) -> pp_mode {
@@ -464,7 +468,7 @@ fn main(args: [str]) {
         version(binary);
         ret;
     }
-    let sopts = build_session_options(binary, match);
+    let sopts = build_session_options(match);
     let sess = build_session(sopts);
     let n_inputs = vec::len::<str>(match.free);
     let output_file = getopts::opt_maybe_str(match, "o");
@@ -545,7 +549,7 @@ mod test {
             alt getopts::getopts(["--test"], opts()) {
               getopts::success(m) { m }
             };
-        let sessopts = build_session_options("whatever", match);
+        let sessopts = build_session_options(match);
         let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         assert (attr::contains_name(cfg, "test"));
@@ -559,7 +563,7 @@ mod test {
             alt getopts::getopts(["--test", "--cfg=test"], opts()) {
               getopts::success(m) { m }
             };
-        let sessopts = build_session_options("whatever", match);
+        let sessopts = build_session_options(match);
         let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         let test_items = attr::find_meta_items_by_name(cfg, "test");

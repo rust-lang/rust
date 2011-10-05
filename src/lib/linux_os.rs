@@ -1,5 +1,3 @@
-
-
 // FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
 // by https://github.com/graydon/rust/issues#issue/268
 native "cdecl" mod libc = "" {
@@ -28,6 +26,8 @@ native "cdecl" mod libc = "" {
     fn unsetenv(n: str::sbuf) -> int;
     fn pipe(buf: *mutable int) -> int;
     fn waitpid(pid: int, &status: int, options: int) -> int;
+    fn readlink(path: str::sbuf, buf: str::sbuf,
+                bufsize: ctypes::size_t) -> ctypes::ssize_t;
 }
 
 mod libc_constants {
@@ -78,6 +78,21 @@ native "rust" mod rustrt {
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 
+/// Returns the directory containing the running program
+/// followed by a path separator
+fn get_exe_path() -> option::t<fs::path> {
+    let bufsize = 1023u;
+    let path = str::unsafe_from_bytes(vec::init_elt(0u8, bufsize));
+    ret str::as_buf("/proc/self/exe", { |proc_self_buf|
+        str::as_buf(path, { |path_buf|
+            if libc::readlink(proc_self_buf, path_buf, bufsize) != -1 {
+                option::some(fs::dirname(path) + fs::path_sep())
+            } else {
+                option::none
+            }
+        })
+    });
+}
 
 // Local Variables:
 // mode: rust;

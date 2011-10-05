@@ -151,9 +151,10 @@ check-stage$(1)-std-dummy: test/stdtest.stage$(1)$$(X)
 
 test/rustctest.stage$(1)$$(X): \
 	$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-	$$(TARGET_SREQ$(1)$$(CFG_HOST_TRPILE)) \
+	$$(TARGET_SREQ$(1)$$(CFG_HOST_TRIPLE)) \
         $$(HOST_LIB$(1))/$$(CFG_RUSTLLVM) \
-	$$(TARGET_LIB$(1)$$(CFG_HOST_TRIPLE))/$$(CFG_RUSTLLVM)
+	$$(TARGET_LIB$(1)$$(CFG_HOST_TRIPLE))/$$(CFG_RUSTLLVM) \
+	$$(TARGET_LIB$(1)$$(CFG_HOST_TRIPLE))/$$(CFG_STDLIB)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) -o $$@ $$< --test
 
