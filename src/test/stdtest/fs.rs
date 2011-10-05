@@ -132,6 +132,7 @@ fn normalize9() {
 fn normalize10() {
     let actual = fs::normalize("/a/b/c/../d/./../../e/");
     let expected = "/a/e/";
+    log_err actual;
     assert actual == expected;
 }
 
@@ -140,4 +141,19 @@ fn normalize11() {
     let actual = fs::normalize("/a/..");
     let expected = "/";
     assert actual == expected;
+}
+
+#[test]
+#[cfg(target_os = "win32")]
+fn normalize12() {
+   let actual = fs::normalize("C:/whatever");
+   let expected = "C:/whatever";
+   log_err actual;
+   assert actual == expected;
+}
+
+#[test]
+#[cfg(target_os = "win32")]
+fn path_is_absolute_win32() {
+   assert fs::path_is_absolute("C:/whatever");
 }
