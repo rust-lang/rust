@@ -2112,9 +2112,8 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
                              ty_to_str(tcx, t));
 }
 
-// FIXME[DPS] rename to store_temp_expr
-fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
-                    src: lval_result, t: ty::t) -> @block_ctxt {
+fn store_temp_expr(cx: @block_ctxt, action: copy_action, dst: ValueRef,
+                   src: lval_result, t: ty::t) -> @block_ctxt {
     // Lvals in memory are not temporaries. Copy them.
     if src.is_mem {
         ret copy_val(cx, action, dst, load_if_immediate(cx, src.val, t),
@@ -2466,17 +2465,6 @@ fn trans_binary(cx: @block_ctxt, op: ast::binop, a: @ast::expr, b: @ast::expr,
                               ty::expr_ty(bcx_tcx(cx), b), dest);
       }
     }
-}
-
-// FIXME[DPS] remove once all uses have been converted to join_returns
-fn join_branches(parent_cx: @block_ctxt, ins: [result]) -> @block_ctxt {
-    let out = new_sub_block_ctxt(parent_cx, "join");
-    let branched = false;
-    for r: result in ins {
-        if !r.bcx.unreachable { Br(r.bcx, out.llbb); branched = true; }
-    }
-    if !branched { Unreachable(out); }
-    ret out;
 }
 
 tag dest {
@@ -3264,6 +3252,7 @@ fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
     }
 }
 
+// Use this when you know you are compiling an lval.
 // The additional bool returned indicates whether it's mem (that is
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
@@ -3653,7 +3642,6 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
         // Trivial 'binding': just return the closure
         let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
         bcx = lv.bcx;
-        // FIXME[DPS] factor this out
         ret memmove_ty(bcx, get_dest_addr(dest), lv.val, pair_ty);
     }
     let closure = alt f_res.env {
@@ -4203,15 +4191,20 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
     ret bcx;
 }
 
+// Store the result of an expression in the given memory location, ensuring
+// that nil or bot expressions get ignore rather than save_in as destination.
 fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
     -> @block_ctxt {
     let tcx = bcx_tcx(bcx), t = ty::expr_ty(tcx, e);
-    let dst = if ty::type_is_bot(tcx, t) || ty::type_is_nil(tcx, t) {
-        ignore
-    } else { save_in(dest) };
-    ret trans_expr(bcx, e, dst);
+    let do_ignore = ty::type_is_bot(tcx, t) || ty::type_is_nil(tcx, t);
+    ret trans_expr(bcx, e, do_ignore ? ignore : save_in(dest));
 }
 
+// Call this to compile an expression that you need as an intermediate value,
+// and you want to know whether you're dealing with an lval or not (the is_mem
+// field in the returned struct). For non-immediates, use trans_expr or
+// trans_expr_save_in. For intermediates where you don't care about lval-ness,
+// use trans_temp_expr.
 fn trans_temp_lval(bcx: @block_ctxt, e: @ast::expr) -> lval_result {
     if expr_is_lval(bcx_tcx(bcx), e) {
         ret trans_lval(bcx, e);
@@ -4235,6 +4228,8 @@ fn trans_temp_lval(bcx: @block_ctxt, e: @ast::expr) -> lval_result {
     }
 }
 
+// Use only for intermediate values. See trans_expr and trans_expr_save_in for
+// expressions that must 'end up somewhere' (or get ignored).
 fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
     let {bcx, val, is_mem} = trans_temp_lval(bcx, e);
     if is_mem && type_is_immediate(bcx_ccx(bcx),
@@ -4244,13 +4239,11 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
     ret {bcx: bcx, val: val};
 }
 
-// Invariants:
-// - things returning nil get dest=ignore
-// - any lvalue expr may be given dest=by_ref
-// - exprs returning an immediate get by_val (or by_ref when lval)
-// - exprs returning non-immediates get save_in (or by_ref when lval)
-fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest)
-    -> @block_ctxt {
+// Translate an expression, with the dest argument deciding what happens with
+// the result. Invariants:
+// - exprs returning nil or bot always get dest=ignore
+// - exprs with non-immediate type never get dest=by_val
+fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
     if expr_is_lval(tcx, e) { ret lval_to_dps(bcx, e, dest); }
 
@@ -4356,11 +4349,11 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest)
 
         let then_cx = new_scope_block_ctxt(bcx, "claim_then");
         let check_cx = trans_check_expr(then_cx, a, "Claim");
-        let else_cx = new_scope_block_ctxt(bcx, "else");
+        let next_cx = new_sub_block_ctxt(bcx, "join");
 
-        CondBr(bcx, cond, then_cx.llbb, else_cx.llbb);
-        ret join_branches(bcx, [rslt(check_cx, C_nil()),
-                                rslt(else_cx, C_nil())]);
+        CondBr(bcx, cond, then_cx.llbb, next_cx.llbb);
+        Br(check_cx, next_cx.llbb);
+        ret next_cx;
       }
       ast::expr_for(decl, seq, body) {
         assert dest == ignore;
@@ -4383,8 +4376,8 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest)
         let src_r = trans_temp_lval(bcx, src);
         let {bcx, val: addr, is_mem} = trans_lval(src_r.bcx, dst);
         assert is_mem;
-        ret move_val_if_temp(bcx, DROP_EXISTING, addr, src_r,
-                             ty::expr_ty(bcx_tcx(bcx), src));
+        ret store_temp_expr(bcx, DROP_EXISTING, addr, src_r,
+                            ty::expr_ty(bcx_tcx(bcx), src));
       }
       ast::expr_move(dst, src) {
         // FIXME: calculate copy init-ness in typestate.
@@ -4435,7 +4428,7 @@ fn lval_to_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
             *cell = Load(bcx, val);
         }
       }
-      save_in(loc) { bcx = move_val_if_temp(bcx, INIT, loc, lv, ty); }
+      save_in(loc) { bcx = store_temp_expr(bcx, INIT, loc, lv, ty); }
       ignore. {}
     }
     ret bcx;
