@@ -1,10 +1,9 @@
 
 import os::getcwd;
-import util::void;
 import os_fs;
 
-native "c-stack-cdecl" mod rustrt {
-    fn rust_file_is_dir(unused: *void, path: *u8) -> int;
+native "rust" mod rustrt {
+    fn rust_file_is_dir(path: str::sbuf) -> int;
 }
 
 fn path_sep() -> str { ret str::from_char(os_fs::path_sep); }
@@ -53,9 +52,7 @@ fn connect_many(paths: [path]) : vec::is_not_empty(paths) -> path {
 }
 
 fn file_is_dir(p: path) -> bool {
-    ret str::as_buf(p, {
-        |buf| rustrt::rust_file_is_dir(ptr::null(), buf) != 0
-    });
+    ret str::as_buf(p, {|buf| rustrt::rust_file_is_dir(buf) != 0 });
 }
 
 fn list_dir(p: path) -> [str] {

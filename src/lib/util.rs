@@ -17,13 +17,6 @@ pure fn rational_leq(x: rational, y: rational) -> bool {
 }
 
 pure fn orb(a: bool, b: bool) -> bool { a || b }
-
-// An unconstructible type. Currently we're using this for unused parameters
-// in native functions, but it may be useful for other purposes as well.
-tag void {
-    void(@void);
-}
-
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
