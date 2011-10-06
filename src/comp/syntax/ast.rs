@@ -390,6 +390,7 @@ type fn_decl =
 
 tag purity {
     pure_fn; // declared with "pure fn"
+    unsafe_fn; // declared with "unsafe fn"
     impure_fn; // declared with "fn"
 }
 

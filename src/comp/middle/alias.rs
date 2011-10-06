@@ -29,10 +29,10 @@ tag ret_info { by_ref(bool, node_id); other; }
 type scope = {bs: [binding], ret_info: ret_info};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
-              unsafe: [unsafe_ty]) -> binding {
+              unsafe_tys: [unsafe_ty]) -> binding {
     ret @{node_id: id, span: span, root_var: root_var,
           local_id: local_id_of_node(cx, id),
-          unsafe_tys: unsafe, mutable ok: valid,
+          unsafe_tys: unsafe_tys, mutable ok: valid,
           mutable copied: not_copied};
 }
 
@@ -284,12 +284,12 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     }
     let j = 0u;
     for b in bindings {
-        for unsafe in b.unsafe_tys {
+        for unsafe_ty in b.unsafe_tys {
             let i = 0u;
             for arg_t: ty::arg in arg_ts {
                 let mut_alias = arg_t.mode == ast::by_mut_ref;
                 if i != j &&
-                       ty_can_unsafely_include(cx, unsafe, arg_t.ty,
+                       ty_can_unsafely_include(cx, unsafe_ty, arg_t.ty,
                                                mut_alias) &&
                        cant_copy(cx, b) {
                     cx.tcx.sess.span_err
@@ -397,24 +397,28 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         let new_bs = sc.bs;
         let root_var = path_def_id(cx, root.ex);
         let pat_id_map = ast_util::pat_id_map(a.pats[0]);
-        type info = {id: node_id, mutable unsafe: [unsafe_ty], span: span};
+        type info = {
+            id: node_id,
+            mutable unsafe_tys: [unsafe_ty],
+            span: span};
         let binding_info: [info] = [];
         for pat in a.pats {
             for proot in pattern_roots(cx.tcx, root.mut, pat) {
                 let canon_id = pat_id_map.get(proot.name);
                 alt vec::find({|x| x.id == canon_id}, binding_info) {
-                  some(s) { s.unsafe += unsafe_set(proot.mut); }
+                  some(s) { s.unsafe_tys += unsafe_set(proot.mut); }
                   none. {
-                      binding_info += [{id: canon_id,
-                                        mutable unsafe: unsafe_set(proot.mut),
-                                        span: proot.span}];
+                      binding_info += [
+                          {id: canon_id,
+                           mutable unsafe_tys: unsafe_set(proot.mut),
+                           span: proot.span}];
                   }
                 }
             }
         }
         for info in binding_info {
             new_bs += [mk_binding(cx, info.id, info.span, root_var,
-                                  copy info.unsafe)];
+                                  copy info.unsafe_tys)];
         }
         visit::visit_arm(a, {bs: new_bs with sc}, v);
     }
@@ -470,8 +474,8 @@ fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
     for b in sc.bs {
         // excludes variables introduced since the alias was made
         if my_local_id < b.local_id {
-            for unsafe in b.unsafe_tys {
-                if ty_can_unsafely_include(cx, unsafe, var_t, assign) {
+            for unsafe_ty in b.unsafe_tys {
+                if ty_can_unsafely_include(cx, unsafe_ty, var_t, assign) {
                     b.ok = val_taken(ex.span, p);
                 }
             }
@@ -689,9 +693,9 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
 fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     -> {ex: @ast::expr, mut: option::t<unsafe_ty>} {
     let base_root = mut::expr_root(cx.tcx, ex, autoderef);
-    let unsafe = none;
+    let unsafe_ty = none;
     for d in *base_root.ds {
-        if d.mut { unsafe = some(contains(d.outer_t)); break; }
+        if d.mut { unsafe_ty = some(contains(d.outer_t)); break; }
     }
     if is_none(path_def_id(cx, base_root.ex)) {
         alt base_root.ex.node {
@@ -703,10 +707,10 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
                 let arg_root = expr_root(cx, arg, false);
                 if mut {
                     let ret_ty = ty::expr_ty(cx.tcx, base_root.ex);
-                    unsafe = some(mut_contains(ret_ty));
+                    unsafe_ty = some(mut_contains(ret_ty));
                 }
-                if !is_none(arg_root.mut) { unsafe = arg_root.mut; }
-                ret {ex: arg_root.ex, mut: unsafe};
+                if !is_none(arg_root.mut) { unsafe_ty = arg_root.mut; }
+                ret {ex: arg_root.ex, mut: unsafe_ty};
               }
               _ {}
             }
@@ -714,7 +718,7 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
           _ {}
         }
     }
-    ret {ex: base_root.ex, mut: unsafe};
+    ret {ex: base_root.ex, mut: unsafe_ty};
 }
 
 fn unsafe_set(from: option::t<unsafe_ty>) -> [unsafe_ty] {
