@@ -40,7 +40,7 @@ fn traverse_in_order() {
     insert(m, 1, ());
 
     let n = 0;
-    fn t(&n: int, k: int, _v: ()) { assert (n == k); n += 1; }
+    fn t(&n: int, &&k: int, &&_v: ()) { assert (n == k); n += 1; }
     traverse(m, bind t(n, _, _));
 }
 

@@ -12,7 +12,7 @@ fn test_generic<@T>(expected: T, eq: compare<T>) {
 }
 
 fn test_bool() {
-    fn compare_bool(b1: bool, b2: bool) -> bool { ret b1 == b2; }
+    fn compare_bool(&&b1: bool, &&b2: bool) -> bool { ret b1 == b2; }
     let eq = bind compare_bool(_, _);
     test_generic::<bool>(true, eq);
 }

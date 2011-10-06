@@ -119,8 +119,8 @@ type reccy = {x: int, y: int, t: taggy};
 
 #[test]
 fn test() {
-    fn inteq(a: int, b: int) -> bool { ret a == b; }
-    fn intboxeq(a: @int, b: @int) -> bool { ret a == b; }
+    fn inteq(&&a: int, &&b: int) -> bool { ret a == b; }
+    fn intboxeq(&&a: @int, &&b: @int) -> bool { ret a == b; }
     fn taggyeq(a: taggy, b: taggy) -> bool {
         alt a {
           one(a1) { alt b { one(b1) { ret a1 == b1; } _ { ret false; } } }
