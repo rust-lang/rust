@@ -71,7 +71,7 @@ fn get_rpaths(os: session::os, cwd: fs::path, sysroot: fs::path,
     let abs_rpaths = get_absolute_rpaths(cwd, libs);
 
     // And a final backup rpath to the global library location.
-    let fallback_rpaths = [get_install_prefix_rpath(target_triple)];
+    let fallback_rpaths = [get_install_prefix_rpath(cwd, target_triple)];
 
     fn log_rpaths(desc: str, rpaths: [str]) {
         log #fmt("%s rpaths:", desc);
@@ -166,7 +166,7 @@ fn get_absolute(cwd: fs::path, lib: fs::path) -> fs::path {
     }
 }
 
-fn get_install_prefix_rpath(target_triple: str) -> str {
+fn get_install_prefix_rpath(cwd: fs::path, target_triple: str) -> str {
     let install_prefix = #env("CFG_PREFIX");
 
     if install_prefix == "" {
@@ -176,7 +176,7 @@ fn get_install_prefix_rpath(target_triple: str) -> str {
     let path = [install_prefix]
         + filesearch::relative_target_lib_path(target_triple);
     check vec::is_not_empty(path);
-    fs::connect_many(path)
+    get_absolute(cwd, fs::connect_many(path))
 }
 
 fn minimize_rpaths(rpaths: [str]) -> [str] {
@@ -219,8 +219,15 @@ mod test {
 
     #[test]
     fn test_prefix_rpath() {
-        let res = get_install_prefix_rpath("triple");
-        assert res == #env("CFG_PREFIX") + "/lib/rustc/triple/lib";
+        let res = get_install_prefix_rpath("/usr/lib", "triple");
+        assert str::ends_with(res, #env("CFG_PREFIX")
+                              + "/lib/rustc/triple/lib");
+    }
+
+    #[test]
+    fn test_prefix_rpath_abs() {
+        let res = get_install_prefix_rpath("/usr/lib", "triple");
+        assert str::starts_with(res, "/");
     }
 
     #[test]
