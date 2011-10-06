@@ -112,7 +112,7 @@ rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF) $(RU
 	@$(call E, link: $@)
 	$(Q)$(call CFG_LINK_C,$@, $(RUNTIME_OBJS) \
 	  $(CFG_GCCISH_POST_LIB_FLAGS) $(RUNTIME_LIBS) \
-	  $(CFG_LIBUV_LINK_FLAGS),$(RUNTIME_DEF))
+	  $(CFG_LIBUV_LINK_FLAGS),$(RUNTIME_DEF),$(CFG_RUNTIME))
 
 # FIXME: For some reason libuv's makefiles can't figure out the correct definition
 # of CC on the mingw I'm using, so we are explicitly using gcc. Also, we

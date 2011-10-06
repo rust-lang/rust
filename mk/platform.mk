@@ -22,6 +22,7 @@ ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_UNIXY := 1
   CFG_LDENV := LD_LIBRARY_PATH
   CFG_DEF_SUFFIX := .bsd.def
+  CFG_INSTALL_NAME =
 endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
@@ -48,6 +49,7 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
       CFG_PERF_TOOL := /usr/bin/time --verbose
     endif
   endif
+  CFG_INSTALL_NAME =
 endif
 
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
@@ -71,6 +73,8 @@ ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_GCCISH_LINK_FLAGS += -m32
   CFG_DSYMUTIL := dsymutil
   CFG_DEF_SUFFIX := .darwin.def
+  # Mac requires this flag to make rpath work
+  CFG_INSTALL_NAME = -Wl,-install_name,@rpath/$(1)
 endif
 
 ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
@@ -154,7 +158,7 @@ ifdef CFG_WINDOWSY
     CFG_GCCISH_CFLAGS += -march=i686
     CFG_GCCISH_LINK_FLAGS += -shared -fPIC
   endif
-
+  CFG_INSTALL_NAME =
 endif
 
 
@@ -169,7 +173,7 @@ ifeq ($(CFG_C_COMPILER),clang)
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
     -MM $(2)
   CFG_LINK_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
-    $(CFG_GCCISH_DEF_FLAG)$(3) $(2)
+    $(CFG_GCCISH_DEF_FLAG)$(3) $(2) $(call CFG_INSTALL_NAME,$(4))
 else
 ifeq ($(CFG_C_COMPILER),gcc)
   CC=gcc
@@ -181,7 +185,7 @@ ifeq ($(CFG_C_COMPILER),gcc)
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
     -MM $(2)
   CFG_LINK_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
-               $(CFG_GCCISH_DEF_FLAG)$(3) $(2)
+               $(CFG_GCCISH_DEF_FLAG)$(3) $(2) $(call CFG_INSTALL_NAME,$(4))
 else
   CFG_ERR := $(error please try on a system with gcc or clang)
 endif

@@ -13,9 +13,14 @@ import util::filesearch;
 // to be exported
 export get_rpath_flags, test;
 
-#[cfg(target_os="linux")]
-#[cfg(target_os="macos")]
 fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
+    let os = sess.get_targ_cfg().os;
+
+    // No rpath on windows
+    if os == session::os_win32 {
+        ret [];
+    }
+
     log "preparing the RPATH!";
 
     let cwd = os::getcwd();
@@ -27,13 +32,8 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
     let libs = libs + [get_sysroot_absolute_rt_lib(sess)];
 
     let target_triple = sess.get_opts().target_triple;
-    let rpaths = get_rpaths(cwd, sysroot, output, libs, target_triple);
+    let rpaths = get_rpaths(os, cwd, sysroot, output, libs, target_triple);
     rpaths_to_flags(rpaths)
-}
-
-#[cfg(target_os="win32")]
-fn get_rpath_flags(_sess: session::session, _out_filename: str) -> [str] {
-    []
 }
 
 fn get_sysroot_absolute_rt_lib(sess: session::session) -> fs::path {
@@ -49,7 +49,7 @@ fn rpaths_to_flags(rpaths: [str]) -> [str] {
     vec::map({ |rpath| #fmt("-Wl,-rpath,%s",rpath)}, rpaths)
 }
 
-fn get_rpaths(cwd: fs::path, sysroot: fs::path,
+fn get_rpaths(os: session::os, cwd: fs::path, sysroot: fs::path,
               output: fs::path, libs: [fs::path],
               target_triple: str) -> [str] {
     log #fmt("cwd: %s", cwd);
@@ -64,7 +64,7 @@ fn get_rpaths(cwd: fs::path, sysroot: fs::path,
     // Use relative paths to the libraries. Binaries can be moved
     // as long as they maintain the relative relationship to the
     // crates they depend on.
-    let rel_rpaths = get_rpaths_relative_to_output(cwd, output, libs);
+    let rel_rpaths = get_rpaths_relative_to_output(os, cwd, output, libs);
 
     // Make backup absolute paths to the libraries. Binaries can
     // be moved as long as the crates they link against don't move.
@@ -91,16 +91,24 @@ fn get_rpaths(cwd: fs::path, sysroot: fs::path,
     ret rpaths;
 }
 
-fn get_rpaths_relative_to_output(cwd: fs::path,
+fn get_rpaths_relative_to_output(os: session::os,
+                                 cwd: fs::path,
                                  output: fs::path,
                                  libs: [fs::path]) -> [str] {
-    vec::map(bind get_rpath_relative_to_output(cwd, output, _), libs)
+    vec::map(bind get_rpath_relative_to_output(os, cwd, output, _), libs)
 }
 
-fn get_rpath_relative_to_output(cwd: fs::path,
+fn get_rpath_relative_to_output(os: session::os,
+                                cwd: fs::path,
                                 output: fs::path,
                                 lib: fs::path) -> str {
-    "$ORIGIN" + fs::path_sep() + get_relative_to(
+    // Mac doesn't appear to support $ORIGIN
+    let prefix = alt os {
+        session::os_linux. { "$ORIGIN" + fs::path_sep() }
+        session::os_macos. { "" }
+    };
+
+    prefix + get_relative_to(
         get_absolute(cwd, output),
         get_absolute(cwd, lib))
 }
@@ -185,6 +193,7 @@ fn minimize_rpaths(rpaths: [str]) -> [str] {
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
+#[cfg(test)]
 mod test {
     #[test]
     fn test_rpaths_to_flags() {
@@ -294,10 +303,19 @@ mod test {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_rpath_relative() {
-        let res = get_rpath_relative_to_output(
+        let res = get_rpath_relative_to_output(session::os_linux,
             "/usr", "bin/rustc", "lib/libstd.so");
         assert res == "$ORIGIN/../lib";
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_rpath_relative() {
+        let res = get_rpath_relative_to_output(session::os_macos,
+            "/usr", "bin/rustc", "lib/libstd.so");
+        assert res == "../lib";
     }
 
     #[test]
