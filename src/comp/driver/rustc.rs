@@ -98,19 +98,6 @@ fn time<@T>(do_it: bool, what: str, thunk: fn() -> T) -> T {
     ret rv;
 }
 
-// FIXME (issue #1005): Needed to work around a segfault. If |time| is used
-// instead, we crash.
-fn time_unit(do_it: bool, what: str, thunk: fn()) {
-    if !do_it { ret thunk(); }
-    let start = std::time::precise_time_s();
-    let rv = thunk();
-    let end = std::time::precise_time_s();
-    log_err #fmt["time: %s took %s s", what,
-                 common::float_to_str(end - start, 3u)];
-    ret rv;
-}
-
-
 fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
                  output: str) {
     let time_passes = sess.get_opts().time_passes;
@@ -132,8 +119,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let ast_map =
         time(time_passes, "ast indexing",
              bind middle::ast_map::map_crate(*crate));
-    time_unit(time_passes, "external crate/lib resolution",
-              bind creader::read_crates(sess, *crate));
+    time(time_passes, "external crate/lib resolution",
+         bind creader::read_crates(sess, *crate));
     let {def_map: def_map, ext_map: ext_map} =
         time(time_passes, "resolution",
              bind resolve::resolve_crate(sess, ast_map, crate));
@@ -141,13 +128,12 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "freevar finding",
              bind freevars::annotate_freevars(def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
-    time_unit(time_passes, "typechecking", bind
-        typeck::check_crate(ty_cx, crate));
-    time_unit(time_passes, "alt checking",
+    time(time_passes, "typechecking", bind typeck::check_crate(ty_cx, crate));
+    time(time_passes, "alt checking",
          bind middle::check_alt::check_crate(ty_cx, crate));
     if sess.get_opts().run_typestate {
-        time_unit(time_passes, "typestate checking",
-                  bind middle::tstate::ck::check_crate(ty_cx, crate));
+        time(time_passes, "typestate checking",
+             bind middle::tstate::ck::check_crate(ty_cx, crate));
     }
     let mut_map =
         time(time_passes, "mutability checking",
@@ -155,15 +141,14 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let copy_map =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
-    time_unit(time_passes, "kind checking",
-           bind kind::check_crate(ty_cx, crate));
+    time(time_passes, "kind checking", bind kind::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
     let llmod =
         time(time_passes, "translation",
              bind trans::trans_crate(sess, crate, ty_cx, output, ast_map,
                                      mut_map, copy_map));
-    time_unit(time_passes, "LLVM passes",
-              bind link::write::run_passes(sess, llmod, output));
+    time(time_passes, "LLVM passes",
+         bind link::write::run_passes(sess, llmod, output));
 }
 
 fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
