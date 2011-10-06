@@ -1525,6 +1525,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
 
 fn require_impure(sess: session::session, f_purity: ast::purity, sp: span) {
     alt f_purity {
+      ast::unsafe_fn. { ret; }
       ast::impure_fn. { ret; }
       ast::pure_fn. {
         sess.span_fatal(sp, "Found impure expression in pure function decl");
