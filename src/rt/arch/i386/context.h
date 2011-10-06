@@ -7,6 +7,10 @@
 #include <inttypes.h>
 #include <stdint.h>
 
+#ifdef HAVE_VALGRIND
+#include <valgrind/memcheck.h>
+#endif
+
 template<typename T>
 T align_down(T sp)
 {
@@ -44,7 +48,14 @@ public:
   // function being called causes the task to fail, then we have to avoid
   // leaking space on the C stack.
   inline void *alloc_stack(size_t nbytes) {
-    return (void *)(align_down(regs.esp - nbytes));
+    uint32_t bot = regs.esp;
+    uint32_t top = align_down(bot - nbytes);
+
+#ifdef HAVE_VALGRIND
+    (void)VALGRIND_MAKE_MEM_UNDEFINED(top - 4, bot - top + 4);
+#endif
+
+    return reinterpret_cast<void *>(top);
   }
 };
 

@@ -7,6 +7,7 @@ import metadata::{encoder, cstore};
 import middle::trans_common::crate_ctxt;
 import std::str;
 import std::fs;
+import std::os;
 import std::vec;
 import std::option;
 import std::run;
@@ -573,6 +574,9 @@ fn link_binary(sess: session::session,
 
     gcc_args += ["-Lrt", "-lrustrt"];
 
+    gcc_args += rpath::get_rpath_flags(sess, saved_out_filename);
+
+    log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
     // We run 'gcc' here
     let err_code = run::run_program(prog, gcc_args);
     if 0 != err_code {

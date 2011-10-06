@@ -144,12 +144,23 @@ fn normalize(p: path) -> path {
         ret t;
     }
 
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
     fn reabsolute(orig: path, new: path) -> path {
         if path_is_absolute(orig) {
             path_sep() + new
         } else {
             new
         }
+    }
+
+    #[cfg(target_os = "win32")]
+    fn reabsolute(orig: path, new: path) -> path {
+       if path_is_absolute(orig) && orig[0] == os_fs::path_sep as u8 {
+           str::from_char(os_fs::path_sep) + new
+       } else {
+           new
+       }
     }
 
     fn reterminate(orig: path, new: path) -> path {

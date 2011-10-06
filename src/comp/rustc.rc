@@ -91,6 +91,7 @@ mod back {
     mod abi;
     mod upcall;
     mod x86;
+    mod rpath;
 }
 
 mod metadata {

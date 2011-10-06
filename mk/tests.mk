@@ -160,7 +160,7 @@ test/rustctest.stage$(1)$$(X): \
 
 check-stage$(1)-rustc-dummy: test/rustctest.stage$(1)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN,$$(HOST_LIB$(1)),$$(CFG_VALGRIND) $$<) \
+	$$(Q)$$(call CFG_RUN_TEST,$$<) \
 	  $$(TESTARGS)
 
 
@@ -286,11 +286,12 @@ test/$(FT).rc test/$(FT_DRIVER).rs: $(TEST_RPASS_SOURCES_STAGE2) \
 	@$(call E, check: building combined stage2 test runner)
 	$(Q)$(S)src/etc/combine-tests.py
 
-stage2/lib/$(FT_LIB): test/$(FT).rc $(SREQ2$(CFG_HOST_TRIPLE))
+$(TARGET_HOST_LIB2)/$(FT_LIB): test/$(FT).rc $(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) --lib -o $@ $<
 
-test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs $(HOST_LIB2)/$(FT_LIB) $(SREQ2$(CFG_HOST_TRIPLE))
+test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs $(TARGET_HOST_LIB2)/$(FT_LIB) \
+	$(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) -L $(HOST_LIB2) -o $@ $<
 
