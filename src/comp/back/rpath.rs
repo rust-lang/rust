@@ -13,9 +13,12 @@ import util::filesearch;
 // to be exported
 export get_rpath_flags, test;
 
-#[cfg(target_os="linux")]
-#[cfg(target_os="macos")]
 fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
+    // No rpath on windows
+    if sess.get_targ_cfg().os == session::os_win32 {
+        ret [];
+    }
+
     log "preparing the RPATH!";
 
     let cwd = os::getcwd();
@@ -29,11 +32,6 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
     let target_triple = sess.get_opts().target_triple;
     let rpaths = get_rpaths(cwd, sysroot, output, libs, target_triple);
     rpaths_to_flags(rpaths)
-}
-
-#[cfg(target_os="win32")]
-fn get_rpath_flags(_sess: session::session, _out_filename: str) -> [str] {
-    []
 }
 
 fn get_sysroot_absolute_rt_lib(sess: session::session) -> fs::path {
