@@ -105,7 +105,7 @@ fn get_rpath_relative_to_output(os: session::os,
     // Mac doesn't appear to support $ORIGIN
     let prefix = alt os {
         session::os_linux. { "$ORIGIN" + fs::path_sep() }
-        session::os_macos. { "" }
+        session::os_macos. { "@executable_path" + fs::path_sep() }
     };
 
     prefix + get_relative_to(
@@ -322,7 +322,7 @@ mod test {
     fn test_rpath_relative() {
         let res = get_rpath_relative_to_output(session::os_macos,
             "/usr", "bin/rustc", "lib/libstd.so");
-        assert res == "../lib";
+        assert res == "@executable_path/../lib";
     }
 
     #[test]
