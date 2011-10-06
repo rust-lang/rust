@@ -19,21 +19,42 @@ PKG_3RDPARTY := rt/valgrind.h rt/memcheck.h \
                 rt/bigint/bigint.h rt/bigint/bigint_int.cpp \
                 rt/bigint/bigint_ext.cpp rt/bigint/low_primes.h
 
+PKG_UV := \
+                $(wildcard $(S)src/rt/libuv/*) \
+                $(wildcard $(S)src/rt/libuv/include/*) \
+                $(wildcard $(S)src/rt/libuv/include/*/*) \
+                $(wildcard $(S)src/rt/libuv/src/*) \
+                $(wildcard $(S)src/rt/libuv/src/*/*) \
+                $(wildcard $(S)src/rt/libuv/src/*/*/*)
+
+PKG_PP_EXAMPLES = $(wildcard $(S)src/test/pretty/*.pp)
+
 PKG_FILES = \
     $(wildcard $(S)src/etc/*.*)                \
     $(S)LICENSE.txt $(S)README                 \
     $(S)configure $(S)Makefile.in              \
+    $(S)src/snapshots.txt                      \
     $(addprefix $(S)src/,                      \
       README comp/README                       \
       $(RUNTIME_CS) $(RUNTIME_HDR)             \
+      $(RUNTIME_S)                             \
+      rt/rustrt.def.in                         \
+      rt/intrinsics/intrinsics.ll.in           \
+      rt/main.ll.in                            \
       $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS)   \
       $(RUSTLLVM_HDR)                          \
+      rustllvm/rustllvm.def.in                 \
       $(PKG_3RDPARTY))                         \
-    $(GENERATED)                               \
+    $(PKG_UV)                                  \
     $(COMPILER_INPUTS)                         \
     $(STDLIB_INPUTS)                           \
     $(ALL_TEST_INPUTS)                         \
-    $(GENERATED)
+    $(FUZZER_CRATE)                            \
+    $(FUZZER_INPUTS)                           \
+    $(COMPILETEST_CRATE)                       \
+    $(COMPILETEST_INPUTS)                      \
+    $(PKG_PP_EXAMPLES)                         \
+    $(MKFILES)
 
 dist: $(PKG_TAR) $(PKG_EXE)
 

@@ -47,9 +47,17 @@
 ######################################################################
 
 include config.mk
-MKFILES := Makefile config.mk $(wildcard $(CFG_SRC_DIR)/mk/*.mk)
-MKFILES += $(CFG_SRC_DIR)/src/rt/libuv/Makefile
-MKFILES += $(wildcard $(CFG_SRC_DIR)/src/rt/libuv/*.mk)
+OUR_MKFILES := Makefile config.mk $(wildcard $(CFG_SRC_DIR)/mk/*.mk)
+3RDPARTY_MKFILES := $(CFG_SRC_DIR)/src/rt/libuv/Makefile \
+                    $(wildcard $(CFG_SRC_DIR)/src/rt/libuv/*.mk)
+GEN_MKFILES := $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/*) \
+               $(wildcard $(CFG_SRC_DIR)/mk/libuv/unix/*) \
+               $(wildcard $(CFG_SRC_DIR)/mk/libuv/win/*) \
+               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/rt/libuv/*) \
+               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/rt/libuv/*) \
+               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/rt/libuv/*)
+
+MKFILES := $(OUR_MKFILES) $(3RDPARTY_MKFILES) $(GEN_MKFILES)
 
 ifneq ($(MAKE_RESTARTS),)
 CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
