@@ -78,7 +78,8 @@ tag meta_item_ {
 type blk = spanned<blk_>;
 
 type blk_ =
-    {stmts: [@stmt], expr: option::t<@expr>, id: node_id, rules: check_mode};
+    {stmts: [@stmt], expr: option::t<@expr>, id: node_id,
+     rules: blk_check_mode};
 
 type pat = {id: node_id, node: pat_, span: span};
 
@@ -173,7 +174,9 @@ type field_ = {mut: mutability, ident: ident, expr: @expr};
 
 type field = spanned<field_>;
 
-tag check_mode { checked; unchecked; }
+tag blk_check_mode { checked_blk; unchecked_blk; unsafe_blk; }
+
+tag expr_check_mode { claimed_expr; checked_expr; }
 
 type expr = {id: node_id, node: expr_, span: span};
 
@@ -222,7 +225,7 @@ tag expr_ {
     expr_assert(@expr);
 
     /* preds that typestate is aware of */
-    expr_check(check_mode, @expr);
+    expr_check(expr_check_mode, @expr);
 
     /* FIXME Would be nice if expr_check desugared
        to expr_if_check. */

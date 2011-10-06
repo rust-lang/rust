@@ -828,7 +828,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
                       p.peek() == token::OROR {
             ret parse_fn_block_expr(p);
         } else {
-            let blk = parse_block_tail(p, lo, ast::checked);
+            let blk = parse_block_tail(p, lo, ast::checked_blk);
             ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
         }
     } else if eat_word(p, "if") {
@@ -853,9 +853,9 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
     } else if eat_word(p, "lambda") {
         ret parse_fn_expr(p, ast::proto_closure);
     } else if eat_word(p, "unchecked") {
-        expect(p, token::LBRACE);
-        let blk = parse_block_tail(p, lo, ast::unchecked);
-        ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
+        ret parse_block_expr(p, lo, ast::unchecked_blk);
+    } else if eat_word(p, "unsafe") {
+        ret parse_block_expr(p, lo, ast::unsafe_blk);
     } else if p.peek() == token::LBRACKET {
         p.bump();
         let mut = parse_mutability(p);
@@ -872,7 +872,8 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_embed_type(ty));
     } else if p.peek() == token::POUND_LBRACE {
         p.bump();
-        let blk = ast::mac_embed_block(parse_block_tail(p, lo, ast::checked));
+        let blk = ast::mac_embed_block(
+            parse_block_tail(p, lo, ast::checked_blk));
         ret mk_mac_expr(p, lo, p.get_hi_pos(), blk);
     } else if p.peek() == token::ELLIPSIS {
         p.bump();
@@ -948,7 +949,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
 
         let e = parse_expr(p);
         hi = e.span.hi;
-        ex = ast::expr_check(ast::checked, e);
+        ex = ast::expr_check(ast::checked_expr, e);
     } else if eat_word(p, "claim") {
         /* Same rules as check, except that if check-claims
          is enabled (a command-line flag), then the parser turns
@@ -956,7 +957,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
 
         let e = parse_expr(p);
         hi = e.span.hi;
-        ex = ast::expr_check(ast::unchecked, e);
+        ex = ast::expr_check(ast::claimed_expr, e);
     } else if eat_word(p, "ret") {
         if can_begin_expr(p.peek()) {
             let e = parse_expr(p);
@@ -1012,6 +1013,14 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         ex = ast::expr_lit(@lit);
     }
     ret mk_expr(p, lo, hi, ex);
+}
+
+fn parse_block_expr(p: parser,
+                    lo: uint,
+                    blk_mode: ast::blk_check_mode) -> @ast::expr {
+    expect(p, token::LBRACE);
+    let blk = parse_block_tail(p, lo, blk_mode);
+    ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
 }
 
 fn parse_syntax_ext(p: parser) -> @ast::expr {
@@ -1311,7 +1320,7 @@ fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let decl = parse_fn_block_decl(p);
-    let body = parse_block_tail(p, lo, ast::checked);
+    let body = parse_block_tail(p, lo, ast::checked_blk);
     let _fn = {decl: decl, proto: ast::proto_block, body: body};
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
 }
@@ -1675,10 +1684,12 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
 fn parse_block(p: parser) -> ast::blk {
     let lo = p.get_lo_pos();
     if eat_word(p, "unchecked") {
-        be parse_block_tail(p, lo, ast::unchecked);
+        be parse_block_tail(p, lo, ast::unchecked_blk);
+    } else if eat_word(p, "unsafe") {
+        be parse_block_tail(p, lo, ast::unsafe_blk);
     } else {
         expect(p, token::LBRACE);
-        be parse_block_tail(p, lo, ast::checked);
+        be parse_block_tail(p, lo, ast::checked_blk);
     }
 }
 
@@ -1695,7 +1706,7 @@ fn parse_block_no_value(p: parser) -> ast::blk {
 // I guess that also means "already parsed the 'impure'" if
 // necessary, and this should take a qualifier.
 // some blocks start with "#{"...
-fn parse_block_tail(p: parser, lo: uint, s: ast::check_mode) -> ast::blk {
+fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
     let stmts: [@ast::stmt] = [];
     let expr: option::t<@ast::expr> = none;
     while p.peek() != token::RBRACE {

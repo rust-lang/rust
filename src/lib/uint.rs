@@ -32,7 +32,7 @@ iter range(lo: uint, hi: uint) -> uint {
 }
 
 fn next_power_of_two(n: uint) -> uint {
-    let halfbits: uint = sys::rustrt::size_of::<uint>() * 4u;
+    let halfbits: uint = sys::size_of::<uint>() * 4u;
     let tmp: uint = n - 1u;
     let shift: uint = 1u;
     while shift <= halfbits { tmp |= tmp >> shift; shift <<= 1u; }

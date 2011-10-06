@@ -4380,11 +4380,11 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         assert dest == ignore;
         ret trans_check_expr(bcx, a, "Assertion");
       }
-      ast::expr_check(ast::checked., a) {
+      ast::expr_check(ast::checked_expr., a) {
         assert dest == ignore;
         ret trans_check_expr(bcx, a, "Predicate");
       }
-      ast::expr_check(ast::unchecked., a) {
+      ast::expr_check(ast::claimed_expr., a) {
         assert dest == ignore;
         /* Claims are turned on and off by a global variable
            that the RTS sets. This case generates code to

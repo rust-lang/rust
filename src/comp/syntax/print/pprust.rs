@@ -572,7 +572,11 @@ tag embed_type { block_macro; block_block_fn; block_normal; }
 
 fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
                                  indented: uint) {
-    alt blk.node.rules { ast::unchecked. { word(s.s, "unchecked"); } _ { } }
+    alt blk.node.rules {
+      ast::unchecked_blk. { word(s.s, "unchecked"); }
+      ast::unsafe_blk. { word(s.s, "unsafe"); }
+      ast::checked_blk. { }
+    }
 
     maybe_print_comment(s, blk.span.lo);
     let ann_node = node_block(s, blk);
@@ -934,8 +938,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_check(m, expr) {
         alt m {
-          ast::unchecked. { word_nbsp(s, "claim"); }
-          ast::checked. { word_nbsp(s, "check"); }
+          ast::claimed_expr. { word_nbsp(s, "claim"); }
+          ast::checked_expr. { word_nbsp(s, "check"); }
         }
         popen(s);
         print_expr(s, expr);
