@@ -251,10 +251,8 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
                        mutable ok: valid,
                        mutable copied: alt arg_t.mode {
                          ast::by_move. { copied }
-                         ast::by_ref. {
-                           i + 1u == by_ref ? not_allowed : not_copied
-                         }
                          ast::by_mut_ref. { not_allowed }
+                         _ { i + 1u == by_ref ? not_allowed : not_copied }
                        }}];
         i += 1u;
     }

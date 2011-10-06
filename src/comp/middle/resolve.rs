@@ -1239,7 +1239,7 @@ fn mie_span(mie: mod_index_entry) -> span {
         };
 }
 
-fn check_item(e: @env, i: @ast::item, x: (), v: vt<()>) {
+fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
     fn typaram_names(tps: [ast::ty_param]) -> [ident] {
         let x: [ast::ident] = [];
         for tp: ast::ty_param in tps { x += [tp.ident]; }
@@ -1276,7 +1276,7 @@ fn check_pat(ch: checker, p: @ast::pat) {
     }
 }
 
-fn check_arm(e: @env, a: ast::arm, x: (), v: vt<()>) {
+fn check_arm(e: @env, a: ast::arm, &&x: (), v: vt<()>) {
     visit::visit_arm(a, x, v);
     let ch0 = checker(*e, "binding");
     check_pat(ch0, a.pats[0]);
@@ -1306,7 +1306,7 @@ fn check_arm(e: @env, a: ast::arm, x: (), v: vt<()>) {
     }
 }
 
-fn check_block(e: @env, b: ast::blk, x: (), v: vt<()>) {
+fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
     visit::visit_block(b, x, v);
     let values = checker(*e, "value");
     let types = checker(*e, "type");
@@ -1359,7 +1359,7 @@ fn check_fn(e: env, sp: span, f: ast::_fn) {
     ensure_unique(e, sp, f.decl.inputs, arg_name, "argument");
 }
 
-fn check_expr(e: @env, ex: @ast::expr, x: (), v: vt<()>) {
+fn check_expr(e: @env, ex: @ast::expr, &&x: (), v: vt<()>) {
     alt ex.node {
       ast::expr_rec(fields, _) {
         fn field_name(f: ast::field) -> ident { ret f.node.ident; }
@@ -1370,7 +1370,7 @@ fn check_expr(e: @env, ex: @ast::expr, x: (), v: vt<()>) {
     visit::visit_expr(ex, x, v);
 }
 
-fn check_ty(e: @env, ty: @ast::ty, x: (), v: vt<()>) {
+fn check_ty(e: @env, ty: @ast::ty, &&x: (), v: vt<()>) {
     alt ty.node {
       ast::ty_rec(fields) {
         fn field_name(f: ast::ty_field) -> ident { ret f.node.ident; }

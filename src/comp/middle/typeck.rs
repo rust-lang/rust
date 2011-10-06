@@ -224,7 +224,27 @@ fn type_is_scalar(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
+fn default_arg_mode_for_ty(tcx: ty::ctxt, m: ast::mode,
+                           ty: ty::t) -> ast::mode {
+    alt m {
+      ast::mode_infer. {
+        alt ty::struct(tcx, ty) {
+            ty::ty_var(_) { ast::mode_infer }
+            _ {
+                if ty::type_is_immediate(tcx, ty) { ast::by_val }
+                else { ast::by_ref }
+            }
+        }
+      }
+      _ { m }
+    }
+}
 fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
+    fn ast_arg_to_arg(tcx: ty::ctxt, getter: ty_getter, arg: ast::ty_arg)
+        -> {mode: ty::mode, ty: ty::t} {
+        let ty = ast_ty_to_ty(tcx, getter, arg.node.ty);
+        ret {mode: default_arg_mode_for_ty(tcx, arg.node.mode, ty), ty: ty};
+    }
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
       some(some(ty)) { ret ty; }
       some(none.) {
@@ -237,10 +257,6 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
     } /* go on */
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, none::<ty::t>);
-    fn ast_arg_to_arg(tcx: ty::ctxt, getter: ty_getter, arg: ast::ty_arg) ->
-       {mode: ty::mode, ty: ty::t} {
-        ret {mode: arg.node.mode, ty: ast_ty_to_ty(tcx, getter, arg.node.ty)};
-    }
     fn ast_mt_to_mt(tcx: ty::ctxt, getter: ty_getter, mt: ast::mt) -> ty::mt {
         ret {ty: ast_ty_to_ty(tcx, getter, mt.ty), mut: mt.mut};
     }
@@ -295,7 +311,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
         typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
       ast::ty_tup(fields) {
-        let flds = vec::map(bind ast_ty_to_ty(tcx, getter, _), fields);
+        let flds = vec::map_imm(bind ast_ty_to_ty(tcx, getter, _), fields);
         typ = ty::mk_tup(tcx, flds);
       }
       ast::ty_rec(fields) {
@@ -550,9 +566,8 @@ mod collect {
         ret tpt;
     }
     fn ty_of_arg(cx: @ctxt, a: ast::arg) -> ty::arg {
-        let f = bind getter(cx, _);
-        let tt = ast_ty_to_ty(cx.tcx, f, a.ty);
-        ret {mode: a.mode, ty: tt};
+        let ty = ast_ty_to_ty(cx.tcx, bind getter(cx, _), a.ty);
+        {mode: default_arg_mode_for_ty(cx.tcx, a.mode, ty), ty: ty}
     }
     fn ty_of_method(cx: @ctxt, m: @ast::method) -> ty::method {
         let get = bind getter(cx, _);
@@ -1216,7 +1231,7 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
 
     // Add explicitly-declared locals.
     let visit_local =
-        lambda (local: @ast::local, e: (), v: visit::vt<()>) {
+        lambda (local: @ast::local, &&e: (), v: visit::vt<()>) {
             let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
             assign(local.node.id, ident_for_local(local), local_ty);
             visit::visit_local(local, e, v);
@@ -1224,7 +1239,7 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
 
     // Add pattern bindings.
     let visit_pat =
-        lambda (p: @ast::pat, e: (), v: visit::vt<()>) {
+        lambda (p: @ast::pat, &&e: (), v: visit::vt<()>) {
             alt p.node {
               ast::pat_bind(ident) { assign(p.id, ident, none); }
               _ {/* no-op */ }
@@ -2022,16 +2037,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         write::ty_only_fixup(fcx, id, result_ty);
       }
       ast::expr_fn(f) {
-        let cx = @{tcx: tcx};
         let convert = bind ast_ty_to_ty_crate_tyvar(fcx, _);
-        let ty_of_arg =
-            lambda (a: ast::arg) -> ty::arg {
-                let tt = ast_ty_to_ty_crate_tyvar(fcx, a.ty);
-                ret {mode: a.mode, ty: tt};
-            };
-        let fty =
-            collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl, f.proto,
-                                   [], none).ty;
+        let ty_of_arg = lambda (a: ast::arg) -> ty::arg {
+            let tt = ast_ty_to_ty_crate_tyvar(fcx, a.ty);
+            ret {mode: default_arg_mode_for_ty(fcx.ccx.tcx, a.mode, tt),
+                 ty: tt};
+        };
+        let cx = @{tcx: tcx};
+        let fty = collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl,
+                                         f.proto, [], none).ty;
+
         write::ty_only_fixup(fcx, id, fty);
 
         // Unify the type of the function with the expected type before we
@@ -2041,6 +2056,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         unify(fcx, expr.span, expected, fty);
 
         check_fn(fcx.ccx, f, id, some(fcx));
+        if f.proto == ast::proto_block {
+            write::ty_only_fixup(fcx, id, expected);
+        }
       }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking
@@ -2301,7 +2319,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // FIXME: These next three functions are largely ripped off from
         // similar ones in collect::.  Is there a better way to do this?
         fn ty_of_arg(ccx: @crate_ctxt, a: ast::arg) -> ty::arg {
-            ret {mode: a.mode, ty: ast_ty_to_ty_crate(ccx, a.ty)};
+            let ty = ast_ty_to_ty_crate(ccx, a.ty);
+            ret {mode: default_arg_mode_for_ty(ccx.tcx, a.mode, ty), ty: ty};
         }
 
         fn ty_of_method(ccx: @crate_ctxt, m: @ast::method) -> ty::method {

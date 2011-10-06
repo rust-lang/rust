@@ -266,7 +266,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                     recur: fn(@expr) -> @expr, exprs: [@expr]) -> [@expr] {
     alt elts_to_ell(cx, exprs) {
       {pre: pre, rep: repeat_me_maybe, post: post} {
-        let res = vec::map(recur, pre);
+        let res = vec::map_imm(recur, pre);
         alt repeat_me_maybe {
           none. { }
           some(repeat_me) {
@@ -315,7 +315,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
             }
           }
         }
-        res += vec::map(recur, post);
+        res += vec::map_imm(recur, post);
         ret res;
       }
     }

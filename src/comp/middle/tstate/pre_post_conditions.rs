@@ -99,10 +99,10 @@ fn find_pre_post_exprs(fcx: fn_ctxt, args: [@expr], id: node_id) {
     fn get_pp(ccx: crate_ctxt, e: @expr) -> pre_and_post {
         ret expr_pp(ccx, e);
     }
-    let pps = vec::map::<@expr, pre_and_post>(bind get_pp(fcx.ccx, _), args);
+    let pps = vec::map_imm(bind get_pp(fcx.ccx, _), args);
 
     set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
-                     seq_postconds(fcx, vec::map(get_post, pps)));
+                     seq_postconds(fcx, vec::map_imm(get_post, pps)));
 }
 
 fn find_pre_post_loop(fcx: fn_ctxt, l: @local, index: @expr, body: blk,
@@ -476,8 +476,8 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         }
         let alt_pps = [];
         for a: arm in alts { alt_pps += [do_an_alt(fcx, a)]; }
-        fn combine_pp(antec: pre_and_post, fcx: fn_ctxt, pp: pre_and_post,
-                      next: pre_and_post) -> pre_and_post {
+        fn combine_pp(antec: pre_and_post, fcx: fn_ctxt, &&pp: pre_and_post,
+                      &&next: pre_and_post) -> pre_and_post {
             union(pp.precondition, seq_preconds(fcx, [antec, next]));
             intersect(pp.postcondition, next.postcondition);
             ret pp;
@@ -694,7 +694,7 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
         */
     }
     for s: @stmt in b.node.stmts { do_one_(fcx, s); }
-    fn do_inner_(fcx: fn_ctxt, e: @expr) { find_pre_post_expr(fcx, e); }
+    fn do_inner_(fcx: fn_ctxt, &&e: @expr) { find_pre_post_expr(fcx, e); }
     let do_inner = bind do_inner_(fcx, _);
     option::map::<@expr, ()>(do_inner, b.node.expr);
 

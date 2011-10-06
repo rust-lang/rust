@@ -380,14 +380,13 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
     assert (next(st) as char == '[');
     let inputs: [ty::arg] = [];
     while peek(st) as char != ']' {
-        let mode = ast::by_ref;
-        if peek(st) as char == '&' {
-            mode = ast::by_mut_ref;
-            st.pos += 1u;
-        } else if peek(st) as char == '-' {
-            mode = ast::by_move;
-            st.pos += 1u;
-        }
+        let mode = alt peek(st) as char {
+          '&' { ast::by_mut_ref }
+          '-' { ast::by_move }
+          '=' { ast::by_ref }
+          '+' { ast::by_val }
+        };
+        st.pos += 1u;
         inputs += [{mode: mode, ty: parse_ty(st, sd)}];
     }
     st.pos += 1u; // eat the ']'

@@ -226,7 +226,7 @@ fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN),
 }
 
 fn commasep_exprs(s: ps, b: breaks, exprs: [@ast::expr]) {
-    fn expr_span(expr: @ast::expr) -> codemap::span { ret expr.span; }
+    fn expr_span(&&expr: @ast::expr) -> codemap::span { ret expr.span; }
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
@@ -246,7 +246,7 @@ fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]) {
     for item: @ast::native_item in nmod.items { print_native_item(s, item); }
 }
 
-fn print_type(s: ps, ty: @ast::ty) {
+fn print_type(s: ps, &&ty: @ast::ty) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     alt ty.node {
@@ -365,7 +365,7 @@ fn print_native_item(s: ps, item: @ast::native_item) {
     }
 }
 
-fn print_item(s: ps, item: @ast::item) {
+fn print_item(s: ps, &&item: @ast::item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
@@ -678,7 +678,7 @@ fn print_mac(s: ps, m: ast::mac) {
     }
 }
 
-fn print_expr(s: ps, expr: @ast::expr) {
+fn print_expr(s: ps, &&expr: @ast::expr) {
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
     let ann_node = node_expr(s, expr);
@@ -1080,7 +1080,7 @@ fn print_path(s: ps, path: ast::path, colons_before_params: bool) {
     }
 }
 
-fn print_pat(s: ps, pat: @ast::pat) {
+fn print_pat(s: ps, &&pat: @ast::pat) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
     s.ann.pre(ann_node);
@@ -1145,7 +1145,7 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl, constrs: [@ast::constr]) {
     popen(s);
     fn print_arg(s: ps, x: ast::arg) {
         ibox(s, indent_unit);
-        print_alias(s, x.mode);
+        print_arg_mode(s, x.mode);
         word_space(s, x.ident + ":");
         print_type(s, x.ty);
         end(s);
@@ -1174,7 +1174,7 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
     word(s.s, "|");
     fn print_arg(s: ps, x: ast::arg) {
         ibox(s, indent_unit);
-        print_alias(s, x.mode);
+        print_arg_mode(s, x.mode);
         word(s.s, x.ident);
         end(s);
     }
@@ -1183,11 +1183,13 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
     maybe_print_comment(s, decl.output.span.lo);
 }
 
-fn print_alias(s: ps, m: ast::mode) {
+fn print_arg_mode(s: ps, m: ast::mode) {
     alt m {
       ast::by_mut_ref. { word(s.s, "&"); }
       ast::by_move. { word(s.s, "-"); }
-      ast::by_ref. { }
+      ast::by_ref. { word(s.s, "&&"); }
+      ast::by_val. { word(s.s, "+"); }
+      ast::mode_infer. {}
     }
 }
 
@@ -1211,7 +1213,7 @@ fn print_type_params(s: ps, params: [ast::ty_param]) {
     }
 }
 
-fn print_meta_item(s: ps, item: @ast::meta_item) {
+fn print_meta_item(s: ps, &&item: @ast::meta_item) {
     ibox(s, indent_unit);
     alt item.node {
       ast::meta_word(name) { word(s.s, name); }
@@ -1351,7 +1353,7 @@ fn print_ty_fn(s: ps, proto: ast::proto, id: option::t<ast::ident>,
     zerobreak(s.s);
     popen(s);
     fn print_arg(s: ps, input: ast::ty_arg) {
-        print_alias(s, input.node.mode);
+        print_arg_mode(s, input.node.mode);
         print_type(s, input.node.ty);
     }
     commasep(s, inconsistent, inputs, print_arg);
@@ -1418,7 +1420,7 @@ fn in_cbox(s: ps) -> bool {
     ret s.boxes[len - 1u] == pp::consistent;
 }
 
-fn print_literal(s: ps, lit: @ast::lit) {
+fn print_literal(s: ps, &&lit: @ast::lit) {
     maybe_print_comment(s, lit.span.lo);
     alt next_lit(s) {
       some(lt) {
@@ -1596,7 +1598,7 @@ fn constr_arg_to_str<T>(f: fn(T) -> str, c: ast::constr_arg_general_<T>) ->
 // needed b/c constr_args_to_str needs
 // something that takes an alias
 // (argh)
-fn uint_to_str(i: uint) -> str { ret uint::str(i); }
+fn uint_to_str(&&i: uint) -> str { ret uint::str(i); }
 
 fn ast_ty_fn_constr_to_str(c: @ast::constr) -> str {
     ret path_to_str(c.node.path) +
@@ -1614,7 +1616,7 @@ fn ast_ty_fn_constrs_str(constrs: [@ast::constr]) -> str {
     ret s;
 }
 
-fn fn_arg_idx_to_str(decl: ast::fn_decl, idx: uint) -> str {
+fn fn_arg_idx_to_str(decl: ast::fn_decl, &&idx: uint) -> str {
     decl.inputs[idx].ident
 }
 

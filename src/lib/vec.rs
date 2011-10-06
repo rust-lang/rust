@@ -191,6 +191,17 @@ fn map<@T, @U>(f: block(T) -> U, v: [mutable? T]) -> [U] {
     }
     ret result;
 }
+// FIXME This is needed to make working with by-value functions a bit less
+// painful. We should come up with a better solution.
+fn map_imm<@T, @U>(f: block(+T) -> U, v: [mutable? T]) -> [U] {
+    let result = [];
+    reserve(result, len(v));
+    for elem: T in v {
+        let elem2 = elem; // satisfies alias checker
+        result += [f(elem2)];
+    }
+    ret result;
+}
 
 fn map2<@T, @U, @V>(f: block(T, U) -> V, v0: [T], v1: [U]) -> [V] {
     let v0_len = len::<T>(v0);

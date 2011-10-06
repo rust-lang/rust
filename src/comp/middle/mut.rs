@@ -131,7 +131,7 @@ fn mk_err(cx: @ctx, span: syntax::codemap::span, msg: msg, name: str) {
     });
 }
 
-fn visit_decl(cx: @ctx, d: @decl, e: (), v: visit::vt<()>) {
+fn visit_decl(cx: @ctx, d: @decl, &&e: (), v: visit::vt<()>) {
     visit::visit_decl(d, e, v);
     alt d.node {
       decl_local(locs) {
@@ -148,7 +148,7 @@ fn visit_decl(cx: @ctx, d: @decl, e: (), v: visit::vt<()>) {
     }
 }
 
-fn visit_expr(cx: @ctx, ex: @expr, e: (), v: visit::vt<()>) {
+fn visit_expr(cx: @ctx, ex: @expr, &&e: (), v: visit::vt<()>) {
     alt ex.node {
       expr_call(f, args) { check_call(cx, f, args); }
       expr_swap(lhs, rhs) {
@@ -225,7 +225,7 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
         alt arg_t.mode {
           by_mut_ref. { check_lval(cx, args[i], msg_mut_ref); }
           by_move. { check_lval(cx, args[i], msg_move_out); }
-          by_ref. {}
+          _ {}
         }
         i += 1u;
     }

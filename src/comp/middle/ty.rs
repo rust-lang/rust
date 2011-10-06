@@ -160,6 +160,7 @@ export type_is_native;
 export type_is_nil;
 export type_is_pod;
 export type_is_scalar;
+export type_is_immediate;
 export type_is_sequence;
 export type_is_signed;
 export type_is_structural;
@@ -916,6 +917,12 @@ pure fn type_is_scalar(cx: ctxt, ty: t) -> bool {
     }
 }
 
+// FIXME maybe inline this for speed?
+fn type_is_immediate(cx: ctxt, ty: t) -> bool {
+    ret type_is_scalar(cx, ty) || type_is_boxed(cx, ty) ||
+        type_is_unique_box(cx, ty) || type_is_native(cx, ty);
+}
+
 fn type_has_pointers(cx: ctxt, ty: t) -> bool {
     alt cx.has_pointer_cache.find(ty) {
       some(result) { ret result; }
@@ -924,14 +931,8 @@ fn type_has_pointers(cx: ctxt, ty: t) -> bool {
 
     let result = false;
     alt struct(cx, ty) {
-
-
-
       // scalar types
-      ty_nil. {
-        /* no-op */
-
-      }
+      ty_nil. {/* no-op */ }
       ty_bot. {/* no-op */ }
       ty_bool. {/* no-op */ }
       ty_int. {/* no-op */ }
@@ -1446,14 +1447,14 @@ fn hash_type_info(st: sty, cname_opt: option::t<str>) -> uint {
     ret h;
 }
 
-fn hash_raw_ty(rt: @raw_t) -> uint { ret rt.hash; }
+fn hash_raw_ty(&&rt: @raw_t) -> uint { ret rt.hash; }
 
-fn hash_ty(typ: t) -> uint { ret typ; }
+fn hash_ty(&&typ: t) -> uint { ret typ; }
 
 
 // Type equality. This function is private to this module (and slow); external
 // users should use `eq_ty()` instead.
-fn eq_int(x: uint, y: uint) -> bool { ret x == y; }
+fn eq_int(&&x: uint, &&y: uint) -> bool { ret x == y; }
 
 fn arg_eq<T>(eq: fn(T, T) -> bool, a: @sp_constr_arg<T>, b: @sp_constr_arg<T>)
    -> bool {
@@ -1495,7 +1496,7 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
 
 // An expensive type equality function. This function is private to this
 // module.
-fn eq_raw_ty(a: @raw_t, b: @raw_t) -> bool {
+fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
     // Check hashes (fast path).
 
     if a.hash != b.hash { ret false; }
@@ -1518,7 +1519,7 @@ fn eq_raw_ty(a: @raw_t, b: @raw_t) -> bool {
 
 // This is the equality function the public should use. It works as long as
 // the types are interned.
-fn eq_ty(a: t, b: t) -> bool { ret a == b; }
+fn eq_ty(&&a: t, &&b: t) -> bool { ret a == b; }
 
 
 // Type lookups
@@ -1954,12 +1955,15 @@ mod unify {
             let actual_input = actual_inputs[i];
             // Unify the result modes.
 
-            let result_mode;
-            if expected_input.mode != actual_input.mode {
+            let result_mode = if expected_input.mode == ast::mode_infer {
+                actual_input.mode
+            } else if actual_input.mode == ast::mode_infer {
+                expected_input.mode
+            } else if expected_input.mode != actual_input.mode {
                 ret fn_common_res_err
                     (ures_err(terr_mode_mismatch(expected_input.mode,
                                                  actual_input.mode)));
-            } else { result_mode = expected_input.mode; }
+            } else { expected_input.mode };
             let result = unify_step(cx, expected_input.ty, actual_input.ty);
             alt result {
               ures_ok(rty) { result_ins += [{mode: result_mode, ty: rty}]; }

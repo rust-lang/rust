@@ -180,9 +180,9 @@ fn is_constraint_arg(e: @expr) -> bool {
     }
 }
 
-fn eq_ty(a: @ty, b: @ty) -> bool { ret std::box::ptr_eq(a, b); }
+fn eq_ty(&&a: @ty, &&b: @ty) -> bool { ret std::box::ptr_eq(a, b); }
 
-fn hash_ty(t: @ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
+fn hash_ty(&&t: @ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
 
 fn block_from_expr(e: @expr) -> blk {
     let blk_ = checked_blk([], option::some::<@expr>(e), e.id);

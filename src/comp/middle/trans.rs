@@ -3699,7 +3699,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
         // be inspected. It's important for the value
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
-    } else if arg.mode == ast::by_ref {
+    } else if arg.mode == ast::by_ref || arg.mode == ast::by_val {
         let copied = false;
         if !lv.is_mem && type_is_immediate(ccx, e_ty) {
             val = do_spill_noroot(bcx, val);
@@ -4439,9 +4439,9 @@ fn lval_to_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
 // latter group "immediates" and, in some circumstances when we know we have a
 // pointer (or need one), perform load/store operations based on the
 // immediate-ness of the type.
+// FIXME simply call the version in ty.rs immediately
 fn type_is_immediate(ccx: @crate_ctxt, t: ty::t) -> bool {
-    ret ty::type_is_scalar(ccx.tcx, t) || ty::type_is_boxed(ccx.tcx, t) ||
-        ty::type_is_unique_box(ccx.tcx, t) || ty::type_is_native(ccx.tcx, t);
+    ty::type_is_immediate(ccx.tcx, t)
 }
 
 fn do_spill(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
@@ -5144,7 +5144,11 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
     for aarg: ast::arg in args {
         let arg_ty = arg_tys[arg_n].ty;
         alt aarg.mode {
-          ast::by_ref. {
+          ast::by_move. {
+            add_clean(bcx, fcx.llargs.get(aarg.id), arg_ty);
+          }
+          ast::by_mut_ref. { }
+          _ {
             let mutated =
                 !ignore_mut && fcx.lcx.ccx.mut_map.contains_key(aarg.id);
 
@@ -5160,10 +5164,6 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
                 add_clean(bcx, alloc, arg_ty);
             }
           }
-          ast::by_move. {
-            add_clean(bcx, fcx.llargs.get(aarg.id), arg_ty);
-          }
-          _ { }
         }
         arg_n += 1u;
     }
@@ -5790,7 +5790,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     }
     fn convert_arg_to_i32(cx: @block_ctxt, v: ValueRef, t: ty::t,
                           mode: ty::mode) -> ValueRef {
-        if mode == ast::by_ref {
+        if mode == ast::by_ref || mode == ast::by_val {
             if ty::type_is_integral(bcx_tcx(cx), t) {
                 // FIXME: would be nice to have a postcondition that says
                 // if a type is integral, then it has static size (#586)
@@ -5845,7 +5845,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     let i = arg_n;
     for arg: ty::arg in args {
         let llarg = llvm::LLVMGetParam(fcx.llfn, i);
-        if arg.mode == ast::by_ref {
+        if arg.mode == ast::by_ref || arg.mode == ast::by_val {
             llarg = load_if_immediate(bcx, llarg, arg.ty);
         }
         assert (llarg as int != 0);
