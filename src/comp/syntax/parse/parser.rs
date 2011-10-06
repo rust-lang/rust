@@ -165,6 +165,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     words.insert("fn", ());
     words.insert("lambda", ());
     words.insert("pure", ());
+    words.insert("unsafe", ());
     words.insert("iter", ());
     words.insert("block", ());
     words.insert("import", ());
@@ -2141,6 +2142,10 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
         expect_word(p, "fn");
         ret some(parse_item_fn_or_iter(p, ast::pure_fn, ast::proto_fn, attrs,
                                        ast::il_normal));
+    } else if eat_word(p, "unsafe") {
+        expect_word(p, "fn");
+        ret some(parse_item_fn_or_iter(p, ast::unsafe_fn, ast::proto_fn,
+                                       attrs, ast::il_normal));
     } else if eat_word(p, "iter") {
         ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_iter,
                                        attrs, ast::il_normal));
