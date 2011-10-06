@@ -509,7 +509,10 @@ fn link_binary(sess: session::session,
       option::none. { sess.fatal("can't find main.o") }
     };
 
+    // The default library location, we need this to find the runtime.
+    // The location of crates will be determined as needed.
     let stage: str = "-L" + sess.filesearch().get_target_lib_path();
+
     let prog: str = "gcc";
     // The invocations of gcc share some flags across platforms
 
@@ -579,7 +582,7 @@ fn link_binary(sess: session::session,
         gcc_args += ["-lm", main];
     }
 
-    gcc_args += ["-Lrt", "-lrustrt"];
+    gcc_args += ["-lrustrt"];
 
     gcc_args += rpath::get_rpath_flags(sess, saved_out_filename);
 
