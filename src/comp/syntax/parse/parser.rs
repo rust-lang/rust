@@ -591,7 +591,13 @@ fn parse_arg_mode(p: parser) -> ast::mode {
         ret ast::by_mut_ref;
     } else if eat(p, token::BINOP(token::MINUS)) {
         ret ast::by_move;
-    } else { ret ast::by_ref; }
+    } else {
+        // FIXME Temporarily ignore these, to make it possible to implement
+        // them without breaking the stage0 build.
+        eat(p, token::ANDAND);
+        eat(p, token::BINOP(token::PLUS));
+        ret ast::by_ref;
+    }
 }
 
 fn parse_arg(p: parser) -> ast::arg {
