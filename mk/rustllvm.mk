@@ -17,7 +17,7 @@ rustllvm/$(CFG_RUSTLLVM): $(RUSTLLVM_OBJS_OBJS) \
 	$(Q)$(call CFG_LINK_C,$@,$(RUSTLLVM_OBJS_OBJS) \
 	  $(CFG_GCCISH_PRE_LIB_FLAGS) $(CFG_LLVM_LIBS) \
           $(CFG_GCCISH_POST_LIB_FLAGS) \
-          $(CFG_LLVM_LDFLAGS),$(RUSTLLVM_DEF))
+          $(CFG_LLVM_LDFLAGS),$(RUSTLLVM_DEF),$(CFG_RUSTLLVM))
 
 rustllvm/%.o: rustllvm/%.cpp $(MKFILES)
 	@$(call E, compile: $@)

@@ -567,6 +567,13 @@ fn link_binary(sess: session::session,
 
     if sess.get_opts().library {
         gcc_args += [lib_cmd];
+
+        // On mac we need to tell the linker to let this library
+        // be rpathed
+        if sess.get_targ_cfg().os == session::os_macos {
+            gcc_args += ["-Wl,-install_name,@rpath/"
+                        + fs::basename(saved_out_filename)];
+        }
     } else {
         // FIXME: why do we hardcode -lm?
         gcc_args += ["-lm", main];
