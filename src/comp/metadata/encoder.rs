@@ -252,6 +252,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w,
                       alt fd.decl.purity {
+                        unsafe_fn. { 'u' }
                         pure_fn. { 'p' }
                         impure_fn. { 'f' }
                       } as u8);

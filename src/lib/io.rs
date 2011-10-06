@@ -263,7 +263,7 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
             let nout = os::libc::write(fd, vbuf, len);
             if nout < 0 {
                 log_err "error dumping buffer";
-                log_err sys::rustrt::last_os_error();
+                log_err sys::last_os_error();
                 fail;
             }
             count += nout as uint;
@@ -299,7 +299,7 @@ fn file_buf_writer(path: str, flags: [fileflag]) -> buf_writer {
                     });
     if fd < 0 {
         log_err "error opening file for writing";
-        log_err sys::rustrt::last_os_error();
+        log_err sys::last_os_error();
         fail;
     }
     ret fd_buf_writer(fd, option::some(@fd_res(fd)));
