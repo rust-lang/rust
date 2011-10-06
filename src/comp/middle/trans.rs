@@ -3785,7 +3785,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
     } else {
         alt dest {
           ignore. {
-            if ty::type_is_nil(tcx, full_retty) ||
+            if ty::type_is_nil(tcx, retty) ||
                !option::is_none(lliterbody) {
                 llvm::LLVMGetUndef(T_ptr(llretty))
             } else { alloca(cx, llretty) }
