@@ -62,7 +62,9 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
         // FIXME: would be nice to have a constraint on arg
         // that would obviate the need for this check
         check non_ty_var(cx, arg_ty);
-        atys += [T_ptr(type_of_inner(cx, sp, arg_ty))];
+        let llty = type_of_inner(cx, sp, arg_ty);
+        if arg.mode == ast::by_val { atys += [llty]; }
+        else { atys += [T_ptr(llty)]; }
     }
     ret atys;
 }
@@ -3424,15 +3426,15 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
                     env_ty: ty::t, ty_param_count: uint,
                     target_fn: option::t<ValueRef>)
     -> {val: ValueRef, ty: TypeRef} {
-// If we supported constraints on record fields, we could make the
-// constraints for this function:
-/*
+    // If we supported constraints on record fields, we could make the
+    // constraints for this function:
+    /*
     : returns_non_ty_var(ccx, outgoing_fty),
       type_has_static_size(ccx, incoming_fty) ->
-*/
-// but since we don't, we have to do the checks at the beginning.
-          let ccx = cx.ccx;
-          check type_has_static_size(ccx, incoming_fty);
+    */
+    // but since we don't, we have to do the checks at the beginning.
+    let ccx = cx.ccx;
+    check type_has_static_size(ccx, incoming_fty);
 
     // Here we're not necessarily constructing a thunk in the sense of
     // "function with no arguments".  The result of compiling 'bind f(foo,
@@ -3566,6 +3568,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
                               abi::closure_elt_bindings, b]);
             bcx = bound_arg.bcx;
             let val = bound_arg.val;
+            if out_arg.mode == ast::by_val { val = Load(bcx, val); }
             // If the type is parameterized, then we need to cast the
             // type we actually have to the parameterized out type.
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
@@ -3700,20 +3703,23 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
     } else if arg.mode == ast::by_ref || arg.mode == ast::by_val {
-        let copied = false;
-        if !lv.is_mem && type_is_immediate(ccx, e_ty) {
+        let copied = false, imm = type_is_immediate(ccx, e_ty);
+        if arg.mode == ast::by_ref && !lv.is_mem && imm {
             val = do_spill_noroot(bcx, val);
             copied = true;
         }
         if ccx.copy_map.contains_key(e.id) && lv.is_mem {
+            assert lv.is_mem;
             if !copied {
                 let alloc = alloc_ty(bcx, e_ty);
-                bcx =
-                    copy_val(alloc.bcx, INIT, alloc.val,
-                             load_if_immediate(alloc.bcx, val, e_ty), e_ty);
+                bcx = copy_val(alloc.bcx, INIT, alloc.val,
+                               load_if_immediate(alloc.bcx, val, e_ty), e_ty);
                 val = alloc.val;
             } else { bcx = take_ty(bcx, val, e_ty); }
             add_clean(bcx, val, e_ty);
+        }
+        if arg.mode == ast::by_val && (lv.is_mem || !imm) {
+            val = Load(bcx, val);
         }
     } else if type_is_immediate(ccx, e_ty) && !lv.is_mem {
         let r = do_spill(bcx, val, e_ty);
@@ -3960,7 +3966,8 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
 
         let r = trans_arg_expr(bcx, ty_arg, llargty, to_zero, to_revoke, arg);
         let llargval = r.val; bcx = r.bcx;
-        { llval: llargval, llty: llargty, static: static }
+        { llval: llargval, llty: llargty, static: static,
+          by_val: ty_arg.mode == ast::by_val }
     }, fn_arg_tys, args);
 
     // Allocate the argument bundle.
@@ -3976,7 +3983,7 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
         if llarg.static {
             // FIXME: This load is unfortunate. It won't be necessary once we
             // have reference types again.
-            llargval = Load(bcx, llarg.llval);
+            llargval = llarg.by_val ? llarg.llval : Load(bcx, llarg.llval);
         } else {
             llargval = llarg.llval;
         }
@@ -5141,27 +5148,38 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
                         arg_tys: [ty::arg], ignore_mut: bool)
     -> @block_ctxt {
     let arg_n: uint = 0u;
-    for aarg: ast::arg in args {
-        let arg_ty = arg_tys[arg_n].ty;
-        alt aarg.mode {
+    for arg in arg_tys {
+        let id = args[arg_n].id;
+        let mutated = !ignore_mut && fcx.lcx.ccx.mut_map.contains_key(id);
+        alt arg.mode {
+          ast::mode_infer. {
+            bcx_ccx(bcx).sess.span_fatal(fcx.sp, "this");
+          }
           ast::by_move. {
-            add_clean(bcx, fcx.llargs.get(aarg.id), arg_ty);
+            add_clean(bcx, fcx.llargs.get(id), arg.ty);
           }
           ast::by_mut_ref. { }
-          _ {
-            let mutated =
-                !ignore_mut && fcx.lcx.ccx.mut_map.contains_key(aarg.id);
-
+          ast::by_val. {
+            let aval = fcx.llargs.get(id);
+            let {bcx: cx, val: alloc} = alloc_ty(bcx, arg.ty);
+            bcx = cx;
+            Store(bcx, aval, alloc);
+            if mutated {
+                bcx = take_ty(bcx, alloc, arg.ty);
+                add_clean(bcx, alloc, arg.ty);
+            }
+            fcx.llargs.insert(id, alloc);
+          }
+          ast::by_ref. {
             // Overwrite the llargs entry for locally mutated params
             // with a local alloca.
             if mutated {
-                let aptr = fcx.llargs.get(aarg.id);
-                let {bcx: bcx, val: alloc} = alloc_ty(bcx, arg_ty);
-                bcx =
-                    copy_val(bcx, INIT, alloc,
-                             load_if_immediate(bcx, aptr, arg_ty), arg_ty);
-                fcx.llargs.insert(aarg.id, alloc);
-                add_clean(bcx, alloc, arg_ty);
+                let aptr = fcx.llargs.get(id);
+                let {bcx: cx, val: alloc} = alloc_ty(bcx, arg.ty);
+                bcx = copy_val(cx, INIT, alloc,
+                               load_if_immediate(cx, aptr, arg.ty), arg.ty);
+                fcx.llargs.insert(id, alloc);
+                add_clean(bcx, alloc, arg.ty);
             }
           }
         }
@@ -5845,7 +5863,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     let i = arg_n;
     for arg: ty::arg in args {
         let llarg = llvm::LLVMGetParam(fcx.llfn, i);
-        if arg.mode == ast::by_ref || arg.mode == ast::by_val {
+        if arg.mode == ast::by_ref {
             llarg = load_if_immediate(bcx, llarg, arg.ty);
         }
         assert (llarg as int != 0);
