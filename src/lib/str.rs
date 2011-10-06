@@ -4,7 +4,8 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len, index,
        unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars,
        to_chars, char_len, char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
-       str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice;
+       str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
+       contains;
 
 native "rust" mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
@@ -252,6 +253,10 @@ fn find(haystack: str, needle: str) -> int {
         i += 1;
     }
     ret -1;
+}
+
+fn contains(haystack: str, needle: str) -> bool {
+    0 <= find(haystack, needle)
 }
 
 fn starts_with(haystack: str, needle: str) -> bool {
