@@ -227,7 +227,7 @@ mod test {
     #[test]
     fn test_prefix_rpath_abs() {
         let res = get_install_prefix_rpath("/usr/lib", "triple");
-        assert str::starts_with(res, "/");
+        assert fs::path_is_absolute(res);
     }
 
     #[test]
