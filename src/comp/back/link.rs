@@ -35,10 +35,12 @@ tag output_type {
 }
 
 fn llvm_err(sess: session::session, msg: str) {
-    let buf = llvm::LLVMRustGetLastError();
-    if buf == std::ptr::null() {
-        sess.fatal(msg);
-    } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
+    unsafe {
+        let buf = llvm::LLVMRustGetLastError();
+        if buf == std::ptr::null() {
+            sess.fatal(msg);
+        } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
+    }
 }
 
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
