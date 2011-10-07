@@ -4,8 +4,15 @@
 
 unsafe fn f() { ret; }
 
-fn main() {
+fn g() {
     unsafe {
         f();
     }
+}
+
+fn h() unsafe {
+    f();
+}
+
+fn main() {
 }

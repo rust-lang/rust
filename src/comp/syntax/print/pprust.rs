@@ -575,7 +575,7 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
     alt blk.node.rules {
       ast::unchecked_blk. { word(s.s, "unchecked"); }
       ast::unsafe_blk. { word(s.s, "unsafe"); }
-      ast::checked_blk. { }
+      ast::default_blk. { }
     }
 
     maybe_print_comment(s, blk.span.lo);
