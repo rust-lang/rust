@@ -428,11 +428,13 @@ fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
 
 // Returns the nth element of the given LLVM structure type.
 fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
-    let elt_count = llvm::LLVMCountStructElementTypes(llstructty);
-    assert (n < elt_count);
-    let elt_tys = std::vec::init_elt(T_nil(), elt_count);
-    llvm::LLVMGetStructElementTypes(llstructty, to_ptr(elt_tys));
-    ret llvm::LLVMGetElementType(elt_tys[n]);
+    unsafe {
+        let elt_count = llvm::LLVMCountStructElementTypes(llstructty);
+        assert (n < elt_count);
+        let elt_tys = std::vec::init_elt(T_nil(), elt_count);
+        llvm::LLVMGetStructElementTypes(llstructty, to_ptr(elt_tys));
+        ret llvm::LLVMGetElementType(elt_tys[n]);
+    }
 }
 
 fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
