@@ -8,3 +8,6 @@ unsafe fn g() {
     f();
 }
 
+fn main() {
+    ret;
+}
