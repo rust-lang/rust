@@ -1552,10 +1552,12 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
             ccx.tcx.sess.span_fatal
                 (sp, "safe function calls function marked unsafe");
           }
-          //some(ast::def_native_fn(_)) {
-          //  ccx.tcx.sess.span_fatal
-          //  (sp, "native functions can only be invoked from unsafe code");
-          //}
+          /* Temporarily disable until unsafe blocks parse!
+          some(ast::def_native_fn(_)) {
+            ccx.tcx.sess.span_fatal
+                (sp, "native functions can only be invoked from unsafe code");
+          }
+          */
           _ {
           }
         }

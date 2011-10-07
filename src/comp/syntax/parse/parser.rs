@@ -2165,7 +2165,8 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
         let proto = parse_fn_proto(p);
         ret some(parse_item_fn_or_iter(p, ast::pure_fn, proto, attrs,
                                        ast::il_normal));
-    } else if eat_word(p, "unsafe") {
+    } else if is_word(p, "unsafe") && p.look_ahead(1u) != token::LBRACE {
+        p.bump();
         expect_word(p, "fn");
         ret some(parse_item_fn_or_iter(p, ast::unsafe_fn, ast::proto_fn,
                                        attrs, ast::il_normal));
