@@ -251,6 +251,7 @@ fn family_has_type_params(fam_ch: u8) -> bool {
     ret alt fam_ch as char {
           'c' { false }
           'f' { true }
+          'u' { true }
           'p' { true }
           'F' { true }
           'y' { true }
