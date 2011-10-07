@@ -57,9 +57,18 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
     ret cx.copy_map;
 }
 
-fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], _sp: span,
-            _name: fn_ident, _id: ast::node_id, sc: scope, v: vt<scope>) {
+fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], sp: span,
+            _name: fn_ident, id: ast::node_id, sc: scope, v: vt<scope>) {
     visit::visit_fn_decl(f.decl, sc, v);
+    let args = ty::ty_fn_args(cx.tcx, ty::node_id_to_type(cx.tcx, id));
+    for arg in args {
+        if arg.mode == ast::by_val &&
+           ty::type_has_dynamic_size(cx.tcx, arg.ty) {
+            cx.tcx.sess.span_err
+                (sp, "can not pass a dynamically-sized type by value");
+        }
+    }
+
     let bs = alt f.proto {
       // Blocks need to obey any restrictions from the enclosing scope.
       ast::proto_block. | ast::proto_closure. { sc.bs }
