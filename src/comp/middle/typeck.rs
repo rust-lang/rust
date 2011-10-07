@@ -2090,13 +2090,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking
-        let fcx_for_block =
-            alt b.node.rules {
-              ast::unchecked_blk. { @{purity: ast::impure_fn with *fcx} }
-              ast::unsafe_blk. { @{purity: ast::unsafe_fn with *fcx} }
-              ast::checked_blk. { fcx }
-            };
-        bot = check_block(fcx_for_block, b);
+        bot = check_block(fcx, b);
         let typ =
             alt b.node.expr {
               some(expr) { expr_ty(tcx, expr) }
@@ -2553,7 +2547,12 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
     ret bot;
 }
 
-fn check_block(fcx: @fn_ctxt, blk: ast::blk) -> bool {
+fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
+    let fcx = alt blk.node.rules {
+      ast::unchecked_blk. { @{purity: ast::impure_fn with *fcx0} }
+      ast::unsafe_blk. { @{purity: ast::unsafe_fn with *fcx0} }
+      ast::default_blk. { fcx0 }
+    };
     let bot = false;
     let warned = false;
     for s: @ast::stmt in blk.node.stmts {

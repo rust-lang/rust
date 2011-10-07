@@ -174,7 +174,7 @@ type field_ = {mut: mutability, ident: ident, expr: @expr};
 
 type field = spanned<field_>;
 
-tag blk_check_mode { checked_blk; unchecked_blk; unsafe_blk; }
+tag blk_check_mode { default_blk; unchecked_blk; unsafe_blk; }
 
 tag expr_check_mode { claimed_expr; checked_expr; }
 

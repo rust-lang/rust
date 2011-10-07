@@ -828,7 +828,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
                       p.peek() == token::OROR {
             ret parse_fn_block_expr(p);
         } else {
-            let blk = parse_block_tail(p, lo, ast::checked_blk);
+            let blk = parse_block_tail(p, lo, ast::default_blk);
             ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
         }
     } else if eat_word(p, "if") {
@@ -873,7 +873,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
     } else if p.peek() == token::POUND_LBRACE {
         p.bump();
         let blk = ast::mac_embed_block(
-            parse_block_tail(p, lo, ast::checked_blk));
+            parse_block_tail(p, lo, ast::default_blk));
         ret mk_mac_expr(p, lo, p.get_hi_pos(), blk);
     } else if p.peek() == token::ELLIPSIS {
         p.bump();
@@ -1320,7 +1320,7 @@ fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let decl = parse_fn_block_decl(p);
-    let body = parse_block_tail(p, lo, ast::checked_blk);
+    let body = parse_block_tail(p, lo, ast::default_blk);
     let _fn = {decl: decl, proto: ast::proto_block, body: body};
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
 }
@@ -1684,12 +1684,14 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
 fn parse_block(p: parser) -> ast::blk {
     let lo = p.get_lo_pos();
     if eat_word(p, "unchecked") {
+        expect(p, token::LBRACE);
         be parse_block_tail(p, lo, ast::unchecked_blk);
     } else if eat_word(p, "unsafe") {
+        expect(p, token::LBRACE);
         be parse_block_tail(p, lo, ast::unsafe_blk);
     } else {
         expect(p, token::LBRACE);
-        be parse_block_tail(p, lo, ast::checked_blk);
+        be parse_block_tail(p, lo, ast::default_blk);
     }
 }
 
