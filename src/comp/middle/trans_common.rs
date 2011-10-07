@@ -264,11 +264,13 @@ tag cleanup {
 }
 
 fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups += [clean(bind drop_ty(_, val, ty))];
     scope_cx.lpad_dirty = true;
 }
 fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     fn spill_and_drop(cx: @block_ctxt, val: ValueRef, ty: ty::t) ->
        @block_ctxt {
         let bcx = cx;
@@ -283,6 +285,7 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     scope_cx.lpad_dirty = true;
 }
 fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
     scope_cx.lpad_dirty = true;
