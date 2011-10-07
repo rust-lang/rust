@@ -357,8 +357,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             // Temporarily set bindings. They'll be rewritten to PHI nodes for
             // the actual arm block.
             for each @{key: key, val: val} in data.id_map.items() {
-                bcx.fcx.lllocals.insert(val,
-                                        option::get(assoc(key, m[0].bound)));
+                let local = local_mem(option::get(assoc(key, m[0].bound)));
+                bcx.fcx.lllocals.insert(val, local);
             }
             let {bcx: guard_bcx, val: guard_val} =
                 trans::trans_temp_expr(guard_cx, e);
@@ -593,21 +593,23 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
         }
         if vec::len(vals) > 0u {
             let local = Phi(bcx, val_ty(vals[0]), vals, llbbs);
-            bcx.fcx.lllocals.insert(node_id, local);
+            bcx.fcx.lllocals.insert(node_id, local_mem(local));
         } else { success = false; }
     }
     if success {
         // Copy references that the alias analysis considered unsafe
         for each @{val: node_id, _} in ids.items() {
             if bcx_ccx(bcx).copy_map.contains_key(node_id) {
-                let local = bcx.fcx.lllocals.get(node_id);
+                let local = alt bcx.fcx.lllocals.get(node_id) {
+                  local_mem(x) { x }
+                };
                 let e_ty = ty::node_id_to_type(bcx_tcx(bcx), node_id);
                 let {bcx: abcx, val: alloc} = trans::alloc_ty(bcx, e_ty);
                 bcx = trans::copy_val(abcx, trans::INIT, alloc,
                                       load_if_immediate(abcx, local, e_ty),
                                       e_ty);
                 add_clean(bcx, alloc, e_ty);
-                bcx.fcx.lllocals.insert(node_id, alloc);
+                bcx.fcx.lllocals.insert(node_id, local_mem(alloc));
             }
         }
     } else {
@@ -668,7 +670,6 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
 
 // Not alt-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
-                        table: hashmap<ast::node_id, ValueRef>,
                         make_copy: bool) -> @block_ctxt {
     let ccx = bcx.fcx.lcx.ccx;
     alt pat.node {
@@ -684,9 +685,9 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             bcx =
                 trans::copy_val(bcx, trans::INIT, alloc,
                                 trans::load_if_immediate(bcx, val, ty), ty);
-            table.insert(pat.id, alloc);
+            bcx.fcx.lllocals.insert(pat.id, local_mem(alloc));
             trans_common::add_clean(bcx, alloc, ty);
-        } else { table.insert(pat.id, val); }
+        } else { bcx.fcx.lllocals.insert(pat.id, local_mem(val)); }
       }
       ast::pat_tag(_, sub) {
         if vec::len(sub) == 0u { ret bcx; }
@@ -694,7 +695,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let i = 0;
         for argval: ValueRef in args.vals {
-            bcx = bind_irrefutable_pat(bcx, sub[i], argval, table, make_copy);
+            bcx = bind_irrefutable_pat(bcx, sub[i], argval, make_copy);
             i += 1;
         }
       }
@@ -708,7 +709,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             // how to get rid of this check?
             check type_is_tup_like(bcx, rec_ty);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
-            bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, table, make_copy);
+            bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, make_copy);
         }
       }
       ast::pat_tup(elems) {
@@ -718,7 +719,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             // how to get rid of this check?
             check type_is_tup_like(bcx, tup_ty);
             let r = trans::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
-            bcx = bind_irrefutable_pat(r.bcx, elem, r.val, table, make_copy);
+            bcx = bind_irrefutable_pat(r.bcx, elem, r.val, make_copy);
             i += 1u;
         }
       }
@@ -727,11 +728,11 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         let unboxed =
             InBoundsGEP(bcx, box,
                         [C_int(0), C_int(back::abi::box_rc_field_body)]);
-        bcx = bind_irrefutable_pat(bcx, inner, unboxed, table, true);
+        bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
       }
       ast::pat_uniq(inner) {
         let val = Load(bcx, val);
-        bcx = bind_irrefutable_pat(bcx, inner, val, table, true);
+        bcx = bind_irrefutable_pat(bcx, inner, val, true);
       }
       ast::pat_wild. | ast::pat_lit(_) | ast::pat_range(_, _) { }
     }

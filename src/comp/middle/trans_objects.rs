@@ -180,7 +180,10 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         for f: ast::obj_field in ob.fields {
             alt bcx.fcx.llargs.find(f.id) {
               some(arg1) {
-                let arg = load_if_immediate(bcx, arg1, arg_tys[i].ty);
+                let arg = alt arg1 {
+                  local_mem(v) { load_if_immediate(bcx, v, arg_tys[i].ty) }
+                  local_imm(v) { v }
+                };
                 // TODO: can we just get fields_ty out of body_ty instead?
                 let fields_ty: ty::t = ty::mk_tup(ccx.tcx, obj_fields);
                 // Silly check

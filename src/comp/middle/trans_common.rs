@@ -135,6 +135,8 @@ type local_ctxt =
 // Types used for llself.
 type val_self_pair = {v: ValueRef, t: ty::t};
 
+tag local_val { local_mem(ValueRef); local_imm(ValueRef); }
+
 // Function context.  Every LLVM function we create will have one of
 // these.
 type fn_ctxt =
@@ -245,9 +247,9 @@ type fn_ctxt =
      mutable llself: option::t<val_self_pair>,
      mutable lliterbody: option::t<ValueRef>,
      mutable iterbodyty: option::t<ty::t>,
-     llargs: hashmap<ast::node_id, ValueRef>,
+     llargs: hashmap<ast::node_id, local_val>,
      llobjfields: hashmap<ast::node_id, ValueRef>,
-     lllocals: hashmap<ast::node_id, ValueRef>,
+     lllocals: hashmap<ast::node_id, local_val>,
      llupvars: hashmap<ast::node_id, ValueRef>,
      mutable lltydescs: [ValueRef],
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
