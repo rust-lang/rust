@@ -18,6 +18,9 @@ Page instfiles
 UninstPage uninstConfirm
 UninstPage instfiles
 
+Section
+    WriteUninstaller $INSTDIR\uninstall.exe
+SectionEnd
 
 Section "Compiler"
     SetOutPath $INSTDIR\bin
@@ -39,4 +42,25 @@ Section "Documentation"
     SetOutPath $INSTDIR\doc
     File /nonfatal /oname=rust.html doc\rust.html
     File /nonfatal /oname=rust.pdf  doc\rust.pdf
+SectionEnd
+
+Section "Uninstall"
+    Delete $INSTDIR\uninstall.exe
+    Delete $INSTDIR\bin\rustc.exe
+    Delete $INSTDIR\lib\rustllvm.dll
+    Delete $INSTDIR\lib\rustrt.dll
+    Delete $INSTDIR\lib\std.dll
+    Delete $INSTDIR\lib\rustc\i686-pc-mingw32\lib\rustrt.dll
+    Delete $INSTDIR\lib\rustc\i686-pc-mingw32\lib\std.dll
+    Delete $INSTDIR\lib\rustc\i686-pc-mingw32\lib\main.o
+    Delete $INSTDIR\lib\rustc\i686-pc-mingw32\lib\intrinsics.bc
+    Delete $INSTDIR\doc\rust.html
+    Delete $INSTDIR\doc\rust.pdf
+    RMDir $INSTDIR\bin
+    RMDir $INSTDIR\lib\rustc\i686-pc-mingw32\lib
+    RMDir $INSTDIR\lib\rustc\i686-pc-mingw32
+    RMDir $INSTDIR\lib\rustc
+    RMDir $INSTDIR\lib
+    RMDir $INSTDIR\doc
+    RMDir $INSTDIR
 SectionEnd
