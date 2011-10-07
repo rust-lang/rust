@@ -239,7 +239,8 @@ fn default_arg_mode_for_ty(tcx: ty::ctxt, m: ast::mode,
       _ { m }
     }
 }
-fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
+fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, &&ast_ty: @ast::ty)
+    -> ty::t {
     fn ast_arg_to_arg(tcx: ty::ctxt, getter: ty_getter, arg: ast::ty_arg)
         -> {mode: ty::mode, ty: ty::t} {
         let ty = ast_ty_to_ty(tcx, getter, arg.node.ty);
@@ -311,7 +312,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
         typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
       ast::ty_tup(fields) {
-        let flds = vec::map_imm(bind ast_ty_to_ty(tcx, getter, _), fields);
+        let flds = vec::map(bind ast_ty_to_ty(tcx, getter, _), fields);
         typ = ty::mk_tup(tcx, flds);
       }
       ast::ty_rec(fields) {
@@ -398,7 +399,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, ast_ty: @ast::ty) -> ty::t {
 
 // A convenience function to use a crate_ctxt to resolve names for
 // ast_ty_to_ty.
-fn ast_ty_to_ty_crate(ccx: @crate_ctxt, ast_ty: @ast::ty) -> ty::t {
+fn ast_ty_to_ty_crate(ccx: @crate_ctxt, &&ast_ty: @ast::ty) -> ty::t {
     fn getter(ccx: @crate_ctxt, id: ast::def_id) ->
        ty::ty_param_kinds_and_ty {
         ret ty::lookup_item_type(ccx.tcx, id);
@@ -408,7 +409,7 @@ fn ast_ty_to_ty_crate(ccx: @crate_ctxt, ast_ty: @ast::ty) -> ty::t {
 }
 
 // A wrapper around ast_ty_to_ty_crate that handles ty_infer.
-fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, ast_ty: @ast::ty) ->
+fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, &&ast_ty: @ast::ty) ->
    option::t<ty::t> {
     alt ast_ty.node {
       ast::ty_infer. { none }
@@ -417,7 +418,7 @@ fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, ast_ty: @ast::ty) ->
 }
 // A wrapper around ast_ty_to_ty_infer that generates a new type variable if
 // there isn't a fixed type.
-fn ast_ty_to_ty_crate_tyvar(fcx: @fn_ctxt, ast_ty: @ast::ty) -> ty::t {
+fn ast_ty_to_ty_crate_tyvar(fcx: @fn_ctxt, &&ast_ty: @ast::ty) -> ty::t {
     alt ast_ty_to_ty_crate_infer(fcx.ccx, ast_ty) {
       some(ty) { ty }
       none. { next_ty_var(fcx) }
@@ -515,7 +516,7 @@ mod collect {
         ret k;
     }
 
-    fn ty_of_fn_decl(cx: @ctxt, convert: fn(@ast::ty) -> ty::t,
+    fn ty_of_fn_decl(cx: @ctxt, convert: fn(&&@ast::ty) -> ty::t,
                      ty_of_arg: fn(ast::arg) -> arg, decl: ast::fn_decl,
                      proto: ast::proto, ty_params: [ast::ty_param],
                      def_id: option::t<ast::def_id>) ->
@@ -535,7 +536,7 @@ mod collect {
         alt def_id { some(did) { cx.tcx.tcache.insert(did, tpt); } _ { } }
         ret tpt;
     }
-    fn ty_of_native_fn_decl(cx: @ctxt, convert: fn(@ast::ty) -> ty::t,
+    fn ty_of_native_fn_decl(cx: @ctxt, convert: fn(&&@ast::ty) -> ty::t,
                             ty_of_arg: fn(ast::arg) -> arg,
                             decl: ast::fn_decl, abi: ast::native_abi,
                             ty_params: [ast::ty_param], def_id: ast::def_id)

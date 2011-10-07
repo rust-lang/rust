@@ -29,8 +29,8 @@ fn fold_mod(cfg: ast::crate_cfg, m: ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
     let filter = bind filter_item(cfg, _);
     let filtered_items = vec::filter_map(filter, m.items);
-    ret {view_items: vec::map_imm(fld.fold_view_item, m.view_items),
-         items: vec::map_imm(fld.fold_item, filtered_items)};
+    ret {view_items: vec::map(fld.fold_view_item, m.view_items),
+         items: vec::map(fld.fold_item, filtered_items)};
 }
 
 fn filter_native_item(cfg: ast::crate_cfg, &&item: @ast::native_item) ->
@@ -46,7 +46,7 @@ fn fold_native_mod(cfg: ast::crate_cfg, nm: ast::native_mod,
     let filtered_items = vec::filter_map(filter, nm.items);
     ret {native_name: nm.native_name,
          abi: nm.abi,
-         view_items: vec::map_imm(fld.fold_view_item, nm.view_items),
+         view_items: vec::map(fld.fold_view_item, nm.view_items),
          items: filtered_items};
 }
 
@@ -71,8 +71,8 @@ fn fold_block(cfg: ast::crate_cfg, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
     let filter = bind filter_stmt(cfg, _);
     let filtered_stmts = vec::filter_map(filter, b.stmts);
-    ret {stmts: vec::map_imm(fld.fold_stmt, filtered_stmts),
-         expr: option::map_imm(fld.fold_expr, b.expr),
+    ret {stmts: vec::map(fld.fold_stmt, filtered_stmts),
+         expr: option::map(fld.fold_expr, b.expr),
          id: b.id,
          rules: b.rules};
 }

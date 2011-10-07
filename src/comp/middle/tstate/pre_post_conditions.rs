@@ -96,13 +96,13 @@ fn find_pre_post_exprs(fcx: fn_ctxt, args: [@expr], id: node_id) {
     fn do_one(fcx: fn_ctxt, e: @expr) { find_pre_post_expr(fcx, e); }
     for e: @expr in args { do_one(fcx, e); }
 
-    fn get_pp(ccx: crate_ctxt, e: @expr) -> pre_and_post {
+    fn get_pp(ccx: crate_ctxt, &&e: @expr) -> pre_and_post {
         ret expr_pp(ccx, e);
     }
-    let pps = vec::map_imm(bind get_pp(fcx.ccx, _), args);
+    let pps = vec::map(bind get_pp(fcx.ccx, _), args);
 
     set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
-                     seq_postconds(fcx, vec::map_imm(get_post, pps)));
+                     seq_postconds(fcx, vec::map(get_post, pps)));
 }
 
 fn find_pre_post_loop(fcx: fn_ctxt, l: @local, index: @expr, body: blk,

@@ -9,11 +9,6 @@ fn get<@T>(opt: t<T>) -> &T {
 fn map<@T, @U>(f: block(T) -> U, opt: t<T>) -> t<U> {
     alt opt { some(x) { some(f(x)) } none. { none } }
 }
-// FIXME This is needed to make working with by-value functions a bit less
-// painful. We should come up with a better solution.
-fn map_imm<@T, @U>(f: block(+T) -> U, opt: t<T>) -> t<U> {
-    alt opt { some(x) { some(f(x)) } none. { none } }
-}
 
 fn is_none<@T>(opt: t<T>) -> bool {
     alt opt { none. { true } some(_) { false } }

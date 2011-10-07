@@ -82,7 +82,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 }
 
 
-fn fold_item(cx: test_ctxt, i: @ast::item, fld: fold::ast_fold) ->
+fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
    @ast::item {
 
     cx.path += [i.ident];

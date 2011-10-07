@@ -70,9 +70,9 @@ fn empty_ann(num_vars: uint) -> ts_ann {
           states: empty_states(num_vars)};
 }
 
-fn get_pre(p: pre_and_post) -> precond { ret p.precondition; }
+fn get_pre(&&p: pre_and_post) -> precond { ret p.precondition; }
 
-fn get_post(p: pre_and_post) -> postcond { ret p.postcondition; }
+fn get_post(&&p: pre_and_post) -> postcond { ret p.postcondition; }
 
 fn difference(p1: precond, p2: precond) -> bool {
     ret tritv_difference(p1, p2);
