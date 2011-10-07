@@ -15,7 +15,9 @@ native "rust" mod rustrt {
 
 /// Reserves space for `n` elements in the given vector.
 fn reserve<@T>(&v: [mutable? T], n: uint) {
-    rustrt::vec_reserve_shared(v, n);
+    //unsafe {
+        rustrt::vec_reserve_shared(v, n);
+    //}
 }
 
 pure fn len<T>(v: [mutable? T]) -> uint { unchecked { rusti::vec_len(v) } }
