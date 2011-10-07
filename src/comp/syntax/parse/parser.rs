@@ -678,40 +678,31 @@ fn parse_seq<@T>(bra: token::token, ket: token::token,
     ret spanned(lo, hi, result);
 }
 
+fn lit_from_token(p: parser, tok: token::token) -> ast::lit_ {
+    alt tok {
+      token::LIT_INT(i) { ast::lit_int(i) }
+      token::LIT_UINT(u) { ast::lit_uint(u) }
+      token::LIT_FLOAT(s) { ast::lit_float(p.get_str(s)) }
+      token::LIT_MACH_INT(tm, i) { ast::lit_mach_int(tm, i) }
+      token::LIT_MACH_FLOAT(tm, s) { ast::lit_mach_float(tm, p.get_str(s)) }
+      token::LIT_CHAR(c) { ast::lit_char(c) }
+      token::LIT_STR(s) { ast::lit_str(p.get_str(s)) }
+      token::LPAREN. { expect(p, token::RPAREN); ast::lit_nil }
+      _ { unexpected(p, tok); }
+    }
+}
 
 fn parse_lit(p: parser) -> ast::lit {
     let sp = p.get_span();
-    let lit: ast::lit_ = ast::lit_nil;
-    if eat_word(p, "true") {
-        lit = ast::lit_bool(true);
+    let lit = if eat_word(p, "true") {
+        ast::lit_bool(true)
     } else if eat_word(p, "false") {
-        lit = ast::lit_bool(false);
+        ast::lit_bool(false)
     } else {
-        alt p.peek() {
-          token::LIT_INT(i) { p.bump(); lit = ast::lit_int(i); }
-          token::LIT_UINT(u) { p.bump(); lit = ast::lit_uint(u); }
-          token::LIT_FLOAT(s) {
-            p.bump();
-            lit = ast::lit_float(p.get_str(s));
-          }
-          token::LIT_MACH_INT(tm, i) {
-            p.bump();
-            lit = ast::lit_mach_int(tm, i);
-          }
-          token::LIT_MACH_FLOAT(tm, s) {
-            p.bump();
-            lit = ast::lit_mach_float(tm, p.get_str(s));
-          }
-          token::LIT_CHAR(c) { p.bump(); lit = ast::lit_char(c); }
-          token::LIT_STR(s) { p.bump(); lit = ast::lit_str(p.get_str(s)); }
-          token::LPAREN. {
-            p.bump();
-            expect(p, token::RPAREN);
-            lit = ast::lit_nil;
-          }
-          t { unexpected(p, t); }
-        }
-    }
+        let tok = p.peek();
+        p.bump();
+        lit_from_token(p, tok)
+    };
     ret {node: lit, span: sp};
 }
 
@@ -1200,13 +1191,25 @@ fn parse_more_binops(p: parser, lhs: @ast::expr, min_prec: int) ->
    @ast::expr {
     if !expr_has_value(lhs) { ret lhs; }
     let peeked = p.peek();
+    let lit_after = alt lexer::maybe_untangle_minus_from_lit(p.get_reader(),
+                                                             peeked) {
+      some(tok) {
+        peeked = token::BINOP(token::MINUS);
+        let lit = @{node: lit_from_token(p, tok), span: p.get_span()};
+        some(mk_expr(p, p.get_lo_pos(), p.get_hi_pos(), ast::expr_lit(lit)))
+      }
+      none. { none }
+    };
     for cur: op_spec in *p.get_prec_table() {
         if cur.prec > min_prec && cur.tok == peeked {
             p.bump();
-            let rhs = parse_more_binops(p, parse_prefix_expr(p), cur.prec);
-            let bin =
-                mk_expr(p, lhs.span.lo, rhs.span.hi,
-                        ast::expr_binary(cur.op, lhs, rhs));
+            let expr = alt lit_after {
+              some(ex) { ex }
+              _ { parse_prefix_expr(p) }
+            };
+            let rhs = parse_more_binops(p, expr, cur.prec);
+            let bin = mk_expr(p, lhs.span.lo, rhs.span.hi,
+                              ast::expr_binary(cur.op, lhs, rhs));
             ret parse_more_binops(p, bin, min_prec);
         }
     }
