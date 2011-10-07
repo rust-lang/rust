@@ -256,7 +256,7 @@ fn unsafe_from_bytes() {
 }
 
 #[test]
-fn str_from_cstr() {
+unsafe fn str_from_cstr() {
     let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
     let b = vec::to_ptr(a);
     let c = str::str_from_cstr(b);
@@ -278,7 +278,7 @@ fn as_buf_small() {
 }
 
 #[test]
-fn as_buf2() {
+unsafe fn as_buf2() {
     let s = "hello";
     let sb = str::as_buf(s, {|b| b });
     let s_cstr = str::str_from_cstr(sb);
