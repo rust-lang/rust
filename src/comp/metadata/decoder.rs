@@ -280,6 +280,7 @@ fn item_family_to_str(fam: u8) -> str {
     alt fam as char {
       'c' { ret "const"; }
       'f' { ret "fn"; }
+      'u' { ret "unsafe fn"; }
       'p' { ret "pure fn"; }
       'F' { ret "native fn"; }
       'y' { ret "type"; }
