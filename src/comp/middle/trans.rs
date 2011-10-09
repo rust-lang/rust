@@ -2197,7 +2197,7 @@ fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
       }
       ast::neg. {
         let {bcx, val} = trans_temp_expr(bcx, e);
-        let neg = if ty::struct(bcx_tcx(bcx), e_ty) == ty::ty_float {
+        let neg = if ty::type_is_fp(bcx_tcx(bcx), e_ty) {
             FNeg(bcx, val)
         } else { Neg(bcx, val) };
         ret store_in_dest(bcx, neg, dest);
@@ -2287,14 +2287,10 @@ fn trans_eager_binop(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
                      lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t, dest: dest)
     -> @block_ctxt {
     if dest == ignore { ret cx; }
-    let is_float = false;
     let intype = lhs_t;
     if ty::type_is_bot(bcx_tcx(cx), intype) { intype = rhs_t; }
+    let is_float = ty::type_is_fp(bcx_tcx(cx), intype);
 
-    alt ty::struct(bcx_tcx(cx), intype) {
-      ty::ty_float. { is_float = true; }
-      _ { is_float = false; }
-    }
     if op == ast::add && ty::type_is_sequence(bcx_tcx(cx), intype) {
         ret tvec::trans_add(cx, intype, lhs, rhs, dest);
     }
