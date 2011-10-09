@@ -131,7 +131,7 @@ fn worker(p: port<request>) {
         let spawnproc =
             bind run::spawn_process(execparms.prog, execparms.args,
                                     pipe_in.in, pipe_out.out, pipe_err.out);
-        let pid = maybe_with_lib_path(execparms.lib_path, spawnproc);
+        let pid = with_lib_path(execparms.lib_path, spawnproc);
 
         os::libc::close(pipe_in.in);
         os::libc::close(pipe_out.out);
@@ -149,18 +149,6 @@ fn worker(p: port<request>) {
               outfd: pipe_out.in,
               errfd: pipe_err.in});
     }
-}
-
-// Only windows needs to set the library path
-#[cfg(target_os = "win32")]
-fn maybe_with_lib_path<@T>(path: str, f: fn() -> T) -> T {
-    with_lib_path(path, f)
-}
-
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-fn maybe_with_lib_path<@T>(_path: str, f: fn() -> T) -> T {
-    f()
 }
 
 fn with_lib_path<@T>(path: str, f: fn() -> T) -> T {

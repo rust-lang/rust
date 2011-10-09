@@ -310,14 +310,6 @@ fn program_output(cx: cx, testfile: str, lib_path: str, prog: str,
          cmdline: cmdline};
 }
 
-// Linux and mac don't require adjusting the library search path
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-fn make_cmdline(_libpath: str, prog: str, args: [str]) -> str {
-    #fmt["%s %s", prog, str::connect(args, " ")]
-}
-
-#[cfg(target_os = "win32")]
 fn make_cmdline(libpath: str, prog: str, args: [str]) -> str {
     #fmt["%s %s %s", lib_path_cmd_prefix(libpath), prog,
          str::connect(args, " ")]
