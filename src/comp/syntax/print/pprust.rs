@@ -1643,6 +1643,7 @@ fn proto_to_str(p: ast::proto) -> str {
           ast::proto_iter. { "iter" }
           ast::proto_block. { "block" }
           ast::proto_closure. { "lambda" }
+          ast::proto_bare. { "fn#" }
         };
 }
 

@@ -2129,7 +2129,7 @@ fn parse_auth(p: parser) -> ast::_auth {
 fn parse_fn_proto(p: parser) -> ast::proto {
     if p.peek() == token::POUND {
         p.bump();
-        ast::proto_fn
+        ast::proto_bare
     } else {
         ast::proto_fn
     }

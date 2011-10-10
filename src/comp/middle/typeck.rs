@@ -478,7 +478,7 @@ mod write {
 // has iter type and block has block type. This may end up changing.
 fn proto_to_ty_proto(proto: ast::proto) -> ast::proto {
     ret alt proto {
-          ast::proto_iter. | ast::proto_block. { proto }
+          ast::proto_iter. | ast::proto_block. | ast::proto_bare. { proto }
           _ { ast::proto_fn }
         };
 }
