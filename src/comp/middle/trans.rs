@@ -98,7 +98,16 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
     // Arg 2: Env (closure-bindings / self-obj)
     if is_method {
         atys += [T_ptr(cx.rust_object_type)];
-    } else { atys += [T_opaque_closure_ptr(*cx)]; }
+    } else {
+        alt proto {
+          ast::proto_bare. {
+            // Bare functions have no environment
+          }
+          _ {
+            atys += [T_opaque_closure_ptr(*cx)];
+          }
+        }
+    }
 
     // Args >3: ty params, if not acquired via capture...
     if !is_method {
@@ -3559,7 +3568,15 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     }
 
     // Set up the three implicit arguments to the thunk.
-    let llargs: [ValueRef] = [llretptr, fcx.lltaskptr, lltargetenv];
+    let llargs: [ValueRef] = alt ty::ty_fn_proto(ccx.tcx, outgoing_fty) {
+      ast::proto_bare. {
+        // Bare functions don't take an environment
+        [llretptr, fcx.lltaskptr]
+      }
+      _ {
+        [llretptr, fcx.lltaskptr, lltargetenv]
+      }
+    };
 
     // Copy in the type parameters.
     let i: uint = 0u;
@@ -3845,7 +3862,12 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
     llargs += [bcx.fcx.lltaskptr];
 
     // Arg 2: Env (closure-bindings / self-obj)
-    llargs += [llenv];
+    alt ty::ty_fn_proto(tcx, fn_ty) {
+      ast::proto_bare. { }
+      _ {
+        llargs += [llenv];
+      }
+    }
 
     // Args >3: ty_params ...
     llargs += lltydescs;
@@ -5098,6 +5120,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
                     id: ast::node_id, rstyle: ast::ret_style)
     -> @fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
+    // FIXME: llenv is not correct for bare functions
     ret @{llfn: llfndecl,
           lltaskptr: llvm::LLVMGetParam(llfndecl, 1u),
           llenv: llvm::LLVMGetParam(llfndecl, 2u),
@@ -5128,6 +5151,13 @@ fn new_fn_ctxt(cx: @local_ctxt, sp: span, llfndecl: ValueRef) -> @fn_ctxt {
     ret new_fn_ctxt_w_id(cx, sp, llfndecl, -1, ast::return_val);
 }
 
+fn implicit_args_for_fn(proto: ast::proto) -> uint {
+    alt proto {
+      ast::proto_bare. { 2u }
+      _ { 3u }
+    }
+}
+
 // NB: must keep 4 fns in sync:
 //
 //  - type_of_fn
@@ -5145,10 +5175,8 @@ fn new_fn_ctxt(cx: @local_ctxt, sp: span, llfndecl: ValueRef) -> @fn_ctxt {
 fn create_llargs_for_fn_args(cx: @fn_ctxt, proto: ast::proto,
                              ty_self: option::t<ty::t>, ret_ty: ty::t,
                              args: [ast::arg], ty_params: [ast::ty_param]) {
-    // Skip the implicit arguments 0, 1, and 2.  TODO: Pull out 3u and define
-    // it as a constant, since we're using it in several places in trans this
-    // way.
-    let arg_n = 3u;
+    // Skip the implicit arguments
+    let arg_n = implicit_args_for_fn(proto);
     alt ty_self {
       some(tt) { cx.llself = some::<val_self_pair>({v: cx.llenv, t: tt}); }
       none. {
