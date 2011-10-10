@@ -105,10 +105,9 @@ ifdef CFG_UNIXY
   CFG_PATH_MUNGE := true
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=
-  CFG_RUN=$(CFG_LDENV)=$(1) $(2)
-  CFG_RUN_TARG=$(call CFG_RUN,$(CFG_BUILD_DIR)/$(HOST_LIB$(1)),$(2))
-  CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1)),\
-      $(CFG_VALGRIND) $(1))
+  CFG_RUN=$(2)
+  CFG_RUN_TARG=$(call CFG_RUN,,$(2))
+  CFG_RUN_TEST=$(call CFG_RUN,,$(CFG_VALGRIND) $(1))
   CFG_LIBUV_LINK_FLAGS=-lpthread
 
   ifdef CFG_ENABLE_MINGW_CROSS

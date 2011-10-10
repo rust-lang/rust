@@ -6,7 +6,7 @@ fn fix<A, ~B>(f: fn(fn(A) -> B, A) -> B) -> fn(A) -> B {
     ret bind fix_help(f, _);
 }
 
-fn fact_(f: fn(int) -> int, n: int) -> int {
+fn fact_(f: fn(&&int) -> int, &&n: int) -> int {
     // fun fact 0 = 1
     ret if n == 0 { 1 } else { n * f(n - 1) };
 }

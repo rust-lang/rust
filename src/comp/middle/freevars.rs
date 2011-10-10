@@ -29,10 +29,10 @@ fn collect_freevars(def_map: resolve::def_map, walker: fn(visit::vt<int>)) ->
     let seen = new_int_hash();
     let refs = @mutable [];
 
-    fn ignore_item(_i: @ast::item, _depth: int, _v: visit::vt<int>) { }
+    fn ignore_item(_i: @ast::item, &&_depth: int, _v: visit::vt<int>) { }
 
     let walk_expr =
-        lambda (expr: @ast::expr, depth: int, v: visit::vt<int>) {
+        lambda (expr: @ast::expr, &&depth: int, v: visit::vt<int>) {
             alt expr.node {
               ast::expr_fn(f) {
                 if f.proto == ast::proto_block ||

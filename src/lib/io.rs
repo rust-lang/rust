@@ -175,14 +175,11 @@ fn stdin() -> reader {
 }
 
 fn file_reader(path: str) -> reader {
-    let f =
-        str::as_buf(path,
-                    {|pathbuf|
-                        str::as_buf("r",
-                                    {|modebuf|
-                                        os::libc::fopen(pathbuf, modebuf)
-                                    })
-                    });
+    let f = str::as_buf(path, {|pathbuf|
+        str::as_buf("r", {|modebuf|
+            os::libc::fopen(pathbuf, modebuf)
+        })
+    });
     if f as uint == 0u { log_err "error opening " + path; fail; }
     ret new_reader(FILE_buf_reader(f, option::some(@FILE_res(f))));
 }

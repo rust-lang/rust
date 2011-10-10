@@ -199,14 +199,14 @@ fn new_str_hash<@V>() -> hashmap<str, V> {
 }
 
 fn new_int_hash<@V>() -> hashmap<int, V> {
-    fn hash_int(x: int) -> uint { ret x as uint; }
-    fn eq_int(a: int, b: int) -> bool { ret a == b; }
+    fn hash_int(&&x: int) -> uint { ret x as uint; }
+    fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
     ret mk_hashmap(hash_int, eq_int);
 }
 
 fn new_uint_hash<@V>() -> hashmap<uint, V> {
-    fn hash_uint(x: uint) -> uint { ret x; }
-    fn eq_uint(a: uint, b: uint) -> bool { ret a == b; }
+    fn hash_uint(&&x: uint) -> uint { ret x; }
+    fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
     ret mk_hashmap(hash_uint, eq_uint);
 }
 

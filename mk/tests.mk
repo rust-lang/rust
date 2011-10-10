@@ -84,8 +84,16 @@ tidy:
 	$(Q)echo \
 	  $(filter-out $(GENERATED) $(addprefix $(S)src/, $(GENERATED)) \
 	    $(addprefix $(S)src/, $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS) \
-	      $(RUSTLLVM_HDR) $(PKG_3RDPARTY)) \
-	    $(S)src/etc/%, $(PKG_FILES)) \
+	      $(RUSTLLVM_HDR) $(PKG_3RDPARTY) \
+              $(RUNTIME_CS) $(RUNTIME_HDR) $(RUNTIME_S)) \
+            $(S)src/etc/%,  \
+            $(COMPILER_CRATE) \
+            $(COMPILER_INPUTS) \
+            $(STDLIB_CRATE) \
+            $(STDLIB_INPUTS) \
+            $(COMPILETEST_CRATE) \
+            $(COMPILETEST_INPUTS) \
+            $(ALL_TEST_INPUTS)) \
 	  | xargs -n 10 python $(S)src/etc/tidy.py
 
 

@@ -276,7 +276,7 @@ fn make_run_args(config: config, _props: test_props, testfile: str) ->
 
 fn split_maybe_args(argstr: option::t<str>) -> [str] {
     fn rm_whitespace(v: [str]) -> [str] {
-        fn flt(s: str) -> option::t<str> {
+        fn flt(&&s: str) -> option::t<str> {
             if !is_whitespace(s) { option::some(s) } else { option::none }
         }
 
@@ -310,6 +310,14 @@ fn program_output(cx: cx, testfile: str, lib_path: str, prog: str,
          cmdline: cmdline};
 }
 
+// Linux and mac don't require adjusting the library search path
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+fn make_cmdline(_libpath: str, prog: str, args: [str]) -> str {
+    #fmt["%s %s", prog, str::connect(args, " ")]
+}
+
+#[cfg(target_os = "win32")]
 fn make_cmdline(libpath: str, prog: str, args: [str]) -> str {
     #fmt["%s %s %s", lib_path_cmd_prefix(libpath), prog,
          str::connect(args, " ")]

@@ -135,6 +135,8 @@ type local_ctxt =
 // Types used for llself.
 type val_self_pair = {v: ValueRef, t: ty::t};
 
+tag local_val { local_mem(ValueRef); local_imm(ValueRef); }
+
 // Function context.  Every LLVM function we create will have one of
 // these.
 type fn_ctxt =
@@ -245,9 +247,9 @@ type fn_ctxt =
      mutable llself: option::t<val_self_pair>,
      mutable lliterbody: option::t<ValueRef>,
      mutable iterbodyty: option::t<ty::t>,
-     llargs: hashmap<ast::node_id, ValueRef>,
+     llargs: hashmap<ast::node_id, local_val>,
      llobjfields: hashmap<ast::node_id, ValueRef>,
-     lllocals: hashmap<ast::node_id, ValueRef>,
+     lllocals: hashmap<ast::node_id, local_val>,
      llupvars: hashmap<ast::node_id, ValueRef>,
      mutable lltydescs: [ValueRef],
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
@@ -262,25 +264,28 @@ tag cleanup {
 }
 
 fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups += [clean(bind drop_ty(_, val, ty))];
     scope_cx.lpad_dirty = true;
 }
 fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
-    fn spill_and_drop(cx: @block_ctxt, val: ValueRef, ty: ty::t) ->
+    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
+    fn do_drop(bcx: @block_ctxt, val: ValueRef, ty: ty::t) ->
        @block_ctxt {
-        let bcx = cx;
-        let r = trans::spill_if_immediate(bcx, val, ty);
-        let spilled = r.val;
-        bcx = r.bcx;
-        ret drop_ty(bcx, spilled, ty);
+        if ty::type_is_immediate(bcx_tcx(bcx), ty) {
+            ret trans::drop_ty_immediate(bcx, val, ty);
+        } else {
+            ret drop_ty(bcx, val, ty);
+        }
     }
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups +=
-        [clean_temp(val, bind spill_and_drop(_, val, ty))];
+        [clean_temp(val, bind do_drop(_, val, ty))];
     scope_cx.lpad_dirty = true;
 }
 fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
     scope_cx.lpad_dirty = true;
@@ -444,14 +449,14 @@ fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
 // Accessors
 // TODO: When we have overloading, simplify these names!
 
-pure fn bcx_tcx(bcx: @block_ctxt) -> ty::ctxt { bcx.fcx.lcx.ccx.tcx }
-pure fn bcx_ccx(bcx: @block_ctxt) -> @crate_ctxt { bcx.fcx.lcx.ccx }
-pure fn bcx_lcx(bcx: @block_ctxt) -> @local_ctxt { bcx.fcx.lcx }
-pure fn bcx_fcx(bcx: @block_ctxt) -> @fn_ctxt { bcx.fcx }
-pure fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { fcx.lcx.ccx }
-pure fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { fcx.lcx.ccx.tcx }
-pure fn lcx_ccx(lcx: @local_ctxt) -> @crate_ctxt { lcx.ccx }
-pure fn ccx_tcx(ccx: @crate_ctxt) -> ty::ctxt { ccx.tcx }
+pure fn bcx_tcx(bcx: @block_ctxt) -> &ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
+pure fn bcx_ccx(bcx: @block_ctxt) -> &@crate_ctxt { ret bcx.fcx.lcx.ccx; }
+pure fn bcx_lcx(bcx: @block_ctxt) -> &@local_ctxt { ret bcx.fcx.lcx; }
+pure fn bcx_fcx(bcx: @block_ctxt) -> &@fn_ctxt { ret bcx.fcx; }
+pure fn fcx_ccx(fcx: @fn_ctxt) -> &@crate_ctxt { ret fcx.lcx.ccx; }
+pure fn fcx_tcx(fcx: @fn_ctxt) -> &ty::ctxt { ret fcx.lcx.ccx.tcx; }
+pure fn lcx_ccx(lcx: @local_ctxt) -> &@crate_ctxt { ret lcx.ccx; }
+pure fn ccx_tcx(ccx: @crate_ctxt) -> &ty::ctxt { ret ccx.tcx; }
 
 // LLVM type constructors.
 fn T_void() -> TypeRef {

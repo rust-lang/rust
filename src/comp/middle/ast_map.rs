@@ -76,7 +76,7 @@ fn map_expr(cx: ctx, ex: @expr) {
 }
 
 fn new_smallintmap_int_adapter<@V>() -> std::map::hashmap<int, V> {
-    let key_idx = fn (key: int) -> uint { key as uint };
+    let key_idx = fn (&&key: int) -> uint { key as uint };
     let idx_key = fn (idx: uint) -> int { idx as int };
     ret new_smallintmap_adapter(key_idx, idx_key);
 }

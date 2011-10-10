@@ -42,12 +42,20 @@ RUNTIME_S := rt/arch/i386/_context.S \
 
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \
+               rt/rust_abi.h \
+               rt/rust_cc.h \
+               rt/rust_debug.h \
+               rt/rust_gc.h \
                rt/rust_internal.h \
                rt/rust_util.h \
                rt/rust_chan.h \
                rt/rust_env.h \
+               rt/rust_obstack.h \
+               rt/rust_unwind.h \
+               rt/rust_upcall.h \
                rt/rust_port.h \
                rt/rust_scheduler.h \
+               rt/rust_shape.h \
                rt/rust_task.h \
                rt/rust_task_list.h \
                rt/rust_log.h \

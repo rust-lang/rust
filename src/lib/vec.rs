@@ -5,7 +5,7 @@ import uint::next_power_of_two;
 import ptr::addr_of;
 
 native "rust-intrinsic" mod rusti {
-    fn vec_len<T>(v: [T]) -> uint;
+    fn vec_len<T>(&&v: [T]) -> uint;
 }
 
 native "rust" mod rustrt {

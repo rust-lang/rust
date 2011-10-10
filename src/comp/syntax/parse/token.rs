@@ -3,7 +3,8 @@ import ast::ty_mach;
 import ast_util::ty_mach_to_str;
 import std::map::new_str_hash;
 import util::interner;
-import std::{int, uint, str};
+import std::{int, uint, str, option};
+import option::{some, none};
 
 type str_num = uint;
 
@@ -211,6 +212,7 @@ pure fn can_begin_expr(t: token) -> bool {
       _ { false }
     }
 }
+
 // Local Variables:
 // fill-column: 78;
 // indent-tabs-mode: nil

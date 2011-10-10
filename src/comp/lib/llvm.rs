@@ -909,9 +909,9 @@ obj type_names(type_names: std::map::hashmap<TypeRef, str>,
 fn mk_type_names() -> type_names {
     let nt = std::map::new_str_hash::<TypeRef>();
 
-    fn hash(t: TypeRef) -> uint { ret t as uint; }
+    fn hash(&&t: TypeRef) -> uint { ret t as uint; }
 
-    fn eq(a: TypeRef, b: TypeRef) -> bool { ret a as uint == b as uint; }
+    fn eq(&&a: TypeRef, &&b: TypeRef) -> bool { ret a as uint == b as uint; }
 
     let hasher: std::map::hashfn<TypeRef> = hash;
     let eqer: std::map::eqfn<TypeRef> = eq;

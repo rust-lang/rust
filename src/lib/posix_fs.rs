@@ -1,6 +1,6 @@
 
 native "rust" mod rustrt {
-    fn rust_list_files(path: str) -> [str];
+    fn rust_list_files(&&path: str) -> [str];
 }
 
 fn list_dir(path: str) -> [str] {

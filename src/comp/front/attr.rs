@@ -57,7 +57,7 @@ fn get_attr_name(attr: ast::attribute) -> ast::ident {
 fn find_meta_items_by_name(metas: [@ast::meta_item], name: ast::ident) ->
    [@ast::meta_item] {
     let filter =
-        bind fn (m: @ast::meta_item, name: ast::ident) ->
+        bind fn (&&m: @ast::meta_item, name: ast::ident) ->
                 option::t<@ast::meta_item> {
                  if get_meta_item_name(m) == name {
                      option::some(m)
@@ -134,7 +134,7 @@ fn contains_name(metas: [@ast::meta_item], name: ast::ident) -> bool {
 
 // FIXME: This needs to sort by meta_item variant in addition to the item name
 fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
-    fn lteq(ma: @ast::meta_item, mb: @ast::meta_item) -> bool {
+    fn lteq(&&ma: @ast::meta_item, &&mb: @ast::meta_item) -> bool {
         fn key(m: @ast::meta_item) -> ast::ident {
             alt m.node {
               ast::meta_word(name) { name }
@@ -160,7 +160,7 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
    [@ast::meta_item] {
 
     let filter =
-        bind fn (item: @ast::meta_item, name: str) ->
+        bind fn (&&item: @ast::meta_item, name: str) ->
                 option::t<@ast::meta_item> {
                  if get_meta_item_name(item) != name {
                      option::some(item)

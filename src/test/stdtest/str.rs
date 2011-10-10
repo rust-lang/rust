@@ -304,3 +304,14 @@ fn vec_str_conversions() {
         i += 1u;
     }
 }
+
+#[test]
+fn contains() {
+    assert str::contains("abcde", "bcd");
+    assert str::contains("abcde", "abcd");
+    assert str::contains("abcde", "bcde");
+    assert str::contains("abcde", "");
+    assert str::contains("", "");
+    assert !str::contains("abcde", "def");
+    assert !str::contains("", "a");
+}

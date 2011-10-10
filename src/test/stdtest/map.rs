@@ -11,7 +11,7 @@ import std::option;
 #[test]
 fn test_simple() {
     log "*** starting test_simple";
-    fn eq_uint(x: uint, y: uint) -> bool { ret x == y; }
+    fn eq_uint(&&x: uint, &&y: uint) -> bool { ret x == y; }
     let hasher_uint: map::hashfn<uint> = util::id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
     let hasher_str: map::hashfn<str> = str::hash;
@@ -83,7 +83,7 @@ fn test_simple() {
 fn test_growth() {
     log "*** starting test_growth";
     let num_to_insert: uint = 64u;
-    fn eq_uint(x: uint, y: uint) -> bool { ret x == y; }
+    fn eq_uint(&&x: uint, &&y: uint) -> bool { ret x == y; }
     log "uint -> uint";
     let hasher_uint: map::hashfn<uint> = util::id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
@@ -157,8 +157,8 @@ fn test_growth() {
 fn test_removal() {
     log "*** starting test_removal";
     let num_to_insert: uint = 64u;
-    fn eq(x: uint, y: uint) -> bool { ret x == y; }
-    fn hash(u: uint) -> uint {
+    fn eq(&&x: uint, &&y: uint) -> bool { ret x == y; }
+    fn hash(&&u: uint) -> uint {
         // This hash function intentionally causes collisions between
         // consecutive integer pairs.
 

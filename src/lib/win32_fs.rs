@@ -1,8 +1,8 @@
 
 
 native "rust" mod rustrt {
-    fn rust_list_files(path: str) -> [str];
-    fn rust_file_is_dir(path: str) -> int;
+    fn rust_list_files(&&path: str) -> [str];
+    fn rust_file_is_dir(&&path: str) -> int;
 }
 
 fn list_dir(path: str) -> [str] {

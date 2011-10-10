@@ -45,16 +45,16 @@ clean-misc:
 define CLEAN_STAGE_N
 
 clean$(1):
-	$(Q)rm -f $$(HOST_BIN$(1))/rustc
-	$(Q)rm -f $$(HOST_BIN$(1))/fuzzer
+	$(Q)rm -f $$(HOST_BIN$(1))/rustc$(X)
+	$(Q)rm -f $$(HOST_BIN$(1))/fuzzer$(X)
 	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_STDLIB)
 	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(HOST_LIB$(1))/libstd.rlib
 
 clean$(1)$(2):
-	$(Q)rm -f $$(TARGET_BIN$(1)$(2))/rustc
-	$(Q)rm -f $$(TARGET_BIN$(1)$(2))/fuzzer
+	$(Q)rm -f $$(TARGET_BIN$(1)$(2))/rustc$(X)
+	$(Q)rm -f $$(TARGET_BIN$(1)$(2))/fuzzer$(X)
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_STDLIB)
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_RUSTLLVM)

@@ -41,7 +41,8 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
     // we're creating.
     let fn_args: [ast::arg] = [];
     for f: ast::obj_field in ob.fields {
-        fn_args += [{mode: ast::by_ref, ty: f.ty, ident: f.ident, id: f.id}];
+        fn_args += [{mode: ast::by_ref, ty: f.ty, ident: f.ident,
+                     id: f.id}];
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
 
@@ -179,7 +180,10 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         for f: ast::obj_field in ob.fields {
             alt bcx.fcx.llargs.find(f.id) {
               some(arg1) {
-                let arg = load_if_immediate(bcx, arg1, arg_tys[i].ty);
+                let arg = alt arg1 {
+                  local_mem(v) { load_if_immediate(bcx, v, arg_tys[i].ty) }
+                  local_imm(v) { v }
+                };
                 // TODO: can we just get fields_ty out of body_ty instead?
                 let fields_ty: ty::t = ty::mk_tup(ccx.tcx, obj_fields);
                 // Silly check
@@ -397,7 +401,7 @@ tag vtbl_mthd {
 }
 
 // Alphabetize ast::methods by ident.  A helper for create_vtbl.
-fn ast_mthd_lteq(a: @ast::method, b: @ast::method) -> bool {
+fn ast_mthd_lteq(&&a: @ast::method, &&b: @ast::method) -> bool {
     ret str::lteq(a.node.ident, b.node.ident);
 }
 

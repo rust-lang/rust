@@ -17,7 +17,7 @@ fn test_from_vec() {
 #[test]
 fn test_foldl() {
     let l = from_vec([0, 1, 2, 3, 4]);
-    fn add(a: int, b: uint) -> uint { ret (a as uint) + b; }
+    fn add(&&a: int, &&b: uint) -> uint { ret (a as uint) + b; }
     let rs = list::foldl(l, 0u, add);
     assert (rs == 10u);
 }
@@ -25,7 +25,7 @@ fn test_foldl() {
 #[test]
 fn test_find_success() {
     let l = from_vec([0, 1, 2]);
-    fn match(i: int) -> option::t<int> {
+    fn match(&&i: int) -> option::t<int> {
         ret if i == 2 { option::some(i) } else { option::none::<int> };
     }
     let rs = list::find(l, match);
@@ -35,7 +35,7 @@ fn test_find_success() {
 #[test]
 fn test_find_fail() {
     let l = from_vec([0, 1, 2]);
-    fn match(_i: int) -> option::t<int> { ret option::none::<int>; }
+    fn match(&&_i: int) -> option::t<int> { ret option::none::<int>; }
     let rs = list::find(l, match);
     assert (rs == option::none::<int>);
 }

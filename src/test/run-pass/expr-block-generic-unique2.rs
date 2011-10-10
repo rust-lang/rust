@@ -10,7 +10,7 @@ fn test_generic<@T>(expected: T, eq: compare<T>) {
 }
 
 fn test_vec() {
-    fn compare_vec(v1: ~int, v2: ~int) -> bool { ret v1 == v2; }
+    fn compare_vec(&&v1: ~int, &&v2: ~int) -> bool { ret v1 == v2; }
     let eq = bind compare_vec(_, _);
     test_generic::<~int>(~1, eq);
 }

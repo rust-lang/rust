@@ -11,7 +11,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
     tcx.sess.abort_if_errors();
 }
 
-fn check_expr(tcx: ty::ctxt, ex: @expr, s: (), v: visit::vt<()>) {
+fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     alt ex.node { expr_alt(_, arms) { check_arms(tcx, arms); } _ { } }
 }
@@ -123,7 +123,7 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
     }
 }
 
-fn check_local(tcx: ty::ctxt, loc: @local, s: (), v: visit::vt<()>) {
+fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
     visit::visit_local(loc, s, v);
     if is_refutable(tcx, loc.node.pat) {
         tcx.sess.span_err(loc.node.pat.span,

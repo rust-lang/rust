@@ -56,7 +56,7 @@ fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     // the one we're going to add.  FIXME: This is sloppy. Instead we should
     // have some mechanism to indicate to the translation pass which function
     // we want to be main.
-    fn nomain(item: @ast::item) -> option::t<@ast::item> {
+    fn nomain(&&item: @ast::item) -> option::t<@ast::item> {
         alt item.node {
           ast::item_fn(f, _) {
             if item.ident == "main" {
@@ -82,7 +82,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 }
 
 
-fn fold_item(cx: test_ctxt, i: @ast::item, fld: fold::ast_fold) ->
+fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
    @ast::item {
 
     cx.path += [i.ident];
@@ -284,7 +284,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
 
     let args_arg: ast::arg =
-        {mode: ast::by_ref,
+        {mode: ast::by_val,
          ty: @args_ty,
          ident: "args",
          id: cx.next_node_id()};
