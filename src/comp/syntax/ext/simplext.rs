@@ -245,7 +245,7 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: option::t<arb_depth<matchable>>,
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 iter free_vars(b: bindings, e: @expr) -> ident {
     let idents: hashmap<ident, ()> = new_str_hash::<()>();
-    fn mark_ident(i: ident, _fld: ast_fold, b: bindings,
+    fn mark_ident(&&i: ident, _fld: ast_fold, b: bindings,
                   idents: hashmap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }
         ret i;
@@ -325,7 +325,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 
 // substitute, in a position that's required to be an ident
 fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
-                    i: ident, _fld: ast_fold) -> ident {
+                    &&i: ident, _fld: ast_fold) -> ident {
     ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
           some(m) { match_error(cx, m, "an identifier") }

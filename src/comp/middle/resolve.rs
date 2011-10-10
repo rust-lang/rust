@@ -1400,7 +1400,7 @@ fn add_name(ch: checker, sp: span, name: ident) {
     ch.seen += [name];
 }
 
-fn ident_id(i: ident) -> ident { ret i; }
+fn ident_id(&&i: ident) -> ident { ret i; }
 
 fn ensure_unique<T>(e: env, sp: span, elts: [T], id: fn(T) -> ident,
                     kind: str) {

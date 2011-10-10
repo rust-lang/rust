@@ -425,7 +425,7 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: [@[entry<T>]],
     ebml::end_tag(ebml_w);
 }
 
-fn write_str(writer: io::writer, s: str) { writer.write_str(s); }
+fn write_str(writer: io::writer, &&s: str) { writer.write_str(s); }
 
 fn write_int(writer: io::writer, &&n: int) {
     writer.write_be_uint(n as uint, 4u);

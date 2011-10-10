@@ -5633,7 +5633,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
                    takes_argv: bool) -> ValueRef {
         let unit_ty = ty::mk_str(ccx.tcx);
         let vecarg_ty: ty::arg =
-            {mode: ast::by_ref,
+            {mode: ast::by_val,
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
         // FIXME: mk_nil should have a postcondition
         let nt = ty::mk_nil(ccx.tcx);
@@ -5653,14 +5653,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
         let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
         let args = [lloutputarg, lltaskarg, llenvarg];
-        if takes_argv {
-            let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
-            // The runtime still passes the arg vector by value, this kludge
-            // makes sure it becomes a pointer (to a pointer to a vec).
-            let minus_ptr = llvm::LLVMGetElementType(val_ty(llargvarg));
-            llargvarg = PointerCast(bcx, llargvarg, minus_ptr);
-            args += [do_spill_noroot(bcx, llargvarg)];
-        }
+        if takes_argv { args += [llvm::LLVMGetParam(llfdecl, 3u)]; }
         Call(bcx, main_llfn, args);
         build_return(bcx);
 
@@ -5944,7 +5937,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
 
 fn item_path(item: @ast::item) -> [str] { ret [item.ident]; }
 
-fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, pt: [str],
+fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
                        _v: vt<[str]>) {
     alt i.node {
       ast::native_item_fn(_, _, _) {
@@ -5956,7 +5949,8 @@ fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, pt: [str],
     }
 }
 
-fn collect_item_1(ccx: @crate_ctxt, i: @ast::item, pt: [str], v: vt<[str]>) {
+fn collect_item_1(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
+                  v: vt<[str]>) {
     visit::visit_item(i, pt + item_path(i), v);
     alt i.node {
       ast::item_const(_, _) {
@@ -5977,7 +5971,8 @@ fn collect_item_1(ccx: @crate_ctxt, i: @ast::item, pt: [str], v: vt<[str]>) {
     }
 }
 
-fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, pt: [str], v: vt<[str]>) {
+fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
+                  v: vt<[str]>) {
     let new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt i.node {
@@ -6018,7 +6013,7 @@ fn collect_items(ccx: @crate_ctxt, crate: @ast::crate) {
     visit::visit_crate(*crate, [], visit::mk_vt(visitor2));
 }
 
-fn collect_tag_ctor(ccx: @crate_ctxt, i: @ast::item, pt: [str],
+fn collect_tag_ctor(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
                     v: vt<[str]>) {
     let new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
@@ -6044,7 +6039,8 @@ fn collect_tag_ctors(ccx: @crate_ctxt, crate: @ast::crate) {
 
 
 // The constant translation pass.
-fn trans_constant(ccx: @crate_ctxt, it: @ast::item, pt: [str], v: vt<[str]>) {
+fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
+                  v: vt<[str]>) {
     let new_pt = pt + item_path(it);
     visit::visit_item(it, new_pt, v);
     alt it.node {

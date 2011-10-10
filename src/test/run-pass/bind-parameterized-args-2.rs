@@ -3,5 +3,5 @@ fn main() {
 
     let y = bind echo(42, _);
 
-    y(fn (i: str) { });
+    y(fn(&&i: str) { });
 }

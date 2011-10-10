@@ -1277,7 +1277,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
       ast::view_item_export(ids, _) {
         head(s, "export");
         commasep(s, inconsistent, ids,
-                 fn (s: ps, w: ast::ident) { word(s.s, w) });
+                 fn (s: ps, &&w: ast::ident) { word(s.s, w) });
       }
     }
     word(s.s, ";");

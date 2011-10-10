@@ -39,7 +39,7 @@ type ast_fold_precursor =
      fold_mod: fn(_mod, ast_fold) -> _mod,
      fold_native_mod: fn(native_mod, ast_fold) -> native_mod,
      fold_variant: fn(variant_, ast_fold) -> variant_,
-     fold_ident: fn(ident, ast_fold) -> ident,
+     fold_ident: fn(&&ident, ast_fold) -> ident,
      fold_path: fn(path_, ast_fold) -> path_,
      fold_local: fn(local_, ast_fold) -> local_,
      map_exprs: fn(fn(&&@expr) -> @expr, [@expr]) -> [@expr],
@@ -66,7 +66,7 @@ type a_f =
      fold_mod: fn(_mod) -> _mod,
      fold_native_mod: fn(native_mod) -> native_mod,
      fold_variant: fn(variant) -> variant,
-     fold_ident: fn(ident) -> ident,
+     fold_ident: fn(&&ident) -> ident,
      fold_path: fn(path) -> path,
      fold_local: fn(&&@local) -> @local,
      map_exprs: fn(fn(&&@expr) -> @expr, [@expr]) -> [@expr],
@@ -96,7 +96,7 @@ fn nf_fn_dummy(_f: _fn) -> _fn { fail; }
 fn nf_mod_dummy(_m: _mod) -> _mod { fail; }
 fn nf_native_mod_dummy(_n: native_mod) -> native_mod { fail; }
 fn nf_variant_dummy(_v: variant) -> variant { fail; }
-fn nf_ident_dummy(_i: ident) -> ident { fail; }
+fn nf_ident_dummy(&&_i: ident) -> ident { fail; }
 fn nf_path_dummy(_p: path) -> path { fail; }
 fn nf_obj_field_dummy(_o: obj_field) -> obj_field { fail; }
 fn nf_local_dummy(&&_o: @local) -> @local { fail; }
@@ -471,7 +471,7 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     ret {name: v.name, args: vec::map(fold_variant_arg, v.args), id: v.id};
 }
 
-fn noop_fold_ident(i: ident, _fld: ast_fold) -> ident { ret i; }
+fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident { ret i; }
 
 fn noop_fold_path(p: path_, fld: ast_fold) -> path_ {
     ret {global: p.global,
@@ -667,7 +667,7 @@ fn make_fold(afp: ast_fold_precursor) -> @foldres {
        variant {
         ret {node: afp.fold_variant(x.node, f), span: afp.new_span(x.span)};
     }
-    fn f_ident(afp: ast_fold_precursor, f: ast_fold, x: ident) -> ident {
+    fn f_ident(afp: ast_fold_precursor, f: ast_fold, &&x: ident) -> ident {
         ret afp.fold_ident(x, f);
     }
     fn f_path(afp: ast_fold_precursor, f: ast_fold, x: path) -> path {

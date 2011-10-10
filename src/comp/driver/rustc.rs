@@ -409,7 +409,7 @@ fn build_session(sopts: @session::options) -> session::session {
                          none, 0u, filesearch);
 }
 
-fn parse_pretty(sess: session::session, name: str) -> pp_mode {
+fn parse_pretty(sess: session::session, &&name: str) -> pp_mode {
     if str::eq(name, "normal") {
         ret ppm_normal;
     } else if str::eq(name, "expanded") {

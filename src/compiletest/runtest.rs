@@ -276,7 +276,7 @@ fn make_run_args(config: config, _props: test_props, testfile: str) ->
 
 fn split_maybe_args(argstr: option::t<str>) -> [str] {
     fn rm_whitespace(v: [str]) -> [str] {
-        fn flt(s: str) -> option::t<str> {
+        fn flt(&&s: str) -> option::t<str> {
             if !is_whitespace(s) { option::some(s) } else { option::none }
         }
 

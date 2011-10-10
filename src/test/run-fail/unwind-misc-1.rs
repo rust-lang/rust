@@ -6,7 +6,7 @@ import std::uint;
 
 fn main() {
     let count = @mutable 0u;
-    let hash = bind fn (_s: [@str], count: @mutable uint) -> uint {
+    let hash = bind fn (&&_s: [@str], count: @mutable uint) -> uint {
         *count += 1u;
         if *count == 10u {
             fail;
@@ -15,7 +15,7 @@ fn main() {
         }
     } (_, count);
 
-    fn eq(s: [@str], t: [@str]) -> bool {
+    fn eq(&&s: [@str], &&t: [@str]) -> bool {
         ret s == t;
     }
 

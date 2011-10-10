@@ -11,11 +11,11 @@ native "rust" mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
 }
 
-fn eq(a: str, b: str) -> bool { a == b }
+fn eq(&&a: str, &&b: str) -> bool { a == b }
 
-fn lteq(a: str, b: str) -> bool { a <= b }
+fn lteq(&&a: str, &&b: str) -> bool { a <= b }
 
-fn hash(s: str) -> uint {
+fn hash(&&s: str) -> uint {
     // djb hash.
     // FIXME: replace with murmur.
 

@@ -101,7 +101,7 @@ fn get_rpaths_relative_to_output(os: session::os,
 fn get_rpath_relative_to_output(os: session::os,
                                 cwd: fs::path,
                                 output: fs::path,
-                                lib: fs::path) -> str {
+                                &&lib: fs::path) -> str {
     // Mac doesn't appear to support $ORIGIN
     let prefix = alt os {
         session::os_linux. { "$ORIGIN" + fs::path_sep() }
@@ -154,7 +154,7 @@ fn get_absolute_rpaths(cwd: fs::path, libs: [fs::path]) -> [str] {
     vec::map(bind get_absolute_rpath(cwd, _), libs)
 }
 
-fn get_absolute_rpath(cwd: fs::path, lib: fs::path) -> str {
+fn get_absolute_rpath(cwd: fs::path, &&lib: fs::path) -> str {
     fs::dirname(get_absolute(cwd, lib))
 }
 
