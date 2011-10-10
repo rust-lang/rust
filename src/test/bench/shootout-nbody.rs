@@ -70,7 +70,7 @@ mod NBodySystem {
         while i < 5 { move(bodies[i], dt); i += 1; }
     }
 
-    fn advance_one(bi: Body::props, bj: Body::props, dt: float) {
+    fn advance_one(bi: Body::props, bj: Body::props, dt: float) unsafe {
         let dx: float = bi.x - bj.x;
         let dy: float = bi.y - bj.y;
         let dz: float = bi.z - bj.z;
@@ -95,7 +95,7 @@ mod NBodySystem {
         b.z += dt * b.vz;
     }
 
-    fn energy(bodies: [Body::props]) -> float {
+    fn energy(bodies: [Body::props]) -> float unsafe {
         let dx: float;
         let dy: float;
         let dz: float;
