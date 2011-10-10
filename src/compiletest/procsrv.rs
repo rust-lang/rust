@@ -79,7 +79,7 @@ fn writeclose(fd: int, s: option::t<str>) unsafe {
     os::libc::close(fd);
 }
 
-fn readclose(fd: int) -> str {
+fn readclose(fd: int) -> str unsafe {
     // Copied from run::program_output
     let file = os::fd_FILE(fd);
     let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
@@ -92,7 +92,7 @@ fn readclose(fd: int) -> str {
     ret buf;
 }
 
-fn worker(p: port<request>) {
+fn worker(p: port<request>) unsafe {
 
     // FIXME (787): If we declare this inside of the while loop and then
     // break out of it before it's ever initialized (i.e. we don't run

@@ -4,7 +4,7 @@ native "rust-intrinsic" mod rusti {
     fn vec_len<T>(&&v: [T]) -> uint;
 }
 
-fn main() {
+fn main() unsafe {
     let v: [int] = [];
     assert (vec_len(v) == 0u); // zero-length
     let x = [1, 2];

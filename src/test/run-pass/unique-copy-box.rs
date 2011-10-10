@@ -1,7 +1,7 @@
 use std;
 import std::sys::rustrt::refcount;
 
-fn main() {
+fn main() unsafe {
     let i = ~@1;
     let j = ~@2;
     let rc1 = refcount(*i);
