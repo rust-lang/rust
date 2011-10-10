@@ -2116,7 +2116,18 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
             i += 1u;
         }
-        let ft = ty::mk_fn(tcx, proto, out_args, rt, cf, constrs);
+
+        // Determine what fn prototype results from binding
+        fn lower_bound_proto(proto: ast::proto) -> ast::proto {
+            // FIXME: This is right for bare fns, possibly not others
+            alt proto {
+              ast::proto_bare. { ast::proto_fn }
+              _ { proto }
+            }
+        }
+
+        let ft = ty::mk_fn(tcx, lower_bound_proto(proto),
+                           out_args, rt, cf, constrs);
         write::ty_only_fixup(fcx, id, ft);
       }
       ast::expr_call(f, args) {
