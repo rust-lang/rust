@@ -23,7 +23,7 @@ fn test_leaks() {
 fn test_leaks() { }
 
 #[test]
-fn test_pipes() {
+fn test_pipes() unsafe {
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
@@ -45,14 +45,14 @@ fn test_pipes() {
     log actual;
     assert (expected == actual);
 
-    fn writeclose(fd: int, s: str) {
+    fn writeclose(fd: int, s: str) unsafe {
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
         writer.write_str(s);
 
         os::libc::close(fd);
     }
 
-    fn readclose(fd: int) -> str {
+    fn readclose(fd: int) -> str unsafe {
         // Copied from run::program_output
         let file = os::fd_FILE(fd);
         let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
@@ -67,7 +67,7 @@ fn test_pipes() {
 }
 
 #[test]
-fn waitpid() {
+fn waitpid() unsafe {
     let pid = run::spawn_process("false", [], 0, 0, 0);
     let status = run::waitpid(pid);
     assert status == 1;

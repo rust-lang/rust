@@ -70,7 +70,7 @@ fn run(handle: handle, lib_path: str, prog: str, args: [str],
     ret {status: status, out: output, err: errput};
 }
 
-fn writeclose(fd: int, s: option::t<str>) {
+fn writeclose(fd: int, s: option::t<str>) unsafe {
     if option::is_some(s) {
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
         writer.write_str(option::get(s));

@@ -43,7 +43,7 @@ fn llvm_err(sess: session::session, msg: str) {
     }
 }
 
-fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
+fn link_intrinsics(sess: session::session, llmod: ModuleRef) unsafe {
     let path = alt filesearch::search(
         sess.filesearch(),
         bind filesearch::pick_file("intrinsics.bc", _)) {
@@ -90,7 +90,8 @@ mod write {
         } else { stem = str::substr(output_path, 0u, dot_pos as uint); }
         ret stem + "." + extension;
     }
-    fn run_passes(sess: session::session, llmod: ModuleRef, output: str) {
+    fn run_passes(sess: session::session, llmod: ModuleRef, output: str)
+       unsafe {
         let opts = sess.get_opts();
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
         link_intrinsics(sess, llmod);
