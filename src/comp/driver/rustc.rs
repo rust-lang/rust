@@ -264,6 +264,7 @@ options:
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
     --stack-growth     perform stack checks (experimental)
+    --check-unsafe     disallow unsafe actions in non-unsafe functions (temporary option)
 
 ");
 }
@@ -322,6 +323,7 @@ fn build_session_options(match: getopts::match)
 
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
+    let check_unsafe = opt_present(match, "check-unsafe");
 
     let output_type =
         if parse_only || no_trans {
@@ -393,7 +395,8 @@ fn build_session_options(match: getopts::match)
           parse_only: parse_only,
           no_trans: no_trans,
           do_gc: do_gc,
-          stack_growth: stack_growth};
+          stack_growth: stack_growth,
+          check_unsafe: check_unsafe};
     ret sopts;
 }
 
@@ -432,7 +435,7 @@ fn opts() -> [getopts::opt] {
          optflag("no-typestate"), optflag("noverify"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static"), optflag("gc"),
-         optflag("stack-growth")];
+         optflag("stack-growth"), optflag("check-unsafe")];
 }
 
 fn main(args: [str]) {
