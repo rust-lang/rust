@@ -1524,11 +1524,13 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
 }
 
 fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
-    alt f_purity {
-      ast::unsafe_fn. { ret; }
-      _ {
-        sess.span_fatal(sp, "Found unsafe expression in safe function decl");
-      }
+    if sess.get_opts().check_unsafe {
+        alt f_purity {
+          ast::unsafe_fn. { ret; }
+          _ {
+            sess.span_fatal(sp, "Found unsafe expression in safe function decl");
+          }
+        }
     }
 }
 
@@ -1547,17 +1549,22 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
     alt caller_purity {
       ast::unsafe_fn. { ret; }
       ast::impure_fn. {
+        let sess = ccx.tcx.sess;
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::unsafe_fn.)) {
-            ccx.tcx.sess.span_fatal
-                (sp, "safe function calls function marked unsafe");
+            if sess.get_opts().check_unsafe {
+                ccx.tcx.sess.span_fatal(
+                    sp,
+                    "safe function calls function marked unsafe");
+            }
           }
-          /* Temporarily disable until unsafe blocks parse!
           some(ast::def_native_fn(_)) {
-            ccx.tcx.sess.span_fatal
-                (sp, "native functions can only be invoked from unsafe code");
+            if sess.get_opts().check_unsafe {
+                ccx.tcx.sess.span_fatal(
+                    sp,
+                    "native functions can only be invoked from unsafe code");
+            }
           }
-          */
           _ {
           }
         }
