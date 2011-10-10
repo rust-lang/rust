@@ -271,17 +271,17 @@ fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
-    fn spill_and_drop(cx: @block_ctxt, val: ValueRef, ty: ty::t) ->
+    fn do_drop(bcx: @block_ctxt, val: ValueRef, ty: ty::t) ->
        @block_ctxt {
-        let bcx = cx;
-        let r = trans::spill_if_immediate(bcx, val, ty);
-        let spilled = r.val;
-        bcx = r.bcx;
-        ret drop_ty(bcx, spilled, ty);
+        if ty::type_is_immediate(bcx_tcx(bcx), ty) {
+            ret trans::drop_ty_immediate(bcx, val, ty);
+        } else {
+            ret drop_ty(bcx, val, ty);
+        }
     }
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups +=
-        [clean_temp(val, bind spill_and_drop(_, val, ty))];
+        [clean_temp(val, bind do_drop(_, val, ty))];
     scope_cx.lpad_dirty = true;
 }
 fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {

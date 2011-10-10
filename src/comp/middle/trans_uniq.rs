@@ -98,15 +98,13 @@ fn autoderef(bcx: @block_ctxt, v: ValueRef, t: ty::t)
 }
 
 fn duplicate(bcx: @block_ctxt, v: ValueRef, t: ty::t)
-    : type_is_unique_box(bcx, t) -> @block_ctxt {
+    : type_is_unique_box(bcx, t) -> result {
 
     let content_ty = content_ty(bcx, t);
     let {bcx, val: llptr} = alloc_uniq(bcx, t);
 
-    let src = Load(bcx, v);
-    let src = load_if_immediate(bcx, src, content_ty);
+    let src = load_if_immediate(bcx, v, content_ty);
     let dst = llptr;
     let bcx = trans::copy_val(bcx, INIT, dst, src, content_ty);
-    Store(bcx, dst, v);
-    ret bcx;
+    ret rslt(bcx, dst);
 }

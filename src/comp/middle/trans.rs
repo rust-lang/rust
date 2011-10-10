@@ -1321,7 +1321,9 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
         bcx = incr_refcnt_of_boxed(bcx, Load(bcx, v));
     } else if ty::type_is_unique_box(bcx_tcx(bcx), t) {
         check trans_uniq::type_is_unique_box(bcx, t);
-        bcx = trans_uniq::duplicate(bcx, v, t);
+        let {bcx: cx, val} = trans_uniq::duplicate(bcx, Load(bcx, v), t);
+        bcx = cx;
+        Store(bcx, val, v);
     } else if ty::type_is_structural(bcx_tcx(bcx), t) {
         bcx = iter_structural_ty(bcx, v, t, take_ty);
     } else if ty::type_is_vec(bcx_tcx(bcx), t) {
@@ -1952,6 +1954,27 @@ fn drop_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_drop_glue);
     }
     ret cx;
+}
+
+fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
+    alt ty::struct(bcx_tcx(bcx), t) {
+      ty::ty_box(_) { ret decr_refcnt_maybe_free(bcx, v, t); }
+      ty::ty_uniq(_) { ret free_ty(bcx, v, t); }
+      // FIXME A ty_ptr pointing at something that needs drop glue is somehow
+      // marked as needing drop glue. This is probably a mistake.
+      ty::ty_ptr(_) { ret bcx; }
+    }
+}
+
+fn take_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
+    alt ty::struct(bcx_tcx(bcx), t) {
+      ty::ty_box(_) { ret rslt(incr_refcnt_of_boxed(bcx, v), v); }
+      ty::ty_uniq(_) {
+        check trans_uniq::type_is_unique_box(bcx, t);
+        ret trans_uniq::duplicate(bcx, v, t);
+      }
+      _ { ret rslt(bcx, v); }
+    }
 }
 
 fn free_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
@@ -4059,8 +4082,8 @@ fn get_landing_pad(bcx: @block_ctxt,
     let scope_bcx = find_scope_for_lpad(bcx, have_zero_or_revoke);
     if scope_bcx.lpad_dirty || have_zero_or_revoke {
         let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
-        let lpadbb = trans_landing_pad(unwind_bcx, to_zero, to_revoke);
-        scope_bcx.lpad = some(lpadbb);
+        trans_landing_pad(unwind_bcx, to_zero, to_revoke);
+        scope_bcx.lpad = some(unwind_bcx.llbb);
         scope_bcx.lpad_dirty = have_zero_or_revoke;
     }
     assert option::is_some(scope_bcx.lpad);
@@ -4418,10 +4441,15 @@ fn lval_to_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let ty = ty::expr_ty(bcx_tcx(bcx), e);
     alt dest {
       by_val(cell) {
-        if kind != owned {
+        if kind == temporary {
             revoke_clean(bcx, val);
             *cell = val;
+        } else if kind == owned_imm {
+            let {bcx: cx, val} = take_ty_immediate(bcx, val, ty);
+            *cell = val;
+            bcx = cx;
         } else if ty::type_is_unique(bcx_tcx(bcx), ty) {
+            // FIXME make vectors immediate again, lose this hack
             // Do a song and a dance to work around the fact that take_ty
             // for unique boxes overwrites the pointer.
             let oldval = Load(bcx, val);
@@ -4723,9 +4751,15 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
       // This is a local that is kept immediate
       none. {
         let initexpr = alt local.node.init { some({expr, _}) { expr } };
-        let val = trans_temp_expr(bcx, initexpr);
-        bcx.fcx.lllocals.insert(local.node.pat.id, local_imm(val.val));
-        ret val.bcx;
+        let {bcx, val, kind} = trans_temp_lval(bcx, initexpr);
+        if kind != temporary {
+            if kind == owned { val = Load(bcx, val); }
+            let rs = take_ty_immediate(bcx, val, ty);
+            bcx = rs.bcx; val = rs.val;
+            add_clean_temp(bcx, val, ty);
+        }
+        bcx.fcx.lllocals.insert(local.node.pat.id, local_imm(val));
+        ret bcx;
       }
     };
 
@@ -4984,8 +5018,7 @@ fn alloc_local(cx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     };
     // Do not allocate space for locals that can be kept immediate.
     if is_simple && !bcx_ccx(cx).mut_map.contains_key(local.node.pat.id) &&
-        ty::type_is_immediate(bcx_tcx(cx), t) &&
-        !ty::type_needs_drop(bcx_tcx(cx), t) {
+        ty::type_is_immediate(bcx_tcx(cx), t) {
         alt local.node.init {
           some({op: ast::init_assign., _}) { ret cx; }
           _ {}
