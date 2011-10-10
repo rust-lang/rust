@@ -3724,7 +3724,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
     } else if arg.mode == ast::by_ref || arg.mode == ast::by_val {
-        let copied = false, imm = type_is_immediate(ccx, e_ty);
+        let copied = false, imm = ty::type_is_immediate(ccx.tcx, e_ty);
         if arg.mode == ast::by_ref && lv.kind != owned && imm {
             val = do_spill_noroot(bcx, val);
             copied = true;
@@ -3741,7 +3741,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
         if arg.mode == ast::by_val && (lv.kind == owned || !imm) {
             val = Load(bcx, val);
         }
-    } else if type_is_immediate(ccx, e_ty) && lv.kind != owned {
+    } else if ty::type_is_immediate(ccx.tcx, e_ty) && lv.kind != owned {
         let r = do_spill(bcx, val, e_ty);
         val = r.val;
         bcx = r.bcx;
@@ -4243,7 +4243,7 @@ fn trans_temp_lval(bcx: @block_ctxt, e: @ast::expr) -> lval_result {
         if ty::type_is_nil(tcx, ty) || ty::type_is_bot(tcx, ty) {
             bcx = trans_expr(bcx, e, ignore);
             ret {bcx: bcx, val: C_nil(), kind: temporary};
-        } else if type_is_immediate(bcx_ccx(bcx), ty) {
+        } else if ty::type_is_immediate(bcx_tcx(bcx), ty) {
             let cell = empty_dest_cell();
             bcx = trans_expr(bcx, e, by_val(cell));
             add_clean_temp(bcx, *cell, ty);
@@ -4467,16 +4467,6 @@ fn lval_to_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     ret bcx;
 }
 
-// We pass structural values around the compiler "by pointer" and
-// non-structural values (scalars, boxes, pointers) "by value". We call the
-// latter group "immediates" and, in some circumstances when we know we have a
-// pointer (or need one), perform load/store operations based on the
-// immediate-ness of the type.
-// FIXME simply call the version in ty.rs immediately
-fn type_is_immediate(ccx: @crate_ctxt, t: ty::t) -> bool {
-    ty::type_is_immediate(ccx.tcx, t)
-}
-
 fn do_spill(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
     // We have a value but we have to spill it, and root it, to pass by alias.
     let bcx = cx;
@@ -4503,12 +4493,12 @@ fn do_spill_noroot(cx: @block_ctxt, v: ValueRef) -> ValueRef {
 }
 
 fn spill_if_immediate(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
-    if type_is_immediate(bcx_ccx(cx), t) { ret do_spill(cx, v, t); }
+    if ty::type_is_immediate(bcx_tcx(cx), t) { ret do_spill(cx, v, t); }
     ret rslt(cx, v);
 }
 
 fn load_if_immediate(cx: @block_ctxt, v: ValueRef, t: ty::t) -> ValueRef {
-    if type_is_immediate(bcx_ccx(cx), t) { ret Load(cx, v); }
+    if ty::type_is_immediate(bcx_tcx(cx), t) { ret Load(cx, v); }
     ret v;
 }
 
@@ -5343,7 +5333,7 @@ fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
        f.proto == ast::proto_iter ||
        option::is_none(f.body.node.expr) {
         bcx = trans_block_dps(bcx, f.body, ignore);
-    } else if type_is_immediate(cx.ccx, block_ty) {
+    } else if ty::type_is_immediate(cx.ccx.tcx, block_ty) {
         let cell = empty_dest_cell();
         bcx = trans_block_dps(bcx, f.body, by_val(cell));
         Store(bcx, *cell, fcx.llretptr);
