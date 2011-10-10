@@ -1327,8 +1327,9 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
     } else if ty::type_is_structural(bcx_tcx(bcx), t) {
         bcx = iter_structural_ty(bcx, v, t, take_ty);
     } else if ty::type_is_vec(bcx_tcx(bcx), t) {
-        bcx = tvec::duplicate(bcx, v);
-        bcx = tvec::iter_vec(bcx, v, t, take_ty);
+        let {bcx: cx, val} = tvec::duplicate(bcx, Load(bcx, v), t);
+        bcx = cx;
+        Store(bcx, val, v);
     }
 
     build_return(bcx);
@@ -1360,6 +1361,9 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         check trans_uniq::type_is_unique_box(bcx, t);
         v = PointerCast(bcx, v, type_of_1(bcx, t));
         trans_uniq::make_free_glue(bcx, v, t)
+      }
+      ty::ty_vec(_) | ty::ty_str. {
+        tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of_1(bcx, t)), t)
       }
       ty::ty_obj(_) {
         // Call through the obj's own fields-drop glue first.
@@ -1404,10 +1408,10 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
     let ccx = bcx_ccx(bcx);
     let bcx =
         alt ty::struct(ccx.tcx, t) {
-          ty::ty_vec(_) { tvec::make_drop_glue(bcx, v0, t) }
-          ty::ty_str. { tvec::make_drop_glue(bcx, v0, t) }
           ty::ty_box(_) { decr_refcnt_maybe_free(bcx, Load(bcx, v0), t) }
-          ty::ty_uniq(_) { free_ty(bcx, Load(bcx, v0), t) }
+          ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str. {
+            free_ty(bcx, Load(bcx, v0), t)
+          }
           ty::ty_obj(_) {
             let box_cell =
                 GEP(bcx, v0, [C_int(0), C_int(abi::obj_field_box)]);
@@ -1958,8 +1962,10 @@ fn drop_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
 
 fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
     alt ty::struct(bcx_tcx(bcx), t) {
+      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str. {
+        ret free_ty(bcx, v, t);
+      }
       ty::ty_box(_) { ret decr_refcnt_maybe_free(bcx, v, t); }
-      ty::ty_uniq(_) { ret free_ty(bcx, v, t); }
       // FIXME A ty_ptr pointing at something that needs drop glue is somehow
       // marked as needing drop glue. This is probably a mistake.
       ty::ty_ptr(_) { ret bcx; }
@@ -1973,6 +1979,7 @@ fn take_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
         check trans_uniq::type_is_unique_box(bcx, t);
         ret trans_uniq::duplicate(bcx, v, t);
       }
+      ty::ty_str. | ty::ty_vec(_) { ret tvec::duplicate(bcx, v, t); }
       _ { ret rslt(bcx, v); }
     }
 }
@@ -2068,30 +2075,32 @@ fn copy_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
     ret copy_val_no_check(cx, action, dst, src, t);
 }
 
-fn copy_val_no_check(cx: @block_ctxt, action: copy_action, dst: ValueRef,
+fn copy_val_no_check(bcx: @block_ctxt, action: copy_action, dst: ValueRef,
                      src: ValueRef, t: ty::t) -> @block_ctxt {
-    let ccx = bcx_ccx(cx);
+    let ccx = bcx_ccx(bcx);
     if ty::type_is_scalar(ccx.tcx, t) || ty::type_is_native(ccx.tcx, t) {
-        Store(cx, src, dst);
-        ret cx;
+        Store(bcx, src, dst);
+        ret bcx;
     }
-    if ty::type_is_nil(ccx.tcx, t) || ty::type_is_bot(ccx.tcx, t) { ret cx; }
+    if ty::type_is_nil(ccx.tcx, t) || ty::type_is_bot(ccx.tcx, t) { ret bcx; }
     if ty::type_is_boxed(ccx.tcx, t) {
-        let bcx = cx;
-        if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
+        if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
         Store(bcx, src, dst);
         ret take_ty(bcx, dst, t);
     }
+    if ty::type_is_vec(ccx.tcx, t) {
+        if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
+        let {bcx, val} = tvec::duplicate(bcx, src, t);
+        Store(bcx, val, dst);
+        ret bcx;
+    }
     if ty::type_is_unique_box(ccx.tcx, t) {
-        let bcx = cx;
-        if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
+        if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
         check trans_uniq::type_is_unique_box(bcx, t);
         ret trans_uniq::copy_val(bcx, dst, src, t);
     }
-    if type_is_structural_or_param(ccx.tcx, t) || ty::type_is_vec(ccx.tcx, t)
-        {
-        let bcx = cx;
-        if action == DROP_EXISTING { bcx = drop_ty(cx, dst, t); }
+    if type_is_structural_or_param(ccx.tcx, t) {
+        if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
         bcx = memmove_ty(bcx, dst, src, t);
         ret take_ty(bcx, dst, t);
     }
@@ -2115,15 +2124,14 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         ret cx;
     } else if ty::type_is_nil(tcx, t) || ty::type_is_bot(tcx, t) {
         ret cx;
-    } else if ty::type_is_boxed(tcx, t) || ty::type_is_unique_box(tcx, t) {
+    } else if ty::type_is_boxed(tcx, t) || ty::type_is_unique(tcx, t) {
         if src.kind == owned { src_val = Load(cx, src_val); }
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         Store(cx, src_val, dst);
         if src.kind == owned { ret zero_alloca(cx, src.val, t); }
         // If we're here, it must be a temporary.
         ret revoke_clean(cx, src_val);
-    } else if ty::type_is_unique(tcx, t) ||
-                  type_is_structural_or_param(tcx, t) {
+    } else if type_is_structural_or_param(tcx, t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         cx = memmove_ty(cx, dst, src_val, t);
         if src.kind == owned { ret zero_alloca(cx, src_val, t); }
@@ -2270,6 +2278,7 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
         let upvars = get_freevars(ccx.tcx, id);
         let env_r = build_closure(bcx, upvars, copying);
         env = env_r.ptr;
+        bcx = env_r.bcx;
         trans_closure(sub_cx, sp, f, llfn, none, [], id, {|fcx|
             load_environment(bcx, fcx, env_r.ptrty, upvars, copying);
         });
@@ -2600,14 +2609,13 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
     let next_cx = new_sub_block_ctxt(cx, "next");
     let seq_ty = ty::expr_ty(bcx_tcx(cx), seq);
     let {bcx: bcx, val: seq} = trans_temp_expr(cx, seq);
-    let seq = PointerCast(bcx, seq, T_ptr(T_ptr(T_opaque_vec())));
+    let seq = PointerCast(bcx, seq, T_ptr(T_opaque_vec()));
     let fill = tvec::get_fill(bcx, seq);
     if ty::type_is_str(bcx_tcx(bcx), seq_ty) {
         fill = Sub(bcx, fill, C_int(1));
     }
-    let bcx =
-        tvec::iter_vec_raw(bcx, seq, seq_ty, fill,
-                           bind inner(_, local, _, _, body, next_cx));
+    let bcx = tvec::iter_vec_raw(bcx, seq, seq_ty, fill,
+                                 bind inner(_, local, _, _, body, next_cx));
     Br(bcx, next_cx.llbb);
     ret next_cx;
 }
@@ -3183,15 +3191,14 @@ fn trans_rec_field(bcx: @block_ctxt, base: @ast::expr,
 fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
                id: ast::node_id) -> lval_result {
     // Is this an interior vector?
-
     let base_ty = ty::expr_ty(bcx_tcx(cx), base);
     let exp = trans_temp_expr(cx, base);
     let lv = autoderef(exp.bcx, exp.val, base_ty);
     let ix = trans_temp_expr(lv.bcx, idx);
     let v = lv.val;
     let bcx = ix.bcx;
-    // Cast to an LLVM integer. Rust is less strict than LLVM in this regard.
 
+    // Cast to an LLVM integer. Rust is less strict than LLVM in this regard.
     let ix_val;
     let ix_size = llsize_of_real(bcx_ccx(cx), val_ty(ix.val));
     let int_size = llsize_of_real(bcx_ccx(cx), T_int());
@@ -3200,6 +3207,7 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
     } else if ix_size > int_size {
         ix_val = Trunc(bcx, ix.val, T_int());
     } else { ix_val = ix.val; }
+
     let unit_ty = node_id_type(bcx_ccx(cx), id);
     let unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
@@ -4444,18 +4452,11 @@ fn lval_to_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         if kind == temporary {
             revoke_clean(bcx, val);
             *cell = val;
-        } else if kind == owned_imm {
+        } else if ty::type_is_immediate(bcx_tcx(bcx), ty) {
+            if kind == owned { val = Load(bcx, val); }
             let {bcx: cx, val} = take_ty_immediate(bcx, val, ty);
             *cell = val;
             bcx = cx;
-        } else if ty::type_is_unique(bcx_tcx(bcx), ty) {
-            // FIXME make vectors immediate again, lose this hack
-            // Do a song and a dance to work around the fact that take_ty
-            // for unique boxes overwrites the pointer.
-            let oldval = Load(bcx, val);
-            bcx = take_ty(bcx, val, ty);
-            *cell = Load(bcx, val);
-            Store(bcx, oldval, val);
         } else {
             bcx = take_ty(bcx, val, ty);
             *cell = Load(bcx, val);
@@ -5469,21 +5470,13 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         // If this argument to this function is a tag, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
-
-        let llargptr = alt fcx.llargs.find(va.id) {
-          some(local_mem(x)) { PointerCast(bcx, x, val_ty(lldestptr)) }
-        };
+        let llarg = alt fcx.llargs.find(va.id) { some(local_mem(x)) { x } };
         let arg_ty = arg_tys[i].ty;
-        let llargval;
-        if ty::type_is_structural(cx.ccx.tcx, arg_ty) ||
-            ty::type_has_dynamic_size(cx.ccx.tcx, arg_ty) ||
-            (ty::type_is_unique(cx.ccx.tcx, arg_ty)
-             && !ty::type_is_unique_box(cx.ccx.tcx, arg_ty)) {
-            // FIXME: Why do we do this for other unique pointer types but not
-            // unique boxes? Something's not quite right.
-            llargval = llargptr;
-        } else { llargval = Load(bcx, llargptr); }
-        bcx = copy_val(bcx, INIT, lldestptr, llargval, arg_ty);
+        if ty::type_contains_params(bcx_tcx(bcx), arg_ty) {
+            lldestptr = PointerCast(bcx, lldestptr, val_ty(llarg));
+        }
+        llarg = load_if_immediate(bcx, llarg, arg_ty);
+        bcx = copy_val(bcx, INIT, lldestptr, llarg, arg_ty);
         i += 1u;
     }
     bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
@@ -5899,9 +5892,6 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     let i = arg_n;
     for arg: ty::arg in args {
         let llarg = llvm::LLVMGetParam(fcx.llfn, i);
-        if arg.mode == ast::by_ref {
-            llarg = load_if_immediate(bcx, llarg, arg.ty);
-        }
         assert (llarg as int != 0);
         if cast_to_i32 {
             let llarg_i32 = convert_arg_to_i32(bcx, llarg, arg.ty, arg.mode);

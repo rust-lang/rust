@@ -920,7 +920,7 @@ pure fn type_is_scalar(cx: ctxt, ty: t) -> bool {
 // FIXME maybe inline this for speed?
 fn type_is_immediate(cx: ctxt, ty: t) -> bool {
     ret type_is_scalar(cx, ty) || type_is_boxed(cx, ty) ||
-        type_is_unique_box(cx, ty) || type_is_native(cx, ty);
+        type_is_unique(cx, ty) || type_is_native(cx, ty);
 }
 
 fn type_has_pointers(cx: ctxt, ty: t) -> bool {

@@ -49,10 +49,10 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
         alt l.node {
           ast::lit_str(s) {
             let strty = ty::mk_str(bcx_tcx(bcx));
-            let {bcx, val: dst} = trans::alloc_ty(bcx, strty);
-            bcx = trans_vec::trans_str(bcx, s, trans::save_in(dst));
-            add_clean_temp(bcx, dst, strty);
-            ret single_result(rslt(bcx, dst));
+            let cell = trans::empty_dest_cell();
+            bcx = trans_vec::trans_str(bcx, s, trans::by_val(cell));
+            add_clean_temp(bcx, *cell, strty);
+            ret single_result(rslt(bcx, *cell));
           }
           _ {
             ret single_result(
@@ -473,8 +473,9 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           }
           lit(l) {
             kind = alt l.node {
-              ast::lit_str(_) { compare }
-              ast::lit_nil. { test_val = Load(bcx, val); compare }
+              ast::lit_str(_) | ast::lit_nil. {
+                test_val = Load(bcx, val); compare
+              }
               _ { test_val = Load(bcx, val); switch }
             };
           }
