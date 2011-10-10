@@ -53,22 +53,19 @@ fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)
     ret rslt(bcx, llptr);
 }
 
-fn make_free_glue(cx: @block_ctxt, v: ValueRef, t: ty::t)
+fn make_free_glue(cx: @block_ctxt, vptr: ValueRef, t: ty::t)
     : type_is_unique_box(cx, t) -> @block_ctxt {
 
     let bcx = cx;
     let free_cx = new_sub_block_ctxt(bcx, "uniq_free");
     let next_cx = new_sub_block_ctxt(bcx, "uniq_free_next");
-    let vptr = Load(bcx, v);
     let null_test = IsNull(bcx, vptr);
     CondBr(bcx, null_test, next_cx.llbb, free_cx.llbb);
 
     let bcx = free_cx;
     let bcx = drop_ty(bcx, vptr, content_ty(cx, t));
     let bcx = trans_shared_free(bcx, vptr);
-    Store(bcx, C_null(val_ty(vptr)), v);
     Br(bcx, next_cx.llbb);
-
     next_cx
 }
 

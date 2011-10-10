@@ -46,6 +46,12 @@ import trans_build::*;
 import trans_objects::{trans_anon_obj, trans_obj};
 import tvec = trans_vec;
 
+fn type_of_1(bcx: @block_ctxt, t: ty::t) -> TypeRef {
+    let cx = bcx_ccx(bcx);
+    check type_has_static_size(cx, t);
+    type_of(cx, bcx.sp, t)
+}
+
 fn type_of(cx: @crate_ctxt, sp: span, t: ty::t) : type_has_static_size(cx, t)
    -> TypeRef {
     // Should follow from type_has_static_size -- argh.
@@ -1335,62 +1341,59 @@ fn incr_refcnt_of_boxed(cx: @block_ctxt, box_ptr: ValueRef) -> @block_ctxt {
     ret cx;
 }
 
-fn make_free_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
-    // NB: v is an *alias* of type t here, not a direct value.
-    let bcx =
-        alt ty::struct(bcx_tcx(bcx), t) {
-          ty::ty_box(body_mt) {
-            let v = Load(bcx, v0);
-            let body = GEP(bcx, v, [C_int(0), C_int(abi::box_rc_field_body)]);
-            let bcx = drop_ty(bcx, body, body_mt.ty);
-            if !bcx_ccx(bcx).sess.get_opts().do_gc {
-                trans_non_gc_free(bcx, v)
-            } else { bcx }
-          }
-          ty::ty_uniq(content_mt) {
-            check trans_uniq::type_is_unique_box(bcx, t);
-            trans_uniq::make_free_glue(bcx, v0, t)
-          }
-          ty::ty_obj(_) {
-            // Call through the obj's own fields-drop glue first.
-            // Then free the body.
-            let box_cell =
-                GEP(bcx, v0, [C_int(0), C_int(abi::obj_field_box)]);
-            let b = Load(bcx, box_cell);
-            let ccx = bcx_ccx(bcx);
-            let llbox_ty = T_opaque_obj_ptr(*ccx);
-            b = PointerCast(bcx, b, llbox_ty);
-            let body = GEP(bcx, b, [C_int(0), C_int(abi::box_rc_field_body)]);
-            let tydescptr =
-                GEP(bcx, body, [C_int(0), C_int(abi::obj_body_elt_tydesc)]);
-            let tydesc = Load(bcx, tydescptr);
-            let ti = none;
-            call_tydesc_glue_full(bcx, body, tydesc,
-                                  abi::tydesc_field_drop_glue, ti);
-            if !bcx_ccx(bcx).sess.get_opts().do_gc {
-                trans_non_gc_free(bcx, b)
-            } else { bcx }
-          }
-          ty::ty_fn(_, _, _, _, _) {
-            // Call through the closure's own fields-drop glue first.
-            // Then free the body.
-            let box_cell = GEP(bcx, v0, [C_int(0), C_int(abi::fn_field_box)]);
-            let v = Load(bcx, box_cell);
-            let body = GEP(bcx, v, [C_int(0), C_int(abi::box_rc_field_body)]);
-            let bindings =
-                GEP(bcx, body, [C_int(0), C_int(abi::closure_elt_bindings)]);
-            let tydescptr =
-                GEP(bcx, body, [C_int(0), C_int(abi::closure_elt_tydesc)]);
-            let ti = none;
-            call_tydesc_glue_full(bcx, bindings, Load(bcx, tydescptr),
-                                  abi::tydesc_field_drop_glue, ti);
-            if !bcx_ccx(bcx).sess.get_opts().do_gc {
-                trans_non_gc_free(bcx, v)
-            } else { bcx }
-          }
-          _ { bcx }
-        };
-
+fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
+    // v is a pointer to the actual box component of the type here. The
+    // ValueRef will have the wrong type here (make_generic_glue is casting
+    // everything to a pointer to the type that the glue acts on).
+    let bcx = alt ty::struct(bcx_tcx(bcx), t) {
+      ty::ty_box(body_mt) {
+        v = PointerCast(bcx, v, type_of_1(bcx, t));
+        let body = GEP(bcx, v, [C_int(0), C_int(abi::box_rc_field_body)]);
+        let bcx = drop_ty(bcx, body, body_mt.ty);
+        if !bcx_ccx(bcx).sess.get_opts().do_gc {
+            trans_non_gc_free(bcx, v)
+        } else { bcx }
+      }
+      ty::ty_uniq(content_mt) {
+        check trans_uniq::type_is_unique_box(bcx, t);
+        v = PointerCast(bcx, v, type_of_1(bcx, t));
+        trans_uniq::make_free_glue(bcx, v, t)
+      }
+      ty::ty_obj(_) {
+        // Call through the obj's own fields-drop glue first.
+        // Then free the body.
+        let ccx = bcx_ccx(bcx);
+        let llbox_ty = T_opaque_obj_ptr(*ccx);
+        let b = PointerCast(bcx, v, llbox_ty);
+        let body = GEP(bcx, b, [C_int(0), C_int(abi::box_rc_field_body)]);
+        let tydescptr =
+            GEP(bcx, body, [C_int(0), C_int(abi::obj_body_elt_tydesc)]);
+        let tydesc = Load(bcx, tydescptr);
+        let ti = none;
+        call_tydesc_glue_full(bcx, body, tydesc,
+                              abi::tydesc_field_drop_glue, ti);
+        if !bcx_ccx(bcx).sess.get_opts().do_gc {
+            trans_non_gc_free(bcx, b)
+        } else { bcx }
+      }
+      ty::ty_fn(_, _, _, _, _) {
+        // Call through the closure's own fields-drop glue first.
+        // Then free the body.
+        v = PointerCast(bcx, v, T_opaque_closure_ptr(*bcx_ccx(bcx)));
+        let body = GEP(bcx, v, [C_int(0), C_int(abi::box_rc_field_body)]);
+        let bindings =
+            GEP(bcx, body, [C_int(0), C_int(abi::closure_elt_bindings)]);
+        let tydescptr =
+            GEP(bcx, body, [C_int(0), C_int(abi::closure_elt_tydesc)]);
+        let ti = none;
+        call_tydesc_glue_full(bcx, bindings, Load(bcx, tydescptr),
+                              abi::tydesc_field_drop_glue, ti);
+        if !bcx_ccx(bcx).sess.get_opts().do_gc {
+            trans_non_gc_free(bcx, v)
+        } else { bcx }
+      }
+      _ { bcx }
+    };
     build_return(bcx);
 }
 
@@ -1401,21 +1404,19 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
         alt ty::struct(ccx.tcx, t) {
           ty::ty_vec(_) { tvec::make_drop_glue(bcx, v0, t) }
           ty::ty_str. { tvec::make_drop_glue(bcx, v0, t) }
-          ty::ty_box(_) { decr_refcnt_maybe_free(bcx, v0, v0, t) }
-          ty::ty_uniq(_) {
-            free_ty(bcx, v0, t)
-          }
+          ty::ty_box(_) { decr_refcnt_maybe_free(bcx, Load(bcx, v0), t) }
+          ty::ty_uniq(_) { free_ty(bcx, Load(bcx, v0), t) }
           ty::ty_obj(_) {
             let box_cell =
                 GEP(bcx, v0, [C_int(0), C_int(abi::obj_field_box)]);
-            decr_refcnt_maybe_free(bcx, box_cell, v0, t)
+            decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
           }
           ty::ty_res(did, inner, tps) {
             trans_res_drop(bcx, v0, did, inner, tps)
           }
           ty::ty_fn(_, _, _, _, _) {
             let box_cell = GEP(bcx, v0, [C_int(0), C_int(abi::fn_field_box)]);
-            decr_refcnt_maybe_free(bcx, box_cell, v0, t)
+            decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
           }
           _ {
             if ty::type_has_pointers(ccx.tcx, t) &&
@@ -1470,13 +1471,12 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     ret next_cx;
 }
 
-fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr_alias: ValueRef,
-                          full_alias: ValueRef, t: ty::t) -> @block_ctxt {
+fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
+    -> @block_ctxt {
     let ccx = bcx_ccx(cx);
     let rc_adj_cx = new_sub_block_ctxt(cx, "rc--");
     let free_cx = new_sub_block_ctxt(cx, "free");
     let next_cx = new_sub_block_ctxt(cx, "next");
-    let box_ptr = Load(cx, box_ptr_alias);
     let llbox_ty = T_opaque_obj_ptr(*ccx);
     box_ptr = PointerCast(cx, box_ptr, llbox_ty);
     let null_test = IsNull(cx, box_ptr);
@@ -1488,7 +1488,7 @@ fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr_alias: ValueRef,
     Store(rc_adj_cx, rc, rc_ptr);
     let zero_test = ICmp(rc_adj_cx, lib::llvm::LLVMIntEQ, C_int(0), rc);
     CondBr(rc_adj_cx, zero_test, free_cx.llbb, next_cx.llbb);
-    let free_cx = free_ty(free_cx, full_alias, t);
+    let free_cx = free_ty(free_cx, box_ptr, t);
     Br(free_cx, next_cx.llbb);
     ret next_cx;
 }
