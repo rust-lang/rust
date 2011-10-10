@@ -264,7 +264,7 @@ options:
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
     --stack-growth     perform stack checks (experimental)
-    --check-unsafe     disallow unsafe actions in non-unsafe functions (temporary option)
+    --check-unsafe     disallow unsafe actions in non-unsafe functions
 
 ");
 }

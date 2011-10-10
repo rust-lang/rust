@@ -1528,7 +1528,9 @@ fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
         alt f_purity {
           ast::unsafe_fn. { ret; }
           _ {
-            sess.span_fatal(sp, "Found unsafe expression in safe function decl");
+            sess.span_fatal(
+                sp, 
+                "Found unsafe expression in safe function decl");
           }
         }
     }
