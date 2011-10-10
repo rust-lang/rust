@@ -231,46 +231,55 @@ PRETTY_PRETTY_ARGS$(1) := $$(CTEST_COMMON_ARGS$(1)) \
                           --mode pretty \
 
 check-stage$(1)-cfail-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                                    $$(CFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(CFAIL_ARGS$(1))
 
 check-stage$(1)-rfail-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                                $$(RFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(RFAIL_ARGS$(1))
 
 check-stage$(1)-rpass-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                                $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(RPASS_ARGS$(1))
 
 check-stage$(1)-bench-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                             $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(BENCH_ARGS$(1))
 
 check-stage$(1)-perf-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                             $$(BENCH_TESTS)
 	@$$(call E, perf: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PERF_ARGS$(1))
 
 check-stage$(1)-pretty-rpass-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                                      $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PRETTY_RPASS_ARGS$(1))
 
 check-stage$(1)-pretty-rfail-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                                      $$(RFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PRETTY_RFAIL_ARGS$(1))
 
 check-stage$(1)-pretty-bench-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                                      $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PRETTY_BENCH_ARGS$(1))
 
 check-stage$(1)-pretty-pretty-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
+                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
                                      $$(PRETTY_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PRETTY_PRETTY_ARGS$(1))
