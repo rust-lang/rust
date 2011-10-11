@@ -1529,7 +1529,7 @@ fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
           ast::unsafe_fn. { ret; }
           _ {
             sess.span_fatal(
-                sp, 
+                sp,
                 "Found unsafe expression in safe function decl");
           }
         }
