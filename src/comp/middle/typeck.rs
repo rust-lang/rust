@@ -103,7 +103,7 @@ fn ty_param_kinds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         ret {kinds: no_kinds, ty: typ};
       }
       ast::def_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
-      ast::def_native_fn(id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
+      ast::def_native_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_const(id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_variant(_, vid) { ret ty::lookup_item_type(fcx.ccx.tcx, vid); }
       ast::def_binding(id) {
@@ -1560,7 +1560,7 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
                     "safe function calls function marked unsafe");
             }
           }
-          some(ast::def_native_fn(_)) {
+          some(ast::def_native_fn(_, ast::unsafe_fn.)) {
             if sess.get_opts().check_unsafe {
                 ccx.tcx.sess.span_fatal(
                     sp,
@@ -1893,6 +1893,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_path(pth) {
         let defn = lookup_def(fcx, pth.span, id);
+
         let tpt = ty_param_kinds_and_ty_for_def(fcx, expr.span, defn);
         if ty::def_has_ty_params(defn) {
             let path_tpot = instantiate_path(fcx, pth, tpt, expr.span);

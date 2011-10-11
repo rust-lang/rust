@@ -3096,7 +3096,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
     -> lval_maybe_callee {
     let ccx = bcx_ccx(cx);
     alt def {
-      ast::def_fn(did, _) | ast::def_native_fn(did) {
+      ast::def_fn(did, _) | ast::def_native_fn(did, _) {
         let tyt = ty::lookup_item_type(ccx.tcx, did);
         ret lval_static_fn(cx, tyt, did, id);
       }
