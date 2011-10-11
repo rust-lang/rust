@@ -247,7 +247,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       }
       'f' {
         let func = parse_ty_fn(st, sd);
-        ret ty::mk_fn(st.tcx, ast::proto_fn, func.args, func.ty, func.cf,
+        ret ty::mk_fn(st.tcx, ast::proto_bare, func.args, func.ty, func.cf,
                       func.cs);
       }
       'W' {
