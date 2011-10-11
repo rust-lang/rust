@@ -1303,8 +1303,8 @@ fn valid_range_bounds(l1: @ast::lit, l2: @ast::lit) -> bool {
     alt l1.node {
       ast::lit_float(s1) | ast::lit_mach_float(_, s1) {
         let s2 = lit_as_float(l2);
-        let f1 = util::common::str_to_float(s1);
-        let f2 = util::common::str_to_float(s2);
+        let f1 = std::float::str_to_float(s1);
+        let f2 = std::float::str_to_float(s2);
         ret *util::common::min(f1, f2) == f1
       }
       ast::lit_uint(_) | ast::lit_char(_) {

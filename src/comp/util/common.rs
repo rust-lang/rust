@@ -156,8 +156,8 @@ fn lit_in_range(l: @ast::lit, m1: @ast::lit, m2: @ast::lit) -> bool {
       frange(f1, f2) {
         alt l.node {
           ast::lit_float(f3) | ast::lit_mach_float(_, f3) {
-            str_to_float(f3) >= *min(f1, f2) &&
-            str_to_float(f3) <= *max(f1, f2)
+            std::float::str_to_float(f3) >= *min(f1, f2) &&
+            std::float::str_to_float(f3) <= *max(f1, f2)
           }
           _ { fail }
         }
@@ -232,7 +232,7 @@ fn lits_to_range(l: @ast::lit, r: @ast::lit) -> range {
       }
       ast::lit_float(f1) | ast::lit_mach_float(_, f1) {
         alt r.node { ast::lit_float(f2) | ast::lit_mach_float(_, f2) {
-          frange(str_to_float(f1), str_to_float(f2))
+          frange(std::float::str_to_float(f1), std::float::str_to_float(f2))
         }
         _ { fail } }
       }
@@ -293,41 +293,7 @@ fn is_main_name(path: [ast::ident]) -> bool {
     str::eq(option::get(std::vec::last(path)), "main")
 }
 
-// FIXME mode this to std::float when editing the stdlib no longer
-// requires a snapshot
-fn float_to_str(num: float, digits: uint) -> str {
-    let accum = if num < 0.0 { num = -num; "-" } else { "" };
-    let trunc = num as uint;
-    let frac = num - (trunc as float);
-    accum += uint::str(trunc);
-    if frac == 0.0 || digits == 0u { ret accum; }
-    accum += ".";
-    while digits > 0u && frac > 0.0 {
-        frac *= 10.0;
-        let digit = frac as uint;
-        accum += uint::str(digit);
-        frac -= digit as float;
-        digits -= 1u;
-    }
-    ret accum;
-}
 
-fn str_to_float(num: str) -> float {
-    let digits = str::split(num, '.' as u8);
-    let total = int::from_str(digits[0]) as float;
-
-    fn dec_val(c: char) -> int { ret (c as int) - ('0' as int); }
-
-    let right = digits[1];
-    let len = str::char_len(digits[1]);
-    let i = 1u;
-    while (i < len) {
-        total += dec_val(str::pop_char(right)) as float /
-                 (int::pow(10, i) as float);
-        i += 1u;
-    }
-    ret total;
-}
 
 //
 // Local Variables:
