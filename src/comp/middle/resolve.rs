@@ -1059,9 +1059,11 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
                 ret some(ast::def_native_ty(local_def(native_item.id)));
             }
           }
-          ast::native_item_fn(_, _, _) {
+          ast::native_item_fn(_, decl, _) {
             if ns == ns_value {
-                ret some(ast::def_native_fn(local_def(native_item.id)));
+                ret some(ast::def_native_fn(
+                    local_def(native_item.id),
+                    decl.purity));
             }
           }
         }
@@ -1163,7 +1165,7 @@ fn ns_for_def(d: def) -> namespace {
           ast::def_binding(_) { ns_type }
           ast::def_use(_) { ns_module }
           ast::def_native_ty(_) { ns_type }
-          ast::def_native_fn(_) { ns_value }
+          ast::def_native_fn(_, _) { ns_value }
         };
 }
 

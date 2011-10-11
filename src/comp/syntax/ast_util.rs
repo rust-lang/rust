@@ -37,7 +37,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_binding(id) { ret id; }
       def_use(id) { ret id; }
       def_native_ty(id) { ret id; }
-      def_native_fn(id) { ret id; }
+      def_native_fn(id, _) { ret id; }
       def_upvar(id, _, _) { ret id; }
     }
 }

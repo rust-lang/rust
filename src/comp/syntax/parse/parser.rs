@@ -1972,11 +1972,11 @@ fn parse_item_native_type(p: parser, attrs: [ast::attribute]) ->
           span: ast_util::mk_sp(t.lo, hi)};
 }
 
-fn parse_item_native_fn(p: parser, attrs: [ast::attribute]) ->
-   @ast::native_item {
+fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
+                        purity: ast::purity) -> @ast::native_item {
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
-    let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
+    let decl = parse_fn_decl(p, purity, ast::il_normal);
     let link_name = none;
     if p.peek() == token::EQ { p.bump(); link_name = some(parse_str(p)); }
     let hi = p.get_hi_pos();
@@ -1993,7 +1993,10 @@ fn parse_native_item(p: parser, attrs: [ast::attribute]) ->
     if eat_word(p, "type") {
         ret parse_item_native_type(p, attrs);
     } else if eat_word(p, "fn") {
-        ret parse_item_native_fn(p, attrs);
+        ret parse_item_native_fn(p, attrs, ast::impure_fn);
+    } else if eat_word(p, "unsafe") {
+        expect_word(p, "fn");
+        ret parse_item_native_fn(p, attrs, ast::unsafe_fn);
     } else { unexpected(p, p.peek()); }
 }
 
