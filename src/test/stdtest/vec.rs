@@ -21,7 +21,7 @@ fn square_if_odd(&&n: uint) -> option::t<uint> {
 fn add(&&x: uint, &&y: uint) -> uint { ret x + y; }
 
 #[test]
-unsafe fn test_unsafe_ptrs() {
+fn test_unsafe_ptrs() unsafe {
     // Test on-stack copy-from-buf.
     let a = [1, 2, 3];
     let ptr = vec::to_ptr(a);
