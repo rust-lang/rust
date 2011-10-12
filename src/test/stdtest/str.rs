@@ -264,14 +264,14 @@ fn str_from_cstr() unsafe {
 }
 
 #[test]
-fn as_buf() {
+fn as_buf() unsafe {
     let a = "Abcdefg";
     let b = str::as_buf(a, {|buf| assert (*buf == 65u8); 100 });
     assert (b == 100);
 }
 
 #[test]
-fn as_buf_small() {
+fn as_buf_small() unsafe {
     let a = "A";
     let b = str::as_buf(a, {|buf| assert (*buf == 65u8); 100 });
     assert (b == 100);
