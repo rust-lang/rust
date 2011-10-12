@@ -175,6 +175,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
     let def =
         alt fam_ch as char {
           'c' { ast::def_const(did) }
+          'u' { ast::def_fn(did, ast::unsafe_fn) }
           'f' { ast::def_fn(did, ast::impure_fn) }
           'p' { ast::def_fn(did, ast::pure_fn) }
           'F' { ast::def_native_fn(did) }
@@ -250,6 +251,7 @@ fn family_has_type_params(fam_ch: u8) -> bool {
     ret alt fam_ch as char {
           'c' { false }
           'f' { true }
+          'u' { true }
           'p' { true }
           'F' { true }
           'y' { true }
@@ -278,6 +280,7 @@ fn item_family_to_str(fam: u8) -> str {
     alt fam as char {
       'c' { ret "const"; }
       'f' { ret "fn"; }
+      'u' { ret "unsafe fn"; }
       'p' { ret "pure fn"; }
       'F' { ret "native fn"; }
       'y' { ret "type"; }

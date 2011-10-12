@@ -1523,8 +1523,22 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
     }
 }
 
+fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
+    if sess.get_opts().check_unsafe {
+        alt f_purity {
+          ast::unsafe_fn. { ret; }
+          _ {
+            sess.span_fatal(
+                sp, 
+                "Found unsafe expression in safe function decl");
+          }
+        }
+    }
+}
+
 fn require_impure(sess: session::session, f_purity: ast::purity, sp: span) {
     alt f_purity {
+      ast::unsafe_fn. { ret; }
       ast::impure_fn. { ret; }
       ast::pure_fn. {
         sess.span_fatal(sp, "Found impure expression in pure function decl");
@@ -1535,7 +1549,29 @@ fn require_impure(sess: session::session, f_purity: ast::purity, sp: span) {
 fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
                      callee: @ast::expr, sp: span) {
     alt caller_purity {
-      ast::impure_fn. { ret; }
+      ast::unsafe_fn. { ret; }
+      ast::impure_fn. {
+        let sess = ccx.tcx.sess;
+        alt ccx.tcx.def_map.find(callee.id) {
+          some(ast::def_fn(_, ast::unsafe_fn.)) {
+            if sess.get_opts().check_unsafe {
+                ccx.tcx.sess.span_fatal(
+                    sp,
+                    "safe function calls function marked unsafe");
+            }
+          }
+          some(ast::def_native_fn(_)) {
+            if sess.get_opts().check_unsafe {
+                ccx.tcx.sess.span_fatal(
+                    sp,
+                    "native functions can only be invoked from unsafe code");
+            }
+          }
+          _ {
+          }
+        }
+        ret;
+      }
       ast::pure_fn. {
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::pure_fn.)) { ret; }
@@ -2063,12 +2099,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking
-        let fcx_for_block =
-            alt b.node.rules {
-              ast::unchecked. { @{purity: ast::impure_fn with *fcx} }
-              _ { fcx }
-            };
-        bot = check_block(fcx_for_block, b);
+        bot = check_block(fcx, b);
         let typ =
             alt b.node.expr {
               some(expr) { expr_ty(tcx, expr) }
@@ -2525,7 +2556,12 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
     ret bot;
 }
 
-fn check_block(fcx: @fn_ctxt, blk: ast::blk) -> bool {
+fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
+    let fcx = alt blk.node.rules {
+      ast::unchecked_blk. { @{purity: ast::impure_fn with *fcx0} }
+      ast::unsafe_blk. { @{purity: ast::unsafe_fn with *fcx0} }
+      ast::default_blk. { fcx0 }
+    };
     let bot = false;
     let warned = false;
     for s: @ast::stmt in blk.node.stmts {
