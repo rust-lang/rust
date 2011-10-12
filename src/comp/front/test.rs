@@ -7,6 +7,7 @@ import syntax::ast_util::*;
 import syntax::fold;
 import syntax::print::pprust;
 import syntax::codemap::span;
+import driver::session;
 import front::attr;
 
 export modify_for_testing;
@@ -16,13 +17,15 @@ type node_id_gen = fn() -> ast::node_id;
 type test = {span: span, path: [ast::ident], ignore: bool};
 
 type test_ctxt =
-    @{next_node_id: node_id_gen,
+    @{sess: session::session,
+      next_node_id: node_id_gen,
       mutable path: [ast::ident],
       mutable testfns: [test]};
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
-fn modify_for_testing(crate: @ast::crate) -> @ast::crate {
+fn modify_for_testing(sess: session::session,
+                      crate: @ast::crate) -> @ast::crate {
 
     // FIXME: This hackasaurus assumes that 200000 is a safe number to start
     // generating node_ids at (which is totally not the case). pauls is going
@@ -37,7 +40,8 @@ fn modify_for_testing(crate: @ast::crate) -> @ast::crate {
               }(next_node_id);
 
     let cx: test_ctxt =
-        @{next_node_id: next_node_id_fn,
+        @{sess: sess,
+          next_node_id: next_node_id_fn,
           mutable path: [],
           mutable testfns: []};
 
@@ -90,10 +94,19 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
     log #fmt["current path: %s", ast_util::path_name_i(cx.path)];
 
     if is_test_fn(i) {
-        log "this is a test function";
-        let test = {span: i.span, path: cx.path, ignore: is_ignored(i)};
-        cx.testfns += [test];
-        log #fmt["have %u test functions", vec::len(cx.testfns)];
+        alt i.node {
+          ast::item_fn(f, _) when f.decl.purity == ast::unsafe_fn {
+            cx.sess.span_fatal(
+                i.span,
+                "unsafe functions cannot be used for tests");
+          }
+          _ {
+            log "this is a test function";
+            let test = {span: i.span, path: cx.path, ignore: is_ignored(i)};
+            cx.testfns += [test];
+            log #fmt["have %u test functions", vec::len(cx.testfns)];
+          }
+        }
     }
 
     let res = fold::noop_fold_item(i, fld);
