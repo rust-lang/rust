@@ -16,8 +16,7 @@ type ctxt = @{mutable next_tydesc_num: uint};
 
 fn mk_ctxt() -> ctxt { ret @{mutable next_tydesc_num: 0u}; }
 
-fn add_global(ccx: @crate_ctxt, llval: ValueRef, name: str)
-   -> ValueRef unsafe {
+fn add_global(ccx: @crate_ctxt, llval: ValueRef, name: str) -> ValueRef {
     let llglobal =
         str::as_buf(name,
                     {|buf|
@@ -28,8 +27,7 @@ fn add_global(ccx: @crate_ctxt, llval: ValueRef, name: str)
     ret llglobal;
 }
 
-fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) ->
-   @block_ctxt unsafe {
+fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     let bcx = cx;
     if !type_is_gc_relevant(bcx_tcx(cx), ty) ||
            ty::type_has_dynamic_size(bcx_tcx(cx), ty) {

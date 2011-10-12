@@ -34,16 +34,14 @@ tag output_type {
     output_type_exe;
 }
 
-fn llvm_err(sess: session::session, msg: str) {
-    unsafe {
-        let buf = llvm::LLVMRustGetLastError();
-        if buf == std::ptr::null() {
-            sess.fatal(msg);
-        } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
-    }
+fn llvm_err(sess: session::session, msg: str) unsafe {
+    let buf = llvm::LLVMRustGetLastError();
+    if buf == std::ptr::null() {
+        sess.fatal(msg);
+    } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
 }
 
-fn link_intrinsics(sess: session::session, llmod: ModuleRef) unsafe {
+fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
     let path = alt filesearch::search(
         sess.filesearch(),
         bind filesearch::pick_file("intrinsics.bc", _)) {
@@ -90,8 +88,7 @@ mod write {
         } else { stem = str::substr(output_path, 0u, dot_pos as uint); }
         ret stem + "." + extension;
     }
-    fn run_passes(sess: session::session, llmod: ModuleRef, output: str)
-       unsafe {
+    fn run_passes(sess: session::session, llmod: ModuleRef, output: str) {
         let opts = sess.get_opts();
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
         link_intrinsics(sess, llmod);

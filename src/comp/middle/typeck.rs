@@ -1524,15 +1524,13 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
 }
 
 fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
-    if sess.get_opts().check_unsafe {
-        alt f_purity {
-          ast::unsafe_fn. { ret; }
-          _ {
-            sess.span_err(
-                sp,
-                "unsafe operation requires unsafe function or block");
-          }
-        }
+    alt f_purity {
+      ast::unsafe_fn. { ret; }
+      _ {
+        sess.span_err(
+            sp,
+            "unsafe operation requires unsafe function or block");
+      }
     }
 }
 
@@ -1551,15 +1549,12 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
     alt caller_purity {
       ast::unsafe_fn. { ret; }
       ast::impure_fn. {
-        let sess = ccx.tcx.sess;
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::unsafe_fn.)) |
           some(ast::def_native_fn(_, ast::unsafe_fn.)) {
-            if sess.get_opts().check_unsafe {
-                ccx.tcx.sess.span_err(
-                    sp,
-                    "safe function calls function marked unsafe");
-            }
+            ccx.tcx.sess.span_err(
+                sp,
+                "safe function calls function marked unsafe");
           }
           _ {
           }
@@ -2727,13 +2722,22 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
 
 fn check_fn(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
             old_fcx: option::t<@fn_ctxt>) {
+
     let decl = f.decl;
     let body = f.body;
+
+    // If old_fcx is some(...), this is a block fn { |x| ... }.
+    // In that case, the purity is inherited from the context.
+    let purity = alt old_fcx {
+      none. { decl.purity }
+      some(f) { assert decl.purity == ast::impure_fn; f.purity }
+    };
+
     let gather_result = gather_locals(ccx, f, id, old_fcx);
     let fixups: [ast::node_id] = [];
     let fcx: @fn_ctxt =
         @{ret_ty: ty::ty_fn_ret(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)),
-          purity: decl.purity,
+          purity: purity,
           proto: f.proto,
           var_bindings: gather_result.var_bindings,
           locals: gather_result.locals,

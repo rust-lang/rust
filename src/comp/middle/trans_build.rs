@@ -492,16 +492,16 @@ fn _UndefReturn(Fn: ValueRef) -> ValueRef {
 }
 
 fn Call(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
+    if cx.unreachable { ret _UndefReturn(Fn); }
     unsafe {
-        if cx.unreachable { ret _UndefReturn(Fn); }
         ret llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
                                 vec::len(Args), noname());
     }
 }
 
 fn FastCall(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
+    if cx.unreachable { ret _UndefReturn(Fn); }
     unsafe {
-        if cx.unreachable { ret _UndefReturn(Fn); }
         let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
                                     vec::len(Args), noname());
         llvm::LLVMSetInstructionCallConv(v, lib::llvm::LLVMFastCallConv);
@@ -511,8 +511,8 @@ fn FastCall(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
 
 fn CallWithConv(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef], Conv: uint)
    -> ValueRef {
+    if cx.unreachable { ret _UndefReturn(Fn); }
     unsafe {
-        if cx.unreachable { ret _UndefReturn(Fn); }
         let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
                                     vec::len(Args), noname());
         llvm::LLVMSetInstructionCallConv(v, Conv);

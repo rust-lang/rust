@@ -426,16 +426,18 @@ type sbuf = *u8;
 
 // NB: This is intentionally unexported because it's easy to misuse (there's
 // no guarantee that the string is rooted). Instead, use as_buf below.
-fn buf(s: str) -> sbuf {
+unsafe fn buf(s: str) -> sbuf {
     let saddr = ptr::addr_of(s);
     let vaddr: *[u8] = unsafe::reinterpret_cast(saddr);
     let buf = vec::to_ptr(*vaddr);
     ret buf;
 }
 
-fn as_buf<T>(s: str, f: block(sbuf) -> T) -> T { let buf = buf(s); f(buf) }
+fn as_buf<T>(s: str, f: block(sbuf) -> T) -> T unsafe {
+    let buf = buf(s); f(buf)
+}
 
-fn str_from_cstr(cstr: sbuf) -> str {
+unsafe fn str_from_cstr(cstr: sbuf) -> str {
     let res = "";
     let start = cstr;
     let curr = start;

@@ -57,7 +57,7 @@ fn convert_whence(whence: seek_style) -> int {
 resource FILE_res(f: os::libc::FILE) { os::libc::fclose(f); }
 
 obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
-    fn read(len: uint) -> [u8] {
+    fn read(len: uint) -> [u8] unsafe {
         let buf = [];
         vec::reserve::<u8>(buf, len);
         let read =
@@ -239,7 +239,7 @@ type buf_writer =
     };
 
 obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
-    fn write(v: [u8]) {
+    fn write(v: [u8]) unsafe {
         let len = vec::len::<u8>(v);
         let vbuf = vec::unsafe::to_ptr::<u8>(v);
         let nout = os::libc::fwrite(vbuf, len, 1u, f);
@@ -254,7 +254,7 @@ obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
 resource fd_res(fd: int) { os::libc::close(fd); }
 
 obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
-    fn write(v: [u8]) {
+    fn write(v: [u8]) unsafe {
         let len = vec::len::<u8>(v);
         let count = 0u;
         let vbuf;

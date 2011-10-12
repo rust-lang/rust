@@ -956,7 +956,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       7 {
         ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
-      8 unsafe {
+      8 {
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args: uint = llvm::LLVMCountParamTypes(ty);
@@ -969,7 +969,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         s += type_to_str_inner(names, outer, out_ty);
         ret s;
       }
-      9 unsafe {
+      9 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
         let elts: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_elts);
