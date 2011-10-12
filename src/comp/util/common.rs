@@ -156,8 +156,8 @@ fn lit_in_range(l: @ast::lit, m1: @ast::lit, m2: @ast::lit) -> bool {
       frange(f1, f2) {
         alt l.node {
           ast::lit_float(f3) | ast::lit_mach_float(_, f3) {
-            std::float::str_to_float(f3) >= *min(f1, f2) &&
-            std::float::str_to_float(f3) <= *max(f1, f2)
+            std::float::from_str(f3) >= *min(f1, f2) &&
+            std::float::from_str(f3) <= *max(f1, f2)
           }
           _ { fail }
         }
@@ -232,7 +232,7 @@ fn lits_to_range(l: @ast::lit, r: @ast::lit) -> range {
       }
       ast::lit_float(f1) | ast::lit_mach_float(_, f1) {
         alt r.node { ast::lit_float(f2) | ast::lit_mach_float(_, f2) {
-          frange(std::float::str_to_float(f1), std::float::str_to_float(f2))
+          frange(std::float::from_str(f1), std::float::from_str(f2))
         }
         _ { fail } }
       }
