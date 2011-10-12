@@ -110,7 +110,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     if sess.get_opts().test {
         crate =
             time(time_passes, "building test harness",
-                 bind front::test::modify_for_testing(crate));
+                 bind front::test::modify_for_testing(sess, crate));
     }
     crate =
         time(time_passes, "expansion",
