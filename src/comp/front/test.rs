@@ -6,13 +6,14 @@ import syntax::ast_util::*;
 //import syntax::ast_util::dummy_sp;
 import syntax::fold;
 import syntax::print::pprust;
+import syntax::codemap::span;
 import front::attr;
 
 export modify_for_testing;
 
 type node_id_gen = fn() -> ast::node_id;
 
-type test = {path: [ast::ident], ignore: bool};
+type test = {span: span, path: [ast::ident], ignore: bool};
 
 type test_ctxt =
     @{next_node_id: node_id_gen,
@@ -90,7 +91,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
 
     if is_test_fn(i) {
         log "this is a test function";
-        let test = {path: cx.path, ignore: is_ignored(i)};
+        let test = {span: i.span, path: cx.path, ignore: is_ignored(i)};
         cx.testfns += [test];
         log #fmt["have %u test functions", vec::len(cx.testfns)];
     }
@@ -237,6 +238,7 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
 }
 
 fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
+    let span = test.span;
     let path = test.path;
 
     log #fmt["encoding %s", ast_util::path_name_i(path)];
@@ -246,7 +248,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let name_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_lit(@name_lit),
-         span: dummy_sp()};
+         span: span};
 
     let name_field: ast::field =
         nospan({mut: ast::imm, ident: "name", expr: @name_expr});
@@ -256,7 +258,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let fn_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_path(fn_path),
-         span: dummy_sp()};
+         span: span};
 
     let fn_field: ast::field =
         nospan({mut: ast::imm, ident: "fn", expr: @fn_expr});
@@ -266,7 +268,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let ignore_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_lit(@ignore_lit),
-         span: dummy_sp()};
+         span: span};
 
     let ignore_field: ast::field =
         nospan({mut: ast::imm, ident: "ignore", expr: @ignore_expr});
@@ -274,7 +276,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let desc_rec_: ast::expr_ =
         ast::expr_rec([name_field, fn_field, ignore_field], option::none);
     let desc_rec: ast::expr =
-        {id: cx.next_node_id(), node: desc_rec_, span: dummy_sp()};
+        {id: cx.next_node_id(), node: desc_rec_, span: span};
     ret @desc_rec;
 }
 
