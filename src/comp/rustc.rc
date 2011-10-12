@@ -93,6 +93,7 @@ mod back {
     mod upcall;
     mod x86;
     mod rpath;
+    mod target_strs;
 }
 
 mod metadata {

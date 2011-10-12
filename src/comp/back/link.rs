@@ -94,7 +94,8 @@ mod write {
         if opts.stack_growth { llvm::LLVMRustEnableSegmentedStacks(); }
         link_intrinsics(sess, llmod);
         let pm = mk_pass_manager();
-        let td = mk_target_data(x86::get_data_layout());
+        let td = mk_target_data(
+            sess.get_targ_cfg().target_strs.data_layout);
         llvm::LLVMAddTargetData(td.lltd, pm.llpm);
         // TODO: run the linter here also, once there are llvm-c bindings for
         // it.
@@ -199,16 +200,17 @@ mod write {
                 // Save the assembly file if -S is used
 
                 if opts.output_type == output_type_assembly {
-                    let _: () = str::as_buf(x86::get_target_triple(), {|buf_t|
-                        str::as_buf(output, {|buf_o|
-                            llvm::LLVMRustWriteOutputFile(pm.llpm,
-                                                          llmod,
-                                                          buf_t,
-                                                          buf_o,
-                                                          LLVMAssemblyFile,
-                                                          CodeGenOptLevel)
-                        })
-                    });
+                    let _: () = str::as_buf(
+                        sess.get_targ_cfg().target_strs.target_triple,
+                        {|buf_t|
+                            str::as_buf(output, {|buf_o|
+                                llvm::LLVMRustWriteOutputFile(
+                                    pm.llpm,
+                                    llmod,
+                                    buf_t,
+                                    buf_o,
+                                    LLVMAssemblyFile,
+                                    CodeGenOptLevel)})});
                 }
 
 
@@ -217,32 +219,34 @@ mod write {
                 if opts.output_type == output_type_object ||
                        opts.output_type == output_type_exe {
                     let _: () =
-                        str::as_buf(x86::get_target_triple(), {|buf_t|
-                            str::as_buf(output, {|buf_o|
-                                llvm::LLVMRustWriteOutputFile(pm.llpm,
-                                                              llmod,
-                                                              buf_t,
-                                                              buf_o,
-                                                              LLVMObjectFile,
-                                                              CodeGenOptLevel)
-                            })
-                        });
+                        str::as_buf(
+                            sess.get_targ_cfg().target_strs.target_triple,
+                            {|buf_t|
+                                str::as_buf(output, {|buf_o|
+                                    llvm::LLVMRustWriteOutputFile(
+                                        pm.llpm,
+                                        llmod,
+                                        buf_t,
+                                        buf_o,
+                                        LLVMObjectFile,
+                                        CodeGenOptLevel)})});
                 }
             } else {
                 // If we aren't saving temps then just output the file
                 // type corresponding to the '-c' or '-S' flag used
 
                 let _: () =
-                    str::as_buf(x86::get_target_triple(), {|buf_t|
-                        str::as_buf(output, {|buf_o|
-                            llvm::LLVMRustWriteOutputFile(pm.llpm,
-                                                          llmod,
-                                                          buf_t,
-                                                          buf_o,
-                                                          FileType,
-                                                          CodeGenOptLevel)
-                        })
-                    });
+                    str::as_buf(
+                        sess.get_targ_cfg().target_strs.target_triple,
+                        {|buf_t|
+                            str::as_buf(output, {|buf_o|
+                                llvm::LLVMRustWriteOutputFile(
+                                    pm.llpm,
+                                    llmod,
+                                    buf_t,
+                                    buf_o,
+                                    FileType,
+                                    CodeGenOptLevel)})});
             }
             // Clean up and return
 

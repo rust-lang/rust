@@ -7,6 +7,7 @@ import std::{uint, map, option, str};
 import std::option::{some, none};
 import syntax::parse::parser::parse_sess;
 import util::filesearch;
+import back::target_strs;
 
 tag os { os_win32; os_macos; os_linux; }
 
@@ -15,6 +16,7 @@ tag arch { arch_x86; arch_x64; arch_arm; }
 type config =
     {os: os,
      arch: arch,
+     target_strs: target_strs::t,
      int_type: ty_mach,
      uint_type: ty_mach,
      float_type: ty_mach};

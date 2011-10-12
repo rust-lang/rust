@@ -5999,7 +5999,7 @@ fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
                     });
     llvm::LLVMSetInitializer(llglobal, llconst);
     let _: () =
-        str::as_buf(x86::get_meta_sect_name(),
+        str::as_buf(cx.sess.get_targ_cfg().target_strs.meta_sect_name,
                     {|buf| llvm::LLVMSetSection(llglobal, buf) });
     llvm::LLVMSetLinkage(llglobal,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -6031,12 +6031,12 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
             (buf, llvm::LLVMGetGlobalContext())
     });
     let _: () =
-        str::as_buf(x86::get_data_layout(),
+        str::as_buf(sess.get_targ_cfg().target_strs.data_layout,
                     {|buf| llvm::LLVMSetDataLayout(llmod, buf) });
     let _: () =
-        str::as_buf(x86::get_target_triple(),
+        str::as_buf(sess.get_targ_cfg().target_strs.target_triple,
                     {|buf| llvm::LLVMSetTarget(llmod, buf) });
-    let td = mk_target_data(x86::get_data_layout());
+    let td = mk_target_data(sess.get_targ_cfg().target_strs.data_layout);
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
     let task_type = T_task();

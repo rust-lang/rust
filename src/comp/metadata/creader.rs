@@ -72,8 +72,8 @@ fn visit_item(e: env, i: @ast::item) {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(path: str, out: io::writer) {
-    alt get_metadata_section(path) {
+fn list_file_metadata(sess: session::session, path: str, out: io::writer) {
+    alt get_metadata_section(sess, path) {
       option::some(bytes) { decoder::list_crate_metadata(bytes, out); }
       option::none. {
         out.write_str("Could not find metadata in " + path + ".\n");
@@ -126,13 +126,14 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
     }
     let nn = default_native_lib_naming(sess, sess.get_opts().static);
     let x =
-        find_library_crate_aux(nn, metas, sess.filesearch());
+        find_library_crate_aux(sess, nn, metas, sess.filesearch());
     if x != none || sess.get_opts().static { ret x; }
     let nn2 = default_native_lib_naming(sess, true);
-    ret find_library_crate_aux(nn2, metas, sess.filesearch());
+    ret find_library_crate_aux(sess, nn2, metas, sess.filesearch());
 }
 
-fn find_library_crate_aux(nn: {prefix: str, suffix: str},
+fn find_library_crate_aux(sess: session::session,
+                          nn: {prefix: str, suffix: str},
                           metas: [@ast::meta_item],
                           filesearch: filesearch::filesearch) ->
    option::t<{ident: str, data: @[u8]}> {
@@ -148,7 +149,7 @@ fn find_library_crate_aux(nn: {prefix: str, suffix: str},
             option::none
         } else {
             log #fmt("%s is a candidate", path);
-            alt get_metadata_section(path) {
+            alt get_metadata_section(sess, path) {
               option::some(cvec) {
                 if !metadata_matches(cvec, metas) {
                     log #fmt["skipping %s, metadata doesn't match", path];
@@ -167,7 +168,8 @@ fn find_library_crate_aux(nn: {prefix: str, suffix: str},
     });
 }
 
-fn get_metadata_section(filename: str) -> option::t<@[u8]> unsafe {
+fn get_metadata_section(sess: session::session,
+                        filename: str) -> option::t<@[u8]> {
     let mb = str::as_buf(filename, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
@@ -176,12 +178,14 @@ fn get_metadata_section(filename: str) -> option::t<@[u8]> unsafe {
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
         let name_buf = llvm::LLVMGetSectionName(si.llsi);
-        let name = str::str_from_cstr(name_buf);
-        if str::eq(name, x86::get_meta_sect_name()) {
+        let name = unsafe { str::str_from_cstr(name_buf) };
+        if str::eq(name, sess.get_targ_cfg().target_strs.meta_sect_name) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi);
-            let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);
-            ret option::some::<@[u8]>(@vec::unsafe::from_buf(cvbuf, csz));
+            unsafe {
+                let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);
+                ret option::some::<@[u8]>(@vec::unsafe::from_buf(cvbuf, csz));
+            }
         }
         llvm::LLVMMoveToNextSection(si.llsi);
     }

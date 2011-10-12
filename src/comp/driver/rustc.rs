@@ -16,6 +16,7 @@ import std::map::mk_hashmap;
 import std::option::{some, none};
 import std::getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::link::output_type;
+import back::x86;
 
 tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
 
@@ -302,12 +303,21 @@ fn get_arch(triple: str) -> session::arch {
 }
 
 fn build_target_config(sopts: @session::options) -> @session::config {
+    let os = get_os(sopts.target_triple);
+    let arch = get_arch(sopts.target_triple);
+    let (int_type, uint_type, float_type) = alt arch {
+      session::arch_x86. {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
+      session::arch_x64. {(ast::ty_i64, ast::ty_u64, ast::ty_f64)}
+      session::arch_arm. {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
+    };
+    let target_strs = alt arch {
+      session::arch_x86. {x86::get_target_strs(os)}
+      session::arch_x64. {x86::get_target_strs(os)}
+      session::arch_arm. {x86::get_target_strs(os)}
+    };
     let target_cfg: @session::config =
-        @{os: get_os(sopts.target_triple),
-          arch: get_arch(sopts.target_triple),
-          int_type: ast::ty_i32,
-          uint_type: ast::ty_u32,
-          float_type: ast::ty_f64};
+        @{os: os, arch: arch, target_strs: target_strs, int_type: int_type,
+          uint_type: uint_type, float_type: float_type};
     ret target_cfg;
 }
 
@@ -531,7 +541,10 @@ fn main(args: [str]) {
       none::<pp_mode>. {/* continue */ }
     }
     let ls = opt_present(match, "ls");
-    if ls { metadata::creader::list_file_metadata(ifile, io::stdout()); ret; }
+    if ls {
+        metadata::creader::list_file_metadata(sess, ifile, io::stdout());
+        ret;
+    }
 
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
