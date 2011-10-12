@@ -2092,21 +2092,11 @@ fn copy_val_no_check(bcx: @block_ctxt, action: copy_action, dst: ValueRef,
         ret bcx;
     }
     if ty::type_is_nil(ccx.tcx, t) || ty::type_is_bot(ccx.tcx, t) { ret bcx; }
-    if ty::type_is_boxed(ccx.tcx, t) {
+    if ty::type_is_boxed(ccx.tcx, t) || ty::type_is_vec(ccx.tcx, t) ||
+       ty::type_is_unique_box(ccx.tcx, t) {
         if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
         Store(bcx, src, dst);
         ret take_ty(bcx, dst, t);
-    }
-    if ty::type_is_vec(ccx.tcx, t) {
-        if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
-        let {bcx, val} = tvec::duplicate(bcx, src, t);
-        Store(bcx, val, dst);
-        ret bcx;
-    }
-    if ty::type_is_unique_box(ccx.tcx, t) {
-        if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
-        check trans_uniq::type_is_unique_box(bcx, t);
-        ret trans_uniq::copy_val(bcx, dst, src, t);
     }
     if type_is_structural_or_param(ccx.tcx, t) {
         if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }

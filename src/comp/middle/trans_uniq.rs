@@ -15,8 +15,7 @@ import trans::{
     dest
 };
 
-export trans_uniq, make_free_glue, type_is_unique_box, copy_val,
-autoderef, duplicate;
+export trans_uniq, make_free_glue, type_is_unique_box, autoderef, duplicate;
 
 pure fn type_is_unique_box(bcx: @block_ctxt, ty: ty::t) -> bool {
     ty::type_is_unique_box(bcx_tcx(bcx), ty)
@@ -75,19 +74,6 @@ fn content_ty(bcx: @block_ctxt, t: ty::t)
     alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_uniq({ty: ct, _}) { ct }
     }
-}
-
-fn copy_val(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
-            ty: ty::t) : type_is_unique_box(cx, ty) -> @block_ctxt {
-
-    let content_ty = content_ty(cx, ty);
-    let {bcx, val: llptr} = alloc_uniq(cx, ty);
-    Store(bcx, llptr, dst);
-
-    let src = load_if_immediate(bcx, src, content_ty);
-    let dst = llptr;
-    let bcx = trans::copy_val(bcx, INIT, dst, src, content_ty);
-    ret bcx;
 }
 
 fn autoderef(bcx: @block_ctxt, v: ValueRef, t: ty::t)
