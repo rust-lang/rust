@@ -2705,13 +2705,14 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     // Copy expr values into boxed bindings.
     // Silly check
     check type_is_tup_like(bcx, closure_ty);
-    let bindings = GEP_tup_like(bcx, closure_ty, closure,
-                                [0, abi::closure_elt_bindings]);
-    bcx = bindings.bcx;
+    let closure_box = box;
+    let closure_box_ty = ty::mk_imm_box(bcx_tcx(bcx), closure_ty);
     let i = 0u;
     for bv in bound_values {
-        let bound =
-            GEP_tup_like_1(bcx, bindings_ty, bindings.val, [0, i as int]);
+        let bound = GEP_tup_like_1(bcx, closure_box_ty, closure_box,
+                                   [0, abi::box_rc_field_body,
+                                    abi::closure_elt_bindings,
+                                    i as int]);
         bcx = bound.bcx;
         alt bv {
           env_expr(e) {
