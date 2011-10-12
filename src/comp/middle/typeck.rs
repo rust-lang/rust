@@ -1553,18 +1553,12 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
       ast::impure_fn. {
         let sess = ccx.tcx.sess;
         alt ccx.tcx.def_map.find(callee.id) {
-          some(ast::def_fn(_, ast::unsafe_fn.)) {
-            if sess.get_opts().check_unsafe {
-                ccx.tcx.sess.span_fatal(
-                    sp,
-                    "safe function calls function marked unsafe");
-            }
-          }
+          some(ast::def_fn(_, ast::unsafe_fn.)) |
           some(ast::def_native_fn(_, ast::unsafe_fn.)) {
             if sess.get_opts().check_unsafe {
                 ccx.tcx.sess.span_fatal(
                     sp,
-                    "native functions can only be invoked from unsafe code");
+                    "safe function calls function marked unsafe");
             }
           }
           _ {
