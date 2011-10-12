@@ -38,14 +38,18 @@ fn getenv(n: str) -> option::t<str> {
         let res =
             str::as_buf(n,
                         {|nbuf|
+                            unsafe {
                             let vbuf = vec::to_ptr(v);
                             os::kernel32::GetEnvironmentVariableA(nbuf, vbuf,
                                                                   nsize)
+                        }
                         });
         if res == 0u {
             ret option::none;
         } else if res < nsize {
-            vec::unsafe::set_len(v, res);
+            unsafe {
+                vec::unsafe::set_len(v, res);
+            }
             ret option::some(str::unsafe_from_bytes(v));
         } else { nsize = res; }
     }
