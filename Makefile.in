@@ -332,7 +332,6 @@ include $(CFG_SRC_DIR)/mk/autodep.mk
 include $(CFG_SRC_DIR)/mk/tools.mk
 include $(CFG_SRC_DIR)/mk/docs.mk
 
-
 ######################################################################
 # Secondary makefiles, conditionalized for speed
 ######################################################################
@@ -378,4 +377,10 @@ endif
 ifneq ($(findstring install,$(MAKECMDGOALS)),)
   CFG_INFO := $(info cfg: including install rules)
   include $(CFG_SRC_DIR)/mk/install.mk
+endif
+
+ifneq ($(strip $(findstring TAGS.emacs,$(MAKECMDGOALS)) \
+               $(findstring TAGS.vi,$(MAKECMDGOALS))),)
+  CFG_INFO := $(info cfg: including ctags rules)
+  include $(CFG_SRC_DIR)/mk/ctags.mk
 endif

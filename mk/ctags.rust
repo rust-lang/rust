@@ -1,0 +1,7 @@
+--langdef=rust
+--langmap=rust:.rs
+--regex-rust=/[ \t]*fn[ \t]+([a-zA-Z0-9_]+)/\1/f,function/
+--regex-rust=/[ \t]*type[ \t]+([a-zA-Z0-9_]+)/\1/T,types/
+--regex-rust=/[ \t]*tag[ \t]+([a-zA-Z0-9_]+)/\1/T,types/
+--regex-rust=/[ \t]*resource[ \t]+([a-zA-Z0-9_]+)/\1/T,types/
+--regex-rust=/[ \t]*mod[ \t]+([a-zA-Z0-9_]+)/\1/m,modules/
