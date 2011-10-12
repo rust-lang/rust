@@ -53,7 +53,7 @@ extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
   // function" error.
   Module *DM = reinterpret_cast<Module *>(Dest);
   Module *SM = reinterpret_cast<Module *>(Src);
-  if (Linker::LinkModules(DM, SM, Linker::DestroySource, &err)) {
+  if (Linker::LinkModules(DM, SM, &err)) {
     LLVMRustError = err.c_str();
     return false;
   }
