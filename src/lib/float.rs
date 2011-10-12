@@ -2,7 +2,7 @@
  * String conversions
  */
 
-fn float_to_str(num: float, digits: uint) -> str {
+fn to_str(num: float, digits: uint) -> str {
     let accum = if num < 0.0 { num = -num; "-" } else { "" };
     let trunc = num as uint;
     let frac = num - (trunc as float);
@@ -36,7 +36,7 @@ fn float_to_str(num: float, digits: uint) -> str {
  * @return [NaN] if the string did not represent a valid number.
  * @return Otherwise, the floating-point number represented [num].
  */
-fn str_to_float(num: str) -> float {
+fn from_str(num: str) -> float {
    let pos = 0u;                  //Current byte position in the string.
                                   //Used to walk the string in O(n).
    let len = str::byte_len(num);  //Length of the string, in bytes.
