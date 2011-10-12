@@ -193,7 +193,7 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
 }
 
 
-// Returns the one-level-deep structure of the given type.
+// Returns the one-level-deep structure of the given type.f
 fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
     ret ty::struct(fcx.ccx.tcx, structurally_resolved_type(fcx, sp, typ));
 }
@@ -1530,7 +1530,7 @@ fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
           _ {
             sess.span_fatal(
                 sp,
-                "Found unsafe expression in safe function decl");
+                "unsafe operation requires unsafe function or block");
           }
         }
     }
@@ -1589,6 +1589,23 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr) -> bool {
 }
 fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
     ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
+}
+
+fn check_for_unsafe_assignments(fcx: @fn_ctxt, lhs: @ast::expr) {
+    alt lhs.node {
+      ast::expr_unary(ast::deref., ptr) {
+        let ty = expr_ty(fcx.ccx.tcx, ptr);
+        let sty = structure_of(fcx, ptr.span, ty);
+        alt sty {
+          ty::ty_ptr(_) {
+            require_unsafe(fcx.ccx.tcx.sess, fcx.purity, lhs.span);
+          }
+          _ {}
+        }
+      }
+      _ {
+      }
+    }
 }
 
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
@@ -1702,6 +1719,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         rhs: @ast::expr, id: ast::node_id) -> bool {
         let t = next_ty_var(fcx);
         let bot = check_expr_with(fcx, lhs, t) | check_expr_with(fcx, rhs, t);
+        check_for_unsafe_assignments(fcx, lhs);
         write::ty_only_fixup(fcx, id, ty::mk_nil(fcx.ccx.tcx));
         ret bot;
     }
