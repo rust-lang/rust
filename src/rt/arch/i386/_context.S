@@ -20,19 +20,19 @@ The registers_t variable is in (%esp)
 swap_registers:
     // save the old context
     movl 4(%esp), %eax
-        //movl %eax, 0(%eax)
-        movl %ebx, 4(%eax)
-        movl %ecx, 8(%eax)
-        movl %edx, 12(%eax)
-        movl %ebp, 16(%eax)
-        movl %esi, 20(%eax)
-        movl %edi, 24(%eax)
-        //movl %cs, 32(%eax)
-        //movl %ds, 34(%eax)
-        //movl %ss, 36(%eax)
-        //movl %es, 38(%eax)
-        //movl %fs, 40(%eax)
-        //movl %gs, 42(%eax)
+	//movl %eax, 0(%eax)
+	movl %ebx, 4(%eax)
+	//movl %ecx, 8(%eax)
+	//movl %edx, 12(%eax)
+	movl %ebp, 16(%eax)
+	movl %esi, 20(%eax)
+	movl %edi, 24(%eax)
+	//movl %cs, 32(%eax)
+	//movl %ds, 34(%eax)
+	//movl %ss, 36(%eax)
+	//movl %es, 38(%eax)
+	//movl %fs, 40(%eax)
+	//movl %gs, 42(%eax)
 
         // save the flags
         pushf
@@ -48,20 +48,20 @@ swap_registers:
     // restore the new context
     movl 4(%esp), %eax
 
-        movl 4(%eax), %ebx
-        // save ecx for later...
-        movl 12(%eax), %edx
-        movl 16(%eax), %ebp
-        movl 20(%eax), %esi
-        movl 24(%eax), %edi
-        movl 28(%eax), %esp
-        // We can't actually change this...
-        //movl 32(%eax), %cs
-        //movl 34(%eax), %ds
-        //movl 36(%eax), %ss
-        //movl 38(%eax), %es
-        //movl 40(%eax), %fs
-        //movl 42(%eax), %gs
+	movl 4(%eax), %ebx
+	// save ecx for later...
+	//movl 12(%eax), %edx
+	movl 16(%eax), %ebp
+	movl 20(%eax), %esi
+	movl 24(%eax), %edi
+	movl 28(%eax), %esp
+	// We can't actually change this...
+	//movl 32(%eax), %cs
+	//movl 34(%eax), %ds
+	//movl 36(%eax), %ss
+	//movl 38(%eax), %es
+	//movl 40(%eax), %fs
+	//movl 42(%eax), %gs
 
         // restore the flags
         movl 44(%eax), %ecx
@@ -69,8 +69,8 @@ swap_registers:
         popf
 
     // ok, now we can restore ecx
-    movl 8(%eax), %ecx
-
+    //movl 8(%eax), %ecx
+	
     // Return!
     jmp *48(%eax)
 
