@@ -41,8 +41,7 @@ type options =
      parse_only: bool,
      no_trans: bool,
      do_gc: bool,
-     stack_growth: bool,
-     check_unsafe: bool};
+     stack_growth: bool};
 
 type crate_metadata = {name: str, data: [u8]};
 

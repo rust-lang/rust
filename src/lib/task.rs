@@ -108,7 +108,7 @@ fn spawn_joinable(-thunk: fn()) -> joinable_task {
 
 // FIXME: make this a fn~ once those are supported.
 fn spawn_inner(-thunk: fn(), notify: option<comm::chan<task_notification>>) ->
-   task_id {
+   task_id unsafe {
     let id = rustrt::new_task();
 
     let raw_thunk: {code: u32, env: u32} = cast(thunk);

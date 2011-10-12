@@ -325,7 +325,6 @@ fn build_session_options(match: getopts::match)
 
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
-    let check_unsafe = opt_present(match, "check-unsafe");
 
     let output_type =
         if parse_only || no_trans {
@@ -397,8 +396,7 @@ fn build_session_options(match: getopts::match)
           parse_only: parse_only,
           no_trans: no_trans,
           do_gc: do_gc,
-          stack_growth: stack_growth,
-          check_unsafe: check_unsafe};
+          stack_growth: stack_growth};
     ret sopts;
 }
 

@@ -15,39 +15,27 @@ native "rust" mod rustrt {
 }
 
 fn last_os_error() -> str {
-    //unsafe {
-        ret rustrt::last_os_error();
-    //}
+    ret rustrt::last_os_error();
 }
 
 fn size_of<T>() -> uint {
-    //unsafe {
-        ret rustrt::size_of::<T>();
-    //}
+    ret rustrt::size_of::<T>();
 }
 
 fn align_of<T>() -> uint {
-    //unsafe {
-        ret rustrt::align_of::<T>();
-    //}
+    ret rustrt::align_of::<T>();
 }
 
 fn refcount<T>(t: @T) -> uint {
-    //unsafe {
-        ret rustrt::refcount::<T>(t);
-    //}
+    ret rustrt::refcount::<T>(t);
 }
 
 fn do_gc() -> () {
-    //unsafe {
-        ret rustrt::do_gc();
-    //}
+    ret rustrt::do_gc();
 }
 
 fn unsupervise() -> () {
-    //unsafe {
-        ret rustrt::unsupervise();
-    //}
+    ret rustrt::unsupervise();
 }
 
 // Local Variables:

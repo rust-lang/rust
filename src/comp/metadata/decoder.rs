@@ -256,6 +256,8 @@ fn family_has_type_params(fam_ch: u8) -> bool {
           'u' { true }
           'p' { true }
           'F' { true }
+          'U' { true }
+          'P' { true }
           'y' { true }
           't' { true }
           'T' { false }
@@ -285,6 +287,8 @@ fn item_family_to_str(fam: u8) -> str {
       'u' { ret "unsafe fn"; }
       'p' { ret "pure fn"; }
       'F' { ret "native fn"; }
+      'U' { ret "unsafe native fn"; }
+      'P' { ret "pure native fn"; }
       'y' { ret "type"; }
       'T' { ret "native type"; }
       't' { ret "type"; }

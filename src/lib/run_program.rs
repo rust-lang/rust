@@ -21,7 +21,7 @@ fn arg_vec(prog: str, args: [@str]) -> [sbuf] {
 }
 
 fn spawn_process(prog: str, args: [str], in_fd: int, out_fd: int, err_fd: int)
-   -> int {
+   -> int unsafe {
     // Note: we have to hold on to these vector references while we hold a
     // pointer to their buffers
     let prog = prog;

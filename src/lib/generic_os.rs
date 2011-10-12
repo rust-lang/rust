@@ -3,7 +3,7 @@ import str::sbuf;
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-fn getenv(n: str) -> option::t<str> {
+fn getenv(n: str) -> option::t<str> unsafe {
     let s = str::as_buf(n, {|buf| os::libc::getenv(buf) });
     ret if unsafe::reinterpret_cast(s) == 0 {
             option::none::<str>
