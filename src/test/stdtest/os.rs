@@ -3,6 +3,7 @@ import std::generic_os::getenv;
 import std::option;
 
 #[test]
+#[ignore(reason = "fails periodically on mac")]
 fn test_setenv() {
     // NB: Each test of setenv needs to use different variable names or the
     // tests will not be threadsafe
