@@ -1,8 +1,11 @@
 // -*- rust -*-
 // error-pattern: safe function calls function marked unsafe
 
-unsafe fn f() { ret; }
+native "cdecl" mod test {
+    unsafe fn free();
+}
 
 fn main() {
-    f();
+    test::free();
 }
+
