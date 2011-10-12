@@ -925,7 +925,7 @@ fn type_to_str(names: type_names, ty: TypeRef) -> str {
 }
 
 fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
-   str unsafe {
+   str {
 
     if names.type_has_name(ty) { ret names.get_name(ty); }
 
@@ -956,7 +956,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       7 {
         ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
-      8 {
+      8 unsafe {
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args: uint = llvm::LLVMCountParamTypes(ty);
@@ -969,7 +969,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         s += type_to_str_inner(names, outer, out_ty);
         ret s;
       }
-      9 {
+      9 unsafe {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
         let elts: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_elts);
@@ -1003,7 +1003,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
     }
 }
 
-fn float_width(llt: TypeRef) -> uint unsafe {
+fn float_width(llt: TypeRef) -> uint {
     ret alt llvm::LLVMGetTypeKind(llt) {
           1 { 32u }
           2 { 64u }
@@ -1022,13 +1022,13 @@ fn fn_ty_param_tys(fn_ty: TypeRef) -> [TypeRef] unsafe {
 
 /* Memory-managed interface to target data. */
 
-resource target_data_res(TD: TargetDataRef) unsafe {
+resource target_data_res(TD: TargetDataRef) {
     llvm::LLVMDisposeTargetData(TD);
 }
 
 type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
 
-fn mk_target_data(string_rep: str) -> target_data unsafe {
+fn mk_target_data(string_rep: str) -> target_data {
     let lltd =
         str::as_buf(string_rep, {|buf| llvm::LLVMCreateTargetData(buf) });
     ret {lltd: lltd, dtor: @target_data_res(lltd)};
@@ -1036,39 +1036,39 @@ fn mk_target_data(string_rep: str) -> target_data unsafe {
 
 /* Memory-managed interface to pass managers. */
 
-resource pass_manager_res(PM: PassManagerRef) unsafe {
+resource pass_manager_res(PM: PassManagerRef) {
     llvm::LLVMDisposePassManager(PM);
 }
 
 type pass_manager = {llpm: PassManagerRef, dtor: @pass_manager_res};
 
-fn mk_pass_manager() -> pass_manager unsafe {
+fn mk_pass_manager() -> pass_manager {
     let llpm = llvm::LLVMCreatePassManager();
     ret {llpm: llpm, dtor: @pass_manager_res(llpm)};
 }
 
 /* Memory-managed interface to object files. */
 
-resource object_file_res(ObjectFile: ObjectFileRef) unsafe {
+resource object_file_res(ObjectFile: ObjectFileRef) {
     llvm::LLVMDisposeObjectFile(ObjectFile);
 }
 
 type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
 
-fn mk_object_file(llmb: MemoryBufferRef) -> object_file unsafe {
+fn mk_object_file(llmb: MemoryBufferRef) -> object_file {
     let llof = llvm::LLVMCreateObjectFile(llmb);
     ret {llof: llof, dtor: @object_file_res(llof)};
 }
 
 /* Memory-managed interface to section iterators. */
 
-resource section_iter_res(SI: SectionIteratorRef) unsafe {
+resource section_iter_res(SI: SectionIteratorRef) {
     llvm::LLVMDisposeSectionIterator(SI);
 }
 
 type section_iter = {llsi: SectionIteratorRef, dtor: @section_iter_res};
 
-fn mk_section_iter(llof: ObjectFileRef) -> section_iter unsafe {
+fn mk_section_iter(llof: ObjectFileRef) -> section_iter {
     let llsi = llvm::LLVMGetSections(llof);
     ret {llsi: llsi, dtor: @section_iter_res(llsi)};
 }
