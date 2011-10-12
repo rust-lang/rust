@@ -42,9 +42,11 @@ fn debug_obj<T>(x: T, nmethods: uint, nbytes: uint) {
 
 fn debug_fn<T>(x: T) { rustrt::debug_fn::<T>(x); }
 
-fn ptr_cast<T, U>(x: @T) -> @U { ret rustrt::debug_ptrcast::<T, U>(x); }
+unsafe fn ptr_cast<T, U>(x: @T) -> @U {
+    ret rustrt::debug_ptrcast::<T, U>(x);
+}
 
-fn refcount<T>(a: @T) -> uint {
+fn refcount<T>(a: @T) -> uint unsafe {
     let p: *uint = unsafe::reinterpret_cast(a);
     ret *p;
 }

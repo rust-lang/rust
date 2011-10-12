@@ -569,7 +569,7 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: span, inner_obj_ty: ty::t,
 // finish_vtbl: Given a vector of vtable entries, create the table in
 // read-only memory and return a pointer to it.
 fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: str) ->
-   ValueRef unsafe {
+   ValueRef {
     let vtbl = C_struct(llmethods);
     let vtbl_name = mangle_internal_name_by_path(cx.ccx, cx.path + [name]);
     let gvar =
@@ -619,7 +619,7 @@ fn begin_fn(cx: @local_ctxt, sp: span, m: @ty::method,
 // returns the value returned from that call.
 fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
                         ty_params: [ast::ty_param], outer_obj_ty: ty::t,
-                        _additional_field_tys: [ty::t]) -> ValueRef unsafe {
+                        _additional_field_tys: [ty::t]) -> ValueRef {
 
     let llbackwarding_fn = begin_fn(cx, sp, m, ty_params, "backwarding_fn");
     let fcx = new_fn_ctxt(cx, sp, llbackwarding_fn);

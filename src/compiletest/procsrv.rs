@@ -70,7 +70,7 @@ fn run(handle: handle, lib_path: str, prog: str, args: [str],
     ret {status: status, out: output, err: errput};
 }
 
-fn writeclose(fd: int, s: option::t<str>) unsafe {
+fn writeclose(fd: int, s: option::t<str>) {
     if option::is_some(s) {
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
         writer.write_str(option::get(s));
@@ -79,7 +79,7 @@ fn writeclose(fd: int, s: option::t<str>) unsafe {
     os::libc::close(fd);
 }
 
-fn readclose(fd: int) -> str unsafe {
+fn readclose(fd: int) -> str {
     // Copied from run::program_output
     let file = os::fd_FILE(fd);
     let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
@@ -92,7 +92,7 @@ fn readclose(fd: int) -> str unsafe {
     ret buf;
 }
 
-fn worker(p: port<request>) unsafe {
+fn worker(p: port<request>) {
 
     // FIXME (787): If we declare this inside of the while loop and then
     // break out of it before it's ever initialized (i.e. we don't run

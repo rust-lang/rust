@@ -41,7 +41,7 @@ tag request {
 
 type ctx = chan<request>;
 
-fn ip_to_sbuf(ip: net::ip_addr) -> *u8 {
+fn ip_to_sbuf(ip: net::ip_addr) -> *u8 unsafe {
 
     // FIXME: This is broken. We're creating a vector, getting a pointer
     // to its buffer, then dropping the vector. On top of that, the vector
@@ -131,7 +131,7 @@ fn request_task(c: chan<ctx>) {
           serve(ip, portnum, events, server) {
             task::spawn(bind server_task(ip, portnum, events, server));
           }
-          write(socket, v, status) {
+          write(socket, v, status) unsafe {
             rustrt::aio_writedata(socket, vec::unsafe::to_ptr::<u8>(v),
                                   vec::len::<u8>(v), status);
           }

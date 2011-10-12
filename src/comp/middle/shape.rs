@@ -72,7 +72,7 @@ fn eq_res_info(a: res_info, b: res_info) -> bool {
 }
 
 fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
-   ValueRef unsafe {
+   ValueRef {
     let llglobal =
         str::as_buf(name,
                     {|buf|
@@ -245,7 +245,7 @@ fn s_float(_tcx: ty_ctxt) -> u8 {
     ret shape_f64; // TODO: x86-64
 }
 
-fn mk_ctxt(llmod: ModuleRef) -> ctxt unsafe {
+fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     let llshapetablesty = trans_common::T_named_struct("shapes");
     let llshapetables =
         str::as_buf("shapes",
@@ -580,7 +580,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }
 
-fn gen_shape_tables(ccx: @crate_ctxt) unsafe {
+fn gen_shape_tables(ccx: @crate_ctxt) {
     let lltagstable = gen_tag_shapes(ccx);
     let llresourcestable = gen_resource_shapes(ccx);
     trans_common::set_struct_body(ccx.shape_cx.llshapetablesty,

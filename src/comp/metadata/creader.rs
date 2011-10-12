@@ -169,27 +169,25 @@ fn find_library_crate_aux(nn: {prefix: str, suffix: str}, crate_name: str,
     });
 }
 
-fn get_metadata_section(filename: str) -> option::t<@[u8]> {
-    unsafe {
-        let mb = str::as_buf(filename, {|buf|
-            llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-                                       });
-        if mb as int == 0 { ret option::none::<@[u8]>; }
-        let of = mk_object_file(mb);
-        let si = mk_section_iter(of.llof);
-        while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
-            let name_buf = llvm::LLVMGetSectionName(si.llsi);
-            let name = str::str_from_cstr(name_buf);
-            if str::eq(name, x86::get_meta_sect_name()) {
-                let cbuf = llvm::LLVMGetSectionContents(si.llsi);
-                let csz = llvm::LLVMGetSectionSize(si.llsi);
-                let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);
-                ret option::some::<@[u8]>(@vec::unsafe::from_buf(cvbuf, csz));
-            }
-            llvm::LLVMMoveToNextSection(si.llsi);
+fn get_metadata_section(filename: str) -> option::t<@[u8]> unsafe {
+    let mb = str::as_buf(filename, {|buf|
+        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
+                                   });
+    if mb as int == 0 { ret option::none::<@[u8]>; }
+    let of = mk_object_file(mb);
+    let si = mk_section_iter(of.llof);
+    while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
+        let name_buf = llvm::LLVMGetSectionName(si.llsi);
+        let name = str::str_from_cstr(name_buf);
+        if str::eq(name, x86::get_meta_sect_name()) {
+            let cbuf = llvm::LLVMGetSectionContents(si.llsi);
+            let csz = llvm::LLVMGetSectionSize(si.llsi);
+            let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);
+            ret option::some::<@[u8]>(@vec::unsafe::from_buf(cvbuf, csz));
         }
-        ret option::none::<@[u8]>;
+        llvm::LLVMMoveToNextSection(si.llsi);
     }
+    ret option::none::<@[u8]>;
 }
 
 fn load_library_crate(sess: session::session, span: span, ident: ast::ident,
