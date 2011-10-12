@@ -1528,7 +1528,7 @@ fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
         alt f_purity {
           ast::unsafe_fn. { ret; }
           _ {
-            sess.span_fatal(
+            sess.span_err(
                 sp,
                 "unsafe operation requires unsafe function or block");
           }
@@ -1541,7 +1541,7 @@ fn require_impure(sess: session::session, f_purity: ast::purity, sp: span) {
       ast::unsafe_fn. { ret; }
       ast::impure_fn. { ret; }
       ast::pure_fn. {
-        sess.span_fatal(sp, "Found impure expression in pure function decl");
+        sess.span_err(sp, "Found impure expression in pure function decl");
       }
     }
 }
@@ -1556,7 +1556,7 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
           some(ast::def_fn(_, ast::unsafe_fn.)) |
           some(ast::def_native_fn(_, ast::unsafe_fn.)) {
             if sess.get_opts().check_unsafe {
-                ccx.tcx.sess.span_fatal(
+                ccx.tcx.sess.span_err(
                     sp,
                     "safe function calls function marked unsafe");
             }
@@ -1570,7 +1570,7 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::pure_fn.)) { ret; }
           _ {
-            ccx.tcx.sess.span_fatal
+            ccx.tcx.sess.span_err
                 (sp, "pure function calls function not known to be pure");
           }
         }
@@ -1589,23 +1589,6 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr) -> bool {
 }
 fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
     ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
-}
-
-fn check_for_unsafe_assignments(fcx: @fn_ctxt, lhs: @ast::expr) {
-    alt lhs.node {
-      ast::expr_unary(ast::deref., ptr) {
-        let ty = expr_ty(fcx.ccx.tcx, ptr);
-        let sty = structure_of(fcx, ptr.span, ty);
-        alt sty {
-          ty::ty_ptr(_) {
-            require_unsafe(fcx.ccx.tcx.sess, fcx.purity, lhs.span);
-          }
-          _ {}
-        }
-      }
-      _ {
-      }
-    }
 }
 
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
@@ -1719,7 +1702,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         rhs: @ast::expr, id: ast::node_id) -> bool {
         let t = next_ty_var(fcx);
         let bot = check_expr_with(fcx, lhs, t) | check_expr_with(fcx, rhs, t);
-        check_for_unsafe_assignments(fcx, lhs);
         write::ty_only_fixup(fcx, id, ty::mk_nil(fcx.ccx.tcx));
         ret bot;
     }
@@ -1872,7 +1854,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 oper_t =
                     ty::substitute_type_params(tcx, tps, variants[0].args[0]);
               }
-              ty::ty_ptr(inner) { oper_t = inner.ty; }
+              ty::ty_ptr(inner) {
+                oper_t = inner.ty;
+                require_unsafe(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+              }
               _ {
                 tcx.sess.span_fatal(expr.span,
                                     "dereferencing non-" +
