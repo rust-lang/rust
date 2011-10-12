@@ -73,16 +73,19 @@ fn to_str(n: int, radix: uint) -> str {
 fn str(i: int) -> str { ret to_str(i, 10u); }
 
 fn pow(base: int, exponent: uint) -> int {
-    ret if exponent == 0u {
-            1
-        } else if base == 0 {
-            0
-        } else {
-            let accum = base;
-            let count = exponent;
-            while count > 1u { accum *= base; count -= 1u; }
-            accum
-        };
+    if exponent == 0u { ret 1; } //Not mathemtically true if [base == 0]
+    if base     == 0  { ret 0; }
+    let my_pow  = exponent;
+    let acc     = 1;
+    let multiplier = base;
+    while(my_pow > 0u) {
+      if my_pow % 2u == 1u {
+         acc *= multiplier;
+      }
+      my_pow     /= 2u;
+      multiplier *= multiplier;
+    }
+    ret acc;
 }
 // Local Variables:
 // mode: rust;
