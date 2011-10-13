@@ -16,19 +16,13 @@ T align_down(T sp)
 {
     // There is no platform we care about that needs more than a
     // 16-byte alignment.
-    return (T)((uint32_t)sp & ~(16 - 1));
+    return (T)((uint64_t)sp & ~(16 - 1));
 }
 
 struct registers_t {
-  // general purpose registers
-  uint32_t eax, ebx, ecx, edx, ebp, esi, edi, esp;
-
-  // segment registers
-  uint16_t cs, ds, ss, es, fs, gs;
-
-  uint32_t eflags;
-
-  uint32_t eip;
+    uint64_t regs[7]; // Space for the volatile regs: rbx, rsp, rbp, r12:r15
+    uint64_t xmms[6]; // Space for the volatile regs: xmm0:xmm5
+    uint64_t ip;
 };
 
 class context {
