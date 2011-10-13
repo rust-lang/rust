@@ -9,14 +9,14 @@ import std::task;
 
 fn main() {
     let p = comm::port();
-    let t = task::spawn(bind child(chan(p)));
+    let t = task::spawn2(chan(p), child);
     let y = recv(p);
     log_err "received";
     log_err y;
     assert (y == 10);
 }
 
-fn child(c: chan<int>) {
+fn# child(c: chan<int>) {
     log_err "sending";
     send(c, 10);
     log_err "value sent"

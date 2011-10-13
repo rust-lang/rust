@@ -4,16 +4,15 @@ import std::task;
 import std::uint;
 import std::str;
 
-fn f(n: uint) {
+fn# f(&&n: uint) {
     let i = 0u;
     while i < n {
-        let thunk = g;
-        task::join(task::spawn_joinable(thunk));
+        task::join(task::spawn_joinable2((), g));
         i += 1u;
     }
 }
 
-fn g() { }
+fn# g(&&_i: ()) { }
 
 fn main(args: [str]) {
     let n =
@@ -21,5 +20,5 @@ fn main(args: [str]) {
             10u
         } else { uint::parse_buf(str::bytes(args[1]), 10u) };
     let i = 0u;
-    while i < n { task::spawn(bind f(n)); i += 1u; }
+    while i < n { task::spawn2(copy n, f); i += 1u; }
 }

@@ -15,17 +15,17 @@ import std::comm::send;
 import std::comm::port;
 import std::comm::recv;
 
-fn grandchild(c: chan<int>) { send(c, 42); }
+fn# grandchild(c: chan<int>) { send(c, 42); }
 
-fn child(c: chan<int>) {
-    let _grandchild = task::spawn_joinable(bind grandchild(c));
+fn# child(c: chan<int>) {
+    let _grandchild = task::spawn_joinable2(c, grandchild);
     join(_grandchild);
 }
 
 fn main() {
     let p = comm::port();
 
-    let _child = task::spawn_joinable(bind child(chan(p)));
+    let _child = task::spawn_joinable2(chan(p), child);
 
     let x: int = recv(p);
 

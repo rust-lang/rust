@@ -4,19 +4,17 @@ import std::task;
 import std::comm;
 import std::uint;
 
-fn die() {
+fn# die(&&_i: ()) {
     fail;
 }
 
-fn iloop() {
+fn# iloop(&&_i: ()) {
     task::unsupervise();
-    let f = die;
-    task::spawn(f);
+    task::spawn2((), die);
 }
 
 fn main() {
     for each i in uint::range(0u, 100u) {
-        let f = iloop;
-        task::spawn(f);
+        task::spawn2((), iloop);
     }
 }

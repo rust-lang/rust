@@ -12,7 +12,7 @@ tag request { quit; close(chan<bool>); }
 
 type ctx = chan<request>;
 
-fn request_task(c: chan<ctx>) {
+fn# request_task(c: chan<ctx>) {
     let p = port();
     send(c, chan(p));
     let req: request;
@@ -23,7 +23,7 @@ fn request_task(c: chan<ctx>) {
 
 fn new() -> ctx {
     let p = port();
-    let t = task::spawn(bind request_task(chan(p)));
+    let t = task::spawn2(chan(p), request_task);
     let cx: ctx;
     cx = recv(p);
     ret cx;

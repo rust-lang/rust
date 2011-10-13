@@ -7,7 +7,7 @@ resource complainer(c: comm::chan<bool>) {
     comm::send(c, true);
 }
 
-fn f(-c: comm::chan<bool>) {
+fn# f(c: comm::chan<bool>) {
     task::unsupervise();
     let c <- complainer(c);
     fail;
@@ -16,6 +16,6 @@ fn f(-c: comm::chan<bool>) {
 fn main() {
     let p = comm::port();
     let c = comm::chan(p);
-    task::spawn(bind f(c));
+    task::spawn2(c, f);
     assert comm::recv(p);
 }

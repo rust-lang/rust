@@ -2,7 +2,7 @@ use std;
 import std::task;
 import std::comm;
 
-fn start(c: comm::chan<comm::chan<str>>) {
+fn# start(c: comm::chan<comm::chan<str>>) {
     let p = comm::port();
     comm::send(c, comm::chan(p));
 
@@ -18,7 +18,7 @@ fn start(c: comm::chan<comm::chan<str>>) {
 
 fn main() {
     let p = comm::port();
-    let child = task::spawn(bind start(comm::chan(p)));
+    let child = task::spawn2(comm::chan(p), start);
 
     let c = comm::recv(p);
     comm::send(c, "A");
