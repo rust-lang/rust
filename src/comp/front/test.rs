@@ -224,10 +224,19 @@ fn empty_fn_ty() -> ast::ty {
 
 // The ast::ty of [std::test::test_desc]
 fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
+    let test_fn_ty: ast::ty = nospan(
+        ast::ty_path(
+            nospan({
+                global: false,
+                idents: ["std", "test", "default_test_fn"],
+                types: []
+            }),
+            cx.next_node_id()));
+
     let test_desc_ty_path: ast::path =
         nospan({global: false,
                 idents: ["std", "test", "test_desc"],
-                types: []});
+                types: [@test_fn_ty]});
 
     let test_desc_ty: ast::ty =
         nospan(ast::ty_path(test_desc_ty_path, cx.next_node_id()));
@@ -273,8 +282,10 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
          node: ast::expr_path(fn_path),
          span: span};
 
+    let fn_wrapper_expr = mk_test_wrapper(cx, fn_expr, span);
+
     let fn_field: ast::field =
-        nospan({mut: ast::imm, ident: "fn", expr: @fn_expr});
+        nospan({mut: ast::imm, ident: "fn", expr: fn_wrapper_expr});
 
     let ignore_lit: ast::lit = nospan(ast::lit_bool(test.ignore));
 
@@ -291,6 +302,51 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let desc_rec: ast::expr =
         {id: cx.next_node_id(), node: desc_rec_, span: span};
     ret @desc_rec;
+}
+
+// Produces a bare function that wraps the test function
+// FIXME: This can go away once fn is the type of bare function
+fn mk_test_wrapper(cx: test_ctxt,
+                   fn_path_expr: ast::expr,
+                   span: span) -> @ast::expr {
+    let call_expr: ast::expr = {
+        id: cx.next_node_id(),
+        node: ast::expr_call(@fn_path_expr, []),
+        span: span
+    };
+
+    let call_stmt: ast::stmt = nospan(
+        ast::stmt_expr(@call_expr, cx.next_node_id()));
+
+    let wrapper_decl: ast::fn_decl = {
+        inputs: [],
+        output: @nospan(ast::ty_nil),
+        purity: ast::impure_fn,
+        il: ast::il_normal,
+        cf: ast::return_val,
+        constraints: []
+    };
+
+    let wrapper_body: ast::blk = nospan({
+        stmts: [@call_stmt],
+        expr: option::none,
+        id: cx.next_node_id(),
+        rules: ast::default_blk
+    });
+
+    let wrapper_fn: ast::_fn = {
+        decl: wrapper_decl,
+        proto: ast::proto_bare,
+        body: wrapper_body
+    };
+
+    let wrapper_expr: ast::expr = {
+        id: cx.next_node_id(),
+        node: ast::expr_fn(wrapper_fn),
+        span: span
+    };
+
+    ret @wrapper_expr;
 }
 
 fn mk_main(cx: test_ctxt) -> @ast::item {
