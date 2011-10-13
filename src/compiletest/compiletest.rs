@@ -1,3 +1,6 @@
+// FIXME: The way this module sets up tests is a relic and more convoluted
+// than it needs to be
+
 import std::option;
 import std::getopts;
 import std::test;
@@ -124,8 +127,10 @@ fn test_opts(config: config) -> test::test_opts {
      run_ignored: config.run_ignored}
 }
 
-type tests_and_conv_fn =
-    {tests: [test::test_desc], to_task: fn(fn()) -> test::joinable};
+type tests_and_conv_fn = {
+    tests: [test::test_desc<fn()>],
+    to_task: fn(fn()) -> test::joinable
+};
 
 fn make_tests(cx: cx) -> tests_and_conv_fn {
     log #fmt["making tests from %s", cx.config.src_base];
@@ -162,7 +167,7 @@ fn is_test(config: config, testfile: str) -> bool {
 }
 
 fn make_test(cx: cx, testfile: str, configport: port<[u8]>) ->
-   test::test_desc {
+   test::test_desc<fn()> {
     {name: make_test_name(cx.config, testfile),
      fn: make_test_closure(testfile, chan(configport)),
      ignore: header::is_test_ignored(cx.config, testfile)}
@@ -172,26 +177,8 @@ fn make_test_name(config: config, testfile: str) -> str {
     #fmt["[%s] %s", mode_str(config.mode), testfile]
 }
 
-/*
-So this is kind of crappy:
-
-A test is just defined as a function, as you might expect, but tests have to
-run in their own tasks. Unfortunately, if your test needs dynamic data then it
-needs to be a closure, and transferring closures across tasks without
-committing a host of memory management transgressions is just impossible.
-
-To get around this, the standard test runner allows you the opportunity do
-your own conversion from a test function to a task. It gives you your function
-and you give it back a task.
-
-So that's what we're going to do. Here's where it gets stupid. To get the
-the data out of the test function we are going to run the test function,
-which will do nothing but send the data for that test to a port we've set
-up. Then we'll spawn that data into another task and return the task.
-Really convoluted. Need to think up of a better definition for tests.
-*/
-
-fn make_test_closure(testfile: str, configchan: chan<[u8]>) -> test::test_fn {
+fn make_test_closure(testfile: str,
+                     configchan: chan<[u8]>) -> test::test_fn<fn()> {
     bind send_config(testfile, configchan)
 }
 
@@ -199,67 +186,22 @@ fn send_config(testfile: str, configchan: chan<[u8]>) {
     send(configchan, str::bytes(testfile));
 }
 
-/*
-FIXME: Good god forgive me.
-
-So actually shuttling structural data across tasks isn't possible at this
-time, but we can send strings! Sadly, I need the whole config record, in the
-test task so, instead of fixing the mechanism in the compiler I'm going to
-break up the config record and pass everything individually to the spawned
-function.
-*/
-
 fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn()) ->
    test::joinable {
     testfn();
     let testfile = recv(configport);
 
-    let compile_lib_path = cx.config.compile_lib_path;
-    let run_lib_path = cx.config.run_lib_path;
-    let rustc_path = cx.config.rustc_path;
-    let src_base = cx.config.src_base;
-    let build_base = cx.config.build_base;
-    let stage_id = cx.config.stage_id;
-    let mode = mode_str(cx.config.mode);
-    let run_ignored = cx.config.run_ignored;
-    let filter = opt_str(cx.config.filter);
-    let runtool = opt_str(cx.config.runtool);
-    let rustcflags = opt_str(cx.config.rustcflags);
-    let verbose = cx.config.verbose;
-    let chan = cx.procsrv.chan;
-
-    let testthunk =
-        bind run_test_task(compile_lib_path, run_lib_path, rustc_path,
-                           src_base, build_base, stage_id, mode, run_ignored,
-                           filter, runtool, rustcflags, verbose, chan,
-                           testfile);
-    ret task::spawn_joinable(testthunk);
+    ret task::spawn_joinable2(
+        (cx.config, cx.procsrv.chan, testfile), run_test_task);
 }
 
-fn run_test_task(-compile_lib_path: str, -run_lib_path: str, -rustc_path: str,
-                 -src_base: str, -build_base: str, -stage_id: str, -mode: str,
-                 -run_ignored: bool, -opt_filter: str, -opt_runtool: str,
-                 -opt_rustcflags: str, -verbose: bool,
-                 -procsrv_chan: procsrv::reqchan, -testfile: [u8]) {
+fn# run_test_task(args: (common::config, procsrv::reqchan, [u8])) {
+
+    let (config, procsrv_chan, testfile) = args;
 
     test::configure_test_task();
 
-    let config =
-        {compile_lib_path: compile_lib_path,
-         run_lib_path: run_lib_path,
-         rustc_path: rustc_path,
-         src_base: src_base,
-         build_base: build_base,
-         stage_id: stage_id,
-         mode: str_mode(mode),
-         run_ignored: run_ignored,
-         filter: str_opt(opt_filter),
-         runtool: str_opt(opt_runtool),
-         rustcflags: str_opt(opt_rustcflags),
-         verbose: verbose};
-
     let procsrv = procsrv::from_chan(procsrv_chan);
-
     let cx = {config: config, procsrv: procsrv};
 
     runtest::run(cx, testfile);
