@@ -21,6 +21,9 @@ export task_result;
 export tr_success;
 export tr_failure;
 export get_task_id;
+export spawn2;
+export spawn_notify2;
+export spawn_joinable2;
 
 native "rust" mod rustrt {
     fn task_sleep(time_in_us: uint);
@@ -92,6 +95,47 @@ fn pin() { rustrt::pin_task(); }
 fn unpin() { rustrt::unpin_task(); }
 
 fn set_min_stack(stack_size: uint) { rustrt::set_min_stack(stack_size); }
+
+fn spawn2<~T>(-data: T, f: fn#(T)) -> task {
+    spawn_inner2(data, f, none)
+}
+
+fn spawn_notify2<~T>(-data: T, f: fn#(T),
+                         notify: comm::chan<task_notification>) -> task {
+    spawn_inner2(data, f, some(notify))
+}
+
+fn spawn_joinable2<~T>(-data: T, f: fn#(T)) -> joinable_task {
+    let p = comm::port::<task_notification>();
+    let id = spawn_notify2(data, f, comm::chan::<task_notification>(p));
+    ret (id, p);
+}
+
+// FIXME: To transition from the unsafe spawn that spawns a shared closure to
+// the safe spawn that spawns a bare function we're going to write
+// barefunc-spawn on top of unsafe-spawn.  Sadly, bind does not work reliably
+// enough to suite our needs (#1034, probably others yet to be discovered), so
+// we're going to copy the bootstrap data into a unique pointer, cast it to an
+// unsafe pointer then wrap up the bare function and the unsafe pointer in a
+// shared closure to spawn.
+//
+// After the transition this should all be rewritten.
+
+fn spawn_inner2<~T>(-data: T, f: fn#(T),
+                    notify: option<comm::chan<task_notification>>)
+    -> task_id {
+
+    fn wrapper<~T>(-data: *u8, f: fn#(T)) {
+        let data: ~T = unsafe::reinterpret_cast(data);
+        f(*data);
+    }
+
+    let data = ~data;
+    let dataptr: *u8 = unsafe::reinterpret_cast(data);
+    unsafe::leak(data);
+    let wrapped = bind wrapper(dataptr, f);
+    ret spawn_inner(wrapped, notify);
+}
 
 fn spawn(-thunk: fn()) -> task { spawn_inner(thunk, none) }
 
