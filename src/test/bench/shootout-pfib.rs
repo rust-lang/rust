@@ -27,7 +27,8 @@ import std::comm::send;
 import std::comm::recv;
 
 fn fib(n: int) -> int {
-    fn pfib(c: chan<int>, n: int) {
+    fn# pfib(args: (chan<int>, int)) {
+        let (c, n) = args;
         if n == 0 {
             send(c, 0);
         } else if n <= 2 {
@@ -35,15 +36,15 @@ fn fib(n: int) -> int {
         } else {
             let p = port();
 
-            let t1 = task::spawn(bind pfib(chan(p), n - 1));
-            let t2 = task::spawn(bind pfib(chan(p), n - 2));
+            let t1 = task::spawn2((chan(p), n - 1), pfib);
+            let t2 = task::spawn2((chan(p), n - 2), pfib);
 
             send(c, recv(p) + recv(p));
         }
     }
 
     let p = port();
-    let t = task::spawn(bind pfib(chan(p), n));
+    let t = task::spawn2((chan(p), n), pfib);
     ret recv(p);
 }
 
@@ -61,7 +62,7 @@ fn parse_opts(argv: [str]) -> config {
     }
 }
 
-fn stress_task(id: int) {
+fn# stress_task(&&id: int) {
     let i = 0;
     while true {
         let n = 15;
@@ -74,7 +75,7 @@ fn stress_task(id: int) {
 fn stress(num_tasks: int) {
     let tasks = [];
     for each i: int in range(0, num_tasks) {
-        tasks += [task::spawn_joinable(bind stress_task(i))];
+        tasks += [task::spawn_joinable2(copy i, stress_task)];
     }
     for t in tasks { task::join(t); }
 }

@@ -7,7 +7,7 @@ import std::comm::chan;
 import std::comm::recv;
 import std::task;
 
-fn a(c: chan<int>) {
+fn# a(c: chan<int>) {
     if true {
         log "task a";
         log "task a";
@@ -26,8 +26,8 @@ fn main() {
     let n: int = 2 + 3 * 7;
     let s: str = "hello there";
     let p = comm::port();
-    task::spawn(bind a(chan(p)));
-    task::spawn(bind b(chan(p)));
+    task::spawn2(chan(p), a);
+    task::spawn2(chan(p), b);
     let x: int = 10;
     x = g(n, s);
     log x;
@@ -37,7 +37,7 @@ fn main() {
     log "children finished, root finishing";
 }
 
-fn b(c: chan<int>) {
+fn# b(c: chan<int>) {
     if true {
         log "task b";
         log "task b";

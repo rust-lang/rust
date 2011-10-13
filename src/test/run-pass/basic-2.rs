@@ -7,19 +7,19 @@ import std::comm::chan;
 import std::comm::recv;
 import std::task;
 
-fn a(c: chan<int>) { log "task a0"; log "task a1"; send(c, 10); }
+fn# a(c: chan<int>) { log "task a0"; log "task a1"; send(c, 10); }
 
 fn main() {
     let p = comm::port();
-    task::spawn(bind a(chan(p)));
-    task::spawn(bind b(chan(p)));
+    task::spawn2(chan(p), a);
+    task::spawn2(chan(p), b);
     let n: int = 0;
     n = recv(p);
     n = recv(p);
     log "Finished.";
 }
 
-fn b(c: chan<int>) {
+fn# b(c: chan<int>) {
     log "task b0";
     log "task b1";
     log "task b2";

@@ -4,12 +4,13 @@ use std;
 import std::task;
 import std::comm;
 
-fn sub(parent: comm::chan<int>, id: int) {
+fn# sub(&&args: (comm::chan<int>, int)) {
+    let (parent, id) = args;
     if id == 0 {
         comm::send(parent, 0);
     } else {
         let p = comm::port();
-        let child = task::spawn(bind sub(comm::chan(p), id - 1));
+        let child = task::spawn2((comm::chan(p), id - 1), sub);
         let y = comm::recv(p);
         comm::send(parent, y + 1);
     }
@@ -17,7 +18,7 @@ fn sub(parent: comm::chan<int>, id: int) {
 
 fn main() {
     let p = comm::port();
-    let child = task::spawn(bind sub(comm::chan(p), 200));
+    let child = task::spawn2((comm::chan(p), 200), sub);
     let y = comm::recv(p);
     log "transmission complete";
     log y;

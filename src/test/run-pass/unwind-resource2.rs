@@ -6,13 +6,12 @@ import std::comm;
 resource complainer(c: @int) {
 }
 
-fn f() {
+fn# f(&&_i: ()) {
     task::unsupervise();
     let c <- complainer(@0);
     fail;
 }
 
 fn main() {
-    let g = f;
-    task::spawn(g);
+    task::spawn2((), f);
 }

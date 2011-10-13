@@ -7,7 +7,8 @@ import std::comm::recv;
 
 fn main() { log "===== WITHOUT THREADS ====="; test00(); }
 
-fn test00_start(ch: chan<int>, message: int, count: int) {
+fn# test00_start(&&args: (chan<int>, int, int)) {
+    let (ch, message, count) = args;
     log "Starting test00_start";
     let i: int = 0;
     while i < count {
@@ -32,8 +33,8 @@ fn test00() {
     // Create and spawn tasks...
     let tasks = [];
     while i < number_of_tasks {
-        let thunk = bind test00_start(ch, i, number_of_messages);
-        tasks += [task::spawn_joinable(thunk)];
+        tasks += [task::spawn_joinable2(
+            (ch, i, number_of_messages), test00_start)];
         i = i + 1;
     }
 

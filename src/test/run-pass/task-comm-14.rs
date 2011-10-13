@@ -3,13 +3,13 @@ import std::comm;
 import std::task;
 
 fn main() {
-    let po = comm::port();
+    let po = comm::port::<int>();
 
     // Spawn 10 tasks each sending us back one int.
     let i = 10;
     while (i > 0) {
         log i;
-        task::spawn(bind child(i, comm::chan(po)));
+        task::spawn2((i, comm::chan(po)), child);
         i = i - 1;
     }
 
@@ -27,7 +27,8 @@ fn main() {
     log "main thread exiting";
 }
 
-fn child(x: int, ch: comm::chan<int>) {
+fn# child(&&args: (int, comm::chan<int>)) {
+    let (x, ch) = args;
     log x;
     comm::send(ch, x);
 }

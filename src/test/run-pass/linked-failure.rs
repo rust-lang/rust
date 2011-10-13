@@ -5,19 +5,17 @@ import std::task;
 import std::comm::port;
 import std::comm::recv;
 
-fn child() { assert (1 == 2); }
+fn# child(&&_i: ()) { assert (1 == 2); }
 
-fn parent() {
+fn# parent(&&_i: ()) {
     // Since this task isn't supervised it won't bring down the whole
     // process
     task::unsupervise();
     let p = port::<int>();
-    let f = child;
-    task::spawn(f);
+    task::spawn2((), child);
     let x = recv(p);
 }
 
 fn main() {
-    let f = parent;
-    task::spawn(f);
+    task::spawn2((), parent);
 }

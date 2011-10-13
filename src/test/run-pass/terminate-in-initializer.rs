@@ -10,16 +10,14 @@ fn test_cont() { let i = 0; while i < 1 { i += 1; let x: @int = cont; } }
 fn test_ret() { let x: @int = ret; }
 
 fn test_fail() {
-    fn f() { std::task::unsupervise(); let x: @int = fail; }
-    let g = f;
-    std::task::spawn(g);
+    fn# f(&&_i: ()) { std::task::unsupervise(); let x: @int = fail; }
+    std::task::spawn2((), f);
 }
 
 fn test_fail_indirect() {
     fn f() -> ! { fail; }
-    fn g() { std::task::unsupervise(); let x: @int = f(); }
-    let h = g;
-    std::task::spawn(h);
+    fn# g(&&_i: ()) { std::task::unsupervise(); let x: @int = f(); }
+    std::task::spawn2((), g);
 }
 
 fn main() {

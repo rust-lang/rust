@@ -3,11 +3,11 @@ import std::task;
 
 fn main() { test00(); }
 
-fn start(task_number: int) { log "Started / Finished task."; }
+fn# start(&&task_number: int) { log "Started / Finished task."; }
 
 fn test00() {
     let i: int = 0;
-    let t = task::spawn_joinable(bind start(i));
+    let t = task::spawn_joinable2(i, start);
 
     // Sleep long enough for the task to finish.
     task::sleep(10000u);

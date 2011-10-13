@@ -1,12 +1,12 @@
 // -*- rust -*-
 
 use std;
-import std::task::spawn;
+import std::task::spawn2;
 
-fn main() { spawn(bind child(10, 20, 30, 40, 50, 60, 70, 80, 90)); }
+fn main() { spawn2((10, 20, 30, 40, 50, 60, 70, 80, 90), child); }
 
-fn child(i1: int, i2: int, i3: int, i4: int, i5: int, i6: int, i7: int,
-         i8: int, i9: int) {
+fn# child(&&args: (int, int, int, int, int, int, int, int, int)) {
+    let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;
     log_err i1;
     log_err i2;
     log_err i3;

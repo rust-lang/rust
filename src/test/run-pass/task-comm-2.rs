@@ -5,7 +5,7 @@ import std::task;
 
 fn main() { log "===== SPAWNING and JOINING THREAD TASKS ====="; test00(); }
 
-fn start(task_number: int) {
+fn# start(&&task_number: int) {
     log "Started task.";
     let i: int = 0;
     while i < 10000 { i = i + 1; }
@@ -19,7 +19,7 @@ fn test00() {
     let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [task::spawn_joinable(bind start(i))];
+        tasks += [task::spawn_joinable2(copy i, start)];
     }
 
     for t in tasks { task::join(t); }

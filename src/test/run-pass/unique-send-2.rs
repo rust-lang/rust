@@ -3,7 +3,8 @@ import std::comm;
 import std::task;
 import std::uint;
 
-fn child(c: comm::chan<~uint>, i: uint) {
+fn# child(args: (comm::chan<~uint>, uint)) {
+    let (c, i) = args;
     comm::send(c, ~i);
 }
 
@@ -12,8 +13,7 @@ fn main() {
     let n = 100u;
     let expected = 0u;
     for each i in uint::range(0u, n) {
-        let f = bind child(comm::chan(p), i);
-        task::spawn(f);
+        task::spawn2((comm::chan(p), i), child);
         expected += i;
     }
 

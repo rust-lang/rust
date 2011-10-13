@@ -7,12 +7,12 @@ import std::comm::send;
 import std::comm::recv;
 import std::task;
 
-fn a(c: chan<int>) { send(c, 10); }
+fn# a(c: chan<int>) { send(c, 10); }
 
 fn main() {
     let p = port();
-    task::spawn(bind a(chan(p)));
-    task::spawn(bind b(chan(p)));
+    task::spawn2(chan(p), a);
+    task::spawn2(chan(p), a);
     let n: int = 0;
     n = recv(p);
     n = recv(p);

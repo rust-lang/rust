@@ -70,12 +70,13 @@ mod map_reduce {
        [joinable_task] {
         let tasks = [];
         for i: str in inputs {
-            tasks += [task::spawn_joinable(bind map_task(ctrl, i))];
+            tasks += [task::spawn_joinable2((ctrl, i), map_task)];
         }
         ret tasks;
     }
 
-    fn map_task(ctrl: chan<ctrl_proto>, input: str) {
+    fn# map_task(args: (chan<ctrl_proto>, str)) {
+        let (ctrl, input) = args;
         // log_err "map_task " + input;
         let intermediates = map::new_str_hash();
 
@@ -107,7 +108,8 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn reduce_task(key: str, out: chan<chan<reduce_proto>>) {
+    fn# reduce_task(args: (str, chan<chan<reduce_proto>>)) {
+        let (key, out) = args;
         let p = port();
 
         send(out, chan(p));
@@ -169,7 +171,7 @@ mod map_reduce {
                     // log_err "creating new reducer for " + k;
                     let p = port();
                     tasks +=
-                        [task::spawn_joinable(bind reduce_task(k, chan(p)))];
+                        [task::spawn_joinable2((k, chan(p)), reduce_task)];
                     c = recv(p);
                     reducers.insert(k, c);
                   }

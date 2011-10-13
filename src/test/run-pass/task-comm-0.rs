@@ -7,7 +7,7 @@ import std::task;
 
 fn main() { test05(); }
 
-fn test05_start(ch : chan<int>) {
+fn# test05_start(ch : chan<int>) {
     log_err ch;
     send(ch, 10);
     log_err "sent 10";
@@ -20,7 +20,7 @@ fn test05_start(ch : chan<int>) {
 fn test05() {
     let po = comm::port();
     let ch = comm::chan(po);
-    task::spawn(bind test05_start(ch));
+    task::spawn2(ch, test05_start);
     let value = comm::recv(po);
     log_err value;
     value = comm::recv(po);

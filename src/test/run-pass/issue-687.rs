@@ -9,13 +9,14 @@ import std::comm::send;
 
 tag msg { closed; received([u8]); }
 
-fn producer(c: chan<[u8]>) {
+fn# producer(c: chan<[u8]>) {
     send(c, [1u8, 2u8, 3u8, 4u8]);
     let empty: [u8] = [];
     send(c, empty);
 }
 
-fn packager(cb: chan<chan<[u8]>>, msg: chan<msg>) {
+fn# packager(&&args: (chan<chan<[u8]>>, chan<msg>)) {
+    let (cb, msg) = args;
     let p: port<[u8]> = port();
     send(cb, chan(p));
     while true {
@@ -36,10 +37,10 @@ fn packager(cb: chan<chan<[u8]>>, msg: chan<msg>) {
 fn main() {
     let p: port<msg> = port();
     let recv_reader: port<chan<[u8]>> = port();
-    let pack = task::spawn(bind packager(chan(recv_reader), chan(p)));
+    let pack = task::spawn2((chan(recv_reader), chan(p)), packager);
 
     let source_chan: chan<[u8]> = recv(recv_reader);
-    let prod = task::spawn(bind producer(source_chan));
+    let prod = task::spawn2(source_chan, producer);
 
     while true {
         let msg = recv(p);
