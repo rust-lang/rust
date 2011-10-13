@@ -11,12 +11,6 @@ type fn_usage_ctx = {
     generic_bare_fn_legal: bool
 };
 
-fn fn_usage_view_item(_vi: @ast::view_item,
-                      _ctx: fn_usage_ctx,
-                      _v: visit::vt<fn_usage_ctx>) {
-    // Ignore paths that appear in use, import, etc
-}
-
 fn fn_usage_expr(expr: @ast::expr,
                  ctx: fn_usage_ctx,
                  v: visit::vt<fn_usage_ctx>) {
@@ -81,8 +75,7 @@ fn fn_usage_expr(expr: @ast::expr,
 fn check_crate_fn_usage(tcx: ty::ctxt, crate: @ast::crate) {
     let visit =
         visit::mk_vt(
-            @{visit_expr: fn_usage_expr,
-              visit_view_item: fn_usage_view_item
+            @{visit_expr: fn_usage_expr
                   with *visit::default_visitor()});
     let ctx = {
         tcx: tcx,
