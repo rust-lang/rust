@@ -49,7 +49,8 @@ fn ip_to_sbuf(ip: net::ip_addr) -> *u8 unsafe {
     vec::to_ptr(str::bytes(net::format_addr(ip)))
 }
 
-fn connect_task(ip: net::ip_addr, portnum: int, evt: chan<socket_event>) {
+fn# connect_task(args: (net::ip_addr, int, chan<socket_event>)) {
+    let (ip, portnum, evt) = args;
     let connecter = port();
     rustrt::aio_connect(ip_to_sbuf(ip), portnum, chan(connecter));
     let client = recv(connecter);
@@ -83,7 +84,8 @@ fn new_client(client: client, evt: chan<socket_event>) {
     log "close message sent";
 }
 
-fn accept_task(client: client, events: chan<server_event>) {
+fn# accept_task(args: (client, chan<server_event>)) {
+    let (client, events) = args;
     log "accept task was spawned";
     let p = port();
     send(events, pending(chan(p)));
@@ -92,8 +94,9 @@ fn accept_task(client: client, events: chan<server_event>) {
     log "done accepting";
 }
 
-fn server_task(ip: net::ip_addr, portnum: int, events: chan<server_event>,
-               server: chan<server>) {
+fn# server_task(args: (net::ip_addr, int, chan<server_event>,
+                       chan<server>)) {
+    let (ip, portnum, events, server) = args;
     let accepter = port();
     send(server, rustrt::aio_serve(ip_to_sbuf(ip), portnum, chan(accepter)));
 
@@ -104,11 +107,11 @@ fn server_task(ip: net::ip_addr, portnum: int, events: chan<server_event>,
         if rustrt::aio_is_null_client(client) {
             log "client was actually null, returning";
             ret;
-        } else { task::spawn(bind accept_task(client, events)); }
+        } else { task::spawn2((client, events), accept_task); }
     }
 }
 
-fn request_task(c: chan<ctx>) {
+fn# request_task(c: chan<ctx>) {
     // Create a port to accept IO requests on
     let p = port();
     // Hand of its channel to our spawner
@@ -126,10 +129,10 @@ fn request_task(c: chan<ctx>) {
             ret;
           }
           connect(remote(ip, portnum), client) {
-            task::spawn(bind connect_task(ip, portnum, client));
+            task::spawn2((ip, portnum, client), connect_task);
           }
           serve(ip, portnum, events, server) {
-            task::spawn(bind server_task(ip, portnum, events, server));
+            task::spawn2((ip, portnum, events, server), server_task);
           }
           write(socket, v, status) unsafe {
             rustrt::aio_writedata(socket, vec::unsafe::to_ptr::<u8>(v),
@@ -147,14 +150,14 @@ fn request_task(c: chan<ctx>) {
     }
 }
 
-fn iotask(c: chan<ctx>) {
+fn# iotask(c: chan<ctx>) {
     log "io task spawned";
     // Initialize before accepting requests
     rustrt::aio_init();
 
     log "io task init";
     // Spawn our request task
-    let reqtask = task::spawn_joinable(bind request_task(c));
+    let reqtask = task::spawn_joinable2(c, request_task);
 
     log "uv run task init";
     // Enter IO loop. This never returns until aio_stop is called.
@@ -166,7 +169,7 @@ fn iotask(c: chan<ctx>) {
 
 fn new() -> ctx {
     let p: port<ctx> = port();
-    task::spawn(bind iotask(chan(p)));
+    task::spawn2(chan(p), iotask);
     ret recv(p);
 }
 
