@@ -54,7 +54,7 @@ rust_synchronized_indexed_list_test::run() {
         delete worker;
     }
 
-    long long expected_items = LARGE_COUNT * THREADS;
+    size_t expected_items = LARGE_COUNT * THREADS;
 
     CHECK(list.length() == expected_items);
 

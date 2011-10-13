@@ -67,9 +67,9 @@ struct frame_glue_fns;
 typedef intptr_t rust_task_id;
 typedef intptr_t rust_port_id;
 
-#ifndef __i386__
-#error "Target CPU not supported."
-#endif
+//NDM #ifndef __i386__
+//NDM #error "Target CPU not supported."
+//NDM #endif
 
 #define I(dom, e) ((e) ? (void)0 : \
          (dom)->srv->fatal(#e, __FILE__, __LINE__, ""))

@@ -32,8 +32,8 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/memory_region.cpp \
               rt/test/rust_test_harness.cpp \
               rt/test/rust_test_runtime.cpp \
-              rt/test/rust_test_util.cpp \
-              rt/arch/i386/context.cpp \
+              rt/test/rust_test_util.cpp #NDM
+#NDM              rt/arch/i386/context.cpp
 
 RUNTIME_LL :=
 
@@ -76,16 +76,19 @@ RUNTIME_HDR := rt/globals.h \
                rt/test/rust_test_harness.h \
                rt/test/rust_test_runtime.h \
                rt/test/rust_test_util.h \
-               rt/arch/i386/context.h \
+               rt/arch/i386/context.h
 
 ifeq ($(CFG_WINDOWSY), 1)
   LIBUV_OSTYPE := win
+  LIBUV_ARCH := x86_64 #NDM
   LIBUV_LIB := rt/libuv/Default/obj.target/src/rt/libuv/libuv.a
 else ifeq ($(CFG_OSTYPE), apple-darwin)
   LIBUV_OSTYPE := mac
+  LIBUV_ARCH := x86_64 #NDM
   LIBUV_LIB := rt/libuv/Default/libuv.a
 else
   LIBUV_OSTYPE := unix
+  LIBUV_ARCH := x86_64 #NDM
   LIBUV_LIB := rt/libuv/Default/obj.target/src/rt/libuv/libuv.a
 endif
 
@@ -121,7 +124,7 @@ $(LIBUV_LIB): $(wildcard \
                      $(S)src/rt/libuv/*/* \
                      $(S)src/rt/libuv/*/*/* \
                      $(S)src/rt/libuv/*/*/*/*)
-	$(Q)$(MAKE) -C $(S)mk/libuv/$(LIBUV_OSTYPE) \
+	$(Q)$(MAKE) -C $(S)mk/libuv/$(LIBUV_ARCH)/$(LIBUV_OSTYPE) \
 		CFLAGS="-m32" LDFLAGS="-m32" \
 		CC="$(CFG_GCCISH_CROSS)$(CC)" \
 		CXX="$(CFG_GCCISH_CROSS)$(CXX)" \

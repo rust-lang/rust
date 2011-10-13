@@ -26,6 +26,7 @@ rust_log::~rust_log() {
 
 const uint16_t
 hash(uintptr_t ptr) {
+#   if(ULONG_MAX == 0xFFFFFFFF)
     // Robert Jenkins' 32 bit integer hash function
     ptr = (ptr + 0x7ed55d16) + (ptr << 12);
     ptr = (ptr ^ 0xc761c23c) ^ (ptr >> 19);
@@ -33,6 +34,18 @@ hash(uintptr_t ptr) {
     ptr = (ptr + 0xd3a2646c) ^ (ptr << 9);
     ptr = (ptr + 0xfd7046c5) + (ptr << 3);
     ptr = (ptr ^ 0xb55a4f09) ^ (ptr >> 16);
+#   elif(ULONG_MAX == 0xFFFFFFFFFFFFFFFF)
+    // "hash64shift()" from http://www.concentric.net/~Ttwang/tech/inthash.htm
+    ptr = (~ptr) + (ptr << 21); // ptr = (ptr << 21) - ptr - 1;
+    ptr = ptr ^ (ptr >> 24);
+    ptr = (ptr + (ptr << 3)) + (ptr << 8); // ptr * 265
+    ptr = ptr ^ (ptr >> 14);
+    ptr = (ptr + (ptr << 2)) + (ptr << 4); // ptr * 21
+    ptr = ptr ^ (ptr >> 28);
+    ptr = ptr + (ptr << 31);    
+#   else
+#   error "hash() not defined for this pointer size"
+#   endif
     return (uint16_t) ptr;
 }
 
@@ -72,7 +85,7 @@ rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
 #if defined(__WIN32__)
     uint32_t thread_id = 0;
 #else
-    uint32_t thread_id = hash((uint32_t) pthread_self());
+    uint32_t thread_id = hash((uintptr_t) pthread_self());
 #endif
     char prefix[BUF_BYTES] = "";
     if (_sched && _sched->name) {

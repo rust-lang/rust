@@ -16,7 +16,7 @@ import std::map::mk_hashmap;
 import std::option::{some, none};
 import std::getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::link::output_type;
-import back::x86;
+import back::{x86, x86_64};
 
 tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
 
@@ -295,7 +295,7 @@ fn get_arch(triple: str) -> session::arch {
                str::find(triple, "i786") >= 0 {
             session::arch_x86
         } else if str::find(triple, "x86_64") >= 0 {
-            session::arch_x64
+            session::arch_x86_64
         } else if str::find(triple, "arm") >= 0 ||
                       str::find(triple, "xscale") >= 0 {
             session::arch_arm
@@ -307,12 +307,12 @@ fn build_target_config(sopts: @session::options) -> @session::config {
     let arch = get_arch(sopts.target_triple);
     let (int_type, uint_type, float_type) = alt arch {
       session::arch_x86. {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
-      session::arch_x64. {(ast::ty_i64, ast::ty_u64, ast::ty_f64)}
+      session::arch_x86_64. {(ast::ty_i64, ast::ty_u64, ast::ty_f64)}
       session::arch_arm. {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
     };
     let target_strs = alt arch {
       session::arch_x86. {x86::get_target_strs(os)}
-      session::arch_x64. {x86::get_target_strs(os)}
+      session::arch_x86_64. {x86_64::get_target_strs(os)}
       session::arch_arm. {x86::get_target_strs(os)}
     };
     let target_cfg: @session::config =

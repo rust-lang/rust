@@ -11,7 +11,7 @@ import back::target_strs;
 
 tag os { os_win32; os_macos; os_linux; }
 
-tag arch { arch_x86; arch_x64; arch_arm; }
+tag arch { arch_x86; arch_x86_64; arch_arm; }
 
 type config =
     {os: os,

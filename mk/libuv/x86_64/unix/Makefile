@@ -7,7 +7,7 @@
 MAKEFLAGS=-r
 
 # The source directory tree.
-srcdir := ../../..
+srcdir := ../../../..
 
 # The name of the builddir.
 builddir_name ?= out
@@ -322,7 +322,7 @@ ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
 endif
 
 quiet_cmd_regen_makefile = ACTION Regenerating $@
-cmd_regen_makefile = ./src/rt/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." "--depth=." "--generator-output=mk/libuv/win" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=win" src/rt/libuv/uv.gyp
+cmd_regen_makefile = ./src/rt/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." "--depth=." "--generator-output=mk/libuv/x86_64/unix" "-Dlibrary=static_library" "-Dtarget_arch=x86_64" "-DOS=linux" src/rt/libuv/uv.gyp
 #Makefile: $(srcdir)/src/rt/libuv/uv.gyp
 #	$(call do_cmd,regen_makefile)
 

@@ -8,11 +8,15 @@
 
 // Upcalls.
 
-#ifdef __i386__
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_X64)
 void
 check_stack(rust_task *task) {
     void *esp;
+#   ifdef __i386__
     asm volatile("movl %%esp,%0" : "=r" (esp));
+#   else
+    asm volatile("mov %%rsp,%0" : "=r" (esp));
+#   endif
     if (esp < task->stk->data)
         task->kernel->fatal("Out of stack space, sorry");
 }
