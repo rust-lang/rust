@@ -3,22 +3,22 @@ import syntax::visit;
 import std::option::some;
 import syntax::print::pprust::{expr_to_str, path_to_str};
 
-export unsafeck_crate;
+export check_crate_fn_usage;
 
-type unsafe_ctx = {
+type fn_usage_ctx = {
     tcx: ty::ctxt,
     unsafe_fn_legal: bool
 };
 
-fn unsafeck_view_item(_vi: @ast::view_item,
-                      _ctx: unsafe_ctx,
-                      _v: visit::vt<unsafe_ctx>) {
+fn fn_usage_view_item(_vi: @ast::view_item,
+                      _ctx: fn_usage_ctx,
+                      _v: visit::vt<fn_usage_ctx>) {
     // Ignore paths that appear in use, import, etc
 }
 
-fn unsafeck_expr(expr: @ast::expr,
-                 ctx: unsafe_ctx,
-                 v: visit::vt<unsafe_ctx>) {
+fn fn_usage_expr(expr: @ast::expr,
+                 ctx: fn_usage_ctx,
+                 v: visit::vt<fn_usage_ctx>) {
     alt expr.node {
       ast::expr_path(path) {
         if !ctx.unsafe_fn_legal {
@@ -51,11 +51,11 @@ fn unsafeck_expr(expr: @ast::expr,
     }
 }
 
-fn unsafeck_crate(tcx: ty::ctxt, crate: @ast::crate) {
+fn check_crate_fn_usage(tcx: ty::ctxt, crate: @ast::crate) {
     let visit =
         visit::mk_vt(
-            @{visit_expr: unsafeck_expr,
-              visit_view_item: unsafeck_view_item
+            @{visit_expr: fn_usage_expr,
+              visit_view_item: fn_usage_view_item
                   with *visit::default_visitor()});
     let ctx = {tcx: tcx, unsafe_fn_legal: false};
     visit::visit_crate(*crate, ctx, visit);

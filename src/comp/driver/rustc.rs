@@ -5,7 +5,7 @@ import metadata::{creader, cstore};
 import syntax::parse::{parser, token};
 import syntax::{ast, codemap};
 import front::attr;
-import middle::{trans, resolve, freevars, kind, ty, typeck, unsafeck};
+import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage};
 import middle::tstate::ck;
 import syntax::print::{pp, pprust};
 import util::{ppaux, common, filesearch};
@@ -129,8 +129,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
              bind freevars::annotate_freevars(def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
     time(time_passes, "typechecking", bind typeck::check_crate(ty_cx, crate));
-    time(time_passes, "unsafechecking",
-         bind unsafeck::unsafeck_crate(ty_cx, crate));
+    time(time_passes, "function usage",
+         bind fn_usage::check_crate_fn_usage(ty_cx, crate));
     time(time_passes, "alt checking",
          bind middle::check_alt::check_crate(ty_cx, crate));
     if sess.get_opts().run_typestate {

@@ -25,7 +25,7 @@ mod middle {
     mod ast_map;
     mod resolve;
     mod typeck;
-    mod unsafeck;
+    mod fn_usage;
     mod check_alt;
     mod mut;
     mod alias;
