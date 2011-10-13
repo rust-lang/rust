@@ -367,16 +367,10 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
             // If inner_obj (the object being extended) exists, translate it.
             // Translating inner_obj returns a ValueRef (pointer to a 2-word
             // value) wrapped in a result.
-            let inner_obj_val: result = trans_temp_expr(bcx, e);
-
             check type_is_tup_like(bcx, body_ty);
-            let body_inner_obj =
-                GEP_tup_like(bcx, body_ty, body,
-                             [0, abi::obj_body_elt_inner_obj]);
-            bcx = body_inner_obj.bcx;
-            bcx =
-                copy_val(bcx, INIT, body_inner_obj.val, inner_obj_val.val,
-                         inner_obj_ty);
+            let {bcx: cx, val: body_inner_obj} = GEP_tup_like
+                (bcx, body_ty, body, [0, abi::obj_body_elt_inner_obj]);
+            bcx = trans_expr(cx, e, save_in(body_inner_obj));
           }
         }
         revoke_clean(bcx, box);
