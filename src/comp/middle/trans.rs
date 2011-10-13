@@ -251,13 +251,13 @@ fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
     let degen = std::vec::len(ty::tag_variants(cx.tcx, did)) == 1u;
     if check type_has_static_size(cx, t) {
         let size = static_size_of_tag(cx, sp, t);
-        if !degen { ret T_tag(cx.tn, size); }
-        // LLVM does not like 0-size arrays, apparently
-        if size == 0u { size = 1u; }
-        ret T_array(T_i8(), size);
+        if !degen { T_tag(cx.tn, size) }
+        else if size == 0u { T_struct([T_int()]) }
+        else { T_array(T_i8(), size) }
     }
     else {
-        if degen { ret T_i8(); } else { ret T_opaque_tag(cx.tn); }
+        if degen { T_struct([T_int()]) }
+        else { T_opaque_tag(cx.tn) }
     }
 }
 
@@ -3115,12 +3115,13 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             let lltagty = type_of_tag(ccx, sp, tid, tag_ty);
             let bcx = alloc_result.bcx;
             let lltagptr = PointerCast(bcx, lltagblob, T_ptr(lltagty));
-            if std::vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
+            let lldiscrimptr = GEP(bcx, lltagptr, [C_int(0), C_int(0)]);
+            let d = if std::vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
                 let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
                 let lldiscrim = Load(bcx, lldiscrim_gv);
-                let lldiscrimptr = GEP(bcx, lltagptr, [C_int(0), C_int(0)]);
-                Store(bcx, lldiscrim, lldiscrimptr);
-            }
+                lldiscrim
+            } else { C_int(0) };
+            Store(bcx, d, lldiscrimptr);
             ret lval_no_env(bcx, lltagptr, temporary);
           }
         }
