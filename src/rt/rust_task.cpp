@@ -180,22 +180,6 @@ void task_start_wrapper(spawn_args *a)
     }
 }
 
-/* We spawn a rust (fastcc) function through a CDECL function
-   defined in main.ll, which is built as part of each crate. These accessors
-   allow each rust program to install that function at startup */
-
-uintptr_t spawn_wrapper;
-
-extern "C" CDECL void
-set_spawn_wrapper(uintptr_t f) {
-    spawn_wrapper = f;
-}
-
-extern "C" CDECL uintptr_t
-get_spawn_wrapper() {
-    return spawn_wrapper;
-}
-
 void
 rust_task::start(uintptr_t spawnee_fn,
                  uintptr_t args,

@@ -472,13 +472,18 @@ struct fn_env_pair {
     intptr_t env;
 };
 
-extern "C" CDECL uintptr_t get_spawn_wrapper();
+// FIXME This is probably not needed at all anymore. Have to rearrange some
+// argument passing to remove it.
+void rust_spawn_wrapper(void* retptr, rust_task* taskptr, void* envptr,
+                        void(*func)(void*, rust_task*, void*)) {
+    func(retptr, taskptr, envptr);
+}
 
 extern "C" CDECL void
 start_task(void *unused_task, rust_task_id id, fn_env_pair *f) {
     rust_task *task = rust_scheduler::get_task();
     rust_task *target = task->kernel->get_task_by_id(id);
-    target->start(get_spawn_wrapper(), f->f, f->env);
+    target->start((uintptr_t)rust_spawn_wrapper, f->f, f->env);
     target->deref();
 }
 

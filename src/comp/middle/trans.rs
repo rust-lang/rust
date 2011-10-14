@@ -5662,7 +5662,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let llfty = type_of_fn(ccx, sp, ast::proto_fn, false, false,
                                [vecarg_ty], nt, 0u);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
-                              lib::llvm::LLVMFastCallConv, llfty);
+                              lib::llvm::LLVMCCallConv, llfty);
 
         let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
 

@@ -16,28 +16,9 @@
 
 declare i32 @rust_start(i32, i32, i32, i32)
 
-declare external fastcc void @_rust_main(i1* nocapture, %task*, %2* nocapture, %vec*)
-
-define void @_rust_main_wrap(i1* nocapture, %task *, %2* nocapture, %vec *)
-{
-  tail call fastcc void @_rust_main(i1* %0, %task *%1, %2* nocapture %2, %vec* %3)
-  ret void
-}
-
-%nullary_fn = type void (i1*, %task*, %2*)
-
-define void @_rust_spawn_wrap(
-       i1* nocapture, %task*, %2* nocapture, %nullary_fn* %f)
-{
-  call void %f(i1* %0, %task *%1, %2* nocapture %2)
-  ret void
-}
-
-declare external void @set_spawn_wrapper(void (i1*, %task*, %2*, %nullary_fn*)*);
+declare external void @_rust_main(i1* nocapture, %task*, %2* nocapture, %vec*)
 
 define i32 @"MAIN"(i32, i32) {
-  call void @set_spawn_wrapper(void (i1*, %task*, %2*, %nullary_fn*)* @_rust_spawn_wrap)
-
-  %result = tail call i32 @rust_start(i32 ptrtoint (void (i1*, %task*, %2*, %vec*)* @_rust_main_wrap to i32), i32 %0, i32 %1, i32 ptrtoint (%0* @_rust_crate_map_toplevel to i32))
+  %result = tail call i32 @rust_start(i32 ptrtoint (void (i1*, %task*, %2*, %vec*)* @_rust_main to i32), i32 %0, i32 %1, i32 ptrtoint (%0* @_rust_crate_map_toplevel to i32))
   ret i32 %result
 }
