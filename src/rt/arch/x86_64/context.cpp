@@ -33,6 +33,6 @@ void context::call(void *f, void *arg, void *stack) {
   *--sp = (uint64_t)arg;
   *--sp = 0xdeadbeef;
 
-  regs.regs[1] = (uint64_t)sp;
+  regs.regs[RSP] = (uint64_t)sp;
   regs.ip = (uint64_t)f;
 }

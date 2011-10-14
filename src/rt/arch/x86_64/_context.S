@@ -54,44 +54,44 @@ swap_registers:
         // jump back into the old code.
         
         // Save instruction pointer:
-        popl %rax
-        movl %rax, 104(%rdi)
+        pop %rax
+        mov %rax, 104(%rdi)
 
         // Save non-volatile integer registers:
         //   (including RSP)
-        movl %rbx,   0(%rdi)
-        movl %rsp,   8(%rdi)
-        movl %rbp,  16(%rdi)
-        movl %r12,  24(%rdi)
-        movl %r13,  32(%rdi)
-        movl %r14,  40(%rdi)
-        movl %r15,  48(%rdi)
+        mov %rbx,   0(%rdi)
+        mov %rsp,   8(%rdi)
+        mov %rbp,  16(%rdi)
+        mov %r12,  24(%rdi)
+        mov %r13,  32(%rdi)
+        mov %r14,  40(%rdi)
+        mov %r15,  48(%rdi)
 
         // Save non-volatile XMM registers:
-        movl %xmm0, 56(%rdi)
-        movl %xmm1, 64(%rdi)
-        movl %xmm2, 72(%rdi)
-        movl %xmm3, 80(%rdi)
-        movl %xmm4, 88(%rdi)
-        movl %xmm5, 96(%rdi)
+        movapd %xmm0, 56(%rdi)
+        movapd %xmm1, 64(%rdi)
+        movapd %xmm2, 72(%rdi)
+        movapd %xmm3, 80(%rdi)
+        movapd %xmm4, 88(%rdi)
+        movapd %xmm5, 96(%rdi)
 
         // Restore non-volatile integer registers:
         //   (including RSP)
-        movl  0(%rsi), %rbx
-        movl  8(%rsi), %rsp
-        movl 16(%rsi), %rbp
-        movl 24(%rsi), %r12
-        movl 32(%rsi), %r13
-        movl 40(%rsi), %r14
-        movl 48(%rsi), %r15
+        mov  0(%rsi), %rbx
+        mov  8(%rsi), %rsp
+        mov 16(%rsi), %rbp
+        mov 24(%rsi), %r12
+        mov 32(%rsi), %r13
+        mov 40(%rsi), %r14
+        mov 48(%rsi), %r15
 
         // Restore non-volatile XMM registers:
-        movl 56(%rsi), %xmm0
-        movl 64(%rsi), %xmm1
-        movl 72(%rsi), %xmm2
-        movl 80(%rsi), %xmm3
-        movl 88(%rsi), %xmm4
-        movl 96(%rsi), %xmm5
+        movapd 56(%rsi), %xmm0
+        movapd 64(%rsi), %xmm1
+        movapd 72(%rsi), %xmm2
+        movapd 80(%rsi), %xmm3
+        movapd 88(%rsi), %xmm4
+        movapd 96(%rsi), %xmm5
 
         // Jump to the instruction pointer
         // found in regs:

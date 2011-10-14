@@ -391,7 +391,7 @@ step_msg "making directories"
 for i in \
     doc doc/std \
     nd nd/std \
-    rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
+    rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 rt/arch/x86_64 \
     rt/libuv rt/libuv/src/ares rt/libuv/src/eio rt/libuv/src/ev \
     rustllvm dl \
     test/run-pass test/run-fail test/compile-fail \

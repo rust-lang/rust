@@ -32,8 +32,8 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/memory_region.cpp \
               rt/test/rust_test_harness.cpp \
               rt/test/rust_test_runtime.cpp \
-              rt/test/rust_test_util.cpp #NDM
-#NDM              rt/arch/i386/context.cpp
+              rt/test/rust_test_util.cpp \
+              rt/arch/i386/context.cpp
 
 RUNTIME_LL :=
 
@@ -76,25 +76,30 @@ RUNTIME_HDR := rt/globals.h \
                rt/test/rust_test_harness.h \
                rt/test/rust_test_runtime.h \
                rt/test/rust_test_util.h \
+<<<<<<< HEAD
                rt/arch/i386/context.h
+=======
+	           rt/arch/i386/context.h
+>>>>>>> start going back to an i386 build
 
 ifeq ($(CFG_WINDOWSY), 1)
   LIBUV_OSTYPE := win
-  LIBUV_ARCH := x86_64 #NDM
+  LIBUV_ARCH := i386
   LIBUV_LIB := rt/libuv/Default/obj.target/src/rt/libuv/libuv.a
 else ifeq ($(CFG_OSTYPE), apple-darwin)
   LIBUV_OSTYPE := mac
-  LIBUV_ARCH := x86_64 #NDM
+  LIBUV_ARCH := i386
   LIBUV_LIB := rt/libuv/Default/libuv.a
 else
   LIBUV_OSTYPE := unix
-  LIBUV_ARCH := x86_64 #NDM
+  LIBUV_ARCH := i386
   LIBUV_LIB := rt/libuv/Default/obj.target/src/rt/libuv/libuv.a
 endif
 
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
-                -I $(S)src/rt/arch/i386 -I $(S)src/rt/libuv/include
+                -I $(S)src/rt/arch/x86_64 \
+				-I $(S)src/rt/libuv/include
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.S=.o)
 RUNTIME_LIBS := $(LIBUV_LIB)
 

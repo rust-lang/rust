@@ -66,13 +66,13 @@ ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   # approaches welcome!
   #
   # NB: Currently GCC's optimizer breaks rustrt (task-comm-1 hangs) on Darwin.
-  CFG_GCC_CFLAGS += -m64 #NDM
-  CFG_CLANG_CFLAGS += -m64 #NDM
+  CFG_GCC_CFLAGS += -m32
+  CFG_CLANG_CFLAGS += -m32
   ifeq ($(CFG_CPUTYPE), x86_64)
-    CFG_GCCISH_CFLAGS += -arch x86_64 #NDM
-    CFG_GCCISH_LINK_FLAGS += -arch x86_64 #NDM
+    CFG_GCCISH_CFLAGS += -arch i386
+    CFG_GCCISH_LINK_FLAGS += -arch i386
   endif
-  CFG_GCCISH_LINK_FLAGS += -m64
+  CFG_GCCISH_LINK_FLAGS += -m32
   CFG_DSYMUTIL := dsymutil
   CFG_DEF_SUFFIX := .darwin.def
   # Mac requires this flag to make rpath work

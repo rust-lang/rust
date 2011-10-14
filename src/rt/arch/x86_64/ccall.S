@@ -11,11 +11,11 @@ _upcall_call_c_stack:
 .globl upcall_call_c_stack
 upcall_call_c_stack:
 #endif
-    pushl %rbp
-    movl %rsp,%rbp          // save rsp
-    movl %rsi,%rsp          // switch stack
-    calll *%rdi
-    movl %rbp,%rsp          // would like to use "leave" but it's slower
-    popl %rbp
+    push %rbp
+    mov %rsp,%rbp          // save rsp
+    mov %rsi,%rsp          // switch stack
+    call *%rdi
+    mov %rbp,%rsp          // would like to use "leave" but it's slower
+    pop %rbp
     ret
 

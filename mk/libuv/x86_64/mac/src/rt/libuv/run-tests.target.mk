@@ -12,7 +12,7 @@ CFLAGS_Default := -fasm-blocks \
 	-mpascal-strings \
 	-Os \
 	-gdwarf-2 \
-	-arch i386
+	-arch x86_64
 
 # Flags passed to only C files.
 CFLAGS_C_Default := 
@@ -104,7 +104,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
 
 # End of this set of suffix rules
 ### Rules for final target.
-LDFLAGS_Default := -arch i386 \
+LDFLAGS_Default := -arch x86_64 \
 	-L$(builddir)
 
 LIBS := -framework Carbon \

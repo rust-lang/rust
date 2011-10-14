@@ -27,6 +27,8 @@ struct registers_t {
 
 class context {
 public:
+  static const int RSP = 1;
+
   registers_t regs;
 
   context();
@@ -42,7 +44,7 @@ public:
   // function being called causes the task to fail, then we have to avoid
   // leaking space on the C stack.
   inline void *alloc_stack(size_t nbytes) {
-    uint32_t bot = regs.esp;
+    uint32_t bot = regs.regs[RSP];
     uint32_t top = align_down(bot - nbytes);
 
 #ifdef HAVE_VALGRIND
