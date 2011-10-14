@@ -33,7 +33,7 @@ mod map_reduce {
     tag ctrl_proto { find_reducer([u8], chan<int>); mapper_done; }
 
     fn start_mappers(ctrl: chan<ctrl_proto>, inputs: [str]) {
-        for i: str in inputs { task::spawn2((ctrl, i), map_task); }
+        for i: str in inputs { task::spawn((ctrl, i), map_task); }
     }
 
     fn# map_task(&&args: (chan<ctrl_proto>, str)) {

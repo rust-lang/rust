@@ -11,8 +11,8 @@ fn# a(c: chan<int>) { send(c, 10); }
 
 fn main() {
     let p = port();
-    task::spawn2(chan(p), a);
-    task::spawn2(chan(p), a);
+    task::spawn(chan(p), a);
+    task::spawn(chan(p), a);
     let n: int = 0;
     n = recv(p);
     n = recv(p);

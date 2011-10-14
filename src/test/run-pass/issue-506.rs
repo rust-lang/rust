@@ -11,4 +11,4 @@ native "rust" mod rustrt {
 
 fn# yield_wrap(&&_i: ()) unsafe { rustrt::task_yield(); }
 
-fn main() { task::spawn2((), yield_wrap); }
+fn main() { task::spawn((), yield_wrap); }

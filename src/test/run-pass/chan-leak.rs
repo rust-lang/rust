@@ -23,7 +23,7 @@ fn# request_task(c: chan<ctx>) {
 
 fn new() -> ctx {
     let p = port();
-    let t = task::spawn2(chan(p), request_task);
+    let t = task::spawn(chan(p), request_task);
     let cx: ctx;
     cx = recv(p);
     ret cx;

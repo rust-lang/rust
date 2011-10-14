@@ -19,7 +19,7 @@ fn test00() {
     let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [task::spawn_joinable2(copy i, start)];
+        tasks += [task::spawn_joinable(copy i, start)];
     }
 
     for t in tasks { task::join(t); }

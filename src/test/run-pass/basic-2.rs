@@ -11,8 +11,8 @@ fn# a(c: chan<int>) { log "task a0"; log "task a1"; send(c, 10); }
 
 fn main() {
     let p = comm::port();
-    task::spawn2(chan(p), a);
-    task::spawn2(chan(p), b);
+    task::spawn(chan(p), a);
+    task::spawn(chan(p), b);
     let n: int = 0;
     n = recv(p);
     n = recv(p);

@@ -4,7 +4,7 @@ import std::task;
 import std::task::*;
 
 fn main() {
-    let other = task::spawn_joinable2((), child);
+    let other = task::spawn_joinable((), child);
     log_err "1";
     yield();
     join(other);

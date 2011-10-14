@@ -13,7 +13,7 @@ fn main() {
     let n = 100u;
     let expected = 0u;
     for each i in uint::range(0u, n) {
-        task::spawn2((comm::chan(p), i), child);
+        task::spawn((comm::chan(p), i), child);
         expected += i;
     }
 

@@ -10,7 +10,7 @@ fn# sub(&&args: (comm::chan<int>, int)) {
         comm::send(parent, 0);
     } else {
         let p = comm::port();
-        let child = task::spawn2((comm::chan(p), id - 1), sub);
+        let child = task::spawn((comm::chan(p), id - 1), sub);
         let y = comm::recv(p);
         comm::send(parent, y + 1);
     }
@@ -18,7 +18,7 @@ fn# sub(&&args: (comm::chan<int>, int)) {
 
 fn main() {
     let p = comm::port();
-    let child = task::spawn2((comm::chan(p), 200), sub);
+    let child = task::spawn((comm::chan(p), 200), sub);
     let y = comm::recv(p);
     log "transmission complete";
     log y;

@@ -26,8 +26,8 @@ fn main() {
     let n: int = 2 + 3 * 7;
     let s: str = "hello there";
     let p = comm::port();
-    task::spawn2(chan(p), a);
-    task::spawn2(chan(p), b);
+    task::spawn(chan(p), a);
+    task::spawn(chan(p), b);
     let x: int = 10;
     x = g(n, s);
     log x;

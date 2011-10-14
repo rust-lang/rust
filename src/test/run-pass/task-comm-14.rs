@@ -9,7 +9,7 @@ fn main() {
     let i = 10;
     while (i > 0) {
         log i;
-        task::spawn2((i, comm::chan(po)), child);
+        task::spawn((i, comm::chan(po)), child);
         i = i - 1;
     }
 

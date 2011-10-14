@@ -18,9 +18,9 @@ export task_result;
 export tr_success;
 export tr_failure;
 export get_task_id;
-export spawn2;
-export spawn_notify2;
-export spawn_joinable2;
+export spawn;
+export spawn_notify;
+export spawn_joinable;
 
 native "rust" mod rustrt {
     fn task_sleep(time_in_us: uint);
@@ -93,18 +93,18 @@ fn unpin() { rustrt::unpin_task(); }
 
 fn set_min_stack(stack_size: uint) { rustrt::set_min_stack(stack_size); }
 
-fn spawn2<~T>(-data: T, f: fn#(T)) -> task {
+fn spawn<~T>(-data: T, f: fn#(T)) -> task {
     spawn_inner2(data, f, none)
 }
 
-fn spawn_notify2<~T>(-data: T, f: fn#(T),
+fn spawn_notify<~T>(-data: T, f: fn#(T),
                          notify: comm::chan<task_notification>) -> task {
     spawn_inner2(data, f, some(notify))
 }
 
-fn spawn_joinable2<~T>(-data: T, f: fn#(T)) -> joinable_task {
+fn spawn_joinable<~T>(-data: T, f: fn#(T)) -> joinable_task {
     let p = comm::port::<task_notification>();
-    let id = spawn_notify2(data, f, comm::chan::<task_notification>(p));
+    let id = spawn_notify(data, f, comm::chan::<task_notification>(p));
     ret (id, p);
 }
 

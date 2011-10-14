@@ -12,5 +12,5 @@ fn f() {
 }
 
 fn main() {
-    task::spawn2(bind f());
+    task::spawn(bind f());
 }

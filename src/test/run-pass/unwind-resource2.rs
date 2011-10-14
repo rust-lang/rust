@@ -13,5 +13,5 @@ fn# f(&&_i: ()) {
 }
 
 fn main() {
-    task::spawn2((), f);
+    task::spawn((), f);
 }

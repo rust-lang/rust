@@ -21,5 +21,5 @@ fn main(args: [str]) {
         if vec::len(args) < 2u {
             100u
         } else { uint::parse_buf(str::bytes(args[1]), 10u) };
-    for each i in uint::range(0u, 100u) { task::spawn2(copy n, f); }
+    for each i in uint::range(0u, 100u) { task::spawn(copy n, f); }
 }
