@@ -7,9 +7,19 @@
 
 define TARGET_STAGE_N
 
-$$(TARGET_LIB$(1)$(2))/intrinsics.bc: $$(INTRINSICS_BC)
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
+TARGET_HOST    := $$(word 1,$$(subst -, ,$(2)))
+
+# For some reason there is (sometimes) a mismatch here between i686, i386, etc
+INTR_HOST := $$(subst i686,i386,$$(TARGET_HOST))
+
+$$(TARGET_LIB$(1)$(2))/intrinsics.ll: \
+		$$(S)src/rt/intrinsics/intrinsics.$$(INTR_HOST).ll.in
+	@$$(call E, sed: $$@)
+	sed s/@CFG_TARGET_TRIPLE@/$(2)/ $$< > $$@
+
+$$(TARGET_LIB$(1)$(2))/intrinsics.bc: $$(TARGET_LIB$(1)$(2))/intrinsics.ll
+	@$$(call E, llvms-as: $$@)
+	$$(LLVM_AS) -o $$@ $$<
 
 $$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB): \
 	$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \

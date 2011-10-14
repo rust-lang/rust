@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# This script generates new definitions for the intrinsics using
+# clang. This is not currently in the Makefile to avoid any dependency
+# on clang.
+
+for ARCH in i386 x86_64
+do
+    clang++ -emit-llvm -S -arch $ARCH -O3 -Isrc/rt/isaac -Isrc/rt/uthash \
+        -Isrc/rt/arch/$ARCH -fno-stack-protector \
+        -o src/rt/intrinsics/intrinsics.$ARCH.ll.in \
+        src/rt/intrinsics/intrinsics.cpp
+    sed -i "" \
+        -e 's/^target datalayout =/; target datalayout =/' \
+        src/rt/intrinsics/intrinsics.$ARCH.ll.in
+    sed -i "" \
+        -e 's/^target triple = "[^"]*"/target triple = "@CFG_TARGET_TRIPLE@"/' \
+        src/rt/intrinsics/intrinsics.$ARCH.ll.in
+done

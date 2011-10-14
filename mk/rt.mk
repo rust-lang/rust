@@ -103,6 +103,8 @@ RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.S=.o)
 RUNTIME_LIBS := $(LIBUV_LIB)
 
+RT_COMPILE_C := $(call CFG_COMPILE_C, $(0), $(1) -I $(S)src/rt/arch/$(2))
+
 rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call E, compile: $@)
 	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<

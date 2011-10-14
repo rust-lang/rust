@@ -11,7 +11,7 @@ $(INTRINSICS_LL):  $(INTRINSICS_LL_IN) $(MKFILES)
 	@$(call E, mkdir: intrinsics)
 	$(Q)mkdir -p intrinsics
 	@$(call E, sed: $@)
-	$(Q)sed s/@CFG_LLVM_TRIPLE@/$(CFG_LLVM_TRIPLE)/g $< > $@
+	$(Q)sed s/@CFG_TARGET_TRIPLE@/$(CFG_LLVM_TRIPLE)/g $< > $@
 
 $(INTRINSICS_BC):   $(INTRINSICS_LL) $(MKFILES)
 	@$(call E, llvm-as: $@)
