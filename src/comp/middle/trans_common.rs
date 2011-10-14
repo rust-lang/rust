@@ -488,23 +488,26 @@ fn T_f64() -> TypeRef { ret llvm::LLVMDoubleType(); }
 
 fn T_bool() -> TypeRef { ret T_i1(); }
 
-fn T_int() -> TypeRef {
-    // FIXME: switch on target type.
-
-    ret T_i32();
+fn T_int(cx: @crate_ctxt) -> TypeRef {
+    ret alt cx.sess.get_targ_cfg().arch {
+      arch_x86 { T_i32() }
+      arch_x86_64 { T_i64() }
+      arch_arm { T_i32() }
+    };
 }
 
-fn T_float() -> TypeRef {
-    // FIXME: switch on target type.
-    ret T_f64();
+fn T_float(cx: @crate_ctxt) -> TypeRef {
+    ret alt cx.sess.get_targ_cfg().arch {
+      arch_x86 { T_f64() }
+      arch_x86_64 { T_f64() }
+      arch_arm { T_f64() }
+    };
 }
 
 fn T_char() -> TypeRef { ret T_i32(); }
 
-fn T_size_t() -> TypeRef {
-    // FIXME: switch on target type.
-
-    ret T_i32();
+fn T_size_t(cx: @crate_ctxt) -> TypeRef {
+    ret T_int(cx);
 }
 
 fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef {
@@ -514,7 +517,7 @@ fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef {
     }
 }
 
-fn T_fn_pair(cx: crate_ctxt, tfn: TypeRef) -> TypeRef {
+fn T_fn_pair(cx: @crate_ctxt, tfn: TypeRef) -> TypeRef {
     ret T_struct([T_ptr(tfn), T_opaque_closure_ptr(cx)]);
 }
 
@@ -548,7 +551,7 @@ fn T_rust_object() -> TypeRef {
     ret t;
 }
 
-fn T_task() -> TypeRef {
+fn T_task(cx: @crate_ctxt) -> TypeRef {
     let t = T_named_struct("task");
 
     // Refcount
@@ -563,13 +566,13 @@ fn T_task() -> TypeRef {
     // Crate cache pointer
 
     let elems =
-        [T_int(), T_int(), T_int(), T_int(), T_int(), T_int(), T_int(),
-         T_int()];
+        [T_int(cx), T_int(cx), T_int(cx), T_int(cx),
+         T_int(cx), T_int(cx), T_int(cx), T_int(cx)];
     set_struct_body(t, elems);
     ret t;
 }
 
-fn T_tydesc_field(cx: crate_ctxt, field: int) -> TypeRef unsafe {
+fn T_tydesc_field(cx: @crate_ctxt, field: int) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     let tydesc_elts: [TypeRef] =
@@ -581,7 +584,7 @@ fn T_tydesc_field(cx: crate_ctxt, field: int) -> TypeRef unsafe {
     ret t;
 }
 
-fn T_glue_fn(cx: crate_ctxt) -> TypeRef {
+fn T_glue_fn(cx: @crate_ctxt) -> TypeRef {
     let s = "glue_fn";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t = T_tydesc_field(cx, abi::tydesc_field_drop_glue);
@@ -589,7 +592,7 @@ fn T_glue_fn(cx: crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_cmp_glue_fn(cx: crate_ctxt) -> TypeRef {
+fn T_cmp_glue_fn(cx: @crate_ctxt) -> TypeRef {
     let s = "cmp_glue_fn";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t = T_tydesc_field(cx, abi::tydesc_field_cmp_glue);
@@ -597,7 +600,7 @@ fn T_cmp_glue_fn(cx: crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_tydesc() -> TypeRef {
+fn T_tydesc(cx: @crate_ctxt) -> TypeRef {
     let tydesc = T_named_struct("tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
@@ -609,9 +612,9 @@ fn T_tydesc() -> TypeRef {
                     pvoid, pvoid, T_i8()], T_void()));
 
     let elems =
-        [tydescpp, T_int(), T_int(), glue_fn_ty, glue_fn_ty, glue_fn_ty,
+        [tydescpp, T_int(cx), T_int(cx), glue_fn_ty, glue_fn_ty, glue_fn_ty,
          T_ptr(T_i8()), glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
-         T_ptr(T_i8()), T_ptr(T_i8()), T_int(), T_int()];
+         T_ptr(T_i8()), T_ptr(T_i8()), T_int(cx), T_int(cx)];
     set_struct_body(tydesc, elems);
     ret tydesc;
 }
@@ -622,28 +625,30 @@ fn T_array(t: TypeRef, n: uint) -> TypeRef { ret llvm::LLVMArrayType(t, n); }
 // Interior vector.
 //
 // TODO: Support user-defined vector sizes.
-fn T_vec(t: TypeRef) -> TypeRef {
-    ret T_struct([T_int(), // fill
-                  T_int(), // alloc
+fn T_vec(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
+    ret T_struct([T_int(cx), // fill
+                  T_int(cx), // alloc
                   T_array(t, 0u)]); // elements
 }
 
 // Note that the size of this one is in bytes.
-fn T_opaque_vec() -> TypeRef { ret T_vec(T_i8()); }
+fn T_opaque_vec(cx: @crate_ctxt) -> TypeRef { ret T_vec(cx, T_i8()); }
 
-fn T_box(t: TypeRef) -> TypeRef { ret T_struct([T_int(), t]); }
+fn T_box(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
+    ret T_struct([T_int(cx), t]);
+}
 
-fn T_port(_t: TypeRef) -> TypeRef {
-    ret T_struct([T_int()]); // Refcount
+fn T_port(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {
+    ret T_struct([T_int(cx)]); // Refcount
 
 }
 
-fn T_chan(_t: TypeRef) -> TypeRef {
-    ret T_struct([T_int()]); // Refcount
+fn T_chan(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {
+    ret T_struct([T_int(cx)]); // Refcount
 
 }
 
-fn T_taskptr(cx: crate_ctxt) -> TypeRef { ret T_ptr(cx.task_type); }
+fn T_taskptr(cx: @crate_ctxt) -> TypeRef { ret T_ptr(cx.task_type); }
 
 
 // This type must never be used directly; it must always be cast away.
@@ -657,16 +662,16 @@ fn T_typaram(tn: type_names) -> TypeRef {
 
 fn T_typaram_ptr(tn: type_names) -> TypeRef { ret T_ptr(T_typaram(tn)); }
 
-fn T_closure_ptr(cx: crate_ctxt, llbindings_ty: TypeRef, n_ty_params: uint) ->
-   TypeRef {
+fn T_closure_ptr(cx: @crate_ctxt, llbindings_ty: TypeRef,
+                 n_ty_params: uint) -> TypeRef {
     // NB: keep this in sync with code in trans_bind; we're making
     // an LLVM typeref structure that has the same "shape" as the ty::t
     // it constructs.
-    ret T_ptr(T_box(T_struct([T_ptr(cx.tydesc_type), llbindings_ty,
-                              T_captured_tydescs(cx, n_ty_params)])));
+    ret T_ptr(T_box(cx, T_struct([T_ptr(cx.tydesc_type), llbindings_ty,
+                                  T_captured_tydescs(cx, n_ty_params)])));
 }
 
-fn T_opaque_closure_ptr(cx: crate_ctxt) -> TypeRef {
+fn T_opaque_closure_ptr(cx: @crate_ctxt) -> TypeRef {
     let s = "*closure";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t = T_closure_ptr(cx, T_nil(), 0u);
@@ -674,45 +679,45 @@ fn T_opaque_closure_ptr(cx: crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_tag(tn: type_names, size: uint) -> TypeRef {
+fn T_tag(cx: @crate_ctxt, size: uint) -> TypeRef {
     let s = "tag_" + uint::to_str(size, 10u);
-    if tn.name_has_type(s) { ret tn.get_type(s); }
+    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t =
         if size == 0u {
-            T_struct([T_int()])
-        } else { T_struct([T_int(), T_array(T_i8(), size)]) };
-    tn.associate(s, t);
+            T_struct([T_int(cx)])
+        } else { T_struct([T_int(cx), T_array(T_i8(), size)]) };
+    cx.tn.associate(s, t);
     ret t;
 }
 
-fn T_opaque_tag(tn: type_names) -> TypeRef {
+fn T_opaque_tag(cx: @crate_ctxt) -> TypeRef {
     let s = "opaque_tag";
-    if tn.name_has_type(s) { ret tn.get_type(s); }
-    let t = T_struct([T_int(), T_i8()]);
-    tn.associate(s, t);
+    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
+    let t = T_struct([T_int(cx), T_i8()]);
+    cx.tn.associate(s, t);
     ret t;
 }
 
-fn T_opaque_tag_ptr(tn: type_names) -> TypeRef {
-    ret T_ptr(T_opaque_tag(tn));
+fn T_opaque_tag_ptr(cx: @crate_ctxt) -> TypeRef {
+    ret T_ptr(T_opaque_tag(cx));
 }
 
-fn T_captured_tydescs(cx: crate_ctxt, n: uint) -> TypeRef {
+fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
     ret T_struct(std::vec::init_elt::<TypeRef>(T_ptr(cx.tydesc_type), n));
 }
 
-fn T_obj_ptr(cx: crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
+fn T_obj_ptr(cx: @crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
     // This function is not publicly exposed because it returns an incomplete
     // type. The dynamically-sized fields follow the captured tydescs.
 
-    fn T_obj(cx: crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
+    fn T_obj(cx: @crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
         ret T_struct([T_ptr(cx.tydesc_type),
                       T_captured_tydescs(cx, n_captured_tydescs)]);
     }
-    ret T_ptr(T_box(T_obj(cx, n_captured_tydescs)));
+    ret T_ptr(T_box(cx, T_obj(cx, n_captured_tydescs)));
 }
 
-fn T_opaque_obj_ptr(cx: crate_ctxt) -> TypeRef { ret T_obj_ptr(cx, 0u); }
+fn T_opaque_obj_ptr(cx: @crate_ctxt) -> TypeRef { ret T_obj_ptr(cx, 0u); }
 
 fn T_opaque_port_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 
@@ -732,8 +737,10 @@ fn C_integral(t: TypeRef, u: uint, sign_extend: Bool) -> ValueRef {
     ret llvm::LLVMRustConstSmallInt(t, u, sign_extend);
 }
 
-fn C_float(s: str) -> ValueRef {
-    ret str::as_buf(s, {|buf| llvm::LLVMConstRealOfString(T_float(), buf) });
+fn C_float(cx: @crate_ctxt, s: str) -> ValueRef {
+    ret str::as_buf(s, {|buf|
+        llvm::LLVMConstRealOfString(T_float(cx), buf)
+    });
 }
 
 fn C_floating(s: str, t: TypeRef) -> ValueRef {
@@ -752,9 +759,13 @@ fn C_bool(b: bool) -> ValueRef {
     } else { ret C_integral(T_bool(), 0u, False); }
 }
 
-fn C_int(i: int) -> ValueRef { ret C_integral(T_int(), i as uint, True); }
+fn C_int(cx: @crate_ctxt, i: int) -> ValueRef {
+    ret C_integral(T_int(cx), i as uint, True);
+}
 
-fn C_uint(i: uint) -> ValueRef { ret C_integral(T_int(), i, False); }
+fn C_uint(cx: @crate_ctxt, i: uint) -> ValueRef {
+    ret C_integral(T_int(cx), i, False);
+}
 
 fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i, False); }
 
