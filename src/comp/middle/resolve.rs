@@ -454,14 +454,14 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                  lookup_in_scope(e, sc, sp, end_id, ns_type),
                  lookup_in_scope(e, sc, sp, end_id, ns_module));
         remove_if_unresolved(e.imports, defid.node);
-    } else { // FIXME (issue #521)
+    } else {
         let dcur =
             alt lookup_in_scope(e, sc, sp, ids[0], ns_module) {
               some(dcur) { dcur }
               none. {
                 unresolved_err(e, sc, sp, ids[0], ns_name(ns_module));
                 remove_if_unresolved(e.imports, defid.node);
-                ret ()
+                ret;
               }
             };
         let i = 1u;
@@ -476,16 +476,15 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                 remove_if_unresolved(e.imports, defid.node);
                 break;
             } else {
-                dcur =
-                    alt lookup_in_mod(e, dcur, sp, ids[i], ns_module, outside)
-                        {
-                      some(dcur) { dcur }
-                      none. {
-                        unresolved_err(e, sc, sp, ids[i], ns_name(ns_module));
-                        remove_if_unresolved(e.imports, defid.node);
-                        ret () // FIXME (issue #521)
-                      }
-                    };
+                dcur = alt lookup_in_mod(e, dcur, sp, ids[i], ns_module,
+                                         outside) {
+                  some(dcur) { dcur }
+                  none. {
+                    unresolved_err(e, sc, sp, ids[i], ns_name(ns_module));
+                    remove_if_unresolved(e.imports, defid.node);
+                    ret;
+                  }
+                };
                 i += 1u;
             }
         }
@@ -523,27 +522,32 @@ fn ns_name(ns: namespace) -> str {
 }
 
 fn unresolved_err(e: env, sc: scopes, sp: span, name: ident, kind: str) {
-    fn find_fn_or_mod_scope(sc: scopes) -> scope {
+    fn find_fn_or_mod_scope(sc: scopes) -> option::t<scope> {
         while true {
             alt sc {
               cons(cur, rest) {
                 alt cur {
                   scope_crate. | scope_fn(_, _, _) |
                   scope_item(@{node: ast::item_mod(_), _}) {
-                    ret cur;
+                    ret some(cur);
                   }
                   _ { sc = *rest; }
                 }
               }
+              _ { ret none; }
             }
         }
         fail;
     }
-    let err_scope = find_fn_or_mod_scope(sc);
-    for rs: {ident: str, sc: scope} in e.reported {
-        if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
+    alt find_fn_or_mod_scope(sc) {
+      some(err_scope) {
+        for rs: {ident: str, sc: scope} in e.reported {
+            if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
+        }
+        e.reported += [{ident: name, sc: err_scope}];
+      }
+      _ {}
     }
-    e.reported += [{ident: name, sc: err_scope}];
     e.sess.span_err(sp, mk_unresolved_msg(name, kind));
 }
 
