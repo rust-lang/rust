@@ -131,23 +131,13 @@ fn spawn_inner2<~T>(-data: T, f: fn#(T),
     let dataptr: *u8 = unsafe::reinterpret_cast(data);
     unsafe::leak(data);
     let wrapped = bind wrapper(dataptr, f);
-    ret spawn_inner(wrapped, notify);
+    ret unsafe_spawn_inner(wrapped, notify);
 }
 
-fn spawn(-thunk: fn()) -> task { spawn_inner(thunk, none) }
-
-fn spawn_notify(-thunk: fn(), notify: comm::chan<task_notification>) -> task {
-    spawn_inner(thunk, some(notify))
-}
-
-fn spawn_joinable(-thunk: fn()) -> joinable_task {
-    let p = comm::port::<task_notification>();
-    let id = spawn_notify(thunk, comm::chan::<task_notification>(p));
-    ret (id, p);
-}
-
-// FIXME: make this a fn~ once those are supported.
-fn spawn_inner(-thunk: fn(), notify: option<comm::chan<task_notification>>) ->
+// FIXME: This is the old spawn function that spawns a shared closure.
+// It is a hack and needs to be rewritten.
+fn unsafe_spawn_inner(-thunk: fn(),
+                      notify: option<comm::chan<task_notification>>) ->
    task_id unsafe {
     let id = rustrt::new_task();
 
