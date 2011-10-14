@@ -916,6 +916,10 @@ fn do_fn_ty_coerce(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t)
                 ty::mk_fn(fcx.ccx.tcx, ast::proto_fn, args, ret_ty, cf,
                           constrs)
               }
+              some(ty::ty_fn(ast::proto_block., _, _, _, _)) {
+                ty::mk_fn(fcx.ccx.tcx, ast::proto_block, args, ret_ty, cf,
+                          constrs)
+              }
               _ { actual }
             }
           }
