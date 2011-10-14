@@ -63,7 +63,7 @@ endif
 
 CFG_INFO := $(info cfg: shell host triple $(CFG_HOST_TRIPLE))
 CFG_INFO := $(info cfg: llvm host triple $(CFG_LLVM_TRIPLE))
-CFG_INFO := $(info cfg: llvm target triples $(CFG_LLVM_TRIPLES))
+CFG_INFO := $(info cfg: llvm target triples $(CFG_TARGET_TRIPLES))
 
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
@@ -274,13 +274,13 @@ else
 CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)
 endif
 
-STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,$(1), \
-                $$(CFG_VALGRIND_COMPILE$(1)) $$(HOST_BIN$(1))/rustc$$(X) \
-                $$(CFG_RUSTC_FLAGS) --target=$(2))
+STAGE$(1)_$(2) := $$(Q)$$(call CFG_RUN_TARG,$(1), \
+                  $$(CFG_VALGRIND_COMPILE$(1)) $$(HOST_BIN$(1))/rustc$$(X) \
+                  $$(CFG_RUSTC_FLAGS) --target=$(2))
 
-PERF_STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,$(1), \
-                $$(CFG_PERF_TOOL) $$(HOST_BIN$(1))/rustc$$(X) \
-                $$(CFG_RUSTC_FLAGS) --target=$(2))
+PERF_STAGE$(1)_$(2) := $$(Q)$$(call CFG_RUN_TARG,$(1), \
+                       $$(CFG_PERF_TOOL) $$(HOST_BIN$(1))/rustc$$(X) \
+                       $$(CFG_RUSTC_FLAGS) --target=$(2))
 
 endef
 
@@ -305,9 +305,11 @@ all: $(SREQ1$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS)
 
 else
 
+TARGET_SREQS := $(foreach target,$(CFG_TARGET_TRIPLES),$(SREQ3$(target)))
 FUZZ := $(HOST_BIN3)/fuzzer$(X)
 
-all: $(SREQ3$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS) $(FUZZ)
+#all: $(SREQ3$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS) $(FUZZ)
+all: $(TARGET_SREQS) $(GENERATED) $(DOCS) $(FUZZ)
 
 endif
 

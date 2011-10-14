@@ -53,7 +53,7 @@ $$(TARGET_BIN$(1)$(2))/rustc$$(X): \
 	$$(TARGET_SREQ$(1)$(2)) \
 	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM) \
 	$$(TARGET_STDLIB_DEFAULT$(1)$(2))
-	@$$(call E, compile_and_link: $$@)
+	@$$(call E, compile_and_link: $$@ for stage $(1) and target $(2))
 	$$(STAGE$(1)_$(2)) -o $$@ $$<
 
 $$(TARGET_LIB$(1)$(2))/$$(CFG_LIBRUSTC): \
