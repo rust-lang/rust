@@ -33,7 +33,7 @@ fn test00() {
     // Create and spawn tasks...
     let tasks = [];
     while i < number_of_tasks {
-        tasks += [task::spawn_joinable2(
+        tasks += [task::spawn_joinable(
             (ch, i, number_of_messages), test00_start)];
         i = i + 1;
     }

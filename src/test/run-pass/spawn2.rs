@@ -1,9 +1,9 @@
 // -*- rust -*-
 
 use std;
-import std::task::spawn2;
+import std::task::spawn;
 
-fn main() { spawn2((10, 20, 30, 40, 50, 60, 70, 80, 90), child); }
+fn main() { spawn((10, 20, 30, 40, 50, 60, 70, 80, 90), child); }
 
 fn# child(&&args: (int, int, int, int, int, int, int, int, int)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;

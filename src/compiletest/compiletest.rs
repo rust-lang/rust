@@ -191,7 +191,7 @@ fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn()) ->
     testfn();
     let testfile = recv(configport);
 
-    ret task::spawn_joinable2(
+    ret task::spawn_joinable(
         (cx.config, cx.procsrv.chan, testfile), run_test_task);
 }
 

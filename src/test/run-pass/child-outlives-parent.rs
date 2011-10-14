@@ -5,4 +5,4 @@ import std::task;
 
 fn# child2(&&s: str) { }
 
-fn main() { let x = task::spawn2("hi", child2); }
+fn main() { let x = task::spawn("hi", child2); }

@@ -11,13 +11,13 @@ fn test_ret() { let x: @int = ret; }
 
 fn test_fail() {
     fn# f(&&_i: ()) { std::task::unsupervise(); let x: @int = fail; }
-    std::task::spawn2((), f);
+    std::task::spawn((), f);
 }
 
 fn test_fail_indirect() {
     fn f() -> ! { fail; }
     fn# g(&&_i: ()) { std::task::unsupervise(); let x: @int = f(); }
-    std::task::spawn2((), g);
+    std::task::spawn((), g);
 }
 
 fn main() {

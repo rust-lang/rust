@@ -36,15 +36,15 @@ fn fib(n: int) -> int {
         } else {
             let p = port();
 
-            let t1 = task::spawn2((chan(p), n - 1), pfib);
-            let t2 = task::spawn2((chan(p), n - 2), pfib);
+            let t1 = task::spawn((chan(p), n - 1), pfib);
+            let t2 = task::spawn((chan(p), n - 2), pfib);
 
             send(c, recv(p) + recv(p));
         }
     }
 
     let p = port();
-    let t = task::spawn2((chan(p), n), pfib);
+    let t = task::spawn((chan(p), n), pfib);
     ret recv(p);
 }
 
@@ -75,7 +75,7 @@ fn# stress_task(&&id: int) {
 fn stress(num_tasks: int) {
     let tasks = [];
     for each i: int in range(0, num_tasks) {
-        tasks += [task::spawn_joinable2(copy i, stress_task)];
+        tasks += [task::spawn_joinable(copy i, stress_task)];
     }
     for t in tasks { task::join(t); }
 }

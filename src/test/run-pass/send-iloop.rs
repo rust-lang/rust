@@ -10,7 +10,7 @@ fn# die(&&_i: ()) {
 
 fn# iloop(&&_i: ()) {
     task::unsupervise();
-    task::spawn2((), die);
+    task::spawn((), die);
     let p = comm::port::<()>();
     let c = comm::chan(p);
     while true {
@@ -20,6 +20,6 @@ fn# iloop(&&_i: ()) {
 
 fn main() {
     for each i in uint::range(0u, 16u) {
-        task::spawn2((), iloop);
+        task::spawn((), iloop);
     }
 }

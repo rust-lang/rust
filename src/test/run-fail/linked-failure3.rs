@@ -10,12 +10,12 @@ fn# grandchild(&&_i: ()) { fail; }
 
 fn# child(&&_i: ()) {
     let p = port::<int>();
-    task::spawn2((), grandchild);
+    task::spawn((), grandchild);
     let x = recv(p);
 }
 
 fn main() {
     let p = port::<int>();
-    task::spawn2((), child);
+    task::spawn((), child);
     let x = recv(p);
 }

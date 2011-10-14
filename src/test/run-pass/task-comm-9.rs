@@ -16,7 +16,7 @@ fn test00() {
     let p = comm::port();
     let number_of_messages: int = 10;
 
-    let t0 = task::spawn_joinable2((comm::chan(p), number_of_messages),
+    let t0 = task::spawn_joinable((comm::chan(p), number_of_messages),
                                   test00_start);
 
     let i: int = 0;

@@ -70,7 +70,7 @@ mod map_reduce {
        [joinable_task] {
         let tasks = [];
         for i: str in inputs {
-            tasks += [task::spawn_joinable2((ctrl, i), map_task)];
+            tasks += [task::spawn_joinable((ctrl, i), map_task)];
         }
         ret tasks;
     }
@@ -171,7 +171,7 @@ mod map_reduce {
                     // log_err "creating new reducer for " + k;
                     let p = port();
                     tasks +=
-                        [task::spawn_joinable2((k, chan(p)), reduce_task)];
+                        [task::spawn_joinable((k, chan(p)), reduce_task)];
                     c = recv(p);
                     reducers.insert(k, c);
                   }

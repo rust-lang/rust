@@ -12,10 +12,10 @@ fn# parent(&&_i: ()) {
     // process
     task::unsupervise();
     let p = port::<int>();
-    task::spawn2((), child);
+    task::spawn((), child);
     let x = recv(p);
 }
 
 fn main() {
-    task::spawn2((), parent);
+    task::spawn((), parent);
 }

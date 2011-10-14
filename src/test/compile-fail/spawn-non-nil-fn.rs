@@ -5,4 +5,4 @@ import std::task;
 
 fn# f(&&x: int) -> int { ret x; }
 
-fn main() { task::spawn2(10, f); }
+fn main() { task::spawn(10, f); }

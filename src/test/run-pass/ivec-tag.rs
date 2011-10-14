@@ -15,7 +15,7 @@ fn# producer(c: chan<[u8]>) {
 
 fn main() {
     let p: port<[u8]> = port();
-    let prod = task::spawn2(chan(p), producer);
+    let prod = task::spawn(chan(p), producer);
 
     let data: [u8] = recv(p);
 }

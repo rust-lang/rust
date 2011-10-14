@@ -8,13 +8,13 @@ fn main() {
     let p = port();
     let y: int;
 
-    task::spawn2(chan(p), child);
+    task::spawn(chan(p), child);
     y = recv(p);
     log "received 1";
     log y;
     assert (y == 10);
 
-    task::spawn2(chan(p), child);
+    task::spawn(chan(p), child);
     y = recv(p);
     log "received 2";
     log y;
