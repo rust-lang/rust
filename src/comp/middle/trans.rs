@@ -4272,7 +4272,7 @@ fn trans_temp_lval(bcx: @block_ctxt, e: @ast::expr) -> lval_result {
             ret {bcx: bcx, val: *cell, kind: temporary};
         } else {
             let {bcx, val: scratch} = alloc_ty(bcx, ty);
-            bcx = trans_expr(bcx, e, save_in(scratch));
+            bcx = trans_expr_save_in(bcx, e, scratch);
             add_clean_temp(bcx, scratch, ty);
             ret {bcx: bcx, val: scratch, kind: temporary};
         }

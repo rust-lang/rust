@@ -370,7 +370,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
             check type_is_tup_like(bcx, body_ty);
             let {bcx: cx, val: body_inner_obj} = GEP_tup_like
                 (bcx, body_ty, body, [0, abi::obj_body_elt_inner_obj]);
-            bcx = trans_expr(cx, e, save_in(body_inner_obj));
+            bcx = trans_expr_save_in(cx, e, body_inner_obj);
           }
         }
         revoke_clean(bcx, box);
