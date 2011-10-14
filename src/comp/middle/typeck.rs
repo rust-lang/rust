@@ -891,7 +891,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     fail;
 }
 
-fn do_fn_block_coerce(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t)
+fn do_fn_ty_coerce(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t)
    -> ty::t {
 
     // fns can be silently coerced to blocks when being used as
@@ -905,6 +905,15 @@ fn do_fn_block_coerce(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t)
             alt structure_of_maybe(fcx, sp, expected) {
               some(ty::ty_fn(ast::proto_block., _, _, _, _)) {
                 ty::mk_fn(fcx.ccx.tcx, ast::proto_block, args, ret_ty, cf,
+                          constrs)
+              }
+              _ { actual }
+            }
+          }
+          some(ty::ty_fn(ast::proto_bare., args, ret_ty, cf, constrs)) {
+            alt structure_of_maybe(fcx, sp, expected) {
+              some(ty::ty_fn(ast::proto_fn., _, _, _, _)) {
+                ty::mk_fn(fcx.ccx.tcx, ast::proto_fn, args, ret_ty, cf,
                           constrs)
               }
               _ { actual }
@@ -932,7 +941,7 @@ mod demand {
        ty::t {
         full(fcx, sp, expected, actual, [], false).ty
     }
-    fn block_coerce(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t)
+    fn fn_coerce(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t)
        -> ty::t {
         full(fcx, sp, expected, actual, [], true).ty
     }
@@ -945,10 +954,10 @@ mod demand {
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
     fn full(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
-            ty_param_substs_0: [ty::t], do_block_coerce: bool) ->
+            ty_param_substs_0: [ty::t], do_fn_coerce: bool) ->
        ty_param_substs_and_ty {
-        if do_block_coerce {
-            actual = do_fn_block_coerce(fcx, sp, actual, expected);
+        if do_fn_coerce {
+            actual = do_fn_ty_coerce(fcx, sp, actual, expected);
         }
 
         let ty_param_substs: [mutable ty::t] = [mutable];
@@ -1676,7 +1685,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         if is_block == check_blocks {
                             bot |=
                                 check_expr_with_unifier(fcx, a,
-                                                        demand::block_coerce,
+                                                        demand::fn_coerce,
                                                         arg_tys[i].ty);
                         }
                       }
