@@ -325,7 +325,6 @@ config.mk: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 # Primary-target makefiles
 ######################################################################
 
-include $(CFG_SRC_DIR)/mk/intrinsics.mk
 include $(CFG_SRC_DIR)/mk/target.mk
 include $(CFG_SRC_DIR)/mk/host.mk
 include $(CFG_SRC_DIR)/mk/stage0.mk

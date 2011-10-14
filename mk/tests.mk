@@ -150,7 +150,7 @@ check-stage$(1)-pretty-pretty: check-stage$(1)-pretty-pretty-dummy
 test/stdtest.stage$(1)$$(X): $$(STDTEST_CRATE) $$(STDTEST_INPUTS) \
                              $$(SREQ$(1)$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -o $$@ $$< --test
+	$$(STAGE$(1)_$$(CFG_HOST_TRIPLE)) -o $$@ $$< --test
 
 check-stage$(1)-std-dummy: test/stdtest.stage$(1)$$(X)
 	@$$(call E, run: $$<)
@@ -166,7 +166,7 @@ test/rustctest.stage$(1)$$(X): \
 	$$(TARGET_LIB$(1)$$(CFG_HOST_TRIPLE))/$$(CFG_RUSTLLVM) \
 	$$(TARGET_LIB$(1)$$(CFG_HOST_TRIPLE))/$$(CFG_STDLIB)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -o $$@ $$< --test
+	$$(STAGE$(1)_$$(CFG_HOST_TRIPLE)) -o $$@ $$< --test
 
 check-stage$(1)-rustc-dummy: test/rustctest.stage$(1)$$(X)
 	@$$(call E, run: $$<)

@@ -15,17 +15,17 @@ INTR_HOST := $$(subst i686,i386,$$(TARGET_HOST))
 $$(TARGET_LIB$(1)$(2))/intrinsics.ll: \
 		$$(S)src/rt/intrinsics/intrinsics.$$(INTR_HOST).ll.in
 	@$$(call E, sed: $$@)
-	sed s/@CFG_TARGET_TRIPLE@/$(2)/ $$< > $$@
+	$$(Q)sed s/@CFG_TARGET_TRIPLE@/$(2)/ $$< > $$@
 
 $$(TARGET_LIB$(1)$(2))/intrinsics.bc: $$(TARGET_LIB$(1)$(2))/intrinsics.ll
 	@$$(call E, llvms-as: $$@)
-	$$(LLVM_AS) -o $$@ $$<
+	$$(Q)$$(LLVM_AS) -o $$@ $$<
 
 $$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB): \
 	$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
         $$(TARGET_SREQ$(1)$(2))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1))  --lib -o $$@ $$<
+	$$(STAGE$(1)_$(2))  --lib -o $$@ $$<
 
 ifeq ($(1), 0)
 # FIXME: temporary
@@ -38,7 +38,7 @@ $$(TARGET_LIB$(1)$(2))/libstd.rlib: \
 	$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
         $$(TARGET_SREQ$(1)$(2))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) --lib --static -o $$@ $$<
+	$$(STAGE$(1)_$(2)) --lib --static -o $$@ $$<
 
 $$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
@@ -54,7 +54,7 @@ $$(TARGET_BIN$(1)$(2))/rustc$$(X): \
 	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM) \
 	$$(TARGET_STDLIB_DEFAULT$(1)$(2))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -o $$@ $$<
+	$$(STAGE$(1)_$(2)) -o $$@ $$<
 
 $$(TARGET_LIB$(1)$(2))/$$(CFG_LIBRUSTC): \
 	$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
@@ -62,7 +62,7 @@ $$(TARGET_LIB$(1)$(2))/$$(CFG_LIBRUSTC): \
 	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM) \
 	$$(TARGET_STDLIB_DEFAULT$(1)$(2))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) --lib -o $$@ $$<
+	$$(STAGE$(1)_$(2)) --lib -o $$@ $$<
 
 endef
 

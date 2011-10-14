@@ -18,7 +18,7 @@ $$(TARGET_BIN$(1)$(CFG_HOST_TRIPLE))/fuzzer$$(X): \
 	$$(TARGET_LIB$(1)$(CFG_HOST_TRIPLE))/$$(CFG_STDLIB) \
 	$$(TARGET_LIB$(1)$(CFG_HOST_TRIPLE))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -o $$@ $$<
+	$$(STAGE$(1)_$(CFG_HOST_TRIPLE)) -o $$@ $$<
 
 # Promote the stageN target to stageN+1 host
 # FIXME: Shouldn't need to depend on host/librustc.so once
@@ -35,7 +35,7 @@ $$(TARGET_BIN$(1)$(CFG_HOST_TRIPLE))/compiletest$$(X): \
 	$$(TARGET_SREQ$(1)$(CFG_HOST_TRIPLE)) \
 	$$(TARGET_LIB$(1)$(CFG_HOST_TRIPLE))/$$(CFG_STDLIB)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -o $$@ $$<
+	$$(STAGE$(1)_$(CFG_HOST_TRIPLE)) -o $$@ $$<
 
 $$(HOST_BIN$(2))/compiletest$$(X): \
 	$$(TARGET_BIN$(1)$(CFG_HOST_TRIPLE))/compiletest$$(X) \

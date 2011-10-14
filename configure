@@ -229,6 +229,7 @@ then
     printf "    %-32s %s\n" "CFG_LLVM_ROOT" "The host LLVM install"
     printf "    %-32s %s\n" "CFG_PREFIX" "The installation prefix"
     printf "    %-32s %s\n" "CFG_ONLY_GCC" "Prefer gcc to clang for building the runtime"
+    printf "    %-32s %s\n" "CFG_TARGET_TRIPLES" "LLVM target triples"
     echo ""
     exit 0
 fi
@@ -363,8 +364,10 @@ then
     fi
 fi
 
-# FIXME: add support for extending the target-triples list
-CFG_TARGET_TRIPLES="${CFG_HOST_TRIPLE}"
+if [ -z "$CFG_TARGET_TRIPLES" ]
+then
+    CFG_TARGET_TRIPLES="${CFG_HOST_TRIPLE}"
+fi
 
 putvar CFG_HOST_TRIPLE
 putvar CFG_TARGET_TRIPLES
