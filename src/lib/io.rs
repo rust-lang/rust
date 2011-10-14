@@ -384,6 +384,9 @@ fn buffered_file_buf_writer(path: str) -> buf_writer {
 fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
 fn stderr() -> writer { ret new_writer(fd_buf_writer(2, option::none)); }
 
+fn print(s: str) { stdout().write_str(s); }
+fn println(s: str) { stdout().write_str(s + "\n"); }
+
 type str_writer =
     obj {
         fn get_writer() -> writer;
