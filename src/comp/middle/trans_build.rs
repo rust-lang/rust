@@ -306,7 +306,7 @@ fn Load(cx: @block_ctxt, PointerVal: ValueRef) -> ValueRef {
     if cx.unreachable {
         let ty = val_ty(PointerVal);
         let eltty = if llvm::LLVMGetTypeKind(ty) == 11 {
-            llvm::LLVMGetElementType(ty) } else { T_int(ccx) };
+            llvm::LLVMGetElementType(ty) } else { ccx.int_type };
         ret llvm::LLVMGetUndef(eltty);
     }
     ret llvm::LLVMBuildLoad(B(cx), PointerVal, noname());
@@ -492,7 +492,7 @@ fn _UndefReturn(cx: @block_ctxt, Fn: ValueRef) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
     let ty = val_ty(Fn);
     let retty = if llvm::LLVMGetTypeKind(ty) == 8 {
-        llvm::LLVMGetReturnType(ty) } else { T_int(ccx) };
+        llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
     ret llvm::LLVMGetUndef(retty);
 }
 
@@ -577,7 +577,7 @@ fn IsNotNull(cx: @block_ctxt, Val: ValueRef) -> ValueRef {
 
 fn PtrDiff(cx: @block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
-    if cx.unreachable { ret llvm::LLVMGetUndef(T_int(ccx)); }
+    if cx.unreachable { ret llvm::LLVMGetUndef(ccx.int_type); }
     ret llvm::LLVMBuildPtrDiff(B(cx), LHS, RHS, noname());
 }
 

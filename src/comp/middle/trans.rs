@@ -134,9 +134,9 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         T_nil() /* ...I guess? */
       }
       ty::ty_bool. { T_bool() }
-      ty::ty_int. { T_int(cx) }
-      ty::ty_float. { T_float(cx) }
-      ty::ty_uint. { T_int(cx) }
+      ty::ty_int. { cx.int_type }
+      ty::ty_float. { cx.float_type }
+      ty::ty_uint. { cx.int_type }
       ty::ty_machine(tm) {
         alt tm {
           ast::ty_i8. | ast::ty_u8. { T_i8() }
@@ -345,8 +345,8 @@ fn get_simple_extern_fn(cx: @block_ctxt,
                         llmod: ModuleRef,
                         name: str, n_args: int) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
-    let inputs = std::vec::init_elt::<TypeRef>(T_int(ccx), n_args as uint);
-    let output = T_int(ccx);
+    let inputs = std::vec::init_elt::<TypeRef>(ccx.int_type, n_args as uint);
+    let output = ccx.int_type;
     let t = T_fn(inputs, output);
     ret get_extern_fn(externs, llmod, name, lib::llvm::LLVMCCallConv, t);
 }
@@ -405,12 +405,12 @@ fn llalign_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
 }
 
 fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
-    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), T_int(cx),
+    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), cx.int_type,
                                False);
 }
 
 fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
-    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMAlignOf(t), T_int(cx),
+    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMAlignOf(t), cx.int_type,
                                False);
 }
 
@@ -597,7 +597,7 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
         let ccx = bcx_ccx(bcx);
         // Compute max(variant sizes).
 
-        let max_size: ValueRef = alloca(bcx, T_int(ccx));
+        let max_size: ValueRef = alloca(bcx, ccx.int_type);
         Store(bcx, C_int(ccx, 0), max_size);
         let variants = ty::tag_variants(bcx_tcx(bcx), tid);
         for variant: ty::variant_info in variants {
@@ -618,7 +618,7 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
         let max_size_val = Load(bcx, max_size);
         let total_size =
             if std::vec::len(variants) != 1u {
-                Add(bcx, max_size_val, llsize_of(ccx, T_int(ccx)))
+                Add(bcx, max_size_val, llsize_of(ccx, ccx.int_type))
             } else { max_size_val };
         ret rslt(bcx, total_size);
       }
@@ -2161,7 +2161,7 @@ fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
         // if target int width is larger than host, at the moment;
         // re-do the mach-int types using 'big' when that works.
 
-        let t = T_int(cx);
+        let t = cx.int_type;
         let s = True;
         alt tm {
           ast::ty_u8. { t = T_i8(); s = False; }
@@ -2177,7 +2177,7 @@ fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
       }
       ast::lit_float(fs) { ret C_float(cx, fs); }
       ast::lit_mach_float(tm, s) {
-        let t = T_float(cx);
+        let t = cx.float_type;
         alt tm { ast::ty_f32. { t = T_f32(); } ast::ty_f64. { t = T_f64(); } }
         ret C_floating(s, t);
       }
@@ -2961,7 +2961,7 @@ fn lookup_discriminant(lcx: @local_ctxt, vid: ast::def_id) -> ValueRef {
         let gvar =
             str::as_buf(sym,
                         {|buf|
-                            llvm::LLVMAddGlobal(ccx.llmod, T_int(ccx), buf)
+                            llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
                         });
         llvm::LLVMSetLinkage(gvar,
                              lib::llvm::LLVMExternalLinkage as llvm::Linkage);
@@ -3120,11 +3120,11 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
     // Cast to an LLVM integer. Rust is less strict than LLVM in this regard.
     let ix_val;
     let ix_size = llsize_of_real(bcx_ccx(cx), val_ty(ix.val));
-    let int_size = llsize_of_real(bcx_ccx(cx), T_int(ccx));
+    let int_size = llsize_of_real(bcx_ccx(cx), ccx.int_type);
     if ix_size < int_size {
-        ix_val = ZExt(bcx, ix.val, T_int(ccx));
+        ix_val = ZExt(bcx, ix.val, ccx.int_type);
     } else if ix_size > int_size {
-        ix_val = Trunc(bcx, ix.val, T_int(ccx));
+        ix_val = Trunc(bcx, ix.val, ccx.int_type);
     } else { ix_val = ix.val; }
 
     let unit_ty = node_id_type(bcx_ccx(cx), id);
@@ -4420,10 +4420,10 @@ fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
         let s = link::mangle_internal_name_by_path_and_seq(
             lcx.ccx, lcx.module_path, "loglevel");
         let global = str::as_buf(s, {|buf|
-            llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(ccx), buf)
+            llvm::LLVMAddGlobal(lcx.ccx.llmod, ccx.int_type, buf)
         });
         llvm::LLVMSetGlobalConstant(global, False);
-        llvm::LLVMSetInitializer(global, C_null(T_int(ccx)));
+        llvm::LLVMSetInitializer(global, C_null(ccx.int_type));
         llvm::LLVMSetLinkage(global,
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
         lcx.ccx.module_data.insert(modname, global);
@@ -5651,14 +5651,14 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         cast_to_i32 = true;
       }
       ast::native_abi_c_stack_cdecl. {
-        let llfn = decl_cdecl_fn(ccx.llmod, name, T_fn([], T_int()));
+        let llfn = decl_cdecl_fn(ccx.llmod, name, T_fn([], ccx.int_type));
         ccx.item_ids.insert(id, llfn);
         ccx.item_symbols.insert(id, name);
         ret;
       }
       ast::native_abi_c_stack_stdcall. {
         let llfn = decl_fn(ccx.llmod, name, lib::llvm::LLVMX86StdcallCallConv,
-                           T_fn([], T_int()));
+                           T_fn([], ccx.int_type));
         ccx.item_ids.insert(id, llfn);
         ccx.item_symbols.insert(id, name);
         ret;
@@ -5706,21 +5706,23 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     fn convert_arg_to_i32(cx: @block_ctxt, v: ValueRef, t: ty::t,
                           mode: ty::mode) -> ValueRef {
         if mode == ast::by_ref || mode == ast::by_val {
+            let ccx = bcx_ccx(cx);
             if ty::type_is_integral(bcx_tcx(cx), t) {
                 // FIXME: would be nice to have a postcondition that says
                 // if a type is integral, then it has static size (#586)
-                let lldsttype = T_int();
-                let ccx = bcx_ccx(cx);
+                let lldsttype = ccx.int_type;
                 let sp = cx.sp;
                 check (type_has_static_size(ccx, t));
                 let llsrctype = type_of(ccx, sp, t);
                 if llvm::LLVMGetIntTypeWidth(lldsttype) >
                        llvm::LLVMGetIntTypeWidth(llsrctype) {
-                    ret ZExtOrBitCast(cx, v, T_int());
+                    ret ZExtOrBitCast(cx, v, ccx.int_type);
                 }
-                ret TruncOrBitCast(cx, v, T_int());
+                ret TruncOrBitCast(cx, v, ccx.int_type);
             }
-            if ty::type_is_fp(bcx_tcx(cx), t) { ret FPToSI(cx, v, T_int()); }
+            if ty::type_is_fp(bcx_tcx(cx), t) {
+                ret FPToSI(cx, v, ccx.int_type);
+            }
         }
         ret vp2i(cx, v);
     }
@@ -5927,11 +5929,10 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
             let p = new_pt + [it.ident, variant.node.name, "discrim"];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let discrim_gvar =
-                str::as_buf(s,
-                            {|buf|
-                                llvm::LLVMAddGlobal(ccx.llmod, T_int(), buf)
-                            });
-            llvm::LLVMSetInitializer(discrim_gvar, C_int(i as int));
+                str::as_buf(s, {|buf|
+                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+                });
+            llvm::LLVMSetInitializer(discrim_gvar, C_int(ccx, i as int));
             llvm::LLVMSetGlobalConstant(discrim_gvar, True);
             ccx.discrims.insert(
                 ast_util::local_def(variant.node.id), discrim_gvar);
@@ -5951,10 +5952,13 @@ fn trans_constants(ccx: @crate_ctxt, crate: @ast::crate) {
 }
 
 fn vp2i(cx: @block_ctxt, v: ValueRef) -> ValueRef {
-    ret PtrToInt(cx, v, T_int());
+    let ccx = bcx_ccx(cx);
+    ret PtrToInt(cx, v, ccx.int_type);
 }
 
-fn p2i(v: ValueRef) -> ValueRef { ret llvm::LLVMConstPtrToInt(v, T_int()); }
+fn p2i(ccx: @crate_ctxt, v: ValueRef) -> ValueRef {
+    ret llvm::LLVMConstPtrToInt(v, ccx.int_type);
+}
 
 fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
     let T_memmove32_args: [TypeRef] =
@@ -6005,7 +6009,7 @@ fn trap(bcx: @block_ctxt) {
 }
 
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
-    let elttype = T_struct([T_int(), T_int()]);
+    let elttype = T_struct([ccx.int_type, ccx.int_type]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
     let map =
         str::as_buf("_rust_mod_map",
@@ -6057,6 +6061,24 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     subcrates += [C_int(0)];
     llvm::LLVMSetInitializer(map, C_struct([p2i(create_module_map(ccx)),
                                             C_array(T_int(), subcrates)]));
+    subcrates += [C_int(ccx, 0)];
+    let mapname;
+    if ccx.sess.get_opts().library {
+        mapname = ccx.link_meta.name;
+    } else { mapname = "toplevel"; }
+    let sym_name = "_rust_crate_map_" + mapname;
+    let arrtype = T_array(ccx.int_type, std::vec::len::<ValueRef>(subcrates));
+    let maptype = T_struct([ccx.int_type, arrtype]);
+    let map =
+        str::as_buf(sym_name,
+                    {|buf| llvm::LLVMAddGlobal(ccx.llmod, maptype, buf) });
+    llvm::LLVMSetLinkage(map,
+                         lib::llvm::LLVMExternalLinkage as llvm::Linkage);
+    llvm::LLVMSetInitializer(map,
+                             C_struct([p2i(create_module_map(ccx)),
+                                       C_array(ccx.int_type, subcrates)]));
+    ret map;
+>>>>>>> work on making the size of ints depend on the target arch
 }
 
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
@@ -6090,7 +6112,7 @@ fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
 
 // Writes the current ABI version into the crate.
 fn write_abi_version(ccx: @crate_ctxt) {
-    shape::mk_global(ccx, "rust_abi_version", C_uint(abi::abi_version),
+    shape::mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version),
                      false);
 }
 
@@ -6110,8 +6132,12 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let td = mk_target_data(sess.get_targ_cfg().target_strs.data_layout);
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
-    let task_type = T_task();
-    let tydesc_type = T_tydesc();
+    let int_type = T_int(sess.get_targ_cfg().arch);
+    let float_type = T_float(sess.get_targ_cfg().arch);
+    let task_type = T_task(sess.get_targ_cfg().arch);
+    let taskptr_type = T_ptr(task_type);
+    tn.associate("taskptr", taskptr_type);
+    let tydesc_type = T_tydesc(taskptr_type);
     tn.associate("tydesc", tydesc_type);
     let hasher = ty::hash_ty;
     let eqer = ty::eq_ty;
@@ -6161,6 +6187,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
               upcall::declare_upcalls(tn, tydesc_type, llmod),
           rust_object_type: T_rust_object(),
           tydesc_type: tydesc_type,
+          int_type: int_type,
+          float_type: float_type,
           task_type: task_type,
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: shape::mk_ctxt(llmod),
