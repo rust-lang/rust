@@ -315,7 +315,7 @@ else
 fi
 
 case $CFG_LLVM_VERSION in
-    (3.0svn | 3.0)
+    (3.0svn | 3.0 | 3.1svn)
     step_msg "found ok version of LLVM: $CFG_LLVM_VERSION"
     ;;
     (*)
