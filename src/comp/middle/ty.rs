@@ -1010,9 +1010,11 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // here yet, leading to weirdness around closure.
       ty_fn(proto, _, _, _, _) {
         result = alt proto {
+          ast::proto_iter. { ast::kind_shared }
           ast::proto_block. { ast::kind_pinned }
           ast::proto_closure. { ast::kind_shared }
-          _ { ast::kind_unique }
+          ast::proto_fn. { ast::kind_shared }
+          ast::proto_bare. { ast::kind_unique }
         };
       }
       // Those with refcounts-to-inner raise pinned to shared,
@@ -2018,6 +2020,54 @@ mod unify {
           _ { ret fn_common_res_err(result); }
         }
     }
+    fn unify_fn_proto(e_proto: ast::proto, a_proto: ast::proto,
+                      variance: variance) -> option::t<result> {
+        fn gt(e_proto: ast::proto, a_proto: ast::proto) -> bool {
+            alt e_proto {
+              ast::proto_block. {
+                // Every function type is a subtype of block
+                false
+              }
+              ast::proto_closure. | ast::proto_fn. {
+                a_proto == ast::proto_block
+              }
+              ast::proto_bare. {
+                a_proto != ast::proto_bare
+              }
+            }
+        }
+
+        ret if (e_proto == ast::proto_iter
+            || a_proto == ast::proto_iter) {
+            if e_proto != a_proto {
+                some(ures_err(terr_mismatch))
+            } else {
+                none
+            }
+        } else if e_proto == a_proto {
+            none
+        } else if variance == invariant {
+            if e_proto != a_proto {
+                some(ures_err(terr_mismatch))
+            } else {
+                fail
+            }
+        } else if variance == covariant {
+            if gt(e_proto, a_proto) {
+                some(ures_err(terr_mismatch))
+            } else {
+                none
+            }
+        } else if variance == contravariant {
+            if gt(a_proto, e_proto) {
+                some(ures_err(terr_mismatch))
+            } else {
+                none
+            }
+        } else {
+            fail
+        }
+    }
     fn unify_fn(cx: @ctxt, e_proto: ast::proto, a_proto: ast::proto,
                 expected: t, actual: t, expected_inputs: [arg],
                 expected_output: t, actual_inputs: [arg], actual_output: t,
@@ -2025,7 +2075,12 @@ mod unify {
                 _expected_constrs: [@constr], actual_constrs: [@constr],
                 variance: variance) ->
        result {
-        if e_proto != a_proto { ret ures_err(terr_mismatch); }
+
+        alt unify_fn_proto(e_proto, a_proto, variance) {
+          some(err) { ret err; }
+          none. { /* fall through */ }
+        }
+
         if actual_cf != ast::noreturn && actual_cf != expected_cf {
             /* even though typestate checking is mostly
                responsible for checking control flow annotations,
