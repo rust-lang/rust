@@ -12,6 +12,7 @@ Brian Anderson <banderson@mozilla.com>
 Chris Double <chris.double@double.co.nz>
 Dave Herman <dherman@mozilla.com>
 David Rajchenbach-Teller <dteller@mozilla.com>
+Elly Jones <elly@leptoquark.net>
 Eric Holk <eric.holk@gmail.com>
 Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Erik Rose <erik@mozilla.com>
