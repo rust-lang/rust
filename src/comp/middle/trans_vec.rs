@@ -28,14 +28,17 @@ fn pointer_add(bcx: @block_ctxt, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
 }
 
 fn alloc_raw(bcx: @block_ctxt, fill: ValueRef, alloc: ValueRef) -> result {
-    let llvecty = T_opaque_vec();
-    let vecsize = Add(bcx, alloc, llsize_of(llvecty));
+    let ccx = bcx_ccx(bcx);
+    let llvecty = ccx.opaque_vec_type;
+    let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
     let {bcx: bcx, val: vecptr} =
         trans_shared_malloc(bcx, T_ptr(llvecty), vecsize);
     Store(bcx, fill,
-          InBoundsGEP(bcx, vecptr, [C_int(0), C_uint(abi::vec_elt_fill)]));
+          InBoundsGEP(bcx, vecptr, [C_int(ccx, 0),
+                                    C_uint(ccx, abi::vec_elt_fill)]));
     Store(bcx, alloc,
-          InBoundsGEP(bcx, vecptr, [C_int(0), C_uint(abi::vec_elt_alloc)]));
+          InBoundsGEP(bcx, vecptr, [C_int(ccx, 0),
+                                    C_uint(ccx, abi::vec_elt_alloc)]));
     ret {bcx: bcx, val: vecptr};
 }
 
@@ -47,13 +50,18 @@ type alloc_result =
      llunitty: TypeRef};
 
 fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint) -> alloc_result {
+    let ccx = bcx_ccx(bcx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
-    let llvecty = T_vec(llunitty);
+    let llvecty = T_vec(ccx, llunitty);
     let {bcx: bcx, val: unit_sz} = size_of(bcx, unit_ty);
 
-    let fill = Mul(bcx, C_uint(elts), unit_sz);
-    let alloc = if elts < 4u { Mul(bcx, C_int(4), unit_sz) } else { fill };
+    let fill = Mul(bcx, C_uint(ccx, elts), unit_sz);
+    let alloc = if elts < 4u {
+                    Mul(bcx, C_int(ccx, 4), unit_sz)
+                } else {
+                    fill
+                };
     let {bcx: bcx, val: vptr} = alloc_raw(bcx, fill, alloc);
     let vptr = PointerCast(bcx, vptr, T_ptr(llvecty));
 
@@ -65,14 +73,16 @@ fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint) -> alloc_result {
 }
 
 fn duplicate(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) -> result {
+    let ccx = bcx_ccx(bcx);
     let fill = get_fill(bcx, vptr);
-    let size = Add(bcx, fill, llsize_of(T_opaque_vec()));
+    let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
     let {bcx: bcx, val: newptr} =
         trans_shared_malloc(bcx, val_ty(vptr), size);
     let bcx = call_memmove(bcx, newptr, vptr, size).bcx;
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     Store(bcx, fill,
-          InBoundsGEP(bcx, newptr, [C_int(0), C_uint(abi::vec_elt_alloc)]));
+          InBoundsGEP(bcx, newptr, [C_int(ccx, 0),
+                                    C_uint(ccx, abi::vec_elt_alloc)]));
     if ty::type_needs_drop(bcx_tcx(bcx), unit_ty) {
         bcx = iter_vec(bcx, newptr, vec_ty, trans::take_ty);
     }
@@ -95,6 +105,7 @@ fn make_free_glue(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) ->
 
 fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
              dest: dest) -> @block_ctxt {
+    let ccx = bcx_ccx(bcx);
     if dest == trans::ignore {
         for arg in args {
             bcx = trans::trans_expr(bcx, arg, trans::ignore);
@@ -115,8 +126,8 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
     let i = 0u, temp_cleanups = [vptr];
     for e in args {
         let lleltptr = if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
-            InBoundsGEP(bcx, dataptr, [Mul(bcx, C_uint(i), llunitsz)])
-        } else { InBoundsGEP(bcx, dataptr, [C_uint(i)]) };
+            InBoundsGEP(bcx, dataptr, [Mul(bcx, C_uint(ccx, i), llunitsz)])
+        } else { InBoundsGEP(bcx, dataptr, [C_uint(ccx, i)]) };
         bcx = trans::trans_expr_save_in(bcx, e, lleltptr);
         add_clean_temp_mem(bcx, lleltptr, unit_ty);
         temp_cleanups += [lleltptr];
@@ -131,21 +142,23 @@ fn trans_str(bcx: @block_ctxt, s: str, dest: dest) -> @block_ctxt {
     let {bcx: bcx, val: sptr, _} =
         alloc(bcx, ty::mk_str(bcx_tcx(bcx)), veclen);
 
-    let llcstr = C_cstr(bcx_ccx(bcx), s);
+    let ccx = bcx_ccx(bcx);
+    let llcstr = C_cstr(ccx, s);
     let bcx =
         call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()), llcstr,
-                     C_uint(veclen)).bcx;
+                     C_uint(ccx, veclen)).bcx;
     ret trans::store_in_dest(bcx, sptr, dest);
 }
 
 fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
                 rhs: ValueRef) -> @block_ctxt {
     // Cast to opaque interior vector types if necessary.
+    let ccx = bcx_ccx(cx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(cx), vec_ty);
     let dynamic = ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty);
     if dynamic {
-        lhsptr = PointerCast(cx, lhsptr, T_ptr(T_ptr(T_opaque_vec())));
-        rhs = PointerCast(cx, rhs, T_ptr(T_opaque_vec()));
+        lhsptr = PointerCast(cx, lhsptr, T_ptr(T_ptr(ccx.opaque_vec_type)));
+        rhs = PointerCast(cx, rhs, T_ptr(ccx.opaque_vec_type));
     }
     let strings = alt ty::struct(bcx_tcx(cx), vec_ty) {
       ty::ty_str. { true }
@@ -160,8 +173,9 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     let lfill = get_fill(bcx, lhs);
     let rfill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lfill, rfill);
-    if strings { new_fill = Sub(bcx, new_fill, C_int(1)); }
-    let opaque_lhs = PointerCast(bcx, lhsptr, T_ptr(T_ptr(T_opaque_vec())));
+    if strings { new_fill = Sub(bcx, new_fill, C_int(ccx, 1)); }
+    let opaque_lhs = PointerCast(bcx, lhsptr,
+                                 T_ptr(T_ptr(ccx.opaque_vec_type)));
     Call(bcx, bcx_ccx(cx).upcalls.vec_grow,
          [opaque_lhs, new_fill]);
     // Was overwritten if we resized
@@ -170,7 +184,7 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
 
     let lhs_data = get_dataptr(bcx, lhs, llunitty);
     let lhs_off = lfill;
-    if strings { lhs_off = Sub(bcx, lhs_off, C_int(1)); }
+    if strings { lhs_off = Sub(bcx, lhs_off, C_int(ccx, 1)); }
     let write_ptr = pointer_add(bcx, lhs_data, lhs_off);
     let write_ptr_ptr = do_spill_noroot(bcx, write_ptr);
     let bcx = iter_vec_raw(bcx, rhs, vec_ty, rfill,
@@ -181,7 +195,7 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
                              copy_val(bcx, INIT, write_ptr,
                                       load_if_immediate(bcx, addr, unit_ty),
                                       unit_ty);
-                         let incr = dynamic ? unit_sz : C_int(1);
+                         let incr = dynamic ? unit_sz : C_int(ccx, 1);
                          Store(bcx, InBoundsGEP(bcx, write_ptr, [incr]),
                                write_ptr_ptr);
                          ret bcx;
@@ -191,12 +205,14 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
 
 fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
                         vals: [@ast::expr]) -> @block_ctxt {
+    let ccx = bcx_ccx(bcx);
     let elt_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let ti = none;
     let {bcx: bcx, val: td} =
         get_tydesc(bcx, elt_ty, false, tps_normal, ti).result;
     trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
-    let opaque_v = PointerCast(bcx, vptrptr, T_ptr(T_ptr(T_opaque_vec())));
+    let opaque_v = PointerCast(bcx, vptrptr,
+                               T_ptr(T_ptr(ccx.opaque_vec_type)));
     for val in vals {
         let {bcx: e_bcx, val: elt} = trans::trans_temp_expr(bcx, val);
         bcx = e_bcx;
@@ -211,6 +227,7 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
 
 fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
              rhs: ValueRef, dest: dest) -> @block_ctxt {
+    let ccx = bcx_ccx(bcx);
     let strings = alt ty::struct(bcx_tcx(bcx), vec_ty) {
       ty::ty_str. { true }
       ty::ty_vec(_) { false }
@@ -220,11 +237,11 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let {bcx: bcx, val: llunitsz} = size_of(bcx, unit_ty);
 
     let lhs_fill = get_fill(bcx, lhs);
-    if strings { lhs_fill = Sub(bcx, lhs_fill, C_int(1)); }
+    if strings { lhs_fill = Sub(bcx, lhs_fill, C_int(ccx, 1)); }
     let rhs_fill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lhs_fill, rhs_fill);
     let {bcx: bcx, val: new_vec_ptr} = alloc_raw(bcx, new_fill, new_fill);
-    new_vec_ptr = PointerCast(bcx, new_vec_ptr, T_ptr(T_vec(llunitty)));
+    new_vec_ptr = PointerCast(bcx, new_vec_ptr, T_ptr(T_vec(ccx, llunitty)));
 
     let write_ptr_ptr = do_spill_noroot
         (bcx, get_dataptr(bcx, new_vec_ptr, llunitty));
@@ -232,13 +249,14 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
         bind fn (bcx: @block_ctxt, addr: ValueRef, _ty: ty::t,
                  write_ptr_ptr: ValueRef, unit_ty: ty::t, llunitsz: ValueRef)
                 -> @block_ctxt {
+                 let ccx = bcx_ccx(bcx);
                  let write_ptr = Load(bcx, write_ptr_ptr);
                  let bcx =
                      copy_val(bcx, INIT, write_ptr,
                               load_if_immediate(bcx, addr, unit_ty), unit_ty);
                  let incr =
                      ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) ?
-                         llunitsz : C_int(1);
+                         llunitsz : C_int(ccx, 1);
                  Store(bcx, InBoundsGEP(bcx, write_ptr, [incr]),
                        write_ptr_ptr);
                  ret bcx;
@@ -255,10 +273,11 @@ type iter_vec_block = block(@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
 
 fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
                 fill: ValueRef, f: iter_vec_block) -> @block_ctxt {
+    let ccx = bcx_ccx(bcx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
     let {bcx: bcx, val: unit_sz} = size_of(bcx, unit_ty);
-    vptr = PointerCast(bcx, vptr, T_ptr(T_vec(llunitty)));
+    vptr = PointerCast(bcx, vptr, T_ptr(T_vec(ccx, llunitty)));
     let data_ptr = get_dataptr(bcx, vptr, llunitty);
 
     // Calculate the last pointer address we want to handle.
@@ -279,7 +298,7 @@ fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     let increment =
         if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
             unit_sz
-        } else { C_int(1) };
+        } else { C_int(ccx, 1) };
     AddIncomingToPhi(data_ptr, InBoundsGEP(body_cx, data_ptr, [increment]),
                      body_cx.llbb);
     Br(body_cx, header_cx.llbb);
@@ -288,7 +307,8 @@ fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
 
 fn iter_vec(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
             f: iter_vec_block) -> @block_ctxt {
-    vptr = PointerCast(bcx, vptr, T_ptr(T_opaque_vec()));
+    let ccx = bcx_ccx(bcx);
+    vptr = PointerCast(bcx, vptr, T_ptr(ccx.opaque_vec_type));
     ret iter_vec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);
 }
 

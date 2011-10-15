@@ -161,7 +161,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
       ty::ty_vec(mt) {
         let mt_ty = mt.ty;
         if ty::type_has_dynamic_size(cx.tcx, mt_ty) {
-            T_ptr(T_opaque_vec(cx))
+            T_ptr(cx.opaque_vec_type)
         } else {
             // should be unnecessary
             check non_ty_var(cx, mt_ty);
@@ -359,7 +359,7 @@ fn trans_native_call(cx: @block_ctxt, externs: hashmap<str, ValueRef>,
         get_simple_extern_fn(cx, externs, llmod, name, n);
     let call_args: [ValueRef] = [];
     for a: ValueRef in args {
-        call_args += [ZExtOrBitCast(cx, a, T_int(bcx_ccx(cx)))];
+        call_args += [ZExtOrBitCast(cx, a, bcx_ccx(cx).int_type)];
     }
     ret Call(cx, llnative, call_args);
 }
@@ -2616,7 +2616,7 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
     let next_cx = new_sub_block_ctxt(cx, "next");
     let seq_ty = ty::expr_ty(bcx_tcx(cx), seq);
     let {bcx: bcx, val: seq} = trans_temp_expr(cx, seq);
-    let seq = PointerCast(bcx, seq, T_ptr(T_opaque_vec(ccx)));
+    let seq = PointerCast(bcx, seq, T_ptr(ccx.opaque_vec_type));
     let fill = tvec::get_fill(bcx, seq);
     if ty::type_is_str(bcx_tcx(bcx), seq_ty) {
         fill = Sub(bcx, fill, C_int(ccx, 1));
@@ -6075,7 +6075,7 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     llvm::LLVMSetLinkage(map,
                          lib::llvm::LLVMExternalLinkage as llvm::Linkage);
     llvm::LLVMSetInitializer(map,
-                             C_struct([p2i(create_module_map(ccx)),
+                             C_struct([p2i(ccx, create_module_map(ccx)),
                                        C_array(ccx.int_type, subcrates)]));
     ret map;
 >>>>>>> work on making the size of ints depend on the target arch
@@ -6129,15 +6129,16 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let _: () =
         str::as_buf(sess.get_targ_cfg().target_strs.target_triple,
                     {|buf| llvm::LLVMSetTarget(llmod, buf) });
+    let targ_cfg = sess.get_targ_cfg();
     let td = mk_target_data(sess.get_targ_cfg().target_strs.data_layout);
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
-    let int_type = T_int(sess.get_targ_cfg().arch);
-    let float_type = T_float(sess.get_targ_cfg().arch);
-    let task_type = T_task(sess.get_targ_cfg().arch);
+    let int_type = T_int(targ_cfg);
+    let float_type = T_float(targ_cfg);
+    let task_type = T_task(targ_cfg);
     let taskptr_type = T_ptr(task_type);
     tn.associate("taskptr", taskptr_type);
-    let tydesc_type = T_tydesc(taskptr_type);
+    let tydesc_type = T_tydesc(targ_cfg, taskptr_type);
     tn.associate("tydesc", tydesc_type);
     let hasher = ty::hash_ty;
     let eqer = ty::eq_ty;
@@ -6184,12 +6185,14 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                mutable n_real_glues: 0u,
                fn_times: @mutable []},
           upcalls:
-              upcall::declare_upcalls(tn, tydesc_type, llmod),
+              upcall::declare_upcalls(targ_cfg, tn, tydesc_type,
+                                      llmod),
           rust_object_type: T_rust_object(),
           tydesc_type: tydesc_type,
           int_type: int_type,
           float_type: float_type,
           task_type: task_type,
+          opaque_vec_type: T_opaque_vec(targ_cfg),
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: shape::mk_ctxt(llmod),
           gc_cx: gc::mk_ctxt(),

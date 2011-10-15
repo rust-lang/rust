@@ -1,5 +1,6 @@
 
 import std::str;
+import driver::session;
 import middle::trans;
 import trans::decl_cdecl_fn;
 import middle::trans_common::{T_f32, T_f64, T_fn, T_bool, T_i1, T_i8, T_i32,
@@ -32,7 +33,9 @@ type upcalls =
      call_c_stack_float: ValueRef,
      rust_personality: ValueRef};
 
-fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
+fn declare_upcalls(targ_cfg: @session::config,
+                   _tn: type_names,
+                   tydesc_type: TypeRef,
                    llmod: ModuleRef) -> @upcalls {
     fn decl(llmod: ModuleRef, name: str, tys: [TypeRef], rv: TypeRef) ->
        ValueRef {
@@ -44,25 +47,35 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
     let d = bind decl(llmod, _, _, _);
     let dv = bind decl(llmod, _, _, T_void());
 
-    ret @{_fail: dv("fail", [T_ptr(T_i8()), T_ptr(T_i8()), T_size_t()]),
+    let int_t = T_int(targ_cfg);
+    let size_t = T_size_t(targ_cfg);
+    let opaque_vec_t = T_opaque_vec(targ_cfg);
+
+    ret @{_fail: dv("fail", [T_ptr(T_i8()),
+                             T_ptr(T_i8()),
+                             size_t]),
           malloc:
-              d("malloc", [T_size_t(), T_ptr(tydesc_type)], T_ptr(T_i8())),
-          free: dv("free", [T_ptr(T_i8()), T_int()]),
+              d("malloc", [size_t, T_ptr(tydesc_type)],
+                T_ptr(T_i8())),
+          free: dv("free", [T_ptr(T_i8()), int_t]),
           shared_malloc:
-              d("shared_malloc", [T_size_t(), T_ptr(tydesc_type)],
+              d("shared_malloc", [size_t, T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
           shared_free: dv("shared_free", [T_ptr(T_i8())]),
-          mark: d("mark", [T_ptr(T_i8())], T_int()),
+          mark: d("mark", [T_ptr(T_i8())], int_t),
           get_type_desc:
               d("get_type_desc",
-                [T_ptr(T_nil()), T_size_t(), T_size_t(), T_size_t(),
-                 T_ptr(T_ptr(tydesc_type)), T_int()], T_ptr(tydesc_type)),
+                [T_ptr(T_nil()), size_t,
+                 size_t, size_t,
+                 T_ptr(T_ptr(tydesc_type)), int_t],
+                T_ptr(tydesc_type)),
           vec_grow:
-              dv("vec_grow", [T_ptr(T_ptr(T_opaque_vec())), T_int()]),
+              dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)),
+                              int_t]),
           vec_push:
               dv("vec_push",
-                 [T_ptr(T_ptr(T_opaque_vec())), T_ptr(tydesc_type),
-                  T_ptr(T_i8())]),
+                [T_ptr(T_ptr(opaque_vec_t)), T_ptr(tydesc_type),
+                 T_ptr(T_i8())]),
           cmp_type:
               dv("cmp_type",
                  [T_ptr(T_i1()), T_ptr(tydesc_type),
@@ -72,13 +85,13 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
               dv("log_type", [T_ptr(tydesc_type), T_ptr(T_i8()), T_i32()]),
           dynastack_mark: d("dynastack_mark", [], T_ptr(T_i8())),
           dynastack_alloc:
-              d("dynastack_alloc_2", [T_size_t(), T_ptr(tydesc_type)],
+              d("dynastack_alloc_2", [size_t, T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
           dynastack_free: dv("dynastack_free", [T_ptr(T_i8())]),
           alloc_c_stack: d("alloc_c_stack", [T_size_t()], T_ptr(T_i8())),
           call_c_stack: d("call_c_stack",
                               [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
-                              T_int()),
+                              int_t),
           call_c_stack_i64: d("call_c_stack_i64",
                               [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
                               T_i64()),

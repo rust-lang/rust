@@ -70,8 +70,8 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
     // Grab onto the first and second elements of the pair.
     // abi::obj_field_vtbl and abi::obj_field_box simply specify words 0 and 1
     // of 'pair'.
-    let pair_vtbl = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
-    let pair_box = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_box)]);
+    let pair_vtbl = GEPi(bcx, pair, [0, abi::obj_field_vtbl]);
+    let pair_box = GEPi(bcx, pair, [0, abi::obj_field_box]);
 
     // Make a vtable for this object: a static array of pointers to functions.
     // It will be located in the read-only memory of the executable we're
@@ -375,9 +375,9 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
         box = PointerCast(bcx, box, llbox_ty);
     }
     let pair = trans::get_dest_addr(dest);
-    let pair_vtbl = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
+    let pair_vtbl = GEPi(bcx, pair, [0, abi::obj_field_vtbl]);
     Store(bcx, vtbl, pair_vtbl);
-    let pair_box = GEP(bcx, pair, [C_int(0), C_int(abi::obj_field_box)]);
+    let pair_box = GEPi(bcx, pair, [0, abi::obj_field_box]);
     Store(bcx, box, pair_box);
     ret bcx;
 }
@@ -627,7 +627,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
         PointerCast(bcx, fcx.llenv,
                     T_ptr(T_struct([cx.ccx.rust_object_type,
                                     T_ptr(cx.ccx.rust_object_type)])));
-    let llself_obj_ptr = GEP(bcx, llenv, [C_int(0), C_int(1)]);
+    let llself_obj_ptr = GEPi(bcx, llenv, [0, 1]);
     llself_obj_ptr = Load(bcx, llself_obj_ptr);
 
     // Cast it back to pointer-to-object-type, so LLVM won't complain.
@@ -663,12 +663,12 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
 
     let llouter_obj_vtbl =
-        GEP(bcx, llself_obj_ptr, [C_int(0), C_int(abi::obj_field_vtbl)]);
+        GEPi(bcx, llself_obj_ptr, [0, abi::obj_field_vtbl]);
     llouter_obj_vtbl = Load(bcx, llouter_obj_vtbl);
     llouter_obj_vtbl = PointerCast(bcx, llouter_obj_vtbl, vtbl_type);
 
     let llouter_mthd =
-        GEP(bcx, llouter_obj_vtbl, [C_int(0), C_int(ix as int)]);
+        GEPi(bcx, llouter_obj_vtbl, [0, ix as int]);
 
     // Set up the outer method to be called.
     let llouter_mthd_ty = type_of_meth(bcx_ccx(bcx), sp, m, ty_params);
@@ -746,16 +746,16 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     // First, grab the box out of the self_obj.  It contains a refcount and a
     // body.
     let llself_obj_box =
-        GEP(bcx, llself_obj_ptr, [C_int(0), C_int(abi::obj_field_box)]);
+        GEPi(bcx, llself_obj_ptr, [0, abi::obj_field_box]);
     llself_obj_box = Load(bcx, llself_obj_box);
 
     let ccx = bcx_ccx(bcx);
-    let llbox_ty = T_opaque_obj_ptr(*ccx);
+    let llbox_ty = T_opaque_obj_ptr(ccx);
     llself_obj_box = PointerCast(bcx, llself_obj_box, llbox_ty);
 
     // Now, reach into the box and grab the body.
     let llself_obj_body =
-        GEP(bcx, llself_obj_box, [C_int(0), C_int(abi::box_rc_field_body)]);
+        GEPi(bcx, llself_obj_box, [0, abi::box_rc_field_body]);
 
     // Now, we need to figure out exactly what type the body is supposed to be
     // cast to.
@@ -784,11 +784,11 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     // method's entry out of the vtable so that the forwarding function can
     // call it.
     let llinner_obj_vtbl =
-        GEP(bcx, llinner_obj.val, [C_int(0), C_int(abi::obj_field_vtbl)]);
+        GEPi(bcx, llinner_obj.val, [0, abi::obj_field_vtbl]);
     llinner_obj_vtbl = Load(bcx, llinner_obj_vtbl);
 
     let llinner_obj_body =
-        GEP(bcx, llinner_obj.val, [C_int(0), C_int(abi::obj_field_box)]);
+        GEPi(bcx, llinner_obj.val, [0, abi::obj_field_box]);
     llinner_obj_body = Load(bcx, llinner_obj_body);
 
     // Get the index of the method we want.
@@ -809,7 +809,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     llinner_obj_vtbl = PointerCast(bcx, llinner_obj_vtbl, vtbl_type);
 
     let llorig_mthd =
-        GEP(bcx, llinner_obj_vtbl, [C_int(0), C_int(ix as int)]);
+        GEPi(bcx, llinner_obj_vtbl, [0, ix as int]);
 
     // Set up the original method to be called.
     let llorig_mthd_ty = type_of_meth(bcx_ccx(bcx), sp, m, ty_params);
@@ -920,18 +920,18 @@ fn populate_self_stack(bcx: @block_ctxt, self_stack: ValueRef,
                        inner_obj_body: ValueRef) -> ValueRef {
 
     // Drop the outer obj into the second slot.
-    let self_pair_ptr = GEP(bcx, self_stack, [C_int(0), C_int(1)]);
+    let self_pair_ptr = GEPi(bcx, self_stack, [0, 1]);
     Store(bcx, outer_obj, self_pair_ptr);
 
     // Drop in the backwarding vtbl.
-    let wrapper_pair = GEP(bcx, self_stack, [C_int(0), C_int(0)]);
-    let wrapper_vtbl_ptr = GEP(bcx, wrapper_pair, [C_int(0), C_int(0)]);
+    let wrapper_pair = GEPi(bcx, self_stack, [0, 0]);
+    let wrapper_vtbl_ptr = GEPi(bcx, wrapper_pair, [0, 0]);
     let backwarding_vtbl_cast =
         PointerCast(bcx, backwarding_vtbl, T_ptr(T_empty_struct()));
     Store(bcx, backwarding_vtbl_cast, wrapper_vtbl_ptr);
 
     // Drop in the inner obj body.
-    let wrapper_body_ptr = GEP(bcx, wrapper_pair, [C_int(0), C_int(1)]);
+    let wrapper_body_ptr = GEPi(bcx, wrapper_pair, [0, 1]);
     Store(bcx, inner_obj_body, wrapper_body_ptr);
 
     ret self_stack;

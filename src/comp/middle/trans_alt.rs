@@ -44,6 +44,7 @@ tag opt_result {
     range_result(result, result);
 }
 fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
+    let ccx = bcx_ccx(bcx);
     alt o {
       lit(l) {
         alt l.node {
@@ -56,11 +57,11 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
           }
           _ {
             ret single_result(
-                rslt(bcx, trans::trans_crate_lit(bcx_ccx(bcx), *l)));
+                rslt(bcx, trans::trans_crate_lit(ccx, *l)));
           }
         }
       }
-      var(id, _) { ret single_result(rslt(bcx, C_int(id as int))); }
+      var(id, _) { ret single_result(rslt(bcx, C_int(ccx, id as int))); }
       range(l1, l2) {
         let cell1 = trans::empty_dest_cell();
         let cell2 = trans::empty_dest_cell();
@@ -257,8 +258,8 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
         vec::len(ty::tag_variant_with_id(ccx.tcx, vdefs.tg, vdefs.var).args);
     if size > 0u && vec::len(variants) != 1u {
         let tagptr =
-            PointerCast(bcx, val, trans_common::T_opaque_tag_ptr(ccx.tn));
-        blobptr = GEP(bcx, tagptr, [C_int(0), C_int(1)]);
+            PointerCast(bcx, val, trans_common::T_opaque_tag_ptr(ccx));
+        blobptr = GEP(bcx, tagptr, [C_int(ccx, 0), C_int(ccx, 1)]);
     }
     let i = 0u;
     let vdefs_tg = vdefs.tg;
@@ -439,7 +440,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         let box = Load(bcx, val);
         let unboxed =
             InBoundsGEP(bcx, box,
-                        [C_int(0), C_int(back::abi::box_rc_field_body)]);
+                        [C_int(ccx, 0),
+                         C_int(ccx, back::abi::box_rc_field_body)]);
         compile_submatch(bcx, enter_box(m, col, val), [unboxed] + vals_left,
                          f, exits);
         ret;
@@ -465,8 +467,9 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             } else {
                 let tagptr =
                     PointerCast(bcx, val,
-                                trans_common::T_opaque_tag_ptr(ccx.tn));
-                let discrimptr = GEP(bcx, tagptr, [C_int(0), C_int(0)]);
+                                trans_common::T_opaque_tag_ptr(ccx));
+                let discrimptr = GEP(bcx, tagptr, [C_int(ccx, 0),
+                                                   C_int(ccx, 0)]);
                 test_val = Load(bcx, discrimptr);
                 kind = switch;
             }
@@ -505,7 +508,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         // holding a corrupted value (when the compiler is optimized).
         // This can be removed after our next LLVM upgrade.
         val_ty(sw);
-    } else { sw = C_int(0); } // Placeholder for when not using a switch
+    } else { sw = C_int(ccx, 0); } // Placeholder for when not using a switch
 
      // Compile subtrees for each option
     for opt: opt in opts {
@@ -736,7 +739,8 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         let box = Load(bcx, val);
         let unboxed =
             InBoundsGEP(bcx, box,
-                        [C_int(0), C_int(back::abi::box_rc_field_body)]);
+                        [C_int(ccx, 0),
+                         C_int(ccx, back::abi::box_rc_field_body)]);
         bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
       }
       ast::pat_uniq(inner) {

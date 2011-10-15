@@ -123,6 +123,7 @@ type crate_ctxt =
      int_type: TypeRef,
      float_type: TypeRef,
      task_type: TypeRef,
+     opaque_vec_type: TypeRef,
      builder: BuilderRef_res,
      shape_cx: shape::ctxt,
      gc_cx: gc::ctxt,
@@ -490,26 +491,26 @@ fn T_f64() -> TypeRef { ret llvm::LLVMDoubleType(); }
 
 fn T_bool() -> TypeRef { ret T_i1(); }
 
-fn T_int(arch: session::arch) -> TypeRef {
-    ret alt arch {
-      arch_x86 { T_i32() }
-      arch_x86_64 { T_i64() }
-      arch_arm { T_i32() }
+fn T_int(targ_cfg: @session::config) -> TypeRef {
+    ret alt targ_cfg.arch {
+      session::arch_x86. { T_i32() }
+      session::arch_x86_64. { T_i64() }
+      session::arch_arm. { T_i32() }
     };
 }
 
-fn T_float(arch: session::arch) -> TypeRef {
-    ret alt arch {
-      arch_x86 { T_f64() }
-      arch_x86_64 { T_f64() }
-      arch_arm { T_f64() }
+fn T_float(targ_cfg: @session::config) -> TypeRef {
+    ret alt targ_cfg.arch {
+      session::arch_x86. { T_f64() }
+      session::arch_x86_64. { T_f64() }
+      session::arch_arm. { T_f64() }
     };
 }
 
 fn T_char() -> TypeRef { ret T_i32(); }
 
-fn T_size_t(cx: @crate_ctxt) -> TypeRef {
-    ret cx.int_type;
+fn T_size_t(targ_cfg: @session::config) -> TypeRef {
+    ret T_int(targ_cfg);
 }
 
 fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef {
@@ -553,7 +554,7 @@ fn T_rust_object() -> TypeRef {
     ret t;
 }
 
-fn T_task(arch: session::arch) -> TypeRef {
+fn T_task(targ_cfg: @session::config) -> TypeRef {
     let t = T_named_struct("task");
 
     // Refcount
@@ -567,7 +568,7 @@ fn T_task(arch: session::arch) -> TypeRef {
     // Domain pointer
     // Crate cache pointer
 
-    let t_int = T_int(arch);
+    let t_int = T_int(targ_cfg);
     let elems =
         [t_int, t_int, t_int, t_int,
          t_int, t_int, t_int, t_int];
@@ -603,7 +604,7 @@ fn T_cmp_glue_fn(cx: @crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_tydesc(cx: @crate_ctxt) -> TypeRef {
+fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
     let tydesc = T_named_struct("tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
@@ -614,29 +615,35 @@ fn T_tydesc(cx: @crate_ctxt) -> TypeRef {
         T_ptr(T_fn([T_ptr(T_i1()), T_ptr(tydesc), tydescpp,
                     pvoid, pvoid, T_i8()], T_void()));
 
+    let int_type = T_int(targ_cfg);
     let elems =
-        [tydescpp, cx.int_type, cx.int_type,
+        [tydescpp, int_type, int_type,
          glue_fn_ty, glue_fn_ty, glue_fn_ty,
          T_ptr(T_i8()), glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
-         T_ptr(T_i8()), T_ptr(T_i8()), cx.int_type, cx.int_type];
+         T_ptr(T_i8()), T_ptr(T_i8()), int_type, int_type];
     set_struct_body(tydesc, elems);
     ret tydesc;
 }
 
 fn T_array(t: TypeRef, n: uint) -> TypeRef { ret llvm::LLVMArrayType(t, n); }
 
-
 // Interior vector.
 //
 // TODO: Support user-defined vector sizes.
-fn T_vec(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
-    ret T_struct([cx.int_type, // fill
-                  cx.int_type, // alloc
+fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
+    ret T_struct([T_int(targ_cfg), // fill
+                  T_int(targ_cfg), // alloc
                   T_array(t, 0u)]); // elements
 }
 
+fn T_vec(ccx: @crate_ctxt, t: TypeRef) -> TypeRef {
+    ret T_vec2(ccx.sess.get_targ_cfg(), t);
+}
+
 // Note that the size of this one is in bytes.
-fn T_opaque_vec(cx: @crate_ctxt) -> TypeRef { ret T_vec(cx, T_i8()); }
+fn T_opaque_vec(targ_cfg: @session::config) -> TypeRef {
+    ret T_vec2(targ_cfg, T_i8());
+}
 
 fn T_box(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
     ret T_struct([cx.int_type, t]);

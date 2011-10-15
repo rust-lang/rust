@@ -29,6 +29,7 @@ fn add_global(ccx: @crate_ctxt, llval: ValueRef, name: str) -> ValueRef {
 
 fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     let bcx = cx;
+    let ccx = bcx_ccx(cx);
     if !type_is_gc_relevant(bcx_tcx(cx), ty) ||
            ty::type_has_dynamic_size(bcx_tcx(cx), ty) {
         ret bcx;
@@ -61,10 +62,12 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
         gc_cx.next_tydesc_num += 1u;
 
         let lldestindex =
-            add_global(bcx_ccx(bcx), C_struct([C_int(0), C_uint(number)]),
+            add_global(bcx_ccx(bcx), C_struct([C_int(ccx, 0),
+                                               C_uint(ccx, number)]),
                        "rust_gc_tydesc_dest_index");
         let llsrcindex =
-            add_global(bcx_ccx(bcx), C_struct([C_int(1), C_uint(number)]),
+            add_global(bcx_ccx(bcx), C_struct([C_int(ccx, 1),
+                                               C_uint(ccx, number)]),
                        "rust_gc_tydesc_src_index");
 
         lldestindex = lll::LLVMConstPointerCast(lldestindex, T_ptr(T_i8()));
@@ -85,7 +88,7 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
         // Static type descriptor.
 
         let llstaticgcmeta =
-            add_global(bcx_ccx(bcx), C_struct([C_int(2), lltydesc]),
+            add_global(bcx_ccx(bcx), C_struct([C_int(ccx, 2), lltydesc]),
                        "rust_gc_tydesc_static_gc_meta");
         let llstaticgcmetaptr =
             lll::LLVMConstPointerCast(llstaticgcmeta, T_ptr(T_i8()));
