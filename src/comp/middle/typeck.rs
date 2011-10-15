@@ -891,43 +891,6 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     fail;
 }
 
-fn do_fn_ty_coerce(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t)
-   -> ty::t {
-
-    // fns can be silently coerced to blocks when being used as
-    // function call or bind arguments, but not the reverse.
-    // If our actual type is a fn and our expected type is a block,
-    // build up a new expected type that is identical to the old one
-    // except for its proto. If we don't know the expected or actual
-    // types, that's fine, but we can't do the coercion.
-    ret alt structure_of_maybe(fcx, sp, actual) {
-          some(ty::ty_fn(ast::proto_fn., args, ret_ty, cf, constrs)) {
-            alt structure_of_maybe(fcx, sp, expected) {
-              some(ty::ty_fn(ast::proto_block., _, _, _, _)) {
-                ty::mk_fn(fcx.ccx.tcx, ast::proto_block, args, ret_ty, cf,
-                          constrs)
-              }
-              _ { actual }
-            }
-          }
-          some(ty::ty_fn(ast::proto_bare., args, ret_ty, cf, constrs)) {
-            alt structure_of_maybe(fcx, sp, expected) {
-              some(ty::ty_fn(ast::proto_fn., _, _, _, _)) {
-                ty::mk_fn(fcx.ccx.tcx, ast::proto_fn, args, ret_ty, cf,
-                          constrs)
-              }
-              some(ty::ty_fn(ast::proto_block., _, _, _, _)) {
-                ty::mk_fn(fcx.ccx.tcx, ast::proto_block, args, ret_ty, cf,
-                          constrs)
-              }
-              _ { actual }
-            }
-          }
-          _ { actual }
-        }
-}
-
-
 fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
     alt ty::unify::fixup_vars(fcx.ccx.tcx, none, fcx.var_bindings, typ) {
       fix_ok(new_type) { ret new_type; }
@@ -943,26 +906,19 @@ type ty_param_substs_and_ty = {substs: [ty::t], ty: ty::t};
 mod demand {
     fn simple(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) ->
        ty::t {
-        full(fcx, sp, expected, actual, [], false).ty
-    }
-    fn fn_coerce(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t)
-       -> ty::t {
-        full(fcx, sp, expected, actual, [], true).ty
+        full(fcx, sp, expected, actual, []).ty
     }
 
     fn with_substs(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
                    ty_param_substs_0: [ty::t]) -> ty_param_substs_and_ty {
-        full(fcx, sp, expected, actual, ty_param_substs_0, false)
+        full(fcx, sp, expected, actual, ty_param_substs_0)
     }
 
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
     fn full(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
-            ty_param_substs_0: [ty::t], do_fn_coerce: bool) ->
+            ty_param_substs_0: [ty::t]) ->
        ty_param_substs_and_ty {
-        if do_fn_coerce {
-            actual = do_fn_ty_coerce(fcx, sp, actual, expected);
-        }
 
         let ty_param_substs: [mutable ty::t] = [mutable];
         let ty_param_subst_var_ids: [int] = [];
@@ -1689,7 +1645,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         if is_block == check_blocks {
                             bot |=
                                 check_expr_with_unifier(fcx, a,
-                                                        demand::fn_coerce,
+                                                        demand::simple,
                                                         arg_tys[i].ty);
                         }
                       }
