@@ -2004,8 +2004,11 @@ mod unify {
                     (ures_err(terr_mode_mismatch(expected_input.mode,
                                                  actual_input.mode)));
             } else { expected_input.mode };
+            // The variance changes (flips basically) when descending
+            // into arguments of function types
             let result = unify_step(
-                cx, expected_input.ty, actual_input.ty, variance);
+                cx, expected_input.ty, actual_input.ty,
+                variance_transform(variance, contravariant));
             alt result {
               ures_ok(rty) { result_ins += [{mode: result_mode, ty: rty}]; }
               _ { ret fn_common_res_err(result); }
