@@ -582,7 +582,7 @@ fn link_binary(sess: session::session,
         gcc_args += ["-lm", main];
     }
 
-    gcc_args += ["-lrustrt"];
+    gcc_args += ["-lrustrt", "-lrt"];
 
     gcc_args += rpath::get_rpath_flags(sess, saved_out_filename);
 
