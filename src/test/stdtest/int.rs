@@ -23,3 +23,10 @@ fn test_pow() {
     assert (int::pow(-3, 3u) == -27);
     assert (int::pow(4, 9u) == 262144);
 }
+
+#[test]
+fn test_overflows() {
+   assert (int::max_value() > 0);
+   assert (int::min_value() <= 0);
+   assert (int::min_value() + int::max_value() + 1 == 0);
+}
