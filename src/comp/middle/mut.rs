@@ -19,11 +19,11 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
         while true {
             alt ty::struct(tcx, t) {
               ty::ty_box(mt) {
-                ds += [@{mut: mt.mut != imm, kind: unbox, outer_t: t}];
+                ds += [@{mut: mt.mut == mut, kind: unbox, outer_t: t}];
                 t = mt.ty;
               }
               ty::ty_uniq(mt) {
-                ds += [@{mut: mt.mut != imm, kind: unbox, outer_t: t}];
+                ds += [@{mut: mt.mut == mut, kind: unbox, outer_t: t}];
                 t = mt.ty;
               }
               ty::ty_res(_, inner, tps) {
