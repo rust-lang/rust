@@ -13,6 +13,7 @@ mod char;
 mod int;
 mod uint;
 mod u8;
+mod u32;
 mod u64;
 mod vec;
 mod str;
