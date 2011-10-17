@@ -1,4 +1,5 @@
-
+pure fn max_value() -> u8 { ret 255u8; }
+pure fn min_value() -> u8 { ret 0u8; }
 
 pure fn add(x: u8, y: u8) -> u8 { ret x + y; }
 

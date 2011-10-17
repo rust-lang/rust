@@ -1,3 +1,6 @@
+pure fn max_value() -> u64 { ret 18446744073709551615u64; }
+pure fn min_value() -> u64 { ret 0u64; }
+
 fn to_str(n: u64, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
 
