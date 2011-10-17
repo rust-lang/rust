@@ -1952,7 +1952,6 @@ mod unify {
        option::t<ast::mutability> {
         if expected == actual { ret some(expected); }
         if expected == ast::maybe_mut { ret some(actual); }
-        if actual == ast::maybe_mut { ret some(expected); }
         ret none;
     }
     tag fn_common_res {

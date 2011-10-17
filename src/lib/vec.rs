@@ -5,7 +5,7 @@ import uint::next_power_of_two;
 import ptr::addr_of;
 
 native "rust-intrinsic" mod rusti {
-    fn vec_len<T>(&&v: [T]) -> uint;
+    fn vec_len<T>(&&v: [mutable? T]) -> uint;
 }
 
 native "rust" mod rustrt {
@@ -86,7 +86,7 @@ pure fn is_not_empty<T>(v: [mutable? T]) -> bool { ret !is_empty(v); }
 fn head<@T>(v: [mutable? T]) : is_not_empty(v) -> T { ret v[0]; }
 
 /// Returns all but the first element of a vector
-fn tail<@T>(v: [mutable? T]) : is_not_empty(v) -> [mutable? T] {
+fn tail<@T>(v: [mutable? T]) : is_not_empty(v) -> [T] {
     ret slice(v, 1u, len(v));
 }
 
