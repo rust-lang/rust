@@ -49,19 +49,19 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
         alt copy ex.node {
           expr_field(base, ident) {
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));
-            let mut = false;
+            let is_mut = false;
             alt ty::struct(tcx, auto_unbox.t) {
               ty::ty_rec(fields) {
                 for fld: ty::field in fields {
                     if str::eq(ident, fld.ident) {
-                        mut = fld.mt.mut != imm;
+                        is_mut = fld.mt.mut == mut;
                         break;
                     }
                 }
               }
               ty::ty_obj(_) { }
             }
-            ds += [@{mut: mut, kind: field, outer_t: auto_unbox.t}];
+            ds += [@{mut: is_mut, kind: field, outer_t: auto_unbox.t}];
             ds += auto_unbox.ds;
             ex = base;
           }
@@ -70,7 +70,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
             alt ty::struct(tcx, auto_unbox.t) {
               ty::ty_vec(mt) {
                 ds +=
-                    [@{mut: mt.mut != imm,
+                    [@{mut: mt.mut == mut,
                        kind: index,
                        outer_t: auto_unbox.t}];
               }
@@ -84,15 +84,15 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
           expr_unary(op, base) {
             if op == deref {
                 let base_t = ty::expr_ty(tcx, base);
-                let mut = false;
+                let is_mut = false;
                 alt ty::struct(tcx, base_t) {
-                  ty::ty_box(mt) { mut = mt.mut != imm; }
-                  ty::ty_uniq(mt) { mut = mt.mut != imm; }
+                  ty::ty_box(mt) { is_mut = mt.mut == mut; }
+                  ty::ty_uniq(mt) { is_mut = mt.mut == mut; }
                   ty::ty_res(_, _, _) { }
                   ty::ty_tag(_, _) { }
-                  ty::ty_ptr(mt) { mut = mt.mut != imm; }
+                  ty::ty_ptr(mt) { is_mut = mt.mut == mut; }
                 }
-                ds += [@{mut: mut, kind: unbox, outer_t: base_t}];
+                ds += [@{mut: is_mut, kind: unbox, outer_t: base_t}];
                 ex = base;
             } else { break; }
           }
