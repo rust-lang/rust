@@ -1840,13 +1840,35 @@ mod unify {
           }
         }
     }
-    fn record_var_binding(cx: @ctxt, key: int, typ: t) -> result {
+
+    fn record_var_binding_for_expected(
+        cx: @ctxt, key: int, typ: t) -> result {
+        record_var_binding(
+            cx, key, typ,
+            fn (cx: @ctxt, old_type: t, new_type: t) -> result {
+                unify_step(cx, old_type, new_type)
+            })
+    }
+
+    fn record_var_binding_for_actual(
+        cx: @ctxt, key: int, typ: t) -> result {
+        record_var_binding(
+            cx, key, typ,
+            fn (cx: @ctxt, old_type: t, new_type: t) -> result {
+                unify_step(cx, new_type, old_type)
+            })
+    }
+
+    fn record_var_binding(
+        cx: @ctxt, key: int, typ: t,
+        unify_types: fn(@ctxt, t, t) -> result) -> result {
+
         ufind::grow(cx.vb.sets, (key as uint) + 1u);
         let root = ufind::find(cx.vb.sets, key as uint);
         let result_type = typ;
         alt smallintmap::find::<t>(cx.vb.types, root) {
           some(old_type) {
-            alt unify_step(cx, old_type, typ) {
+            alt unify_types(cx, old_type, typ) {
               ures_ok(unified_type) { result_type = unified_type; }
               rs { ret rs; }
             }
@@ -2099,7 +2121,7 @@ mod unify {
               }
               _ {
                 // Just bind the type variable to the expected type.
-                alt record_var_binding(cx, actual_id, expected) {
+                alt record_var_binding_for_actual(cx, actual_id, expected) {
                   ures_ok(_) {/* fall through */ }
                   rs { ret rs; }
                 }
@@ -2113,7 +2135,7 @@ mod unify {
           ty::ty_var(expected_id) {
             // Add a binding. (`actual` can't actually be a var here.)
 
-            alt record_var_binding(cx, expected_id, actual) {
+            alt record_var_binding_for_expected(cx, expected_id, actual) {
               ures_ok(_) {/* fall through */ }
               rs { ret rs; }
             }
