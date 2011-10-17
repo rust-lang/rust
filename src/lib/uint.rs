@@ -1,4 +1,18 @@
+/**
+ * Return the minimal value for an uint.
+ *
+ * This is always 0
+ */
 pure fn min_value() -> uint { ret 0u; }
+
+/**
+ * Return the maximal value for an uint.
+ *
+ * This is 2^wordsize - 1
+ */
+pure fn max_value() -> uint {
+     ret 0u - 1u;
+}
 
 fn add(x: uint, y: uint) -> uint { ret x + y; }
 

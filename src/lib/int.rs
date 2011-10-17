@@ -1,3 +1,10 @@
+fn max_value() -> int {
+  ret min_value() - 1;
+}
+
+fn min_value() -> int {
+  ret (-1 << (sys::size_of::<int>()  * 8u as int - 1)) as int;
+}
 
 
 pure fn add(x: int, y: int) -> int { ret x + y; }

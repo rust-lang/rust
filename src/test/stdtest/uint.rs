@@ -47,3 +47,10 @@ fn test_next_power_of_two() {
     assert (uint::next_power_of_two(38u) == 64u);
     assert (uint::next_power_of_two(39u) == 64u);
 }
+
+#[test]
+fn test_overflows() {
+   assert (uint::max_value() > 0u);
+   assert (uint::min_value() <= 0u);
+   assert (uint::min_value() + uint::max_value() + 1u == 0u);
+}
