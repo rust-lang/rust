@@ -582,14 +582,15 @@ fn link_binary(sess: session::session,
         gcc_args += ["-lm", main];
     }
 
-    // On linux librt is an indirect dependency via rustrt,
-    // and binutils 2.22+ won't add it automatically
-    if sess.get_targ_cfg().os == session::os_linux {
-        gcc_args += ["-lrt"];
-    }
 
     // Always want the runtime linked in
     gcc_args += ["-lrustrt"];
+
+    // On linux librt and libdl are an indirect dependencies via rustrt,
+    // and binutils 2.22+ won't add them automatically
+    if sess.get_targ_cfg().os == session::os_linux {
+        gcc_args += ["-lrt", "-ldl"];
+    }
 
     gcc_args += rpath::get_rpath_flags(sess, saved_out_filename);
 
