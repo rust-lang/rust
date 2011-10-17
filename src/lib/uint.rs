@@ -1,4 +1,4 @@
-
+pure fn min_value() -> uint { ret 0u; }
 
 fn add(x: uint, y: uint) -> uint { ret x + y; }
 
