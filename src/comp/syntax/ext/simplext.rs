@@ -72,7 +72,7 @@ fn match_error(cx: ext_ctxt, m: matchable, expected: str) -> ! {
 // we'll want to return something indicating amount of progress and location
 // of failure instead of `none`.
 type match_result = option::t<arb_depth<matchable>>;
-type selector = fn(matchable) -> match_result;
+type selector = fn@(matchable) -> match_result;
 
 fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
    {pre: [@expr], rep: option::t<@expr>, post: [@expr]} {
@@ -104,7 +104,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
         }
 }
 
-fn option_flatten_map<T, @U>(f: fn(T) -> option::t<U>, v: [T]) ->
+fn option_flatten_map<T, @U>(f: fn@(T) -> option::t<U>, v: [T]) ->
    option::t<[U]> {
     let res = [];
     for elem: T in v {
@@ -263,7 +263,7 @@ iter free_vars(b: bindings, e: @expr) -> ident {
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
 fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
-                    recur: fn(&&@expr) -> @expr, exprs: [@expr]) -> [@expr] {
+                    recur: fn@(&&@expr) -> @expr, exprs: [@expr]) -> [@expr] {
     alt elts_to_ell(cx, exprs) {
       {pre: pre, rep: repeat_me_maybe, post: post} {
         let res = vec::map(recur, pre);
@@ -351,7 +351,7 @@ fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 
 fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                    e: ast::expr_, fld: ast_fold,
-                   orig: fn(ast::expr_, ast_fold) -> ast::expr_) ->
+                   orig: fn@(ast::expr_, ast_fold) -> ast::expr_) ->
    ast::expr_ {
     ret alt e {
           expr_path(p) {
@@ -378,7 +378,7 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 
 fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                    t: ast::ty_, fld: ast_fold,
-                   orig: fn(ast::ty_, ast_fold) -> ast::ty_) -> ast::ty_ {
+                   orig: fn@(ast::ty_, ast_fold) -> ast::ty_) -> ast::ty_ {
     ret alt t {
           ast::ty_path(pth, _) {
             alt path_to_ident(pth) {
@@ -402,7 +402,7 @@ fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 
 fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                     blk: blk_, fld: ast_fold,
-                    orig: fn(blk_, ast_fold) -> blk_) -> blk_ {
+                    orig: fn@(blk_, ast_fold) -> blk_) -> blk_ {
     ret alt block_to_ident(blk) {
           some(id) {
             alt follow_for_trans(cx, b.find(id), idx_path) {

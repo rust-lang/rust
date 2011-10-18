@@ -13,7 +13,7 @@ fn pure_foldl<@T, @U>(ls: list<T>, u: U, f: block(T, U) -> U) -> U {
 // fn from a pure fn
 pure fn pure_length<@T>(ls: list<T>) -> uint {
     fn count<T>(_t: T, &&u: uint) -> uint { u + 1u }
-    unchecked{ pure_foldl(ls, 0u, count) }
+    unchecked{ pure_foldl(ls, 0u, bind count(_, _)) }
 }
 
 pure fn nonempty_list<@T>(ls: list<T>) -> bool { pure_length(ls) > 0u }

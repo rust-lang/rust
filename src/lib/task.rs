@@ -136,7 +136,7 @@ fn spawn_inner2<~T>(-data: T, f: fn#(T),
 
 // FIXME: This is the old spawn function that spawns a shared closure.
 // It is a hack and needs to be rewritten.
-fn unsafe_spawn_inner(-thunk: fn(),
+fn unsafe_spawn_inner(-thunk: fn@(),
                       notify: option<comm::chan<task_notification>>) ->
    task_id unsafe {
     let id = rustrt::new_task();

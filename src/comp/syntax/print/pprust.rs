@@ -18,7 +18,7 @@ tag ann_node {
     node_expr(ps, @ast::expr);
     node_pat(ps, @ast::pat);
 }
-type pp_ann = {pre: fn(ann_node), post: fn(ann_node)};
+type pp_ann = {pre: fn@(ann_node), post: fn@(ann_node)};
 
 fn no_ann() -> pp_ann {
     fn ignore(_node: ann_node) { }
@@ -352,7 +352,7 @@ fn print_native_item(s: ps, item: @ast::native_item) {
 
 
       ast::native_item_fn(lname, decl, typarams) {
-        print_fn(s, decl, ast::proto_fn, item.ident, typarams,
+        print_fn(s, decl, ast::proto_bare, item.ident, typarams,
                  decl.constraints);
         alt lname {
           none. { }
@@ -1557,7 +1557,7 @@ fn escape_str(st: str, to_escape: char) -> str {
     ret out;
 }
 
-fn to_str<T>(t: T, f: fn(ps, T)) -> str {
+fn to_str<T>(t: T, f: fn@(ps, T)) -> str {
     let writer = io::string_writer();
     let s = rust_printer(writer.get_writer());
     f(s, t);
@@ -1578,7 +1578,7 @@ fn next_comment(s: ps) -> option::t<lexer::cmnt> {
 
 // Removing the aliases from the type of f in the next two functions
 // triggers memory corruption, but I haven't isolated the bug yet. FIXME
-fn constr_args_to_str<T>(f: fn(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
+fn constr_args_to_str<T>(f: fn@(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
    str {
     let comma = false;
     let s = "(";
@@ -1590,7 +1590,7 @@ fn constr_args_to_str<T>(f: fn(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
     ret s;
 }
 
-fn constr_arg_to_str<T>(f: fn(T) -> str, c: ast::constr_arg_general_<T>) ->
+fn constr_arg_to_str<T>(f: fn@(T) -> str, c: ast::constr_arg_general_<T>) ->
    str {
     alt c {
       ast::carg_base. { ret "*"; }
@@ -1643,11 +1643,11 @@ fn ast_fn_constrs_str(decl: ast::fn_decl, constrs: [@ast::constr]) -> str {
 
 fn proto_to_str(p: ast::proto) -> str {
     ret alt p {
-          ast::proto_fn. { "fn" }
+          ast::proto_fn. { "fn@" }
           ast::proto_iter. { "iter" }
           ast::proto_block. { "block" }
           ast::proto_closure. { "lambda" }
-          ast::proto_bare. { "fn#" }
+          ast::proto_bare. { "fn" }
         };
 }
 

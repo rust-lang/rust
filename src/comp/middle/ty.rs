@@ -603,7 +603,7 @@ fn cname(cx: ctxt, typ: t) -> option::t<str> {
 
 
 // Type folds
-type ty_walk = fn(t);
+type ty_walk = fn@(t);
 
 fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
     alt struct(cx, ty) {
@@ -655,9 +655,9 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
 }
 
 tag fold_mode {
-    fm_var(fn(int) -> t);
-    fm_param(fn(uint, ast::kind) -> t);
-    fm_general(fn(t) -> t);
+    fm_var(fn@(int) -> t);
+    fm_param(fn@(uint, ast::kind) -> t);
+    fm_general(fn@(t) -> t);
 }
 
 fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
@@ -2712,13 +2712,14 @@ fn type_err_to_str(err: ty::type_err) -> str {
 
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
-fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn() -> int, typ: t,
+fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
                        ty_param_count: uint) -> {ids: [int], ty: t} {
     let param_var_ids: @mutable [int] = @mutable [];
     let i = 0u;
     while i < ty_param_count { *param_var_ids += [next_ty_var()]; i += 1u; }
     fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
-              _next_ty_var: fn() -> int, index: uint, _kind: ast::kind) -> t {
+              _next_ty_var: fn@() -> int, index: uint,
+              _kind: ast::kind) -> t {
         if index < vec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids[index]);
         } else {

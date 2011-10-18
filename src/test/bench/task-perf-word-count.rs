@@ -51,11 +51,11 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter = fn(str, int);
+    type putter = fn@(str, int);
 
     type mapper = fn(str, putter);
 
-    type getter = fn() -> option<int>;
+    type getter = fn@() -> option<int>;
 
     type reducer = fn(str, getter);
 

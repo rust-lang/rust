@@ -26,7 +26,7 @@ mod map_reduce {
     export mapper;
     export map_reduce;
 
-    type putter = fn(str, str);
+    type putter = fn@(str, str);
 
     type mapper = fn(str, putter);
 

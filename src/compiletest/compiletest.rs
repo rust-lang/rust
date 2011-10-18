@@ -128,8 +128,8 @@ fn test_opts(config: config) -> test::test_opts {
 }
 
 type tests_and_conv_fn = {
-    tests: [test::test_desc<fn()>],
-    to_task: fn(fn()) -> test::joinable
+    tests: [test::test_desc<fn@()>],
+    to_task: fn@(fn@()) -> test::joinable
 };
 
 fn make_tests(cx: cx) -> tests_and_conv_fn {
@@ -167,7 +167,7 @@ fn is_test(config: config, testfile: str) -> bool {
 }
 
 fn make_test(cx: cx, testfile: str, configport: port<[u8]>) ->
-   test::test_desc<fn()> {
+   test::test_desc<fn@()> {
     {name: make_test_name(cx.config, testfile),
      fn: make_test_closure(testfile, chan(configport)),
      ignore: header::is_test_ignored(cx.config, testfile)}
@@ -178,7 +178,7 @@ fn make_test_name(config: config, testfile: str) -> str {
 }
 
 fn make_test_closure(testfile: str,
-                     configchan: chan<[u8]>) -> test::test_fn<fn()> {
+                     configchan: chan<[u8]>) -> test::test_fn<fn@()> {
     bind send_config(testfile, configchan)
 }
 
@@ -186,7 +186,7 @@ fn send_config(testfile: str, configchan: chan<[u8]>) {
     send(configchan, str::bytes(testfile));
 }
 
-fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn()) ->
+fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn@()) ->
    test::joinable {
     testfn();
     let testfile = recv(configport);

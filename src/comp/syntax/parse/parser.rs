@@ -390,7 +390,8 @@ fn parse_constr_in_type(p: parser) -> @ast::ty_constr {
 }
 
 
-fn parse_constrs<T>(pser: fn(parser) -> @ast::constr_general<T>, p: parser) ->
+fn parse_constrs<T>(pser: fn@(parser) -> @ast::constr_general<T>,
+                    p: parser) ->
    [@ast::constr_general<T>] {
     let constrs: [@ast::constr_general<T>] = [];
     while true {
@@ -602,7 +603,7 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
 }
 
 fn parse_seq_to_before_gt<@T>(sep: option::t<token::token>,
-                              f: fn(parser) -> T,
+                              f: fn@(parser) -> T,
                               p: parser) -> [T] {
     let first = true;
     let v = [];
@@ -618,7 +619,7 @@ fn parse_seq_to_before_gt<@T>(sep: option::t<token::token>,
     ret v;
 }
 
-fn parse_seq_to_gt<@T>(sep: option::t<token::token>, f: fn(parser) -> T,
+fn parse_seq_to_gt<@T>(sep: option::t<token::token>, f: fn@(parser) -> T,
                       p: parser) -> [T] {
     let v = parse_seq_to_before_gt(sep, f, p);
     expect_gt(p);
@@ -626,7 +627,7 @@ fn parse_seq_to_gt<@T>(sep: option::t<token::token>, f: fn(parser) -> T,
     ret v;
 }
 
-fn parse_seq_lt_gt<@T>(sep: option::t<token::token>, f: fn(parser) -> T,
+fn parse_seq_lt_gt<@T>(sep: option::t<token::token>, f: fn@(parser) -> T,
                       p: parser) -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, token::LT);
@@ -645,7 +646,7 @@ fn parse_seq_to_end<@T>(ket: token::token, sep: option::t<token::token>,
 
 fn parse_seq_to_before_end<@T>(ket: token::token,
                                sep: option::t<token::token>,
-                               f: fn(parser) -> T, p: parser) -> [T] {
+                               f: fn@(parser) -> T, p: parser) -> [T] {
     let first: bool = true;
     let v: [T] = [];
     while p.peek() != ket {
@@ -660,7 +661,7 @@ fn parse_seq_to_before_end<@T>(ket: token::token,
 
 
 fn parse_seq<@T>(bra: token::token, ket: token::token,
-                sep: option::t<token::token>, f: fn(parser) -> T, p: parser)
+                sep: option::t<token::token>, f: fn@(parser) -> T, p: parser)
    -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, bra);
@@ -2141,7 +2142,7 @@ fn parse_fn_item_proto(p: parser) -> ast::proto {
         p.bump();
         ast::proto_fn
     } else {
-        ast::proto_fn
+        ast::proto_bare
     }
 }
 
@@ -2153,7 +2154,7 @@ fn parse_fn_ty_proto(p: parser) -> ast::proto {
         p.bump();
         ast::proto_fn
     } else {
-        ast::proto_fn
+        ast::proto_bare
     }
 }
 
@@ -2165,7 +2166,7 @@ fn parse_fn_anon_proto(p: parser) -> ast::proto {
         p.bump();
         ast::proto_fn
     } else {
-        ast::proto_fn
+        ast::proto_bare
     }
 }
 
@@ -2198,7 +2199,8 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
     } else if is_word(p, "unsafe") && p.look_ahead(1u) != token::LBRACE {
         p.bump();
         expect_word(p, "fn");
-        ret some(parse_item_fn_or_iter(p, ast::unsafe_fn, ast::proto_fn,
+        let proto = parse_fn_item_proto(p);
+        ret some(parse_item_fn_or_iter(p, ast::unsafe_fn, proto,
                                        attrs, ast::il_normal));
     } else if eat_word(p, "iter") {
         ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_iter,

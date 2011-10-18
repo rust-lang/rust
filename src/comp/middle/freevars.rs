@@ -24,7 +24,7 @@ type freevar_map = hashmap<ast::node_id, freevar_info>;
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: resolve::def_map, walker: fn(visit::vt<int>)) ->
+fn collect_freevars(def_map: resolve::def_map, walker: fn@(visit::vt<int>)) ->
    freevar_info {
     let seen = new_int_hash();
     let refs = @mutable [];

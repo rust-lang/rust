@@ -595,6 +595,7 @@ fn lookup_in_scope_strict(e: env, sc: scopes, sp: span, name: ident,
 fn scope_is_fn(sc: scope) -> bool {
     ret alt sc {
           scope_fn(_, ast::proto_iter., _) | scope_fn(_, ast::proto_fn., _) |
+          scope_fn(_, ast::proto_bare., _) |
           scope_native_item(_) {
             true
           }

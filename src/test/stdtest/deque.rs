@@ -79,7 +79,7 @@ fn test_boxes(a: @int, b: @int, c: @int, d: @int) {
     assert (deq.get(3) == d);
 }
 
-type eqfn<T> = fn(T, T) -> bool;
+type eqfn<T> = fn@(T, T) -> bool;
 
 fn test_parameterized<@T>(e: eqfn<T>, a: T, b: T, c: T, d: T) {
     let deq: deque::t<T> = deque::create::<T>();
@@ -178,7 +178,7 @@ fn test() {
                                 two(17, 42));
 
     log "*** test parameterized: taggypar<int>";
-    let eq4: eqfn<taggypar<int>> = taggypareq::<int>;
+    let eq4: eqfn<taggypar<int>> = bind taggypareq::<int>(_, _);
     test_parameterized::<taggypar<int>>(eq4, onepar::<int>(1),
                                         twopar::<int>(1, 2),
                                         threepar::<int>(1, 2, 3),

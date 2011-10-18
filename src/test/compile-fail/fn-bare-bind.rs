@@ -1,4 +1,4 @@
-// error-pattern:mismatched types: expected fn#() but found fn()
+// error-pattern:mismatched types: expected fn() but found fn@()
 
 fn# f() {
 }

@@ -1,9 +1,9 @@
 /**
  * Hashmap implementation.
  */
-type hashfn<K> = fn(K) -> uint;
+type hashfn<K> = fn@(K) -> uint;
 
-type eqfn<K> = fn(K, K) -> bool;
+type eqfn<K> = fn@(K, K) -> bool;
 
 type hashmap<K, V> =
     obj {
