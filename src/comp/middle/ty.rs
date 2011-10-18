@@ -1845,31 +1845,25 @@ mod unify {
     fn record_var_binding_for_expected(
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
         record_var_binding(
-            cx, key, typ,
-            lambda (cx: @ctxt, old_type: t, new_type: t) -> result {
-                unify_step(cx, old_type, new_type, variance)
-            })
+            cx, key, typ, variance_transform(variance, covariant))
     }
 
     fn record_var_binding_for_actual(
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
+        // Unifying in 'the other direction' so flip the variance
         record_var_binding(
-            cx, key, typ,
-            lambda (cx: @ctxt, old_type: t, new_type: t) -> result {
-                unify_step(cx, new_type, old_type, variance)
-            })
+            cx, key, typ, variance_transform(variance, contravariant))
     }
 
     fn record_var_binding(
-        cx: @ctxt, key: int, typ: t,
-        unify_types: fn(@ctxt, t, t) -> result) -> result {
+        cx: @ctxt, key: int, typ: t, variance: variance) -> result {
 
         ufind::grow(cx.vb.sets, (key as uint) + 1u);
         let root = ufind::find(cx.vb.sets, key as uint);
         let result_type = typ;
         alt smallintmap::find::<t>(cx.vb.types, root) {
           some(old_type) {
-            alt unify_types(cx, old_type, typ) {
+            alt unify_step(cx, old_type, typ, variance) {
               ures_ok(unified_type) { result_type = unified_type; }
               rs { ret rs; }
             }
@@ -1949,10 +1943,24 @@ mod unify {
     }
 
     // Unifies two mutability flags.
-    fn unify_mut(expected: ast::mutability, actual: ast::mutability) ->
-       option::t<ast::mutability> {
-        if expected == actual { ret some(expected); }
-        if expected == ast::maybe_mut { ret some(actual); }
+    fn unify_mut(expected: ast::mutability, actual: ast::mutability,
+                 variance: variance) ->
+       option::t<(ast::mutability, variance)> {
+
+        // If you're unifying mutability then the thing inside
+        // will be invariant on anything it contains
+        let newvariance = variance_transform(variance, invariant);
+
+        if expected == actual { ret some((expected, newvariance)); }
+        if variance == covariant {
+            if expected == ast::maybe_mut {
+                ret some((actual, newvariance));
+            }
+        } else if variance == contravariant {
+            if actual == ast::maybe_mut {
+                ret some((expected, newvariance));
+            }
+        }
         ret none;
     }
     tag fn_common_res {
@@ -2258,13 +2266,13 @@ mod unify {
           ty::ty_box(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_box(actual_mt) {
-                let mut;
-                alt unify_mut(expected_mt.mut, actual_mt.mut) {
+                let (mut, var) = alt unify_mut(
+                    expected_mt.mut, actual_mt.mut, variance) {
                   none. { ret ures_err(terr_box_mutability); }
-                  some(m) { mut = m; }
-                }
+                  some(mv) { mv }
+                };
                 let result = unify_step(
-                    cx, expected_mt.ty, actual_mt.ty, variance);
+                    cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
                     let mt = {ty: result_sub, mut: mut};
@@ -2279,13 +2287,13 @@ mod unify {
           ty::ty_uniq(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_uniq(actual_mt) {
-                let mut = expected_mt.mut;
-                alt unify_mut(expected_mt.mut, actual_mt.mut) {
+                let (mut, var) = alt unify_mut(
+                    expected_mt.mut, actual_mt.mut, variance) {
                   none. { ret ures_err(terr_box_mutability); }
-                  some(m) { mut = m; }
-                }
+                  some(mv) { mv }
+                };
                 let result = unify_step(
-                    cx, expected_mt.ty, actual_mt.ty, variance);
+                    cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_mt) {
                     let mt = {ty: result_mt, mut: mut};
@@ -2300,13 +2308,13 @@ mod unify {
           ty::ty_vec(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_vec(actual_mt) {
-                let mut;
-                alt unify_mut(expected_mt.mut, actual_mt.mut) {
+                let (mut, var) = alt unify_mut(
+                    expected_mt.mut, actual_mt.mut, variance) {
                   none. { ret ures_err(terr_vec_mutability); }
-                  some(m) { mut = m; }
-                }
+                  some(mv) { mv }
+                };
                 let result = unify_step(
-                    cx, expected_mt.ty, actual_mt.ty, variance);
+                    cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
                     let mt = {ty: result_sub, mut: mut};
@@ -2321,13 +2329,13 @@ mod unify {
           ty::ty_ptr(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_ptr(actual_mt) {
-                let mut;
-                alt unify_mut(expected_mt.mut, actual_mt.mut) {
+                let (mut, var) = alt unify_mut(
+                    expected_mt.mut, actual_mt.mut, variance) {
                   none. { ret ures_err(terr_vec_mutability); }
-                  some(m) { mut = m; }
-                }
+                  some(mv) { mv }
+                };
                 let result = unify_step(
-                    cx, expected_mt.ty, actual_mt.ty, variance);
+                    cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
                     let mt = {ty: result_sub, mut: mut};
@@ -2385,12 +2393,12 @@ mod unify {
                 while i < expected_len {
                     let expected_field = expected_fields[i];
                     let actual_field = actual_fields[i];
-                    let mut;
-                    alt unify_mut(expected_field.mt.mut, actual_field.mt.mut)
+                    let (mut, var) = alt unify_mut(
+                        expected_field.mt.mut, actual_field.mt.mut, variance)
                         {
                       none. { ret ures_err(terr_record_mutability); }
-                      some(m) { mut = m; }
-                    }
+                      some(mv) { mv }
+                    };
                     if !str::eq(expected_field.ident, actual_field.ident) {
                         let err =
                             terr_record_fields(expected_field.ident,
@@ -2399,7 +2407,7 @@ mod unify {
                     }
                     let result =
                         unify_step(cx, expected_field.mt.ty,
-                                   actual_field.mt.ty, variance);
+                                   actual_field.mt.ty, var);
                     alt result {
                       ures_ok(rty) {
                         let mt = {ty: rty, mut: mut};
