@@ -2008,7 +2008,7 @@ iter range(lo: int, hi: int) -> int @{
 @}
 
 let sum: int = 0;
-for each (x: int in range(0,100)) @{
+for each x: int in range(0,100) @{
     sum += x;
 @}
 @end example
@@ -2464,7 +2464,7 @@ iter range(x: int, y: int) -> int @{
   @}
 @}
 
-for each (i: int in range(5,7)) @{
+for each i: int in range(5,7) @{
   @dots{};
 @}
 @end example
@@ -3172,7 +3172,7 @@ fn read_file_lines(path: str) -> [str] @{
     note path;
     let r: [str];
     let f: file = open_read(path);
-    for each (s: str in lines(f)) @{
+    for each s: str in lines(f) @{
         vec::append(r,s);
     @}
     ret r;
@@ -3271,7 +3271,7 @@ Example a for loop:
 @example
 let v: [foo] = [a, b, c];
 
-for (foo e in v) @{
+for e: foo in v @{
     bar(e);
 @}
 @end example
@@ -3291,7 +3291,7 @@ Example of a foreach loop:
 @example
 let txt: str;
 let lines: [str];
-for each (s: str in str::split(txt, "\n")) @{
+for each s: str in str::split(txt, "\n") @{
     vec::push(lines, s);
 @}
 @end example
