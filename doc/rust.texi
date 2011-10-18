@@ -956,7 +956,7 @@ x::y::z;
 @end example
 
 In most contexts, the Rust grammar accepts a general @emph{path}, but
-subsequent passes pay restrict paths occurring in various contexts to refer to
+subsequent passes may restrict paths occurring in various contexts to refer to
 slots or items, depending on the semantics of the occurrence. In other words:
 in some contexts a slot is required (for example, on the left hand side of the
 copy operator, @pxref{Ref.Expr.Copy}) and in other contexts an item is
