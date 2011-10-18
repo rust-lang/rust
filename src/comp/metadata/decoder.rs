@@ -28,9 +28,9 @@ export external_resolver;
 // def_id for an item defined in another crate, somebody needs to figure out
 // what crate that's in and give us a def_id that makes sense for the current
 // build.
-type external_resolver = fn(ast::def_id) -> ast::def_id;
+type external_resolver = fn@(ast::def_id) -> ast::def_id;
 
-fn lookup_hash(d: ebml::doc, eq_fn: fn([u8]) -> bool, hash: uint) ->
+fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
    [ebml::doc] {
     let index = ebml::get_doc(d, tag_index);
     let table = ebml::get_doc(index, tag_index_table);

@@ -100,7 +100,7 @@ type joinable = (task, comm::port<task::task_notification>);
 // In cases where test functions are closures it is not ok to just dump them
 // into a task and run them, so this transformation gives the caller a chance
 // to create the test task.
-type test_to_task<@T> = fn(test_fn<T>) -> joinable;
+type test_to_task<@T> = fn@(test_fn<T>) -> joinable;
 
 // A simple console test runner
 fn run_tests_console(opts: test_opts,
@@ -215,7 +215,7 @@ tag testevent<@T> {
 
 fn run_tests<@T>(opts: test_opts, tests: [test_desc<T>],
                  to_task: test_to_task<T>,
-                 callback: fn(testevent<T>)) {
+                 callback: fn@(testevent<T>)) {
 
     let filtered_tests = filter_tests(opts, tests);
 
@@ -286,7 +286,7 @@ fn filter_tests<@T>(opts: test_opts,
             } else { ret option::none; }
         };
 
-        vec::filter_map(filter, filtered)
+        vec::filter_map(bind filter(_), filtered)
     };
 
     // Sort the tests alphabetically
@@ -295,13 +295,13 @@ fn filter_tests<@T>(opts: test_opts,
             fn lteq<@T>(t1: test_desc<T>, t2: test_desc<T>) -> bool {
                 str::lteq(t1.name, t2.name)
             }
-            sort::merge_sort(lteq, filtered)
+            sort::merge_sort(bind lteq(_, _), filtered)
         };
 
     ret filtered;
 }
 
-type test_future<@T> = {test: test_desc<T>, wait: fn() -> test_result};
+type test_future<@T> = {test: test_desc<T>, wait: fn@() -> test_result};
 
 fn run_test<@T>(test: test_desc<T>,
                 to_task: test_to_task<T>) -> test_future<T> {

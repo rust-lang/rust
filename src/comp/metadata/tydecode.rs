@@ -16,7 +16,7 @@ export parse_ty_data;
 // data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
-type str_def = fn(str) -> ast::def_id;
+type str_def = fn@(str) -> ast::def_id;
 
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
@@ -34,7 +34,7 @@ fn parse_ident(st: @pstate, sd: str_def, last: char) -> ast::ident {
     ret parse_ident_(st, sd, bind is_last(last, _));
 }
 
-fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool) ->
+fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn@(char) -> bool) ->
    ast::ident {
     let rslt = "";
     while !is_last(peek(st) as char) {

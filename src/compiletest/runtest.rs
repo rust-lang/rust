@@ -232,7 +232,7 @@ fn exec_compiled_test(cx: cx, props: test_props, testfile: str) -> procres {
 }
 
 fn compose_and_run(cx: cx, testfile: str,
-                   make_args: fn(config, str) -> procargs, lib_path: str,
+                   make_args: fn@(config, str) -> procargs, lib_path: str,
                    input: option::t<str>) -> procres {
     let procargs = make_args(cx.config, testfile);
     ret program_output(cx, testfile, lib_path, procargs.prog, procargs.args,

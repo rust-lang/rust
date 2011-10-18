@@ -12,7 +12,7 @@ import front::attr;
 
 export modify_for_testing;
 
-type node_id_gen = fn() -> ast::node_id;
+type node_id_gen = fn@() -> ast::node_id;
 
 type test = {span: span, path: [ast::ident], ignore: bool};
 
@@ -369,7 +369,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
          il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-    let proto = ast::proto_fn;
+    let proto = ast::proto_bare;
 
     let test_main_call_expr = mk_test_main_call(cx);
 

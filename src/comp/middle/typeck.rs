@@ -53,7 +53,7 @@ type fn_ctxt =
 
 
 // Used for ast_ty_to_ty() below.
-type ty_getter = fn(ast::def_id) -> ty::ty_param_kinds_and_ty;
+type ty_getter = fn@(ast::def_id) -> ty::ty_param_kinds_and_ty;
 
 fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> int {
     alt fcx.locals.find(id) {
@@ -516,8 +516,8 @@ mod collect {
         ret k;
     }
 
-    fn ty_of_fn_decl(cx: @ctxt, convert: fn(&&@ast::ty) -> ty::t,
-                     ty_of_arg: fn(ast::arg) -> arg, decl: ast::fn_decl,
+    fn ty_of_fn_decl(cx: @ctxt, convert: fn@(&&@ast::ty) -> ty::t,
+                     ty_of_arg: fn@(ast::arg) -> arg, decl: ast::fn_decl,
                      proto: ast::proto, ty_params: [ast::ty_param],
                      def_id: option::t<ast::def_id>) ->
        ty::ty_param_kinds_and_ty {
@@ -536,8 +536,8 @@ mod collect {
         alt def_id { some(did) { cx.tcx.tcache.insert(did, tpt); } _ { } }
         ret tpt;
     }
-    fn ty_of_native_fn_decl(cx: @ctxt, convert: fn(&&@ast::ty) -> ty::t,
-                            ty_of_arg: fn(ast::arg) -> arg,
+    fn ty_of_native_fn_decl(cx: @ctxt, convert: fn@(&&@ast::ty) -> ty::t,
+                            ty_of_arg: fn@(ast::arg) -> arg,
                             decl: ast::fn_decl, abi: ast::native_abi,
                             ty_params: [ast::ty_param], def_id: ast::def_id)
        -> ty::ty_param_kinds_and_ty {
@@ -1227,8 +1227,10 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     let visit =
         @{visit_local: visit_local,
           visit_pat: visit_pat,
-          visit_fn: visit_fn,
-          visit_item: visit_item with *visit::default_visitor()};
+          visit_fn: bind visit_fn(_, _, _, _, _, _, _),
+          visit_item: bind visit_item(_, _, _)
+              with *visit::default_visitor()};
+
     visit::visit_block(f.body, (), visit::mk_vt(visit));
     ret {var_bindings: vb,
          locals: locals,
@@ -2787,7 +2789,7 @@ fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
 fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
     let main_t = ty::node_id_to_monotype(tcx, main_id);
     alt ty::struct(tcx, main_t) {
-      ty::ty_fn(ast::proto_fn., args, rs, ast::return_val., constrs) {
+      ty::ty_fn(ast::proto_bare., args, rs, ast::return_val., constrs) {
         let ok = vec::len(constrs) == 0u;
         ok &= ty::type_is_nil(tcx, rs);
         let num_args = vec::len(args);

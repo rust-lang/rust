@@ -216,7 +216,7 @@ iter under(n: uint) -> uint {
 
 fn devnull() -> io::writer { std::io::string_writer().get_writer() }
 
-fn as_str(f: fn(io::writer)) -> str {
+fn as_str(f: fn@(io::writer)) -> str {
     let w = std::io::string_writer();
     f(w.get_writer());
     ret w.get_str();

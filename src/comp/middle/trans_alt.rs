@@ -109,7 +109,7 @@ fn matches_always(p: @ast::pat) -> bool {
         };
 }
 
-type enter_pat = fn(@ast::pat) -> option::t<[@ast::pat]>;
+type enter_pat = fn@(@ast::pat) -> option::t<[@ast::pat]>;
 
 fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
     let result = [];
@@ -314,7 +314,7 @@ fn any_tup_pat(m: match, col: uint) -> bool {
 }
 
 type exit_node = {bound: bind_map, from: BasicBlockRef, to: BasicBlockRef};
-type mk_fail = fn() -> BasicBlockRef;
+type mk_fail = fn@() -> BasicBlockRef;
 
 fn pick_col(m: match) -> uint {
     let scores = vec::init_elt_mut(0u, vec::len(m[0].pats));

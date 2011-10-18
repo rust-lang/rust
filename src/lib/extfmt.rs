@@ -67,7 +67,7 @@ mod ct {
 
     // A fragment of the output sequence
     tag piece { piece_string(str); piece_conv(conv); }
-    type error_fn = fn(str) -> ! ;
+    type error_fn = fn@(str) -> ! ;
 
     fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
         let pieces: [piece] = [];

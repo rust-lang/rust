@@ -259,8 +259,8 @@ type fn_ctxt =
      lcx: @local_ctxt};
 
 tag cleanup {
-    clean(fn(@block_ctxt) -> @block_ctxt);
-    clean_temp(ValueRef, fn(@block_ctxt) -> @block_ctxt);
+    clean(fn@(@block_ctxt) -> @block_ctxt);
+    clean_temp(ValueRef, fn@(@block_ctxt) -> @block_ctxt);
 }
 
 fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
