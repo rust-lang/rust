@@ -2,6 +2,10 @@
 //export rustrt;
 //export size_of;
 
+tag type_desc {
+    type_desc(@type_desc);
+}
+
 native "rust" mod rustrt {
     // Explicitly re-export native stuff we want to be made
     // available outside this crate. Otherwise it's
@@ -12,6 +16,11 @@ native "rust" mod rustrt {
     fn refcount<T>(t: @T) -> uint;
     fn do_gc();
     fn unsupervise();
+    fn get_type_desc<T>() -> *type_desc;
+}
+
+fn get_type_desc<T>() -> *type_desc {
+    ret rustrt::get_type_desc::<T>();
 }
 
 fn last_os_error() -> str {
