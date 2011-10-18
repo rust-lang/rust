@@ -1,4 +1,5 @@
 import std::{str, map, uint, int, option};
+import std::math::{max, min};
 import std::map::hashmap;
 import std::option::{none, some};
 import syntax::ast;
@@ -131,7 +132,7 @@ fn lit_in_range(l: @ast::lit, m1: @ast::lit, m2: @ast::lit) -> bool {
       irange(i1, i2) {
         alt l.node {
           ast::lit_int(i3) | ast::lit_mach_int(_, i3) {
-            i3 >= *min(i1, i2) && i3 <= *max(i1, i2)
+            i3 >= min(i1, i2) && i3 <= max(i1, i2)
           }
           _ { fail }
         }
@@ -139,7 +140,7 @@ fn lit_in_range(l: @ast::lit, m1: @ast::lit, m2: @ast::lit) -> bool {
       urange(u1, u2) {
         alt l.node {
           ast::lit_uint(u3) {
-            u3 >= *min(u1, u2) && u3 <= *max(u1, u2)
+            u3 >= min(u1, u2) && u3 <= max(u1, u2)
           }
           _ { fail }
         }
@@ -147,8 +148,8 @@ fn lit_in_range(l: @ast::lit, m1: @ast::lit, m2: @ast::lit) -> bool {
       crange(c1, c2) {
         alt l.node {
           ast::lit_char(c3) {
-            (c3 as uint) >= *min(c1 as uint, c2 as uint) &&
-            (c3 as uint) <= *max(c1 as uint, c2 as uint)
+            (c3 as uint) >= min(c1 as uint, c2 as uint) &&
+            (c3 as uint) <= max(c1 as uint, c2 as uint)
           }
           _ { fail }
         }
@@ -156,8 +157,8 @@ fn lit_in_range(l: @ast::lit, m1: @ast::lit, m2: @ast::lit) -> bool {
       frange(f1, f2) {
         alt l.node {
           ast::lit_float(f3) | ast::lit_mach_float(_, f3) {
-            std::float::from_str(f3) >= *min(f1, f2) &&
-            std::float::from_str(f3) <= *max(f1, f2)
+            std::float::from_str(f3) >= min(f1, f2) &&
+            std::float::from_str(f3) <= max(f1, f2)
           }
           _ { fail }
         }
@@ -165,19 +166,11 @@ fn lit_in_range(l: @ast::lit, m1: @ast::lit, m2: @ast::lit) -> bool {
     }
 }
 
-fn min<@T>(x: T, y: T) -> @T {
-    ret @(if x > y { y } else { x });
-}
-
-fn max<@T>(x: T, y: T) -> @T {
-    ret @(if x > y { x } else { y });
-}
-
 fn ranges_overlap<@T>(a1: T, a2: T, b1: T, b2: T) -> bool {
-    let min1 = *min(a1, a2);
-    let max1 = *max(a1, a2);
-    let min2 = *min(b1, b2);
-    let max2 = *max(b1, b2);
+    let min1 = min(a1, a2);
+    let max1 = max(a1, a2);
+    let min2 = min(b1, b2);
+    let max2 = max(b1, b2);
     ret (min1 >= min2 && max1 <= max2) || (min1 <= min2 && max1 >= min2) ||
         (min1 >= min2 && min1 <= max2) || (max1 >= min2 && max1 <= max2);
 }

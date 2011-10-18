@@ -30,6 +30,7 @@ mod task;
 mod test;
 mod uint;
 mod float;
+mod math;
 
 // Local Variables:
 // mode: rust

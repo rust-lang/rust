@@ -97,6 +97,7 @@ mod ptr;
 mod test;
 mod unsafe;
 mod term;
+mod math;
 
 #[cfg(unicode)]
 mod unicode;

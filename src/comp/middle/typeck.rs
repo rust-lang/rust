@@ -1305,17 +1305,17 @@ fn valid_range_bounds(l1: @ast::lit, l2: @ast::lit) -> bool {
         let s2 = lit_as_float(l2);
         let f1 = std::float::from_str(s1);
         let f2 = std::float::from_str(s2);
-        ret *util::common::min(f1, f2) == f1
+        ret std::math::min(f1, f2) == f1
       }
       ast::lit_uint(_) | ast::lit_char(_) {
         let u1 = lit_as_uint(l1);
         let u2 = lit_as_uint(l2);
-        ret *util::common::min(u1, u2) == u1
+        ret std::math::min(u1, u2) == u1
       }
       _ {
         let i1 = lit_as_int(l1);
         let i2 = lit_as_int(l2);
-        ret *util::common::min(i1, i2) == i1
+        ret std::math::min(i1, i2) == i1
       }
     }
 }
