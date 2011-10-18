@@ -1947,9 +1947,16 @@ mod unify {
                  variance: variance) ->
        option::t<(ast::mutability, variance)> {
 
-        // If you're unifying mutability then the thing inside
-        // will be invariant on anything it contains
-        let newvariance = variance_transform(variance, invariant);
+        // If you're unifying on something mutable then we have to
+        // be invariant on the inner type
+        let newvariance = alt expected {
+          ast::mut. {
+            variance_transform(variance, invariant)
+          }
+          _ {
+            variance_transform(variance, covariant)
+          }
+        };
 
         if expected == actual { ret some((expected, newvariance)); }
         if variance == covariant {
