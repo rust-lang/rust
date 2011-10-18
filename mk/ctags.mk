@@ -3,6 +3,8 @@
 # Requires Exuberant Ctags: http://ctags.sourceforge.net/index.html
 ######################################################################
 
+.PHONY: TAGS.emacs TAGS.vi
+
 CTAGS_OPTS=--options=${CFG_SRC_DIR}/src/etc/ctags.rust -R ${CFG_SRC_DIR}/src
 
 TAGS.emacs:
