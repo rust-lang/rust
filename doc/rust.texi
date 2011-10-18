@@ -3353,10 +3353,9 @@ equal the type of the head expression.
 
 To execute a pattern @code{alt} expression, first the head expression is
 evaluated, then its value is sequentially compared to the patterns in the arms
-until a match is found. The first arm with a matching @code{case} pattern is
-chosen as the branch target of the @code{alt}, any variables bound by the
-pattern are assigned to local slots in the arm's block, and control enters the
-block.
+until a match is found. The first arm with a matching pattern is chosen as the
+branch target of the @code{alt}, any variables bound by the pattern are
+assigned to local slots in the arm's block, and control enters the block.
 
 An example of a pattern @code{alt} expression:
 
@@ -3366,13 +3365,13 @@ type list<X> = tag(nil, cons(X, @@list<X>));
 let x: list<int> = cons(10, cons(11, nil));
 
 alt x @{
-    case (cons(a, cons(b, _))) @{
+    cons(a, cons(b, _)) @{
         process_pair(a,b);
     @}
-    case (cons(v=10, _)) @{
+    cons(v=10, _) @{
         process_ten(v);
     @}
-    case (_) @{
+    _ @{
         fail;
     @}
 @}
