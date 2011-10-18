@@ -1807,7 +1807,8 @@ mod unify {
     }
 
     // Unifies two sets.
-    fn union(cx: @ctxt, set_a: uint, set_b: uint) -> union_result {
+    fn union(cx: @ctxt, set_a: uint, set_b: uint,
+             variance: variance) -> union_result {
         ufind::grow(cx.vb.sets, uint::max(set_a, set_b) + 1u);
         let root_a = ufind::find(cx.vb.sets, set_a);
         let root_b = ufind::find(cx.vb.sets, set_b);
@@ -1831,7 +1832,7 @@ mod unify {
             alt smallintmap::find(cx.vb.types, root_b) {
               none. { replace_type(cx, t_a); ret unres_ok; }
               some(t_b) {
-                alt unify_step(cx, t_a, t_b) {
+                alt unify_step(cx, t_a, t_b, variance) {
                   ures_ok(t_c) { replace_type(cx, t_c); ret unres_ok; }
                   ures_err(terr) { ret unres_err(terr); }
                 }
@@ -1842,20 +1843,20 @@ mod unify {
     }
 
     fn record_var_binding_for_expected(
-        cx: @ctxt, key: int, typ: t) -> result {
+        cx: @ctxt, key: int, typ: t, variance: variance) -> result {
         record_var_binding(
             cx, key, typ,
             fn (cx: @ctxt, old_type: t, new_type: t) -> result {
-                unify_step(cx, old_type, new_type)
+                unify_step(cx, old_type, new_type, variance)
             })
     }
 
     fn record_var_binding_for_actual(
-        cx: @ctxt, key: int, typ: t) -> result {
+        cx: @ctxt, key: int, typ: t, variance: variance) -> result {
         record_var_binding(
             cx, key, typ,
             fn (cx: @ctxt, old_type: t, new_type: t) -> result {
-                unify_step(cx, new_type, old_type)
+                unify_step(cx, new_type, old_type, variance)
             })
     }
 
@@ -1960,7 +1961,8 @@ mod unify {
     }
     fn unify_fn_common(cx: @ctxt, _expected: t, _actual: t,
                        expected_inputs: [arg], expected_output: t,
-                       actual_inputs: [arg], actual_output: t) ->
+                       actual_inputs: [arg], actual_output: t,
+                       variance: variance) ->
        fn_common_res {
         let expected_len = vec::len::<arg>(expected_inputs);
         let actual_len = vec::len::<arg>(actual_inputs);
@@ -1985,7 +1987,8 @@ mod unify {
                     (ures_err(terr_mode_mismatch(expected_input.mode,
                                                  actual_input.mode)));
             } else { expected_input.mode };
-            let result = unify_step(cx, expected_input.ty, actual_input.ty);
+            let result = unify_step(
+                cx, expected_input.ty, actual_input.ty, variance);
             alt result {
               ures_ok(rty) { result_ins += [{mode: result_mode, ty: rty}]; }
               _ { ret fn_common_res_err(result); }
@@ -1994,7 +1997,7 @@ mod unify {
         }
         // Check the output.
 
-        let result = unify_step(cx, expected_output, actual_output);
+        let result = unify_step(cx, expected_output, actual_output, variance);
         alt result {
           ures_ok(rty) { ret fn_common_res_ok(result_ins, rty); }
           _ { ret fn_common_res_err(result); }
@@ -2095,7 +2098,19 @@ mod unify {
           _ { ret fix_ok(typ); }
         }
     }
-    fn unify_step(cx: @ctxt, expected: t, actual: t) -> result {
+
+    // Specifies the allowable subtyping between expected and actual types
+    tag variance {
+        // Actual may be a subtype of expected
+        covariant;
+        // Actual may be a supertype of expected
+        contravariant;
+        // Actual must be the same type as expected
+        invariant;
+    }
+
+    fn unify_step(cx: @ctxt, expected: t, actual: t,
+                  variance: variance) -> result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
 
@@ -2187,7 +2202,8 @@ mod unify {
                 while i < expected_len {
                     let expected_tp = expected_tps[i];
                     let actual_tp = actual_tps[i];
-                    let result = unify_step(cx, expected_tp, actual_tp);
+                    let result = unify_step(
+                        cx, expected_tp, actual_tp, variance);
                     alt result {
                       ures_ok(rty) { result_tps += [rty]; }
                       _ { ret result; }
@@ -2208,7 +2224,8 @@ mod unify {
                   none. { ret ures_err(terr_box_mutability); }
                   some(m) { mut = m; }
                 }
-                let result = unify_step(cx, expected_mt.ty, actual_mt.ty);
+                let result = unify_step(
+                    cx, expected_mt.ty, actual_mt.ty, variance);
                 alt result {
                   ures_ok(result_sub) {
                     let mt = {ty: result_sub, mut: mut};
@@ -2228,7 +2245,8 @@ mod unify {
                   none. { ret ures_err(terr_box_mutability); }
                   some(m) { mut = m; }
                 }
-                let result = unify_step(cx, expected_mt.ty, actual_mt.ty);
+                let result = unify_step(
+                    cx, expected_mt.ty, actual_mt.ty, variance);
                 alt result {
                   ures_ok(result_mt) {
                     let mt = {ty: result_mt, mut: mut};
@@ -2248,7 +2266,8 @@ mod unify {
                   none. { ret ures_err(terr_vec_mutability); }
                   some(m) { mut = m; }
                 }
-                let result = unify_step(cx, expected_mt.ty, actual_mt.ty);
+                let result = unify_step(
+                    cx, expected_mt.ty, actual_mt.ty, variance);
                 alt result {
                   ures_ok(result_sub) {
                     let mt = {ty: result_sub, mut: mut};
@@ -2268,7 +2287,8 @@ mod unify {
                   none. { ret ures_err(terr_vec_mutability); }
                   some(m) { mut = m; }
                 }
-                let result = unify_step(cx, expected_mt.ty, actual_mt.ty);
+                let result = unify_step(
+                    cx, expected_mt.ty, actual_mt.ty, variance);
                 alt result {
                   ures_ok(result_sub) {
                     let mt = {ty: result_sub, mut: mut};
@@ -2286,13 +2306,15 @@ mod unify {
                 if ex_id.crate != act_id.crate || ex_id.node != act_id.node {
                     ret ures_err(terr_mismatch);
                 }
-                let result = unify_step(cx, ex_inner, act_inner);
+                let result = unify_step(
+                    cx, ex_inner, act_inner, variance);
                 alt result {
                   ures_ok(res_inner) {
                     let i = 0u;
                     let res_tps = [];
                     for ex_tp: t in ex_tps {
-                        let result = unify_step(cx, ex_tp, act_tps[i]);
+                        let result = unify_step(
+                            cx, ex_tp, act_tps[i], variance);
                         alt result {
                           ures_ok(rty) { res_tps += [rty]; }
                           _ { ret result; }
@@ -2338,7 +2360,7 @@ mod unify {
                     }
                     let result =
                         unify_step(cx, expected_field.mt.ty,
-                                   actual_field.mt.ty);
+                                   actual_field.mt.ty, variance);
                     alt result {
                       ures_ok(rty) {
                         let mt = {ty: rty, mut: mut};
@@ -2370,7 +2392,8 @@ mod unify {
                 while i < expected_len {
                     let expected_elem = expected_elems[i];
                     let actual_elem = actual_elems[i];
-                    let result = unify_step(cx, expected_elem, actual_elem);
+                    let result = unify_step(
+                        cx, expected_elem, actual_elem, variance);
                     alt result {
                       ures_ok(rty) { result_elems += [rty]; }
                       _ { ret result; }
@@ -2419,7 +2442,8 @@ mod unify {
             // unify the base types...
             alt struct(cx.tcx, actual) {
               ty::ty_constr(actual_t, actual_constrs) {
-                let rslt = unify_step(cx, expected_t, actual_t);
+                let rslt = unify_step(
+                    cx, expected_t, actual_t, variance);
                 alt rslt {
                   ures_ok(rty) {
                     // FIXME: probably too restrictive --
@@ -2435,7 +2459,8 @@ mod unify {
                 // If the actual type is *not* a constrained type,
                 // then we go ahead and just ignore the constraints on
                 // the expected type. typestate handles the rest.
-                ret unify_step(cx, expected_t, actual);
+                ret unify_step(
+                    cx, expected_t, actual, variance);
               }
             }
           }
@@ -2444,7 +2469,7 @@ mod unify {
     fn unify(expected: t, actual: t, vb: @var_bindings, tcx: ty_ctxt) ->
        result {
         let cx = @{vb: vb, tcx: tcx};
-        ret unify_step(cx, expected, actual);
+        ret unify_step(cx, expected, actual, covariant);
     }
     fn dump_var_bindings(tcx: ty_ctxt, vb: @var_bindings) {
         let i = 0u;
