@@ -1846,7 +1846,7 @@ mod unify {
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
         record_var_binding(
             cx, key, typ,
-            fn (cx: @ctxt, old_type: t, new_type: t) -> result {
+            lambda (cx: @ctxt, old_type: t, new_type: t) -> result {
                 unify_step(cx, old_type, new_type, variance)
             })
     }
@@ -1855,7 +1855,7 @@ mod unify {
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
         record_var_binding(
             cx, key, typ,
-            fn (cx: @ctxt, old_type: t, new_type: t) -> result {
+            lambda (cx: @ctxt, old_type: t, new_type: t) -> result {
                 unify_step(cx, new_type, old_type, variance)
             })
     }
@@ -2007,7 +2007,8 @@ mod unify {
                 expected: t, actual: t, expected_inputs: [arg],
                 expected_output: t, actual_inputs: [arg], actual_output: t,
                 expected_cf: ret_style, actual_cf: ret_style,
-                _expected_constrs: [@constr], actual_constrs: [@constr]) ->
+                _expected_constrs: [@constr], actual_constrs: [@constr],
+                variance: variance) ->
        result {
         if e_proto != a_proto { ret ures_err(terr_mismatch); }
         if actual_cf != ast::noreturn && actual_cf != expected_cf {
@@ -2020,7 +2021,8 @@ mod unify {
         }
         let t =
             unify_fn_common(cx, expected, actual, expected_inputs,
-                            expected_output, actual_inputs, actual_output);
+                            expected_output, actual_inputs, actual_output,
+                            variance);
         alt t {
           fn_common_res_err(r) { ret r; }
           fn_common_res_ok(result_ins, result_out) {
@@ -2034,11 +2036,13 @@ mod unify {
     fn unify_native_fn(cx: @ctxt, e_abi: ast::native_abi,
                        a_abi: ast::native_abi, expected: t, actual: t,
                        expected_inputs: [arg], expected_output: t,
-                       actual_inputs: [arg], actual_output: t) -> result {
+                       actual_inputs: [arg], actual_output: t,
+                       variance: variance) -> result {
         if e_abi != a_abi { ret ures_err(terr_mismatch); }
         let t =
             unify_fn_common(cx, expected, actual, expected_inputs,
-                            expected_output, actual_inputs, actual_output);
+                            expected_output, actual_inputs, actual_output,
+                            variance);
         alt t {
           fn_common_res_err(r) { ret r; }
           fn_common_res_ok(result_ins, result_out) {
@@ -2048,7 +2052,7 @@ mod unify {
         }
     }
     fn unify_obj(cx: @ctxt, expected: t, actual: t, expected_meths: [method],
-                 actual_meths: [method]) -> result {
+                 actual_meths: [method], variance: variance) -> result {
         let result_meths: [method] = [];
         let i: uint = 0u;
         let expected_len: uint = vec::len::<method>(expected_meths);
@@ -2064,7 +2068,7 @@ mod unify {
                 unify_fn(cx, e_meth.proto, a_meth.proto, expected, actual,
                          e_meth.inputs, e_meth.output, a_meth.inputs,
                          a_meth.output, e_meth.cf, a_meth.cf, e_meth.constrs,
-                         a_meth.constrs);
+                         a_meth.constrs, variance);
             alt r {
               ures_ok(tfn) {
                 alt struct(cx.tcx, tfn) {
@@ -2109,6 +2113,38 @@ mod unify {
         invariant;
     }
 
+    // The calculation for recursive variance
+    // "Taming the Wildcards: Combining Definition- and Use-Site Variance"
+    // by John Altidor, et. al.
+    //
+    // I'm just copying the table from figure 1 - haven't actually
+    // read the paper (yet).
+    fn variance_transform(a: variance, b: variance) -> variance {
+        alt a {
+          covariant. {
+            alt b {
+              covariant. { covariant }
+              contravariant. { contravariant }
+              invariant. { invariant }
+            }
+          }
+          contravariant. {
+            alt b {
+              covariant. { contravariant }
+              contravariant. { covariant }
+              invariant. { invariant }
+            }
+          }
+          invariant. {
+            alt b {
+              covariant. { invariant }
+              contravariant. { invariant }
+              invariant. { invariant }
+            }
+          }
+        }
+    }
+
     fn unify_step(cx: @ctxt, expected: t, actual: t,
                   variance: variance) -> result {
         // TODO: rewrite this using tuple pattern matching when available, to
@@ -2128,14 +2164,15 @@ mod unify {
             alt struct(cx.tcx, expected) {
               ty::ty_var(expected_id) {
                 let expected_n = expected_id as uint;
-                alt union(cx, expected_n, actual_n) {
+                alt union(cx, expected_n, actual_n, variance) {
                   unres_ok. {/* fall through */ }
                   unres_err(t_e) { ret ures_err(t_e); }
                 }
               }
               _ {
                 // Just bind the type variable to the expected type.
-                alt record_var_binding_for_actual(cx, actual_id, expected) {
+                alt record_var_binding_for_actual(
+                    cx, actual_id, expected, variance) {
                   ures_ok(_) {/* fall through */ }
                   rs { ret rs; }
                 }
@@ -2149,7 +2186,9 @@ mod unify {
           ty::ty_var(expected_id) {
             // Add a binding. (`actual` can't actually be a var here.)
 
-            alt record_var_binding_for_expected(cx, expected_id, actual) {
+            alt record_var_binding_for_expected(
+                cx, expected_id, actual,
+                variance) {
               ures_ok(_) {/* fall through */ }
               rs { ret rs; }
             }
@@ -2413,7 +2452,7 @@ mod unify {
                 ret unify_fn(cx, ep, ap, expected, actual, expected_inputs,
                              expected_output, actual_inputs, actual_output,
                              expected_cf, actual_cf, expected_constrs,
-                             actual_constrs);
+                             actual_constrs, variance);
               }
               _ { ret ures_err(terr_mismatch); }
             }
@@ -2423,7 +2462,7 @@ mod unify {
               ty::ty_native_fn(a_abi, actual_inputs, actual_output) {
                 ret unify_native_fn(cx, e_abi, a_abi, expected, actual,
                                     expected_inputs, expected_output,
-                                    actual_inputs, actual_output);
+                                    actual_inputs, actual_output, variance);
               }
               _ { ret ures_err(terr_mismatch); }
             }
@@ -2432,7 +2471,7 @@ mod unify {
             alt struct(cx.tcx, actual) {
               ty::ty_obj(actual_meths) {
                 ret unify_obj(cx, expected, actual, expected_meths,
-                              actual_meths);
+                              actual_meths, variance);
               }
               _ { ret ures_err(terr_mismatch); }
             }
