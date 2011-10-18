@@ -473,7 +473,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           }
           lit(l) {
             kind = alt l.node {
-              ast::lit_str(_) | ast::lit_nil. {
+              ast::lit_str(_) | ast::lit_nil. | ast::lit_float(_) |
+              ast::lit_mach_float(_, _) {
                 test_val = Load(bcx, val); compare
               }
               _ { test_val = Load(bcx, val); switch }
