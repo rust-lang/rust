@@ -21,7 +21,6 @@ native "c-stack-cdecl" mod rustrt {
 
 /// Reserves space for `n` elements in the given vector.
 fn reserve<@T>(&v: [mutable? T], n: uint) {
-    log_err("reserve: v=", ptr::addr_of(v), " n=", n);
     rustrt::vec_reserve_shared(null(), sys::get_type_desc::<T>(), v, n);
 }
 
