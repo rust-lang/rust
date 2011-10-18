@@ -3848,8 +3848,7 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
 
         let r = trans_arg_expr(bcx, ty_arg, llargty, to_zero, to_revoke, arg);
         let llargval = r.val; bcx = r.bcx;
-        { llval: llargval, llty: llargty, static: static,
-          by_val: ty_arg.mode == ast::by_val }
+        { llval: llargval, llty: llargty, static: static, mode: ty_arg.mode }
     }, fn_arg_tys, args);
 
     // Allocate the argument bundle.
@@ -3865,7 +3864,10 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
         if llarg.static {
             // FIXME: This load is unfortunate. It won't be necessary once we
             // have reference types again.
-            llargval = llarg.by_val ? llarg.llval : Load(bcx, llarg.llval);
+            llargval = alt llarg.mode {
+              ast::by_val. | ast::by_mut_ref. { llarg.llval }
+              ast::by_ref. | ast::mode_infer. { Load(bcx, llarg.llval) }
+            };
         } else {
             llargval = llarg.llval;
         }
