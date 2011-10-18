@@ -2,20 +2,27 @@
 
 import option::{some, none};
 import uint::next_power_of_two;
-import ptr::addr_of;
+import ptr::{addr_of, null};
 
 native "rust-intrinsic" mod rusti {
     fn vec_len<T>(&&v: [mutable? T]) -> uint;
 }
 
-native "rust" mod rustrt {
-    fn vec_reserve_shared<T>(&v: [mutable? T], n: uint);
-    fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
+native "c-stack-cdecl" mod rustrt {
+    fn vec_reserve_shared<T>(dummy: *util::void,
+                             t: *sys::type_desc,
+                             &v: [mutable? T],
+                             n: uint);
+    fn vec_from_buf_shared<T>(dummy: *util::void,
+                              t: *sys::type_desc,
+                              ptr: *T,
+                              count: uint) -> [T];
 }
 
 /// Reserves space for `n` elements in the given vector.
 fn reserve<@T>(&v: [mutable? T], n: uint) {
-    rustrt::vec_reserve_shared(v, n);
+    log_err("reserve: v=", ptr::addr_of(v), " n=", n);
+    rustrt::vec_reserve_shared(null(), sys::get_type_desc::<T>(), v, n);
 }
 
 pure fn len<T>(v: [mutable? T]) -> uint { unchecked { rusti::vec_len(v) } }
@@ -352,7 +359,8 @@ mod unsafe {
     type vec_repr = {mutable fill: uint, mutable alloc: uint, data: u8};
 
     unsafe fn from_buf<@T>(ptr: *T, elts: uint) -> [T] {
-        ret rustrt::vec_from_buf_shared(ptr, elts);
+        ret rustrt::vec_from_buf_shared(null(), sys::get_type_desc::<T>(),
+                                        ptr, elts);
     }
 
     unsafe fn set_len<@T>(&v: [T], new_len: uint) {
