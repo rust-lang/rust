@@ -109,6 +109,11 @@ unsupervise() {
     task->unsupervise();
 }
 
+extern "C" CDECL type_desc*
+get_type_desc(void *unused_task, type_desc* t) {
+    return t;
+}
+
 extern "C" CDECL void
 vec_reserve_shared(type_desc* ty, rust_vec** vp,
                    size_t n_elts) {
