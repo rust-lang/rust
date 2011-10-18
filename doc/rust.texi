@@ -1878,7 +1878,7 @@ were declared without the @code{!} annotation, the following code would not
 typecheck:
 @example
 fn f(i: int) -> int @{
-   if (i == 42) @{
+   if i == 42 @{
      ret 42;
    @}
    else @{
@@ -3056,7 +3056,7 @@ and transfers control to the caller frame.
 An example of a @code{ret} expression:
 @example
 fn max(a: int, b: int) -> int @{
-   if (a > b) @{
+   if a > b @{
       ret a;
    @}
    ret b;
@@ -3081,7 +3081,7 @@ last expression in a block.
 An example of a @code{be} expression:
 @example
 fn print_loop(n: int) @{
-  if (n <= 0) @{
+  if n <= 0 @{
     ret;
   @} else @{
     print_int(n);
@@ -3304,9 +3304,9 @@ for each s: str in str::split(txt, "\n") @{
 @cindex Control-flow
 
 An @code{if} expression is a conditional branch in program control. The form of
-an @code{if} expression is a parenthesized condition expression, followed by a
-consequent block, any number of @code{else if} conditions and blocks, and an
-optional trailing @code{else} block. The condition expressions must have type
+an @code{if} expression is a condition expression, followed by a consequent
+block, any number of @code{else if} conditions and blocks, and an optional
+trailing @code{else} block. The condition expressions must have type
 @code{bool}. If a condition expression evaluates to @code{true}, the
 consequent block is executed and any subsequent @code{else if} or @code{else}
 block is skipped. If a condition expression evaluates to @code{false}, the
