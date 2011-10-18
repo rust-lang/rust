@@ -3347,9 +3347,9 @@ expression following the @code{alt} when the case block completes.
 A pattern @code{alt} expression branches on a @emph{pattern}. The exact form of
 matching that occurs depends on the pattern. Patterns consist of some
 combination of literals, tag constructors, variable binding specifications and
-placeholders (@code{_}). A pattern @code{alt} has a parenthesized @emph{head
-expression}, which is the value to compare to the patterns. The type of the
-patterns must equal the type of the head expression.
+placeholders (@code{_}). A pattern @code{alt} has a @emph{head expression},
+which is the value to compare to the patterns. The type of the patterns must
+equal the type of the head expression.
 
 To execute a pattern @code{alt} expression, first the head expression is
 evaluated, then its value is sequentially compared to the patterns in the arms
@@ -3365,7 +3365,7 @@ type list<X> = tag(nil, cons(X, @@list<X>));
 
 let x: list<int> = cons(10, cons(11, nil));
 
-alt (x) @{
+alt x @{
     case (cons(a, cons(b, _))) @{
         process_pair(a,b);
     @}
