@@ -2133,7 +2133,7 @@ tag list<T> @{
   cons(T, @@list<T>);
 @}
 
-let a: list<int> = cons(7, cons(13, nil));
+let a: list<int> = cons(7, @@cons(13, @@nil));
 @end example
 
 
@@ -3360,16 +3360,16 @@ assigned to local slots in the arm's block, and control enters the block.
 An example of a pattern @code{alt} expression:
 
 @example
-type list<X> = tag(nil, cons(X, @@list<X>));
+tag list<X> @{ nil; cons(X, @@list<X>); @}
 
-let x: list<int> = cons(10, cons(11, nil));
+let x: list<int> = cons(10, @@cons(11, @@nil));
 
 alt x @{
-    cons(a, cons(b, _)) @{
+    cons(a, @@cons(b, _)) @{
         process_pair(a,b);
     @}
-    cons(v=10, _) @{
-        process_ten(v);
+    cons(10, _) @{
+        process_ten();
     @}
     _ @{
         fail;
