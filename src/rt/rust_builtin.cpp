@@ -559,8 +559,8 @@ void drop_port(rust_port *port) {
     port->ref_count--;
 }
 
-extern "C" CDECL void
-chan_send(rust_chan *chan, void *sptr) {
+extern "C" CDECL
+void chan_send(rust_chan *chan, void *sptr) {
     chan->send(sptr);
 }
 
