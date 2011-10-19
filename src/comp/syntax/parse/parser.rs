@@ -2139,9 +2139,6 @@ fn parse_fn_item_proto(p: parser) -> ast::proto {
     if p.peek() == token::POUND {
         p.bump();
         ast::proto_bare
-    } else if p.peek() == token::AT {
-        p.bump();
-        ast::proto_shared(ast::sugar_normal)
     } else {
         ast::proto_bare
     }
