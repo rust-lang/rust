@@ -1013,7 +1013,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
           ast::proto_iter. { ast::kind_shared }
           ast::proto_block. { ast::kind_pinned }
           ast::proto_closure. { ast::kind_shared }
-          ast::proto_fn. { ast::kind_shared }
+          ast::proto_shared. { ast::kind_shared }
           ast::proto_bare. { ast::kind_unique }
         };
       }
@@ -1616,7 +1616,7 @@ fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
 fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
     alt struct(cx, fty) {
       ty::ty_fn(p, _, _, _, _) { ret p; }
-      ty::ty_native_fn(_, _, _) { ret ast::proto_fn; }
+      ty::ty_native_fn(_, _, _) { ret ast::proto_shared; }
       _ { cx.sess.bug("ty_fn_proto() called on non-fn type"); }
     }
 }
@@ -2031,7 +2031,7 @@ mod unify {
                 // Every function type is a subtype of block
                 false
               }
-              ast::proto_closure. | ast::proto_fn. {
+              ast::proto_closure. | ast::proto_shared. {
                 a_proto == ast::proto_block
               }
               ast::proto_bare. {

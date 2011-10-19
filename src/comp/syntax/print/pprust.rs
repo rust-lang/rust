@@ -1643,7 +1643,7 @@ fn ast_fn_constrs_str(decl: ast::fn_decl, constrs: [@ast::constr]) -> str {
 
 fn proto_to_str(p: ast::proto) -> str {
     ret alt p {
-          ast::proto_fn. { "fn@" }
+          ast::proto_shared. { "fn@" }
           ast::proto_iter. { "iter" }
           ast::proto_block. { "block" }
           ast::proto_closure. { "lambda" }
