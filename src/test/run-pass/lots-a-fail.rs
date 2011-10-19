@@ -1,4 +1,4 @@
-// xfail-fast
+// xfail-win32 leaks
 use std;
 import std::task;
 import std::comm;

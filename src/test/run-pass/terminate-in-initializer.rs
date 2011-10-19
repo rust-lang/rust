@@ -1,3 +1,4 @@
+// xfail-win32 leaks
 // Issue #787
 // Don't try to clean up uninitizaed locals
 
