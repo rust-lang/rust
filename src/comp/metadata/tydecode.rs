@@ -281,7 +281,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
             let proto;
             alt next(st) as char {
               'W' { proto = ast::proto_iter; }
-              'F' { proto = ast::proto_fn; }
+              'f' { proto = ast::proto_bare; }
             }
             let name = "";
             while peek(st) as char != '[' {
