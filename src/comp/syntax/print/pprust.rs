@@ -1643,11 +1643,11 @@ fn ast_fn_constrs_str(decl: ast::fn_decl, constrs: [@ast::constr]) -> str {
 
 fn proto_to_str(p: ast::proto) -> str {
     ret alt p {
-          ast::proto_shared. { "fn@" }
           ast::proto_iter. { "iter" }
-          ast::proto_block. { "block" }
-          ast::proto_closure. { "lambda" }
           ast::proto_bare. { "fn" }
+          ast::proto_block. { "block" }
+          ast::proto_shared(ast::sugar_normal.) { "fn@" }
+          ast::proto_shared(ast::sugar_sexy.) { "lambda" }
         };
 }
 
