@@ -340,7 +340,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
     let nil_res = ty::mk_nil(ccx.tcx);
     // FIXME: Silly check -- mk_nil should have a postcondition
     check non_ty_var(ccx, nil_res);
-    let f_t = type_of_fn(ccx, sp, ast::proto_fn, false, false,
+    let f_t = type_of_fn(ccx, sp, ast::proto_shared, false, false,
                          [{mode: ast::by_ref, ty: inner_t}],
                          nil_res, params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,

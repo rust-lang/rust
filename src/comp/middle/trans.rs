@@ -5349,7 +5349,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
     let ret_t = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
-    create_llargs_for_fn_args(fcx, ast::proto_fn, none::<ty::t>, ret_t,
+    create_llargs_for_fn_args(fcx, ast::proto_shared, none::<ty::t>, ret_t,
                               dtor.decl.inputs, ty_params);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
@@ -5409,7 +5409,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
       }
     }
     let fcx = new_fn_ctxt(cx, variant.span, llfndecl);
-    create_llargs_for_fn_args(fcx, ast::proto_fn, none::<ty::t>,
+    create_llargs_for_fn_args(fcx, ast::proto_shared, none::<ty::t>,
                               ty::ret_ty_of_fn(cx.ccx.tcx, variant.node.id),
                               fn_args, ty_params);
     let ty_param_substs: [ty::t] = [];
@@ -5616,7 +5616,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let nt = ty::mk_nil(ccx.tcx);
         check non_ty_var(ccx, nt);
 
-        let llfty = type_of_fn(ccx, sp, ast::proto_fn, false, false,
+        let llfty = type_of_fn(ccx, sp, ast::proto_shared, false, false,
                                [vecarg_ty], nt, 0u);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::LLVMCCallConv, llfty);
@@ -5729,7 +5729,7 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
     alt ty::struct(cx.tcx, x) {
       ty::ty_native_fn(abi, args, out) {
         check non_ty_var(cx, out);
-        ret type_of_fn(cx, sp, ast::proto_fn, false, false, args, out,
+        ret type_of_fn(cx, sp, ast::proto_shared, false, false, args, out,
                        ty_param_count);
       }
     }

@@ -105,11 +105,10 @@ tag _auth { auth_unsafe; }
 
 tag proto {
     proto_iter;
-    proto_fn;
+    proto_shared;
     proto_block;
+    // FIXME: Merge with proto_shared
     proto_closure;
-    // Functions without an environment. Eventually, this will
-    // merge with proto_fn.
     proto_bare;
 }
 

@@ -1901,7 +1901,7 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
          il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-    let f = {decl: decl, proto: ast::proto_fn, body: dtor};
+    let f = {decl: decl, proto: ast::proto_shared, body: dtor};
     ret mk_item(p, lo, dtor.span.hi, ident,
                 ast::item_res(f, p.get_id(), ty_params, p.get_id()), attrs);
 }
@@ -2140,7 +2140,7 @@ fn parse_fn_item_proto(p: parser) -> ast::proto {
         ast::proto_bare
     } else if p.peek() == token::AT {
         p.bump();
-        ast::proto_fn
+        ast::proto_shared
     } else {
         ast::proto_bare
     }
@@ -2152,7 +2152,7 @@ fn parse_fn_ty_proto(p: parser) -> ast::proto {
         ast::proto_bare
     } else if p.peek() == token::AT {
         p.bump();
-        ast::proto_fn
+        ast::proto_shared
     } else {
         ast::proto_bare
     }
@@ -2164,7 +2164,7 @@ fn parse_fn_anon_proto(p: parser) -> ast::proto {
         ast::proto_bare
     } else if p.peek() == token::AT {
         p.bump();
-        ast::proto_fn
+        ast::proto_shared
     } else {
         ast::proto_bare
     }
