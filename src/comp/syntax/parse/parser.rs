@@ -294,16 +294,6 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
     ret ast::ty_fn(proto, inputs.node, ret_ty, ret_style, constrs);
 }
 
-fn parse_method_proto(p: parser) -> ast::proto {
-    if eat_word(p, "iter") {
-        ret ast::proto_iter;
-    } else if eat_word(p, "fn") {
-        ret ast::proto_fn;
-    } else if eat_word(p, "block") {
-        ret ast::proto_block;
-    } else { unexpected(p, p.peek()); }
-}
-
 fn parse_ty_obj(p: parser, &hi: uint) -> ast::ty_ {
     fn parse_method_sig(p: parser) -> ast::ty_method {
         let flo = p.get_lo_pos();
@@ -2177,6 +2167,14 @@ fn parse_fn_anon_proto(p: parser) -> ast::proto {
     } else {
         ast::proto_fn
     }
+}
+
+fn parse_method_proto(p: parser) -> ast::proto {
+    if eat_word(p, "iter") {
+        ret ast::proto_iter;
+    } else if eat_word(p, "fn") {
+        ret ast::proto_bare;
+    } else { unexpected(p, p.peek()); }
 }
 
 fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
