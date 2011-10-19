@@ -71,7 +71,7 @@ fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], sp: span,
 
     let bs = alt f.proto {
       // Blocks need to obey any restrictions from the enclosing scope.
-      ast::proto_block. | ast::proto_closure. { sc.bs }
+      ast::proto_block. | ast::proto_shared(_) { sc.bs }
       // Non capturing functions start out fresh.
       _ { [] }
     };

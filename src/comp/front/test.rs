@@ -192,7 +192,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
          il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-    let proto = ast::proto_shared;
+    let proto = ast::proto_bare;
 
     // The vector of test_descs for this crate
     let test_descs = mk_test_desc_vec(cx);
@@ -214,7 +214,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
 }
 
 fn empty_fn_ty() -> ast::ty {
-    let proto = ast::proto_shared;
+    let proto = ast::proto_bare;
     let input_ty = [];
     let ret_ty = @nospan(ast::ty_nil);
     let cf = ast::return_val;

@@ -595,7 +595,6 @@ fn lookup_in_scope_strict(e: env, sc: scopes, sp: span, name: ident,
 fn scope_is_fn(sc: scope) -> bool {
     ret alt sc {
           scope_fn(_, ast::proto_iter., _) |
-          scope_fn(_, ast::proto_shared., _) |
           scope_fn(_, ast::proto_bare., _) |
           scope_native_item(_) {
             true
@@ -607,7 +606,7 @@ fn scope_is_fn(sc: scope) -> bool {
 fn scope_closes(sc: scope) -> option::t<bool> {
     alt sc {
       scope_fn(_, ast::proto_block., _) | scope_loop(_, true) { some(true) }
-      scope_fn(_, ast::proto_closure., _) { some(false) }
+      scope_fn(_, ast::proto_shared(_), _) { some(false) }
       _ { none }
     }
 }

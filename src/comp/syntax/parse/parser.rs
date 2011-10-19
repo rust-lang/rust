@@ -842,7 +842,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
     } else if eat_word(p, "block") {
         ret parse_fn_expr(p, ast::proto_block);
     } else if eat_word(p, "lambda") {
-        ret parse_fn_expr(p, ast::proto_closure);
+        ret parse_fn_expr(p, ast::proto_shared(ast::sugar_sexy));
     } else if eat_word(p, "unchecked") {
         ret parse_block_expr(p, lo, ast::unchecked_blk);
     } else if eat_word(p, "unsafe") {
@@ -1901,7 +1901,8 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
          il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-    let f = {decl: decl, proto: ast::proto_shared, body: dtor};
+    let f = {decl: decl, proto: ast::proto_shared(ast::sugar_normal),
+             body: dtor};
     ret mk_item(p, lo, dtor.span.hi, ident,
                 ast::item_res(f, p.get_id(), ty_params, p.get_id()), attrs);
 }
@@ -2140,7 +2141,7 @@ fn parse_fn_item_proto(p: parser) -> ast::proto {
         ast::proto_bare
     } else if p.peek() == token::AT {
         p.bump();
-        ast::proto_shared
+        ast::proto_shared(ast::sugar_normal)
     } else {
         ast::proto_bare
     }
@@ -2152,7 +2153,7 @@ fn parse_fn_ty_proto(p: parser) -> ast::proto {
         ast::proto_bare
     } else if p.peek() == token::AT {
         p.bump();
-        ast::proto_shared
+        ast::proto_shared(ast::sugar_normal)
     } else {
         ast::proto_bare
     }
@@ -2164,7 +2165,7 @@ fn parse_fn_anon_proto(p: parser) -> ast::proto {
         ast::proto_bare
     } else if p.peek() == token::AT {
         p.bump();
-        ast::proto_shared
+        ast::proto_shared(ast::sugar_normal)
     } else {
         ast::proto_bare
     }
