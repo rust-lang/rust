@@ -40,7 +40,6 @@ PKG_FILES = \
       $(RUNTIME_S)                             \
       rt/rustrt.def.in                         \
       rt/intrinsics/intrinsics.ll.in           \
-      rt/main.ll.in                            \
       $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS)   \
       $(RUSTLLVM_HDR)                          \
       rustllvm/rustllvm.def.in                 \

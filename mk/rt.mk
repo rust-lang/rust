@@ -102,22 +102,6 @@ rt/%.o: rt/%.S $(MKFILES)
 	@$(call E, compile: $@)
 	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
 
-ifdef CFG_WINDOWSY
-rt/main.ll: rt/main.ll.in
-	@$(call E, sed: $@)
-	$(Q)sed 's/MAIN/WinMain@16/' < $^ > $@
-rt/main0.ll: rt/main0.ll.in
-	@$(call E, sed: $@)
-	$(Q)sed 's/MAIN/WinMain@16/' < $^ > $@
-else
-rt/main.ll: rt/main.ll.in
-	@$(call E, sed: $@)
-	$(Q)sed 's/MAIN/main/' < $^ > $@
-rt/main0.ll: rt/main0.ll.in
-	@$(call E, sed: $@)
-	$(Q)sed 's/MAIN/main/' < $^ > $@
-endif
-
 rt/%.o: rt/%.ll $(MKFILES)
 	@$(call E, llc: $@)
 	$(Q)$(LLC) -filetype=obj -relocation-model=pic -march=x86 -o $@ $<

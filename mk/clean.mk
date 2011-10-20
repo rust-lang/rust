@@ -22,8 +22,6 @@ clean-misc:
 	$(Q)rm -f $(GENERATED)
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
-	$(Q)rm -f rt/main.o
-	$(Q)rm -f rt/main.ll
 	$(Q)rm -f rt/libuv/uv.a
 	$(Q)rm -Rf $(wildcard rt/libuv/src/*/*)
 	$(Q)rm -f $(wildcard rt/libuv/src/*.o)
@@ -60,7 +58,6 @@ clean$(1)$(2):
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/libstd.rlib
 	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/intrinsics.bc
-	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/main.o
 
 endef
 

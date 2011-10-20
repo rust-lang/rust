@@ -32,7 +32,6 @@ install-target$(1): $$(SREQ$$(ISTAGE)$(1))
 	$(Q)$(call INSTALL,$$(TL$(1)),$$(PTL$(1)),$$(CFG_RUNTIME))
 	$(Q)$(call INSTALL,$$(TL$(1)),$$(PTL$(1)),$$(CFG_STDLIB))
 	$(Q)$(call INSTALL,$$(TL$(1)),$$(PTL$(1)),intrinsics.bc)
-	$(Q)$(call INSTALL,$$(TL$(1)),$$(PTL$(1)),main.o)
 endef
 
 $(foreach target,$(CFG_TARGET_TRIPLES), \

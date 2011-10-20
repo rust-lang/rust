@@ -23,23 +23,9 @@ $$(TARGET_LIB$(1)$(2))/libstd.rlib: \
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) --lib --static -o $$@ $$<
 
-ifeq ($(1), 0)
-$$(TARGET_LIB$(1)$(2))/main.o: rt/main0.o
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-$$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME): stage0/lib/$$(CFG_RUNTIME)
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-else
-$$(TARGET_LIB$(1)$(2))/main.o: rt/main.o
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
 $$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-endif
 
 $$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM): rustllvm/$$(CFG_RUSTLLVM)
 	@$$(call E, cp: $$@)
