@@ -2489,8 +2489,10 @@ fn parse_crate_mod(p: parser, _cfg: ast::crate_cfg) -> @ast::crate {
 
 fn parse_str(p: parser) -> str {
     alt p.peek() {
-      token::LIT_STR(s) { p.bump(); ret p.get_str(s); }
-      _ { fail; }
+      token::LIT_STR(s) { p.bump(); p.get_str(s) }
+      _ {
+        p.fatal("expected string literal")
+      }
     }
 }
 

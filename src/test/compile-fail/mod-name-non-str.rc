@@ -1,0 +1,3 @@
+// error-pattern: expected string literal
+// Issue #1028
+mod ncurses = x;
