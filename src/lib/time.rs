@@ -1,6 +1,6 @@
 
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     fn get_time(&sec: u32, &usec: u32);
     fn nano_time(&ns: u64);
 }
