@@ -14,9 +14,6 @@
 #include <vector>
 #include <stdint.h>
 
-#undef DPRINT
-#define DPRINT(fmt,...)     fprintf(stderr, fmt, ##__VA_ARGS__)
-
 // The number of allocations Rust code performs before performing cycle
 // collection.
 #define RUST_CC_FREQUENCY   5000
@@ -122,11 +119,16 @@ class irc : public shape::data<irc,shape::ptr> {
 
         // Bump the internal reference count of the box.
         if (ircs.find((void *)ref_count_dp) == ircs.end()) {
-            //DPRINT("setting internal reference count for %p\n",
-            //       (void *)ref_count_dp);
+	    LOG(task, gc,
+		"setting internal reference count for %p to 1",
+		(void *)ref_count_dp);
             ircs[(void *)ref_count_dp] = 1;
         } else {
-            ++ircs[(void *)ref_count_dp];
+	    uintptr_t newcount = ircs[(void *)ref_count_dp] + 1;
+	    LOG(task, gc,
+		"bumping internal reference count for %p to %lu",
+		(void *)ref_count_dp, newcount);
+            ircs[(void *)ref_count_dp] = newcount;
         }
 
         // Do not traverse the contents of this box; it's in the allocation
@@ -176,8 +178,8 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
 
         const type_desc *tydesc = begin->second;
 
-        //DPRINT("determining internal ref counts: %p, tydesc=%p\n", p,
-        //tydesc);
+        LOG(task, gc, "determining internal ref counts: %p, tydesc=%p", p,
+	    tydesc);
 
         shape::arena arena;
         shape::type_param *params =
@@ -223,11 +225,12 @@ find_roots(rust_task *task, irc_map &ircs, std::vector<void *> &roots) {
         if (irc < ref_count) {
             // This allocation must be a root, because the internal reference
             // count is smaller than the total reference count.
-            //DPRINT("root found: %p, irc %lu, ref count %lu\n", alloc, irc,
-            //       ref_count);
+	    LOG(task, gc,"root found: %p, irc %lu, ref count %lu",
+		alloc, irc, ref_count);
             roots.push_back(alloc);
         } else {
-            //DPRINT("nonroot found: %p, ref count %lu\n", alloc, ref_count);
+            LOG(task, gc, "nonroot found: %p, irc %lu, ref count %lu",
+		alloc, irc, ref_count);
             /*assert(irc == ref_count && "Internal reference count must be "
                    "less than or equal to the total reference count!");*/
         }
@@ -385,7 +388,7 @@ mark::do_mark(rust_task *task, const std::vector<void *> &roots,
 
             const type_desc *tydesc = task->local_allocs[alloc];
 
-            //DPRINT("marking: %p, tydesc=%p\n", p, tydesc);
+            LOG(task, gc, "marking: %p, tydesc=%p", alloc, tydesc);
 
             uint8_t *p = reinterpret_cast<uint8_t *>(alloc);
             shape::arena arena;
@@ -398,7 +401,6 @@ mark::do_mark(rust_task *task, const std::vector<void *> &roots,
                            tydesc->shape_tables, p + sizeof(uintptr_t),
                            std::cerr);
             log.walk();
-            DPRINT("\n");
 #endif
 
             // We skip over the reference count here.
@@ -419,7 +421,7 @@ sweep(rust_task *task, const std::set<void *> &marked) {
     while (begin != end) {
         void *alloc = begin->first;
         if (marked.find(alloc) == marked.end()) {
-            //DPRINT("object is part of a cycle: %p\n", alloc);
+            LOG(task, gc, "object is part of a cycle: %p", alloc);
 
             // FIXME: Run the destructor, *if* it's a resource.
 
@@ -432,8 +434,8 @@ sweep(rust_task *task, const std::set<void *> &marked) {
 
 void
 do_cc(rust_task *task) {
-    //DPRINT("cc; n allocs = %lu\n",
-    //       (long unsigned int)task->local_allocs.size());
+    LOG(task, gc, "cc; n allocs = %lu",
+	(long unsigned int)task->local_allocs.size());
 
     irc_map ircs;
     irc::compute_ircs(task, ircs);
