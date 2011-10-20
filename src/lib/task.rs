@@ -38,7 +38,6 @@ native "rust" mod rustrt {
     fn new_task() -> task_id;
     fn drop_task(task: *rust_task);
     fn get_task_pointer(id: task_id) -> *rust_task;
-    fn get_task_trampoline() -> u32;
 
     fn migrate_alloc(alloc: *u8, target: task_id);
     fn start_task(id: task_id, closure: *u8);

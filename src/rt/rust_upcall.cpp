@@ -45,10 +45,10 @@ copy_elements(rust_task *task, type_desc *elem_t,
 }
 
 extern "C" CDECL void
-upcall_fail(rust_task *task,
-            char const *expr,
+upcall_fail(char const *expr,
             char const *file,
             size_t line) {
+    rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
     LOG_ERR(task, upcall, "upcall fail '%s', %s:%" PRIdPTR, expr, file, line);
     task->fail();

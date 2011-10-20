@@ -114,9 +114,9 @@ fn program_output(prog: str, args: [str]) ->
    {status: int, out: str, err: str} {
     let pr = start_program(prog, args);
     pr.close_input();
-    ret {status: pr.finish(),
-         out: read_all(pr.output()),
-         err: read_all(pr.err())};
+    let out = read_all(pr.output());
+    let err = read_all(pr.err());
+    ret {status: pr.finish(), out: out, err: err};
 }
 
 /* Returns an exit status */

@@ -6,8 +6,7 @@
 #include <io.h>
 
 extern "C" CDECL int
-rust_run_program(void* task, const char* argv[],
-                 int in_fd, int out_fd, int err_fd) {
+rust_run_program(const char* argv[], int in_fd, int out_fd, int err_fd) {
     STARTUPINFO si;
     ZeroMemory(&si, sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
@@ -54,7 +53,7 @@ rust_run_program(void* task, const char* argv[],
 }
 
 extern "C" CDECL int
-rust_process_wait(void* task, int proc) {
+rust_process_wait(int proc) {
     DWORD status;
     while (true) {
         if (GetExitCodeProcess((HANDLE)proc, &status) &&
@@ -73,8 +72,7 @@ rust_process_wait(void* task, int proc) {
 #include <termios.h>
 
 extern "C" CDECL int
-rust_run_program(rust_task* task, char* argv[],
-                 int in_fd, int out_fd, int err_fd) {
+rust_run_program(char* argv[], int in_fd, int out_fd, int err_fd) {
     int pid = fork();
     if (pid != 0) return pid;
 
@@ -92,7 +90,7 @@ rust_run_program(rust_task* task, char* argv[],
 }
 
 extern "C" CDECL int
-rust_process_wait(void* task, int proc) {
+rust_process_wait(int proc) {
     // FIXME: stub; exists to placate linker.
     return 0;
 }

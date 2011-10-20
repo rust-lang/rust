@@ -26,7 +26,6 @@ drop_task
 get_port_id
 get_task_id
 get_task_pointer
-get_task_trampoline
 get_time
 last_os_error
 leak

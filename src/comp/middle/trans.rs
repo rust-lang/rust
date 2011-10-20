@@ -5762,7 +5762,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     let cast_to_i32;
     alt abi {
       ast::native_abi_rust. {
-        pass_task = true;
+        pass_task = false;
         uses_retptr = false;
         cast_to_i32 = true;
       }

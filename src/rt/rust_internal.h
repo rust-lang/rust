@@ -288,7 +288,7 @@ struct type_desc {
 #include "memory.h"
 
 extern "C" CDECL void
-port_recv(void *unused_task, uintptr_t *dptr, rust_port *port);
+port_recv(uintptr_t *dptr, rust_port *port);
 
 #include "test/rust_test_harness.h"
 #include "test/rust_test_util.h"

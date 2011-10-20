@@ -8,7 +8,7 @@
 #endif
 
 extern "C" CDECL rust_str*
-last_os_error(void *unused_task) {
+last_os_error() {
     rust_task *task = rust_scheduler::get_task();
 
     LOG(task, task, "last_os_error()");
@@ -51,7 +51,7 @@ last_os_error(void *unused_task) {
 }
 
 extern "C" CDECL rust_str *
-rust_getcwd(void *unused_task) {
+rust_getcwd() {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, task, "rust_getcwd()");
 
@@ -71,47 +71,46 @@ rust_getcwd(void *unused_task) {
 
 // TODO: Allow calling native functions that return double results.
 extern "C" CDECL
-void squareroot(void *unused_task, double *input, double *output) {
+void squareroot(double *input, double *output) {
     *output = sqrt(*input);
 }
 
 extern "C" CDECL size_t
-size_of(void *unused_task, type_desc *t) {
+size_of(type_desc *t) {
   return t->size;
 }
 
 extern "C" CDECL size_t
-align_of(void *unused_task, type_desc *t) {
+align_of(type_desc *t) {
   return t->align;
 }
 
 extern "C" CDECL void
-leak(void *unused_task, type_desc *t, void *thing) {
+leak(type_desc *t, void *thing) {
     // Do nothing. Call this with move-mode in order to say "Don't worry rust,
     // I'll take care of this."
 }
 
 extern "C" CDECL intptr_t
-refcount(void *unused_task, type_desc *t, intptr_t *v) {
-
+refcount(type_desc *t, intptr_t *v) {
     // Passed-in value has refcount 1 too high
     // because it was ref'ed while making the call.
     return (*v) - 1;
 }
 
 extern "C" CDECL void
-do_gc(void *unused_task) {
+do_gc() {
     // TODO
 }
 
 extern "C" CDECL void
-unsupervise(void *unused_task) {
+unsupervise() {
     rust_task *task = rust_scheduler::get_task();
     task->unsupervise();
 }
 
 extern "C" CDECL void
-vec_reserve_shared(void *unused_task, type_desc* ty, rust_vec** vp,
+vec_reserve_shared(type_desc* ty, rust_vec** vp,
                    size_t n_elts) {
     rust_task *task = rust_scheduler::get_task();
     reserve_vec(task, vp, n_elts * ty->size);
@@ -122,8 +121,7 @@ vec_reserve_shared(void *unused_task, type_desc* ty, rust_vec** vp,
  * vector must have size zero.
  */
 extern "C" CDECL rust_vec*
-vec_from_buf_shared(void *unused_task, type_desc *ty,
-                    void *ptr, size_t count) {
+vec_from_buf_shared(type_desc *ty, void *ptr, size_t count) {
     rust_task *task = rust_scheduler::get_task();
     size_t fill = ty->size * count;
     rust_vec* v = (rust_vec*)task->kernel->malloc(fill + sizeof(rust_vec),
@@ -134,7 +132,7 @@ vec_from_buf_shared(void *unused_task, type_desc *ty,
 }
 
 extern "C" CDECL void
-rust_str_push(void *unused_task, rust_vec** sp, uint8_t byte) {
+rust_str_push(rust_vec** sp, uint8_t byte) {
     rust_task *task = rust_scheduler::get_task();
     size_t fill = (*sp)->fill;
     reserve_vec(task, sp, fill + 1);
@@ -144,8 +142,7 @@ rust_str_push(void *unused_task, rust_vec** sp, uint8_t byte) {
 }
 
 extern "C" CDECL void *
-rand_new(void *unused_task)
-{
+rand_new() {
     rust_task *task = rust_scheduler::get_task();
     rust_scheduler *sched = task->sched;
     randctx *rctx = (randctx *) task->malloc(sizeof(randctx), "randctx");
@@ -158,32 +155,30 @@ rand_new(void *unused_task)
 }
 
 extern "C" CDECL size_t
-rand_next(void *unused_task, randctx *rctx)
-{
+rand_next(randctx *rctx) {
     return isaac_rand(rctx);
 }
 
 extern "C" CDECL void
-rand_free(void *unused_task, randctx *rctx)
-{
+rand_free(randctx *rctx) {
     rust_task *task = rust_scheduler::get_task();
     task->free(rctx);
 }
 
 extern "C" CDECL void
-task_sleep(void *unused_task, size_t time_in_us) {
+task_sleep(size_t time_in_us) {
     rust_task *task = rust_scheduler::get_task();
     task->yield(time_in_us);
 }
 
 extern "C" CDECL void
-task_yield(void *unused_task) {
+task_yield() {
     rust_task *task = rust_scheduler::get_task();
     task->yield(1);
 }
 
 extern "C" CDECL intptr_t
-task_join(void *unused_task, rust_task_id tid) {
+task_join(rust_task_id tid) {
     rust_task *task = rust_scheduler::get_task();
     // If the other task is already dying, we don't have to wait for it.
     rust_task *join_task = task->kernel->get_task_by_id(tid);
@@ -211,25 +206,21 @@ task_join(void *unused_task, rust_task_id tid) {
 /* Debug builtins for std::dbg. */
 
 static void
-debug_tydesc_helper(void *unused_task, type_desc *t)
-{
-    rust_task *task = rust_scheduler::get_task();
+debug_tydesc_helper(rust_task* task, type_desc *t) {
     LOG(task, stdlib, "  size %" PRIdPTR ", align %" PRIdPTR
         ", first_param 0x%" PRIxPTR,
         t->size, t->align, t->first_param);
 }
 
 extern "C" CDECL void
-debug_tydesc(void *unused_task, type_desc *t)
-{
+debug_tydesc(type_desc *t) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_tydesc");
     debug_tydesc_helper(task, t);
 }
 
 extern "C" CDECL void
-debug_opaque(void *unused_task, type_desc *t, uint8_t *front)
-{
+debug_opaque(type_desc *t, uint8_t *front) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_opaque");
     debug_tydesc_helper(task, t);
@@ -248,8 +239,7 @@ struct rust_box {
 };
 
 extern "C" CDECL void
-debug_box(void *unused_task, type_desc *t, rust_box *box)
-{
+debug_box(type_desc *t, rust_box *box) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
     debug_tydesc_helper(task, t);
@@ -266,8 +256,7 @@ struct rust_tag {
 };
 
 extern "C" CDECL void
-debug_tag(void *unused_task, type_desc *t, rust_tag *tag)
-{
+debug_tag(type_desc *t, rust_tag *tag) {
     rust_task *task = rust_scheduler::get_task();
 
     LOG(task, stdlib, "debug_tag");
@@ -285,9 +274,7 @@ struct rust_obj {
 };
 
 extern "C" CDECL void
-debug_obj(void *unused_task, type_desc *t, rust_obj *obj,
-          size_t nmethods, size_t nbytes)
-{
+debug_obj(type_desc *t, rust_obj *obj, size_t nmethods, size_t nbytes) {
     rust_task *task = rust_scheduler::get_task();
 
     LOG(task, stdlib, "debug_obj with %" PRIdPTR " methods", nmethods);
@@ -309,8 +296,7 @@ struct rust_fn {
 };
 
 extern "C" CDECL void
-debug_fn(void *unused_task, type_desc *t, rust_fn *fn)
-{
+debug_fn(type_desc *t, rust_fn *fn) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_fn");
     debug_tydesc_helper(task, t);
@@ -322,11 +308,9 @@ debug_fn(void *unused_task, type_desc *t, rust_fn *fn)
 }
 
 extern "C" CDECL void *
-debug_ptrcast(void *unused_task,
-              type_desc *from_ty,
+debug_ptrcast(type_desc *from_ty,
               type_desc *to_ty,
-              void *ptr)
-{
+              void *ptr) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_ptrcast from");
     debug_tydesc_helper(task, from_ty);
@@ -336,7 +320,7 @@ debug_ptrcast(void *unused_task,
 }
 
 extern "C" CDECL rust_vec*
-rust_list_files(void *unused_task, rust_vec **path) {
+rust_list_files(rust_vec **path) {
     rust_task *task = rust_scheduler::get_task();
     array_list<rust_str*> strings;
 #if defined(__WIN32__)
@@ -375,7 +359,7 @@ rust_list_files(void *unused_task, rust_vec **path) {
 }
 
 extern "C" CDECL int
-rust_file_is_dir(void *unused_task, char *path) {
+rust_file_is_dir(char *path) {
     struct stat buf;
     if (stat(path, &buf)) {
         return 0;
@@ -388,13 +372,13 @@ extern "C" CDECL FILE* rust_get_stdout() {return stdout;}
 extern "C" CDECL FILE* rust_get_stderr() {return stderr;}
 
 extern "C" CDECL int
-rust_ptr_eq(void *unused_task, type_desc *t, rust_box *a, rust_box *b) {
+rust_ptr_eq(type_desc *t, rust_box *a, rust_box *b) {
     return a == b;
 }
 
 #if defined(__WIN32__)
 extern "C" CDECL void
-get_time(void *unused_task, uint32_t *sec, uint32_t *usec) {
+get_time(uint32_t *sec, uint32_t *usec) {
     rust_task *task = rust_scheduler::get_task();
     SYSTEMTIME systemTime;
     FILETIME fileTime;
@@ -410,7 +394,7 @@ get_time(void *unused_task, uint32_t *sec, uint32_t *usec) {
 }
 #else
 extern "C" CDECL void
-get_time(void *unused_task, uint32_t *sec, uint32_t *usec) {
+get_time(uint32_t *sec, uint32_t *usec) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     *sec = tv.tv_sec;
@@ -419,52 +403,46 @@ get_time(void *unused_task, uint32_t *sec, uint32_t *usec) {
 #endif
 
 extern "C" CDECL void
-nano_time(void *unused_task, uint64_t *ns) {
+nano_time(uint64_t *ns) {
     timer t;
     *ns = t.time_ns();
 }
 
 extern "C" CDECL void
-pin_task(void *unused_task) {
+pin_task() {
     rust_task *task = rust_scheduler::get_task();
     task->pin();
 }
 
 extern "C" CDECL void
-unpin_task(void *unused_task) {
+unpin_task() {
     rust_task *task = rust_scheduler::get_task();
     task->unpin();
 }
 
 extern "C" CDECL rust_task_id
-get_task_id(void *unused_task) {
+get_task_id() {
     rust_task *task = rust_scheduler::get_task();
     return task->user.id;
 }
 
 extern "C" CDECL rust_task_id
-new_task(void *unused_task) {
+new_task() {
     rust_task *task = rust_scheduler::get_task();
     return task->kernel->create_task(task, NULL);
 }
 
 extern "C" CDECL void
-drop_task(void *unused_task, rust_task *target) {
+drop_task(rust_task *target) {
     if(target) {
         target->deref();
     }
 }
 
 extern "C" CDECL rust_task *
-get_task_pointer(void *unused_task, rust_task_id id) {
+get_task_pointer(rust_task_id id) {
     rust_task *task = rust_scheduler::get_task();
     return task->kernel->get_task_by_id(id);
-}
-
-// FIXME: Transitional. Remove
-extern "C" CDECL void **
-get_task_trampoline(void *unused_task) {
-    return NULL;
 }
 
 struct fn_env_pair {
@@ -480,7 +458,7 @@ void rust_spawn_wrapper(void* retptr, rust_task* taskptr, void* envptr,
 }
 
 extern "C" CDECL void
-start_task(void *unused_task, rust_task_id id, fn_env_pair *f) {
+start_task(rust_task_id id, fn_env_pair *f) {
     rust_task *task = rust_scheduler::get_task();
     rust_task *target = task->kernel->get_task_by_id(id);
     target->start((uintptr_t)rust_spawn_wrapper, f->f, f->env);
@@ -488,7 +466,7 @@ start_task(void *unused_task, rust_task_id id, fn_env_pair *f) {
 }
 
 extern "C" CDECL void
-migrate_alloc(void *unused_task, void *alloc, rust_task_id tid) {
+migrate_alloc(void *alloc, rust_task_id tid) {
     rust_task *task = rust_scheduler::get_task();
     if(!alloc) return;
     rust_task *target = task->kernel->get_task_by_id(tid);
@@ -506,18 +484,18 @@ migrate_alloc(void *unused_task, void *alloc, rust_task_id tid) {
 // defined in rust_task.cpp
 extern size_t g_custom_min_stack_size;
 extern "C" CDECL void
-set_min_stack(void *unused_task, uintptr_t stack_size) {
+set_min_stack(uintptr_t stack_size) {
     g_custom_min_stack_size = stack_size;
 }
 
 extern "C" CDECL int
-sched_threads(void *unused_task) {
+sched_threads() {
     rust_task *task = rust_scheduler::get_task();
     return task->kernel->num_threads;
 }
 
 extern "C" CDECL rust_port*
-new_port(void *unused_task, size_t unit_sz) {
+new_port(size_t unit_sz) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, comm, "new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
         (uintptr_t) task, task->name, unit_sz);
@@ -527,7 +505,7 @@ new_port(void *unused_task, size_t unit_sz) {
 }
 
 extern "C" CDECL void
-del_port(void *unused_task, rust_port *port) {
+del_port(rust_port *port) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
     I(task->sched, !port->ref_count);
@@ -538,12 +516,12 @@ del_port(void *unused_task, rust_port *port) {
 }
 
 extern "C" CDECL rust_port_id
-get_port_id(void *unused_task, rust_port *port) {
+get_port_id(rust_port *port) {
     return port->id;
 }
 
 extern "C" CDECL rust_chan*
-new_chan(void *unused_task, rust_port *port) {
+new_chan(rust_port *port) {
     rust_task *task = rust_scheduler::get_task();
     rust_scheduler *sched = task->sched;
     LOG(task, comm, "new_chan("
@@ -555,34 +533,34 @@ new_chan(void *unused_task, rust_port *port) {
 }
 
 extern "C" CDECL
-void del_chan(void *unused_task, rust_chan *chan) {
+void del_chan(rust_chan *chan) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, comm, "del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
     I(task->sched, false);
 }
 
 extern "C" CDECL
-void take_chan(void *unused_task, rust_chan *chan) {
+void take_chan(rust_chan *chan) {
     chan->ref();
 }
 
 extern "C" CDECL
-void drop_chan(void *unused_task, rust_chan *chan) {
+void drop_chan(rust_chan *chan) {
     chan->deref();
 }
 
 extern "C" CDECL
-void drop_port(void *, rust_port *port) {
+void drop_port(rust_port *port) {
     port->ref_count--;
 }
 
 extern "C" CDECL void
-chan_send(void *unused_task, rust_chan *chan, void *sptr) {
+chan_send(rust_chan *chan, void *sptr) {
     chan->send(sptr);
 }
 
 extern "C" CDECL void
-chan_id_send(void *unused_task, type_desc *t, rust_task_id target_task_id,
+chan_id_send(type_desc *t, rust_task_id target_task_id,
              rust_port_id target_port_id, void *sptr) {
     // FIXME: make sure this is thread-safe
     rust_task *task = rust_scheduler::get_task();
@@ -598,7 +576,7 @@ chan_id_send(void *unused_task, type_desc *t, rust_task_id target_task_id,
 }
 
 extern "C" CDECL void
-port_recv(void *unused_task, uintptr_t *dptr, rust_port *port) {
+port_recv(uintptr_t *dptr, rust_port *port) {
     rust_task *task = rust_scheduler::get_task();
     {
         scoped_lock with(port->lock);
