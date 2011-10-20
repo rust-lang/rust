@@ -106,8 +106,14 @@ ifdef CFG_WINDOWSY
 rt/main.ll: rt/main.ll.in
 	@$(call E, sed: $@)
 	$(Q)sed 's/MAIN/WinMain@16/' < $^ > $@
+rt/main0.ll: rt/main0.ll.in
+	@$(call E, sed: $@)
+	$(Q)sed 's/MAIN/WinMain@16/' < $^ > $@
 else
 rt/main.ll: rt/main.ll.in
+	@$(call E, sed: $@)
+	$(Q)sed 's/MAIN/main/' < $^ > $@
+rt/main0.ll: rt/main0.ll.in
 	@$(call E, sed: $@)
 	$(Q)sed 's/MAIN/main/' < $^ > $@
 endif
