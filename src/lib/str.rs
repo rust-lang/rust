@@ -7,7 +7,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len, index,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
        contains;
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
 }
 
