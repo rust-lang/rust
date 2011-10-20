@@ -160,12 +160,22 @@ rand_new() {
 }
 
 extern "C" CDECL size_t
+<<<<<<< HEAD
 rand_next(randctx *rctx) {
+=======
+rand_next(randctx *rctx)
+{
+>>>>>>> move rand functions into c-stack-cdecl mode
     return isaac_rand(rctx);
 }
 
 extern "C" CDECL void
+<<<<<<< HEAD
 rand_free(randctx *rctx) {
+=======
+rand_free(randctx *rctx)
+{
+>>>>>>> move rand functions into c-stack-cdecl mode
     rust_task *task = rust_scheduler::get_task();
     task->free(rctx);
 }
