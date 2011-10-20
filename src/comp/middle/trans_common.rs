@@ -102,7 +102,7 @@ type crate_ctxt =
      mutable main_fn: option::t<ValueRef>,
      link_meta: link::link_meta,
      tag_sizes: hashmap<ty::t, uint>,
-     discrims: hashmap<ast::node_id, ValueRef>,
+     discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
      consts: hashmap<ast::node_id, ValueRef>,
      obj_methods: hashmap<ast::node_id, ()>,

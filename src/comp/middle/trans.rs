@@ -3026,7 +3026,7 @@ fn lval_static_fn(bcx: @block_ctxt, tpt: ty::ty_param_kinds_and_ty,
 }
 
 fn lookup_discriminant(lcx: @local_ctxt, vid: ast::def_id) -> ValueRef {
-    alt lcx.ccx.discrims.find(vid.node) {
+    alt lcx.ccx.discrims.find(vid) {
       none. {
         // It's an external discriminant that we haven't seen yet.
         assert (vid.crate != ast::local_crate);
@@ -3039,7 +3039,7 @@ fn lookup_discriminant(lcx: @local_ctxt, vid: ast::def_id) -> ValueRef {
         llvm::LLVMSetLinkage(gvar,
                              lib::llvm::LLVMExternalLinkage as llvm::Linkage);
         llvm::LLVMSetGlobalConstant(gvar, True);
-        lcx.ccx.discrims.insert(vid.node, gvar);
+        lcx.ccx.discrims.insert(vid, gvar);
         ret gvar;
       }
       some(llval) { ret llval; }
@@ -6086,7 +6086,8 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
                             });
             llvm::LLVMSetInitializer(discrim_gvar, C_int(i as int));
             llvm::LLVMSetGlobalConstant(discrim_gvar, True);
-            ccx.discrims.insert(variant.node.id, discrim_gvar);
+            ccx.discrims.insert(
+                ast_util::local_def(variant.node.id), discrim_gvar);
             ccx.discrim_symbols.insert(variant.node.id, s);
             i += 1u;
         }
@@ -6288,7 +6289,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           mutable main_fn: none::<ValueRef>,
           link_meta: link_meta,
           tag_sizes: tag_sizes,
-          discrims: new_int_hash::<ValueRef>(),
+          discrims: ast_util::new_def_id_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
           consts: new_int_hash::<ValueRef>(),
           obj_methods: new_int_hash::<()>(),
