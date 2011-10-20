@@ -325,12 +325,12 @@ debug_ptrcast(type_desc *from_ty,
 }
 
 extern "C" CDECL rust_vec*
-rust_list_files(rust_vec **path) {
+rust_list_files(rust_str *path) {
     rust_task *task = rust_scheduler::get_task();
     array_list<rust_str*> strings;
 #if defined(__WIN32__)
     WIN32_FIND_DATA FindFileData;
-    HANDLE hFind = FindFirstFile((char*)(*path)->data, &FindFileData);
+    HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
             rust_str *str = make_str(task->kernel, FindFileData.cFileName,
@@ -341,7 +341,7 @@ rust_list_files(rust_vec **path) {
         FindClose(hFind);
     }
 #else
-    DIR *dirp = opendir((char*)(*path)->data);
+    DIR *dirp = opendir((char*)path->data);
   if (dirp) {
       struct dirent *dp;
       while ((dp = readdir(dirp))) {

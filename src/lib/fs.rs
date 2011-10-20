@@ -2,7 +2,7 @@
 import os::getcwd;
 import os_fs;
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     fn rust_file_is_dir(path: str::sbuf) -> int;
 }
 
