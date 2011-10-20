@@ -3831,25 +3831,23 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     // Translate the callee.
     let { params: _, ty: fn_ty } = ty::expr_ty_params_and_ty(bcx_tcx(bcx), f);
     let fn_arg_tys = ty::ty_fn_args(bcx_tcx(bcx), fn_ty);
+    let llargtys = type_of_explicit_args(ccx, f.span, fn_arg_tys);
 
     // Translate arguments.
     let (to_zero, to_revoke) = ([], []);
-    let llargs = vec::map2({ |ty_arg, arg|
-        let arg_ty = ty_arg.ty;
-
-        let static, llargty;
-        if check type_has_static_size(ccx, arg_ty) {
-            static = true;
-            llargty = type_of(ccx, f.span, arg_ty);
-        } else {
-            static = false;
-            llargty = T_ptr(T_i8());
-        }
-
+    let i = 0u, n = vec::len(args);
+    let llargs = [];
+    while i < n {
+        let ty_arg = fn_arg_tys[i];
+        let arg = args[i];
+        let llargty = llargtys[i];
         let r = trans_arg_expr(bcx, ty_arg, llargty, to_zero, to_revoke, arg);
         let llargval = r.val; bcx = r.bcx;
-        { llval: llargval, llty: llargty, static: static, mode: ty_arg.mode }
-    }, fn_arg_tys, args);
+        llargs += [
+            { llval: llargval, llty: llargty }
+        ];
+        i += 1u;
+    }
 
     // Allocate the argument bundle.
     let llargbundlety = T_struct(vec::map({ |r| r.llty }, llargs));
@@ -3859,20 +3857,12 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     let llargbundle = PointerCast(bcx, llrawargbundle, T_ptr(llargbundlety));
 
     // Copy in arguments.
-    vec::eachi({ |llarg, i|
-        let llargval;
-        if llarg.static {
-            // FIXME: This load is unfortunate. It won't be necessary once we
-            // have reference types again.
-            llargval = alt llarg.mode {
-              ast::by_val. | ast::by_mut_ref. { llarg.llval }
-              ast::by_ref. | ast::mode_infer. { Load(bcx, llarg.llval) }
-            };
-        } else {
-            llargval = llarg.llval;
-        }
-        store_inbounds(bcx, llargval, llargbundle, [C_int(0), C_uint(i)]);
-    }, llargs);
+    let i = 0u, n = vec::len(llargs);
+    while i < n {
+        let llarg = llargs[i].llval;
+        store_inbounds(bcx, llarg, llargbundle, [C_int(0), C_uint(i)]);
+        i += 1u;
+    }
 
     // Call.
     // TODO: Invoke instead.
