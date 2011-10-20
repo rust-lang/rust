@@ -1,5 +1,3 @@
-// xfail-fast - random windows breakage
-
 tag maybe_pointy {
     no_pointy;
     yes_pointy(@pointy);
