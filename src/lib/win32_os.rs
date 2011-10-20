@@ -79,7 +79,7 @@ fn fd_FILE(fd: int) -> libc::FILE {
     ret str::as_buf("r", {|modebuf| libc::_fdopen(fd, modebuf) });
 }
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     fn rust_process_wait(handle: int) -> int;
     fn rust_getcwd() -> str;
 }
