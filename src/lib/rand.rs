@@ -4,7 +4,7 @@
 /**
  * Bindings the runtime's random number generator (ISAAC).
  */
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     type rctx;
     fn rand_new() -> rctx;
     fn rand_next(c: rctx) -> u32;
