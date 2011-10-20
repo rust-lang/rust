@@ -1,3 +1,5 @@
+// xfail-test - #1038 - Can't do this safely with bare functions
+
 /**
    A parallel word-frequency counting program.
 

@@ -54,7 +54,8 @@ fn find_locals(tcx: ty::ctxt, f: _fn, tps: [ty_param], sp: span, i: fn_ident,
     visitor =
         @{visit_local: collect_local,
           visit_expr: collect_pred,
-          visit_fn: do_nothing with *visitor};
+          visit_fn: bind do_nothing(_, _, _, _, _, _, _)
+              with *visitor};
     visit::visit_fn(f, tps, sp, i, id, cx, visit::mk_vt(visitor));
     ret cx;
 }

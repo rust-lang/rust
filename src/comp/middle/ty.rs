@@ -603,7 +603,7 @@ fn cname(cx: ctxt, typ: t) -> option::t<str> {
 
 
 // Type folds
-type ty_walk = fn(t);
+type ty_walk = fn@(t);
 
 fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
     alt struct(cx, ty) {
@@ -655,9 +655,9 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
 }
 
 tag fold_mode {
-    fm_var(fn(int) -> t);
-    fm_param(fn(uint, ast::kind) -> t);
-    fm_general(fn(t) -> t);
+    fm_var(fn@(int) -> t);
+    fm_param(fn@(uint, ast::kind) -> t);
+    fm_general(fn@(t) -> t);
 }
 
 fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
@@ -1010,9 +1010,10 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // here yet, leading to weirdness around closure.
       ty_fn(proto, _, _, _, _) {
         result = alt proto {
+          ast::proto_iter. { ast::kind_shared }
           ast::proto_block. { ast::kind_pinned }
-          ast::proto_closure. { ast::kind_shared }
-          _ { ast::kind_unique }
+          ast::proto_shared(_) { ast::kind_shared }
+          ast::proto_bare. { ast::kind_unique }
         };
       }
       // Those with refcounts-to-inner raise pinned to shared,
@@ -1614,7 +1615,10 @@ fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
 fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
     alt struct(cx, fty) {
       ty::ty_fn(p, _, _, _, _) { ret p; }
-      ty::ty_native_fn(_, _, _) { ret ast::proto_fn; }
+      ty::ty_native_fn(_, _, _) {
+        // FIXME: This should probably be proto_bare
+        ret ast::proto_shared(ast::sugar_normal);
+      }
       _ { cx.sess.bug("ty_fn_proto() called on non-fn type"); }
     }
 }
@@ -2002,8 +2006,11 @@ mod unify {
                     (ures_err(terr_mode_mismatch(expected_input.mode,
                                                  actual_input.mode)));
             } else { expected_input.mode };
+            // The variance changes (flips basically) when descending
+            // into arguments of function types
             let result = unify_step(
-                cx, expected_input.ty, actual_input.ty, variance);
+                cx, expected_input.ty, actual_input.ty,
+                variance_transform(variance, contravariant));
             alt result {
               ures_ok(rty) { result_ins += [{mode: result_mode, ty: rty}]; }
               _ { ret fn_common_res_err(result); }
@@ -2018,6 +2025,54 @@ mod unify {
           _ { ret fn_common_res_err(result); }
         }
     }
+    fn unify_fn_proto(e_proto: ast::proto, a_proto: ast::proto,
+                      variance: variance) -> option::t<result> {
+        fn gt(e_proto: ast::proto, a_proto: ast::proto) -> bool {
+            alt e_proto {
+              ast::proto_block. {
+                // Every function type is a subtype of block
+                false
+              }
+              ast::proto_shared(_) {
+                a_proto == ast::proto_block
+              }
+              ast::proto_bare. {
+                a_proto != ast::proto_bare
+              }
+            }
+        }
+
+        ret if (e_proto == ast::proto_iter
+            || a_proto == ast::proto_iter) {
+            if e_proto != a_proto {
+                some(ures_err(terr_mismatch))
+            } else {
+                none
+            }
+        } else if e_proto == a_proto {
+            none
+        } else if variance == invariant {
+            if e_proto != a_proto {
+                some(ures_err(terr_mismatch))
+            } else {
+                fail
+            }
+        } else if variance == covariant {
+            if gt(e_proto, a_proto) {
+                some(ures_err(terr_mismatch))
+            } else {
+                none
+            }
+        } else if variance == contravariant {
+            if gt(a_proto, e_proto) {
+                some(ures_err(terr_mismatch))
+            } else {
+                none
+            }
+        } else {
+            fail
+        }
+    }
     fn unify_fn(cx: @ctxt, e_proto: ast::proto, a_proto: ast::proto,
                 expected: t, actual: t, expected_inputs: [arg],
                 expected_output: t, actual_inputs: [arg], actual_output: t,
@@ -2025,7 +2080,12 @@ mod unify {
                 _expected_constrs: [@constr], actual_constrs: [@constr],
                 variance: variance) ->
        result {
-        if e_proto != a_proto { ret ures_err(terr_mismatch); }
+
+        alt unify_fn_proto(e_proto, a_proto, variance) {
+          some(err) { ret err; }
+          none. { /* fall through */ }
+        }
+
         if actual_cf != ast::noreturn && actual_cf != expected_cf {
             /* even though typestate checking is mostly
                responsible for checking control flow annotations,
@@ -2654,13 +2714,14 @@ fn type_err_to_str(err: ty::type_err) -> str {
 
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
-fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn() -> int, typ: t,
+fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
                        ty_param_count: uint) -> {ids: [int], ty: t} {
     let param_var_ids: @mutable [int] = @mutable [];
     let i = 0u;
     while i < ty_param_count { *param_var_ids += [next_ty_var()]; i += 1u; }
     fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
-              _next_ty_var: fn() -> int, index: uint, _kind: ast::kind) -> t {
+              _next_ty_var: fn@() -> int, index: uint,
+              _kind: ast::kind) -> t {
         if index < vec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids[index]);
         } else {

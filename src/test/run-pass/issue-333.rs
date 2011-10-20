@@ -1,4 +1,4 @@
-fn quux<@T>(x: T) -> T { let f = id::<T>; ret f(x); }
+fn quux<@T>(x: T) -> T { let f = bind id::<T>(_); ret f(x); }
 
 fn id<@T>(x: T) -> T { ret x; }
 

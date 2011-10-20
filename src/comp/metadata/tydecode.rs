@@ -16,7 +16,7 @@ export parse_ty_data;
 // data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
-type str_def = fn(str) -> ast::def_id;
+type str_def = fn@(str) -> ast::def_id;
 
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
@@ -34,7 +34,7 @@ fn parse_ident(st: @pstate, sd: str_def, last: char) -> ast::ident {
     ret parse_ident_(st, sd, bind is_last(last, _));
 }
 
-fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool) ->
+fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn@(char) -> bool) ->
    ast::ident {
     let rslt = "";
     while !is_last(peek(st) as char) {
@@ -242,7 +242,8 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       }
       'F' {
         let func = parse_ty_fn(st, sd);
-        ret ty::mk_fn(st.tcx, ast::proto_fn, func.args, func.ty, func.cf,
+        ret ty::mk_fn(st.tcx, ast::proto_shared(ast::sugar_normal),
+                      func.args, func.ty, func.cf,
                       func.cs);
       }
       'f' {
@@ -281,7 +282,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
             let proto;
             alt next(st) as char {
               'W' { proto = ast::proto_iter; }
-              'F' { proto = ast::proto_fn; }
+              'f' { proto = ast::proto_bare; }
             }
             let name = "";
             while peek(st) as char != '[' {

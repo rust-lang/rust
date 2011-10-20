@@ -53,7 +53,7 @@ type fn_ctxt =
 
 
 // Used for ast_ty_to_ty() below.
-type ty_getter = fn(ast::def_id) -> ty::ty_param_kinds_and_ty;
+type ty_getter = fn@(ast::def_id) -> ty::ty_param_kinds_and_ty;
 
 fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> int {
     alt fcx.locals.find(id) {
@@ -477,10 +477,9 @@ mod write {
 // code. This is needed because fn and lambda have fn type while iter
 // has iter type and block has block type. This may end up changing.
 fn proto_to_ty_proto(proto: ast::proto) -> ast::proto {
-    ret alt proto {
-          ast::proto_iter. | ast::proto_block. | ast::proto_bare. { proto }
-          _ { ast::proto_fn }
-        };
+    // FIXME: This is no longer needed since fn@ and lambda have
+    // the same type
+    proto
 }
 
 // Item collection - a pair of bootstrap passes:
@@ -516,8 +515,8 @@ mod collect {
         ret k;
     }
 
-    fn ty_of_fn_decl(cx: @ctxt, convert: fn(&&@ast::ty) -> ty::t,
-                     ty_of_arg: fn(ast::arg) -> arg, decl: ast::fn_decl,
+    fn ty_of_fn_decl(cx: @ctxt, convert: fn@(&&@ast::ty) -> ty::t,
+                     ty_of_arg: fn@(ast::arg) -> arg, decl: ast::fn_decl,
                      proto: ast::proto, ty_params: [ast::ty_param],
                      def_id: option::t<ast::def_id>) ->
        ty::ty_param_kinds_and_ty {
@@ -536,8 +535,8 @@ mod collect {
         alt def_id { some(did) { cx.tcx.tcache.insert(did, tpt); } _ { } }
         ret tpt;
     }
-    fn ty_of_native_fn_decl(cx: @ctxt, convert: fn(&&@ast::ty) -> ty::t,
-                            ty_of_arg: fn(ast::arg) -> arg,
+    fn ty_of_native_fn_decl(cx: @ctxt, convert: fn@(&&@ast::ty) -> ty::t,
+                            ty_of_arg: fn@(ast::arg) -> arg,
                             decl: ast::fn_decl, abi: ast::native_abi,
                             ty_params: [ast::ty_param], def_id: ast::def_id)
        -> ty::ty_param_kinds_and_ty {
@@ -612,7 +611,8 @@ mod collect {
         }
 
         let t_fn =
-            ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj.ty,
+            ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
+                      t_inputs, t_obj.ty,
                       ast::return_val, []);
         let tpt = {kinds: ty_param_kinds(ty_params), ty: t_fn};
         cx.tcx.tcache.insert(local_def(ctor_id), tpt);
@@ -723,7 +723,8 @@ mod collect {
                 let tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
                 result_ty =
-                    ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t,
+                    ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
+                              args, tag_t,
                               ast::return_val, []);
             }
             let tpt = {kinds: ty_param_kinds(ty_params), ty: result_ty};
@@ -793,10 +794,13 @@ mod collect {
                 ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
                            mk_ty_params(cx, tps));
             let t_ctor =
-                ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg], t_res,
+                ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
+                          [t_arg], t_res,
                           ast::return_val, []);
             let t_dtor =
-                ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg], ty::mk_nil(cx.tcx),
+                ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
+                          [t_arg],
+                          ty::mk_nil(cx.tcx),
                           ast::return_val, []);
             write::ty_only(cx.tcx, it.id, t_res);
             write::ty_only(cx.tcx, ctor_id, t_ctor);
@@ -891,30 +895,6 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     fail;
 }
 
-fn do_fn_block_coerce(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t)
-   -> ty::t {
-
-    // fns can be silently coerced to blocks when being used as
-    // function call or bind arguments, but not the reverse.
-    // If our actual type is a fn and our expected type is a block,
-    // build up a new expected type that is identical to the old one
-    // except for its proto. If we don't know the expected or actual
-    // types, that's fine, but we can't do the coercion.
-    ret alt structure_of_maybe(fcx, sp, actual) {
-          some(ty::ty_fn(ast::proto_fn., args, ret_ty, cf, constrs)) {
-            alt structure_of_maybe(fcx, sp, expected) {
-              some(ty::ty_fn(ast::proto_block., _, _, _, _)) {
-                ty::mk_fn(fcx.ccx.tcx, ast::proto_block, args, ret_ty, cf,
-                          constrs)
-              }
-              _ { actual }
-            }
-          }
-          _ { actual }
-        }
-}
-
-
 fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
     alt ty::unify::fixup_vars(fcx.ccx.tcx, none, fcx.var_bindings, typ) {
       fix_ok(new_type) { ret new_type; }
@@ -930,26 +910,19 @@ type ty_param_substs_and_ty = {substs: [ty::t], ty: ty::t};
 mod demand {
     fn simple(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) ->
        ty::t {
-        full(fcx, sp, expected, actual, [], false).ty
-    }
-    fn block_coerce(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t)
-       -> ty::t {
-        full(fcx, sp, expected, actual, [], true).ty
+        full(fcx, sp, expected, actual, []).ty
     }
 
     fn with_substs(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
                    ty_param_substs_0: [ty::t]) -> ty_param_substs_and_ty {
-        full(fcx, sp, expected, actual, ty_param_substs_0, false)
+        full(fcx, sp, expected, actual, ty_param_substs_0)
     }
 
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
     fn full(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
-            ty_param_substs_0: [ty::t], do_block_coerce: bool) ->
+            ty_param_substs_0: [ty::t]) ->
        ty_param_substs_and_ty {
-        if do_block_coerce {
-            actual = do_fn_block_coerce(fcx, sp, actual, expected);
-        }
 
         let ty_param_substs: [mutable ty::t] = [mutable];
         let ty_param_subst_var_ids: [int] = [];
@@ -1258,8 +1231,10 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     let visit =
         @{visit_local: visit_local,
           visit_pat: visit_pat,
-          visit_fn: visit_fn,
-          visit_item: visit_item with *visit::default_visitor()};
+          visit_fn: bind visit_fn(_, _, _, _, _, _, _),
+          visit_item: bind visit_item(_, _, _)
+              with *visit::default_visitor()};
+
     visit::visit_block(f.body, (), visit::mk_vt(visit));
     ret {var_bindings: vb,
          locals: locals,
@@ -1676,7 +1651,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         if is_block == check_blocks {
                             bot |=
                                 check_expr_with_unifier(fcx, a,
-                                                        demand::block_coerce,
+                                                        demand::simple,
                                                         arg_tys[i].ty);
                         }
                       }
@@ -2120,7 +2095,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             constrs = constrs_;
           }
           ty::ty_native_fn(_, arg_tys_, rt_) {
-            proto = ast::proto_fn;
+            proto = ast::proto_shared(ast::sugar_normal);
             arg_tys = arg_tys_;
             rt = rt_;
             cf = ast::return_val;
@@ -2145,7 +2120,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         fn lower_bound_proto(proto: ast::proto) -> ast::proto {
             // FIXME: This is right for bare fns, possibly not others
             alt proto {
-              ast::proto_bare. { ast::proto_fn }
+              ast::proto_bare. { ast::proto_shared(ast::sugar_normal) }
               _ { proto }
             }
         }
@@ -2596,7 +2571,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     let fcx: @fn_ctxt =
         @{ret_ty: rty,
           purity: ast::pure_fn,
-          proto: ast::proto_fn,
+          proto: ast::proto_shared(ast::sugar_normal),
           var_bindings: ty::unify::mk_var_bindings(),
           locals: new_int_hash::<int>(),
           local_names: new_int_hash::<ast::ident>(),
@@ -2818,7 +2793,7 @@ fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
 fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
     let main_t = ty::node_id_to_monotype(tcx, main_id);
     alt ty::struct(tcx, main_t) {
-      ty::ty_fn(ast::proto_fn., args, rs, ast::return_val., constrs) {
+      ty::ty_fn(ast::proto_bare., args, rs, ast::return_val., constrs) {
         let ok = vec::len(constrs) == 0u;
         ok &= ty::type_is_nil(tcx, rs);
         let num_args = vec::len(args);

@@ -14,13 +14,13 @@ export unsupervise;
 export pin;
 export unpin;
 export set_min_stack;
-export spawn;
-export spawn_notify;
-export spawn_joinable;
 export task_result;
 export tr_success;
 export tr_failure;
 export get_task_id;
+export spawn;
+export spawn_notify;
+export spawn_joinable;
 
 native "rust" mod rustrt {
     fn task_sleep(time_in_us: uint);
@@ -94,20 +94,51 @@ fn unpin() { rustrt::unpin_task(); }
 
 fn set_min_stack(stack_size: uint) { rustrt::set_min_stack(stack_size); }
 
-fn spawn(-thunk: fn()) -> task { spawn_inner(thunk, none) }
-
-fn spawn_notify(-thunk: fn(), notify: comm::chan<task_notification>) -> task {
-    spawn_inner(thunk, some(notify))
+fn spawn<~T>(-data: T, f: fn#(T)) -> task {
+    spawn_inner2(data, f, none)
 }
 
-fn spawn_joinable(-thunk: fn()) -> joinable_task {
+fn spawn_notify<~T>(-data: T, f: fn#(T),
+                         notify: comm::chan<task_notification>) -> task {
+    spawn_inner2(data, f, some(notify))
+}
+
+fn spawn_joinable<~T>(-data: T, f: fn#(T)) -> joinable_task {
     let p = comm::port::<task_notification>();
-    let id = spawn_notify(thunk, comm::chan::<task_notification>(p));
+    let id = spawn_notify(data, f, comm::chan::<task_notification>(p));
     ret (id, p);
 }
 
-// FIXME: make this a fn~ once those are supported.
-fn spawn_inner(-thunk: fn(), notify: option<comm::chan<task_notification>>) ->
+// FIXME: To transition from the unsafe spawn that spawns a shared closure to
+// the safe spawn that spawns a bare function we're going to write
+// barefunc-spawn on top of unsafe-spawn.  Sadly, bind does not work reliably
+// enough to suite our needs (#1034, probably others yet to be discovered), so
+// we're going to copy the bootstrap data into a unique pointer, cast it to an
+// unsafe pointer then wrap up the bare function and the unsafe pointer in a
+// shared closure to spawn.
+//
+// After the transition this should all be rewritten.
+
+fn spawn_inner2<~T>(-data: T, f: fn#(T),
+                    notify: option<comm::chan<task_notification>>)
+    -> task_id {
+
+    fn wrapper<~T>(-data: *u8, f: fn#(T)) {
+        let data: ~T = unsafe::reinterpret_cast(data);
+        f(*data);
+    }
+
+    let data = ~data;
+    let dataptr: *u8 = unsafe::reinterpret_cast(data);
+    unsafe::leak(data);
+    let wrapped = bind wrapper(dataptr, f);
+    ret unsafe_spawn_inner(wrapped, notify);
+}
+
+// FIXME: This is the old spawn function that spawns a shared closure.
+// It is a hack and needs to be rewritten.
+fn unsafe_spawn_inner(-thunk: fn@(),
+                      notify: option<comm::chan<task_notification>>) ->
    task_id unsafe {
     let id = rustrt::new_task();
 

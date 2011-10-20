@@ -11,7 +11,7 @@ import syntax::ext::base::*;
 
 
 fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
-               fld: ast_fold, orig: fn(expr_, ast_fold) -> expr_) -> expr_ {
+               fld: ast_fold, orig: fn@(expr_, ast_fold) -> expr_) -> expr_ {
     ret alt e {
           expr_mac(mac) {
             alt mac.node {

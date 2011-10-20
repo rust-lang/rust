@@ -20,7 +20,7 @@ fn reserve<@T>(&v: [mutable? T], n: uint) {
 
 pure fn len<T>(v: [mutable? T]) -> uint { unchecked { rusti::vec_len(v) } }
 
-type init_op<T> = fn(uint) -> T;
+type init_op<T> = fn@(uint) -> T;
 
 fn init_fn<@T>(op: init_op<T>, n_elts: uint) -> [T] {
     let v = [];

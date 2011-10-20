@@ -294,16 +294,6 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
     ret ast::ty_fn(proto, inputs.node, ret_ty, ret_style, constrs);
 }
 
-fn parse_method_proto(p: parser) -> ast::proto {
-    if eat_word(p, "iter") {
-        ret ast::proto_iter;
-    } else if eat_word(p, "fn") {
-        ret ast::proto_fn;
-    } else if eat_word(p, "block") {
-        ret ast::proto_block;
-    } else { unexpected(p, p.peek()); }
-}
-
 fn parse_ty_obj(p: parser, &hi: uint) -> ast::ty_ {
     fn parse_method_sig(p: parser) -> ast::ty_method {
         let flo = p.get_lo_pos();
@@ -400,7 +390,8 @@ fn parse_constr_in_type(p: parser) -> @ast::ty_constr {
 }
 
 
-fn parse_constrs<T>(pser: fn(parser) -> @ast::constr_general<T>, p: parser) ->
+fn parse_constrs<T>(pser: fn@(parser) -> @ast::constr_general<T>,
+                    p: parser) ->
    [@ast::constr_general<T>] {
     let constrs: [@ast::constr_general<T>] = [];
     while true {
@@ -569,7 +560,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if eat_word(p, "fn") {
-        let proto = parse_fn_proto(p);
+        let proto = parse_fn_ty_proto(p);
         t = parse_ty_fn(proto, p);
         alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
     } else if eat_word(p, "block") {
@@ -612,7 +603,7 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
 }
 
 fn parse_seq_to_before_gt<@T>(sep: option::t<token::token>,
-                              f: fn(parser) -> T,
+                              f: fn@(parser) -> T,
                               p: parser) -> [T] {
     let first = true;
     let v = [];
@@ -628,7 +619,7 @@ fn parse_seq_to_before_gt<@T>(sep: option::t<token::token>,
     ret v;
 }
 
-fn parse_seq_to_gt<@T>(sep: option::t<token::token>, f: fn(parser) -> T,
+fn parse_seq_to_gt<@T>(sep: option::t<token::token>, f: fn@(parser) -> T,
                       p: parser) -> [T] {
     let v = parse_seq_to_before_gt(sep, f, p);
     expect_gt(p);
@@ -636,7 +627,7 @@ fn parse_seq_to_gt<@T>(sep: option::t<token::token>, f: fn(parser) -> T,
     ret v;
 }
 
-fn parse_seq_lt_gt<@T>(sep: option::t<token::token>, f: fn(parser) -> T,
+fn parse_seq_lt_gt<@T>(sep: option::t<token::token>, f: fn@(parser) -> T,
                       p: parser) -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, token::LT);
@@ -655,7 +646,7 @@ fn parse_seq_to_end<@T>(ket: token::token, sep: option::t<token::token>,
 
 fn parse_seq_to_before_end<@T>(ket: token::token,
                                sep: option::t<token::token>,
-                               f: fn(parser) -> T, p: parser) -> [T] {
+                               f: fn@(parser) -> T, p: parser) -> [T] {
     let first: bool = true;
     let v: [T] = [];
     while p.peek() != ket {
@@ -670,7 +661,7 @@ fn parse_seq_to_before_end<@T>(ket: token::token,
 
 
 fn parse_seq<@T>(bra: token::token, ket: token::token,
-                sep: option::t<token::token>, f: fn(parser) -> T, p: parser)
+                sep: option::t<token::token>, f: fn@(parser) -> T, p: parser)
    -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, bra);
@@ -846,12 +837,12 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
                 ret parse_spawn_expr(p);
         */
     } else if eat_word(p, "fn") {
-        let proto = parse_fn_proto(p);
+        let proto = parse_fn_anon_proto(p);
         ret parse_fn_expr(p, proto);
     } else if eat_word(p, "block") {
         ret parse_fn_expr(p, ast::proto_block);
     } else if eat_word(p, "lambda") {
-        ret parse_fn_expr(p, ast::proto_closure);
+        ret parse_fn_expr(p, ast::proto_shared(ast::sugar_sexy));
     } else if eat_word(p, "unchecked") {
         ret parse_block_expr(p, lo, ast::unchecked_blk);
     } else if eat_word(p, "unsafe") {
@@ -1910,7 +1901,8 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
          il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-    let f = {decl: decl, proto: ast::proto_fn, body: dtor};
+    let f = {decl: decl, proto: ast::proto_shared(ast::sugar_normal),
+             body: dtor};
     ret mk_item(p, lo, dtor.span.hi, ident,
                 ast::item_res(f, p.get_id(), ty_params, p.get_id()), attrs);
 }
@@ -2143,16 +2135,45 @@ fn parse_auth(p: parser) -> ast::_auth {
     } else { unexpected(p, p.peek()); }
 }
 
-fn parse_fn_proto(p: parser) -> ast::proto {
+fn parse_fn_item_proto(p: parser) -> ast::proto {
+    if p.peek() == token::POUND {
+        p.bump();
+        ast::proto_bare
+    } else {
+        ast::proto_bare
+    }
+}
+
+fn parse_fn_ty_proto(p: parser) -> ast::proto {
     if p.peek() == token::POUND {
         p.bump();
         ast::proto_bare
     } else if p.peek() == token::AT {
         p.bump();
-        ast::proto_fn
+        ast::proto_shared(ast::sugar_normal)
     } else {
-        ast::proto_fn
+        ast::proto_bare
     }
+}
+
+fn parse_fn_anon_proto(p: parser) -> ast::proto {
+    if p.peek() == token::POUND {
+        p.bump();
+        ast::proto_bare
+    } else if p.peek() == token::AT {
+        p.bump();
+        ast::proto_shared(ast::sugar_normal)
+    } else {
+        ast::proto_bare
+    }
+}
+
+fn parse_method_proto(p: parser) -> ast::proto {
+    if eat_word(p, "iter") {
+        ret ast::proto_iter;
+    } else if eat_word(p, "fn") {
+        ret ast::proto_bare;
+    } else { unexpected(p, p.peek()); }
 }
 
 fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
@@ -2160,23 +2181,24 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
         ret some(parse_item_const(p, attrs));
     } else if eat_word(p, "inline") {
         expect_word(p, "fn");
-        let proto = parse_fn_proto(p);
+        let proto = parse_fn_item_proto(p);
         ret some(parse_item_fn_or_iter(p, ast::impure_fn, proto,
                                        attrs, ast::il_inline));
     } else if is_word(p, "fn") && p.look_ahead(1u) != token::LPAREN {
         p.bump();
-        let proto = parse_fn_proto(p);
+        let proto = parse_fn_item_proto(p);
         ret some(parse_item_fn_or_iter(p, ast::impure_fn, proto,
                                        attrs, ast::il_normal));
     } else if eat_word(p, "pure") {
         expect_word(p, "fn");
-        let proto = parse_fn_proto(p);
+        let proto = parse_fn_item_proto(p);
         ret some(parse_item_fn_or_iter(p, ast::pure_fn, proto, attrs,
                                        ast::il_normal));
     } else if is_word(p, "unsafe") && p.look_ahead(1u) != token::LBRACE {
         p.bump();
         expect_word(p, "fn");
-        ret some(parse_item_fn_or_iter(p, ast::unsafe_fn, ast::proto_fn,
+        let proto = parse_fn_item_proto(p);
+        ret some(parse_item_fn_or_iter(p, ast::unsafe_fn, proto,
                                        attrs, ast::il_normal));
     } else if eat_word(p, "iter") {
         ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_iter,

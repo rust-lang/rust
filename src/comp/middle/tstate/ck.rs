@@ -111,7 +111,8 @@ fn check_states_against_conditions(fcx: fn_ctxt, f: _fn, tps: [ast::ty_param],
     visitor =
         @{visit_stmt: check_states_stmt,
           visit_expr: check_states_expr,
-          visit_fn: do_nothing with *visitor};
+          visit_fn: bind do_nothing(_, _, _, _, _, _, _)
+              with *visitor};
     visit::visit_fn(f, tps, sp, i, id, fcx, visit::mk_vt(visitor));
 
     /* Check that the return value is initialized */

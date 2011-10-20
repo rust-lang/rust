@@ -1,5 +1,5 @@
 // -*- rust -*-
-fn ho(f: fn(int) -> int) -> int { let n: int = f(3); ret n; }
+fn ho(f: fn@(int) -> int) -> int { let n: int = f(3); ret n; }
 
 fn direct(x: int) -> int { ret x + 1; }
 

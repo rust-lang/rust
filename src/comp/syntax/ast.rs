@@ -103,14 +103,16 @@ tag kind { kind_pinned; kind_shared; kind_unique; }
 
 tag _auth { auth_unsafe; }
 
+tag proto_sugar {
+    sugar_normal;
+    sugar_sexy;
+}
+
 tag proto {
     proto_iter;
-    proto_fn;
-    proto_block;
-    proto_closure;
-    // Functions without an environment. Eventually, this will
-    // merge with proto_fn.
     proto_bare;
+    proto_shared(proto_sugar);
+    proto_block;
 }
 
 tag binop {

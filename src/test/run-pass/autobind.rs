@@ -1,3 +1,7 @@
+// FIXME: Autobind doesn't work for bare functions currently
+// because it would have to convert them to shared closures
+// xfail-test
+
 fn f<@T>(x: [T]) -> T { ret x[0]; }
 
 fn g(act: fn([int]) -> int) -> int { ret act([1, 2, 3]); }

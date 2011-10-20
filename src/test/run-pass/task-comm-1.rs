@@ -5,11 +5,10 @@ import std::task::join;
 
 fn main() { test00(); }
 
-fn start() { log "Started / Finished task."; }
+fn# start(&&_i: ()) { log "Started / Finished task."; }
 
 fn test00() {
-    let f = start;
-    let t = spawn_joinable(f);
+    let t = spawn_joinable((), start);
     join(t);
     log "Completing.";
 }

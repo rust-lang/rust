@@ -52,7 +52,7 @@ fn find<@K, @V>(m: treemap<K, V>, k: K) -> option<V> {
 }
 
 // Performs an in-order traversal
-fn traverse<@K, @V>(m: treemap<K, V>, f: fn(K, V)) {
+fn traverse<@K, @V>(m: treemap<K, V>, f: fn@(K, V)) {
     alt *m {
       empty. { }
       node(k, v, _, _) {
