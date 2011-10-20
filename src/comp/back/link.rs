@@ -503,12 +503,6 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 // gcc to link the object file with some libs
 fn link_binary(sess: session::session,
                saved_out_filename: str) {
-    let main: str = alt filesearch::search(
-        sess.filesearch(), bind filesearch::pick_file("main.o", _)) {
-      option::some(f) { f }
-      option::none. { sess.fatal("can't find main.o") }
-    };
-
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let stage: str = "-L" + sess.filesearch().get_target_lib_path();
@@ -579,7 +573,7 @@ fn link_binary(sess: session::session,
         }
     } else {
         // FIXME: why do we hardcode -lm?
-        gcc_args += ["-lm", main];
+        gcc_args += ["-lm"];
     }
 
 

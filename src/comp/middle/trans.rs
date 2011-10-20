@@ -5632,6 +5632,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
 
     let llfn = create_main(ccx, sp, main_llfn, main_takes_argv);
     ccx.main_fn = some(llfn);
+    create_entry_fn(ccx, llfn);
 
     fn create_main(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
                    takes_argv: bool) -> ValueRef {
@@ -5663,6 +5664,35 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         finish_fn(fcx, lltop);
 
         ret llfdecl;
+    }
+
+    fn create_entry_fn(ccx: @crate_ctxt, rust_main: ValueRef) {
+        #[cfg(target_os = "win32")]
+        fn main_name() -> str { ret "WinMain@16"; }
+        #[cfg(target_os = "macos")]
+        fn main_name() -> str { ret "main"; }
+        #[cfg(target_os = "linux")]
+        fn main_name() -> str { ret "main"; }
+        let llfty = T_fn([T_int(), T_int()], T_int());
+        let llfn = decl_cdecl_fn(ccx.llmod, main_name(), llfty);
+        let llbb = str::as_buf("top", {|buf|
+            llvm::LLVMAppendBasicBlock(llfn, buf)
+        });
+        let bld = *ccx.builder;
+        llvm::LLVMPositionBuilderAtEnd(bld, llbb);
+        let crate_map = ccx.crate_map;
+        let start_ty = T_fn([val_ty(rust_main), T_int(), T_int(),
+                             val_ty(crate_map)], T_int());
+        let start = str::as_buf("rust_start", {|buf|
+            llvm::LLVMAddGlobal(ccx.llmod, start_ty, buf)
+        });
+        let args = [rust_main, llvm::LLVMGetParam(llfn, 0u),
+                    llvm::LLVMGetParam(llfn, 1u), crate_map];
+        let result = unsafe {
+            llvm::LLVMBuildCall(bld, start, vec::to_ptr(args),
+                                vec::len(args), noname())
+        };
+        llvm::LLVMBuildRet(bld, result);
     }
 }
 
@@ -6146,38 +6176,39 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
 }
 
 
+fn decl_crate_map(sess: session::session, mapname: str,
+                  llmod: ModuleRef) -> ValueRef {
+    let n_subcrates = 1;
+    let cstore = sess.get_cstore();
+    while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
+    if !sess.get_opts().library { mapname = "toplevel"; }
+    let sym_name = "_rust_crate_map_" + mapname;
+    let arrtype = T_array(T_int(), n_subcrates as uint);
+    let maptype = T_struct([T_int(), arrtype]);
+    let map = str::as_buf(sym_name, {|buf|
+        llvm::LLVMAddGlobal(llmod, maptype, buf)
+    });
+    llvm::LLVMSetLinkage(map, lib::llvm::LLVMExternalLinkage
+                         as llvm::Linkage);
+    ret map;
+}
+
 // FIXME use hashed metadata instead of crate names once we have that
-fn create_crate_map(ccx: @crate_ctxt) -> ValueRef {
+fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     let subcrates: [ValueRef] = [];
     let i = 1;
     let cstore = ccx.sess.get_cstore();
     while cstore::have_crate_data(cstore, i) {
         let nm = "_rust_crate_map_" + cstore::get_crate_data(cstore, i).name;
-        let cr =
-            str::as_buf(nm,
-                        {|buf|
-                            llvm::LLVMAddGlobal(ccx.llmod, T_int(), buf)
-                        });
+        let cr = str::as_buf(nm, {|buf|
+            llvm::LLVMAddGlobal(ccx.llmod, T_int(), buf)
+        });
         subcrates += [p2i(cr)];
         i += 1;
     }
     subcrates += [C_int(0)];
-    let mapname;
-    if ccx.sess.get_opts().library {
-        mapname = ccx.link_meta.name;
-    } else { mapname = "toplevel"; }
-    let sym_name = "_rust_crate_map_" + mapname;
-    let arrtype = T_array(T_int(), std::vec::len::<ValueRef>(subcrates));
-    let maptype = T_struct([T_int(), arrtype]);
-    let map =
-        str::as_buf(sym_name,
-                    {|buf| llvm::LLVMAddGlobal(ccx.llmod, maptype, buf) });
-    llvm::LLVMSetLinkage(map,
-                         lib::llvm::LLVMExternalLinkage as llvm::Linkage);
-    llvm::LLVMSetInitializer(map,
-                             C_struct([p2i(create_module_map(ccx)),
-                                       C_array(T_int(), subcrates)]));
-    ret map;
+    llvm::LLVMSetInitializer(map, C_struct([p2i(create_module_map(ccx)),
+                                            C_array(T_int(), subcrates)]));
 }
 
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
@@ -6242,6 +6273,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let sha1s = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let short_names = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let sha = std::sha1::mk_sha1();
+    let link_meta = link::build_link_meta(sess, *crate, output, sha);
+    let crate_map = decl_crate_map(sess, link_meta.name, llmod);
     let ccx =
         @{sess: sess,
           llmod: llmod,
@@ -6253,7 +6286,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           ast_map: amap,
           item_symbols: new_int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
-          link_meta: link::build_link_meta(sess, *crate, output, sha),
+          link_meta: link_meta,
           tag_sizes: tag_sizes,
           discrims: new_int_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
@@ -6283,13 +6316,14 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           task_type: task_type,
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: shape::mk_ctxt(llmod),
-          gc_cx: gc::mk_ctxt()};
+          gc_cx: gc::mk_ctxt(),
+          crate_map: crate_map};
     let cx = new_local_ctxt(ccx);
     collect_items(ccx, crate);
     collect_tag_ctors(ccx, crate);
     trans_constants(ccx, crate);
     trans_mod(cx, crate.node.module);
-    create_crate_map(ccx);
+    fill_crate_map(ccx, crate_map);
     emit_tydescs(ccx);
     shape::gen_shape_tables(ccx);
     write_abi_version(ccx);

@@ -123,7 +123,8 @@ type crate_ctxt =
      task_type: TypeRef,
      builder: BuilderRef_res,
      shape_cx: shape::ctxt,
-     gc_cx: gc::ctxt};
+     gc_cx: gc::ctxt,
+     crate_map: ValueRef};
 
 type local_ctxt =
     {path: [str],
