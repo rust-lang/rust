@@ -596,10 +596,11 @@ fn link_binary(sess: session::session,
 
     log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
     // We run 'gcc' here
-    let err_code = run::run_program(prog, gcc_args);
-    if 0 != err_code {
-        sess.err(#fmt["linking with gcc failed with code %d", err_code]);
+    let prog = run::program_output(prog, gcc_args);
+    if 0 != prog.status {
+        sess.err(#fmt["linking with gcc failed with code %d", prog.status]);
         sess.note(#fmt["gcc arguments: %s", str::connect(gcc_args, " ")]);
+        sess.note(prog.err + prog.out);
         sess.abort_if_errors();
     }
     // Clean up on Darwin
