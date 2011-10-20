@@ -39,13 +39,8 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
         let fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
-    fn decl_with_taskptr(taskptr_type: TypeRef, llmod: ModuleRef, name: str,
-                         tys: [TypeRef], rv: TypeRef) -> ValueRef {
-        ret decl(llmod, name, [taskptr_type] + tys, rv);
-    }
-    let dv = bind decl_with_taskptr(taskptr_type, llmod, _, _, T_void());
-    let d = bind decl_with_taskptr(taskptr_type, llmod, _, _, _);
-    let dr = bind decl(llmod, _, _, _);
+    let d = bind decl(llmod, _, _, _);
+    let dv = bind decl(llmod, _, _, T_void());
 
     ret @{_fail: dv("fail", [T_ptr(T_i8()), T_ptr(T_i8()), T_size_t()]),
           malloc:
@@ -61,31 +56,28 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
                 [T_ptr(T_nil()), T_size_t(), T_size_t(), T_size_t(),
                  T_ptr(T_ptr(tydesc_type)), T_int()], T_ptr(tydesc_type)),
           vec_grow:
-              d("vec_grow", [T_ptr(T_ptr(T_opaque_vec())), T_int()],
-                T_void()),
+              dv("vec_grow", [T_ptr(T_ptr(T_opaque_vec())), T_int()]),
           vec_push:
-              d("vec_push",
-                [T_ptr(T_ptr(T_opaque_vec())), T_ptr(tydesc_type),
-                 T_ptr(T_i8())], T_void()),
+              dv("vec_push",
+                 [T_ptr(T_ptr(T_opaque_vec())), T_ptr(tydesc_type),
+                  T_ptr(T_i8())]),
           cmp_type:
-              dr("cmp_type",
+              dv("cmp_type",
                  [T_ptr(T_i1()), taskptr_type, T_ptr(tydesc_type),
                   T_ptr(T_ptr(tydesc_type)), T_ptr(T_i8()), T_ptr(T_i8()),
-                  T_i8()], T_void()),
+                  T_i8()]),
           log_type:
-              dr("log_type",
-                 [taskptr_type, T_ptr(tydesc_type), T_ptr(T_i8()), T_i32()],
-                 T_void()),
+              dv("log_type", [T_ptr(tydesc_type), T_ptr(T_i8()), T_i32()]),
           dynastack_mark: d("dynastack_mark", [], T_ptr(T_i8())),
           dynastack_alloc:
               d("dynastack_alloc_2", [T_size_t(), T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
-          dynastack_free: d("dynastack_free", [T_ptr(T_i8())], T_void()),
-          alloc_c_stack: dr("alloc_c_stack", [T_size_t()], T_ptr(T_i8())),
-          call_c_stack: dr("call_c_stack",
-                           [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
-                           T_int()),
-          rust_personality: dr("rust_personality", [], T_i32())
+          dynastack_free: dv("dynastack_free", [T_ptr(T_i8())]),
+          alloc_c_stack: d("alloc_c_stack", [T_size_t()], T_ptr(T_i8())),
+          call_c_stack: d("call_c_stack",
+                          [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
+                          T_int()),
+          rust_personality: d("rust_personality", [], T_i32())
          };
 }
 //

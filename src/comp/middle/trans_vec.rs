@@ -163,7 +163,7 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     if strings { new_fill = Sub(bcx, new_fill, C_int(1)); }
     let opaque_lhs = PointerCast(bcx, lhsptr, T_ptr(T_ptr(T_opaque_vec())));
     Call(bcx, bcx_ccx(cx).upcalls.vec_grow,
-         [cx.fcx.lltaskptr, opaque_lhs, new_fill]);
+         [opaque_lhs, new_fill]);
     // Was overwritten if we resized
     let lhs = Load(bcx, lhsptr);
     rhs = Select(bcx, self_append, lhs, rhs);
@@ -204,8 +204,7 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
         let spilled = r.val;
         bcx = r.bcx;
         Call(bcx, bcx_ccx(bcx).upcalls.vec_push,
-             [bcx.fcx.lltaskptr, opaque_v, td,
-              PointerCast(bcx, spilled, T_ptr(T_i8()))]);
+             [opaque_v, td, PointerCast(bcx, spilled, T_ptr(T_i8()))]);
     }
     ret bcx;
 }

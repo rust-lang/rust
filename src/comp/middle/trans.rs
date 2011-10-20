@@ -389,13 +389,13 @@ fn trans_native_call(cx: @block_ctxt, externs: hashmap<str, ValueRef>,
 
 fn trans_non_gc_free(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
     Call(cx, bcx_ccx(cx).upcalls.free,
-         [cx.fcx.lltaskptr, PointerCast(cx, v, T_ptr(T_i8())), C_int(0)]);
+         [PointerCast(cx, v, T_ptr(T_i8())), C_int(0)]);
     ret cx;
 }
 
 fn trans_shared_free(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
     Call(cx, bcx_ccx(cx).upcalls.shared_free,
-         [cx.fcx.lltaskptr, PointerCast(cx, v, T_ptr(T_i8()))]);
+         [PointerCast(cx, v, T_ptr(T_i8()))]);
     ret cx;
 }
 
@@ -462,11 +462,10 @@ fn dynastack_alloca(cx: @block_ctxt, t: TypeRef, n: ValueRef, ty: ty::t) ->
     if cx.unreachable { ret llvm::LLVMGetUndef(t); }
     let bcx = cx;
     let dy_cx = new_raw_block_ctxt(cx.fcx, cx.fcx.lldynamicallocas);
-    let lltaskptr = bcx_fcx(bcx).lltaskptr;
     alt bcx_fcx(cx).llobstacktoken {
       none. {
         bcx_fcx(cx).llobstacktoken =
-            some(mk_obstack_token(bcx_ccx(cx), cx.fcx, lltaskptr));
+            some(mk_obstack_token(bcx_ccx(cx), cx.fcx));
       }
       some(_) {/* no-op */ }
     }
@@ -477,14 +476,14 @@ fn dynastack_alloca(cx: @block_ctxt, t: TypeRef, n: ValueRef, ty: ty::t) ->
     let ti = none;
     let lltydesc = get_tydesc(cx, ty, false, tps_normal, ti).result.val;
 
-    let llresult = Call(dy_cx, dynastack_alloc, [lltaskptr, llsz, lltydesc]);
+    let llresult = Call(dy_cx, dynastack_alloc, [llsz, lltydesc]);
     ret PointerCast(dy_cx, llresult, T_ptr(t));
 }
 
-fn mk_obstack_token(ccx: @crate_ctxt, fcx: @fn_ctxt, lltaskptr: ValueRef) ->
+fn mk_obstack_token(ccx: @crate_ctxt, fcx: @fn_ctxt) ->
    ValueRef {
     let cx = new_raw_block_ctxt(fcx, fcx.lldynamicallocas);
-    ret Call(cx, ccx.upcalls.dynastack_mark, [lltaskptr]);
+    ret Call(cx, ccx.upcalls.dynastack_mark, []);
 }
 
 
@@ -836,7 +835,7 @@ fn trans_shared_malloc(cx: @block_ctxt, llptr_ty: TypeRef, llsize: ValueRef)
     let tydesc = C_null(T_ptr(bcx_ccx(cx).tydesc_type));
     let rval =
         Call(cx, bcx_ccx(cx).upcalls.shared_malloc,
-             [cx.fcx.lltaskptr, llsize, tydesc]);
+             [llsize, tydesc]);
     ret rslt(cx, PointerCast(cx, rval, llptr_ty));
 }
 
@@ -875,7 +874,7 @@ fn trans_malloc_boxed_raw(cx: @block_ctxt, t: ty::t) -> result {
     let lltydesc = tydesc_result.result.val; bcx = tydesc_result.result.bcx;
 
     let rval = Call(cx, ccx.upcalls.malloc,
-                    [cx.fcx.lltaskptr, llsz, lltydesc]);
+                    [llsz, lltydesc]);
     ret rslt(cx, PointerCast(cx, rval, llty));
 }
 
@@ -1034,7 +1033,7 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     if escapes {
         let td_val =
             Call(bcx, bcx_ccx(bcx).upcalls.get_type_desc,
-                 [bcx.fcx.lltaskptr, C_null(T_ptr(T_nil())), sz.val,
+                 [C_null(T_ptr(T_nil())), sz.val,
                   align.val, C_uint(1u + n_params), llfirstparam,
                   C_uint(obj_params)]);
         v = td_val;
@@ -1938,10 +1937,8 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     }
 
     let llcmpresultptr = alloca(bcx, T_i1());
-    let llargs: [ValueRef] =
-        [llcmpresultptr, bcx.fcx.lltaskptr, lltydesc, lltydescs, llrawlhsptr,
-         llrawrhsptr, llop];
-    Call(bcx, llfn, llargs);
+    Call(bcx, llfn, [llcmpresultptr, bcx.fcx.lltaskptr, lltydesc, lltydescs,
+                     llrawlhsptr, llrawrhsptr, llop]);
     ret rslt(bcx, Load(bcx, llcmpresultptr));
 }
 
@@ -4556,7 +4553,7 @@ fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let llval_i8 = PointerCast(log_bcx, llvalptr, T_ptr(T_i8()));
 
     Call(log_bcx, bcx_ccx(log_bcx).upcalls.log_type,
-         [log_bcx.fcx.lltaskptr, lltydesc, llval_i8, C_int(lvl)]);
+         [lltydesc, llval_i8, C_int(lvl)]);
 
     log_bcx = trans_block_cleanups(log_bcx, log_cx);
     Br(log_bcx, after_cx.llbb);
@@ -4619,7 +4616,7 @@ fn trans_fail_value(bcx: @block_ctxt, sp_opt: option::t<span>,
     }
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
-    let args = [bcx.fcx.lltaskptr, V_str, V_filename, C_int(V_line)];
+    let args = [V_str, V_filename, C_int(V_line)];
     let bcx = invoke(bcx, bcx_ccx(bcx).upcalls._fail, args);
     Unreachable(bcx);
     ret bcx;
@@ -4932,8 +4929,7 @@ fn trans_fn_cleanups(fcx: @fn_ctxt, cx: @block_ctxt) {
     alt fcx.llobstacktoken {
       some(lltoken_) {
         let lltoken = lltoken_; // satisfy alias checker
-        Call(cx, fcx_ccx(fcx).upcalls.dynastack_free,
-             [fcx.lltaskptr, lltoken]);
+        Call(cx, fcx_ccx(fcx).upcalls.dynastack_free, [lltoken]);
       }
       none. {/* nothing to do */ }
     }

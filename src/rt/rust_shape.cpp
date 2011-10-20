@@ -552,8 +552,8 @@ upcall_cmp_type(int8_t *result, rust_task *task, const type_desc *tydesc,
 }
 
 extern "C" void
-upcall_log_type(rust_task *task, const type_desc *tydesc, uint8_t *data,
-                uint32_t level) {
+upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
+    rust_task *task = rust_scheduler::get_task();
     if (task->sched->log_lvl < level)
         return;     // TODO: Don't evaluate at all?
 

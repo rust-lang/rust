@@ -55,7 +55,7 @@ upcall_fail(rust_task *task,
 }
 
 extern "C" CDECL uintptr_t
-upcall_malloc(rust_task *unused_task, size_t nbytes, type_desc *td) {
+upcall_malloc(size_t nbytes, type_desc *td) {
     rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
 
@@ -85,7 +85,8 @@ upcall_malloc(rust_task *unused_task, size_t nbytes, type_desc *td) {
  * Called whenever an object's ref count drops to zero.
  */
 extern "C" CDECL void
-upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
+upcall_free(void* ptr, uintptr_t is_gc) {
+    rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
 
     rust_scheduler *sched = task->sched;
@@ -100,7 +101,8 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
 }
 
 extern "C" CDECL uintptr_t
-upcall_shared_malloc(rust_task *task, size_t nbytes, type_desc *td) {
+upcall_shared_malloc(size_t nbytes, type_desc *td) {
+    rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
 
     LOG(task, mem,
@@ -119,7 +121,8 @@ upcall_shared_malloc(rust_task *task, size_t nbytes, type_desc *td) {
  * Called whenever an object's ref count drops to zero.
  */
 extern "C" CDECL void
-upcall_shared_free(rust_task *task, void* ptr) {
+upcall_shared_free(void* ptr) {
+    rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
 
     rust_scheduler *sched = task->sched;
@@ -130,13 +133,13 @@ upcall_shared_free(rust_task *task, void* ptr) {
 }
 
 extern "C" CDECL type_desc *
-upcall_get_type_desc(rust_task *task,
-                     void *curr_crate, // ignored, legacy compat.
+upcall_get_type_desc(void *curr_crate, // ignored, legacy compat.
                      size_t size,
                      size_t align,
                      size_t n_descs,
                      type_desc const **descs,
                      uintptr_t n_obj_params) {
+    rust_task *task = rust_scheduler::get_task();
     check_stack(task);
     LOG_UPCALL_ENTRY(task);
 
@@ -151,15 +154,16 @@ upcall_get_type_desc(rust_task *task,
 }
 
 extern "C" CDECL void
-upcall_vec_grow(rust_task* task, rust_vec** vp, size_t new_sz) {
+upcall_vec_grow(rust_vec** vp, size_t new_sz) {
+    rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
     reserve_vec(task, vp, new_sz);
     (*vp)->fill = new_sz;
 }
 
 extern "C" CDECL void
-upcall_vec_push(rust_task* task, rust_vec** vp, type_desc* elt_ty,
-                void* elt) {
+upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
+    rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
     size_t new_sz = (*vp)->fill + elt_ty->size;
     reserve_vec(task, vp, new_sz);
@@ -173,8 +177,8 @@ upcall_vec_push(rust_task* task, rust_vec** vp, type_desc* elt_ty,
  * space in the dynamic stack.
  */
 extern "C" CDECL void *
-upcall_dynastack_mark(rust_task *task) {
-    return task->dynastack.mark();
+upcall_dynastack_mark() {
+    return rust_scheduler::get_task()->dynastack.mark();
 }
 
 /**
@@ -183,8 +187,8 @@ upcall_dynastack_mark(rust_task *task) {
  * FIXME: Deprecated since dynamic stacks need to be self-describing for GC.
  */
 extern "C" CDECL void *
-upcall_dynastack_alloc(rust_task *task, size_t sz) {
-    return sz ? task->dynastack.alloc(sz, NULL) : NULL;
+upcall_dynastack_alloc(size_t sz) {
+    return sz ? rust_scheduler::get_task()->dynastack.alloc(sz, NULL) : NULL;
 }
 
 /**
@@ -192,14 +196,14 @@ upcall_dynastack_alloc(rust_task *task, size_t sz) {
  * returns it.
  */
 extern "C" CDECL void *
-upcall_dynastack_alloc_2(rust_task *task, size_t sz, type_desc *ty) {
-    return sz ? task->dynastack.alloc(sz, ty) : NULL;
+upcall_dynastack_alloc_2(size_t sz, type_desc *ty) {
+    return sz ? rust_scheduler::get_task()->dynastack.alloc(sz, ty) : NULL;
 }
 
 /** Frees space in the dynamic stack. */
 extern "C" CDECL void
-upcall_dynastack_free(rust_task *task, void *ptr) {
-    return task->dynastack.free(ptr);
+upcall_dynastack_free(void *ptr) {
+    return rust_scheduler::get_task()->dynastack.free(ptr);
 }
 
 /**
