@@ -71,7 +71,7 @@ fn waitpid(pid: int) -> int {
     ret status;
 }
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     fn rust_getcwd() -> str;
 }
 
