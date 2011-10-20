@@ -92,10 +92,7 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
     let out_ty = T_ptr(type_of_inner(cx, sp, output));
     atys += [ret_ref ? T_ptr(out_ty) : out_ty];
 
-    // Arg 1: task pointer.
-    atys += [T_taskptr(*cx)];
-
-    // Arg 2: Env (closure-bindings / self-obj)
+    // Arg 1: Env (closure-bindings / self-obj)
     if is_method {
         atys += [T_ptr(cx.rust_object_type)];
     } else {
@@ -109,7 +106,7 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
         }
     }
 
-    // Args >3: ty params, if not acquired via capture...
+    // Args >2: ty params, if not acquired via capture...
     if !is_method {
         let i = 0u;
         while i < ty_param_count { atys += [T_ptr(cx.tydesc_type)]; i += 1u; }
@@ -347,10 +344,6 @@ fn decl_internal_cdecl_fn(llmod: ModuleRef, name: str, llty: TypeRef) ->
     llvm::LLVMSetLinkage(llfn,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     ret llfn;
-}
-
-fn decl_glue(llmod: ModuleRef, cx: crate_ctxt, s: str) -> ValueRef {
-    ret decl_cdecl_fn(llmod, s, T_fn([T_taskptr(cx)], T_void()));
 }
 
 fn get_extern_fn(externs: hashmap<str, ValueRef>, llmod: ModuleRef, name: str,
@@ -1217,7 +1210,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
         } else { T_ptr(T_i8()) };
 
     let ty_param_count = std::vec::len::<uint>(ty_params);
-    let lltyparams = llvm::LLVMGetParam(llfn, 3u);
+    let lltyparams = llvm::LLVMGetParam(llfn, 2u);
     let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
     let lltydescs = [mutable];
     let p = 0u;
@@ -1235,12 +1228,12 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
 
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
-    let llrawptr0 = llvm::LLVMGetParam(llfn, 4u);
+    let llrawptr0 = llvm::LLVMGetParam(llfn, 3u);
     let llval0 = BitCast(bcx, llrawptr0, llty);
     alt helper {
       default_helper(helper) { helper(bcx, llval0, t); }
       copy_helper(helper) {
-        let llrawptr1 = llvm::LLVMGetParam(llfn, 5u);
+        let llrawptr1 = llvm::LLVMGetParam(llfn, 4u);
         let llval1 = BitCast(bcx, llrawptr1, llty);
         helper(bcx, llval0, llval1, t);
       }
@@ -1463,7 +1456,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     cx = val.bcx;
     // Find and call the actual destructor.
     let dtor_addr = trans_common::get_res_dtor(ccx, cx.sp, did, inner_t);
-    let args = [cx.fcx.llretptr, cx.fcx.lltaskptr, null_env_ptr(cx)];
+    let args = [cx.fcx.llretptr, null_env_ptr(cx)];
     for tp: ty::t in tps {
         let ti: option::t<@tydesc_info> = none;
         let td = get_tydesc(cx, tp, false, tps_normal, ti).result;
@@ -1888,9 +1881,8 @@ fn call_tydesc_glue_full(cx: @block_ctxt, v: ValueRef, tydesc: ValueRef,
       some(sgf) { llfn = sgf; }
     }
 
-    Call(cx, llfn,
-         [C_null(T_ptr(T_nil())), cx.fcx.lltaskptr, C_null(T_ptr(T_nil())),
-          lltydescs, llrawptr]);
+    Call(cx, llfn, [C_null(T_ptr(T_nil())), C_null(T_ptr(T_nil())),
+                    lltydescs, llrawptr]);
 }
 
 fn call_tydesc_glue(cx: @block_ctxt, v: ValueRef, t: ty::t, field: int) ->
@@ -1937,7 +1929,7 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     }
 
     let llcmpresultptr = alloca(bcx, T_i1());
-    Call(bcx, llfn, [llcmpresultptr, bcx.fcx.lltaskptr, lltydesc, lltydescs,
+    Call(bcx, llfn, [llcmpresultptr, lltydesc, lltydescs,
                      llrawlhsptr, llrawrhsptr, llop]);
     ret rslt(bcx, Load(bcx, llcmpresultptr));
 }
@@ -2921,7 +2913,7 @@ fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
     let bcx = new_top_block_ctxt(fcx);
     // Add bindings for the loop variable alias.
     bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat,
-                                          llvm::LLVMGetParam(fcx.llfn, 3u),
+                                          llvm::LLVMGetParam(fcx.llfn, 2u),
                                           false);
     let lltop = bcx.llbb;
     bcx = trans_block(bcx, body);
@@ -3560,10 +3552,10 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
     let llargs: [ValueRef] = alt ty::ty_fn_proto(ccx.tcx, outgoing_fty) {
       ast::proto_bare. {
         // Bare functions don't take an environment
-        [llretptr, fcx.lltaskptr]
+        [llretptr]
       }
       _ {
-        [llretptr, fcx.lltaskptr, lltargetenv]
+        [llretptr, lltargetenv]
       }
     };
 
@@ -3583,7 +3575,7 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
         i += 1u;
     }
 
-    let a: uint = 3u; // retptr, task ptr, env come first
+    let a: uint = 2u; // retptr, env come first
     let b: int = starting_idx;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =
@@ -3847,10 +3839,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
         llargs += [PointerCast(cx, llretslot, llretty)];
     } else { llargs += [llretslot]; }
 
-    // Arg 1: task pointer.
-    llargs += [bcx.fcx.lltaskptr];
-
-    // Arg 2: Env (closure-bindings / self-obj)
+    // Arg 1: Env (closure-bindings / self-obj)
     alt ty::ty_fn_proto(tcx, fn_ty) {
       ast::proto_bare. { }
       _ {
@@ -3858,7 +3847,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
       }
     }
 
-    // Args >3: ty_params ...
+    // Args >2: ty_params ...
     llargs += lltydescs;
 
     // ... then possibly an lliterbody argument.
@@ -4639,7 +4628,7 @@ fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
     }
     let bcx = cx;
     let dummy_retslot = alloca(bcx, T_nil());
-    let llargs: [ValueRef] = [dummy_retslot, cx.fcx.lltaskptr, llenv];
+    let llargs: [ValueRef] = [dummy_retslot, llenv];
     alt e {
       none. {
         llargs += [C_null(T_ptr(T_nil()))];
@@ -5110,8 +5099,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
     let llbbs = mk_standard_basic_blocks(llfndecl);
     // FIXME: llenv is not correct for bare functions
     ret @{llfn: llfndecl,
-          lltaskptr: llvm::LLVMGetParam(llfndecl, 1u),
-          llenv: llvm::LLVMGetParam(llfndecl, 2u),
+          llenv: llvm::LLVMGetParam(llfndecl, 1u),
           llretptr: llvm::LLVMGetParam(llfndecl, 0u),
           mutable llstaticallocas: llbbs.sa,
           mutable llloadenv: llbbs.ca,
@@ -5141,8 +5129,8 @@ fn new_fn_ctxt(cx: @local_ctxt, sp: span, llfndecl: ValueRef) -> @fn_ctxt {
 
 fn implicit_args_for_fn(proto: ast::proto) -> uint {
     alt proto {
-      ast::proto_bare. { 2u }
-      _ { 3u }
+      ast::proto_bare. { 1u }
+      _ { 2u }
     }
 }
 
@@ -5666,10 +5654,9 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let lltop = bcx.llbb;
 
         let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
-        let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
-        let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
-        let args = [lloutputarg, lltaskarg, llenvarg];
-        if takes_argv { args += [llvm::LLVMGetParam(llfdecl, 3u)]; }
+        let llenvarg = llvm::LLVMGetParam(llfdecl, 1u);
+        let args = [lloutputarg, llenvarg];
+        if takes_argv { args += [llvm::LLVMGetParam(llfdecl, 2u)]; }
         Call(bcx, main_llfn, args);
         build_return(bcx);
 
@@ -5825,16 +5812,11 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     let rty = ty::ty_fn_ret(ccx.tcx, fn_type);
     let rty_is_nil = ty::type_is_nil(ccx.tcx, rty);
 
-    let lltaskptr;
-    if cast_to_i32 {
-        lltaskptr = vp2i(bcx, fcx.lltaskptr);
-    } else { lltaskptr = fcx.lltaskptr; }
-
     let call_args: [ValueRef] = [];
-    if pass_task { call_args += [lltaskptr]; }
+    if pass_task { call_args += [C_null(T_ptr(ccx.task_type))]; }
     if uses_retptr { call_args += [bcx.fcx.llretptr]; }
 
-    let arg_n = 3u;
+    let arg_n = 2u;
     for each i: uint in uint::range(0u, num_ty_param) {
         let llarg = llvm::LLVMGetParam(fcx.llfn, arg_n);
         fcx.lltydescs += [llarg];
@@ -6144,11 +6126,6 @@ fn trap(bcx: @block_ctxt) {
     }
 }
 
-fn decl_no_op_type_glue(llmod: ModuleRef, taskptr_type: TypeRef) -> ValueRef {
-    let ty = T_fn([taskptr_type, T_ptr(T_i8())], T_void());
-    ret decl_cdecl_fn(llmod, abi::no_op_type_glue_name(), ty);
-}
-
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct([T_int(), T_int()]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
@@ -6255,9 +6232,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
     let task_type = T_task();
-    let taskptr_type = T_ptr(task_type);
-    tn.associate("taskptr", taskptr_type);
-    let tydesc_type = T_tydesc(taskptr_type);
+    let tydesc_type = T_tydesc();
     tn.associate("tydesc", tydesc_type);
     let hasher = ty::hash_ty;
     let eqer = ty::eq_ty;
@@ -6302,7 +6277,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                mutable n_real_glues: 0u,
                fn_times: @mutable []},
           upcalls:
-              upcall::declare_upcalls(tn, tydesc_type, taskptr_type, llmod),
+              upcall::declare_upcalls(tn, tydesc_type, llmod),
           rust_object_type: T_rust_object(),
           tydesc_type: tydesc_type,
           task_type: task_type,

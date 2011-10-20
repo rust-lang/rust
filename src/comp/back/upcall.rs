@@ -31,7 +31,7 @@ type upcalls =
      rust_personality: ValueRef};
 
 fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
-                   taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
+                   llmod: ModuleRef) -> @upcalls {
     fn decl(llmod: ModuleRef, name: str, tys: [TypeRef], rv: TypeRef) ->
        ValueRef {
         let arg_tys: [TypeRef] = [];
@@ -63,7 +63,7 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
                   T_ptr(T_i8())]),
           cmp_type:
               dv("cmp_type",
-                 [T_ptr(T_i1()), taskptr_type, T_ptr(tydesc_type),
+                 [T_ptr(T_i1()), T_ptr(tydesc_type),
                   T_ptr(T_ptr(tydesc_type)), T_ptr(T_i8()), T_ptr(T_i8()),
                   T_i8()]),
           log_type:

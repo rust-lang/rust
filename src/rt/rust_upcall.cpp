@@ -28,8 +28,7 @@ check_stack(rust_task *task) {
 // dealing with reference counts
 static inline void
 copy_elements(rust_task *task, type_desc *elem_t,
-              void *pdst, void *psrc, size_t n)
-{
+              void *pdst, void *psrc, size_t n) {
     char *dst = (char *)pdst, *src = (char *)psrc;
     memmove(dst, src, n);
 
@@ -39,7 +38,7 @@ copy_elements(rust_task *task, type_desc *elem_t,
         size_t elem_size = elem_t->size;
         const type_desc **tydescs = elem_t->first_param;
         for (char *p = dst; p < dst+n; p += elem_size) {
-            take_glue(NULL, task, NULL, tydescs, p);
+            take_glue(NULL, NULL, tydescs, p);
         }
     }
 }

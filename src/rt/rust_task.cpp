@@ -130,8 +130,7 @@ struct spawn_args {
     rust_task *task;
     uintptr_t a3;
     uintptr_t a4;
-    void (*CDECL f)(int *, rust_task *,
-                       uintptr_t, uintptr_t);
+    void (*CDECL f)(int *, uintptr_t, uintptr_t);
 };
 
 struct rust_closure_env {
@@ -147,7 +146,7 @@ void task_start_wrapper(spawn_args *a)
 
     bool failed = false;
     try {
-        a->f(&rval, task, a->a3, a->a4);
+        a->f(&rval, a->a3, a->a4);
     } catch (rust_task *ex) {
         A(task->sched, ex == task,
           "Expected this task to be thrown for unwinding");

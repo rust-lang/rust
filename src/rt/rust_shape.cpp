@@ -530,9 +530,10 @@ log::walk_res(const rust_fn *dtor, unsigned n_params,
 } // end namespace shape
 
 extern "C" void
-upcall_cmp_type(int8_t *result, rust_task *task, const type_desc *tydesc,
+upcall_cmp_type(int8_t *result, const type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
+    rust_task *task = rust_scheduler::get_task();
     shape::arena arena;
 
     // FIXME: This may well be broken when comparing two closures or objects

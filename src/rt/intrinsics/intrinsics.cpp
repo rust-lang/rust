@@ -28,7 +28,7 @@ rust_intrinsic_cast(rust_task *task, void *retptr, type_desc *t1,
                     type_desc *t2, void *src)
 {
     if (t1->size != t2->size) {
-        upcall_fail(task, "attempt to cast values of differing sizes",
+        upcall_fail("attempt to cast values of differing sizes",
                     __FILE__, __LINE__);
         return;
     }
@@ -45,6 +45,6 @@ rust_intrinsic_addr_of(rust_task *task, void **retptr, type_desc *ty,
 extern "C" void
 rust_intrinsic_recv(rust_task *task, void **retptr, type_desc *ty,
                     rust_port *port) {
-    port_recv(task, (uintptr_t*)retptr, port);
+    port_recv((uintptr_t*)retptr, port);
 }
 

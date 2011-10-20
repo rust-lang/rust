@@ -680,13 +680,12 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
 
     // Set up the three implicit arguments to the outer method we'll need to
     // call.
-    let llouter_mthd_args: [ValueRef] = [llretptr, fcx.lltaskptr,
-                                         llself_obj_ptr];
+    let llouter_mthd_args: [ValueRef] = [llretptr, llself_obj_ptr];
 
     // Copy the explicit arguments that are being passed into the forwarding
     // function (they're in fcx.llargs) to llouter_mthd_args.
 
-    let a: uint = 3u; // retptr, task ptr, env come first
+    let a: uint = 2u; // retptr, env come first
     for arg: ty::arg in m.inputs {
         llouter_mthd_args += [llvm::LLVMGetParam(llbackwarding_fn, a)];
         a += 1u;
@@ -833,12 +832,12 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
 
     // Set up the three implicit arguments to the original method we'll need
     // to call.
-    let llorig_mthd_args: [ValueRef] = [llretptr, fcx.lltaskptr, self_stack];
+    let llorig_mthd_args: [ValueRef] = [llretptr, self_stack];
 
     // Copy the explicit arguments that are being passed into the forwarding
     // function (they're in fcx.llargs) to llorig_mthd_args.
 
-    let a: uint = 3u; // retptr, task ptr, env come first
+    let a: uint = 2u; // retptr, env come first
     for arg: ty::arg in m.inputs {
         llorig_mthd_args += [llvm::LLVMGetParam(llforwarding_fn, a)];
         a += 1u;

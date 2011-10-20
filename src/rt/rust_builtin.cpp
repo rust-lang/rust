@@ -452,9 +452,9 @@ struct fn_env_pair {
 
 // FIXME This is probably not needed at all anymore. Have to rearrange some
 // argument passing to remove it.
-void rust_spawn_wrapper(void* retptr, rust_task* taskptr, void* envptr,
-                        void(*func)(void*, rust_task*, void*)) {
-    func(retptr, taskptr, envptr);
+void rust_spawn_wrapper(void* retptr, void* envptr,
+                        void(*func)(void*, void*)) {
+    func(retptr, envptr);
 }
 
 extern "C" CDECL void

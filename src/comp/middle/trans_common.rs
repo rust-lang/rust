@@ -234,7 +234,6 @@ type fn_ctxt =
 
     // This function's enclosing local context.
     {llfn: ValueRef,
-     lltaskptr: ValueRef,
      llenv: ValueRef,
      llretptr: ValueRef,
      mutable llstaticallocas: BasicBlockRef,
@@ -605,15 +604,15 @@ fn T_cmp_glue_fn(cx: crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
+fn T_tydesc() -> TypeRef {
     let tydesc = T_named_struct("tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
     let glue_fn_ty =
-        T_ptr(T_fn([T_ptr(T_nil()), taskptr_type, T_ptr(T_nil()), tydescpp,
+        T_ptr(T_fn([T_ptr(T_nil()), T_ptr(T_nil()), tydescpp,
                     pvoid], T_void()));
     let cmp_glue_fn_ty =
-        T_ptr(T_fn([T_ptr(T_i1()), taskptr_type, T_ptr(tydesc), tydescpp,
+        T_ptr(T_fn([T_ptr(T_i1()), T_ptr(tydesc), tydescpp,
                     pvoid, pvoid, T_i8()], T_void()));
 
     let elems =

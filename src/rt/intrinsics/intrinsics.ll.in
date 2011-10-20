@@ -83,7 +83,7 @@ entry:
   br i1 %cmp, label %if.end, label %if.then
 
 if.then:                                          ; preds = %entry
-  tail call void @upcall_fail(%struct.rust_task* %task, i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8]* @.str1, i32 0, i32 0), i32 45)
+  tail call void @upcall_fail(i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8]* @.str1, i32 0, i32 0), i32 45)
   br label %return
 
 if.end:                                           ; preds = %entry
@@ -94,7 +94,7 @@ return:                                           ; preds = %if.end, %if.then
   ret void
 }
 
-declare void @upcall_fail(%struct.rust_task*, i8*, i8*, i32)
+declare void @upcall_fail(i8*, i8*, i32)
 
 declare void @llvm.memmove.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) nounwind
 
@@ -107,11 +107,11 @@ entry:
 define linkonce_odr void @rust_intrinsic_recv(%struct.rust_task* %task, i8** %retptr, %struct.type_desc* nocapture %ty, %class.rust_port* %port) {
 entry:
   %0 = bitcast i8** %retptr to i32*
-  tail call void @port_recv(%struct.rust_task* %task, i32* %0, %class.rust_port* %port)
+  tail call void @port_recv(i32* %0, %class.rust_port* %port)
   ret void
 }
 
-declare void @port_recv(%struct.rust_task*, i32*, %class.rust_port*)
+declare void @port_recv(i32*, %class.rust_port*)
 
 !0 = metadata !{metadata !"long", metadata !1}
 !1 = metadata !{metadata !"omnipotent char", metadata !2}
