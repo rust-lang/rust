@@ -213,15 +213,6 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     ret @item;
 }
 
-fn empty_fn_ty() -> ast::ty {
-    let proto = ast::proto_bare;
-    let input_ty = [];
-    let ret_ty = @nospan(ast::ty_nil);
-    let cf = ast::return_val;
-    let constrs = [];
-    ret nospan(ast::ty_fn(proto, input_ty, ret_ty, cf, constrs));
-}
-
 // The ast::ty of [std::test::test_desc]
 fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
     let test_fn_ty: ast::ty = nospan(
