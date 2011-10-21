@@ -64,7 +64,7 @@ fn from_str(num: str) -> float {
        c   = char_range.ch;
        pos = char_range.next;
        alt c {
-          '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9'  {
+         '0' to '9' {
            total = total * 10f;
            total += ((c as int) - ('0' as int)) as float;
          }
