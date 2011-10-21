@@ -2,7 +2,7 @@
 Can we bind native things?
 */
 
-native "rust" mod rustrt {
+native "cdecl" mod rustrt {
     fn task_yield();
 }
 

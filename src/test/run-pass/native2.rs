@@ -1,10 +1,10 @@
 
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     fn unsupervise();
 }
 
-native "rust" mod bar = "" { }
+native "c-stack-cdecl" mod bar = "" { }
 
 native "cdecl" mod zed = "" { }
 
