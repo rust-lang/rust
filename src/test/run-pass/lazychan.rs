@@ -21,4 +21,4 @@ fn main() {
     assert (y == 10);
 }
 
-fn# child(c: chan<int>) { send(c, 10); }
+fn child(c: chan<int>) { send(c, 10); }

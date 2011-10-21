@@ -3,7 +3,7 @@ import std::task;
 import std::comm;
 import std::comm::send;
 
-fn# start(&&args: (comm::chan<int>, int, int)) {
+fn start(&&args: (comm::chan<int>, int, int)) {
     let (c, start, number_of_messages) = args;
     let i: int = 0;
     while i < number_of_messages { send(c, start + i); i += 1; }

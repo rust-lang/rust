@@ -5,7 +5,7 @@ import std::task;
 
 fn main() { log "===== SPAWNING and JOINING THREAD TASKS ====="; test00(); }
 
-fn# start(&&task_number: int) {
+fn start(&&task_number: int) {
     log "Started task.";
     let i: int = 0;
     while i < 10000 { i = i + 1; }

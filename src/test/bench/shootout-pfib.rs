@@ -27,7 +27,7 @@ import std::comm::send;
 import std::comm::recv;
 
 fn fib(n: int) -> int {
-    fn# pfib(args: (chan<int>, int)) {
+    fn pfib(args: (chan<int>, int)) {
         let (c, n) = args;
         if n == 0 {
             send(c, 0);
@@ -62,7 +62,7 @@ fn parse_opts(argv: [str]) -> config {
     }
 }
 
-fn# stress_task(&&id: int) {
+fn stress_task(&&id: int) {
     let i = 0;
     while true {
         let n = 15;

@@ -1,4 +1,4 @@
-fn# f<T>(i: T, j: T, k: T) {
+fn f<T>(i: T, j: T, k: T) {
     assert i == j;
     assert j != k;
 }

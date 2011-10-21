@@ -6,9 +6,9 @@ import std::task;
 import std::comm::port;
 import std::comm::recv;
 
-fn# grandchild(&&_i: ()) { fail; }
+fn grandchild(&&_i: ()) { fail; }
 
-fn# child(&&_i: ()) {
+fn child(&&_i: ()) {
     let p = port::<int>();
     task::spawn((), grandchild);
     let x = recv(p);

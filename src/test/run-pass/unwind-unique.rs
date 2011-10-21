@@ -2,7 +2,7 @@
 use std;
 import std::task;
 
-fn# f(&&_i: ()) {
+fn f(&&_i: ()) {
     task::unsupervise();
     let a = ~0;
     fail;

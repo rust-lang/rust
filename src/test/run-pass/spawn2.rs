@@ -5,7 +5,7 @@ import std::task::spawn;
 
 fn main() { spawn((10, 20, 30, 40, 50, 60, 70, 80, 90), child); }
 
-fn# child(&&args: (int, int, int, int, int, int, int, int, int)) {
+fn child(&&args: (int, int, int, int, int, int, int, int, int)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;
     log_err i1;
     log_err i2;

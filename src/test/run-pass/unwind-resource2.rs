@@ -6,7 +6,7 @@ import std::comm;
 resource complainer(c: @int) {
 }
 
-fn# f(&&_i: ()) {
+fn f(&&_i: ()) {
     task::unsupervise();
     let c <- complainer(@0);
     fail;

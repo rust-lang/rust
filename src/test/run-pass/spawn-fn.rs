@@ -4,7 +4,7 @@ use std;
 import std::task::yield;
 import std::task;
 
-fn# x(&&args: (str, int)) {
+fn x(&&args: (str, int)) {
     let (s, n) = args;
     log s; log n;
 }

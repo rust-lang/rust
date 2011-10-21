@@ -7,7 +7,7 @@ import std::comm::chan;
 import std::comm::port;
 import std::comm::recv;
 
-fn# child(&&_i: ()) { fail; }
+fn child(&&_i: ()) { fail; }
 
 fn main() {
     let p = port::<int>();

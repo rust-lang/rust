@@ -7,7 +7,7 @@ import std::comm::recv;
 
 fn main() { log "===== WITHOUT THREADS ====="; test00(); }
 
-fn# test00_start(&&args: (chan<int>, int, int)) {
+fn test00_start(&&args: (chan<int>, int, int)) {
     let (ch, message, count) = args;
     log "Starting test00_start";
     let i: int = 0;

@@ -12,4 +12,4 @@ fn main() {
     log_err "3";
 }
 
-fn# child(&&_i: ()) { log_err "2"; }
+fn child(&&_i: ()) { log_err "2"; }

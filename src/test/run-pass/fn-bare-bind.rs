@@ -1,4 +1,4 @@
-fn# f(i: int) {
+fn f(i: int) {
     assert i == 10;
 }
 

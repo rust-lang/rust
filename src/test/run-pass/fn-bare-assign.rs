@@ -1,9 +1,9 @@
-fn# f(i: int, &called: bool) {
+fn f(i: int, &called: bool) {
     assert i == 10;
     called = true;
 }
 
-fn# g(f: fn#(int, &bool), &called: bool) {
+fn g(f: fn(int, &bool), &called: bool) {
     f(10, called);
 }
 

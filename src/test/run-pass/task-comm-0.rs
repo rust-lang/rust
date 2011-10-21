@@ -7,7 +7,7 @@ import std::task;
 
 fn main() { test05(); }
 
-fn# test05_start(ch : chan<int>) {
+fn test05_start(ch : chan<int>) {
     log_err ch;
     send(ch, 10);
     log_err "sent 10";

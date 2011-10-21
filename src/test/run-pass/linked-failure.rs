@@ -5,9 +5,9 @@ import std::task;
 import std::comm::port;
 import std::comm::recv;
 
-fn# child(&&_i: ()) { assert (1 == 2); }
+fn child(&&_i: ()) { assert (1 == 2); }
 
-fn# parent(&&_i: ()) {
+fn parent(&&_i: ()) {
     // Since this task isn't supervised it won't bring down the whole
     // process
     task::unsupervise();

@@ -3,7 +3,7 @@ import std::comm;
 import std::task;
 import std::uint;
 
-fn# child(args: (comm::chan<~uint>, uint)) {
+fn child(args: (comm::chan<~uint>, uint)) {
     let (c, i) = args;
     comm::send(c, ~i);
 }

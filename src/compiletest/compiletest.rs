@@ -195,7 +195,7 @@ fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn@()) ->
         (cx.config, cx.procsrv.chan, testfile), run_test_task);
 }
 
-fn# run_test_task(args: (common::config, procsrv::reqchan, [u8])) {
+fn run_test_task(args: (common::config, procsrv::reqchan, [u8])) {
 
     let (config, procsrv_chan, testfile) = args;
 

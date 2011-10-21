@@ -1,4 +1,4 @@
-fn# bare() {}
+fn bare() {}
 
 fn likes_block(f: block()) { f() }
 

@@ -1,4 +1,4 @@
-fn# bare() {}
+fn bare() {}
 
 fn likes_shared(f: fn@()) { f() }
 

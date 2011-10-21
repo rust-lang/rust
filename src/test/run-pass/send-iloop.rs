@@ -4,11 +4,11 @@ import std::task;
 import std::comm;
 import std::uint;
 
-fn# die(&&_i: ()) {
+fn die(&&_i: ()) {
     fail;
 }
 
-fn# iloop(&&_i: ()) {
+fn iloop(&&_i: ()) {
     task::unsupervise();
     task::spawn((), die);
     let p = comm::port::<()>();

@@ -4,7 +4,7 @@ use std;
 import std::task;
 import std::comm;
 
-fn# goodfail(&&_i: ()) {
+fn goodfail(&&_i: ()) {
     task::yield();
     fail "goodfail";
 }

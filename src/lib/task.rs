@@ -93,16 +93,16 @@ fn unpin() { rustrt::unpin_task(); }
 
 fn set_min_stack(stack_size: uint) { rustrt::set_min_stack(stack_size); }
 
-fn spawn<~T>(-data: T, f: fn#(T)) -> task {
+fn spawn<~T>(-data: T, f: fn(T)) -> task {
     spawn_inner2(data, f, none)
 }
 
-fn spawn_notify<~T>(-data: T, f: fn#(T),
+fn spawn_notify<~T>(-data: T, f: fn(T),
                          notify: comm::chan<task_notification>) -> task {
     spawn_inner2(data, f, some(notify))
 }
 
-fn spawn_joinable<~T>(-data: T, f: fn#(T)) -> joinable_task {
+fn spawn_joinable<~T>(-data: T, f: fn(T)) -> joinable_task {
     let p = comm::port::<task_notification>();
     let id = spawn_notify(data, f, comm::chan::<task_notification>(p));
     ret (id, p);
@@ -118,11 +118,11 @@ fn spawn_joinable<~T>(-data: T, f: fn#(T)) -> joinable_task {
 //
 // After the transition this should all be rewritten.
 
-fn spawn_inner2<~T>(-data: T, f: fn#(T),
+fn spawn_inner2<~T>(-data: T, f: fn(T),
                     notify: option<comm::chan<task_notification>>)
     -> task_id {
 
-    fn wrapper<~T>(-data: *u8, f: fn#(T)) {
+    fn wrapper<~T>(-data: *u8, f: fn(T)) {
         let data: ~T = unsafe::reinterpret_cast(data);
         f(*data);
     }

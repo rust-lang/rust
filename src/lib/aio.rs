@@ -49,7 +49,7 @@ fn ip_to_sbuf(ip: net::ip_addr) -> *u8 unsafe {
     vec::to_ptr(str::bytes(net::format_addr(ip)))
 }
 
-fn# connect_task(args: (net::ip_addr, int, chan<socket_event>)) {
+fn connect_task(args: (net::ip_addr, int, chan<socket_event>)) {
     let (ip, portnum, evt) = args;
     let connecter = port();
     rustrt::aio_connect(ip_to_sbuf(ip), portnum, chan(connecter));
@@ -84,7 +84,7 @@ fn new_client(client: client, evt: chan<socket_event>) {
     log "close message sent";
 }
 
-fn# accept_task(args: (client, chan<server_event>)) {
+fn accept_task(args: (client, chan<server_event>)) {
     let (client, events) = args;
     log "accept task was spawned";
     let p = port();
@@ -94,7 +94,7 @@ fn# accept_task(args: (client, chan<server_event>)) {
     log "done accepting";
 }
 
-fn# server_task(args: (net::ip_addr, int, chan<server_event>,
+fn server_task(args: (net::ip_addr, int, chan<server_event>,
                        chan<server>)) {
     let (ip, portnum, events, server) = args;
     let accepter = port();
@@ -111,7 +111,7 @@ fn# server_task(args: (net::ip_addr, int, chan<server_event>,
     }
 }
 
-fn# request_task(c: chan<ctx>) {
+fn request_task(c: chan<ctx>) {
     // Create a port to accept IO requests on
     let p = port();
     // Hand of its channel to our spawner
@@ -150,7 +150,7 @@ fn# request_task(c: chan<ctx>) {
     }
 }
 
-fn# iotask(c: chan<ctx>) {
+fn iotask(c: chan<ctx>) {
     log "io task spawned";
     // Initialize before accepting requests
     rustrt::aio_init();

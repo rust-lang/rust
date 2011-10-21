@@ -75,7 +75,7 @@ mod map_reduce {
         ret tasks;
     }
 
-    fn# map_task(args: (chan<ctrl_proto>, str)) {
+    fn map_task(args: (chan<ctrl_proto>, str)) {
         let (ctrl, input) = args;
         // log_err "map_task " + input;
         let intermediates = map::new_str_hash();
@@ -108,7 +108,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn# reduce_task(args: (str, chan<chan<reduce_proto>>)) {
+    fn reduce_task(args: (str, chan<chan<reduce_proto>>)) {
         let (key, out) = args;
         let p = port();
 

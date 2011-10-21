@@ -2,9 +2,9 @@
 // Issue #1038
 
 fn main() {
-    fn# foo<T>() { }
+    fn foo<T>() { }
 
     // This wants to build a closure over type int,
     // but there's no way to do that while still being a bare function
-    let f: fn#() = foo::<int>;
+    let f: fn() = foo::<int>;
 }

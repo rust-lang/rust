@@ -9,7 +9,7 @@ import std::uint;
 import std::str;
 import std::task;
 
-fn# f(&&n: uint) {
+fn f(&&n: uint) {
     for each i in uint::range(0u, n) {
         let v: [u8] = [];
         vec::reserve(v, 1000u);

@@ -27,7 +27,7 @@ fn main() {
     log "main thread exiting";
 }
 
-fn# child(&&args: (int, comm::chan<int>)) {
+fn child(&&args: (int, comm::chan<int>)) {
     let (x, ch) = args;
     log x;
     comm::send(ch, x);

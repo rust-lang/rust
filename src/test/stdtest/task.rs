@@ -15,25 +15,25 @@ fn test_unsupervise() { }
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "linux")]
 fn test_unsupervise() {
-    fn# f(&&_i: ()) { task::unsupervise(); fail; }
+    fn f(&&_i: ()) { task::unsupervise(); fail; }
     task::spawn((), f);
 }
 
 #[test]
 fn test_lib_spawn() {
-    fn# foo(&&_i: ()) { log_err "Hello, World!"; }
+    fn foo(&&_i: ()) { log_err "Hello, World!"; }
     task::spawn((), foo);
 }
 
 #[test]
 fn test_lib_spawn2() {
-    fn# foo(&&x: int) { assert (x == 42); }
+    fn foo(&&x: int) { assert (x == 42); }
     task::spawn(42, foo);
 }
 
 #[test]
 fn test_join_chan() {
-    fn# winner(&&_i: ()) { }
+    fn winner(&&_i: ()) { }
 
     let p = comm::port();
     task::spawn_notify((), winner, comm::chan(p));
@@ -56,7 +56,7 @@ fn test_join_chan_fail() { }
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "linux")]
 fn test_join_chan_fail() {
-    fn# failer(&&_i: ()) { task::unsupervise(); fail }
+    fn failer(&&_i: ()) { task::unsupervise(); fail }
 
     let p = comm::port();
     task::spawn_notify((), failer, comm::chan(p));
@@ -71,7 +71,7 @@ fn test_join_chan_fail() {
 
 #[test]
 fn test_join_convenient() {
-    fn# winner(&&_i: ()) { }
+    fn winner(&&_i: ()) { }
     let handle = task::spawn_joinable((), winner);
     assert (task::tr_success == task::join(handle));
 }
@@ -80,7 +80,7 @@ fn test_join_convenient() {
 #[ignore]
 fn spawn_polymorphic() {
     // FIXME #1038: Can't spawn palymorphic functions
-    /*fn# foo<~T>(x: T) { log_err x; }
+    /*fn foo<~T>(x: T) { log_err x; }
 
     task::spawn(true, foo);
     task::spawn(42, foo);*/

@@ -13,6 +13,6 @@ fn main() {
     join(other);
 }
 
-fn# child(&&_i: ()) {
+fn child(&&_i: ()) {
     log_err "4"; yield(); log_err "5"; yield(); log_err "6";
 }

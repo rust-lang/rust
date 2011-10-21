@@ -4,7 +4,7 @@ import std::comm;
 
 fn main() { test00(); }
 
-fn# test00_start(&&args: (comm::chan<int>, int)) {
+fn test00_start(&&args: (comm::chan<int>, int)) {
     let (c, number_of_messages) = args;
     let i: int = 0;
     while i < number_of_messages { comm::send(c, i + 0); i += 1; }

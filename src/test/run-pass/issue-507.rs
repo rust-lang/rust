@@ -15,9 +15,9 @@ import std::comm::send;
 import std::comm::port;
 import std::comm::recv;
 
-fn# grandchild(c: chan<int>) { send(c, 42); }
+fn grandchild(c: chan<int>) { send(c, 42); }
 
-fn# child(c: chan<int>) {
+fn child(c: chan<int>) {
     let _grandchild = task::spawn_joinable(c, grandchild);
     join(_grandchild);
 }

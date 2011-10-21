@@ -7,7 +7,7 @@ import std::comm::chan;
 import std::comm::recv;
 import std::task;
 
-fn# a(c: chan<int>) {
+fn a(c: chan<int>) {
     if true {
         log "task a";
         log "task a";
@@ -37,7 +37,7 @@ fn main() {
     log "children finished, root finishing";
 }
 
-fn# b(c: chan<int>) {
+fn b(c: chan<int>) {
     if true {
         log "task b";
         log "task b";

@@ -3,5 +3,5 @@ type r = {
 };
 
 fn main() {
-    let i: r = {field: fn#() { }};
+    let i: r = {field: fn() { }};
 }

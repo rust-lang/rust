@@ -36,7 +36,7 @@ mod map_reduce {
         for i: str in inputs { task::spawn((ctrl, i), map_task); }
     }
 
-    fn# map_task(&&args: (chan<ctrl_proto>, str)) {
+    fn map_task(&&args: (chan<ctrl_proto>, str)) {
         let (ctrl, input) = args;
 
         let intermediates = map::new_str_hash();

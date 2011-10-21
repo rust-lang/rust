@@ -3,6 +3,6 @@
 use std;
 import std::task;
 
-fn# child2(&&s: str) { }
+fn child2(&&s: str) { }
 
 fn main() { let x = task::spawn("hi", child2); }

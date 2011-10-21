@@ -2,7 +2,7 @@ use std;
 import std::comm;
 import std::task;
 
-fn# start(c: comm::chan<comm::chan<int>>) {
+fn start(c: comm::chan<comm::chan<int>>) {
     let p: comm::port<int> = comm::port();
     comm::send(c, comm::chan(p));
 }

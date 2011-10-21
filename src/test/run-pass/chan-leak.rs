@@ -12,7 +12,7 @@ tag request { quit; close(chan<bool>); }
 
 type ctx = chan<request>;
 
-fn# request_task(c: chan<ctx>) {
+fn request_task(c: chan<ctx>) {
     let p = port();
     send(c, chan(p));
     let req: request;

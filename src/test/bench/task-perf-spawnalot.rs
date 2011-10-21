@@ -4,7 +4,7 @@ import std::task;
 import std::uint;
 import std::str;
 
-fn# f(&&n: uint) {
+fn f(&&n: uint) {
     let i = 0u;
     while i < n {
         task::join(task::spawn_joinable((), g));
@@ -12,7 +12,7 @@ fn# f(&&n: uint) {
     }
 }
 
-fn# g(&&_i: ()) { }
+fn g(&&_i: ()) { }
 
 fn main(args: [str]) {
     let n =

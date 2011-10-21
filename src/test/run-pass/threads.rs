@@ -9,5 +9,5 @@ fn main() {
     log "main thread exiting";
 }
 
-fn# child(&&x: int) { log x; }
+fn child(&&x: int) { log x; }
 

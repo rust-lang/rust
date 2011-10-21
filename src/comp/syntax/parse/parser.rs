@@ -2135,20 +2135,12 @@ fn parse_auth(p: parser) -> ast::_auth {
     } else { unexpected(p, p.peek()); }
 }
 
-fn parse_fn_item_proto(p: parser) -> ast::proto {
-    if p.peek() == token::POUND {
-        p.bump();
-        ast::proto_bare
-    } else {
-        ast::proto_bare
-    }
+fn parse_fn_item_proto(_p: parser) -> ast::proto {
+    ast::proto_bare
 }
 
 fn parse_fn_ty_proto(p: parser) -> ast::proto {
-    if p.peek() == token::POUND {
-        p.bump();
-        ast::proto_bare
-    } else if p.peek() == token::AT {
+    if p.peek() == token::AT {
         p.bump();
         ast::proto_shared(ast::sugar_normal)
     } else {
@@ -2157,10 +2149,7 @@ fn parse_fn_ty_proto(p: parser) -> ast::proto {
 }
 
 fn parse_fn_anon_proto(p: parser) -> ast::proto {
-    if p.peek() == token::POUND {
-        p.bump();
-        ast::proto_bare
-    } else if p.peek() == token::AT {
+    if p.peek() == token::AT {
         p.bump();
         ast::proto_shared(ast::sugar_normal)
     } else {

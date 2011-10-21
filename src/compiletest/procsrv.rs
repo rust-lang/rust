@@ -39,7 +39,7 @@ fn mk() -> handle {
     let setupport = port();
     let task = task::spawn_joinable(
         chan(setupport),
-        fn# (setupchan: chan<chan<request>>) {
+        fn (setupchan: chan<chan<request>>) {
             let reqport = port();
             let reqchan = chan(reqport);
             send(setupchan, reqchan);

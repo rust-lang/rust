@@ -7,7 +7,7 @@ resource complainer(c: comm::chan<bool>) {
     comm::send(c, true);
 }
 
-fn# f(c: comm::chan<bool>) {
+fn f(c: comm::chan<bool>) {
     task::unsupervise();
     let c <- complainer(c);
     fail;

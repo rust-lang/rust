@@ -7,7 +7,7 @@ import std::comm::send;
 import std::comm::recv;
 import std::task;
 
-fn# a(c: chan<int>) { send(c, 10); }
+fn a(c: chan<int>) { send(c, 10); }
 
 fn main() {
     let p = port();
