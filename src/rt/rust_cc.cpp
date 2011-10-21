@@ -95,7 +95,12 @@ class irc : public shape::data<irc,shape::ptr> {
     }
 
     void walk_fn() {
-        shape::data<irc,shape::ptr>::walk_fn_contents(dp);
+	// Record an irc for the environment box, but don't descend
+	// into it since it will be walked via the box's allocation
+	dp += sizeof(void *); // skip code pointer
+	uint8_t * box_ptr = shape::bump_dp<uint8_t *>(dp);
+	shape::ptr ref_count_dp(box_ptr);
+	maybe_record_irc(ref_count_dp);
     }
 
     void walk_obj() {
@@ -114,26 +119,30 @@ class irc : public shape::data<irc,shape::ptr> {
     void walk_subcontext(irc &sub) { sub.walk(); }
 
     void walk_box_contents(irc &sub, shape::ptr &ref_count_dp) {
-        if (!ref_count_dp)
-            return;
-
-        // Bump the internal reference count of the box.
-        if (ircs.find((void *)ref_count_dp) == ircs.end()) {
-	    LOG(task, gc,
-		"setting internal reference count for %p to 1",
-		(void *)ref_count_dp);
-            ircs[(void *)ref_count_dp] = 1;
-        } else {
-	    uintptr_t newcount = ircs[(void *)ref_count_dp] + 1;
-	    LOG(task, gc,
-		"bumping internal reference count for %p to %lu",
-		(void *)ref_count_dp, newcount);
-            ircs[(void *)ref_count_dp] = newcount;
-        }
+	maybe_record_irc(ref_count_dp);
 
         // Do not traverse the contents of this box; it's in the allocation
         // somewhere, so we're guaranteed to come back to it (if we haven't
         // traversed it already).
+    }
+
+    void maybe_record_irc(shape::ptr &ref_count_dp) {
+        if (!ref_count_dp)
+            return;
+
+	// Bump the internal reference count of the box.
+	if (ircs.find((void *)ref_count_dp) == ircs.end()) {
+	  LOG(task, gc,
+	      "setting internal reference count for %p to 1",
+	      (void *)ref_count_dp);
+	  ircs[(void *)ref_count_dp] = 1;
+	} else {
+	  uintptr_t newcount = ircs[(void *)ref_count_dp] + 1;
+	  LOG(task, gc,
+	      "bumping internal reference count for %p to %lu",
+	      (void *)ref_count_dp, newcount);
+	  ircs[(void *)ref_count_dp] = newcount;
+	}
     }
 
     void walk_struct(const uint8_t *end_sp) {
@@ -231,8 +240,8 @@ find_roots(rust_task *task, irc_map &ircs, std::vector<void *> &roots) {
         } else {
             LOG(task, gc, "nonroot found: %p, irc %lu, ref count %lu",
 		alloc, irc, ref_count);
-            /*assert(irc == ref_count && "Internal reference count must be "
-                   "less than or equal to the total reference count!");*/
+            assert(irc == ref_count && "Internal reference count must be "
+                   "less than or equal to the total reference count!");
         }
 
         ++begin;
