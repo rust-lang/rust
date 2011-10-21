@@ -422,18 +422,141 @@ mark::do_mark(rust_task *task, const std::vector<void *> &roots,
     }
 }
 
+class sweep : public shape::data<sweep,shape::ptr> {
+    friend class shape::data<sweep,shape::ptr>;
+
+    sweep(const sweep &other, const shape::ptr &in_dp)
+	: shape::data<sweep,shape::ptr>(other.task, other.align,
+					other.sp, other.params,
+					other.tables, in_dp) {}
+
+    sweep(const sweep &other,
+	  const uint8_t *in_sp,
+	  const shape::type_param *in_params,
+	  const rust_shape_tables *in_tables = NULL)
+	: shape::data<sweep,shape::ptr>(other.task,
+					other.align,
+					in_sp,
+					in_params,
+					in_tables ? in_tables : other.tables,
+					other.dp) {}
+
+    sweep(const sweep &other,
+	  const uint8_t *in_sp,
+	  const shape::type_param *in_params,
+	  const rust_shape_tables *in_tables,
+	  shape::ptr in_dp)
+	: shape::data<sweep,shape::ptr>(other.task,
+					other.align,
+					in_sp,
+					in_params,
+					in_tables,
+					in_dp) {}
+
+    sweep(rust_task *in_task,
+	  bool in_align,
+	  const uint8_t *in_sp,
+	  const shape::type_param *in_params,
+	  const rust_shape_tables *in_tables,
+	  uint8_t *in_data)
+	: shape::data<sweep,shape::ptr>(in_task, in_align, in_sp,
+					in_params, in_tables, in_data) {}
+
+    void walk_vec(bool is_pod, uint16_t sp_size) {
+	void *vec = shape::get_dp<void *>(dp);
+	walk_vec(is_pod, get_vec_data_range(dp));
+	task->kernel->free(vec);
+    }
+
+    void walk_vec(bool is_pod,
+		  const std::pair<shape::ptr,shape::ptr> &data_range) {
+	sweep sub(*this, data_range.first);
+	shape::ptr data_end = sub.end_dp = data_range.second;
+	while (sub.dp < data_end) {
+	    sub.walk_reset();
+	    sub.align = true;
+	}
+    }
+
+    void walk_tag(shape::tag_info &tinfo, uint32_t tag_variant) {
+        shape::data<sweep,shape::ptr>::walk_variant(tinfo, tag_variant);
+    }
+
+    void walk_box() {
+	shape::data<sweep,shape::ptr>::walk_box_contents();
+    }
+
+    void walk_fn() {
+	return;
+    }
+
+    void walk_obj() {
+        shape::data<sweep,shape::ptr>::walk_obj_contents(dp);
+    }
+
+    void walk_res(const shape::rust_fn *dtor, unsigned n_params,
+                  const shape::type_param *params, const uint8_t *end_sp,
+                  bool live) {
+        while (this->sp != end_sp) {
+            this->walk();
+            align = true;
+        }
+    }
+
+    void walk_subcontext(sweep &sub) { sub.walk(); }
+
+    void walk_box_contents(sweep &sub, shape::ptr &ref_count_dp) {
+	return;
+    }
+
+    void walk_struct(const uint8_t *end_sp) {
+        while (this->sp != end_sp) {
+            this->walk();
+            align = true;
+        }
+    }
+
+    void walk_variant(shape::tag_info &tinfo, uint32_t variant_id,
+                      const std::pair<const uint8_t *,const uint8_t *>
+                      variant_ptr_and_end) {
+	sweep sub(*this, variant_ptr_and_end.first, tinfo.params);
+
+	const uint8_t *variant_end = variant_ptr_and_end.second;
+	while (sub.sp < variant_end) {
+	    sub.walk();
+	    align = true;
+	}
+    }
+
+    template<typename T>
+    inline void walk_number() { /* no-op */ }
+
+public:
+    static void do_sweep(rust_task *task, const std::set<void *> &marked);
+};
 
 void
-sweep(rust_task *task, const std::set<void *> &marked) {
+sweep::do_sweep(rust_task *task, const std::set<void *> &marked) {
     std::map<void *,const type_desc *>::iterator
         begin(task->local_allocs.begin()), end(task->local_allocs.end());
     while (begin != end) {
         void *alloc = begin->first;
+
         if (marked.find(alloc) == marked.end()) {
             LOG(task, gc, "object is part of a cycle: %p", alloc);
 
-            // FIXME: Run the destructor, *if* it's a resource.
+	    const type_desc *tydesc = begin->second;
+            uint8_t *p = reinterpret_cast<uint8_t *>(alloc);
+            shape::arena arena;
+            shape::type_param *params =
+                shape::type_param::from_tydesc_and_data(tydesc, p, arena);
 
+	    sweep sweep(task, true, tydesc->shape,
+			params, tydesc->shape_tables,
+			p + sizeof(uintptr_t));
+	    sweep.walk();
+
+            // FIXME: Run the destructor, *if* it's a resource.
             task->free(alloc);
         }
         ++begin;
@@ -455,7 +578,7 @@ do_cc(rust_task *task) {
     std::set<void *> marked;
     mark::do_mark(task, roots, marked);
 
-    sweep(task, marked);
+    sweep::do_sweep(task, marked);
 }
 
 void
