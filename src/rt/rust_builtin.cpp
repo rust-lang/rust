@@ -92,7 +92,7 @@ leak(void *thing) {
 }
 
 extern "C" CDECL intptr_t
-refcount(type_desc *t, intptr_t *v) {
+refcount(intptr_t *v) {
     // Passed-in value has refcount 1 too high
     // because it was ref'ed while making the call.
     return (*v) - 1;
@@ -107,11 +107,6 @@ extern "C" CDECL void
 unsupervise() {
     rust_task *task = rust_scheduler::get_task();
     task->unsupervise();
-}
-
-extern "C" CDECL type_desc*
-get_type_desc(void *unused_task, type_desc* t) {
-    return t;
 }
 
 extern "C" CDECL void

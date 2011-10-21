@@ -6,21 +6,24 @@ tag type_desc {
     type_desc(@type_desc);
 }
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     // Explicitly re-export native stuff we want to be made
     // available outside this crate. Otherwise it's
     // visible-in-crate, but not re-exported.
     fn last_os_error() -> str;
-    fn size_of<T>() -> uint;
-    fn align_of<T>() -> uint;
+    fn size_of(td: *type_desc) -> uint;
+    fn align_of(td: *type_desc) -> uint;
     fn refcount<T>(t: @T) -> uint;
     fn do_gc();
     fn unsupervise();
+}
+
+native "rust-intrinsic" mod rusti {
     fn get_type_desc<T>() -> *type_desc;
 }
 
 fn get_type_desc<T>() -> *type_desc {
-    ret rustrt::get_type_desc::<T>();
+    ret rusti::get_type_desc::<T>();
 }
 
 fn last_os_error() -> str {
@@ -28,11 +31,11 @@ fn last_os_error() -> str {
 }
 
 fn size_of<T>() -> uint {
-    ret rustrt::size_of::<T>();
+    ret rustrt::size_of(get_type_desc::<T>());
 }
 
 fn align_of<T>() -> uint {
-    ret rustrt::align_of::<T>();
+    ret rustrt::align_of(get_type_desc::<T>());
 }
 
 fn refcount<T>(t: @T) -> uint {

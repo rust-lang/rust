@@ -48,3 +48,9 @@ rust_intrinsic_recv(rust_task *task, void **retptr, type_desc *ty,
     port_recv((uintptr_t*)retptr, port);
 }
 
+extern "C" void
+rust_intrinsic_get_type_desc(rust_task *task, void **retptr,
+                             type_desc* ty) {
+    *(type_desc**)retptr = ty;
+}
+
