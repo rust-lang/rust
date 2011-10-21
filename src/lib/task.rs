@@ -22,25 +22,27 @@ export spawn;
 export spawn_notify;
 export spawn_joinable;
 
-native "rust" mod rustrt {                           // C Stack?
-    fn task_sleep(time_in_us: uint);                 // No
-    fn task_yield();                                 // No
-    fn start_task(id: task_id, closure: *u8);        // No
-    fn task_join(t: task_id) -> int;                 // Refactor
+native "cdecl" mod rustrt {
+    // these must run on the Rust stack so that they can swap stacks etc:
+    fn task_sleep(time_in_us: uint);
+    fn task_yield();
+    fn start_task(id: task_id, closure: *u8);
+    fn task_join(t: task_id) -> int;
 }
 
 native "c-stack-cdecl" mod rustrt2 = "rustrt" {
-    fn pin_task();                                   // Yes
-    fn unpin_task();                                 // Yes
-    fn get_task_id() -> task_id;                     // Yes
+    // these can run on the C stack:
+    fn pin_task();
+    fn unpin_task();
+    fn get_task_id() -> task_id;
 
-    fn set_min_stack(stack_size: uint);              // Yes
+    fn set_min_stack(stack_size: uint);
 
     fn new_task() -> task_id;
     fn drop_task(task: *rust_task);
     fn get_task_pointer(id: task_id) -> *rust_task;
 
-    fn migrate_alloc(alloc: *u8, target: task_id);   // Yes
+    fn migrate_alloc(alloc: *u8, target: task_id);
 }
 
 type rust_task =
