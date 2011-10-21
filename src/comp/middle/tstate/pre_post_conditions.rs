@@ -109,14 +109,14 @@ fn find_pre_post_loop(fcx: fn_ctxt, l: @local, index: @expr, body: blk,
                       id: node_id) {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
-    for each p: @pat in pat_bindings(l.node.pat) {
+    pat_bindings(l.node.pat) {|p|
         let ident = alt p.node { pat_bind(id) { id } };
         let v_init = ninit(p.id, ident);
         relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
         // Hack: for-loop index variables are frequently ignored,
         // so we pretend they're used
         use_var(fcx, p.id);
-    }
+    };
 
     let loop_precond =
         seq_preconds(fcx, [expr_pp(fcx.ccx, index), block_pp(fcx.ccx, body)]);
@@ -577,9 +577,9 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                     /* LHS always becomes initialized,
                      whether or not this is a move */
                     find_pre_post_expr(fcx, an_init.expr);
-                    for each p: @pat in pat_bindings(alocal.node.pat) {
+                    pat_bindings(alocal.node.pat) {|p|
                         copy_pre_post(fcx.ccx, p.id, an_init.expr);
-                    }
+                    };
                     /* Inherit ann from initializer, and add var being
                        initialized to the postcondition */
                     copy_pre_post(fcx.ccx, id, an_init.expr);
@@ -590,18 +590,15 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                       _ { }
                     }
 
-                    for each pat: @pat in pat_bindings(alocal.node.pat) {
+                    pat_bindings(alocal.node.pat) {|pat|
                         /* FIXME: This won't be necessary when typestate
                         works well enough for pat_bindings to return a
                         refinement-typed thing. */
-                        let ident =
-                            alt pat.node {
-                              pat_bind(n) { n }
-                              _ {
-                                fcx.ccx.tcx.sess.span_bug(pat.span,
-                                                          "Impossible LHS");
-                              }
-                            };
+                        let ident = alt pat.node {
+                          pat_bind(n) { n }
+                          _ { fcx.ccx.tcx.sess.span_bug(pat.span,
+                                                        "Impossible LHS"); }
+                        };
                         alt p {
                           some(p) {
                             copy_in_postcond(fcx, id,
@@ -615,7 +612,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                           none. { }
                         }
                         gen(fcx, id, ninit(pat.id, ident));
-                    }
+                    };
 
                     if an_init.op == init_move && is_path(an_init.expr) {
                         forget_in_postcond(fcx, id, an_init.expr.id);
@@ -628,7 +625,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                                seq_preconds(fcx, [prev_pp, e_pp]));
                     /* Include the LHSs too, since those aren't in the
                      postconds of the RHSs themselves */
-                    for each pat: @pat in pat_bindings(alocal.node.pat) {
+                    pat_bindings(alocal.node.pat) {|pat|
                         alt pat.node {
                           pat_bind(n) {
                             set_in_postcond(bit_num(fcx, ninit(pat.id, n)),
@@ -639,14 +636,14 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                                                       "Impossible LHS");
                           }
                         }
-                    }
+                    };
                     copy_pre_post_(fcx.ccx, id, prev_pp.precondition,
                                    prev_pp.postcondition);
                   }
                   none. {
-                    for each p: @pat in pat_bindings(alocal.node.pat) {
+                    pat_bindings(alocal.node.pat) {|p|
                         clear_pp(node_id_to_ts_ann(fcx.ccx, p.id).conditions);
-                    }
+                    };
                     clear_pp(node_id_to_ts_ann(fcx.ccx, id).conditions);
                   }
                 }

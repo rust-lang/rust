@@ -46,17 +46,17 @@ fn map_fn(cx: ctx, f: _fn, _tp: [ty_param], _sp: codemap::span,
 }
 
 fn map_local(cx: ctx, loc: @local) {
-    for each p in ast_util::pat_bindings(loc.node.pat) {
+    ast_util::pat_bindings(loc.node.pat) {|p|
         cx.map.insert(p.id, node_local(cx.local_id));
         cx.local_id += 1u;
-    }
+    };
 }
 
 fn map_arm(cx: ctx, arm: arm) {
-    for each p in ast_util::pat_bindings(arm.pats[0]) {
+    ast_util::pat_bindings(arm.pats[0]) {|p|
         cx.map.insert(p.id, node_local(cx.local_id));
         cx.local_id += 1u;
-    }
+    };
 }
 
 fn map_item(cx: ctx, i: @item) {

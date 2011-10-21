@@ -48,35 +48,29 @@ type pat_id_map = std::map::hashmap<str, node_id>;
 // use the node_id of their namesake in the first pattern.
 fn pat_id_map(pat: @pat) -> pat_id_map {
     let map = std::map::new_str_hash::<node_id>();
-    for each bound in pat_bindings(pat) {
+    pat_bindings(pat) {|bound|
         let name = alt bound.node { pat_bind(n) { n } };
         map.insert(name, bound.id);
-    }
+    };
     ret map;
 }
 
 // FIXME: could return a constrained type
-iter pat_bindings(pat: @pat) -> @pat {
+fn pat_bindings(pat: @pat, it: block(@pat)) {
     alt pat.node {
-      pat_bind(_) { put pat; }
-      pat_tag(_, sub) {
-        for p in sub { for each b in pat_bindings(p) { put b; } }
-      }
-      pat_rec(fields, _) {
-        for f in fields { for each b in pat_bindings(f.pat) { put b; } }
-      }
-      pat_tup(elts) {
-        for elt in elts { for each b in pat_bindings(elt) { put b; } }
-      }
-      pat_box(sub) { for each b in pat_bindings(sub) { put b; } }
-      pat_uniq(sub) { for each b in pat_bindings(sub) { put b; } }
+      pat_bind(_) { it(pat); }
+      pat_tag(_, sub) { for p in sub { pat_bindings(p, it); } }
+      pat_rec(fields, _) { for f in fields { pat_bindings(f.pat, it); } }
+      pat_tup(elts) { for elt in elts { pat_bindings(elt, it); } }
+      pat_box(sub) { pat_bindings(sub, it); }
+      pat_uniq(sub) { pat_bindings(sub, it); }
       pat_wild. | pat_lit(_) | pat_range(_, _) { }
     }
 }
 
 fn pat_binding_ids(pat: @pat) -> [node_id] {
     let found = [];
-    for each b in pat_bindings(pat) { found += [b.id]; }
+    pat_bindings(pat) {|b| found += [b.id]; };
     ret found;
 }
 
