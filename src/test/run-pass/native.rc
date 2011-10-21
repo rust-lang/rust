@@ -1,7 +1,7 @@
 // xfail-test
 // -*- rust -*-
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
   fn str_buf(str s) -> int;
 }
 

@@ -117,7 +117,7 @@ fn test_fn() {
     assert (h1 >= h2);
 }
 
-native "rust" mod native_mod = "" {
+native "cdecl" mod native_mod = "" {
     fn do_gc();
     fn unsupervise();
 }
