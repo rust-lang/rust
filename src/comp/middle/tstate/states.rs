@@ -335,7 +335,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                                     vec::len(elts)), elts,
                                       return_val);
       }
-      expr_call(operator, operands) {
+      expr_call(operator, operands, _) {
         ret find_pre_post_state_call(fcx, pres, operator, e.id,
                                      callee_arg_init_ops(fcx, operator.id),
                                      operands,

@@ -2072,7 +2072,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                            out_args, rt, cf, constrs);
         write::ty_only_fixup(fcx, id, ft);
       }
-      ast::expr_call(f, args) {
+      ast::expr_call(f, args, _) {
         bot = check_call_full(fcx, expr.span, f, args, expr.id);
       }
       ast::expr_self_method(ident) {
@@ -2535,7 +2535,7 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     /* e must be a call expr where all arguments are either
     literals or slots */
     alt e.node {
-      ast::expr_call(operator, operands) {
+      ast::expr_call(operator, operands, _) {
         if !ty::is_pred_ty(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, operator)) {
             fcx.ccx.tcx.sess.span_err
                 (operator.span,
@@ -2632,7 +2632,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
         let call_expr_id = fcx.ccx.tcx.sess.next_node_id();
         let call_expr =
             @{id: call_expr_id,
-              node: ast::expr_call(oper, c_args),
+              node: ast::expr_call(oper, c_args, false),
               span: c.span};
         check_pred_expr(fcx, call_expr);
     }

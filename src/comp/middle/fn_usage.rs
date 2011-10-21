@@ -42,7 +42,7 @@ fn fn_usage_expr(expr: @ast::expr,
         }
       }
 
-      ast::expr_call(f, args) {
+      ast::expr_call(f, args, _) {
         let f_ctx = {unsafe_fn_legal: true,
                      generic_bare_fn_legal: true with ctx};
         v.visit_expr(f, f_ctx, v);

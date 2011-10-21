@@ -302,7 +302,7 @@ fn mk_test_wrapper(cx: test_ctxt,
                    span: span) -> @ast::expr {
     let call_expr: ast::expr = {
         id: cx.next_node_id(),
-        node: ast::expr_call(@fn_path_expr, []),
+        node: ast::expr_call(@fn_path_expr, [], false),
         span: span
     };
 
@@ -401,7 +401,7 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
     let test_path_expr: ast::expr =
         {id: cx.next_node_id(), node: test_path_expr_, span: dummy_sp()};
 
-    let test_call_expr_: ast::expr_ = ast::expr_call(@test_path_expr, []);
+    let test_call_expr_ = ast::expr_call(@test_path_expr, [], false);
 
     let test_call_expr: ast::expr =
         {id: cx.next_node_id(), node: test_call_expr_, span: dummy_sp()};
@@ -419,7 +419,7 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
 
     let test_main_call_expr_: ast::expr_ =
         ast::expr_call(@test_main_path_expr,
-                       [@args_path_expr, @test_call_expr]);
+                       [@args_path_expr, @test_call_expr], false);
 
     let test_main_call_expr: ast::expr =
         {id: cx.next_node_id(), node: test_main_call_expr_, span: dummy_sp()};

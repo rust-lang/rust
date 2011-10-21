@@ -93,7 +93,7 @@ fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], sp: span,
 fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
     let handled = true;
     alt ex.node {
-      ast::expr_call(f, args) {
+      ast::expr_call(f, args, _) {
         check_call(*cx, f, args);
         handled = false;
       }
@@ -667,7 +667,7 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     }
     if is_none(path_def_id(cx, base_root.ex)) {
         alt base_root.ex.node {
-          ast::expr_call(f, args) {
+          ast::expr_call(f, args, _) {
             let fty = ty::expr_ty(cx.tcx, f);
             alt ty::ty_fn_ret_style(cx.tcx, fty) {
               ast::return_ref(mut, arg_n) {

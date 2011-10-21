@@ -163,7 +163,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
 }
 
 pure fn is_call_expr(e: @expr) -> bool {
-    alt e.node { expr_call(_, _) { true } _ { false } }
+    alt e.node { expr_call(_, _, _) { true } _ { false } }
 }
 
 fn is_constraint_arg(e: @expr) -> bool {

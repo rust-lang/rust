@@ -174,7 +174,7 @@ fn need_shared_or_pinned_ctor(tcx: ty::ctxt, a: @ast::expr, descr: str) {
     fn pinned_ctor(a: @ast::expr) -> bool {
         // FIXME: Technically a lambda block is also a pinned ctor
         alt a.node {
-          ast::expr_call(cexpr, _) {
+          ast::expr_call(cexpr, _, _) {
             // Assuming that if it's a call that it's safe to move in, mostly
             // because I don't know offhand how to ensure that it's a call
             // specifically to a resource constructor
@@ -224,7 +224,7 @@ fn check_expr(tcx: ty::ctxt, e: @ast::expr) {
       ast::expr_fail(option::some(a)) {
         need_expr_kind(tcx, a, ast::kind_shared, "'fail' operand");
       }
-      ast::expr_call(callee, _) {
+      ast::expr_call(callee, _, _) {
         let tpt = ty::expr_ty_params_and_ty(tcx, callee);
 
         // If we have typarams, we're calling an item; we need to check

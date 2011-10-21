@@ -309,7 +309,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 
 
     alt e.node {
-      expr_call(operator, operands) {
+      expr_call(operator, operands, _) {
         /* copy */
 
         let args = operands;

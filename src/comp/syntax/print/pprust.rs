@@ -727,11 +727,19 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         commasep_exprs(s, inconsistent, exprs);
         pclose(s);
       }
-      ast::expr_call(func, args) {
+      ast::expr_call(func, args, has_block) {
         print_expr_parens_if_not_bot(s, func);
-        popen(s);
-        commasep_exprs(s, inconsistent, args);
-        pclose(s);
+        let base_args = args, blk = none;
+        if has_block { blk = some(vec::pop(base_args)); }
+        if !has_block || vec::len(base_args) > 0u {
+            popen(s);
+            commasep_exprs(s, inconsistent, base_args);
+            pclose(s);
+        }
+        if has_block {
+            nbsp(s);
+            print_expr(s, option::get(blk));
+        }
       }
       ast::expr_self_method(ident) {
         word(s.s, "self.");

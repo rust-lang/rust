@@ -150,7 +150,7 @@ fn visit_decl(cx: @ctx, d: @decl, &&e: (), v: visit::vt<()>) {
 
 fn visit_expr(cx: @ctx, ex: @expr, &&e: (), v: visit::vt<()>) {
     alt ex.node {
-      expr_call(f, args) { check_call(cx, f, args); }
+      expr_call(f, args, _) { check_call(cx, f, args); }
       expr_swap(lhs, rhs) {
         check_lval(cx, lhs, msg_assign);
         check_lval(cx, rhs, msg_assign);

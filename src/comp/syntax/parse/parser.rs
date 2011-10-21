@@ -977,7 +977,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
             parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                       parse_expr, p);
         hi = es.span.hi;
-        ex = ast::expr_call(f, es.node);
+        ex = ast::expr_call(f, es.node, false);
     } else if p.peek() == token::MOD_SEP ||
                   is_ident(p.peek()) && !is_word(p, "true") &&
                       !is_word(p, "false") {
@@ -1051,7 +1051,7 @@ fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
                 let es = parse_seq(token::LPAREN, token::RPAREN,
                                    some(token::COMMA), parse_expr, p);
                 hi = es.span.hi;
-                let nd = ast::expr_call(e, es.node);
+                let nd = ast::expr_call(e, es.node, false);
                 e = mk_expr(p, lo, hi, nd);
             }
           }
@@ -1071,19 +1071,6 @@ fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
                 e = mk_expr(p, lo, hi, ast::expr_field(e, p.get_str(i)));
               }
               t { unexpected(p, t); }
-            }
-          }
-          token::LBRACE. when is_bar(p.look_ahead(1u)) {
-            p.bump();
-            let blk = parse_fn_block_expr(p);
-            alt e.node {
-              ast::expr_call(f, args) {
-                e = @{node: ast::expr_call(f, args + [blk]) with *e};
-              }
-              _ {
-                e = mk_expr(p, lo, p.get_last_hi_pos(),
-                            ast::expr_call(e, [blk]));
-              }
             }
           }
           _ { ret e; }
@@ -1569,7 +1556,6 @@ fn parse_source_stmt(p: parser) -> @ast::stmt {
         let decl = parse_let(p);
         ret @spanned(lo, decl.span.hi, ast::stmt_decl(decl, p.get_id()));
     } else {
-
         let item_attrs;
         alt parse_outer_attrs_or_ext(p) {
           none. { item_attrs = []; }
@@ -1589,7 +1575,6 @@ fn parse_source_stmt(p: parser) -> @ast::stmt {
             }
         }
 
-
         alt maybe_item {
           some(i) {
             let hi = i.span.hi;
@@ -1599,6 +1584,21 @@ fn parse_source_stmt(p: parser) -> @ast::stmt {
           none. {
             // Remainder are line-expr stmts.
             let e = parse_expr(p);
+            // See if it is a block call
+            if p.peek() == token::LBRACE && is_bar(p.look_ahead(1u)) {
+                p.bump();
+                let blk = parse_fn_block_expr(p);
+                alt e.node {
+                  ast::expr_call(f, args, false) {
+                    e = @{node: ast::expr_call(f, args + [blk], true)
+                        with *e};
+                  }
+                  _ {
+                    e = mk_expr(p, lo, p.get_last_hi_pos(),
+                                ast::expr_call(e, [blk], true));
+                  }
+                }
+            }
             ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_id()));
           }
           _ { p.fatal("expected statement"); }
@@ -1624,6 +1624,7 @@ fn expr_has_value(e: @ast::expr) -> bool {
       ast::expr_for(_, _, blk) | ast::expr_do_while(blk, _) {
         !option::is_none(blk.node.expr)
       }
+      ast::expr_call(_, _, true) { false }
       _ { true }
     }
 }

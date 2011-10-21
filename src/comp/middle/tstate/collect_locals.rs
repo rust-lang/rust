@@ -32,7 +32,7 @@ fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
 
       // If it's a call, generate appropriate instances of the
       // call's constraints.
-      expr_call(operator, operands) {
+      expr_call(operator, operands, _) {
         for c: @ty::constr in constraints_expr(cx.tcx, operator) {
             let ct: sp_constr =
                 respan(c.span,

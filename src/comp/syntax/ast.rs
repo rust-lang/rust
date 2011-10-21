@@ -184,7 +184,7 @@ type expr = {id: node_id, node: expr_, span: span};
 tag expr_ {
     expr_vec([@expr], mutability);
     expr_rec([field], option::t<@expr>);
-    expr_call(@expr, [@expr]);
+    expr_call(@expr, [@expr], bool);
     expr_tup([@expr]);
     expr_self_method(ident);
     expr_bind(@expr, [option::t<@expr>]);

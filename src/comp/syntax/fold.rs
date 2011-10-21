@@ -348,8 +348,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
                      option::map(fld.fold_expr, maybe_expr))
           }
           expr_tup(elts) { expr_tup(vec::map(fld.fold_expr, elts)) }
-          expr_call(f, args) {
-            expr_call(fld.fold_expr(f), fld.map_exprs(fld.fold_expr, args))
+          expr_call(f, args, blk) {
+            expr_call(fld.fold_expr(f), fld.map_exprs(fld.fold_expr, args),
+                      blk)
           }
           expr_self_method(id) { expr_self_method(fld.fold_ident(id)) }
           expr_bind(f, args) {

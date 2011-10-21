@@ -3147,7 +3147,7 @@ fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
           ty::ty_rec(_) { true }
         }
       }
-      ast::expr_call(f, _) {
+      ast::expr_call(f, _, _) {
           let fty = ty::expr_ty(tcx, f);
           ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fty))
       }
@@ -3198,7 +3198,7 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         ret lval_owned(sub.bcx, val);
       }
       // This is a by-ref returning call. Regular calls are not lval
-      ast::expr_call(f, args) {
+      ast::expr_call(f, args, _) {
         let cell = empty_dest_cell();
         let bcx = trans_call(cx, f, args, e.id, by_val(cell));
         ret lval_owned(bcx, *cell);
@@ -4175,7 +4175,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(bcx, e.span, anon_obj, e.id, dest);
       }
-      ast::expr_call(f, args) {
+      ast::expr_call(f, args, _) {
         ret trans_call(bcx, f, args, e.id, dest);
       }
       ast::expr_field(_, _) {

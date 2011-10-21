@@ -79,7 +79,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     fn make_call(cx: ext_ctxt, sp: span, fn_path: [ast::ident],
                  args: [@ast::expr]) -> @ast::expr {
         let pathexpr = make_path_expr(cx, sp, fn_path);
-        let callexpr = ast::expr_call(pathexpr, args);
+        let callexpr = ast::expr_call(pathexpr, args, false);
         ret @{id: cx.next_id(), node: callexpr, span: sp};
     }
     fn make_rec_expr(cx: ext_ctxt, sp: span,

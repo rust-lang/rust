@@ -607,7 +607,7 @@ fn exprs_to_constr_args(tcx: ty::ctxt, args: [@expr]) -> [@constr_arg_use] {
 
 fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
     alt e.node {
-      expr_call(operator, args) {
+      expr_call(operator, args, _) {
         alt operator.node {
           expr_path(p) {
             ret respan(e.span,
