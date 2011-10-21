@@ -47,10 +47,10 @@ fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
     log ">" + id + " " + desc;
     let rng = myrandom(std::rand::mk_rng().next());
     let op: str = "";
-    for each i: uint in uint::range(0u, n as uint) {
+    uint::range(0u, n as uint) {|i|
         str::push_byte(op, select_random(rng.next(100u32), genelist) as u8);
         if str::byte_len(op) >= LINE_LENGTH() { log op; op = ""; }
-    }
+    };
     if str::byte_len(op) > 0u { log op; }
 }
 
@@ -58,10 +58,10 @@ fn make_repeat_fasta(id: str, desc: str, s: str, n: int) {
     log ">" + id + " " + desc;
     let op: str = "";
     let sl: uint = str::byte_len(s);
-    for each i: uint in uint::range(0u, n as uint) {
+    uint::range(0u, n as uint) {|i|
         str::push_byte(op, s[i % sl]);
         if str::byte_len(op) >= LINE_LENGTH() { log op; op = ""; }
-    }
+    };
     if str::byte_len(op) > 0u { log op; }
 }
 

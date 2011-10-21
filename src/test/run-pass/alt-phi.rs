@@ -2,12 +2,12 @@
 
 tag thing { a; b; c; }
 
-iter foo() -> int { put 10; }
+fn foo(it: block(int)) { it(10); }
 
 fn main() {
     let x = true;
     alt a {
-      a. { x = true; for each i: int in foo() { } }
+      a. { x = true; foo {|_i|} }
       b. { x = false; }
       c. { x = false; }
     }

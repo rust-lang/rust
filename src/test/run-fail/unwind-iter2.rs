@@ -1,12 +1,10 @@
 // error-pattern:fail
 
-iter x() -> int {
+fn x(it: block(int)) {
     let a = @0;
-    put 1;
+    it(1);
 }
 
 fn main() {
-    for each x in x() {
-        fail;
-    }
+    x {|_x| fail; };
 }

@@ -17,10 +17,6 @@ fn bind_id_1() { bind id(fail); }
 
 fn bind_id_2() { bind id(ret); }
 
-iter put_break() -> int {
-    while true { put break; }
-}
-
 fn fail_fail() { fail fail; }
 
 fn log_fail() { log_err fail; }

@@ -1,4 +1,5 @@
 // -*- rust -*-
+// xfail-pretty
 
 /*
   A parallel version of fibonacci numbers.
@@ -74,9 +75,9 @@ fn stress_task(&&id: int) {
 
 fn stress(num_tasks: int) {
     let tasks = [];
-    for each i: int in range(0, num_tasks) {
+    range(0, num_tasks) {|i|
         tasks += [task::spawn_joinable(copy i, stress_task)];
-    }
+    };
     for t in tasks { task::join(t); }
 }
 
@@ -98,8 +99,8 @@ fn main(argv: [str]) {
 
             let out = io::stdout();
 
-            for each n: int in range(1, max + 1) {
-                for each i: int in range(0, num_trials) {
+            range(1, max + 1) {|n|
+                range(0, num_trials) {|i|
                     let start = time::precise_time_ns();
                     let fibn = fib(n);
                     let stop = time::precise_time_ns();
@@ -108,8 +109,8 @@ fn main(argv: [str]) {
 
                     out.write_line(#fmt["%d\t%d\t%s", n, fibn,
                                         u64::str(elapsed)]);
-                }
-            }
+                };
+            };
         }
     }
 }

@@ -4904,14 +4904,14 @@ fn trans_fn_cleanups(fcx: @fn_ctxt, cx: @block_ctxt) {
     }
 }
 
-iter block_locals(b: ast::blk) -> @ast::local {
+fn block_locals(b: ast::blk, it: block(@ast::local)) {
     for s: @ast::stmt in b.node.stmts {
         alt s.node {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locals) {
                 for (style, local) in locals {
-                    if style == ast::let_copy { put local; }
+                    if style == ast::let_copy { it(local); }
                 }
               }
               _ {/* fall through */ }
@@ -5015,9 +5015,7 @@ fn trans_block(bcx: @block_ctxt, b: ast::blk) -> @block_ctxt {
 
 fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
     -> @block_ctxt {
-    for each local: @ast::local in block_locals(b) {
-        bcx = alloc_local(bcx, local);
-    }
+    block_locals(b) {|local| bcx = alloc_local(bcx, local); };
     for s: @ast::stmt in b.node.stmts {
         bcx = trans_stmt(bcx, *s);
     }

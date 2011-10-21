@@ -24,11 +24,11 @@ fn load_props(testfile: str) -> test_props {
     let error_patterns = [];
     let compile_flags = option::none;
     let pp_exact = option::none;
-    for each ln: str in iter_header(testfile) {
+    iter_header(testfile) {|ln|
         alt parse_error_pattern(ln) {
           option::some(ep) { error_patterns += [ep]; }
           option::none. { }
-        }
+        };
 
         if option::is_none(compile_flags) {
             compile_flags = parse_compile_flags(ln);
@@ -37,7 +37,7 @@ fn load_props(testfile: str) -> test_props {
         if option::is_none(pp_exact) {
             pp_exact = parse_pp_exact(ln, testfile);
         }
-    }
+    };
     ret {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
@@ -47,14 +47,14 @@ fn load_props(testfile: str) -> test_props {
 
 fn is_test_ignored(config: config, testfile: str) -> bool {
     let found = false;
-    for each ln: str in iter_header(testfile) {
+    iter_header(testfile) {|ln|
         // FIXME: Can't return or break from iterator
         found = found || parse_name_directive(ln, "xfail-test");
         found = found || parse_name_directive(ln, xfail_target());
         if (config.mode == common::mode_pretty) {
             found = found || parse_name_directive(ln, "xfail-pretty");
         }
-    }
+    };
     ret found;
 
     fn xfail_target() -> str {
@@ -62,7 +62,7 @@ fn is_test_ignored(config: config, testfile: str) -> bool {
     }
 }
 
-iter iter_header(testfile: str) -> str {
+fn iter_header(testfile: str, it: block(str)) {
     let rdr = io::file_reader(testfile);
     while !rdr.eof() {
         let ln = rdr.read_line();
@@ -73,7 +73,7 @@ iter iter_header(testfile: str) -> str {
         if str::starts_with(ln, "fn")
             || str::starts_with(ln, "mod") {
             break;
-        } else { put ln; }
+        } else { it(ln); }
     }
 }
 

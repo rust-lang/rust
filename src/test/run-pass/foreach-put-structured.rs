@@ -1,20 +1,21 @@
 
 
-iter pairs() -> {_0: int, _1: int} {
+fn pairs(it: block((int, int))) {
     let i: int = 0;
     let j: int = 0;
-    while i < 10 { put {_0: i, _1: j}; i += 1; j += i; }
+    while i < 10 { it((i, j)); i += 1; j += i; }
 }
 
 fn main() {
     let i: int = 10;
     let j: int = 0;
-    for each p: {_0: int, _1: int} in pairs() {
-        log p._0;
-        log p._1;
-        assert (p._0 + 10 == i);
+    pairs() {|p|
+        let (_0, _1) = p;
+        log _0;
+        log _1;
+        assert (_0 + 10 == i);
         i += 1;
-        j = p._1;
-    }
+        j = _1;
+    };
     assert (j == 45);
 }

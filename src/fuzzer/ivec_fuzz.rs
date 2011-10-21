@@ -42,9 +42,9 @@ fn vec_insert<@T>(v: [T], i: uint, x: T) -> [T] {
 }
 
 // Iterates over 0...length, skipping the specified number on each side.
-iter ix(skip_low: uint, skip_high: uint, length: uint) -> uint {
+fn ix(skip_low: uint, skip_high: uint, length: uint, it: block(uint)) {
     let i: uint = skip_low;
-    while i + skip_high <= length { put i; i += 1u; }
+    while i + skip_high <= length { it(i); i += 1u; }
 }
 
 // Returns a bunch of modified versions of v, some of which introduce new elements (borrowed from xs).
@@ -60,20 +60,20 @@ fn vec_edits<@T>(v: [T], xs: [T]) -> [[T]] {
         // When Lv == 2u, this is redundant with swap.
         edits += [vec::reversed(v)];
     }
-    for each i: uint in ix(0u, 1u, Lv) { edits += [vec_omit(v, i)]; }
-    for each i: uint in ix(0u, 1u, Lv) { edits += [vec_dup(v, i)]; }
-    for each i: uint in ix(0u, 2u, Lv) { edits += [vec_swadj(v, i)]; }
-    for each i: uint in ix(1u, 2u, Lv) { edits += [vec_prefix(v, i)]; }
-    for each i: uint in ix(2u, 1u, Lv) { edits += [vec_suffix(v, i)]; }
+    ix(0u, 1u, Lv) {|i| edits += [vec_omit(v, i)]; };
+    ix(0u, 1u, Lv) {|i| edits += [vec_dup(v, i)]; };
+    ix(0u, 2u, Lv) {|i| edits += [vec_swadj(v, i)]; };
+    ix(1u, 2u, Lv) {|i| edits += [vec_prefix(v, i)]; };
+    ix(2u, 1u, Lv) {|i| edits += [vec_suffix(v, i)]; };
 
-    for each j: uint in ix(0u, 1u, len(xs)) {
-        for each i: uint in ix(0u, 1u, Lv) {
+    ix(0u, 1u, len(xs)) {|j|
+        ix(0u, 1u, Lv) {|i|
             edits += [vec_poke(v, i, xs[j])];
-        }
-        for each i: uint in ix(0u, 0u, Lv) {
+        };
+        ix(0u, 0u, Lv) {|i|
             edits += [vec_insert(v, i, xs[j])];
-        }
-    }
+        };
+    };
 
     edits
 }
@@ -93,7 +93,7 @@ fn vec_to_str(v: [int]) -> str {
 fn show_edits(a: [int], xs: [int]) {
     log_err "=== Edits of " + vec_to_str(a) + " ===";
     let b = vec_edits(a, xs);
-    for each i: uint in ix(0u, 1u, len(b)) { log_err vec_to_str(b[i]); }
+    ix(0u, 1u, len(b)) {|i| log_err vec_to_str(b[i]); };
 }
 
 fn demo_edits() {

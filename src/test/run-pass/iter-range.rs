@@ -1,13 +1,13 @@
 
 
-iter range(a: int, b: int) -> int {
+fn range(a: int, b: int, it: block(int)) {
     assert (a < b);
     let i: int = a;
-    while i < b { put i; i += 1; }
+    while i < b { it(i); i += 1; }
 }
 
 fn main() {
     let sum: int = 0;
-    for each x: int in range(0, 100) { sum += x; }
+    range(0, 100) {|x| sum += x; };
     log sum;
 }

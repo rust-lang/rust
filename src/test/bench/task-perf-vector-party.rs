@@ -10,10 +10,10 @@ import std::str;
 import std::task;
 
 fn f(&&n: uint) {
-    for each i in uint::range(0u, n) {
+    uint::range(0u, n) {|i|
         let v: [u8] = [];
         vec::reserve(v, 1000u);
-    }
+    };
 }
 
 fn main(args: [str]) {
@@ -21,5 +21,5 @@ fn main(args: [str]) {
         if vec::len(args) < 2u {
             100u
         } else { uint::parse_buf(str::bytes(args[1]), 10u) };
-    for each i in uint::range(0u, 100u) { task::spawn(copy n, f); }
+    uint::range(0u, 100u) {|i| task::spawn(copy n, f); };
 }

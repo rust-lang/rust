@@ -23,9 +23,9 @@ type pointy = {
   mutable z : fn()->()
 };
 
-iter allunder(n: uint) -> uint {
+fn allunder(n: uint, it: block(uint)) {
     let i: uint = 0u;
-    while i < n { put i; i += 1u; }
+    while i < n { it(i); i += 1u; }
 }
 
 fn nopT(_x : @pointy) { }
@@ -36,20 +36,20 @@ fn test_cycles(r : rand::rng)
     const max : uint = 10u;
 
     let v : [mutable @pointy] = [mutable];
-    for each i in allunder(max) {
+    allunder(max) {|i|
         v += [mutable @{ mutable x : no_pointy, mutable y : no_pointy, mutable z: nop }];
-    }
+    };
 
-    for each i in allunder(max) {
+    allunder(max) {|i|
         v[i].x = yes_pointy(v[under(r, max)]);
         v[i].y = yes_pointy(v[under(r, max)]);
         v[i].z = bind nopT(v[under(r, max)]);
-    }
+    };
 
     // Drop refs one at a time
-    for each i in allunder(max) {
+    allunder(max) {|i|
         v[i] = @{ mutable x : no_pointy, mutable y : no_pointy, mutable z: nop };
-    }
+    };
 }
 
 fn main()

@@ -209,9 +209,9 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty, tm: test_mode
     *crate2
 }
 
-iter under(n: uint) -> uint {
+fn under(n: uint, it: block(uint)) {
     let i: uint = 0u;
-    while i < n { put i; i += 1u; }
+    while i < n { it(i); i += 1u; }
 }
 
 fn devnull() -> io::writer { std::io::string_writer().get_writer() }
@@ -245,9 +245,9 @@ fn check_variants_T<@T>(
     let L = vec::len(things);
 
     if L < 100u {
-        for each i: uint in under(uint::min(L, 20u)) {
+        under(uint::min(L, 20u)) {|i|
             log_err "Replacing... #" + uint::str(i);
-            for each j: uint in under(uint::min(L, 30u)) {
+            under(uint::min(L, 30u)) {|j|
                 log_err "With... " + stringifier(@things[j]);
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but testing the
@@ -267,8 +267,8 @@ fn check_variants_T<@T>(
                     check_whole_compiler(str3, file_label, safe_to_run);
                   }
                 }
-            }
-        }
+            };
+        };
     }
 }
 

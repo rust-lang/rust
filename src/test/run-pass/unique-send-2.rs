@@ -12,16 +12,16 @@ fn main() {
     let p = comm::port();
     let n = 100u;
     let expected = 0u;
-    for each i in uint::range(0u, n) {
+    uint::range(0u, n) {|i|
         task::spawn((comm::chan(p), i), child);
         expected += i;
-    }
+    };
 
     let actual = 0u;
-    for each i in uint::range(0u, n) {
+    uint::range(0u, n) {|_i|
         let j = comm::recv(p);
         actual += *j;
-    }
+    };
 
     assert expected == actual;
 }

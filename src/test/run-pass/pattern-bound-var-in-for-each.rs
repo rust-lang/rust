@@ -10,10 +10,10 @@ fn foo(src: uint) {
 
     alt some(src) {
       some(src_id) {
-        for each i: uint in uint::range(0u, 10u) {
+        uint::range(0u, 10u) {|i|
             let yyy = src_id;
             assert (yyy == 0u);
-        }
+        };
       }
       _ { }
     }

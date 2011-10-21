@@ -14,7 +14,7 @@ fn iloop(&&_i: ()) {
 }
 
 fn main() {
-    for each i in uint::range(0u, 100u) {
+    uint::range(0u, 100u) {|_i|
         task::spawn((), iloop);
-    }
+    };
 }

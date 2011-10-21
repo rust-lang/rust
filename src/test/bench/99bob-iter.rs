@@ -40,14 +40,17 @@ fn sub(t: str, n: int) -> str {
 
 
 /* Using an interator */
-iter ninetynine() -> int { let n: int = 100; while n > 1 { n -= 1; put n; } }
+fn ninetynine(it: block(int)) {
+    let n: int = 100;
+    while n > 1 { n -= 1; it(n); }
+}
 
 fn main() {
-    for each n: int in ninetynine() {
+    ninetynine {|n|
         log sub(b1(), n);
         log sub(b2(), n - 1);
         log "";
-    }
+    };
     log b7();
     log b8();
 }

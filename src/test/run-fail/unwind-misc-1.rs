@@ -21,8 +21,8 @@ fn main() {
 
     let map = map::mk_hashmap(hash, eq);
     let arr = [];
-    for each i in uint::range(0u, 10u) {
+    uint::range(0u, 10u) {|i|
         arr += [@"key stuff"];
         map.insert(arr, arr + [@"value stuff"]);
-    }
+    };
 }
