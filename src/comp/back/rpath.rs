@@ -137,9 +137,7 @@ fn get_relative_to(abs1: fs::path, abs2: fs::path) -> fs::path {
 
     let path = [];
 
-    for each _ in uint::range(start_idx, len1 - 1u) {
-        path += [".."];
-    }
+    uint::range(start_idx, len1 - 1u) {|_i| path += [".."]; };
 
     path += vec::slice(split2, start_idx, len2 - 1u);
 

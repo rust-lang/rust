@@ -198,9 +198,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
     let lines = [];
-    for each i: uint in uint::range(lo.line - 1u, hi.line as uint) {
-        lines += [i];
-    }
+    uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]; };
     ret @{name: lo.filename, lines: lines};
 }
 

@@ -5825,7 +5825,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     if uses_retptr { call_args += [bcx.fcx.llretptr]; }
 
     let arg_n = 2u;
-    for each i: uint in uint::range(0u, num_ty_param) {
+    uint::range(0u, num_ty_param) {|_i|
         let llarg = llvm::LLVMGetParam(fcx.llfn, arg_n);
         fcx.lltydescs += [llarg];
         assert (llarg as int != 0);
@@ -5833,7 +5833,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
             call_args += [vp2i(bcx, llarg)];
         } else { call_args += [llarg]; }
         arg_n += 1u;
-    }
+    };
     fn convert_arg_to_i32(cx: @block_ctxt, v: ValueRef, t: ty::t,
                           mode: ty::mode) -> ValueRef {
         if mode == ast::by_ref || mode == ast::by_val {

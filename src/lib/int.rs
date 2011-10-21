@@ -43,9 +43,8 @@ fn hash(x: int) -> uint { ret x as uint; }
 
 fn eq_alias(x: int, y: int) -> bool { ret x == y; }
 
-iter range(lo: int, hi: int) -> int {
-    let lo_: int = lo;
-    while lo_ < hi { put lo_; lo_ += 1; }
+fn range(lo: int, hi: int, it: block(int)) {
+    while lo < hi { it(lo); lo += 1; }
 }
 
 fn parse_buf(buf: [u8], radix: uint) -> int {

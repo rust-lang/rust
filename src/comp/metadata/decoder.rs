@@ -41,12 +41,12 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
 
     let result: [ebml::doc] = [];
     let belt = tag_index_buckets_bucket_elt;
-    for each elt: ebml::doc in ebml::tagged_docs(bucket, belt) {
+    ebml::tagged_docs(bucket, belt) {|elt|
         let pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
         if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
             result += [ebml::doc_at(d.data, pos)];
         }
-    }
+    };
     ret result;
 }
 
@@ -111,7 +111,7 @@ fn item_type(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
 fn item_ty_param_kinds(item: ebml::doc) -> [ast::kind] {
     let ks: [ast::kind] = [];
     let tp = tag_items_data_item_ty_param_kinds;
-    for each p: ebml::doc in ebml::tagged_docs(item, tp) {
+    ebml::tagged_docs(item, tp) {|p|
         let dat: [u8] = ebml::doc_data(p);
         let vi = ebml::vint_at(dat, 0u);
         let i = 0u;
@@ -125,7 +125,7 @@ fn item_ty_param_kinds(item: ebml::doc) -> [ast::kind] {
             ks += [k];
             i += 1u;
         }
-    }
+    };
     ret ks;
 }
 
@@ -133,10 +133,10 @@ fn tag_variant_ids(item: ebml::doc, this_cnum: ast::crate_num) ->
    [ast::def_id] {
     let ids: [ast::def_id] = [];
     let v = tag_items_data_item_variant;
-    for each p: ebml::doc in ebml::tagged_docs(item, v) {
+    ebml::tagged_docs(item, v) {|p|
         let ext = parse_def_id(ebml::doc_data(p));
         ids += [{crate: this_cnum, node: ext.node}];
-    }
+    };
     ret ids;
 }
 
@@ -300,14 +300,12 @@ fn item_family_to_str(fam: u8) -> str {
 
 fn get_meta_items(md: ebml::doc) -> [@ast::meta_item] {
     let items: [@ast::meta_item] = [];
-    for each meta_item_doc: ebml::doc in
-             ebml::tagged_docs(md, tag_meta_item_word) {
+    ebml::tagged_docs(md, tag_meta_item_word) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::unsafe_from_bytes(ebml::doc_data(nd));
         items += [attr::mk_word_item(n)];
-    }
-    for each meta_item_doc: ebml::doc in
-             ebml::tagged_docs(md, tag_meta_item_name_value) {
+    };
+    ebml::tagged_docs(md, tag_meta_item_name_value) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
         let n = str::unsafe_from_bytes(ebml::doc_data(nd));
@@ -315,14 +313,13 @@ fn get_meta_items(md: ebml::doc) -> [@ast::meta_item] {
         // FIXME (#611): Should be able to decode meta_name_value variants,
         // but currently they can't be encoded
         items += [attr::mk_name_value_item_str(n, v)];
-    }
-    for each meta_item_doc: ebml::doc in
-             ebml::tagged_docs(md, tag_meta_item_list) {
+    };
+    ebml::tagged_docs(md, tag_meta_item_list) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::unsafe_from_bytes(ebml::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
         items += [attr::mk_list_item(n, subitems)];
-    }
+    };
     ret items;
 }
 
@@ -330,8 +327,7 @@ fn get_attributes(md: ebml::doc) -> [ast::attribute] {
     let attrs: [ast::attribute] = [];
     alt ebml::maybe_get_doc(md, tag_attributes) {
       option::some(attrs_d) {
-        for each attr_doc: ebml::doc in
-                 ebml::tagged_docs(attrs_d, tag_attribute) {
+        ebml::tagged_docs(attrs_d, tag_attribute) {|attr_doc|
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
@@ -340,7 +336,7 @@ fn get_attributes(md: ebml::doc) -> [ast::attribute] {
             attrs +=
                 [{node: {style: ast::attr_outer, value: *meta_item},
                   span: ast_util::dummy_sp()}];
-        }
+        };
       }
       option::none. { }
     }
@@ -374,11 +370,11 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     let cratedoc = ebml::new_doc(data);
     let depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
     let crate_num = 1;
-    for each depdoc: ebml::doc in ebml::tagged_docs(depsdoc, tag_crate_dep) {
+    ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
         let depname = str::unsafe_from_bytes(ebml::doc_data(depdoc));
         deps += [{cnum: crate_num, ident: depname}];
         crate_num += 1;
-    }
+    };
     ret deps;
 }
 
@@ -398,18 +394,17 @@ fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {
     let items = ebml::get_doc(md, tag_items);
     let index = ebml::get_doc(paths, tag_index);
     let bs = ebml::get_doc(index, tag_index_buckets);
-    for each bucket: ebml::doc in
-             ebml::tagged_docs(bs, tag_index_buckets_bucket) {
+    ebml::tagged_docs(bs, tag_index_buckets_bucket) {|bucket|
         let et = tag_index_buckets_bucket_elt;
-        for each elt: ebml::doc in ebml::tagged_docs(bucket, et) {
+        ebml::tagged_docs(bucket, et) {|elt|
             let data = read_path(elt);
             let def = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
             let did = parse_def_id(ebml::doc_data(did_doc));
             out.write_str(#fmt["%s (%s)\n", data.path,
                                describe_def(items, did)]);
-        }
-    }
+        };
+    };
     out.write_str("\n");
 }
 

@@ -394,7 +394,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer) ->
 fn create_index<@T>(index: [entry<T>], hash_fn: fn(T) -> uint) ->
    [@[entry<T>]] {
     let buckets: [@mutable [entry<T>]] = [];
-    for each i: uint in uint::range(0u, 256u) { buckets += [@mutable []]; }
+    uint::range(0u, 256u) {|_i| buckets += [@mutable []]; };
     for elt: entry<T> in index {
         let h = hash_fn(elt.val);
         *buckets[h % 256u] += [elt];

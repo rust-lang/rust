@@ -343,9 +343,9 @@ fn eachi<@T>(f: block(T, uint) -> (), v: [mutable? T]) {
 }
 
 // Iterate over a list with with the indexes
-iter iter2<@T>(v: [T]) -> (uint, T) {
+fn iter2<@T>(v: [T], it: block(uint, T)) {
     let i = 0u;
-    for x in v { put (i, x); i += 1u; }
+    for x in v { it(i, x); i += 1u; }
 }
 
 mod unsafe {

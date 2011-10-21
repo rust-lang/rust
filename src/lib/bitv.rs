@@ -40,12 +40,12 @@ fn process(op: block(uint, uint) -> uint, v0: t, v1: t) -> bool {
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
     let changed = false;
-    for each i: uint in uint::range(0u, len) {
+    uint::range(0u, len) {|i|
         let w0 = v0.storage[i];
         let w1 = v1.storage[i];
         let w = op(w0, w1);
         if w0 != w { changed = true; v0.storage[i] = w; }
-    }
+    };
     ret changed;
 }
 
@@ -67,7 +67,7 @@ fn assign(v0: t, v1: t) -> bool { let sub = right; ret process(sub, v0, v1); }
 fn clone(v: t) -> t {
     let storage = vec::init_elt_mut::<uint>(0u, v.nbits / uint_bits() + 1u);
     let len = vec::len(v.storage);
-    for each i: uint in uint::range(0u, len) { storage[i] = v.storage[i]; }
+    uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
     ret @{storage: storage, nbits: v.nbits};
 }
 
@@ -94,19 +94,17 @@ fn equal(v0: t, v1: t) -> bool {
 }
 
 fn clear(v: t) {
-    for each i: uint in uint::range(0u, vec::len(v.storage)) {
-        v.storage[i] = 0u;
-    }
+    uint::range(0u, vec::len(v.storage)) {|i| v.storage[i] = 0u; };
 }
 
 fn set_all(v: t) {
-    for each i: uint in uint::range(0u, v.nbits) { set(v, i, true); }
+    uint::range(0u, v.nbits) {|i| set(v, i, true); };
 }
 
 fn invert(v: t) {
-    for each i: uint in uint::range(0u, vec::len(v.storage)) {
+    uint::range(0u, vec::len(v.storage)) {|i|
         v.storage[i] = !v.storage[i];
-    }
+    };
 }
 
 

@@ -72,25 +72,24 @@ fn get_doc(d: doc, tg: uint) -> doc {
     }
 }
 
-iter docs(d: doc) -> {tag: uint, doc: doc} {
+fn docs(d: doc, it: block(uint, doc)) {
     let pos = d.start;
     while pos < d.end {
         let elt_tag = vint_at(*d.data, pos);
         let elt_size = vint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
-        put {tag: elt_tag.val,
-             doc: {data: d.data, start: elt_size.next, end: pos}};
+        it(elt_tag.val, {data: d.data, start: elt_size.next, end: pos});
     }
 }
 
-iter tagged_docs(d: doc, tg: uint) -> doc {
+fn tagged_docs(d: doc, tg: uint, it: block(doc)) {
     let pos = d.start;
     while pos < d.end {
         let elt_tag = vint_at(*d.data, pos);
         let elt_size = vint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
-            put {data: d.data, start: elt_size.next, end: pos};
+            it({data: d.data, start: elt_size.next, end: pos});
         }
     }
 }

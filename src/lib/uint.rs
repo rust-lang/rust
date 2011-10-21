@@ -40,9 +40,8 @@ fn max(x: uint, y: uint) -> uint { if x > y { ret x; } ret y; }
 
 fn min(x: uint, y: uint) -> uint { if x > y { ret y; } ret x; }
 
-iter range(lo: uint, hi: uint) -> uint {
-    let lo_ = lo;
-    while lo_ < hi { put lo_; lo_ += 1u; }
+fn range(lo: uint, hi: uint, it: block(uint)) {
+    while lo < hi { it(lo); lo += 1u; }
 }
 
 fn next_power_of_two(n: uint) -> uint {

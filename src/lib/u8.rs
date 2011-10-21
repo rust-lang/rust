@@ -23,7 +23,10 @@ pure fn ge(x: u8, y: u8) -> bool { ret x >= y; }
 
 pure fn gt(x: u8, y: u8) -> bool { ret x > y; }
 
-iter range(lo: u8, hi: u8) -> u8 { while lo < hi { put lo; lo += 1u8; } }
+fn range(lo: u8, hi: u8, it: block(u8)) {
+    while lo < hi { it(lo); lo += 1u8; }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
