@@ -2087,7 +2087,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             constrs = constrs_;
           }
           ty::ty_native_fn(_, arg_tys_, rt_) {
-            proto = ast::proto_shared(ast::sugar_normal);
+            proto = ast::proto_bare;
             arg_tys = arg_tys_;
             rt = rt_;
             cf = ast::return_val;
