@@ -1585,7 +1585,8 @@ fn parse_source_stmt(p: parser) -> @ast::stmt {
             // Remainder are line-expr stmts.
             let e = parse_expr(p);
             // See if it is a block call
-            if p.peek() == token::LBRACE && is_bar(p.look_ahead(1u)) {
+            if expr_has_value(e) && p.peek() == token::LBRACE &&
+               is_bar(p.look_ahead(1u)) {
                 p.bump();
                 let blk = parse_fn_block_expr(p);
                 alt e.node {
