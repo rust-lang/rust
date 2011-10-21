@@ -86,14 +86,13 @@ fn new_smallintmap_int_adapter<@V>() -> std::map::hashmap<int, V> {
 // the entire codebase adapting all the callsites to the different
 // interface.
 // FIXME: hashmap and smallintmap should support the same interface.
-fn new_smallintmap_adapter<@K,
-                           @V>(key_idx: fn(K) -> uint, idx_key: fn(uint) -> K)
-   -> std::map::hashmap<K, V> {
+fn new_smallintmap_adapter<@K, @V>(key_idx: fn(K) -> uint,
+                                   idx_key: fn(uint) -> K)
+    -> std::map::hashmap<K, V> {
 
-    obj adapter<@K,
-                @V>(map: smallintmap::smallintmap<V>,
-                    key_idx: fn(K) -> uint,
-                    idx_key: fn(uint) -> K) {
+    obj adapter<@K, @V>(map: smallintmap::smallintmap<V>,
+                        key_idx: fn(K) -> uint,
+                        idx_key: fn(uint) -> K) {
 
         fn size() -> uint { fail }
 
@@ -117,22 +116,29 @@ fn new_smallintmap_adapter<@K,
 
         fn rehash() { fail }
 
-        iter items() -> @{key: K, val: V} {
+        fn items(it: block(K, V)) {
             let idx = 0u;
-            for item: option::t<V> in map.v {
+            for item in map.v {
                 alt item {
                   option::some(elt) {
-                    let value = elt;
-                    let key = idx_key(idx);
-                    put @{key: key, val: value};
+                    it(idx_key(idx), elt);
                   }
                   option::none. { }
                 }
                 idx += 1u;
             }
         }
-        iter keys() -> K {
-            for each p: @{key: K, val: V} in self.items() { put p.key; }
+        fn keys(it: block(K)) {
+            let idx = 0u;
+            for item in map.v {
+                if item != option::none { it(idx_key(idx)); }
+                idx += 1u;
+            }
+        }
+        fn values(it: block(V)) {
+            for item in map.v {
+                alt item { option::some(elt) { it(elt); } _ {} }
+            }
         }
     }
 

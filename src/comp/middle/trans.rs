@@ -1249,10 +1249,10 @@ fn make_generic_glue(cx: @local_ctxt, sp: span, t: ty::t, llfn: ValueRef,
 }
 
 fn emit_tydescs(ccx: @crate_ctxt) {
-    for each pair: @{key: ty::t, val: @tydesc_info} in ccx.tydescs.items() {
+    ccx.tydescs.items {|key, val|
         let glue_fn_ty = T_ptr(T_glue_fn(*ccx));
         let cmp_fn_ty = T_ptr(T_cmp_glue_fn(*ccx));
-        let ti = pair.val;
+        let ti = val;
         let take_glue =
             alt ti.take_glue {
               none. { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
@@ -1274,7 +1274,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
 
-        let shape = shape::shape_of(ccx, pair.key, ti.ty_params,
+        let shape = shape::shape_of(ccx, key, ti.ty_params,
                                     ti.is_obj_body);
         let shape_tables =
             llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
@@ -1303,7 +1303,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
         llvm::LLVMSetGlobalConstant(gvar, True);
         llvm::LLVMSetLinkage(gvar,
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
-    }
+    };
 }
 
 fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
@@ -6144,10 +6144,10 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     llvm::LLVMSetLinkage(map,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     let elts: [ValueRef] = [];
-    for each item: @{key: str, val: ValueRef} in ccx.module_data.items() {
-        let elt = C_struct([p2i(C_cstr(ccx, item.key)), p2i(item.val)]);
+    ccx.module_data.items {|key, val|
+        let elt = C_struct([p2i(C_cstr(ccx, key)), p2i(val)]);
         elts += [elt];
-    }
+    };
     let term = C_struct([C_int(0), C_int(0)]);
     elts += [term];
     llvm::LLVMSetInitializer(map, C_array(elttype, elts));

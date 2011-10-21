@@ -48,12 +48,8 @@ type scopes = list<scope>;
 tag import_state {
     todo(ast::node_id, ast::ident, [ast::ident], codemap::span, scopes);
     resolving(span);
-    resolved(option::t<def>,
-
-             /* value */
-             option::t<def>,
-
-             /* type */
+    resolved(option::t<def>, /* value */
+             option::t<def>, /* type */
              option::t<def>); /* module */
 }
 
@@ -241,15 +237,14 @@ fn map_crate(e: @env, c: @ast::crate) {
 }
 
 fn resolve_imports(e: env) {
-    for each it: @{key: ast::node_id, val: import_state} in e.imports.items()
-             {
-        alt it.val {
+    e.imports.values {|v|
+        alt v {
           todo(node_id, name, path, span, scopes) {
             resolve_import(e, local_def(node_id), name, path, span, scopes);
           }
           resolved(_, _, _) { }
         }
-    }
+    };
     e.sess.abort_if_errors();
 }
 
@@ -1188,12 +1183,9 @@ fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
 fn check_for_collisions(e: @env, c: ast::crate) {
     // Module indices make checking those relatively simple -- just check each
     // name for multiple entities in the same namespace.
-    for each m: @{key: ast::node_id, val: @indexed_mod} in e.mod_map.items() {
-        for each name: @{key: ident, val: list<mod_index_entry>} in
-                 m.val.index.items() {
-            check_mod_name(*e, name.key, name.val);
-        }
-    }
+    e.mod_map.values {|val|
+        val.index.items {|k, v| check_mod_name(*e, k, v); };
+    };
     // Other scopes have to be checked the hard way.
     let v =
         @{visit_item: bind check_item(e, _, _, _),
@@ -1426,7 +1418,7 @@ fn check_bad_exports(e: @env) {
                                                     ns_type, inside));
     }
 
-    for each @{val: val, _} in e.mod_map.items() {
+    e.mod_map.values {|val|
         alt val.m {
           some(m) {
             for vi in m.view_items {
@@ -1447,7 +1439,7 @@ fn check_bad_exports(e: @env) {
           }
           none. { }
         }
-    }
+    };
 }
 
 // Local Variables:

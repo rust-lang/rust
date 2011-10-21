@@ -72,12 +72,8 @@ fn have_crate_data(cstore: cstore, cnum: ast::crate_num) -> bool {
     ret p(cstore).metas.contains_key(cnum);
 }
 
-iter iter_crate_data(cstore: cstore) ->
-     @{key: ast::crate_num, val: crate_metadata} {
-    for each kv: @{key: ast::crate_num, val: crate_metadata} in
-             p(cstore).metas.items() {
-        put kv;
-    }
+fn iter_crate_data(cstore: cstore, i: block(ast::crate_num, crate_metadata)) {
+    p(cstore).metas.items {|k,v| i(k, v);};
 }
 
 fn add_used_crate_file(cstore: cstore, lib: str) {

@@ -172,12 +172,12 @@ fn use_selectors_to_bind(b: binders, e: @expr) -> option::t<bindings> {
         alt sel(match_expr(e)) { none. { ret none; } _ { } }
     }
     let never_mind: bool = false;
-    for each pair: @{key: ident, val: selector} in b.real_binders.items() {
-        alt pair.val(match_expr(e)) {
+    b.real_binders.items {|key, val|
+        alt val(match_expr(e)) {
           none. { never_mind = true; }
-          some(mtc) { res.insert(pair.key, mtc); }
+          some(mtc) { res.insert(key, mtc); }
         }
-    }
+    };
     //HACK: `ret` doesn't work in `for each`
     if never_mind { ret none; }
     ret some(res);
@@ -243,7 +243,7 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: option::t<arb_depth<matchable>>,
 }
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
-iter free_vars(b: bindings, e: @expr) -> ident {
+fn free_vars(b: bindings, e: @expr, it: block(ident)) {
     let idents: hashmap<ident, ()> = new_str_hash::<()>();
     fn mark_ident(&&i: ident, _fld: ast_fold, b: bindings,
                   idents: hashmap<ident, ()>) -> ident {
@@ -257,7 +257,7 @@ iter free_vars(b: bindings, e: @expr) -> ident {
             with *default_ast_fold()};
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
-    for each id: ident in idents.keys() { put id; }
+    idents.keys {|x| it(x); };
 }
 
 
@@ -273,7 +273,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
             let repeat: option::t<{rep_count: uint, name: ident}> = none;
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
-            for each fv: ident in free_vars(b, repeat_me) {
+            free_vars(b, repeat_me) {|fv|
                 let cur_pos = follow(b.get(fv), idx_path);
                 alt cur_pos {
                   leaf(_) { }
@@ -295,7 +295,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                     }
                   }
                 }
-            }
+            };
             alt repeat {
               none. {
                 cx.span_fatal(repeat_me.span,

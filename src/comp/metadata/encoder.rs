@@ -371,20 +371,19 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer) ->
    [entry<int>] {
     let index: [entry<int>] = [];
     ebml::start_tag(ebml_w, tag_items_data);
-    for each kvp: @{key: node_id, val: middle::ast_map::ast_node} in
-             ecx.ccx.ast_map.items() {
-        alt kvp.val {
+    ecx.ccx.ast_map.items {|key, val|
+        alt val {
           middle::ast_map::node_item(i) {
-            index += [{val: kvp.key, pos: ebml_w.writer.tell()}];
+            index += [{val: key, pos: ebml_w.writer.tell()}];
             encode_info_for_item(ecx, ebml_w, i, index);
           }
           middle::ast_map::node_native_item(i) {
-            index += [{val: kvp.key, pos: ebml_w.writer.tell()}];
+            index += [{val: key, pos: ebml_w.writer.tell()}];
             encode_info_for_native_item(ecx, ebml_w, i);
           }
           _ { }
         }
-    }
+    };
     ebml::end_tag(ebml_w);
     ret index;
 }
@@ -544,9 +543,9 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
 
         // Pull the cnums and names out of cstore
         let pairs: [mutable numname] = [mutable];
-        for each hashkv: hashkv in cstore::iter_crate_data(cstore) {
-            pairs += [mutable {crate: hashkv.key, ident: hashkv.val.name}];
-        }
+        cstore::iter_crate_data(cstore) {|key, val|
+            pairs += [mutable {crate: key, ident: val.name}];
+        };
 
         // Sort by cnum
         fn lteq(kv1: numname, kv2: numname) -> bool { kv1.crate <= kv2.crate }

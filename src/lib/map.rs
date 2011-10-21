@@ -14,8 +14,9 @@ type hashmap<K, V> =
         fn find(K) -> option::t<V>;
         fn remove(K) -> option::t<V>;
         fn rehash();
-        iter items() -> @{key: K, val: V};
-        iter keys() -> K;
+        fn items(block(K, V));
+        fn keys(block(K));
+        fn values(block(V));
     };
 type hashset<K> = hashmap<K, ()>;
 
@@ -111,8 +112,7 @@ fn mk_hashmap<@K, @V>(hasher: hashfn<K>, eqer: eqfn<K>) -> hashmap<K, V> {
             }
         }
     }
-    obj hashmap<@K,
-                @V>(hasher: hashfn<K>,
+    obj hashmap<@K, @V>(hasher: hashfn<K>,
                     eqer: eqfn<K>,
                     mutable bkts: [mutable bucket<K, V>],
                     mutable nbkts: uint,
@@ -177,14 +177,19 @@ fn mk_hashmap<@K, @V>(hasher: hashfn<K>, eqer: eqfn<K>) -> hashmap<K, V> {
             rehash(hasher, eqer, bkts, nbkts, newbkts, nbkts);
             bkts = newbkts;
         }
-        iter items() -> @{key: K, val: V} {
-            for b: bucket<K, V> in bkts {
-                alt b { some(k, v) { put @{key: k, val: v}; } _ { } }
+        fn items(it: block(K, V)) {
+            for b in bkts {
+                alt b { some(k, v) { it(copy k, copy v); } _ { } }
             }
         }
-        iter keys() -> K {
-            for b: bucket<K, V> in bkts {
-                alt b { some(k, _) { put k; } _ { } }
+        fn keys(it: block(K)) {
+            for b in bkts {
+                alt b { some(k, _) { it(copy k); } _ { } }
+            }
+        }
+        fn values(it: block(V)) {
+            for b in bkts {
+                alt b { some(_, v) { it(copy v); } _ { } }
             }
         }
     }

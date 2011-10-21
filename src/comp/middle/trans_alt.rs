@@ -356,10 +356,10 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             Br(bcx, guard_cx.llbb);
             // Temporarily set bindings. They'll be rewritten to PHI nodes for
             // the actual arm block.
-            for each @{key: key, val: val} in data.id_map.items() {
+            data.id_map.items {|key, val|
                 let local = local_mem(option::get(assoc(key, m[0].bound)));
                 bcx.fcx.lllocals.insert(val, local);
-            }
+            };
             let {bcx: guard_bcx, val: guard_val} =
                 trans::trans_temp_expr(guard_cx, e);
             guard_bcx = trans::trans_block_cleanups(guard_bcx, guard_cx);
@@ -582,7 +582,7 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
                      ids: ast_util::pat_id_map) -> bool {
     let our_block = bcx.llbb as uint;
     let success = true;
-    for each @{key: name, val: node_id} in ids.items() {
+    ids.items {|name, node_id|
         let llbbs = [];
         let vals = [];
         for ex: exit_node in map {
@@ -597,10 +597,10 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
             let local = Phi(bcx, val_ty(vals[0]), vals, llbbs);
             bcx.fcx.lllocals.insert(node_id, local_mem(local));
         } else { success = false; }
-    }
+    };
     if success {
         // Copy references that the alias analysis considered unsafe
-        for each @{val: node_id, _} in ids.items() {
+        ids.values {|node_id|
             if bcx_ccx(bcx).copy_map.contains_key(node_id) {
                 let local = alt bcx.fcx.lllocals.get(node_id) {
                   local_mem(x) { x }
@@ -613,7 +613,7 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
                 add_clean(bcx, alloc, e_ty);
                 bcx.fcx.lllocals.insert(node_id, local_mem(alloc));
             }
-        }
+        };
     } else {
         Unreachable(bcx);
     }
