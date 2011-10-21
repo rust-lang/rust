@@ -24,5 +24,5 @@ fn main() {
     uint::range(0u, 10u) {|i|
         arr += [@"key stuff"];
         map.insert(arr, arr + [@"value stuff"]);
-    };
+    }
 }

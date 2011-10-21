@@ -77,7 +77,7 @@ fn stress(num_tasks: int) {
     let tasks = [];
     range(0, num_tasks) {|i|
         tasks += [task::spawn_joinable(copy i, stress_task)];
-    };
+    }
     for t in tasks { task::join(t); }
 }
 
@@ -109,8 +109,8 @@ fn main(argv: [str]) {
 
                     out.write_line(#fmt["%d\t%d\t%s", n, fibn,
                                         u64::str(elapsed)]);
-                };
-            };
+                }
+            }
         }
     }
 }

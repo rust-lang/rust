@@ -38,18 +38,18 @@ fn test_cycles(r : rand::rng)
     let v : [mutable @pointy] = [mutable];
     allunder(max) {|i|
         v += [mutable @{ mutable x : no_pointy, mutable y : no_pointy, mutable z: nop }];
-    };
+    }
 
     allunder(max) {|i|
         v[i].x = yes_pointy(v[under(r, max)]);
         v[i].y = yes_pointy(v[under(r, max)]);
         v[i].z = bind nopT(v[under(r, max)]);
-    };
+    }
 
     // Drop refs one at a time
     allunder(max) {|i|
         v[i] = @{ mutable x : no_pointy, mutable y : no_pointy, mutable z: nop };
-    };
+    }
 }
 
 fn main()

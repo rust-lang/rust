@@ -12,7 +12,7 @@ fn bitv_to_str(enclosing: fn_info, v: bitv::t) -> str {
     // error is that the value type in the hash map is var_info, not a box
     enclosing.vars.values {|val|
         if bitv::get(v, val) { s += "foo"; }
-    };
+    }
     ret s;
 }
 

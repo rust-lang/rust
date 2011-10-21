@@ -50,7 +50,7 @@ fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
     uint::range(0u, n as uint) {|i|
         str::push_byte(op, select_random(rng.next(100u32), genelist) as u8);
         if str::byte_len(op) >= LINE_LENGTH() { log op; op = ""; }
-    };
+    }
     if str::byte_len(op) > 0u { log op; }
 }
 
@@ -61,7 +61,7 @@ fn make_repeat_fasta(id: str, desc: str, s: str, n: int) {
     uint::range(0u, n as uint) {|i|
         str::push_byte(op, s[i % sl]);
         if str::byte_len(op) >= LINE_LENGTH() { log op; op = ""; }
-    };
+    }
     if str::byte_len(op) > 0u { log op; }
 }
 

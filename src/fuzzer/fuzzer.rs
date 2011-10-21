@@ -264,8 +264,8 @@ fn check_variants_T<@T>(
                     check_whole_compiler(str3, file_label, safe_to_run);
                   }
                 }
-            };
-        };
+            }
+        }
     }
 }
 

@@ -16,5 +16,5 @@ fn iloop(&&_i: ()) {
 fn main() {
     uint::range(0u, 100u) {|_i|
         task::spawn((), iloop);
-    };
+    }
 }

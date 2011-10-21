@@ -35,7 +35,7 @@ fn test_grow() {
     uint::range(0u, 100u) {|i|
         let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
         comm::send(mychan, val);
-    };
+    }
 }
 
 
@@ -53,8 +53,8 @@ fn test_shrink2() {
     uint::range(0u, 100u) {|_i|
         let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
         send(mychan, val);
-    };
-    uint::range(0u, 100u) {|_i| let x = recv(myport); };
+    }
+    uint::range(0u, 100u) {|_i| let x = recv(myport); }
 }
 
 
@@ -69,7 +69,7 @@ fn test_rotate() {
         assert (x.val1 == i as u32);
         assert (x.val2 == i as u32);
         assert (x.val3 == i as u32);
-    };
+    }
 }
 
 
@@ -83,14 +83,14 @@ fn test_rotate_grow() {
             let val: record =
                 {val1: i as u32, val2: i as u32, val3: i as u32};
             send(mychan, val);
-        };
+        }
         uint::range(0u, 10u) {|i|
             let x = recv(myport);
             assert (x.val1 == i as u32);
             assert (x.val2 == i as u32);
             assert (x.val3 == i as u32);
-        };
-    };
+        }
+    }
 }
 
 fn main() {

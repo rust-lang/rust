@@ -100,7 +100,7 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        intermediates.values {|v| send(v, release); };
+        intermediates.values {|v| send(v, release); }
 
         send(ctrl, mapper_done);
     }
@@ -178,7 +178,7 @@ mod map_reduce {
             }
         }
 
-        reducers.values {|v| send(v, done); };
+        reducers.values {|v| send(v, done); }
 
         for t in tasks { task::join(t); }
     }

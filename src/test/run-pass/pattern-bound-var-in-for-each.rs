@@ -13,7 +13,7 @@ fn foo(src: uint) {
         uint::range(0u, 10u) {|i|
             let yyy = src_id;
             assert (yyy == 0u);
-        };
+        }
       }
       _ { }
     }

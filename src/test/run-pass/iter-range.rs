@@ -8,6 +8,6 @@ fn range(a: int, b: int, it: block(int)) {
 
 fn main() {
     let sum: int = 0;
-    range(0, 100) {|x| sum += x; };
+    range(0, 100) {|x| sum += x; }
     log sum;
 }
