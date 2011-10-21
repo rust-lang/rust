@@ -160,22 +160,12 @@ rand_new() {
 }
 
 extern "C" CDECL size_t
-<<<<<<< HEAD
 rand_next(randctx *rctx) {
-=======
-rand_next(randctx *rctx)
-{
->>>>>>> move rand functions into c-stack-cdecl mode
     return isaac_rand(rctx);
 }
 
 extern "C" CDECL void
-<<<<<<< HEAD
 rand_free(randctx *rctx) {
-=======
-rand_free(randctx *rctx)
-{
->>>>>>> move rand functions into c-stack-cdecl mode
     rust_task *task = rust_scheduler::get_task();
     task->free(rctx);
 }
@@ -221,7 +211,9 @@ task_join(rust_task_id tid) {
 /* Debug builtins for std::dbg. */
 
 static void
-debug_tydesc_helper(rust_task* task, type_desc *t) {
+debug_tydesc_helper(type_desc *t)
+{
+    rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "  size %" PRIdPTR ", align %" PRIdPTR
         ", first_param 0x%" PRIxPTR,
         t->size, t->align, t->first_param);
@@ -231,14 +223,14 @@ extern "C" CDECL void
 debug_tydesc(type_desc *t) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_tydesc");
-    debug_tydesc_helper(task, t);
+    debug_tydesc_helper(t);
 }
 
 extern "C" CDECL void
 debug_opaque(type_desc *t, uint8_t *front) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_opaque");
-    debug_tydesc_helper(task, t);
+    debug_tydesc_helper(t);
     // FIXME may want to actually account for alignment.  `front` may not
     // indeed be the front byte of the passed-in argument.
     for (uintptr_t i = 0; i < t->size; ++front, ++i) {
@@ -257,7 +249,7 @@ extern "C" CDECL void
 debug_box(type_desc *t, rust_box *box) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
-    debug_tydesc_helper(task, t);
+    debug_tydesc_helper(t);
     LOG(task, stdlib, "  refcount %" PRIdPTR,
         box->ref_count - 1);  // -1 because we ref'ed for this call
     for (uintptr_t i = 0; i < t->size; ++i) {
@@ -275,7 +267,7 @@ debug_tag(type_desc *t, rust_tag *tag) {
     rust_task *task = rust_scheduler::get_task();
 
     LOG(task, stdlib, "debug_tag");
-    debug_tydesc_helper(task, t);
+    debug_tydesc_helper(t);
     LOG(task, stdlib, "  discriminant %" PRIdPTR, tag->discriminant);
 
     for (uintptr_t i = 0; i < t->size - sizeof(tag->discriminant); ++i)
@@ -293,7 +285,7 @@ debug_obj(type_desc *t, rust_obj *obj, size_t nmethods, size_t nbytes) {
     rust_task *task = rust_scheduler::get_task();
 
     LOG(task, stdlib, "debug_obj with %" PRIdPTR " methods", nmethods);
-    debug_tydesc_helper(task, t);
+    debug_tydesc_helper(t);
     LOG(task, stdlib, "  vtbl at 0x%" PRIxPTR, obj->vtbl);
     LOG(task, stdlib, "  body at 0x%" PRIxPTR, obj->body);
 
@@ -314,7 +306,7 @@ extern "C" CDECL void
 debug_fn(type_desc *t, rust_fn *fn) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_fn");
-    debug_tydesc_helper(task, t);
+    debug_tydesc_helper(t);
     LOG(task, stdlib, "  thunk at 0x%" PRIxPTR, fn->thunk);
     LOG(task, stdlib, "  closure at 0x%" PRIxPTR, fn->closure);
     if (fn->closure) {
@@ -328,9 +320,9 @@ debug_ptrcast(type_desc *from_ty,
               void *ptr) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, stdlib, "debug_ptrcast from");
-    debug_tydesc_helper(task, from_ty);
+    debug_tydesc_helper(from_ty);
     LOG(task, stdlib, "to");
-    debug_tydesc_helper(task, to_ty);
+    debug_tydesc_helper(to_ty);
     return ptr;
 }
 
