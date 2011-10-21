@@ -86,7 +86,7 @@ align_of(type_desc *t) {
 }
 
 extern "C" CDECL void
-leak(type_desc *t, void *thing) {
+leak(void *thing) {
     // Do nothing. Call this with move-mode in order to say "Don't worry rust,
     // I'll take care of this."
 }
