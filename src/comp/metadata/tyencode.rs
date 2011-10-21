@@ -194,7 +194,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
 }
 fn enc_proto(w: io::writer, proto: proto) {
     alt proto {
-      proto_iter. { w.write_char('W'); }
       proto_shared(_) { w.write_char('F'); }
       proto_block. { w.write_char('B'); }
       proto_bare. { w.write_char('f'); }

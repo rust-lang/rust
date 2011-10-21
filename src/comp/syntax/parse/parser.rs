@@ -148,10 +148,8 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     words.insert("do", ());
     words.insert("alt", ());
     words.insert("for", ());
-    words.insert("each", ());
     words.insert("break", ());
     words.insert("cont", ());
-    words.insert("put", ());
     words.insert("ret", ());
     words.insert("be", ());
     words.insert("fail", ());
@@ -160,13 +158,11 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     words.insert("check", ());
     words.insert("assert", ());
     words.insert("claim", ());
-    words.insert("prove", ());
     words.insert("native", ());
     words.insert("fn", ());
     words.insert("lambda", ());
     words.insert("pure", ());
     words.insert("unsafe", ());
-    words.insert("iter", ());
     words.insert("block", ());
     words.insert("import", ());
     words.insert("export", ());
@@ -566,9 +562,6 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
         alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
-    } else if eat_word(p, "iter") {
-        t = parse_ty_fn(ast::proto_iter, p);
-        alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
     } else if eat_word(p, "obj") {
         t = parse_ty_obj(p, hi);
     } else if p.peek() == token::MOD_SEP || is_ident(p.peek()) {
@@ -964,15 +957,6 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
     } else if eat_word(p, "cont") {
         ex = ast::expr_cont;
         hi = p.get_hi_pos();
-    } else if eat_word(p, "put") {
-        alt p.peek() {
-          token::SEMI. { ex = ast::expr_put(none); }
-          _ {
-            let e = parse_expr(p);
-            hi = e.span.hi;
-            ex = ast::expr_put(some(e));
-          }
-        }
     } else if eat_word(p, "be") {
         let e = parse_expr(p);
 
@@ -1341,15 +1325,12 @@ fn parse_else_expr(p: parser) -> @ast::expr {
 
 fn parse_for_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
-    let is_each = eat_word(p, "each");
     let decl = parse_local(p, false);
     expect_word(p, "in");
     let seq = parse_expr(p);
     let body = parse_block_no_value(p);
     let hi = body.span.hi;
-    if is_each {
-        ret mk_expr(p, lo, hi, ast::expr_for_each(decl, seq, body));
-    } else { ret mk_expr(p, lo, hi, ast::expr_for(decl, seq, body)); }
+    ret mk_expr(p, lo, hi, ast::expr_for(decl, seq, body));
 }
 
 fn parse_while_expr(p: parser) -> @ast::expr {
@@ -1640,8 +1621,7 @@ fn expr_has_value(e: @ast::expr) -> bool {
         found_expr
       }
       ast::expr_block(blk) | ast::expr_while(_, blk) |
-      ast::expr_for(_, _, blk) | ast::expr_for_each(_, _, blk) |
-      ast::expr_do_while(blk, _) {
+      ast::expr_for(_, _, blk) | ast::expr_do_while(blk, _) {
         !option::is_none(blk.node.expr)
       }
       _ { true }
@@ -1837,7 +1817,7 @@ fn mk_item(p: parser, lo: uint, hi: uint, ident: ast::ident, node: ast::item_,
           span: ast_util::mk_sp(lo, hi)};
 }
 
-fn parse_item_fn_or_iter(p: parser, purity: ast::purity, proto: ast::proto,
+fn parse_item_fn(p: parser, purity: ast::purity, proto: ast::proto,
                          attrs: [ast::attribute], il: ast::inlineness) ->
    @ast::item {
     let lo = p.get_last_lo_pos();
@@ -2167,9 +2147,7 @@ fn parse_fn_anon_proto(p: parser) -> ast::proto {
 }
 
 fn parse_method_proto(p: parser) -> ast::proto {
-    if eat_word(p, "iter") {
-        ret ast::proto_iter;
-    } else if eat_word(p, "fn") {
+    if eat_word(p, "fn") {
         ret ast::proto_bare;
     } else { unexpected(p, p.peek()); }
 }
@@ -2180,27 +2158,24 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
     } else if eat_word(p, "inline") {
         expect_word(p, "fn");
         let proto = parse_fn_item_proto(p);
-        ret some(parse_item_fn_or_iter(p, ast::impure_fn, proto,
+        ret some(parse_item_fn(p, ast::impure_fn, proto,
                                        attrs, ast::il_inline));
     } else if is_word(p, "fn") && p.look_ahead(1u) != token::LPAREN {
         p.bump();
         let proto = parse_fn_item_proto(p);
-        ret some(parse_item_fn_or_iter(p, ast::impure_fn, proto,
-                                       attrs, ast::il_normal));
+        ret some(parse_item_fn(p, ast::impure_fn, proto,
+                               attrs, ast::il_normal));
     } else if eat_word(p, "pure") {
         expect_word(p, "fn");
         let proto = parse_fn_item_proto(p);
-        ret some(parse_item_fn_or_iter(p, ast::pure_fn, proto, attrs,
-                                       ast::il_normal));
+        ret some(parse_item_fn(p, ast::pure_fn, proto, attrs,
+                               ast::il_normal));
     } else if is_word(p, "unsafe") && p.look_ahead(1u) != token::LBRACE {
         p.bump();
         expect_word(p, "fn");
         let proto = parse_fn_item_proto(p);
-        ret some(parse_item_fn_or_iter(p, ast::unsafe_fn, proto,
-                                       attrs, ast::il_normal));
-    } else if eat_word(p, "iter") {
-        ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_iter,
-                                       attrs, ast::il_normal));
+        ret some(parse_item_fn(p, ast::unsafe_fn, proto,
+                               attrs, ast::il_normal));
     } else if eat_word(p, "mod") {
         ret some(parse_item_mod(p, attrs));
     } else if eat_word(p, "native") {

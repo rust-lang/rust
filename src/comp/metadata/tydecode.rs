@@ -251,11 +251,6 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         ret ty::mk_fn(st.tcx, ast::proto_bare, func.args, func.ty, func.cf,
                       func.cs);
       }
-      'W' {
-        let func = parse_ty_fn(st, sd);
-        ret ty::mk_fn(st.tcx, ast::proto_iter, func.args, func.ty, func.cf,
-                      func.cs);
-      }
       'B' {
         let func = parse_ty_fn(st, sd);
         ret ty::mk_fn(st.tcx, ast::proto_block, func.args, func.ty, func.cf,
@@ -281,7 +276,6 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         while peek(st) as char != ']' {
             let proto;
             alt next(st) as char {
-              'W' { proto = ast::proto_iter; }
               'f' { proto = ast::proto_bare; }
             }
             let name = "";

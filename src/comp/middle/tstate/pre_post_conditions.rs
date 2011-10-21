@@ -343,15 +343,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         find_pre_post_expr(fcx, arg);
         copy_pre_post(fcx.ccx, e.id, arg);
       }
-      expr_put(opt) {
-        alt opt {
-          some(arg) {
-            find_pre_post_expr(fcx, arg);
-            copy_pre_post(fcx.ccx, e.id, arg);
-          }
-          none. { clear_pp(expr_pp(fcx.ccx, e)); }
-        }
-      }
       expr_fn(f) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
@@ -458,14 +449,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       }
       expr_for(d, index, body) {
         find_pre_post_loop(fcx, d, index, body, e.id);
-      }
-      expr_for_each(d, index, body) {
-        find_pre_post_loop(fcx, d, index, body, e.id);
-        let rslt = expr_pp(fcx.ccx, e);
-        clear_pp(rslt);
-        for def in *freevars::get_freevars(fcx.ccx.tcx, body.node.id) {
-            handle_var_def(fcx, rslt, def, "upvar");
-        }
       }
       expr_index(val, sub) { find_pre_post_exprs(fcx, [val, sub], e.id); }
       expr_alt(ex, alts) {

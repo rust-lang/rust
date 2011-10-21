@@ -49,7 +49,6 @@ fn common_exprs() -> [ast::expr] {
      dse(ast::expr_fail(option::none)),
      dse(ast::expr_fail(option::some(@dse(ast::expr_lit(@dsl(ast::lit_str("boo"))))))),
      dse(ast::expr_ret(option::none)),
-     dse(ast::expr_put(option::none)),
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
@@ -74,7 +73,6 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_block(_) { false }
           ast::expr_alt(_, _) { false }
           ast::expr_for(_, _, _) { false }
-          ast::expr_for_each(_, _, _) { false }
           ast::expr_while(_, _) { false }
 
           // https://github.com/graydon/rust/issues/955
@@ -89,7 +87,6 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
 
           ast::expr_fail(option::none.) { false }
           ast::expr_ret(option::none.) { false }
-          ast::expr_put(option::none.) { false }
 
           // https://github.com/graydon/rust/issues/953
           ast::expr_fail(option::some(_)) { false }

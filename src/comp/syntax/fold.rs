@@ -377,10 +377,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_for(fld.fold_local(decl), fld.fold_expr(expr),
                      fld.fold_block(blk))
           }
-          expr_for_each(decl, expr, blk) {
-            expr_for_each(fld.fold_local(decl), fld.fold_expr(expr),
-                          fld.fold_block(blk))
-          }
           expr_do_while(blk, expr) {
             expr_do_while(fld.fold_block(blk), fld.fold_expr(expr))
           }
@@ -413,7 +409,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_break. { e }
           expr_cont. { e }
           expr_ret(e) { expr_ret(option::map(fld.fold_expr, e)) }
-          expr_put(e) { expr_put(option::map(fld.fold_expr, e)) }
           expr_be(e) { expr_be(fld.fold_expr(e)) }
           expr_log(lv, e) { expr_log(lv, fld.fold_expr(e)) }
           expr_assert(e) { expr_assert(fld.fold_expr(e)) }

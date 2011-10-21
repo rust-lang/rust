@@ -82,7 +82,7 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
+fn type_of_fn(cx: @crate_ctxt, sp: span,
               is_method: bool, ret_ref: bool, inputs: [ty::arg],
               output: ty::t, ty_param_count: uint)
    : non_ty_var(cx, output) -> TypeRef {
@@ -102,18 +102,6 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, proto: ast::proto,
         let i = 0u;
         while i < ty_param_count { atys += [T_ptr(cx.tydesc_type)]; i += 1u; }
     }
-    if proto == ast::proto_iter {
-        // If it's an iter, the 'output' type of the iter is actually the
-        // *input* type of the function we're given as our iter-block
-        // argument.
-        let iter_body_ty = ty::mk_iter_body_fn(cx.tcx, output);
-        // FIXME: this check could be avoided pretty easily if we had
-        // postconditions
-        // (or better yet, just use a constraiend type that expresses
-        // non-ty-var things)
-        check non_ty_var(cx, iter_body_ty);
-        atys += [type_of_inner(cx, sp, iter_body_ty)];
-    }
     // ... then explicit args.
     atys += type_of_explicit_args(cx, sp, inputs);
     ret T_fn(atys, llvm::LLVMVoidType());
@@ -129,8 +117,7 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
     // (see Issue #586)
     let ret_ty = ty::ty_fn_ret(cx.tcx, fty);
     check non_ty_var(cx, ret_ty);
-    ret type_of_fn(cx, sp, ty::ty_fn_proto(cx.tcx, fty),
-                   false, by_ref, ty::ty_fn_args(cx.tcx, fty),
+    ret type_of_fn(cx, sp, false, by_ref, ty::ty_fn_args(cx.tcx, fty),
                    ret_ty, ty_param_count);
 }
 
@@ -2739,12 +2726,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
 fn build_closure(cx: @block_ctxt, upvars: @[ast::def], copying: bool) ->
    {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
     // If we need to, package up the iterator body to call
-    let env_vals = alt cx.fcx.lliterbody {
-      some(body) when !copying {
-        [env_direct(body, option::get(cx.fcx.iterbodyty), true)]
-      }
-      _ { [] }
-    };
+    let env_vals = [];
     // Package up the upvars
     for def in *upvars {
         let lv = trans_local_var(cx, def);
@@ -2819,17 +2801,6 @@ fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
     // Populate the upvars from the environment.
     let path = [0, abi::box_rc_field_body, abi::closure_elt_bindings];
     i = 0u;
-    // If this is an aliasing closure/for-each body, we need to load
-    // the iterbody.
-    if !copying && !option::is_none(enclosing_cx.fcx.lliterbody) {
-        // Silly check
-        check type_is_tup_like(bcx, ty);
-        let iterbodyptr = GEP_tup_like(bcx, ty, llclosure, path + [0]);
-        fcx.lliterbody = some(Load(bcx, iterbodyptr.val));
-        bcx = iterbodyptr.bcx;
-        i += 1u;
-    }
-
     // Load the actual upvars.
     for upvar_def in *upvars {
         // Silly check
@@ -2841,86 +2812,6 @@ fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
         let def_id = ast_util::def_id_of_def(upvar_def);
         fcx.llupvars.insert(def_id.node, llupvarptr);
         i += 1u;
-    }
-}
-
-fn trans_for_each(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
-                  body: ast::blk) -> @block_ctxt {
-    /*
-     * The translation is a little .. complex here. Code like:
-     *
-     *    let ty1 p = ...;
-     *
-     *    let ty1 q = ...;
-     *
-     *    foreach (ty v in foo(a,b)) { body(p,q,v) }
-     *
-     *
-     * Turns into a something like so (C/Rust mishmash):
-     *
-     *    type env = { *ty1 p, *ty2 q, ... };
-     *
-     *    let env e = { &p, &q, ... };
-     *
-     *    fn foreach123_body(env* e, ty v) { body(*(e->p),*(e->q),v) }
-     *
-     *    foo([foreach123_body, env*], a, b);
-     *
-     */
-
-    // Step 1: Generate code to build an environment containing pointers
-    // to all of the upvars
-    let lcx = cx.fcx.lcx;
-    let ccx = lcx.ccx;
-
-    // FIXME: possibly support alias-mode here?
-    let decl_ty = node_id_type(ccx, local.node.id);
-    let upvars = get_freevars(ccx.tcx, body.node.id);
-
-    let llenv = build_closure(cx, upvars, false);
-
-    // Step 2: Declare foreach body function.
-    let s: str =
-        mangle_internal_name_by_path_and_seq(ccx, lcx.path, "foreach");
-
-    // The 'env' arg entering the body function is a fake env member (as in
-    // the env-part of the normal rust calling convention) that actually
-    // points to a stack allocated env in this frame. We bundle that env
-    // pointer along with the foreach-body-fn pointer into a 'normal' fn pair
-    // and pass it in as a first class fn-arg to the iterator.
-    let iter_body_fn = ty::mk_iter_body_fn(ccx.tcx, decl_ty);
-    // FIXME: should be a postcondition on mk_iter_body_fn
-    check returns_non_ty_var(ccx, iter_body_fn);
-    let iter_body_llty =
-        type_of_fn_from_ty(ccx, cx.sp, iter_body_fn, 0u);
-    let lliterbody: ValueRef =
-        decl_internal_cdecl_fn(ccx.llmod, s, iter_body_llty);
-    let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id,
-                               ast::return_val);
-    fcx.iterbodyty = cx.fcx.iterbodyty;
-
-    // Generate code to load the environment out of the
-    // environment pointer.
-    load_environment(cx, fcx, llenv.ptrty, upvars, false);
-
-    let bcx = new_top_block_ctxt(fcx);
-    // Add bindings for the loop variable alias.
-    bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat,
-                                          llvm::LLVMGetParam(fcx.llfn, 2u),
-                                          false);
-    let lltop = bcx.llbb;
-    bcx = trans_block(bcx, body);
-    finish_fn(fcx, lltop);
-
-    build_return(bcx);
-
-    // Step 3: Call iter passing [lliterbody, llenv], plus other args.
-    alt seq.node {
-      ast::expr_call(f, args) {
-        let pair =
-            create_real_fn_pair(cx, iter_body_llty, lliterbody, llenv.ptr);
-        ret trans_call(cx, f, some(pair), args, seq.id, ignore);
-      }
     }
 }
 
@@ -3151,9 +3042,8 @@ fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
     // FIXME: constrain ty_obj?
     check non_ty_var(ccx, ret_ty);
 
-    let ll_fn_ty = type_of_fn(ccx, bcx.sp, ty::ty_fn_proto(tcx, fn_ty),
-                              true, ret_ref, ty::ty_fn_args(tcx, fn_ty),
-                              ret_ty, 0u);
+    let ll_fn_ty = type_of_fn(ccx, bcx.sp, true, ret_ref,
+                              ty::ty_fn_args(tcx, fn_ty), ret_ty, 0u);
     v = Load(bcx, PointerCast(bcx, v, T_ptr(T_ptr(ll_fn_ty))));
     ret {bcx: bcx, mthptr: v, objptr: o};
 }
@@ -3310,7 +3200,7 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
       // This is a by-ref returning call. Regular calls are not lval
       ast::expr_call(f, args) {
         let cell = empty_dest_cell();
-        let bcx = trans_call(cx, f, none, args, e.id, by_val(cell));
+        let bcx = trans_call(cx, f, args, e.id, by_val(cell));
         ret lval_owned(bcx, *cell);
       }
       _ { bcx_ccx(cx).sess.span_bug(e.span, "non-lval in trans_lval"); }
@@ -3762,8 +3652,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
-              gen: option::t<generic_info>,
-              lliterbody: option::t<ValueRef>, es: [@ast::expr], fn_ty: ty::t,
+              gen: option::t<generic_info>, es: [@ast::expr], fn_ty: ty::t,
               dest: dest)
    -> {bcx: @block_ctxt,
        outer_cx: @block_ctxt,
@@ -3802,8 +3691,7 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
     } else {
         alt dest {
           ignore. {
-            if ty::type_is_nil(tcx, retty) ||
-               !option::is_none(lliterbody) {
+            if ty::type_is_nil(tcx, retty) {
                 llvm::LLVMGetUndef(T_ptr(llretty))
             } else { alloca(cx, llretty) }
           }
@@ -3829,21 +3717,6 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
 
     // Args >2: ty_params ...
     llargs += lltydescs;
-
-    // ... then possibly an lliterbody argument.
-    alt lliterbody {
-      none. { }
-      some(lli) {
-        let lli =
-            if ty::type_contains_params(tcx, retty) {
-                let body_ty = ty::mk_iter_body_fn(tcx, retty);
-                check non_ty_var(ccx, body_ty);
-                let body_llty = type_of_inner(ccx, cx.sp, body_ty);
-                PointerCast(bcx, lli, T_ptr(body_llty))
-            } else { lli };
-        llargs += [Load(cx, lli)];
-      }
-    }
 
     // ... then explicit args.
 
@@ -3873,8 +3746,8 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
 }
 
 fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
-              lliterbody: option::t<ValueRef>, args: [@ast::expr],
-              id: ast::node_id, dest: dest) -> @block_ctxt {
+              args: [@ast::expr], id: ast::node_id, dest: dest)
+    -> @block_ctxt {
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
@@ -3911,8 +3784,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
 
     let ret_ty = ty::node_id_to_type(tcx, id);
     let args_res =
-        trans_args(bcx, in_cx, llenv, f_res.generic, lliterbody, args,
-                   fn_expr_ty, dest);
+        trans_args(bcx, in_cx, llenv, f_res.generic, args, fn_expr_ty, dest);
     Br(args_res.outer_cx, cx.llbb);
     bcx = args_res.bcx;
     let llargs = args_res.args;
@@ -4304,7 +4176,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_anon_obj(bcx, e.span, anon_obj, e.id, dest);
       }
       ast::expr_call(f, args) {
-        ret trans_call(bcx, f, none, args, e.id, dest);
+        ret trans_call(bcx, f, args, e.id, dest);
       }
       ast::expr_field(_, _) {
         fail "Taking the value of a method does not work yet (issue #435)";
@@ -4330,10 +4202,6 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         // FIXME
         check (ast_util::is_call_expr(ex));
         ret trans_be(bcx, ex);
-      }
-      ast::expr_put(ex) {
-        assert dest == ignore;
-        ret trans_put(bcx, ex);
       }
       ast::expr_fail(expr) {
         assert dest == ignore;
@@ -4374,10 +4242,6 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       ast::expr_for(decl, seq, body) {
         assert dest == ignore;
         ret trans_for(bcx, decl, seq, body);
-      }
-      ast::expr_for_each(decl, seq, body) {
-        assert dest == ignore;
-        ret trans_for_each(bcx, decl, seq, body);
       }
       ast::expr_while(cond, body) {
         assert dest == ignore;
@@ -4589,47 +4453,6 @@ fn trans_fail_value(bcx: @block_ctxt, sp_opt: option::t<span>,
     let bcx = invoke(bcx, bcx_ccx(bcx).upcalls._fail, args);
     Unreachable(bcx);
     ret bcx;
-}
-
-fn trans_put(in_cx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
-    let cx = new_scope_block_ctxt(in_cx, "put");
-    Br(in_cx, cx.llbb);
-    let llcallee = C_nil();
-    let llenv = C_nil();
-    alt cx.fcx.lliterbody {
-      some(lli) {
-        let slot = alloca(cx, val_ty(lli));
-        Store(cx, lli, slot);
-        llcallee = GEP(cx, slot, [C_int(0), C_int(abi::fn_field_code)]);
-        llcallee = Load(cx, llcallee);
-        llenv = GEP(cx, slot, [C_int(0), C_int(abi::fn_field_box)]);
-        llenv = Load(cx, llenv);
-      }
-    }
-    let bcx = cx;
-    let dummy_retslot = alloca(bcx, T_nil());
-    let llargs: [ValueRef] = [dummy_retslot, llenv];
-    alt e {
-      none. {
-        llargs += [C_null(T_ptr(T_nil()))];
-      }
-      some(x) {
-        let e_ty = ty::expr_ty(bcx_tcx(cx), x);
-        let arg = {mode: ast::by_ref, ty: e_ty};
-        let arg_tys = type_of_explicit_args(bcx_ccx(cx), x.span, [arg]);
-        let z = [];
-        let k = [];
-        let r = trans_arg_expr(bcx, arg, arg_tys[0], z, k, x);
-        bcx = r.bcx;
-        llargs += [r.val];
-      }
-    }
-    bcx = invoke(bcx, llcallee, llargs);
-    bcx = trans_block_cleanups(bcx, cx);
-    let next_cx = new_sub_block_ctxt(in_cx, "next");
-    if bcx.unreachable { Unreachable(next_cx); }
-    Br(bcx, next_cx.llbb);
-    ret next_cx;
 }
 
 fn trans_break_cont(sp: span, bcx: @block_ctxt, to_end: bool)
@@ -5086,8 +4909,6 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
           mutable llreturn: llbbs.rt,
           mutable llobstacktoken: none::<ValueRef>,
           mutable llself: none::<val_self_pair>,
-          mutable lliterbody: none::<ValueRef>,
-          mutable iterbodyty: none::<ty::t>,
           llargs: new_int_hash::<local_val>(),
           llobjfields: new_int_hash::<ValueRef>(),
           lllocals: new_int_hash::<local_val>(),
@@ -5118,8 +4939,7 @@ fn new_fn_ctxt(cx: @local_ctxt, sp: span, llfndecl: ValueRef) -> @fn_ctxt {
 // spaces that have been created for them (by code in the llallocas field of
 // the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
 // field of the fn_ctxt with
-fn create_llargs_for_fn_args(cx: @fn_ctxt, proto: ast::proto,
-                             ty_self: option::t<ty::t>, ret_ty: ty::t,
+fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: option::t<ty::t>,
                              args: [ast::arg], ty_params: [ast::ty_param]) {
     // Skip the implicit arguments 0, and 1.  TODO: Pull out 2u and define
     // it as a constant, since we're using it in several places in trans this
@@ -5137,17 +4957,6 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, proto: ast::proto,
             i += 1u;
         }
       }
-    }
-
-    // If the function is actually an iter, populate the lliterbody field of
-    // the function context with the ValueRef that we get from
-    // llvm::LLVMGetParam for the iter's body.
-    if proto == ast::proto_iter {
-        cx.iterbodyty = some(ty::mk_iter_body_fn(fcx_tcx(cx), ret_ty));
-        let llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
-        assert (llarg as int != 0);
-        cx.lliterbody = some::<ValueRef>(llarg);
-        arg_n += 1u;
     }
 
     // Populate the llargs field of the function context with the ValueRefs
@@ -5282,9 +5091,7 @@ fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
 
     // Set up arguments to the function.
     let fcx = new_fn_ctxt_w_id(cx, sp, llfndecl, id, f.decl.cf);
-    create_llargs_for_fn_args(fcx, f.proto, ty_self,
-                              ty::ret_ty_of_fn(cx.ccx.tcx, id), f.decl.inputs,
-                              ty_params);
+    create_llargs_for_fn_args(fcx, ty_self, f.decl.inputs, ty_params);
     alt fcx.llself {
       some(llself) { populate_fn_ctxt_from_llself(fcx, llself); }
       _ { }
@@ -5307,7 +5114,6 @@ fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     // (trans_block, trans_expr, et cetera).
     if ty::type_is_bot(cx.ccx.tcx, block_ty) ||
        ty::type_is_nil(cx.ccx.tcx, block_ty) ||
-       f.proto == ast::proto_iter ||
        option::is_none(f.body.node.expr) {
         bcx = trans_block_dps(bcx, f.body, ignore);
     } else if ty::type_is_immediate(cx.ccx.tcx, block_ty) {
@@ -5349,9 +5155,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
     let ret_t = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
-    create_llargs_for_fn_args(fcx, ast::proto_shared(ast::sugar_normal),
-                              none::<ty::t>, ret_t,
-                              dtor.decl.inputs, ty_params);
+    create_llargs_for_fn_args(fcx, none, dtor.decl.inputs, ty_params);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
     let arg_t = arg_tys_of_fn(cx.ccx, ctor_id)[0].ty;
@@ -5410,10 +5214,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
       }
     }
     let fcx = new_fn_ctxt(cx, variant.span, llfndecl);
-    create_llargs_for_fn_args(fcx, ast::proto_shared(ast::sugar_normal),
-                              none::<ty::t>,
-                              ty::ret_ty_of_fn(cx.ccx.tcx, variant.node.id),
-                              fn_args, ty_params);
+    create_llargs_for_fn_args(fcx, none, fn_args, ty_params);
     let ty_param_substs: [ty::t] = [];
     i = 0u;
     for tp: ast::ty_param in ty_params {
@@ -5573,11 +5374,10 @@ fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
     let llfty =
         type_of_fn_from_ty(ccx, sp, node_type, std::vec::len(ty_params));
     alt ty::struct(ccx.tcx, node_type) {
-      ty::ty_fn(proto, inputs, output, rs, _) {
+      ty::ty_fn(_, inputs, output, rs, _) {
         check non_ty_var(ccx, output);
-        llfty = type_of_fn(ccx, sp, proto, false,
-                           ast_util::ret_by_ref(rs), inputs, output,
-                           vec::len(ty_params));
+        llfty = type_of_fn(ccx, sp, false, ast_util::ret_by_ref(rs), inputs,
+                           output, vec::len(ty_params));
       }
       _ { ccx.sess.bug("register_fn(): fn item doesn't have fn type!"); }
     }
@@ -5618,9 +5418,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let nt = ty::mk_nil(ccx.tcx);
         check non_ty_var(ccx, nt);
 
-        let llfty = type_of_fn(ccx, sp, ast::proto_shared(ast::sugar_normal),
-                               false, false,
-                               [vecarg_ty], nt, 0u);
+        let llfty = type_of_fn(ccx, sp, false, false, [vecarg_ty], nt, 0u);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::LLVMCCallConv, llfty);
 
@@ -5732,9 +5530,7 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
     alt ty::struct(cx.tcx, x) {
       ty::ty_native_fn(abi, args, out) {
         check non_ty_var(cx, out);
-        ret type_of_fn(cx, sp, ast::proto_shared(ast::sugar_normal),
-                       false, false, args, out,
-                       ty_param_count);
+        ret type_of_fn(cx, sp, false, false, args, out, ty_param_count);
       }
     }
 }

@@ -117,10 +117,9 @@ fn check_states_against_conditions(fcx: fn_ctxt, f: _fn, tps: [ast::ty_param],
 
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f.body);
-    if f.proto != ast::proto_iter &&
-           !promises(fcx, post, fcx.enclosing.i_return) &&
-           !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
-           f.decl.cf == return_val {
+    if !promises(fcx, post, fcx.enclosing.i_return) &&
+       !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
+       f.decl.cf == return_val {
         fcx.ccx.tcx.sess.span_err(f.body.span,
                                   "In function " + fcx.name +
                                       ", not all control paths \

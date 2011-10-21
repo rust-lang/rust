@@ -98,23 +98,6 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
         handled = false;
       }
       ast::expr_alt(input, arms) { check_alt(*cx, input, arms, sc, v); }
-      ast::expr_put(val) {
-        alt val {
-          some(ex) {
-            let root = expr_root(*cx, ex, false);
-            if !is_none(root.mut) {
-                cx.tcx.sess.span_err(ex.span,
-                                     "result of put must be" +
-                                         " immutably rooted");
-            }
-            visit_expr(cx, ex, sc, v);
-          }
-          _ { }
-        }
-      }
-      ast::expr_for_each(decl, call, blk) {
-        check_for_each(*cx, decl, call, blk, sc, v);
-      }
       ast::expr_for(decl, seq, blk) { check_for(*cx, decl, seq, blk, sc, v); }
       ast::expr_path(pt) {
         check_var(*cx, ex, pt, ex.id, false, sc);
@@ -421,21 +404,6 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
                                   copy info.unsafe_tys)];
         }
         visit::visit_arm(a, {bs: new_bs with sc}, v);
-    }
-}
-
-fn check_for_each(cx: ctx, local: @ast::local, call: @ast::expr,
-                  blk: ast::blk, sc: scope, v: vt<scope>) {
-    v.visit_expr(call, sc, v);
-    alt call.node {
-      ast::expr_call(f, args) {
-        let new_bs = sc.bs + check_call(cx, f, args);
-        for proot in pattern_roots(cx.tcx, none, local.node.pat) {
-            new_bs += [mk_binding(cx, proot.id, proot.span, none,
-                                  unsafe_set(proot.mut))];
-        }
-        visit::visit_block(blk, {bs: new_bs with sc}, v);
-      }
     }
 }
 

@@ -1010,7 +1010,6 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // here yet, leading to weirdness around closure.
       ty_fn(proto, _, _, _, _) {
         result = alt proto {
-          ast::proto_iter. { ast::kind_shared }
           ast::proto_block. { ast::kind_pinned }
           ast::proto_shared(_) { ast::kind_shared }
           ast::proto_bare. { ast::kind_unique }
@@ -2042,14 +2041,7 @@ mod unify {
             }
         }
 
-        ret if (e_proto == ast::proto_iter
-            || a_proto == ast::proto_iter) {
-            if e_proto != a_proto {
-                some(ures_err(terr_mismatch))
-            } else {
-                none
-            }
-        } else if e_proto == a_proto {
+        ret if e_proto == a_proto {
             none
         } else if variance == invariant {
             if e_proto != a_proto {

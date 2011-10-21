@@ -606,8 +606,7 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
 // alt, do, & while unambiguously without being parenthesized
 fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
     let disambig = alt e.node {
-      ast::expr_ret(none.) | ast::expr_put(none.) |
-      ast::expr_fail(none.) { true }
+      ast::expr_ret(none.) | ast::expr_fail(none.) { true }
       _ { false }
     };
     if disambig { popen(s); }
@@ -796,12 +795,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         space(s.s);
         print_block(s, blk);
       }
-      ast::expr_for_each(decl, expr, blk) {
-        head(s, "for each");
-        print_for_decl(s, decl, expr);
-        space(s.s);
-        print_block(s, blk);
-      }
       ast::expr_do_while(blk, expr) {
         head(s, "do");
         space(s.s);
@@ -924,13 +917,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           _ { }
         }
       }
-      ast::expr_put(result) {
-        word(s.s, "put");
-        alt result {
-          some(expr) { word(s.s, " "); print_expr(s, expr); }
-          _ { }
-        }
-      }
       ast::expr_be(result) { word_nbsp(s, "be"); print_expr(s, result); }
       ast::expr_log(lvl, expr) {
         alt lvl { 1 { word_nbsp(s, "log"); } 0 { word_nbsp(s, "log_err"); } }
@@ -1005,7 +991,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
 
 fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
     let parens = alt ex.node {
-      ast::expr_fail(_) | ast::expr_ret(_) | ast::expr_put(_) |
+      ast::expr_fail(_) | ast::expr_ret(_) |
       ast::expr_binary(_, _, _) | ast::expr_unary(_, _) |
       ast::expr_ternary(_, _, _) | ast::expr_move(_, _) |
       ast::expr_copy(_) | ast::expr_assign(_, _) | ast::expr_be(_) |
@@ -1319,7 +1305,6 @@ fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
       ast::expr_swap(_, _) { true }
       ast::expr_assign_op(_, _, _) { true }
       ast::expr_ret(_) { true }
-      ast::expr_put(_) { true }
       ast::expr_be(_) { true }
       ast::expr_assert(_) { true }
       ast::expr_check(_, _) { true }
@@ -1643,7 +1628,6 @@ fn ast_fn_constrs_str(decl: ast::fn_decl, constrs: [@ast::constr]) -> str {
 
 fn proto_to_str(p: ast::proto) -> str {
     ret alt p {
-          ast::proto_iter. { "iter" }
           ast::proto_bare. { "fn" }
           ast::proto_block. { "block" }
           ast::proto_shared(ast::sugar_normal.) { "fn@" }
@@ -1679,7 +1663,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
       ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
       ast::expr_log(_, sub) | ast::expr_assert(sub) |
       ast::expr_check(_, sub) { ends_in_lit_int(sub) }
-      ast::expr_fail(osub) | ast::expr_ret(osub) | ast::expr_put(osub) {
+      ast::expr_fail(osub) | ast::expr_ret(osub) {
         alt osub {
           some(ex) { ends_in_lit_int(ex) }
           _ { false }

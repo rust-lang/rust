@@ -1560,8 +1560,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(fcx: @fn_ctxt, sp: span, f: @ast::expr,
-                          args: [option::t<@ast::expr>], call_kind: call_kind)
-       -> bool {
+                          args: [option::t<@ast::expr>]) -> bool {
         // Check the function.
         let bot = check_expr(fcx, f);
 
@@ -1569,22 +1568,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let fty = expr_ty(fcx.ccx.tcx, f);
 
         let sty = structure_of(fcx, sp, fty);
-
-        // Check that we aren't confusing iter calls and fn calls
-        alt sty {
-          ty::ty_fn(ast::proto_iter., _, _, _, _) {
-            if call_kind != kind_for_each {
-                fcx.ccx.tcx.sess.span_err
-                    (sp, "calling iter outside of for each loop");
-            }
-          }
-          _ {
-            if call_kind == kind_for_each {
-                fcx.ccx.tcx.sess.span_err
-                    (sp, "calling non-iter as sequence of for each loop");
-            }
-          }
-        }
 
         // Grab the argument types
         let arg_tys =
@@ -1669,27 +1652,26 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     }
 
     // A generic function for checking call expressions
-    fn check_call(fcx: @fn_ctxt, sp: span, f: @ast::expr, args: [@ast::expr],
-                  call_kind: call_kind) -> bool {
+    fn check_call(fcx: @fn_ctxt, sp: span, f: @ast::expr, args: [@ast::expr])
+        -> bool {
         let args_opt_0: [option::t<@ast::expr>] = [];
         for arg: @ast::expr in args {
             args_opt_0 += [some::<@ast::expr>(arg)];
         }
 
         // Call the generic checker.
-        ret check_call_or_bind(fcx, sp, f, args_opt_0, call_kind);
+        ret check_call_or_bind(fcx, sp, f, args_opt_0);
     }
 
     // A generic function for doing all of the checking for call expressions
     fn check_call_full(fcx: @fn_ctxt, sp: span, f: @ast::expr,
-                       args: [@ast::expr], call_kind: call_kind,
-                       id: ast::node_id) -> bool {
+                       args: [@ast::expr], id: ast::node_id) -> bool {
         /* here we're kind of hosed, as f can be any expr
         need to restrict it to being an explicit expr_path if we're
         inside a pure function, and need an environment mapping from
         function name onto purity-designation */
         require_pure_call(fcx.ccx, fcx.purity, f, sp);
-        let bot = check_call(fcx, sp, f, args, call_kind);
+        let bot = check_call(fcx, sp, f, args);
 
         // Pull the return type out of the type of the function.
         let rt_1;
@@ -1707,9 +1689,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     }
 
     // A generic function for checking for or for-each loops
-    fn check_for_or_for_each(fcx: @fn_ctxt, local: @ast::local,
-                             element_ty: ty::t, body: ast::blk,
-                             node_id: ast::node_id) -> bool {
+    fn check_for(fcx: @fn_ctxt, local: @ast::local,
+                 element_ty: ty::t, body: ast::blk,
+                 node_id: ast::node_id) -> bool {
         let locid = lookup_local(fcx, local.span, local.node.id);
         element_ty =
             demand::simple(fcx, local.span, element_ty,
@@ -1893,23 +1875,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
         write::bot_ty(tcx, id);
       }
-      ast::expr_put(expr_opt) {
-        require_impure(tcx.sess, fcx.purity, expr.span);
-        if fcx.proto != ast::proto_iter {
-            tcx.sess.span_err(expr.span, "put in non-iterator");
-        }
-        alt expr_opt {
-          none. {
-            let nil = ty::mk_nil(tcx);
-            if !are_compatible(fcx, fcx.ret_ty, nil) {
-                tcx.sess.span_err(expr.span,
-                                  "put; in iterator yielding non-nil");
-            }
-          }
-          some(e) { bot = check_expr_with(fcx, e, fcx.ret_ty); }
-        }
-        write::nil_ty(tcx, id);
-      }
       ast::expr_be(e) {
         // FIXME: prove instead of assert
         assert (ast_util::is_call_expr(e));
@@ -1979,21 +1944,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                 + "but found " + ty_to_str(tcx, ety));
           }
         }
-        bot |= check_for_or_for_each(fcx, decl, elt_ty, body, id);
-      }
-      ast::expr_for_each(decl, seq, body) {
-        alt seq.node {
-          ast::expr_call(f, args) {
-            bot =
-                check_call_full(fcx, seq.span, f, args, kind_for_each,
-                                seq.id);
-          }
-          _ {
-            tcx.sess.span_fatal(expr.span,
-                                "sequence in for each loop not a call");
-          }
-        }
-        bot |= check_for_or_for_each(fcx, decl, expr_ty(tcx, seq), body, id);
+        bot |= check_for(fcx, decl, elt_ty, body, id);
       }
       ast::expr_while(cond, body) {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx));
@@ -2069,7 +2020,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_bind(f, args) {
         // Call the generic checker.
-        bot = check_call_or_bind(fcx, expr.span, f, args, kind_bind);
+        bot = check_call_or_bind(fcx, expr.span, f, args);
 
         // Pull the argument and return types out.
         let proto, arg_tys, rt, cf, constrs;
@@ -2122,7 +2073,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         write::ty_only_fixup(fcx, id, ft);
       }
       ast::expr_call(f, args) {
-        bot = check_call_full(fcx, expr.span, f, args, kind_call, expr.id);
+        bot = check_call_full(fcx, expr.span, f, args, expr.id);
       }
       ast::expr_self_method(ident) {
         let t = ty::mk_nil(tcx);
@@ -2716,16 +2667,12 @@ fn check_fn(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     check_constraints(fcx, decl.constraints, decl.inputs);
     check_block(fcx, body);
 
-    // For non-iterator fns, we unify the tail expr's type with the
+    // We unify the tail expr's type with the
     // function result type, if there is a tail expr.
-    // We don't do this check for an iterator, as the tail expr doesn't
-    // have to have the result type of the iterator.
     alt body.node.expr {
       some(tail_expr) {
-        if f.proto != ast::proto_iter {
-            let tail_expr_ty = expr_ty(ccx.tcx, tail_expr);
-            demand::simple(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty);
-        }
+        let tail_expr_ty = expr_ty(ccx.tcx, tail_expr);
+        demand::simple(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty);
       }
       none. { }
     }

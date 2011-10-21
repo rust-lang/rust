@@ -109,7 +109,6 @@ tag proto_sugar {
 }
 
 tag proto {
-    proto_iter;
     proto_bare;
     proto_shared(proto_sugar);
     proto_block;
@@ -197,7 +196,6 @@ tag expr_ {
     expr_ternary(@expr, @expr, @expr);
     expr_while(@expr, blk);
     expr_for(@local, @expr, blk);
-    expr_for_each(@local, @expr, blk);
     expr_do_while(blk, @expr);
     expr_alt(@expr, [arm]);
     expr_fn(_fn);
@@ -219,7 +217,6 @@ tag expr_ {
     expr_break;
     expr_cont;
     expr_ret(option::t<@expr>);
-    expr_put(option::t<@expr>);
     expr_be(@expr);
     expr_log(int, @expr);
 

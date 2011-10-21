@@ -37,7 +37,7 @@ tag scope {
     scope_item(@ast::item);
     scope_fn(ast::fn_decl, ast::proto, [ast::ty_param]);
     scope_native_item(@ast::native_item);
-    scope_loop(@ast::local, bool); // there's only 1 decl per loop.
+    scope_loop(@ast::local); // there's only 1 decl per loop.
 
     scope_block(ast::blk, @mutable uint, @mutable uint);
     scope_arm(ast::arm);
@@ -381,9 +381,8 @@ fn visit_arm_with_scope(a: ast::arm, sc: scopes, v: vt<scopes>) {
 
 fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
     alt x.node {
-      ast::expr_for(decl, coll, blk) | ast::expr_for_each(decl, coll, blk) {
-        let f_e = alt x.node { expr_for_each(_, _, _) { true } _ { false } };
-        let new_sc = cons(scope_loop(decl, f_e), @sc);
+      ast::expr_for(decl, coll, blk) {
+        let new_sc = cons(scope_loop(decl), @sc);
         v.visit_expr(coll, sc, v);
         v.visit_local(decl, new_sc, v);
         v.visit_block(blk, new_sc, v);
@@ -589,7 +588,6 @@ fn lookup_in_scope_strict(e: env, sc: scopes, sp: span, name: ident,
 
 fn scope_is_fn(sc: scope) -> bool {
     ret alt sc {
-          scope_fn(_, ast::proto_iter., _) |
           scope_fn(_, ast::proto_bare., _) |
           scope_native_item(_) {
             true
@@ -600,7 +598,7 @@ fn scope_is_fn(sc: scope) -> bool {
 
 fn scope_closes(sc: scope) -> option::t<bool> {
     alt sc {
-      scope_fn(_, ast::proto_block., _) | scope_loop(_, true) { some(true) }
+      scope_fn(_, ast::proto_block., _) { some(true) }
       scope_fn(_, ast::proto_shared(_), _) { some(false) }
       _ { none }
     }
@@ -662,7 +660,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           scope_fn(decl, _, ty_params) {
             ret lookup_in_fn(name, decl, ty_params, ns);
           }
-          scope_loop(local, _) {
+          scope_loop(local) {
             if ns == ns_value {
                 alt lookup_in_pat(name, local.node.pat) {
                   some(did) { ret some(ast::def_binding(did)); }

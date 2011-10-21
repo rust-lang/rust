@@ -274,7 +274,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_expr(el, e, v);
       }
       expr_while(x, b) { v.visit_expr(x, e, v); v.visit_block(b, e, v); }
-      expr_for(dcl, x, b) | expr_for_each(dcl, x, b) {
+      expr_for(dcl, x, b) {
         v.visit_local(dcl, e, v);
         v.visit_expr(x, e, v);
         v.visit_block(b, e, v);
@@ -301,7 +301,6 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_break. { }
       expr_cont. { }
       expr_ret(eo) { visit_expr_opt(eo, e, v); }
-      expr_put(eo) { visit_expr_opt(eo, e, v); }
       expr_be(x) { v.visit_expr(x, e, v); }
       expr_log(_, x) { v.visit_expr(x, e, v); }
       expr_check(_, x) { v.visit_expr(x, e, v); }

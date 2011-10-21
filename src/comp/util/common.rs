@@ -271,17 +271,6 @@ fn lit_eq(l: @ast::lit, m: @ast::lit) -> bool {
     }
 }
 
-tag call_kind { kind_call; kind_spawn; kind_bind; kind_for_each; }
-
-fn call_kind_str(c: call_kind) -> str {
-    alt c {
-      kind_call. { "Call" }
-      kind_spawn. { "Spawn" }
-      kind_bind. { "Bind" }
-      kind_for_each. { "For-Each" }
-    }
-}
-
 fn is_main_name(path: [ast::ident]) -> bool {
     str::eq(option::get(std::vec::last(path)), "main")
 }

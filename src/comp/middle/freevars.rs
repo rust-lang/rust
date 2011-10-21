@@ -41,11 +41,6 @@ fn collect_freevars(def_map: resolve::def_map, walker: fn@(visit::vt<int>)) ->
                     visit::visit_expr(expr, depth + 1, v);
                 }
               }
-              ast::expr_for_each(dcl, x, b) {
-                v.visit_local(dcl, depth, v);
-                v.visit_expr(x, depth, v);
-                v.visit_block(b, depth + 1, v);
-              }
               ast::expr_path(path) {
                 let def = def_map.get(expr.id), i = 0;
                 while i < depth {
@@ -91,21 +86,9 @@ fn annotate_freevars(def_map: resolve::def_map, crate: @ast::crate) ->
             let vars = collect_freevars(def_map, start_walk);
             freevars.insert(nid, vars);
         };
-    let walk_expr =
-        lambda (expr: @ast::expr) {
-            alt expr.node {
-              ast::expr_for_each(local, _, body) {
-                let start_walk =
-                    lambda (v: visit::vt<int>) { v.visit_block(body, 1, v); };
-                let vars = collect_freevars(def_map, start_walk);
-                freevars.insert(body.node.id, vars);
-              }
-              _ { }
-            }
-        };
 
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn: walk_fn, visit_expr: walk_expr
+        visit::mk_simple_visitor(@{visit_fn: walk_fn
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visitor);
 

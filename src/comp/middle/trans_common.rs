@@ -191,12 +191,6 @@ type fn_ctxt =
     // If this function is actually a iter, a block containing the
     // code called whenever the iter calls 'put'.
 
-    // If this function is actually a iter, the type of the function
-    // that that we call when we call 'put'. Having to track this is
-    // pretty irritating. We have to do it because we need the type if
-    // we are going to put the iterbody into a closure (if it appears
-    // in a for-each inside of an iter).
-
     // The next four items: hash tables mapping from AST def_ids to
     // LLVM-stuff-in-the-frame.
 
@@ -245,8 +239,6 @@ type fn_ctxt =
      mutable llreturn: BasicBlockRef,
      mutable llobstacktoken: option::t<ValueRef>,
      mutable llself: option::t<val_self_pair>,
-     mutable lliterbody: option::t<ValueRef>,
-     mutable iterbodyty: option::t<ty::t>,
      llargs: hashmap<ast::node_id, local_val>,
      llobjfields: hashmap<ast::node_id, ValueRef>,
      lllocals: hashmap<ast::node_id, local_val>,
@@ -340,8 +332,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
     let nil_res = ty::mk_nil(ccx.tcx);
     // FIXME: Silly check -- mk_nil should have a postcondition
     check non_ty_var(ccx, nil_res);
-    let f_t = type_of_fn(ccx, sp, ast::proto_shared(ast::sugar_normal),
-                         false, false,
+    let f_t = type_of_fn(ccx, sp, false, false,
                          [{mode: ast::by_ref, ty: inner_t}],
                          nil_res, params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,

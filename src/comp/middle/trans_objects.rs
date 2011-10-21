@@ -52,10 +52,7 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
     let lltop = bcx.llbb;
 
     // Both regular arguments and type parameters are handled here.
-    create_llargs_for_fn_args(fcx, ast::proto_shared(ast::sugar_normal),
-                              none::<ty::t>,
-                              ty::ret_ty_of_fn(ccx.tcx, ctor_id), fn_args,
-                              ty_params);
+    create_llargs_for_fn_args(fcx, none::<ty::t>, fn_args, ty_params);
     let arg_tys: [ty::arg] = arg_tys_of_fn(ccx, ctor_id);
     bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys, true);
 
@@ -888,9 +885,9 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     let llfnty = T_nil();
     let ccx = cx.ccx;
     alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.node.id)) {
-      ty::ty_fn(proto, inputs, output, rs, _) {
+      ty::ty_fn(_, inputs, output, rs, _) {
         check non_ty_var(ccx, output);
-        llfnty = type_of_fn(ccx, m.span, proto, true,
+        llfnty = type_of_fn(ccx, m.span, true,
                             ast_util::ret_by_ref(rs), inputs, output,
                             vec::len(ty_params));
       }
@@ -944,7 +941,7 @@ fn type_of_meth(ccx: @crate_ctxt, sp: span, m: @ty::method,
                 tps: [ast::ty_param]) -> TypeRef {
     let out_ty = m.output;
     check non_ty_var(ccx, out_ty);
-    type_of_fn(ccx, sp, m.proto, true, ast_util::ret_by_ref(m.cf),
+    type_of_fn(ccx, sp, true, ast_util::ret_by_ref(m.cf),
                m.inputs, out_ty, vec::len(tps))
 }
 

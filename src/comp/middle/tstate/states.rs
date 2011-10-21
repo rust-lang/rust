@@ -361,14 +361,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         ret find_pre_post_state_sub(fcx, pres, ex, e.id, none);
       }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
-      expr_put(maybe_e) {
-        alt maybe_e {
-          some(arg) {
-            ret find_pre_post_state_sub(fcx, pres, arg, e.id, none);
-          }
-          none. { ret pure_exp(fcx.ccx, e.id, pres); }
-        }
-      }
       expr_lit(l) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_fn(f) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_block(b) {
@@ -528,9 +520,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         ret changed;
       }
       expr_for(d, index, body) {
-        ret find_pre_post_state_loop(fcx, pres, d, index, body, e.id);
-      }
-      expr_for_each(d, index, body) {
         ret find_pre_post_state_loop(fcx, pres, d, index, body, e.id);
       }
       expr_index(val, sub) {
