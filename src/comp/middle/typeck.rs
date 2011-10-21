@@ -473,14 +473,6 @@ mod write {
     }
 }
 
-// Determine the proto for a fn type given the proto for its associated
-// code. This is needed because fn and lambda have fn type while iter
-// has iter type and block has block type. This may end up changing.
-fn proto_to_ty_proto(proto: ast::proto) -> ast::proto {
-    // FIXME: This is no longer needed since fn@ and lambda have
-    // the same type
-    proto
-}
 
 // Item collection - a pair of bootstrap passes:
 //
@@ -529,7 +521,7 @@ mod collect {
             out_constrs += [ty::ast_constr_to_constr(cx.tcx, constr)];
         }
         let t_fn =
-            ty::mk_fn(cx.tcx, proto_to_ty_proto(proto), input_tys, output_ty,
+            ty::mk_fn(cx.tcx, proto, input_tys, output_ty,
                       decl.cf, out_constrs);
         let tpt = {kinds: ty_param_kinds(ty_params), ty: t_fn};
         alt def_id { some(did) { cx.tcx.tcache.insert(did, tpt); } _ { } }
@@ -584,7 +576,7 @@ mod collect {
         for constr: @ast::constr in m.node.meth.decl.constraints {
             out_constrs += [ty::ast_constr_to_constr(cx.tcx, constr)];
         }
-        ret {proto: proto_to_ty_proto(m.node.meth.proto),
+        ret {proto: m.node.meth.proto,
              ident: m.node.ident,
              inputs: inputs,
              output: output,
