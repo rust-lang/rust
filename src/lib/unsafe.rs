@@ -4,7 +4,7 @@ native "rust-intrinsic" mod rusti {
     fn cast<T, U>(src: T) -> U;
 }
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     fn leak<@T>(-thing: T);
 }
 
