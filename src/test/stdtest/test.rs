@@ -6,22 +6,19 @@ import std::vec;
 
 #[test]
 fn do_not_run_ignored_tests() {
-    /*let ran = @mutable false;
-    let f = bind fn (ran: @mutable bool) { *ran = true; }(ran);
-
+    fn f() { fail; }
     let desc = {name: "whatever", fn: f, ignore: true};
-
-    test::run_test(desc, test::default_test_to_task);
-
-    assert (*ran == false);*/
+    let future = test::run_test(desc, test::default_test_to_task);
+    let result = future.wait();
+    assert result != test::tr_ok;
 }
 
 #[test]
 fn ignored_tests_result_in_ignored() {
-    /*fn f() { }
+    fn f() { }
     let desc = {name: "whatever", fn: f, ignore: true};
     let res = test::run_test(desc, test::default_test_to_task).wait();
-    assert (res == test::tr_ignored);*/
+    assert (res == test::tr_ignored);
 }
 
 #[test]
