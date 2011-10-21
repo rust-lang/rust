@@ -2,7 +2,7 @@
 ifdef CFG_PERF_TOOL
 rustc-perf$(X): stage2/bin/rustc$(X)
 	@$(call E, perf compile: $@)
-	$(PERF_STAGE1) -o $@ $(COMPILER_CRATE) >rustc-perf.err 2>&1
+	$(PERF_STAGE2) -o $@ $(COMPILER_CRATE) >rustc-perf.err 2>&1
 	$(Q)rm -f $@
 else
 rustc-perf$(X): stage2/bin/rustc$(X)
