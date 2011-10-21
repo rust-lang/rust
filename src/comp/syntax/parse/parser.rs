@@ -781,6 +781,10 @@ fn mk_mac_expr(p: parser, lo: uint, hi: uint, m: ast::mac_) -> @ast::expr {
           span: ast_util::mk_sp(lo, hi)};
 }
 
+fn is_bar(t: token::token) -> bool {
+    alt t { token::BINOP(token::OR.) | token::OROR. { true } _ { false } }
+}
+
 fn parse_bottom_expr(p: parser) -> @ast::expr {
     let lo = p.get_lo_pos();
     let hi = p.get_hi_pos();
@@ -815,8 +819,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
             hi = p.get_hi_pos();
             expect(p, token::RBRACE);
             ex = ast::expr_rec(fields, base);
-        } else if p.peek() == token::BINOP(token::OR) ||
-                      p.peek() == token::OROR {
+        } else if is_bar(p.peek()) {
             ret parse_fn_block_expr(p);
         } else {
             let blk = parse_block_tail(p, lo, ast::default_blk);
@@ -1061,10 +1064,8 @@ fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
                 ret e;
             } else {
                 // Call expr.
-
-                let es =
-                    parse_seq(token::LPAREN, token::RPAREN,
-                              some(token::COMMA), parse_expr, p);
+                let es = parse_seq(token::LPAREN, token::RPAREN,
+                                   some(token::COMMA), parse_expr, p);
                 hi = es.span.hi;
                 let nd = ast::expr_call(e, es.node);
                 e = mk_expr(p, lo, hi, nd);
@@ -1086,6 +1087,19 @@ fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
                 e = mk_expr(p, lo, hi, ast::expr_field(e, p.get_str(i)));
               }
               t { unexpected(p, t); }
+            }
+          }
+          token::LBRACE. when is_bar(p.look_ahead(1u)) {
+            p.bump();
+            let blk = parse_fn_block_expr(p);
+            alt e.node {
+              ast::expr_call(f, args) {
+                e = @{node: ast::expr_call(f, args + [blk]) with *e};
+              }
+              _ {
+                e = mk_expr(p, lo, p.get_last_hi_pos(),
+                            ast::expr_call(e, [blk]));
+              }
             }
           }
           _ { ret e; }
@@ -1394,11 +1408,6 @@ fn parse_initializer(p: parser) -> option::t<ast::initializer> {
         p.bump();
         ret some({op: ast::init_move, expr: parse_expr(p)});
       }
-
-
-
-
-
       // Now that the the channel is the first argument to receive,
       // combining it with an initializer doesn't really make sense.
       // case (token::RECV) {
@@ -1792,7 +1801,7 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
 fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
     let inputs =
         if p.peek() == token::OROR {
-            p.bump();;
+            p.bump();
             []
         } else {
             parse_seq(token::BINOP(token::OR), token::BINOP(token::OR),
