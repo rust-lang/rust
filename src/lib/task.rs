@@ -22,24 +22,25 @@ export spawn;
 export spawn_notify;
 export spawn_joinable;
 
-native "rust" mod rustrt {
-    fn task_sleep(time_in_us: uint);
-    fn task_yield();
-    fn task_join(t: task_id) -> int;
-    fn pin_task();
-    fn unpin_task();
-    fn get_task_id() -> task_id;
+native "rust" mod rustrt {                           // C Stack?
+    fn task_sleep(time_in_us: uint);                 // No
+    fn task_yield();                                 // No
+    fn start_task(id: task_id, closure: *u8);        // No
+    fn task_join(t: task_id) -> int;                 // Refactor
+}
 
-    type rust_chan;
+native "c-stack-cdecl" mod rustrt2 = "rustrt" {
+    fn pin_task();                                   // Yes
+    fn unpin_task();                                 // Yes
+    fn get_task_id() -> task_id;                     // Yes
 
-    fn set_min_stack(stack_size: uint);
+    fn set_min_stack(stack_size: uint);              // Yes
 
     fn new_task() -> task_id;
     fn drop_task(task: *rust_task);
     fn get_task_pointer(id: task_id) -> *rust_task;
 
-    fn migrate_alloc(alloc: *u8, target: task_id);
-    fn start_task(id: task_id, closure: *u8);
+    fn migrate_alloc(alloc: *u8, target: task_id);   // Yes
 }
 
 type rust_task =
@@ -48,13 +49,13 @@ type rust_task =
      mutable notify_chan: comm::chan<task_notification>,
      mutable stack_ptr: *u8};
 
-resource rust_task_ptr(task: *rust_task) { rustrt::drop_task(task); }
+resource rust_task_ptr(task: *rust_task) { rustrt2::drop_task(task); }
 
 type task = int;
 type task_id = task;
 type joinable_task = (task_id, comm::port<task_notification>);
 
-fn get_task_id() -> task_id { rustrt::get_task_id() }
+fn get_task_id() -> task_id { rustrt2::get_task_id() }
 
 /**
  * Hints the scheduler to yield this task for a specified ammount of time.
@@ -86,11 +87,11 @@ fn join_id(t: task_id) -> task_result {
 
 fn unsupervise() { ret sys::unsupervise(); }
 
-fn pin() { rustrt::pin_task(); }
+fn pin() { rustrt2::pin_task(); }
 
-fn unpin() { rustrt::unpin_task(); }
+fn unpin() { rustrt2::unpin_task(); }
 
-fn set_min_stack(stack_size: uint) { rustrt::set_min_stack(stack_size); }
+fn set_min_stack(stack_size: uint) { rustrt2::set_min_stack(stack_size); }
 
 fn spawn<~T>(-data: T, f: fn(T)) -> task {
     spawn_inner2(data, f, none)
@@ -138,12 +139,12 @@ fn spawn_inner2<~T>(-data: T, f: fn(T),
 fn unsafe_spawn_inner(-thunk: fn@(),
                       notify: option<comm::chan<task_notification>>) ->
    task_id unsafe {
-    let id = rustrt::new_task();
+    let id = rustrt2::new_task();
 
     let raw_thunk: {code: u32, env: u32} = cast(thunk);
 
     // set up the task pointer
-    let task_ptr <- rust_task_ptr(rustrt::get_task_pointer(id));
+    let task_ptr <- rust_task_ptr(rustrt2::get_task_pointer(id));
 
     assert (ptr::null() != (**task_ptr).stack_ptr);
 
@@ -167,7 +168,7 @@ fn unsafe_spawn_inner(-thunk: fn@(),
     }
 
     // give the thunk environment's allocation to the new task
-    rustrt::migrate_alloc(cast(raw_thunk.env), id);
+    rustrt2::migrate_alloc(cast(raw_thunk.env), id);
     rustrt::start_task(id, cast(thunkfn));
     // don't cleanup the thunk in this task
     unsafe::leak(thunk);
