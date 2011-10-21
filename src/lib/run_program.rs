@@ -8,7 +8,7 @@ export program_output;
 export spawn_process;
 export waitpid;
 
-native "rust" mod rustrt {
+native "c-stack-cdecl" mod rustrt {
     fn rust_run_program(argv: *sbuf, in_fd: int, out_fd: int, err_fd: int) ->
        int;
 }
