@@ -104,7 +104,10 @@ class irc : public shape::data<irc,shape::ptr> {
     }
 
     void walk_obj() {
-        shape::data<irc,shape::ptr>::walk_obj_contents(dp);
+	dp += sizeof(void *); // skip vtable
+	uint8_t *box_ptr = shape::bump_dp<uint8_t *>(dp);
+	shape::ptr ref_count_dp(box_ptr);
+	maybe_record_irc(ref_count_dp);
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,
@@ -491,7 +494,7 @@ class sweep : public shape::data<sweep,shape::ptr> {
     }
 
     void walk_obj() {
-        shape::data<sweep,shape::ptr>::walk_obj_contents(dp);
+	return;
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,
