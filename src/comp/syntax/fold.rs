@@ -7,7 +7,6 @@ export ast_fold_precursor;
 export ast_fold;
 export default_ast_fold;
 export make_fold;
-export dummy_out;
 export noop_fold_crate;
 export noop_fold_item;
 export noop_fold_expr;
@@ -529,42 +528,7 @@ fn default_ast_fold() -> @ast_fold_precursor {
           new_span: noop_span};
 }
 
-fn dummy_out(a: ast_fold) {
-    *a =
-        {fold_crate: nf_crate_dummy,
-         fold_crate_directive: nf_crate_directive_dummy,
-         fold_view_item: nf_view_item_dummy,
-         fold_native_item: nf_native_item_dummy,
-         fold_item: nf_item_dummy,
-         fold_item_underscore: nf_item_underscore_dummy,
-         fold_method: nf_method_dummy,
-         fold_block: nf_blk_dummy,
-         fold_stmt: nf_stmt_dummy,
-         fold_arm: nf_arm_dummy,
-         fold_pat: nf_pat_dummy,
-         fold_decl: nf_decl_dummy,
-         fold_expr: nf_expr_dummy,
-         fold_ty: nf_ty_dummy,
-         fold_constr: nf_constr_dummy,
-         fold_fn: nf_fn_dummy,
-         fold_mod: nf_mod_dummy,
-         fold_native_mod: nf_native_mod_dummy,
-         fold_variant: nf_variant_dummy,
-         fold_ident: nf_ident_dummy,
-         fold_path: nf_path_dummy,
-         fold_local: nf_local_dummy,
-         map_exprs: noop_map_exprs,
-         new_id: noop_id,
-         new_span: noop_span};
-}
-
-// FIXME: Fold has a circular reference that has to be broken. With GC this
-// can go away
-resource foldres(f: ast_fold) {
-    dummy_out(f);
-}
-
-fn make_fold(afp: ast_fold_precursor) -> @foldres {
+fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     // FIXME: Have to bind all the bare functions into shared functions
     // because @mutable is invariant with respect to its contents
     let result: ast_fold =
@@ -702,7 +666,7 @@ fn make_fold(afp: ast_fold_precursor) -> @foldres {
          map_exprs: afp.map_exprs,
          new_id: afp.new_id,
          new_span: afp.new_span};
-    ret @foldres(result);
+    ret result;
 }
 
 
