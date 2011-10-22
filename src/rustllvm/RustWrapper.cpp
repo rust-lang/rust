@@ -1,16 +1,16 @@
-//===- RustWrapper.cpp - Rust wrapper for core functions --------*- C++ -*-===//
+//===- RustWrapper.cpp - Rust wrapper for core functions --------*- C++ -*-===
 //
 //                     The LLVM Compiler Infrastructure
 //
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
 //
-//===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===
 //
 // This file defines alternate interfaces to core functions that are more
 // readily callable by Rust's FFI.
 //
-//===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===
 
 #include "llvm/Linker.h"
 #include "llvm/PassManager.h"
@@ -60,12 +60,13 @@ extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
   return true;
 }
 
-extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
-                                        LLVMModuleRef M,
-                                        const char *triple,
-                                        const char *path,
-                                        TargetMachine::CodeGenFileType FileType,
-                                        CodeGenOpt::Level OptLevel) {
+extern "C" void
+LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
+                        LLVMModuleRef M,
+                        const char *triple,
+                        const char *path,
+                        TargetMachine::CodeGenFileType FileType,
+                        CodeGenOpt::Level OptLevel) {
 
   // Set compilation options.
   llvm::NoFramePointerElim = true;

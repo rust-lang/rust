@@ -82,18 +82,17 @@ check-fast: tidy \
 tidy:
 	@$(call E, check: formatting)
 	$(Q)echo \
-	  $(filter-out $(GENERATED) $(addprefix $(S)src/, $(GENERATED)) \
 	    $(addprefix $(S)src/, $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS) \
-	      $(RUSTLLVM_HDR) $(PKG_3RDPARTY) \
+	      $(RUSTLLVM_HDR) \
               $(RUNTIME_CS) $(RUNTIME_HDR) $(RUNTIME_S)) \
-            $(S)src/etc/%,  \
+            $(wildcard $(S)src/etc/*.py)  \
             $(COMPILER_CRATE) \
             $(COMPILER_INPUTS) \
             $(STDLIB_CRATE) \
             $(STDLIB_INPUTS) \
             $(COMPILETEST_CRATE) \
             $(COMPILETEST_INPUTS) \
-            $(ALL_TEST_INPUTS)) \
+            $(ALL_TEST_INPUTS) \
 	  | xargs -n 10 python $(S)src/etc/tidy.py
 
 

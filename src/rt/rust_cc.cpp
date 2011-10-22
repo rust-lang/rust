@@ -95,19 +95,19 @@ class irc : public shape::data<irc,shape::ptr> {
     }
 
     void walk_fn() {
-	// Record an irc for the environment box, but don't descend
-	// into it since it will be walked via the box's allocation
-	dp += sizeof(void *); // skip code pointer
-	uint8_t * box_ptr = shape::bump_dp<uint8_t *>(dp);
-	shape::ptr ref_count_dp(box_ptr);
-	maybe_record_irc(ref_count_dp);
+        // Record an irc for the environment box, but don't descend
+        // into it since it will be walked via the box's allocation
+        dp += sizeof(void *); // skip code pointer
+        uint8_t * box_ptr = shape::bump_dp<uint8_t *>(dp);
+        shape::ptr ref_count_dp(box_ptr);
+        maybe_record_irc(ref_count_dp);
     }
 
     void walk_obj() {
-	dp += sizeof(void *); // skip vtable
-	uint8_t *box_ptr = shape::bump_dp<uint8_t *>(dp);
-	shape::ptr ref_count_dp(box_ptr);
-	maybe_record_irc(ref_count_dp);
+        dp += sizeof(void *); // skip vtable
+        uint8_t *box_ptr = shape::bump_dp<uint8_t *>(dp);
+        shape::ptr ref_count_dp(box_ptr);
+        maybe_record_irc(ref_count_dp);
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,
@@ -122,7 +122,7 @@ class irc : public shape::data<irc,shape::ptr> {
     void walk_subcontext(irc &sub) { sub.walk(); }
 
     void walk_box_contents(irc &sub, shape::ptr &ref_count_dp) {
-	maybe_record_irc(ref_count_dp);
+        maybe_record_irc(ref_count_dp);
 
         // Do not traverse the contents of this box; it's in the allocation
         // somewhere, so we're guaranteed to come back to it (if we haven't
@@ -133,19 +133,19 @@ class irc : public shape::data<irc,shape::ptr> {
         if (!ref_count_dp)
             return;
 
-	// Bump the internal reference count of the box.
-	if (ircs.find((void *)ref_count_dp) == ircs.end()) {
-	  LOG(task, gc,
-	      "setting internal reference count for %p to 1",
-	      (void *)ref_count_dp);
-	  ircs[(void *)ref_count_dp] = 1;
-	} else {
-	  uintptr_t newcount = ircs[(void *)ref_count_dp] + 1;
-	  LOG(task, gc,
-	      "bumping internal reference count for %p to %lu",
-	      (void *)ref_count_dp, newcount);
-	  ircs[(void *)ref_count_dp] = newcount;
-	}
+        // Bump the internal reference count of the box.
+        if (ircs.find((void *)ref_count_dp) == ircs.end()) {
+          LOG(task, gc,
+              "setting internal reference count for %p to 1",
+              (void *)ref_count_dp);
+          ircs[(void *)ref_count_dp] = 1;
+        } else {
+          uintptr_t newcount = ircs[(void *)ref_count_dp] + 1;
+          LOG(task, gc,
+              "bumping internal reference count for %p to %lu",
+              (void *)ref_count_dp, newcount);
+          ircs[(void *)ref_count_dp] = newcount;
+        }
     }
 
     void walk_struct(const uint8_t *end_sp) {
@@ -191,7 +191,7 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
         const type_desc *tydesc = begin->second;
 
         LOG(task, gc, "determining internal ref counts: %p, tydesc=%p", p,
-	    tydesc);
+            tydesc);
 
         shape::arena arena;
         shape::type_param *params =
@@ -237,12 +237,12 @@ find_roots(rust_task *task, irc_map &ircs, std::vector<void *> &roots) {
         if (irc < ref_count) {
             // This allocation must be a root, because the internal reference
             // count is smaller than the total reference count.
-	    LOG(task, gc,"root found: %p, irc %lu, ref count %lu",
-		alloc, irc, ref_count);
+            LOG(task, gc,"root found: %p, irc %lu, ref count %lu",
+                alloc, irc, ref_count);
             roots.push_back(alloc);
         } else {
             LOG(task, gc, "nonroot found: %p, irc %lu, ref count %lu",
-		alloc, irc, ref_count);
+                alloc, irc, ref_count);
             assert(irc == ref_count && "Internal reference count must be "
                    "less than or equal to the total reference count!");
         }
@@ -429,56 +429,56 @@ class sweep : public shape::data<sweep,shape::ptr> {
     friend class shape::data<sweep,shape::ptr>;
 
     sweep(const sweep &other, const shape::ptr &in_dp)
-	: shape::data<sweep,shape::ptr>(other.task, other.align,
-					other.sp, other.params,
-					other.tables, in_dp) {}
+        : shape::data<sweep,shape::ptr>(other.task, other.align,
+                                        other.sp, other.params,
+                                        other.tables, in_dp) {}
 
     sweep(const sweep &other,
-	  const uint8_t *in_sp,
-	  const shape::type_param *in_params,
-	  const rust_shape_tables *in_tables = NULL)
-	: shape::data<sweep,shape::ptr>(other.task,
-					other.align,
-					in_sp,
-					in_params,
-					in_tables ? in_tables : other.tables,
-					other.dp) {}
+          const uint8_t *in_sp,
+          const shape::type_param *in_params,
+          const rust_shape_tables *in_tables = NULL)
+        : shape::data<sweep,shape::ptr>(other.task,
+                                        other.align,
+                                        in_sp,
+                                        in_params,
+                                        in_tables ? in_tables : other.tables,
+                                        other.dp) {}
 
     sweep(const sweep &other,
-	  const uint8_t *in_sp,
-	  const shape::type_param *in_params,
-	  const rust_shape_tables *in_tables,
-	  shape::ptr in_dp)
-	: shape::data<sweep,shape::ptr>(other.task,
-					other.align,
-					in_sp,
-					in_params,
-					in_tables,
-					in_dp) {}
+          const uint8_t *in_sp,
+          const shape::type_param *in_params,
+          const rust_shape_tables *in_tables,
+          shape::ptr in_dp)
+        : shape::data<sweep,shape::ptr>(other.task,
+                                        other.align,
+                                        in_sp,
+                                        in_params,
+                                        in_tables,
+                                        in_dp) {}
 
     sweep(rust_task *in_task,
-	  bool in_align,
-	  const uint8_t *in_sp,
-	  const shape::type_param *in_params,
-	  const rust_shape_tables *in_tables,
-	  uint8_t *in_data)
-	: shape::data<sweep,shape::ptr>(in_task, in_align, in_sp,
-					in_params, in_tables, in_data) {}
+          bool in_align,
+          const uint8_t *in_sp,
+          const shape::type_param *in_params,
+          const rust_shape_tables *in_tables,
+          uint8_t *in_data)
+        : shape::data<sweep,shape::ptr>(in_task, in_align, in_sp,
+                                        in_params, in_tables, in_data) {}
 
     void walk_vec(bool is_pod, uint16_t sp_size) {
-	void *vec = shape::get_dp<void *>(dp);
-	walk_vec(is_pod, get_vec_data_range(dp));
-	task->kernel->free(vec);
+        void *vec = shape::get_dp<void *>(dp);
+        walk_vec(is_pod, get_vec_data_range(dp));
+        task->kernel->free(vec);
     }
 
     void walk_vec(bool is_pod,
-		  const std::pair<shape::ptr,shape::ptr> &data_range) {
-	sweep sub(*this, data_range.first);
-	shape::ptr data_end = sub.end_dp = data_range.second;
-	while (sub.dp < data_end) {
-	    sub.walk_reset();
-	    sub.align = true;
-	}
+                  const std::pair<shape::ptr,shape::ptr> &data_range) {
+        sweep sub(*this, data_range.first);
+        shape::ptr data_end = sub.end_dp = data_range.second;
+        while (sub.dp < data_end) {
+            sub.walk_reset();
+            sub.align = true;
+        }
     }
 
     void walk_tag(shape::tag_info &tinfo, uint32_t tag_variant) {
@@ -486,15 +486,15 @@ class sweep : public shape::data<sweep,shape::ptr> {
     }
 
     void walk_box() {
-	shape::data<sweep,shape::ptr>::walk_box_contents();
+        shape::data<sweep,shape::ptr>::walk_box_contents();
     }
 
     void walk_fn() {
-	return;
+        return;
     }
 
     void walk_obj() {
-	return;
+        return;
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,
@@ -509,7 +509,7 @@ class sweep : public shape::data<sweep,shape::ptr> {
     void walk_subcontext(sweep &sub) { sub.walk(); }
 
     void walk_box_contents(sweep &sub, shape::ptr &ref_count_dp) {
-	return;
+        return;
     }
 
     void walk_struct(const uint8_t *end_sp) {
@@ -522,13 +522,13 @@ class sweep : public shape::data<sweep,shape::ptr> {
     void walk_variant(shape::tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end) {
-	sweep sub(*this, variant_ptr_and_end.first, tinfo.params);
+        sweep sub(*this, variant_ptr_and_end.first, tinfo.params);
 
-	const uint8_t *variant_end = variant_ptr_and_end.second;
-	while (sub.sp < variant_end) {
-	    sub.walk();
-	    align = true;
-	}
+        const uint8_t *variant_end = variant_ptr_and_end.second;
+        while (sub.sp < variant_end) {
+            sub.walk();
+            align = true;
+        }
     }
 
     template<typename T>
@@ -548,16 +548,16 @@ sweep::do_sweep(rust_task *task, const std::set<void *> &marked) {
         if (marked.find(alloc) == marked.end()) {
             LOG(task, gc, "object is part of a cycle: %p", alloc);
 
-	    const type_desc *tydesc = begin->second;
+            const type_desc *tydesc = begin->second;
             uint8_t *p = reinterpret_cast<uint8_t *>(alloc);
             shape::arena arena;
             shape::type_param *params =
                 shape::type_param::from_tydesc_and_data(tydesc, p, arena);
 
-	    sweep sweep(task, true, tydesc->shape,
-			params, tydesc->shape_tables,
-			p + sizeof(uintptr_t));
-	    sweep.walk();
+            sweep sweep(task, true, tydesc->shape,
+                        params, tydesc->shape_tables,
+                        p + sizeof(uintptr_t));
+            sweep.walk();
 
             // FIXME: Run the destructor, *if* it's a resource.
             task->free(alloc);
@@ -570,7 +570,7 @@ sweep::do_sweep(rust_task *task, const std::set<void *> &marked) {
 void
 do_cc(rust_task *task) {
     LOG(task, gc, "cc; n allocs = %lu",
-	(long unsigned int)task->local_allocs.size());
+        (long unsigned int)task->local_allocs.size());
 
     irc_map ircs;
     irc::compute_ircs(task, ircs);
