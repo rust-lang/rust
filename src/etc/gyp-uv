@@ -2,16 +2,18 @@
 
 # This script generates rust compatible makefiles from libuv. When upgrading
 # libuv, do:
-#
+# cd $RUST_DIR
+# rm -r mk/libuv
 # cd $LIBUV_DIR
 # git archive --prefix libuv/ $REVISION > libuv.tar.gz
 # cd $RUST_DIR/src/rt
 # rm -r libuv
 # tar -xvf $LIBUV_DIR/libuv.tar.gz
-# mkdir -p libuv/build
-# svn co http://gyp.googlecode.com/svn build/gyp
-# cd ../..
-# ./etc/src/gyp_uv
+# cd libuv
+# mkdir build
+# svn co http://gyp.googlecode.com/svn/trunk build/gyp
+# cd ../../..
+# ./src/etc/gyp-uv
 
 set -e
 
@@ -37,11 +39,11 @@ args="--depth . -Dlibrary=static_library -Dtarget_arch=ia32"
 
 # Comment out the gyp auto regeneration
 for os in mac unix win; do
-  sed -i ".save" \
+  sed -i".save" \
     -e 's/^\(Makefile: $(srcdir)\/src\/rt\/libuv\/uv\.gyp\)/#\1/' \
     mk/libuv/$os/Makefile
 
-  sed -i ".save" \
+  sed -i".save" \
     -e 's/^\(	$(call do_cmd,regen_makefile)\)/#\1/' \
     mk/libuv/$os/Makefile
 
