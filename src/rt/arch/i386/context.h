@@ -7,9 +7,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#ifdef HAVE_VALGRIND
-#include <valgrind/memcheck.h>
-#endif
+#include "../../memcheck.h"
 
 template<typename T>
 T align_down(T sp)
