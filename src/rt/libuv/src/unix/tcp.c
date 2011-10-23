@@ -33,10 +33,10 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
 }
 
 
-static int uv__tcp_bind(uv_tcp_t* tcp,
-                        int domain,
-                        struct sockaddr* addr,
-                        int addrsize) {
+static int uv__bind(uv_tcp_t* tcp,
+                    int domain,
+                    struct sockaddr* addr,
+                    int addrsize) {
   int saved_errno;
   int status;
 
@@ -45,7 +45,7 @@ static int uv__tcp_bind(uv_tcp_t* tcp,
 
   if (tcp->fd < 0) {
     if ((tcp->fd = uv__socket(domain, SOCK_STREAM, 0)) == -1) {
-      uv_err_new(tcp->loop, errno);
+      uv__set_sys_error(tcp->loop, errno);
       goto out;
     }
 
@@ -64,7 +64,7 @@ static int uv__tcp_bind(uv_tcp_t* tcp,
     if (errno == EADDRINUSE) {
       tcp->delayed_error = errno;
     } else {
-      uv_err_new(tcp->loop, errno);
+      uv__set_sys_error(tcp->loop, errno);
       goto out;
     }
   }
@@ -76,29 +76,19 @@ out:
 }
 
 
-int uv_tcp_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
-  if (addr.sin_family != AF_INET) {
-    uv_err_new(tcp->loop, EFAULT);
-    return -1;
-  }
-
-  return uv__tcp_bind(tcp,
-                      AF_INET,
-                      (struct sockaddr*)&addr,
-                      sizeof(struct sockaddr_in));
+int uv__tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
+  return uv__bind(handle,
+                  AF_INET,
+                  (struct sockaddr*)&addr,
+                  sizeof(struct sockaddr_in));
 }
 
 
-int uv_tcp_bind6(uv_tcp_t* tcp, struct sockaddr_in6 addr) {
-  if (addr.sin6_family != AF_INET6) {
-    uv_err_new(tcp->loop, EFAULT);
-    return -1;
-  }
-
-  return uv__tcp_bind(tcp,
-                      AF_INET6,
-                      (struct sockaddr*)&addr,
-                      sizeof(struct sockaddr_in6));
+int uv__tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
+  return uv__bind(handle,
+                  AF_INET6,
+                  (struct sockaddr*)&addr,
+                  sizeof(struct sockaddr_in6));
 }
 
 
@@ -112,13 +102,13 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
   saved_errno = errno;
 
   if (handle->delayed_error) {
-    uv_err_new(handle->loop, handle->delayed_error);
+    uv__set_sys_error(handle->loop, handle->delayed_error);
     rv = -1;
     goto out;
   }
 
   if (handle->fd < 0) {
-    uv_err_new(handle->loop, EINVAL);
+    uv__set_sys_error(handle->loop, EINVAL);
     rv = -1;
     goto out;
   }
@@ -127,7 +117,7 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
   socklen = (socklen_t)*namelen;
 
   if (getsockname(handle->fd, name, &socklen) == -1) {
-    uv_err_new(handle->loop, errno);
+    uv__set_sys_error(handle->loop, errno);
     rv = -1;
   } else {
     *namelen = (int)socklen;
@@ -149,13 +139,13 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
   saved_errno = errno;
 
   if (handle->delayed_error) {
-    uv_err_new(handle->loop, handle->delayed_error);
+    uv__set_sys_error(handle->loop, handle->delayed_error);
     rv = -1;
     goto out;
   }
 
   if (handle->fd < 0) {
-    uv_err_new(handle->loop, EINVAL);
+    uv__set_sys_error(handle->loop, EINVAL);
     rv = -1;
     goto out;
   }
@@ -164,7 +154,7 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
   socklen = (socklen_t)*namelen;
 
   if (getpeername(handle->fd, name, &socklen) == -1) {
-    uv_err_new(handle->loop, errno);
+    uv__set_sys_error(handle->loop, errno);
     rv = -1;
   } else {
     *namelen = (int)socklen;
@@ -180,13 +170,13 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   int r;
 
   if (tcp->delayed_error) {
-    uv_err_new(tcp->loop, tcp->delayed_error);
+    uv__set_sys_error(tcp->loop, tcp->delayed_error);
     return -1;
   }
 
   if (tcp->fd < 0) {
     if ((tcp->fd = uv__socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-      uv_err_new(tcp->loop, errno);
+      uv__set_sys_error(tcp->loop, errno);
       return -1;
     }
 
@@ -201,7 +191,7 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 
   r = listen(tcp->fd, backlog);
   if (r < 0) {
-    uv_err_new(tcp->loop, errno);
+    uv__set_sys_error(tcp->loop, errno);
     return -1;
   }
 
@@ -216,25 +206,12 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 }
 
 
-int uv_tcp_connect(uv_connect_t* req,
+int uv__tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
                    struct sockaddr_in address,
                    uv_connect_cb cb) {
-  int saved_errno;
+  int saved_errno = errno;
   int status;
-
-  saved_errno = errno;
-  status = -1;
-
-  if (handle->type != UV_TCP) {
-    uv_err_new(handle->loop, EINVAL);
-    goto out;
-  }
-
-  if (address.sin_family != AF_INET) {
-    uv_err_new(handle->loop, EINVAL);
-    goto out;
-  }
 
   status = uv__connect(req,
                        (uv_stream_t*)handle,
@@ -242,31 +219,17 @@ int uv_tcp_connect(uv_connect_t* req,
                        sizeof address,
                        cb);
 
-out:
   errno = saved_errno;
   return status;
 }
 
 
-int uv_tcp_connect6(uv_connect_t* req,
+int uv__tcp_connect6(uv_connect_t* req,
                     uv_tcp_t* handle,
                     struct sockaddr_in6 address,
                     uv_connect_cb cb) {
-  int saved_errno;
+  int saved_errno = errno;
   int status;
-
-  saved_errno = errno;
-  status = -1;
-
-  if (handle->type != UV_TCP) {
-    uv_err_new(handle->loop, EINVAL);
-    goto out;
-  }
-
-  if (address.sin6_family != AF_INET6) {
-    uv_err_new(handle->loop, EINVAL);
-    goto out;
-  }
 
   status = uv__connect(req,
                        (uv_stream_t*)handle,
@@ -274,7 +237,85 @@ int uv_tcp_connect6(uv_connect_t* req,
                        sizeof address,
                        cb);
 
-out:
   errno = saved_errno;
   return status;
+}
+
+
+int uv__tcp_nodelay(uv_tcp_t* handle, int enable) {
+  if (setsockopt(handle->fd,
+                 IPPROTO_TCP,
+                 TCP_NODELAY,
+                 &enable,
+                 sizeof enable) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    return -1;
+  }
+  return 0;
+}
+
+
+int uv__tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay) {
+  if (setsockopt(handle->fd,
+                 SOL_SOCKET,
+                 SO_KEEPALIVE,
+                 &enable,
+                 sizeof enable) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    return -1;
+  }
+
+#ifdef TCP_KEEPIDLE
+  if (enable && setsockopt(handle->fd,
+                           IPPROTO_TCP,
+                           TCP_KEEPIDLE,
+                           &delay,
+                           sizeof delay) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    return -1;
+  }
+#endif
+
+#ifdef TCP_KEEPALIVE
+  if (enable && setsockopt(handle->fd,
+                           IPPROTO_TCP,
+                           TCP_KEEPALIVE,
+                           &delay,
+                           sizeof delay) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    return -1;
+  }
+#endif
+
+  return 0;
+}
+
+
+int uv_tcp_nodelay(uv_tcp_t* handle, int enable) {
+  if (handle->fd != -1 && uv__tcp_nodelay(handle, enable))
+    return -1;
+
+  if (enable)
+    handle->flags |= UV_TCP_NODELAY;
+  else
+    handle->flags &= ~UV_TCP_NODELAY;
+
+  return 0;
+}
+
+
+int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay) {
+  if (handle->fd != -1 && uv__tcp_keepalive(handle, enable, delay))
+    return -1;
+
+  if (enable)
+    handle->flags |= UV_TCP_KEEPALIVE;
+  else
+    handle->flags &= ~UV_TCP_KEEPALIVE;
+
+  /* TODO Store delay if handle->fd == -1 but don't want to enlarge
+   *       uv_tcp_t with an int that's almost never used...
+   */
+
+  return 0;
 }

@@ -37,20 +37,19 @@ abs_obj := $(abspath $(obj))
 # generated dependency rule Makefiles in one pass.
 all_deps :=
 
-# C++ apps need to be linked with g++.  Not sure what's appropriate.
+
+
+# C++ apps need to be linked with g++.
 #
-# Note, the flock is used to seralize linking. Linking is a memory-intensive
+# Note: flock is used to seralize linking. Linking is a memory-intensive
 # process so running parallel links can often lead to thrashing.  To disable
-# the serialization, override FLOCK via an envrionment variable as follows:
+# the serialization, override LINK via an envrionment variable as follows:
 #
-#   export FLOCK=
+#   export LINK=g++
 #
 # This will allow make to invoke N linker processes as specified in -jN.
-FLOCK ?= flock $(builddir)/linker.lock
+LINK ?= flock $(builddir)/linker.lock $(CXX)
 
-
-
-LINK ?= $(FLOCK) $(CXX)
 CC.target ?= $(CC)
 CFLAGS.target ?= $(CFLAGS)
 CXX.target ?= $(CXX)
@@ -213,6 +212,23 @@ command_changed = $(or $(subst $(cmd_$(1)),,$(cmd_$(call replace_spaces,$@))),\
 #   $| -- order-only dependencies
 prereq_changed = $(filter-out FORCE_DO_CMD,$(filter-out $|,$?))
 
+# Helper that executes all postbuilds, and deletes the output file when done
+# if any of the postbuilds failed.
+define do_postbuilds
+  @E=0;\
+  for p in $(POSTBUILDS); do\
+    eval $$p;\
+    F=$$?;\
+    if [ $$F -ne 0 ]; then\
+      E=$$F;\
+    fi;\
+  done;\
+  if [ $$E -ne 0 ]; then\
+    rm -rf "$@";\
+    exit $$E;\
+  fi
+endef
+
 # do_cmd: run a command via the above cmd_foo names, if necessary.
 # Should always run for a given target to handle command-line changes.
 # Second argument, if non-zero, makes it do asm/C/C++ dependency munging.
@@ -231,7 +247,7 @@ $(if $(or $(command_changed),$(prereq_changed)),
   @$(call exact_echo,$(call escape_vars,cmd_$(call replace_spaces,$@) := $(cmd_$(1)))) > $(depfile)
   @$(if $(2),$(fixup_dep))
   $(if $(and $(3), $(POSTBUILDS)),
-    @for p in $(POSTBUILDS); do eval $$p; done
+    $(call do_postbuilds)
   )
 )
 endef

@@ -172,7 +172,7 @@ void uv_loop_delete(uv_loop_t* loop) {
 uv_loop_t* uv_default_loop() {
   if (!default_loop_ptr) {
     default_loop_ptr = &default_loop_struct;
-#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+#if HAVE_KQUEUE
     default_loop_struct.ev = ev_default_loop(EVBACKEND_KQUEUE);
 #else
     default_loop_struct.ev = ev_default_loop(EVFLAG_AUTO);
@@ -563,7 +563,7 @@ int uv_timer_stop(uv_timer_t* timer) {
 
 int uv_timer_again(uv_timer_t* timer) {
   if (!ev_is_active(&timer->timer_watcher)) {
-    uv_err_new(timer->loop, EINVAL);
+    uv__set_sys_error(timer->loop, EINVAL);
     return -1;
   }
 
@@ -595,7 +595,7 @@ static int uv_getaddrinfo_done(eio_req* req) {
 
   if (handle->retcode != 0) {
     /* TODO how to display gai error strings? */
-    uv_err_new(handle->loop, handle->retcode);
+    uv__set_sys_error(handle->loop, handle->retcode);
   }
 
   handle->cb(handle, handle->retcode, res);
@@ -626,7 +626,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   if (handle == NULL || cb == NULL ||
       (hostname == NULL && service == NULL)) {
-    uv_err_new_artificial(loop, UV_EINVAL);
+    uv__set_artificial_error(loop, UV_EINVAL);
     return -1;
   }
 
@@ -639,7 +639,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   if (hints) {
     handle->hints = malloc(sizeof(struct addrinfo));
-    memcpy(&handle->hints, hints, sizeof(struct addrinfo));
+    memcpy(handle->hints, hints, sizeof(struct addrinfo));
   }
   else {
     handle->hints = NULL;
@@ -667,7 +667,8 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
 
 void uv_freeaddrinfo(struct addrinfo* ai) {
-  freeaddrinfo(ai);
+  if (ai)
+    freeaddrinfo(ai);
 }
 
 
@@ -790,10 +791,3 @@ size_t uv__strlcpy(char* dst, const char* src, size_t size) {
 
   return src - org;
 }
-
-
-uv_stream_t* uv_std_handle(uv_loop_t* loop, uv_std_type type) {
-  assert(0 && "implement me");
-  return NULL;
-}
-

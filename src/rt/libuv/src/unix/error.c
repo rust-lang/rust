@@ -56,19 +56,37 @@ void uv_fatal_error(const int errorno, const char* syscall) {
 }
 
 
-uv_err_t uv_last_error(uv_loop_t* loop) {
-  return loop->last_err;
-}
+static int uv__translate_lib_error(int code) {
+  switch (code) {
+    case UV_ENOSYS: return ENOSYS;
+    case UV_ENOENT: return ENOENT;
+    case UV_EACCESS: return EACCES;
+    case UV_EBADF: return EBADF;
+    case UV_EPIPE: return EPIPE;
+    case UV_EAGAIN: return EAGAIN;
+    case UV_ECONNRESET: return ECONNRESET;
+    case UV_EFAULT: return EFAULT;
+    case UV_EMFILE: return EMFILE;
+    case UV_EMSGSIZE: return EMSGSIZE;
+    case UV_EINVAL: return EINVAL;
+    case UV_ECONNREFUSED: return ECONNREFUSED;
+    case UV_EADDRINUSE: return EADDRINUSE;
+    case UV_EADDRNOTAVAIL: return EADDRNOTAVAIL;
+    case UV_ENOTDIR: return ENOTDIR;
+    case UV_ENOTCONN: return ENOTCONN;
+    case UV_EEXIST: return EEXIST;
+    default: return -1;
+  }
 
-
-char* uv_strerror(uv_err_t err) {
-  return strerror(err.sys_errno_);
+  assert(0 && "unreachable");
+  return -1;
 }
 
 
 uv_err_code uv_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
     case 0: return UV_OK;
+    case ENOSYS: return UV_ENOSYS;
     case ENOENT: return UV_ENOENT;
     case EACCES: return UV_EACCESS;
     case EBADF: return UV_EBADF;
@@ -82,8 +100,10 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case ECONNREFUSED: return UV_ECONNREFUSED;
     case EADDRINUSE: return UV_EADDRINUSE;
     case EADDRNOTAVAIL: return UV_EADDRNOTAVAIL;
+    case ENOTDIR: return UV_ENOTDIR;
     case ENOTCONN: return UV_ENOTCONN;
     case EEXIST: return UV_EEXIST;
+    case EAI_NONAME: return UV_ENOENT;
     default: return UV_UNKNOWN;
   }
 
@@ -92,19 +112,20 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
 }
 
 
-uv_err_t uv_err_new_artificial(uv_loop_t* loop, int code) {
-  uv_err_t err;
-  err.sys_errno_ = 0;
-  err.code = code;
-  loop->last_err = err;
-  return err;
-}
+/* TODO Pull in error messages so we don't have to
+ *  a) rely on what the system provides us
+ *  b) reverse-map the error codes
+ */
+char* uv_strerror(uv_err_t err) {
+  int errorno;
 
+  if (err.sys_errno_)
+    errorno = err.sys_errno_;
+  else
+    errorno = uv__translate_lib_error(err.code);
 
-uv_err_t uv_err_new(uv_loop_t* loop, int sys_error) {
-  uv_err_t err;
-  err.sys_errno_ = sys_error;
-  err.code = uv_translate_sys_error(sys_error);
-  loop->last_err = err;
-  return err;
+  if (errorno == -1)
+    return "Unknown error";
+  else
+    return strerror(errorno);
 }

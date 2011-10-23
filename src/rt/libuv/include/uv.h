@@ -41,6 +41,98 @@ extern "C" {
 typedef intptr_t ssize_t;
 #endif
 
+#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
+# include "uv-private/uv-unix.h"
+#else
+# include "uv-private/uv-win.h"
+#endif
+
+/* Expand this list if necessary. */
+typedef enum {
+  UV_UNKNOWN = -1,
+  UV_OK = 0,
+  UV_EOF,
+  UV_EACCESS,
+  UV_EAGAIN,
+  UV_EADDRINUSE,
+  UV_EADDRNOTAVAIL,
+  UV_EAFNOSUPPORT,
+  UV_EALREADY,
+  UV_EBADF,
+  UV_EBUSY,
+  UV_ECONNABORTED,
+  UV_ECONNREFUSED,
+  UV_ECONNRESET,
+  UV_EDESTADDRREQ,
+  UV_EFAULT,
+  UV_EHOSTUNREACH,
+  UV_EINTR,
+  UV_EINVAL,
+  UV_EISCONN,
+  UV_EMFILE,
+  UV_EMSGSIZE,
+  UV_ENETDOWN,
+  UV_ENETUNREACH,
+  UV_ENFILE,
+  UV_ENOBUFS,
+  UV_ENOMEM,
+  UV_ENOTDIR,
+  UV_ENONET,
+  UV_ENOPROTOOPT,
+  UV_ENOTCONN,
+  UV_ENOTSOCK,
+  UV_ENOTSUP,
+  UV_ENOENT,
+  UV_ENOSYS,
+  UV_EPIPE,
+  UV_EPROTO,
+  UV_EPROTONOSUPPORT,
+  UV_EPROTOTYPE,
+  UV_ETIMEDOUT,
+  UV_ECHARSET,
+  UV_EAIFAMNOSUPPORT,
+  UV_EAINONAME,
+  UV_EAISERVICE,
+  UV_EAISOCKTYPE,
+  UV_ESHUTDOWN,
+  UV_EEXIST
+} uv_err_code;
+
+typedef enum {
+  UV_UNKNOWN_HANDLE = 0,
+  UV_TCP,
+  UV_UDP,
+  UV_NAMED_PIPE,
+  UV_TTY,
+  UV_FILE,
+  UV_TIMER,
+  UV_PREPARE,
+  UV_CHECK,
+  UV_IDLE,
+  UV_ASYNC,
+  UV_ARES_TASK,
+  UV_ARES_EVENT,
+  UV_PROCESS,
+  UV_FS_EVENT
+} uv_handle_type;
+
+typedef enum {
+  UV_UNKNOWN_REQ = 0,
+  UV_CONNECT,
+  UV_ACCEPT,
+  UV_READ,
+  UV_WRITE,
+  UV_SHUTDOWN,
+  UV_WAKEUP,
+  UV_UDP_SEND,
+  UV_FS,
+  UV_WORK,
+  UV_GETADDRINFO,
+  UV_REQ_TYPE_PRIVATE
+} uv_req_type;
+
+
+
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_ares_task_s uv_ares_task_t;
 typedef struct uv_err_s uv_err_t;
@@ -68,12 +160,6 @@ typedef struct uv_fs_s uv_fs_t;
 /* uv_fs_event_t is a subclass of uv_handle_t. */
 typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_work_s uv_work_t;
-
-#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
-# include "uv-private/uv-unix.h"
-#else
-# include "uv-private/uv-win.h"
-#endif
 
 
 /*
@@ -121,6 +207,13 @@ int64_t uv_now(uv_loop_t*);
  */
 typedef uv_buf_t (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size);
 typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, uv_buf_t buf);
+/*
+ * Just like the uv_read_cb except that if the pending parameter is true
+ * then you can use uv_accept() to pull the new handle into the process.
+ * If no handle is pending then pending will be UV_UNKNOWN_HANDLE.
+ */
+typedef void (*uv_read2_cb)(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
+    uv_handle_type pending);
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
 typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_shutdown_t* req, int status);
@@ -148,88 +241,10 @@ typedef void (*uv_after_work_cb)(uv_work_t* req);
 typedef void (*uv_fs_event_cb)(uv_fs_event_t* handle, const char* filename,
     int events, int status);
 
-
-/* Expand this list if necessary. */
 typedef enum {
-  UV_UNKNOWN = -1,
-  UV_OK = 0,
-  UV_EOF,
-  UV_EACCESS,
-  UV_EAGAIN,
-  UV_EADDRINUSE,
-  UV_EADDRNOTAVAIL,
-  UV_EAFNOSUPPORT,
-  UV_EALREADY,
-  UV_EBADF,
-  UV_EBUSY,
-  UV_ECONNABORTED,
-  UV_ECONNREFUSED,
-  UV_ECONNRESET,
-  UV_EDESTADDRREQ,
-  UV_EFAULT,
-  UV_EHOSTUNREACH,
-  UV_EINTR,
-  UV_EINVAL,
-  UV_EISCONN,
-  UV_EMFILE,
-  UV_EMSGSIZE,
-  UV_ENETDOWN,
-  UV_ENETUNREACH,
-  UV_ENFILE,
-  UV_ENOBUFS,
-  UV_ENOMEM,
-  UV_ENONET,
-  UV_ENOPROTOOPT,
-  UV_ENOTCONN,
-  UV_ENOTSOCK,
-  UV_ENOTSUP,
-  UV_ENOENT,
-  UV_EPIPE,
-  UV_EPROTO,
-  UV_EPROTONOSUPPORT,
-  UV_EPROTOTYPE,
-  UV_ETIMEDOUT,
-  UV_ECHARSET,
-  UV_EAIFAMNOSUPPORT,
-  UV_EAINONAME,
-  UV_EAISERVICE,
-  UV_EAISOCKTYPE,
-  UV_ESHUTDOWN,
-  UV_EEXIST
-} uv_err_code;
-
-typedef enum {
-  UV_UNKNOWN_HANDLE = 0,
-  UV_TCP,
-  UV_UDP,
-  UV_NAMED_PIPE,
-  UV_TTY,
-  UV_FILE,
-  UV_TIMER,
-  UV_PREPARE,
-  UV_CHECK,
-  UV_IDLE,
-  UV_ASYNC,
-  UV_ARES_TASK,
-  UV_ARES_EVENT,
-  UV_PROCESS,
-  UV_FS_EVENT
-} uv_handle_type;
-
-typedef enum {
-  UV_UNKNOWN_REQ = 0,
-  UV_CONNECT,
-  UV_ACCEPT,
-  UV_READ,
-  UV_WRITE,
-  UV_SHUTDOWN,
-  UV_WAKEUP,
-  UV_UDP_SEND,
-  UV_FS,
-  UV_WORK,
-  UV_GETADDRINFO,
-  UV_REQ_TYPE_PRIVATE
-} uv_req_type;
+  UV_LEAVE_GROUP = 0,
+  UV_JOIN_GROUP
+} uv_membership;
 
 
 struct uv_err_s {
@@ -330,6 +345,9 @@ uv_buf_t uv_buf_init(char* base, size_t len);
 #define UV_STREAM_FIELDS \
   /* number of bytes queued for writing */ \
   size_t write_queue_size; \
+  uv_alloc_cb alloc_cb; \
+  uv_read_cb read_cb; \
+  uv_read2_cb read2_cb; \
   /* private */ \
   UV_STREAM_PRIVATE_FIELDS
 
@@ -338,8 +356,8 @@ uv_buf_t uv_buf_init(char* base, size_t len);
  *
  * uv_stream is an abstract class.
  *
- * uv_stream_t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
- * and soon uv_file_t.
+ * uv_stream_t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t, and
+ * soon uv_file_t.
  */
 struct uv_stream_s {
   UV_HANDLE_FIELDS
@@ -375,13 +393,12 @@ int uv_read_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 
 int uv_read_stop(uv_stream_t*);
 
-typedef enum {
-  UV_STDIN = 0,
-  UV_STDOUT,
-  UV_STDERR
-} uv_std_type;
+/*
+ * Extended read methods for receiving handles over a pipe. The pipe must be
+ * initialized with ipc == 1.
+ */
+int uv_read2_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read2_cb read_cb);
 
-uv_stream_t* uv_std_handle(uv_loop_t*, uv_std_type type);
 
 /*
  * Write data to stream. Buffers are written in order. Example:
@@ -404,10 +421,14 @@ uv_stream_t* uv_std_handle(uv_loop_t*, uv_std_type type);
 int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
     uv_write_cb cb);
 
+int uv_write2(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
+    uv_stream_t* send_handle, uv_write_cb cb);
+
 /* uv_write_t is a subclass of uv_req_t */
 struct uv_write_s {
   UV_REQ_FIELDS
   uv_write_cb cb;
+  uv_stream_t* send_handle;
   uv_stream_t* handle;
   UV_WRITE_PRIVATE_FIELDS
 };
@@ -426,6 +447,15 @@ struct uv_tcp_s {
 };
 
 int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
+
+/* Enable/disable Nagle's algorithm. */
+int uv_tcp_nodelay(uv_tcp_t* handle, int enable);
+
+/* Enable/disable TCP keep-alive.
+ *
+ * `ms` is the initial delay in seconds, ignored when `enable` is zero.
+ */
+int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay);
 
 int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in);
 int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6);
@@ -537,6 +567,21 @@ int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags);
 int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name, int* namelen);
 
 /*
+ * Set membership for a multicast address
+ *
+ * Arguments:
+ *  handle              UDP handle. Should have been initialized with `uv_udp_init`.
+ *  multicast_addr      multicast address to set membership for
+ *  interface_addr      interface address
+ *  membership          Should be UV_JOIN_GROUP or UV_LEAVE_GROUP
+ *
+ * Returns:
+ *  0 on success, -1 on error.
+ */
+int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
+  const char* interface_addr, uv_membership membership);
+
+/*
  * Send data. If the socket has not previously been bound with `uv_udp_bind`
  * or `uv_udp_bind6`, it is bound to 0.0.0.0 (the "all interfaces" address)
  * and a random port number.
@@ -574,7 +619,7 @@ int uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
     int bufcnt, struct sockaddr_in6 addr, uv_udp_send_cb send_cb);
 
 /*
- * Send data. If the socket has not previously been bound with `uv_udp_bind`
+ * Receive data. If the socket has not previously been bound with `uv_udp_bind`
  * or `uv_udp_bind6`, it is bound to 0.0.0.0 (the "all interfaces" address)
  * and a random port number.
  *
@@ -612,12 +657,29 @@ struct uv_tty_s {
   UV_TTY_PRIVATE_FIELDS
 };
 
-int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd);
+/*
+ * Initialize a new TTY stream with the given file descriptor. Usually the
+ * file descriptor will be
+ *   0 = stdin
+ *   1 = stdout
+ *   2 = stderr
+ * The last argument, readable, specifies if you plan on calling
+ * uv_read_start with this stream. stdin is readable, stdout is not.
+ *
+ * TTY streams which are not readable have blocking writes.
+ */
+int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd, int readable);
 
 /*
  * Set mode. 0 for normal, 1 for raw.
  */
 int uv_tty_set_mode(uv_tty_t*, int mode);
+
+/*
+ * To be called when the program exits. Resets TTY settings to default
+ * values for the next process to take over.
+ */
+void uv_tty_reset_mode();
 
 /*
  * Gets the current Window size. On success zero is returned.
@@ -642,9 +704,14 @@ struct uv_pipe_s {
   UV_HANDLE_FIELDS
   UV_STREAM_FIELDS
   UV_PIPE_PRIVATE_FIELDS
+  int ipc; /* non-zero if this pipe is used for passing handles */
 };
 
-int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle);
+/*
+ * Initialize a pipe. The last argument is a boolean to indicate if
+ * this pipe will be used for handle passing between processes.
+ */
+int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
 
 /*
  * Opens an existing file descriptor or HANDLE as a pipe.
@@ -807,6 +874,8 @@ struct uv_getaddrinfo_s {
  *
  * uv_freeaddrinfo() must be called after completion to free the addrinfo
  * structure.
+ *
+ * On error NXDOMAIN the status code will be non-zero and UV_ENOENT returned.
  */
  int uv_getaddrinfo(uv_loop_t*,
                     uv_getaddrinfo_t* handle,
@@ -1003,7 +1072,7 @@ int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
 int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
     const char* new_path, uv_fs_cb cb);
 
-/* 
+/*
  * This flag can be used with uv_fs_symlink on Windows
  * to specify whether path argument points to a directory.
  */
@@ -1039,6 +1108,13 @@ struct uv_fs_event_s {
 
 
 /*
+ * Gets load avg
+ * See: http://en.wikipedia.org/wiki/Load_(computing)
+ * (Returns [0,0,0] for windows and cygwin)
+ */
+void uv_loadavg(double avg[3]);
+
+/*
 * If filename is a directory then we will watch for all events in that
 * directory. If filename is a file - we will only get events from that
 * file. Subdirectories are not watched.
@@ -1058,6 +1134,10 @@ int uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size);
 
 /* Gets the executable path */
 int uv_exepath(char* buffer, size_t* size);
+
+/* Gets memory info in bytes */
+uint64_t uv_get_free_memory(void);
+uint64_t uv_get_total_memory(void);
 
 /*
  * Returns the current high-resolution real time. This is expressed in

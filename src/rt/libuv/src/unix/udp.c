@@ -34,8 +34,6 @@ static void uv__udp_run_pending(uv_udp_t* handle);
 static void uv__udp_recvmsg(uv_udp_t* handle);
 static void uv__udp_sendmsg(uv_udp_t* handle);
 static void uv__udp_io(EV_P_ ev_io* w, int events);
-static int uv__udp_bind(uv_udp_t* handle, int domain, struct sockaddr* addr,
-    socklen_t len, unsigned flags);
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain);
 static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
     int bufcnt, struct sockaddr* addr, socklen_t addrlen, uv_udp_send_cb send_cb);
@@ -84,7 +82,7 @@ void uv__udp_destroy(uv_udp_t* handle) {
     req = ngx_queue_data(q, uv_udp_send_t, queue);
     if (req->send_cb) {
       /* FIXME proper error code like UV_EABORTED */
-      uv_err_new_artificial(handle->loop, UV_EINTR);
+      uv__set_artificial_error(handle->loop, UV_EINTR);
       req->send_cb(req, -1);
     }
   }
@@ -187,7 +185,7 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
       req->send_cb(req, 0);
     }
     else {
-      uv_err_new(handle->loop, -req->status);
+      uv__set_sys_error(handle->loop, -req->status);
       req->send_cb(req, -1);
     }
   }
@@ -223,11 +221,11 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
 
     if (nread == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        uv_err_new(handle->loop, EAGAIN);
+        uv__set_sys_error(handle->loop, EAGAIN);
         handle->recv_cb(handle, 0, buf, NULL, 0);
       }
       else {
-        uv_err_new(handle->loop, errno);
+        uv__set_sys_error(handle->loop, errno);
         handle->recv_cb(handle, -1, buf, NULL, 0);
       }
     }
@@ -289,11 +287,11 @@ static void uv__udp_io(EV_P_ ev_io* w, int events) {
 }
 
 
-static int uv__udp_bind(uv_udp_t* handle,
-                        int domain,
-                        struct sockaddr* addr,
-                        socklen_t len,
-                        unsigned flags) {
+static int uv__bind(uv_udp_t* handle,
+                    int domain,
+                    struct sockaddr* addr,
+                    socklen_t len,
+                    unsigned flags) {
   int saved_errno;
   int status;
   int yes;
@@ -301,27 +299,28 @@ static int uv__udp_bind(uv_udp_t* handle,
 
   saved_errno = errno;
   status = -1;
+  fd = -1;
 
   /* Check for bad flags. */
   if (flags & ~UV_UDP_IPV6ONLY) {
-    uv_err_new(handle->loop, EINVAL);
+    uv__set_sys_error(handle->loop, EINVAL);
     goto out;
   }
 
   /* Cannot set IPv6-only mode on non-IPv6 socket. */
   if ((flags & UV_UDP_IPV6ONLY) && domain != AF_INET6) {
-    uv_err_new(handle->loop, EINVAL);
+    uv__set_sys_error(handle->loop, EINVAL);
     goto out;
   }
 
   /* Check for already active socket. */
   if (handle->fd != -1) {
-    uv_err_new_artificial(handle->loop, UV_EALREADY);
+    uv__set_artificial_error(handle->loop, UV_EALREADY);
     goto out;
   }
 
   if ((fd = uv__socket(domain, SOCK_DGRAM, 0)) == -1) {
-    uv_err_new(handle->loop, errno);
+    uv__set_sys_error(handle->loop, errno);
     goto out;
   }
 
@@ -329,17 +328,17 @@ static int uv__udp_bind(uv_udp_t* handle,
 #ifdef IPV6_V6ONLY
     yes = 1;
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof yes) == -1) {
-      uv_err_new(handle->loop, errno);
+      uv__set_sys_error(handle->loop, errno);
       goto out;
     }
 #else
-    uv_err_new((uv_handle_t*)handle, ENOTSUP);
+    uv__set_sys_error((uv_handle_t*)handle, ENOTSUP);
     goto out;
 #endif
   }
 
   if (bind(fd, addr, len) == -1) {
-    uv_err_new(handle->loop, errno);
+    uv__set_sys_error(handle->loop, errno);
     goto out;
   }
 
@@ -388,7 +387,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain) {
     abort();
   }
 
-  return uv__udp_bind(handle, domain, (struct sockaddr*)&taddr, addrlen, 0);
+  return uv__bind(handle, domain, (struct sockaddr*)&taddr, addrlen, 0);
 }
 
 
@@ -416,7 +415,7 @@ static int uv__udp_send(uv_udp_send_t* req,
     req->bufs = req->bufsml;
   }
   else if ((req->bufs = malloc(bufcnt * sizeof(bufs[0]))) == NULL) {
-    uv_err_new(handle->loop, ENOMEM);
+    uv__set_sys_error(handle->loop, ENOMEM);
     return -1;
   }
   memcpy(req->bufs, bufs, bufcnt * sizeof(bufs[0]));
@@ -442,21 +441,57 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
 }
 
 
-int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags) {
-  return uv__udp_bind(handle,
-                      AF_INET,
-                      (struct sockaddr*)&addr,
-                      sizeof addr,
-                      flags);
+int uv__udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags) {
+  return uv__bind(handle,
+                  AF_INET,
+                  (struct sockaddr*)&addr,
+                  sizeof addr,
+                  flags);
 }
 
 
-int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags) {
-  return uv__udp_bind(handle,
-                      AF_INET6,
-                      (struct sockaddr*)&addr,
-                      sizeof addr,
-                      flags);
+int uv__udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags) {
+  return uv__bind(handle,
+                  AF_INET6,
+                  (struct sockaddr*)&addr,
+                  sizeof addr,
+                  flags);
+}
+
+
+int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
+  const char* interface_addr, uv_membership membership) {
+
+  int optname;
+  struct ip_mreq mreq;
+  memset(&mreq, 0, sizeof mreq);
+
+  if (interface_addr) {
+    mreq.imr_interface.s_addr = inet_addr(interface_addr);
+  } else {
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+  }
+
+  mreq.imr_multiaddr.s_addr = inet_addr(multicast_addr);
+
+  switch (membership) {
+  case UV_JOIN_GROUP:
+    optname = IP_ADD_MEMBERSHIP;
+    break;
+  case UV_LEAVE_GROUP:
+    optname = IP_DROP_MEMBERSHIP;
+    break;
+  default:
+    uv__set_sys_error(handle->loop, EFAULT);
+    return -1;
+  }
+
+  if (setsockopt(handle->fd, IPPROTO_IP, optname, (void*) &mreq, sizeof mreq) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    return -1;
+  }
+
+  return 0;
 }
 
 
@@ -470,7 +505,7 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
   saved_errno = errno;
 
   if (handle->fd < 0) {
-    uv_err_new(handle->loop, EINVAL);
+    uv__set_sys_error(handle->loop, EINVAL);
     rv = -1;
     goto out;
   }
@@ -479,7 +514,7 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
   socklen = (socklen_t)*namelen;
 
   if (getsockname(handle->fd, name, &socklen) == -1) {
-    uv_err_new(handle->loop, errno);
+    uv__set_sys_error(handle->loop, errno);
     rv = -1;
   } else {
     *namelen = (int)socklen;
@@ -527,12 +562,12 @@ int uv_udp_recv_start(uv_udp_t* handle,
                       uv_alloc_cb alloc_cb,
                       uv_udp_recv_cb recv_cb) {
   if (alloc_cb == NULL || recv_cb == NULL) {
-    uv_err_new_artificial(handle->loop, UV_EINVAL);
+    uv__set_artificial_error(handle->loop, UV_EINVAL);
     return -1;
   }
 
   if (ev_is_active(&handle->read_watcher)) {
-    uv_err_new_artificial(handle->loop, UV_EALREADY);
+    uv__set_artificial_error(handle->loop, UV_EALREADY);
     return -1;
   }
 

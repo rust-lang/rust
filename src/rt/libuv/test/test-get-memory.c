@@ -19,57 +19,18 @@
  * IN THE SOFTWARE.
  */
 
-#include <assert.h>
-#include <string.h>
-
 #include "uv.h"
-#include "../uv-common.h"
-#include "internal.h"
+#include "task.h"
 
+TEST_IMPL(get_memory) {
+  uint64_t free_mem = uv_get_free_memory();
+  uint64_t total_mem = uv_get_total_memory();
 
-static uv_pipe_t* uv_make_pipe_for_std_handle(uv_loop_t* loop, HANDLE handle) {
-  uv_pipe_t* pipe = NULL;
+  printf("free_mem=%llu, total_mem=%llu\n", free_mem, total_mem);
 
-  pipe = (uv_pipe_t*)malloc(sizeof(uv_pipe_t));
-  if (!pipe) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-  }
+  ASSERT(free_mem > 0);
+  ASSERT(total_mem > 0);
+  ASSERT(total_mem > free_mem);
 
-  if (uv_pipe_init_with_handle(loop, pipe, handle)) {
-    free(pipe);
-    return NULL;
-  }
-
-  pipe->flags |= UV_HANDLE_UV_ALLOCED;
-  return pipe;
-}
-
-
-uv_stream_t* uv_std_handle(uv_loop_t* loop, uv_std_type type) {
-  HANDLE handle;
-
-  switch (type) {
-    case UV_STDIN:
-      handle = GetStdHandle(STD_INPUT_HANDLE);
-      if (handle == INVALID_HANDLE_VALUE) {
-        return NULL;
-      }
-
-      /* Assume only named pipes for now. */
-      return (uv_stream_t*)uv_make_pipe_for_std_handle(loop, handle);
-      break;
-
-    case UV_STDOUT:
-      return NULL;
-      break;
-
-    case UV_STDERR:
-      return NULL;
-      break;
-
-    default:
-      assert(0);
-      uv_set_error(loop, UV_EINVAL, 0);
-      return NULL;
-  }
+  return 0;
 }

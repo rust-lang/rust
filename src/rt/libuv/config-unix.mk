@@ -18,8 +18,6 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-CC = $(PREFIX)gcc
-AR = $(PREFIX)ar
 E=
 CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -g
@@ -44,7 +42,7 @@ ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
 EIO_CONFIG=config_sunos.h
 CPPFLAGS += -Isrc/ares/config_sunos -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
-LINKFLAGS+=-lsocket -lnsl
+LINKFLAGS+=-lsocket -lnsl -lkstat
 OBJS += src/unix/sunos.o
 endif
 
@@ -54,6 +52,7 @@ EIO_CONFIG=config_darwin.h
 CPPFLAGS += -Isrc/ares/config_darwin
 LINKFLAGS+=-framework CoreServices
 OBJS += src/unix/darwin.o
+OBJS += src/unix/kqueue.o
 endif
 
 ifeq (Linux,$(uname_S))
@@ -71,6 +70,7 @@ EIO_CONFIG=config_freebsd.h
 CPPFLAGS += -Isrc/ares/config_freebsd
 LINKFLAGS+=
 OBJS += src/unix/freebsd.o
+OBJS += src/unix/kqueue.o
 endif
 
 ifeq (NetBSD,$(uname_S))
@@ -79,6 +79,16 @@ EIO_CONFIG=config_netbsd.h
 CPPFLAGS += -Isrc/ares/config_netbsd
 LINKFLAGS+=
 OBJS += src/unix/netbsd.o
+OBJS += src/unix/kqueue.o
+endif
+
+ifeq (OpenBSD,$(uname_S))
+EV_CONFIG=config_openbsd.h
+EIO_CONFIG=config_openbsd.h
+CPPFLAGS += -Isrc/ares/config_openbsd
+LINKFLAGS+=
+OBJS += src/unix/openbsd.o
+OBJS += src/unix/kqueue.o
 endif
 
 ifneq (,$(findstring CYGWIN,$(uname_S)))

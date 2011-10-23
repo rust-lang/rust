@@ -36,6 +36,11 @@ uint64_t uv_hrtime() {
   return (ts.tv_sec * NANOSEC + ts.tv_nsec);
 }
 
+void uv_loadavg(double avg[3]) {
+  /* Unsupported as of cygwin 1.7.7 */
+  avg[0] = avg[1] = avg[2] = 0;
+}
+
 
 int uv_exepath(char* buffer, size_t* size) {
   uint32_t usize;
@@ -53,12 +58,19 @@ int uv_exepath(char* buffer, size_t* size) {
   return 0;
 }
 
+uint64_t uv_get_free_memory(void) {
+  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_AVPHYS_PAGES);
+}
+
+uint64_t uv_get_total_memory(void) {
+  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
+}
 
 int uv_fs_event_init(uv_loop_t* loop,
                      uv_fs_event_t* handle,
                      const char* filename,
                      uv_fs_event_cb cb) {
-  uv_err_new(loop, ENOSYS);
+  uv__set_sys_error(loop, ENOSYS);
   return -1;
 }
 

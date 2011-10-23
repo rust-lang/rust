@@ -19,6 +19,7 @@
  */
 
 #include "uv.h"
+#include "internal.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -26,7 +27,9 @@
 #include <errno.h>
 
 #include <sys/time.h>
+#include <sys/loadavg.h>
 #include <unistd.h>
+#include <kstat.h>
 
 
 uint64_t uv_hrtime() {
@@ -63,11 +66,26 @@ int uv_exepath(char* buffer, size_t* size) {
 }
 
 
+uint64_t uv_get_free_memory(void) {
+  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_AVPHYS_PAGES);
+}
+
+
+uint64_t uv_get_total_memory(void) {
+  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
+}
+
+
+void uv_loadavg(double avg[3]) {
+  (void) getloadavg(avg, 3);
+}
+
+
 int uv_fs_event_init(uv_loop_t* loop,
                      uv_fs_event_t* handle,
                      const char* filename,
                      uv_fs_event_cb cb) {
-  uv_err_new(loop, ENOSYS);
+  uv__set_sys_error(loop, ENOSYS);
   return -1;
 }
 

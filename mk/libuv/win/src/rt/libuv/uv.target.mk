@@ -22,11 +22,8 @@ INCS_Default := -I$(srcdir)/src/rt/libuv/include \
 	-I$(srcdir)/src/rt/libuv/src/ares/config_win32
 
 OBJS := $(obj).target/$(TARGET)/src/rt/libuv/src/uv-common.o \
-	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares__close_sockets.o \
-	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares__get_hostent.o \
-	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares__read_line.o \
-	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares__timeval.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_cancel.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares__close_sockets.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_data.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_destroy.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_expand_name.o \
@@ -36,6 +33,7 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/src/uv-common.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_free_string.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_gethostbyaddr.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_gethostbyname.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares__get_hostent.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_getnameinfo.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_getopt.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_getsock.o \
@@ -45,8 +43,8 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/src/uv-common.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_mkquery.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_nowarn.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_options.o \
-	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_parse_a_reply.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_parse_aaaa_reply.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_parse_a_reply.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_parse_mx_reply.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_parse_ns_reply.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_parse_ptr_reply.o \
@@ -54,18 +52,22 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/src/uv-common.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_parse_txt_reply.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_process.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_query.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares__read_line.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_search.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_send.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_strcasecmp.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_strdup.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_strerror.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_timeout.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares__timeval.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_version.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_writev.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/bitncmp.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/inet_net_pton.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/inet_ntop.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/windows_port.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_getenv.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/ares/ares_platform.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/async.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/cares.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/core.o \
@@ -78,7 +80,6 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/src/uv-common.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/pipe.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/process.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/req.o \
-	$(obj).target/$(TARGET)/src/rt/libuv/src/win/stdio.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/stream.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/tcp.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/tty.o \

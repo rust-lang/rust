@@ -67,6 +67,7 @@ static uv_ares_task_t* uv__ares_task_create(int fd) {
 
   if (h == NULL) {
     uv_fatal_error(ENOMEM, "malloc");
+    return NULL;
   }
 
   h->sock = fd;
@@ -146,7 +147,7 @@ int uv_ares_init_options(uv_loop_t* loop, ares_channel *channelptr,
 
   /* only allow single init at a time */
   if (loop->channel != NULL) {
-    uv_err_new_artificial(loop, UV_EALREADY);
+    uv__set_artificial_error(loop, UV_EALREADY);
     return -1;
   }
 

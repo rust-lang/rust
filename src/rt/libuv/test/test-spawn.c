@@ -67,7 +67,7 @@ static void kill_cb(uv_process_t* process, int exit_status, int term_signal) {
 }
 
 
-uv_buf_t on_alloc(uv_handle_t* handle, size_t suggested_size) {
+static uv_buf_t on_alloc(uv_handle_t* handle, size_t suggested_size) {
   uv_buf_t buf;
   buf.base = output + output_used;
   buf.len = OUTPUT_SIZE - output_used;
@@ -138,7 +138,7 @@ TEST_IMPL(spawn_stdout) {
 
   init_process_options("spawn_helper2", exit_cb);
 
-  uv_pipe_init(uv_default_loop(), &out);
+  uv_pipe_init(uv_default_loop(), &out, 0);
   options.stdout_stream = &out;
 
   r = uv_spawn(uv_default_loop(), &process, options);
@@ -160,7 +160,7 @@ TEST_IMPL(spawn_stdout) {
 
 
 TEST_IMPL(spawn_stdin) {
-int r;
+  int r;
   uv_pipe_t out;
   uv_pipe_t in;
   uv_write_t write_req;
@@ -169,8 +169,8 @@ int r;
 
   init_process_options("spawn_helper3", exit_cb);
 
-  uv_pipe_init(uv_default_loop(), &out);
-  uv_pipe_init(uv_default_loop(), &in);
+  uv_pipe_init(uv_default_loop(), &out, 0);
+  uv_pipe_init(uv_default_loop(), &in, 0);
   options.stdout_stream = &out;
   options.stdin_stream = &in;
 
@@ -220,6 +220,47 @@ TEST_IMPL(spawn_and_kill) {
 }
 
 
+TEST_IMPL(spawn_and_ping) {
+  uv_write_t write_req;
+  uv_pipe_t in, out;
+  uv_buf_t buf;
+  int r;
+
+  init_process_options("spawn_helper3", exit_cb);
+  buf = uv_buf_init("TEST", 4);
+
+  uv_pipe_init(uv_default_loop(), &out, 0);
+  uv_pipe_init(uv_default_loop(), &in, 0);
+  options.stdout_stream = &out;
+  options.stdin_stream = &in;
+
+  r = uv_spawn(uv_default_loop(), &process, options);
+  ASSERT(r == 0);
+
+  /* Sending signum == 0 should check if the
+   * child process is still alive, not kill it.
+   */
+  r = uv_process_kill(&process, 0);
+  ASSERT(r == 0);
+
+  r = uv_write(&write_req, (uv_stream_t*)&in, &buf, 1, write_cb);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*)&out, on_alloc, on_read);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 0);
+
+  r = uv_run(uv_default_loop());
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(strcmp(output, "TEST") == 0);
+
+  return 0;
+}
+
+
 #ifdef _WIN32
 TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
   int r;
@@ -229,7 +270,7 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
 
   init_process_options("spawn_helper2", exit_cb);
 
-  uv_pipe_init(uv_default_loop(), &out);
+  uv_pipe_init(uv_default_loop(), &out, 0);
   options.stdout_stream = &out;
 
   /* Create a pipe that'll cause a collision. */

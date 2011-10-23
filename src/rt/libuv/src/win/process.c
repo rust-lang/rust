@@ -45,7 +45,7 @@ typedef struct env_var {
     uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");          \
   }                                                       \
   if (!uv_utf8_to_utf16(s, t, size / sizeof(wchar_t))) {  \
-    uv_set_sys_error(loop, GetLastError());                     \
+    uv__set_sys_error(loop, GetLastError());              \
     err = -1;                                             \
     goto done;                                            \
   }
@@ -739,14 +739,15 @@ void uv_process_close(uv_loop_t* loop, uv_process_t* handle) {
 
 
 static int uv_create_stdio_pipe_pair(uv_loop_t* loop, uv_pipe_t* server_pipe,
-    HANDLE* child_pipe,  DWORD server_access, DWORD child_access) {
+    HANDLE* child_pipe,  DWORD server_access, DWORD child_access,
+    int overlapped) {
   int err;
   SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
   char pipe_name[64];
   DWORD mode = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT;
 
   if (server_pipe->type != UV_NAMED_PIPE) {
-    uv_set_error(loop, UV_EINVAL, 0);
+    uv__set_artificial_error(loop, UV_EINVAL);
     err = -1;
     goto done;
   }
@@ -767,17 +768,17 @@ static int uv_create_stdio_pipe_pair(uv_loop_t* loop, uv_pipe_t* server_pipe,
                             0,
                             &sa,
                             OPEN_EXISTING,
-                            0,
+                            overlapped ? FILE_FLAG_OVERLAPPED : 0,
                             NULL);
 
   if (*child_pipe == INVALID_HANDLE_VALUE) {
-    uv_set_sys_error(loop, GetLastError());
+    uv__set_sys_error(loop, GetLastError());
     err = -1;
     goto done;
   }
 
   if (!SetNamedPipeHandleState(*child_pipe, &mode, NULL, NULL)) {
-    uv_set_sys_error(loop, GetLastError());
+    uv__set_sys_error(loop, GetLastError());
     err = -1;
     goto done;
   }
@@ -787,7 +788,7 @@ static int uv_create_stdio_pipe_pair(uv_loop_t* loop, uv_pipe_t* server_pipe,
    */
   if (!ConnectNamedPipe(server_pipe->handle, NULL)) {
     if (GetLastError() != ERROR_PIPE_CONNECTED) {
-      uv_set_sys_error(loop, GetLastError());
+      uv__set_sys_error(loop, GetLastError());
       err = -1;
       goto done;
     }
@@ -822,7 +823,7 @@ static int duplicate_std_handle(uv_loop_t* loop, DWORD id, HANDLE* dup) {
     return 0;
   } else if (handle == INVALID_HANDLE_VALUE) {
     *dup = INVALID_HANDLE_VALUE;
-    uv_set_sys_error(loop, GetLastError());
+    uv__set_sys_error(loop, GetLastError());
     return -1;
   }
 
@@ -834,7 +835,7 @@ static int duplicate_std_handle(uv_loop_t* loop, DWORD id, HANDLE* dup) {
                        TRUE,
                        DUPLICATE_SAME_ACCESS)) {
     *dup = INVALID_HANDLE_VALUE;
-    uv_set_sys_error(loop, GetLastError());
+    uv__set_sys_error(loop, GetLastError());
     return -1;
   }
 
@@ -848,13 +849,14 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   wchar_t* path = NULL;
   int size;
   BOOL result;
-  wchar_t* application_path = NULL, *application = NULL, *arguments = NULL, *env = NULL, *cwd = NULL;
+  wchar_t* application_path = NULL, *application = NULL, *arguments = NULL,
+    *env = NULL, *cwd = NULL;
   HANDLE* child_stdio = process->child_stdio;
   STARTUPINFOW startup;
   PROCESS_INFORMATION info;
 
   if (!options.file) {
-    uv_set_error(loop, UV_EINVAL, 0);
+    uv__set_artificial_error(loop, UV_EINVAL);
     return -1;
   }
 
@@ -877,7 +879,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
       }
       GetCurrentDirectoryW(size, cwd);
     } else {
-      uv_set_sys_error(loop, GetLastError());
+      uv__set_sys_error(loop, GetLastError());
       err = -1;
       goto done;
     }
@@ -904,12 +906,23 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
   /* Create stdio pipes. */
   if (options.stdin_stream) {
-    err = uv_create_stdio_pipe_pair(
-        loop,
-        options.stdin_stream,
-        &child_stdio[0],
-        PIPE_ACCESS_OUTBOUND,
-        GENERIC_READ | FILE_WRITE_ATTRIBUTES);
+    if (options.stdin_stream->ipc) {
+      err = uv_create_stdio_pipe_pair(
+          loop,
+          options.stdin_stream,
+          &child_stdio[0],
+          PIPE_ACCESS_DUPLEX,
+          GENERIC_READ | FILE_WRITE_ATTRIBUTES | GENERIC_WRITE,
+          1);
+    } else {
+      err = uv_create_stdio_pipe_pair(
+          loop,
+          options.stdin_stream,
+          &child_stdio[0],
+          PIPE_ACCESS_OUTBOUND,
+          GENERIC_READ | FILE_WRITE_ATTRIBUTES,
+          0);
+    }
   } else {
     err = duplicate_std_handle(loop, STD_INPUT_HANDLE, &child_stdio[0]);
   }
@@ -922,7 +935,8 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
         loop, options.stdout_stream,
         &child_stdio[1],
         PIPE_ACCESS_INBOUND,
-        GENERIC_WRITE);
+        GENERIC_WRITE,
+        0);
   } else {
     err = duplicate_std_handle(loop, STD_OUTPUT_HANDLE, &child_stdio[1]);
   }
@@ -936,7 +950,8 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
         options.stderr_stream,
         &child_stdio[2],
         PIPE_ACCESS_INBOUND,
-        GENERIC_WRITE);
+        GENERIC_WRITE,
+        0);
   } else {
     err = duplicate_std_handle(loop, STD_ERROR_HANDLE, &child_stdio[2]);
   }
@@ -968,6 +983,11 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     /* Spawn succeeded */
     process->process_handle = info.hProcess;
     process->pid = info.dwProcessId;
+
+    if (options.stdin_stream &&
+        options.stdin_stream->ipc) {
+      options.stdin_stream->ipc_pid = info.dwProcessId;
+    }
 
     /* Setup notifications for when the child process exits. */
     result = RegisterWaitForSingleObject(&process->wait_handle,
@@ -1033,13 +1053,34 @@ done:
 
 
 int uv_process_kill(uv_process_t* process, int signum) {
-  process->exit_signal = signum;
+  DWORD status;
 
-  /* On windows killed processes normally return 1 */
-  if (process->process_handle != INVALID_HANDLE_VALUE &&
-      TerminateProcess(process->process_handle, 1)) {
-      return 0;
+  if (process->process_handle == INVALID_HANDLE_VALUE) {
+    uv__set_artificial_error(process->loop, UV_EINVAL);
+    return -1;
   }
 
-  return -1;
+  if (signum) {
+    /* Kill the process. On Windows, killed processes normally return 1. */
+    if (TerminateProcess(process->process_handle, 1)) {
+        process->exit_signal = signum;
+        return 0;
+    }
+    else {
+      uv__set_sys_error(process->loop, GetLastError());
+      return -1;
+    }
+  }
+  else {
+    /* Health check: is the process still alive? */
+    if (GetExitCodeProcess(process->process_handle, &status) && status == STILL_ACTIVE) {
+      return 0;
+    }
+    else {
+      uv__set_artificial_error(process->loop, UV_EINVAL);
+      return -1;
+    }
+  }
+
+  assert(0 && "unreachable");
 }

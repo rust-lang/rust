@@ -27,76 +27,8 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 
+#include "winapi.h"
 
-/*
- * Guids and typedefs for winsock extension functions
- * Mingw32 doesn't have these :-(
- */
-#ifndef WSAID_ACCEPTEX
-# define WSAID_ACCEPTEX                                        \
-         {0xb5367df1, 0xcbac, 0x11cf,                          \
-         {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}}
-
-# define WSAID_CONNECTEX                                       \
-         {0x25a207b9, 0xddf3, 0x4660,                          \
-         {0x8e, 0xe9, 0x76, 0xe5, 0x8c, 0x74, 0x06, 0x3e}}
-
-# define WSAID_GETACCEPTEXSOCKADDRS                            \
-         {0xb5367df2, 0xcbac, 0x11cf,                          \
-         {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}}
-
-# define WSAID_DISCONNECTEX                                    \
-         {0x7fda2e11, 0x8630, 0x436f,                          \
-         {0xa0, 0x31, 0xf5, 0x36, 0xa6, 0xee, 0xc1, 0x57}}
-
-# define WSAID_TRANSMITFILE                                    \
-         {0xb5367df0, 0xcbac, 0x11cf,                          \
-         {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}}
-
-  typedef BOOL PASCAL (*LPFN_ACCEPTEX)
-                      (SOCKET sListenSocket,
-                       SOCKET sAcceptSocket,
-                       PVOID lpOutputBuffer,
-                       DWORD dwReceiveDataLength,
-                       DWORD dwLocalAddressLength,
-                       DWORD dwRemoteAddressLength,
-                       LPDWORD lpdwBytesReceived,
-                       LPOVERLAPPED lpOverlapped);
-
-  typedef BOOL PASCAL (*LPFN_CONNECTEX)
-                      (SOCKET s,
-                       const struct sockaddr* name,
-                       int namelen,
-                       PVOID lpSendBuffer,
-                       DWORD dwSendDataLength,
-                       LPDWORD lpdwBytesSent,
-                       LPOVERLAPPED lpOverlapped);
-
-  typedef void PASCAL (*LPFN_GETACCEPTEXSOCKADDRS)
-                      (PVOID lpOutputBuffer,
-                       DWORD dwReceiveDataLength,
-                       DWORD dwLocalAddressLength,
-                       DWORD dwRemoteAddressLength,
-                       LPSOCKADDR* LocalSockaddr,
-                       LPINT LocalSockaddrLength,
-                       LPSOCKADDR* RemoteSockaddr,
-                       LPINT RemoteSockaddrLength);
-
-  typedef BOOL PASCAL (*LPFN_DISCONNECTEX)
-                      (SOCKET hSocket,
-                       LPOVERLAPPED lpOverlapped,
-                       DWORD dwFlags,
-                       DWORD reserved);
-
-  typedef BOOL PASCAL (*LPFN_TRANSMITFILE)
-                      (SOCKET hSocket,
-                       HANDLE hFile,
-                       DWORD nNumberOfBytesToWrite,
-                       DWORD nNumberOfBytesPerSend,
-                       LPOVERLAPPED lpOverlapped,
-                       LPTRANSMIT_FILE_BUFFERS lpTransmitBuffers,
-                       DWORD dwFlags);
-#endif
 
 /*
  * MinGW is missing these too
@@ -109,26 +41,66 @@
   #define IPV6_V6ONLY 27
 #endif
 
+/*
+ * TDI defines that are only in the DDK.
+ * We only need receive flags so far.
+ */
+#ifndef TDI_RECEIVE_NORMAL
+  #define TDI_RECEIVE_BROADCAST           0x00000004
+  #define TDI_RECEIVE_MULTICAST           0x00000008
+  #define TDI_RECEIVE_PARTIAL             0x00000010
+  #define TDI_RECEIVE_NORMAL              0x00000020
+  #define TDI_RECEIVE_EXPEDITED           0x00000040
+  #define TDI_RECEIVE_PEEK                0x00000080
+  #define TDI_RECEIVE_NO_RESPONSE_EXP     0x00000100
+  #define TDI_RECEIVE_COPY_LOOKAHEAD      0x00000200
+  #define TDI_RECEIVE_ENTIRE_MESSAGE      0x00000400
+  #define TDI_RECEIVE_AT_DISPATCH_LEVEL   0x00000800
+  #define TDI_RECEIVE_CONTROL_INFO        0x00001000
+  #define TDI_RECEIVE_FORCE_INDICATION    0x00002000
+  #define TDI_RECEIVE_NO_PUSH             0x00004000
+#endif
 
-/* Winsock extension functions (ipv4) */
-extern LPFN_CONNECTEX pConnectEx;
-extern LPFN_ACCEPTEX pAcceptEx;
-extern LPFN_GETACCEPTEXSOCKADDRS pGetAcceptExSockAddrs;
-extern LPFN_DISCONNECTEX pDisconnectEx;
-extern LPFN_TRANSMITFILE pTransmitFile;
+/*
+ * The "Auxiliary Function Driver" is the windows kernel-mode driver that does
+ * TCP, UDP etc. Winsock is just a layer that dispatches requests to it.
+ * Having these definitions allows us to bypass winsock and make an AFD kernel
+ * call directly, avoiding a bug in winsock's recvfrom implementation.
+ */
 
-/* Winsock extension functions (ipv6) */
-extern LPFN_CONNECTEX pConnectEx6;
-extern LPFN_ACCEPTEX pAcceptEx6;
-extern LPFN_GETACCEPTEXSOCKADDRS pGetAcceptExSockAddrs6;
-extern LPFN_DISCONNECTEX pDisconnectEx6;
-extern LPFN_TRANSMITFILE  pTransmitFile6;
+#define AFD_NO_FAST_IO   0x00000001
+#define AFD_OVERLAPPED   0x00000002
+#define AFD_IMMEDIATE    0x00000004
 
-/* Whether ipv6 is supported */
-extern int uv_allow_ipv6;
+typedef struct _AFD_RECV_DATAGRAM_INFO {
+    LPWSABUF BufferArray;
+    ULONG BufferCount;
+    ULONG AfdFlags;
+    ULONG TdiFlags;
+    struct sockaddr* Address;
+    int* AddressLength;
+} AFD_RECV_DATAGRAM_INFO, *PAFD_RECV_DATAGRAM_INFO;
 
-/* Ip address used to bind to any port at any interface */
-extern struct sockaddr_in uv_addr_ip4_any_;
-extern struct sockaddr_in6 uv_addr_ip6_any_;
+typedef struct _AFD_RECV_INFO {
+    LPWSABUF BufferArray;
+    ULONG BufferCount;
+    ULONG AfdFlags;
+    ULONG TdiFlags;
+} AFD_RECV_INFO, *PAFD_RECV_INFO;
+
+
+#define _AFD_CONTROL_CODE(operation, method) \
+    ((FSCTL_AFD_BASE) << 12 | (operation << 2) | method)
+
+#define FSCTL_AFD_BASE FILE_DEVICE_NETWORK
+
+#define AFD_RECEIVE            5
+#define AFD_RECEIVE_DATAGRAM   6
+
+#define IOCTL_AFD_RECEIVE \
+    _AFD_CONTROL_CODE(AFD_RECEIVE, METHOD_NEITHER)
+
+#define IOCTL_AFD_RECEIVE_DATAGRAM \
+    _AFD_CONTROL_CODE(AFD_RECEIVE_DATAGRAM, METHOD_NEITHER)
 
 #endif /* UV_WIN_WINSOCK_H_ */

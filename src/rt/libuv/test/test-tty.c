@@ -33,7 +33,7 @@ TEST_IMPL(tty) {
    */
   ASSERT(UV_TTY == uv_guess_handle(0));
 
-  r = uv_tty_init(uv_default_loop(), &tty, 0);
+  r = uv_tty_init(uv_default_loop(), &tty, 0, 1);
   ASSERT(r == 0);
 
   r = uv_tty_get_winsize(&tty, &width, &height);
@@ -47,6 +47,16 @@ TEST_IMPL(tty) {
    */
   ASSERT(width > 10);
   ASSERT(height > 10);
+
+  /* Turn on raw mode. */
+  r = uv_tty_set_mode(&tty, 1);
+  ASSERT(r == 0);
+
+  /* Turn off raw mode. */
+  r = uv_tty_set_mode(&tty, 0);
+  ASSERT(r == 0);
+
+  /* TODO check the actual mode! */
 
   uv_close((uv_handle_t*)&tty, NULL);
 

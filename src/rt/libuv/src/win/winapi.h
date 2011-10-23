@@ -4137,6 +4137,13 @@ typedef struct _FILE_BASIC_INFORMATION {
   DWORD FileAttributes;
 } FILE_BASIC_INFORMATION, *PFILE_BASIC_INFORMATION;
 
+typedef struct _FILE_MODE_INFORMATION {
+  ULONG Mode;
+} FILE_MODE_INFORMATION, *PFILE_MODE_INFORMATION;
+
+#define FILE_SYNCHRONOUS_IO_ALERT               0x00000010
+#define FILE_SYNCHRONOUS_IO_NONALERT            0x00000020
+
 typedef enum _FILE_INFORMATION_CLASS {
   FileDirectoryInformation = 1,
   FileFullDirectoryInformation,
@@ -4202,6 +4209,10 @@ typedef enum _FILE_INFORMATION_CLASS {
 
 #ifndef FILE_DEVICE_FILE_SYSTEM
 # define FILE_DEVICE_FILE_SYSTEM 0x00000009
+#endif
+
+#ifndef FILE_DEVICE_NETWORK
+# define FILE_DEVICE_NETWORK 0x00000012
 #endif
 
 #ifndef METHOD_BUFFERED
@@ -4270,8 +4281,25 @@ typedef enum _FILE_INFORMATION_CLASS {
                                              FILE_SPECIAL_ACCESS)
 #endif
 
+typedef VOID (NTAPI *PIO_APC_ROUTINE)
+             (PVOID ApcContext,
+              PIO_STATUS_BLOCK IoStatusBlock,
+              ULONG Reserved);
+
 typedef ULONG (NTAPI *sRtlNtStatusToDosError)
               (NTSTATUS Status);
+
+typedef NTSTATUS (NTAPI *sNtDeviceIoControlFile)
+                 (HANDLE FileHandle,
+                  HANDLE Event,
+                  PIO_APC_ROUTINE ApcRoutine,
+                  PVOID ApcContext,
+                  PIO_STATUS_BLOCK IoStatusBlock,
+                  ULONG IoControlCode,
+                  PVOID InputBuffer,
+                  ULONG InputBufferLength,
+                  PVOID OutputBuffer,
+                  ULONG OutputBufferLength);
 
 typedef NTSTATUS (NTAPI *sNtQueryInformationFile)
                  (HANDLE FileHandle,
@@ -4317,14 +4345,15 @@ typedef BOOL (WINAPI* sSetFileCompletionNotificationModes)
              (HANDLE FileHandle,
               UCHAR Flags);
 
-typedef BOOLEAN (WINAPI* sCreateSymbolicLinkA)
-                (LPCSTR lpSymlinkFileName,
-                 LPCSTR lpTargetFileName,
+typedef BOOLEAN (WINAPI* sCreateSymbolicLinkW)
+                (LPCWSTR lpSymlinkFileName,
+                 LPCWSTR lpTargetFileName,
                  DWORD dwFlags);
 
 
 /* Ntapi function pointers */
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
+extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
 extern sNtSetInformationFile pNtSetInformationFile;
 
@@ -4332,6 +4361,6 @@ extern sNtSetInformationFile pNtSetInformationFile;
 /* Kernel32 function pointers */
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
 extern sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
-extern sCreateSymbolicLinkA pCreateSymbolicLinkA;
+extern sCreateSymbolicLinkW pCreateSymbolicLinkW;
 
 #endif /* UV_WIN_WINAPI_H_ */

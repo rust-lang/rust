@@ -32,33 +32,33 @@
 #include <linux/version.h>
 #include <features.h>
 
-#undef HAVE_FUTIMES
-#undef HAVE_PIPE2
-#undef HAVE_ACCEPT4
-
 /* futimes() requires linux >= 2.6.22 and glib >= 2.6 */
 #if LINUX_VERSION_CODE >= 0x20616 && __GLIBC_PREREQ(2, 6)
-#define HAVE_FUTIMES
+#define HAVE_FUTIMES 1
 #endif
 
 /* pipe2() requires linux >= 2.6.27 and glibc >= 2.9 */
 #if LINUX_VERSION_CODE >= 0x2061B && __GLIBC_PREREQ(2, 9)
-#define HAVE_PIPE2
+#define HAVE_PIPE2 1
 #endif
 
 /* accept4() requires linux >= 2.6.28 and glib >= 2.10 */
 #if LINUX_VERSION_CODE >= 0x2061C && __GLIBC_PREREQ(2, 10)
-#define HAVE_ACCEPT4
+#define HAVE_ACCEPT4 1
 #endif
 
 #endif /* __linux__ */
 
-#ifdef __APPLE__
-# define HAVE_FUTIMES
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__sun)
+# define HAVE_FUTIMES 1
 #endif
 
-#ifdef __FreeBSD__
-# define HAVE_FUTIMES
+/* FIXME exact copy of the #ifdef guard in uv-unix.h */
+#if (defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060) \
+  || defined(__FreeBSD__) \
+  || defined(__OpenBSD__) \
+  || defined(__NetBSD__)
+# define HAVE_KQUEUE 1
 #endif
 
 #define container_of(ptr, type, member) \
@@ -74,13 +74,15 @@
 
 /* flags */
 enum {
-  UV_CLOSING  = 0x00000001, /* uv_close() called but not finished. */
-  UV_CLOSED   = 0x00000002, /* close(2) finished. */
-  UV_READING  = 0x00000004, /* uv_read_start() called. */
-  UV_SHUTTING = 0x00000008, /* uv_shutdown() called but not complete. */
-  UV_SHUT     = 0x00000010, /* Write side closed. */
-  UV_READABLE = 0x00000020, /* The stream is readable */
-  UV_WRITABLE = 0x00000040  /* The stream is writable */
+  UV_CLOSING       = 0x01,   /* uv_close() called but not finished. */
+  UV_CLOSED        = 0x02,   /* close(2) finished. */
+  UV_READING       = 0x04,   /* uv_read_start() called. */
+  UV_SHUTTING      = 0x08,   /* uv_shutdown() called but not complete. */
+  UV_SHUT          = 0x10,   /* Write side closed. */
+  UV_READABLE      = 0x20,   /* The stream is readable */
+  UV_WRITABLE      = 0x40,   /* The stream is writable */
+  UV_TCP_NODELAY   = 0x080,  /* Disable Nagle. */
+  UV_TCP_KEEPALIVE = 0x100   /* Turn on keep-alive. */
 };
 
 size_t uv__strlcpy(char* dst, const char* src, size_t size);
@@ -96,8 +98,6 @@ int uv__socket(int domain, int type, int protocol);
 
 /* error */
 uv_err_code uv_translate_sys_error(int sys_errno);
-uv_err_t uv_err_new(uv_loop_t* loop, int sys_error);
-uv_err_t uv_err_new_artificial(uv_loop_t* loop, int code);
 void uv_fatal_error(const int errorno, const char* syscall);
 
 /* stream */
@@ -113,6 +113,8 @@ int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
 
 /* tcp */
 int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
+int uv__tcp_nodelay(uv_tcp_t* handle, int enable);
+int uv__tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay);
 
 /* pipe */
 int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);

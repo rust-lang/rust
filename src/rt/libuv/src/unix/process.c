@@ -1,4 +1,3 @@
-
 /* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -63,6 +62,34 @@ static void uv__chld(EV_P_ ev_child* watcher, int revents) {
   }
 }
 
+
+/*
+ * Used for initializing stdio streams like options.stdin_stream. Returns
+ * zero on success.
+ */
+static int uv__process_init_pipe(uv_pipe_t* handle, int fds[2]) {
+  if (handle->type != UV_NAMED_PIPE) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (handle->ipc) {
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) < 0) {
+      return -1;
+    }
+  } else {
+    if (pipe(fds) < 0) {
+      return -1;
+    }
+  }
+
+  uv__cloexec(fds[0], 1);
+  uv__cloexec(fds[1], 1);
+
+  return 0;
+}
+
+
 #ifndef SPAWN_WAIT_EXEC
 # define SPAWN_WAIT_EXEC 1
 #endif
@@ -83,49 +110,26 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 #endif
   int status;
   pid_t pid;
+  int flags;
 
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   loop->counters.process_init++;
 
   process->exit_cb = options.exit_cb;
 
-  if (options.stdin_stream) {
-    if (options.stdin_stream->type != UV_NAMED_PIPE) {
-      errno = EINVAL;
-      goto error;
-    }
-
-    if (pipe(stdin_pipe) < 0) {
-      goto error;
-    }
-    uv__cloexec(stdin_pipe[0], 1);
-    uv__cloexec(stdin_pipe[1], 1);
+  if (options.stdin_stream &&
+      uv__process_init_pipe(options.stdin_stream, stdin_pipe)) {
+    goto error;
   }
 
-  if (options.stdout_stream) {
-    if (options.stdout_stream->type != UV_NAMED_PIPE) {
-      errno = EINVAL;
-      goto error;
-    }
-
-    if (pipe(stdout_pipe) < 0) {
-      goto error;
-    }
-    uv__cloexec(stdout_pipe[0], 1);
-    uv__cloexec(stdout_pipe[1], 1);
+  if (options.stdout_stream &&
+      uv__process_init_pipe(options.stdout_stream, stdout_pipe)) {
+    goto error;
   }
 
-  if (options.stderr_stream) {
-    if (options.stderr_stream->type != UV_NAMED_PIPE) {
-      errno = EINVAL;
-      goto error;
-    }
-
-    if (pipe(stderr_pipe) < 0) {
-      goto error;
-    }
-    uv__cloexec(stderr_pipe[0], 1);
-    uv__cloexec(stderr_pipe[1], 1);
+  if (options.stderr_stream &&
+      uv__process_init_pipe(options.stderr_stream, stderr_pipe)) {
+    goto error;
   }
 
   /* This pipe is used by the parent to wait until
@@ -154,7 +158,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     goto error;
   }
 # else
-  if (pipe(signal_pipe) < 0) {
+  if (socketpair(AF_UNIX, SOCK_STREAM, 0, signal_pipe) < 0) {
     goto error;
   }
   uv__cloexec(signal_pipe[0], 1);
@@ -232,13 +236,8 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   }
   while (status == -1 && (errno == EINTR || errno == ENOMEM));
 
+  assert((status == 1) && "poll() on pipe read end failed");
   uv__close(signal_pipe[0]);
-  uv__close(signal_pipe[1]);
-
-  assert((status == 1)
-      && "poll() on pipe read end failed");
-  assert((pfd.revents & POLLHUP) == POLLHUP
-      && "no POLLHUP on pipe read end");
 #endif
 
   process->pid = pid;
@@ -252,8 +251,9 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     assert(stdin_pipe[0] >= 0);
     uv__close(stdin_pipe[0]);
     uv__nonblock(stdin_pipe[1], 1);
+    flags = UV_WRITABLE | (options.stdin_stream->ipc ? UV_READABLE : 0);
     uv__stream_open((uv_stream_t*)options.stdin_stream, stdin_pipe[1],
-        UV_WRITABLE);
+        flags);
   }
 
   if (stdout_pipe[0] >= 0) {
@@ -261,8 +261,9 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     assert(stdout_pipe[1] >= 0);
     uv__close(stdout_pipe[1]);
     uv__nonblock(stdout_pipe[0], 1);
+    flags = UV_READABLE | (options.stdout_stream->ipc ? UV_WRITABLE : 0);
     uv__stream_open((uv_stream_t*)options.stdout_stream, stdout_pipe[0],
-        UV_READABLE);
+        flags);
   }
 
   if (stderr_pipe[0] >= 0) {
@@ -270,14 +271,15 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     assert(stderr_pipe[1] >= 0);
     uv__close(stderr_pipe[1]);
     uv__nonblock(stderr_pipe[0], 1);
+    flags = UV_READABLE | (options.stderr_stream->ipc ? UV_WRITABLE : 0);
     uv__stream_open((uv_stream_t*)options.stderr_stream, stderr_pipe[0],
-        UV_READABLE);
+        flags);
   }
 
   return 0;
 
 error:
-  uv_err_new(process->loop, errno);
+  uv__set_sys_error(process->loop, errno);
   uv__close(stdin_pipe[0]);
   uv__close(stdin_pipe[1]);
   uv__close(stdout_pipe[0]);
@@ -292,7 +294,7 @@ int uv_process_kill(uv_process_t* process, int signum) {
   int r = kill(process->pid, signum);
 
   if (r) {
-    uv_err_new(process->loop, errno);
+    uv__set_sys_error(process->loop, errno);
     return -1;
   } else {
     return 0;

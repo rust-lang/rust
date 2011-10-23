@@ -2,11 +2,15 @@
 
 TOOLSET := target
 TARGET := run-benchmarks
-DEFS_Default := '-D_GNU_SOURCE'
+DEFS_Default := '-D_LARGEFILE_SOURCE' \
+	'-D_FILE_OFFSET_BITS=64' \
+	'-D_GNU_SOURCE' \
+	'-DEIO_STACKSIZE=262144'
 
 # Flags passed to all source files.
 CFLAGS_Default := -fasm-blocks \
 	-mpascal-strings \
+	-Os \
 	-gdwarf-2 \
 	-arch i386
 
@@ -31,9 +35,11 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/benchmark-ares.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/benchmark-pump.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/benchmark-sizes.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/benchmark-spawn.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/benchmark-tcp-write-batch.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/benchmark-udp-packet-storm.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/dns-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/echo-server.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/blackhole-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/run-benchmarks.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/runner.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/runner-unix.o
