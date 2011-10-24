@@ -1,0 +1,124 @@
+Format: 1.51
+
+# This is the Natural Docs languages file for this project.  If you change
+# anything here, it will apply to THIS PROJECT ONLY.  If you'd like to change
+# something for all your projects, edit the Languages.txt in Natural Docs'
+# Config directory instead.
+
+
+# You can prevent certain file extensions from being scanned like this:
+# Ignore Extensions: [extension] [extension] ...
+
+
+#-------------------------------------------------------------------------------
+# SYNTAX:
+#
+# Unlike other Natural Docs configuration files, in this file all comments
+# MUST be alone on a line.  Some languages deal with the # character, so you
+# cannot put comments on the same line as content.
+#
+# Also, all lists are separated with spaces, not commas, again because some
+# languages may need to use them.
+#
+# Language: [name]
+# Alter Language: [name]
+#    Defines a new language or alters an existing one.  Its name can use any
+#    characters.  If any of the properties below have an add/replace form, you
+#    must use that when using Alter Language.
+#
+#    The language Shebang Script is special.  It's entry is only used for
+#    extensions, and files with those extensions have their shebang (#!) lines
+#    read to determine the real language of the file.  Extensionless files are
+#    always treated this way.
+#
+#    The language Text File is also special.  It's treated as one big comment
+#    so you can put Natural Docs content in them without special symbols.  Also,
+#    if you don't specify a package separator, ignored prefixes, or enum value
+#    behavior, it will copy those settings from the language that is used most
+#    in the source tree.
+#
+# Extensions: [extension] [extension] ...
+# [Add/Replace] Extensions: [extension] [extension] ...
+#    Defines the file extensions of the language's source files.  You can
+#    redefine extensions found in the main languages file.  You can use * to
+#    mean any undefined extension.
+#
+# Shebang Strings: [string] [string] ...
+# [Add/Replace] Shebang Strings: [string] [string] ...
+#    Defines a list of strings that can appear in the shebang (#!) line to
+#    designate that it's part of the language.  You can redefine strings found
+#    in the main languages file.
+#
+# Ignore Prefixes in Index: [prefix] [prefix] ...
+# [Add/Replace] Ignored Prefixes in Index: [prefix] [prefix] ...
+#
+# Ignore [Topic Type] Prefixes in Index: [prefix] [prefix] ...
+# [Add/Replace] Ignored [Topic Type] Prefixes in Index: [prefix] [prefix] ...
+#    Specifies prefixes that should be ignored when sorting symbols in an
+#    index.  Can be specified in general or for a specific topic type.
+#
+#------------------------------------------------------------------------------
+# For basic language support only:
+#
+# Line Comments: [symbol] [symbol] ...
+#    Defines a space-separated list of symbols that are used for line comments,
+#    if any.
+#
+# Block Comments: [opening sym] [closing sym] [opening sym] [closing sym] ...
+#    Defines a space-separated list of symbol pairs that are used for block
+#    comments, if any.
+#
+# Package Separator: [symbol]
+#    Defines the default package separator symbol.  The default is a dot.
+#
+# [Topic Type] Prototype Enders: [symbol] [symbol] ...
+#    When defined, Natural Docs will attempt to get a prototype from the code
+#    immediately following the topic type.  It stops when it reaches one of
+#    these symbols.  Use \n for line breaks.
+#
+# Line Extender: [symbol]
+#    Defines the symbol that allows a prototype to span multiple lines if
+#    normally a line break would end it.
+#
+# Enum Values: [global|under type|under parent]
+#    Defines how enum values are referenced.  The default is global.
+#    global       - Values are always global, referenced as 'value'.
+#    under type   - Values are under the enum type, referenced as
+#               'package.enum.value'.
+#    under parent - Values are under the enum's parent, referenced as
+#               'package.value'.
+#
+# Perl Package: [perl package]
+#    Specifies the Perl package used to fine-tune the language behavior in ways
+#    too complex to do in this file.
+#
+#------------------------------------------------------------------------------
+# For full language support only:
+#
+# Full Language Support: [perl package]
+#    Specifies the Perl package that has the parsing routines necessary for full
+#    language support.
+#
+#-------------------------------------------------------------------------------
+
+# The following languages are defined in the main file, if you'd like to alter
+# them:
+#
+#    Text File, Shebang Script, C/C++, C#, Java, JavaScript, Perl, Python,
+#    PHP, SQL, Visual Basic, Pascal, Assembly, Ada, Tcl, Ruby, Makefile,
+#    ActionScript, ColdFusion, R, Fortran
+
+# If you add a language that you think would be useful to other developers
+# and should be included in Natural Docs by default, please e-mail it to
+# languages [at] naturaldocs [dot] org.
+
+
+Language: Rust
+
+   Extensions: rc rs
+   Line Comment: //
+   Block Comment: /* */
+   Package Separator: ::
+   Function Prototype Enders: ; {
+   Type Prototype Enders: ; }
+   Class Prototype Enders: {

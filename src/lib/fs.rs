@@ -1,3 +1,8 @@
+/*
+Module: fs
+
+File system manipulation
+*/
 
 import os::getcwd;
 import os_fs;
@@ -6,10 +11,32 @@ native "c-stack-cdecl" mod rustrt {
     fn rust_file_is_dir(path: str::sbuf) -> int;
 }
 
+/*
+Function: path_sep
+
+Get the default path separator for the host platform
+*/
 fn path_sep() -> str { ret str::from_char(os_fs::path_sep); }
 
+// FIXME: This type should probably be constrained
+/*
+Type: path
+
+A path or fragment of a filesystem path
+*/
 type path = str;
 
+/*
+Function: dirname
+
+Get the directory portion of a path
+
+Returns all of the path up to, but excluding, the final path separator.
+The dirname of "/usr/share" will be "/usr", but the dirname of
+"/usr/share/" is "/usr/share".
+
+If the path is not prefixed with a directory, then "." is returned.
+*/
 fn dirname(p: path) -> path {
     let i: int = str::rindex(p, os_fs::path_sep as u8);
     if i == -1 {
@@ -19,6 +46,17 @@ fn dirname(p: path) -> path {
     ret str::substr(p, 0u, i as uint);
 }
 
+/*
+Function: basename
+
+Get the file name portion of a path
+
+Returns the portion of the path after the final path separator.
+The basename of "/usr/share" will be "share". If there are no
+path separators in the path then the returned path is identical to
+the provided path. If an empty path is provided or the path ends
+with a path separator then an empty path is returned.
+*/
 fn basename(p: path) -> path {
     let i: int = str::rindex(p, os_fs::path_sep as u8);
     if i == -1 {
@@ -32,6 +70,15 @@ fn basename(p: path) -> path {
 
 
 // FIXME: Need some typestate to avoid bounds check when len(pre) == 0
+/*
+Function: connect
+
+Connects to path segments
+
+Given paths `pre` and `post` this function will return a path
+that is equal to `post` appended to `pre`, inserting a path separator
+between the two as needed.
+*/
 fn connect(pre: path, post: path) -> path {
     let len = str::byte_len(pre);
     ret if pre[len - 1u] == os_fs::path_sep as u8 {
@@ -41,6 +88,13 @@ fn connect(pre: path, post: path) -> path {
         } else { pre + path_sep() + post };
 }
 
+/*
+Function: connect_many
+
+Connects a vector of path segments into a single path.
+
+Inserts path separators as needed.
+*/
 fn connect_many(paths: [path]) : vec::is_not_empty(paths) -> path {
     ret if vec::len(paths) == 1u {
         paths[0]
@@ -51,10 +105,20 @@ fn connect_many(paths: [path]) : vec::is_not_empty(paths) -> path {
     }
 }
 
+/*
+Function: file_id_dir
+
+Indicates whether a path represents a directory.
+*/
 fn file_is_dir(p: path) -> bool {
     ret str::as_buf(p, {|buf| rustrt::rust_file_is_dir(buf) != 0 });
 }
 
+/*
+Function: list_dir
+
+Lists the contents of a directory.
+*/
 fn list_dir(p: path) -> [str] {
     let p = p;
     let pl = str::byte_len(p);
@@ -68,14 +132,41 @@ fn list_dir(p: path) -> [str] {
     ret full_paths;
 }
 
+/*
+Function: path_is_absolute
+
+Indicates whether a path is absolute.
+
+A path is considered absolute if it begins at the filesystem root ("/") or,
+on Windows, begins with a drive letter.
+*/
 fn path_is_absolute(p: path) -> bool { ret os_fs::path_is_absolute(p); }
 
 // FIXME: under Windows, we should prepend the current drive letter to paths
 // that start with a slash.
+/*
+Function: make_absolute
+
+Convert a relative path to an absolute path
+
+If the given path is relative, return it prepended with the current working
+directory. If the given path is already an absolute path, return it
+as is.
+*/
 fn make_absolute(p: path) -> path {
     if path_is_absolute(p) { ret p; } else { ret connect(getcwd(), p); }
 }
 
+/*
+Function: split
+
+Split a path into it's individual components
+
+Splits a given path by path separators and returns a vector containing
+each piece of the path. On Windows, if the path is absolute then
+the first element of the returned vector will be the drive letter
+followed by a colon.
+*/
 fn split(p: path) -> [path] {
     let split1 = str::split(p, os_fs::path_sep as u8);
     let split2 = [];
@@ -85,6 +176,13 @@ fn split(p: path) -> [path] {
     ret split2;
 }
 
+/*
+Function: normalize
+
+Removes extra "." and ".." entries from paths.
+
+Does not follow symbolic links.
+*/
 fn normalize(p: path) -> path {
     let s = split(p);
     let s = strip_dots(s);

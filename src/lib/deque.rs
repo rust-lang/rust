@@ -1,21 +1,38 @@
+/*
+Module: deque
 
+A deque.  Untested as of yet.  Likely buggy.
+*/
 
-
-/**
- * A deque, for fun.  Untested as of yet.  Likely buggy.
- */
-type t<T> =
-    obj {
-        fn size() -> uint;
-        fn add_front(T);
-        fn add_back(T);
-        fn pop_front() -> T;
-        fn pop_back() -> T;
-        fn peek_front() -> T;
-        fn peek_back() -> T;
-        fn get(int) -> T;
+/*
+Object: t
+*/
+type t<T> = obj {
+    // Method: size
+    fn size() -> uint;
+    // Method: add_front
+    fn add_front(T);
+    // Method: add_back
+    fn add_back(T);
+    // Method: pop_front
+    fn pop_front() -> T;
+    // Method: pop_back
+    fn pop_back() -> T;
+    // Method: peek_front
+    fn peek_front() -> T;
+    // Method: peek_back
+    fn peek_back() -> T;
+    // Method: get
+    fn get(int) -> T;
     };
 
+/*
+Section: Functions
+*/
+
+/*
+Function: create
+*/
 fn create<T>() -> t<T> {
     type cell<T> = option::t<T>;
 

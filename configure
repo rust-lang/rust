@@ -387,7 +387,8 @@ rm -f config.mk.bak
 
 step_msg "making directories"
 for i in \
-    doc \
+    doc doc/std \
+    nd nd/std \
     rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
     rt/libuv rt/libuv/src/ares rt/libuv/src/eio rt/libuv/src/ev \
     rustllvm dl \

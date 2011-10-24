@@ -1,7 +1,21 @@
+/*
+Module: float
+*/
+
 /**
- * String conversions
+ * Section: String Conversions
  */
 
+/*
+Function: to_str
+
+Converts a float to a string
+
+Parameters:
+
+num - The float value
+digits: The number of significant digits
+*/
 fn to_str(num: float, digits: uint) -> str {
     let accum = if num < 0.0 { num = -num; "-" } else { "" };
     let trunc = num as uint;
@@ -19,23 +33,30 @@ fn to_str(num: float, digits: uint) -> str {
     ret accum;
 }
 
-/**
- * Convert a string to a float
- *
- * This function accepts strings such as
- * * "3.14"
- * * "+3.14", equivalent to "3.14"
- * * "-3.14"
- * * "2.5E10", or equivalently, "2.5e10"
- * * "2.5E-10"
- * * "", or, equivalently, "." (understood as 0)
- * * "5."
- * * ".5", or, equivalently,  "0.5"
- *
- * @param num A string, possibly empty.
- * @return [NaN] if the string did not represent a valid number.
- * @return Otherwise, the floating-point number represented [num].
- */
+/*
+Function: from_str
+
+Convert a string to a float
+
+This function accepts strings such as
+* "3.14"
+* "+3.14", equivalent to "3.14"
+* "-3.14"
+* "2.5E10", or equivalently, "2.5e10"
+* "2.5E-10"
+* "", or, equivalently, "." (understood as 0)
+* "5."
+* ".5", or, equivalently,  "0.5"
+
+Parameters:
+
+num - A string, possibly empty.
+
+Returns:
+
+<NaN> If the string did not represent a valid number.
+Otherwise, the floating-point number represented [num].
+*/
 fn from_str(num: str) -> float {
    let pos = 0u;                  //Current byte position in the string.
                                   //Used to walk the string in O(n).
@@ -144,17 +165,21 @@ fn from_str(num: str) -> float {
 }
 
 /**
- * Arithmetics
+ * Section: Arithmetics
  */
 
-/**
- * Compute the exponentiation of an integer by another integer as a float.
- *
- *
- * @param x The base.
- * @param pow The exponent.
- * @return [NaN] of both [x] and [pow] are [0u], otherwise [x^pow].
- */
+/*
+Function: pow_uint_to_uint_as_float
+
+Compute the exponentiation of an integer by another integer as a float.
+
+Parameters:
+x - The base.
+pow - The exponent.
+
+Returns:
+<NaN> of both `x` and `pow` are `0u`, otherwise `x^pow`.
+*/
 fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
    if x == 0u {
       if pow == 0u {
@@ -177,20 +202,23 @@ fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
 
 
 /**
- * Constants
+ * Section: Constants
  */
 
 //TODO: Once this is possible, replace the body of these functions
 //by an actual constant.
 
+/* Function: NaN */
 fn NaN() -> float {
    ret 0./0.;
 }
 
+/* Function: infinity */
 fn infinity() -> float {
    ret 1./0.;
 }
 
+/* Function: neg_infinity */
 fn neg_infinity() -> float {
    ret -1./0.;
 }

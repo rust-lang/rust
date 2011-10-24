@@ -1,5 +1,30 @@
+/*
+Module: generic_os
+
+Some miscellaneous platform functions.
+
+These should be rolled into another module.
+*/
+
 import str::sbuf;
 
+// Wow, this is an ugly way to write doc comments
+
+#[cfg(bogus)]
+/*
+Function: getenv
+
+Get the value of an environment variable
+*/
+fn getenv(n: str) -> option::t<str> { }
+
+#[cfg(bogus)]
+/*
+Function: setenv
+
+Set the value of an environment variable
+*/
+fn setenv(n: str, v: str) { }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]

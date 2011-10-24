@@ -1,3 +1,18 @@
+/*
+Module: char
+
+Utilities for manipulating the char type
+*/
+
+/*
+Function: is_whitespace
+
+Indicates whether a character is whitespace.
+
+Whitespace characters include space (U+0020), tab (U+0009), line feed
+(U+000A), carriage return (U+000D), and a number of less common
+ASCII and unicode characters.
+*/
 pure fn is_whitespace(c: char) -> bool {
     const ch_space: char = '\u0020';
     const ch_ogham_space_mark: char = '\u1680';

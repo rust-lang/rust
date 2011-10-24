@@ -1,4 +1,3 @@
-
 import os::libc;
 
 native "c-stack-cdecl" mod rustrt {

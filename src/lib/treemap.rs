@@ -1,4 +1,6 @@
 /*
+Module: treemap
+
 A key,value store that works on anything.
 
 This works using a binary search tree. In the first version, it's a
@@ -16,12 +18,32 @@ export insert;
 export find;
 export traverse;
 
-tag tree_node<K, V> { empty; node(@K, @V, treemap<K, V>, treemap<K, V>); }
+/* Section: Types */
 
+/*
+Type: treemap
+*/
 type treemap<K, V> = @mutable tree_node<K, V>;
 
+/*
+Tag: tree_node
+*/
+tag tree_node<K, V> { empty; node(@K, @V, treemap<K, V>, treemap<K, V>); }
+
+/* Section: Operations */
+
+/*
+Function: init
+
+Create a treemap
+*/
 fn init<K, V>() -> treemap<K, V> { @mutable empty }
 
+/*
+Function: insert
+
+Insert a value into the map
+*/
 fn insert<K, V>(m: treemap<K, V>, k: K, v: V) {
     alt m {
       @empty. { *m = node(@k, @v, @mutable empty, @mutable empty); }
@@ -36,6 +58,11 @@ fn insert<K, V>(m: treemap<K, V>, k: K, v: V) {
     }
 }
 
+/*
+Function: find
+
+Find a value based on the key
+*/
 fn find<K, V>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
       empty. { none }
@@ -51,7 +78,11 @@ fn find<K, V>(m: treemap<K, V>, k: K) -> option<V> {
     }
 }
 
-// Performs an in-order traversal
+/*
+Function: traverse
+
+Visit all pairs in the map in order.
+*/
 fn traverse<K, V>(m: treemap<K, V>, f: fn@(K, V)) {
     alt *m {
       empty. { }

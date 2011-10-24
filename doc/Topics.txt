@@ -1,0 +1,159 @@
+Format: 1.51
+
+# This is the Natural Docs topics file for this project.  If you change anything
+# here, it will apply to THIS PROJECT ONLY.  If you'd like to change something
+# for all your projects, edit the Topics.txt in Natural Docs' Config directory
+# instead.
+
+
+# If you'd like to prevent keywords from being recognized by Natural Docs, you
+# can do it like this:
+# Ignore Keywords: [keyword], [keyword], ...
+#
+# Or you can use the list syntax like how they are defined:
+# Ignore Keywords:
+#    [keyword]
+#    [keyword], [plural keyword]
+#    ...
+
+
+#-------------------------------------------------------------------------------
+# SYNTAX:
+#
+# Topic Type: [name]
+# Alter Topic Type: [name]
+#    Creates a new topic type or alters one from the main file.  Each type gets
+#    its own index and behavior settings.  Its name can have letters, numbers,
+#    spaces, and these charaters: - / . '
+#
+# Plural: [name]
+#    Sets the plural name of the topic type, if different.
+#
+# Keywords:
+#    [keyword]
+#    [keyword], [plural keyword]
+#    ...
+#    Defines or adds to the list of keywords for the topic type.  They may only
+#    contain letters, numbers, and spaces and are not case sensitive.  Plural
+#    keywords are used for list topics.  You can redefine keywords found in the
+#    main topics file.
+#
+# Index: [yes|no]
+#    Whether the topics get their own index.  Defaults to yes.  Everything is
+#    included in the general index regardless of this setting.
+#
+# Scope: [normal|start|end|always global]
+#    How the topics affects scope.  Defaults to normal.
+#    normal        - Topics stay within the current scope.
+#    start         - Topics start a new scope for all the topics beneath it,
+#                    like class topics.
+#    end           - Topics reset the scope back to global for all the topics
+#                    beneath it.
+#    always global - Topics are defined as global, but do not change the scope
+#                    for any other topics.
+#
+# Class Hierarchy: [yes|no]
+#    Whether the topics are part of the class hierarchy.  Defaults to no.
+#
+# Page Title If First: [yes|no]
+#    Whether the topic's title becomes the page title if it's the first one in
+#    a file.  Defaults to no.
+#
+# Break Lists: [yes|no]
+#    Whether list topics should be broken into individual topics in the output.
+#    Defaults to no.
+#
+# Can Group With: [type], [type], ...
+#    Defines a list of topic types that this one can possibly be grouped with.
+#    Defaults to none.
+#-------------------------------------------------------------------------------
+
+# The following topics are defined in the main file, if you'd like to alter
+# their behavior or add keywords:
+#
+#    Generic, Class, Interface, Section, File, Group, Function, Variable,
+#    Property, Type, Constant, Enumeration, Event, Delegate, Macro,
+#    Database, Database Table, Database View, Database Index, Database
+#    Cursor, Database Trigger, Cookie, Build Target
+
+# If you add something that you think would be useful to other developers
+# and should be included in Natural Docs by default, please e-mail it to
+# topics [at] naturaldocs [dot] org.
+
+
+#Topic Type: Crate
+
+#   Plural: Crates
+#   Scope: Always Global
+
+#   Keywords:
+#      crate, crates
+
+Topic Type: Syntax Extension
+
+   Plural: Syntax Extensions
+   Scope: Always Global
+
+   Keywords:
+      syntax extension, syntax extensions
+
+#Alter Topic Type: Class
+
+#   Keywords:
+#      object, objects
+#      tag, tags
+#      resource, resources
+
+Topic Type: Module
+   Plural: Modules
+   Scope: Start
+   Class Hierarchy: Yes
+   Page Title If First: Yes
+
+   Keywords:
+      module, modules
+
+Topic Type: Object
+   Plural: Objects
+   Scope: Start
+   Class Hierarchy: Yes
+
+   Keywords:
+      obj, objs
+
+Topic Type: Tag
+   Plural: Tags
+   Scope: Start
+   Class Hierarchy: Yes
+
+   Keywords:
+      tag, tags
+
+#Alter Topic Type: Function
+
+#   Scope: Start
+#      predicate, predicates
+
+#   Ignore Keywords:
+#      method, methods
+#   Keywords:
+#      variant, variants
+
+Topic Type: Variant
+
+   Plural: Variants
+   Keywords:
+      variant, variants
+
+#Alter Topic Type: Type
+
+#    Keywords:
+#       tag, tags
+
+Topic Type: Predicate
+
+   Plural: Predicates
+   Break Lists: Yes
+
+   Keywords:
+      predicate, predicates

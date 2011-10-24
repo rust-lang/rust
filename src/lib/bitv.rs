@@ -1,3 +1,8 @@
+/*
+Module: bitv
+
+Bitvectors.
+*/
 
 export t;
 export create;
@@ -23,12 +28,26 @@ export eq_vec;
 //        an optimizing version of this module that produces a different obj
 //        for the case where nbits <= 32.
 
+/*
+Type: t
+
+The bitvector type.
+*/
 type t = @{storage: [mutable uint], nbits: uint};
 
 
 // FIXME: this should be a constant once they work
 fn uint_bits() -> uint { ret 32u + (1u << 32u >> 27u); }
 
+/*
+Function: create
+
+Constructs a bitvector.
+
+Parameters:
+nbits - The number of bits in the bitvector
+init - If true then the bits are initialized to 1, otherwise 0
+*/
 fn create(nbits: uint, init: bool) -> t {
     let elt = if init { !0u } else { 0u };
     let storage = vec::init_elt_mut::<uint>(elt, nbits / uint_bits() + 1u);

@@ -1,19 +1,28 @@
+/*
+Syntax Extension: fmt
 
+Format a string
 
-/* The 'fmt' extension is modeled on the posix printf system.
- *
- * A posix conversion ostensibly looks like this:
- *
- * %[parameter][flags][width][.precision][length]type
- *
- * Given the different numeric type bestiary we have, we omit the 'length'
- * parameter and support slightly different conversions for 'type':
- *
- * %[parameter][flags][width][.precision]type
- *
- * we also only support translating-to-rust a tiny subset of the possible
- * combinations at the moment.
- */
+The 'fmt' extension is modeled on the posix printf system.
+
+A posix conversion ostensibly looks like this
+
+> %[parameter][flags][width][.precision][length]type
+
+Given the different numeric type bestiary we have, we omit the 'length'
+parameter and support slightly different conversions for 'type'
+
+> %[parameter][flags][width][.precision]type
+
+we also only support translating-to-rust a tiny subset of the possible
+combinations at the moment.
+
+Example:
+
+log #fmt("hello, %s!", "world");
+
+*/
+
 import option::{some, none};
 
 
