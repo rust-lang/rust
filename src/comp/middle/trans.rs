@@ -3889,8 +3889,6 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     if lib::llvm::llvm::LLVMGetTypeKind(llretty) as int == 11 { // pointer
         llretval = IntToPtr(bcx, llrawretval, llretty);
     } else {
-        log_err("TruncOrBitCast(", val_str(ccx.tn, llrawretval), ", ",
-                ty_str(ccx.tn, llretty), ")");
         llretval = TruncOrBitCast(bcx, llrawretval, llretty);
     }
 
