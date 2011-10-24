@@ -31,6 +31,8 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
   CFG_GCCISH_PRE_LIB_FLAGS := -Wl,-whole-archive
+  # -znoexecstack is here because librt is for some reason being created
+  # with executable stack and Fedora (or SELinux) doesn't like that (#798)
   CFG_GCCISH_POST_LIB_FLAGS := -Wl,-no-whole-archive -Wl,-znoexecstack
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCCISH_CFLAGS += -m32
