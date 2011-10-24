@@ -31,7 +31,7 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
   CFG_GCCISH_PRE_LIB_FLAGS := -Wl,-whole-archive
-  CFG_GCCISH_POST_LIB_FLAGS := -Wl,-no-whole-archive
+  CFG_GCCISH_POST_LIB_FLAGS := -Wl,-no-whole-archive -Wl,-znoexecstack
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCCISH_CFLAGS += -m32
     CFG_GCCISH_LINK_FLAGS += -m32
