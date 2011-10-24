@@ -1,8 +1,8 @@
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 
-native "llvm" mod llvm {
-    fn sqrt(n: float) -> float = "sqrt.f64";
+native "c-stack-cdecl" mod llvm = "" {
+    fn sqrt(n: float) -> float;
 }
 
 fn main() {

@@ -3864,20 +3864,33 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
         i += 1u;
     }
 
-    // Call.
-    // TODO: Invoke instead.
-    let llrawretval = Call(bcx, ccx.upcalls.call_c_stack,
-                           [llfn, llrawargbundle]);
-
-    // Cast return type.
+    // Determine return type.
     let ret_ty = ty::ty_fn_ret(bcx_tcx(bcx), fn_ty);
     check type_has_static_size(ccx, ret_ty);
     let llretty = type_of(ccx, f.span, ret_ty);
 
+    // Determine which upcall fn to use based on the return type.
+    let upcall_fn = alt lib::llvm::llvm::LLVMGetTypeKind(llretty) {
+      1 | 2 | 3 | 4 | 5 {
+        // LLVMFloatTypeKind, LLVMDoubleTypeKind,
+        // LLVMX86_FP80TypeKind, LLVMFP128TypeKind
+        // LLVMPPC_FP128TypeKind
+        ccx.upcalls.call_c_stack_float
+      }
+
+      _ { ccx.upcalls.call_c_stack }
+    };
+
+    // Call and cast the return type.
+    // TODO: Invoke instead.
+    let llrawretval = Call(bcx, upcall_fn,
+                           [llfn, llrawargbundle]);
     let llretval;
     if lib::llvm::llvm::LLVMGetTypeKind(llretty) as int == 11 { // pointer
         llretval = IntToPtr(bcx, llrawretval, llretty);
     } else {
+        log_err("TruncOrBitCast(", val_str(ccx.tn, llrawretval), ", ",
+                ty_str(ccx.tn, llretty), ")");
         llretval = TruncOrBitCast(bcx, llrawretval, llretty);
     }
 
