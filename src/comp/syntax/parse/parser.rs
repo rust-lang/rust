@@ -1735,16 +1735,9 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
 }
 
 fn parse_ty_param(p: parser) -> ast::ty_param {
-    let k =
-        alt p.peek() {
-          token::TILDE. { p.bump(); ast::kind_unique }
-          token::AT. { p.bump(); ast::kind_shared }
-          _ {
-            if eat_word(p, "pinned") { ast::kind_pinned }
+    let k = if eat_word(p, "pinned") { ast::kind_pinned }
             else if eat_word(p, "unique") { ast::kind_unique }
-            else { ast::kind_shared }
-          }
-        };
+            else { ast::kind_shared };
     ret {ident: parse_ident(p), kind: k};
 }
 
