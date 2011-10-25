@@ -551,6 +551,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
             for t in ts { if helper(tcx, needle, t, mut) { ret true; } }
             ret false;
           }
+          ty::ty_fn(ast::proto_bare., _, _, _, _) { ret false; }
           // These may contain anything.
           ty::ty_fn(_, _, _, _, _) | ty::ty_obj(_) { ret true; }
           // A type param may include everything, but can only be
@@ -665,26 +666,32 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     for d in *base_root.ds {
         if d.mut { unsafe_ty = some(contains(d.outer_t)); break; }
     }
-    if is_none(path_def_id(cx, base_root.ex)) {
-        alt base_root.ex.node {
-          ast::expr_call(f, args, _) {
-            let fty = ty::expr_ty(cx.tcx, f);
-            alt ty::ty_fn_ret_style(cx.tcx, fty) {
-              ast::return_ref(mut, arg_n) {
-                let arg = args[arg_n - 1u];
-                let arg_root = expr_root(cx, arg, false);
-                if mut {
-                    let ret_ty = ty::expr_ty(cx.tcx, base_root.ex);
-                    unsafe_ty = some(mut_contains(ret_ty));
-                }
-                if !is_none(arg_root.mut) { unsafe_ty = arg_root.mut; }
-                ret {ex: arg_root.ex, mut: unsafe_ty};
-              }
-              _ {}
-            }
+    alt base_root.ex.node {
+      ast::expr_path(_) {
+        alt cx.tcx.def_map.get(base_root.ex.id) {
+          ast::def_obj_field(_, ast::mut.) {
+            unsafe_ty = some(mut_contains(ty::expr_ty(cx.tcx, base_root.ex)));
           }
           _ {}
         }
+      }
+      ast::expr_call(f, args, _) {
+        let fty = ty::expr_ty(cx.tcx, f);
+        alt ty::ty_fn_ret_style(cx.tcx, fty) {
+          ast::return_ref(mut, arg_n) {
+            let arg = args[arg_n - 1u];
+            let arg_root = expr_root(cx, arg, false);
+            if mut {
+                let ret_ty = ty::expr_ty(cx.tcx, base_root.ex);
+                unsafe_ty = some(mut_contains(ret_ty));
+            }
+            if !is_none(arg_root.mut) { unsafe_ty = arg_root.mut; }
+            ret {ex: arg_root.ex, mut: unsafe_ty};
+          }
+          _ {}
+        }
+      }
+      _ {}
     }
     ret {ex: base_root.ex, mut: unsafe_ty};
 }

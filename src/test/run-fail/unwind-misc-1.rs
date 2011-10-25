@@ -6,15 +6,10 @@ import std::uint;
 
 fn main() {
     let count = @mutable 0u;
-    let hash = bind fn (&&_s: [@str], count: @mutable uint) -> uint {
-        *count += 1u;
-        if *count == 10u {
-            fail;
-        } else {
-            ret *count;
-        }
-    } (_, count);
-
+    fn hash(&&s: [@str]) -> uint {
+        if (std::vec::len(s) > 0u && std::str::eq(*s[0], "boom")) { fail; }
+        ret 10u;
+    }
     fn eq(&&s: [@str], &&t: [@str]) -> bool {
         ret s == t;
     }
@@ -25,4 +20,5 @@ fn main() {
         arr += [@"key stuff"];
         map.insert(arr, arr + [@"value stuff"]);
     }
+    map.insert([@"boom"], []);
 }

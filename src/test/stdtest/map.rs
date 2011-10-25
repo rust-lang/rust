@@ -8,11 +8,13 @@ import std::uint;
 import std::util;
 import std::option;
 
+
 #[test]
 fn test_simple() {
     log "*** starting test_simple";
     fn eq_uint(&&x: uint, &&y: uint) -> bool { ret x == y; }
-    let hasher_uint: map::hashfn<uint> = bind util::id(_);
+    fn uint_id(&&x: uint) -> uint { x }
+    let hasher_uint: map::hashfn<uint> = uint_id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
     let hasher_str: map::hashfn<str> = str::hash;
     let eqer_str: map::eqfn<str> = str::eq;
@@ -84,8 +86,9 @@ fn test_growth() {
     log "*** starting test_growth";
     let num_to_insert: uint = 64u;
     fn eq_uint(&&x: uint, &&y: uint) -> bool { ret x == y; }
+    fn uint_id(&&x: uint) -> uint { x }
     log "uint -> uint";
-    let hasher_uint: map::hashfn<uint> = bind util::id(_);
+    let hasher_uint: map::hashfn<uint> = uint_id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
     let hm_uu: map::hashmap<uint, uint> =
         map::mk_hashmap::<uint, uint>(hasher_uint, eqer_uint);
