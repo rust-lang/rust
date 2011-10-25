@@ -4,7 +4,7 @@ resource r(i: @mutable int) {
     *i = *i + 1;
 }
 
-fn movearg<T>(i: T) {
+fn movearg<pinned T>(i: T) {
     // Implicit copy to mutate reference i
     let j <- i;
 }

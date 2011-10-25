@@ -1193,8 +1193,8 @@ fn print_arg_mode(s: ps, m: ast::mode) {
 
 fn print_kind(s: ps, kind: ast::kind) {
     alt kind {
-      ast::kind_unique. { word(s.s, "~"); }
-      ast::kind_shared. { word(s.s, "@"); }
+      ast::kind_unique. { word_nbsp(s, "unique"); }
+      ast::kind_pinned. { word_nbsp(s, "pinned"); }
       _ {/* fallthrough */ }
     }
 }

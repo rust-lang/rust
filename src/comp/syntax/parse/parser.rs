@@ -1739,7 +1739,11 @@ fn parse_ty_param(p: parser) -> ast::ty_param {
         alt p.peek() {
           token::TILDE. { p.bump(); ast::kind_unique }
           token::AT. { p.bump(); ast::kind_shared }
-          _ { ast::kind_pinned }
+          _ {
+            if eat_word(p, "pinned") { ast::kind_pinned }
+            else if eat_word(p, "unique") { ast::kind_unique }
+            else { ast::kind_shared }
+          }
         };
     ret {ident: parse_ident(p), kind: k};
 }
