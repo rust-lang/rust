@@ -53,7 +53,7 @@ target triple = "@CFG_TARGET_TRIPLE@"
 %struct.rust_vec = type { i32, i32, [0 x i8] }
 %"struct.std::_Rb_tree<void *, std::pair<void *const, const type_desc *>, std::_Select1st<std::pair<void *const, const type_desc *> >, std::less<void *>, std::allocator<std::pair<void *const, const type_desc *> > >::_Rb_tree_impl" = type { %struct.rust_cond, %"struct.std::_Rb_tree_node_base", i32 }
 %"struct.std::_Rb_tree_node_base" = type { i32, %"struct.std::_Rb_tree_node_base"*, %"struct.std::_Rb_tree_node_base"*, %"struct.std::_Rb_tree_node_base"* }
-%struct.type_desc = type { %struct.type_desc**, i32, i32, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, i8*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, i32, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*, i8*, i8)*, i8*, %struct.rust_shape_tables*, i32, i32, %struct.UT_hash_handle, i32, [0 x %struct.type_desc*] }
+%struct.type_desc = type { %struct.type_desc**, i32, i32, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, i8*, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, i32, void (i8*, i8*, %struct.type_desc**, i8*, i8*, i8)*, i8*, %struct.rust_shape_tables*, i32, i32, %struct.UT_hash_handle, i32, [0 x %struct.type_desc*] }
 
 @.str = private unnamed_addr constant [42 x i8] c"attempt to cast values of differing sizes\00"
 @.str1 = private unnamed_addr constant [33 x i8] c"src/rt/intrinsics/intrinsics.cpp\00"
@@ -78,7 +78,7 @@ define void @rust_intrinsic_ptr_offset(%struct.rust_task* nocapture %task, i8** 
   ret void
 }
 
-define void @rust_intrinsic_cast(%struct.rust_task* %task, i8* nocapture %retptr, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %src) {
+define void @rust_intrinsic_cast(%struct.rust_task* nocapture %task, i8* nocapture %retptr, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %src) {
   %1 = getelementptr inbounds %struct.type_desc* %t1, i32 0, i32 1
   %2 = load i32* %1, align 4
   %3 = getelementptr inbounds %struct.type_desc* %t2, i32 0, i32 1
@@ -87,7 +87,7 @@ define void @rust_intrinsic_cast(%struct.rust_task* %task, i8* nocapture %retptr
   br i1 %5, label %7, label %6
 
 ; <label>:6                                       ; preds = %0
-  tail call void @upcall_fail(%struct.rust_task* %task, i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([33 x i8]* @.str1, i32 0, i32 0), i32 32)
+  tail call void @upcall_fail(i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([33 x i8]* @.str1, i32 0, i32 0), i32 32)
   br label %8
 
 ; <label>:7                                       ; preds = %0
@@ -98,7 +98,7 @@ define void @rust_intrinsic_cast(%struct.rust_task* %task, i8* nocapture %retptr
   ret void
 }
 
-declare void @upcall_fail(%struct.rust_task*, i8*, i8*, i32)
+declare void @upcall_fail(i8*, i8*, i32)
 
 declare void @llvm.memmove.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) nounwind
 
@@ -107,11 +107,16 @@ define void @rust_intrinsic_addr_of(%struct.rust_task* nocapture %task, i8** noc
   ret void
 }
 
-define void @rust_intrinsic_recv(%struct.rust_task* %task, i8** %retptr, %struct.type_desc* nocapture %ty, %class.rust_port* %port) {
-  %1 = bitcast %struct.rust_task* %task to i8*
-  %2 = bitcast i8** %retptr to i32*
-  tail call void @port_recv(i8* %1, i32* %2, %class.rust_port* %port)
+define void @rust_intrinsic_recv(%struct.rust_task* nocapture %task, i8** %retptr, %struct.type_desc* nocapture %ty, %class.rust_port* %port) {
+  %1 = bitcast i8** %retptr to i32*
+  tail call void @port_recv(i32* %1, %class.rust_port* %port)
   ret void
 }
 
-declare void @port_recv(i8*, i32*, %class.rust_port*)
+declare void @port_recv(i32*, %class.rust_port*)
+
+define void @rust_intrinsic_get_type_desc(%struct.rust_task* nocapture %task, i8** nocapture %retptr, %struct.type_desc* %ty) nounwind {
+  %ty.c = bitcast %struct.type_desc* %ty to i8*
+  store i8* %ty.c, i8** %retptr, align 4
+  ret void
+}

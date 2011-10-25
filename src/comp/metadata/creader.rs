@@ -169,7 +169,7 @@ fn find_library_crate_aux(sess: session::session,
 }
 
 fn get_metadata_section(sess: session::session,
-                        filename: str) -> option::t<@[u8]> {
+                        filename: str) -> option::t<@[u8]> unsafe {
     let mb = str::as_buf(filename, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });

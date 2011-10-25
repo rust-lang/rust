@@ -48,6 +48,7 @@ fn declare_upcalls(targ_cfg: @session::config,
     let dv = bind decl(llmod, _, _, T_void());
 
     let int_t = T_int(targ_cfg);
+    let float_t = T_float(targ_cfg);
     let size_t = T_size_t(targ_cfg);
     let opaque_vec_t = T_opaque_vec(targ_cfg);
 
@@ -88,16 +89,16 @@ fn declare_upcalls(targ_cfg: @session::config,
               d("dynastack_alloc_2", [size_t, T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
           dynastack_free: dv("dynastack_free", [T_ptr(T_i8())]),
-          alloc_c_stack: d("alloc_c_stack", [T_size_t()], T_ptr(T_i8())),
+          alloc_c_stack: d("alloc_c_stack", [size_t], T_ptr(T_i8())),
           call_c_stack: d("call_c_stack",
-                              [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
+                              [T_ptr(T_fn([], int_t)), T_ptr(T_i8())],
                               int_t),
           call_c_stack_i64: d("call_c_stack_i64",
-                              [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
+                              [T_ptr(T_fn([], int_t)), T_ptr(T_i8())],
                               T_i64()),
           call_c_stack_float: d("call_c_stack_float",
-                                [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
-                                T_float()),
+                                [T_ptr(T_fn([], int_t)), T_ptr(T_i8())],
+                                float_t),
           rust_personality: d("rust_personality", [], T_i32())
          };
 }

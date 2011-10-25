@@ -42,7 +42,7 @@ hash(uintptr_t ptr) {
     ptr = ptr ^ (ptr >> 14);
     ptr = (ptr + (ptr << 2)) + (ptr << 4); // ptr * 21
     ptr = ptr ^ (ptr >> 28);
-    ptr = ptr + (ptr << 31);    
+    ptr = ptr + (ptr << 31);
 #   else
 #   error "hash() not defined for this pointer size"
 #   endif

@@ -226,13 +226,13 @@ fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
     let degen = std::vec::len(ty::tag_variants(cx.tcx, did)) == 1u;
     if check type_has_static_size(cx, t) {
         let size = static_size_of_tag(cx, sp, t);
-        if !degen { T_tag(cx.tn, size) }
-        else if size == 0u { T_struct([T_int()]) }
+        if !degen { T_tag(cx, size) }
+        else if size == 0u { T_struct([cx.int_type]) }
         else { T_array(T_i8(), size) }
     }
     else {
-        if degen { T_struct([T_int()]) }
-        else { T_opaque_tag(cx.tn) }
+        if degen { T_struct([cx.int_type]) }
+        else { T_opaque_tag(cx) }
     }
 }
 
@@ -3031,12 +3031,13 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             let lltagty = type_of_tag(ccx, sp, tid, tag_ty);
             let bcx = alloc_result.bcx;
             let lltagptr = PointerCast(bcx, lltagblob, T_ptr(lltagty));
-            let lldiscrimptr = GEP(bcx, lltagptr, [C_int(0), C_int(0)]);
+            let lldiscrimptr = GEP(bcx, lltagptr, [C_int(ccx, 0),
+                                                   C_int(ccx, 0)]);
             let d = if std::vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
                 let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
                 let lldiscrim = Load(bcx, lldiscrim_gv);
                 lldiscrim
-            } else { C_int(0) };
+            } else { C_int(ccx, 0) };
             Store(bcx, d, lldiscrimptr);
             ret lval_no_env(bcx, lltagptr, temporary);
           }
@@ -3914,7 +3915,8 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     let i = 0u, n = vec::len(llargs);
     while i < n {
         let llarg = llargs[i].llval;
-        store_inbounds(bcx, llarg, llargbundle, [C_int(0), C_uint(i)]);
+        store_inbounds(bcx, llarg, llargbundle, [C_int(ccx, 0),
+                                                 C_uint(ccx, i)]);
         i += 1u;
     }
 
@@ -4449,8 +4451,8 @@ fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let llvalptr = r.val;
     let llval_i8 = PointerCast(log_bcx, llvalptr, T_ptr(T_i8()));
 
-    Call(log_bcx, bcx_ccx(log_bcx).upcalls.log_type,
-         [lltydesc, llval_i8, C_int(lvl)]);
+    Call(log_bcx, ccx.upcalls.log_type,
+         [lltydesc, llval_i8, C_int(ccx, lvl)]);
 
     log_bcx = trans_block_cleanups(log_bcx, log_cx);
     Br(log_bcx, after_cx.llbb);
@@ -4514,7 +4516,7 @@ fn trans_fail_value(bcx: @block_ctxt, sp_opt: option::t<span>,
     }
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
-    let args = [V_str, V_filename, C_int(V_line)];
+    let args = [V_str, V_filename, C_int(ccx, V_line)];
     let bcx = invoke(bcx, bcx_ccx(bcx).upcalls._fail, args);
     Unreachable(bcx);
     ret bcx;
@@ -5518,7 +5520,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         fn main_name() -> str { ret "main"; }
         #[cfg(target_os = "linux")]
         fn main_name() -> str { ret "main"; }
-        let llfty = T_fn([T_int(), T_int()], T_int());
+        let llfty = T_fn([ccx.int_type, ccx.int_type], ccx.int_type);
         let llfn = decl_cdecl_fn(ccx.llmod, main_name(), llfty);
         let llbb = str::as_buf("top", {|buf|
             llvm::LLVMAppendBasicBlock(llfn, buf)
@@ -5526,8 +5528,8 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let bld = *ccx.builder;
         llvm::LLVMPositionBuilderAtEnd(bld, llbb);
         let crate_map = ccx.crate_map;
-        let start_ty = T_fn([val_ty(rust_main), T_int(), T_int(),
-                             val_ty(crate_map)], T_int());
+        let start_ty = T_fn([val_ty(rust_main), ccx.int_type, ccx.int_type,
+                             val_ty(crate_map)], ccx.int_type);
         let start = str::as_buf("rust_start", {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, start_ty, buf)
         });
@@ -6018,10 +6020,11 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     let elts: [ValueRef] = [];
     ccx.module_data.items {|key, val|
-        let elt = C_struct([p2i(C_cstr(ccx, key)), p2i(val)]);
+        let elt = C_struct([p2i(ccx, C_cstr(ccx, key)),
+                            p2i(ccx, val)]);
         elts += [elt];
     };
-    let term = C_struct([C_int(0), C_int(0)]);
+    let term = C_struct([C_int(ccx, 0), C_int(ccx, 0)]);
     elts += [term];
     llvm::LLVMSetInitializer(map, C_array(elttype, elts));
     ret map;
@@ -6030,13 +6033,15 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
 
 fn decl_crate_map(sess: session::session, mapname: str,
                   llmod: ModuleRef) -> ValueRef {
+    let targ_cfg = sess.get_targ_cfg();
+    let int_type = T_int(targ_cfg);
     let n_subcrates = 1;
     let cstore = sess.get_cstore();
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
     if !sess.get_opts().library { mapname = "toplevel"; }
     let sym_name = "_rust_crate_map_" + mapname;
-    let arrtype = T_array(T_int(), n_subcrates as uint);
-    let maptype = T_struct([T_int(), arrtype]);
+    let arrtype = T_array(int_type, n_subcrates as uint);
+    let maptype = T_struct([int_type, arrtype]);
     let map = str::as_buf(sym_name, {|buf|
         llvm::LLVMAddGlobal(llmod, maptype, buf)
     });
@@ -6053,32 +6058,15 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     while cstore::have_crate_data(cstore, i) {
         let nm = "_rust_crate_map_" + cstore::get_crate_data(cstore, i).name;
         let cr = str::as_buf(nm, {|buf|
-            llvm::LLVMAddGlobal(ccx.llmod, T_int(), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
         });
-        subcrates += [p2i(cr)];
+        subcrates += [p2i(ccx, cr)];
         i += 1;
     }
-    subcrates += [C_int(0)];
-    llvm::LLVMSetInitializer(map, C_struct([p2i(create_module_map(ccx)),
-                                            C_array(T_int(), subcrates)]));
     subcrates += [C_int(ccx, 0)];
-    let mapname;
-    if ccx.sess.get_opts().library {
-        mapname = ccx.link_meta.name;
-    } else { mapname = "toplevel"; }
-    let sym_name = "_rust_crate_map_" + mapname;
-    let arrtype = T_array(ccx.int_type, std::vec::len::<ValueRef>(subcrates));
-    let maptype = T_struct([ccx.int_type, arrtype]);
-    let map =
-        str::as_buf(sym_name,
-                    {|buf| llvm::LLVMAddGlobal(ccx.llmod, maptype, buf) });
-    llvm::LLVMSetLinkage(map,
-                         lib::llvm::LLVMExternalLinkage as llvm::Linkage);
-    llvm::LLVMSetInitializer(map,
-                             C_struct([p2i(ccx, create_module_map(ccx)),
-                                       C_array(ccx.int_type, subcrates)]));
-    ret map;
->>>>>>> work on making the size of ints depend on the target arch
+    llvm::LLVMSetInitializer(map, C_struct(
+        [p2i(ccx, create_module_map(ccx)),
+         C_array(ccx.int_type, subcrates)]));
 }
 
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
@@ -6138,7 +6126,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let task_type = T_task(targ_cfg);
     let taskptr_type = T_ptr(task_type);
     tn.associate("taskptr", taskptr_type);
-    let tydesc_type = T_tydesc(targ_cfg, taskptr_type);
+    let tydesc_type = T_tydesc(targ_cfg);
     tn.associate("tydesc", tydesc_type);
     let hasher = ty::hash_ty;
     let eqer = ty::eq_ty;

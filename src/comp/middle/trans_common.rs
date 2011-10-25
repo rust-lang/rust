@@ -576,7 +576,7 @@ fn T_task(targ_cfg: @session::config) -> TypeRef {
     ret t;
 }
 
-fn T_tydesc_field(cx: @crate_ctxt, field: int) -> TypeRef {
+fn T_tydesc_field(cx: @crate_ctxt, field: int) -> TypeRef unsafe {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     let tydesc_elts: [TypeRef] =
