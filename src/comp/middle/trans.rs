@@ -3878,13 +3878,19 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
         ccx.upcalls.call_c_stack_float
       }
 
+      7 {
+        // LLVMIntegerTypeKind
+        let width = lib::llvm::llvm::LLVMGetIntTypeWidth(llretty);
+        if width == 64u { ccx.upcalls.call_c_stack_i64 }
+        else { ccx.upcalls.call_c_stack } // on 64-bit target, no diff
+      }
+
       _ { ccx.upcalls.call_c_stack }
     };
 
     // Call and cast the return type.
     // TODO: Invoke instead.
-    let llrawretval = Call(bcx, upcall_fn,
-                           [llfn, llrawargbundle]);
+    let llrawretval = Call(bcx, upcall_fn, [llfn, llrawargbundle]);
     let llretval;
     if lib::llvm::llvm::LLVMGetTypeKind(llretty) as int == 11 { // pointer
         llretval = IntToPtr(bcx, llrawretval, llretty);

@@ -3,7 +3,7 @@ import std::str;
 import middle::trans;
 import trans::decl_cdecl_fn;
 import middle::trans_common::{T_f32, T_f64, T_fn, T_bool, T_i1, T_i8, T_i32,
-                              T_int, T_vec, T_nil, T_opaque_chan_ptr,
+                              T_i64, T_int, T_vec, T_nil, T_opaque_chan_ptr,
                               T_opaque_vec, T_opaque_port_ptr, T_ptr,
                               T_size_t, T_void, T_float};
 import lib::llvm::type_names;
@@ -28,6 +28,7 @@ type upcalls =
      dynastack_free: ValueRef,
      alloc_c_stack: ValueRef,
      call_c_stack: ValueRef,
+     call_c_stack_i64: ValueRef,
      call_c_stack_float: ValueRef,
      rust_personality: ValueRef};
 
@@ -76,8 +77,11 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
           dynastack_free: dv("dynastack_free", [T_ptr(T_i8())]),
           alloc_c_stack: d("alloc_c_stack", [T_size_t()], T_ptr(T_i8())),
           call_c_stack: d("call_c_stack",
-                          [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
-                          T_int()),
+                              [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
+                              T_int()),
+          call_c_stack_i64: d("call_c_stack_i64",
+                              [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
+                              T_i64()),
           call_c_stack_float: d("call_c_stack_float",
                                 [T_ptr(T_fn([], T_int())), T_ptr(T_i8())],
                                 T_float()),

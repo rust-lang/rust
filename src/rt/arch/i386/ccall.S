@@ -6,13 +6,17 @@
 // slower.
 #if defined(__APPLE__) || defined(_WIN32)
 .globl _upcall_call_c_stack
+.globl _upcall_call_c_stack_i64
 .globl _upcall_call_c_stack_float
 _upcall_call_c_stack:
+_upcall_call_c_stack_i64:
 _upcall_call_c_stack_float:
 #else
 .globl upcall_call_c_stack
+.globl upcall_call_c_stack_i64
 .globl upcall_call_c_stack_float
 upcall_call_c_stack:
+upcall_call_c_stack_i64:
 upcall_call_c_stack_float:
 #endif
     pushl %ebp
