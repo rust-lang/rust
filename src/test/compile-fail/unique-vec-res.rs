@@ -4,7 +4,7 @@ resource r(i: @mutable int) {
     *i = *i + 1;
 }
 
-fn f<@T>(i: [T], j: [T]) {
+fn f<T>(i: [T], j: [T]) {
     // Shouldn't be able to do this copy of j
     let k = i + j;
 }

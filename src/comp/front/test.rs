@@ -180,7 +180,7 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
     ret @item;
 }
 
-fn nospan<@T>(t: T) -> ast::spanned<T> { ret {node: t, span: dummy_sp()}; }
+fn nospan<T>(t: T) -> ast::spanned<T> { ret {node: t, span: dummy_sp()}; }
 
 fn mk_tests(cx: test_ctxt) -> @ast::item {
     let ret_ty = mk_test_desc_vec_ty(cx);

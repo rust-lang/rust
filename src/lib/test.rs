@@ -41,13 +41,13 @@ type test_name = str;
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
 // to support isolation of tests into tasks.
-type test_fn<@T> = T;
+type test_fn<T> = T;
 
 type default_test_fn = test_fn<fn()>;
 
 // The definition of a single test. A test runner will run a list of
 // these.
-type test_desc<@T> = {
+type test_desc<T> = {
     name: test_name,
     fn: test_fn<T>,
     ignore: bool
@@ -100,7 +100,7 @@ type joinable = (task, comm::port<task::task_notification>);
 // In cases where test functions are closures it is not ok to just dump them
 // into a task and run them, so this transformation gives the caller a chance
 // to create the test task.
-type test_to_task<@T> = fn@(test_fn<T>) -> joinable;
+type test_to_task<T> = fn@(test_fn<T>) -> joinable;
 
 // A simple console test runner
 fn run_tests_console(opts: test_opts,
@@ -108,7 +108,7 @@ fn run_tests_console(opts: test_opts,
     run_tests_console_(opts, tests, default_test_to_task)
 }
 
-fn run_tests_console_<@T>(opts: test_opts, tests: [test_desc<T>],
+fn run_tests_console_<T>(opts: test_opts, tests: [test_desc<T>],
                           to_task: test_to_task<T>) -> bool {
 
     type test_state =
@@ -120,7 +120,7 @@ fn run_tests_console_<@T>(opts: test_opts, tests: [test_desc<T>],
           mutable ignored: uint,
           mutable failures: [test_desc<T>]};
 
-    fn callback<@T>(event: testevent<T>, st: test_state) {
+    fn callback<T>(event: testevent<T>, st: test_state) {
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
@@ -207,13 +207,13 @@ fn run_tests_console_<@T>(opts: test_opts, tests: [test_desc<T>],
 
 fn use_color() -> bool { ret get_concurrency() == 1u; }
 
-tag testevent<@T> {
+tag testevent<T> {
     te_filtered([test_desc<T>]);
     te_wait(test_desc<T>);
     te_result(test_desc<T>, test_result);
 }
 
-fn run_tests<@T>(opts: test_opts, tests: [test_desc<T>],
+fn run_tests<T>(opts: test_opts, tests: [test_desc<T>],
                  to_task: test_to_task<T>,
                  callback: fn@(testevent<T>)) {
 
@@ -248,7 +248,7 @@ fn run_tests<@T>(opts: test_opts, tests: [test_desc<T>],
 
 fn get_concurrency() -> uint { rustrt::sched_threads() }
 
-fn filter_tests<@T>(opts: test_opts,
+fn filter_tests<T>(opts: test_opts,
                     tests: [test_desc<T>]) -> [test_desc<T>] {
     let filtered = tests;
 
@@ -262,7 +262,7 @@ fn filter_tests<@T>(opts: test_opts,
           option::none. { "" }
         };
 
-        fn filter_fn<@T>(test: test_desc<T>, filter_str: str) ->
+        fn filter_fn<T>(test: test_desc<T>, filter_str: str) ->
             option::t<test_desc<T>> {
             if str::find(test.name, filter_str) >= 0 {
                 ret option::some(test);
@@ -278,7 +278,7 @@ fn filter_tests<@T>(opts: test_opts,
     filtered = if !opts.run_ignored {
         filtered
     } else {
-        fn filter<@T>(test: test_desc<T>) -> option::t<test_desc<T>> {
+        fn filter<T>(test: test_desc<T>) -> option::t<test_desc<T>> {
             if test.ignore {
                 ret option::some({name: test.name,
                                   fn: test.fn,
@@ -292,7 +292,7 @@ fn filter_tests<@T>(opts: test_opts,
     // Sort the tests alphabetically
     filtered =
         {
-            fn lteq<@T>(t1: test_desc<T>, t2: test_desc<T>) -> bool {
+            fn lteq<T>(t1: test_desc<T>, t2: test_desc<T>) -> bool {
                 str::lteq(t1.name, t2.name)
             }
             sort::merge_sort(bind lteq(_, _), filtered)
@@ -301,9 +301,9 @@ fn filter_tests<@T>(opts: test_opts,
     ret filtered;
 }
 
-type test_future<@T> = {test: test_desc<T>, wait: fn@() -> test_result};
+type test_future<T> = {test: test_desc<T>, wait: fn@() -> test_result};
 
-fn run_test<@T>(test: test_desc<T>,
+fn run_test<T>(test: test_desc<T>,
                 to_task: test_to_task<T>) -> test_future<T> {
     if !test.ignore {
         let test_task = to_task(test.fn);

@@ -12,7 +12,7 @@ fn choice<T>(r : rand::rng, v : [T]) -> T { assert vec::len(v) != 0u; v[under(r,
 fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }
 
 // shuffle a vec in place
-fn shuffle<@T>(r : rand::rng, &v : [mutable T]) {
+fn shuffle<T>(r : rand::rng, &v : [mutable T]) {
     let i = vec::len(v);
     while i >= 2u {
         // Loop invariant: elements with index >= i have been locked in place.
@@ -22,7 +22,7 @@ fn shuffle<@T>(r : rand::rng, &v : [mutable T]) {
 }
 
 // create a shuffled copy of a vec
-fn shuffled<@T>(r : rand::rng, v : [T]) -> [T] {
+fn shuffled<T>(r : rand::rng, v : [T]) -> [T] {
     let w = vec::to_mut(v);
     shuffle(r, w);
     vec::from_mut(w) // Shouldn't this happen automatically?
@@ -35,7 +35,7 @@ fn shuffled<@T>(r : rand::rng, v : [T]) -> [T] {
 // * weighted_choice is O(number of choices) time
 // * weighted_vec is O(total weight) space
 type weighted<T> = { weight: uint, item: T };
-fn weighted_choice<@T>(r : rand::rng, v : [weighted<T>]) -> T {
+fn weighted_choice<T>(r : rand::rng, v : [weighted<T>]) -> T {
     assert vec::len(v) != 0u;
     let total = 0u;
     for {weight: weight, item: _} in v {

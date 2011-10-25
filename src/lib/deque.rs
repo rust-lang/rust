@@ -16,7 +16,7 @@ type t<T> =
         fn get(int) -> T;
     };
 
-fn create<@T>() -> t<T> {
+fn create<T>() -> t<T> {
     type cell<T> = option::t<T>;
 
     let initial_capacity: uint = 32u; // 2^5
@@ -30,7 +30,7 @@ fn create<@T>() -> t<T> {
 
 
 
-    fn grow<@T>(nelts: uint, lo: uint, elts: [mutable cell<T>]) ->
+    fn grow<T>(nelts: uint, lo: uint, elts: [mutable cell<T>]) ->
        [mutable cell<T>] {
         assert (nelts == vec::len(elts));
         let rv = [mutable];
@@ -46,10 +46,10 @@ fn create<@T>() -> t<T> {
 
         ret rv;
     }
-    fn get<@T>(elts: [mutable cell<T>], i: uint) -> T {
+    fn get<T>(elts: [mutable cell<T>], i: uint) -> T {
         ret alt elts[i] { option::some(t) { t } _ { fail } };
     }
-    obj deque<@T>(mutable nelts: uint,
+    obj deque<T>(mutable nelts: uint,
                   mutable lo: uint,
                   mutable hi: uint,
                   mutable elts: [mutable cell<T>]) {

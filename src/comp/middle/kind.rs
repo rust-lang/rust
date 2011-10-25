@@ -25,10 +25,10 @@
 *
 *
 * Since this forms a lattice, we denote the capabilites in terms of a
-* worst-case requirement.  That is, if your function needs to move-and-send
-* (or copy) your T, you write fn<~T>(...). If you need to move but not send,
-* you write fn<@T>(...). And if you need neither -- can work with any sort of
-* pinned data at all -- then you write fn<T>(...).
+* worst-case requirement. That is, if your function needs to move-and-send (or
+* copy) your T, you write fn<unique T>(...). If you need to move but not send,
+* you write fn<T>(...). And if you need neither -- can work with any sort of
+* pinned data at all -- then you write fn<pinned T>(...).
 *
 * Most types are unique or shared. Other possible name combinations for these
 * two: (tree, graph; pruned, pooled; message, local; owned, common) are

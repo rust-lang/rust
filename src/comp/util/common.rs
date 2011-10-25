@@ -25,7 +25,7 @@ fn hash_def(d: ast::def_id) -> uint {
     ret h;
 }
 
-fn new_def_hash<@V>() -> std::map::hashmap<ast::def_id, V> {
+fn new_def_hash<V>() -> std::map::hashmap<ast::def_id, V> {
     let hasher: std::map::hashfn<ast::def_id> = hash_def;
     let eqer: std::map::eqfn<ast::def_id> = def_eq;
     ret std::map::mk_hashmap::<ast::def_id, V>(hasher, eqer);
@@ -166,7 +166,7 @@ fn lit_in_range(l: @ast::lit, m1: @ast::lit, m2: @ast::lit) -> bool {
     }
 }
 
-fn ranges_overlap<@T>(a1: T, a2: T, b1: T, b2: T) -> bool {
+fn ranges_overlap<T>(a1: T, a2: T, b1: T, b2: T) -> bool {
     let min1 = min(a1, a2);
     let max1 = max(a1, a2);
     let min2 = min(b1, b2);

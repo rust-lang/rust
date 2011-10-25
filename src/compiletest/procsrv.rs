@@ -154,17 +154,17 @@ fn worker(p: port<request>) {
 
 // Only windows needs to set the library path
 #[cfg(target_os = "win32")]
-fn maybe_with_lib_path<@T>(path: str, f: fn@() -> T) -> T {
+fn maybe_with_lib_path<T>(path: str, f: fn@() -> T) -> T {
     with_lib_path(path, f)
 }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-fn maybe_with_lib_path<@T>(_path: str, f: fn@() -> T) -> T {
+fn maybe_with_lib_path<T>(_path: str, f: fn@() -> T) -> T {
     f()
 }
 
-fn with_lib_path<@T>(path: str, f: fn@() -> T) -> T {
+fn with_lib_path<T>(path: str, f: fn@() -> T) -> T {
     let maybe_oldpath = getenv(util::lib_path_env_var());
     append_lib_path(path);
     let res = f();

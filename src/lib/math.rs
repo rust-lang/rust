@@ -18,5 +18,5 @@ fn atan(x: float) -> float { llvm::atan(x) }
 
 const pi: float = 3.141592653589793;
 
-fn min<@T>(x: T, y: T) -> T { x < y ? x : y }
-fn max<@T>(x: T, y: T) -> T { x < y ? y : x }
+fn min<T>(x: T, y: T) -> T { x < y ? x : y }
+fn max<T>(x: T, y: T) -> T { x < y ? y : x }

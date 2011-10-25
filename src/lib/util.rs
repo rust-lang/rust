@@ -1,5 +1,5 @@
 
-pure fn id<@T>(x: T) -> T { x }
+pure fn id<T>(x: T) -> T { x }
 
 fn unreachable() -> ! {
     fail "Internal error: entered unreachable code";

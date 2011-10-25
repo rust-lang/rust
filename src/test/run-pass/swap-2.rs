@@ -1,4 +1,4 @@
-fn swap<@T>(v: [mutable T], i: int, j: int) { v[i] <-> v[j]; }
+fn swap<T>(v: [mutable T], i: int, j: int) { v[i] <-> v[j]; }
 
 fn main() {
     let a: [mutable int] = [mutable 0, 1, 2, 3, 4, 5, 6];

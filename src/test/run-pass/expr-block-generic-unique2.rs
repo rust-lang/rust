@@ -4,7 +4,7 @@
 // -*- rust -*-
 type compare<T> = fn@(T, T) -> bool;
 
-fn test_generic<@T>(expected: T, eq: compare<T>) {
+fn test_generic<T>(expected: T, eq: compare<T>) {
     let actual: T = { expected };
     assert (eq(expected, actual));
 }

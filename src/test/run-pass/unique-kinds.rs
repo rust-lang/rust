@@ -1,10 +1,10 @@
 fn unique() {
 
-    fn f<~T>(i: T, j: T) {
+    fn f<unique T>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<~T>(i: T, j: T) {
+    fn g<unique T>(i: T, j: T) {
         assert i != j;
     }
 
@@ -18,11 +18,11 @@ fn unique() {
 
 fn shared() {
 
-    fn f<@T>(i: T, j: T) {
+    fn f<T>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<@T>(i: T, j: T) {
+    fn g<T>(i: T, j: T) {
         assert i != j;
     }
 

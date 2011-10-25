@@ -1,4 +1,4 @@
-fn f<@T>(t: T) -> T {
+fn f<T>(t: T) -> T {
     let t1 = t;
     t1
 }

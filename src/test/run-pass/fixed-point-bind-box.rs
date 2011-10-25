@@ -1,8 +1,8 @@
-fn fix_help<A, @B>(f: fn(fn@(A) -> B, A) -> B, x: A) -> B {
+fn fix_help<A, B>(f: fn(fn@(A) -> B, A) -> B, x: A) -> B {
     ret f(bind fix_help(f, _), x);
 }
 
-fn fix<A, @B>(f: fn(fn@(A) -> B, A) -> B) -> fn@(A) -> B {
+fn fix<A, B>(f: fn(fn@(A) -> B, A) -> B) -> fn@(A) -> B {
     ret bind fix_help(f, _);
 }
 

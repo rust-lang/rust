@@ -16,13 +16,13 @@ export insert;
 export find;
 export traverse;
 
-tag tree_node<@K, @V> { empty; node(@K, @V, treemap<K, V>, treemap<K, V>); }
+tag tree_node<K, V> { empty; node(@K, @V, treemap<K, V>, treemap<K, V>); }
 
-type treemap<@K, @V> = @mutable tree_node<K, V>;
+type treemap<K, V> = @mutable tree_node<K, V>;
 
-fn init<@K, @V>() -> treemap<K, V> { @mutable empty }
+fn init<K, V>() -> treemap<K, V> { @mutable empty }
 
-fn insert<@K, @V>(m: treemap<K, V>, k: K, v: V) {
+fn insert<K, V>(m: treemap<K, V>, k: K, v: V) {
     alt m {
       @empty. { *m = node(@k, @v, @mutable empty, @mutable empty); }
       @node(@kk, _, _, _) {
@@ -36,7 +36,7 @@ fn insert<@K, @V>(m: treemap<K, V>, k: K, v: V) {
     }
 }
 
-fn find<@K, @V>(m: treemap<K, V>, k: K) -> option<V> {
+fn find<K, V>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
       empty. { none }
       node(@kk, @v, _, _) {
@@ -52,7 +52,7 @@ fn find<@K, @V>(m: treemap<K, V>, k: K) -> option<V> {
 }
 
 // Performs an in-order traversal
-fn traverse<@K, @V>(m: treemap<K, V>, f: fn@(K, V)) {
+fn traverse<K, V>(m: treemap<K, V>, f: fn@(K, V)) {
     alt *m {
       empty. { }
       node(k, v, _, _) {

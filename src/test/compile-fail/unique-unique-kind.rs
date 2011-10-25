@@ -1,6 +1,6 @@
 // error-pattern: needed unique type
 
-fn f<~T>(i: T) {
+fn f<unique T>(i: T) {
 }
 
 fn main() {

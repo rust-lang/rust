@@ -1,7 +1,7 @@
 use std;
 import std::option;
 
-fn f<@T>(&o: option::t<T>) {
+fn f<T>(&o: option::t<T>) {
     assert o == option::none;
 }
 

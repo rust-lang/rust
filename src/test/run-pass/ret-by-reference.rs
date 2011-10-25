@@ -1,6 +1,6 @@
 tag option<T> { some(T); none; }
 
-fn get<@T>(opt: option<T>) -> &T {
+fn get<T>(opt: option<T>) -> &T {
     alt opt {
       some(x) { ret x; }
     }
