@@ -1,8 +1,33 @@
+/*
+Module: net
+*/
+
 import vec;
 import uint;
 
-tag ip_addr { ipv4(u8, u8, u8, u8); }
+/* Section: Types */
 
+/*
+Tag: ip_addr
+
+An IP address
+*/
+tag ip_addr {
+    /*
+    Variant: ipv4
+
+    An IPv4 address
+    */
+    ipv4(u8, u8, u8, u8);
+}
+
+/* Section: Operations */
+
+/*
+Function: format_addr
+
+Convert an <ip_addr> to a str
+*/
 fn format_addr(ip: ip_addr) -> str {
     alt ip {
       ipv4(a, b, c, d) {
@@ -12,6 +37,17 @@ fn format_addr(ip: ip_addr) -> str {
     }
 }
 
+/*
+Function: parse_addr
+
+Convert a str to <ip_addr>
+
+Converts a string of the format "x.x.x.x" into an ip_addr tag.
+
+Failure:
+
+String must be a valid IPv4 address
+*/
 fn parse_addr(ip: str) -> ip_addr {
     let parts = vec::map({|s| uint::from_str(s) }, str::split(ip, "."[0]));
     if vec::len(parts) != 4u { fail "Too many dots in IP address"; }

@@ -145,10 +145,10 @@ Topic Type: Variant
    Keywords:
       variant, variants
 
-#Alter Topic Type: Type
+Alter Topic Type: Type
 
-#    Keywords:
-#       tag, tags
+    Keywords:
+       resource, resources
 
 Topic Type: Predicate
 

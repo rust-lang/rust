@@ -1,9 +1,8 @@
+/*
+Module: rand
 
-
-
-/**
- * Bindings the runtime's random number generator (ISAAC).
- */
+Random number generation
+*/
 native "c-stack-cdecl" mod rustrt {
     type rctx;
     fn rand_new() -> rctx;
@@ -11,14 +10,38 @@ native "c-stack-cdecl" mod rustrt {
     fn rand_free(c: rctx);
 }
 
-type rng =
-    obj {
-        fn next() -> u32;
-        fn next_float() -> float;
-    };
+/* Section: Types */
+
+/*
+Obj: rng
+
+A random number generator
+*/
+type rng = obj {
+    /*
+    Method: next
+
+    Return the next random integer
+    */
+    fn next() -> u32;
+
+    /*
+    Method: next_float
+
+    Return the next random float
+    */
+    fn next_float() -> float;
+};
 
 resource rand_res(c: rustrt::rctx) { rustrt::rand_free(c); }
 
+/* Section: Operations */
+
+/*
+Function: mk_rng
+
+Create a random number generator
+*/
 fn mk_rng() -> rng {
     obj rt_rng(c: @rand_res) {
         fn next() -> u32 { ret rustrt::rand_next(**c); }

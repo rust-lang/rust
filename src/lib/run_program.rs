@@ -1,4 +1,8 @@
+/*
+Module: run
 
+Process spawning
+*/
 import str::sbuf;
 
 export program;
@@ -13,6 +17,78 @@ native "c-stack-cdecl" mod rustrt {
        int;
 }
 
+/* Section: Types */
+
+/*
+Resource: program_res
+
+A resource that manages the destruction of a <program> object
+
+program_res ensures that the destroy method is called on a
+program object in order to close open file descriptors.
+*/
+resource program_res(p: program) { p.destroy(); }
+
+/*
+Obj: program
+
+An object representing a child process
+*/
+type program = obj {
+    /*
+    Method: get_id
+
+    Returns the process id of the program
+    */
+    fn get_id() -> int;
+
+    /*
+    Method: input
+
+    Returns an io::writer that can be used to write to stdin
+    */
+    fn input() -> io::writer;
+
+    /*
+    Method: output
+
+    Returns an io::reader that can be used to read from stdout
+    */
+    fn output() -> io::reader;
+
+    /*
+    Method: err
+
+    Returns an io::reader that can be used to read from stderr
+    */
+    fn err() -> io::reader;
+
+    /*
+    Method: close_input
+
+    Closes the handle to the child processes standard input
+    */
+    fn close_input();
+
+    /*
+    Method: finish
+
+    Waits for the child process to terminate. Closes the handle
+    to stdin if necessary.
+    */
+    fn finish() -> int;
+
+    /*
+    Method: destroy
+
+    Closes open handles
+    */
+    fn destroy();
+};
+
+
+/* Section: Operations */
+
 fn arg_vec(prog: str, args: [@str]) -> [sbuf] {
     let argptrs = str::as_buf(prog, {|buf| [buf] });
     for arg in args { argptrs += str::as_buf(*arg, {|buf| [buf] }); }
@@ -20,6 +96,23 @@ fn arg_vec(prog: str, args: [@str]) -> [sbuf] {
     ret argptrs;
 }
 
+/*
+Function: spawn_process
+
+Run a program, providing stdin, stdout and stderr handles
+
+Parameters:
+
+prog - The path to an executable
+args - Vector of arguments to pass to the child process
+in_fd - A file descriptor for the child to use as std input
+out_fd - A file descriptor for the child to use as std output
+err_fd - A file descriptor for the child to use as std error
+
+Returns:
+
+The process id of the spawned process
+*/
 fn spawn_process(prog: str, args: [str], in_fd: int, out_fd: int, err_fd: int)
    -> int unsafe {
     // Note: we have to hold on to these vector references while we hold a
@@ -33,23 +126,42 @@ fn spawn_process(prog: str, args: [str], in_fd: int, out_fd: int, err_fd: int)
     ret pid;
 }
 
+/*
+Function: run_program
+
+Spawns a process and waits for it to terminate
+
+Parameters:
+
+prog - The path to an executable
+args - Vector of arguments to pass to the child process
+
+Returns:
+
+The process id
+*/
 fn run_program(prog: str, args: [str]) -> int {
     ret waitpid(spawn_process(prog, args, 0, 0, 0));
 }
 
-type program =
-    obj {
-        fn get_id() -> int;
-        fn input() -> io::writer;
-        fn output() -> io::reader;
-        fn err() -> io::reader;
-        fn close_input();
-        fn finish() -> int;
-        fn destroy();
-    };
+/*
+Function: start_program
 
-resource program_res(p: program) { p.destroy(); }
+Spawns a process and returns a boxed <program_res>
 
+The returned value is a boxed resource containing a <program> object that can
+be used for sending and recieving data over the standard file descriptors.
+The resource will ensure that file descriptors are closed properly.
+
+Parameters:
+
+prog - The path to an executable
+args - Vector of arguments to pass to the child process
+
+Returns:
+
+A boxed resource of <program>
+*/
 fn start_program(prog: str, args: [str]) -> @program_res {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
@@ -110,6 +222,22 @@ fn read_all(rd: io::reader) -> str {
     ret buf;
 }
 
+/*
+Function: program_output
+
+Spawns a process, waits for it to exit, and returns the exit code, and
+contents of stdout and stderr.
+
+Parameters:
+
+prog - The path to an executable
+args - Vector of arguments to pass to the child process
+
+Returns:
+
+A record, {status: int, out: str, err: str} containing the exit code,
+the contents of stdout and the contents of stderr.
+*/
 fn program_output(prog: str, args: [str]) ->
    {status: int, out: str, err: str} {
     let pr = start_program(prog, args);
@@ -119,41 +247,49 @@ fn program_output(prog: str, args: [str]) ->
     ret {status: pr.finish(), out: out, err: err};
 }
 
-/* Returns an exit status */
-#[cfg(target_os = "win32")]
-fn waitpid(pid: int) -> int {
-    os::waitpid(pid)
-}
+/*
+Function: waitpid
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
+Waits for a process to exit and returns the exit code
+*/
 fn waitpid(pid: int) -> int {
-    #[cfg(target_os = "linux")]
-    fn WIFEXITED(status: int) -> bool {
-        (status & 0xff) == 0
-    }
+    ret waitpid_os(pid);
 
-    #[cfg(target_os = "macos")]
-    fn WIFEXITED(status: int) -> bool {
-        (status & 0x7f) == 0
+    #[cfg(target_os = "win32")]
+    fn waitpid_os(pid: int) -> int {
+        os::waitpid(pid)
     }
 
     #[cfg(target_os = "linux")]
-    fn WEXITSTATUS(status: int) -> int {
-        (status >> 8) & 0xff
-    }
-
     #[cfg(target_os = "macos")]
-    fn WEXITSTATUS(status: int) -> int {
-        status >> 8
-    }
+    fn waitpid_os(pid: int) -> int {
+        #[cfg(target_os = "linux")]
+        fn WIFEXITED(status: int) -> bool {
+            (status & 0xff) == 0
+        }
 
-    let status = os::waitpid(pid);
-    ret if WIFEXITED(status) {
-        WEXITSTATUS(status)
-    } else {
-        1
-    };
+        #[cfg(target_os = "macos")]
+        fn WIFEXITED(status: int) -> bool {
+            (status & 0x7f) == 0
+        }
+
+        #[cfg(target_os = "linux")]
+        fn WEXITSTATUS(status: int) -> int {
+            (status >> 8) & 0xff
+        }
+
+        #[cfg(target_os = "macos")]
+        fn WEXITSTATUS(status: int) -> int {
+            status >> 8
+        }
+
+        let status = os::waitpid(pid);
+        ret if WIFEXITED(status) {
+            WEXITSTATUS(status)
+        } else {
+            1
+        };
+    }
 }
 
 // Local Variables:

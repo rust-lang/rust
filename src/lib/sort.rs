@@ -1,12 +1,25 @@
+/*
+Module: sort
 
+Sorting methods
+*/
 import vec::{len, slice};
 
 export merge_sort;
 export quick_sort;
 export quick_sort3;
 
+/* Type: lteq */
 type lteq<T> = block(T, T) -> bool;
 
+/*
+Function: merge_sort
+
+Merge sort. Returns a new vector containing the sorted list.
+
+Has worst case O(n log n) performance, best case O(n), but
+is not space efficient. This is a stable sort.
+*/
 fn merge_sort<T>(le: lteq<T>, v: [T]) -> [T] {
     fn merge<T>(le: lteq<T>, a: [T], b: [T]) -> [T] {
         let rs: [T] = [];
@@ -68,16 +81,19 @@ fn qsort<T>(compare_func: lteq<T>, arr: [mutable T], left: uint,
     }
 }
 
+/*
+Function: quick_sort
+
+Quicksort. Sorts a mutable vector in place.
+
+Has worst case O(n^2) performance, average case O(n log n).
+This is an unstable sort.
+*/
 fn quick_sort<T>(compare_func: lteq<T>, arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
 
-
-// Based on algorithm presented by Sedgewick and Bentley here:
-// http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf
-// According to these slides this is the algorithm of choice for
-// 'randomly ordered keys, abstract compare' & 'small number of key values'
 fn qsort3<T>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
               arr: [mutable T], left: int, right: int) {
     if right <= left { ret; }
@@ -126,6 +142,19 @@ fn qsort3<T>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
     qsort3::<T>(compare_func_lt, compare_func_eq, arr, i, right);
 }
 
+// FIXME: This should take lt and eq types
+/*
+Function: quick_sort3
+
+Fancy quicksort. Sorts a mutable vector in place.
+
+Based on algorithm presented by Sedgewick and Bentley
+<http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf>.
+According to these slides this is the algorithm of choice for
+'randomly ordered keys, abstract compare' & 'small number of key values'.
+
+This is an unstable sort.
+*/
 fn quick_sort3<T>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
                   arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }

@@ -1,4 +1,20 @@
 /*
+Module: sha1
+
+An implementation of the SHA-1 cryptographic hash.
+
+First create a <sha1> object using the <mk_sha1> constructor, then
+feed it input using the <input> or <input_str> methods, which may be
+called any number of times.
+
+After the entire input has been fed to the hash read the result using
+the <result> or <result_str> methods.
+
+The <sha1> object may be reused to create multiple hashes by calling
+the <reset> method.
+*/
+
+/*
  * A SHA-1 implementation derived from Paul E. Jones's reference
  * implementation, which is written for clarity, not speed. At some
  * point this will want to be rewritten.
@@ -6,22 +22,49 @@
 export sha1;
 export mk_sha1;
 
-type sha1 =
-    // Provide message input as bytes
-    // Provide message input as string
-    // Read the digest as a vector of 20 bytes. After calling this no further
-    // input may provided until reset is called
-    // Same as above, just a hex-string version.
-    // Reset the sha1 state for reuse. This is called
-    // automatically during construction
-    obj {
-        fn input([u8]);
-        fn input_str(str);
-        fn result() -> [u8];
-        fn result_str() -> str;
-        fn reset();
-    };
+/* Section: Types */
 
+/*
+Obj: sha1
+
+The SHA-1 object
+*/
+type sha1 = obj {
+    /*
+    Method: input
+
+    Provide message input as bytes
+    */
+    fn input([u8]);
+    /*
+    Method: input_str
+
+    Provide message input as string
+    */
+    fn input_str(str);
+    /*
+    Method: result
+
+    Read the digest as a vector of 20 bytes. After calling this no further
+    input may be provided until reset is called.
+    */
+    fn result() -> [u8];
+    /*
+    Method: result_str
+
+    Read the digest as a hex string. After calling this no further
+    input may be provided until reset is called.
+    */
+    fn result_str() -> str;
+    /*
+    Method: reset
+
+    Reset the SHA-1 state for reuse
+    */
+    fn reset();
+};
+
+/* Section: Operations */
 
 // Some unexported constants
 const digest_buf_len: uint = 5u;
@@ -33,7 +76,11 @@ const k2: u32 = 0x8F1BBCDCu32;
 const k3: u32 = 0xCA62C1D6u32;
 
 
-// Builds a sha1 object
+/*
+Function: mk_sha1
+
+Construct a <sha1> object
+*/
 fn mk_sha1() -> sha1 {
     type sha1state =
         {h: [mutable u32],
