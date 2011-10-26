@@ -8,16 +8,16 @@ import trans::{call_memmove, trans_shared_malloc, llsize_of, type_of_or_i8,
                llderivedtydescs_block_ctxt, lazily_emit_tydesc_glue,
                get_tydesc, load_inbounds,
                node_id_type, new_sub_block_ctxt, tps_normal, do_spill_noroot,
-               GEPi, alloc_ty, dest};
+               alloc_ty, dest};
 import trans_build::*;
 import trans_common::*;
 
 fn get_fill(bcx: @block_ctxt, vptr: ValueRef) -> ValueRef {
-    Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_fill as int]))
+    Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_fill]))
 }
 fn get_dataptr(bcx: @block_ctxt, vptr: ValueRef, unit_ty: TypeRef)
     -> ValueRef {
-    let ptr = GEPi(bcx, vptr, [0, abi::vec_elt_elems as int]);
+    let ptr = GEPi(bcx, vptr, [0, abi::vec_elt_elems]);
     PointerCast(bcx, ptr, T_ptr(unit_ty))
 }
 
@@ -33,12 +33,8 @@ fn alloc_raw(bcx: @block_ctxt, fill: ValueRef, alloc: ValueRef) -> result {
     let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
     let {bcx: bcx, val: vecptr} =
         trans_shared_malloc(bcx, T_ptr(llvecty), vecsize);
-    Store(bcx, fill,
-          InBoundsGEP(bcx, vecptr, [C_int(ccx, 0),
-                                    C_uint(ccx, abi::vec_elt_fill)]));
-    Store(bcx, alloc,
-          InBoundsGEP(bcx, vecptr, [C_int(ccx, 0),
-                                    C_uint(ccx, abi::vec_elt_alloc)]));
+    Store(bcx, fill, GEPi(bcx, vecptr, [0, abi::vec_elt_fill]));
+    Store(bcx, alloc, GEPi(bcx, vecptr, [0, abi::vec_elt_alloc]));
     ret {bcx: bcx, val: vecptr};
 }
 
@@ -80,9 +76,7 @@ fn duplicate(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) -> result {
         trans_shared_malloc(bcx, val_ty(vptr), size);
     let bcx = call_memmove(bcx, newptr, vptr, size).bcx;
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
-    Store(bcx, fill,
-          InBoundsGEP(bcx, newptr, [C_int(ccx, 0),
-                                    C_uint(ccx, abi::vec_elt_alloc)]));
+    Store(bcx, fill, GEPi(bcx, newptr, [0, abi::vec_elt_alloc]));
     if ty::type_needs_drop(bcx_tcx(bcx), unit_ty) {
         bcx = iter_vec(bcx, newptr, vec_ty, trans::take_ty);
     }

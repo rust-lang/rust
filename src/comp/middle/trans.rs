@@ -659,14 +659,6 @@ fn dynamic_align_of(cx: @block_ctxt, t: ty::t) -> result {
     }
 }
 
-// Simple wrapper around GEP that takes an array of ints and wraps them
-// in C_int()
-fn GEPi(cx: @block_ctxt, base: ValueRef, ixs: [int]) -> ValueRef {
-    let v: [ValueRef] = [];
-    for i: int in ixs { v += [C_int(bcx_ccx(cx), i)]; }
-    ret InBoundsGEP(cx, base, v);
-}
-
 // Increment a pointer by a given amount and then cast it to be a pointer
 // to a given type.
 fn bump_ptr(bcx: @block_ctxt, t: ty::t, base: ValueRef, sz: ValueRef) ->
@@ -898,10 +890,8 @@ fn field_of_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool, field: int) ->
    result {
     let ti = none::<@tydesc_info>;
     let tydesc = get_tydesc(cx, t, escapes, tps_normal, ti).result;
-    let ccx = bcx_ccx(cx);
     ret rslt(tydesc.bcx,
-             GEP(tydesc.bcx, tydesc.val, [C_int(ccx, 0),
-                                          C_int(ccx, field)]));
+             GEPi(tydesc.bcx, tydesc.val, [0, field]));
 }
 
 
@@ -1230,7 +1220,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
     let lltydescs = [mutable];
     let p = 0u;
     while p < ty_param_count {
-        let llparam = GEP(load_env_bcx, lltyparams, [C_int(ccx, p as int)]);
+        let llparam = GEPi(load_env_bcx, lltyparams, [p as int]);
         llparam = Load(load_env_bcx, llparam);
         std::vec::grow_set(lltydescs, ty_params[p], 0 as ValueRef, llparam);
         p += 1u;
@@ -1354,8 +1344,7 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
 fn incr_refcnt_of_boxed(cx: @block_ctxt, box_ptr: ValueRef) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
     let rc_ptr =
-        GEP(cx, box_ptr, [C_int(ccx, 0),
-                          C_int(ccx, abi::box_rc_field_refcnt)]);
+        GEPi(cx, box_ptr, [0, abi::box_rc_field_refcnt]);
     let rc = Load(cx, rc_ptr);
     rc = Add(cx, rc, C_int(ccx, 1));
     Store(cx, rc, rc_ptr);
@@ -1369,9 +1358,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
     let bcx = alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_box(body_mt) {
         v = PointerCast(bcx, v, type_of_1(bcx, t));
-        let ccx = bcx_ccx(bcx);
-        let body = GEP(bcx, v, [C_int(ccx, 0),
-                                C_int(ccx, abi::box_rc_field_body)]);
+        let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
         let bcx = drop_ty(bcx, body, body_mt.ty);
         if !bcx_ccx(bcx).sess.get_opts().do_gc {
             trans_non_gc_free(bcx, v)
@@ -1391,11 +1378,9 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         let ccx = bcx_ccx(bcx);
         let llbox_ty = T_opaque_obj_ptr(ccx);
         let b = PointerCast(bcx, v, llbox_ty);
-        let body = GEP(bcx, b, [C_int(ccx, 0),
-                                C_int(ccx, abi::box_rc_field_body)]);
+        let body = GEPi(bcx, b, [0, abi::box_rc_field_body]);
         let tydescptr =
-            GEP(bcx, body, [C_int(ccx, 0),
-                            C_int(ccx, abi::obj_body_elt_tydesc)]);
+            GEPi(bcx, body, [0, abi::obj_body_elt_tydesc]);
         let tydesc = Load(bcx, tydescptr);
         let ti = none;
         call_tydesc_glue_full(bcx, body, tydesc,
@@ -1409,14 +1394,11 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         // Then free the body.
         let ccx = bcx_ccx(bcx);
         v = PointerCast(bcx, v, T_opaque_closure_ptr(ccx));
-        let body = GEP(bcx, v, [C_int(ccx, 0),
-                                C_int(ccx, abi::box_rc_field_body)]);
+        let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
         let bindings =
-            GEP(bcx, body, [C_int(ccx, 0),
-                            C_int(ccx, abi::closure_elt_bindings)]);
+            GEPi(bcx, body, [0, abi::closure_elt_bindings]);
         let tydescptr =
-            GEP(bcx, body, [C_int(ccx, 0),
-                            C_int(ccx, abi::closure_elt_tydesc)]);
+            GEPi(bcx, body, [0, abi::closure_elt_tydesc]);
         let ti = none;
         call_tydesc_glue_full(bcx, bindings, Load(bcx, tydescptr),
                               abi::tydesc_field_drop_glue, ti);
@@ -1440,16 +1422,14 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
           }
           ty::ty_obj(_) {
             let box_cell =
-                GEP(bcx, v0, [C_int(ccx, 0),
-                              C_int(ccx, abi::obj_field_box)]);
+                GEPi(bcx, v0, [0, abi::obj_field_box]);
             decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
           }
           ty::ty_res(did, inner, tps) {
             trans_res_drop(bcx, v0, did, inner, tps)
           }
           ty::ty_fn(_, _, _, _, _) {
-            let box_cell = GEP(bcx, v0, [C_int(ccx, 0),
-                                         C_int(ccx, abi::fn_field_box)]);
+            let box_cell = GEPi(bcx, v0, [0, abi::fn_field_box]);
             decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
           }
           _ {
@@ -1516,8 +1496,7 @@ fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
     let null_test = IsNull(cx, box_ptr);
     CondBr(cx, null_test, next_cx.llbb, rc_adj_cx.llbb);
     let rc_ptr =
-        GEP(rc_adj_cx, box_ptr, [C_int(ccx, 0),
-                                 C_int(ccx, abi::box_rc_field_refcnt)]);
+        GEPi(rc_adj_cx, box_ptr, [0, abi::box_rc_field_refcnt]);
     let rc = Load(rc_adj_cx, rc_ptr);
     rc = Sub(rc_adj_cx, rc, C_int(ccx, 1));
     Store(rc_adj_cx, rc, rc_ptr);
@@ -1730,8 +1709,8 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         let ccx = bcx_ccx(cx);
         let lltagty = T_opaque_tag_ptr(ccx);
         let av_tag = PointerCast(cx, av, lltagty);
-        let lldiscrim_a_ptr = GEP(cx, av_tag, [C_int(ccx, 0), C_int(ccx, 0)]);
-        let llunion_a_ptr = GEP(cx, av_tag, [C_int(ccx, 0), C_int(ccx, 1)]);
+        let lldiscrim_a_ptr = GEPi(cx, av_tag, [0, 0]);
+        let llunion_a_ptr = GEPi(cx, av_tag, [0, 1]);
         let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
 
         // NB: we must hit the discriminant first so that structural
@@ -1756,15 +1735,11 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         ret next_cx;
       }
       ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) {
-        let ccx = bcx_ccx(cx);
-        let box_cell_a = GEP(cx, av, [C_int(ccx, 0),
-                                      C_int(ccx, abi::fn_field_box)]);
+        let box_cell_a = GEPi(cx, av, [0, abi::fn_field_box]);
         ret iter_boxpp(cx, box_cell_a, f);
       }
       ty::ty_obj(_) {
-        let ccx = bcx_ccx(cx);
-        let box_cell_a = GEP(cx, av, [C_int(ccx, 0),
-                                      C_int(ccx, abi::obj_field_box)]);
+        let box_cell_a = GEPi(cx, av, [0, abi::obj_field_box]);
         ret iter_boxpp(cx, box_cell_a, f);
       }
       _ { bcx_ccx(cx).sess.unimpl("type in iter_structural_ty"); }
@@ -1880,18 +1855,15 @@ fn call_tydesc_glue_full(cx: @block_ctxt, v: ValueRef, tydesc: ValueRef,
       }
     }
 
-    let ccx = bcx_ccx(cx);
     let llrawptr = PointerCast(cx, v, T_ptr(T_i8()));
     let lltydescs =
-        GEP(cx, tydesc, [C_int(ccx, 0),
-                         C_int(ccx, abi::tydesc_field_first_param)]);
+        GEPi(cx, tydesc, [0, abi::tydesc_field_first_param]);
     lltydescs = Load(cx, lltydescs);
 
     let llfn;
     alt static_glue_fn {
       none. {
-        let llfnptr = GEP(cx, tydesc, [C_int(ccx, 0),
-                                       C_int(ccx, field)]);
+        let llfnptr = GEPi(cx, tydesc, [0, field]);
         llfn = Load(cx, llfnptr);
       }
       some(sgf) { llfn = sgf; }
@@ -1930,18 +1902,15 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     let lltydesc = r.val;
     bcx = r.bcx;
     lazily_emit_tydesc_glue(bcx, abi::tydesc_field_cmp_glue, ti);
-    let ccx = bcx_ccx(bcx);
     let lltydescs =
-        GEP(bcx, lltydesc, [C_int(ccx, 0),
-                            C_int(ccx, abi::tydesc_field_first_param)]);
+        GEPi(bcx, lltydesc, [0, abi::tydesc_field_first_param]);
     lltydescs = Load(bcx, lltydescs);
 
     let llfn;
     alt ti {
       none. {
         let llfnptr =
-            GEP(bcx, lltydesc, [C_int(ccx, 0),
-                                C_int(ccx, abi::tydesc_field_cmp_glue)]);
+            GEPi(bcx, lltydesc, [0, abi::tydesc_field_cmp_glue]);
         llfn = Load(bcx, llfnptr);
       }
       some(sti) { llfn = option::get(sti.cmp_glue); }
@@ -2411,8 +2380,7 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
     while true {
         alt ty::struct(ccx.tcx, t1) {
           ty::ty_box(mt) {
-            let body = GEP(cx, v1, [C_int(ccx, 0),
-                                    C_int(ccx, abi::box_rc_field_body)]);
+            let body = GEPi(cx, v1, [0, abi::box_rc_field_body]);
             t1 = mt.ty;
 
             // Since we're changing levels of box indirection, we may have
@@ -2432,7 +2400,7 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
           }
           ty::ty_res(did, inner, tps) {
             t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
-            v1 = GEP(cx, v1, [C_int(ccx, 0), C_int(ccx, 1)]);
+            v1 = GEPi(cx, v1, [0, 1]);
           }
           ty::ty_tag(did, tps) {
             let variants = ty::tag_variants(ccx.tcx, did);
@@ -3031,8 +2999,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             let lltagty = type_of_tag(ccx, sp, tid, tag_ty);
             let bcx = alloc_result.bcx;
             let lltagptr = PointerCast(bcx, lltagblob, T_ptr(lltagty));
-            let lldiscrimptr = GEP(bcx, lltagptr, [C_int(ccx, 0),
-                                                   C_int(ccx, 0)]);
+            let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
             let d = if std::vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
                 let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
                 let lldiscrim = Load(bcx, lldiscrim_gv);
@@ -3075,13 +3042,11 @@ fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
     let mths = alt ty::struct(tcx, o_ty) { ty::ty_obj(ms) { ms } };
 
     let ix = ty::method_idx(ccx.sess, bcx.sp, field, mths);
-    let vtbl = Load(bcx, GEP(bcx, o, [C_int(ccx, 0),
-                                      C_int(ccx, abi::obj_field_vtbl)]));
+    let vtbl = Load(bcx, GEPi(bcx, o, [0, abi::obj_field_vtbl]));
     let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
     vtbl = PointerCast(bcx, vtbl, vtbl_type);
 
-    let v = GEP(bcx, vtbl, [C_int(ccx, 0),
-                            C_int(ccx, ix as int)]);
+    let v = GEPi(bcx, vtbl, [0, ix as int]);
     let fn_ty: ty::t = ty::method_ty_to_fn_ty(tcx, mths[ix]);
     let ret_ty = ty::ty_fn_ret(tcx, fn_ty);
     let ret_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_ty));
@@ -3225,13 +3190,10 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         let val =
             alt ty::struct(ccx.tcx, t) {
               ty::ty_box(_) {
-                InBoundsGEP(sub.bcx, sub.val,
-                            [C_int(ccx, 0),
-                             C_int(ccx, abi::box_rc_field_body)])
+                GEPi(sub.bcx, sub.val, [0, abi::box_rc_field_body])
               }
               ty::ty_res(_, _, _) {
-                InBoundsGEP(sub.bcx, sub.val, [C_int(ccx, 0),
-                                               C_int(ccx, 1)])
+                GEPi(sub.bcx, sub.val, [0, 1])
               }
               ty::ty_tag(_, _) {
                 let ety = ty::expr_ty(ccx.tcx, e);
@@ -3453,11 +3415,9 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
                          [0, abi::box_rc_field_body,
                           abi::closure_elt_bindings, 0]);
         let lltargetenv =
-            Load(cx, GEP(cx, pair, [C_int(ccx, 0),
-                                    C_int(ccx, abi::fn_field_box)]));
+            Load(cx, GEPi(cx, pair, [0, abi::fn_field_box]));
         let lltargetfn = Load
-            (cx, GEP(cx, pair, [C_int(ccx, 0),
-                                C_int(ccx, abi::fn_field_code)]));
+            (cx, GEPi(cx, pair, [0, abi::fn_field_code]));
         bcx = cx;
         (lltargetfn, lltargetenv, 1)
       }
@@ -3803,7 +3763,6 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
-    let ccx = bcx_ccx(in_cx);
     let tcx = bcx_tcx(in_cx);
     let fn_expr_ty = ty::expr_ty(tcx, f);
 
@@ -3828,11 +3787,9 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
             faddr = load_if_immediate(bcx, faddr, fn_expr_ty);
         }
         let pair = faddr;
-        faddr = GEP(bcx, pair, [C_int(ccx, 0),
-                                C_int(ccx, abi::fn_field_code)]);
+        faddr = GEPi(bcx, pair, [0, abi::fn_field_code]);
         faddr = Load(bcx, faddr);
-        let llclosure = GEP(bcx, pair, [C_int(ccx, 0),
-                                        C_int(ccx, abi::fn_field_box)]);
+        let llclosure = GEPi(bcx, pair, [0, abi::fn_field_box]);
         llenv = Load(bcx, llclosure);
       }
     }
@@ -5100,25 +5057,23 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
     let fields_tup_ty = ty::mk_tup(fcx.lcx.ccx.tcx, field_tys);
     let n_typarams = std::vec::len::<ast::ty_param>(bcx.fcx.lcx.obj_typarams);
     let llobj_box_ty: TypeRef = T_obj_ptr(ccx, n_typarams);
-    let box_cell = GEP(bcx, llself.v, [C_int(ccx, 0),
-                                       C_int(ccx, abi::obj_field_box)]);
+    let box_cell = GEPi(bcx, llself.v, [0, abi::obj_field_box]);
     let box_ptr = Load(bcx, box_cell);
     box_ptr = PointerCast(bcx, box_ptr, llobj_box_ty);
     let obj_typarams =
-        GEP(bcx, box_ptr,
-            [C_int(ccx, 0), C_int(ccx, abi::box_rc_field_body),
-             C_int(ccx, abi::obj_body_elt_typarams)]);
+        GEPi(bcx, box_ptr, [0, abi::box_rc_field_body,
+                            abi::obj_body_elt_typarams]);
 
     // The object fields immediately follow the type parameters, so we skip
     // over them to get the pointer.
     let obj_fields =
-        PointerCast(bcx, GEP(bcx, obj_typarams, [C_int(ccx, 1)]),
+        PointerCast(bcx, GEPi(bcx, obj_typarams, [1]),
                     T_ptr(type_of_or_i8(bcx, fields_tup_ty)));
 
     let i: int = 0;
     for p: ast::ty_param in fcx.lcx.obj_typarams {
         let lltyparam: ValueRef =
-            GEP(bcx, obj_typarams, [C_int(ccx, 0), C_int(ccx, i)]);
+            GEPi(bcx, obj_typarams, [0, i]);
         lltyparam = Load(bcx, lltyparam);
         fcx.lltydescs += [lltyparam];
         i += 1;
@@ -5307,10 +5262,9 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         } else {
             let lltagptr =
                 PointerCast(bcx, fcx.llretptr, T_opaque_tag_ptr(ccx));
-            let lldiscrimptr = GEP(bcx, lltagptr, [C_int(ccx, 0),
-                                                   C_int(ccx, 0)]);
+            let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
             Store(bcx, C_int(ccx, index), lldiscrimptr);
-            GEP(bcx, lltagptr, [C_int(ccx, 0), C_int(ccx, 1)])
+            GEPi(bcx, lltagptr, [0, 1])
         };
     i = 0u;
     let t_id = ast_util::local_def(tag_id);
@@ -5558,11 +5512,9 @@ fn create_real_fn_pair(cx: @block_ctxt, llfnty: TypeRef, llfn: ValueRef,
 fn fill_fn_pair(bcx: @block_ctxt, pair: ValueRef, llfn: ValueRef,
                 llenvptr: ValueRef) {
     let ccx = bcx_ccx(bcx);
-    let code_cell = GEP(bcx, pair, [C_int(ccx, 0),
-                                    C_int(ccx, abi::fn_field_code)]);
+    let code_cell = GEPi(bcx, pair, [0, abi::fn_field_code]);
     Store(bcx, llfn, code_cell);
-    let env_cell = GEP(bcx, pair, [C_int(ccx, 0),
-                                   C_int(ccx, abi::fn_field_box)]);
+    let env_cell = GEPi(bcx, pair, [0, abi::fn_field_box]);
     let llenvblobptr =
         PointerCast(bcx, llenvptr, T_opaque_closure_ptr(ccx));
     Store(bcx, llenvblobptr, env_cell);
@@ -5801,7 +5753,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         r =
             trans_native_call(new_raw_block_ctxt(bcx.fcx, bcx.llbb),
                               ccx.externs, ccx.llmod, name, call_args);
-        rptr = BitCast(bcx, fcx.llretptr, T_ptr(T_i32()));
+        rptr = BitCast(bcx, fcx.llretptr, T_ptr(ccx.int_type));
       }
     }
     // We don't store the return value if it's nil, to avoid stomping on a nil

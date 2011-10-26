@@ -4,7 +4,7 @@ import lib::llvm::llvm;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, Opcode,
               ModuleRef};
 import trans_common::{block_ctxt, T_ptr, T_nil, T_int, T_i8, T_i1,
-                      val_ty, val_str, bcx_ccx};
+                      val_ty, val_str, bcx_ccx, C_i32};
 
 fn B(cx: @block_ctxt) -> BuilderRef {
     let b = *cx.fcx.lcx.ccx.builder;
@@ -323,6 +323,14 @@ fn GEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
         ret llvm::LLVMBuildGEP(B(cx), Pointer, vec::to_ptr(Indices),
                                vec::len(Indices), noname());
     }
+}
+
+// Simple wrapper around GEP that takes an array of ints and wraps them
+// in C_i32()
+fn GEPi(cx: @block_ctxt, base: ValueRef, ixs: [int]) -> ValueRef {
+    let v: [ValueRef] = [];
+    for i: int in ixs { v += [C_i32(i as i32)]; }
+    ret InBoundsGEP(cx, base, v);
 }
 
 fn InBoundsGEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) ->

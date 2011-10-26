@@ -259,7 +259,7 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
     if size > 0u && vec::len(variants) != 1u {
         let tagptr =
             PointerCast(bcx, val, trans_common::T_opaque_tag_ptr(ccx));
-        blobptr = GEP(bcx, tagptr, [C_int(ccx, 0), C_int(ccx, 1)]);
+        blobptr = GEPi(bcx, tagptr, [0, 1]);
     }
     let i = 0u;
     let vdefs_tg = vdefs.tg;
@@ -438,10 +438,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     // Unbox in case of a box field
     if any_box_pat(m, col) {
         let box = Load(bcx, val);
-        let unboxed =
-            InBoundsGEP(bcx, box,
-                        [C_int(ccx, 0),
-                         C_int(ccx, back::abi::box_rc_field_body)]);
+        let unboxed = GEPi(bcx, box, [0, back::abi::box_rc_field_body]);
         compile_submatch(bcx, enter_box(m, col, val), [unboxed] + vals_left,
                          f, exits);
         ret;
@@ -468,8 +465,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                 let tagptr =
                     PointerCast(bcx, val,
                                 trans_common::T_opaque_tag_ptr(ccx));
-                let discrimptr = GEP(bcx, tagptr, [C_int(ccx, 0),
-                                                   C_int(ccx, 0)]);
+                let discrimptr = GEPi(bcx, tagptr, [0, 0]);
                 test_val = Load(bcx, discrimptr);
                 kind = switch;
             }
@@ -738,9 +734,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
       ast::pat_box(inner) {
         let box = Load(bcx, val);
         let unboxed =
-            InBoundsGEP(bcx, box,
-                        [C_int(ccx, 0),
-                         C_int(ccx, back::abi::box_rc_field_body)]);
+            GEPi(bcx, box, [0, back::abi::box_rc_field_body]);
         bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
       }
       ast::pat_uniq(inner) {

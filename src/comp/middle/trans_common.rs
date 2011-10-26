@@ -770,6 +770,10 @@ fn C_bool(b: bool) -> ValueRef {
     } else { ret C_integral(T_bool(), 0u, False); }
 }
 
+fn C_i32(i: i32) -> ValueRef {
+    ret C_integral(T_i32(), i as uint, True);
+}
+
 fn C_int(cx: @crate_ctxt, i: int) -> ValueRef {
     ret C_integral(cx.int_type, i as uint, True);
 }

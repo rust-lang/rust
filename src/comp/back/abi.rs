@@ -78,11 +78,11 @@ const closure_elt_bindings: int = 1;
 
 const closure_elt_ty_params: int = 2;
 
-const vec_elt_fill: uint = 0u;
+const vec_elt_fill: int = 0;
 
-const vec_elt_alloc: uint = 1u;
+const vec_elt_alloc: int = 1;
 
-const vec_elt_elems: uint = 2u;
+const vec_elt_elems: int = 2;
 
 const worst_case_glue_call_args: int = 7;
 
