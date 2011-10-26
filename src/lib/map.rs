@@ -1,27 +1,119 @@
-/**
- * Hashmap implementation.
- */
+/*
+Module: map
+
+A hashmap
+*/
+
+/* Section: Types */
+
+/*
+Type: hashfn
+
+A function that returns a hash of a value
+*/
 type hashfn<K> = fn(K) -> uint;
 
+/*
+Type: eqfn
+
+Equality
+*/
 type eqfn<K> = fn(K, K) -> bool;
 
-type hashmap<K, V> =
-    obj {
-        fn size() -> uint;
-        fn insert(K, V) -> bool;
-        fn contains_key(K) -> bool;
-        fn get(K) -> V;
-        fn find(K) -> option::t<V>;
-        fn remove(K) -> option::t<V>;
-        fn rehash();
-        fn items(block(K, V));
-        fn keys(block(K));
-        fn values(block(V));
-    };
+/*
+Type: hashset
+
+A convenience type to treat a hashmap as a set
+*/
 type hashset<K> = hashmap<K, ()>;
 
-fn set_add<K>(set: hashset<K>, key: K) -> bool { ret set.insert(key, ()); }
+/*
+Obj: hashmap
+*/
+type hashmap<K, V> = obj {
+    /*
+    Method: size
 
+    Return the number of elements in the map
+    */
+    fn size() -> uint;
+    /*
+    Method: insert
+
+    Add a value to the map. If the map already contains a value for
+    the specified key then the original value is replaced.
+
+    Returns:
+
+    True if the key did not already exist in the map
+    */
+    fn insert(K, V) -> bool;
+    /*
+    Method: contains_key
+
+    Returns true if the map contains a value for the specified key
+    */
+    fn contains_key(K) -> bool;
+    /*
+    Method: get
+
+    Get the value for the specified key
+
+    Failure:
+
+    If the key does not exist in the map
+    */
+    fn get(K) -> V;
+    /*
+    Method: find
+
+    Get the value for the specified key. If the key does not exist
+    in the map then returns none.
+    */
+    fn find(K) -> option::t<V>;
+    /*
+    Method: remove
+
+    Remove and return a value from the map. If the key does not exist
+    in the map then returns none.
+    */
+    fn remove(K) -> option::t<V>;
+    /*
+    Method: rehash
+
+    Force map growth and rehashing
+    */
+    fn rehash();
+    /*
+    Method: items
+
+    Iterate over all the key/value pairs in the map
+    */
+    fn items(block(K, V));
+    /*
+    Method: keys
+
+    Iterate over all the keys in the map
+    */
+    fn keys(block(K));
+    /*
+    Iterate over all the values in the map
+    */
+    fn values(block(V));
+};
+
+/* Section: Operations */
+
+/*
+Function: mk_hashmap
+
+Construct a hashmap
+
+Parameters:
+
+hasher - The hash function for key type K
+eqer - The equality function for key type K
+*/
 fn mk_hashmap<K, V>(hasher: hashfn<K>, eqer: eqfn<K>) -> hashmap<K, V> {
     let initial_capacity: uint = 32u; // 2^5
 
@@ -194,23 +286,43 @@ fn mk_hashmap<K, V>(hasher: hashfn<K>, eqer: eqfn<K>) -> hashmap<K, V> {
     ret hashmap(hasher, eqer, bkts, initial_capacity, 0u, load_factor);
 }
 
-// Hash map constructors for basic types
+/*
+Function: new_str_hash
 
+Construct a hashmap for string keys
+*/
 fn new_str_hash<V>() -> hashmap<str, V> {
     ret mk_hashmap(str::hash, str::eq);
 }
 
+/*
+Function: new_int_hash
+
+Construct a hashmap for int keys
+*/
 fn new_int_hash<V>() -> hashmap<int, V> {
     fn hash_int(&&x: int) -> uint { ret x as uint; }
     fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
     ret mk_hashmap(hash_int, eq_int);
 }
 
+/*
+Function: new_uint_hash
+
+Construct a hashmap for uint keys
+*/
 fn new_uint_hash<V>() -> hashmap<uint, V> {
     fn hash_uint(&&x: uint) -> uint { ret x; }
     fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
     ret mk_hashmap(hash_uint, eq_uint);
 }
+
+/*
+Function: set_add
+
+Convenience function for adding keys to a hashmap with nil type keys
+*/
+fn set_add<K>(set: hashset<K>, key: K) -> bool { ret set.insert(key, ()); }
 
 // Local Variables:
 // mode: rust;

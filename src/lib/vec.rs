@@ -36,6 +36,11 @@ fn reserve<T>(&v: [mutable? T], n: uint) {
     rustrt::vec_reserve_shared(sys::get_type_desc::<T>(), v, n);
 }
 
+/*
+Function: len
+
+Returns the length of a vector
+*/
 pure fn len<T>(v: [mutable? T]) -> uint { unchecked { rusti::vec_len(v) } }
 
 /*
@@ -479,7 +484,7 @@ Function: find
 Search for an element that matches a given predicate
 
 Apply function `f` to each element of `v`, starting from the first.
-When function `f` matches then an option containing the element
+When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
 fn find<T>(f: block(T) -> bool, v: [T]) -> option::t<T> {

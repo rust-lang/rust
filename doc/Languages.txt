@@ -122,3 +122,4 @@ Language: Rust
    Function Prototype Enders: ; {
    Type Prototype Enders: ; }
    Class Prototype Enders: {
+   Variant Prototype Enders: ;

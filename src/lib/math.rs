@@ -1,3 +1,5 @@
+/* Module: math */
+
 native "llvm" mod llvm {
     fn sqrt(n: float) -> float = "sqrt.f64";
     fn sin(n: float) -> float = "sin.f64";

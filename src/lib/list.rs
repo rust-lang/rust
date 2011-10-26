@@ -1,7 +1,30 @@
+/*
+Module: list
+
+A standard linked list
+*/
+
 import option::{some, none};
 
-tag list<T> { cons(T, @list<T>); nil; }
+/* Section: Types */
 
+/*
+Tag: list
+*/
+tag list<T> {
+    /* Variant: cons */
+    cons(T, @list<T>);
+    /* Variant: nil */
+    nil;
+}
+
+/*Section: Operations */
+
+/*
+Function: from_vec
+
+Create a list from a vector
+*/
 fn from_vec<T>(v: [T]) -> list<T> {
     let l = nil::<T>;
     // FIXME: This would be faster and more space efficient if it looped over
@@ -12,6 +35,21 @@ fn from_vec<T>(v: [T]) -> list<T> {
     ret l;
 }
 
+/*
+Function: foldl
+
+Left fold
+
+Applies `f` to the first argument in the list and `u`, then applies
+`f` to the second argument and the result of the previous call,
+and so on, returning the accumulated result.
+
+Parameters:
+
+ls_ - The list to fold
+u - The initial value
+f - The function to apply
+*/
 fn foldl<T, U>(ls_: list<T>, u: U, f: block(T, U) -> U) -> U {
     let accum: U = u;
     let ls = ls_;
@@ -24,6 +62,15 @@ fn foldl<T, U>(ls_: list<T>, u: U, f: block(T, U) -> U) -> U {
     ret accum;
 }
 
+/*
+Function: find
+
+Search for an element that matches a given predicate
+
+Apply function `f` to each element of `v`, starting from the first.
+When function `f` returns true then an option containing the element
+is returned. If `f` matches no elements then none is returned.
+*/
 fn find<T, U>(ls_: list<T>, f: block(T) -> option::t<U>) -> option::t<U> {
     let ls = ls_;
     while true {
@@ -37,6 +84,11 @@ fn find<T, U>(ls_: list<T>, f: block(T) -> option::t<U>) -> option::t<U> {
     ret none;
 }
 
+/*
+Function: has
+
+Returns true if a list contains an element with the given value
+*/
 fn has<T>(ls_: list<T>, elt: T) -> bool {
     let ls = ls_;
     while true {
@@ -48,19 +100,39 @@ fn has<T>(ls_: list<T>, elt: T) -> bool {
     ret false;
 }
 
+/*
+Function: length
+
+Returns the length of a list
+*/
 fn length<T>(ls: list<T>) -> uint {
     fn count<T>(_t: T, &&u: uint) -> uint { ret u + 1u; }
     ret foldl(ls, 0u, bind count(_, _));
 }
 
+/*
+Function: cdr
+
+Returns all but the first element of a list
+*/
 fn cdr<T>(ls: list<T>) -> list<T> {
     alt ls { cons(_, tl) { ret *tl; } nil. { fail "list empty" } }
 }
 
+/*
+Function: car
+
+Returns the first element of a list
+*/
 fn car<T>(ls: list<T>) -> T {
     alt ls { cons(hd, _) { ret hd; } nil. { fail "list empty" } }
 }
 
+/*
+Function: append
+
+Appends one list to another
+*/
 fn append<T>(l: list<T>, m: list<T>) -> list<T> {
     alt l {
       nil. { ret m; }
