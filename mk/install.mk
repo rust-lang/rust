@@ -1,3 +1,9 @@
+# FIXME: Docs are currently not installed from the stageN dirs.
+# For consistency it might be desirable for stageN to be an exact
+# mirror of the installation directory structure.
+
+# Installation macro. Call with source directory as arg 1,
+# destination directory as arg 2, and filename as arg 3
 ifdef VERBOSE
  INSTALL = cp $(1)/$(3) $(2)/$(3)
 else
@@ -11,9 +17,13 @@ PREFIX_ROOT = $(CFG_PREFIX)
 PREFIX_BIN = $(PREFIX_ROOT)/bin
 PREFIX_LIB = $(PREFIX_ROOT)/lib
 
+# Shorthand for build/stageN/bin
 HB = $(HOST_BIN$(ISTAGE))
+# Shorthand for build/stageN/lib
 HL = $(HOST_LIB$(ISTAGE))
+# Shorthand for the prefix bin directory
 PHB = $(PREFIX_BIN)
+# Shorthand for the prefix bin directory
 PHL = $(PREFIX_LIB)
 
 define INSTALL_TARGET_N
@@ -22,6 +32,7 @@ PREFIX_TARGET_ROOT$(1) = $$(PREFIX_LIB)/rustc/$(1)
 PREFIX_TARGET_BIN$(1) = $$(PREFIX_TARGET_ROOT$(1))/bin
 PREFIX_TARGET_LIB$(1) = $$(PREFIX_TARGET_ROOT$(1))/lib
 
+# Similar to the H* macros above but for each target triple
 TB$(1) = $$(TARGET_BIN$$(ISTAGE)$(1))
 TL$(1) = $$(TARGET_LIB$$(ISTAGE)$(1))
 PTB$(1) = $$(PREFIX_TARGET_BIN$(1))
