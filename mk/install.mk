@@ -49,5 +49,7 @@ install-host: $(SREQ$(ISTAGE)$(CFG_HOST_TRIPLE))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_STDLIB))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM))
+	$(Q)$(call INSTALL,$(S)/man, \
+	     $(PREFIX_ROOT)/share/man/man1,rustc.1)
 
 install-targets: $(INSTALL_TARGET_RULES)
