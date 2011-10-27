@@ -1475,7 +1475,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     Call(cx, dtor_addr, args + [val_cast]);
 
     cx = drop_ty(cx, val.val, inner_t_s);
-    Store(cx, C_int(ccx, 0), drop_flag.val);
+    Store(cx, C_i32(0i32), drop_flag.val);
     Br(cx, next_cx.llbb);
     ret next_cx;
 }
@@ -5206,7 +5206,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     check type_is_tup_like(bcx, tup_t);
     let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
-    Store(bcx, C_i32(1), flag.val);
+    Store(bcx, C_i32(1i32), flag.val);
     build_return(bcx);
     finish_fn(fcx, lltop);
 }
