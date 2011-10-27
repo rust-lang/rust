@@ -1,49 +1,78 @@
-/**
- * Return the minimal value for an uint.
- *
- * This is always 0
- */
+/*
+Module: uint
+*/
+
+/*
+Function: min_value
+
+Return the minimal value for an uint.
+
+This is always 0
+*/
 pure fn min_value() -> uint { ret 0u; }
 
-/**
- * Return the maximal value for an uint.
- *
- * This is 2^wordsize - 1
- */
+/*
+Function: max_value
+
+Return the maximal value for an uint.
+
+This is 2^wordsize - 1
+*/
 pure fn max_value() -> uint {
      ret 0u - 1u;
 }
 
+/* Function: add */
 pure fn add(x: uint, y: uint) -> uint { ret x + y; }
 
+/* Function: sub */
 pure fn sub(x: uint, y: uint) -> uint { ret x - y; }
 
+/* Function: mul */
 pure fn mul(x: uint, y: uint) -> uint { ret x * y; }
 
+/* Function: div */
 pure fn div(x: uint, y: uint) -> uint { ret x / y; }
 
+/* Function: rem */
 pure fn rem(x: uint, y: uint) -> uint { ret x % y; }
 
+/* Predicate: lt */
 pure fn lt(x: uint, y: uint) -> bool { ret x < y; }
 
+/* Predicate: le */
 pure fn le(x: uint, y: uint) -> bool { ret x <= y; }
 
+/* Predicate: eq */
 pure fn eq(x: uint, y: uint) -> bool { ret x == y; }
 
+/* Predicate: ne */
 pure fn ne(x: uint, y: uint) -> bool { ret x != y; }
 
+/* Predicate: ge */
 pure fn ge(x: uint, y: uint) -> bool { ret x >= y; }
 
+/* Predicate: gt */
 pure fn gt(x: uint, y: uint) -> bool { ret x > y; }
 
 fn max(x: uint, y: uint) -> uint { if x > y { ret x; } ret y; }
 
 fn min(x: uint, y: uint) -> uint { if x > y { ret y; } ret x; }
 
+/*
+Function: range
+
+Iterate over the range [`lo`..`hi`)
+*/
 fn range(lo: uint, hi: uint, it: block(uint)) {
     while lo < hi { it(lo); lo += 1u; }
 }
 
+/*
+Function: next_power_of_two
+
+Returns the smallest power of 2 greater than or equal to `n`
+*/
 fn next_power_of_two(n: uint) -> uint {
     let halfbits: uint = sys::size_of::<uint>() * 4u;
     let tmp: uint = n - 1u;
@@ -52,6 +81,20 @@ fn next_power_of_two(n: uint) -> uint {
     ret tmp + 1u;
 }
 
+/*
+Function: parse_buf
+
+Parse a buffer of bytes
+
+Parameters:
+
+buf - A byte buffer
+radix - The base of the number
+
+Failure:
+
+buf must not be empty
+*/
 fn parse_buf(buf: [u8], radix: uint) -> uint {
     if vec::len::<u8>(buf) == 0u {
         log_err "parse_buf(): buf is empty";
@@ -69,8 +112,22 @@ fn parse_buf(buf: [u8], radix: uint) -> uint {
     fail;
 }
 
+/*
+Function: from_str
+
+Parse a string to an int
+
+Failure:
+
+s must not be empty
+*/
 fn from_str(s: str) -> uint { parse_buf(str::bytes(s), 10u) }
 
+/*
+Function: to_str
+
+Convert to a string in a given base
+*/
 fn to_str(num: uint, radix: uint) -> str {
     let n = num;
     assert (0u < radix && radix <= 16u);
@@ -106,6 +163,12 @@ fn to_str(num: uint, radix: uint) -> str {
     while len != 0u { len -= 1u; s1 += str::unsafe_from_byte(s[len]); }
     ret s1;
 }
+
+/*
+Function: str
+
+Convert to a string
+*/
 fn str(i: uint) -> str { ret to_str(i, 10u); }
 
 // Local Variables:
