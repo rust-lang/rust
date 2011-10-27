@@ -142,7 +142,7 @@ else
 endif
 
 ifeq ($(CFG_NATURALDOCS),)
-  $(info cfg: no naturaldocs found, omitting doc/std/index.html
+  $(info cfg: no naturaldocs found, omitting doc/std/index.html)
 else
   DOCS += doc/std/index.html
 endif
