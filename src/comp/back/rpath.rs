@@ -3,6 +3,7 @@ import std::fs;
 import std::os_fs;
 import std::vec;
 import std::map;
+import std::math;
 import std::str;
 import std::uint;
 import metadata::cstore;
@@ -128,7 +129,7 @@ fn get_relative_to(abs1: fs::path, abs2: fs::path) -> fs::path {
     assert len1 > 0u;
     assert len2 > 0u;
 
-    let max_common_path = uint::min(len1, len2) - 1u;
+    let max_common_path = math::min(len1, len2) - 1u;
     let start_idx = 0u;
     while start_idx < max_common_path
         && split1[start_idx] == split2[start_idx] {

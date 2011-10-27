@@ -6,6 +6,7 @@ import std::box;
 import std::ufind;
 import std::map;
 import std::map::hashmap;
+import std::math;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -1812,7 +1813,7 @@ mod unify {
     // Unifies two sets.
     fn union(cx: @ctxt, set_a: uint, set_b: uint,
              variance: variance) -> union_result {
-        ufind::grow(cx.vb.sets, uint::max(set_a, set_b) + 1u);
+        ufind::grow(cx.vb.sets, math::max(set_a, set_b) + 1u);
         let root_a = ufind::find(cx.vb.sets, set_a);
         let root_b = ufind::find(cx.vb.sets, set_b);
 
