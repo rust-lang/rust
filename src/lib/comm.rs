@@ -56,9 +56,18 @@ type port_id = int;
 /*
 Type: chan
 
-A handle through which data may be sent.
+A communication endpoint that can send messages. Channels send
+messages to ports.
 
-Each channel is associated with a single <port>.
+Each channel is bound to a port when the channel is constructed, so
+the destination port for a channel must exist before the channel
+itself.
+
+Channels are weak: a channel does not keep the port it is bound to alive.
+If a channel attempts to send data to a dead port that data will be silently
+dropped.
+
+Channels may be duplicated and themselves transmitted over other channels.
 */
 tag chan<unique T> {
     chan_t(task::task, port_id);
@@ -72,7 +81,11 @@ resource port_ptr(po: *rustrt::rust_port) {
 /*
 Type: port
 
-A handle through which data may be received.
+A communication endpoint that can receive messages. Ports receive
+messages from channels.
+
+Each port has a unique per-task identity and may not be replicated or
+transmitted. If a port value is copied, both copies refer to the same port.
 
 Ports may be associated with multiple <chan>s.
 */
@@ -105,6 +118,9 @@ fn port<unique T>() -> port<T> {
 Function: recv
 
 Receive from a port.
+
+If no data is available on the port then the task will block until data
+becomes available.
 */
 fn recv<unique T>(p: port<T>) -> T { ret rusti::recv(***p) }
 
@@ -112,6 +128,8 @@ fn recv<unique T>(p: port<T>) -> T { ret rusti::recv(***p) }
 Function: chan
 
 Constructs a channel.
+
+The channel is bound to the port used to construct it.
 */
 fn chan<unique T>(p: port<T>) -> chan<T> {
     chan_t(task::get_task_id(), rustrt::get_port_id(***p))

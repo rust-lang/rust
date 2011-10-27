@@ -1,3 +1,8 @@
+/*
+Module: task
+
+Task management.
+*/
 import cast = unsafe::reinterpret_cast;
 import comm;
 import option::{some, none};
