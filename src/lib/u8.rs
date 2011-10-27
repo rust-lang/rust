@@ -49,6 +49,11 @@ pure fn ge(x: u8, y: u8) -> bool { ret x >= y; }
 /* Predicate: gt */
 pure fn gt(x: u8, y: u8) -> bool { ret x > y; }
 
+/*
+Function: range
+
+Iterate over the range [`lo`..`hi`)
+*/
 fn range(lo: u8, hi: u8, it: block(u8)) {
     while lo < hi { it(lo); lo += 1u8; }
 }

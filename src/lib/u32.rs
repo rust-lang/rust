@@ -1,5 +1,20 @@
-pure fn max_value() -> u32 { ret 4294967296u32; }
+/*
+Module: u32
+*/
+
+/*
+Function: min_value
+
+Return the minimal value for a u32
+*/
 pure fn min_value() -> u32 { ret 0u32; }
+
+/*
+Function: max_value
+
+Return the maximal value for a u32
+*/
+pure fn max_value() -> u32 { ret 4294967296u32; }
 
 //
 // Local Variables:

@@ -1,6 +1,26 @@
-pure fn max_value() -> u64 { ret 18446744073709551615u64; }
+/*
+Module: u64
+*/
+
+/*
+Function: min_value
+
+Return the minimal value for a u64
+*/
 pure fn min_value() -> u64 { ret 0u64; }
 
+/*
+Function: max_value
+
+Return the maximal value for a u64
+*/
+pure fn max_value() -> u64 { ret 18446744073709551615u64; }
+
+/*
+Function: to_str
+
+Convert to a string in a given base
+*/
 fn to_str(n: u64, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
 
@@ -36,4 +56,9 @@ fn to_str(n: u64, radix: uint) -> str {
     ret s;
 }
 
+/*
+Function: str
+
+Convert to a string
+*/
 fn str(n: u64) -> str { ret to_str(n, 10u); }
