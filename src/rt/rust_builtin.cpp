@@ -177,32 +177,6 @@ task_yield() {
     task->yield(1);
 }
 
-extern "C" CDECL intptr_t
-task_join(rust_task_id tid) {
-    rust_task *task = rust_scheduler::get_task();
-    // If the other task is already dying, we don't have to wait for it.
-    rust_task *join_task = task->kernel->get_task_by_id(tid);
-    // FIXME: find task exit status and return that.
-    if(!join_task) return 0;
-    join_task->lock.lock();
-    if (join_task->dead() == false) {
-        join_task->tasks_waiting_to_join.push(task);
-        task->block(join_task, "joining local task");
-        join_task->lock.unlock();
-        task->yield(2);
-    }
-    else {
-        join_task->lock.unlock();
-    }
-    if (!join_task->failed) {
-        join_task->deref();
-        return 0;
-    } else {
-        join_task->deref();
-        return -1;
-    }
-}
-
 /* Debug builtins for std::dbg. */
 
 static void

@@ -61,7 +61,6 @@ vec_reserve_shared
 vec_from_buf_shared
 task_sleep
 task_yield
-task_join
 unsupervise
 upcall_alloc_c_stack
 upcall_call_c_stack

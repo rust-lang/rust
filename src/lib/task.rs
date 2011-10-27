@@ -27,7 +27,6 @@ native "cdecl" mod rustrt {
     fn task_sleep(time_in_us: uint);
     fn task_yield();
     fn start_task(id: task_id, closure: *u8);
-    fn task_join(t: task_id) -> int;
 }
 
 native "c-stack-cdecl" mod rustrt2 = "rustrt" {
@@ -81,10 +80,6 @@ fn join(task_port: (task_id, comm::port<task_notification>)) -> task_result {
         } else { fail #fmt["join received id %d, expected %d", _id, id] }
       }
     }
-}
-
-fn join_id(t: task_id) -> task_result {
-    alt rustrt::task_join(t) { 0 { tr_success } _ { tr_failure } }
 }
 
 fn unsupervise() { ret sys::unsupervise(); }
