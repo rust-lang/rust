@@ -141,6 +141,12 @@ else
   endif
 endif
 
+ifeq ($(CFG_NATURALDOCS),)
+  $(info cfg: no naturaldocs found, omitting doc/std/index.html
+else
+  DOCS += doc/std/index.html
+endif
+
 ifdef CFG_DISABLE_DOCS
   $(info cfg: disabling doc build (CFG_DISABLE_DOCS))
   DOCS :=

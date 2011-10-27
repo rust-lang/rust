@@ -254,6 +254,7 @@ probe CFG_MAKEINFO         makeinfo
 probe CFG_TEXI2PDF         texi2pdf
 probe CFG_TEX              tex
 probe CFG_MAKENSIS         makensis
+probe CFG_NATURALDOCS      naturaldocs
 
 if [ -z "$CFG_CLANG" -a -z "$CFG_GCC" ]
 then
