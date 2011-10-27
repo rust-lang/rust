@@ -132,5 +132,5 @@ Constructs a channel.
 The channel is bound to the port used to construct it.
 */
 fn chan<unique T>(p: port<T>) -> chan<T> {
-    chan_t(task::get_task_id(), rustrt::get_port_id(***p))
+    chan_t(task::get_task(), rustrt::get_port_id(***p))
 }

@@ -22,7 +22,7 @@ export set_min_stack;
 export task_result;
 export tr_success;
 export tr_failure;
-export get_task_id;
+export get_task;
 export spawn;
 export spawn_notify;
 export spawn_joinable;
@@ -31,7 +31,7 @@ native "cdecl" mod rustrt {
     // these must run on the Rust stack so that they can swap stacks etc:
     fn task_sleep(time_in_us: uint);
     fn task_yield();
-    fn start_task(id: task_id, closure: *u8);
+    fn start_task(id: task, closure: *u8);
 }
 
 native "c-stack-cdecl" mod rustrt2 = "rustrt" {
@@ -43,7 +43,7 @@ native "c-stack-cdecl" mod rustrt2 = "rustrt" {
     fn set_min_stack(stack_size: uint);
 
     fn new_task() -> task_id;
-    fn drop_task(task: *rust_task);
+    fn drop_task(task_id: *rust_task);
     fn get_task_pointer(id: task_id) -> *rust_task;
 
     fn migrate_alloc(alloc: *u8, target: task_id);
@@ -57,11 +57,11 @@ type rust_task =
 
 resource rust_task_ptr(task: *rust_task) { rustrt2::drop_task(task); }
 
-type task = int;
-type task_id = task;
-type joinable_task = (task_id, comm::port<task_notification>);
+type task_id = int;
+type task = task_id;
+type joinable_task = (task, comm::port<task_notification>);
 
-fn get_task_id() -> task_id { rustrt2::get_task_id() }
+fn get_task() -> task { rustrt2::get_task_id() }
 
 /**
  * Hints the scheduler to yield this task for a specified ammount of time.
@@ -76,7 +76,7 @@ tag task_result { tr_success; tr_failure; }
 
 tag task_notification { exit(task, task_result); }
 
-fn join(task_port: (task_id, comm::port<task_notification>)) -> task_result {
+fn join(task_port: joinable_task) -> task_result {
     let (id, port) = task_port;
     alt comm::recv::<task_notification>(port) {
       exit(_id, res) {
@@ -96,12 +96,12 @@ fn unpin() { rustrt2::unpin_task(); }
 fn set_min_stack(stack_size: uint) { rustrt2::set_min_stack(stack_size); }
 
 fn spawn<unique T>(-data: T, f: fn(T)) -> task {
-    spawn_inner2(data, f, none)
+    spawn_inner(data, f, none)
 }
 
 fn spawn_notify<unique T>(-data: T, f: fn(T),
                          notify: comm::chan<task_notification>) -> task {
-    spawn_inner2(data, f, some(notify))
+    spawn_inner(data, f, some(notify))
 }
 
 fn spawn_joinable<unique T>(-data: T, f: fn(T)) -> joinable_task {
@@ -120,9 +120,9 @@ fn spawn_joinable<unique T>(-data: T, f: fn(T)) -> joinable_task {
 //
 // After the transition this should all be rewritten.
 
-fn spawn_inner2<unique T>(-data: T, f: fn(T),
+fn spawn_inner<unique T>(-data: T, f: fn(T),
                           notify: option<comm::chan<task_notification>>)
-    -> task_id {
+    -> task {
 
     fn wrapper<unique T>(-data: *u8, f: fn(T)) {
         let data: ~T = unsafe::reinterpret_cast(data);
@@ -140,7 +140,7 @@ fn spawn_inner2<unique T>(-data: T, f: fn(T),
 // It is a hack and needs to be rewritten.
 fn unsafe_spawn_inner(-thunk: fn@(),
                       notify: option<comm::chan<task_notification>>) ->
-   task_id unsafe {
+   task unsafe {
     let id = rustrt2::new_task();
 
     let raw_thunk: {code: u32, env: u32} = cast(thunk);
