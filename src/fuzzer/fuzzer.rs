@@ -1,7 +1,7 @@
 use std;
 use rustc;
 
-import std::{fs, io, getopts, vec, str, int, uint, option};
+import std::{fs, io, getopts, math, vec, str, int, uint, option};
 import std::getopts::{optopt, opt_present, opt_str};
 import std::io::stdout;
 
@@ -242,9 +242,9 @@ fn check_variants_T<T>(
     let L = vec::len(things);
 
     if L < 100u {
-        under(uint::min(L, 20u)) {|i|
+        under(math::min(L, 20u)) {|i|
             log_err "Replacing... #" + uint::str(i);
-            under(uint::min(L, 30u)) {|j|
+            under(math::min(L, 30u)) {|j|
                 log_err "With... " + stringifier(@things[j]);
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but testing the

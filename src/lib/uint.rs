@@ -55,10 +55,6 @@ pure fn ge(x: uint, y: uint) -> bool { ret x >= y; }
 /* Predicate: gt */
 pure fn gt(x: uint, y: uint) -> bool { ret x > y; }
 
-fn max(x: uint, y: uint) -> uint { if x > y { ret x; } ret y; }
-
-fn min(x: uint, y: uint) -> uint { if x > y { ret y; } ret x; }
-
 /*
 Function: range
 
