@@ -2,6 +2,8 @@
 # Doc variables and rules
 ######################################################################
 
+docs: $(DOCS)
+
 doc/version.texi: $(MKFILES) rust.texi
 	@$(call E, version-stamp: $@)
 	$(Q)echo "@macro gitversion" >$@
