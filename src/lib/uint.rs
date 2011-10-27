@@ -14,15 +14,15 @@ pure fn max_value() -> uint {
      ret 0u - 1u;
 }
 
-fn add(x: uint, y: uint) -> uint { ret x + y; }
+pure fn add(x: uint, y: uint) -> uint { ret x + y; }
 
-fn sub(x: uint, y: uint) -> uint { ret x - y; }
+pure fn sub(x: uint, y: uint) -> uint { ret x - y; }
 
-fn mul(x: uint, y: uint) -> uint { ret x * y; }
+pure fn mul(x: uint, y: uint) -> uint { ret x * y; }
 
-fn div(x: uint, y: uint) -> uint { ret x / y; }
+pure fn div(x: uint, y: uint) -> uint { ret x / y; }
 
-fn rem(x: uint, y: uint) -> uint { ret x % y; }
+pure fn rem(x: uint, y: uint) -> uint { ret x % y; }
 
 pure fn lt(x: uint, y: uint) -> bool { ret x < y; }
 
