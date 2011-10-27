@@ -935,20 +935,15 @@ fn trans_stack_local_derived_tydesc(cx: @block_ctxt, llsz: ValueRef,
     // Store a pointer to the rest of the descriptors.
     let ccx = bcx_ccx(cx);
     store_inbounds(cx, llfirstparam, llmyroottydesc,
-                   [C_int(ccx, 0),
-                    C_int(ccx, abi::tydesc_field_first_param)]);
+                   [0, abi::tydesc_field_first_param]);
     store_inbounds(cx, C_uint(ccx, n_params), llmyroottydesc,
-                   [C_int(ccx, 0),
-                    C_int(ccx, abi::tydesc_field_n_params)]);
+                   [0, abi::tydesc_field_n_params]);
     store_inbounds(cx, llsz, llmyroottydesc,
-                   [C_int(ccx, 0),
-                    C_int(ccx, abi::tydesc_field_size)]);
+                   [0, abi::tydesc_field_size]);
     store_inbounds(cx, llalign, llmyroottydesc,
-                   [C_int(ccx, 0),
-                    C_int(ccx, abi::tydesc_field_align)]);
+                   [0, abi::tydesc_field_align]);
     store_inbounds(cx, C_uint(ccx, obj_params), llmyroottydesc,
-                   [C_int(ccx, 0),
-                    C_int(ccx, abi::tydesc_field_obj_params)]);
+                   [0, abi::tydesc_field_obj_params]);
     ret llmyroottydesc;
 }
 
@@ -1618,8 +1613,8 @@ fn load_inbounds(cx: @block_ctxt, p: ValueRef, idxs: [ValueRef]) -> ValueRef {
 }
 
 fn store_inbounds(cx: @block_ctxt, v: ValueRef, p: ValueRef,
-                  idxs: [ValueRef]) {
-    Store(cx, v, InBoundsGEP(cx, p, idxs));
+                  idxs: [int]) {
+    Store(cx, v, GEPi(cx, p, idxs));
 }
 
 // Iterates through the elements of a structural type.
@@ -1975,16 +1970,20 @@ fn call_memmove(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
     // LLVM complains -- not even a constant element of a tydesc works).
 
     let ccx = bcx_ccx(cx);
+    let key = alt ccx.sess.get_targ_cfg().arch {
+      session::arch_x86. | session::arch_arm. { "llvm.memmove.p0i8.p0i8.i32" }
+      session::arch_x86_64. { "llvm.memmove.p0i8.p0i8.i64" }
+    };
     let i = ccx.intrinsics;
-    assert (i.contains_key("llvm.memmove.p0i8.p0i8.i32"));
-    let memmove = i.get("llvm.memmove.p0i8.p0i8.i32");
+    assert (i.contains_key(key));
+    let memmove = i.get(key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
-    let size = IntCast(cx, n_bytes, T_i32());
-    let align = C_int(ccx, 1);
+    let size = IntCast(cx, n_bytes, ccx.int_type);
+    let align = C_i32(1i32);
     let volatile = C_bool(false);
-    ret rslt(cx,
-             Call(cx, memmove, [dst_ptr, src_ptr, size, align, volatile]));
+    let ret_val = Call(cx, memmove, [dst_ptr, src_ptr, size, align, volatile]);
+    ret rslt(cx, ret_val);
 }
 
 fn call_bzero(cx: @block_ctxt, dst: ValueRef, n_bytes: ValueRef,
@@ -3872,8 +3871,7 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     let i = 0u, n = vec::len(llargs);
     while i < n {
         let llarg = llargs[i].llval;
-        store_inbounds(bcx, llarg, llargbundle, [C_int(ccx, 0),
-                                                 C_uint(ccx, i)]);
+        store_inbounds(bcx, llarg, llargbundle, [0, i as int]);
         i += 1u;
     }
 
@@ -4408,8 +4406,10 @@ fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let llvalptr = r.val;
     let llval_i8 = PointerCast(log_bcx, llvalptr, T_ptr(T_i8()));
 
+    // FIXME lvl should not be int, but actually u32,
+    // and the upcall should take a u32, not an i32
     Call(log_bcx, ccx.upcalls.log_type,
-         [lltydesc, llval_i8, C_int(ccx, lvl)]);
+         [lltydesc, llval_i8, C_i32(lvl as i32)]);
 
     log_bcx = trans_block_cleanups(log_bcx, log_cx);
     Br(log_bcx, after_cx.llbb);
@@ -5206,7 +5206,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     check type_is_tup_like(bcx, tup_t);
     let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
-    Store(bcx, C_int(ccx, 1), flag.val);
+    Store(bcx, C_i32(1), flag.val);
     build_return(bcx);
     finish_fn(fcx, lltop);
 }
