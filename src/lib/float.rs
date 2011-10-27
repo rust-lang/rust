@@ -223,6 +223,36 @@ fn neg_infinity() -> float {
    ret -1./0.;
 }
 
+pure fn add(x: float, y: float) -> float { ret x + y; }
+
+pure fn sub(x: float, y: float) -> float { ret x - y; }
+
+pure fn mul(x: float, y: float) -> float { ret x * y; }
+
+pure fn div(x: float, y: float) -> float { ret x / y; }
+
+pure fn rem(x: float, y: float) -> float { ret x % y; }
+
+pure fn lt(x: float, y: float) -> bool { ret x < y; }
+
+pure fn le(x: float, y: float) -> bool { ret x <= y; }
+
+pure fn eq(x: float, y: float) -> bool { ret x == y; }
+
+pure fn ne(x: float, y: float) -> bool { ret x != y; }
+
+pure fn ge(x: float, y: float) -> bool { ret x >= y; }
+
+pure fn gt(x: float, y: float) -> bool { ret x > y; }
+
+pure fn positive(x: float) -> bool { ret x > 0.; }
+
+pure fn negative(x: float) -> bool { ret x < 0.; }
+
+pure fn nonpositive(x: float) -> bool { ret x <= 0.; }
+
+pure fn nonnegative(x: float) -> bool { ret x >= 0.; }
+
 //
 // Local Variables:
 // mode: rust
