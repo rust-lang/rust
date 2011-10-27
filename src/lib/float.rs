@@ -223,34 +223,49 @@ fn neg_infinity() -> float {
    ret -1./0.;
 }
 
+/* Function: add */
 pure fn add(x: float, y: float) -> float { ret x + y; }
 
+/* Function: sub */
 pure fn sub(x: float, y: float) -> float { ret x - y; }
 
+/* Function: mul */
 pure fn mul(x: float, y: float) -> float { ret x * y; }
 
+/* Function: div */
 pure fn div(x: float, y: float) -> float { ret x / y; }
 
+/* Function: rem */
 pure fn rem(x: float, y: float) -> float { ret x % y; }
 
+/* Predicate: lt */
 pure fn lt(x: float, y: float) -> bool { ret x < y; }
 
+/* Predicate: le */
 pure fn le(x: float, y: float) -> bool { ret x <= y; }
 
+/* Predicate: eq */
 pure fn eq(x: float, y: float) -> bool { ret x == y; }
 
+/* Predicate: ne */
 pure fn ne(x: float, y: float) -> bool { ret x != y; }
 
+/* Predicate: ge */
 pure fn ge(x: float, y: float) -> bool { ret x >= y; }
 
+/* Predicate: gt */
 pure fn gt(x: float, y: float) -> bool { ret x > y; }
 
+/* Predicate: positive */
 pure fn positive(x: float) -> bool { ret x > 0.; }
 
+/* Predicate: negative */
 pure fn negative(x: float) -> bool { ret x < 0.; }
 
+/* Predicate: nonpositive */
 pure fn nonpositive(x: float) -> bool { ret x <= 0.; }
 
+/* Predicate: nonnegative */
 pure fn nonnegative(x: float) -> bool { ret x >= 0.; }
 
 //
