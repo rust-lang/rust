@@ -48,7 +48,7 @@ Type: init_op
 
 A function used to initialize the elements of a vector.
 */
-type init_op<T> = fn@(uint) -> T;
+type init_op<T> = block(uint) -> T;
 
 /*
 Function: init_fn
@@ -327,7 +327,7 @@ v - The vector to grow
 n - The number of elements to add
 init_fn - A function to call to retreive each appended element's value
 */
-fn grow_fn<T>(&v: [T], n: uint, init_fn: fn(uint) -> T) {
+fn grow_fn<T>(&v: [T], n: uint, init_fn: block(uint) -> T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [init_fn(i)]; i += 1u; }
@@ -513,7 +513,7 @@ Function: position_pred
 
 Find the first index for which the value matches some predicate
 */
-fn position_pred<T>(f: fn(T) -> bool, v: [T]) -> option::t<uint> {
+fn position_pred<T>(f: block(T) -> bool, v: [T]) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;

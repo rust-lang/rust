@@ -84,7 +84,7 @@ Function: traverse
 
 Visit all pairs in the map in order.
 */
-fn traverse<K, V>(m: treemap<K, V>, f: fn(K, V)) {
+fn traverse<K, V>(m: treemap<K, V>, f: block(K, V)) {
     alt *m {
       empty. { }
       node(@k, @v, _, _) {
