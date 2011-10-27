@@ -15,5 +15,24 @@ fn test_from_str() {
    assert ( float::from_str("5.") == 5. );
    assert ( float::from_str(".5") == 0.5 );
    assert ( float::from_str("0.5") == 0.5 );
+}
 
+#[test]
+fn test_positive() {
+  assert(float::positive(float::infinity()));
+  assert(float::positive(1.));
+  assert(float::positive(0.));
+  assert(!float::positive(-1.));
+  assert(!float::positive(float::neg_infinity()));
+  assert(!float::positive(1./float::neg_infinity()));
+}
+
+#[test]
+fn test_negative() {
+  assert(!float::negative(float::infinity()));
+  assert(!float::negative(1.));
+  assert(!float::negative(0.));
+  assert(float::negative(-1.));
+  assert(float::negative(float::neg_infinity()));
+  assert(float::negative(1./float::neg_infinity()));
 }

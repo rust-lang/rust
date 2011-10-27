@@ -214,12 +214,12 @@ fn NaN() -> float {
 }
 
 /* Function: infinity */
-fn infinity() -> float {
+pure fn infinity() -> float {
    ret 1./0.;
 }
 
 /* Function: neg_infinity */
-fn neg_infinity() -> float {
+pure fn neg_infinity() -> float {
    ret -1./0.;
 }
 
@@ -257,16 +257,16 @@ pure fn ge(x: float, y: float) -> bool { ret x >= y; }
 pure fn gt(x: float, y: float) -> bool { ret x > y; }
 
 /* Predicate: positive */
-pure fn positive(x: float) -> bool { ret x > 0.; }
+pure fn positive(x: float) -> bool { ret x > 0. || (1./x) == infinity(); }
 
 /* Predicate: negative */
-pure fn negative(x: float) -> bool { ret x < 0.; }
+pure fn negative(x: float) -> bool { ret x < 0. || (1./x) == neg_infinity(); }
 
 /* Predicate: nonpositive */
-pure fn nonpositive(x: float) -> bool { ret x <= 0.; }
+pure fn nonpositive(x: float) -> bool { ret !positive(x); }
 
 /* Predicate: nonnegative */
-pure fn nonnegative(x: float) -> bool { ret x >= 0.; }
+pure fn nonnegative(x: float) -> bool { ret !negative(x); }
 
 //
 // Local Variables:
