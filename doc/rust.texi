@@ -2930,6 +2930,7 @@ effects of the expression's evaluation.
 * Ref.Expr.Ret::                Expression for stopping and producing a value.
 @c * Ref.Expr.Be::                 Expression for stopping and executing a tail call.
 * Ref.Expr.Put::                Expression for pausing and producing a value.
+* Ref.Expr.As::                 Expression for casting a value to a different type.
 * Ref.Expr.Fail::               Expression for causing task failure.
 * Ref.Expr.Log::                Expression for logging values to diagnostic buffers.
 * Ref.Expr.Note::               Expression for logging values during failure.
@@ -3114,6 +3115,30 @@ stack and obey a strict stack discipline.} The current put-recipient will
 eventually resume the suspended iterator containing the @code{put} expression,
 either continuing execution after the @code{put} expression, or terminating its
 execution and destroying the iterator frame.
+
+
+@node       Ref.Expr.As
+@subsection Ref.Expr.As
+@c * Ref.Expr.As::                 Expression for casting a value to a different type.
+@cindex As expression
+@cindex Cast
+@cindex Typecast
+
+Executing an @code{as} expression casts the value on the left-hand side to the
+type on the right-hand side.
+
+A numeric value can be cast to any numeric type.  A native pointer value can
+be cast to or from any integral type or native pointer type.  Any other cast
+is unsupported and will fail to compile.
+
+An example of an @code{as} expression:
+@example
+fn avg(v: [float]) -> float @{
+  let sum: float = sum(v);
+  let sz: float = std::vec::len(v) as float;
+  ret sum / sz;
+@}
+@end example
 
 
 @node       Ref.Expr.Fail
