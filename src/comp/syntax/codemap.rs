@@ -183,13 +183,13 @@ fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
 }
 
 fn emit_warning(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, "warning", 11u8, cm);
+    emit_diagnostic(sp, msg, "warning", term::color_bright_yellow, cm);
 }
 fn emit_error(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, "error", 9u8, cm);
+    emit_diagnostic(sp, msg, "error", term::color_bright_red, cm);
 }
 fn emit_note(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, "note", 10u8, cm);
+    emit_diagnostic(sp, msg, "note", term::color_bright_green, cm);
 }
 
 type file_lines = {name: str, lines: [uint]};
