@@ -435,10 +435,23 @@ Function: foldl
 
 Reduce a vector from left to right
 */
-fn foldl<T, U>(p: block(U, T) -> U, z: U, v: [mutable? T]) -> U {
+fn foldl<T, U>(p: block(T, U) -> T, z: T, v: [mutable? U]) -> T {
     let accum = z;
     iter(v) { |elt|
         accum = p(accum, elt);
+    }
+    ret accum;
+}
+
+/*
+Function: foldr
+
+Reduce a vector from right to left
+*/
+fn foldr<T, U>(p: block(T, U) -> U, z: U, v: [mutable? T]) -> U {
+    let accum = z;
+    riter(v) { |elt|
+        accum = p(elt, accum);
     }
     ret accum;
 }

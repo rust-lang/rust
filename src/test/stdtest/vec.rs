@@ -303,6 +303,16 @@ fn test_foldl2() {
 }
 
 #[test]
+fn test_foldr() {
+    fn sub(&&a: int, &&b: int) -> int {
+        a - b
+    }
+    let v = [1, 2, 3, 4];
+    let sum = vec::foldr(sub, 0, v);
+    assert sum == -2;
+}
+
+#[test]
 fn iter_empty() {
     let i = 0;
     vec::iter::<int>([], { |_v| i += 1 });
