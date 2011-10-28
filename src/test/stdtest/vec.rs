@@ -317,6 +317,34 @@ fn iter_nonempty() {
 }
 
 #[test]
+fn riter_empty() {
+    let i = 0;
+    vec::riter::<int>([], { |_v| i += 1 });
+    assert i == 0;
+}
+
+#[test]
+fn riter_nonempty() {
+    let i = 0;
+    vec::riter([1, 2, 3], { |v|
+        if i == 0 { assert v == 3; }
+        i += v
+                         });
+    assert i == 6;
+}
+
+#[test]
+fn riter2() {
+    let i = 0;
+    vec::riter2([0, 1, 2], { |j, v|
+        if i == 0 { assert v == 2; }
+        assert j == v as uint;
+        i += v;                   
+                          });
+    assert i == 3;
+}
+
+#[test]
 fn test_any_and_all() {
     assert (vec::any(is_three, [1u, 2u, 3u]));
     assert (!vec::any(is_three, [0u, 1u, 2u]));

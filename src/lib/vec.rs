@@ -664,6 +664,35 @@ fn iter2<T>(v: [mutable? T], f: block(uint, T)) {
 }
 
 /*
+Function: riter
+
+Iterates over a vector in reverse
+
+Iterates over vector `v` and, for each element, calls function `f` with the
+element's value.
+
+*/
+fn riter<T>(v: [mutable? T], f: block(T)) {
+    riter2(v) { |_i, v| f(v) }
+}
+
+/*
+Function: riter2
+
+Iterates over a vector's elements and indexes in reverse
+
+Iterates over vector `v` and, for each element, calls function `f` with the
+element's value and index.
+*/
+fn riter2<T>(v: [mutable? T], f: block(uint, T)) {
+    let i = len(v);
+    while 0u < i {
+        i -= 1u;
+        f(i, v[i]);
+    };
+}
+
+/*
 Function: to_ptr
 
 FIXME: We don't need this wrapper
