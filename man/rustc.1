@@ -34,11 +34,11 @@ Compile and link a library crate into a shared object.
 Produce a statically-linked binary, or generate a static
 library.
 .TP
-\fB--pretty\fR \fItype\fR:
+\fB--pretty\fR \fI[type]\fR:
 Pretty-print the input. Valid \fItype\fRs are:
 .RS
 .TP
-\fBnormal\fR: Un-annotated source.
+\fBnormal\fR: Un-annotated source (default).
 .TP
 \fBexpanded\fR: Crates expanded.
 .TP
@@ -69,7 +69,7 @@ Run all passes except translation. Produces no output.
 \fB-g\fR:
 Produce debug info.
 .TP
-\fB--opt-level\fR=\fIlevel\fR:
+\fB--opt-level\fR \fIlevel\fR:
 Set optimization level to \fIlevel\fR.
 .TP
 \fB-O\fR:
