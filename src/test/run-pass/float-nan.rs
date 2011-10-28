@@ -71,4 +71,12 @@ fn main() {
   assert(float::isNaN(0. / 0.));
   assert(float::isNaN(-inf + inf));
   assert(float::isNaN(inf - inf));
+
+  assert(!float::isNaN(-1.));
+  assert(!float::isNaN(0.));
+  assert(!float::isNaN(0.1));
+  assert(!float::isNaN(1.));
+  assert(!float::isNaN(inf));
+  assert(!float::isNaN(-inf));
+  assert(!float::isNaN(1./-inf));
 }
