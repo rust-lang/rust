@@ -26,13 +26,7 @@ Function: from_vec
 Create a list from a vector
 */
 fn from_vec<T>(v: [mutable? T]) -> list<T> {
-    let l = nil::<T>;
-    // FIXME: This would be faster and more space efficient if it looped over
-    // a reverse vector iterator. Unfortunately generic iterators seem not to
-    // work yet.
-
-    for item: T in vec::reversed(v) { l = cons::<T>(item, @l); }
-    ret l;
+    *vec::foldr({ |h, t| @cons(h, t) }, @nil::<T>, v)
 }
 
 /*
