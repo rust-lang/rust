@@ -17,7 +17,7 @@ Function: reinterpret_cast
 
 Casts the value at `src` to U. The two types must have the same length.
 */
-fn reinterpret_cast<T, U>(src: T) -> U { ret rusti::cast(src); }
+unsafe fn reinterpret_cast<T, U>(src: T) -> U { ret rusti::cast(src); }
 
 /*
 Function: leak
@@ -29,4 +29,4 @@ to run any required cleanup or memory-management operations on it. This
 can be used for various acts of magick, particularly when using
 reinterpret_cast on managed pointer types.
 */
-fn leak<T>(-thing: T) { rustrt::leak(thing); }
+unsafe fn leak<T>(-thing: T) { rustrt::leak(thing); }

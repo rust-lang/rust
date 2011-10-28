@@ -29,4 +29,4 @@ Function: null
 
 Create an unsafe null pointer
 */
-fn null<T>() -> *T { ret unsafe::reinterpret_cast(0u); }
+fn null<T>() -> *T unsafe { ret unsafe::reinterpret_cast(0u); }

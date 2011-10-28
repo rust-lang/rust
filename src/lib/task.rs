@@ -273,9 +273,9 @@ fn spawn_joinable<uniq T>(-data: T, f: fn(T)) -> joinable_task {
 
 fn spawn_inner<uniq T>(-data: T, f: fn(T),
                           notify: option<comm::chan<task_notification>>)
-    -> task {
+    -> task unsafe {
 
-    fn wrapper<uniq T>(-data: *u8, f: fn(T)) {
+    fn wrapper<uniq T>(-data: *u8, f: fn(T)) unsafe {
         let data: ~T = unsafe::reinterpret_cast(data);
         f(*data);
     }

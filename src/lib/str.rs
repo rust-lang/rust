@@ -127,7 +127,7 @@ Function: byte_len
 
 Returns the length in bytes of a string
 */
-fn byte_len(s: str) -> uint {
+fn byte_len(s: str) -> uint unsafe {
     let v: [u8] = unsafe::reinterpret_cast(s);
     let vlen = vec::len(v);
     unsafe::leak(v);
@@ -141,7 +141,7 @@ Function: bytes
 
 Converts a string to a vector of bytes
 */
-fn bytes(s: str) -> [u8] {
+fn bytes(s: str) -> [u8] unsafe {
     let v = unsafe::reinterpret_cast(s);
     let vcopy = vec::slice(v, 0u, vec::len(v) - 1u);
     unsafe::leak(v);
@@ -154,7 +154,7 @@ Function: unsafe_from_bytes
 Converts a vector of bytes to a string. Does not verify that the
 vector contains valid UTF-8.
 */
-fn unsafe_from_bytes(v: [mutable? u8]) -> str {
+fn unsafe_from_bytes(v: [mutable? u8]) -> str unsafe {
     let vcopy: [u8] = v + [0u8];
     let scopy: str = unsafe::reinterpret_cast(vcopy);
     unsafe::leak(vcopy);
@@ -520,7 +520,7 @@ Failure:
 - If begin is greater than end.
 - If end is greater than the length of the string.
 */
-fn slice(s: str, begin: uint, end: uint) -> str {
+fn slice(s: str, begin: uint, end: uint) -> str unsafe {
     // FIXME: Typestate precondition
     assert (begin <= end);
     assert (end <= byte_len(s));

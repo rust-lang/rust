@@ -81,7 +81,7 @@ fn IndirectBr(cx: @block_ctxt, Addr: ValueRef, NumDests: uint) {
 
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_buf("", ...) every time.
-fn noname() -> sbuf {
+fn noname() -> sbuf unsafe {
     const cnull: uint = 0u;
     ret std::unsafe::reinterpret_cast(std::ptr::addr_of(cnull));
 }
@@ -480,9 +480,11 @@ fn Phi(cx: @block_ctxt, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
 
 fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     if llvm::LLVMIsUndef(phi) == lib::llvm::True { ret; }
-    let valptr = std::unsafe::reinterpret_cast(std::ptr::addr_of(val));
-    let bbptr = std::unsafe::reinterpret_cast(std::ptr::addr_of(bb));
-    llvm::LLVMAddIncoming(phi, valptr, bbptr, 1u);
+    unsafe {
+        let valptr = std::unsafe::reinterpret_cast(std::ptr::addr_of(val));
+        let bbptr = std::unsafe::reinterpret_cast(std::ptr::addr_of(bb));
+        llvm::LLVMAddIncoming(phi, valptr, bbptr, 1u);
+    }
 }
 
 fn _UndefReturn(Fn: ValueRef) -> ValueRef {
