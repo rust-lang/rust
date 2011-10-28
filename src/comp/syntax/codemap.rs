@@ -92,25 +92,54 @@ fn span_to_str(sp: span, cm: codemap) -> str {
     ret res;
 }
 
-fn emit_diagnostic(sp: option::t<span>, msg: str, kind: str, color: u8,
+tag diagnostictype {
+    warning;
+    error;
+    note;
+}
+
+fn diagnosticstr(t: diagnostictype) -> str {
+    alt t {
+      warning. { "warning" }
+      error. { "error" }
+      note. { "note" }
+    }
+}
+
+fn diagnosticcolor(t: diagnostictype) -> u8 {
+    alt t {
+      warning. { term::color_bright_yellow }
+      error. { term::color_bright_red }
+      note. { term::color_bright_green }
+    }
+}
+
+fn print_diagnostic(topic: str, t: diagnostictype, msg: str) {
+    if str::is_not_empty(topic) {
+        io::stdout().write_str(#fmt["%s ", topic]);
+    }
+    if term::color_supported() {
+        term::fg(io::stdout().get_buf_writer(), diagnosticcolor(t));
+    }
+    io::stdout().write_str(#fmt["%s:", diagnosticstr(t)]);
+    if term::color_supported() {
+        term::reset(io::stdout().get_buf_writer());
+    }
+    io::stdout().write_str(#fmt[" %s\n", msg]);
+}
+
+fn emit_diagnostic(sp: option::t<span>, msg: str, t: diagnostictype,
                    cm: codemap) {
     let ss = "";
     let maybe_lines: option::t<@file_lines> = none;
     alt sp {
       some(ssp) {
-        ss = span_to_str(ssp, cm) + " ";
+        ss = span_to_str(ssp, cm);
         maybe_lines = some(span_to_lines(ssp, cm));
       }
       none. { }
     }
-    io::stdout().write_str(ss);
-    if term::color_supported() {
-        term::fg(io::stdout().get_buf_writer(), color);
-    }
-    io::stdout().write_str(#fmt["%s:", kind]);
-    if term::color_supported() { term::reset(io::stdout().get_buf_writer()); }
-    io::stdout().write_str(#fmt[" %s\n", msg]);
-
+    print_diagnostic(ss, t, msg);
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
 
@@ -183,13 +212,13 @@ fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
 }
 
 fn emit_warning(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, "warning", term::color_bright_yellow, cm);
+    emit_diagnostic(sp, msg, warning, cm);
 }
 fn emit_error(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, "error", term::color_bright_red, cm);
+    emit_diagnostic(sp, msg, error, cm);
 }
 fn emit_note(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, "note", term::color_bright_green, cm);
+    emit_diagnostic(sp, msg, note, cm);
 }
 
 type file_lines = {name: str, lines: [uint]};
