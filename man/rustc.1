@@ -20,11 +20,12 @@ Display help.
 Display version information.
 .TP
 \fB-o\fR \fIfilename\fR:
-Write output to \fIfilename\fR. The default output
-filename for \fBfoo.rs\fR is otherwise \fBfoo\fR (when compiling a binary),
-\fBfoo\fR (when compiling a library), \fBfoo.o\fR (when using \fB-c\fR),
-\fBfoo.s\fR (when using \fB-S\fR) or \fBfoo.bc\fR (when using
-\fB--emit-llvm\fR).
+Write output to \fIfilename\fR. The default
+output filename for \fBfoo.rs\fR is otherwise \fBfoo\fR plus any
+platform-specific extension (when compiling a binary), a
+platform-specific name, e.g. \fBlibfoo.so\fR (when compiling a
+library), \fBfoo.o\fR (when using \fB-c\fR), \fBfoo.s\fR (when using
+\fB-S\fR) or \fBfoo.bc\fR (when using \fB--emit-llvm\fR), and
 .TP
 \fB--lib\fR:
 Compile and link a library crate into a shared object.
