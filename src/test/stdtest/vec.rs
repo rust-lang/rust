@@ -332,7 +332,7 @@ fn iter2() {
     vec::iter2([1, 2, 3], { |j, v|
         if i == 0 { assert v == 1; }
         assert j + 1u == v as uint;
-        i += v;                   
+        i += v;
                           });
     assert i == 6;
 }
@@ -360,7 +360,7 @@ fn riter2() {
     vec::riter2([0, 1, 2], { |j, v|
         if i == 0 { assert v == 2; }
         assert j == v as uint;
-        i += v;                   
+        i += v;
                           });
     assert i == 3;
 }
