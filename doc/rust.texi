@@ -3402,6 +3402,17 @@ alt x @{
 @}
 @end example
 
+Multiple alternative patterns may be joined with the @code{|} operator.  A
+range of values may be specified with @code{to}.  For example:
+
+@example
+let message = alt x @{
+  0 | 1  @{ "not many" @}
+  2 to 9 @{ "a few" @}
+  _      @{ "lots" @}
+@}
+@end example
+
 
 @node          Ref.Expr.Alt.Type
 @subsubsection Ref.Expr.Alt.Type
