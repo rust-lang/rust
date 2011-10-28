@@ -3369,12 +3369,12 @@ expression following the @code{alt} when the case block completes.
 @cindex Pattern alt expression
 @cindex Control-flow
 
-A pattern @code{alt} expression branches on a @emph{pattern}. The exact form of
-matching that occurs depends on the pattern. Patterns consist of some
-combination of literals, tag constructors, variable binding specifications and
-placeholders (@code{_}). A pattern @code{alt} has a @emph{head expression},
-which is the value to compare to the patterns. The type of the patterns must
-equal the type of the head expression.
+A pattern @code{alt} expression branches on a @emph{pattern}. The exact form
+of matching that occurs depends on the pattern. Patterns consist of some
+combination of literals, destructured tag constructors, records and tuples,
+variable binding specifications and placeholders (@code{_}). A pattern
+@code{alt} has a @emph{head expression}, which is the value to compare to the
+patterns. The type of the patterns must equal the type of the head expression.
 
 To execute a pattern @code{alt} expression, first the head expression is
 evaluated, then its value is sequentially compared to the patterns in the arms
@@ -3410,6 +3410,35 @@ required syntax for pattern matching a nullary tag variant, to distingush the
 variant @code{nil} from a binding to variable @code{nil}. Without the period
 the value of @code{x} would be bound to variable @code{nil} and the compiler
 would issue an error about the final wildcard case being unreachable.
+
+Records can also be pattern-matched and their fields bound to variables.
+When matching fields of a record, the fields being matched are specified
+first, then a placeholder (@code{_}) represents the remaining fields.
+
+@example
+fn main() @{
+    let r = @{
+        player: "ralph",
+        stats: load_stats(),
+        options: @{
+            choose: true,
+            size: "small"
+        @}
+    @};
+
+    alt r @{
+      @{options: @{choose: true, _@}, _@} @{
+        choose_player(r)
+      @}
+      @{player: p, options: @{size: "small", _@}, _@} @{
+        log p + " is small";
+      @}
+      _ @{
+        next_player();
+      @}
+    @}
+@}
+@end example
 
 Multiple alternative patterns may be joined with the @code{|} operator.  A
 range of values may be specified with @code{to}.  For example:
