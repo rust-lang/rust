@@ -619,7 +619,7 @@ fn def_is_obj_field(d: def) -> bool {
 }
 
 fn def_is_ty_arg(d: def) -> bool {
-    ret alt d { ast::def_ty_arg(_, _) { true } _ { false } };
+    ret alt d { ast::def_ty_param(_, _) { true } _ { false } };
 }
 
 fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
@@ -734,7 +734,9 @@ fn lookup_in_ty_params(name: ident, ty_params: [ast::ty_param]) ->
    option::t<def> {
     let i = 0u;
     for tp: ast::ty_param in ty_params {
-        if str::eq(tp.ident, name) { ret some(ast::def_ty_arg(i, tp.kind)); }
+        if str::eq(tp.ident, name) {
+            ret some(ast::def_ty_param(i, ast_util::ty_param_kind(tp)));
+        }
         i += 1u;
     }
     ret none::<def>;

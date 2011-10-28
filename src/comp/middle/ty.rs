@@ -2752,7 +2752,7 @@ fn def_has_ty_params(def: ast::def) -> bool {
       ast::def_upvar(_, _, _) { ret false; }
       ast::def_variant(_, _) { ret true; }
       ast::def_ty(_) { ret false; }
-      ast::def_ty_arg(_, _) { ret false; }
+      ast::def_ty_param(_, _) { ret false; }
       ast::def_binding(_) { ret false; }
       ast::def_use(_) { ret false; }
       ast::def_native_ty(_) { ret false; }

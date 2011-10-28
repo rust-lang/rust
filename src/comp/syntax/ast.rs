@@ -23,7 +23,7 @@ type def_id = {crate: crate_num, node: node_id};
 
 const local_crate: crate_num = 0;
 
-type ty_param = {ident: ident, kind: kind};
+type ty_param = {ident: ident, kind: plicit<kind>};
 
 tag def {
     def_fn(def_id, purity);
@@ -37,7 +37,7 @@ tag def {
 
     /* variant */
     def_ty(def_id);
-    def_ty_arg(uint, kind);
+    def_ty_param(uint, kind);
     def_binding(def_id);
     def_use(def_id);
     def_native_ty(def_id);
@@ -99,7 +99,8 @@ tag pat_ {
 
 tag mutability { mut; imm; maybe_mut; }
 
-tag kind { kind_pinned; kind_shared; kind_unique; }
+tag plicit<T> { explicit(T); implicit(T); }
+tag kind { kind_pinned; kind_shared; kind_unique; kind_auto; }
 
 tag _auth { auth_unsafe; }
 
@@ -489,16 +490,10 @@ tag item_ {
     item_ty(@ty, [ty_param]);
     item_tag([variant], [ty_param]);
     item_obj(_obj, [ty_param], /* constructor id */node_id);
-    item_res(_fn,
-
-             /* dtor */
-             node_id,
-
-             /* dtor id */
+    item_res(_fn /* dtor */,
+             node_id /* dtor id */,
              [ty_param],
-
-             /* ctor id */
-             node_id);
+             node_id /* ctor id */);
 }
 
 type native_item =

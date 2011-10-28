@@ -170,12 +170,11 @@ fn encode_type_param_kinds(ebml_w: ebml::writer, tps: [ty_param]) {
     ebml::start_tag(ebml_w, tag_items_data_item_ty_param_kinds);
     ebml::write_vint(ebml_w.writer, vec::len::<ty_param>(tps));
     for tp: ty_param in tps {
-        let c =
-            alt tp.kind {
-              kind_unique. { 'u' }
-              kind_shared. { 's' }
-              kind_pinned. { 'p' }
-            };
+        let c = alt ast_util::ty_param_kind(tp) {
+          kind_unique. { 'u' }
+          kind_shared. { 's' }
+          kind_pinned. { 'p' }
+        };
         ebml_w.writer.write([c as u8]);
     }
     ebml::end_tag(ebml_w);

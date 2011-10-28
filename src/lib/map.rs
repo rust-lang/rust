@@ -201,12 +201,12 @@ fn mk_hashmap<K, V>(hasher: hashfn<K>, eqer: eqfn<K>) -> hashmap<K, V> {
             }
         }
     }
-    obj hashmap<K, V>(hasher: hashfn<K>,
-                    eqer: eqfn<K>,
-                    mutable bkts: [mutable bucket<K, V>],
-                    mutable nbkts: uint,
-                    mutable nelts: uint,
-                    lf: util::rational) {
+    obj hashmap<shar K, shar V>(hasher: hashfn<K>,
+                                eqer: eqfn<K>,
+                                mutable bkts: [mutable bucket<K, V>],
+                                mutable nbkts: uint,
+                                mutable nelts: uint,
+                                lf: util::rational) {
         fn size() -> uint { ret nelts; }
         fn insert(key: K, val: V) -> bool {
             let load: util::rational =

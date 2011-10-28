@@ -90,9 +90,9 @@ fn new_smallintmap_adapter<K, V>(key_idx: fn(K) -> uint,
                                    idx_key: fn(uint) -> K)
     -> std::map::hashmap<K, V> {
 
-    obj adapter<K, V>(map: smallintmap::smallintmap<V>,
-                      key_idx: fn(K) -> uint,
-                      idx_key: fn(uint) -> K) {
+    obj adapter<shar K, shar V>(map: smallintmap::smallintmap<V>,
+                                key_idx: fn(K) -> uint,
+                                idx_key: fn(uint) -> K) {
 
         fn size() -> uint { fail }
 

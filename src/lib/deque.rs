@@ -41,12 +41,6 @@ fn create<T>() -> t<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-
-
-
-
-
-
     fn grow<T>(nelts: uint, lo: uint, elts: [mutable cell<T>]) ->
        [mutable cell<T>] {
         assert (nelts == vec::len(elts));
@@ -66,10 +60,10 @@ fn create<T>() -> t<T> {
     fn get<T>(elts: [mutable cell<T>], i: uint) -> T {
         ret alt elts[i] { option::some(t) { t } _ { fail } };
     }
-    obj deque<T>(mutable nelts: uint,
-                  mutable lo: uint,
-                  mutable hi: uint,
-                  mutable elts: [mutable cell<T>]) {
+    obj deque<shar T>(mutable nelts: uint,
+                      mutable lo: uint,
+                      mutable hi: uint,
+                      mutable elts: [mutable cell<T>]) {
         fn size() -> uint { ret nelts; }
         fn add_front(t: T) {
             let oldlo: uint = lo;

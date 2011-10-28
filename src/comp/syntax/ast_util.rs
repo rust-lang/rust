@@ -33,7 +33,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_local(id, _) { ret id; }
       def_variant(_, id) { ret id; }
       def_ty(id) { ret id; }
-      def_ty_arg(_, _) { fail; }
+      def_ty_param(_, _) { fail; }
       def_binding(id) { ret id; }
       def_use(id) { ret id; }
       def_native_ty(id) { ret id; }
@@ -226,6 +226,10 @@ fn ret_by_ref(style: ret_style) -> bool {
       return_ref(_, _) { true }
       _ { false }
     }
+}
+
+fn ty_param_kind(tp: ty_param) -> kind {
+    alt tp.kind { explicit(x) | implicit(x) { x } }
 }
 
 // Local Variables:

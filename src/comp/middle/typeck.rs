@@ -1,6 +1,6 @@
 import syntax::{ast, ast_util};
 import ast::{mutability, spanned};
-import syntax::ast_util::{local_def, respan};
+import syntax::ast_util::{local_def, respan, ty_param_kind};
 import syntax::visit;
 import metadata::csearch;
 import driver::session;
@@ -342,7 +342,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, &&ast_ty: @ast::ty)
             typ = instantiate(tcx, ast_ty.span, getter, id, path.node.types);
           }
           some(ast::def_native_ty(id)) { typ = getter(id).ty; }
-          some(ast::def_ty_arg(id, k)) { typ = ty::mk_param(tcx, id, k); }
+          some(ast::def_ty_param(id, k)) { typ = ty::mk_param(tcx, id, k); }
           some(_) {
             tcx.sess.span_fatal(ast_ty.span,
                                 "found type name used as a variable");
@@ -495,7 +495,7 @@ mod collect {
         let tps = [];
         let i = 0u;
         for atp: ast::ty_param in atps {
-            tps += [ty::mk_param(cx.tcx, i, atp.kind)];
+            tps += [ty::mk_param(cx.tcx, i, ty_param_kind(atp))];
             i += 1u;
         }
         ret tps;
@@ -503,7 +503,7 @@ mod collect {
 
     fn ty_param_kinds(tps: [ast::ty_param]) -> [ast::kind] {
         let k: [ast::kind] = [];
-        for p: ast::ty_param in tps { k += [p.kind]; }
+        for p: ast::ty_param in tps { k += [ty_param_kind(p)]; }
         ret k;
     }
 
