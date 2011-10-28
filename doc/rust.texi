@@ -3396,11 +3396,20 @@ alt x @{
     cons(10, _) @{
         process_ten();
     @}
+    nil. @{
+        ret;
+    @}
     _ @{
         fail;
     @}
 @}
 @end example
+
+Note in the above example that @code{nil} is followed by a period. This is
+required syntax for pattern matching a nullary tag variant, to distingush the
+variant @code{nil} from a binding to variable @code{nil}. Without the period
+the value of @code{x} would be bound to variable @code{nil} and the compiler
+would issue an error about the final wildcard case being unreachable.
 
 Multiple alternative patterns may be joined with the @code{|} operator.  A
 range of values may be specified with @code{to}.  For example:
