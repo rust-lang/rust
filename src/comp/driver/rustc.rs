@@ -250,14 +250,14 @@ options:
     --parse-only       parse only; do not compile, assemble, or link
     --no-trans         run all passes except translation; no output
     -g                 produce debug info
-    --opt-level=       optimize with possible levels 0-3
+    --opt-level <lvl>  optimize with possible levels 0-3
     -O                 equivalent to --opt-level=2
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
     --emit-llvm        produce an LLVM bitcode file
     --save-temps       write intermediate files in addition to normal output
     --stats            gather and report various compilation statistics
-    --cfg [cfgspec]    configure the compilation environment
+    --cfg <cfgspec>    configure the compilation environment
     --time-passes      time the individual phases of the compiler
     --time-llvm-passes time the individual phases of the LLVM backend
     --sysroot <path>   override the system root (default: rustc's directory)
