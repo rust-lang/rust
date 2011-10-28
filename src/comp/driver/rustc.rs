@@ -438,6 +438,53 @@ fn opts() -> [getopts::opt] {
          optflag("stack-growth"), optflag("check-unsafe")];
 }
 
+fn build_output_filenames(ifile: str, ofile: option::t<str>,
+                          sopts: @session::options)
+        -> @{out_filename: str, obj_filename:str} {
+    let obj_filename = "";
+    let saved_out_filename: str = "";
+    let stop_after_codegen =
+        sopts.output_type != link::output_type_exe ||
+            sopts.static && sopts.library;
+    alt ofile {
+      none. {
+        // "-" as input file will cause the parser to read from stdin so we
+        // have to make up a name
+        // We want to toss everything after the final '.'
+        let parts =
+            if !input_is_stdin(ifile) {
+                str::split(ifile, '.' as u8)
+            } else { ["default", "rs"] };
+        vec::pop(parts);
+        let base_filename = str::connect(parts, ".");
+        let suffix =
+            alt sopts.output_type {
+              link::output_type_none. { "none" }
+              link::output_type_bitcode. { "bc" }
+              link::output_type_assembly. { "s" }
+              // Object and exe output both use the '.o' extension here
+              link::output_type_object. | link::output_type_exe. {
+                "o"
+              }
+            };
+        obj_filename = base_filename + "." + suffix;
+
+        if sopts.library {
+            saved_out_filename = std::os::dylib_filename(base_filename);
+        } else {
+            saved_out_filename = base_filename;
+        }
+      }
+      some(out_file) {
+        // FIXME: what about windows? This will create a foo.exe.o.
+        saved_out_filename = out_file;
+        obj_filename =
+            if stop_after_codegen { out_file } else { out_file + ".o" };
+      }
+    }
+    ret @{out_filename: saved_out_filename, obj_filename: obj_filename};
+}
+
 fn main(args: [str]) {
     let binary = vec::shift(args);
     let match =
@@ -459,14 +506,14 @@ fn main(args: [str]) {
     let sopts = build_session_options(match);
     let sess = build_session(sopts);
     let n_inputs = vec::len::<str>(match.free);
-    let output_file = getopts::opt_maybe_str(match, "o");
+    let ofile = getopts::opt_maybe_str(match, "o");
+    let ifile = match.free[0];
+    let outputs = build_output_filenames(ifile, ofile, sopts);
     if n_inputs == 0u {
         sess.fatal("No input filename given.");
     } else if n_inputs > 1u {
         sess.fatal("Multiple input filenames provided.");
     }
-    let ifile = match.free[0];
-    let saved_out_filename: str = "";
     let cfg = build_configuration(sess, binary, ifile);
     let pretty =
         option::map::<str,
@@ -484,47 +531,13 @@ fn main(args: [str]) {
         sopts.output_type != link::output_type_exe ||
             sopts.static && sopts.library;
 
-    let ofile = "";
-    alt output_file {
-      none. {
-        // "-" as input file will cause the parser to read from stdin so we
-        // have to make up a name
-        // We want to toss everything after the final '.'
-        let parts =
-            if !input_is_stdin(ifile) {
-                str::split(ifile, '.' as u8)
-            } else { ["default", "rs"] };
-        vec::pop(parts);
-        let base_filename = str::connect(parts, ".");
-        let suffix =
-            alt sopts.output_type {
-              link::output_type_none. { "none" }
-              link::output_type_bitcode. { "bc" }
-              link::output_type_assembly. { "s" }
-              // Object and exe output both use the '.o' extension here
-              link::output_type_object. | link::output_type_exe. {
-                "o"
-              }
-            };
-        ofile = base_filename + "." + suffix;
+    let temp_filename = outputs.obj_filename;
 
-        if sopts.library {
-            saved_out_filename = std::os::dylib_filename(base_filename);
-        } else {
-            saved_out_filename = base_filename;
-        }
-      }
-      some(out_file) {
-        saved_out_filename = out_file;
-        ofile =
-            if !stop_after_codegen { out_file + ".o" } else { out_file };
-      }
-    }
+    compile_input(sess, cfg, ifile, temp_filename);
 
-    compile_input(sess, cfg, ifile, ofile);
     if stop_after_codegen { ret; }
 
-    link::link_binary(sess, ofile, saved_out_filename);
+    link::link_binary(sess, temp_filename, outputs.out_filename);
 }
 
 #[cfg(test)]
