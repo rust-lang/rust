@@ -45,7 +45,7 @@ Function: is_none
 
 Returns true if the option equals none
 */
-fn is_none<T>(opt: t<T>) -> bool {
+pure fn is_none<T>(opt: t<T>) -> bool {
     alt opt { none. { true } some(_) { false } }
 }
 
@@ -54,7 +54,7 @@ Function: is_some
 
 Returns true if the option contains some value
 */
-fn is_some<T>(opt: t<T>) -> bool { !is_none(opt) }
+pure fn is_some<T>(opt: t<T>) -> bool { !is_none(opt) }
 
 /*
 Function: from_maybe
