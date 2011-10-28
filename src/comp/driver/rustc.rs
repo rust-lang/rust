@@ -246,7 +246,6 @@ options:
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
     --noverify         suppress LLVM verification step (slight speedup)
-    --depend           print dependencies, in makefile-rule form
     --parse-only       parse only; do not compile, assemble, or link
     --no-trans         run all passes except translation; no output
     -g                 produce debug info

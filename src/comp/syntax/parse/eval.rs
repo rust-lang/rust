@@ -8,14 +8,9 @@ import syntax::parse::parser::{parser, new_parser_from_file,
                                parse_mod_items, SOURCE_FILE};
 
 export eval_crate_directives_to_mod;
-export mode_parse;
-
-tag eval_mode { mode_depend; mode_parse; }
 
 type ctx =
     @{p: parser,
-      mode: eval_mode,
-      mutable deps: [str],
       sess: parser::parse_sess,
       mutable chpos: uint,
       mutable byte_pos: uint,
@@ -48,7 +43,6 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
             if std::fs::path_is_absolute(file_path) {
                 file_path
             } else { prefix + std::fs::path_sep() + file_path };
-        if cx.mode == mode_depend { cx.deps += [full_path]; ret; }
         let p0 =
             new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos,
                                  cx.byte_pos, SOURCE_FILE);

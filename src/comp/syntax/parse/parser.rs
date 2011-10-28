@@ -2584,11 +2584,8 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
     let crate_attrs = leading_attrs.inner;
     let first_cdir_attr = leading_attrs.next;
     let cdirs = parse_crate_directives(p, token::EOF, first_cdir_attr);
-    let deps: [str] = [];
     let cx =
         @{p: p,
-          mode: eval::mode_parse,
-          mutable deps: deps,
           sess: sess,
           mutable chpos: p.get_chpos(),
           mutable byte_pos: p.get_byte_pos(),
