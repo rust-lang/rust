@@ -433,14 +433,14 @@ fn filter<T>(f: block(T) -> bool, v: [mutable? T]) -> [T] {
 /*
 Function: foldl
 
-FIXME: This looks like it's actually foldr
+Reduce a vector from left to right
 */
 fn foldl<T, U>(p: block(U, T) -> U, z: U, v: [mutable? T]) -> U {
-    let sz = len(v);
-    if sz == 0u { ret z; }
-    let first = v[0];
-    let rest = slice(v, 1u, sz);
-    ret p(foldl(p, z, rest), first);
+    let accum = z;
+    iter(v) { |elt|
+        accum = p(accum, elt);
+    }
+    ret accum;
 }
 
 /*
