@@ -47,7 +47,7 @@ fn test_nonpositive() {
   assert(float::nonpositive(-1.));
   assert(float::nonpositive(float::neg_infinity()));
   assert(float::nonpositive(1./float::neg_infinity()));
-  // TODO: assert(!float::nonpositive(float::NaN()));
+  assert(!float::nonpositive(float::NaN()));
 }
 
 #[test]
@@ -58,5 +58,5 @@ fn test_nonnegative() {
   assert(!float::nonnegative(-1.));
   assert(!float::nonnegative(float::neg_infinity()));
   assert(!float::nonnegative(1./float::neg_infinity()));
-  // TODO: assert(!float::nonnegative(float::NaN()));
+  assert(!float::nonnegative(float::NaN()));
 }
