@@ -337,10 +337,10 @@ v - The vector to grow
 n - The number of elements to add
 init_fn - A function to call to retreive each appended element's value
 */
-fn grow_fn<T>(&v: [T], n: uint, init_fn: block(uint) -> T) {
+fn grow_fn<T>(&v: [T], n: uint, op: init_op<T>) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
-    while i < n { v += [init_fn(i)]; i += 1u; }
+    while i < n { v += [op(i)]; i += 1u; }
 }
 
 /*
