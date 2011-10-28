@@ -48,6 +48,8 @@ This function accepts strings such as
 * "5."
 * ".5", or, equivalently,  "0.5"
 
+Leading and trailing whitespace are ignored.
+
 Parameters:
 
 num - A string, possibly empty.
@@ -58,6 +60,8 @@ Returns:
 Otherwise, the floating-point number represented [num].
 */
 fn from_str(num: str) -> float {
+   num = str::trim(num);
+
    let pos = 0u;                  //Current byte position in the string.
                                   //Used to walk the string in O(n).
    let len = str::byte_len(num);  //Length of the string, in bytes.
@@ -65,6 +69,12 @@ fn from_str(num: str) -> float {
    if len == 0u { ret 0.; }
    let total = 0f;                //Accumulated result
    let c     = 'z';               //Latest char.
+
+   //The string must start with one of the following characters.
+   alt str::char_at(num, 0u) {
+      '-' | '+' | '0' to '9' | '.' {}
+      _ { ret NaN(); }
+   }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
    let neg = false;               //Sign of the result
@@ -89,8 +99,11 @@ fn from_str(num: str) -> float {
            total = total * 10f;
            total += ((c as int) - ('0' as int)) as float;
          }
-         _ {
+         '.' | 'e' | 'E' {
            break;
+         }
+         _ {
+           ret NaN();
          }
        }
    }
@@ -106,8 +119,11 @@ fn from_str(num: str) -> float {
                  decimal /= 10.f;
                  total += (((c as int) - ('0' as int)) as float)*decimal;
              }
-             _ {
+             'e' | 'E' {
                  break;
+             }
+             _ {
+                 ret NaN();
              }
          }
       }
@@ -132,7 +148,6 @@ fn from_str(num: str) -> float {
           while(pos < len) {
              let char_range = str::char_range_at(num, pos);
              c = char_range.ch;
-             pos = char_range.next;
              alt c {
                  '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9' {
                      exponent *= 10u;
@@ -142,6 +157,7 @@ fn from_str(num: str) -> float {
                      break;
                  }
              }
+             pos = char_range.next;
           }
           let multiplier = pow_uint_to_uint_as_float(10u, exponent);
               //Note: not [int::pow], otherwise, we'll quickly
@@ -151,6 +167,8 @@ fn from_str(num: str) -> float {
           } else {
              total = total * multiplier;
           }
+      } else {
+         ret NaN();
       }
    }
 
