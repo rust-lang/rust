@@ -213,6 +213,9 @@ fn NaN() -> float {
    ret 0./0.;
 }
 
+/* Predicate: isNaN */
+pure fn isNaN(f: float) -> bool { f != f }
+
 /* Function: infinity */
 pure fn infinity() -> float {
    ret 1./0.;
