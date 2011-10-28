@@ -250,8 +250,8 @@ options:
     --parse-only       parse only; do not compile, assemble, or link
     --no-trans         run all passes except translation; no output
     -g                 produce debug info
-    --OptLevel=        optimize with possible levels 0-3
-    -O                 equivalent to --OptLevel=2
+    --opt-level=       optimize with possible levels 0-3
+    -O                 equivalent to --opt-level=2
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
     --emit-llvm        produce an LLVM bitcode file
@@ -347,12 +347,12 @@ fn build_session_options(match: getopts::match)
     let target_opt = getopts::opt_maybe_str(match, "target");
     let opt_level: uint =
         if opt_present(match, "O") {
-            if opt_present(match, "OptLevel") {
-                early_error("-O and --OptLevel both provided");
+            if opt_present(match, "opt-level") {
+                early_error("-O and --opt-level both provided");
             }
             2u
-        } else if opt_present(match, "OptLevel") {
-            alt getopts::opt_str(match, "OptLevel") {
+        } else if opt_present(match, "opt-level") {
+            alt getopts::opt_str(match, "opt-level") {
               "0" { 0u }
               "1" { 1u }
               "2" { 2u }
@@ -426,7 +426,7 @@ fn opts() -> [getopts::opt] {
     ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
          optflag("emit-llvm"), optflagopt("pretty"),
          optflag("ls"), optflag("parse-only"), optflag("no-trans"),
-         optflag("O"), optopt("OptLevel"), optmulti("L"), optflag("S"),
+         optflag("O"), optopt("opt-level"), optmulti("L"), optflag("S"),
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optopt("target"), optflag("stats"),
          optflag("time-passes"), optflag("time-llvm-passes"),
