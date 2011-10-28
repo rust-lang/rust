@@ -259,17 +259,39 @@ pure fn ge(x: float, y: float) -> bool { ret x >= y; }
 /* Predicate: gt */
 pure fn gt(x: float, y: float) -> bool { ret x > y; }
 
-/* Predicate: positive */
+/*
+Predicate: positive
+
+Returns true if `x` is a positive number, including +0.0 and +Infinity.
+ */
 pure fn positive(x: float) -> bool { ret x > 0. || (1./x) == infinity(); }
 
-/* Predicate: negative */
+/*
+Predicate: negative
+
+Returns true if `x` is a negative number, including -0.0 and -Infinity.
+ */
 pure fn negative(x: float) -> bool { ret x < 0. || (1./x) == neg_infinity(); }
 
-/* Predicate: nonpositive */
-pure fn nonpositive(x: float) -> bool { ret !positive(x); }
+/*
+Predicate: nonpositive
 
-/* Predicate: nonnegative */
-pure fn nonnegative(x: float) -> bool { ret !negative(x); }
+Returns true if `x` is a negative number, including -0.0 and -Infinity.
+(This is the same as `float::negative`.)
+*/
+pure fn nonpositive(x: float) -> bool {
+  ret x < 0. || (1./x) == neg_infinity();
+}
+
+/*
+Predicate: nonnegative
+
+Returns true if `x` is a positive number, including +0.0 and +Infinity.
+(This is the same as `float::positive`.)
+*/
+pure fn nonnegative(x: float) -> bool {
+  ret x > 0. || (1./x) == infinity();
+}
 
 //
 // Local Variables:
