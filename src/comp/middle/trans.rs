@@ -1492,26 +1492,26 @@ tag scalar_type { nil_type; signed_int; unsigned_int; floating_point; }
 
 
 fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
-                        t: ty::t, llop: ValueRef) -> result {
-    let f = bind compare_scalar_values(cx, lhs, rhs, _, llop);
+                        t: ty::t, op: ast::binop) -> result {
+    let f = bind compare_scalar_values(cx, lhs, rhs, _, op);
 
     alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_nil. { ret f(nil_type); }
+      ty::ty_nil. { ret rslt(cx, f(nil_type)); }
       ty::ty_bool. | ty::ty_uint. | ty::ty_ptr(_) | ty::ty_char. {
-        ret f(unsigned_int);
+        ret rslt(cx, f(unsigned_int));
       }
-      ty::ty_int. { ret f(signed_int); }
-      ty::ty_float. { ret f(floating_point); }
+      ty::ty_int. { ret rslt(cx, f(signed_int)); }
+      ty::ty_float. { ret rslt(cx, f(floating_point)); }
       ty::ty_machine(_) {
         if ty::type_is_fp(bcx_tcx(cx), t) {
             // Floating point machine types
-            ret f(floating_point);
+            ret rslt(cx, f(floating_point));
         } else if ty::type_is_signed(bcx_tcx(cx), t) {
             // Signed, integral machine types
-            ret f(signed_int);
+            ret rslt(cx, f(signed_int));
         } else {
             // Unsigned, integral machine types
-            ret f(unsigned_int);
+            ret rslt(cx, f(unsigned_int));
         }
       }
       ty::ty_type. {
@@ -1535,34 +1535,47 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
 
 // A helper function to do the actual comparison of scalar values.
 fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
-                         nt: scalar_type, llop: ValueRef) -> result {
-    let eq_cmp;
-    let lt_cmp;
-    let le_cmp;
-    alt nt {
+                         nt: scalar_type, op: ast::binop) -> ValueRef {
+    let cmp = alt nt {
       nil_type. {
         // We don't need to do actual comparisons for nil.
         // () == () holds but () < () does not.
-        eq_cmp = 1u;
-        lt_cmp = 0u;
-        le_cmp = 1u;
+        alt op {
+          ast::eq. | ast::le. | ast::ge. { 1u }
+          ast::ne. | ast::lt. | ast::gt. { 0u }
+        }
       }
       floating_point. {
-        eq_cmp = lib::llvm::LLVMRealUEQ;
-        lt_cmp = lib::llvm::LLVMRealULT;
-        le_cmp = lib::llvm::LLVMRealULE;
+        alt op {
+          ast::eq. { lib::llvm::LLVMRealOEQ }
+          ast::ne. { lib::llvm::LLVMRealUNE }
+          ast::lt. { lib::llvm::LLVMRealOLT }
+          ast::le. { lib::llvm::LLVMRealOLE }
+          ast::gt. { lib::llvm::LLVMRealOGT }
+          ast::ge. { lib::llvm::LLVMRealOGE }
+        }
       }
       signed_int. {
-        eq_cmp = lib::llvm::LLVMIntEQ;
-        lt_cmp = lib::llvm::LLVMIntSLT;
-        le_cmp = lib::llvm::LLVMIntSLE;
+        alt op {
+          ast::eq. { lib::llvm::LLVMIntEQ }
+          ast::ne. { lib::llvm::LLVMIntNE }
+          ast::lt. { lib::llvm::LLVMIntSLT }
+          ast::le. { lib::llvm::LLVMIntSLE }
+          ast::gt. { lib::llvm::LLVMIntSGT }
+          ast::ge. { lib::llvm::LLVMIntSGE }
+        }
       }
       unsigned_int. {
-        eq_cmp = lib::llvm::LLVMIntEQ;
-        lt_cmp = lib::llvm::LLVMIntULT;
-        le_cmp = lib::llvm::LLVMIntULE;
+        alt op {
+          ast::eq. { lib::llvm::LLVMIntEQ }
+          ast::ne. { lib::llvm::LLVMIntNE }
+          ast::lt. { lib::llvm::LLVMIntULT }
+          ast::le. { lib::llvm::LLVMIntULE }
+          ast::gt. { lib::llvm::LLVMIntUGT }
+          ast::ge. { lib::llvm::LLVMIntUGE }
+        }
       }
-    }
+    };
     // FIXME: This wouldn't be necessary if we could bind methods off of
     // objects and therefore abstract over FCmp and ICmp (issue #435).  Then
     // we could just write, e.g., "cmp_fn = bind FCmp(cx, _, _, _);" in
@@ -1579,26 +1592,7 @@ fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
         } else { r = ICmp(cx, op, lhs, rhs); }
         ret r;
     }
-    let last_cx = new_sub_block_ctxt(cx, "last");
-    let eq_cx = new_sub_block_ctxt(cx, "eq");
-    let eq_result = generic_cmp(eq_cx, nt, eq_cmp, lhs, rhs);
-    Br(eq_cx, last_cx.llbb);
-    let lt_cx = new_sub_block_ctxt(cx, "lt");
-    let lt_result = generic_cmp(lt_cx, nt, lt_cmp, lhs, rhs);
-    Br(lt_cx, last_cx.llbb);
-    let le_cx = new_sub_block_ctxt(cx, "le");
-    let le_result = generic_cmp(le_cx, nt, le_cmp, lhs, rhs);
-    Br(le_cx, last_cx.llbb);
-    let unreach_cx = new_sub_block_ctxt(cx, "unreach");
-    Unreachable(unreach_cx);
-    let llswitch = Switch(cx, llop, unreach_cx.llbb, 3u);
-    AddCase(llswitch, C_u8(abi::cmp_glue_op_eq), eq_cx.llbb);
-    AddCase(llswitch, C_u8(abi::cmp_glue_op_lt), lt_cx.llbb);
-    AddCase(llswitch, C_u8(abi::cmp_glue_op_le), le_cx.llbb);
-    let last_result =
-        Phi(last_cx, T_i1(), [eq_result, lt_result, le_result],
-            [eq_cx.llbb, lt_cx.llbb, le_cx.llbb]);
-    ret rslt(last_cx, last_result);
+    ret generic_cmp(cx, nt, cmp, lhs, rhs);
 }
 
 type val_pair_fn = fn(@block_ctxt, ValueRef, ValueRef) -> @block_ctxt;
@@ -1910,16 +1904,6 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     Call(bcx, llfn, [llcmpresultptr, lltydesc, lltydescs,
                      llrawlhsptr, llrawrhsptr, llop]);
     ret rslt(bcx, Load(bcx, llcmpresultptr));
-}
-
-// Compares two values. Performs the simple scalar comparison if the types are
-// scalar and calls to comparison glue otherwise.
-fn compare(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
-           llop: ValueRef) -> result {
-    if ty::type_is_scalar(bcx_tcx(cx), t) {
-        ret compare_scalar_types(cx, lhs, rhs, t, llop);
-    }
-    ret call_cmp_glue(cx, lhs, rhs, t, llop);
 }
 
 fn take_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
@@ -2262,6 +2246,11 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
 
 fn trans_compare(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
                  _lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t) -> result {
+    if ty::type_is_scalar(bcx_tcx(cx), rhs_t) {
+      let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, op);
+      ret rslt(rs.bcx, rs.val);
+    }
+
     // Determine the operation we need.
     let llop;
     alt op {
@@ -2270,7 +2259,7 @@ fn trans_compare(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
       ast::le. | ast::gt. { llop = C_u8(abi::cmp_glue_op_le); }
     }
 
-    let rs = compare(cx, lhs, rhs, rhs_t, llop);
+    let rs = call_cmp_glue(cx, lhs, rhs, rhs_t, llop);
 
     // Invert the result if necessary.
     alt op {
