@@ -34,22 +34,22 @@ Function: foldl
 
 Left fold
 
-Applies `f` to the first argument in the list and `u`, then applies
-`f` to the second argument and the result of the previous call,
+Applies `f` to `u` and the first element in the list, then applies
+`f` to the result of the previous call and the second element,
 and so on, returning the accumulated result.
 
 Parameters:
 
 ls - The list to fold
-u - The initial value
+z - The initial value
 f - The function to apply
 */
-fn foldl<T, U>(ls: list<T>, u: U, f: block(T, U) -> U) -> U {
-    let accum: U = u;
+fn foldl<T, U>(ls: list<U>, z: T, f: block(T, U) -> T) -> T {
+    let accum: T = z;
     let ls = ls;
     while true {
         alt ls {
-          cons(hd, tl) { accum = f(hd, accum); ls = *tl; }
+          cons(hd, tl) { accum = f(accum, hd); ls = *tl; }
           nil. { break; }
         }
     }
@@ -100,7 +100,7 @@ Function: len
 Returns the length of a list
 */
 fn len<T>(ls: list<T>) -> uint {
-    fn count<T>(_t: T, &&u: uint) -> uint { ret u + 1u; }
+    fn count<T>(&&u: uint, _t: T) -> uint { ret u + 1u; }
     ret foldl(ls, 0u, bind count(_, _));
 }
 

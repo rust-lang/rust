@@ -25,9 +25,19 @@ fn test_from_vec_mut() {
 #[test]
 fn test_foldl() {
     let l = from_vec([0, 1, 2, 3, 4]);
-    fn add(&&a: int, &&b: uint) -> uint { ret (a as uint) + b; }
+    fn add(&&a: uint, &&b: int) -> uint { ret a + (b as uint); }
     let rs = list::foldl(l, 0u, add);
     assert (rs == 10u);
+}
+
+#[test]
+fn test_foldl2() {
+    fn sub(&&a: int, &&b: int) -> int {
+        a - b
+    }
+    let l = from_vec([1, 2, 3, 4]);
+    let sum = list::foldl(l, 0, sub);
+    assert sum == -10;
 }
 
 #[test]
