@@ -95,11 +95,11 @@ fn has<T>(ls: list<T>, elt: T) -> bool {
 }
 
 /*
-Function: length
+Function: len
 
 Returns the length of a list
 */
-fn length<T>(ls: list<T>) -> uint {
+fn len<T>(ls: list<T>) -> uint {
     fn count<T>(_t: T, &&u: uint) -> uint { ret u + 1u; }
     ret foldl(ls, 0u, bind count(_, _));
 }

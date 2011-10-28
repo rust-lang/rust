@@ -59,8 +59,8 @@ fn test_has() {
 }
 
 #[test]
-fn test_length() {
+fn test_len() {
     let l = from_vec([0, 1, 2]);
-    assert (list::length(l) == 3u);
+    assert (list::len(l) == 3u);
 }
 
