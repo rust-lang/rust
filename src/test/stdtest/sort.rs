@@ -26,3 +26,11 @@ fn test() {
         check_sort(v1, v2);
     }
 }
+
+#[test]
+fn test_merge_sort_mutable() {
+    fn lteq(&&a: int, &&b: int) -> bool { ret a <= b; }
+    let v1 = [mutable 3, 2, 1];
+    let v2 = std::sort::merge_sort(lteq, v1);
+    assert v2 == [1, 2, 3];
+}
