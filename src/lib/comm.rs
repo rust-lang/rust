@@ -41,9 +41,9 @@ native "c-stack-cdecl" mod rustrt {
     type void;
     type rust_port;
 
-    fn chan_id_send<unique T>(t: *sys::type_desc,
-                              target_task: task::task, target_port: port_id,
-                              -data: T);
+    fn chan_id_send<uniq T>(t: *sys::type_desc,
+                            target_task: task::task, target_port: port_id,
+                            -data: T);
 
     fn new_port(unit_sz: uint) -> *rust_port;
     fn del_port(po: *rust_port);
@@ -52,7 +52,7 @@ native "c-stack-cdecl" mod rustrt {
 }
 
 native "rust-intrinsic" mod rusti {
-    fn recv<unique T>(port: *rustrt::rust_port) -> T;
+    fn recv<uniq T>(port: *rustrt::rust_port) -> T;
 }
 
 type port_id = int;
@@ -75,7 +75,7 @@ dropped.
 
 Channels may be duplicated and themselves transmitted over other channels.
 */
-tag chan<unique T> {
+tag chan<uniq T> {
     chan_t(task::task, port_id);
 }
 
@@ -95,7 +95,7 @@ transmitted. If a port value is copied, both copies refer to the same port.
 
 Ports may be associated with multiple <chan>s.
 */
-tag port<unique T> { port_t(@port_ptr); }
+tag port<uniq T> { port_t(@port_ptr); }
 
 /*
 Function: send
@@ -105,7 +105,7 @@ Sends data over a channel.
 The sent data is moved into the channel, whereupon the caller loses access
 to it.
 */
-fn send<unique T>(ch: chan<T>, -data: T) {
+fn send<uniq T>(ch: chan<T>, -data: T) {
     let chan_t(t, p) = ch;
     rustrt::chan_id_send(sys::get_type_desc::<T>(), t, p, data);
     task::yield();
@@ -116,7 +116,7 @@ Function: port
 
 Constructs a port.
 */
-fn port<unique T>() -> port<T> {
+fn port<uniq T>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>())))
 }
 
@@ -128,7 +128,7 @@ Receive from a port.
 If no data is available on the port then the task will block until data
 becomes available.
 */
-fn recv<unique T>(p: port<T>) -> T { ret rusti::recv(***p) }
+fn recv<uniq T>(p: port<T>) -> T { ret rusti::recv(***p) }
 
 /*
 Function: chan
@@ -137,6 +137,6 @@ Constructs a channel.
 
 The channel is bound to the port used to construct it.
 */
-fn chan<unique T>(p: port<T>) -> chan<T> {
+fn chan<uniq T>(p: port<T>) -> chan<T> {
     chan_t(task::get_task(), rustrt::get_port_id(***p))
 }
