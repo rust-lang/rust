@@ -92,8 +92,7 @@ type program = obj {
 fn arg_vec(prog: str, args: [@str]) -> [sbuf] {
     let argptrs = str::as_buf(prog, {|buf| [buf] });
     for arg in args { argptrs += str::as_buf(*arg, {|buf| [buf] }); }
-    // FIXME: ptr::null instead of cast
-    argptrs += [unsafe {unsafe::reinterpret_cast(0)}];
+    argptrs += [ptr::null()];
     ret argptrs;
 }
 
