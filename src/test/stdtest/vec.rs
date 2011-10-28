@@ -317,6 +317,17 @@ fn iter_nonempty() {
 }
 
 #[test]
+fn iter2() {
+    let i = 0;
+    vec::iter2([1, 2, 3], { |j, v|
+        if i == 0 { assert v == 1; }
+        assert j + 1u == v as uint;
+        i += v;                   
+                          });
+    assert i == 6;
+}
+
+#[test]
 fn riter_empty() {
     let i = 0;
     vec::riter::<int>([], { |_v| i += 1 });
