@@ -20,6 +20,41 @@ native "c-stack-cdecl" mod rustrt {
 }
 
 /*
+Type: init_op
+
+A function used to initialize the elements of a vector.
+*/
+type init_op<T> = block(uint) -> T;
+
+
+/*
+Predicate: is_empty
+
+Returns true if a vector contains no elements.
+*/
+pure fn is_empty<T>(v: [mutable? T]) -> bool {
+    // FIXME: This would be easier if we could just call len
+    for t: T in v { ret false; }
+    ret true;
+}
+
+/*
+Predicate: is_not_empty
+
+Returns true if a vector contains some elements.
+*/
+pure fn is_not_empty<T>(v: [mutable? T]) -> bool { ret !is_empty(v); }
+
+/*
+Predicate: same_length
+
+Returns true if two vectors have the same length
+*/
+pure fn same_length<T, U>(xs: [T], ys: [U]) -> bool {
+    vec::len(xs) == vec::len(ys)
+}
+
+/*
 Function: reserve
 
 Reserves capacity for `n` elements in the given vector.
@@ -42,13 +77,6 @@ Function: len
 Returns the length of a vector
 */
 pure fn len<T>(v: [mutable? T]) -> uint { unchecked { rusti::vec_len(v) } }
-
-/*
-Type: init_op
-
-A function used to initialize the elements of a vector.
-*/
-type init_op<T> = block(uint) -> T;
 
 /*
 Function: init_fn
@@ -140,24 +168,6 @@ fn from_mut<T>(v: [mutable T]) -> [T] {
     for t: T in v { vres += [t]; }
     ret vres;
 }
-
-/*
-Predicate: is_empty
-
-Returns true if a vector contains no elements.
-*/
-pure fn is_empty<T>(v: [mutable? T]) -> bool {
-    // FIXME: This would be easier if we could just call len
-    for t: T in v { ret false; }
-    ret true;
-}
-
-/*
-Predicate: is_not_empty
-
-Returns true if a vector contains some elements.
-*/
-pure fn is_not_empty<T>(v: [mutable? T]) -> bool { ret !is_empty(v); }
 
 // Accessors
 
@@ -517,15 +527,6 @@ fn position_pred<T>(f: block(T) -> bool, v: [T]) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;
-}
-
-/*
-Predicate: same_length
-
-Returns true if two vectors have the same length
-*/
-pure fn same_length<T, U>(xs: [T], ys: [U]) -> bool {
-    vec::len(xs) == vec::len(ys)
 }
 
 // FIXME: if issue #586 gets implemented, could have a postcondition
