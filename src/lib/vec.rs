@@ -602,7 +602,7 @@ Function: reversed
 
 Returns a vector with the order of elements reversed
 */
-fn reversed<T>(v: [T]) -> [T] {
+fn reversed<T>(v: [mutable? T]) -> [T] {
     let rs: [T] = [];
     let i = len::<T>(v);
     if i == 0u { ret rs; } else { i -= 1u; }

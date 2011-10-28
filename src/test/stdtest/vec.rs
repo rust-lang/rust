@@ -363,6 +363,13 @@ fn reverse_and_reversed() {
     vec::reverse::<int>(v3);
 }
 
+#[test]
+fn reversed_mut() {
+    let v2 = vec::reversed::<int>([mutable 10, 20]);
+    assert (v2[0] == 20);
+    assert (v2[1] == 10);
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
