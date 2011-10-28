@@ -74,9 +74,6 @@ Produce a uint suitable for use in a hash table
 */
 fn hash(x: int) -> uint { ret x as uint; }
 
-// FIXME: This is redundant
-fn eq_alias(x: int, y: int) -> bool { ret x == y; }
-
 /*
 Function: range
 
