@@ -279,7 +279,7 @@ fn get_os(triple: str) -> session::os {
             session::os_macos
         } else if str::find(triple, "linux") >= 0 {
             session::os_linux
-        } else { log_err "Unknown operating system!"; fail };
+        } else { early_error("Unknown operating system!") };
 }
 
 fn get_arch(triple: str) -> session::arch {
@@ -293,7 +293,7 @@ fn get_arch(triple: str) -> session::arch {
         } else if str::find(triple, "arm") >= 0 ||
                       str::find(triple, "xscale") >= 0 {
             session::arch_arm
-        } else { log_err "Unknown architecture! " + triple; fail };
+        } else { early_error("Unknown architecture! " + triple) };
 }
 
 fn build_target_config(sopts: @session::options) -> @session::config {
@@ -348,8 +348,7 @@ fn build_session_options(match: getopts::match)
     let opt_level: uint =
         if opt_present(match, "O") {
             if opt_present(match, "OptLevel") {
-                log_err "error: -O and --OptLevel both provided";
-                fail;
+                early_error("-O and --OptLevel both provided");
             }
             2u
         } else if opt_present(match, "OptLevel") {
@@ -359,9 +358,8 @@ fn build_session_options(match: getopts::match)
               "2" { 2u }
               "3" { 3u }
               _ {
-                log_err "error: optimization level needs " +
-                            "to be between 0-3";
-                fail
+                early_error("optimization level needs " +
+                            "to be between 0-3")
               }
             }
         } else { 0u };
@@ -485,14 +483,18 @@ fn build_output_filenames(ifile: str, ofile: option::t<str>,
     ret @{out_filename: saved_out_filename, obj_filename: obj_filename};
 }
 
+fn early_error(msg: str) -> ! {
+    codemap::print_diagnostic("", codemap::error, msg);
+    fail;
+}
+
 fn main(args: [str]) {
     let binary = vec::shift(args);
     let match =
         alt getopts::getopts(args, opts()) {
           getopts::success(m) { m }
           getopts::failure(f) {
-            log_err #fmt["error: %s", getopts::fail_str(f)];
-            fail
+            early_error(getopts::fail_str(f))
           }
         };
     if opt_present(match, "h") || opt_present(match, "help") {
@@ -503,16 +505,15 @@ fn main(args: [str]) {
         version(binary);
         ret;
     }
+    let ifile = alt vec::len(match.free) {
+      0u { early_error("No input filename given.") }
+      1u { match.free[0] }
+      _ { early_error("Multiple input filenames provided.") }
+    };
+
     let sopts = build_session_options(match);
     let sess = build_session(sopts);
-    let n_inputs = vec::len::<str>(match.free);
-    if n_inputs == 0u {
-        sess.fatal("No input filename given.");
-    } else if n_inputs > 1u {
-        sess.fatal("Multiple input filenames provided.");
-    }
     let ofile = getopts::opt_maybe_str(match, "o");
-    let ifile = match.free[0];
     let outputs = build_output_filenames(ifile, ofile, sopts);
     let cfg = build_configuration(sess, binary, ifile);
     let pretty =
