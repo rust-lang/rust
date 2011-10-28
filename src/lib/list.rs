@@ -40,13 +40,13 @@ and so on, returning the accumulated result.
 
 Parameters:
 
-ls_ - The list to fold
+ls - The list to fold
 u - The initial value
 f - The function to apply
 */
-fn foldl<T, U>(ls_: list<T>, u: U, f: block(T, U) -> U) -> U {
+fn foldl<T, U>(ls: list<T>, u: U, f: block(T, U) -> U) -> U {
     let accum: U = u;
-    let ls = ls_;
+    let ls = ls;
     while true {
         alt ls {
           cons(hd, tl) { accum = f(hd, accum); ls = *tl; }
@@ -65,8 +65,8 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<T, U>(ls_: list<T>, f: block(T) -> option::t<U>) -> option::t<U> {
-    let ls = ls_;
+fn find<T, U>(ls: list<T>, f: block(T) -> option::t<U>) -> option::t<U> {
+    let ls = ls;
     while true {
         alt ls {
           cons(hd, tl) {
@@ -83,8 +83,8 @@ Function: has
 
 Returns true if a list contains an element with the given value
 */
-fn has<T>(ls_: list<T>, elt: T) -> bool {
-    let ls = ls_;
+fn has<T>(ls: list<T>, elt: T) -> bool {
+    let ls = ls;
     while true {
         alt ls {
           cons(hd, tl) { if elt == hd { ret true; } else { ls = *tl; } }
