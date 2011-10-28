@@ -656,11 +656,22 @@ fn eachi<T>(f: block(T, uint) -> (), v: [mutable? T]) {
 }
 
 /*
+Function: iter
+
+Iterates over a vector
+
+Iterates over vector `v` and, for each element, calls function `f`
+*/
+fn iter<T>(v: [mutable? T], it: block(T)) {
+    iter2(v) { |_i, v| it(v) }
+}
+
+/*
 Function: iter2
 
 FIXME: This is exactly the same as eachi
 */
-fn iter2<T>(v: [T], it: block(uint, T)) {
+fn iter2<T>(v: [mutable? T], it: block(uint, T)) {
     let i = 0u;
     for x in v { it(i, x); i += 1u; }
 }

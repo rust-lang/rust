@@ -293,6 +293,20 @@ fn test_foldl() {
 }
 
 #[test]
+fn iter_empty() {
+    let i = 0;
+    vec::iter::<int>([], { |_v| i += 1 });
+    assert i == 0;
+}
+
+#[test]
+fn iter_nonempty() {
+    let i = 0;
+    vec::iter([1, 2, 3], { |v| i += v });
+    assert i == 6;
+}
+
+#[test]
 fn test_any_and_all() {
     assert (vec::any(is_three, [1u, 2u, 3u]));
     assert (!vec::any(is_three, [0u, 1u, 2u]));
