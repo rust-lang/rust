@@ -15,6 +15,14 @@ fn test_from_vec() {
 }
 
 #[test]
+fn test_from_vec_mut() {
+    let l = from_vec([mutable 0, 1, 2]);
+    assert (car(l) == 0);
+    assert (car(cdr(l)) == 1);
+    assert (car(cdr(cdr(l))) == 2);
+}
+
+#[test]
 fn test_foldl() {
     let l = from_vec([0, 1, 2, 3, 4]);
     fn add(&&a: int, &&b: uint) -> uint { ret (a as uint) + b; }
