@@ -367,9 +367,9 @@ fn parse_constr_arg(args: [ast::arg], p: parser) -> @ast::constr_arg {
 fn parse_ty_constr(fn_args: [ast::arg], p: parser) -> @ast::constr {
     let lo = p.get_lo_pos();
     let path = parse_path(p);
-    let pf = bind parse_constr_arg(fn_args, _);
     let args: {node: [@ast::constr_arg], span: span} =
-        parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), pf, p);
+        parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
+                  {|p| parse_constr_arg(fn_args, p)}, p);
     ret @spanned(lo, args.span.hi,
                  {path: path, args: args.node, id: p.get_id()});
 }
@@ -386,7 +386,7 @@ fn parse_constr_in_type(p: parser) -> @ast::ty_constr {
 }
 
 
-fn parse_constrs<T>(pser: fn@(parser) -> @ast::constr_general<T>,
+fn parse_constrs<T>(pser: block(parser) -> @ast::constr_general<T>,
                     p: parser) ->
    [@ast::constr_general<T>] {
     let constrs: [@ast::constr_general<T>] = [];
@@ -414,7 +414,8 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool)
     } else { ret @spanned(lo, p.get_lo_pos(), orig_t); }
 
     // If we're here, we have explicit type parameter instantiation.
-    let seq = parse_seq_to_gt(some(token::COMMA), bind parse_ty(_, false), p);
+    let seq = parse_seq_to_gt(some(token::COMMA), {|p| parse_ty(p, false)},
+                              p);
 
     alt orig_t {
       ast::ty_path(pth, ann) {
@@ -596,7 +597,7 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
 }
 
 fn parse_seq_to_before_gt<T>(sep: option::t<token::token>,
-                              f: fn@(parser) -> T,
+                              f: block(parser) -> T,
                               p: parser) -> [T] {
     let first = true;
     let v = [];
@@ -612,7 +613,7 @@ fn parse_seq_to_before_gt<T>(sep: option::t<token::token>,
     ret v;
 }
 
-fn parse_seq_to_gt<T>(sep: option::t<token::token>, f: fn@(parser) -> T,
+fn parse_seq_to_gt<T>(sep: option::t<token::token>, f: block(parser) -> T,
                       p: parser) -> [T] {
     let v = parse_seq_to_before_gt(sep, f, p);
     expect_gt(p);
@@ -620,7 +621,7 @@ fn parse_seq_to_gt<T>(sep: option::t<token::token>, f: fn@(parser) -> T,
     ret v;
 }
 
-fn parse_seq_lt_gt<T>(sep: option::t<token::token>, f: fn@(parser) -> T,
+fn parse_seq_lt_gt<T>(sep: option::t<token::token>, f: block(parser) -> T,
                       p: parser) -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, token::LT);
@@ -631,7 +632,7 @@ fn parse_seq_lt_gt<T>(sep: option::t<token::token>, f: fn@(parser) -> T,
 }
 
 fn parse_seq_to_end<T>(ket: token::token, sep: option::t<token::token>,
-                       f: fn(parser) -> T, p: parser) -> [T] {
+                       f: block(parser) -> T, p: parser) -> [T] {
     let val = parse_seq_to_before_end(ket, sep, f, p);
     p.bump();
     ret val;
@@ -639,7 +640,7 @@ fn parse_seq_to_end<T>(ket: token::token, sep: option::t<token::token>,
 
 fn parse_seq_to_before_end<T>(ket: token::token,
                                sep: option::t<token::token>,
-                               f: fn@(parser) -> T, p: parser) -> [T] {
+                               f: block(parser) -> T, p: parser) -> [T] {
     let first: bool = true;
     let v: [T] = [];
     while p.peek() != ket {
@@ -654,8 +655,8 @@ fn parse_seq_to_before_end<T>(ket: token::token,
 
 
 fn parse_seq<T>(bra: token::token, ket: token::token,
-                sep: option::t<token::token>, f: fn@(parser) -> T, p: parser)
-   -> spanned<[T]> {
+                sep: option::t<token::token>, f: block(parser) -> T,
+                p: parser) -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, bra);
     let result = parse_seq_to_before_end::<T>(ket, sep, f, p);
@@ -736,7 +737,7 @@ fn parse_path_and_ty_param_substs(p: parser) -> ast::path {
         p.bump();
 
         let seq =
-            parse_seq_lt_gt(some(token::COMMA), bind parse_ty(_, false), p);
+            parse_seq_lt_gt(some(token::COMMA), {|p| parse_ty(p, false)}, p);
         let hi = seq.span.hi;
         path =
             spanned(lo, hi,
@@ -1768,7 +1769,7 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
     let constrs = [];
     if p.peek() == token::COLON {
         p.bump();
-        constrs = parse_constrs(bind parse_ty_constr(inputs.node, _), p);
+        constrs = parse_constrs({|x| parse_ty_constr(inputs.node, x) }, p);
     }
     let (ret_style, ret_ty) = parse_ret_ty(p, vec::len(inputs.node));
     ret {inputs: inputs.node,
@@ -2092,9 +2093,9 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
             let vhi = p.get_hi_pos();
             alt p.peek() {
               token::LPAREN. {
-                let arg_tys =
-                    parse_seq(token::LPAREN, token::RPAREN,
-                              some(token::COMMA), bind parse_ty(_, false), p);
+                let arg_tys = parse_seq(token::LPAREN, token::RPAREN,
+                                        some(token::COMMA),
+                                        {|p| parse_ty(p, false)}, p);
                 for ty: @ast::ty in arg_tys.node {
                     args += [{ty: ty, id: p.get_id()}];
                 }
