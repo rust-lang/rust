@@ -638,42 +638,29 @@ fn enum_uints(start: uint, end: uint) : uint::le(start, end) -> [uint] {
 }
 
 /*
-Function: eachi
-
-Iterates over a vector's elements and indexes
-
-Iterates over vector `v` and, for each element, calls function `f`
-with the element's value and index.
-*/
-fn eachi<T>(f: block(T, uint) -> (), v: [mutable? T]) {
-    let i = 0u;
-    let l = len(v);
-    while (i < l) {
-        let elem = v[i];    // Satisfy alias checker
-        f(elem, i);
-        i += 1u;
-    }
-}
-
-/*
 Function: iter
 
 Iterates over a vector
 
-Iterates over vector `v` and, for each element, calls function `f`
+Iterates over vector `v` and, for each element, calls function `f` with the
+element's value.
+
 */
-fn iter<T>(v: [mutable? T], it: block(T)) {
-    iter2(v) { |_i, v| it(v) }
+fn iter<T>(v: [mutable? T], f: block(T)) {
+    iter2(v) { |_i, v| f(v) }
 }
 
 /*
 Function: iter2
 
-FIXME: This is exactly the same as eachi
+Iterates over a vector's elements and indexes
+
+Iterates over vector `v` and, for each element, calls function `f` with the
+element's value and index.
 */
-fn iter2<T>(v: [mutable? T], it: block(uint, T)) {
+fn iter2<T>(v: [mutable? T], f: block(uint, T)) {
     let i = 0u;
-    for x in v { it(i, x); i += 1u; }
+    for x in v { f(i, x); i += 1u; }
 }
 
 /*
