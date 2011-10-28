@@ -484,6 +484,7 @@ fn main(args: [str]) {
         sopts.output_type != link::output_type_exe ||
             sopts.static && sopts.library;
 
+    let ofile = "";
     alt output_file {
       none. {
         // "-" as input file will cause the parser to read from stdin so we
@@ -494,37 +495,36 @@ fn main(args: [str]) {
                 str::split(ifile, '.' as u8)
             } else { ["default", "rs"] };
         vec::pop(parts);
-        saved_out_filename = str::connect(parts, ".");
+        let base_filename = str::connect(parts, ".");
         let suffix =
             alt sopts.output_type {
               link::output_type_none. { "none" }
               link::output_type_bitcode. { "bc" }
               link::output_type_assembly. { "s" }
-
-
-
-
               // Object and exe output both use the '.o' extension here
               link::output_type_object. | link::output_type_exe. {
                 "o"
               }
             };
-        let ofile = saved_out_filename + "." + suffix;
-        compile_input(sess, cfg, ifile, ofile);
+        ofile = base_filename + "." + suffix;
+
+        if sopts.library {
+            saved_out_filename = std::os::dylib_filename(base_filename);
+        } else {
+            saved_out_filename = base_filename;
+        }
       }
-      some(ofile) {
-        let ofile = ofile;
-        // FIXME: what about windows? This will create a foo.exe.o.
-        saved_out_filename = ofile;
-        let temp_filename =
-            if !stop_after_codegen { ofile + ".o" } else { ofile };
-        compile_input(sess, cfg, ifile, temp_filename);
+      some(out_file) {
+        saved_out_filename = out_file;
+        ofile =
+            if !stop_after_codegen { out_file + ".o" } else { out_file };
       }
     }
 
+    compile_input(sess, cfg, ifile, ofile);
     if stop_after_codegen { ret; }
 
-    link::link_binary(sess, saved_out_filename);
+    link::link_binary(sess, ofile, saved_out_filename);
 }
 
 #[cfg(test)]

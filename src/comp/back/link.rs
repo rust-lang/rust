@@ -502,7 +502,8 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 // If the user wants an exe generated we need to invoke
 // gcc to link the object file with some libs
 fn link_binary(sess: session::session,
-               saved_out_filename: str) {
+               obj_filename: str,
+               out_filename: str) {
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let stage: str = "-L" + sess.filesearch().get_target_lib_path();
@@ -510,9 +511,7 @@ fn link_binary(sess: session::session,
     let prog: str = "gcc";
     // The invocations of gcc share some flags across platforms
 
-    let gcc_args =
-        [stage, "-m32", "-o", saved_out_filename,
-         saved_out_filename + ".o"];
+    let gcc_args = [stage, "-m32", "-o", out_filename, obj_filename];
     let lib_cmd;
 
     let os = sess.get_targ_cfg().os;
@@ -569,7 +568,7 @@ fn link_binary(sess: session::session,
         // be rpathed
         if sess.get_targ_cfg().os == session::os_macos {
             gcc_args += ["-Wl,-install_name,@rpath/"
-                        + fs::basename(saved_out_filename)];
+                        + fs::basename(out_filename)];
         }
     } else {
         // FIXME: why do we hardcode -lm?
@@ -586,7 +585,7 @@ fn link_binary(sess: session::session,
         gcc_args += ["-lrt", "-ldl"];
     }
 
-    gcc_args += rpath::get_rpath_flags(sess, saved_out_filename);
+    gcc_args += rpath::get_rpath_flags(sess, out_filename);
 
     log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
     // We run 'gcc' here
@@ -600,13 +599,13 @@ fn link_binary(sess: session::session,
     // Clean up on Darwin
 
     if sess.get_targ_cfg().os == session::os_macos {
-        run::run_program("dsymutil", [saved_out_filename]);
+        run::run_program("dsymutil", [out_filename]);
     }
 
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.get_opts().save_temps {
-        run::run_program("rm", [saved_out_filename + ".o"]);
+        run::run_program("rm", [obj_filename]);
     }
 }
 
