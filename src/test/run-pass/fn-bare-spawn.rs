@@ -1,6 +1,6 @@
 // This is what the signature to spawn should look like with bare functions
 
-fn spawn<unique T>(val: T, f: fn(T)) {
+fn spawn<uniq T>(val: T, f: fn(T)) {
     f(val);
 }
 

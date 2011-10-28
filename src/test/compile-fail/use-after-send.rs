@@ -1,5 +1,5 @@
 // error-pattern: Unsatisfied precondition constraint
-fn send<unique T>(ch: _chan<T>, -data: T) { log ch; log data; fail; }
+fn send<uniq T>(ch: _chan<T>, -data: T) { log ch; log data; fail; }
 type _chan<T> = int;
 
 // Tests that "log message;" is flagged as using

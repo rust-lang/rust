@@ -5,7 +5,7 @@ type closable = @mutable bool;
 
 resource close_res(i: closable) { *i = false; }
 
-tag option<pinned T> { none; some(T); }
+tag option<pin T> { none; some(T); }
 
 fn sink(res: option<close_res>) { }
 

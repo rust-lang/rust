@@ -1,10 +1,10 @@
 fn unique() {
 
-    fn f<unique T>(i: T, j: T) {
+    fn f<uniq T>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<unique T>(i: T, j: T) {
+    fn g<uniq T>(i: T, j: T) {
         assert i != j;
     }
 
@@ -36,11 +36,11 @@ fn shared() {
 
 fn pinned() {
 
-    fn f<T>(i: T, j: T) {
+    fn f<pin T>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T>(i: T, j: T) {
+    fn g<pin T>(i: T, j: T) {
         assert i != j;
     }
 

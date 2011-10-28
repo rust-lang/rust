@@ -1,6 +1,6 @@
 
 
-fn id<unique T>(t: T) -> T { ret t; }
+fn id<uniq T>(t: T) -> T { ret t; }
 
 fn main() {
     let expected = ~100;
