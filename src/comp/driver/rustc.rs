@@ -506,14 +506,14 @@ fn main(args: [str]) {
     let sopts = build_session_options(match);
     let sess = build_session(sopts);
     let n_inputs = vec::len::<str>(match.free);
-    let ofile = getopts::opt_maybe_str(match, "o");
-    let ifile = match.free[0];
-    let outputs = build_output_filenames(ifile, ofile, sopts);
     if n_inputs == 0u {
         sess.fatal("No input filename given.");
     } else if n_inputs > 1u {
         sess.fatal("Multiple input filenames provided.");
     }
+    let ofile = getopts::opt_maybe_str(match, "o");
+    let ifile = match.free[0];
+    let outputs = build_output_filenames(ifile, ofile, sopts);
     let cfg = build_configuration(sess, binary, ifile);
     let pretty =
         option::map::<str,
