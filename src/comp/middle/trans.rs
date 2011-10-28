@@ -1536,63 +1536,49 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
 // A helper function to do the actual comparison of scalar values.
 fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
                          nt: scalar_type, op: ast::binop) -> ValueRef {
-    let cmp = alt nt {
+    alt nt {
       nil_type. {
         // We don't need to do actual comparisons for nil.
         // () == () holds but () < () does not.
         alt op {
-          ast::eq. | ast::le. | ast::ge. { 1u }
-          ast::ne. | ast::lt. | ast::gt. { 0u }
+          ast::eq. | ast::le. | ast::ge. { ret C_bool(true); }
+          ast::ne. | ast::lt. | ast::gt. { ret C_bool(false); }
         }
       }
       floating_point. {
-        alt op {
+        let cmp = alt op {
           ast::eq. { lib::llvm::LLVMRealOEQ }
           ast::ne. { lib::llvm::LLVMRealUNE }
           ast::lt. { lib::llvm::LLVMRealOLT }
           ast::le. { lib::llvm::LLVMRealOLE }
           ast::gt. { lib::llvm::LLVMRealOGT }
           ast::ge. { lib::llvm::LLVMRealOGE }
-        }
+        };
+        ret FCmp(cx, cmp, lhs, rhs);
       }
       signed_int. {
-        alt op {
+        let cmp = alt op {
           ast::eq. { lib::llvm::LLVMIntEQ }
           ast::ne. { lib::llvm::LLVMIntNE }
           ast::lt. { lib::llvm::LLVMIntSLT }
           ast::le. { lib::llvm::LLVMIntSLE }
           ast::gt. { lib::llvm::LLVMIntSGT }
           ast::ge. { lib::llvm::LLVMIntSGE }
-        }
+        };
+        ret ICmp(cx, cmp, lhs, rhs);
       }
       unsigned_int. {
-        alt op {
+        let cmp = alt op {
           ast::eq. { lib::llvm::LLVMIntEQ }
           ast::ne. { lib::llvm::LLVMIntNE }
           ast::lt. { lib::llvm::LLVMIntULT }
           ast::le. { lib::llvm::LLVMIntULE }
           ast::gt. { lib::llvm::LLVMIntUGT }
           ast::ge. { lib::llvm::LLVMIntUGE }
-        }
+        };
+        ret ICmp(cx, cmp, lhs, rhs);
       }
-    };
-    // FIXME: This wouldn't be necessary if we could bind methods off of
-    // objects and therefore abstract over FCmp and ICmp (issue #435).  Then
-    // we could just write, e.g., "cmp_fn = bind FCmp(cx, _, _, _);" in
-    // the above, and "auto eq_result = cmp_fn(eq_cmp, lhs, rhs);" in the
-    // below.
-
-    fn generic_cmp(cx: @block_ctxt, nt: scalar_type, op: uint, lhs: ValueRef,
-                   rhs: ValueRef) -> ValueRef {
-        let r: ValueRef;
-        if nt == nil_type {
-            r = C_bool(op != 0u);
-        } else if nt == floating_point {
-            r = FCmp(cx, op, lhs, rhs);
-        } else { r = ICmp(cx, op, lhs, rhs); }
-        ret r;
     }
-    ret generic_cmp(cx, nt, cmp, lhs, rhs);
 }
 
 type val_pair_fn = fn(@block_ctxt, ValueRef, ValueRef) -> @block_ctxt;
