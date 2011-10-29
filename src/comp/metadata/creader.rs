@@ -88,7 +88,13 @@ fn metadata_matches(crate_data: @[u8], metas: [@ast::meta_item]) -> bool {
     log #fmt["matching %u metadata requirements against %u items",
              vec::len(metas), vec::len(linkage_metas)];
 
+    log #fmt("crate metadata:");
+    for have: @ast::meta_item in linkage_metas {
+        log #fmt("  %s", pprust::meta_item_to_str(*have));
+    }
+
     for needed: @ast::meta_item in metas {
+        log #fmt["looking for %s", pprust::meta_item_to_str(*needed)];
         if !attr::contains(linkage_metas, needed) {
             log #fmt["missing %s", pprust::meta_item_to_str(*needed)];
             ret false;
@@ -147,12 +153,14 @@ fn find_library_crate_aux(nn: {prefix: str, suffix: str}, crate_name: str,
     let suffix: str = nn.suffix;
 
     ret filesearch::search(filesearch, { |path|
+        log #fmt("inspecting file %s", path);
         let f: str = fs::basename(path);
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
             log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
                      suffix];
             option::none
         } else {
+            log #fmt("%s is a candidate", path);
             alt get_metadata_section(path) {
               option::some(cvec) {
                 if !metadata_matches(cvec, metas) {
@@ -163,7 +171,10 @@ fn find_library_crate_aux(nn: {prefix: str, suffix: str}, crate_name: str,
                     option::some({ident: path, data: cvec})
                 }
               }
-              _ { option::none }
+              _ {
+                log #fmt("could not load metadata for %s", path);
+                option::none
+              }
             }
         }
     });
