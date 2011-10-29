@@ -5,6 +5,7 @@ import std::vec::*;
 import std::option;
 import std::option::none;
 import std::option::some;
+import std::task;
 
 fn square(n: uint) -> uint { ret n * n; }
 
@@ -442,6 +443,31 @@ fn reversed_mut() {
     assert (v2[0] == 20);
     assert (v2[1] == 10);
 }
+
+#[test]
+fn init() {
+    let v = vec::init([1, 2, 3]);
+    assert v == [1, 2];
+}
+
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "mac")]
+#[test]
+fn init_empty() {
+
+    let r = task::join(
+        task::spawn_joinable((), fn (&&_i: ()) {
+            task::unsupervise();
+            vec::init::<int>([]);
+        }));
+    assert r == task::tr_failure
+}
+
+// FIXME: Windows can't undwind
+#[cfg(target_os = "win32")]
+#[test]
+#[ignore]
+fn init_empty() { }
 
 // Local Variables:
 // mode: rust;

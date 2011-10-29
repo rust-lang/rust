@@ -193,10 +193,26 @@ fn tail<T>(v: [mutable? T]) : is_not_empty(v) -> [T] {
     ret slice(v, 1u, len(v));
 }
 
+// FIXME: This name is sort of confusing next to init_fn, etc
+// but this is the name haskell uses for this function,
+// along with head/tail/last.
+/*
+Function: init
+
+Returns all but the last elemnt of a vector
+
+Preconditions:
+`v` is not empty
+*/
+fn init<T>(v: [mutable? T]) -> [T] {
+    assert len(v) != 0u;
+    slice(v, 0u, len(v) - 1u)
+}
+
 /*
 Function: last
 
-Returns the last element of `v`
+Returns the last element of a vector
 
 Returns:
 
