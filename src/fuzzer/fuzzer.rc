@@ -3,8 +3,6 @@
 use std;
 use rustc;
 
-mod fuzzer;
-
 // Local Variables:
 // fill-column: 78;
 // indent-tabs-mode: nil

@@ -1,5 +1,5 @@
 
-import std::{io, vec, str, option, either, result};
+import std::{io, vec, str, option, either, result, fs};
 import std::option::{some, none};
 import std::either::{left, right};
 import std::map::{hashmap, new_str_hash};
@@ -2599,13 +2599,15 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
           mutable chpos: p.get_chpos(),
           mutable byte_pos: p.get_byte_pos(),
           cfg: p.get_cfg()};
-    let m = eval::eval_crate_directives_to_mod(cx, cdirs, prefix);
+    let (companionmod, _) = fs::splitext(fs::basename(input));
+    let (m, attrs) = eval::eval_crate_directives_to_mod(
+        cx, cdirs, prefix, option::some(companionmod));
     let hi = p.get_hi_pos();
     expect(p, token::EOF);
     ret @spanned(lo, hi,
                  {directives: cdirs,
                   module: m,
-                  attrs: crate_attrs,
+                  attrs: crate_attrs + attrs,
                   config: p.get_cfg()});
 }
 

@@ -1,0 +1,1 @@
+fn f() -> str { "ralph" }

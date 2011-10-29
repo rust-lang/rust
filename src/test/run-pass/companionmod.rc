@@ -1,0 +1,10 @@
+// Test that crates and directory modules can contain code
+
+mod a = "companionmod-src" {
+    mod b {
+        mod x;
+    }
+    mod c = "d" {
+        mod x;
+    }
+}

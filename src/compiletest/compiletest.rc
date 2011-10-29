@@ -1,6 +1,5 @@
 use std;
 
-mod compiletest;
 mod procsrv;
 mod util;
 mod header;

@@ -1,6 +1,3 @@
-use std;
-use rustc;
-
 import std::{fs, io, getopts, math, vec, str, int, uint, option, result};
 import std::getopts::{optopt, opt_present, opt_str};
 import std::io::stdout;
