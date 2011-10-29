@@ -177,6 +177,55 @@ fn split(p: path) -> [path] {
 }
 
 /*
+Function: splitext
+
+Split a path into a pair of strings with the first element being the filename
+without the extension and the second being either empty or the file extension
+including the period. Leading periods in the basename are ignored.  If the
+path includes directory components then they are included in the filename part
+of the result pair.
+*/
+fn splitext(p: path) -> (str, str) {
+    if str::is_empty(p) { ("", "") }
+    else {
+        let parts = str::split(p, '.' as u8);
+        if vec::len(parts) > 1u {
+            let base = str::connect(vec::init(parts), ".");
+            let ext = "." + option::get(vec::last(parts));
+
+            fn is_dotfile(base: str) -> bool {
+                str::is_empty(base)
+                    || str::ends_with(
+                        base, str::from_char(os_fs::path_sep))
+                    || str::ends_with(
+                        base, str::from_char(os_fs::alt_path_sep))
+            }
+
+            fn ext_contains_sep(ext: str) -> bool {
+                vec::len(split(ext)) > 1u
+            }
+
+            fn no_basename(ext: str) -> bool {
+                str::ends_with(
+                    ext, str::from_char(os_fs::path_sep))
+                    || str::ends_with(
+                        ext, str::from_char(os_fs::alt_path_sep))
+            }
+
+            if is_dotfile(base)
+                || ext_contains_sep(ext)
+                || no_basename(ext) {
+                (p, "")
+            } else {
+                (base, ext)
+            }
+        } else {
+            (p, "")
+        }
+    }
+}
+
+/*
 Function: normalize
 
 Removes extra "." and ".." entries from paths.

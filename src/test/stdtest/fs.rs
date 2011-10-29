@@ -157,3 +157,59 @@ fn normalize12() {
 fn path_is_absolute_win32() {
    assert fs::path_is_absolute("C:/whatever");
 }
+
+#[test]
+fn splitext_empty() {
+    let (base, ext) = fs::splitext("");
+    assert base == "";
+    assert ext == "";
+}
+
+#[test]
+fn splitext_ext() {
+    let (base, ext) = fs::splitext("grum.exe");
+    assert base == "grum";
+    assert ext == ".exe";
+}
+
+#[test]
+fn splitext_noext() {
+    let (base, ext) = fs::splitext("grum");
+    assert base == "grum";
+    assert ext == "";
+}
+
+#[test]
+fn splitext_dotfile() {
+    let (base, ext) = fs::splitext(".grum");
+    assert base == ".grum";
+    assert ext == "";
+}
+
+#[test]
+fn splitext_path_ext() {
+    let (base, ext) = fs::splitext("oh/grum.exe");
+    assert base == "oh/grum";
+    assert ext == ".exe";
+}
+
+#[test]
+fn splitext_path_noext() {
+    let (base, ext) = fs::splitext("oh/grum");
+    assert base == "oh/grum";
+    assert ext == "";
+}
+
+#[test]
+fn splitext_dot_in_path() {
+    let (base, ext) = fs::splitext("oh.my/grum");
+    assert base == "oh.my/grum";
+    assert ext == "";
+}
+
+#[test]
+fn splitext_nobasename() {
+    let (base, ext) = fs::splitext("oh.my/");
+    assert base == "oh.my/";
+    assert ext == "";
+}
