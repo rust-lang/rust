@@ -1,5 +1,5 @@
 
-import std::{io, vec, str, option, either};
+import std::{io, vec, str, option, either, result};
 import std::option::{some, none};
 import std::either::{left, right};
 import std::map::{hashmap, new_str_hash};
@@ -53,7 +53,16 @@ type parser =
 fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
                         chpos: uint, byte_pos: uint, ftype: file_type) ->
    parser {
-    let src = io::read_whole_file_str(path);
+    let src = alt io::read_whole_file_str(path) {
+      result::ok(src) {
+        // FIXME: This copy is unfortunate
+        src
+      }
+      result::err(e) {
+        codemap::emit_error(none, e, sess.cm);
+        fail;
+      }
+    };
     let filemap = codemap::new_filemap(path, chpos, byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);

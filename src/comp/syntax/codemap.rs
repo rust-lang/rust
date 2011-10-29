@@ -1,4 +1,4 @@
-import std::{vec, uint, str, term, io, option};
+import std::{vec, uint, str, term, io, option, result};
 import std::option::{some, none};
 
 type filename = str;
@@ -154,7 +154,13 @@ fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
 
         // FIXME: reading in the entire file is the worst possible way to
         //        get access to the necessary lines.
-        let file = io::read_whole_file_str(lines.name);
+        let file = alt io::read_whole_file_str(lines.name) {
+          result::ok(file) { file }
+          result::err(e) {
+            emit_error(none, e, cm);
+            fail;
+          }
+        };
         let fm = get_filemap(cm, lines.name);
 
         // arbitrarily only print up to six lines of the error

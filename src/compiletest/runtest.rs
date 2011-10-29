@@ -5,6 +5,7 @@ import std::fs;
 import std::os;
 import std::vec;
 import std::test;
+import std::result;
 
 import common::mode_run_pass;
 import common::mode_run_fail;
@@ -92,7 +93,7 @@ fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
     let rounds =
         alt props.pp_exact { option::some(_) { 1 } option::none. { 2 } };
 
-    let srcs = [io::read_whole_file_str(testfile)];
+    let srcs = [result::get(io::read_whole_file_str(testfile))];
 
     let round = 0;
     while round < rounds {
@@ -112,7 +113,7 @@ fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
         alt props.pp_exact {
           option::some(file) {
             let filepath = fs::connect(fs::dirname(testfile), file);
-            io::read_whole_file_str(filepath)
+            result::get(io::read_whole_file_str(filepath))
           }
           option::none. { srcs[vec::len(srcs) - 2u] }
         };
@@ -339,7 +340,8 @@ fn dump_output(config: config, testfile: str, out: str, err: str) {
 #[cfg(target_os = "linux")]
 fn dump_output_file(config: config, testfile: str, out: str, extension: str) {
     let outfile = make_out_name(config, testfile, extension);
-    let writer = io::file_writer(outfile, [io::create, io::truncate]);
+    let writer = result::get(
+        io::file_writer(outfile, [io::create, io::truncate]));
     writer.write_str(out);
 }
 

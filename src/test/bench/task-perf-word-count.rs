@@ -20,6 +20,7 @@ import std::io;
 
 import std::time;
 import std::u64;
+import std::result;
 
 import std::task;
 import std::task::joinable_task;
@@ -30,7 +31,7 @@ import std::comm::recv;
 import std::comm::send;
 
 fn map(filename: str, emit: map_reduce::putter) {
-    let f = io::file_reader(filename);
+    let f = result::get(io::file_reader(filename));
 
 
     while true {

@@ -41,6 +41,8 @@ fn get<T, U>(res: t<T, U>) -> T {
     alt res {
       ok(t) { t }
       err(_) {
+        // FIXME: Serialize the error value
+        // and include it in the fail message
         fail "get called on error result";
       }
     }

@@ -1,7 +1,7 @@
 use std;
 use rustc;
 
-import std::{fs, io, getopts, math, vec, str, int, uint, option};
+import std::{fs, io, getopts, math, vec, str, int, uint, option, result};
 import std::getopts::{optopt, opt_present, opt_str};
 import std::io::stdout;
 
@@ -13,7 +13,9 @@ tag test_mode { tm_converge; tm_run; }
 type context = { mode: test_mode }; // + rng
 
 fn write_file(filename: str, content: str) {
-    io::file_writer(filename, [io::create, io::truncate]).write_str(content);
+    result::get(
+        io::file_writer(filename, [io::create, io::truncate]))
+        .write_str(content);
     // Work around https://github.com/graydon/rust/issues/726
     std::run::run_program("chmod", ["644", filename]);
 }
@@ -517,7 +519,7 @@ fn check_convergence(files: [str]) {
     log_err #fmt["pp convergence tests: %u files", vec::len(files)];
     for file in files {
         if !file_might_not_converge(file) {
-            let s = io::read_whole_file_str(file);
+            let s = result::get(io::read_whole_file_str(file));
             if !content_might_not_converge(s) {
                 log_err #fmt["pp converge: %s", file];
                 // Change from 7u to 2u once https://github.com/graydon/rust/issues/850 is fixed
@@ -533,7 +535,7 @@ fn check_variants(files: [str], cx: context) {
             cont;
         }
 
-        let s = io::read_whole_file_str(file);
+        let s = result::get(io::read_whole_file_str(file));
         if contains(s, "#") {
             cont; // Macros are confusing
         }

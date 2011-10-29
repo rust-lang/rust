@@ -11,7 +11,7 @@ import syntax::print::{pp, pprust};
 import util::{ppaux, common, filesearch};
 import back::link;
 import lib::llvm;
-import std::{fs, option, str, vec, int, io, run, getopts};
+import std::{fs, option, str, vec, int, io, run, getopts, result};
 import std::map::mk_hashmap;
 import std::option::{some, none};
 import std::getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
@@ -77,10 +77,16 @@ fn parse_input(sess: session::session, cfg: ast::crate_cfg, input: str) ->
 
 fn parse_input_src(sess: session::session, cfg: ast::crate_cfg, infile: str)
    -> {crate: @ast::crate, src: str} {
-    let srcbytes =
-        if infile != "-" {
-            io::file_reader(infile)
-        } else { io::stdin() }.read_whole_stream();
+    let srcbytes = if infile != "-" {
+        alt io::file_reader(infile) {
+          result::ok(reader) { reader }
+          result::err(e) {
+            sess.fatal(e)
+          }
+        }
+    } else {
+        io::stdin()
+    }.read_whole_stream();
     let src = str::unsafe_from_bytes(srcbytes);
     let crate =
         parser::parse_crate_from_source_str(infile, src, cfg,

@@ -173,14 +173,16 @@ fn stdin() -> reader {
     ret new_reader(FILE_buf_reader(rustrt::rust_get_stdin(), option::none));
 }
 
-fn file_reader(path: str) -> reader {
+fn file_reader(path: str) -> result::t<reader, str> {
     let f = str::as_buf(path, {|pathbuf|
         str::as_buf("r", {|modebuf|
             os::libc::fopen(pathbuf, modebuf)
         })
     });
-    if f as uint == 0u { log_err "error opening " + path; fail; }
-    ret new_reader(FILE_buf_reader(f, option::some(@FILE_res(f))));
+    ret if f as uint == 0u { result::err("error opening " + path) }
+    else {
+        result::ok(new_reader(FILE_buf_reader(f, option::some(@FILE_res(f)))))
+    }
 }
 
 
@@ -278,7 +280,8 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
     }
 }
 
-fn file_buf_writer(path: str, flags: [fileflag]) -> buf_writer {
+fn file_buf_writer(path: str,
+                   flags: [fileflag]) -> result::t<buf_writer, str> {
     let fflags: int =
         os::libc_constants::O_WRONLY() | os::libc_constants::O_BINARY();
     for f: fileflag in flags {
@@ -296,12 +299,12 @@ fn file_buf_writer(path: str, flags: [fileflag]) -> buf_writer {
                                        os::libc_constants::S_IRUSR() |
                                            os::libc_constants::S_IWUSR())
                     });
-    if fd < 0 {
-        log_err "error opening file for writing";
+    ret if fd < 0 {
         log_err sys::last_os_error();
-        fail;
+        result::err("error opening " + path)
+    } else {
+        result::ok(fd_buf_writer(fd, option::some(@fd_res(fd))))
     }
-    ret fd_buf_writer(fd, option::some(@fd_res(fd)));
 }
 
 type writer =
@@ -359,13 +362,15 @@ obj new_writer(out: buf_writer) {
     }
 }
 
-fn file_writer(path: str, flags: [fileflag]) -> writer {
-    ret new_writer(file_buf_writer(path, flags));
+fn file_writer(path: str, flags: [fileflag]) -> result::t<writer, str> {
+    result::chain(file_buf_writer(path, flags), { |w|
+        result::ok(new_writer(w))
+    })
 }
 
 
 // FIXME: fileflags
-fn buffered_file_buf_writer(path: str) -> buf_writer {
+fn buffered_file_buf_writer(path: str) -> result::t<buf_writer, str> {
     let f =
         str::as_buf(path,
                     {|pathbuf|
@@ -374,8 +379,8 @@ fn buffered_file_buf_writer(path: str) -> buf_writer {
                                         os::libc::fopen(pathbuf, modebuf)
                                     })
                     });
-    if f as uint == 0u { log_err "error opening " + path; fail; }
-    ret FILE_writer(f, option::some(@FILE_res(f)));
+    ret if f as uint == 0u { result::err("error opening " + path) }
+    else { result::ok(FILE_writer(f, option::some(@FILE_res(f)))) }
 }
 
 
@@ -452,14 +457,18 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
     ret bpos as uint;
 }
 
-fn read_whole_file_str(file: str) -> str {
-    str::unsafe_from_bytes(read_whole_file(file))
+fn read_whole_file_str(file: str) -> result::t<str, str> {
+    result::chain(read_whole_file(file), { |bytes|
+        result::ok(str::unsafe_from_bytes(bytes))
+    })
 }
 
-fn read_whole_file(file: str) -> [u8] {
+fn read_whole_file(file: str) -> result::t<[u8], str> {
 
     // FIXME: There's a lot of copying here
-    file_reader(file).read_whole_stream()
+    result::chain(file_reader(file), { |rdr|
+        result::ok(rdr.read_whole_stream())
+    })
 }
 
 
