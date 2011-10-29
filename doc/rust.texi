@@ -656,16 +656,16 @@ The keywords are:
 @tab @code{str}
 @tab @code{with}
 @tab @code{fn}
-@item @code{iter}
-@tab @code{pure}
+@item @code{pure}
 @tab @code{obj}
 @tab @code{resource}
 @tab @code{if}
-@item @code{else}
-@tab @code{alt}
+@tab @code{else}
+@item @code{alt}
 @tab @code{in}
 @tab @code{do}
 @tab @code{while}
+@tab @code{for}
 @item @code{break}
 @tab @code{cont}
 @tab @code{note}
@@ -674,10 +674,7 @@ The keywords are:
 @item @code{check}
 @tab @code{prove}
 @tab @code{fail}
-@tab @code{for}
-@tab @code{each}
-@item @code{ret}
-@tab @code{put}
+@tab @code{ret}
 @tab @code{be}
 @end multitable
 
@@ -1688,7 +1685,6 @@ context. There are no general parametric types.
 * Ref.Item.Mod::                Items defining modules.
 * Ref.Item.Fn::                 Items defining functions.
 * Ref.Item.Pred::               Items defining predicates for typestates.
-* Ref.Item.Iter::               Items defining iterators.
 * Ref.Item.Obj::                Items defining objects.
 * Ref.Item.Type::               Items defining the types of values and slots.
 * Ref.Item.Tag::                Items defining the constructors of a tag type.
@@ -1970,48 +1966,6 @@ argument @code{f} is a pure function. So, to use @code{foldl} in a pure list
 length function that a predicate could then use, we must use an
 @code{unchecked} block wrapped around the call to @code{pure_foldl} in the
 definition of @code{pure_length}.
- 
-@node          Ref.Item.Iter
-@subsection    Ref.Item.Iter
-@c * Ref.Item.Iter::          Items defining iterators.
-
-@cindex Iterators
-@cindex Put expression
-@cindex Put each expression
-@cindex Foreach expression
-
-Iterators are function-like items that can @code{put} multiple values during
-their execution before returning.
-
-Putting a value is similar to returning a value -- the argument to @code{put}
-is copied into the caller's frame and control transfers back to the caller --
-but the iterator frame is only @emph{suspended} during the put, and will be
-@emph{resumed} at the point after the @code{put}, on the next iteration of
-the caller's loop.
-
-The output type of an iterator is the type of value that the function will
-@code{put}, before it eventually evaluates a @code{ret} or @code{be} expression
-of type @code{()} and completes its execution.
-
-An iterator can be called only in the loop header of a matching @code{for
-each} loop or as the argument in a @code{put each} expression.
-@xref{Ref.Expr.Foreach}.
-
-An example of an iterator:
-@example
-iter range(lo: int, hi: int) -> int @{
-    let i: int = lo;
-    while (i < hi) @{
-        put i;
-        i = i + 1;
-    @}
-@}
-
-let sum: int = 0;
-for each x: int in range(0,100) @{
-    sum += x;
-@}
-@end example
 
 
 @node       Ref.Item.Obj
@@ -2165,7 +2119,6 @@ Rust; they cannot be used as user-defined identifiers in any context.
 * Ref.Type.Vec::                Open products of homogeneous types.
 * Ref.Type.Tag::                Disjoint unions of heterogeneous types.
 * Ref.Type.Fn::                 Subroutine types.
-* Ref.Type.Iter::               Scoped coroutine types.
 * Ref.Type.Obj::                Abstract types.
 * Ref.Type.Constr::             Constrained types.
 * Ref.Type.Type::               Types describing types.
@@ -2445,28 +2398,6 @@ let int x = add(5,7);
 type binop = fn(int,int) -> int;
 let bo: binop = add;
 x = bo(5,7);
-@end example
-
-@node       Ref.Type.Iter
-@subsection Ref.Type.Iter
-@cindex Iterator types
-
-The iterator type-constructor @code{iter} forms new iterator types. An
-iterator type consists a sequence of input slots, an optional set of input
-constraints and an output slot. @xref{Ref.Item.Iter}.
-
-An example of an @code{iter} type:
-@example
-iter range(x: int, y: int) -> int @{
-  while (x < y) @{
-    put x;
-    x += 1;
-  @}
-@}
-
-for each i: int in range(5,7) @{
-  @dots{};
-@}
 @end example
 
 @node       Ref.Type.Obj
@@ -2938,7 +2869,6 @@ effects of the expression's evaluation.
 * Ref.Expr.Break::              Expression for terminating a loop.
 * Ref.Expr.Cont::               Expression for terminating a single loop iteration.
 * Ref.Expr.For::                Expression for looping over strings and vectors.
-* Ref.Expr.Foreach::            Expression for looping via an iterator.
 * Ref.Expr.If::                 Expression for simple conditional branching.
 * Ref.Expr.Alt::                Expression for complex conditional branching.
 * Ref.Expr.Prove::              Expression for static assertion of typestate.
@@ -3197,8 +3127,8 @@ fn read_file_lines(path: str) -> [str] @{
     note path;
     let r: [str];
     let f: file = open_read(path);
-    for each s: str in lines(f) @{
-        vec::append(r,s);
+    lines(f) @{|s|
+        r += [s];
     @}
     ret r;
 @}
@@ -3298,26 +3228,6 @@ let v: [foo] = [a, b, c];
 
 for e: foo in v @{
     bar(e);
-@}
-@end example
-
-@node          Ref.Expr.Foreach
-@subsection    Ref.Expr.Foreach
-@c * Ref.Expr.Foreach::           Expression for general conditional looping.
-@cindex Foreach expression
-@cindex Loops
-@cindex Control-flow
-
-An @dfn{foreach loop} is denoted by the @code{for each} keywords, and is
-controlled by an iterator. The loop executes once for each value @code{put} by
-the iterator.  When the iterator returns or fails, the loop terminates.
-
-Example of a foreach loop:
-@example
-let txt: str;
-let lines: [str];
-for each s: str in str::split(txt, "\n") @{
-    vec::push(lines, s);
 @}
 @end example
 
