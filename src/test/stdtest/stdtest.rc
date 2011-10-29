@@ -31,6 +31,7 @@ mod test;
 mod uint;
 mod float;
 mod math;
+mod result;
 
 // Local Variables:
 // mode: rust
