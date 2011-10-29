@@ -228,6 +228,7 @@ then
     echo ""
     printf "    %-32s %s\n" "CFG_LLVM_ROOT" "The host LLVM install"
     printf "    %-32s %s\n" "CFG_PREFIX" "The installation prefix"
+    printf "    %-32s %s\n" "CFG_ONLY_GCC" "Prefer gcc to clang for building the runtime"
     echo ""
     exit 0
 fi
