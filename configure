@@ -324,7 +324,7 @@ case $CFG_LLVM_VERSION in
     ;;
 esac
 
-if [ ! -z "$CFG_CLANG" ]
+if [ ! -z "$CFG_CLANG" -a -z "$CFG_ONLY_GCC" ]
 then
     CFG_CLANG_VERSION=$("$CFG_CLANG" \
                       --version \
