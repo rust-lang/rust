@@ -18,6 +18,7 @@ type test = {span: span, path: [ast::ident], ignore: bool};
 
 type test_ctxt =
     @{sess: session::session,
+      crate: @ast::crate,
       next_node_id: node_id_gen,
       mutable path: [ast::ident],
       mutable testfns: [test]};
@@ -41,6 +42,7 @@ fn modify_for_testing(sess: session::session,
 
     let cx: test_ctxt =
         @{sess: sess,
+          crate: crate,
           next_node_id: next_node_id_fn,
           mutable path: [],
           mutable testfns: []};
@@ -102,7 +104,8 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
           }
           _ {
             log "this is a test function";
-            let test = {span: i.span, path: cx.path, ignore: is_ignored(i)};
+            let test = {span: i.span,
+                        path: cx.path, ignore: is_ignored(cx, i)};
             cx.testfns += [test];
             log #fmt["have %u test functions", vec::len(cx.testfns)];
           }
@@ -133,8 +136,16 @@ fn is_test_fn(i: @ast::item) -> bool {
     ret has_test_attr && has_test_signature(i);
 }
 
-fn is_ignored(i: @ast::item) -> bool {
-    attr::contains_name(attr::attr_metas(i.attrs), "ignore")
+fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
+    let ignoreattrs = attr::find_attrs_by_name(i.attrs, "ignore");
+    let ignoreitems = attr::attr_metas(ignoreattrs);
+    let cfg_metas = vec::concat(vec::filter_map(
+        {|&&i| attr::get_meta_item_list(i)}, ignoreitems));
+    ret if vec::is_not_empty(ignoreitems) {
+        config::metas_in_cfg(cx.crate.node.config, cfg_metas)
+    } else {
+        false
+    }
 }
 
 fn add_test_module(cx: test_ctxt, m: ast::_mod) -> ast::_mod {

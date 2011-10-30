@@ -3,6 +3,7 @@ import syntax::{ast, fold};
 import attr;
 
 export strip_unconfigured_items;
+export metas_in_cfg;
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
@@ -88,31 +89,24 @@ fn native_item_in_cfg(cfg: ast::crate_cfg, item: @ast::native_item) -> bool {
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
 fn in_cfg(cfg: ast::crate_cfg, attrs: [ast::attribute]) -> bool {
+    metas_in_cfg(cfg, attr::attr_metas(attrs))
+}
+
+fn metas_in_cfg(cfg: ast::crate_cfg, metas: [@ast::meta_item]) -> bool {
 
     // The "cfg" attributes on the item
-    let item_cfg_attrs = attr::find_attrs_by_name(attrs, "cfg");
-    let item_has_cfg_attrs = vec::len(item_cfg_attrs) > 0u;
-    if !item_has_cfg_attrs { ret true; }
+    let cfg_metas = attr::find_meta_items_by_name(metas, "cfg");
 
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
     // so we can match against them. This is the list of configurations for
     // which the item is valid
-    let item_cfg_metas = {
-        fn extract_metas(&&inner_items: [@ast::meta_item],
-                         &&cfg_item: @ast::meta_item) -> [@ast::meta_item] {
-            alt cfg_item.node {
-              ast::meta_list(name, items) {
-                assert (name == "cfg");
-                inner_items + items
-              }
-              _ { inner_items }
-            }
-        }
-        let cfg_metas = attr::attr_metas(item_cfg_attrs);
-        vec::foldl(extract_metas, [], cfg_metas)
-    };
+    let cfg_metas = vec::concat(vec::filter_map(
+        {|&&i| attr::get_meta_item_list(i)}, cfg_metas));
 
-    for cfg_mi: @ast::meta_item in item_cfg_metas {
+    let has_cfg_metas = vec::len(cfg_metas) > 0u;
+    if !has_cfg_metas { ret true; }
+
+    for cfg_mi: @ast::meta_item in cfg_metas {
         if attr::contains(cfg, cfg_mi) { ret true; }
     }
 

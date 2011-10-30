@@ -18,6 +18,7 @@ export require_unique_names;
 export get_attr_name;
 export get_meta_item_name;
 export get_meta_item_value_str;
+export get_meta_item_list;
 export mk_name_value_item_str;
 export mk_name_value_item;
 export mk_list_item;
@@ -81,6 +82,13 @@ fn get_meta_item_value_str(meta: @ast::meta_item) -> option::t<str> {
       ast::meta_name_value(_, v) {
         alt v.node { ast::lit_str(s) { option::some(s) } _ { option::none } }
       }
+      _ { option::none }
+    }
+}
+
+fn get_meta_item_list(meta: @ast::meta_item) -> option::t<[@ast::meta_item]> {
+    alt meta.node {
+      ast::meta_list(_, l) { option::some(l) }
       _ { option::none }
     }
 }
