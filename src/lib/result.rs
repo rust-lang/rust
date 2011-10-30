@@ -98,7 +98,7 @@ This function can be used to compose the results of two functions.
 
 Example:
 
-> let res = chain(read_file(file), { |buf]
+> let res = chain(read_file(file), { |buf|
 >   ok(parse_buf(buf))
 > })
 
