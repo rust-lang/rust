@@ -7,13 +7,7 @@ fn test_sleep() { task::sleep(1000000u); }
 
 // FIXME: Leaks on windows
 #[test]
-#[cfg(target_os = "win32")]
-#[ignore]
-fn test_unsupervise() { }
-
-#[test]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "linux")]
+#[ignore(cfg(target_os = "win32"))]
 fn test_unsupervise() {
     fn f(&&_i: ()) { task::unsupervise(); fail; }
     task::spawn((), f);
@@ -48,13 +42,7 @@ fn test_join_chan() {
 
 // FIXME: Leaks on windows
 #[test]
-#[cfg(target_os = "win32")]
-#[ignore]
-fn test_join_chan_fail() { }
-
-#[test]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "linux")]
+#[ignore(cfg(target_os = "win32"))]
 fn test_join_chan_fail() {
     fn failer(&&_i: ()) { task::unsupervise(); fail }
 

@@ -4,9 +4,9 @@ import std::io;
 import std::str;
 import std::result;
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "win32")]
+// FIXME (726)
 #[test]
+#[ignore(cfg(target_os = "macos"))]
 fn test_simple() {
     let tmpfile: str = "test/run-pass/lib-io-test-simple.tmp";
     log tmpfile;
@@ -23,12 +23,6 @@ fn test_simple() {
     assert (str::eq(frood, frood2));
 }
 
-// FIXME (726)
-#[cfg(target_os = "macos")]
-#[test]
-#[ignore]
-fn test_simple() { }
-
 #[test]
 fn file_reader_not_exist() {
     alt io::file_reader("not a file") {
@@ -39,9 +33,9 @@ fn file_reader_not_exist() {
     }
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "win32")]
 #[test]
+// FIXME (726)
+#[ignore(cfg(target_os = "macos"))]
 fn file_buf_writer_bad_name() {
     alt io::file_buf_writer("/?", []) {
       result::err(e) {
@@ -51,15 +45,9 @@ fn file_buf_writer_bad_name() {
     }
 }
 
+#[test]
 // FIXME (726)
-#[cfg(target_os = "macos")]
-#[test]
-#[ignore]
-fn file_buf_writer_bad_name() { }
-
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "win32")]
-#[test]
+#[ignore(cfg(target_os = "macos"))]
 fn buffered_file_buf_writer_bad_name() {
     alt io::buffered_file_buf_writer("/?") {
       result::err(e) {
@@ -68,9 +56,3 @@ fn buffered_file_buf_writer_bad_name() {
       result::ok(_) { fail; }
     }
 }
-
-// FIXME (726)
-#[cfg(target_os = "macos")]
-#[test]
-#[ignore]
-fn buffered_file_buf_writer_bad_name() { }

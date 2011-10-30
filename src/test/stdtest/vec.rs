@@ -450,9 +450,9 @@ fn init() {
     assert v == [1, 2];
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "mac")]
 #[test]
+// FIXME: Windows can't undwind
+#[ignore(cfg(target_os = "win32"))]
 fn init_empty() {
 
     let r = task::join(
@@ -462,12 +462,6 @@ fn init_empty() {
         }));
     assert r == task::tr_failure
 }
-
-// FIXME: Windows can't undwind
-#[cfg(target_os = "win32")]
-#[test]
-#[ignore]
-fn init_empty() { }
 
 #[test]
 fn concat() {
