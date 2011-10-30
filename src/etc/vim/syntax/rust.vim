@@ -14,12 +14,12 @@ if !exists("main_syntax")
   let main_syntax='rust'
 endif
 
-syn keyword   rustKeyword     alt as assert auth be bind break chan check
-syn keyword   rustKeyword     claim cont const do each else export fail fn for
-syn keyword   rustKeyword     if import in inline iter lambda let log log_err
-syn keyword   rustKeyword     macro meta mod mutable native note obj port
-syn keyword   rustKeyword     prove pure put resource ret self spawn syntax
-syn keyword   rustKeyword     tag type unsafe use while with
+syn keyword   rustKeyword     alt as assert auth be bind block break chan
+syn keyword   rustKeyword     check claim cont const copy do else export fail
+syn keyword   rustKeyword     fn for if import in inline lambda let log
+syn keyword   rustKeyword     log_err mod mutable native note obj prove pure
+syn keyword   rustKeyword     resource ret self tag type unsafe use while
+syn keyword   rustKeyword     with
 
 syn keyword   rustType        any int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str task
