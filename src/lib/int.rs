@@ -103,16 +103,18 @@ fn parse_buf(buf: [u8], radix: uint) -> int {
         fail;
     }
     let i = vec::len::<u8>(buf) - 1u;
+    let start = 0u;
     let power = 1;
+
     if buf[0] == ('-' as u8) {
         power = -1;
-        i -= 1u;
+        start = 1u;
     }
     let n = 0;
     while true {
         n += (buf[i] - ('0' as u8) as int) * power;
         power *= radix as int;
-        if i == 0u { ret n; }
+        if i <= start { ret n; }
         i -= 1u;
     }
     fail;
