@@ -469,6 +469,11 @@ fn init_empty() {
 #[ignore]
 fn init_empty() { }
 
+#[test]
+fn concat() {
+    assert vec::concat([[1], [2,3]]) == [1, 2, 3];
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

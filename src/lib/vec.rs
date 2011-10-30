@@ -447,6 +447,19 @@ fn filter<T>(f: block(T) -> bool, v: [mutable? T]) -> [T] {
 }
 
 /*
+Function: concat
+
+Concatenate a vector of vectors. Flattens a vector of vectors of T into
+a single vector of T.
+*/
+fn concat<T>(v: [mutable? [mutable? T]]) -> [T] {
+    // FIXME: So much copying
+    let new: [T] = [];
+    for inner: [T] in v { new += inner; }
+    ret new;
+}
+
+/*
 Function: foldl
 
 Reduce a vector from left to right
