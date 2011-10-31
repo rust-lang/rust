@@ -24,8 +24,13 @@ struct chan_handle {
 struct rust_box;
 
 struct stk_seg {
-    unsigned int valgrind_id;
+    stk_seg *next;
     uintptr_t limit;
+    unsigned int valgrind_id;
+#ifndef _LP64
+    uint32_t pad;
+#endif
+
     uint8_t data[];
 };
 

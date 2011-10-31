@@ -5,6 +5,11 @@
 RUSTLLVM_OBJS_CS := $(addprefix rustllvm/, RustGCMetadataPrinter.cpp \
     RustGCStrategy.cpp RustWrapper.cpp)
 
+# Behind an ifdef for now since this requires a patched LLVM.
+ifdef CFG_STACK_GROWTH
+RUSTLLVM_OBJS_CS += rustllvm/RustPrologHook.cpp
+endif
+
 RUSTLLVM_DEF := rustllvm/rustllvm$(CFG_DEF_SUFFIX)
 
 RUSTLLVM_INCS := -iquote $(CFG_LLVM_INCDIR) \

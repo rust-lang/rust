@@ -38,7 +38,8 @@ RUNTIME_CS := rt/sync/timer.cpp \
 RUNTIME_LL :=
 
 RUNTIME_S := rt/arch/i386/_context.S \
-             rt/arch/i386/ccall.S
+             rt/arch/i386/ccall.S \
+             rt/arch/i386/morestack.S
 
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \
