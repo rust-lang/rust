@@ -868,6 +868,8 @@ native "c-stack-cdecl" mod llvm = "rustllvm" {
 
     /** Turn on LLVM pass-timing. */
     fn LLVMRustEnableTimePasses();
+    /** Turn on LLVM segmented stacks. */
+    fn LLVMRustEnableSegmentedStacks();
 
     /** Print the pass timings since static dtors aren't picking them up. */
     fn LLVMRustPrintPassTimings();

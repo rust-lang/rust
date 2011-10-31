@@ -91,6 +91,7 @@ mod write {
     fn run_passes(sess: session::session, llmod: ModuleRef, output: str) {
         let opts = sess.get_opts();
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
+        if opts.stack_growth { llvm::LLVMRustEnableSegmentedStacks(); }
         link_intrinsics(sess, llmod);
         let pm = mk_pass_manager();
         let td = mk_target_data(x86::get_data_layout());

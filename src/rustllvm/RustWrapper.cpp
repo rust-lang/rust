@@ -123,3 +123,9 @@ extern "C" void LLVMRustPrintPassTimings() {
   raw_fd_ostream OS (2, false); // stderr.
   TimerGroup::printAll(OS);
 }
+
+extern bool llvm::EnableSegmentedStacks;
+extern "C" void LLVMRustEnableSegmentedStacks() {
+  EnableSegmentedStacks = true;
+}
+
