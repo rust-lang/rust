@@ -21,12 +21,12 @@
 .globl MORESTACK
 
 MORESTACK:
-    pushl 8(%esp)           //               argsz > ra stksz argsz x x ra args
-    leal 28(%esp),%eax      //                 argsz ra stksz argsz x x ra args 
-    pushl %eax              //          argp > argsz ra stksz argsz x x ra args
-    pushl 12(%esp)          //    stksz > argp argsz ra stksz argsz x x ra args
+    pushl 8(%esp)           //              argsz > ra stksz argsz x x ra args
+    leal 28(%esp),%eax      //                argsz ra stksz argsz x x ra args
+    pushl %eax              //         argp > argsz ra stksz argsz x x ra args
+    pushl 12(%esp)          //   stksz > argp argsz ra stksz argsz x x ra args
     calll RUST_NEW_STACK
-    addl $12,%esp           //                       ra stksz argsz x x ra args
+    addl $12,%esp           //                      ra stksz argsz x x ra args
 
     movl (%esp),%edx        // Grab the return pointer.
     incl %edx               // Skip past the `ret`.
@@ -37,5 +37,5 @@ MORESTACK:
     // old stack space.
     calll RUST_DEL_STACK
     movl %eax,%esp
-    retl $8                 //                       ra stksz argsz x x ra args
+    retl $8                 //                      ra stksz argsz x x ra args
 
