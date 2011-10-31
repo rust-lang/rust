@@ -77,7 +77,7 @@ check-full: tidy check-stage1 check-stage2 check-stage3 \
 
 check-fast: tidy \
 	check-stage2-rustc check-stage2-std \
-	test/$(FT_DRIVER).out \
+	test/$(FT_DRIVER).out
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
 tidy:
@@ -307,12 +307,12 @@ test/$(FT).rc test/$(FT_DRIVER).rs: $(TEST_RPASS_SOURCES_STAGE2) \
 
 $(TARGET_HOST_LIB2)/$(FT_LIB): test/$(FT).rc $(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
-	$(STAGE2) --lib -o $@ $<
+	$(STAGE2_$(CFG_HOST_TRIPLE)) --lib -o $@ $<
 
 test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs $(TARGET_HOST_LIB2)/$(FT_LIB) \
 	$(SREQ2$(CFG_HOST_TRIPLE))
 	@$(call E, compile_and_link: $@)
-	$(STAGE2) -L $(HOST_LIB2) -o $@ $<
+	$(STAGE2_$(CFG_HOST_TRIPLE)) -L $(HOST_LIB2) -o $@ $<
 
 test/$(FT_DRIVER).out: test/$(FT_DRIVER)$(X) $(SREQ2$(CFG_HOST_TRIPLE))
 	$(Q)$(call CFG_RUN_TEST, $<)
