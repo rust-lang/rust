@@ -425,7 +425,8 @@ for i in \
     nd nd/std \
     dl \
     test/run-pass test/run-fail test/compile-fail \
-    test/bench test/perf test/pretty
+    test/bench test/perf test/pretty \
+    llvm/build llvm/install
 do
     make_dir $i
 done
@@ -465,6 +466,39 @@ do
         make_dir stage$i/lib/rustc/$t/lib
     done
 done
+
+
+# Configure submodules
+step_msg "configuring submodules"
+
+# Have to be in the top of src directory for this
+cd ${CFG_SRC_DIR}
+
+SUBMODULE_STATUS=$("${CFG_GIT}" submodule status)
+NEED_INIT_COUNT=$(echo "$SUBMODULE_STATUS" | grep -c "^-")
+NEED_UPDATE_COUNT=$(echo "$SUBMODULE_STATUS" | grep -c "^+")
+NEED_INIT=$(test $NEED_INIT_COUNT -gt 0)$?
+NEED_UPDATE=$(test "($NEED_INIT)" -o "$NEED_UPDATE_COUNT" -gt 0)$?
+
+if [ $NEED_INIT ]
+then
+    msg "git: submodule init"
+    ${CFG_GIT} submodule init --quiet
+fi
+
+if [ $NEED_UPDATE ]
+then
+    msg "git: submodule update"
+    ${CFG_GIT} submodule update --quiet
+fi
+
+cd ${CFG_BUILD_DIR}
+
+msg
+
+
+# Configure llvm
+
 
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
 
