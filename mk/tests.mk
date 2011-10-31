@@ -79,6 +79,7 @@ check-fast: tidy \
 	check-stage2-rustc check-stage2-std \
 	test/$(FT_DRIVER).out \
 
+# Run the tidy script in multiple parts to avoid huge 'echo' commands
 tidy:
 	@$(call E, check: formatting)
 	$(Q)echo \
@@ -92,6 +93,8 @@ tidy:
             $(STDLIB_INPUTS) \
             $(COMPILETEST_CRATE) \
             $(COMPILETEST_INPUTS) \
+	  | xargs -n 10 python $(S)src/etc/tidy.py
+	$(Q)echo \
             $(ALL_TEST_INPUTS) \
 	  | xargs -n 10 python $(S)src/etc/tidy.py
 
