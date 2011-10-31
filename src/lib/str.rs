@@ -11,7 +11,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len, index,
        to_chars, char_len, char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
-       contains;
+       contains, chars;
 
 native "c-stack-cdecl" mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
@@ -298,6 +298,21 @@ Function: char_at
 Pluck a character out of a string
 */
 fn char_at(s: str, i: uint) -> char { ret char_range_at(s, i).ch; }
+
+/*
+Function: chars
+
+Iterate over the characters in a string
+*/
+
+fn chars(s: str, it: block(char)) {
+    let pos = 0u, len = byte_len(s);
+    while (pos < len) {
+        let {ch, next} = char_range_at(s, pos);
+        pos = next;
+        it(ch);
+    }
+}
 
 /*
 Function: char_len

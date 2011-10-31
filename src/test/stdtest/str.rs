@@ -315,3 +315,16 @@ fn contains() {
     assert !str::contains("abcde", "def");
     assert !str::contains("", "a");
 }
+
+#[test]
+fn chars() {
+    let i = 0;
+    str::chars("x\u03c0y") {|ch|
+        alt i {
+          0 { assert ch == 'x'; }
+          1 { assert ch == '\u03c0'; }
+          2 { assert ch == 'y'; }
+        }
+        i += 1;
+    }
+}
