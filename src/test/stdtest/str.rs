@@ -317,9 +317,9 @@ fn contains() {
 }
 
 #[test]
-fn chars() {
+fn iter_chars() {
     let i = 0;
-    str::chars("x\u03c0y") {|ch|
+    str::iter_chars("x\u03c0y") {|ch|
         alt i {
           0 { assert ch == 'x'; }
           1 { assert ch == '\u03c0'; }
