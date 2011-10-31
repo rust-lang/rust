@@ -676,6 +676,7 @@ The keywords are:
 @tab @code{fail}
 @tab @code{ret}
 @tab @code{be}
+@item @code{when}
 @end multitable
 
 @node       Ref.Lex.Res
@@ -3358,6 +3359,18 @@ let message = alt x @{
   0 | 1  @{ "not many" @}
   2 to 9 @{ "a few" @}
   _      @{ "lots" @}
+@}
+@end example
+
+Finally, alt patterns can accept @emph{pattern guards} to further refine the
+criteria for matching a case. Pattern guards appear after the pattern and
+consist of a bool-typed expression following the @emph{when} keyword. A pattern
+guard may refer to the variables bound within the pattern they follow.
+
+@example
+let message = alt maybe_digit @{
+  some(x) when x < 10 @{ process_digit(x) @}
+  some(x) @{ process_other(x) @}
 @}
 @end example
 
