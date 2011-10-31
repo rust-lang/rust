@@ -93,3 +93,12 @@ pure fn is_whitespace(c: char) -> bool {
         true
     } else if c == ch_no_break_space { true } else { false }
 }
+
+pure fn to_digit(c: char) -> u8 {
+    alt c {
+        '0' to '9' { c as u8 - ('0' as u8) }
+        'a' to 'z' { c as u8 + 10u8 - ('a' as u8) }
+        'A' to 'Z' { c as u8 + 10u8 - ('A' as u8) }
+        _ { fail; }
+    }
+}

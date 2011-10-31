@@ -100,11 +100,7 @@ fn parse_buf(buf: [u8], radix: uint) -> uint {
     let power = 1u;
     let n = 0u;
     while true {
-        let digit = alt buf[i] as char {
-            '0' to '9' { buf[i] - ('0' as u8) }
-            'a' to 'z' { 10u8 + buf[i] - ('a' as u8) }
-            'A' to 'Z' { 10u8 + buf[i] - ('A' as u8) }
-        };
+        let digit = char::to_digit(buf[i] as char);
         if (digit as uint) >= radix {
             fail;
         }
