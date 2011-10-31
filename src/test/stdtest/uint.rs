@@ -3,6 +3,26 @@
 // -*- rust -*-
 use std;
 import std::uint;
+import std::str::bytes;
+
+#[test]
+fn test_from_str() {
+    assert (uint::from_str("0") == 0u);
+    assert (uint::from_str("3") == 3u);
+    assert (uint::from_str("10") == 10u);
+    assert (uint::from_str("123456789") == 123456789u);
+    assert (uint::from_str("00100") == 100u);
+}
+
+#[test]
+fn test_parse_buf() {
+    assert (uint::parse_buf(bytes("123"), 10u) == 123u);
+    assert (uint::parse_buf(bytes("1001"), 2u) == 9u);
+    assert (uint::parse_buf(bytes("123"), 8u) == 83u);
+    assert (uint::parse_buf(bytes("123"), 16u) == 291u);
+    assert (uint::parse_buf(bytes("ffff"), 16u) == 65535u);
+    assert (uint::parse_buf(bytes("z"), 36u) == 35u);
+}
 
 #[test]
 fn test_next_power_of_two() {
