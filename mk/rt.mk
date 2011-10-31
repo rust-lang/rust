@@ -76,11 +76,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/test/rust_test_harness.h \
                rt/test/rust_test_runtime.h \
                rt/test/rust_test_util.h \
-<<<<<<< HEAD
                rt/arch/i386/context.h
-=======
-	           rt/arch/i386/context.h
->>>>>>> start going back to an i386 build
 
 ifeq ($(CFG_WINDOWSY), 1)
   LIBUV_OSTYPE := win
