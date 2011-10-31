@@ -1982,7 +1982,8 @@ fn call_memmove(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(1i32);
     let volatile = C_bool(false);
-    let ret_val = Call(cx, memmove, [dst_ptr, src_ptr, size, align, volatile]);
+    let ret_val = Call(cx, memmove, [dst_ptr, src_ptr, size,
+                                     align, volatile]);
     ret rslt(cx, ret_val);
 }
 
