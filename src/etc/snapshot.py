@@ -15,15 +15,6 @@ download_url_base = "http://dl.rust-lang.org/stage0-snapshots"
 download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
-old_snapshot_files = {
-    "linux": ["bin/rustc", "lib/libstd.so",
-              "lib/librustrt.so", "lib/librustllvm.so"],
-    "macos": ["bin/rustc", "lib/libstd.dylib",
-              "lib/librustrt.dylib", "lib/librustllvm.dylib"],
-    "winnt": ["bin/rustc.exe", "lib/std.dll",
-              "lib/rustrt.dll", "lib/rustllvm.dll"]
-    }
-
 snapshot_files = {
     "linux": ["bin/rustc", "lib/libruststd.so",
               "lib/librustrt.so", "lib/librustllvm.so"],

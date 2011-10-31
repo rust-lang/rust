@@ -9,7 +9,7 @@ def unpack_snapshot(snap):
   print("opening snapshot " + dl_path)
   tar = tarfile.open(dl_path)
   kernel = get_kernel()
-  for name in old_snapshot_files[kernel]:
+  for name in snapshot_files[kernel]:
     p = "rust-stage0/" + name
     fp = os.path.join("stage0", name)
     print("extracting " + fp)
