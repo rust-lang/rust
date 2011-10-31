@@ -2,6 +2,7 @@
 use std;
 import std::int;
 import std::str::eq;
+import std::str::bytes;
 
 #[test]
 fn test_from_str() {
@@ -16,6 +17,27 @@ fn test_from_str() {
     assert(int::from_str("-10") == -10);
     assert(int::from_str("-123456789") == -123456789);
     assert(int::from_str("-00100") == -100);
+}
+
+#[test]
+fn test_parse_buf() {
+    assert (int::parse_buf(bytes("123"), 10u) == 123);
+    assert (int::parse_buf(bytes("1001"), 2u) == 9);
+    assert (int::parse_buf(bytes("123"), 8u) == 83);
+    assert (int::parse_buf(bytes("123"), 16u) == 291);
+    assert (int::parse_buf(bytes("ffff"), 16u) == 65535);
+    assert (int::parse_buf(bytes("FFFF"), 16u) == 65535);
+    assert (int::parse_buf(bytes("z"), 36u) == 35);
+    assert (int::parse_buf(bytes("Z"), 36u) == 35);
+
+    assert (int::parse_buf(bytes("-123"), 10u) == -123);
+    assert (int::parse_buf(bytes("-1001"), 2u) == -9);
+    assert (int::parse_buf(bytes("-123"), 8u) == -83);
+    assert (int::parse_buf(bytes("-123"), 16u) == -291);
+    assert (int::parse_buf(bytes("-ffff"), 16u) == -65535);
+    assert (int::parse_buf(bytes("-FFFF"), 16u) == -65535);
+    assert (int::parse_buf(bytes("-z"), 36u) == -35);
+    assert (int::parse_buf(bytes("-Z"), 36u) == -35);
 }
 
 #[test]

@@ -112,7 +112,15 @@ fn parse_buf(buf: [u8], radix: uint) -> int {
     }
     let n = 0;
     while true {
-        n += (buf[i] - ('0' as u8) as int) * power;
+        let digit = alt buf[i] as char {
+            '0' to '9' { buf[i] - ('0' as u8) }
+            'a' to 'z' { 10u8 + buf[i] - ('a' as u8) }
+            'A' to 'Z' { 10u8 + buf[i] - ('A' as u8) }
+        };
+        if (digit as uint) >= radix {
+            fail;
+        }
+        n += (digit as int) * power;
         power *= radix as int;
         if i <= start { ret n; }
         i -= 1u;
