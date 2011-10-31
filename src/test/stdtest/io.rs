@@ -37,9 +37,9 @@ fn file_reader_not_exist() {
 // FIXME (726)
 #[ignore(cfg(target_os = "macos"))]
 fn file_buf_writer_bad_name() {
-    alt io::file_buf_writer("/?", []) {
+    alt io::file_buf_writer("?/?", []) {
       result::err(e) {
-        assert e == "error opening /?";
+        assert e == "error opening ?/?";
       }
       result::ok(_) { fail; }
     }
@@ -49,9 +49,9 @@ fn file_buf_writer_bad_name() {
 // FIXME (726)
 #[ignore(cfg(target_os = "macos"))]
 fn buffered_file_buf_writer_bad_name() {
-    alt io::buffered_file_buf_writer("/?") {
+    alt io::buffered_file_buf_writer("?/?") {
       result::err(e) {
-        assert e == "error opening /?";
+        assert e == "error opening ?/?";
       }
       result::ok(_) { fail; }
     }
