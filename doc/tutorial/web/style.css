@@ -1,0 +1,36 @@
+body {
+  padding: 1em;
+  margin: 0;
+  font-family: "Helvetica Neue", Helvetica, sans-serif;
+}
+
+#content {
+  padding: 1em 6em;
+  max-width: 50em;
+}
+
+h1 { font-size: 22pt; }
+h2 { font-size: 17pt; }
+h3 { font-size: 14pt; }
+
+code {
+  color: #033;
+}
+
+pre {
+  margin: 1.1em 12px;
+  border: 1px solid #CCCCCC;
+  padding: .4em;
+  font-size: 120%;
+}
+
+p.head {
+  font-size: 80%;
+  font-style: italic;
+  text-align: right;
+}
+
+a, a:visited, a:link {
+  text-decoration: none;
+  color: #00438a;
+}
