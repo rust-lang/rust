@@ -38,14 +38,6 @@ $$(HOST_LIB$(2))/$$(CFG_STDLIB): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-# FIXME: temporary
-ifeq ($(2),0)
-$$(HOST_LIB$(2))/$$(CFG_OLDSTDLIB): \
-	$$(HOST_LIB$(2))/$$(CFG_STDLIB)
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-endif
-
 $$(HOST_LIB$(2))/libstd.rlib: \
 	$$(TARGET_HOST_LIB$(1))/libstd.rlib \
 	$$(HOST_LIB$(2))/$$(CFG_RUNTIME)

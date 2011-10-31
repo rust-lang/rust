@@ -38,16 +38,6 @@ $$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM): rustllvm/$$(CFG_RUSTLLVM)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-ifeq ($(1), 0)
-$$(TARGET_BIN$(1)$(2))/rustc$$(X): \
-	$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-	$$(TARGET_SREQ$(1)$(2)) \
-	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM) \
-	$$(TARGET_STDLIB_DEFAULT$(1)$(2)) \
-	$$(TARGET_LIB$(1)$(2))/$$(CFG_OLDSTDLIB)
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)) -o $$@ $$<
-else
 $$(TARGET_BIN$(1)$(2))/rustc$$(X): \
 	$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
 	$$(TARGET_SREQ$(1)$(2)) \
@@ -55,7 +45,6 @@ $$(TARGET_BIN$(1)$(2))/rustc$$(X): \
 	$$(TARGET_STDLIB_DEFAULT$(1)$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) -o $$@ $$<
-endif
 
 $$(TARGET_LIB$(1)$(2))/$$(CFG_LIBRUSTC): \
 	$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \

@@ -103,8 +103,6 @@ endif
 CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
 CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
 CFG_STDLIB :=$(call CFG_LIB_NAME,ruststd)
-# FIXME: temporary
-CFG_OLDSTDLIB :=$(call CFG_LIB_NAME,std)
 CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
 
 # version-string calculation
