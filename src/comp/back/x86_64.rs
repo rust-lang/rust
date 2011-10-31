@@ -33,7 +33,9 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
           session::os_macos. { "x86_64-apple-darwin" }
           session::os_win32. { "x86_64-pc-mingw32" }
           session::os_linux. { "x86_64-unknown-linux-gnu" }
-        }
+        },
+
+        gcc_args: ["-m64"]
     };
 }
 

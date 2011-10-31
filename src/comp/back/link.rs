@@ -516,7 +516,9 @@ fn link_binary(sess: session::session,
     let prog: str = "gcc";
     // The invocations of gcc share some flags across platforms
 
-    let gcc_args = [stage, "-m32", "-o", out_filename, obj_filename];
+    let gcc_args =
+        [stage] + sess.get_targ_cfg().target_strs.gcc_args +
+        ["-o", out_filename, obj_filename];
     let lib_cmd;
 
     let os = sess.get_targ_cfg().os;

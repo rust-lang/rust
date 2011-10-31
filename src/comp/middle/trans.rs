@@ -6063,11 +6063,13 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
         llvm::LLVMModuleCreateWithNameInContext
             (buf, llvm::LLVMGetGlobalContext())
     });
+    let data_layout = sess.get_targ_cfg().target_strs.data_layout;
+    let targ_triple = sess.get_targ_cfg().target_strs.target_triple;
     let _: () =
-        str::as_buf(sess.get_targ_cfg().target_strs.data_layout,
+        str::as_buf(data_layout,
                     {|buf| llvm::LLVMSetDataLayout(llmod, buf) });
     let _: () =
-        str::as_buf(sess.get_targ_cfg().target_strs.target_triple,
+        str::as_buf(targ_triple,
                     {|buf| llvm::LLVMSetTarget(llmod, buf) });
     let targ_cfg = sess.get_targ_cfg();
     let td = mk_target_data(sess.get_targ_cfg().target_strs.data_layout);
