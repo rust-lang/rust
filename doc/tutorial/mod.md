@@ -1,7 +1,7 @@
 # Modules and crates
 
-The Rust namespace is divided in modules. Each source file starts with
-its own, empty module.
+The Rust namespace is divided into modules. Each source file starts
+with its own, empty module.
 
 ## Local modules
 
@@ -153,7 +153,7 @@ restricted with `export` directives at the top of the module or file.
 
 This defines a rock-solid encryption algorithm. Code outside of the
 module can refer to the `enc::encrypt` and `enc::decrypt` identifiers
-just fine, but it does not have access to `enc::syper_secret_number`.
+just fine, but it does not have access to `enc::super_secret_number`.
 
 ## Namespaces
 
@@ -185,10 +185,10 @@ context.
 Identifiers can shadow each others. In this program, `x` is of type
 `int`:
 
-    type x = str;
+    type t = str;
     fn main() {
-        type x = int;
-        let x: int;
+        type t = int;
+        let x: t;
     }
 
 An `import` directive will only import into the namespaces for which

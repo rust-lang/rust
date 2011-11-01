@@ -35,7 +35,7 @@ like `if` and `while` are available:
 
 ## Expression syntax
 
-Though it isn't apparent in most everyday code, there is a fundamental
+Though it isn't apparent in all code, there is a fundamental
 difference between Rust's syntax and the predecessors in this family
 of languages. A lot of thing that are statements in C are expressions
 in Rust. This allows for useless things like this (which passes

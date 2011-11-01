@@ -1,6 +1,6 @@
 # Interacting with foreign code
 
-On of Rust's aims, as a system programming language, is to
+One of Rust's aims, as a system programming language, is to
 interoperate well with C code.
 
 We'll start with an example. It's a bit bigger than usual, and

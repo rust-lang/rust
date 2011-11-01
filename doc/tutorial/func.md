@@ -61,6 +61,8 @@ stored in data structures or returned.
 A block with no arguments is written `{|| body(); }`—you can not leave
 off the pipes.
 
+FIXME mention bind
+
 ## Iteration
 
 Functions taking blocks provide a good way to define non-trivial
