@@ -677,6 +677,8 @@ The keywords are:
 @tab @code{ret}
 @tab @code{be}
 @item @code{when}
+@tab @code{block}
+@tab @code{lambda}
 @end multitable
 
 @node       Ref.Lex.Res
