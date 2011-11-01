@@ -414,19 +414,18 @@ putvar CFG_LLVM_LDFLAGS
 putvar CFG_LLVM_LIBS
 putvar CFG_LLVM_TRIPLE
 
-# Munge any paths that appear in config.mk back to posix-y
-perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
-               -e 's@\\@/@go;' config.mk
-rm -f config.mk.bak
+CFG_LLVM_BUILD_DIR=llvm/build
+CFG_LLVM_INST_DIR=llvm/install
 
 step_msg "making directories"
+
 for i in \
     doc doc/std \
     nd nd/std \
     dl \
     test/run-pass test/run-fail test/compile-fail \
     test/bench test/perf test/pretty \
-    llvm/build llvm/install
+    $LLVM_BUILD_DIR $LLVM_INST_DIR
 do
     make_dir $i
 done
@@ -497,8 +496,53 @@ cd ${CFG_BUILD_DIR}
 msg
 
 
-# Configure llvm
+# Configure llvm. Here we go...
+step_msg "configure: LLVM"
 
+CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}/src/llvm
+
+LLVM_TARGETS="--enable-targets=x86,x86_64"
+LLVM_DISABLE="--disable-docs"
+
+LLVM_CXX_32="g++ -m32"
+LLVM_CC_32="gcc -m32"
+LLVM_CFLAGS_32="-m32"
+LLVM_CXXFLAGS_32="-m32"
+LLVM_LDFLAGS_32="-m32"
+
+# FIXME: Need to change flags for x64
+LLVM_CXX=$LLVM_CXX_32
+LLVM_CC=$LLVM_CC_32
+LLVM_CFLAGS=$LLVM_CFLAGS_32
+LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
+LLVM_LDFLAGS=$LLVM_LDFLAGS_32
+
+CXX=$LLVM_CXX
+CC=$LLVM_CC
+CFLAGS=$LLVM_CFLAGS
+CXXFLAGS=$LLVM_CXXFLAGS
+LDFLAGS=$LLVM_LDFLAGS
+
+export CXX
+export CC
+export CFLAGS
+export CXXFLAGS
+export LDFLAGS
+
+cd $CFG_LLVM_BUILD_DIR
+# FIXME: This won't work if CFG_SRC_DIR is absolute
+${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure $LLVM_TARGETS $LLVM_DISABLE
+cd $CFG_BUILD_DIR
+
+putvar CFG_LLVM_SRC_DIR
+putvar CFG_LLVM_BUILD_DIR
+putvar CFG_LLVM_INST_DIR
+
+
+# Munge any paths that appear in config.mk back to posix-y
+perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
+               -e 's@\\@/@go;' config.mk
+rm -f config.mk.bak
 
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
 
