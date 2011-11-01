@@ -170,7 +170,8 @@ fn make_test(cx: cx, testfile: str, configport: port<[u8]>) ->
    test::test_desc<fn@()> {
     {name: make_test_name(cx.config, testfile),
      fn: make_test_closure(testfile, chan(configport)),
-     ignore: header::is_test_ignored(cx.config, testfile)}
+     ignore: header::is_test_ignored(cx.config, testfile),
+     should_fail: false}
 }
 
 fn make_test_name(config: config, testfile: str) -> str {

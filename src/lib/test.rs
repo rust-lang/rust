@@ -50,7 +50,8 @@ type default_test_fn = test_fn<fn()>;
 type test_desc<T> = {
     name: test_name,
     fn: test_fn<T>,
-    ignore: bool
+    ignore: bool,
+    should_fail: bool
 };
 
 // The default console test runner. It accepts the command line
@@ -218,7 +219,6 @@ fn run_tests<T>(opts: test_opts, tests: [test_desc<T>],
                  callback: fn@(testevent<T>)) {
 
     let filtered_tests = filter_tests(opts, tests);
-
     callback(te_filtered(filtered_tests));
 
     // It's tempting to just spawn all the tests at once but that doesn't
@@ -282,7 +282,8 @@ fn filter_tests<T>(opts: test_opts,
             if test.ignore {
                 ret option::some({name: test.name,
                                   fn: test.fn,
-                                  ignore: false});
+                                  ignore: false,
+                                  should_fail: test.should_fail});
             } else { ret option::none; }
         };
 
@@ -305,17 +306,25 @@ type test_future<T> = {test: test_desc<T>, wait: fn@() -> test_result};
 
 fn run_test<T>(test: test_desc<T>,
                 to_task: test_to_task<T>) -> test_future<T> {
-    if !test.ignore {
-        let test_task = to_task(test.fn);
-        ret {test: test,
-             wait:
-                 bind fn (test_task: joinable) -> test_result {
-                          alt task::join(test_task) {
-                            task::tr_success. { tr_ok }
-                            task::tr_failure. { tr_failed }
-                          }
-                      }(test_task)};
-    } else { ret {test: test, wait: fn () -> test_result { tr_ignored }}; }
+    if test.ignore {
+        ret {test: test, wait: fn () -> test_result { tr_ignored }};
+    }
+
+    let test_task = to_task(test.fn);
+    ret {test: test,
+         wait:
+             bind fn (test_task: joinable, should_fail: bool) -> test_result {
+                  alt task::join(test_task) {
+                    task::tr_success. {
+                      if should_fail { tr_failed }
+                      else { tr_ok }
+                    }
+                    task::tr_failure. {
+                      if should_fail { tr_ok }
+                      else { tr_failed }
+                    }
+                  }
+              }(test_task, test.should_fail)};
 }
 
 // We need to run our tests in another task in order to trap test failures.

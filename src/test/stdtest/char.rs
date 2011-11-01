@@ -26,3 +26,15 @@ fn test_to_digit() {
     assert (char::to_digit('z') == 35u8);
     assert (char::to_digit('Z') == 35u8);
 }
+
+#[test]
+#[should_fail]
+fn test_to_digit_fail_1() {
+    char::to_digit(' ');
+}
+
+#[test]
+#[should_fail]
+fn test_to_digit_fail_2() {
+    char::to_digit('$');
+}
