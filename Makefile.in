@@ -318,6 +318,17 @@ endif
 # Re-configuration
 ######################################################################
 
+# This is a pretty expensive operation but I don't see any way to avoid it
+SUBMODULE_STATUS=$(shell cd "$(CFG_SRC_DIR)" && "$(CFG_GIT)" submodule status)
+# Look through for submodules prefixed with '-' (need init), or '+' (need update)
+NEED_GIT_RECONFIG=$(shell echo "$(SUBMODULE_STATUS)" | grep -c '^\(+\|-\)')
+
+ifeq ($(NEED_GIT_RECONFIG),0)
+else
+# If the submodules have changed then always execute config.mk
+.PHONY: config.mk
+endif
+
 config.mk: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 	@$(call E, cfg: reconfiguring)
 	$(Q)$(S)configure $(CFG_CONFIGURE_ARGS)
