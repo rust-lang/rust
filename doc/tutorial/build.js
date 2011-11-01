@@ -1,4 +1,22 @@
 var fs = require("fs"), md = require("./lib/markdown");
+CodeMirror = require("./lib/codemirror-node");
+require("./lib/codemirror-rust");
+
+md.Markdown.dialects.Maruku.block.code = function code(block, next) {
+  if (block.match(/^    /)) {
+    var text = block.replace(/(^|\n)    /g, "$1"), accum = [], curstr = "", curstyle = null;
+    function add(str, style) {
+      if (style != curstyle) {
+        if (curstyle) accum.push(["span", {"class": "cm-" + curstyle}, curstr]);
+        else if (curstr) accum.push(curstr);
+        curstr = str; curstyle = style;
+      } else curstr += str;
+    }
+    CodeMirror.runMode(text, "rust", add);
+    add("", "bogus"); // Flush pending string.
+    return [["pre", {"class": "cm-s-default"}].concat(accum)];
+  }
+};    
 
 function markdown(str) { return md.toHTML(str, "Maruku"); }
 
@@ -19,6 +37,7 @@ function fileDates(file, c) {
 
 function head(title) {
   return "<html><head><link rel='stylesheet' href='style.css' type='text/css'>" +
+    "<link rel='stylesheet' href='default.css' type='text/css'>" +
     "<meta http-equiv='Content-Type' content='text/html; charset=utf-8'><title>" +
     title + "</title></head><body>\n";
 }

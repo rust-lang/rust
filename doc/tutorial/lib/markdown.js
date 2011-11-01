@@ -252,8 +252,6 @@ Markdown.prototype.toTree = function toTree( source, custom_root ) {
 Markdown.prototype.debug = function () {
   var args = Array.prototype.slice.call( arguments);
   args.unshift(this.debug_indent);
-  if (typeof print !== "undefined")
-      print.apply( print, args );
   if (typeof console !== "undefined" && typeof console.log !== "undefined")
       console.log.apply( null, args );
 }
@@ -1125,6 +1123,10 @@ Markdown.dialects.Maruku.block.definition_list = function definition_list( block
   return [ list ];
 }
 
+Markdown.dialects.Maruku.block.html_paragraph = function html_paragraph( block, next ) {
+  if (block.match(/^<\w/)) return [["RAW", block.toString()]];
+}
+
 Markdown.dialects.Maruku.inline[ "{:" ] = function inline_meta( text, matches, out ) {
   if ( !out.length ) {
     return [ 2, "{:" ];
@@ -1297,6 +1299,7 @@ function render_tree( jsonml ) {
   var tag = jsonml.shift(),
       attributes = {},
       content = [];
+  if (tag == "RAW") return jsonml[0];
 
   if ( jsonml.length && typeof jsonml[ 0 ] === "object" && !( jsonml[ 0 ] instanceof Array ) ) {
     attributes = jsonml.shift();

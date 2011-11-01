@@ -18,9 +18,8 @@ code {
 }
 
 pre {
-  margin: 1.1em 12px;
-  border: 1px solid #CCCCCC;
-  padding: .4em;
+  margin: 1.1em 0;
+  padding: .4em .4em .4em 1em;
   font-size: 120%;
 }
 

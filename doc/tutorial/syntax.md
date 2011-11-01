@@ -1,7 +1,5 @@
 # Syntax Basics
 
-FIXME: mention the module separator `::` somewhere
-
 ## Braces
 
 Assuming you've programmed in any C-family language (C++, Java,
@@ -74,6 +72,19 @@ loops do not allow trailing expressions, and `if` statements tend to
 only have a trailing expression when you want to use their value for
 something—in which case you'll have embedded it in a bigger statement,
 like the `let x = ...` example above.
+
+## Identifiers
+
+Rust identifiers must start with an alphabetic character or an
+underscore, and after that may contain any alphanumeric character, and
+more underscores.
+
+NOTE: The parser doesn't currently recognize non-ascii alphabetic
+characters. This is a bug that will eventually be fixed.
+
+The double-colon (`::`) is used as a module separator, so
+`std::io::println` means 'the thing named `println` in the module
+named `io` in the module named `std`'.
 
 ## Types
 
@@ -158,10 +169,10 @@ Types can be given names with `type` declarations:
 This will provide a synonym, `monster_size`, for unsigned integers. It
 will not actually create a new type—`monster_size` and `uint` can be
 used interchangeably, and using one where the other is expected is not
-a type error. Read about [single-variant tags][svt] in the next
-section if you need to create a type name that's not just a synonym.
+a type error. Read about [single-variant tags][svt] further on if you
+need to create a type name that's not just a synonym.
 
-[svt]: FIXME
+[svt]: data.html#single_variant_tag
 
 ## Literals
 
@@ -211,4 +222,37 @@ following it, will not appear in the resulting string literal.
 
 ## Operators
 
-FIXME recap C-style operators, ?:, explain `as`
+Rust's set of operators contains very few surprises. The main
+difference with C is that `++` and `--` are missing, and that the
+logical binary operators have higher precedence—in C, `x & 2 > 0`
+comes out as `x & (2 > 0)`, in Rust, it means `(x & 2) > 0`, which is
+more likely to be what you expect (unless you are a C veteran).
+
+Thus, binary arithmetic is done with `*`, `/`, `%`, `+`, and `-`
+(multiply, divide, remainder, plus, minus). `-` is also a unary prefix
+operator (there are no unary postfix operators in Rust) that does
+negation.
+
+Binary shifting is done with `>>` (shift right), `>>>` (arithmetic
+shift right), and `<<` (shift left). Logical bitwise operators are
+`&`, `|`, and `^` (and, or, and exclusive or), and unary `!` for
+bitwise negation (or boolean negation when applied to a boolean
+value).
+
+The comparison operators are the traditional `==`, `!=`, `<`, `>`,
+`<=`, and `>=`. Short-circuiting (lazy) boolean operators are written
+`&&` (and) and `||` (or).
+
+Rust has a ternary conditional operator `?:`, as in:
+
+    let message = badness < 10 ? "error" : "FATAL ERROR";
+
+For type casting, Rust uses the binary `as` operator, which has a
+precedence between the bitwise combination operators (`&`, `|`, `^`)
+and the comparison operators. It takes an expression on the left side,
+and a type on the right side, and will, if a meaningful conversion
+exists, convert the result of the expression to the given type.
+
+    let x: float = 4.0;
+    let y: uint = x as uint;
+    assert y == 4u;

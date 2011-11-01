@@ -13,11 +13,11 @@ types).
 
 ## Records
 
-Rust record types are written `{field1: TYPE, field2: TYPE [,
-...]}`, and record literals are written in the same way, but with
-expressions instead of types. They are quite similar to C structs, and
-even laid out the same way in memory (so you can read from a Rust
-struct in C, and vice-versa).
+Rust record types are written `{field1: TYPE, field2: TYPE [, ...]}`,
+and record literals are written in the same way, but with expressions
+instead of types. They are quite similar to C structs, and even laid
+out the same way in memory (so you can read from a Rust struct in C,
+and vice-versa).
 
 The dot operator is used to access record fields (`mypoint.x`).
 
@@ -99,6 +99,8 @@ equivalent to an `enum` in C:
 
 This will define `north`, `east`, `south`, and `west` as constants,
 all of which have type `direction`.
+
+<a name="single_variant_tag"></a>
 
 There is a special case for tags with a single variant. These are used
 to define new types in such a way that the new name is not just a
