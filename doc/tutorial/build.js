@@ -24,13 +24,13 @@ function fileDates(file, c) {
   function takeTime(str) {
     return Number(str.match(/^(\S+)\s/)[1]) * 1000;
   }
-  require("child_process").exec("git rev-list --timestamp HEAD -- " + file, function(err, stdout) {
+  require("child_process").exec("git rev-list --timestamp HEAD -- " + file + ".md", function(err, stdout) {
     if (err != null) { console.log("Failed to run git rev-list"); return; }
     var history = stdout.split("\n");
     if (history.length && history[history.length-1] == "") history.pop();
-    var created = history.length ? takeTime(history[0]) : Date.now();
+    var created = history.length ? takeTime(history[history.length-1]) : Date.now();
     var modified = created;
-    if (history.length > 1) modified = takeTime(history[history.length-1]);
+    if (history.length > 1) modified = takeTime(history[0]);
     c(created, modified);
   });
 }
