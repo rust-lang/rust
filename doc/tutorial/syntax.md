@@ -86,6 +86,27 @@ The double-colon (`::`) is used as a module separator, so
 `std::io::println` means 'the thing named `println` in the module
 named `io` in the module named `std`'.
 
+Rust will normally emit warning about unused variables. These can be
+suppressed by using a variable name that starts with an underscore.
+
+    fn this_warns(x: int) {}
+    fn this_doesnt(_x: int) {}
+
+## Variable declaration
+
+The `let` keyword, as we've seen, introduces a local variable. Global
+constants can be defined with `const`:
+
+    import std;
+    const repeat: uint = 5u;
+    fn main() {
+        let count = 0u;
+        while count < repeat {
+            std::io::println("Hi!");
+            count += 1u;
+        }
+    }
+
 ## Types
 
 The `-> bool` in the last example is the way a function's return type
@@ -256,3 +277,7 @@ exists, convert the result of the expression to the given type.
     let x: float = 4.0;
     let y: uint = x as uint;
     assert y == 4u;
+
+## Attributes
+
+FIXME Briefly introduce attributes

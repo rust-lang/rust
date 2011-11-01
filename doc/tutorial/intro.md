@@ -46,3 +46,14 @@ function, `ret` for return.
 You should, however, not conclude that Rust is simply an evolution of
 C. As will become clear in the rest of this tutorial, it goes into
 quite a different direction.
+
+## Conventions
+
+Throughout the tutorial, words that indicate language keywords or
+identifiers defined in the example code are displayed in `code font`.
+
+Code snippets are indented, and also shown in a monospace font. Not
+all snippets constitute whole programs. For brevity, we'll often show
+fragments of programs that don't compile on their own. To try them
+out, you'll have to wrap them in `fn main() { ... }`, and make sure
+they don't contain references to things that aren't actually defined.
