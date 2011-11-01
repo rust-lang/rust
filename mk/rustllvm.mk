@@ -26,10 +26,9 @@ rustllvm/$(1)/$(CFG_RUSTLLVM): $$(RUSTLLVM_OBJS_OBJS_$(1)) \
           $$(CFG_GCCISH_POST_LIB_FLAGS) \
           $$(CFG_LLVM_LDFLAGS),$$(RUSTLLVM_DEF_$(1)),$$(CFG_RUSTLLVM))
 
-rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILES)
+rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILES) $$(CFG_LLVM_INST_DIR)/bin/llc
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(CFG_LLVM_CXXFLAGS) $$(RUSTLLVM_INCS_$(1))) $$<
-
 endef
 
 # Instantiate template for all stages
