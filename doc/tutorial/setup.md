@@ -36,7 +36,9 @@ FIXME say something about libs, main, modules, use
 
 There are Vim highlighting and indentation scrips in the Rust source
 distribution under `src/etc/vim/`. An Emacs mode can be found at
-`[https://github.com/marijnh/rust-mode](https://github.com/marijnh/rust-mode)`.
+[https://github.com/marijnh/rust-mode][rust-mode].
+
+[rust-mode]: https://github.com/marijnh/rust-mode
 
 Other editors are not provided for yet. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.

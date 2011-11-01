@@ -37,9 +37,9 @@ like `if` and `while` are available:
 
 Though it isn't apparent in most everyday code, there is a fundamental
 difference between Rust's syntax and the predecessors in this family
-of languages. Almost everything in rust is an expression, even things
-that are statements in other languages. This allows for useless things
-like this (which passes nil—the void type—to a function):
+of languages. A lot of thing that are statements in C are expressions
+in Rust. This allows for useless things like this (which passes
+nil—the void type—to a function):
 
     a_function(while false {});
 
@@ -62,11 +62,14 @@ This also works for function bodies. This function returns a boolean:
 
     fn is_four(x: int) -> bool { x == 4 }
 
-If everything is an expression, you might conclude that you have to
-add a terminating semicolon after *every* statement, even ones that
+In short, everything that's not a declaration (`let` for variables,
+`fn` for functions, etcetera) is an expression.
+
+If all those things are expressions, you might conclude that you have
+to add a terminating semicolon after *every* statement, even ones that
 are not traditionally terminated with a semicolon in C (like `while`).
-That is not the case, though. Statements that end in a block only need
-a semicolon if that block contains a trailing expression. `while`
+That is not the case, though. Expressions that end in a block only
+need a semicolon if that block contains a trailing expression. `while`
 loops do not allow trailing expressions, and `if` statements tend to
 only have a trailing expression when you want to use their value for
 something—in which case you'll have embedded it in a bigger statement,
@@ -166,7 +169,7 @@ Integers can be written in decimal (`144`), hexadecimal (`0x90`), and
 binary (`0b10010000`) base. Without suffix, an integer literal is
 considered to be of type `int`. Add a `u` (`144u`) to make it a `uint`
 instead. Literals of the fixed-size integer types can be created by
-the literal with the type name (`i8`, `u64`, etc).
+the literal with the type name (`255u8`, `50i64`, etc).
 
 Note that, in Rust, no implicit conversion between integer types
 happens. If you are adding one to a variable of type `uint`, you must
@@ -188,12 +191,16 @@ character escapes, using the backslash character:
 
 `\n`
 : A newline (unicode character 32).
+
 `\r`
 : A carriage return (13).
+
 `\t`
 : A tab character (9).
+
 `\\`, `\'`, `\"`
 : Simply escapes the following character.
+
 `\xHH`, `\uHHHH`, `\UHHHHHHHH`
 : Unicode escapes, where the `H` characters are the hexadecimal digits that form the character code.
 

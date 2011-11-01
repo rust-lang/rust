@@ -33,7 +33,9 @@ error.
 To 'update' an immutable record, you use functional record update
 syntax, by ending a record literal with the keyword `with`:
 
+    let oldpoint = {x: 10f, y: 20f};
     let newpoint = {x: 0f with oldpoint};
+    assert newpoint == {x: 0f, y: 20f};
 
 This will create a new struct, copying all the fields from `oldpoint`
 into it, except for the ones that are explicitly set in the literal.

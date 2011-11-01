@@ -94,8 +94,9 @@ extract the fields from a tuple:
 This will introduce two new variables, `a` and `b`, bound to the
 content of the tuple.
 
-You may only use irrevocable patterns in let bindings, though. Things
-like literals, which only match a specific value, are not allowed.
+You may only use irrevocable patterns—patterns that can never fail to
+match—in let bindings, though. Things like literals, which only match
+a specific value, are not allowed.
 
 ## Loops
 
@@ -113,6 +114,13 @@ to abort the current iteration and continue with the next.
 
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
+
+There's also `while`'s ugly cousin, `do`/`while`, which does not check
+its condition on the first iteration, using traditional syntax:
+
+    do {
+        eat_cake();
+    } while any_cake_left();
 
 When iterating over a vector, use `for` instead.
 
@@ -167,3 +175,14 @@ leave them in.
 
 For interactive debugging, you often want unconditional logging. For
 this, use `log_err` instead of `log` [FIXME better name].
+
+## Assertions
+
+The keyword `assert`, followed by an expression with boolean type,
+will check that the given expression results in `true`, and cause a
+failure otherwise. It is typically used to double-check things that
+*should* hold at a certain point in a program.
+
+    let x = 100;
+    while (x > 10) { x -= 10; }
+    assert x == 10;
