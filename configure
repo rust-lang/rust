@@ -414,9 +414,6 @@ putvar CFG_LLVM_LDFLAGS
 putvar CFG_LLVM_LIBS
 putvar CFG_LLVM_TRIPLE
 
-LLVM_BUILD_DIR=llvm/build
-LLVM_INST_DIR=llvm/install
-
 step_msg "making directories"
 
 for i in \
@@ -425,7 +422,7 @@ for i in \
     dl \
     test/run-pass test/run-fail test/compile-fail \
     test/bench test/perf test/pretty \
-    $LLVM_BUILD_DIR $LLVM_INST_DIR
+    llvm
 do
     make_dir $i
 done
@@ -499,13 +496,12 @@ msg
 # Configure llvm. Here we go...
 step_msg "configuring LLVM"
 
-CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}/src/llvm
-CFG_LLVM_BUILD_DIR=${CFG_BUILD_DIR}/${LLVM_BUILD_DIR}
-CFG_LLVM_INST_DIR=${CFG_BUILD_DIR}/${LLVM_INST_DIR}
+CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm
+CFG_LLVM_BUILD_DIR=${CFG_BUILD_DIR}/llvm
+CFG_LLVM_INST_DIR=${CFG_LLVM_BUILD_DIR}/Release+Asserts
 
 LLVM_TARGETS="--enable-targets=x86,x86_64"
 LLVM_DISABLE="--disable-docs"
-LLVM_PREFIX="--prefix=${CFG_LLVM_INST_DIR}"
 LLVM_BUILD="--build=${CFG_HOST_TRIPLE}"
 LLVM_HOST="--host=${CFG_HOST_TRIPLE}"
 LLVM_TARGET="--target=${CFG_HOST_TRIPLE}"
@@ -529,7 +525,7 @@ CFLAGS=$LLVM_CFLAGS
 CXXFLAGS=$LLVM_CXXFLAGS
 LDFLAGS=$LLVM_LDFLAGS
 
-LLVM_FLAGS="$LLVM_TARGETS $LLVM_DISABLE $LLVM_PREFIX $LLVM_BUILD $LLVM_HOST $LLVM_TARGET"
+LLVM_FLAGS="$LLVM_TARGETS $LLVM_DISABLE $LLVM_BUILD $LLVM_HOST $LLVM_TARGET"
 
 export CXX
 export CC
