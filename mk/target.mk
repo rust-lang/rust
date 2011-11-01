@@ -7,13 +7,8 @@
 
 define TARGET_STAGE_N
 
-TARGET_HOST    := $$(word 1,$$(subst -, ,$(2)))
-
-# For some reason there is (sometimes) a mismatch here between i686, i386, etc
-INTR_HOST := $$(subst i686,i386,$$(TARGET_HOST))
-
 $$(TARGET_LIB$(1)$(2))/intrinsics.ll: \
-		$$(S)src/rt/intrinsics/intrinsics.$$(INTR_HOST).ll.in
+		$$(S)src/rt/intrinsics/intrinsics.$(HOST_$(2)).ll.in
 	@$$(call E, sed: $$@)
 	$$(Q)sed s/@CFG_TARGET_TRIPLE@/$(2)/ $$< > $$@
 
@@ -40,7 +35,7 @@ $$(TARGET_LIB$(1)$(2))/libstd.rlib: \
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_$(2)) --lib --static -o $$@ $$<
 
-$$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
+$$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME): rt/$(2)/$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 

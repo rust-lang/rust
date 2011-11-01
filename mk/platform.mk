@@ -1,5 +1,15 @@
 
-CFG_GCCISH_CFLAGS := -fno-strict-aliasing
+# Create variables HOST_<triple> containing the host part
+# of each target triple.  For example, the triple i686-darwin-macos
+# would create a variable HOST_i686-darwin-macos with the value 
+# i386.
+define DEF_HOST_VAR
+  HOST_$(1) = $(subst i686,i386,$(word 1,$(subst -, ,$(1))))
+endef
+$(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_HOST_VAR,$(t))))
+$(foreach t,$(CFG_TARGET_TRIPLES),$(info Host for $(t) is $(HOST_$(t))))
+
+CFG_GCCISH_FLAGS := -fno-strict-aliasing
 CFG_GCCISH_LINK_FLAGS :=
 
 # On Darwin, we need to run dsymutil so the debugging information ends
@@ -16,8 +26,10 @@ ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_GCCISH_CFLAGS += -fPIC -march=i686 -I/usr/local/include
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
   ifeq ($(CFG_CPUTYPE), x86_64)
-    CFG_GCCISH_CFLAGS += -m32
-    CFG_GCCISH_LINK_FLAGS += -m32
+	CFG_GCCISH_CFLAGS_i386 += -m32
+	CFG_GCCISH_LINK_FLAGS_i386 += -m32
+	CFG_GCCISH_CFLAGS_x86_64 += -m32
+	CFG_GCCISH_LINK_FLAGS_x86_64 += -m32
   endif
   CFG_UNIXY := 1
   CFG_LDENV := LD_LIBRARY_PATH
@@ -34,10 +46,10 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   # -znoexecstack is here because librt is for some reason being created
   # with executable stack and Fedora (or SELinux) doesn't like that (#798)
   CFG_GCCISH_POST_LIB_FLAGS := -Wl,-no-whole-archive -Wl,-znoexecstack
-  ifeq ($(CFG_CPUTYPE), x86_64)
-    CFG_GCCISH_CFLAGS += -m32
-    CFG_GCCISH_LINK_FLAGS += -m32
-  endif
+  CFG_GCCISH_CFLAGS_i386 = -m32
+  CFG_GCCISH_LINK_FLAGS_i386 = -m32
+  CFG_GCCISH_CFLAGS_x86_64 = -m64
+  CFG_GCCISH_LINK_FLAGS_x86_64 = -m64
   CFG_UNIXY := 1
   CFG_LDENV := LD_LIBRARY_PATH
   CFG_DEF_SUFFIX := .linux.def
@@ -66,13 +78,10 @@ ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   # approaches welcome!
   #
   # NB: Currently GCC's optimizer breaks rustrt (task-comm-1 hangs) on Darwin.
-  CFG_GCC_CFLAGS += -m32
-  CFG_CLANG_CFLAGS += -m32
-  ifeq ($(CFG_CPUTYPE), x86_64)
-    CFG_GCCISH_CFLAGS += -arch i386
-    CFG_GCCISH_LINK_FLAGS += -arch i386
-  endif
-  CFG_GCCISH_LINK_FLAGS += -m32
+  CFG_GCCISH_CFLAGS_i386 := -m32 -arch i386
+  CFG_GCCISH_CFLAGS_x86_64 := -m64 -arch x86_64
+  CFG_GCCISH_LINK_FLAGS_i386 := -m32
+  CFG_GCCISH_LINK_FLAGS_x86_64 := -m64
   CFG_DSYMUTIL := dsymutil
   CFG_DEF_SUFFIX := .darwin.def
   # Mac requires this flag to make rpath work
@@ -169,25 +178,51 @@ ifeq ($(CFG_C_COMPILER),clang)
   CXX=clang++
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
-  CFG_COMPILE_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) \
-    $(CFG_CLANG_CFLAGS) -c -o $(1) $(2)
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
     -MM $(2)
-  CFG_LINK_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
-    $(CFG_GCCISH_DEF_FLAG)$(3) $(2) $(call CFG_INSTALL_NAME,$(4))
+
+  define CFG_MAKE_CC
+	CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
+		$$(CFG_GCCISH_CFLAGS) $$(CFG_CLANG_CFLAGS)		\
+		$$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))				\
+	    $$(CFG_CLANG_CFLAGS_$$(HOST_$(1)))				\
+		-c -o $$(1) $$(2)
+    CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
+		$$(CFG_GCCISH_LINK_FLAGS) -o $$(1)			\
+		$$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))		\
+        $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)			\
+	    $$(call CFG_INSTALL_NAME,$$(4))
+  endef
+
+  $(foreach target,$(CFG_TARGET_TRIPLES), \
+    $(eval $(call CFG_MAKE_CC,$(target))))
 else
 ifeq ($(CFG_C_COMPILER),gcc)
   CC=gcc
   CXX=g++
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
-  CFG_COMPILE_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) \
-    $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
     -MM $(2)
-  CFG_LINK_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
-               $(CFG_GCCISH_DEF_FLAG)$(3) $(2) $(call CFG_INSTALL_NAME,$(4))
+
+  define CFG_MAKE_CC
+	CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
+        $$(CFG_GCCISH_CFLAGS)							\
+	    $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))				\
+        $$(CFG_GCC_CFLAGS)								\
+        $$(CFG_GCC_CFLAGS_$$(HOST_$(1)))				\
+        -c -o $$(1) $$(2)
+    CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
+        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)			\
+		$$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))		\
+        $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)			\
+        $$(call CFG_INSTALL_NAME,$$(4))
+  endef
+
+  $(foreach target,$(CFG_TARGET_TRIPLES), \
+    $(eval $(call CFG_MAKE_CC,$(target))))
 else
   CFG_ERR := $(error please try on a system with gcc or clang)
 endif
 endif
+

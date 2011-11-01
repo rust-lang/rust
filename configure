@@ -394,13 +394,23 @@ step_msg "making directories"
 for i in \
     doc doc/std \
     nd nd/std \
-    rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 rt/arch/x86_64 \
-    rt/libuv rt/libuv/src/ares rt/libuv/src/eio rt/libuv/src/ev \
     rustllvm dl \
     test/run-pass test/run-fail test/compile-fail \
     test/bench test/perf test/pretty
 do
     make_dir $i
+done
+
+make_dir rt
+for t in $CFG_TARGET_TRIPLES
+do
+  make_dir rt/$t
+  for i in                                          \
+    isaac bigint sync test arch/i386 arch/x86_64    \
+    libuv libuv/src/ares libuv/src/eio libuv/src/ev
+  do
+    make_dir rt/$t/$i
+  done
 done
 
 for t in $CFG_TARGET_TRIPLES
