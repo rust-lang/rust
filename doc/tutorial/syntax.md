@@ -15,7 +15,7 @@ allows you to omit the parentheses around the condition in `if`,
 `while`, and similar constructs. This will save you two characters
 every time. As a bonus, you no longer have to spend any mental energy
 on deciding whether you need to add braces or not, or on adding them
-after the fact when a adding a statement to an `if` branch.
+after the fact when adding a statement to an `if` branch.
 
 Accounting for these differences, the surface syntax of Rust
 statements and expressions is C-like. Function calls are written
