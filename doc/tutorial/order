@@ -8,5 +8,6 @@ args
 generic
 mod
 ffi
+ext
 task
 test

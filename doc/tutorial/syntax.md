@@ -1,5 +1,7 @@
 # Syntax Basics
 
+FIXME: briefly mention syntax extentions, #fmt
+
 ## Braces
 
 Assuming you've programmed in any C-family language (C++, Java,
