@@ -408,11 +408,20 @@ fn llalign_of(t: TypeRef) -> ValueRef {
 }
 
 fn size_of(cx: @block_ctxt, t: ty::t) -> result {
+    size_of_(cx, t, align_total)
+}
+
+tag align_mode {
+    align_total;
+    align_next(ty::t);
+}
+
+fn size_of_(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
     let ccx = bcx_ccx(cx);
     if check type_has_static_size(ccx, t) {
         let sp = cx.sp;
         rslt(cx, llsize_of(type_of(ccx, sp, t)))
-    } else { dynamic_size_of(cx, t) }
+    } else { dynamic_size_of(cx, t, mode) }
 }
 
 fn align_of(cx: @block_ctxt, t: ty::t) -> result {
@@ -524,8 +533,9 @@ fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
     }
 }
 
-fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
-    fn align_elements(cx: @block_ctxt, elts: [ty::t]) -> result {
+fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
+    fn align_elements(cx: @block_ctxt, elts: [ty::t],
+                      mode: align_mode) -> result {
         //
         // C padding rules:
         //
@@ -547,7 +557,15 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
             off = Add(bcx, aligned_off, elt_size.val);
             max_align = umax(bcx, max_align, elt_align.val);
         }
-        off = align_to(bcx, off, max_align);
+        off = alt mode {
+          align_total. {
+            align_to(bcx, off, max_align)
+          }
+          align_next(t) {
+            let {bcx, val: align} = align_of(bcx, t);
+            align_to(bcx, off, align)
+          }
+        };
         ret rslt(bcx, off);
     }
     alt ty::struct(bcx_tcx(cx), t) {
@@ -558,12 +576,12 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
       ty::ty_rec(flds) {
         let tys: [ty::t] = [];
         for f: ty::field in flds { tys += [f.mt.ty]; }
-        ret align_elements(cx, tys);
+        ret align_elements(cx, tys, mode);
       }
       ty::ty_tup(elts) {
         let tys = [];
         for tp in elts { tys += [tp]; }
-        ret align_elements(cx, tys);
+        ret align_elements(cx, tys, mode);
       }
       ty::ty_tag(tid, tps) {
         let bcx = cx;
@@ -581,7 +599,7 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
                 let t = ty::substitute_type_params(bcx_tcx(cx), tps, raw_ty);
                 tys += [t];
             }
-            let rslt = align_elements(bcx, tys);
+            let rslt = align_elements(bcx, tys, mode);
             bcx = rslt.bcx;
             let this_size = rslt.val;
             let old_max_size = Load(bcx, max_size);
@@ -738,7 +756,7 @@ fn GEP_tup_like(cx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
     let prefix_ty = ty::mk_tup(bcx_tcx(cx), args);
 
     let bcx = cx;
-    let sz = size_of(bcx, prefix_ty);
+    let sz = size_of_(bcx, prefix_ty, align_next(s.target));
     ret rslt(sz.bcx, bump_ptr(sz.bcx, s.target, base, sz.val));
 }
 
