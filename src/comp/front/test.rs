@@ -14,7 +14,7 @@ export modify_for_testing;
 
 type node_id_gen = fn@() -> ast::node_id;
 
-type test = {span: span, path: [ast::ident], ignore: bool};
+type test = {span: span, path: [ast::ident], ignore: bool, should_fail: bool};
 
 type test_ctxt =
     @{sess: session::session,
@@ -105,7 +105,8 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
           _ {
             log "this is a test function";
             let test = {span: i.span,
-                        path: cx.path, ignore: is_ignored(cx, i)};
+                        path: cx.path, ignore: is_ignored(cx, i),
+                        should_fail: should_fail(i)};
             cx.testfns += [test];
             log #fmt["have %u test functions", vec::len(cx.testfns)];
           }
@@ -146,6 +147,10 @@ fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
     } else {
         false
     }
+}
+
+fn should_fail(i: @ast::item) -> bool {
+    vec::len(attr::find_attrs_by_name(i.attrs, "should_fail")) > 0u
 }
 
 fn add_test_module(cx: test_ctxt, m: ast::_mod) -> ast::_mod {
@@ -299,8 +304,19 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let ignore_field: ast::field =
         nospan({mut: ast::imm, ident: "ignore", expr: @ignore_expr});
 
+    let fail_lit: ast::lit = nospan(ast::lit_bool(test.should_fail));
+
+    let fail_expr: ast::expr =
+        {id: cx.next_node_id(),
+         node: ast::expr_lit(@fail_lit),
+         span: span};
+
+    let fail_field: ast::field =
+        nospan({mut: ast::imm, ident: "should_fail", expr: @fail_expr});
+
     let desc_rec_: ast::expr_ =
-        ast::expr_rec([name_field, fn_field, ignore_field], option::none);
+        ast::expr_rec([name_field, fn_field, ignore_field, fail_field],
+            option::none);
     let desc_rec: ast::expr =
         {id: cx.next_node_id(), node: desc_rec_, span: span};
     ret @desc_rec;

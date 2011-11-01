@@ -15,6 +15,18 @@ fn test_from_str() {
 }
 
 #[test]
+#[should_fail]
+fn test_from_str_fail_1() {
+    uint::from_str(" ");
+}
+
+#[test]
+#[should_fail]
+fn test_from_str_fail_2() {
+    uint::from_str("x");
+}
+
+#[test]
 fn test_parse_buf() {
     assert (uint::parse_buf(bytes("123"), 10u) == 123u);
     assert (uint::parse_buf(bytes("1001"), 2u) == 9u);
@@ -22,6 +34,18 @@ fn test_parse_buf() {
     assert (uint::parse_buf(bytes("123"), 16u) == 291u);
     assert (uint::parse_buf(bytes("ffff"), 16u) == 65535u);
     assert (uint::parse_buf(bytes("z"), 36u) == 35u);
+}
+
+#[test]
+#[should_fail]
+fn test_parse_buf_fail_1() {
+    uint::parse_buf(bytes("Z"), 10u);
+}
+
+#[test]
+#[should_fail]
+fn test_parse_buf_fail_2() {
+    uint::parse_buf(bytes("_"), 2u);
 }
 
 #[test]

@@ -7,7 +7,7 @@ import std::vec;
 #[test]
 fn do_not_run_ignored_tests() {
     fn f() { fail; }
-    let desc = {name: "whatever", fn: f, ignore: true};
+    let desc = {name: "whatever", fn: f, ignore: true, should_fail: false};
     let future = test::run_test(desc, test::default_test_to_task);
     let result = future.wait();
     assert result != test::tr_ok;
@@ -16,9 +16,25 @@ fn do_not_run_ignored_tests() {
 #[test]
 fn ignored_tests_result_in_ignored() {
     fn f() { }
-    let desc = {name: "whatever", fn: f, ignore: true};
+    let desc = {name: "whatever", fn: f, ignore: true, should_fail: false};
     let res = test::run_test(desc, test::default_test_to_task).wait();
     assert (res == test::tr_ignored);
+}
+
+#[test]
+fn test_should_fail() {
+    fn f() { fail; }
+    let desc = {name: "whatever", fn: f, ignore: false, should_fail: true};
+    let res = test::run_test(desc, test::default_test_to_task).wait();
+    assert res == test::tr_ok;
+}
+
+#[test]
+fn test_should_fail_but_succeeds() {
+    fn f() { }
+    let desc = {name: "whatever", fn: f, ignore: false, should_fail: true};
+    let res = test::run_test(desc, test::default_test_to_task).wait();
+    assert res == test::tr_failed;
 }
 
 #[test]
@@ -44,8 +60,8 @@ fn filter_for_ignored_option() {
 
     let opts = {filter: option::none, run_ignored: true};
     let tests =
-        [{name: "1", fn: fn () { }, ignore: true},
-         {name: "2", fn: fn () { }, ignore: false}];
+        [{name: "1", fn: fn () { }, ignore: true, should_fail: false},
+         {name: "2", fn: fn () { }, ignore: false, should_fail: false}];
     let filtered = test::filter_tests(opts, tests);
 
     assert (vec::len(filtered) == 1u);
@@ -69,7 +85,8 @@ fn sort_tests() {
             let testfn = fn () { };
             let tests = [];
             for name: str in names {
-                let test = {name: name, fn: testfn, ignore: false};
+                let test = {name: name, fn: testfn, ignore: false,
+                  should_fail: false};
                 tests += [test];
             }
             tests
