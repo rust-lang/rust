@@ -105,7 +105,7 @@ and `&&` for by(-immutable)-reference. It is sometimes necessary to
 override the defaults. We'll talk more about this when discussing
 [generics][gens].
 
-[gens]: FIXME
+[gens]: generic.html
 
 ## Other uses of safe references
 

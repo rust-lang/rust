@@ -35,7 +35,7 @@ It is also possible to include multiple files in a crate. For this
 purpose, you create a `.rc` crate file, which references any number of
 `.rs` code files. A crate file could look like this:
 
-    #[link(name = "farm", vers = "2.5", author = "mjh")]
+    #[link(name = "farm", vers = "2.5", author = "mjh")];
     mod cow;
     mod chicken;
     mod horse;
@@ -90,7 +90,7 @@ local name `myfarm`.
 
 Our example crate declared this set of `link` attributes:
 
-    #[link(name = "farm", vers = "2.5", author = "mjh")]
+    #[link(name = "farm", vers = "2.5", author = "mjh")];
 
 The version does not match the one provided in the `use` directive, so
 unless the compiler can find another crate with the right version
@@ -102,13 +102,12 @@ Now for something that you can actually compile yourself. We have
 these two files:
 
     // mylib.rs
+    #[link(name = "mylib", vers = "1.0")];
     fn world() -> str { "world" }
 
     // main.rs
     use mylib;
     fn main() { log_err "hello " + mylib::world(); }
-
-FIXME the compiler currently complains about missing link metas when you compile this
 
 Now compile and run like this (adjust to your platform if necessary):
 

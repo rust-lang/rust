@@ -280,4 +280,28 @@ exists, convert the result of the expression to the given type.
 
 ## Attributes
 
-FIXME Briefly introduce attributes
+Every definition can be annotated with attributes. Attributes are meta
+information that can serve a variety of purposes. One of those is
+conditional compilation:
+
+    #[cfg(target_os = "win32")]
+    fn register_win_service() { /* ... */ }
+
+This will cause the function to vanish without a trace during
+compilation on a non-Windows platform. Attributes always look like
+`#[attr]`, where `attr` can be simply a name (as in `#[test]`, which
+is used by the [built-in test framework](test.html)), a name followed
+by `=` and then a literal (as in `#[license = "BSD"]`, which is a
+valid way to annotate a Rust program as being released under a
+BSD-style license), or a name followed by a comma-separated list of
+nested attributes, as in the `cfg` example above.
+
+An attribute without a semicolon following it applies to the
+definition that follows it. When terminated with a semicolon, it
+applies to the current context. The above example could also be
+written like this:
+
+    fn register_win_service() {
+        #[cfg(target_os = "win32")];
+        /* ... */
+    }

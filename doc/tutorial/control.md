@@ -148,7 +148,7 @@ handle the failure, allowing the program to continue running.
 to access a vector out of bounds, or running a pattern match with no
 matching clauses, both result in the equivalent of a `fail`.
 
-[tasks]: FIXME
+[tasks]: task.html
 
 ## Logging
 

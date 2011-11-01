@@ -102,3 +102,6 @@ pass to a generic higher-order function as being passed by pointer:
 
 NOTE: This is inconvenient, and we are hoping to get rid of this
 restriction in the future.
+
+FIXME discuss kinds, when they have settled
+

@@ -292,4 +292,17 @@ strings. They are always immutable.
 
 ## Resources
 
-FIXME fill this in
+Resources are data types that have a destructor associated with them.
+
+    resource file_desc(fd: int) {
+        close_file_desc(fd);
+    }
+
+This defines a type `file_desc` and a constructor of the same name,
+which takes an integer. Values of such a type can not be copied, and
+when they are destroyed (by going out of scope, or, when boxed, when
+their box is cleaned up), their body runs. In the example above, this
+would cause the given file descriptor to be closed.
+
+NOTE: We're considering alternative approaches for data types with
+destructors. Resources might go away in the future.
