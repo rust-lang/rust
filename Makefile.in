@@ -335,6 +335,7 @@ include $(CFG_SRC_DIR)/mk/rustllvm.mk
 include $(CFG_SRC_DIR)/mk/autodep.mk
 include $(CFG_SRC_DIR)/mk/tools.mk
 include $(CFG_SRC_DIR)/mk/docs.mk
+include $(CFG_SRC_DIR)/mk/llvm.mk
 
 ######################################################################
 # Secondary makefiles, conditionalized for speed
