@@ -196,19 +196,31 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 # LLVM macros
 ######################################################################
 
-# Any rules that depend on LLVM should depend on LLVM_CONFIG
-LLVM_CONFIG:=$(CFG_LLVM_INST_DIR)/bin/llvm-config
-LLVM_VERSION=$(shell "$(LLVM_CONFIG)" --version)
-LLVM_BINDIR=$(shell "$(LLVM_CONFIG)" --bindir)
-LLVM_INCDIR=$(shell "$(LLVM_CONFIG)" --includedir)
-LLVM_LIBDIR=$(shell "$(LLVM_CONFIG)" --libdir)
-LLVM_LIBS=$(shell "$(LLVM_CONFIG)" --libs)
-LLVM_LDFLAGS=$(shell "$(LLVM_CONFIG)" --ldflags)
-LLVM_CXXFLAGS=$(shell "$(LLVM_CONFIG)" --cxxflags)
-LLVM_HOST_TRIPLE=$(shell "$(LLVM_CONFIG)" --host-target)
+define DEF_LLVM_VARS
+# The configure script defines these variables with the target triples
+# separated by Z. This defines new ones with the expected format.
+CFG_LLVM_BUILD_DIR_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))
+CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
 
-LLVM_AS=$(LLVM_BINDIR)/llvm-as$(X)
-LLC=$(LLVM_BINDIR)/llc$(X)
+# Any rules that depend on LLVM should depend on LLVM_CONFIG
+LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config
+LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
+LLVM_BINDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --bindir)
+LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)
+LLVM_LIBDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libdir)
+LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs)
+LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
+LLVM_CXXFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags)
+LLVM_HOST_TRIPLE_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --host-target)
+
+LLVM_AS_$(1)=$$(LLVM_BINDIR_$(1))/llvm-as$$(X)
+LLC_$(1)=$$(LLVM_BINDIR_$(1))/llc$$(X)
+
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+ $(eval $(call DEF_LLVM_VARS,$(target))))
+
 
 ######################################################################
 # Exports for sub-utilities

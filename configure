@@ -372,10 +372,15 @@ for i in \
     nd nd/std \
     dl \
     test/run-pass test/run-fail test/compile-fail \
-    test/bench test/perf test/pretty \
-    llvm
+    test/bench test/perf test/pretty
 do
     make_dir $i
+done
+
+make_dir llvm
+for t in $CFG_TARGET_TRIPLES
+do
+    make_dir llvm/$t
 done
 
 make_dir rustllvm
@@ -446,62 +451,78 @@ msg
 
 # Configure llvm. Here we go...
 CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm
-CFG_LLVM_BUILD_DIR=${CFG_BUILD_DIR}/llvm
-# Just use LLVM straight from its build directory to avoid 'make install' time
-CFG_LLVM_INST_DIR=${CFG_LLVM_BUILD_DIR}/Release+Asserts
-
-if [ -z $CFG_LLVM_ROOT ]
-then
-    step_msg "configuring LLVM"
-
-    LLVM_TARGETS="--enable-targets=x86,x86_64"
-    LLVM_BUILD="--build=${CFG_HOST_TRIPLE}"
-    LLVM_HOST="--host=${CFG_HOST_TRIPLE}"
-    LLVM_TARGET="--target=${CFG_HOST_TRIPLE}"
-    LLVM_OPTS="--enable-optimized --disable-docs"
-
-    LLVM_CXX_32="g++ -m32"
-    LLVM_CC_32="gcc -m32"
-    LLVM_CFLAGS_32="-m32"
-    LLVM_CXXFLAGS_32="-m32"
-    LLVM_LDFLAGS_32="-m32"
-
-    # FIXME: Need to change flags for x64
-    LLVM_CXX=$LLVM_CXX_32
-    LLVM_CC=$LLVM_CC_32
-    LLVM_CFLAGS=$LLVM_CFLAGS_32
-    LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
-    LLVM_LDFLAGS=$LLVM_LDFLAGS_32
-
-    CXX=$LLVM_CXX
-    CC=$LLVM_CC
-    CFLAGS=$LLVM_CFLAGS
-    CXXFLAGS=$LLVM_CXXFLAGS
-    LDFLAGS=$LLVM_LDFLAGS
-
-    LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD $LLVM_HOST $LLVM_TARGET"
-
-    msg "configuring LLVM with:"
-    msg "$LLVM_FLAGS"
-
-    export CXX
-    export CC
-    export CFLAGS
-    export CXXFLAGS
-    export LDFLAGS
-
-    cd $CFG_LLVM_BUILD_DIR
-    # FIXME: This won't work if CFG_SRC_DIR is absolute
-    ${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
-    cd $CFG_BUILD_DIR
-else
-    # The user is using their own LLVM
-    CFG_LLVM_INST_DIR=$CFG_LLVM_ROOT
-fi
-
 putvar CFG_LLVM_SRC_DIR
-putvar CFG_LLVM_BUILD_DIR
-putvar CFG_LLVM_INST_DIR
+
+for t in $CFG_TARGET_TRIPLES
+do
+    if [ -z $CFG_LLVM_ROOT ]
+    then
+	step_msg "configuring LLVM for $t"
+
+	LLVM_BUILD_DIR=$CFG_BUILD_DIR/llvm/$t
+        # Just use LLVM straight from its build directory to
+        # avoid 'make install' time
+	LLVM_INST_DIR=$LLVM_BUILD_DIR/Release+Asserts
+
+	LLVM_TARGETS="--enable-targets=x86,x86_64"
+	LLVM_BUILD="--build=$t"
+	LLVM_HOST="--host=$t"
+	LLVM_TARGET="--target=$t"
+	LLVM_OPTS="--enable-optimized --disable-docs"
+
+	LLVM_CXX_32="g++ -m32"
+	LLVM_CC_32="gcc -m32"
+	LLVM_CFLAGS_32="-m32"
+	LLVM_CXXFLAGS_32="-m32"
+	LLVM_LDFLAGS_32="-m32"
+
+        # FIXME: Need to change flags for x64
+	LLVM_CXX=$LLVM_CXX_32
+	LLVM_CC=$LLVM_CC_32
+	LLVM_CFLAGS=$LLVM_CFLAGS_32
+	LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
+	LLVM_LDFLAGS=$LLVM_LDFLAGS_32
+
+	CXX=$LLVM_CXX
+	CC=$LLVM_CC
+	CFLAGS=$LLVM_CFLAGS
+	CXXFLAGS=$LLVM_CXXFLAGS
+	LDFLAGS=$LLVM_LDFLAGS
+
+	LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD $LLVM_HOST $LLVM_TARGET"
+
+	msg "configuring LLVM with:"
+	msg "$LLVM_FLAGS"
+
+	export CXX
+	export CC
+	export CFLAGS
+	export CXXFLAGS
+	export LDFLAGS
+
+	cd $LLVM_BUILD_DIR
+        # FIXME: This won't work if CFG_SRC_DIR is absolute
+	${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
+	cd $CFG_BUILD_DIR
+    else
+	LLVM_BUILD_DIR=bogus
+        # The user is using their own LLVM
+	LLVM_INST_DIR=$CFG_LLVM_ROOT
+    fi
+
+    # Construct variables for LLVM build and install directories for
+    # each target. These will be named
+    # CFG_LLVM_BUILD_DIR_${target_triple} but all the hyphens in
+    # target_triple will be converted to underscore, because bash
+    # variables can't contain hyphens. The makefile will then have to
+    # convert back.
+    CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
+    CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
+    eval ${CFG_LLVM_BUILD_DIR}="'$LLVM_BUILD_DIR'"
+    eval ${CFG_LLVM_INST_DIR}="'$LLVM_INST_DIR'"
+    putvar $CFG_LLVM_BUILD_DIR
+    putvar $CFG_LLVM_INST_DIR
+done
 
 
 # Munge any paths that appear in config.mk back to posix-y
