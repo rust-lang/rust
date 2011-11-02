@@ -109,11 +109,12 @@ constants can be defined with `const`:
 
 ## Types
 
-The `-> bool` in the last example is the way a function's return type
-is written. For functions that do not return a meaningful value (these
-conceptually return nil in Rust), you can optionally say `-> ()` (`()`
-is how nil is written), but usually the return annotation is simply
-left off, as in the `fn main() { ... }` examples we've seen earlier.
+The `-> bool` in the `is_four` example is the way a function's return
+type is written. For functions that do not return a meaningful value
+(these conceptually return nil in Rust), you can optionally say `->
+()` (`()` is how nil is written), but usually the return annotation is
+simply left off, as in the `fn main() { ... }` examples we've seen
+earlier.
 
 Every argument to a function must have its type declared (for example,
 `x: int`). Inside the function, type inference will be able to
