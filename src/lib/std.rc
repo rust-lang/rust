@@ -3,50 +3,91 @@
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "http://rust-lang.org/src/std")];
 
-#[comment = "Rust standard library"];
+#[comment = "The Rust standard library"];
 #[license = "BSD"];
 
-// Built-in types support modules.
 
+export box, char, float, int, str, ptr, uint, u8, u32, u64, vec;
+export aio, comm, fs, io, net, run, sio, sys, task;
+export ctypes, either, option, result, util;
+export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
+export ebml, dbg, getopts, math, rand, sha1, term, time, unsafe;
+export extfmt, test;
+// FIXME: generic_os and os_fs shouldn't be exported
+export generic_os, os, os_fs;
+
+
+// Built-in types support modules
+
+mod box;
 mod char;
+mod float;
 mod int;
+mod str;
+mod ptr;
 mod uint;
 mod u8;
 mod u32;
 mod u64;
 mod vec;
-mod str;
-mod float;
 
-// General io and system-services modules.
 
+// General io and system-services modules
+
+mod aio;
+mod comm;
+mod fs;
 mod io;
+mod net;
+mod run = "run_program.rs";
+mod sio;
 mod sys;
 mod task;
-mod comm;
 
-// Utility modules.
 
+// Utility modules
+
+mod ctypes;
 mod either;
 mod option;
+mod result;
 mod util;
-mod ctypes;
 
-// Authorize various rule-bendings.
 
-auth io = unsafe;
-auth fs = unsafe;
-auth os_fs = unsafe;
-auth run = unsafe;
-auth str = unsafe;
-auth vec = unsafe;
-auth task = unsafe;
+// Collections
 
-auth dbg = unsafe;
+mod bitv;
+mod deque;
+mod fun_treemap;
+mod list;
+mod map;
+mod smallintmap;
+mod sort;
+mod treemap;
+mod ufind;
 
-auth uint::next_power_of_two = unsafe;
-auth map::mk_hashmap = unsafe;
-auth rand::mk_rng = unsafe;
+
+// And ... other stuff
+
+mod ebml;
+mod dbg;
+mod getopts;
+mod math;
+mod rand;
+mod sha1;
+mod term;
+mod time;
+mod unsafe;
+
+#[cfg(unicode)]
+mod unicode;
+
+
+// Compiler support modules
+
+mod extfmt;
+mod test;
+
 
 // Target-os module.
 
@@ -68,39 +109,24 @@ mod os = "linux_os.rs";
 #[cfg(target_os = "linux")]
 mod os_fs = "posix_fs.rs";
 
-mod run = "run_program.rs";
-mod fs;
-mod aio;
-mod sio;
-mod net;
 
-// FIXME: parametric
-mod map;
-mod treemap;
-mod fun_treemap;
-mod deque;
-mod list;
-mod rand;
-mod dbg;
-mod bitv;
-mod sort;
-mod sha1;
-mod ebml;
-mod ufind;
-mod extfmt;
-mod box;
-mod getopts;
-mod time;
-mod smallintmap;
-mod ptr;
-mod test;
-mod unsafe;
-mod term;
-mod math;
-mod result;
+// FIXME: This doesn't do anything.
+// Authorize various rule-bendings.
 
-#[cfg(unicode)]
-mod unicode;
+auth io = unsafe;
+auth fs = unsafe;
+auth os_fs = unsafe;
+auth run = unsafe;
+auth str = unsafe;
+auth vec = unsafe;
+auth task = unsafe;
+
+auth dbg = unsafe;
+
+auth uint::next_power_of_two = unsafe;
+auth map::mk_hashmap = unsafe;
+auth rand::mk_rng = unsafe;
+
 
 // Local Variables:
 // mode: rust;
