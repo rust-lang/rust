@@ -10,7 +10,7 @@ fn main() {
 
     unsafe {
         let a = 0;
-        let v = std::ptr::addr_of(a);
+        let v = std::ptr::mut_addr_of(a);
         f(v);
     }
 }

@@ -57,7 +57,7 @@ fn dylib_filename(base: str) -> str { ret "lib" + base + ".dylib"; }
 
 fn pipe() -> {in: int, out: int} {
     let fds = {mutable in: 0, mutable out: 0};
-    assert (os::libc::pipe(ptr::addr_of(fds.in)) == 0);
+    assert (os::libc::pipe(ptr::mut_addr_of(fds.in)) == 0);
     ret {in: fds.in, out: fds.out};
 }
 
@@ -82,7 +82,8 @@ fn get_exe_path() -> option::t<fs::path> {
     let bufsize = 1023u32;
     let path = str::unsafe_from_bytes(vec::init_elt(0u8, bufsize as uint));
     ret str::as_buf(path, { |path_buf|
-        if libc::_NSGetExecutablePath(path_buf, ptr::addr_of(bufsize)) == 0 {
+        if libc::_NSGetExecutablePath(path_buf,
+                                      ptr::mut_addr_of(bufsize)) == 0 {
             option::some(fs::dirname(path) + fs::path_sep())
         } else {
             option::none

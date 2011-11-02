@@ -162,9 +162,10 @@ This program uses the Posix function `gettimeofday` to get a
 microsecond-resolution timer.
 
     use std;
-    type timeval = {tv_sec: u32, tv_usec: u32};
+    type timeval = {mutable tv_sec: u32,
+                    mutable tv_usec: u32};
     native "cdecl" mod libc = "" {
-        fn gettimeofday(tv: *mutable timeval, tz: *()) -> i32;
+        fn gettimeofday(tv: *timeval, tz: *()) -> i32;
     }
     fn unix_time_in_microseconds() -> u64 unsafe {
         let x = {tv_sec: 0u32, tv_usec: 0u32};

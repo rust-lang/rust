@@ -64,7 +64,7 @@ fn dylib_filename(base: str) -> str { ret "lib" + base + ".so"; }
 
 fn pipe() -> {in: int, out: int} {
     let fds = {mutable in: 0, mutable out: 0};
-    assert (os::libc::pipe(ptr::addr_of(fds.in)) == 0);
+    assert (os::libc::pipe(ptr::mut_addr_of(fds.in)) == 0);
     ret {in: fds.in, out: fds.out};
 }
 
