@@ -121,7 +121,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
             if vec::len::<t>(tps) > 0u {
                 let strs: [str] = [];
                 for typ: t in tps { strs += [ty_to_str(cx, typ)]; }
-                s += "[" + str::connect(strs, ",") + "]";
+                s += "<" + str::connect(strs, ",") + ">";
             }
             s
           }
