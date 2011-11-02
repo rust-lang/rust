@@ -40,6 +40,11 @@ not see changes made to these variables after the `lambda` was
 evaluated. `lambda`s can be put in data structures and passed around
 without limitation.
 
+The type of a closure is `lambda(args) -> type`, as opposed to
+`fn(args) -> type`. The `fn` type stands for 'bare' functions, with no
+closure attached. Keep this in mind when writing higher-order
+functions.
+
 A different form of closure is the block. Blocks are written like they
 are in Ruby: `{|x| x + y}`, the formal parameters between pipes,
 followed by the function body. They are stack-allocated and properly
@@ -55,10 +60,25 @@ stored in data structures or returned.
     }
     map_int({|x| x + 1 }, [1, 2, 3]);
 
+The type of blocks is spelled `block(args) -> type`. Both closures and
+bare functions are automatically convert to `block`s when appropriate.
+Most higher-order functions should take their function arguments as
+`block`s.
+
 A block with no arguments is written `{|| body(); }`—you can not leave
 off the pipes.
 
-FIXME mention bind
+## Binding
+
+Partial application is done using the `bind` keyword in Rust.
+
+    let daynum = bind std::vec::position(_, ["mo", "tu", "we", "do",
+                                             "fr", "sa", "su"]);
+
+Binding a function produces a closure (`lambda` type) in which some of
+the arguments to the bound function have already been provided.
+`daynum` will be a function taking a single string argument, and
+returning the day of the week that string corresponds to (if any).
 
 ## Iteration
 

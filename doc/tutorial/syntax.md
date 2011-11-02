@@ -130,31 +130,31 @@ annotation:
 The basic types are written like this:
 
 `()`
-: Nil, the type that has only a single value.  
+: Nil, the type that has only a single value.
 
 `bool`
-: Boolean type..  
+: Boolean type..
 
 `int`
-: A machine-pointer-sized integer.  
+: A machine-pointer-sized integer.
 
 `uint`
-: A machine-pointer-sized unsigned integer.  
+: A machine-pointer-sized unsigned integer.
 
 `i8`, `i16`, `i32`, `i64`
-: Signed integers with a specific size (in bits).  
+: Signed integers with a specific size (in bits).
 
 `u8`, `u16`, `u32`, `u64`
-: Unsigned integers with a specific size.  
+: Unsigned integers with a specific size.
 
 `f32`, `f64`
-: Floating-point types.  
+: Floating-point types.
 
 `float`
-: The largest floating-point type efficiently supported on the target machine.  
+: The largest floating-point type efficiently supported on the target machine.
 
 `char`
-: A character is a 32-bit Unicode code point.  
+: A character is a 32-bit Unicode code point.
 
 `str`
 : String type. A string contains a utf-8 encoded sequence of characters.
@@ -163,22 +163,22 @@ These can be combined in composite types, which will be described in
 more detail later on (the `T`s here stand for any other type):
 
 `[T]`
-: Vector type.  
+: Vector type.
 
 `[mutable T]`
-: Mutable vector type.  
+: Mutable vector type.
 
 `(T1, T2)`
-: Tuple type. Any arity above 1 is supported.  
+: Tuple type. Any arity above 1 is supported.
 
 `{fname1: T1, fname2: T2}`
-: Record type.  
+: Record type.
 
-`fn(arg1: T1, arg2: T2) -> T3`
-: Function type.  
+`fn(arg1: T1, arg2: T2) -> T3`, `lambda()`, `block()`
+: Function types.
 
 `@T`, `~T`, `*T`
-: Pointer types.  
+: Pointer types.
 
 `obj { fn method1() }`
 : Object type.

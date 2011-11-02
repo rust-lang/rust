@@ -8,7 +8,8 @@ CodeMirror.defineMode("rust", function() {
     "lambda": "fn", "type": "type", "tag": "tag", "mod": "mod",
     "as": "op", "true": "atom", "false": "atom", "assert": "op", "check": "op",
     "claim": "op", "native": "ignore", "unsafe": "ignore", "import": "else-style",
-    "export": "else-style", "copy": "op", "log": "op", "log_err": "op", "use": "op"
+    "export": "else-style", "copy": "op", "log": "op", "log_err": "op",
+    "use": "op", "bind": "op"
   };
   var typeKeywords = function() {
     var keywords = {"fn": "fn", "block": "fn", "obj": "obj"};
