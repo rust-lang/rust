@@ -2,29 +2,36 @@
 # rustc LLVM-extensions (C++) library variables and rules
 ######################################################################
 
-RUSTLLVM_OBJS_CS := $(addprefix rustllvm/, RustGCMetadataPrinter.cpp \
+define DEF_RUSTLLVM_TARGETS
+
+RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, RustGCMetadataPrinter.cpp \
     RustGCStrategy.cpp RustWrapper.cpp)
 
 # Behind an ifdef for now since this requires a patched LLVM.
 ifdef CFG_STACK_GROWTH
-RUSTLLVM_OBJS_CS += rustllvm/RustPrologHook.cpp
+RUSTLLVM_OBJS_CS_$(1) += rustllvm/RustPrologHook.cpp
 endif
 
-RUSTLLVM_DEF := rustllvm/rustllvm$(CFG_DEF_SUFFIX)
+RUSTLLVM_DEF_$(1) := rustllvm/rustllvm$$(CFG_DEF_SUFFIX)
 
-RUSTLLVM_INCS := -iquote $(CFG_LLVM_INCDIR) \
-                 -iquote $(S)src/rustllvm/include
-RUSTLLVM_OBJS_OBJS := $(RUSTLLVM_OBJS_CS:.cpp=.o)
+RUSTLLVM_INCS_$(1) := -iquote $$(CFG_LLVM_INCDIR) \
+                      -iquote $$(S)src/rustllvm/include
+RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=rustllvm/$(1)/%.o)
 
-rustllvm/$(CFG_RUSTLLVM): $(RUSTLLVM_OBJS_OBJS) \
-                          $(MKFILES) $(RUSTLLVM_DEF)
-	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C,$@,$(RUSTLLVM_OBJS_OBJS) \
-	  $(CFG_GCCISH_PRE_LIB_FLAGS) $(CFG_LLVM_LIBS) \
-          $(CFG_GCCISH_POST_LIB_FLAGS) \
-          $(CFG_LLVM_LDFLAGS),$(RUSTLLVM_DEF),$(CFG_RUSTLLVM))
+rustllvm/$(1)/$(CFG_RUSTLLVM): $$(RUSTLLVM_OBJS_OBJS_$(1)) \
+                          $$(MKFILES) $$(RUSTLLVM_DEF_$(1))
+	@$$(call E, link: $$@)
+	$$(Q)$$(call CFG_LINK_C_$(1),$$@,$$(RUSTLLVM_OBJS_OBJS_$(1)) \
+	  $$(CFG_GCCISH_PRE_LIB_FLAGS) $$(CFG_LLVM_LIBS) \
+          $$(CFG_GCCISH_POST_LIB_FLAGS) \
+          $$(CFG_LLVM_LDFLAGS),$$(RUSTLLVM_DEF_$(1)),$$(CFG_RUSTLLVM))
 
-rustllvm/%.o: rustllvm/%.cpp $(MKFILES)
-	@$(call E, compile: $@)
-	$(Q)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) $(RUSTLLVM_INCS)) $<
+rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILES)
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(CFG_LLVM_CXXFLAGS) $$(RUSTLLVM_INCS_$(1))) $$<
 
+endef
+
+# Instantiate template for all stages
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+ $(eval $(call DEF_RUSTLLVM_TARGETS,$(target))))

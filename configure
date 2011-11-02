@@ -394,11 +394,17 @@ step_msg "making directories"
 for i in \
     doc doc/std \
     nd nd/std \
-    rustllvm dl \
+    dl \
     test/run-pass test/run-fail test/compile-fail \
     test/bench test/perf test/pretty
 do
     make_dir $i
+done
+
+make_dir rustllvm
+for t in $CFG_TARGET_TRIPLES
+do
+    make_dir rustllvm/$t
 done
 
 make_dir rt

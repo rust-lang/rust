@@ -35,11 +35,11 @@ $$(TARGET_LIB$(1)$(2))/libstd.rlib: \
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_$(2)) --lib --static -o $$@ $$<
 
-$$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME): rt/$(2)/$(CFG_RUNTIME)
+$$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME): rt/$(2)/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM): rustllvm/$$(CFG_RUSTLLVM)
+$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM): rustllvm/$(2)/$$(CFG_RUSTLLVM)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
