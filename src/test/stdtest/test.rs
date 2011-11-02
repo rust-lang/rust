@@ -22,6 +22,7 @@ fn ignored_tests_result_in_ignored() {
 }
 
 #[test]
+#[ignore(cfg(target_os = "win32"))]
 fn test_should_fail() {
     fn f() { fail; }
     let desc = {name: "whatever", fn: f, ignore: false, should_fail: true};
