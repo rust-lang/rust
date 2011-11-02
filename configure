@@ -342,8 +342,7 @@ then
     CFG_LLVM_LIBS=$($CFG_LLVM_CONFIG --libs)
     CFG_LLVM_TRIPLE=$($CFG_LLVM_CONFIG --host-target)
 else
-    err "either the \"CFG_LLVM_ROOT\" environment variable must be set, or a \
-\"llvm-config\" script must be present"
+    err "no llvm-config found and no --llvm-root specified"
 fi
 
 case $CFG_LLVM_VERSION in
