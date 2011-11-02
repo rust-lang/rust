@@ -14,7 +14,7 @@ endif
 
 RUSTLLVM_DEF_$(1) := rustllvm/rustllvm$$(CFG_DEF_SUFFIX)
 
-RUSTLLVM_INCS_$(1) := -iquote $$(CFG_LLVM_INCDIR) \
+RUSTLLVM_INCS_$(1) := -iquote $$(LLVM_INCDIR) \
                       -iquote $$(S)src/rustllvm/include
 RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=rustllvm/$(1)/%.o)
 
@@ -22,13 +22,14 @@ rustllvm/$(1)/$(CFG_RUSTLLVM): $$(RUSTLLVM_OBJS_OBJS_$(1)) \
                           $$(MKFILES) $$(RUSTLLVM_DEF_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_C_$(1),$$@,$$(RUSTLLVM_OBJS_OBJS_$(1)) \
-	  $$(CFG_GCCISH_PRE_LIB_FLAGS) $$(CFG_LLVM_LIBS) \
+	  $$(CFG_GCCISH_PRE_LIB_FLAGS) $$(LLVM_LIBS) \
           $$(CFG_GCCISH_POST_LIB_FLAGS) \
-          $$(CFG_LLVM_LDFLAGS),$$(RUSTLLVM_DEF_$(1)),$$(CFG_RUSTLLVM))
+          $$(LLVM_LDFLAGS),$$(RUSTLLVM_DEF_$(1)),$$(CFG_RUSTLLVM))
 
-rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILES) $$(CFG_LLVM_INST_DIR)/bin/llc
+rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILES) \
+		$$(CFG_LLVM_INST_DIR)/bin/llvm-config
 	@$$(call E, compile: $$@)
-	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(CFG_LLVM_CXXFLAGS) $$(RUSTLLVM_INCS_$(1))) $$<
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(LLVM_CXXFLAGS) $$(RUSTLLVM_INCS_$(1))) $$<
 endef
 
 # Instantiate template for all stages

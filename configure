@@ -498,13 +498,14 @@ step_msg "configuring LLVM"
 
 CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm
 CFG_LLVM_BUILD_DIR=${CFG_BUILD_DIR}/llvm
+# Just use LLVM straight from its build directory to avoid 'make install' time
 CFG_LLVM_INST_DIR=${CFG_LLVM_BUILD_DIR}/Release+Asserts
 
 LLVM_TARGETS="--enable-targets=x86,x86_64"
-LLVM_DISABLE="--disable-docs"
 LLVM_BUILD="--build=${CFG_HOST_TRIPLE}"
 LLVM_HOST="--host=${CFG_HOST_TRIPLE}"
 LLVM_TARGET="--target=${CFG_HOST_TRIPLE}"
+LLVM_OPTS="--enable-optimized --disable-docs"
 
 LLVM_CXX_32="g++ -m32"
 LLVM_CC_32="gcc -m32"
@@ -525,7 +526,10 @@ CFLAGS=$LLVM_CFLAGS
 CXXFLAGS=$LLVM_CXXFLAGS
 LDFLAGS=$LLVM_LDFLAGS
 
-LLVM_FLAGS="$LLVM_TARGETS $LLVM_DISABLE $LLVM_BUILD $LLVM_HOST $LLVM_TARGET"
+LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD $LLVM_HOST $LLVM_TARGET"
+
+msg "configuring LLVM with:"
+msg "$LLVM_FLAGS"
 
 export CXX
 export CC

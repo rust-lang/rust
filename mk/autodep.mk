@@ -14,11 +14,11 @@ rt/%.d: rt/%.cpp $(MKFILES)
 	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
-rustllvm/%.d: rustllvm/%.cpp $(MKFILES)
+rustllvm/%.d: rustllvm/%.cpp $(MKFILES) $(LLVM_CONFIG)
 	@$(call E, dep: $@)
 	$(Q)$(call CFG_DEPEND_C, $@ \
       $(subst $(S)src/,,$(patsubst %.cpp, %.o, $<)), \
-      $(CFG_LLVM_CXXFLAGS) $(RUSTLLVM_INCS)) $< >$@.tmp
+      $(LLVM_CXXFLAGS) $(RUSTLLVM_INCS)) $< >$@.tmp
 	$(Q)$(CFG_PATH_MUNGE) $@.tmp
 	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@

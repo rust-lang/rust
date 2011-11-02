@@ -62,8 +62,6 @@ CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
 endif
 
 CFG_INFO := $(info cfg: shell host triple $(CFG_HOST_TRIPLE))
-CFG_INFO := $(info cfg: llvm host triple $(CFG_LLVM_TRIPLE))
-CFG_INFO := $(info cfg: llvm target triples $(CFG_TARGET_TRIPLES))
 
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
@@ -195,6 +193,23 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
                                 rustc.rc *.rs */*.rs */*/*.rs))
 
 ######################################################################
+# LLVM macros
+######################################################################
+
+LLVM_CONFIG:=$(CFG_LLVM_INST_DIR)/bin/llvm-config
+LLVM_VERSION=$(shell "$(LLVM_CONFIG)" --version)
+LLVM_BINDIR=$(shell "$(LLVM_CONFIG)" --bindir)
+LLVM_INCDIR=$(shell "$(LLVM_CONFIG)" --includedir)
+LLVM_LIBDIR=$(shell "$(LLVM_CONFIG)" --libdir)
+LLVM_LIBS=$(shell "$(LLVM_CONFIG)" --libs)
+LLVM_LDFLAGS=$(shell "$(LLVM_CONFIG)" --ldflags)
+LLVM_CXXFLAGS=$(shell "$(LLVM_CONFIG)" --cxxflags)
+LLVM_HOST_TRIPLE=$(shell "$(LLVM_CONFIG)" --host-target)
+
+LLVM_AS=$(CFG_LLVM_BINDIR)/llvm-as$(X)
+LLC=$(CFG_LLVM_BINDIR)/llc$(X)
+
+######################################################################
 # Exports for sub-utilities
 ######################################################################
 
@@ -212,10 +227,6 @@ export CFG_PREFIX
 ######################################################################
 # Subprograms
 ######################################################################
-
-LLVM_AS := $(CFG_LLVM_BINDIR)/llvm-as$(X)
-
-LLC := $(CFG_LLVM_BINDIR)/llc$(X)
 
 ######################################################################
 # Per-stage targets and runner
