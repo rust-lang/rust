@@ -254,6 +254,12 @@ valopt prefix "/usr/local" "set installation prefix"
 valopt llvm-root "" "set llvm root"
 valopt target-triples "" "LLVM target triples (defaults to host if unset)"
 
+if [ $HELP -eq 1 ]
+then
+    echo ""
+    exit 0
+fi
+
 step_msg "writing out basic parameters"
 putvar CFG_SRC_DIR
 putvar CFG_BUILD_DIR
