@@ -367,6 +367,27 @@ fn riter2() {
 }
 
 #[test]
+fn test_permute() {
+  let results: [[int]];
+
+  results = [];
+  permute([]) {|v| results += [v]; }
+  assert results == [[]];
+
+  results = [];
+  permute([7]) {|v| results += [v]; }
+  assert results == [[7]];
+
+  results = [];
+  permute([1,1]) {|v| results += [v]; }
+  assert results == [[1,1],[1,1]];
+
+  results = [];
+  permute([5,2,0]) {|v| results += [v]; }
+  assert results == [[5,2,0],[5,0,2],[2,5,0],[2,0,5],[0,5,2],[0,2,5]];
+}
+
+#[test]
 fn test_any_and_all() {
     assert (vec::any(is_three, [1u, 2u, 3u]));
     assert (!vec::any(is_three, [0u, 1u, 2u]));

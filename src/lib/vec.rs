@@ -735,6 +735,31 @@ fn riter2<T>(v: [mutable? T], f: block(uint, T)) {
 }
 
 /*
+Function: permute
+
+Iterate over all permutations of vector `v`.  Permutations are produced in
+lexicographic order with respect to the order of elements in `v` (so if `v`
+is sorted then the permutations are lexicographically sorted).
+
+The total number of permutations produced is `len(v)!`.  If `v` contains
+repeated elements, then some permutations are repeated.
+*/
+fn permute<T>(v: [mutable? T], put: block([T])) {
+  let ln = len(v);
+  if ln == 0u {
+    put([]);
+  } else {
+    let i = 0u;
+    while i < ln {
+      let elt = v[i];
+      let rest = slice(v, 0u, i) + slice(v, i+1u, ln);
+      permute(rest) {|permutation| put([elt] + permutation)}
+      i += 1u;
+    }
+  }
+}
+
+/*
 Function: to_ptr
 
 FIXME: We don't need this wrapper
