@@ -23,6 +23,10 @@
 # fit the experimental data (i.e., I was able to get the system 
 # working under these assumptions). 
 
+# Hack for passing flags into LIBUV, see below.
+LIBUV_FLAGS_i386 = -m32
+LIBUV_FLAGS_x86_64 = -m64
+
 define DEF_RUNTIME_TARGETS
 
 ######################################################################
@@ -155,7 +159,8 @@ $$(LIBUV_LIB_$(1)): $$(wildcard \
                      $$(S)src/rt/libuv/*/*/* \
                      $$(S)src/rt/libuv/*/*/*/*)
 	$$(Q)$$(MAKE) -C $$(S)mk/libuv/$$(LIBUV_ARCH_$(1))/$$(LIBUV_OSTYPE_$(1)) \
-		CFLAGS="$$(TAR_CFLAGS)" LDFLAGS="-m32" \
+		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+        LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CFG_GCCISH_CROSS)$$(CC)" \
 		CXX="$$(CFG_GCCISH_CROSS)$$(CXX)" \
 		AR="$$(CFG_GCCISH_CROSS)$$(AR)" \
