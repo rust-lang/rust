@@ -26,8 +26,7 @@ rustllvm/$(1)/$(CFG_RUSTLLVM): $$(RUSTLLVM_OBJS_OBJS_$(1)) \
           $$(CFG_GCCISH_POST_LIB_FLAGS) \
           $$(LLVM_LDFLAGS),$$(RUSTLLVM_DEF_$(1)),$$(CFG_RUSTLLVM))
 
-rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILES) \
-		$$(CFG_LLVM_INST_DIR)/bin/llvm-config
+rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILES) $$(LLVM_CONFIG)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(LLVM_CXXFLAGS) $$(RUSTLLVM_INCS_$(1))) $$<
 endef
