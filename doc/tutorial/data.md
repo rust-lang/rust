@@ -61,9 +61,10 @@ name as the field.
         {x, y}             { /* Simply bind the fields */ }
     }
 
-When you are not interested in all the fields of a record, a record
-pattern may end with `, _` (as in `{field1, _}`) to indicate that
-you're ignoring all other fields.
+The field names of a record do not have to appear in a pattern in the
+same order they appear in the type. When you are not interested in all
+the fields of a record, a record pattern may end with `, _` (as in
+`{field1, _}`) to indicate that you're ignoring all other fields.
 
 ## Tags
 
