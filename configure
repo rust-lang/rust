@@ -251,7 +251,7 @@ opt optimize 1 "build optimized rust code"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt only-gcc 0 "prefer gcc to clang for building the runtime"
 valopt prefix "/usr/local" "set installation prefix"
-valopt llvm-root "" "set llvm root"
+valopt llvm-root "" "set LLVM root"
 valopt target-triples "" "LLVM target triples (defaults to host if unset)"
 
 if [ $HELP -eq 1 ]
