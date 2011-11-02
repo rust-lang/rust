@@ -356,11 +356,10 @@ fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {
 }
 
 fn visit_decl_with_scope(d: @decl, sc: scopes, v: vt<scopes>) {
-    let loc_pos =
-        alt list::car(sc) {
-          scope_block(_, _, pos) { pos }
-          _ { @mutable 0u }
-        };
+    let loc_pos = alt list::head(sc) {
+      scope_block(_, _, pos) { pos }
+      _ { @mutable 0u }
+    };
     alt d.node {
       decl_local(locs) {
         for (_, loc) in locs { v.visit_local(loc, sc, v);; *loc_pos += 1u; }

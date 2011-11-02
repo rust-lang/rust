@@ -105,20 +105,20 @@ fn len<T>(ls: list<T>) -> uint {
 }
 
 /*
-Function: cdr
+Function: tail
 
 Returns all but the first element of a list
 */
-fn cdr<T>(ls: list<T>) -> list<T> {
+fn tail<T>(ls: list<T>) -> list<T> {
     alt ls { cons(_, tl) { ret *tl; } nil. { fail "list empty" } }
 }
 
 /*
-Function: car
+Function: head
 
 Returns the first element of a list
 */
-fn car<T>(ls: list<T>) -> T {
+fn head<T>(ls: list<T>) -> T {
     alt ls { cons(hd, _) { ret hd; } nil. { fail "list empty" } }
 }
 

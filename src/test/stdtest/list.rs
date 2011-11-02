@@ -1,25 +1,25 @@
 
 use std;
 import std::list;
-import std::list::car;
-import std::list::cdr;
+import std::list::head;
+import std::list::tail;
 import std::list::from_vec;
 import std::option;
 
 #[test]
 fn test_from_vec() {
     let l = from_vec([0, 1, 2]);
-    assert (car(l) == 0);
-    assert (car(cdr(l)) == 1);
-    assert (car(cdr(cdr(l))) == 2);
+    assert (head(l) == 0);
+    assert (head(tail(l)) == 1);
+    assert (head(tail(tail(l))) == 2);
 }
 
 #[test]
 fn test_from_vec_mut() {
     let l = from_vec([mutable 0, 1, 2]);
-    assert (car(l) == 0);
-    assert (car(cdr(l)) == 1);
-    assert (car(cdr(cdr(l))) == 2);
+    assert (head(l) == 0);
+    assert (head(tail(l)) == 1);
+    assert (head(tail(tail(l))) == 2);
 }
 
 #[test]
