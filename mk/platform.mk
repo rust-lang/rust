@@ -39,7 +39,7 @@ endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
-  CFG_GCCISH_CFLAGS += -fPIC -march=i686
+  CFG_GCCISH_CFLAGS += -fPIC
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
   CFG_GCCISH_PRE_LIB_FLAGS := -Wl,-whole-archive

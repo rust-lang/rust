@@ -204,7 +204,7 @@ esac
 case $CFG_CPUTYPE in
 
     i386 | i486 | i686 | i786 | x86)
-        CFG_CPUTYPE=i686
+        CFG_CPUTYPE=i386
         ;;
 
     xscale | arm)
@@ -212,7 +212,8 @@ case $CFG_CPUTYPE in
         ;;
 
     x86_64 | x86-64 | x64)
-        CFG_CPUTYPE=x86_64
+	# FIME: Once we do a 64-bit build this should be x86_64
+        CFG_CPUTYPE=i386
         ;;
 
     *)
@@ -306,17 +307,17 @@ fi
 
 if [ ! -z "$CFG_LLVM_ROOT" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
 then
-    step_msg "using custom LLVM"
+    step_msg "using custom LLVM at $CFG_LLVM_ROOT"
 
     LLVM_CONFIG="$CFG_LLVM_ROOT/bin/llvm-config"
-    LLVM_VERSION=$($CFG_LLVM_CONFIG --version)
+    LLVM_VERSION=$($LLVM_CONFIG --version)
 
     case $LLVM_VERSION in
 	(3.0svn | 3.0 | 3.1svn)
-	    step_msg "found ok version of LLVM: $CFG_LLVM_VERSION"
+	    step_msg "found ok version of LLVM: $LLVM_VERSION"
 	    ;;
 	(*)
-	    err "bad LLVM version: $CFG_LLVM_VERSION, need >=3.0svn"
+	    err "bad LLVM version: $LLVM_VERSION, need >=3.0svn"
 	    ;;
     esac
 fi
