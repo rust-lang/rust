@@ -169,10 +169,11 @@ $$(LIBUV_LIB_$(1)): $$(wildcard \
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
+# This regexp has a single $, escaped twice
 %.linux.def:    %.def.in $$(MKFILES)
 	@$$(call E, def: $$@)
 	$$(Q)echo "{" > $$@
-	$$(Q)sed 's/.$$/&;/' $$< >> $$@
+	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
 	$$(Q)echo "};" >> $$@
 
 %.darwin.def:	%.def.in $$(MKFILES)
