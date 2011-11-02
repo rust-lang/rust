@@ -85,9 +85,9 @@ valopt() {
     local DOC="$*"
     if [ $HELP -eq 0 ]
     then
-	local UOP=$(echo $OP | tr 'a-z-' 'A-Z_')
-	local V="CFG_${UOP}"
-	eval $V="$DEFAULT"
+        local UOP=$(echo $OP | tr 'a-z-' 'A-Z_')
+        local V="CFG_${UOP}"
+        eval $V="$DEFAULT"
         for arg in $CFG_CONFIGURE_ARGS
         do
             if echo "$arg" | grep -q -- "--$OP="
@@ -98,8 +98,12 @@ valopt() {
         done
         putvar $V
     else
-	local OPDEF="${OP}=[${DEFAULT}]"
-        printf "    --%-30s %s\n" "$OPDEF" "$DOC"
+        if [ -z "$DEFAULT" ]
+        then
+            DEFAULT="<none>"
+        fi
+        OP="${OP}=[${DEFAULT}]"
+        printf "    --%-30s %s\n" "$OP" "$DOC"
     fi
 }
 
@@ -246,14 +250,13 @@ opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
 valopt prefix "/usr/local" "set installation prefix"
+valopt llvm-root "" "set llvm root"
 
 if [ $HELP -eq 1 ]
 then
     echo ""
     echo "Useful environment variables:"
     echo ""
-    printf "    %-32s %s\n" "CFG_LLVM_ROOT" "The host LLVM install"
-    printf "    %-32s %s\n" "CFG_PREFIX" "The installation prefix"
     printf "    %-32s %s\n" "CFG_ONLY_GCC" "Prefer gcc to clang for building the runtime"
     printf "    %-32s %s\n" "CFG_TARGET_TRIPLES" "LLVM target triples"
     echo ""
