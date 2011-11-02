@@ -107,6 +107,7 @@ type env =
      ext_map: hashmap<def_id, [ident]>,
      ext_cache: ext_hash,
      mutable reported: [{ident: str, sc: scope}],
+     mutable currently_resolving: node_id,
      sess: session};
 
 
@@ -127,6 +128,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           ext_map: new_def_hash::<[ident]>(),
           ext_cache: new_ext_hash(),
           mutable reported: [],
+          mutable currently_resolving: -1,
           sess: sess};
     map_crate(e, crate);
     resolve_imports(*e);
@@ -218,11 +220,6 @@ fn map_crate(e: @env, c: @ast::crate) {
             }
         }
         alt vi.node {
-
-
-
-
-
           //if it really is a glob import, that is
           ast::view_item_import_glob(path, _) {
             let imp = follow_import(*e, sc, path, vi.span);
@@ -435,73 +432,62 @@ fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
 
 // Import resolution
 fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
-                  ids: [ast::ident], sp: codemap::span, sc_in: scopes) {
-    e.imports.insert(defid.node, resolving(sp));
-    let n_idents = vec::len(ids);
-    let end_id = ids[n_idents - 1u];
-    // Ignore the current scope if this import would shadow itself.
-    let sc =
-        if str::eq(name, ids[0]) { std::list::cdr(sc_in) } else { sc_in };
-    if n_idents == 1u {
-        register(e, defid, sp, end_id, sc_in,
-                 lookup_in_scope(e, sc, sp, end_id, ns_value),
-                 lookup_in_scope(e, sc, sp, end_id, ns_type),
-                 lookup_in_scope(e, sc, sp, end_id, ns_module));
-        remove_if_unresolved(e.imports, defid.node);
-    } else {
-        let dcur =
-            alt lookup_in_scope(e, sc, sp, ids[0], ns_module) {
-              some(dcur) { dcur }
-              none. {
-                unresolved_err(e, sc, sp, ids[0], ns_name(ns_module));
-                remove_if_unresolved(e.imports, defid.node);
-                ret;
-              }
-            };
-        let i = 1u;
-        while true {
-            if i == n_idents - 1u {
-                register(e, defid, sp, end_id, sc_in,
-                         lookup_in_mod(e, dcur, sp, end_id, ns_value,
-                                       outside),
-                         lookup_in_mod(e, dcur, sp, end_id, ns_type, outside),
-                         lookup_in_mod(e, dcur, sp, end_id, ns_module,
-                                       outside));
-                remove_if_unresolved(e.imports, defid.node);
-                break;
-            } else {
-                dcur = alt lookup_in_mod(e, dcur, sp, ids[i], ns_module,
-                                         outside) {
-                  some(dcur) { dcur }
-                  none. {
-                    unresolved_err(e, sc, sp, ids[i], ns_name(ns_module));
-                    remove_if_unresolved(e.imports, defid.node);
-                    ret;
-                  }
-                };
-                i += 1u;
-            }
-        }
-    }
-    fn register(e: env, defid: def_id, sp: span, name: ident, sc: scopes,
-                val: option::t<def>, typ: option::t<def>,
-                md: option::t<def>) {
+                  ids: [ast::ident], sp: codemap::span, sc: scopes) {
+    fn register(e: env, id: node_id, sc: scopes, sp: codemap::span,
+                name: ast::ident, lookup: block(namespace) -> option::t<def>){
+        let val = lookup(ns_value), typ = lookup(ns_type),
+            md = lookup(ns_module);
         if is_none(val) && is_none(typ) && is_none(md) {
             unresolved_err(e, sc, sp, name, "import");
-        } else { e.imports.insert(defid.node, resolved(val, typ, md)); }
-    }
-    fn remove_if_unresolved(imports: hashmap<ast::node_id, import_state>,
-                            node_id: ast::node_id) {
-
-        // If we couldn't resolve the import, don't leave it in a partially
-        // resolved state, to avoid having it reported later as a cyclic
-        // import
-        if imports.contains_key(node_id) {
-            alt imports.get(node_id) {
-              resolving(_) { imports.remove(node_id); }
-              _ { }
-            }
+        } else {
+            e.imports.insert(id, resolved(val, typ, md));
         }
+    }
+    // This function has cleanup code at the end. Do not return without going
+    // through that.
+    e.imports.insert(defid.node, resolving(sp));
+    let previously_resolving = e.currently_resolving;
+    e.currently_resolving = defid.node;
+    let n_idents = vec::len(ids);
+    let end_id = ids[n_idents - 1u];
+    if n_idents == 1u {
+        register(e, defid.node, sc, sp, name,
+                 {|ns| lookup_in_scope(e, sc, sp, end_id, ns) });
+    } else {
+        alt lookup_in_scope(e, sc, sp, ids[0], ns_module) {
+          none. { unresolved_err(e, sc, sp, ids[0], ns_name(ns_module)); }
+          some(dcur_) {
+            let dcur = dcur_, i = 1u;
+            while true {
+                if i == n_idents - 1u {
+                    register(e, defid.node, sc, sp, name, {|ns|
+                        lookup_in_mod(e, dcur, sp, end_id, ns, outside)
+                    });
+                    break;
+                } else {
+                    dcur = alt lookup_in_mod(e, dcur, sp, ids[i], ns_module,
+                                             outside) {
+                      some(dcur) { dcur }
+                      none. {
+                        unresolved_err(e, sc, sp, ids[i], ns_name(ns_module));
+                        break;
+                      }
+                    };
+                    i += 1u;
+                }
+            }
+          }
+        }
+    }
+    e.currently_resolving = previously_resolving;
+    // If we couldn't resolve the import, don't leave it in a partially
+    // resolved state, to avoid having it reported later as a cyclic
+    // import
+    alt e.imports.find(defid.node) {
+      some(resolving(_)) {
+        e.imports.insert(defid.node, resolved(none, none, none));
+      }
+      _ { }
     }
 }
 
@@ -937,7 +923,13 @@ fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
         resolve_import(e, local_def(node_id), name, path, span, scopes);
         ret lookup_import(e, defid, ns);
       }
-      resolving(sp) { e.sess.span_err(sp, "cyclic import"); ret none; }
+      resolving(sp) {
+        // Imports are simply ignored when resolving themselves.
+        if e.currently_resolving != defid.node {
+            e.sess.span_err(sp, "cyclic import");
+        }
+        ret none;
+      }
       resolved(val, typ, md) {
         ret alt ns { ns_value. { val } ns_type. { typ } ns_module. { md } };
       }
