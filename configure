@@ -77,6 +77,32 @@ probe_need() {
     fi
 }
 
+valopt() {
+    local OP=$1
+    local DEFAULT=$2
+    shift
+    shift
+    local DOC="$*"
+    if [ $HELP -eq 0 ]
+    then
+	local UOP=$(echo $OP | tr 'a-z-' 'A-Z_')
+	local V="CFG_${UOP}"
+	eval $V="$DEFAULT"
+        for arg in $CFG_CONFIGURE_ARGS
+        do
+            if echo "$arg" | grep -q -- "--$OP="
+            then
+                val=$(echo "$arg" | cut -f2 -d=)
+                eval $V=$val
+            fi
+        done
+        putvar $V
+    else
+	local OPDEF="${OP}=[${DEFAULT}]"
+        printf "    --%-30s %s\n" "$OPDEF" "$DOC"
+    fi
+}
+
 opt() {
     local OP=$1
     local DEFAULT=$2
@@ -219,7 +245,7 @@ opt valgrind 1 "run tests with valgrind"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
-
+valopt prefix "/usr/local" "set installation prefix"
 
 if [ $HELP -eq 1 ]
 then
