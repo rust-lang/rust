@@ -2,7 +2,10 @@
 
 TOOLSET := target
 TARGET := run-tests
-DEFS_Default := '-D_GNU_SOURCE'
+DEFS_Default := '-D_LARGEFILE_SOURCE' \
+	'-D_FILE_OFFSET_BITS=64' \
+	'-D_GNU_SOURCE' \
+	'-DEIO_STACKSIZE=262144'
 
 # Flags passed to all source files.
 CFLAGS_Default := -fasm-blocks \
@@ -25,10 +28,13 @@ CFLAGS_OBJCC_Default :=
 
 INCS_Default := -I$(srcdir)/src/rt/libuv/include
 
-OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/echo-server.o \
+OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/blackhole-server.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/echo-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/run-tests.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/runner.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-get-loadavg.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-async.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-callback-stack.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-connection-fail.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-delayed-accept.o \
@@ -36,11 +42,13 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/echo-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-fs.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-fs-event.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-get-currentexe.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-get-memory.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-getaddrinfo.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-gethostbyname.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-getsockname.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-hrtime.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-idle.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ipc.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-loop-handles.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-pass-always.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ping-pong.o \
@@ -48,9 +56,13 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/echo-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ref.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-shutdown-eof.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-spawn.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-stdio-over-pipes.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-bind-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-bind6-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-close.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-flags.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-connect-error.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-connect6-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-write-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-writealot.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-threadpool.o \
@@ -60,6 +72,7 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/echo-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-udp-dgram-too-big.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-udp-ipv6.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-udp-send-and-recv.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-udp-multicast-join.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/runner-unix.o
 
 # Add to the list of files we specially track dependencies for.
