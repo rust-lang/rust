@@ -624,7 +624,10 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
              dest: trans::dest) -> @block_ctxt {
     let bodies = [];
     let match: match = [];
-    let er = trans::trans_temp_expr(cx, expr);
+    let alt_cx = new_scope_block_ctxt(cx, "alt");
+    Br(cx, alt_cx.llbb);
+
+    let er = trans::trans_temp_expr(alt_cx, expr);
     if er.bcx.unreachable { ret er.bcx; }
 
     for a: ast::arm in arms {
@@ -654,7 +657,7 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
     let t = trans::node_id_type(cx.fcx.lcx.ccx, expr.id);
     let vr = trans::spill_if_immediate(er.bcx, er.val, t);
     compile_submatch(vr.bcx, match, [vr.val],
-                     bind mk_fail(cx, expr.span, fail_cx), exit_map);
+                     bind mk_fail(alt_cx, expr.span, fail_cx), exit_map);
 
     let arm_cxs = [], arm_dests = [], i = 0u;
     for a: ast::arm in arms {
@@ -667,7 +670,11 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
         }
         i += 1u;
     }
-    ret trans::join_returns(cx, arm_cxs, arm_dests, dest);
+    let after_cx = trans::join_returns(cx, arm_cxs, arm_dests, dest);
+    after_cx = trans::trans_block_cleanups(after_cx, alt_cx);
+    let next_cx = new_sub_block_ctxt(after_cx, "next");
+    Br(after_cx, next_cx.llbb);
+    ret next_cx;
 }
 
 // Not alt-related, but similar to the pattern-munging code above
