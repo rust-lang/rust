@@ -16,12 +16,14 @@ fn test_from_str() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_from_str_fail_1() {
     uint::from_str(" ");
 }
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_from_str_fail_2() {
     uint::from_str("x");
 }
@@ -38,12 +40,14 @@ fn test_parse_buf() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_parse_buf_fail_1() {
     uint::parse_buf(bytes("Z"), 10u);
 }
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_parse_buf_fail_2() {
     uint::parse_buf(bytes("_"), 2u);
 }

@@ -29,12 +29,14 @@ fn test_to_digit() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_to_digit_fail_1() {
     char::to_digit(' ');
 }
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_to_digit_fail_2() {
     char::to_digit('$');
 }

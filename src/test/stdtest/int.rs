@@ -21,12 +21,14 @@ fn test_from_str() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_from_str_fail_1() {
     int::from_str(" ");
 }
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_from_str_fail_2() {
     int::from_str("x");
 }
@@ -54,12 +56,14 @@ fn test_parse_buf() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_parse_buf_fail_1() {
     int::parse_buf(bytes("Z"), 35u);
 }
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_parse_buf_fail_2() {
     int::parse_buf(bytes("-9"), 2u);
 }
