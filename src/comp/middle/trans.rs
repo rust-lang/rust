@@ -3269,12 +3269,13 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     check (type_has_static_size(ccx, t_out));
     let ll_t_out = type_of(ccx, e.span, t_out);
 
-    tag kind { native_; integral; float; other; }
+    tag kind { pointer; integral; float; other; }
     fn t_kind(tcx: ty::ctxt, t: ty::t) -> kind {
         ret if ty::type_is_fp(tcx, t) {
                 float
-            } else if ty::type_is_native(tcx, t) {
-                native_
+            } else if ty::type_is_native(tcx, t) ||
+                      ty::type_is_unsafe_ptr(tcx, t) {
+                pointer
             } else if ty::type_is_integral(tcx, t) {
                 integral
             } else { other };
@@ -3301,13 +3302,13 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
                 FPToSI(e_res.bcx, e_res.val, ll_t_out)
             } else { FPToUI(e_res.bcx, e_res.val, ll_t_out) }
           }
-          {in: integral., out: native_.} {
+          {in: integral., out: pointer.} {
             IntToPtr(e_res.bcx, e_res.val, ll_t_out)
           }
-          {in: native_., out: integral.} {
+          {in: pointer., out: integral.} {
             PtrToInt(e_res.bcx, e_res.val, ll_t_out)
           }
-          {in: native_., out: native_.} {
+          {in: pointer., out: pointer.} {
             PointerCast(e_res.bcx, e_res.val, ll_t_out)
           }
           _ { ccx.sess.bug("Translating unsupported cast.") }

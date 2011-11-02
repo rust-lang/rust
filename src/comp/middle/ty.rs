@@ -153,6 +153,7 @@ export type_is_bot;
 export type_is_box;
 export type_is_boxed;
 export type_is_unique_box;
+export type_is_unsafe_ptr;
 export type_is_vec;
 export type_is_fp;
 export type_allows_implicit_copy;
@@ -881,6 +882,13 @@ pure fn type_is_boxed(cx: ctxt, ty: t) -> bool {
 pure fn type_is_unique_box(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_uniq(_) { ret true; }
+      _ { ret false; }
+    }
+}
+
+pure fn type_is_unsafe_ptr(cx: ctxt, ty: t) -> bool {
+    alt struct(cx, ty) {
+      ty_ptr(_) { ret true; }
       _ { ret false; }
     }
 }
