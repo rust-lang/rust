@@ -299,7 +299,7 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
     ret ast::ty_fn(proto, inputs.node, ret_ty, ret_style, constrs);
 }
 
-fn parse_ty_obj(p: parser, &hi: uint) -> ast::ty_ {
+fn parse_ty_obj(p: parser) -> ast::ty_ {
     fn parse_method_sig(p: parser) -> ast::ty_method {
         let flo = p.get_lo_pos();
         let proto: ast::proto = parse_method_proto(p);
@@ -320,7 +320,6 @@ fn parse_ty_obj(p: parser, &hi: uint) -> ast::ty_ {
     }
     let meths =
         parse_seq(token::LBRACE, token::RBRACE, none, parse_method_sig, p);
-    hi = meths.span.hi;
     ret ast::ty_obj(meths.node);
 }
 
@@ -475,7 +474,6 @@ fn parse_ret_ty(p: parser, n_args: uint) -> (ast::ret_style, @ast::ty) {
 
 fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     let lo = p.get_lo_pos();
-    let hi = lo;
     let t: ast::ty_;
     // FIXME: do something with this
 
@@ -518,7 +516,6 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if p.peek() == token::LPAREN {
         p.bump();
         if p.peek() == token::RPAREN {
-            hi = p.get_hi_pos();
             p.bump();
             t = ast::ty_nil;
         } else {
@@ -530,54 +527,44 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
             if vec::len(ts) == 1u {
                 t = ts[0].node;
             } else { t = ast::ty_tup(ts); }
-            hi = p.get_hi_pos();
             expect(p, token::RPAREN);
         }
     } else if p.peek() == token::AT {
         p.bump();
-        let mt = parse_mt(p);
-        hi = mt.ty.span.hi;
-        t = ast::ty_box(mt);
+        t = ast::ty_box(parse_mt(p));
     } else if p.peek() == token::TILDE {
         p.bump();
-        let mt = parse_mt(p);
-        hi = mt.ty.span.hi;
-        t = ast::ty_uniq(mt);
+        t = ast::ty_uniq(parse_mt(p));
     } else if p.peek() == token::BINOP(token::STAR) {
         p.bump();
-        let mt = parse_mt(p);
-        hi = mt.ty.span.hi;
-        t = ast::ty_ptr(mt);
+        t = ast::ty_ptr(parse_mt(p));
     } else if p.peek() == token::LBRACE {
         let elems =
             parse_seq(token::LBRACE, token::RBRACE, some(token::COMMA),
                       parse_ty_field, p);
-        hi = elems.span.hi;
+        let hi = elems.span.hi;
         t = ast::ty_rec(elems.node);
         if p.peek() == token::COLON {
             p.bump();
-            t =
-                ast::ty_constr(@spanned(lo, hi, t),
+            t = ast::ty_constr(@spanned(lo, hi, t),
                                parse_type_constraints(p));
         }
     } else if p.peek() == token::LBRACKET {
         expect(p, token::LBRACKET);
         t = ast::ty_vec(parse_mt(p));
-        hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         t = parse_ty_fn(proto, p);
-        alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
-        alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
+    } else if eat_word(p, "lambda") {
+        t = parse_ty_fn(ast::proto_shared(ast::sugar_sexy), p);
     } else if eat_word(p, "obj") {
-        t = parse_ty_obj(p, hi);
+        t = parse_ty_obj(p);
     } else if p.peek() == token::MOD_SEP || is_ident(p.peek()) {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
-        hi = path.span.hi;
     } else { p.fatal("expecting type"); }
     ret parse_ty_postfix(t, p, colons_before_params);
 }

@@ -25,13 +25,10 @@ expected to return.
 
 ## Closures
 
-FIXME Either move entirely to fn~/fn@ nomenclature, or fix compiler to
-accept lambda as a type
-
 Normal Rust functions (declared with `fn`) do not close over their
 environment. A `lambda` expression can be used to create a closure.
 
-    fn make_plus_function(x: int) -> fn@(int) -> int {
+    fn make_plus_function(x: int) -> lambda(int) -> int {
         lambda(y: int) -> int { x + y }
     }
     let plus_two = make_plus_function(2);
