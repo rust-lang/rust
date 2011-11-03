@@ -249,7 +249,7 @@ opt valgrind 1 "run tests with valgrind"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
-opt only-gcc 0 "prefer gcc to clang for building the runtime"
+opt clang 0 "prefer gcc to clang for building the runtime"
 valopt prefix "/usr/local" "set installation prefix"
 valopt llvm-root "" "set LLVM root"
 valopt target-triples "" "LLVM target triples (defaults to host if unset)"
@@ -284,7 +284,7 @@ probe CFG_TEX              tex
 probe CFG_MAKENSIS         makensis
 probe CFG_NATURALDOCS      naturaldocs
 
-if [ -z "$CFG_CLANG" -a -z "$CFG_GCC" ]
+if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
     err "either clang or gcc is required"
 fi
@@ -351,8 +351,12 @@ case $CFG_LLVM_VERSION in
     ;;
 esac
 
-if [ ! -z "$CFG_CLANG" -a -z "$CFG_ONLY_GCC" ]
+if [ ! -z "$CFG_ENABLE_CLANG" ]
 then
+    if [ -z "$CFG_CLANG" ]
+    then
+	err "clang requested but not found"
+    fi
     CFG_CLANG_VERSION=$("$CFG_CLANG" \
                       --version \
                       | grep version \
