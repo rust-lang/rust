@@ -145,6 +145,7 @@ opt() {
      fi
 }
 
+
 msg "looking for configure programs"
 need_cmd mkdir
 need_cmd printf
@@ -157,6 +158,7 @@ need_cmd uname
 need_cmd date
 need_cmd tr
 need_cmd sed
+
 
 msg "inspecting environment"
 
@@ -261,14 +263,9 @@ then
     exit 0
 fi
 
-step_msg "writing out basic parameters"
-putvar CFG_SRC_DIR
-putvar CFG_BUILD_DIR
-putvar CFG_OSTYPE
-putvar CFG_CPUTYPE
-putvar CFG_CONFIGURE_ARGS
 
 step_msg "looking for build programs"
+
 probe_need CFG_PERL         perl
 probe_need CFG_PYTHON       python
 probe_need CFG_CURL         curl
@@ -290,21 +287,6 @@ then
     err "either clang or gcc is required"
 fi
 
-if head -n 1 ${CFG_SRC_DIR}src/snapshots.txt | grep -q '^T'
-then
-    CFG_IN_TRANSITION=1
-    putvar CFG_IN_TRANSITION
-fi
-
-# Valgrind is only reliable on Linux. On Windows it doesn't work at all, and
-# on the Mac the dynamic linker causes Valgrind to emit a huge stream of
-# errors.
-if [ $CFG_OSTYPE != unknown-linux-gnu ] && [ $CFG_OSTYPE != apple-darwin ]
-then
-    CFG_BAD_VALGRIND=1
-    putvar CFG_BAD_VALGRIND
-fi
-
 if [ ! -z "$CFG_LLVM_ROOT" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
 then
     step_msg "using custom LLVM at $CFG_LLVM_ROOT"
@@ -314,7 +296,7 @@ then
 
     case $LLVM_VERSION in
 	(3.0svn | 3.0 | 3.1svn)
-	    step_msg "found ok version of LLVM: $LLVM_VERSION"
+	    msg "found ok version of LLVM: $LLVM_VERSION"
 	    ;;
 	(*)
 	    err "bad LLVM version: $LLVM_VERSION, need >=3.0svn"
@@ -339,8 +321,7 @@ then
         CFG_C_COMPILER="clang"
         ;;
         (*)
-        msg "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn; disabling"
-        CFG_C_COMPILER="gcc"
+        err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
         ;;
     esac
 else
@@ -357,13 +338,6 @@ then
     CFG_TARGET_TRIPLES="${CFG_HOST_TRIPLE}"
 fi
 
-putvar CFG_HOST_TRIPLE
-putvar CFG_TARGET_TRIPLES
-
-putvar CFG_C_COMPILER
-putvar CFG_PREFIX
-
-putvar CFG_LLVM_ROOT
 
 step_msg "making directories"
 
@@ -446,12 +420,9 @@ fi
 
 cd ${CFG_BUILD_DIR}
 
-msg
-
 
 # Configure llvm. Here we go...
 CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm
-putvar CFG_LLVM_SRC_DIR
 
 for t in $CFG_TARGET_TRIPLES
 do
@@ -500,12 +471,14 @@ do
 	export CXXFLAGS
 	export LDFLAGS
 
+	# FIXME: This ends up filling the screen with a bunch of LLVM configuration,
+	# depriving the user of seeing our configuration info
 	cd $LLVM_BUILD_DIR
         # FIXME: This won't work if CFG_SRC_DIR is absolute
 	${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
 	cd $CFG_BUILD_DIR
     else
-	LLVM_BUILD_DIR=bogus
+	LLVM_BUILD_DIR=
         # The user is using their own LLVM
 	LLVM_INST_DIR=$CFG_LLVM_ROOT
     fi
@@ -520,6 +493,43 @@ do
     CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
     eval ${CFG_LLVM_BUILD_DIR}="'$LLVM_BUILD_DIR'"
     eval ${CFG_LLVM_INST_DIR}="'$LLVM_INST_DIR'"
+done
+
+
+step_msg "writing configuration"
+
+putvar CFG_SRC_DIR
+putvar CFG_BUILD_DIR
+putvar CFG_OSTYPE
+putvar CFG_CPUTYPE
+putvar CFG_CONFIGURE_ARGS
+putvar CFG_HOST_TRIPLE
+putvar CFG_TARGET_TRIPLES
+putvar CFG_C_COMPILER
+putvar CFG_PREFIX
+
+if head -n 1 ${CFG_SRC_DIR}src/snapshots.txt | grep -q '^T'
+then
+    CFG_IN_TRANSITION=1
+    putvar CFG_IN_TRANSITION
+fi
+
+# Valgrind is only reliable on Linux. On Windows it doesn't work at all, and
+# on the Mac the dynamic linker causes Valgrind to emit a huge stream of
+# errors.
+if [ $CFG_OSTYPE != unknown-linux-gnu ] && [ $CFG_OSTYPE != apple-darwin ]
+then
+    CFG_BAD_VALGRIND=1
+    putvar CFG_BAD_VALGRIND
+fi
+
+putvar CFG_LLVM_ROOT
+putvar CFG_LLVM_SRC_DIR
+
+for t in $CFG_TARGET_TRIPLES
+do
+    CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
+    CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
     putvar $CFG_LLVM_BUILD_DIR
     putvar $CFG_LLVM_INST_DIR
 done
@@ -530,6 +540,7 @@ perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
                -e 's@\\@/@go;' config.mk
 rm -f config.mk.bak
 
+msg
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
 
 step_msg "complete"
