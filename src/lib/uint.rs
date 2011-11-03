@@ -34,6 +34,29 @@ pure fn mul(x: uint, y: uint) -> uint { ret x * y; }
 /* Function: div */
 pure fn div(x: uint, y: uint) -> uint { ret x / y; }
 
+/**
+ * Divide two numbers, return the result, rounded up.
+ */
+pure fn div_ceil(x: uint, y: uint) -> uint {
+    let div = div(x, y);
+    if x % y == 0u { ret div;}
+    else { ret div + 1u; }
+}
+
+/**
+ * Divide two numbers, return the result, rounded to the closest integer.
+ */
+pure fn div_round(x: uint, y: uint) -> uint {
+    let div = div(x, y);
+    if x % y * 2u  < y { ret div;}
+    else { ret div + 1u; }
+}
+
+/**
+ * Divide two numbers, return the result, rounded down.
+ */
+pure fn div_floor(x: uint, y: uint) -> uint { ret x / y; }
+
 /* Function: rem */
 pure fn rem(x: uint, y: uint) -> uint { ret x % y; }
 

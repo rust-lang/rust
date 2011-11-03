@@ -102,3 +102,10 @@ fn test_overflows() {
    assert (uint::min_value() <= 0u);
    assert (uint::min_value() + uint::max_value() + 1u == 0u);
 }
+
+#[test]
+fn test_div() {
+    assert(uint::div_floor(3u, 4u) == 0u);
+    assert(uint::div_ceil(3u, 4u)  == 1u);
+    assert(uint::div_round(3u, 4u) == 1u);
+}
