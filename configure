@@ -204,7 +204,7 @@ esac
 case $CFG_CPUTYPE in
 
     i386 | i486 | i686 | i786 | x86)
-        CFG_CPUTYPE=i386
+        CFG_CPUTYPE=i686
         ;;
 
     xscale | arm)
@@ -213,7 +213,7 @@ case $CFG_CPUTYPE in
 
     x86_64 | x86-64 | x64)
 	# FIME: Once we do a 64-bit build this should be x86_64
-        CFG_CPUTYPE=i386
+        CFG_CPUTYPE=i686
         ;;
 
     *)
