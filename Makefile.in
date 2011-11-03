@@ -31,7 +31,7 @@
 # A note about host libraries:
 #
 # The only libraries that get promoted to stageN/lib are those needed
-# by rustc. In general, rustc programs, even those compiled for the
+# by rustc. In general, rust programs, even those compiled for the
 # host architecture will use libraries from the target
 # directories. This gives rust some freedom to experiment with how
 # libraries are managed and versioned without polluting the common
