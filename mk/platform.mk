@@ -7,7 +7,7 @@ define DEF_HOST_VAR
   HOST_$(1) = $(subst i686,i386,$(word 1,$(subst -, ,$(1))))
 endef
 $(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_HOST_VAR,$(t))))
-$(foreach t,$(CFG_TARGET_TRIPLES),$(info Host for $(t) is $(HOST_$(t))))
+$(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: host for $(t) is $(HOST_$(t))))
 
 CFG_GCCISH_FLAGS := -fno-strict-aliasing
 CFG_GCCISH_LINK_FLAGS :=
