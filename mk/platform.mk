@@ -64,6 +64,8 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
     endif
   endif
   CFG_INSTALL_NAME =
+  # Linux requires LLVM to be built like this to get backtraces into Rust code
+  CFG_LLVM_BUILD_ENV="CXXFLAGS=-fno-omit-frame-pointer"
 endif
 
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
