@@ -17,18 +17,19 @@ num - The float value
 digits: The number of significant digits
 */
 fn to_str(num: float, digits: uint) -> str {
-    let accum = if num < 0.0 { num = -num; "-" } else { "" };
+    let (num, accum) = num < 0.0 ? (-num, "-") : (num, "");
     let trunc = num as uint;
     let frac = num - (trunc as float);
     accum += uint::str(trunc);
     if frac == 0.0 || digits == 0u { ret accum; }
     accum += ".";
-    while digits > 0u && frac > 0.0 {
+    let i = digits;
+    while i > 0u && frac > 0.0 {
         frac *= 10.0;
         let digit = frac as uint;
         accum += uint::str(digit);
         frac -= digit as float;
-        digits -= 1u;
+        i -= 1u;
     }
     ret accum;
 }
@@ -60,7 +61,7 @@ Returns:
 Otherwise, the floating-point number represented [num].
 */
 fn from_str(num: str) -> float {
-   num = str::trim(num);
+   let num = str::trim(num);
 
    let pos = 0u;                  //Current byte position in the string.
                                   //Used to walk the string in O(n).

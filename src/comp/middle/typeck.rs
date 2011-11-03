@@ -1693,9 +1693,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                  element_ty: ty::t, body: ast::blk,
                  node_id: ast::node_id) -> bool {
         let locid = lookup_local(fcx, local.span, local.node.id);
-        element_ty =
-            demand::simple(fcx, local.span, element_ty,
-                           ty::mk_var(fcx.ccx.tcx, locid));
+        let element_ty = demand::simple(fcx, local.span, element_ty,
+                                        ty::mk_var(fcx.ccx.tcx, locid));
         let bot = check_decl_local(fcx, local);
         check_block(fcx, body);
         // Unify type of decl with element type of the seq

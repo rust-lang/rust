@@ -504,7 +504,7 @@ fn early_error(msg: str) -> ! {
 }
 
 fn main(args: [str]) {
-    let binary = vec::shift(args);
+    let args = args, binary = vec::shift(args);
     let match =
         alt getopts::getopts(args, opts()) {
           getopts::success(m) { m }

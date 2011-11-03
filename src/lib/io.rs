@@ -132,31 +132,31 @@ obj new_reader(rdr: buf_reader) {
     fn read_le_uint(size: uint) -> uint {
         let val = 0u;
         let pos = 0u;
-        while size > 0u {
+        let i = size;
+        while i > 0u {
             val += (rdr.read_byte() as uint) << pos;
             pos += 8u;
-            size -= 1u;
+            i -= 1u;
         }
         ret val;
     }
     fn read_le_int(size: uint) -> int {
-        let val = 0u;
-        let pos = 0u;
-        while size > 0u {
+        let val = 0u, pos = 0u, i = size;
+        while i > 0u {
             val += (rdr.read_byte() as uint) << pos;
             pos += 8u;
-            size -= 1u;
+            i -= 1u;
         }
         ret val as int;
     }
 
     // FIXME deal with eof?
     fn read_be_uint(sz: uint) -> uint {
-        let val = 0u;
+        let val = 0u, i = sz;
 
-        while sz > 0u {
-            sz -= 1u;
-            val += (rdr.read_byte() as uint) << sz * 8u;
+        while i > 0u {
+            i -= 1u;
+            val += (rdr.read_byte() as uint) << i * 8u;
         }
         ret val;
     }
@@ -324,8 +324,8 @@ type writer =
     };
 
 fn uint_to_le_bytes(n: uint, size: uint) -> [u8] {
-    let bytes: [u8] = [];
-    while size > 0u { bytes += [n & 255u as u8]; n >>= 8u; size -= 1u; }
+    let bytes: [u8] = [], i = size, n = n;
+    while i > 0u { bytes += [n & 255u as u8]; n >>= 8u; i -= 1u; }
     ret bytes;
 }
 

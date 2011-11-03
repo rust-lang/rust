@@ -277,7 +277,7 @@ fn char_range_at(s: str, i: uint) -> {ch: char, next: uint} {
     if w == 1u { ret {ch: b0 as char, next: i + 1u}; }
     let val = 0u;
     let end = i + w;
-    i += 1u;
+    let i = i + 1u;
     while i < end {
         let byte = s[i];
         assert (byte & 192u8 == tag_cont_u8);

@@ -334,7 +334,7 @@ fn default_test_to_task(&&f: default_test_fn) -> joinable {
         configure_test_task();
         f();
     }
-    ret task::spawn_joinable(f, run_task);
+    ret task::spawn_joinable(copy f, run_task);
 }
 
 // Call from within a test task to make sure it's set up correctly

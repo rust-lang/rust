@@ -1038,6 +1038,7 @@ fn parse_dot_or_call_expr(p: parser) -> @ast::expr {
 fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
     let lo = e.span.lo;
     let hi = e.span.hi;
+    let e = e;
     while true {
         alt p.peek() {
           token::LPAREN. {

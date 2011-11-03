@@ -132,7 +132,7 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
 }
 
 fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
-    let bs = sc.bs;
+    let bs = sc.bs, sc = sc;
     for stmt in b.node.stmts {
         alt stmt.node {
           ast::stmt_decl(@{node: ast::decl_item(it), _}, _) {

@@ -157,7 +157,7 @@ fn iotask(c: chan<ctx>) {
 
     log "io task init";
     // Spawn our request task
-    let reqtask = task::spawn_joinable(c, request_task);
+    let reqtask = task::spawn_joinable(copy c, request_task);
 
     log "uv run task init";
     // Enter IO loop. This never returns until aio_stop is called.

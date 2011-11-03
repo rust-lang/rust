@@ -54,7 +54,7 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
     // Both regular arguments and type parameters are handled here.
     create_llargs_for_fn_args(fcx, none::<ty::t>, fn_args, ty_params);
     let arg_tys: [ty::arg] = arg_tys_of_fn(ccx, ctor_id);
-    bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys, true);
+    bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
 
     // Pick up the type of this object by looking at our own output type, that
     // is, the output type of the object constructor we're building.
@@ -216,6 +216,7 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
 // itself.
 fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
                   id: ast::node_id, dest: trans::dest) -> @block_ctxt {
+    let bcx = bcx;
     if dest == trans::ignore {
         alt anon_obj.inner_obj {
           some(e) { ret trans::trans_expr(bcx, e, trans::ignore); }

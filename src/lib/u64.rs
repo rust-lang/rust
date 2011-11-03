@@ -52,6 +52,7 @@ fn to_str(n: u64, radix: uint) -> str {
 
     let s = "";
 
+    let n = n;
     while n > 0u64 { s = digit(n % r64) + s; n /= r64; }
     ret s;
 }

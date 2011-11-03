@@ -99,7 +99,7 @@ fn make_free_glue(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) ->
 
 fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
              dest: dest) -> @block_ctxt {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx_ccx(bcx), bcx = bcx;
     if dest == trans::ignore {
         for arg in args {
             bcx = trans::trans_expr(bcx, arg, trans::ignore);
@@ -150,10 +150,9 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     let ccx = bcx_ccx(cx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(cx), vec_ty);
     let dynamic = ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty);
-    if dynamic {
-        lhsptr = PointerCast(cx, lhsptr, T_ptr(T_ptr(ccx.opaque_vec_type)));
-        rhs = PointerCast(cx, rhs, T_ptr(ccx.opaque_vec_type));
-    }
+    let (lhsptr, rhs) = !dynamic ? (lhsptr, rhs) :
+        (PointerCast(cx, lhsptr, T_ptr(T_ptr(ccx.opaque_vec_type))),
+         PointerCast(cx, rhs, T_ptr(ccx.opaque_vec_type)));
     let strings = alt ty::struct(bcx_tcx(cx), vec_ty) {
       ty::ty_str. { true }
       ty::ty_vec(_) { false }
@@ -271,7 +270,7 @@ fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);
     let {bcx: bcx, val: unit_sz} = size_of(bcx, unit_ty);
-    vptr = PointerCast(bcx, vptr, T_ptr(T_vec(ccx, llunitty)));
+    let vptr = PointerCast(bcx, vptr, T_ptr(T_vec(ccx, llunitty)));
     let data_ptr = get_dataptr(bcx, vptr, llunitty);
 
     // Calculate the last pointer address we want to handle.
@@ -302,7 +301,7 @@ fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
 fn iter_vec(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
             f: iter_vec_block) -> @block_ctxt {
     let ccx = bcx_ccx(bcx);
-    vptr = PointerCast(bcx, vptr, T_ptr(ccx.opaque_vec_type));
+    let vptr = PointerCast(bcx, vptr, T_ptr(ccx.opaque_vec_type));
     ret iter_vec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);
 }
 

@@ -61,7 +61,8 @@ Function: range
 Iterate over the range [`lo`..`hi`)
 */
 fn range(lo: uint, hi: uint, it: block(uint)) {
-    while lo < hi { it(lo); lo += 1u; }
+    let i = lo;
+    while i < hi { it(i); i += 1u; }
 }
 
 /*

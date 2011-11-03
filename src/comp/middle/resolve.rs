@@ -502,6 +502,7 @@ fn ns_name(ns: namespace) -> str {
 
 fn unresolved_err(e: env, sc: scopes, sp: span, name: ident, kind: str) {
     fn find_fn_or_mod_scope(sc: scopes) -> option::t<scope> {
+        let sc = sc;
         while true {
             alt sc {
               cons(cur, rest) {
@@ -671,6 +672,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
     let closing = [];
     // Used to determine whether obj fields are in scope
     let left_fn_level2 = false;
+    let sc = sc;
     while true {
         alt copy sc {
           nil. { ret none::<def>; }
@@ -1191,6 +1193,7 @@ fn check_mod_name(e: env, name: ident, entries: list<mod_index_entry>) {
     let saw_mod = false;
     let saw_type = false;
     let saw_value = false;
+    let entries = entries;
     fn dup(e: env, sp: span, word: str, name: ident) {
         e.sess.span_fatal(sp, "duplicate definition of " + word + name);
     }

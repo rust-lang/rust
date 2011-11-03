@@ -41,7 +41,7 @@ fn main() {
     }
 
     obj sender(c: chan<int>) {
-        fn take(z: int) { send(c, z); }
+        fn take(z: int) { send(c, copy z); }
     }
 
     fn give_ints(t: taker) { t.take(1); t.take(2); t.take(3); }

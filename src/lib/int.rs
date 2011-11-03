@@ -80,7 +80,8 @@ Function: range
 Iterate over the range [`lo`..`hi`)
 */
 fn range(lo: int, hi: int, it: block(int)) {
-    while lo < hi { it(lo); lo += 1; }
+    let i = lo;
+    while i < hi { it(i); i += 1; }
 }
 
 /*

@@ -158,17 +158,6 @@ fn consume_block_comment(rdr: reader) {
     be consume_whitespace_and_comments(rdr);
 }
 
-fn string_to_int(s: str) -> int {
-    let negative = false;
-    if str::char_at(s, 0u) == '-' {
-        negative = true;
-        s = str::substr(s, 1u, str::byte_len(s) - 1u);
-    }
-    let accum_int: int = 0;
-    for c: u8 in s { accum_int *= 10; accum_int += dec_digit_val(c as char); }
-    ret if negative { -accum_int } else { accum_int };
-}
-
 fn scan_exponent(rdr: reader) -> option::t<str> {
     let c = rdr.curr();
     let rslt = "";
@@ -210,7 +199,7 @@ fn scan_dec_digits(rdr: reader) -> str {
 }
 
 fn scan_number(c: char, rdr: reader) -> token::token {
-    let accum_int = 0;
+    let accum_int = 0, c = c;
     let num_str: str = "";
     let n = rdr.next();
     if c == '0' && n == 'x' {
@@ -233,7 +222,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         }
     } else {
         num_str = scan_dec_digits_with_prefix(rdr);
-        accum_int = string_to_int(num_str);
+        accum_int = std::int::from_str(num_str);
     }
     c = rdr.curr();
     n = rdr.next();
@@ -321,8 +310,8 @@ fn scan_number(c: char, rdr: reader) -> token::token {
 }
 
 fn scan_numeric_escape(rdr: reader, n_hex_digits: uint) -> char {
-    let accum_int = 0;
-    while n_hex_digits != 0u {
+    let accum_int = 0, i = n_hex_digits;
+    while i != 0u {
         let n = rdr.curr();
         rdr.bump();
         if !is_hex_digit(n) {
@@ -331,7 +320,7 @@ fn scan_numeric_escape(rdr: reader, n_hex_digits: uint) -> char {
         }
         accum_int *= 16;
         accum_int += hex_digit_val(n);
-        n_hex_digits -= 1u;
+        i -= 1u;
     }
     ret accum_int as char;
 }

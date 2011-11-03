@@ -44,7 +44,7 @@ tag opt_result {
     range_result(result, result);
 }
 fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx_ccx(bcx), bcx = bcx;
     alt o {
       lit(l) {
         alt l.node {
@@ -249,7 +249,7 @@ fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
 fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
                         vdefs: {tg: def_id, var: def_id}, val: ValueRef) ->
    {vals: [ValueRef], bcx: @block_ctxt} {
-    let ccx = bcx.fcx.lcx.ccx;
+    let ccx = bcx.fcx.lcx.ccx, bcx = bcx;
     let ty_param_substs = ty::node_id_to_type_params(ccx.tcx, pat_id);
     let blobptr = val;
     let variants = ty::tag_variants(ccx.tcx, vdefs.tg);
@@ -348,6 +348,7 @@ fn pick_col(m: match) -> uint {
 
 fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                     &exits: [exit_node]) {
+    let bcx = bcx;
     if vec::len(m) == 0u { Br(bcx, f()); ret; }
     if vec::len(m[0].pats) == 0u {
         let data = m[0].data;
@@ -543,7 +544,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                 let le = trans::trans_compare(ge.bcx, ast::le, test_val, t,
                                               rend.val, t);
                 let in_range = rslt(le.bcx, And(le.bcx, ge.val, le.val));
-                /*let*/ bcx = in_range.bcx; //XXX uncomment for assertion
+                bcx = in_range.bcx;
                 let cleanup_cx =
                     trans::trans_block_cleanups(bcx, compare_cx);
                 bcx = new_sub_block_ctxt(bcx, "compare_next");
@@ -580,7 +581,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
                      ids: ast_util::pat_id_map) -> bool {
     let our_block = bcx.llbb as uint;
-    let success = true;
+    let success = true, bcx = bcx;
     ids.items {|name, node_id|
         let llbbs = [];
         let vals = [];
@@ -679,7 +680,7 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
 // Not alt-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
                         make_copy: bool) -> @block_ctxt {
-    let ccx = bcx.fcx.lcx.ccx;
+    let ccx = bcx.fcx.lcx.ccx, bcx = bcx;
     alt pat.node {
       ast::pat_bind(_) {
         if make_copy || ccx.copy_map.contains_key(pat.id) {
@@ -690,9 +691,8 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             check non_ty_var(ccx, ty);
             let llty = trans::type_of(ccx, pat.span, ty);
             let alloc = trans::alloca(bcx, llty);
-            bcx =
-                trans::copy_val(bcx, trans::INIT, alloc,
-                                trans::load_if_immediate(bcx, val, ty), ty);
+            bcx = trans::copy_val(bcx, trans::INIT, alloc,
+                                  trans::load_if_immediate(bcx, val, ty), ty);
             bcx.fcx.lllocals.insert(pat.id, local_mem(alloc));
             trans_common::add_clean(bcx, alloc, ty);
         } else { bcx.fcx.lllocals.insert(pat.id, local_mem(val)); }

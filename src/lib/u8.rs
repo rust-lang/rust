@@ -55,7 +55,8 @@ Function: range
 Iterate over the range [`lo`..`hi`)
 */
 fn range(lo: u8, hi: u8, it: block(u8)) {
-    while lo < hi { it(lo); lo += 1u8; }
+    let i = lo;
+    while i < hi { it(i); i += 1u8; }
 }
 
 // Local Variables:
