@@ -22,13 +22,6 @@ $$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB): \
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_$(2))  --lib -o $$@ $$<
 
-ifeq ($(1), 0)
-# FIXME: temporary
-$$(TARGET_LIB$(1)$(2))/$$(CFG_OLDSTDLIB): $$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB)
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-endif
-
 $$(TARGET_LIB$(1)$(2))/libstd.rlib: \
 	$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
         $$(TARGET_SREQ$(1)$(2))
