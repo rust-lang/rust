@@ -409,13 +409,13 @@ NEED_UPDATE=$(test "($NEED_INIT)" -o "$NEED_UPDATE_COUNT" -gt 0)$?
 if [ $NEED_INIT ]
 then
     msg "git: submodule init"
-    ${CFG_GIT} submodule init --quiet
+    "${CFG_GIT}" submodule init --quiet
 fi
 
 if [ $NEED_UPDATE ]
 then
     msg "git: submodule update"
-    ${CFG_GIT} submodule update --quiet
+    "${CFG_GIT}" submodule update --quiet
 fi
 
 cd ${CFG_BUILD_DIR}
