@@ -6,8 +6,14 @@ CLEAN_STAGE_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
  clean0$(target) clean1$(target) clean2$(target) clean3$(target)) \
  clean0 clean1 clean2 clean3
 
+CLEAN_LLVM_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
+                   clean-llvm$(target))
 
-.PHONY: clean
+.PHONY: clean clean-all clean-misc
+
+clean-all: clean clean-llvm
+
+clean-llvm: $(CLEAN_LLVM_RULES)
 
 clean: clean-misc $(CLEAN_STAGE_RULES)
 
@@ -66,3 +72,19 @@ $(foreach target, $(CFG_TARGET_TRIPLES), \
  $(eval $(call CLEAN_STAGE_N,1,$(target))) \
  $(eval $(call CLEAN_STAGE_N,2,$(target))) \
  $(eval $(call CLEAN_STAGE_N,3,$(target))))
+
+
+define DEF_CLEAN_LLVM_TARGET
+ifeq ($(CFG_LLVM_ROOT),)
+
+clean-llvm$(1):
+	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) clean
+else
+
+clean-llvm$(1): ;
+
+endif
+endef
+
+$(foreach target, $(CFG_TARGET_TRIPLES), \
+ $(eval $(call DEF_CLEAN_LLVM_TARGET,$(target))))
