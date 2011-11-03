@@ -4,14 +4,16 @@ Module: str
 String manipulation.
 */
 
-export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len, index,
+export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
+       byte_len_range, index,
        rindex, find, starts_with, ends_with, substr, slice, split, concat,
        connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
        unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars,
-       to_chars, char_len, char_at, bytes, is_ascii, shift_byte, pop_byte,
+       to_chars, char_len, char_len_range, char_at, bytes, is_ascii,
+       shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
-       contains, iter_chars;
+       contains, iter_chars, loop_chars, loop_chars_sub;
 
 native "c-stack-cdecl" mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
@@ -134,6 +136,23 @@ fn byte_len(s: str) -> uint unsafe {
     // There should always be a null terminator
     assert (vlen > 0u);
     ret vlen - 1u;
+}
+
+/*
+Function byte_len_range
+
+As byte_len but for a substring
+*/
+fn byte_len_range(s: str, byte_offset: uint, char_len: uint) -> uint {
+    let i = byte_offset;
+    let chars = 0u;
+    while chars < char_len {
+        let chsize = utf8_char_width(s[i]);
+        assert (chsize > 0u);
+        i += chsize;
+        chars += 1u;
+    }
+    ret i - byte_offset;
 }
 
 /*
@@ -315,21 +334,56 @@ fn iter_chars(s: str, it: block(char)) {
 }
 
 /*
+ Function: loop_chars
+
+ As `iter_chars` but may be interrupted
+*/
+fn loop_chars(s: str, it: block(char) -> bool) -> bool{
+    ret loop_chars_sub(s, 0u, byte_len(s), it);
+}
+
+/*
+ Function: loop_chars_sub
+
+ As `loop_chars` but on a substring
+*/
+fn loop_chars_sub(s: str, byte_offset: uint, byte_len: uint,
+              it: block(char) -> bool) -> bool {
+   let i = byte_offset;
+   let result = true;
+   while i < byte_len {
+      let {ch, next} = char_range_at(s, i);
+      if !it(ch) {result = false; break;}
+      i = next;
+   }
+   ret result;
+}
+
+
+/*
 Function: char_len
 
 Count the number of unicode characters in a string
 */
 fn char_len(s: str) -> uint {
-    let i = 0u;
-    let len = 0u;
-    let total = byte_len(s);
-    while i < total {
+    ret char_len_range(s, 0u, byte_len(s));
+}
+
+/*
+Function: char_len_range
+
+As char_len but for a slice of a string
+*/
+fn char_len_range(s: str, byte_start: uint, byte_len: uint) -> uint {
+    let i     = byte_start;
+    let len   = 0u;
+    while i < byte_len {
         let chsize = utf8_char_width(s[i]);
         assert (chsize > 0u);
         len += 1u;
         i += chsize;
     }
-    assert (i == total);
+    assert (i == byte_len);
     ret len;
 }
 
@@ -818,3 +872,4 @@ unsafe fn str_from_cstr(cstr: sbuf) -> str {
     }
     ret res;
 }
+
