@@ -1,5 +1,5 @@
 // error-pattern:quux
-fn test00_start(ch: chan_t<int>, message: int) { send(ch, message); }
+fn test00_start(ch: chan_t<int>, message: int) { send(ch, copy message); }
 
 type task_id = int;
 type port_id = int;
