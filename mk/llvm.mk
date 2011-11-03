@@ -9,7 +9,7 @@ ifeq ($(CFG_LLVM_ROOT),)
 
 $$(LLVM_CONFIG_$(1)): $$(LLVM_DEPS_$(1))
 	@$$(call E, make: llvm)
-	$$(Q)make -C $$(CFG_LLVM_BUILD_DIR_$(1))
+	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1))
 
 endif
 
