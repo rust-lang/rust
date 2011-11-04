@@ -281,6 +281,8 @@ exists, convert the result of the expression to the given type.
 
 ## Attributes
 
+<a name="conditional></a>
+
 Every definition can be annotated with attributes. Attributes are meta
 information that can serve a variety of purposes. One of those is
 conditional compilation:
@@ -289,14 +291,20 @@ conditional compilation:
     fn register_win_service() { /* ... */ }
 
 This will cause the function to vanish without a trace during
-compilation on a non-Windows platform. Attributes always look like
-`#[attr]`, where `attr` can be simply a name (as in `#[test]`, which
-is used by the [built-in test framework](test.html)), a name followed
-by `=` and then a literal (as in `#[license = "BSD"]`, which is a
-valid way to annotate a Rust program as being released under a
-BSD-style license), or a name followed by a comma-separated list of
-nested attributes, as in the `cfg` example above, or in this
-[crate](mod.html) metadata declaration:
+compilation on a non-Windows platform, much like `#ifdef` in C (it
+allows `cfg(flag=value)` and `cfg(flag)` forms, where the second
+simply checks whether the configuration flag is defined at all). Flags
+for `target_os` and `target_arch` are set by the compiler. It is
+possible to set additional flags with the `--cfg` command-line option.
+
+Attributes always look like `#[attr]`, where `attr` can be simply a
+name (as in `#[test]`, which is used by the [built-in test
+framework](test.html)), a name followed by `=` and then a literal (as
+in `#[license = "BSD"]`, which is a valid way to annotate a Rust
+program as being released under a BSD-style license), or a name
+followed by a comma-separated list of nested attributes, as in the
+`cfg` example above, or in this [crate](mod.html) metadata
+declaration:
 
     #[link(name = "std",
            vers = "0.1",
