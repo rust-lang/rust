@@ -33,6 +33,7 @@ mod uint;
 mod float;
 mod math;
 mod result;
+mod rope;
 
 // Local Variables:
 // mode: rust
