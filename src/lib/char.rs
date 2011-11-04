@@ -94,6 +94,7 @@ pure fn is_whitespace(c: char) -> bool {
     } else if c == ch_no_break_space { true } else { false }
 }
 
+
 pure fn to_digit(c: char) -> u8 {
     alt c {
         '0' to '9' { c as u8 - ('0' as u8) }
@@ -101,4 +102,11 @@ pure fn to_digit(c: char) -> u8 {
         'A' to 'Z' { c as u8 + 10u8 - ('A' as u8) }
         _ { fail; }
     }
+}
+
+
+fn cmp(a: char, b: char) -> int {
+    ret  if b > a { -1 }
+    else if b < a { 1 }
+    else { 0 }
 }
