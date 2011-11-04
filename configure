@@ -471,11 +471,15 @@ do
 	export CXXFLAGS
 	export LDFLAGS
 
-	# FIXME: This ends up filling the screen with a bunch of LLVM configuration,
-	# depriving the user of seeing our configuration info
 	cd $LLVM_BUILD_DIR
-        # FIXME: This won't work if CFG_SRC_DIR is absolute
-	${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
+	case $CFG_SRC_DIR in
+	    /* | [a-z]:* | [A-Z]:*)
+		${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
+		;;
+	    *)
+		${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
+		;;
+	esac
 	cd $CFG_BUILD_DIR
     else
 	LLVM_BUILD_DIR=
