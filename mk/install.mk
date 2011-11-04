@@ -56,6 +56,7 @@ install: install-host install-targets
 install-host: $(SREQ$(ISTAGE)$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_BIN)
 	$(Q)mkdir -p $(PREFIX_LIB)
+	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
 	$(Q)$(call INSTALL,$(HB),$(PHB),rustc$(X))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_STDLIB))
