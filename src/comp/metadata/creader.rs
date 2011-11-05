@@ -17,6 +17,7 @@ import common::*;
 
 export read_crates;
 export list_file_metadata;
+export read_attr;
 
 // Traverses an AST, reading all the information about use'd crates and native
 // libraries necessary for later resolving, typechecking, linking, etc.
@@ -78,6 +79,15 @@ fn list_file_metadata(sess: session::session, path: str, out: io::writer) {
       option::none. {
         out.write_str("Could not find metadata in " + path + ".\n");
       }
+    }
+}
+
+fn read_attr(sess: session::session, path: str, out: io::writer, name: str) {
+    alt get_metadata_section(sess, path) {
+        option::none. { }
+        option::some(bytes) {
+            decoder::print_crate_attr(bytes, out, name);
+        }
     }
 }
 

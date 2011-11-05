@@ -22,6 +22,7 @@ export list_crate_metadata;
 export crate_dep;
 export get_crate_deps;
 export external_resolver;
+export print_crate_attr;
 
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
@@ -413,6 +414,18 @@ fn list_crate_metadata(bytes: @[u8], out: io::writer) {
     list_crate_attributes(md, out);
     list_crate_deps(bytes, out);
     list_crate_items(bytes, md, out);
+}
+
+fn print_crate_attr(bytes: @[u8], out: io::writer, name: str) {
+    let md = ebml::new_doc(bytes);
+    for attr: ast::attribute in get_attributes(md) {
+        alt attr.node.value.node {
+            ast::meta_name_value(mname, value) when mname == name {
+                out.write_str(#fmt["%s\n", pprust::attribute_to_str(attr)]);
+            }
+            _ { }
+        }
+    }
 }
 
 // Local Variables:
