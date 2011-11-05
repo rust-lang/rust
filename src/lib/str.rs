@@ -139,9 +139,23 @@ fn byte_len(s: str) -> uint unsafe {
 }
 
 /*
-Function byte_len_range
+Function: byte_len_range
 
 As byte_len but for a substring
+
+Parameters:
+s - A string
+byte_offset - The byte offset at which to start in the string
+char_len    - The number of chars (not bytes!) in the range
+
+Returns:
+The number of bytes in the substring starting at `byte_offset` and
+containing `char_len` chars.
+
+Safety note:
+
+This function fails if `byte_offset` or `char_len` do not represent
+valid positions in `s`
 */
 fn byte_len_range(s: str, byte_offset: uint, char_len: uint) -> uint {
     let i = byte_offset;
@@ -334,19 +348,46 @@ fn iter_chars(s: str, it: block(char)) {
 }
 
 /*
- Function: loop_chars
+Function: loop_chars
 
- As `iter_chars` but may be interrupted
-*/
+Loop through a string, char by char
+
+Parameters:
+s  - A string to traverse. It may be empty.
+it - A block to execute with each consecutive character of `s`.
+Return `true` to continue, `false` to stop.
+
+Returns:
+
+`true` If execution proceeded correctly, `false` if it was interrupted,
+that is if `it` returned `false` at any point.
+ */
 fn loop_chars(s: str, it: block(char) -> bool) -> bool{
     ret loop_chars_sub(s, 0u, byte_len(s), it);
 }
 
 /*
- Function: loop_chars_sub
+Function: loop_chars
 
- As `loop_chars` but on a substring
-*/
+Loop through a substring, char by char
+
+Parameters:
+s           - A string to traverse. It may be empty.
+byte_offset - The byte offset at which to start in the string.
+byte_len    - The number of bytes to traverse in the string
+it          - A block to execute with each consecutive character of `s`.
+Return `true` to continue, `false` to stop.
+
+Returns:
+
+`true` If execution proceeded correctly, `false` if it was interrupted,
+that is if `it` returned `false` at any point.
+
+Safety note:
+- This function does not check whether the substring is valid.
+- This function fails if `byte_offset` or `byte_len` do not
+ represent valid positions inside `s`
+ */
 fn loop_chars_sub(s: str, byte_offset: uint, byte_len: uint,
               it: block(char) -> bool) -> bool {
    let i = byte_offset;
@@ -373,6 +414,20 @@ fn char_len(s: str) -> uint {
 Function: char_len_range
 
 As char_len but for a slice of a string
+
+Parameters:
+ s           - A valid string
+ byte_start  - The position inside `s` where to start counting in bytes.
+ byte_len    - The number of bytes of `s` to take into account.
+
+Returns:
+ The number of Unicode characters in `s` in
+segment [byte_start, byte_start+len( .
+
+Safety note:
+- This function does not check whether the substring is valid.
+- This function fails if `byte_offset` or `byte_len` do not
+ represent valid positions inside `s`
 */
 fn char_len_range(s: str, byte_start: uint, byte_len: uint) -> uint {
     let i     = byte_start;
