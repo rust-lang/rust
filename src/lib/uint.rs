@@ -34,27 +34,54 @@ pure fn mul(x: uint, y: uint) -> uint { ret x * y; }
 /* Function: div */
 pure fn div(x: uint, y: uint) -> uint { ret x / y; }
 
-/**
- * Divide two numbers, return the result, rounded up.
- */
+/* Function: div_ceil
+
+   Divide two numbers, return the result, rounded up.
+
+   Parameters:
+   x - an integer
+   y - an integer distinct from 0u
+
+   Return:
+    The smallest integer `q` such that `x/y <= q`.
+*/
 pure fn div_ceil(x: uint, y: uint) -> uint {
     let div = div(x, y);
     if x % y == 0u { ret div;}
     else { ret div + 1u; }
 }
 
-/**
- * Divide two numbers, return the result, rounded to the closest integer.
- */
+/* Function: div_ceil
+
+   Divide two numbers, return the result, rounded to the closest integer.
+
+   Parameters:
+   x - an integer
+   y - an integer distinct from 0u
+
+   Return:
+    The integer `q` closest to `x/y`.
+*/
 pure fn div_round(x: uint, y: uint) -> uint {
     let div = div(x, y);
     if x % y * 2u  < y { ret div;}
     else { ret div + 1u; }
 }
 
-/**
- * Divide two numbers, return the result, rounded down.
- */
+/* Function: div_ceil
+
+   Divide two numbers, return the result, rounded down.
+
+   Parameters:
+   x - an integer
+   y - an integer distinct from 0u
+
+   Note: This is the same function as `div`.
+
+   Return:
+    The smallest integer `q` such that `x/y <= q`. This
+   is either `x/y` or `x/y + 1`.
+*/
 pure fn div_floor(x: uint, y: uint) -> uint { ret x / y; }
 
 /* Function: rem */
@@ -86,6 +113,31 @@ Iterate over the range [`lo`..`hi`)
 fn range(lo: uint, hi: uint, it: block(uint)) {
     let i = lo;
     while i < hi { it(i); i += 1u; }
+}
+
+/*
+Function: loop
+
+Iterate over the range [`lo`..`hi`), or stop when requested
+
+Parameters:
+lo - The integer at which to start the loop (included)
+hi - The integer at which to stop the loop (excluded)
+it - A block to execute with each consecutive integer of the range.
+Return `true` to continue, `false` to stop.
+
+Returns:
+
+`true` If execution proceeded correctly, `false` if it was interrupted,
+that is if `it` returned `false` at any point.
+*/
+fn loop(lo: uint, hi: uint, it: block(uint) -> bool) -> bool {
+    let i = lo;
+    while i < hi {
+        if (!it(i)) { ret false; }
+        i += 1u;
+    }
+    ret true;
 }
 
 /*
