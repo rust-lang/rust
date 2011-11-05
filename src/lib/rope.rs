@@ -298,22 +298,78 @@ fn cmp(left: rope, right: rope) -> int {
     }
 }
 
+/*
+Function: eq
+
+Returns:
+
+ `true` if both ropes have the same content (regardless of their structure),
+`false` otherwise
+*/
 fn eq(left: rope, right: rope) -> bool {
     ret cmp(left, right) == 0;
 }
 
-fn leq(left: rope, right: rope) -> bool {
+/*
+Function: le
+
+Parameters
+  left - an arbitrary rope
+  right - an arbitrary rope
+
+Returns:
+
+ `true` if `left <= right` in lexicographical order (regardless of their
+structure), `false` otherwise
+*/
+fn le(left: rope, right: rope) -> bool {
     ret cmp(left, right) <= 0;
 }
 
+/*
+Function: lt
+
+Parameters
+  left - an arbitrary rope
+  right - an arbitrary rope
+
+Returns:
+
+ `true` if `left < right` in lexicographical order (regardless of their
+structure), `false` otherwise
+*/
 fn lt(left: rope, right: rope) -> bool {
     ret cmp(left, right) < 0;
 }
 
-fn geq(left: rope, right: rope) -> bool {
+/*
+Function: ge
+
+Parameters
+  left - an arbitrary rope
+  right - an arbitrary rope
+
+Returns:
+
+ `true` if `left >= right` in lexicographical order (regardless of their
+structure), `false` otherwise
+*/
+fn ge(left: rope, right: rope) -> bool {
     ret cmp(left, right) >= 0;
 }
 
+/*
+Function: gt
+
+Parameters
+  left - an arbitrary rope
+  right - an arbitrary rope
+
+Returns:
+
+ `true` if `left > right` in lexicographical order (regardless of their
+structure), `false` otherwise
+*/
 fn gt(left: rope, right: rope) -> bool {
     ret cmp(left, right) > 0;
 }
@@ -349,6 +405,16 @@ fn loop_chars(rope: rope, it: block(char) -> bool) -> bool {
       node::content(x) { ret node::loop_chars(x, it) }
    }
 }
+
+/*
+Function: iter_chars
+
+Loop through a rope, char by char, until the end.
+
+Parameters:
+rope - A rope to traverse. It may be empty.
+it - A block to execute with each consecutive character of the rope.
+ */
 fn iter_chars(rope: rope, it: block(char)) {
     loop_chars(rope) {|x|
         it(x);
