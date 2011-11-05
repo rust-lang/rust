@@ -796,7 +796,7 @@ mod unsafe {
     modifing its buffers, so it is up to the caller to ensure that
     the vector is actually the specified size.
     */
-    unsafe fn set_len<T>(&v: [T], new_len: uint) {
+    unsafe fn set_len<T>(&v: [mutable? T], new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
@@ -812,7 +812,7 @@ mod unsafe {
     Modifying the vector may cause its buffer to be reallocated, which
     would also make any pointers to it invalid.
     */
-    unsafe fn to_ptr<T>(v: [T]) -> *T {
+    unsafe fn to_ptr<T>(v: [mutable? T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
