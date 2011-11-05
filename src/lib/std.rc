@@ -11,6 +11,7 @@ export box, char, float, int, str, ptr, uint, u8, u32, u64, vec;
 export aio, comm, fs, io, net, run, sio, sys, task;
 export ctypes, either, option, result, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
+export rope;
 export ebml, dbg, getopts, math, rand, sha1, term, time, unsafe;
 export extfmt, test;
 // FIXME: generic_os and os_fs shouldn't be exported
@@ -61,6 +62,7 @@ mod deque;
 mod fun_treemap;
 mod list;
 mod map;
+mod rope;
 mod smallintmap;
 mod sort;
 mod treemap;
