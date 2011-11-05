@@ -251,6 +251,7 @@ options:
     --static           use or produce static libraries
     --pretty [type]    pretty-print the input instead of compiling
     --ls               list the symbols defined by a crate file
+    --read-attr <name> read a specific crate attribute
     -L <path>          add a directory to the library search path
     --noverify         suppress LLVM verification step (slight speedup)
     --parse-only       parse only; do not compile, assemble, or link
@@ -448,7 +449,8 @@ fn opts() -> [getopts::opt] {
          optflag("no-typestate"), optflag("noverify"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static"), optflag("gc"),
-         optflag("stack-growth"), optflag("check-unsafe")];
+         optflag("stack-growth"), optflag("check-unsafe"),
+         optflagopt("read-attr")];
 }
 
 fn build_output_filenames(ifile: str, ofile: option::t<str>,
@@ -543,6 +545,12 @@ fn main(args: [str]) {
     let ls = opt_present(match, "ls");
     if ls {
         metadata::creader::list_file_metadata(sess, ifile, io::stdout());
+        ret;
+    }
+
+    if opt_present(match, "read-attr") {
+        let arg = getopts::opt_str(match, "read-attr");
+        metadata::creader::read_attr(sess, ifile, io::stdout(), arg);
         ret;
     }
 
