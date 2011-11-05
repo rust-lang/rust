@@ -62,8 +62,6 @@ CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
 endif
 
 CFG_INFO := $(info cfg: shell host triple $(CFG_HOST_TRIPLE))
-CFG_INFO := $(info cfg: llvm host triple $(CFG_LLVM_TRIPLE))
-CFG_INFO := $(info cfg: llvm target triples $(CFG_TARGET_TRIPLES))
 
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
@@ -195,6 +193,36 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
                                 rustc.rc *.rs */*.rs */*/*.rs))
 
 ######################################################################
+# LLVM macros
+######################################################################
+
+define DEF_LLVM_VARS
+# The configure script defines these variables with the target triples
+# separated by Z. This defines new ones with the expected format.
+CFG_LLVM_BUILD_DIR_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))
+CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
+
+# Any rules that depend on LLVM should depend on LLVM_CONFIG
+LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config
+LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
+LLVM_BINDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --bindir)
+LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)
+LLVM_LIBDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libdir)
+LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs)
+LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
+LLVM_CXXFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags)
+LLVM_HOST_TRIPLE_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --host-target)
+
+LLVM_AS_$(1)=$$(LLVM_BINDIR_$(1))/llvm-as$$(X)
+LLC_$(1)=$$(LLVM_BINDIR_$(1))/llc$$(X)
+
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+ $(eval $(call DEF_LLVM_VARS,$(target))))
+
+
+######################################################################
 # Exports for sub-utilities
 ######################################################################
 
@@ -212,10 +240,6 @@ export CFG_PREFIX
 ######################################################################
 # Subprograms
 ######################################################################
-
-LLVM_AS := $(CFG_LLVM_BINDIR)/llvm-as$(X)
-
-LLC := $(CFG_LLVM_BINDIR)/llc$(X)
 
 ######################################################################
 # Per-stage targets and runner
@@ -318,6 +342,17 @@ endif
 # Re-configuration
 ######################################################################
 
+# This is a pretty expensive operation but I don't see any way to avoid it
+SUBMODULE_STATUS=$(shell cd "$(CFG_SRC_DIR)" && "$(CFG_GIT)" submodule status)
+# Look through for submodules prefixed with '-' (need init), or '+' (need update)
+NEED_GIT_RECONFIG=$(shell echo "$(SUBMODULE_STATUS)" | grep -c '^\(+\|-\)')
+
+ifeq ($(NEED_GIT_RECONFIG),0)
+else
+# If the submodules have changed then always execute config.mk
+.PHONY: config.mk
+endif
+
 config.mk: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 	@$(call E, cfg: reconfiguring)
 	$(Q)$(S)configure $(CFG_CONFIGURE_ARGS)
@@ -335,6 +370,7 @@ include $(CFG_SRC_DIR)/mk/rustllvm.mk
 include $(CFG_SRC_DIR)/mk/autodep.mk
 include $(CFG_SRC_DIR)/mk/tools.mk
 include $(CFG_SRC_DIR)/mk/docs.mk
+include $(CFG_SRC_DIR)/mk/llvm.mk
 
 ######################################################################
 # Secondary makefiles, conditionalized for speed

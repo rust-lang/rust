@@ -39,7 +39,7 @@ endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
-  CFG_GCCISH_CFLAGS += -fPIC -march=i686
+  CFG_GCCISH_CFLAGS += -fPIC
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
   CFG_GCCISH_PRE_LIB_FLAGS := -Wl,-whole-archive
@@ -64,6 +64,8 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
     endif
   endif
   CFG_INSTALL_NAME =
+  # Linux requires LLVM to be built like this to get backtraces into Rust code
+  CFG_LLVM_BUILD_ENV="CXXFLAGS=-fno-omit-frame-pointer"
 endif
 
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
@@ -154,7 +156,6 @@ ifdef CFG_WINDOWSY
   CFG_EXE_SUFFIX := .exe
   CFG_LIB_NAME=$(1).dll
   CFG_DEF_SUFFIX := .def
-  CFG_LDPATH :=$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
   CFG_RUN_TARG=$(call CFG_RUN,$(HOST_LIB$(1)),$(2))

@@ -12,9 +12,10 @@ $$(TARGET_LIB$(1)$(2))/intrinsics.ll: \
 	@$$(call E, sed: $$@)
 	$$(Q)sed s/@CFG_TARGET_TRIPLE@/$(2)/ $$< > $$@
 
-$$(TARGET_LIB$(1)$(2))/intrinsics.bc: $$(TARGET_LIB$(1)$(2))/intrinsics.ll
+$$(TARGET_LIB$(1)$(2))/intrinsics.bc: $$(TARGET_LIB$(1)$(2))/intrinsics.ll \
+		$$(LLVM_CONFIG_$(2))
 	@$$(call E, llvms-as: $$@)
-	$$(Q)$$(LLVM_AS) -o $$@ $$<
+	$$(Q)$$(LLVM_AS_$(2)) -o $$@ $$<
 
 $$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB): \
 	$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
