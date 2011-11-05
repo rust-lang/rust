@@ -12,7 +12,10 @@ doc/version.texi: $(MKFILES) rust.texi
 
 doc/%.pdf: %.texi doc/version.texi
 	@$(call E, texi2pdf: $@)
-	$(Q)texi2pdf --silent --batch -I doc -o $@ --clean $<
+	@# LC_COLLATE=C works around a bug in texi2dvi; see
+	@# https://bugzilla.redhat.com/show_bug.cgi?id=583011 and
+	@# https://github.com/graydon/rust/issues/1134
+	$(Q)LC_COLLATE=C texi2pdf --silent --batch -I doc -o $@ --clean $<
 
 doc/%.html: %.texi doc/version.texi
 	@$(call E, makeinfo: $@)
