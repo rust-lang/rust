@@ -173,14 +173,36 @@ fn append_rope(left: rope, right: rope) -> rope {
 /*
 Function: concat
 
-Concatenate many ropes
+Concatenate many ropes.
+
+If the ropes are balanced initially and have the same height, the resulting
+rope remains balanced. However, this function does not take any further
+measure to ensure that the result is balanced.
  */
 fn concat(v: [rope]) -> rope {
-   let acc = node::empty;
-   for r: rope in v {
-       acc = append_rope(acc, r);
-   }
-   ret bal(acc);
+    //Copy `v` into a mutable vector
+    let len   = vec::len(v);
+    if len == 0u { ret node::empty; }
+    let ropes = vec::init_elt_mut(v[0], len);
+    uint::range(1u, len) {|i|
+       ropes[i] = v[i];
+    }
+
+    //Merge progresively
+    while len > 1u {
+        uint::range(0u, len/2u) {|i|
+            ropes[i] = append_rope(ropes[2u*i], ropes[2u*i+1u]);
+        }
+        if len%2u != 0u {
+            ropes[len/2u] = ropes[len - 1u];
+            len = len/2u + 1u;
+        } else {
+            len = len/2u;
+        }
+    }
+
+    //Return final rope
+    ret ropes[0];
 }
 
 
