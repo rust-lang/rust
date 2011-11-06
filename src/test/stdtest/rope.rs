@@ -2,6 +2,7 @@ import std::str;
 import std::rope::*;
 import std::option;
 import std::uint;
+import std::vec;
 
 //Utility function, used for sanity check
 fn rope_to_string(r: rope) -> str {
@@ -145,4 +146,19 @@ fn char_at1() {
     assert eq(r, bal3);
     assert eq(r2, r3);
     assert eq(bal2, bal3);
+}
+
+#[test]
+fn concat1() {
+    //Generate a reasonable rope
+    let chunk = of_str(@ "123456789");
+    let r = empty();
+    uint::range(0u, 10u){|_i|
+        r = append_rope(r, chunk);
+    }
+
+    //Same rope, obtained with rope::concat
+    let r2 = concat(vec::init_elt(chunk, 10u));
+
+    assert eq(r, r2);
 }
