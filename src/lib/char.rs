@@ -94,7 +94,21 @@ pure fn is_whitespace(c: char) -> bool {
     } else if c == ch_no_break_space { true } else { false }
 }
 
+/*
+ Function: to_digit
 
+ Convert a char to the corresponding digit.
+
+ Parameters:
+   c - a char, either '0' to '9', 'a' to 'z' or 'A' to 'Z'
+
+ Returns:
+   If `c` is between '0' and '9', the corresponding value between 0 and 9.
+ If `c` is 'a' or 'A', 10. If `c` is 'b' or 'B', 11, etc.
+
+ Safety note:
+   This function fails if `c` is not a valid char
+*/
 pure fn to_digit(c: char) -> u8 {
     alt c {
         '0' to '9' { c as u8 - ('0' as u8) }
@@ -104,7 +118,18 @@ pure fn to_digit(c: char) -> u8 {
     }
 }
 
+/*
+ Function: cmp
 
+ Compare two chars.
+
+ Parameters:
+  a - a char
+  b - a char
+
+ Returns:
+  -1 if a<b, 0 if a==b, +1 if a>b
+*/
 fn cmp(a: char, b: char) -> int {
     ret  if b > a { -1 }
     else if b < a { 1 }

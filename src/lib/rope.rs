@@ -95,6 +95,7 @@ Safety notes:
  */
 fn of_substr(str: @str, byte_offset: uint, byte_len: uint) -> rope {
     if byte_len == 0u { ret node::empty; }
+    if byte_offset + byte_len  > str::byte_len(*str) { fail; }
     ret node::content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -172,14 +173,36 @@ fn append_rope(left: rope, right: rope) -> rope {
 /*
 Function: concat
 
-Concatenate many ropes
+Concatenate many ropes.
+
+If the ropes are balanced initially and have the same height, the resulting
+rope remains balanced. However, this function does not take any further
+measure to ensure that the result is balanced.
  */
 fn concat(v: [rope]) -> rope {
-   let acc = node::empty;
-   for r: rope in v {
-       acc = append_rope(acc, r);
-   }
-   ret bal(acc);
+    //Copy `v` into a mutable vector
+    let len   = vec::len(v);
+    if len == 0u { ret node::empty; }
+    let ropes = vec::init_elt_mut(v[0], len);
+    uint::range(1u, len) {|i|
+       ropes[i] = v[i];
+    }
+
+    //Merge progresively
+    while len > 1u {
+        uint::range(0u, len/2u) {|i|
+            ropes[i] = append_rope(ropes[2u*i], ropes[2u*i+1u]);
+        }
+        if len%2u != 0u {
+            ropes[len/2u] = ropes[len - 1u];
+            len = len/2u + 1u;
+        } else {
+            len = len/2u;
+        }
+    }
+
+    //Return final rope
+    ret ropes[0];
 }
 
 
@@ -688,6 +711,8 @@ mod node {
     const hint_max_node_height:   uint = 16u;
 
     /*
+    Function: of_str
+
     Adopt a string as a node.
 
     If the string is longer than `max_leaf_char_len`, it is
@@ -702,18 +727,50 @@ mod node {
     }
 
     /*
+    Function: of_substr
+
     Adopt a slice of a string as a node.
 
     If the slice is longer than `max_leaf_char_len`, it is logically split
     between as many leaves as necessary. Regardless, the string itself
     is not copied.
 
-    @param byte_start The byte offset where the slice of `str` starts.
-    @param byte_len   The number of bytes from `str` to use.
+    Parameters:
+    byte_start - The byte offset where the slice of `str` starts.
+    byte_len   - The number of bytes from `str` to use.
+
+    Safety note:
+    - Behavior is undefined if `byte_start` or `byte_len` do not represent
+     valid positions in `str`
      */
     fn of_substr(str: @str, byte_start: uint, byte_len: uint) -> @node {
-        assert (byte_len > 0u);
-        let char_len = str::char_len_range(*str, byte_start, byte_len);
+        ret of_substr_unsafer(str, byte_start, byte_len,
+                  str::char_len_range(*str, byte_start, byte_len));
+    }
+
+    /*
+    Function: of_substr_unsafer
+
+    Adopt a slice of a string as a node.
+
+    If the slice is longer than `max_leaf_char_len`, it is logically split
+    between as many leaves as necessary. Regardless, the string itself
+    is not copied.
+
+    byte_start - The byte offset where the slice of `str` starts.
+    byte_len   - The number of bytes from `str` to use.
+    char_len   - The number of chars in `str` in the interval
+          [byte_start, byte_start+byte_len(
+
+    Safety note:
+    - Behavior is undefined if `byte_start` or `byte_len` do not represent
+     valid positions in `str`
+    - Behavior is undefined if `char_len` does not accurately represent the
+     number of chars between byte_start and byte_start+byte_len
+    */
+    fn of_substr_unsafer(str: @str, byte_start: uint, byte_len: uint,
+                          char_len: uint) -> @node {
+        assert(byte_start + byte_len <= str::byte_len(*str));
         let candidate = @leaf({
                 byte_offset: byte_start,
                 byte_len:    byte_len,
@@ -784,6 +841,15 @@ mod node {
     }
 
 
+    /*
+    Function: tree_from_forest_destructive
+
+    Concatenate a forest of nodes into one tree.
+
+    Parameters:
+    forest - The forest. This vector is progressively rewritten during
+    execution and should be discarded as meaningless afterwards.
+    */
     fn tree_from_forest_destructive(forest: [mutable @node]) -> @node {
         let i = 0u;
         let len = vec::len(forest);
@@ -796,16 +862,25 @@ mod node {
                 let right_len= char_len(right);
                 let left_height= height(left);
                 let right_height=height(right);
-                if left_len + right_len > hint_max_leaf_char_len
-                    //TODO: Improve strategy
-                    || left_height  >= hint_max_node_height
-                    || right_height >= hint_max_node_height {
+                if left_len + right_len > hint_max_leaf_char_len {
                     if left_len <= hint_max_leaf_char_len {
                         left = flatten(left);
+                        left_height = height(left);
                     }
                     if right_len <= hint_max_leaf_char_len {
                         right = flatten(right);
+                        right_height = height(right);
                     }
+                }
+                if left_height >= hint_max_node_height {
+                    left = of_substr_unsafer(@serialize_node(left),
+                                             0u,byte_len(left),
+                                             left_len);
+                }
+                if right_height >= hint_max_node_height {
+                    right = of_substr_unsafer(@serialize_node(right),
+                                             0u,byte_len(right),
+                                             right_len);
                 }
                 forest[i/2u] = concat2(left, right);
                 i += 2u;
@@ -845,7 +920,11 @@ mod node {
     }
 
     /*
+    Function: flatten
+
     Replace a subtree by a single leaf with the same contents.
+
+    Performance note: This function executes in linear time.
      */
     fn flatten(node: @node) -> @node unsafe {
         alt(*node) {
@@ -861,49 +940,77 @@ mod node {
         }
     }
 
+    /*
+    Function: bal
+
+    Balance a node.
+
+    Algorithm:
+    - if the node height is smaller than `hint_max_node_height`, do nothing
+    - otherwise, gather all leaves as a forest, rebuild a balanced node,
+         concatenating small leaves along the way
+
+    Returns:
+    - `option::none` if no transformation happened
+    - `option::some(x)` otherwise, in which case `x` has the same contents
+       as `node` bot lower height and/or fragmentation.
+    */
     fn bal(node: @node) -> option::t<@node> {
-        if height(node) < hint_max_node_height { ret option::none }
-        else {
-            //1. Gather all leaves as a forest
-            let forest = [mutable];
-            let it = leaf_iterator::start(node);
-            while true {
-                alt (leaf_iterator::next(it)) {
-                  option::none.   { break; }
-                  option::some(x) { forest += [mutable @leaf(x)]; }
-                }
+        if height(node) < hint_max_node_height { ret option::none; }
+        //1. Gather all leaves as a forest
+        let forest = [mutable];
+        let it = leaf_iterator::start(node);
+        while true {
+            alt (leaf_iterator::next(it)) {
+              option::none.   { break; }
+              option::some(x) { forest += [mutable @leaf(x)]; }
             }
-            //2. Rebuild tree from forest
-            let root = @*tree_from_forest_destructive(forest);
-            ret option::some(root);
         }
+        //2. Rebuild tree from forest
+        let root = @*tree_from_forest_destructive(forest);
+        ret option::some(root);
+
     }
 
+    /*
+    Function: sub_bytes
+
+    Compute the subnode of a node.
+
+    Parameters:
+    node        - A node
+    byte_offset - A byte offset in `node`
+    byte_len    - The number of bytes to return
+
+    Performance notes:
+    - this function performs no copying;
+    - this function executes in a time proportional to the height of `node`.
+
+    Safety notes:
+    - this function fails if `byte_offset` or `byte_len` do not represent
+    valid positions in `node`.
+    */
     fn sub_bytes(node: @node, byte_offset: uint, byte_len: uint) -> @node {
         let node        = node;
-        let result      = node;//Arbitrary value
         let byte_offset = byte_offset;
-        let byte_len    = byte_len;
         while true {
             if byte_offset == 0u && byte_len == node::byte_len(node) {
-                result = node;
-                break;
+                ret node;
             }
             alt(*node) {
               node::leaf(x) {
                 let char_len =
                     str::char_len_range(*x.content, byte_offset, byte_len);
-                result = @leaf({byte_offset: byte_offset,
+                ret @leaf({byte_offset: byte_offset,
                                 byte_len:    byte_len,
                                 char_len:    char_len,
                                 content:     x.content});
-                break;
               }
               node::concat(x) {
                 let left_len: uint = node::byte_len(x.left);
                 if byte_offset <= left_len {
                     if byte_offset + byte_len <= left_len {
-                   //Case 1: Everything fits in x.left, tail-call
+                        //Case 1: Everything fits in x.left, tail-call
                         node = x.left;
                     } else {
                         //Case 2: A (non-empty, possibly full) suffix
@@ -913,8 +1020,7 @@ mod node {
                             sub_bytes(x.left, byte_offset, left_len);
                         let right_result =
                             sub_bytes(x.right, 0u, left_len - byte_offset);
-                        result = concat2(left_result, right_result);
-                        break;
+                        ret concat2(left_result, right_result);
                     }
                 } else {
                     //Case 3: Everything fits in x.right
@@ -924,49 +1030,71 @@ mod node {
               }
             }
         }
-        ret result;
+        fail;//Note: unreachable
     }
 
+    /*
+    Function: sub_chars
+
+    Compute the subnode of a node.
+
+    Parameters:
+    node        - A node
+    char_offset - A char offset in `node`
+    char_len    - The number of chars to return
+
+    Performance notes:
+    - this function performs no copying;
+    - this function executes in a time proportional to the height of `node`.
+
+    Safety notes:
+    - this function fails if `char_offset` or `char_len` do not represent
+    valid positions in `node`.
+    */
     fn sub_chars(node: @node, char_offset: uint, char_len: uint) -> @node {
-        alt(*node) {
-          node::leaf(x) {
-            if char_offset == 0u && char_len == x.char_len {
-                ret node;
-            }
-            let byte_offset =
-                str::byte_len_range(*x.content, 0u, char_offset);
-            let byte_len    =
-                str::byte_len_range(*x.content, byte_offset, char_len);
-            ret @leaf({byte_offset: byte_offset,
-                 byte_len:    byte_len,
-                 char_len:    char_len,
-                 content:     x.content});
-          }
-          node::concat(x) {
-            if char_offset == 0u && char_len == x.char_len {ret node;}
-            let left_len : uint = node::char_len(x.left);
-            if char_offset <= left_len {
-                if char_offset + char_len <= left_len {
-                    //Case 1: Everything fits in x.left
-                    ret sub_chars(x.left, char_offset, char_len);
-                    //TODO: Optimize manually this tail call?
-                } else {
-                    //Case 2: A (non-empty, possibly full) suffix
-                    //of x.left and a (non-empty, possibly full) prefix
-                    //of x.right
-                    let left_result  =
-                        sub_chars(x.left, char_offset, left_len);
-                    let right_result =
-                        sub_chars(x.right, 0u, left_len - char_offset);
-                    ret concat2(left_result, right_result)
+        let node        = node;
+        let char_offset = char_offset;
+        while true {
+            alt(*node) {
+              node::leaf(x) {
+                if char_offset == 0u && char_len == x.char_len {
+                    ret node;
                 }
-            } else {
-                //Case 3: Everything fits in x.right
-                ret sub_chars(x.right, char_offset - left_len, char_len);
-                //TODO: Optimize manually this tail call?
+                let byte_offset =
+                    str::byte_len_range(*x.content, 0u, char_offset);
+                let byte_len    =
+                    str::byte_len_range(*x.content, byte_offset, char_len);
+                ret @leaf({byte_offset: byte_offset,
+                           byte_len:    byte_len,
+                           char_len:    char_len,
+                           content:     x.content});
+              }
+              node::concat(x) {
+                if char_offset == 0u && char_len == x.char_len {ret node;}
+                let left_len : uint = node::char_len(x.left);
+                if char_offset <= left_len {
+                    if char_offset + char_len <= left_len {
+                        //Case 1: Everything fits in x.left, tail call
+                        node        = x.left;
+                    } else {
+                        //Case 2: A (non-empty, possibly full) suffix
+                        //of x.left and a (non-empty, possibly full) prefix
+                        //of x.right
+                        let left_result  =
+                            sub_chars(x.left, char_offset, left_len);
+                        let right_result =
+                            sub_chars(x.right, 0u, left_len - char_offset);
+                        ret concat2(left_result, right_result);
+                    }
+                } else {
+                    //Case 3: Everything fits in x.right, tail call
+                    node = x.right;
+                    char_offset -= left_len;
+                }
+              }
             }
-          }
         }
+        fail;
     }
 
     fn concat2(left: @node, right: @node) -> @node {
@@ -1018,37 +1146,63 @@ mod node {
         })
     }
 
+    /*
+    Function: loop_leaves
+
+    Loop through a node, leaf by leaf
+
+    Parameters:
+
+    rope - A node to traverse.
+    it - A block to execute with each consecutive leaf of the node.
+    Return `true` to continue, `false` to stop.
+
+    Returns:
+
+    `true` If execution proceeded correctly, `false` if it was interrupted,
+    that is if `it` returned `false` at any point.
+    */
     fn loop_leaves(node: @node, it: block(leaf) -> bool) -> bool{
-        let result  = true;
         let current = node;
         while true {
             alt(*current) {
               leaf(x) {
-                result = it(x);
-                break;
+                ret it(x);
               }
               concat(x) {
                 if loop_leaves(x.left, it) { //non tail call
                     current = x.right;       //tail call
                 } else {
-                    result = false;
-                    break;
+                    ret false;
                 }
               }
             }
         }
-        ret result;
+        fail;//unreachable
     }
 
+    /*
+    Function: char_at
+
+    Parameters:
+    pos - A position in the rope
+
+    Returns: The character at position `pos`
+
+    Safety notes: The function will fail if `pos`
+    is not a valid position in the rope.
+
+    Performance note: This function executes in a time
+    proportional to the height of the rope + the (bounded)
+    length of the largest leaf.
+    */
    fn char_at(node: @node, pos: uint) -> char {
        let node    = node;
        let pos     = pos;
-       let result  = '0';
        while true {
            alt(*node) {
              leaf(x) {
-               result = str::char_at(*x.content, pos);
-               break;
+               ret str::char_at(*x.content, pos);
              }
              concat({left: left,
                      right: right,
@@ -1056,16 +1210,16 @@ mod node {
                      byte_len: _,
                      height: _}) {
                let left_len = char_len(left);
-           if left_len > pos {
+               if left_len > pos {
                    node = left;
-           } else {
+               } else {
                    node = right;
                    pos  = pos - left_len;
-           }
+               }
              }
            }
        };
-       ret result;
+       fail;//unreachable
    }
 
     mod leaf_iterator {
@@ -1089,7 +1243,6 @@ mod node {
 
         fn next(it: t) -> option::t<leaf> {
             if it.stackpos < 0 { ret option::none; }
-            let result  = option::none;
             while true {
                 let current = it.stack[it.stackpos];
                 it.stackpos -= 1;
@@ -1101,12 +1254,11 @@ mod node {
                     it.stack[it.stackpos] = x.left;
                   }
                   leaf(x) {
-                    result    = option::some(x);
-                    break;
+                    ret option::some(x);
                   }
                 }
             }
-            ret result;
+            fail;//unreachable
         }
     }
 
@@ -1134,12 +1286,9 @@ mod node {
         }
 
         fn next(it: t) -> option::t<char> {
-            let result = option::none;
             while true {
                 alt(get_current_or_next_leaf(it)) {
-                  option::none. {
-                    break;
-                  }
+                  option::none. { ret option::none; }
                   option::some(leaf) {
                     let next_char = get_next_char_in_leaf(it);
                     alt(next_char) {
@@ -1147,14 +1296,13 @@ mod node {
                         cont;
                       }
                       option::some(_) {
-                        result = next_char;
-                        break;
+                        ret next_char;
                       }
                     }
                   }
                 }
             }
-            ret result;
+            fail;//unreachable
         }
 
         fn get_current_or_next_leaf(it: t) -> option::t<leaf> {
