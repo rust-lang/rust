@@ -95,6 +95,7 @@ Safety notes:
  */
 fn of_substr(str: @str, byte_offset: uint, byte_len: uint) -> rope {
     if byte_len == 0u { ret node::empty; }
+    if byte_offset + byte_len  > str::byte_len(*str) { fail; }
     ret node::content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -702,18 +703,50 @@ mod node {
     }
 
     /*
+    Function: of_substr
+
     Adopt a slice of a string as a node.
 
     If the slice is longer than `max_leaf_char_len`, it is logically split
     between as many leaves as necessary. Regardless, the string itself
     is not copied.
 
-    @param byte_start The byte offset where the slice of `str` starts.
-    @param byte_len   The number of bytes from `str` to use.
+    Parameters:
+    byte_start - The byte offset where the slice of `str` starts.
+    byte_len   - The number of bytes from `str` to use.
+
+    Safety note:
+    - Behavior is undefined if `byte_start` or `byte_len` do not represent
+     valid positions in `str`
      */
     fn of_substr(str: @str, byte_start: uint, byte_len: uint) -> @node {
-        assert (byte_len > 0u);
-        let char_len = str::char_len_range(*str, byte_start, byte_len);
+        ret of_substr_unsafer(str, byte_start, byte_len,
+                  str::char_len_range(*str, byte_start, byte_len));
+    }
+
+    /*
+    Function: of_substr_unsafer
+
+    Adopt a slice of a string as a node.
+
+    If the slice is longer than `max_leaf_char_len`, it is logically split
+    between as many leaves as necessary. Regardless, the string itself
+    is not copied.
+
+    byte_start - The byte offset where the slice of `str` starts.
+    byte_len   - The number of bytes from `str` to use.
+    char_len   - The number of chars in `str` in the interval
+          [byte_start, byte_start+byte_len(
+
+    Safety note:
+    - Behavior is undefined if `byte_start` or `byte_len` do not represent
+     valid positions in `str`
+    - Behavior is undefined if `char_len` does not accurately represent the
+     number of chars between byte_start and byte_start+byte_len
+    */
+    fn of_substr_unsafer(str: @str, byte_start: uint, byte_len: uint,
+                          char_len: uint) -> @node {
+        assert(byte_start + byte_len <= str::byte_len(*str));
         let candidate = @leaf({
                 byte_offset: byte_start,
                 byte_len:    byte_len,
@@ -784,6 +817,15 @@ mod node {
     }
 
 
+    /*
+    Function: tree_from_forest_destructive
+
+    Concatenate a forest of nodes into one tree.
+
+    Parameters:
+    forest - The forest. This vector is progressively rewritten during
+    execution and should be discarded as meaningless afterwards.
+    */
     fn tree_from_forest_destructive(forest: [mutable @node]) -> @node {
         let i = 0u;
         let len = vec::len(forest);
@@ -796,16 +838,25 @@ mod node {
                 let right_len= char_len(right);
                 let left_height= height(left);
                 let right_height=height(right);
-                if left_len + right_len > hint_max_leaf_char_len
-                    //TODO: Improve strategy
-                    || left_height  >= hint_max_node_height
-                    || right_height >= hint_max_node_height {
+                if left_len + right_len > hint_max_leaf_char_len {
                     if left_len <= hint_max_leaf_char_len {
                         left = flatten(left);
+                        left_height = height(left);
                     }
                     if right_len <= hint_max_leaf_char_len {
                         right = flatten(right);
+                        right_height = height(right);
                     }
+                }
+                if left_height >= hint_max_node_height {
+                    left = of_substr_unsafer(@serialize_node(left),
+                                             0u,byte_len(left),
+                                             left_len);
+                }
+                if right_height >= hint_max_node_height {
+                    right = of_substr_unsafer(@serialize_node(right),
+                                             0u,byte_len(right),
+                                             right_len);
                 }
                 forest[i/2u] = concat2(left, right);
                 i += 2u;
