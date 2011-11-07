@@ -97,7 +97,7 @@ suppressed by using a variable name that starts with an underscore.
 The `let` keyword, as we've seen, introduces a local variable. Global
 constants can be defined with `const`:
 
-    import std;
+    use std;
     const repeat: uint = 5u;
     fn main() {
         let count = 0u;
