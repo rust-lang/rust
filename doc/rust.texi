@@ -1031,7 +1031,7 @@ and compiled crates have a 1:1 relationship.
 The syntactic form of a crate is a sequence of @emph{directives}, some of
 which have nested sub-directives.
 
-A crate defines an implicit top-level anonymous module: within this module,
+A crate defines an implicit top-level module: within this module,
 all members of the crate have canonical path names. @xref{Ref.Path}. The
 @code{mod} directives within a crate file specify sub-modules to include in
 the crate: these are either directory modules, corresponding to directories in
@@ -1039,6 +1039,13 @@ the filesystem of the compilation environment, or file modules, corresponding
 to Rust source files. The names given to such modules in @code{mod} directives
 become prefixes of the paths of items defined within any included Rust source
 files.
+
+If a .rs file exists in the filesystem alongside the .rc crate file, then it
+will be used to provide the top-level module of the crate. Similarly,
+directory modules may be paired with .rs files of the same name as the
+directory to provide the code for those modules. These source files are never
+mentioned explicitly in the crate file; they are simply used if they are
+present.
 
 The @code{use} directives within the crate specify @emph{other crates} to scan
 for, locate, import into the crate's module namespace during compilation, and
