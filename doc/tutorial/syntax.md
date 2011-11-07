@@ -329,7 +329,7 @@ The compiler defines a few built-in syntax extensions. The most useful
 one is `#fmt`, a printf-style text formatting macro that is expanded
 at compile time.
 
-    std::io::writeln(#fmt("%s is %d", "the answer", 42));
+    std::io::println(#fmt("%s is %d", "the answer", 42));
 
 `#fmt` supports most of the directives that [printf][pf] supports, but
 will give you a compile-time error when the types of the directives
@@ -341,4 +341,4 @@ All syntax extensions look like `#word`. Another built-in one is
 `#env`, which will look up its argument as an environment variable at
 compile-time.
 
-    std::io::writeln(#env("PATH"));
+    std::io::println(#env("PATH"));

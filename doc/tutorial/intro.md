@@ -27,10 +27,10 @@ a language can be made easier if the notation looks familiar. Rust is
 a curly-brace language in the tradition of C, C++, and JavaScript.
 
     fn fac(n: int) -> int {
-        let result = 1;
-        while n > 0 {
-            result *= n;
-            n -= 1;
+        let result = 1, i = 1;
+        while i <= n {
+            result *= i;
+            i += 1;
         }
         ret result;
     }
