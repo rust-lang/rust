@@ -426,7 +426,6 @@ type anon_obj =
 type _mod = {view_items: [@view_item], items: [@item]};
 
 tag native_abi {
-    native_abi_rust;
     native_abi_cdecl;
     native_abi_llvm;
     native_abi_rust_intrinsic;

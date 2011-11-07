@@ -402,7 +402,6 @@ fn print_item(s: ps, &&item: @ast::item) {
         head(s, "native");
         alt nmod.abi {
           ast::native_abi_llvm. { word_nbsp(s, "\"llvm\""); }
-          ast::native_abi_rust. { word_nbsp(s, "\"rust\""); }
           ast::native_abi_cdecl. { word_nbsp(s, "\"cdecl\""); }
           ast::native_abi_rust_intrinsic. {
             word_nbsp(s, "\"rust-intrinsic\"");

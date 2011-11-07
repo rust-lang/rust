@@ -259,7 +259,6 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       'N' {
         let abi;
         alt next(st) as char {
-          'r' { abi = ast::native_abi_rust; }
           'i' { abi = ast::native_abi_rust_intrinsic; }
           'c' { abi = ast::native_abi_cdecl; }
           'l' { abi = ast::native_abi_llvm; }

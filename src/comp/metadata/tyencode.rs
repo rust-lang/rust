@@ -142,7 +142,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_native_fn(abi, args, out) {
         w.write_char('N');
         alt abi {
-          native_abi_rust. { w.write_char('r'); }
           native_abi_rust_intrinsic. { w.write_char('i'); }
           native_abi_cdecl. { w.write_char('c'); }
           native_abi_llvm. { w.write_char('l'); }
