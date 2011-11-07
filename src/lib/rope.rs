@@ -18,11 +18,14 @@ structure of ropes makes them suitable as a form of index to speed-up
 access to Unicode characters by index in long chunks of text.
 
 The following operations are algorithmically faster in ropes:
-- extracting a subrope is logarithmic (linear in strings);
+- extracting a subrope is logarithmic* (linear in strings);
 - appending/prepending is near-constant time (linear in strings);
 - concatenation is near-constant time (linear in strings);
 - char length is constant-time (linear in strings);
-- access to a character by index is logarithmic (linear in strings);
+- access to a character by index is logarithmic* (linear in strings);
+(*) Provided the rope is balanced. It is actually proportional to
+the height of the rope.
+
  */
 
 
@@ -828,15 +831,15 @@ mod node {
 
     pure fn byte_len(node: @node) -> uint {
         alt(*node) {//TODO: Could we do this without the pattern-matching?
-          leaf(y)  { ret y.byte_len; }
-          concat(y){ ret y.byte_len; }
+          leaf({byte_len: x, _})    { ret x; }
+          concat({byte_len: x, _})  { ret x; }
         }
     }
 
     pure fn char_len(node: @node) -> uint {
         alt(*node) {
-          leaf(y)   { ret y.char_len; }
-          concat(y) { ret y.char_len; }
+          leaf({char_len: x, _})    { ret x; }
+          concat({char_len: x, _})  { ret x; }
         }
     }
 
@@ -929,11 +932,11 @@ mod node {
     fn flatten(node: @node) -> @node unsafe {
         alt(*node) {
           leaf(_) { ret node }
-          concat(x) {
+          concat({byte_len: byte_len, char_len:char_len, _}) {
             ret @leaf({
                 byte_offset: 0u,
-                byte_len:    x.byte_len,
-                char_len:    x.char_len,
+                byte_len:    byte_len,
+                char_len:    char_len,
                 content:     @serialize_node(node)
             })
           }
@@ -998,34 +1001,34 @@ mod node {
                 ret node;
             }
             alt(*node) {
-              node::leaf(x) {
+              node::leaf({content:content, _}) {
                 let char_len =
-                    str::char_len_range(*x.content, byte_offset, byte_len);
+                    str::char_len_range(*content, byte_offset, byte_len);
                 ret @leaf({byte_offset: byte_offset,
                                 byte_len:    byte_len,
                                 char_len:    char_len,
-                                content:     x.content});
+                                content:     content});
               }
-              node::concat(x) {
-                let left_len: uint = node::byte_len(x.left);
+              node::concat({left:left, right:right, _}) {
+                let left_len: uint = node::byte_len(left);
                 if byte_offset <= left_len {
                     if byte_offset + byte_len <= left_len {
                         //Case 1: Everything fits in x.left, tail-call
-                        node = x.left;
+                        node = left;
                     } else {
                         //Case 2: A (non-empty, possibly full) suffix
                         //of x.left and a (non-empty, possibly full) prefix
                         //of x.right
                         let left_result  =
-                            sub_bytes(x.left, byte_offset, left_len);
+                            sub_bytes(left, byte_offset, left_len);
                         let right_result =
-                            sub_bytes(x.right, 0u, left_len - byte_offset);
+                            sub_bytes(right, 0u, left_len - byte_offset);
                         ret concat2(left_result, right_result);
                     }
                 } else {
                     //Case 3: Everything fits in x.right
                     byte_offset -= left_len;
-                    node = x.right;
+                    node = right;
                 }
               }
             }
@@ -1056,39 +1059,37 @@ mod node {
         let char_offset = char_offset;
         while true {
             alt(*node) {
-              node::leaf(x) {
-                if char_offset == 0u && char_len == x.char_len {
-                    ret node;
-                }
+              node::leaf({content:content, char_len:c, _}) {
+                if char_offset == 0u && char_len == c { ret node; }
                 let byte_offset =
-                    str::byte_len_range(*x.content, 0u, char_offset);
+                    str::byte_len_range(*content, 0u, char_offset);
                 let byte_len    =
-                    str::byte_len_range(*x.content, byte_offset, char_len);
+                    str::byte_len_range(*content, byte_offset, char_len);
                 ret @leaf({byte_offset: byte_offset,
                            byte_len:    byte_len,
                            char_len:    char_len,
-                           content:     x.content});
+                           content:     content});
               }
-              node::concat(x) {
-                if char_offset == 0u && char_len == x.char_len {ret node;}
-                let left_len : uint = node::char_len(x.left);
+              node::concat({left:left, right:right, char_len:c, _}) {
+                if char_offset == 0u && char_len == c {ret node;}
+                let left_len : uint = node::char_len(left);
                 if char_offset <= left_len {
                     if char_offset + char_len <= left_len {
                         //Case 1: Everything fits in x.left, tail call
-                        node        = x.left;
+                        node        = left;
                     } else {
                         //Case 2: A (non-empty, possibly full) suffix
-                        //of x.left and a (non-empty, possibly full) prefix
-                        //of x.right
+                        //of left and a (non-empty, possibly full) prefix
+                        //of right
                         let left_result  =
-                            sub_chars(x.left, char_offset, left_len);
+                            sub_chars(left, char_offset, left_len);
                         let right_result =
-                            sub_chars(x.right, 0u, left_len - char_offset);
+                            sub_chars(right, 0u, left_len - char_offset);
                         ret concat2(left_result, right_result);
                     }
                 } else {
-                    //Case 3: Everything fits in x.right, tail call
-                    node = x.right;
+                    //Case 3: Everything fits in right, tail call
+                    node = right;
                     char_offset -= left_len;
                 }
               }
@@ -1108,8 +1109,8 @@ mod node {
 
     fn height(node: @node) -> uint {
         alt(*node) {
-          leaf(_)   { ret 0u; }
-          concat(x) { ret x.height; }
+          leaf(_)               { ret 0u; }
+          concat({height:x, _}) { ret x; }
         }
     }
 
@@ -1169,9 +1170,9 @@ mod node {
               leaf(x) {
                 ret it(x);
               }
-              concat(x) {
-                if loop_leaves(x.left, it) { //non tail call
-                    current = x.right;       //tail call
+              concat({left: left, right:right, _}) {
+                if loop_leaves(left, it) { //non tail call
+                    current = right;       //tail call
                 } else {
                     ret false;
                 }
@@ -1201,14 +1202,10 @@ mod node {
        let pos     = pos;
        while true {
            alt(*node) {
-             leaf(x) {
-               ret str::char_at(*x.content, pos);
+             leaf({content:content, _}) {
+               ret str::char_at(*content, pos);
              }
-             concat({left: left,
-                     right: right,
-                     char_len: _,
-                     byte_len: _,
-                     height: _}) {
+             concat({left: left, right: right, _}) {
                let left_len = char_len(left);
                if left_len > pos {
                    node = left;
@@ -1243,17 +1240,16 @@ mod node {
 
         fn next(it: t) -> option::t<leaf> {
             if it.stackpos < 0 { ret option::none; }
+            let current = it.stack[it.stackpos];
             while true {
-                let current = it.stack[it.stackpos];
-                it.stackpos -= 1;
                 alt(*current) {
-                  concat(x) {
+                  concat({left:left, right:right, _}) {
+                    it.stack[it.stackpos] = right;
                     it.stackpos += 1;
-                    it.stack[it.stackpos] = x.right;
-                    it.stackpos += 1;
-                    it.stack[it.stackpos] = x.left;
+                    current = left;
                   }
                   leaf(x) {
+                    it.stackpos -= 1;
                     ret option::some(x);
                   }
                 }
