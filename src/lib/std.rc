@@ -74,6 +74,7 @@ mod ufind;
 mod ebml;
 mod dbg;
 mod getopts;
+mod json;
 mod math;
 mod rand;
 mod sha1;
