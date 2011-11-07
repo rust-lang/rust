@@ -95,7 +95,8 @@ fn from_str_str(s: str) -> (option::t<json>, str) {
             escape = true;
             cont;
         } else if (c == '"') {
-            ret (some(string(res)), str::char_slice(s, pos, str::char_len(s)));
+            ret (some(string(res)),
+                 str::char_slice(s, pos, str::char_len(s)));
         }
         res = res + str::from_char(c);
     }
