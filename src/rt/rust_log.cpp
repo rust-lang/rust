@@ -13,7 +13,6 @@
  * Synchronizes access to the underlying logging mechanism.
  */
 static lock_and_signal _log_lock;
-static uint32_t _last_thread_id;
 
 rust_log::rust_log(rust_srv *srv, rust_scheduler *sched) :
     _srv(srv),
@@ -67,26 +66,29 @@ append_string(char *buffer, const char *format, ...) {
 }
 
 void
-rust_log::trace_ln(uint32_t thread_id, char *prefix, char *message) {
+rust_log::trace_ln(char *prefix, char *message) {
     char buffer[BUF_BYTES] = "";
     _log_lock.lock();
-    append_string(buffer, "%-34s", prefix);
+    append_string(buffer, "%s", prefix);
     append_string(buffer, "%s", message);
-    if (_last_thread_id != thread_id) {
-        _last_thread_id = thread_id;
-        _srv->log("---");
-    }
     _srv->log(buffer);
     _log_lock.unlock();
 }
 
 void
 rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
+
+
+    // FIXME: The scheduler and task names used to have meaning,
+    // but they are always equal to 'main' currently
+#if 0
+
 #if defined(__WIN32__)
     uint32_t thread_id = 0;
 #else
     uint32_t thread_id = hash((uintptr_t) pthread_self());
 #endif
+
     char prefix[BUF_BYTES] = "";
     if (_sched && _sched->name) {
         append_string(prefix, "%04" PRIxPTR ":%.10s:",
@@ -102,7 +104,11 @@ rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
             append_string(prefix, "0x%08" PRIxPTR ":", (uintptr_t) task);
         }
     }
-    trace_ln(thread_id, prefix, message);
+#else
+    char prefix[BUF_BYTES] = "";
+#endif
+
+    trace_ln(prefix, message);
 }
 
 // Reading log directives and setting log level vars

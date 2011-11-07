@@ -42,7 +42,7 @@ public:
     virtual ~rust_log();
 
     void trace_ln(rust_task *task, uint32_t level, char *message);
-    void trace_ln(uint32_t thread_id, char *prefix, char *message);
+    void trace_ln(char *prefix, char *message);
     bool is_tracing(uint32_t type_bits);
 
 private:
