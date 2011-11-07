@@ -1268,7 +1268,9 @@ fn parse_if_expr_1(p: parser) ->
         hi = elexpr.span.hi;
     } else if !option::is_none(thn.node.expr) {
         let sp = option::get(thn.node.expr).span;
-        p.span_fatal(sp, "if without else can not return a value");
+        p.span_fatal(sp, "`if` without `else` can not produce a result");
+        //TODO: If a suggestion mechanism appears, suggest that the
+        //user may have forgotten a ';'
     }
     ret {cond: cond, then: thn, els: els, lo: lo, hi: hi};
 }
@@ -1679,7 +1681,9 @@ fn parse_block_no_value(p: parser) -> ast::blk {
     let blk = parse_block(p);
     if !option::is_none(blk.node.expr) {
         let sp = option::get(blk.node.expr).span;
-        p.span_fatal(sp, "this block must not return a value");
+        p.span_fatal(sp, "this block must not have a result");
+        //TODO: If a suggestion mechanism appears, suggest that the
+        //user may have forgotten a ';'
     }
     ret blk;
 }
