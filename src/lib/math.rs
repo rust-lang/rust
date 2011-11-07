@@ -1,13 +1,13 @@
 /* Module: math */
 
-native "llvm" mod llvm {
-    fn sqrt(n: float) -> float = "sqrt.f64";
-    fn sin(n: float) -> float = "sin.f64";
-    fn asin(n: float) -> float = "asin.f64";
-    fn cos(n: float) -> float = "cos.f64";
-    fn acos(n: float) -> float = "acos.f64";
-    fn tan(n: float) -> float = "tan.f64";
-    fn atan(n: float) -> float = "atan.f64";
+native "c-stack-cdecl" mod libc = "" {
+    fn sqrt(n: float) -> float;
+    fn sin(n: float) -> float;
+    fn asin(n: float) -> float;
+    fn cos(n: float) -> float;
+    fn acos(n: float) -> float;
+    fn tan(n: float) -> float;
+    fn atan(n: float) -> float;
 }
 
 /*
@@ -15,49 +15,49 @@ Function: sqrt
 
 Returns the square root
 */
-fn sqrt(x: float) -> float { llvm::sqrt(x) }
+fn sqrt(x: float) -> float { libc::sqrt(x) }
 
 /*
 Function: sin
 
 Returns the sine of an angle
 */
-fn sin(x: float) -> float { llvm::sin(x) }
+fn sin(x: float) -> float { libc::sin(x) }
 
 /*
 Function: cos
 
 Returns the cosine of an angle
 */
-fn cos(x: float) -> float { llvm::cos(x) }
+fn cos(x: float) -> float { libc::cos(x) }
 
 /*
 Function: tan
 
 Returns the tangent of an angle
 */
-fn tan(x: float) -> float { llvm::tan(x) }
+fn tan(x: float) -> float { libc::tan(x) }
 
 /*
 Function: asin
 
 Returns the arcsine of an angle
 */
-fn asin(x: float) -> float { llvm::asin(x) }
+fn asin(x: float) -> float { libc::asin(x) }
 
 /*
 Function: acos
 
 Returns the arccosine of an angle
 */
-fn acos(x: float) -> float { llvm::acos(x) }
+fn acos(x: float) -> float { libc::acos(x) }
 
 /*
 Function: atan
 
 Returns the arctangent of an angle
 */
-fn atan(x: float) -> float { llvm::atan(x) }
+fn atan(x: float) -> float { libc::atan(x) }
 
 /*
 Const: pi

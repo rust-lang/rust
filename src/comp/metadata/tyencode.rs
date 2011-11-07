@@ -144,7 +144,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         alt abi {
           native_abi_rust_intrinsic. { w.write_char('i'); }
           native_abi_cdecl. { w.write_char('c'); }
-          native_abi_llvm. { w.write_char('l'); }
           native_abi_x86stdcall. { w.write_char('s'); }
           native_abi_c_stack_cdecl. { w.write_char('C'); }
           native_abi_c_stack_stdcall. { w.write_char('S'); }

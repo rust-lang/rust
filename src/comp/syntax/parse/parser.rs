@@ -2007,8 +2007,6 @@ fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
     if !is_word(p, "mod") {
         let t = parse_str(p);
         if str::eq(t, "cdecl") {
-        } else if str::eq(t, "llvm") {
-            abi = ast::native_abi_llvm;
         } else if str::eq(t, "rust-intrinsic") {
             abi = ast::native_abi_rust_intrinsic;
         } else if str::eq(t, "x86stdcall") {
