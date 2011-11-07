@@ -336,6 +336,8 @@ fi
 if [ -z "$CFG_TARGET_TRIPLES" ]
 then
     CFG_TARGET_TRIPLES="${CFG_HOST_TRIPLE}"
+else
+    CFG_TARGET_TRIPLES="${CFG_TARGET_TRIPLES/,/ }"
 fi
 
 
