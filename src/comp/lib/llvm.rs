@@ -1,4 +1,4 @@
-import std::{vec, str};
+import std::{vec, str, option};
 import std::str::sbuf;
 
 import llvm::{ModuleRef, ContextRef, TypeRef, TypeHandleRef, ValueRef,
@@ -1057,9 +1057,10 @@ resource object_file_res(ObjectFile: ObjectFileRef) {
 
 type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
 
-fn mk_object_file(llmb: MemoryBufferRef) -> object_file {
+fn mk_object_file(llmb: MemoryBufferRef) -> option::t<object_file> {
     let llof = llvm::LLVMCreateObjectFile(llmb);
-    ret {llof: llof, dtor: @object_file_res(llof)};
+    if llof as int == 0 { ret option::none::<object_file>; }
+    ret option::some::<object_file>({llof: llof, dtor: @object_file_res(llof)});
 }
 
 /* Memory-managed interface to section iterators. */
