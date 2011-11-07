@@ -24,6 +24,7 @@ Jeff Muizelaar <jmuizelaar@mozilla.com>
 Jeffrey Yasskin <jyasskin@gmail.com>
 Jesse Ruderman <jruderman@gmail.com>
 Josh Matthews <josh@joshmatthews.net>
+Joshua Wise <joshua@joshuawise.com>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
 Lindsey Kuper <lkuper@mozilla.com>
 Marijn Haverbeke <marijnh@gmail.com>
