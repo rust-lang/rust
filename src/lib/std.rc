@@ -12,7 +12,7 @@ export aio, comm, fs, io, net, run, sio, sys, task;
 export ctypes, either, option, result, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
-export ebml, dbg, getopts, math, rand, sha1, term, time, unsafe;
+export ebml, dbg, getopts, json, math, rand, sha1, term, time, unsafe;
 export extfmt, test;
 // FIXME: generic_os and os_fs shouldn't be exported
 export generic_os, os, os_fs;

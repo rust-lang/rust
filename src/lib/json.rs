@@ -1,10 +1,5 @@
-#[link(name = "json",
-       vers = "0.1",
-       uuid = "09d7f2fc-1fad-48b2-9f9d-a65512342f16",
-       url = "http://www.leptoquark.net/~elly/rust/")];
-#[copyright = "Google Inc. 2011"];
-#[comment = "JSON serialization format library"];
-#[license = "BSD"];
+// Rust JSON serialization library
+// Copyright (c) 2011 Google Inc.
 
 import float;
 import map;
@@ -14,18 +9,39 @@ import str;
 import vec;
 
 export json;
-export tostr;
-export fromstr;
+export to_str;
+export from_str;
 
+export num;
+export string;
+export boolean;
+export list;
+export dict;
+
+/*
+Tag: json
+
+Represents a json value.
+*/
 tag json {
+    /* Variant: num */
     num(float);
+    /* Variant: string */
     string(str);
+    /* Variant: boolean */
     boolean(bool);
+    /* Variant: list */
     list(@[json]);
+    /* Variant: dict */
     dict(map::hashmap<str,json>);
 }
 
-fn tostr(j: json) -> str {
+/*
+Function: to_str
+
+Serializes a json value into a string.
+*/
+fn to_str(j: json) -> str {
     alt j {
         num(f) { float::to_str(f, 6u) }
         string(s) { #fmt["\"%s\"", s] } // XXX: escape
@@ -34,7 +50,7 @@ fn tostr(j: json) -> str {
         list(@js) {
             str::concat(["[",
                     str::connect(
-                        vec::map::<json,str>({ |e| tostr(e) }, js),
+                        vec::map::<json,str>({ |e| to_str(e) }, js),
                         ", "),
                     "]"])
         }
@@ -42,7 +58,7 @@ fn tostr(j: json) -> str {
             let parts = [];
             m.items({ |k, v|
                         vec::grow(parts, 1u,
-                                  str::concat(["\"", k, "\": ", tostr(v)])
+                                  str::concat(["\"", k, "\": ", to_str(v)])
                         )
             });
             str::concat(["{ ", str::connect(parts, ", "), " }"])
@@ -51,10 +67,11 @@ fn tostr(j: json) -> str {
 }
 
 fn rest(s: str) -> str {
+    assert(str::char_len(s) >= 1u);
     str::char_slice(s, 1u, str::char_len(s))
 }
 
-fn fromstr_str(s: str) -> (option::t<json>, str) {
+fn from_str_str(s: str) -> (option::t<json>, str) {
     let pos = 0u;
     let len = str::byte_len(s);
     let escape = false;
@@ -86,7 +103,7 @@ fn fromstr_str(s: str) -> (option::t<json>, str) {
     ret (none, s);
 }
 
-fn fromstr_list(s: str) -> (option::t<json>, str) {
+fn from_str_list(s: str) -> (option::t<json>, str) {
     if str::char_at(s, 0u) != '[' { ret (none, s); }
     let s0 = str::trim_left(rest(s));
     let vals = [];
@@ -94,7 +111,7 @@ fn fromstr_list(s: str) -> (option::t<json>, str) {
     if str::char_at(s0, 0u) == ']' { ret (some(list(@[])), rest(s0)); }
     while str::is_not_empty(s0) {
         s0 = str::trim_left(s0);
-        let (next, s1) = fromstr_helper(s0);
+        let (next, s1) = from_str_helper(s0);
         s0 = s1;
         alt next {
             some(j) { vec::grow(vals, 1u, j); }
@@ -112,7 +129,7 @@ fn fromstr_list(s: str) -> (option::t<json>, str) {
     ret (none, s0);
 }
 
-fn fromstr_dict(s: str) -> (option::t<json>, str) {
+fn from_str_dict(s: str) -> (option::t<json>, str) {
     if str::char_at(s, 0u) != '{' { ret (none, s); }
     let s0 = str::trim_left(rest(s));
     let vals = map::new_str_hash::<json>();
@@ -120,7 +137,7 @@ fn fromstr_dict(s: str) -> (option::t<json>, str) {
     if str::char_at(s0, 0u) == '}' { ret (some(dict(vals)), rest(s0)); }
     while str::is_not_empty(s0) {
         s0 = str::trim_left(s0);
-        let (next, s1) = fromstr_helper(s0);    // key
+        let (next, s1) = from_str_helper(s0);    // key
         let key = "";
         s0 = s1;
         alt next {
@@ -131,7 +148,7 @@ fn fromstr_dict(s: str) -> (option::t<json>, str) {
         if str::is_empty(s0) { ret (none, s0); }
         if str::char_at(s0, 0u) != ':' { ret (none, s0); }
         s0 = str::trim_left(rest(s0));
-        let (next, s1) = fromstr_helper(s0);    // value
+        let (next, s1) = from_str_helper(s0);    // value
         s0 = s1;
         alt next {
             some(j) { vals.insert(key, j); }
@@ -149,7 +166,7 @@ fn fromstr_dict(s: str) -> (option::t<json>, str) {
     (none, s)
 }
 
-fn fromstr_float(s: str) -> (option::t<json>, str) {
+fn from_str_float(s: str) -> (option::t<json>, str) {
     let pos = 0u;
     let len = str::byte_len(s);
     let res = 0f;
@@ -205,7 +222,7 @@ fn fromstr_float(s: str) -> (option::t<json>, str) {
     ret (some(num(neg * res)), str::char_slice(s, pos, str::char_len(s)));
 }
 
-fn fromstr_bool(s: str) -> (option::t<json>, str) {
+fn from_str_bool(s: str) -> (option::t<json>, str) {
     if (str::starts_with(s, "true")) {
         (some(boolean(true)), str::slice(s, 4u, str::byte_len(s)))
     } else if (str::starts_with(s, "false")) {
@@ -215,79 +232,26 @@ fn fromstr_bool(s: str) -> (option::t<json>, str) {
     }
 }
 
-fn fromstr_helper(s: str) -> (option::t<json>, str) {
+fn from_str_helper(s: str) -> (option::t<json>, str) {
     let s = str::trim_left(s);
     if str::is_empty(s) { ret (none, s); }
     let start = str::char_at(s, 0u);
     alt start {
-        '"' { fromstr_str(s) }
-        '[' { fromstr_list(s) }
-        '{' { fromstr_dict(s) }
-        '0' to '9' | '-' | '+' | '.' { fromstr_float(s) }
-        't' | 'f' { fromstr_bool(s) }
+        '"' { from_str_str(s) }
+        '[' { from_str_list(s) }
+        '{' { from_str_dict(s) }
+        '0' to '9' | '-' | '+' | '.' { from_str_float(s) }
+        't' | 'f' { from_str_bool(s) }
         _ { ret (none, s); }
     }
 }
 
-fn fromstr(s: str) -> option::t<json> {
-    let (j, _) = fromstr_helper(s);
+/*
+Function: from_str
+
+Deserializes a json value from a string.
+*/
+fn from_str(s: str) -> option::t<json> {
+    let (j, _) = from_str_helper(s);
     j
-}
-
-fn main() {
-    let j = fromstr("{ \"foo\": [ 4, 5 ], \"bar\": { \"baz\": true}}");
-    alt j {
-        some(j0) {
-            log tostr(j0);
-        }
-        _ { }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_fromstr_num() {
-        assert(fromstr("3") == some(num(3f)));
-        assert(fromstr("3.1") == some(num(3.1f)));
-        assert(fromstr("-1.2") == some(num(-1.2f)));
-        assert(fromstr(".4") == some(num(0.4f)));
-    }
-
-    #[test]
-    fn test_fromstr_str() {
-        assert(fromstr("\"foo\"") == some(string("foo")));
-        assert(fromstr("\"\\\"\"") == some(string("\"")));
-        assert(fromstr("\"lol") == none);
-    }
-
-    #[test]
-    fn test_fromstr_bool() {
-        assert(fromstr("true") == some(boolean(true)));
-        assert(fromstr("false") == some(boolean(false)));
-        assert(fromstr("truz") == none);
-    }
-
-    #[test]
-    fn test_fromstr_list() {
-        assert(fromstr("[]") == some(list(@[])));
-        assert(fromstr("[true]") == some(list(@[boolean(true)])));
-        assert(fromstr("[3, 1]") == some(list(@[num(3f), num(1f)])));
-        assert(fromstr("[2, [4, 1]]") ==
-            some(list(@[num(2f), list(@[num(4f), num(1f)])])));
-        assert(fromstr("[2, ]") == none);
-        assert(fromstr("[5, ") == none);
-        assert(fromstr("[6 7]") == none);
-        assert(fromstr("[3") == none);
-    }
-
-    #[test]
-    fn test_fromstr_dict() {
-        assert(fromstr("{}") != none);
-        assert(fromstr("{\"a\": 3}") != none);
-        assert(fromstr("{\"a\": }") == none);
-        assert(fromstr("{\"a\" }") == none);
-        assert(fromstr("{\"a\"") == none);
-        assert(fromstr("{") == none);
-    }
 }
