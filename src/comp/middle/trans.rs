@@ -6051,7 +6051,9 @@ fn write_abi_version(ccx: @crate_ctxt) {
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, amap: ast_map::map, mut_map: mut::mut_map,
                copy_map: alias::copy_map) -> ModuleRef {
-    let llmod = str::as_buf("rust_out", {|buf|
+    let sha = std::sha1::mk_sha1();
+    let link_meta = link::build_link_meta(sess, *crate, output, sha);
+    let llmod = str::as_buf(link_meta.name, {|buf|
         llvm::LLVMModuleCreateWithNameInContext
             (buf, llvm::LLVMGetGlobalContext())
     });
@@ -6081,8 +6083,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let lltypes = map::mk_hashmap::<ty::t, TypeRef>(hasher, eqer);
     let sha1s = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let short_names = map::mk_hashmap::<ty::t, str>(hasher, eqer);
-    let sha = std::sha1::mk_sha1();
-    let link_meta = link::build_link_meta(sess, *crate, output, sha);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
     let ccx =
         @{sess: sess,

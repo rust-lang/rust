@@ -866,6 +866,9 @@ native "c-stack-cdecl" mod llvm = "rustllvm" {
     fn LLVMRustConstSmallInt(IntTy: TypeRef, N: uint, SignExtend: Bool) ->
        ValueRef;
 
+    fn LLVMRustAddPrintModulePass(PM: PassManagerRef, M: ModuleRef,
+                                  Output: sbuf);
+
     /** Turn on LLVM pass-timing. */
     fn LLVMRustEnableTimePasses();
     /** Turn on LLVM segmented stacks. */

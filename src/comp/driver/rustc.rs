@@ -344,6 +344,8 @@ fn build_session_options(match: getopts::match)
     let output_type =
         if parse_only || no_trans {
             link::output_type_none
+        } else if opt_present(match, "S") && opt_present(match, "emit-llvm") {
+            link::output_type_llvm_assembly
         } else if opt_present(match, "S") {
             link::output_type_assembly
         } else if opt_present(match, "c") {
@@ -475,6 +477,7 @@ fn build_output_filenames(ifile: str, ofile: option::t<str>,
               link::output_type_none. { "none" }
               link::output_type_bitcode. { "bc" }
               link::output_type_assembly. { "s" }
+              link::output_type_llvm_assembly. { "s" }
               // Object and exe output both use the '.o' extension here
               link::output_type_object. | link::output_type_exe. {
                 "o"

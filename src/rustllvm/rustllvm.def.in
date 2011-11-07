@@ -24,6 +24,7 @@ LLVMAddAlias
 LLVMAddArgumentPromotionPass
 LLVMAddAttribute
 LLVMAddBasicAliasAnalysisPass
+LLVMRustAddPrintModulePass
 LLVMAddCFGSimplificationPass
 LLVMAddCase
 LLVMAddClause

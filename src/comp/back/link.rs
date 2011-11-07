@@ -30,6 +30,7 @@ tag output_type {
     output_type_none;
     output_type_bitcode;
     output_type_assembly;
+    output_type_llvm_assembly;
     output_type_object;
     output_type_exe;
 }
@@ -254,12 +255,19 @@ mod write {
             if opts.time_llvm_passes { llvm::LLVMRustPrintPassTimings(); }
             ret;
         }
-        // If only a bitcode file is asked for by using the '--emit-llvm'
-        // flag, then output it here
 
-        llvm::LLVMRunPassManager(pm.llpm, llmod);
-        str::as_buf(output,
-                    {|buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) });
+        if opts.output_type == output_type_llvm_assembly {
+            // Given options "-S --emit-llvm": output LLVM assembly
+            str::as_buf(output, {|buf_o|
+                llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o)});
+        } else {
+            // If only a bitcode file is asked for by using the '--emit-llvm'
+            // flag, then output it here
+            llvm::LLVMRunPassManager(pm.llpm, llmod);
+            str::as_buf(output,
+                        {|buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) });
+        }
+
         llvm::LLVMDisposeModule(llmod);
         if opts.time_llvm_passes { llvm::LLVMRustPrintPassTimings(); }
     }

@@ -15,6 +15,7 @@
 #include "llvm/Linker.h"
 #include "llvm/PassManager.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/Assembly/PrintModulePass.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
@@ -45,6 +46,17 @@ extern "C" const char *LLVMRustGetLastError(void) {
 }
 
 extern "C" void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);
+
+extern "C" void LLVMRustAddPrintModulePass(LLVMPassManagerRef PMR,
+                                           LLVMModuleRef M,
+                                           const char* path) {
+  PassManager *PM = unwrap<PassManager>(PMR);
+  std::string ErrorInfo;
+  raw_fd_ostream OS(path, ErrorInfo, raw_fd_ostream::F_Binary);
+  formatted_raw_ostream FOS(OS);
+  PM->add(createPrintModulePass(&FOS));
+  PM->run(*unwrap(M));
+}
 
 extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
   static std::string err;
