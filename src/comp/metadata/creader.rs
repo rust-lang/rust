@@ -175,7 +175,10 @@ fn get_metadata_section(sess: session::session,
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
     if mb as int == 0 { ret option::none::<@[u8]>; }
-    let of = mk_object_file(mb);
+    let of = alt mk_object_file(mb) {
+        option::some(of) { of }
+        _ { ret option::none::<@[u8]>; }
+    };
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
         let name_buf = llvm::LLVMGetSectionName(si.llsi);
