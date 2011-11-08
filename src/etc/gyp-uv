@@ -23,17 +23,17 @@ for ARCH in ia32 x86_64
 do
     args="--depth . -Dlibrary=static_library -Dtarget_arch=$ARCH"
     
-    ./src/rt/libuv/build/gyp/gyp src/rt/libuv/uv.gyp $args \
+    ./src/libuv/build/gyp/gyp src/libuv/uv.gyp $args \
         -f make-mac \
         --generator-output mk/libuv/$ARCH/mac \
         -DOS=mac
 
-    ./src/rt/libuv/build/gyp/gyp src/rt/libuv/uv.gyp $args \
+    ./src/libuv/build/gyp/gyp src/libuv/uv.gyp $args \
         -f make-linux \
         --generator-output mk/libuv/$ARCH/unix \
         -DOS=linux
 
-    ./src/rt/libuv/build/gyp/gyp src/rt/libuv/uv.gyp $args \
+    ./src/libuv/build/gyp/gyp src/libuv/uv.gyp $args \
         -f make-linux \
         --generator-output mk/libuv/$ARCH/win \
         -DOS=win
@@ -53,4 +53,4 @@ done
 # On Mac, GYP hardcodes a -arch i386 into the output. Fix that.
 sed -i \
     -e 's/-arch i386/-arch x86_64/' \
-    mk/libuv/x86_64/mac/src/rt/libuv/*.mk
+    mk/libuv/x86_64/mac/src/libuv/*.mk
