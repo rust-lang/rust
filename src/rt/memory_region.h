@@ -11,19 +11,32 @@
 
 #include "sync/lock_and_signal.h"
 
+// There are three levels of debugging:
+//
+// 0 --- no headers, no debugging support
+// 1 --- support poison, but do not track allocations
+// 2 --- track allocations in deatil
+//
+// NB: please do not commit code with level 2. It's
+// hugely expensive and should only be used as a last resort.
+#define RUSTRT_TRACK_ALLOCATIONS 0
+
 class rust_srv;
 
 class memory_region {
 private:
     struct alloc_header {
+#       if RUSTRT_TRACK_ALLOCATIONS > 0
         uint32_t magic;
         int index;
         const char *tag;
         uint32_t size;
+#       endif
     };
 
-    alloc_header *get_header(void *mem);
-    void *get_data(alloc_header *);
+    inline alloc_header *get_header(void *mem);
+    inline void *get_data(alloc_header *);
+    
 
     rust_srv *_srv;
     memory_region *_parent;

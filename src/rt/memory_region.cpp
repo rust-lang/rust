@@ -1,22 +1,20 @@
 #include "rust_internal.h"
 #include "memory_region.h"
 
-// NB: please do not commit code with this uncommented. It's
-// hugely expensive and should only be used as a last resort.
-//
-// #define TRACK_ALLOCATIONS
-
-#define PTR_SIZE (sizeof(void*))
-#define ALIGN_PTR(x) (((x)+PTR_SIZE-1)/PTR_SIZE*PTR_SIZE)
-#define HEADER_SIZE ALIGN_PTR(sizeof(alloc_header))
-#define MAGIC 0xbadc0ffe
+#if RUSTRT_TRACK_ALLOCATIONS >= 1
+#  define PTR_SIZE (sizeof(void*))
+#  define ALIGN_PTR(x) (((x)+PTR_SIZE-1)/PTR_SIZE*PTR_SIZE)
+#  define HEADER_SIZE ALIGN_PTR(sizeof(alloc_header))
+#  define MAGIC 0xbadc0ffe
+#else
+#  define HEADER_SIZE 0
+#endif
 
 memory_region::alloc_header *memory_region::get_header(void *mem) {
     return (alloc_header *)((char *)mem - HEADER_SIZE);
 }
 
 void *memory_region::get_data(alloc_header *ptr) {
-    assert(ptr->magic == MAGIC);
     return (void*)((char *)ptr + HEADER_SIZE);
 }
 
@@ -46,7 +44,11 @@ void memory_region::free(void *mem) {
     // printf("free: ptr 0x%" PRIxPTR" region=%p\n", (uintptr_t) mem, this);
     if (!mem) { return; }
     alloc_header *alloc = get_header(mem);
+
+#   if RUSTRT_TRACK_ALLOCATIONS >= 1
     assert(alloc->magic == MAGIC);
+#   endif
+
     if (_live_allocations < 1) {
         _srv->fatal("live_allocs < 1", __FILE__, __LINE__, "");
     }
@@ -56,18 +58,22 @@ void memory_region::free(void *mem) {
 }
 
 void *
-memory_region::realloc(void *mem, size_t size) {
+memory_region::realloc(void *mem, size_t orig_size) {
     if (_synchronized) { _lock.lock(); }
     if (!mem) {
         add_alloc();
     }
-    size_t old_size = size;
-    size += HEADER_SIZE;
+
     alloc_header *alloc = get_header(mem);
-    assert(alloc->magic == MAGIC);
-    alloc->size = old_size;
+    size_t size = orig_size + HEADER_SIZE;
     alloc_header *newMem = (alloc_header *)_srv->realloc(alloc, size);
-#ifdef TRACK_ALLOCATIONS
+
+#   if RUSTRT_TRACK_ALLOCATIONS >= 1
+    assert(alloc->magic == MAGIC);
+    newMem->size = orig_size;
+#   endif
+
+#   if RUSTRT_TRACK_ALLOCATIONS >= 2
     if (_allocation_list[newMem->index] != alloc) {
         printf("at index %d, found %p, expected %p\n",
                alloc->index, _allocation_list[alloc->index], alloc);
@@ -80,7 +86,8 @@ memory_region::realloc(void *mem, size_t size) {
         // printf("realloc: stored %p at index %d, replacing %p\n",
         //        newMem, index, mem);
     }
-#endif
+#   endif
+
     if (_synchronized) { _lock.unlock(); }
     return get_data(newMem);
 }
@@ -90,10 +97,13 @@ memory_region::malloc(size_t size, const char *tag, bool zero) {
     size_t old_size = size;
     size += HEADER_SIZE;
     alloc_header *mem = (alloc_header *)_srv->malloc(size);
+
+#   if RUSTRT_TRACK_ALLOCATIONS >= 1
     mem->magic = MAGIC;
     mem->tag = tag;
     mem->index = -1;
     mem->size = old_size;
+#   endif
 
     void *data = get_data(mem);
     claim_alloc(data);
@@ -122,7 +132,8 @@ memory_region::~memory_region() {
                  "leaked memory in rust main loop (%d objects)",
                  _live_allocations);
     }
-#ifdef TRACK_ALLOCATIONS
+
+#   if RUSTRT_TRACK_ALLOCATIONS >= 2
     if (_detailed_leaks) {
         int leak_count = 0;
         for (size_t i = 0; i < _allocation_list.size(); i++) {
@@ -136,7 +147,8 @@ memory_region::~memory_region() {
         }
         assert(leak_count == _live_allocations);
     }
-#endif
+#   endif
+
     if (_live_allocations > 0) {
         _srv->fatal(msg, __FILE__, __LINE__,
                     "%d objects", _live_allocations);
@@ -146,10 +158,12 @@ memory_region::~memory_region() {
 
 void
 memory_region::release_alloc(void *mem) {
+#   if RUSTRT_TRACK_ALLOCATIONS >= 1
     alloc_header *alloc = get_header(mem);
     assert(alloc->magic == MAGIC);
+#   endif
 
-#ifdef TRACK_ALLOCATIONS
+#   if RUSTRT_TRACK_ALLOCATIONS >= 2
     if (_synchronized) { _lock.lock(); }
     if (_allocation_list[alloc->index] != alloc) {
         printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
@@ -162,19 +176,24 @@ memory_region::release_alloc(void *mem) {
         alloc->index = -1;
     }
     if (_synchronized) { _lock.unlock(); }
-#endif
+#   endif
+
     dec_alloc();
 }
 
 void
 memory_region::claim_alloc(void *mem) {
+#   if RUSTRT_TRACK_ALLOCATIONS >= 1
     alloc_header *alloc = get_header(mem);
     assert(alloc->magic == MAGIC);
-#ifdef TRACK_ALLOCATIONS
+#   endif
+
+#   if RUSTRT_TRACK_ALLOCATIONS >= 2
     if (_synchronized) { _lock.lock(); }
     alloc->index = _allocation_list.append(alloc);
     if (_synchronized) { _lock.unlock(); }
-#endif
+#   endif
+
     add_alloc();
 }
 
@@ -190,8 +209,10 @@ memory_region::maybe_poison(void *mem) {
     if (!poison)
         return;
 
+#   if RUSTRT_TRACK_ALLOCATIONS >= 1
     alloc_header *alloc = get_header(mem);
     memset(mem, '\xcd', alloc->size);
+#   endif
 }
 
 //
