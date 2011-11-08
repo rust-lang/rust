@@ -55,7 +55,7 @@ swap_registers:
         
         // Save instruction pointer:
         pop %rax
-        mov %rax, 104(%rdi)
+        mov %rax, 56(%rdi)
 
         // Save non-volatile integer registers:
         //   (including RSP)
@@ -68,12 +68,12 @@ swap_registers:
         mov %r15,  48(%rdi)
 
         // Save non-volatile XMM registers:
-        movapd %xmm0, 56(%rdi)
-        movapd %xmm1, 64(%rdi)
-        movapd %xmm2, 72(%rdi)
-        movapd %xmm3, 80(%rdi)
-        movapd %xmm4, 88(%rdi)
-        movapd %xmm5, 96(%rdi)
+        movapd %xmm0,  64(%rdi)
+        movapd %xmm1,  80(%rdi)
+        movapd %xmm2,  96(%rdi)
+        movapd %xmm3, 112(%rdi)
+        movapd %xmm4, 128(%rdi)
+        movapd %xmm5, 144(%rdi)
 
         // Restore non-volatile integer registers:
         //   (including RSP)
@@ -86,14 +86,14 @@ swap_registers:
         mov 48(%rsi), %r15
 
         // Restore non-volatile XMM registers:
-        movapd 56(%rsi), %xmm0
-        movapd 64(%rsi), %xmm1
-        movapd 72(%rsi), %xmm2
-        movapd 80(%rsi), %xmm3
-        movapd 88(%rsi), %xmm4
-        movapd 96(%rsi), %xmm5
+        movapd  64(%rsi), %xmm0
+        movapd  80(%rsi), %xmm1
+        movapd  96(%rsi), %xmm2
+        movapd 112(%rsi), %xmm3
+        movapd 128(%rsi), %xmm4
+        movapd 144(%rsi), %xmm5
 
         // Jump to the instruction pointer
         // found in regs:
-        jmp *104(%rsi)
+        jmp *56(%rsi)
 

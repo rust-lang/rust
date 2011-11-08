@@ -17,7 +17,7 @@ context::context()
 
 void context::swap(context &out)
 {
-  swap_registers(&out.regs, &regs);
+    swap_registers(&out.regs, &regs);
 }
 
 void context::call(void *f, void *arg, void *stack) {

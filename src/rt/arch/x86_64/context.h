@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <inttypes.h>
 #include <stdint.h>
+#include <xmmintrin.h>
 
 #ifdef HAVE_VALGRIND
 #include <valgrind/memcheck.h>
@@ -20,9 +21,11 @@ T align_down(T sp)
 }
 
 struct registers_t {
-    uint64_t regs[7]; // Space for the volatile regs: rbx, rsp, rbp, r12:r15
-    uint64_t xmms[6]; // Space for the volatile regs: xmm0:xmm5
+    uint64_t regs[7];  // Space for the volatile regs: rbx, rsp, rbp, r12:r15
     uint64_t ip;
+
+    // n.b.: These must be 16-byte aligned or movapd is unhappy.
+    __m128 xmms[6]; // Space for the volatile regs: xmm0:xmm5
 };
 
 class context {
