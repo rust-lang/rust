@@ -25,14 +25,11 @@ void context::call(void *f, void *arg, void *stack) {
   // given function.
   swap(*this);
 
-  // set up the trampoline frame
-  uint64_t *sp = (uint64_t *)stack;
+  // set up the stack
+  uint32_t *sp = (uint32_t *)stack;
+  sp = align_down(sp);
 
-  // Shift the stack pointer so the alignment works out right.
-  sp = align_down(sp) - 3;
-  *--sp = (uint64_t)arg;
-  *--sp = 0xdeadbeef;
-
-  regs.regs[RSP] = (uint64_t)sp;
-  regs.ip = (uint64_t)f;
+  regs.data[RUSTRT_ARG0] = (uint64_t)arg;
+  regs.data[RUSTRT_RSP] = (uint64_t)sp;
+  regs.data[RUSTRT_IP] = (uint64_t)f;
 }

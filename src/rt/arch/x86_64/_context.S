@@ -1,4 +1,6 @@
-	.text
+#include "x86_64_regs.h"
+
+        .text
 
 /*
 According to ABI documentation found at
@@ -46,54 +48,68 @@ First four arguments:
 .globl swap_registers
 swap_registers:
         // n.b. when we enter, the return address is at the top of
-        // the stack (i.e., 0(%RSP)).  We
+        // the stack (i.e., 0(%RSP)) and the argument is in
+        // RUSTRT_ARG0_S.  We
         // simply save all NV registers into oregs.
         // We then restore all NV registers from regs.  This restores
         // the old stack pointer, which should include the proper
         // return address. We can therefore just return normally to
         // jump back into the old code.
+
+#       if defined(RUSTRT_ARG0_S)
+        mov RUSTRT_ARG0_S, %rdi
+        mov RUSTRT_ARG1_S, %rsi
+#       endif
         
         // Save instruction pointer:
         pop %rax
-        mov %rax, 56(%rdi)
+        mov %rax, (RUSTRT_IP*8)(%rdi)
 
         // Save non-volatile integer registers:
         //   (including RSP)
-        mov %rbx,   0(%rdi)
-        mov %rsp,   8(%rdi)
-        mov %rbp,  16(%rdi)
-        mov %r12,  24(%rdi)
-        mov %r13,  32(%rdi)
-        mov %r14,  40(%rdi)
-        mov %r15,  48(%rdi)
+        mov %rbx, (RUSTRT_RBX*8)(%rdi)
+        mov %rsp, (RUSTRT_RSP*8)(%rdi)
+        mov %rbp, (RUSTRT_RBP*8)(%rdi)
+        mov %r12, (RUSTRT_R12*8)(%rdi)
+        mov %r13, (RUSTRT_R13*8)(%rdi)
+        mov %r14, (RUSTRT_R14*8)(%rdi)
+        mov %r15, (RUSTRT_R15*8)(%rdi)
+
+        // Save relevant argument registers:
+        mov %rcx, (RUSTRT_RCX*8)(%rdi)
+        mov %rdi, (RUSTRT_RDI*8)(%rdi)
 
         // Save non-volatile XMM registers:
-        movapd %xmm0,  64(%rdi)
-        movapd %xmm1,  80(%rdi)
-        movapd %xmm2,  96(%rdi)
-        movapd %xmm3, 112(%rdi)
-        movapd %xmm4, 128(%rdi)
-        movapd %xmm5, 144(%rdi)
+        movapd %xmm0, (RUSTRT_XMM0*8)(%rdi)
+        movapd %xmm1, (RUSTRT_XMM1*8)(%rdi)
+        movapd %xmm2, (RUSTRT_XMM2*8)(%rdi)
+        movapd %xmm3, (RUSTRT_XMM3*8)(%rdi)
+        movapd %xmm4, (RUSTRT_XMM4*8)(%rdi)
+        movapd %xmm5, (RUSTRT_XMM5*8)(%rdi)
 
         // Restore non-volatile integer registers:
         //   (including RSP)
-        mov  0(%rsi), %rbx
-        mov  8(%rsi), %rsp
-        mov 16(%rsi), %rbp
-        mov 24(%rsi), %r12
-        mov 32(%rsi), %r13
-        mov 40(%rsi), %r14
-        mov 48(%rsi), %r15
+        mov (RUSTRT_RBX*8)(%rsi), %rbx
+        mov (RUSTRT_RSP*8)(%rsi), %rsp
+        mov (RUSTRT_RBP*8)(%rsi), %rbp
+        mov (RUSTRT_R12*8)(%rsi), %r12
+        mov (RUSTRT_R13*8)(%rsi), %r13
+        mov (RUSTRT_R14*8)(%rsi), %r14
+        mov (RUSTRT_R15*8)(%rsi), %r15
+
+        // Restore relevant argument registers:
+        mov (RUSTRT_RCX*8)(%rdi), %rcx
+        mov (RUSTRT_RDI*8)(%rdi), %rdi
 
         // Restore non-volatile XMM registers:
-        movapd  64(%rsi), %xmm0
-        movapd  80(%rsi), %xmm1
-        movapd  96(%rsi), %xmm2
-        movapd 112(%rsi), %xmm3
-        movapd 128(%rsi), %xmm4
-        movapd 144(%rsi), %xmm5
+        movapd (RUSTRT_XMM0*8)(%rsi), %xmm0
+        movapd (RUSTRT_XMM1*8)(%rsi), %xmm1
+        movapd (RUSTRT_XMM2*8)(%rsi), %xmm2
+        movapd (RUSTRT_XMM3*8)(%rsi), %xmm3
+        movapd (RUSTRT_XMM4*8)(%rsi), %xmm4
+        movapd (RUSTRT_XMM5*8)(%rsi), %xmm5
 
         // Jump to the instruction pointer
         // found in regs:
-        jmp *56(%rsi)
+        jmp *(RUSTRT_IP*8)(%rsi)
 
