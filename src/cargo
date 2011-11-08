@@ -1,320 +1,301 @@
-#!/bin/sh
-# Copyright (c) 2011 Google Inc.
-#/ Usage: cargo <verb> [args...]
-#/   config                List, get, or set a config option.
-#/      [key]              Option to get/set
-#/      [val]              Value to set to
-#/   install               Install a package.
-#/      [-s userid]        Require signature by userid.
-#/      <pkgref>
-#/   make-manifest         Generate a manifest.
-#/      [-s userid]        Sign as userid.
-#/      <crate-file>
-#/      <manifest-file>
-#/      [files...]         Additional files to include.
-#/   uninstall             Uninstall a package
-#/      <pkgname>
-#/
-#/ A 'pkgref' is any of:
-#/   github:<username>/<reponame>[@<commit-id>]    Fetch source from github.
-#/   file:<filepath>[@<commit-id>]               Fetch source from local fs.
-#/   <url>                                  Fetch source from tarball at url.
-#/   <uuid>[@<commit-id>]                   Lookup uuid from global registry.
-#/
-#/ Examples:
-#/   cargo config rustc /path/to/rustc
-#/   cargo install github:elly/rust-hello
-#/   cargo install file:$HOME/tmp/package.tar
-#/   cargo install uuid:83941200-18b3-41b1-8316-b98a2950b33a
-#/   cargo install http://www.leptoquark.net/~elly/rust-hello.tar
-#/   cargo install -s elly@leptoquark.net http://www.leptoquark.net/~elly/rust-hello.tar
-#/   cargo make-manifest hello.rc manifest
-#/
-#/ Config keys:
-#/   rustc = /path/to/rustc
-#/   makeopts = options-to-pass-to-make
+#!/usr/bin/env python
 
-die() {
-	echo "$*"
-	exit 1
+import glob
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import urllib
+
+# Root of the cargo tree.
+CARGO_DIR = os.getenv('HOME') + '/.cargo'
+
+# Config file (as JSON).
+CARGO_CONFFILE = CARGO_DIR + '/config'
+
+# Directory where packages are built (under tmpdirs).
+CARGO_WORKDIR = CARGO_DIR + '/work'
+
+# Directory where packages are installed to (as pkgname-pkgver).
+CARGO_PKGDIR = CARGO_DIR + '/pkgs'
+
+# Directory where libs are symlinked to.
+CARGO_LIBDIR = CARGO_DIR + '/libs'
+
+# URL to fetch cargo uuid mapping from.
+CARGO_UUIDLIST = 'http://www.leptoquark.net/~elly/cargo-uuids'
+
+class BadManifestError(RuntimeError):
+    pass
+
+class RustPackage:
+    """Abstract representation of a Rust package.
+
+    Defines the interface for rust packages. All packages have a work directory
+    in which they are built.
+    """
+    def __init__(self, config):
+        self.name = None
+        self.config = config
+        self.buildopts = {}
+        self.metadata = None
+        self.workdir = tempfile.mkdtemp(prefix='build-', dir=CARGO_WORKDIR)
+        self.destdir = None
+
+    def fetch(self):
+        raise RuntimeError("RustPackage.fetch is abstract")
+
+    def load_config(self):
+        with file(self.workdir + '/manifest') as f:
+            self.metadata = json.load(f)
+        if 'name' not in self.metadata:
+            raise BadManifestError("Missing key 'name' in manifest.")
+        if 'vers' not in self.metadata:
+            raise BadManifestError("Missing key 'vers' in manifest.")
+        self.name = self.metadata['name']
+        self.pkgname = self.metadata['name'] + '-' + self.metadata['vers']
+        self.destdir = CARGO_PKGDIR + '/%s' % self.pkgname
+        if not os.path.exists(self.destdir):
+            os.makedirs(self.destdir)
+
+    def probe_buildopts(self):
+        if os.path.exists('%s/configure' % self.workdir):
+            self.buildopts['configure'] = './configure'
+        if 'configure' in self.metadata:
+            self.buildopts['configure'] = self.manifest['configure']
+
+        self.buildopts['build'] = 'make'
+        if 'build' in self.metadata:
+            self.buildopts['build'] = self.metadata['build']
+
+        if 'test' in self.metadata:
+            self.buildopts['test'] = self.metadata['test']
+
+        self.buildopts['install'] = 'make install'
+        if 'install' in self.metadata:
+            self.buildopts['install'] = self.metadata['install']
+
+    def callproc(self, *args):
+        p = subprocess.Popen(args)
+        pid, sts = os.waitpid(p.pid, 0)
+        return sts
+
+    def needproc(self, *args):
+        r = self.callproc(*args)
+        if r:
+            raise RuntimeError("Subprocess '%s' failed" % args[0])
+
+    def run_buildopt(self, name, *args):
+        if name not in self.buildopts:
+            print 'Skipping %s' % name
+            return
+        print '%s: ' % name,
+        argstr = '%s %s' % (self.buildopts[name], ' '.join(args))
+        sts = self.callproc('/bin/sh', '-c', argstr)
+        if not sts:
+            print 'ok.'
+            return
+        print 'failed.'
+
+    def build(self):
+        self.load_config()
+        self.probe_buildopts()
+        os.chdir(self.workdir)
+        self.run_buildopt('configure', 'RUSTC=%s' % self.config['rustc'])
+        self.run_buildopt('build', 'RUSTC=%s' % self.config['rustc'])
+        self.run_buildopt('test', 'RUSTC=%s' % self.config['rustc'])
+
+    def hashfile(self, filename):
+        h = hashlib.sha256()
+        with file(filename, 'rb') as f:
+            h.update(f.read())
+        return h.hexdigest()
+
+    def install(self):
+        self.run_buildopt('install', 'PREFIX=%s' % self.destdir)
+        libs = glob.glob('%s/*.so' % self.destdir)
+        libs += glob.glob('%s/*.dll' % self.destdir)
+        libs += glob.glob('%s/lib/*.so' % self.destdir)
+        libs += glob.glob('%s/lib/*.dll' % self.destdir)
+        libs += glob.glob('%s/usr/lib/*.so' % self.destdir)
+        libs += glob.glob('%s/usr/lib/*.dll' % self.destdir)
+        if not libs:
+            print 'Skipping symlinking'
+            return
+        print 'symlinking: '
+        if not os.path.exists(CARGO_LIBDIR):
+            os.makedirs(CARGO_LIBDIR)
+        for lib in libs:
+            base = os.path.basename(lib)
+            h = self.hashfile(lib)
+            path = CARGO_LIBDIR + '/%s-%s' % (h, base)
+            if os.path.exists(path):
+                os.remove(path)
+            os.symlink(lib, path)
+            print '%s-%s' % (h, base)
+        print 'ok.'
+
+class GitPackage(RustPackage):
+    """Rust package that fetches source from a git repo."""
+    def __init__(self, config, giturl, commit=None):
+        RustPackage.__init__(self, config)
+        self.giturl = giturl
+        self.commit = commit
+
+    def fetch(self):
+        self.needproc('git', 'clone', self.giturl, self.workdir)
+        if self.commit:
+            self.needproc('git', 'checkout', '--work-tree=%s' % self.workdir,
+                          '--git-dir=%s/.git' % self.workdir, self.commit)
+
+class GithubPackage(GitPackage):
+    """Rust package that fetches source from a github repo."""
+    def __init__(self, config, repopath, commit=None):
+        GitPackage.__init__(self, config, 'git://github.com/%s' % (repopath),
+                            commit)
+
+class TarballPackage(RustPackage):
+    """Rust package that fetches source from a local tarball."""
+    def __init__(self, config, path):
+        RustPackage.__init__(self, config)
+        self.path = path
+
+    def fetch(self):
+        self.needproc('tar', '--strip-components=1', '-C', self.workdir,
+                      '-xf', self.path)
+
+class RemoteTarballPackage(TarballPackage):
+    """Rust package that fetches source from a remote tarball."""
+    def __init__(self, config, url):
+        TarballPackage.__init__(self, config, None)
+        self.url = url
+
+    def fetch(self):
+        self.path = '%s/source.tar' % self.workdir
+        self.needproc('wget', '-O', self.path, self.url)
+        TarballPackage.fetch(self)
+
+def load_config():
+    try:
+        with file(CARGO_CONFFILE) as f:
+            return json.load(f)
+    except ValueError, IOError:
+        return {}
+
+def save_config(config):
+    with file(CARGO_CONFFILE, 'w') as f:
+        if not os.path.exists(CARGO_DIR):
+            os.makedirs(CARGO_DIR)
+        json.dump(config, f)
+
+def cmd_config(args):
+    if len(args) < 1:
+        c = load_config()
+        ks = c.keys()
+        ks.sort()
+        for k in ks:
+            print '%s: %s' % (k, c[k])
+        return
+    if len(args) < 2:
+        c = load_config()
+        if args[0] in c:
+            print c[args[0]]
+        return
+    if len(args) < 3:
+        c = load_config()
+        c[args[0]] = args[1]
+        save_config(c)
+        return
+    usage()
+
+def cmd_cult(args):
+    print 'use std;'
+    print 'import std::{aio, bitv, box, char, comm, ctypes, dbg, deque, ebml};'
+    print 'import std::{either, extfmt, float, fs, fun_treemap, generic_os};'
+    print 'import std::{getopts, int, io, list, map, math, net, option};'
+    print 'import std::{ptr, rand, result, rope, run_program, sha1, sio};'
+    print 'import std::{smallintmap, sort, str, sys, task, term, test, time};'
+    print 'import std::{treemap, u32, u64, u8, ufind, uint, unicode, unsafe};'
+    print 'import std::{util, vec};'
+
+def resolve_uuid(config, uuid):
+    uuid_server = CARGO_UUIDLIST
+    if 'uuid-server' in config:
+        uuid_server = config['uuid-server']
+    u = urllib.urlopen(uuid_server)
+    j = json.load(u)
+    return j[uuid]
+
+def cmd_install(args):
+    if len(args) < 1:
+        usage()
+    config = load_config()
+    p = None
+    if args[0].startswith('github:'):
+        rest = args[0].split(':', 2)[1]
+        commit = None
+        if '/' not in rest:
+            usage()
+        if '@' in rest:
+            (rest, commit) = rest.split('@', 2)
+        p = GithubPackage(config, rest, commit)
+    elif args[0].startswith('file:'):
+        rest = args[0].split(':', 2)[1]
+        p = TarballPackage(config, rest)
+    elif args[0].startswith('uuid:'):
+        rest = args[0].split(':', 2)[1]
+        r = resolve_uuid(config, rest)
+        cmd_install([r])
+        return
+    elif '://' in args[0]:
+        p = RemoteTarballPackage(config, args[0])
+    else:
+        usage()
+    p.fetch()
+    p.build()
+    p.install()
+
+def cmd_uninstall(args):
+    print 'Not implemented :('
+    pass
+
+commands = {
+    'config': cmd_config,
+    'cult': cmd_cult,
+    'install': cmd_install,
+    'uninstall': cmd_uninstall
 }
 
-make_workdir() {
-	mkdir -p "$HOME/.cargo/work"
-	mktemp -d "$HOME/.cargo/work/$1-XXXXXXXX"
-}
+def usage():
+    print "Usage: cargo <verb> [args...]"
+    print "  config         List, get, or set a config option."
+    print "    [key]        Key to get or set."
+    print "    [val]        Value to set to."
+    print "  install        Install a package."
+    print "    <pkgref>"
+    print "  uninstall      Uninstall a package."
+    print "    <pkgname>"
+    print "A 'pkgref' is any of:"
+    print "  github:<username>/<reponame>[@<commit-id>]    Fetch source from github."
+    print "  file:<filepath>[@<commit-id>]               Fetch source from local fs."
+    print "  <url>                                  Fetch source from tarball at url."
+    print "  <uuid>[@<commit-id>]                   Lookup uuid from global registry."
+    print ""
+    print "Examples:"
+    print "  cargo config rustc /path/to/rustc"
+    print "  cargo install github:elly/rust-hello"
+    print "  cargo install file:$HOME/tmp/package.tar"
+    print "  cargo install uuid:83941200-18b3-41b1-8316-b98a2950b33a"
+    print "  cargo install http://www.leptoquark.net/~elly/rust-hello.tar"
+    sys.exit(1)
 
-make_fixdir() {
-	local d="$HOME/.cargo/pkg/$1-$2"
-	rm -rf "$d"
-	mkdir -p "$d"
-	echo "$d"
-}
+def main(argv):
+    if len(argv) < 2:
+        usage()
+    if argv[1] not in commands:
+        usage()
+    commands[argv[1]](argv[2:])
 
-# Check for rustc in the config file, or check for it in the path and store its
-# location in the config file. If we can't find it, die.
-need_rustc() {
-	if [ -n "$(get_config rustc)" ]; then return 0; fi
-	rustc=$(which rustc)
-	if [ -n "$rustc" ]; then
-		echo "Found rustc at $rustc"
-		set_config rustc "$rustc"
-		return 0
-	fi
-	die "Need rustc. Try '$0 config rustc <path>'."
-}
-
-# Write value $2 for config key $1.
-set_config() {
-	mkdir -p "$HOME/.cargo"
-	touch "$HOME/.cargo/config"
-	sed -i -e "s/^$1: //;" "$HOME/.cargo/config"
-	echo "$1: $2" >> "$HOME/.cargo/config"
-}
-
-# Read the value of config key $1.
-get_config() {
-	mkdir -p "$HOME/.cargo"
-	touch "$HOME/.cargo/config"
-	sed -n "/^$1: /{s/^$1: //;p}" "$HOME/.cargo/config"
-}
-
-# Dump the config file.
-list_config() {
-	cat "$HOME/.cargo/config"
-}
-
-# Read the value of a config key in a manifest.
-get_manifest() {
-	 sed -n "/^$1: /{s/^$1: //;p}" manifest
-}
-
-# Support two kinds of key checks:
-#   user@host - looked up in existing keyring
-#   short keyid - existing keyring
-# Argument is one of these; we operate on the manifest{,.sig} in the current
-# directory.
-check_sig_specific() {
-	r=$(gpg --verify manifest.sig manifest 2>&1)
-	if ! echo "$r" | grep -q "Good signature from"; then
-		echo "Bad signature! GPG output:"
-		echo "$r"
-		die
-	fi
-	if echo "$r" | grep -q "^gpg: Signature made .* key ID $1"; then
-		echo "Good signature from $1."
-		return 0
-	fi
-	if echo "$r" | grep -q "^gpg: Good signature from .* <$1>"; then
-		echo "Good signature from $1."
-		return 0
-	fi
-	if echo "$r" | grep -q "^gpg: Good signature from"; then
-		echo "Signature from wrong key?"
-		echo "$r" | grep "^gpg: Good signature from"
-		die
-	fi
-	echo "Unparseable gpg output:"
-	echo "$r"
-	die
-}
-
-# Read hashes out of the manifest (key-val pairs starting with 'hash-') and
-# verify them.
-check_hashes() {
-	sed -n '/^hash-/{s/^hash-\([^:]\+\): \(.\+\)/\2  \1/;p}' manifest \
-		| while read line; do
-		echo "$line" | sha256sum -c --quiet || die "cksum wrong: $line"
-	done
-	echo "Checksums match."
-}
-
-# Install a package from source, which is unpacked in the current directory.
-# Read the name and version out of the manifest, then build, optionally test,
-# and install the package, and symlink any libraries it creates into place.
-# The directory structure we expect is:
-#   /manifest: Key-value file with at least keys 'name' and 'version'.
-c_install_source() {
-	if [ ! -z "$NEEDED_SIGNER" ]; then
-		check_sig_specific "$NEEDED_SIGNER"
-		check_hashes
-	fi
-	local name=$(get_manifest name)
-	local vers=$(get_manifest vers)
-	local bootstrap=$(get_manifest bootstrap)
-	local build=$(get_manifest build)
-	local test=$(get_manifest test)
-	local install=$(get_manifest install)
-	local makeopts=$(get_config makeopts)
-	[ -z "$name" ] && die "required property 'name' missing"
-	[ -z "$vers" ] && die "required property 'vers' missing"
-	[ -z "$build" ] && build="make $makeopts"
-	[ -z "$install" ] && install="make $makeopts install"
-	[ -z "$bootstrap" ] && need_rustc
-	rustc=$(get_config rustc)
-	destdir=$(make_fixdir "$name" "$vers")
-	if [ -x  ./configure ]; then
-		RUSTC="$rustc" ./configure --prefix="$destdir"
-	fi
-	RUSTC="$rustc" PREFIX="$destdir" $build || die "build failed: $build"
-	if [ ! -z "$test" ]; then
-		RUSTC="$rustc" PREFIX="$destdir" $test || die "test failed: $test"
-	fi
-	RUSTC="$rustc" PREFIX="$destdir" $install \
-		|| die "install failed: $install"
-	local workdir="$PWD"
-	cd "$destdir"
-	for x in *.so; do
-		if [ -x "$x" ]; then
-			mkdir -p "$HOME/.cargo/libs"
-			dname=$(sha1sum "$x" | cut -f1 -d' ')
-			ln -sf "$destdir/$x" "$HOME/.cargo/libs/$dname-$x.so"
-		fi
-	done
-	rm -rf "$workdir"
-}
-
-# Install a package from github. $1 is a string of the form
-# github:<username>/<reponame>[@<commit>]. Make a local clone of the source,
-# check out the specified commit if needed, and do a source install.
-c_install_github() {
-	local urepo=$(echo "$1" | sed -e 's/^github://')
-	local repopath=$(echo "$urepo" | cut -f1 -d@)
-	if echo "$1" | grep -q '@'; then
-		local commit=$(echo "$urepo" | cut -f2 -d@)
-	fi
-	local pkgname=$(echo "$repopath" | cut -f2 -d/)
-	d=$(make_workdir "$pkgname")
-	cd "$d"
-	git clone "git://github.com/$repopath" "$d" || die "git clone failed"
-	if [ ! -z "$commit" ]; then
-		git checkout "$commit" || die "git checkout $commit failed"
-	fi
-	c_install_source
-}
-
-# Install a package from a local file. The tarball must have a directory
-# component before the expected source layout (no tarbombs!).
-c_install_file() {
-	local filename=$(echo "$1" | sed -e 's/^file://')
-	local pkgname=$(basename "$filename" | cut -f1 -d.)
-	d=$(make_workdir "$pkgname")
-	cd "$d"
-	tar --strip-components=1 -xf "$filename" || die "tar xf '$filename' failed"
-	c_install_source
-}
-
-# Install a package by uuid. Look the uuid up in a global database to resolve it
-# to one of the other install methods, then run that other method.
-# XXX: This should probably be hosted on rust-lang.org or something, or really
-# anywhere but elly's machine.
-c_install_uuid() {
-	local uuid=$(echo "$1" | sed -e 's/^uuid://' | cut -f1 -d@)
-	if echo "$1" | grep -q "@"; then
-		local commit=$(echo "$1" | cut -f2 -d@)
-	fi
-	URL="http://www.leptoquark.net/~elly/cargo-uuids"
-	local res=$(wget -qO- "$URL" | sed -n "/^$uuid: /{s/^$uuid: //;p}")
-	echo "Resolved: $uuid -> $res"
-	[ -n "$commit" ] && res="$res@$commit"
-	c_install "$res"
-}
-
-# Install a package by url of source tarball. Fetch, extract, and do a source
-# install.
-c_install_url() {
-	local pkgname=$(basename "$1")
-	d=$(make_workdir "$pkgname")
-	cd "$d"
-	wget "$1"
-	tar --strip-components=1 -xf * || die "no tar files to extract"
-	c_install_source
-}
-
-# Do an install.
-c_install() {
-	if [ "$1" = "-s" ]; then
-		[ -z "$2" ] && usage
-		NEEDED_SIGNER="$2"
-		shift; shift
-	fi
-	if echo "$1" | grep -q '^github:'; then
-		c_install_github "$@"
-	elif echo "$1" | grep -q '^file:'; then
-		c_install_file "$@"
-	elif echo "$1" | grep -q '^uuid:'; then
-		c_install_uuid "$@"
-	elif echo "$1" | grep -q '://'; then
-		c_install_url "$@"
-	fi
-}
-
-# Generate a manifest file from a .rc file.
-# XXX: Don't parse the crate file this way!
-read_rc_attr() {
-	sed -n "/$2 = \"/{s/.*$2 = \"\([^\"]*\)\".*/\1/;p}" "$1"
-}
-
-# Generate a manifest file. $1 is the crate file (the .rc file), $2 is the
-# manifest file to write. Any additional args are included in the set to be
-# hashed as filenames.
-c_make_manifest() {
-	if [ "$1" = "-s" ]; then
-		[ -z "$2" ] && usage
-		signas="$2"
-		shift; shift
-	fi
-	name=$(read_rc_attr "$1" name)
-	vers=$(read_rc_attr "$1" vers)
-	local manifest="$2"
-
-	echo "name: $name" > "$manifest"
-	echo "vers: $vers" >> "$manifest"
-	shift; shift
-	[ -z "$signas" ] && return 0
-	for x in $*; do
-		h=$(sha256sum "$x" | cut -f1 -d' ')
-		echo "hash-$x: $h" >> "$manifest"
-	done
-	find . -name '*.rs' -o -name '*.rc' -o -iname '*.mk' \
-		-o -iname 'makefile' | while read x; do
-		x=$(echo "$x" | sed -e 's/^\.\///')
-		h=$(sha256sum "$x" | cut -f1 -d' ')
-		echo "hash-$x: $h" >> "$manifest"
-	done
-	rm -f manifest.sig
-	gpg -u "$signas" --detach-sign --armor -o manifest.sig manifest
-}
-
-c_uninstall() {
-	echo "Not implemented yet, sorry :(."
-}
-
-usage() {
-	sed -n -e '/^#\//{s/^#\/ \?//;p}' $0
-	exit 1
-}
-
-[ -z "$1" ] && usage
-cmd="$1"; shift
-
-case "$cmd" in
-	config)
-		[ -z "$1" ] && list_config
-		[ -z "$2" ] && get_config "$1"
-		set_config "$1" "$2"
-		;;
-	install)
-		[ -z "$1" ] && usage
-		c_install "$@"
-		;;
-	make-manifest)
-		c_make_manifest "$@"
-		;;
-	uninstall)
-		c_uninstall "$@"
-		;;
-	*)
-		usage
-		;;
-esac
+main(sys.argv)
