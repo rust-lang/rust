@@ -1,3 +1,6 @@
 [submodule "src/llvm"]
 	path = src/llvm
 	url = git://github.com/brson/llvm.git
+[submodule "src/rt/libuv"]
+	path = src/rt/libuv
+	url = git://github.com/joyent/libuv
