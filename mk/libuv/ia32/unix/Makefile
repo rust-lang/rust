@@ -307,23 +307,23 @@ $(obj).$(TOOLSET)/%.o: $(obj)/%.s FORCE_DO_CMD
 
 ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
     $(findstring $(join ^,$(prefix)),\
-                 $(join ^,src/rt/libuv/run-benchmarks.target.mk)))),)
-  include src/rt/libuv/run-benchmarks.target.mk
+                 $(join ^,src/libuv/run-benchmarks.target.mk)))),)
+  include src/libuv/run-benchmarks.target.mk
 endif
 ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
     $(findstring $(join ^,$(prefix)),\
-                 $(join ^,src/rt/libuv/run-tests.target.mk)))),)
-  include src/rt/libuv/run-tests.target.mk
+                 $(join ^,src/libuv/run-tests.target.mk)))),)
+  include src/libuv/run-tests.target.mk
 endif
 ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
     $(findstring $(join ^,$(prefix)),\
-                 $(join ^,src/rt/libuv/uv.target.mk)))),)
-  include src/rt/libuv/uv.target.mk
+                 $(join ^,src/libuv/uv.target.mk)))),)
+  include src/libuv/uv.target.mk
 endif
 
 quiet_cmd_regen_makefile = ACTION Regenerating $@
-cmd_regen_makefile = ./src/rt/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." "--depth=." "--generator-output=mk/libuv/ia32/unix" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=linux" src/rt/libuv/uv.gyp
-#Makefile: $(srcdir)/src/rt/libuv/uv.gyp
+cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." "--depth=." "--generator-output=mk/libuv/ia32/unix" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=linux" src/libuv/uv.gyp
+Makefile: $(srcdir)/src/libuv/uv.gyp
 #	$(call do_cmd,regen_makefile)
 
 # "all" is a concatenation of the "all" targets from all the included

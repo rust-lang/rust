@@ -344,9 +344,9 @@ ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
 endif
 
 quiet_cmd_regen_makefile = ACTION Regenerating $@
-cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." "--depth=." "--generator-output=mk/libuv/ia32/mac" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=mac" src/libuv/uv.gyp
+cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." "--depth=." "--generator-output=mk/libuv/x86_64/mac" "-Dlibrary=static_library" "-Dtarget_arch=x86_64" "-DOS=mac" src/libuv/uv.gyp
 Makefile: $(srcdir)/src/libuv/uv.gyp
-#	$(call do_cmd,regen_makefile)
+	$(call do_cmd,regen_makefile)
 
 # "all" is a concatenation of the "all" targets from all the included
 # sub-makefiles. This is just here to clarify.
