@@ -89,6 +89,7 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/src/uv-common.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/unix/tty.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/unix/stream.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/unix/cares.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/unix/dl.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/unix/error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/unix/process.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/unix/eio/eio.o \

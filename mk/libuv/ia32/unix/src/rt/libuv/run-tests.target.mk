@@ -8,7 +8,7 @@ DEFS_Default := '-D_LARGEFILE_SOURCE' \
 	'-DEIO_STACKSIZE=262144'
 
 # Flags passed to all source files.
-CFLAGS_Default := 
+CFLAGS_Default := -pthread
 
 # Flags passed to only C files.
 CFLAGS_C_Default := 
@@ -40,9 +40,11 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/blackhole-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-idle.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ipc.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-loop-handles.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-multiple-listen.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-pass-always.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ping-pong.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-pipe-bind-error.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-pipe-connect-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ref.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-shutdown-eof.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-spawn.o \
@@ -54,6 +56,7 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/blackhole-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-connect-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-connect6-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-write-error.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-write-to-half-open-connection.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-writealot.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-threadpool.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-timer-again.o \
@@ -92,7 +95,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
 
 # End of this set of suffix rules
 ### Rules for final target.
-LDFLAGS_Default := -pthread
+LDFLAGS_Default := 
 
 LIBS := -lrt
 

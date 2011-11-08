@@ -71,6 +71,7 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/src/uv-common.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/async.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/cares.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/core.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/src/win/dl.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/fs.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/src/win/fs-event.o \

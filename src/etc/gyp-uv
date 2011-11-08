@@ -40,17 +40,17 @@ do
 
     # Comment out the gyp auto regeneration
     for os in mac unix win; do
-        sed -i "" \
+        sed -i \
             -e 's/^\(Makefile: $(srcdir)\/src\/rt\/libuv\/uv\.gyp\)/#\1/' \
             mk/libuv/$ARCH/$os/Makefile
 
-        sed -i "" \
+        sed -i \
             -e 's/^\(	$(call do_cmd,regen_makefile)\)/#\1/' \
             mk/libuv/$ARCH/$os/Makefile
     done
 done
 
 # On Mac, GYP hardcodes a -arch i386 into the output. Fix that.
-sed -i "" \
+sed -i \
     -e 's/-arch i386/-arch x86_64/' \
     mk/libuv/x86_64/mac/src/rt/libuv/*.mk

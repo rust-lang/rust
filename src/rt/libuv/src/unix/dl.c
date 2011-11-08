@@ -1,4 +1,5 @@
 /* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
  * deal in the Software without restriction, including without limitation the
@@ -19,63 +20,38 @@
  */
 
 #include "uv.h"
+#include "internal.h"
 
-#include <assert.h>
-#include <stdint.h>
-#include <stddef.h>
+#include <dlfcn.h>
 #include <errno.h>
-#include <time.h>
-
-#undef NANOSEC
-#define NANOSEC 1000000000
 
 
-uint64_t uv_hrtime() {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (ts.tv_sec * NANOSEC + ts.tv_nsec);
-}
-
-void uv_loadavg(double avg[3]) {
-  /* Unsupported as of cygwin 1.7.7 */
-  avg[0] = avg[1] = avg[2] = 0;
-}
-
-
-int uv_exepath(char* buffer, size_t* size) {
-  uint32_t usize;
-  int result;
-  char* path;
-  char* fullpath;
-
-  if (!buffer || !size) {
-    return -1;
+uv_err_t uv_dlopen(const char* filename, uv_lib_t* library) {
+  void* handle = dlopen(filename, RTLD_LAZY);
+  if (handle == NULL) {
+    return uv__new_sys_error(errno);
   }
 
-  *size = readlink("/proc/self/exe", buffer, *size - 1);
-  if (*size <= 0) return -1;
-  buffer[*size] = '\0';
-  return 0;
-}
-
-uint64_t uv_get_free_memory(void) {
-  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_AVPHYS_PAGES);
-}
-
-uint64_t uv_get_total_memory(void) {
-  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
-}
-
-int uv_fs_event_init(uv_loop_t* loop,
-                     uv_fs_event_t* handle,
-                     const char* filename,
-                     uv_fs_event_cb cb,
-                     int flags) {
-  uv__set_sys_error(loop, ENOSYS);
-  return -1;
+  *library = handle;
+  return uv_ok_;
 }
 
 
-void uv__fs_event_destroy(uv_fs_event_t* handle) {
-  assert(0 && "implement me");
+uv_err_t uv_dlclose(uv_lib_t library) {
+  if (dlclose(library) != 0) {
+    return uv__new_sys_error(errno);
+  }
+
+  return uv_ok_;
+}
+
+
+uv_err_t uv_dlsym(uv_lib_t library, const char* name, void** ptr) {
+  void* address = dlsym(library, name);
+  if (address == NULL) {
+    return uv__new_sys_error(errno);
+  }
+
+  *ptr = (void*) address;
+  return uv_ok_;
 }

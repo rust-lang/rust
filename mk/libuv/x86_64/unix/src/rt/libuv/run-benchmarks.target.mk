@@ -8,7 +8,7 @@ DEFS_Default := '-D_LARGEFILE_SOURCE' \
 	'-DEIO_STACKSIZE=262144'
 
 # Flags passed to all source files.
-CFLAGS_Default := 
+CFLAGS_Default := -pthread
 
 # Flags passed to only C files.
 CFLAGS_C_Default := 
@@ -61,7 +61,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
 
 # End of this set of suffix rules
 ### Rules for final target.
-LDFLAGS_Default := -pthread
+LDFLAGS_Default := 
 
 LIBS := -lrt
 

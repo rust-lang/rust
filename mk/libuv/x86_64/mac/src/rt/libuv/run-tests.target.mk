@@ -50,9 +50,11 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/blackhole-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-idle.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ipc.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-loop-handles.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-multiple-listen.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-pass-always.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ping-pong.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-pipe-bind-error.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-pipe-connect-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-ref.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-shutdown-eof.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-spawn.o \
@@ -64,6 +66,7 @@ OBJS := $(obj).target/$(TARGET)/src/rt/libuv/test/blackhole-server.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-connect-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-connect6-error.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-write-error.o \
+	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-write-to-half-open-connection.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-tcp-writealot.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-threadpool.o \
 	$(obj).target/$(TARGET)/src/rt/libuv/test/test-timer-again.o \

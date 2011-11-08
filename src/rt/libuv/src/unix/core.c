@@ -38,18 +38,22 @@
 #include <limits.h> /* PATH_MAX */
 #include <sys/uio.h> /* writev */
 
+#ifdef __linux__
+# include <sys/ioctl.h>
+#endif
+
 #ifdef __sun
 # include <sys/types.h>
 # include <sys/wait.h>
 #endif
 
-#if defined(__APPLE__)
-#include <mach-o/dyld.h> /* _NSGetExecutablePath */
+#ifdef __APPLE__
+# include <mach-o/dyld.h> /* _NSGetExecutablePath */
 #endif
 
-#if defined(__FreeBSD__)
-#include <sys/sysctl.h>
-#include <sys/wait.h>
+#ifdef __FreeBSD__
+# include <sys/sysctl.h>
+# include <sys/wait.h>
 #endif
 
 static uv_loop_t default_loop_struct;
@@ -154,7 +158,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 }
 
 
-uv_loop_t* uv_loop_new() {
+uv_loop_t* uv_loop_new(void) {
   uv_loop_t* loop = calloc(1, sizeof(uv_loop_t));
   loop->ev = ev_loop_new(0);
   ev_set_userdata(loop->ev, loop);
@@ -169,7 +173,7 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 
-uv_loop_t* uv_default_loop() {
+uv_loop_t* uv_default_loop(void) {
   if (!default_loop_ptr) {
     default_loop_ptr = &default_loop_struct;
 #if HAVE_KQUEUE
@@ -593,9 +597,17 @@ static int uv_getaddrinfo_done(eio_req* req) {
   free(handle->service);
   free(handle->hostname);
 
-  if (handle->retcode != 0) {
-    /* TODO how to display gai error strings? */
-    uv__set_sys_error(handle->loop, handle->retcode);
+  if (handle->retcode == 0) {
+    /* OK */
+#if EAI_NODATA /* FreeBSD deprecated EAI_NODATA */
+  } else if (handle->retcode == EAI_NONAME || handle->retcode == EAI_NODATA) {
+#else
+  } else if (handle->retcode == EAI_NONAME) {
+#endif
+    uv__set_sys_error(handle->loop, ENOENT); /* FIXME compatibility hack */
+  } else {
+    handle->loop->last_err.code = UV_EADDRINFO;
+    handle->loop->last_err.sys_errno_ = handle->retcode;
   }
 
   handle->cb(handle, handle->retcode, res);
@@ -734,6 +746,9 @@ int uv__close(int fd) {
 
 
 int uv__nonblock(int fd, int set) {
+#if FIONBIO
+  return ioctl(fd, FIONBIO, &set);
+#else
   int flags;
 
   if ((flags = fcntl(fd, F_GETFL)) == -1) {
@@ -751,10 +766,17 @@ int uv__nonblock(int fd, int set) {
   }
 
   return 0;
+#endif
 }
 
 
 int uv__cloexec(int fd, int set) {
+#if __linux__
+  /* Linux knows only FD_CLOEXEC so we can safely omit the fcntl(F_GETFD)
+   * syscall. CHECKME: That's probably true for other Unices as well.
+   */
+  return fcntl(fd, F_SETFD, set ? FD_CLOEXEC : 0);
+#else
   int flags;
 
   if ((flags = fcntl(fd, F_GETFD)) == -1) {
@@ -772,6 +794,7 @@ int uv__cloexec(int fd, int set) {
   }
 
   return 0;
+#endif
 }
 
 

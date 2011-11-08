@@ -59,8 +59,10 @@ void uv_fatal_error(const int errorno, const char* syscall) {
 static int uv__translate_lib_error(int code) {
   switch (code) {
     case UV_ENOSYS: return ENOSYS;
+    case UV_ENOTSOCK: return ENOTSOCK;
     case UV_ENOENT: return ENOENT;
-    case UV_EACCESS: return EACCES;
+    case UV_EACCES: return EACCES;
+    case UV_EAFNOSUPPORT: return EAFNOSUPPORT;
     case UV_EBADF: return EBADF;
     case UV_EPIPE: return EPIPE;
     case UV_EAGAIN: return EAGAIN;
@@ -73,8 +75,10 @@ static int uv__translate_lib_error(int code) {
     case UV_EADDRINUSE: return EADDRINUSE;
     case UV_EADDRNOTAVAIL: return EADDRNOTAVAIL;
     case UV_ENOTDIR: return ENOTDIR;
+    case UV_EISDIR: return EISDIR;
     case UV_ENOTCONN: return ENOTCONN;
     case UV_EEXIST: return EEXIST;
+    case UV_EHOSTUNREACH: return EHOSTUNREACH;
     default: return -1;
   }
 
@@ -87,8 +91,10 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
     case 0: return UV_OK;
     case ENOSYS: return UV_ENOSYS;
+    case ENOTSOCK: return UV_ENOTSOCK;
     case ENOENT: return UV_ENOENT;
-    case EACCES: return UV_EACCESS;
+    case EACCES: return UV_EACCES;
+    case EAFNOSUPPORT: return UV_EAFNOSUPPORT;
     case EBADF: return UV_EBADF;
     case EPIPE: return UV_EPIPE;
     case EAGAIN: return UV_EAGAIN;
@@ -101,8 +107,10 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case EADDRINUSE: return UV_EADDRINUSE;
     case EADDRNOTAVAIL: return UV_EADDRNOTAVAIL;
     case ENOTDIR: return UV_ENOTDIR;
+    case EISDIR: return UV_EISDIR;
     case ENOTCONN: return UV_ENOTCONN;
     case EEXIST: return UV_EEXIST;
+    case EHOSTUNREACH: return UV_EHOSTUNREACH;
     case EAI_NONAME: return UV_ENOENT;
     default: return UV_UNKNOWN;
   }
@@ -116,13 +124,16 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
  *  a) rely on what the system provides us
  *  b) reverse-map the error codes
  */
-char* uv_strerror(uv_err_t err) {
+const char* uv_strerror(uv_err_t err) {
   int errorno;
 
   if (err.sys_errno_)
     errorno = err.sys_errno_;
   else
     errorno = uv__translate_lib_error(err.code);
+
+  if (err.code == UV_EADDRINFO)
+    return gai_strerror(errorno);
 
   if (errorno == -1)
     return "Unknown error";

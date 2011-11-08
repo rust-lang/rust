@@ -26,7 +26,10 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <windows.h>
+
+#define SIGKILL         9
 
 typedef struct env_var {
   const char* narrow;
@@ -265,6 +268,8 @@ static wchar_t* search_path(const wchar_t *file,
   wchar_t* result = NULL;
   wchar_t *file_name_start;
   wchar_t *dot;
+  const wchar_t *dir_start, *dir_end, *dir_path;
+  int dir_len;
   int name_has_ext;
 
   int file_len = wcslen(file);
@@ -302,8 +307,7 @@ static wchar_t* search_path(const wchar_t *file,
         name_has_ext);
 
   } else {
-    const wchar_t *dir_start,
-                *dir_end = path;
+    dir_end = path;
 
     /* The file is really only a name; look in cwd first, then scan path */
     result = path_search_walk_ext(L"", 0,
@@ -335,7 +339,20 @@ static wchar_t* search_path(const wchar_t *file,
         continue;
       }
 
-      result = path_search_walk_ext(dir_start, dir_end - dir_start,
+      dir_path = dir_start;
+      dir_len = dir_end - dir_start;
+
+      /* Adjust if the path is quoted. */
+      if (dir_path[0] == '"' || dir_path[0] == '\'') {
+        ++dir_path;
+        --dir_len;
+      }
+
+      if (dir_path[dir_len - 1] == '"' || dir_path[dir_len - 1] == '\'') {
+        --dir_len;
+      }
+
+      result = path_search_walk_ext(dir_path, dir_len,
                                     file, file_len,
                                     cwd, cwd_len,
                                     name_has_ext);
@@ -1052,35 +1069,65 @@ done:
 }
 
 
-int uv_process_kill(uv_process_t* process, int signum) {
+static uv_err_t uv__kill(HANDLE process_handle, int signum) {
   DWORD status;
+  uv_err_t err;
+
+  if (signum == SIGTERM || signum == SIGKILL || signum == SIGINT) {
+    /* Kill the process. On Windows, killed processes normally return 1. */
+    if (TerminateProcess(process_handle, 1)) {
+      err = uv_ok_;
+    } else {
+      err = uv__new_sys_error(GetLastError());
+    }
+  } else if (signum == 0) {
+    /* Health check: is the process still alive? */
+    if (GetExitCodeProcess(process_handle, &status) &&
+        status == STILL_ACTIVE) {
+      err =  uv_ok_;
+    } else {
+      err = uv__new_sys_error(GetLastError());
+    }
+  } else {
+    err.code = UV_ENOSYS;
+  }
+
+  return err;
+}
+
+
+int uv_process_kill(uv_process_t* process, int signum) {
+  uv_err_t err;
 
   if (process->process_handle == INVALID_HANDLE_VALUE) {
     uv__set_artificial_error(process->loop, UV_EINVAL);
     return -1;
   }
 
-  if (signum) {
-    /* Kill the process. On Windows, killed processes normally return 1. */
-    if (TerminateProcess(process->process_handle, 1)) {
-        process->exit_signal = signum;
-        return 0;
-    }
-    else {
-      uv__set_sys_error(process->loop, GetLastError());
-      return -1;
-    }
-  }
-  else {
-    /* Health check: is the process still alive? */
-    if (GetExitCodeProcess(process->process_handle, &status) && status == STILL_ACTIVE) {
-      return 0;
-    }
-    else {
-      uv__set_artificial_error(process->loop, UV_EINVAL);
-      return -1;
-    }
+  err = uv__kill(process->process_handle, signum);
+
+  if (err.code != UV_OK) {
+    uv__set_error(process->loop, err.code, err.sys_errno_);
+    return -1;
   }
 
-  assert(0 && "unreachable");
+  process->exit_signal = signum;
+
+  return 0;
+}
+
+
+uv_err_t uv_kill(int pid, int signum) {
+  uv_err_t err;
+  HANDLE process_handle = OpenProcess(PROCESS_TERMINATE |
+    PROCESS_QUERY_INFORMATION, FALSE, pid);
+
+  if (process_handle == INVALID_HANDLE_VALUE) {
+    return uv__new_sys_error(GetLastError());
+  }
+
+  err = uv__kill(process_handle, signum);
+  CloseHandle(process_handle);
+
+  return err;
 }

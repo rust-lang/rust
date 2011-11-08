@@ -184,7 +184,7 @@ static void on_read(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
 }
 
 
-TEST_IMPL(ipc) {
+int run_ipc_test(const char* helper) {
   int r;
   uv_process_options_t options;
   uv_process_t process;
@@ -199,7 +199,7 @@ TEST_IMPL(ipc) {
   ASSERT(r == 0);
   exepath[exepath_size] = '\0';
   args[0] = exepath;
-  args[1] = "ipc_helper";
+  args[1] = (char*)helper;
   args[2] = NULL;
   options.file = exepath;
   options.args = args;
@@ -220,3 +220,59 @@ TEST_IMPL(ipc) {
   ASSERT(exit_cb_called == 1);
   return 0;
 }
+
+
+TEST_IMPL(ipc_listen_before_write) {
+  return run_ipc_test("ipc_helper_listen_before_write");
+}
+
+
+TEST_IMPL(ipc_listen_after_write) {
+  return run_ipc_test("ipc_helper_listen_after_write");
+}
+
+
+#ifdef _WIN32
+TEST_IMPL(listen_with_simultaneous_accepts) {
+  uv_tcp_t server;
+  int r;
+  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
+
+  r = uv_tcp_init(uv_default_loop(), &server);
+  ASSERT(r == 0);
+
+  r = uv_tcp_bind(&server, addr);
+  ASSERT(r == 0);
+
+  r = uv_tcp_simultaneous_accepts(&server, 1);
+  ASSERT(r == 0);
+
+  r = uv_listen((uv_stream_t*)&server, SOMAXCONN, NULL);
+  ASSERT(r == 0);
+  ASSERT(server.reqs_pending == 32);
+
+  return 0;
+}
+
+
+TEST_IMPL(listen_no_simultaneous_accepts) {
+  uv_tcp_t server;
+  int r;
+  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
+
+  r = uv_tcp_init(uv_default_loop(), &server);
+  ASSERT(r == 0);
+
+  r = uv_tcp_bind(&server, addr);
+  ASSERT(r == 0);
+
+  r = uv_tcp_simultaneous_accepts(&server, 0);
+  ASSERT(r == 0);
+
+  r = uv_listen((uv_stream_t*)&server, SOMAXCONN, NULL);
+  ASSERT(r == 0);
+  ASSERT(server.reqs_pending == 1);
+
+  return 0;
+}
+#endif

@@ -8,6 +8,15 @@
           '_GNU_SOURCE',
           'EIO_STACKSIZE=262144'
         ],
+        'conditions': [
+          ['OS=="solaris"', {
+            'cflags': ['-pthreads'],
+            'ldlags': ['-pthreads'],
+          }, {
+            'cflags': ['-pthread'],
+            'ldlags': ['-pthread'],
+          }],
+        ],
       }],
     ],
   },
@@ -29,6 +38,7 @@
         'HAVE_CONFIG_H'
       ],
       'sources': [
+        'common.gypi',
         'include/ares.h',
         'include/ares_version.h',
         'include/uv.h',
@@ -120,6 +130,7 @@
             'src/win/async.c',
             'src/win/cares.c',
             'src/win/core.c',
+            'src/win/dl.c',
             'src/win/error.c',
             'src/win/fs.c',
             'src/win/fs-event.c',
@@ -172,6 +183,7 @@
             'src/unix/tty.c',
             'src/unix/stream.c',
             'src/unix/cares.c',
+            'src/unix/dl.c',
             'src/unix/error.c',
             'src/unix/process.c',
             'src/unix/internal.h',
@@ -280,9 +292,11 @@
         'test/test-ipc.c',
         'test/test-list.h',
         'test/test-loop-handles.c',
+        'test/test-multiple-listen.c',
         'test/test-pass-always.c',
         'test/test-ping-pong.c',
         'test/test-pipe-bind-error.c',
+        'test/test-pipe-connect-error.c',
         'test/test-ref.c',
         'test/test-shutdown-eof.c',
         'test/test-spawn.c',
@@ -294,6 +308,7 @@
         'test/test-tcp-connect-error.c',
         'test/test-tcp-connect6-error.c',
         'test/test-tcp-write-error.c',
+        'test/test-tcp-write-to-half-open-connection.c',
         'test/test-tcp-writealot.c',
         'test/test-threadpool.c',
         'test/test-timer-again.c',
@@ -313,11 +328,10 @@
           'libraries': [ 'ws2_32.lib' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],
-          'ldflags': [ '-pthread' ],
           'sources': [
             'test/runner-unix.c',
             'test/runner-unix.h',
-          ]
+          ],
         }],
         [ 'OS=="solaris"', { # make test-fs.c compile, needs _POSIX_C_SOURCE
           'defines': [
@@ -365,7 +379,6 @@
           'libraries': [ 'ws2_32.lib' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],
-          'ldflags': [ '-pthread' ],
           'sources': [
             'test/runner-unix.c',
             'test/runner-unix.h',
