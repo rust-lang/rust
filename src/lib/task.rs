@@ -50,7 +50,7 @@ export spawn;
 export spawn_notify;
 export spawn_joinable;
 
-native "cdecl" mod rustrt {
+native "rust-intrinsic" mod rustrt {
     // these must run on the Rust stack so that they can swap stacks etc:
     fn task_sleep(time_in_us: uint);
 }

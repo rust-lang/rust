@@ -9,6 +9,12 @@
 extern "C" CDECL void
 upcall_fail(char const *expr, char const *file, size_t line);
 
+extern "C" CDECL void
+port_recv(uintptr_t *dptr, rust_port *port);
+
+extern "C" CDECL void
+rust_task_sleep(size_t time_in_us);
+
 extern "C" void
 rust_intrinsic_vec_len(rust_task *task, size_t *retptr, type_desc *ty,
                        rust_vec **vp)
@@ -54,3 +60,8 @@ rust_intrinsic_get_type_desc(rust_task *task, void **retptr,
     *(type_desc**)retptr = ty;
 }
 
+extern "C" void
+rust_intrinsic_task_sleep(rust_task *_task, void **retptr,
+			  size_t time_in_us) {
+  rust_task_sleep(time_in_us);
+}

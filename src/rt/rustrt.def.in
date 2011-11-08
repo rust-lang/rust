@@ -52,6 +52,7 @@ rust_ptr_eq
 rust_run_program
 rust_start
 rust_getcwd
+rust_task_sleep
 set_min_stack
 sched_threads
 size_of
@@ -59,7 +60,6 @@ squareroot
 start_task
 vec_reserve_shared
 vec_from_buf_shared
-task_sleep
 unsupervise
 upcall_alloc_c_stack
 upcall_call_c_stack

@@ -165,12 +165,6 @@ rand_free(randctx *rctx) {
     task->free(rctx);
 }
 
-extern "C" CDECL void
-task_sleep(size_t time_in_us) {
-    rust_task *task = rust_scheduler::get_task();
-    task->yield(time_in_us);
-}
-
 /* Debug builtins for std::dbg. */
 
 static void
@@ -544,6 +538,16 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
     }
 }
 
+// This is called by an intrinsic on the Rust stack.
+// Do not call on the C stack.
+extern "C" CDECL void
+rust_task_sleep(size_t time_in_us) {
+    rust_task *task = rust_scheduler::get_task();
+    task->yield(time_in_us);
+}
+
+// This is called by an intrinsic on the Rust stack.
+// Do not call on the C stack.
 extern "C" CDECL void
 port_recv(uintptr_t *dptr, rust_port *port) {
     rust_task *task = rust_scheduler::get_task();
