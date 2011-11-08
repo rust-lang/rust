@@ -54,7 +54,6 @@ native "cdecl" mod rustrt {
     // these must run on the Rust stack so that they can swap stacks etc:
     fn task_sleep(time_in_us: uint);
     fn task_yield();
-    fn start_task(id: task, closure: *u8);
 }
 
 native "c-stack-cdecl" mod rustrt2 = "rustrt" {
@@ -70,6 +69,9 @@ native "c-stack-cdecl" mod rustrt2 = "rustrt" {
     fn get_task_pointer(id: task_id) -> *rust_task;
 
     fn migrate_alloc(alloc: *u8, target: task_id);
+
+    fn start_task(id: task, closure: *u8);
+
 }
 
 /* Section: Types */
@@ -322,7 +324,7 @@ fn unsafe_spawn_inner(-thunk: fn@(),
 
     // give the thunk environment's allocation to the new task
     rustrt2::migrate_alloc(cast(raw_thunk.env), id);
-    rustrt::start_task(id, cast(thunkfn));
+    rustrt2::start_task(id, cast(thunkfn));
     // don't cleanup the thunk in this task
     unsafe::leak(thunk);
     ret id;
