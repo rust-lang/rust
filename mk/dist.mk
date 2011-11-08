@@ -20,12 +20,12 @@ PKG_3RDPARTY := rt/valgrind.h rt/memcheck.h \
                 rt/bigint/bigint_ext.cpp rt/bigint/low_primes.h
 
 PKG_UV := \
-                $(wildcard $(S)src/rt/libuv/*) \
-                $(wildcard $(S)src/rt/libuv/include/*) \
-                $(wildcard $(S)src/rt/libuv/include/*/*) \
-                $(wildcard $(S)src/rt/libuv/src/*) \
-                $(wildcard $(S)src/rt/libuv/src/*/*) \
-                $(wildcard $(S)src/rt/libuv/src/*/*/*)
+                $(wildcard $(S)src/libuv/*) \
+                $(wildcard $(S)src/libuv/include/*) \
+                $(wildcard $(S)src/libuv/include/*/*) \
+                $(wildcard $(S)src/libuv/src/*) \
+                $(wildcard $(S)src/libuv/src/*/*) \
+                $(wildcard $(S)src/libuv/src/*/*/*)
 
 PKG_PP_EXAMPLES = $(wildcard $(S)src/test/pretty/*.pp)
 

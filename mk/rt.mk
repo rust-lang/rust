@@ -116,19 +116,19 @@ endif
 
 ifeq ($$(CFG_WINDOWSY), 1)
   LIBUV_OSTYPE_$(1) := win
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/rt/libuv/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/libuv/libuv.a
 else ifeq ($(CFG_OSTYPE), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/libuv.a
 else
   LIBUV_OSTYPE_$(1) := unix
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/rt/libuv/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/libuv/libuv.a
 endif
 
 RUNTIME_DEF_$(1) := rt/rustrt$$(CFG_DEF_SUFFIX)
 RUNTIME_INCS_$(1) := -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                 -I $$(S)src/rt/arch/$$(HOST_$(1)) \
-				-I $$(S)src/rt/libuv/include
+				-I $$(S)src/libuv/include
 RUNTIME_OBJS_$(1) := $$(RUNTIME_CS_$(1):rt/%.cpp=rt/$(1)/%.o) \
                      $$(RUNTIME_S_$(1):rt/%.S=rt/$(1)/%.o)
 RUNTIME_LIBS_$(1) := $$(LIBUV_LIB_$(1))
@@ -154,10 +154,10 @@ rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILES) \
 # of CC on the mingw I'm using, so we are explicitly using gcc. Also, we
 # have to list environment variables first on windows... mysterious
 $$(LIBUV_LIB_$(1)): $$(wildcard \
-                     $$(S)src/rt/libuv/* \
-                     $$(S)src/rt/libuv/*/* \
-                     $$(S)src/rt/libuv/*/*/* \
-                     $$(S)src/rt/libuv/*/*/*/*)
+                     $$(S)src/libuv/* \
+                     $$(S)src/libuv/*/* \
+                     $$(S)src/libuv/*/*/* \
+                     $$(S)src/libuv/*/*/*/*)
 	$$(Q)$$(MAKE) -C $$(S)mk/libuv/$$(LIBUV_ARCH_$(1))/$$(LIBUV_OSTYPE_$(1)) \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
         LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \

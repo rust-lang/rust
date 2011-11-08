@@ -48,12 +48,12 @@
 
 include config.mk
 OUR_MKFILES := Makefile config.mk $(wildcard $(CFG_SRC_DIR)/mk/*.mk)
-3RDPARTY_MKFILES := $(CFG_SRC_DIR)/src/rt/libuv/Makefile \
-                    $(wildcard $(CFG_SRC_DIR)/src/rt/libuv/*.mk)
+3RDPARTY_MKFILES := $(CFG_SRC_DIR)/src/libuv/Makefile \
+                    $(wildcard $(CFG_SRC_DIR)/src/libuv/*.mk)
 GEN_MKFILES := $(wildcard $(CFG_SRC_DIR)/mk/libuv/*/*/*) \
-               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/rt/libuv/*) \
-               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/rt/libuv/*) \
-               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/rt/libuv/*)
+               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*) \
+               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*) \
+               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*)
 
 MKFILES := $(OUR_MKFILES) $(3RDPARTY_MKFILES) $(GEN_MKFILES)
 

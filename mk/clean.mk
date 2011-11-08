@@ -28,9 +28,9 @@ clean-misc:
 	$(Q)rm -f $(GENERATED)
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
-	$(Q)rm -f rt/libuv/uv.a
-	$(Q)rm -Rf $(wildcard rt/libuv/src/*/*)
-	$(Q)rm -f $(wildcard rt/libuv/src/*.o)
+	$(Q)rm -f libuv/uv.a
+	$(Q)rm -Rf $(wildcard libuv/src/*/*)
+	$(Q)rm -f $(wildcard libuv/src/*.o)
 	$(Q)rm -f test/run_pass_stage2.rc test/run_pass_stage2_driver.rs
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(Q)rm -f $(foreach ext,o a d bc s exe,$(wildcard stage*/*.$(ext)))
@@ -44,7 +44,7 @@ clean-misc:
                  aux cp fn ky log pdf html pg toc tp vr cps, \
                  $(wildcard doc/*.$(ext)))
 	$(Q)rm -Rf doc/version.texi
-	$(Q)rm -rf rt/libuv
+	$(Q)rm -rf libuv
 
 define CLEAN_STAGE_N
 
