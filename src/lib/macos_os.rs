@@ -1,5 +1,5 @@
 
-native "cdecl" mod libc = "" {
+native "c-stack-cdecl" mod libc = "" {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
@@ -63,6 +63,14 @@ fn pipe() -> {in: int, out: int} {
 
 fn fd_FILE(fd: int) -> libc::FILE {
     ret str::as_buf("r", {|modebuf| libc::fdopen(fd, modebuf) });
+}
+
+fn close(fd: int) -> int {
+    libc::close(fd)
+}
+
+fn fclose(file: libc::FILE) {
+    libc::fclose(file)
 }
 
 fn waitpid(pid: int) -> int {

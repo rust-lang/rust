@@ -77,7 +77,7 @@ fn writeclose(fd: int, s: option::t<str>) {
         writer.write_str(option::get(s));
     }
 
-    os::libc::close(fd);
+    os::close(fd);
 }
 
 fn readclose(fd: int) -> str {
@@ -89,7 +89,7 @@ fn readclose(fd: int) -> str {
         let bytes = reader.read_bytes(4096u);
         buf += str::unsafe_from_bytes(bytes);
     }
-    os::libc::fclose(file);
+    os::fclose(file);
     ret buf;
 }
 
@@ -134,13 +134,13 @@ fn worker(p: port<request>) {
                                     pipe_in.in, pipe_out.out, pipe_err.out);
         let pid = maybe_with_lib_path(execparms.lib_path, spawnproc);
 
-        os::libc::close(pipe_in.in);
-        os::libc::close(pipe_out.out);
-        os::libc::close(pipe_err.out);
+        os::close(pipe_in.in);
+        os::close(pipe_out.out);
+        os::close(pipe_err.out);
         if pid == -1 {
-            os::libc::close(pipe_in.out);
-            os::libc::close(pipe_out.in);
-            os::libc::close(pipe_err.in);
+            os::close(pipe_in.out);
+            os::close(pipe_out.in);
+            os::close(pipe_err.in);
             fail;
         }
 

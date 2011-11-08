@@ -1,3 +1,8 @@
+// xfail-test
+// FIXME: This test is no longer testing what it was intended to. It should
+// be testing spawning of a native function, but is actually testing
+// spawning some other function, then executing a native function.
+
 /*
   A reduced test case for Issue #506, provided by Rob Arnold.
 */
