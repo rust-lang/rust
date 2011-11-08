@@ -28,6 +28,7 @@ clean-misc:
 	$(Q)rm -f $(GENERATED)
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
+	$(Q)find rt -name '*.o' -delete
 	$(Q)rm -f libuv/uv.a
 	$(Q)rm -Rf $(wildcard libuv/src/*/*)
 	$(Q)rm -f $(wildcard libuv/src/*.o)
