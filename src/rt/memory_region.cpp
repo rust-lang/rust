@@ -6,10 +6,18 @@
 //
 // #define TRACK_ALLOCATIONS
 
+#define PTR_SIZE (sizeof(void*))
+#define ALIGN_PTR(x) (((x)+PTR_SIZE-1)/PTR_SIZE*PTR_SIZE)
+#define HEADER_SIZE ALIGN_PTR(sizeof(alloc_header))
 #define MAGIC 0xbadc0ffe
 
 memory_region::alloc_header *memory_region::get_header(void *mem) {
-    return (alloc_header *)((char *)mem - sizeof(alloc_header));
+    return (alloc_header *)((char *)mem - HEADER_SIZE);
+}
+
+void *memory_region::get_data(alloc_header *ptr) {
+    assert(ptr->magic == MAGIC);
+    return (void*)((char *)ptr + HEADER_SIZE);
 }
 
 memory_region::memory_region(rust_srv *srv, bool synchronized) :
@@ -54,7 +62,7 @@ memory_region::realloc(void *mem, size_t size) {
         add_alloc();
     }
     size_t old_size = size;
-    size += sizeof(alloc_header);
+    size += HEADER_SIZE;
     alloc_header *alloc = get_header(mem);
     assert(alloc->magic == MAGIC);
     alloc->size = old_size;
@@ -64,7 +72,7 @@ memory_region::realloc(void *mem, size_t size) {
         printf("at index %d, found %p, expected %p\n",
                alloc->index, _allocation_list[alloc->index], alloc);
         printf("realloc: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
-            (uintptr_t) &alloc->data, alloc->tag);
+               (uintptr_t) get_data(alloc), alloc->tag);
         _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
     }
     else {
@@ -74,25 +82,27 @@ memory_region::realloc(void *mem, size_t size) {
     }
 #endif
     if (_synchronized) { _lock.unlock(); }
-    return newMem->data;
+    return get_data(newMem);
 }
 
 void *
 memory_region::malloc(size_t size, const char *tag, bool zero) {
     size_t old_size = size;
-    size += sizeof(alloc_header);
+    size += HEADER_SIZE;
     alloc_header *mem = (alloc_header *)_srv->malloc(size);
     mem->magic = MAGIC;
     mem->tag = tag;
     mem->index = -1;
     mem->size = old_size;
-    claim_alloc(mem->data);
+
+    void *data = get_data(mem);
+    claim_alloc(data);
 
     if(zero) {
-        memset(mem->data, 0, old_size);
+        memset(data, 0, old_size);
     }
 
-    return mem->data;
+    return data;
 }
 
 void *

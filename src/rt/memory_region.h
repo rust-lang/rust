@@ -20,10 +20,10 @@ private:
         int index;
         const char *tag;
         uint32_t size;
-        char data[];
     };
 
     alloc_header *get_header(void *mem);
+    void *get_data(alloc_header *);
 
     rust_srv *_srv;
     memory_region *_parent;
