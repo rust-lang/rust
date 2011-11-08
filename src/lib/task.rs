@@ -53,7 +53,6 @@ export spawn_joinable;
 native "cdecl" mod rustrt {
     // these must run on the Rust stack so that they can swap stacks etc:
     fn task_sleep(time_in_us: uint);
-    fn task_yield();
 }
 
 native "c-stack-cdecl" mod rustrt2 = "rustrt" {
@@ -149,7 +148,7 @@ Yield control to the task scheduler
 
 The scheduler may schedule another task to execute.
 */
-fn yield() { ret rustrt::task_yield(); }
+fn yield() { sleep(1u) }
 
 /*
 Function: join

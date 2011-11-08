@@ -171,12 +171,6 @@ task_sleep(size_t time_in_us) {
     task->yield(time_in_us);
 }
 
-extern "C" CDECL void
-task_yield() {
-    rust_task *task = rust_scheduler::get_task();
-    task->yield(1);
-}
-
 /* Debug builtins for std::dbg. */
 
 static void
