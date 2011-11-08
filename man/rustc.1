@@ -25,7 +25,8 @@ output filename for \fBfoo.rs\fR is otherwise \fBfoo\fR plus any
 platform-specific extension (when compiling a binary), a
 platform-specific name, e.g. \fBlibfoo.so\fR (when compiling a
 library), \fBfoo.o\fR (when using \fB-c\fR), \fBfoo.s\fR (when using
-\fB-S\fR) or \fBfoo.bc\fR (when using \fB--emit-llvm\fR), and
+\fB-S\fR) or \fBfoo.bc\fR (when using \fB--emit-llvm\fR), and \fBfoo.ll\fR
+(when using both \fB-S\fR and \fB--emit-llvm\fR).
 .TP
 \fB--lib\fR:
 Compile and link a library crate into a shared object.
@@ -82,7 +83,9 @@ Compile to assembly, but do not assemble or link.
 Compile and assemble, but do not link.
 .TP
 \fB--emit-llvm\fR:
-Generate llvm bitcode.
+Generate output files in LLVM format. When used with \fB-S\fR this generate LLVM
+intermediate language assembly files, otherwise this generates LLVM bitcode
+format object files. 
 .TP
 \fB--save-temps\fR:
 For foo.rs, save generated bitcode before optimization to
