@@ -27,6 +27,7 @@ mod middle {
     mod typeck;
     mod fn_usage;
     mod check_alt;
+    mod check_const;
     mod mut;
     mod alias;
     mod kind;

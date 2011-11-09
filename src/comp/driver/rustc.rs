@@ -151,6 +151,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
     time(time_passes, "kind checking", bind kind::check_crate(ty_cx, crate));
+    time(time_passes, "const checking",
+         bind middle::check_const::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
     let llmod =
         time(time_passes, "translation",
