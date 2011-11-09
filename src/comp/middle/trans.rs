@@ -3840,6 +3840,7 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     let ccx = bcx_ccx(bcx);
     let f_res = trans_callee(bcx, f);
     let llfn = f_res.val, bcx = f_res.bcx;
+    let llfn = BitCast(bcx, llfn, T_ptr(T_fn([], bcx_ccx(bcx).int_type)));
 
     // Translate the callee.
     let { params: _, ty: fn_ty } = ty::expr_ty_params_and_ty(bcx_tcx(bcx), f);
@@ -5651,8 +5652,22 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         ret;
       }
       ast::native_abi_c_stack_stdcall. {
+        // The name of stdcall functions depend on their argument count
+        // so we have to declare them correctly
+        let fn_args_tys = ty::ty_fn_args(ccx.tcx, fn_type);
+        let fn_ret_ty = ty::ty_fn_ret(ccx.tcx, fn_type);
+        let ll_args_tys = [];
+        for arg in fn_args_tys {
+            let arg_ty = arg.ty;
+            check type_has_static_size(ccx, arg_ty);
+            ll_args_tys += [type_of(ccx, sp, arg_ty)];
+        }
+        check type_has_static_size(ccx, fn_ret_ty);
+        let ll_ret_ty = type_of(ccx, sp, fn_ret_ty);
+        let native_fn_ty = T_fn(ll_args_tys, ll_ret_ty);
+
         let llfn = decl_fn(ccx.llmod, name, lib::llvm::LLVMX86StdcallCallConv,
-                           T_fn([], ccx.int_type));
+                           native_fn_ty);
         ccx.item_ids.insert(id, llfn);
         ccx.item_symbols.insert(id, name);
         ret;
