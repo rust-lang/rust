@@ -2003,11 +2003,10 @@ fn parse_native_mod_items(p: parser, native_name: str, abi: ast::native_abi,
 
 fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
-    let abi = ast::native_abi_cdecl;
+    let abi = ast::native_abi_c_stack_cdecl;
     if !is_word(p, "mod") {
         let t = parse_str(p);
-        if str::eq(t, "cdecl") {
-        } else if str::eq(t, "rust-intrinsic") {
+        if str::eq(t, "rust-intrinsic") {
             abi = ast::native_abi_rust_intrinsic;
         } else if str::eq(t, "x86stdcall") {
             abi = ast::native_abi_x86stdcall;
