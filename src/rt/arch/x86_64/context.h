@@ -23,8 +23,8 @@ T align_down(T sp)
 // The struct in which we store the saved data.  This is mostly the
 // volatile registers and instruction pointer, but it also includes
 // RCX/RDI which are used to pass arguments.  The indices for each
-// register are found in <x86_64_regs.h>:
-#include "x86_64_regs.h"
+// register are found in "regs.h":
+#include "regs.h"
 struct registers_t {
     uint64_t data[RUSTRT_MAX];
 };

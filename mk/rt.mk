@@ -106,7 +106,8 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/test/rust_test_harness.h \
                rt/test/rust_test_runtime.h \
                rt/test/rust_test_util.h \
-               rt/arch/$$(HOST_$(1))/context.h
+               rt/arch/$$(HOST_$(1))/context.h \
+               rt/arch/$$(HOST_$(1))/regs.h
 
 ifeq ($$(HOST_$(1)), i386)
   LIBUV_ARCH_$(1) := ia32

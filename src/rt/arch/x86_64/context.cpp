@@ -26,8 +26,9 @@ void context::call(void *f, void *arg, void *stack) {
   swap(*this);
 
   // set up the stack
-  uint32_t *sp = (uint32_t *)stack;
+  uint64_t *sp = (uint64_t *)stack;
   sp = align_down(sp);
+  *--sp = 0xdeadbeef; // takes place of ret. addr.
 
   regs.data[RUSTRT_ARG0] = (uint64_t)arg;
   regs.data[RUSTRT_RSP] = (uint64_t)sp;
