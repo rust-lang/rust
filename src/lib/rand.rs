@@ -67,7 +67,8 @@ fn mk_rng() -> rng {
             let s = "";
             let i = 0u;
             while (i < len) {
-                let n = rustrt::rand_next(**c) as uint % str::char_len(charset);
+                let n = rustrt::rand_next(**c) as uint %
+                    str::char_len(charset);
                 s = s + str::from_char(str::char_at(charset, n));
                 i += 1u;
             }
