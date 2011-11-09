@@ -27,8 +27,20 @@ fn check_const_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     alt ex.node {
       expr_lit(_) { }
+      expr_binary(_, _, _) { /* subexps covered by visit */ }
+      expr_unary(u, _) {
+        alt u {
+          box(_)  |
+          uniq(_) |
+          deref.  {
+            tcx.sess.span_err(ex.span,
+                              "disallowed operator in constant expression");
+          }
+          _ { }
+        }
+      }
       _ { tcx.sess.span_err(ex.span,
-          "constant contains unimplemented expression type"); }
+            "constant contains unimplemented expression type"); }
     }
 }
 
