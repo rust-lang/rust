@@ -5290,7 +5290,71 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     alt e.node {
       ast::expr_lit(lit) { ret trans_crate_lit(cx, *lit); }
-      _ { cx.sess.span_unimpl(e.span, "consts that's not a plain literal"); }
+      ast::expr_binary(b, e1, e2) {
+        let te1 = trans_const_expr(cx, e1);
+        let te2 = trans_const_expr(cx, e2);
+        /* Neither type is bottom, and we expect them to be unified already,
+         * so the following is safe. */
+        let ty = ty::expr_ty(ccx_tcx(cx), e1);
+        let is_float = ty::type_is_fp(ccx_tcx(cx), ty);
+        let signed = ty::type_is_signed(ccx_tcx(cx), ty);
+        ret alt b {
+          ast::add.    {
+            if is_float { llvm::LLVMConstFAdd(te1, te2) }
+            else        { llvm::LLVMConstAdd(te1, te2) }
+          }
+          ast::sub.    {
+            if is_float { llvm::LLVMConstFSub(te1, te2) }
+            else        { llvm::LLVMConstSub(te1, te2) }
+          }
+          ast::mul.    {
+            if is_float { llvm::LLVMConstFMul(te1, te2) }
+            else        { llvm::LLVMConstMul(te1, te2) }
+          }
+          ast::div.    {
+            if is_float    { llvm::LLVMConstFDiv(te1, te2) }
+            else if signed { llvm::LLVMConstSDiv(te1, te2) }
+            else           { llvm::LLVMConstUDiv(te1, te2) }
+          }
+          ast::rem.    {
+            if is_float    { llvm::LLVMConstFRem(te1, te2) }
+            else if signed { llvm::LLVMConstSRem(te1, te2) }
+            else           { llvm::LLVMConstURem(te1, te2) }
+          }
+          ast::and.    |
+          ast::or.     { cx.sess.span_unimpl(e.span, "binop logic"); }
+          ast::bitxor. { llvm::LLVMConstXor(te1, te2) }
+          ast::bitand. { llvm::LLVMConstAnd(te1, te2) }
+          ast::bitor.  { llvm::LLVMConstOr(te1, te2) }
+          ast::lsl.    { llvm::LLVMConstShl(te1, te2) }
+          ast::lsr.    { llvm::LLVMConstLShr(te1, te2) }
+          ast::asr.    { llvm::LLVMConstAShr(te1, te2) }
+          ast::eq.     |
+          ast::lt.     |
+          ast::le.     |
+          ast::ne.     |
+          ast::ge.     |
+          ast::gt.     { cx.sess.span_unimpl(e.span, "binop comparator"); }
+        }
+      }
+      ast::expr_unary(u, e) {
+        let te = trans_const_expr(cx, e);
+        let ty = ty::expr_ty(ccx_tcx(cx), e);
+        let is_float = ty::type_is_fp(ccx_tcx(cx), ty);
+        ret alt u {
+          ast::box(_)  |
+          ast::uniq(_) |
+          ast::deref.  { cx.sess.span_bug(e.span,
+                           "bad unop type in trans_const_expr"); }
+          ast::not.    { llvm::LLVMConstNot(te) }
+          ast::neg.    {
+            if is_float { llvm::LLVMConstFNeg(te) }
+            else        { llvm::LLVMConstNeg(te) }
+          }
+        }
+      }
+      _ { cx.sess.span_bug(e.span,
+            "bad constant expression type in trans_const_expr"); }
     }
 }
 
