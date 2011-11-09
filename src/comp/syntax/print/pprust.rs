@@ -404,7 +404,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           ast::native_abi_rust_intrinsic. {
             word_nbsp(s, "\"rust-intrinsic\"");
           }
-          ast::native_abi_c_stack_cdecl. {
+          ast::native_abi_cdecl. {
             word_nbsp(s, "\"c-stack-cdecl\"");
           }
           ast::native_abi_stdcall. {

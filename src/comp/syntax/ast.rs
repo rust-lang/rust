@@ -427,7 +427,7 @@ type _mod = {view_items: [@view_item], items: [@item]};
 
 tag native_abi {
     native_abi_rust_intrinsic;
-    native_abi_c_stack_cdecl;
+    native_abi_cdecl;
     native_abi_stdcall;
 }
 

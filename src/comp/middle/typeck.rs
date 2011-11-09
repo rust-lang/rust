@@ -552,7 +552,7 @@ mod collect {
           some(ast_map::node_item(item)) { tpt = ty_of_item(cx, item); }
           some(ast_map::node_native_item(native_item)) {
             tpt = ty_of_native_item(cx, native_item,
-                                    ast::native_abi_c_stack_cdecl);
+                                    ast::native_abi_cdecl);
           }
           _ { cx.tcx.sess.fatal("internal error " + std::int::str(id.node)); }
         }

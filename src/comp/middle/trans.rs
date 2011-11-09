@@ -5597,7 +5597,7 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
 pure fn native_abi_requires_pair(abi: ast::native_abi) -> bool {
     alt abi {
         ast::native_abi_rust_intrinsic. { ret true; }
-        ast::native_abi_c_stack_cdecl. |
+        ast::native_abi_cdecl. |
         ast::native_abi_stdcall. { ret false; }
     }
 }
@@ -5641,7 +5641,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         uses_retptr = true;
         cast_to_i32 = false;
       }
-      ast::native_abi_c_stack_cdecl. {
+      ast::native_abi_cdecl. {
         let llfn = decl_cdecl_fn(ccx.llmod, name, T_fn([], ccx.int_type));
         ccx.item_ids.insert(id, llfn);
         ccx.item_symbols.insert(id, name);
