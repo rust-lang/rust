@@ -4,6 +4,7 @@ Module: fs
 File system manipulation
 */
 
+import os;
 import os::getcwd;
 import os_fs;
 
@@ -113,6 +114,28 @@ Indicates whether a path represents a directory.
 */
 fn file_is_dir(p: path) -> bool {
     ret str::as_buf(p, {|buf| rustrt::rust_file_is_dir(buf) != 0 });
+}
+
+/*
+Function: make_dir
+
+Creates a directory at the specific path.
+*/
+fn make_dir(p: path, mode: int) -> bool {
+    ret mkdir(p, mode);
+
+    #[cfg(target_os = "win32")]
+    fn mkdir(_p: path, _mode: int) -> bool {
+        // FIXME: turn mode into something useful?
+        let noctx = ptr::null<os::kernel32::LPSECURITY_ATTRIBUTES>();
+        ret str::as_buf(_p, {|buf| os::kernel32::CreateDirectory(buf, noctx) });
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    fn mkdir(_p: path, _mode: int) -> bool {
+        ret str::as_buf(_p, {|buf| os::libc::mkdir(buf, _mode) == 0 });
+    }
 }
 
 /*

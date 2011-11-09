@@ -32,6 +32,13 @@ type rng = obj {
     Return the next random float
     */
     fn next_float() -> float;
+
+    /*
+    Method: gen_str
+
+    Return a random string composed of A-Z, a-z, 0-9.
+    */
+    fn gen_str(len: uint) -> str;
 };
 
 resource rand_res(c: rustrt::rctx) { rustrt::rand_free(c); }
@@ -52,6 +59,19 @@ fn mk_rng() -> rng {
           let u3 = rustrt::rand_next(**c) as float;
           let scale = u32::max_value as float;
           ret ((u1 / scale + u2) / scale + u3) / scale;
+        }
+        fn gen_str(len: uint) -> str {
+            let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+                          "abcdefghijklmnopqrstuvwxyz" +
+                          "0123456789";
+            let s = "";
+            let i = 0u;
+            while (i < len) {
+                let n = rustrt::rand_next(**c) as uint % str::char_len(charset);
+                s = s + str::from_char(str::char_at(charset, n));
+                i += 1u;
+            }
+            s
         }
     }
     ret rt_rng(@rand_res(rustrt::rand_new()));
