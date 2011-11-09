@@ -13,7 +13,7 @@ export ctypes, either, option, result, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
 export ebml, dbg, getopts, json, math, rand, sha1, term, time, unsafe;
-export extfmt, test;
+export extfmt, test, tempfile;
 // FIXME: generic_os and os_fs shouldn't be exported
 export generic_os, os, os_fs;
 
@@ -79,6 +79,7 @@ mod json;
 mod math;
 mod rand;
 mod sha1;
+mod tempfile;
 mod term;
 mod time;
 mod unsafe;

@@ -40,10 +40,11 @@ native mod libc {
     type dirent;
     fn readdir(d: dir) -> dirent;
     fn getenv(n: str::sbuf) -> str::sbuf;
-    fn setenv(n: str::sbuf, v: str::sbuf, overwrite: c_int) -> c_int;
-    fn unsetenv(n: str::sbuf) -> c_int;
-    fn pipe(buf: *mutable fd_t) -> c_int;
-    fn waitpid(pid: pid_t, &status: c_int, options: c_int) -> pid_t;
+    fn setenv(n: str::sbuf, v: str::sbuf, overwrite: int) -> int;
+    fn unsetenv(n: str::sbuf) -> int;
+    fn pipe(buf: *mutable int) -> int;
+    fn waitpid(pid: int, &status: int, options: int) -> int;
+    fn mkdir(s: str::sbuf, mode: int) -> int;
 }
 
 mod libc_constants {

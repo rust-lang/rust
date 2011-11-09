@@ -41,15 +41,19 @@ mod libc_constants {
 type DWORD = u32;
 type HMODULE = uint;
 type LPTSTR = str::sbuf;
+type LPCTSTR = str::sbuf;
 
 #[abi = "stdcall"]
 native mod kernel32 {
+    type LPSECURITY_ATTRIBUTES;
     fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: uint) ->
        uint;
     fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
     fn GetModuleFileNameA(hModule: HMODULE,
                           lpFilename: LPTSTR,
                           nSize: DWORD) -> DWORD;
+    fn CreateDirectory(lpPathName: LPCTSTR,
+                       lpSecurityAttributes: LPSECURITY_ATTRIBUTES) -> bool;
 }
 
 // FIXME turn into constants
