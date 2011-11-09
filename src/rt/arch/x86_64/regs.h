@@ -21,9 +21,15 @@
 #if defined(__MINGW32__) || defined(_WINDOWS)
 #   define RUSTRT_ARG0_S %rcx
 #   define RUSTRT_ARG1_S %rdx
+#   define RUSTRT_ARG2_S %r8
+#   define RUSTRT_ARG3_S %r9
 #else
 #   define RUSTRT_ARG0_S %rdi
 #   define RUSTRT_ARG1_S %rsi
+#   define RUSTRT_ARG2_S %rdx
+#   define RUSTRT_ARG3_S %rcx
+#   define RUSTRT_ARG4_S %r8
+#   define RUSTRT_ARG5_S %r9
 #endif
 
 
