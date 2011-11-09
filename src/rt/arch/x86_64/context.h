@@ -46,8 +46,8 @@ public:
     // function being called causes the task to fail, then we have to avoid
     // leaking space on the C stack.
     inline void *alloc_stack(size_t nbytes) {
-        uint32_t bot = regs.data[RUSTRT_RSP];
-        uint32_t top = align_down(bot - nbytes);
+        uint64_t bot = regs.data[RUSTRT_RSP];
+        uint64_t top = align_down(bot - nbytes);
 
 #ifdef HAVE_VALGRIND
         (void)VALGRIND_MAKE_MEM_UNDEFINED(top - 4, bot - top + 4);
