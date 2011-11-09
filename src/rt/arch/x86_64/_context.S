@@ -98,8 +98,8 @@ swap_registers:
         mov (RUSTRT_R15*8)(%rsi), %r15
 
         // Restore relevant argument registers:
-        mov (RUSTRT_RCX*8)(%rdi), %rcx
-        mov (RUSTRT_RDI*8)(%rdi), %rdi
+        mov (RUSTRT_RCX*8)(%rsi), %rcx
+        mov (RUSTRT_RDI*8)(%rsi), %rdi
 
         // Restore non-volatile XMM registers:
         movapd (RUSTRT_XMM0*8)(%rsi), %xmm0
