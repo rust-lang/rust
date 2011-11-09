@@ -261,7 +261,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         alt next(st) as char {
           'i' { abi = ast::native_abi_rust_intrinsic; }
           'C' { abi = ast::native_abi_c_stack_cdecl; }
-          'S' { abi = ast::native_abi_c_stack_stdcall; }
+          'S' { abi = ast::native_abi_stdcall; }
         }
         let func = parse_ty_fn(st, sd);
         ret ty::mk_native_fn(st.tcx, abi, func.args, func.ty);

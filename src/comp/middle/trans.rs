@@ -5598,7 +5598,7 @@ pure fn native_abi_requires_pair(abi: ast::native_abi) -> bool {
     alt abi {
         ast::native_abi_rust_intrinsic. { ret true; }
         ast::native_abi_c_stack_cdecl. |
-        ast::native_abi_c_stack_stdcall. { ret false; }
+        ast::native_abi_stdcall. { ret false; }
     }
 }
 
@@ -5647,7 +5647,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         ccx.item_symbols.insert(id, name);
         ret;
       }
-      ast::native_abi_c_stack_stdcall. {
+      ast::native_abi_stdcall. {
         // The name of stdcall functions depend on their argument count
         // so we have to declare them correctly
         let fn_args_tys = ty::ty_fn_args(ccx.tcx, fn_type);
