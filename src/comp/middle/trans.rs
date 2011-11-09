@@ -5596,8 +5596,7 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
 
 pure fn native_abi_requires_pair(abi: ast::native_abi) -> bool {
     alt abi {
-        ast::native_abi_rust_intrinsic. |
-        ast::native_abi_x86stdcall. { ret true; }
+        ast::native_abi_rust_intrinsic. { ret true; }
         ast::native_abi_c_stack_cdecl. |
         ast::native_abi_c_stack_stdcall. { ret false; }
     }
@@ -5631,6 +5630,8 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
     let fn_type = node_id_type(ccx, id); // NB: has no type params
     let abi = ty::ty_fn_abi(ccx.tcx, fn_type);
 
+    // FIXME: There's probably a lot of unused code here now that
+    // there's only one possible combination of these three options
     let pass_task;
     let uses_retptr;
     let cast_to_i32;
@@ -5639,11 +5640,6 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         pass_task = true;
         uses_retptr = true;
         cast_to_i32 = false;
-      }
-      ast::native_abi_x86stdcall. {
-        pass_task = false;
-        uses_retptr = false;
-        cast_to_i32 = true;
       }
       ast::native_abi_c_stack_cdecl. {
         let llfn = decl_cdecl_fn(ccx.llmod, name, T_fn([], ccx.int_type));
@@ -5786,14 +5782,6 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         let result =
             trans_simple_native_abi(bcx, external_name, call_args, fn_type,
                                     uses_retptr, lib::llvm::LLVMCCallConv);
-        r = result.val;
-        rptr = result.rptr;
-      }
-      ast::native_abi_x86stdcall. {
-        let result =
-            trans_simple_native_abi(bcx, name, call_args, fn_type,
-                                    uses_retptr,
-                                    lib::llvm::LLVMX86StdcallCallConv);
         r = result.val;
         rptr = result.rptr;
       }
