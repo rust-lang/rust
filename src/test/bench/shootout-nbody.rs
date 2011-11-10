@@ -1,7 +1,7 @@
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 
-native "c-stack-cdecl" mod llvm = "" {
+native "cdecl" mod llvm = "" {
     fn sqrt(n: float) -> float;
 }
 

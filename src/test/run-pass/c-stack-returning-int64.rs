@@ -1,7 +1,7 @@
 use std;
 import std::str;
 
-native "c-stack-cdecl" mod libc = "" {
+native "cdecl" mod libc = "" {
     fn atol(x: str::sbuf) -> int;
     fn atoll(x: str::sbuf) -> i64;
 }

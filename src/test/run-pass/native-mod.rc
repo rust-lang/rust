@@ -10,7 +10,7 @@ native mod libc = target_libc {
   fn free(int p) -> ();
 }
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
   fn str_buf(str s) -> int;
 }
 

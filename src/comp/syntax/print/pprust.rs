@@ -405,7 +405,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             word_nbsp(s, "\"rust-intrinsic\"");
           }
           ast::native_abi_cdecl. {
-            word_nbsp(s, "\"c-stack-cdecl\"");
+            word_nbsp(s, "\"cdecl\"");
           }
           ast::native_abi_stdcall. {
             word_nbsp(s, "\"stdcall\"");

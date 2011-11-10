@@ -1,7 +1,7 @@
 // -*- rust -*-
 // error-pattern: unsafe functions can only be called
 
-native "c-stack-cdecl" mod test {
+native "cdecl" mod test {
     unsafe fn free();
 }
 

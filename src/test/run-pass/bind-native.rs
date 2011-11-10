@@ -2,7 +2,7 @@
 Can we bind native things?
 */
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn pin_task();
 }
 

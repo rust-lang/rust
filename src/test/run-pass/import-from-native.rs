@@ -3,7 +3,7 @@ mod spam {
     fn eggs() { }
 }
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     import spam::{ham, eggs};
     export ham;
     export eggs;

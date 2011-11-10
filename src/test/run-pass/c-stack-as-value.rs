@@ -1,6 +1,6 @@
 // xfail-test
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn unsupervise();
 }
 

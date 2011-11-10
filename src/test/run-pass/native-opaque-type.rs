@@ -1,6 +1,6 @@
 
 
-native "c-stack-cdecl" mod libc = "" {
+native "cdecl" mod libc = "" {
     type file_handle;
 }
 

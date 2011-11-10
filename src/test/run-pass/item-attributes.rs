@@ -29,7 +29,7 @@ mod test_single_attr_outer {
     mod mod1 { }
 
     #[attr = "val"]
-    native "c-stack-cdecl" mod rustrt { }
+    native "cdecl" mod rustrt { }
 
     #[attr = "val"]
     type t = obj { };
@@ -55,7 +55,7 @@ mod test_multi_attr_outer {
 
     #[attr1 = "val"]
     #[attr2 = "val"]
-    native "c-stack-cdecl" mod rustrt { }
+    native "cdecl" mod rustrt { }
 
     #[attr1 = "val"]
     #[attr2 = "val"]
@@ -83,7 +83,7 @@ mod test_stmt_single_attr_outer {
         }
 
         #[attr = "val"]
-        native "c-stack-cdecl" mod rustrt {
+        native "cdecl" mod rustrt {
         }
         */
 
@@ -116,7 +116,7 @@ mod test_stmt_multi_attr_outer {
 
         #[attr1 = "val"]
         #[attr2 = "val"]
-        native "c-stack-cdecl" mod rustrt {
+        native "cdecl" mod rustrt {
         }
         */
 
@@ -182,7 +182,7 @@ mod test_other_forms {
 }
 
 mod test_native_items {
-    native "c-stack-cdecl" mod rustrt {
+    native "cdecl" mod rustrt {
         #[attr];
 
         #[attr]
