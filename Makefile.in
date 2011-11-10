@@ -289,8 +289,7 @@ TARGET_SREQ$(1)$(2) = \
 # Prerequisites for complete stageN targets
 SREQ$(1)$(2) = \
 	$$(TARGET_SREQ$(1)$(2)) \
-	$$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB) \
-	$$(TARGET_BIN$(1)$(2))/rustc
+	$$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB)
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed
