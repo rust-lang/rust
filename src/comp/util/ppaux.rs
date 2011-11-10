@@ -3,13 +3,11 @@ import std::option::{none, some};
 import middle::ty;
 import middle::ty::*;
 import metadata::encoder;
-import syntax::print::{pp, pprust};
+import syntax::print::pprust;
 import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str};
-import pp::{word, eof, zerobreak, hardbreak};
 import syntax::ast_util::ty_mach_to_str;
 import syntax::ast;
 import middle::ast_map;
-import metadata::csearch;
 
 fn mode_str(m: ty::mode) -> str {
     alt m {

@@ -2,17 +2,16 @@
 import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
-import syntax::ast_util::{local_def, respan};
+import syntax::ast_util::local_def;
 
 import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;
 import std::map::{new_int_hash, new_str_hash};
 import syntax::codemap::span;
-import middle::ty::constr_table;
 import syntax::visit;
 import visit::vt;
-import std::{vec, int, list, option, str};
+import std::{vec, list, option, str};
 import std::map::hashmap;
 import std::list::{list, nil, cons};
 import std::option::{some, none, is_none};
@@ -50,7 +49,9 @@ tag import_state {
     resolving(span);
     resolved(option::t<def>, /* value */
              option::t<def>, /* type */
-             option::t<def>); /* module */
+             option::t<def>, /* module */
+             /* used for reporting unused import warning */
+             ast::ident, codemap::span);
 }
 
 type ext_hash = hashmap<{did: def_id, ident: str, ns: namespace}, def>;
@@ -106,6 +107,7 @@ type env =
      mod_map: hashmap<ast::node_id, @indexed_mod>,
      ext_map: hashmap<def_id, [ident]>,
      ext_cache: ext_hash,
+     mutable used_imports: option::t<[ast::node_id]>,
      mutable reported: [{ident: str, sc: scope}],
      mutable currently_resolving: node_id,
      sess: session};
@@ -127,6 +129,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           mod_map: new_int_hash::<@indexed_mod>(),
           ext_map: new_def_hash::<[ident]>(),
           ext_cache: new_ext_hash(),
+          mutable used_imports: none,
           mutable reported: [],
           mutable currently_resolving: -1,
           sess: sess};
@@ -134,10 +137,11 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     resolve_imports(*e);
     check_for_collisions(e, *crate);
     check_bad_exports(e);
+    e.used_imports = some([]);
     resolve_names(e, crate);
+    check_unused_imports(e);
     ret {def_map: e.def_map, ext_map: e.ext_map};
 }
-
 
 // Locate all modules and imports and index them, so that the next passes can
 // resolve through them.
@@ -239,10 +243,24 @@ fn resolve_imports(e: env) {
           todo(node_id, name, path, span, scopes) {
             resolve_import(e, local_def(node_id), name, path, span, scopes);
           }
-          resolved(_, _, _) { }
+          resolved(_, _, _, _, _) { }
         }
     };
     e.sess.abort_if_errors();
+}
+
+fn check_unused_imports(e: @env) {
+    let used = option::get(e.used_imports);
+    e.imports.items {|k, v|
+        alt v {
+            resolved(val, ty, md, name, sp) {
+              if !vec::member(k, used) {
+                e.sess.span_warn(sp, "unused import " + name);
+              }
+            }
+            _ { }
+        }
+    };
 }
 
 fn resolve_names(e: @env, c: @ast::crate) {
@@ -439,7 +457,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
         if is_none(val) && is_none(typ) && is_none(md) {
             unresolved_err(e, sc, sp, name, "import");
         } else {
-            e.imports.insert(id, resolved(val, typ, md));
+            e.imports.insert(id, resolved(val, typ, md, name, sp));
         }
     }
     // This function has cleanup code at the end. Do not return without going
@@ -483,8 +501,8 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
     // resolved state, to avoid having it reported later as a cyclic
     // import
     alt e.imports.find(defid.node) {
-      some(resolving(_)) {
-        e.imports.insert(defid.node, resolved(none, none, none));
+      some(resolving(sp)) {
+        e.imports.insert(defid.node, resolved(none, none, none, "", sp));
       }
       _ { }
     }
@@ -931,7 +949,14 @@ fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
         }
         ret none;
       }
-      resolved(val, typ, md) {
+      resolved(val, typ, md, _, _) {
+        alt e.used_imports {
+          none. { }
+          some(lst_) {
+            let lst = lst_ + [defid.node];
+            e.used_imports = option::some(lst);
+          }
+        }
         ret alt ns { ns_value. { val } ns_type. { typ } ns_module. { md } };
       }
     }
@@ -1008,7 +1033,7 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
         let val = per_ns(e, info, sp, id, ns_value, dr);
         let typ = per_ns(e, info, sp, id, ns_type, dr);
         let md = per_ns(e, info, sp, id, ns_module, dr);
-        info.glob_imported_names.insert(id, resolved(val, typ, md));
+        info.glob_imported_names.insert(id, resolved(val, typ, md, id, sp));
     }
     alt info.glob_imported_names.get(id) {
       todo(_, _, _, _, _) { e.sess.bug("Shouldn't've put a todo in."); }
@@ -1016,7 +1041,7 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
         ret none::<def>; //circularity is okay in import globs
 
       }
-      resolved(val, typ, md) {
+      resolved(val, typ, md, _, _) {
         ret alt wanted_ns {
               ns_value. { val }
               ns_type. { typ }

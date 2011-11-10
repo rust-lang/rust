@@ -1,20 +1,17 @@
 
 import syntax::ast;
-import ast::{method, item, item_fn, _fn, obj_field, _obj, stmt, ident,
-             fn_ident, node_id, def_id, ty_param, crate, return_val, noreturn,
+import ast::{_fn, stmt,
+             fn_ident, node_id, crate, return_val, noreturn,
              expr};
-import syntax::ast_util::local_def;
 import syntax::visit;
 import syntax::codemap::span;
 import middle::ty::{type_is_nil, ret_ty_of_fn};
-import tstate::ann::{ts_ann, empty_poststate, true_precond, true_postcond,
-                     false_postcond, precond, postcond, poststate, prestate,
+import tstate::ann::{
+                     precond, prestate,
                      implies, ann_precond, ann_prestate};
-import std::{str, option};
-import std::option::{t, some, none};
+import std::{option};
 import aux::*;
 import syntax::print::pprust::ty_to_str;
-import util::common::log_stmt_err;
 import bitvectors::*;
 import annotate::annotate_crate;
 import collect_locals::mk_f_to_fn_info;

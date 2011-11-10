@@ -5,7 +5,6 @@ use std;
 import std::map;
 import std::str;
 import std::uint;
-import std::util;
 import std::option;
 
 

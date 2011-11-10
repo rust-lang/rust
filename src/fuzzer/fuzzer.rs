@@ -1,6 +1,4 @@
-import std::{fs, io, getopts, math, vec, str, int, uint, option, result};
-import std::getopts::{optopt, opt_present, opt_str};
-import std::io::stdout;
+import std::{fs, io, math, vec, str, int, uint, option, result};
 
 import rustc::syntax::{ast, ast_util, fold, visit, codemap};
 import rustc::syntax::parse::parser;

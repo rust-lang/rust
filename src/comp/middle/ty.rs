@@ -1,8 +1,6 @@
-import std::int;
 import std::vec;
 import std::str;
 import std::uint;
-import std::box;
 import std::ufind;
 import std::map;
 import std::map::hashmap;

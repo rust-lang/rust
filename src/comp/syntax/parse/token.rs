@@ -1,10 +1,8 @@
 
 import ast::ty_mach;
 import ast_util::ty_mach_to_str;
-import std::map::new_str_hash;
 import util::interner;
-import std::{int, uint, str, option};
-import option::{some, none};
+import std::{int, uint, str};
 
 type str_num = uint;
 

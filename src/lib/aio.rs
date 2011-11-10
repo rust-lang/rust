@@ -1,7 +1,6 @@
 import task;
 import vec;
 
-import comm;
 import comm::{chan, port, send, recv};
 import net;
 

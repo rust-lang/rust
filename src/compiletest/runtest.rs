@@ -4,7 +4,6 @@ import std::option;
 import std::fs;
 import std::os;
 import std::vec;
-import std::test;
 import std::result;
 
 import common::mode_run_pass;

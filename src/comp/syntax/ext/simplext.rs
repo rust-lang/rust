@@ -1,16 +1,15 @@
 use std;
 
 import codemap::span;
-import std::{vec, str, option};
+import std::{vec, option};
 import std::map::{hashmap, new_str_hash};
 import option::{some, none};
 
-import base::{syntax_extension, ext_ctxt, normal,
-              expr_to_str, expr_to_ident};
+import base::{ext_ctxt, normal};
 
 import fold::*;
 import ast_util::respan;
-import ast::{ident, path, ty, blk, blk_, expr, expr_, path_, expr_path,
+import ast::{ident, path, ty, blk_, expr, path_, expr_path,
              expr_vec, expr_mac, mac_invoc, node_id};
 
 export add_new_extension;
