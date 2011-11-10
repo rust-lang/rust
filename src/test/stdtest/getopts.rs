@@ -1,7 +1,5 @@
 
 use std;
-import std::vec;
-import std::option;
 import opt = std::getopts;
 
 tag fail_type {

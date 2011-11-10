@@ -9,7 +9,6 @@ import std::str;
 import std::vec;
 import std::task;
 
-import std::comm;
 import std::comm::port;
 import std::comm::chan;
 import std::comm::send;

@@ -4,7 +4,6 @@ import std::os;
 import std::io;
 import std::option;
 import std::str;
-import std::vec;
 
 // Regression test for memory leaks
 #[ignore(cfg(target_os = "win32"))] // FIXME
