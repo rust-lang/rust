@@ -2,7 +2,7 @@
 // xfail-test
 
 #[cfg(target_os = "win32")]
-native "c-stack-stdcall" mod kernel32 {
+native "stdcall" mod kernel32 {
     fn SetLastError(err: uint);
     fn GetLastError() -> uint;
 }

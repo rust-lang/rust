@@ -5,7 +5,7 @@ type LPVOID = uint;
 type BOOL = u8;
 
 #[cfg(target_os = "win32")]
-native "c-stack-stdcall" mod kernel32 {
+native "stdcall" mod kernel32 {
        fn GetProcessHeap() -> HANDLE;
        fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
        fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
