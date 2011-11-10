@@ -29,9 +29,7 @@ clean-misc:
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
 	$(Q)find rt -name '*.o' -delete
-	$(Q)rm -f libuv/uv.a
-	$(Q)rm -Rf $(wildcard libuv/src/*/*)
-	$(Q)rm -f $(wildcard libuv/src/*.o)
+	$(Q)find rt -name '*.a' -delete
 	$(Q)rm -f test/run_pass_stage2.rc test/run_pass_stage2_driver.rs
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(Q)rm -f $(foreach ext,o a d bc s exe,$(wildcard stage*/*.$(ext)))
