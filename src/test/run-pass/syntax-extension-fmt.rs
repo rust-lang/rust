@@ -38,6 +38,7 @@ fn part1() {
     test(#fmt["%X", 0x12ab_u], "12AB");
     test(#fmt["%o", 10u], "12");
     test(#fmt["%t", 0b11010101_u], "11010101");
+    test(#fmt["%f", 5.82], "5.82");
     // 32-bit limits
 
     test(#fmt["%i", -2147483648], "-2147483648");
@@ -61,6 +62,7 @@ fn part2() {
     test(#fmt["%10o", 10u], "        12");
     test(#fmt["%10t", 0xff_u], "  11111111");
     test(#fmt["%10c", 'A'], "         A");
+    test(#fmt["%10f", 5.82], "      5.82");
     // Left justify
 
     test(#fmt["%-10d", 500], "500       ");
@@ -73,6 +75,7 @@ fn part2() {
     test(#fmt["%-10o", 10u], "12        ");
     test(#fmt["%-10t", 0xff_u], "11111111  ");
     test(#fmt["%-10c", 'A'], "A         ");
+    test(#fmt["%-10f", 5.82], "5.82      ");
 }
 
 fn part3() {
@@ -90,6 +93,7 @@ fn part3() {
     test(#fmt["%.o", 10u], "12");
     test(#fmt["%.t", 3u], "11");
     test(#fmt["%.c", 'A'], "A");
+    test(#fmt["%.f", 5.82], "5");
     test(#fmt["%.0d", 0], "");
     test(#fmt["%.0u", 0u], "");
     test(#fmt["%.0x", 0u], "");
@@ -102,6 +106,7 @@ fn part3() {
     test(#fmt["%.0o", 10u], "12");
     test(#fmt["%.0t", 3u], "11");
     test(#fmt["%.0c", 'A'], "A");
+    test(#fmt["%.0f", 5.892], "5");
     test(#fmt["%.1d", 0], "0");
     test(#fmt["%.1u", 0u], "0");
     test(#fmt["%.1x", 0u], "0");
@@ -114,6 +119,7 @@ fn part3() {
     test(#fmt["%.1o", 10u], "12");
     test(#fmt["%.1t", 3u], "11");
     test(#fmt["%.1c", 'A'], "A");
+    test(#fmt["%.1f", 5.82], "5.8");
 }
 fn part4() {
     test(#fmt["%.5d", 0], "00000");
@@ -128,6 +134,7 @@ fn part4() {
     test(#fmt["%.5o", 10u], "00012");
     test(#fmt["%.5t", 3u], "00011");
     test(#fmt["%.5c", 'A'], "A");
+    test(#fmt["%.5f", 5.82], "5.82000");
     // Bool precision. I'm not sure if it's good or bad to have bool
     // conversions support precision - it's not standard printf so we
     // can do whatever. For now I'm making it behave the same as string
@@ -144,15 +151,19 @@ fn part5() {
     test(#fmt["%+d", 0], "+0");
     test(#fmt["%+d", 1], "+1");
     test(#fmt["%+d", -1], "-1");
+    test(#fmt["%+f", 0.0], "+0");
     // Leave space for sign
 
     test(#fmt["% d", 0], " 0");
     test(#fmt["% d", 1], " 1");
     test(#fmt["% d", -1], "-1");
+    test(#fmt["% f", 0.0], " 0");
     // Plus overrides space
 
     test(#fmt["% +d", 0], "+0");
     test(#fmt["%+ d", 0], "+0");
+    test(#fmt["% +f", 0.0], "+0");
+    test(#fmt["%+ f", 0.0], "+0");
     // 0-padding
 
     test(#fmt["%05d", 0], "00000");
@@ -163,6 +174,7 @@ fn part5() {
     test(#fmt["%05X", 127u], "0007F");
     test(#fmt["%05o", 10u], "00012");
     test(#fmt["%05t", 3u], "00011");
+    test(#fmt["%05f", 5.82], "05.82");
     // 0-padding a string is undefined but glibc does this:
 
     test(#fmt["%05s", "test"], " test");
@@ -181,6 +193,7 @@ fn part5() {
     test(#fmt["%-05s", "test"], "test ");
     test(#fmt["%-05c", 'A'], "A    ");
     test(#fmt["%-05b", true], "true ");
+    test(#fmt["%-05f", 5.82], "5.82 ");
 }
 fn part6() {
     // Precision overrides 0-padding
@@ -196,6 +209,7 @@ fn part6() {
     test(#fmt["%06.5x", 127u], " 0007f");
     test(#fmt["%06.5X", 127u], " 0007F");
     test(#fmt["%06.5o", 10u], " 00012");
+    test(#fmt["%08.5f", 5.82], " 5.82000");
     // Signed combinations
 
     test(#fmt["% 5d", 1], "    1");
