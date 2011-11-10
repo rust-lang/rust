@@ -32,7 +32,6 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
         let digit = frac as uint;
         accum += uint::str(digit);
         frac -= digit as float;
-        log frac;
         i -= 1u;
     }
     ret accum;
