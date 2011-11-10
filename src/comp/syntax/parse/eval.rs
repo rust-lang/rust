@@ -1,5 +1,5 @@
 
-import std::{str, option, result, io, fs};
+import std::{option, result, io, fs};
 import std::option::{some, none};
 import syntax::ast;
 import syntax::parse::token;

@@ -5,8 +5,8 @@ import std::option::*;
 import aux::*;
 import tstate::ann::{pre_and_post, precond, postcond, prestate, poststate,
                      relax_prestate, relax_precond, relax_poststate,
-                     pps_len, true_precond, empty_prestate,
-                     difference, union, intersect, clone,
+                     pps_len, true_precond,
+                     difference, union, clone,
                      set_in_postcond, set_in_poststate, set_in_poststate_,
                      clear_in_poststate, clear_in_prestate,
                      clear_in_poststate_};

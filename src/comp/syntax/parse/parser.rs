@@ -4,7 +4,6 @@ import std::option::{some, none};
 import std::either::{left, right};
 import std::map::{hashmap, new_str_hash};
 import token::can_begin_expr;
-import ex = ext::base;
 import codemap::span;
 import util::interner;
 import ast::{node_id, spanned};

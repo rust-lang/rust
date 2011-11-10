@@ -1,11 +1,9 @@
 
-import std::str;
 import driver::session;
 import middle::trans;
-import trans::decl_cdecl_fn;
-import middle::trans_common::{T_f32, T_f64, T_fn, T_bool, T_i1, T_i8, T_i32,
-                              T_i64, T_int, T_vec, T_nil, T_opaque_chan_ptr,
-                              T_opaque_vec, T_opaque_port_ptr, T_ptr,
+import middle::trans_common::{T_fn, T_i1, T_i8, T_i32,
+                              T_i64, T_int, T_nil,
+                              T_opaque_vec, T_ptr,
                               T_size_t, T_void, T_float};
 import lib::llvm::type_names;
 import lib::llvm::llvm::ModuleRef;

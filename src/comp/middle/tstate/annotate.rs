@@ -1,15 +1,11 @@
 
-import std::{int, uint, str, option};
-import std::option::{some, none};
+import std::{int, uint};
 import syntax::ast::*;
 import syntax::ast_util::pat_binding_ids;
 import syntax::visit;
 import syntax::codemap::span;
-import std::map::new_str_hash;
-import util::common::{log_expr_err, log_block_err, log_item_err,
-                      log_stmt_err, log_expr, log_block, log_stmt};
-import aux::{fn_info, fn_info_map, num_constraints, get_fn_info,
-             crate_ctxt, add_node};
+import util::common::{log_stmt};
+import aux::{num_constraints, get_fn_info, crate_ctxt, add_node};
 import middle::tstate::ann::empty_ann;
 
 fn collect_ids_expr(e: @expr, rs: @mutable [node_id]) { *rs += [e.id]; }

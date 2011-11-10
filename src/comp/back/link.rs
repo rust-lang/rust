@@ -7,23 +7,18 @@ import metadata::{encoder, cstore};
 import middle::trans_common::crate_ctxt;
 import std::str;
 import std::fs;
-import std::os;
 import std::vec;
 import std::option;
 import std::run;
 import option::some;
 import option::none;
 import std::sha1::sha1;
-import std::sort;
 import syntax::ast;
 import syntax::print::pprust;
 import lib::llvm::llvm::ModuleRef;
-import lib::llvm::llvm::ValueRef;
 import lib::llvm::mk_pass_manager;
 import lib::llvm::mk_target_data;
-import lib::llvm::mk_type_names;
 import lib::llvm::False;
-import lib::llvm::True;
 import util::filesearch;
 
 tag output_type {

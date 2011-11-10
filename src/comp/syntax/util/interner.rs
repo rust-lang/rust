@@ -1,7 +1,7 @@
 // An "interner" is a data structure that associates values with uint tags and
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
-import std::{vec, map, option};
+import std::{vec, map};
 import std::map::{hashmap, hashfn, eqfn};
 import std::option::{none, some};
 

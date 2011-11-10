@@ -85,7 +85,7 @@
 */
 
 import syntax::{ast, ast_util, visit, codemap};
-import std::{vec, option, str};
+import std::{vec, option};
 import ast::{kind, kind_unique, kind_shared, kind_pinned};
 
 fn kind_lteq(a: kind, b: kind) -> bool {

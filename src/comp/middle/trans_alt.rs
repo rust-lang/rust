@@ -1,12 +1,10 @@
-import std::{str, vec, option, int};
+import std::{str, vec, option};
 import option::{some, none};
-import std::map::hashmap;
 
 import lib::llvm::llvm;
-import lib::llvm::llvm::{ValueRef, TypeRef, BasicBlockRef};
+import lib::llvm::llvm::{ValueRef, BasicBlockRef};
 import trans_build::*;
 import trans::{new_sub_block_ctxt, new_scope_block_ctxt, load_if_immediate};
-import ty::pat_ty;
 import syntax::ast;
 import syntax::ast_util;
 import syntax::ast_util::dummy_sp;

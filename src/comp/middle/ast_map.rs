@@ -2,7 +2,6 @@ import std::{smallintmap, option};
 import syntax::ast::*;
 import syntax::ast_util;
 import syntax::{visit, codemap};
-import visit::vt;
 
 tag ast_node {
     node_item(@item);

@@ -1,10 +1,8 @@
 import std::{vec, str, option};
 import std::str::sbuf;
 
-import llvm::{ModuleRef, ContextRef, TypeRef, TypeHandleRef, ValueRef,
-              BasicBlockRef, BuilderRef, ModuleProviderRef, MemoryBufferRef,
-              PassManagerRef, UseRef, TargetDataRef, Linkage, Attribute,
-              Visibility, CallConv, IntPredicate, RealPredicate, Opcode,
+import llvm::{TypeRef, MemoryBufferRef,
+              PassManagerRef, TargetDataRef,
               ObjectFileRef, SectionIteratorRef};
 
 type ULongLong = u64;

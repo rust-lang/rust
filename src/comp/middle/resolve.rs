@@ -2,17 +2,16 @@
 import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
-import syntax::ast_util::{local_def, respan};
+import syntax::ast_util::local_def;
 
 import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;
 import std::map::{new_int_hash, new_str_hash};
 import syntax::codemap::span;
-import middle::ty::constr_table;
 import syntax::visit;
 import visit::vt;
-import std::{vec, int, list, option, str};
+import std::{vec, list, option, str};
 import std::map::hashmap;
 import std::list::{list, nil, cons};
 import std::option::{some, none, is_none};

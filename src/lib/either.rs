@@ -4,8 +4,6 @@ Module: either
 A type that represents one of two alternatives
 */
 
-import option;
-import option::{some, none};
 
 /*
 Tag: t

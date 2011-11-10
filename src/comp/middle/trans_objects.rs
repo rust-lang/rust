@@ -3,7 +3,7 @@
 import std::{str, option, vec};
 import option::{none, some};
 
-import lib::llvm::{llvm, Bool, True};
+import lib::llvm::{llvm, True};
 import lib::llvm::llvm::{TypeRef, ValueRef};
 
 import back::abi;

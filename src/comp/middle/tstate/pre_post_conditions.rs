@@ -1,20 +1,18 @@
 
-import std::{vec, str, option};
+import std::{vec, option};
 import std::option::{none, some};
 
 import tstate::ann::*;
 import aux::*;
-import bitvectors::{bit_num, promises, seq_preconds, seq_postconds,
-                    intersect_states, declare_var, gen_poststate,
+import bitvectors::{bit_num, seq_preconds, seq_postconds,
+                    intersect_states,
                     relax_precond_block, gen};
 import tritv::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::visit;
-import std::map::new_int_hash;
-import util::common::{new_def_hash, log_expr, log_fn, field_exprs,
-                      has_nonlocal_exits, log_stmt, log_stmt_err,
-                      log_expr_err, log_block_err, log_block};
+import util::common::{new_def_hash, log_expr, field_exprs,
+                      has_nonlocal_exits, log_stmt};
 import syntax::codemap::span;
 import util::ppaux::fn_ident_to_string;
 

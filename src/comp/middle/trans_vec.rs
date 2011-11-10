@@ -4,11 +4,10 @@ import syntax::ast;
 import lib::llvm::llvm::{ValueRef, TypeRef};
 import back::abi;
 import trans::{call_memmove, trans_shared_malloc, llsize_of, type_of_or_i8,
-               INIT, copy_val, load_if_immediate, alloca, size_of,
-               llderivedtydescs_block_ctxt, lazily_emit_tydesc_glue,
-               get_tydesc, load_inbounds,
+               INIT, copy_val, load_if_immediate, size_of,
+               get_tydesc,
                node_id_type, new_sub_block_ctxt, tps_normal, do_spill_noroot,
-               alloc_ty, dest};
+               dest};
 import trans_build::*;
 import trans_common::*;
 
