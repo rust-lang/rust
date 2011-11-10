@@ -3851,23 +3851,31 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     check type_has_static_size(ccx, ret_ty);
     let llretty = type_of(ccx, f.span, ret_ty);
 
-    // Allocate the argument bundle.
-    let llargbundlety = T_struct(llargtys + [llretty]);
-    let llargbundlesz = llsize_of(ccx, llargbundlety);
-    let llrawargbundle = Call(bcx, ccx.upcalls.alloc_c_stack,
-                              [llargbundlesz]);
-    let llargbundle = PointerCast(bcx, llrawargbundle, T_ptr(llargbundlety));
-
-    // Translate arguments and store into bundle.
+    // Translate arguments.
+    // n.b.: We must do this before allocating the argument
+    // bundle in order to avoid problems with nested function calls.
     let (to_zero, to_revoke) = ([], []);
     let i = 0u, n = vec::len(args);
+    let llargs = [];
     while i < n {
         let ty_arg = fn_arg_tys[i];
         let arg = args[i];
         let llargty = llargtys[i];
         let r = trans_arg_expr(bcx, ty_arg, llargty, to_zero, to_revoke, arg);
         bcx = r.bcx;
-        store_inbounds(bcx, r.val, llargbundle, [0, i as int]);
+        llargs += [r.val];
+        i += 1u;
+    }
+
+    // Allocate the argument bundle and store arguments.
+    let llargbundlety = T_struct(llargtys + [llretty]);
+    let llargbundlesz = llsize_of(ccx, llargbundlety);
+    let llrawargbundle = Call(bcx, ccx.upcalls.alloc_c_stack,
+                              [llargbundlesz]);
+    let llargbundle = PointerCast(bcx, llrawargbundle, T_ptr(llargbundlety));
+    i = 0u;
+    while i < n {
+        store_inbounds(bcx, llargs[i], llargbundle, [0, i as int]);
         i += 1u;
     }
 

@@ -253,6 +253,7 @@ opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt clang 0 "prefer gcc to clang for building the runtime"
+opt debug-llvm "build LLVM in debug mode"
 valopt prefix "/usr/local" "set installation prefix"
 valopt llvm-root "" "set LLVM root"
 valopt target-triples "" "LLVM target triples (defaults to host if unset)"
@@ -433,15 +434,22 @@ do
 	step_msg "configuring LLVM for $t"
 
 	LLVM_BUILD_DIR=$CFG_BUILD_DIR/llvm/$t
-        # Just use LLVM straight from its build directory to
-        # avoid 'make install' time
-	LLVM_INST_DIR=$LLVM_BUILD_DIR/Release+Asserts
 
 	LLVM_TARGETS="--enable-targets=x86,x86_64"
 	LLVM_BUILD="--build=$t"
 	LLVM_HOST="--host=$t"
 	LLVM_TARGET="--target=$t"
-	LLVM_OPTS="--enable-optimized --disable-docs"
+    if [ -z "$CFG_ENABLE_DEBUG_LLVM" ]
+    then
+        LLVM_DBG_OPTS=""
+        # Just use LLVM straight from its build directory to
+        # avoid 'make install' time
+	    LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug+Asserts
+    else
+        LLVM_DBG_OPTS="--enabled-optimized"
+	    LLVM_INST_DIR=$LLVM_BUILD_DIR/Release+Asserts
+    fi
+	LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs"
 
 	LLVM_CXX_32="g++ -m32"
 	LLVM_CC_32="gcc -m32"
