@@ -43,7 +43,7 @@ type DWORD = u32;
 type HMODULE = uint;
 type LPTSTR = str::sbuf;
 
-native "c-stack-stdcall" mod kernel32 {
+native "stdcall" mod kernel32 {
     fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: uint) ->
        uint;
     fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
