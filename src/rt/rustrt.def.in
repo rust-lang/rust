@@ -30,7 +30,6 @@ last_os_error
 leak
 migrate_alloc
 nano_time
-new_chan
 new_port
 new_task
 pin_task

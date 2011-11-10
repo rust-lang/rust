@@ -484,18 +484,6 @@ get_port_id(rust_port *port) {
     return port->id;
 }
 
-extern "C" CDECL rust_chan*
-new_chan(rust_port *port) {
-    rust_task *task = rust_scheduler::get_task();
-    rust_scheduler *sched = task->sched;
-    LOG(task, comm, "new_chan("
-        "task=0x%" PRIxPTR " (%s), port=0x%" PRIxPTR ")",
-        (uintptr_t) task, task->name, port);
-    I(sched, port);
-    return new (task->kernel, "rust_chan")
-        rust_chan(task->kernel, port, port->unit_sz);
-}
-
 extern "C" CDECL
 void del_chan(rust_chan *chan) {
     rust_task *task = rust_scheduler::get_task();

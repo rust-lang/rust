@@ -1,8 +1,7 @@
 #include "rust_internal.h"
 #include "rust_port.h"
+#include "rust_chan.h"
 
-extern "C" CDECL rust_chan*
-new_chan(rust_port *port);
 
 rust_port::rust_port(rust_task *task, size_t unit_sz)
     : ref_count(1), kernel(task->kernel), task(task),
@@ -13,7 +12,8 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
         PRIxPTR, (uintptr_t)task, unit_sz, (uintptr_t)this);
 
     id = task->register_port(this);
-    remote_chan = new_chan(this);
+    remote_chan = new (task->kernel, "rust_chan")
+        rust_chan(task->kernel, this, unit_sz);
 }
 
 rust_port::~rust_port() {
