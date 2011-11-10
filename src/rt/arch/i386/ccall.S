@@ -37,9 +37,10 @@ upcall_call_c_stack_shim:
 #endif
     pushl %ebp
     movl %esp,%ebp          // save esp
-    movl 8(%esp),%eax       // eax = callee
-    movl 12(%esp),%esp      // switch stack
-    pushl %esp              // push ptr to new arguments
+    movl 8(%ebp),%eax       // eax = callee
+    movl 12(%ebp),%esp      // switch stack
+    subl $12,%esp           // maintain 16-byte alignment
+    pushl 12(%ebp)          // push ptr to argument block
     calll *%eax
     movl %ebp,%esp          // would like to use "leave" but it's slower
     popl %ebp
