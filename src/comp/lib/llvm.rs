@@ -256,6 +256,7 @@ native mod llvm {
 
     /* Operations on Users */
     fn LLVMGetOperand(Val: ValueRef, Index: uint) -> ValueRef;
+    fn LLVMSetOperand(Val: ValueRef, Index: uint, Op: ValueRef);
 
     /* Operations on constants of any type */
     fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
@@ -275,6 +276,8 @@ native mod llvm {
     fn LLVMMDNodeInContext(C: ContextRef, Vals: *ValueRef, Count: uint) ->
        ValueRef;
     fn LLVMMDNode(Vals: *ValueRef, Count: uint) -> ValueRef;
+    fn LLVMAddNamedMetadataOperand(M: ModuleRef, Str: sbuf, SLen: uint,
+                                   Val: ValueRef);
 
     /* Operations on scalar constants */
     fn LLVMConstInt(IntTy: TypeRef, N: ULongLong, SignExtend: Bool) ->

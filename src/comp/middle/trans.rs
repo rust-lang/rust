@@ -20,7 +20,7 @@ import std::map::{new_int_hash, new_str_hash};
 import option::{some, none};
 import driver::session;
 import front::attr;
-import middle::{ty, gc, resolve};
+import middle::{ty, gc, resolve, debuginfo};
 import middle::freevars::*;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util};
@@ -4543,6 +4543,12 @@ fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     let do_time = cx.ccx.sess.get_opts().stats;
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
     trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|_fcx|});
+    if cx.ccx.sess.get_opts().debuginfo {
+        let item = alt option::get(cx.ccx.ast_map.find(id)) {
+            ast_map::node_item(item) { item }
+        };
+        debuginfo::get_function_metadata(cx.ccx, item, llfndecl);
+    }
     if do_time {
         let end = time::get_time();
         log_fn_time(cx.ccx, str::connect(cx.path, "::"), start, end);
@@ -5659,7 +5665,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: shape::mk_ctxt(llmod),
           gc_cx: gc::mk_ctxt(),
-          crate_map: crate_map};
+          crate_map: crate_map,
+          llmetadata: map::new_int_hash()};
     let cx = new_local_ctxt(ccx);
     collect_items(ccx, crate);
     collect_tag_ctors(ccx, crate);

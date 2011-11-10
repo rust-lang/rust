@@ -116,7 +116,8 @@ type crate_ctxt =
      builder: BuilderRef_res,
      shape_cx: shape::ctxt,
      gc_cx: gc::ctxt,
-     crate_map: ValueRef};
+     crate_map: ValueRef,
+     llmetadata: debuginfo::metadata_cache};
 
 type local_ctxt =
     {path: [str],

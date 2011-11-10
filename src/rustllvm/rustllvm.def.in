@@ -487,6 +487,7 @@ LLVMMDNode
 LLVMMDNodeInContext
 LLVMMDString
 LLVMMDStringInContext
+LLVMAddNamedMetadataOperand
 LLVMModuleCreateWithName
 LLVMModuleCreateWithNameInContext
 LLVMMoveBasicBlockAfter
