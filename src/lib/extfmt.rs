@@ -49,6 +49,7 @@ mod ct {
         ty_bits;
         ty_hex(caseness);
         ty_octal;
+        ty_float;
         // FIXME: More types
     }
     tag flag {
@@ -246,6 +247,8 @@ mod ct {
                 ty_bits
             } else if str::eq(tstr, "o") {
                 ty_octal
+            } else if str::eq(tstr, "f") {
+                ty_float
             } else { error("unknown type in conversion: " + tstr) };
         ret {ty: t, next: i + 1u};
     }
@@ -327,6 +330,21 @@ mod rt {
               }
             };
         ret pad(cv, unpadded, pad_nozero);
+    }
+    fn conv_float(cv: conv, f: float) -> str {
+        let (to_str, digits) = alt cv.precision {
+              count_is(c) { (float::to_str_exact, c as uint) }
+              count_implied. { (float::to_str, 6u) }
+        };
+        let s = to_str(f, digits);
+        if 0.0 <= f {
+            if have_flag(cv.flags, flag_sign_always) {
+                s = "+" + s;
+            } else if have_flag(cv.flags, flag_space_for_sign) {
+                s = " " + s;
+            }
+        }
+        ret pad(cv, s, pad_signed);
     }
 
     // Convert an int to string with minimum number of digits. If precision is

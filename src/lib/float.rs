@@ -7,16 +7,17 @@ Module: float
  */
 
 /*
-Function: to_str
+Function: to_str_common
 
 Converts a float to a string
 
 Parameters:
 
 num - The float value
-digits: The number of significant digits
+digits - The number of significant digits
+exact - Whether to enforce the exact number of significant digits
 */
-fn to_str(num: float, digits: uint) -> str {
+fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     let (num, accum) = num < 0.0 ? (-num, "-") : (num, "");
     let trunc = num as uint;
     let frac = num - (trunc as float);
@@ -24,14 +25,46 @@ fn to_str(num: float, digits: uint) -> str {
     if frac == 0.0 || digits == 0u { ret accum; }
     accum += ".";
     let i = digits;
-    while i > 0u && frac > 0.0 {
+    let epsilon = 1. / pow_uint_to_uint_as_float(10u, i);
+    while i > 0u && (frac >= epsilon || exact) {
         frac *= 10.0;
+        epsilon *= 10.0;
         let digit = frac as uint;
         accum += uint::str(digit);
         frac -= digit as float;
         i -= 1u;
     }
     ret accum;
+
+}
+
+/*
+Function: to_str
+
+Converts a float to a string with exactly the number of provided significant
+digits
+
+Parameters:
+
+num - The float value
+digits - The number of significant digits
+*/
+fn to_str_exact(num: float, digits: uint) -> str {
+    to_str_common(num, digits, true)
+}
+
+/*
+Function: to_str
+
+Converts a float to a string with a maximum number of significant digits
+
+Parameters:
+
+num - The float value
+digits - The number of significant digits
+*/
+fn to_str(num: float, digits: uint) -> str {
+    to_str_common(num, digits, false)
 }
 
 /*
