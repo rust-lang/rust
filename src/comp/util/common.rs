@@ -275,8 +275,6 @@ fn is_main_name(path: [ast::ident]) -> bool {
     str::eq(option::get(std::vec::last(path)), "main")
 }
 
-
-
 //
 // Local Variables:
 // mode: rust
