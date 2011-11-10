@@ -1,23 +1,20 @@
 import syntax::{ast, ast_util};
-import ast::{mutability, spanned};
+import ast::spanned;
 import syntax::ast_util::{local_def, respan, ty_param_kind};
 import syntax::visit;
 import metadata::csearch;
 import driver::session;
-import util::common;
 import util::common::*;
 import syntax::codemap::span;
 import middle::ty;
 import middle::ty::{node_id_to_type, arg, bind_params_in_type, block_ty,
-                    expr_ty, field, method, node_type_table, pat_ty,
-                    ty_param_substs_opt_and_ty, ty_param_kinds_and_ty,
-                    ty_nil};
+                    expr_ty, field, node_type_table,
+                    ty_param_substs_opt_and_ty, ty_param_kinds_and_ty};
 import util::ppaux::ty_to_str;
-import middle::ty::unify::{ures_ok, ures_err, fixup_result, fix_ok, fix_err};
-import std::{int, vec, str, uint, map, option, smallintmap};
-import std::map::{hashmap, new_int_hash, new_str_hash};
-import std::option::{none, some, from_maybe};
-import middle::tstate::ann::ts_ann;
+import middle::ty::unify::{ures_ok, ures_err, fix_ok, fix_err};
+import std::{int, vec, str, option, smallintmap};
+import std::map::{hashmap, new_int_hash};
+import std::option::{none, some};
 import syntax::print::pprust::*;
 
 export check_crate;

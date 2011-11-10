@@ -1,6 +1,5 @@
 
-import std::{io, int, vec, str, map, option};
-import std::map::hashmap;
+import std::{io, vec, str, option};
 import std::option::{some, none};
 import util::interner;
 import util::interner::intern;

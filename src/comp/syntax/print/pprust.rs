@@ -2,11 +2,10 @@
 import std::{vec, int, io, str, uint, option};
 import parse::lexer;
 import syntax::codemap::codemap;
-import syntax::visit;
 import ast;
 import ast_util;
 import option::{some, none};
-import pp::{printer, break_offset, word, huge_word, zero_word,
+import pp::{break_offset, word,
             space, zerobreak, hardbreak, breaks, consistent,
             inconsistent, eof};
 

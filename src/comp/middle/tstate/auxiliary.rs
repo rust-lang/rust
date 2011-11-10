@@ -1,26 +1,23 @@
-import std::{vec, int, uint, str, option};
+import std::{vec, int, uint, option};
 import std::option::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::codemap::span;
 import syntax::visit;
-import util::common;
-import util::common::log_block;
-import std::map::{new_int_hash, new_uint_hash};
-import util::common::{log_expr_err, lit_eq};
+import std::map::{new_int_hash};
+import util::common::{lit_eq};
 import syntax::print::pprust::path_to_str;
 import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
-                     poststate, precond, postcond, empty_states, pps_len,
+                     poststate, precond, postcond,
                      set_prestate, set_poststate, set_in_poststate_,
                      extend_prestate, extend_poststate, set_precondition,
-                     set_postcondition, set_in_postcond_, ts_ann,
+                     set_postcondition, ts_ann,
                      clear_in_postcond,
-                     clear_in_poststate, clear_in_poststate_};
+                     clear_in_poststate_};
 import tritv::*;
 import bitvectors::promises_;
 
-import syntax::print::pprust::{constr_args_to_str, constr_arg_to_str,
-                               lit_to_str};
+import syntax::print::pprust::{constr_args_to_str, lit_to_str};
 
 // Used to communicate which operands should be invalidated
 // to helper functions

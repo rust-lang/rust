@@ -28,8 +28,6 @@ Example:
 */
 
 import sys;
-import ptr;
-import unsafe;
 import task;
 
 export send;

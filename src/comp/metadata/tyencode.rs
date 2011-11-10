@@ -1,12 +1,11 @@
 // Type encoding
 
-import std::{str, io, int, uint};
+import std::{io, int, uint};
 import std::map::hashmap;
 import std::option::{some, none};
 import syntax::ast::*;
 import middle::ty;
 import syntax::print::pprust::*;
-import util::common;
 
 export ctxt;
 export ty_abbrev;

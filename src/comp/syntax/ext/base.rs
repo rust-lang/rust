@@ -1,4 +1,4 @@
-import std::{str, vec, option};
+import std::{vec, option};
 import std::map::hashmap;
 import driver::session::session;
 import codemap::span;

@@ -1,10 +1,10 @@
 
 import syntax::{ast, ast_util};
-import ast::{ident, fn_ident, node_id, def_id};
+import ast::{ident, fn_ident, node_id};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
-import std::{vec, str, option};
+import std::{vec, option};
 import std::option::{some, none, is_none};
 
 // This is not an alias-analyser (though it would merit from becoming one, or

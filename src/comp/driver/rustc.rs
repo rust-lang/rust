@@ -2,20 +2,16 @@
 
 // -*- rust -*-
 import metadata::{creader, cstore};
-import syntax::parse::{parser, token};
+import syntax::parse::{parser};
 import syntax::{ast, codemap};
 import front::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage};
-import middle::tstate::ck;
 import syntax::print::{pp, pprust};
-import util::{ppaux, common, filesearch};
+import util::{ppaux, filesearch};
 import back::link;
-import lib::llvm;
-import std::{fs, option, str, vec, int, io, run, getopts, result};
-import std::map::mk_hashmap;
+import std::{option, str, vec, int, io, getopts, result};
 import std::option::{some, none};
 import std::getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
-import back::link::output_type;
 import back::{x86, x86_64};
 
 tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }

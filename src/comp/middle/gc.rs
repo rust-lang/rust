@@ -1,13 +1,13 @@
 // Routines useful for garbage collection.
 
-import lib::llvm::{True, False};
+import lib::llvm::True;
 import lib::llvm::llvm::ValueRef;
 import middle::trans;
 import middle::trans::{get_tydesc, tps_normal};
 import middle::trans_common::*;
 import middle::ty;
-import std::option::{some, none};
-import std::{ptr, str, unsafe, vec};
+import std::option::none;
+import std::str;
 
 import lll = lib::llvm::llvm;
 import bld = trans_build;

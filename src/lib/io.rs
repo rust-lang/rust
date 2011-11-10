@@ -1,4 +1,3 @@
-import os::libc;
 
 native "cdecl" mod rustrt {
     fn rust_get_stdin() -> os::libc::FILE;

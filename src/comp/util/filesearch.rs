@@ -5,9 +5,7 @@
 import std::option;
 import std::fs;
 import std::vec;
-import std::str;
 import std::os;
-import back::link;
 
 export filesearch;
 export mk_filesearch;

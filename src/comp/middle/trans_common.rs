@@ -3,34 +3,20 @@
 
 */
 
-import std::{int, vec, str, uint, map, option, fs, unsafe};
+import std::{int, vec, str, uint, option, unsafe};
 import std::vec::to_ptr;
 import std::map::hashmap;
-import std::option::{some, none};
+import std::option::some;
 import syntax::ast;
 import driver::session;
 import middle::ty;
-import back::{link, x86, abi, upcall};
-import syntax::visit;
-import visit::vt;
-import util::common;
+import back::{link, abi, upcall};
 import util::common::*;
-import std::map::{new_int_hash, new_str_hash};
 import syntax::codemap::span;
-import lib::llvm::{llvm, target_data, type_names,
-                   mk_target_data, mk_type_names};
-import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, TypeHandleRef,
-                         BuilderRef, BasicBlockRef};
+import lib::llvm::{llvm, target_data, type_names};
+import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
 import lib::llvm::{True, False, Bool};
-import link::{mangle_internal_name_by_type_only,
-              mangle_internal_name_by_seq,
-              mangle_internal_name_by_path,
-              mangle_internal_name_by_path_and_seq,
-              mangle_exported_name};
-import metadata::{creader, csearch, cstore};
-import util::ppaux::{ty_to_str, ty_to_short_str};
-import syntax::print::pprust::{expr_to_str, path_to_str};
-import bld = trans_build;
+import metadata::{csearch};
 
 // FIXME: These should probably be pulled in here too.
 import trans::{type_of_fn, drop_ty};

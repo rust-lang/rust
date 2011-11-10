@@ -1,16 +1,12 @@
-import std::{str, map, uint, int, option};
+import std::{str, option};
 import std::math::{max, min};
 import std::map::hashmap;
-import std::option::{none, some};
+import std::option::{some};
 import syntax::ast;
-import ast::{ty, pat, lit, path};
-import syntax::codemap::{codemap, span};
+import ast::{ty, pat};
+import syntax::codemap::{span};
 import syntax::visit;
-import std::io::{stdout, str_writer, string_writer};
 import syntax::print;
-import print::pprust::{print_block, print_item, print_expr, print_path,
-                       print_decl, print_fn, print_type, print_literal};
-import print::pp::mk_printer;
 
 type flag = hashmap<str, ()>;
 
