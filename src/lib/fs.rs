@@ -127,7 +127,7 @@ fn make_dir(p: path, mode: int) -> bool {
     #[cfg(target_os = "win32")]
     fn mkdir(_p: path, _mode: int) -> bool {
         // FIXME: turn mode into something useful?
-        let noctx = ptr::null<os::kernel32::LPSECURITY_ATTRIBUTES>();
+        let noctx = ptr::null();
         ret str::as_buf(_p, {|buf|
             os::kernel32::CreateDirectory(buf, noctx)
         });
