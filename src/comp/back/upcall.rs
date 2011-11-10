@@ -26,9 +26,7 @@ type upcalls =
      dynastack_alloc: ValueRef,
      dynastack_free: ValueRef,
      alloc_c_stack: ValueRef,
-     call_c_stack: ValueRef,
-     call_c_stack_i64: ValueRef,
-     call_c_stack_float: ValueRef,
+     call_c_stack_shim: ValueRef,
      rust_personality: ValueRef};
 
 fn declare_upcalls(targ_cfg: @session::config,
@@ -46,7 +44,6 @@ fn declare_upcalls(targ_cfg: @session::config,
     let dv = bind decl(llmod, _, _, T_void());
 
     let int_t = T_int(targ_cfg);
-    let float_t = T_float(targ_cfg);
     let size_t = T_size_t(targ_cfg);
     let opaque_vec_t = T_opaque_vec(targ_cfg);
 
@@ -88,15 +85,11 @@ fn declare_upcalls(targ_cfg: @session::config,
                 T_ptr(T_i8())),
           dynastack_free: dv("dynastack_free", [T_ptr(T_i8())]),
           alloc_c_stack: d("alloc_c_stack", [size_t], T_ptr(T_i8())),
-          call_c_stack: d("call_c_stack",
-                              [T_ptr(T_fn([], int_t)), T_ptr(T_i8())],
-                              int_t),
-          call_c_stack_i64: d("call_c_stack_i64",
-                              [T_ptr(T_fn([], int_t)), T_ptr(T_i8())],
-                              T_i64()),
-          call_c_stack_float: d("call_c_stack_float",
-                                [T_ptr(T_fn([], int_t)), T_ptr(T_i8())],
-                                float_t),
+          call_c_stack_shim: d("call_c_stack_shim",
+                          // first arg is func ptr, but type of func varies,
+                          // so just call it char* for LLVM
+                          [T_ptr(T_i8()), T_ptr(T_i8())],
+                          int_t),
           rust_personality: d("rust_personality", [], T_i32())
          };
 }
