@@ -10,7 +10,6 @@ aio_stop
 aio_writedata
 align_of
 chan_id_send
-chan_send
 check_claims
 debug_box
 debug_fn
