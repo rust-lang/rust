@@ -6,7 +6,6 @@ Some miscellaneous platform functions.
 These should be rolled into another module.
 */
 
-import str::sbuf;
 
 // Wow, this is an ugly way to write doc comments
 

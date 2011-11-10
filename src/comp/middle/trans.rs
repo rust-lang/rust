@@ -12,32 +12,29 @@
 //     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
-import std::{int, str, uint, map, option, fs, time, vec};
+import std::{str, uint, map, option, time, vec};
 import std::map::hashmap;
 import std::map::{new_int_hash, new_str_hash};
 import std::option::{some, none};
 import driver::session;
 import middle::{ty, gc};
 import middle::freevars::*;
-import back::{link, x86, abi, upcall};
+import back::{link, abi, upcall};
 import syntax::{ast, ast_util};
 import syntax::visit;
 import syntax::codemap::span;
-import syntax::print::pprust::{expr_to_str, path_to_str};
+import syntax::print::pprust::{expr_to_str};
 import visit::vt;
-import util::common;
 import util::common::*;
-import lib::llvm::{llvm, target_data, type_names,
-                   mk_target_data, mk_type_names};
-import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, TypeHandleRef,
-                         BuilderRef, BasicBlockRef};
-import lib::llvm::{Bool, True, False};
+import lib::llvm::{llvm, mk_target_data, mk_type_names};
+import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
+import lib::llvm::{True, False};
 import link::{mangle_internal_name_by_type_only,
               mangle_internal_name_by_seq,
               mangle_internal_name_by_path,
               mangle_internal_name_by_path_and_seq,
               mangle_exported_name};
-import metadata::{creader, csearch, cstore};
+import metadata::{csearch, cstore};
 import util::ppaux::{ty_to_str, ty_to_short_str};
 
 import trans_common::*;

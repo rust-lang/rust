@@ -3,7 +3,7 @@ import syntax::{ast, codemap};
 import syntax::ast::node_id;
 import codemap::span;
 import syntax::ast::ty_mach;
-import std::{uint, map, option, str};
+import std::{option};
 import std::option::{some, none};
 import syntax::parse::parser::parse_sess;
 import util::filesearch;

@@ -1,11 +1,10 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
-import std::{map, option, int, str};
+import std::{int};
 import std::map::*;
 import std::option::*;
 import syntax::{ast, ast_util, visit};
-import driver::session;
 import middle::resolve;
 import syntax::codemap::span;
 

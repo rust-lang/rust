@@ -3,8 +3,8 @@ import std::str::sbuf;
 import lib::llvm::llvm;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, Opcode,
               ModuleRef};
-import trans_common::{block_ctxt, T_ptr, T_nil, T_int, T_i8, T_i1,
-                      val_ty, val_str, bcx_ccx, C_i32};
+import trans_common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1,
+                      val_ty, C_i32};
 
 fn B(cx: @block_ctxt) -> BuilderRef {
     let b = *cx.fcx.lcx.ccx.builder;

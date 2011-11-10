@@ -6,7 +6,7 @@
  * compiler syntax extension plugin interface.
  */
 import std::{vec, str, option};
-import std::option::{none, some};
+import std::option::{some};
 import std::extfmt::ct::*;
 import base::*;
 import codemap::span;

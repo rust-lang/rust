@@ -1,6 +1,3 @@
-import lib::llvm::llvm;
-import lib::llvm::llvm::ModuleRef;
-import std::str;
 import driver::session;
 
 fn get_target_strs(target_os: session::os) -> target_strs::t {
