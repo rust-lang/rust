@@ -55,7 +55,7 @@ native "rust-intrinsic" mod rusti {
     fn task_sleep(time_in_us: uint);
 }
 
-native "c-stack-cdecl" mod rustrt = "rustrt" {
+native "cdecl" mod rustrt = "rustrt" {
     // these can run on the C stack:
     fn pin_task();
     fn unpin_task();

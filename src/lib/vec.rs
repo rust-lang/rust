@@ -10,7 +10,7 @@ native "rust-intrinsic" mod rusti {
     fn vec_len<T>(&&v: [mutable? T]) -> uint;
 }
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn vec_reserve_shared<T>(t: *sys::type_desc,
                              &v: [mutable? T],
                              n: uint);

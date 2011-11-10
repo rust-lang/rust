@@ -4,7 +4,7 @@ Module: time
 
 // FIXME: Document what these functions do
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn get_time(&sec: u32, &usec: u32);
     fn nano_time(&ns: u64);
 }

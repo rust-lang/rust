@@ -8,7 +8,7 @@
  * logging.
  */
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn debug_tydesc(td: *sys::type_desc);
     fn debug_opaque<T>(td: *sys::type_desc, x: T);
     fn debug_box<T>(td: *sys::type_desc, x: @T);

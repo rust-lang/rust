@@ -8,7 +8,7 @@ native "rust-intrinsic" mod rusti {
     fn cast<T, U>(src: T) -> U;
 }
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn leak<T>(-thing: T);
 }
 

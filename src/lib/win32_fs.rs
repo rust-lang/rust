@@ -1,6 +1,6 @@
 
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn rust_list_files(path: str) -> [str];
 }
 

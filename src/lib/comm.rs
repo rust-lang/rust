@@ -37,7 +37,7 @@ export recv;
 export chan;
 export port;
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     type void;
     type rust_port;
 

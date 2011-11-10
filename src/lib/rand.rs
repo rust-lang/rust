@@ -3,7 +3,7 @@ Module: rand
 
 Random number generation
 */
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     type rctx;
     fn rand_new() -> rctx;
     fn rand_next(c: rctx) -> u32;

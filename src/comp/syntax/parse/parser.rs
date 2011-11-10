@@ -2008,8 +2008,6 @@ fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
         let t = parse_str(p);
         if str::eq(t, "rust-intrinsic") {
             abi = ast::native_abi_rust_intrinsic;
-        } else if str::eq(t, "c-stack-cdecl") {
-            abi = ast::native_abi_cdecl;
         } else if str::eq(t, "cdecl") {
             abi = ast::native_abi_cdecl;
         } else if str::eq(t, "c-stack-stdcall") {

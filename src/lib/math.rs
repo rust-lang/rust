@@ -1,6 +1,6 @@
 /* Module: math */
 
-native "c-stack-cdecl" mod libc = "" {
+native "cdecl" mod libc = "" {
     fn sqrt(n: float) -> float;
     fn sin(n: float) -> float;
     fn asin(n: float) -> float;

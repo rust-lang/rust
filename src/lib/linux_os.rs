@@ -6,7 +6,7 @@ TODO: Restructure and document
 
 // FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
 // by https://github.com/graydon/rust/issues#issue/268
-native "c-stack-cdecl" mod libc = "" {
+native "cdecl" mod libc = "" {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
@@ -86,7 +86,7 @@ fn waitpid(pid: int) -> int {
     ret status;
 }
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn rust_getcwd() -> str;
 }
 

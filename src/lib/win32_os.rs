@@ -1,5 +1,5 @@
 
-native "c-stack-cdecl" mod libc = "" {
+native "cdecl" mod libc = "" {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
@@ -87,7 +87,7 @@ fn fclose(file: libc::FILE) {
     libc::fclose(file)
 }
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     fn rust_process_wait(handle: int) -> int;
     fn rust_getcwd() -> str;
 }

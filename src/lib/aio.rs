@@ -5,7 +5,7 @@ import comm;
 import comm::{chan, port, send, recv};
 import net;
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     type socket;
     type server;
     fn aio_init();

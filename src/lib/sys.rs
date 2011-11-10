@@ -7,7 +7,7 @@ tag type_desc {
     type_desc(@type_desc);
 }
 
-native "c-stack-cdecl" mod rustrt {
+native "cdecl" mod rustrt {
     // Explicitly re-export native stuff we want to be made
     // available outside this crate. Otherwise it's
     // visible-in-crate, but not re-exported.
