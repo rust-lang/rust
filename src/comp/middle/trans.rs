@@ -3876,6 +3876,7 @@ fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
     let llfnptr = PointerCast(bcx, llfn, T_ptr(T_i8()));
     Call(bcx, upcall_fn, [llfnptr, llrawargbundle]);
     let llres = load_inbounds(bcx, llargbundle, [0, n as int]);
+    bcx = zero_and_revoke(bcx, to_zero, to_revoke);
     ret store_in_dest(bcx, llres, dest);
 }
 
