@@ -44,7 +44,6 @@ native "cdecl" mod rustrt {
 
     fn new_port(unit_sz: uint) -> *rust_port;
     fn del_port(po: *rust_port);
-    fn drop_port(po: *rust_port);
     fn get_port_id(po: *rust_port) -> port_id;
 }
 
@@ -77,7 +76,6 @@ tag chan<uniq T> {
 }
 
 resource port_ptr(po: *rustrt::rust_port) {
-    rustrt::drop_port(po);
     rustrt::del_port(po);
 }
 

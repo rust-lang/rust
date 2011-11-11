@@ -10,7 +10,6 @@ debug_ptrcast
 debug_tag
 debug_tydesc
 do_gc
-drop_port
 drop_task
 get_port_id
 get_task_id

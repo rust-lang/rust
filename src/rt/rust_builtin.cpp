@@ -479,10 +479,6 @@ get_port_id(rust_port *port) {
     return port->id;
 }
 
-extern "C" CDECL
-void drop_port(rust_port *port) {
-}
-
 extern "C" CDECL void
 chan_id_send(type_desc *t, rust_task_id target_task_id,
              rust_port_id target_port_id, void *sptr) {
