@@ -1,13 +1,3 @@
-aio_close_socket
-aio_close_server
-aio_connect
-aio_init
-aio_is_null_client
-aio_read
-aio_run
-aio_serve
-aio_stop
-aio_writedata
 align_of
 chan_id_send
 check_claims
