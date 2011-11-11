@@ -1,4 +1,3 @@
-// xfail-test
 use std;
 
 import std::task;
@@ -19,7 +18,8 @@ fn main() {
     test06();
 }
 
-fn test00_start(ch: chan<int>, message: int, count: int) {
+fn test00_start(&&args: (chan<int>, int, int)) {
+    let (ch, message, count) = args;
     log "Starting test00_start";
     let i: int = 0;
     while i < count {
@@ -43,8 +43,8 @@ fn test00() {
     let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        let thunk = bind test00_start(ch, i, number_of_messages);
-        tasks += [task::spawn_joinable(thunk)];
+        tasks += [task::spawn_joinable(
+            (ch, i, number_of_messages), test00_start)];
     }
     let sum: int = 0;
     for t in tasks {
@@ -90,7 +90,7 @@ fn test03() {
     log v.length();
 }
 
-fn test04_start() {
+fn test04_start(&&_args: ()) {
     log "Started task";
     let i: int = 1024 * 1024;
     while i > 0 { i = i - 1; }
@@ -100,7 +100,7 @@ fn test04_start() {
 fn test04() {
     log "Spawning lots of tasks.";
     let i: int = 4;
-    while i > 0 { i = i - 1; let f = test04_start; task::spawn(f); }
+    while i > 0 { i = i - 1; task::spawn((), test04_start); }
     log "Finishing up.";
 }
 
@@ -115,7 +115,7 @@ fn test05_start(ch: chan<int>) {
 fn test05() {
     let po = comm::port();
     let ch = chan(po);
-    task::spawn(bind test05_start(ch));
+    task::spawn(ch, test05_start);
     let value: int;
     value = recv(po);
     value = recv(po);
@@ -123,7 +123,7 @@ fn test05() {
     log value;
 }
 
-fn test06_start(task_number: int) {
+fn test06_start(&&task_number: int) {
     log "Started task.";
     let i: int = 0;
     while i < 1000000 { i = i + 1; }
@@ -139,7 +139,7 @@ fn test06() {
     let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [task::spawn_joinable(bind test06_start(i))];
+        tasks += [task::spawn_joinable(copy i, test06_start)];
     }
 
 
