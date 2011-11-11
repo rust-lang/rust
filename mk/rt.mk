@@ -45,7 +45,6 @@ RUNTIME_CS_$(1) := \
               rt/rust_scheduler.cpp \
               rt/rust_task.cpp \
               rt/rust_task_list.cpp \
-              rt/rust_chan.cpp \
               rt/rust_port.cpp \
               rt/rust_upcall.cpp \
               rt/rust_log.cpp \
@@ -78,7 +77,6 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/rust_gc.h \
                rt/rust_internal.h \
                rt/rust_util.h \
-               rt/rust_chan.h \
                rt/rust_env.h \
                rt/rust_obstack.h \
                rt/rust_unwind.h \

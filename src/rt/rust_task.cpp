@@ -122,21 +122,20 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
 rust_task::~rust_task()
 {
     I(sched, !sched->lock.lock_held_by_current_thread());
+    I(sched, port_table.is_empty());
     DLOG(sched, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
     if(user.notify_enabled) {
-        rust_chan *target =
-            get_chan_by_handle(&user.notify_chan);
+        rust_port *target =
+            get_port_by_chan_handle(&user.notify_chan);
         if(target) {
             task_notification msg;
             msg.id = user.id;
             msg.result = failed ? tr_failure : tr_success;
 
-            if (target->is_associated()) {
-                target->port->send(&msg);
-                target->deref();
-            }
+            target->send(&msg);
+            target->deref();
         }
     }
 
@@ -552,16 +551,18 @@ rust_port *rust_task::get_port_by_id(rust_port_id id) {
     scoped_lock with(lock);
     rust_port *port = NULL;
     port_table.get(id, &port);
+    if (port) {
+        port->ref();
+    }
     return port;
 }
 
-rust_chan *rust_task::get_chan_by_handle(chan_handle *handle) {
+rust_port *rust_task::get_port_by_chan_handle(chan_handle *handle) {
     rust_task *target_task = kernel->get_task_by_id(handle->task);
     if(target_task) {
         rust_port *port = target_task->get_port_by_id(handle->port);
         target_task->deref();
-        port->remote_chan->ref();
-        return port->remote_chan;
+        return port;
     }
     return NULL;
 }

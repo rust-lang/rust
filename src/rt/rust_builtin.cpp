@@ -463,8 +463,7 @@ new_port(size_t unit_sz) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, comm, "new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
         (uintptr_t) task, task->name, unit_sz);
-    // take a reference on behalf of the port
-    task->ref();
+    // port starts with refcount == 1
     return new (task->kernel, "rust_port") rust_port(task, unit_sz);
 }
 
@@ -472,11 +471,7 @@ extern "C" CDECL void
 del_port(rust_port *port) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    I(task->sched, !port->ref_count);
-    delete port;
-
-    // FIXME: this should happen in the port.
-    task->deref();
+    port->deref();
 }
 
 extern "C" CDECL rust_port_id
@@ -486,7 +481,6 @@ get_port_id(rust_port *port) {
 
 extern "C" CDECL
 void drop_port(rust_port *port) {
-    port->ref_count--;
 }
 
 extern "C" CDECL void
@@ -497,10 +491,11 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
     rust_task *target_task = task->kernel->get_task_by_id(target_task_id);
     if(target_task) {
         rust_port *port = target_task->get_port_by_id(target_port_id);
+        target_task->deref();
         if(port) {
             port->send(sptr);
+            port->deref();
         }
-        target_task->deref();
     }
 }
 

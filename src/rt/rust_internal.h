@@ -55,7 +55,6 @@ struct rust_scheduler;
 struct rust_task;
 class rust_log;
 class rust_port;
-class rust_chan;
 class rust_kernel;
 class rust_crate_cache;
 
@@ -282,7 +281,6 @@ struct type_desc {
 
 #include "circular_buffer.h"
 #include "rust_task.h"
-#include "rust_chan.h"
 #include "rust_port.h"
 #include "memory.h"
 

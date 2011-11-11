@@ -3,14 +3,14 @@
 
 class rust_port : public kernel_owned<rust_port>, public rust_cond {
 public:
-    RUST_REFCOUNTED(rust_port);
+    RUST_ATOMIC_REFCOUNT();
 
     rust_port_id id;
 
     rust_kernel *kernel;
     rust_task *task;
-    rust_chan *remote_chan;
     size_t unit_sz;
+    circular_buffer buffer;
 
     lock_and_signal lock;
 
