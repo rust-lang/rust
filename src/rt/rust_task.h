@@ -209,8 +209,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // not at all safe.
     intptr_t get_ref_count() const { return ref_count; }
 
-    rust_port *get_port_by_chan_handle(chan_handle *handle);
-
     // FIXME: These functions only exist to get the tasking system off the
     // ground. We should never be migrating shared boxes between tasks.
     const type_desc *release_alloc(void *alloc);

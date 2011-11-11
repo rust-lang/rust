@@ -127,15 +127,20 @@ rust_task::~rust_task()
          name, (uintptr_t)this, ref_count);
 
     if(user.notify_enabled) {
-        rust_port *target =
-            get_port_by_chan_handle(&user.notify_chan);
-        if(target) {
-            task_notification msg;
-            msg.id = user.id;
-            msg.result = failed ? tr_failure : tr_success;
+        rust_task *target_task = kernel->get_task_by_id(user.notify_chan.task);
+        if (target_task) {
+            rust_port *target_port =
+                target_task->get_port_by_id(user.notify_chan.port);
+            if(target_port) {
+                task_notification msg;
+                msg.id = user.id;
+                msg.result = failed ? tr_failure : tr_success;
 
-            target->send(&msg);
-            target->deref();
+                target_port->send(&msg);
+                scoped_lock with(target_task->lock);
+                target_port->deref();
+            }
+            target_task->deref();
         }
     }
 
@@ -553,8 +558,7 @@ rust_port_id rust_task::register_port(rust_port *port) {
 }
 
 void rust_task::release_port(rust_port_id id) {
-    I(sched, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
+    I(sched, lock.lock_held_by_current_thread());
     port_table.remove(id);
 }
 
@@ -569,15 +573,6 @@ rust_port *rust_task::get_port_by_id(rust_port_id id) {
     return port;
 }
 
-rust_port *rust_task::get_port_by_chan_handle(chan_handle *handle) {
-    rust_task *target_task = kernel->get_task_by_id(handle->task);
-    if(target_task) {
-        rust_port *port = target_task->get_port_by_id(handle->port);
-        target_task->deref();
-        return port;
-    }
-    return NULL;
-}
 
 // Temporary routine to allow boxes on one task's shared heap to be reparented
 // to another.

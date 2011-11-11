@@ -1,11 +1,10 @@
-// xfail-test
 // xfail-win32
 use std;
 import std::comm;
 import std::task;
 
-fn start(c: comm::chan<int>, n: int) {
-    let i: int = n;
+fn start(&&args: (comm::chan<int>, int)) {
+    let (c, i) = args;
 
     while i > 0 { comm::send(c, 0); i = i - 1; }
 }
@@ -16,6 +15,6 @@ fn main() {
     // is likely to terminate before the child completes, so from
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
-    let child = task::spawn(bind start(comm::chan(p), 10));
+    let child = task::spawn((comm::chan(p), 10), start);
     let c = comm::recv(p);
 }
