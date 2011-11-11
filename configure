@@ -440,14 +440,14 @@ do
 	LLVM_BUILD="--build=$t"
 	LLVM_HOST="--host=$t"
 	LLVM_TARGET="--target=$t"
-    if [ -z "$CFG_ENABLE_DEBUG_LLVM" ]
+    if [ ! -z "$CFG_ENABLE_DEBUG_LLVM" ]
     then
         LLVM_DBG_OPTS=""
         # Just use LLVM straight from its build directory to
         # avoid 'make install' time
 	    LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug+Asserts
     else
-        LLVM_DBG_OPTS="--enabled-optimized"
+        LLVM_DBG_OPTS="--enable-optimized"
 	    LLVM_INST_DIR=$LLVM_BUILD_DIR/Release+Asserts
     fi
 	LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs"
