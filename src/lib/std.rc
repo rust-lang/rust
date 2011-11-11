@@ -8,7 +8,7 @@
 
 
 export box, char, float, int, str, ptr, uint, u8, u32, u64, vec;
-export aio, comm, fs, io, net, run, sio, sys, task;
+export comm, fs, io, net, run, sys, task;
 export ctypes, either, option, result, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
@@ -35,13 +35,11 @@ mod vec;
 
 // General io and system-services modules
 
-mod aio;
 mod comm;
 mod fs;
 mod io;
 mod net;
 mod run = "run_program.rs";
-mod sio;
 mod sys;
 mod task;
 
