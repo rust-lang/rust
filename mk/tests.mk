@@ -151,7 +151,7 @@ check-stage$(1)-$(2)-pretty-pretty: check-stage$(1)-$(2)-pretty-pretty-dummy
 # Rules for the standard library test runner
 
 test/stdtest.stage$(1)-$(2)$$(X): $$(STDTEST_CRATE) $$(STDTEST_INPUTS) \
-                             $$(SREQ$(1)$$(CFG_HOST_TRIPLE))
+                            $$(SREQ$(1)$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_$(2)) -o $$@ $$< --test
 
