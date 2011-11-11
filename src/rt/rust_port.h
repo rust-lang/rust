@@ -11,7 +11,6 @@ public:
     rust_task *task;
     rust_chan *remote_chan;
     size_t unit_sz;
-    ptr_vec<rust_token> writers;
 
     lock_and_signal lock;
 

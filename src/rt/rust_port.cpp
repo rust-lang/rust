@@ -5,7 +5,7 @@
 
 rust_port::rust_port(rust_task *task, size_t unit_sz)
     : ref_count(1), kernel(task->kernel), task(task),
-      unit_sz(unit_sz), writers(task) {
+      unit_sz(unit_sz) {
 
     LOG(task, comm,
         "new rust_port(task=0x%" PRIxPTR ", unit_sz=%d) -> port=0x%"
