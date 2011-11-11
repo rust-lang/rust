@@ -298,7 +298,7 @@ fn unsafe_spawn_inner(-thunk: fn@(),
    task unsafe {
     let id = rustrt::new_task();
 
-    let raw_thunk: {code: u32, env: u32} = cast(thunk);
+    let raw_thunk: {code: uint, env: uint} = cast(thunk);
 
     // set up the task pointer
     let task_ptr <- rust_task_ptr(rustrt::get_task_pointer(id));
