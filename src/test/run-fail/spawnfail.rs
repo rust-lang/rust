@@ -1,13 +1,12 @@
-// xfail-test
+// xfail-win32
 // error-pattern:explicit
 use std;
 import std::task;
 
 // We don't want to see any invalid reads
 fn main() {
-    fn f() {
+    fn f(&&_i: ()) {
         fail;
     }
-    let g = f;
-    task::spawn(g);
+    task::spawn((), f);
 }

@@ -191,6 +191,13 @@ void task_start_wrapper(spawn_args *a)
         task->free(env);
     }
 
+    task->die();
+
+    if (task->killed && !failed) {
+        LOG(task, task, "Task killed during termination");
+        failed = true;
+    }
+
     if (failed) {
 #ifndef __WIN32__
         task->conclude_failure();
@@ -198,7 +205,6 @@ void task_start_wrapper(spawn_args *a)
         A(task->sched, false, "Shouldn't happen");
 #endif
     } else {
-        task->die();
         task->lock.lock();
         task->notify_tasks_waiting_to_join();
         task->lock.unlock();
@@ -316,13 +322,13 @@ rust_task::fail() {
 #ifndef __WIN32__
     throw this;
 #else
+    die();
     conclude_failure();
 #endif
 }
 
 void
 rust_task::conclude_failure() {
-    die();
     // Unblock the task so it can unwind.
     unblock();
     fail_parent();
