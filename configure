@@ -252,9 +252,9 @@ opt valgrind 1 "run tests with valgrind"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
+opt optimize-llvm 1 "build optimized LLVM"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt clang 0 "prefer gcc to clang for building the runtime"
-opt debug-llvm 0 "build LLVM in debug mode"
 valopt prefix "/usr/local" "set installation prefix"
 valopt llvm-root "" "set LLVM root"
 valopt target-triples "" "LLVM target triples (defaults to host if unset)"
@@ -440,7 +440,8 @@ do
 	LLVM_BUILD="--build=$t"
 	LLVM_HOST="--host=$t"
 	LLVM_TARGET="--target=$t"
-    if [ ! -z "$CFG_ENABLE_DEBUG_LLVM" ]
+
+    if [ ! -z "$CFG_DISABLE_OPTIMIZE_LLVM" ]
     then
         LLVM_DBG_OPTS=""
         # Just use LLVM straight from its build directory to
