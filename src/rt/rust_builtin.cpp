@@ -485,23 +485,6 @@ get_port_id(rust_port *port) {
 }
 
 extern "C" CDECL
-void del_chan(rust_chan *chan) {
-    rust_task *task = rust_scheduler::get_task();
-    LOG(task, comm, "del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
-    I(task->sched, false);
-}
-
-extern "C" CDECL
-void take_chan(rust_chan *chan) {
-    chan->ref();
-}
-
-extern "C" CDECL
-void drop_chan(rust_chan *chan) {
-    chan->deref();
-}
-
-extern "C" CDECL
 void drop_port(rust_port *port) {
     port->ref_count--;
 }
