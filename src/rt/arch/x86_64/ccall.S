@@ -56,3 +56,19 @@ upcall_call_c_stack_float:
     pop %rbp
     ret
 
+#if defined(__APPLE__) || defined(_WIN32)
+.globl _upcall_call_c_stack_shim
+_upcall_call_c_stack_shim:
+#else
+.globl upcall_call_c_stack_shim
+upcall_call_c_stack_shim
+#endif
+    push %rbp
+    mov %rsp,%rbp          // save rsp
+    mov ARG1,%rsp          // switch stack
+    mov ARG0,%r11          // Remember target address
+    mov ARG1,ARG0          // setup the parameter shim expects
+    call *%r11
+    mov %rbp,%rsp
+    pop %rbp
+    ret
