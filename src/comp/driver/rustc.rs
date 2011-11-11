@@ -270,7 +270,6 @@ options:
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
     --stack-growth     perform stack checks (experimental)
-    --check-unsafe     disallow unsafe actions in non-unsafe functions
 
 ");
 }
@@ -448,7 +447,7 @@ fn opts() -> [getopts::opt] {
          optflag("no-typestate"), optflag("noverify"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static"), optflag("gc"),
-         optflag("stack-growth"), optflag("check-unsafe")];
+         optflag("stack-growth")];
 }
 
 fn build_output_filenames(ifile: str, ofile: option::t<str>,
