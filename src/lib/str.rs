@@ -13,7 +13,8 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
-       contains, iter_chars, loop_chars, loop_chars_sub;
+       contains, iter_chars, loop_chars, loop_chars_sub,
+       escape;
 
 native "cdecl" mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
@@ -367,7 +368,7 @@ fn loop_chars(s: str, it: block(char) -> bool) -> bool{
 }
 
 /*
-Function: loop_chars
+Function: loop_chars_sub
 
 Loop through a substring, char by char
 
@@ -928,3 +929,32 @@ unsafe fn str_from_cstr(cstr: sbuf) -> str {
     ret res;
 }
 
+/*
+Function: escape_char
+
+Escapes a single character.
+*/
+fn escape_char(c: char) -> str {
+    alt c {
+        '"' { "\\\"" }
+        '\\' { "\\\\" }
+// TODO: uncomment these when https://github.com/graydon/rust/issues/1170 is
+// fixed.
+//        '\n' { "\\n" }
+//        '\t' { "\\t" }
+//        '\r' { "\\r" }
+        '\x00' to '\x1f' { #fmt["\\x%02x", c as uint] }
+        v { from_char(c) }
+    }
+}
+
+/*
+Function: escape
+
+Escapes special characters inside the string, making it safe for transfer.
+*/
+fn escape(s: str) -> str {
+    let r = "";
+    loop_chars(s, { |c| r += escape_char(c); true });
+    r
+}
