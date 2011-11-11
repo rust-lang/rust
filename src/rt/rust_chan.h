@@ -16,8 +16,6 @@ public:
     size_t idx;
     circular_buffer buffer;
 
-    void associate(rust_port *port);
-    void disassociate();
     bool is_associated();
 
     void send(void *sptr);

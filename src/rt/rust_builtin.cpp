@@ -538,9 +538,8 @@ port_recv(uintptr_t *dptr, rust_port *port) {
         scoped_lock with(port->lock);
 
         LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
-            ", size: 0x%" PRIxPTR ", chan_no: %d",
-            (uintptr_t) port, (uintptr_t) dptr, port->unit_sz,
-            port->chans.length());
+            ", size: 0x%" PRIxPTR,
+            (uintptr_t) port, (uintptr_t) dptr, port->unit_sz);
 
         if (port->receive(dptr)) {
             return;

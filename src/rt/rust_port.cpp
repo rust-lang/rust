@@ -5,7 +5,7 @@
 
 rust_port::rust_port(rust_task *task, size_t unit_sz)
     : ref_count(1), kernel(task->kernel), task(task),
-      unit_sz(unit_sz), writers(task), chans(task) {
+      unit_sz(unit_sz), writers(task) {
 
     LOG(task, comm,
         "new rust_port(task=0x%" PRIxPTR ", unit_sz=%d) -> port=0x%"
@@ -14,47 +14,37 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
     id = task->register_port(this);
     remote_chan = new (task->kernel, "rust_chan")
         rust_chan(task->kernel, this, unit_sz);
+    remote_chan->ref();
+    remote_chan->port = this;
 }
 
 rust_port::~rust_port() {
     LOG(task, comm, "~rust_port 0x%" PRIxPTR, (uintptr_t) this);
 
-    // Disassociate channels from this port.
-    while (chans.is_empty() == false) {
+    {
         scoped_lock with(lock);
-        rust_chan *chan = chans.peek();
-        chan->disassociate();
+        remote_chan->port = NULL;
+        remote_chan->deref();
+        remote_chan = NULL;
     }
-
-    remote_chan->deref();
-    remote_chan = NULL;
 
     task->release_port(id);
 }
 
 bool rust_port::receive(void *dptr) {
-    for (uint32_t i = 0; i < chans.length(); i++) {
-        rust_chan *chan = chans[i];
-        if (chan->buffer.is_empty() == false) {
-            chan->buffer.dequeue(dptr);
-            LOG(task, comm, "<=== read data ===");
-            return true;
-        }
+    if (remote_chan->buffer.is_empty() == false) {
+        remote_chan->buffer.dequeue(dptr);
+        LOG(task, comm, "<=== read data ===");
+        return true;
     }
     return false;
 }
 
 void rust_port::log_state() {
     LOG(task, comm,
-              "rust_port: 0x%" PRIxPTR ", associated channel(s): %d",
-              this, chans.length());
-    for (uint32_t i = 0; i < chans.length(); i++) {
-        rust_chan *chan = chans[i];
-        LOG(task, comm,
-            "\tchan: 0x%" PRIxPTR ", size: %d",
-            chan,
-            chan->buffer.size());
-    }
+        "\tchan: 0x%" PRIxPTR ", size: %d",
+        remote_chan,
+        remote_chan->buffer.size());
 }
 
 //

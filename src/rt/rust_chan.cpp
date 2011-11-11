@@ -6,16 +6,17 @@
  */
 rust_chan::rust_chan(rust_kernel *kernel, rust_port *port,
                      size_t unit_sz)
-    : ref_count(1),
+    : ref_count(0),
       kernel(kernel),
       port(port),
       buffer(kernel, unit_sz) {
-    if (port) {
-        associate(port);
-    }
     KLOG(kernel, comm, "new rust_chan(task=0x%" PRIxPTR
         ", port=0x%" PRIxPTR ") -> chan=0x%" PRIxPTR,
         (uintptr_t) task, (uintptr_t) port, (uintptr_t) this);
+
+    A(kernel, port != NULL, "Port must not be null");
+    this->task = port->task;
+    this->task->ref();
 }
 
 rust_chan::~rust_chan() {
@@ -26,47 +27,13 @@ rust_chan::~rust_chan() {
 
     A(kernel, is_associated() == false,
       "Channel must be disassociated before being freed.");
-}
 
-/**
- * Link this channel with the specified port.
- */
-void rust_chan::associate(rust_port *port) {
-    this->ref();
-    this->port = port;
-    scoped_lock with(port->lock);
-    KLOG(kernel, task,
-         "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
-         this, port);
-    this->task = port->task;
-    this->task->ref();
-    this->port->chans.push(this);
+    task->deref();
+    task = NULL;
 }
 
 bool rust_chan::is_associated() {
     return port != NULL;
-}
-
-/**
- * Unlink this channel from its associated port.
- */
-void rust_chan::disassociate() {
-    A(kernel,
-      port->lock.lock_held_by_current_thread(),
-      "Port referent lock must be held to call rust_chan::disassociate");
-    A(kernel, is_associated(),
-      "Channel must be associated with a port.");
-    KLOG(kernel, task,
-         "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
-         this, port);
-    task->deref();
-    this->task = NULL;
-    port->chans.swap_delete(this);
-
-    // Delete reference to the port.
-    port = NULL;
-
-    this->deref();
 }
 
 /**
