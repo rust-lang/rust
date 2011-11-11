@@ -184,56 +184,56 @@ CTEST_COMMON_ARGS$(1)-$(2) := --compile-lib-path $$(HOST_LIB$(1)) \
                          --rustc-path $$(HOST_BIN$(1))/rustc$$(X) \
                          --stage-id stage$(1)-$(2) \
                          --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)" \
-                         $$(CTEST_TESTARGS) \
+                         $$(CTEST_TESTARGS)
 
 CFAIL_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                   --src-base $$(S)src/test/compile-fail/ \
                   --build-base test/compile-fail/ \
-                  --mode compile-fail \
+                  --mode compile-fail
 
 RFAIL_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                   --src-base $$(S)src/test/run-fail/ \
                   --build-base test/run-fail/ \
                   --mode run-fail \
-                  $$(CTEST_RUNTOOL) \
+                  $$(CTEST_RUNTOOL)
 
 RPASS_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                   --src-base $$(S)src/test/run-pass/ \
                   --build-base test/run-pass/ \
                   --mode run-pass \
-                  $$(CTEST_RUNTOOL) \
+                  $$(CTEST_RUNTOOL)
 
 BENCH_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                   --src-base $$(S)src/test/bench/ \
                   --build-base test/bench/ \
                   --mode run-pass \
-                  $$(CTEST_RUNTOOL) \
+                  $$(CTEST_RUNTOOL)
 
 PERF_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                   --src-base $$(S)src/test/bench/ \
                   --build-base test/perf/ \
                   --mode run-pass \
-                  $$(CTEST_PERF_RUNTOOL) \
+                  $$(CTEST_PERF_RUNTOOL)
 
 PRETTY_RPASS_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                          --src-base $$(S)src/test/run-pass/ \
                          --build-base test/run-pass/ \
-                         --mode pretty \
+                         --mode pretty
 
 PRETTY_RFAIL_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                          --src-base $$(S)src/test/run-fail/ \
                          --build-base test/run-fail/ \
-                         --mode pretty \
+                         --mode pretty
 
 PRETTY_BENCH_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                          --src-base $$(S)src/test/bench/ \
                          --build-base test/bench/ \
-                         --mode pretty \
+                         --mode pretty
 
 PRETTY_PRETTY_ARGS$(1)-$(2) := $$(CTEST_COMMON_ARGS$(1)-$(2)) \
                           --src-base $$(S)src/test/pretty/ \
                           --build-base test/pretty/ \
-                          --mode pretty \
+                          --mode pretty
 
 check-stage$(1)-$(2)-cfail-dummy: $$(HOST_BIN$(1))/compiletest$$(X) \
                              $$(SREQ$(1)$$(CFG_HOST_TRIPLE)) \
@@ -299,10 +299,15 @@ $(foreach target,$(CFG_TARGET_TRIPLES), \
  $(eval $(call TEST_STAGEN,2,$(target))) \
  $(eval $(call TEST_STAGEN,3,$(target))))
 
-check-stage0: check-stage0-$(CFG_HOST_TRIPLE)
-check-stage1: check-stage1-$(CFG_HOST_TRIPLE)
-check-stage2: check-stage2-$(CFG_HOST_TRIPLE)
-check-stage3: check-stage3-$(CFG_HOST_TRIPLE)
+# Make convenient Shorthand Targets for use on command
+# line or by other rules:
+check-stage0:        check-stage0-$(CFG_HOST_TRIPLE)
+check-stage1:        check-stage1-$(CFG_HOST_TRIPLE)
+check-stage2:        check-stage2-$(CFG_HOST_TRIPLE)
+check-stage2-perf:   check-stage2-$(CFG_HOST_TRIPLE)-perf
+check-stage2-rustc:  check-stage2-$(CFG_HOST_TRIPLE)-rustc
+check-stage2-std:    check-stage2-$(CFG_HOST_TRIPLE)-std
+check-stage3:        check-stage3-$(CFG_HOST_TRIPLE)
 
 ######################################################################
 # Fast-test rules
