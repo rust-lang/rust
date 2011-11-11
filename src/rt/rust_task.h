@@ -51,10 +51,9 @@ struct rust_task_user {
 };
 
 // std::lib::task::task_result
-enum task_result {
-    tr_success = 0,
-    tr_failure = 1
-};
+typedef unsigned long task_result;
+#define tr_success 0
+#define tr_failure 1
 
 // std::lib::task::task_notification
 //
