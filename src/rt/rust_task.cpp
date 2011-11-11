@@ -440,6 +440,7 @@ rust_task::transition(rust_task_list *src, rust_task_list *dst) {
 
 void
 rust_task::block(rust_cond *on, const char* name) {
+    I(sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     LOG(this, task, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
                          (uintptr_t) on, (uintptr_t) cond);
@@ -453,6 +454,7 @@ rust_task::block(rust_cond *on, const char* name) {
 
 void
 rust_task::wakeup(rust_cond *from) {
+    I(sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     A(sched, cond != NULL, "Cannot wake up unblocked task.");
     LOG(this, task, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
@@ -473,6 +475,7 @@ rust_task::wakeup(rust_cond *from) {
 
 void
 rust_task::die() {
+    I(sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     transition(&sched->running_tasks, &sched->dead_tasks);
     sched->lock.signal();
@@ -535,6 +538,7 @@ void rust_task::on_wakeup(rust_task::wakeup_callback *callback) {
 }
 
 rust_port_id rust_task::register_port(rust_port *port) {
+    I(sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
 
     rust_port_id id = next_port_id++;
@@ -543,11 +547,13 @@ rust_port_id rust_task::register_port(rust_port *port) {
 }
 
 void rust_task::release_port(rust_port_id id) {
+    I(sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     port_table.remove(id);
 }
 
 rust_port *rust_task::get_port_by_id(rust_port_id id) {
+    I(sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     rust_port *port = NULL;
     port_table.get(id, &port);
@@ -571,6 +577,7 @@ rust_port *rust_task::get_port_by_chan_handle(chan_handle *handle) {
 // to another.
 const type_desc *
 rust_task::release_alloc(void *alloc) {
+    I(sched, !lock.lock_held_by_current_thread());
     lock.lock();
 
     assert(local_allocs.find(alloc) != local_allocs.end());
@@ -587,6 +594,7 @@ rust_task::release_alloc(void *alloc) {
 // reparented to this one.
 void
 rust_task::claim_alloc(void *alloc, const type_desc *tydesc) {
+    I(sched, !lock.lock_held_by_current_thread());
     lock.lock();
 
     assert(local_allocs.find(alloc) == local_allocs.end());
