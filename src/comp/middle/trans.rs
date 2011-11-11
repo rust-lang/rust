@@ -3833,7 +3833,8 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
 }
 
 // Translates a native call on the C stack. Calls into the runtime to perform
-// the stack switching operation. Must be kept in sync with trans_native_mod().
+// the stack switching operation. Must be kept in sync with
+// trans_native_mod().
 fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
                              args: [@ast::expr], dest: dest) -> @block_ctxt {
     let ccx = bcx_ccx(bcx);
