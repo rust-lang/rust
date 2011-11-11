@@ -36,32 +36,6 @@ bool rust_chan::is_associated() {
     return port != NULL;
 }
 
-/**
- * Attempt to send data to the associated port.
- */
-void rust_chan::send(void *sptr) {
-    if (!is_associated()) {
-        W(kernel, is_associated(),
-          "rust_chan::transmit with no associated port.");
-        return;
-    }
-
-    I(kernel, port != NULL);
-    scoped_lock with(port->lock);
-
-    buffer.enqueue(sptr);
-
-    A(kernel, !buffer.is_empty(),
-      "rust_chan::transmit with nothing to send.");
-
-    if (port->task->blocked_on(port)) {
-        KLOG(kernel, comm, "dequeued in rendezvous_ptr");
-        buffer.dequeue(port->task->rendezvous_ptr);
-        port->task->rendezvous_ptr = 0;
-        port->task->wakeup(port);
-    }
-}
-
 rust_chan *rust_chan::clone(rust_task *target) {
     return new (target->kernel, "cloned chan")
         rust_chan(kernel, port, buffer.unit_sz);

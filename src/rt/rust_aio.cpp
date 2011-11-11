@@ -41,7 +41,7 @@ struct socket_data : public task_owned<socket_data> {
   }
 
   void send_result(void *data) {
-    chan->send(&data);
+    chan->port->send(&data);
     chan->deref();
     chan = NULL;
   }
@@ -138,7 +138,7 @@ static void read_progress(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
       v->fill = nread;
       break;
   }
-  data->reader->send(v);
+  data->reader->port->send(v);
 }
 
 static void new_connection(uv_stream_t *socket, int status) {
@@ -156,7 +156,7 @@ static void new_connection(uv_stream_t *socket, int status) {
     server->task->fail();
     return;
   }
-  server->chan->send(&client);
+  server->chan->port->send(&client);
 }
 
 extern "C" CDECL socket_data *aio_serve(const char *ip, int port,
@@ -201,7 +201,7 @@ static void free_socket(uv_handle_t *handle) {
     bool closed = true;
     I(data->task->sched, data->chan != NULL);
     data->task->kill();
-    data->chan->send(&closed);
+    data->chan->port->send(&closed);
   }
   delete data;
 }
@@ -221,7 +221,7 @@ extern "C" CDECL void aio_close_server(socket_data *server,
   // XXX: hax until rust_task::kill
   // send null and the receiver knows to call back into native code to check
   void* null_client = NULL;
-  server->chan->send(&null_client);
+  server->chan->port->send(&null_client);
   server->chan->deref();
   server->chan = chan->clone(iotask);
   aio_close_socket(server);

@@ -18,8 +18,6 @@ public:
 
     bool is_associated();
 
-    void send(void *sptr);
-
     rust_chan *clone(rust_task *target);
 };
 

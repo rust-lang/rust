@@ -31,6 +31,28 @@ rust_port::~rust_port() {
     task->release_port(id);
 }
 
+void rust_port::send(void *sptr) {
+    if (!remote_chan->is_associated()) {
+        W(kernel, remote_chan->is_associated(),
+          "rust_chan::transmit with no associated port.");
+        return;
+    }
+
+    scoped_lock with(lock);
+
+    remote_chan->buffer.enqueue(sptr);
+
+    A(kernel, !remote_chan->buffer.is_empty(),
+      "rust_chan::transmit with nothing to send.");
+
+    if (task->blocked_on(this)) {
+        KLOG(kernel, comm, "dequeued in rendezvous_ptr");
+        remote_chan->buffer.dequeue(task->rendezvous_ptr);
+        task->rendezvous_ptr = 0;
+        task->wakeup(this);
+    }
+}
+
 bool rust_port::receive(void *dptr) {
     if (remote_chan->buffer.is_empty() == false) {
         remote_chan->buffer.dequeue(dptr);

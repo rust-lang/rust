@@ -133,8 +133,10 @@ rust_task::~rust_task()
             msg.id = user.id;
             msg.result = failed ? tr_failure : tr_success;
 
-            target->send(&msg);
-            target->deref();
+            if (target->is_associated()) {
+                target->port->send(&msg);
+                target->deref();
+            }
         }
     }
 

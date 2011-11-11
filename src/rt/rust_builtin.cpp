@@ -498,7 +498,7 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
     if(target_task) {
         rust_port *port = target_task->get_port_by_id(target_port_id);
         if(port) {
-            port->remote_chan->send(sptr);
+            port->send(sptr);
         }
         target_task->deref();
     }
