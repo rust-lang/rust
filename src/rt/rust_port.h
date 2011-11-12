@@ -3,7 +3,7 @@
 
 class rust_port : public kernel_owned<rust_port>, public rust_cond {
 public:
-    RUST_ATOMIC_REFCOUNT();
+    RUST_REFCOUNTED(rust_port)
 
     rust_port_id id;
 
