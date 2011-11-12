@@ -164,7 +164,7 @@ check-stage$(1)-$(2)-std-dummy: test/stdtest.stage$(1)-$(2)$$(X)
 
 test/rustctest.stage$(1)-$(2)$$(X): \
 	$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-	$$(TARGET_SREQ$(1)$$(CFG_HOST_TRIPLE)) \
+	$$(TARGET_SREQ$(1)$(2) \
     $$(HOST_LIB$(1))/$$(CFG_RUSTLLVM) \
 	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM) \
 	$$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB)
