@@ -1,5 +1,4 @@
-// xfail-test
-
+// xfail-win32
 // Create a task that is supervised by another task,
 // join the supervised task from the supervising task,
 // then fail the supervised task. The supervised task
@@ -10,7 +9,7 @@
 use std;
 import std::task;
 
-fn supervised() {
+fn supervised(&&_args: ()) {
     // Yield to make sure the supervisor joins before we
     // fail. This is currently not needed because the supervisor
     // runs first, but I can imagine that changing.
@@ -18,19 +17,18 @@ fn supervised() {
     fail;
 }
 
-fn supervisor() {
+fn supervisor(&&_args: ()) {
     // Unsupervise this task so the process doesn't return a failure status as
     // a result of the main task being killed.
     task::unsupervise();
     let f = supervised;
-    let t = task::_spawn(supervised);
-    task::join_id(t);
+    let t = task::spawn_joinable((), supervised);
+    task::join(t);
 }
 
 fn main() {
-    let f = supervisor;
-    let dom2 = task::_spawn(f);
-    task::join_id(dom2);
+    let dom2 = task::spawn_joinable((), supervisor);
+    task::join(dom2);
 }
 
 // Local Variables:
