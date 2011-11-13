@@ -79,9 +79,6 @@ endif
 ifdef TIME_LLVM_PASSES
   CFG_RUSTC_FLAGS += --time-llvm-passes
 endif
-ifdef NO_TYPESTATE
-  CFG_RUSTC_FLAGS += --no-typestate
-endif
 ifdef DEBUG
   CFG_RUSTC_FLAGS += -g
 endif

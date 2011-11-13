@@ -29,7 +29,6 @@ type options =
      optimize: uint,
      debuginfo: bool,
      verify: bool,
-     run_typestate: bool,
      save_temps: bool,
      stats: bool,
      time_passes: bool,
