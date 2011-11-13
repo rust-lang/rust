@@ -1965,7 +1965,6 @@ fn free_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
 
 fn call_memmove(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
                 n_bytes: ValueRef) -> result {
-    // FIXME: switch to the 64-bit variant when on such a platform.
     // TODO: Provide LLVM with better alignment information when the alignment
     // is statically known (it must be nothing more than a constant int, or
     // LLVM complains -- not even a constant element of a tydesc works).
