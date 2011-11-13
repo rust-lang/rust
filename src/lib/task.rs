@@ -80,7 +80,7 @@ native mod rustrt {
 
 type rust_task =
     {id: task,
-     mutable notify_enabled: u32,
+     mutable notify_enabled: int,
      mutable notify_chan: comm::chan<task_notification>,
      mutable stack_ptr: *u8};
 
@@ -318,7 +318,7 @@ fn unsafe_spawn_inner(-thunk: fn@(),
     // set up notifications if they are enabled.
     alt notify {
       some(c) {
-        (**task_ptr).notify_enabled = 1u32;;
+        (**task_ptr).notify_enabled = 1;
         (**task_ptr).notify_chan = c;
       }
       none { }
