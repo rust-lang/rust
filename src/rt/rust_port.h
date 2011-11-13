@@ -19,6 +19,7 @@ public:
     void log_state();
     void send(void *sptr);
     bool receive(void *dptr);
+    size_t size();
 };
 
 //

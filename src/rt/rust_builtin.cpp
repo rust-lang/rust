@@ -475,6 +475,11 @@ del_port(rust_port *port) {
     port->deref();
 }
 
+extern "C" CDECL size_t
+rust_port_size(rust_port *port) {
+    return port->size();
+}
+
 extern "C" CDECL rust_port_id
 get_port_id(rust_port *port) {
     return port->id;

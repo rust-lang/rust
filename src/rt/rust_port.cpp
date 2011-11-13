@@ -48,6 +48,11 @@ bool rust_port::receive(void *dptr) {
     return false;
 }
 
+size_t rust_port::size() {
+    scoped_lock with(lock);
+    return buffer.size();
+}
+
 void rust_port::log_state() {
     LOG(task, comm,
         "port size: %d",

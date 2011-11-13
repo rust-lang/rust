@@ -34,6 +34,7 @@ rust_get_stdout
 rust_get_stderr
 rust_str_push
 rust_list_files
+rust_port_size
 rust_process_wait
 rust_ptr_eq
 rust_run_program
