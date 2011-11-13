@@ -2902,7 +2902,6 @@ fn is_binopable(cx: ctxt, ty: t, op: ast::binop) -> bool {
           ty_machine(ast::ty_f32.) { tycat_float }
           ty_machine(ast::ty_f64.) { tycat_float }
           ty_char. { tycat_int }
-          ty_ptr(_) { tycat_int }
           ty_str. { tycat_str }
           ty_vec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }
