@@ -1,6 +1,7 @@
 
 #include <stdarg.h>
 #include <cassert>
+#include <pthread.h>
 #include "rust_internal.h"
 #include "globals.h"
 
@@ -11,6 +12,9 @@ DWORD rust_scheduler::task_key;
 #endif
 
 bool rust_scheduler::tls_initialized = false;
+
+// Defined in arch/*/record_sp.S.
+extern "C" void rust_record_sp(uintptr_t sp);
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                rust_srv *srv,
@@ -285,6 +289,8 @@ rust_scheduler::start_main_loop() {
              scheduled_task->state->name);
 
         place_task_in_tls(scheduled_task);
+        rust_record_sp(scheduled_task->stk->limit);
+        //pthread_setspecific(89, (void *)scheduled_task->stk->limit);
 
         interrupt_flag = 0;
 
@@ -374,6 +380,8 @@ rust_scheduler::place_task_in_tls(rust_task *task) {
 
 rust_task *
 rust_scheduler::get_task() {
+    if (!tls_initialized)
+        return NULL;
     rust_task *task = reinterpret_cast<rust_task *>
         (pthread_getspecific(task_key));
     assert(task && "Couldn't get the task from TLS!");
@@ -395,6 +403,8 @@ rust_scheduler::place_task_in_tls(rust_task *task) {
 
 rust_task *
 rust_scheduler::get_task() {
+    if (!tls_initialized)
+        return NULL;
     rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
     assert(task && "Couldn't get the task from TLS!");
     return task;
