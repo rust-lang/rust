@@ -158,7 +158,7 @@ fn node_span(node: ast_node) -> codemap::span {
 mod test {
     import syntax::ast_util;
 
-    #[test]
+    //FIXME NDM #[test]
     fn test_node_span_item() {
         let expected: codemap::span = ast_util::mk_sp(20u, 30u);
         let node =
@@ -170,7 +170,7 @@ mod test {
         assert (node_span(node) == expected);
     }
 
-    #[test]
+    //FIXME NDM #[test]
     fn test_node_span_obj_ctor() {
         let expected: codemap::span = ast_util::mk_sp(20u, 30u);
         let node =
@@ -182,7 +182,7 @@ mod test {
         assert (node_span(node) == expected);
     }
 
-    #[test]
+    //FIXME NDM #[test]
     fn test_node_span_native_item() {
         let expected: codemap::span = ast_util::mk_sp(20u, 30u);
         let node =
@@ -194,7 +194,7 @@ mod test {
         assert (node_span(node) == expected);
     }
 
-    #[test]
+    //FIXME NDM #[test]
     fn test_node_span_expr() {
         let expected: codemap::span = ast_util::mk_sp(20u, 30u);
         let node = node_expr(@{id: 0, node: expr_break, span: expected});
