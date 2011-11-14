@@ -25,6 +25,8 @@
 
 namespace shape {
 
+typedef unsigned long tag_variant_t;
+typedef unsigned long tag_align_t;
 
 // Constants
 
@@ -234,7 +236,7 @@ public:
     void walk_reset();
 
     std::pair<const uint8_t *,const uint8_t *>
-    get_variant_sp(tag_info &info, uint32_t variant_id);
+    get_variant_sp(tag_info &info, tag_variant_t variant_id);
 
 protected:
     inline uint8_t peek() { return *sp; }
@@ -406,7 +408,7 @@ ctxt<T>::get_size_align(const uint8_t *&addr) {
 // the tag variant with the given ID.
 template<typename T>
 std::pair<const uint8_t *,const uint8_t *>
-ctxt<T>::get_variant_sp(tag_info &tinfo, uint32_t variant_id) {
+ctxt<T>::get_variant_sp(tag_info &tinfo, tag_variant_t variant_id) {
     uint16_t variant_offset = get_u16(tinfo.info_ptr +
                                       variant_id * sizeof(uint16_t));
     const uint8_t *variant_ptr = tables->tags + variant_offset;
@@ -816,7 +818,7 @@ protected:
     void walk_uniq_contents();
     void walk_fn_contents(ptr &dp);
     void walk_obj_contents(ptr &dp);
-    void walk_variant(tag_info &tinfo, uint32_t variant);
+    void walk_variant(tag_info &tinfo, tag_variant_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
     static std::pair<ptr_pair,ptr_pair> get_vec_data_range(ptr_pair &dp);
@@ -901,7 +903,7 @@ data<T,U>::walk_uniq_contents() {
 
 template<typename T,typename U>
 void
-data<T,U>::walk_variant(tag_info &tinfo, uint32_t variant_id) {
+data<T,U>::walk_variant(tag_info &tinfo, tag_variant_t variant_id) {
     std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
         this->get_variant_sp(tinfo, variant_id);
     static_cast<T *>(this)->walk_variant(tinfo, variant_id,
@@ -932,13 +934,13 @@ data<T,U>::walk_tag(tag_info &tinfo) {
     size_of::compute_tag_size(*this, tinfo);
 
     if (tinfo.variant_count > 1)
-        ALIGN_TO(alignof<uint32_t>());
+        ALIGN_TO(alignof<tag_align_t>());
 
     U end_dp = dp + tinfo.tag_sa.size;
 
-    typename U::template data<uint32_t>::t tag_variant;
+    typename U::template data<tag_variant_t>::t tag_variant;
     if (tinfo.variant_count > 1)
-        tag_variant = bump_dp<uint32_t>(dp);
+        tag_variant = bump_dp<tag_variant_t>(dp);
     else
         tag_variant = 0;
 
@@ -1047,7 +1049,7 @@ private:
             walk_vec(is_pod, get_vec_data_range(dp));
     }
 
-    void walk_tag(tag_info &tinfo, uint32_t tag_variant) {
+    void walk_tag(tag_info &tinfo, tag_variant_t tag_variant) {
         out << prefix << "tag" << tag_variant;
         data<log,ptr>::walk_variant(tinfo, tag_variant);
     }
@@ -1096,7 +1098,7 @@ private:
 
     void walk_struct(const uint8_t *end_sp);
     void walk_vec(bool is_pod, const std::pair<ptr,ptr> &data);
-    void walk_variant(tag_info &tinfo, uint32_t variant_id,
+    void walk_variant(tag_info &tinfo, tag_variant_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
     void walk_string(const std::pair<ptr,ptr> &data);

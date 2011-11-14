@@ -223,7 +223,7 @@ size_of::compute_tag_size(tag_info &tinfo) {
             tinfo.tag_sa.set(1, 1);
     } else {
         // Add in space for the tag.
-        tinfo.tag_sa.add(sizeof(uint32_t), alignof<uint32_t>());
+        tinfo.tag_sa.add(sizeof(tag_variant_t), alignof<tag_align_t>());
     }
 }
 
@@ -357,12 +357,12 @@ public:
     void walk_fn()  { return cmp_two_pointers(); }
     void walk_obj() { return cmp_two_pointers(); }
 
-    void walk_tag(tag_info &tinfo, const data_pair<uint32_t> &tag_variants);
+    void walk_tag(tag_info &tinfo, const data_pair<tag_variant_t> &tag_variants);
     void walk_struct(const uint8_t *end_sp);
     void walk_res(const rust_fn *dtor, uint16_t n_ty_params,
                   const type_param *ty_params_sp, const uint8_t *end_sp,
                   const data_pair<uintptr_t> &live);
-    void walk_variant(tag_info &tinfo, uint32_t variant_id,
+    void walk_variant(tag_info &tinfo, tag_variant_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
 
@@ -394,7 +394,7 @@ cmp::walk_vec(bool is_pod, const std::pair<ptr_pair,ptr_pair> &data_range) {
 }
 
 void
-cmp::walk_tag(tag_info &tinfo, const data_pair<uint32_t> &tag_variants) {
+cmp::walk_tag(tag_info &tinfo, const data_pair<tag_variant_t> &tag_variants) {
     cmp_number(tag_variants);
     if (result != 0)
         return;
@@ -417,7 +417,7 @@ cmp::walk_res(const rust_fn *dtor, uint16_t n_ty_params,
 }
 
 void
-cmp::walk_variant(tag_info &tinfo, uint32_t variant_id,
+cmp::walk_variant(tag_info &tinfo, tag_variant_t variant_id,
                   const std::pair<const uint8_t *,const uint8_t *>
                   variant_ptr_and_end) {
     cmp sub(*this, variant_ptr_and_end.first, tinfo.params);
@@ -489,7 +489,7 @@ log::walk_vec(bool is_pod, const std::pair<ptr,ptr> &data) {
 }
 
 void
-log::walk_variant(tag_info &tinfo, uint32_t variant_id,
+log::walk_variant(tag_info &tinfo, tag_variant_t variant_id,
                   const std::pair<const uint8_t *,const uint8_t *>
                   variant_ptr_and_end) {
     log sub(*this, variant_ptr_and_end.first, tinfo.params);
