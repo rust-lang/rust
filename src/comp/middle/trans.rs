@@ -2142,7 +2142,7 @@ fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
           ast::ty_i32. { t = T_i32(); }
           ast::ty_i64. { t = T_i64(); }
         }
-        ret C_integral(t, i as uint, s);
+        ret C_integral(t, i as u64, s);
       }
       ast::lit_float(fs) { ret C_float(cx, fs); }
       ast::lit_mach_float(tm, s) {
@@ -2150,7 +2150,7 @@ fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
         alt tm { ast::ty_f32. { t = T_f32(); } ast::ty_f64. { t = T_f64(); } }
         ret C_floating(s, t);
       }
-      ast::lit_char(c) { ret C_integral(T_char(), c as uint, False); }
+      ast::lit_char(c) { ret C_integral(T_char(), c as u64, False); }
       ast::lit_bool(b) { ret C_bool(b); }
       ast::lit_nil. { ret C_nil(); }
       ast::lit_str(s) {

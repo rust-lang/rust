@@ -724,14 +724,8 @@ fn T_opaque_chan_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 // LLVM constant constructors.
 fn C_null(t: TypeRef) -> ValueRef { ret llvm::LLVMConstNull(t); }
 
-fn C_integral(t: TypeRef, u: uint, sign_extend: Bool) -> ValueRef {
-    // FIXME: We can't use LLVM::ULongLong with our existing minimal native
-    // API, which only knows word-sized args.
-    //
-    // ret llvm::LLVMConstInt(.int_type, t as LLVM::ULongLong, False);
-    //
-
-    ret llvm::LLVMRustConstSmallInt(t, u, sign_extend);
+fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
+    ret llvm::LLVMConstInt(t, u, sign_extend);
 }
 
 fn C_float(cx: @crate_ctxt, s: str) -> ValueRef {
@@ -747,28 +741,28 @@ fn C_floating(s: str, t: TypeRef) -> ValueRef {
 fn C_nil() -> ValueRef {
     // NB: See comment above in T_void().
 
-    ret C_integral(T_i1(), 0u, False);
+    ret C_integral(T_i1(), 0u64, False);
 }
 
 fn C_bool(b: bool) -> ValueRef {
     if b {
-        ret C_integral(T_bool(), 1u, False);
-    } else { ret C_integral(T_bool(), 0u, False); }
+        ret C_integral(T_bool(), 1u64, False);
+    } else { ret C_integral(T_bool(), 0u64, False); }
 }
 
 fn C_i32(i: i32) -> ValueRef {
-    ret C_integral(T_i32(), i as uint, True);
+    ret C_integral(T_i32(), i as u64, True);
 }
 
 fn C_int(cx: @crate_ctxt, i: int) -> ValueRef {
-    ret C_integral(cx.int_type, i as uint, True);
+    ret C_integral(cx.int_type, i as u64, True);
 }
 
 fn C_uint(cx: @crate_ctxt, i: uint) -> ValueRef {
-    ret C_integral(cx.int_type, i, False);
+    ret C_integral(cx.int_type, i as u64, False);
 }
 
-fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i, False); }
+fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i as u64, False); }
 
 
 // This is a 'c-like' raw string, which differs from
