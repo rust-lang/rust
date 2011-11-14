@@ -40,7 +40,7 @@ native "cdecl" mod rustrt {
 
     fn chan_id_send<uniq T>(t: *sys::type_desc,
                             target_task: task::task, target_port: port_id,
-                            -data: T);
+                            data: T) -> ctypes::uintptr_t;
 
     fn new_port(unit_sz: uint) -> *rust_port;
     fn del_port(po: *rust_port);
@@ -109,7 +109,11 @@ to it.
 */
 fn send<uniq T>(ch: chan<T>, -data: T) {
     let chan_t(t, p) = ch;
-    rustrt::chan_id_send(sys::get_type_desc::<T>(), t, p, data);
+    let res = rustrt::chan_id_send(sys::get_type_desc::<T>(), t, p, data);
+    if res != 0u unsafe {
+        // Data sent successfully
+        unsafe::leak(data);
+    }
     task::yield();
 }
 

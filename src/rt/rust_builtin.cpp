@@ -485,10 +485,11 @@ get_port_id(rust_port *port) {
     return port->id;
 }
 
-extern "C" CDECL void
+extern "C" CDECL uintptr_t
 chan_id_send(type_desc *t, rust_task_id target_task_id,
              rust_port_id target_port_id, void *sptr) {
     // FIXME: make sure this is thread-safe
+    bool sent = false;
     rust_task *task = rust_scheduler::get_task();
     rust_task *target_task = task->kernel->get_task_by_id(target_task_id);
     if(target_task) {
@@ -497,9 +498,11 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
             port->send(sptr);
             scoped_lock with(target_task->lock);
             port->deref();
+            sent = true;
         }
         target_task->deref();
     }
+    return (uintptr_t)sent;
 }
 
 // This is called by an intrinsic on the Rust stack.

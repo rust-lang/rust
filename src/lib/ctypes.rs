@@ -10,3 +10,5 @@ type size_t = uint;
 type ssize_t = int;
 /* Type: uint32_t */
 type uint32_t = u32;
+/* Type: uintptr_t */
+type uintptr_t = uint;
