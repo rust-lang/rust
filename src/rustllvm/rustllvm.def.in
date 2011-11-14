@@ -364,6 +364,7 @@ LLVMGetNextParam
 LLVMGetNextUse
 LLVMGetNumOperands
 LLVMGetOperand
+LLVMGetOrInsertFunction
 LLVMGetParam
 LLVMGetParamParent
 LLVMGetParamTypes

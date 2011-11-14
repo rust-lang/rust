@@ -448,6 +448,8 @@ native "cdecl" mod llvm = "rustllvm" {
     fn LLVMGetNextFunction(Fn: ValueRef) -> ValueRef;
     fn LLVMGetPreviousFunction(Fn: ValueRef) -> ValueRef;
     fn LLVMDeleteFunction(Fn: ValueRef);
+    fn LLVMGetOrInsertFunction(M: ModuleRef, Name: sbuf, FunctionTy: TypeRef)
+       -> ValueRef;
     fn LLVMGetIntrinsicID(Fn: ValueRef) -> uint;
     fn LLVMGetFunctionCallConv(Fn: ValueRef) -> uint;
     fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: uint);

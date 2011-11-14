@@ -301,7 +301,8 @@ fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timeval,
 
 fn decl_fn(llmod: ModuleRef, name: str, cc: uint, llty: TypeRef) -> ValueRef {
     let llfn: ValueRef =
-        str::as_buf(name, {|buf| llvm::LLVMAddFunction(llmod, buf, llty) });
+        str::as_buf(name, {|buf|
+            llvm::LLVMGetOrInsertFunction(llmod, buf, llty) });
     llvm::LLVMSetFunctionCallConv(llfn, cc);
     ret llfn;
 }

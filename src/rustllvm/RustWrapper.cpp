@@ -141,3 +141,9 @@ extern "C" void LLVMRustEnableSegmentedStacks() {
   EnableSegmentedStacks = true;
 }
 
+extern "C" LLVMValueRef LLVMGetOrInsertFunction(LLVMModuleRef M,
+                                                const char* Name,
+                                                LLVMTypeRef FunctionTy) {
+  return wrap(unwrap(M)->getOrInsertFunction(Name,
+                                             unwrap<FunctionType>(FunctionTy)));
+}
