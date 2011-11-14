@@ -81,7 +81,7 @@ resource port_ptr<uniq T>(po: *rustrt::rust_port) {
     while rustrt::rust_port_size(po) > 0u {
         // FIXME: For some reason if we don't assign to something here
         // we end up with invalid reads in the drop glue.
-        let t = rusti::recv::<T>(po);
+        let _t = rusti::recv::<T>(po);
     }
     rustrt::del_port(po);
 }

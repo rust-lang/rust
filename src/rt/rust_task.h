@@ -213,6 +213,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // ground. We should never be migrating shared boxes between tasks.
     const type_desc *release_alloc(void *alloc);
     void claim_alloc(void *alloc, const type_desc *tydesc);
+
+    void notify(bool success);
 };
 
 //

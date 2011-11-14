@@ -126,24 +126,6 @@ rust_task::~rust_task()
     DLOG(sched, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
-    if(user.notify_enabled) {
-        rust_task *target_task = kernel->get_task_by_id(user.notify_chan.task);
-        if (target_task) {
-            rust_port *target_port =
-                target_task->get_port_by_id(user.notify_chan.port);
-            if(target_port) {
-                task_notification msg;
-                msg.id = user.id;
-                msg.result = failed ? tr_failure : tr_success;
-
-                target_port->send(&msg);
-                scoped_lock with(target_task->lock);
-                target_port->deref();
-            }
-            target_task->deref();
-        }
-    }
-
     if (supervisor) {
         supervisor->deref();
     }
@@ -202,6 +184,8 @@ void task_start_wrapper(spawn_args *a)
         LOG(task, task, "Task killed during termination");
         failed = true;
     }
+
+    task->notify(!failed);
 
     if (failed) {
 #ifndef __WIN32__
@@ -603,6 +587,28 @@ rust_task::claim_alloc(void *alloc, const type_desc *tydesc) {
     local_region.claim_alloc(alloc);
 
     lock.unlock();
+}
+
+void
+rust_task::notify(bool success) {
+    // FIXME (1078) Do this in rust code
+    if(user.notify_enabled) {
+        rust_task *target_task = kernel->get_task_by_id(user.notify_chan.task);
+        if (target_task) {
+            rust_port *target_port =
+                target_task->get_port_by_id(user.notify_chan.port);
+            if(target_port) {
+                task_notification msg;
+                msg.id = user.id;
+                msg.result = !success ? tr_failure : tr_success;
+
+                target_port->send(&msg);
+                scoped_lock with(target_task->lock);
+                target_port->deref();
+            }
+            target_task->deref();
+        }
+    }
 }
 
 //
