@@ -1,4 +1,3 @@
-// xfail-win32 Requires unwinding
 use std;
 import std::comm;
 
