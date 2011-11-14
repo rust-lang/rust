@@ -163,11 +163,8 @@ check-stage$(1)-$(2)-std-dummy: test/stdtest.stage$(1)-$(2)$$(X)
 # Rules for the rustc test runner
 
 test/rustctest.stage$(1)-$(2)$$(X): \
-	$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-	$$(TARGET_SREQ$(1)$(2) \
-    $$(HOST_LIB$(1))/$$(CFG_RUSTLLVM) \
-	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM) \
-	$$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB)
+	$$(COMPILER_CRATE) $$(COMPILER_INPUTS) $$(SREQ$(1)$(2)) \
+	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUSTLLVM)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_$(2)) -o $$@ $$< --test
 
