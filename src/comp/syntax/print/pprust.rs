@@ -350,13 +350,9 @@ fn print_native_item(s: ps, item: @ast::native_item) {
 
 
 
-      ast::native_item_fn(lname, decl, typarams) {
+      ast::native_item_fn(decl, typarams) {
         print_fn(s, decl, ast::proto_bare, item.ident, typarams,
                  decl.constraints);
-        alt lname {
-          none. { }
-          some(ss) { space(s.s); word_space(s, "="); print_string(s, ss); }
-        }
         end(s); // end head-ibox
         word(s.s, ";");
         end(s); // end the outer fn box

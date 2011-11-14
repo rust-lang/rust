@@ -4,8 +4,10 @@ native "cdecl" mod libc = "" {
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
     fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn open(s: str::sbuf, flags: int, mode: uint) -> int = "_open";
-    fn close(fd: int) -> int = "_close";
+    #[link_name = "_open"]
+    fn open(s: str::sbuf, flags: int, mode: uint) -> int;
+    #[link_name = "_close"]
+    fn close(fd: int) -> int;
     type FILE;
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn _fdopen(fd: int, mode: str::sbuf) -> FILE;

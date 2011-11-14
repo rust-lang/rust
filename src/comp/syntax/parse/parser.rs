@@ -1956,13 +1956,11 @@ fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
     let decl = parse_fn_decl(p, purity, ast::il_normal);
-    let link_name = none;
-    if p.peek() == token::EQ { p.bump(); link_name = some(parse_str(p)); }
     let hi = p.get_hi_pos();
     expect(p, token::SEMI);
     ret @{ident: t.ident,
           attrs: attrs,
-          node: ast::native_item_fn(link_name, decl, t.tps),
+          node: ast::native_item_fn(decl, t.tps),
           id: p.get_id(),
           span: ast_util::mk_sp(lo, hi)};
 }

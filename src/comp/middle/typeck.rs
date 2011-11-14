@@ -668,7 +668,7 @@ mod collect {
                          abi: ast::native_abi) -> ty::ty_param_kinds_and_ty {
         let no_kinds: [ast::kind] = [];
         alt it.node {
-          ast::native_item_fn(_, fn_decl, params) {
+          ast::native_item_fn(fn_decl, params) {
             let get = bind getter(cx, _);
             let convert = bind ast_ty_to_ty(cx.tcx, get, _);
             let f = bind ty_of_arg(cx, _);
@@ -819,7 +819,7 @@ mod collect {
           ast::native_item_ty. {
             // FIXME: Native types have no annotation. Should they? --pcw
           }
-          ast::native_item_fn(_, _, _) {
+          ast::native_item_fn(_, _) {
             write::ty_only(cx.tcx, i.id, tpt.ty);
           }
         }

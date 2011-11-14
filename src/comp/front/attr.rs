@@ -17,6 +17,7 @@ export require_unique_names;
 export get_attr_name;
 export get_meta_item_name;
 export get_meta_item_value_str;
+export get_meta_item_value_str_by_name;
 export get_meta_item_list;
 export mk_name_value_item_str;
 export mk_name_value_item;
@@ -83,6 +84,15 @@ fn get_meta_item_value_str(meta: @ast::meta_item) -> option::t<str> {
       }
       _ { option::none }
     }
+}
+
+fn get_meta_item_value_str_by_name(attrs: [ast::attribute], name: ast::ident)
+    -> option::t<str> {
+    let mattrs = find_attrs_by_name(attrs, name);
+    if vec::len(mattrs) > 0u {
+        ret get_meta_item_value_str(attr_meta(mattrs[0]));
+    }
+    ret option::none;
 }
 
 fn get_meta_item_list(meta: @ast::meta_item) -> option::t<[@ast::meta_item]> {

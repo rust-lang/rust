@@ -4,7 +4,8 @@ import std::vec;
 import std::str;
 
 native "cdecl" mod libc = "" {
-    fn my_strlen(str: *u8) -> uint = "strlen";
+    #[link_name = "strlen"]
+    fn my_strlen(str: *u8) -> uint;
 }
 
 fn strlen(str: str) -> uint unsafe {

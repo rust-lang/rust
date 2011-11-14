@@ -501,7 +501,7 @@ type native_item =
 
 tag native_item_ {
     native_item_ty;
-    native_item_fn(option::t<str>, fn_decl, [ty_param]);
+    native_item_fn(fn_decl, [ty_param]);
 }
 
 //
