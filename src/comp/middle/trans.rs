@@ -24,7 +24,7 @@ import back::{link, abi, upcall};
 import syntax::{ast, ast_util};
 import syntax::visit;
 import syntax::codemap::span;
-import syntax::print::pprust::{expr_to_str};
+import syntax::print::pprust::{expr_to_str, path_to_str, stmt_to_str};
 import visit::vt;
 import util::common::*;
 import lib::llvm::{llvm, mk_target_data, mk_type_names};
@@ -4604,6 +4604,8 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
 
 fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     // FIXME Fill in cx.sp
+
+    add_span_comment(cx, s.span, stmt_to_str(s));
 
     let bcx = cx;
     alt s.node {

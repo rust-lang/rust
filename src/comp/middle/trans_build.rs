@@ -1,10 +1,11 @@
 import std::{vec, str};
 import std::str::sbuf;
 import lib::llvm::llvm;
+import syntax::codemap::span;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, Opcode,
               ModuleRef};
-import trans_common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1,
-                      val_ty, C_i32};
+import trans_common::{block_ctxt, T_ptr, T_nil, T_int, T_i8, T_i1, T_void,
+                      T_fn, val_ty, bcx_ccx, C_i32};
 
 fn B(cx: @block_ctxt) -> BuilderRef {
     let b = *cx.fcx.lcx.ccx.builder;
@@ -502,6 +503,24 @@ fn _UndefReturn(cx: @block_ctxt, Fn: ValueRef) -> ValueRef {
     let retty = if llvm::LLVMGetTypeKind(ty) == 8 {
         llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
     ret llvm::LLVMGetUndef(retty);
+}
+
+fn add_span_comment(bcx: @block_ctxt, sp: span, text: str) {
+    let ccx = bcx_ccx(bcx);
+    if (!ccx.sess.get_opts().no_asm_comments) {
+        add_comment(bcx, text + " (" + ccx.sess.span_str(sp) + ")");
+    }
+}
+
+fn add_comment(bcx: @block_ctxt, text: str) {
+    let ccx = bcx_ccx(bcx);
+    if (!ccx.sess.get_opts().no_asm_comments) {
+        let comment_text = "; " + text;
+        let asm = str::as_buf(comment_text, { |c|
+            str::as_buf("", { |e|
+                llvm::LLVMConstInlineAsm(T_fn([], T_void()), c, e, 0, 0)})});
+        Call(bcx, asm, []);
+    }
 }
 
 fn Call(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {

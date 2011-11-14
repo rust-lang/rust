@@ -263,6 +263,7 @@ options:
     --opt-level <lvl>  optimize with possible levels 0-3
     -O                 equivalent to --opt-level=2
     -S                 compile only; do not assemble or link
+    --no-asm-comments  do not add comments into the assembly source
     -c                 compile and assemble, but do not link
     --emit-llvm        produce an LLVM bitcode file
     --save-temps       write intermediate files in addition to normal output
@@ -365,6 +366,11 @@ fn build_session_options(match: getopts::match)
     let run_typestate = !opt_present(match, "no-typestate");
     let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
     let target_opt = getopts::opt_maybe_str(match, "target");
+    let no_asm_comments = getopts::opt_present(match, "no-asm-comments");
+    alt output_type { // unless we're emitting huamn-readable assembly, omit comments.
+      link::output_type_llvm_assembly. | link::output_type_assembly. {}
+      _ { no_asm_comments = true; }
+    }
     let opt_level: uint =
         if opt_present(match, "O") {
             if opt_present(match, "opt-level") {
@@ -414,7 +420,8 @@ fn build_session_options(match: getopts::match)
           parse_only: parse_only,
           no_trans: no_trans,
           do_gc: do_gc,
-          stack_growth: stack_growth};
+          stack_growth: stack_growth,
+          no_asm_comments: no_asm_comments};
     ret sopts;
 }
 
@@ -453,7 +460,8 @@ fn opts() -> [getopts::opt] {
          optflag("no-typestate"), optflag("noverify"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static"), optflag("gc"),
-         optflag("stack-growth")];
+         optflag("stack-growth"), optflag("check-unsafe"),
+         optflag("no-asm-comments")];
 }
 
 fn build_output_filenames(ifile: str, ofile: option::t<str>,
