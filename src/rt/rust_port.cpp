@@ -22,8 +22,7 @@ rust_port::~rust_port() {
 }
 
 void rust_port::send(void *sptr) {
-    // FIXME: Is this lock really necessary? Why do we send with the lock
-    // but not receive with the lock?
+    I(task->sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
 
     buffer.enqueue(sptr);
@@ -40,6 +39,7 @@ void rust_port::send(void *sptr) {
 }
 
 bool rust_port::receive(void *dptr) {
+    I(task->sched, lock.lock_held_by_current_thread());
     if (buffer.is_empty() == false) {
         buffer.dequeue(dptr);
         LOG(task, comm, "<=== read data ===");
@@ -49,6 +49,7 @@ bool rust_port::receive(void *dptr) {
 }
 
 size_t rust_port::size() {
+    I(task->sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     return buffer.size();
 }
