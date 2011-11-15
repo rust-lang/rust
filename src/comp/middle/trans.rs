@@ -24,7 +24,7 @@ import back::{link, abi, upcall};
 import syntax::{ast, ast_util};
 import syntax::visit;
 import syntax::codemap::span;
-import syntax::print::pprust::{expr_to_str, path_to_str, stmt_to_str};
+import syntax::print::pprust::{expr_to_str, stmt_to_str};
 import visit::vt;
 import util::common::*;
 import lib::llvm::{llvm, mk_target_data, mk_type_names};
@@ -5393,7 +5393,9 @@ fn c_stack_tys(ccx: @crate_ctxt,
 //     }
 //
 fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
-    fn build_shim_fn(lcx: @local_ctxt, native_item: @ast::native_item,
+    fn build_shim_fn(lcx: @local_ctxt,
+                     link_name: str,
+                     native_item: @ast::native_item,
                      llshimfn: ValueRef) {
         let ccx = lcx_ccx(lcx);
         let span = native_item.span;
@@ -5401,8 +5403,7 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
         let tys = c_stack_tys(ccx, span, id);
 
         // Declare the "prototype" for the base function F:
-        let name = native_item.ident;
-        let llbasefn = decl_cdecl_fn(ccx.llmod, name, tys.base_fn_ty);
+        let llbasefn = decl_cdecl_fn(ccx.llmod, link_name, tys.base_fn_ty);
 
         // Declare the body of the shim function:
         let fcx = new_fn_ctxt(lcx, span, llshimfn);
@@ -5430,17 +5431,25 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
         finish_fn(fcx, lltop);
     }
 
+    fn select_link_name(user_name: option::t<str>, rust_name: str) -> str {
+        ret alt user_name {
+          some(n) { n }
+          none. { rust_name }
+        };
+    }
+
     let ccx = lcx_ccx(lcx);
     alt native_mod.abi {
       ast::native_abi_cdecl. {
         for native_item in native_mod.items {
             alt native_item.node {
               ast::native_item_ty. {}
-              ast::native_item_fn(_, fn_decl, _) {
+              ast::native_item_fn(name, fn_decl, _) {
                 let id = native_item.id;
                 alt ccx.item_ids.find(id) {
                   some(llshimfn) {
-                    build_shim_fn(lcx, native_item, llshimfn);
+                    let link_name = select_link_name(name, native_item.ident);
+                    build_shim_fn(lcx, link_name, native_item, llshimfn);
                   }
 
                   none. {

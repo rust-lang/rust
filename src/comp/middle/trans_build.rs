@@ -4,7 +4,7 @@ import lib::llvm::llvm;
 import syntax::codemap::span;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, Opcode,
               ModuleRef};
-import trans_common::{block_ctxt, T_ptr, T_nil, T_int, T_i8, T_i1, T_void,
+import trans_common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1, T_void,
                       T_fn, val_ty, bcx_ccx, C_i32};
 
 fn B(cx: @block_ctxt) -> BuilderRef {

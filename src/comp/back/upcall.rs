@@ -2,9 +2,9 @@
 import driver::session;
 import middle::trans;
 import middle::trans_common::{T_fn, T_i1, T_i8, T_i32,
-                              T_i64, T_int, T_nil,
+                              T_int, T_nil,
                               T_opaque_vec, T_ptr,
-                              T_size_t, T_void, T_float};
+                              T_size_t, T_void};
 import lib::llvm::type_names;
 import lib::llvm::llvm::ModuleRef;
 import lib::llvm::llvm::ValueRef;
