@@ -48,7 +48,7 @@ fn setenv(n: str, v: str) {
                         let _: () =
                             str::as_buf(v,
                                         {|vbuf|
-                                            os::libc::setenv(nbuf, vbuf, 1);
+                                            os::libc::setenv(nbuf, vbuf, 1i32);
                                         });
                     });
 }

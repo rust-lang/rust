@@ -4,6 +4,7 @@ Module: run
 Process spawning
 */
 import str::sbuf;
+import ctypes::{fd_t, pid_t};
 
 export program;
 export run_program;
@@ -14,8 +15,8 @@ export waitpid;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_run_program(argv: *sbuf, in_fd: int, out_fd: int, err_fd: int) ->
-       int;
+    fn rust_run_program(argv: *sbuf, in_fd: fd_t, out_fd: fd_t, err_fd: fd_t) ->
+       pid_t;
 }
 
 /* Section: Types */
@@ -41,7 +42,7 @@ type program = obj {
 
     Returns the process id of the program
     */
-    fn get_id() -> int;
+    fn get_id() -> pid_t;
 
     /*
     Method: input
@@ -114,8 +115,8 @@ Returns:
 
 The process id of the spawned process
 */
-fn spawn_process(prog: str, args: [str], in_fd: int, out_fd: int, err_fd: int)
-   -> int unsafe {
+fn spawn_process(prog: str, args: [str], in_fd: fd_t, out_fd: fd_t, err_fd: fd_t)
+   -> pid_t unsafe {
     // Note: we have to hold on to these vector references while we hold a
     // pointer to their buffers
     let prog = prog;
@@ -142,7 +143,7 @@ Returns:
 The process id
 */
 fn run_program(prog: str, args: [str]) -> int {
-    ret waitpid(spawn_process(prog, args, 0, 0, 0));
+    ret waitpid(spawn_process(prog, args, 0i32, 0i32, 0i32));
 }
 
 /*
@@ -171,16 +172,16 @@ fn start_program(prog: str, args: [str]) -> @program_res {
         spawn_process(prog, args, pipe_input.in, pipe_output.out,
                       pipe_err.out);
 
-    if pid == -1 { fail; }
+    if pid == -1i32 { fail; }
     os::libc::close(pipe_input.in);
     os::libc::close(pipe_output.out);
     os::libc::close(pipe_err.out);
-    obj new_program(pid: int,
-                    mutable in_fd: int,
+    obj new_program(pid: pid_t,
+                    mutable in_fd: fd_t,
                     out_file: os::libc::FILE,
                     err_file: os::libc::FILE,
                     mutable finished: bool) {
-        fn get_id() -> int { ret pid; }
+        fn get_id() -> pid_t { ret pid; }
         fn input() -> io::writer {
             ret io::new_writer(io::fd_buf_writer(in_fd, option::none));
         }
@@ -191,7 +192,7 @@ fn start_program(prog: str, args: [str]) -> @program_res {
             ret io::new_reader(io::FILE_buf_reader(err_file, option::none));
         }
         fn close_input() {
-            let invalid_fd = -1;
+            let invalid_fd = -1i32;
             if in_fd != invalid_fd {
                 os::libc::close(in_fd);
                 in_fd = invalid_fd;
@@ -253,7 +254,7 @@ Function: waitpid
 
 Waits for a process to exit and returns the exit code
 */
-fn waitpid(pid: int) -> int {
+fn waitpid(pid: pid_t) -> int {
     ret waitpid_os(pid);
 
     #[cfg(target_os = "win32")]
@@ -263,30 +264,30 @@ fn waitpid(pid: int) -> int {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
-    fn waitpid_os(pid: int) -> int {
+    fn waitpid_os(pid: pid_t) -> int {
         #[cfg(target_os = "linux")]
-        fn WIFEXITED(status: int) -> bool {
-            (status & 0xff) == 0
+        fn WIFEXITED(status: i32) -> bool {
+            (status & 0xffi32) == 0i32
         }
 
         #[cfg(target_os = "macos")]
-        fn WIFEXITED(status: int) -> bool {
-            (status & 0x7f) == 0
+        fn WIFEXITED(status: i32) -> bool {
+            (status & 0x7fi32) == 0i32
         }
 
         #[cfg(target_os = "linux")]
-        fn WEXITSTATUS(status: int) -> int {
+        fn WEXITSTATUS(status: i32) -> i32 {
             (status >> 8) & 0xff
         }
 
         #[cfg(target_os = "macos")]
-        fn WEXITSTATUS(status: int) -> int {
-            status >> 8
+        fn WEXITSTATUS(status: i32) -> i32 {
+            status >> 8i32
         }
 
         let status = os::waitpid(pid);
         ret if WIFEXITED(status) {
-            WEXITSTATUS(status)
+            WEXITSTATUS(status) as int
         } else {
             1
         };

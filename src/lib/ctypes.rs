@@ -4,11 +4,18 @@ Module: ctypes
 Definitions useful for C interop
 */
 
-/* Type: size_t */
-type size_t = uint;
-/* Type: ssize_t */
-type ssize_t = int;
-/* Type: uint32_t */
-type uint32_t = u32;
-/* Type: uintptr_t */
+type c_int = i32;
+type long = int;
+type unsigned = u32;
+type ulong = uint;
+
+type intptr_t = uint;
 type uintptr_t = uint;
+type uint32_t = u32;
+
+type size_t = uint;
+type ssize_t = int;
+type off_t = uint;
+
+type fd_t = i32;      // not actually a C type, but should be.
+type pid_t = i32;

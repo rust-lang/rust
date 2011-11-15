@@ -4,6 +4,7 @@ import std::os;
 import std::io;
 import std::option;
 import std::str;
+import std::ctypes::fd_t;
 
 // Regression test for memory leaks
 #[ignore(cfg(target_os = "win32"))] // FIXME
@@ -14,7 +15,7 @@ fn test_leaks() {
 }
 
 #[test]
-fn test_pipes() unsafe {
+fn test_pipes() {
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
@@ -25,7 +26,7 @@ fn test_pipes() unsafe {
     os::close(pipe_out.out);
     os::close(pipe_err.out);
 
-    if pid == -1 { fail; }
+    if pid == -1i32 { fail; }
     let expected = "test";
     writeclose(pipe_in.out, expected);
     let actual = readclose(pipe_out.in);
@@ -36,14 +37,15 @@ fn test_pipes() unsafe {
     log actual;
     assert (expected == actual);
 
-    fn writeclose(fd: int, s: str) unsafe {
+    fn writeclose(fd: fd_t, s: str) {
+        log_err("writeclose", (fd, s));
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
         writer.write_str(s);
 
         os::close(fd);
     }
 
-    fn readclose(fd: int) -> str unsafe {
+    fn readclose(fd: fd_t) -> str {
         // Copied from run::program_output
         let file = os::fd_FILE(fd);
         let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
@@ -58,8 +60,8 @@ fn test_pipes() unsafe {
 }
 
 #[test]
-fn waitpid() unsafe {
-    let pid = run::spawn_process("false", [], 0, 0, 0);
+fn waitpid() {
+    let pid = run::spawn_process("false", [], 0i32, 0i32, 0i32);
     let status = run::waitpid(pid);
     assert status == 1;
 }

@@ -1,3 +1,5 @@
+import ctypes::fd_t;
+import ctypes::c_int;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -5,7 +7,6 @@ native mod rustrt {
     fn rust_get_stdout() -> os::libc::FILE;
     fn rust_get_stderr() -> os::libc::FILE;
 }
-
 
 // Reading
 
@@ -49,8 +50,12 @@ type reader =
         fn tell() -> uint;
     };
 
-fn convert_whence(whence: seek_style) -> int {
-    ret alt whence { seek_set. { 0 } seek_cur. { 1 } seek_end. { 2 } };
+fn convert_whence(whence: seek_style) -> i32 {
+    ret alt whence {
+      seek_set. { 0i32 }
+      seek_cur. { 1i32 }
+      seek_end. { 2i32 }
+    };
 }
 
 resource FILE_res(f: os::libc::FILE) { os::libc::fclose(f); }
@@ -64,11 +69,11 @@ obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
         vec::unsafe::set_len::<u8>(buf, read);
         ret buf;
     }
-    fn read_byte() -> int { ret os::libc::fgetc(f); }
-    fn unread_byte(byte: int) { os::libc::ungetc(byte, f); }
-    fn eof() -> bool { ret os::libc::feof(f) != 0; }
+    fn read_byte() -> int { ret os::libc::fgetc(f) as int; }
+    fn unread_byte(byte: int) { os::libc::ungetc(byte as i32, f); }
+    fn eof() -> bool { ret os::libc::feof(f) != 0i32; }
     fn seek(offset: int, whence: seek_style) {
-        assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0);
+        assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0i32);
     }
     fn tell() -> uint { ret os::libc::ftell(f) as uint; }
 }
@@ -247,14 +252,14 @@ obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
         if nout < 1u { log_err "error dumping buffer"; }
     }
     fn seek(offset: int, whence: seek_style) {
-        assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0);
+        assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0i32);
     }
     fn tell() -> uint { ret os::libc::ftell(f) as uint; }
 }
 
-resource fd_res(fd: int) { os::libc::close(fd); }
+resource fd_res(fd: fd_t) { os::libc::close(fd); }
 
-obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
+obj fd_buf_writer(fd: fd_t, res: option::t<@fd_res>) {
     fn write(v: [u8]) unsafe {
         let len = vec::len::<u8>(v);
         let count = 0u;
@@ -282,7 +287,7 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
 
 fn file_buf_writer(path: str,
                    flags: [fileflag]) -> result::t<buf_writer, str> {
-    let fflags: int =
+    let fflags: i32 =
         os::libc_constants::O_WRONLY | os::libc_constants::O_BINARY;
     for f: fileflag in flags {
         alt f {
@@ -299,7 +304,7 @@ fn file_buf_writer(path: str,
                                        os::libc_constants::S_IRUSR |
                                            os::libc_constants::S_IWUSR)
                     });
-    ret if fd < 0 {
+    ret if fd < 0i32 {
         log_err sys::last_os_error();
         result::err("error opening " + path)
     } else {
@@ -385,9 +390,14 @@ fn buffered_file_buf_writer(path: str) -> result::t<buf_writer, str> {
 
 
 // FIXME it would be great if this could be a const
+<<<<<<< HEAD
 // Problem seems to be that new_writer is not pure
 fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
 fn stderr() -> writer { ret new_writer(fd_buf_writer(2, option::none)); }
+=======
+fn stdout() -> writer { ret new_writer(fd_buf_writer(1i32, option::none)); }
+fn stderr() -> writer { ret new_writer(fd_buf_writer(2i32, option::none)); }
+>>>>>>> refactor all unix types
 
 fn print(s: str) { stdout().write_str(s); }
 fn println(s: str) { stdout().write_str(s + "\n"); }
