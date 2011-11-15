@@ -367,7 +367,8 @@ fn build_session_options(match: getopts::match)
     let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
     let target_opt = getopts::opt_maybe_str(match, "target");
     let no_asm_comments = getopts::opt_present(match, "no-asm-comments");
-    alt output_type { // unless we're emitting huamn-readable assembly, omit comments.
+    alt output_type {
+      // unless we're emitting huamn-readable assembly, omit comments.
       link::output_type_llvm_assembly. | link::output_type_assembly. {}
       _ { no_asm_comments = true; }
     }
