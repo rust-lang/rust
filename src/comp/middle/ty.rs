@@ -41,6 +41,7 @@ export eq_ty;
 export expr_has_ty_params;
 export expr_ty;
 export expr_ty_params_and_ty;
+export expr_is_lval;
 export fold_ty;
 export field;
 export field_idx;
@@ -139,6 +140,7 @@ export ty_fn_args;
 export type_constr;
 export type_contains_params;
 export type_contains_vars;
+export kind_lteq;
 export type_kind;
 export type_err;
 export type_err_to_str;
@@ -981,108 +983,83 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
         };
 }
 
+fn kind_lteq(a: kind, b: kind) -> bool {
+    alt a {
+      kind_noncopyable. { true }
+      kind_copyable. { b != kind_noncopyable }
+      kind_sendable. { b == kind_sendable }
+    }
+}
+
+fn lower_kind(a: kind, b: kind) -> kind {
+    if ty::kind_lteq(a, b) { a } else { b }
+}
+
 fn type_kind(cx: ctxt, ty: t) -> ast::kind {
     alt cx.kind_cache.find(ty) {
       some(result) { ret result; }
       none. {/* fall through */ }
     }
 
-    let result = ast::kind_noncopyable;
-
     // Insert a default in case we loop back on self recursively.
-    cx.kind_cache.insert(ty, result);
+    cx.kind_cache.insert(ty, ast::kind_sendable);
 
-    alt struct(cx, ty) {
-      // Scalar types are unique-kind, no substructure.
+    let result = alt struct(cx, ty) {
+      // Scalar and unique types are sendable
       ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_uint. | ty_float. |
-      ty_machine(_) | ty_char. | ty_native(_) {
-        // no-op
-      }
-      // A handful of other built-in are unique too.
-      ty_type. | ty_str. | ty_native_fn(_, _, _) {
-        // no-op
-      }
+      ty_machine(_) | ty_char. | ty_native(_) |
+      ty_type. | ty_str. | ty_native_fn(_, _, _) { ast::kind_sendable }
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
-      ty_obj(_) {
-        result = kind_copyable;
-      }
+      ty_obj(_) { kind_copyable }
       // FIXME: the environment capture mode is not fully encoded
       // here yet, leading to weirdness around closure.
       ty_fn(proto, _, _, _, _) {
-        result = alt proto {
+        alt proto {
           ast::proto_block. { ast::kind_noncopyable }
           ast::proto_shared(_) { ast::kind_copyable }
           ast::proto_bare. { ast::kind_sendable }
-        };
+        }
       }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
-      ty_box(mt) {
-        result = ast::kind_copyable;
-      }
+      ty_box(mt) { ast::kind_copyable }
       // Pointers and unique containers raise pinned to shared.
-      ty_ptr(tm) | ty_vec(tm) | ty_uniq(tm) {
-        let k = type_kind(cx, tm.ty);
-
-        // FIXME (984) Doing this implies a lot of subtle rules about what can
-        // and can't be copied, so I'm going to start by not raising unique of
-        // pinned to shared, make sure that's relatively safe, then we can try
-        // to make this work.
-
-        // if k == ast::kind_pinned { k = ast::kind_shared; }
-
-        result = kind::lower_kind(result, k);
-      }
+      ty_ptr(tm) | ty_vec(tm) | ty_uniq(tm) { type_kind(cx, tm.ty) }
       // Records lower to the lowest of their members.
       ty_rec(flds) {
-        for f: field in flds {
-            result = kind::lower_kind(result, type_kind(cx, f.mt.ty));
-            if result == ast::kind_noncopyable { break; }
-        }
+        let lowest = ast::kind_sendable;
+        for f in flds { lowest = lower_kind(lowest, type_kind(cx, f.mt.ty)); }
+        lowest
       }
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
-        for ty: t in tys {
-            result = kind::lower_kind(result, type_kind(cx, ty));
-            if result == ast::kind_noncopyable { break; }
-        }
+        let lowest = ast::kind_sendable;
+        for ty in tys { lowest = lower_kind(lowest, type_kind(cx, ty)); }
+        lowest
       }
       // Tags lower to the lowest of their variants.
       ty_tag(did, tps) {
-        let variants = tag_variants(cx, did);
-        for variant: variant_info in variants {
-            for aty: t in variant.args {
+        let lowest = ast::kind_sendable;
+        for variant in tag_variants(cx, did) {
+            for aty in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
-                result = kind::lower_kind(result, type_kind(cx, arg_ty));
-                if result == ast::kind_noncopyable { break; }
+                lowest = lower_kind(lowest, type_kind(cx, arg_ty));
+                if lowest == ast::kind_noncopyable { break; }
             }
-            if result == ast::kind_noncopyable { break; }
         }
+        lowest
       }
-      // Resources are always pinned.
-      ty_res(did, inner, tps) {
-        result = ast::kind_noncopyable;
-      }
-      ty_var(_) {
-        fail;
-      }
-      ty_param(_, k) {
-        result = kind::lower_kind(result, k);
-      }
-      ty_constr(t, _) {
-        result = type_kind(cx, t);
-      }
-      _ {
-        cx.sess.bug("missed case: " + ty_to_str(cx, ty));
-      }
-    }
+      // Resources are always noncopyable.
+      ty_res(did, inner, tps) { ast::kind_noncopyable }
+      ty_param(_, k) { k }
+      ty_constr(t, _) { type_kind(cx, t) }
+    };
 
     cx.kind_cache.insert(ty, result);
     ret result;
 }
-
 
 // FIXME: should we just return true for native types in
 // type_is_scalar?
@@ -1706,6 +1683,25 @@ fn expr_ty_params_and_ty(cx: ctxt, expr: @ast::expr) -> {params: [t], ty: t} {
 
 fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
     ret node_id_has_type_params(cx, expr.id);
+}
+
+fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
+    alt e.node {
+      ast::expr_path(_) | ast::expr_index(_, _) |
+      ast::expr_unary(ast::deref., _) { true }
+      ast::expr_field(base, ident) {
+        let basety = type_autoderef(tcx, expr_ty(tcx, base));
+        alt struct(tcx, basety) {
+          ty_obj(_) { false }
+          ty_rec(_) { true }
+        }
+      }
+      ast::expr_call(f, _, _) {
+          let fty = expr_ty(tcx, f);
+          ast_util::ret_by_ref(ty_fn_ret_style(tcx, fty))
+      }
+      _ { false }
+    }
 }
 
 fn stmt_node_id(s: @ast::stmt) -> ast::node_id {

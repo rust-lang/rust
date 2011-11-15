@@ -267,17 +267,15 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, &&ast_ty: @ast::ty)
         if vec::len(ty_param_kinds_and_ty.kinds) == 0u {
             ret ty_param_kinds_and_ty.ty;
         }
-        // The typedef is type-parametric. Do the type substitution.
-        //
 
+        // The typedef is type-parametric. Do the type substitution.
         let param_bindings: [ty::t] = [];
+        if vec::len(args) != vec::len(ty_param_kinds_and_ty.kinds) {
+            tcx.sess.span_fatal(sp, "Wrong number of type arguments for a \
+                                     polymorphic type");
+        }
         for ast_ty: @ast::ty in args {
             param_bindings += [ast_ty_to_ty(tcx, getter, ast_ty)];
-        }
-        if vec::len(param_bindings) != vec::len(ty_param_kinds_and_ty.kinds) {
-            tcx.sess.span_fatal(sp,
-                                "Wrong number of type arguments for a \
-                                 polymorphic type");
         }
         let typ =
             ty::substitute_type_params(tcx, param_bindings,

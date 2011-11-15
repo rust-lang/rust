@@ -3128,7 +3128,7 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
       ast::expr_path(p) { ret trans_path(bcx, p, e.id); }
       ast::expr_field(base, ident) {
         // Lval means this is a record field, so not a method
-        if !expr_is_lval(bcx_tcx(bcx), e) {
+        if !ty::expr_is_lval(bcx_tcx(bcx), e) {
             let of = trans_object_field(bcx, base, ident);
             ret {bcx: of.bcx, val: of.mthptr, kind: owned,
                  env: obj_env(of.objptr), generic: none};
@@ -3147,25 +3147,6 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     }
     let lv = trans_temp_lval(bcx, e);
     ret lval_no_env(lv.bcx, lv.val, lv.kind);
-}
-
-fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
-    alt e.node {
-      ast::expr_path(_) | ast::expr_index(_, _) |
-      ast::expr_unary(ast::deref., _) { true }
-      ast::expr_field(base, ident) {
-        let basety = ty::type_autoderef(tcx, ty::expr_ty(tcx, base));
-        alt ty::struct(tcx, basety) {
-          ty::ty_obj(_) { false }
-          ty::ty_rec(_) { true }
-        }
-      }
-      ast::expr_call(f, _, _) {
-          let fty = ty::expr_ty(tcx, f);
-          ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fty))
-      }
-      _ { false }
-    }
 }
 
 // Use this when you know you are compiling an lval.
@@ -4103,7 +4084,7 @@ fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
 // use trans_temp_expr.
 fn trans_temp_lval(bcx: @block_ctxt, e: @ast::expr) -> lval_result {
     let bcx = bcx;
-    if expr_is_lval(bcx_tcx(bcx), e) {
+    if ty::expr_is_lval(bcx_tcx(bcx), e) {
         ret trans_lval(bcx, e);
     } else {
         let tcx = bcx_tcx(bcx);
@@ -4141,7 +4122,7 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
 // - exprs with non-immediate type never get dest=by_val
 fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
-    if expr_is_lval(tcx, e) { ret lval_to_dps(bcx, e, dest); }
+    if ty::expr_is_lval(tcx, e) { ret lval_to_dps(bcx, e, dest); }
 
     alt e.node {
       ast::expr_if(cond, thn, els) | ast::expr_if_check(cond, thn, els) {
@@ -4176,7 +4157,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       ast::expr_fn(f) { ret trans_expr_fn(bcx, f, e.span, e.id, dest); }
       ast::expr_bind(f, args) { ret trans_bind(bcx, f, args, e.id, dest); }
       ast::expr_copy(a) {
-        if !expr_is_lval(tcx, a) { ret trans_expr(bcx, a, dest); }
+        if !ty::expr_is_lval(tcx, a) { ret trans_expr(bcx, a, dest); }
         else { ret lval_to_dps(bcx, a, dest); }
       }
       ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
@@ -4574,7 +4555,7 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     alt local.node.init {
       some(init) {
         if init.op == ast::init_assign ||
-           !expr_is_lval(bcx_tcx(bcx), init.expr) {
+           !ty::expr_is_lval(bcx_tcx(bcx), init.expr) {
             bcx = trans_expr_save_in(bcx, init.expr, llptr);
         } else { // This is a move from an lval, must perform an actual move
             let sub = trans_lval(bcx, init.expr);

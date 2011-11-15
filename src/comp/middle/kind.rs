@@ -1,3 +1,122 @@
+import std::option::some;
+import syntax::{visit, ast_util};
+import syntax::ast::*;
+import syntax::codemap::span;
+
+fn kind_to_str(k: kind) -> str {
+    alt k {
+      kind_sendable. { "sendable" }
+      kind_copyable. { "copyable" }
+      kind_noncopyable. { "noncopyable" }
+    }
+}
+
+type rval_map = std::map::hashmap<node_id, ()>;
+
+type ctx = {tcx: ty::ctxt,
+            rval_map: rval_map,
+            mutable ret_by_ref: bool};
+
+fn check_crate(tcx: ty::ctxt, crate: @crate) -> rval_map {
+    let ctx = {tcx: tcx,
+               rval_map: std::map::new_int_hash(),
+               mutable ret_by_ref: false};
+    let visit = visit::mk_vt(@{
+        visit_expr: check_expr,
+        visit_stmt: check_stmt,
+        visit_fn: visit_fn
+        with *visit::default_visitor()
+    });
+    visit::visit_crate(*crate, ctx, visit);
+    // FIXME go through alias's copy_map, check implicit copies (either here,
+    // or in alias.rs)
+    tcx.sess.abort_if_errors();
+    ret ctx.rval_map;
+}
+
+fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
+    alt e.node {
+      expr_assign(_, ex) | expr_assign_op(_, _, ex) |
+      expr_block({node: {expr: some(ex), _}, _}) |
+      expr_unary(box(_), ex) | expr_unary(uniq(_), ex) { maybe_copy(cx, ex); }
+      expr_ret(some(ex)) { if !cx.ret_by_ref { maybe_copy(cx, ex); } }
+      expr_copy(expr) { check_copy_ex(cx, expr, false); }
+      // Vector add copies.
+      expr_binary(add., ls, rs) { maybe_copy(cx, ls); maybe_copy(cx, rs); }
+      expr_rec(fields, _) {
+        for field in fields { maybe_copy(cx, field.node.expr); }
+      }
+      expr_tup(exprs) | expr_vec(exprs, _) {
+        for expr in exprs { maybe_copy(cx, expr); }
+      }
+      expr_bind(_, args) {
+        for a in args { alt a { some(ex) { maybe_copy(cx, ex); } _ {} } }
+      }
+      // FIXME check for by-copy args
+      expr_call(_f, _args, _) {
+
+      }
+      // FIXME: generic instantiation
+      expr_path(_) {}
+      expr_fn({proto: proto_shared(_), _}) {
+        for free in *freevars::get_freevars(cx.tcx, e.id) {
+            let id = ast_util::def_id_of_def(free).node;
+            let ty = ty::node_id_to_type(cx.tcx, id);
+            check_copy(cx, ty, e.span);
+        }
+      }
+      expr_ternary(_, a, b) { maybe_copy(cx, a); maybe_copy(cx, b); }
+      _ { }
+    }
+    visit::visit_expr(e, cx, v);
+}
+
+fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
+    alt stmt.node {
+      stmt_decl(@{node: decl_local(locals), _}, _) {
+        for (_, local) in locals {
+            alt local.node.init {
+              some({op: init_assign., expr}) { maybe_copy(cx, expr); }
+              _ {}
+            }
+        }
+      }
+      _ {}
+    }
+    visit::visit_stmt(stmt, cx, v);
+}
+
+fn visit_fn(f: _fn, tps: [ty_param], sp: span, ident: fn_ident,
+            id: node_id, cx: ctx, v: visit::vt<ctx>) {
+    let old_ret = cx.ret_by_ref;
+    cx.ret_by_ref = ast_util::ret_by_ref(f.decl.cf);
+    visit::visit_fn(f, tps, sp, ident, id, cx, v);
+    cx.ret_by_ref = old_ret;
+}
+
+fn maybe_copy(cx: ctx, ex: @expr) {
+    check_copy_ex(cx, ex, true);
+}
+
+fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
+    if ty::expr_is_lval(cx.tcx, ex) {
+        let ty = ty::expr_ty(cx.tcx, ex);
+        check_copy(cx, ty, ex.span);
+        // FIXME turn this on again once vector types are no longer unique.
+        // Right now, it is too annoying to be useful.
+        /* if warn && ty::type_is_unique(cx.tcx, ty) {
+            cx.tcx.sess.span_warn(ex.span, "copying a unique value");
+        }*/
+    }
+}
+
+fn check_copy(cx: ctx, ty: ty::t, sp: span) {
+    if ty::type_kind(cx.tcx, ty) == kind_noncopyable {
+        cx.tcx.sess.span_err(sp, "copying a noncopyable value");
+    }
+}
+
+
 /*
 * Kinds are types of type.
 *
@@ -84,28 +203,6 @@
 *
 */
 
-import syntax::ast;
-import ast::{kind, kind_sendable, kind_copyable, kind_noncopyable};
-
-fn kind_lteq(a: kind, b: kind) -> bool {
-    alt a {
-      kind_noncopyable. { true }
-      kind_copyable. { b != kind_noncopyable }
-      kind_sendable. { b == kind_sendable }
-    }
-}
-
-fn lower_kind(a: kind, b: kind) -> kind {
-    if kind_lteq(a, b) { a } else { b }
-}
-
-fn kind_to_str(k: kind) -> str {
-    alt k {
-      ast::kind_sendable. { "sendable" }
-      ast::kind_copyable. { "copyable" }
-      ast::kind_noncopyable. { "noncopyable" }
-    }
-}
 /*
 fn type_and_kind(tcx: ty::ctxt, e: @ast::expr) ->
    {ty: ty::t, kind: ast::kind} {
@@ -296,15 +393,6 @@ fn check_stmt(tcx: ty::ctxt, stmt: @ast::stmt) {
     }
 }
 */
-fn check_crate(_tcx: ty::ctxt, _crate: @ast::crate) {
-    // FIXME stubbed out
-/*    let visit =
-        visit::mk_simple_visitor(@{visit_expr: bind check_expr(tcx, _),
-                                   visit_stmt: bind check_stmt(tcx, _)
-                                      with *visit::default_simple_visitor()});
-    visit::visit_crate(*crate, (), visit);
-    tcx.sess.abort_if_errors();*/
-}
 
 //
 // Local Variables:
