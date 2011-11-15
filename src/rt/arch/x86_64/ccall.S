@@ -61,7 +61,7 @@ upcall_call_c_stack_float:
 _upcall_call_c_stack_shim:
 #else
 .globl upcall_call_c_stack_shim
-upcall_call_c_stack_shim
+upcall_call_c_stack_shim:
 #endif
     push %rbp
     mov %rsp,%rbp          // save rsp

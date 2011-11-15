@@ -278,7 +278,7 @@ fn waitpid(pid: pid_t) -> int {
 
         #[cfg(target_os = "linux")]
         fn WEXITSTATUS(status: i32) -> i32 {
-            (status >> 8) & 0xff
+            (status >> 8i32) & 0xffi32
         }
 
         #[cfg(target_os = "macos")]
