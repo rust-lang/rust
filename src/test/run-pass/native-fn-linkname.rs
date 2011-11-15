@@ -13,7 +13,7 @@ fn strlen(str: str) -> uint unsafe {
     ret libc::my_strlen(vec::unsafe::to_ptr(bytes));
 }
 
-fn main(_args: [str]) {
+fn main() {
     let len = strlen("Rust");
     assert(len == 4u);
 }
