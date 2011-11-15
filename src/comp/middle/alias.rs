@@ -4,15 +4,20 @@ import ast::{ident, fn_ident, node_id};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
-import std::{vec, option};
+import std::{vec, option, list};
 import std::option::{some, none, is_none};
+import list::list;
 
 // This is not an alias-analyser (though it would merit from becoming one, or
 // getting input from one, to be more precise). It is a pass that checks
 // whether aliases are used in a safe way.
 
-tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 tag copied { not_allowed; copied; not_copied; }
+tag invalid_reason { overwritten; val_taken; }
+type invalid = {reason: invalid_reason,
+                node_id: node_id,
+                sp: span, path:
+                ast::path};
 
 tag unsafe_ty { contains(ty::t); mut_contains(ty::t); }
 
@@ -21,18 +26,19 @@ type binding = @{node_id: node_id,
                  root_var: option::t<node_id>,
                  local_id: uint,
                  unsafe_tys: [unsafe_ty],
-                 mutable ok: valid,
                  mutable copied: copied};
 
 tag ret_info { by_ref(bool, node_id); other; }
 // FIXME it may be worthwhile to use a linked list of bindings instead
-type scope = {bs: [binding], ret_info: ret_info};
+type scope = {bs: [binding],
+              ret_info: ret_info,
+              invalid: @mutable list<@invalid>};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
               unsafe_tys: [unsafe_ty]) -> binding {
     ret @{node_id: id, span: span, root_var: root_var,
           local_id: local_id_of_node(cx, id),
-          unsafe_tys: unsafe_tys, mutable ok: valid,
+          unsafe_tys: unsafe_tys,
           mutable copied: not_copied};
 }
 
@@ -41,18 +47,21 @@ tag local_info { local(uint); }
 type copy_map = std::map::hashmap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
-            copy_map: copy_map};
+            copy_map: copy_map,
+            mutable silent: bool};
 
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
     let cx = @{tcx: tcx,
-               copy_map: std::map::new_int_hash()};
+               copy_map: std::map::new_int_hash(),
+               mutable silent: false};
     let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_block: bind visit_block(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
-    visit::visit_crate(*crate, {bs: [], ret_info: other}, visit::mk_vt(v));
+    let sc = {bs: [], ret_info: other, invalid: @mutable list::nil};
+    visit::visit_crate(*crate, sc, visit::mk_vt(v));
     tcx.sess.abort_if_errors();
     ret cx.copy_map;
 }
@@ -64,22 +73,14 @@ fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], sp: span,
     for arg in args {
         if arg.mode == ast::by_val &&
            ty::type_has_dynamic_size(cx.tcx, arg.ty) {
-            cx.tcx.sess.span_err
-                (sp, "can not pass a dynamically-sized type by value");
+            err(*cx, sp, "can not pass a dynamically-sized type by value");
         }
     }
 
-    let bs = alt f.proto {
-      // Blocks need to obey any restrictions from the enclosing scope.
-      ast::proto_block. | ast::proto_shared(_) { sc.bs }
-      // Non capturing functions start out fresh.
-      _ { [] }
-    };
     if ast_util::ret_by_ref(f.decl.cf) && !is_none(f.body.node.expr) {
         // FIXME this will be easier to lift once have DPS
-        cx.tcx.sess.span_err(option::get(f.body.node.expr).span,
-                             "reference-returning functions may not " +
-                             "return implicitly");
+        err(*cx, option::get(f.body.node.expr).span,
+            "reference-returning functions may not return implicitly");
     }
     let ret_info = alt f.decl.cf {
       ast::return_ref(mut, n_arg) {
@@ -87,7 +88,15 @@ fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], sp: span,
       }
       _ { other }
     };
-    v.visit_block(f.body, {bs: bs, ret_info: ret_info}, v);
+    // Blocks need to obey any restrictions from the enclosing scope, and may
+    // be called multiple times.
+    if f.proto == ast::proto_block {
+        let sc = {ret_info: ret_info with sc};
+        check_loop(*cx, sc) {|| v.visit_block(f.body, sc, v);}
+    } else {
+        let sc = {bs: [], ret_info: ret_info, invalid: @mutable list::nil};
+        v.visit_block(f.body, sc, v);
+    }
 }
 
 fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
@@ -98,7 +107,10 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
         handled = false;
       }
       ast::expr_alt(input, arms) { check_alt(*cx, input, arms, sc, v); }
-      ast::expr_for(decl, seq, blk) { check_for(*cx, decl, seq, blk, sc, v); }
+      ast::expr_for(decl, seq, blk) {
+        v.visit_expr(seq, sc, v);
+        check_loop(*cx, sc) {|| check_for(*cx, decl, seq, blk, sc, v); }
+      }
       ast::expr_path(pt) {
         check_var(*cx, ex, pt, ex.id, false, sc);
         handled = false;
@@ -125,6 +137,10 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
             }
         }
         handled = false;
+      }
+      ast::expr_if(c, then, els) { check_if(c, then, els, sc, v); }
+      ast::expr_while(_, _) | ast::expr_do_while(_, _) {
+        check_loop(*cx, sc) {|| visit::visit_expr(ex, sc, v); }
       }
       _ { handled = false; }
     }
@@ -169,14 +185,13 @@ fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
     alt loc.node.init {
       some(init) {
         if init.op == ast::init_move {
-            cx.tcx.sess.span_err
-                (loc.span, "can not move into a by-reference binding");
+            err(cx, loc.span, "can not move into a by-reference binding");
         }
         let root = expr_root(cx, init.expr, false);
         let root_var = path_def_id(cx, root.ex);
         if is_none(root_var) {
-            cx.tcx.sess.span_err(loc.span, "a reference binding can't be \
-                                            rooted in a temporary");
+            err(cx, loc.span, "a reference binding can't be \
+                               rooted in a temporary");
         }
         for proot in pattern_roots(cx.tcx, root.mut, loc.node.pat) {
             let bnd = mk_binding(cx, proot.id, proot.span, root_var,
@@ -187,8 +202,7 @@ fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
         }
       }
       _ {
-        cx.tcx.sess.span_err
-            (loc.span, "by-reference bindings must be initialized");
+        err(cx, loc.span, "by-reference bindings must be initialized");
       }
     }
 }
@@ -240,7 +254,6 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
                        root_var: root_var,
                        local_id: 0u,
                        unsafe_tys: unsafe_set(root.mut),
-                       mutable ok: valid,
                        mutable copied: alt arg_t.mode {
                          ast::by_move. { copied }
                          ast::by_mut_ref. { not_allowed }
@@ -257,10 +270,8 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
         let i = 0u;
         for b in bindings {
             if vec::len(b.unsafe_tys) > 0u && cant_copy(cx, b) {
-                cx.tcx.sess.span_err(f.span,
-                                     #fmt["function may alias with argument \
-                                           %u, which is not immutably rooted",
-                                          i]);
+                err(cx, f.span, #fmt["function may alias with argument \
+                                     %u, which is not immutably rooted", i]);
             }
             i += 1u;
         }
@@ -275,11 +286,9 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
                        ty_can_unsafely_include(cx, unsafe_ty, arg_t.ty,
                                                mut_alias) &&
                        cant_copy(cx, b) {
-                    cx.tcx.sess.span_err
-                        (args[i].span,
-                         #fmt["argument %u may alias with argument %u, \
-                              which is not immutably rooted",
-                                              i, j]);
+                    err(cx, args[i].span,
+                        #fmt["argument %u may alias with argument %u, \
+                             which is not immutably rooted", i, j]);
                 }
                 i += 1u;
             }
@@ -295,10 +304,9 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
                 alt b.root_var {
                   some(root) {
                     if node == root && cant_copy(cx, b) {
-                        cx.tcx.sess.span_err
-                            (args[arg].span,
-                             "passing a mutable reference to a \
-                              variable that roots another reference");
+                        err(cx, args[arg].span,
+                            "passing a mutable reference to a \
+                             variable that roots another reference");
                         break;
                     }
                   }
@@ -365,8 +373,7 @@ fn check_ret_ref(cx: ctx, sc: scope, mut: bool, arg_node_id: node_id,
     if mut_field && !mut { bad = some("a mutable field"); }
     alt bad {
       some(name) {
-        cx.tcx.sess.span_err(expr.span, "can not return a reference to " +
-                             name);
+        err(cx, expr.span, "can not return a reference to " + name);
       }
       _ {}
     }
@@ -375,6 +382,8 @@ fn check_ret_ref(cx: ctx, sc: scope, mut: bool, arg_node_id: node_id,
 fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
              v: vt<scope>) {
     v.visit_expr(input, sc, v);
+    let orig_invalid = *sc.invalid;
+    let all_invalid = orig_invalid;
     let root = expr_root(cx, input, true);
     for a: ast::arm in arms {
         let new_bs = sc.bs;
@@ -403,13 +412,15 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
             new_bs += [mk_binding(cx, info.id, info.span, root_var,
                                   copy info.unsafe_tys)];
         }
+        *sc.invalid = orig_invalid;
         visit::visit_arm(a, {bs: new_bs with sc}, v);
+        all_invalid = append_invalid(all_invalid, *sc.invalid, orig_invalid);
     }
+    *sc.invalid = all_invalid;
 }
 
 fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
              sc: scope, v: vt<scope>) {
-    v.visit_expr(seq, sc, v);
     let root = expr_root(cx, seq, false);
 
     // If this is a mutable vector, don't allow it to be touched.
@@ -444,7 +455,9 @@ fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
         if my_local_id < b.local_id {
             for unsafe_ty in b.unsafe_tys {
                 if ty_can_unsafely_include(cx, unsafe_ty, var_t, assign) {
-                    b.ok = val_taken(ex.span, p);
+                    let inv = @{reason: val_taken, node_id: b.node_id,
+                                sp: ex.span, path: p};
+                    *sc.invalid = list::cons(inv, @*sc.invalid);
                 }
             }
         } else if b.node_id == my_defnum {
@@ -459,7 +472,11 @@ fn check_lval(cx: @ctx, dest: @ast::expr, sc: scope, v: vt<scope>) {
         let def = cx.tcx.def_map.get(dest.id);
         let dnum = ast_util::def_id_of_def(def).node;
         for b in sc.bs {
-            if b.root_var == some(dnum) { b.ok = overwritten(dest.span, p); }
+            if b.root_var == some(dnum) {
+                let inv = @{reason: overwritten, node_id: b.node_id,
+                            sp: dest.span, path: p};
+                *sc.invalid = list::cons(inv, @*sc.invalid);
+            }
         }
       }
       _ { visit_expr(cx, dest, sc, v); }
@@ -472,33 +489,52 @@ fn check_assign(cx: @ctx, dest: @ast::expr, src: @ast::expr, sc: scope,
     check_lval(cx, dest, sc, v);
 }
 
+fn check_if(c: @ast::expr, then: ast::blk, els: option::t<@ast::expr>,
+            sc: scope, v: vt<scope>) {
+    v.visit_expr(c, sc, v);
+    let orig_invalid = *sc.invalid;
+    v.visit_block(then, sc, v);
+    let then_invalid = *sc.invalid;
+    *sc.invalid = orig_invalid;
+    visit::visit_expr_opt(els, sc, v);
+    *sc.invalid = append_invalid(*sc.invalid, then_invalid, orig_invalid);
+}
+
+fn check_loop(cx: ctx, sc: scope, checker: block()) {
+    let orig_invalid = filter_invalid(*sc.invalid, sc.bs);
+    checker();
+    let new_invalid = filter_invalid(*sc.invalid, sc.bs);
+    // Have to check contents of loop again if it invalidated an alias
+    if list::len(orig_invalid) < list::len(new_invalid) {
+        let old_silent = cx.silent;
+        cx.silent = true;
+        checker();
+        cx.silent = old_silent;
+    }
+    *sc.invalid = new_invalid;
+}
+
 fn test_scope(cx: ctx, sc: scope, b: binding, p: ast::path) {
-    let prob = b.ok;
+    let prob = find_invalid(b.node_id, *sc.invalid);
     alt b.root_var {
       some(dn) {
         for other in sc.bs {
+            if !is_none(prob) { break; }
             if other.node_id == dn {
-                prob = other.ok;
-                if prob != valid { break; }
+                prob = find_invalid(other.node_id, *sc.invalid);
             }
         }
       }
       _ {}
     }
-    if prob != valid && cant_copy(cx, b) {
-        let msg = alt prob {
-          overwritten(sp, wpt) {
-            {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
-          }
-          val_taken(sp, vpt) {
-            {span: sp,
-             msg: "taking the value of " + ast_util::path_name(vpt)}
-          }
+    if !is_none(prob) && cant_copy(cx, b) {
+        let i = option::get(prob);
+        let msg = alt i.reason {
+          overwritten. { "overwriting " + ast_util::path_name(i.path) }
+          val_taken. { "taking the value of " + ast_util::path_name(i.path) }
         };
-        cx.tcx.sess.span_err(msg.span,
-                             msg.msg + " will invalidate reference " +
-                                 ast_util::path_name(p) +
-                                 ", which is still used");
+        err(cx, i.sp, msg + " will invalidate reference " +
+            ast_util::path_name(p) + ", which is still used");
     }
 }
 
@@ -698,6 +734,57 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
 
 fn unsafe_set(from: option::t<unsafe_ty>) -> [unsafe_ty] {
     alt from { some(t) { [t] } _ { [] } }
+}
+
+fn find_invalid(id: node_id, lst: list<@invalid>)
+    -> option::t<@invalid> {
+    let cur = lst;
+    while true {
+        alt cur {
+          list::nil. { break; }
+          list::cons(head, tail) {
+            if head.node_id == id { ret some(head); }
+            cur = *tail;
+          }
+        }
+    }
+    ret none;
+}
+
+fn append_invalid(dest: list<@invalid>, src: list<@invalid>,
+                  stop: list<@invalid>) -> list<@invalid> {
+    let cur = src, dest = dest;
+    while cur != stop {
+        alt cur {
+          list::cons(head, tail) {
+            if is_none(find_invalid(head.node_id, dest)) {
+                dest = list::cons(head, @dest);
+            }
+            cur = *tail;
+          }
+        }
+    }
+    ret dest;
+}
+
+fn filter_invalid(src: list<@invalid>, bs: [binding]) -> list<@invalid> {
+    let out = list::nil, cur = src;
+    while cur != list::nil {
+        alt cur {
+          list::cons(head, tail) {
+            let p = vec::position_pred({|b| b.node_id == head.node_id}, bs);
+            if !is_none(p) { out = list::cons(head, @out); }
+            cur = *tail;
+          }
+        }
+    }
+    ret out;
+}
+
+fn err(cx: ctx, sp: span, err: str) {
+    if !cx.silent || !cx.tcx.sess.has_errors() {
+        cx.tcx.sess.span_err(sp, err);
+    }
 }
 
 // Local Variables:

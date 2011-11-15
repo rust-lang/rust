@@ -76,6 +76,7 @@ obj session(targ_cfg: @config,
         codemap::emit_error(none, msg, parse_sess.cm);
         err_count += 1u;
     }
+    fn has_errors() -> bool { err_count > 0u }
     fn abort_if_errors() {
         if err_count > 0u { self.fatal("aborting due to previous errors"); }
     }
