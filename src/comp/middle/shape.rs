@@ -3,6 +3,7 @@
 
 import lib::llvm::True;
 import lib::llvm::llvm::{ModuleRef, TypeRef, ValueRef};
+import driver::session;
 import middle::{trans, trans_common};
 import middle::trans_common::{crate_ctxt, val_ty, C_bytes,
                               C_named_struct, C_struct};
@@ -231,16 +232,32 @@ fn tag_kind(ccx: @crate_ctxt, did: ast::def_id) -> tag_kind {
 
 
 // Returns the code corresponding to the pointer size on this architecture.
-fn s_int(_tcx: ty_ctxt) -> u8 {
-    ret shape_i32; // TODO: x86-64
+fn s_int(tcx: ty_ctxt) -> u8 {
+    ret alt tcx.sess.get_targ_cfg().arch {
+        session::arch_x86. { shape_i32 }
+        session::arch_x86_64. { shape_i64 }
+        session::arch_arm. { shape_i32 }
+    };
 }
 
-fn s_uint(_tcx: ty_ctxt) -> u8 {
-    ret shape_u32; // TODO: x86-64
+fn s_uint(tcx: ty_ctxt) -> u8 {
+    ret alt tcx.sess.get_targ_cfg().arch {
+        session::arch_x86. { shape_u32 }
+        session::arch_x86_64. { shape_u64 }
+        session::arch_arm. { shape_u32 }
+    };
 }
 
-fn s_float(_tcx: ty_ctxt) -> u8 {
-    ret shape_f64; // TODO: x86-64
+fn s_float(tcx: ty_ctxt) -> u8 {
+    ret alt tcx.sess.get_targ_cfg().arch {
+        session::arch_x86. { shape_f64 }
+        session::arch_x86_64. { shape_f64 }
+        session::arch_arm. { shape_f64 }
+    };
+}
+
+fn s_variant_tag_t(tcx: ty_ctxt) -> u8 {
+    ret s_int(tcx);
 }
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
@@ -329,9 +346,9 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
         alt tag_kind(ccx, did) {
           tk_unit. {
             // FIXME: For now we do this.
-            s += [shape_u32];
+            s += [s_variant_tag_t(ccx.tcx)];
           }
-          tk_enum. { s += [shape_u32]; }
+          tk_enum. { s += [s_variant_tag_t(ccx.tcx)]; }
           tk_complex. {
             s += [shape_tag];
 
