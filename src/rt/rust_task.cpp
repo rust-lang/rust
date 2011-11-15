@@ -8,13 +8,10 @@
 #ifndef __WIN32__
 #include <execinfo.h>
 #endif
-#include <iostream>
 #include <cassert>
 #include <cstring>
 
 #include "globals.h"
-
-#define RED_ZONE_SIZE   128
 
 // Stack size
 size_t g_custom_min_stack_size = 0;
@@ -37,16 +34,16 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t minsz)
     size_t min_stk_bytes = get_min_stk_size(sched->min_stack_size);
     if (minsz < min_stk_bytes)
         minsz = min_stk_bytes;
-    size_t sz = sizeof(stk_seg) + minsz + RED_ZONE_SIZE;
+    size_t sz = sizeof(stk_seg) + minsz;
     stk_seg *stk = (stk_seg *)task->malloc(sz, "stack");
     LOGPTR(task->sched, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
     stk->next = task->stk;
-    stk->limit = (uintptr_t) &stk->data[minsz + RED_ZONE_SIZE];
+    stk->limit = (uintptr_t) &stk->data[minsz];
     LOGPTR(task->sched, "stk limit", stk->limit);
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
-                                &stk->data[minsz + RED_ZONE_SIZE]);
+                                &stk->data[minsz]);
     task->stk = stk;
     return stk;
 }
@@ -66,32 +63,18 @@ del_stk(rust_task *task, stk_seg *stk)
 // Entry points for `__morestack` (see arch/*/morestack.S).
 extern "C" void *
 rust_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
-    std::cerr << "*** New stack!\n";
-
     rust_task *task = rust_scheduler::get_task();
-    if (!task)
-        return NULL;
-
     stk_seg *stk_seg = new_stk(task->sched, task, stk_sz);
     memcpy(stk_seg->data, args_addr, args_sz);
     return stk_seg->data;
 }
 
-extern "C" void
+extern "C" void *
 rust_del_stack() {
     rust_task *task = rust_scheduler::get_task();
+    stk_seg *next_seg = task->stk->next;
     del_stk(task, task->stk);
-}
-
-extern "C" void *
-rust_get_prev_stack() {
-    rust_task *task = rust_scheduler::get_task();
-    return task->stk->next;
-}
-
-extern "C" rust_task *
-rust_get_task() {
-    return rust_scheduler::get_task();
+    return next_seg->data;
 }
 
 
