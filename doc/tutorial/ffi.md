@@ -15,7 +15,7 @@ OpenSSL libraries installed, it should 'just work'.
     use std;
     import std::{vec, str};
     
-    native "cdecl" mod ssl {
+    native "cdecl" mod crypto {
         fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
     }
     
@@ -27,8 +27,8 @@ OpenSSL libraries installed, it should 'just work'.
 
     fn sha1(data: str) -> str unsafe {
         let bytes = str::bytes(data);
-        let hash = ssl::SHA1(vec::unsafe::to_ptr(bytes),
-                             vec::len(bytes), std::ptr::null());
+        let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
+                                vec::len(bytes), std::ptr::null());
         ret as_hex(vec::unsafe::from_buf(hash, 20u));
     }
     
@@ -41,7 +41,7 @@ OpenSSL libraries installed, it should 'just work'.
 Before we can call `SHA1`, we have to declare it. That is what this
 part of the program is responsible for:
 
-    native "cdecl" mod ssl {
+    native "cdecl" mod crypto {
         fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
     }
 
@@ -49,10 +49,10 @@ A `native` module declaration tells the compiler that the program
 should be linked with a library by that name, and that the given list
 of functions are available in that library.
 
-In this case, it'll change the name `ssl` to a shared library name in
-a platform-specific way (`libssl.so` on Linux, for example), and link
-that in. If you want the module to have a different name from the
-actual library, you can say `native "cdecl" mod something = "ssl" {
+In this case, it'll change the name `crypto` to a shared library name
+in a platform-specific way (`libcrypto.so` on Linux, for example), and
+link that in. If you want the module to have a different name from the
+actual library, you can say `native "cdecl" mod something = "crypto" {
 ... }`.
 
 The `"cdecl"` word indicates the calling convention to use for
@@ -94,8 +94,8 @@ The `sha1` function is the most obscure part of the program.
 
     fn sha1(data: str) -> str unsafe {
         let bytes = str::bytes(data);
-        let hash = ssl::SHA1(vec::unsafe::to_ptr(bytes),
-                             vec::len(bytes), std::ptr::null());
+        let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
+                                vec::len(bytes), std::ptr::null());
         ret as_hex(vec::unsafe::from_buf(hash, 20u));
     }
 
@@ -128,8 +128,8 @@ Rust's safety mechanisms.
 Let's look at our `sha1` function again.
 
     let bytes = str::bytes(data);
-    let hash = ssl::SHA1(vec::unsafe::to_ptr(bytes),
-                         vec::len(bytes), std::ptr::null());
+    let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
+                            vec::len(bytes), std::ptr::null());
     ret as_hex(vec::unsafe::from_buf(hash, 20u));
 
 The `str::bytes` function is perfectly safe, it converts a string to
