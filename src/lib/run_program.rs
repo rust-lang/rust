@@ -15,8 +15,8 @@ export waitpid;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_run_program(argv: *sbuf, in_fd: fd_t, out_fd: fd_t, err_fd: fd_t) ->
-       pid_t;
+    fn rust_run_program(argv: *sbuf, in_fd: fd_t,
+                        out_fd: fd_t, err_fd: fd_t) -> pid_t;
 }
 
 /* Section: Types */
@@ -115,7 +115,8 @@ Returns:
 
 The process id of the spawned process
 */
-fn spawn_process(prog: str, args: [str], in_fd: fd_t, out_fd: fd_t, err_fd: fd_t)
+fn spawn_process(prog: str, args: [str], in_fd: fd_t,
+                 out_fd: fd_t, err_fd: fd_t)
    -> pid_t unsafe {
     // Note: we have to hold on to these vector references while we hold a
     // pointer to their buffers

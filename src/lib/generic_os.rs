@@ -41,16 +41,14 @@ fn getenv(n: str) -> option::t<str> unsafe {
 #[cfg(target_os = "macos")]
 fn setenv(n: str, v: str) {
     // FIXME (868)
-    let _: () =
-        str::as_buf(n,
-                    // FIXME (868)
-                    {|nbuf|
-                        let _: () =
-                            str::as_buf(v,
-                                        {|vbuf|
-                                            os::libc::setenv(nbuf, vbuf, 1i32);
-                                        });
-                    });
+    str::as_buf(
+        n,
+        // FIXME (868)
+        {|nbuf|
+            str::as_buf(
+                v,
+                {|vbuf|
+                    os::libc::setenv(nbuf, vbuf, 1i32)})});
 }
 
 #[cfg(target_os = "win32")]
