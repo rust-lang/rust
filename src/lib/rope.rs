@@ -1196,31 +1196,23 @@ mod node {
     proportional to the height of the rope + the (bounded)
     length of the largest leaf.
     */
-   fn char_at(node: @node, pos: uint) -> char {
-       let node    = node;
-       let pos     = pos;
-       while true {
-           alt(*node) {
-             leaf(x) {
-               ret str::char_at(*x.content, pos);
-             }
-             concat({left: left,
-                     right: right,
-                     char_len: _,
-                     byte_len: _,
-                     height: _}) {
-               let left_len = char_len(left);
-               if left_len > pos {
-                   node = left;
-               } else {
-                   node = right;
-                   pos  = pos - left_len;
-               }
-             }
-           }
-       };
-       fail;//unreachable
-   }
+    fn char_at(node: @node, pos: uint) -> char {
+        let node    = node;
+        let pos     = pos;
+        while true {
+            alt *node {
+              leaf(x) {
+                ret str::char_at(*x.content, pos);
+              }
+              concat({left, right, _}) {
+                let left_len = char_len(left);
+                node = if left_len > pos { left }
+                       else { pos -= left_len; right };
+              }
+            }
+        }
+        fail;//unreachable
+    }
 
     mod leaf_iterator {
         type t = {
