@@ -84,15 +84,14 @@
 *
 */
 
-import syntax::{ast, ast_util, visit, codemap};
-import std::{vec, option};
-import ast::{kind, kind_unique, kind_shared, kind_pinned};
+import syntax::ast;
+import ast::{kind, kind_sendable, kind_copyable, kind_noncopyable};
 
 fn kind_lteq(a: kind, b: kind) -> bool {
     alt a {
-      kind_pinned. { true }
-      kind_shared. { b != kind_pinned }
-      kind_unique. { b == kind_unique }
+      kind_noncopyable. { true }
+      kind_copyable. { b != kind_noncopyable }
+      kind_sendable. { b == kind_sendable }
     }
 }
 
@@ -102,12 +101,12 @@ fn lower_kind(a: kind, b: kind) -> kind {
 
 fn kind_to_str(k: kind) -> str {
     alt k {
-      ast::kind_pinned. { "pinned" }
-      ast::kind_unique. { "unique" }
-      ast::kind_shared. { "shared" }
+      ast::kind_sendable. { "sendable" }
+      ast::kind_copyable. { "copyable" }
+      ast::kind_noncopyable. { "noncopyable" }
     }
 }
-
+/*
 fn type_and_kind(tcx: ty::ctxt, e: @ast::expr) ->
    {ty: ty::t, kind: ast::kind} {
     let t = ty::expr_ty(tcx, e);
@@ -138,8 +137,8 @@ fn demand_kind(tcx: ty::ctxt, sp: codemap::span, t: ty::t,
 }
 
 fn need_shared_lhs_rhs(tcx: ty::ctxt, a: @ast::expr, b: @ast::expr, op: str) {
-    need_expr_kind(tcx, a, ast::kind_shared, op + " lhs");
-    need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
+    need_expr_kind(tcx, a, ast::kind_copyable, op + " lhs");
+    need_expr_kind(tcx, b, ast::kind_copyable, op + " rhs");
 }
 
 /*
@@ -296,14 +295,15 @@ fn check_stmt(tcx: ty::ctxt, stmt: @ast::stmt) {
       _ { /* fall through */ }
     }
 }
-
-fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
-    let visit =
+*/
+fn check_crate(_tcx: ty::ctxt, _crate: @ast::crate) {
+    // FIXME stubbed out
+/*    let visit =
         visit::mk_simple_visitor(@{visit_expr: bind check_expr(tcx, _),
                                    visit_stmt: bind check_stmt(tcx, _)
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visit);
-    tcx.sess.abort_if_errors();
+    tcx.sess.abort_if_errors();*/
 }
 
 //

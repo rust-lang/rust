@@ -1,4 +1,5 @@
 // error-pattern:mismatched kinds for '~' operand
+// xfail-test
 resource r(i: @mutable int) {
     *i = *i + 1;
 }

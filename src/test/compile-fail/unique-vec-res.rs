@@ -1,4 +1,5 @@
 // error-pattern: needed shared type, got pinned type ~r
+// xfail-test
 
 resource r(i: @mutable int) {
     *i = *i + 1;

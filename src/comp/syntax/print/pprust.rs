@@ -1168,10 +1168,10 @@ fn print_arg_mode(s: ps, m: ast::mode) {
 
 fn print_kind(s: ps, kind: ast::plicit<ast::kind>) {
     alt kind {
+      ast::explicit(ast::kind_sendable.) { word_nbsp(s, "send"); }
+      ast::explicit(ast::kind_copyable.) { word_nbsp(s, "copy"); }
+      ast::explicit(ast::kind_noncopyable.) { word_nbsp(s, "nocopy"); }
       ast::implicit(_) {}
-      ast::explicit(ast::kind_unique.) { word_nbsp(s, "uniq"); }
-      ast::explicit(ast::kind_pinned.) { word_nbsp(s, "pin"); }
-      ast::explicit(ast::kind_shared.) { word_nbsp(s, "shar"); }
     }
 }
 

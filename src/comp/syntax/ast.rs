@@ -23,6 +23,8 @@ type def_id = {crate: crate_num, node: node_id};
 
 const local_crate: crate_num = 0;
 
+tag plicit<T> { explicit(T); implicit(T); }
+
 type ty_param = {ident: ident, kind: plicit<kind>};
 
 tag def {
@@ -99,8 +101,7 @@ tag pat_ {
 
 tag mutability { mut; imm; maybe_mut; }
 
-tag plicit<T> { explicit(T); implicit(T); }
-tag kind { kind_pinned; kind_shared; kind_unique; kind_auto; }
+tag kind { kind_sendable; kind_copyable; kind_noncopyable; }
 
 tag _auth { auth_unsafe; }
 

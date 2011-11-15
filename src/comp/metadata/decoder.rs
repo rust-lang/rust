@@ -116,9 +116,9 @@ fn item_ty_param_kinds(item: ebml::doc) -> [ast::kind] {
         while i < vi.val {
             let k =
                 alt dat[vi.next + i] as char {
-                  'u' { ast::kind_unique }
-                  's' { ast::kind_shared }
-                  'p' { ast::kind_pinned }
+                  's' { ast::kind_sendable }
+                  'c' { ast::kind_copyable }
+                  'a' { ast::kind_noncopyable }
                 };
             ks += [k];
             i += 1u;

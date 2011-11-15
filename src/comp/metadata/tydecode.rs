@@ -204,9 +204,9 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       'p' {
         let k =
             alt next(st) as char {
-              'u' { kind_unique }
-              's' { kind_shared }
-              'p' { kind_pinned }
+              's' { kind_sendable }
+              'c' { kind_copyable }
+              'a' { kind_noncopyable }
               c {
                 log_err "unexpected char in encoded type param: ";
                 log_err c;

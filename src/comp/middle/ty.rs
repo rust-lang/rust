@@ -993,7 +993,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       none. {/* fall through */ }
     }
 
-    let result = ast::kind_unique;
+    let result = ast::kind_noncopyable;
 
     // Insert a default in case we loop back on self recursively.
     cx.kind_cache.insert(ty, result);
@@ -1011,21 +1011,21 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
       ty_obj(_) {
-        result = kind_shared;
+        result = kind_copyable;
       }
       // FIXME: the environment capture mode is not fully encoded
       // here yet, leading to weirdness around closure.
       ty_fn(proto, _, _, _, _) {
         result = alt proto {
-          ast::proto_block. { ast::kind_pinned }
-          ast::proto_shared(_) { ast::kind_shared }
-          ast::proto_bare. { ast::kind_unique }
+          ast::proto_block. { ast::kind_noncopyable }
+          ast::proto_shared(_) { ast::kind_copyable }
+          ast::proto_bare. { ast::kind_sendable }
         };
       }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
       ty_box(mt) {
-        result = ast::kind_shared;
+        result = ast::kind_copyable;
       }
       // Pointers and unique containers raise pinned to shared.
       ty_ptr(tm) | ty_vec(tm) | ty_uniq(tm) {
@@ -1044,14 +1044,14 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       ty_rec(flds) {
         for f: field in flds {
             result = kind::lower_kind(result, type_kind(cx, f.mt.ty));
-            if result == ast::kind_pinned { break; }
+            if result == ast::kind_noncopyable { break; }
         }
       }
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
         for ty: t in tys {
             result = kind::lower_kind(result, type_kind(cx, ty));
-            if result == ast::kind_pinned { break; }
+            if result == ast::kind_noncopyable { break; }
         }
       }
       // Tags lower to the lowest of their variants.
@@ -1062,14 +1062,14 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
                 result = kind::lower_kind(result, type_kind(cx, arg_ty));
-                if result == ast::kind_pinned { break; }
+                if result == ast::kind_noncopyable { break; }
             }
-            if result == ast::kind_pinned { break; }
+            if result == ast::kind_noncopyable { break; }
         }
       }
       // Resources are always pinned.
       ty_res(did, inner, tps) {
-        result = ast::kind_pinned;
+        result = ast::kind_noncopyable;
       }
       ty_var(_) {
         fail;

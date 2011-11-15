@@ -1,4 +1,5 @@
 // error-pattern: needed unique type
+// xfail-test
 
 fn f<uniq T>(i: T) {
 }

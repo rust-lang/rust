@@ -1738,21 +1738,24 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
     ret spanned(lo, hi, bloc);
 }
 
-fn parse_ty_param(default: ast::kind, p: parser) -> ast::ty_param {
-    let k = if eat_word(p, "pin") { ast::explicit(ast::kind_pinned) }
-            else if eat_word(p, "uniq") { ast::explicit(ast::kind_unique) }
-            else if eat_word(p, "shar") { ast::explicit(ast::kind_shared) }
-            // FIXME distinguish implied shared from explicit
-            else { ast::implicit(default) };
+fn parse_ty_param(p: parser, def: ast::kind) -> ast::ty_param {
+    // Accept both old and new kind names for now. FIXME remove this
+    let k = if eat_word(p, "send") | eat_word(p, "uniq")
+                { ast::explicit(ast::kind_sendable) }
+            else if eat_word(p, "copy") | eat_word(p, "shar")
+                { ast::explicit(ast::kind_copyable) }
+            else if eat_word(p, "nocopy") | eat_word(p, "pin")
+                { ast::explicit(ast::kind_noncopyable) }
+            else { ast::implicit(def) };
     ret {ident: parse_ident(p), kind: k};
 }
 
-fn parse_ty_params(p: parser, default: ast::kind) -> [ast::ty_param] {
+fn parse_ty_params(p: parser, def: ast::kind) -> [ast::ty_param] {
     let ty_params: [ast::ty_param] = [];
     if p.peek() == token::LT {
         p.bump();
         ty_params = parse_seq_to_gt(some(token::COMMA),
-                                    {|p| parse_ty_param(default, p)}, p);
+                                    {|p| parse_ty_param(p, def)}, p);
     }
     ret ty_params;
 }
@@ -1805,7 +1808,7 @@ fn parse_fn(p: parser, proto: ast::proto, purity: ast::purity,
 
 fn parse_fn_header(p: parser) -> {ident: ast::ident, tps: [ast::ty_param]} {
     let id = parse_value_ident(p);
-    let ty_params = parse_ty_params(p, ast::kind_shared);
+    let ty_params = parse_ty_params(p, ast::kind_copyable);
     ret {ident: id, tps: ty_params};
 }
 
@@ -1858,7 +1861,7 @@ fn parse_method(p: parser) -> @ast::method {
 fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let ident = parse_value_ident(p);
-    let ty_params = parse_ty_params(p, ast::kind_pinned);
+    let ty_params = parse_ty_params(p, ast::kind_copyable);
     let fields: ast::spanned<[ast::obj_field]> =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                   parse_obj_field, p);
@@ -1875,7 +1878,7 @@ fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let ident = parse_value_ident(p);
-    let ty_params = parse_ty_params(p, ast::kind_pinned);
+    let ty_params = parse_ty_params(p, ast::kind_noncopyable);
     expect(p, token::LPAREN);
     let arg_ident = parse_value_ident(p);
     expect(p, token::COLON);
@@ -2039,7 +2042,7 @@ fn parse_type_decl(p: parser) -> {lo: uint, ident: ast::ident} {
 
 fn parse_item_type(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let t = parse_type_decl(p);
-    let tps = parse_ty_params(p, ast::kind_pinned);
+    let tps = parse_ty_params(p, ast::kind_noncopyable);
     expect(p, token::EQ);
     let ty = parse_ty(p, false);
     let hi = p.get_hi_pos();
@@ -2050,7 +2053,7 @@ fn parse_item_type(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let id = parse_ident(p);
-    let ty_params = parse_ty_params(p, ast::kind_pinned);
+    let ty_params = parse_ty_params(p, ast::kind_noncopyable);
     let variants: [ast::variant] = [];
     // Newtype syntax
     if p.peek() == token::EQ {

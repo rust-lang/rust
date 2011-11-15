@@ -1,4 +1,5 @@
 // error-pattern: cannot copy pinned type ~~~{y: r}
+// xfail-test
 
 resource r(i: @mutable int) {
     *i = *i + 1;

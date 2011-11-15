@@ -172,9 +172,9 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_param(id, k) {
         alt k {
-          kind_unique. { w.write_str("pu"); }
-          kind_shared. { w.write_str("ps"); }
-          kind_pinned. { w.write_str("pp"); }
+          kind_sendable. { w.write_str("ps"); }
+          kind_copyable. { w.write_str("pc"); }
+          kind_noncopyable. { w.write_str("pa"); }
         }
         w.write_str(uint::str(id));
       }

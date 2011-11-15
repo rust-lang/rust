@@ -1,4 +1,5 @@
 // error-pattern: mismatched kind
+// xfail-test
 
 resource r(b: bool) {
 }

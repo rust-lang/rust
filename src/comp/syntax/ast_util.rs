@@ -229,7 +229,7 @@ fn ret_by_ref(style: ret_style) -> bool {
 }
 
 fn ty_param_kind(tp: ty_param) -> kind {
-    alt tp.kind { explicit(x) | implicit(x) { x } }
+    alt tp.kind { ast::implicit(x) | ast::explicit(x) { x } }
 }
 
 // Local Variables:
