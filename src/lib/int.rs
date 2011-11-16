@@ -3,22 +3,27 @@ Module: int
 */
 
 /*
-Function: max_value
+Const: max_value
 
 The maximum value of an integer
 */
-fn max_value() -> int {
-  ret min_value() - 1;
-}
+// FIXME: Find another way to access the machine word size in a const expr
+#[cfg(target_arch="x86")]
+const max_value: int = (-1 << 31)-1;
+
+#[cfg(target_arch="x86_64")]
+const max_value: int = (-1 << 63)-1;
 
 /*
-Function: min_value
+Const: min_value
 
 The minumum value of an integer
 */
-fn min_value() -> int {
-  ret (-1 << (sys::size_of::<int>()  * 8u as int - 1)) as int;
-}
+#[cfg(target_arch="x86")]
+const min_value: int = -1 << 31;
+
+#[cfg(target_arch="x86_64")]
+const min_value: int = -1 << 63;
 
 /* Function: add */
 pure fn add(x: int, y: int) -> int { ret x + y; }

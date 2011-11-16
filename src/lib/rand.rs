@@ -49,7 +49,7 @@ fn mk_rng() -> rng {
           let u1 = rustrt::rand_next(**c) as float;
           let u2 = rustrt::rand_next(**c) as float;
           let u3 = rustrt::rand_next(**c) as float;
-          let scale = u32::max_value() as float;
+          let scale = u32::max_value as float;
           ret ((u1 / scale + u2) / scale + u3) / scale;
         }
     }

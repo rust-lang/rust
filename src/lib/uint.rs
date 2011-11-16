@@ -3,24 +3,22 @@ Module: uint
 */
 
 /*
-Function: min_value
+Const: min_value
 
 Return the minimal value for an uint.
 
 This is always 0
 */
-pure fn min_value() -> uint { ret 0u; }
+const min_value: uint = 0u;
 
 /*
-Function: max_value
+Const: max_value
 
 Return the maximal value for an uint.
 
 This is 2^wordsize - 1
 */
-pure fn max_value() -> uint {
-     ret 0u - 1u;
-}
+const max_value: uint = 0u - 1u;
 
 /* Function: add */
 pure fn add(x: uint, y: uint) -> uint { ret x + y; }

@@ -37,27 +37,22 @@ native "cdecl" mod libc = "" {
 }
 
 mod libc_constants {
-    fn O_RDONLY() -> int { ret 0; }
-    fn O_WRONLY() -> int { ret 1; }
-    fn O_RDWR() -> int { ret 2; }
-    fn O_APPEND() -> int { ret 1024; }
-    fn O_CREAT() -> int { ret 64; }
-    fn O_EXCL() -> int { ret 128; }
-    fn O_TRUNC() -> int { ret 512; }
-    fn O_TEXT() -> int {
-        ret 0; // nonexistent in linux libc
+    const O_RDONLY: int = 0;
+    const O_WRONLY: int = 1;
+    const O_RDWR: int   = 2;
+    const O_APPEND: int = 1024;
+    const O_CREAT: int  = 64;
+    const O_EXCL: int   = 128;
+    const O_TRUNC: int  = 512;
+    const O_TEXT: int   = 0;     // nonexistent in linux libc
+    const O_BINARY: int = 0;     // nonexistent in linux libc
 
-    }
-    fn O_BINARY() -> int {
-        ret 0; // nonexistent in linux libc
-
-    }
-    fn S_IRUSR() -> uint { ret 256u; }
-    fn S_IWUSR() -> uint { ret 128u; }
+    const S_IRUSR: uint = 256u;
+    const S_IWUSR: uint = 128u;
 }
 
+// FIXME turn into constants
 fn exec_suffix() -> str { ret ""; }
-
 fn target_os() -> str { ret "linux"; }
 
 fn dylib_filename(base: str) -> str { ret "lib" + base + ".so"; }

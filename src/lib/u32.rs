@@ -3,18 +3,18 @@ Module: u32
 */
 
 /*
-Function: min_value
+Const: min_value
 
 Return the minimal value for a u32
 */
-pure fn min_value() -> u32 { ret 0u32; }
+const min_value: u32 = 0u32;
 
 /*
-Function: max_value
+Const: max_value
 
 Return the maximal value for a u32
 */
-pure fn max_value() -> u32 { ret 4294967296u32; }
+const max_value: u32 = 4294967296u32;
 
 //
 // Local Variables:

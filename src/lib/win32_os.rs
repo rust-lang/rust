@@ -19,24 +19,18 @@ native "cdecl" mod libc = "" {
 }
 
 mod libc_constants {
-    fn O_RDONLY() -> int { ret 0; }
-    fn O_WRONLY() -> int { ret 1; }
-    fn O_RDWR() -> int { ret 2; }
-    fn O_APPEND() -> int { ret 8; }
-    fn O_CREAT() -> int { ret 256; }
-    fn O_EXCL() -> int { ret 1024; }
-    fn O_TRUNC() -> int { ret 512; }
-    fn O_TEXT() -> int { ret 16384; }
-    fn O_BINARY() -> int { ret 32768; }
-    fn O_NOINHERIT() -> int { ret 128; }
-    fn S_IRUSR() -> uint {
-        ret 256u; // really _S_IREAD  in win32
-
-    }
-    fn S_IWUSR() -> uint {
-        ret 128u; // really _S_IWRITE in win32
-
-    }
+    const O_RDONLY: int    = 0;
+    const O_WRONLY: int    = 1;
+    const O_RDWR: int      = 2;
+    const O_APPEND: int    = 8;
+    const O_CREAT: int     = 256;
+    const O_EXCL: int      = 1024;
+    const O_TRUNC: int     = 512;
+    const O_TEXT: int      = 16384;
+    const O_BINARY: int    = 32768;
+    const O_NOINHERIT: int = 128;
+    const S_IRUSR: uint    = 256u; // really _S_IREAD  in win32
+    const S_IWUSR: uint    = 128u; // really _S_IWRITE in win32
 }
 
 type DWORD = u32;
@@ -52,8 +46,8 @@ native "stdcall" mod kernel32 {
                           nSize: DWORD) -> DWORD;
 }
 
+// FIXME turn into constants
 fn exec_suffix() -> str { ret ".exe"; }
-
 fn target_os() -> str { ret "win32"; }
 
 fn dylib_filename(base: str) -> str { ret base + ".dll"; }
