@@ -4,6 +4,7 @@ LLVMRustWriteOutputFile
 LLVMRustGetLastError
 LLVMRustGetHostTriple
 LLVMRustConstSmallInt
+LLVMRustConstInt
 LLVMRustParseBitcode
 LLVMRustPrintPassTimings
 LLVMRustEnableSegmentedStacks

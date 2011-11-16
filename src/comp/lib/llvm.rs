@@ -865,7 +865,7 @@ native mod llvm {
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;
 
     /** FiXME: Hacky adaptor for lack of ULongLong in FFI: */
-    fn LLVMRustConstSmallInt(IntTy: TypeRef, N: uint, SignExtend: Bool) ->
+    fn LLVMRustConstInt(IntTy: TypeRef, N_hi: uint, N_lo: uint, SignExtend: Bool) ->
        ValueRef;
 
     fn LLVMRustAddPrintModulePass(PM: PassManagerRef, M: ModuleRef,

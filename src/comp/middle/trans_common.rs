@@ -725,7 +725,9 @@ fn T_opaque_chan_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 fn C_null(t: TypeRef) -> ValueRef { ret llvm::LLVMConstNull(t); }
 
 fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
-    ret llvm::LLVMConstInt(t, u, sign_extend);
+    let u_hi = (u >> 32u64) as uint;
+    let u_lo = u as uint;
+    ret llvm::LLVMRustConstInt(t, u_hi, u_lo, sign_extend);
 }
 
 fn C_float(cx: @crate_ctxt, s: str) -> ValueRef {

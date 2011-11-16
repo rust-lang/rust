@@ -126,6 +126,16 @@ extern "C" LLVMValueRef LLVMRustConstSmallInt(LLVMTypeRef IntTy, unsigned N,
   return LLVMConstInt(IntTy, (unsigned long long)N, SignExtend);
 }
 
+extern "C" LLVMValueRef LLVMRustConstInt(LLVMTypeRef IntTy, 
+					 unsigned N_hi,
+					 unsigned N_lo,
+					 LLVMBool SignExtend) {
+  unsigned long long N = N_hi;
+  N <<= 32;
+  N |= N_lo;
+  return LLVMConstInt(IntTy, N, SignExtend);
+}
+
 extern bool llvm::TimePassesIsEnabled;
 extern "C" void LLVMRustEnableTimePasses() {
   TimePassesIsEnabled = true;
