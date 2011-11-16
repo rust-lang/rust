@@ -5805,9 +5805,15 @@ fn item_path(item: @ast::item) -> [str] { ret [item.ident]; }
 fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
                        _v: vt<[str]>) {
     alt i.node {
-      ast::native_item_fn(_, _, _) {
+      ast::native_item_fn(link_name, _, _) {
         if !ccx.obj_methods.contains_key(i.id) {
-            register_native_fn(ccx, i.span, pt, i.ident, i.id);
+            let name =
+              if option::is_some(link_name) {
+                option::get(link_name)
+              } else {
+                i.ident
+              };
+            register_native_fn(ccx, i.span, pt, name, i.id);
         }
       }
       _ { }
