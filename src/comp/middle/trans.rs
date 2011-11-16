@@ -5420,7 +5420,7 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
         }
 
         // Create the call itself:
-        let llretval = Call(bcx, llbasefn, llargvals);
+        let llretval = CallWithConv(bcx, llbasefn, llargvals, cc);
         //log_err("llretval", val_str(ccx.tn, llretval),
         //        "llargbundle", val_str(ccx.tn, llargbundle),
         //        "tys.ret_ty", ty_str(ccx.tn, tys.ret_ty),
