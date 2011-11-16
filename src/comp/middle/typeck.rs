@@ -597,7 +597,7 @@ mod collect {
         for f: ast::obj_field in ob.fields {
             let g = bind getter(cx, _);
             let t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
-            t_inputs += [{mode: ast::by_ref, ty: t_field}];
+            t_inputs += [{mode: ast::by_copy, ty: t_field}];
         }
 
         let t_fn =
@@ -646,8 +646,7 @@ mod collect {
             let t_arg = ty_of_arg(cx, f.decl.inputs[0]);
             let t_res =
                 {kinds: ty_param_kinds(tps),
-                 ty:
-                     ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
+                 ty: ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
                                 mk_ty_params(cx, tps))};
             cx.tcx.tcache.insert(local_def(it.id), t_res);
             ret t_res;
@@ -708,7 +707,7 @@ mod collect {
                 let args: [arg] = [];
                 for va: ast::variant_arg in variant.node.args {
                     let arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
-                    args += [{mode: ast::by_ref, ty: arg_ty}];
+                    args += [{mode: ast::by_copy, ty: arg_ty}];
                 }
                 let tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
@@ -785,7 +784,7 @@ mod collect {
                            mk_ty_params(cx, tps));
             let t_ctor =
                 ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
-                          [t_arg], t_res,
+                          [{mode: ast::by_copy with t_arg}], t_res,
                           ast::return_val, []);
             let t_dtor =
                 ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),

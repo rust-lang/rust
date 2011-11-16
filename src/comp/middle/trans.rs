@@ -3587,8 +3587,8 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     };
 
     // Actually construct the closure
-    let closure = build_environment
-        (bcx, lltydescs, env_vals + vec::map(env_expr, bound), true);
+    let closure = build_environment(bcx, lltydescs, env_vals +
+                                    vec::map({|x| env_expr(x)}, bound), true);
     bcx = closure.bcx;
 
     // Make thunk
@@ -5163,12 +5163,9 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     let lltop = bcx.llbb;
     let arg_t = arg_tys_of_fn(ccx, ctor_id)[0].ty;
     let tup_t = ty::mk_tup(ccx.tcx, [ty::mk_int(ccx.tcx), arg_t]);
-    let arg;
-    alt fcx.llargs.find(dtor.decl.inputs[0].id) {
-      some(local_mem(x)) { arg = load_if_immediate(bcx, x, arg_t); }
-      some(local_imm(x)) { arg = x; }
-      _ { ccx.sess.span_fatal(sp, "unbound dtor decl in trans_res_ctor"); }
-    }
+    let arg = alt fcx.llargs.find(dtor.decl.inputs[0].id) {
+      some(local_mem(x)) { x }
+    };
     let llretptr = fcx.llretptr;
     if ty::type_has_dynamic_size(ccx.tcx, ret_t) {
         let llret_t = T_ptr(T_struct([ccx.int_type, llvm::LLVMTypeOf(arg)]));
@@ -5177,9 +5174,8 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
 
     // FIXME: silly checks
     check type_is_tup_like(bcx, tup_t);
-    let dst = GEP_tup_like(bcx, tup_t, llretptr, [0, 1]);
-    bcx = dst.bcx;
-    bcx = copy_val(bcx, INIT, dst.val, arg, arg_t);
+    let {bcx, val: dst} = GEP_tup_like(bcx, tup_t, llretptr, [0, 1]);
+    bcx = memmove_ty(bcx, dst, arg, arg_t);
     check type_is_tup_like(bcx, tup_t);
     let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
@@ -5206,7 +5202,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     let i = 0u;
     for varg: ast::variant_arg in variant.node.args {
         fn_args +=
-            [{mode: ast::by_ref,
+            [{mode: ast::by_copy,
               ty: varg.ty,
               ident: "arg" + uint::to_str(i, 10u),
               id: varg.id}];
@@ -5261,11 +5257,9 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         if ty::type_contains_params(bcx_tcx(bcx), arg_ty) {
             lldestptr = PointerCast(bcx, lldestptr, val_ty(llarg));
         }
-        llarg = load_if_immediate(bcx, llarg, arg_ty);
-        bcx = copy_val(bcx, INIT, lldestptr, llarg, arg_ty);
+        bcx = memmove_ty(bcx, lldestptr, llarg, arg_ty);
         i += 1u;
     }
-    bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
     build_return(bcx);
     finish_fn(fcx, lltop);
 }

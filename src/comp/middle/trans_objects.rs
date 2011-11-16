@@ -41,7 +41,7 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
     // we're creating.
     let fn_args: [ast::arg] = [];
     for f: ast::obj_field in ob.fields {
-        fn_args += [{mode: ast::by_ref, ty: f.ty, ident: f.ident,
+        fn_args += [{mode: ast::by_copy, ty: f.ty, ident: f.ident,
                      id: f.id}];
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
@@ -174,27 +174,18 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         let body_fields =
             GEP_tup_like(bcx, body_ty, body, [0, abi::obj_body_elt_fields]);
         bcx = body_fields.bcx;
+        // TODO: can we just get fields_ty out of body_ty instead?
+        let fields_ty = ty::mk_tup(ccx.tcx, obj_fields);
         i = 0;
         for f: ast::obj_field in ob.fields {
             alt bcx.fcx.llargs.find(f.id) {
-              some(arg1) {
-                let arg = alt arg1 {
-                  local_mem(v) { load_if_immediate(bcx, v, arg_tys[i].ty) }
-                  local_imm(v) { v }
-                };
-                // TODO: can we just get fields_ty out of body_ty instead?
-                let fields_ty: ty::t = ty::mk_tup(ccx.tcx, obj_fields);
+              some(local_mem(arg)) {
                 // Silly check
                 check type_is_tup_like(bcx, fields_ty);
                 let field =
                     GEP_tup_like(bcx, fields_ty, body_fields.val, [0, i]);
-                bcx = field.bcx;
-                bcx = copy_val(bcx, INIT, field.val, arg, arg_tys[i].ty);
+                bcx = memmove_ty(field.bcx, field.val, arg, arg_tys[i].ty);
                 i += 1;
-              }
-              none. {
-                bcx_ccx(bcx).sess.span_fatal(f.ty.span,
-                                             "internal error in trans_obj");
               }
             }
         }

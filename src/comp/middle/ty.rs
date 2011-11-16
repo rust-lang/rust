@@ -84,7 +84,6 @@ export mk_type;
 export mk_uint;
 export mk_uniq;
 export mk_var;
-export mk_iter_body_fn;
 export mode;
 export mt;
 export node_type_table;
@@ -586,11 +585,6 @@ fn mk_param(cx: ctxt, n: uint, k: ast::kind) -> t {
 fn mk_type(_cx: ctxt) -> t { ret idx_type; }
 
 fn mk_native(cx: ctxt, did: def_id) -> t { ret gen_ty(cx, ty_native(did)); }
-
-fn mk_iter_body_fn(cx: ctxt, output: t) -> t {
-    ret mk_fn(cx, ast::proto_block, [{mode: ast::by_ref, ty: output}],
-              ty::mk_nil(cx), ast::return_val, []);
-}
 
 // Returns the one-level-deep type structure of the given type.
 pure fn struct(cx: ctxt, typ: t) -> sty { interner::get(*cx.ts, typ).struct }
