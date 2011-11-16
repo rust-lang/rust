@@ -15,7 +15,8 @@ OpenSSL libraries installed, it should 'just work'.
     use std;
     import std::{vec, str};
     
-    native "cdecl" mod crypto {
+    #[abi = "cdecl"]
+    native mod crypto {
         fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
     }
     
@@ -41,7 +42,8 @@ OpenSSL libraries installed, it should 'just work'.
 Before we can call `SHA1`, we have to declare it. That is what this
 part of the program is responsible for:
 
-    native "cdecl" mod crypto {
+    #[abi = "cdecl"]
+    native mod crypto {
         fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
     }
 
@@ -52,12 +54,17 @@ of functions are available in that library.
 In this case, it'll change the name `crypto` to a shared library name
 in a platform-specific way (`libcrypto.so` on Linux, for example), and
 link that in. If you want the module to have a different name from the
-actual library, you can say `native "cdecl" mod something = "crypto" {
-... }`.
+actual library, you can use the `"link_name"` attribute, like:
 
-The `"cdecl"` word indicates the calling convention to use for
-functions in this module. Most C libraries use cdecl as their calling
-convention. You can also specify `"x86stdcall"` to use stdcall
+    #[abi = "cdecl"]
+    #[link_name = "crypto"]
+    native mod something {
+        fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
+    }
+
+The `#[abi = "cdecl"]` attribute indicates the calling convention to
+use for functions in this module. Most C libraries use cdecl as their
+calling convention. You can also specify `"x86stdcall"` to use stdcall
 instead.
 
 FIXME: Mention c-stack variants? Are they going to change?
@@ -164,7 +171,9 @@ microsecond-resolution timer.
     use std;
     type timeval = {mutable tv_sec: u32,
                     mutable tv_usec: u32};
-    native "cdecl" mod libc = "" {
+    #[abi = "cdecl"]
+    #[link_name = ""]
+    native mod libc {
         fn gettimeofday(tv: *timeval, tz: *()) -> i32;
     }
     fn unix_time_in_microseconds() -> u64 unsafe {
@@ -173,9 +182,9 @@ microsecond-resolution timer.
         ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
     }
 
-The `libc = ""` sets the name of the native module to the empty string
-to prevent the rust compiler from trying to link it. The standard C
-library is already linked with Rust programs.
+The `#[link_name = ""]` sets the name of the native module to the
+empty string to prevent the rust compiler from trying to link it.
+The standard C library is already linked with Rust programs.
 
 A `timeval`, in C, is a struct with two 32-bit integers. Thus, we
 define a record type with the same contents, and declare
