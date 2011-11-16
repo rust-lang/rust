@@ -15,7 +15,6 @@ OpenSSL libraries installed, it should 'just work'.
     use std;
     import std::{vec, str};
     
-    #[abi = "cdecl"]
     native mod crypto {
         fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
     }
@@ -42,7 +41,6 @@ OpenSSL libraries installed, it should 'just work'.
 Before we can call `SHA1`, we have to declare it. That is what this
 part of the program is responsible for:
 
-    #[abi = "cdecl"]
     native mod crypto {
         fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
     }
@@ -56,18 +54,27 @@ in a platform-specific way (`libcrypto.so` on Linux, for example), and
 link that in. If you want the module to have a different name from the
 actual library, you can use the `"link_name"` attribute, like:
 
-    #[abi = "cdecl"]
     #[link_name = "crypto"]
     native mod something {
         fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
     }
 
-The `#[abi = "cdecl"]` attribute indicates the calling convention to
-use for functions in this module. Most C libraries use cdecl as their
-calling convention. You can also specify `"x86stdcall"` to use stdcall
-instead.
+## Native calling conventions
 
-FIXME: Mention c-stack variants? Are they going to change?
+Most native C code use the cdecl calling convention, so that is what
+Rust uses by default when calling native functions. Some native functions,
+most notably the Windows API, use other calling conventions, so Rust
+provides a way to to hint to the compiler which is expected by using
+the `"abi"` attribute:
+
+    #[abi = "stdcall"]
+    native mod kernel32 {
+        fn SetEnvironmentVariableA(n: *u8, v: *u8) -> int;
+    }
+
+The `"abi"` attribute applies to a native mod (it can not be applied
+to a single function within a module), and must be either `"cdecl"`
+or `"stdcall"`. Other conventions may be defined in the future.
 
 ## Unsafe pointers
 
@@ -171,7 +178,6 @@ microsecond-resolution timer.
     use std;
     type timeval = {mutable tv_sec: u32,
                     mutable tv_usec: u32};
-    #[abi = "cdecl"]
     #[link_name = ""]
     native mod libc {
         fn gettimeofday(tv: *timeval, tz: *()) -> i32;
