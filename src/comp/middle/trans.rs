@@ -5396,14 +5396,15 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
     fn build_shim_fn(lcx: @local_ctxt,
                      link_name: str,
                      native_item: @ast::native_item,
-                     llshimfn: ValueRef) {
+                     llshimfn: ValueRef,
+                     cc: uint) {
         let ccx = lcx_ccx(lcx);
         let span = native_item.span;
         let id = native_item.id;
         let tys = c_stack_tys(ccx, span, id);
 
         // Declare the "prototype" for the base function F:
-        let llbasefn = decl_cdecl_fn(ccx.llmod, link_name, tys.base_fn_ty);
+        let llbasefn = decl_fn(ccx.llmod, link_name, cc, tys.base_fn_ty);
 
         // Declare the body of the shim function:
         let fcx = new_fn_ctxt(lcx, span, llshimfn);
@@ -5439,30 +5440,32 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
     }
 
     let ccx = lcx_ccx(lcx);
+    let cc: uint = lib::llvm::LLVMCCallConv;
     alt native_mod.abi {
-      ast::native_abi_cdecl. {
-        for native_item in native_mod.items {
-            alt native_item.node {
-              ast::native_item_ty. {}
-              ast::native_item_fn(name, fn_decl, _) {
-                let id = native_item.id;
-                alt ccx.item_ids.find(id) {
-                  some(llshimfn) {
-                    let link_name = select_link_name(name, native_item.ident);
-                    build_shim_fn(lcx, link_name, native_item, llshimfn);
-                  }
+      ast::native_abi_rust_intrinsic. { ret; }
+      ast::native_abi_cdecl. { cc = lib::llvm::LLVMCCallConv; }
+      ast::native_abi_stdcall. { cc = lib::llvm::LLVMX86StdcallCallConv; }
+    }
 
-                  none. {
-                    ccx.sess.span_fatal(
-                        native_item.span,
-                        "unbound function item in trans_native_mod");
-                  }
-                }
-              }
+    for native_item in native_mod.items {
+      alt native_item.node {
+        ast::native_item_ty. {}
+        ast::native_item_fn(name, fn_decl, _) {
+          let id = native_item.id;
+          alt ccx.item_ids.find(id) {
+            some(llshimfn) {
+              let link_name = select_link_name(name, native_item.ident);
+              build_shim_fn(lcx, link_name, native_item, llshimfn, cc);
             }
+
+            none. {
+              ccx.sess.span_fatal(
+                  native_item.span,
+                  "unbound function item in trans_native_mod");
+            }
+          }
         }
       }
-      _ { /* nothing to do for other ABIs */ }
     }
 }
 
@@ -5736,34 +5739,14 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
         uses_retptr = true;
         cast_to_i32 = false;
       }
-      ast::native_abi_cdecl. {
+
+      ast::native_abi_cdecl. | ast::native_abi_stdcall. {
         let tys = c_stack_tys(ccx, sp, id);
         let shim_name = name + "__c_stack_shim";
         let llshimfn = decl_internal_cdecl_fn(
             ccx.llmod, shim_name, tys.shim_fn_ty);
         ccx.item_ids.insert(id, llshimfn);
         ccx.item_symbols.insert(id, shim_name);
-        ret;
-      }
-      ast::native_abi_stdcall. {
-        // The name of stdcall functions depend on their argument count
-        // so we have to declare them correctly
-        let fn_args_tys = ty::ty_fn_args(ccx.tcx, fn_type);
-        let fn_ret_ty = ty::ty_fn_ret(ccx.tcx, fn_type);
-        let ll_args_tys = [];
-        for arg in fn_args_tys {
-            let arg_ty = arg.ty;
-            check type_has_static_size(ccx, arg_ty);
-            ll_args_tys += [type_of(ccx, sp, arg_ty)];
-        }
-        check type_has_static_size(ccx, fn_ret_ty);
-        let ll_ret_ty = type_of(ccx, sp, fn_ret_ty);
-        let native_fn_ty = T_fn(ll_args_tys, ll_ret_ty);
-
-        let llfn = decl_fn(ccx.llmod, name, lib::llvm::LLVMX86StdcallCallConv,
-                           native_fn_ty);
-        ccx.item_ids.insert(id, llfn);
-        ccx.item_symbols.insert(id, name);
         ret;
       }
     }
