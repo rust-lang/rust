@@ -2124,7 +2124,7 @@ fn store_temp_expr(cx: @block_ctxt, action: copy_action, dst: ValueRef,
 fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
     alt lit.node {
       ast::lit_int(i) { ret C_int(cx, i); }
-      ast::lit_uint(u) { ret C_int(cx, u as int); }
+      ast::lit_uint(u) { ret C_uint(cx, u); }
       ast::lit_mach_int(tm, i) {
         // FIXME: the entire handling of mach types falls apart
         // if target int width is larger than host, at the moment;
