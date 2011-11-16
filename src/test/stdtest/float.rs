@@ -40,44 +40,44 @@ fn test_from_str() {
 
 #[test]
 fn test_positive() {
-  assert(float::positive(float::infinity()));
+  assert(float::positive(float::infinity));
   assert(float::positive(1.));
   assert(float::positive(0.));
   assert(!float::positive(-1.));
-  assert(!float::positive(float::neg_infinity()));
-  assert(!float::positive(1./float::neg_infinity()));
-  assert(!float::positive(float::NaN()));
+  assert(!float::positive(float::neg_infinity));
+  assert(!float::positive(1./float::neg_infinity));
+  assert(!float::positive(float::NaN));
 }
 
 #[test]
 fn test_negative() {
-  assert(!float::negative(float::infinity()));
+  assert(!float::negative(float::infinity));
   assert(!float::negative(1.));
   assert(!float::negative(0.));
   assert(float::negative(-1.));
-  assert(float::negative(float::neg_infinity()));
-  assert(float::negative(1./float::neg_infinity()));
-  assert(!float::negative(float::NaN()));
+  assert(float::negative(float::neg_infinity));
+  assert(float::negative(1./float::neg_infinity));
+  assert(!float::negative(float::NaN));
 }
 
 #[test]
 fn test_nonpositive() {
-  assert(!float::nonpositive(float::infinity()));
+  assert(!float::nonpositive(float::infinity));
   assert(!float::nonpositive(1.));
   assert(!float::nonpositive(0.));
   assert(float::nonpositive(-1.));
-  assert(float::nonpositive(float::neg_infinity()));
-  assert(float::nonpositive(1./float::neg_infinity()));
-  assert(!float::nonpositive(float::NaN()));
+  assert(float::nonpositive(float::neg_infinity));
+  assert(float::nonpositive(1./float::neg_infinity));
+  assert(!float::nonpositive(float::NaN));
 }
 
 #[test]
 fn test_nonnegative() {
-  assert(float::nonnegative(float::infinity()));
+  assert(float::nonnegative(float::infinity));
   assert(float::nonnegative(1.));
   assert(float::nonnegative(0.));
   assert(!float::nonnegative(-1.));
-  assert(!float::nonnegative(float::neg_infinity()));
-  assert(!float::nonnegative(1./float::neg_infinity()));
-  assert(!float::nonnegative(float::NaN()));
+  assert(!float::nonnegative(float::neg_infinity));
+  assert(!float::nonnegative(1./float::neg_infinity));
+  assert(!float::nonnegative(float::NaN));
 }

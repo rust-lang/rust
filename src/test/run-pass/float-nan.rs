@@ -2,11 +2,11 @@ use std;
 import std::float;
 
 fn main() {
-  let nan = float::NaN();
+  let nan = float::NaN;
   assert(float::isNaN(nan));
 
-  let inf = float::infinity();
-  assert(-inf == float::neg_infinity());
+  let inf = float::infinity;
+  assert(-inf == float::neg_infinity);
 
   assert( nan !=  nan);
   assert( nan != -nan);

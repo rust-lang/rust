@@ -98,9 +98,9 @@ fn test_next_power_of_two() {
 
 #[test]
 fn test_overflows() {
-   assert (uint::max_value() > 0u);
-   assert (uint::min_value() <= 0u);
-   assert (uint::min_value() + uint::max_value() + 1u == 0u);
+   assert (uint::max_value > 0u);
+   assert (uint::min_value <= 0u);
+   assert (uint::min_value + uint::max_value + 1u == 0u);
 }
 
 #[test]

@@ -107,7 +107,7 @@ fn from_str(num: str) -> float {
    //The string must start with one of the following characters.
    alt str::char_at(num, 0u) {
       '-' | '+' | '0' to '9' | '.' {}
-      _ { ret NaN(); }
+      _ { ret NaN; }
    }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
@@ -137,7 +137,7 @@ fn from_str(num: str) -> float {
            break;
          }
          _ {
-           ret NaN();
+           ret NaN;
          }
        }
    }
@@ -157,7 +157,7 @@ fn from_str(num: str) -> float {
                  break;
              }
              _ {
-                 ret NaN();
+                 ret NaN;
              }
          }
       }
@@ -202,12 +202,12 @@ fn from_str(num: str) -> float {
              total = total * multiplier;
           }
       } else {
-         ret NaN();
+         ret NaN;
       }
    }
 
    if(pos < len) {
-     ret NaN();
+     ret NaN;
    } else {
      if(neg) {
         total *= -1f;
@@ -235,7 +235,7 @@ Returns:
 fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
    if x == 0u {
       if pow == 0u {
-        ret NaN();
+        ret NaN;
       }
        ret 0.;
    }
@@ -260,23 +260,17 @@ fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
 //TODO: Once this is possible, replace the body of these functions
 //by an actual constant.
 
-/* Function: NaN */
-fn NaN() -> float {
-   ret 0./0.;
-}
+/* Const: NaN */
+const NaN: float = 0./0.;
 
 /* Predicate: isNaN */
 pure fn isNaN(f: float) -> bool { f != f }
 
-/* Function: infinity */
-pure fn infinity() -> float {
-   ret 1./0.;
-}
+/* Const: infinity */
+const infinity: float = 1./0.;
 
-/* Function: neg_infinity */
-pure fn neg_infinity() -> float {
-   ret -1./0.;
-}
+/* Const: neg_infinity */
+const neg_infinity: float = -1./0.;
 
 /* Function: add */
 pure fn add(x: float, y: float) -> float { ret x + y; }
@@ -316,14 +310,14 @@ Predicate: positive
 
 Returns true if `x` is a positive number, including +0.0 and +Infinity.
  */
-pure fn positive(x: float) -> bool { ret x > 0. || (1./x) == infinity(); }
+pure fn positive(x: float) -> bool { ret x > 0. || (1./x) == infinity; }
 
 /*
 Predicate: negative
 
 Returns true if `x` is a negative number, including -0.0 and -Infinity.
  */
-pure fn negative(x: float) -> bool { ret x < 0. || (1./x) == neg_infinity(); }
+pure fn negative(x: float) -> bool { ret x < 0. || (1./x) == neg_infinity; }
 
 /*
 Predicate: nonpositive
@@ -332,7 +326,7 @@ Returns true if `x` is a negative number, including -0.0 and -Infinity.
 (This is the same as `float::negative`.)
 */
 pure fn nonpositive(x: float) -> bool {
-  ret x < 0. || (1./x) == neg_infinity();
+  ret x < 0. || (1./x) == neg_infinity;
 }
 
 /*
@@ -342,7 +336,7 @@ Returns true if `x` is a positive number, including +0.0 and +Infinity.
 (This is the same as `float::positive`.)
 */
 pure fn nonnegative(x: float) -> bool {
-  ret x > 0. || (1./x) == infinity();
+  ret x > 0. || (1./x) == infinity;
 }
 
 //

@@ -36,8 +36,7 @@ The bitvector type.
 type t = @{storage: [mutable uint], nbits: uint};
 
 
-// FIXME: this should be a constant once they work
-fn uint_bits() -> uint { ret 32u + (1u << 32u >> 27u); }
+const uint_bits: uint = 32u + (1u << 32u >> 27u);
 
 /*
 Function: create
@@ -50,7 +49,7 @@ init - If true then the bits are initialized to 1, otherwise 0
 */
 fn create(nbits: uint, init: bool) -> t {
     let elt = if init { !0u } else { 0u };
-    let storage = vec::init_elt_mut::<uint>(elt, nbits / uint_bits() + 1u);
+    let storage = vec::init_elt_mut::<uint>(elt, nbits / uint_bits + 1u);
     ret @{storage: storage, nbits: nbits};
 }
 
@@ -118,7 +117,7 @@ Function: clone
 Makes a copy of a bitvector
 */
 fn clone(v: t) -> t {
-    let storage = vec::init_elt_mut::<uint>(0u, v.nbits / uint_bits() + 1u);
+    let storage = vec::init_elt_mut::<uint>(0u, v.nbits / uint_bits + 1u);
     let len = vec::len(v.storage);
     uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
     ret @{storage: storage, nbits: v.nbits};
@@ -131,7 +130,7 @@ Retreive the value at index `i`
 */
 fn get(v: t, i: uint) -> bool {
     assert (i < v.nbits);
-    let bits = uint_bits();
+    let bits = uint_bits;
     let w = i / bits;
     let b = i % bits;
     let x = 1u & v.storage[w] >> b;
@@ -229,7 +228,7 @@ Preconditions:
 */
 fn set(v: t, i: uint, x: bool) {
     assert (i < v.nbits);
-    let bits = uint_bits();
+    let bits = uint_bits;
     let w = i / bits;
     let b = i % bits;
     let flag = 1u << b;

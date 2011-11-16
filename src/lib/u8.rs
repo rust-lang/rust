@@ -3,18 +3,18 @@ Module: u8
 */
 
 /*
-Function: max_value
+Const: max_value
 
 The maximum value of a u8.
 */
-pure fn max_value() -> u8 { ret 255u8; }
+const max_value: u8 = 255u8;
 
 /*
-Function: min_value
+Const: min_value
 
 The minumum value of a u8.
 */
-pure fn min_value() -> u8 { ret 0u8; }
+const min_value: u8 = 0u8;
 
 /* Function: add */
 pure fn add(x: u8, y: u8) -> u8 { ret x + y; }

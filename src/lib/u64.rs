@@ -3,18 +3,18 @@ Module: u64
 */
 
 /*
-Function: min_value
+Const: min_value
 
 Return the minimal value for a u64
 */
-pure fn min_value() -> u64 { ret 0u64; }
+const min_value: u64 = 0u64;
 
 /*
-Function: max_value
+Const: max_value
 
 Return the maximal value for a u64
 */
-pure fn max_value() -> u64 { ret 18446744073709551615u64; }
+const max_value: u64 = 18446744073709551615u64;
 
 /*
 Function: to_str

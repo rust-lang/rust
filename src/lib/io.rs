@@ -282,12 +282,12 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
 fn file_buf_writer(path: str,
                    flags: [fileflag]) -> result::t<buf_writer, str> {
     let fflags: int =
-        os::libc_constants::O_WRONLY() | os::libc_constants::O_BINARY();
+        os::libc_constants::O_WRONLY | os::libc_constants::O_BINARY;
     for f: fileflag in flags {
         alt f {
-          append. { fflags |= os::libc_constants::O_APPEND(); }
-          create. { fflags |= os::libc_constants::O_CREAT(); }
-          truncate. { fflags |= os::libc_constants::O_TRUNC(); }
+          append. { fflags |= os::libc_constants::O_APPEND; }
+          create. { fflags |= os::libc_constants::O_CREAT; }
+          truncate. { fflags |= os::libc_constants::O_TRUNC; }
           none. { }
         }
     }
@@ -295,8 +295,8 @@ fn file_buf_writer(path: str,
         str::as_buf(path,
                     {|pathbuf|
                         os::libc::open(pathbuf, fflags,
-                                       os::libc_constants::S_IRUSR() |
-                                           os::libc_constants::S_IWUSR())
+                                       os::libc_constants::S_IRUSR |
+                                           os::libc_constants::S_IWUSR)
                     });
     ret if fd < 0 {
         log_err sys::last_os_error();
@@ -384,6 +384,7 @@ fn buffered_file_buf_writer(path: str) -> result::t<buf_writer, str> {
 
 
 // FIXME it would be great if this could be a const
+// Problem seems to be that new_writer is not pure
 fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
 fn stderr() -> writer { ret new_writer(fd_buf_writer(2, option::none)); }
 
