@@ -1,40 +1,41 @@
+import ctypes::*;
 
 #[abi = "cdecl"]
 #[link_name = ""]
 native mod libc {
-    fn read(fd: int, buf: *u8, count: uint) -> int;
-    fn write(fd: int, buf: *u8, count: uint) -> int;
-    fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
+    fn read(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;
+    fn write(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;
+    fn fread(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
+    fn fwrite(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
     #[link_name = "_open"]
-    fn open(s: str::sbuf, flags: int, mode: uint) -> int;
+    fn open(s: str::sbuf, flags: c_int, mode: c_int) -> c_int;
     #[link_name = "_close"]
-    fn close(fd: int) -> int;
+    fn close(fd: fd_t) -> c_int;
     type FILE;
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
-    fn _fdopen(fd: int, mode: str::sbuf) -> FILE;
+    fn _fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
-    fn fgetc(f: FILE) -> int;
-    fn ungetc(c: int, f: FILE);
-    fn feof(f: FILE) -> int;
-    fn fseek(f: FILE, offset: int, whence: int) -> int;
-    fn ftell(f: FILE) -> int;
-    fn _pipe(fds: *mutable int, size: uint, mode: int) -> int;
+    fn fgetc(f: FILE) -> c_int;
+    fn ungetc(c: c_int, f: FILE);
+    fn feof(f: FILE) -> c_int;
+    fn fseek(f: FILE, offset: long, whence: c_int) -> c_int;
+    fn ftell(f: FILE) -> long;
+    fn _pipe(fds: *mutable fd_t, size: unsigned, mode: c_int) -> c_int;
 }
 
 mod libc_constants {
-    const O_RDONLY: int    = 0;
-    const O_WRONLY: int    = 1;
-    const O_RDWR: int      = 2;
-    const O_APPEND: int    = 8;
-    const O_CREAT: int     = 256;
-    const O_EXCL: int      = 1024;
-    const O_TRUNC: int     = 512;
-    const O_TEXT: int      = 16384;
-    const O_BINARY: int    = 32768;
-    const O_NOINHERIT: int = 128;
-    const S_IRUSR: uint    = 256u; // really _S_IREAD  in win32
-    const S_IWUSR: uint    = 128u; // really _S_IWRITE in win32
+    const O_RDONLY: c_int    = 0i32;
+    const O_WRONLY: c_int    = 1i32;
+    const O_RDWR: c_int      = 2i32;
+    const O_APPEND: c_int    = 8i32;
+    const O_CREAT: c_int     = 256i32;
+    const O_EXCL: c_int      = 1024i32;
+    const O_TRUNC: c_int     = 512i32;
+    const O_TEXT: c_int      = 16384i32;
+    const O_BINARY: c_int    = 32768i32;
+    const O_NOINHERIT: c_int = 128i32;
+    const S_IRUSR: unsigned  = 256u32; // really _S_IREAD  in win32
+    const S_IWUSR: unsigned  = 128u32; // really _S_IWRITE in win32
 }
 
 type DWORD = u32;
@@ -57,28 +58,28 @@ fn target_os() -> str { ret "win32"; }
 
 fn dylib_filename(base: str) -> str { ret base + ".dll"; }
 
-fn pipe() -> {in: int, out: int} {
+fn pipe() -> {in: fd_t, out: fd_t} {
     // Windows pipes work subtly differently than unix pipes, and their
     // inheritance has to be handled in a different way that I don't fully
     // understand. Here we explicitly make the pipe non-inheritable,
     // which means to pass it to a subprocess they need to be duplicated
     // first, as in rust_run_program.
-    let fds = {mutable in: 0, mutable out: 0};
+    let fds = {mutable in: 0i32, mutable out: 0i32};
     let res =
-        os::libc::_pipe(ptr::mut_addr_of(fds.in), 1024u,
+        os::libc::_pipe(ptr::mut_addr_of(fds.in), 1024u32,
                         libc_constants::O_BINARY |
                             libc_constants::O_NOINHERIT);
-    assert (res == 0);
-    assert (fds.in != -1 && fds.in != 0);
-    assert (fds.out != -1 && fds.in != 0);
+    assert (res == 0i32);
+    assert (fds.in != -1i32 && fds.in != 0i32);
+    assert (fds.out != -1i32 && fds.in != 0i32);
     ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(fd: int) -> libc::FILE {
+fn fd_FILE(fd: fd_t) -> libc::FILE {
     ret str::as_buf("r", {|modebuf| libc::_fdopen(fd, modebuf) });
 }
 
-fn close(fd: int) -> int {
+fn close(fd: fd_t) -> c_int {
     libc::close(fd)
 }
 
@@ -88,11 +89,11 @@ fn fclose(file: libc::FILE) {
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_process_wait(handle: int) -> int;
+    fn rust_process_wait(handle: c_int) -> c_int;
     fn rust_getcwd() -> str;
 }
 
-fn waitpid(pid: int) -> int { ret rustrt::rust_process_wait(pid); }
+fn waitpid(pid: pid_t) -> i32 { ret rustrt::rust_process_wait(pid); }
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 

@@ -24,7 +24,7 @@ native mod libc {
     fn fread(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
     fn fwrite(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
     fn open(s: str::sbuf, flags: c_int, mode: unsigned) -> fd_t;
-    fn close(fd: fd_t) -> int;
+    fn close(fd: fd_t) -> c_int;
     type FILE;
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
@@ -71,7 +71,7 @@ fn fd_FILE(fd: fd_t) -> libc::FILE {
     ret str::as_buf("r", {|modebuf| libc::fdopen(fd, modebuf) });
 }
 
-fn close(fd: fd_t) -> int {
+fn close(fd: fd_t) -> c_int {
     libc::close(fd)
 }
 

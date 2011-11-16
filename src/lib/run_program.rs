@@ -259,8 +259,8 @@ fn waitpid(pid: pid_t) -> int {
     ret waitpid_os(pid);
 
     #[cfg(target_os = "win32")]
-    fn waitpid_os(pid: int) -> int {
-        os::waitpid(pid)
+    fn waitpid_os(pid: pid_t) -> int {
+        os::waitpid(pid) as int
     }
 
     #[cfg(target_os = "linux")]

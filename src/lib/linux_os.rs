@@ -30,7 +30,7 @@ native mod libc {
     fn fread(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
     fn fwrite(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
     fn open(s: str::sbuf, flags: c_int, mode: unsigned) -> fd_t;
-    fn close(fd: fd_t) -> int;
+    fn close(fd: fd_t) -> c_int;
     type FILE;
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
@@ -54,18 +54,18 @@ native mod libc {
 }
 
 mod libc_constants {
-    const O_RDONLY: c_int = 0;
-    const O_WRONLY: c_int = 1;
-    const O_RDWR: c_int   = 2;
-    const O_APPEND: c_int = 1024;
-    const O_CREAT: c_int  = 64;
-    const O_EXCL: c_int   = 128;
-    const O_TRUNC: c_int  = 512;
-    const O_TEXT: c_int   = 0;     // nonexistent in linux libc
-    const O_BINARY: c_int = 0;     // nonexistent in linux libc
+    const O_RDONLY: c_int = 0i32;
+    const O_WRONLY: c_int = 1i32;
+    const O_RDWR: c_int   = 2i32;
+    const O_APPEND: c_int = 1024i32;
+    const O_CREAT: c_int  = 64i32;
+    const O_EXCL: c_int   = 128i32;
+    const O_TRUNC: c_int  = 512i32;
+    const O_TEXT: c_int   = 0i32;     // nonexistent in linux libc
+    const O_BINARY: c_int = 0i32;     // nonexistent in linux libc
 
-    const S_IRUSR: unsigned = 256u;
-    const S_IWUSR: unsigned = 128u;
+    const S_IRUSR: unsigned = 256u32;
+    const S_IWUSR: unsigned = 128u32;
 }
 
 fn pipe() -> {in: fd_t, out: fd_t} {
@@ -78,7 +78,7 @@ fn fd_FILE(fd: fd_t) -> libc::FILE {
     ret str::as_buf("r", {|modebuf| libc::fdopen(fd, modebuf) });
 }
 
-fn close(fd: fd_t) -> int {
+fn close(fd: fd_t) -> c_int {
     libc::close(fd)
 }
 
