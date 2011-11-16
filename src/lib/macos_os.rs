@@ -12,6 +12,7 @@ export exec_suffix;
 export target_os;
 export dylib_filename;
 export get_exe_path;
+export fsync_fd;
 
 // FIXME Refactor into unix_os module or some such. Doesn't
 // seem to work right now.
@@ -28,6 +29,9 @@ native mod libc {
     type FILE;
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
+    fn fflush(f: FILE) -> c_int;
+    fn fsync(fd: fd_t) -> c_int;
+    fn fileno(f: FILE) -> fd_t;
     fn fclose(f: FILE);
     fn fgetc(f: FILE) -> c_int;
     fn ungetc(c: c_int, f: FILE);
@@ -47,21 +51,26 @@ native mod libc {
     fn mkdir(s: str::sbuf, mode: c_int) -> c_int;
     fn rmdir(s: str::sbuf) -> c_int;
     fn chdir(s: str::sbuf) -> c_int;
+
+    // FIXME: Needs varags
+    fn fcntl(fd: fd_t, cmd: c_int) -> c_int;
 }
 
 mod libc_constants {
-    const O_RDONLY: c_int   = 0i32;
-    const O_WRONLY: c_int   = 1i32;
-    const O_RDWR: c_int     = 2i32;
-    const O_APPEND: c_int   = 8i32;
-    const O_CREAT: c_int    = 512i32;
-    const O_EXCL: c_int     = 2048i32;
-    const O_TRUNC: c_int    = 1024i32;
-    const O_TEXT: c_int     = 0i32;    // nonexistent in darwin libc
-    const O_BINARY: c_int   = 0i32;    // nonexistent in darwin libc
+    const O_RDONLY: c_int    = 0i32;
+    const O_WRONLY: c_int    = 1i32;
+    const O_RDWR: c_int      = 2i32;
+    const O_APPEND: c_int    = 8i32;
+    const O_CREAT: c_int     = 512i32;
+    const O_EXCL: c_int      = 2048i32;
+    const O_TRUNC: c_int     = 1024i32;
+    const O_TEXT: c_int      = 0i32;    // nonexistent in darwin libc
+    const O_BINARY: c_int    = 0i32;    // nonexistent in darwin libc
 
-    const S_IRUSR: unsigned = 256u32;
-    const S_IWUSR: unsigned = 128u32;
+    const S_IRUSR: unsigned  = 256u32;
+    const S_IWUSR: unsigned  = 128u32;
+
+    const F_FULLFSYNC: c_int = 51i32;
 }
 
 fn pipe() -> {in: fd_t, out: fd_t} {
@@ -86,6 +95,19 @@ fn waitpid(pid: pid_t) -> i32 {
     let status = 0i32;
     assert (os::libc::waitpid(pid, status, 0i32) != -1i32);
     ret status;
+}
+
+fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
+    alt level {
+      io::fsync::fsync. { ret libc::fsync(fd); }
+      _ {
+        // According to man fnctl, the ok retval is only specified to be !=-1
+        if (libc::fcntl(libc_constants::F_FULLFSYNC, fd) == -1 as c_int)
+            { ret -1 as c_int; }
+        else
+            { ret 0 as c_int; }
+      }
+    }
 }
 
 #[abi = "cdecl"]

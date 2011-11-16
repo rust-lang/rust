@@ -15,6 +15,9 @@ native mod libc {
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn _fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
+    fn fflush(f: FILE) -> c_int;
+    fn fsync(fd: fd_t) -> c_int;
+    fn fileno(f: FILE) -> fd_t;
     fn fgetc(f: FILE) -> c_int;
     fn ungetc(c: c_int, f: FILE);
     fn feof(f: FILE) -> c_int;
@@ -91,6 +94,11 @@ fn close(fd: fd_t) -> c_int {
 
 fn fclose(file: libc::FILE) {
     libc::fclose(file)
+}
+
+fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
+    // FIXME do something more apropriate
+    ret libc::fsync(fd);
 }
 
 #[abi = "cdecl"]
