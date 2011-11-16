@@ -385,7 +385,8 @@ type block_ctxt =
      mutable lpad_dirty: bool,
      mutable lpad: option::t<BasicBlockRef>,
      sp: span,
-     fcx: @fn_ctxt};
+     fcx: @fn_ctxt,
+     mutable source_pos: option::t<syntax::codemap::loc>};
 
 // FIXME: we should be able to use option::t<@block_parent> here but
 // the infinite-tag check in rustboot gets upset.
@@ -463,6 +464,8 @@ fn T_nil() -> TypeRef {
 
     ret llvm::LLVMInt1Type();
 }
+
+fn T_metadata() -> TypeRef { ret llvm::LLVMMetadataType(); }
 
 fn T_i1() -> TypeRef { ret llvm::LLVMInt1Type(); }
 
@@ -799,6 +802,10 @@ fn C_bool(b: bool) -> ValueRef {
 
 fn C_i32(i: i32) -> ValueRef {
     ret C_integral(T_i32(), i as u64, True);
+}
+
+fn C_i64(i: i64) -> ValueRef {
+    ret C_integral(T_i64(), i as uint, True);
 }
 
 fn C_int(cx: @crate_ctxt, i: int) -> ValueRef {

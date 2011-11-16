@@ -234,9 +234,11 @@ native mod llvm {
     /* Operations on other types */
     fn LLVMVoidTypeInContext(C: ContextRef) -> TypeRef;
     fn LLVMLabelTypeInContext(C: ContextRef) -> TypeRef;
+    fn LLVMMetadataTypeInContext(C: ContextRef) -> TypeRef;
 
     fn LLVMVoidType() -> TypeRef;
     fn LLVMLabelType() -> TypeRef;
+    fn LLVMMetadataType() -> TypeRef;
 
     /* Operations on all values */
     fn LLVMTypeOf(Val: ValueRef) -> TypeRef;

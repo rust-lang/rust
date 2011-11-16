@@ -3519,6 +3519,8 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
 // - exprs with non-immediate type never get dest=by_val
 fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
+    debuginfo::update_source_pos(bcx, e);
+
     if expr_is_lval(bcx, e) {
         ret lval_to_dps(bcx, e, dest);
     }
@@ -4012,6 +4014,8 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     }
 
     let bcx = cx;
+    debuginfo::update_source_pos(cx, s);
+    
     alt s.node {
       ast::stmt_expr(e, _) { bcx = trans_expr(cx, e, ignore); }
       ast::stmt_decl(d, _) {
@@ -4023,6 +4027,9 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
                 } else {
                     bcx = init_ref_local(bcx, local);
                 }
+                if bcx_ccx(cx).sess.get_opts().debuginfo {
+                    debuginfo::get_local_var_metadata(bcx, local);
+                }
             }
           }
           ast::decl_item(i) { trans_item(cx.fcx.lcx, *i); }
@@ -4030,6 +4037,8 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
       }
       _ { bcx_ccx(cx).sess.unimpl("stmt variant"); }
     }
+
+    debuginfo::reset_source_pos(cx);
     ret bcx;
 }
 
@@ -4053,7 +4062,8 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
                 mutable lpad_dirty: true,
                 mutable lpad: option::none,
                 sp: cx.sp,
-                fcx: cx};
+                fcx: cx,
+                mutable source_pos: option::none};
     alt parent {
       parent_some(cx) {
         if cx.unreachable { Unreachable(bcx); }
@@ -4097,7 +4107,8 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
           mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
-          fcx: fcx};
+          fcx: fcx,
+          mutable source_pos: option::none};
 }
 
 
@@ -4164,7 +4175,8 @@ fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
-          fcx: fcx};
+          fcx: fcx,
+          mutable source_pos: option::none};
 }
 
 fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
@@ -4177,7 +4189,8 @@ fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
-          fcx: fcx};
+          fcx: fcx,
+          mutable source_pos: option::none};
 }
 
 
@@ -4250,6 +4263,7 @@ fn trans_block(bcx: @block_ctxt, b: ast::blk) -> @block_ctxt {
 fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
     -> @block_ctxt {
     let bcx = bcx;
+    debuginfo::update_source_pos(bcx, b);
     block_locals(b) {|local| bcx = alloc_local(bcx, local); };
     for s: @ast::stmt in b.node.stmts {
         bcx = trans_stmt(bcx, *s);
@@ -4261,7 +4275,9 @@ fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
       }
       _ { assert dest == ignore || bcx.unreachable; }
     }
-    ret trans_block_cleanups(bcx, find_scope_cx(bcx));
+    let rv = trans_block_cleanups(bcx, find_scope_cx(bcx));
+    debuginfo::reset_source_pos(bcx);
+    ret rv;
 }
 
 fn new_local_ctxt(ccx: @crate_ctxt) -> @local_ctxt {
@@ -5465,6 +5481,18 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
     ret intrinsics;
 }
 
+fn declare_dbg_intrinsics(llmod: ModuleRef,
+                          intrinsics: hashmap<str, ValueRef>) {
+    let declare =
+        decl_cdecl_fn(llmod, "llvm.dbg.declare",
+                      T_fn([T_metadata(), T_metadata()], T_void()));
+    let value =
+        decl_cdecl_fn(llmod, "llvm.dbg.value",
+                      T_fn([T_metadata(), T_i64(), T_metadata()], T_void()));
+    intrinsics.insert("llvm.dbg.declare", declare);
+    intrinsics.insert("llvm.dbg.value", value);
+}
+
 fn trap(bcx: @block_ctxt) {
     let v: [ValueRef] = [];
     alt bcx_ccx(bcx).intrinsics.find("llvm.trap") {
@@ -5601,6 +5629,9 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let td = mk_target_data(sess.get_targ_cfg().target_strs.data_layout);
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
+    if sess.get_opts().debuginfo {
+        declare_dbg_intrinsics(llmod, intrinsics);
+    }
     let int_type = T_int(targ_cfg);
     let float_type = T_float(targ_cfg);
     let task_type = T_task(targ_cfg);
