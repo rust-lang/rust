@@ -1,11 +1,15 @@
 
-native "cdecl" mod libc = "" {
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod libc {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
     fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn open(s: str::sbuf, flags: int, mode: uint) -> int = "_open";
-    fn close(fd: int) -> int = "_close";
+    #[link_name = "_open"]
+    fn open(s: str::sbuf, flags: int, mode: uint) -> int;
+    #[link_name = "_close"]
+    fn close(fd: int) -> int;
     type FILE;
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn _fdopen(fd: int, mode: str::sbuf) -> FILE;
@@ -37,7 +41,8 @@ type DWORD = u32;
 type HMODULE = uint;
 type LPTSTR = str::sbuf;
 
-native "stdcall" mod kernel32 {
+#[abi = "stdcall"]
+native mod kernel32 {
     fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: uint) ->
        uint;
     fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
@@ -81,7 +86,8 @@ fn fclose(file: libc::FILE) {
     libc::fclose(file)
 }
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn rust_process_wait(handle: int) -> int;
     fn rust_getcwd() -> str;
 }

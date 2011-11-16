@@ -187,9 +187,8 @@ fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
           node:
               alt ni.node {
                 native_item_ty. { native_item_ty }
-                native_item_fn(st, fdec, typms) {
-                  native_item_fn(st,
-                                 {inputs: vec::map(fold_arg, fdec.inputs),
+                native_item_fn(fdec, typms) {
+                  native_item_fn({inputs: vec::map(fold_arg, fdec.inputs),
                                   output: fld.fold_ty(fdec.output),
                                   purity: fdec.purity,
                                   il: fdec.il,
@@ -453,8 +452,7 @@ fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
 }
 
 fn noop_fold_native_mod(nm: native_mod, fld: ast_fold) -> native_mod {
-    ret {native_name: nm.native_name,
-         abi: nm.abi,
+    ret {abi: nm.abi,
          view_items: vec::map(fld.fold_view_item, nm.view_items),
          items: vec::map(fld.fold_native_item, nm.items)}
 }

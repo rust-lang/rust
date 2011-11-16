@@ -17,6 +17,7 @@ import std::map::hashmap;
 import std::map::{new_int_hash, new_str_hash};
 import std::option::{some, none};
 import driver::session;
+import front::attr;
 import middle::{ty, gc};
 import middle::freevars::*;
 import back::{link, abi, upcall};
@@ -5585,7 +5586,7 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
         cx.sess.bug("register_native_fn(): native fn isn't \
                         actually a fn");
       }
-      ast::native_item_fn(_, _, tps) {
+      ast::native_item_fn(_, tps) {
         count = std::vec::len::<ast::ty_param>(tps);
       }
     }
@@ -5805,14 +5806,13 @@ fn item_path(item: @ast::item) -> [str] { ret [item.ident]; }
 fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
                        _v: vt<[str]>) {
     alt i.node {
-      ast::native_item_fn(link_name, _, _) {
+      ast::native_item_fn(_, _) {
         if !ccx.obj_methods.contains_key(i.id) {
-            let name =
-              if option::is_some(link_name) {
-                option::get(link_name)
-              } else {
-                i.ident
-              };
+            let name = i.ident;
+            alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
+              none. { }
+              option::some(ln) { name = ln; }
+            }
             register_native_fn(ccx, i.span, pt, name, i.id);
         }
       }

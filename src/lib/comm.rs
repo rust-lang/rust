@@ -34,7 +34,8 @@ export recv;
 export chan;
 export port;
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     type void;
     type rust_port;
 
@@ -48,7 +49,8 @@ native "cdecl" mod rustrt {
     fn rust_port_size(po: *rust_port) -> ctypes::size_t;
 }
 
-native "rust-intrinsic" mod rusti {
+#[abi = "rust-intrinsic"]
+native mod rusti {
     fn recv<uniq T>(port: *rustrt::rust_port) -> T;
 }
 

@@ -117,7 +117,9 @@ fn test_fn() {
     assert (h1 >= h2);
 }
 
-native "cdecl" mod native_mod = "" {
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod test {
     fn do_gc();
     fn unsupervise();
 }

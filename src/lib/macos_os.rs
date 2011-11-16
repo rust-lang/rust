@@ -1,5 +1,7 @@
 
-native "cdecl" mod libc = "" {
+#[link_name = ""]
+#[abi = "cdecl"]
+native mod libc {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
@@ -74,7 +76,8 @@ fn waitpid(pid: int) -> int {
     ret status;
 }
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn rust_getcwd() -> str;
 }
 

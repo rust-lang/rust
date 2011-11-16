@@ -179,7 +179,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
 
 fn visit_native_item<E>(ni: @native_item, e: E, v: vt<E>) {
     alt ni.node {
-      native_item_fn(_, fd, _) { visit_fn_decl(fd, e, v); }
+      native_item_fn(fd, _) { visit_fn_decl(fd, e, v); }
       native_item_ty. { }
     }
 }

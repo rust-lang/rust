@@ -16,7 +16,8 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        contains, iter_chars, loop_chars, loop_chars_sub,
        escape;
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
 }
 

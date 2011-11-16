@@ -1,11 +1,15 @@
 // xfail-fast - Somehow causes check-fast to livelock?? Probably because we're
 // calling pin_task and that's having wierd side-effects.
 
-native "cdecl" mod rustrt1 = "rustrt" {
+#[abi = "cdecl"]
+#[link_name = "rustrt"]
+native mod rustrt1 {
     fn pin_task();
 }
 
-native "cdecl" mod rustrt2 = "rustrt" {
+#[abi = "cdecl"]
+#[link_name = "rustrt"]
+native mod rustrt2 {
     fn pin_task();
 }
 

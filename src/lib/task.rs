@@ -50,12 +50,15 @@ export spawn;
 export spawn_notify;
 export spawn_joinable;
 
-native "rust-intrinsic" mod rusti {
+#[abi = "rust-intrinsic"]
+native mod rusti {
     // these must run on the Rust stack so that they can swap stacks etc:
     fn task_sleep(time_in_us: uint);
 }
 
-native "cdecl" mod rustrt = "rustrt" {
+#[link_name = "rustrt"]
+#[abi = "cdecl"]
+native mod rustrt {
     // these can run on the C stack:
     fn pin_task();
     fn unpin_task();

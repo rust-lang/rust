@@ -350,13 +350,9 @@ fn print_native_item(s: ps, item: @ast::native_item) {
 
 
 
-      ast::native_item_fn(lname, decl, typarams) {
+      ast::native_item_fn(decl, typarams) {
         print_fn(s, decl, ast::proto_bare, item.ident, typarams,
                  decl.constraints);
-        alt lname {
-          none. { }
-          some(ss) { space(s.s); word_space(s, "="); print_string(s, ss); }
-        }
         end(s); // end head-ibox
         word(s.s, ";");
         end(s); // end the outer fn box
@@ -399,24 +395,8 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_native_mod(nmod) {
         head(s, "native");
-        alt nmod.abi {
-          ast::native_abi_rust_intrinsic. {
-            word_nbsp(s, "\"rust-intrinsic\"");
-          }
-          ast::native_abi_cdecl. {
-            word_nbsp(s, "\"cdecl\"");
-          }
-          ast::native_abi_stdcall. {
-            word_nbsp(s, "\"stdcall\"");
-          }
-        }
         word_nbsp(s, "mod");
         word_nbsp(s, item.ident);
-        if !str::eq(nmod.native_name, item.ident) {
-            word_space(s, "=");
-            print_string(s, nmod.native_name);
-            nbsp(s);
-        }
         bopen(s);
         print_native_mod(s, nmod, item.attrs);
         bclose(s, item.span);

@@ -656,7 +656,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           }
           scope_native_item(it) {
             alt it.node {
-              ast::native_item_fn(_, decl, ty_params) {
+              ast::native_item_fn(decl, ty_params) {
                 ret lookup_in_fn(name, decl, ty_params, ns);
               }
             }
@@ -1077,7 +1077,7 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
                 ret some(ast::def_native_ty(local_def(native_item.id)));
             }
           }
-          ast::native_item_fn(_, decl, _) {
+          ast::native_item_fn(decl, _) {
             if ns == ns_value {
                 ret some(ast::def_native_fn(
                     local_def(native_item.id),

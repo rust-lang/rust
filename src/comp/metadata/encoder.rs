@@ -348,7 +348,7 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_type(ecx, ebml_w,
                     ty::mk_native(ecx.ccx.tcx, local_def(nitem.id)));
       }
-      native_item_fn(_, fn_decl, tps) {
+      native_item_fn(fn_decl, tps) {
         let letter =
             alt fn_decl.purity {
               unsafe_fn. { 'U' }

@@ -1,6 +1,8 @@
 /* Module: math */
 
-native "cdecl" mod libc = "" {
+#[link_name = ""]
+#[abi = "cdecl"]
+native mod libc {
     fn sqrt(n: float) -> float;
     fn sin(n: float) -> float;
     fn asin(n: float) -> float;

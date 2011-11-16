@@ -1,4 +1,5 @@
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn rust_list_files(path: str) -> [str];
 }
 

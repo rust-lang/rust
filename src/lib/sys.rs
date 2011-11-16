@@ -7,7 +7,8 @@ tag type_desc {
     type_desc(@type_desc);
 }
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     // Explicitly re-export native stuff we want to be made
     // available outside this crate. Otherwise it's
     // visible-in-crate, but not re-exported.
@@ -19,7 +20,8 @@ native "cdecl" mod rustrt {
     fn unsupervise();
 }
 
-native "rust-intrinsic" mod rusti {
+#[abi = "rust-intrinsic"]
+native mod rusti {
     fn get_type_desc<T>() -> *type_desc;
 }
 

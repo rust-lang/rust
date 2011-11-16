@@ -20,7 +20,9 @@ mod a1 {
 //   |   |   |
 mod a2 {
     //   |   |   |
-    native "cdecl" mod b1 = "" {
+    #[abi = "cdecl"]
+    #[link_name = ""]
+    native mod b1 {
         //   |   |   |
         import a1::b2::*;
         //   | <-/  -/

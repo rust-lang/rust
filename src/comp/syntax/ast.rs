@@ -432,7 +432,7 @@ tag native_abi {
 }
 
 type native_mod =
-    {native_name: str,
+    {// FIXME: Removing abi from AST. Depends on Issue #1179.
      abi: native_abi,
      view_items: [@view_item],
      items: [@native_item]};
@@ -501,7 +501,7 @@ type native_item =
 
 tag native_item_ {
     native_item_ty;
-    native_item_fn(option::t<str>, fn_decl, [ty_param]);
+    native_item_fn(fn_decl, [ty_param]);
 }
 
 //

@@ -110,7 +110,9 @@ const LLVMRealULE: uint = 13u;
 const LLVMRealUNE: uint = 14u;
 
 #[link_args = "-Lrustllvm"]
-native "cdecl" mod llvm = "rustllvm" {
+#[link_name = "rustllvm"]
+#[abi = "cdecl"]
+native mod llvm {
 
     type ModuleRef;
     type ContextRef;

@@ -148,7 +148,9 @@ mod icu {
     // FIXME: should be -1, change when compiler supports negative
     // constants
 
-    native "cdecl" mod libicu = "icuuc" {
+    #[link_name = "icuuc"]
+    #[abi = "cdecl"]
+    native mod libicu {
         fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
     }
 }

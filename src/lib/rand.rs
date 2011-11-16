@@ -3,7 +3,8 @@ Module: rand
 
 Random number generation
 */
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     type rctx;
     fn rand_new() -> rctx;
     fn rand_next(c: rctx) -> u32;
