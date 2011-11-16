@@ -253,6 +253,9 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
     let llnode = llmdnode(lldata);
     let mdval = @{node: llnode, data: {hash: ty::hash_ty(t)}};
     update_cache(cache, BasicTypeDescriptorTag, tydesc_metadata(mdval));
+    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
+                                      str::byte_len("llvm.dbg.ty"),
+                                      llnode);
     ret mdval;
 }
 
@@ -295,21 +298,21 @@ fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
       }
     };
     let declargs = [llmdnode([llptr]), mdnode];
-    let instr = trans_build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
-                                  declargs);
+    trans_build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
+                      declargs);
     llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.vars"),
                                       str::byte_len("llvm.dbg.vars"),
                                       mdnode);
     ret mdval;
 }
 
-fn update_source_pos<T>(cx: @block_ctxt, s: T) {
+fn update_source_pos(cx: @block_ctxt, s: codemap::span) {
     if !bcx_ccx(cx).sess.get_opts().debuginfo {
         ret;
     }
     cx.source_pos = option::some(
         codemap::lookup_char_pos(bcx_ccx(cx).sess.get_codemap(),
-                                 s.span.lo)); //XXX maybe hi
+                                 s.lo)); //XXX maybe hi
 
 }
 

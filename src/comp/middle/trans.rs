@@ -3519,7 +3519,7 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
 // - exprs with non-immediate type never get dest=by_val
 fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
-    debuginfo::update_source_pos(bcx, e);
+    debuginfo::update_source_pos(bcx, e.span);
 
     if expr_is_lval(bcx, e) {
         ret lval_to_dps(bcx, e, dest);
@@ -4014,7 +4014,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     }
 
     let bcx = cx;
-    debuginfo::update_source_pos(cx, s);
+    debuginfo::update_source_pos(cx, s.span);
     
     alt s.node {
       ast::stmt_expr(e, _) { bcx = trans_expr(cx, e, ignore); }
@@ -4263,7 +4263,7 @@ fn trans_block(bcx: @block_ctxt, b: ast::blk) -> @block_ctxt {
 fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
     -> @block_ctxt {
     let bcx = bcx;
-    debuginfo::update_source_pos(bcx, b);
+    debuginfo::update_source_pos(bcx, b.span);
     block_locals(b) {|local| bcx = alloc_local(bcx, local); };
     for s: @ast::stmt in b.node.stmts {
         bcx = trans_stmt(bcx, *s);
