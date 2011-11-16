@@ -28,9 +28,15 @@ fn default_configuration(sess: session::session, argv0: str, input: str) ->
 
     let mk = attr::mk_name_value_item_str;
 
+    let arch = alt sess.get_targ_cfg().arch {
+      session::arch_x86. { "x86" }
+      session::arch_x86_64. { "x86_64" }
+      session::arch_arm. { "arm" }
+    };
+
     ret [ // Target bindings.
          mk("target_os", std::os::target_os()),
-         mk("target_arch", "x86"),
+         mk("target_arch", arch),
          mk("target_libc", libc),
          // Build bindings.
          mk("build_compiler", argv0),
