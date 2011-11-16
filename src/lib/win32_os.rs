@@ -61,8 +61,8 @@ fn pipe() -> {in: int, out: int} {
     let fds = {mutable in: 0, mutable out: 0};
     let res =
         os::libc::_pipe(ptr::mut_addr_of(fds.in), 1024u,
-                        libc_constants::O_BINARY() |
-                            libc_constants::O_NOINHERIT());
+                        libc_constants::O_BINARY |
+                            libc_constants::O_NOINHERIT);
     assert (res == 0);
     assert (fds.in != -1 && fds.in != 0);
     assert (fds.out != -1 && fds.in != 0);
