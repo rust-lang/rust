@@ -390,14 +390,9 @@ fn buffered_file_buf_writer(path: str) -> result::t<buf_writer, str> {
 
 
 // FIXME it would be great if this could be a const
-<<<<<<< HEAD
 // Problem seems to be that new_writer is not pure
-fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
-fn stderr() -> writer { ret new_writer(fd_buf_writer(2, option::none)); }
-=======
 fn stdout() -> writer { ret new_writer(fd_buf_writer(1i32, option::none)); }
 fn stderr() -> writer { ret new_writer(fd_buf_writer(2i32, option::none)); }
->>>>>>> refactor all unix types
 
 fn print(s: str) { stdout().write_str(s); }
 fn println(s: str) { stdout().write_str(s + "\n"); }
