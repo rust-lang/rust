@@ -44,7 +44,7 @@ tendency towards aggressive abbreviation in the keywords—`fn` for
 function, `ret` for return.
 
 You should, however, not conclude that Rust is simply an evolution of
-C. As will become clear in the rest of this tutorial, it goes into
+C. As will become clear in the rest of this tutorial, it goes in
 quite a different direction.
 
 ## Conventions
