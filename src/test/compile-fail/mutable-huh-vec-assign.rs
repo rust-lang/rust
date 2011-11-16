@@ -1,7 +1,7 @@
 // error-pattern: assigning to immutable vec content
 
 fn main() {
-    fn f(&&v: [mutable? int]) {
+    fn f(&&v: [const int]) {
         // This shouldn't be possible
         v[0] = 1
     }

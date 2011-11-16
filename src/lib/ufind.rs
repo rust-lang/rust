@@ -44,7 +44,7 @@ fn set_count(ufnd: ufind) -> uint { ret vec::len::<node>(ufnd.nodes); }
 
 // Removes all sets with IDs greater than or equal to the given value.
 fn prune(ufnd: ufind, n: uint) {
-    // TODO: Use "slice" once we get rid of "mutable?"
+    // TODO: Use "slice" once we get rid of "const"
 
     let len = vec::len::<node>(ufnd.nodes);
     while len != n { vec::pop::<node>(ufnd.nodes); len -= 1u; }

@@ -1,7 +1,7 @@
 // error-pattern: assigning to immutable field
 
 fn main() {
-    fn f(&&v: {mutable? field: int}) {
+    fn f(&&v: {const field: int}) {
         // This shouldn't be possible
         v.field = 1
     }

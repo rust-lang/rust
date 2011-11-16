@@ -189,7 +189,7 @@ Function: unsafe_from_bytes
 Converts a vector of bytes to a string. Does not verify that the
 vector contains valid UTF-8.
 */
-fn unsafe_from_bytes(v: [mutable? u8]) -> str unsafe {
+fn unsafe_from_bytes(v: [const u8]) -> str unsafe {
     let vcopy: [u8] = v + [0u8];
     let scopy: str = unsafe::reinterpret_cast(vcopy);
     unsafe::leak(vcopy);

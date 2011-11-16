@@ -25,7 +25,7 @@ Function: from_vec
 
 Create a list from a vector
 */
-fn from_vec<T>(v: [mutable? T]) -> list<T> {
+fn from_vec<T>(v: [const T]) -> list<T> {
     *vec::foldr({ |h, t| @cons(h, t) }, @nil::<T>, v)
 }
 

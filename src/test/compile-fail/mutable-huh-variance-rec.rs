@@ -3,7 +3,7 @@
 fn main() {
     let v = {mutable g: [0]};
 
-    fn f(&&v: {mutable g: [mutable? int]}) {
+    fn f(&&v: {mutable g: [const int]}) {
         v.g = [mutable 3]
     }
 

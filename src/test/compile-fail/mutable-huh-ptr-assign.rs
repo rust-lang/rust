@@ -3,7 +3,7 @@
 use std;
 
 fn main() {
-    unsafe fn f(&&v: *mutable? int) {
+    unsafe fn f(&&v: *const int) {
         // This shouldn't be possible
         *v = 1
     }

@@ -3,7 +3,7 @@
 fn main() {
     let v = [mutable [mutable 0]];
 
-    fn f(&&v: [mutable [mutable? int]]) {
+    fn f(&&v: [mutable [const int]]) {
         v[0] = [3]
     }
 

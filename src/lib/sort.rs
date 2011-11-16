@@ -20,7 +20,7 @@ Merge sort. Returns a new vector containing the sorted list.
 Has worst case O(n log n) performance, best case O(n), but
 is not space efficient. This is a stable sort.
 */
-fn merge_sort<T>(le: lteq<T>, v: [mutable? T]) -> [T] {
+fn merge_sort<T>(le: lteq<T>, v: [const T]) -> [T] {
     fn merge<T>(le: lteq<T>, a: [T], b: [T]) -> [T] {
         let rs: [T] = [];
         let a_len: uint = len::<T>(a);

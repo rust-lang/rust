@@ -746,8 +746,7 @@ fn parse_path_and_ty_param_substs(p: parser) -> ast::path {
 
 fn parse_mutability(p: parser) -> ast::mutability {
     if eat_word(p, "mutable") {
-        if p.peek() == token::QUES { p.bump(); ast::maybe_mut }
-        else { ast::mut }
+        ast::mut
     } else if eat_word(p, "const") {
         ast::maybe_mut
     } else {

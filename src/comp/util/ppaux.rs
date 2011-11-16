@@ -84,7 +84,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         alt m.mut {
           ast::mut. { mstr = "mutable "; }
           ast::imm. { mstr = ""; }
-          ast::maybe_mut. { mstr = "mutable? "; }
+          ast::maybe_mut. { mstr = "const "; }
         }
         ret mstr + ty_to_str(cx, m.ty);
     }

@@ -1307,7 +1307,7 @@ fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: int) {
 fn print_mutability(s: ps, mut: ast::mutability) {
     alt mut {
       ast::mut. { word_nbsp(s, "mutable"); }
-      ast::maybe_mut. { word_nbsp(s, "mutable?"); }
+      ast::maybe_mut. { word_nbsp(s, "const"); }
       ast::imm. {/* nothing */ }
     }
 }

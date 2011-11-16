@@ -188,7 +188,7 @@ fn file_reader(path: str) -> result::t<reader, str> {
 
 // Byte buffer readers
 
-// TODO: mutable? u8, but this fails with rustboot.
+// TODO: const u8, but this fails with rustboot.
 type byte_buf = @{buf: [u8], mutable pos: uint};
 
 obj byte_buf_reader(bbuf: byte_buf) {
