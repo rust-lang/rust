@@ -16,22 +16,30 @@ extern "C" CDECL void
 rust_task_sleep(size_t time_in_us);
 
 extern "C" void
-rust_intrinsic_vec_len(rust_task *task, size_t *retptr, type_desc *ty,
-                       rust_vec **vp)
+rust_intrinsic_2_vec_len(size_t *retptr,
+                         void *env,
+                         type_desc *ty,
+                         rust_vec **vp)
 {
     *retptr = (*vp)->fill / ty->size;
 }
 
 extern "C" void
-rust_intrinsic_ptr_offset(rust_task *task, void **retptr, type_desc *ty,
-                          void *ptr, uintptr_t count)
+rust_intrinsic_2_ptr_offset(void **retptr,
+                          void *env,
+                          type_desc *ty,
+                          void *ptr,
+                          uintptr_t count)
 {
     *retptr = &((uint8_t *)ptr)[ty->size * count];
 }
 
 extern "C" void
-rust_intrinsic_cast(rust_task *task, void *retptr, type_desc *t1,
-                    type_desc *t2, void *src)
+rust_intrinsic_2_cast(void *retptr,
+                    void *env,
+                    type_desc *t1,
+                    type_desc *t2,
+                    void *src)
 {
     if (t1->size != t2->size) {
         upcall_fail("attempt to cast values of differing sizes",
@@ -43,25 +51,91 @@ rust_intrinsic_cast(rust_task *task, void *retptr, type_desc *t1,
 }
 
 extern "C" void
-rust_intrinsic_addr_of(rust_task *task, void **retptr, type_desc *ty,
+rust_intrinsic_2_addr_of(void **retptr,
+                       void *env,
+                       type_desc *ty,
                        void *valptr) {
     *retptr = valptr;
 }
 
 extern "C" void
-rust_intrinsic_recv(rust_task *task, void **retptr, type_desc *ty,
+rust_intrinsic_2_recv(void **retptr,
+                    void *env,
+                    type_desc *ty,
                     rust_port *port) {
     port_recv((uintptr_t*)retptr, port);
 }
 
 extern "C" void
-rust_intrinsic_get_type_desc(rust_task *task, void **retptr,
+rust_intrinsic_2_get_type_desc(void **retptr,
+                             void *env,
                              type_desc* ty) {
     *(type_desc**)retptr = ty;
 }
 
 extern "C" void
-rust_intrinsic_task_sleep(rust_task *_task, void **retptr,
-			  size_t time_in_us) {
-  rust_task_sleep(time_in_us);
+rust_intrinsic_2_task_sleep(void **retptr,
+                          void *env,
+                          size_t time_in_us) {
+    rust_task_sleep(time_in_us);
 }
+
+extern "C" void
+rust_intrinsic_vec_len(void *task,
+                       size_t *retptr,
+                       type_desc *ty,
+                       rust_vec **vp)
+{
+    rust_intrinsic_2_vec_len(retptr, NULL, ty, vp);
+}
+
+extern "C" void
+rust_intrinsic_ptr_offset(void *task,
+                          void **retptr,
+                          type_desc *ty,
+                          void *ptr,
+                          uintptr_t count)
+{
+    rust_intrinsic_2_ptr_offset(retptr, NULL, ty, ptr, count);
+}
+
+extern "C" void
+rust_intrinsic_cast(void *task,
+                    void *retptr,
+                    type_desc *t1,
+                    type_desc *t2,
+                    void *src)
+{
+    rust_intrinsic_2_cast(retptr, NULL, t1, t2, src);
+}
+
+extern "C" void
+rust_intrinsic_addr_of(void *task,
+                       void **retptr,
+                       type_desc *ty,
+                       void *valptr) {
+    rust_intrinsic_2_addr_of(retptr, NULL, ty, valptr);
+}
+
+extern "C" void
+rust_intrinsic_recv(void *task,
+                    void **retptr,
+                    type_desc *ty,
+                    rust_port *port) {
+    rust_intrinsic_2_recv(retptr, NULL, ty, port);
+}
+
+extern "C" void
+rust_intrinsic_get_type_desc(void *task,
+                             void **retptr,
+                             type_desc* ty) {
+    rust_intrinsic_2_get_type_desc(retptr, NULL, ty);
+}
+
+extern "C" void
+rust_intrinsic_task_sleep(void *task,
+                          void **retptr,
+                          size_t time_in_us) {
+    rust_task_sleep(time_in_us);
+}
+

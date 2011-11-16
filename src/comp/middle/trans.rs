@@ -5723,21 +5723,20 @@ fn raw_native_fn_type(ccx: @crate_ctxt, sp: span, args: [ty::arg],
     ret T_fn(type_of_explicit_args(ccx, sp, args), type_of(ccx, sp, ret_ty));
 }
 
-fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
-                           id: ast::node_id) {
+fn register_native_fn(ccx: @crate_ctxt, sp: span, _path: [str], name: str,
+                      id: ast::node_id) {
     let fn_type = node_id_type(ccx, id); // NB: has no type params
     let abi = ty::ty_fn_abi(ccx.tcx, fn_type);
 
-    // FIXME: There's probably a lot of unused code here now that
-    // there's only one possible combination of these three options
-    let pass_task;
-    let uses_retptr;
-    let cast_to_i32;
     alt abi {
       ast::native_abi_rust_intrinsic. {
-        pass_task = true;
-        uses_retptr = true;
-        cast_to_i32 = false;
+        let num_ty_param = native_fn_ty_param_count(ccx, id);
+        let fn_type = native_fn_wrapper_type(ccx, sp, num_ty_param, fn_type);
+        let ri_name = "rust_intrinsic_2_" + name;
+        let llnativefn = get_extern_fn(ccx.externs, ccx.llmod, ri_name,
+                                       lib::llvm::LLVMCCallConv, fn_type);
+        ccx.item_ids.insert(id, llnativefn);
+        ccx.item_symbols.insert(id, ri_name);
       }
 
       ast::native_abi_cdecl. | ast::native_abi_stdcall. {
@@ -5747,140 +5746,9 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, path: [str], name: str,
             ccx.llmod, shim_name, tys.shim_fn_ty);
         ccx.item_ids.insert(id, llshimfn);
         ccx.item_symbols.insert(id, shim_name);
-        ret;
       }
     }
 
-    let path = path;
-    let num_ty_param = native_fn_ty_param_count(ccx, id);
-    // Declare the wrapper.
-
-    let t = node_id_type(ccx, id);
-    let wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
-    let ps: str = mangle_exported_name(ccx, path, node_id_type(ccx, id));
-    let wrapper_fn = decl_cdecl_fn(ccx.llmod, ps, wrapper_type);
-    ccx.item_ids.insert(id, wrapper_fn);
-    ccx.item_symbols.insert(id, ps);
-
-    // Build the wrapper.
-    let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, wrapper_fn);
-    let bcx = new_top_block_ctxt(fcx);
-    let lltop = bcx.llbb;
-
-    // Declare the function itself.
-    // FIXME: If the returned type is not nil, then we assume it's 32 bits
-    // wide. This is obviously wildly unsafe. We should have a better FFI
-    // that allows types of different sizes to be returned.
-
-    let rty = ty::ty_fn_ret(ccx.tcx, fn_type);
-    let rty_is_nil = ty::type_is_nil(ccx.tcx, rty);
-
-    let call_args: [ValueRef] = [];
-    if pass_task { call_args += [C_null(T_ptr(ccx.task_type))]; }
-    if uses_retptr { call_args += [bcx.fcx.llretptr]; }
-
-    let arg_n = 2u;
-    uint::range(0u, num_ty_param) {|_i|
-        let llarg = llvm::LLVMGetParam(fcx.llfn, arg_n);
-        fcx.lltydescs += [llarg];
-        assert (llarg as int != 0);
-        if cast_to_i32 {
-            call_args += [vp2i(bcx, llarg)];
-        } else { call_args += [llarg]; }
-        arg_n += 1u;
-    };
-    fn convert_arg_to_i32(cx: @block_ctxt, v: ValueRef, t: ty::t,
-                          mode: ty::mode) -> ValueRef {
-        if mode == ast::by_ref || mode == ast::by_val {
-            let ccx = bcx_ccx(cx);
-            if ty::type_is_integral(bcx_tcx(cx), t) {
-                // FIXME: would be nice to have a postcondition that says
-                // if a type is integral, then it has static size (#586)
-                let lldsttype = ccx.int_type;
-                let sp = cx.sp;
-                check (type_has_static_size(ccx, t));
-                let llsrctype = type_of(ccx, sp, t);
-                if llvm::LLVMGetIntTypeWidth(lldsttype) >
-                       llvm::LLVMGetIntTypeWidth(llsrctype) {
-                    ret ZExtOrBitCast(cx, v, ccx.int_type);
-                }
-                ret TruncOrBitCast(cx, v, ccx.int_type);
-            }
-            if ty::type_is_fp(bcx_tcx(cx), t) {
-                ret FPToSI(cx, v, ccx.int_type);
-            }
-        }
-        ret vp2i(cx, v);
-    }
-
-    fn trans_simple_native_abi(bcx: @block_ctxt, name: str,
-                               &call_args: [ValueRef], fn_type: ty::t,
-                               uses_retptr: bool, cc: uint) ->
-       {val: ValueRef, rptr: ValueRef} {
-        let call_arg_tys: [TypeRef] = [];
-        for arg: ValueRef in call_args { call_arg_tys += [val_ty(arg)]; }
-        let ccx = bcx_ccx(bcx);
-
-        let llnativefnty =
-            if uses_retptr {
-                T_fn(call_arg_tys, T_void())
-            } else {
-                let fn_ret_ty = ty::ty_fn_ret(bcx_tcx(bcx), fn_type);
-                // FIXME: Could follow from a constraint on fn_type...
-                check (type_has_static_size(ccx, fn_ret_ty));
-                let sp = bcx.sp;
-                T_fn(call_arg_tys, type_of(ccx, sp, fn_ret_ty))
-            };
-
-        let llnativefn =
-            get_extern_fn(ccx.externs, ccx.llmod, name, cc, llnativefnty);
-        let r =
-            if cc == lib::llvm::LLVMCCallConv {
-                Call(bcx, llnativefn, call_args)
-            } else { CallWithConv(bcx, llnativefn, call_args, cc) };
-        let rptr = bcx.fcx.llretptr;
-        ret {val: r, rptr: rptr};
-    }
-
-    let args = ty::ty_fn_args(ccx.tcx, fn_type);
-    // Build up the list of arguments.
-
-    let i = arg_n;
-    for arg: ty::arg in args {
-        let llarg = llvm::LLVMGetParam(fcx.llfn, i);
-        assert (llarg as int != 0);
-        if cast_to_i32 {
-            let llarg_i32 = convert_arg_to_i32(bcx, llarg, arg.ty, arg.mode);
-            call_args += [llarg_i32];
-        } else { call_args += [llarg]; }
-        i += 1u;
-    }
-    let r;
-    let rptr;
-    alt abi {
-      ast::native_abi_rust_intrinsic. {
-        let external_name = "rust_intrinsic_" + name;
-        let result =
-            trans_simple_native_abi(bcx, external_name, call_args, fn_type,
-                                    uses_retptr, lib::llvm::LLVMCCallConv);
-        r = result.val;
-        rptr = result.rptr;
-      }
-      _ {
-        r =
-            trans_native_call(new_raw_block_ctxt(bcx.fcx, bcx.llbb),
-                              ccx.externs, ccx.llmod, name, call_args);
-        rptr = BitCast(bcx, fcx.llretptr, T_ptr(ccx.int_type));
-      }
-    }
-    // We don't store the return value if it's nil, to avoid stomping on a nil
-    // pointer. This is the only concession made to non-i32 return values. See
-    // the FIXME above.
-
-    if !rty_is_nil && !uses_retptr { Store(bcx, r, rptr); }
-
-    build_return(bcx);
-    finish_fn(fcx, lltop);
 }
 
 fn item_path(item: @ast::item) -> [str] { ret [item.ident]; }
