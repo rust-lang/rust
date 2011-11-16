@@ -18,6 +18,7 @@ export exec_suffix;
 export target_os;
 export dylib_filename;
 export get_exe_path;
+export fsync_fd;
 
 // FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
 // by https://github.com/graydon/rust/issues#issue/268
@@ -35,11 +36,14 @@ native mod libc {
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
-    fn fgetc(f: FILE) -> c_int;
-    fn ungetc(c: c_int, f: FILE);
-    fn feof(f: FILE) -> c_int;
-    fn fseek(f: FILE, offset: long, whence: c_int) -> c_int;
-    fn ftell(f: FILE) -> long;
+    fn fsync(fd: fd_t) -> c_int;
+    fn fdatasync(fd: fd_t) -> c_int;
+    fn fileno(f: FILE) -> fd_t;
+    fn fgetc(f: FILE) -> int;
+    fn ungetc(c: int, f: FILE);
+    fn feof(f: FILE) -> int;
+    fn fseek(f: FILE, offset: int, whence: int) -> int;
+    fn ftell(f: FILE) -> int;
     type dir;
     fn opendir(d: str::sbuf) -> dir;
     fn closedir(d: dir) -> c_int;
@@ -88,9 +92,16 @@ fn fclose(file: libc::FILE) {
     libc::fclose(file)
 }
 
+fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
+    alt level {
+      io::fsync::fsync. | io::fsync::fullfsync. { ret libc::fsync(fd); }
+      io::fsync::fdatasync. { ret libc::fdatasync(fd); }
+    }
+}
+
 fn waitpid(pid: pid_t) -> i32 {
-    let status = 0i32;
-    assert (os::libc::waitpid(pid, status, 0i32) != -1i32);
+    let status = 0u32;
+    assert (os::libc::waitpid(pid, status, 0i32) != -1);
     ret status;
 }
 

@@ -15,12 +15,14 @@ native mod libc {
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn _fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
-    fn fgetc(f: FILE) -> c_int;
-    fn ungetc(c: c_int, f: FILE);
-    fn feof(f: FILE) -> c_int;
-    fn fseek(f: FILE, offset: long, whence: c_int) -> c_int;
-    fn ftell(f: FILE) -> long;
-    fn _pipe(fds: *mutable fd_t, size: unsigned, mode: c_int) -> c_int;
+    fn fsync(fd: fd_t) -> c_int;
+    fn fileno(f: FILE) -> fd_t;
+    fn fgetc(f: FILE) -> int;
+    fn ungetc(c: int, f: FILE);
+    fn feof(f: FILE) -> int;
+    fn fseek(f: FILE, offset: int, whence: int) -> int;
+    fn ftell(f: FILE) -> int;
+    fn _pipe(fds: *mutable int, size: uint, mode: int) -> int;
 }
 
 mod libc_constants {
@@ -90,6 +92,11 @@ fn close(fd: fd_t) -> c_int {
 
 fn fclose(file: libc::FILE) {
     libc::fclose(file)
+}
+
+fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
+    // FIXME do something more apropriate
+    ret libc::fsync(fd);
 }
 
 #[abi = "cdecl"]
