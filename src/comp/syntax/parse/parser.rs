@@ -573,7 +573,10 @@ fn parse_arg_mode(p: parser) -> ast::mode {
     if eat(p, token::BINOP(token::AND)) { ast::by_mut_ref }
     else if eat(p, token::BINOP(token::MINUS)) { ast::by_move }
     else if eat(p, token::ANDAND) { ast::by_ref }
-    else if eat(p, token::BINOP(token::PLUS)) { ast::by_val }
+    else if eat(p, token::BINOP(token::PLUS)) {
+        if eat(p, token::BINOP(token::PLUS)) { ast::by_val }
+        else { ast::by_copy }
+    }
     else { ast::mode_infer }
 }
 

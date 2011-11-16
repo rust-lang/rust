@@ -144,7 +144,7 @@ tag unop {
     deref; not; neg;
 }
 
-tag mode { by_ref; by_val; by_mut_ref; by_move; mode_infer; }
+tag mode { by_ref; by_val; by_mut_ref; by_move; by_copy; mode_infer; }
 
 type stmt = spanned<stmt_>;
 

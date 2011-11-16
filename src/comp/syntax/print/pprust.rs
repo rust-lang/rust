@@ -1161,7 +1161,8 @@ fn print_arg_mode(s: ps, m: ast::mode) {
       ast::by_mut_ref. { word(s.s, "&"); }
       ast::by_move. { word(s.s, "-"); }
       ast::by_ref. { word(s.s, "&&"); }
-      ast::by_val. { word(s.s, "+"); }
+      ast::by_val. { word(s.s, "++"); }
+      ast::by_copy. { word(s.s, "+"); }
       ast::mode_infer. {}
     }
 }

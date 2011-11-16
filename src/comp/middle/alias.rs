@@ -255,7 +255,7 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
                        local_id: 0u,
                        unsafe_tys: unsafe_set(root.mut),
                        mutable copied: alt arg_t.mode {
-                         ast::by_move. { copied }
+                         ast::by_move. | ast::by_copy. { copied }
                          ast::by_mut_ref. { not_allowed }
                          _ { i + 1u == by_ref ? not_allowed : not_copied }
                        }}];
@@ -336,6 +336,9 @@ fn check_ret_ref(cx: ctx, sc: scope, mut: bool, arg_node_id: node_id,
               some(ast_map::node_arg(arg, _)) {
                 if arg.mode == ast::by_move {
                     bad = some("a move-mode parameter");
+                }
+                if arg.mode == ast::by_copy {
+                    bad = some("a copy-mode parameter");
                 }
                 if cur_node != arg_node_id {
                     bad = some("the wrong parameter");

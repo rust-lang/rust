@@ -67,8 +67,7 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
         // that would obviate the need for this check
         check non_ty_var(cx, arg_ty);
         let llty = type_of_inner(cx, sp, arg_ty);
-        if arg.mode == ast::by_val { atys += [llty]; }
-        else { atys += [T_ptr(llty)]; }
+        atys += [arg.mode == ast::by_val ? llty : T_ptr(llty)];
     }
     ret atys;
 }
@@ -3636,6 +3635,15 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
         if arg.mode == ast::by_val && (lv.kind == owned || !imm) {
             val = Load(bcx, val);
         }
+    } else if arg.mode == ast::by_copy {
+        let {bcx: cx, val: alloc} = alloc_ty(bcx, e_ty);
+        bcx = cx;
+        if lv.kind == temporary { revoke_clean(bcx, val); }
+        if lv.kind == owned || !ty::type_is_immediate(ccx.tcx, e_ty) {
+            bcx = memmove_ty(bcx, alloc, val, e_ty);
+        } else { Store(bcx, val, alloc); }
+        val = alloc;
+        if lv.kind != temporary { bcx = take_ty(bcx, val, e_ty); }
     } else if ty::type_is_immediate(ccx.tcx, e_ty) && lv.kind != owned {
         let r = do_spill(bcx, val, e_ty);
         val = r.val;
@@ -4989,7 +4997,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
         let argval = alt fcx.llargs.get(id) { local_mem(v) { v } };
         alt arg.mode {
           ast::by_mut_ref. { }
-          ast::by_move. { add_clean(bcx, argval, arg.ty); }
+          ast::by_move. | ast::by_copy. { add_clean(bcx, argval, arg.ty); }
           ast::by_val. {
             if !ty::type_is_immediate(bcx_tcx(bcx), arg.ty) {
                 let {bcx: cx, val: alloc} = alloc_ty(bcx, arg.ty);

@@ -379,8 +379,9 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
         let mode = alt peek(st) as char {
           '&' { ast::by_mut_ref }
           '-' { ast::by_move }
+          '+' { ast::by_copy }
           '=' { ast::by_ref }
-          '+' { ast::by_val }
+          '#' { ast::by_val }
         };
         st.pos += 1u;
         inputs += [{mode: mode, ty: parse_ty(st, sd)}];

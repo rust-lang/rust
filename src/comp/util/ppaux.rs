@@ -12,9 +12,10 @@ import middle::ast_map;
 fn mode_str(m: ty::mode) -> str {
     alt m {
       ast::by_ref. { "&&" }
-      ast::by_val. { "+" }
+      ast::by_val. { "++" }
       ast::by_mut_ref. { "&" }
       ast::by_move. { "-" }
+      ast::by_copy. { "+" }
       _ { "" }
     }
 }
