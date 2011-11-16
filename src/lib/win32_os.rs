@@ -8,7 +8,7 @@ native mod libc {
     fn fread(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
     fn fwrite(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
     #[link_name = "_open"]
-    fn open(s: str::sbuf, flags: c_int, mode: c_int) -> c_int;
+    fn open(s: str::sbuf, flags: c_int, mode: unsigned) -> c_int;
     #[link_name = "_close"]
     fn close(fd: fd_t) -> c_int;
     type FILE;
