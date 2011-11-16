@@ -42,8 +42,8 @@ mod libc_constants {
     const O_TEXT: int     = 0;    // nonexistent in darwin libc
     const O_BINARY: int   = 0;    // nonexistent in darwin libc
 
-    const S_IRUSR: uint   = 1024u;
-    const S_IWUSR: uint   = 512u;
+    const S_IRUSR: uint   = 256u;
+    const S_IWUSR: uint   = 128u;
 }
 
 // FIXME turn into constants

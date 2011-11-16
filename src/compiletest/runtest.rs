@@ -335,18 +335,11 @@ fn dump_output(config: config, testfile: str, out: str, err: str) {
     maybe_dump_to_stdout(config, out, err);
 }
 
-#[cfg(target_os = "win32")]
-#[cfg(target_os = "linux")]
 fn dump_output_file(config: config, testfile: str, out: str, extension: str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer = result::get(
         io::file_writer(outfile, [io::create, io::truncate]));
     writer.write_str(out);
-}
-
-// FIXME (726): Can't use file_writer on mac
-#[cfg(target_os = "macos")]
-fn dump_output_file(config: config, testfile: str, out: str, extension: str) {
 }
 
 fn make_out_name(config: config, testfile: str, extension: str) -> str {
