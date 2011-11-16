@@ -35,7 +35,7 @@ mod libc_constants {
     const O_RDWR: int     = 2;
     const O_APPEND: int   = 8;
     const O_CREAT: int    = 512;
-    const O_EXCL: int     = 248;
+    const O_EXCL: int     = 2048;
     const O_TRUNC: int    = 1024;
     const O_TEXT: int     = 0;    // nonexistent in darwin libc
     const O_BINARY: int   = 0;    // nonexistent in darwin libc
