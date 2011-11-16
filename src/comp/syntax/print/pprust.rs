@@ -264,7 +264,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         word(s.s, "[");
         alt mt.mut {
           ast::mut. { word_space(s, "mutable"); }
-          ast::maybe_mut. { word_space(s, "mutable?"); }
+          ast::maybe_mut. { word_space(s, "const"); }
           ast::imm. { }
         }
         print_type(s, mt.ty);
