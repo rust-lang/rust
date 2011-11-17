@@ -197,7 +197,6 @@ void task_start_wrapper(spawn_args *a)
 #endif
     } else {
         task->lock.lock();
-        task->notify_tasks_waiting_to_join();
         task->lock.unlock();
         task->yield(1);
     }
@@ -324,7 +323,6 @@ rust_task::conclude_failure() {
     unblock();
     fail_parent();
     failed = true;
-    notify_tasks_waiting_to_join();
     yield(4);
 }
 
@@ -354,19 +352,6 @@ rust_task::unsupervise()
     }
     supervisor = NULL;
     propagate_failure = false;
-}
-
-void
-rust_task::notify_tasks_waiting_to_join() {
-    while (tasks_waiting_to_join.is_empty() == false) {
-        LOG(this, task, "notify_tasks_waiting_to_join: %d",
-            tasks_waiting_to_join.size());
-        rust_task *waiting_task = 0;
-        tasks_waiting_to_join.pop(&waiting_task);
-        if (waiting_task->blocked() == true) {
-            waiting_task->wakeup(this);
-        }
-    }
 }
 
 frame_glue_fns*

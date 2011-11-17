@@ -99,9 +99,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // that location before waking us up.
     uintptr_t* rendezvous_ptr;
 
-    // List of tasks waiting for this task to finish.
-    array_list<rust_task *> tasks_waiting_to_join;
-
     // This flag indicates that a worker is either currently running the task
     // or is about to run this task.
     int running_on;
@@ -183,9 +180,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     // Disconnect from our supervisor.
     void unsupervise();
-
-    // Notify tasks waiting for us that we are about to die.
-    void notify_tasks_waiting_to_join();
 
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
     rust_crate_cache * get_crate_cache();

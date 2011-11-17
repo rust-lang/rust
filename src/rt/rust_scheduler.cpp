@@ -137,7 +137,6 @@ rust_scheduler::reap_dead_tasks(int id) {
         task->lock.lock();
         // Make sure this task isn't still running somewhere else...
         if (task->can_schedule(id)) {
-            I(this, task->tasks_waiting_to_join.is_empty());
             DLOG(this, task,
                 "deleting unreferenced dead task %s @0x%" PRIxPTR,
                 task->name, task);
