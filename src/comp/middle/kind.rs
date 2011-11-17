@@ -15,11 +15,14 @@ type rval_map = std::map::hashmap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
             rval_map: rval_map,
+            last_uses: last_use::last_uses,
             mutable ret_by_ref: bool};
 
-fn check_crate(tcx: ty::ctxt, crate: @crate) -> rval_map {
+fn check_crate(tcx: ty::ctxt, last_uses: last_use::last_uses,
+               crate: @crate) -> rval_map {
     let ctx = {tcx: tcx,
                rval_map: std::map::new_int_hash(),
+               last_uses: last_uses,
                mutable ret_by_ref: false};
     let visit = visit::mk_vt(@{
         visit_expr: check_expr,
@@ -118,7 +121,7 @@ fn maybe_copy(cx: ctx, ex: @expr) {
 }
 
 fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
-    if ty::expr_is_lval(cx.tcx, ex) {
+    if ty::expr_is_lval(cx.tcx, ex) && !cx.last_uses.contains_key(ex.id) {
         let ty = ty::expr_ty(cx.tcx, ex);
         check_copy(cx, ty, ex.span);
         // FIXME turn this on again once vector types are no longer unique.

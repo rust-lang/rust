@@ -5,7 +5,8 @@ import metadata::{creader, cstore};
 import syntax::parse::{parser};
 import syntax::{ast, codemap};
 import front::attr;
-import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage};
+import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
+                last_use};
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
@@ -138,6 +139,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
              bind freevars::annotate_freevars(def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
     time(time_passes, "typechecking", bind typeck::check_crate(ty_cx, crate));
+    let last_uses = time(time_passes, "last use finding",
+        bind last_use::find_last_uses(crate, def_map, ty_cx));
     time(time_passes, "function usage",
          bind fn_usage::check_crate_fn_usage(ty_cx, crate));
     time(time_passes, "alt checking",
@@ -150,7 +153,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let copy_map =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
-    time(time_passes, "kind checking", bind kind::check_crate(ty_cx, crate));
+    time(time_passes, "kind checking",
+         bind kind::check_crate(ty_cx, last_uses, crate));
     time(time_passes, "const checking",
          bind middle::check_const::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }

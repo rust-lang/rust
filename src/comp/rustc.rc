@@ -30,6 +30,7 @@ mod middle {
     mod check_const;
     mod mut;
     mod alias;
+    mod last_use;
     mod kind;
     mod freevars;
     mod shape;

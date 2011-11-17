@@ -134,6 +134,23 @@ fn append<T>(l: list<T>, m: list<T>) -> list<T> {
     }
 }
 
+/*
+Function: iter
+
+Iterate over a list
+*/
+fn iter<copy T>(l: list<T>, f: block(T)) {
+    let cur = l;
+    while cur != nil {
+        alt cur {
+          cons(hd, tl) {
+            f(hd);
+            cur = *tl;
+          }
+        }
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

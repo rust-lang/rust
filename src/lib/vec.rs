@@ -703,8 +703,8 @@ Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
 */
 fn iter2<T>(v: [const T], f: block(uint, T)) {
-    let i = 0u;
-    for x in v { f(i, x); i += 1u; }
+    let i = 0u, l = len(v);
+    while i < l { f(i, v[i]); i += 1u; }
 }
 
 /*
