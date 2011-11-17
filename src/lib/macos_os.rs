@@ -47,18 +47,18 @@ native mod libc {
 }
 
 mod libc_constants {
-    const O_RDONLY: int   = 0i32;
-    const O_WRONLY: int   = 1i32;
-    const O_RDWR: int     = 2i32;
-    const O_APPEND: int   = 8i32;
-    const O_CREAT: int    = 512i32;
-    const O_EXCL: int     = 2048i32;
-    const O_TRUNC: int    = 1024i32;
-    const O_TEXT: int     = 0i32;    // nonexistent in darwin libc
-    const O_BINARY: int   = 0i32;    // nonexistent in darwin libc
+    const O_RDONLY: c_int   = 0i32;
+    const O_WRONLY: c_int   = 1i32;
+    const O_RDWR: c_int     = 2i32;
+    const O_APPEND: c_int   = 8i32;
+    const O_CREAT: c_int    = 512i32;
+    const O_EXCL: c_int     = 2048i32;
+    const O_TRUNC: c_int    = 1024i32;
+    const O_TEXT: c_int     = 0i32;    // nonexistent in darwin libc
+    const O_BINARY: c_int   = 0i32;    // nonexistent in darwin libc
 
-    const S_IRUSR: uint   = 256u32;
-    const S_IWUSR: uint   = 128u32;
+    const S_IRUSR: unsigned = 256u32;
+    const S_IWUSR: unsigned = 128u32;
 }
 
 fn pipe() -> {in: fd_t, out: fd_t} {
@@ -92,7 +92,9 @@ native mod rustrt {
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 
-native "cdecl" mod mac_libc = "" {
+#[link_name = ""]
+#[abi = "cdecl"]
+native mod mac_libc {
     fn _NSGetExecutablePath(buf: str::sbuf,
                             bufsize: *mutable uint32_t) -> c_int;
 }

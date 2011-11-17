@@ -5394,17 +5394,17 @@ fn c_stack_tys(ccx: @crate_ctxt,
 //
 fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
     fn build_shim_fn(lcx: @local_ctxt,
-                     link_name: str,
                      native_item: @ast::native_item,
                      llshimfn: ValueRef,
                      cc: uint) {
+        let lname = link_name(native_item);
         let ccx = lcx_ccx(lcx);
         let span = native_item.span;
         let id = native_item.id;
         let tys = c_stack_tys(ccx, span, id);
 
         // Declare the "prototype" for the base function F:
-        let llbasefn = decl_fn(ccx.llmod, link_name, cc, tys.base_fn_ty);
+        let llbasefn = decl_fn(ccx.llmod, lname, cc, tys.base_fn_ty);
 
         // Declare the body of the shim function:
         let fcx = new_fn_ctxt(lcx, span, llshimfn);
@@ -5432,13 +5432,6 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
         finish_fn(fcx, lltop);
     }
 
-    fn select_link_name(user_name: option::t<str>, rust_name: str) -> str {
-        ret alt user_name {
-          some(n) { n }
-          none. { rust_name }
-        };
-    }
-
     let ccx = lcx_ccx(lcx);
     let cc: uint = lib::llvm::LLVMCCallConv;
     alt native_mod.abi {
@@ -5450,12 +5443,11 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
     for native_item in native_mod.items {
       alt native_item.node {
         ast::native_item_ty. {}
-        ast::native_item_fn(name, fn_decl, _) {
+        ast::native_item_fn(fn_decl, _) {
           let id = native_item.id;
           alt ccx.item_ids.find(id) {
             some(llshimfn) {
-              let link_name = select_link_name(name, native_item.ident);
-              build_shim_fn(lcx, link_name, native_item, llshimfn, cc);
+              build_shim_fn(lcx, native_item, llshimfn, cc);
             }
 
             none. {
@@ -5753,16 +5745,20 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, _path: [str], name: str,
 
 fn item_path(item: @ast::item) -> [str] { ret [item.ident]; }
 
+fn link_name(i: @ast::native_item) -> str {
+    alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
+      none. { ret i.ident; }
+      option::some(ln) { ret ln; }
+    }
+}
+
+
 fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
                        _v: vt<[str]>) {
     alt i.node {
       ast::native_item_fn(_, _) {
         if !ccx.obj_methods.contains_key(i.id) {
-            let name = i.ident;
-            alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
-              none. { }
-              option::some(ln) { name = ln; }
-            }
+            let name = link_name(i);
             register_native_fn(ccx, i.span, pt, name, i.id);
         }
       }
@@ -6163,6 +6159,5 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //
