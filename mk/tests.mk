@@ -298,13 +298,25 @@ $(foreach target,$(CFG_TARGET_TRIPLES), \
 
 # Make convenient Shorthand Targets for use on command
 # line or by other rules:
-check-stage0:        check-stage0-$(CFG_HOST_TRIPLE)
-check-stage1:        check-stage1-$(CFG_HOST_TRIPLE)
-check-stage2:        check-stage2-$(CFG_HOST_TRIPLE)
-check-stage2-perf:   check-stage2-$(CFG_HOST_TRIPLE)-perf
-check-stage2-rustc:  check-stage2-$(CFG_HOST_TRIPLE)-rustc
-check-stage2-std:    check-stage2-$(CFG_HOST_TRIPLE)-std
-check-stage3:        check-stage3-$(CFG_HOST_TRIPLE)
+
+define DEF_CHECK_STAGE
+
+check-stage$(1):        check-stage$(1)-$$(CFG_HOST_TRIPLE)
+check-stage$(1)-perf:   check-stage$(1)-$$(CFG_HOST_TRIPLE)-perf
+check-stage$(1)-rustc:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-rustc
+check-stage$(1)-std:    check-stage$(1)-$$(CFG_HOST_TRIPLE)-std
+check-stage$(1)-rpass:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-rpass
+check-stage$(1)-rfail:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-rfail
+check-stage$(1)-cfail:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-cfail
+check-stage$(1)-bench:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-bench
+
+endef
+
+$(eval $(call DEF_CHECK_STAGE,0))
+$(eval $(call DEF_CHECK_STAGE,1))
+$(eval $(call DEF_CHECK_STAGE,2))
+$(eval $(call DEF_CHECK_STAGE,3))
+
 
 ######################################################################
 # Fast-test rules
