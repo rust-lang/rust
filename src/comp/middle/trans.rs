@@ -195,7 +195,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
         check non_ty_var(cx, sub1);
-        ret T_struct([T_i32(), type_of_inner(cx, sp, sub1)]);
+        ret T_struct([cx.int_type, type_of_inner(cx, sp, sub1)]);
       }
       ty::ty_var(_) {
         // Should be unreachable b/c of precondition.
@@ -1474,7 +1474,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     Call(cx, dtor_addr, args + [val_cast]);
 
     cx = drop_ty(cx, val.val, inner_t_s);
-    Store(cx, C_i32(0i32), drop_flag.val);
+    Store(cx, C_int(ccx, 0), drop_flag.val);
     Br(cx, next_cx.llbb);
     ret next_cx;
 }
@@ -5160,7 +5160,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     }
     let llretptr = fcx.llretptr;
     if ty::type_has_dynamic_size(ccx.tcx, ret_t) {
-        let llret_t = T_ptr(T_struct([T_i32(), llvm::LLVMTypeOf(arg)]));
+        let llret_t = T_ptr(T_struct([ccx.int_type, llvm::LLVMTypeOf(arg)]));
         llretptr = BitCast(bcx, llretptr, llret_t);
     }
 
@@ -5172,7 +5172,8 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     check type_is_tup_like(bcx, tup_t);
     let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
-    Store(bcx, C_i32(1i32), flag.val);
+    let one = C_int(ccx, 1);
+    Store(bcx, one, flag.val);
     build_return(bcx);
     finish_fn(fcx, lltop);
 }
@@ -5421,10 +5422,6 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
 
         // Create the call itself:
         let llretval = CallWithConv(bcx, llbasefn, llargvals, cc);
-        //log_err("llretval", val_str(ccx.tn, llretval),
-        //        "llargbundle", val_str(ccx.tn, llargbundle),
-        //        "tys.ret_ty", ty_str(ccx.tn, tys.ret_ty),
-        //        "n", n);
         store_inbounds(bcx, llretval, llargbundle, [0, n as int]);
 
         // Finish up.
