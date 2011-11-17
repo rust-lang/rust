@@ -7,6 +7,7 @@ import token::can_begin_expr;
 import codemap::span;
 import util::interner;
 import ast::{node_id, spanned};
+import front::attr;
 
 tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; }
 
@@ -2012,6 +2013,23 @@ fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
         } else {
             p.fatal("unsupported abi: " + t);
         }
+    } else {
+        abi =
+            alt attr::get_meta_item_value_str_by_name(attrs, "abi") {
+              none. { ast::native_abi_cdecl }
+              some("rust-intrinsic") {
+                ast::native_abi_rust_intrinsic
+              }
+              some("cdecl") {
+                ast::native_abi_cdecl
+              }
+              some("stdcall") {
+                ast::native_abi_stdcall
+              }
+              some(t) {
+                p.fatal("unsupported abi: " + t);
+              }
+            };
     }
     expect_word(p, "mod");
     let id = parse_ident(p);
@@ -2019,7 +2037,13 @@ fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
     if p.peek() == token::EQ {
         expect(p, token::EQ);
         native_name = parse_str(p);
-    } else { native_name = id; }
+    } else {
+        native_name =
+            alt attr::get_meta_item_value_str_by_name(attrs, "link_name") {
+              none. { id }
+              some(nn) { nn }
+            };
+    }
     expect(p, token::LBRACE);
     let more_attrs = parse_inner_attrs_and_next(p);
     let inner_attrs = more_attrs.inner;
