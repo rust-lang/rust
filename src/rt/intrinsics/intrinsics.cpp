@@ -1,5 +1,7 @@
-// Use `clang++ -emit-llvm -S -arch i386 -O3 -I../isaac -I../uthash
-//      -I../arch/i386 -fno-stack-protector -o intrinsics.ll intrinsics.cpp`
+// Rust intrinsics. These are built into each compilation unit and are
+// run on the Rust stack. They should not call C methods because that
+// will very likely result in running off the end of the stack.
+// Build with the script in src/etc/gen-intrinsics
 
 #include "../rust_internal.h"
 #include "../rust_scheduler.h"
