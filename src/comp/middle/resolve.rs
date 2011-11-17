@@ -107,7 +107,8 @@ type env =
      mod_map: hashmap<ast::node_id, @indexed_mod>,
      ext_map: hashmap<def_id, [ident]>,
      ext_cache: ext_hash,
-     mutable used_imports: option::t<[ast::node_id]>,
+     used_imports: {mutable track: bool,
+                    mutable data: [ast::node_id]},
      mutable reported: [{ident: str, sc: scope}],
      mutable currently_resolving: node_id,
      sess: session};
@@ -129,7 +130,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           mod_map: new_int_hash::<@indexed_mod>(),
           ext_map: new_def_hash::<[ident]>(),
           ext_cache: new_ext_hash(),
-          mutable used_imports: none,
+          used_imports: {mutable track: false, mutable data:  []},
           mutable reported: [],
           mutable currently_resolving: -1,
           sess: sess};
@@ -137,7 +138,6 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     resolve_imports(*e);
     check_for_collisions(e, *crate);
     check_bad_exports(e);
-    e.used_imports = some([]);
     resolve_names(e, crate);
     check_unused_imports(e);
     ret {def_map: e.def_map, ext_map: e.ext_map};
@@ -238,6 +238,7 @@ fn map_crate(e: @env, c: @ast::crate) {
 }
 
 fn resolve_imports(e: env) {
+    e.used_imports.track = true;
     e.imports.values {|v|
         alt v {
           todo(node_id, name, path, span, scopes) {
@@ -246,15 +247,15 @@ fn resolve_imports(e: env) {
           resolved(_, _, _, _, _) { }
         }
     };
+    e.used_imports.track = false;
     e.sess.abort_if_errors();
 }
 
 fn check_unused_imports(e: @env) {
-    let used = option::get(e.used_imports);
     e.imports.items {|k, v|
         alt v {
             resolved(val, ty, md, name, sp) {
-              if !vec::member(k, used) {
+              if !vec::member(k, e.used_imports.data) {
                 e.sess.span_warn(sp, "unused import " + name);
               }
             }
@@ -264,6 +265,7 @@ fn check_unused_imports(e: @env) {
 }
 
 fn resolve_names(e: @env, c: @ast::crate) {
+    e.used_imports.track = true;
     let v =
         @{visit_native_item: visit_native_item_with_scope,
           visit_item: visit_item_with_scope,
@@ -277,6 +279,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
              with *visit::default_visitor()};
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v));
+    e.used_imports.track = false;
     e.sess.abort_if_errors();
 
     fn walk_expr(e: @env, exp: @ast::expr, sc: scopes, v: vt<scopes>) {
@@ -950,12 +953,8 @@ fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
         ret none;
       }
       resolved(val, typ, md, _, _) {
-        alt e.used_imports {
-          none. { }
-          some(lst_) {
-            let lst = lst_ + [defid.node];
-            e.used_imports = option::some(lst);
-          }
+        if e.used_imports.track {
+            e.used_imports.data += [defid.node];
         }
         ret alt ns { ns_value. { val } ns_type. { typ } ns_module. { md } };
       }
