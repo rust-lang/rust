@@ -27,6 +27,7 @@ namespace shape {
 
 typedef unsigned long tag_variant_t;
 typedef unsigned long tag_align_t;
+typedef unsigned long ref_cnt_t;
 
 // Constants
 
@@ -888,7 +889,7 @@ data<T,U>::walk_box_contents() {
     typename U::template data<uint8_t *>::t box_ptr = bump_dp<uint8_t *>(dp);
 
     U ref_count_dp(box_ptr);
-    T sub(*static_cast<T *>(this), ref_count_dp + sizeof(uint32_t));
+    T sub(*static_cast<T *>(this), ref_count_dp + sizeof(ref_cnt_t));
     static_cast<T *>(this)->walk_box_contents(sub, ref_count_dp);
 }
 
