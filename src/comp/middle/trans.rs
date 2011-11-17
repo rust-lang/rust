@@ -5741,7 +5741,6 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, _path: [str], name: str,
         ccx.item_symbols.insert(id, shim_name);
       }
     }
-
 }
 
 fn item_path(item: @ast::item) -> [str] { ret [item.ident]; }
