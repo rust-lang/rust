@@ -20,6 +20,7 @@ public:
     void send(void *sptr);
     bool receive(void *dptr);
     size_t size();
+    void detach();
 };
 
 //

@@ -468,10 +468,23 @@ new_port(size_t unit_sz) {
 }
 
 extern "C" CDECL void
+rust_port_detach(rust_port *port) {
+    rust_task *task = rust_scheduler::get_task();
+    LOG(task, comm, "rust_port_detach(0x%" PRIxPTR ")", (uintptr_t) port);
+    port->detach();
+    // FIXME: Busy waiting until we're the only ref
+    bool done = false;
+    while (!done) {
+        scoped_lock with(port->lock);
+        done = port->ref_count == 1;
+    }
+}
+
+extern "C" CDECL void
 del_port(rust_port *port) {
     rust_task *task = rust_scheduler::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    scoped_lock with(task->lock);
+    A(task->sched, port->ref_count == 1, "Expected port ref_count == 1");
     port->deref();
 }
 

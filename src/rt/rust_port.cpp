@@ -17,8 +17,15 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
 rust_port::~rust_port() {
     LOG(task, comm, "~rust_port 0x%" PRIxPTR, (uintptr_t) this);
 
-    task->release_port(id);
     task->deref();
+}
+
+void rust_port::detach() {
+    I(task->sched, !task->lock.lock_held_by_current_thread());
+    scoped_lock with(task->lock);
+    {
+        task->release_port(id);
+    }
 }
 
 void rust_port::send(void *sptr) {

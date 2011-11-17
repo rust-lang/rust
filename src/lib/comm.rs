@@ -45,6 +45,7 @@ native mod rustrt {
 
     fn new_port(unit_sz: uint) -> *rust_port;
     fn del_port(po: *rust_port);
+    fn rust_port_detach(po: *rust_port);
     fn get_port_id(po: *rust_port) -> port_id;
     fn rust_port_size(po: *rust_port) -> ctypes::size_t;
 }
@@ -79,6 +80,9 @@ tag chan<uniq T> {
 }
 
 resource port_ptr<uniq T>(po: *rustrt::rust_port) {
+    // Once the port is detached it's guaranteed not to receive further
+    // messages
+    rustrt::rust_port_detach(po);
     // Drain the port so that all the still-enqueued items get dropped
     while rustrt::rust_port_size(po) > 0u {
         // FIXME: For some reason if we don't assign to something here
