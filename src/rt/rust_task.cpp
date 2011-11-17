@@ -184,9 +184,7 @@ void task_start_wrapper(spawn_args *a)
         failed = true;
     }
 
-#   ifndef __x86_64__ // FIXME: temp. hack on X86-64 (NDM)
     cc::do_cc(task);
-#   endif
 
     rust_closure_env* env = (rust_closure_env*)a->a3;
     if(env) {
@@ -620,6 +618,5 @@ rust_task::notify(bool success) {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //
