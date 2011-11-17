@@ -183,7 +183,7 @@ microsecond-resolution timer.
         fn gettimeofday(tv: *timeval, tz: *()) -> i32;
     }
     fn unix_time_in_microseconds() -> u64 unsafe {
-        let x = {tv_sec: 0u32, tv_usec: 0u32};
+        let x = {mutable tv_sec: 0u32, mutable tv_usec: 0u32};
         libc::gettimeofday(std::ptr::addr_of(x), std::ptr::null());
         ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
     }
