@@ -169,6 +169,7 @@ struct rust_closure_env {
     type_desc *td;
 };
 
+// This runs on the Rust stack
 extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
 {
@@ -273,6 +274,7 @@ rust_task::yield() {
     yield(0);
 }
 
+// Only run this on the rust stack
 void
 rust_task::yield(size_t time_in_us) {
     LOG(this, task, "task %s @0x%" PRIxPTR " yielding for %d us",
