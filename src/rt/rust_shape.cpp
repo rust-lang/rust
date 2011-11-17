@@ -289,7 +289,7 @@ private:
     }
 
     inline void cmp_two_pointers() {
-        ALIGN_TO(alignof<void *>() * 2);
+        ALIGN_TO(alignof<void *>());
         data_pair<uint8_t *> fst = bump_dp<uint8_t *>(dp);
         data_pair<uint8_t *> snd = bump_dp<uint8_t *>(dp);
         cmp_number(fst);
