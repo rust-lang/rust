@@ -118,5 +118,4 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: [@ast::meta_item]) -> bool {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:

@@ -132,6 +132,5 @@ fn make_new_lit(cx: ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //
