@@ -15,6 +15,7 @@ native mod libc {
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn _fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
+    fn fflush(f: FILE) -> c_int;
     fn fsync(fd: fd_t) -> c_int;
     fn fileno(f: FILE) -> fd_t;
     fn fgetc(f: FILE) -> c_int;
@@ -22,7 +23,7 @@ native mod libc {
     fn feof(f: FILE) -> c_int;
     fn fseek(f: FILE, offset: long, whence: c_int) -> c_int;
     fn ftell(f: FILE) -> long;
-    fn _pipe(fds: *mutable fd_t, size: uint, mode: c_int) -> c_int;
+    fn _pipe(fds: *mutable fd_t, size: unsigned, mode: c_int) -> c_int;
 }
 
 mod libc_constants {

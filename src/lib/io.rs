@@ -251,6 +251,7 @@ type buf_writer =
         fn write([u8]);
         fn seek(int, seek_style);
         fn tell() -> uint;
+        fn flush() -> int;
         fn fsync(level: fsync::level) -> int;
     };
 
@@ -265,6 +266,7 @@ obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
         assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0i32);
     }
     fn tell() -> uint { ret os::libc::ftell(f) as uint; }
+    fn flush() -> int { ret os::libc::fflush(f) as int; }
     fn fsync(level: fsync::level) -> int {
         ret os::fsync_fd(os::libc::fileno(f), level) as int;
     }
@@ -296,6 +298,8 @@ obj fd_buf_writer(fd: fd_t, res: option::t<@fd_res>) {
         log_err "need 64-bit native calls for tell, sorry";
         fail;
     }
+
+    fn flush() -> int { ret 0; }
 
     fn fsync(level: fsync::level) -> int {
         ret os::fsync_fd(fd, level) as int;
@@ -450,6 +454,7 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
         buf.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { ret buf.pos; }
+    fn flush() -> int { ret 0; }
     fn fsync(_level: fsync::level) -> int { ret 0; }
 }
 

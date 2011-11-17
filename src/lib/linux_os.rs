@@ -36,6 +36,7 @@ native mod libc {
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
+    fn fflush(f: FILE) -> c_int;
     fn fsync(fd: fd_t) -> c_int;
     fn fdatasync(fd: fd_t) -> c_int;
     fn fileno(f: FILE) -> fd_t;
