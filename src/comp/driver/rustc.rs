@@ -456,7 +456,7 @@ fn opts() -> [getopts::opt] {
          optflag("noverify"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static"), optflag("gc"),
-         optflag("stack-growth"), optflag("check-unsafe"),
+         optflag("stack-growth"),
          optflag("no-asm-comments")];
 }
 
