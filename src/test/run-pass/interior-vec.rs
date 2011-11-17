@@ -1,6 +1,7 @@
 import rusti::vec_len;
 
-native "rust-intrinsic" mod rusti {
+#[abi = "rust-intrinsic"]
+native mod rusti {
     fn vec_len<T>(&&v: [T]) -> uint;
 }
 

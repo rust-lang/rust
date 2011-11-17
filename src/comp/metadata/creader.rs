@@ -54,7 +54,12 @@ fn visit_item(e: env, i: @ast::item) {
             ret;
         }
         let cstore = e.sess.get_cstore();
-        if !cstore::add_used_library(cstore, m.native_name) { ret; }
+        let native_name = i.ident;
+        alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
+          some(nn) { native_name = nn; }
+          none. { }
+        }
+        if !cstore::add_used_library(cstore, native_name) { ret; }
         for a: ast::attribute in
             attr::find_attrs_by_name(i.attrs, "link_args") {
 

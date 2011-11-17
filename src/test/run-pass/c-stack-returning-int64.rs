@@ -1,7 +1,9 @@
 use std;
 import std::str;
 
-native "cdecl" mod libc = "" {
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod libc {
     fn atol(x: str::sbuf) -> int;
     fn atoll(x: str::sbuf) -> i64;
 }

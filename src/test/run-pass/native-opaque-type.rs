@@ -1,6 +1,8 @@
 
 
-native "cdecl" mod libc = "" {
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod libc {
     type file_handle;
 }
 

@@ -6,11 +6,13 @@ import option::{some, none};
 import uint::next_power_of_two;
 import ptr::addr_of;
 
-native "rust-intrinsic" mod rusti {
+#[abi = "rust-intrinsic"]
+native mod rusti {
     fn vec_len<T>(&&v: [mutable? T]) -> uint;
 }
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn vec_reserve_shared<T>(t: *sys::type_desc,
                              &v: [mutable? T],
                              n: uint);

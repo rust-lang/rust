@@ -25,7 +25,8 @@ export default_test_to_task;
 export configure_test_task;
 export joinable;
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn sched_threads() -> uint;
 }
 

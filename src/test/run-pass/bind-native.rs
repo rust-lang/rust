@@ -2,7 +2,8 @@
 Can we bind native things?
 */
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn pin_task();
 }
 
