@@ -76,7 +76,6 @@ int check_claims = 0;
 
 extern "C" CDECL int
 rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
-    fprintf(stderr, "rust_start, argc=%d argv=%p\n", argc, argv);
 
     rust_env *env = load_env();
 
