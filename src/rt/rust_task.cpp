@@ -269,11 +269,6 @@ rust_task::grow(size_t n_frame_bytes)
 
 }
 
-void
-rust_task::yield() {
-    yield(0);
-}
-
 // Only run this on the rust stack
 void
 rust_task::yield(size_t time_in_us) {

@@ -164,9 +164,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Print a backtrace, if the "bt" logging option is on.
     void backtrace();
 
-    // Save callee-saved registers and return to the main loop.
-    void yield();
-
     // Yields for a specified duration of time.
     void yield(size_t time_in_ms);
 
