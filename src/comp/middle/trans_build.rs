@@ -408,7 +408,7 @@ fn GEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
     unsafe {
         let instr = llvm::LLVMBuildGEP(B(cx), Pointer, vec::to_ptr(Indices),
                                        vec::len(Indices), noname());
-        debuginfo::add_line_info(cx, instr);
+        //debuginfo::add_line_info(cx, instr);
         ret instr;
     }
 }
@@ -425,18 +425,18 @@ fn InBoundsGEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) ->
    ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
-        let v = llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
-                                           vec::to_ptr(Indices),
-                                           vec::len(Indices), noname());
-        debuginfo::add_line_info(cx, v);
-        ret v;
+        let instr = llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
+                                               vec::to_ptr(Indices),
+                                               vec::len(Indices), noname());
+        //debuginfo::add_line_info(cx, instr);
+        ret instr;
     }
 }
 
 fn StructGEP(cx: @block_ctxt, Pointer: ValueRef, Idx: uint) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     let instr = llvm::LLVMBuildStructGEP(B(cx), Pointer, Idx, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
@@ -458,84 +458,84 @@ fn GlobalStringPtr(cx: @block_ctxt, _Str: sbuf) -> ValueRef {
 fn Trunc(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildTrunc(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn ZExt(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildZExt(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn SExt(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildSExt(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn FPToUI(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildFPToUI(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn FPToSI(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildFPToSI(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn UIToFP(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildUIToFP(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn SIToFP(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildSIToFP(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn FPTrunc(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildFPTrunc(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn FPExt(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildFPExt(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn PtrToInt(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildPtrToInt(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn IntToPtr(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildIntToPtr(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn BitCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildBitCast(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
@@ -543,7 +543,7 @@ fn ZExtOrBitCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) ->
    ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildZExtOrBitCast(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
@@ -551,7 +551,7 @@ fn SExtOrBitCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) ->
    ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildSExtOrBitCast(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
@@ -559,7 +559,7 @@ fn TruncOrBitCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) ->
    ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildTruncOrBitCast(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
@@ -567,28 +567,28 @@ fn Cast(cx: @block_ctxt, Op: Opcode, Val: ValueRef, DestTy: TypeRef,
         _Name: sbuf) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildCast(B(cx), Op, Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn PointerCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildPointerCast(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn IntCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildIntCast(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
 fn FPCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     let instr = llvm::LLVMBuildFPCast(B(cx), Val, DestTy, noname());
-    debuginfo::add_line_info(cx, instr);
+    //debuginfo::add_line_info(cx, instr);
     ret instr;
 }
 
@@ -670,7 +670,7 @@ fn Call(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     unsafe {
         let instr = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
                                         vec::len(Args), noname());
-        debuginfo::add_line_info(cx, instr);
+        //debuginfo::add_line_info(cx, instr);
         ret instr;
     }
 }

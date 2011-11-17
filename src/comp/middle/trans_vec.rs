@@ -27,6 +27,7 @@ fn pointer_add(bcx: @block_ctxt, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
 }
 
 fn alloc_raw(bcx: @block_ctxt, fill: ValueRef, alloc: ValueRef) -> result {
+    let _s = debuginfo::invalidate_source_pos(bcx);
     let ccx = bcx_ccx(bcx);
     let llvecty = ccx.opaque_vec_type;
     let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
@@ -45,6 +46,7 @@ type alloc_result =
      llunitty: TypeRef};
 
 fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint) -> alloc_result {
+    let _s = debuginfo::invalidate_source_pos(bcx);
     let ccx = bcx_ccx(bcx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);

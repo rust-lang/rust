@@ -306,34 +306,65 @@ fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
     ret mdval;
 }
 
-fn update_source_pos(cx: @block_ctxt, s: codemap::span) {
+fn update_source_pos(cx: @block_ctxt, s: codemap::span) -> @debug_source_pos {
+    let dsp = @debug_source_pos(cx);
+    if !bcx_ccx(cx).sess.get_opts().debuginfo {
+        ret dsp;
+    }
+    let cm = bcx_ccx(cx).sess.get_codemap();
+    if vec::is_empty(cx.source_pos.pos) {
+        cx.source_pos.usable = true;
+    }
+    cx.source_pos.pos += [codemap::lookup_char_pos(cm, s.lo)]; //XXX maybe hi
+    ret dsp;
+}
+
+fn invalidate_source_pos(cx: @block_ctxt) -> @invalidated_source_pos {
+    let isp = @invalidated_source_pos(cx);
+    if !bcx_ccx(cx).sess.get_opts().debuginfo {
+        ret isp;
+    }
+    cx.source_pos.usable = false;
+    ret isp;
+}
+
+fn revalidate_source_pos(cx: @block_ctxt) {
     if !bcx_ccx(cx).sess.get_opts().debuginfo {
         ret;
     }
-    cx.source_pos = option::some(
-        codemap::lookup_char_pos(bcx_ccx(cx).sess.get_codemap(),
-                                 s.lo)); //XXX maybe hi
-
+    cx.source_pos.usable = true;
 }
 
 fn reset_source_pos(cx: @block_ctxt) {
-    cx.source_pos = option::none;
+    if !bcx_ccx(cx).sess.get_opts().debuginfo {
+        ret;
+    }
+    vec::pop(cx.source_pos.pos);
+}
+
+resource debug_source_pos(bcx: @block_ctxt) {
+    reset_source_pos(bcx);
+}
+resource invalidated_source_pos(bcx: @block_ctxt) {
+    revalidate_source_pos(bcx);
 }
 
 fn add_line_info(cx: @block_ctxt, llinstr: ValueRef) {
     if !bcx_ccx(cx).sess.get_opts().debuginfo ||
-        option::is_none(cx.source_pos) {
+       !cx.source_pos.usable ||
+       vec::is_empty(cx.source_pos.pos) {
         ret;
     }
-    let loc = option::get(cx.source_pos);
+    let loc = option::get(vec::last(cx.source_pos.pos));
     let blockmd = get_block_metadata(cx);
-    let kind_id = llvm::LLVMGetMDKindID(as_buf("dbg"), str::byte_len("dbg"));
+    let kind_id = llvm::LLVMGetMDKindID(as_buf("dbg"),
+                                        str::byte_len("dbg"));
     let scopedata = [lli32(loc.line as int),
                      lli32(loc.col as int),
                      blockmd.node,
                      llnull()];
     let dbgscope = llmdnode(scopedata);
-    llvm::LLVMSetMetadata(llinstr, kind_id, dbgscope);    
+    llvm::LLVMSetMetadata(llinstr, kind_id, dbgscope);
 }
 
 fn get_function_metadata(cx: @crate_ctxt, item: @ast::item,
