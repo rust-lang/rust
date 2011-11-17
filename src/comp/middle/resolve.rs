@@ -139,7 +139,9 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     check_for_collisions(e, *crate);
     check_bad_exports(e);
     resolve_names(e, crate);
-    check_unused_imports(e);
+    if sess.get_opts().warn_unused_imports {
+        check_unused_imports(e);
+    }
     ret {def_map: e.def_map, ext_map: e.ext_map};
 }
 

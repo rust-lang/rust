@@ -43,7 +43,8 @@ type options =
      no_trans: bool,
      do_gc: bool,
      stack_growth: bool,
-     no_asm_comments: bool};
+     no_asm_comments: bool,
+     warn_unused_imports: bool};
 
 type crate_metadata = {name: str, data: [u8]};
 

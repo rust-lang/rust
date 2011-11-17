@@ -274,6 +274,8 @@ options:
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
     --stack-growth     perform stack checks (experimental)
+    --warn-unused-imports
+                       warn about unnecessary imports
 
 ");
 }
@@ -397,6 +399,7 @@ fn build_session_options(match: getopts::match)
     let test = opt_present(match, "test");
     let do_gc = opt_present(match, "gc");
     let stack_growth = opt_present(match, "stack-growth");
+    let warn_unused_imports = opt_present(match, "warn-unused-imports");
     let sopts: @session::options =
         @{library: library,
           static: static,
@@ -417,7 +420,8 @@ fn build_session_options(match: getopts::match)
           no_trans: no_trans,
           do_gc: do_gc,
           stack_growth: stack_growth,
-          no_asm_comments: no_asm_comments};
+          no_asm_comments: no_asm_comments,
+          warn_unused_imports: warn_unused_imports};
     ret sopts;
 }
 
@@ -457,7 +461,8 @@ fn opts() -> [getopts::opt] {
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static"), optflag("gc"),
          optflag("stack-growth"),
-         optflag("no-asm-comments")];
+         optflag("no-asm-comments"),
+         optflag("warn-unused-imports")];
 }
 
 fn build_output_filenames(ifile: str, ofile: option::t<str>,
