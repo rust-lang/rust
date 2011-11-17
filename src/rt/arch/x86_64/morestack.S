@@ -8,7 +8,7 @@
 #if defined(__APPLE__) || defined(_WIN32)
 #define RUST_NEW_STACK      _rust_new_stack
 #define RUST_DEL_STACK      _rust_del_stack
-#define MORESTACK           __morestack
+#define MORESTACK           ___morestack
 #else
 #define RUST_NEW_STACK      rust_new_stack
 #define RUST_DEL_STACK      rust_del_stack
