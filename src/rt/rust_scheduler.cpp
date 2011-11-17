@@ -13,6 +13,9 @@ DWORD rust_scheduler::task_key;
 
 bool rust_scheduler::tls_initialized = false;
 
+// Defined in arch/*/record_sp.S.
+extern "C" void rust_record_sp(uintptr_t sp);
+
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                rust_srv *srv,
                                int id) :
@@ -286,6 +289,7 @@ rust_scheduler::start_main_loop() {
              scheduled_task->state->name);
 
         place_task_in_tls(scheduled_task);
+        rust_record_sp(scheduled_task->stk->limit);
         //pthread_setspecific(89, (void *)scheduled_task->stk->limit);
 
         interrupt_flag = 0;

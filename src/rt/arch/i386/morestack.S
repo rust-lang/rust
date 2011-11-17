@@ -106,18 +106,13 @@ L$bail:
 
 #ifdef __APPLE__
 
-		.section	__IMPORT,__pointers,non_lazy_symbol_pointers
+	.section	__IMPORT,__pointers,non_lazy_symbol_pointers
 rust_new_stack_sym:
     .indirect_symbol RUST_NEW_STACK
     .long 0
 rust_del_stack_sym:
     .indirect_symbol RUST_DEL_STACK
     .long 0
-
-#else
-
-rust_new_stack_sym:
-rust_del_stack_sym:
 
 #endif
 
