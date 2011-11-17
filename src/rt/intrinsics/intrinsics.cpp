@@ -7,9 +7,6 @@
 #include <cstring>
 
 extern "C" CDECL void
-upcall_fail(char const *expr, char const *file, size_t line);
-
-extern "C" CDECL void
 port_recv(uintptr_t *dptr, rust_port *port);
 
 extern "C" CDECL void
@@ -41,12 +38,8 @@ rust_intrinsic_cast(void *retptr,
                     type_desc *t2,
                     void *src)
 {
-    if (t1->size != t2->size) {
-        upcall_fail("attempt to cast values of differing sizes",
-                    __FILE__, __LINE__);
-        return;
-    }
-
+    // assert t1->size == t2->size
+    // FIXME: This should be easily expressible in rust
     memmove(retptr, src, t1->size);
 }
 

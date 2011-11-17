@@ -57,9 +57,6 @@ target triple = "@CFG_TARGET_TRIPLE@"
 %"struct.hash_map<int, rust_task *>::map_entry" = type opaque
 %class.circular_buffer = type { %class.rust_kernel*, i32, i32, i32, i32, i8* }
 
-@.str = private unnamed_addr constant [42 x i8] c"attempt to cast values of differing sizes\00", align 1
-@.str1 = private unnamed_addr constant [33 x i8] c"src/rt/intrinsics/intrinsics.cpp\00", align 1
-
 define void @rust_intrinsic_vec_len(i32* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, %struct.rust_vec** nocapture %vp) nounwind {
   %1 = load %struct.rust_vec** %vp, align 4, !tbaa !0
   %2 = getelementptr inbounds %struct.rust_vec* %1, i32 0, i32 0
@@ -80,27 +77,12 @@ define void @rust_intrinsic_ptr_offset(i8** nocapture %retptr, i8* nocapture %en
   ret void
 }
 
-define void @rust_intrinsic_cast(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %src) {
+define void @rust_intrinsic_cast(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %src) nounwind {
   %1 = getelementptr inbounds %struct.type_desc* %t1, i32 0, i32 1
   %2 = load i32* %1, align 4, !tbaa !3
-  %3 = getelementptr inbounds %struct.type_desc* %t2, i32 0, i32 1
-  %4 = load i32* %3, align 4, !tbaa !3
-  %5 = icmp eq i32 %2, %4
-  br i1 %5, label %7, label %6
-
-; <label>:6                                       ; preds = %0
-  tail call void @upcall_fail(i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([33 x i8]* @.str1, i32 0, i32 0), i32 46)
-  br label %8
-
-; <label>:7                                       ; preds = %0
   tail call void @llvm.memmove.p0i8.p0i8.i32(i8* %retptr, i8* %src, i32 %2, i32 1, i1 false)
-  br label %8
-
-; <label>:8                                       ; preds = %7, %6
   ret void
 }
-
-declare void @upcall_fail(i8*, i8*, i32)
 
 declare void @llvm.memmove.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) nounwind
 

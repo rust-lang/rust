@@ -19,7 +19,14 @@ Function: reinterpret_cast
 
 Casts the value at `src` to U. The two types must have the same length.
 */
-unsafe fn reinterpret_cast<T, U>(src: T) -> U { ret rusti::cast(src); }
+unsafe fn reinterpret_cast<T, U>(src: T) -> U {
+    let t1 = sys::get_type_desc::<T>();
+    let t2 = sys::get_type_desc::<U>();
+    if (*t1).size != (*t2).size {
+        fail "attempt to cast values of differing sizes";
+    }
+    ret rusti::cast(src);
+}
 
 /*
 Function: leak
