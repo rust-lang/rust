@@ -100,9 +100,9 @@ fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
       io::fsync::fsync. { ret libc::fsync(fd); }
       _ {
         // According to man fnctl, the ok retval is only specified to be !=-1
-        if (libc::fcntl(libc_constants::F_FULLFSYNC, fd) == -1 as c_int) 
+        if (libc::fcntl(libc_constants::F_FULLFSYNC, fd) == -1 as c_int)
             { ret -1 as c_int; }
-        else 
+        else
             { ret 0 as c_int; }
       }
     }
