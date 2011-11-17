@@ -264,9 +264,7 @@ rust_task::yield(size_t time_in_us) {
         name, this, time_in_us);
 
     if (killed && !dead()) {
-        if (blocked()) {
-            unblock();
-        }
+        unblock();
         killed = false;
         fail();
     }
