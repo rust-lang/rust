@@ -27,7 +27,7 @@ target triple = "@CFG_TARGET_TRIPLE@"
 %class.rust_task_list = type { %class.indexed_list, %struct.rust_scheduler*, i8* }
 %class.indexed_list = type { i32 (...)**, %class.array_list.2 }
 %class.array_list.2 = type { i64, %struct.rust_task**, i64 }
-%struct.rust_task = type { %struct.rust_task_user, i64, %class.context, %struct.stk_seg*, i64, %struct.rust_scheduler*, %class.rust_crate_cache*, %class.rust_kernel*, i8*, %class.rust_task_list*, %struct.rust_cond*, i8*, %struct.rust_task*, i32, i64, %class.timer, i64*, i32, i32, %class.memory_region, %"class.rust_task::wakeup_callback"*, i8, i8, i8, %class.lock_and_signal, %class.hash_map.4, %class.rust_obstack, %"class.std::map", i32, %"class.debug::task_debug_info" }
+%struct.rust_task = type { %struct.rust_task_user, i64, %class.context, %struct.stk_seg*, i64, %struct.rust_scheduler*, %class.rust_crate_cache*, %class.rust_kernel*, i8*, %class.rust_task_list*, %struct.rust_cond*, i8*, %struct.rust_task*, i32, i64, %class.timer, i64*, i32, i32, %class.memory_region, i8, i8, i8, %class.lock_and_signal, %class.hash_map.4, %class.rust_obstack, %"class.std::map", i32, %"class.debug::task_debug_info" }
 %struct.rust_task_user = type { i64, i64, %struct.chan_handle, i64 }
 %struct.chan_handle = type { i64, i64 }
 %class.context = type { %struct.registers_t, %class.context* }
@@ -36,7 +36,6 @@ target triple = "@CFG_TARGET_TRIPLE@"
 %class.rust_crate_cache = type { %struct.type_desc*, %struct.rust_scheduler*, i64 }
 %struct.rust_cond = type { i8 }
 %class.timer = type { i32 (...)**, i64, i64 }
-%"class.rust_task::wakeup_callback" = type { i32 (...)** }
 %class.hash_map.4 = type { %"struct.hash_map<long, rust_port *>::map_entry"* }
 %"struct.hash_map<long, rust_port *>::map_entry" = type opaque
 %class.rust_obstack = type { %struct.rust_obstack_chunk*, %struct.rust_task* }
@@ -105,12 +104,12 @@ define void @rust_intrinsic_get_type_desc(i8** nocapture %retptr, i8* nocapture 
   ret void
 }
 
-define void @rust_intrinsic_task_sleep(i8** nocapture %retptr, i8* nocapture %env, i64 %time_in_us) uwtable {
-  tail call void @rust_task_sleep(i64 %time_in_us)
+define void @rust_intrinsic_task_sleep(i8** nocapture %retptr, i8* nocapture %env, %struct.rust_task* %task, i64 %time_in_us) uwtable {
+  tail call void @rust_task_sleep(%struct.rust_task* %task, i64 %time_in_us)
   ret void
 }
 
-declare void @rust_task_sleep(i64)
+declare void @rust_task_sleep(%struct.rust_task*, i64)
 
 !0 = metadata !{metadata !"any pointer", metadata !1}
 !1 = metadata !{metadata !"omnipotent char", metadata !2}

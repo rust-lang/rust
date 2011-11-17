@@ -53,7 +53,7 @@ export spawn_joinable;
 #[abi = "rust-intrinsic"]
 native mod rusti {
     // these must run on the Rust stack so that they can swap stacks etc:
-    fn task_sleep(time_in_us: uint);
+    fn task_sleep(task: *rust_task, time_in_us: uint);
 }
 
 #[link_name = "rustrt"]
@@ -63,6 +63,7 @@ native mod rustrt {
     fn pin_task();
     fn unpin_task();
     fn get_task_id() -> task_id;
+    fn rust_get_task() -> *rust_task;
 
     fn set_min_stack(stack_size: uint);
 
@@ -142,7 +143,10 @@ Parameters:
 
 time_in_us - maximum number of microseconds to yield control for
 */
-fn sleep(time_in_us: uint) { ret rusti::task_sleep(time_in_us); }
+fn sleep(time_in_us: uint) {
+    let task = rustrt::rust_get_task();
+    ret rusti::task_sleep(task, time_in_us);
+}
 
 /*
 Function: yield

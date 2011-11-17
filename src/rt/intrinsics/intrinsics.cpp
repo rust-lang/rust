@@ -12,7 +12,7 @@ extern "C" CDECL void
 port_recv(uintptr_t *dptr, rust_port *port);
 
 extern "C" CDECL void
-rust_task_sleep(size_t time_in_us);
+rust_task_sleep(rust_task *task, size_t time_in_us);
 
 extern "C" void
 rust_intrinsic_vec_len(size_t *retptr,
@@ -71,7 +71,8 @@ rust_intrinsic_get_type_desc(void **retptr,
 extern "C" void
 rust_intrinsic_task_sleep(void **retptr,
                           void *env,
+			  rust_task *task,
                           size_t time_in_us) {
-    rust_task_sleep(time_in_us);
+    rust_task_sleep(task, time_in_us);
 }
 

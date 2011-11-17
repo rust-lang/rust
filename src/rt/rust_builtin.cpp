@@ -511,8 +511,7 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
 // This is called by an intrinsic on the Rust stack.
 // Do not call on the C stack.
 extern "C" CDECL void
-rust_task_sleep(size_t time_in_us) {
-    rust_task *task = rust_scheduler::get_task();
+rust_task_sleep(rust_task *task, size_t time_in_us) {
     task->yield(time_in_us);
 }
 
