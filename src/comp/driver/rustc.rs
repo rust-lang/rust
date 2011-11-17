@@ -271,7 +271,7 @@ options:
     --cfg <cfgspec>    configure the compilation environment
     --time-passes      time the individual phases of the compiler
     --time-llvm-passes time the individual phases of the LLVM backend
-    --sysroot <path>   override the system root (default: rustc's directory)
+    --sysroot <path>   override the system root
     --target <triple>  target to compile for (default: host triple)
     --no-typestate     don't run the typestate pass (unsafe!)
     --test             build test harness
