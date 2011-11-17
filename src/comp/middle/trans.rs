@@ -5724,7 +5724,7 @@ fn register_native_fn(ccx: @crate_ctxt, sp: span, _path: [str], name: str,
       ast::native_abi_rust_intrinsic. {
         let num_ty_param = native_fn_ty_param_count(ccx, id);
         let fn_type = native_fn_wrapper_type(ccx, sp, num_ty_param, fn_type);
-        let ri_name = "rust_intrinsic_2_" + name;
+        let ri_name = "rust_intrinsic_" + name;
         let llnativefn = get_extern_fn(ccx.externs, ccx.llmod, ri_name,
                                        lib::llvm::LLVMCCallConv, fn_type);
         ccx.item_ids.insert(id, llnativefn);
