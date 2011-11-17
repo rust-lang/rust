@@ -130,68 +130,6 @@ define void @rust_intrinsic_task_sleep(i8** nocapture %retptr, i8* nocapture %en
 
 declare void @rust_task_sleep(i64)
 
-define void @rust_intrinsic_2_vec_len(i64* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, %struct.rust_vec** nocapture %vp) nounwind uwtable {
-  %1 = load %struct.rust_vec** %vp, align 8, !tbaa !0
-  %2 = getelementptr inbounds %struct.rust_vec* %1, i64 0, i32 0
-  %3 = load i64* %2, align 8, !tbaa !3
-  %4 = getelementptr inbounds %struct.type_desc* %ty, i64 0, i32 1
-  %5 = load i64* %4, align 8, !tbaa !3
-  %6 = udiv i64 %3, %5
-  store i64 %6, i64* %retptr, align 8, !tbaa !3
-  ret void
-}
-
-define void @rust_intrinsic_2_ptr_offset(i8** nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* %ptr, i64 %count) nounwind uwtable {
-  %1 = getelementptr inbounds %struct.type_desc* %ty, i64 0, i32 1
-  %2 = load i64* %1, align 8, !tbaa !3
-  %3 = mul i64 %2, %count
-  %4 = getelementptr inbounds i8* %ptr, i64 %3
-  store i8* %4, i8** %retptr, align 8, !tbaa !0
-  ret void
-}
-
-define void @rust_intrinsic_2_cast(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %src) uwtable {
-  %1 = getelementptr inbounds %struct.type_desc* %t1, i64 0, i32 1
-  %2 = load i64* %1, align 8, !tbaa !3
-  %3 = getelementptr inbounds %struct.type_desc* %t2, i64 0, i32 1
-  %4 = load i64* %3, align 8, !tbaa !3
-  %5 = icmp eq i64 %2, %4
-  br i1 %5, label %7, label %6
-
-; <label>:6                                       ; preds = %0
-  tail call void @upcall_fail(i8* getelementptr inbounds ([42 x i8]* @.str, i64 0, i64 0), i8* getelementptr inbounds ([33 x i8]* @.str1, i64 0, i64 0), i64 112)
-  br label %8
-
-; <label>:7                                       ; preds = %0
-  tail call void @llvm.memmove.p0i8.p0i8.i64(i8* %retptr, i8* %src, i64 %2, i32 1, i1 false)
-  br label %8
-
-; <label>:8                                       ; preds = %7, %6
-  ret void
-}
-
-define void @rust_intrinsic_2_addr_of(i8** nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* %valptr) nounwind uwtable {
-  store i8* %valptr, i8** %retptr, align 8, !tbaa !0
-  ret void
-}
-
-define void @rust_intrinsic_2_recv(i8** %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, %class.rust_port* %port) uwtable {
-  %1 = bitcast i8** %retptr to i64*
-  tail call void @port_recv(i64* %1, %class.rust_port* %port)
-  ret void
-}
-
-define void @rust_intrinsic_2_get_type_desc(i8** nocapture %retptr, i8* nocapture %env, %struct.type_desc* %ty) nounwind uwtable {
-  %ty.c = bitcast %struct.type_desc* %ty to i8*
-  store i8* %ty.c, i8** %retptr, align 8, !tbaa !0
-  ret void
-}
-
-define void @rust_intrinsic_2_task_sleep(i8** nocapture %retptr, i8* nocapture %env, i64 %time_in_us) uwtable {
-  tail call void @rust_task_sleep(i64 %time_in_us)
-  ret void
-}
-
 !0 = metadata !{metadata !"any pointer", metadata !1}
 !1 = metadata !{metadata !"omnipotent char", metadata !2}
 !2 = metadata !{metadata !"Simple C/C++ TBAA", null}
