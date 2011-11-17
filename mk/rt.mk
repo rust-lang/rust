@@ -67,8 +67,7 @@ RUNTIME_CS_$(1) := \
 
 RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
                   rt/arch/$$(HOST_$(1))/ccall.S \
-                  rt/arch/$$(HOST_$(1))/morestack.S \
-                  rt/arch/$$(HOST_$(1))/record_sp.S
+                  rt/arch/$$(HOST_$(1))/morestack.S
 
 RUNTIME_HDR_$(1) := rt/globals.h \
                rt/rust.h \

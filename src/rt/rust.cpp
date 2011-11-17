@@ -1,5 +1,4 @@
 #include "rust_internal.h"
-#include <cstdio>
 
 struct
 command_line_args : public kernel_owned<command_line_args>
@@ -76,8 +75,6 @@ int check_claims = 0;
 
 extern "C" CDECL int
 rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
-    fprintf(stderr, "rust_start, argc=%d argv=%p\n", argc, argv);
-
     rust_env *env = load_env();
 
     update_log_settings(crate_map, env->logspec);
