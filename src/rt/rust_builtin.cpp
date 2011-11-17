@@ -75,16 +75,6 @@ void squareroot(double *input, double *output) {
     *output = sqrt(*input);
 }
 
-extern "C" CDECL size_t
-size_of(type_desc *t) {
-  return t->size;
-}
-
-extern "C" CDECL size_t
-align_of(type_desc *t) {
-  return t->align;
-}
-
 extern "C" CDECL void
 leak(void *thing) {
     // Do nothing. Call this with move-mode in order to say "Don't worry rust,

@@ -16,8 +16,6 @@ native mod rustrt {
     // available outside this crate. Otherwise it's
     // visible-in-crate, but not re-exported.
     fn last_os_error() -> str;
-    fn size_of(td: *type_desc) -> uint;
-    fn align_of(td: *type_desc) -> uint;
     fn refcount<T>(t: @T) -> uint;
     fn do_gc();
     fn unsupervise();
@@ -52,8 +50,8 @@ Function: size_of
 
 Returns the size of a type
 */
-fn size_of<T>() -> uint {
-    ret rustrt::size_of(get_type_desc::<T>());
+fn size_of<T>() -> uint unsafe {
+    ret (*get_type_desc::<T>()).size;
 }
 
 /*
@@ -61,8 +59,8 @@ Function: align_of
 
 Returns the alignment of a type
 */
-fn align_of<T>() -> uint {
-    ret rustrt::align_of(get_type_desc::<T>());
+fn align_of<T>() -> uint unsafe {
+    ret (*get_type_desc::<T>()).align;
 }
 
 /*

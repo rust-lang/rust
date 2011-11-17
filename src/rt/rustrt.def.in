@@ -1,5 +1,4 @@
 __morestack
-align_of
 chan_id_send
 check_claims
 debug_box
@@ -50,7 +49,6 @@ rust_task_sleep
 rust_get_task
 set_min_stack
 sched_threads
-size_of
 squareroot
 start_task
 vec_reserve_shared
