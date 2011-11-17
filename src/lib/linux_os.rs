@@ -39,11 +39,11 @@ native mod libc {
     fn fsync(fd: fd_t) -> c_int;
     fn fdatasync(fd: fd_t) -> c_int;
     fn fileno(f: FILE) -> fd_t;
-    fn fgetc(f: FILE) -> int;
-    fn ungetc(c: int, f: FILE);
-    fn feof(f: FILE) -> int;
-    fn fseek(f: FILE, offset: int, whence: int) -> int;
-    fn ftell(f: FILE) -> int;
+    fn fgetc(f: FILE) -> c_int;
+    fn ungetc(c: c_int, f: FILE);
+    fn feof(f: FILE) -> c_int;
+    fn fseek(f: FILE, offset: long, whence: c_int) -> c_int;
+    fn ftell(f: FILE) -> long;
     type dir;
     fn opendir(d: str::sbuf) -> dir;
     fn closedir(d: dir) -> c_int;
@@ -100,8 +100,8 @@ fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
 }
 
 fn waitpid(pid: pid_t) -> i32 {
-    let status = 0u32;
-    assert (os::libc::waitpid(pid, status, 0i32) != -1);
+    let status = 0i32;
+    assert (os::libc::waitpid(pid, status, 0i32) != -1i32);
     ret status;
 }
 

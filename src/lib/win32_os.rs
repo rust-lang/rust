@@ -17,12 +17,12 @@ native mod libc {
     fn fclose(f: FILE);
     fn fsync(fd: fd_t) -> c_int;
     fn fileno(f: FILE) -> fd_t;
-    fn fgetc(f: FILE) -> int;
-    fn ungetc(c: int, f: FILE);
-    fn feof(f: FILE) -> int;
-    fn fseek(f: FILE, offset: int, whence: int) -> int;
-    fn ftell(f: FILE) -> int;
-    fn _pipe(fds: *mutable int, size: uint, mode: int) -> int;
+    fn fgetc(f: FILE) -> c_int;
+    fn ungetc(c: c_int, f: FILE);
+    fn feof(f: FILE) -> c_int;
+    fn fseek(f: FILE, offset: long, whence: c_int) -> c_int;
+    fn ftell(f: FILE) -> long;
+    fn _pipe(fds: *mutable fd_t, size: uint, mode: c_int) -> c_int;
 }
 
 mod libc_constants {
