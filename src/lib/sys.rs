@@ -3,9 +3,12 @@ Module: sys
 
 Misc low level stuff
 */
-tag type_desc {
-    type_desc(@type_desc);
-}
+tag type_desc = {
+    first_param: **ctypes::c_int,
+    size: ctypes::size_t,
+    align: ctypes::size_t
+    // Remaining fields not listed
+};
 
 #[abi = "cdecl"]
 native mod rustrt {
