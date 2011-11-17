@@ -7,7 +7,8 @@ File system manipulation
 import os::getcwd;
 import os_fs;
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn rust_file_is_dir(path: str::sbuf) -> int;
 }
 

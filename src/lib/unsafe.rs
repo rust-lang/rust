@@ -4,11 +4,13 @@ Module: unsafe
 Unsafe operations
 */
 
-native "rust-intrinsic" mod rusti {
+#[abi = "rust-intrinsic"]
+native mod rusti {
     fn cast<T, U>(src: T) -> U;
 }
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn leak<T>(-thing: T);
 }
 

@@ -1,7 +1,9 @@
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 
-native "cdecl" mod llvm = "" {
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod llvm {
     fn sqrt(n: float) -> float;
 }
 

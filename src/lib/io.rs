@@ -1,5 +1,6 @@
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn rust_get_stdin() -> os::libc::FILE;
     fn rust_get_stdout() -> os::libc::FILE;
     fn rust_get_stderr() -> os::libc::FILE;

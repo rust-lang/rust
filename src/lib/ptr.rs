@@ -3,7 +3,8 @@ Module: ptr
 
 Unsafe pointer utility functions
 */
-native "rust-intrinsic" mod rusti {
+#[abi = "rust-intrinsic"]
+native mod rusti {
     fn addr_of<T>(val: T) -> *T;
     fn ptr_offset<T>(ptr: *T, count: uint) -> *T;
 }

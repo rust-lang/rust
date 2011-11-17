@@ -1,5 +1,7 @@
 
-native "cdecl" mod libc = "" {
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod libc {
     fn read(fd: int, buf: *u8, count: uint) -> int;
     fn write(fd: int, buf: *u8, count: uint) -> int;
     fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
@@ -39,7 +41,8 @@ type DWORD = u32;
 type HMODULE = uint;
 type LPTSTR = str::sbuf;
 
-native "stdcall" mod kernel32 {
+#[abi = "stdcall"]
+native mod kernel32 {
     fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: uint) ->
        uint;
     fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
@@ -83,7 +86,8 @@ fn fclose(file: libc::FILE) {
     libc::fclose(file)
 }
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn rust_process_wait(handle: int) -> int;
     fn rust_getcwd() -> str;
 }

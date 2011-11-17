@@ -1978,7 +1978,7 @@ fn parse_native_item(p: parser, attrs: [ast::attribute]) ->
     } else { unexpected(p, p.peek()); }
 }
 
-fn parse_native_mod_items(p: parser, native_name: str, abi: ast::native_abi,
+fn parse_native_mod_items(p: parser, abi: ast::native_abi,
                           first_item_attrs: [ast::attribute]) ->
    ast::native_mod {
     // Shouldn't be any view items since we've already parsed an item attr
@@ -1993,63 +1993,37 @@ fn parse_native_mod_items(p: parser, native_name: str, abi: ast::native_abi,
         initial_attrs = [];
         items += [parse_native_item(p, attrs)];
     }
-    ret {native_name: native_name,
-         abi: abi,
+    ret {abi: abi,
          view_items: view_items,
          items: items};
 }
 
 fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
-    let abi = ast::native_abi_cdecl;
-    if !is_word(p, "mod") {
-        let t = parse_str(p);
-        if str::eq(t, "rust-intrinsic") {
-            abi = ast::native_abi_rust_intrinsic;
-        } else if str::eq(t, "cdecl") {
-            abi = ast::native_abi_cdecl;
-        } else if str::eq(t, "stdcall") {
-            abi = ast::native_abi_stdcall;
-        } else {
-            p.fatal("unsupported abi: " + t);
-        }
-    } else {
-        abi =
-            alt attr::get_meta_item_value_str_by_name(attrs, "abi") {
-              none. { ast::native_abi_cdecl }
-              some("rust-intrinsic") {
-                ast::native_abi_rust_intrinsic
-              }
-              some("cdecl") {
-                ast::native_abi_cdecl
-              }
-              some("stdcall") {
-                ast::native_abi_stdcall
-              }
-              some(t) {
-                p.fatal("unsupported abi: " + t);
-              }
-            };
-    }
     expect_word(p, "mod");
     let id = parse_ident(p);
-    let native_name;
-    if p.peek() == token::EQ {
-        expect(p, token::EQ);
-        native_name = parse_str(p);
-    } else {
-        native_name =
-            alt attr::get_meta_item_value_str_by_name(attrs, "link_name") {
-              none. { id }
-              some(nn) { nn }
-            };
-    }
     expect(p, token::LBRACE);
     let more_attrs = parse_inner_attrs_and_next(p);
     let inner_attrs = more_attrs.inner;
     let first_item_outer_attrs = more_attrs.next;
-    let m =
-        parse_native_mod_items(p, native_name, abi, first_item_outer_attrs);
+    let abi =
+        alt attr::get_meta_item_value_str_by_name(
+                attrs + inner_attrs, "abi") {
+          none. { ast::native_abi_cdecl }
+          some("rust-intrinsic") {
+            ast::native_abi_rust_intrinsic
+          }
+          some("cdecl") {
+            ast::native_abi_cdecl
+          }
+          some("stdcall") {
+            ast::native_abi_stdcall
+          }
+          some(t) {
+            p.fatal("unsupported abi: " + t);
+          }
+        };
+    let m = parse_native_mod_items(p, abi, first_item_outer_attrs);
     let hi = p.get_hi_pos();
     expect(p, token::RBRACE);
     ret mk_item(p, lo, hi, id, ast::item_native_mod(m), attrs + inner_attrs);

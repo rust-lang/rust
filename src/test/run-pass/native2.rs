@@ -1,17 +1,26 @@
 
 
-native "cdecl" mod rustrt {
+#[abi = "cdecl"]
+native mod rustrt {
     fn unsupervise();
 }
 
-native "cdecl" mod bar = "" { }
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod bar { }
 
-native "cdecl" mod zed = "" { }
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod zed { }
 
-native "cdecl" mod libc = "" {
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod libc {
     fn write(fd: int, buf: *u8, count: uint) -> int;
 }
 
-native "cdecl" mod baz = "" { }
+#[abi = "cdecl"]
+#[link_name = ""]
+native mod baz { }
 
 fn main(args: [str]) { }
