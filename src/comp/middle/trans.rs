@@ -195,6 +195,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
         check non_ty_var(cx, sub1);
+        // FIXME #1184: Resource flag is larger than necessary
         ret T_struct([cx.int_type, type_of_inner(cx, sp, sub1)]);
       }
       ty::ty_var(_) {
@@ -1474,6 +1475,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     Call(cx, dtor_addr, args + [val_cast]);
 
     cx = drop_ty(cx, val.val, inner_t_s);
+    // FIXME #1184: Resource flag is larger than necessary
     Store(cx, C_int(ccx, 0), drop_flag.val);
     Br(cx, next_cx.llbb);
     ret next_cx;
@@ -1979,6 +1981,7 @@ fn call_memmove(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
     let memmove = i.get(key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
+    // FIXME #1184: Resource flag is larger than necessary
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(1i32);
     let volatile = C_bool(false);
@@ -5172,6 +5175,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     check type_is_tup_like(bcx, tup_t);
     let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
+    // FIXME #1184: Resource flag is larger than necessary
     let one = C_int(ccx, 1);
     Store(bcx, one, flag.val);
     build_return(bcx);
