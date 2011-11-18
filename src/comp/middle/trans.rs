@@ -5366,7 +5366,7 @@ fn c_stack_tys(ccx: @crate_ctxt,
       ty::ty_native_fn(_, arg_tys, ret_ty) {
         let llargtys = type_of_explicit_args(ccx, sp, arg_tys);
         check non_ty_var(ccx, ret_ty); // NDM does this truly hold?
-        let llretty = type_of_inner(ccx, sp, ret_ty);
+        let llretty = T_ptr(type_of_inner(ccx, sp, ret_ty));
         let bundle_ty = T_struct(llargtys + [llretty]);
         ret @{
             arg_tys: llargtys,
@@ -5385,30 +5385,57 @@ fn c_stack_tys(ccx: @crate_ctxt,
     }
 }
 
-// For c-stack ABIs, we must generate shim functions for making
-// the call.  These shim functions will unpack arguments out of
-// a struct and then invoke the base function.
+// For each native function F, we generate a wrapper function W and a shim
+// function S that all work together.  The wrapper function W is the function
+// that other rust code actually invokes.  Its job is to marshall the
+// arguments into a struct.  It then uses a small bit of assembly to switch
+// over to the C stack and invoke the shim function.  The shim function S then
+// unpacks the arguments from the struct and invokes the actual function F
+// according to its specified calling convention.
 //
 // Example: Given a native c-stack function F(x: X, y: Y) -> Z,
-// we generate a shim function S that is something like:
+// we generate a wrapper function W that looks like:
 //
-//     void S(struct F_Args { X x; Y y; Z *z; } *args) {
+//    void W(Z* dest, void *env, X x, Y y) {
+//        struct { X x; Y y; Z *z; } args = { x, y, z };
+//        call_on_c_stack_shim(S, &args);
+//    }
+//
+// The shim function S then looks something like:
+//
+//     void S(struct { X x; Y y; Z *z; } *args) {
 //         *args->z = F(args->x, args->y);
 //     }
 //
+// However, if the return type of F is dynamically sized or of aggregate type,
+// the shim function looks like:
+//
+//     void S(struct { X x; Y y; Z *z; } *args) {
+//         F(args->z, args->x, args->y);
+//     }
+//
+// Note: on i386, the layout of the args struct is generally the same as the
+// desired layout of the arguments on the C stack.  Therefore, we could use
+// upcall_alloc_c_stack() to allocate the `args` structure and switch the
+// stack pointer appropriately to avoid a round of copies.  (In fact, the shim
+// function itself is unnecessary). We used to do this, in fact, and will
+// perhaps do so in the future.
 fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
     fn build_shim_fn(lcx: @local_ctxt,
                      native_item: @ast::native_item,
-                     llshimfn: ValueRef,
-                     cc: uint) {
+                     tys: @c_stack_tys,
+                     cc: uint) -> ValueRef {
         let lname = link_name(native_item);
         let ccx = lcx_ccx(lcx);
         let span = native_item.span;
-        let id = native_item.id;
-        let tys = c_stack_tys(ccx, span, id);
 
         // Declare the "prototype" for the base function F:
         let llbasefn = decl_fn(ccx.llmod, lname, cc, tys.base_fn_ty);
+
+        // Create the shim function:
+        let shim_name = lname + "__c_stack_shim";
+        let llshimfn = decl_internal_cdecl_fn(
+            ccx.llmod, shim_name, tys.shim_fn_ty);
 
         // Declare the body of the shim function:
         let fcx = new_fn_ctxt(lcx, span, llshimfn);
@@ -5423,11 +5450,39 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
             i += 1u;
         }
 
-        // Create the call itself:
+        // Create the call itself and store the return value:
         let llretval = CallWithConv(bcx, llbasefn, llargvals, cc);
-        store_inbounds(bcx, llretval, llargbundle, [0, n as int]);
+        store_inbounds(bcx, llretval, llargbundle, [0, n as int, 0]);
 
-        // Finish up.
+        // Finish up:
+        build_return(bcx);
+        finish_fn(fcx, lltop);
+
+        ret llshimfn;
+    }
+
+    fn build_wrap_fn(lcx: @local_ctxt,
+                     native_item: @ast::native_item,
+                     tys: @c_stack_tys,
+                     llshimfn: ValueRef,
+                     llwrapfn: ValueRef) {
+        let fcx = new_fn_ctxt(lcx, span, llshimfn);
+        let bcx = new_top_block_ctxt(fcx);
+        let lltop = bcx.llbb;
+
+        // Allocate the struct and write the arguments into it.
+        let llargbundle = alloca(bcx, tys.bundle_ty);
+        let imp = 2u, i = 0u, n = vec::len(tys.arg_tys);
+        while i < n {
+            let llargval = llvm::LLVMGetParam(llwrapfn, i + imp);
+            store_inbounds(bcx, llargval, llargbundle, [0, i as int]);
+            i += 1u;
+        }
+        let llretptr = llvm::LLVMGetParam(llwrapfn, 0);
+        store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
+
+        // Create call itself:
+
         build_return(bcx);
         finish_fn(fcx, lltop);
     }
@@ -5445,9 +5500,11 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
         ast::native_item_ty. {}
         ast::native_item_fn(fn_decl, _) {
           let id = native_item.id;
+          let tys = c_stack_tys(ccx, span, id);
           alt ccx.item_ids.find(id) {
-            some(llshimfn) {
-              build_shim_fn(lcx, native_item, llshimfn, cc);
+            some(llwrapfn) {
+              let llshimfn = build_shim_fn(lcx, native_item, cc, tys);
+              build_wrap_fn(lcx, native_item, tys, llshimfn, llwrapfn);
             }
 
             none. {
@@ -5548,14 +5605,6 @@ fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
     let path = path;
     let llfty =
         type_of_fn_from_ty(ccx, sp, node_type, std::vec::len(ty_params));
-    alt ty::struct(ccx.tcx, node_type) {
-      ty::ty_fn(_, inputs, output, rs, _) {
-        check non_ty_var(ccx, output);
-        llfty = type_of_fn(ccx, sp, false, ast_util::ret_by_ref(rs), inputs,
-                           output, vec::len(ty_params));
-      }
-      _ { ccx.sess.bug("register_fn(): fn item doesn't have fn type!"); }
-    }
     let ps: str = mangle_exported_name(ccx, path, node_type);
     let llfn: ValueRef = decl_cdecl_fn(ccx.llmod, ps, llfty);
     ccx.item_ids.insert(node_id, llfn);
@@ -5715,33 +5764,6 @@ fn raw_native_fn_type(ccx: @crate_ctxt, sp: span, args: [ty::arg],
     ret T_fn(type_of_explicit_args(ccx, sp, args), type_of(ccx, sp, ret_ty));
 }
 
-fn register_native_fn(ccx: @crate_ctxt, sp: span, _path: [str], name: str,
-                      id: ast::node_id) {
-    let fn_type = node_id_type(ccx, id); // NB: has no type params
-    let abi = ty::ty_fn_abi(ccx.tcx, fn_type);
-
-    alt abi {
-      ast::native_abi_rust_intrinsic. {
-        let num_ty_param = native_fn_ty_param_count(ccx, id);
-        let fn_type = native_fn_wrapper_type(ccx, sp, num_ty_param, fn_type);
-        let ri_name = "rust_intrinsic_" + name;
-        let llnativefn = get_extern_fn(ccx.externs, ccx.llmod, ri_name,
-                                       lib::llvm::LLVMCCallConv, fn_type);
-        ccx.item_ids.insert(id, llnativefn);
-        ccx.item_symbols.insert(id, ri_name);
-      }
-
-      ast::native_abi_cdecl. | ast::native_abi_stdcall. {
-        let tys = c_stack_tys(ccx, sp, id);
-        let shim_name = name + "__c_stack_shim";
-        let llshimfn = decl_internal_cdecl_fn(
-            ccx.llmod, shim_name, tys.shim_fn_ty);
-        ccx.item_ids.insert(id, llshimfn);
-        ccx.item_symbols.insert(id, shim_name);
-      }
-    }
-}
-
 fn item_path(item: @ast::item) -> [str] { ret [item.ident]; }
 
 fn link_name(i: @ast::native_item) -> str {
@@ -5751,14 +5773,36 @@ fn link_name(i: @ast::native_item) -> str {
     }
 }
 
-
 fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
                        _v: vt<[str]>) {
     alt i.node {
-      ast::native_item_fn(_, _) {
+      ast::native_item_fn(_, tps) {
         if !ccx.obj_methods.contains_key(i.id) {
-            let name = link_name(i);
-            register_native_fn(ccx, i.span, pt, name, i.id);
+            // FIXME NDM abi should come from attr
+            let abi = ty::ty_fn_abi(ccx.tcx, fn_type);
+
+            alt abi {
+              ast::native_abi_rust_intrinsic. {
+                // For intrinsics: link the function directly to the intrinsic
+                // function itself.
+                let num_ty_param = vec::len(tps);
+                let node_type = node_id_type(ccx, id);
+                let fn_type = type_of_fn_from_ty(ccx, sp, node_type, num_ty_param);
+                let ri_name = "rust_intrinsic_" + name;
+                let llnativefn = get_extern_fn(ccx.externs, ccx.llmod, ri_name,
+                                               lib::llvm::LLVMCCallConv, fn_type);
+                ccx.item_ids.insert(id, llnativefn);
+                ccx.item_symbols.insert(id, ri_name);
+              }
+
+              ast::native_abi_cdecl. | ast::native_abi_stdcall. {
+                // For true external functions: create a rust wrapper
+                // and link to that.  The rust wrapper will handle
+                // switching to the C stack.
+                let new_pt = pt + [i.ident];
+                register_fn(ccx, i.span, new_pt, "native fn", tps, i.id);
+              }
+            }
         }
       }
       _ { }
