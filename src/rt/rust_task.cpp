@@ -275,6 +275,7 @@ rust_task::yield(size_t time_in_us) {
         name, this, time_in_us);
 
     if (killed && !dead()) {
+        // Receive may have blocked before yielding
         unblock();
         fail();
     }
