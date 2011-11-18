@@ -1,5 +1,5 @@
-// Resources can't be copied into other types but still need to be able
-// to find their way into things.
+// Resources can't be copied, but storing into data structures counts
+// as a move unless the stored thing is used afterwards.
 
 resource r(i: @mutable int) {
     *i = *i + 1;
@@ -59,6 +59,14 @@ fn test_box_rec() {
     assert *i == 1;
 }
 
+fn test_obj() {
+    obj o(_f: r) {}
+    let i = @mutable 0;
+    let rr = r(i);
+    { let _oo = o(rr); }
+    assert *i == 1;
+}
+
 fn main() {
     test_box();
     test_rec();
@@ -67,4 +75,5 @@ fn main() {
     test_tup();
     test_unique();
     test_box_rec();
+    test_obj();
 }

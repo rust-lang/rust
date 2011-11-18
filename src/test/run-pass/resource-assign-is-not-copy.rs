@@ -1,7 +1,13 @@
-resource r(i: int) {
-}
+resource r(i: @mutable int) { *i += 1; }
 
 fn main() {
-    // Even though this looks like a copy, it's guaranteed not to be
-    let a = r(0);
+    let i = @mutable 0;
+    // Even though these look like copies, they are guaranteed not to be
+    {
+        let a = r(i);
+        let b = (a, 10);
+        let (c, _d) = b;
+        log c;
+    }
+    assert *i == 1;
 }
