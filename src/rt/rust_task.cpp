@@ -213,8 +213,8 @@ void task_start_wrapper(spawn_args *a)
     } else {
         task->lock.lock();
         task->lock.unlock();
-        task->yield(1);
     }
+    task->ctx.next->swap(task->ctx);
 }
 
 void
@@ -274,7 +274,7 @@ rust_task::yield(size_t time_in_us) {
     LOG(this, task, "task %s @0x%" PRIxPTR " yielding for %d us",
         name, this, time_in_us);
 
-    if (killed && !dead()) {
+    if (killed) {
         // Receive may have blocked before yielding
         unblock();
         fail();
@@ -333,7 +333,6 @@ void
 rust_task::conclude_failure() {
     fail_parent();
     failed = true;
-    yield(4);
 }
 
 void
