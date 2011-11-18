@@ -4035,34 +4035,35 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
       save_in(pos) { pos }
     };
 
-    let base_val = alt base {
+    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
+    let temp_cleanups = [];
+    for fld in fields {
+        let ix = option::get(vec::position_pred({|ft|
+            str::eq(fld.node.ident, ft.ident)
+        }, ty_fields));
+        let dst = GEP_tup_like_1(bcx, t, addr, [0, ix as int]);
+        bcx = trans_expr_save_in(dst.bcx, fld.node.expr, dst.val);
+        add_clean_temp_mem(bcx, dst.val, ty_fields[ix].mt.ty);
+        temp_cleanups += [dst.val];
+    }
+    alt base {
       some(bexp) {
-        let base_res = trans_temp_expr(bcx, bexp);
-        bcx = base_res.bcx;
-        base_res.val
+        let {bcx: cx, val: base_val} = trans_temp_expr(bcx, bexp), i = 0;
+        bcx = cx;
+        // Copy over inherited fields
+        for tf in ty_fields {
+            if !vec::any({|f| str::eq(f.node.ident, tf.ident)}, fields) {
+                let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
+                let base = GEP_tup_like_1(bcx, t, base_val, [0, i]);
+                let val = load_if_immediate(base.bcx, base.val, tf.mt.ty);
+                bcx = copy_val(base.bcx, INIT, dst.val, val, tf.mt.ty);
+            }
+            i += 1;
+        }
       }
-      none. { C_nil() }
+      none. {}
     };
 
-    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
-    let temp_cleanups = [], i = 0;
-    for tf in ty_fields {
-        let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
-        bcx = dst.bcx;
-        alt vec::find({|f| str::eq(f.node.ident, tf.ident)}, fields) {
-          some(f) {
-            bcx = trans_expr_save_in(bcx, f.node.expr, dst.val);
-          }
-          none. {
-            let base = GEP_tup_like_1(bcx, t, base_val, [0, i]);
-            let val = load_if_immediate(base.bcx, base.val, tf.mt.ty);
-            bcx = copy_val(base.bcx, INIT, dst.val, val, tf.mt.ty);
-          }
-        }
-        add_clean_temp_mem(bcx, dst.val, tf.mt.ty);
-        temp_cleanups += [dst.val];
-        i += 1;
-    }
     // Now revoke the cleanups as we pass responsibility for the data
     // structure on to the caller
     for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
