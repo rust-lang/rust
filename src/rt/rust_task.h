@@ -106,13 +106,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     memory_region local_region;
 
-    class wakeup_callback {
-    public:
-        virtual void on_wakeup() = 0;
-    };
-
-    wakeup_callback *_on_wakeup;
-
     // Indicates that the task ended in failure
     bool failed;
     // Indicates that the task was killed and needs to unwind
@@ -188,8 +181,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     void pin();
     void pin(int id);
     void unpin();
-
-    void on_wakeup(wakeup_callback *callback);
 
     rust_port_id register_port(rust_port *port);
     void release_port(rust_port_id id);

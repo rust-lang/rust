@@ -343,7 +343,6 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
                         task, spawner ? spawner->name : "null", name);
     if(spawner) {
         task->pin(spawner->pinned_on);
-        task->on_wakeup(spawner->_on_wakeup);
     }
 
     {

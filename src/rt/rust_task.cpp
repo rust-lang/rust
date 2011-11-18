@@ -115,7 +115,6 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     running_on(-1),
     pinned_on(-1),
     local_region(&sched->srv->local_region),
-    _on_wakeup(NULL),
     failed(false),
     killed(false),
     propagate_failure(true),
@@ -456,10 +455,6 @@ rust_task::wakeup(rust_cond *from) {
     cond = NULL;
     cond_name = "none";
 
-    if(_on_wakeup) {
-        _on_wakeup->on_wakeup();
-    }
-
     sched->lock.signal();
 }
 
@@ -521,10 +516,6 @@ void rust_task::pin(int id) {
 
 void rust_task::unpin() {
     pinned_on = -1;
-}
-
-void rust_task::on_wakeup(rust_task::wakeup_callback *callback) {
-    _on_wakeup = callback;
 }
 
 rust_port_id rust_task::register_port(rust_port *port) {
