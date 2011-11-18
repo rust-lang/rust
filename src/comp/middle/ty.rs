@@ -1122,9 +1122,9 @@ pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool {
     }
 }
 
-// Returns true for types where a copy of a value can be distinguished from
-// the value itself. I.e. types with mutable content that's not shared through
-// a pointer.
+// Returns true for noncopyable types and types where a copy of a value can be
+// distinguished from the value itself. I.e. types with mutable content that's
+// not shared through a pointer.
 fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
     ret !type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
         ret alt sty {
@@ -1143,7 +1143,7 @@ fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
           }
           _ { false }
         };
-    });
+    }) && type_kind(cx, t) != ast::kind_noncopyable;
 }
 
 fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {

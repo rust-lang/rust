@@ -28,8 +28,6 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) -> rval_map {
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, ctx, visit);
-    // FIXME go through alias's copy_map, check implicit copies (either here,
-    // or in alias.rs)
     tcx.sess.abort_if_errors();
     ret ctx.rval_map;
 }
