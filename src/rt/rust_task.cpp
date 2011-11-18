@@ -210,9 +210,6 @@ void task_start_wrapper(spawn_args *a)
 #else
         A(task->sched, false, "Shouldn't happen");
 #endif
-    } else {
-        task->lock.lock();
-        task->lock.unlock();
     }
     task->ctx.next->swap(task->ctx);
 }
