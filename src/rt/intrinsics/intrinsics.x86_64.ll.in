@@ -107,12 +107,12 @@ define void @rust_intrinsic_get_type_desc(i8** nocapture %retptr, i8* nocapture 
   ret void
 }
 
-define void @rust_intrinsic_task_sleep(i8** nocapture %retptr, i8* nocapture %env, %struct.rust_task* %task, i64 %time_in_us) uwtable {
-  tail call void @rust_task_sleep(%struct.rust_task* %task, i64 %time_in_us)
+define void @rust_intrinsic_task_sleep(i8** nocapture %retptr, i8* nocapture %env, %struct.rust_task* %task, i64 %time_in_us, i8* %killed) uwtable {
+  tail call void @rust_task_sleep(%struct.rust_task* %task, i64 %time_in_us, i8* %killed)
   ret void
 }
 
-declare void @rust_task_sleep(%struct.rust_task*, i64)
+declare void @rust_task_sleep(%struct.rust_task*, i64, i8*)
 
 !0 = metadata !{metadata !"any pointer", metadata !1}
 !1 = metadata !{metadata !"omnipotent char", metadata !2}

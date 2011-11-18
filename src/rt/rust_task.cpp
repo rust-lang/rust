@@ -267,13 +267,13 @@ rust_task::grow(size_t n_frame_bytes)
 
 // Only run this on the rust stack
 void
-rust_task::yield(size_t time_in_us) {
+rust_task::yield(size_t time_in_us, bool *killed) {
     LOG(this, task, "task %s @0x%" PRIxPTR " yielding for %d us",
         name, this, time_in_us);
 
-    if (killed) {
+    if (this->killed) {
         A(sched, !blocked(), "Shouldn't be blocked before failing");
-        fail();
+        *killed = true;
     }
 
     yield_timer.reset_us(time_in_us);
@@ -281,8 +281,8 @@ rust_task::yield(size_t time_in_us) {
     // Return to the scheduler.
     ctx.next->swap(ctx);
 
-    if (killed) {
-        fail();
+    if (this->killed) {
+        *killed = true;
     }
 }
 

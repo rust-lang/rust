@@ -163,17 +163,13 @@ fn recv_<send T>(p: *rustrt::rust_port) -> T {
     let killedp = ptr::addr_of(killed);
     let res = rusti::call_with_retptr(bind recv(_, p, yieldp, killedp));
     if killed != 0u {
-        fail_killed();
+        fail "killed";
     }
     if yield != 0u {
         // Data isn't available yet, so res has not been initialized.
         task::yield();
     }
     ret res;
-}
-
-fn fail_killed() -> ! {
-    fail "killed";
 }
 
 /*

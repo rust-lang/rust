@@ -53,7 +53,7 @@ export spawn_joinable;
 #[abi = "rust-intrinsic"]
 native mod rusti {
     // these must run on the Rust stack so that they can swap stacks etc:
-    fn task_sleep(task: *rust_task, time_in_us: uint);
+    fn task_sleep(task: *rust_task, time_in_us: uint, &killed: bool);
 }
 
 #[link_name = "rustrt"]
@@ -145,7 +145,11 @@ time_in_us - maximum number of microseconds to yield control for
 */
 fn sleep(time_in_us: uint) {
     let task = rustrt::rust_get_task();
-    ret rusti::task_sleep(task, time_in_us);
+    let killed = false;
+    rusti::task_sleep(task, time_in_us, killed);
+    if killed {
+        fail "killed";
+    }
 }
 
 /*
