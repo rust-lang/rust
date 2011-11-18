@@ -183,12 +183,8 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         T_fn_pair(cx, type_of_fn_from_ty(cx, sp, t, 0u))
       }
       ty::ty_native_fn(abi, args, out) {
-        if native_abi_requires_pair(abi) {
-            let nft = native_fn_wrapper_type(cx, sp, 0u, t);
-            T_fn_pair(cx, nft)
-        } else {
-            raw_native_fn_type(cx, sp, args, out)
-        }
+        let nft = native_fn_wrapper_type(cx, sp, 0u, t);
+        T_fn_pair(cx, nft)
       }
       ty::ty_obj(meths) { cx.rust_object_type }
       ty::ty_res(_, sub, tps) {
@@ -3766,9 +3762,9 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let tcx = bcx_tcx(in_cx);
     let fn_expr_ty = ty::expr_ty(tcx, f);
 
-    if check type_is_native_fn_on_c_stack(tcx, fn_expr_ty) {
-        ret trans_c_stack_native_call(in_cx, f, args, dest);
-    }
+//NDM    if check type_is_native_fn_on_c_stack(tcx, fn_expr_ty) {
+//NDM        ret trans_c_stack_native_call(in_cx, f, args, dest);
+//NDM    }
 
     let cx = new_scope_block_ctxt(in_cx, "call");
     let f_res = trans_callee(cx, f);
@@ -3830,63 +3826,6 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     }
     Br(bcx, next_cx.llbb);
     ret next_cx;
-}
-
-// Translates a native call on the C stack. Calls into the runtime to perform
-// the stack switching operation. Must be kept in sync with
-// trans_native_mod().
-fn trans_c_stack_native_call(bcx: @block_ctxt, f: @ast::expr,
-                             args: [@ast::expr], dest: dest) -> @block_ctxt {
-    let ccx = bcx_ccx(bcx);
-    let f_res = trans_callee(bcx, f);
-    let llfn = f_res.val, bcx = f_res.bcx;
-    let llfn = BitCast(bcx, llfn, T_ptr(T_fn([], bcx_ccx(bcx).int_type)));
-
-    // Translate the callee.
-    let { params: _, ty: fn_ty } = ty::expr_ty_params_and_ty(bcx_tcx(bcx), f);
-    let fn_arg_tys = ty::ty_fn_args(bcx_tcx(bcx), fn_ty);
-    let llargtys = type_of_explicit_args(ccx, f.span, fn_arg_tys);
-
-    // Determine return type.
-    let ret_ty = ty::ty_fn_ret(bcx_tcx(bcx), fn_ty);
-    check type_has_static_size(ccx, ret_ty);
-    let llretty = type_of(ccx, f.span, ret_ty);
-
-    // Translate arguments.
-    // n.b.: We must do this before allocating the argument
-    // bundle in order to avoid problems with nested function calls.
-    let (to_zero, to_revoke) = ([], []);
-    let i = 0u, n = vec::len(args);
-    let llargs = [];
-    while i < n {
-        let ty_arg = fn_arg_tys[i];
-        let arg = args[i];
-        let llargty = llargtys[i];
-        let r = trans_arg_expr(bcx, ty_arg, llargty, to_zero, to_revoke, arg);
-        bcx = r.bcx;
-        llargs += [r.val];
-        i += 1u;
-    }
-
-    // Allocate the argument bundle and store arguments.
-    let llargbundlety = T_struct(llargtys + [llretty]);
-    let llargbundlesz = llsize_of(ccx, llargbundlety);
-    let llrawargbundle = Call(bcx, ccx.upcalls.alloc_c_stack,
-                              [llargbundlesz]);
-    let llargbundle = PointerCast(bcx, llrawargbundle, T_ptr(llargbundlety));
-    i = 0u;
-    while i < n {
-        store_inbounds(bcx, llargs[i], llargbundle, [0, i as int]);
-        i += 1u;
-    }
-
-    // Call the upcall function then extract return value from the bundle.
-    let upcall_fn = ccx.upcalls.call_c_stack_shim;
-    let llfnptr = PointerCast(bcx, llfn, T_ptr(T_i8()));
-    Call(bcx, upcall_fn, [llfnptr, llrawargbundle]);
-    let llres = load_inbounds(bcx, llargbundle, [0, n as int]);
-    bcx = zero_and_revoke(bcx, to_zero, to_revoke);
-    ret store_in_dest(bcx, llres, dest);
 }
 
 fn zero_and_revoke(bcx: @block_ctxt,
@@ -5354,6 +5293,7 @@ fn trans_const(cx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
 type c_stack_tys = {
     arg_tys: [TypeRef],
     ret_ty: TypeRef,
+    ret_def: bool,
     base_fn_ty: TypeRef,
     bundle_ty: TypeRef,
     shim_fn_ty: TypeRef
@@ -5364,13 +5304,16 @@ fn c_stack_tys(ccx: @crate_ctxt,
                id: ast::node_id) -> @c_stack_tys {
     alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)) {
       ty::ty_native_fn(_, arg_tys, ret_ty) {
+        let tcx = ccx.tcx;
         let llargtys = type_of_explicit_args(ccx, sp, arg_tys);
         check non_ty_var(ccx, ret_ty); // NDM does this truly hold?
-        let llretty = T_ptr(type_of_inner(ccx, sp, ret_ty));
-        let bundle_ty = T_struct(llargtys + [llretty]);
+        let llretty = type_of_inner(ccx, sp, ret_ty);
+        let bundle_ty = T_struct(llargtys + [T_ptr(llretty)]);
         ret @{
             arg_tys: llargtys,
             ret_ty: llretty,
+            ret_def: !ty::type_is_bot(tcx, ret_ty) &&
+                !ty::type_is_nil(tcx, ret_ty),
             base_fn_ty: T_fn(llargtys, llretty),
             bundle_ty: bundle_ty,
             shim_fn_ty: T_fn([T_ptr(bundle_ty)], T_void())
@@ -5451,8 +5394,15 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
         }
 
         // Create the call itself and store the return value:
-        let llretval = CallWithConv(bcx, llbasefn, llargvals, cc);
-        store_inbounds(bcx, llretval, llargbundle, [0, n as int, 0]);
+        let llretval = CallWithConv(bcx, llbasefn, llargvals, cc); // r
+        if tys.ret_def {
+            // R** llretptr = &args->r;
+            let llretptr = GEPi(bcx, llargbundle, [0, n as int]);
+            // R* llretloc = *llretptr; /* (args->r) */
+            let llretloc = Load(bcx, llretptr);
+            // *args->r = r;
+            Store(bcx, llretval, llretloc);
+        }
 
         // Finish up:
         build_return(bcx);
@@ -5464,25 +5414,32 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
     fn build_wrap_fn(lcx: @local_ctxt,
                      native_item: @ast::native_item,
                      tys: @c_stack_tys,
+                     num_tps: uint,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
-        let fcx = new_fn_ctxt(lcx, span, llshimfn);
+        let span = native_item.span;
+        let ccx = lcx_ccx(lcx);
+        let fcx = new_fn_ctxt(lcx, span, llwrapfn);
         let bcx = new_top_block_ctxt(fcx);
         let lltop = bcx.llbb;
 
         // Allocate the struct and write the arguments into it.
         let llargbundle = alloca(bcx, tys.bundle_ty);
-        let imp = 2u, i = 0u, n = vec::len(tys.arg_tys);
+        let i = 0u, n = vec::len(tys.arg_tys);
+        let implicit_args = 2u + num_tps; // ret + env
         while i < n {
-            let llargval = llvm::LLVMGetParam(llwrapfn, i + imp);
+            let llargval = llvm::LLVMGetParam(llwrapfn, i + implicit_args);
             store_inbounds(bcx, llargval, llargbundle, [0, i as int]);
             i += 1u;
         }
-        let llretptr = llvm::LLVMGetParam(llwrapfn, 0);
+        let llretptr = llvm::LLVMGetParam(llwrapfn, 0u);
         store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
 
-        // Create call itself:
-
+        // Create call itself.
+        let call_shim_on_c_stack = ccx.upcalls.call_shim_on_c_stack;
+        let llshimfnptr = PointerCast(bcx, llshimfn, T_ptr(T_i8()));
+        let llrawargbundle = PointerCast(bcx, llargbundle, T_ptr(T_i8()));
+        Call(bcx, call_shim_on_c_stack, [llrawargbundle, llshimfnptr]);
         build_return(bcx);
         finish_fn(fcx, lltop);
     }
@@ -5498,13 +5455,15 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
     for native_item in native_mod.items {
       alt native_item.node {
         ast::native_item_ty. {}
-        ast::native_item_fn(fn_decl, _) {
+        ast::native_item_fn(fn_decl, tps) {
+          let span = native_item.span;
           let id = native_item.id;
           let tys = c_stack_tys(ccx, span, id);
           alt ccx.item_ids.find(id) {
             some(llwrapfn) {
-              let llshimfn = build_shim_fn(lcx, native_item, cc, tys);
-              build_wrap_fn(lcx, native_item, tys, llshimfn, llwrapfn);
+              let llshimfn = build_shim_fn(lcx, native_item, tys, cc);
+              build_wrap_fn(lcx, native_item, tys,
+                            vec::len(tps), llshimfn, llwrapfn);
             }
 
             none. {
@@ -5733,21 +5692,6 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
     ret count;
 }
 
-pure fn native_abi_requires_pair(abi: ast::native_abi) -> bool {
-    alt abi {
-        ast::native_abi_rust_intrinsic. { ret true; }
-        ast::native_abi_cdecl. |
-        ast::native_abi_stdcall. { ret false; }
-    }
-}
-
-pure fn type_is_native_fn_on_c_stack(tcx: ty::ctxt, t: ty::t) -> bool {
-    alt ty::struct(tcx, t) {
-        ty::ty_native_fn(abi, _, _) { ret !native_abi_requires_pair(abi); }
-        _ { ret false; }
-    }
-}
-
 fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
@@ -5778,19 +5722,24 @@ fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
     alt i.node {
       ast::native_item_fn(_, tps) {
         if !ccx.obj_methods.contains_key(i.id) {
+            let sp = i.span;
+            let id = i.id;
+            let node_type = node_id_type(ccx, id);
             // FIXME NDM abi should come from attr
-            let abi = ty::ty_fn_abi(ccx.tcx, fn_type);
+            let abi = ty::ty_fn_abi(ccx.tcx, node_type);
 
             alt abi {
               ast::native_abi_rust_intrinsic. {
                 // For intrinsics: link the function directly to the intrinsic
                 // function itself.
                 let num_ty_param = vec::len(tps);
-                let node_type = node_id_type(ccx, id);
-                let fn_type = type_of_fn_from_ty(ccx, sp, node_type, num_ty_param);
-                let ri_name = "rust_intrinsic_" + name;
-                let llnativefn = get_extern_fn(ccx.externs, ccx.llmod, ri_name,
-                                               lib::llvm::LLVMCCallConv, fn_type);
+                check returns_non_ty_var(ccx, node_type);
+                let fn_type = type_of_fn_from_ty(ccx, sp, node_type,
+                                                 num_ty_param);
+                let ri_name = "rust_intrinsic_" + link_name(i);
+                let llnativefn = get_extern_fn(
+                    ccx.externs, ccx.llmod, ri_name,
+                    lib::llvm::LLVMCCallConv, fn_type);
                 ccx.item_ids.insert(id, llnativefn);
                 ccx.item_symbols.insert(id, ri_name);
               }

@@ -26,7 +26,7 @@ type upcalls =
      dynastack_alloc: ValueRef,
      dynastack_free: ValueRef,
      alloc_c_stack: ValueRef,
-     call_c_stack_shim: ValueRef,
+     call_shim_on_c_stack: ValueRef,
      rust_personality: ValueRef};
 
 fn declare_upcalls(targ_cfg: @session::config,
@@ -85,11 +85,10 @@ fn declare_upcalls(targ_cfg: @session::config,
                 T_ptr(T_i8())),
           dynastack_free: dv("dynastack_free", [T_ptr(T_i8())]),
           alloc_c_stack: d("alloc_c_stack", [size_t], T_ptr(T_i8())),
-          call_c_stack_shim: d("call_c_stack_shim",
-                          // first arg is func ptr, but type of func varies,
-                          // so just call it char* for LLVM
-                          [T_ptr(T_i8()), T_ptr(T_i8())],
-                          int_t),
+          call_shim_on_c_stack: d("call_shim_on_c_stack",
+                                  // arguments: void *args, void *fn_ptr
+                                  [T_ptr(T_i8()), T_ptr(T_i8())],
+                                  int_t),
           rust_personality: d("rust_personality", [], T_i32())
          };
 }

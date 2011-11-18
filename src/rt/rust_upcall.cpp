@@ -219,6 +219,16 @@ upcall_alloc_c_stack(size_t nbytes) {
     return sched->c_context.alloc_stack(nbytes);
 }
 
+/**
+ * Allocates |nbytes| bytes in the C stack and returns a pointer to the start
+ * of the allocated space.
+ */
+extern "C" CDECL void
+upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
+    rust_scheduler *sched = rust_scheduler::get_task()->sched;
+    sched->c_context.call_shim_on_c_stack(args, fn_ptr);
+}
+
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,
