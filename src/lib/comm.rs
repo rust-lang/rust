@@ -48,11 +48,13 @@ native mod rustrt {
     fn rust_port_detach(po: *rust_port);
     fn get_port_id(po: *rust_port) -> port_id;
     fn rust_port_size(po: *rust_port) -> ctypes::size_t;
+    fn port_recv(dptr: *uint, po: *rust_port,
+                 yield: *ctypes::uintptr_t);
 }
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
-    fn recv<send T>(port: *rustrt::rust_port) -> T;
+    fn call_with_retptr<send T>(&&f: fn@(*uint)) -> T;
 }
 
 type port_id = int;
@@ -87,7 +89,7 @@ resource port_ptr<send T>(po: *rustrt::rust_port) {
     while rustrt::rust_port_size(po) > 0u {
         // FIXME: For some reason if we don't assign to something here
         // we end up with invalid reads in the drop glue.
-        let _t = rusti::recv::<T>(po);
+        let _t = recv_::<T>(po);
     }
     rustrt::del_port(po);
 }
@@ -140,7 +142,29 @@ Receive from a port.
 If no data is available on the port then the task will block until data
 becomes available.
 */
-fn recv<send T>(p: port<T>) -> T { ret rusti::recv(***p) }
+fn recv<send T>(p: port<T>) -> T { recv_(***p) }
+
+// Receive on a raw port pointer
+fn recv_<send T>(p: *rustrt::rust_port) -> T {
+    // FIXME: Due to issue 1185 we can't use a return pointer when
+    // calling C code, and since we can't create our own return
+    // pointer on the stack, we're going to call a little intrinsic
+    // that will grab the value of the return pointer, then call this
+    // function, which we will then use to call the runtime.
+    fn recv(dptr: *uint, port: *rustrt::rust_port,
+                    yield: *ctypes::uintptr_t) unsafe {
+        rustrt::port_recv(dptr,
+                          port, yield);
+    }
+    let yield = 0u;
+    let yieldp = ptr::addr_of(yield);
+    let res = rusti::call_with_retptr(bind recv(_, p, yieldp));
+    if yield != 0u {
+        // Data isn't available yet, so res has not been initialized.
+        task::yield();
+    }
+    ret res;
+}
 
 /*
 Function: chan

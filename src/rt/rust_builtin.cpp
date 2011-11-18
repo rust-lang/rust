@@ -515,10 +515,8 @@ rust_task_sleep(rust_task *task, size_t time_in_us) {
     task->yield(time_in_us);
 }
 
-// This is called by an intrinsic on the Rust stack.
-// Do not call on the C stack.
 extern "C" CDECL void
-port_recv(uintptr_t *dptr, rust_port *port) {
+port_recv(uintptr_t *dptr, rust_port *port, uintptr_t *yield) {
     rust_task *task = rust_scheduler::get_task();
     {
         scoped_lock with(port->lock);
@@ -528,6 +526,7 @@ port_recv(uintptr_t *dptr, rust_port *port) {
             (uintptr_t) port, (uintptr_t) dptr, port->unit_sz);
 
         if (port->receive(dptr)) {
+            *yield = false;
             return;
         }
 
@@ -539,7 +538,8 @@ port_recv(uintptr_t *dptr, rust_port *port) {
         task->rendezvous_ptr = dptr;
         task->block(port, "waiting for rendezvous data");
     }
-    task->yield(3);
+    *yield = true;
+    return;
 }
 
 //

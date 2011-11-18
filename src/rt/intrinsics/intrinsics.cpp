@@ -53,12 +53,22 @@ rust_intrinsic_addr_of(void **retptr,
     *retptr = valptr;
 }
 
+struct rust_fn {
+    uintptr_t *fn;
+    rust_box *env;
+};
+
+typedef void (*retptr_fn)(void **retptr,
+			   void *env,
+			   void **dptr);
+// FIXME (1185): This exists just to get access to the return pointer
 extern "C" void
-rust_intrinsic_recv(void **retptr,
-                    void *env,
-                    type_desc *ty,
-                    rust_port *port) {
-    port_recv((uintptr_t*)retptr, port);
+rust_intrinsic_call_with_retptr(void **retptr,
+				void *env,
+				type_desc *ty,
+				rust_fn *recvfn) {
+    retptr_fn fn = ((retptr_fn)(recvfn->fn));
+    ((retptr_fn)(*fn))(NULL, recvfn->env, retptr);
 }
 
 extern "C" void
