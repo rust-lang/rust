@@ -15,6 +15,7 @@ const DW_VIRTUALITY_none: int = 0;
 const CompileUnitTag: int = 17;
 const FileDescriptorTag: int = 41;
 const SubprogramTag: int = 46;
+const SubroutineTag: int = 21;
 const BasicTypeDescriptorTag: int = 36;
 const AutoVariableTag: int = 256;
 const ArgVariableTag: int = 257;
@@ -54,8 +55,8 @@ fn llmdnode(elems: [ValueRef]) -> ValueRef unsafe {
 fn llunused() -> ValueRef {
     lli32(0x0)
 }
-fn llnull() -> ValueRef {
-    C_null(T_ptr(T_nil()))
+fn llnull() -> ValueRef unsafe {
+    unsafe::reinterpret_cast(std::ptr::null::<ValueRef>())
 }
 
 fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
@@ -191,10 +192,8 @@ fn get_block_metadata(cx: @block_ctxt) -> @metadata<block_md> {
       option::none. {}
     }
     let parent = alt cx.parent {
-      trans_common::parent_none. { llnull() }
-      trans_common::parent_some(bcx) {
-        get_block_metadata(bcx).node
-      }
+      trans_common::parent_none. { function_metadata_from_block(cx).node }
+      trans_common::parent_some(bcx) { get_block_metadata(cx).node }
     };
     let file_node = get_file_metadata(bcx_ccx(cx), fname);
     let unique_id = alt cache.find(LexicalBlockTag) {
@@ -259,6 +258,14 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
     ret mdval;
 }
 
+fn function_metadata_from_block(bcx: @block_ctxt) -> @metadata<subprogram_md> {
+    let cx = bcx_ccx(bcx);
+    let fcx = bcx_fcx(bcx);
+    let fn_node = cx.ast_map.get(fcx.id);
+    let fn_item = alt fn_node { ast_map::node_item(item) { item } };
+    get_function_metadata(cx, fn_item, fcx.llfn)
+}
+
 fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
     -> @metadata<local_var_md> unsafe {
     let cx = bcx_ccx(bcx);
@@ -276,9 +283,12 @@ fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
     let ty = trans::node_id_type(cx, local.node.id);
     let tymd = get_ty_metadata(cx, ty, local.node.ty);
     let filemd = get_file_metadata(cx, loc.filename);
-    let blockmd = get_block_metadata(bcx);
+    let context = alt bcx.parent {
+      trans_common::parent_none. { function_metadata_from_block(bcx).node }
+      trans_common::parent_some(_) { get_block_metadata(bcx).node }
+    };
     let lldata = [lltag(AutoVariableTag),
-                  blockmd.node, //XXX block context (maybe subprogram if possible?)
+                  context, // context
                   llstr(name), // name
                   filemd.node,
                   lli32(loc.line as int), // line
@@ -388,6 +398,21 @@ fn get_function_metadata(cx: @crate_ctxt, item: @ast::item,
       _ { get_ty_metadata(cx, ty::node_id_to_type(ccx_tcx(cx), item.id),
                           ret_ty).node }
     };
+    let sub_type = llmdnode([ty_node]);
+    let sub_metadata = [lltag(SubroutineTag),
+                        file_node,
+                        llstr(""),
+                        file_node,
+                        lli32(0),
+                        lli64(0),
+                        lli64(0),
+                        lli64(0),
+                        lli32(0),
+                        llnull(),
+                        sub_type,
+                        lli32(0),
+                        llnull()];
+    let sub_node = llmdnode(sub_metadata);
     let fn_metadata = [lltag(SubprogramTag),
                        llunused(),
                        file_node,
@@ -396,7 +421,7 @@ fn get_function_metadata(cx: @crate_ctxt, item: @ast::item,
                        llstr(mangled), //XXX MIPS name?????
                        file_node,
                        lli32(loc.line as int),
-                       ty_node,
+                       sub_node,
                        lli1(false), //XXX static (check export)
                        lli1(true), // not extern
                        lli32(DW_VIRTUALITY_none), // virtual-ness
