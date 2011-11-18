@@ -806,7 +806,7 @@ fn C_i32(i: i32) -> ValueRef {
 }
 
 fn C_i64(i: i64) -> ValueRef {
-    ret C_integral(T_i64(), i as uint, True);
+    ret C_integral(T_i64(), i as u64, True);
 }
 
 fn C_int(cx: @crate_ctxt, i: int) -> ValueRef {
