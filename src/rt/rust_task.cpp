@@ -330,8 +330,6 @@ rust_task::fail() {
 
 void
 rust_task::conclude_failure() {
-    // Unblock the task so it can unwind.
-    unblock();
     fail_parent();
     failed = true;
     yield(4);
