@@ -125,25 +125,39 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
     attr::require_unique_names(sess, metas);
     let metas = metas;
 
-    // Metadata "name" will be used to find the crate. Use `ident'
-    // as "name" if the attribute is not explicitly specified
-    if !attr::contains_name(metas, "name") {
-      metas += [attr::mk_name_value_item_str("name", ident)];
-    }
+    let crate_name =
+        {
+            let name_items = attr::find_meta_items_by_name(metas, "name");
+            alt vec::last(name_items) {
+              some(i) {
+                alt attr::get_meta_item_value_str(i) {
+                  some(n) { n }
+                  // FIXME: Probably want a warning here since the user
+                  // is using the wrong type of meta item
+                  _ { ident }
+                }
+              }
+              none. { ident }
+            }
+        };
+
     let nn = default_native_lib_naming(sess, sess.get_opts().static);
     let x =
-        find_library_crate_aux(sess, nn, metas, sess.filesearch());
+        find_library_crate_aux(sess, nn, crate_name,
+                               metas, sess.filesearch());
     if x != none || sess.get_opts().static { ret x; }
     let nn2 = default_native_lib_naming(sess, true);
-    ret find_library_crate_aux(sess, nn2, metas, sess.filesearch());
+    ret find_library_crate_aux(sess, nn2, crate_name, metas,
+                               sess.filesearch());
 }
 
 fn find_library_crate_aux(sess: session::session,
                           nn: {prefix: str, suffix: str},
+                          crate_name: str,
                           metas: [@ast::meta_item],
                           filesearch: filesearch::filesearch) ->
    option::t<{ident: str, data: @[u8]}> {
-    let prefix: str = nn.prefix;
+    let prefix: str = nn.prefix + crate_name;
     let suffix: str = nn.suffix;
 
     ret filesearch::search(filesearch, { |path|
