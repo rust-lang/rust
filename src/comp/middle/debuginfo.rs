@@ -221,7 +221,7 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
       option::some(md) { ret md; }
       option::none. {}
     }
-    let (name, size, flags) = alt ty.node {
+    let (name, size, encoding) = alt ty.node {
       ast::ty_bool. { ("bool", 1, DW_ATE_boolean) }
       ast::ty_int. { ("int", 32, DW_ATE_signed) } //XXX machine-dependent?
       ast::ty_uint. { ("uint", 32, DW_ATE_unsigned) } //XXX machine-dependent?
@@ -240,15 +240,19 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
       } }
       ast::ty_char. { ("char", 32, DW_ATE_unsigned) }
     };
+    let fname = filename_from_span(cx, ty.span);
+    let file_node = get_file_metadata(cx, fname);
+    let cu_node = get_compile_unit_metadata(cx, fname);
     let lldata = [lltag(BasicTypeDescriptorTag),
-                  llunused(), //XXX scope context
+                  cu_node.node,
                   llstr(name),
-                  llnull(), //XXX basic types only
+                  file_node.node,
                   lli32(0), //XXX basic types only
                   lli64(size),
                   lli64(32), //XXX alignment?
                   lli64(0), //XXX offset?
-                  lli32(flags)];
+                  lli32(0), //XXX flags?
+                  lli32(encoding)];
     let llnode = llmdnode(lldata);
     let mdval = @{node: llnode, data: {hash: ty::hash_ty(t)}};
     update_cache(cache, BasicTypeDescriptorTag, tydesc_metadata(mdval));
@@ -264,6 +268,10 @@ fn function_metadata_from_block(bcx: @block_ctxt) -> @metadata<subprogram_md> {
     let fn_node = cx.ast_map.get(fcx.id);
     let fn_item = alt fn_node { ast_map::node_item(item) { item } };
     get_function_metadata(cx, fn_item, fcx.llfn)
+}
+
+fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> str {
+    codemap::lookup_char_pos(cx.sess.get_codemap(), sp.lo).filename
 }
 
 fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
@@ -293,8 +301,7 @@ fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
                   filemd.node,
                   lli32(loc.line as int), // line
                   tymd.node,
-                  lli32(0), //XXX flags
-                  llnull() // inline loc reference
+                  lli32(0) //XXX flags
                  ];
     let mdnode = llmdnode(lldata);
     let mdval = @{node: mdnode, data: {id: local.node.id}};
@@ -310,9 +317,6 @@ fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
     let declargs = [llmdnode([llptr]), mdnode];
     trans_build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
                       declargs);
-    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.vars"),
-                                      str::byte_len("llvm.dbg.vars"),
-                                      mdnode);
     ret mdval;
 }
 

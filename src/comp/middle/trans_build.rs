@@ -670,7 +670,7 @@ fn Call(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     unsafe {
         let instr = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
                                         vec::len(Args), noname());
-        //debuginfo::add_line_info(cx, instr);
+        debuginfo::add_line_info(cx, instr);
         ret instr;
     }
 }
