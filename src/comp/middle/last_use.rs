@@ -3,6 +3,24 @@ import syntax::ast::*;
 import std::list::{list, nil, cons, tail};
 import std::{vec, list, option};
 
+// Last use analysis pass.
+//
+// Finds the last read of each value stored in a local variable or
+// callee-owned argument (arguments with by-move or by-copy passing
+// style). This is a limited form of liveness analysis, peformed
+// (perhaps foolishly) directly on the AST.
+//
+// The algorithm walks the AST, keeping a set of (def, last_use)
+// pairs. When the function is exited, or the local is overwritten,
+// the current set of last uses is marked with 'true' in a table.
+// Other branches may later overwrite them with 'false' again, since
+// they may find a use coming after them. (Marking an expression as a
+// last use is only done if it has not already been marked with
+// 'false'.)
+//
+// Some complexity is added to deal with joining control flow branches
+// (by `break` or conditionals), and for handling loops.
+
 // Marks expr_paths that are last uses.
 type last_uses = std::map::hashmap<node_id, ()>;
 

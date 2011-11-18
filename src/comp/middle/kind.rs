@@ -3,6 +3,21 @@ import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
 
+// Kind analysis pass. There are three kinds:
+//
+//  sendable: scalar types, and unique types containing only sendable types
+//  copyable: boxes, objects, closures, and uniques containing copyable types
+//  noncopyable: resources, or unique types containing resources
+//
+// This pass ensures that type parameters are only instantiated with types
+// whose kinds are equal or less general than the way the type parameter was
+// annotated (with the `send` or `copy` keyword).
+//
+// It also verifies that noncopyable kinds are not copied. Sendability is not
+// applied, since none of our language primitives send. Instead, the sending
+// primitives in the stdlib are explicitly annotated to only take sendable
+// types.
+
 fn kind_to_str(k: kind) -> str {
     alt k {
       kind_sendable. { "sendable" }
