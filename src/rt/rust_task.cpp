@@ -278,6 +278,10 @@ rust_task::yield(size_t time_in_us) {
         unblock();
         fail();
     }
+
+    // FIXME: If we are blocked, and get killed right here then we may never
+    // know it.
+
     yield_timer.reset_us(time_in_us);
 
     // Return to the scheduler.
@@ -468,8 +472,11 @@ rust_task::die() {
 
 void
 rust_task::unblock() {
-    if (blocked())
+    if (blocked()) {
+        // FIXME: What if another thread unblocks the task between when
+        // we checked and here?
         wakeup(cond);
+    }
 }
 
 rust_crate_cache *
