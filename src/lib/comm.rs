@@ -49,7 +49,8 @@ native mod rustrt {
     fn get_port_id(po: *rust_port) -> port_id;
     fn rust_port_size(po: *rust_port) -> ctypes::size_t;
     fn port_recv(dptr: *uint, po: *rust_port,
-                 yield: *ctypes::uintptr_t);
+                 yield: *ctypes::uintptr_t,
+                 killed: *ctypes::uintptr_t);
 }
 
 #[abi = "rust-intrinsic"]
@@ -152,18 +153,27 @@ fn recv_<send T>(p: *rustrt::rust_port) -> T {
     // that will grab the value of the return pointer, then call this
     // function, which we will then use to call the runtime.
     fn recv(dptr: *uint, port: *rustrt::rust_port,
-                    yield: *ctypes::uintptr_t) unsafe {
-        rustrt::port_recv(dptr,
-                          port, yield);
+            yield: *ctypes::uintptr_t,
+            killed: *ctypes::uintptr_t) unsafe {
+        rustrt::port_recv(dptr, port, yield, killed);
     }
     let yield = 0u;
     let yieldp = ptr::addr_of(yield);
-    let res = rusti::call_with_retptr(bind recv(_, p, yieldp));
+    let killed = 0u;
+    let killedp = ptr::addr_of(killed);
+    let res = rusti::call_with_retptr(bind recv(_, p, yieldp, killedp));
+    if killed != 0u {
+        fail_killed();
+    }
     if yield != 0u {
         // Data isn't available yet, so res has not been initialized.
         task::yield();
     }
     ret res;
+}
+
+fn fail_killed() -> ! {
+    fail "killed";
 }
 
 /*

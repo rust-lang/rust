@@ -272,13 +272,9 @@ rust_task::yield(size_t time_in_us) {
         name, this, time_in_us);
 
     if (killed) {
-        // Receive may have blocked before yielding
-        unblock();
+        A(sched, !blocked(), "Shouldn't be blocked before failing");
         fail();
     }
-
-    // FIXME: If we are blocked, and get killed right here then we may never
-    // know it.
 
     yield_timer.reset_us(time_in_us);
 
