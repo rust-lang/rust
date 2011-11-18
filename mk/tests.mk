@@ -80,24 +80,27 @@ check-fast: tidy \
 	test/$(FT_DRIVER).out
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
+ifdef CFG_NOTIDY
 tidy:
-	@$(call E, check: formatting)
-	$(Q)echo \
-	    $(addprefix $(S)src/, $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS) \
-	      $(RUSTLLVM_HDR) \
-              $(RUNTIME_CS) $(RUNTIME_HDR) $(RUNTIME_S)) \
-            $(wildcard $(S)src/etc/*.py)  \
-            $(COMPILER_CRATE) \
-            $(COMPILER_INPUTS) \
-            $(STDLIB_CRATE) \
-            $(STDLIB_INPUTS) \
-            $(COMPILETEST_CRATE) \
-            $(COMPILETEST_INPUTS) \
-	  | xargs -n 10 python $(S)src/etc/tidy.py
-	$(Q)echo \
-            $(ALL_TEST_INPUTS) \
-	  | xargs -n 10 python $(S)src/etc/tidy.py
-
+else
+tidy:
+		@$(call E, check: formatting)
+		$(Q)echo \
+	  	  $(addprefix $(S)src/, $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS) \
+	    	  $(RUSTLLVM_HDR) \
+                $(RUNTIME_CS) $(RUNTIME_HDR) $(RUNTIME_S)) \
+              $(wildcard $(S)src/etc/*.py)  \
+              $(COMPILER_CRATE) \
+              $(COMPILER_INPUTS) \
+              $(STDLIB_CRATE) \
+              $(STDLIB_INPUTS) \
+              $(COMPILETEST_CRATE) \
+              $(COMPILETEST_INPUTS) \
+		  | xargs -n 10 python $(S)src/etc/tidy.py
+		$(Q)echo \
+              $(ALL_TEST_INPUTS) \
+	  	| xargs -n 10 python $(S)src/etc/tidy.py
+endif
 
 ######################################################################
 # Rules for the test runners
