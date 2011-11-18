@@ -3621,13 +3621,19 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
         }
     } else if arg.mode == ast::by_copy {
         let {bcx: cx, val: alloc} = alloc_ty(bcx, e_ty);
+        let last_use = ccx.last_uses.contains_key(e.id);
         bcx = cx;
         if lv.kind == temporary { revoke_clean(bcx, val); }
         if lv.kind == owned || !ty::type_is_immediate(ccx.tcx, e_ty) {
             bcx = memmove_ty(bcx, alloc, val, e_ty);
+            if last_use && ty::type_needs_drop(ccx.tcx, e_ty) {
+                bcx = zero_alloca(bcx, val, e_ty);
+            }
         } else { Store(bcx, val, alloc); }
         val = alloc;
-        if lv.kind != temporary { bcx = take_ty(bcx, val, e_ty); }
+        if lv.kind != temporary && !last_use {
+            bcx = take_ty(bcx, val, e_ty);
+        }
     } else if ty::type_is_immediate(ccx.tcx, e_ty) && lv.kind != owned {
         let r = do_spill(bcx, val, e_ty);
         val = r.val;
