@@ -23,9 +23,7 @@ type def_id = {crate: crate_num, node: node_id};
 
 const local_crate: crate_num = 0;
 
-tag plicit<T> { explicit(T); implicit(T); }
-
-type ty_param = {ident: ident, kind: plicit<kind>};
+type ty_param = {ident: ident, kind: kind};
 
 tag def {
     def_fn(def_id, purity);

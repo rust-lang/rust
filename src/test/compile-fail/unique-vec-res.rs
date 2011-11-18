@@ -1,12 +1,10 @@
-// error-pattern: needed shared type, got pinned type ~r
-// xfail-test
+// error-pattern: copying a noncopyable value
 
 resource r(i: @mutable int) {
     *i = *i + 1;
 }
 
-fn f<T>(i: [T], j: [T]) {
-    // Shouldn't be able to do this copy of j
+fn f<T>(+i: [T], +j: [T]) {
     let k = i + j;
 }
 
@@ -16,6 +14,6 @@ fn main() {
     let r1 <- [~r(i1)];
     let r2 <- [~r(i2)];
     f(r1, r2);
-    log_err *i1;
-    log_err *i2;
+    log (r2, *i1);
+    log (r1, *i2);
 }

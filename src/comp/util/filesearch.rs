@@ -55,7 +55,7 @@ fn mk_filesearch(maybe_sysroot: option::t<fs::path>,
 }
 
 // FIXME #1001: This can't be an obj method
-fn search<T>(filesearch: filesearch, pick: pick<T>) -> option::t<T> {
+fn search<copy T>(filesearch: filesearch, pick: pick<T>) -> option::t<T> {
     for lib_search_path in filesearch.lib_search_paths() {
         log #fmt["searching %s", lib_search_path];
         for path in fs::list_dir(lib_search_path) {

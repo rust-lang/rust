@@ -39,7 +39,7 @@ Function: lefts
 
 Extracts from a vector of either all the left values.
 */
-fn lefts<T, U>(eithers: [t<T, U>]) -> [T] {
+fn lefts<copy T, U>(eithers: [t<T, U>]) -> [T] {
     let result: [T] = [];
     for elt: t<T, U> in eithers {
         alt elt { left(l) { result += [l]; } _ {/* fallthrough */ } }
@@ -52,7 +52,7 @@ Function: rights
 
 Extracts from a vector of either all the right values
 */
-fn rights<T, U>(eithers: [t<T, U>]) -> [U] {
+fn rights<T, copy U>(eithers: [t<T, U>]) -> [U] {
     let result: [U] = [];
     for elt: t<T, U> in eithers {
         alt elt { right(r) { result += [r]; } _ {/* fallthrough */ } }
@@ -68,7 +68,8 @@ Extracts from a vector of either all the left values and right values
 Returns a structure containing a vector of left values and a vector of
 right values.
 */
-fn partition<T, U>(eithers: [t<T, U>]) -> {lefts: [T], rights: [U]} {
+fn partition<copy T, copy U>(eithers: [t<T, U>])
+    -> {lefts: [T], rights: [U]} {
     let lefts: [T] = [];
     let rights: [U] = [];
     for elt: t<T, U> in eithers {

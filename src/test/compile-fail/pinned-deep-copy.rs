@@ -1,5 +1,4 @@
-// error-pattern: cannot copy pinned type ~~~{y: r}
-// xfail-test
+// error-pattern: copying a noncopyable value
 
 resource r(i: @mutable int) {
     *i = *i + 1;
@@ -11,6 +10,7 @@ fn main() {
         // Can't do this copy
         let x = ~~~{y: r(i)};
         let z = x;
+        log x;
     }
     log_err *i;
 }

@@ -20,8 +20,8 @@ Merge sort. Returns a new vector containing the sorted list.
 Has worst case O(n log n) performance, best case O(n), but
 is not space efficient. This is a stable sort.
 */
-fn merge_sort<T>(le: lteq<T>, v: [const T]) -> [T] {
-    fn merge<T>(le: lteq<T>, a: [T], b: [T]) -> [T] {
+fn merge_sort<copy T>(le: lteq<T>, v: [const T]) -> [T] {
+    fn merge<copy T>(le: lteq<T>, a: [T], b: [T]) -> [T] {
         let rs: [T] = [];
         let a_len: uint = len::<T>(a);
         let a_ix: uint = 0u;
@@ -46,30 +46,24 @@ fn merge_sort<T>(le: lteq<T>, v: [const T]) -> [T] {
     ret merge::<T>(le, merge_sort::<T>(le, a), merge_sort::<T>(le, b));
 }
 
-fn swap<T>(arr: [mutable T], x: uint, y: uint) {
-    let a = arr[x];
-    arr[x] = arr[y];
-    arr[y] = a;
-}
-
-fn part<T>(compare_func: lteq<T>, arr: [mutable T], left: uint, right: uint,
-            pivot: uint) -> uint {
+fn part<copy T>(compare_func: lteq<T>, arr: [mutable T], left: uint,
+                right: uint, pivot: uint) -> uint {
     let pivot_value = arr[pivot];
-    swap::<T>(arr, pivot, right);
+    arr[pivot] <-> arr[right];
     let storage_index: uint = left;
     let i: uint = left;
     while i < right {
-        if compare_func({ arr[i] }, pivot_value) {
-            swap::<T>(arr, i, storage_index);
+        if compare_func(copy arr[i], pivot_value) {
+            arr[i] <-> arr[storage_index];
             storage_index += 1u;
         }
         i += 1u;
     }
-    swap::<T>(arr, storage_index, right);
+    arr[storage_index] <-> arr[right];
     ret storage_index;
 }
 
-fn qsort<T>(compare_func: lteq<T>, arr: [mutable T], left: uint,
+fn qsort<copy T>(compare_func: lteq<T>, arr: [mutable T], left: uint,
              right: uint) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -90,13 +84,13 @@ Quicksort. Sorts a mutable vector in place.
 Has worst case O(n^2) performance, average case O(n log n).
 This is an unstable sort.
 */
-fn quick_sort<T>(compare_func: lteq<T>, arr: [mutable T]) {
+fn quick_sort<copy T>(compare_func: lteq<T>, arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
 
-fn qsort3<T>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
-              arr: [mutable T], left: int, right: int) {
+fn qsort3<copy T>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
+                  arr: [mutable T], left: int, right: int) {
     if right <= left { ret; }
     let v: T = arr[right];
     let i: int = left - 1;
@@ -105,36 +99,36 @@ fn qsort3<T>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
     let q: int = j;
     while true {
         i += 1;
-        while compare_func_lt({ arr[i] }, v) { i += 1; }
+        while compare_func_lt(copy arr[i], v) { i += 1; }
         j -= 1;
-        while compare_func_lt(v, { arr[j] }) {
+        while compare_func_lt(v, copy arr[j]) {
             if j == left { break; }
             j -= 1;
         }
         if i >= j { break; }
-        swap::<T>(arr, i as uint, j as uint);
-        if compare_func_eq({ arr[i] }, v) {
+        arr[i] <-> arr[j];
+        if compare_func_eq(copy arr[i], v) {
             p += 1;
-            swap::<T>(arr, p as uint, i as uint);
+            arr[p] <-> arr[i];
         }
-        if compare_func_eq(v, { arr[j] }) {
+        if compare_func_eq(v, copy arr[j]) {
             q -= 1;
-            swap::<T>(arr, j as uint, q as uint);
+            arr[j] <-> arr[q];
         }
     }
-    swap::<T>(arr, i as uint, right as uint);
+    arr[i] <-> arr[right];
     j = i - 1;
     i += 1;
     let k: int = left;
     while k < p {
-        swap::<T>(arr, k as uint, j as uint);
+        arr[k] <-> arr[j];
         k += 1;
         j -= 1;
         if k == len::<T>(arr) as int { break; }
     }
     k = right - 1;
     while k > q {
-        swap::<T>(arr, i as uint, k as uint);
+        arr[i] <-> arr[k];
         k -= 1;
         i += 1;
         if k == 0 { break; }
@@ -156,8 +150,8 @@ According to these slides this is the algorithm of choice for
 
 This is an unstable sort.
 */
-fn quick_sort3<T>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
-                  arr: [mutable T]) {
+fn quick_sort3<copy T>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
+                       arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort3::<T>(compare_func_lt, compare_func_eq, arr, 0,
                 (len::<T>(arr) as int) - 1);

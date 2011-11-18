@@ -25,7 +25,7 @@ Function: from_vec
 
 Create a list from a vector
 */
-fn from_vec<T>(v: [const T]) -> list<T> {
+fn from_vec<copy T>(v: [const T]) -> list<T> {
     *vec::foldr({ |h, t| @cons(h, t) }, @nil::<T>, v)
 }
 
@@ -44,7 +44,7 @@ ls - The list to fold
 z - The initial value
 f - The function to apply
 */
-fn foldl<T, U>(ls: list<U>, z: T, f: block(T, U) -> T) -> T {
+fn foldl<copy T, copy U>(ls: list<U>, z: T, f: block(T, U) -> T) -> T {
     let accum: T = z;
     let ls = ls;
     while true {
@@ -65,7 +65,8 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<T, U>(ls: list<T>, f: block(T) -> option::t<U>) -> option::t<U> {
+fn find<copy T, copy U>(ls: list<T>, f: block(T) -> option::t<U>)
+    -> option::t<U> {
     let ls = ls;
     while true {
         alt ls {
@@ -83,7 +84,7 @@ Function: has
 
 Returns true if a list contains an element with the given value
 */
-fn has<T>(ls: list<T>, elt: T) -> bool {
+fn has<copy T>(ls: list<T>, elt: T) -> bool {
     let ls = ls;
     while true {
         alt ls {
@@ -99,7 +100,7 @@ Function: len
 
 Returns the length of a list
 */
-fn len<T>(ls: list<T>) -> uint {
+fn len<copy T>(ls: list<T>) -> uint {
     fn count<T>(&&u: uint, _t: T) -> uint { ret u + 1u; }
     ret foldl(ls, 0u, bind count(_, _));
 }
@@ -109,7 +110,7 @@ Function: tail
 
 Returns all but the first element of a list
 */
-fn tail<T>(ls: list<T>) -> list<T> {
+fn tail<copy T>(ls: list<T>) -> list<T> {
     alt ls { cons(_, tl) { ret *tl; } nil. { fail "list empty" } }
 }
 
@@ -118,7 +119,7 @@ Function: head
 
 Returns the first element of a list
 */
-fn head<T>(ls: list<T>) -> T {
+fn head<copy T>(ls: list<T>) -> T {
     alt ls { cons(hd, _) { ret hd; } nil. { fail "list empty" } }
 }
 
@@ -127,7 +128,7 @@ Function: append
 
 Appends one list to another
 */
-fn append<T>(l: list<T>, m: list<T>) -> list<T> {
+fn append<copy T>(l: list<T>, m: list<T>) -> list<T> {
     alt l {
       nil. { ret m; }
       cons(x, xs) { let rest = append(*xs, m); ret cons(x, @rest); }

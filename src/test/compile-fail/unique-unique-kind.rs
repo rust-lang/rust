@@ -1,7 +1,6 @@
-// error-pattern: needed unique type
-// xfail-test
+// error-pattern: instantiating a sendable type parameter with a copyable type
 
-fn f<uniq T>(i: T) {
+fn f<send T>(i: T) {
 }
 
 fn main() {

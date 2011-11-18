@@ -1,6 +1,6 @@
-type recbox<T> = {x: ~T};
+type recbox<copy T> = {x: ~T};
 
-fn reclift<T>(t: T) -> recbox<T> { ret {x: ~t}; }
+fn reclift<copy T>(t: T) -> recbox<T> { ret {x: ~t}; }
 
 fn main() {
     let foo: int = 17;

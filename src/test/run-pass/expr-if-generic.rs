@@ -6,7 +6,7 @@
 // Tests for if as expressions with dynamic type sizes
 type compare<T> = fn@(T, T) -> bool;
 
-fn test_generic<T>(expected: T, not_expected: T, eq: compare<T>) {
+fn test_generic<copy T>(expected: T, not_expected: T, eq: compare<T>) {
     let actual: T = if true { expected } else { not_expected };
     assert (eq(expected, actual));
 }

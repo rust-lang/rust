@@ -5,7 +5,7 @@ import std::comm::port;
 import std::comm::send;
 import std::comm::recv;
 
-fn echo<uniq T>(c: chan<T>, oc: chan<chan<T>>) {
+fn echo<send T>(c: chan<T>, oc: chan<chan<T>>) {
     // Tests that the type argument in port gets
     // visited
     let p = port::<T>();

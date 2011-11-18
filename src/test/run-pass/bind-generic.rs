@@ -1,4 +1,4 @@
-fn wrapper3<T>(i: T, j: int) {
+fn wrapper3<copy T>(i: T, j: int) {
     log i;
     log j;
     // This is a regression test that the spawn3 thunk to wrapper3
@@ -6,7 +6,7 @@ fn wrapper3<T>(i: T, j: int) {
     assert j == 123456789;
 }
 
-fn spawn3<T>(i: T, j: int) {
+fn spawn3<copy T>(i: T, j: int) {
     let wrapped = bind wrapper3(i, j);
     wrapped();
 }

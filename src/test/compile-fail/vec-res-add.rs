@@ -1,12 +1,11 @@
-// error-pattern:mismatched kinds
-// xfail-test
+// error-pattern: copying a noncopyable value
 
-resource r(i: int) {
-}
+resource r(_i: int) { }
 
 fn main() {
     // This can't make sense as it would copy the resources
     let i <- [r(0)];
     let j <- [r(1)];
     let k = i + j;
+    log j;
 }

@@ -1,8 +1,8 @@
 tag myvec<X> = [X];
 
-fn myvec_deref<X>(mv: myvec<X>) -> [X] { ret *mv; }
+fn myvec_deref<copy X>(mv: myvec<X>) -> [X] { ret *mv; }
 
-fn myvec_elt<X>(mv: myvec<X>) -> X { ret mv[0]; }
+fn myvec_elt<copy X>(mv: myvec<X>) -> X { ret mv[0]; }
 
 fn main() {
     let mv = myvec([1, 2, 3]);

@@ -1,11 +1,10 @@
-// error-pattern: mismatched kind
-// xfail-test
+// error-pattern: copying a noncopyable value
 
 resource r(b: bool) {
 }
 
 fn main() {
     let i <- ~r(true);
-    let j;
-    j = i;
+    let j = i;
+    log i;
 }

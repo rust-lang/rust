@@ -1,5 +1,4 @@
-// error-pattern: needed shared type, got pinned type block
-// xfail-test
+// error-pattern: copying a noncopyable value
 
 fn lol(f: block()) -> block() { ret f; }
 fn main() { let i = 8; let f = lol(block () { log_err i; }); f(); }

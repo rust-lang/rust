@@ -73,11 +73,11 @@ Function: min
 
 Returns the minimum of two values
 */
-fn min<T>(x: T, y: T) -> T { x < y ? x : y }
+fn min<copy T>(x: T, y: T) -> T { x < y ? x : y }
 
 /*
 Function: max
 
 Returns the maximum of two values
 */
-fn max<T>(x: T, y: T) -> T { x < y ? y : x }
+fn max<copy T>(x: T, y: T) -> T { x < y ? y : x }

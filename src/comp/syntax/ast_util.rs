@@ -2,7 +2,9 @@ import std::{str, option};
 import codemap::span;
 import ast::*;
 
-fn respan<T>(sp: span, t: T) -> spanned<T> { ret {node: t, span: sp}; }
+fn respan<copy T>(sp: span, t: T) -> spanned<T> {
+    ret {node: t, span: sp};
+}
 
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {
@@ -186,7 +188,7 @@ fn eq_def_id(&&a: def_id, &&b: def_id) -> bool {
     a == b
 }
 
-fn new_def_id_hash<T>() -> std::map::hashmap<def_id, T> {
+fn new_def_id_hash<copy T>() -> std::map::hashmap<def_id, T> {
     std::map::mk_hashmap(hash_def_id, eq_def_id)
 }
 
@@ -228,9 +230,7 @@ fn ret_by_ref(style: ret_style) -> bool {
     }
 }
 
-fn ty_param_kind(tp: ty_param) -> kind {
-    alt tp.kind { ast::implicit(x) | ast::explicit(x) { x } }
-}
+fn ty_param_kind(tp: ty_param) -> kind { tp.kind }
 
 // Local Variables:
 // mode: rust
