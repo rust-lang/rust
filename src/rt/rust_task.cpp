@@ -277,7 +277,6 @@ rust_task::yield(size_t time_in_us) {
 
     if (killed && !dead()) {
         unblock();
-        killed = false;
         fail();
     }
     yield_timer.reset_us(time_in_us);
@@ -286,7 +285,6 @@ rust_task::yield(size_t time_in_us) {
     ctx.next->swap(ctx);
 
     if (killed) {
-        killed = false;
         fail();
     }
 }
