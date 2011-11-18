@@ -9,9 +9,6 @@
 #include <cstring>
 
 extern "C" CDECL void
-port_recv(uintptr_t *dptr, rust_port *port);
-
-extern "C" CDECL void
 rust_task_sleep(rust_task *task, size_t time_in_us, bool *killed);
 
 extern "C" void
