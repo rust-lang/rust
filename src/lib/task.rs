@@ -146,6 +146,7 @@ time_in_us - maximum number of microseconds to yield control for
 fn sleep(time_in_us: uint) {
     let task = rustrt::rust_get_task();
     let killed = false;
+    log #fmt("yielding for %u us", time_in_us);
     rusti::task_sleep(task, time_in_us, killed);
     if killed {
         fail "killed";
