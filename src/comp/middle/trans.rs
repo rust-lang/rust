@@ -4079,7 +4079,7 @@ fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
 
 // Call this to compile an expression that you need as an intermediate value,
 // and you want to know whether you're dealing with an lval or not (the kind
-// field in the returned struct). For non-immediates, use trans_expr or
+// field in the returned struct). For non-intermediates, use trans_expr or
 // trans_expr_save_in. For intermediates where you don't care about lval-ness,
 // use trans_temp_expr.
 fn trans_temp_lval(bcx: @block_ctxt, e: @ast::expr) -> lval_result {

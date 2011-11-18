@@ -1143,7 +1143,7 @@ fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
           }
           _ { false }
         };
-    }) && type_kind(cx, t) != ast::kind_noncopyable;
+    }) && type_kind(cx, ty) != ast::kind_noncopyable;
 }
 
 fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
