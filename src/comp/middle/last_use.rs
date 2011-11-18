@@ -31,7 +31,13 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map, tcx: ty::ctxt)
               mutable blocks: nil};
     visit::visit_crate(*c, cx, v);
     let mini_table = std::map::new_int_hash();
-    cx.last_uses.items {|key, val| if val { mini_table.insert(key, ()); }}
+    cx.last_uses.items {|key, val|
+        if val {
+            mini_table.insert(key, ());
+            let def_node = ast_util::def_id_of_def(def_map.get(key)).node;
+            mini_table.insert(def_node, ());
+        }
+    }
     ret mini_table;
 }
 

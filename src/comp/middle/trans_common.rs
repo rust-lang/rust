@@ -102,6 +102,7 @@ type crate_ctxt =
      tcx: ty::ctxt,
      mut_map: mut::mut_map,
      copy_map: alias::copy_map,
+     last_uses: last_use::last_uses,
      stats: stats,
      upcalls: @upcall::upcalls,
      rust_object_type: TypeRef,
@@ -283,7 +284,7 @@ fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
 // to a system where we can also cancel the cleanup on local variables, but
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
-fn revoke_clean(cx: @block_ctxt, val: ValueRef) -> @block_ctxt {
+fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
     let sc_cx = find_scope_cx(cx);
     let found = -1;
     let i = 0;
@@ -296,16 +297,21 @@ fn revoke_clean(cx: @block_ctxt, val: ValueRef) -> @block_ctxt {
         }
         i += 1;
     }
-    // The value does not have a cleanup associated with it. Might be a
-    // constant or some immediate value.
-    if found == -1 { ret cx; }
+    // The value does not have a cleanup associated with it. Continue to next
+    // scope.
+    if found == -1 {
+        alt sc_cx.parent {
+          parent_some(parent) { revoke_clean(parent, val); } _ {}
+        }
+        ret;
+    }
     // We found the cleanup and remove it
     sc_cx.cleanups =
         std::vec::slice(sc_cx.cleanups, 0u, found as uint) +
             std::vec::slice(sc_cx.cleanups, (found as uint) + 1u,
                             std::vec::len(sc_cx.cleanups));
     sc_cx.lpad_dirty = true;
-    ret cx;
+    ret;
 }
 
 fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)

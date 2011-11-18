@@ -2099,13 +2099,15 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         Store(cx, src_val, dst);
         if src.kind == owned { ret zero_alloca(cx, src.val, t); }
         // If we're here, it must be a temporary.
-        ret revoke_clean(cx, src_val);
+        revoke_clean(cx, src_val);
+        ret cx;
     } else if type_is_structural_or_param(tcx, t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         cx = memmove_ty(cx, dst, src_val, t);
         if src.kind == owned { ret zero_alloca(cx, src_val, t); }
         // If we're here, it must be a temporary.
-        ret revoke_clean(cx, src_val);
+        revoke_clean(cx, src_val);
+        ret cx;
     }
     /* FIXME: suggests a type constraint */
     bcx_ccx(cx).sess.bug("unexpected type in trans::move_val: " +
@@ -2113,9 +2115,10 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
 }
 
 fn store_temp_expr(cx: @block_ctxt, action: copy_action, dst: ValueRef,
-                   src: lval_result, t: ty::t) -> @block_ctxt {
+                   src: lval_result, t: ty::t, last_use: bool)
+    -> @block_ctxt {
     // Lvals in memory are not temporaries. Copy them.
-    if src.kind != temporary {
+    if src.kind != temporary && !last_use {
         let v = src.kind == owned ? load_if_immediate(cx, src.val, t)
                                   : src.val;
         ret copy_val(cx, action, dst, v, t);
@@ -3887,9 +3890,7 @@ fn zero_and_revoke(bcx: @block_ctxt,
     for {v, t} in to_zero {
         bcx = zero_alloca(bcx, v, t);
     }
-    for {v, _} in to_revoke {
-        bcx = revoke_clean(bcx, v);
-    }
+    for {v, _} in to_revoke { revoke_clean(bcx, v); }
     ret bcx;
 }
 
@@ -4246,7 +4247,8 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         let {bcx, val: addr, kind} = trans_lval(src_r.bcx, dst);
         assert kind == owned;
         ret store_temp_expr(bcx, DROP_EXISTING, addr, src_r,
-                            ty::expr_ty(bcx_tcx(bcx), src));
+                            ty::expr_ty(bcx_tcx(bcx), src),
+                            bcx_ccx(bcx).last_uses.contains_key(src.id));
       }
       ast::expr_move(dst, src) {
         // FIXME: calculate copy init-ness in typestate.
@@ -4277,25 +4279,30 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
 }
 
 fn lval_to_dps(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
-    let lv = trans_lval(bcx, e);
+    let lv = trans_lval(bcx, e), ccx = bcx_ccx(bcx);
     let {bcx, val, kind} = lv;
-    let ty = ty::expr_ty(bcx_tcx(bcx), e);
+    let last_use = kind == owned && ccx.last_uses.contains_key(e.id);
+    let ty = ty::expr_ty(ccx.tcx, e);
     alt dest {
       by_val(cell) {
         if kind == temporary {
             revoke_clean(bcx, val);
             *cell = val;
-        } else if ty::type_is_immediate(bcx_tcx(bcx), ty) {
+        } else if last_use {
+            *cell = Load(bcx, val);
+            if ty::type_needs_drop(ccx.tcx, ty) {
+                bcx = zero_alloca(bcx, val, ty);
+            }
+        } else {
             if kind == owned { val = Load(bcx, val); }
             let {bcx: cx, val} = take_ty_immediate(bcx, val, ty);
             *cell = val;
             bcx = cx;
-        } else {
-            bcx = take_ty(bcx, val, ty);
-            *cell = Load(bcx, val);
         }
       }
-      save_in(loc) { bcx = store_temp_expr(bcx, INIT, loc, lv, ty); }
+      save_in(loc) {
+        bcx = store_temp_expr(bcx, INIT, loc, lv, ty, last_use);
+      }
       ignore. {}
     }
     ret bcx;
@@ -4807,8 +4814,10 @@ fn alloc_local(cx: @block_ctxt, local: @ast::local) -> @block_ctxt {
       ast::pat_bind(_) { true } _ { false }
     };
     // Do not allocate space for locals that can be kept immediate.
-    if is_simple && !bcx_ccx(cx).mut_map.contains_key(local.node.pat.id) &&
-        ty::type_is_immediate(bcx_tcx(cx), t) {
+    let ccx = bcx_ccx(cx);
+    if is_simple && !ccx.mut_map.contains_key(local.node.pat.id) &&
+       !ccx.last_uses.contains_key(local.node.pat.id) &&
+       ty::type_is_immediate(ccx.tcx, t) {
         alt local.node.init {
           some({op: ast::init_assign., _}) { ret cx; }
           _ {}
@@ -6027,7 +6036,8 @@ fn write_abi_version(ccx: @crate_ctxt) {
 
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, amap: ast_map::map, mut_map: mut::mut_map,
-               copy_map: alias::copy_map) -> ModuleRef {
+               copy_map: alias::copy_map, last_uses: last_use::last_uses)
+    -> ModuleRef {
     let sha = std::sha1::mk_sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
     let llmod = str::as_buf(link_meta.name, {|buf|
@@ -6088,6 +6098,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tcx: tcx,
           mut_map: mut_map,
           copy_map: copy_map,
+          last_uses: last_uses,
           stats:
               {mutable n_static_tydescs: 0u,
                mutable n_derived_tydescs: 0u,

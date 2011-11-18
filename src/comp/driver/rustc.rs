@@ -161,7 +161,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let llmod =
         time(time_passes, "translation",
              bind trans::trans_crate(sess, crate, ty_cx, output, ast_map,
-                                     mut_map, copy_map));
+                                     mut_map, copy_map, last_uses));
     time(time_passes, "LLVM passes",
          bind link::write::run_passes(sess, llmod, output));
 }
