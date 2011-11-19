@@ -508,8 +508,8 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
     return (uintptr_t)sent;
 }
 
-// This is called by an intrinsic on the Rust stack.
-// Do not call on the C stack.
+// This is called by an intrinsic on the Rust stack and must run
+// entirely in the red zone. Do not call on the C stack.
 extern "C" CDECL void
 rust_task_sleep(rust_task *task, size_t time_in_us, bool *killed) {
     task->yield(time_in_us, killed);
