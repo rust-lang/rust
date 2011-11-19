@@ -1,12 +1,14 @@
 use std;
 
 mod bitv;
+mod bool;
 mod box;
 mod char;
 mod comm;
 mod deque;
 mod either;
 mod float;
+mod four;
 mod fs;
 mod getopts;
 mod int;
@@ -32,6 +34,7 @@ mod str;
 mod sys;
 mod task;
 mod test;
+mod tri;
 mod treemap;
 mod uint;
 mod unsafe;
