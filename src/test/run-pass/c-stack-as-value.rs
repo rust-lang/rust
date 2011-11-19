@@ -1,5 +1,3 @@
-// xfail-test
-
 #[abi = "cdecl"]
 native mod rustrt {
     fn unsupervise();

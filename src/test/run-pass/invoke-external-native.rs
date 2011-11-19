@@ -1,5 +1,4 @@
-// xfail-test
-
+use std;
 import std::sys;
 
 // The purpose of this test is to check that we can
