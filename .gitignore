@@ -52,7 +52,7 @@ rustc
 TAGS
 version.ml
 version.texi
-./Makefile
+/Makefile
 config.mk
 /rt/
 /rustllvm/
@@ -63,6 +63,11 @@ src/.DS_Store
 /stage0/
 /dl/
 /stage1/
+/stage2/
+/stage3/
 *.bz2
 /doc/html
 /doc/latex
+/doc/std
+/nd/
+/llvm/
