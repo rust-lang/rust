@@ -13,6 +13,7 @@ mod int;
 mod io;
 mod json;
 mod list;
+mod logic;
 mod map;
 mod math;
 mod net;

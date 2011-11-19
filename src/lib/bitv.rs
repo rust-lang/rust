@@ -33,7 +33,7 @@ Type: t
 
 The bitvector type.
 */
-type t = @{storage: [mutable uint], nbits: uint};
+type t = {storage: [mutable uint], nbits: uint};
 
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);
@@ -50,7 +50,7 @@ init - If true then the bits are initialized to 1, otherwise 0
 fn create(nbits: uint, init: bool) -> t {
     let elt = if init { !0u } else { 0u };
     let storage = vec::init_elt_mut::<uint>(elt, nbits / uint_bits + 1u);
-    ret @{storage: storage, nbits: nbits};
+    ret {storage: storage, nbits: nbits};
 }
 
 fn process(op: block(uint, uint) -> uint, v0: t, v1: t) -> bool {
@@ -120,7 +120,7 @@ fn clone(v: t) -> t {
     let storage = vec::init_elt_mut::<uint>(0u, v.nbits / uint_bits + 1u);
     let len = vec::len(v.storage);
     uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
-    ret @{storage: storage, nbits: v.nbits};
+    ret {storage: storage, nbits: v.nbits};
 }
 
 /*
