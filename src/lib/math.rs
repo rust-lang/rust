@@ -10,6 +10,11 @@ native mod libc {
     fn acos(n: float) -> float;
     fn tan(n: float) -> float;
     fn atan(n: float) -> float;
+    #[link_name="log"]
+    fn ln(n: float) -> float;
+    fn log2(n: float) -> float;
+    fn log10(n: float) -> float;
+    fn log1p(n: float) -> float;
 }
 
 /*
@@ -81,3 +86,40 @@ Function: max
 Returns the maximum of two values
 */
 fn max<copy T>(x: T, y: T) -> T { x < y ? y : x }
+
+/*
+Const: e
+
+Euler's number
+*/
+const e: float = 2.718281828459045235;
+
+/*
+Function: ln
+
+Returns the natural logaritm
+*/
+fn ln(n: float) -> float { libc::ln(n) }
+
+/*
+Function: log2
+
+Returns the logarithm to base 2
+*/
+fn log2(n: float) -> float { libc::log2(n) }
+
+/*
+Function: log2
+
+Returns the logarithm to base 10
+*/
+fn log10(n: float) -> float { libc::log10(n) }
+
+
+/*
+Function: log1p
+
+Returns the natural logarithm of `1+n` accurately, 
+even for very small values of `n`
+*/
+fn ln1p(n: float) -> float { libc::log1p(n) }
