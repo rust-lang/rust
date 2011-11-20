@@ -7,7 +7,7 @@ import front::attr;
 import syntax::visit;
 import syntax::codemap::span;
 import util::{filesearch};
-import std::{vec, str, fs, io, option};
+import std::{either, vec, str, fs, io, option};
 import std::option::{none, some};
 import std::map::{hashmap, new_int_hash};
 import syntax::print::pprust;
@@ -49,9 +49,12 @@ fn visit_view_item(e: env, i: @ast::view_item) {
 fn visit_item(e: env, i: @ast::item) {
     alt i.node {
       ast::item_native_mod(m) {
-        if m.abi != ast::native_abi_cdecl &&
-                m.abi != ast::native_abi_stdcall {
-            ret;
+        alt attr::native_abi(i.attrs) {
+          either::right(abi) {
+            if abi != ast::native_abi_cdecl &&
+               abi != ast::native_abi_stdcall { ret; }
+          }
+          either::left(msg) { e.sess.span_fatal(i.span, msg); }
         }
         let cstore = e.sess.get_cstore();
         let native_name = i.ident;

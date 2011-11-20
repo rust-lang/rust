@@ -524,14 +524,14 @@ mod collect {
     }
     fn ty_of_native_fn_decl(cx: @ctxt, convert: fn@(&&@ast::ty) -> ty::t,
                             ty_of_arg: fn@(ast::arg) -> arg,
-                            decl: ast::fn_decl, abi: ast::native_abi,
+                            decl: ast::fn_decl,
                             ty_params: [ast::ty_param], def_id: ast::def_id)
        -> ty::ty_param_kinds_and_ty {
         let input_tys = [];
         for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(a)]; }
         let output_ty = convert(decl.output);
 
-        let t_fn = ty::mk_native_fn(cx.tcx, abi, input_tys, output_ty);
+        let t_fn = ty::mk_native_fn(cx.tcx, input_tys, output_ty);
         let tpt = {kinds: ty_param_kinds(ty_params), ty: t_fn};
         cx.tcx.tcache.insert(def_id, tpt);
         ret tpt;
@@ -546,8 +546,7 @@ mod collect {
         alt it {
           some(ast_map::node_item(item)) { tpt = ty_of_item(cx, item); }
           some(ast_map::node_native_item(native_item)) {
-            tpt = ty_of_native_item(cx, native_item,
-                                    ast::native_abi_cdecl);
+            tpt = ty_of_native_item(cx, native_item);
           }
           _ { cx.tcx.sess.fatal("internal error " + std::int::str(id.node)); }
         }
@@ -661,15 +660,15 @@ mod collect {
           ast::item_native_mod(_) { fail; }
         }
     }
-    fn ty_of_native_item(cx: @ctxt, it: @ast::native_item,
-                         abi: ast::native_abi) -> ty::ty_param_kinds_and_ty {
+    fn ty_of_native_item(cx: @ctxt, it: @ast::native_item)
+        -> ty::ty_param_kinds_and_ty {
         let no_kinds: [ast::kind] = [];
         alt it.node {
           ast::native_item_fn(fn_decl, params) {
             let get = bind getter(cx, _);
             let convert = bind ast_ty_to_ty(cx.tcx, get, _);
             let f = bind ty_of_arg(cx, _);
-            ret ty_of_native_fn_decl(cx, convert, f, fn_decl, abi, params,
+            ret ty_of_native_fn_decl(cx, convert, f, fn_decl, params,
                                      ast_util::local_def(it.id));
           }
           ast::native_item_ty. {
@@ -726,16 +725,13 @@ mod collect {
         }
         ret meths;
     }
-    fn convert(cx: @ctxt, abi: @mutable option::t<ast::native_abi>,
-               it: @ast::item) {
+    fn convert(cx: @ctxt, it: @ast::item) {
         alt it.node {
           ast::item_mod(_) {
             // ignore item_mod, it has no type.
           }
           ast::item_native_mod(native_mod) {
-            // Propagate the native ABI down to convert_native() below,
-            // but otherwise do nothing, as native modules have no types.
-            *abi = some::<ast::native_abi>(native_mod.abi);
+            // do nothing, as native modules have no types.
           }
           ast::item_tag(variants, ty_params) {
             let tpt = ty_of_item(cx, it);
@@ -804,14 +800,11 @@ mod collect {
           }
         }
     }
-    fn convert_native(cx: @ctxt, abi: @mutable option::t<ast::native_abi>,
-                      i: @ast::native_item) {
+    fn convert_native(cx: @ctxt, i: @ast::native_item) {
         // As above, this call populates the type table with the converted
         // type of the native item. We simply write it into the node type
         // table.
-        let tpt =
-            ty_of_native_item(cx, i,
-                              option::get::<ast::native_abi>({ *abi }));
+        let tpt = ty_of_native_item(cx, i);
         alt i.node {
           ast::native_item_ty. {
             // FIXME: Native types have no annotation. Should they? --pcw
@@ -822,14 +815,11 @@ mod collect {
         }
     }
     fn collect_item_types(tcx: ty::ctxt, crate: @ast::crate) {
-        // We have to propagate the surrounding ABI to the native items
-        // contained within the native module.
-        let abi = @mutable none::<ast::native_abi>;
         let cx = @{tcx: tcx};
         let visit =
-            visit::mk_simple_visitor(@{visit_item: bind convert(cx, abi, _),
+            visit::mk_simple_visitor(@{visit_item: bind convert(cx, _),
                                        visit_native_item:
-                                           bind convert_native(cx, abi, _)
+                                           bind convert_native(cx, _)
                                        with
                                           *visit::default_simple_visitor()});
         visit::visit_crate(*crate, (), visit);
@@ -1567,7 +1557,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Grab the argument types
         let arg_tys =
             alt sty {
-              ty::ty_fn(_, arg_tys, _, _, _) | ty::ty_native_fn(_, arg_tys, _)
+              ty::ty_fn(_, arg_tys, _, _, _) | ty::ty_native_fn(arg_tys, _)
               {
                 arg_tys
               }
@@ -1676,7 +1666,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             bot |= cf == ast::noreturn;
             rt_1 = rt;
           }
-          ty::ty_native_fn(_, _, rt) { rt_1 = rt; }
+          ty::ty_native_fn(_, rt) { rt_1 = rt; }
           _ { fcx.ccx.tcx.sess.span_fatal(sp, "calling non-function"); }
         }
         write::ty_only_fixup(fcx, id, rt_1);
@@ -2031,7 +2021,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             cf = cf_;
             constrs = constrs_;
           }
-          ty::ty_native_fn(_, arg_tys_, rt_) {
+          ty::ty_native_fn(arg_tys_, rt_) {
             proto = ast::proto_bare;
             arg_tys = arg_tys_;
             rt = rt_;

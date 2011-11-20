@@ -127,7 +127,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
           ty_fn(proto, inputs, output, cf, constrs) {
             fn_to_str(cx, proto, none, inputs, output, cf, constrs)
           }
-          ty_native_fn(_, inputs, output) {
+          ty_native_fn(inputs, output) {
             fn_to_str(cx, ast::proto_bare, none, inputs, output,
                       ast::return_val, [])
           }

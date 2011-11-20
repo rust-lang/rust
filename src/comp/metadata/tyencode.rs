@@ -138,13 +138,8 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_proto(w, proto);
         enc_ty_fn(w, cx, args, out, cf, constrs);
       }
-      ty::ty_native_fn(abi, args, out) {
+      ty::ty_native_fn(args, out) {
         w.write_char('N');
-        alt abi {
-          native_abi_rust_intrinsic. { w.write_char('i'); }
-          native_abi_cdecl. { w.write_char('C'); }
-          native_abi_stdcall. { w.write_char('S'); }
-        }
         enc_ty_fn(w, cx, args, out, return_val, []);
       }
       ty::ty_obj(methods) {

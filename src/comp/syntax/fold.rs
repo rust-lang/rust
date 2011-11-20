@@ -452,8 +452,7 @@ fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
 }
 
 fn noop_fold_native_mod(nm: native_mod, fld: ast_fold) -> native_mod {
-    ret {abi: nm.abi,
-         view_items: vec::map(fld.fold_view_item, nm.view_items),
+    ret {view_items: vec::map(fld.fold_view_item, nm.view_items),
          items: vec::map(fld.fold_native_item, nm.items)}
 }
 

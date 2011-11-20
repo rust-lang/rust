@@ -1070,7 +1070,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [ty::mode] {
         ty::type_autoderef(fcx.ccx.tcx,
                            ty::node_id_to_type(fcx.ccx.tcx, callee));
     alt ty::struct(fcx.ccx.tcx, ty) {
-      ty::ty_fn(_, args, _, _, _) | ty::ty_native_fn(_, args, _) {
+      ty::ty_fn(_, args, _, _, _) | ty::ty_native_fn(args, _) {
         let modes = [];
         for arg: ty::arg in args { modes += [arg.mode]; }
         ret modes;
