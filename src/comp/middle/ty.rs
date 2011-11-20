@@ -113,7 +113,6 @@ export ty_constr;
 export ty_constr_arg;
 export ty_float;
 export ty_fn;
-export ty_fn_abi;
 export ty_fn_proto;
 export ty_fn_ret;
 export ty_fn_ret_style;
@@ -259,7 +258,7 @@ tag sty {
     ty_ptr(mt);
     ty_rec([field]);
     ty_fn(ast::proto, [arg], t, ret_style, [@constr]);
-    ty_native_fn(ast::native_abi, [arg], t);
+    ty_native_fn([arg], t);
     ty_obj([method]);
     ty_res(def_id, t, [t]);
     ty_tup([t]);
@@ -465,7 +464,7 @@ fn mk_raw_ty(cx: ctxt, st: sty, _in_cname: option::t<str>) -> @raw_t {
       ty_fn(_, args, tt, _, _) {
         derive_flags_sig(cx, has_params, has_vars, args, tt);
       }
-      ty_native_fn(_, args, tt) {
+      ty_native_fn(args, tt) {
         derive_flags_sig(cx, has_params, has_vars, args, tt);
       }
       ty_obj(meths) {
@@ -568,8 +567,8 @@ fn mk_fn(cx: ctxt, proto: ast::proto, args: [arg], ty: t, cf: ret_style,
     ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
 }
 
-fn mk_native_fn(cx: ctxt, abi: ast::native_abi, args: [arg], ty: t) -> t {
-    ret gen_ty(cx, ty_native_fn(abi, args, ty));
+fn mk_native_fn(cx: ctxt, args: [arg], ty: t) -> t {
+    ret gen_ty(cx, ty_native_fn(args, ty));
 }
 
 fn mk_obj(cx: ctxt, meths: [method]) -> t { ret gen_ty(cx, ty_obj(meths)); }
@@ -628,7 +627,7 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
         for a: arg in args { walk_ty(cx, walker, a.ty); }
         walk_ty(cx, walker, ret_ty);
       }
-      ty_native_fn(abi, args, ret_ty) {
+      ty_native_fn(args, ret_ty) {
         for a: arg in args { walk_ty(cx, walker, a.ty); }
         walk_ty(cx, walker, ret_ty);
       }
@@ -719,7 +718,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
                        mk_fn(cx, proto, new_args, fold_ty(cx, fld, ret_ty),
                              cf, constrs), ty);
       }
-      ty_native_fn(abi, args, ret_ty) {
+      ty_native_fn(args, ret_ty) {
         let new_args: [arg] = [];
         for a: arg in args {
             let new_ty = fold_ty(cx, fld, a.ty);
@@ -727,7 +726,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         }
         ty =
             copy_cname(cx,
-                       mk_native_fn(cx, abi, new_args,
+                       mk_native_fn(cx, new_args,
                                     fold_ty(cx, fld, ret_ty)), ty);
       }
       ty_obj(methods) {
@@ -802,7 +801,7 @@ fn type_is_structural(cx: ctxt, ty: t) -> bool {
       ty_tup(_) { ret true; }
       ty_tag(_, _) { ret true; }
       ty_fn(_, _, _, _, _) { ret true; }
-      ty_native_fn(_, _, _) { ret true; }
+      ty_native_fn(_, _) { ret true; }
       ty_obj(_) { ret true; }
       ty_res(_, _, _) { ret true; }
       _ { ret false; }
@@ -1008,7 +1007,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // Scalar and unique types are sendable
       ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_uint. | ty_float. |
       ty_machine(_) | ty_char. | ty_native(_) |
-      ty_type. | ty_str. | ty_native_fn(_, _, _) { ast::kind_sendable }
+      ty_type. | ty_str. | ty_native_fn(_, _) { ast::kind_sendable }
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
       ty_obj(_) { kind_copyable }
@@ -1221,7 +1220,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       }
       // Boxed types
       ty_str. | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
-      ty_native_fn(_, _, _) | ty_obj(_) {
+      ty_native_fn(_, _) | ty_obj(_) {
         result = false;
       }
       // Structural types
@@ -1390,7 +1389,7 @@ fn hash_type_structure(st: sty) -> uint {
       ty_fn(_, args, rty, _, _) {
         ret hash_fn(27u, args, rty);
       }
-      ty_native_fn(_, args, rty) { ret hash_fn(28u, args, rty); }
+      ty_native_fn(args, rty) { ret hash_fn(28u, args, rty); }
       ty_obj(methods) {
         let h = 29u;
         for m: method in methods { h += h << 5u + str::hash(m.ident); }
@@ -1584,7 +1583,7 @@ fn type_contains_params(cx: ctxt, typ: t) -> bool {
 fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
     alt struct(cx, fty) {
       ty::ty_fn(_, a, _, _, _) { ret a; }
-      ty::ty_native_fn(_, a, _) { ret a; }
+      ty::ty_native_fn(a, _) { ret a; }
       _ { cx.sess.bug("ty_fn_args() called on non-fn type"); }
     }
 }
@@ -1592,7 +1591,7 @@ fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
 fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
     alt struct(cx, fty) {
       ty::ty_fn(p, _, _, _, _) { ret p; }
-      ty::ty_native_fn(_, _, _) {
+      ty::ty_native_fn(_, _) {
         // FIXME: This should probably be proto_bare
         ret ast::proto_shared(ast::sugar_normal);
       }
@@ -1600,18 +1599,11 @@ fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
     }
 }
 
-fn ty_fn_abi(cx: ctxt, fty: t) -> ast::native_abi {
-    alt struct(cx, fty) {
-      ty::ty_native_fn(a, _, _) { ret a; }
-      _ { cx.sess.bug("ty_fn_abi() called on non-native-fn type"); }
-    }
-}
-
 pure fn ty_fn_ret(cx: ctxt, fty: t) -> t {
     let sty = struct(cx, fty);
     alt sty {
       ty::ty_fn(_, _, r, _, _) { ret r; }
-      ty::ty_native_fn(_, _, r) { ret r; }
+      ty::ty_native_fn(_, r) { ret r; }
       _ {
         // Unchecked is ok since we diverge here
         // (might want to change the typechecker to allow
@@ -1626,7 +1618,7 @@ pure fn ty_fn_ret(cx: ctxt, fty: t) -> t {
 fn ty_fn_ret_style(cx: ctxt, fty: t) -> ast::ret_style {
     alt struct(cx, fty) {
       ty::ty_fn(_, _, _, rs, _) { rs }
-      ty::ty_native_fn(_, _, _) { ast::return_val }
+      ty::ty_native_fn(_, _) { ast::return_val }
       _ { cx.sess.bug("ty_fn_ret_style() called on non-fn type"); }
     }
 }
@@ -1634,7 +1626,7 @@ fn ty_fn_ret_style(cx: ctxt, fty: t) -> ast::ret_style {
 fn is_fn_ty(cx: ctxt, fty: t) -> bool {
     alt struct(cx, fty) {
       ty::ty_fn(_, _, _, _, _) { ret true; }
-      ty::ty_native_fn(_, _, _) { ret true; }
+      ty::ty_native_fn(_, _) { ret true; }
       _ { ret false; }
     }
 }
@@ -2097,12 +2089,10 @@ mod unify {
           }
         }
     }
-    fn unify_native_fn(cx: @ctxt, e_abi: ast::native_abi,
-                       a_abi: ast::native_abi, expected: t, actual: t,
+    fn unify_native_fn(cx: @ctxt, expected: t, actual: t,
                        expected_inputs: [arg], expected_output: t,
                        actual_inputs: [arg], actual_output: t,
                        variance: variance) -> result {
-        if e_abi != a_abi { ret ures_err(terr_mismatch); }
         let t =
             unify_fn_common(cx, expected, actual, expected_inputs,
                             expected_output, actual_inputs, actual_output,
@@ -2110,7 +2100,7 @@ mod unify {
         alt t {
           fn_common_res_err(r) { ret r; }
           fn_common_res_ok(result_ins, result_out) {
-            let t2 = mk_native_fn(cx.tcx, e_abi, result_ins, result_out);
+            let t2 = mk_native_fn(cx.tcx, result_ins, result_out);
             ret ures_ok(t2);
           }
         }
@@ -2521,10 +2511,10 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_native_fn(e_abi, expected_inputs, expected_output) {
+          ty::ty_native_fn(expected_inputs, expected_output) {
             alt struct(cx.tcx, actual) {
-              ty::ty_native_fn(a_abi, actual_inputs, actual_output) {
-                ret unify_native_fn(cx, e_abi, a_abi, expected, actual,
+              ty::ty_native_fn(actual_inputs, actual_output) {
+                ret unify_native_fn(cx, expected, actual,
                                     expected_inputs, expected_output,
                                     actual_inputs, actual_output, variance);
               }

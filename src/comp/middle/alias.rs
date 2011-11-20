@@ -651,7 +651,7 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_ptr(_) { 1u }
           ty::ty_box(_) { 3u }
           ty::ty_constr(t, _) | ty::ty_res(_, t, _) { score_ty(tcx, t) }
-          ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) |
+          ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _) |
           ty::ty_obj(_) { 4u }
           ty::ty_str. | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
           ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }

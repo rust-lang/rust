@@ -45,8 +45,7 @@ fn fold_native_mod(cfg: ast::crate_cfg, nm: ast::native_mod,
                    fld: fold::ast_fold) -> ast::native_mod {
     let filter = bind filter_native_item(cfg, _);
     let filtered_items = vec::filter_map(filter, nm.items);
-    ret {abi: nm.abi,
-         view_items: vec::map(fld.fold_view_item, nm.view_items),
+    ret {view_items: vec::map(fld.fold_view_item, nm.view_items),
          items: filtered_items};
 }
 

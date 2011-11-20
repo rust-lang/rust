@@ -12,7 +12,7 @@
 //     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
-import std::{str, uint, map, option, time, vec};
+import std::{either, str, uint, map, option, time, vec};
 import std::map::hashmap;
 import std::map::{new_int_hash, new_str_hash};
 import std::option::{some, none};
@@ -182,7 +182,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         check returns_non_ty_var(cx, t);
         T_fn_pair(cx, type_of_fn_from_ty(cx, sp, t, 0u))
       }
-      ty::ty_native_fn(abi, args, out) {
+      ty::ty_native_fn(args, out) {
         let nft = native_fn_wrapper_type(cx, sp, 0u, t);
         T_fn_pair(cx, nft)
       }
@@ -235,7 +235,7 @@ fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: span,
     let cx = lcx.ccx;
     let t = tpt.ty;
     alt ty::struct(cx.tcx, t) {
-      ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) {
+      ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _) {
         check returns_non_ty_var(cx, t);
         ret type_of_fn_from_ty(cx, sp, t, std::vec::len(tpt.kinds));
       }
@@ -1727,7 +1727,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         }
         ret next_cx;
       }
-      ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _, _) {
+      ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _) {
         let box_cell_a = GEPi(cx, av, [0, abi::fn_field_box]);
         ret iter_boxpp(cx, box_cell_a, f);
       }
@@ -5305,7 +5305,7 @@ fn c_stack_tys(ccx: @crate_ctxt,
                sp: span,
                id: ast::node_id) -> @c_stack_tys {
     alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)) {
-      ty::ty_native_fn(_, arg_tys, ret_ty) {
+      ty::ty_native_fn(arg_tys, ret_ty) {
         let tcx = ccx.tcx;
         let llargtys = type_of_explicit_args(ccx, sp, arg_tys);
         check non_ty_var(ccx, ret_ty); // NDM does this truly hold?
@@ -5365,7 +5365,8 @@ fn c_stack_tys(ccx: @crate_ctxt,
 // stack pointer appropriately to avoid a round of copies.  (In fact, the shim
 // function itself is unnecessary). We used to do this, in fact, and will
 // perhaps do so in the future.
-fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
+fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
+                    abi: ast::native_abi) {
     fn build_shim_fn(lcx: @local_ctxt,
                      native_item: @ast::native_item,
                      tys: @c_stack_tys,
@@ -5448,7 +5449,7 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod) {
 
     let ccx = lcx_ccx(lcx);
     let cc: uint = lib::llvm::LLVMCCallConv;
-    alt native_mod.abi {
+    alt abi {
       ast::native_abi_rust_intrinsic. { ret; }
       ast::native_abi_cdecl. { cc = lib::llvm::LLVMCCallConv; }
       ast::native_abi_stdcall. { cc = lib::llvm::LLVMX86StdcallCallConv; }
@@ -5529,12 +5530,15 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
       }
       ast::item_const(_, expr) { trans_const(cx.ccx, expr, item.id); }
       ast::item_native_mod(native_mod) {
-        trans_native_mod(cx, native_mod);
+        let abi = alt attr::native_abi(item.attrs) {
+          either::right(abi_) { abi_ }
+          either::left(msg) { cx.ccx.sess.span_fatal(item.span, msg) }
+        };
+        trans_native_mod(cx, native_mod, abi);
       }
       _ {/* fall through */ }
     }
 }
-
 
 // Translate a module.  Doing this amounts to translating the items in the
 // module; there ends up being no artifact (aside from linkage names) of
@@ -5697,7 +5701,7 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
 fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
-      ty::ty_native_fn(abi, args, out) {
+      ty::ty_native_fn(args, out) {
         check non_ty_var(cx, out);
         ret type_of_fn(cx, sp, false, false, args, out, ty_param_count);
       }
@@ -5719,7 +5723,10 @@ fn link_name(i: @ast::native_item) -> str {
     }
 }
 
-fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
+fn collect_native_item(ccx: @crate_ctxt,
+                       abi: @mutable option::t<ast::native_abi>,
+                       i: @ast::native_item,
+                       &&pt: [str],
                        _v: vt<[str]>) {
     alt i.node {
       ast::native_item_fn(_, tps) {
@@ -5727,10 +5734,21 @@ fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
             let sp = i.span;
             let id = i.id;
             let node_type = node_id_type(ccx, id);
-            // FIXME NDM abi should come from attr
-            let abi = ty::ty_fn_abi(ccx.tcx, node_type);
-
-            alt abi {
+            let fn_abi =
+                alt attr::get_meta_item_value_str_by_name(i.attrs, "abi") {
+              option::none. {
+                // if abi isn't specified for this function, inherit from
+                // its enclosing native module
+                option::get(*abi)
+              }
+              _ {
+                alt attr::native_abi(i.attrs) {
+                  either::right(abi_) { abi_ }
+                  either::left(msg) { ccx.sess.span_fatal(i.span, msg) }
+                }
+              }
+            };
+            alt fn_abi {
               ast::native_abi_rust_intrinsic. {
                 // For intrinsics: link the function directly to the intrinsic
                 // function itself.
@@ -5760,9 +5778,8 @@ fn collect_native_item(ccx: @crate_ctxt, i: @ast::native_item, &&pt: [str],
     }
 }
 
-fn collect_item_1(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
-                  v: vt<[str]>) {
-    visit::visit_item(i, pt + item_path(i), v);
+fn collect_item_1(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
+                  i: @ast::item, &&pt: [str], v: vt<[str]>) {
     alt i.node {
       ast::item_const(_, _) {
         let typ = node_id_type(ccx, i.id);
@@ -5778,8 +5795,18 @@ fn collect_item_1(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
         ccx.item_symbols.insert(i.id, s);
         ccx.consts.insert(i.id, g);
       }
+      ast::item_native_mod(native_mod) {
+        // Propagate the native ABI down to collect_native_item(),
+        alt attr::native_abi(i.attrs) {
+          either::left(msg) { ccx.sess.span_fatal(i.span, msg); }
+          either::right(abi_) {
+            *abi = option::some(abi_);
+          }
+        }
+      }
       _ { }
     }
+    visit::visit_item(i, pt + item_path(i), v);
 }
 
 fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
@@ -5814,10 +5841,11 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
 }
 
 fn collect_items(ccx: @crate_ctxt, crate: @ast::crate) {
+    let abi = @mutable none::<ast::native_abi>;
     let visitor0 = visit::default_visitor();
     let visitor1 =
-        @{visit_native_item: bind collect_native_item(ccx, _, _, _),
-          visit_item: bind collect_item_1(ccx, _, _, _) with *visitor0};
+        @{visit_native_item: bind collect_native_item(ccx, abi, _, _, _),
+          visit_item: bind collect_item_1(ccx, abi, _, _, _) with *visitor0};
     let visitor2 =
         @{visit_item: bind collect_item_2(ccx, _, _, _) with *visitor0};
     visit::visit_crate(*crate, [], visit::mk_vt(visitor1));

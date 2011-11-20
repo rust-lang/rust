@@ -1,6 +1,6 @@
 // Functions dealing with attributes and meta_items
 
-import std::{vec, map, option};
+import std::{either, vec, map, option};
 import syntax::{ast, ast_util};
 import driver::session;
 
@@ -24,6 +24,7 @@ export mk_name_value_item;
 export mk_list_item;
 export mk_word_item;
 export mk_attr;
+export native_abi;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
@@ -197,6 +198,26 @@ fn require_unique_names(sess: session::session, metas: [@ast::meta_item]) {
         }
         map.insert(name, ());
     }
+}
+
+fn native_abi(attrs: [ast::attribute]) -> either::t<str, ast::native_abi> {
+    ret alt attr::get_meta_item_value_str_by_name(attrs, "abi") {
+      option::none. {
+        either::right(ast::native_abi_cdecl)
+      }
+      option::some("rust-intrinsic") {
+        either::right(ast::native_abi_rust_intrinsic)
+      }
+      option::some("cdecl") {
+        either::right(ast::native_abi_cdecl)
+      }
+      option::some("stdcall") {
+        either::right(ast::native_abi_stdcall)
+      }
+      option::some(t) {
+        either::left("unsupported abi: " + t)
+      }
+    };
 }
 
 fn span<copy T>(item: T) -> ast::spanned<T> {

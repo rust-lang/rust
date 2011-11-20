@@ -419,7 +419,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
       ty::ty_fn(_, _, _, _, _) {
         s += [shape_fn];
       }
-      ty::ty_native_fn(_, _, _) { s += [shape_u32]; }
+      ty::ty_native_fn(_, _) { s += [shape_u32]; }
       ty::ty_obj(_) { s += [shape_obj]; }
 
 
