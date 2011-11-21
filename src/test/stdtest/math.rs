@@ -36,6 +36,7 @@ fn test_angle() {
 
 
 #[test]
+#[ignore]
 fn test_log_functions() {
     assert ln(1.0) == 0.0;
     assert log2(1.0) == 0.0;
