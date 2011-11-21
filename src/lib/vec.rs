@@ -384,7 +384,19 @@ Function: map
 
 Apply a function to each element of a vector and return the results
 */
-fn map<copy T, U>(f: block(T) -> U, v: [const T]) -> [U] {
+fn map<T, U>(f: block(T) -> U, v: [T]) -> [U] {
+    let result = [];
+    reserve(result, len(v));
+    for elem: T in v { result += [f(elem)]; }
+    ret result;
+}
+
+/*
+Function: map_mut
+
+Apply a function to each element of a mutable vector and return the results
+*/
+fn map_mut<copy T, U>(f: block(T) -> U, v: [const T]) -> [U] {
     let result = [];
     reserve(result, len(v));
     for elem: T in v {
