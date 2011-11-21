@@ -150,7 +150,7 @@ fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
 
     fn compare_source(expected: str, actual: str) {
         if expected != actual {
-            error("pretty-printed source does match expected source");
+            error("pretty-printed source does not match expected source");
             let msg =
                 #fmt["\n\
 expected:\n\
