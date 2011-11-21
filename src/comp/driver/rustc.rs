@@ -139,6 +139,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
              bind freevars::annotate_freevars(def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
     time(time_passes, "typechecking", bind typeck::check_crate(ty_cx, crate));
+    time(time_passes, "block-use checking",
+         bind middle::block_use::check_crate(ty_cx, crate));
     time(time_passes, "function usage",
          bind fn_usage::check_crate_fn_usage(ty_cx, crate));
     time(time_passes, "alt checking",

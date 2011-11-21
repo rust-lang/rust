@@ -31,6 +31,7 @@ mod middle {
     mod mut;
     mod alias;
     mod last_use;
+    mod block_use;
     mod kind;
     mod freevars;
     mod shape;
