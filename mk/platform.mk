@@ -101,7 +101,7 @@ else
   CFG_GCCISH_CFLAGS += -O2
 endif
 
-CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip \
+CFG_TESTLIB=$(CFG_BUILD_DIR)/$(CFG_HOST_TRIPLE)/$(strip \
  $(if $(findstring stage0,$(1)), \
        stage0/lib, \
       $(if $(findstring stage1,$(1)), \

@@ -380,24 +380,26 @@ do
   done
 done
 
-for t in $CFG_TARGET_TRIPLES
+for h in $CFG_TARGET_TRIPLES
 do
-    for i in 0 1 2 3
+    for t in $CFG_TARGET_TRIPLES
     do
-        # host bin dir
-        make_dir stage$i/bin
+        for i in 0 1 2 3
+        do
+            # host bin dir
+            make_dir $h/stage$i/bin
 
-        # host lib dir
-        make_dir stage$i/lib
+            # host lib dir
+            make_dir $h/stage$i/lib
 
-        # target bin dir
-        make_dir stage$i/lib/rustc/$t/bin
+            # target bin dir
+            make_dir $h/stage$i/lib/rustc/$t/bin
 
-        # target lib dir
-        make_dir stage$i/lib/rustc/$t/lib
+            # target lib dir
+            make_dir $h/stage$i/lib/rustc/$t/lib
+        done
     done
 done
-
 
 # Configure submodules
 step_msg "configuring submodules"

@@ -2,12 +2,16 @@
 # Cleanup
 ######################################################################
 
-CLEAN_STAGE_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
- clean0$(target) clean1$(target) clean2$(target) clean3$(target)) \
- clean0 clean1 clean2 clean3
+CLEAN_STAGE_RULES =								\
+ $(foreach stage, $(STAGES),					\
+  $(foreach host, $(CFG_TARGET_TRIPLES),		\
+   clean$(stage)_H_$(host)						\
+   $(foreach target, $(CFG_TARGET_TRIPLES),		\
+    clean$(stage)_H_$(host)_T_$(target))))
 
-CLEAN_LLVM_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
-                   clean-llvm$(target))
+CLEAN_LLVM_RULES = 								\
+ $(foreach target, $(CFG_TARGET_TRIPLES),		\
+  clean-llvm$(target))
 
 .PHONY: clean clean-all clean-misc
 
@@ -45,41 +49,45 @@ clean-misc:
 	$(Q)rm -Rf doc/version.texi
 	$(Q)rm -rf libuv
 
-define CLEAN_STAGE_N
+define CLEAN_HOST_STAGE_N
 
-clean$(1):
-	$(Q)rm -f $$(HOST_BIN$(1))/rustc$(X)
-	$(Q)rm -f $$(HOST_BIN$(1))/fuzzer$(X)
-	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_RUNTIME)
-	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_STDLIB)
-	$(Q)rm -f $$(HOST_LIB$(1))/$(CFG_RUSTLLVM)
-	$(Q)rm -f $$(HOST_LIB$(1))/libstd.rlib
-
-clean$(1)$(2):
-	$(Q)rm -f $$(TARGET_BIN$(1)$(2))/rustc$(X)
-	$(Q)rm -f $$(TARGET_BIN$(1)$(2))/fuzzer$(X)
-	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_RUNTIME)
-	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_STDLIB)
-	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/$(CFG_RUSTLLVM)
-	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/libstd.rlib
-	$(Q)rm -f $$(TARGET_LIB$(1)$(2))/intrinsics.bc
+clean$(1)_H_$(2):
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustc$(X)
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/fuzzer$(X)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/libstd.rlib
 
 endef
 
-$(foreach target, $(CFG_TARGET_TRIPLES), \
- $(eval $(call CLEAN_STAGE_N,0,$(target))) \
- $(eval $(call CLEAN_STAGE_N,1,$(target))) \
- $(eval $(call CLEAN_STAGE_N,2,$(target))) \
- $(eval $(call CLEAN_STAGE_N,3,$(target))))
+$(foreach host, $(CFG_TARGET_TRIPLES), \
+ $(eval $(foreach stage, $(STAGES), \
+  $(eval $(call CLEAN_HOST_STAGE_N,$(stage),$(host))))))
 
+define CLEAN_TARGET_STAGE_N
+
+clean$(1)_T_$(2)_H$(3):
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$(X)
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/fuzzer$(X)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.bc
+
+endef
+
+$(foreach host, $(CFG_TARGET_TRIPLES), \
+ $(eval $(foreach target, $(CFG_TARGET_TRIPLES), \
+  $(eval $(foreach stage, $(STAGES), \
+   $(eval $(call CLEAN_TARGET_STAGE_N,$(stage),$(target),$(host))))))))
 
 define DEF_CLEAN_LLVM_TARGET
 ifeq ($(CFG_LLVM_ROOT),)
-
 clean-llvm$(1):
 	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) clean
 else
-
 clean-llvm$(1): ;
 
 endif

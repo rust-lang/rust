@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, tarfile, hashlib, re, shutil
+import os, tarfile, hashlib, re, shutil, sys
 from snapshot import *
 
 
@@ -11,7 +11,8 @@ def unpack_snapshot(snap):
   kernel = get_kernel()
   for name in snapshot_files[kernel]:
     p = "rust-stage0/" + name
-    fp = os.path.join("stage0", name)
+    stagep = os.path.join(triple, "stage0")
+    fp = os.path.join(stagep, name)
     print("extracting " + fp)
     tar.extract(p, download_unpack_base)
     tp = os.path.join(download_unpack_base, p)
@@ -57,6 +58,7 @@ def determine_curr_snapshot_for_platform():
 
 # Main
 
+triple = sys.argv[1]
 snap = determine_curr_snapshot_for_platform()
 dl = os.path.join(download_dir_base, snap)
 url = download_url_base + "/" + snap

@@ -12,39 +12,39 @@ COMPILETEST_INPUTS := $(wildcard $(S)src/compiletest/*rs)
 # have tools that need to built for other targets.
 define TOOLS_STAGE_N
 
-$$(TARGET_BIN$(1)$(CFG_HOST_TRIPLE))/fuzzer$$(X): \
-	$$(FUZZER_CRATE) $$(FUZZER_INPUTS) \
-	$$(TARGET_SREQ$(1)$(CFG_HOST_TRIPLE)) \
-	$$(TARGET_LIB$(1)$(CFG_HOST_TRIPLE))/$$(CFG_STDLIB) \
-	$$(TARGET_LIB$(1)$(CFG_HOST_TRIPLE))/$$(CFG_LIBRUSTC)
+$$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X):				\
+		$$(FUZZER_CRATE) $$(FUZZER_INPUTS)			\
+		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_$$(CFG_HOST_TRIPLE)) -o $$@ $$<
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
 
 # Promote the stageN target to stageN+1 host
 # FIXME: Shouldn't need to depend on host/librustc.so once
 # rpath is working
-$$(HOST_BIN$(2))/fuzzer$$(X): \
-	$$(TARGET_BIN$(1)$(CFG_HOST_TRIPLE))/fuzzer$$(X) \
-	$$(HOST_LIB$(2))/$$(CFG_LIBRUSTC) \
-	$$(HOST_SREQ$(2))
+$$(HBIN$(2)_H_$(4))/fuzzer$$(X):				\
+		$$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X)	\
+		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)	\
+		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(TARGET_BIN$(1)$(CFG_HOST_TRIPLE))/compiletest$$(X): \
-	$$(COMPILETEST_CRATE) $$(COMPILETEST_INPUTS) \
-	$$(TARGET_SREQ$(1)$(CFG_HOST_TRIPLE)) \
-	$$(TARGET_LIB$(1)$(CFG_HOST_TRIPLE))/$$(CFG_STDLIB)
+$$(TBIN$(1)_T_$(4)_H_$(3))/compiletest$$(X):			\
+		$$(COMPILETEST_CRATE) $$(COMPILETEST_INPUTS)	\
+		$$(TSREQ$(1)_T_$(4)_H_$(3))						\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_$$(CFG_HOST_TRIPLE)) -o $$@ $$<
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
 
-$$(HOST_BIN$(2))/compiletest$$(X): \
-	$$(TARGET_BIN$(1)$(CFG_HOST_TRIPLE))/compiletest$$(X) \
-	$$(HOST_SREQ$(2))
+$$(HBIN$(2)_H_$(4))/compiletest$$(X):				\
+		$$(TBIN$(1)_T_$(4)_H_$(3))/compiletest$$(X)	\
+		$$(HSREQ$(2)_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 endef
 
-$(eval $(call TOOLS_STAGE_N,0,1))
-$(eval $(call TOOLS_STAGE_N,1,2))
-$(eval $(call TOOLS_STAGE_N,2,3))
+$(eval $(call TOOLS_STAGE_N,0,1,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE)))
+$(eval $(call TOOLS_STAGE_N,1,2,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE)))
+$(eval $(call TOOLS_STAGE_N,2,3,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE)))

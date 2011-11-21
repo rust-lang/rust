@@ -42,6 +42,8 @@
 #
 # Admittedly this is a little convoluted.
 
+STAGES = 0 1 2 3
+
 ######################################################################
 # Residual auto-configuration
 ######################################################################
@@ -243,51 +245,52 @@ export CFG_PREFIX
 ######################################################################
 
 define SREQ
+# $(1) is the stage number
+# $(2) is the target triple
+# $(3) is the build triple
 
 # Destinations of artifacts for the host compiler
-HOST_ROOT$(1) = stage$(1)
-HOST_BIN$(1) = $$(HOST_ROOT$(1))/bin
-HOST_LIB$(1) = $$(HOST_ROOT$(1))/lib
+HROOT$(1)_H_$(3) = $(3)/stage$(1)
+HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/lib
 
 # Destinations of artifacts for target architectures
-TARGET_ROOT$(1)$(2) = $$(HOST_LIB$(1))/rustc/$(2)
-TARGET_BIN$(1)$(2) = $$(TARGET_ROOT$(1)$(2))/bin
-TARGET_LIB$(1)$(2) = $$(TARGET_ROOT$(1)$(2))/lib
-
-# The target locations of artifacts for the host architecture (used for
-# promoting target binaries to host binaries)
-TARGET_HOST_ROOT$(1) = $$(TARGET_ROOT$(1)$$(CFG_HOST_TRIPLE))
-TARGET_HOST_BIN$(1) = $$(TARGET_BIN$(1)$$(CFG_HOST_TRIPLE))
-TARGET_HOST_LIB$(1) = $$(TARGET_LIB$(1)$$(CFG_HOST_TRIPLE))
+TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustc/$(2)
+TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
+TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/lib
 
 # The name of the standard library used by rustc
 ifdef CFG_DISABLE_SHAREDSTD
-  HOST_STDLIB_DEFAULT$(1) = $$(HOST_LIB$(1))/libstd.rlib
-  TARGET_STDLIB_DEFAULT$(1)$(2) = $$(TARGET_LIB$(1)$(2))/libstd.rlib
+  HSTDLIB_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/libstd.rlib
+  TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 else
-  HOST_STDLIB_DEFAULT$(1) = $$(HOST_LIB$(1))/$(CFG_STDLIB)
-  TARGET_STDLIB_DEFAULT$(1)$(2) = $$(TARGET_LIB$(1)$(2))/$(CFG_STDLIB)
+  HSTDLIB_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/$(CFG_STDLIB)
+  TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB)
 endif
 
 # Preqrequisites for using the stageN compiler
-HOST_SREQ$(1) = \
-	$$(HOST_BIN$(1))/rustc$$(X) \
-	$$(HOST_LIB$(1))/$$(CFG_RUNTIME) \
-	$$(HOST_LIB$(1))/$$(CFG_RUSTLLVM) \
-	$$(HOST_STDLIB_DEFAULT$(1)) \
+HSREQ$(1)_H_$(3) = \
+	$$(HBIN$(1)_H_$(3))/rustc$$(X) \
+	$$(HLIB$(1)_H_$(3))/$$(CFG_RUNTIME) \
+	$$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLLVM) \
+	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
 	$$(MKFILES)
 
 # Prerequisites for using the stageN compiler to build target artifacts
-TARGET_SREQ$(1)$(2) = \
-	$$(HOST_SREQ$(1)) \
-	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME) \
-	$$(TARGET_LIB$(1)$(2))/intrinsics.bc \
-	$$(TARGET_LIB$(1)$(2))/libmorestack.a
+TSREQ$(1)_T_$(2)_H_$(3) = \
+	$$(HSREQ$(1)_H_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.bc \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 
 # Prerequisites for complete stageN targets
-SREQ$(1)$(2) = \
-	$$(TARGET_SREQ$(1)$(2)) \
-	$$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB)
+SREQ$(1)_T_$(2)_H_$(3) = \
+	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed
@@ -296,21 +299,24 @@ else
 CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)
 endif
 
-STAGE$(1)_$(2) := $$(Q)$$(call CFG_RUN_TARG,$(1), \
-                  $$(CFG_VALGRIND_COMPILE$(1)) $$(HOST_BIN$(1))/rustc$$(X) \
-                  $$(CFG_RUSTC_FLAGS) --target=$(2))
+STAGE$(1)_T_$(2)_H_$(3) := 						\
+	$$(Q)$$(call CFG_RUN_TARG,$(1),				\
+		$$(CFG_VALGRIND_COMPILE$(1)) 			\
+		$$(HBIN$(1)_H_$(3))/rustc$$(X)			\
+		$$(CFG_RUSTC_FLAGS) --target=$(2))
 
-PERF_STAGE$(1)_$(2) := $$(Q)$$(call CFG_RUN_TARG,$(1), \
-                       $$(CFG_PERF_TOOL) $$(HOST_BIN$(1))/rustc$$(X) \
-                       $$(CFG_RUSTC_FLAGS) --target=$(2))
+PERF_STAGE$(1)_T_$(2)_H_$(3) := 				\
+	$$(Q)$$(call CFG_RUN_TARG,$(1),				\
+		$$(CFG_PERF_TOOL) 						\
+		$$(HBIN$(1)_H_$(3))/rustc$$(X)			\
+		$$(CFG_RUSTC_FLAGS) --target=$(2))
 
 endef
 
-$(foreach target,$(CFG_TARGET_TRIPLES), \
- $(eval $(call SREQ,0,$(target))) \
- $(eval $(call SREQ,1,$(target))) \
- $(eval $(call SREQ,2,$(target))) \
- $(eval $(call SREQ,3,$(target))))
+$(foreach build,$(CFG_TARGET_TRIPLES), \
+ $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
+  $(eval $(foreach stage,$(STAGES), \
+   $(eval $(call SREQ,$(stage),$(target),$(build))))))))
 
 ######################################################################
 # Entrypoint rule
@@ -327,11 +333,13 @@ all: $(SREQ1$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS)
 
 else
 
-TARGET_SREQS := $(foreach target,$(CFG_TARGET_TRIPLES),$(SREQ3$(target)))
-FUZZ := $(HOST_BIN3)/fuzzer$(X)
+TSREQS :=											\
+	$(foreach target,$(CFG_TARGET_TRIPLES),			\
+		$(SREQ3_T_$(target)_H_$(CFG_HOST_TRIPLE)))
+FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 
 #all: $(SREQ3$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS) $(FUZZ)
-all: $(TARGET_SREQS) $(GENERATED) $(DOCS) $(FUZZ)
+all: $(TSREQS) $(GENERATED) $(DOCS) $(FUZZ)
 
 endif
 
