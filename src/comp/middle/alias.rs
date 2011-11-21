@@ -110,7 +110,7 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
     let handled = true;
     alt ex.node {
       ast::expr_call(f, args, _) {
-        check_call(*cx, f, args);
+        check_call(*cx, sc, f, args);
         handled = false;
       }
       ast::expr_alt(input, arms) { check_alt(*cx, input, arms, sc, v); }
@@ -234,7 +234,8 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
     } else { ret true; }
 }
 
-fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
+fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
+    -> [binding] {
     let fty = ty::expr_ty(cx.tcx, f);
     let by_ref = alt ty::ty_fn_ret_style(cx.tcx, fty) {
       ast::return_ref(_, arg_n) { arg_n } _ { 0u }
@@ -276,7 +277,18 @@ fn check_call(cx: ctx, f: @ast::expr, args: [@ast::expr]) -> [binding] {
     if f_may_close {
         let i = 0u;
         for b in bindings {
-            if vec::len(b.unsafe_tys) > 0u && cant_copy(cx, b) {
+            let unsfe = vec::len(b.unsafe_tys) > 0u;
+            alt b.root_var {
+              some(rid) {
+                for o in sc.bs {
+                    if o.node_id == rid && vec::len(o.unsafe_tys) > 0u {
+                        unsfe = true; break;
+                    }
+                }
+              }
+              _ {}
+            }
+            if unsfe && cant_copy(cx, b) {
                 err(cx, f.span, #fmt["function may alias with argument \
                                      %u, which is not immutably rooted", i]);
             }
