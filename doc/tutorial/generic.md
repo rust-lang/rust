@@ -57,12 +57,14 @@ programs that just can't be typed.
 
     let n = none;
 
-If you never do anything else with none, the compiler will not be able
+If you never do anything else with `n`, the compiler will not be able
 to assign a type to it. (The same goes for `[]`, in fact.) If you
 really want to have such a statement, you'll have to write it like
 this:
 
     let n = none::<int>;
+    // or
+    let n2: option::t<int>: none;
 
 Note that, in a value expression, `<` already has a meaning as a
 comparison operator, so you'll have to write `::<T>` to explicitly
@@ -75,12 +77,44 @@ There are two built-in operations that, perhaps surprisingly, act on
 values of any type. It was already mentioned earlier that `log` can
 take any type of value and output it as a string.
 
-More interesting is that Rust also defines an ordering for all
-datatypes, and allows you to meaningfully apply comparison operators
-(`<`, `>`, `<=`, `>=`, `==`, `!=`) to them. For structural types, the
-comparison happens left to right, so `"abc" < "bac"` (but note that
-`"bac" < "ác"`, because the ordering acts on UTF-8 sequences without
-any sophistication).
+More interesting is that Rust also defines an ordering for values of
+all datatypes, and allows you to meaningfully apply comparison
+operators (`<`, `>`, `<=`, `>=`, `==`, `!=`) to them. For structural
+types, the comparison happens left to right, so `"abc" < "bac"` (but
+note that `"bac" < "ác"`, because the ordering acts on UTF-8 sequences
+without any sophistication).
+
+## Kinds
+
+Perhaps surprisingly, the 'copy' (duplicate) operation is not defined
+for all Rust types. Resource types (types with destructors) can not be
+copied, and neither can any type whose copying would require copying a
+resource (such as records or unique boxes containing a resource).
+
+This complicates handling of generic functions. If you have a type
+parameter `T`, can you copy values of that type? In Rust, you can't,
+unless you explicitly declare that type parameter to have copyable
+'kind'. A kind is a type of type.
+
+    // This does not compile
+    fn head_bad<T>(v: [T]) -> T { v[0] }
+    // This does
+    fn head<copy T>(v: [T]) -> T { v[0] }
+
+When instantiating a generic function, you can only instantiate it
+with types that fit its kinds. So you could not apply `head` to a
+resource type.
+
+Rust has three kinds: 'noncopyable', 'copyable', and 'sendable'. By
+default, type parameters are considered to be noncopyable. You can
+annotate them with the `copy` keyword to declare them copyable, and
+with the `send` keyword to make them sendable.
+
+Sendable types are a subset of copyable types. They are types that do
+not contain shared (reference counted) types, which are thus uniquely
+owned by the function that owns them, and can be sent over channels to
+other tasks. Most of the generic functions in the `std::comm` module
+take sendable types.
 
 ## Generic functions and argument-passing
 
@@ -102,6 +136,3 @@ pass to a generic higher-order function as being passed by pointer:
 
 NOTE: This is inconvenient, and we are hoping to get rid of this
 restriction in the future.
-
-FIXME discuss kinds, when they have settled
-
