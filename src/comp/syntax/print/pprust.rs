@@ -294,7 +294,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         }
         fn get_span(f: ast::ty_field) -> codemap::span { ret f.span; }
         commasep_cmnt(s, consistent, fields, print_field, get_span);
-        word(s.s, "}");
+        word(s.s, ",}");
       }
       ast::ty_tup(elts) {
         popen(s);
@@ -693,7 +693,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             print_expr(s, expr);
             end(s);
           }
-          _ { }
+          _ { word(s.s, ","); }
         }
         word(s.s, "}");
       }
