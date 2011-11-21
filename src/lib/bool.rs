@@ -30,7 +30,7 @@ Conjunction
 */
 pure fn and(a: t, b: t) -> t { a && b }
 
-/* Function: and
+/* Function: or
 
 Disjunction
 */

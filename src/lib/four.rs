@@ -5,10 +5,10 @@ Module: four
 
 The fourrternary Belnap relevance logic FOUR represented as ADT
 
-This allows reasoning with four logic values (true, false, none, both)
+This allows reasoning with four logic values (true, false, none, both).
 
 Implementation: Truth values are represented using a single u8 and
-all operations are done using bitshifting which is fast
+all operations are done using bit operations which is fast
 on current cpus.
 */
 
