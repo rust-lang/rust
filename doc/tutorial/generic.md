@@ -62,9 +62,9 @@ to assign a type to it. (The same goes for `[]`, in fact.) If you
 really want to have such a statement, you'll have to write it like
 this:
 
-    let n = none::<int>;
+    let n2: option::t<int> = none;
     // or
-    let n2: option::t<int>: none;
+    let n = none::<int>;
 
 Note that, in a value expression, `<` already has a meaning as a
 comparison operator, so you'll have to write `::<T>` to explicitly
