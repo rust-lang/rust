@@ -22,49 +22,49 @@ Function: sqrt
 
 Returns the square root
 */
-fn sqrt(x: float) -> float { libc::sqrt(x) }
+pure fn sqrt(x: float) -> float { unsafe { libc::sqrt(x) } }
 
 /*
 Function: sin
 
 Returns the sine of an angle
 */
-fn sin(x: float) -> float { libc::sin(x) }
+pure fn sin(x: float) -> float { unsafe { libc::sin(x) } }
 
 /*
 Function: cos
 
 Returns the cosine of an angle
 */
-fn cos(x: float) -> float { libc::cos(x) }
+pure fn cos(x: float) -> float { unsafe { libc::cos(x) } }
 
 /*
 Function: tan
 
 Returns the tangent of an angle
 */
-fn tan(x: float) -> float { libc::tan(x) }
+pure fn tan(x: float) -> float { unsafe { libc::tan(x) } }
 
 /*
 Function: asin
 
 Returns the arcsine of an angle
 */
-fn asin(x: float) -> float { libc::asin(x) }
+pure fn asin(x: float) -> float { unsafe { libc::asin(x) } }
 
 /*
 Function: acos
 
 Returns the arccosine of an angle
 */
-fn acos(x: float) -> float { libc::acos(x) }
+pure fn acos(x: float) -> float { unsafe { libc::acos(x) } }
 
 /*
 Function: atan
 
 Returns the arctangent of an angle
 */
-fn atan(x: float) -> float { libc::atan(x) }
+pure fn atan(x: float) -> float { unsafe { libc::atan(x) } }
 
 /*
 Const: pi
@@ -78,14 +78,14 @@ Function: min
 
 Returns the minimum of two values
 */
-fn min<copy T>(x: T, y: T) -> T { x < y ? x : y }
+pure fn min<copy T>(x: T, y: T) -> T { x < y ? x : y }
 
 /*
 Function: max
 
 Returns the maximum of two values
 */
-fn max<copy T>(x: T, y: T) -> T { x < y ? y : x }
+pure fn max<copy T>(x: T, y: T) -> T { x < y ? y : x }
 
 /*
 Const: e
@@ -99,27 +99,27 @@ Function: ln
 
 Returns the natural logaritm
 */
-fn ln(n: float) -> float { libc::ln(n) }
+pure fn ln(n: float) -> float { unsafe { libc::ln(n) } }
 
 /*
 Function: log2
 
 Returns the logarithm to base 2
 */
-fn log2(n: float) -> float { libc::log2(n) }
+pure fn log2(n: float) -> float { unsafe { libc::log2(n) } }
 
 /*
 Function: log2
 
 Returns the logarithm to base 10
 */
-fn log10(n: float) -> float { libc::log10(n) }
+pure fn log10(n: float) -> float { unsafe { libc::log10(n) } }
 
 
 /*
 Function: log1p
 
-Returns the natural logarithm of `1+n` accurately, 
+Returns the natural logarithm of `1+n` accurately,
 even for very small values of `n`
 */
-fn ln1p(n: float) -> float { libc::log1p(n) }
+pure fn ln1p(n: float) -> float { unsafe { libc::log1p(n) } }
