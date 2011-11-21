@@ -5,10 +5,10 @@ Module: tri
 
 ADT for the ternary Kleene logic K3
 
-This allows reasoning with three logic values (true, false, unknown)
+This allows reasoning with three logic values (true, false, unknown).
 
 Implementation: Truth values are represented using a single u8 and
-all operations are done using bitshifting which is fast
+all operations are done using bit operations which is fast
 on current cpus.
 */
 
