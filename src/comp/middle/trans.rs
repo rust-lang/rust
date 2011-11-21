@@ -4524,10 +4524,12 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
 
 fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let init_expr = option::get(local.node.init).expr;
-    let val = trans_lval(bcx, init_expr);
-    assert val.kind == owned;
-    ret trans_alt::bind_irrefutable_pat(val.bcx, local.node.pat, val.val,
-                                        false);
+    let {bcx, val, kind} = trans_lval(bcx, init_expr);
+    alt kind {
+      owned_imm. { val = do_spill_noroot(bcx, val); }
+      owned. {}
+    }
+    ret trans_alt::bind_irrefutable_pat(bcx, local.node.pat, val, false);
 }
 
 fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)

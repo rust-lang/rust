@@ -36,6 +36,10 @@ type scope = {bs: [binding],
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
               unsafe_tys: [unsafe_ty]) -> binding {
+    alt root_var {
+      some(r_id) { cx.ref_map.insert(id, r_id); }
+      _ {}
+    }
     ret @{node_id: id, span: span, root_var: root_var,
           local_id: local_id_of_node(cx, id),
           unsafe_tys: unsafe_tys,
@@ -45,16 +49,19 @@ fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
 tag local_info { local(uint); }
 
 type copy_map = std::map::hashmap<node_id, ()>;
+type ref_map = std::map::hashmap<node_id, node_id>;
 
 type ctx = {tcx: ty::ctxt,
             copy_map: copy_map,
+            ref_map: ref_map,
             mutable silent: bool};
 
-fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
+fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
     let cx = @{tcx: tcx,
                copy_map: std::map::new_int_hash(),
+               ref_map: std::map::new_int_hash(),
                mutable silent: false};
     let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
@@ -63,7 +70,7 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> copy_map {
     let sc = {bs: [], ret_info: other, invalid: @mutable list::nil};
     visit::visit_crate(*crate, sc, visit::mk_vt(v));
     tcx.sess.abort_if_errors();
-    ret cx.copy_map;
+    ret (cx.copy_map, cx.ref_map);
 }
 
 fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], sp: span,

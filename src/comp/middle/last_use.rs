@@ -32,18 +32,20 @@ type bl = @{type: block_type, mutable second: bool, mutable exits: [set]};
 
 type ctx = {last_uses: std::map::hashmap<node_id, bool>,
             def_map: resolve::def_map,
+            ref_map: alias::ref_map,
             tcx: ty::ctxt,
             // The current set of local last uses
             mutable current: set,
             mutable blocks: list<bl>};
 
-fn find_last_uses(c: @crate, def_map: resolve::def_map, tcx: ty::ctxt)
-    -> last_uses {
+fn find_last_uses(c: @crate, def_map: resolve::def_map,
+                  ref_map: alias::ref_map, tcx: ty::ctxt) -> last_uses {
     let v = visit::mk_vt(@{visit_expr: visit_expr,
                            visit_fn: visit_fn
                            with *visit::default_visitor()});
     let cx = {last_uses: std::map::new_int_hash(),
               def_map: def_map,
+              ref_map: ref_map,
               tcx: tcx,
               mutable current: [],
               mutable blocks: nil};
@@ -99,11 +101,17 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         cx.current = join_branches([cur, cx.current]);
       }
       expr_path(_) {
-        alt clear_if_path(cx, ex, v, false) {
-          option::some(my_def) {
-            cx.current += [{def: my_def, exprs: cons(ex.id, @nil)}];
+        let my_def = ast_util::def_id_of_def(cx.def_map.get(ex.id)).node;
+        alt cx.ref_map.find(my_def) {
+          option::some(root_id) { clear_in_current(cx, root_id, false); }
+          _ {
+            alt clear_if_path(cx, ex, v, false) {
+              option::some(my_def) {
+                cx.current += [{def: my_def, exprs: cons(ex.id, @nil)}];
+              }
+              _ {}
+            }
           }
-          _ {}
         }
       }
       expr_swap(lhs, rhs) {

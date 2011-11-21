@@ -139,8 +139,6 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
              bind freevars::annotate_freevars(def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
     time(time_passes, "typechecking", bind typeck::check_crate(ty_cx, crate));
-    let last_uses = time(time_passes, "last use finding",
-        bind last_use::find_last_uses(crate, def_map, ty_cx));
     time(time_passes, "function usage",
          bind fn_usage::check_crate_fn_usage(ty_cx, crate));
     time(time_passes, "alt checking",
@@ -150,9 +148,11 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let mut_map =
         time(time_passes, "mutability checking",
              bind middle::mut::check_crate(ty_cx, crate));
-    let copy_map =
+    let (copy_map, ref_map) =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
+    let last_uses = time(time_passes, "last use finding",
+        bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, last_uses, crate));
     time(time_passes, "const checking",
