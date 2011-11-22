@@ -21,6 +21,7 @@ If you modify the program to make it invalid (for example, remove the
 `use std` line), and then compile it, you'll see an error message like
 this:
 
+    ## notrust
     hello.rs:2:4: 2:20 error: unresolved modulename: std
     hello.rs:2     std::io::println("hello world!");
                    ^~~~~~~~~~~~~~~~

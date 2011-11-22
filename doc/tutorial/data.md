@@ -56,6 +56,7 @@ Records can be destructured on in `alt` patterns. The basic syntax is
 omitted as a shorthand for simply binding the variable with the same
 name as the field.
 
+    # let mypoint = {x: 0f, y: 0f};
     alt mypoint {
         {x: 0f, y: y_name} { /* Provide sub-patterns for fields */ }
         {x, y}             { /* Simply bind the fields */ }
@@ -71,6 +72,7 @@ the fields of a record, a record pattern may end with `, _` (as in
 Tags [FIXME terminology] are datatypes that have several different
 representations. For example, the type shown earlier:
 
+    # type point = {x: float, y: float};
     tag shape {
         circle(point, float);
         rectangle(point, point);
@@ -96,7 +98,7 @@ equivalent to an `enum` in C:
         east;
         south;
         west;
-    };
+    }
 
 This will define `north`, `east`, `south`, and `west` as constants,
 all of which have type `direction`.
@@ -116,6 +118,7 @@ That is a shorthand for this:
 Tag types like this can have their content extracted with the
 dereference (`*`) unary operator:
 
+    # tag gizmo_id = int;
     let my_gizmo_id = gizmo_id(10);
     let id_int: int = *my_gizmo_id;
 
@@ -125,6 +128,8 @@ For tag types with multiple variants, destructuring is the only way to
 get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
+    # type point = {x: float, y: float};
+    # tag shape { circle(point, float); rectangle(point, point); }
     fn area(sh: shape) -> float {
         alt sh {
             circle(_, size) { std::math::pi * size * size }
@@ -136,6 +141,8 @@ For variants without arguments, you have to write `variantname.` (with
 a dot at the end) to match them in a pattern. This to prevent
 ambiguity between matching a variant name and binding a new variable.
 
+    # type point = {x: float, y: float};
+    # tag direction { north; east; south; west; }
     fn point_from_direction(dir: direction) -> point {
         alt dir {
             north. { {x:  0f, y:  1f} }
@@ -295,6 +302,7 @@ strings. They are always immutable.
 
 Resources are data types that have a destructor associated with them.
 
+    # fn close_file_desc(x: int) {}
     resource file_desc(fd: int) {
         close_file_desc(fd);
     }

@@ -22,6 +22,8 @@ other tasks, and that most data is immutable.
 
 Take the following program:
 
+    # fn get_really_big_record() -> int { 1 }
+    # fn myfunc(a: int) {}
     let x = get_really_big_record();
     myfunc(x);
 
@@ -32,6 +34,9 @@ existing value as the argument, without copying.
 
 There are more involved cases. The call could look like this:
 
+    # fn myfunc(a: int, b: block()) {}
+    # fn get_another_record() -> int { 1 }
+    # let x = 1;
     myfunc(x, {|| x = get_another_record(); });
 
 Now, if `myfunc` first calls its second argument and then accesses its

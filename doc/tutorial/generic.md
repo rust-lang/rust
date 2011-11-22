@@ -55,16 +55,17 @@ dereferences become impossible.
 Rust's type inferrer works very well with generics, but there are
 programs that just can't be typed.
 
-    let n = none;
+    let n = std::option::none;
+    # n = std::option::some(1);
 
 If you never do anything else with `n`, the compiler will not be able
 to assign a type to it. (The same goes for `[]`, in fact.) If you
 really want to have such a statement, you'll have to write it like
 this:
 
-    let n2: option::t<int> = none;
+    let n2: std::option::t<int> = std::option::none;
     // or
-    let n = none::<int>;
+    let n = std::option::none::<int>;
 
 Note that, in a value expression, `<` already has a meaning as a
 comparison operator, so you'll have to write `::<T>` to explicitly
@@ -120,6 +121,7 @@ take sendable types.
 
 If you try this program:
 
+    # fn map(f: block(int) -> int, v: [int]) {}
     fn plus1(x: int) -> int { x + 1 }
     map(plus1, [1, 2, 3]);
 
@@ -131,6 +133,7 @@ way to pass integers, which is by value. To get around this issue, you
 have to explicitly mark the arguments to a function that you want to
 pass to a generic higher-order function as being passed by pointer:
 
+    # fn map<T, U>(f: block(T) -> U, v: [T]) {}
     fn plus1(&&x: int) -> int { x + 1 }
     map(plus1, [1, 2, 3]);
 

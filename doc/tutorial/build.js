@@ -4,7 +4,15 @@ require("./lib/codemirror-rust");
 
 md.Markdown.dialects.Maruku.block.code = function code(block, next) {
   if (block.match(/^    /)) {
-    var text = block.replace(/(^|\n)    /g, "$1"), accum = [], curstr = "", curstyle = null;
+    var text = String(block);
+    while (next.length && next[0].match(/^    /)) text += "\n" + String(next.shift());
+    var leaveAlone, accum = [], curstr = "", curstyle = null;
+    text = text.split("\n").map(function(line) {
+      line = line.slice(4);
+      if (line == "## notrust") leaveAlone = true;
+      return line;
+    }).filter(function(x) { return !/^##? /.test(x); }).join("\n");
+    if (leaveAlone) return [["pre", {}, text]];
     function add(str, style) {
       if (style != curstyle) {
         if (curstyle) accum.push(["span", {"class": "cm-" + curstyle}, curstr]);

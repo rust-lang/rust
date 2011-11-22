@@ -2485,22 +2485,12 @@ fn parse_crate_directive(p: parser, first_outer_attr: [ast::attribute]) ->
               _ { none }
             };
         alt p.peek() {
-
-
-
-
-
           // mod x = "foo.rs";
           token::SEMI. {
             let hi = p.get_hi_pos();
             p.bump();
             ret spanned(lo, hi, ast::cdir_src_mod(id, file_opt, outer_attrs));
           }
-
-
-
-
-
           // mod x = "foo_dir" { ...directives... }
           token::LBRACE. {
             p.bump();

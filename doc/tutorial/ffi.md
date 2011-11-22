@@ -67,6 +67,7 @@ most notably the Windows API, use other calling conventions, so Rust
 provides a way to to hint to the compiler which is expected by using
 the `"abi"` attribute:
 
+    #[cfg(target_os = "win32")]
     #[abi = "stdcall"]
     native mod kernel32 {
         fn SetEnvironmentVariableA(n: *u8, v: *u8) -> int;
@@ -81,7 +82,9 @@ or `"stdcall"`. Other conventions may be defined in the future.
 The native `SHA1` function is declared to take three arguments, and
 return a pointer.
 
+    # native mod crypto {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
+    # }
 
 When declaring the argument types to a foreign function, the Rust
 compiler has no way to check whether your declaration is correct, so
@@ -106,6 +109,9 @@ null pointers.
 
 The `sha1` function is the most obscure part of the program.
 
+    # import std::{str, vec};
+    # mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
+    # fn as_hex(data: [u8]) -> str { "hi" }
     fn sha1(data: str) -> str unsafe {
         let bytes = str::bytes(data);
         let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
@@ -141,10 +147,15 @@ Rust's safety mechanisms.
 
 Let's look at our `sha1` function again.
 
+    # import std::{str, vec};
+    # mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
+    # fn as_hex(data: [u8]) -> str { "hi" }
+    # fn x(data: str) -> str unsafe {
     let bytes = str::bytes(data);
     let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                             vec::len(bytes), std::ptr::null());
     ret as_hex(vec::unsafe::from_buf(hash, 20u));
+    # }
 
 The `str::bytes` function is perfectly safe, it converts a string to
 an `[u8]`. This byte array is then fed to `vec::unsafe::to_ptr`, which

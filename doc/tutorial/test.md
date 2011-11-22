@@ -21,6 +21,7 @@ When you compile the program normally, the `test_twice` function will
 not be used. To actually run the tests, compile with the `--test`
 flag:
 
+    ## notrust
     > rustc --lib twice.rs
     > ./twice
     running 1 tests
@@ -30,6 +31,7 @@ flag:
 Or, if we change the file to fail, for example by replacing `x + x`
 with `x + 1`:
 
+    ## notrust
     running 1 tests
     test test_twice ... FAILED
     failures:

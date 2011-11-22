@@ -38,6 +38,7 @@ Rust's `alt` construct is a generalized, cleaned-up version of C's
 each labelled with a pattern, and it will execute the arm that matches
 the value.
 
+    # let my_number = 1;
     alt my_number {
       0       { std::io::println("zero"); }
       1 | 2   { std::io::println("one or two"); }
@@ -89,6 +90,7 @@ To a limited extent, it is possible to use destructuring patterns when
 declaring a variable with `let`. For example, you can say this to
 extract the fields from a tuple:
 
+    # fn get_tuple_of_two_ints() -> (int, int) { (1, 1) }
     let (a, b) = get_tuple_of_two_ints();
 
 This will introduce two new variables, `a` and `b`, bound to the
@@ -118,6 +120,8 @@ it finds one that can be divided by five.
 There's also `while`'s ugly cousin, `do`/`while`, which does not check
 its condition on the first iteration, using traditional syntax:
 
+    # fn eat_cake() {}
+    # fn any_cake_left() -> bool { false }
     do {
         eat_cake();
     } while any_cake_left();

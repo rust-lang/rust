@@ -21,6 +21,7 @@ statements and expressions is C-like. Function calls are written
 precedence that they have in C, comments look the same, and constructs
 like `if` and `while` are available:
 
+    # fn call_a_function(_a: int) {}
     fn main() {
         if 1 < 2 {
             while false { call_a_function(10 * 4); }
@@ -39,10 +40,13 @@ of languages. A lot of thing that are statements in C are expressions
 in Rust. This allows for useless things like this (which passes
 nil—the void type—to a function):
 
+    # fn a_function(_a: ()) {}
     a_function(while false {});
 
 But also useful things like this:
 
+    # fn the_stars_align() -> bool { false }
+    # fn something_else() -> bool { true }
     let x = if the_stars_align() { 4 }
             else if something_else() { 3 }
             else { 0 };
@@ -125,6 +129,7 @@ annotation:
 
     // The type of this vector will be inferred based on its use.
     let x = [];
+    # x = [3];
     // Explicitly say this is a vector of integers.
     let y: [int] = [];
 
@@ -272,6 +277,7 @@ The comparison operators are the traditional `==`, `!=`, `<`, `>`,
 
 Rust has a ternary conditional operator `?:`, as in:
 
+    let badness = 12;
     let message = badness < 10 ? "error" : "FATAL ERROR";
 
 For type casting, Rust uses the binary `as` operator, which has a
@@ -311,19 +317,14 @@ followed by a comma-separated list of nested attributes, as in the
 `cfg` example above, or in this [crate](mod.html) metadata
 declaration:
 
+    ## ignore
     #[link(name = "std",
            vers = "0.1",
            url = "http://rust-lang.org/src/std")];
 
 An attribute without a semicolon following it applies to the
 definition that follows it. When terminated with a semicolon, it
-applies to the current context. The above example could also be
-written like this:
-
-    fn register_win_service() {
-        #[cfg(target_os = "win32")];
-        /* ... */
-    }
+applies to the module or crate.
 
 ## Syntax extensions
 

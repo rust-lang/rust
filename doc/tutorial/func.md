@@ -19,6 +19,10 @@ This helps the compiler avoid spurious error messages. For example,
 the following code would be a type error if `dead_end` would be
 expected to return.
 
+    # fn can_go_left() -> bool { true }
+    # fn can_go_right() -> bool { true }
+    # tag dir { left; right; }
+    # fn dead_end() -> ! { fail; }
     let dir = if can_go_left() { left }
               else if can_go_right() { right }
               else { dead_end(); };
@@ -96,12 +100,14 @@ of integers backwards:
 
 To run such an iteration, you could do this:
 
+    # fn for_rev(v: [int], act: block(int)) {}
     for_rev([1, 2, 3], {|n| log n; });
 
 But Rust allows a more pleasant syntax for this situation, with the
 loop block moved out of the parenthesis and the final semicolon
 omitted:
 
+    # fn for_rev(v: [int], act: block(int)) {}
     for_rev([1, 2, 3]) {|n|
         log n;
     }

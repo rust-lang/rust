@@ -35,6 +35,7 @@ It is also possible to include multiple files in a crate. For this
 purpose, you create a `.rc` crate file, which references any number of
 `.rs` code files. A crate file could look like this:
 
+    ## ignore
     #[link(name = "farm", vers = "2.5", author = "mjh")];
     mod cow;
     mod chicken;
@@ -52,6 +53,7 @@ in a moment.
 To have a nested directory structure for your source files, you can
 nest mods in your `.rc` file:
 
+    ## ignore
     mod poultry {
         mod chicken;
         mod turkey;
@@ -79,6 +81,7 @@ OS X.
 It is possible to provide more specific information when using an
 external crate.
 
+    ## ignore
     use myfarm (name = "farm", vers = "2.7");
 
 When a comma-separated list of name/value pairs is given after `use`,
@@ -90,6 +93,7 @@ local name `myfarm`.
 
 Our example crate declared this set of `link` attributes:
 
+    ## ignore
     #[link(name = "farm", vers = "2.5", author = "mjh")];
 
 The version does not match the one provided in the `use` directive, so
@@ -105,12 +109,14 @@ these two files:
     #[link(name = "mylib", vers = "1.0")];
     fn world() -> str { "world" }
 
+    ## ignore
     // main.rs
     use mylib;
     fn main() { log_err "hello " + mylib::world(); }
 
 Now compile and run like this (adjust to your platform if necessary):
 
+    ## notrust
     > rustc --lib mylib.rs
     > rustc main.rs -L .
     > ./main
@@ -147,8 +153,8 @@ restricted with `export` directives at the top of the module or file.
     mod enc {
         export encrypt, decrypt;
         const super_secret_number: int = 10;
-        fn encrypt(n: int) { n + super_secret_number }
-        fn decrypt(n: int) { n - super_secret_number }
+        fn encrypt(n: int) -> int { n + super_secret_number }
+        fn decrypt(n: int) -> int { n - super_secret_number }
     }
 
 This defines a rock-solid encryption algorithm. Code outside of the
