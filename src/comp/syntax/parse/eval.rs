@@ -1,4 +1,5 @@
 
+import front::attr;
 import std::{option, result, io, fs};
 import std::option::{some, none};
 import syntax::ast;
@@ -86,13 +87,21 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option::t<str>)
     }
 }
 
+fn cdir_path_opt(id: str, attrs: [ast::attribute]) -> str {
+    alt attr::get_meta_item_value_str_by_name(attrs, "path") {
+      some(d) {
+        ret d;
+      }
+      none. { ret id; }
+    }
+}
+
 fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
                         &view_items: [@ast::view_item],
                         &items: [@ast::item]) {
     alt cdir.node {
-      ast::cdir_src_mod(id, file_opt, attrs) {
-        let file_path = id + ".rs";
-        alt file_opt { some(f) { file_path = f; } none. { } }
+      ast::cdir_src_mod(id, attrs) {
+        let file_path = cdir_path_opt(id + ".rs", attrs);
         let full_path =
             if std::fs::path_is_absolute(file_path) {
                 file_path
@@ -113,9 +122,8 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         cx.byte_pos = p0.get_byte_pos();
         items += [i];
       }
-      ast::cdir_dir_mod(id, dir_opt, cdirs, attrs) {
-        let path = id;
-        alt dir_opt { some(d) { path = d; } none. { } }
+      ast::cdir_dir_mod(id, cdirs, attrs) {
+        let path = cdir_path_opt(id, attrs);
         let full_path =
             if std::fs::path_is_absolute(path) {
                 path

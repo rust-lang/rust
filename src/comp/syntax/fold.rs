@@ -159,11 +159,11 @@ fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
 fn noop_fold_crate_directive(cd: crate_directive_, fld: ast_fold) ->
    crate_directive_ {
     ret alt cd {
-          cdir_src_mod(id, fname, attrs) {
-            cdir_src_mod(fld.fold_ident(id), fname, attrs)
+          cdir_src_mod(id, attrs) {
+            cdir_src_mod(fld.fold_ident(id), attrs)
           }
-          cdir_dir_mod(id, fname, cds, attrs) {
-            cdir_dir_mod(fld.fold_ident(id), fname,
+          cdir_dir_mod(id, cds, attrs) {
+            cdir_dir_mod(fld.fold_ident(id),
                          vec::map(fld.fold_crate_directive, cds), attrs)
           }
           cdir_view_item(vi) { cdir_view_item(fld.fold_view_item(vi)) }

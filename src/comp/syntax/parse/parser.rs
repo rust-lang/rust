@@ -2502,19 +2502,12 @@ fn parse_crate_directive(p: parser, first_outer_attr: [ast::attribute]) ->
     if expect_mod || is_word(p, "mod") {
         expect_word(p, "mod");
         let id = parse_ident(p);
-        let file_opt =
-            alt p.peek() {
-              token::EQ. { p.bump(); some(parse_str(p)) }
-              _ {
-                attr::get_meta_item_value_str_by_name(outer_attrs, "path")
-              }
-            };
         alt p.peek() {
           // mod x = "foo.rs";
           token::SEMI. {
             let hi = p.get_hi_pos();
             p.bump();
-            ret spanned(lo, hi, ast::cdir_src_mod(id, file_opt, outer_attrs));
+            ret spanned(lo, hi, ast::cdir_src_mod(id, outer_attrs));
           }
           // mod x = "foo_dir" { ...directives... }
           token::LBRACE. {
@@ -2527,7 +2520,7 @@ fn parse_crate_directive(p: parser, first_outer_attr: [ast::attribute]) ->
             let hi = p.get_hi_pos();
             expect(p, token::RBRACE);
             ret spanned(lo, hi,
-                        ast::cdir_dir_mod(id, file_opt, cdirs, mod_attrs));
+                        ast::cdir_dir_mod(id, cdirs, mod_attrs));
           }
           t { unexpected(p, t); }
         }
