@@ -33,6 +33,7 @@ mod sort;
 mod str;
 mod sys;
 mod task;
+mod tempfile;
 mod test;
 mod tri;
 mod treemap;
