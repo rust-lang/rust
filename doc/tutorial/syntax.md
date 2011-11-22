@@ -240,7 +240,12 @@ character escapes, using the backslash character:
 String literals allow the same escape sequences. They are written
 between double quotes (`"hello"`). Rust strings may contain newlines.
 When a newline is preceded by a backslash, it, and all white space
-following it, will not appear in the resulting string literal.
+following it, will not appear in the resulting string literal. So
+this is equivalent to `"abc"`:
+
+    let s = "a\
+             b\
+             c";
 
 ## Operators
 
