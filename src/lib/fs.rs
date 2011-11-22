@@ -125,10 +125,11 @@ fn make_dir(p: path, mode: int) -> bool {
     ret mkdir(p, mode);
 
     #[cfg(target_os = "win32")]
-    fn mkdir(_p: path, _mode: int) -> bool {
+    fn mkdir(_p: path, _mode: int) -> bool unsafe {
         // FIXME: turn mode into something useful?
         ret str::as_buf(_p, {|buf|
-            os::kernel32::CreateDirectory(buf, ptr::null())
+            os::kernel32::CreateDirectoryA(
+                buf, unsafe::reinterpret_cast(0))
         });
     }
 
@@ -167,7 +168,7 @@ fn remove_dir(p: path) -> bool {
 
     #[cfg(target_os = "win32")]
     fn rmdir(_p: path) -> bool {
-        ret str::as_buf(_p, {|buf| os::kernel32::RemoveDirectory(buf)});
+        ret str::as_buf(_p, {|buf| os::kernel32::RemoveDirectoryA(buf)});
     }
 
     #[cfg(target_os = "linux")]

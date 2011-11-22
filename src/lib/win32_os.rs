@@ -52,9 +52,9 @@ native mod kernel32 {
     fn GetModuleFileNameA(hModule: HMODULE,
                           lpFilename: LPTSTR,
                           nSize: DWORD) -> DWORD;
-    fn CreateDirectory(lpPathName: LPCTSTR,
-                       lpSecurityAttributes: LPSECURITY_ATTRIBUTES) -> bool;
-    fn RemoveDirectory(lpPathName: LPCTSTR) -> bool;
+    fn CreateDirectoryA(lpPathName: LPCTSTR,
+                        lpSecurityAttributes: LPSECURITY_ATTRIBUTES) -> bool;
+    fn RemoveDirectoryA(lpPathName: LPCTSTR) -> bool;
 }
 
 // FIXME turn into constants
