@@ -45,7 +45,7 @@ fn default_visitor<E>() -> visitor<E> {
           visit_pat: bind visit_pat::<E>(_, _, _),
           visit_decl: bind visit_decl::<E>(_, _, _),
           visit_expr: bind visit_expr::<E>(_, _, _),
-          visit_ty: bind visit_ty::<E>(_, _, _),
+          visit_ty: bind skip_ty::<E>(_, _, _),
           visit_constr: bind visit_constr::<E>(_, _, _, _, _),
           visit_fn: bind visit_fn::<E>(_, _, _, _, _, _, _)};
 }
@@ -108,6 +108,8 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       }
     }
 }
+
+fn skip_ty<E>(_t: @ty, _e: E, _v: vt<E>) {}
 
 fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
     alt t.node {
@@ -355,6 +357,8 @@ type simple_visitor =
       visit_constr: fn@(path, span, node_id),
       visit_fn: fn@(_fn, [ty_param], span, fn_ident, node_id)};
 
+fn simple_ignore_ty(_t: @ty) {}
+
 fn default_simple_visitor() -> simple_visitor {
     ret @{visit_mod: fn(_m: _mod, _sp: span) { },
           visit_view_item: fn(_vi: @view_item) { },
@@ -367,7 +371,7 @@ fn default_simple_visitor() -> simple_visitor {
           visit_pat: fn(_p: @pat) { },
           visit_decl: fn(_d: @decl) { },
           visit_expr: fn(_e: @expr) { },
-          visit_ty: fn(_t: @ty) { },
+          visit_ty: simple_ignore_ty,
           visit_constr: fn(_p: path, _sp: span, _id: node_id) { },
           visit_fn:
               fn(_f: _fn, _tps: [ty_param], _sp: span, _ident: fn_ident,
@@ -436,6 +440,11 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(ff, tps, sp, ident, id);
         visit_fn(ff, tps, sp, ident, id, e, v);
     }
+    let visit_ty = if v.visit_ty == simple_ignore_ty {
+        bind skip_ty(_, _, _)
+    } else {
+        bind v_ty(v.visit_ty, _, _, _)
+    };
     ret mk_vt(@{visit_mod: bind v_mod(v.visit_mod, _, _, _, _),
                 visit_view_item: bind v_view_item(v.visit_view_item, _, _, _),
                 visit_native_item:
@@ -448,7 +457,7 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
                 visit_pat: bind v_pat(v.visit_pat, _, _, _),
                 visit_decl: bind v_decl(v.visit_decl, _, _, _),
                 visit_expr: bind v_expr(v.visit_expr, _, _, _),
-                visit_ty: bind v_ty(v.visit_ty, _, _, _),
+                visit_ty: visit_ty,
                 visit_constr: bind v_constr(v.visit_constr, _, _, _, _, _),
                 visit_fn: bind v_fn(v.visit_fn, _, _, _, _, _, _, _)});
 }

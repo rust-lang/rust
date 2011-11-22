@@ -113,10 +113,9 @@ type ctx = {tcx: ty::ctxt, mut_map: mut_map};
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) -> mut_map {
     let cx = @{tcx: tcx, mut_map: std::map::new_int_hash()};
-    let v =
-        @{visit_expr: bind visit_expr(cx, _, _, _),
-          visit_decl: bind visit_decl(cx, _, _, _)
-             with *visit::default_visitor::<()>()};
+    let v = @{visit_expr: bind visit_expr(cx, _, _, _),
+              visit_decl: bind visit_decl(cx, _, _, _)
+              with *visit::default_visitor()};
     visit::visit_crate(*crate, (), visit::mk_vt(v));
     ret cx.mut_map;
 }
