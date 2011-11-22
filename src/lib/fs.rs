@@ -4,6 +4,7 @@ Module: fs
 File system manipulation
 */
 
+import os;
 import os::getcwd;
 import os_fs;
 
@@ -116,6 +117,29 @@ fn file_is_dir(p: path) -> bool {
 }
 
 /*
+Function: make_dir
+
+Creates a directory at the specified path.
+*/
+fn make_dir(p: path, mode: int) -> bool {
+    ret mkdir(p, mode);
+
+    #[cfg(target_os = "win32")]
+    fn mkdir(_p: path, _mode: int) -> bool {
+        // FIXME: turn mode into something useful?
+        ret str::as_buf(_p, {|buf|
+            os::kernel32::CreateDirectory(buf, ptr::null())
+        });
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    fn mkdir(_p: path, _mode: int) -> bool {
+        ret str::as_buf(_p, {|buf| os::libc::mkdir(buf, _mode) == 0 });
+    }
+}
+
+/*
 Function: list_dir
 
 Lists the contents of a directory.
@@ -131,6 +155,26 @@ fn list_dir(p: path) -> [str] {
         }
     }
     ret full_paths;
+}
+
+/*
+Function: remove_dir
+
+Removes a directory at the specified path.
+*/
+fn remove_dir(p: path) -> bool {
+   ret rmdir(p);
+
+    #[cfg(target_os = "win32")]
+    fn rmdir(_p: path) -> bool {
+        ret str::as_buf(_p, {|buf| os::kernel32::RemoveDirectory(buf)});
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    fn rmdir(_p: path) -> bool {
+        ret str::as_buf(_p, {|buf| os::libc::rmdir(buf) == 0 });
+    }
 }
 
 /*
