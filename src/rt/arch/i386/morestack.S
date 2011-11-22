@@ -29,6 +29,14 @@
 #define ALIGNMENT               8
 #endif
 
+#if defined (__APPLE__) || defined(_WIN32)
+#define NEW_STACK_ADDR          rust_new_stack_sym-.L$pic_ref_pt_0(%eax)
+#define DEL_STACK_ADDR          rust_del_stack_sym-.L$pic_ref_pt_1(%edx)
+#else
+#define NEW_STACK_ADDR          $rust_new_stack
+#define DEL_STACK_ADDR          $rust_del_stack
+#endif
+
 #define RETURN_OFFSET   7
 
 .globl RUST_NEW_STACK
@@ -39,6 +47,10 @@
 .globl UPCALL_CALL_C_STACK
 .globl MORESTACK
 
+#ifdef __ELF__
+	.type MORESTACK,@function
+#endif
+
 MORESTACK:
 
     // Sanity check to make sure that there is a currently-running task.
@@ -47,34 +59,33 @@ MORESTACK:
     testl %eax,%eax
     jz L$bail
 
-    subl $12,%esp
-    pushl $12
+    movl $12, (%esp)
     calll UPCALL_ALLOC_C_STACK
     movl %eax,%edx
 
+    movl %esp, 12(%edx)
                             // C stack              | esp+12
                             // ---------------------+-------------------------
     movl 20(%esp),%eax      //                      | ra stksz argsz x ra args
     movl %eax,8(%edx)       //              argsz > | ra stksz argsz x ra args
-    leal 32(%esp),%eax      //                argsz | ra stksz argsz x ra args
+    leal 28+ALIGNMENT(%esp),%eax //           argsz | ra stksz argsz x ra args
     movl %eax,4(%edx)       //         argp > argsz | ra stksz argsz x ra args
     movl 16(%esp),%eax      //           argp argsz | ra stksz argsz x ra args
     movl %eax,(%edx)        //   stksz > argp argsz | ra stksz argsz x ra args
 
-    calll L$pic_ref_pt_0
-L$pic_ref_pt_0:
+    calll .L$pic_ref_pt_0
+.L$pic_ref_pt_0:
     popl %eax
 
-    movl rust_new_stack_sym-L$pic_ref_pt_0(%eax),%eax
+    movl NEW_STACK_ADDR,%eax
     movl %eax,(%esp)
     movl %edx,4(%esp)
     calll UPCALL_CALL_C_STACK
 
-    movl 16(%esp),%edx          // Grab the return pointer.
+    movl 12(%esp),%edx          // Grab the return pointer.
     addl $RETURN_OFFSET,%edx    // Skip past the `add esp,4` and the `ret`.
 
     movl %eax,%esp          // Switch stacks.
-    subl $12,%esp           // Align the stack.
     calll *%edx             // Re-enter the function that called us.
 
     // Now the function that called us has returned, so we need to delete the
@@ -86,22 +97,22 @@ L$pic_ref_pt_0:
     movl $0,(%esp)
     calll UPCALL_ALLOC_C_STACK
 
-    calll L$pic_ref_pt_1
-L$pic_ref_pt_1:
+    calll .L$pic_ref_pt_1
+.L$pic_ref_pt_1:
     popl %edx
 
-    movl rust_del_stack_sym-L$pic_ref_pt_1(%edx),%edx
+    movl DEL_STACK_ADDR,%edx
     movl %edx,(%esp)
     movl %eax,4(%esp)
     calll UPCALL_CALL_C_STACK
 
-    addl $16,%esp
-    retl $16 + ALIGNMENT    //                      ra stksz argsz x ra args
+    addl $12,%esp
+    retl $8    //                      ra stksz argsz x ra args
 
 L$bail:
     movl 12(%esp),%edx
     addl $RETURN_OFFSET,%edx
-    addl $12+16,%esp
+    addl $12+4+8+ALIGNMENT,%esp
     jmpl *%edx
 
 #ifdef __APPLE__
@@ -113,11 +124,6 @@ rust_new_stack_sym:
 rust_del_stack_sym:
     .indirect_symbol RUST_DEL_STACK
     .long 0
-
-#else
-
-rust_new_stack_sym:
-rust_del_stack_sym:
 
 #endif
 
