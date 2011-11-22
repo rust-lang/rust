@@ -5,6 +5,7 @@ Definitions useful for C interop
 */
 
 type c_int = i32;
+
 type long = int;
 type unsigned = u32;
 type ulong = uint;
@@ -12,6 +13,9 @@ type ulong = uint;
 type intptr_t = uint;
 type uintptr_t = uint;
 type uint32_t = u32;
+
+// This *must* match with "import c_float = fXX" in std::math per arch
+type c_float = f64;
 
 type size_t = uint;
 type ssize_t = int;
