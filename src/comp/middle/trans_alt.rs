@@ -91,10 +91,9 @@ fn assoc(key: str, list: bind_map) -> option::t<ValueRef> {
 type match_branch =
     @{pats: [@ast::pat],
       bound: bind_map,
-      data:
-          @{body: BasicBlockRef,
-            guard: option::t<@ast::expr>,
-            id_map: ast_util::pat_id_map}};
+      data: @{body: BasicBlockRef,
+              guard: option::t<@ast::expr>,
+              id_map: ast_util::pat_id_map}};
 type match = [match_branch];
 
 fn matches_always(p: @ast::pat) -> bool {
@@ -114,18 +113,15 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
     for br: match_branch in m {
         alt e(br.pats[col]) {
           some(sub) {
-            let pats =
-                vec::slice(br.pats, 0u, col) + sub +
-                    vec::slice(br.pats, col + 1u, vec::len(br.pats));
-            let new_br =
-                @{pats: pats,
-                  bound:
-                      alt br.pats[col].node {
-                        ast::pat_bind(name) {
-                          br.bound + [{ident: name, val: val}]
-                        }
-                        _ { br.bound }
-                      } with *br};
+            let pats = sub + vec::slice(br.pats, 0u, col) +
+                vec::slice(br.pats, col + 1u, vec::len(br.pats));
+            let new_br = @{pats: pats,
+                           bound: alt br.pats[col].node {
+                             ast::pat_bind(name) {
+                               br.bound + [{ident: name, val: val}]
+                             }
+                             _ { br.bound }
+                           } with *br};
             result += [new_br];
           }
           none. { }
@@ -386,7 +382,6 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     let ccx = bcx.fcx.lcx.ccx;
     let pat_id = 0;
     for br: match_branch in m {
-
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
         if pat_id == 0 { pat_id = br.pats[col].id; }
