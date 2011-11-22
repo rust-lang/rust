@@ -59,8 +59,23 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_copy(expr) { check_copy_ex(cx, expr, false); }
       // Vector add copies.
       expr_binary(add., ls, rs) { maybe_copy(cx, ls); maybe_copy(cx, rs); }
-      expr_rec(fields, _) {
+      expr_rec(fields, def) {
         for field in fields { maybe_copy(cx, field.node.expr); }
+        alt def {
+          some(ex) {
+            // All noncopyable fields must be overridden
+            let t = ty::expr_ty(cx.tcx, ex);
+            let ty_fields = alt ty::struct(cx.tcx, t) { ty::ty_rec(f) { f } };
+            for tf in ty_fields {
+                if !std::vec::any({|f| f.node.ident == tf.ident}, fields) &&
+                   ty::type_kind(cx.tcx, tf.mt.ty) == kind_noncopyable {
+                    cx.tcx.sess.span_err(ex.span,
+                                         "copying a noncopyable value");
+                }
+            }
+          }
+          _ {}
+        }
       }
       expr_tup(exprs) | expr_vec(exprs, _) {
         for expr in exprs { maybe_copy(cx, expr); }
