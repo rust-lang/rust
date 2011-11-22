@@ -144,7 +144,6 @@ export type_kind;
 export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
-export type_has_pointers;
 export type_needs_drop;
 export type_is_bool;
 export type_is_bot;
@@ -213,7 +212,7 @@ type ctxt =
       tcache: type_cache,
       rcache: creader_cache,
       short_names_cache: hashmap<t, @str>,
-      has_pointer_cache: hashmap<t, bool>,
+      needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, ast::kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>};
 
@@ -400,7 +399,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map,
           tcache: tcache,
           rcache: mk_rcache(),
           short_names_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
-          has_pointer_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+          needs_drop_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           kind_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           ast_ty_to_ty_cache:
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty)};
@@ -925,61 +924,42 @@ fn type_is_immediate(cx: ctxt, ty: t) -> bool {
         type_is_unique(cx, ty) || type_is_native(cx, ty);
 }
 
-fn type_has_pointers(cx: ctxt, ty: t) -> bool {
-    alt cx.has_pointer_cache.find(ty) {
+fn type_needs_drop(cx: ctxt, ty: t) -> bool {
+    alt cx.needs_drop_cache.find(ty) {
       some(result) { ret result; }
       none. {/* fall through */ }
     }
 
-    let result = false;
-    alt struct(cx, ty) {
+    let accum = false;
+    let result = alt struct(cx, ty) {
       // scalar types
-      ty_nil. {/* no-op */ }
-      ty_bot. {/* no-op */ }
-      ty_bool. {/* no-op */ }
-      ty_int. {/* no-op */ }
-      ty_float. {/* no-op */ }
-      ty_uint. {/* no-op */ }
-      ty_machine(_) {/* no-op */ }
-      ty_char. {/* no-op */ }
-      ty_type. {/* no-op */ }
-      ty_native(_) {/* no-op */ }
+      ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_float. | ty_uint. |
+      ty_machine(_) | ty_char. | ty_type. | ty_native(_) | ty_ptr(_) { false }
       ty_rec(flds) {
-        for f: field in flds {
-            if type_has_pointers(cx, f.mt.ty) { result = true; break; }
-        }
+        for f in flds { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
+        accum
       }
       ty_tup(elts) {
-        for m in elts { if type_has_pointers(cx, m) { result = true; } }
+        for m in elts { if type_needs_drop(cx, m) { accum = true; } }
+        accum
       }
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
-        for variant: variant_info in variants {
-            for aty: t in variant.args {
+        for variant in variants {
+            for aty in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
-                if type_has_pointers(cx, arg_ty) { result = true; break; }
+                if type_needs_drop(cx, arg_ty) { accum = true; }
             }
-            if result { break; }
+            if accum { break; }
         }
+        accum
       }
-      ty_res(did, inner, tps) {
-        result =
-            type_has_pointers(cx, substitute_type_params(cx, tps, inner));
-      }
-      _ { result = true; }
-    }
+      _ { true }
+    };
 
-    cx.has_pointer_cache.insert(ty, result);
+    cx.needs_drop_cache.insert(ty, result);
     ret result;
-}
-
-fn type_needs_drop(cx: ctxt, ty: t) -> bool {
-    ret alt struct(cx, ty) {
-          ty_res(_, _, _) { true }
-          ty_param(_, _) { true }
-          _ { type_has_pointers(cx, ty) }
-        };
 }
 
 fn kind_lteq(a: kind, b: kind) -> bool {

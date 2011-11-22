@@ -1423,8 +1423,8 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
             decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
           }
           _ {
-            if ty::type_has_pointers(ccx.tcx, t) &&
-                   ty::type_is_structural(ccx.tcx, t) {
+            if ty::type_needs_drop(ccx.tcx, t) &&
+               ty::type_is_structural(ccx.tcx, t) {
                 iter_structural_ty(bcx, v0, t, drop_ty)
             } else { bcx }
           }
@@ -1916,7 +1916,7 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
 }
 
 fn take_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
-    if ty::type_has_pointers(bcx_tcx(cx), t) {
+    if ty::type_needs_drop(bcx_tcx(cx), t) {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_take_glue);
     }
     ret cx;
@@ -1935,9 +1935,6 @@ fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
         ret free_ty(bcx, v, t);
       }
       ty::ty_box(_) { ret decr_refcnt_maybe_free(bcx, v, t); }
-      // FIXME A ty_ptr pointing at something that needs drop glue is somehow
-      // marked as needing drop glue. This is probably a mistake.
-      ty::ty_ptr(_) { ret bcx; }
     }
 }
 
@@ -1954,7 +1951,7 @@ fn take_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
 }
 
 fn free_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
-    if ty::type_has_pointers(bcx_tcx(cx), t) {
+    if ty::type_needs_drop(bcx_tcx(cx), t) {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_free_glue);
     }
     ret cx;
