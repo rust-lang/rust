@@ -54,6 +54,7 @@ native mod kernel32 {
                           nSize: DWORD) -> DWORD;
     fn CreateDirectory(lpPathName: LPCTSTR,
                        lpSecurityAttributes: LPSECURITY_ATTRIBUTES) -> bool;
+    fn RemoveDirectory(lpPathName: LPCTSTR) -> bool;
 }
 
 // FIXME turn into constants

@@ -45,6 +45,7 @@ native mod libc {
     fn pipe(buf: *mutable int) -> int;
     fn waitpid(pid: int, &status: int, options: int) -> int;
     fn mkdir(s: str::sbuf, mode: int) -> int;
+    fn rmdir(s: str::sbuf) -> int;
 }
 
 mod libc_constants {
