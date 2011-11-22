@@ -5,7 +5,6 @@ import syntax::ast_util::*;
 import syntax::codemap::span;
 import syntax::visit;
 import std::map::{new_int_hash};
-import util::common::{lit_eq};
 import syntax::print::pprust::path_to_str;
 import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
                      poststate, precond, postcond,

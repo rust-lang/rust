@@ -1443,7 +1443,9 @@ fn arg_eq<T>(eq: fn(T, T) -> bool, a: @sp_constr_arg<T>, b: @sp_constr_arg<T>)
         alt b.node { ast::carg_ident(t) { ret eq(s, t); } _ { ret false; } }
       }
       ast::carg_lit(l) {
-        alt b.node { ast::carg_lit(m) { ret lit_eq(l, m); } _ { ret false; } }
+        alt b.node {
+          ast::carg_lit(m) { ret ast_util::lit_eq(l, m); } _ { ret false; }
+        }
       }
     }
 }

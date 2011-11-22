@@ -1,6 +1,7 @@
 import syntax::{ast, ast_util};
 import ast::spanned;
-import syntax::ast_util::{local_def, respan, ty_param_kind};
+import syntax::ast_util::{local_def, respan, ty_param_kind, lit_is_numeric,
+                          lit_types_match};
 import syntax::visit;
 import metadata::csearch;
 import driver::session;
@@ -1252,24 +1253,7 @@ fn lit_as_float(l: @ast::lit) -> str {
 }
 
 fn valid_range_bounds(l1: @ast::lit, l2: @ast::lit) -> bool {
-    alt l1.node {
-      ast::lit_float(s1) | ast::lit_mach_float(_, s1) {
-        let s2 = lit_as_float(l2);
-        let f1 = std::float::from_str(s1);
-        let f2 = std::float::from_str(s2);
-        ret std::math::min(f1, f2) == f1
-      }
-      ast::lit_uint(_) | ast::lit_char(_) {
-        let u1 = lit_as_uint(l1);
-        let u2 = lit_as_uint(l2);
-        ret std::math::min(u1, u2) == u1
-      }
-      _ {
-        let i1 = lit_as_int(l1);
-        let i2 = lit_as_int(l2);
-        ret std::math::min(i1, i2) == i1
-      }
-    }
+    ast_util::compare_lit(l1, l2) <= 0
 }
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
@@ -1284,8 +1268,9 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
         write::ty_only_fixup(fcx, pat.id, typ);
       }
       ast::pat_range(begin, end) {
-        if !util::common::lit_is_numeric(begin) ||
-           !util::common::lit_is_numeric(end) {
+        if !lit_types_match(begin, end) {
+            fcx.ccx.tcx.sess.span_err(pat.span, "mismatched types in range");
+        } else if !lit_is_numeric(begin) || !lit_is_numeric(end) {
             fcx.ccx.tcx.sess.span_err(pat.span,
                                       "non-numeric type used in range");
         } else if !valid_range_bounds(begin, end) {

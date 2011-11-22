@@ -7,10 +7,9 @@ import trans_build::*;
 import trans::{new_sub_block_ctxt, new_scope_block_ctxt, load_if_immediate};
 import syntax::ast;
 import syntax::ast_util;
-import syntax::ast_util::dummy_sp;
+import syntax::ast_util::{dummy_sp, lit_eq};
 import syntax::ast::def_id;
 import syntax::codemap::span;
-import util::common::lit_eq;
 
 import trans_common::*;
 

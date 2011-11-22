@@ -1,5 +1,5 @@
 import syntax::ast::*;
-import syntax::ast_util::{variant_def_ids, dummy_sp};
+import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit, lit_eq};
 import syntax::visit;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
@@ -66,11 +66,7 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
       pat_wild. | pat_bind(_) { ret true; }
       pat_lit(la) {
         alt b.node {
-          pat_lit(lb) { ret util::common::lit_eq(la, lb); }
-          pat_range(beginb, endb) {
-            ret util::common::lit_type_eq(la, beginb) &&
-                util::common::lit_in_range(la, beginb, endb);
-          }
+          pat_lit(lb) { ret lit_eq(la, lb); }
           _ { ret false; }
         }
       }
@@ -110,12 +106,11 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
       pat_range(begina, enda) {
         alt b.node {
           pat_lit(lb) {
-            ret util::common::lit_type_eq(lb, begina) &&
-                util::common::lit_in_range(lb, begina, enda);
+            ret compare_lit(begina, lb) <= 0 && compare_lit(enda, lb) >= 0;
           }
           pat_range(beginb, endb) {
-            ret util::common::lit_type_eq(begina, beginb) &&
-                util::common::lit_ranges_overlap(begina, enda, beginb, endb);
+            ret compare_lit(begina, beginb) <= 0 &&
+                compare_lit(enda, endb) >= 0;
           }
           _ { ret false; }
         }

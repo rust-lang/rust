@@ -232,6 +232,47 @@ fn ret_by_ref(style: ret_style) -> bool {
 
 fn ty_param_kind(tp: ty_param) -> kind { tp.kind }
 
+fn compare_lit(a: @lit, b: @lit) -> int {
+    fn cmp<T>(a: T, b: T) -> int { a == b ? 0 : a < b ? -1 : 1 }
+    alt (a.node, b.node) {
+      (lit_int(a), lit_int(b)) |
+      (lit_mach_int(_, a), lit_mach_int(_, b)) { cmp(a, b) }
+      (lit_uint(a), lit_uint(b)) { cmp(a, b) }
+      (lit_char(a), lit_char(b)) { cmp(a, b) }
+      (lit_float(a), lit_float(b)) |
+      (lit_mach_float(_, a), lit_mach_float(_, b)) {
+        cmp(std::float::from_str(a), std::float::from_str(b))
+      }
+      (lit_str(a), lit_str(b)) { cmp(a, b) }
+      (lit_nil., lit_nil.) { 0 }
+      (lit_bool(a), lit_bool(b)) { cmp(a, b) }
+    }
+}
+
+fn lit_eq(a: @lit, b: @lit) -> bool { compare_lit(a, b) == 0 }
+
+fn lit_types_match(a: @lit, b: @lit) -> bool {
+    alt (a.node, b.node) {
+      (lit_int(_), lit_int(_)) | (lit_uint(_), lit_uint(_)) |
+      (lit_char(_), lit_char(_)) | (lit_float(_), lit_float(_)) |
+      (lit_str(_), lit_str(_)) | (lit_nil., lit_nil.) |
+      (lit_bool(_), lit_bool(_ )) { true }
+      (lit_mach_int(ta, _), lit_mach_int(tb, _)) |
+      (lit_mach_float(ta, _), lit_mach_float(tb, _)) { ta == tb }
+      _ { false }
+    }
+}
+
+fn lit_is_numeric(l: @ast::lit) -> bool {
+    alt l.node {
+      ast::lit_int(_) | ast::lit_char(_) | ast::lit_uint(_) |
+      ast::lit_mach_int(_, _) | ast::lit_float(_) | ast::lit_mach_float(_,_) {
+        true
+      }
+      _ { false }
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
@@ -239,4 +280,3 @@ fn ty_param_kind(tp: ty_param) -> kind { tp.kind }
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
 // End:
-
