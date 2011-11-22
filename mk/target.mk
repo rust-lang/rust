@@ -56,9 +56,10 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC):		\
 
 endef
 
-# Instantiate template for all stages
-$(foreach target,$(CFG_TARGET_TRIPLES), \
- $(eval $(call TARGET_STAGE_N,0,$(target),$(CFG_HOST_TRIPLE))) \
- $(eval $(call TARGET_STAGE_N,1,$(target),$(CFG_HOST_TRIPLE))) \
- $(eval $(call TARGET_STAGE_N,2,$(target),$(CFG_HOST_TRIPLE))) \
- $(eval $(call TARGET_STAGE_N,3,$(target),$(CFG_HOST_TRIPLE))))
+# In principle, each host can build each target:
+$(foreach source,$(CFG_TARGET_TRIPLES),						\
+ $(foreach target,$(CFG_TARGET_TRIPLES),					\
+  $(eval $(call TARGET_STAGE_N,0,$(source),$(target)))		\
+  $(eval $(call TARGET_STAGE_N,1,$(source),$(target)))		\
+  $(eval $(call TARGET_STAGE_N,2,$(source),$(target)))		\
+  $(eval $(call TARGET_STAGE_N,3,$(source),$(target)))))
