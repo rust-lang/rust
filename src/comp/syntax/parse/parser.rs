@@ -2478,7 +2478,9 @@ fn parse_crate_directive(p: parser, first_outer_attr: [ast::attribute]) ->
         let file_opt =
             alt p.peek() {
               token::EQ. { p.bump(); some(parse_str(p)) }
-              _ { none }
+              _ {
+                attr::get_meta_item_value_str_by_name(outer_attrs, "path")
+              }
             };
         alt p.peek() {
           // mod x = "foo.rs";
