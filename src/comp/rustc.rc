@@ -40,7 +40,8 @@ mod middle {
     mod tstate {
         mod ck;
         mod annotate;
-        mod aux = "auxiliary.rs";
+        #[path = "auxiliary.rs"]
+        mod aux;
         mod bitvectors;
         mod collect_locals;
         mod pre_post_conditions;

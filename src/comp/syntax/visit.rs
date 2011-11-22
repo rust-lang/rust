@@ -56,8 +56,8 @@ fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
 
 fn visit_crate_directive<E>(cd: @crate_directive, e: E, v: vt<E>) {
     alt cd.node {
-      cdir_src_mod(_, _, _) { }
-      cdir_dir_mod(_, _, cdirs, _) {
+      cdir_src_mod(_, _) { }
+      cdir_dir_mod(_, cdirs, _) {
         for cdir: @crate_directive in cdirs {
             visit_crate_directive(cdir, e, v);
         }

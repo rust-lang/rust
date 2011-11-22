@@ -1030,9 +1030,11 @@ An example of a crate:
 use std (ver = "1.0");
 
 // Define some modules.
-mod foo = "foo.rs";
+#[path = "foo.rs"]
+mod foo;
 mod bar @{
-    mod quux = "quux.rs";
+    #[path =  "quux.rs"]
+    mod quux;
 @}
 @end example
 

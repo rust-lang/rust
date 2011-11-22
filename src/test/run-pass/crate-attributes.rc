@@ -2,7 +2,8 @@
 #[vers = "1.0"];
 
 #[attr1]
-mod m = "crate-attributes-src" {
+#[path = "crate-attributes-src"]
+mod m {
   #[attr_inner];
 
   #[attr2]
