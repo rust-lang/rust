@@ -24,14 +24,14 @@ fn test_max_min() {
 fn test_angle() {
     fn angle(vec: (float, float)) -> float {
         alt vec {
-          (0f, y) when y < 0f { 1.5 * std::math::pi }
-          (0f, y) { 0.5 * std::math::pi }
+          (0f, y) when y < 0f { 1.5 * consts::pi }
+          (0f, y) { 0.5 * consts::pi }
           (x, y) { std::math::atan(y / x) }
         }
     }
     assert angle((1f, 0f)) == 0f;
-    assert angle((1f, 1f)) == 0.25 * pi;
-    assert angle((0f, 1f)) == 0.5 * pi;
+    assert angle((1f, 1f)) == 0.25 * consts::pi;
+    assert angle((0f, 1f)) == 0.5 * consts::pi;
 }
 
 
@@ -42,11 +42,11 @@ fn test_log_functions() {
     assert log2(1.0) == 0.0;
     assert log10(1.0) == 0.0;
 
-    assert ln(e) == 1.0;
+    assert ln(consts::e) == 1.0;
     assert log2(2.0) == 1.0;
     assert log10(10.0) == 1.0;
 
-    assert ln(e*e*e*e) == 4.0;
+    assert ln(consts::e*consts::e*consts::e*consts::e) == 4.0;
     assert log2(256.0) == 8.0;
     assert log10(1000.0) == 3.0;
 
