@@ -24,26 +24,26 @@ native mod f64 {
 
     // Alpabetically sorted by link_name
 
-    fn acos(n: f64) -> f64;
-    fn asin(n: f64) -> f64;
-    fn atan(n: f64) -> f64;
-    fn atan2(a: f64, b: f64) -> f64;
-    fn ceil(n: f64) -> f64;
-    fn cos(n: f64) -> f64;
-    fn cosh(n: f64) -> f64;
-    fn exp(n: f64) -> f64;
-    #[link_name="fabs"] fn abs(n: f64) -> f64; 
-    fn floor(n: f64) -> f64;
-    #[link_name="log"] fn ln(n: f64) -> f64;
-    #[link_name="log1p"] fn ln1p(n: f64) -> f64;
-    fn log10(n: f64) -> f64;
-    fn log2(n: f64) -> f64;
-    fn pow(n: f64, e: f64) -> f64;
-    fn sin(n: f64) -> f64;
-    fn sinh(n: f64) -> f64;
-    fn sqrt(n: f64) -> f64;
-    fn tan(n: f64) -> f64;
-    fn tanh(n: f64) -> f64;
+    pure fn acos(n: f64) -> f64;
+    pure fn asin(n: f64) -> f64;
+    pure fn atan(n: f64) -> f64;
+    pure fn atan2(a: f64, b: f64) -> f64;
+    pure fn ceil(n: f64) -> f64;
+    pure fn cos(n: f64) -> f64;
+    pure fn cosh(n: f64) -> f64;
+    pure fn exp(n: f64) -> f64;
+    #[link_name="fabs"] pure fn abs(n: f64) -> f64;
+    pure fn floor(n: f64) -> f64;
+    #[link_name="log"] pure fn ln(n: f64) -> f64;
+    #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
+    pure fn log10(n: f64) -> f64;
+    pure fn log2(n: f64) -> f64;
+    pure fn pow(n: f64, e: f64) -> f64;
+    pure fn sin(n: f64) -> f64;
+    pure fn sinh(n: f64) -> f64;
+    pure fn sqrt(n: f64) -> f64;
+    pure fn tan(n: f64) -> f64;
+    pure fn tanh(n: f64) -> f64;
 }
 
 #[link_name = "m"]
@@ -52,26 +52,26 @@ native mod f32 {
 
     // Alpabetically sorted by link_name
 
-    #[link_name="acosf"] fn acos(n: f32) -> f32;
-    #[link_name="asinf"] fn asin(n: f32) -> f32;
-    #[link_name="atanf"] fn atan(n: f32) -> f32;
-    #[link_name="atan2f"] fn atan2(a: f32, b: f32) -> f32;
-    #[link_name="ceilf"] fn ceil(n: f32) -> f32;
-    #[link_name="cosf"] fn cos(n: f32) -> f32;
-    #[link_name="coshf"] fn cosh(n: f32) -> f32;
-    #[link_name="expf"] fn exp(n: f32) -> f32;
-    #[link_name="fabsf"] fn abs(n: f32) -> f32;
-    #[link_name="floorf"] fn floor(n: f32) -> f32;
-    #[link_name="powf"] fn pow(n: f32, e: f32) -> f32;
-    #[link_name="sinf"] fn sin(n: f32) -> f32;
-    #[link_name="sinhf"] fn sinh(n: f32) -> f32;
-    #[link_name="sqrtf"] fn sqrt(n: f32) -> f32;
-    #[link_name="tanf"] fn tan(n: f32) -> f32;
-    #[link_name="tanhf"] fn tanh(n: f32) -> f32;
-    #[link_name="logf"] fn ln(n: f32) -> f32;
-    #[link_name="log1p"] fn ln1p(n: f64) -> f64;
-    #[link_name="log2f"] fn log2(n: f32) -> f32;
-    #[link_name="log10f"] fn log10(n: f32) -> f32;
+    #[link_name="acosf"] pure fn acos(n: f32) -> f32;
+    #[link_name="asinf"] pure fn asin(n: f32) -> f32;
+    #[link_name="atanf"] pure fn atan(n: f32) -> f32;
+    #[link_name="atan2f"] pure fn atan2(a: f32, b: f32) -> f32;
+    #[link_name="ceilf"] pure fn ceil(n: f32) -> f32;
+    #[link_name="cosf"] pure fn cos(n: f32) -> f32;
+    #[link_name="coshf"] pure fn cosh(n: f32) -> f32;
+    #[link_name="expf"] pure fn exp(n: f32) -> f32;
+    #[link_name="fabsf"] pure fn abs(n: f32) -> f32;
+    #[link_name="floorf"] pure fn floor(n: f32) -> f32;
+    #[link_name="powf"] pure fn pow(n: f32, e: f32) -> f32;
+    #[link_name="sinf"] pure fn sin(n: f32) -> f32;
+    #[link_name="sinhf"] pure fn sinh(n: f32) -> f32;
+    #[link_name="sqrtf"] pure fn sqrt(n: f32) -> f32;
+    #[link_name="tanf"] pure fn tan(n: f32) -> f32;
+    #[link_name="tanhf"] pure fn tanh(n: f32) -> f32;
+    #[link_name="logf"] pure fn ln(n: f32) -> f32;
+    #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
+    #[link_name="log2f"] pure fn log2(n: f32) -> f32;
+    #[link_name="log10f"] pure fn log10(n: f32) -> f32;
 }
 
 
@@ -189,7 +189,7 @@ Function: acos
 Returns the arccosine of an angle (measured in rad)
 */
 pure fn acos(x: float) -> float
-    { unsafe { c_float::acos(x as c_float) as float } }
+    { c_float::acos(x as c_float) as float }
 
 /*
 Function: asin
@@ -197,7 +197,7 @@ Function: asin
 Returns the arcsine of an angle (measured in rad)
 */
 pure fn asin(x: float) -> float
-    { unsafe { c_float::asin(x as c_float) as float } }
+    { c_float::asin(x as c_float) as float }
 
 /*
 Function: atan
@@ -205,7 +205,7 @@ Function: atan
 Returns the arctangents of an angle (measured in rad)
 */
 pure fn atan(x: float) -> float
-    { unsafe { c_float::atan(x as c_float) as float } }
+    { c_float::atan(x as c_float) as float }
 
 
 /*
@@ -214,7 +214,7 @@ Function: atan2
 Returns the arctangent of an angle (measured in rad)
 */
 pure fn atan2(y: float, x: float) -> float
-    { unsafe { c_float::atan2(y as c_float, x as c_float) as float } }
+    { c_float::atan2(y as c_float, x as c_float) as float }
 
 /*
 Function: ceil
@@ -224,7 +224,7 @@ Returns:
 The smallest integral value less than or equal to `n`
 */
 pure fn ceil(n: float) -> float
-    { unsafe { c_float::ceil(n as c_float) as float } }
+    { c_float::ceil(n as c_float) as float }
 
 /*
 Function: cos
@@ -232,7 +232,7 @@ Function: cos
 Returns the cosine of an angle `x` (measured in rad)
 */
 pure fn cos(x: float) -> float
-    { unsafe { c_float::cos(x as c_float) as float } }
+    { c_float::cos(x as c_float) as float }
 
 /*
 Function: cosh
@@ -241,7 +241,7 @@ Returns the hyperbolic cosine of `x`
 
 */
 pure fn cosh(x: float) -> float
-    { unsafe { c_float::cosh(x as c_float) as float } }
+    { c_float::cosh(x as c_float) as float }
 
 
 /*
@@ -252,7 +252,7 @@ Returns:
 e to the power of `n*
 */
 pure fn exp(n: float) -> float
-    { unsafe { c_float::exp(n as c_float) as float } }
+    { c_float::exp(n as c_float) as float }
 
 /*
 Function: abs
@@ -263,7 +263,7 @@ The absolute value of  `n`
 
 */
 pure fn abs(n: float) -> float
-    { unsafe { c_float::abs(n as c_float) as float } }
+    { c_float::abs(n as c_float) as float }
 
 /*
 Function: floor
@@ -273,7 +273,7 @@ Returns:
 The largest integral value less than or equal to `n`
 */
 pure fn floor(n: float) -> float
-    { unsafe { c_float::floor(n as c_float) as float } }
+    { c_float::floor(n as c_float) as float }
 
 /*
 Function: ln
@@ -281,7 +281,7 @@ Function: ln
 Returns the natural logaritm of `n`
 */
 pure fn ln(n: float) -> float
-    { unsafe { c_float::ln(n as c_float) as float } }
+    { c_float::ln(n as c_float) as float }
 
 /*
 Function: ln1p
@@ -290,7 +290,7 @@ Returns the natural logarithm of `1+n` accurately,
 even for very small values of `n`
 */
 pure fn ln1p(n: float) -> float
-    { unsafe { c_float::ln1p(n as c_float) as float } }
+    { c_float::ln1p(n as c_float) as float }
 
 /*
 Function: log10
@@ -298,7 +298,7 @@ Function: log10
 Returns the logarithm to base 10 of `n`
 */
 pure fn log10(n: float) -> float
-    { unsafe { c_float::log10(n as c_float) as float } }
+    { c_float::log10(n as c_float) as float }
 
 /*
 Function: log2
@@ -306,13 +306,13 @@ Function: log2
 Returns the logarithm to base 2 of `n`
 */
 pure fn log2(n: float) -> float
-    { unsafe { c_float::log2(n as c_float) as float } }
+    { c_float::log2(n as c_float) as float }
 
 /*
 Function: pow
 */
 pure fn pow(v: float, e: float) -> float
-    { unsafe { c_float::pow(v as c_float, e as c_float) as float } }
+    { c_float::pow(v as c_float, e as c_float) as float }
 
 
 /*
@@ -321,7 +321,7 @@ Function: sin
 Returns the sine of an angle `x` (measured in rad)
 */
 pure fn sin(x: float) -> float
-    { unsafe { c_float::sin(x as c_float) as float } }
+    { c_float::sin(x as c_float) as float }
 
 /*
 Function: sinh
@@ -329,7 +329,7 @@ Function: sinh
 Returns the hyperbolic sine of an angle `x` (measured in rad)
 */
 pure fn sinh(x: float) -> float
-    { unsafe { c_float::sinh(x as c_float) as float } }
+    { c_float::sinh(x as c_float) as float }
 
 /*
 Function: sqrt
@@ -337,7 +337,7 @@ Function: sqrt
 Returns the square root of `x`
 */
 pure fn sqrt(x: float) -> float
-    { unsafe { c_float::sqrt(x as c_float) as float } }
+    { c_float::sqrt(x as c_float) as float }
 
 /*
 Function: tan
@@ -346,7 +346,7 @@ Returns the tangent of an angle `x` (measured in rad)
 
 */
 pure fn tan(x: float) -> float
-    { unsafe { c_float::tan(x as c_float) as float } }
+    { c_float::tan(x as c_float) as float }
 
 /*
 Function: tanh
@@ -355,7 +355,7 @@ Returns the hyperbolic tangent of an angle `x` (measured in rad)
 
 */
 pure fn tanh(x: float) -> float
-    { unsafe { c_float::tanh(x as c_float) as float } }
+    { c_float::tanh(x as c_float) as float }
 
 
 
