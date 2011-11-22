@@ -1501,6 +1501,7 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
       ast::pure_fn. {
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::pure_fn.)) { ret; }
+          some(ast::def_native_fn(_, ast::pure_fn.)) { ret; }
           _ {
             ccx.tcx.sess.span_err
                 (sp, "pure function calls function not known to be pure");

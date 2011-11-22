@@ -1975,6 +1975,9 @@ fn parse_native_item(p: parser, attrs: [ast::attribute]) ->
         ret parse_item_native_type(p, attrs);
     } else if eat_word(p, "fn") {
         ret parse_item_native_fn(p, attrs, ast::impure_fn);
+    } else if eat_word(p, "pure") {
+        expect_word(p, "fn");
+        ret parse_item_native_fn(p, attrs, ast::pure_fn);
     } else if eat_word(p, "unsafe") {
         expect_word(p, "fn");
         ret parse_item_native_fn(p, attrs, ast::unsafe_fn);
