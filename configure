@@ -349,9 +349,7 @@ step_msg "making directories"
 for i in \
     doc doc/std \
     nd nd/std \
-    dl \
-    test/run-pass test/run-fail test/compile-fail \
-    test/bench test/perf test/pretty
+    dl
 do
     make_dir $i
 done
@@ -399,6 +397,13 @@ do
             make_dir $h/stage$i/lib/rustc/$t/lib
         done
     done
+
+    make_dir $h/test/run-pass
+    make_dir $h/test/run-fail
+    make_dir $h/test/compile-fail
+    make_dir $h/test/bench
+    make_dir $h/test/perf
+    make_dir $h/test/pretty
 done
 
 # Configure submodules

@@ -115,53 +115,53 @@ define TEST_STAGEN
 # $(2) is the target triple to test
 # $(3) is the host triple to test
 
-check-stage$(1)-$(2)-H-$(3): tidy				\
-	check-stage$(1)-$(2)-H-$(3)-rustc			\
-	check-stage$(1)-$(2)-H-$(3)-std				\
-	check-stage$(1)-$(2)-H-$(3)-rpass			\
-	check-stage$(1)-$(2)-H-$(3)-rfail			\
-	check-stage$(1)-$(2)-H-$(3)-cfail			\
-	check-stage$(1)-$(2)-H-$(3)-bench			\
-	check-stage$(1)-$(2)-H-$(3)-pretty
+check-stage$(1)-T-$(2)-H-$(3): tidy				\
+	check-stage$(1)-T-$(2)-H-$(3)-rustc			\
+	check-stage$(1)-T-$(2)-H-$(3)-std			\
+	check-stage$(1)-T-$(2)-H-$(3)-rpass			\
+	check-stage$(1)-T-$(2)-H-$(3)-rfail			\
+	check-stage$(1)-T-$(2)-H-$(3)-cfail			\
+	check-stage$(1)-T-$(2)-H-$(3)-bench			\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty
 
-check-stage$(1)-$(2)-H-$(3)-std:				\
-	check-stage$(1)-$(2)-H-$(3)-std-dummy
+check-stage$(1)-T-$(2)-H-$(3)-std:				\
+	check-stage$(1)-T-$(2)-H-$(3)-std-dummy
 
-check-stage$(1)-$(2)-H-$(3)-rustc:				\
-	check-stage$(1)-$(2)-H-$(3)-rustc-dummy
+check-stage$(1)-T-$(2)-H-$(3)-rustc:				\
+	check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy
 
-check-stage$(1)-$(2)-H-$(3)-cfail:				\
-	check-stage$(1)-$(2)-H-$(3)-cfail-dummy
+check-stage$(1)-T-$(2)-H-$(3)-cfail:				\
+	check-stage$(1)-T-$(2)-H-$(3)-cfail-dummy
 
-check-stage$(1)-$(2)-H-$(3)-rfail:				\
-	check-stage$(1)-$(2)-H-$(3)-rfail-dummy
+check-stage$(1)-T-$(2)-H-$(3)-rfail:				\
+	check-stage$(1)-T-$(2)-H-$(3)-rfail-dummy
 
-check-stage$(1)-$(2)-H-$(3)-rpass:				\
-	check-stage$(1)-$(2)-H-$(3)-rpass-dummy
+check-stage$(1)-T-$(2)-H-$(3)-rpass:				\
+	check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy
 
-check-stage$(1)-$(2)-H-$(3)-bench:				\
-	check-stage$(1)-$(2)-H-$(3)-bench-dummy
+check-stage$(1)-T-$(2)-H-$(3)-bench:				\
+	check-stage$(1)-T-$(2)-H-$(3)-bench-dummy
 
-check-stage$(1)-$(2)-H-$(3)-perf:				\
-	check-stage$(1)-$(2)-H-$(3)-perf-dummy
+check-stage$(1)-T-$(2)-H-$(3)-perf:				\
+	check-stage$(1)-T-$(2)-H-$(3)-perf-dummy
 
-check-stage$(1)-$(2)-H-$(3)-pretty:				\
-	check-stage$(1)-$(2)-H-$(3)-pretty-rpass	\
-    check-stage$(1)-$(2)-H-$(3)-pretty-rfail	\
-    check-stage$(1)-$(2)-H-$(3)-pretty-bench	\
-    check-stage$(1)-$(2)-H-$(3)-pretty-pretty
+check-stage$(1)-T-$(2)-H-$(3)-pretty:			\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass	\
+    check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail	\
+    check-stage$(1)-T-$(2)-H-$(3)-pretty-bench	\
+    check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty
 
-check-stage$(1)-$(2)-H-$(3)-pretty-rpass:			\
-	check-stage$(1)-$(2)-H-$(3)-pretty-rpass-dummy
+check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass:			\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy
 
-check-stage$(1)-$(2)-H-$(3)-pretty-rfail:			\
-	check-stage$(1)-$(2)-H-$(3)-pretty-rfail-dummy
+check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail:			\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy
 
-check-stage$(1)-$(2)-H-$(3)-pretty-bench:			\
-	check-stage$(1)-$(2)-H-$(3)-pretty-bench-dummy
+check-stage$(1)-T-$(2)-H-$(3)-pretty-bench:			\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-dummy
 
-check-stage$(1)-$(2)-H-$(3)-pretty-pretty:				\
-	check-stage$(1)-$(2)-H-$(3)-pretty-pretty-dummy
+check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty:				\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy
 
 # Rules for the standard library test runner
 
@@ -169,9 +169,9 @@ $(3)/test/stdtest.stage$(1)-$(2)$$(X):			\
 		$$(STDTEST_CRATE) $$(STDTEST_INPUTS)	\
         $$(SREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_$(2)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-check-stage$(1)-$(2)-H-$(3)-std-dummy:			\
+check-stage$(1)-T-$(2)-H-$(3)-std-dummy:			\
 		$(3)/test/stdtest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(TESTARGS)
@@ -182,18 +182,18 @@ $(3)/test/rustctest.stage$(1)-$(2)$$(X):					\
 		$$(COMPILER_CRATE)									\
 		$$(COMPILER_INPUTS)									\
 		$$(SREQ$(1)_T_$(2)_H_$(3))							\
-		$$(TARGET_LIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_$(2)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-check-stage$(1)-$(2)-H-$(3)-rustc-dummy:		\
+check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy:		\
 		$(3)/test/rustctest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(TESTARGS)
 
 # Rules for the cfail/rfail/rpass/bench/perf test runner
 
-CTEST_COMMON_ARGS$(1)-$(2)-$(3) :=							\
+CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X)			\
@@ -201,112 +201,121 @@ CTEST_COMMON_ARGS$(1)-$(2)-$(3) :=							\
         --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)"	\
         $$(CTEST_TESTARGS)
 
-CFAIL_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-        --src-base $$(S)src/test/compile-fail/					\
-        --build-base test/compile-fail/							\
+CFAIL_ARGS$(1)-T-$(2)-H-$(3) := 				\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/compile-fail/	\
+        --build-base test/compile-fail/			\
         --mode compile-fail
 
-RFAIL_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-        --src-base $$(S)src/test/run-fail/						\
-        --build-base test/run-fail/								\
-        --mode run-fail											\
+RFAIL_ARGS$(1)-T-$(2)-H-$(3) := 				\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/run-fail/		\
+        --build-base test/run-fail/				\
+        --mode run-fail							\
         $$(CTEST_RUNTOOL)
 
-RPASS_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-        --src-base $$(S)src/test/run-pass/						\
-        --build-base test/run-pass/								\
-        --mode run-pass											\
+RPASS_ARGS$(1)-T-$(2)-H-$(3) := 				\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/run-pass/		\
+        --build-base test/run-pass/				\
+        --mode run-pass							\
         $$(CTEST_RUNTOOL)
 
-BENCH_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-        --src-base $$(S)src/test/bench/							\
-        --build-base test/bench/								\
-        --mode run-pass											\
+BENCH_ARGS$(1)-T-$(2)-H-$(3) := 				\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/bench/			\
+        --build-base test/bench/				\
+        --mode run-pass							\
         $$(CTEST_RUNTOOL)
 
-PERF_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-        --src-base $$(S)src/test/bench/							\
-        --build-base test/perf/									\
-        --mode run-pass											\
+PERF_ARGS$(1)-T-$(2)-H-$(3) := 					\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/bench/			\
+        --build-base test/perf/					\
+        --mode run-pass							\
         $$(CTEST_PERF_RUNTOOL)
 
-PRETTY_RPASS_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-                         --src-base $$(S)src/test/run-pass/				\
-                         --build-base test/run-pass/					\
-                         --mode pretty
+PRETTY_RPASS_ARGS$(1)-T-$(2)-H-$(3) := 			\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/run-pass/		\
+        --build-base test/run-pass/				\
+        --mode pretty
 
-PRETTY_RFAIL_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-                         --src-base $$(S)src/test/run-fail/				\
-                         --build-base test/run-fail/					\
-                         --mode pretty
+PRETTY_RFAIL_ARGS$(1)-T-$(2)-H-$(3) := 			\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/run-fail/		\
+        --build-base test/run-fail/				\
+        --mode pretty
 
-PRETTY_BENCH_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-                         --src-base $$(S)src/test/bench/				\
-                         --build-base test/bench/						\
-                         --mode pretty
+PRETTY_BENCH_ARGS$(1)-T-$(2)-H-$(3) := 			\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/bench/			\
+        --build-base test/bench/				\
+        --mode pretty
 
-PRETTY_PRETTY_ARGS$(1)-$(2)-$(3) := $$(CTEST_COMMON_ARGS$(1)-$(2)-$(3))	\
-                          --src-base $$(S)src/test/pretty/				\
-                          --build-base test/pretty/						\
-                          --mode pretty
+PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3) := 		\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/pretty/		\
+        --build-base test/pretty/				\
+        --mode pretty
 
-check-stage$(1)-$(2)-$(3)-cfail-dummy:			\
+check-stage$(1)-T-$(2)-H-$(3)-cfail-dummy:			\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
 	    $$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(CFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(CFAIL_ARGS$(1)-$(2))
 
-check-stage$(1)-$(2)-$(3)-rfail-dummy:			\
+check-stage$(1)-T-$(2)-H-$(3)-rfail-dummy:			\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
 	    $$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(RFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(RFAIL_ARGS$(1)-$(2))
 
-check-stage$(1)-$(2)-$(3)-rpass-dummy:			\
+check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy:			\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
 	    $$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(RPASS_ARGS$(1)-$(2))
 
-check-stage$(1)-$(2)-$(3)-bench-dummy:			\
+check-stage$(1)-T-$(2)-H-$(3)-bench-dummy:			\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
 	    $$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(BENCH_ARGS$(1)-$(2))
 
-check-stage$(1)-$(2)-$(3)-perf-dummy:			\
+check-stage$(1)-T-$(2)-H-$(3)-perf-dummy:			\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
         $$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(BENCH_TESTS)
 	@$$(call E, perf: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PERF_ARGS$(1)-$(2))
 
-check-stage$(1)-$(2)-$(3)-pretty-rpass-dummy:	\
+check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy:	\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
         $$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PRETTY_RPASS_ARGS$(1)-$(2))
 
-check-stage$(1)-$(2)-pretty-rfail-dummy:		\
+check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy:	\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
         $$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(RFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PRETTY_RFAIL_ARGS$(1)-$(2))
 
-check-stage$(1)-$(2)-pretty-bench-dummy:		\
+check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-dummy:	\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
 		$$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<) $$(PRETTY_BENCH_ARGS$(1)-$(2))
 
-check-stage$(1)-$(2)-pretty-pretty-dummy:		\
+check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy:	\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
         $$(SREQ$(1)_T_$(2)_H_$(3))				\
         $$(PRETTY_TESTS)
@@ -317,33 +326,46 @@ endef
 
 # Instantiate the template for stage 0, 1, 2, 3
 
-$(foreach target,$(CFG_TARGET_TRIPLES), \
- $(eval $(call TEST_STAGEN,0,$(target))) \
- $(eval $(call TEST_STAGEN,1,$(target))) \
- $(eval $(call TEST_STAGEN,2,$(target))) \
- $(eval $(call TEST_STAGEN,3,$(target))))
+$(foreach host,$(CFG_TARGET_TRIPLES), \
+ $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
+  $(eval $(foreach stage,$(STAGES), \
+   $(eval $(call TEST_STAGEN,$(stage),$(target),$(host))))))))
 
 # Make convenient Shorthand Targets for use on command
 # line or by other rules:
 
-define DEF_CHECK_STAGE
+define DEF_CHECK_SAME
 
-check-stage$(1):        check-stage$(1)-$$(CFG_HOST_TRIPLE)
-check-stage$(1)-perf:   check-stage$(1)-$$(CFG_HOST_TRIPLE)-perf
-check-stage$(1)-rustc:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-rustc
-check-stage$(1)-std:    check-stage$(1)-$$(CFG_HOST_TRIPLE)-std
-check-stage$(1)-rpass:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-rpass
-check-stage$(1)-rfail:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-rfail
-check-stage$(1)-cfail:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-cfail
-check-stage$(1)-bench:  check-stage$(1)-$$(CFG_HOST_TRIPLE)-bench
+check-stage$(1)-H-$(2):        check-stage$(1)-T-$(2)-H-$(2)
+check-stage$(1)-H-$(2)-perf:   check-stage$(1)-T-$(2)-H-$(2)-perf
+check-stage$(1)-H-$(2)-rustc:  check-stage$(1)-T-$(2)-H-$(2)-rustc
+check-stage$(1)-H-$(2)-std:    check-stage$(1)-T-$(2)-H-$(2)-std
+check-stage$(1)-H-$(2)-rpass:  check-stage$(1)-T-$(2)-H-$(2)-rpass
+check-stage$(1)-H-$(2)-rfail:  check-stage$(1)-T-$(2)-H-$(2)-rfail
+check-stage$(1)-H-$(2)-cfail:  check-stage$(1)-T-$(2)-H-$(2)-cfail
+check-stage$(1)-H-$(2)-bench:  check-stage$(1)-T-$(2)-H-$(2)-bench
 
 endef
 
-$(eval $(call DEF_CHECK_STAGE,0))
-$(eval $(call DEF_CHECK_STAGE,1))
-$(eval $(call DEF_CHECK_STAGE,2))
-$(eval $(call DEF_CHECK_STAGE,3))
+$(foreach stage,$(STAGES),								\
+ $(eval $(foreach target,$(CFG_TARGET_TRIPLES),			\
+  $(eval $(call DEF_CHECK_SAME,$(stage),$(target))))))
 
+define DEF_CHECK_HOST
+
+check-stage$(1):        check-stage$(1)-H-$(CFG_HOST_TRIPLE)
+check-stage$(1)-perf:   check-stage$(1)-H-$(CFG_HOST_TRIPLE)-perf
+check-stage$(1)-rustc:  check-stage$(1)-H-$(CFG_HOST_TRIPLE)-rustc
+check-stage$(1)-std:    check-stage$(1)-H-$(CFG_HOST_TRIPLE)-std
+check-stage$(1)-rpass:  check-stage$(1)-H-$(CFG_HOST_TRIPLE)-rpass
+check-stage$(1)-rfail:  check-stage$(1)-H-$(CFG_HOST_TRIPLE)-rfail
+check-stage$(1)-cfail:  check-stage$(1)-H-$(CFG_HOST_TRIPLE)-cfail
+check-stage$(1)-bench:  check-stage$(1)-H-$(CFG_HOST_TRIPLE)-bench
+
+endef
+
+$(foreach stage,$(STAGES),						\
+ $(eval $(call DEF_CHECK_HOST,$(stage))))
 
 ######################################################################
 # Fast-test rules
