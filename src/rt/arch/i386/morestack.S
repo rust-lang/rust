@@ -29,12 +29,17 @@
 #define ALIGNMENT               8
 #endif
 
-#if defined (__APPLE__) || defined(_WIN32)
+#if defined (__APPLE__)
 #define NEW_STACK_ADDR          rust_new_stack_sym-.L$pic_ref_pt_0(%eax)
 #define DEL_STACK_ADDR          rust_del_stack_sym-.L$pic_ref_pt_1(%edx)
 #else
+#if defined (_WIN32)
+#define NEW_STACK_ADDR          $_rust_new_stack
+#define DEL_STACK_ADDR          $_rust_del_stack
+#else
 #define NEW_STACK_ADDR          $rust_new_stack
 #define DEL_STACK_ADDR          $rust_del_stack
+#endif
 #endif
 
 #define RETURN_OFFSET   7
