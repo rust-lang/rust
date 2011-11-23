@@ -297,14 +297,8 @@ fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
         }
         i += 1;
     }
-    // The value does not have a cleanup associated with it. Continue to next
-    // scope.
-    if found == -1 {
-        alt sc_cx.parent {
-          parent_some(parent) { revoke_clean(parent, val); } _ {}
-        }
-        ret;
-    }
+    // The value does not have a cleanup associated with it.
+    if found == -1 { ret; }
     // We found the cleanup and remove it
     sc_cx.cleanups =
         std::vec::slice(sc_cx.cleanups, 0u, found as uint) +
