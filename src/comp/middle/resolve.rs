@@ -217,17 +217,17 @@ fn map_crate(e: @env, c: @ast::crate) {
             let imp = follow_import(*e, sc, path, vi.span);
             if option::is_some(imp) {
                 let glob = {def: option::get(imp), item: vi};;
-                alt sc {
-                  cons(scope_item(i), _) {
+                alt list::head(sc) {
+                  scope_item(i) {
                     e.mod_map.get(i.id).glob_imports += [glob];
                   }
-                  cons(scope_block(b, _, _), _) {
+                  scope_block(b, _, _) {
                     let globs = alt e.block_map.find(b.node.id) {
                       some(globs) { globs + [glob] } none. { [glob] }
                     };
                     e.block_map.insert(b.node.id, globs);
                   }
-                  nil. {
+                  scope_crate. {
                     e.mod_map.get(-1).glob_imports += [glob];
                   }
                 }

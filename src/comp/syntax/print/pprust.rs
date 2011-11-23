@@ -562,6 +562,7 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
       block_normal. { bopen(s); }
     }
 
+    for vi in blk.node.view_items { print_view_item(s, vi); }
     for st: @ast::stmt in blk.node.stmts {
         print_stmt(s, *st);
     }
