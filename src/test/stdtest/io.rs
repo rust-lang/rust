@@ -6,7 +6,7 @@ import std::result;
 
 #[test]
 fn test_simple() {
-    let tmpfile: str = "test/run-pass/lib-io-test-simple.tmp";
+    let tmpfile: str = "tmp/lib-io-test-simple.tmp";
     log tmpfile;
     let frood: str = "A hoopy frood who really knows where his towel is.";
     log frood;
