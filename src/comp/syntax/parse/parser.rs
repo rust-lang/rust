@@ -1697,8 +1697,8 @@ fn parse_block_no_value(p: parser) -> ast::blk {
 // necessary, and this should take a qualifier.
 // some blocks start with "#{"...
 fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
-    let stmts: [@ast::stmt] = [];
-    let expr: option::t<@ast::expr> = none;
+    let view_items = [], stmts = [], expr = none;
+    while is_word(p, "import") { view_items += [parse_view_item(p)]; }
     while p.peek() != token::RBRACE {
         alt p.peek() {
           token::SEMI. {
@@ -1736,7 +1736,8 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
     }
     let hi = p.get_hi_pos();
     p.bump();
-    let bloc = {stmts: stmts, expr: expr, id: p.get_id(), rules: s};
+    let bloc = {view_items: view_items, stmts: stmts, expr: expr,
+                id: p.get_id(), rules: s};
     ret spanned(lo, hi, bloc);
 }
 

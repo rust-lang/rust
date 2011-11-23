@@ -200,7 +200,8 @@ fn visit_fn<E>(f: _fn, _tp: [ty_param], _sp: span, _i: fn_ident, _id: node_id,
 }
 
 fn visit_block<E>(b: ast::blk, e: E, v: vt<E>) {
-    for s: @stmt in b.node.stmts { v.visit_stmt(s, e, v); }
+    for vi in b.node.view_items { v.visit_view_item(vi, e, v); }
+    for s in b.node.stmts { v.visit_stmt(s, e, v); }
     visit_expr_opt(b.node.expr, e, v);
 }
 

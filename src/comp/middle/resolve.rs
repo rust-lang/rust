@@ -37,7 +37,6 @@ tag scope {
     scope_fn(ast::fn_decl, ast::proto, [ast::ty_param]);
     scope_native_item(@ast::native_item);
     scope_loop(@ast::local); // there's only 1 decl per loop.
-
     scope_block(ast::blk, @mutable uint, @mutable uint);
     scope_arm(ast::arm);
 }
@@ -105,6 +104,7 @@ type env =
      ast_map: ast_map::map,
      imports: hashmap<ast::node_id, import_state>,
      mod_map: hashmap<ast::node_id, @indexed_mod>,
+     block_map: hashmap<ast::node_id, [glob_imp_def]>,
      ext_map: hashmap<def_id, [ident]>,
      ext_cache: ext_hash,
      used_imports: {mutable track: bool,
@@ -124,11 +124,12 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
    {def_map: def_map, ext_map: ext_map} {
     let e =
         @{cstore: sess.get_cstore(),
-          def_map: new_int_hash::<def>(),
+          def_map: new_int_hash(),
           ast_map: amap,
-          imports: new_int_hash::<import_state>(),
-          mod_map: new_int_hash::<@indexed_mod>(),
-          ext_map: new_def_hash::<[ident]>(),
+          imports: new_int_hash(),
+          mod_map: new_int_hash(),
+          block_map: new_int_hash(),
+          ext_map: new_def_hash(),
           ext_cache: new_ext_hash(),
           used_imports: {mutable track: false, mutable data:  []},
           mutable reported: [],
@@ -149,14 +150,14 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
 // resolve through them.
 fn map_crate(e: @env, c: @ast::crate) {
     // First, find all the modules, and index the names that they contain
-
     let v_map_mod =
         @{visit_view_item: bind index_vi(e, _, _, _),
-          visit_item: bind index_i(e, _, _, _)
-             with *visit::default_visitor::<scopes>()};
+          visit_item: bind index_i(e, _, _, _),
+          visit_block: visit_block_with_scope
+          with *visit::default_visitor::<scopes>()};
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v_map_mod));
-    // Register the top-level mod
 
+    // Register the top-level mod
     e.mod_map.insert(-1,
                      @{m: some(c.node.module),
                        index: index_mod(c.node.module),
@@ -200,38 +201,36 @@ fn map_crate(e: @env, c: @ast::crate) {
           _ { }
         }
     }
-    // Next, assemble the links for globbed imports.
 
+    // Next, assemble the links for globbed imports.
     let v_link_glob =
         @{visit_view_item: bind link_glob(e, _, _, _),
+          visit_block: visit_block_with_scope,
           visit_item: visit_item_with_scope
-             with *visit::default_visitor::<scopes>()};
+          with *visit::default_visitor::<scopes>()};
     visit::visit_crate(*c, cons(scope_crate, @nil),
                        visit::mk_vt(v_link_glob));
     fn link_glob(e: @env, vi: @ast::view_item, sc: scopes, _v: vt<scopes>) {
-        fn find_mod(e: @env, sc: scopes) -> @indexed_mod {
-            alt sc {
-              cons(scope_item(i), tl) {
-                alt i.node {
-                  ast::item_mod(_) | ast::item_native_mod(_) {
-                    ret e.mod_map.get(i.id);
-                  }
-                  _ { be find_mod(e, *tl); }
-                }
-              }
-              _ {
-                ret e.mod_map.get(-1); //top-level
-
-              }
-            }
-        }
         alt vi.node {
           //if it really is a glob import, that is
           ast::view_item_import_glob(path, _) {
             let imp = follow_import(*e, sc, path, vi.span);
             if option::is_some(imp) {
-                find_mod(e, sc).glob_imports +=
-                    [{def: option::get(imp), item: vi}];
+                let glob = {def: option::get(imp), item: vi};;
+                alt sc {
+                  cons(scope_item(i), _) {
+                    e.mod_map.get(i.id).glob_imports += [glob];
+                  }
+                  cons(scope_block(b, _, _), _) {
+                    let globs = alt e.block_map.find(b.node.id) {
+                      some(globs) { globs + [glob] } none. { [glob] }
+                    };
+                    e.block_map.insert(b.node.id, globs);
+                  }
+                  nil. {
+                    e.mod_map.get(-1).glob_imports += [glob];
+                  }
+                }
             }
           }
           _ { }
@@ -370,6 +369,7 @@ fn visit_fn_with_scope(e: @env, f: ast::_fn, tp: [ast::ty_param], sp: span,
 fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {
     let pos = @mutable 0u, loc = @mutable 0u;
     let block_sc = cons(scope_block(b, pos, loc), @sc);
+    for vi in b.node.view_items { v.visit_view_item(vi, block_sc, v); }
     for stmt in b.node.stmts {
         v.visit_stmt(stmt, block_sc, v);;
         *pos += 1u;;
@@ -426,9 +426,8 @@ fn follow_import(e: env, sc: scopes, path: [ident], sp: span) ->
         alt option::get(dcur) {
           ast::def_mod(_) | ast::def_native_mod(_) { ret dcur; }
           _ {
-            e.sess.span_err(sp,
-                            str::connect(path, "::") +
-                                " does not name a module.");
+            e.sess.span_err(sp, str::connect(path, "::") +
+                            " does not name a module.");
             ret none;
           }
         }
@@ -678,7 +677,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
             }
           }
           scope_block(b, pos, loc) {
-            ret lookup_in_block(name, b.node, *pos, *loc, ns);
+            ret lookup_in_block(e, name, sp, b.node, *pos, *loc, ns);
           }
           scope_arm(a) {
             if ns == ns_value {
@@ -793,8 +792,8 @@ fn lookup_in_obj(name: ident, ob: ast::_obj, ty_params: [ast::ty_param],
     }
 }
 
-fn lookup_in_block(name: ident, b: ast::blk_, pos: uint, loc_pos: uint,
-                   ns: namespace) -> option::t<def> {
+fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
+                   loc_pos: uint, ns: namespace) -> option::t<def> {
     let i = vec::len(b.stmts);
     while i > 0u {
         i -= 1u;
@@ -849,7 +848,30 @@ fn lookup_in_block(name: ident, b: ast::blk_, pos: uint, loc_pos: uint,
           _ { }
         }
     }
-    ret none::<def>;
+    for vi in b.view_items {
+        alt vi.node {
+          ast::view_item_import(ident, _, id) {
+            if name == ident { ret lookup_import(e, local_def(id), ns); }
+          }
+          ast::view_item_import_from(mod_path, idents, id) {
+            for ident in idents {
+                if name == ident.node.name {
+                    ret lookup_import(e, local_def(ident.node.id), ns);
+                }
+            }
+          }
+          ast::view_item_import_glob(_, _) {
+            alt e.block_map.find(b.id) {
+              some(globs) {
+                let found = lookup_in_globs(e, globs, sp, name, ns, inside);
+                if found != none { ret found; }
+              }
+              _ {}
+            }
+          }
+        }
+    }
+    ret none;
 }
 
 fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
@@ -991,57 +1013,51 @@ fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
         }
       }
     }
-
     // not local or explicitly imported; try globs:
     ret lookup_glob_in_mod(e, info, sp, id, ns, outside);
 }
 
-fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
-                      wanted_ns: namespace, dr: dir) -> option::t<def> {
-    fn per_ns(e: env, info: @indexed_mod, sp: span, id: ident, ns: namespace,
-              dr: dir) -> option::t<def> {
-
-        fn lookup_in_mod_(e: env, def: glob_imp_def, sp: span, name: ident,
-                          ns: namespace, dr: dir) -> option::t<glob_imp_def> {
-            alt lookup_in_mod(e, def.def, sp, name, ns, dr) {
-              option::some(d) { option::some({def: d, item: def.item}) }
-              option::none. { option::none }
-            }
-        }
-
-        let matches =
-            vec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
-                            { info.glob_imports });
-        if vec::len(matches) == 0u {
-            ret none;
-        } else if vec::len(matches) == 1u {
-            ret some(matches[0].def);
-        } else {
-            for match: glob_imp_def in matches {
-                let sp = match.item.span;
-                e.sess.span_note(sp, #fmt["'%s' is imported here", id]);
-            }
-            e.sess.span_fatal(sp,
-                              "'" + id + "' is glob-imported from" +
-                                  " multiple different modules.");
+fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
+                   ns: namespace, dr: dir) -> option::t<def> {
+    fn lookup_in_mod_(e: env, def: glob_imp_def, sp: span, name: ident,
+                      ns: namespace, dr: dir) -> option::t<glob_imp_def> {
+        alt lookup_in_mod(e, def.def, sp, name, ns, dr) {
+          option::some(d) { option::some({def: d, item: def.item}) }
+          option::none. { option::none }
         }
     }
+    let matches =
+        vec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
+                        { globs });
+    if vec::len(matches) == 0u {
+        ret none;
+    } else if vec::len(matches) == 1u {
+        ret some(matches[0].def);
+    } else {
+        for match: glob_imp_def in matches {
+            let sp = match.item.span;
+            e.sess.span_note(sp, #fmt["'%s' is imported here", id]);
+        }
+        e.sess.span_fatal(sp, "'" + id + "' is glob-imported from" +
+                          " multiple different modules.");
+    }
+}
+
+fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
+                      wanted_ns: namespace, dr: dir) -> option::t<def> {
     // since we don't know what names we have in advance,
     // absence takes the place of todo()
-
     if !info.glob_imported_names.contains_key(id) {
         info.glob_imported_names.insert(id, resolving(sp));
-        let val = per_ns(e, info, sp, id, ns_value, dr);
-        let typ = per_ns(e, info, sp, id, ns_type, dr);
-        let md = per_ns(e, info, sp, id, ns_module, dr);
+        let val = lookup_in_globs(e, info.glob_imports, sp, id, ns_value, dr);
+        let typ = lookup_in_globs(e, info.glob_imports, sp, id, ns_type, dr);
+        let md = lookup_in_globs(e, info.glob_imports, sp, id, ns_module, dr);
         info.glob_imported_names.insert(id, resolved(val, typ, md, id, sp));
     }
     alt info.glob_imported_names.get(id) {
       todo(_, _, _, _, _) { e.sess.bug("Shouldn't've put a todo in."); }
-      resolving(sp) {
-        ret none::<def>; //circularity is okay in import globs
-
-      }
+      //circularity is okay in import globs
+      resolving(sp) { ret none::<def>; }
       resolved(val, typ, md, _, _) {
         ret alt wanted_ns {
               ns_value. { val }

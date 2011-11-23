@@ -348,6 +348,7 @@ fn mk_test_wrapper(cx: test_ctxt,
     };
 
     let wrapper_body: ast::blk = nospan({
+        view_items: [],
         stmts: [@call_stmt],
         expr: option::none,
         id: cx.next_node_id(),

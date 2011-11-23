@@ -76,9 +76,8 @@ tag meta_item_ {
 
 type blk = spanned<blk_>;
 
-type blk_ =
-    {stmts: [@stmt], expr: option::t<@expr>, id: node_id,
-     rules: blk_check_mode};
+type blk_ = {view_items: [@view_item], stmts: [@stmt], expr: option::t<@expr>,
+             id: node_id, rules: blk_check_mode};
 
 type pat = {id: node_id, node: pat_, span: span};
 

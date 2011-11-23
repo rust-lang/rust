@@ -247,7 +247,8 @@ fn noop_fold_method(m: method_, fld: ast_fold) -> method_ {
 
 
 fn noop_fold_block(b: blk_, fld: ast_fold) -> blk_ {
-    ret {stmts: vec::map(fld.fold_stmt, b.stmts),
+    ret {view_items: vec::map(fld.fold_view_item, b.view_items),
+         stmts: vec::map(fld.fold_stmt, b.stmts),
          expr: option::map(fld.fold_expr, b.expr),
          id: b.id,
          rules: b.rules};

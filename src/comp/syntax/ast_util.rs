@@ -199,7 +199,7 @@ fn block_from_expr(e: @expr) -> blk {
 
 fn default_block(stmts1: [@stmt], expr1: option::t<@expr>, id1: node_id) ->
    blk_ {
-    ret {stmts: stmts1, expr: expr1, id: id1, rules: default_blk};
+    {view_items: [], stmts: stmts1, expr: expr1, id: id1, rules: default_blk}
 }
 
 fn obj_field_from_anon_obj_field(f: anon_obj_field) -> obj_field {
