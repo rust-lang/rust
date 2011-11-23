@@ -10,7 +10,7 @@
 export box, char, float, int, str, ptr;
 export uint, u8, u32, u64, vec, bool;
 export comm, fs, io, net, run, sys, task;
-export ctypes, either, option, result, four, tri, util;
+export c_vec, ctypes, either, option, result, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
 export math, math_f32, math_f64;
@@ -50,6 +50,7 @@ mod task;
 
 // Utility modules
 
+mod c_vec;
 mod ctypes;
 mod cmath; /* unexported */
 mod either;
