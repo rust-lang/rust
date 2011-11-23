@@ -986,7 +986,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
     let result = alt struct(cx, ty) {
       // Scalar and unique types are sendable
       ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_uint. | ty_float. |
-      ty_machine(_) | ty_char. | ty_native(_) |
+      ty_machine(_) | ty_char. | ty_native(_) | ty_ptr(_) |
       ty_type. | ty_str. | ty_native_fn(_, _) { ast::kind_sendable }
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
@@ -1003,8 +1003,8 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
       ty_box(mt) { ast::kind_copyable }
-      // Pointers and unique containers raise pinned to shared.
-      ty_ptr(tm) | ty_vec(tm) | ty_uniq(tm) { type_kind(cx, tm.ty) }
+      // Boxes and unique pointers raise pinned to shared.
+      ty_vec(tm) | ty_uniq(tm) { type_kind(cx, tm.ty) }
       // Records lower to the lowest of their members.
       ty_rec(flds) {
         let lowest = ast::kind_sendable;
