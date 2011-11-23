@@ -295,7 +295,7 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
     // FIXME: there's no syntax for this right now anyway
     //  auto constrs = parse_constrs(~[], p);
     let constrs: [@ast::constr] = [];
-    let (ret_style, ret_ty) = parse_ret_ty(p, vec::len(inputs.node));
+    let (ret_style, ret_ty) = parse_ret_ty(p);
     ret ast::ty_fn(proto, inputs.node, ret_ty, ret_style, constrs);
 }
 
@@ -439,34 +439,12 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool)
     }
 }
 
-fn parse_ret_ty(p: parser, n_args: uint) -> (ast::ret_style, @ast::ty) {
+fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
     ret if eat(p, token::RARROW) {
         let lo = p.get_lo_pos();
         if eat(p, token::NOT) {
             (ast::noreturn, @spanned(lo, p.get_last_hi_pos(), ast::ty_bot))
-        } else {
-            let style = ast::return_val;
-            if eat(p, token::BINOP(token::AND)) {
-                if n_args == 0u {
-                    p.fatal("can not return reference from argument-less fn");
-                }
-                let mut_root = eat(p, token::NOT), arg = 1u;
-                alt p.peek() {
-                  token::LIT_INT(val) { p.bump(); arg = val as uint; }
-                  _ { if n_args > 1u {
-                      p.fatal("must specify referenced parameter");
-                  } }
-                }
-                if arg > n_args {
-                    p.fatal("referenced argument does not exist");
-                }
-                if arg == 0u {
-                    p.fatal("referenced argument can't be 0");
-                }
-                style = ast::return_ref(mut_root, arg);
-            };
-            (style, parse_ty(p, false))
-        }
+        } else { (ast::return_val, parse_ty(p, false)) }
     } else {
         let pos = p.get_lo_pos();
         (ast::return_val, @spanned(pos, pos, ast::ty_nil))
@@ -1791,7 +1769,7 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
         p.bump();
         constrs = parse_constrs({|x| parse_ty_constr(inputs.node, x) }, p);
     }
-    let (ret_style, ret_ty) = parse_ret_ty(p, vec::len(inputs.node));
+    let (ret_style, ret_ty) = parse_ret_ty(p);
     ret {inputs: inputs.node,
          output: ret_ty,
          purity: purity,

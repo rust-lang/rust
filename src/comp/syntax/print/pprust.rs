@@ -1130,15 +1130,6 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl, constrs: [@ast::constr]) {
     if decl.output.node != ast::ty_nil {
         space_if_not_bol(s);
         word_space(s, "->");
-        alt decl.cf {
-          ast::return_ref(mut, arg) {
-            word(s.s, mut ? "&!" : "&");
-            if vec::len(decl.inputs) > 1u {
-                word_space(s, std::uint::str(arg));
-            }
-          }
-          _ {}
-        }
         print_type(s, decl.output);
     }
 }
@@ -1336,18 +1327,8 @@ fn print_ty_fn(s: ps, proto: ast::proto, id: option::t<ast::ident>,
         space_if_not_bol(s);
         ibox(s, indent_unit);
         word_space(s, "->");
-        if cf == ast::noreturn {
-            word_nbsp(s, "!");
-        } else {
-            alt cf {
-              ast::return_ref(mut, arg) {
-                word(s.s, mut ? "&!" : "&");
-                if vec::len(inputs) > 1u { word(s.s, std::uint::str(arg)); }
-              }
-              _ {}
-            }
-            print_type(s, output);
-        }
+        if cf == ast::noreturn { word_nbsp(s, "!"); }
+        else { print_type(s, output); }
         end(s);
     }
     word(s.s, ast_ty_fn_constrs_str(constrs));

@@ -80,14 +80,14 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
 //  - new_fn_ctxt
 //  - trans_args
 fn type_of_fn(cx: @crate_ctxt, sp: span,
-              is_method: bool, ret_ref: bool, inputs: [ty::arg],
+              is_method: bool, inputs: [ty::arg],
               output: ty::t, ty_param_count: uint)
    : non_ty_var(cx, output) -> TypeRef {
     let atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
     let out_ty = T_ptr(type_of_inner(cx, sp, output));
-    atys += [ret_ref ? T_ptr(out_ty) : out_ty];
+    atys += [out_ty];
 
     // Arg 1: Env (closure-bindings / self-obj)
     if is_method {
@@ -108,13 +108,12 @@ fn type_of_fn(cx: @crate_ctxt, sp: span,
 fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
                       ty_param_count: uint)
     : returns_non_ty_var(cx, fty) -> TypeRef {
-    let by_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(cx.tcx, fty));
     // FIXME: Check should be unnecessary, b/c it's implied
     // by returns_non_ty_var(t). Make that a postcondition
     // (see Issue #586)
     let ret_ty = ty::ty_fn_ret(cx.tcx, fty);
     check non_ty_var(cx, ret_ty);
-    ret type_of_fn(cx, sp, false, by_ref, ty::ty_fn_args(cx.tcx, fty),
+    ret type_of_fn(cx, sp, false, ty::ty_fn_args(cx.tcx, fty),
                    ret_ty, ty_param_count);
 }
 
@@ -3046,11 +3045,10 @@ fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
     let v = GEPi(bcx, vtbl, [0, ix as int]);
     let fn_ty: ty::t = ty::method_ty_to_fn_ty(tcx, mths[ix]);
     let ret_ty = ty::ty_fn_ret(tcx, fn_ty);
-    let ret_ref = ast_util::ret_by_ref(ty::ty_fn_ret_style(tcx, fn_ty));
     // FIXME: constrain ty_obj?
     check non_ty_var(ccx, ret_ty);
 
-    let ll_fn_ty = type_of_fn(ccx, bcx.sp, true, ret_ref,
+    let ll_fn_ty = type_of_fn(ccx, bcx.sp, true,
                               ty::ty_fn_args(tcx, fn_ty), ret_ty, 0u);
     v = Load(bcx, PointerCast(bcx, v, T_ptr(T_ptr(ll_fn_ty))));
     ret {bcx: bcx, mthptr: v, objptr: o};
@@ -3656,16 +3654,14 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
+fn trans_args(cx: @block_ctxt, llenv: ValueRef,
               gen: option::t<generic_info>, es: [@ast::expr], fn_ty: ty::t,
               dest: dest)
    -> {bcx: @block_ctxt,
-       outer_cx: @block_ctxt,
        args: [ValueRef],
        retslot: ValueRef,
        to_zero: [{v: ValueRef, t: ty::t}],
-       to_revoke: [{v: ValueRef, t: ty::t}],
-       ret_ref: bool} {
+       to_revoke: [{v: ValueRef, t: ty::t}]} {
 
     let args: [ty::arg] = ty::ty_fn_args(bcx_tcx(cx), fn_ty);
     let llargs: [ValueRef] = [];
@@ -3676,8 +3672,6 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
     let ccx = bcx_ccx(cx);
     let tcx = ccx.tcx;
     let bcx = cx;
-    let ret_style = ty::ty_fn_ret_style(tcx, fn_ty);
-    let ret_ref = ast_util::ret_by_ref(ret_style);
 
     let retty = ty::ty_fn_ret(tcx, fn_ty), full_retty = retty;
     alt gen {
@@ -3691,18 +3685,14 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
     }
     // Arg 0: Output pointer.
     let llretty = type_of_or_i8(bcx, full_retty);
-    let llretslot = if ret_ref {
-        alloca(cx, T_ptr(llretty))
-    } else {
-        alt dest {
-          ignore. {
-            if ty::type_is_nil(tcx, retty) {
-                llvm::LLVMGetUndef(T_ptr(llretty))
-            } else { alloca(cx, llretty) }
-          }
-          save_in(dst) { dst }
-          by_val(_) { alloca(cx, llretty) }
-        }
+    let llretslot = alt dest {
+      ignore. {
+        if ty::type_is_nil(tcx, retty) {
+            llvm::LLVMGetUndef(T_ptr(llretty))
+        } else { alloca(cx, llretty) }
+      }
+      save_in(dst) { dst }
+      by_val(_) { alloca(cx, llretty) }
     };
 
     if ty::type_contains_params(tcx, retty) {
@@ -3713,7 +3703,6 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
         // view, for the sake of making a type-compatible call.
         check non_ty_var(ccx, retty);
         let llretty = T_ptr(type_of_inner(ccx, bcx.sp, retty));
-        if ret_ref { llretty = T_ptr(llretty); }
         llargs += [PointerCast(cx, llretslot, llretty)];
     } else { llargs += [llretslot]; }
 
@@ -3729,25 +3718,19 @@ fn trans_args(cx: @block_ctxt, outer_cx: @block_ctxt, llenv: ValueRef,
     // This will be needed if this is a generic call, because the callee has
     // to cast her view of the arguments to the caller's view.
     let arg_tys = type_of_explicit_args(ccx, cx.sp, args);
-    let i = 0u, outer_cx = outer_cx;
+    let i = 0u;
     for e: @ast::expr in es {
-        let is_referenced = alt ret_style {
-          ast::return_ref(_, arg_n) { i + 1u == arg_n }
-          _ { false }
-        };
-        let r = trans_arg_expr(is_referenced ? outer_cx : bcx,
-                               args[i], arg_tys[i], to_zero, to_revoke, e);
-        if is_referenced { outer_cx = r.bcx; } else { bcx = r.bcx; }
+        let r = trans_arg_expr(bcx, args[i], arg_tys[i], to_zero, to_revoke,
+                               e);
+        bcx = r.bcx;
         llargs += [r.val];
         i += 1u;
     }
     ret {bcx: bcx,
-         outer_cx: outer_cx,
          args: llargs,
          retslot: llretslot,
          to_zero: to_zero,
-         to_revoke: to_revoke,
-         ret_ref: ret_ref};
+         to_revoke: to_revoke};
 }
 
 fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
@@ -3764,6 +3747,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
 //NDM    }
 
     let cx = new_scope_block_ctxt(in_cx, "call");
+    Br(in_cx, cx.llbb);
     let f_res = trans_callee(cx, f);
     let bcx = f_res.bcx;
 
@@ -3789,8 +3773,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
 
     let ret_ty = ty::node_id_to_type(tcx, id);
     let args_res =
-        trans_args(bcx, in_cx, llenv, f_res.generic, args, fn_expr_ty, dest);
-    Br(args_res.outer_cx, cx.llbb);
+        trans_args(bcx, llenv, f_res.generic, args, fn_expr_ty, dest);
     bcx = args_res.bcx;
     let llargs = args_res.args;
     let llretslot = args_res.retslot;
@@ -3803,8 +3786,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
                       args_res.to_revoke);
     alt dest {
       ignore. {
-        if llvm::LLVMIsUndef(llretslot) != lib::llvm::True &&
-           !args_res.ret_ref {
+        if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
             bcx = drop_ty(bcx, llretslot, ret_ty);
         }
       }
@@ -4445,16 +4427,7 @@ fn trans_cont(sp: span, cx: @block_ctxt) -> @block_ctxt {
 fn trans_ret(bcx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
     let cleanup_cx = bcx, bcx = bcx;
     alt e {
-      some(x) {
-        if ast_util::ret_by_ref(bcx.fcx.ret_style) {
-            let {bcx: cx, val, kind} = trans_lval(bcx, x);
-            assert kind == owned;
-            Store(cx, val, bcx.fcx.llretptr);
-            bcx = cx;
-        } else {
-            bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr);
-        }
-      }
+      some(x) { bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr); }
       _ {}
     }
     // run all cleanups and back out.
@@ -5604,7 +5577,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let nt = ty::mk_nil(ccx.tcx);
         check non_ty_var(ccx, nt);
 
-        let llfty = type_of_fn(ccx, sp, false, false, [vecarg_ty], nt, 0u);
+        let llfty = type_of_fn(ccx, sp, false, [vecarg_ty], nt, 0u);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::LLVMCCallConv, llfty);
 
@@ -5700,7 +5673,7 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
     alt ty::struct(cx.tcx, x) {
       ty::ty_native_fn(args, out) {
         check non_ty_var(cx, out);
-        ret type_of_fn(cx, sp, false, false, args, out, ty_param_count);
+        ret type_of_fn(cx, sp, false, args, out, ty_param_count);
       }
     }
 }

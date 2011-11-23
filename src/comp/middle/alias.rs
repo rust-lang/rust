@@ -28,10 +28,8 @@ type binding = @{node_id: node_id,
                  unsafe_tys: [unsafe_ty],
                  mutable copied: copied};
 
-tag ret_info { by_ref(bool, node_id); other; }
 // FIXME it may be worthwhile to use a linked list of bindings instead
 type scope = {bs: [binding],
-              ret_info: ret_info,
               invalid: @mutable list<@invalid>};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
@@ -67,7 +65,7 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_block: bind visit_block(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
-    let sc = {bs: [], ret_info: other, invalid: @mutable list::nil};
+    let sc = {bs: [], invalid: @mutable list::nil};
     visit::visit_crate(*crate, sc, visit::mk_vt(v));
     tcx.sess.abort_if_errors();
     ret (cx.copy_map, cx.ref_map);
@@ -84,24 +82,12 @@ fn visit_fn(cx: @ctx, f: ast::_fn, _tp: [ast::ty_param], sp: span,
         }
     }
 
-    if ast_util::ret_by_ref(f.decl.cf) && !is_none(f.body.node.expr) {
-        // FIXME this will be easier to lift once have DPS
-        err(*cx, option::get(f.body.node.expr).span,
-            "reference-returning functions may not return implicitly");
-    }
-    let ret_info = alt f.decl.cf {
-      ast::return_ref(mut, n_arg) {
-        by_ref(mut, f.decl.inputs[n_arg - 1u].id)
-      }
-      _ { other }
-    };
     // Blocks need to obey any restrictions from the enclosing scope, and may
     // be called multiple times.
     if f.proto == ast::proto_block {
-        let sc = {ret_info: ret_info with sc};
         check_loop(*cx, sc) {|| v.visit_block(f.body, sc, v);}
     } else {
-        let sc = {bs: [], ret_info: ret_info, invalid: @mutable list::nil};
+        let sc = {bs: [], invalid: @mutable list::nil};
         v.visit_block(f.body, sc, v);
     }
 }
@@ -133,17 +119,6 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
       }
       ast::expr_assign(dest, src) | ast::expr_assign_op(_, dest, src) {
         check_assign(cx, dest, src, sc, v);
-      }
-      ast::expr_ret(oexpr) {
-        if !is_none(oexpr) {
-            alt sc.ret_info {
-              by_ref(mut, arg_node_id) {
-                check_ret_ref(*cx, sc, mut, arg_node_id, option::get(oexpr));
-              }
-              _ {}
-            }
-        }
-        handled = false;
       }
       ast::expr_if(c, then, els) { check_if(c, then, els, sc, v); }
       ast::expr_while(_, _) | ast::expr_do_while(_, _) {
@@ -237,9 +212,6 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
 fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
     -> [binding] {
     let fty = ty::expr_ty(cx.tcx, f);
-    let by_ref = alt ty::ty_fn_ret_style(cx.tcx, fty) {
-      ast::return_ref(_, arg_n) { arg_n } _ { 0u }
-    };
     let arg_ts = ty::ty_fn_args(cx.tcx, fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
     let bindings = [];
@@ -265,7 +237,7 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
                        mutable copied: alt arg_t.mode {
                          ast::by_move. | ast::by_copy. { copied }
                          ast::by_mut_ref. { not_allowed }
-                         _ { i + 1u == by_ref ? not_allowed : not_copied }
+                         _ { not_copied }
                        }}];
         i += 1u;
     }
@@ -336,69 +308,6 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
         }
     }
     ret bindings;
-}
-
-fn check_ret_ref(cx: ctx, sc: scope, mut: bool, arg_node_id: node_id,
-                 expr: @ast::expr) {
-    let root = expr_root(cx, expr, false);
-    let bad = none;
-    let mut_field = !is_none(root.mut);
-    alt path_def(cx, root.ex) {
-      none. {
-        bad = some("a temporary");
-      }
-      some(ast::def_local(did, _)) | some(ast::def_binding(did)) |
-      some(ast::def_arg(did, _)) {
-        let cur_node = did.node;
-        while true {
-            alt cx.tcx.items.find(cur_node) {
-              some(ast_map::node_arg(arg, _)) {
-                if arg.mode == ast::by_move {
-                    bad = some("a move-mode parameter");
-                }
-                if arg.mode == ast::by_copy {
-                    bad = some("a copy-mode parameter");
-                }
-                if cur_node != arg_node_id {
-                    bad = some("the wrong parameter");
-                }
-                break;
-              }
-              _ {}
-            }
-            alt vec::find({|b| b.node_id == cur_node}, sc.bs) {
-              some(b) {
-                if vec::len(b.unsafe_tys) > 0u {
-                    mut_field = true;
-                    break;
-                }
-                if is_none(b.root_var) {
-                    bad = some("a function-local value");
-                    break;
-                }
-                if b.copied == copied {
-                    bad = some("an implicitly copied reference");
-                    break;
-                }
-                b.copied = not_allowed;
-                cur_node = option::get(b.root_var);
-              }
-              none. {
-                bad = some("a function-local value");
-                break;
-              }
-            }
-        }
-      }
-      _ { bad = some("a non-local value"); }
-    }
-    if mut_field && !mut { bad = some("a mutable field"); }
-    alt bad {
-      some(name) {
-        err(cx, expr.span, "can not return a reference to " + name);
-      }
-      _ {}
-    }
 }
 
 fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
@@ -729,22 +638,6 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
         alt cx.tcx.def_map.get(base_root.ex.id) {
           ast::def_obj_field(_, ast::mut.) {
             unsafe_ty = some(mut_contains(ty::expr_ty(cx.tcx, base_root.ex)));
-          }
-          _ {}
-        }
-      }
-      ast::expr_call(f, args, _) {
-        let fty = ty::expr_ty(cx.tcx, f);
-        alt ty::ty_fn_ret_style(cx.tcx, fty) {
-          ast::return_ref(mut, arg_n) {
-            let arg = args[arg_n - 1u];
-            let arg_root = expr_root(cx, arg, false);
-            if mut {
-                let ret_ty = ty::expr_ty(cx.tcx, base_root.ex);
-                unsafe_ty = some(mut_contains(ret_ty));
-            }
-            if !is_none(arg_root.mut) { unsafe_ty = arg_root.mut; }
-            ret {ex: arg_root.ex, mut: unsafe_ty};
           }
           _ {}
         }

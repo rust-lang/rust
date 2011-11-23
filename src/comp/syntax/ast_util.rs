@@ -223,13 +223,6 @@ fn ternary_to_if(e: @expr) -> @expr {
     }
 }
 
-fn ret_by_ref(style: ret_style) -> bool {
-    alt style {
-      return_ref(_, _) { true }
-      _ { false }
-    }
-}
-
 fn ty_param_kind(tp: ty_param) -> kind { tp.kind }
 
 fn compare_lit(a: @lit, b: @lit) -> int {

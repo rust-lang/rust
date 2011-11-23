@@ -30,7 +30,7 @@ Failure:
 
 Fails if the value equals `none`.
 */
-fn get<T>(opt: t<T>) -> &T {
+fn get<copy T>(opt: t<T>) -> T {
     alt opt { some(x) { ret x; } none. { fail "option none"; } }
 }
 

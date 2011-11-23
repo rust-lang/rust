@@ -30,19 +30,16 @@ type rval_map = std::map::hashmap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
             rval_map: rval_map,
-            last_uses: last_use::last_uses,
-            mutable ret_by_ref: bool};
+            last_uses: last_use::last_uses};
 
 fn check_crate(tcx: ty::ctxt, last_uses: last_use::last_uses,
                crate: @crate) -> rval_map {
     let ctx = {tcx: tcx,
                rval_map: std::map::new_int_hash(),
-               last_uses: last_uses,
-               mutable ret_by_ref: false};
+               last_uses: last_uses};
     let visit = visit::mk_vt(@{
         visit_expr: check_expr,
-        visit_stmt: check_stmt,
-        visit_fn: visit_fn
+        visit_stmt: check_stmt
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, ctx, visit);
@@ -55,7 +52,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_assign(_, ex) | expr_assign_op(_, _, ex) |
       expr_block({node: {expr: some(ex), _}, _}) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) { maybe_copy(cx, ex); }
-      expr_ret(some(ex)) { if !cx.ret_by_ref { maybe_copy(cx, ex); } }
+      expr_ret(some(ex)) { maybe_copy(cx, ex); }
       expr_copy(expr) { check_copy_ex(cx, expr, false); }
       // Vector add copies.
       expr_binary(add., ls, rs) { maybe_copy(cx, ls); maybe_copy(cx, rs); }
@@ -136,14 +133,6 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
       _ {}
     }
     visit::visit_stmt(stmt, cx, v);
-}
-
-fn visit_fn(f: _fn, tps: [ty_param], sp: span, ident: fn_ident,
-            id: node_id, cx: ctx, v: visit::vt<ctx>) {
-    let old_ret = cx.ret_by_ref;
-    cx.ret_by_ref = ast_util::ret_by_ref(f.decl.cf);
-    visit::visit_fn(f, tps, sp, ident, id, cx, v);
-    cx.ret_by_ref = old_ret;
 }
 
 fn maybe_copy(cx: ctx, ex: @expr) {

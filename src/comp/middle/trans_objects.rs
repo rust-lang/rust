@@ -879,8 +879,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.node.id)) {
       ty::ty_fn(_, inputs, output, rs, _) {
         check non_ty_var(ccx, output);
-        llfnty = type_of_fn(ccx, m.span, true,
-                            ast_util::ret_by_ref(rs), inputs, output,
+        llfnty = type_of_fn(ccx, m.span, true, inputs, output,
                             vec::len(ty_params));
       }
     }
@@ -933,8 +932,7 @@ fn type_of_meth(ccx: @crate_ctxt, sp: span, m: @ty::method,
                 tps: [ast::ty_param]) -> TypeRef {
     let out_ty = m.output;
     check non_ty_var(ccx, out_ty);
-    type_of_fn(ccx, sp, true, ast_util::ret_by_ref(m.cf),
-               m.inputs, out_ty, vec::len(tps))
+    type_of_fn(ccx, sp, true, m.inputs, out_ty, vec::len(tps))
 }
 
 //

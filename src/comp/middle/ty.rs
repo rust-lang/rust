@@ -1670,10 +1670,6 @@ fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
           ty_rec(_) { true }
         }
       }
-      ast::expr_call(f, _, _) {
-          let fty = expr_ty(tcx, f);
-          ast_util::ret_by_ref(ty_fn_ret_style(tcx, fty))
-      }
       _ { false }
     }
 }
@@ -2623,10 +2619,6 @@ fn type_err_to_str(err: ty::type_err) -> str {
             alt s {
               ast::noreturn. { "non-returning" }
               ast::return_val. { "return-by-value" }
-              ast::return_ref(mut, arg) {
-                #fmt("return-by-%sreference on arg %u",
-                     mut ? "mutable-" : "", arg)
-              }
             }
         }
         ret to_str(actual) + " function found where " + to_str(expect) +

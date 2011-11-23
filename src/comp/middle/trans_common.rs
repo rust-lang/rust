@@ -321,7 +321,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
     let nil_res = ty::mk_nil(ccx.tcx);
     // FIXME: Silly check -- mk_nil should have a postcondition
     check non_ty_var(ccx, nil_res);
-    let f_t = type_of_fn(ccx, sp, false, false,
+    let f_t = type_of_fn(ccx, sp, false,
                          [{mode: ast::by_ref, ty: inner_t}],
                          nil_res, params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
@@ -430,14 +430,14 @@ fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
 // Accessors
 // TODO: When we have overloading, simplify these names!
 
-pure fn bcx_tcx(bcx: @block_ctxt) -> &ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
-pure fn bcx_ccx(bcx: @block_ctxt) -> &@crate_ctxt { ret bcx.fcx.lcx.ccx; }
-pure fn bcx_lcx(bcx: @block_ctxt) -> &@local_ctxt { ret bcx.fcx.lcx; }
-pure fn bcx_fcx(bcx: @block_ctxt) -> &@fn_ctxt { ret bcx.fcx; }
-pure fn fcx_ccx(fcx: @fn_ctxt) -> &@crate_ctxt { ret fcx.lcx.ccx; }
-pure fn fcx_tcx(fcx: @fn_ctxt) -> &ty::ctxt { ret fcx.lcx.ccx.tcx; }
-pure fn lcx_ccx(lcx: @local_ctxt) -> &@crate_ctxt { ret lcx.ccx; }
-pure fn ccx_tcx(ccx: @crate_ctxt) -> &ty::ctxt { ret ccx.tcx; }
+pure fn bcx_tcx(bcx: @block_ctxt) -> ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
+pure fn bcx_ccx(bcx: @block_ctxt) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
+pure fn bcx_lcx(bcx: @block_ctxt) -> @local_ctxt { ret bcx.fcx.lcx; }
+pure fn bcx_fcx(bcx: @block_ctxt) -> @fn_ctxt { ret bcx.fcx; }
+pure fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { ret fcx.lcx.ccx; }
+pure fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { ret fcx.lcx.ccx.tcx; }
+pure fn lcx_ccx(lcx: @local_ctxt) -> @crate_ctxt { ret lcx.ccx; }
+pure fn ccx_tcx(ccx: @crate_ctxt) -> ty::ctxt { ret ccx.tcx; }
 
 // LLVM type constructors.
 fn T_void() -> TypeRef {

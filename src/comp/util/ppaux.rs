@@ -62,11 +62,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
             s += " -> ";
             alt cf {
               ast::noreturn. { s += "!"; }
-              ast::return_ref(mut, arg) {
-                s += mut ? "&!" : "&";
-                if vec::len(inputs) > 1u { s += std::uint::str(arg); }
-                s += ty_to_str(cx, output);
-              }
               ast::return_val. { s += ty_to_str(cx, output); }
             }
         }

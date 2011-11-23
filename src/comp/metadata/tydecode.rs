@@ -55,11 +55,6 @@ fn parse_ty_data(data: @[u8], crate_num: int, pos: uint, len: uint,
 fn parse_ret_ty(st: @pstate, sd: str_def) -> (ast::ret_style, ty::t) {
     alt peek(st) as char {
       '!' { next(st); (ast::noreturn, ty::mk_bot(st.tcx)) }
-      '&' | '^' {
-        let mut = next(st) == '^' as u8;
-        let arg = next(st) as uint;
-        (ast::return_ref(mut, arg), parse_ty(st, sd))
-      }
       _ { (ast::return_val, parse_ty(st, sd)) }
     }
 }
