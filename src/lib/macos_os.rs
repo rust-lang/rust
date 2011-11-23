@@ -43,7 +43,7 @@ native mod libc {
     fn setenv(n: str::sbuf, v: str::sbuf, overwrite: c_int) -> c_int;
     fn unsetenv(n: str::sbuf) -> c_int;
     fn pipe(buf: *mutable c_int) -> c_int;
-    fn waitpid(pid: int, &status: c_int, options: c_int) -> c_int;
+    fn waitpid(pid: pid_t, &status: c_int, options: c_int) -> c_int;
     fn mkdir(s: str::sbuf, mode: c_int) -> c_int;
     fn rmdir(s: str::sbuf) -> c_int;
 }

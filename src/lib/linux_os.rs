@@ -51,8 +51,8 @@ native mod libc {
     fn pipe(buf: *mutable fd_t) -> c_int;
     fn waitpid(pid: pid_t, &status: c_int, options: c_int) -> pid_t;
     fn readlink(path: str::sbuf, buf: str::sbuf, bufsize: size_t) -> ssize_t;
-    fn mkdir(path: str::sbuf, mode: int) -> int;
-    fn rmdir(path: str::sbuf) -> int;
+    fn mkdir(path: str::sbuf, mode: c_int) -> c_int;
+    fn rmdir(path: str::sbuf) -> c_int;
 }
 
 mod libc_constants {

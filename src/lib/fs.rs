@@ -121,11 +121,11 @@ Function: make_dir
 
 Creates a directory at the specified path.
 */
-fn make_dir(p: path, mode: int) -> bool {
+fn make_dir(p: path, mode: ctypes::c_int) -> bool {
     ret mkdir(p, mode);
 
     #[cfg(target_os = "win32")]
-    fn mkdir(_p: path, _mode: int) -> bool unsafe {
+    fn mkdir(_p: path, _mode: ctypes::c_int) -> bool unsafe {
         // FIXME: turn mode into something useful?
         ret str::as_buf(_p, {|buf|
             os::kernel32::CreateDirectoryA(
@@ -135,8 +135,8 @@ fn make_dir(p: path, mode: int) -> bool {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
-    fn mkdir(_p: path, _mode: int) -> bool {
-        ret str::as_buf(_p, {|buf| os::libc::mkdir(buf, _mode) == 0 });
+    fn mkdir(_p: path, _mode: ctypes::c_int) -> bool {
+        ret str::as_buf(_p, {|buf| os::libc::mkdir(buf, _mode) == 0i32 });
     }
 }
 
@@ -174,7 +174,7 @@ fn remove_dir(p: path) -> bool {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     fn rmdir(_p: path) -> bool {
-        ret str::as_buf(_p, {|buf| os::libc::rmdir(buf) == 0 });
+        ret str::as_buf(_p, {|buf| os::libc::rmdir(buf) == 0i32 });
     }
 }
 
