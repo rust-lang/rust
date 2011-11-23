@@ -7,7 +7,8 @@
 #[license = "BSD"];
 
 
-export box, char, float, int, str, ptr, uint, u8, u32, u64, vec, bool;
+export box, char, float, f32, f64, int, str, ptr;
+export  uint, u8, u32, u64, vec, bool;
 export comm, fs, io, net, run, sys, task;
 export ctypes, either, option, result, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
@@ -23,6 +24,8 @@ export generic_os, os, os_fs;
 mod box;
 mod char;
 mod float;
+mod f32;
+mod f64;
 mod int;
 mod str;
 mod ptr;
@@ -49,6 +52,7 @@ mod task;
 // Utility modules
 
 mod ctypes;
+mod cmath; /* unexported */
 mod either;
 mod option;
 mod result;
