@@ -5,16 +5,18 @@ export min, max;
 
 export f32, f64;
 
-// Currently this module supports from -lmath
-// C95 - frexp - ldexp - fmod - modf + log2 + log1p
+// Currently this module supports from -lmath:
+// C95 + log2 + log1p + trunc + round + rint
 
 export
-    acos, asin, atan, atan2, ceil, cos, cosh, exp, abs, floor,
-    ln, ln1p, log10, log2, pow, sin, sinh, sqrt, tan, tanh;
+    acos, asin, atan, atan2, ceil, cos, cosh, exp, abs, floor, fmod, frexp,
+    ldexp, ln, ln1p, log10, log2, modf, rint, round, pow, sin, sinh, sqrt,
+    tan, tanh, trunc;
 
 // These two must match in width according to architecture
 
 import ctypes::c_float;
+import ctypes::c_int;
 import c_float = f64;
 
 
@@ -34,16 +36,23 @@ native mod f64 {
     pure fn exp(n: f64) -> f64;
     #[link_name="fabs"] pure fn abs(n: f64) -> f64;
     pure fn floor(n: f64) -> f64;
+    pure fn fmod(x: f64, y: f64) -> f64;
+    pure fn frexp(n: f64, &value: c_int) -> f64;
+    pure fn ldexp(x: f64, n: c_int) -> f64;
     #[link_name="log"] pure fn ln(n: f64) -> f64;
     #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
     pure fn log10(n: f64) -> f64;
     pure fn log2(n: f64) -> f64;
+    pure fn modf(n: f64, &iptr: f64) -> f64;
     pure fn pow(n: f64, e: f64) -> f64;
+    pure fn rint(n: f64) -> f64;
+    pure fn round(n: f64) -> f64;
     pure fn sin(n: f64) -> f64;
     pure fn sinh(n: f64) -> f64;
     pure fn sqrt(n: f64) -> f64;
     pure fn tan(n: f64) -> f64;
     pure fn tanh(n: f64) -> f64;
+    pure fn trunc(n: f64) -> f64;
 }
 
 #[link_name = "m"]
@@ -62,18 +71,24 @@ native mod f32 {
     #[link_name="expf"] pure fn exp(n: f32) -> f32;
     #[link_name="fabsf"] pure fn abs(n: f32) -> f32;
     #[link_name="floorf"] pure fn floor(n: f32) -> f32;
+    #[link_name="frexpf"] pure fn frexp(n: f64, &value: c_int) -> f32;
+    #[link_name="fmodf"] pure fn fmod(x: f32, y: f32) -> f32;
+    #[link_name="ldexpf"] pure fn ldexp(x: f32, n: c_int) -> f32;
+    #[link_name="logf"] pure fn ln(n: f32) -> f32;
+    #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
+    #[link_name="log2f"] pure fn log2(n: f32) -> f32;
+    #[link_name="log10f"] pure fn log10(n: f32) -> f32;
+    #[link_name="modff"] pure fn modf(n: f32, &iptr: f32) -> f32;
     #[link_name="powf"] pure fn pow(n: f32, e: f32) -> f32;
+    #[link_name="rintf"] pure fn rint(n: f32) -> f32;
+    #[link_name="roundf"] pure fn round(n: f32) -> f32;
     #[link_name="sinf"] pure fn sin(n: f32) -> f32;
     #[link_name="sinhf"] pure fn sinh(n: f32) -> f32;
     #[link_name="sqrtf"] pure fn sqrt(n: f32) -> f32;
     #[link_name="tanf"] pure fn tan(n: f32) -> f32;
     #[link_name="tanhf"] pure fn tanh(n: f32) -> f32;
-    #[link_name="logf"] pure fn ln(n: f32) -> f32;
-    #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
-    #[link_name="log2f"] pure fn log2(n: f32) -> f32;
-    #[link_name="log10f"] pure fn log10(n: f32) -> f32;
+    #[link_name="truncf"] pure fn trunc(n: f32) -> f32;
 }
-
 
 mod consts {
     /*
@@ -219,9 +234,7 @@ pure fn atan2(y: float, x: float) -> float
 /*
 Function: ceil
 
-Returns:
-
-The smallest integral value less than or equal to `n`
+Returns the smallest integral value less than or equal to `n`
 */
 pure fn ceil(n: float) -> float
     { c_float::ceil(n as c_float) as float }
@@ -247,9 +260,7 @@ pure fn cosh(x: float) -> float
 /*
 Function: exp
 
-Returns:
-
-e to the power of `n*
+Returns `consts::e` to the power of `n*
 */
 pure fn exp(n: float) -> float
     { c_float::exp(n as c_float) as float }
@@ -257,10 +268,7 @@ pure fn exp(n: float) -> float
 /*
 Function: abs
 
-Returns:
-
-The absolute value of  `n`
-
+Returns the absolute value of  `n`
 */
 pure fn abs(n: float) -> float
     { c_float::abs(n as c_float) as float }
@@ -268,12 +276,18 @@ pure fn abs(n: float) -> float
 /*
 Function: floor
 
-Returns:
-
-The largest integral value less than or equal to `n`
+Returns the largest integral value less than or equal to `n`
 */
 pure fn floor(n: float) -> float
     { c_float::floor(n as c_float) as float }
+
+/*
+Function: fmod
+
+Returns the floating-point remainder of `x/y`
+*/
+pure fn fmod(x: float, y: float) -> float
+    { c_float::fmod(x as c_float, y as c_float) as float }
 
 /*
 Function: ln
@@ -282,6 +296,14 @@ Returns the natural logaritm of `n`
 */
 pure fn ln(n: float) -> float
     { c_float::ln(n as c_float) as float }
+
+/*
+Function: ldexp
+
+Returns `x` multiplied by 2 to the power of `n`
+*/
+pure fn ldexp(n: float, i: int) -> float
+    { c_float::ldexp(n as c_float, i as c_int) as float }
 
 /*
 Function: ln1p
@@ -308,12 +330,70 @@ Returns the logarithm to base 2 of `n`
 pure fn log2(n: float) -> float
     { c_float::log2(n as c_float) as float }
 
+
+/*
+Function: modf
+
+Breaks `n` into integral and fractional parts such that both
+have the same sign as `n`
+
+The integral part is stored in `iptr`.
+
+Returns:
+
+The fractional part of `n`
+*/
+pure fn modf(n: float, &iptr: float) -> float {
+    unchecked {
+        let f = iptr as c_float;
+        let r = c_float::modf(n as c_float, f) as float;
+        iptr  = f as float;
+        ret r;
+    }
+}
+
+/*
+Function: frexp
+
+Breaks `n` into a normalized fraction and an integral power of 2
+
+The inegral part is stored in iptr.
+
+The functions return a number x such that x has a magnitude in the interval
+[1/2, 1) or 0, and `n == x*(2 to the power of exp)`.
+
+Returns:
+
+The fractional part of `n`
+*/
+pure fn frexp(n: float, &exp: c_int) -> float
+    { c_float::frexp(n as c_float, exp) as float }
+
 /*
 Function: pow
 */
 pure fn pow(v: float, e: float) -> float
     { c_float::pow(v as c_float, e as c_float) as float }
 
+
+/*
+Function: rint
+
+Returns the integral value nearest to `x` (according to the
+prevailing rounding mode) in floating-point format
+*/
+pure fn rint(x: float) -> float
+    { c_float::rint(x as c_float) as float }
+
+/*
+Function: round
+
+
+Return the integral value nearest to `x` rounding half-way
+cases away from zero, regardless of the current rounding direction.
+*/
+pure fn round(x: float) -> float
+    { c_float::round(x as c_float) as float }
 
 /*
 Function: sin
@@ -356,6 +436,15 @@ Returns the hyperbolic tangent of an angle `x` (measured in rad)
 */
 pure fn tanh(x: float) -> float
     { c_float::tanh(x as c_float) as float }
+
+/*
+Function: trunc
+
+Returns the integral value nearest to but no larger in magnitude than `x`
+
+*/
+pure fn trunc(x: float) -> float
+    { c_float::trunc(x as c_float) as float }
 
 
 
