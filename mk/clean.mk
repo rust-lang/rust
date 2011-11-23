@@ -7,7 +7,7 @@ CLEAN_STAGE_RULES =								\
   $(foreach host, $(CFG_TARGET_TRIPLES),		\
    clean$(stage)_H_$(host)						\
    $(foreach target, $(CFG_TARGET_TRIPLES),		\
-    clean$(stage)_H_$(host)_T_$(target))))
+    clean$(stage)_T_$(target)_H_$(host))))
 
 CLEAN_LLVM_RULES = 								\
  $(foreach target, $(CFG_TARGET_TRIPLES),		\
@@ -67,7 +67,7 @@ $(foreach host, $(CFG_TARGET_TRIPLES), \
 
 define CLEAN_TARGET_STAGE_N
 
-clean$(1)_T_$(2)_H$(3):
+clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$(X)
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/fuzzer$(X)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME)
@@ -80,7 +80,7 @@ endef
 
 $(foreach host, $(CFG_TARGET_TRIPLES), \
  $(eval $(foreach target, $(CFG_TARGET_TRIPLES), \
-  $(eval $(foreach stage, $(STAGES), \
+  $(eval $(foreach stage, 0 1 2 3, \
    $(eval $(call CLEAN_TARGET_STAGE_N,$(stage),$(target),$(host))))))))
 
 define DEF_CLEAN_LLVM_TARGET
