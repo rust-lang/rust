@@ -127,10 +127,6 @@ mod util {
     mod filesearch;
 }
 
-auth middle::metadata = unsafe;
-auth middle::trans = unsafe;
-auth lib::llvm = unsafe;
-
 mod lib {
     mod llvm;
 }

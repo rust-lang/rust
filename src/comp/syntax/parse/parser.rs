@@ -2112,12 +2112,6 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
     ret mk_item(p, lo, hi, id, ast::item_tag(variants, ty_params), attrs);
 }
 
-fn parse_auth(p: parser) -> ast::_auth {
-    if eat_word(p, "unsafe") {
-        ret ast::auth_unsafe;
-    } else { unexpected(p, p.peek()); }
-}
-
 fn parse_fn_item_proto(_p: parser) -> ast::proto {
     ast::proto_bare
 }
@@ -2529,13 +2523,6 @@ fn parse_crate_directive(p: parser, first_outer_attr: [ast::attribute]) ->
           }
           t { unexpected(p, t); }
         }
-    } else if eat_word(p, "auth") {
-        let n = parse_path(p);
-        expect(p, token::EQ);
-        let a = parse_auth(p);
-        let hi = p.get_hi_pos();
-        expect(p, token::SEMI);
-        ret spanned(lo, hi, ast::cdir_auth(n, a));
     } else if is_view_item(p) {
         let vi = parse_view_item(p);
         ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));

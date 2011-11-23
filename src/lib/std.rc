@@ -114,25 +114,6 @@ mod os = "linux_os.rs";
 #[cfg(target_os = "linux")]
 mod os_fs = "posix_fs.rs";
 
-
-// FIXME: This doesn't do anything.
-// Authorize various rule-bendings.
-
-auth io = unsafe;
-auth fs = unsafe;
-auth os_fs = unsafe;
-auth run = unsafe;
-auth str = unsafe;
-auth vec = unsafe;
-auth task = unsafe;
-
-auth dbg = unsafe;
-
-auth uint::next_power_of_two = unsafe;
-auth map::mk_hashmap = unsafe;
-auth rand::mk_rng = unsafe;
-
-
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

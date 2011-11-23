@@ -636,7 +636,7 @@ The keywords are:
 @tab @code{if}
 @tab @code{pure}
 @tab @code{uint}
-@item @code{auth}
+@item @code{}
 @tab @code{export}
 @tab @code{import}
 @tab @code{resource}

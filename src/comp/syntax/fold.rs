@@ -168,7 +168,6 @@ fn noop_fold_crate_directive(cd: crate_directive_, fld: ast_fold) ->
           }
           cdir_view_item(vi) { cdir_view_item(fld.fold_view_item(vi)) }
           cdir_syntax(_) { cd }
-          cdir_auth(_, _) { cd }
         }
 }
 

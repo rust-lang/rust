@@ -62,7 +62,6 @@ tag crate_directive_ {
     cdir_dir_mod(ident, option::t<filename>, [@crate_directive], [attribute]);
     cdir_view_item(@view_item);
     cdir_syntax(path);
-    cdir_auth(path, _auth);
 }
 
 type crate_directive = spanned<crate_directive_>;
@@ -100,8 +99,6 @@ tag pat_ {
 tag mutability { mut; imm; maybe_mut; }
 
 tag kind { kind_sendable; kind_copyable; kind_noncopyable; }
-
-tag _auth { auth_unsafe; }
 
 tag proto_sugar {
     sugar_normal;
