@@ -676,13 +676,17 @@ fn T_opaque_closure_ptr(cx: @crate_ctxt) -> TypeRef {
     ret t;
 }
 
+fn T_tag_variant(cx: @crate_ctxt) -> TypeRef {
+    ret cx.int_type;
+}
+
 fn T_tag(cx: @crate_ctxt, size: uint) -> TypeRef {
     let s = "tag_" + uint::to_str(size, 10u);
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
     let t =
         if size == 0u {
-            T_struct([cx.int_type])
-        } else { T_struct([cx.int_type, T_array(T_i8(), size)]) };
+            T_struct([T_tag_variant(cx)])
+        } else { T_struct([T_tag_variant(cx), T_array(T_i8(), size)]) };
     cx.tn.associate(s, t);
     ret t;
 }
@@ -690,7 +694,7 @@ fn T_tag(cx: @crate_ctxt, size: uint) -> TypeRef {
 fn T_opaque_tag(cx: @crate_ctxt) -> TypeRef {
     let s = "opaque_tag";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
-    let t = T_struct([cx.int_type, T_i8()]);
+    let t = T_struct([T_tag_variant(cx), T_i8()]);
     cx.tn.associate(s, t);
     ret t;
 }

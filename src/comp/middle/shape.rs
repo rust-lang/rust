@@ -6,7 +6,7 @@ import lib::llvm::llvm::{ModuleRef, TypeRef, ValueRef};
 import driver::session;
 import middle::{trans, trans_common};
 import middle::trans_common::{crate_ctxt, val_ty, C_bytes,
-                              C_named_struct, C_struct};
+                              C_named_struct, C_struct, T_tag_variant};
 import middle::ty;
 import middle::ty::field;
 import syntax::ast;
@@ -213,7 +213,12 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
     // Add space for the tag if applicable.
     // FIXME (issue #792): This is wrong. If the tag starts with an 8 byte
     // aligned quantity, we don't align it.
-    if vec::len(variants) > 1u { max_size += 4u16; max_align = 4u8; }
+    if vec::len(variants) > 1u {
+        let variant_t = T_tag_variant(ccx);
+        max_size += trans::llsize_of_real(ccx, variant_t) as u16;
+        let align = trans::llalign_of_real(ccx, variant_t) as u8;
+        if max_align < align { max_align = align; }
+    }
 
     ret {size: max_size, align: max_align};
 }

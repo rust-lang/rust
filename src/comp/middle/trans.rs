@@ -220,11 +220,11 @@ fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
     if check type_has_static_size(cx, t) {
         let size = static_size_of_tag(cx, sp, t);
         if !degen { T_tag(cx, size) }
-        else if size == 0u { T_struct([cx.int_type]) }
+        else if size == 0u { T_struct([T_tag_variant(cx)]) }
         else { T_array(T_i8(), size) }
     }
     else {
-        if degen { T_struct([cx.int_type]) }
+        if degen { T_struct([T_tag_variant(cx)]) }
         else { T_opaque_tag(cx) }
     }
 }
