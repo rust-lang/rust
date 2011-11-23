@@ -2,7 +2,7 @@
 
 $(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X):		\
 		$(S)src/snapshots.txt					\
-		$(S)src/etc/get-snapshot.py $(MKFILES)
+		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS)
 	@$(call E, fetch: $@)
 	$(Q)$(S)src/etc/get-snapshot.py $(CFG_HOST_TRIPLE)
 	$(Q)touch $@
@@ -50,5 +50,7 @@ $$(HLIB0_H_$(1))/$(CFG_RUSTLLVM): \
 
 endef
 
+# Use stage1 to build other architectures: then you don't have to wait
+# for stage2, but you get the latest updates to the compiler source.
 $(foreach t,$(NON_HOST_TRIPLES),								\
- $(eval $(call BOOTSTRAP_STAGE0,$(t),2,$(CFG_HOST_TRIPLE))))
+ $(eval $(call BOOTSTRAP_STAGE0,$(t),1,$(CFG_HOST_TRIPLE))))

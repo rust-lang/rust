@@ -45,6 +45,7 @@ $$(HBIN$(2)_H_$(4))/compiletest$$(X):				\
 
 endef
 
-$(eval $(call TOOLS_STAGE_N,0,1,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE)))
-$(eval $(call TOOLS_STAGE_N,1,2,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE)))
-$(eval $(call TOOLS_STAGE_N,2,3,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE)))
+$(foreach host,$(CFG_TARGET_TRIPLES),				\
+ $(eval $(call TOOLS_STAGE_N,0,1,$(host),$(host)))	\
+ $(eval $(call TOOLS_STAGE_N,1,2,$(host),$(host)))	\
+ $(eval $(call TOOLS_STAGE_N,2,3,$(host),$(host))))

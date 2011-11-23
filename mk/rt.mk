@@ -131,22 +131,23 @@ RUNTIME_OBJS_$(1) := $$(RUNTIME_CS_$(1):rt/%.cpp=rt/$(1)/%.o) \
                      $$(RUNTIME_S_$(1):rt/%.S=rt/$(1)/%.o)
 RUNTIME_LIBS_$(1) := $$(LIBUV_LIB_$(1))
 
-rt/$(1)/%.o: rt/%.cpp $$(MKFILES)
+rt/$(1)/%.o: rt/%.cpp $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1))) $$<
 
-rt/$(1)/%.o: rt/%.S $$(MKFILES)
+rt/$(1)/%.o: rt/%.S $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1))) $$<
 
-rt/$(1)/arch/$$(HOST_$(1))/libmorestack.a: rt/$(1)/arch/$$(HOST_$(1))/morestack.o
+rt/$(1)/arch/$$(HOST_$(1))/libmorestack.a: \
+		rt/$(1)/arch/$$(HOST_$(1))/morestack.o
 	@$$(call E, link: $$@)
 	$$(Q)ar rcs $$@ $$<
 
-rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILES) \
-			  				 $$(RUNTIME_HDR_$(1)) \
-                             $$(RUNTIME_DEF_$(1)) \
-                             $$(RUNTIME_LIBS_$(1))
+rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
+			$$(RUNTIME_HDR_$(1)) \
+                        $$(RUNTIME_DEF_$(1)) \
+                        $$(RUNTIME_LIBS_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_C_$(1),$$@, $$(RUNTIME_OBJS_$(1)) \
 	  $$(CFG_GCCISH_POST_LIB_FLAGS) $$(RUNTIME_LIBS_$(1)) \
@@ -172,18 +173,18 @@ $$(LIBUV_LIB_$(1)): $$(wildcard \
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
 # This regexp has a single $, escaped twice
-%.linux.def:    %.def.in $$(MKFILES)
+%.linux.def:    %.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo "{" > $$@
 	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
 	$$(Q)echo "};" >> $$@
 
-%.darwin.def:	%.def.in $$(MKFILES)
+%.darwin.def:	%.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)sed 's/^./_&/' $$< > $$@
 
 ifdef CFG_WINDOWSY
-%.def:	%.def.in $$(MKFILES)
+%.def:	%.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo LIBRARY $$* > $$@
 	$$(Q)echo EXPORTS >> $$@

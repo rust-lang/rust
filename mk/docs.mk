@@ -8,7 +8,7 @@ doc/keywords.texi: $(S)doc/keywords.txt $(S)src/etc/gen-keywords-table.py
 	@$(call E, gen-keywords-table: $@)
 	$(Q)$(S)src/etc/gen-keywords-table.py
 
-doc/version.texi: $(MKFILES) rust.texi
+doc/version.texi: $(MKFILE_DEPS) rust.texi
 	@$(call E, version-stamp: $@)
 	$(Q)echo "@macro gitversion" >$@
 	$(Q)echo "$(CFG_VERSION)" >>$@

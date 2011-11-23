@@ -5,7 +5,7 @@
 C_DEPFILES := $(RUNTIME_CS:%.cpp=%.d) $(RUSTLLVM_LIB_CS:%.cpp=%.d) \
               $(RUSTLLVM_OBJS_CS:%.cpp=%.d)
 
-rt/%.d: rt/%.cpp $(MKFILES)
+rt/%.d: rt/%.cpp $(MKFILE_DEPS)
 	@$(call E, dep: $@)
 	$(Q)$(call CFG_DEPEND_C, $@ \
       $(subst $(S)src/,,$(patsubst %.cpp, %.o, $<)), \
@@ -14,7 +14,7 @@ rt/%.d: rt/%.cpp $(MKFILES)
 	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
-rustllvm/%.d: rustllvm/%.cpp $(MKFILES) $(LLVM_CONFIG_$(CFG_HOST_TRIPLE))
+rustllvm/%.d: rustllvm/%.cpp $(MKFILE_DEPS) $(LLVM_CONFIG_$(CFG_HOST_TRIPLE))
 	@$(call E, dep: $@)
 	$(Q)$(call CFG_DEPEND_C, $@ \
       $(subst $(S)src/,,$(patsubst %.cpp, %.o, $<)), \

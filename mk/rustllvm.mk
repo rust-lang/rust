@@ -19,14 +19,14 @@ RUSTLLVM_INCS_$(1) = -iquote $$(LLVM_INCDIR_$(1)) \
 RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=rustllvm/$(1)/%.o)
 
 rustllvm/$(1)/$(CFG_RUSTLLVM): $$(RUSTLLVM_OBJS_OBJS_$(1)) \
-                          $$(MKFILES) $$(RUSTLLVM_DEF_$(1))
+                          $$(MKFILE_DEPS) $$(RUSTLLVM_DEF_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_C_$(1),$$@,$$(RUSTLLVM_OBJS_OBJS_$(1)) \
 	  $$(CFG_GCCISH_PRE_LIB_FLAGS) $$(LLVM_LIBS_$(1)) \
           $$(CFG_GCCISH_POST_LIB_FLAGS) \
           $$(LLVM_LDFLAGS_$(1)),$$(RUSTLLVM_DEF_$(1)),$$(CFG_RUSTLLVM))
 
-rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILES) $$(LLVM_CONFIG_$(1))
+rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILE_DEPS) $$(LLVM_CONFIG_$(1))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(LLVM_CXXFLAGS_$(1)) $$(RUSTLLVM_INCS_$(1))) $$<
 endef

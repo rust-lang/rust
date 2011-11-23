@@ -201,62 +201,62 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)"	\
         $$(CTEST_TESTARGS)
 
-CFAIL_ARGS$(1)-T-$(2)-H-$(3) := 				\
+CFAIL_ARGS$(1)-T-$(2)-H-$(3) :=					\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/compile-fail/	\
-        --build-base test/compile-fail/			\
+        --build-base $(3)/test/compile-fail/	\
         --mode compile-fail
 
-RFAIL_ARGS$(1)-T-$(2)-H-$(3) := 				\
+RFAIL_ARGS$(1)-T-$(2)-H-$(3) :=					\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/run-fail/		\
-        --build-base test/run-fail/				\
+        --build-base $(3)/test/run-fail/		\
         --mode run-fail							\
         $$(CTEST_RUNTOOL)
 
-RPASS_ARGS$(1)-T-$(2)-H-$(3) := 				\
+RPASS_ARGS$(1)-T-$(2)-H-$(3) :=					\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/run-pass/		\
-        --build-base test/run-pass/				\
+        --build-base $(3)/test/run-pass/		\
         --mode run-pass							\
         $$(CTEST_RUNTOOL)
 
-BENCH_ARGS$(1)-T-$(2)-H-$(3) := 				\
+BENCH_ARGS$(1)-T-$(2)-H-$(3) :=					\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/bench/			\
-        --build-base test/bench/				\
+        --build-base $(3)/test/bench/			\
         --mode run-pass							\
         $$(CTEST_RUNTOOL)
 
-PERF_ARGS$(1)-T-$(2)-H-$(3) := 					\
+PERF_ARGS$(1)-T-$(2)-H-$(3) :=					\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/bench/			\
-        --build-base test/perf/					\
+        --build-base $(3)/test/perf/			\
         --mode run-pass							\
         $$(CTEST_PERF_RUNTOOL)
 
-PRETTY_RPASS_ARGS$(1)-T-$(2)-H-$(3) := 			\
+PRETTY_RPASS_ARGS$(1)-T-$(2)-H-$(3) :=			\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/run-pass/		\
-        --build-base test/run-pass/				\
+        --build-base $(3)/test/run-pass/		\
         --mode pretty
 
-PRETTY_RFAIL_ARGS$(1)-T-$(2)-H-$(3) := 			\
+PRETTY_RFAIL_ARGS$(1)-T-$(2)-H-$(3) :=			\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/run-fail/		\
-        --build-base test/run-fail/				\
+        --build-base $(3)/test/run-fail/		\
         --mode pretty
 
-PRETTY_BENCH_ARGS$(1)-T-$(2)-H-$(3) := 			\
+PRETTY_BENCH_ARGS$(1)-T-$(2)-H-$(3) :=			\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/bench/			\
-        --build-base test/bench/				\
+        --build-base $(3)/test/bench/			\
         --mode pretty
 
-PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3) := 		\
+PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3) :=			\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/pretty/		\
-        --build-base test/pretty/				\
+        --build-base $(3)/test/pretty/			\
         --mode pretty
 
 check-stage$(1)-T-$(2)-H-$(3)-cfail-dummy:		\

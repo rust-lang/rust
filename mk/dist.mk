@@ -53,7 +53,7 @@ PKG_FILES = \
     $(COMPILETEST_CRATE)                       \
     $(COMPILETEST_INPUTS)                      \
     $(PKG_PP_EXAMPLES)                         \
-    $(MKFILES)
+    $(MKFILE_DEPS)
 
 dist: $(PKG_TAR) $(PKG_EXE)
 

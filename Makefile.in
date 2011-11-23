@@ -59,6 +59,12 @@ GEN_MKFILES := $(wildcard $(CFG_SRC_DIR)/mk/libuv/*/*/*) \
 
 MKFILES := $(OUR_MKFILES) $(3RDPARTY_MKFILES) $(GEN_MKFILES)
 
+ifdef IGNORE_MKFILES
+  MKFILE_DEPS :=
+else
+  MKFILE_DEPS := $(MKFILES)
+endif
+
 NON_HOST_TRIPLES = $(filter-out $(CFG_HOST_TRIPLE),$(CFG_TARGET_TRIPLES))
 
 ifneq ($(MAKE_RESTARTS),)
