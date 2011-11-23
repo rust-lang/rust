@@ -4,20 +4,24 @@
 
 docs: $(DOCS)
 
+doc/keywords.texi: $(S)doc/keywords.txt $(S)src/etc/gen-keywords-table.py
+	@$(call E, gen-keywords-table: $@)
+	$(Q)$(S)src/etc/gen-keywords-table.py
+
 doc/version.texi: $(MKFILES) rust.texi
 	@$(call E, version-stamp: $@)
 	$(Q)echo "@macro gitversion" >$@
 	$(Q)echo "$(CFG_VERSION)" >>$@
 	$(Q)echo "@end macro" >>$@
 
-doc/%.pdf: %.texi doc/version.texi
+doc/%.pdf: %.texi doc/version.texi doc/keywords.texi
 	@$(call E, texi2pdf: $@)
 	@# LC_COLLATE=C works around a bug in texi2dvi; see
 	@# https://bugzilla.redhat.com/show_bug.cgi?id=583011 and
 	@# https://github.com/graydon/rust/issues/1134
 	$(Q)LC_COLLATE=C texi2pdf --silent --batch -I doc -o $@ --clean $<
 
-doc/%.html: %.texi doc/version.texi
+doc/%.html: %.texi doc/version.texi doc/keywords.texi
 	@$(call E, makeinfo: $@)
 	$(Q)makeinfo -I doc --html --ifhtml --force --no-split --output=$@ $<
 
