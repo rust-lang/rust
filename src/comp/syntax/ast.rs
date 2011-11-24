@@ -58,8 +58,8 @@ type crate_ =
      config: crate_cfg};
 
 tag crate_directive_ {
-    cdir_src_mod(ident, option::t<filename>, [attribute]);
-    cdir_dir_mod(ident, option::t<filename>, [@crate_directive], [attribute]);
+    cdir_src_mod(ident, [attribute]);
+    cdir_dir_mod(ident, [@crate_directive], [attribute]);
     cdir_view_item(@view_item);
     cdir_syntax(path);
 }

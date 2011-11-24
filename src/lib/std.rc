@@ -40,7 +40,8 @@ mod comm;
 mod fs;
 mod io;
 mod net;
-mod run = "run_program.rs";
+#[path =  "run_program.rs"]
+mod run;
 mod sys;
 mod task;
 
@@ -100,19 +101,25 @@ mod test;
 mod generic_os;
 
 #[cfg(target_os = "win32")]
-mod os = "win32_os.rs";
+#[path = "win32_os.rs"]
+mod os;
 #[cfg(target_os = "win32")]
-mod os_fs = "win32_fs.rs";
+#[path = "win32_fs.rs"]
+mod os_fs;
 
 #[cfg(target_os = "macos")]
-mod os = "macos_os.rs";
+#[path = "macos_os.rs"]
+mod os;
 #[cfg(target_os = "macos")]
-mod os_fs = "posix_fs.rs";
+#[path = "posix_fs.rs"]
+mod os_fs;
 
 #[cfg(target_os = "linux")]
-mod os = "linux_os.rs";
+#[path = "linux_os.rs"]
+mod os;
 #[cfg(target_os = "linux")]
-mod os_fs = "posix_fs.rs";
+#[path = "posix_fs.rs"]
+mod os_fs;
 
 // Local Variables:
 // mode: rust;
