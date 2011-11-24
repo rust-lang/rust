@@ -1,3 +1,13 @@
+
+/*
+Module: math_f64
+
+Floating point operations and constants for `f64`s
+
+This exposes the same operations as `math`, just for `f64` even though
+they do not show up in the docs right now!
+*/
+
 import cmath::f64::*;
 
 export

@@ -1,4 +1,9 @@
-/* Module: math */
+/*
+
+Module: math
+
+Floating point operations and constants for `float`s
+*/
 
 export consts;
 export min, max;
@@ -15,7 +20,7 @@ export
 
 import ctypes::c_float;
 import ctypes::c_int;
-import c_float = f64;
+import c_float = math_f64;
 
 // FIXME replace with redirect to c_float::consts::FOO as soon as it works
 mod consts {

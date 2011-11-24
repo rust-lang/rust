@@ -20,6 +20,7 @@ fn test_max_min() {
 fn test_trig() {
     assert sin(0.0) == 0.0;
     assert sin(-0.0) == 0.0;
+
     assert float::isNaN(sin(float::infinity));
     assert float::isNaN(sin(float::neg_infinity));
 
@@ -259,7 +260,7 @@ fn test_log_functions() {
     assert log10(1.0) == 0.0;
 
     // FIXME remove round-up due to valgrind weirdness
-    assert ceil(ln(consts::e)) /* ln(e) == 0.999.. under valgrind */
+    assert ceil(ln(consts::e)) == 1.0; /* ln(e) == 0.999.. under valgrind */
     assert log2(2.0) == 1.0;
     assert log10(10.0) == 1.0;
 
