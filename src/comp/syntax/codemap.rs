@@ -193,7 +193,7 @@ fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
         if vec::len(lines.lines) == 1u {
             let lo = lookup_char_pos(cm, option::get(sp).lo);
             let digits = 0u;
-            let num = lines.lines[0] / 10u;
+            let num = (lines.lines[0] + 1u) / 10u;
 
             // how many digits must be indent past?
             while num > 0u { num /= 10u; digits += 1u; }
