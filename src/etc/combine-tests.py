@@ -43,7 +43,8 @@ c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
 for t in stage2_tests:
     p = os.path.join(run_pass, t)
     p = p.replace("\\", "\\\\")
-    c.write("mod t_%d = \"%s\";\n" % (i, p))
+    c.write("#[path = \"%s\"]" % p);
+    c.write("mod t_%d;\n" % i)
     i += 1
 c.close()
 
