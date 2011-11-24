@@ -1,3 +1,13 @@
+
+/*
+Module: math_f32
+
+Floating point operations and constants for `f32`
+
+This exposes the same operations as `math`, just for `f32` even though
+they do not show up in the docs right now!
+*/
+
 import cmath::f32::*;
 
 export
