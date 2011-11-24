@@ -176,6 +176,7 @@ actual:\n\
     fn make_typecheck_args(config: config, _testfile: str) -> procargs {
         let prog = config.rustc_path;
         let args = ["-", "--no-trans", "--lib"];
+        args += split_maybe_args(config.rustcflags);
         ret {prog: prog, args: args};
     }
 }
@@ -243,12 +244,7 @@ fn make_compile_args(config: config, props: test_props, testfile: str) ->
    procargs {
     let prog = config.rustc_path;
     let args = [testfile, "-o", make_exe_name(config, testfile)];
-    let rustcflags =
-        alt config.rustcflags {
-          option::some(s) { option::some(s) }
-          option::none. { option::none }
-        };
-    args += split_maybe_args(rustcflags);
+    args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
     ret {prog: prog, args: args};
 }
