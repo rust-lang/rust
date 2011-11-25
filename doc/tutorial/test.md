@@ -22,7 +22,7 @@ not be used. To actually run the tests, compile with the `--test`
 flag:
 
     ## notrust
-    > rustc --lib twice.rs
+    > rustc --test twice.rs
     > ./twice
     running 1 tests
     test test_twice ... ok
