@@ -1,0 +1,11 @@
+// Regression test for a problem with the first mod attribute
+// being applied to every mod
+
+#[cfg(target_os = "linux")]
+mod hello;
+
+#[cfg(target_os = "macos")]
+mod hello;
+
+#[cfg(target_os = "win32")]
+mod hello;

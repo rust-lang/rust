@@ -2515,9 +2515,11 @@ fn parse_crate_directives(p: parser, term: token::token,
     }
 
     let cdirs: [@ast::crate_directive] = [];
+    let first_outer_attr = first_outer_attr;
     while p.peek() != term {
         let cdir = @parse_crate_directive(p, first_outer_attr);
         cdirs += [cdir];
+        first_outer_attr = [];
     }
     ret cdirs;
 }
