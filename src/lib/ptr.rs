@@ -35,6 +35,16 @@ fn offset<T>(ptr: *T, count: uint) -> *T {
 }
 
 /*
+Function: mut_offset
+
+Calculate the offset from a mutable pointer
+*/
+fn mut_offset<T>(ptr: *mutable T, count: uint) -> *mutable T {
+    ret rusti::ptr_offset(ptr as *T, count) as *mutable T;
+}
+
+
+/*
 Function: null
 
 Create an unsafe null pointer
