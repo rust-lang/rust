@@ -43,7 +43,7 @@ export ptr;
  */
 
 tag t<T> {
-    t({ base: *T, size: uint, rsrc: @dtor_res});
+    t({ base: *mutable T, size: uint, rsrc: @dtor_res});
 }
 
 resource dtor_res(dtor: option::t<fn@()>) {
@@ -57,14 +57,15 @@ resource dtor_res(dtor: option::t<fn@()>) {
  Section: Introduction forms
  */
 
-unsafe fn create<T>(base: *T, size: uint) -> t<T> {
+unsafe fn create<T>(base: *mutable T, size: uint) -> t<T> {
     ret t({base: base,
            size: size,
            rsrc: @dtor_res(option::none)
           });
 }
 
-unsafe fn create_with_dtor<T>(base: *T, size: uint, dtor: fn@()) -> t<T> {
+unsafe fn create_with_dtor<T>(base: *mutable T, size: uint, dtor: fn@())
+  -> t<T> {
     ret t({base: base,
            size: size,
            rsrc: @dtor_res(option::some(dtor))
@@ -77,12 +78,12 @@ unsafe fn create_with_dtor<T>(base: *T, size: uint, dtor: fn@()) -> t<T> {
 
 fn get<copy T>(t: t<T>, ofs: uint) -> T {
     assert ofs < (*t).size;
-    ret unsafe { *ptr::offset((*t).base, ofs) };
+    ret unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
 
 fn set<copy T>(t: t<T>, ofs: uint, v: T) {
     assert ofs < (*t).size;
-    unsafe { *(ptr::offset((*t).base, ofs) as *mutable T) = v };
+    unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }
 
 /*
@@ -93,6 +94,6 @@ fn size<T>(t: t<T>) -> uint {
     ret (*t).size;
 }
 
-unsafe fn ptr<T>(t: t<T>) -> *T {
+unsafe fn ptr<T>(t: t<T>) -> *mutable T {
     ret (*t).base;
 }
