@@ -12,9 +12,11 @@
 //
 //===----------------------------------------------------------------------===
 
+#include "llvm/LLVMContext.h"
 #include "llvm/Linker.h"
 #include "llvm/PassManager.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/Assembly/Parser.h"
 #include "llvm/Assembly/PrintModulePass.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/Timer.h"
@@ -22,6 +24,7 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/SourceMgr.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/Host.h"
 #include "llvm-c/Core.h"
@@ -107,6 +110,18 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   (void)foo;
   PM->run(*unwrap(M));
   delete Target;
+}
+
+extern "C" LLVMModuleRef LLVMRustParseAssemblyFile(const char *Filename) {
+
+  SMDiagnostic d;
+  Module *m = ParseAssemblyFile(Filename, d, getGlobalContext());
+  if (m) {
+    return wrap(m);
+  } else {
+    LLVMRustError = d.getMessage().c_str();
+    return NULL;
+  }
 }
 
 extern "C" LLVMModuleRef LLVMRustParseBitcode(LLVMMemoryBufferRef MemBuf) {

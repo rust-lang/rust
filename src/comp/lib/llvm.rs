@@ -864,6 +864,9 @@ native mod llvm {
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;
 
+    /** Parses LLVM asm in the given file */
+    fn LLVMRustParseAssemblyFile(Filename: sbuf) -> ModuleRef;
+
     /** FiXME: Hacky adaptor for lack of ULongLong in FFI: */
     fn LLVMRustConstInt(IntTy: TypeRef, N_hi: uint, N_lo: uint,
                         SignExtend: Bool) -> ValueRef;
