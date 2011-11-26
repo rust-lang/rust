@@ -340,9 +340,7 @@ endif
 ######################################################################
 
 # This is a pretty expensive operation but I don't see any way to avoid it
-SUBMODULE_STATUS=$(shell cd "$(CFG_SRC_DIR)" && "$(CFG_GIT)" submodule status)
-# Look through for submodules prefixed with '-' (need init), or '+' (need update)
-NEED_GIT_RECONFIG=$(shell echo "$(SUBMODULE_STATUS)" | grep -c '^\(+\|-\)')
+NEED_GIT_RECONFIG=$(shell cd "$(CFG_SRC_DIR)" && "$(CFG_GIT)" submodule status | grep -c '^\(+\|-\)')
 
 ifeq ($(NEED_GIT_RECONFIG),0)
 else
