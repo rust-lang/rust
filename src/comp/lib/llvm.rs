@@ -852,14 +852,12 @@ native mod llvm {
 
     /* FIXME: The FileType is an enum.*/
     fn LLVMRustWriteOutputFile(PM: PassManagerRef, M: ModuleRef, Triple: sbuf,
-                               Output: sbuf, FileType: int, OptLevel: int);
+                               Output: sbuf, FileType: int, OptLevel: int,
+                               EnableSegmentedStacks: bool);
 
     /** Returns a string describing the last error caused by an LLVMRust*
         call. */
     fn LLVMRustGetLastError() -> sbuf;
-
-    /** Returns a string describing the hosts triple */
-    fn LLVMRustGetHostTriple() -> sbuf;
 
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;
@@ -876,8 +874,6 @@ native mod llvm {
 
     /** Turn on LLVM pass-timing. */
     fn LLVMRustEnableTimePasses();
-    /** Turn on LLVM segmented stacks. */
-    fn LLVMRustEnableSegmentedStacks();
 
     /** Print the pass timings since static dtors aren't picking them up. */
     fn LLVMRustPrintPassTimings();

@@ -125,7 +125,6 @@ mod write {
     fn run_passes(sess: session::session, llmod: ModuleRef, output: str) {
         let opts = sess.get_opts();
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
-        if opts.stack_growth { llvm::LLVMRustEnableSegmentedStacks(); }
         link_intrinsics(sess, llmod);
         let pm = mk_pass_manager();
         let td = mk_target_data(
@@ -244,7 +243,8 @@ mod write {
                                     buf_t,
                                     buf_o,
                                     LLVMAssemblyFile,
-                                    CodeGenOptLevel)})});
+                                    CodeGenOptLevel,
+                                    opts.stack_growth)})});
                 }
 
 
@@ -263,7 +263,8 @@ mod write {
                                         buf_t,
                                         buf_o,
                                         LLVMObjectFile,
-                                        CodeGenOptLevel)})});
+                                        CodeGenOptLevel,
+                                        opts.stack_growth)})});
                 }
             } else {
                 // If we aren't saving temps then just output the file
@@ -280,7 +281,8 @@ mod write {
                                     buf_t,
                                     buf_o,
                                     FileType,
-                                    CodeGenOptLevel)})});
+                                    CodeGenOptLevel,
+                                    opts.stack_growth)})});
             }
             // Clean up and return
 

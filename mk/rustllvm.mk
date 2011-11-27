@@ -4,6 +4,14 @@
 
 define DEF_RUSTLLVM_TARGETS
 
+# FIXME: Lately, on windows, llvm-config --includedir is not enough
+# to find the llvm includes (probably because we're not actually installing
+# llvm, but using it straight out of the build directory)
+ifdef CFG_WINDOWSY
+LLVM_EXTRA_INCDIRS_$(1)= -iquote $(S)src/llvm/include \
+                         -iquote llvm/$(1)/include
+endif
+
 RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, RustGCMetadataPrinter.cpp \
     RustGCStrategy.cpp RustWrapper.cpp)
 
@@ -14,7 +22,8 @@ endif
 
 RUSTLLVM_DEF_$(1) := rustllvm/rustllvm$$(CFG_DEF_SUFFIX)
 
-RUSTLLVM_INCS_$(1) = -iquote $$(LLVM_INCDIR_$(1)) \
+RUSTLLVM_INCS_$(1) = $$(LLVM_EXTRA_INCDIRS_$(1)) \
+                     -iquote $$(LLVM_INCDIR_$(1)) \
                      -iquote $$(S)src/rustllvm/include
 RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=rustllvm/$(1)/%.o)
 

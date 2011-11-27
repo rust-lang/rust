@@ -81,22 +81,27 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         const char *triple,
                         const char *path,
                         TargetMachine::CodeGenFileType FileType,
-                        CodeGenOpt::Level OptLevel) {
-
-  // Set compilation options.
-  llvm::NoFramePointerElim = true;
+                        CodeGenOpt::Level OptLevel,
+			bool EnableSegmentedStacks) {
 
   InitializeAllTargets();
   InitializeAllTargetMCs();
   InitializeAllAsmPrinters();
   InitializeAllAsmParsers();
+
+  TargetOptions Options;
+  Options.NoFramePointerElim = true;
+  Options.EnableSegmentedStacks = EnableSegmentedStacks;
+
   std::string Err;
   const Target *TheTarget = TargetRegistry::lookupTarget(triple, Err);
   std::string FeaturesStr;
   std::string Trip(triple);
   std::string CPUStr = llvm::sys::getHostCPUName();
   TargetMachine *Target =
-    TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr, Reloc::PIC_);
+    TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
+				   Options, Reloc::PIC_,
+				   CodeModel::Default, OptLevel);
   bool NoVerify = false;
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
@@ -104,8 +109,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                     raw_fd_ostream::F_Binary);
   formatted_raw_ostream FOS(OS);
 
-  bool foo = Target->addPassesToEmitFile(*PM, FOS, FileType, OptLevel,
-                                         NoVerify);
+  bool foo = Target->addPassesToEmitFile(*PM, FOS, FileType, NoVerify);
   assert(!foo);
   (void)foo;
   PM->run(*unwrap(M));
@@ -128,12 +132,6 @@ extern "C" LLVMModuleRef LLVMRustParseBitcode(LLVMMemoryBufferRef MemBuf) {
   LLVMModuleRef M;
   return LLVMParseBitcode(MemBuf, &M, const_cast<char **>(&LLVMRustError))
          ? NULL : M;
-}
-
-extern "C" const char *LLVMRustGetHostTriple(void)
-{
-  static std::string str = llvm::sys::getHostTriple();
-  return str.c_str();
 }
 
 extern "C" LLVMValueRef LLVMRustConstSmallInt(LLVMTypeRef IntTy, unsigned N,
@@ -159,11 +157,6 @@ extern "C" void LLVMRustEnableTimePasses() {
 extern "C" void LLVMRustPrintPassTimings() {
   raw_fd_ostream OS (2, false); // stderr.
   TimerGroup::printAll(OS);
-}
-
-extern bool llvm::EnableSegmentedStacks;
-extern "C" void LLVMRustEnableSegmentedStacks() {
-  EnableSegmentedStacks = true;
 }
 
 extern "C" LLVMValueRef LLVMGetOrInsertFunction(LLVMModuleRef M,
