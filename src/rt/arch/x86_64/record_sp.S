@@ -8,5 +8,10 @@
 
 .globl RECORD_SP
 
+#if defined(__linux__)
+RECORD_SP:
+	movq %rdi, %fs:112
+#else
 RECORD_SP:
 	ret
+#endif
