@@ -54,22 +54,22 @@ def full_snapshot_name(date, rev, platform, hsh):
           % (date, rev, platform, hsh))
 
 
-def get_kernel():
-    if os.name == "nt" or scrub(os.getenv("CFG_ENABLE_MINGW_CROSS")):
+def get_kernel(triple):
+    os_name = triple.split('-')[-1]
+    if os_name == "nt" or scrub(os.getenv("CFG_ENABLE_MINGW_CROSS")):
         return "winnt"
-    kernel = os.uname()[0].lower()
-    if kernel == "darwin":
-        kernel = "macos"
-    return kernel
+    if os_name == "darwin":
+        return "macos"
+    return "linux"
 
+def get_cpu(triple):
+    arch = triple.split('-')[0]
+    if arch == "i686":
+      return "i386"
+    return arch
 
-def get_cpu():
-    # return os.uname()[-1].lower()
-    return "i386"
-
-
-def get_platform():
-  return "%s-%s" % (get_kernel(), get_cpu())
+def get_platform(triple):
+  return "%s-%s" % (get_kernel(triple), get_cpu(triple))
 
 
 def cmd_out(cmdline):
@@ -110,9 +110,9 @@ def hash_file(x):
     return scrub(h.hexdigest())
 
 
-def make_snapshot(stage):
-    kernel = get_kernel()
-    platform = get_platform()
+def make_snapshot(stage, triple):
+    kernel = get_kernel(triple)
+    platform = get_platform(triple)
     rev = local_rev_short_sha()
     date = local_rev_committer_date().split()[0]
 
@@ -123,7 +123,7 @@ def make_snapshot(stage):
       dir = stage
       if stage == "stage1" and re.match(r"^lib/(lib)?std.*", name):
         dir = "stage0"
-      tar.add(os.path.join(dir, name),
+      tar.add(os.path.join(triple, os.path.join(dir, name)),
               "rust-stage0/" + name)
     tar.close()
 

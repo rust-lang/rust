@@ -20,10 +20,9 @@ def unpack_snapshot(snap):
   tar.close()
   shutil.rmtree(download_unpack_base)
 
-def determine_curr_snapshot_for_platform():
-
+def determine_curr_snapshot(triple):
   i = 0
-  platform = get_platform()
+  platform = get_platform(triple)
 
   found_file = False
   found_snap = False
