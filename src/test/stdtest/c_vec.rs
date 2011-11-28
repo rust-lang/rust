@@ -31,6 +31,7 @@ fn test_basic() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_overrun_get() {
     let cv = malloc(16u);
 
@@ -39,6 +40,7 @@ fn test_overrun_get() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(target_os = "win32"))]
 fn test_overrun_set() {
     let cv = malloc(16u);
 
