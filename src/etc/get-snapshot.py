@@ -4,11 +4,11 @@ import os, tarfile, hashlib, re, shutil, sys
 from snapshot import *
 
 
-def unpack_snapshot(snap):
+def unpack_snapshot(triple, snap):
   dl_path = os.path.join(download_dir_base, snap)
   print("opening snapshot " + dl_path)
   tar = tarfile.open(dl_path)
-  kernel = get_kernel()
+  kernel = get_kernel(triple)
   for name in snapshot_files[kernel]:
     p = "rust-stage0/" + name
     stagep = os.path.join(triple, "stage0")
@@ -53,12 +53,12 @@ def determine_curr_snapshot(triple):
     raise Exception("no snapshot file found for platform %s, rev %s" %
                     (platform, rev))
 
-  return full_snapshot_name(date, rev, get_platform(), hsh)
+  return full_snapshot_name(date, rev, platform, hsh)
 
 # Main
 
 triple = sys.argv[1]
-snap = determine_curr_snapshot_for_platform()
+snap = determine_curr_snapshot(triple)
 dl = os.path.join(download_dir_base, snap)
 url = download_url_base + "/" + snap
 print("determined most recent snapshot: " + snap)
@@ -71,4 +71,4 @@ if (snap_filename_hash_part(snap) == hash_file(dl)):
 else:
   raise Exception("bad hash on download")
 
-unpack_snapshot(snap)
+unpack_snapshot(triple, snap)
