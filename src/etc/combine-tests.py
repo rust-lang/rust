@@ -36,7 +36,7 @@ for t in os.listdir(run_pass):
 
 stage2_tests.sort()
 
-c = open("test/run_pass_stage2.rc", "w")
+c = open("tmp/run_pass_stage2.rc", "w")
 i = 0
 c.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
 c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
@@ -49,7 +49,7 @@ for t in stage2_tests:
 c.close()
 
 
-d = open("test/run_pass_stage2_driver.rs", "w")
+d = open("tmp/run_pass_stage2_driver.rs", "w")
 d.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
 d.write("use std;\n")
 d.write("use run_pass_stage2;\n")

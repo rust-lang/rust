@@ -29,7 +29,6 @@ PRETTY_TESTS := $(PRETTY_RS)
 FT := run_pass_stage2
 FT_LIB := $(call CFG_LIB_NAME,$(FT))
 FT_DRIVER := $(FT)_driver
-GENERATED += test/$(FT).rc test/$(FT_DRIVER).rs
 
 # The arguments to all test runners
 ifdef TESTNAME
@@ -74,10 +73,6 @@ endif
 check: tidy check-stage2 \
 
 check-full: tidy check-stage1 check-stage2 check-stage3 \
-
-check-fast: tidy \
-	check-stage2-rustc check-stage2-std \
-	test/$(FT_DRIVER).out
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
 ifdef CFG_NOTIDY
@@ -214,18 +209,18 @@ RFAIL_ARGS$(1)-T-$(2)-H-$(3) :=					\
         --mode run-fail							\
         $$(CTEST_RUNTOOL)
 
-RPASS_ARGS$(1)-T-$(2)-H-$(3) :=					\
+RPASS_ARGS$(1)-T-$(2)-H-$(3) :=				\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/run-pass/		\
         --build-base $(3)/test/run-pass/		\
-        --mode run-pass							\
+        --mode run-pass					\
         $$(CTEST_RUNTOOL)
 
-BENCH_ARGS$(1)-T-$(2)-H-$(3) :=					\
+BENCH_ARGS$(1)-T-$(2)-H-$(3) :=				\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/bench/			\
         --build-base $(3)/test/bench/			\
-        --mode run-pass							\
+        --mode run-pass					\
         $$(CTEST_RUNTOOL)
 
 PERF_ARGS$(1)-T-$(2)-H-$(3) :=					\
@@ -261,32 +256,32 @@ PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3) :=			\
 
 check-stage$(1)-T-$(2)-H-$(3)-cfail-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	    $$(SREQ$(1)_T_$(2)_H_$(3))				\
-        $$(CFAIL_TESTS)
+		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(CFAIL_TESTS)
 	@$$(call E, run cfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(CFAIL_ARGS$(1)-T-$(2)-H-$(3))
 
 check-stage$(1)-T-$(2)-H-$(3)-rfail-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	    $$(SREQ$(1)_T_$(2)_H_$(3))				\
-        $$(RFAIL_TESTS)
+		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(RFAIL_TESTS)
 	@$$(call E, run rfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(RFAIL_ARGS$(1)-T-$(2)-H-$(3))
 
 check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	    $$(SREQ$(1)_T_$(2)_H_$(3))				\
-        $$(RPASS_TESTS)
+		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(RPASS_TESTS)
 	@$$(call E, run rpass: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(RPASS_ARGS$(1)-T-$(2)-H-$(3))
 
 check-stage$(1)-T-$(2)-H-$(3)-bench-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	    $$(SREQ$(1)_T_$(2)_H_$(3))				\
-        $$(BENCH_TESTS)
+		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(BENCH_TESTS)
 	@$$(call E, run bench: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(BENCH_ARGS$(1)-T-$(2)-H-$(3))
@@ -300,33 +295,33 @@ check-stage$(1)-T-$(2)-H-$(3)-perf-dummy:		\
 		$$(PERF_ARGS$(1)-T-$(2)-H-$(3))
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy:	\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)		\
-        $$(SREQ$(1)_T_$(2)_H_$(3))					\
-        $$(RPASS_TESTS)
+		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
+	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(RPASS_TESTS)
 	@$$(call E, run pretty-rpass: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PRETTY_RPASS_ARGS$(1)-T-$(2)-H-$(3))
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy:	\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)		\
-        $$(SREQ$(1)_T_$(2)_H_$(3))					\
-        $$(RFAIL_TESTS)
+		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
+	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(RFAIL_TESTS)
 	@$$(call E, run pretty-rfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PRETTY_RFAIL_ARGS$(1)-T-$(2)-H-$(3))
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-dummy:	\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)		\
-		$$(SREQ$(1)_T_$(2)_H_$(3))					\
-        $$(BENCH_TESTS)
+		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
+		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(BENCH_TESTS)
 	@$$(call E, run pretty-bench: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PRETTY_BENCH_ARGS$(1)-T-$(2)-H-$(3))
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy:	\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)		\
-        $$(SREQ$(1)_T_$(2)_H_$(3))					\
-        $$(PRETTY_TESTS)
+		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
+	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(PRETTY_TESTS)
 	@$$(call E, run pretty-pretty: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3))
@@ -340,10 +335,57 @@ $(foreach host,$(CFG_TARGET_TRIPLES), \
   $(eval $(foreach stage,$(STAGES), \
    $(eval $(call TEST_STAGEN,$(stage),$(target),$(host))))))))
 
-# Make convenient Shorthand Targets for use on command
-# line or by other rules:
+######################################################################
+# Fast-test rules
+######################################################################
 
-define DEF_CHECK_SAME
+GENERATED += tmp/$$(FT).rc tmp/$$(FT_DRIVER).rs
+
+tmp/$$(FT).rc tmp/$$(FT_DRIVER).rs: \
+		$$(TEST_RPASS_SOURCES_STAGE2) \
+		$$(S)src/etc/combine-tests.py
+	@$$(call E, check: building combined stage2 test runner)
+	$$(Q)$$(S)src/etc/combine-tests.py
+
+define DEF_CHECK_FAST_FOR_T_H
+# $(1) unused
+# $(2) target triple
+# $(3) host triple
+
+$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB): \
+		tmp/$$(FT).rc \
+		$$(SREQ2_T_$(2)_H_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE2_$(CFG_HOST_TRIPLE)) --lib -o $$@ $$<
+
+$(3)/test/$(FT_DRIVER)-$(2)$(X): \
+		tmp/$(FT_DRIVER).rs \
+		$(TLIB2_T_$(2)_H_$(3))/$(FT_LIB) \
+		$(SREQ2_T_$(2)_H_$(3))
+	@$(call E, compile_and_link: $@)
+	$(STAGE2_$(CFG_HOST_TRIPLE)) -L $(HOST_LIB2) -o $@ $<
+
+$(3)/test/$(FT_DRIVER)-$(2).out: \
+		$(3)/test/$(FT_DRIVER)-$(2)$(X) \
+		$(SREQ2_T_$(2)_H_$(3))
+	$(Q)$(call CFG_RUN_TEST,$<,$(2),$(3))
+
+check-fast-T-$(2)-H-$(3): tidy			\
+	check-stage2-T-$(2)-H-$(3)-rustc	\
+	check-stage2-T-$(2)-H-$(3)-std		\
+	$(3)/test/$(FT_DRIVER)-$(2).out
+
+endef
+
+$(foreach host,$(CFG_TARGET_TRIPLES), \
+ $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
+   $(eval $(call DEF_CHECK_FAST_FOR_T_H,,$(target),$(host))))))
+
+######################################################################
+# Shortcut rules
+######################################################################
+
+define DEF_CHECK_FOR_STAGE_H
 
 check-stage$(1)-H-$(2):        check-stage$(1)-T-$(2)-H-$(2)
 check-stage$(1)-H-$(2)-perf:   check-stage$(1)-T-$(2)-H-$(2)-perf
@@ -356,11 +398,20 @@ check-stage$(1)-H-$(2)-bench:  check-stage$(1)-T-$(2)-H-$(2)-bench
 
 endef
 
-$(foreach stage,$(STAGES),								\
+$(foreach stage,$(STAGES),					\
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES),			\
-  $(eval $(call DEF_CHECK_SAME,$(stage),$(target))))))
+  $(eval $(call DEF_CHECK_FOR_STAGE_H,$(stage),$(target))))))
 
-define DEF_CHECK_HOST
+define DEF_CHECK_FAST_FOR_H
+
+check-fast-H-$(1): 		check-fast-T-$(1)-H-$(1)
+
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES),			\
+ $(eval $(call DEF_CHECK_FAST_FOR_H,$(target))))
+
+define DEF_CHECK_FOR_STAGE
 
 check-stage$(1):        check-stage$(1)-H-$(CFG_HOST_TRIPLE)
 check-stage$(1)-perf:   check-stage$(1)-H-$(CFG_HOST_TRIPLE)-perf
@@ -374,25 +425,6 @@ check-stage$(1)-bench:  check-stage$(1)-H-$(CFG_HOST_TRIPLE)-bench
 endef
 
 $(foreach stage,$(STAGES),						\
- $(eval $(call DEF_CHECK_HOST,$(stage))))
+ $(eval $(call DEF_CHECK_FOR_STAGE,$(stage))))
 
-######################################################################
-# Fast-test rules
-######################################################################
-
-test/$(FT).rc test/$(FT_DRIVER).rs: $(TEST_RPASS_SOURCES_STAGE2) \
-    $(S)src/etc/combine-tests.py
-	@$(call E, check: building combined stage2 test runner)
-	$(Q)$(S)src/etc/combine-tests.py
-
-$(TARGET_HOST_LIB2)/$(FT_LIB): test/$(FT).rc $(SREQ2$(CFG_HOST_TRIPLE))
-	@$(call E, compile_and_link: $@)
-	$(STAGE2_$(CFG_HOST_TRIPLE)) --lib -o $@ $<
-
-test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs $(TARGET_HOST_LIB2)/$(FT_LIB) \
-	$(SREQ2$(CFG_HOST_TRIPLE))
-	@$(call E, compile_and_link: $@)
-	$(STAGE2_$(CFG_HOST_TRIPLE)) -L $(HOST_LIB2) -o $@ $<
-
-test/$(FT_DRIVER).out: test/$(FT_DRIVER)$(X) $(SREQ2$(CFG_HOST_TRIPLE))
-	$(Q)$(call CFG_RUN_TEST,$<,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE))
+check-fast: check-fast-H-$(CFG_HOST_TRIPLE)
