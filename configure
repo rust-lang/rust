@@ -253,6 +253,7 @@ opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
 opt optimize-llvm 1 "build optimized LLVM"
+opt manage-submodules 1 "let the build manage the git submodules"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt clang 0 "prefer gcc to clang for building the runtime"
 valopt prefix "/usr/local" "set installation prefix"
@@ -404,11 +405,17 @@ step_msg "configuring submodules"
 # Have to be in the top of src directory for this
 cd ${CFG_SRC_DIR}
 
+if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ]
+then
 SUBMODULE_STATUS=$("${CFG_GIT}" submodule status)
 NEED_INIT_COUNT=$(echo "$SUBMODULE_STATUS" | grep -c "^-")
 NEED_UPDATE_COUNT=$(echo "$SUBMODULE_STATUS" | grep -c "^+")
 NEED_INIT=$(test $NEED_INIT_COUNT -gt 0)$?
 NEED_UPDATE=$(test "($NEED_INIT)" -o "$NEED_UPDATE_COUNT" -gt 0)$?
+else
+NEED_INIT=
+NEED_UPDATE=
+fi
 
 if [ $NEED_INIT ]
 then
