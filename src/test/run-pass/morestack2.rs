@@ -1,4 +1,5 @@
 // xfail-test
+// compile-flags:--stack-growth
 fn getbig(i: int) -> int {
     let m = if i >= 0 {
         let j = getbig(i - 1);
