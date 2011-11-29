@@ -52,6 +52,15 @@
 .globl UPCALL_CALL_C_STACK
 .globl MORESTACK
 
+// FIXME: What about _WIN32?	
+#if defined(__linux__)
+	.hidden MORESTACK
+#else
+#if defined(__APPLE__)
+	.private_extern MORESTACK
+#endif
+#endif
+
 #ifdef __ELF__
 	.type MORESTACK,@function
 #endif
