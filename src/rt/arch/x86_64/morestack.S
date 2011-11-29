@@ -6,12 +6,14 @@
 // prolog when we run out.
 
 #if defined(__APPLE__) || defined(_WIN32)
-#define RUST_NEW_STACK      _rust_new_stack
+#define RUST_NEW_STACK2     _rust_new_stack2
 #define RUST_DEL_STACK      _rust_del_stack
+#define UPCALL_CALL_C       _upcall_call_shim_on_c_stack
 #define MORESTACK           ___morestack
 #else
-#define RUST_NEW_STACK      rust_new_stack
+#define RUST_NEW_STACK2     rust_new_stack2
 #define RUST_DEL_STACK      rust_del_stack
+#define UPCALL_CALL_C       upcall_call_shim_on_c_stack
 #define MORESTACK           __morestack
 #endif
 
@@ -28,31 +30,51 @@
 #  define ARG2 %rdx
 #endif
 
-.globl RUST_NEW_STACK
+.globl RUST_NEW_STACK2
 .globl RUST_DEL_STACK
-
+.globl UPCALL_CALL_C
 .globl MORESTACK
 
-MORESTACK:
-        // Hastily and probably incorrectly ported from i386 version.
-        // Actually this calling convention doens't make so much sense
-        // for x86_64...
-        mov %rcx, ARG0      // param 0: amount of space needed
-        mov %rdx, ARG2      // param 2: size of arguments
-        lea 8(%rsp),ARG1
-        call rust_new_stack_sym
+#ifdef __ELF__
+	.type MORESTACK,@function
+#endif
 
+MORESTACK:
+	.cfi_startproc
+
+	# Set up a normal backtrace
+	pushq %rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbp, -16
+	movq %rsp, %rbp
+	.cfi_def_cfa_register %rbp
+
+	// Save argument registers
+	pushq	%rdi
+	pushq	%rsi
+	pushq	%rdx
+	pushq	%rcx
+	pushq	%r8
+	pushq	%r9
+
+	// Calculate the address of the stack arguments
+	movq %rbp, %rcx
+	addq $16, %rcx   // Add the saved %rbp, and return address
+	addq %r11, %rcx // Add the size of stack arguments
+
+	pushq %r10 // The amount of stack needed
+	pushq %rcx // Address of stack arguments
+	pushq %r11 // Size of stack arguments
+	pushq %rbp // Save the Rust stack pointer
+
+	// FIXME: Don't understand why I have to use the PLT here
+	lea RUST_NEW_STACK2@PLT(%rip), %rsi
+	lea 24(%rsp), %rdi
+	call UPCALL_CALL_C@PLT
+	
         mov (%rsp),%rdx        // Grab the return pointer.
         inc %rdx               // Skip past the `ret`.
         mov %rax,%rsp          // Switch to the new stack.
         call *%rdx             // Enter the new function.
 
-        // Now the function that called us has returned, so we need to delete the
-        // old stack space.
-        call rust_new_stack_sym
-        mov %rax,%rsp          // Switch back to the old stack.
-        ret
-
-// This is totally broken
-rust_new_stack_sym:
-rust_del_stack_sym:
+	.cfi_endproc

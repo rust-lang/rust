@@ -86,6 +86,21 @@ rust_new_stack(size_t stk_sz, void *args_addr, size_t args_sz,
     return new_sp;
 }
 
+struct rust_new_stack2_args {
+  size_t stk_sz;
+  void *args_addr;
+  size_t args_sz;
+  uintptr_t current_sp;
+};
+
+// A new stack function suitable for calling through
+// upcall_call_shim_on_c_stack
+extern "C" void *
+rust_new_stack2(struct rust_new_stack2_args *args) {
+    return rust_new_stack(args->stk_sz, args->args_addr,
+                          args->args_sz, args->current_sp);
+}
+
 extern "C" void
 rust_del_stack() {
     rust_task *task = rust_scheduler::get_task();
