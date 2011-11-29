@@ -76,10 +76,11 @@ MORESTACK:
 	pushq	%r8
 	pushq	%r9
 
-	// Calculate the address of the stack arguments
+	// Calculate the address of the stack arguments.
+	// We have the base pointer, __morestack's return address,
+	// and __morestack's caller's return address to skip
 	movq %rbp, %rcx
-	addq $16, %rcx   // Add the saved %rbp, and return address
-	addq %r11, %rcx // Add the size of stack arguments
+	addq $24, %rcx  // Base pointer, return address x2
 
 	pushq %rbp // Save the Rust stack pointer
 	pushq %r11 // Size of stack arguments
