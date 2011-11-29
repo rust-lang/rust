@@ -34,17 +34,17 @@ $$(HBIN0_H_$(1))/rustc$$(X):								\
 	$$(Q)cp $$< $$@
 
 $$(HLIB0_H_$(1))/$$(CFG_RUNTIME): \
-		$$(TBIN$(2)_T_$(1)_H_$(3))/rustc$$(X)
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(HLIB0_H_$(1))/$(CFG_STDLIB): \
-		$$(TBIN$(2)_T_$(1)_H_$(3))/rustc$$(X)
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$$(CFG_STDLIB)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(HLIB0_H_$(1))/$(CFG_RUSTLLVM): \
-		$$(TBIN$(2)_T_$(1)_H_$(3))/rustc$$(X)
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$$(CFG_RUSTLLVM)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
