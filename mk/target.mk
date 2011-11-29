@@ -17,6 +17,10 @@ $$(TARGET_LIB$(1)$(2))/intrinsics.bc: $$(TARGET_LIB$(1)$(2))/intrinsics.ll \
 	@$$(call E, llvms-as: $$@)
 	$$(Q)$$(LLVM_AS_$(2)) -o $$@ $$<
 
+$$(TARGET_LIB$(1)$(2))/libmorestack.a: rt/$(2)/arch/$$(HOST_$(2))/libmorestack.a
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
 $$(TARGET_LIB$(1)$(2))/$$(CFG_STDLIB): \
 	$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
         $$(TARGET_SREQ$(1)$(2))

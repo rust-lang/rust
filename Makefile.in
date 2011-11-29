@@ -281,7 +281,8 @@ HOST_SREQ$(1) = \
 TARGET_SREQ$(1)$(2) = \
 	$$(HOST_SREQ$(1)) \
 	$$(TARGET_LIB$(1)$(2))/$$(CFG_RUNTIME) \
-	$$(TARGET_LIB$(1)$(2))/intrinsics.bc
+	$$(TARGET_LIB$(1)$(2))/intrinsics.bc \
+	$$(TARGET_LIB$(1)$(2))/libmorestack.a
 
 # Prerequisites for complete stageN targets
 SREQ$(1)$(2) = \

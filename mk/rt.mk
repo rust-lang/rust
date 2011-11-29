@@ -139,6 +139,10 @@ rt/$(1)/%.o: rt/%.S $$(MKFILES)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1))) $$<
 
+rt/$(1)/arch/$$(HOST_$(1))/libmorestack.a: rt/$(1)/arch/$$(HOST_$(1))/morestack.o
+	@$$(call E, link: $$@)
+	$$(Q)ar rcs $$@ $$<
+
 rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILES) \
 			  				 $$(RUNTIME_HDR_$(1)) \
                              $$(RUNTIME_DEF_$(1)) \
