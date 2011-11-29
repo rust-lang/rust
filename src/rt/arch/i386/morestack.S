@@ -65,6 +65,7 @@
 	.type MORESTACK,@function
 #endif
 
+#if defined(__linux__)
 MORESTACK:
 
     // Sanity check to make sure that there is a currently-running task.
@@ -129,6 +130,12 @@ MORESTACK:
     addl $RETURN_OFFSET,%edx
     addl $12+4+8+ALIGNMENT,%esp
     jmpl *%edx
+
+
+#else
+MORESTACK:
+	ret
+#endif
 
 #ifdef __APPLE__
 
