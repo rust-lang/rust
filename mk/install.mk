@@ -7,7 +7,7 @@
 ifdef VERBOSE
  INSTALL = cp $(1)/$(3) $(2)/$(3)
 else
- INSTALL = @$(call E, install: $(2)/$(3)) && cp $(1)/$(3) $(2)/$(3)
+ INSTALL = $(Q)$(call E, install: $(2)/$(3)) && cp $(1)/$(3) $(2)/$(3)
 endif
 
 # The stage we install from
@@ -22,20 +22,20 @@ define INSTALL_TARGET_N
   # $(2) is the host triple
 
 # T{B,L} == Target {Bin, Lib} for stage ${ISTAGE}
-TB$(1)_H_$(2) = $$(TBIN$$(ISTAGE)_T_$(1)_H_$(2))
-TL$(1)_H_$(2) = $$(TLIB$$(ISTAGE))_T_$(1)_H_$(2))
+TB$(1)$(2) = $$(TBIN$$(ISTAGE)_T_$(1)_H_$(2))
+TL$(1)$(2) = $$(TLIB$$(ISTAGE)_T_$(1)_H_$(2))
 
 # PT{R,B,L} == Prefix Target {Root, Bin, Lib}
-PTR_T_$(1)_H_$(2) = $$(PREFIX_LIB)/rustc/$(1)
-PTB_T_$(1)_H_$(2) = $$(PTR_T_$(1)_H_$(2))/bin
-PTL_T_$(1)_H_$(2) = $$(PTR_T_$(1)_H_$(2))/lib
+PTR$(1)$(2) = $$(PREFIX_LIB)/rustc/$(1)
+PTB$(1)$(2) = $$(PTR$(1)$(2))/bin
+PTL$(1)$(2) = $$(PTR$(1)$(2))/lib
 
 install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
-	$(Q)mkdir -p $$(PTL_$(1)_H_$(2))
-	$(Q)$(call INSTALL,$$(TL$(1)_H_$(2)),$$(PTL$(1)_H_$(2)),$$(CFG_RUNTIME))
-	$(Q)$(call INSTALL,$$(TL$(1)_H_$(2)),$$(PTL$(1)_H_$(2)),$$(CFG_STDLIB))
-	$(Q)$(call INSTALL,$$(TL$(1)_H_$(2)),$$(PTL$(1)_H_$(2)),intrinsics.bc)
-	$(Q)$(call INSTALL,$$(TL$(1)_H_$(2)),$$(PTL$(1)_H_$(2)),libmorestack.a)
+	$$(Q)mkdir -p $$(PTL$(1)$(2))
+	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME))
+	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_STDLIB))
+	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),intrinsics.bc)
+	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 endef
 
 $(foreach target,$(CFG_TARGET_TRIPLES), \
@@ -47,15 +47,15 @@ INSTALL_TARGET_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
 install: install-host install-targets
 
 # Shorthand for build/stageN/bin
-HB = $(HBIN$(ISTAGE)_H_$(HT))
+HB = $(HBIN$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
 # Shorthand for build/stageN/lib
-HL = $(HLIB$(ISTAGE)_H_$(HT))
+HL = $(HLIB$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
 # Shorthand for the prefix bin directory
 PHB = $(PREFIX_BIN)
 # Shorthand for the prefix bin directory
 PHL = $(PREFIX_LIB)
 
-install-host: $(SREQ$(ISTAGE)$(CFG_HOST_TRIPLE))
+install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_BIN)
 	$(Q)mkdir -p $(PREFIX_LIB)
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1

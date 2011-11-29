@@ -49,20 +49,18 @@ STAGES = 0 1 2 3
 ######################################################################
 
 include config.mk
-OUR_MKFILES := Makefile config.mk $(wildcard $(CFG_SRC_DIR)/mk/*.mk)
-3RDPARTY_MKFILES := $(CFG_SRC_DIR)/src/libuv/Makefile \
-                    $(wildcard $(CFG_SRC_DIR)/src/libuv/*.mk)
-GEN_MKFILES := $(wildcard $(CFG_SRC_DIR)/mk/libuv/*/*/*) \
-               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*) \
-               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*) \
-               $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*)
-
-MKFILES := $(OUR_MKFILES) $(3RDPARTY_MKFILES) $(GEN_MKFILES)
 
 ifdef IGNORE_MKFILES
   MKFILE_DEPS :=
 else
-  MKFILE_DEPS := $(MKFILES)
+  OUR_MKFILES := Makefile config.mk $(wildcard $(CFG_SRC_DIR)/mk/*.mk)
+  3RDPARTY_MKFILES := $(CFG_SRC_DIR)/src/libuv/Makefile \
+                      $(wildcard $(CFG_SRC_DIR)/src/libuv/*.mk)
+  GEN_MKFILES := $(wildcard $(CFG_SRC_DIR)/mk/libuv/*/*/*) \
+                 $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*) \
+                 $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*) \
+                 $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*)
+  MKFILE_DEPS := $(OUR_MKFILES) $(3RDPARTY_MKFILES) $(GEN_MKFILES)
 endif
 
 NON_HOST_TRIPLES = $(filter-out $(CFG_HOST_TRIPLE),$(CFG_TARGET_TRIPLES))
@@ -286,7 +284,7 @@ HSREQ$(1)_H_$(3) = \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_RUNTIME) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLLVM) \
 	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
-	$$(MKFILES)
+	$$(MKFILE_DEPS)
 
 # Prerequisites for using the stageN compiler to build target artifacts
 TSREQ$(1)_T_$(2)_H_$(3) = \
