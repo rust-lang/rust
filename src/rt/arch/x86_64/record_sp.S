@@ -11,6 +11,7 @@
 #if defined(__linux__)
 RECORD_SP:
 	movq %rdi, %fs:112
+	ret
 #else
 RECORD_SP:
 	ret

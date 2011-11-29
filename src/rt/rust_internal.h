@@ -95,7 +95,13 @@ static size_t const BUF_BYTES = 2048;
 #define PROC_FAIL_CODE 101;
 
 // FIXME: We want this to be 128 but need to slim the red zone calls down
-#define RED_ZONE_SIZE   256
+#ifdef __i386__
+#define RED_ZONE_SIZE 256
+#endif
+
+#ifdef __x86_64__
+#define RED_ZONE_SIZE 2048
+#endif
 
 // Every reference counted object should use this macro and initialize
 // ref_count.
