@@ -101,7 +101,7 @@ else
   CFG_GCCISH_CFLAGS += -O2
 endif
 
-CFG_TESTLIB=$(CFG_BUILD_DIR)/$(CFG_HOST_TRIPLE)/$(strip \
+CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
  $(if $(findstring stage0,$(1)), \
        stage0/lib, \
       $(if $(findstring stage1,$(1)), \
@@ -158,8 +158,8 @@ ifdef CFG_WINDOWSY
   CFG_DEF_SUFFIX := .def
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
-  CFG_RUN_TARG=$(call CFG_RUN,$(HOST_LIB$(1)),$(2))
-  CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1)),$(1))
+  CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
+  CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
   CFG_LIBUV_LINK_FLAGS=-lWs2_32
 
   ifndef CFG_ENABLE_MINGW_CROSS

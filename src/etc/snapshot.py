@@ -56,7 +56,8 @@ def full_snapshot_name(date, rev, platform, hsh):
 
 def get_kernel(triple):
     os_name = triple.split('-')[-1]
-    if os_name == "nt" or scrub(os.getenv("CFG_ENABLE_MINGW_CROSS")):
+    #scrub(os.getenv("CFG_ENABLE_MINGW_CROSS")):
+    if os_name == "nt" or os_name == "mingw32":
         return "winnt"
     if os_name == "darwin":
         return "macos"

@@ -62,7 +62,7 @@ STDTEST_INPUTS := $(wildcard $(S)src/test/stdtest/*rs)
 
 # Run the compiletest runner itself under valgrind
 ifdef CTEST_VALGRIND
-  CFG_RUN_CTEST=$(call CFG_RUN_TEST,$(2))
+  CFG_RUN_CTEST=$(call CFG_RUN_TEST,$(2),$(3))
 else
   CFG_RUN_CTEST=$(call CFG_RUN,$(TLIB$(1)_T_$(3)_H_$(3)),$(2))
 endif
@@ -174,7 +174,7 @@ $(3)/test/stdtest.stage$(1)-$(2)$$(X):			\
 check-stage$(1)-T-$(2)-H-$(3)-std-dummy:			\
 		$(3)/test/stdtest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(TESTARGS)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
 
 # Rules for the rustc test runner
 
@@ -189,7 +189,7 @@ $(3)/test/rustctest.stage$(1)-$(2)$$(X):					\
 check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy:		\
 		$(3)/test/rustctest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(TESTARGS)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
 
 # Rules for the cfail/rfail/rpass/bench/perf test runner
 
@@ -395,4 +395,4 @@ test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs $(TARGET_HOST_LIB2)/$(FT_LIB) \
 	$(STAGE2_$(CFG_HOST_TRIPLE)) -L $(HOST_LIB2) -o $@ $<
 
 test/$(FT_DRIVER).out: test/$(FT_DRIVER)$(X) $(SREQ2$(CFG_HOST_TRIPLE))
-	$(Q)$(call CFG_RUN_TEST, $<)
+	$(Q)$(call CFG_RUN_TEST,$<,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE))
