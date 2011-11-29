@@ -48,6 +48,7 @@
 	.type MORESTACK,@function
 #endif
 
+#if defined(__linux)
 MORESTACK:
 	.cfi_startproc
 
@@ -71,14 +72,14 @@ MORESTACK:
 	addq $16, %rcx   // Add the saved %rbp, and return address
 	addq %r11, %rcx // Add the size of stack arguments
 
-	pushq %r10 // The amount of stack needed
-	pushq %rcx // Address of stack arguments
-	pushq %r11 // Size of stack arguments
 	pushq %rbp // Save the Rust stack pointer
+	pushq %r11 // Size of stack arguments
+	pushq %rcx // Address of stack arguments
+	pushq %r10 // The amount of stack needed
 
 	// FIXME: Don't understand why I have to use the PLT here
 	lea RUST_NEW_STACK2@PLT(%rip), %rsi
-	lea 24(%rsp), %rdi
+	mov %rsp, %rdi
 	call UPCALL_CALL_C@PLT
 	
         mov (%rsp),%rdx        // Grab the return pointer.
@@ -87,3 +88,7 @@ MORESTACK:
         call *%rdx             // Enter the new function.
 
 	.cfi_endproc
+#else
+MORESTACK:
+	ret
+#endif
