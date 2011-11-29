@@ -62,7 +62,7 @@ MORESTACK:
     subl $12,%esp
     calll RUST_GET_TASK
     testl %eax,%eax
-    jz L$bail
+    jz .L$bail
 
     movl $12, (%esp)
     calll UPCALL_ALLOC_C_STACK
@@ -114,7 +114,7 @@ MORESTACK:
     addl $12,%esp
     retl $8    //                      ra stksz argsz x ra args
 
-L$bail:
+.L$bail:
     movl 12(%esp),%edx
     addl $RETURN_OFFSET,%edx
     addl $12+4+8+ALIGNMENT,%esp
