@@ -94,7 +94,8 @@ MORESTACK:
     movl NEW_STACK_ADDR,%eax
     movl %eax,(%esp)
     movl %edx,4(%esp)
-    calll UPCALL_CALL_C_STACK
+    // FIXME: Don't understand why just _here_ I have to say @PLT
+    calll UPCALL_CALL_C_STACK@PLT
 
     movl 12(%esp),%edx          // Grab the return pointer.
     addl $RETURN_OFFSET,%edx    // Skip past the `add esp,4` and the `ret`.

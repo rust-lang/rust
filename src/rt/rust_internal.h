@@ -96,7 +96,7 @@ static size_t const BUF_BYTES = 2048;
 
 // FIXME: We want this to be 128 but need to slim the red zone calls down
 #ifdef __i386__
-#define RED_ZONE_SIZE 256
+#define RED_ZONE_SIZE 2048
 #endif
 
 #ifdef __x86_64__
