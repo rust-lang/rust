@@ -52,7 +52,7 @@
 	.type MORESTACK,@function
 #endif
 
-#if defined(__linux)
+#if defined(__linux__)
 MORESTACK:
 	.cfi_startproc
 
