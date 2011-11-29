@@ -77,7 +77,6 @@ MORESTACK:
 	pushq %rcx // Address of stack arguments
 	pushq %r10 // The amount of stack needed
 
-	// FIXME: Don't understand why I have to use the PLT here
 	lea RUST_NEW_STACK2@PLT(%rip), %rsi
 	mov %rsp, %rdi
 	call UPCALL_CALL_C@PLT
