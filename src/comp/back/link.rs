@@ -633,6 +633,11 @@ fn link_binary(sess: session::session,
         gcc_args += ["-lrt", "-ldl"];
     }
 
+    // Stack growth requires statically linking a __morestack function
+    if sess.get_opts().stack_growth {
+        gcc_args += ["-lmorestack"];
+    }
+
     gcc_args += rpath::get_rpath_flags(sess, out_filename);
 
     log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
