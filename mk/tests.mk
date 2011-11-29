@@ -288,8 +288,8 @@ check-stage$(1)-T-$(2)-H-$(3)-bench-dummy:		\
 
 check-stage$(1)-T-$(2)-H-$(3)-perf-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-        $$(SREQ$(1)_T_$(2)_H_$(3))				\
-        $$(BENCH_TESTS)
+	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(BENCH_TESTS)
 	@$$(call E, perf: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PERF_ARGS$(1)-T-$(2)-H-$(3))

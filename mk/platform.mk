@@ -35,6 +35,7 @@ ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LDENV := LD_LIBRARY_PATH
   CFG_DEF_SUFFIX := .bsd.def
   CFG_INSTALL_NAME =
+  CFG_PERF_TOOL := /usr/bin/time
 endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
