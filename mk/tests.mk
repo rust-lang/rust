@@ -341,11 +341,11 @@ $(foreach host,$(CFG_TARGET_TRIPLES), \
 
 GENERATED += tmp/$$(FT).rc tmp/$$(FT_DRIVER).rs
 
-tmp/$$(FT).rc tmp/$$(FT_DRIVER).rs: \
-		$$(TEST_RPASS_SOURCES_STAGE2) \
-		$$(S)src/etc/combine-tests.py
-	@$$(call E, check: building combined stage2 test runner)
-	$$(Q)$$(S)src/etc/combine-tests.py
+tmp/$(FT).rc tmp/$(FT_DRIVER).rs: \
+		$(TEST_RPASS_SOURCES_STAGE2) \
+		$(S)src/etc/combine-tests.py
+	@$(call E, check: building combined stage2 test runner)
+	$(Q)$(S)src/etc/combine-tests.py
 
 define DEF_CHECK_FAST_FOR_T_H
 # $(1) unused
@@ -356,24 +356,24 @@ $$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB): \
 		tmp/$$(FT).rc \
 		$$(SREQ2_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE2_$(CFG_HOST_TRIPLE)) --lib -o $$@ $$<
+	$$(STAGE2_T_$(2)_H_$(3)) --lib -o $$@ $$<
 
-$(3)/test/$(FT_DRIVER)-$(2)$(X): \
-		tmp/$(FT_DRIVER).rs \
-		$(TLIB2_T_$(2)_H_$(3))/$(FT_LIB) \
-		$(SREQ2_T_$(2)_H_$(3))
-	@$(call E, compile_and_link: $@)
-	$(STAGE2_$(CFG_HOST_TRIPLE)) -L $(HOST_LIB2) -o $@ $<
+$(3)/test/$$(FT_DRIVER)-$(2)$$(X): \
+		tmp/$$(FT_DRIVER).rs \
+		$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB) \
+		$$(SREQ2_T_$(2)_H_$(3))
+	@$$(call E, compile_and_link: $$@ $$<)
+	$$(STAGE2_T_$(2)_H_$(3)) -L $$(TLIB2_T_$(2)_H_$(3)) -o $$@ $$<
 
-$(3)/test/$(FT_DRIVER)-$(2).out: \
-		$(3)/test/$(FT_DRIVER)-$(2)$(X) \
-		$(SREQ2_T_$(2)_H_$(3))
-	$(Q)$(call CFG_RUN_TEST,$<,$(2),$(3))
+$(3)/test/$$(FT_DRIVER)-$(2).out: \
+		$(3)/test/$$(FT_DRIVER)-$(2)$$(X) \
+		$$(SREQ2_T_$(2)_H_$(3))
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3))
 
 check-fast-T-$(2)-H-$(3): tidy			\
 	check-stage2-T-$(2)-H-$(3)-rustc	\
 	check-stage2-T-$(2)-H-$(3)-std		\
-	$(3)/test/$(FT_DRIVER)-$(2).out
+	$(3)/test/$$(FT_DRIVER)-$(2).out
 
 endef
 
