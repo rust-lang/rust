@@ -98,7 +98,7 @@ fn init_fn<T>(op: init_op<T>, n_elts: uint) -> [T] {
 
 // TODO: Remove me once we have slots.
 /*
-Function: init_fn
+Function: init_fn_mut
 
 Creates and initializes a mutable vector.
 
