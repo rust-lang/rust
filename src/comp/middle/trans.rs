@@ -4088,10 +4088,8 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       }
       ast::expr_cast(val, _) {
         alt tcx.cast_map.find(e.id) {
-          option::none. { ret trans_cast(bcx, val, e.id, dest); }
-          some { alt option::get(some) {
-            ty::triv_cast. { ret trans_expr(bcx, val, dest); }
-          } }
+          some(ty::triv_cast.) { ret trans_expr(bcx, val, dest); }
+          _ { ret trans_cast(bcx, val, e.id, dest); }
         }
       }
       ast::expr_anon_obj(anon_obj) {
@@ -4122,7 +4120,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         // that is_call_expr(ex) -- but we don't support that
         // yet
         // FIXME
-        check (ast_util::is_call_expr(ex));
+        check (ast_util::is_tail_call_expr(ex));
         ret trans_be(bcx, ex);
       }
       ast::expr_fail(expr) {
@@ -4455,7 +4453,8 @@ fn trans_ret(bcx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
 fn build_return(bcx: @block_ctxt) { Br(bcx, bcx_fcx(bcx).llreturn); }
 
 // fn trans_be(cx: &@block_ctxt, e: &@ast::expr) -> result {
-fn trans_be(cx: @block_ctxt, e: @ast::expr) : ast_util::is_call_expr(e) ->
+fn trans_be(cx: @block_ctxt, e: @ast::expr) :
+ast_util::is_tail_call_expr(e) ->
    @block_ctxt {
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled

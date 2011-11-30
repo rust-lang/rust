@@ -1501,7 +1501,7 @@ fn eq_ty(&&a: t, &&b: t) -> bool { ret a == b; }
 // Convert type to machine type
 // (i.e. replace uint, int, float with target architecture machine types)
 //
-// Somewhat expensive but casts that need this should be rare
+// FIXME somewhat expensive but this should only be called rarely
 fn ty_to_machine_ty(cx: ctxt, ty: t) -> t {
     fn sub_fn(cx: ctxt, uint_ty: t, int_ty: t, float_ty: t, in: t) -> t {
         alt struct(cx, in) {
@@ -1525,12 +1525,9 @@ fn ty_to_machine_ty(cx: ctxt, ty: t) -> t {
 // equal or if they are equal after substituting all occurences of
 //  machine independent primitive types by their machine type equivalents
 // for the current target architecture
-//
-// Somewhat expensive but casts that need this should be rare
 fn triv_eq_ty(cx: ctxt, &&a: t, &&b: t) -> bool {
-    let mach_a = ty_to_machine_ty(cx, a);
-    let mach_b = ty_to_machine_ty(cx, b );
-    ret eq_ty(a, b) || eq_ty(mach_a, mach_b);
+    ret eq_ty(a, b)
+        || eq_ty(ty_to_machine_ty(cx, a), ty_to_machine_ty(cx, b));
 }
 
 // Type lookups
