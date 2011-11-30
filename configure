@@ -175,7 +175,6 @@ then
     fi
 fi
 
-
 # The goal here is to come up with the same triple as LLVM would,
 # at least for the subset of platforms we're willing to target.
 
@@ -214,8 +213,7 @@ case $CFG_CPUTYPE in
         ;;
 
     x86_64 | x86-64 | x64)
-	# FIME: Once we do a 64-bit build this should be x86_64
-        CFG_CPUTYPE=i686
+        CFG_CPUTYPE=x86_64
         ;;
 
     *)
