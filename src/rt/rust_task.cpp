@@ -178,7 +178,10 @@ rust_task::~rust_task()
     I(sched, ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
 
-    del_stk(this, stk);
+    // Delete all the stacks. There may be more than one if the task failed
+    while (stk != NULL) {
+        del_stk(this, stk);
+    }
 }
 
 struct spawn_args {
