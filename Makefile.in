@@ -253,7 +253,7 @@ export CFG_PREFIX
 define SREQ
 # $(1) is the stage number
 # $(2) is the target triple
-# $(3) is the build triple
+# $(3) is the host triple
 
 # Destinations of artifacts for the host compiler
 HROOT$(1)_H_$(3) = $(3)/stage$(1)
