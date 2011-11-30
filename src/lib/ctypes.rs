@@ -5,6 +5,7 @@ Definitions useful for C interop
 */
 
 type c_int = i32;
+type c_uint = u32;
 
 type void = int; // Not really the same as C
 type long = int;
@@ -15,8 +16,20 @@ type intptr_t = uint;
 type uintptr_t = uint;
 type uint32_t = u32;
 
-// This *must* match with "import c_float = fXX" in std::math per arch
-type c_float = f64;
+// machine type equivalents of rust int, uint, float
+
+#[cfg(target_arch="x86")]
+type m_int = i32;
+#[cfg(target_arch="x86_64")]
+type m_int = i64;
+
+#[cfg(target_arch="x86")]
+type m_uint = u32;
+#[cfg(target_arch="x86_64")]
+type m_uint = u64;
+
+// This *must* match with "import m_float = fXX" in std::math per arch
+type m_float = f64;
 
 type size_t = uint;
 type ssize_t = int;

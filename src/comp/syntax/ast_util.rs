@@ -175,6 +175,14 @@ pure fn is_call_expr(e: @expr) -> bool {
     alt e.node { expr_call(_, _, _) { true } _ { false } }
 }
 
+pure fn is_tail_call_expr(e: @expr) -> bool {
+    alt e.node {
+      expr_call(_, _, _) { true }
+      expr_cast(inner_e, _) { is_call_expr(inner_e) }
+      _ { false }
+    }
+}
+
 fn is_constraint_arg(e: @expr) -> bool {
     alt e.node {
       expr_lit(_) { ret true; }
