@@ -354,7 +354,7 @@ fn parse_type_constr_arg(p: parser) -> @ast::ty_constr_arg {
     if p.peek() == token::DOT {
         // "*..." notation for record fields
         p.bump();
-        let pth: ast::path = parse_path(p);
+        let pth = parse_path(p);
         carg = ast::carg_ident(pth);
     }
     // No literals yet, I guess?
@@ -430,10 +430,10 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool)
       ast::ty_path(pth, ann) {
         let hi = p.get_hi_pos();
         ret @spanned(lo, hi,
-                     ast::ty_path(spanned(lo, hi,
-                                          {global: pth.node.global,
-                                           idents: pth.node.idents,
-                                           types: seq}), ann));
+                     ast::ty_path(@spanned(lo, hi,
+                                           {global: pth.node.global,
+                                            idents: pth.node.idents,
+                                            types: seq}), ann));
       }
       _ { p.fatal("type parameter instantiation only allowed for paths"); }
     }
@@ -697,7 +697,7 @@ fn is_plain_ident(p: parser) -> bool {
     ret alt p.peek() { token::IDENT(_, false) { true } _ { false } };
 }
 
-fn parse_path(p: parser) -> ast::path {
+fn parse_path(p: parser) -> @ast::path {
     let lo = p.get_lo_pos();
     let hi = lo;
 
@@ -722,10 +722,10 @@ fn parse_path(p: parser) -> ast::path {
           _ { break; }
         }
     }
-    ret spanned(lo, hi, {global: global, idents: ids, types: []});
+    ret @spanned(lo, hi, {global: global, idents: ids, types: []});
 }
 
-fn parse_path_and_ty_param_substs(p: parser) -> ast::path {
+fn parse_path_and_ty_param_substs(p: parser) -> @ast::path {
     let lo = p.get_lo_pos();
     let path = parse_path(p);
     if p.peek() == token::MOD_SEP {
@@ -734,11 +734,10 @@ fn parse_path_and_ty_param_substs(p: parser) -> ast::path {
         let seq =
             parse_seq_lt_gt(some(token::COMMA), {|p| parse_ty(p, false)}, p);
         let hi = seq.span.hi;
-        path =
-            spanned(lo, hi,
-                    {global: path.node.global,
-                     idents: path.node.idents,
-                     types: seq.node});
+        path = @spanned(lo, hi,
+                        {global: path.node.global,
+                         idents: path.node.idents,
+                         types: seq.node});
     }
     ret path;
 }
@@ -2331,18 +2330,18 @@ fn parse_rest_import_name(p: parser, first: ast::ident,
         if option::is_some(from_idents) {
             p.fatal("can't rename import list");
         }
-        ret ast::view_item_import(i, identifiers, p.get_id());
+        ret ast::view_item_import(i, @identifiers, p.get_id());
       }
       _ {
         if glob {
-            ret ast::view_item_import_glob(identifiers, p.get_id());
+            ret ast::view_item_import_glob(@identifiers, p.get_id());
         } else if option::is_some(from_idents) {
-            ret ast::view_item_import_from(identifiers,
+            ret ast::view_item_import_from(@identifiers,
                                            option::get(from_idents),
                                            p.get_id());
         } else {
             let len = vec::len(identifiers);
-            ret ast::view_item_import(identifiers[len - 1u], identifiers,
+            ret ast::view_item_import(identifiers[len - 1u], @identifiers,
                                       p.get_id());
         }
       }

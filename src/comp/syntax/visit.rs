@@ -30,7 +30,7 @@ type visitor<E> =
       visit_decl: fn@(@decl, E, vt<E>),
       visit_expr: fn@(@expr, E, vt<E>),
       visit_ty: fn@(@ty, E, vt<E>),
-      visit_constr: fn@(path, span, node_id, E, vt<E>),
+      visit_constr: fn@(@path, span, node_id, E, vt<E>),
       visit_fn: fn@(_fn, [ty_param], span, fn_ident, node_id, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
@@ -149,7 +149,7 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       ty_type. {/* no-op */ }
       ty_constr(t, cs) {
         v.visit_ty(t, e, v);
-        for tc: @spanned<constr_general_<path, node_id>> in cs {
+        for tc: @spanned<constr_general_<@path, node_id>> in cs {
             v.visit_constr(tc.node.path, tc.span, tc.node.id, e, v);
         }
       }
@@ -157,7 +157,7 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
     }
 }
 
-fn visit_constr<E>(_operator: path, _sp: span, _id: node_id, _e: E,
+fn visit_constr<E>(_operator: @path, _sp: span, _id: node_id, _e: E,
                    _v: vt<E>) {
     // default
 }
@@ -354,7 +354,7 @@ type simple_visitor =
       visit_decl: fn@(@decl),
       visit_expr: fn@(@expr),
       visit_ty: fn@(@ty),
-      visit_constr: fn@(path, span, node_id),
+      visit_constr: fn@(@path, span, node_id),
       visit_fn: fn@(_fn, [ty_param], span, fn_ident, node_id)};
 
 fn simple_ignore_ty(_t: @ty) {}
@@ -372,7 +372,7 @@ fn default_simple_visitor() -> simple_visitor {
           visit_decl: fn(_d: @decl) { },
           visit_expr: fn(_e: @expr) { },
           visit_ty: simple_ignore_ty,
-          visit_constr: fn(_p: path, _sp: span, _id: node_id) { },
+          visit_constr: fn(_p: @path, _sp: span, _id: node_id) { },
           visit_fn:
               fn(_f: _fn, _tps: [ty_param], _sp: span, _ident: fn_ident,
                   _id: node_id) {
@@ -429,8 +429,8 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(ty);
         visit_ty(ty, e, v);
     }
-    fn v_constr(f: fn@(path, span, node_id), pt: path, sp: span, id: node_id,
-                &&e: (), v: vt<()>) {
+    fn v_constr(f: fn@(@path, span, node_id), pt: @path, sp: span,
+                id: node_id, &&e: (), v: vt<()>) {
         f(pt, sp, id);
         visit_constr(pt, sp, id, e, v);
     }

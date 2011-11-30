@@ -67,7 +67,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     fn make_path_expr(cx: ext_ctxt, sp: span, idents: [ast::ident]) ->
        @ast::expr {
         let path = {global: false, idents: idents, types: []};
-        let sp_path = {node: path, span: sp};
+        let sp_path = @{node: path, span: sp};
         let pathexpr = ast::expr_path(sp_path);
         ret @{id: cx.next_id(), node: pathexpr, span: sp};
     }

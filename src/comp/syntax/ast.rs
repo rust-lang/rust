@@ -61,7 +61,7 @@ tag crate_directive_ {
     cdir_src_mod(ident, [attribute]);
     cdir_dir_mod(ident, [@crate_directive], [attribute]);
     cdir_view_item(@view_item);
-    cdir_syntax(path);
+    cdir_syntax(@path);
 }
 
 type crate_directive = spanned<crate_directive_>;
@@ -87,7 +87,7 @@ tag pat_ {
     pat_wild;
     pat_bind(ident);
     pat_lit(@lit);
-    pat_tag(path, [@pat]);
+    pat_tag(@path, [@pat]);
     pat_rec([field_pat], bool);
     pat_tup([@pat]);
     pat_box(@pat);
@@ -208,7 +208,7 @@ tag expr_ {
     expr_assign_op(binop, @expr, @expr);
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
-    expr_path(path);
+    expr_path(@path);
     expr_fail(option::t<@expr>);
     expr_break;
     expr_cont;
@@ -241,7 +241,7 @@ tag blk_sort {
 type mac = spanned<mac_>;
 
 tag mac_ {
-    mac_invoc(path, @expr, option::t<str>);
+    mac_invoc(@path, @expr, option::t<str>);
     mac_embed_type(@ty);
     mac_embed_block(blk);
     mac_ellipsis;
@@ -328,7 +328,7 @@ tag ty_ {
     ty_fn(proto, [ty_arg], @ty, ret_style, [@constr]);
     ty_obj([ty_method]);
     ty_tup([@ty]);
-    ty_path(path, node_id);
+    ty_path(@path, node_id);
     ty_type;
     ty_constr(@ty, [@ty_constr]);
     ty_mac(mac);
@@ -352,7 +352,7 @@ tag constr_arg_general_<T> { carg_base; carg_ident(T); carg_lit(@lit); }
 
 type fn_constr_arg = constr_arg_general_<uint>;
 type sp_constr_arg<T> = spanned<constr_arg_general_<T>>;
-type ty_constr_arg = sp_constr_arg<path>;
+type ty_constr_arg = sp_constr_arg<@path>;
 type constr_arg = spanned<fn_constr_arg>;
 
 // Constrained types' args are parameterized by paths, since
@@ -361,14 +361,14 @@ type constr_arg = spanned<fn_constr_arg>;
 // constrained type, is * (referring to the base record)
 
 type constr_general_<ARG, ID> =
-    {path: path, args: [@spanned<constr_arg_general_<ARG>>], id: ID};
+    {path: @path, args: [@spanned<constr_arg_general_<ARG>>], id: ID};
 
 // In the front end, constraints have a node ID attached.
 // Typeck turns this to a def_id, using the output of resolve.
 type constr_general<ARG> = spanned<constr_general_<ARG, node_id>>;
 type constr_ = constr_general_<uint, node_id>;
 type constr = spanned<constr_general_<uint, node_id>>;
-type ty_constr_ = ast::constr_general_<ast::path, ast::node_id>;
+type ty_constr_ = constr_general_<@path, node_id>;
 type ty_constr = spanned<ty_constr_>;
 
 /* The parser generates ast::constrs; resolve generates
@@ -447,9 +447,9 @@ type import_ident = spanned<import_ident_>;
 
 tag view_item_ {
     view_item_use(ident, [@meta_item], node_id);
-    view_item_import(ident, simple_path, node_id);
-    view_item_import_glob(simple_path, node_id);
-    view_item_import_from(simple_path, [import_ident], node_id);
+    view_item_import(ident, @simple_path, node_id);
+    view_item_import_glob(@simple_path, node_id);
+    view_item_import_from(@simple_path, [import_ident], node_id);
     view_item_export([ident], node_id);
 }
 

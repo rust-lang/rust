@@ -67,7 +67,7 @@ type a_f =
      fold_native_mod: fn@(native_mod) -> native_mod,
      fold_variant: fn@(variant) -> variant,
      fold_ident: fn@(&&ident) -> ident,
-     fold_path: fn@(path) -> path,
+     fold_path: fn@(@path) -> @path,
      fold_local: fn@(&&@local) -> @local,
      map_exprs: fn@(fn@(&&@expr) -> @expr, [@expr]) -> [@expr],
      new_id: fn@(node_id) -> node_id,
@@ -97,7 +97,7 @@ fn nf_mod_dummy(_m: _mod) -> _mod { fail; }
 fn nf_native_mod_dummy(_n: native_mod) -> native_mod { fail; }
 fn nf_variant_dummy(_v: variant) -> variant { fail; }
 fn nf_ident_dummy(&&_i: ident) -> ident { fail; }
-fn nf_path_dummy(_p: path) -> path { fail; }
+fn nf_path_dummy(_p: @path) -> @path { fail; }
 fn nf_obj_field_dummy(_o: obj_field) -> obj_field { fail; }
 fn nf_local_dummy(&&_o: @local) -> @local { fail; }
 
@@ -630,8 +630,8 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     fn f_ident(afp: ast_fold_precursor, f: ast_fold, &&x: ident) -> ident {
         ret afp.fold_ident(x, f);
     }
-    fn f_path(afp: ast_fold_precursor, f: ast_fold, x: path) -> path {
-        ret {node: afp.fold_path(x.node, f), span: afp.new_span(x.span)};
+    fn f_path(afp: ast_fold_precursor, f: ast_fold, x: @path) -> @path {
+        ret @{node: afp.fold_path(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_local(afp: ast_fold_precursor, f: ast_fold, &&x: @local) -> @local {
         ret @{node: afp.fold_local(x.node, f), span: afp.new_span(x.span)};

@@ -16,8 +16,7 @@ tag copied { not_allowed; copied; not_copied; }
 tag invalid_reason { overwritten; val_taken; }
 type invalid = {reason: invalid_reason,
                 node_id: node_id,
-                sp: span, path:
-                ast::path};
+                sp: span, path: @ast::path};
 
 tag unsafe_ty { contains(ty::t); mut_contains(ty::t); }
 
@@ -374,7 +373,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
     visit::visit_block(blk, {bs: new_bs with sc}, v);
 }
 
-fn check_var(cx: ctx, ex: @ast::expr, p: ast::path, id: ast::node_id,
+fn check_var(cx: ctx, ex: @ast::expr, p: @ast::path, id: ast::node_id,
              assign: bool, sc: scope) {
     let def = cx.tcx.def_map.get(id);
     if !def_is_local(def, false) { ret; }
@@ -445,7 +444,7 @@ fn check_loop(cx: ctx, sc: scope, checker: block()) {
     *sc.invalid = new_invalid;
 }
 
-fn test_scope(cx: ctx, sc: scope, b: binding, p: ast::path) {
+fn test_scope(cx: ctx, sc: scope, b: binding, p: @ast::path) {
     let prob = find_invalid(b.node_id, *sc.invalid);
     alt b.root_var {
       some(dn) {

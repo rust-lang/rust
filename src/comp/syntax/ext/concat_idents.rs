@@ -17,8 +17,8 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: @ast::expr,
     }
 
     ret @{id: cx.next_id(),
-          node:
-              ast::expr_path({node: {global: false, idents: [res], types: []},
-                              span: sp}),
+          node: ast::expr_path(@{node: {global: false, idents: [res],
+                                        types: []},
+                                 span: sp}),
           span: sp};
 }

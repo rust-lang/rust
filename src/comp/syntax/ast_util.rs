@@ -14,7 +14,7 @@ fn mk_sp(lo: uint, hi: uint) -> span {
 // make this a const, once the compiler supports it
 fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
-fn path_name(p: path) -> str { path_name_i(p.node.idents) }
+fn path_name(p: @path) -> str { path_name_i(p.node.idents) }
 
 fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 

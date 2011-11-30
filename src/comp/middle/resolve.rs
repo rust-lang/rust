@@ -44,7 +44,7 @@ tag scope {
 type scopes = list<scope>;
 
 tag import_state {
-    todo(ast::node_id, ast::ident, [ast::ident], codemap::span, scopes);
+    todo(ast::node_id, ast::ident, @[ast::ident], codemap::span, scopes);
     resolving(span);
     resolved(option::t<def>, /* value */
              option::t<def>, /* type */
@@ -172,7 +172,7 @@ fn map_crate(e: @env, c: @ast::crate) {
             for ident in idents {
                 e.imports.insert(ident.node.id,
                                  todo(ident.node.id, ident.node.name,
-                                      mod_path + [ident.node.name],
+                                      @(*mod_path + [ident.node.name]),
                                       ident.span, sc));
             }
           }
@@ -214,7 +214,7 @@ fn map_crate(e: @env, c: @ast::crate) {
         alt vi.node {
           //if it really is a glob import, that is
           ast::view_item_import_glob(path, _) {
-            let imp = follow_import(*e, sc, path, vi.span);
+            let imp = follow_import(*e, sc, *path, vi.span);
             if option::is_some(imp) {
                 let glob = {def: option::get(imp), item: vi};;
                 alt list::head(sc) {
@@ -243,7 +243,7 @@ fn resolve_imports(e: env) {
     e.imports.values {|v|
         alt v {
           todo(node_id, name, path, span, scopes) {
-            resolve_import(e, local_def(node_id), name, path, span, scopes);
+            resolve_import(e, local_def(node_id), name, *path, span, scopes);
           }
           resolved(_, _, _, _, _) { }
         }
@@ -304,7 +304,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           _ { }
         }
     }
-    fn walk_constr(e: @env, p: ast::path, sp: span, id: node_id, sc: scopes,
+    fn walk_constr(e: @env, p: @ast::path, sp: span, id: node_id, sc: scopes,
                    _v: vt<scopes>) {
         maybe_insert(e, id, lookup_path_strict(*e, sc, sp, p.node, ns_value));
     }
@@ -966,7 +966,7 @@ fn found_view_item(e: env, vi: @ast::view_item) -> option::t<def> {
 fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
     alt e.imports.get(defid.node) {
       todo(node_id, name, path, span, scopes) {
-        resolve_import(e, local_def(node_id), name, path, span, scopes);
+        resolve_import(e, local_def(node_id), name, *path, span, scopes);
         ret lookup_import(e, defid, ns);
       }
       resolving(sp) {

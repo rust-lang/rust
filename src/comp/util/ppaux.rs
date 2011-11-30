@@ -161,10 +161,10 @@ fn constrs_str(constrs: [@constr]) -> str {
     ret s;
 }
 
-fn ty_constr_to_str<Q>(c: @ast::spanned<ast::constr_general_<ast::path, Q>>)
+fn ty_constr_to_str<Q>(c: @ast::spanned<ast::constr_general_<@ast::path, Q>>)
    -> str {
     ret path_to_str(c.node.path) +
-            constr_args_to_str::<ast::path>(path_to_str, c.node.args);
+            constr_args_to_str::<@ast::path>(path_to_str, c.node.args);
 }
 
 // Local Variables:

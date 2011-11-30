@@ -27,7 +27,7 @@ fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
     }
 }
 
-fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: path,
+fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
                        rhs_id: node_id, instlhs: inst, init_op: init_op) {
     forbid_upvar(fcx, rhs_id, rhs_path.span, op_to_oper_ty(init_op));
 

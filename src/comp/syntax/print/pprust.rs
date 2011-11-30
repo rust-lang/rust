@@ -86,7 +86,7 @@ fn stmt_to_str(s: ast::stmt) -> str { be to_str(s, print_stmt); }
 
 fn item_to_str(i: @ast::item) -> str { be to_str(i, print_item); }
 
-fn path_to_str(p: ast::path) -> str {
+fn path_to_str(&&p: @ast::path) -> str {
     be to_str(p, bind print_path(_, _, false));
 }
 
@@ -1038,7 +1038,7 @@ fn print_for_decl(s: ps, loc: @ast::local, coll: @ast::expr) {
     print_expr(s, coll);
 }
 
-fn print_path(s: ps, path: ast::path, colons_before_params: bool) {
+fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
     maybe_print_comment(s, path.span.lo);
     if path.node.global { word(s.s, "::"); }
     let first = true;
@@ -1213,19 +1213,19 @@ fn print_view_item(s: ps, item: @ast::view_item) {
       }
       ast::view_item_import(id, ids, _) {
         head(s, "import");
-        if !str::eq(id, ids[vec::len(ids) - 1u]) {
+        if !str::eq(id, ids[vec::len(*ids) - 1u]) {
             word_space(s, id);
             word_space(s, "=");
         }
         let first = true;
-        for elt: ast::ident in ids {
+        for elt: ast::ident in *ids {
             if first { first = false; } else { word(s.s, "::"); }
             word(s.s, elt);
         }
       }
       ast::view_item_import_from(mod_path, idents, _) {
         head(s, "import");
-        for elt: ast::ident in mod_path { word(s.s, elt); word(s.s, "::"); }
+        for elt: ast::ident in *mod_path { word(s.s, elt); word(s.s, "::"); }
         word(s.s, "{");
         commasep(s, inconsistent, idents,
                  fn (s: ps, w: ast::import_ident) { word(s.s, w.node.name) });
@@ -1234,7 +1234,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
       ast::view_item_import_glob(ids, _) {
         head(s, "import");
         let first = true;
-        for elt: ast::ident in ids {
+        for elt: ast::ident in *ids {
             if first { first = false; } else { word(s.s, "::"); }
             word(s.s, elt);
         }
@@ -1602,11 +1602,11 @@ fn proto_to_str(p: ast::proto) -> str {
 }
 
 fn ty_constr_to_str(c: @ast::ty_constr) -> str {
-    fn ty_constr_path_to_str(p: ast::path) -> str { "*." + path_to_str(p) }
+    fn ty_constr_path_to_str(&&p: @ast::path) -> str { "*." + path_to_str(p) }
 
     ret path_to_str(c.node.path) +
-            constr_args_to_str::<ast::path>(ty_constr_path_to_str,
-                                            c.node.args);
+            constr_args_to_str::<@ast::path>(ty_constr_path_to_str,
+                                             c.node.args);
 }
 
 

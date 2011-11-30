@@ -235,17 +235,17 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
 fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
     let test_fn_ty: ast::ty = nospan(
         ast::ty_path(
-            nospan({
+            @nospan({
                 global: false,
                 idents: ["std", "test", "default_test_fn"],
                 types: []
             }),
             cx.next_node_id()));
 
-    let test_desc_ty_path: ast::path =
-        nospan({global: false,
-                idents: ["std", "test", "test_desc"],
-                types: [@test_fn_ty]});
+    let test_desc_ty_path =
+        @nospan({global: false,
+                 idents: ["std", "test", "test_desc"],
+                 types: [@test_fn_ty]});
 
     let test_desc_ty: ast::ty =
         nospan(ast::ty_path(test_desc_ty_path, cx.next_node_id()));
@@ -284,7 +284,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let name_field: ast::field =
         nospan({mut: ast::imm, ident: "name", expr: @name_expr});
 
-    let fn_path: ast::path = nospan({global: false, idents: path, types: []});
+    let fn_path = @nospan({global: false, idents: path, types: []});
 
     let fn_expr: ast::expr =
         {id: cx.next_node_id(),
@@ -414,8 +414,8 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
 fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
 
     // Get the args passed to main so we can pass the to test_main
-    let args_path: ast::path =
-        nospan({global: false, idents: ["args"], types: []});
+    let args_path =
+        @nospan({global: false, idents: ["args"], types: []});
 
     let args_path_expr_: ast::expr_ = ast::expr_path(args_path);
 
@@ -423,8 +423,8 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
         {id: cx.next_node_id(), node: args_path_expr_, span: dummy_sp()};
 
     // Call __test::test to generate the vector of test_descs
-    let test_path: ast::path =
-        nospan({global: false, idents: ["tests"], types: []});
+    let test_path =
+        @nospan({global: false, idents: ["tests"], types: []});
 
     let test_path_expr_: ast::expr_ = ast::expr_path(test_path);
 
@@ -437,10 +437,10 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
         {id: cx.next_node_id(), node: test_call_expr_, span: dummy_sp()};
 
     // Call std::test::test_main
-    let test_main_path: ast::path =
-        nospan({global: false,
-                idents: ["std", "test", "test_main"],
-                types: []});
+    let test_main_path =
+        @nospan({global: false,
+                 idents: ["std", "test", "test_main"],
+                 types: []});
 
     let test_main_path_expr_: ast::expr_ = ast::expr_path(test_main_path);
 

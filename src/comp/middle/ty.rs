@@ -274,7 +274,7 @@ tag sty {
 // In the middle end, constraints have a def_id attached, referring
 // to the definition of the operator in the constraint.
 type constr_general<ARG> = spanned<constr_general_<ARG, def_id>>;
-type type_constr = constr_general<path>;
+type type_constr = constr_general<@path>;
 type constr = constr_general<uint>;
 
 // Data structures used in type unification

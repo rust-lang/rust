@@ -130,8 +130,9 @@ fn ty_param_kinds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
 
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
-fn instantiate_path(fcx: @fn_ctxt, pth: ast::path, tpt: ty_param_kinds_and_ty,
-                    sp: span) -> ty_param_substs_opt_and_ty {
+fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
+                    tpt: ty_param_kinds_and_ty, sp: span)
+    -> ty_param_substs_opt_and_ty {
     let ty_param_count = vec::len(tpt.kinds);
     let bind_result =
         bind_params_in_type(sp, fcx.ccx.tcx, bind next_ty_var_id(fcx), tpt.ty,
@@ -2586,7 +2587,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
                                ast::def_arg(local_def(args[i].id),
                                             args[i].mode));
                           {id: arg_occ_node_id,
-                           node: ast::expr_path(respan(a.span, p)),
+                           node: ast::expr_path(@respan(a.span, p)),
                            span: a.span}
                       } else {
                           fcx.ccx.tcx.sess.span_bug(a.span,

@@ -2967,7 +2967,7 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> lval_result {
     }
 }
 
-fn trans_path(cx: @block_ctxt, p: ast::path, id: ast::node_id)
+fn trans_path(cx: @block_ctxt, p: @ast::path, id: ast::node_id)
     -> lval_maybe_callee {
     ret trans_var(cx, p.span, bcx_tcx(cx).def_map.get(id), id);
 }

@@ -83,7 +83,7 @@ fn parse_ty_constrs(st: @pstate, sd: str_def) -> [@ty::type_constr] {
         do  {
             next(st);
             let one: @ty::type_constr =
-                parse_constr::<path>(st, sd, parse_ty_constr_arg);
+                parse_constr::<@path>(st, sd, parse_ty_constr_arg);
             rslt += [one];
         } while peek(st) as char == ';'
       }
@@ -92,7 +92,7 @@ fn parse_ty_constrs(st: @pstate, sd: str_def) -> [@ty::type_constr] {
     ret rslt;
 }
 
-fn parse_path(st: @pstate, sd: str_def) -> ast::path {
+fn parse_path(st: @pstate, sd: str_def) -> @ast::path {
     let idents: [ast::ident] = [];
     fn is_last(c: char) -> bool { ret c == '(' || c == ':'; }
     idents += [parse_ident_(st, sd, is_last)];
@@ -101,8 +101,8 @@ fn parse_path(st: @pstate, sd: str_def) -> ast::path {
           ':' { next(st); next(st); }
           c {
             if c == '(' {
-                ret respan(ast_util::dummy_sp(),
-                           {global: false, idents: idents, types: []});
+                ret @respan(ast_util::dummy_sp(),
+                            {global: false, idents: idents, types: []});
             } else { idents += [parse_ident_(st, sd, is_last)]; }
           }
         }
@@ -138,7 +138,7 @@ fn parse_constr_arg(st: @pstate, _sd: str_def) -> ast::fn_constr_arg {
 }
 
 fn parse_ty_constr_arg(st: @pstate, sd: str_def) ->
-   ast::constr_arg_general_<path> {
+   ast::constr_arg_general_<@path> {
     alt peek(st) as char {
       '*' { st.pos += 1u; ret ast::carg_base; }
       c { ret ast::carg_ident(parse_path(st, sd)); }
@@ -149,9 +149,9 @@ fn parse_constr<copy T>(st: @pstate, sd: str_def, pser: arg_parser<T>) ->
    @ty::constr_general<T> {
     let sp = ast_util::dummy_sp(); // FIXME: use a real span
     let args: [@sp_constr_arg<T>] = [];
-    let pth: path = parse_path(st, sd);
+    let pth = parse_path(st, sd);
     let ignore: char = next(st) as char;
-    assert (ignore as char == '(');
+    assert (ignore == '(');
     let def = parse_def(st, sd);
     let an_arg: constr_arg_general_<T>;
     do  {

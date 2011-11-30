@@ -14,7 +14,7 @@ import ast::{ident, path, ty, blk_, expr, path_, expr_path,
 
 export add_new_extension;
 
-fn path_to_ident(pth: path) -> option::t<ident> {
+fn path_to_ident(pth: @path) -> option::t<ident> {
     if vec::len(pth.node.idents) == 1u && vec::len(pth.node.types) == 0u {
         ret some(pth.node.idents[0u]);
     }
@@ -30,7 +30,7 @@ tag arb_depth<T> { leaf(T); seq(@[arb_depth<T>], span); }
 
 tag matchable {
     match_expr(@expr);
-    match_path(path);
+    match_path(@path);
     match_ident(ast::spanned<ident>);
     match_ty(@ty);
     match_block(ast::blk);
@@ -360,10 +360,10 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
             }
             alt follow_for_trans(cx, b.find(p.node.idents[0]), idx_path) {
               some(match_ident(id)) {
-                expr_path(respan(id.span,
-                                 {global: false,
-                                  idents: [id.node],
-                                  types: []}))
+                expr_path(@respan(id.span,
+                                  {global: false,
+                                   idents: [id.node],
+                                   types: []}))
               }
               some(match_path(a_pth)) { expr_path(a_pth) }
               some(match_expr(a_exp)) { a_exp.node }
@@ -502,7 +502,7 @@ fn specialize_match(m: matchable) -> matchable {
 }
 
 /* pattern_to_selectors helper functions */
-fn p_t_s_r_path(cx: ext_ctxt, p: path, s: selector, b: binders) {
+fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
     alt path_to_ident(p) {
       some(p_id) {
         fn select(cx: ext_ctxt, m: matchable) -> match_result {

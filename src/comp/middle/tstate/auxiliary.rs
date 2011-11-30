@@ -194,7 +194,7 @@ tag constraint {
 
     // FIXME: really only want it to be mutable during collect_locals.
     // freeze it after that.
-    cpred(path, @mutable [pred_args]);
+    cpred(@path, @mutable [pred_args]);
 }
 
 // An ninit variant has a node_id because it refers to a local var.
@@ -204,7 +204,7 @@ tag constraint {
 // and give ninit a constraint saying it's local.
 tag tsconstr {
     ninit(node_id, ident);
-    npred(path, def_id, [@constr_arg_use]);
+    npred(@path, def_id, [@constr_arg_use]);
 }
 
 type sp_constr = spanned<tsconstr>;
@@ -773,7 +773,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
     ret rslt;
 }
 
-fn path_to_ident(cx: ty::ctxt, p: path) -> ident {
+fn path_to_ident(cx: ty::ctxt, p: @path) -> ident {
     alt vec::last(p.node.idents) {
       none. { cx.sess.span_fatal(p.span, "Malformed path"); }
       some(i) { ret i; }
