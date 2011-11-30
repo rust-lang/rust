@@ -53,11 +53,6 @@ start_task
 vec_reserve_shared
 vec_from_buf_shared
 unsupervise
-upcall_alloc_c_stack
-upcall_call_c_stack
-upcall_call_c_stack_i64
-upcall_call_c_stack_float
-upcall_call_c_stack_shim
 upcall_cmp_type
 upcall_dynastack_alloc
 upcall_dynastack_alloc_2
