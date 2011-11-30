@@ -1,9 +1,16 @@
-import std::{str, option};
+import std::{str, option, int, map};
 import codemap::span;
 import ast::*;
 
 fn respan<copy T>(sp: span, t: T) -> spanned<T> {
     ret {node: t, span: sp};
+}
+
+fn new_node_hash<copy V>() -> map::hashmap<node_id, V> {
+    fn node_id_hash(&&i: node_id) -> uint { ret int::hash(i as int); }
+    fn node_id_eq(&&a: node_id, &&b: node_id) -> bool
+        { ret int::eq(a as int, b as int); }
+    ret map::mk_hashmap(node_id_hash, node_id_eq);
 }
 
 /* assuming that we're not in macro expansion */

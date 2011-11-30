@@ -4086,7 +4086,14 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         if !ty::expr_is_lval(tcx, a) { ret trans_expr(bcx, a, dest); }
         else { ret lval_to_dps(bcx, a, dest); }
       }
-      ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
+      ast::expr_cast(val, _) {
+        alt tcx.cast_map.find(e.id) {
+          option::none. { ret trans_cast(bcx, val, e.id, dest); }
+          some { alt option::get(some) {
+            ty::triv_cast. { ret trans_expr(bcx, val, dest); }
+          } }
+        }
+      }
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(bcx, e.span, anon_obj, e.id, dest);
       }
