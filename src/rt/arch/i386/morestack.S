@@ -74,7 +74,7 @@ MORESTACK:
     testl %eax,%eax
     jz .L$bail
 
-    movl $12, (%esp)
+    movl $16, (%esp)
     calll UPCALL_ALLOC_C_STACK
     movl %eax,%edx
 
