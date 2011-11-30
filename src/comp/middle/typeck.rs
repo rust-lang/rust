@@ -2101,15 +2101,19 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_cast(e, t) {
         bot = check_expr(fcx, e);
         let t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
-        // FIXME: there are more forms of cast to support, eventually.
+        let t_e = expr_ty(tcx, e);
 
-        if !(type_is_scalar(fcx, expr.span, expr_ty(tcx, e)) &&
-                 type_is_scalar(fcx, expr.span, t_1)) {
+        // FIXME there are more forms of cast to support, eventually.
+        if !(   type_is_scalar(fcx, expr.span, t_e)
+             && type_is_scalar(fcx, expr.span, t_1)) {
             tcx.sess.span_err(expr.span,
                               "non-scalar cast: " +
                                   ty_to_str(tcx, expr_ty(tcx, e)) + " as " +
                                   ty_to_str(tcx, t_1));
         }
+
+        if ty::triv_eq_ty(tcx, t_1, t_e)
+            { tcx.cast_map.insert(expr.id, ty::triv_cast); }
         write::ty_only_fixup(fcx, id, t_1);
       }
       ast::expr_vec(args, mut) {

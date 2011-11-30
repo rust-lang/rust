@@ -32,6 +32,7 @@ export ast_constr_to_constr;
 export bind_params_in_type;
 export block_ty;
 export constr;
+export cast_type;
 export constr_general;
 export constr_table;
 export count_ty_params;
@@ -102,6 +103,7 @@ export substitute_type_params;
 export t;
 export tag_variants;
 export tag_variant_with_id;
+export triv_cast;
 export triv_eq_ty;
 export ty_param_substs_opt_and_ty;
 export ty_param_kinds_and_ty;
@@ -201,6 +203,12 @@ type mt = {ty: t, mut: ast::mutability};
 // the types of AST nodes.
 type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, ty::t>;
 
+tag cast_type {
+    /* cast may be ignored after substituting primitive with machine types
+       since expr already has the right type */
+    triv_cast;
+}
+
 type ctxt =
     //        constr_table fn_constrs,
     // We need the ext_map just for printing the types of tags defined in
@@ -209,6 +217,7 @@ type ctxt =
       sess: session::session,
       def_map: resolve::def_map,
       ext_map: resolve::ext_map,
+      cast_map: hashmap<ast::node_id, cast_type>,
       node_types: node_type_table,
       items: ast_map::map,
       freevars: freevars::freevar_map,
@@ -396,6 +405,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map,
           sess: s,
           def_map: dm,
           ext_map: em,
+          cast_map: ast_util::new_node_hash(),
           node_types: ntt,
           items: amap,
           freevars: freevars,
