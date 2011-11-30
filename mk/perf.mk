@@ -10,5 +10,5 @@ rustc-perf$(X): $(CFG_HOST_TRIPLE)/stage2/bin/rustc$(X)
 endif
 
 perf: check-stage2-perf rustc-perf$(X)
-	$(Q)find test/perf -name \*.err | xargs cat
+	$(Q)find $(CFG_HOST_TRIPLE)/test/perf -name \*.err | xargs cat
 	$(Q)cat rustc-perf.err
