@@ -1,4 +1,5 @@
 // From #1174:
+// xfail-test bots are crashing on this on x86_64
 
 use std;
 
