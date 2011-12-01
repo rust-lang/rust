@@ -8,12 +8,10 @@
 #if defined(__APPLE__) || defined(_WIN32)
 #define RUST_NEW_STACK2     _rust_new_stack2
 #define RUST_DEL_STACK      _rust_del_stack
-#define RUST_DEL_STACK      _rust_del_stack
 #define UPCALL_CALL_C       _upcall_call_shim_on_c_stack
 #define MORESTACK           ___morestack
 #else
 #define RUST_NEW_STACK2     rust_new_stack2
-#define RUST_DEL_STACK      rust_del_stack
 #define RUST_DEL_STACK      rust_del_stack
 #define UPCALL_CALL_C       upcall_call_shim_on_c_stack
 #define MORESTACK           __morestack
