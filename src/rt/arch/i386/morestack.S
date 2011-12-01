@@ -8,14 +8,12 @@
 #if defined(__APPLE__) || defined(_WIN32)
 #define RUST_NEW_STACK2         _rust_new_stack2
 #define RUST_DEL_STACK          _rust_del_stack
-#define RUST_GET_PREV_STACK     _rust_get_prev_stack
 #define RUST_GET_TASK           _rust_get_task
 #define UPCALL_CALL_C           _upcall_call_shim_on_c_stack
 #define MORESTACK               ___morestack
 #else
 #define RUST_NEW_STACK2         rust_new_stack2
 #define RUST_DEL_STACK          rust_del_stack
-#define RUST_GET_PREV_STACK     rust_get_prev_stack
 #define RUST_GET_TASK           rust_get_task
 #define UPCALL_CALL_C           upcall_call_shim_on_c_stack
 #define MORESTACK               __morestack
@@ -59,7 +57,6 @@ MORESTACK:
 	jz .L$bail
 
 	// The arguments to rust_new_stack2
-	movl %esp, 20(%esp) // Save the stack pointer
 	movl 36(%esp),%eax  // Size of stack arguments
 	movl %eax,16(%esp)
 	leal 44+ALIGNMENT(%esp),%eax // Address of stack arguments
@@ -81,21 +78,14 @@ MORESTACK:
 	// Now the function that called us has returned, so we need to delete the
 	// old stack space.
 
-	// NB: This is assuming we already have at least 2 words
-	// pushed onto the C stack. This is always true because
-	// Rust functions have implicit arguments.
-	movl $RUST_GET_PREV_STACK,4(%esp)
-	movl $0, (%esp)
-	call UPCALL_CALL_C
-
 	// Switch back to the rust stack
-	movl %eax, %esp
+	movl %ebp, %esp
 
-	movl $RUST_DEL_STACK,4(%esp)
-	movl $0, (%esp)
+	pushl $RUST_DEL_STACK
+	pushl $0
 	call UPCALL_CALL_C
 
-	addl $24,%esp
+	addl $8,%esp
 	popl %ebp
 	retl $8
 

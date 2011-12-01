@@ -30,7 +30,6 @@ refcount
 rust_del_stack
 rust_file_is_dir
 rust_getcwd
-rust_get_prev_stack
 rust_get_stdin
 rust_get_stdout
 rust_get_stderr

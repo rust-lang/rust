@@ -67,14 +67,11 @@ record_sp(void *limit);
 
 // Entry points for `__morestack` (see arch/*/morestack.S).
 extern "C" void *
-rust_new_stack(size_t stk_sz, void *args_addr, size_t args_sz,
-               uintptr_t current_sp) {
+rust_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     rust_task *task = rust_scheduler::get_task();
 
     stk_seg *stk_seg = new_stk(task->sched, task, stk_sz + args_sz);
 
-    // Save the previous stack pointer so it can be restored later
-    stk_seg->return_sp = current_sp;
     uint8_t *new_sp = (uint8_t*)stk_seg->limit;
     size_t sizeof_retaddr = sizeof(void*);
     // Make enough room on the new stack to hold the old stack pointer
@@ -90,7 +87,6 @@ struct rust_new_stack2_args {
   size_t stk_sz;
   void *args_addr;
   size_t args_sz;
-  uintptr_t current_sp;
 };
 
 // A new stack function suitable for calling through
@@ -98,7 +94,7 @@ struct rust_new_stack2_args {
 extern "C" void *
 rust_new_stack2(struct rust_new_stack2_args *args) {
     return rust_new_stack(args->stk_sz, args->args_addr,
-                          args->args_sz, args->current_sp);
+                          args->args_sz);
 }
 
 extern "C" void
@@ -106,12 +102,6 @@ rust_del_stack() {
     rust_task *task = rust_scheduler::get_task();
     del_stk(task, task->stk);
     record_sp(task->stk->data + RED_ZONE_SIZE);
-}
-
-extern "C" uintptr_t
-rust_get_prev_stack() {
-    rust_task *task = rust_scheduler::get_task();
-    return task->stk->return_sp;
 }
 
 extern "C" rust_task *

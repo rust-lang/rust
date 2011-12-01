@@ -9,14 +9,12 @@
 #define RUST_NEW_STACK2     _rust_new_stack2
 #define RUST_DEL_STACK      _rust_del_stack
 #define RUST_DEL_STACK      _rust_del_stack
-#define RUST_GET_PREV_STACK _rust_get_prev_stack
 #define UPCALL_CALL_C       _upcall_call_shim_on_c_stack
 #define MORESTACK           ___morestack
 #else
 #define RUST_NEW_STACK2     rust_new_stack2
 #define RUST_DEL_STACK      rust_del_stack
 #define RUST_DEL_STACK      rust_del_stack
-#define RUST_GET_PREV_STACK rust_get_prev_stack
 #define UPCALL_CALL_C       upcall_call_shim_on_c_stack
 #define MORESTACK           __morestack
 #endif
@@ -63,9 +61,6 @@ MORESTACK:
 	movq %rsp, %rbp
 	.cfi_def_cfa_register %rbp
 
-	// Alignment
-	pushq $0
-
 	// FIXME: libgcc also saves rax. not sure if we need to
 
 	// Save argument registers
@@ -82,7 +77,6 @@ MORESTACK:
 	movq %rbp, %rcx
 	addq $24, %rcx  // Base pointer, return address x2
 
-	pushq %rbp // Save the Rust stack pointer
 	pushq %r11 // Size of stack arguments
 	pushq %rcx // Address of stack arguments
 	pushq %r10 // The amount of stack needed
@@ -92,7 +86,7 @@ MORESTACK:
 	call UPCALL_CALL_C@PLT
 
 	// Pop the new_stack_args struct
-	addq $32, %rsp
+	addq $24, %rsp
 
 	// Pop the saved arguments
 	popq %r9
@@ -108,13 +102,8 @@ MORESTACK:
 
         call *%r10              // Reenter the caller function
 
-	leaq RUST_GET_PREV_STACK@PLT(%rip), %rsi
-	movq $0, %rdi
-	call UPCALL_CALL_C@PLT
-
-	// Switch back to the rust stack, positioned
-	// where we pushed %ebp
-	movq %rax, %rsp
+	// Switch back to the rust stack
+	movq %rbp, %rsp
 
 	// Align the stack again
 	pushq $0
