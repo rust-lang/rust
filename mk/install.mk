@@ -60,6 +60,7 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_LIB)
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
 	$(Q)$(call INSTALL,$(HB),$(PHB),rustc$(X))
+	$(Q)$(call INSTALL,$(S)/src,$(PHB),cargo)
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_STDLIB))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM))

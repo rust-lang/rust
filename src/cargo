@@ -1,0 +1,302 @@
+#!/usr/bin/env python
+# Copyright (c) 2011 Google Inc.
+
+import glob
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import urllib
+
+# Root of the cargo tree.
+CARGO_DIR = os.getenv('HOME') + '/.cargo'
+
+# Config file (as JSON).
+CARGO_CONFFILE = CARGO_DIR + '/config'
+
+# Directory where packages are built (under tmpdirs).
+CARGO_WORKDIR = CARGO_DIR + '/work'
+
+# Directory where packages are installed to (as pkgname-pkgver).
+CARGO_PKGDIR = CARGO_DIR + '/pkgs'
+
+# Directory where libs are symlinked to.
+CARGO_LIBDIR = CARGO_DIR + '/libs'
+
+# URL to fetch cargo uuid mapping from.
+CARGO_UUIDLIST = 'http://www.leptoquark.net/~elly/cargo-uuids'
+
+class BadManifestError(RuntimeError):
+    pass
+
+class RustPackage:
+    """Abstract representation of a Rust package.
+
+    Defines the interface for rust packages. All packages have a work directory
+    in which they are built.
+    """
+    def __init__(self, config):
+        self.name = None
+        self.config = config
+        self.buildopts = {}
+        self.metadata = None
+        self.workdir = tempfile.mkdtemp(prefix='build-', dir=CARGO_WORKDIR)
+        self.destdir = None
+
+    def fetch(self):
+        raise RuntimeError("RustPackage.fetch is abstract")
+
+    def load_config(self):
+        with file(self.workdir + '/manifest') as f:
+            self.metadata = json.load(f)
+        if 'name' not in self.metadata:
+            raise BadManifestError("Missing key 'name' in manifest.")
+        if 'vers' not in self.metadata:
+            raise BadManifestError("Missing key 'vers' in manifest.")
+        self.name = self.metadata['name']
+        self.pkgname = self.metadata['name'] + '-' + self.metadata['vers']
+        self.destdir = CARGO_PKGDIR + '/%s' % self.pkgname
+        if not os.path.exists(self.destdir):
+            os.makedirs(self.destdir)
+
+    def probe_buildopts(self):
+        if os.path.exists('%s/configure' % self.workdir):
+            self.buildopts['configure'] = './configure'
+        if 'configure' in self.metadata:
+            self.buildopts['configure'] = self.manifest['configure']
+
+        self.buildopts['build'] = 'make'
+        if 'build' in self.metadata:
+            self.buildopts['build'] = self.metadata['build']
+
+        if 'test' in self.metadata:
+            self.buildopts['test'] = self.metadata['test']
+
+        self.buildopts['install'] = 'make install'
+        if 'install' in self.metadata:
+            self.buildopts['install'] = self.metadata['install']
+
+    def callproc(self, *args):
+        p = subprocess.Popen(args)
+        pid, sts = os.waitpid(p.pid, 0)
+        return sts
+
+    def needproc(self, *args):
+        r = self.callproc(*args)
+        if r:
+            raise RuntimeError("Subprocess '%s' failed" % args[0])
+
+    def run_buildopt(self, name, *args):
+        if name not in self.buildopts:
+            print 'Skipping %s' % name
+            return
+        print '%s: ' % name,
+        argstr = '%s %s' % (self.buildopts[name], ' '.join(args))
+        sts = self.callproc('/bin/sh', '-c', argstr)
+        if not sts:
+            print 'ok.'
+            return
+        print 'failed.'
+
+    def build(self):
+        self.load_config()
+        self.probe_buildopts()
+        os.chdir(self.workdir)
+        self.run_buildopt('configure', 'RUSTC=%s' % self.config['rustc'])
+        self.run_buildopt('build', 'RUSTC=%s' % self.config['rustc'])
+        self.run_buildopt('test', 'RUSTC=%s' % self.config['rustc'])
+
+    def hashfile(self, filename):
+        h = hashlib.sha256()
+        with file(filename, 'rb') as f:
+            h.update(f.read())
+        return h.hexdigest()
+
+    def install(self):
+        self.run_buildopt('install', 'PREFIX=%s' % self.destdir)
+        libs = glob.glob('%s/*.so' % self.destdir)
+        libs += glob.glob('%s/*.dll' % self.destdir)
+        libs += glob.glob('%s/lib/*.so' % self.destdir)
+        libs += glob.glob('%s/lib/*.dll' % self.destdir)
+        libs += glob.glob('%s/usr/lib/*.so' % self.destdir)
+        libs += glob.glob('%s/usr/lib/*.dll' % self.destdir)
+        if not libs:
+            print 'Skipping symlinking'
+            return
+        print 'symlinking: '
+        if not os.path.exists(CARGO_LIBDIR):
+            os.makedirs(CARGO_LIBDIR)
+        for lib in libs:
+            base = os.path.basename(lib)
+            h = self.hashfile(lib)
+            path = CARGO_LIBDIR + '/%s-%s' % (h, base)
+            if os.path.exists(path):
+                os.remove(path)
+            os.symlink(lib, path)
+            print '%s-%s' % (h, base)
+        print 'ok.'
+
+class GitPackage(RustPackage):
+    """Rust package that fetches source from a git repo."""
+    def __init__(self, config, giturl, commit=None):
+        RustPackage.__init__(self, config)
+        self.giturl = giturl
+        self.commit = commit
+
+    def fetch(self):
+        self.needproc('git', 'clone', self.giturl, self.workdir)
+        if self.commit:
+            self.needproc('git', 'checkout', '--work-tree=%s' % self.workdir,
+                          '--git-dir=%s/.git' % self.workdir, self.commit)
+
+class GithubPackage(GitPackage):
+    """Rust package that fetches source from a github repo."""
+    def __init__(self, config, repopath, commit=None):
+        GitPackage.__init__(self, config, 'git://github.com/%s' % (repopath),
+                            commit)
+
+class TarballPackage(RustPackage):
+    """Rust package that fetches source from a local tarball."""
+    def __init__(self, config, path):
+        RustPackage.__init__(self, config)
+        self.path = path
+
+    def fetch(self):
+        self.needproc('tar', '--strip-components=1', '-C', self.workdir,
+                      '-xf', self.path)
+
+class RemoteTarballPackage(TarballPackage):
+    """Rust package that fetches source from a remote tarball."""
+    def __init__(self, config, url):
+        TarballPackage.__init__(self, config, None)
+        self.url = url
+
+    def fetch(self):
+        self.path = '%s/source.tar' % self.workdir
+        self.needproc('wget', '-O', self.path, self.url)
+        TarballPackage.fetch(self)
+
+def load_config():
+    try:
+        with file(CARGO_CONFFILE) as f:
+            return json.load(f)
+    except ValueError, IOError:
+        return {}
+
+def save_config(config):
+    with file(CARGO_CONFFILE, 'w') as f:
+        if not os.path.exists(CARGO_DIR):
+            os.makedirs(CARGO_DIR)
+        json.dump(config, f)
+
+def cmd_config(args):
+    if len(args) < 1:
+        c = load_config()
+        ks = c.keys()
+        ks.sort()
+        for k in ks:
+            print '%s: %s' % (k, c[k])
+        return
+    if len(args) < 2:
+        c = load_config()
+        if args[0] in c:
+            print c[args[0]]
+        return
+    if len(args) < 3:
+        c = load_config()
+        c[args[0]] = args[1]
+        save_config(c)
+        return
+    usage()
+
+def cmd_cult(args):
+    print 'use std;'
+    print 'import std::{aio, bitv, box, char, comm, ctypes, dbg, deque, ebml};'
+    print 'import std::{either, extfmt, float, fs, fun_treemap, generic_os};'
+    print 'import std::{getopts, int, io, list, map, math, net, option};'
+    print 'import std::{ptr, rand, result, rope, run_program, sha1, sio};'
+    print 'import std::{smallintmap, sort, str, sys, task, term, test, time};'
+    print 'import std::{treemap, u32, u64, u8, ufind, uint, unicode, unsafe};'
+    print 'import std::{util, vec};'
+
+def resolve_uuid(config, uuid):
+    uuid_server = CARGO_UUIDLIST
+    if 'uuid-server' in config:
+        uuid_server = config['uuid-server']
+    u = urllib.urlopen(uuid_server)
+    j = json.load(u)
+    return j[uuid]
+
+def cmd_install(args):
+    if len(args) < 1:
+        usage()
+    config = load_config()
+    p = None
+    if args[0].startswith('github:'):
+        rest = args[0].split(':', 2)[1]
+        commit = None
+        if '/' not in rest:
+            usage()
+        if '@' in rest:
+            (rest, commit) = rest.split('@', 2)
+        p = GithubPackage(config, rest, commit)
+    elif args[0].startswith('file:'):
+        rest = args[0].split(':', 2)[1]
+        p = TarballPackage(config, rest)
+    elif args[0].startswith('uuid:'):
+        rest = args[0].split(':', 2)[1]
+        r = resolve_uuid(config, rest)
+        cmd_install([r])
+        return
+    elif '://' in args[0]:
+        p = RemoteTarballPackage(config, args[0])
+    else:
+        usage()
+    p.fetch()
+    p.build()
+    p.install()
+
+def cmd_uninstall(args):
+    print 'Not implemented :('
+    pass
+
+commands = {
+    'config': cmd_config,
+    'cult': cmd_cult,
+    'install': cmd_install,
+    'uninstall': cmd_uninstall
+}
+
+def usage():
+    print "Usage: cargo <verb> [args...]"
+    print "  config         List, get, or set a config option."
+    print "    [key]        Key to get or set."
+    print "    [val]        Value to set to."
+    print "  install        Install a package."
+    print "    <pkgref>"
+    print "  uninstall      Uninstall a package."
+    print "    <pkgname>"
+    print "A 'pkgref' is any of:"
+    print "  github:<username>/<reponame>[@<commit-id>]    Fetch source from github."
+    print "  file:<filepath>[@<commit-id>]               Fetch source from local fs."
+    print "  <url>                                  Fetch source from tarball at url."
+    print "  <uuid>[@<commit-id>]                   Lookup uuid from global registry."
+    print ""
+    print "Examples:"
+    print "  cargo config rustc /path/to/rustc"
+    print "  cargo install github:elly/rust-hello"
+    print "  cargo install file:$HOME/tmp/package.tar"
+    print "  cargo install uuid:83941200-18b3-41b1-8316-b98a2950b33a"
+    print "  cargo install http://www.leptoquark.net/~elly/rust-hello.tar"
+    sys.exit(1)
+
+def main(argv):
+    if len(argv) < 2:
+        usage()
+    if argv[1] not in commands:
+        usage()
+    commands[argv[1]](argv[2:])
+
+main(sys.argv)
