@@ -14,6 +14,16 @@
 
 #include "globals.h"
 
+// The amount of extra space at the end of each stack segment, available
+// to the rt, compiler and dynamic linker for running small functions
+// FIXME: We want this to be 128 but need to slim the red zone calls down
+#ifdef __i386__
+#define RED_ZONE_SIZE 2048
+#endif
+
+#ifdef __x86_64__
+#define RED_ZONE_SIZE 2048
+#endif
 
 // Stack size
 size_t g_custom_min_stack_size = 0;
