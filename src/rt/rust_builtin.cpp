@@ -399,6 +399,11 @@ get_task_pointer(rust_task_id id) {
     return task->kernel->get_task_by_id(id);
 }
 
+extern "C" rust_task *
+rust_get_task() {
+    return rust_scheduler::get_task();
+}
+
 struct fn_env_pair {
     intptr_t f;
     intptr_t env;

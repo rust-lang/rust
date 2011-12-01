@@ -219,6 +219,26 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
     sched->c_context.call_shim_on_c_stack(args, fn_ptr);
 }
 
+struct rust_new_stack2_args {
+  size_t stk_sz;
+  void *args_addr;
+  size_t args_sz;
+};
+
+// A new stack function suitable for calling through
+// upcall_call_shim_on_c_stack
+extern "C" CDECL void *
+upcall_new_stack(struct rust_new_stack2_args *args) {
+    rust_task *task = rust_scheduler::get_task();
+    return task->new_stack(args->stk_sz, args->args_addr, args->args_sz);
+}
+
+extern "C" CDECL void
+upcall_del_stack() {
+    rust_task *task = rust_scheduler::get_task();
+    task->del_stack();
+}
+
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,

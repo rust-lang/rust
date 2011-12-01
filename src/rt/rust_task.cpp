@@ -62,54 +62,6 @@ del_stk(rust_task *task, stk_seg *stk)
     task->free(stk);
 }
 
-extern "C" CDECL void
-record_sp(void *limit);
-
-// Entry points for `__morestack` (see arch/*/morestack.S).
-extern "C" void *
-rust_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
-    rust_task *task = rust_scheduler::get_task();
-
-    stk_seg *stk_seg = new_stk(task->sched, task, stk_sz + args_sz);
-
-    uint8_t *new_sp = (uint8_t*)stk_seg->limit;
-    size_t sizeof_retaddr = sizeof(void*);
-    // Make enough room on the new stack to hold the old stack pointer
-    // in addition to the function arguments
-    new_sp = align_down(new_sp - (args_sz + sizeof_retaddr));
-    new_sp += sizeof_retaddr;
-    memcpy(new_sp, args_addr, args_sz);
-    record_sp(stk_seg->data + RED_ZONE_SIZE);
-    return new_sp;
-}
-
-struct rust_new_stack2_args {
-  size_t stk_sz;
-  void *args_addr;
-  size_t args_sz;
-};
-
-// A new stack function suitable for calling through
-// upcall_call_shim_on_c_stack
-extern "C" void *
-rust_new_stack2(struct rust_new_stack2_args *args) {
-    return rust_new_stack(args->stk_sz, args->args_addr,
-                          args->args_sz);
-}
-
-extern "C" void
-rust_del_stack() {
-    rust_task *task = rust_scheduler::get_task();
-    del_stk(task, task->stk);
-    record_sp(task->stk->data + RED_ZONE_SIZE);
-}
-
-extern "C" rust_task *
-rust_get_task() {
-    return rust_scheduler::get_task();
-}
-
-
 // Tasks
 rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
                      rust_task *spawner, const char *name) :
@@ -607,6 +559,31 @@ rust_task::notify(bool success) {
             target_task->deref();
         }
     }
+}
+
+extern "C" CDECL void
+record_sp(void *limit);
+
+void *
+rust_task::new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
+
+    stk_seg *stk_seg = new_stk(sched, this, stk_sz + args_sz);
+
+    uint8_t *new_sp = (uint8_t*)stk_seg->limit;
+    size_t sizeof_retaddr = sizeof(void*);
+    // Make enough room on the new stack to hold the old stack pointer
+    // in addition to the function arguments
+    new_sp = align_down(new_sp - (args_sz + sizeof_retaddr));
+    new_sp += sizeof_retaddr;
+    memcpy(new_sp, args_addr, args_sz);
+    record_sp(stk_seg->data + RED_ZONE_SIZE);
+    return new_sp;
+}
+
+void
+rust_task::del_stack() {
+    del_stk(this, stk);
+    record_sp(stk->data + RED_ZONE_SIZE);
 }
 
 //

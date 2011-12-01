@@ -6,14 +6,14 @@
 // prolog when we run out.
 
 #if defined(__APPLE__) || defined(_WIN32)
-#define RUST_NEW_STACK2         _rust_new_stack2
-#define RUST_DEL_STACK          _rust_del_stack
+#define UPCALL_NEW_STACK        _upcall_new_stack
+#define UPCALL_DEL_STACK        _upcall_del_stack
 #define RUST_GET_TASK           _rust_get_task
 #define UPCALL_CALL_C           _upcall_call_shim_on_c_stack
 #define MORESTACK               ___morestack
 #else
-#define RUST_NEW_STACK2         rust_new_stack2
-#define RUST_DEL_STACK          rust_del_stack
+#define UPCALL_NEW_STACK        upcall_new_stack
+#define UPCALL_DEL_STACK        upcall_del_stack
 #define RUST_GET_TASK           rust_get_task
 #define UPCALL_CALL_C           upcall_call_shim_on_c_stack
 #define MORESTACK               __morestack
@@ -22,11 +22,9 @@
 #define ALIGNMENT 8
 #define RETURN_OFFSET   7
 
-.globl RUST_NEW_STACK
-.globl RUST_DEL_STACK
-.globl RUST_GET_PREV_STACK
+.globl UPCALL_NEW_STACK
+.globl UPCALL_DEL_STACK
 .globl RUST_GET_TASK
-.globl UPCALL_ALLOC_C_STACK
 .globl UPCALL_CALL_C_STACK
 .globl MORESTACK
 
@@ -64,7 +62,7 @@ MORESTACK:
 	movl 32(%esp),%eax // The amount of stack needed
 	movl %eax,8(%esp)
 
-	movl $RUST_NEW_STACK2,4(%esp)
+	movl $UPCALL_NEW_STACK,4(%esp)
 	leal 8(%esp), %eax
 	movl %eax,(%esp)
 	call UPCALL_CALL_C
@@ -81,7 +79,7 @@ MORESTACK:
 	// Switch back to the rust stack
 	movl %ebp, %esp
 
-	pushl $RUST_DEL_STACK
+	pushl $UPCALL_DEL_STACK
 	pushl $0
 	call UPCALL_CALL_C
 

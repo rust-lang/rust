@@ -196,6 +196,9 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     void claim_alloc(void *alloc, const type_desc *tydesc);
 
     void notify(bool success);
+
+    void *new_stack(size_t stk_sz, void *args_addr, size_t args_sz);
+    void del_stack();
 };
 
 //

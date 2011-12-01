@@ -6,15 +6,15 @@
 // prolog when we run out.
 
 #if defined(__APPLE__) || defined(_WIN32)
-#define RUST_NEW_STACK2     _rust_new_stack2
-#define RUST_DEL_STACK      _rust_del_stack
-#define UPCALL_CALL_C       _upcall_call_shim_on_c_stack
-#define MORESTACK           ___morestack
+#define UPCALL_NEW_STACK        _upcall_new_stack
+#define UPCALL_DEL_STACK        _upcall_del_stack
+#define UPCALL_CALL_C           _upcall_call_shim_on_c_stack
+#define MORESTACK               ___morestack
 #else
-#define RUST_NEW_STACK2     rust_new_stack2
-#define RUST_DEL_STACK      rust_del_stack
-#define UPCALL_CALL_C       upcall_call_shim_on_c_stack
-#define MORESTACK           __morestack
+#define UPCALL_NEW_STACK        upcall_new_stack
+#define UPCALL_DEL_STACK        upcall_del_stack
+#define UPCALL_CALL_C           upcall_call_shim_on_c_stack
+#define MORESTACK               __morestack
 #endif
 
         // Naturally, nobody can agree as to
@@ -30,8 +30,8 @@
 #  define ARG2 %rdx
 #endif
 
-.globl RUST_NEW_STACK2
-.globl RUST_DEL_STACK
+.globl UPCALL_NEW_STACK
+.globl UPCALL_DEL_STACK
 .globl UPCALL_CALL_C
 .globl MORESTACK
 
@@ -79,7 +79,7 @@ MORESTACK:
 	pushq %rcx // Address of stack arguments
 	pushq %r10 // The amount of stack needed
 
-	leaq RUST_NEW_STACK2@PLT(%rip), %rsi
+	leaq UPCALL_NEW_STACK@PLT(%rip), %rsi
 	movq %rsp, %rdi
 	call UPCALL_CALL_C@PLT
 
@@ -106,7 +106,7 @@ MORESTACK:
 	// Align the stack again
 	pushq $0
 	
-	leaq RUST_DEL_STACK@PLT(%rip), %rsi
+	leaq UPCALL_DEL_STACK@PLT(%rip), %rsi
 	movq $0, %rdi
 	call UPCALL_CALL_C@PLT
 
