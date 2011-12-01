@@ -588,6 +588,9 @@ rust_task::del_stack() {
 
 void
 rust_task::record_stack_limit() {
+    // FIXME: Future LLVM patches expect us to add an additional 256 bytes
+    // here so that, if the frame size is < 256 it can generate the
+    // comparison against esp directly, instead of some offset from esp
     record_sp(stk->data + RED_ZONE_SIZE);
 }
 //

@@ -19,6 +19,8 @@
 #define MORESTACK               __morestack
 #endif
 
+// FIXME: Future LLVM patches remove these 8 alignment bytes from
+// the function prologue in order to match gcc's behavior
 #define ALIGNMENT 8
 #define RETURN_OFFSET   7
 
