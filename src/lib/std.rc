@@ -9,7 +9,7 @@
 
 export box, char, float, int, str, ptr;
 export uint, u8, u32, u64, vec, bool;
-export comm, fs, io, net, run, sys, task;
+export comm, fs, io, net, run, sys, task, uv;
 export c_vec, ctypes, either, option, result, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
@@ -46,6 +46,7 @@ mod net;
 mod run;
 mod sys;
 mod task;
+mod uv;
 
 
 // Utility modules

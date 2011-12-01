@@ -40,6 +40,7 @@ mod tri;
 mod treemap;
 mod uint;
 mod unsafe;
+mod uv;
 mod vec;
 
 // Local Variables:

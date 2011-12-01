@@ -6,6 +6,7 @@ Definitions useful for C interop
 
 type c_int = i32;
 
+type void = int; // Not really the same as C
 type long = int;
 type unsigned = u32;
 type ulong = uint;
@@ -23,3 +24,6 @@ type off_t = uint;
 
 type fd_t = i32;      // not actually a C type, but should be.
 type pid_t = i32;
+
+// enum is implementation-defined, but is 32-bits in practice
+type enum = u32;

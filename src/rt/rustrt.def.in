@@ -69,3 +69,11 @@ upcall_call_shim_on_c_stack
 upcall_new_stack
 upcall_del_stack
 asm_call_on_stack
+rust_uv_default_loop
+rust_uv_loop_new
+rust_uv_loop_delete
+rust_uv_run
+rust_uv_unref
+rust_uv_idle_init
+rust_uv_idle_start
+rust_uv_size_of_idle_t
