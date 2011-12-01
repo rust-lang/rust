@@ -367,14 +367,11 @@ rust_scheduler::init_tls() {
     tls_initialized = true;
 }
 
-extern "C" CDECL void
-record_sp(void *limit);
-
 void
 rust_scheduler::place_task_in_tls(rust_task *task) {
     int result = pthread_setspecific(task_key, task);
     assert(!result && "Couldn't place the task in TLS!");
-    record_sp(task->stk->data + RED_ZONE_SIZE);
+    task->record_stack_limit();
 }
 
 rust_task *

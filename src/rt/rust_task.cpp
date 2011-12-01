@@ -576,16 +576,20 @@ rust_task::new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     new_sp = align_down(new_sp - (args_sz + sizeof_retaddr));
     new_sp += sizeof_retaddr;
     memcpy(new_sp, args_addr, args_sz);
-    record_sp(stk_seg->data + RED_ZONE_SIZE);
+    record_stack_limit();
     return new_sp;
 }
 
 void
 rust_task::del_stack() {
     del_stk(this, stk);
-    record_sp(stk->data + RED_ZONE_SIZE);
+    record_stack_limit();
 }
 
+void
+rust_task::record_stack_limit() {
+    record_sp(stk->data + RED_ZONE_SIZE);
+}
 //
 // Local Variables:
 // mode: C++

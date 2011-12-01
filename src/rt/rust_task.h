@@ -199,6 +199,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     void *new_stack(size_t stk_sz, void *args_addr, size_t args_sz);
     void del_stack();
+    void record_stack_limit();
 };
 
 //
