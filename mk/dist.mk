@@ -52,6 +52,8 @@ PKG_FILES = \
     $(FUZZER_INPUTS)                           \
     $(COMPILETEST_CRATE)                       \
     $(COMPILETEST_INPUTS)                      \
+    $(CARGO_CRATE)                             \
+    $(CARGO_INPUTS)                            \
     $(PKG_PP_EXAMPLES)                         \
     $(MKFILE_DEPS)
 

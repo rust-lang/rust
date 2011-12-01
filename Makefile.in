@@ -343,9 +343,10 @@ TSREQS :=											\
 	$(foreach target,$(CFG_TARGET_TRIPLES),			\
 		$(SREQ3_T_$(target)_H_$(CFG_HOST_TRIPLE)))
 FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
+CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
 
 #all: $(SREQ3$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS) $(FUZZ)
-all: $(TSREQS) $(GENERATED) $(DOCS) $(FUZZ)
+all: $(TSREQS) $(GENERATED) $(DOCS) $(FUZZ) $(CARGO)
 
 endif
 

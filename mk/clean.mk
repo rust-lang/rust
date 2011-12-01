@@ -54,6 +54,7 @@ define CLEAN_HOST_STAGE_N
 clean$(1)_H_$(2):
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustc$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/fuzzer$(X)
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/cargo$(X)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM)

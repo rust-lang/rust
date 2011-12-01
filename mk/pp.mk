@@ -4,9 +4,10 @@ ifdef PPFILES
 else
   PP_INPUTS = $(wildcard $(addprefix $(S)src/lib/,*.rs */*.rs)) \
               $(wildcard $(addprefix $(S)src/comp/,*.rs */*.rs */*/*.rs)) \
-              $(wildcard $(S)src/test/*/*.rs   \
+              $(wildcard $(S)src/test/*/*.rs    \
                          $(S)src/test/*/*/*.rs) \
-              $(wildcard $(S)src/fuzzer/*.rs)
+              $(wildcard $(S)src/fuzzer/*.rs)   \
+              $(wildcard $(S)src/cargo/*.rs)
 
   PP_INPUTS_FILTERED = $(shell echo $(PP_INPUTS) | xargs grep -L \
                        "no-reformat\|xfail-pretty\|xfail-test")

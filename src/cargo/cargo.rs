@@ -1,8 +1,5 @@
 // cargo.rs - Rust package manager
 
-use rustc;
-use std;
-
 import rustc::syntax::{ast, codemap, visit};
 import rustc::syntax::parse::parser;
 
@@ -98,7 +95,7 @@ fn rest(s: str, start: uint) -> str {
     }
 }
 
-fn install_file(path: str) -> option::t<str> {
+fn install_file(_path: str) -> option::t<str> {
     let wd = tempfile::mkdtemp("/tmp/cargo-work-", "");
     ret wd;
 }
@@ -110,7 +107,7 @@ fn cmd_install(argv: [str]) {
         ret;
     }
 
-    let wd = if str::starts_with(argv[2], "file:") {
+    let _wd = if str::starts_with(argv[2], "file:") {
         let path = rest(argv[2], 5u);
         install_file(path)
     } else {
@@ -132,4 +129,3 @@ fn main(argv: [str]) {
         _ { cmd_usage(); }
     }
 }
-
