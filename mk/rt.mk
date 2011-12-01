@@ -24,8 +24,8 @@
 # working under these assumptions). 
 
 # Hack for passing flags into LIBUV, see below.
-LIBUV_FLAGS_i386 = -m32
-LIBUV_FLAGS_x86_64 = -m64
+LIBUV_FLAGS_i386 = -m32 -fPIC
+LIBUV_FLAGS_x86_64 = -m64 -fPIC
 
 define DEF_RUNTIME_TARGETS
 
