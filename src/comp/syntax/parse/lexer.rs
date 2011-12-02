@@ -175,17 +175,6 @@ fn scan_exponent(rdr: reader) -> option::t<str> {
     } else { ret none::<str>; }
 }
 
-fn scan_dec_digits_with_prefix(rdr: reader) -> str {
-    let negative = false;
-    if rdr.curr() == '-' {
-        negative = true;
-        rdr.bump();
-    }
-    let digits = scan_dec_digits(rdr);
-    if negative { str::unshift_char(digits, '-'); }
-    ret digits;
-}
-
 fn scan_dec_digits(rdr: reader) -> str {
     let c = rdr.curr();
     let rslt: str = "";
@@ -220,7 +209,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             c = rdr.curr();
         }
     } else {
-        num_str = scan_dec_digits_with_prefix(rdr);
+        num_str = scan_dec_digits(rdr);
         accum_int = std::int::from_str(num_str);
     }
     c = rdr.curr();
@@ -346,7 +335,7 @@ fn next_token_inner(rdr: reader) -> token::token {
         ret token::IDENT(interner::intern::<str>(*rdr.get_interner(),
                                                  accum_str), is_mod_name);
     }
-    if is_dec_digit(c) || (c == '-' && is_dec_digit(rdr.next())) {
+    if is_dec_digit(c) {
         ret scan_number(c, rdr);
     }
     fn binop(rdr: reader, op: token::binop) -> token::token {
@@ -741,42 +730,6 @@ fn gather_comments_and_literals(cm: codemap::codemap, path: str,
         first_read = false;
     }
     ret {cmnts: comments, lits: literals};
-}
-
-// This is a stopgap fix. We will have to do better eventually (issue #954)
-fn maybe_untangle_minus_from_lit(r: reader, t: token::token)
-    -> option::t<token::token> {
-    fn check_str(r: reader, i: uint) -> option::t<uint> {
-        let it = r.get_interner(), s = interner::get(*it, i);
-        if s[0] == '-' as u8 {
-            some(interner::intern(*it, str::slice(s, 1u, str::byte_len(s))))
-        } else { none }
-    }
-    alt t {
-      token::LIT_INT(v) {
-        if v < 0 { ret some(token::LIT_INT(-v)); }
-      }
-      token::LIT_UINT(v) {
-        if v > 0x7fffffffu { ret some(token::LIT_UINT(-(v as int) as uint)); }
-      }
-      token::LIT_MACH_INT(m, v) {
-        if v < 0 { ret some(token::LIT_MACH_INT(m, -v)); }
-      }
-      token::LIT_FLOAT(s) {
-        alt check_str(r, s) {
-          some(s) { ret some(token::LIT_FLOAT(s)); }
-          _ {}
-        }
-      }
-      token::LIT_MACH_FLOAT(m, s) {
-        alt check_str(r, s) {
-          some(s) { ret some(token::LIT_MACH_FLOAT(m, s)); }
-          _ {}
-        }
-      }
-      _ {}
-    }
-    none
 }
 
 //

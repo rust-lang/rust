@@ -1180,24 +1180,12 @@ fn parse_more_binops(p: parser, lhs: @ast::expr, min_prec: int) ->
    @ast::expr {
     if !expr_has_value(lhs) { ret lhs; }
     let peeked = p.peek();
-    let lit_after = alt lexer::maybe_untangle_minus_from_lit(p.get_reader(),
-                                                             peeked) {
-      some(tok) {
-        peeked = token::BINOP(token::MINUS);
-        let lit = @{node: lit_from_token(p, tok), span: p.get_span()};
-        some(mk_expr(p, p.get_lo_pos(), p.get_hi_pos(), ast::expr_lit(lit)))
-      }
-      none. { none }
-    };
     if peeked == token::BINOP(token::OR) &&
        p.get_restriction() == RESTRICT_NO_BAR_OP { ret lhs; }
     for cur: op_spec in *p.get_prec_table() {
         if cur.prec > min_prec && cur.tok == peeked {
             p.bump();
-            let expr = alt lit_after {
-              some(ex) { ex }
-              _ { parse_prefix_expr(p) }
-            };
+            let expr = parse_prefix_expr(p);
             let rhs = parse_more_binops(p, expr, cur.prec);
             let bin = mk_expr(p, lhs.span.lo, rhs.span.hi,
                               ast::expr_binary(cur.op, lhs, rhs));
