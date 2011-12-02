@@ -108,7 +108,7 @@ type env =
      used_imports: {mutable track: bool,
                     mutable data: [ast::node_id]},
      mutable reported: [{ident: str, sc: scope}],
-     mutable currently_resolving: node_id,
+     mutable ignored_imports: [node_id],
      sess: session};
 
 
@@ -131,7 +131,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           ext_cache: new_ext_hash(),
           used_imports: {mutable track: false, mutable data:  []},
           mutable reported: [],
-          mutable currently_resolving: -1,
+          mutable ignored_imports: [],
           sess: sess};
     map_crate(e, crate);
     resolve_imports(*e);
@@ -462,11 +462,48 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
             e.imports.insert(id, resolved(val, typ, md, name, sp));
         }
     }
+    // Temporarily disable this import and the imports coming after during
+    // resolution of this import.
+    fn find_imports_after(e: env, id: node_id, sc: scopes) -> [node_id] {
+        fn lst(my_id: node_id, vis: [@view_item]) -> [node_id] {
+            let imports = [], found = false;
+            for vi in vis {
+                alt vi.node {
+                  view_item_import(_, _, id) | view_item_import_glob(_, id) {
+                    if id == my_id { found = true; }
+                    if found { imports += [id]; }
+                  }
+                  view_item_import_from(_, ids, _) {
+                    for id in ids {
+                        if id.node.id == my_id { found = true; }
+                        if found { imports += [id.node.id]; }
+                    }
+                  }
+                  _ {}
+                }
+            }
+            imports
+        }
+        alt sc {
+          cons(scope_item(@{node: item_mod(m), _}), _) {
+            lst(id, m.view_items)
+          }
+          cons(scope_item(@{node: item_native_mod(m), _}), _) {
+            lst(id, m.view_items)
+          }
+          cons(scope_block(b, _, _), _) {
+            lst(id, b.node.view_items)
+          }
+          cons(scope_crate., _) {
+            lst(id, option::get(e.mod_map.get(crate_mod).m).view_items)
+          }
+        }
+    }
     // This function has cleanup code at the end. Do not return without going
     // through that.
     e.imports.insert(defid.node, resolving(sp));
-    let previously_resolving = e.currently_resolving;
-    e.currently_resolving = defid.node;
+    let ignored = find_imports_after(e, defid.node, sc);
+    e.ignored_imports <-> ignored;
     let n_idents = vec::len(ids);
     let end_id = ids[n_idents - 1u];
     if n_idents == 1u {
@@ -498,7 +535,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
           }
         }
     }
-    e.currently_resolving = previously_resolving;
+    e.ignored_imports <-> ignored;
     // If we couldn't resolve the import, don't leave it in a partially
     // resolved state, to avoid having it reported later as a cyclic
     // import
@@ -961,16 +998,15 @@ fn found_view_item(e: env, vi: @ast::view_item) -> option::t<def> {
 }
 
 fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
+    // Imports are simply ignored when resolving themselves.
+    if vec::member(defid.node, e.ignored_imports) { ret none; }
     alt e.imports.get(defid.node) {
       todo(node_id, name, path, span, scopes) {
         resolve_import(e, local_def(node_id), name, *path, span, scopes);
         ret lookup_import(e, defid, ns);
       }
       resolving(sp) {
-        // Imports are simply ignored when resolving themselves.
-        if e.currently_resolving != defid.node {
-            e.sess.span_err(sp, "cyclic import");
-        }
+        e.sess.span_err(sp, "cyclic import");
         ret none;
       }
       resolved(val, typ, md, _, _) {
@@ -1018,14 +1054,18 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
                    ns: namespace, dr: dir) -> option::t<def> {
     fn lookup_in_mod_(e: env, def: glob_imp_def, sp: span, name: ident,
                       ns: namespace, dr: dir) -> option::t<glob_imp_def> {
+        alt def.item.node {
+          ast::view_item_import_glob(_, id) {
+            if vec::member(id, e.ignored_imports) { ret none; }
+          }
+        }
         alt lookup_in_mod(e, def.def, sp, name, ns, dr) {
-          option::some(d) { option::some({def: d, item: def.item}) }
-          option::none. { option::none }
+          some(d) { option::some({def: d, item: def.item}) }
+          none. { none }
         }
     }
-    let matches =
-        vec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
-                        { globs });
+    let matches = vec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
+                                  copy globs);
     if vec::len(matches) == 0u {
         ret none;
     } else if vec::len(matches) == 1u {

@@ -1,6 +1,6 @@
 // error-pattern: cyclic import
 
-import zed::bar;
-import bar::zed;
+mod a { import foo = b::foo; export foo; }
+mod b { import foo = a::foo; export foo; }
 
 fn main(args: [str]) { log "loop"; }
