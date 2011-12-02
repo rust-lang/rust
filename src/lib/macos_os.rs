@@ -46,6 +46,7 @@ native mod libc {
     fn waitpid(pid: pid_t, &status: c_int, options: c_int) -> c_int;
     fn mkdir(s: str::sbuf, mode: c_int) -> c_int;
     fn rmdir(s: str::sbuf) -> c_int;
+    fn chdir(s: str::sbuf) -> c_int;
 }
 
 mod libc_constants {
