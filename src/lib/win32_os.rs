@@ -97,6 +97,7 @@ fn fclose(file: libc::FILE) {
 
 fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
     // FIXME (1253)
+    fail;
 }
 
 #[abi = "cdecl"]
