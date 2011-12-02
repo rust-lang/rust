@@ -4949,7 +4949,10 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
                  with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
-      ast::item_impl(_, _, _) { fail "FIXME[impl]"; }
+      ast::item_impl(_, _, _) {
+        
+        fail "FIXME[impl]";
+      }
       ast::item_res(dtor, dtor_id, tps, ctor_id) {
         trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
 

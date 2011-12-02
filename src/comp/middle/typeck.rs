@@ -457,7 +457,7 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_mod(_) { fail; }
+      ast::item_impl(_, _, _) | ast::item_mod(_) |
       ast::item_native_mod(_) { fail; }
     }
 }
@@ -689,16 +689,19 @@ mod collect {
     }
     fn convert(cx: @ctxt, it: @ast::item) {
         alt it.node {
-          ast::item_mod(_) | ast::item_impl(_, _, _) {
-            // ignore item_mod, it has no type.
-          }
-          ast::item_native_mod(native_mod) {
-            // do nothing, as native modules have no types.
-          }
+          // These don't define types.
+          ast::item_mod(_) | ast::item_native_mod(_) {}
           ast::item_tag(variants, ty_params) {
             let tpt = ty_of_item(cx.tcx, m_collect, it);
             write::ty_only(cx.tcx, it.id, tpt.ty);
             get_tag_variant_types(cx, local_def(it.id), variants, ty_params);
+          }
+          ast::item_impl(_, _, ms) {
+            for m in ms {
+                write::ty_only(cx.tcx, m.node.id, 
+                               ty::method_ty_to_fn_ty(cx.tcx, ty_of_method(
+                                   cx.tcx, m_collect, m)));
+            }
           }
           ast::item_obj(object, ty_params, ctor_id) {
             // Now we need to call ty_of_obj_ctor(); this is the type that
@@ -714,8 +717,8 @@ mod collect {
             // ty_of_obj().)
             let method_types = ty_of_obj_methods(cx.tcx, m_collect, object);
             let i = 0u;
-            while i < vec::len::<@ast::method>(object.methods) {
-                write::ty_only(cx.tcx, object.methods[i].node.id,
+            for m in object.methods {
+                write::ty_only(cx.tcx, m.node.id,
                                ty::method_ty_to_fn_ty(cx.tcx,
                                                       method_types[i]));
                 i += 1u;
@@ -919,8 +922,6 @@ fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
     let tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt ty::struct(ccx.tcx, tpt.ty) {
       ty::ty_fn(_, ins, _, _, _) {
-
-
         // N-ary variant.
         for arg: ty::arg in ins {
             let arg_ty =
@@ -930,7 +931,6 @@ fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
       }
       _ {
         // Nullary variant. Do nothing, as there are no arguments.
-
       }
     }
     /* result is a vector of the *expected* types of all the fields */
@@ -2144,35 +2144,70 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
       }
       ast::expr_field(base, field) {
+        // FIXME proper type compare, notice conflicts
+        fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
+                         name: ast::ident, ty: ty::t)
+            -> option::t<@ast::method> {
+            let result = none;
+            std::list::iter(isc) {|impls|
+                for im in *impls {
+                    alt im.node {
+                      ast::item_impl(_, slf, mthds) {
+                        let self_ty = ast_ty_to_ty_crate(fcx.ccx, slf);
+                        alt unify::unify(fcx, ty, self_ty) {
+                          ures_ok(_) {}
+                          _ { cont; }
+                        }
+                        for m in mthds {
+                            if m.node.ident == name {
+                                result = some(m);
+                                ret;
+                            }
+                        }
+                      }
+                    }
+                }
+            }
+            result
+        }
         bot |= check_expr(fcx, base);
         let base_t = expr_ty(tcx, base);
-        base_t = do_autoderef(fcx, expr.span, base_t);
-        alt structure_of(fcx, expr.span, base_t) {
-          ty::ty_rec(fields) {
-            let ix: uint = ty::field_idx(tcx.sess, expr.span, field, fields);
-            if ix >= vec::len::<ty::field>(fields) {
-                tcx.sess.span_fatal(expr.span, "bad index on record");
-            }
-            write::ty_only_fixup(fcx, id, fields[ix].mt.ty);
-          }
-          ty::ty_obj(methods) {
-            let ix: uint =
-                ty::method_idx(tcx.sess, expr.span, field, methods);
-            if ix >= vec::len::<ty::method>(methods) {
-                tcx.sess.span_fatal(expr.span, "bad index on obj");
-            }
-            let meth = methods[ix];
-            let t =
-                ty::mk_fn(tcx, meth.proto, meth.inputs, meth.output, meth.cf,
-                          meth.constrs);
-            write::ty_only_fixup(fcx, id, t);
+        let iscope = fcx.ccx.impl_map.get(expr.id);
+        alt lookup_method(fcx, iscope, field, base_t) {
+          some(method) {
+            let mt = ty_of_method(fcx.ccx.tcx, m_check, method);
+            let f_ty = ty::mk_fn(fcx.ccx.tcx, mt.proto, mt.inputs,
+                                 mt.output, mt.cf, mt.constrs);
+            write::ty_only_fixup(fcx, id, f_ty);
           }
           _ {
-            let t_err = resolve_type_vars_if_possible(fcx, base_t);
-            let msg =
-                #fmt["attempted field access on type %s",
-                     ty_to_str(tcx, t_err)];
-            tcx.sess.span_fatal(expr.span, msg);
+            base_t = do_autoderef(fcx, expr.span, base_t);
+            alt structure_of(fcx, expr.span, base_t) {
+              ty::ty_rec(fields) {
+                let ix = ty::field_idx(tcx.sess, expr.span, field, fields);
+                if ix >= vec::len::<ty::field>(fields) {
+                    tcx.sess.span_fatal(expr.span, "bad index on record");
+                }
+                write::ty_only_fixup(fcx, id, fields[ix].mt.ty);
+              }
+              ty::ty_obj(methods) {
+                let ix = ty::method_idx(tcx.sess, expr.span, field, methods);
+                if ix >= vec::len::<ty::method>(methods) {
+                    tcx.sess.span_fatal(expr.span, "bad index on obj");
+                }
+                let meth = methods[ix];
+                let t = ty::mk_fn(tcx, meth.proto, meth.inputs, meth.output,
+                                  meth.cf, meth.constrs);
+                write::ty_only_fixup(fcx, id, t);
+              }
+              _ {
+                let t_err = resolve_type_vars_if_possible(fcx, base_t);
+                let msg = #fmt["attempted field access on type %s, but no \
+                                method implementation was found",
+                               ty_to_str(tcx, t_err)];
+                tcx.sess.span_fatal(expr.span, msg);
+              }
+            }
           }
         }
       }
@@ -2602,13 +2637,12 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_obj(ob, _, _) {
         // We're entering an object, so gather up the info we need.
         ccx.obj_infos += [regular_obj(ob.fields, it.id)];
-
         // Typecheck the methods.
         for method: @ast::method in ob.methods { check_method(ccx, method); }
-
         // Now remove the info from the stack.
         vec::pop::<obj_info>(ccx.obj_infos);
       }
+      ast::item_impl(_, _, ms) { for m in ms { check_method(ccx, m); } }
       _ {/* nothing to do */ }
     }
 }
