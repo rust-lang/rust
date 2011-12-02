@@ -225,45 +225,82 @@ fn ternary_to_if(e: @expr) -> @expr {
 
 fn ty_param_kind(tp: ty_param) -> kind { tp.kind }
 
-fn compare_lit(a: @lit, b: @lit) -> int {
-    fn cmp<T>(a: T, b: T) -> int { a == b ? 0 : a < b ? -1 : 1 }
-    alt (a.node, b.node) {
-      (lit_int(a), lit_int(b)) |
-      (lit_mach_int(_, a), lit_mach_int(_, b)) { cmp(a, b) }
-      (lit_uint(a), lit_uint(b)) { cmp(a, b) }
-      (lit_char(a), lit_char(b)) { cmp(a, b) }
-      (lit_float(a), lit_float(b)) |
-      (lit_mach_float(_, a), lit_mach_float(_, b)) {
-        cmp(std::float::from_str(a), std::float::from_str(b))
+// FIXME this doesn't handle big integer/float literals correctly (nor does
+// the rest of our literal handling)
+tag const_val { const_float(float); const_int(i64); const_str(str); }
+
+fn eval_const_expr(e: @expr) -> const_val {
+    fn fromb(b: bool) -> const_val { const_int(b as i64) }
+    alt e.node {
+      expr_unary(neg., inner) {
+        alt eval_const_expr(inner) {
+          const_float(f) { const_float(-f) }
+          const_int(i) { const_int(-i) }
+        }
       }
-      (lit_str(a), lit_str(b)) { cmp(a, b) }
-      (lit_nil., lit_nil.) { 0 }
-      (lit_bool(a), lit_bool(b)) { cmp(a, b) }
+      expr_unary(not., inner) {
+        alt eval_const_expr(inner) {
+          const_int(i) { const_int(!i) }
+        }
+      }
+      expr_binary(op, a, b) {
+        alt (eval_const_expr(a), eval_const_expr(b)) {
+          (const_float(a), const_float(b)) {
+            alt op {
+              add. { const_float(a + b) } sub. { const_float(a - b) }
+              mul. { const_float(a * b) } div. { const_float(a / b) }
+              rem. { const_float(a % b) } eq. { fromb(a == b) }
+              lt. { fromb(a < b) } le. { fromb(a <= b) } ne. { fromb(a != b) }
+              ge. { fromb(a >= b) } gt. { fromb(a > b) }
+            }
+          }
+          (const_int(a), const_int(b)) {
+            alt op {
+              add. { const_int(a + b) } sub. { const_int(a - b) }
+              mul. { const_int(a * b) } div. { const_int(a / b) }
+              rem. { const_int(a % b) } and. | bitand. { const_int(a & b) }
+              or. | bitor. { const_int(a | b) } bitxor. { const_int(a ^ b) }
+              eq. { fromb(a == b) } lt. { fromb(a < b) }
+              le. { fromb(a <= b) } ne. { fromb(a != b) }
+              ge. { fromb(a >= b) } gt. { fromb(a > b) }
+            }
+          }
+        }
+      }
+      expr_lit(lit) { lit_to_const(lit) }
     }
 }
 
-fn lit_eq(a: @lit, b: @lit) -> bool { compare_lit(a, b) == 0 }
-
-fn lit_types_match(a: @lit, b: @lit) -> bool {
-    alt (a.node, b.node) {
-      (lit_int(_), lit_int(_)) | (lit_uint(_), lit_uint(_)) |
-      (lit_char(_), lit_char(_)) | (lit_float(_), lit_float(_)) |
-      (lit_str(_), lit_str(_)) | (lit_nil., lit_nil.) |
-      (lit_bool(_), lit_bool(_ )) { true }
-      (lit_mach_int(ta, _), lit_mach_int(tb, _)) |
-      (lit_mach_float(ta, _), lit_mach_float(tb, _)) { ta == tb }
-      _ { false }
+fn lit_to_const(lit: @lit) -> const_val {
+    alt lit.node {
+      lit_str(s) { const_str(s) }
+      lit_char(ch) { const_int(ch as i64) }
+      lit_int(i) | lit_mach_int(_, i) { const_int(i as i64) }
+      lit_uint(ui) { const_int(ui as i64) }
+      lit_float(s) | lit_mach_float(_, s) {
+        const_float(std::float::from_str(s))
+      }
+      lit_nil. { const_int(0i64) }
+      lit_bool(b) { const_int(b as i64) }
     }
 }
 
-fn lit_is_numeric(l: @ast::lit) -> bool {
-    alt l.node {
-      ast::lit_int(_) | ast::lit_char(_) | ast::lit_uint(_) |
-      ast::lit_mach_int(_, _) | ast::lit_float(_) | ast::lit_mach_float(_,_) {
-        true
-      }
-      _ { false }
-    }
+fn compare_const_vals(a: const_val, b: const_val) -> int {
+  alt (a, b) {
+    (const_int(a), const_int(b)) { a == b ? 0 : a < b ? -1 : 1 }
+    (const_float(a), const_float(b)) { a == b ? 0 : a < b ? -1 : 1 }
+    (const_str(a), const_str(b)) { a == b ? 0 : a < b ? -1 : 1 }
+  }
+}
+
+fn compare_lit_exprs(a: @expr, b: @expr) -> int {
+  compare_const_vals(eval_const_expr(a), eval_const_expr(b))
+}
+
+fn lit_expr_eq(a: @expr, b: @expr) -> bool { compare_lit_exprs(a, b) == 0 }
+
+fn lit_eq(a: @lit, b: @lit) -> bool {
+    compare_const_vals(lit_to_const(a), lit_to_const(b)) == 0
 }
 
 // Local Variables:

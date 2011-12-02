@@ -1,5 +1,6 @@
 import syntax::ast::*;
-import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit, lit_eq};
+import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit_exprs,
+                          lit_expr_eq};
 import syntax::visit;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
@@ -66,7 +67,7 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
       pat_wild. | pat_bind(_) { ret true; }
       pat_lit(la) {
         alt b.node {
-          pat_lit(lb) { ret lit_eq(la, lb); }
+          pat_lit(lb) { ret lit_expr_eq(la, lb); }
           _ { ret false; }
         }
       }
@@ -106,11 +107,12 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
       pat_range(begina, enda) {
         alt b.node {
           pat_lit(lb) {
-            ret compare_lit(begina, lb) <= 0 && compare_lit(enda, lb) >= 0;
+            ret compare_lit_exprs(begina, lb) <= 0 &&
+                compare_lit_exprs(enda, lb) >= 0;
           }
           pat_range(beginb, endb) {
-            ret compare_lit(begina, beginb) <= 0 &&
-                compare_lit(enda, endb) >= 0;
+            ret compare_lit_exprs(begina, beginb) <= 0 &&
+                compare_lit_exprs(enda, endb) >= 0;
           }
           _ { ret false; }
         }

@@ -137,6 +137,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let freevars =
         time(time_passes, "freevar finding",
              bind freevars::annotate_freevars(def_map, crate));
+    time(time_passes, "const checking",
+         bind middle::check_const::check_crate(sess, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
     time(time_passes, "typechecking", bind typeck::check_crate(ty_cx, crate));
     time(time_passes, "block-use checking",
@@ -157,8 +159,6 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, last_uses, crate));
-    time(time_passes, "const checking",
-         bind middle::check_const::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
     let llmod =
         time(time_passes, "translation",

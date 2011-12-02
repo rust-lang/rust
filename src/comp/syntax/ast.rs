@@ -86,13 +86,13 @@ type field_pat = {ident: ident, pat: @pat};
 tag pat_ {
     pat_wild;
     pat_bind(ident);
-    pat_lit(@lit);
     pat_tag(@path, [@pat]);
     pat_rec([field_pat], bool);
     pat_tup([@pat]);
     pat_box(@pat);
     pat_uniq(@pat);
-    pat_range(@lit, @lit);
+    pat_lit(@expr);
+    pat_range(@expr, @expr);
 }
 
 tag mutability { mut; imm; maybe_mut; }

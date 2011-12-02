@@ -9,7 +9,7 @@ import util::interner;
 import ast::{node_id, spanned};
 import front::attr;
 
-tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; }
+tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; RESTRICT_NO_BAR_OP; }
 
 tag file_type { CRATE_FILE; SOURCE_FILE; }
 
@@ -1189,6 +1189,8 @@ fn parse_more_binops(p: parser, lhs: @ast::expr, min_prec: int) ->
       }
       none. { none }
     };
+    if peeked == token::BINOP(token::OR) &&
+       p.get_restriction() == RESTRICT_NO_BAR_OP { ret lhs; }
     for cur: op_spec in *p.get_prec_table() {
         if cur.prec > min_prec && cur.tok == peeked {
             p.bump();
@@ -1462,9 +1464,9 @@ fn parse_pat(p: parser) -> @ast::pat {
         if p.peek() == token::RPAREN {
             hi = p.get_hi_pos();
             p.bump();
-            pat =
-                ast::pat_lit(@{node: ast::lit_nil,
-                               span: ast_util::mk_sp(lo, hi)});
+            let lit = @{node: ast::lit_nil, span: ast_util::mk_sp(lo, hi)};
+            let expr = mk_expr(p, lo, hi, ast::expr_lit(lit));
+            pat = ast::pat_lit(expr);
         } else {
             let fields = [parse_pat(p)];
             while p.peek() == token::COMMA {
@@ -1479,14 +1481,14 @@ fn parse_pat(p: parser) -> @ast::pat {
       }
       tok {
         if !is_ident(tok) || is_word(p, "true") || is_word(p, "false") {
-            let lit = parse_lit(p);
+            let val = parse_expr_res(p, RESTRICT_NO_BAR_OP);
             if eat_word(p, "to") {
-                let end = parse_lit(p);
+                let end = parse_expr_res(p, RESTRICT_NO_BAR_OP);
                 hi = end.span.hi;
-                pat = ast::pat_range(@lit, @end);
+                pat = ast::pat_range(val, end);
             } else {
-                hi = lit.span.hi;
-                pat = ast::pat_lit(@lit);
+                hi = val.span.hi;
+                pat = ast::pat_lit(val);
             }
         } else if is_plain_ident(p) &&
                       alt p.look_ahead(1u) {

@@ -1061,7 +1061,6 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
     alt pat.node {
       ast::pat_wild. { word(s.s, "_"); }
       ast::pat_bind(id) { word(s.s, id); }
-      ast::pat_lit(lit) { print_literal(s, lit); }
       ast::pat_tag(path, args) {
         print_path(s, path, true);
         if vec::len(args) > 0u {
@@ -1094,11 +1093,12 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
       }
       ast::pat_box(inner) { word(s.s, "@"); print_pat(s, inner); }
       ast::pat_uniq(inner) { word(s.s, "~"); print_pat(s, inner); }
+      ast::pat_lit(e) { print_expr(s, e); }
       ast::pat_range(begin, end) {
-        print_literal(s, begin);
+        print_expr(s, begin);
         space(s.s);
         word_space(s, "to");
-        print_literal(s, end);
+        print_expr(s, end);
       }
     }
     s.ann.post(ann_node);

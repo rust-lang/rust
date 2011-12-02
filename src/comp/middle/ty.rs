@@ -155,6 +155,7 @@ export type_is_vec;
 export type_is_fp;
 export type_allows_implicit_copy;
 export type_is_integral;
+export type_is_numeric;
 export type_is_native;
 export type_is_nil;
 export type_is_pod;
@@ -1171,6 +1172,10 @@ fn type_is_fp(cx: ctxt, ty: t) -> bool {
       ty_float. { ret true; }
       _ { ret false; }
     }
+}
+
+fn type_is_numeric(cx: ctxt, ty: t) -> bool {
+    ret type_is_integral(cx, ty) || type_is_fp(cx, ty);
 }
 
 fn type_is_signed(cx: ctxt, ty: t) -> bool {

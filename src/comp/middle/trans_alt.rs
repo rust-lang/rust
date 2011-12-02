@@ -7,7 +7,7 @@ import trans_build::*;
 import trans::{new_sub_block_ctxt, new_scope_block_ctxt, load_if_immediate};
 import syntax::ast;
 import syntax::ast_util;
-import syntax::ast_util::{dummy_sp, lit_eq};
+import syntax::ast_util::{dummy_sp};
 import syntax::ast::def_id;
 import syntax::codemap::span;
 
@@ -15,24 +15,19 @@ import trans_common::*;
 
 // An option identifying a branch (either a literal, a tag variant or a range)
 tag opt {
-    lit(@ast::lit);
+    lit(@ast::expr);
     var(/* variant id */uint, /* variant dids */{tg: def_id, var: def_id});
-    range(@ast::lit, @ast::lit);
+    range(@ast::expr, @ast::expr);
 }
 fn opt_eq(a: opt, b: opt) -> bool {
-    alt a {
-      lit(la) {
-        ret alt b { lit(lb) { lit_eq(la, lb) } _ { false } };
+    alt (a, b) {
+      (lit(a), lit(b)) { ast_util::compare_lit_exprs(a, b) == 0 }
+      (range(a1, a2), range(b1, b2)) {
+        ast_util::compare_lit_exprs(a1, b1) == 0 &&
+        ast_util::compare_lit_exprs(a2, b2) == 0
       }
-      var(ida, _) {
-        ret alt b { var(idb, _) { ida == idb } _ { false } };
-      }
-      range(la1, la2) {
-        ret alt b {
-          range(lb1, lb2) { lit_eq(la1, lb1) && lit_eq(la2, lb2) }
-          _ { false }
-        };
-      }
+      (var(a, _), var(b, _)) { a == b }
+      _ { false }
     }
 }
 
@@ -45,7 +40,7 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
     alt o {
       lit(l) {
         alt l.node {
-          ast::lit_str(s) {
+          ast::expr_lit(@{node: ast::lit_str(s), _}) {
             let strty = ty::mk_str(bcx_tcx(bcx));
             let cell = trans::empty_dest_cell();
             bcx = trans_vec::trans_str(bcx, s, trans::by_val(cell));
@@ -54,17 +49,14 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
           }
           _ {
             ret single_result(
-                rslt(bcx, trans::trans_crate_lit(ccx, *l)));
+                rslt(bcx, trans::trans_const_expr(ccx, l)));
           }
         }
       }
       var(id, _) { ret single_result(rslt(bcx, C_int(ccx, id as int))); }
       range(l1, l2) {
-        let cell1 = trans::empty_dest_cell();
-        let cell2 = trans::empty_dest_cell();
-        let bcx = trans::trans_lit(bcx, *l1, trans::by_val(cell1));
-        let bcx = trans::trans_lit(bcx, *l2, trans::by_val(cell2));
-        ret range_result(rslt(bcx, *cell1), rslt(bcx, *cell2));
+        ret range_result(rslt(bcx, trans::trans_const_expr(ccx, l1)),
+                         rslt(bcx, trans::trans_const_expr(ccx, l2)));
       }
     }
 }
@@ -464,13 +456,9 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             }
           }
           lit(l) {
-            kind = alt l.node {
-              ast::lit_str(_) | ast::lit_nil. | ast::lit_float(_) |
-              ast::lit_mach_float(_, _) {
-                test_val = Load(bcx, val); compare
-              }
-              _ { test_val = Load(bcx, val); switch }
-            };
+            test_val = Load(bcx, val);
+            let pty = ty::node_id_to_monotype(ccx.tcx, pat_id);
+            kind = ty::type_is_integral(ccx.tcx, pty) ? switch : compare;
           }
           range(_, _) {
             test_val = Load(bcx, val);

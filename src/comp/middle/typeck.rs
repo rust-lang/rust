@@ -1,7 +1,6 @@
 import syntax::{ast, ast_util};
 import ast::spanned;
-import syntax::ast_util::{local_def, respan, ty_param_kind, lit_is_numeric,
-                          lit_types_match};
+import syntax::ast_util::{local_def, respan, ty_param_kind};
 import syntax::visit;
 import metadata::csearch;
 import driver::session;
@@ -1253,8 +1252,8 @@ fn lit_as_float(l: @ast::lit) -> str {
     }
 }
 
-fn valid_range_bounds(l1: @ast::lit, l2: @ast::lit) -> bool {
-    ast_util::compare_lit(l1, l2) <= 0
+fn valid_range_bounds(from: @ast::expr, to: @ast::expr) -> bool {
+    ast_util::compare_lit_exprs(from, to) <= 0
 }
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
@@ -1264,14 +1263,18 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
     alt pat.node {
       ast::pat_wild. { write::ty_only_fixup(fcx, pat.id, expected); }
       ast::pat_lit(lt) {
-        let typ = check_lit(fcx.ccx, lt);
-        typ = demand::simple(fcx, pat.span, expected, typ);
-        write::ty_only_fixup(fcx, pat.id, typ);
+        check_expr_with(fcx, lt, expected);
+        write::ty_only_fixup(fcx, pat.id, expr_ty(fcx.ccx.tcx, lt));
       }
       ast::pat_range(begin, end) {
-        if !lit_types_match(begin, end) {
+        check_expr_with(fcx, begin, expected);
+        check_expr_with(fcx, end, expected);
+        let b_ty = resolve_type_vars_if_possible(fcx, expr_ty(fcx.ccx.tcx,
+                                                              begin));
+        if b_ty != resolve_type_vars_if_possible(fcx, expr_ty(fcx.ccx.tcx,
+                                                              end)) {
             fcx.ccx.tcx.sess.span_err(pat.span, "mismatched types in range");
-        } else if !lit_is_numeric(begin) || !lit_is_numeric(end) {
+        } else if !ty::type_is_numeric(fcx.ccx.tcx, b_ty) {
             fcx.ccx.tcx.sess.span_err(pat.span,
                                       "non-numeric type used in range");
         } else if !valid_range_bounds(begin, end) {
@@ -1279,12 +1282,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
                                       "lower range bound must be less \
                                        than upper");
         }
-        let typ1 = check_lit(fcx.ccx, begin);
-        typ1 = demand::simple(fcx, pat.span, expected, typ1);
-        write::ty_only_fixup(fcx, pat.id, typ1);
-        let typ2 = check_lit(fcx.ccx, end);
-        typ2 = demand::simple(fcx, pat.span, typ1, typ2);
-        write::ty_only_fixup(fcx, pat.id, typ2);
+        write::ty_only_fixup(fcx, pat.id, b_ty);
       }
       ast::pat_bind(name) {
         let vid = lookup_local(fcx, pat.span, pat.id);

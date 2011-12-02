@@ -1,46 +1,61 @@
 import syntax::ast::*;
 import syntax::visit;
+import driver::session::session;
 
-fn check_crate(tcx: ty::ctxt, crate: @crate) {
-    let v =
-        @{visit_item: bind check_item(tcx, _, _, _)
-             with *visit::default_visitor::<()>()};
-    visit::visit_crate(*crate, (), visit::mk_vt(v));
-    tcx.sess.abort_if_errors();
+fn check_crate(sess: session, crate: @crate) {
+    visit::visit_crate(*crate, false, visit::mk_vt(@{
+        visit_item: check_item,
+        visit_pat: check_pat,
+        visit_expr: bind check_expr(sess, _, _, _)
+        with *visit::default_visitor()
+    }));
+    sess.abort_if_errors();
 }
 
-fn check_item(tcx: ty::ctxt, it: @item, &&s: (), v: visit::vt<()>) {
-    visit::visit_item(it, s, v);
+fn check_item(it: @item, &&_is_const: bool, v: visit::vt<bool>) {
     alt it.node {
-      item_const(_ /* ty */, ex) {
-         let v =
-             @{visit_expr: bind check_const_expr(tcx, _, _, _)
-                  with *visit::default_visitor::<()>()};
-         check_const_expr(tcx, ex, (), visit::mk_vt(v));
-       }
-       _ { }
+      item_const(_, ex) { v.visit_expr(ex, true, v); }
+      _ { visit::visit_item(it, false, v); }
     }
 }
 
-fn check_const_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
-    visit::visit_expr(ex, s, v);
-    alt ex.node {
-      expr_lit(_) { }
-      expr_binary(_, _, _) { /* subexps covered by visit */ }
-      expr_unary(u, _) {
-        alt u {
-          box(_)  |
-          uniq(_) |
-          deref.  {
-            tcx.sess.span_err(ex.span,
-                              "disallowed operator in constant expression");
-          }
-          _ { }
-        }
-      }
-      _ { tcx.sess.span_err(ex.span,
-            "constant contains unimplemented expression type"); }
+fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
+    fn is_str(e: @expr) -> bool {
+        alt e.node { expr_lit(@{node: lit_str(_), _}) { true } _ { false } }
     }
+    alt p.node {
+      // Let through plain string literals here
+      pat_lit(a) { if !is_str(a) { v.visit_expr(a, true, v); } }
+      pat_range(a, b) {
+        if !is_str(a) { v.visit_expr(a, true, v); }
+        if !is_str(b) { v.visit_expr(b, true, v); }
+      }
+      _ { visit::visit_pat(p, false, v); }
+    }
+}
+
+fn check_expr(sess: session, e: @expr, &&is_const: bool, v: visit::vt<bool>) {
+    if is_const {
+        alt e.node {
+          expr_unary(box(_), _) | expr_unary(uniq(_), _) |
+          expr_unary(deref., _){
+            sess.span_err(e.span,
+                          "disallowed operator in constant expression");
+            ret;
+          }
+          expr_lit(@{node: lit_str(_), _}) {
+            sess.span_err(e.span,
+                          "string constants are not supported");
+          }
+          expr_lit(_) | expr_binary(_, _, _) | expr_unary(_, _) {}
+          _ {
+            sess.span_err(e.span,
+                          "constant contains unimplemented expression type");
+            ret;
+          }
+        }
+    }
+    visit::visit_expr(e, is_const, v);
 }
 
 // Local Variables:
