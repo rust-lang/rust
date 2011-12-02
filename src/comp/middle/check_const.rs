@@ -43,6 +43,7 @@ fn check_expr(sess: session, e: @expr, &&is_const: bool, v: visit::vt<bool>) {
                           "disallowed operator in constant expression");
             ret;
           }
+          expr_cast(_, _) { }
           expr_lit(@{node: lit_str(_), _}) {
             sess.span_err(e.span,
                           "string constants are not supported");
