@@ -178,6 +178,21 @@ fn remove_dir(p: path) -> bool {
     }
 }
 
+fn change_dir(p: path) -> bool {
+    ret chdir(p);
+
+    #[cfg(target_os = "win32")]
+    fn chdir(_p: path) -> bool {
+        ret str::as_buf(_p, {|buf| os::kernel32::SetCurrentDirectory(buf)});
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    fn chdir(_p: path) -> bool {
+        ret str::as_buf(_p, {|buf| os::libc::chdir(buf) == 0i32 });
+    }
+}
+
 /*
 Function: path_is_absolute
 

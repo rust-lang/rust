@@ -53,6 +53,7 @@ native mod libc {
     fn readlink(path: str::sbuf, buf: str::sbuf, bufsize: size_t) -> ssize_t;
     fn mkdir(path: str::sbuf, mode: c_int) -> c_int;
     fn rmdir(path: str::sbuf) -> c_int;
+    fn chdir(path: str::sbuf) -> c_int;
 }
 
 mod libc_constants {
