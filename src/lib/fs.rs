@@ -183,7 +183,7 @@ fn change_dir(p: path) -> bool {
 
     #[cfg(target_os = "win32")]
     fn chdir(_p: path) -> bool {
-        ret str::as_buf(_p, {|buf| os::kernel32::SetCurrentDirectory(buf)});
+        ret str::as_buf(_p, {|buf| os::kernel32::SetCurrentDirectoryA(buf)});
     }
 
     #[cfg(target_os = "linux")]
