@@ -1,4 +1,4 @@
-// error-pattern:unresolved import: foo
+// error-pattern:unresolved import
 
 mod m1 {
     fn foo() { log "foo"; }

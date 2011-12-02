@@ -1,4 +1,4 @@
-// error-pattern: unresolved import: baz
+// error-pattern: unresolved import
 import zed::bar;
 import zed::baz;
 mod zed {
