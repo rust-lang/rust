@@ -3,6 +3,7 @@
 import rustc::syntax::{ast, codemap, visit};
 import rustc::syntax::parse::parser;
 
+import std::fs;
 import std::io;
 import std::option;
 import std::option::{none, some};
@@ -95,9 +96,38 @@ fn rest(s: str, start: uint) -> str {
     }
 }
 
-fn install_file(_path: str) -> option::t<str> {
+fn install_source(path: str) {
+    log #fmt["source: %s", path];
+    fs::change_dir(path);
+    let contents = fs::list_dir(".");
+
+    log #fmt["contents: %s", str::connect(contents, ", ")];
+
+    let cratefile = vec::find::<str>({ |n| str::ends_with(n, ".rc") }, contents);
+
+    // First, try a configure script:
+    if vec::member("./configure", contents) {
+        run::run_program("./configure", []);
+    }
+
+    // Makefile?
+    if vec::member("./Makefile", contents) {
+        run::run_program("make", ["RUSTC=rustc"]);
+    } else if option::is_some::<str>(cratefile) {
+        run::run_program("rustc", [option::get(cratefile)]);
+    }
+}
+
+fn install_file(_path: str) {
     let wd = tempfile::mkdtemp("/tmp/cargo-work-", "");
-    ret wd;
+    alt wd {
+        some(p) {
+            run::run_program("tar", ["-x", "--strip-components=1",
+                                     "-C", p, "-f", _path]);
+            install_source(p);
+        }
+        _ { }
+    }
 }
 
 fn cmd_install(argv: [str]) {
@@ -107,12 +137,10 @@ fn cmd_install(argv: [str]) {
         ret;
     }
 
-    let _wd = if str::starts_with(argv[2], "file:") {
+    if str::starts_with(argv[2], "file:") {
         let path = rest(argv[2], 5u);
-        install_file(path)
-    } else {
-        none
-    };
+        install_file(path);
+    }
 }
 
 fn cmd_usage() {
@@ -125,6 +153,7 @@ fn main(argv: [str]) {
         ret;
     }
     alt argv[1] {
+        "install" { cmd_install(argv); }
         "usage" { cmd_usage(); }
         _ { cmd_usage(); }
     }
