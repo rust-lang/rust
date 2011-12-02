@@ -108,6 +108,10 @@ CFG_CORELIB :=$(call CFG_LIB_NAME,core)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
 
+STDLIB_GLOB :=$(call CFG_LIB_GLOB,std)
+CORELIB_GLOB :=$(call CFG_LIB_GLOB,core)
+LIBRUSTC_GLOB :=$(call CFG_LIB_GLOB,rustc)
+
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
 CFG_VERSION = prerelease

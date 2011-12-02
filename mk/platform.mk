@@ -23,6 +23,7 @@ endif
 
 ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
+  CFG_LIB_GLOB=lib$(1)-*.so
   CFG_GCCISH_CFLAGS += -fPIC -march=i686 -I/usr/local/include
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
   ifeq ($(CFG_CPUTYPE), x86_64)
@@ -40,6 +41,7 @@ endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
+  CFG_LIB_GLOB=lib$(1)-*.so
   CFG_GCCISH_CFLAGS += -fPIC
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
@@ -71,6 +73,7 @@ endif
 
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).dylib
+  CFG_LIB_GLOB=lib$(1)-*.dylib
   CFG_UNIXY := 1
   CFG_LDENV := DYLD_LIBRARY_PATH
   CFG_GCCISH_LINK_FLAGS += -dynamiclib -lpthread -framework CoreServices
@@ -156,6 +159,7 @@ ifdef CFG_WINDOWSY
 
   CFG_EXE_SUFFIX := .exe
   CFG_LIB_NAME=$(1).dll
+  CFG_LIB_GLOB=$(1)-*.dll
   CFG_DEF_SUFFIX := .def
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)

@@ -551,7 +551,8 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 // gcc to link the object file with some libs
 fn link_binary(sess: session::session,
                obj_filename: str,
-               out_filename: str) {
+               out_filename: str,
+               lm: link_meta) {
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let stage: str = "-L" + sess.filesearch().get_target_lib_path();
@@ -611,14 +612,17 @@ fn link_binary(sess: session::session,
     let used_libs = cstore::get_used_libraries(cstore);
     for l: str in used_libs { gcc_args += ["-l" + l]; }
 
+    let long_libname =
+        std::os::dylib_filename(#fmt("%s-%s-%s",
+                                     lm.name, lm.extras_hash, lm.vers));
+
     if sess.building_library() {
         gcc_args += [lib_cmd];
 
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.get_targ_cfg().os == session::os_macos {
-            gcc_args += ["-Wl,-install_name,@rpath/"
-                        + fs::basename(out_filename)];
+            gcc_args += ["-Wl,-install_name,@rpath/" + long_libname];
         }
     } else {
         // FIXME: why do we hardcode -lm?
@@ -651,19 +655,22 @@ fn link_binary(sess: session::session,
         sess.note(prog.err + prog.out);
         sess.abort_if_errors();
     }
-    // Clean up on Darwin
 
+    // Clean up on Darwin
     if sess.get_targ_cfg().os == session::os_macos {
         run::run_program("dsymutil", [out_filename]);
     }
-
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.get_opts().save_temps {
         run::run_program("rm", [obj_filename]);
     }
-}
 
+    if sess.building_library() {
+        let fullname = fs::connect(fs::dirname(out_filename), long_libname);
+        run::run_program("mv", [out_filename, fullname]);
+    }
+}
 //
 // Local Variables:
 // mode: rust

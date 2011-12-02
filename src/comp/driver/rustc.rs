@@ -10,7 +10,7 @@ import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
-import std::{option, str, vec, int, io, getopts, result};
+import std::{fs, option, str, vec, int, io, getopts, result};
 import std::option::{some, none};
 import std::getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
@@ -193,7 +193,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
 
     let outputs = build_output_filenames(input, output, sess);
 
-    let llmod =
+    let (llmod, link_meta) =
         time(time_passes, "translation",
              bind trans::trans_crate(sess, crate, ty_cx,
                                      outputs.obj_filename, ast_map,
@@ -209,7 +209,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
 
     time(time_passes, "Linking",
          bind link::link_binary(sess, outputs.obj_filename,
-                                outputs.out_filename));
+                                outputs.out_filename, link_meta));
 }
 
 fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
