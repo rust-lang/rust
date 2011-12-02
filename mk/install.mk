@@ -3,11 +3,14 @@
 # mirror of the installation directory structure.
 
 # Installation macro. Call with source directory as arg 1,
-# destination directory as arg 2, and filename as arg 3
+# destination directory as arg 2, and filename/libname-glob as arg 3
 ifdef VERBOSE
  INSTALL = cp $(1)/$(3) $(2)/$(3)
+ INSTALL_LIB = cp `ls -rt1 $(1)/$(3) | tail -1` $(2)/
 else
  INSTALL = $(Q)$(call E, install: $(2)/$(3)) && cp $(1)/$(3) $(2)/$(3)
+ INSTALL_LIB = $(Q)$(call E, install_lib: $(2)/$(3)) &&                    \
+	       cp `ls -rt1 $(1)/$(3) | tail -1` $(2)/
 endif
 
 # The stage we install from
@@ -33,8 +36,10 @@ PTL$(1)$(2) = $$(PTR$(1)$(2))/lib
 install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME))
-	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_CORELIB))
-	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_STDLIB))
+	$$(Q)$$(call INSTALL_LIB, \
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CORELIB_GLOB))
+	$$(Q)$$(call INSTALL_LIB, \
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),intrinsics.bc)
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 endef
@@ -62,8 +67,8 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
 	$(Q)$(call INSTALL,$(HB),$(PHB),rustc$(X))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
-	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_CORELIB))
-	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_STDLIB))
+	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(CORELIB_GLOB))
+	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM))
 	$(Q)$(call INSTALL,$(S)/man, \
 	     $(PREFIX_ROOT)/share/man/man1,rustc.1)

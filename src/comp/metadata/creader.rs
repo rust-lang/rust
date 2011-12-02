@@ -157,7 +157,7 @@ fn find_library_crate_aux(sess: session::session,
                           metas: [@ast::meta_item],
                           filesearch: filesearch::filesearch) ->
    option::t<{ident: str, data: @[u8]}> {
-    let prefix: str = nn.prefix + crate_name;
+    let prefix: str = nn.prefix + crate_name + "-";
     let suffix: str = nn.suffix;
 
     ret filesearch::search(filesearch, { |path|
