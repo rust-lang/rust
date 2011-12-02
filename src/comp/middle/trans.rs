@@ -5184,6 +5184,16 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
 // that does so later on?
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     alt e.node {
+      ast::expr_cast(e1, _) {
+        alt ccx_tcx(cx).cast_map.find(e.id) {
+          some(ty::triv_cast.) { trans_const_expr(cx, e1) }
+          _ {
+              cx.sess.span_err(e.span,
+                               "non-trivial cast in constant expression");
+              fail;
+            }
+        }
+      }
       ast::expr_lit(lit) { ret trans_crate_lit(cx, *lit); }
       ast::expr_binary(b, e1, e2) {
         let te1 = trans_const_expr(cx, e1);
