@@ -48,16 +48,12 @@
 	.type MORESTACK,@function
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
 MORESTACK:
-	.cfi_startproc
 
 	# Set up a normal backtrace
 	pushq %rbp
-	.cfi_def_cfa_offset 16
-	.cfi_offset %rbp, -16
 	movq %rsp, %rbp
-	.cfi_def_cfa_register %rbp
 
 	// FIXME: libgcc also saves rax. not sure if we need to
 
@@ -79,9 +75,9 @@ MORESTACK:
 	pushq %rcx // Address of stack arguments
 	pushq %r10 // The amount of stack needed
 
-	leaq UPCALL_NEW_STACK@PLT(%rip), %rsi
+	movq UPCALL_NEW_STACK@GOTPCREL(%rip), %rsi
 	movq %rsp, %rdi
-	call UPCALL_CALL_C@PLT
+	call UPCALL_CALL_C@GOTPCREL
 
 	// Pop the new_stack_args struct
 	addq $24, %rsp
@@ -106,15 +102,14 @@ MORESTACK:
 	// Align the stack again
 	pushq $0
 	
-	leaq UPCALL_DEL_STACK@PLT(%rip), %rsi
+	movq UPCALL_DEL_STACK@GOTPCREL(%rip), %rsi
 	movq $0, %rdi
-	call UPCALL_CALL_C@PLT
+	call UPCALL_CALL_C@GOTPCREL
 
 	addq $8, %rsp
 	popq %rbp
 	ret
 	
-	.cfi_endproc
 #else
 MORESTACK:
 	ret
