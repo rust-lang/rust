@@ -50,10 +50,20 @@
 
 #if defined(__linux__) || defined(__APPLE__)
 MORESTACK:
-
-	# Set up a normal backtrace
+#if defined(__ELF__)
+	.cfi_startproc
+#endif
+	
+	// Set up a normal backtrace
+#if defined(__ELF__)
 	pushq %rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbp, -16
+#endif
 	movq %rsp, %rbp
+#if defined(__ELF__)
+	.cfi_def_cfa_register %rbp
+#endif
 
 	// FIXME: libgcc also saves rax. not sure if we need to
 
@@ -77,7 +87,12 @@ MORESTACK:
 
 	movq UPCALL_NEW_STACK@GOTPCREL(%rip), %rsi
 	movq %rsp, %rdi
+#ifdef __APPLE__
 	call UPCALL_CALL_C@GOTPCREL
+#endif
+#ifdef __linux__
+	call UPCALL_CALL_C@PLT
+#endif
 
 	// Pop the new_stack_args struct
 	addq $24, %rsp
@@ -104,12 +119,21 @@ MORESTACK:
 	
 	movq UPCALL_DEL_STACK@GOTPCREL(%rip), %rsi
 	movq $0, %rdi
+#ifdef __APPLE__
 	call UPCALL_CALL_C@GOTPCREL
+#endif
+#ifdef __linux__
+	call UPCALL_CALL_C@PLT
+#endif
 
 	addq $8, %rsp
 	popq %rbp
 	ret
 	
+#if defined(__ELF__)
+	.cfi_endproc
+#endif
+
 #else
 MORESTACK:
 	ret
