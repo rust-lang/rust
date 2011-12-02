@@ -25,6 +25,9 @@ type buf_reader =
         fn eof() -> bool;
         fn seek(int, seek_style);
         fn tell() -> uint;
+        // Needed on readers in case one needs to flush metadata
+        // changes (atime)
+        fn fsync(level: fsync::level) -> int;
     };
 
 
@@ -58,7 +61,9 @@ fn convert_whence(whence: seek_style) -> i32 {
     };
 }
 
-resource FILE_res(f: os::libc::FILE) { os::libc::fclose(f); }
+resource FILE_res(f: os::libc::FILE) {
+    os::libc::fclose(f);
+}
 
 obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn read(len: uint) -> [u8] unsafe {
@@ -76,6 +81,9 @@ obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
         assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0i32);
     }
     fn tell() -> uint { ret os::libc::ftell(f) as uint; }
+    fn fsync(level: fsync::level) -> int {
+        ret os::fsync_fd(os::libc::fileno(f), level) as int;
+    }
 }
 
 
@@ -219,6 +227,7 @@ obj byte_buf_reader(bbuf: byte_buf) {
         bbuf.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { ret bbuf.pos; }
+    fn fsync(_level: fsync::level) -> int { ret 0; }
 }
 
 fn new_byte_buf_reader(buf: [u8]) -> buf_reader {
@@ -242,6 +251,8 @@ type buf_writer =
         fn write([u8]);
         fn seek(int, seek_style);
         fn tell() -> uint;
+        fn flush() -> int;
+        fn fsync(level: fsync::level) -> int;
     };
 
 obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
@@ -255,6 +266,10 @@ obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
         assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0i32);
     }
     fn tell() -> uint { ret os::libc::ftell(f) as uint; }
+    fn flush() -> int { ret os::libc::fflush(f) as int; }
+    fn fsync(level: fsync::level) -> int {
+        ret os::fsync_fd(os::libc::fileno(f), level) as int;
+    }
 }
 
 resource fd_res(fd: fd_t) { os::libc::close(fd); }
@@ -282,6 +297,12 @@ obj fd_buf_writer(fd: fd_t, res: option::t<@fd_res>) {
     fn tell() -> uint {
         log_err "need 64-bit native calls for tell, sorry";
         fail;
+    }
+
+    fn flush() -> int { ret 0; }
+
+    fn fsync(level: fsync::level) -> int {
+        ret os::fsync_fd(fd, level) as int;
     }
 }
 
@@ -433,6 +454,8 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
         buf.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { ret buf.pos; }
+    fn flush() -> int { ret 0; }
+    fn fsync(_level: fsync::level) -> int { ret 0; }
 }
 
 fn string_writer() -> str_writer {
@@ -477,6 +500,75 @@ fn read_whole_file(file: str) -> result::t<[u8], str> {
     })
 }
 
+// fsync related
+
+mod fsync {
+
+    tag level {
+        // whatever fsync does on that platform
+        fsync;
+
+        // fdatasync on linux, similiar or more on other platforms
+        fdatasync;
+
+        // full fsync
+        //
+        // You must additionally sync the parent directory as well!
+        fullfsync;
+    }
+
+
+    // Resource of artifacts that need to fsync on destruction
+    resource res<t>(arg: arg<t>) {
+        alt arg.opt_level {
+          option::none::<level>. { }
+          option::some::<level>(level) {
+            // fail hard if not succesful
+            assert(arg.fsync_fn(arg.val, level) != -1);
+          }
+        }
+    }
+
+    type arg<t> = {
+        val: t,
+        opt_level: option::t<level>,
+        fsync_fn: fn(t, level) -> int
+    };
+
+    // fsync file after executing blk
+    // FIXME find better way to create resources within lifetime of outer res
+    fn FILE_res_sync(&&file: FILE_res, opt_level: option::t<level>,
+                  blk: block(&&res<os::libc::FILE>)) {
+        blk(res({
+            val: *file, opt_level: opt_level,
+            fsync_fn: fn(&&file: os::libc::FILE, l: level) -> int {
+                ret os::fsync_fd(os::libc::fileno(file), l) as int;
+            }
+        }));
+    }
+
+    // fsync fd after executing blk
+    fn fd_res_sync(&&fd: fd_res, opt_level: option::t<level>,
+                   blk: block(&&res<fd_t>)) {
+        blk(res({
+            val: *fd, opt_level: opt_level,
+            fsync_fn: fn(&&fd: fd_t, l: level) -> int {
+                ret os::fsync_fd(fd, l) as int;
+            }
+        }));
+    }
+
+    // Type of objects that may want to fsync
+    type t = obj { fn fsync(l: level) -> int; };
+
+    // Call o.fsync after executing blk
+    fn obj_sync(&&o: t, opt_level: option::t<level>, blk: block(&&res<t>)) {
+        blk(res({
+            val: o, opt_level: opt_level,
+            fsync_fn: fn(&&o: t, l: level) -> int { ret o.fsync(l); }
+        }));
+    }
+}
 
 
 //
