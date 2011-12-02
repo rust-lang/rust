@@ -25,6 +25,7 @@ fn check_item(tcx: ty::ctxt, it: @item, &&s: (), v: visit::vt<()>) {
 fn check_const_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     alt ex.node {
+      expr_cast(_, _) { }
       expr_lit(_) { }
       expr_binary(_, _, _) { /* subexps covered by visit */ }
       expr_unary(u, _) {

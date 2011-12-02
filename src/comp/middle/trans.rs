@@ -4086,7 +4086,12 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         if !ty::expr_is_lval(tcx, a) { ret trans_expr(bcx, a, dest); }
         else { ret lval_to_dps(bcx, a, dest); }
       }
-      ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
+      ast::expr_cast(val, _) {
+        alt tcx.cast_map.find(e.id) {
+          some(ty::triv_cast.) { ret trans_expr(bcx, val, dest); }
+          _ { ret trans_cast(bcx, val, e.id, dest); }
+        }
+      }
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(bcx, e.span, anon_obj, e.id, dest);
       }
@@ -4115,7 +4120,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         // that is_call_expr(ex) -- but we don't support that
         // yet
         // FIXME
-        check (ast_util::is_call_expr(ex));
+        check (ast_util::is_tail_call_expr(ex));
         ret trans_be(bcx, ex);
       }
       ast::expr_fail(expr) {
@@ -4448,7 +4453,8 @@ fn trans_ret(bcx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
 fn build_return(bcx: @block_ctxt) { Br(bcx, bcx_fcx(bcx).llreturn); }
 
 // fn trans_be(cx: &@block_ctxt, e: &@ast::expr) -> result {
-fn trans_be(cx: @block_ctxt, e: @ast::expr) : ast_util::is_call_expr(e) ->
+fn trans_be(cx: @block_ctxt, e: @ast::expr) :
+ast_util::is_tail_call_expr(e) ->
    @block_ctxt {
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled
@@ -5178,6 +5184,16 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
 // that does so later on?
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     alt e.node {
+      ast::expr_cast(e1, _) {
+        alt ccx_tcx(cx).cast_map.find(e.id) {
+          some(ty::triv_cast.) { trans_const_expr(cx, e1) }
+          _ {
+              cx.sess.span_err(e.span,
+                               "non-trivial cast in constant expression");
+              fail;
+            }
+        }
+      }
       ast::expr_lit(lit) { ret trans_crate_lit(cx, *lit); }
       ast::expr_binary(b, e1, e2) {
         let te1 = trans_const_expr(cx, e1);

@@ -2954,9 +2954,8 @@ analogous to a @code{become} expression in Newsqueak or Alef.}  destroys the
 current function activation frame and replaces it with an activation frame for
 the called function. In other words, @code{be} executes a tail-call. The
 syntactic form of a @code{be} expression is therefore limited to @emph{tail
-position}: its argument must be a @emph{call expression}, and it must be the
-last expression in a block.
-
+position}: its argument must be a @emph{call expression} or a @{trivial cast}
+of a @emph{call expression}, and it must be the last expression in a block.
 An example of a @code{be} expression:
 @example
 fn print_loop(n: int) @{
@@ -2971,6 +2970,7 @@ fn print_loop(n: int) @{
 
 The above example executes in constant space, replacing each frame with a new
 copy of itself.
+
 @end ignore
 
 
@@ -3001,6 +3001,7 @@ execution and destroying the iterator frame.
 @cindex As expression
 @cindex Cast
 @cindex Typecast
+@cindex Trivial cast
 
 Executing an @code{as} expression casts the value on the left-hand side to the
 type on the right-hand side.
@@ -3018,6 +3019,10 @@ fn avg(v: [float]) -> float @{
 @}
 @end example
 
+A cast is a @emph{trivial cast} iff the type of the casted expression and the
+target type are identical after replacing all occurences of @code{int},
+@code{uint}, @code{float} with their machine type equivalents of the
+target architecture in both types.
 
 @node       Ref.Expr.Fail
 @subsection Ref.Expr.Fail
