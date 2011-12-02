@@ -27,10 +27,8 @@ export ext_map;
 // locates all names (in expressions, types, and alt patterns) and resolves
 // them, storing the resulting def in the AST nodes.
 
-// This module internally uses -1 as a def_id for the top_level module in a
-// crate. The parser doesn't assign a def_id to this module.
-// (FIXME See https://github.com/graydon/rust/issues/358 for the reason this
-//  isn't a const.)
+const crate_mod: int = -1;
+
 tag scope {
     scope_crate;
     scope_item(@ast::item);
@@ -158,7 +156,7 @@ fn map_crate(e: @env, c: @ast::crate) {
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v_map_mod));
 
     // Register the top-level mod
-    e.mod_map.insert(-1,
+    e.mod_map.insert(crate_mod,
                      @{m: some(c.node.module),
                        index: index_mod(c.node.module),
                        mutable glob_imports: [],
@@ -228,7 +226,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                     e.block_map.insert(b.node.id, globs);
                   }
                   scope_crate. {
-                    e.mod_map.get(-1).glob_imports += [glob];
+                    e.mod_map.get(crate_mod).glob_imports += [glob];
                   }
                 }
             }
@@ -636,7 +634,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
        option::t<def> {
         alt s {
           scope_crate. {
-            ret lookup_in_local_mod(e, -1, sp, name, ns, inside);
+            ret lookup_in_local_mod(e, crate_mod, sp, name, ns, inside);
           }
           scope_item(it) {
             alt it.node {
@@ -932,11 +930,10 @@ fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
     let defid = ast_util::def_id_of_def(m);
     if defid.crate != ast::local_crate {
         // examining a module in an external crate
-
         let cached = e.ext_cache.find({did: defid, ident: name, ns: ns});
         if !is_none(cached) { ret cached; }
         let path = [name];
-        if defid.node != -1 { path = e.ext_map.get(defid) + path; }
+        if defid.node != crate_mod { path = e.ext_map.get(defid) + path; }
         let fnd = lookup_external(e, defid.crate, path, ns);
         if !is_none(fnd) {
             e.ext_cache.insert({did: defid, ident: name, ns: ns},
@@ -958,7 +955,7 @@ fn found_view_item(e: env, vi: @ast::view_item) -> option::t<def> {
     alt vi.node {
       ast::view_item_use(_, _, id) {
         let cnum = cstore::get_use_stmt_cnum(e.cstore, id);
-        ret some(ast::def_mod({crate: cnum, node: -1}));
+        ret some(ast::def_mod({crate: cnum, node: crate_mod}));
       }
     }
 }
