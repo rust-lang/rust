@@ -14,7 +14,10 @@ fn iloop(&&_i: ()) {
     let p = comm::port::<()>();
     let c = comm::chan(p);
     while true {
+        // Sending and receiving here because these actions yield,
+        // at which point our child can kill us
         comm::send(c, ());
+        comm::recv(p);
     }
 }
 
