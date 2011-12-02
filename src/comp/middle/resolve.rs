@@ -83,12 +83,13 @@ type mod_index = hashmap<ident, list<mod_index_entry>>;
 // A tuple of an imported def and the import stmt that brung it
 type glob_imp_def = {def: def, item: @ast::view_item};
 
-type indexed_mod =
-    {m: option::t<ast::_mod>,
-     index: mod_index,
-     mutable glob_imports: [glob_imp_def],
-     glob_imported_names: hashmap<str, import_state>};
-
+type indexed_mod = {
+    m: option::t<ast::_mod>,
+    index: mod_index,
+    mutable glob_imports: [glob_imp_def],
+    glob_imported_names: hashmap<str, import_state>,
+    path: str
+};
 
 /* native modules can't contain tags, and we don't store their ASTs because we
    only need to look at them to determine exports, which they can't control.*/
@@ -160,7 +161,8 @@ fn map_crate(e: @env, c: @ast::crate) {
                      @{m: some(c.node.module),
                        index: index_mod(c.node.module),
                        mutable glob_imports: [],
-                       glob_imported_names: new_str_hash::<import_state>()});
+                       glob_imported_names: new_str_hash::<import_state>(),
+                       path: ""});
     fn index_vi(e: @env, i: @ast::view_item, sc: scopes, _v: vt<scopes>) {
         alt i.node {
           ast::view_item_import(name, ids, id) {
@@ -177,6 +179,16 @@ fn map_crate(e: @env, c: @ast::crate) {
           _ { }
         }
     }
+    fn path_from_scope(sc: scopes, n: str) -> str {
+        let path = n + "::";
+        list::iter(sc) {|s|
+            alt s {
+              scope_item(i) { path = i.ident + "::" + path; }
+              _ {}
+            }
+        }
+        path
+    }
     fn index_i(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
         visit_item_with_scope(i, sc, v);
         alt i.node {
@@ -186,7 +198,8 @@ fn map_crate(e: @env, c: @ast::crate) {
                              @{m: some(md),
                                index: index_mod(md),
                                mutable glob_imports: [],
-                               glob_imported_names: s});
+                               glob_imported_names: s,
+                               path: path_from_scope(sc, i.ident)});
           }
           ast::item_native_mod(nmd) {
             let s = new_str_hash::<import_state>();
@@ -194,7 +207,8 @@ fn map_crate(e: @env, c: @ast::crate) {
                              @{m: none::<ast::_mod>,
                                index: index_nmod(nmd),
                                mutable glob_imports: [],
-                               glob_imported_names: s});
+                               glob_imported_names: s,
+                               path: path_from_scope(sc, i.ident)});
           }
           _ { }
         }
@@ -416,7 +430,7 @@ fn follow_import(e: env, sc: scopes, path: [ident], sp: span) ->
     while true && option::is_some(dcur) {
         if i == path_len { break; }
         dcur =
-            lookup_in_mod_strict(e, sc, option::get(dcur), sp, path[i],
+            lookup_in_mod_strict(e, option::get(dcur), sp, path[i],
                                  ns_module, outside);
         i += 1u;
     }
@@ -452,12 +466,12 @@ fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
 // Import resolution
 fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                   ids: [ast::ident], sp: codemap::span, sc: scopes) {
-    fn register(e: env, id: node_id, sc: scopes, sp: codemap::span,
+    fn register(e: env, id: node_id, cx: ctxt, sp: codemap::span,
                 name: ast::ident, lookup: block(namespace) -> option::t<def>){
         let val = lookup(ns_value), typ = lookup(ns_type),
             md = lookup(ns_module);
         if is_none(val) && is_none(typ) && is_none(md) {
-            unresolved_err(e, sc, sp, name, "import");
+            unresolved_err(e, cx, sp, name, "import");
         } else {
             e.imports.insert(id, resolved(val, typ, md, name, sp));
         }
@@ -507,16 +521,18 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
     let n_idents = vec::len(ids);
     let end_id = ids[n_idents - 1u];
     if n_idents == 1u {
-        register(e, defid.node, sc, sp, name,
+        register(e, defid.node, in_scope(sc), sp, name,
                  {|ns| lookup_in_scope(e, sc, sp, end_id, ns) });
     } else {
         alt lookup_in_scope(e, sc, sp, ids[0], ns_module) {
-          none. { unresolved_err(e, sc, sp, ids[0], ns_name(ns_module)); }
+          none. {
+            unresolved_err(e, in_scope(sc), sp, ids[0], ns_name(ns_module));
+          }
           some(dcur_) {
             let dcur = dcur_, i = 1u;
             while true {
                 if i == n_idents - 1u {
-                    register(e, defid.node, sc, sp, name, {|ns|
+                    register(e, defid.node, in_mod(dcur), sp, name, {|ns|
                         lookup_in_mod(e, dcur, sp, end_id, ns, outside)
                     });
                     break;
@@ -525,7 +541,8 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                                              outside) {
                       some(dcur) { dcur }
                       none. {
-                        unresolved_err(e, sc, sp, ids[i], ns_name(ns_module));
+                        unresolved_err(e, in_mod(dcur), sp, ids[i],
+                                       ns_name(ns_module));
                         break;
                       }
                     };
@@ -557,7 +574,9 @@ fn ns_name(ns: namespace) -> str {
     }
 }
 
-fn unresolved_err(e: env, sc: scopes, sp: span, name: ident, kind: str) {
+tag ctxt { in_mod(def); in_scope(scopes); }
+
+fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
     fn find_fn_or_mod_scope(sc: scopes) -> option::t<scope> {
         let sc = sc;
         while true {
@@ -576,16 +595,24 @@ fn unresolved_err(e: env, sc: scopes, sp: span, name: ident, kind: str) {
         }
         fail;
     }
-    alt find_fn_or_mod_scope(sc) {
-      some(err_scope) {
-        for rs: {ident: str, sc: scope} in e.reported {
-            if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
+    let path = name;
+    alt cx {
+      in_scope(sc) {
+        alt find_fn_or_mod_scope(sc) {
+          some(err_scope) {
+            for rs: {ident: str, sc: scope} in e.reported {
+                if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
+            }
+            e.reported += [{ident: name, sc: err_scope}];
+          }
+          _ {}
         }
-        e.reported += [{ident: name, sc: err_scope}];
       }
-      _ {}
+      in_mod(def) {
+        path = e.mod_map.get(ast_util::def_id_of_def(def).node).path + path;
+      }
     }
-    e.sess.span_err(sp, mk_unresolved_msg(name, kind));
+    e.sess.span_err(sp, mk_unresolved_msg(path, kind));
 }
 
 fn unresolved_fatal(e: env, sp: span, id: ident, kind: str) -> ! {
@@ -614,7 +641,7 @@ fn lookup_path_strict(e: env, sc: scopes, sp: span, pth: ast::path_,
     while i < n_idents && option::is_some(dcur) {
         let curns = if n_idents == i + 1u { ns } else { ns_module };
         dcur =
-            lookup_in_mod_strict(e, sc, option::get(dcur), sp, pth.idents[i],
+            lookup_in_mod_strict(e, option::get(dcur), sp, pth.idents[i],
                                  curns, outside);
         i += 1u;
     }
@@ -624,7 +651,10 @@ fn lookup_path_strict(e: env, sc: scopes, sp: span, pth: ast::path_,
 fn lookup_in_scope_strict(e: env, sc: scopes, sp: span, name: ident,
                           ns: namespace) -> option::t<def> {
     alt lookup_in_scope(e, sc, sp, name, ns) {
-      none. { unresolved_err(e, sc, sp, name, ns_name(ns)); ret none; }
+      none. {
+        unresolved_err(e, in_scope(sc), sp, name, ns_name(ns));
+        ret none;
+      }
       some(d) { ret some(d); }
     }
 }
@@ -954,10 +984,13 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
     ret none::<def>;
 }
 
-fn lookup_in_mod_strict(e: env, sc: scopes, m: def, sp: span, name: ident,
+fn lookup_in_mod_strict(e: env, m: def, sp: span, name: ident,
                         ns: namespace, dr: dir) -> option::t<def> {
     alt lookup_in_mod(e, m, sp, name, ns, dr) {
-      none. { unresolved_err(e, sc, sp, name, ns_name(ns)); ret none; }
+      none. {
+        unresolved_err(e, in_mod(m), sp, name, ns_name(ns));
+        ret none;
+      }
       some(d) { ret some(d); }
     }
 }
