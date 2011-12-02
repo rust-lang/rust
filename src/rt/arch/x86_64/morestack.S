@@ -55,8 +55,8 @@ MORESTACK:
 #endif
 	
 	// Set up a normal backtrace
-#if defined(__ELF__)
 	pushq %rbp
+#if defined(__ELF__)
 	.cfi_def_cfa_offset 16
 	.cfi_offset %rbp, -16
 #endif
