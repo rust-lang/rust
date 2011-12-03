@@ -427,32 +427,48 @@ endef
 $(foreach target,$(CFG_TARGET_TRIPLES),			\
  $(eval $(call DEF_CHECK_FAST_FOR_H,$(target))))
 
-define DEF_CHECK_FOR_STAGE
+define DEF_CHECK_ALL_FOR_STAGE
 
-check-stage$(1): \
+check-stage$(1)-H-all: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target))
-check-stage$(1)-perf: \
+check-stage$(1)-H-all-perf: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-perf)
-check-stage$(1)-rustc: \
+check-stage$(1)-H-all-rustc: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rustc)
-check-stage$(1)-std: \
+check-stage$(1)-H-all-std: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-std)
-check-stage$(1)-rpass: \
+check-stage$(1)-H-all-rpass: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rpass)
-check-stage$(1)-rfail: \
+check-stage$(1)-H-all-rfail: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rfail)
-check-stage$(1)-cfail: \
+check-stage$(1)-H-all-cfail: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-cfail)
-check-stage$(1)-bench: \
+check-stage$(1)-H-all-bench: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-bench)
+
+endef
+
+$(foreach stage,$(STAGES),						\
+ $(eval $(call DEF_CHECK_FOR_STAGE,$(stage))))
+
+define DEF_CHECK_FOR_STAGE
+
+check-stage$(1): check-stage$(1)-H-$$(CFG_HOST_TRIPLE)
+check-stage$(1)-perf: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-perf
+check-stage$(1)-rustc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustc
+check-stage$(1)-std: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-std
+check-stage$(1)-rpass: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rpass
+check-stage$(1)-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rfail
+check-stage$(1)-cfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-cfail
+check-stage$(1)-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-bench
 
 endef
 
