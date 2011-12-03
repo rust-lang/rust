@@ -1,4 +1,4 @@
-import std::{vec, str, option, unsafe, fs};
+import std::{vec, str, option, unsafe, fs, sys};
 import std::map::hashmap;
 import lib::llvm::llvm;
 import lib::llvm::llvm::ValueRef;
@@ -221,24 +221,27 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
       option::some(md) { ret md; }
       option::none. {}
     }
-    let (name, size, encoding) = alt ty.node {
-      ast::ty_bool. { ("bool", 1, DW_ATE_boolean) }
-      ast::ty_int. { ("int", 32, DW_ATE_signed) } //XXX machine-dependent?
-      ast::ty_uint. { ("uint", 32, DW_ATE_unsigned) } //XXX machine-dependent?
-      ast::ty_float. { ("float", 32, DW_ATE_float) } //XXX machine-dependent?
+    fn size_and_align_of<T>() -> (int, int) {
+        (sys::size_of::<T>() as int, sys::align_of::<T>() as int)
+    }
+    let (name, (size, align), encoding) = alt ty.node {
+      ast::ty_bool. {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
+      ast::ty_int. {("int", size_and_align_of::<int>(), DW_ATE_signed)}
+      ast::ty_uint. {("uint", size_and_align_of::<uint>(), DW_ATE_unsigned)}
+      ast::ty_float. {("float", size_and_align_of::<float>(), DW_ATE_float)}
       ast::ty_machine(m) { alt m {
-        ast::ty_i8. { ("i8", 1, DW_ATE_signed_char) }
-        ast::ty_i16. { ("i16", 16, DW_ATE_signed) }
-        ast::ty_i32. { ("i32", 32, DW_ATE_signed) }
-        ast::ty_i64. { ("i64", 64, DW_ATE_signed) }
-        ast::ty_u8. { ("u8", 8, DW_ATE_unsigned_char) }
-        ast::ty_u16. { ("u16", 16, DW_ATE_unsigned) }
-        ast::ty_u32. { ("u32", 32, DW_ATE_unsigned) }
-        ast::ty_u64. { ("u64", 64, DW_ATE_unsigned) }
-        ast::ty_f32. { ("f32", 32, DW_ATE_float) }
-        ast::ty_f64. { ("f64", 64, DW_ATE_float) }
+        ast::ty_i8. {("i8", size_and_align_of::<i8>(), DW_ATE_signed_char)}
+        ast::ty_i16. {("i16", size_and_align_of::<i16>(), DW_ATE_signed)}
+        ast::ty_i32. {("i32", size_and_align_of::<i32>(), DW_ATE_signed)}
+        ast::ty_i64. {("i64", size_and_align_of::<i64>(), DW_ATE_signed)}
+        ast::ty_u8. {("u8", size_and_align_of::<u8>(), DW_ATE_unsigned_char)}
+        ast::ty_u16. {("u16", size_and_align_of::<u16>(), DW_ATE_unsigned)}
+        ast::ty_u32. {("u32", size_and_align_of::<u32>(), DW_ATE_unsigned)}
+        ast::ty_u64. {("u64", size_and_align_of::<u64>(), DW_ATE_unsigned)}
+        ast::ty_f32. {("f32", size_and_align_of::<f32>(), DW_ATE_float)}
+        ast::ty_f64. {("f64", size_and_align_of::<f64>(), DW_ATE_float)}
       } }
-      ast::ty_char. { ("char", 32, DW_ATE_unsigned) }
+      ast::ty_char. {("char", size_and_align_of::<char>(), DW_ATE_unsigned)}
     };
     let fname = filename_from_span(cx, ty.span);
     let file_node = get_file_metadata(cx, fname);
@@ -247,9 +250,9 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
                   cu_node.node,
                   llstr(name),
                   file_node.node,
-                  lli32(0), //XXX basic types only
-                  lli64(size),
-                  lli64(32), //XXX alignment?
+                  lli32(0), //XXX source line
+                  lli64(size * 8),  // size in bits
+                  lli64(align * 8), // alignment in bits
                   lli64(0), //XXX offset?
                   lli32(0), //XXX flags?
                   lli32(encoding)];
