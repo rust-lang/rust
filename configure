@@ -220,7 +220,7 @@ case $CFG_CPUTYPE in
         err "unknown CPU type: $CFG_CPUTYPE"
 esac
 
-CFG_HOST_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
+DEFAULT_HOST_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SELF=$(echo $0 | tr '\\' '/')
 CFG_SRC_DIR=${CFG_SELF%${CFG_SELF##*/}}
@@ -256,6 +256,7 @@ opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt clang 0 "prefer gcc to clang for building the runtime"
 valopt prefix "/usr/local" "set installation prefix"
 valopt llvm-root "" "set LLVM root"
+valopt host-triple "$DEFAULT_HOST_TRIPLE" "primary LLVM host triple"
 valopt target-triples "" "LLVM target triples (defaults to host if unset)"
 
 if [ $HELP -eq 1 ]
@@ -341,6 +342,15 @@ else
     CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
 fi
 
+case $CFG_TARGET_TRIPLES in
+    (*$CFG_HOST_TRIPLE*) ;;
+    (*) err "Host triple is not among the target triples." ;;
+esac
+
+if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
+then
+    err "either clang or gcc is required"
+fi
 
 step_msg "making directories"
 
