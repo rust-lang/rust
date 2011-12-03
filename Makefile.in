@@ -325,6 +325,25 @@ $(foreach build,$(CFG_TARGET_TRIPLES), \
    $(eval $(call SREQ,$(stage),$(target),$(build))))))))
 
 ######################################################################
+# rustc-H-targets
+#
+# Builds a functional Rustc for the given host.
+######################################################################
+
+define DEF_RUSTC_TARGET
+# $(1) == architecture
+
+rustc-H-$(1):									\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+		$$(SREQ3_T_$$(target)_H_$(1)))
+endef
+
+$(foreach host,$(CFG_TARGET_TRIPLES),			\
+ $(eval $(call DEF_RUSTC_TARGET,$(host))))
+
+all-rustcs: $(foreach host,$(CFG_TARGET_TRIPLES),rustc-H-$(host))
+
+######################################################################
 # Entrypoint rule
 ######################################################################
 
@@ -345,8 +364,7 @@ TSREQS :=											\
 FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
 
-#all: $(SREQ3$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS) $(FUZZ)
-all: $(TSREQS) $(GENERATED) $(DOCS) $(FUZZ) $(CARGO)
+all: rustc-H-$(CFG_HOST_TRIPLE) $(GENERATED) $(DOCS) $(FUZZ) $(CARGO)
 
 endif
 
