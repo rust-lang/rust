@@ -341,7 +341,7 @@ endef
 $(foreach host,$(CFG_TARGET_TRIPLES),			\
  $(eval $(call DEF_RUSTC_TARGET,$(host))))
 
-all-rustcs: $(foreach host,$(CFG_TARGET_TRIPLES),rustc-H-$(host))
+rustc-H-all: $(foreach host,$(CFG_TARGET_TRIPLES),rustc-H-$(host))
 
 ######################################################################
 # Entrypoint rule
