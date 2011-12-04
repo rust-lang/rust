@@ -457,7 +457,7 @@ check-stage$(1)-H-all-bench: \
 endef
 
 $(foreach stage,$(STAGES),						\
- $(eval $(call DEF_CHECK_FOR_STAGE,$(stage))))
+ $(eval $(call DEF_CHECK_ALL_FOR_STAGE,$(stage))))
 
 define DEF_CHECK_FOR_STAGE
 
