@@ -2844,8 +2844,11 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
                                   "do-while loop body");
     let body_end = trans_block(body_cx, body);
-    let cond_res = trans_temp_expr(body_end, cond);
-    CondBr(cond_res.bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
+    let cond_cx = new_scope_block_ctxt(body_cx, "do-while cond");
+    Br(body_end, cond_cx.llbb);
+    let cond_res = trans_temp_expr(cond_cx, cond);
+    let cond_bcx = trans_block_cleanups(cond_res.bcx, cond_cx);
+    CondBr(cond_bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
     Br(cx, body_cx.llbb);
     ret next_cx;
 }
