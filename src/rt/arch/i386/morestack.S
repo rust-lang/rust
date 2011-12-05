@@ -46,9 +46,25 @@
 
 #if defined(__linux__) || defined(__APPLE__)
 MORESTACK:
+#ifdef __linux__
+	.cfi_startproc
+
+	// Some magic that explains to the unwinder the unusal nature
+	// of this stack frame. Copied verbatim from libgcc, which
+	// has comments explaining it.
+	.cfi_offset 8, 8
+	.cfi_escape 0x15, 4, 0x7d
+#endif
 
 	pushl %ebp
+#ifdef __linux__
+	.cfi_def_cfa_offset 8
+	.cfi_offset %ebp, -8
+#endif
 	movl %esp, %ebp
+#ifdef __linux__
+	.cfi_def_cfa_register %ebp
+#endif
 	
 	// FIXME (1226): main is compiled with the split-stack prologue,
 	// causing it to call __morestack, so we have to jump back out
@@ -105,7 +121,12 @@ MORESTACK:
 	call UPCALL_CALL_C
 
 	addl $16,%esp
+
 	popl %ebp
+#ifdef __linux__
+	.cfi_restore %ebp
+	.cfi_def_cfa %esp, 4
+#endif
 	retl $8
 
 .L$bail:
@@ -118,6 +139,9 @@ MORESTACK:
 	
 	jmpl *%edx
 
+#ifdef __linux__
+	.cfi_endproc
+#endif
 
 #else
 MORESTACK:
