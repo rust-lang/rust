@@ -25,11 +25,6 @@
 #endif
 #endif
 
-// FIXME: Future LLVM patches remove these 8 alignment bytes from
-// the function prologue in order to match gcc's behavior
-#define ALIGNMENT 8
-#define RETURN_OFFSET   7
-
 .globl UPCALL_NEW_STACK
 .globl UPCALL_DEL_STACK
 .globl RUST_GET_TASK
@@ -57,17 +52,17 @@ MORESTACK:
 	
 	// FIXME (1226): main is compiled with the split-stack prologue,
 	// causing it to call __morestack, so we have to jump back out
-	subl $20,%esp
+	subl $28,%esp
 	calll RUST_GET_TASK
 	testl %eax,%eax
 	jz .L$bail
 
 	// The arguments to rust_new_stack2
-	movl 32(%esp),%eax  // Size of stack arguments
+	movl 40(%esp),%eax  // Size of stack arguments
 	movl %eax,16(%esp)
-	leal 40+ALIGNMENT(%esp),%eax // Address of stack arguments
+	leal 48(%esp),%eax // Address of stack arguments
 	movl %eax,12(%esp)
-	movl 28(%esp),%eax // The amount of stack needed
+	movl 36(%esp),%eax // The amount of stack needed
 	movl %eax,8(%esp)
 
 #ifdef __APPLE__
@@ -83,8 +78,8 @@ MORESTACK:
 	movl %eax,(%esp)
 	call UPCALL_CALL_C
 
-	movl 24(%esp),%edx          // Grab the return pointer.
-	addl $RETURN_OFFSET,%edx    // Skip past the `add esp,4` and the `ret`.
+	movl 32(%esp),%edx          // Grab the return pointer.
+	inc  %edx    // Skip past the ret instruction in the parent fn
 
 	movl %eax,%esp          // Switch stacks.
 	call *%edx             // Re-enter the function that called us.
@@ -94,6 +89,8 @@ MORESTACK:
 
 	// Switch back to the rust stack
 	movl %ebp, %esp
+
+	subl $8, %esp // Alignment
 
 #ifdef __APPLE__
 	call 1f
@@ -107,17 +104,17 @@ MORESTACK:
 	pushl $0
 	call UPCALL_CALL_C
 
-	addl $8,%esp
+	addl $16,%esp
 	popl %ebp
 	retl $8
 
 .L$bail:
-	movl 24(%esp),%edx
-	addl $RETURN_OFFSET,%edx
+	movl 32(%esp),%edx
+	inc %edx
 	
-	addl $20, %esp
+	addl $28, %esp
 	popl %ebp
-	addl $4+8+ALIGNMENT,%esp
+	addl $4+8,%esp
 	
 	jmpl *%edx
 

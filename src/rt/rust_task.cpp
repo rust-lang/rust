@@ -598,10 +598,17 @@ rust_task::del_stack() {
 
 void
 rust_task::record_stack_limit() {
-    // FIXME: Future LLVM patches expect us to add an additional 256 bytes
-    // here so that, if the frame size is < 256 it can generate the
-    // comparison against esp directly, instead of some offset from esp
-    record_sp(stk->data + RED_ZONE_SIZE);
+    // The function prolog compares the amount of stack needed to the end of
+    // the stack. As an optimization, when the frame size is less than 256
+    // bytes, it will simply compare %esp to to the stack limit instead of
+    // subtracting the frame size. As a result we need our stack limit to
+    // account for those 256 bytes.
+    const unsigned LIMIT_OFFSET = 256;
+    A(sched,
+      (uintptr_t)stk->limit - RED_ZONE_SIZE
+      - (uintptr_t)stk->data >= LIMIT_OFFSET,
+      "Stack size must be greater than LIMIT_OFFSET");
+    record_sp(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
 //
 // Local Variables:
