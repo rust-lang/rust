@@ -2116,6 +2116,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
         let t_e = expr_ty(tcx, e);
 
+        if ty::type_is_nil(tcx, t_e) {
+            tcx.sess.span_err(expr.span,
+                              "cast from nil: " +
+                                  ty_to_str(tcx, expr_ty(tcx, e)) + " as " +
+                                  ty_to_str(tcx, t_1));
+        }
+
+        if ty::type_is_nil(tcx, t_1) {
+            tcx.sess.span_err(expr.span,
+                              "cast to nil: " +
+                                  ty_to_str(tcx, expr_ty(tcx, e)) + " as " +
+                                  ty_to_str(tcx, t_1));
+        }
+
         // FIXME there are more forms of cast to support, eventually.
         if !(   type_is_scalar(fcx, expr.span, t_e)
              && type_is_scalar(fcx, expr.span, t_1)) {
