@@ -6066,7 +6066,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     // for ELF backends. Value of the "filename" is set as the
     // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
     // crashes if the module identifer is same as other symbols
-    // such as a function name in the module. 
+    // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.name + ".rc";
 
