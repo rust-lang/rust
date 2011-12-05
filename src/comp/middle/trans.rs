@@ -6059,7 +6059,18 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     -> ModuleRef {
     let sha = std::sha1::mk_sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
-    let llmod = str::as_buf(link_meta.name, {|buf|
+
+    // Append ".rc" to crate name as LLVM module identifier.
+    //
+    // LLVM code generator emits a ".file filename" directive
+    // for ELF backends. Value of the "filename" is set as the
+    // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
+    // crashes if the module identifer is same as other symbols
+    // such as a function name in the module. 
+    // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
+    let llmod_id = link_meta.name + ".rc";
+
+    let llmod = str::as_buf(llmod_id, {|buf|
         llvm::LLVMModuleCreateWithNameInContext
             (buf, llvm::LLVMGetGlobalContext())
     });
