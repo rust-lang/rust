@@ -273,6 +273,12 @@ debug_ptrcast(type_desc *from_ty,
     return ptr;
 }
 
+extern "C" CDECL void *
+debug_get_stk_seg() {
+    rust_task *task = rust_scheduler::get_task();
+    return task->stk;
+}
+
 extern "C" CDECL rust_vec*
 rust_list_files(rust_str *path) {
     rust_task *task = rust_scheduler::get_task();
