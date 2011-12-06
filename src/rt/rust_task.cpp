@@ -2,8 +2,8 @@
 #include "rust_internal.h"
 #include "rust_cc.h"
 
-#include "valgrind.h"
-#include "memcheck.h"
+#include "vg/valgrind.h"
+#include "vg/memcheck.h"
 
 #ifndef __WIN32__
 #include <execinfo.h>
