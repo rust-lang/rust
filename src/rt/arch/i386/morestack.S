@@ -75,11 +75,12 @@ MORESTACK:
 
 	// The arguments to rust_new_stack2
 	movl 40(%esp),%eax  // Size of stack arguments
-	movl %eax,16(%esp)
+	movl %eax,20(%esp)
 	leal 48(%esp),%eax // Address of stack arguments
-	movl %eax,12(%esp)
+	movl %eax,16(%esp)
 	movl 36(%esp),%eax // The amount of stack needed
-	movl %eax,8(%esp)
+	movl %eax,12(%esp)
+	movl $0, 8(%esp)   // Out pointer
 
 #ifdef __APPLE__
 	call 1f
@@ -97,7 +98,7 @@ MORESTACK:
 	movl 32(%esp),%edx          // Grab the return pointer.
 	inc  %edx    // Skip past the ret instruction in the parent fn
 
-	movl %eax,%esp          // Switch stacks.
+	movl 8(%esp),%esp          // Switch stacks.
 	call *%edx             // Re-enter the function that called us.
 
 	// Now the function that called us has returned, so we need to delete the
