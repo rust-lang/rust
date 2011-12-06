@@ -7,7 +7,10 @@
 // See the hack in upcall_call_shim_on_c_stack where it messes
 // with the stack limit.
 
+use std;
+
 native mod rustrt {
+    fn set_min_stack(size: uint);
     fn pin_task();
 }
 
@@ -26,10 +29,13 @@ resource and_then_get_big_again(_i: ()) {
             getbig(i - 1);
         }
     }
-    getbig(100000);
+    getbig(10000);
 }
 
 fn main() {
-    let r = and_then_get_big_again(());
-    getbig_call_c_and_fail(100000);
+    rustrt::set_min_stack(256u);
+    std::task::spawn((), fn (&&_i: ()) {
+        let r = and_then_get_big_again(());
+        getbig_call_c_and_fail(10000);
+    });
 }
