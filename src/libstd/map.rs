@@ -137,21 +137,25 @@ fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
     // is always a power of 2), so that all buckets are probed for a
     // fixed key.
 
-    fn hashl(n: uint, _nbkts: uint) -> uint { ret (n >>> 16u) * 2u + 1u; }
-    fn hashr(n: uint, _nbkts: uint) -> uint { ret 0x0000_ffff_u & n; }
-    fn hash(h: uint, nbkts: uint, i: uint) -> uint {
-        ret (hashl(h, nbkts) * i + hashr(h, nbkts)) % nbkts;
+    fn hashl(n: u32) -> u32 { ret (n >>> 16u32) * 2u32 + 1u32; }
+    fn hashr(n: u32) -> u32 { ret 0x0000_ffff_u32 & n; }
+    fn hash(h: u32, nbkts: uint, i: uint) -> uint {
+        ret ((hashl(h) as uint) * i + (hashr(h) as uint)) % nbkts;
     }
+
+    fn to_u64(h: uint) -> u32 {
+        ret (h as u32) ^ ((h >>> 16u) as u32);
+    }
+
     /**
      * We attempt to never call this with a full table.  If we do, it
      * will fail.
      */
-
     fn insert_common<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>,
                                      bkts: [mutable bucket<K, V>],
                                      nbkts: uint, key: K, val: V) -> bool {
         let i: uint = 0u;
-        let h: uint = hasher(key);
+        let h = to_u64(hasher(key));
         while i < nbkts {
             let j: uint = hash(h, nbkts, i);
             alt bkts[j] {
@@ -171,7 +175,7 @@ fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
                                    bkts: [mutable bucket<K, V>],
                                    nbkts: uint, key: K) -> option::t<V> {
         let i: uint = 0u;
-        let h: uint = hasher(key);
+        let h = to_u64(hasher(key));
         while i < nbkts {
             let j: uint = hash(h, nbkts, i);
             alt bkts[j] {
@@ -244,7 +248,7 @@ fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
         }
         fn remove(key: K) -> option::t<V> {
             let i: uint = 0u;
-            let h: uint = hasher(key);
+            let h = to_u64(hasher(key));
             while i < nbkts {
                 let j: uint = hash(h, nbkts, i);
                 alt bkts[j] {
