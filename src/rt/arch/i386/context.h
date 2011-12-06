@@ -7,7 +7,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#include "../../memcheck.h"
+#include "vg/memcheck.h"
 
 template<typename T>
 T align_down(T sp)
@@ -51,9 +51,7 @@ public:
     uint32_t bot = regs.esp;
     uint32_t top = align_down(bot - nbytes);
 
-#ifdef HAVE_VALGRIND
     (void)VALGRIND_MAKE_MEM_UNDEFINED(top - 4, bot - top + 4);
-#endif
 
     return reinterpret_cast<void *>(top);
   }

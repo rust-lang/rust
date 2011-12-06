@@ -17,8 +17,8 @@ CFG_GCCISH_LINK_FLAGS :=
 # embedded into the executable, so use a no-op command.
 CFG_DSYMUTIL := true
 
-ifneq ($(CFG_VALGRIND),)
-  CFG_GCCISH_CFLAGS += -DHAVE_VALGRIND
+ifeq ($(CFG_VALGRIND),)
+  CFG_GCCISH_CFLAGS += -DNVALGRIND
 endif
 
 ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)

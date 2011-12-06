@@ -1,5 +1,5 @@
 #include "rust_internal.h"
-#include "valgrind.h"
+#include "vg/valgrind.h"
 
 // The mechanism in this file is very crude; every domain (thread) spawns its
 // own secondary timer thread, and that timer thread *never idles*. It
