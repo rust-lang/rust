@@ -174,7 +174,8 @@ fn byte_len_range(s: str, byte_offset: uint, char_len: uint) -> uint {
 /*
 Function: bytes
 
-Converts a string to a vector of bytes
+Converts a string to a vector of bytes. The result vector is not
+null-terminated.
 */
 fn bytes(s: str) -> [u8] unsafe {
     let v = unsafe::reinterpret_cast(s);

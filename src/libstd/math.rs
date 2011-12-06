@@ -23,6 +23,9 @@ import ctypes::c_int;
 import m_float = math_f64;
 
 // FIXME replace with redirect to m_float::consts::FOO as soon as it works
+/*
+Module: consts
+*/
 mod consts {
     /*
     Const: pi

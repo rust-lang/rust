@@ -1,3 +1,9 @@
+/*
+Module: io
+
+Basic input/output
+*/
+
 import ctypes::fd_t;
 import ctypes::c_int;
 
