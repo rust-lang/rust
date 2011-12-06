@@ -4536,7 +4536,9 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
 fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     // FIXME Fill in cx.sp
 
-    add_span_comment(cx, s.span, stmt_to_str(s));
+    if (!bcx_ccx(cx).sess.get_opts().no_asm_comments) {
+        add_span_comment(cx, s.span, stmt_to_str(s));
+    }
 
     let bcx = cx;
     alt s.node {
