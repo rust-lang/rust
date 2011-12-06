@@ -15,6 +15,7 @@ $$(HBIN$(2)_H_$(4))/rustc$$(X): \
 	$$(TBIN$(1)_T_$(4)_H_$(3))/rustc$$(X) \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME) \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUSTLLVM) \
+	$$(HCORELIB_DEFAULT$(2)_H_$(4)) \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
@@ -25,6 +26,7 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC) \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME) \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUSTLLVM) \
+	$$(HCORELIB_DEFAULT$(2)_H_$(3)) \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(3))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
@@ -34,14 +36,28 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
+$$(HLIB$(2)_H_$(4))/$$(CFG_CORELIB): \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB) \
+	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
 $$(HLIB$(2)_H_$(4))/$$(CFG_STDLIB): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB) \
+	$$(HLIB$(2)_H_$(4))/$$(CFG_CORELIB) \
+	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
+$$(HLIB$(2)_H_$(4))/libcore.rlib: \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/libcore.rlib \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(HLIB$(2)_H_$(4))/libstd.rlib: \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/libstd.rlib \
+	$$(HLIB$(2)_H_$(4))/libcore.rlib \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@

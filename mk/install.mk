@@ -33,6 +33,7 @@ PTL$(1)$(2) = $$(PTR$(1)$(2))/lib
 install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME))
+	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_CORELIB))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_STDLIB))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),intrinsics.bc)
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
@@ -61,6 +62,7 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
 	$(Q)$(call INSTALL,$(HB),$(PHB),rustc$(X))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
+	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_CORELIB))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_STDLIB))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM))
 	$(Q)$(call INSTALL,$(S)/man, \

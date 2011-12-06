@@ -355,8 +355,8 @@ fi
 step_msg "making directories"
 
 for i in \
-    doc doc/std \
-    nd nd/std \
+    doc doc/core doc/std \
+    nd nd/core nd/std \
     dl tmp
 do
     make_dir $i
