@@ -230,7 +230,20 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
     fn size_and_align_of<T>() -> (int, int) {
         (sys::size_of::<T>() as int, sys::align_of::<T>() as int)
     }
-    let (name, (size, align), encoding) = alt ty.node {
+    let ast_ty = alt ty.node {
+      ast::ty_infer. {
+        alt ty::struct(ccx_tcx(cx), t) {
+          ty::ty_bool. { ast::ty_bool }
+          ty::ty_int. { ast::ty_int }
+          ty::ty_uint. { ast::ty_uint }
+          ty::ty_float. { ast::ty_float }
+          ty::ty_machine(m) { ast::ty_machine(m) }
+          ty::ty_char. { ast::ty_char }
+        }
+      }
+      _ { ty.node }
+    };
+    let (name, (size, align), encoding) = alt ast_ty {
       ast::ty_bool. {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
       ast::ty_int. {("int", size_and_align_of::<int>(), DW_ATE_signed)}
       ast::ty_uint. {("uint", size_and_align_of::<uint>(), DW_ATE_unsigned)}
