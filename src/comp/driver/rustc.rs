@@ -260,7 +260,7 @@ options:
     --pretty [type]    pretty-print the input instead of compiling
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
-    --noverify         suppress LLVM verification step (slight speedup)
+    --no-verify        suppress LLVM verification step (slight speedup)
     --parse-only       parse only; do not compile, assemble, or link
     --no-trans         run all passes except translation; no output
     -g                 produce debug info
@@ -362,7 +362,7 @@ fn build_session_options(match: getopts::match)
         } else if opt_present(match, "emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let verify = !opt_present(match, "noverify");
+    let verify = !opt_present(match, "no-verify");
     let save_temps = opt_present(match, "save-temps");
     let debuginfo = opt_present(match, "g");
     let stats = opt_present(match, "stats");
@@ -463,7 +463,7 @@ fn opts() -> [getopts::opt] {
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optopt("target"), optflag("stats"),
          optflag("time-passes"), optflag("time-llvm-passes"),
-         optflag("noverify"),
+         optflag("no-verify"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static"), optflag("gc"),
          optflag("stack-growth"),

@@ -81,9 +81,12 @@ MORESTACK:
 	movq %rbp, %rcx
 	addq $24, %rcx  // Base pointer, return address x2
 
+	pushq $0 // Alignment
+
 	pushq %r11 // Size of stack arguments
 	pushq %rcx // Address of stack arguments
 	pushq %r10 // The amount of stack needed
+	pushq $0   // Out pointer
 
 	movq UPCALL_NEW_STACK@GOTPCREL(%rip), %rsi
 	movq %rsp, %rdi
@@ -95,7 +98,8 @@ MORESTACK:
 #endif
 
 	// Pop the new_stack_args struct
-	addq $24, %rsp
+	popq %rax
+	addq $32, %rsp
 
 	// Pop the saved arguments
 	popq %r9

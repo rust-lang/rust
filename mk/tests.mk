@@ -87,6 +87,8 @@ tidy:
               $(wildcard $(S)src/etc/*.py)  \
               $(COMPILER_CRATE) \
               $(COMPILER_INPUTS) \
+              $(CORELIB_CRATE) \
+              $(CORELIB_INPUTS) \
               $(STDLIB_CRATE) \
               $(STDLIB_INPUTS) \
               $(COMPILETEST_CRATE) \

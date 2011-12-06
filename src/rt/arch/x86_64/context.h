@@ -8,9 +8,7 @@
 #include <stdint.h>
 #include <xmmintrin.h>
 
-#ifdef HAVE_VALGRIND
-#include <valgrind/memcheck.h>
-#endif
+#include "vg/memcheck.h"
 
 template<typename T>
 T align_down(T sp)
@@ -51,9 +49,7 @@ public:
         uint64_t bot = regs.data[RUSTRT_RSP];
         uint64_t top = align_down(bot - nbytes);
 
-#ifdef HAVE_VALGRIND
         (void)VALGRIND_MAKE_MEM_UNDEFINED(top - 4, bot - top + 4);
-#endif
 
         return reinterpret_cast<void *>(top);
     }

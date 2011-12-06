@@ -1,0 +1,17 @@
+#[link(name = "core",
+       vers = "0.1",
+       uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
+       url = "http://rust-lang.org/src/core")];
+
+#[comment = "The Rust core library"];
+#[license = "BSD"];
+
+
+// Local Variables:
+// mode: rust;
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:

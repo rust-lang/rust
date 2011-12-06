@@ -253,24 +253,17 @@ fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
 }
 
 
-/**
- * Section: Constants
- */
-
-//TODO: Once this is possible, replace the body of these functions
-//by an actual constant.
-
 /* Const: NaN */
 const NaN: float = 0./0.;
-
-/* Predicate: isNaN */
-pure fn isNaN(f: float) -> bool { f != f }
 
 /* Const: infinity */
 const infinity: float = 1./0.;
 
 /* Const: neg_infinity */
 const neg_infinity: float = -1./0.;
+
+/* Predicate: isNaN */
+pure fn isNaN(f: float) -> bool { f != f }
 
 /* Function: add */
 pure fn add(x: float, y: float) -> float { ret x + y; }

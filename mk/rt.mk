@@ -125,7 +125,7 @@ else
 endif
 
 RUNTIME_DEF_$(1) := rt/rustrt$$(CFG_DEF_SUFFIX)
-RUNTIME_INCS_$(1) := -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
+RUNTIME_INCS_$(1) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                 -I $$(S)src/rt/arch/$$(HOST_$(1)) \
 				-I $$(S)src/libuv/include
 RUNTIME_OBJS_$(1) := $$(RUNTIME_CS_$(1):rt/%.cpp=rt/$(1)/%.o) \

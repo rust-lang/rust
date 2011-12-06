@@ -29,19 +29,25 @@ docsnap: doc/rust.pdf
 	@$(call E, snap: doc/rust-$(shell date +"%Y-%m-%d")-snap.pdf)
 	$(Q)mv $< doc/rust-$(shell date +"%Y-%m-%d")-snap.pdf
 
-doc/std/index.html: nd/std/Languages.txt nd/std/Topics.txt nd/std/std.css \
-                    $(STDLIB_CRATE) $(STDLIB_INPUTS)
-	@$(call E, naturaldocs: $@)
-	naturaldocs -i $(S)src/lib -o HTML doc/std -p nd/std -r -s Default std
+define libdoc
+doc/$(1)/index.html: nd/$(1)/Languages.txt nd/$(1)/Topics.txt \
+                     nd/$(1)/lib.css $(2)
+	@$$(call E, naturaldocs: $$@)
+	naturaldocs -i $(S)src/lib$(1) -o HTML doc/$(1) -p nd/$(1) -r -s Default lib
 
-nd/std/Languages.txt: $(S)doc/Languages.txt
-	@$(call E, cp: $@)
-	$(Q)cp $< $@
+nd/$(1)/Languages.txt: $(S)doc/Languages.txt
+	@$$(call E, cp: $$@)
+	$(Q)cp $$< $$@
 
-nd/std/Topics.txt: $(S)doc/Topics.txt
-	@$(call E, cp: $@)
-	$(Q)cp $< $@
+nd/$(1)/Topics.txt: $(S)doc/Topics.txt
+	@$$(call E, cp: $$@)
+	$(Q)cp $$< $$@
 
-nd/std/std.css: $(S)doc/std.css
-	@$(call E, cp: $@)
-	$(Q)cp $< $@
+nd/$(1)/lib.css: $(S)doc/lib.css
+	@$$(call E, cp: $$@)
+	$(Q)cp $$< $$@
+
+endef
+
+$(eval $(call libdoc,core,$(CORELIB_CRATE) $(CORELIB_INPUTS)))
+$(eval $(call libdoc,std,$(STDLIB_CRATE) $(STDLIB_INPUTS)))

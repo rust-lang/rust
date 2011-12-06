@@ -46,6 +46,7 @@ PKG_FILES = \
       $(PKG_3RDPARTY))                         \
     $(PKG_UV)                                  \
     $(COMPILER_INPUTS)                         \
+    $(CORELIB_INPUTS)                          \
     $(STDLIB_INPUTS)                           \
     $(ALL_TEST_INPUTS)                         \
     $(FUZZER_CRATE)                            \

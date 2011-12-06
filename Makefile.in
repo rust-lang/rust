@@ -104,6 +104,7 @@ endif
 
 CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
 CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
+CFG_CORELIB :=$(call CFG_LIB_NAME,core)
 CFG_STDLIB :=$(call CFG_LIB_NAME,ruststd)
 CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
 
@@ -144,9 +145,9 @@ else
 endif
 
 ifeq ($(CFG_NATURALDOCS),)
-  $(info cfg: no naturaldocs found, omitting doc/std/index.html)
+  $(info cfg: no naturaldocs found, omitting library doc build)
 else
-  DOCS += doc/std/index.html
+  DOCS += doc/core/index.html doc/std/index.html
 endif
 
 ifdef CFG_DISABLE_DOCS
@@ -184,11 +185,20 @@ GENERATED :=
 %:: SCCS/s.%
 
 ######################################################################
+# Core library variables
+######################################################################
+
+CORELIB_CRATE := $(S)src/libcore/core.rc
+CORELIB_INPUTS := $(wildcard $(addprefix $(S)src/libcore/,        \
+                                           core.rc *.rs */*.rs))
+
+######################################################################
 # Standard library variables
 ######################################################################
 
-STDLIB_CRATE := $(S)src/lib/std.rc
-STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/lib/,*.rc *.rs */*.rs))
+STDLIB_CRATE := $(S)src/libstd/std.rc
+STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,          \
+                                          std.rc *.rs */*.rs))
 
 ######################################################################
 # rustc crate variables
@@ -268,13 +278,21 @@ TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustc/$(2)
 TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
 TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/lib
 
-# The name of the standard library used by rustc
+# The name of the core and standard libraries used by rustc
 ifdef CFG_DISABLE_SHAREDSTD
+  HCORELIB_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/libcore.rlib
+  TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/libcore.rlib
   HSTDLIB_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/libstd.rlib
   TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 else
+  HCORELIB_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/$(CFG_CORELIB)
+  TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB)
   HSTDLIB_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/$(CFG_STDLIB)
   TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
@@ -286,6 +304,7 @@ HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_RUNTIME) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLLVM) \
+	$$(HCORELIB_DEFAULT$(1)_H_$(3)) \
 	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
 	$$(MKFILE_DEPS)
 
@@ -299,6 +318,7 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 # Prerequisites for complete stageN targets
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)
 
 ifeq ($(1),0)

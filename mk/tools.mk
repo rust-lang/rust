@@ -19,6 +19,7 @@ define TOOLS_STAGE_N
 $$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X):				\
 		$$(FUZZER_CRATE) $$(FUZZER_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
@@ -37,6 +38,7 @@ $$(HBIN$(2)_H_$(4))/fuzzer$$(X):				\
 $$(TBIN$(1)_T_$(4)_H_$(3))/compiletest$$(X):			\
 		$$(COMPILETEST_CRATE) $$(COMPILETEST_INPUTS)	\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))						\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)      \
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
@@ -50,6 +52,7 @@ $$(HBIN$(2)_H_$(4))/compiletest$$(X):				\
 $$(TBIN$(1)_T_$(4)_H_$(3))/cargo$$(X):				\
 		$$(CARGO_CRATE) $$(CARGO_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)  \
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)   \
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)

@@ -57,6 +57,16 @@ resource dtor_res(dtor: option::t<fn@()>) {
  Section: Introduction forms
  */
 
+/*
+Function: create
+
+Create a c_vec::t from a native buffer with a given size.
+
+Parameters:
+
+base - A native pointer to a buffer
+size - The number of elements in the buffer
+*/
 unsafe fn create<T>(base: *mutable T, size: uint) -> t<T> {
     ret t({base: base,
            size: size,
@@ -64,6 +74,19 @@ unsafe fn create<T>(base: *mutable T, size: uint) -> t<T> {
           });
 }
 
+/*
+Function: create_with_dtor
+
+Create a c_vec::t from a native buffer, with a given size,
+and a function to run upon destruction.
+
+Parameters:
+
+base - A native pointer to a buffer
+size - The number of elements in the buffer
+dtor - A function to run when the value is destructed, useful
+       for freeing the buffer, etc.
+*/
 unsafe fn create_with_dtor<T>(base: *mutable T, size: uint, dtor: fn@())
   -> t<T> {
     ret t({base: base,
@@ -76,11 +99,29 @@ unsafe fn create_with_dtor<T>(base: *mutable T, size: uint, dtor: fn@())
  Section: Operations
  */
 
+/*
+Function: get
+
+Retrieves an element at a given index
+
+Failure:
+
+If `ofs` is greater or equal to the length of the vector
+*/
 fn get<copy T>(t: t<T>, ofs: uint) -> T {
     assert ofs < (*t).size;
     ret unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
 
+/*
+Function: set
+
+Sets the value of an element at a given index
+
+Failure:
+
+If `ofs` is greater or equal to the length of the vector
+*/
 fn set<copy T>(t: t<T>, ofs: uint, v: T) {
     assert ofs < (*t).size;
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
@@ -90,10 +131,21 @@ fn set<copy T>(t: t<T>, ofs: uint, v: T) {
  Section: Elimination forms
  */
 
+// FIXME: Rename to len
+/*
+Function: size
+
+Returns the length of the vector
+*/
 fn size<T>(t: t<T>) -> uint {
     ret (*t).size;
 }
 
+/*
+Function: ptr
+
+Returns a pointer to the first element of the vector
+*/
 unsafe fn ptr<T>(t: t<T>) -> *mutable T {
     ret (*t).base;
 }

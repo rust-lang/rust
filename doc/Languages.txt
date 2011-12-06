@@ -120,6 +120,7 @@ Language: Rust
    Block Comment: /* */
    Package Separator: ::
    Function Prototype Enders: ; {
+   Predicate Prototype Enders: ; {
    Type Prototype Enders: ; }
    Class Prototype Enders: {
    Variant Prototype Enders: ;
