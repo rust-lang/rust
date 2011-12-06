@@ -108,6 +108,30 @@ fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
     ret rv;
 }
 
+fn inject_libcore_reference(sess: session::session,
+                            crate: @ast::crate) -> @ast::crate {
+
+    fn spanned<copy T>(x: T) -> @ast::spanned<T> {
+        ret @{node: x,
+              span: {lo: 0u, hi: 0u,
+                     expanded_from: codemap::os_none}};
+    }
+
+    let n1 = sess.next_node_id();
+    let n2 = sess.next_node_id();
+
+    let vi1 = spanned(ast::view_item_use("core", [], n1));
+    let vi2 = spanned(ast::view_item_import_glob(@["core"], n2));
+
+    let cd1 = spanned(ast::cdir_view_item(vi1));
+    let cd2 = spanned(ast::cdir_view_item(vi2));
+
+    let cdirs = [cd1, cd2] + crate.node.directives;
+
+    ret @{node: {directives: cdirs with crate.node} with *crate }
+}
+
+
 fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
                  output: str) {
     let time_passes = sess.get_opts().time_passes;
@@ -125,6 +149,10 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     crate =
         time(time_passes, "expansion",
              bind syntax::ext::expand::expand_crate(sess, crate));
+
+    if sess.get_opts().libcore {
+        crate = inject_libcore_reference(sess, crate);
+    }
 
     let ast_map =
         time(time_passes, "ast indexing",
@@ -257,6 +285,7 @@ options:
     -o <filename>      write output to <filename>
     --lib              compile a library crate
     --static           use or produce static libraries
+    --no-core          omit the 'core' library (used and imported by default)
     --pretty [type]    pretty-print the input instead of compiling
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
@@ -362,6 +391,7 @@ fn build_session_options(match: getopts::match)
         } else if opt_present(match, "emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
+    let libcore = !opt_present(match, "no-core");
     let verify = !opt_present(match, "no-verify");
     let save_temps = opt_present(match, "save-temps");
     let debuginfo = opt_present(match, "g");
@@ -409,6 +439,7 @@ fn build_session_options(match: getopts::match)
     let sopts: @session::options =
         @{library: library,
           static: static,
+          libcore: libcore,
           optimize: opt_level,
           debuginfo: debuginfo,
           verify: verify,
@@ -465,6 +496,7 @@ fn opts() -> [getopts::opt] {
          optflag("time-passes"), optflag("time-llvm-passes"),
          optflag("no-verify"),
          optmulti("cfg"), optflag("test"),
+         optflag("no-core"),
          optflag("lib"), optflag("static"), optflag("gc"),
          optflag("stack-growth"),
          optflag("no-asm-comments"),
