@@ -104,6 +104,14 @@ fn Invoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
         let instr = llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
                                           vec::len(Args), Then, Catch,
                                           noname());
+        if bcx_ccx(cx).sess.get_opts().debuginfo {
+            /*llvm::LLVMAddAttribute(option::get(vec::last(llargs)),
+            lib::llvm::LLVMStructRetAttribute as
+            lib::llvm::llvm::Attribute);*/
+            llvm::LLVMAddInstrAttribute(instr, 1u,
+                                        lib::llvm::LLVMStructRetAttribute as
+                                            lib::llvm::llvm::Attribute);
+        }
         debuginfo::add_line_info(cx, instr);
     }
 }

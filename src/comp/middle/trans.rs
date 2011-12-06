@@ -4422,6 +4422,12 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
 
 fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
                         arg_tys: [ty::arg]) -> @block_ctxt {
+    if fcx_ccx(fcx).sess.get_opts().debuginfo {
+        llvm::LLVMAddAttribute(llvm::LLVMGetFirstParam(fcx.llfn),
+                               lib::llvm::LLVMStructRetAttribute as
+                                   lib::llvm::llvm::Attribute);
+        //let _ = debuginfo::get_retval_metadata(bcx);
+    }
     let arg_n: uint = 0u, bcx = bcx;
     for arg in arg_tys {
         let id = args[arg_n].id;
@@ -4440,6 +4446,9 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
             }
           }
           ast::by_ref. {}
+        }
+        if fcx_ccx(fcx).sess.get_opts().debuginfo {
+            let _ = debuginfo::get_arg_metadata(bcx, args[arg_n]);
         }
         arg_n += 1u;
     }
@@ -4574,12 +4583,13 @@ fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
             id: ast::node_id) {
     let do_time = cx.ccx.sess.get_opts().stats;
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
-    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|_fcx|});
+    let fcx = option::none;
+    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|new_fcx| fcx = option::some(new_fcx);});
     if cx.ccx.sess.get_opts().debuginfo {
         let item = alt option::get(cx.ccx.ast_map.find(id)) {
             ast_map::node_item(item) { item }
         };
-        debuginfo::get_function_metadata(cx.ccx, item, llfndecl);
+        debuginfo::get_function_metadata(option::get(fcx), item, llfndecl);
     }
     if do_time {
         let end = time::get_time();
