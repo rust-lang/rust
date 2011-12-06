@@ -228,8 +228,8 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
     try {
         sched->c_context.call_shim_on_c_stack(args, fn_ptr);
     } catch (...) {
-        //task = rust_scheduler::get_task();
-        //task->record_stack_limit();
+        task = rust_scheduler::get_task();
+        task->record_stack_limit();
         throw;
     }
     task = rust_scheduler::get_task();

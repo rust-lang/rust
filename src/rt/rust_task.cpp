@@ -131,6 +131,9 @@ rust_task::~rust_task()
     //   (ref_count == 1 && this == sched->root_task));
 
     // Delete all the stacks. There may be more than one if the task failed
+    // FIXME: This is not correct. During unwinding we need to delete
+    // the stacks and record the stack limit, otherwise the stack
+    // stack is corrupted when destructors are running.
     while (stk != NULL) {
         del_stk(this, stk);
     }
