@@ -288,38 +288,6 @@ upcall_s_dynastack_free(s_dynastack_free_args *args) {
     return rust_scheduler::get_task()->dynastack.free(args->ptr);
 }
 
-struct rust_new_stack2_args {
-    void *new_stack;
-    size_t stk_sz;
-    void *args_addr;
-    size_t args_sz;
-};
-
-// A new stack function suitable for calling through
-// upcall_call_shim_on_c_stack
-extern "C" CDECL void
-upcall_new_stack(struct rust_new_stack2_args *args) {
-    rust_task *task = rust_scheduler::get_task();
-    args->new_stack = task->new_stack(args->stk_sz,
-                                      args->args_addr,
-                                      args->args_sz);
-}
-
-extern "C" CDECL void
-upcall_del_stack() {
-    rust_task *task = rust_scheduler::get_task();
-    task->del_stack();
-}
-
-// Landing pads need to call this to insert the
-// correct limit into TLS.
-// NB: This must be called on the Rust stack
-extern "C" CDECL void
-upcall_reset_stack_limit() {
-    rust_task *task = rust_scheduler::get_task();
-    task->reset_stack_limit();
-}
-
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,
@@ -504,6 +472,42 @@ extern "C" void
 upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
     s_log_type_args args = {tydesc, data, level};
     upcall_s_log_type(&args);
+}
+
+struct rust_new_stack2_args {
+    void *new_stack;
+    size_t stk_sz;
+    void *args_addr;
+    size_t args_sz;
+};
+
+// A new stack function suitable for calling through
+// upcall_call_shim_on_c_stack
+// FIXME: Convert this to the same arrangement as
+// the other upcalls, simplify __morestack
+extern "C" CDECL void
+upcall_new_stack(struct rust_new_stack2_args *args) {
+    rust_task *task = rust_scheduler::get_task();
+    args->new_stack = task->new_stack(args->stk_sz,
+                                      args->args_addr,
+                                      args->args_sz);
+}
+
+// FIXME: As above
+extern "C" CDECL void
+upcall_del_stack() {
+    rust_task *task = rust_scheduler::get_task();
+    task->del_stack();
+}
+
+// Landing pads need to call this to insert the
+// correct limit into TLS.
+// NB: This must run on the Rust stack because it
+// needs to acquire the value of the stack pointer
+extern "C" CDECL void
+upcall_reset_stack_limit() {
+    rust_task *task = rust_scheduler::get_task();
+    task->reset_stack_limit();
 }
 
 //
