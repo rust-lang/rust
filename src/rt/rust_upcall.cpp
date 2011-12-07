@@ -344,6 +344,41 @@ upcall_s_rust_personality(s_rust_personality_args *args) {
                                 args->context);
 }
 
+extern "C" void
+shape_cmp_type(int8_t *result, const type_desc *tydesc,
+               const type_desc **subtydescs, uint8_t *data_0,
+               uint8_t *data_1, uint8_t cmp_type);
+
+struct s_cmp_type_args {
+    int8_t *result;
+    const type_desc *tydesc;
+    const type_desc **subtydescs;
+    uint8_t *data_0;
+    uint8_t *data_1;
+    uint8_t cmp_type;
+};
+
+extern "C" void
+upcall_s_cmp_type(s_cmp_type_args *args) {
+    shape_cmp_type(args->result, args->tydesc, args->subtydescs,
+                   args->data_0, args->data_1, args->cmp_type);
+}
+
+extern "C" void
+shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level);
+
+struct s_log_type_args {
+    const type_desc *tydesc;
+    uint8_t *data;
+    uint32_t level;
+};
+
+extern "C" void
+upcall_s_log_type(s_log_type_args *args) {
+    shape_log_type(args->tydesc, args->data, args->level);
+}
+
+
 // ______________________________________________________________________________
 // Upcalls in original format: deprecated and should be removed once snapshot
 // transitions them away.
@@ -458,23 +493,17 @@ upcall_rust_personality(int version,
 }
 
 extern "C" void
-shape_cmp_type(int8_t *result, const type_desc *tydesc,
-               const type_desc **subtydescs, uint8_t *data_0,
-               uint8_t *data_1, uint8_t cmp_type);
-
-extern "C" void
 upcall_cmp_type(int8_t *result, const type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
-    shape_cmp_type(result, tydesc, subtydescs, data_0, data_1, cmp_type);
+    s_cmp_type_args args = {result, tydesc, subtydescs, data_0, data_1, cmp_type};
+    upcall_s_cmp_type(&args);
 }
 
 extern "C" void
-shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level);
-
-extern "C" void
 upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
-    shape_log_type(tydesc, data, level);
+    s_log_type_args args = {tydesc, data, level};
+    upcall_s_log_type(&args);
 }
 
 //
