@@ -14,15 +14,22 @@
 
 #include "globals.h"
 
+// Each stack gets some guard bytes that valgrind will verify we don't touch
+#ifndef NVALGRIND
+#define STACK_NOACCESS_SIZE 16
+#else
+#define STACK_NOACCESS_SIZE 0
+#endif
+
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
 // FIXME: We want this to be 128 but need to slim the red zone calls down
 #ifdef __i386__
-#define RED_ZONE_SIZE 65536
+#define RED_ZONE_SIZE (65536 + STACK_NOACCESS_SIZE)
 #endif
 
 #ifdef __x86_64__
-#define RED_ZONE_SIZE 65536
+#define RED_ZONE_SIZE (65536 + STACK_NOACCESS_SIZE)
 #endif
 
 // Stack size
@@ -56,6 +63,9 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t minsz)
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
                                 &stk->data[minsz + RED_ZONE_SIZE]);
+#ifndef NVALGRIND
+    VALGRIND_MAKE_MEM_NOACCESS(stk->data, STACK_NOACCESS_SIZE);
+#endif
     task->stk = stk;
     return stk;
 }
@@ -67,6 +77,9 @@ del_stk(rust_task *task, stk_seg *stk)
 
     task->stk = stk->next;
 
+#ifndef NVALGRIND
+    VALGRIND_MAKE_MEM_DEFINED(stk->data, STACK_NOACCESS_SIZE);
+#endif
     VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
     LOGPTR(task->sched, "freeing stk segment", (uintptr_t)stk);
     task->free(stk);
