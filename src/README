@@ -4,7 +4,10 @@ Source layout:
 
 comp/              The self-hosted compiler
 
-lib/               The standard library
+cargo/             The package manager
+
+libcore/           The core library (imported and linked by default)
+libstd/            The standard library (slightly more peripheral code)
 
 rustllvm/          LLVM support code
 
