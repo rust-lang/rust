@@ -259,6 +259,15 @@ upcall_del_stack() {
     task->del_stack();
 }
 
+// Landing pads need to call this to insert the
+// correct limit into TLS.
+// NB: This must be called on the Rust stack
+extern "C" CDECL void
+upcall_reset_stack_limit() {
+    rust_task *task = rust_scheduler::get_task();
+    task->reset_stack_limit();
+}
+
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,
