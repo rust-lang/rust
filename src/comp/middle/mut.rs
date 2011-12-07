@@ -150,6 +150,7 @@ fn visit_decl(cx: @ctx, d: @decl, &&e: (), v: visit::vt<()>) {
 fn visit_expr(cx: @ctx, ex: @expr, &&e: (), v: visit::vt<()>) {
     alt ex.node {
       expr_call(f, args, _) { check_call(cx, f, args); }
+      expr_bind(f, args) { check_bind(cx, f, args); }
       expr_swap(lhs, rhs) {
         check_lval(cx, lhs, msg_assign);
         check_lval(cx, rhs, msg_assign);
@@ -224,6 +225,30 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
         alt arg_t.mode {
           by_mut_ref. { check_lval(cx, args[i], msg_mut_ref); }
           by_move. { check_lval(cx, args[i], msg_move_out); }
+          _ {}
+        }
+        i += 1u;
+    }
+}
+
+fn check_bind(cx: @ctx, f: @expr, args: [option::t<@expr>]) {
+    let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
+    let i = 0u;
+    for arg in args {
+        alt arg {
+          some(expr) {
+            alt (alt arg_ts[i].mode {
+              by_mut_ref. { some("by mutable reference") }
+              by_move. { some("by move") }
+              _ { none }
+            }) {
+              some(name) {
+                cx.tcx.sess.span_err(
+                    expr.span, "can not bind an argument passed " + name);
+              }
+              none. {}
+            }
+          }
           _ {}
         }
         i += 1u;

@@ -14,15 +14,22 @@
 
 #include "globals.h"
 
+// Each stack gets some guard bytes that valgrind will verify we don't touch
+#ifndef NVALGRIND
+#define STACK_NOACCESS_SIZE 16
+#else
+#define STACK_NOACCESS_SIZE 0
+#endif
+
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
 // FIXME: We want this to be 128 but need to slim the red zone calls down
 #ifdef __i386__
-#define RED_ZONE_SIZE 2048
+#define RED_ZONE_SIZE (65536 + STACK_NOACCESS_SIZE)
 #endif
 
 #ifdef __x86_64__
-#define RED_ZONE_SIZE 2048
+#define RED_ZONE_SIZE (65536 + STACK_NOACCESS_SIZE)
 #endif
 
 // Stack size
@@ -51,11 +58,14 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t minsz)
     LOGPTR(task->sched, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
     stk->next = task->stk;
-    stk->limit = (uintptr_t) &stk->data[minsz + RED_ZONE_SIZE];
-    LOGPTR(task->sched, "stk limit", stk->limit);
+    stk->end = (uintptr_t) &stk->data[minsz + RED_ZONE_SIZE];
+    LOGPTR(task->sched, "stk end", stk->end);
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
                                 &stk->data[minsz + RED_ZONE_SIZE]);
+#ifndef NVALGRIND
+    VALGRIND_MAKE_MEM_NOACCESS(stk->data, STACK_NOACCESS_SIZE);
+#endif
     task->stk = stk;
     return stk;
 }
@@ -67,6 +77,9 @@ del_stk(rust_task *task, stk_seg *stk)
 
     task->stk = stk->next;
 
+#ifndef NVALGRIND
+    VALGRIND_MAKE_MEM_DEFINED(stk->data, STACK_NOACCESS_SIZE);
+#endif
     VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
     LOGPTR(task->sched, "freeing stk segment", (uintptr_t)stk);
     task->free(stk);
@@ -106,7 +119,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     user.notify_enabled = 0;
 
     stk = new_stk(sched, this, 0);
-    user.rust_sp = stk->limit;
+    user.rust_sp = stk->end;
     if (supervisor) {
         supervisor->ref();
     }
@@ -582,7 +595,7 @@ rust_task::new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
 
     stk_seg *stk_seg = new_stk(sched, this, stk_sz + args_sz);
 
-    uint8_t *new_sp = (uint8_t*)stk_seg->limit;
+    uint8_t *new_sp = (uint8_t*)stk_seg->end;
     size_t sizeof_retaddr = sizeof(void*);
     // Make enough room on the new stack to hold the old stack pointer
     // in addition to the function arguments
@@ -608,11 +621,34 @@ rust_task::record_stack_limit() {
     // account for those 256 bytes.
     const unsigned LIMIT_OFFSET = 256;
     A(sched,
-      (uintptr_t)stk->limit - RED_ZONE_SIZE
+      (uintptr_t)stk->end - RED_ZONE_SIZE
       - (uintptr_t)stk->data >= LIMIT_OFFSET,
       "Stack size must be greater than LIMIT_OFFSET");
     record_sp(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
+
+extern "C" uintptr_t get_sp();
+
+/*
+Called by landing pads during unwinding to figure out which
+stack segment we are currently running on, delete the others,
+and record the stack limit (which was not restored when unwinding
+through __morestack).
+ */
+void
+rust_task::reset_stack_limit() {
+    uintptr_t sp = get_sp();
+    // Not positive these bounds for sp are correct.
+    // I think that the first possible value for esp on a new
+    // stack is stk->end, which points one word in front of
+    // the first work to be pushed onto a new stack.
+    while (sp <= (uintptr_t)stk->data || stk->end < sp) {
+        del_stk(this, stk);
+        A(sched, stk != NULL, "Failed to find the current stack");
+    }
+    record_stack_limit();
+}
+
 //
 // Local Variables:
 // mode: C++

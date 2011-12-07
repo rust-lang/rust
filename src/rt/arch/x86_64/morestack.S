@@ -132,6 +132,10 @@ MORESTACK:
 
 	addq $8, %rsp
 	popq %rbp
+#ifdef __linux__
+	.cfi_restore %rbp
+	.cfi_def_cfa %rsp, 8
+#endif
 	ret
 	
 #if defined(__ELF__)

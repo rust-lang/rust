@@ -288,7 +288,7 @@ fn spawn_inner<send T>(-data: T, f: fn(T),
                           notify: option<comm::chan<task_notification>>)
     -> task unsafe {
 
-    fn wrapper<send T>(-data: *u8, f: fn(T)) unsafe {
+    fn wrapper<send T>(data: *u8, f: fn(T)) unsafe {
         let data: ~T = unsafe::reinterpret_cast(data);
         f(*data);
     }

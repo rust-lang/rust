@@ -515,7 +515,9 @@ fn add_span_comment(bcx: @block_ctxt, sp: span, text: str) {
 fn add_comment(bcx: @block_ctxt, text: str) {
     let ccx = bcx_ccx(bcx);
     if (!ccx.sess.get_opts().no_asm_comments) {
-        let comment_text = "; " + text;
+        check str::is_not_empty("$");
+        let sanitized = str::replace(text, "$", "");
+        let comment_text = "; " + sanitized;
         let asm = str::as_buf(comment_text, { |c|
             str::as_buf("", { |e|
                 llvm::LLVMConstInlineAsm(T_fn([], T_void()), c, e, 0, 0)})});

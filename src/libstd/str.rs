@@ -324,7 +324,7 @@ fn char_range_at(s: str, i: uint) -> {ch: char, next: uint} {
     // Clunky way to get the right bits from the first byte. Uses two shifts,
     // the first to clip off the marker bits at the left of the byte, and then
     // a second (as uint) to get it to the right position.
-    val += (b0 << (w + 1u as u8) as uint) << (w - 1u) * 6u - w - 1u;
+    val += (b0 << (w + 1u as u8) as uint) << ((w - 1u) * 6u - w - 1u);
     ret {ch: val as char, next: i};
 }
 

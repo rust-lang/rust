@@ -25,7 +25,7 @@ struct rust_box;
 
 struct stk_seg {
     stk_seg *next;
-    uintptr_t limit;
+    uintptr_t end;
     unsigned int valgrind_id;
 #ifndef _LP64
     uint32_t pad;
@@ -200,6 +200,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     void *new_stack(size_t stk_sz, void *args_addr, size_t args_sz);
     void del_stack();
     void record_stack_limit();
+    void reset_stack_limit();
 };
 
 //

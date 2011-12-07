@@ -530,6 +530,12 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         if vec::len(alts) > 0u {
             a_post = false_postcond(num_constrs);
             for an_alt: arm in alts {
+                alt an_alt.guard {
+                  some(e) {
+                    changed |= find_pre_post_state_expr(fcx, e_post, e);
+                  }
+                  _ {}
+                }
                 changed |=
                     find_pre_post_state_block(fcx, e_post, an_alt.body);
                 intersect(a_post, block_poststate(fcx.ccx, an_alt.body));

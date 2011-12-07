@@ -286,7 +286,6 @@ rust_scheduler::start_main_loop() {
              scheduled_task->state->name);
 
         place_task_in_tls(scheduled_task);
-        //pthread_setspecific(89, (void *)scheduled_task->stk->limit);
 
         interrupt_flag = 0;
 

@@ -112,12 +112,12 @@ mod map_reduce {
 
         send(out, chan(p));
 
-        let ref_count = 0;
-        let is_done = false;
+        let state = @{mutable ref_count: 0, mutable is_done: false};
 
-        fn get(p: port<reduce_proto>, &ref_count: int, &is_done: bool) ->
-           option<int> {
-            while !is_done || ref_count > 0 {
+        fn get(p: port<reduce_proto>, state: @{mutable ref_count: int,
+                                               mutable is_done: bool})
+            -> option<int> {
+            while !state.is_done || state.ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {
                     // log_err #fmt("received %d", v);
@@ -125,16 +125,16 @@ mod map_reduce {
                   }
                   done. {
                     // log_err "all done";
-                    is_done = true;
+                    state.is_done = true;
                   }
-                  ref. { ref_count += 1; }
-                  release. { ref_count -= 1; }
+                  ref. { state.ref_count += 1; }
+                  release. { state.ref_count -= 1; }
                 }
             }
             ret none;
         }
 
-        reduce(key, bind get(p, ref_count, is_done));
+        reduce(key, bind get(p, state));
     }
 
     fn map_reduce(-inputs: [str]) {

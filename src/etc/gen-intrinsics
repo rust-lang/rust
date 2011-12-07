@@ -17,10 +17,11 @@ do
         -Isrc/rt/arch/$ARCH -fno-stack-protector \
         -o src/rt/intrinsics/intrinsics.$ARCH.ll.in \
         src/rt/intrinsics/intrinsics.cpp
-    sed -i \
+    sed -i .orig \
         -e 's/^target datalayout =/; target datalayout =/' \
         src/rt/intrinsics/intrinsics.$ARCH.ll.in
-    sed -i \
+    sed -i .orig \
         -e 's/^target triple = "[^"]*"/target triple = "@CFG_TARGET_TRIPLE@"/' \
         src/rt/intrinsics/intrinsics.$ARCH.ll.in
+    rm src/rt/intrinsics/intrinsics.$ARCH.ll.in.orig
 done

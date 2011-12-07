@@ -452,6 +452,10 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_alt(ex, alts) {
         find_pre_post_expr(fcx, ex);
         fn do_an_alt(fcx: fn_ctxt, an_alt: arm) -> pre_and_post {
+            alt an_alt.guard {
+              some(e) { find_pre_post_expr(fcx, e); }
+              _ {}
+            }
             find_pre_post_block(fcx, an_alt.body);
             ret block_pp(fcx.ccx, an_alt.body);
         }

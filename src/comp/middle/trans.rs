@@ -3462,6 +3462,12 @@ fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
             bcx = bound_arg.bcx;
             let val = bound_arg.val;
             if out_arg.mode == ast::by_val { val = Load(bcx, val); }
+            if out_arg.mode == ast::by_copy {
+                let {bcx: cx, val: alloc} = alloc_ty(bcx, out_arg.ty);
+                bcx = memmove_ty(cx, alloc, val, out_arg.ty);
+                bcx = take_ty(bcx, alloc, out_arg.ty);
+                val = alloc;
+            }
             // If the type is parameterized, then we need to cast the
             // type we actually have to the parameterized out type.
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
@@ -3903,6 +3909,11 @@ fn trans_landing_pad(bcx: @block_ctxt,
     let llretval = llpad;
     // The landing pad block is a cleanup
     SetCleanup(bcx, llpad);
+
+    // Because we may have unwound across a stack boundary, we must call into
+    // the runtime to figure out which stack segment we are on and place the
+    // stack limit back into the TLS.
+    Call(bcx, bcx_ccx(bcx).upcalls.reset_stack_limit, []);
 
     // FIXME: This seems like a very naive and redundant way to generate the
     // landing pads, as we're re-generating all in-scope cleanups for each
@@ -4531,7 +4542,9 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
 fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     // FIXME Fill in cx.sp
 
-    add_span_comment(cx, s.span, stmt_to_str(s));
+    if (!bcx_ccx(cx).sess.get_opts().no_asm_comments) {
+        add_span_comment(cx, s.span, stmt_to_str(s));
+    }
 
     let bcx = cx;
     alt s.node {

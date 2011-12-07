@@ -353,12 +353,24 @@ $(foreach build,$(CFG_TARGET_TRIPLES), \
 # Builds a functional Rustc for the given host.
 ######################################################################
 
+define DEF_RUSTC_STAGE_TARGET
+# $(1) == architecture
+# $(2) == stage
+
+rustc-stage$(2)-H-$(1):							\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+		$$(SREQ$(2)_T_$$(target)_H_$(1)))
+
+endef
+
+$(foreach host,$(CFG_TARGET_TRIPLES),							\
+ $(eval $(foreach stage,1 2 3,									\
+  $(eval $(call DEF_RUSTC_STAGE_TARGET,$(host),$(stage))))))
+
 define DEF_RUSTC_TARGET
 # $(1) == architecture
 
-rustc-H-$(1):									\
-	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
-		$$(SREQ3_T_$$(target)_H_$(1)))
+rustc-H-$(1): rustc-stage3-H-$(1)
 endef
 
 $(foreach host,$(CFG_TARGET_TRIPLES),			\
