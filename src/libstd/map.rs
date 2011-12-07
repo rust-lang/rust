@@ -104,6 +104,242 @@ type hashmap<K, V> = obj {
 
 /* Section: Operations */
 
+mod chained {
+    type entry<copy K, copy V> = {
+        hash: uint,
+        key: K,
+        mutable value: V,
+        mutable next: chain<K, V>
+    };
+
+    tag chain<copy K, copy V> {
+        present(@entry<K, V>);
+        absent;
+    }
+
+    type t<copy K, copy V> = {
+        mutable size: uint,
+        mutable chains: [mutable chain<K,V>],
+        hasher: hashfn<K>,
+        eqer: eqfn<K>
+    };
+
+    tag search_result<copy K, copy V> {
+        not_found(uint);
+        found_first(uint, @entry<K,V>);
+        found_after(@entry<K,V>, @entry<K,V>);
+    }
+
+    fn search_rem<copy K, copy V>(tbl: t<K,V>,
+                                  k: K,
+                                  h: uint,
+                                  idx: uint,
+                                  e_root: @entry<K,V>) -> search_result<K,V> {
+        let e0 = e_root;
+        while true {
+            alt e0.next {
+              absent. {
+                ret not_found(idx);
+              }
+              present(e1) {
+                let e1_key = e1.key; // Satisfy alias checker.
+                if e1.hash == h && tbl.eqer(e1_key, k) {
+                    ret found_after(e0, e1);
+                } else {
+                    e0 = e1;
+                }
+              }
+            }
+        }
+        util::unreachable();
+    }
+
+    fn search_tbl<copy K, copy V>(
+        tbl: t<K,V>, k: K, h: uint) -> search_result<K,V> {
+
+        let idx = h % vec::len(tbl.chains);
+
+        alt tbl.chains[idx] {
+          absent. {
+            ret not_found(idx);
+          }
+          present(e) {
+            let e_key = e.key; // Satisfy alias checker.
+            if e.hash == h && tbl.eqer(e_key, k) {
+                ret found_first(idx, e);
+            } else {
+                ret search_rem(tbl, k, h, idx, e);
+            }
+          }
+        }
+    }
+
+    fn insert_h<copy K, copy V>(tbl: t<K,V>, k: K, v: V, hash: uint) -> bool {
+        // internal routine: does not update size
+        alt search_tbl(tbl, k, hash) {
+          not_found(idx) {
+            let old_chain = tbl.chains[idx];
+            tbl.chains[idx] = present(@{
+                hash: hash,
+                key: k,
+                mutable value: v,
+                mutable next: old_chain});
+            ret true;
+          }
+          found_first(_, entry) {
+            entry.value = v;
+            ret false;
+          }
+          found_after(_, entry) {
+            entry.value = v;
+            ret false
+          }
+        }
+    }
+
+    fn insert<copy K, copy V>(tbl: t<K,V>, k: K, v: V) -> bool {
+        tbl.size += 1u;
+        ret insert_h(tbl, k, v, tbl.hasher(k));
+    }
+
+    fn get<copy K, copy V>(tbl: t<K,V>, k: K) -> option::t<V> {
+        alt search_tbl(tbl, k, tbl.hasher(k)) {
+          not_found(_) {
+            ret option::none;
+          }
+
+          found_first(_, entry) {
+            ret option::some(entry.value);
+          }
+
+          found_after(_, entry) {
+            ret option::some(entry.value);
+          }
+        }
+    }
+
+    fn remove<copy K, copy V>(tbl: t<K,V>, k: K) -> option::t<V> {
+        alt search_tbl(tbl, k, tbl.hasher(k)) {
+          not_found(_) {
+            ret option::none;
+          }
+
+          found_first(idx, entry) {
+            tbl.chains[idx] = entry.next;
+            ret option::some(entry.value);
+          }
+
+          found_after(eprev, entry) {
+            eprev.next = entry.next;
+            ret option::some(entry.value);
+          }
+        }
+    }
+
+    fn chains<copy K, copy V>(nchains: uint) -> [mutable chain<K,V>] {
+        ret vec::init_elt_mut(absent, nchains);
+    }
+
+    fn foreach_entry<copy K, copy V>(chain0: chain<K,V>,
+                                     blk: block(@entry<K,V>)) {
+        let chain = chain0;
+        while true {
+            alt chain {
+              absent. { ret; }
+              present(entry) {
+                blk(entry);
+                chain = entry.next;
+              }
+            }
+        }
+    }
+
+    fn foreach_chain<copy K, copy V>(chains: [const chain<K,V>],
+                                     blk: block(@entry<K,V>)) {
+        let i = 0u, n = vec::len(chains);
+        while i < n {
+            foreach_entry(chains[i], blk);
+            i += 1u;
+        }
+    }
+
+    fn rehash<copy K, copy V>(tbl: t<K,V>) {
+        let old_chains = tbl.chains;
+        let n_old_chains = vec::len(old_chains);
+        let n_new_chains: uint = uint::next_power_of_two(n_old_chains + 1u);
+        tbl.chains = chains(n_new_chains);
+        foreach_chain(old_chains) { |entry|
+            insert_h(tbl, entry.key, entry.value, entry.hash);
+        }
+    }
+
+    fn items<copy K, copy V>(tbl: t<K,V>, blk: block(K,V)) {
+        let tbl_chains = tbl.chains;  // Satisfy alias checker.
+        foreach_chain(tbl_chains) { |entry|
+            let key = entry.key;
+            let value = entry.value;
+            blk(key, value);
+        }
+    }
+
+    obj o<copy K, copy V>(tbl: @t<K,V>,
+                          lf: float) {
+        fn size() -> uint {
+            ret tbl.size;
+        }
+
+        fn insert(k: K, v: V) -> bool {
+            let nchains = vec::len(tbl.chains);
+            let load = (tbl.size + 1u as float) / (nchains as float);
+            if load > lf {
+                rehash(*tbl);
+            }
+            ret insert(*tbl, k, v);
+        }
+
+        fn contains_key(k: K) -> bool {
+            ret option::is_some(get(*tbl, k));
+        }
+
+        fn get(k: K) -> V {
+            ret option::get(get(*tbl, k));
+        }
+
+        fn find(k: K) -> option::t<V> {
+            ret get(*tbl, k);
+        }
+
+        fn remove(k: K) -> option::t<V> {
+            ret remove(*tbl, k);
+        }
+
+        fn rehash() {
+            rehash(*tbl);
+        }
+
+        fn items(blk: block(K, V)) {
+            items(*tbl, blk);
+        }
+
+        fn keys(blk: block(K)) {
+            items(*tbl) { |k, _v| blk(k) }
+        }
+
+        fn values(blk: block(V)) {
+            items(*tbl) { |_k, v| blk(v) }
+        }
+    }
+
+    fn mk<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>) -> hashmap<K,V> {
+        let initial_capacity: uint = 32u; // 2^5
+        let t = @{mutable size: 0u,
+                  mutable chains: chains(initial_capacity),
+                  hasher: hasher,
+                  eqer: eqer};
+        ret o(t, 0.75);
+    }
+}
+
 /*
 Function: mk_hashmap
 
@@ -114,7 +350,7 @@ Parameters:
 hasher - The hash function for key type K
 eqer - The equality function for key type K
 */
-fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
+fn mk_flat_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
     -> hashmap<K, V> {
     let initial_capacity: uint = 32u; // 2^5
 
@@ -134,7 +370,7 @@ fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
     // buckets before the resulting pair of hash functions no longer
     // probes all buckets for a fixed key.  Note that hashl is made to
     // output odd numbers (hence coprime to the number of nbkts, which
-    // is always a power of 2), so that all buckets are probed for a
+    // is always a power? of 2), so that all buckets are probed for a
     // fixed key.
 
     fn hashl(n: u32) -> u32 { ret (n >>> 16u32) * 2u32 + 1u32; }
@@ -291,6 +527,11 @@ fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
     }
     let bkts = make_buckets(initial_capacity);
     ret hashmap(hasher, eqer, bkts, initial_capacity, 0u, load_factor);
+}
+
+fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
+    -> hashmap<K, V> {
+    ret chained::mk(hasher, eqer);
 }
 
 /*
