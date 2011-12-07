@@ -60,7 +60,14 @@ type crate_ =
 tag crate_directive_ {
     cdir_src_mod(ident, [attribute]);
     cdir_dir_mod(ident, [@crate_directive], [attribute]);
+
+    // NB: cdir_view_item is *not* processed by the rest of the compiler; the
+    // attached view_items are sunk into the crate's module during parsing,
+    // and processed (resolved, imported, etc.) there. This tag-variant exists
+    // only to preserve the view items in order in case we decide to
+    // pretty-print crates in the future.
     cdir_view_item(@view_item);
+
     cdir_syntax(@path);
 }
 

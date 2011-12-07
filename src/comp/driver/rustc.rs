@@ -123,12 +123,10 @@ fn inject_libcore_reference(sess: session::session,
     let vi1 = spanned(ast::view_item_use("core", [], n1));
     let vi2 = spanned(ast::view_item_import_glob(@["core"], n2));
 
-    let cd1 = spanned(ast::cdir_view_item(vi1));
-    let cd2 = spanned(ast::cdir_view_item(vi2));
+    let vis = [vi1, vi2] + crate.node.module.view_items;
 
-    let cdirs = [cd1, cd2] + crate.node.directives;
-
-    ret @{node: {directives: cdirs with crate.node} with *crate }
+    ret @{node: {module: { view_items: vis with crate.node.module }
+                 with crate.node} with *crate }
 }
 
 
