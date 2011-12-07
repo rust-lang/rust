@@ -484,9 +484,6 @@ LLVMIsThreadLocal
 LLVMIsUndef
 LLVMLabelType
 LLVMLabelTypeInContext
-LLVMLinkInInterpreter
-LLVMLinkInJIT
-LLVMLinkInMCJIT
 LLVMMDNode
 LLVMMDNodeInContext
 LLVMMDString
