@@ -132,10 +132,28 @@ fn int_ty_to_str(t: int_ty) -> str {
     }
 }
 
+fn int_ty_max(t: int_ty) -> u64 {
+    alt t {
+      ty_i8. { 0x80u64 }
+      ty_i16. { 0x800u64 }
+      ty_char. | ty_i32. { 0x80000000u64 }
+      ty_i64. { 0x8000000000000000u64 }
+    }
+}
+
 fn uint_ty_to_str(t: uint_ty) -> str {
     alt t {
       ty_u. { "" } ty_u8. { "u8" } ty_u16. { "u16" }
       ty_u32. { "u32" } ty_u64. { "u64" }
+    }
+}
+
+fn uint_ty_max(t: uint_ty) -> u64 {
+    alt t {
+      ty_u8. { 0xffu64 }
+      ty_u16. { 0xffffu64 }
+      ty_u32. { 0xffffffffu64 }
+      ty_u64. { 0xffffffffffffffffu64 }
     }
 }
 

@@ -1,5 +1,5 @@
 import syntax::ast::*;
-import syntax::visit;
+import syntax::{visit, ast_util};
 import driver::session::session;
 
 fn check_crate(sess: session, crate: @crate) {
@@ -55,6 +55,23 @@ fn check_expr(sess: session, e: @expr, &&is_const: bool, v: visit::vt<bool>) {
             ret;
           }
         }
+    }
+    alt e.node {
+      expr_lit(@{node: lit_int(v, t), _}) {
+        if t != ty_char {
+            if (v as u64) > ast_util::int_ty_max(
+                t == ty_i ? sess.get_targ_cfg().int_type : t) {
+                sess.span_err(e.span, "literal out of range for its type");
+            }
+        }
+      }
+      expr_lit(@{node: lit_uint(v, t), _}) {
+        if v > ast_util::uint_ty_max(
+            t == ty_u ? sess.get_targ_cfg().uint_type : t) {
+            sess.span_err(e.span, "literal out of range for its type");
+        }
+      }
+      _ {}
     }
     visit::visit_expr(e, is_const, v);
 }

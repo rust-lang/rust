@@ -14,7 +14,7 @@ Const: max_value
 
 Return the maximal value for a u32
 */
-const max_value: u32 = 4294967296u32;
+const max_value: u32 = 0xffff_ffffu32;
 
 //
 // Local Variables:
