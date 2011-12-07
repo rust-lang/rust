@@ -154,9 +154,6 @@ fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
           ast::stmt_expr(ex, _) {
             v.visit_expr(ex, sc, v);
           }
-          ast::stmt_crate_directive(cd) {
-            visit::visit_crate_directive(cd, sc, v);
-          }
         }
     }
     visit::visit_expr_opt(b.node.expr, sc, v);

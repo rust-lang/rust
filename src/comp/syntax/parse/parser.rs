@@ -1525,18 +1525,6 @@ fn parse_let(p: parser) -> @ast::decl {
 }
 
 fn parse_stmt(p: parser) -> @ast::stmt {
-    if p.get_file_type() == SOURCE_FILE {
-        ret parse_source_stmt(p);
-    } else { ret parse_crate_stmt(p); }
-}
-
-fn parse_crate_stmt(p: parser) -> @ast::stmt {
-    let cdir = parse_crate_directive(p, []);
-    ret @spanned(cdir.span.lo, cdir.span.hi,
-                 ast::stmt_crate_directive(@cdir));
-}
-
-fn parse_source_stmt(p: parser) -> @ast::stmt {
     let lo = p.get_lo_pos();
     if eat_word(p, "let") {
         let decl = parse_let(p);
@@ -1642,10 +1630,6 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
       ast::stmt_expr(e, _) {
         ret expr_has_value(e);
       }
-      // We should not be calling this on a cdir.
-      ast::stmt_crate_directive(cdir) {
-        fail;
-      }
     }
 }
 
@@ -1707,8 +1691,7 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
                 // Not an expression statement.
                 stmts += [stmt];
 
-                if p.get_file_type() == SOURCE_FILE &&
-                       stmt_ends_with_semi(*stmt) {
+                if stmt_ends_with_semi(*stmt) {
                     expect(p, token::SEMI);
                 }
               }

@@ -196,7 +196,6 @@ fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
     alt s.node {
       stmt_decl(d, _) { v.visit_decl(d, e, v); }
       stmt_expr(ex, _) { v.visit_expr(ex, e, v); }
-      stmt_crate_directive(cd) { visit_crate_directive(cd, e, v); }
     }
 }
 

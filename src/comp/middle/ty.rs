@@ -1659,10 +1659,6 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     alt s.node {
       ast::stmt_decl(_, id) { ret id; }
       ast::stmt_expr(_, id) { ret id; }
-      ast::stmt_crate_directive(_) {
-        log_err "ty::stmt_node_id(): crate directive found";
-        fail;
-      }
     }
 }
 

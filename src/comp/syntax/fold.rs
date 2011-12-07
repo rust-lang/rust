@@ -258,10 +258,7 @@ fn noop_fold_stmt(s: stmt_, fld: ast_fold) -> stmt_ {
     ret alt s {
           stmt_decl(d, nid) { stmt_decl(fld.fold_decl(d), nid) }
           stmt_expr(e, nid) { stmt_expr(fld.fold_expr(e), nid) }
-          stmt_crate_directive(cd) {
-            stmt_crate_directive(fld.fold_crate_directive(cd))
-          }
-        };
+    };
 }
 
 fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {

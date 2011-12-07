@@ -145,9 +145,6 @@ type stmt = spanned<stmt_>;
 tag stmt_ {
     stmt_decl(@decl, node_id);
     stmt_expr(@expr, node_id);
-
-    // These only exist in crate-level blocks.
-    stmt_crate_directive(@crate_directive);
 }
 
 tag init_op { init_assign; init_move; }
