@@ -155,9 +155,7 @@ mod chained {
 
     fn search_tbl<copy K, copy V>(
         tbl: t<K,V>, k: K, h: uint) -> search_result<K,V> {
-
         let idx = h % vec::len(tbl.chains);
-
         alt tbl.chains[idx] {
           absent. {
             ret not_found;
@@ -221,11 +219,13 @@ mod chained {
           }
 
           found_first(idx, entry) {
+            tbl.size -= 1u;
             tbl.chains[idx] = entry.next;
             ret option::some(entry.value);
           }
 
           found_after(eprev, entry) {
+            tbl.size -= 1u;
             eprev.next = entry.next;
             ret option::some(entry.value);
           }
