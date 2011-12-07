@@ -125,7 +125,7 @@ mod chained {
     };
 
     tag search_result<copy K, copy V> {
-        not_found(uint);
+        not_found;
         found_first(uint, @entry<K,V>);
         found_after(@entry<K,V>, @entry<K,V>);
     }
@@ -133,13 +133,12 @@ mod chained {
     fn search_rem<copy K, copy V>(tbl: t<K,V>,
                                   k: K,
                                   h: uint,
-                                  idx: uint,
                                   e_root: @entry<K,V>) -> search_result<K,V> {
         let e0 = e_root;
         while true {
             alt e0.next {
               absent. {
-                ret not_found(idx);
+                ret not_found;
               }
               present(e1) {
                 let e1_key = e1.key; // Satisfy alias checker.
@@ -161,23 +160,25 @@ mod chained {
 
         alt tbl.chains[idx] {
           absent. {
-            ret not_found(idx);
+            ret not_found;
           }
           present(e) {
             let e_key = e.key; // Satisfy alias checker.
             if e.hash == h && tbl.eqer(e_key, k) {
                 ret found_first(idx, e);
             } else {
-                ret search_rem(tbl, k, h, idx, e);
+                ret search_rem(tbl, k, h, e);
             }
           }
         }
     }
 
-    fn insert_h<copy K, copy V>(tbl: t<K,V>, k: K, v: V, hash: uint) -> bool {
-        // internal routine: does not update size
+    fn insert<copy K, copy V>(tbl: t<K,V>, k: K, v: V) -> bool {
+        let hash = tbl.hasher(k);
         alt search_tbl(tbl, k, hash) {
-          not_found(idx) {
+          not_found. {
+            tbl.size += 1u;
+            let idx = hash % vec::len(tbl.chains);
             let old_chain = tbl.chains[idx];
             tbl.chains[idx] = present(@{
                 hash: hash,
@@ -197,14 +198,9 @@ mod chained {
         }
     }
 
-    fn insert<copy K, copy V>(tbl: t<K,V>, k: K, v: V) -> bool {
-        tbl.size += 1u;
-        ret insert_h(tbl, k, v, tbl.hasher(k));
-    }
-
     fn get<copy K, copy V>(tbl: t<K,V>, k: K) -> option::t<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
-          not_found(_) {
+          not_found. {
             ret option::none;
           }
 
@@ -220,7 +216,7 @@ mod chained {
 
     fn remove<copy K, copy V>(tbl: t<K,V>, k: K) -> option::t<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
-          not_found(_) {
+          not_found. {
             ret option::none;
           }
 
@@ -247,8 +243,9 @@ mod chained {
             alt chain {
               absent. { ret; }
               present(entry) {
-                blk(entry);
-                chain = entry.next;
+                let next = entry.next;
+                blk(entry); // may modify entry.next!
+                chain = next;
               }
             }
         }
@@ -269,7 +266,9 @@ mod chained {
         let n_new_chains: uint = uint::next_power_of_two(n_old_chains + 1u);
         tbl.chains = chains(n_new_chains);
         foreach_chain(old_chains) { |entry|
-            insert_h(tbl, entry.key, entry.value, entry.hash);
+            let idx = entry.hash % n_new_chains;
+            entry.next = tbl.chains[idx];
+            tbl.chains[idx] = present(entry);
         }
     }
 
