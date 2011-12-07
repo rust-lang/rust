@@ -1,4 +1,4 @@
-import std::{vec, str, option, unsafe, fs, sys};
+import std::{vec, str, option, unsafe, fs, sys, ctypes};
 import std::map::hashmap;
 import lib::llvm::llvm;
 import lib::llvm::llvm::ValueRef;
@@ -6,6 +6,7 @@ import middle::trans_common::*;
 import middle::ty;
 import syntax::{ast, codemap};
 import ast::ty;
+import util::ppaux::ty_to_str;
 
 const LLVMDebugVersion: int = (9 << 16);
 
@@ -21,6 +22,9 @@ const AutoVariableTag: int = 256;
 const ArgVariableTag: int = 257;
 const ReturnVariableTag: int = 258;
 const LexicalBlockTag: int = 11;
+const PointerTypeTag: int = 15;
+const StructureTypeTag: int = 19;
+const MemberTag: int = 13;
 
 const DW_ATE_boolean: int = 0x02;
 const DW_ATE_float: int = 0x04;
@@ -219,31 +223,21 @@ fn get_block_metadata(cx: @block_ctxt) -> @metadata<block_md> {
       ret mdval;
 }
 
-fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_md> {
+fn size_and_align_of<T>() -> (int, int) {
+    (sys::size_of::<T>() as int, sys::align_of::<T>() as int)
+}
+
+fn get_basic_type_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
+    -> @metadata<tydesc_md> {
     let cache = cx.llmetadata;
+    let tg = BasicTypeDescriptorTag;
     alt cached_metadata::<@metadata<tydesc_md>>(
-        cache, BasicTypeDescriptorTag,
+        cache, tg,
         {|md| ty::hash_ty(t) == ty::hash_ty(md.data.hash)}) {
       option::some(md) { ret md; }
       option::none. {}
     }
-    fn size_and_align_of<T>() -> (int, int) {
-        (sys::size_of::<T>() as int, sys::align_of::<T>() as int)
-    }
-    let ast_ty = alt ty.node {
-      ast::ty_infer. {
-        alt ty::struct(ccx_tcx(cx), t) {
-          ty::ty_bool. { ast::ty_bool }
-          ty::ty_int. { ast::ty_int }
-          ty::ty_uint. { ast::ty_uint }
-          ty::ty_float. { ast::ty_float }
-          ty::ty_machine(m) { ast::ty_machine(m) }
-          ty::ty_char. { ast::ty_char }
-        }
-      }
-      _ { ty.node }
-    };
-    let (name, (size, align), encoding) = alt ast_ty {
+    let (name, (size, align), encoding) = alt ty.node {
       ast::ty_bool. {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
       ast::ty_int. {("int", size_and_align_of::<int>(), DW_ATE_signed)}
       ast::ty_uint. {("uint", size_and_align_of::<uint>(), DW_ATE_unsigned)}
@@ -265,7 +259,7 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
     let fname = filename_from_span(cx, ty.span);
     let file_node = get_file_metadata(cx, fname);
     let cu_node = get_compile_unit_metadata(cx, fname);
-    let lldata = [lltag(BasicTypeDescriptorTag),
+    let lldata = [lltag(tg),
                   cu_node.node,
                   llstr(name),
                   file_node.node,
@@ -277,11 +271,158 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
                   lli32(encoding)];
     let llnode = llmdnode(lldata);
     let mdval = @{node: llnode, data: {hash: ty::hash_ty(t)}};
-    update_cache(cache, BasicTypeDescriptorTag, tydesc_metadata(mdval));
+    update_cache(cache, tg, tydesc_metadata(mdval));
     llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
                                       str::byte_len("llvm.dbg.ty"),
                                       llnode);
     ret mdval;
+}
+
+fn get_pointer_type_metadata(cx: @crate_ctxt, t: ty::t, span: codemap::span,
+                             pointee: @metadata<tydesc_md>)
+    -> @metadata<tydesc_md> {
+    let tg = PointerTypeTag;
+    /*let cache = cx.llmetadata;
+    alt cached_metadata::<@metadata<tydesc_md>>(
+        cache, tg, {|md| ty::hash_ty(t) == ty::hash_ty(md.data.hash)}) {
+      option::some(md) { ret md; }
+      option::none. {}
+    }*/
+    let (size, align) = size_and_align_of::<ctypes::intptr_t>();
+    let fname = filename_from_span(cx, span);
+    let file_node = get_file_metadata(cx, fname);
+    //let cu_node = get_compile_unit_metadata(cx, fname);
+    let lldata = [lltag(tg),
+                  file_node.node,
+                  llstr(""),
+                  file_node.node,
+                  lli32(0), //XXX source line
+                  lli64(size * 8),  // size in bits
+                  lli64(align * 8), // alignment in bits
+                  lli64(0), //XXX offset?
+                  lli32(0),
+                  pointee.node];
+    let llnode = llmdnode(lldata);
+    let mdval = @{node: llnode, data: {hash: ty::hash_ty(t)}};
+    //update_cache(cache, tg, tydesc_metadata(mdval));
+    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
+                                      str::byte_len("llvm.dbg.ty"),
+                                      llnode);
+    ret mdval;
+}
+
+fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
+                           span: codemap::span, boxed: @metadata<tydesc_md>)
+    -> @metadata<tydesc_md> {
+    let tg = StructureTypeTag;
+    /*let cache = cx.llmetadata;
+    alt cached_metadata::<@metadata<tydesc_md>>(
+        cache, tg, {|md| ty::hash_ty(outer) == ty::hash_ty(md.data.hash)}) {
+      option::some(md) { ret md; }
+      option::none. {}
+    }*/
+    let (size, align) = size_and_align_of::<@int>();
+    let fname = filename_from_span(cx, span);
+    let file_node = get_file_metadata(cx, fname);
+    //let cu_node = get_compile_unit_metadata(cx, fname);
+    let tcx = ccx_tcx(cx);
+    let uint_t = ty::mk_uint(tcx);
+    let uint_ty = @{node: ast::ty_uint, span: span};
+    let refcount_type = get_basic_type_metadata(cx, uint_t, uint_ty);
+    /*let refcount_ptr_type = get_pointer_type_metadata(cx,
+                                                      ty::mk_imm_uniq(tcx, uint_t),
+                                                      span, refcount_type);*/
+    /*let boxed_ptr_type = get_pointer_type_metadata(cx, ty::mk_imm_uniq(tcx, inner),
+                                                   span, boxed);*/
+    //let ptr_size = sys::size_of::<ctypes::intptr_t>() as int;
+    //let ptr_align = sys::align_of::<ctypes::intptr_t>() as int;
+    let size = sys::size_of::<uint>() as int * 8;
+    let total_size = size;
+    let refcount = [lltag(MemberTag),
+                    file_node.node,
+                    llstr("refcnt"),
+                    file_node.node,
+                    lli32(0),
+                    lli64(size),
+                    lli64(sys::align_of::<uint>() as int * 8),
+                    lli64(0),
+                    lli32(0),
+                    refcount_type.node];
+    let size = 64; //XXX size of inner
+    let boxed_member = [lltag(MemberTag),
+                        file_node.node,
+                        llstr("boxed"),
+                        file_node.node,
+                        lli32(0),
+                        lli64(size),
+                        lli64(64), //XXX align of inner
+                        lli64(total_size),
+                        lli32(0),
+                        boxed.node];
+    total_size += size;
+    let members = [llmdnode(refcount), llmdnode(boxed_member)];
+    let lldata = [lltag(tg),
+                  file_node.node,
+                  llstr(ty_to_str(ccx_tcx(cx), outer)),
+                  file_node.node,
+                  lli32(0), //XXX source line
+                  lli64(total_size),  // size in bits
+                  lli64(align * 8), // alignment in bits
+                  lli64(0), //XXX offset?
+                  lli32(0), //XXX flags
+                  llnull(), // derived from
+                  llmdnode(members), // members
+                  lli32(0) // runtime language
+                 ];
+    let llnode = llmdnode(lldata);
+    let mdval = @{node: llnode, data: {hash: ty::hash_ty(outer)}};
+    //update_cache(cache, tg, tydesc_metadata(mdval));
+    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
+                                      str::byte_len("llvm.dbg.ty"),
+                                      llnode);
+    ret mdval;
+}
+
+fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_md> {
+    fn t_to_ty(cx: @crate_ctxt, t: ty::t, span: codemap::span) -> @ast::ty {
+        let ty = alt ty::struct(ccx_tcx(cx), t) {
+          ty::ty_nil. { ast::ty_nil }
+          ty::ty_bot. { ast::ty_bot }
+          ty::ty_bool. { ast::ty_bool }
+          ty::ty_int. { ast::ty_int }
+          ty::ty_float. { ast::ty_float }
+          ty::ty_uint. { ast::ty_uint }
+          ty::ty_machine(mt) { ast::ty_machine(mt) }
+          ty::ty_char. { ast::ty_char }
+          ty::ty_box(mt) { ast::ty_box({ty: t_to_ty(cx, mt.ty, span),
+                                        mut: mt.mut}) }
+          ty::ty_uniq(mt) { ast::ty_uniq({ty: t_to_ty(cx, mt.ty, span),
+                                          mut: mt.mut}) }
+        };
+        ret @{node: ty, span: span};
+    }
+    alt ty.node {
+      ast::ty_box(mt) {
+        let inner_t = alt ty::struct(ccx_tcx(cx), t) {
+          ty::ty_box(boxed) { boxed.ty }
+        };
+        let md = get_ty_metadata(cx, inner_t, mt.ty);
+        let box = get_boxed_type_metadata(cx, t, inner_t, ty.span, md);
+        ret get_pointer_type_metadata(cx, t, ty.span, box);
+      }
+      ast::ty_uniq(mt) {
+        let inner_t = alt ty::struct(ccx_tcx(cx), t) {
+          ty::ty_uniq(boxed) { boxed.ty }
+        };
+        let md = get_ty_metadata(cx, inner_t, mt.ty);
+        ret get_pointer_type_metadata(cx, t, ty.span, md);
+      }
+      ast::ty_infer. {
+        let inferred = t_to_ty(cx, t, ty.span);
+        ret get_ty_metadata(cx, t, inferred);
+      }
+      _ { ret get_basic_type_metadata(cx, t, ty); }
+    };
 }
 
 fn function_metadata_from_block(bcx: @block_ctxt) -> @metadata<subprogram_md> {
