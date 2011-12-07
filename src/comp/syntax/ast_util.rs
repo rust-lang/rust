@@ -193,7 +193,10 @@ fn is_constraint_arg(e: @expr) -> bool {
 
 fn eq_ty(&&a: @ty, &&b: @ty) -> bool { ret std::box::ptr_eq(a, b); }
 
-fn hash_ty(&&t: @ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
+fn hash_ty(&&t: @ty) -> uint {
+    let res = (t.span.lo << 16u) + t.span.hi;
+    ret res;
+}
 
 fn hash_def_id(&&id: def_id) -> uint {
     id.crate as uint << 16u + (id.node as uint)
