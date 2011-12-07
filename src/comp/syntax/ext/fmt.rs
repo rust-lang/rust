@@ -52,11 +52,11 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
         ret make_new_lit(cx, sp, lit);
     }
     fn make_new_int(cx: ext_ctxt, sp: span, i: int) -> @ast::expr {
-        let lit = ast::lit_int(i);
+        let lit = ast::lit_int(i as i64, ast::ty_i);
         ret make_new_lit(cx, sp, lit);
     }
     fn make_new_uint(cx: ext_ctxt, sp: span, u: uint) -> @ast::expr {
-        let lit = ast::lit_uint(u);
+        let lit = ast::lit_uint(u as u64, ast::ty_u);
         ret make_new_lit(cx, sp, lit);
     }
     fn make_add_expr(cx: ext_ctxt, sp: span, lhs: @ast::expr, rhs: @ast::expr)

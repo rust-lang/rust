@@ -112,22 +112,10 @@ fn skip_ty<E>(_t: @ty, _e: E, _v: vt<E>) {}
 
 fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
     alt t.node {
-      ty_nil. {/* no-op */ }
-      ty_bot. {/* no-op */ }
-      ty_bool. {/* no-op */ }
-      ty_int. {/* no-op */ }
-      ty_float. {/* no-op */ }
-      ty_uint. {/* no-op */ }
-      ty_machine(_) {/* no-op */ }
-      ty_char. {/* no-op */ }
-      ty_str. {/* no-op */ }
       ty_box(mt) { v.visit_ty(mt.ty, e, v); }
       ty_uniq(mt) { v.visit_ty(mt.ty, e, v); }
       ty_vec(mt) { v.visit_ty(mt.ty, e, v); }
       ty_ptr(mt) { v.visit_ty(mt.ty, e, v); }
-      ty_port(t) { v.visit_ty(t, e, v); }
-      ty_chan(t) { v.visit_ty(t, e, v); }
-      ty_task. {/* no-op */ }
       ty_rec(flds) {
         for f: ty_field in flds { v.visit_ty(f.node.mt.ty, e, v); }
       }
@@ -146,14 +134,13 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
         }
       }
       ty_path(p, _) { for tp: @ty in p.node.types { v.visit_ty(tp, e, v); } }
-      ty_type. {/* no-op */ }
       ty_constr(t, cs) {
         v.visit_ty(t, e, v);
         for tc: @spanned<constr_general_<@path, node_id>> in cs {
             v.visit_constr(tc.node.path, tc.span, tc.node.id, e, v);
         }
       }
-      ty_infer. {/* no-op */ }
+      _ {}
     }
 }
 

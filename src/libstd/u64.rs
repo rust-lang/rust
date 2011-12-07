@@ -63,3 +63,26 @@ Function: str
 Convert to a string
 */
 fn str(n: u64) -> str { ret to_str(n, 10u); }
+
+/*
+Function: parse_buf
+
+Parse a string as an unsigned integer.
+*/
+fn from_str(buf: str, radix: u64) -> u64 {
+    if str::byte_len(buf) == 0u {
+        log_err "parse_buf(): buf is empty";
+        fail;
+    }
+    let i = str::byte_len(buf) - 1u;
+    let power = 1u64, n = 0u64;
+    while true {
+        let digit = char::to_digit(buf[i] as char) as u64;
+        if digit >= radix { fail; }
+        n += digit * power;
+        power *= radix;
+        if i == 0u { ret n; }
+        i -= 1u;
+    }
+    fail;
+}

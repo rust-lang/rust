@@ -2,7 +2,7 @@
 import syntax::{ast, codemap};
 import syntax::ast::node_id;
 import codemap::span;
-import syntax::ast::ty_mach;
+import syntax::ast::{int_ty, uint_ty, float_ty};
 import std::{option};
 import std::option::{some, none};
 import syntax::parse::parser::parse_sess;
@@ -17,9 +17,9 @@ type config =
     {os: os,
      arch: arch,
      target_strs: target_strs::t,
-     int_type: ty_mach,
-     uint_type: ty_mach,
-     float_type: ty_mach};
+     int_type: int_ty,
+     uint_type: uint_ty,
+     float_type: float_ty};
 
 type options =
     // The crate config requested for the session, which may be combined

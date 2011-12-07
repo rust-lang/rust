@@ -251,12 +251,9 @@ type lit = spanned<lit_>;
 
 tag lit_ {
     lit_str(str);
-    lit_char(char);
-    lit_int(int);
-    lit_uint(uint);
-    lit_mach_int(ty_mach, int);
-    lit_float(str);
-    lit_mach_float(ty_mach, str);
+    lit_int(i64, int_ty);
+    lit_uint(u64, uint_ty);
+    lit_float(str, float_ty);
     lit_nil;
     lit_bool(bool);
 }
@@ -283,18 +280,11 @@ type ty_arg = spanned<ty_arg_>;
 
 type ty_method = spanned<ty_method_>;
 
-tag ty_mach {
-    ty_i8;
-    ty_i16;
-    ty_i32;
-    ty_i64;
-    ty_u8;
-    ty_u16;
-    ty_u32;
-    ty_u64;
-    ty_f32;
-    ty_f64;
-}
+tag int_ty { ty_i; ty_char; ty_i8; ty_i16; ty_i32; ty_i64; }
+
+tag uint_ty { ty_u; ty_u8; ty_u16; ty_u32; ty_u64; }
+
+tag float_ty { ty_f; ty_f32; ty_f64; }
 
 type ty = spanned<ty_>;
 
@@ -304,18 +294,13 @@ tag ty_ {
              ret/fail/break/cont. there is no syntax
              for this type. */
 
-
-
-
      /* bot represents the value of functions that don't return a value
         locally to their context. in contrast, things like log that do
         return, but don't return a meaningful value, have result type nil. */
-     ty_bool;
-    ty_int;
-    ty_uint;
-    ty_float;
-    ty_machine(ty_mach);
-    ty_char;
+    ty_bool;
+    ty_int(int_ty);
+    ty_uint(uint_ty);
+    ty_float(float_ty);
     ty_str;
     ty_box(mt);
     ty_uniq(mt);
@@ -332,7 +317,6 @@ tag ty_ {
     ty_type;
     ty_constr(@ty, [@ty_constr]);
     ty_mac(mac);
-
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
     // nested in one.

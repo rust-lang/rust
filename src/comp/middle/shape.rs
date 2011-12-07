@@ -299,54 +299,27 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
     let s = [];
 
     alt ty::struct(ccx.tcx, t) {
-      ty::ty_nil. | ty::ty_bool. | ty::ty_machine(ast::ty_u8.) | ty::ty_bot. {
-        s += [shape_u8];
-      }
-
-
-
-
-
-      ty::ty_int. {
-        s += [s_int(ccx.tcx)];
-      }
-      ty::ty_float. { s += [s_float(ccx.tcx)]; }
-
-
-
-
-
-      ty::ty_uint. | ty::ty_ptr(_) | ty::ty_type. | ty::ty_native(_) {
-        s += [s_uint(ccx.tcx)];
-      }
-
-
-
-
-
-      ty::ty_machine(ast::ty_i8.) {
-        s += [shape_i8];
-      }
-      ty::ty_machine(ast::ty_u16.) { s += [shape_u16]; }
-      ty::ty_machine(ast::ty_i16.) { s += [shape_i16]; }
-      ty::ty_machine(ast::ty_u32.) | ty::ty_char. { s += [shape_u32]; }
-      ty::ty_machine(ast::ty_i32.) { s += [shape_i32]; }
-      ty::ty_machine(ast::ty_u64.) { s += [shape_u64]; }
-      ty::ty_machine(ast::ty_i64.) { s += [shape_i64]; }
-
-      ty::ty_machine(ast::ty_f32.) { s += [shape_f32]; }
-      ty::ty_machine(ast::ty_f64.) { s += [shape_f64]; }
-
+      ty::ty_nil. | ty::ty_bool. | ty::ty_uint(ast::ty_u8.) |
+      ty::ty_bot. { s += [shape_u8]; }
+      ty::ty_int(ast::ty_i.) { s += [s_int(ccx.tcx)]; }
+      ty::ty_float(ast::ty_f.) { s += [s_float(ccx.tcx)]; }
+      ty::ty_uint(ast::ty_u.) | ty::ty_ptr(_) | ty::ty_type. |
+      ty::ty_native(_) { s += [s_uint(ccx.tcx)]; }
+      ty::ty_int(ast::ty_i8.) { s += [shape_i8]; }
+      ty::ty_uint(ast::ty_u16.) { s += [shape_u16]; }
+      ty::ty_int(ast::ty_i16.) { s += [shape_i16]; }
+      ty::ty_uint(ast::ty_u32.) { s += [shape_u32]; }
+      ty::ty_int(ast::ty_i32.) | ty::ty_int(ast::ty_char.) {s += [shape_i32];}
+      ty::ty_uint(ast::ty_u64.) { s += [shape_u64]; }
+      ty::ty_int(ast::ty_i64.) { s += [shape_i64]; }
+      ty::ty_float(ast::ty_f32.) { s += [shape_f32]; }
+      ty::ty_float(ast::ty_f64.) { s += [shape_f64]; }
       ty::ty_str. {
         s += [shape_vec];
         add_bool(s, true); // type is POD
-        let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
+        let unit_ty = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
         add_substr(s, shape_of(ccx, unit_ty, ty_param_map, is_obj_body));
       }
-
-
-
-
       ty::ty_tag(did, tps) {
         alt tag_kind(ccx, did) {
           tk_unit. {
@@ -382,11 +355,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
           }
         }
       }
-
-
-
-
-
       ty::ty_box(mt) {
         s += [shape_box];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map, is_obj_body));
@@ -416,21 +384,11 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
         }
         add_substr(s, sub);
       }
-
-
-
-
-
       ty::ty_fn(_, _, _, _, _) {
         s += [shape_fn];
       }
       ty::ty_native_fn(_, _) { s += [shape_u32]; }
       ty::ty_obj(_) { s += [shape_obj]; }
-
-
-
-
-
       ty::ty_res(did, raw_subt, tps) {
         let subt = ty::substitute_type_params(ccx.tcx, tps, raw_subt);
         let ri = {did: did, t: subt};
@@ -445,17 +403,9 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
         add_substr(s, shape_of(ccx, subt, ty_param_map, is_obj_body));
 
       }
-
-
-
-
       ty::ty_var(n) {
         fail "shape_of ty_var";
       }
-
-
-
-
       ty::ty_param(n, _) {
         if is_obj_body {
             // Just write in the parameter number.

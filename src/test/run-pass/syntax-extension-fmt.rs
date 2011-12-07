@@ -41,8 +41,7 @@ fn part1() {
     test(#fmt["%f", 5.82], "5.82");
     // 32-bit limits
 
-    // FIXME Disabled until issue 1252 is resolved.
-    // test(#fmt["%i", -2147483648], "-2147483648");
+    test(#fmt["%i", -2147483648], "-2147483648");
     test(#fmt["%i", 2147483647], "2147483647");
     test(#fmt["%u", 4294967295u], "4294967295");
     test(#fmt["%x", 0xffffffff_u], "ffffffff");

@@ -1,5 +1,5 @@
 
-import std::{io, vec, str, option};
+import std::{io, vec, str, option, either};
 import std::option::{some, none};
 import util::interner;
 import util::interner::intern;
@@ -161,103 +161,89 @@ fn scan_exponent(rdr: reader) -> option::t<str> {
     let c = rdr.curr();
     let rslt = "";
     if c == 'e' || c == 'E' {
-        rslt += str::unsafe_from_bytes([c as u8]);
+        str::push_byte(rslt, c as u8);
         rdr.bump();
         c = rdr.curr();
         if c == '-' || c == '+' {
-            rslt += str::unsafe_from_bytes([c as u8]);
+            str::push_byte(rslt, c as u8);
             rdr.bump();
         }
-        let exponent = scan_dec_digits(rdr);
+        let exponent = scan_digits(rdr, 10u);
         if str::byte_len(exponent) > 0u {
             ret some(rslt + exponent);
         } else { rdr.err("scan_exponent: bad fp literal"); fail; }
     } else { ret none::<str>; }
 }
 
-fn scan_dec_digits(rdr: reader) -> str {
-    let c = rdr.curr();
-    let rslt: str = "";
-    while is_dec_digit(c) || c == '_' {
-        if c != '_' { rslt += str::unsafe_from_bytes([c as u8]); }
-        rdr.bump();
-        c = rdr.curr();
+fn scan_digits(rdr: reader, radix: uint) -> str {
+    radix; // FIXME work around issue #1265
+    let rslt = "";
+    while true {
+        let c = rdr.curr();
+        if c == '_' { rdr.bump(); cont; }
+        alt std::char::maybe_digit(c) {
+          some(d) when (d as uint) < radix {
+            str::push_byte(rslt, c as u8);
+            rdr.bump();
+          }
+          _ { break; }
+        }
     }
     ret rslt;
 }
 
 fn scan_number(c: char, rdr: reader) -> token::token {
-    let accum_int = 0, c = c;
-    let num_str: str = "";
-    let n = rdr.next();
+    let num_str, base = 10u, c = c, n = rdr.next();
     if c == '0' && n == 'x' {
         rdr.bump();
         rdr.bump();
-        c = rdr.curr();
-        while is_hex_digit(c) || c == '_' {
-            if c != '_' { accum_int *= 16; accum_int += hex_digit_val(c); }
-            rdr.bump();
-            c = rdr.curr();
-        }
+        base = 16u;
     } else if c == '0' && n == 'b' {
         rdr.bump();
         rdr.bump();
-        c = rdr.curr();
-        while is_bin_digit(c) || c == '_' {
-            if c != '_' { accum_int *= 2; accum_int += bin_digit_value(c); }
-            rdr.bump();
-            c = rdr.curr();
-        }
-    } else {
-        num_str = scan_dec_digits(rdr);
-        accum_int = std::int::from_str(num_str);
+        base = 2u;
     }
+    num_str = scan_digits(rdr, base);
     c = rdr.curr();
     n = rdr.next();
     if c == 'u' || c == 'i' {
-        let signed: bool = c == 'i';
+        let signed = c == 'i', tp = signed ? either::left(ast::ty_i)
+                                           : either::right(ast::ty_u);
         rdr.bump();
         c = rdr.curr();
         if c == '8' {
             rdr.bump();
-            if signed {
-                ret token::LIT_MACH_INT(ast::ty_i8, accum_int);
-            } else { ret token::LIT_MACH_INT(ast::ty_u8, accum_int); }
+            tp = signed ? either::left(ast::ty_i8)
+                        : either::right(ast::ty_u8);
         }
         n = rdr.next();
         if c == '1' && n == '6' {
             rdr.bump();
             rdr.bump();
-            if signed {
-                ret token::LIT_MACH_INT(ast::ty_i16, accum_int);
-            } else { ret token::LIT_MACH_INT(ast::ty_u16, accum_int); }
+            tp = signed ? either::left(ast::ty_i16)
+                        : either::right(ast::ty_u16);
+        } else if c == '3' && n == '2' {
+            rdr.bump();
+            rdr.bump();
+            tp = signed ? either::left(ast::ty_i32)
+                        : either::right(ast::ty_u32);
+        } else if c == '6' && n == '4' {
+            rdr.bump();
+            rdr.bump();
+            tp = signed ? either::left(ast::ty_i64)
+                        : either::right(ast::ty_u64);
         }
-        if c == '3' && n == '2' {
-            rdr.bump();
-            rdr.bump();
-            if signed {
-                ret token::LIT_MACH_INT(ast::ty_i32, accum_int);
-            } else { ret token::LIT_MACH_INT(ast::ty_u32, accum_int); }
-        }
-        if c == '6' && n == '4' {
-            rdr.bump();
-            rdr.bump();
-            if signed {
-                ret token::LIT_MACH_INT(ast::ty_i64, accum_int);
-            } else { ret token::LIT_MACH_INT(ast::ty_u64, accum_int); }
-        }
-        if signed {
-            ret token::LIT_INT(accum_int);
-        } else {
-            // FIXME: should cast in the target bit-width.
-            ret token::LIT_UINT(accum_int as uint);
+        let parsed = std::u64::from_str(num_str, base as u64);
+        alt tp {
+          either::left(t) { ret token::LIT_INT(parsed as i64, t); }
+          either::right(t) { ret token::LIT_UINT(parsed, t); }
         }
     }
     let is_float = false;
     if rdr.curr() == '.' {
         is_float = true;
         rdr.bump();
-        let dec_part = scan_dec_digits(rdr);
+        let dec_part = scan_digits(rdr, 10u);
         num_str += "." + dec_part;
     }
     alt scan_exponent(rdr) {
@@ -274,15 +260,13 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         if c == '3' && n == '2' {
             rdr.bump();
             rdr.bump();
-            ret token::LIT_MACH_FLOAT(ast::ty_f32,
-                                      intern(*rdr.get_interner(),
-                                             num_str));
+            ret token::LIT_FLOAT(intern(*rdr.get_interner(), num_str),
+                                 ast::ty_f32);
         } else if c == '6' && n == '4' {
             rdr.bump();
             rdr.bump();
-            ret token::LIT_MACH_FLOAT(ast::ty_f64,
-                                      intern(*rdr.get_interner(),
-                                             num_str));
+            ret token::LIT_FLOAT(intern(*rdr.get_interner(), num_str),
+                                 ast::ty_f64);
             /* FIXME: if this is out of range for either a 32-bit or
             64-bit float, it won't be noticed till the back-end */
         } else {
@@ -290,10 +274,11 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         }
     }
     if is_float {
-        ret token::LIT_FLOAT(interner::intern::<str>(*rdr.get_interner(),
-                                                     num_str));
+        ret token::LIT_FLOAT(interner::intern(*rdr.get_interner(), num_str),
+                             ast::ty_f);
     } else {
-        ret token::LIT_INT(accum_int);
+        let parsed = std::u64::from_str(num_str, base as u64);
+        ret token::LIT_INT(parsed as i64, ast::ty_i);
     }
 }
 
@@ -463,8 +448,7 @@ fn next_token_inner(rdr: reader) -> token::token {
             fail;
         }
         rdr.bump(); // advance curr past token
-
-        ret token::LIT_CHAR(c2);
+        ret token::LIT_INT(c2 as i64, ast::ty_char);
       }
       '"' {
         let n = rdr.get_chpos();
@@ -685,13 +669,10 @@ fn consume_comment(rdr: reader, code_to_the_left: bool, &comments: [cmnt]) {
 
 fn is_lit(t: token::token) -> bool {
     ret alt t {
-          token::LIT_INT(_) { true }
-          token::LIT_UINT(_) { true }
-          token::LIT_MACH_INT(_, _) { true }
-          token::LIT_FLOAT(_) { true }
-          token::LIT_MACH_FLOAT(_, _) { true }
+          token::LIT_INT(_, _) { true }
+          token::LIT_UINT(_, _) { true }
+          token::LIT_FLOAT(_, _) { true }
           token::LIT_STR(_) { true }
-          token::LIT_CHAR(_) { true }
           token::LIT_BOOL(_) { true }
           _ { false }
         }

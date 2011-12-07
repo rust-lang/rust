@@ -125,21 +125,23 @@ fn is_path(e: @expr) -> bool {
     ret alt e.node { expr_path(_) { true } _ { false } };
 }
 
-fn ty_mach_to_str(tm: ty_mach) -> str {
-    alt tm {
-      ty_u8. { ret "u8"; }
-      ty_u16. { ret "u16"; }
-      ty_u32. { ret "u32"; }
-      ty_u64. { ret "u64"; }
-      ty_i8. { ret "i8"; }
-      ty_i16. { ret "i16"; }
-      ty_i32. { ret "i32"; }
-      ty_i64. { ret "i64"; }
-      ty_f32. { ret "f32"; }
-      ty_f64. { ret "f64"; }
+fn int_ty_to_str(t: int_ty) -> str {
+    alt t {
+      ty_i. { "" } ty_i8. { "i8" } ty_i16. { "i16" }
+      ty_i32. { "i32" } ty_i64. { "i64" }
     }
 }
 
+fn uint_ty_to_str(t: uint_ty) -> str {
+    alt t {
+      ty_u. { "" } ty_u8. { "u8" } ty_u16. { "u16" }
+      ty_u32. { "u32" } ty_u64. { "u64" }
+    }
+}
+
+fn float_ty_to_str(t: float_ty) -> str {
+    alt t { ty_f. { "" } ty_f32. { "f32" } ty_f64. { "f64" } }
+}
 
 fn is_exported(i: ident, m: _mod) -> bool {
     let nonlocal = true;
@@ -245,7 +247,12 @@ fn ty_param_kind(tp: ty_param) -> kind { tp.kind }
 
 // FIXME this doesn't handle big integer/float literals correctly (nor does
 // the rest of our literal handling)
-tag const_val { const_float(float); const_int(i64); const_str(str); }
+tag const_val {
+    const_float(float);
+    const_int(i64);
+    const_uint(u64);
+    const_str(str);
+}
 
 fn eval_const_expr(e: @expr) -> const_val {
     fn fromb(b: bool) -> const_val { const_int(b as i64) }
@@ -254,11 +261,13 @@ fn eval_const_expr(e: @expr) -> const_val {
         alt eval_const_expr(inner) {
           const_float(f) { const_float(-f) }
           const_int(i) { const_int(-i) }
+          const_uint(i) { const_uint(-i) }
         }
       }
       expr_unary(not., inner) {
         alt eval_const_expr(inner) {
           const_int(i) { const_int(!i) }
+          const_uint(i) { const_uint(!i) }
         }
       }
       expr_binary(op, a, b) {
@@ -283,6 +292,17 @@ fn eval_const_expr(e: @expr) -> const_val {
               ge. { fromb(a >= b) } gt. { fromb(a > b) }
             }
           }
+          (const_uint(a), const_uint(b)) {
+            alt op {
+              add. { const_uint(a + b) } sub. { const_uint(a - b) }
+              mul. { const_uint(a * b) } div. { const_uint(a / b) }
+              rem. { const_uint(a % b) } and. | bitand. { const_uint(a & b) }
+              or. | bitor. { const_uint(a | b) } bitxor. { const_uint(a ^ b) }
+              eq. { fromb(a == b) } lt. { fromb(a < b) }
+              le. { fromb(a <= b) } ne. { fromb(a != b) }
+              ge. { fromb(a >= b) } gt. { fromb(a > b) }
+            }
+          }
         }
       }
       expr_lit(lit) { lit_to_const(lit) }
@@ -292,12 +312,9 @@ fn eval_const_expr(e: @expr) -> const_val {
 fn lit_to_const(lit: @lit) -> const_val {
     alt lit.node {
       lit_str(s) { const_str(s) }
-      lit_char(ch) { const_int(ch as i64) }
-      lit_int(i) | lit_mach_int(_, i) { const_int(i as i64) }
-      lit_uint(ui) { const_int(ui as i64) }
-      lit_float(s) | lit_mach_float(_, s) {
-        const_float(std::float::from_str(s))
-      }
+      lit_int(n, _) { const_int(n) }
+      lit_uint(n, _) { const_uint(n) }
+      lit_float(n, _) { const_float(std::float::from_str(n)) }
       lit_nil. { const_int(0i64) }
       lit_bool(b) { const_int(b as i64) }
     }
@@ -306,6 +323,7 @@ fn lit_to_const(lit: @lit) -> const_val {
 fn compare_const_vals(a: const_val, b: const_val) -> int {
   alt (a, b) {
     (const_int(a), const_int(b)) { a == b ? 0 : a < b ? -1 : 1 }
+    (const_uint(a), const_uint(b)) { a == b ? 0 : a < b ? -1 : 1 }
     (const_float(a), const_float(b)) { a == b ? 0 : a < b ? -1 : 1 }
     (const_str(a), const_str(b)) { a == b ? 0 : a < b ? -1 : 1 }
   }

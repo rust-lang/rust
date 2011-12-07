@@ -553,9 +553,8 @@ fn local_id_of_node(cx: ctx, id: node_id) -> uint {
 fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
     fn score_ty(tcx: ty::ctxt, ty: ty::t) -> uint {
         ret alt ty::struct(tcx, ty) {
-          ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int. |
-          ty::ty_uint. | ty::ty_float. | ty::ty_machine(_) |
-          ty::ty_char. | ty::ty_type. | ty::ty_native(_) |
+          ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int(_) |
+          ty::ty_uint(_) | ty::ty_float(_) | ty::ty_type. | ty::ty_native(_) |
           ty::ty_ptr(_) { 1u }
           ty::ty_box(_) { 3u }
           ty::ty_constr(t, _) | ty::ty_res(_, t, _) { score_ty(tcx, t) }

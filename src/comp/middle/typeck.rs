@@ -289,11 +289,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, getter: ty_getter, &&ast_ty: @ast::ty)
       ast::ty_nil. { typ = ty::mk_nil(tcx); }
       ast::ty_bot. { typ = ty::mk_bot(tcx); }
       ast::ty_bool. { typ = ty::mk_bool(tcx); }
-      ast::ty_int. { typ = ty::mk_int(tcx); }
-      ast::ty_uint. { typ = ty::mk_uint(tcx); }
-      ast::ty_float. { typ = ty::mk_float(tcx); }
-      ast::ty_machine(tm) { typ = ty::mk_mach(tcx, tm); }
-      ast::ty_char. { typ = ty::mk_char(tcx); }
+      ast::ty_int(it) { typ = ty::mk_mach_int(tcx, it); }
+      ast::ty_uint(uit) { typ = ty::mk_mach_uint(tcx, uit); }
+      ast::ty_float(ft) { typ = ty::mk_mach_float(tcx, ft); }
       ast::ty_str. { typ = ty::mk_str(tcx); }
       ast::ty_box(mt) {
         typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
@@ -1223,32 +1221,12 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
 // AST fragment checking
 fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
     alt lit.node {
-      ast::lit_str(_) { ret ty::mk_str(ccx.tcx); }
-      ast::lit_char(_) { ret ty::mk_char(ccx.tcx); }
-      ast::lit_int(_) { ret ty::mk_int(ccx.tcx); }
-      ast::lit_float(_) { ret ty::mk_float(ccx.tcx); }
-      ast::lit_mach_float(tm, _) { ret ty::mk_mach(ccx.tcx, tm); }
-      ast::lit_uint(_) { ret ty::mk_uint(ccx.tcx); }
-      ast::lit_mach_int(tm, _) { ret ty::mk_mach(ccx.tcx, tm); }
-      ast::lit_nil. { ret ty::mk_nil(ccx.tcx); }
-      ast::lit_bool(_) { ret ty::mk_bool(ccx.tcx); }
-    }
-}
-
-fn lit_as_uint(l: @ast::lit) -> uint {
-    alt l.node {
-      ast::lit_uint(u) { u }
-      ast::lit_char(c) { c as uint }
-    }
-}
-fn lit_as_int(l: @ast::lit) -> int {
-    alt l.node {
-      ast::lit_int(i) | ast::lit_mach_int(_, i) { i }
-    }
-}
-fn lit_as_float(l: @ast::lit) -> str {
-    alt l.node {
-      ast::lit_float(f) | ast::lit_mach_float(_, f) { f }
+      ast::lit_str(_) { ty::mk_str(ccx.tcx) }
+      ast::lit_int(_, t) { ty::mk_mach_int(ccx.tcx, t) }
+      ast::lit_uint(_, t) { ty::mk_mach_uint(ccx.tcx, t) }
+      ast::lit_float(_, t) { ty::mk_mach_float(ccx.tcx, t) }
+      ast::lit_nil. { ty::mk_nil(ccx.tcx) }
+      ast::lit_bool(_) { ty::mk_bool(ccx.tcx) }
     }
 }
 
@@ -1919,7 +1897,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let ety = expr_ty(tcx, seq);
         alt structure_of(fcx, expr.span, ety) {
           ty::ty_vec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
-          ty::ty_str. { elt_ty = ty::mk_mach(tcx, ast::ty_u8); }
+          ty::ty_str. { elt_ty = ty::mk_mach_uint(tcx, ast::ty_u8); }
           _ {
             tcx.sess.span_fatal(expr.span,
                                 "mismatched types: expected vector or string "
@@ -2258,7 +2236,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         alt structure_of(fcx, expr.span, base_t) {
           ty::ty_vec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
           ty::ty_str. {
-            let typ = ty::mk_mach(tcx, ast::ty_u8);
+            let typ = ty::mk_mach_uint(tcx, ast::ty_u8);
             write::ty_only_fixup(fcx, id, typ);
           }
           _ {

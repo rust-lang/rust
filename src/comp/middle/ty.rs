@@ -71,7 +71,9 @@ export mk_mut_ptr;
 export mk_int;
 export mk_str;
 export mk_vec;
-export mk_mach;
+export mk_mach_int;
+export mk_mach_uint;
+export mk_mach_float;
 export mk_native;
 export mk_native_fn;
 export mk_nil;
@@ -111,7 +113,6 @@ export ty_native_fn;
 export ty_bool;
 export ty_bot;
 export ty_box;
-export ty_char;
 export ty_constr;
 export ty_constr_arg;
 export ty_float;
@@ -122,7 +123,6 @@ export ty_fn_ret_style;
 export ty_int;
 export ty_str;
 export ty_vec;
-export ty_machine;
 export ty_native;
 export ty_nil;
 export ty_obj;
@@ -249,18 +249,15 @@ type raw_t =
 
 type t = uint;
 
-
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast::rs as well.
 tag sty {
     ty_nil;
     ty_bot;
     ty_bool;
-    ty_int;
-    ty_float;
-    ty_uint;
-    ty_machine(ast::ty_mach);
-    ty_char;
+    ty_int(ast::int_ty);
+    ty_uint(ast::uint_ty);
+    ty_float(ast::float_ty);
     ty_str;
     ty_tag(def_id, [t]);
     ty_box(mt);
@@ -361,20 +358,20 @@ type node_type_table =
 fn populate_type_store(cx: ctxt) {
     intern(cx, ty_nil, none);
     intern(cx, ty_bool, none);
-    intern(cx, ty_int, none);
-    intern(cx, ty_float, none);
-    intern(cx, ty_uint, none);
-    intern(cx, ty_machine(ast::ty_i8), none);
-    intern(cx, ty_machine(ast::ty_i16), none);
-    intern(cx, ty_machine(ast::ty_i32), none);
-    intern(cx, ty_machine(ast::ty_i64), none);
-    intern(cx, ty_machine(ast::ty_u8), none);
-    intern(cx, ty_machine(ast::ty_u16), none);
-    intern(cx, ty_machine(ast::ty_u32), none);
-    intern(cx, ty_machine(ast::ty_u64), none);
-    intern(cx, ty_machine(ast::ty_f32), none);
-    intern(cx, ty_machine(ast::ty_f64), none);
-    intern(cx, ty_char, none);
+    intern(cx, ty_int(ast::ty_i), none);
+    intern(cx, ty_float(ast::ty_f), none);
+    intern(cx, ty_uint(ast::ty_u), none);
+    intern(cx, ty_int(ast::ty_i8), none);
+    intern(cx, ty_int(ast::ty_i16), none);
+    intern(cx, ty_int(ast::ty_i32), none);
+    intern(cx, ty_int(ast::ty_i64), none);
+    intern(cx, ty_uint(ast::ty_u8), none);
+    intern(cx, ty_uint(ast::ty_u16), none);
+    intern(cx, ty_uint(ast::ty_u32), none);
+    intern(cx, ty_uint(ast::ty_u64), none);
+    intern(cx, ty_float(ast::ty_f32), none);
+    intern(cx, ty_float(ast::ty_f64), none);
+    intern(cx, ty_int(ast::ty_char), none);
     intern(cx, ty_str, none);
     intern(cx, ty_type, none);
     intern(cx, ty_bot, none);
@@ -445,17 +442,8 @@ fn mk_raw_ty(cx: ctxt, st: sty, _in_cname: option::t<str>) -> @raw_t {
         derive_flags_t(cx, has_params, has_vars, tt);
     }
     alt st {
-      ty_nil. {/* no-op */ }
-      ty_bot. {/* no-op */ }
-      ty_bool. {/* no-op */ }
-      ty_int. {/* no-op */ }
-      ty_float. {/* no-op */ }
-      ty_uint. {/* no-op */ }
-      ty_machine(_) {/* no-op */ }
-      ty_char. {/* no-op */ }
-      ty_str. {/* no-op */ }
-      ty_type. {/* no-op */ }
-      ty_native(_) {/* no-op */ }
+      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_str. | ty_type. | ty_native(_) {/* no-op */ }
       ty_param(_, _) { has_params = true; }
       ty_var(_) { has_vars = true; }
       ty_tag(_, tys) {
@@ -523,20 +511,35 @@ fn mk_float(_cx: ctxt) -> t { ret idx_float; }
 
 fn mk_uint(_cx: ctxt) -> t { ret idx_uint; }
 
-fn mk_mach(_cx: ctxt, tm: ast::ty_mach) -> t {
+fn mk_mach_int(_cx: ctxt, tm: ast::int_ty) -> t {
     alt tm {
-      ast::ty_u8. { ret idx_u8; }
-      ast::ty_u16. { ret idx_u16; }
-      ast::ty_u32. { ret idx_u32; }
-      ast::ty_u64. { ret idx_u64; }
+      ast::ty_i. { ret idx_int; }
+      ast::ty_char. { ret idx_char; }
       ast::ty_i8. { ret idx_i8; }
       ast::ty_i16. { ret idx_i16; }
       ast::ty_i32. { ret idx_i32; }
       ast::ty_i64. { ret idx_i64; }
+    }
+}
+
+fn mk_mach_uint(_cx: ctxt, tm: ast::uint_ty) -> t {
+    alt tm {
+      ast::ty_u. { ret idx_uint; }
+      ast::ty_u8. { ret idx_u8; }
+      ast::ty_u16. { ret idx_u16; }
+      ast::ty_u32. { ret idx_u32; }
+      ast::ty_u64. { ret idx_u64; }
+    }
+}
+
+fn mk_mach_float(_cx: ctxt, tm: ast::float_ty) -> t {
+    alt tm {
+      ast::ty_f. { ret idx_float; }
       ast::ty_f32. { ret idx_f32; }
       ast::ty_f64. { ret idx_f64; }
     }
 }
+
 
 fn mk_char(_cx: ctxt) -> t { ret idx_char; }
 
@@ -614,20 +617,9 @@ type ty_walk = fn@(t);
 
 fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
     alt struct(cx, ty) {
-      ty_nil. {/* no-op */ }
-      ty_bot. {/* no-op */ }
-      ty_bool. {/* no-op */ }
-      ty_int. {/* no-op */ }
-      ty_uint. {/* no-op */ }
-      ty_float. {/* no-op */ }
-      ty_machine(_) {/* no-op */ }
-      ty_char. {/* no-op */ }
-      ty_str. {/* no-op */ }
-      ty_type. {/* no-op */ }
-      ty_native(_) {/* no-op */ }
-      ty_box(tm) { walk_ty(cx, walker, tm.ty); }
-      ty_vec(tm) { walk_ty(cx, walker, tm.ty); }
-      ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
+      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_str. | ty_type. | ty_native(_) {/* no-op */ }
+      ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
       ty_tag(tid, subtys) {
         for subty: t in subtys { walk_ty(cx, walker, subty); }
       }
@@ -677,17 +669,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       fm_general(_) {/* no fast path */ }
     }
     alt struct(cx, ty) {
-      ty_nil. {/* no-op */ }
-      ty_bot. {/* no-op */ }
-      ty_bool. {/* no-op */ }
-      ty_int. {/* no-op */ }
-      ty_uint. {/* no-op */ }
-      ty_float. {/* no-op */ }
-      ty_machine(_) {/* no-op */ }
-      ty_char. {/* no-op */ }
-      ty_str. {/* no-op */ }
-      ty_type. {/* no-op */ }
-      ty_native(_) {/* no-op */ }
+      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_str. | ty_type. | ty_native(_) {/* no-op */ }
       ty_box(tm) {
         ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
@@ -725,10 +708,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
             let new_ty = fold_ty(cx, fld, a.ty);
             new_args += [{mode: a.mode, ty: new_ty}];
         }
-        ty =
-            copy_cname(cx,
-                       mk_fn(cx, proto, new_args, fold_ty(cx, fld, ret_ty),
-                             cf, constrs), ty);
+        ty = copy_cname(cx, mk_fn(cx, proto, new_args,
+                                  fold_ty(cx, fld, ret_ty), cf, constrs), ty);
       }
       ty_native_fn(args, ret_ty) {
         let new_args: [arg] = [];
@@ -736,10 +717,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
             let new_ty = fold_ty(cx, fld, a.ty);
             new_args += [{mode: a.mode, ty: new_ty}];
         }
-        ty =
-            copy_cname(cx,
-                       mk_native_fn(cx, new_args,
-                                    fold_ty(cx, fld, ret_ty)), ty);
+        ty = copy_cname(cx, mk_native_fn(cx, new_args,
+                                         fold_ty(cx, fld, ret_ty)), ty);
       }
       ty_obj(methods) {
         let new_methods: [method] = [];
@@ -772,7 +751,6 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         alt fld { fm_param(folder) { ty = folder(id, k); } _ {/* no-op */ } }
       }
     }
-
 
     // If this is a general type fold, then we need to run it now.
     alt fld { fm_general(folder) { ret folder(ty); } _ { ret ty; } }
@@ -842,7 +820,7 @@ fn type_is_str(cx: ctxt, ty: t) -> bool {
 
 fn sequence_element_type(cx: ctxt, ty: t) -> t {
     alt struct(cx, ty) {
-      ty_str. { ret mk_mach(cx, ast::ty_u8); }
+      ty_str. { ret mk_mach_uint(cx, ast::ty_u8); }
       ty_vec(mt) { ret mt.ty; }
       _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
     }
@@ -917,17 +895,9 @@ pure fn type_is_unique(cx: ctxt, ty: t) -> bool {
 
 pure fn type_is_scalar(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_nil. { ret true; }
-      ty_bool. { ret true; }
-      ty_int. { ret true; }
-      ty_float. { ret true; }
-      ty_uint. { ret true; }
-      ty_machine(_) { ret true; }
-      ty_char. { ret true; }
-      ty_type. { ret true; }
-      ty_native(_) { ret true; }
-      ty_ptr(_) { ret true; }
-      _ { ret false; }
+      ty_nil. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_type. | ty_native(_) | ty_ptr(_) { true }
+      _ { false }
     }
 }
 
@@ -946,8 +916,8 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     let accum = false;
     let result = alt struct(cx, ty) {
       // scalar types
-      ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_float. | ty_uint. |
-      ty_machine(_) | ty_char. | ty_type. | ty_native(_) | ty_ptr(_) { false }
+      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_type. | ty_native(_) | ty_ptr(_) { false }
       ty_rec(flds) {
         for f in flds { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
@@ -998,8 +968,8 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
 
     let result = alt struct(cx, ty) {
       // Scalar and unique types are sendable
-      ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_uint. | ty_float. |
-      ty_machine(_) | ty_char. | ty_native(_) | ty_ptr(_) |
+      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_native(_) | ty_ptr(_) |
       ty_type. | ty_str. | ty_native_fn(_, _) { ast::kind_sendable }
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
@@ -1151,38 +1121,15 @@ fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
 
 fn type_is_integral(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_int. { ret true; }
-      ty_uint. { ret true; }
-      ty_machine(m) {
-        alt m {
-          ast::ty_i8. { ret true; }
-          ast::ty_i16. { ret true; }
-          ast::ty_i32. { ret true; }
-          ast::ty_i64. { ret true; }
-          ast::ty_u8. { ret true; }
-          ast::ty_u16. { ret true; }
-          ast::ty_u32. { ret true; }
-          ast::ty_u64. { ret true; }
-          _ { ret false; }
-        }
-      }
-      ty_char. { ret true; }
-      ty_bool. { ret true; }
-      _ { ret false; }
+      ty_int(_) | ty_uint(_) | ty_bool. { true }
+      _ { false }
     }
 }
 
 fn type_is_fp(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_machine(tm) {
-        alt tm {
-          ast::ty_f32. { ret true; }
-          ast::ty_f64. { ret true; }
-          _ { ret false; }
-        }
-      }
-      ty_float. { ret true; }
-      _ { ret false; }
+      ty_float(_) { true }
+      _ { false }
     }
 }
 
@@ -1192,17 +1139,8 @@ fn type_is_numeric(cx: ctxt, ty: t) -> bool {
 
 fn type_is_signed(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_int. { ret true; }
-      ty_machine(tm) {
-        alt tm {
-          ast::ty_i8. { ret true; }
-          ast::ty_i16. { ret true; }
-          ast::ty_i32. { ret true; }
-          ast::ty_i64. { ret true; }
-          _ { ret false; }
-        }
-      }
-      _ { ret false; }
+      ty_int(_) { true }
+      _ { false }
     }
 }
 
@@ -1211,10 +1149,8 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let result = true;
     alt struct(cx, ty) {
       // Scalar types
-      ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_float. | ty_uint. |
-      ty_machine(_) | ty_char. | ty_type. | ty_native(_) | ty_ptr(_) {
-        result = true;
-      }
+      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_type. | ty_native(_) | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str. | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
       ty_native_fn(_, _) | ty_obj(_) {
@@ -1343,26 +1279,22 @@ fn hash_type_structure(st: sty) -> uint {
         ret h;
     }
     alt st {
-      ty_nil. { ret 0u; }
-      ty_bool. { ret 1u; }
-      ty_int. { ret 2u; }
-      ty_float. { ret 3u; }
-      ty_uint. { ret 4u; }
-      ty_machine(tm) {
-        alt tm {
-          ast::ty_i8. { ret 5u; }
-          ast::ty_i16. { ret 6u; }
-          ast::ty_i32. { ret 7u; }
-          ast::ty_i64. { ret 8u; }
-          ast::ty_u8. { ret 9u; }
-          ast::ty_u16. { ret 10u; }
-          ast::ty_u32. { ret 11u; }
-          ast::ty_u64. { ret 12u; }
-          ast::ty_f32. { ret 13u; }
-          ast::ty_f64. { ret 14u; }
+      ty_nil. { 0u } ty_bool. { 1u }
+      ty_int(t) {
+        alt t {
+          ast::ty_i. { 2u } ast::ty_char. { 3u } ast::ty_i8. { 4u }
+          ast::ty_i16. { 5u } ast::ty_i32. { 6u } ast::ty_i64. { 7u }
         }
       }
-      ty_char. { ret 15u; }
+      ty_uint(t) {
+        alt t {
+          ast::ty_u. { 8u } ast::ty_u8. { 9u } ast::ty_u16. { 10u }
+          ast::ty_u32. { 11u } ast::ty_u64. { 12u }
+        }
+      }
+      ty_float(t) {
+        alt t { ast::ty_f. { 13u } ast::ty_f32. { 14u } ast::ty_f64. { 15u } }
+      }
       ty_str. { ret 17u; }
       ty_tag(did, tys) {
         let h = hash_def(18u, did);
@@ -1505,17 +1437,17 @@ fn eq_ty(&&a: t, &&b: t) -> bool { ret a == b; }
 fn ty_to_machine_ty(cx: ctxt, ty: t) -> t {
     fn sub_fn(cx: ctxt, uint_ty: t, int_ty: t, float_ty: t, in: t) -> t {
         alt struct(cx, in) {
-          ty_uint. { ret uint_ty; }
-          ty_int. { ret int_ty; }
-          ty_float. { ret float_ty; }
+          ty_uint(ast::ty_u.) { ret uint_ty; }
+          ty_int(ast::ty_i.) { ret int_ty; }
+          ty_float(ast::ty_f.) { ret float_ty; }
           _ { ret in; }
         }
     }
 
     let cfg      = cx.sess.get_targ_cfg();
-    let uint_ty  = mk_mach(cx, cfg.uint_type);
-    let int_ty   = mk_mach(cx, cfg.int_type);
-    let float_ty = mk_mach(cx, cfg.float_type);
+    let uint_ty  = mk_mach_uint(cx, cfg.uint_type);
+    let int_ty   = mk_mach_int(cx, cfg.int_type);
+    let float_ty = mk_mach_float(cx, cfg.float_type);
     let fold_m   = fm_general(bind sub_fn(cx, uint_ty, int_ty, float_ty, _));
 
     ret fold_ty(cx, fold_m, ty);
@@ -2289,14 +2221,10 @@ mod unify {
           ty::ty_bot. {
             ret ures_ok(actual);
           }
-          ty::ty_bool. { ret struct_cmp(cx, expected, actual); }
-          ty::ty_int. { ret struct_cmp(cx, expected, actual); }
-          ty::ty_uint. { ret struct_cmp(cx, expected, actual); }
-          ty::ty_machine(_) { ret struct_cmp(cx, expected, actual); }
-          ty::ty_float. { ret struct_cmp(cx, expected, actual); }
-          ty::ty_char. { ret struct_cmp(cx, expected, actual); }
-          ty::ty_str. { ret struct_cmp(cx, expected, actual); }
-          ty::ty_type. { ret struct_cmp(cx, expected, actual); }
+          ty::ty_bool. | ty::ty_int(_) | ty_uint(_) | ty_float(_) |
+          ty::ty_str. | ty::ty_type. {
+            ret struct_cmp(cx, expected, actual);
+          }
           ty::ty_native(ex_id) {
             alt struct(cx.tcx, actual) {
               ty_native(act_id) {
@@ -2891,20 +2819,9 @@ fn is_binopable(cx: ctxt, ty: t, op: ast::binop) -> bool {
     fn tycat(cx: ctxt, ty: t) -> int {
         alt struct(cx, ty) {
           ty_bool. { tycat_bool }
-          ty_int. { tycat_int }
-          ty_uint. { tycat_int }
-          ty_machine(ast::ty_i8.) { tycat_int }
-          ty_machine(ast::ty_i16.) { tycat_int }
-          ty_machine(ast::ty_i32.) { tycat_int }
-          ty_machine(ast::ty_i64.) { tycat_int }
-          ty_machine(ast::ty_u8.) { tycat_int }
-          ty_machine(ast::ty_u16.) { tycat_int }
-          ty_machine(ast::ty_u32.) { tycat_int }
-          ty_machine(ast::ty_u64.) { tycat_int }
-          ty_float. { tycat_float }
-          ty_machine(ast::ty_f32.) { tycat_float }
-          ty_machine(ast::ty_f64.) { tycat_float }
-          ty_char. { tycat_int }
+          ty_int(_) { tycat_int }
+          ty_uint(_) { tycat_int }
+          ty_float(_) { tycat_float }
           ty_str. { tycat_str }
           ty_vec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }

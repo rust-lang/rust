@@ -130,20 +130,9 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         T_nil() /* ...I guess? */
       }
       ty::ty_bool. { T_bool() }
-      ty::ty_int. { cx.int_type }
-      ty::ty_float. { cx.float_type }
-      ty::ty_uint. { cx.int_type }
-      ty::ty_machine(tm) {
-        alt tm {
-          ast::ty_i8. | ast::ty_u8. { T_i8() }
-          ast::ty_i16. | ast::ty_u16. { T_i16() }
-          ast::ty_i32. | ast::ty_u32. { T_i32() }
-          ast::ty_i64. | ast::ty_u64. { T_i64() }
-          ast::ty_f32. { T_f32() }
-          ast::ty_f64. { T_f64() }
-        }
-      }
-      ty::ty_char. { T_char() }
+      ty::ty_int(t) { T_int_ty(cx, t) }
+      ty::ty_uint(t) { T_uint_ty(cx, t) }
+      ty::ty_float(t) { T_float_ty(cx, t) }
       ty::ty_str. { T_ptr(T_vec(cx, T_i8())) }
       ty::ty_tag(did, _) { type_of_tag(cx, sp, did, t) }
       ty::ty_box(mt) {
@@ -1516,23 +1505,10 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
 
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_nil. { ret rslt(cx, f(nil_type)); }
-      ty::ty_bool. | ty::ty_uint. | ty::ty_ptr(_) | ty::ty_char. {
-        ret rslt(cx, f(unsigned_int));
-      }
-      ty::ty_int. { ret rslt(cx, f(signed_int)); }
-      ty::ty_float. { ret rslt(cx, f(floating_point)); }
-      ty::ty_machine(_) {
-        if ty::type_is_fp(bcx_tcx(cx), t) {
-            // Floating point machine types
-            ret rslt(cx, f(floating_point));
-        } else if ty::type_is_signed(bcx_tcx(cx), t) {
-            // Signed, integral machine types
-            ret rslt(cx, f(signed_int));
-        } else {
-            // Unsigned, integral machine types
-            ret rslt(cx, f(unsigned_int));
-        }
-      }
+      ty::ty_bool. | ty::ty_ptr(_) { ret rslt(cx, f(unsigned_int)); }
+      ty::ty_int(_) { ret rslt(cx, f(signed_int)); }
+      ty::ty_uint(_) { ret rslt(cx, f(unsigned_int)); }
+      ty::ty_float(_) { ret rslt(cx, f(floating_point)); }
       ty::ty_type. {
         ret rslt(trans_fail(cx, none,
                             "attempt to compare values of type type"),
@@ -2120,36 +2096,11 @@ fn store_temp_expr(cx: @block_ctxt, action: copy_action, dst: ValueRef,
 
 fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
     alt lit.node {
-      ast::lit_int(i) { ret C_int(cx, i); }
-      ast::lit_uint(u) { ret C_uint(cx, u); }
-      ast::lit_mach_int(tm, i) {
-        // FIXME: the entire handling of mach types falls apart
-        // if target int width is larger than host, at the moment;
-        // re-do the mach-int types using 'big' when that works.
-
-        let t = cx.int_type;
-        let s = True;
-        alt tm {
-          ast::ty_u8. { t = T_i8(); s = False; }
-          ast::ty_u16. { t = T_i16(); s = False; }
-          ast::ty_u32. { t = T_i32(); s = False; }
-          ast::ty_u64. { t = T_i64(); s = False; }
-          ast::ty_i8. { t = T_i8(); }
-          ast::ty_i16. { t = T_i16(); }
-          ast::ty_i32. { t = T_i32(); }
-          ast::ty_i64. { t = T_i64(); }
-        }
-        ret C_integral(t, i as u64, s);
-      }
-      ast::lit_float(fs) { ret C_float(cx, fs); }
-      ast::lit_mach_float(tm, s) {
-        let t = cx.float_type;
-        alt tm { ast::ty_f32. { t = T_f32(); } ast::ty_f64. { t = T_f64(); } }
-        ret C_floating(s, t);
-      }
-      ast::lit_char(c) { ret C_integral(T_char(), c as u64, False); }
-      ast::lit_bool(b) { ret C_bool(b); }
-      ast::lit_nil. { ret C_nil(); }
+      ast::lit_int(i, t) { C_integral(T_int_ty(cx, t), i as u64, True) }
+      ast::lit_uint(u, t) { C_integral(T_uint_ty(cx, t), u, False) }
+      ast::lit_float(fs, t) { C_floating(fs, T_float_ty(cx, t)) }
+      ast::lit_bool(b) { C_bool(b) }
+      ast::lit_nil. { C_nil() }
       ast::lit_str(s) {
         cx.sess.span_unimpl(lit.span, "unique string in this context");
       }
@@ -4359,7 +4310,7 @@ fn trans_fail_expr(bcx: @block_ctxt, sp_opt: option::t<span>,
         if ty::type_is_str(tcx, e_ty) {
             let data = tvec::get_dataptr(
                 bcx, expr_res.val, type_of_or_i8(
-                    bcx, ty::mk_mach(tcx, ast::ty_u8)));
+                    bcx, ty::mk_mach_uint(tcx, ast::ty_u8)));
             ret trans_fail_value(bcx, sp_opt, data);
         } else if bcx.unreachable {
             ret bcx;

@@ -174,16 +174,16 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       'l' { ret ty::mk_float(st.tcx); }
       'M' {
         alt next(st) as char {
-          'b' { ret ty::mk_mach(st.tcx, ast::ty_u8); }
-          'w' { ret ty::mk_mach(st.tcx, ast::ty_u16); }
-          'l' { ret ty::mk_mach(st.tcx, ast::ty_u32); }
-          'd' { ret ty::mk_mach(st.tcx, ast::ty_u64); }
-          'B' { ret ty::mk_mach(st.tcx, ast::ty_i8); }
-          'W' { ret ty::mk_mach(st.tcx, ast::ty_i16); }
-          'L' { ret ty::mk_mach(st.tcx, ast::ty_i32); }
-          'D' { ret ty::mk_mach(st.tcx, ast::ty_i64); }
-          'f' { ret ty::mk_mach(st.tcx, ast::ty_f32); }
-          'F' { ret ty::mk_mach(st.tcx, ast::ty_f64); }
+          'b' { ret ty::mk_mach_uint(st.tcx, ast::ty_u8); }
+          'w' { ret ty::mk_mach_uint(st.tcx, ast::ty_u16); }
+          'l' { ret ty::mk_mach_uint(st.tcx, ast::ty_u32); }
+          'd' { ret ty::mk_mach_uint(st.tcx, ast::ty_u64); }
+          'B' { ret ty::mk_mach_int(st.tcx, ast::ty_i8); }
+          'W' { ret ty::mk_mach_int(st.tcx, ast::ty_i16); }
+          'L' { ret ty::mk_mach_int(st.tcx, ast::ty_i32); }
+          'D' { ret ty::mk_mach_int(st.tcx, ast::ty_i64); }
+          'f' { ret ty::mk_mach_float(st.tcx, ast::ty_f32); }
+          'F' { ret ty::mk_mach_float(st.tcx, ast::ty_f64); }
         }
       }
       'c' { ret ty::mk_char(st.tcx); }

@@ -459,39 +459,35 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     if eat_word(p, "bool") {
         t = ast::ty_bool;
     } else if eat_word(p, "int") {
-        t = ast::ty_int;
+        t = ast::ty_int(ast::ty_i);
     } else if eat_word(p, "uint") {
-        t = ast::ty_uint;
+        t = ast::ty_uint(ast::ty_u);
     } else if eat_word(p, "float") {
-        t = ast::ty_float;
+        t = ast::ty_float(ast::ty_f);
     } else if eat_word(p, "str") {
         t = ast::ty_str;
     } else if eat_word(p, "char") {
-        t = ast::ty_char;
-        /*
-            } else if (eat_word(p, "task")) {
-                t = ast::ty_task;
-        */
+        t = ast::ty_int(ast::ty_char);
     } else if eat_word(p, "i8") {
-        t = ast::ty_machine(ast::ty_i8);
+        t = ast::ty_int(ast::ty_i8);
     } else if eat_word(p, "i16") {
-        t = ast::ty_machine(ast::ty_i16);
+        t = ast::ty_int(ast::ty_i16);
     } else if eat_word(p, "i32") {
-        t = ast::ty_machine(ast::ty_i32);
+        t = ast::ty_int(ast::ty_i32);
     } else if eat_word(p, "i64") {
-        t = ast::ty_machine(ast::ty_i64);
+        t = ast::ty_int(ast::ty_i64);
     } else if eat_word(p, "u8") {
-        t = ast::ty_machine(ast::ty_u8);
+        t = ast::ty_uint(ast::ty_u8);
     } else if eat_word(p, "u16") {
-        t = ast::ty_machine(ast::ty_u16);
+        t = ast::ty_uint(ast::ty_u16);
     } else if eat_word(p, "u32") {
-        t = ast::ty_machine(ast::ty_u32);
+        t = ast::ty_uint(ast::ty_u32);
     } else if eat_word(p, "u64") {
-        t = ast::ty_machine(ast::ty_u64);
+        t = ast::ty_uint(ast::ty_u64);
     } else if eat_word(p, "f32") {
-        t = ast::ty_machine(ast::ty_f32);
+        t = ast::ty_float(ast::ty_f32);
     } else if eat_word(p, "f64") {
-        t = ast::ty_machine(ast::ty_f64);
+        t = ast::ty_float(ast::ty_f64);
     } else if p.peek() == token::LPAREN {
         p.bump();
         if p.peek() == token::RPAREN {
@@ -662,12 +658,9 @@ fn parse_seq<copy T>(bra: token::token, ket: token::token,
 
 fn lit_from_token(p: parser, tok: token::token) -> ast::lit_ {
     alt tok {
-      token::LIT_INT(i) { ast::lit_int(i) }
-      token::LIT_UINT(u) { ast::lit_uint(u) }
-      token::LIT_FLOAT(s) { ast::lit_float(p.get_str(s)) }
-      token::LIT_MACH_INT(tm, i) { ast::lit_mach_int(tm, i) }
-      token::LIT_MACH_FLOAT(tm, s) { ast::lit_mach_float(tm, p.get_str(s)) }
-      token::LIT_CHAR(c) { ast::lit_char(c) }
+      token::LIT_INT(i, it) { ast::lit_int(i, it) }
+      token::LIT_UINT(u, ut) { ast::lit_uint(u, ut) }
+      token::LIT_FLOAT(s, ft) { ast::lit_float(p.get_str(s), ft) }
       token::LIT_STR(s) { ast::lit_str(p.get_str(s)) }
       token::LPAREN. { expect(p, token::RPAREN); ast::lit_nil }
       _ { unexpected(p, tok); }

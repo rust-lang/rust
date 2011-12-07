@@ -252,11 +252,13 @@ fn print_type(s: ps, &&ty: @ast::ty) {
       ast::ty_nil. { word(s.s, "()"); }
       ast::ty_bool. { word(s.s, "bool"); }
       ast::ty_bot. { word(s.s, "!"); }
-      ast::ty_int. { word(s.s, "int"); }
-      ast::ty_uint. { word(s.s, "uint"); }
-      ast::ty_float. { word(s.s, "float"); }
-      ast::ty_machine(tm) { word(s.s, ast_util::ty_mach_to_str(tm)); }
-      ast::ty_char. { word(s.s, "char"); }
+      ast::ty_int(ast::ty_i.) { word(s.s, "int"); }
+      ast::ty_int(ast::ty_char.) { word(s.s, "char"); }
+      ast::ty_int(t) { word(s.s, ast_util::int_ty_to_str(t)); }
+      ast::ty_uint(ast::ty_u.) { word(s.s, "uint"); }
+      ast::ty_uint(t) { word(s.s, ast_util::uint_ty_to_str(t)); }
+      ast::ty_float(ast::ty_f.) { word(s.s, "float"); }
+      ast::ty_float(t) { word(s.s, ast_util::float_ty_to_str(t)); }
       ast::ty_str. { word(s.s, "str"); }
       ast::ty_box(mt) { word(s.s, "@"); print_mt(s, mt); }
       ast::ty_uniq(mt) { word(s.s, "~"); print_mt(s, mt); }
@@ -1385,22 +1387,17 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
     }
     alt lit.node {
       ast::lit_str(st) { print_string(s, st); }
-      ast::lit_char(ch) {
-        word(s.s,
-             "'" + escape_str(str::unsafe_from_bytes([ch as u8]), '\'') +
-                 "'");
+      ast::lit_int(ch, ast::ty_char.) {
+        word(s.s, "'" + escape_str(str::from_char(ch as char), '\'') + "'");
       }
-      ast::lit_int(val) { word(s.s, int::str(val)); }
-      ast::lit_uint(val) { word(s.s, uint::str(val) + "u"); }
-      ast::lit_float(fstr) { word(s.s, fstr); }
-      ast::lit_mach_int(mach, val) {
-        word(s.s, int::str(val as int));
-        word(s.s, ast_util::ty_mach_to_str(mach));
+      ast::lit_int(i, t) {
+        word(s.s, int::str(i as int) + ast_util::int_ty_to_str(t));
       }
-      ast::lit_mach_float(mach, val) {
-        // val is already a str
-        word(s.s, val);
-        word(s.s, ast_util::ty_mach_to_str(mach));
+      ast::lit_uint(u, t) {
+        word(s.s, uint::str(u as uint) + ast_util::uint_ty_to_str(t));
+      }
+      ast::lit_float(f, t) {
+        word(s.s, f + ast_util::float_ty_to_str(t));
       }
       ast::lit_nil. { word(s.s, "()"); }
       ast::lit_bool(val) {
@@ -1622,7 +1619,7 @@ fn ast_ty_constrs_str(constrs: [@ast::ty_constr]) -> str {
 
 fn ends_in_lit_int(ex: @ast::expr) -> bool {
     alt ex.node {
-      ast::expr_lit(@{node: ast::lit_int(_), _}) { true }
+      ast::expr_lit(@{node: ast::lit_int(_, ast::ty_i.), _}) { true }
       ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
       ast::expr_ternary(_, _, sub) | ast::expr_move(_, sub) |
       ast::expr_copy(sub) | ast::expr_assign(_, sub) | ast::expr_be(sub) |

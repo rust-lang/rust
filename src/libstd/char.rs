@@ -109,12 +109,25 @@ pure fn is_whitespace(c: char) -> bool {
  Safety note:
    This function fails if `c` is not a valid char
 */
-pure fn to_digit(c: char) -> u8 {
+pure fn to_digit(c: char) -> u8 unsafe {
+    alt maybe_digit(c) {
+      option::some(x) { x }
+      option::none. { fail; }
+    }
+}
+
+/*
+ Function: to_digit
+
+ Convert a char to the corresponding digit. Returns none when the
+ character is not a valid hexadecimal digit.
+*/
+fn maybe_digit(c: char) -> option::t<u8> {
     alt c {
-        '0' to '9' { c as u8 - ('0' as u8) }
-        'a' to 'z' { c as u8 + 10u8 - ('a' as u8) }
-        'A' to 'Z' { c as u8 + 10u8 - ('A' as u8) }
-        _ { fail; }
+      '0' to '9' { option::some(c as u8 - ('0' as u8)) }
+      'a' to 'z' { option::some(c as u8 + 10u8 - ('a' as u8)) }
+      'A' to 'Z' { option::some(c as u8 + 10u8 - ('A' as u8)) }
+      _ { option::none }
     }
 }
 

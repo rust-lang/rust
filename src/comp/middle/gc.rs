@@ -102,8 +102,8 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
 
 fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
     alt ty::struct(cx, ty) {
-      ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int. | ty::ty_float. |
-      ty::ty_uint. | ty::ty_machine(_) | ty::ty_char. | ty::ty_str. |
+      ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int(_) |
+      ty::ty_float(_) | ty::ty_uint(_) | ty::ty_str. |
       ty::ty_type. | ty::ty_native(_) | ty::ty_ptr(_) | ty::ty_type. |
       ty::ty_native(_) {
         ret false;

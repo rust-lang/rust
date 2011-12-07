@@ -485,6 +485,35 @@ fn T_int(targ_cfg: @session::config) -> TypeRef {
     };
 }
 
+fn T_int_ty(cx: @crate_ctxt, t: ast::int_ty) -> TypeRef {
+    alt t {
+      ast::ty_i. { cx.int_type }
+      ast::ty_char. { T_char() }
+      ast::ty_i8. { T_i8() }
+      ast::ty_i16. { T_i16() }
+      ast::ty_i32. { T_i32() }
+      ast::ty_i64. { T_i64() }
+    }
+}
+
+fn T_uint_ty(cx: @crate_ctxt, t: ast::uint_ty) -> TypeRef {
+    alt t {
+      ast::ty_u. { cx.int_type }
+      ast::ty_u8. { T_i8() }
+      ast::ty_u16. { T_i16() }
+      ast::ty_u32. { T_i32() }
+      ast::ty_u64. { T_i64() }
+    }
+}
+
+fn T_float_ty(cx: @crate_ctxt, t: ast::float_ty) -> TypeRef {
+    alt t {
+      ast::ty_f. { cx.float_type }
+      ast::ty_f32. { T_f32() }
+      ast::ty_f64. { T_f64() }
+    }
+}
+
 fn T_float(targ_cfg: @session::config) -> TypeRef {
     ret alt targ_cfg.arch {
       session::arch_x86. { T_f64() }
@@ -732,12 +761,6 @@ fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
     let u_hi = (u >> 32u64) as uint;
     let u_lo = u as uint;
     ret llvm::LLVMRustConstInt(t, u_hi, u_lo, sign_extend);
-}
-
-fn C_float(cx: @crate_ctxt, s: str) -> ValueRef {
-    ret str::as_buf(s, {|buf|
-        llvm::LLVMConstRealOfString(cx.float_type, buf)
-    });
 }
 
 fn C_floating(s: str, t: TypeRef) -> ValueRef {

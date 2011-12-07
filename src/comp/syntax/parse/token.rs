@@ -1,6 +1,4 @@
 
-import ast::ty_mach;
-import ast_util::ty_mach_to_str;
 import util::interner;
 import std::{int, uint, str};
 
@@ -21,8 +19,6 @@ tag binop {
 }
 
 tag token {
-
-
     /* Expression-operator symbols. */
     EQ;
     LT;
@@ -37,7 +33,6 @@ tag token {
     TILDE;
     BINOP(binop);
     BINOPEQ(binop);
-
 
     /* Structural symbols */
     AT;
@@ -61,17 +56,12 @@ tag token {
     POUND_LBRACE;
     POUND_LT;
 
-
     /* Literals */
-    LIT_INT(int);
-    LIT_UINT(uint);
-    LIT_MACH_INT(ty_mach, int);
-    LIT_FLOAT(str_num);
-    LIT_MACH_FLOAT(ty_mach, str_num);
+    LIT_INT(i64, ast::int_ty);
+    LIT_UINT(u64, ast::uint_ty);
+    LIT_FLOAT(str_num, ast::float_ty);
     LIT_STR(str_num);
-    LIT_CHAR(char);
     LIT_BOOL(bool);
-
 
     /* Name components */
     IDENT(str_num, bool);
@@ -113,10 +103,6 @@ fn to_str(r: lexer::reader, t: token) -> str {
       BINOP(op) { ret binop_to_str(op); }
       BINOPEQ(op) { ret binop_to_str(op) + "="; }
 
-
-
-
-
       /* Structural symbols */
       AT. {
         ret "@";
@@ -141,38 +127,28 @@ fn to_str(r: lexer::reader, t: token) -> str {
       POUND_LBRACE. { ret "#{"; }
       POUND_LT. { ret "#<"; }
 
-
-
-
-
       /* Literals */
-      LIT_INT(i) {
-        ret int::to_str(i, 10u);
-      }
-      LIT_UINT(u) { ret uint::to_str(u, 10u); }
-      LIT_MACH_INT(tm, i) {
-        ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
-      }
-      LIT_MACH_FLOAT(tm, s) {
-        ret interner::get::<str>(*r.get_interner(), s) + "_" +
-                ty_mach_to_str(tm);
-      }
-      LIT_FLOAT(s) { ret interner::get::<str>(*r.get_interner(), s); }
-      LIT_STR(s) { // FIXME: escape.
-        ret "\"" + interner::get::<str>(*r.get_interner(), s) + "\"";
-      }
-      LIT_CHAR(c) {
+      LIT_INT(c, ast::ty_char.) {
         // FIXME: escape.
         let tmp = "'";
-        str::push_char(tmp, c);
+        str::push_char(tmp, c as char);
         str::push_byte(tmp, '\'' as u8);
         ret tmp;
       }
+      LIT_INT(i, t) {
+        ret int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t);
+      }
+      LIT_UINT(u, t) {
+        ret uint::to_str(u as uint, 10u) + ast_util::uint_ty_to_str(t);
+      }
+      LIT_FLOAT(s, t) {
+        ret interner::get::<str>(*r.get_interner(), s) +
+            ast_util::float_ty_to_str(t);
+      }
+      LIT_STR(s) { // FIXME: escape.
+        ret "\"" + interner::get::<str>(*r.get_interner(), s) + "\"";
+      }
       LIT_BOOL(b) { if b { ret "true"; } else { ret "false"; } }
-
-
-
-
 
       /* Name components */
       IDENT(s, _) {
@@ -194,13 +170,10 @@ pure fn can_begin_expr(t: token) -> bool {
       IDENT(_, _) { true }
       UNDERSCORE. { true }
       TILDE. { true }
-      LIT_INT(_) { true }
-      LIT_UINT(_) { true }
-      LIT_MACH_INT(_, _) { true }
-      LIT_FLOAT(_) { true }
-      LIT_MACH_FLOAT(_, _) { true }
+      LIT_INT(_, _) { true }
+      LIT_UINT(_, _) { true }
+      LIT_FLOAT(_, _) { true }
       LIT_STR(_) { true }
-      LIT_CHAR(_) { true }
       POUND. { true }
       AT. { true }
       NOT. { true }

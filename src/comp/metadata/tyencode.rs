@@ -90,24 +90,32 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_nil. { w.write_char('n'); }
       ty::ty_bot. { w.write_char('z'); }
       ty::ty_bool. { w.write_char('b'); }
-      ty::ty_int. { w.write_char('i'); }
-      ty::ty_uint. { w.write_char('u'); }
-      ty::ty_float. { w.write_char('l'); }
-      ty::ty_machine(mach) {
-        alt mach {
-          ty_u8. { w.write_str("Mb"); }
-          ty_u16. { w.write_str("Mw"); }
-          ty_u32. { w.write_str("Ml"); }
-          ty_u64. { w.write_str("Md"); }
+      ty::ty_int(t) {
+        alt t {
+          ty_i. { w.write_char('i'); }
+          ty_char. { w.write_char('c'); }
           ty_i8. { w.write_str("MB"); }
           ty_i16. { w.write_str("MW"); }
           ty_i32. { w.write_str("ML"); }
           ty_i64. { w.write_str("MD"); }
+        }
+      }
+      ty::ty_uint(t) {
+        alt t {
+          ty_u. { w.write_char('u'); }
+          ty_u8. { w.write_str("Mb"); }
+          ty_u16. { w.write_str("Mw"); }
+          ty_u32. { w.write_str("Ml"); }
+          ty_u64. { w.write_str("Md"); }
+        }
+      }
+      ty::ty_float(t) {
+        alt t {
+          ty_f. { w.write_char('l'); }
           ty_f32. { w.write_str("Mf"); }
           ty_f64. { w.write_str("MF"); }
         }
       }
-      ty::ty_char. { w.write_char('c'); }
       ty::ty_str. { w.write_char('S'); }
       ty::ty_tag(def, tys) {
         w.write_str("t[");
