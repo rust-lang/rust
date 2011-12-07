@@ -25,10 +25,10 @@ resource and_then_get_big_again(_i: @int) {
             getbig(i - 1);
         }
     }
-    getbig(1000);
+    getbig(100);
 }
 
 fn main() {
     rustrt::set_min_stack(256u);
-    std::task::spawn(1000, getbig_and_fail);
+    std::task::spawn(100, getbig_and_fail);
 }

@@ -3904,6 +3904,11 @@ fn trans_landing_pad(bcx: @block_ctxt,
     // The landing pad block is a cleanup
     SetCleanup(bcx, llpad);
 
+    // Because we may have unwound across a stack boundary, we must call into
+    // the runtime to figure out which stack segment we are on and place the
+    // stack limit back into the TLS.
+    Call(bcx, bcx_ccx(bcx).upcalls.reset_stack_limit, []);
+
     // FIXME: This seems like a very naive and redundant way to generate the
     // landing pads, as we're re-generating all in-scope cleanups for each
     // function call. Probably good optimization opportunities here.

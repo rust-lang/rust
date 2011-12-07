@@ -18,11 +18,11 @@
 // to the rt, compiler and dynamic linker for running small functions
 // FIXME: We want this to be 128 but need to slim the red zone calls down
 #ifdef __i386__
-#define RED_ZONE_SIZE 2048
+#define RED_ZONE_SIZE 65536
 #endif
 
 #ifdef __x86_64__
-#define RED_ZONE_SIZE 2048
+#define RED_ZONE_SIZE 65536
 #endif
 
 // Stack size
@@ -613,6 +613,29 @@ rust_task::record_stack_limit() {
       "Stack size must be greater than LIMIT_OFFSET");
     record_sp(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
+
+extern "C" uintptr_t get_sp();
+
+/*
+Called by landing pads during unwinding to figure out which
+stack segment we are currently running on, delete the others,
+and record the stack limit (which was not restored when unwinding
+through __morestack).
+ */
+void
+rust_task::reset_stack_limit() {
+    uintptr_t sp = get_sp();
+    // Not positive these bounds for sp are correct.
+    // I think that the first possible value for esp on a new
+    // stack is stk->limit, which points one word in front of
+    // the first work to be pushed onto a new stack.
+    while (sp <= (uintptr_t)stk->data || stk->limit < sp) {
+        del_stk(this, stk);
+        A(sched, stk != NULL, "Failed to find the current stack");
+    }
+    record_stack_limit();
+}
+
 //
 // Local Variables:
 // mode: C++
