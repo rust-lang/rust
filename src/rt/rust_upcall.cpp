@@ -457,6 +457,26 @@ upcall_rust_personality(int version,
     return upcall_s_rust_personality(&args);
 }
 
+extern "C" void
+shape_cmp_type(int8_t *result, const type_desc *tydesc,
+               const type_desc **subtydescs, uint8_t *data_0,
+               uint8_t *data_1, uint8_t cmp_type);
+
+extern "C" void
+upcall_cmp_type(int8_t *result, const type_desc *tydesc,
+                const type_desc **subtydescs, uint8_t *data_0,
+                uint8_t *data_1, uint8_t cmp_type) {
+    shape_cmp_type(result, tydesc, subtydescs, data_0, data_1, cmp_type);
+}
+
+extern "C" void
+shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level);
+
+extern "C" void
+upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
+    shape_log_type(tydesc, data, level);
+}
+
 //
 // Local Variables:
 // mode: C++
