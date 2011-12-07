@@ -1299,23 +1299,23 @@ fn type_autoderef(cx: ctxt, t: ty::t) -> ty::t {
 fn hash_type_structure(st: sty) -> uint {
     fn hash_uint(id: uint, n: uint) -> uint {
         let h = id;
-        h += h << 5u + n;
+        h += (h << 5u) + n;
         ret h;
     }
     fn hash_def(id: uint, did: ast::def_id) -> uint {
         let h = id;
-        h += h << 5u + (did.crate as uint);
-        h += h << 5u + (did.node as uint);
+        h += (h << 5u) + (did.crate as uint);
+        h += (h << 5u) + (did.node as uint);
         ret h;
     }
     fn hash_subty(id: uint, subty: t) -> uint {
         let h = id;
-        h += h << 5u + hash_ty(subty);
+        h += (h << 5u) + hash_ty(subty);
         ret h;
     }
     fn hash_type_constr(id: uint, c: @type_constr) -> uint {
         let h = id;
-        h += h << 5u + hash_def(h, c.node.id);
+        h += (h << 5u) + hash_def(h, c.node.id);
         ret hash_type_constr_args(h, c.node.args);
     }
     fn hash_type_constr_args(id: uint, args: [@ty_constr_arg]) -> uint {
@@ -1338,8 +1338,8 @@ fn hash_type_structure(st: sty) -> uint {
 
     fn hash_fn(id: uint, args: [arg], rty: t) -> uint {
         let h = id;
-        for a: arg in args { h += h << 5u + hash_ty(a.ty); }
-        h += h << 5u + hash_ty(rty);
+        for a: arg in args { h += (h << 5u) + hash_ty(a.ty); }
+        h += (h << 5u) + hash_ty(rty);
         ret h;
     }
     alt st {
@@ -1366,19 +1366,19 @@ fn hash_type_structure(st: sty) -> uint {
       ty_str. { ret 17u; }
       ty_tag(did, tys) {
         let h = hash_def(18u, did);
-        for typ: t in tys { h += h << 5u + hash_ty(typ); }
+        for typ: t in tys { h += (h << 5u) + hash_ty(typ); }
         ret h;
       }
       ty_box(mt) { ret hash_subty(19u, mt.ty); }
       ty_vec(mt) { ret hash_subty(21u, mt.ty); }
       ty_rec(fields) {
         let h = 26u;
-        for f: field in fields { h += h << 5u + hash_ty(f.mt.ty); }
+        for f: field in fields { h += (h << 5u) + hash_ty(f.mt.ty); }
         ret h;
       }
       ty_tup(ts) {
         let h = 25u;
-        for tt in ts { h += h << 5u + hash_ty(tt); }
+        for tt in ts { h += (h << 5u) + hash_ty(tt); }
         ret h;
       }
 
@@ -1389,7 +1389,7 @@ fn hash_type_structure(st: sty) -> uint {
       ty_native_fn(args, rty) { ret hash_fn(28u, args, rty); }
       ty_obj(methods) {
         let h = 29u;
-        for m: method in methods { h += h << 5u + str::hash(m.ident); }
+        for m: method in methods { h += (h << 5u) + str::hash(m.ident); }
         ret h;
       }
       ty_var(v) { ret hash_uint(30u, v as uint); }
@@ -1400,15 +1400,15 @@ fn hash_type_structure(st: sty) -> uint {
       ty_ptr(mt) { ret hash_subty(35u, mt.ty); }
       ty_res(did, sub, tps) {
         let h = hash_subty(hash_def(18u, did), sub);
-        for tp: t in tps { h += h << 5u + hash_ty(tp); }
+        for tp: t in tps { h += (h << 5u) + hash_ty(tp); }
         ret h;
       }
       ty_constr(t, cs) {
         let h = 36u;
-        for c: @type_constr in cs { h += h << 5u + hash_type_constr(h, c); }
+        for c: @type_constr in cs { h += (h << 5u) + hash_type_constr(h, c); }
         ret h;
       }
-      ty_uniq(mt) { let h = 37u; h += h << 5u + hash_ty(mt.ty); ret h; }
+      ty_uniq(mt) { let h = 37u; h += (h << 5u) + hash_ty(mt.ty); ret h; }
     }
 }
 
@@ -1416,7 +1416,7 @@ fn hash_type_info(st: sty, cname_opt: option::t<str>) -> uint {
     let h = hash_type_structure(st);
     alt cname_opt {
       none. {/* no-op */ }
-      some(s) { h += h << 5u + str::hash(s); }
+      some(s) { h += (h << 5u) + str::hash(s); }
     }
     ret h;
 }

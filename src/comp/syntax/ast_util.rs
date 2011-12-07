@@ -199,7 +199,7 @@ fn hash_ty(&&t: @ty) -> uint {
 }
 
 fn hash_def_id(&&id: def_id) -> uint {
-    id.crate as uint << 16u + (id.node as uint)
+    (id.crate as uint << 16u) + (id.node as uint)
 }
 
 fn eq_def_id(&&a: def_id, &&b: def_id) -> bool {
