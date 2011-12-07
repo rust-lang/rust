@@ -6,6 +6,8 @@
 #include "rust_upcall.h"
 #include <stdint.h>
 
+#define SWITCH_STACK(A, F) upcall_call_shim_on_c_stack((void*)A, (void*)F)
+
 extern "C" void record_sp(void *limit);
 
 /**
@@ -31,26 +33,6 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
     task = rust_scheduler::get_task();
     task->record_stack_limit();
 }
-
-#if defined(__i386__) || defined(__x86_64__) || defined(_M_X64)
-void
-check_stack(rust_task *task) {
-    void *esp;
-#   ifdef __i386__
-    asm volatile("movl %%esp,%0" : "=r" (esp));
-#   else
-    asm volatile("mov %%rsp,%0" : "=r" (esp));
-#   endif
-    if (esp < task->stk->data)
-        task->kernel->fatal("Out of stack space, sorry");
-}
-#else
-#warning "Stack checks are not supported on this architecture"
-void
-check_stack(rust_task *task) {
-    // TODO
-}
-#endif
 
 // Copy elements from one vector to another,
 // dealing with reference counts
@@ -87,11 +69,12 @@ upcall_s_fail(s_fail_args *args) {
 }
 
 struct s_malloc_args {
+    uintptr_t retval;
     size_t nbytes;
     type_desc *td;
 };
 
-extern "C" CDECL uintptr_t
+extern "C" CDECL void
 upcall_s_malloc(s_malloc_args *args) {
     rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
@@ -115,7 +98,7 @@ upcall_s_malloc(s_malloc_args *args) {
     LOG(task, mem,
         "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ") = 0x%" PRIxPTR,
         args->nbytes, args->td, (uintptr_t)p);
-    return (uintptr_t) p;
+    args->retval = (uintptr_t) p;
 }
 
 struct s_free_args {
@@ -143,11 +126,12 @@ upcall_s_free(s_free_args *args) {
 }
 
 struct s_shared_malloc_args {
+    uintptr_t retval;
     size_t nbytes;
     type_desc *td;
 };
 
-extern "C" CDECL uintptr_t
+extern "C" CDECL void
 upcall_s_shared_malloc(s_shared_malloc_args *args) {
     rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
@@ -161,7 +145,7 @@ upcall_s_shared_malloc(s_shared_malloc_args *args) {
         "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR
         ") = 0x%" PRIxPTR,
         args->nbytes, args->td, (uintptr_t)p);
-    return (uintptr_t) p;
+    args->retval = (uintptr_t) p;
 }
 
 struct s_shared_free_args {
@@ -184,6 +168,7 @@ upcall_s_shared_free(s_shared_free_args *args) {
 }
 
 struct s_get_type_desc_args {
+    type_desc *retval;
     size_t size;
     size_t align;
     size_t n_descs;
@@ -191,10 +176,9 @@ struct s_get_type_desc_args {
     uintptr_t n_obj_params;
 };
 
-extern "C" CDECL type_desc *
+extern "C" CDECL void
 upcall_s_get_type_desc(s_get_type_desc_args *args) {
     rust_task *task = rust_scheduler::get_task();
-    check_stack(task);
     LOG_UPCALL_ENTRY(task);
 
     LOG(task, cache, "upcall get_type_desc with size=%" PRIdPTR
@@ -204,7 +188,7 @@ upcall_s_get_type_desc(s_get_type_desc_args *args) {
     type_desc *td = cache->get_type_desc(args->size, args->align, args->n_descs,
                                          args->descs, args->n_obj_params);
     LOG(task, cache, "returning tydesc 0x%" PRIxPTR, td);
-    return td;
+    args->retval = td;
 }
 
 struct s_vec_grow_args {
@@ -238,16 +222,21 @@ upcall_s_vec_push(s_vec_push_args *args) {
     v->fill += args->elt_ty->size;
 }
 
+struct s_dynastack_mark_args {
+    void *retval;
+};
+
 /**
  * Returns a token that can be used to deallocate all of the allocated space
  * space in the dynamic stack.
  */
-extern "C" CDECL void *
-upcall_s_dynastack_mark() {
-    return rust_scheduler::get_task()->dynastack.mark();
+extern "C" CDECL void
+upcall_s_dynastack_mark(s_dynastack_mark_args *args) {
+    args->retval = rust_scheduler::get_task()->dynastack.mark();
 }
 
 struct s_dynastack_alloc_args {
+    void *retval;
     size_t sz;
 };
 
@@ -256,13 +245,15 @@ struct s_dynastack_alloc_args {
  *
  * FIXME: Deprecated since dynamic stacks need to be self-describing for GC.
  */
-extern "C" CDECL void *
+extern "C" CDECL void
 upcall_s_dynastack_alloc(s_dynastack_alloc_args *args) {
     size_t sz = args->sz;
-    return sz ? rust_scheduler::get_task()->dynastack.alloc(sz, NULL) : NULL;
+    args->retval = sz ?
+        rust_scheduler::get_task()->dynastack.alloc(sz, NULL) : NULL;
 }
 
 struct s_dynastack_alloc_2_args {
+    void *retval;
     size_t sz;
     type_desc *ty;
 };
@@ -271,11 +262,12 @@ struct s_dynastack_alloc_2_args {
  * Allocates space associated with a type descriptor in the dynamic stack and
  * returns it.
  */
-extern "C" CDECL void *
+extern "C" CDECL void
 upcall_s_dynastack_alloc_2(s_dynastack_alloc_2_args *args) {
     size_t sz = args->sz;
     type_desc *ty = args->ty;
-    return sz ? rust_scheduler::get_task()->dynastack.alloc(sz, ty) : NULL;
+    args->retval = sz ?
+        rust_scheduler::get_task()->dynastack.alloc(sz, ty) : NULL;
 }
 
 struct s_dynastack_free_args {
@@ -296,6 +288,7 @@ __gxx_personality_v0(int version,
                      _Unwind_Context *context);
 
 struct s_rust_personality_args {
+    _Unwind_Reason_Code retval;
     int version;
     _Unwind_Action actions;
     uint64_t exception_class;
@@ -303,13 +296,13 @@ struct s_rust_personality_args {
     _Unwind_Context *context;
 };
 
-extern "C" _Unwind_Reason_Code
+extern "C" void
 upcall_s_rust_personality(s_rust_personality_args *args) {
-    return __gxx_personality_v0(args->version,
-                                args->actions,
-                                args->exception_class,
-                                args->ue_header,
-                                args->context);
+    args->retval = __gxx_personality_v0(args->version,
+                                        args->actions,
+                                        args->exception_class,
+                                        args->ue_header,
+                                        args->context);
 }
 
 extern "C" void
@@ -355,14 +348,17 @@ extern "C" CDECL void
 upcall_fail(char const *expr,
             char const *file,
             size_t line) {
+    // FIXME: Need to fix the stack switching function to unwind properly
+    // in order to switch stacks here
     s_fail_args args = {expr,file,line};
     upcall_s_fail(&args);
 }
 
 extern "C" CDECL uintptr_t
 upcall_malloc(size_t nbytes, type_desc *td) {
-    s_malloc_args args = {nbytes, td};
-    return upcall_s_malloc(&args);
+    s_malloc_args args = {0, nbytes, td};
+    SWITCH_STACK(&args, upcall_s_malloc);
+    return args.retval;
 }
 
 /**
@@ -371,13 +367,14 @@ upcall_malloc(size_t nbytes, type_desc *td) {
 extern "C" CDECL void
 upcall_free(void* ptr, uintptr_t is_gc) {
     s_free_args args = {ptr, is_gc};
-    upcall_s_free(&args);
+    SWITCH_STACK(&args, upcall_s_free);
 }
 
 extern "C" CDECL uintptr_t
 upcall_shared_malloc(size_t nbytes, type_desc *td) {
-    s_shared_malloc_args args = {nbytes, td};
-    return upcall_s_shared_malloc(&args);
+    s_shared_malloc_args args = {0, nbytes, td};
+    SWITCH_STACK(&args, upcall_s_shared_malloc);
+    return args.retval;
 }
 
 /**
@@ -386,7 +383,7 @@ upcall_shared_malloc(size_t nbytes, type_desc *td) {
 extern "C" CDECL void
 upcall_shared_free(void* ptr) {
     s_shared_free_args args = {ptr};
-    upcall_s_shared_free(&args);
+    SWITCH_STACK(&args, upcall_s_shared_free);
 }
 
 extern "C" CDECL type_desc *
@@ -396,18 +393,21 @@ upcall_get_type_desc(void *curr_crate, // ignored, legacy compat.
                      size_t n_descs,
                      type_desc const **descs,
                      uintptr_t n_obj_params) {
-    s_get_type_desc_args args = {size,align,n_descs,descs,n_obj_params};
-    return upcall_s_get_type_desc(&args);
+    s_get_type_desc_args args = {0,size,align,n_descs,descs,n_obj_params};
+    SWITCH_STACK(&args, upcall_s_get_type_desc);
+    return args.retval;
 }
 
 extern "C" CDECL void
 upcall_vec_grow(rust_vec** vp, size_t new_sz) {
     s_vec_grow_args args = {vp, new_sz};
-    upcall_s_vec_grow(&args);
+    SWITCH_STACK(&args, upcall_s_vec_grow);
 }
 
 extern "C" CDECL void
 upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
+    // FIXME: Switching stacks here causes crashes, probably
+    // because this upcall calls take glue
     s_vec_push_args args = {vp, elt_ty, elt};
     upcall_s_vec_push(&args);
 }
@@ -418,7 +418,9 @@ upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
  */
 extern "C" CDECL void *
 upcall_dynastack_mark() {
-    return upcall_s_dynastack_mark();
+    s_dynastack_mark_args args = {0};
+    SWITCH_STACK(&args, upcall_s_dynastack_mark);
+    return args.retval;
 }
 
 /**
@@ -428,8 +430,9 @@ upcall_dynastack_mark() {
  */
 extern "C" CDECL void *
 upcall_dynastack_alloc(size_t sz) {
-    s_dynastack_alloc_args args = {sz};
-    return upcall_s_dynastack_alloc(&args);
+    s_dynastack_alloc_args args = {0, sz};
+    SWITCH_STACK(&args, upcall_s_dynastack_alloc);
+    return args.retval;
 }
 
 /**
@@ -438,15 +441,16 @@ upcall_dynastack_alloc(size_t sz) {
  */
 extern "C" CDECL void *
 upcall_dynastack_alloc_2(size_t sz, type_desc *ty) {
-    s_dynastack_alloc_2_args args = {sz, ty};
-    return upcall_s_dynastack_alloc_2(&args);
+    s_dynastack_alloc_2_args args = {0, sz, ty};
+    SWITCH_STACK(&args, upcall_s_dynastack_alloc_2);
+    return args.retval;
 }
 
 /** Frees space in the dynamic stack. */
 extern "C" CDECL void
 upcall_dynastack_free(void *ptr) {
     s_dynastack_free_args args = {ptr};
-    return upcall_s_dynastack_free(&args);
+    SWITCH_STACK(&args, upcall_s_dynastack_free);
 }
 
 extern "C" _Unwind_Reason_Code
@@ -455,9 +459,11 @@ upcall_rust_personality(int version,
                         uint64_t exception_class,
                         _Unwind_Exception *ue_header,
                         _Unwind_Context *context) {
-    s_rust_personality_args args = {version, actions, exception_class, ue_header, 
-                                    context};
-    return upcall_s_rust_personality(&args);
+    s_rust_personality_args args = {(_Unwind_Reason_Code)0,
+                                    version, actions, exception_class,
+                                    ue_header, context};
+    SWITCH_STACK(&args, upcall_s_rust_personality);
+    return args.retval;
 }
 
 extern "C" void
@@ -465,13 +471,13 @@ upcall_cmp_type(int8_t *result, const type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
     s_cmp_type_args args = {result, tydesc, subtydescs, data_0, data_1, cmp_type};
-    upcall_s_cmp_type(&args);
+    SWITCH_STACK(&args, upcall_s_cmp_type);
 }
 
 extern "C" void
 upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
     s_log_type_args args = {tydesc, data, level};
-    upcall_s_log_type(&args);
+    SWITCH_STACK(&args, upcall_s_log_type);
 }
 
 struct rust_new_stack2_args {
