@@ -133,16 +133,24 @@ mod chained {
     fn search_rem<copy K, copy V>(tbl: t<K,V>,
                                   k: K,
                                   h: uint,
+                                  idx: uint,
                                   e_root: @entry<K,V>) -> search_result<K,V> {
         let e0 = e_root;
+        let comp = 1u;   // for logging
         while true {
             alt e0.next {
               absent. {
+                log("search_tbl", "absent", "comparisons", comp,
+                    "hash", h, "idx", idx);
+
                 ret not_found;
               }
               present(e1) {
+                comp += 1u;
                 let e1_key = e1.key; // Satisfy alias checker.
                 if e1.hash == h && tbl.eqer(e1_key, k) {
+                    log("search_tbl", "present", "comparisons", comp,
+                        "hash", h, "idx", idx);
                     ret found_after(e0, e1);
                 } else {
                     e0 = e1;
@@ -158,14 +166,18 @@ mod chained {
         let idx = h % vec::len(tbl.chains);
         alt tbl.chains[idx] {
           absent. {
+            log("search_tbl", "absent", "comparisons", 0u,
+                "hash", h, "idx", idx);
             ret not_found;
           }
           present(e) {
             let e_key = e.key; // Satisfy alias checker.
             if e.hash == h && tbl.eqer(e_key, k) {
+                log("search_tbl", "present", "comparisons", 1u,
+                    "hash", h, "idx", idx);
                 ret found_first(idx, e);
             } else {
-                ret search_rem(tbl, k, h, e);
+                ret search_rem(tbl, k, h, idx, e);
             }
           }
         }
