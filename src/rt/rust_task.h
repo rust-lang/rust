@@ -25,7 +25,7 @@ struct rust_box;
 
 struct stk_seg {
     stk_seg *next;
-    uintptr_t limit;
+    uintptr_t end;
     unsigned int valgrind_id;
 #ifndef _LP64
     uint32_t pad;
