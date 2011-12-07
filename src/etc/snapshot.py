@@ -16,12 +16,21 @@ download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
 snapshot_files = {
-    "linux": ["bin/rustc", "lib/libruststd.so",
-              "lib/librustrt.so", "lib/librustllvm.so"],
-    "macos": ["bin/rustc", "lib/libruststd.dylib",
-              "lib/librustrt.dylib", "lib/librustllvm.dylib"],
-    "winnt": ["bin/rustc.exe", "lib/ruststd.dll",
-              "lib/rustrt.dll", "lib/rustllvm.dll"]
+    "linux": ["bin/rustc",
+              "lib/libcore.so",
+              "lib/libruststd.so",
+              "lib/librustrt.so",
+              "lib/librustllvm.so"],
+    "macos": ["bin/rustc",
+              "lib/libcore.dylib",
+              "lib/libruststd.dylib",
+              "lib/librustrt.dylib",
+              "lib/librustllvm.dylib"],
+    "winnt": ["bin/rustc.exe",
+              "lib/core.dll",
+              "lib/ruststd.dll",
+              "lib/rustrt.dll",
+              "lib/rustllvm.dll"]
     }
 
 def parse_line(n, line):
