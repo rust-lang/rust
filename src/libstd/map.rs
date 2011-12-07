@@ -9,7 +9,9 @@ A hashmap
 /*
 Type: hashfn
 
-A function that returns a hash of a value
+A function that returns a hash of a value.
+The hash should concentrate entropy in the
+lower bits.
 */
 type hashfn<K> = fn(K) -> uint;
 
@@ -352,9 +354,15 @@ mod chained {
 }
 
 /*
-Function: mk_hashmap
+Function: mk_flat_hashmap
 
-Construct a hashmap
+Construct a "flat" hashmap, meaning that there are
+not chains per buckets, but rather we search a sequence
+of buckets for each key.
+
+Warning: it is unclear to me that this code is correct
+on 32-bit processors.  Check out the 'hash-tearing' code
+in hash() and the comment surrounding it. - Niko
 
 Parameters:
 
@@ -550,6 +558,16 @@ fn mk_flat_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
     ret hashmap(hasher, eqer, bkts, initial_capacity, 0u, load_factor);
 }
 
+/*
+Function: mk_hashmap
+
+Construct a hashmap.
+
+Parameters:
+
+hasher - The hash function for key type K
+eqer - The equality function for key type K
+*/
 fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
     -> hashmap<K, V> {
     ret chained::mk(hasher, eqer);
