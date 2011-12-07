@@ -384,14 +384,10 @@ fn mk_flat_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
     // is always a power? of 2), so that all buckets are probed for a
     // fixed key.
 
-    fn hashl(n: u32) -> u32 { ret (n >>> 16u32) * 2u32 + 1u32; }
-    fn hashr(n: u32) -> u32 { ret 0x0000_ffff_u32 & n; }
-    fn hash(h: u32, nbkts: uint, i: uint) -> uint {
-        ret ((hashl(h) as uint) * i + (hashr(h) as uint)) % nbkts;
-    }
-
-    fn to_u64(h: uint) -> u32 {
-        ret (h as u32) ^ ((h >>> 16u) as u32);
+    fn hashl(n: uint) -> uint { ret (n >>> 16u) * 2u + 1u; }
+    fn hashr(n: uint) -> uint { ret 0x0000_ffff_u & n; }
+    fn hash(h: uint, nbkts: uint, i: uint) -> uint {
+        ret (hashl(h) * i + hashr(h)) % nbkts;
     }
 
     /**
@@ -402,7 +398,7 @@ fn mk_flat_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
                                      bkts: [mutable bucket<K, V>],
                                      nbkts: uint, key: K, val: V) -> bool {
         let i: uint = 0u;
-        let h = to_u64(hasher(key));
+        let h = hasher(key);
         while i < nbkts {
             let j: uint = hash(h, nbkts, i);
             alt bkts[j] {
@@ -410,10 +406,18 @@ fn mk_flat_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
                 // Copy key to please alias analysis.
 
                 let k_ = k;
-                if eqer(key, k_) { bkts[j] = some(k_, val); ret false; }
+                if eqer(key, k_) {
+                    log("map updated", "i", i, "h", h, "nbkts", nbkts);
+                    bkts[j] = some(k_, val);
+                    ret false;
+                }
                 i += 1u;
               }
-              _ { bkts[j] = some(key, val); ret true; }
+              _ {
+                log("map inserted", "i", i, "h", h, "nbkts", nbkts);
+                bkts[j] = some(key, val);
+                ret true;
+              }
             }
         }
         fail; // full table
@@ -422,7 +426,7 @@ fn mk_flat_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
                                    bkts: [mutable bucket<K, V>],
                                    nbkts: uint, key: K) -> option::t<V> {
         let i: uint = 0u;
-        let h = to_u64(hasher(key));
+        let h = hasher(key);
         while i < nbkts {
             let j: uint = hash(h, nbkts, i);
             alt bkts[j] {
@@ -430,9 +434,15 @@ fn mk_flat_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
                 // Copy to please alias analysis.
                 let k_ = k;
                 let v_ = v;
-                if eqer(key, k_) { ret option::some(v_); }
+                if eqer(key, k_) {
+                    log("map present", "i", i, "h", h, "nbkts", nbkts);
+                    ret option::some(v_);
+                }
               }
-              nil. { ret option::none; }
+              nil. {
+                log("map absent", "i", i, "h", h, "nbkts", nbkts);
+                ret option::none;
+              }
               deleted. { }
             }
             i += 1u;
@@ -495,7 +505,7 @@ fn mk_flat_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
         }
         fn remove(key: K) -> option::t<V> {
             let i: uint = 0u;
-            let h = to_u64(hasher(key));
+            let h = hasher(key);
             while i < nbkts {
                 let j: uint = hash(h, nbkts, i);
                 alt bkts[j] {
