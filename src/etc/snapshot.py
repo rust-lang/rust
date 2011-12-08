@@ -1,4 +1,4 @@
-import re, os, sys, hashlib, tarfile, shutil, subprocess, tempfile
+import re, os, sys, glob, hashlib, tarfile, shutil, subprocess, tempfile
 
 def scrub(b):
   if sys.version_info >= (3,) and type(b) == bytes:
@@ -17,18 +17,18 @@ download_unpack_base = os.path.join(download_dir_base, "unpack")
 
 snapshot_files = {
     "linux": ["bin/rustc",
-              "lib/libcore.so",
-              "lib/libruststd.so",
+              "lib/libcore-*.so",
+              "lib/libstd-*.so",
               "lib/librustrt.so",
               "lib/librustllvm.so"],
     "macos": ["bin/rustc",
-              "lib/libcore.dylib",
-              "lib/libruststd.dylib",
+              "lib/libcore-*.dylib",
+              "lib/libstd-*.dylib",
               "lib/librustrt.dylib",
               "lib/librustllvm.dylib"],
     "winnt": ["bin/rustc.exe",
-              "lib/core.dll",
-              "lib/ruststd.dll",
+              "lib/core-*.dll",
+              "lib/std-*.dll",
               "lib/rustrt.dll",
               "lib/rustllvm.dll"]
     }
@@ -128,13 +128,25 @@ def make_snapshot(stage, triple, flag):
 
     file0 = partial_snapshot_name(date, rev, platform)
 
+    def in_tar_name(fn):
+      cs = fn.split(os.sep)
+      if len(cs) >= 2:
+        return os.sep.join(cs[-2:])
+
     tar = tarfile.open(file0, "w:bz2")
     for name in snapshot_files[kernel]:
       dir = stage
       if stage == "stage1" and re.match(r"^lib/(lib)?std.*", name):
         dir = "stage0"
-      tar.add(os.path.join(triple, os.path.join(dir, name)),
-              "rust-stage0/" + name)
+      fn_glob = os.path.join(triple, dir, name)
+      matches = glob.glob(fn_glob)
+      if not matches:
+        raise Exception("Not found file with name like " + fn_glob)
+      if len(matches) == 1:
+        tar.add(matches[0], "rust-stage0/" + in_tar_name(matches[0]))
+      else:
+        raise Exception("Found stale files: \n  %s\n\
+Please make a clean build." % "\n  ".join(matches))
     tar.close()
 
     h = hash_file(file0)
