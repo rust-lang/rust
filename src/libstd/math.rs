@@ -16,13 +16,18 @@ export
     ldexp, ln, ln1p, log10, log2, modf, rint, round, pow, sin, sinh, sqrt,
     tan, tanh, trunc;
 
+export f64, f32;
+
+import f64 = math_f64;
+import f32 = math_f32;
+
 // These two must match in width according to architecture
 
 import ctypes::m_float;
 import ctypes::c_int;
+import ptr;
 import m_float = math_f64;
 
-// FIXME replace with redirect to m_float::consts::FOO as soon as it works
 /*
 Module: consts
 */
@@ -143,7 +148,7 @@ Function: acos
 Returns the arccosine of an angle (measured in rad)
 */
 pure fn acos(x: float) -> float
-    { m_float::acos(x as m_float) as float }
+    { be m_float::acos(x as m_float) as float }
 
 /*
 Function: asin
@@ -151,7 +156,7 @@ Function: asin
 Returns the arcsine of an angle (measured in rad)
 */
 pure fn asin(x: float) -> float
-    { m_float::asin(x as m_float) as float }
+    { be m_float::asin(x as m_float) as float }
 
 /*
 Function: atan
@@ -159,7 +164,7 @@ Function: atan
 Returns the arctangents of an angle (measured in rad)
 */
 pure fn atan(x: float) -> float
-    { m_float::atan(x as m_float) as float }
+    { be m_float::atan(x as m_float) as float }
 
 
 /*
@@ -168,7 +173,7 @@ Function: atan2
 Returns the arctangent of an angle (measured in rad)
 */
 pure fn atan2(y: float, x: float) -> float
-    { m_float::atan2(y as m_float, x as m_float) as float }
+    { be m_float::atan2(y as m_float, x as m_float) as float }
 
 /*
 Function: ceil
@@ -176,7 +181,7 @@ Function: ceil
 Returns the smallest integral value less than or equal to `n`
 */
 pure fn ceil(n: float) -> float
-    { m_float::ceil(n as m_float) as float }
+    { be m_float::ceil(n as m_float) as float }
 
 /*
 Function: cos
@@ -184,7 +189,7 @@ Function: cos
 Returns the cosine of an angle `x` (measured in rad)
 */
 pure fn cos(x: float) -> float
-    { m_float::cos(x as m_float) as float }
+    { be m_float::cos(x as m_float) as float }
 
 /*
 Function: cosh
@@ -193,7 +198,7 @@ Returns the hyperbolic cosine of `x`
 
 */
 pure fn cosh(x: float) -> float
-    { m_float::cosh(x as m_float) as float }
+    { be m_float::cosh(x as m_float) as float }
 
 
 /*
@@ -202,7 +207,7 @@ Function: exp
 Returns `consts::e` to the power of `n*
 */
 pure fn exp(n: float) -> float
-    { m_float::exp(n as m_float) as float }
+    { be m_float::exp(n as m_float) as float }
 
 /*
 Function: abs
@@ -210,7 +215,7 @@ Function: abs
 Returns the absolute value of  `n`
 */
 pure fn abs(n: float) -> float
-    { m_float::abs(n as m_float) as float }
+    { be m_float::abs(n as m_float) as float }
 
 /*
 Function: floor
@@ -218,7 +223,7 @@ Function: floor
 Returns the largest integral value less than or equal to `n`
 */
 pure fn floor(n: float) -> float
-    { m_float::floor(n as m_float) as float }
+    { be m_float::floor(n as m_float) as float }
 
 /*
 Function: fmod
@@ -226,7 +231,7 @@ Function: fmod
 Returns the floating-point remainder of `x/y`
 */
 pure fn fmod(x: float, y: float) -> float
-    { m_float::fmod(x as m_float, y as m_float) as float }
+    { be m_float::fmod(x as m_float, y as m_float) as float }
 
 /*
 Function: ln
@@ -234,7 +239,7 @@ Function: ln
 Returns the natural logaritm of `n`
 */
 pure fn ln(n: float) -> float
-    { m_float::ln(n as m_float) as float }
+    { be m_float::ln(n as m_float) as float }
 
 /*
 Function: ldexp
@@ -242,7 +247,7 @@ Function: ldexp
 Returns `x` multiplied by 2 to the power of `n`
 */
 pure fn ldexp(n: float, i: int) -> float
-    { m_float::ldexp(n as m_float, i as c_int) as float }
+    { be m_float::ldexp(n as m_float, i as c_int) as float }
 
 /*
 Function: ln1p
@@ -251,7 +256,7 @@ Returns the natural logarithm of `1+n` accurately,
 even for very small values of `n`
 */
 pure fn ln1p(n: float) -> float
-    { m_float::ln1p(n as m_float) as float }
+    { be m_float::ln1p(n as m_float) as float }
 
 /*
 Function: log10
@@ -259,7 +264,7 @@ Function: log10
 Returns the logarithm to base 10 of `n`
 */
 pure fn log10(n: float) -> float
-    { m_float::log10(n as m_float) as float }
+    { be m_float::log10(n as m_float) as float }
 
 /*
 Function: log2
@@ -267,8 +272,7 @@ Function: log2
 Returns the logarithm to base 2 of `n`
 */
 pure fn log2(n: float) -> float
-    { m_float::log2(n as m_float) as float }
-
+    { be m_float::log2(n as m_float) as float }
 
 /*
 Function: modf
@@ -282,14 +286,10 @@ Returns:
 
 The fractional part of `n`
 */
-pure fn modf(n: float, &iptr: float) -> float {
-    unchecked {
-        let f = iptr as m_float;
-        let r = m_float::modf(n as m_float, f) as float;
-        iptr  = f as float;
-        ret r;
-    }
-}
+#[no(warn_trivial_casts)] // FIXME Implement
+pure fn modf(n: float, &iptr: float) -> float { unsafe {
+    be m_float::modf(n as m_float, ptr::addr_of(iptr) as *m_float) as float
+} }
 
 /*
 Function: frexp
@@ -306,13 +306,13 @@ Returns:
 The fractional part of `n`
 */
 pure fn frexp(n: float, &exp: c_int) -> float
-    { m_float::frexp(n as m_float, exp) as float }
+    { be m_float::frexp(n as m_float, exp) as float }
 
 /*
 Function: pow
 */
 pure fn pow(v: float, e: float) -> float
-    { m_float::pow(v as m_float, e as m_float) as float }
+    { be m_float::pow(v as m_float, e as m_float) as float }
 
 
 /*
@@ -322,7 +322,7 @@ Returns the integral value nearest to `x` (according to the
 prevailing rounding mode) in floating-point format
 */
 pure fn rint(x: float) -> float
-    { m_float::rint(x as m_float) as float }
+    { be m_float::rint(x as m_float) as float }
 
 /*
 Function: round
@@ -332,7 +332,7 @@ Return the integral value nearest to `x` rounding half-way
 cases away from zero, regardless of the current rounding direction.
 */
 pure fn round(x: float) -> float
-    { m_float::round(x as m_float) as float }
+    { be m_float::round(x as m_float) as float }
 
 /*
 Function: sin
@@ -340,7 +340,7 @@ Function: sin
 Returns the sine of an angle `x` (measured in rad)
 */
 pure fn sin(x: float) -> float
-    { m_float::sin(x as m_float) as float }
+    { be m_float::sin(x as m_float) as float }
 
 /*
 Function: sinh
@@ -348,7 +348,7 @@ Function: sinh
 Returns the hyperbolic sine of an angle `x` (measured in rad)
 */
 pure fn sinh(x: float) -> float
-    { m_float::sinh(x as m_float) as float }
+    { be m_float::sinh(x as m_float) as float }
 
 /*
 Function: sqrt
@@ -356,7 +356,7 @@ Function: sqrt
 Returns the square root of `x`
 */
 pure fn sqrt(x: float) -> float
-    { m_float::sqrt(x as m_float) as float }
+    { be m_float::sqrt(x as m_float) as float }
 
 /*
 Function: tan
@@ -365,7 +365,7 @@ Returns the tangent of an angle `x` (measured in rad)
 
 */
 pure fn tan(x: float) -> float
-    { m_float::tan(x as m_float) as float }
+    { be m_float::tan(x as m_float) as float }
 
 /*
 Function: tanh
@@ -374,7 +374,7 @@ Returns the hyperbolic tangent of an angle `x` (measured in rad)
 
 */
 pure fn tanh(x: float) -> float
-    { m_float::tanh(x as m_float) as float }
+    { be m_float::tanh(x as m_float) as float }
 
 /*
 Function: trunc
@@ -383,7 +383,7 @@ Returns the integral value nearest to but no larger in magnitude than `x`
 
 */
 pure fn trunc(x: float) -> float
-    { m_float::trunc(x as m_float) as float }
+    { be m_float::trunc(x as m_float) as float }
 
 
 

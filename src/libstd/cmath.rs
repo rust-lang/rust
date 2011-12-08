@@ -23,7 +23,7 @@ native mod f64 {
     #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
     pure fn log10(n: f64) -> f64;
     pure fn log2(n: f64) -> f64;
-    pure fn modf(n: f64, &iptr: f64) -> f64;
+    pure fn modf(n: f64, iptr: *f64) -> f64;
     pure fn pow(n: f64, e: f64) -> f64;
     pure fn rint(n: f64) -> f64;
     pure fn round(n: f64) -> f64;
@@ -58,7 +58,7 @@ native mod f32 {
     #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
     #[link_name="log2f"] pure fn log2(n: f32) -> f32;
     #[link_name="log10f"] pure fn log10(n: f32) -> f32;
-    #[link_name="modff"] pure fn modf(n: f32, &iptr: f32) -> f32;
+    #[link_name="modff"] pure fn modf(n: f32, iptr: *f32) -> f32;
     #[link_name="powf"] pure fn pow(n: f32, e: f32) -> f32;
     #[link_name="rintf"] pure fn rint(n: f32) -> f32;
     #[link_name="roundf"] pure fn round(n: f32) -> f32;

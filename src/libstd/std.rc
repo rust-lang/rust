@@ -13,7 +13,7 @@ export comm, fs, io, net, run, sys, task, uv;
 export c_vec, ctypes, either, option, result, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
-export math, math_f32, math_f64;
+export math;
 export ebml, dbg, getopts, json, rand, sha1, term, time, unsafe;
 export extfmt, test, tempfile;
 // FIXME: generic_os and os_fs shouldn't be exported
@@ -54,6 +54,8 @@ mod uv;
 mod c_vec;
 mod ctypes;
 mod cmath; /* unexported */
+mod math_f32;
+mod math_f64;
 mod either;
 mod option;
 mod result;
@@ -83,8 +85,6 @@ mod dbg;
 mod getopts;
 mod json;
 mod math;
-mod math_f32;
-mod math_f64;
 mod rand;
 mod sha1;
 mod tempfile;

@@ -160,8 +160,11 @@ fn test_exp_and_mod() {
 
     let d2: float = 1.0;
     assert modf(float::infinity, d2) == 0.0;
+    assert d2 == float::infinity;
     assert modf(float::neg_infinity, d2) == -0.0;
+    assert d2 == float::neg_infinity;
     assert float::isNaN(modf(float::NaN, d2));
+    assert float::isNaN(d2);
 }
 
 #[test]
