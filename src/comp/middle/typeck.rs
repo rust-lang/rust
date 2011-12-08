@@ -35,7 +35,7 @@ tag obj_info {
 type crate_ctxt = {mutable obj_infos: [obj_info], tcx: ty::ctxt};
 
 type fn_ctxt =
-    // var_bindings, locals, local_names, and next_var_id are shared
+    // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
     {ret_ty: ty::t,
@@ -43,7 +43,6 @@ type fn_ctxt =
      proto: ast::proto,
      var_bindings: @ty::unify::var_bindings,
      locals: hashmap<ast::node_id, int>,
-     local_names: hashmap<ast::node_id, ast::ident>,
      next_var_id: @mutable int,
      mutable fixups: [ast::node_id],
      ccx: @crate_ctxt};
@@ -70,13 +69,6 @@ fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
                                     "internal error looking up a definition")
       }
     }
-}
-
-fn ident_for_local(loc: @ast::local) -> ast::ident {
-    ret alt loc.node.pat.node {
-          ast::pat_bind(name) { name }
-          _ { "local" }
-        }; // FIXME DESTR
 }
 
 // Returns the type parameter count and the type for the given definition.
@@ -1117,24 +1109,21 @@ mod writeback {
 type gather_result =
     {var_bindings: @ty::unify::var_bindings,
      locals: hashmap<ast::node_id, int>,
-     local_names: hashmap<ast::node_id, ast::ident>,
      next_var_id: @mutable int};
 
 // Used only as a helper for check_fn.
 fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
                  old_fcx: option::t<@fn_ctxt>) -> gather_result {
-    let {vb: vb, locals: locals, local_names: local_names, nvi: nvi} =
+    let {vb: vb, locals: locals, nvi: nvi} =
         alt old_fcx {
           none. {
             {vb: ty::unify::mk_var_bindings(),
              locals: new_int_hash::<int>(),
-             local_names: new_int_hash::<ast::ident>(),
              nvi: @mutable 0}
           }
           some(fcx) {
             {vb: fcx.var_bindings,
              locals: fcx.locals,
-             local_names: fcx.local_names,
              nvi: fcx.next_var_id}
           }
         };
@@ -1142,11 +1131,9 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
 
     let next_var_id = lambda () -> int { let rv = *nvi; *nvi += 1; ret rv; };
     let assign =
-        lambda (nid: ast::node_id, ident: ast::ident,
-                ty_opt: option::t<ty::t>) {
+        lambda (nid: ast::node_id, ty_opt: option::t<ty::t>) {
             let var_id = next_var_id();
             locals.insert(nid, var_id);
-            local_names.insert(nid, ident);
             alt ty_opt {
               none. {/* nothing to do */ }
               some(typ) {
@@ -1168,14 +1155,14 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     }
     for f: ast::obj_field in obj_fields {
         let field_ty = ty::node_id_to_type(ccx.tcx, f.id);
-        assign(f.id, f.ident, some(field_ty));
+        assign(f.id, some(field_ty));
     }
 
     // Add formal parameters.
     let args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
     let i = 0u;
     for arg: ty::arg in args {
-        assign(f.decl.inputs[i].id, f.decl.inputs[i].ident, some(arg.ty));
+        assign(f.decl.inputs[i].id, some(arg.ty));
         i += 1u;
     }
 
@@ -1183,7 +1170,7 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     let visit_local =
         lambda (local: @ast::local, &&e: (), v: visit::vt<()>) {
             let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
-            assign(local.node.id, ident_for_local(local), local_ty);
+            assign(local.node.id, local_ty);
             visit::visit_local(local, e, v);
         };
 
@@ -1191,7 +1178,7 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     let visit_pat =
         lambda (p: @ast::pat, &&e: (), v: visit::vt<()>) {
             alt p.node {
-              ast::pat_bind(ident) { assign(p.id, ident, none); }
+              ast::pat_bind(_) { assign(p.id, none); }
               _ {/* no-op */ }
             }
             visit::visit_pat(p, e, v);
@@ -1214,7 +1201,6 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     visit::visit_block(f.body, (), visit::mk_vt(visit));
     ret {var_bindings: vb,
          locals: locals,
-         local_names: local_names,
          next_var_id: nvi};
 }
 
@@ -2409,10 +2395,6 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
     let bot = false;
 
     alt fcx.locals.find(local.node.id) {
-      none. {
-        fcx.ccx.tcx.sess.bug("check_decl_local: local id not found " +
-                                 ident_for_local(local));
-      }
       some(i) {
         let t = ty::mk_var(fcx.ccx.tcx, i);
         write::ty_only_fixup(fcx, local.node.id, t);
@@ -2498,7 +2480,6 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           proto: ast::proto_shared(ast::sugar_normal),
           var_bindings: ty::unify::mk_var_bindings(),
           locals: new_int_hash::<int>(),
-          local_names: new_int_hash::<ast::ident>(),
           next_var_id: @mutable 0,
           mutable fixups: fixups,
           ccx: ccx};
@@ -2640,7 +2621,6 @@ fn check_fn(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
           proto: f.proto,
           var_bindings: gather_result.var_bindings,
           locals: gather_result.locals,
-          local_names: gather_result.local_names,
           next_var_id: gather_result.next_var_id,
           mutable fixups: fixups,
           ccx: ccx};
