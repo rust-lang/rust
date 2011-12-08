@@ -239,22 +239,26 @@ fn get_basic_type_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     }
     let (name, (size, align), encoding) = alt ty.node {
       ast::ty_bool. {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
-      ast::ty_int. {("int", size_and_align_of::<int>(), DW_ATE_signed)}
-      ast::ty_uint. {("uint", size_and_align_of::<uint>(), DW_ATE_unsigned)}
-      ast::ty_float. {("float", size_and_align_of::<float>(), DW_ATE_float)}
-      ast::ty_machine(m) { alt m {
+      ast::ty_int(m) { alt m {
+        ast::ty_char. {("char", size_and_align_of::<char>(), DW_ATE_unsigned)}
+        ast::ty_i. {("int", size_and_align_of::<int>(), DW_ATE_signed)}
         ast::ty_i8. {("i8", size_and_align_of::<i8>(), DW_ATE_signed_char)}
         ast::ty_i16. {("i16", size_and_align_of::<i16>(), DW_ATE_signed)}
         ast::ty_i32. {("i32", size_and_align_of::<i32>(), DW_ATE_signed)}
         ast::ty_i64. {("i64", size_and_align_of::<i64>(), DW_ATE_signed)}
+      }}
+      ast::ty_uint(m) { alt m {
+        ast::ty_u. {("uint", size_and_align_of::<uint>(), DW_ATE_unsigned)}
         ast::ty_u8. {("u8", size_and_align_of::<u8>(), DW_ATE_unsigned_char)}
         ast::ty_u16. {("u16", size_and_align_of::<u16>(), DW_ATE_unsigned)}
         ast::ty_u32. {("u32", size_and_align_of::<u32>(), DW_ATE_unsigned)}
         ast::ty_u64. {("u64", size_and_align_of::<u64>(), DW_ATE_unsigned)}
+      }}
+      ast::ty_float(m) { alt m {
+        ast::ty_f. {("float", size_and_align_of::<float>(), DW_ATE_float)}
         ast::ty_f32. {("f32", size_and_align_of::<f32>(), DW_ATE_float)}
         ast::ty_f64. {("f64", size_and_align_of::<f64>(), DW_ATE_float)}
-      } }
-      ast::ty_char. {("char", size_and_align_of::<char>(), DW_ATE_unsigned)}
+      }}
     };
     let fname = filename_from_span(cx, ty.span);
     let file_node = get_file_metadata(cx, fname);
@@ -327,7 +331,7 @@ fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
     //let cu_node = get_compile_unit_metadata(cx, fname);
     let tcx = ccx_tcx(cx);
     let uint_t = ty::mk_uint(tcx);
-    let uint_ty = @{node: ast::ty_uint, span: span};
+    let uint_ty = @{node: ast::ty_uint(ast::ty_u), span: span};
     let refcount_type = get_basic_type_metadata(cx, uint_t, uint_ty);
     /*let refcount_ptr_type = get_pointer_type_metadata(cx,
                                                       ty::mk_imm_uniq(tcx, uint_t),
@@ -389,11 +393,9 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
           ty::ty_nil. { ast::ty_nil }
           ty::ty_bot. { ast::ty_bot }
           ty::ty_bool. { ast::ty_bool }
-          ty::ty_int. { ast::ty_int }
-          ty::ty_float. { ast::ty_float }
-          ty::ty_uint. { ast::ty_uint }
-          ty::ty_machine(mt) { ast::ty_machine(mt) }
-          ty::ty_char. { ast::ty_char }
+          ty::ty_int(t) { ast::ty_int(t) }
+          ty::ty_float(t) { ast::ty_float(t) }
+          ty::ty_uint(t) { ast::ty_uint(t) }
           ty::ty_box(mt) { ast::ty_box({ty: t_to_ty(cx, mt.ty, span),
                                         mut: mt.mut}) }
           ty::ty_uniq(mt) { ast::ty_uniq({ty: t_to_ty(cx, mt.ty, span),
