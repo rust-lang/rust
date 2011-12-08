@@ -296,15 +296,15 @@ mod chained {
     }
 
     obj o<copy K, copy V>(tbl: @t<K,V>,
-                          lf: float) {
+                          lf: util::rational) {
         fn size() -> uint {
             ret tbl.size;
         }
 
         fn insert(k: K, v: V) -> bool {
             let nchains = vec::len(tbl.chains);
-            let load = (tbl.size + 1u as float) / (nchains as float);
-            if load > lf {
+            let load = {num:tbl.size + 1u as int, den:nchains as int};
+            if !util::rational_leq(load, lf) {
                 rehash(*tbl);
             }
             ret insert(*tbl, k, v);
@@ -349,7 +349,7 @@ mod chained {
                   mutable chains: chains(initial_capacity),
                   hasher: hasher,
                   eqer: eqer};
-        ret o(t, 0.75);
+        ret o(t, {num:3, den:4});
     }
 }
 
