@@ -176,7 +176,6 @@ fn scan_exponent(rdr: reader) -> option::t<str> {
 }
 
 fn scan_digits(rdr: reader, radix: uint) -> str {
-    radix; // FIXME work around issue #1265
     let rslt = "";
     while true {
         let c = rdr.curr();
