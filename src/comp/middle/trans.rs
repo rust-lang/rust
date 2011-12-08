@@ -4702,7 +4702,7 @@ fn alloc_ty(cx: @block_ctxt, t: ty::t) -> result {
 fn alloc_local(cx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let t = node_id_type(bcx_ccx(cx), local.node.id);
     let is_simple = alt local.node.pat.node {
-      ast::pat_bind(_) { true } _ { false }
+      ast::pat_bind(_, none.) { true } _ { false }
     };
     // Do not allocate space for locals that can be kept immediate.
     let ccx = bcx_ccx(cx);
@@ -4716,7 +4716,7 @@ fn alloc_local(cx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     }
     let r = alloc_ty(cx, t);
     alt local.node.pat.node {
-      ast::pat_bind(ident) {
+      ast::pat_bind(ident, none.) {
         if bcx_ccx(cx).sess.get_opts().debuginfo {
             let _: () = str::as_buf(ident, {|buf|
                 llvm::LLVMSetValueName(r.val, buf)

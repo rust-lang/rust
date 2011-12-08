@@ -206,7 +206,7 @@ fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
     // in the body
     let index_post = tritv_clone(expr_poststate(fcx.ccx, index));
     pat_bindings(l.node.pat) {|p|
-        let ident = alt p.node { pat_bind(name) { name } };
+        let ident = alt p.node { pat_bind(name, _) { name } };
         set_in_poststate_ident(fcx, p.id, ident, index_post);
     };
 

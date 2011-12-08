@@ -1062,7 +1062,13 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
     s.ann.pre(ann_node);
     alt pat.node {
       ast::pat_wild. { word(s.s, "_"); }
-      ast::pat_bind(id) { word(s.s, id); }
+      ast::pat_bind(id, sub) {
+        word(s.s, id);
+        alt sub {
+          some(p) { word(s.s, "@"); print_pat(s, p); }
+          _ {}
+        }
+      }
       ast::pat_tag(path, args) {
         print_path(s, path, true);
         if vec::len(args) > 0u {

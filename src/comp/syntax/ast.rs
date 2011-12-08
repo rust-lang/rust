@@ -92,7 +92,7 @@ type field_pat = {ident: ident, pat: @pat};
 
 tag pat_ {
     pat_wild;
-    pat_bind(ident);
+    pat_bind(ident, option::t<@pat>);
     pat_tag(@path, [@pat]);
     pat_rec([field_pat], bool);
     pat_tup([@pat]);

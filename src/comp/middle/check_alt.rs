@@ -2,6 +2,7 @@ import syntax::ast::*;
 import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit_exprs,
                           lit_expr_eq};
 import syntax::visit;
+import std::option::{some, none};
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     let v =
@@ -64,57 +65,58 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
     }
 
     alt a.node {
-      pat_wild. | pat_bind(_) { ret true; }
+      pat_bind(_, some(p)) { pattern_supersedes(tcx, p, b) }
+      pat_wild. | pat_bind(_, none.) { true }
       pat_lit(la) {
         alt b.node {
-          pat_lit(lb) { ret lit_expr_eq(la, lb); }
-          _ { ret false; }
+          pat_lit(lb) { lit_expr_eq(la, lb) }
+          _ { false }
         }
       }
       pat_tag(va, suba) {
         alt b.node {
           pat_tag(vb, subb) {
-            ret tcx.def_map.get(a.id) == tcx.def_map.get(b.id) &&
-                    patterns_supersede(tcx, suba, subb);
+            tcx.def_map.get(a.id) == tcx.def_map.get(b.id) &&
+                patterns_supersede(tcx, suba, subb)
           }
-          _ { ret false; }
+          _ { false }
         }
       }
       pat_rec(suba, _) {
         alt b.node {
-          pat_rec(subb, _) { ret field_patterns_supersede(tcx, suba, subb); }
-          _ { ret false; }
+          pat_rec(subb, _) { field_patterns_supersede(tcx, suba, subb) }
+          _ { false }
         }
       }
       pat_tup(suba) {
         alt b.node {
-          pat_tup(subb) { ret patterns_supersede(tcx, suba, subb); }
-          _ { ret false; }
+          pat_tup(subb) { patterns_supersede(tcx, suba, subb) }
+          _ { false }
         }
       }
       pat_box(suba) {
         alt b.node {
-          pat_box(subb) { ret pattern_supersedes(tcx, suba, subb); }
-          _ { ret pattern_supersedes(tcx, suba, b); }
+          pat_box(subb) { pattern_supersedes(tcx, suba, subb) }
+          _ { pattern_supersedes(tcx, suba, b) }
         }
       }
       pat_uniq(suba) {
         alt b.node {
-          pat_uniq(subb) { ret pattern_supersedes(tcx, suba, subb); }
-          _ { ret pattern_supersedes(tcx, suba, b); }
+          pat_uniq(subb) { pattern_supersedes(tcx, suba, subb) }
+          _ { pattern_supersedes(tcx, suba, b) }
         }
       }
       pat_range(begina, enda) {
         alt b.node {
           pat_lit(lb) {
-            ret compare_lit_exprs(begina, lb) <= 0 &&
-                compare_lit_exprs(enda, lb) >= 0;
+            compare_lit_exprs(begina, lb) <= 0 &&
+            compare_lit_exprs(enda, lb) >= 0
           }
           pat_range(beginb, endb) {
-            ret compare_lit_exprs(begina, beginb) <= 0 &&
-                compare_lit_exprs(enda, endb) >= 0;
+            compare_lit_exprs(begina, beginb) <= 0 &&
+            compare_lit_exprs(enda, endb) >= 0
           }
-          _ { ret false; }
+          _ { false }
         }
       }
     }
@@ -130,25 +132,26 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
 
 fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     alt pat.node {
-      pat_wild. | pat_bind(_) { ret false; }
-      pat_lit(_) { ret true; }
-      pat_box(sub) { ret is_refutable(tcx, sub); }
-      pat_uniq(sub) { ret is_refutable(tcx, sub); }
+      pat_box(sub) | pat_uniq(sub) | pat_bind(_, some(sub)) {
+        is_refutable(tcx, sub)
+      }
+      pat_wild. | pat_bind(_, none.) { false }
+      pat_lit(_) { true }
       pat_rec(fields, _) {
         for field: field_pat in fields {
             if is_refutable(tcx, field.pat) { ret true; }
         }
-        ret false;
+        false
       }
       pat_tup(elts) {
         for elt in elts { if is_refutable(tcx, elt) { ret true; } }
-        ret false;
+        false
       }
       pat_tag(_, args) {
         let vdef = variant_def_ids(tcx.def_map.get(pat.id));
         if std::vec::len(ty::tag_variants(tcx, vdef.tg)) != 1u { ret true; }
         for p: @pat in args { if is_refutable(tcx, p) { ret true; } }
-        ret false;
+        false
       }
     }
 }

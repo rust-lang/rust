@@ -159,8 +159,9 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
         for f: field_pat in fields { v.visit_pat(f.pat, e, v); }
       }
       pat_tup(elts) { for elt in elts { v.visit_pat(elt, e, v); } }
-      pat_box(inner) { v.visit_pat(inner, e, v); }
-      pat_uniq(inner) { v.visit_pat(inner, e, v); }
+      pat_box(inner) | pat_uniq(inner) | pat_bind(_, some(inner)) {
+        v.visit_pat(inner, e, v);
+      }
       _ { }
     }
 }

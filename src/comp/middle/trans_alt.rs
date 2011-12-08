@@ -88,14 +88,31 @@ type match_branch =
               id_map: ast_util::pat_id_map}};
 type match = [match_branch];
 
-fn matches_always(p: @ast::pat) -> bool {
-    ret alt p.node {
-          ast::pat_wild. { true }
-          ast::pat_bind(_) { true }
-          ast::pat_rec(_, _) { true }
-          ast::pat_tup(_) { true }
-          _ { false }
-        };
+fn has_nested_bindings(m: match, col: uint) -> bool {
+    for br in m {
+        alt br.pats[col].node {
+          ast::pat_bind(_, some(_)) { ret true; }
+          _ {}
+        }
+    }
+    ret false;
+}
+
+fn expand_nested_bindings(m: match, col: uint, val: ValueRef) -> match {
+    let result = [];
+    for br in m {
+        alt br.pats[col].node {
+          ast::pat_bind(name, some(inner)) {
+            let pats = vec::slice(br.pats, 0u, col) + [inner] +
+                vec::slice(br.pats, col + 1u, vec::len(br.pats));
+            result += [@{pats: pats,
+                         bound: br.bound + [{ident: name, val: val}]
+                         with *br}];
+          }
+          _ { result += [br]; }
+        }
+    }
+    result
 }
 
 type enter_pat = fn@(@ast::pat) -> option::t<[@ast::pat]>;
@@ -109,7 +126,7 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
                 vec::slice(br.pats, col + 1u, vec::len(br.pats));
             let new_br = @{pats: pats,
                            bound: alt br.pats[col].node {
-                             ast::pat_bind(name) {
+                             ast::pat_bind(name, none.) {
                                br.bound + [{ident: name, val: val}]
                              }
                              _ { br.bound }
@@ -123,6 +140,13 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
 }
 
 fn enter_default(m: match, col: uint, val: ValueRef) -> match {
+    fn matches_always(p: @ast::pat) -> bool {
+        ret alt p.node {
+          ast::pat_wild. | ast::pat_bind(_, none.) | ast::pat_rec(_, _) |
+          ast::pat_tup(_) { true }
+          _ { false }
+        };
+    }
     fn e(p: @ast::pat) -> option::t<[@ast::pat]> {
         ret if matches_always(p) { some([]) } else { none };
     }
@@ -303,18 +327,17 @@ type exit_node = {bound: bind_map, from: BasicBlockRef, to: BasicBlockRef};
 type mk_fail = fn@() -> BasicBlockRef;
 
 fn pick_col(m: match) -> uint {
+    fn score(p: @ast::pat) -> uint {
+        alt p.node {
+          ast::pat_lit(_) | ast::pat_tag(_, _) | ast::pat_range(_, _) { 1u }
+          ast::pat_bind(_, some(p)) { score(p) }
+          _ { 0u }
+        }
+    }
     let scores = vec::init_elt_mut(0u, vec::len(m[0].pats));
     for br: match_branch in m {
         let i = 0u;
-        for p: @ast::pat in br.pats {
-            alt p.node {
-              ast::pat_lit(_) | ast::pat_tag(_, _) | ast::pat_range(_, _) {
-                scores[i] += 1u;
-              }
-              _ { }
-            }
-            i += 1u;
-        }
+        for p: @ast::pat in br.pats { scores[i] += score(p); i += 1u; }
     }
     let max_score = 0u;
     let best_col = 0u;
@@ -368,6 +391,9 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 
     let col = pick_col(m);
     let val = vals[col];
+    let m = has_nested_bindings(m, col) ?
+        expand_nested_bindings(m, col, val) : m;
+
     let vals_left =
         vec::slice(vals, 0u, col) +
             vec::slice(vals, col + 1u, vec::len(vals));
@@ -662,7 +688,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
                         make_copy: bool) -> @block_ctxt {
     let ccx = bcx.fcx.lcx.ccx, bcx = bcx;
     alt pat.node {
-      ast::pat_bind(_) {
+      ast::pat_bind(_, inner) {
         if make_copy || ccx.copy_map.contains_key(pat.id) {
             let ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
             // FIXME: Could constrain pat_bind to make this
@@ -676,6 +702,10 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             bcx.fcx.lllocals.insert(pat.id, local_mem(alloc));
             trans_common::add_clean(bcx, alloc, ty);
         } else { bcx.fcx.lllocals.insert(pat.id, local_mem(val)); }
+        alt inner {
+          some(pat) { bcx = bind_irrefutable_pat(bcx, pat, val, true); }
+          _ {}
+        }
       }
       ast::pat_tag(_, sub) {
         if vec::len(sub) == 0u { ret bcx; }

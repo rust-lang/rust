@@ -585,8 +585,9 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
             &set: [pattern_root]) {
         alt pat.node {
           ast::pat_wild. | ast::pat_lit(_) | ast::pat_range(_, _) {}
-          ast::pat_bind(nm) {
+          ast::pat_bind(nm, sub) {
             set += [{id: pat.id, name: nm, mut: mut, span: pat.span}];
+            alt sub { some(p) { walk(tcx, mut, p, set); } _ {} }
           }
           ast::pat_tag(_, ps) | ast::pat_tup(ps) {
             for p in ps { walk(tcx, mut, p, set); }

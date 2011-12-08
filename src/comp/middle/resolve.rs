@@ -819,7 +819,7 @@ fn lookup_in_ty_params(name: ident, ty_params: [ast::ty_param]) ->
 fn lookup_in_pat(name: ident, pat: @ast::pat) -> option::t<def_id> {
     let found = none;
     ast_util::pat_bindings(pat) {|bound|
-        let p_name = alt bound.node { ast::pat_bind(n) { n } };
+        let p_name = alt bound.node { ast::pat_bind(n, _) { n } };
         if str::eq(p_name, name) { found = some(local_def(bound.id)); }
     };
     ret found;
@@ -1376,7 +1376,7 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
 
 fn check_pat(ch: checker, p: @ast::pat) {
     ast_util::pat_bindings(p) {|p|
-        let ident = alt p.node { pat_bind(n) { n } };
+        let ident = alt p.node { pat_bind(n, _) { n } };
         add_name(ch, p.span, ident);
     };
 }
@@ -1424,7 +1424,7 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                 let local_values = checker(*e, "value");
                 for (_, loc) in locs {
                     ast_util::pat_bindings(loc.node.pat) {|p|
-                        let ident = alt p.node { pat_bind(n) { n } };
+                        let ident = alt p.node { pat_bind(n, _) { n } };
                         add_name(local_values, p.span, ident);
                         check_name(values, p.span, ident);
                     };

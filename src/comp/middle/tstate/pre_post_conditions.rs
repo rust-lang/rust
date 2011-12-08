@@ -108,7 +108,7 @@ fn find_pre_post_loop(fcx: fn_ctxt, l: @local, index: @expr, body: blk,
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
     pat_bindings(l.node.pat) {|p|
-        let ident = alt p.node { pat_bind(id) { id } };
+        let ident = alt p.node { pat_bind(id, _) { id } };
         let v_init = ninit(p.id, ident);
         relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
         // Hack: for-loop index variables are frequently ignored,
@@ -579,11 +579,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                         /* FIXME: This won't be necessary when typestate
                         works well enough for pat_bindings to return a
                         refinement-typed thing. */
-                        let ident = alt pat.node {
-                          pat_bind(n) { n }
-                          _ { fcx.ccx.tcx.sess.span_bug(pat.span,
-                                                        "Impossible LHS"); }
-                        };
+                        let ident = alt pat.node { pat_bind(n, _) { n } };
                         alt p {
                           some(p) {
                             copy_in_postcond(fcx, id,
@@ -612,13 +608,9 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                      postconds of the RHSs themselves */
                     pat_bindings(alocal.node.pat) {|pat|
                         alt pat.node {
-                          pat_bind(n) {
+                          pat_bind(n, _) {
                             set_in_postcond(bit_num(fcx, ninit(pat.id, n)),
                                             prev_pp);
-                          }
-                          _ {
-                            fcx.ccx.tcx.sess.span_bug(pat.span,
-                                                      "Impossible LHS");
                           }
                         }
                     };

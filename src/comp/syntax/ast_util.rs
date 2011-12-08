@@ -58,7 +58,7 @@ type pat_id_map = std::map::hashmap<str, node_id>;
 fn pat_id_map(pat: @pat) -> pat_id_map {
     let map = std::map::new_str_hash::<node_id>();
     pat_bindings(pat) {|bound|
-        let name = alt bound.node { pat_bind(n) { n } };
+        let name = alt bound.node { pat_bind(n, _) { n } };
         map.insert(name, bound.id);
     };
     ret map;
@@ -67,7 +67,8 @@ fn pat_id_map(pat: @pat) -> pat_id_map {
 // FIXME: could return a constrained type
 fn pat_bindings(pat: @pat, it: block(@pat)) {
     alt pat.node {
-      pat_bind(_) { it(pat); }
+      pat_bind(_, option::none.) { it(pat); }
+      pat_bind(_, option::some(sub)) { it(pat); pat_bindings(sub, it); }
       pat_tag(_, sub) { for p in sub { pat_bindings(p, it); } }
       pat_rec(fields, _) { for f in fields { pat_bindings(f.pat, it); } }
       pat_tup(elts) { for elt in elts { pat_bindings(elt, it); } }

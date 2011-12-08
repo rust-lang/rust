@@ -1178,7 +1178,7 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     let visit_pat =
         lambda (p: @ast::pat, &&e: (), v: visit::vt<()>) {
             alt p.node {
-              ast::pat_bind(_) { assign(p.id, none); }
+              ast::pat_bind(_, _) { assign(p.id, none); }
               _ {/* no-op */ }
             }
             visit::visit_pat(p, e, v);
@@ -1248,7 +1248,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
         }
         write::ty_only_fixup(fcx, pat.id, b_ty);
       }
-      ast::pat_bind(name) {
+      ast::pat_bind(name, sub) {
         let vid = lookup_local(fcx, pat.span, pat.id);
         let typ = ty::mk_var(fcx.ccx.tcx, vid);
         typ = demand::simple(fcx, pat.span, expected, typ);
@@ -1260,6 +1260,10 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
             typ = demand::simple(fcx, pat.span, ct, typ);
         }
         write::ty_only_fixup(fcx, pat.id, typ);
+        alt sub {
+          some(p) { check_pat(fcx, map, p, expected); }
+          _ {}
+        }
       }
       ast::pat_tag(path, subpats) {
         // Typecheck the path.

@@ -12,7 +12,7 @@ type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 
 fn collect_local(loc: @local, cx: ctxt, v: visit::vt<ctxt>) {
     pat_bindings(loc.node.pat) {|p|
-        let ident = alt p.node { pat_bind(id) { id } };
+        let ident = alt p.node { pat_bind(id, _) { id } };
         log "collect_local: pushing " + ident;;
         *cx.cs += [respan(loc.span, ninit(p.id, ident))];
     };

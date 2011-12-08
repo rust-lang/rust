@@ -1429,10 +1429,9 @@ fn parse_pat(p: parser) -> @ast::pat {
                 if p.get_bad_expr_words().contains_key(fieldname) {
                     p.fatal("found " + fieldname + " in binding position");
                 }
-                subpat =
-                    @{id: p.get_id(),
-                      node: ast::pat_bind(fieldname),
-                      span: ast_util::mk_sp(lo, hi)};
+                subpat = @{id: p.get_id(),
+                           node: ast::pat_bind(fieldname, none),
+                           span: ast_util::mk_sp(lo, hi)};
             }
             fields += [{ident: fieldname, pat: subpat}];
         }
@@ -1479,7 +1478,9 @@ fn parse_pat(p: parser) -> @ast::pat {
                         _ { true }
                       } {
             hi = p.get_hi_pos();
-            pat = ast::pat_bind(parse_value_ident(p));
+            let name = parse_value_ident(p);
+            let sub = eat(p, token::AT) ? some(parse_pat(p)) : none;
+            pat = ast::pat_bind(name, sub);
         } else {
             let tag_path = parse_path_and_ty_param_substs(p);
             hi = tag_path.span.hi;
