@@ -517,6 +517,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         let elems =
             parse_seq(token::LBRACE, token::RBRACE, seq_sep_opt(token::COMMA),
                       parse_ty_field, p);
+        if vec::len(elems.node) == 0u { unexpected(p, token::RBRACE); }
         let hi = elems.span.hi;
         t = ast::ty_rec(elems.node);
         if p.peek() == token::COLON {
