@@ -10,9 +10,6 @@ def unpack_snapshot(triple, snap):
   tar = tarfile.open(dl_path)
   kernel = get_kernel(triple)
   for name in snapshot_files[kernel]:
-    # FIXME: temporary hack to make transition, remove soon.
-    if "core" in name:
-      continue
     p = "rust-stage0/" + name
     stagep = os.path.join(triple, "stage0")
     fp = os.path.join(stagep, name)
