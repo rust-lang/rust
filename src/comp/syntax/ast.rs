@@ -113,6 +113,7 @@ tag proto_sugar {
 
 tag proto {
     proto_bare;
+    proto_send;
     proto_shared(proto_sugar);
     proto_block;
 }
@@ -198,7 +199,7 @@ tag expr_ {
     expr_for(@local, @expr, blk);
     expr_do_while(blk, @expr);
     expr_alt(@expr, [arm]);
-    expr_fn(_fn);
+    expr_fn(_fn, @capture);
     expr_block(blk);
 
     /*
@@ -232,6 +233,15 @@ tag expr_ {
     expr_anon_obj(anon_obj);
     expr_mac(mac);
 }
+
+// At the moment, one can only capture local variables.
+type capture_ = {
+    is_send: bool,
+    copies: [ident],
+    moves: [ident]
+};
+
+type capture = spanned<capture_>;
 
 /*
 // Says whether this is a block the user marked as

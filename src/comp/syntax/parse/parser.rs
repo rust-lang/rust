@@ -14,6 +14,12 @@ tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; RESTRICT_NO_BAR_OP; }
 
 tag file_type { CRATE_FILE; SOURCE_FILE; }
 
+tag fn_kw {
+    fn_kw_fn;
+    fn_kw_lambda;
+    fn_kw_block;
+};
+
 type parse_sess = @{cm: codemap::codemap, mutable next_id: node_id};
 
 fn next_node_id(sess: parse_sess) -> node_id {
@@ -536,7 +542,14 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
     } else if eat_word(p, "lambda") {
-        t = parse_ty_fn(ast::proto_shared(ast::sugar_sexy), p);
+        if p.peek() == token::LBRACE { // lambda[send](...)
+            expect(p, token::LBRACE);
+            expect_word(p, "send");
+            expect(p, token::RBRACE);
+            t = parse_ty_fn(ast::proto_send, p);
+        } else { // lambda(...)
+            t = parse_ty_fn(ast::proto_shared(ast::sugar_sexy), p);
+        }
     } else if eat_word(p, "obj") {
         t = parse_ty_obj(p);
     } else if p.peek() == token::MOD_SEP || is_ident(p.peek()) {
@@ -831,11 +844,11 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         */
     } else if eat_word(p, "fn") {
         let proto = parse_fn_anon_proto(p);
-        ret parse_fn_expr(p, proto);
+        ret parse_fn_expr(p, fn_kw_fn);
     } else if eat_word(p, "block") {
-        ret parse_fn_expr(p, ast::proto_block);
+        ret parse_fn_expr(p, fn_kw_block);
     } else if eat_word(p, "lambda") {
-        ret parse_fn_expr(p, ast::proto_shared(ast::sugar_sexy));
+        ret parse_fn_expr(p, fn_kw_lambda);
     } else if eat_word(p, "unchecked") {
         ret parse_block_expr(p, lo, ast::unchecked_blk);
     } else if eat_word(p, "unsafe") {
@@ -1274,12 +1287,78 @@ fn parse_if_expr(p: parser) -> @ast::expr {
     }
 }
 
-fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
+// Parses:
+//
+//   CC := [send; copy ID*; move ID*]
+//
+// where any part is optional and trailing ; is permitted.
+fn parse_capture_clause(p: parser) -> (bool, @ast::capture) {
+    fn expect_opt_trailing_semi(p: parser) {
+        if !eat(p, token::SEMI) {
+            if p.peek() != token::RBRACE {
+                p.fatal("expecting ; or ]");
+            }
+        }
+    }
+
+    fn eat_ident_list(p: parser) -> [ast::ident] {
+        let res = [];
+        while true {
+            alt p.peek() {
+              token::IDENT(_, _) {
+                res += parse_ident(p);
+                if !eat(p, token::COMMA) {
+                    ret res;
+                }
+              }
+
+              _ { ret res; }
+            }
+        }
+    }
+
+    let is_send = false;
+    let copies = [];
+    let moves = [];
+
+    if p.peek() != token::LBRACE {
+        ret (is_send, captures);
+    }
+
+    expect(p, token::LBRACE);
+    while p.peek() != token::RBRACE {
+        if eat_word(p, "send") {
+            is_send = true;
+            expect_opt_trailing_semi(p);
+        } else if eat_word(p, "copy") {
+            copies += eat_ident_list();
+            expect_opt_trailing_semi(p);
+        } else if eat_word(p, "move") {
+            moves += eat_ident_list();
+            expect_opt_trailing_semi(p);
+        } else {
+            let s: str = "expecting send, copy, or move clause";
+            p.fatal(s);
+        }
+    }
+
+    ret @{is_send: is_send, copies: copies, moves: moves};
+}
+
+fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
     let lo = p.get_last_lo_pos();
+    let cap = parse_capture_clause(p);
     let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
     let body = parse_block(p);
+    let proto = alt (kw, cap.is_send) {
+      (fn_kw_fn., true) { ast::proto_bare }
+      (fn_kw_lambda., true) { ast::proto_send }
+      (fn_kw_lambda., false) { ast::proto_shared(ast::sugar_sexy) }
+      (fn_kw_block., false) { ast::proto_block }
+      (_, true) { p.fatal("only lambda can be declared sendable"); }
+    }
     let _fn = {decl: decl, proto: proto, body: body};
-    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
+    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, cap));
 }
 
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
