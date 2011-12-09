@@ -59,7 +59,8 @@ obj session(targ_cfg: @config,
             // For a library crate, this is always none
             mutable main_fn: option::t<node_id>,
             mutable err_count: uint,
-            filesearch: filesearch::filesearch) {
+            filesearch: filesearch::filesearch,
+            mutable building_library: bool) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
     fn get_cstore() -> metadata::cstore::cstore { cstore }
@@ -118,7 +119,10 @@ obj session(targ_cfg: @config,
     fn set_main_id(d: node_id) { main_fn = some(d); }
     fn get_main_id() -> option::t<node_id> { main_fn }
     fn filesearch() -> filesearch::filesearch { filesearch }
-    fn building_library() -> bool { opts.crate_type == lib_crate }
+    fn building_library() -> bool { building_library }
+    fn set_building_library(crate: @ast::crate) {
+        building_library = session::building_library(opts.crate_type, crate);
+    }
 }
 
 fn building_library(req_crate_type: crate_type, crate: @ast::crate) -> bool {

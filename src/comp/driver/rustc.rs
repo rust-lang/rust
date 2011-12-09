@@ -138,6 +138,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
     if sess.get_opts().parse_only { ret; }
 
+    sess.set_building_library(crate);
+
     crate =
         time(time_passes, "configuration",
              bind front::config::strip_unconfigured_items(crate));
@@ -492,7 +494,7 @@ fn build_session(sopts: @session::options) -> session::session {
         sopts.addl_lib_search_paths);
     ret session::session(target_cfg, sopts, cstore,
                          @{cm: codemap::new_codemap(), mutable next_id: 0},
-                         none, 0u, filesearch);
+                         none, 0u, filesearch, false);
 }
 
 fn parse_pretty(sess: session::session, &&name: str) -> pp_mode {
