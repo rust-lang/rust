@@ -14,6 +14,14 @@ import std::str;
 import std::tempfile;
 import std::vec;
 
+type cargo = {
+    root: str,
+    bindir: str,
+    libdir: str,
+    workdir: str,
+    fetchdir: str
+};
+
 type pkg = {
     name: str,
     vers: str,
@@ -109,7 +117,7 @@ fn need_dir(s: str) {
     }
 }
 
-fn setup_dirs() -> str {
+fn configure() -> cargo {
     let p = alt generic_os::getenv("CARGO_ROOT") {
         some(_p) { _p }
         none. {
@@ -122,18 +130,24 @@ fn setup_dirs() -> str {
 
     log #fmt["p: %s", p];
 
-    need_dir(p);
-    need_dir(fs::connect(p, "fetch"));
-    need_dir(fs::connect(p, "work"));
-    need_dir(fs::connect(p, "lib"));
-    need_dir(fs::connect(p, "bin"));
+    let c = {
+        root: p,
+        bindir: fs::connect(p, "bin"),
+        libdir: fs::connect(p, "lib"),
+        workdir: fs::connect(p, "work"),
+        fetchdir: fs::connect(p, "fetch")
+    };
 
-    p
+    need_dir(c.root);
+    need_dir(c.fetchdir);
+    need_dir(c.workdir);
+    need_dir(c.libdir);
+    need_dir(c.bindir);
+
+    c
 }
 
-fn install_one_crate(cargo_root: str, path: str, cf: str, p: pkg) {
-    let bindir = fs::connect(cargo_root, "bin");
-    let libdir = fs::connect(cargo_root, "lib");
+fn install_one_crate(c: cargo, path: str, cf: str, p: pkg) {
     let name = fs::basename(cf);
     let ri = str::index(name, '.' as u8);
     if ri != -1 {
@@ -144,19 +158,19 @@ fn install_one_crate(cargo_root: str, path: str, cf: str, p: pkg) {
     run::run_program("rustc", [cf]);
     let new = fs::list_dir(".");
     let created = vec::filter::<str>({ |n| !vec::member::<str>(n, old) }, new);
-    for c: str in created {
-        if str::ends_with(c, os::exec_suffix()) {
-            log #fmt["  bin: %s", c];
+    for ct: str in created {
+        if str::ends_with(ct, os::exec_suffix()) {
+            log #fmt["  bin: %s", ct];
             // FIXME: need libstd fs::copy or something
-            run::run_program("cp", [c, fs::connect(bindir, c)]);
+            run::run_program("cp", [ct, c.bindir]);
         } else {
-            log #fmt["  lib: %s", c];
-            run::run_program("cp", [c, fs::connect(libdir, c)]);
+            log #fmt["  lib: %s", ct];
+            run::run_program("cp", [ct, c.libdir]);
         }
     }
 }
 
-fn install_source(cargo_root: str, path: str) {
+fn install_source(c: cargo, path: str) {
     log #fmt["source: %s", path];
     fs::change_dir(path);
     let contents = fs::list_dir(".");
@@ -174,25 +188,25 @@ fn install_source(cargo_root: str, path: str) {
         alt p {
             none. { cont; }
             some(_p) {
-                install_one_crate(cargo_root, path, cf, _p);
+                install_one_crate(c, path, cf, _p);
             }
         }
     }
 }
 
-fn install_file(cargo_root: str, _path: str) {
-    let wd = tempfile::mkdtemp(cargo_root + "/work/", "");
+fn install_file(c: cargo, _path: str) {
+    let wd = tempfile::mkdtemp(c.workdir + fs::path_sep(), "");
     alt wd {
         some(p) {
             run::run_program("tar", ["-x", "--strip-components=1",
                                      "-C", p, "-f", _path]);
-            install_source(cargo_root, p);
+            install_source(c, p);
         }
         _ { fail "needed temp dir"; }
     }
 }
 
-fn cmd_install(cargo_root: str, argv: [str]) {
+fn cmd_install(c: cargo, argv: [str]) {
     // cargo install <pkg>
     if vec::len(argv) < 3u {
         cmd_usage();
@@ -201,7 +215,7 @@ fn cmd_install(cargo_root: str, argv: [str]) {
 
     if str::starts_with(argv[2], "file:") {
         let path = rest(argv[2], 5u);
-        install_file(cargo_root, path);
+        install_file(c, path);
     }
 }
 
@@ -214,9 +228,9 @@ fn main(argv: [str]) {
         cmd_usage();
         ret;
     }
-    let cargo_root = setup_dirs();
+    let c = configure();
     alt argv[1] {
-        "install" { cmd_install(cargo_root, argv); }
+        "install" { cmd_install(c, argv); }
         "usage" { cmd_usage(); }
         _ { cmd_usage(); }
     }
