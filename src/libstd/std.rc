@@ -5,7 +5,7 @@
 
 #[comment = "The Rust standard library"];
 #[license = "BSD"];
-
+#[crate_type = "lib"];
 
 export box, char, float, int, str, ptr;
 export uint, u8, u32, u64, vec, bool;

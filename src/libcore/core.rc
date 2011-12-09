@@ -5,7 +5,7 @@
 
 #[comment = "The Rust core library"];
 #[license = "BSD"];
-
+#[crate_type = "lib"];
 
 // Local Variables:
 // mode: rust;

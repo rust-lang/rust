@@ -7,7 +7,7 @@
 
 #[desc = "The Rust compiler"];
 #[license = "BSD"];
-
+#[crate_type = "bin"];
 
 use std (name = "std",
          vers = "0.1",
