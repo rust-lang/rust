@@ -120,6 +120,80 @@ obj session(targ_cfg: @config,
     fn filesearch() -> filesearch::filesearch { filesearch }
     fn building_library() -> bool { opts.crate_type == lib_crate }
 }
+
+fn building_library(req_crate_type: crate_type, crate: @ast::crate) -> bool {
+    alt req_crate_type {
+      bin_crate. { false }
+      lib_crate. { true }
+      unknown_crate. {
+        alt front::attr::get_meta_item_value_str_by_name(
+            crate.node.attrs,
+            "crate_type") {
+          option::some("lib") { true }
+          _ { false }
+        }
+      }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    import syntax::ast_util;
+
+    fn make_crate_type_attr(t: str) -> ast::attribute {
+        ast_util::respan(ast_util::dummy_sp(), {
+            style: ast::attr_outer,
+            value: ast_util::respan(ast_util::dummy_sp(),
+                ast::meta_name_value(
+                    "crate_type",
+                    ast_util::respan(ast_util::dummy_sp(),
+                                     ast::lit_str(t))))
+        })
+    }
+
+    fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
+        let attrs = [];
+        if with_bin { attrs += [make_crate_type_attr("bin")]; }
+        if with_lib { attrs += [make_crate_type_attr("lib")]; }
+        @ast_util::respan(ast_util::dummy_sp(), {
+            directives: [],
+            module: {view_items: [], items: []},
+            attrs: attrs,
+            config: []
+        })
+    }
+
+    #[test]
+    fn bin_crate_type_attr_results_in_bin_output() {
+        let crate = make_crate(true, false);
+        assert !building_library(unknown_crate, crate);
+    }
+
+    #[test]
+    fn lib_crate_type_attr_results_in_lib_output() {
+        let crate = make_crate(false, true);
+        assert building_library(unknown_crate, crate);
+    }
+
+    #[test]
+    fn bin_option_overrides_lib_crate_type() {
+        let crate = make_crate(false, true);
+        assert !building_library(bin_crate, crate);
+    }
+
+    #[test]
+    fn lib_option_overrides_bin_crate_type() {
+        let crate = make_crate(true, false);
+        assert building_library(lib_crate, crate);
+    }
+
+    #[test]
+    fn bin_crate_type_is_default() {
+        let crate = make_crate(false, false);
+        assert !building_library(unknown_crate, crate);
+    }
+}
+
 // Local Variables:
 // fill-column: 78;
 // indent-tabs-mode: nil
