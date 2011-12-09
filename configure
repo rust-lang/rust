@@ -473,7 +473,8 @@ do
         LLVM_DBG_OPTS="--enable-optimized"
 	    LLVM_INST_DIR=$LLVM_BUILD_DIR/Release+Asserts
     fi
-	LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs"
+	# Disable unused LLVM features
+	LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs --disable-jit --enable-bindings=none --disable-threads --disable-pthreads"
 
 	LLVM_CXX_32="g++ -m32"
 	LLVM_CC_32="gcc -m32"
