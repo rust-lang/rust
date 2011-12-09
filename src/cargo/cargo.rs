@@ -194,6 +194,17 @@ fn install_source(c: cargo, path: str) {
     }
 }
 
+fn install_git(c: cargo, _path: str) {
+    let wd = tempfile::mkdtemp(c.workdir + fs::path_sep(), "");
+    alt wd {
+        some(p) {
+            run::run_program("git", ["clone", _path, p]);
+            install_source(c, p);
+        }
+        _ { fail "needed temp dir"; }
+    }
+}
+
 fn install_file(c: cargo, _path: str) {
     let wd = tempfile::mkdtemp(c.workdir + fs::path_sep(), "");
     alt wd {
@@ -213,6 +224,9 @@ fn cmd_install(c: cargo, argv: [str]) {
         ret;
     }
 
+    if str::starts_with(argv[2], "git:") {
+        install_git(c, argv[2]);
+    }
     if str::starts_with(argv[2], "file:") {
         let path = rest(argv[2], 5u);
         install_file(c, path);
