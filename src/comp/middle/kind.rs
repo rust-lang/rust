@@ -107,7 +107,14 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           none. {}
         }
       }
-      expr_fn({proto: proto_shared(_), _}) {
+      expr_fn({proto: proto_send, _}, captures) {
+        for free in *freevars::get_freevars(cx.tcx, e.id) {
+            let id = ast_util::def_id_of_def(free).node;
+            let ty = ty::node_id_to_type(cx.tcx, id);
+            check_copy(cx, ty, e.span);
+        }
+      }
+      expr_fn({proto: proto_shared(_), _}, captures) {
         for free in *freevars::get_freevars(cx.tcx, e.id) {
             let id = ast_util::def_id_of_def(free).node;
             let ty = ty::node_id_to_type(cx.tcx, id);

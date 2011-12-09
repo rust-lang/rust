@@ -33,7 +33,7 @@ fn collect_freevars(def_map: resolve::def_map, walker: fn@(visit::vt<int>)) ->
     let walk_expr =
         lambda (expr: @ast::expr, &&depth: int, v: visit::vt<int>) {
             alt expr.node {
-              ast::expr_fn(f) {
+              ast::expr_fn(f, captures) {
                 if f.proto == ast::proto_block ||
                     f.proto == ast::proto_shared(ast::sugar_normal) ||
                     f.proto == ast::proto_shared(ast::sugar_sexy) {

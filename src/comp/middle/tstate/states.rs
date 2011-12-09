@@ -358,7 +358,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
       expr_lit(l) { ret pure_exp(fcx.ccx, e.id, pres); }
-      expr_fn(f) { ret pure_exp(fcx.ccx, e.id, pres); }
+      expr_fn(f, _) { ret pure_exp(fcx.ccx, e.id, pres); } // NDM Captures
       expr_block(b) {
         ret find_pre_post_state_block(fcx, pres, b) |
                 set_prestate_ann(fcx.ccx, e.id, pres) |

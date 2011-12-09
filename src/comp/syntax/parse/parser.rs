@@ -18,7 +18,7 @@ tag fn_kw {
     fn_kw_fn;
     fn_kw_lambda;
     fn_kw_block;
-};
+}
 
 type parse_sess = @{cm: codemap::codemap, mutable next_id: node_id};
 
@@ -1292,7 +1292,7 @@ fn parse_if_expr(p: parser) -> @ast::expr {
 //   CC := [send; copy ID*; move ID*]
 //
 // where any part is optional and trailing ; is permitted.
-fn parse_capture_clause(p: parser) -> (bool, @ast::capture) {
+fn parse_capture_clause(p: parser) -> @ast::capture {
     fn expect_opt_trailing_semi(p: parser) {
         if !eat(p, token::SEMI) {
             if p.peek() != token::RBRACE {
@@ -1301,12 +1301,13 @@ fn parse_capture_clause(p: parser) -> (bool, @ast::capture) {
         }
     }
 
-    fn eat_ident_list(p: parser) -> [ast::ident] {
+    fn eat_ident_list(p: parser) -> [ast::spanned<ast::ident>] {
         let res = [];
         while true {
             alt p.peek() {
               token::IDENT(_, _) {
-                res += parse_ident(p);
+                let i = spanned(p.get_lo_pos(), p.get_hi_pos(), parse_ident(p));
+                res += [i];
                 if !eat(p, token::COMMA) {
                     ret res;
                 }
@@ -1321,52 +1322,53 @@ fn parse_capture_clause(p: parser) -> (bool, @ast::capture) {
     let copies = [];
     let moves = [];
 
-    if p.peek() != token::LBRACE {
-        ret (is_send, captures);
-    }
-
-    expect(p, token::LBRACE);
-    while p.peek() != token::RBRACE {
-        if eat_word(p, "send") {
-            is_send = true;
-            expect_opt_trailing_semi(p);
-        } else if eat_word(p, "copy") {
-            copies += eat_ident_list();
-            expect_opt_trailing_semi(p);
-        } else if eat_word(p, "move") {
-            moves += eat_ident_list();
-            expect_opt_trailing_semi(p);
-        } else {
-            let s: str = "expecting send, copy, or move clause";
-            p.fatal(s);
+    let lo = p.get_lo_pos();
+    if eat(p, token::LBRACE) {
+        while !eat(p, token::RBRACE) {
+            if eat_word(p, "send") {
+                is_send = true;
+                expect_opt_trailing_semi(p);
+            } else if eat_word(p, "copy") {
+                copies += eat_ident_list(p);
+                expect_opt_trailing_semi(p);
+            } else if eat_word(p, "move") {
+                moves += eat_ident_list(p);
+                expect_opt_trailing_semi(p);
+            } else {
+                let s: str = "expecting send, copy, or move clause";
+                p.fatal(s);
+            }
         }
     }
+    let hi = p.get_last_hi_pos();
 
-    ret @{is_send: is_send, copies: copies, moves: moves};
+    ret @spanned(lo, hi, {is_send: is_send, copies: copies, moves: moves});
 }
 
 fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
     let lo = p.get_last_lo_pos();
-    let cap = parse_capture_clause(p);
+    let captures = parse_capture_clause(p);
     let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
     let body = parse_block(p);
-    let proto = alt (kw, cap.is_send) {
+    let proto = alt (kw, captures.node.is_send) {
       (fn_kw_fn., true) { ast::proto_bare }
       (fn_kw_lambda., true) { ast::proto_send }
       (fn_kw_lambda., false) { ast::proto_shared(ast::sugar_sexy) }
       (fn_kw_block., false) { ast::proto_block }
       (_, true) { p.fatal("only lambda can be declared sendable"); }
-    }
+    };
     let _fn = {decl: decl, proto: proto, body: body};
-    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, cap));
+    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
 }
 
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let decl = parse_fn_block_decl(p);
+    let mid = p.get_last_hi_pos();
     let body = parse_block_tail(p, lo, ast::default_blk);
     let _fn = {decl: decl, proto: ast::proto_block, body: body};
-    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
+    let captures = @spanned(lo, mid, {is_send: false, copies: [], moves: []});
+    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
 }
 
 fn parse_else_expr(p: parser) -> @ast::expr {

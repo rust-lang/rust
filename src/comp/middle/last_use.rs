@@ -134,7 +134,8 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
         for arg in args {
             alt arg.node {
-              expr_fn(_) { fns += [arg]; }
+              //NDM--register captured as uses
+              expr_fn(_, captured) { fns += [arg]; }
               _ {
                 alt arg_ts[i].mode {
                   by_mut_ref. { clear_if_path(cx, arg, v, false); }

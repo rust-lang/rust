@@ -273,7 +273,8 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_expr(x, e, v);
         for a: arm in arms { v.visit_arm(a, e, v); }
       }
-      expr_fn(f) { v.visit_fn(f, [], ex.span, none, ex.id, e, v); }
+      // NDM add visit routine?
+      expr_fn(f, captures) { v.visit_fn(f, [], ex.span, none, ex.id, e, v); }
       expr_block(b) { v.visit_block(b, e, v); }
       expr_assign(a, b) { v.visit_expr(b, e, v); v.visit_expr(a, e, v); }
       expr_copy(a) { v.visit_expr(a, e, v); }

@@ -237,8 +237,8 @@ tag expr_ {
 // At the moment, one can only capture local variables.
 type capture_ = {
     is_send: bool,
-    copies: [ident],
-    moves: [ident]
+    copies: [spanned<ident>],
+    moves: [spanned<ident>]
 };
 
 type capture = spanned<capture_>;

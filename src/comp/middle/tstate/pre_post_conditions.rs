@@ -341,7 +341,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         find_pre_post_expr(fcx, arg);
         copy_pre_post(fcx.ccx, e.id, arg);
       }
-      expr_fn(f) {
+      expr_fn(f, _) { // NDM captures
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
         for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {

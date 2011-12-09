@@ -381,7 +381,8 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_alt(expr, arms) {
             expr_alt(fld.fold_expr(expr), vec::map(fld.fold_arm, arms))
           }
-          expr_fn(f) { expr_fn(fld.fold_fn(f)) }
+          // NDM fold_captures
+          expr_fn(f, captures) { expr_fn(fld.fold_fn(f), captures) }
           expr_block(blk) { expr_block(fld.fold_block(blk)) }
           expr_move(el, er) {
             expr_move(fld.fold_expr(el), fld.fold_expr(er))

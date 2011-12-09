@@ -4047,7 +4047,8 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         assert op != ast::deref; // lvals are handled above
         ret trans_unary(bcx, op, x, e.id, dest);
       }
-      ast::expr_fn(f) { ret trans_expr_fn(bcx, f, e.span, e.id, dest); }
+      // NDM captures
+      ast::expr_fn(f, cap) { ret trans_expr_fn(bcx, f, e.span, e.id, dest); }
       ast::expr_bind(f, args) { ret trans_bind(bcx, f, args, e.id, dest); }
       ast::expr_copy(a) {
         if !ty::expr_is_lval(tcx, a) { ret trans_expr(bcx, a, dest); }

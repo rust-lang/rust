@@ -372,6 +372,10 @@ $(foreach host,$(CFG_TARGET_TRIPLES),							\
  $(eval $(foreach stage,1 2 3,									\
   $(eval $(call DEF_RUSTC_STAGE_TARGET,$(host),$(stage))))))
 
+rustc-stage1: rustc-stage1-H-$(CFG_HOST_TRIPLE)
+rustc-stage2: rustc-stage2-H-$(CFG_HOST_TRIPLE)
+rustc-stage3: rustc-stage3-H-$(CFG_HOST_TRIPLE)
+
 define DEF_RUSTC_TARGET
 # $(1) == architecture
 

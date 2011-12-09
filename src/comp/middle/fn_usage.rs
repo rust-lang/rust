@@ -7,8 +7,7 @@ export check_crate_fn_usage;
 
 type fn_usage_ctx = {
     tcx: ty::ctxt,
-    unsafe_fn_legal: bool,
-    generic_bare_fn_legal: bool
+    unsafe_fn_legal: bool
 };
 
 fn fn_usage_expr(expr: @ast::expr,
@@ -29,44 +28,28 @@ fn fn_usage_expr(expr: @ast::expr,
               _ {}
             }
         }
-        if !ctx.generic_bare_fn_legal
-            && ty::expr_has_ty_params(ctx.tcx, expr) {
-            alt ty::struct(ctx.tcx, ty::expr_ty(ctx.tcx, expr)) {
-              ty::ty_fn(ast::proto_bare., _, _, _, _) {
-                ctx.tcx.sess.span_fatal(
-                    expr.span,
-                    "generic bare functions can only be called or bound");
-              }
-              _ { }
-            }
-        }
       }
 
       ast::expr_call(f, args, _) {
-        let f_ctx = {unsafe_fn_legal: true,
-                     generic_bare_fn_legal: true with ctx};
+        let f_ctx = {unsafe_fn_legal: true with ctx};
         v.visit_expr(f, f_ctx, v);
 
-        let args_ctx = {unsafe_fn_legal: false,
-                        generic_bare_fn_legal: false with ctx};
+        let args_ctx = {unsafe_fn_legal: false with ctx};
         visit::visit_exprs(args, args_ctx, v);
       }
 
       ast::expr_bind(f, args) {
-        let f_ctx = {unsafe_fn_legal: false,
-                     generic_bare_fn_legal: true with ctx};
+        let f_ctx = {unsafe_fn_legal: false with ctx};
         v.visit_expr(f, f_ctx, v);
 
-        let args_ctx = {unsafe_fn_legal: false,
-                        generic_bare_fn_legal: false with ctx};
+        let args_ctx = {unsafe_fn_legal: false with ctx};
         for arg in args {
             visit::visit_expr_opt(arg, args_ctx, v);
         }
       }
 
       _ {
-        let subctx = {unsafe_fn_legal: false,
-                      generic_bare_fn_legal: false with ctx};
+        let subctx = {unsafe_fn_legal: false with ctx};
         visit::visit_expr(expr, subctx, v);
       }
     }
@@ -79,8 +62,7 @@ fn check_crate_fn_usage(tcx: ty::ctxt, crate: @ast::crate) {
                   with *visit::default_visitor()});
     let ctx = {
         tcx: tcx,
-        unsafe_fn_legal: false,
-        generic_bare_fn_legal: false
+        unsafe_fn_legal: false
     };
     visit::visit_crate(*crate, ctx, visit);
 }

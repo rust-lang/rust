@@ -818,7 +818,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, alt_indent_unit);
       }
-      ast::expr_fn(f) {
+      ast::expr_fn(f, captures) { // NDM captures
 
         // If the return type is the magic ty_infer, then we need to
         // pretty print as a lambda-block

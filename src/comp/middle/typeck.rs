@@ -1001,7 +1001,7 @@ mod writeback {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, e.span, e.id);
         alt e.node {
-          ast::expr_fn(f) {
+          ast::expr_fn(f, _) { // NDM captures?
             for input in f.decl.inputs {
                 resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
@@ -1526,7 +1526,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                       some(a) {
                         let is_block =
                             alt a.node {
-                              ast::expr_fn(_) { true }
+                              ast::expr_fn(_, _) { true }
                               _ { false }
                             };
                         if is_block == check_blocks {
@@ -1902,7 +1902,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         if !arm_non_bot { result_ty = ty::mk_bot(tcx); }
         write::ty_only_fixup(fcx, id, result_ty);
       }
-      ast::expr_fn(f) {
+      ast::expr_fn(f, captures) { // NDM captures
         let cx = @{tcx: tcx};
         let fty = ty_of_fn_decl(cx.tcx, m_check_tyvar(fcx), f.decl,
                                  f.proto, [], none).ty;
