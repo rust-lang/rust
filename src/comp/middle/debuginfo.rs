@@ -74,6 +74,15 @@ fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
 
 ////////////////
 
+type debug_ctxt = {
+    llmetadata: metadata_cache,
+    //llmod: ValueRef,
+    //opt: bool,
+    names: trans_common::namegen
+};
+
+////////////////
+
 type metadata<T> = {node: ValueRef, data: T};
 
 type file_md = {path: str};
@@ -134,7 +143,7 @@ fn cached_metadata<copy T>(cache: metadata_cache, mdtag: int,
 
 fn get_compile_unit_metadata(cx: @crate_ctxt, full_path: str)
     -> @metadata<compile_unit_md> {
-    let cache = cx.llmetadata;
+    let cache = get_cache(cx);
     alt cached_metadata::<@metadata<compile_unit_md>>(cache, CompileUnitTag,
                         {|md| md.data.path == full_path}) {
       option::some(md) { ret md; }
@@ -166,37 +175,45 @@ fn get_compile_unit_metadata(cx: @crate_ctxt, full_path: str)
     ret mdval;
 }
 
+fn get_cache(cx: @crate_ctxt) -> metadata_cache {
+    option::get(cx.dbg_cx).llmetadata
+}
+
 fn get_file_metadata(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
-    let cache = cx.llmetadata;
+    let cache = get_cache(cx);;
+    let tg = FileDescriptorTag;
     alt cached_metadata::<@metadata<file_md>>(
-        cache, FileDescriptorTag,
-        {|md|
-         md.data.path == full_path}) {
-      option::some(md) { ret md; }
-      option::none. {}
+        cache, tg, {|md| md.data.path == full_path}) {
+        option::some(md) { ret md; }
+        option::none. {}
     }
     let fname = fs::basename(full_path);
     let path = fs::dirname(full_path);
     let unit_node = get_compile_unit_metadata(cx, full_path).node;
-    let file_md = [lltag(FileDescriptorTag),
+    let file_md = [lltag(tg),
                    llstr(fname),
                    llstr(path),
                    unit_node];
     let val = llmdnode(file_md);
     let mdval = @{node: val, data: {path: full_path}};
-    update_cache(cache, FileDescriptorTag, file_metadata(mdval));
+    update_cache(cache, tg, file_metadata(mdval));
     ret mdval;
 }
 
+fn line_from_span(cm: codemap::codemap, sp: codemap::span) -> uint {
+    codemap::lookup_char_pos(cm, sp.lo).line
+}
+
 fn get_block_metadata(cx: @block_ctxt) -> @metadata<block_md> {
-    let cache = bcx_ccx(cx).llmetadata;
+    let cache = get_cache(bcx_ccx(cx));
     let start = codemap::lookup_char_pos(bcx_ccx(cx).sess.get_codemap(),
                                          cx.sp.lo);
     let fname = start.filename;
     let end = codemap::lookup_char_pos(bcx_ccx(cx).sess.get_codemap(),
                                        cx.sp.hi);
+    let tg = LexicalBlockTag;
     alt cached_metadata::<@metadata<block_md>>(
-        cache, LexicalBlockTag,
+        cache, tg,
         {|md| start == md.data.start && end == md.data.end}) {
       option::some(md) { ret md; }
       option::none. {}
@@ -210,7 +227,7 @@ fn get_block_metadata(cx: @block_ctxt) -> @metadata<block_md> {
       option::some(v) { vec::len(v) as int }
       option::none. { 0 }
     };
-    let lldata = [lltag(LexicalBlockTag),
+    let lldata = [lltag(tg),
                   parent,
                   lli32(start.line as int),
                   lli32(start.col as int),
@@ -219,7 +236,7 @@ fn get_block_metadata(cx: @block_ctxt) -> @metadata<block_md> {
                  ];
       let val = llmdnode(lldata);
       let mdval = @{node: val, data: {start: start, end: end}};
-      update_cache(cache, LexicalBlockTag, block_metadata(mdval));
+      update_cache(cache, tg, block_metadata(mdval));
       ret mdval;
 }
 
@@ -229,7 +246,7 @@ fn size_and_align_of<T>() -> (int, int) {
 
 fn get_basic_type_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     -> @metadata<tydesc_md> {
-    let cache = cx.llmetadata;
+    let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg,
@@ -315,6 +332,82 @@ fn get_pointer_type_metadata(cx: @crate_ctxt, t: ty::t, span: codemap::span,
     ret mdval;
 }
 
+type struct_ctxt = {
+    file: ValueRef,
+    name: str,
+    line: int,
+    mutable members: [ValueRef],
+    mutable total_size: int,
+    align: int
+};
+
+fn finish_structure(cx: @struct_ctxt) -> ValueRef {
+    let lldata = [lltag(StructureTypeTag),
+                  cx.file,
+                  llstr(cx.name), // type name
+                  cx.file, // source file definition
+                  lli32(cx.line), // source line definition
+                  lli64(cx.total_size), // size of members
+                  lli64(cx.align), // align
+                  lli64(0), // offset
+                  lli32(0), // flags
+                  llnull(), // derived from
+                  llmdnode(cx.members), // members
+                  lli32(0),  // runtime language
+                  llnull()
+                 ];
+    ret llmdnode(lldata);
+}
+
+fn create_structure(file: @metadata<file_md>, name: str, line: int)
+    -> @struct_ctxt {
+    let cx = @{file: file.node,
+               name: name,
+               line: line,
+               mutable members: [],
+               mutable total_size: 0,
+               align: 64 //XXX different alignment per arch?
+              }; 
+    ret cx;
+}
+
+fn add_member(cx: @struct_ctxt, name: str, line: int, size: int, align: int,
+              ty: ValueRef) {
+    let lldata = [lltag(MemberTag),
+                  cx.file,
+                  llstr(name),
+                  cx.file,
+                  lli32(line),
+                  lli64(size * 8),
+                  lli64(align * 8),
+                  lli64(cx.total_size),
+                  lli32(0),
+                  ty];
+    cx.total_size += size * 8;
+    cx.members += [llmdnode(lldata)];
+}
+
+fn get_record_metadata(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
+                       span: codemap::span) -> @metadata<tydesc_md> {
+    let fname = filename_from_span(cx, span);
+    let file_node = get_file_metadata(cx, fname);
+    let scx = create_structure(file_node,
+                               option::get(cx.dbg_cx).names.next("rec"),
+                               line_from_span(cx.sess.get_codemap(),
+                                              span) as int);
+    for field in fields {
+        //let field_t = option::get(ccx_tcx(cx).ast_ty_to_ty_cache.get(field.node.mt.ty));
+        let field_t = ty::get_field(ccx_tcx(cx), t, field.node.ident).mt.ty;
+        let ty_md = get_ty_metadata(cx, field_t, field.node.mt.ty);
+        let (size, align) = member_size_and_align(field.node.mt.ty);
+        add_member(scx, field.node.ident,
+                   line_from_span(cx.sess.get_codemap(), field.span) as int,
+                   size as int, align as int, ty_md.node);
+    }
+    let mdval = @{node: finish_structure(scx), data:{hash: t}};
+    ret mdval;
+}
+
 fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
                            span: codemap::span, boxed: @metadata<tydesc_md>)
     -> @metadata<tydesc_md> {
@@ -352,7 +445,7 @@ fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
                     lli64(0),
                     lli32(0),
                     refcount_type.node];
-    let size = 64; //XXX size of inner
+    let size = 64; //XXX member_size_and_align(???)
     let boxed_member = [lltag(MemberTag),
                         file_node.node,
                         llstr("boxed"),
@@ -379,7 +472,7 @@ fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
                   lli32(0) // runtime language
                  ];
     let llnode = llmdnode(lldata);
-    let mdval = @{node: llnode, data: {hash: ty::hash_ty(outer)}};
+    let mdval = @{node: llnode, data: {hash: outer}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
     llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
                                       str::byte_len("llvm.dbg.ty"),
@@ -387,7 +480,49 @@ fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
     ret mdval;
 }
 
+fn member_size_and_align(ty: @ast::ty) -> (int, int) {
+    alt ty.node {
+      ast::ty_bool. { size_and_align_of::<bool>() }
+      ast::ty_int(m) { alt m {
+        ast::ty_char. { size_and_align_of::<char>() }
+        ast::ty_i. { size_and_align_of::<int>() }
+        ast::ty_i8. { size_and_align_of::<i8>() }
+        ast::ty_i16. { size_and_align_of::<i16>() }
+        ast::ty_i32. { size_and_align_of::<i32>() }
+      }}
+      ast::ty_uint(m) { alt m {
+        ast::ty_u. { size_and_align_of::<uint>() }
+        ast::ty_u8. { size_and_align_of::<i8>() }
+        ast::ty_u16. { size_and_align_of::<u16>() }
+        ast::ty_u32. { size_and_align_of::<u32>() }
+      }}
+      ast::ty_float(m) { alt m {
+        ast::ty_f. { size_and_align_of::<float>() }
+        ast::ty_f32. { size_and_align_of::<f32>() }
+        ast::ty_f64. { size_and_align_of::<f64>() }
+      }}
+      ast::ty_box(_) | ast::ty_uniq(_) {
+        size_and_align_of::<ctypes::uintptr_t>()
+      }
+      ast::ty_rec(fields) {
+        let total_size = 0;
+        for field in fields {
+            let (size, _) = member_size_and_align(field.node.mt.ty);
+            total_size += size;
+        }
+        (total_size, 64) //XXX different align for other arches?
+      }
+    }
+}
+
 fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_md> {
+    /*let cache = get_cache(cx);
+    alt cached_metadata::<@metadata<tydesc_md>>(
+        cache, tg, {|md| t == md.data.hash}) {
+      option::some(md) { ret md; }
+      option::none. {}
+    }*/
+
     fn t_to_ty(cx: @crate_ctxt, t: ty::t, span: codemap::span) -> @ast::ty {
         let ty = alt ty::struct(ccx_tcx(cx), t) {
           ty::ty_nil. { ast::ty_nil }
@@ -400,9 +535,20 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
                                         mut: mt.mut}) }
           ty::ty_uniq(mt) { ast::ty_uniq({ty: t_to_ty(cx, mt.ty, span),
                                           mut: mt.mut}) }
+          ty::ty_rec(fields) {
+            let fs = [];
+            for field in fields {
+                fs += [{node: {ident: field.ident,
+                               mt: {ty: t_to_ty(cx, field.mt.ty, span),
+                                    mut: field.mt.mut}},
+                        span: span}];
+            }
+            ast::ty_rec(fs)
+          }
         };
         ret @{node: ty, span: span};
     }
+
     alt ty.node {
       ast::ty_box(mt) {
         let inner_t = alt ty::struct(ccx_tcx(cx), t) {
@@ -423,6 +569,9 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
         let inferred = t_to_ty(cx, t, ty.span);
         ret get_ty_metadata(cx, t, inferred);
       }
+      ast::ty_rec(fields) {
+        ret get_record_metadata(cx, t, fields, ty.span);
+      }
       _ { ret get_basic_type_metadata(cx, t, ty); }
     };
 }
@@ -442,7 +591,7 @@ fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> str {
 fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
     -> @metadata<local_var_md> unsafe {
     let cx = bcx_ccx(bcx);
-    let cache = cx.llmetadata;
+    let cache = get_cache(cx);
     alt cached_metadata::<@metadata<local_var_md>>(
         cache, AutoVariableTag, {|md| md.data.id == local.node.id}) {
       option::some(md) { ret md; }
@@ -540,7 +689,7 @@ fn get_arg_metadata(bcx: @block_ctxt, arg: ast::arg)
     -> @metadata<argument_md> unsafe {
     let fcx = bcx_fcx(bcx);
     let cx = fcx_ccx(fcx);
-    let cache = cx.llmetadata;
+    let cache = get_cache(cx);
     alt cached_metadata::<@metadata<argument_md>>(
         cache, ArgVariableTag, {|md| md.data.id == arg.id}) {
       option::some(md) { ret md; }
@@ -641,7 +790,7 @@ fn add_line_info(cx: @block_ctxt, llinstr: ValueRef) {
 fn get_function_metadata(fcx: @fn_ctxt, item: @ast::item,
                          llfndecl: ValueRef) -> @metadata<subprogram_md> {
     let cx = fcx_ccx(fcx);
-    let cache = cx.llmetadata;
+    let cache = get_cache(cx);
     alt cached_metadata::<@metadata<subprogram_md>>(
         cache, SubprogramTag, {|md| md.data.name == item.ident &&
                                     /*sub.path == ??*/ true}) {

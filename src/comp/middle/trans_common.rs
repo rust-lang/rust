@@ -117,7 +117,7 @@ type crate_ctxt =
      shape_cx: shape::ctxt,
      gc_cx: gc::ctxt,
      crate_map: ValueRef,
-     llmetadata: debuginfo::metadata_cache};
+     dbg_cx: option::t<@debuginfo::debug_ctxt>};
 
 type local_ctxt =
     {path: [str],

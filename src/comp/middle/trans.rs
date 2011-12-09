@@ -5673,6 +5673,12 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let sha1s = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let short_names = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
+    let dbg_cx = if sess.get_opts().debuginfo {
+        option::some(@{llmetadata: map::new_int_hash(),
+                       names: namegen(0)})
+    } else {
+        option::none
+    };
     let ccx =
         @{sess: sess,
           llmod: llmod,
@@ -5723,7 +5729,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           shape_cx: shape::mk_ctxt(llmod),
           gc_cx: gc::mk_ctxt(),
           crate_map: crate_map,
-          llmetadata: map::new_int_hash()};
+          dbg_cx: dbg_cx};
     let cx = new_local_ctxt(ccx);
     collect_items(ccx, crate);
     collect_tag_ctors(ccx, crate);
