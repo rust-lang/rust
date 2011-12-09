@@ -131,11 +131,13 @@ fn inject_libcore_reference(sess: session::session,
 
 
 fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
-                 output: str) {
+                 output: option::t<str>) {
+
     let time_passes = sess.get_opts().time_passes;
     let crate =
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
     if sess.get_opts().parse_only { ret; }
+
     crate =
         time(time_passes, "configuration",
              bind front::config::strip_unconfigured_items(crate));
@@ -186,12 +188,26 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, last_uses, crate));
     if sess.get_opts().no_trans { ret; }
+
+    let outputs = build_output_filenames(input, output, sess);
+
     let llmod =
         time(time_passes, "translation",
-             bind trans::trans_crate(sess, crate, ty_cx, output, ast_map,
+             bind trans::trans_crate(sess, crate, ty_cx,
+                                     outputs.obj_filename, ast_map,
                                      mut_map, copy_map, last_uses));
     time(time_passes, "LLVM passes",
-         bind link::write::run_passes(sess, llmod, output));
+         bind link::write::run_passes(sess, llmod, outputs.obj_filename));
+
+    let stop_after_codegen =
+        sess.get_opts().output_type != link::output_type_exe ||
+            sess.get_opts().static && sess.building_library();
+
+    if stop_after_codegen { ret; }
+
+    time(time_passes, "Linking",
+         bind link::link_binary(sess, outputs.obj_filename,
+                                outputs.out_filename));
 }
 
 fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
@@ -604,19 +620,7 @@ fn main(args: [str]) {
         ret;
     }
 
-    let outputs = build_output_filenames(ifile, ofile, sess);
-
-    let stop_after_codegen =
-        sopts.output_type != link::output_type_exe ||
-            sopts.static && sess.building_library();
-
-    let temp_filename = outputs.obj_filename;
-
-    compile_input(sess, cfg, ifile, temp_filename);
-
-    if stop_after_codegen { ret; }
-
-    link::link_binary(sess, temp_filename, outputs.out_filename);
+    compile_input(sess, cfg, ifile, ofile);
 }
 
 #[cfg(test)]
