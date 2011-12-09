@@ -567,7 +567,8 @@ fn parse_arg(p: parser) -> ast::arg {
 fn parse_fn_block_arg(p: parser) -> ast::arg {
     let m = parse_arg_mode(p);
     let i = parse_value_ident(p);
-    let t = @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer);
+    let t = eat(p, token::COLON) ? parse_ty(p, false) :
+        @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer);
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
 
@@ -1747,16 +1748,13 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
 }
 
 fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
-    let inputs =
-        if p.peek() == token::OROR {
-            p.bump();
-            []
-        } else {
-            parse_seq(token::BINOP(token::OR), token::BINOP(token::OR),
-                      seq_sep(token::COMMA), parse_fn_block_arg, p).node
-        };
+    let inputs = eat(p, token::OROR) ? [] :
+        parse_seq(token::BINOP(token::OR), token::BINOP(token::OR),
+                  seq_sep(token::COMMA), parse_fn_block_arg, p).node;
+    let output = eat(p, token::RARROW) ? parse_ty(p, false) :
+        @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer);
     ret {inputs: inputs,
-         output: @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer),
+         output: output,
          purity: ast::impure_fn,
          il: ast::il_normal,
          cf: ast::return_val,
