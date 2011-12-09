@@ -122,7 +122,7 @@ fn configure() -> cargo {
         some(_p) { _p }
         none. {
             alt generic_os::getenv("HOME") {
-                some(_q) { fs::connect(_q, "/.cargo") }
+                some(_q) { fs::connect(_q, ".cargo") }
                 none. { fail "no CARGO_ROOT or HOME"; }
             }
         }
