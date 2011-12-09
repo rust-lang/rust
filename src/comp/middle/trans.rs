@@ -5528,7 +5528,7 @@ fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
     ccx.item_ids.insert(node_id, llfn);
     ccx.item_symbols.insert(node_id, ps);
 
-    let is_main: bool = is_main_name(path) && !ccx.sess.get_opts().library;
+    let is_main: bool = is_main_name(path) && !ccx.sess.building_library();
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
 }
 
@@ -5951,7 +5951,7 @@ fn decl_crate_map(sess: session::session, mapname: str,
     let n_subcrates = 1;
     let cstore = sess.get_cstore();
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
-    let mapname = sess.get_opts().library ? mapname : "toplevel";
+    let mapname = sess.building_library() ? mapname : "toplevel";
     let sym_name = "_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
     let maptype = T_struct([int_type, arrtype]);
@@ -5983,7 +5983,7 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
 }
 
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
-    if !cx.sess.get_opts().library { ret; }
+    if !cx.sess.building_library() { ret; }
     let llmeta = C_postr(metadata::encoder::encode_metadata(cx, crate));
     let llconst = trans_common::C_struct([llmeta]);
     let llglobal =

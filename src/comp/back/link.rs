@@ -425,7 +425,7 @@ fn build_link_meta(sess: session::session, c: ast::crate, output: str,
     }
 
     fn warn_missing(sess: session::session, name: str, default: str) {
-        if !sess.get_opts().library { ret; }
+        if !sess.building_library() { ret; }
         sess.warn(#fmt["missing crate link meta '%s', using '%s' as default",
                        name, default]);
     }
@@ -611,7 +611,7 @@ fn link_binary(sess: session::session,
     let used_libs = cstore::get_used_libraries(cstore);
     for l: str in used_libs { gcc_args += ["-l" + l]; }
 
-    if sess.get_opts().library {
+    if sess.building_library() {
         gcc_args += [lib_cmd];
 
         // On mac we need to tell the linker to let this library

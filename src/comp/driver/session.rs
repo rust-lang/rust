@@ -13,6 +13,8 @@ tag os { os_win32; os_macos; os_linux; }
 
 tag arch { arch_x86; arch_x86_64; arch_arm; }
 
+tag crate_type { bin_crate; lib_crate; unknown_crate; }
+
 type config =
     {os: os,
      arch: arch,
@@ -24,7 +26,7 @@ type config =
 type options =
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
-    {library: bool,
+    {crate_type: crate_type,
      static: bool,
      libcore: bool,
      optimize: uint,
@@ -116,6 +118,7 @@ obj session(targ_cfg: @config,
     fn set_main_id(d: node_id) { main_fn = some(d); }
     fn get_main_id() -> option::t<node_id> { main_fn }
     fn filesearch() -> filesearch::filesearch { filesearch }
+    fn building_library() -> bool { opts.crate_type == lib_crate }
 }
 // Local Variables:
 // fill-column: 78;

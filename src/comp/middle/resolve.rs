@@ -362,7 +362,7 @@ fn visit_fn_with_scope(e: @env, f: ast::_fn, tp: [ast::ty_param], sp: span,
     // is this a main fn declaration?
     alt name {
       some(nm) {
-        if is_main_name([nm]) && !e.sess.get_opts().library {
+        if is_main_name([nm]) && !e.sess.building_library() {
             // This is a main function -- set it in the session
             // as the main ID
             e.sess.set_main_id(id);

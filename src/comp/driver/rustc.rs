@@ -282,6 +282,7 @@ options:
 
     -o <filename>      write output to <filename>
     --lib              compile a library crate
+    --bin              compile an executable crate (default)
     --static           use or produce static libraries
     --no-core          omit the 'core' library (used and imported by default)
     --pretty [type]    pretty-print the input instead of compiling
@@ -371,7 +372,13 @@ fn host_triple() -> str {
 
 fn build_session_options(match: getopts::match)
    -> @session::options {
-    let library = opt_present(match, "lib");
+    let crate_type = if opt_present(match, "lib") {
+        session::lib_crate
+    } else if opt_present(match, "bin") {
+        session::bin_crate
+    } else {
+        session::unknown_crate
+    };
     let static = opt_present(match, "static");
 
     let parse_only = opt_present(match, "parse-only");
@@ -435,7 +442,7 @@ fn build_session_options(match: getopts::match)
     let stack_growth = opt_present(match, "stack-growth");
     let warn_unused_imports = opt_present(match, "warn-unused-imports");
     let sopts: @session::options =
-        @{library: library,
+        @{crate_type: crate_type,
           static: static,
           libcore: libcore,
           optimize: opt_level,
@@ -495,20 +502,21 @@ fn opts() -> [getopts::opt] {
          optflag("no-verify"),
          optmulti("cfg"), optflag("test"),
          optflag("no-core"),
-         optflag("lib"), optflag("static"), optflag("gc"),
+         optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("stack-growth"),
          optflag("no-asm-comments"),
          optflag("warn-unused-imports")];
 }
 
 fn build_output_filenames(ifile: str, ofile: option::t<str>,
-                          sopts: @session::options)
+                          sess: session::session)
         -> @{out_filename: str, obj_filename:str} {
     let obj_filename = "";
     let saved_out_filename: str = "";
+    let sopts = sess.get_opts();
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
-            sopts.static && sopts.library;
+            sopts.static && sess.building_library();
     alt ofile {
       none. {
         // "-" as input file will cause the parser to read from stdin so we
@@ -533,7 +541,7 @@ fn build_output_filenames(ifile: str, ofile: option::t<str>,
             };
         obj_filename = base_filename + "." + suffix;
 
-        if sopts.library {
+        if sess.building_library() {
             saved_out_filename = std::os::dylib_filename(base_filename);
         } else {
             saved_out_filename = base_filename;
@@ -580,7 +588,6 @@ fn main(args: [str]) {
     let sopts = build_session_options(match);
     let sess = build_session(sopts);
     let ofile = getopts::opt_maybe_str(match, "o");
-    let outputs = build_output_filenames(ifile, ofile, sopts);
     let cfg = build_configuration(sess, binary, ifile);
     let pretty =
         option::map::<str,
@@ -597,9 +604,11 @@ fn main(args: [str]) {
         ret;
     }
 
+    let outputs = build_output_filenames(ifile, ofile, sess);
+
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
-            sopts.static && sopts.library;
+            sopts.static && sess.building_library();
 
     let temp_filename = outputs.obj_filename;
 

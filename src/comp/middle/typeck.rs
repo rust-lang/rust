@@ -2720,7 +2720,7 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
 }
 
 fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
-    if !tcx.sess.get_opts().library {
+    if !tcx.sess.building_library() {
         alt tcx.sess.get_main_id() {
           some(id) { check_main_fn_ty(tcx, id); }
           none. { tcx.sess.span_err(crate.span, "main function not found"); }
