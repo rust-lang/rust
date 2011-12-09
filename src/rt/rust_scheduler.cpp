@@ -394,6 +394,7 @@ void
 rust_scheduler::place_task_in_tls(rust_task *task) {
     BOOL result = TlsSetValue(task_key, task);
     assert(result && "Couldn't place the task in TLS!");
+    task->record_stack_limit();
 }
 
 rust_task *

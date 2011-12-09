@@ -16,17 +16,21 @@ RECORD_SP:
 	movl 4(%esp), %eax
 	movl %eax, %gs:48
 	ret
-#else
+#endif
+
 #if defined(__APPLE__)
 RECORD_SP:
 	movl $0x48+90*4, %eax
 	movl 4(%esp), %ecx
 	movl %ecx, %gs:(%eax)
 	ret
-#else
-RECORD_SP:
-	ret
 #endif
+
+#if defined(_WIN32)
+RECORD_SP:
+	movl 4(%esp), %eax
+	movl %eax, %fs:0x14
+	ret
 #endif
 
 GET_SP:

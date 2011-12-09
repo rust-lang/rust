@@ -21,7 +21,7 @@
 #define UPCALL_DEL_STACK        _upcall_del_stack
 #define RUST_GET_TASK           _rust_get_task
 #define UPCALL_CALL_C           _upcall_call_shim_on_c_stack
-#define MORESTACK               __morestack
+#define MORESTACK               ___morestack
 #endif
 #endif
 
@@ -44,7 +44,6 @@
 	.type MORESTACK,@function
 #endif
 
-#if defined(__linux__) || defined(__APPLE__)
 MORESTACK:
 #ifdef __linux__
 	.cfi_startproc
@@ -142,11 +141,6 @@ MORESTACK:
 
 #ifdef __linux__
 	.cfi_endproc
-#endif
-
-#else
-MORESTACK:
-	ret
 #endif
 
 #ifdef __APPLE__
