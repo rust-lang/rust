@@ -16,6 +16,7 @@ tag file_type { CRATE_FILE; SOURCE_FILE; }
 
 tag fn_kw {
     fn_kw_fn;
+    fn_kw_fn_at;
     fn_kw_lambda;
     fn_kw_block;
 }
@@ -542,10 +543,9 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
     } else if eat_word(p, "lambda") {
-        if p.peek() == token::LBRACE { // lambda[send](...)
-            expect(p, token::LBRACE);
+        if eat(p, token::LBRACKET) { // lambda[send](...)
             expect_word(p, "send");
-            expect(p, token::RBRACE);
+            expect(p, token::RBRACKET);
             t = parse_ty_fn(ast::proto_send, p);
         } else { // lambda(...)
             t = parse_ty_fn(ast::proto_shared(ast::sugar_sexy), p);
@@ -843,8 +843,8 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
                 ret parse_spawn_expr(p);
         */
     } else if eat_word(p, "fn") {
-        let proto = parse_fn_anon_proto(p);
-        ret parse_fn_expr(p, fn_kw_fn);
+        let kw = parse_fn_anon_kw(p);
+        ret parse_fn_expr(p, kw);
     } else if eat_word(p, "block") {
         ret parse_fn_expr(p, fn_kw_block);
     } else if eat_word(p, "lambda") {
@@ -1295,7 +1295,7 @@ fn parse_if_expr(p: parser) -> @ast::expr {
 fn parse_capture_clause(p: parser) -> @ast::capture {
     fn expect_opt_trailing_semi(p: parser) {
         if !eat(p, token::SEMI) {
-            if p.peek() != token::RBRACE {
+            if p.peek() != token::RBRACKET {
                 p.fatal("expecting ; or ]");
             }
         }
@@ -1306,7 +1306,9 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
         while true {
             alt p.peek() {
               token::IDENT(_, _) {
-                let i = spanned(p.get_lo_pos(), p.get_hi_pos(), parse_ident(p));
+                let i = spanned(p.get_lo_pos(),
+                                p.get_hi_pos(),
+                                parse_ident(p));
                 res += [i];
                 if !eat(p, token::COMMA) {
                     ret res;
@@ -1316,6 +1318,7 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
               _ { ret res; }
             }
         }
+        std::util::unreachable();
     }
 
     let is_send = false;
@@ -1323,8 +1326,8 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
     let moves = [];
 
     let lo = p.get_lo_pos();
-    if eat(p, token::LBRACE) {
-        while !eat(p, token::RBRACE) {
+    if eat(p, token::LBRACKET) {
+        while !eat(p, token::RBRACKET) {
             if eat_word(p, "send") {
                 is_send = true;
                 expect_opt_trailing_semi(p);
@@ -1352,10 +1355,13 @@ fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
     let body = parse_block(p);
     let proto = alt (kw, captures.node.is_send) {
       (fn_kw_fn., true) { ast::proto_bare }
+      (fn_kw_fn_at., true) { ast::proto_send }
       (fn_kw_lambda., true) { ast::proto_send }
+      (fn_kw_block., true) { p.fatal("block cannot be declared sendable"); }
+      (fn_kw_fn., false) { ast::proto_bare }
+      (fn_kw_fn_at., false) { ast::proto_shared(ast::sugar_normal) }
       (fn_kw_lambda., false) { ast::proto_shared(ast::sugar_sexy) }
       (fn_kw_block., false) { ast::proto_block }
-      (_, true) { p.fatal("only lambda can be declared sendable"); }
     };
     let _fn = {decl: decl, proto: proto, body: body};
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
@@ -2151,12 +2157,12 @@ fn parse_fn_ty_proto(p: parser) -> ast::proto {
     }
 }
 
-fn parse_fn_anon_proto(p: parser) -> ast::proto {
+fn parse_fn_anon_kw(p: parser) -> fn_kw {
     if p.peek() == token::AT {
         p.bump();
-        ast::proto_shared(ast::sugar_normal)
+        fn_kw_fn_at
     } else {
-        ast::proto_bare
+        fn_kw_fn
     }
 }
 

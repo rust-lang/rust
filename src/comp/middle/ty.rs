@@ -1971,29 +1971,23 @@ mod unify {
     }
     fn unify_fn_proto(e_proto: ast::proto, a_proto: ast::proto,
                       variance: variance) -> option::t<result> {
+        fn rank(proto: ast::proto) -> int {
+            ret alt proto {
+              ast::proto_block. { 0 }
+              ast::proto_shared(_) { 1 }
+              ast::proto_send. { 2 }
+              ast::proto_bare. { 3 }
+            };
+        }
+
         fn gt(e_proto: ast::proto, a_proto: ast::proto) -> bool {
-            alt e_proto {
-              ast::proto_block. {
-                // Every function type is a subtype of block
-                false
-              }
-              ast::proto_shared(_) {
-                a_proto == ast::proto_block
-              }
-              ast::proto_bare. {
-                a_proto != ast::proto_bare
-              }
-            }
+            ret rank(e_proto) > rank(a_proto);
         }
 
         ret if e_proto == a_proto {
             none
         } else if variance == invariant {
-            if e_proto != a_proto {
-                some(ures_err(terr_mismatch))
-            } else {
-                fail
-            }
+            some(ures_err(terr_mismatch))
         } else if variance == covariant {
             if gt(e_proto, a_proto) {
                 some(ures_err(terr_mismatch))

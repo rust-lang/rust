@@ -164,6 +164,13 @@ fn parse_constr<copy T>(st: @pstate, sd: str_def, pser: arg_parser<T>) ->
     ret @respan(sp, {path: pth, args: args, id: def});
 }
 
+fn parse_ty_rust_fn(st: @pstate, sd: str_def, p: ast::proto) -> ty::t {
+    let func = parse_ty_fn(st, sd);
+    ret ty::mk_fn(st.tcx, p,
+                  func.args, func.ty, func.cf,
+                  func.cs);
+}
+
 fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
     alt next(st) as char {
       'n' { ret ty::mk_nil(st.tcx); }
@@ -235,21 +242,17 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         st.pos = st.pos + 1u;
         ret ty::mk_tup(st.tcx, params);
       }
+      's' {
+        ret parse_ty_rust_fn(st, sd, ast::proto_send);
+      }
       'F' {
-        let func = parse_ty_fn(st, sd);
-        ret ty::mk_fn(st.tcx, ast::proto_shared(ast::sugar_normal),
-                      func.args, func.ty, func.cf,
-                      func.cs);
+        ret parse_ty_rust_fn(st, sd, ast::proto_shared(ast::sugar_normal));
       }
       'f' {
-        let func = parse_ty_fn(st, sd);
-        ret ty::mk_fn(st.tcx, ast::proto_bare, func.args, func.ty, func.cf,
-                      func.cs);
+        ret parse_ty_rust_fn(st, sd, ast::proto_bare);
       }
       'B' {
-        let func = parse_ty_fn(st, sd);
-        ret ty::mk_fn(st.tcx, ast::proto_block, func.args, func.ty, func.cf,
-                      func.cs);
+        ret parse_ty_rust_fn(st, sd, ast::proto_block);
       }
       'N' {
         let func = parse_ty_fn(st, sd);

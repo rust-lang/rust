@@ -347,9 +347,18 @@ fn mk_test_wrapper(cx: test_ctxt,
         body: wrapper_body
     };
 
+    let wrapper_capture: @ast::capture = @{
+        node: {
+            is_send: false,
+            copies: [],
+            moves: []
+        },
+        span: span
+    };
+
     let wrapper_expr: ast::expr = {
         id: cx.sess.next_node_id(),
-        node: ast::expr_fn(wrapper_fn),
+        node: ast::expr_fn(wrapper_fn, wrapper_capture),
         span: span
     };
 

@@ -48,6 +48,17 @@ fn check_crate(tcx: ty::ctxt, last_uses: last_use::last_uses,
 }
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
+
+    fn check_free_vars(e: @expr,
+                       cx: ctx,
+                       check_fn: fn(ctx, ty::t, sp: span)) {
+        for free in *freevars::get_freevars(cx.tcx, e.id) {
+            let id = ast_util::def_id_of_def(free).node;
+            let ty = ty::node_id_to_type(cx.tcx, id);
+            check_fn(cx, ty, e.span);
+        }
+    }
+
     alt e.node {
       expr_assign(_, ex) | expr_assign_op(_, _, ex) |
       expr_block({node: {expr: some(ex), _}, _}) |
@@ -65,7 +76,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             let ty_fields = alt ty::struct(cx.tcx, t) { ty::ty_rec(f) { f } };
             for tf in ty_fields {
                 if !vec::any({|f| f.node.ident == tf.ident}, fields) &&
-                   ty::type_kind(cx.tcx, tf.mt.ty) == kind_noncopyable {
+                    !kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
                     cx.tcx.sess.span_err(ex.span,
                                          "copying a noncopyable value");
                 }
@@ -107,19 +118,11 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           none. {}
         }
       }
-      expr_fn({proto: proto_send, _}, captures) {
-        for free in *freevars::get_freevars(cx.tcx, e.id) {
-            let id = ast_util::def_id_of_def(free).node;
-            let ty = ty::node_id_to_type(cx.tcx, id);
-            check_copy(cx, ty, e.span);
-        }
+      expr_fn({proto: proto_send., _}, captures) { // NDM captures
+        check_free_vars(e, cx, check_send);
       }
-      expr_fn({proto: proto_shared(_), _}, captures) {
-        for free in *freevars::get_freevars(cx.tcx, e.id) {
-            let id = ast_util::def_id_of_def(free).node;
-            let ty = ty::node_id_to_type(cx.tcx, id);
-            check_copy(cx, ty, e.span);
-        }
+      expr_fn({proto: proto_shared(_), _}, captures) { // NDM captures
+        check_free_vars(e, cx, check_copy);
       }
       expr_ternary(_, a, b) { maybe_copy(cx, a); maybe_copy(cx, b); }
       _ { }
@@ -159,8 +162,14 @@ fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
 }
 
 fn check_copy(cx: ctx, ty: ty::t, sp: span) {
-    if ty::type_kind(cx.tcx, ty) == kind_noncopyable {
+    if !kind_can_be_copied(ty::type_kind(cx.tcx, ty)) {
         cx.tcx.sess.span_err(sp, "copying a noncopyable value");
+    }
+}
+
+fn check_send(cx: ctx, ty: ty::t, sp: span) {
+    if !kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
+        cx.tcx.sess.span_err(sp, "not a sendable value");
     }
 }
 

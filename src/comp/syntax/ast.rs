@@ -106,6 +106,25 @@ tag mutability { mut; imm; maybe_mut; }
 
 tag kind { kind_sendable; kind_copyable; kind_noncopyable; }
 
+// Using these query functons is preferable to direct comparison or matching
+// against the kind constants, as we may modify the kind hierarchy in the
+// future.
+pure fn kind_can_be_copied(k: kind) -> bool {
+    ret alt k {
+      kind_sendable. { true }
+      kind_copyable. { true }
+      kind_noncopyable. { false }
+    };
+}
+
+pure fn kind_can_be_sent(k: kind) -> bool {
+    ret alt k {
+      kind_sendable. { true }
+      kind_copyable. { false }
+      kind_noncopyable. { false }
+    };
+}
+
 tag proto_sugar {
     sugar_normal;
     sugar_sexy;

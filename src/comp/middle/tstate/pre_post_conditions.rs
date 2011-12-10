@@ -278,6 +278,7 @@ fn handle_var(fcx: fn_ctxt, rslt: pre_and_post, id: node_id, name: ident) {
 }
 
 fn handle_var_def(fcx: fn_ctxt, rslt: pre_and_post, def: def, name: ident) {
+    log ("handle_var_def: ", def, name);
     alt def {
       def_local(d_id, _) | def_arg(d_id, _) {
         use_var(fcx, d_id.node);
@@ -345,6 +346,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
         for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
+            log ("handle_var_def: def=", def);
             handle_var_def(fcx, rslt, def, "upvar");
         }
       }
