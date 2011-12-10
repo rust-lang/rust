@@ -678,9 +678,14 @@ fn scope_is_fn(sc: scope) -> bool {
         };
 }
 
+// Returns:
+//   none - does not close
+//   some(true) - closes and permits mutation
+//   some(false) - closes but no mutation
 fn scope_closes(sc: scope) -> option::t<bool> {
     alt sc {
       scope_fn(_, ast::proto_block., _) { some(true) }
+      scope_fn(_, ast::proto_send., _) { some(false) }
       scope_fn(_, ast::proto_shared(_), _) { some(false) }
       _ { none }
     }

@@ -2192,7 +2192,7 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
                || f.proto == ast::proto_shared(ast::sugar_sexy);
     let env;
     alt f.proto {
-      ast::proto_block. | ast::proto_shared(_) {
+      ast::proto_block. | ast::proto_shared(_) | ast::proto_send. {
         let upvars = get_freevars(ccx.tcx, id);
         let env_r = build_closure(bcx, upvars, copying);
         env = env_r.ptr;
@@ -2201,7 +2201,7 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
             load_environment(bcx, fcx, env_r.ptrty, upvars, copying);
         });
       }
-      _ {
+      ast::proto_bare. {
         env = C_null(T_opaque_closure_ptr(ccx));
         trans_closure(sub_cx, sp, f, llfn, none, [], id, {|_fcx|});
       }
