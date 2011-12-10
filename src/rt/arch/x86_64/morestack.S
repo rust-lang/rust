@@ -91,7 +91,7 @@ MORESTACK:
 	movq UPCALL_NEW_STACK@GOTPCREL(%rip), %rsi
 	movq %rsp, %rdi
 #ifdef __APPLE__
-	call UPCALL_CALL_C@GOTPCREL
+	call UPCALL_CALL_C
 #endif
 #ifdef __linux__
 	call UPCALL_CALL_C@PLT
@@ -124,7 +124,7 @@ MORESTACK:
 	movq UPCALL_DEL_STACK@GOTPCREL(%rip), %rsi
 	movq $0, %rdi
 #ifdef __APPLE__
-	call UPCALL_CALL_C@GOTPCREL
+	call UPCALL_CALL_C
 #endif
 #ifdef __linux__
 	call UPCALL_CALL_C@PLT

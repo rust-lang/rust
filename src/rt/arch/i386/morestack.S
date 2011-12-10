@@ -27,8 +27,10 @@
 
 .globl UPCALL_NEW_STACK
 .globl UPCALL_DEL_STACK
+#ifndef __APPLE__
 .globl RUST_GET_TASK
 .globl UPCALL_CALL_C_STACK
+#endif
 .globl MORESTACK
 
 // FIXME: What about _WIN32?	

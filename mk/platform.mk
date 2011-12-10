@@ -178,6 +178,7 @@ CFG_INFO := $(info cfg: using $(CFG_C_COMPILER))
 ifeq ($(CFG_C_COMPILER),clang)
   CC=clang
   CXX=clang++
+  CPP=cpp
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
@@ -202,6 +203,7 @@ else
 ifeq ($(CFG_C_COMPILER),gcc)
   CC=gcc
   CXX=g++
+  CPP=cpp
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
@@ -228,3 +230,16 @@ else
 endif
 endif
 
+# We're using llvm-mc as our assembler because it supports
+# .cfi pseudo-ops on mac
+define CFG_MAKE_ASSEMBLER
+  CFG_ASSEMBLE_$(1)=$$(CPP) $$(2) | \
+                    $$(LLVM_MC_$$(CFG_HOST_TRIPLE)) \
+                    -assemble \
+                    -filetype=obj \
+                    -triple=$(1) \
+                    -o=$$(1)
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES),\
+  $(eval $(call CFG_MAKE_ASSEMBLER,$(target))))

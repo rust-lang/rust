@@ -223,6 +223,7 @@ CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
 
 # Any rules that depend on LLVM should depend on LLVM_CONFIG
 LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config
+LLVM_MC_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-mc
 LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
 LLVM_BINDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --bindir)
 LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)

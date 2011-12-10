@@ -1,13 +1,15 @@
 #define RUSTRT_RBX   0
 #define RUSTRT_RSP   1
 #define RUSTRT_RBP   2
-#define RUSTRT_ARG0  3 // RCX on Windows, RDI elsewhere
+// RCX on Windows, RDI elsewhere
+#define RUSTRT_ARG0  3
 #define RUSTRT_R12   4
 #define RUSTRT_R13   5
 #define RUSTRT_R14   6
 #define RUSTRT_R15   7
 #define RUSTRT_IP    8
-#define RUSTRT_XXX   9 // Not used, just padding
+// Not used, just padding
+#define RUSTRT_XXX   9
 #define RUSTRT_XMM0 10
 #define RUSTRT_XMM1 12
 #define RUSTRT_XMM2 14
