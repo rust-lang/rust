@@ -2188,8 +2188,10 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
     let s = mangle_internal_name_by_path(ccx, sub_cx.path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let copying = f.proto == ast::proto_shared(ast::sugar_normal)
-               || f.proto == ast::proto_shared(ast::sugar_sexy);
+    let copying = alt f.proto {
+      ast::proto_shared(_) | ast::proto_send. { true }
+      ast::proto_bare. | ast::proto_block. { false }
+    };
     let env;
     alt f.proto {
       ast::proto_block. | ast::proto_shared(_) | ast::proto_send. {
@@ -2812,6 +2814,7 @@ type generic_info =
      tydescs: [ValueRef]};
 
 tag lval_kind { temporary; owned; owned_imm; }
+type local_var_result = {val: ValueRef, kind: lval_kind};
 type lval_result = {bcx: @block_ctxt, val: ValueRef, kind: lval_kind};
 tag callee_env { obj_env(ValueRef); null_env; is_closure; }
 type lval_maybe_callee = {bcx: @block_ctxt,
@@ -2822,6 +2825,10 @@ type lval_maybe_callee = {bcx: @block_ctxt,
 
 fn null_env_ptr(bcx: @block_ctxt) -> ValueRef {
     C_null(T_opaque_closure_ptr(bcx_ccx(bcx)))
+}
+
+fn lval_from_local_var(bcx: @block_ctxt, r: local_var_result) -> lval_result {
+    ret { bcx: bcx, val: r.val, kind: r.kind };
 }
 
 fn lval_owned(bcx: @block_ctxt, val: ValueRef) -> lval_result {
@@ -2893,28 +2900,28 @@ fn lookup_discriminant(lcx: @local_ctxt, vid: ast::def_id) -> ValueRef {
     }
 }
 
-fn trans_local_var(cx: @block_ctxt, def: ast::def) -> lval_result {
-    fn take_local(cx: @block_ctxt, table: hashmap<ast::node_id, local_val>,
-                  id: ast::node_id) -> lval_result {
+fn trans_local_var(cx: @block_ctxt, def: ast::def) -> local_var_result {
+    fn take_local(table: hashmap<ast::node_id, local_val>,
+                  id: ast::node_id) -> local_var_result {
         alt table.find(id) {
-          some(local_mem(v)) { lval_owned(cx, v) }
-          some(local_imm(v)) { {bcx: cx, val: v, kind: owned_imm} }
+          some(local_mem(v)) { {val: v, kind: owned} }
+          some(local_imm(v)) { {val: v, kind: owned_imm} }
         }
     }
     alt def {
       ast::def_upvar(did, _, _) {
         assert (cx.fcx.llupvars.contains_key(did.node));
-        ret lval_owned(cx, cx.fcx.llupvars.get(did.node));
+        ret { val: cx.fcx.llupvars.get(did.node), kind: owned };
       }
       ast::def_arg(did, _) {
-        ret take_local(cx, cx.fcx.llargs, did.node);
+        ret take_local(cx.fcx.llargs, did.node);
       }
       ast::def_local(did, _) | ast::def_binding(did) {
-        ret take_local(cx, cx.fcx.lllocals, did.node);
+        ret take_local(cx.fcx.lllocals, did.node);
       }
       ast::def_obj_field(did, _) {
         assert (cx.fcx.llobjfields.contains_key(did.node));
-        ret lval_owned(cx, cx.fcx.llobjfields.get(did.node));
+        ret { val: cx.fcx.llobjfields.get(did.node), kind: owned };
       }
       _ {
         bcx_ccx(cx).sess.span_unimpl
@@ -2975,7 +2982,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
       }
       _ {
         let loc = trans_local_var(cx, def);
-        ret lval_no_env(loc.bcx, loc.val, loc.kind);
+        ret lval_no_env(cx, loc.val, loc.kind);
       }
     }
 }
