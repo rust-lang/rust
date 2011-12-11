@@ -20,6 +20,8 @@ export add_used_link_args;
 export get_used_link_args;
 export add_use_stmt_cnum;
 export get_use_stmt_cnum;
+export get_dep_hashes;
+
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -116,6 +118,29 @@ fn get_use_stmt_cnum(cstore: cstore, use_id: ast::node_id) -> ast::crate_num {
     ret p(cstore).use_crate_map.get(use_id);
 }
 
+// returns hashes of crates directly used by this crate. Hashes are
+// sorted by crate name.
+fn get_dep_hashes(cstore: cstore) -> [str] {
+    type crate_hash = {name: str, hash: str};
+    let result = [];
+
+    p(cstore).use_crate_map.values {|cnum|
+        let cdata = cstore::get_crate_data(cstore, cnum);
+        let hash = decoder::get_crate_hash(cdata.data);
+        log #fmt("Add hash[%s]: %s", cdata.name, hash);
+        result += [{name: cdata.name, hash: hash}];
+    };
+    fn lteq(a: crate_hash, b: crate_hash) -> bool {
+        ret a.name <= b.name;
+    }
+    let sorted = std::sort::merge_sort(lteq, result);
+    log "sorted:";
+    for x in sorted {
+        log #fmt("  hash[%s]: %s", x.name, x.hash);
+    }
+    fn mapper(ch: crate_hash) -> str { ret ch.hash; }
+    ret vec::map(mapper, sorted);
+}
 // Local Variables:
 // mode: rust
 // fill-column: 78;
