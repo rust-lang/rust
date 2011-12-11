@@ -64,6 +64,8 @@ const tag_crate_dep: uint = 0x26u;
 
 const tag_items_data_item_inlineness: uint = 0x27u;
 
+const tag_crate_hash: uint = 0x28u;
+
 // djb's cdb hashes.
 fn hash_node_id(&&node_id: int) -> uint { ret 177573u ^ (node_id as uint); }
 

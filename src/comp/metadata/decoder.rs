@@ -19,6 +19,7 @@ export get_crate_attributes;
 export list_crate_metadata;
 export crate_dep;
 export get_crate_deps;
+export get_crate_hash;
 export external_resolver;
 
 // A function that takes a def_id relative to the crate being searched and
@@ -347,8 +348,8 @@ fn list_meta_items(meta_items: ebml::doc, out: io::writer) {
     }
 }
 
-fn list_crate_attributes(md: ebml::doc, out: io::writer) {
-    out.write_str("=Crate Attributes=\n");
+fn list_crate_attributes(md: ebml::doc, hash: str, out: io::writer) {
+    out.write_str(#fmt("=Crate Attributes (%s)=\n", hash));
 
     for attr: ast::attribute in get_attributes(md) {
         out.write_str(#fmt["%s\n", pprust::attribute_to_str(attr)]);
@@ -386,6 +387,12 @@ fn list_crate_deps(data: @[u8], out: io::writer) {
     out.write_str("\n");
 }
 
+fn get_crate_hash(data: @[u8]) -> str {
+    let cratedoc = ebml::new_doc(data);
+    let hashdoc = ebml::get_doc(cratedoc, tag_crate_hash);
+    ret str::unsafe_from_bytes(ebml::doc_data(hashdoc));
+}
+
 fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {
     out.write_str("=Items=\n");
     let paths = ebml::get_doc(md, tag_paths);
@@ -407,8 +414,9 @@ fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {
 }
 
 fn list_crate_metadata(bytes: @[u8], out: io::writer) {
+    let hash = get_crate_hash(bytes);
     let md = ebml::new_doc(bytes);
-    list_crate_attributes(md, out);
+    list_crate_attributes(md, hash, out);
     list_crate_deps(bytes, out);
     list_crate_items(bytes, md, out);
 }
