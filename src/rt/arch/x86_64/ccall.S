@@ -13,10 +13,30 @@ _asm_call_on_stack:
 .globl asm_call_on_stack
 asm_call_on_stack:
 #endif
-    push %rbp
-    mov %rsp,%rbp          // save rsp
-    mov ARG2,%rsp          // switch stack
-    call *ARG1             // invoke target address
-    mov %rbp,%rsp
-    pop %rbp
-    ret
+
+#if defined(__linux__) || defined(__APPLE__)
+	.cfi_startproc
+#endif
+
+	push %rbp
+#if defined(__linux__) || defined(__APPLE__)
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbp, -16
+#endif
+
+	mov %rsp,%rbp          // save rsp
+
+#if defined(__linux__) || defined(__APPLE__)
+	.cfi_def_cfa_register %rbp
+#endif
+
+	mov ARG2,%rsp          // switch stack
+	call *ARG1             // invoke target address
+	mov %rbp,%rsp
+	pop %rbp
+
+	ret
+
+#if defined(__linux__) || defined(__APPLE__)
+	.cfi_endproc
+#endif
