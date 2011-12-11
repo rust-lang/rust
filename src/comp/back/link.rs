@@ -348,7 +348,7 @@ mod write {
  *  - Define CMETA as all the non-name, non-vers exported meta tags in the
  *    crate (in sorted order).
  *
- *  - Define CMH as hash(CMETA).
+ *  - Define CMH as hash(CMETA + hashes of dependent crates).
  *
  *  - Compile our crate to lib CNAME-CMH-CVERS.so
  *
@@ -395,7 +395,8 @@ fn build_link_meta(sess: session::session, c: ast::crate, output: str,
 
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(sha: sha1, _crate: ast::crate,
-                              metas: provided_metas) -> str {
+                              metas: provided_metas,
+                              dep_hashes: [str]) -> str {
         fn len_and_str(s: str) -> str {
             ret #fmt["%u_%s", str::byte_len(s), s];
         }
@@ -421,6 +422,11 @@ fn build_link_meta(sess: session::session, c: ast::crate, output: str,
               }
             }
         }
+
+        for dh in dep_hashes {
+            sha.input_str(len_and_str(dh));
+        }
+
         ret truncated_sha1_result(sha);
     }
 
@@ -463,7 +469,9 @@ fn build_link_meta(sess: session::session, c: ast::crate, output: str,
     let provided_metas = provided_link_metas(sess, c);
     let name = crate_meta_name(sess, c, output, provided_metas);
     let vers = crate_meta_vers(sess, c, provided_metas);
-    let extras_hash = crate_meta_extras_hash(sha, c, provided_metas);
+    let dep_hashes = cstore::get_dep_hashes(sess.get_cstore());
+    let extras_hash =
+        crate_meta_extras_hash(sha, c, provided_metas, dep_hashes);
 
     ret {name: name, vers: vers, extras_hash: extras_hash};
 }
