@@ -25,6 +25,8 @@ const LexicalBlockTag: int = 11;
 const PointerTypeTag: int = 15;
 const StructureTypeTag: int = 19;
 const MemberTag: int = 13;
+const ArrayTypeTag: int = 1;
+const SubrangeTag: int = 33;
 
 const DW_ATE_boolean: int = 0x02;
 const DW_ATE_float: int = 0x04;
@@ -342,21 +344,9 @@ type struct_ctxt = {
 };
 
 fn finish_structure(cx: @struct_ctxt) -> ValueRef {
-    let lldata = [lltag(StructureTypeTag),
-                  cx.file,
-                  llstr(cx.name), // type name
-                  cx.file, // source file definition
-                  lli32(cx.line), // source line definition
-                  lli64(cx.total_size), // size of members
-                  lli64(cx.align), // align
-                  lli64(0), // offset
-                  lli32(0), // flags
-                  llnull(), // derived from
-                  llmdnode(cx.members), // members
-                  lli32(0),  // runtime language
-                  llnull()
-                 ];
-    ret llmdnode(lldata);
+    ret create_composite_type(StructureTypeTag, cx.name, cx.file, cx.line,
+                              cx.total_size, cx.align, 0, option::none,
+                              option::some(cx.members));
 }
 
 fn create_structure(file: @metadata<file_md>, name: str, line: int)
@@ -396,7 +386,6 @@ fn get_record_metadata(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
                                line_from_span(cx.sess.get_codemap(),
                                               span) as int);
     for field in fields {
-        //let field_t = option::get(ccx_tcx(cx).ast_ty_to_ty_cache.get(field.node.mt.ty));
         let field_t = ty::get_field(ccx_tcx(cx), t, field.node.ident).mt.ty;
         let ty_md = get_ty_metadata(cx, field_t, field.node.mt.ty);
         let (size, align) = member_size_and_align(field.node.mt.ty);
@@ -418,7 +407,6 @@ fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
       option::some(md) { ret md; }
       option::none. {}
     }*/
-    let (size, align) = size_and_align_of::<@int>();
     let fname = filename_from_span(cx, span);
     let file_node = get_file_metadata(cx, fname);
     //let cu_node = get_compile_unit_metadata(cx, fname);
@@ -426,58 +414,69 @@ fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
     let uint_t = ty::mk_uint(tcx);
     let uint_ty = @{node: ast::ty_uint(ast::ty_u), span: span};
     let refcount_type = get_basic_type_metadata(cx, uint_t, uint_ty);
-    /*let refcount_ptr_type = get_pointer_type_metadata(cx,
-                                                      ty::mk_imm_uniq(tcx, uint_t),
-                                                      span, refcount_type);*/
-    /*let boxed_ptr_type = get_pointer_type_metadata(cx, ty::mk_imm_uniq(tcx, inner),
-                                                   span, boxed);*/
-    //let ptr_size = sys::size_of::<ctypes::intptr_t>() as int;
-    //let ptr_align = sys::align_of::<ctypes::intptr_t>() as int;
-    let size = sys::size_of::<uint>() as int * 8;
-    let total_size = size;
-    let refcount = [lltag(MemberTag),
-                    file_node.node,
-                    llstr("refcnt"),
-                    file_node.node,
-                    lli32(0),
-                    lli64(size),
-                    lli64(sys::align_of::<uint>() as int * 8),
-                    lli64(0),
-                    lli32(0),
-                    refcount_type.node];
-    let size = 64; //XXX member_size_and_align(???)
-    let boxed_member = [lltag(MemberTag),
-                        file_node.node,
-                        llstr("boxed"),
-                        file_node.node,
-                        lli32(0),
-                        lli64(size),
-                        lli64(64), //XXX align of inner
-                        lli64(total_size),
-                        lli32(0),
-                        boxed.node];
-    total_size += size;
-    let members = [llmdnode(refcount), llmdnode(boxed_member)];
-    let lldata = [lltag(tg),
-                  file_node.node,
-                  llstr(ty_to_str(ccx_tcx(cx), outer)),
-                  file_node.node,
-                  lli32(0), //XXX source line
-                  lli64(total_size),  // size in bits
-                  lli64(align * 8), // alignment in bits
-                  lli64(0), //XXX offset?
-                  lli32(0), //XXX flags
-                  llnull(), // derived from
-                  llmdnode(members), // members
-                  lli32(0) // runtime language
-                 ];
-    let llnode = llmdnode(lldata);
+    let scx = create_structure(file_node, ty_to_str(ccx_tcx(cx), outer), 0);
+    add_member(scx, "refcnt", 0, sys::size_of::<uint>() as int, 
+               sys::align_of::<uint>() as int, refcount_type.node);
+    add_member(scx, "boxed", 0, 8, //XXX member_size_and_align(??)
+               8, //XXX just a guess 
+               boxed.node);
+    let llnode = finish_structure(scx);
     let mdval = @{node: llnode, data: {hash: outer}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
     llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
                                       str::byte_len("llvm.dbg.ty"),
                                       llnode);
     ret mdval;
+}
+
+fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
+                         size: int, align: int, offset: int,
+                         derived: option::t<ValueRef>,
+                         members: option::t<[ValueRef]>)
+    -> ValueRef {
+    let lldata = [lltag(type_tag),
+                  file,
+                  llstr(name), // type name
+                  file, // source file definition
+                  lli32(line), // source line definition
+                  lli64(size), // size of members
+                  lli64(align), // align
+                  lli64(offset), // offset
+                  lli32(0), // flags
+                  option::is_none(derived) ? llnull() : // derived from
+                                             option::get(derived),
+                  option::is_none(members) ? llnull() : // members
+                                             llmdnode(option::get(members)),
+                  lli32(0),  // runtime language
+                  llnull()
+                 ];
+    ret llmdnode(lldata);
+}
+
+fn get_vec_metadata(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t, vec_ty: @ast::ty)
+    -> @metadata<tydesc_md> {
+    let fname = filename_from_span(cx, vec_ty.span);
+    let file_node = get_file_metadata(cx, fname);
+    let elem_ty = alt vec_ty.node { ast::ty_vec(mt) { mt.ty } };
+    let elem_ty_md = get_ty_metadata(cx, elem_t, elem_ty);
+    let tcx = ccx_tcx(cx);
+    let scx = create_structure(file_node, ty_to_str(tcx, vec_t), 0);
+    let uint_ty = @{node: ast::ty_uint(ast::ty_u), span: vec_ty.span};
+    let size_t_type = get_basic_type_metadata(cx, ty::mk_uint(tcx), uint_ty);
+    add_member(scx, "fill", 0, sys::size_of::<ctypes::size_t>() as int,
+               sys::align_of::<ctypes::size_t>() as int, size_t_type.node);
+    add_member(scx, "alloc", 0, sys::size_of::<ctypes::size_t>() as int,
+               sys::align_of::<ctypes::size_t>() as int, size_t_type.node);
+    let subrange = llmdnode([lltag(SubrangeTag), lli64(0), lli64(0)]);
+    let (arr_size, arr_align) = member_size_and_align(elem_ty);
+    let data_ptr = create_composite_type(ArrayTypeTag, "", file_node.node, 0,
+                                         arr_size, arr_align, 0,
+                                         option::some(elem_ty_md.node),
+                                         option::some([subrange]));
+    add_member(scx, "data", 0, 0, // according to an equivalent clang dump, the size should be 0
+               sys::align_of::<u8>() as int, data_ptr);
+    let llnode = finish_structure(scx);
+    ret @{node: llnode, data: {hash: vec_t}};
 }
 
 fn member_size_and_align(ty: @ast::ty) -> (int, int) {
@@ -512,6 +511,9 @@ fn member_size_and_align(ty: @ast::ty) -> (int, int) {
         }
         (total_size, 64) //XXX different align for other arches?
       }
+      ast::ty_vec(_) {
+        size_and_align_of::<ctypes::uintptr_t>()
+      }
     }
 }
 
@@ -545,6 +547,8 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
             }
             ast::ty_rec(fs)
           }
+          ty::ty_vec(mt) { ast::ty_vec({ty: t_to_ty(cx, mt.ty, span),
+                                        mut: mt.mut}) }
         };
         ret @{node: ty, span: span};
     }
@@ -571,6 +575,11 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
       }
       ast::ty_rec(fields) {
         ret get_record_metadata(cx, t, fields, ty.span);
+      }
+      ast::ty_vec(mt) {
+        let inner_t = ty::sequence_element_type(ccx_tcx(cx), t);
+        let v = get_vec_metadata(cx, t, inner_t, ty);
+        ret get_pointer_type_metadata(cx, t, ty.span, v);
       }
       _ { ret get_basic_type_metadata(cx, t, ty); }
     };
