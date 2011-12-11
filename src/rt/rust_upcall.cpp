@@ -63,10 +63,8 @@ extern "C" CDECL void
 upcall_fail(char const *expr,
             char const *file,
             size_t line) {
-    // FIXME: Need to fix the stack switching function to unwind properly
-    // in order to switch stacks here
     s_fail_args args = {expr,file,line};
-    upcall_s_fail(&args);
+    SWITCH_STACK(&args, upcall_s_fail);
 }
 
 struct s_malloc_args {
