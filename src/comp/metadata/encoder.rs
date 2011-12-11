@@ -576,6 +576,12 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
     ebml::end_tag(ebml_w);
 }
 
+fn encode_hash(ebml_w: ebml::writer, hash: str) {
+    ebml::start_tag(ebml_w, tag_crate_hash);
+    ebml_w.writer.write(str::bytes(hash));
+    ebml::end_tag(ebml_w);
+}
+
 fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
 
     let abbrevs = map::mk_hashmap(ty::hash_ty, ty::eq_ty);
@@ -584,6 +590,8 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
     let string_w = io::string_writer();
     let buf_w = string_w.get_writer().get_buf_writer();
     let ebml_w = ebml::create_writer(buf_w);
+
+    encode_hash(ebml_w, cx.link_meta.extras_hash);
 
     let crate_attrs = synthesize_crate_attrs(ecx, crate);
     encode_attributes(ebml_w, crate_attrs);
