@@ -561,6 +561,13 @@ fn link_binary(sess: session::session,
                obj_filename: str,
                out_filename: str,
                lm: link_meta) {
+    let output = if sess.building_library() {
+        let long_libname =
+            std::os::dylib_filename(#fmt("%s-%s-%s",
+                                         lm.name, lm.extras_hash, lm.vers));
+        fs::connect(fs::dirname(out_filename), long_libname)
+    } else { out_filename };
+
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let stage: str = "-L" + sess.filesearch().get_target_lib_path();
@@ -570,9 +577,9 @@ fn link_binary(sess: session::session,
 
     let gcc_args =
         [stage] + sess.get_targ_cfg().target_strs.gcc_args +
-        ["-o", out_filename, obj_filename];
-    let lib_cmd;
+        ["-o", output, obj_filename];
 
+    let lib_cmd;
     let os = sess.get_targ_cfg().os;
     if os == session::os_macos {
         lib_cmd = "-dynamiclib";
@@ -620,23 +627,19 @@ fn link_binary(sess: session::session,
     let used_libs = cstore::get_used_libraries(cstore);
     for l: str in used_libs { gcc_args += ["-l" + l]; }
 
-    let long_libname =
-        std::os::dylib_filename(#fmt("%s-%s-%s",
-                                     lm.name, lm.extras_hash, lm.vers));
-
     if sess.building_library() {
         gcc_args += [lib_cmd];
 
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.get_targ_cfg().os == session::os_macos {
-            gcc_args += ["-Wl,-install_name,@rpath/" + long_libname];
+            gcc_args += ["-Wl,-install_name,@rpath/"
+                        + fs::basename(output)];
         }
     } else {
         // FIXME: why do we hardcode -lm?
         gcc_args += ["-lm"];
     }
-
 
     // Always want the runtime linked in
     gcc_args += ["-lrustrt"];
@@ -666,17 +669,12 @@ fn link_binary(sess: session::session,
 
     // Clean up on Darwin
     if sess.get_targ_cfg().os == session::os_macos {
-        run::run_program("dsymutil", [out_filename]);
+        run::run_program("dsymutil", [output]);
     }
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.get_opts().save_temps {
         run::run_program("rm", [obj_filename]);
-    }
-
-    if sess.building_library() {
-        let fullname = fs::connect(fs::dirname(out_filename), long_libname);
-        run::run_program("mv", [out_filename, fullname]);
     }
 }
 //
