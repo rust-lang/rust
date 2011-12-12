@@ -279,6 +279,8 @@ struct type_desc {
     const type_desc *descs[];
 };
 
+extern "C" type_desc *rust_clone_type_desc(type_desc*);
+
 #include "circular_buffer.h"
 #include "rust_task.h"
 #include "rust_port.h"

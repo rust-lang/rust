@@ -2188,19 +2188,20 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
     let s = mangle_internal_name_by_path(ccx, sub_cx.path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let copying = alt f.proto {
-      ast::proto_shared(_) | ast::proto_send. { true }
-      ast::proto_bare. | ast::proto_block. { false }
+    let mode = alt f.proto {
+      ast::proto_shared(_) { for_closure }
+      ast::proto_send. { for_send }
+      ast::proto_bare. | ast::proto_block. { for_block }
     };
     let env;
     alt f.proto {
       ast::proto_block. | ast::proto_shared(_) | ast::proto_send. {
         let upvars = get_freevars(ccx.tcx, id);
-        let env_r = build_closure(bcx, upvars, copying);
+        let env_r = build_closure(bcx, upvars, mode);
         env = env_r.ptr;
         bcx = env_r.bcx;
         trans_closure(sub_cx, sp, f, llfn, none, [], id, {|fcx|
-            load_environment(bcx, fcx, env_r.ptrty, upvars, copying);
+            load_environment(bcx, fcx, env_r.ptrty, upvars, mode);
         });
       }
       ast::proto_bare. {
@@ -2560,7 +2561,7 @@ tag environment_value {
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
                      bound_values: [environment_value],
-                     copying: bool) ->
+                     mode: closure_constr_mode) ->
    {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
     let ccx = bcx_ccx(bcx);
     let tcx = bcx_tcx(bcx);
@@ -2602,13 +2603,15 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
 
     let temp_cleanups = [], bcx = bcx;
     // Allocate a box that can hold something closure-sized.
-    let (closure, box) = if copying {
+    let (closure, box) = alt mode {
+      for_closure. | for_send. {
         let r = trans_malloc_boxed(bcx, closure_ty);
         add_clean_free(bcx, r.box, false);
         temp_cleanups += [r.box];
         bcx = r.bcx;
         (r.body, r.box)
-    } else {
+      }
+      for_block. {
         // We need to dummy up a box on the stack
         let ty = ty::mk_tup(tcx, [ty::mk_int(tcx), closure_ty]);
         let r = alloc_ty(bcx, ty);
@@ -2618,10 +2621,12 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
               C_int(ccx, 2),
               GEPi(bcx, r.val, [0, abi::box_rc_field_refcnt]));
         (GEPi(bcx, r.val, [0, abi::box_rc_field_body]), r.val)
+      }
     };
 
     // Store bindings tydesc.
-    if copying {
+    alt mode {
+      for_closure. | for_send. {
         let bound_tydesc = GEPi(bcx, closure, [0, abi::closure_elt_tydesc]);
         let ti = none;
         let bindings_tydesc =
@@ -2630,6 +2635,8 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = bindings_tydesc.bcx;
         Store(bcx, bindings_tydesc.val, bound_tydesc);
+      }
+      for_block. {}
     }
 
     // Copy expr values into boxed bindings.
@@ -2651,12 +2658,15 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
             temp_cleanups += [bound.val];
           }
           env_direct(val, ty, is_mem) {
-            if copying {
+            alt mode {
+              for_closure. | for_send. {
                 let val1 = is_mem ? load_if_immediate(bcx, val, ty) : val;
                 bcx = copy_val(bcx, INIT, bound.val, val1, ty);
-            } else {
+              }
+              for_block. {
                 let addr = is_mem ? val : do_spill_noroot(bcx, val);
                 Store(bcx, addr, bound.val);
+              }
             }
           }
         }
@@ -2675,17 +2685,33 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     i = 0u;
     for td: ValueRef in lltydescs {
         let ty_param_slot = GEPi(bcx, ty_params_slot.val, [0, i as int]);
-        Store(bcx, td, ty_param_slot);
+        alt mode {
+          for_closure. | for_block. {
+            Store(bcx, td, ty_param_slot);
+          }
+          for_send. {
+            let cloned_td = Call(bcx, ccx.upcalls.clone_type_desc, [td]);
+            Store(bcx, cloned_td, ty_param_slot);
+          }
+        }
         i += 1u;
     }
 
     ret {ptr: box, ptrty: closure_ty, bcx: bcx};
 }
 
+tag closure_constr_mode {
+    for_block;
+    for_closure;
+    for_send;
+}
+
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for build_environment.
-fn build_closure(cx: @block_ctxt, upvars: @[ast::def], copying: bool) ->
-   {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
+fn build_closure(cx: @block_ctxt,
+                 upvars: @[ast::def],
+                 mode: closure_constr_mode)
+    -> {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
     // If we need to, package up the iterator body to call
     let env_vals = [];
     // Package up the upvars
@@ -2693,10 +2719,13 @@ fn build_closure(cx: @block_ctxt, upvars: @[ast::def], copying: bool) ->
         let lv = trans_local_var(cx, def);
         let nid = ast_util::def_id_of_def(def).node;
         let ty = ty::node_id_to_monotype(bcx_tcx(cx), nid);
-        if !copying { ty = ty::mk_mut_ptr(bcx_tcx(cx), ty); }
+        alt mode {
+          for_block. { ty = ty::mk_mut_ptr(bcx_tcx(cx), ty); }
+          for_send. | for_closure. {}
+        }
         env_vals += [env_direct(lv.val, ty, lv.kind == owned)];
     }
-    ret build_environment(cx, copy cx.fcx.lltydescs, env_vals, copying);
+    ret build_environment(cx, copy cx.fcx.lltydescs, env_vals, mode);
 }
 
 // Return a pointer to the stored typarams in a closure.
@@ -2734,7 +2763,7 @@ fn find_environment_tydescs(bcx: @block_ctxt, envty: ty::t, closure: ValueRef)
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
 fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
-                    upvars: @[ast::def], copying: bool) {
+                    upvars: @[ast::def], mode: closure_constr_mode) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
 
     let ty = ty::mk_imm_box(bcx_tcx(bcx), envty);
@@ -2769,7 +2798,10 @@ fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
         let upvarptr = GEP_tup_like(bcx, ty, llclosure, path + [i as int]);
         bcx = upvarptr.bcx;
         let llupvarptr = upvarptr.val;
-        if !copying { llupvarptr = Load(bcx, llupvarptr); }
+        alt mode {
+          for_block. { llupvarptr = Load(bcx, llupvarptr); }
+          for_send. | for_closure. { }
+        }
         let def_id = ast_util::def_id_of_def(upvar_def);
         fcx.llupvars.insert(def_id.node, llupvarptr);
         i += 1u;
@@ -3532,7 +3564,8 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
 
     // Actually construct the closure
     let closure = build_environment(bcx, lltydescs, env_vals +
-                                    vec::map({|x| env_expr(x)}, bound), true);
+                                    vec::map({|x| env_expr(x)}, bound),
+                                    for_closure);
     bcx = closure.bcx;
 
     // Make thunk

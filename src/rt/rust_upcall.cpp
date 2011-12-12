@@ -195,6 +195,39 @@ upcall_shared_free(void* ptr) {
     SWITCH_STACK(&args, upcall_s_shared_free);
 }
 
+struct s_clone_type_desc_args {
+    const type_desc *td;
+    type_desc *res;
+};
+
+void upcall_s_clone_type_desc(s_clone_type_desc_args *args)
+{
+    // Copy the main part of the type descriptor:
+    const type_desc *td = args->td;
+    int n_descs = td->n_descs;
+    size_t sz = sizeof(type_desc) + sizeof(type_desc*) * n_descs;
+    args->res = (type_desc*) malloc(sz);
+    memcpy(args->res, td, sizeof(type_desc));
+
+    // Recursively copy any referenced descriptors:
+    for (int i = 0; i < n_descs; i++) {
+        s_clone_type_desc_args rec_args = { td->descs[i], 0 };
+        upcall_s_clone_type_desc(&rec_args);
+        args->res->descs[i] = rec_args.res;
+    }
+}
+
+/**
+ * Called to deep-clone type descriptors so they can be attached to a sendable
+ * function.  Eventually this should perhaps move to a centralized hashtable.
+ */
+type_desc *
+upcall_clone_type_desc(type_desc *td) {
+    s_clone_type_desc_args args = { td, 0 };
+    SWITCH_STACK(&args, upcall_s_clone_type_desc);
+    return args.res;
+}
+
 struct s_get_type_desc_args {
     type_desc *retval;
     size_t size;

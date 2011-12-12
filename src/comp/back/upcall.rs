@@ -17,6 +17,7 @@ type upcalls =
      shared_malloc: ValueRef,
      shared_free: ValueRef,
      mark: ValueRef,
+     clone_type_desc: ValueRef,
      get_type_desc: ValueRef,
      vec_grow: ValueRef,
      vec_push: ValueRef,
@@ -54,12 +55,18 @@ fn declare_upcalls(targ_cfg: @session::config,
           malloc:
               d("malloc", [size_t, T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
-          free: dv("free", [T_ptr(T_i8()), int_t]),
+          free:
+              dv("free", [T_ptr(T_i8()), int_t]),
           shared_malloc:
               d("shared_malloc", [size_t, T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
-          shared_free: dv("shared_free", [T_ptr(T_i8())]),
-          mark: d("mark", [T_ptr(T_i8())], int_t),
+          shared_free:
+              dv("shared_free", [T_ptr(T_i8())]),
+          mark:
+              d("mark", [T_ptr(T_i8())], int_t),
+          clone_type_desc:
+              d("clone_type_desc", [T_ptr(tydesc_type)],
+                T_ptr(tydesc_type)),
           get_type_desc:
               d("get_type_desc",
                 [T_ptr(T_nil()), size_t,
@@ -67,8 +74,7 @@ fn declare_upcalls(targ_cfg: @session::config,
                  T_ptr(T_ptr(tydesc_type)), int_t],
                 T_ptr(tydesc_type)),
           vec_grow:
-              dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)),
-                              int_t]),
+              dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t]),
           vec_push:
               dv("vec_push",
                 [T_ptr(T_ptr(opaque_vec_t)), T_ptr(tydesc_type),
@@ -80,18 +86,24 @@ fn declare_upcalls(targ_cfg: @session::config,
                   T_i8()]),
           log_type:
               dv("log_type", [T_ptr(tydesc_type), T_ptr(T_i8()), T_i32()]),
-          dynastack_mark: d("dynastack_mark", [], T_ptr(T_i8())),
+          dynastack_mark:
+              d("dynastack_mark", [], T_ptr(T_i8())),
           dynastack_alloc:
               d("dynastack_alloc_2", [size_t, T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
-          dynastack_free: dv("dynastack_free", [T_ptr(T_i8())]),
-          alloc_c_stack: d("alloc_c_stack", [size_t], T_ptr(T_i8())),
-          call_shim_on_c_stack: d("call_shim_on_c_stack",
-                                  // arguments: void *args, void *fn_ptr
-                                  [T_ptr(T_i8()), T_ptr(T_i8())],
-                                  int_t),
-          rust_personality: d("rust_personality", [], T_i32()),
-          reset_stack_limit: dv("reset_stack_limit", [])
+          dynastack_free:
+              dv("dynastack_free", [T_ptr(T_i8())]),
+          alloc_c_stack:
+              d("alloc_c_stack", [size_t], T_ptr(T_i8())),
+          call_shim_on_c_stack:
+              d("call_shim_on_c_stack",
+                // arguments: void *args, void *fn_ptr
+                [T_ptr(T_i8()), T_ptr(T_i8())],
+                int_t),
+          rust_personality:
+              d("rust_personality", [], T_i32()),
+          reset_stack_limit:
+              dv("reset_stack_limit", [])
          };
 }
 //
