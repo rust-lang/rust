@@ -244,7 +244,7 @@ mod write {
                                     buf_o,
                                     LLVMAssemblyFile,
                                     CodeGenOptLevel,
-                                    opts.stack_growth)})});
+                                    true)})});
                 }
 
 
@@ -264,7 +264,7 @@ mod write {
                                         buf_o,
                                         LLVMObjectFile,
                                         CodeGenOptLevel,
-                                        opts.stack_growth)})});
+                                        true)})});
                 }
             } else {
                 // If we aren't saving temps then just output the file
@@ -282,7 +282,7 @@ mod write {
                                     buf_o,
                                     FileType,
                                     CodeGenOptLevel,
-                                    opts.stack_growth)})});
+                                    true)})});
             }
             // Clean up and return
 
@@ -651,9 +651,7 @@ fn link_binary(sess: session::session,
     }
 
     // Stack growth requires statically linking a __morestack function
-    if sess.get_opts().stack_growth {
-        gcc_args += ["-lmorestack"];
-    }
+    gcc_args += ["-lmorestack"];
 
     gcc_args += rpath::get_rpath_flags(sess, output);
 
