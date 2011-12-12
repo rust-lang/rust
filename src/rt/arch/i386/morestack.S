@@ -47,17 +47,17 @@
 #endif
 
 MORESTACK:
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 	.cfi_startproc
 #endif
 
 	pushl %ebp
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 	.cfi_def_cfa_offset 8
 	.cfi_offset %ebp, -8
 #endif
 	movl %esp, %ebp
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 	.cfi_def_cfa_register %ebp
 #endif
 
@@ -69,7 +69,7 @@ MORESTACK:
 	jz .L$bail
 
 	// During unwinding we want to skip our caller.
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 	// Don't understand this line. I think it means that
 	// the next frame's pc is the return address of our caller.
 	.cfi_offset 8, 8
@@ -134,7 +134,7 @@ MORESTACK:
 	addl $16,%esp
 
 	popl %ebp
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 	.cfi_restore %ebp
 	.cfi_def_cfa %esp, 4
 #endif
@@ -150,7 +150,7 @@ MORESTACK:
 	
 	jmpl *%edx
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 	.cfi_endproc
 #endif
 

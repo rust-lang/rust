@@ -50,30 +50,22 @@
 
 #if defined(__linux__) || defined(__APPLE__)
 MORESTACK:
-#if defined(__ELF__)
 	.cfi_startproc
-#endif
 	
 	// Set up a normal backtrace
 	pushq %rbp
-#if defined(__ELF__)
 	.cfi_def_cfa_offset 16
 	.cfi_offset %rbp, -16
-#endif
 	movq %rsp, %rbp
-#if defined(__ELF__)
 	.cfi_def_cfa_register %rbp
-#endif
 
 	// During unwinding we want to skip our caller since it's not
 	// a complete frame and will make the unwinder sad
-#if defined(__linux__)
 	// Don't understand this line
 	.cfi_offset 16, 0
 	// Tell the unwinding where to get the stack pointer for
 	// our grandparent frame
 	.cfi_offset %rsp, -24
-#endif
 
 	// Save the grandparent stack pointer for the unwinder
 	leaq 16(%rbp), %rax
@@ -147,15 +139,11 @@ MORESTACK:
 
 	addq $8, %rsp
 	popq %rbp
-#ifdef __linux__
 	.cfi_restore %rbp
 	.cfi_def_cfa %rsp, 8
-#endif
 	ret
 	
-#if defined(__ELF__)
 	.cfi_endproc
-#endif
 
 #else
 MORESTACK:
