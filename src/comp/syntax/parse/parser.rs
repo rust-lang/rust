@@ -1357,7 +1357,7 @@ fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
       (fn_kw_fn., true) { ast::proto_bare }
       (fn_kw_fn_at., true) { ast::proto_send }
       (fn_kw_lambda., true) { ast::proto_send }
-      (fn_kw_block., true) { p.fatal("block cannot be declared sendable"); }
+      (fn_kw_block., true) { p.fatal("block cannot be declared sendable") }
       (fn_kw_fn., false) { ast::proto_bare }
       (fn_kw_fn_at., false) { ast::proto_shared(ast::sugar_normal) }
       (fn_kw_lambda., false) { ast::proto_shared(ast::sugar_sexy) }
