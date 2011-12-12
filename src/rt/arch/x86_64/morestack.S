@@ -73,13 +73,11 @@ MORESTACK:
 
 	// During unwinding we want to skip our caller since it's not
 	// a complete frame and will make the unwinder sad
-#if defined(__linux__)
 	// Don't understand this line
 	.cfi_offset 16, 0
 	// Tell the unwinding where to get the stack pointer for
 	// our grandparent frame
 	.cfi_offset %rsp, -24
-#endif
 
 	// Save the grandparent stack pointer for the unwinder
 	leaq 16(%rbp), %rax
