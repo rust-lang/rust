@@ -65,6 +65,20 @@ MORESTACK:
 	.cfi_def_cfa_register %rbp
 #endif
 
+	// During unwinding we want to skip our caller since it's not
+	// a complete frame and will make the unwinder sad
+#if defined(__linux__)
+	// Don't understand this line
+	.cfi_offset 16, 0
+	// Tell the unwinding where to get the stack pointer for
+	// our grandparent frame
+	.cfi_offset %rsp, -24
+#endif
+
+	// Save the grandparent stack pointer for the unwinder
+	leaq 16(%rbp), %rax
+	pushq %rax
+
 	// FIXME: libgcc also saves rax. not sure if we need to
 
 	// Save argument registers
@@ -80,8 +94,6 @@ MORESTACK:
 	// and __morestack's caller's return address to skip
 	movq %rbp, %rcx
 	addq $24, %rcx  // Base pointer, return address x2
-
-	pushq $0 // Alignment
 
 	pushq %r11 // Size of stack arguments
 	pushq %rcx // Address of stack arguments
@@ -99,7 +111,7 @@ MORESTACK:
 
 	// Pop the new_stack_args struct
 	popq %rax
-	addq $32, %rsp
+	addq $24, %rsp
 
 	// Pop the saved arguments
 	popq %r9
@@ -108,7 +120,10 @@ MORESTACK:
 	popq %rdx
 	popq %rsi
 	popq %rdi
-	
+
+	// Pop the unwinding %rsp
+	addq $8, %rsp
+
         movq 8(%rbp),%r10       // Grab the return pointer.
         incq %r10               // Skip past the `ret` in our parent frame
         movq %rax,%rsp          // Switch to the new stack.

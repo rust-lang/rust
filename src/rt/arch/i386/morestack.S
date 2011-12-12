@@ -49,12 +49,6 @@
 MORESTACK:
 #ifdef __linux__
 	.cfi_startproc
-
-	// Some magic that explains to the unwinder the unusal nature
-	// of this stack frame. Copied verbatim from libgcc, which
-	// has comments explaining it.
-	.cfi_offset 8, 8
-	.cfi_escape 0x15, 4, 0x7d
 #endif
 
 	pushl %ebp
@@ -66,7 +60,7 @@ MORESTACK:
 #ifdef __linux__
 	.cfi_def_cfa_register %ebp
 #endif
-	
+
 	// FIXME (1226): main is compiled with the split-stack prologue,
 	// causing it to call __morestack, so we have to jump back out
 	subl $28,%esp
@@ -74,6 +68,21 @@ MORESTACK:
 	testl %eax,%eax
 	jz .L$bail
 
+	// During unwinding we want to skip our caller.
+#ifdef __linux__
+	// Don't understand this line. I think it means that
+	// the next frame's pc is the return address of our caller.
+	.cfi_offset 8, 8
+	// The next frame's esp is stored at our CFA - 12
+	// (by the code below)
+	.cfi_offset %esp, -12
+#endif
+
+	// Save the the correct %esp value for our grandparent frame,
+	// for the unwinder
+	leal 20(%ebp), %eax
+	movl %eax, -4(%ebp)
+	
 	// The arguments to rust_new_stack2
 	movl 40(%esp),%eax  // Size of stack arguments
 	movl %eax,20(%esp)
