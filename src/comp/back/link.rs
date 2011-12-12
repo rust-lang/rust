@@ -561,6 +561,29 @@ fn link_binary(sess: session::session,
                obj_filename: str,
                out_filename: str,
                lm: link_meta) {
+    // Converts a library file name into a gcc -l argument
+    fn unlib(config: @session::config, filename: str) -> str {
+        let rmlib =
+            bind fn (config: @session::config, filename: str) -> str {
+                     if config.os == session::os_macos ||
+                            config.os == session::os_linux &&
+                                str::find(filename, "lib") == 0 {
+                         ret str::slice(filename, 3u,
+                                        str::byte_len(filename));
+                     } else { ret filename; }
+                 }(config, _);
+        fn rmext(filename: str) -> str {
+            let parts = str::split(filename, '.' as u8);
+            vec::pop(parts);
+            ret str::connect(parts, ".");
+        }
+        ret alt config.os {
+              session::os_macos. { rmext(rmlib(filename)) }
+              session::os_linux. { rmext(rmlib(filename)) }
+              _ { rmext(filename) }
+            };
+    }
+
     let output = if sess.building_library() {
         let long_libname =
             std::os::dylib_filename(#fmt("%s-%s-%s",
@@ -584,29 +607,6 @@ fn link_binary(sess: session::session,
     if os == session::os_macos {
         lib_cmd = "-dynamiclib";
     } else { lib_cmd = "-shared"; }
-
-    // Converts a library file name into a gcc -l argument
-    fn unlib(config: @session::config, filename: str) -> str {
-        let rmlib =
-            bind fn (config: @session::config, filename: str) -> str {
-                     if config.os == session::os_macos ||
-                            config.os == session::os_linux &&
-                                str::find(filename, "lib") == 0 {
-                         ret str::slice(filename, 3u,
-                                        str::byte_len(filename));
-                     } else { ret filename; }
-                 }(config, _);
-        fn rmext(filename: str) -> str {
-            let parts = str::split(filename, '.' as u8);
-            vec::pop(parts);
-            ret str::connect(parts, ".");
-        }
-        ret alt config.os {
-              session::os_macos. { rmext(rmlib(filename)) }
-              session::os_linux. { rmext(rmlib(filename)) }
-              _ { rmext(filename) }
-            };
-    }
 
     let cstore = sess.get_cstore();
     for cratepath: str in cstore::get_used_crate_files(cstore) {
@@ -655,7 +655,7 @@ fn link_binary(sess: session::session,
         gcc_args += ["-lmorestack"];
     }
 
-    gcc_args += rpath::get_rpath_flags(sess, out_filename);
+    gcc_args += rpath::get_rpath_flags(sess, output);
 
     log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
     // We run 'gcc' here
