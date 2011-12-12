@@ -1157,10 +1157,7 @@ fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
     ret info;
 }
 
-tag glue_helper {
-    default_helper(fn(@block_ctxt, ValueRef, ty::t));
-    copy_helper(fn(@block_ctxt, ValueRef, ValueRef, ty::t));
-}
+type glue_helper = fn(@block_ctxt, ValueRef, ty::t);
 
 fn declare_generic_glue(cx: @local_ctxt, t: ty::t, llfnty: TypeRef, name: str)
    -> ValueRef {
@@ -1215,14 +1212,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
     let lltop = bcx.llbb;
     let llrawptr0 = llvm::LLVMGetParam(llfn, 3u);
     let llval0 = BitCast(bcx, llrawptr0, llty);
-    alt helper {
-      default_helper(helper) { helper(bcx, llval0, t); }
-      copy_helper(helper) {
-        let llrawptr1 = llvm::LLVMGetParam(llfn, 4u);
-        let llval1 = BitCast(bcx, llrawptr1, llty);
-        helper(bcx, llval0, llval1, t);
-      }
-    }
+    helper(bcx, llval0, t);
     finish_fn(fcx, lltop);
     ret llfn;
 }
@@ -1749,7 +1739,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                                          "take");
                 ti.take_glue = some::<ValueRef>(glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                  default_helper(make_take_glue),
+                                  make_take_glue,
                                   ti.ty_params, "take");
                 log #fmt["--- lazily_emit_tydesc_glue TAKE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
@@ -1767,7 +1757,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                                          "drop");
                 ti.drop_glue = some::<ValueRef>(glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                  default_helper(make_drop_glue),
+                                  make_drop_glue,
                                   ti.ty_params, "drop");
                 log #fmt["--- lazily_emit_tydesc_glue DROP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
@@ -1785,7 +1775,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                                          "free");
                 ti.free_glue = some::<ValueRef>(glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                  default_helper(make_free_glue),
+                                  make_free_glue,
                                   ti.ty_params, "free");
                 log #fmt["--- lazily_emit_tydesc_glue FREE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
