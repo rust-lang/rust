@@ -2,7 +2,7 @@
 import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
-import syntax::ast_util::local_def;
+import syntax::ast_util::{local_def, def_id_of_def};
 
 import metadata::{csearch, cstore};
 import driver::session::session;
@@ -609,7 +609,15 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
         }
       }
       in_mod(def) {
-        path = e.mod_map.get(ast_util::def_id_of_def(def).node).path + path;
+        let did = def_id_of_def(def);
+        if did.crate == ast::local_crate {
+            path = e.mod_map.get(did.node).path + path;
+        } else {
+            let paths = e.ext_map.get(did);
+            if vec::len(paths) > 0u {
+                path = str::connect(paths, "::") + "::" + path;
+            }
+        }
       }
     }
     e.sess.span_err(sp, mk_unresolved_msg(path, kind));
@@ -783,7 +791,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                     while i > 0u {
                         i -= 1u;
                         df =
-                            ast::def_upvar(ast_util::def_id_of_def(df), @df,
+                            ast::def_upvar(def_id_of_def(df), @df,
                                            closing[i]);
                         fnd = some(df);
                     }
@@ -997,7 +1005,7 @@ fn lookup_in_mod_strict(e: env, m: def, sp: span, name: ident,
 
 fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
                  dr: dir) -> option::t<def> {
-    let defid = ast_util::def_id_of_def(m);
+    let defid = def_id_of_def(m);
     if defid.crate != ast::local_crate {
         // examining a module in an external crate
         let cached = e.ext_cache.find({did: defid, ident: name, ns: ns});
@@ -1277,7 +1285,7 @@ fn ns_for_def(d: def) -> namespace {
 fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
    option::t<def> {
     for d: def in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids) {
-        e.ext_map.insert(ast_util::def_id_of_def(d), ids);
+        e.ext_map.insert(def_id_of_def(d), ids);
         if ns == ns_for_def(d) { ret some(d); }
     }
     ret none::<def>;
