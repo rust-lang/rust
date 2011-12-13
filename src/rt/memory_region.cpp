@@ -2,7 +2,8 @@
 #include "memory_region.h"
 
 #if RUSTRT_TRACK_ALLOCATIONS >= 1
-#  define PTR_SIZE (sizeof(void*))
+// For some platforms, 16 byte alignment is required.
+#  define PTR_SIZE 16
 #  define ALIGN_PTR(x) (((x)+PTR_SIZE-1)/PTR_SIZE*PTR_SIZE)
 #  define HEADER_SIZE ALIGN_PTR(sizeof(alloc_header))
 #  define MAGIC 0xbadc0ffe
@@ -65,11 +66,15 @@ memory_region::realloc(void *mem, size_t orig_size) {
     }
 
     alloc_header *alloc = get_header(mem);
+#   if RUSTRT_TRACK_ALLOCATIONS >= 1
+    assert(alloc->magic == MAGIC);
+#   endif
+
     size_t size = orig_size + HEADER_SIZE;
     alloc_header *newMem = (alloc_header *)_srv->realloc(alloc, size);
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1
-    assert(alloc->magic == MAGIC);
+    assert(newMem->magic == MAGIC);
     newMem->size = orig_size;
 #   endif
 
@@ -141,7 +146,7 @@ memory_region::~memory_region() {
                 alloc_header *header = (alloc_header*)_allocation_list[i];
                 printf("allocation (%s) 0x%" PRIxPTR " was not freed\n",
                        header->tag,
-                       (uintptr_t) &header->data);
+                       (uintptr_t) get_data(header));
                 ++leak_count;
             }
         }
@@ -167,7 +172,7 @@ memory_region::release_alloc(void *mem) {
     if (_synchronized) { _lock.lock(); }
     if (_allocation_list[alloc->index] != alloc) {
         printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
-               (uintptr_t) &alloc->data, alloc->tag);
+               (uintptr_t) get_data(alloc), alloc->tag);
         _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
     }
     else {
@@ -222,6 +227,5 @@ memory_region::maybe_poison(void *mem) {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //
