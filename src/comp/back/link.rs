@@ -321,7 +321,7 @@ mod write {
  *
  * There are a few issues to handle:
  *
- *  - Linnkers operate on a flat namespace, so we have to flatten names.
+ *  - Linkers operate on a flat namespace, so we have to flatten names.
  *    We do this using the C++ namespace-mangling technique. Foo::bar
  *    symbols and such.
  *
