@@ -657,6 +657,10 @@ fn link_binary(sess: session::session,
 
     gcc_args += rpath::get_rpath_flags(sess, output);
 
+    if !vec::is_empty(sess.get_opts().link_args) {
+        gcc_args += sess.get_opts().link_args;
+    }
+
     log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
     // We run 'gcc' here
     let prog = run::program_output(prog, gcc_args);
