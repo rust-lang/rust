@@ -66,7 +66,7 @@ const tag_six_b: uint = 252u;
 /*
 Function: is_utf8
 
-Determines if a vector uf bytes contains valid UTF-8
+Determines if a vector of bytes contains valid UTF-8
 */
 fn is_utf8(v: [u8]) -> bool {
     let i = 0u;
@@ -546,7 +546,7 @@ needle - The string to look for
 
 Returns:
 
-The index of the first occurance of `needle`, or -1 if not found.
+The index of the first occurrence of `needle`, or -1 if not found.
 */
 fn find(haystack: str, needle: str) -> int {
     let haystack_len: int = byte_len(haystack) as int;
@@ -723,11 +723,11 @@ fn push_bytes(&s: str, bytes: [u8]) {
 /*
 Function: split
 
-Split a string at each occurance of a given separator
+Split a string at each occurrence of a given separator
 
 Returns:
 
-A vector containing all the strings between each occurance of the separator
+A vector containing all the strings between each occurrence of the separator
 */
 fn split(s: str, sep: u8) -> [str] {
     let v: [str] = [];
@@ -795,7 +795,7 @@ fn to_upper(s: str) -> str {
 /*
 Function: replace
 
-Replace all occurances of one string with another
+Replace all occurrences of one string with another
 
 Parameters:
 
@@ -805,7 +805,7 @@ to - The replacement string
 
 Returns:
 
-The original string with all occurances of `from` replaced with `to`
+The original string with all occurrences of `from` replaced with `to`
 */
 fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
     // FIXME (694): Shouldn't have to check this
