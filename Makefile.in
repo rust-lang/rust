@@ -385,6 +385,11 @@ endef
 $(foreach host,$(CFG_TARGET_TRIPLES),			\
  $(eval $(call DEF_RUSTC_TARGET,$(host))))
 
+rustc-stage1: rustc-stage1-H-$(CFG_HOST_TRIPLE)
+rustc-stage2: rustc-stage2-H-$(CFG_HOST_TRIPLE)
+rustc-stage3: rustc-stage3-H-$(CFG_HOST_TRIPLE)
+rustc: rustc-H-$(CFG_HOST_TRIPLE)
+
 rustc-H-all: $(foreach host,$(CFG_TARGET_TRIPLES),rustc-H-$(host))
 
 ######################################################################
@@ -410,7 +415,7 @@ TSREQS :=											\
 FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
 
-all: rustc-H-$(CFG_HOST_TRIPLE) $(GENERATED) $(DOCS) $(FUZZ) $(CARGO)
+all: rustc $(GENERATED) $(DOCS) $(FUZZ) $(CARGO)
 
 endif
 
