@@ -61,6 +61,9 @@ MORESTACK:
 	.cfi_def_cfa_register %ebp
 #endif
 
+	// NB: This can be called with the fastcc convention so we
+	// have to preserve any argument registers we want to use
+
 	// FIXME (1226): main is compiled with the split-stack prologue,
 	// causing it to call __morestack, so we have to jump back out
 	subl $28,%esp
@@ -94,9 +97,9 @@ MORESTACK:
 
 #ifdef __APPLE__
 	call 1f
-1:	popl %ebx
-	movl L_upcall_new_stack$non_lazy_ptr-1b(%ebx),%ecx
-	movl %ecx, 4(%esp)
+1:	popl %eax
+	movl L_upcall_new_stack$non_lazy_ptr-1b(%eax),%eax
+	movl %eax, 4(%esp)
 #else
 	movl $UPCALL_NEW_STACK,4(%esp)
 #endif
@@ -105,11 +108,11 @@ MORESTACK:
 	movl %eax,(%esp)
 	call UPCALL_CALL_C
 
-	movl 32(%esp),%edx          // Grab the return pointer.
-	inc  %edx    // Skip past the ret instruction in the parent fn
+	movl 32(%esp),%eax          // Grab the return pointer.
+	inc  %eax    // Skip past the ret instruction in the parent fn
 
 	movl 8(%esp),%esp          // Switch stacks.
-	call *%edx             // Re-enter the function that called us.
+	call *%eax             // Re-enter the function that called us.
 
 	// Now the function that called us has returned, so we need to delete the
 	// old stack space.
@@ -121,9 +124,9 @@ MORESTACK:
 
 #ifdef __APPLE__
 	call 1f
-1:	popl %ebx
-	movl L_upcall_del_stack$non_lazy_ptr-1b(%ebx),%ecx
-	pushl %ecx
+1:	popl %eax
+	movl L_upcall_del_stack$non_lazy_ptr-1b(%eax),%eax
+	pushl %eax
 #else
 	pushl $UPCALL_DEL_STACK
 #endif
@@ -141,14 +144,14 @@ MORESTACK:
 	retl $8
 
 .L$bail:
-	movl 32(%esp),%edx
-	inc %edx
+	movl 32(%esp),%eax
+	inc %eax
 	
 	addl $28, %esp
 	popl %ebp
 	addl $4+8,%esp
 	
-	jmpl *%edx
+	jmpl *%eax
 
 #if defined(__linux__) || defined(__APPLE__)
 	.cfi_endproc
