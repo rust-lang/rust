@@ -387,6 +387,8 @@ rustc-H-all: $(foreach host,$(CFG_TARGET_TRIPLES),rustc-H-$(host))
 # Entrypoint rule
 ######################################################################
 
+.DEFAULT_GOAL := all
+
 ifneq ($(CFG_IN_TRANSITION),)
 
 CFG_INFO := $(info cfg:)
