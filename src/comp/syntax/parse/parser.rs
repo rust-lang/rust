@@ -155,7 +155,8 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "lambda", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
-                 "log", "log_err", "tag", "obj", "self", "copy", "sendfn"] {
+                 "log", "log_err", "tag", "obj", "self", "copy", "sendfn",
+                 "impl"] {
         words.insert(word, ());
     }
     words
@@ -941,8 +942,8 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         let e = parse_expr(p);
         ex = ast::expr_copy(e);
         hi = e.span.hi;
-    } else if eat_word(p, "self") {
-        expect(p, token::DOT);
+    } else if is_word(p, "self") && p.look_ahead(1u) == token::DOT {
+        p.bump(); p.bump();
         // The rest is a call expression.
         let f: @ast::expr = parse_self_method(p);
         let es =
@@ -1873,6 +1874,17 @@ fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
                 attrs);
 }
 
+fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
+    let lo = p.get_last_lo_pos(), ty = parse_ty(p, false);
+    expect(p, token::COLON);
+    let path = parse_path(p), meths = [];
+    expect(p, token::LBRACE);
+    while !eat(p, token::RBRACE) { meths += [parse_method(p)]; }
+    ret mk_item(p, lo, p.get_last_hi_pos(),
+                path.node.idents[vec::len(path.node.idents) - 1u],
+                ast::item_impl(path, ty, meths), attrs);
+}
+
 fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let ident = parse_value_ident(p);
@@ -2139,14 +2151,15 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
         ret some(parse_item_mod(p, attrs));
     } else if eat_word(p, "native") {
         ret some(parse_item_native_mod(p, attrs));
-    }
-    if eat_word(p, "type") {
+    } if eat_word(p, "type") {
         ret some(parse_item_type(p, attrs));
     } else if eat_word(p, "tag") {
         ret some(parse_item_tag(p, attrs));
     } else if is_word(p, "obj") && p.look_ahead(1u) != token::LPAREN {
         p.bump();
         ret some(parse_item_obj(p, attrs));
+    } else if eat_word(p, "impl") {
+        ret some(parse_item_impl(p, attrs));
     } else if eat_word(p, "resource") {
         ret some(parse_item_res(p, attrs));
     } else { ret none; }

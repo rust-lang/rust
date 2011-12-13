@@ -26,17 +26,14 @@ fn find_pre_post_native_mod(_m: native_mod) -> native_mod {
     fail;
 }
 
-fn find_pre_post_obj(ccx: crate_ctxt, o: _obj) {
-    fn do_a_method(ccx: crate_ctxt, m: @method) {
-        assert (ccx.fm.contains_key(m.node.id));
-        let fcx: fn_ctxt =
-            {enclosing: ccx.fm.get(m.node.id),
-             id: m.node.id,
-             name: m.node.ident,
-             ccx: ccx};
-        find_pre_post_fn(fcx, m.node.meth);
-    }
-    for m: @method in o.methods { do_a_method(ccx, m); }
+fn find_pre_post_method(ccx: crate_ctxt, m: @method) {
+    assert (ccx.fm.contains_key(m.node.id));
+    let fcx: fn_ctxt =
+        {enclosing: ccx.fm.get(m.node.id),
+         id: m.node.id,
+         name: m.node.ident,
+         ccx: ccx};
+    find_pre_post_fn(fcx, m.node.meth);
 }
 
 fn find_pre_post_item(ccx: crate_ctxt, i: item) {
@@ -77,7 +74,8 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
              ccx: ccx};
         find_pre_post_fn(fcx, dtor);
       }
-      item_obj(o, _, _) { find_pre_post_obj(ccx, o); }
+      item_obj(o, _, _) {for m in o.methods { find_pre_post_method(ccx, m); }}
+      item_impl(_, _, ms) { for m in ms { find_pre_post_method(ccx, m); } }
     }
 }
 

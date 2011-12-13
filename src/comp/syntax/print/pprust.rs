@@ -483,6 +483,22 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
+      ast::item_impl(path, ty, methods) {
+        head(s, "impl");
+        print_type(s, ty);
+        word_space(s, ":");
+        print_path(s, path, false);
+        bopen(s);
+        for meth in methods {
+            hardbreak_if_not_bol(s);
+            maybe_print_comment(s, meth.span.lo);
+            print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
+                     meth.node.ident, [], []);
+            word(s.s, " ");
+            print_block(s, meth.node.meth.body);
+        }
+        bclose(s, item.span);
+      }
       ast::item_res(dt, dt_id, tps, ct_id) {
         head(s, "resource");
         word(s.s, item.ident);

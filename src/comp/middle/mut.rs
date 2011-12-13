@@ -264,6 +264,7 @@ fn is_immutable_def(def: def) -> option::t<str> {
       def_arg(_, by_ref.) | def_arg(_, by_val.) |
       def_arg(_, mode_infer.) { some("argument") }
       def_obj_field(_, imm.) { some("immutable object field") }
+      def_self(_) { some("self argument") }
       def_upvar(_, inner, mut) {
         if !mut { some("upvar") } else { is_immutable_def(*inner) }
       }

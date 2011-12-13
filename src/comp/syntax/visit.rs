@@ -105,6 +105,14 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
                        e, v);
         }
       }
+      item_impl(path, ty, methods) {
+        visit_path(path, e, v);
+        visit_ty(ty, e, v);
+        for m in methods {
+            v.visit_fn(m.node.meth, [], m.span, some(m.node.ident), m.node.id,
+                       e, v);
+        }
+      }
     }
 }
 
@@ -133,7 +141,8 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
             v.visit_ty(m.node.output, e, v);
         }
       }
-      ty_path(p, _) { for tp: @ty in p.node.types { v.visit_ty(tp, e, v); } }
+      ty_path(p, _) { visit_path(p, e, v); }
+      ty_type. {/* no-op */ }
       ty_constr(t, cs) {
         v.visit_ty(t, e, v);
         for tc: @spanned<constr_general_<@path, node_id>> in cs {
@@ -149,10 +158,14 @@ fn visit_constr<E>(_operator: @path, _sp: span, _id: node_id, _e: E,
     // default
 }
 
+fn visit_path<E>(p: @path, e: E, v: vt<E>) {
+    for tp: @ty in p.node.types { v.visit_ty(tp, e, v); }
+}
+
 fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     alt p.node {
       pat_tag(path, children) {
-        for tp: @ty in path.node.types { v.visit_ty(tp, e, v); }
+        visit_path(path, e, v);
         for child: @pat in children { v.visit_pat(child, e, v); }
       }
       pat_rec(fields, _) {
@@ -286,7 +299,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_field(x, _) { v.visit_expr(x, e, v); }
       expr_index(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
-      expr_path(p) { for tp: @ty in p.node.types { v.visit_ty(tp, e, v); } }
+      expr_path(p) { visit_path(p, e, v); }
       expr_fail(eo) { visit_expr_opt(eo, e, v); }
       expr_break. { }
       expr_cont. { }

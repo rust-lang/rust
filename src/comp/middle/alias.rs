@@ -532,7 +532,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
 fn def_is_local(d: ast::def, objfields_count: bool) -> bool {
     ret alt d {
           ast::def_local(_, _) | ast::def_arg(_, _) | ast::def_binding(_) |
-          ast::def_upvar(_, _, _) {
+          ast::def_upvar(_, _, _) | ast::def_self(_) {
             true
           }
           ast::def_obj_field(_, _) { objfields_count }

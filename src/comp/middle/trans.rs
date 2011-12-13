@@ -2678,6 +2678,9 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> local_var_result {
         assert (cx.fcx.llobjfields.contains_key(did.node));
         ret { val: cx.fcx.llobjfields.get(did.node), kind: owned };
       }
+      ast::def_self(did) {
+        ret lval_owned(cx, cx.fcx.llenv);
+      }
       _ {
         bcx_ccx(cx).sess.span_unimpl
             (cx.sp, "unsupported def type in trans_local_def");
@@ -4946,6 +4949,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
                  with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
+      ast::item_impl(_, _, _) { fail "FIXME[impl]"; }
       ast::item_res(dtor, dtor_id, tps, ctor_id) {
         trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
 

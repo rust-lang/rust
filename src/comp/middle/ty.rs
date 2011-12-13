@@ -2702,20 +2702,12 @@ fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
 
 fn def_has_ty_params(def: ast::def) -> bool {
     alt def {
-      ast::def_fn(_, _) { ret true; }
-      ast::def_obj_field(_, _) { ret false; }
-      ast::def_mod(_) { ret false; }
-      ast::def_const(_) { ret false; }
-      ast::def_arg(_, _) { ret false; }
-      ast::def_local(_, _) { ret false; }
-      ast::def_upvar(_, _, _) { ret false; }
-      ast::def_variant(_, _) { ret true; }
-      ast::def_ty(_) { ret false; }
-      ast::def_ty_param(_, _) { ret false; }
-      ast::def_binding(_) { ret false; }
-      ast::def_use(_) { ret false; }
-      ast::def_native_ty(_) { ret false; }
-      ast::def_native_fn(_, _) { ret true; }
+      ast::def_obj_field(_, _) | ast::def_mod(_) | ast::def_const(_) |
+      ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_upvar(_, _, _) |
+      ast::def_ty_param(_, _) | ast::def_binding(_) | ast::def_use(_) |
+      ast::def_native_ty(_) | ast::def_self(_) | ast::def_ty(_) { false }
+      ast::def_fn(_, _) | ast::def_variant(_, _) |
+      ast::def_native_fn(_, _) { true }
     }
 }
 

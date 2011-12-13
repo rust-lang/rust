@@ -33,9 +33,8 @@ tag def {
     def_const(def_id);
     def_arg(def_id, mode);
     def_local(def_id, let_style);
-    def_variant(def_id, /* tag */def_id);
-
-    /* variant */
+    def_variant(def_id /* tag */, def_id /* variant */);
+    def_self(def_id);
     def_ty(def_id);
     def_ty_param(uint, kind);
     def_binding(def_id);
@@ -507,6 +506,7 @@ tag item_ {
              node_id /* dtor id */,
              [ty_param],
              node_id /* ctor id */);
+    item_impl(@path /* iface */, @ty /* self */, [@method]);
 }
 
 type native_item =

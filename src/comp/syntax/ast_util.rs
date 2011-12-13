@@ -36,6 +36,7 @@ fn def_id_of_def(d: def) -> def_id {
     alt d {
       def_fn(id, _) { ret id; }
       def_obj_field(id, _) { ret id; }
+      def_self(id) { ret id; }
       def_mod(id) { ret id; }
       def_native_mod(id) { ret id; }
       def_const(id) { ret id; }

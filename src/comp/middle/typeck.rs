@@ -33,7 +33,9 @@ tag obj_info {
     anon_obj([ast::obj_field], option::t<ty::sty>);
 }
 
-type crate_ctxt = {mutable obj_infos: [obj_info], tcx: ty::ctxt};
+type crate_ctxt = {mutable obj_infos: [obj_info],
+                   impl_map: resolve::impl_map,
+                   tcx: ty::ctxt};
 
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
@@ -89,6 +91,7 @@ fn ty_param_kinds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {kinds: no_kinds, ty: typ};
       }
+      ast::def_self(id) { fail "FIXME[impl]"; }
       ast::def_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_native_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_const(id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
@@ -686,7 +689,7 @@ mod collect {
     }
     fn convert(cx: @ctxt, it: @ast::item) {
         alt it.node {
-          ast::item_mod(_) {
+          ast::item_mod(_) | ast::item_impl(_, _, _) {
             // ignore item_mod, it has no type.
           }
           ast::item_native_mod(native_mod) {
@@ -2657,12 +2660,15 @@ fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
     }
 }
 
-fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
+fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
+               crate: @ast::crate) {
     collect::collect_item_types(tcx, crate);
 
     let obj_infos: [obj_info] = [];
 
-    let ccx = @{mutable obj_infos: obj_infos, tcx: tcx};
+    let ccx = @{mutable obj_infos: obj_infos,
+                impl_map: impl_map,
+                tcx: tcx};
     let visit =
         visit::mk_simple_visitor(@{visit_item: bind check_item(ccx, _)
                                       with *visit::default_simple_visitor()});
