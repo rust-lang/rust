@@ -129,7 +129,7 @@ def make_snapshot(stage, triple, flag):
     file0 = partial_snapshot_name(date, rev, platform)
 
     def in_tar_name(fn):
-      cs = fn.split(os.sep)
+      cs = re.split(r"[\\/]", fn)
       if len(cs) >= 2:
         return os.sep.join(cs[-2:])
 
