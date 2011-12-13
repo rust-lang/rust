@@ -3,34 +3,16 @@
 import os, tarfile, hashlib, re, shutil, sys
 from snapshot import *
 
-old_snapshot_files = {
-    "linux": ["bin/rustc",
-              "lib/libcore.so",
-              "lib/libruststd.so",
-              "lib/librustrt.so",
-              "lib/librustllvm.so"],
-    "macos": ["bin/rustc",
-              "lib/libcore.dylib",
-              "lib/libruststd.dylib",
-              "lib/librustrt.dylib",
-              "lib/librustllvm.dylib"],
-    "winnt": ["bin/rustc.exe",
-              "lib/core.dll",
-              "lib/ruststd.dll",
-              "lib/rustrt.dll",
-              "lib/rustllvm.dll"]
-    }
-
 def unpack_snapshot(triple, snap):
   dl_path = os.path.join(download_dir_base, snap)
   print("opening snapshot " + dl_path)
   tar = tarfile.open(dl_path)
   kernel = get_kernel(triple)
-  for name in old_snapshot_files[kernel]:
-    p = "rust-stage0/" + name
+  for p in tar.getnames():
+    name = p.replace("rust-stage0/", "", 1);
     stagep = os.path.join(triple, "stage0")
     fp = os.path.join(stagep, name)
-    print("extracting " + fp)
+    print("extracting " + p)
     tar.extract(p, download_unpack_base)
     tp = os.path.join(download_unpack_base, p)
     shutil.move(tp, fp)
