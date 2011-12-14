@@ -1,6 +1,8 @@
-use std;
+import core::ctypes::*;
 
-import ctypes::*;
+import core::mtypes::m_float;
+import core::mtypes::m_int;
+import core::mtypes::m_uint;
 
 fn foo_float() -> m_float { ret 0.0 as m_float; }
 fn bar_float() -> float { be foo_float() as float; }
