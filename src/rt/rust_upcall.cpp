@@ -202,11 +202,14 @@ struct s_clone_type_desc_args {
 
 void upcall_s_clone_type_desc(s_clone_type_desc_args *args)
 {
+    rust_task *task = rust_scheduler::get_task();
+    LOG_UPCALL_ENTRY(task);
+
     // Copy the main part of the type descriptor:
     const type_desc *td = args->td;
     int n_descs = td->n_descs;
     size_t sz = sizeof(type_desc) + sizeof(type_desc*) * n_descs;
-    args->res = (type_desc*) malloc(sz);
+    args->res = (type_desc*) task->kernel->malloc(sz, "clone_type_desc");
     memcpy(args->res, td, sizeof(type_desc));
 
     // Recursively copy any referenced descriptors:
