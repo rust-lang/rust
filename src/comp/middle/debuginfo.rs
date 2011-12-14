@@ -782,9 +782,14 @@ fn create_function(fcx: @fn_ctxt, item: @ast::item, llfndecl: ValueRef)
     let ret_ty = alt item.node {
       ast::item_fn(f, _) { f.decl.output }
     };
-    let ty_node = alt ret_ty.node {
-      ast::ty_nil. { llnull() }
-      _ { create_ty(cx, ty::node_id_to_type(ccx_tcx(cx), item.id), ret_ty).node }
+    let ty_node = if cx.sess.get_opts().extra_debuginfo {
+        alt ret_ty.node {
+          ast::ty_nil. { llnull() }
+          _ { create_ty(cx, ty::node_id_to_type(ccx_tcx(cx), item.id),
+                        ret_ty).node }
+        }
+    } else {
+        llnull()
     };
     let sub_node = create_composite_type(SubroutineTag, "", file_node, 0, 0,
                                          0, 0, option::none,

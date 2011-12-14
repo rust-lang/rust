@@ -421,7 +421,8 @@ fn build_session_options(match: getopts::match)
     let libcore = !opt_present(match, "no-core");
     let verify = !opt_present(match, "no-verify");
     let save_temps = opt_present(match, "save-temps");
-    let debuginfo = opt_present(match, "g");
+    let extra_debuginfo = opt_present(match, "xg");
+    let debuginfo = opt_present(match, "g") || extra_debuginfo;
     let stats = opt_present(match, "stats");
     let time_passes = opt_present(match, "time-passes");
     let time_llvm_passes = opt_present(match, "time-llvm-passes");
@@ -468,6 +469,7 @@ fn build_session_options(match: getopts::match)
           libcore: libcore,
           optimize: opt_level,
           debuginfo: debuginfo,
+          extra_debuginfo: extra_debuginfo,
           verify: verify,
           save_temps: save_temps,
           stats: stats,
@@ -516,7 +518,7 @@ fn opts() -> [getopts::opt] {
          optflag("emit-llvm"), optflagopt("pretty"),
          optflag("ls"), optflag("parse-only"), optflag("no-trans"),
          optflag("O"), optopt("opt-level"), optmulti("L"), optflag("S"),
-         optopt("o"), optopt("out-dir"),
+         optopt("o"), optopt("out-dir"), optflag("xg"),
          optflag("c"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optopt("target"), optflag("stats"),
          optflag("time-passes"), optflag("time-llvm-passes"),

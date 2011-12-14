@@ -31,6 +31,7 @@ type options =
      libcore: bool,
      optimize: uint,
      debuginfo: bool,
+     extra_debuginfo: bool,
      verify: bool,
      save_temps: bool,
      stats: bool,

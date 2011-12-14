@@ -4027,7 +4027,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
                 } else {
                     bcx = init_ref_local(bcx, local);
                 }
-                if bcx_ccx(cx).sess.get_opts().debuginfo {
+                if bcx_ccx(cx).sess.get_opts().extra_debuginfo {
                     debuginfo::create_local_var(bcx, local);
                 }
             }
@@ -4422,7 +4422,7 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
 
 fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
                         arg_tys: [ty::arg]) -> @block_ctxt {
-    if fcx_ccx(fcx).sess.get_opts().debuginfo {
+    if fcx_ccx(fcx).sess.get_opts().extra_debuginfo {
         llvm::LLVMAddAttribute(llvm::LLVMGetFirstParam(fcx.llfn),
                                lib::llvm::LLVMStructRetAttribute as
                                    lib::llvm::llvm::Attribute);
@@ -4446,7 +4446,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
           }
           ast::by_ref. {}
         }
-        if fcx_ccx(fcx).sess.get_opts().debuginfo {
+        if fcx_ccx(fcx).sess.get_opts().extra_debuginfo {
             debuginfo::create_arg(bcx, args[arg_n]);
         }
         arg_n += 1u;
@@ -4584,7 +4584,7 @@ fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
     let fcx = option::none;
     trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|new_fcx| fcx = option::some(new_fcx);});
-    if cx.ccx.sess.get_opts().debuginfo {
+    if cx.ccx.sess.get_opts().extra_debuginfo {
         let item = alt option::get(cx.ccx.ast_map.find(id)) {
             ast_map::node_item(item) { item }
         };
@@ -5654,7 +5654,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let td = mk_target_data(sess.get_targ_cfg().target_strs.data_layout);
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
-    if sess.get_opts().debuginfo {
+    if sess.get_opts().extra_debuginfo {
         declare_dbg_intrinsics(llmod, intrinsics);
     }
     let int_type = T_int(targ_cfg);
