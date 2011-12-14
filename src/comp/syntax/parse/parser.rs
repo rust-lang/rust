@@ -155,8 +155,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "lambda", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
-                 "log", "log_err", "tag", "obj", "self", "copy", "sendfn",
-                 "impl"] {
+                 "log", "log_err", "tag", "obj", "copy", "sendfn", "impl"] {
         words.insert(word, ());
     }
     words
@@ -942,15 +941,6 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         let e = parse_expr(p);
         ex = ast::expr_copy(e);
         hi = e.span.hi;
-    } else if is_word(p, "self") && p.look_ahead(1u) == token::DOT {
-        p.bump(); p.bump();
-        // The rest is a call expression.
-        let f: @ast::expr = parse_self_method(p);
-        let es =
-            parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
-                      parse_expr, p);
-        hi = es.span.hi;
-        ex = ast::expr_call(f, es.node, false);
     } else if p.peek() == token::MOD_SEP ||
                   is_ident(p.peek()) && !is_word(p, "true") &&
                       !is_word(p, "false") {
@@ -996,12 +986,6 @@ fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
     let hi = es.span.hi;
     let e = mk_expr(p, es.span.lo, hi, ast::expr_vec(es.node, ast::imm));
     ret mk_mac_expr(p, lo, hi, ast::mac_invoc(pth, e, none));
-}
-
-fn parse_self_method(p: parser) -> @ast::expr {
-    let sp = p.get_span();
-    let f_name: ast::ident = parse_ident(p);
-    ret mk_expr(p, sp.lo, sp.hi, ast::expr_self_method(f_name));
 }
 
 fn parse_dot_or_call_expr(p: parser) -> @ast::expr {

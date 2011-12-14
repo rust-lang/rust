@@ -52,7 +52,7 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
     let lltop = bcx.llbb;
 
     // Both regular arguments and type parameters are handled here.
-    create_llargs_for_fn_args(fcx, none::<ty::t>, fn_args, ty_params);
+    create_llargs_for_fn_args(fcx, no_self, fn_args, ty_params);
     let arg_tys: [ty::arg] = arg_tys_of_fn(ccx, ctor_id);
     bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
 
@@ -893,7 +893,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     // method's definition will be in the executable.
     ccx.item_ids.insert(m.node.id, llfn);
     ccx.item_symbols.insert(m.node.id, s);
-    trans_fn(mcx, m.span, m.node.meth, llfn, some(self_ty), ty_params,
+    trans_fn(mcx, m.span, m.node.meth, llfn, obj_self(self_ty), ty_params,
              m.node.id);
 
     ret llfn;

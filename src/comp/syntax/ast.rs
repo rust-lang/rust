@@ -28,13 +28,13 @@ type ty_param = {ident: ident, kind: kind};
 tag def {
     def_fn(def_id, purity);
     def_obj_field(def_id, mutability);
+    def_self(def_id);
     def_mod(def_id);
     def_native_mod(def_id);
     def_const(def_id);
     def_arg(def_id, mode);
     def_local(def_id, let_style);
     def_variant(def_id /* tag */, def_id /* variant */);
-    def_self(def_id);
     def_ty(def_id);
     def_ty_param(uint, kind);
     def_binding(def_id);
@@ -214,7 +214,6 @@ tag expr_ {
     expr_rec([field], option::t<@expr>);
     expr_call(@expr, [@expr], bool);
     expr_tup([@expr]);
-    expr_self_method(ident);
     expr_bind(@expr, [option::t<@expr>]);
     expr_binary(binop, @expr, @expr);
     expr_unary(unop, @expr);

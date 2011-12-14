@@ -335,7 +335,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         clear_pp(rslt);
         handle_var(fcx, rslt, e.id, path_to_ident(fcx.ccx.tcx, p));
       }
-      expr_self_method(v) { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_log(_, arg) {
         find_pre_post_expr(fcx, arg);
         copy_pre_post(fcx.ccx, e.id, arg);

@@ -203,6 +203,9 @@ fn check_move_rhs(cx: @ctx, src: @expr) {
           def_obj_field(_, _) {
             mk_err(cx, src.span, msg_move_out, "object field");
           }
+          def_self(_) {
+            mk_err(cx, src.span, msg_move_out, "method self");
+          }
           _ { }
         }
         check_lval(cx, src, msg_move_out);

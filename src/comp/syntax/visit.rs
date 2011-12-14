@@ -251,7 +251,6 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         visit_exprs(args, e, v);
         v.visit_expr(callee, e, v);
       }
-      expr_self_method(_) { }
       expr_bind(callee, args) {
         v.visit_expr(callee, e, v);
         for eo: option::t<@expr> in args { visit_expr_opt(eo, e, v); }

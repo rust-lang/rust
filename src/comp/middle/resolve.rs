@@ -37,6 +37,7 @@ tag scope {
     scope_loop(@ast::local); // there's only 1 decl per loop.
     scope_block(ast::blk, @mutable uint, @mutable uint);
     scope_arm(ast::arm);
+    scope_self(ast::node_id);
 }
 
 type scopes = list<scope>;
@@ -437,6 +438,9 @@ fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
         v.visit_local(decl, new_sc, v);
         v.visit_block(blk, new_sc, v);
       }
+      ast::expr_anon_obj(_) {
+        visit::visit_expr(x, cons(scope_self(x.id), @sc), v);
+      }
       _ { visit::visit_expr(x, sc, v); }
     }
 }
@@ -723,7 +727,10 @@ fn def_is_local(d: def) -> bool {
 }
 
 fn def_is_obj_field(d: def) -> bool {
-    ret alt d { ast::def_obj_field(_, _) { true } _ { false } };
+    alt d {
+      ast::def_obj_field(_, _) | ast::def_self(_) { true }
+      _ { false }
+    }
 }
 
 fn def_is_ty_arg(d: def) -> bool {
@@ -741,7 +748,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           scope_item(it) {
             alt it.node {
               ast::item_obj(ob, ty_params, _) {
-                ret lookup_in_obj(name, ob, ty_params, ns);
+                ret lookup_in_obj(name, ob, ty_params, ns, it.id);
               }
               ast::item_impl(_, _, _) {
                 if (name == "self" && ns == ns_value) {
@@ -761,6 +768,11 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                 if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }
               }
               _ { }
+            }
+          }
+          scope_self(id) {
+            if (name == "self" && ns == ns_value) {
+                ret some(ast::def_self(local_def(id)));
             }
           }
           scope_native_item(it) {
@@ -881,9 +893,10 @@ fn lookup_in_fn(name: ident, decl: ast::fn_decl, ty_params: [ast::ty_param],
 }
 
 fn lookup_in_obj(name: ident, ob: ast::_obj, ty_params: [ast::ty_param],
-                 ns: namespace) -> option::t<def> {
+                 ns: namespace, id: node_id) -> option::t<def> {
     alt ns {
       ns_value. {
+        if name == "self" { ret some(ast::def_self(local_def(id))); }
         for f: ast::obj_field in ob.fields {
             if str::eq(f.ident, name) {
                 ret some(ast::def_obj_field(local_def(f.id), f.mut));
@@ -1295,23 +1308,17 @@ fn index_nmod(md: ast::native_mod) -> mod_index {
 
 // External lookups
 fn ns_for_def(d: def) -> namespace {
-    ret alt d {
-          ast::def_fn(_, _) { ns_value }
-          ast::def_obj_field(_, _) { ns_value }
-          ast::def_mod(_) { ns_module }
-          ast::def_native_mod(_) { ns_module }
-          ast::def_const(_) { ns_value }
-          ast::def_arg(_, _) { ns_value }
-          ast::def_local(_, _) { ns_value }
-          ast::def_upvar(_, _, _) { ns_value }
-          ast::def_variant(_, _) { ns_value }
-          ast::def_ty(_) { ns_type }
-          ast::def_binding(_) { ns_type }
-          ast::def_use(_) { ns_module }
-          ast::def_native_ty(_) { ns_type }
-          ast::def_native_fn(_, _) { ns_value }
-          ast::def_self(_) { ns_value }
-        };
+    alt d {
+      ast::def_fn(_, _) | ast::def_obj_field(_, _) | ast::def_self(_) |
+      ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
+      ast::def_upvar(_, _, _) | ast::def_variant(_, _) |
+      ast::def_native_fn(_, _) | ast::def_self(_) { ns_value }
+
+      ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
+
+      ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
+      ast::def_native_ty(_) { ns_type }
+    }
 }
 
 fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->

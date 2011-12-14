@@ -2678,7 +2678,9 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> local_var_result {
         ret { val: cx.fcx.llobjfields.get(did.node), kind: owned };
       }
       ast::def_self(did) {
-        ret lval_owned(cx, cx.fcx.llenv);
+        let slf = option::get(cx.fcx.llself);
+        let ptr = PointerCast(cx, slf.v, T_ptr(type_of_or_i8(cx, slf.t)));
+        ret {val: ptr, kind: owned};
       }
       _ {
         bcx_ccx(cx).sess.span_unimpl
@@ -2832,21 +2834,29 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
     ret lval_owned(next_cx, elt);
 }
 
+fn expr_is_lval(bcx: @block_ctxt, e: @ast::expr) -> bool {
+    let ccx = bcx_ccx(bcx);
+    ty::expr_is_lval(ccx.method_map, ccx.tcx, e)
+}
+
 // This is for impl methods, not obj methods.
 fn trans_method_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
                        did: ast::def_id) -> lval_maybe_callee {
-    let bcx = trans_expr(bcx, base, ignore); // FIXME pass self
-    lval_static_fn(bcx, did, e.id)
+    let tz = [], tr = [];
+    let basety = ty::expr_ty(bcx_tcx(bcx), base);
+    let {bcx, val} = trans_arg_expr(bcx, {mode: ast::by_ref, ty: basety},
+                                    type_of_or_i8(bcx, basety), tz, tr, base);
+    let val = PointerCast(bcx, val, T_opaque_boxed_closure_ptr(bcx_ccx(bcx)));
+    {env: obj_env(val) with lval_static_fn(bcx, did, e.id)}
 }
 
 fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     alt e.node {
       ast::expr_path(p) { ret trans_path(bcx, p, e.id); }
       ast::expr_field(base, ident) {
-        let method_map = bcx_ccx(bcx).method_map;
         // Lval means this is a record field, so not a method
-        if !ty::expr_is_lval(method_map, bcx_tcx(bcx), e) {
-            alt method_map.find(e.id) {
+        if !expr_is_lval(bcx, e) {
+            alt bcx_ccx(bcx).method_map.find(e.id) {
               some(did) { // An impl method
                 ret trans_method_callee(bcx, e, base, did);
               }
@@ -2856,15 +2866,6 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
                      env: obj_env(of.objptr), generic: none};
               }
             }
-        }
-      }
-      ast::expr_self_method(ident) {
-        alt bcx.fcx.llself {
-          some(pair) {
-            let fld = trans_object_field_inner(bcx, pair.v, ident, pair.t);
-            ret {bcx: fld.bcx, val: fld.mthptr, kind: owned,
-                 env: obj_env(fld.objptr), generic: none};
-          }
         }
       }
       _ {}
@@ -3475,7 +3476,7 @@ fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
 // use trans_temp_expr.
 fn trans_temp_lval(bcx: @block_ctxt, e: @ast::expr) -> lval_result {
     let bcx = bcx;
-    if ty::expr_is_lval(bcx_ccx(bcx).method_map, bcx_tcx(bcx), e) {
+    if expr_is_lval(bcx, e) {
         ret trans_lval(bcx, e);
     } else {
         let tcx = bcx_tcx(bcx);
@@ -3513,7 +3514,7 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
 // - exprs with non-immediate type never get dest=by_val
 fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
-    if ty::expr_is_lval(bcx_ccx(bcx).method_map, tcx, e) {
+    if expr_is_lval(bcx, e) {
         ret lval_to_dps(bcx, e, dest);
     }
 
@@ -3555,7 +3556,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_closure::trans_bind(bcx, f, args, e.id, dest);
       }
       ast::expr_copy(a) {
-        if !ty::expr_is_lval(bcx_ccx(bcx).method_map, tcx, a) {
+        if !expr_is_lval(bcx, a) {
             ret trans_expr(bcx, a, dest);
         }
         else { ret lval_to_dps(bcx, a, dest); }
@@ -3957,9 +3958,7 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let bcx = bcx;
     alt local.node.init {
       some(init) {
-        if init.op == ast::init_assign ||
-           !ty::expr_is_lval(bcx_ccx(bcx).method_map, bcx_tcx(bcx),
-                             init.expr) {
+        if init.op == ast::init_assign || !expr_is_lval(bcx, init.expr) {
             bcx = trans_expr_save_in(bcx, init.expr, llptr);
         } else { // This is a move from an lval, must perform an actual move
             let sub = trans_lval(bcx, init.expr);
@@ -4347,15 +4346,15 @@ fn new_fn_ctxt(cx: @local_ctxt, sp: span, llfndecl: ValueRef) -> @fn_ctxt {
 // spaces that have been created for them (by code in the llallocas field of
 // the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
 // field of the fn_ctxt with
-fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: option::t<ty::t>,
+fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
                              args: [ast::arg], ty_params: [ast::ty_param]) {
     // Skip the implicit arguments 0, and 1.  TODO: Pull out 2u and define
     // it as a constant, since we're using it in several places in trans this
     // way.
     let arg_n = 2u;
     alt ty_self {
-      some(tt) { cx.llself = some::<val_self_pair>({v: cx.llenv, t: tt}); }
-      none. {
+      obj_self(tt) | impl_self(tt) { cx.llself = some({v: cx.llenv, t: tt}); }
+      no_self. {
         let i = 0u;
         for tp: ast::ty_param in ty_params {
             let llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
@@ -4473,19 +4472,23 @@ fn finish_fn(fcx: @fn_ctxt, lltop: BasicBlockRef) {
     RetVoid(ret_cx);
 }
 
+tag self_arg { obj_self(ty::t); impl_self(ty::t); no_self; }
+
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
 fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
-                 ty_self: option::t<ty::t>, ty_params: [ast::ty_param],
+                 ty_self: self_arg, ty_params: [ast::ty_param],
                  id: ast::node_id, maybe_load_env: block(@fn_ctxt)) {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
     let fcx = new_fn_ctxt_w_id(cx, sp, llfndecl, id, f.decl.cf);
     create_llargs_for_fn_args(fcx, ty_self, f.decl.inputs, ty_params);
-    alt fcx.llself {
-      some(llself) { populate_fn_ctxt_from_llself(fcx, llself); }
+    alt ty_self {
+      obj_self(_) {
+          populate_fn_ctxt_from_llself(fcx, option::get(fcx.llself));
+      }
       _ { }
     }
 
@@ -4526,7 +4529,7 @@ fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
-            ty_self: option::t<ty::t>, ty_params: [ast::ty_param],
+            ty_self: self_arg, ty_params: [ast::ty_param],
             id: ast::node_id) {
     let do_time = cx.ccx.sess.get_opts().stats;
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
@@ -4549,7 +4552,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
     let ret_t = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
-    create_llargs_for_fn_args(fcx, none, dtor.decl.inputs, ty_params);
+    create_llargs_for_fn_args(fcx, no_self, dtor.decl.inputs, ty_params);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
     let arg_t = arg_tys_of_fn(ccx, ctor_id)[0].ty;
@@ -4608,7 +4611,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
       }
     }
     let fcx = new_fn_ctxt(cx, variant.span, llfndecl);
-    create_llargs_for_fn_args(fcx, none, fn_args, ty_params);
+    create_llargs_for_fn_args(fcx, no_self, fn_args, ty_params);
     let ty_param_substs: [ty::t] = [];
     i = 0u;
     for tp: ast::ty_param in ty_params {
@@ -4655,13 +4658,15 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     finish_fn(fcx, lltop);
 }
 
-fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method]) {
+fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
+              id: ast::node_id) {
     let sub_cx = extend_path(cx, name);
     for m in methods {
         alt cx.ccx.item_ids.find(m.node.id) {
-          some(llfndecl) {
+          some(llfn) {
             trans_fn(extend_path(sub_cx, m.node.ident), m.span, m.node.meth,
-                     llfndecl, none, [], m.node.id);
+                     llfn, impl_self(ty::node_id_to_monotype(cx.ccx.tcx, id)),
+                     [], m.node.id);
           }
         }
     }
@@ -4961,7 +4966,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
         let sub_cx = extend_path(cx, item.ident);
         alt cx.ccx.item_ids.find(item.id) {
           some(llfndecl) {
-            trans_fn(sub_cx, item.span, f, llfndecl, none, tps, item.id);
+            trans_fn(sub_cx, item.span, f, llfndecl, no_self, tps, item.id);
           }
           _ {
             cx.ccx.sess.span_fatal(item.span,
@@ -4975,14 +4980,14 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
                  with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
-      ast::item_impl(_, _, ms) { trans_impl(cx, item.ident, ms); }
+      ast::item_impl(_, _, ms) { trans_impl(cx, item.ident, ms, item.id); }
       ast::item_res(dtor, dtor_id, tps, ctor_id) {
         trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
 
         // Create a function for the destructor
         alt cx.ccx.item_ids.find(item.id) {
           some(lldtor_decl) {
-            trans_fn(cx, item.span, dtor, lldtor_decl, none, tps, dtor_id);
+            trans_fn(cx, item.span, dtor, lldtor_decl, no_self, tps, dtor_id);
           }
           _ {
             cx.ccx.sess.span_fatal(item.span, "unbound dtor in trans_item");

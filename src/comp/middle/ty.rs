@@ -90,6 +90,7 @@ export mk_uint;
 export mk_uniq;
 export mk_var;
 export mk_opaque_closure;
+export gen_ty;
 export mode;
 export mt;
 export node_type_table;

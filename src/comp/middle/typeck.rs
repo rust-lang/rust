@@ -8,7 +8,7 @@ import util::common::*;
 import syntax::codemap::span;
 import middle::ty;
 import middle::ty::{node_id_to_type, arg, bind_params_in_type, block_ty,
-                    expr_ty, field, node_type_table,
+                    expr_ty, field, node_type_table, mk_nil,
                     ty_param_substs_opt_and_ty, ty_param_kinds_and_ty};
 import util::ppaux::ty_to_str;
 import middle::ty::unify::{ures_ok, ures_err, fix_ok, fix_err};
@@ -25,17 +25,12 @@ type method_map = hashmap<ast::node_id, ast::def_id>;
 type ty_table = hashmap<ast::def_id, ty::t>;
 
 // Used for typechecking the methods of an object.
-tag obj_info {
-
-    // Regular objects have a node_id at compile time.
-    regular_obj([ast::obj_field], ast::node_id);
-
-    // Anonymous objects only have a type at compile time.  It's optional
-    // because not all anonymous objects have a inner_obj to attach to.
-    anon_obj([ast::obj_field], option::t<ty::sty>);
+tag self_info {
+    self_obj([ast::obj_field], ty::t);
+    self_impl(ty::t);
 }
 
-type crate_ctxt = {mutable obj_infos: [obj_info],
+type crate_ctxt = {mutable self_infos: [self_info],
                    impl_map: resolve::impl_map,
                    method_map: method_map,
                    tcx: ty::ctxt};
@@ -93,7 +88,13 @@ fn ty_param_kinds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {kinds: [], ty: typ};
       }
-      ast::def_self(id) { fail "FIXME[impl]"; }
+      ast::def_self(id) {
+        alt get_self_info(fcx.ccx) {
+          some(self_obj(_, obj_t)) | some(self_impl(obj_t)) {
+            ret {kinds: [], ty: obj_t};
+          }
+        }
+      }
       ast::def_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_native_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_const(id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
@@ -696,7 +697,7 @@ mod collect {
             write::ty_only(cx.tcx, it.id, tpt.ty);
             get_tag_variant_types(cx, local_def(it.id), variants, ty_params);
           }
-          ast::item_impl(_, _, ms) {
+          ast::item_impl(_, selfty, ms) {
             for m in ms {
                 let ty = ty::method_ty_to_fn_ty(
                     cx.tcx, ty_of_method(cx.tcx, m_collect, m));
@@ -704,6 +705,8 @@ mod collect {
                                      {kinds: [], ty: ty});
                 write::ty_only(cx.tcx, m.node.id, ty);
             }
+            write::ty_only(cx.tcx, it.id, ast_ty_to_ty(cx.tcx, m_collect,
+                                                       selfty));
           }
           ast::item_obj(object, ty_params, ctor_id) {
             // Now we need to call ty_of_obj_ctor(); this is the type that
@@ -1115,19 +1118,13 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
         };
 
     // Add object fields, if any.
-    let obj_fields = [];
-    alt get_obj_info(ccx) {
-      some(oinfo) {
-        alt oinfo {
-          regular_obj(ofs, _) { obj_fields = ofs; }
-          anon_obj(ofs, _) { obj_fields = ofs; }
+    alt get_self_info(ccx) {
+      some(self_obj(ofs, _)) {
+        for f in ofs {
+            assign(f.id, some(ty::node_id_to_type(ccx.tcx, f.id)));
         }
       }
-      none. {/* no fields */ }
-    }
-    for f: ast::obj_field in obj_fields {
-        let field_ty = ty::node_id_to_type(ccx.tcx, f.id);
-        assign(f.id, some(field_ty));
+      _ {}
     }
 
     // Add formal parameters.
@@ -1992,60 +1989,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_call(f, args, _) {
         bot = check_call_full(fcx, expr.span, f, args, expr.id);
       }
-      ast::expr_self_method(ident) {
-        let t = ty::mk_nil(tcx);
-        let this_obj_sty: option::t<ty::sty> =
-            some(structure_of(fcx, expr.span, ty::mk_nil(tcx)));
-        let this_obj_info: option::t<obj_info> = get_obj_info(fcx.ccx);
-        alt this_obj_info {
-          some(oinfo) {
-            alt oinfo {
-              regular_obj(_, obj_id) {
-                let did = local_def(obj_id);
-
-                // Try looking up the current object in the type
-                // cache.
-                alt tcx.tcache.find(did) {
-                  some(tpt) {
-                    // If we're typechecking a self-method on
-                    // a regular object, this lookup should
-                    // succeed.
-                    this_obj_sty = some(structure_of(fcx, expr.span, tpt.ty));
-                  }
-                  none. {
-                    tcx.sess.bug("didn't find " + int::str(did.node) +
-                                     " in type cache");
-                  }
-                }
-              }
-              anon_obj(_, obj_sty) { this_obj_sty = obj_sty; }
-            }
-          }
-          none. {
-            // Shouldn't happen.
-            tcx.sess.span_err(expr.span, "self-call in non-object context");
-          }
-        }
-
-        // Grab this method's type out of the current object type.
-        alt this_obj_sty {
-          some(sty) {
-            alt sty {
-              ty::ty_obj(methods) {
-                for method: ty::method in methods {
-                    if method.ident == ident {
-                        t = ty::method_ty_to_fn_ty(tcx, method);
-                    }
-                }
-              }
-              _ { fail; }
-            }
-          }
-          none. { }
-        }
-        write::ty_only_fixup(fcx, id, t);
-        require_impure(tcx.sess, fcx.purity, expr.span);
-      }
       ast::expr_cast(e, t) {
         bot = check_expr(fcx, e);
         let t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
@@ -2172,15 +2115,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
             result
         }
+
         bot |= check_expr(fcx, base);
         let base_t = expr_ty(tcx, base);
         let iscope = fcx.ccx.impl_map.get(expr.id);
         alt lookup_method(fcx, iscope, field, base_t) {
           some(method) {
             let mt = ty_of_method(fcx.ccx.tcx, m_check, method);
-            let f_ty = ty::mk_fn(fcx.ccx.tcx, mt.proto, mt.inputs,
-                                 mt.output, mt.cf, mt.constrs);
-            write::ty_only_fixup(fcx, id, f_ty);
+            let fty = ty::mk_fn(fcx.ccx.tcx, mt.proto, mt.inputs,
+                                mt.output, mt.cf, mt.constrs);
+            write::ty_only_fixup(fcx, id, fty);
             fcx.ccx.method_map.insert(id, local_def(method.node.id));
           }
           _ {
@@ -2255,15 +2199,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             // Typecheck 'inner_obj'.  If it exists, it had better have object
             // type.
             let inner_obj_methods: [ty::method] = [];
-            let inner_obj_ty: ty::t = ty::mk_nil(tcx);
             let inner_obj_sty: option::t<ty::sty> = none;
             alt ao.inner_obj {
               none. { }
               some(e) {
-                // If there's a inner_obj, we push it onto the obj_infos stack
-                // so that self-calls can be checked within its context later.
+                // If there's a inner_obj, we push it onto the self_infos
+                // stack so that self-calls can be checked within its context
+                // later.
                 bot |= check_expr(fcx, e);
-                inner_obj_ty = expr_ty(tcx, e);
+                let inner_obj_ty = expr_ty(tcx, e);
                 inner_obj_sty = some(structure_of(fcx, e.span, inner_obj_ty));
 
                 alt inner_obj_sty {
@@ -2282,10 +2226,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 }
               }
             }
-
-            fcx.ccx.obj_infos +=
-                [anon_obj(vec::map(ast_util::obj_field_from_anon_obj_field,
-                                   fields), inner_obj_sty)];
 
             // Whenever an outer method overrides an inner, we need to remove
             // that inner from the type.  Filter inner_obj_methods to remove
@@ -2311,9 +2251,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
 
             let f = bind filtering_fn(fcx.ccx, _, ao.methods);
-            inner_obj_methods =
-                vec::filter_map::<ty::method,
-                                       ty::method>(f, inner_obj_methods);
+            inner_obj_methods = vec::filter_map(f, inner_obj_methods);
 
             method_types += inner_obj_methods;
         }
@@ -2325,19 +2263,22 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Write the methods into the node type table.  (This happens in
         // collect::convert for regular objects.)
         let i = 0u;
-        while i < vec::len::<@ast::method>(ao.methods) {
+        while i < vec::len(ao.methods) {
             write::ty_only(tcx, ao.methods[i].node.id,
                            ty::method_ty_to_fn_ty(tcx, method_types[i]));
             i += 1u;
         }
 
+        fcx.ccx.self_infos +=
+            [self_obj(vec::map(ast_util::obj_field_from_anon_obj_field,
+                               fields), ot)];
         // Typecheck the methods.
         for method: @ast::method in ao.methods {
             check_method(fcx.ccx, method);
         }
 
         // Now remove the info from the stack.
-        vec::pop::<obj_info>(fcx.ccx.obj_infos);
+        vec::pop(fcx.ccx.self_infos);
       }
       _ { tcx.sess.unimpl("expr type in typeck::check_expr"); }
     }
@@ -2357,8 +2298,8 @@ fn next_ty_var(fcx: @fn_ctxt) -> ty::t {
     ret ty::mk_var(fcx.ccx.tcx, next_ty_var_id(fcx));
 }
 
-fn get_obj_info(ccx: @crate_ctxt) -> option::t<obj_info> {
-    ret vec::last::<obj_info>(ccx.obj_infos);
+fn get_self_info(ccx: @crate_ctxt) -> option::t<self_info> {
+    ret vec::last(ccx.self_infos);
 }
 
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
@@ -2639,13 +2580,18 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_res(f, dtor_id, _, _) { check_fn(ccx, f, dtor_id, none); }
       ast::item_obj(ob, _, _) {
         // We're entering an object, so gather up the info we need.
-        ccx.obj_infos += [regular_obj(ob.fields, it.id)];
+        ccx.self_infos += [self_obj(ob.fields,
+                                    ccx.tcx.tcache.get(local_def(it.id)).ty)];
         // Typecheck the methods.
         for method: @ast::method in ob.methods { check_method(ccx, method); }
         // Now remove the info from the stack.
-        vec::pop::<obj_info>(ccx.obj_infos);
+        vec::pop(ccx.self_infos);
       }
-      ast::item_impl(_, _, ms) { for m in ms { check_method(ccx, m); } }
+      ast::item_impl(_, ty, ms) {
+        ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];
+        for m in ms { check_method(ccx, m); }
+        vec::pop(ccx.self_infos);
+      }
       _ {/* nothing to do */ }
     }
 }
@@ -2701,9 +2647,7 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                crate: @ast::crate) -> method_map {
     collect::collect_item_types(tcx, crate);
 
-    let obj_infos: [obj_info] = [];
-
-    let ccx = @{mutable obj_infos: obj_infos,
+    let ccx = @{mutable self_infos: [],
                 impl_map: impl_map,
                 method_map: std::map::new_int_hash(),
                 tcx: tcx};

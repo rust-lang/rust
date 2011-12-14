@@ -736,10 +736,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             print_expr(s, option::get(blk));
         }
       }
-      ast::expr_self_method(ident) {
-        word(s.s, "self.");
-        print_ident(s, ident);
-      }
       ast::expr_bind(func, args) {
         fn print_opt(s: ps, expr: option::t<@ast::expr>) {
             alt expr {

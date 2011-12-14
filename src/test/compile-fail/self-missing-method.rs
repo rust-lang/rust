@@ -1,4 +1,4 @@
-// error-pattern:expecting ., found (
+// error-pattern:attempted field access on type fn
 fn main() {
 
   obj foo() {

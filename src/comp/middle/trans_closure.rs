@@ -339,7 +339,7 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
     let trans_closure_env = lambda(ck: ty::closure_kind) -> ValueRef {
         let upvars = get_freevars(ccx.tcx, id);
         let {llbox, box_ty, bcx} = build_closure(bcx, upvars, ck);
-        trans_closure(sub_cx, sp, f, llfn, none, [], id, {|fcx|
+        trans_closure(sub_cx, sp, f, llfn, no_self, [], id, {|fcx|
             load_environment(bcx, fcx, box_ty, upvars, ck);
         });
         llbox
@@ -351,7 +351,7 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
       ast::proto_send. { trans_closure_env(ty::closure_send) }
       ast::proto_bare. {
         let closure = C_null(T_opaque_boxed_closure_ptr(ccx));
-        trans_closure(sub_cx, sp, f, llfn, none, [], id, {|_fcx|});
+        trans_closure(sub_cx, sp, f, llfn, no_self, [], id, {|_fcx|});
         closure
       }
     };

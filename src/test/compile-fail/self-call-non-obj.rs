@@ -1,4 +1,4 @@
-// error-pattern:self-call in non-object context
+// error-pattern:unresolved name: self
 
 // Fix for issue #707.
 fn main() {

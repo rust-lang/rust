@@ -240,7 +240,7 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
     }
     let f_may_close =
         alt f.node {
-          ast::expr_path(_) { def_is_local(cx.tcx.def_map.get(f.id), true) }
+          ast::expr_path(_) { def_is_local(cx.tcx.def_map.get(f.id)) }
           _ { true }
         };
     if f_may_close {
@@ -374,7 +374,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
 fn check_var(cx: ctx, ex: @ast::expr, p: @ast::path, id: ast::node_id,
              assign: bool, sc: scope) {
     let def = cx.tcx.def_map.get(id);
-    if !def_is_local(def, false) { ret; }
+    if !def_is_local(def) { ret; }
     let my_defnum = ast_util::def_id_of_def(def).node;
     let my_local_id = local_id_of_node(cx, my_defnum);
     let var_t = ty::expr_ty(cx.tcx, ex);
@@ -529,20 +529,19 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
     ret helper(cx.tcx, needle, haystack, mut);
 }
 
-fn def_is_local(d: ast::def, objfields_count: bool) -> bool {
-    ret alt d {
-          ast::def_local(_, _) | ast::def_arg(_, _) | ast::def_binding(_) |
-          ast::def_upvar(_, _, _) | ast::def_self(_) {
-            true
-          }
-          ast::def_obj_field(_, _) { objfields_count }
-          _ { false }
-        };
+fn def_is_local(d: ast::def) -> bool {
+    alt d {
+      ast::def_local(_, _) | ast::def_arg(_, _) | ast::def_binding(_) |
+      ast::def_upvar(_, _, _) | ast::def_self(_) |
+      ast::def_obj_field(_, _) { true }
+      _ { false }
+    }
 }
 
 fn local_id_of_node(cx: ctx, id: node_id) -> uint {
-    alt cx.tcx.items.get(id) {
-      ast_map::node_arg(_, id) | ast_map::node_local(id) { id }
+    alt cx.tcx.items.find(id) {
+      some(ast_map::node_arg(_, id)) | some(ast_map::node_local(id)) { id }
+      _ { 0u }
     }
 }
 

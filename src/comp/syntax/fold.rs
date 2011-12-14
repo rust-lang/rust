@@ -353,7 +353,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_call(fld.fold_expr(f), fld.map_exprs(fld.fold_expr, args),
                       blk)
           }
-          expr_self_method(id) { expr_self_method(fld.fold_ident(id)) }
           expr_bind(f, args) {
             let opt_map_se = bind option::map(fld.fold_expr, _);
             expr_bind(fld.fold_expr(f), vec::map(opt_map_se, args))
