@@ -1466,6 +1466,7 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
             let box_cell = GEPi(bcx, v0, [0, abi::fn_field_box]);
             free_ty(bcx, Load(bcx, box_cell), t)
           }
+          ty::ty_native_fn(_, _) |
           ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
             let box_cell = GEPi(bcx, v0, [0, abi::fn_field_box]);
             decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
