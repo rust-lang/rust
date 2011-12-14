@@ -55,7 +55,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         };
     }
 
-    let ccx = bcx_ccx(bcx);
+    //let ccx = bcx_ccx(bcx);
     let tcx = bcx_tcx(bcx);
 
     // First, synthesize a tuple type containing the types of all the
