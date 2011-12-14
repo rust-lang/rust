@@ -1292,20 +1292,27 @@ fn emit_tydescs(ccx: @crate_ctxt) {
 
 fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
     let bcx = cx;
+    let tcx = bcx_tcx(cx);
     // NB: v is an *alias* of type t here, not a direct value.
-    if ty::type_is_boxed(bcx_tcx(bcx), t) {
+    alt ty::struct(tcx, t) {
+      ty::ty_box(_) {
         bcx = incr_refcnt_of_boxed(bcx, Load(bcx, v));
-    } else if ty::type_is_unique_box(bcx_tcx(bcx), t) {
+      }
+      ty::ty_uniq(_) {
         check trans_uniq::type_is_unique_box(bcx, t);
         let {bcx: cx, val} = trans_uniq::duplicate(bcx, Load(bcx, v), t);
         bcx = cx;
         Store(bcx, val, v);
-    } else if ty::type_is_structural(bcx_tcx(bcx), t) {
-        bcx = iter_structural_ty(bcx, v, t, take_ty);
-    } else if ty::type_is_vec(bcx_tcx(bcx), t) {
+      }
+      ty::ty_vec(_) | ty::ty_str. {
         let {bcx: cx, val} = tvec::duplicate(bcx, Load(bcx, v), t);
         bcx = cx;
         Store(bcx, val, v);
+      }
+      _ when ty::type_is_structural(bcx_tcx(bcx), t) {
+        bcx = iter_structural_ty(bcx, v, t, take_ty);
+      }
+      _ { /* fallthrough */ }
     }
 
     build_return(bcx);
@@ -1319,6 +1326,19 @@ fn incr_refcnt_of_boxed(cx: @block_ctxt, box_ptr: ValueRef) -> @block_ctxt {
     rc = Add(cx, rc, C_int(ccx, 1));
     Store(cx, rc, rc_ptr);
     ret cx;
+}
+
+fn call_bound_data_glue_for_closure(bcx: @block_ctxt,
+                                    v: ValueRef,
+                                    field: int) {
+    // Call through the closure's own fields-drop glue.
+    let ccx = bcx_ccx(bcx);
+    let v = PointerCast(bcx, v, T_opaque_closure_ptr(ccx));
+    let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
+    let bindings = GEPi(bcx, body, [0, abi::closure_elt_bindings]);
+    let tydescptr = GEPi(bcx, body, [0, abi::closure_elt_tydesc]);
+    let ti = none;
+    call_tydesc_glue_full(bcx, bindings, Load(bcx, tydescptr), field, ti);
 }
 
 fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
@@ -1359,19 +1379,22 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
             trans_non_gc_free(bcx, b)
         } else { bcx }
       }
-      ty::ty_fn(_, _, _, _, _) {
-        // Call through the closure's own fields-drop glue first.
-        // Then free the body.
-        let ccx = bcx_ccx(bcx);
-        let v = PointerCast(bcx, v, T_opaque_closure_ptr(ccx));
-        let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
-        let bindings =
-            GEPi(bcx, body, [0, abi::closure_elt_bindings]);
-        let tydescptr =
-            GEPi(bcx, body, [0, abi::closure_elt_tydesc]);
-        let ti = none;
-        call_tydesc_glue_full(bcx, bindings, Load(bcx, tydescptr),
-                              abi::tydesc_field_drop_glue, ti);
+      ty::ty_fn(ast::proto_bare., _, _, _, _) {
+        bcx
+      }
+      ty::ty_fn(ast::proto_block., _, _, _, _) {
+        bcx
+      }
+      ty::ty_fn(ast::proto_send., _, _, _, _) {
+        // n.b.: When we drop a function, we actually invoke the
+        // free glue only on the environment part.
+        call_bound_data_glue_for_closure(bcx, v, abi::tydesc_field_drop_glue);
+        trans_shared_free(bcx, v)
+      }
+      ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
+        // n.b.: When we drop a function, we actually invoke the
+        // free glue only on the environment part.
+        call_bound_data_glue_for_closure(bcx, v, abi::tydesc_field_drop_glue);
         if !bcx_ccx(bcx).sess.get_opts().do_gc {
             trans_non_gc_free(bcx, v)
         } else { bcx }
@@ -1398,7 +1421,18 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
           ty::ty_res(did, inner, tps) {
             trans_res_drop(bcx, v0, did, inner, tps)
           }
-          ty::ty_fn(_, _, _, _, _) {
+          ty::ty_fn(ast::proto_bare., _, _, _, _) {
+            bcx // No environment to free.
+          }
+          ty::ty_fn(ast::proto_block., _, _, _, _) {
+            bcx // Environment is stack allocated and needs no free.
+          }
+          ty::ty_fn(ast::proto_send., _, _, _, _) {
+            // Environment is a unique pointer.
+            let box_cell = GEPi(bcx, v0, [0, abi::fn_field_box]);
+            free_ty(bcx, Load(bcx, box_cell), t)
+          }
+          ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
             let box_cell = GEPi(bcx, v0, [0, abi::fn_field_box]);
             decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
           }
