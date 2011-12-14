@@ -695,7 +695,7 @@ fn T_closure_ptr(cx: @crate_ctxt, llbindings_ty: TypeRef,
     // it constructs.
     ret T_ptr(T_box(cx, T_struct([T_ptr(cx.tydesc_type),
                                   llbindings_ty,
-                                  cx.int_type,
+                                  //cx.int_type,
                                   T_captured_tydescs(cx, n_ty_params)])));
 }
 
