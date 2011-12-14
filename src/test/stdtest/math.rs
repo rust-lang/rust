@@ -2,7 +2,7 @@ import core::*;
 
 use std;
 
-import std::math::*;
+import float::*;
 import float;
 import c_int = ctypes::c_int;
 

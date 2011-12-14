@@ -72,36 +72,6 @@ when interoperating with C void pointers can help in documentation.
 */
 type void = int;
 
-// machine type equivalents of rust int, uint, float
-
-/*
-Type: m_int
-
-FIXME: What C type does this represent?
-*/
-#[cfg(target_arch="x86")]
-type m_int = i32;
-#[cfg(target_arch="x86_64")]
-type m_int = i64;
-
-/*
-Type: m_uint
-
-FIXME: What C type does this represent?
-*/
-#[cfg(target_arch="x86")]
-type m_uint = u32;
-#[cfg(target_arch="x86_64")]
-type m_uint = u64;
-
-// This *must* match with "import m_float = fXX" in std::math per arch
-/*
-Type: m_float
-
-FIXME: What C type does this represent?
-*/
-type m_float = f64;
-
 /*
 Type: size_t
 
