@@ -104,6 +104,7 @@ type crate_ctxt =
      mut_map: mut::mut_map,
      copy_map: alias::copy_map,
      last_uses: last_use::last_uses,
+     method_map: typeck::method_map,
      stats: stats,
      upcalls: @upcall::upcalls,
      rust_object_type: TypeRef,

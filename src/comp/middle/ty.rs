@@ -1672,15 +1672,18 @@ fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
     ret node_id_has_type_params(cx, expr.id);
 }
 
-fn expr_is_lval(tcx: ty::ctxt, e: @ast::expr) -> bool {
+fn expr_is_lval(method_map: typeck::method_map, tcx: ty::ctxt,
+                e: @ast::expr) -> bool {
     alt e.node {
       ast::expr_path(_) | ast::expr_index(_, _) |
       ast::expr_unary(ast::deref., _) { true }
       ast::expr_field(base, ident) {
-        let basety = type_autoderef(tcx, expr_ty(tcx, base));
-        alt struct(tcx, basety) {
-          ty_obj(_) { false }
-          ty_rec(_) { true }
+        method_map.contains_key(e.id) ? false : {
+            let basety = type_autoderef(tcx, expr_ty(tcx, base));
+            alt struct(tcx, basety) {
+              ty_obj(_) { false }
+              ty_rec(_) { true }
+            }
         }
       }
       _ { false }

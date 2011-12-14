@@ -18,7 +18,9 @@ import std::map::{hashmap, new_int_hash};
 import option::{none, some};
 import syntax::print::pprust::*;
 
-export check_crate;
+export check_crate, method_map;
+
+type method_map = hashmap<ast::node_id, ast::def_id>;
 
 type ty_table = hashmap<ast::def_id, ty::t>;
 
@@ -35,6 +37,7 @@ tag obj_info {
 
 type crate_ctxt = {mutable obj_infos: [obj_info],
                    impl_map: resolve::impl_map,
+                   method_map: method_map,
                    tcx: ty::ctxt};
 
 type fn_ctxt =
@@ -74,22 +77,21 @@ fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
 // Returns the type parameter count and the type for the given definition.
 fn ty_param_kinds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
    ty_param_kinds_and_ty {
-    let no_kinds: [ast::kind] = [];
     alt defn {
       ast::def_arg(id, _) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {kinds: no_kinds, ty: typ};
+        ret {kinds: [], ty: typ};
       }
       ast::def_local(id, _) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {kinds: no_kinds, ty: typ};
+        ret {kinds: [], ty: typ};
       }
       ast::def_obj_field(id, _) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {kinds: no_kinds, ty: typ};
+        ret {kinds: [], ty: typ};
       }
       ast::def_self(id) { fail "FIXME[impl]"; }
       ast::def_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
@@ -99,12 +101,12 @@ fn ty_param_kinds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_binding(id) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {kinds: no_kinds, ty: typ};
+        ret {kinds: [], ty: typ};
       }
       ast::def_mod(_) {
         // Hopefully part of a path.
         // TODO: return a type that's more poisonous, perhaps?
-        ret {kinds: no_kinds, ty: ty::mk_nil(fcx.ccx.tcx)};
+        ret {kinds: [], ty: ty::mk_nil(fcx.ccx.tcx)};
       }
       ast::def_ty(_) {
         fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found type");
@@ -410,11 +412,10 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
 
 fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
     -> ty::ty_param_kinds_and_ty {
-    let no_kinds: [ast::kind] = [];
     alt it.node {
       ast::item_const(t, _) {
         let typ = ast_ty_to_ty(tcx, mode, t);
-        let tpt = {kinds: no_kinds, ty: typ};
+        let tpt = {kinds: [], ty: typ};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
@@ -463,7 +464,6 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
 }
 fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
     -> ty::ty_param_kinds_and_ty {
-    let no_kinds: [ast::kind] = [];
     alt it.node {
       ast::native_item_fn(fn_decl, params) {
         ret ty_of_native_fn_decl(tcx, mode, fn_decl, params,
@@ -475,7 +475,7 @@ fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
           none. { }
         }
         let t = ty::mk_native(tcx, ast_util::local_def(it.id));
-        let tpt = {kinds: no_kinds, ty: t};
+        let tpt = {kinds: [], ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
@@ -698,9 +698,11 @@ mod collect {
           }
           ast::item_impl(_, _, ms) {
             for m in ms {
-                write::ty_only(cx.tcx, m.node.id, 
-                               ty::method_ty_to_fn_ty(cx.tcx, ty_of_method(
-                                   cx.tcx, m_collect, m)));
+                let ty = ty::method_ty_to_fn_ty(
+                    cx.tcx, ty_of_method(cx.tcx, m_collect, m));
+                cx.tcx.tcache.insert(local_def(m.node.id),
+                                     {kinds: [], ty: ty});
+                write::ty_only(cx.tcx, m.node.id, ty);
             }
           }
           ast::item_obj(object, ty_params, ctor_id) {
@@ -2179,6 +2181,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             let f_ty = ty::mk_fn(fcx.ccx.tcx, mt.proto, mt.inputs,
                                  mt.output, mt.cf, mt.constrs);
             write::ty_only_fixup(fcx, id, f_ty);
+            fcx.ccx.method_map.insert(id, local_def(method.node.id));
           }
           _ {
             base_t = do_autoderef(fcx, expr.span, base_t);
@@ -2695,13 +2698,14 @@ fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
 }
 
 fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
-               crate: @ast::crate) {
+               crate: @ast::crate) -> method_map {
     collect::collect_item_types(tcx, crate);
 
     let obj_infos: [obj_info] = [];
 
     let ccx = @{mutable obj_infos: obj_infos,
                 impl_map: impl_map,
+                method_map: std::map::new_int_hash(),
                 tcx: tcx};
     let visit =
         visit::mk_simple_visitor(@{visit_item: bind check_item(ccx, _)
@@ -2709,6 +2713,7 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
     visit::visit_crate(*crate, (), visit);
     check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();
+    ccx.method_map
 }
 //
 // Local Variables:

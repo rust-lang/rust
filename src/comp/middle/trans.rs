@@ -13,7 +13,7 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-import core::{either, str, uint, option, vec};
+import core::{either, str, int, uint, option, vec};
 import std::{map, time};
 import std::map::hashmap;
 import std::map::{new_int_hash, new_str_hash};
@@ -948,8 +948,6 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
                       &static_ti: option::t<@tydesc_info>) -> result {
     alt cx.fcx.derived_tydescs.find(t) {
       some(info) {
-
-
         // If the tydesc escapes in this context, the cached derived
         // tydesc also has to be one that was marked as escaping.
         if !(escapes && !info.escapes) && storage == tps_normal {
@@ -2606,8 +2604,9 @@ fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
                          type_of_ty_param_kinds_and_ty(lcx, cx.sp, tpt));
 }
 
-fn lval_static_fn(bcx: @block_ctxt, tpt: ty::ty_param_kinds_and_ty,
-                  fn_id: ast::def_id, id: ast::node_id) -> lval_maybe_callee {
+fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
+    -> lval_maybe_callee {
+    let tpt = ty::lookup_item_type(bcx_tcx(bcx), fn_id);
     let val = if fn_id.crate == ast::local_crate {
         // Internal reference.
         assert (bcx_ccx(bcx).item_ids.contains_key(fn_id.node));
@@ -2698,17 +2697,13 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
     let ccx = bcx_ccx(cx);
     alt def {
       ast::def_fn(did, _) | ast::def_native_fn(did, _) {
-        let tyt = ty::lookup_item_type(ccx.tcx, did);
-        ret lval_static_fn(cx, tyt, did, id);
+        ret lval_static_fn(cx, did, id);
       }
       ast::def_variant(tid, vid) {
-        let v_tyt = ty::lookup_item_type(ccx.tcx, vid);
-        alt ty::struct(ccx.tcx, v_tyt.ty) {
-          ty::ty_fn(_, _, _, _, _) {
+        if vec::len(ty::tag_variant_with_id(ccx.tcx, tid, vid).args) > 0u {
             // N-ary variant.
-            ret lval_static_fn(cx, v_tyt, vid, id);
-          }
-          _ {
+            ret lval_static_fn(cx, vid, id);
+        } else {
             // Nullary variant.
             let tag_ty = node_id_type(ccx, id);
             let alloc_result = alloc_ty(cx, tag_ty);
@@ -2724,7 +2719,6 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             } else { C_int(ccx, 0) };
             Store(bcx, d, lldiscrimptr);
             ret lval_no_env(bcx, lltagptr, temporary);
-          }
         }
       }
       ast::def_const(did) {
@@ -2838,15 +2832,30 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
     ret lval_owned(next_cx, elt);
 }
 
+// This is for impl methods, not obj methods.
+fn trans_method_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
+                       did: ast::def_id) -> lval_maybe_callee {
+    let bcx = trans_expr(bcx, base, ignore); // FIXME pass self
+    lval_static_fn(bcx, did, e.id)
+}
+
 fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     alt e.node {
       ast::expr_path(p) { ret trans_path(bcx, p, e.id); }
       ast::expr_field(base, ident) {
+        let method_map = bcx_ccx(bcx).method_map;
         // Lval means this is a record field, so not a method
-        if !ty::expr_is_lval(bcx_tcx(bcx), e) {
-            let of = trans_object_field(bcx, base, ident);
-            ret {bcx: of.bcx, val: of.mthptr, kind: owned,
-                 env: obj_env(of.objptr), generic: none};
+        if !ty::expr_is_lval(method_map, bcx_tcx(bcx), e) {
+            alt method_map.find(e.id) {
+              some(did) { // An impl method
+                ret trans_method_callee(bcx, e, base, did);
+              }
+              none. { // An object method
+                let of = trans_object_field(bcx, base, ident);
+                ret {bcx: of.bcx, val: of.mthptr, kind: owned,
+                     env: obj_env(of.objptr), generic: none};
+              }
+            }
         }
       }
       ast::expr_self_method(ident) {
@@ -3466,7 +3475,7 @@ fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
 // use trans_temp_expr.
 fn trans_temp_lval(bcx: @block_ctxt, e: @ast::expr) -> lval_result {
     let bcx = bcx;
-    if ty::expr_is_lval(bcx_tcx(bcx), e) {
+    if ty::expr_is_lval(bcx_ccx(bcx).method_map, bcx_tcx(bcx), e) {
         ret trans_lval(bcx, e);
     } else {
         let tcx = bcx_tcx(bcx);
@@ -3504,7 +3513,9 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
 // - exprs with non-immediate type never get dest=by_val
 fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
-    if ty::expr_is_lval(tcx, e) { ret lval_to_dps(bcx, e, dest); }
+    if ty::expr_is_lval(bcx_ccx(bcx).method_map, tcx, e) {
+        ret lval_to_dps(bcx, e, dest);
+    }
 
     alt e.node {
       ast::expr_if(cond, thn, els) | ast::expr_if_check(cond, thn, els) {
@@ -3544,7 +3555,9 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_closure::trans_bind(bcx, f, args, e.id, dest);
       }
       ast::expr_copy(a) {
-        if !ty::expr_is_lval(tcx, a) { ret trans_expr(bcx, a, dest); }
+        if !ty::expr_is_lval(bcx_ccx(bcx).method_map, tcx, a) {
+            ret trans_expr(bcx, a, dest);
+        }
         else { ret lval_to_dps(bcx, a, dest); }
       }
       ast::expr_cast(val, _) {
@@ -3945,7 +3958,8 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     alt local.node.init {
       some(init) {
         if init.op == ast::init_assign ||
-           !ty::expr_is_lval(bcx_tcx(bcx), init.expr) {
+           !ty::expr_is_lval(bcx_ccx(bcx).method_map, bcx_tcx(bcx),
+                             init.expr) {
             bcx = trans_expr_save_in(bcx, init.expr, llptr);
         } else { // This is a move from an lval, must perform an actual move
             let sub = trans_lval(bcx, init.expr);
@@ -4641,6 +4655,18 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     finish_fn(fcx, lltop);
 }
 
+fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method]) {
+    let sub_cx = extend_path(cx, name);
+    for m in methods {
+        alt cx.ccx.item_ids.find(m.node.id) {
+          some(llfndecl) {
+            trans_fn(extend_path(sub_cx, m.node.ident), m.span, m.node.meth,
+                     llfndecl, none, [], m.node.id);
+          }
+        }
+    }
+}
+
 
 // FIXME: this should do some structural hash-consing to avoid
 // duplicate constants. I think. Maybe LLVM has a magical mode
@@ -4949,10 +4975,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
                  with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
-      ast::item_impl(_, _, _) {
-        
-        fail "FIXME[impl]";
-      }
+      ast::item_impl(_, _, ms) { trans_impl(cx, item.ident, ms); }
       ast::item_res(dtor, dtor_id, tps, ctor_id) {
         trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
 
@@ -5167,8 +5190,6 @@ fn raw_native_fn_type(ccx: @crate_ctxt, sp: span, args: [ty::arg],
     ret T_fn(type_of_explicit_args(ccx, sp, args), type_of(ccx, sp, ret_ty));
 }
 
-fn item_path(item: @ast::item) -> [str] { ret [item.ident]; }
-
 fn link_name(i: @ast::native_item) -> str {
     alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
       none. { ret i.ident; }
@@ -5259,12 +5280,12 @@ fn collect_item_1(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
       }
       _ { }
     }
-    visit::visit_item(i, pt + item_path(i), v);
+    visit::visit_item(i, pt + [i.ident], v);
 }
 
 fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
                   v: vt<[str]>) {
-    let new_pt = pt + item_path(i);
+    let new_pt = pt + [i.ident];
     visit::visit_item(i, new_pt, v);
     alt i.node {
       ast::item_fn(f, tps) {
@@ -5276,6 +5297,13 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
         register_fn(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
         for m: @ast::method in ob.methods {
             ccx.obj_methods.insert(m.node.id, ());
+        }
+      }
+      ast::item_impl(_, _, methods) {
+        let name = ccx.names.next(i.ident);
+        for m in methods {
+            register_fn(ccx, i.span, pt + [name, m.node.ident],
+                        "impl_method", [], m.node.id);
         }
       }
       ast::item_res(_, dtor_id, tps, ctor_id) {
@@ -5307,7 +5335,7 @@ fn collect_items(ccx: @crate_ctxt, crate: @ast::crate) {
 
 fn collect_tag_ctor(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
                     v: vt<[str]>) {
-    let new_pt = pt + item_path(i);
+    let new_pt = pt + [i.ident];
     visit::visit_item(i, new_pt, v);
     alt i.node {
       ast::item_tag(variants, tps) {
@@ -5333,7 +5361,7 @@ fn collect_tag_ctors(ccx: @crate_ctxt, crate: @ast::crate) {
 // The constant translation pass.
 fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
                   v: vt<[str]>) {
-    let new_pt = pt + item_path(it);
+    let new_pt = pt + [it.ident];
     visit::visit_item(it, new_pt, v);
     alt it.node {
       ast::item_tag(variants, _) {
@@ -5520,7 +5548,7 @@ fn write_abi_version(ccx: @crate_ctxt) {
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, emap: resolve::exp_map, amap: ast_map::map,
                mut_map: mut::mut_map, copy_map: alias::copy_map,
-               last_uses: last_use::last_uses)
+               last_uses: last_use::last_uses, method_map: typeck::method_map)
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::mk_sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
@@ -5595,6 +5623,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           mut_map: mut_map,
           copy_map: copy_map,
           last_uses: last_uses,
+          method_map: method_map,
           stats:
               {mutable n_static_tydescs: 0u,
                mutable n_derived_tydescs: 0u,

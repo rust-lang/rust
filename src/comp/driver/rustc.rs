@@ -171,8 +171,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     time(time_passes, "const checking",
          bind middle::check_const::check_crate(sess, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
-    time(time_passes, "typechecking",
-         bind typeck::check_crate(ty_cx, impl_map, crate));
+    let method_map = time(time_passes, "typechecking",
+                          bind typeck::check_crate(ty_cx, impl_map, crate));
     time(time_passes, "block-use checking",
          bind middle::block_use::check_crate(ty_cx, crate));
     time(time_passes, "function usage",
@@ -190,7 +190,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let last_uses = time(time_passes, "last use finding",
         bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
-         bind kind::check_crate(ty_cx, last_uses, crate));
+         bind kind::check_crate(ty_cx, method_map, last_uses, crate));
     if sess.get_opts().no_trans { ret; }
 
     let outputs = build_output_filenames(input, outdir, output, sess);
@@ -199,7 +199,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "translation",
              bind trans::trans_crate(sess, crate, ty_cx,
                                      outputs.obj_filename, exp_map, ast_map,
-                                     mut_map, copy_map, last_uses));
+                                     mut_map, copy_map, last_uses,
+                                     method_map));
     time(time_passes, "LLVM passes",
          bind link::write::run_passes(sess, llmod, outputs.obj_filename));
 

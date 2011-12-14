@@ -30,12 +30,15 @@ type rval_map = std::map::hashmap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
             rval_map: rval_map,
+            method_map: typeck::method_map,
             last_uses: last_use::last_uses};
 
-fn check_crate(tcx: ty::ctxt, last_uses: last_use::last_uses,
-               crate: @crate) -> rval_map {
+fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
+               last_uses: last_use::last_uses, crate: @crate)
+    -> rval_map {
     let ctx = {tcx: tcx,
                rval_map: std::map::new_int_hash(),
+               method_map: method_map,
                last_uses: last_uses};
     let visit = visit::mk_vt(@{
         visit_expr: check_expr,
@@ -150,7 +153,8 @@ fn maybe_copy(cx: ctx, ex: @expr) {
 }
 
 fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
-    if ty::expr_is_lval(cx.tcx, ex) && !cx.last_uses.contains_key(ex.id) {
+    if ty::expr_is_lval(cx.method_map, cx.tcx, ex) &&
+       !cx.last_uses.contains_key(ex.id) {
         let ty = ty::expr_ty(cx.tcx, ex);
         check_copy(cx, ty, ex.span);
         // FIXME turn this on again once vector types are no longer unique.
