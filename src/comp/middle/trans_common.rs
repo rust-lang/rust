@@ -693,7 +693,9 @@ fn T_closure_ptr(cx: @crate_ctxt, llbindings_ty: TypeRef,
     // NB: keep this in sync with code in trans_bind; we're making
     // an LLVM typeref structure that has the same "shape" as the ty::t
     // it constructs.
-    ret T_ptr(T_box(cx, T_struct([T_ptr(cx.tydesc_type), llbindings_ty,
+    ret T_ptr(T_box(cx, T_struct([T_ptr(cx.tydesc_type),
+                                  llbindings_ty,
+                                  cx.int_type,
                                   T_captured_tydescs(cx, n_ty_params)])));
 }
 

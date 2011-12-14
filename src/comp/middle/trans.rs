@@ -1336,11 +1336,15 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
         bcx
       }
       ty::ty_fn(ast::proto_send., _, _, _, _) {
-        take_fn_env(bcx, v, { |bcx, _box_ptr_v|
-            bcx // NDM
+        take_fn_env(bcx, v, { |bcx, box_ptr_v|
+            // Here, box_ptr_v is a unique pointer which
+            // must be cloned.
+            call_bound_data_glue_for_closure(
+                bcx, box_ptr_v, abi::tydesc_field_take_glue);
+            bcx
         })
       }
-      ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
+      ty::ty_native_fn(_, _) | ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
         take_fn_env(bcx, v, { |bcx, box_ptr_v|
             incr_refcnt_of_boxed(bcx, box_ptr_v)
         })
@@ -2633,6 +2637,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         };
     }
 
+    let ccx = bcx_ccx(bcx);
     let tcx = bcx_tcx(bcx);
 
     // First, synthesize a tuple type containing the types of all the
@@ -2661,12 +2666,11 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     // ourselves) into a vector.  The whole things ends up looking
     // like:
 
-    // closure_tys = [tydesc_ty, [bound_ty1, bound_ty2, ...], [tydesc_ty,
-    // tydesc_ty, ...]]
+    // closure_ty = (tydesc_ty, (bound_ty1, bound_ty2, ...), int, (tydesc_ty,
+    // tydesc_ty, ...))
     let closure_tys: [ty::t] =
-        [tydesc_ty, bindings_ty, ty::mk_tup(tcx, captured_tys)];
-
-    // Finally, synthesize a type for that whole vector.
+        [tydesc_ty, bindings_ty,
+         ty::mk_uint(tcx), ty::mk_tup(tcx, captured_tys)];
     let closure_ty: ty::t = ty::mk_tup(tcx, closure_tys);
 
     let temp_cleanups = [];
@@ -2758,13 +2762,17 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     // appropriate slot in the closure.
     // Silly check as well
     check type_is_tup_like(bcx, closure_ty);
-    let ty_params_slot =
+    let {bcx:bcx, val:n_ty_params_slot} =
+        GEP_tup_like(bcx, closure_ty, closure,
+                     [0, abi::closure_elt_n_ty_params]);
+    Store(bcx, C_uint(ccx, vec::len(lltydescs)), n_ty_params_slot);
+    check type_is_tup_like(bcx, closure_ty);
+    let {bcx:bcx, val:ty_params_slot} =
         GEP_tup_like(bcx, closure_ty, closure,
                      [0, abi::closure_elt_ty_params]);
-    bcx = ty_params_slot.bcx;
     i = 0u;
     for td: ValueRef in lltydescs {
-        let ty_param_slot = GEPi(bcx, ty_params_slot.val, [0, i as int]);
+        let ty_param_slot = GEPi(bcx, ty_params_slot, [0, i as int]);
         let cloned_td = clone_tydesc(bcx, mode, td);
         Store(bcx, cloned_td, ty_param_slot);
         i += 1u;
@@ -3816,10 +3824,6 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     // with trans_call.
     let tcx = bcx_tcx(in_cx);
     let fn_expr_ty = ty::expr_ty(tcx, f);
-
-//NDM    if check type_is_native_fn_on_c_stack(tcx, fn_expr_ty) {
-//NDM        ret trans_c_stack_native_call(in_cx, f, args, dest);
-//NDM    }
 
     let cx = new_scope_block_ctxt(in_cx, "call");
     Br(in_cx, cx.llbb);
