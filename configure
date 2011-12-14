@@ -85,7 +85,7 @@ valopt() {
     local DOC="$*"
     if [ $HELP -eq 0 ]
     then
-        local UOP=$(echo $OP | tr 'a-z-' 'A-Z_')
+        local UOP=$(echo $OP | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
         local V="CFG_${UOP}"
         eval $V="$DEFAULT"
         for arg in $CFG_CONFIGURE_ARGS
@@ -333,6 +333,11 @@ fi
 if [ -z "$CFG_PREFIX" ]
 then
     CFG_PREFIX=/usr/local
+fi
+
+if [ -z "$CFG_HOST_TRIPLE" ]
+then
+    CFG_HOST_TRIPLE="$DEFAULT_HOST_TRIPLE"
 fi
 
 if [ -z "$CFG_TARGET_TRIPLES" ]
