@@ -123,7 +123,8 @@ MORESTACK:
 	subl $8, %esp // Alignment
 
 	// Now that we're on the return path we want to avoid
-	// stomping on %eax
+	// stomping on %eax. FIXME: Need to save and restore
+	// eax to actually preserve it across the call to delete the stack
 #ifdef __APPLE__
 	call 1f
 1:	popl %ecx
