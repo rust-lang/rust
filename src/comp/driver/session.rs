@@ -38,6 +38,7 @@ type options =
      time_llvm_passes: bool,
      output_type: back::link::output_type,
      addl_lib_search_paths: [str],
+     link_args: [str],
      maybe_sysroot: option::t<str>,
      target_triple: str,
      cfg: ast::crate_cfg,

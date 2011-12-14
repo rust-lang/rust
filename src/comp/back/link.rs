@@ -321,7 +321,7 @@ mod write {
  *
  * There are a few issues to handle:
  *
- *  - Linnkers operate on a flat namespace, so we have to flatten names.
+ *  - Linkers operate on a flat namespace, so we have to flatten names.
  *    We do this using the C++ namespace-mangling technique. Foo::bar
  *    symbols and such.
  *
@@ -656,6 +656,10 @@ fn link_binary(sess: session::session,
     }
 
     gcc_args += rpath::get_rpath_flags(sess, output);
+
+    if !vec::is_empty(sess.get_opts().link_args) {
+        gcc_args += sess.get_opts().link_args;
+    }
 
     log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
     // We run 'gcc' here

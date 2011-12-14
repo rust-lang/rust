@@ -329,6 +329,7 @@ options:
     --stack-growth     perform stack checks (experimental)
     --warn-unused-imports
                        warn about unnecessary imports
+    --link-args <args> pass arguments to the linker
 
 ");
 }
@@ -455,6 +456,11 @@ fn build_session_options(match: getopts::match)
         };
 
     let addl_lib_search_paths = getopts::opt_strs(match, "L");
+    let link_args =
+        alt getopts::opt_maybe_str(match, "link-args") {
+            none. { [] }
+            some(args) { str::split(args, ' ' as u8) }
+        };
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let do_gc = opt_present(match, "gc");
@@ -473,6 +479,7 @@ fn build_session_options(match: getopts::match)
           time_llvm_passes: time_llvm_passes,
           output_type: output_type,
           addl_lib_search_paths: addl_lib_search_paths,
+          link_args: link_args,
           maybe_sysroot: sysroot_opt,
           target_triple: target,
           cfg: cfg,
@@ -524,7 +531,8 @@ fn opts() -> [getopts::opt] {
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("stack-growth"),
          optflag("no-asm-comments"),
-         optflag("warn-unused-imports")];
+         optflag("warn-unused-imports"),
+         optopt("link-args")];
 }
 
 fn build_output_filenames(ifile: str, ofile: option::t<str>,
