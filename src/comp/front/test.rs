@@ -349,7 +349,6 @@ fn mk_test_wrapper(cx: test_ctxt,
 
     let wrapper_capture: @ast::capture = @{
         node: {
-            is_send: false,
             copies: [],
             moves: []
         },

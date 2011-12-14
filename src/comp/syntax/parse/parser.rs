@@ -14,13 +14,6 @@ tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; RESTRICT_NO_BAR_OP; }
 
 tag file_type { CRATE_FILE; SOURCE_FILE; }
 
-tag fn_kw {
-    fn_kw_fn;
-    fn_kw_fn_at;
-    fn_kw_lambda;
-    fn_kw_block;
-}
-
 type parse_sess = @{cm: codemap::codemap, mutable next_id: node_id};
 
 fn next_node_id(sess: parse_sess) -> node_id {
@@ -544,13 +537,9 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
     } else if eat_word(p, "lambda") {
-        if eat(p, token::LBRACKET) { // lambda[send](...)
-            expect_word(p, "send");
-            expect(p, token::RBRACKET);
-            t = parse_ty_fn(ast::proto_send, p);
-        } else { // lambda(...)
-            t = parse_ty_fn(ast::proto_shared(ast::sugar_sexy), p);
-        }
+        t = parse_ty_fn(ast::proto_shared(ast::sugar_sexy), p);
+    } else if eat_word(p, "sendfn") {
+        t = parse_ty_fn(ast::proto_send, p);
     } else if eat_word(p, "obj") {
         t = parse_ty_obj(p);
     } else if p.peek() == token::MOD_SEP || is_ident(p.peek()) {
@@ -844,12 +833,14 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
                 ret parse_spawn_expr(p);
         */
     } else if eat_word(p, "fn") {
-        let kw = parse_fn_anon_kw(p);
-        ret parse_fn_expr(p, kw);
+        let proto = parse_fn_ty_proto(p);
+        ret parse_fn_expr(p, proto);
     } else if eat_word(p, "block") {
-        ret parse_fn_expr(p, fn_kw_block);
+        ret parse_fn_expr(p, ast::proto_block);
     } else if eat_word(p, "lambda") {
-        ret parse_fn_expr(p, fn_kw_lambda);
+        ret parse_fn_expr(p, ast::proto_shared(ast::sugar_sexy));
+    } else if eat_word(p, "sendfn") {
+        ret parse_fn_expr(p, ast::proto_send);
     } else if eat_word(p, "unchecked") {
         ret parse_block_expr(p, lo, ast::unchecked_blk);
     } else if eat_word(p, "unsafe") {
@@ -1290,7 +1281,7 @@ fn parse_if_expr(p: parser) -> @ast::expr {
 
 // Parses:
 //
-//   CC := [send; copy ID*; move ID*]
+//   CC := [copy ID*; move ID*]
 //
 // where any part is optional and trailing ; is permitted.
 fn parse_capture_clause(p: parser) -> @ast::capture {
@@ -1322,17 +1313,13 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
         std::util::unreachable();
     }
 
-    let is_send = false;
     let copies = [];
     let moves = [];
 
     let lo = p.get_lo_pos();
     if eat(p, token::LBRACKET) {
         while !eat(p, token::RBRACKET) {
-            if eat_word(p, "send") {
-                is_send = true;
-                expect_opt_trailing_semi(p);
-            } else if eat_word(p, "copy") {
+            if eat_word(p, "copy") {
                 copies += eat_ident_list(p);
                 expect_opt_trailing_semi(p);
             } else if eat_word(p, "move") {
@@ -1346,60 +1333,17 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
     }
     let hi = p.get_last_hi_pos();
 
-    ret @spanned(lo, hi, {is_send: is_send, copies: copies, moves: moves});
+    ret @spanned(lo, hi, {copies: copies, moves: moves});
 }
 
-fn select_proto(p: parser, kw: fn_kw, is_send: bool) -> ast::proto {
-    ret alt (kw, is_send) {
-      (fn_kw_fn., true) { ast::proto_bare }
-      (fn_kw_fn_at., true) { ast::proto_send }
-      (fn_kw_lambda., true) { ast::proto_send }
-      (fn_kw_block., true) { p.fatal("block cannot be declared sendable") }
-      (fn_kw_fn., false) { ast::proto_bare }
-      (fn_kw_fn_at., false) { ast::proto_shared(ast::sugar_normal) }
-      (fn_kw_lambda., false) { ast::proto_shared(ast::sugar_sexy) }
-      (fn_kw_block., false) { ast::proto_block }
-    };
-}
-
-fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
+fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let captures = parse_capture_clause(p);
-    let is_send = captures.node.is_send;
-    let proto = select_proto(p, kw, is_send);
     let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
     let body = parse_block(p);
     let _fn = {decl: decl, proto: proto, body: body};
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
 }
-
-/*
-** This version triggers an LLVM bug: **
-
-fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
-    let lo = p.get_last_lo_pos();
-    let captures = parse_capture_clause(p);
-    let is_send = captures.node.is_send;
-    //let proto = select_proto(p, kw, is_send);
-    log_err (kw, captures, is_send);
-    let proto = alt (kw, is_send) {
-      (fn_kw_fn., true) { ast::proto_bare }
-      (fn_kw_fn_at., true) { ast::proto_send }
-      (fn_kw_lambda., true) { ast::proto_send }
-      (fn_kw_block., true) { p.fatal("block cannot be declared sendable") }
-      (fn_kw_fn., false) { ast::proto_bare }
-      (fn_kw_fn_at., false) { ast::proto_shared(ast::sugar_normal) }
-      (fn_kw_lambda., false) { ast::proto_shared(ast::sugar_sexy) }
-      (fn_kw_block., false) { ast::proto_block }
-    };
-    fail "foo";
-    //let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
-    //let body = parse_block(p);
-    //let _fn = {decl: decl, proto: proto, body: body};
-    //ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
-}
-*/
-
 
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
@@ -1407,7 +1351,7 @@ fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let mid = p.get_last_hi_pos();
     let body = parse_block_tail(p, lo, ast::default_blk);
     let _fn = {decl: decl, proto: ast::proto_block, body: body};
-    let captures = @spanned(lo, mid, {is_send: false, copies: [], moves: []});
+    let captures = @spanned(lo, mid, {copies: [], moves: []});
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
 }
 
@@ -2188,15 +2132,6 @@ fn parse_fn_ty_proto(p: parser) -> ast::proto {
         ast::proto_shared(ast::sugar_normal)
     } else {
         ast::proto_bare
-    }
-}
-
-fn parse_fn_anon_kw(p: parser) -> fn_kw {
-    if p.peek() == token::AT {
-        p.bump();
-        fn_kw_fn_at
-    } else {
-        fn_kw_fn
     }
 }
 
