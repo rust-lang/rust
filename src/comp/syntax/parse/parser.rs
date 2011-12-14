@@ -187,6 +187,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     words.insert("const", ());
     words.insert("log", ());
     words.insert("log_err", ());
+    words.insert("sendfn", ());
     words.insert("tag", ());
     words.insert("obj", ());
     words.insert("copy", ());
@@ -1348,12 +1349,8 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
     ret @spanned(lo, hi, {is_send: is_send, copies: copies, moves: moves});
 }
 
-fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
-    let lo = p.get_last_lo_pos();
-    let captures = parse_capture_clause(p);
-    let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
-    let body = parse_block(p);
-    let proto = alt (kw, captures.node.is_send) {
+fn select_proto(p: parser, kw: fn_kw, is_send: bool) -> ast::proto {
+    ret alt (kw, is_send) {
       (fn_kw_fn., true) { ast::proto_bare }
       (fn_kw_fn_at., true) { ast::proto_send }
       (fn_kw_lambda., true) { ast::proto_send }
@@ -1363,9 +1360,46 @@ fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
       (fn_kw_lambda., false) { ast::proto_shared(ast::sugar_sexy) }
       (fn_kw_block., false) { ast::proto_block }
     };
+}
+
+fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
+    let lo = p.get_last_lo_pos();
+    let captures = parse_capture_clause(p);
+    let is_send = captures.node.is_send;
+    let proto = select_proto(p, kw, is_send);
+    let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
+    let body = parse_block(p);
     let _fn = {decl: decl, proto: proto, body: body};
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
 }
+
+/*
+** This version triggers an LLVM bug: **
+
+fn parse_fn_expr(p: parser, kw: fn_kw) -> @ast::expr {
+    let lo = p.get_last_lo_pos();
+    let captures = parse_capture_clause(p);
+    let is_send = captures.node.is_send;
+    //let proto = select_proto(p, kw, is_send);
+    log_err (kw, captures, is_send);
+    let proto = alt (kw, is_send) {
+      (fn_kw_fn., true) { ast::proto_bare }
+      (fn_kw_fn_at., true) { ast::proto_send }
+      (fn_kw_lambda., true) { ast::proto_send }
+      (fn_kw_block., true) { p.fatal("block cannot be declared sendable") }
+      (fn_kw_fn., false) { ast::proto_bare }
+      (fn_kw_fn_at., false) { ast::proto_shared(ast::sugar_normal) }
+      (fn_kw_lambda., false) { ast::proto_shared(ast::sugar_sexy) }
+      (fn_kw_block., false) { ast::proto_block }
+    };
+    fail "foo";
+    //let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
+    //let body = parse_block(p);
+    //let _fn = {decl: decl, proto: proto, body: body};
+    //ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
+}
+*/
+
 
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
