@@ -1,8 +1,10 @@
+import core::*;
+
 // -*- rust -*-
 use std;
 import std::io;
-import std::str;
-import std::result;
+import str;
+import result;
 
 #[test]
 fn test_simple() {

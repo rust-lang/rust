@@ -1,6 +1,8 @@
+import core::*;
 
 use std;
 import std::fs;
+import vec;
 
 #[test]
 fn test_connect() {
@@ -18,7 +20,7 @@ fn test_list_dir_no_invalid_memory_access() { fs::list_dir("."); }
 fn list_dir() {
     let dirs = fs::list_dir(".");
     // Just assuming that we've got some contents in the current directory
-    assert (std::vec::len(dirs) > 0u);
+    assert (vec::len(dirs) > 0u);
 
     for dir in dirs { log dir; }
 }

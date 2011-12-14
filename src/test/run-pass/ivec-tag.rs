@@ -1,11 +1,11 @@
 use std;
 
-import std::task;
-import std::comm;
-import std::comm::chan;
-import std::comm::port;
-import std::comm::send;
-import std::comm::recv;
+import task;
+import comm;
+import comm::chan;
+import comm::port;
+import comm::send;
+import comm::recv;
 
 fn producer(c: chan<[u8]>) {
     send(c,

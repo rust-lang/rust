@@ -2,8 +2,8 @@
 
 // Regression test for issue #374
 use std;
-import std::option;
-import std::option::none;
+import option;
+import option::none;
 
 tag sty { ty_nil; }
 

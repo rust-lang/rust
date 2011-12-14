@@ -1,10 +1,10 @@
 use std;
 
 import std::io;
-import std::str;
-import std::uint;
-import std::u8;
-import std::vec;
+import str;
+import uint;
+import u8;
+import vec;
 import std::bitv;
 
 // Computes a single solution to a given 9x9 sudoku

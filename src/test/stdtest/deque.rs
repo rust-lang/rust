@@ -1,4 +1,4 @@
-
+import core::*;
 
 // -*- rust -*-
 use std;

@@ -1,6 +1,9 @@
+import core::*;
+
 use std;
-import std::either::*;
-import std::vec::len;
+import vec;
+import core::either::*;
+import vec::len;
 
 #[test]
 fn test_either_left() {

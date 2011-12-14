@@ -1,6 +1,6 @@
 use std;
-import std::task;
-import std::comm;
+import task;
+import comm;
 import comm::chan;
 import comm::recv;
 import comm::port;

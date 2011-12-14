@@ -1,6 +1,8 @@
+import core::*;
+
 use std;
 
-import std::bool;
+import bool;
 
 #[test]
 fn test_bool_from_str() {

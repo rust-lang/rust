@@ -10,9 +10,10 @@ import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
-import std::{fs, option, str, vec, int, io, getopts, result};
-import std::option::{some, none};
-import std::getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
+import core::{option, str, vec, int, result};
+import std::{fs, io, getopts};
+import option::{some, none};
+import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 
 tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
@@ -104,7 +105,7 @@ fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
     let rv = thunk();
     let end = std::time::precise_time_s();
     log_err #fmt["time: %s took %s s", what,
-                 std::float::to_str(end - start, 3u)];
+                 float::to_str(end - start, 3u)];
     ret rv;
 }
 

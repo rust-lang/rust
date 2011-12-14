@@ -1,9 +1,9 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
-import std::{int};
+import int;
 import std::map::*;
-import std::option::*;
+import option::*;
 import syntax::{ast, ast_util, visit};
 import middle::resolve;
 import syntax::codemap::span;
@@ -101,7 +101,7 @@ fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     }
 }
 fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
-    ret std::vec::len(*get_freevars(tcx, fid)) != 0u;
+    ret vec::len(*get_freevars(tcx, fid)) != 0u;
 }
 
 // Local Variables:

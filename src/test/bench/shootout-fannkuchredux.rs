@@ -1,7 +1,7 @@
 // Based on Isaac Gouy's fannkuchredux.csharp
 use std;
-import std::int;
-import std::vec;
+import int;
+import vec;
 
 fn fannkuch(n: int) -> int {
     fn perm1init(i: uint) -> int { ret i as int; }

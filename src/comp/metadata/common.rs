@@ -1,6 +1,6 @@
 // EBML tag definitions and utils shared by the encoder and decoder
 
-import std::str;
+import str;
 
 const tag_paths: uint = 0x01u;
 

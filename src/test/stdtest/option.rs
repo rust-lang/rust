@@ -1,5 +1,6 @@
+import core::*;
 
 use std;
 
 #[test]
-fn test() { let _x = std::option::some::<int>(10); }
+fn test() { let _x = option::some::<int>(10); }

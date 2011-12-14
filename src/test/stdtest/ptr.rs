@@ -1,6 +1,8 @@
+import core::*;
+
 use std;
-import std::ptr;
-import std::unsafe;
+import ptr;
+import unsafe;
 
 type pair = {mutable fst: int, mutable snd: int};
 

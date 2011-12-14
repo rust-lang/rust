@@ -1,6 +1,6 @@
 
 use std;
-import std::vec::*;
+import vec::*;
 
 fn main() {
     let v = init_elt(0, 0u);

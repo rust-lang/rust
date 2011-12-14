@@ -1,6 +1,6 @@
 // error-pattern:precondition constraint (for example, uint::le(a, b)
 use std;
-import std::str::*;
+import str::*;
 
 fn main() {
     let a: uint = 4u;

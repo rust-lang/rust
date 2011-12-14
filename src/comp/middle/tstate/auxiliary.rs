@@ -1,5 +1,5 @@
-import std::{vec, int, uint, option};
-import std::option::*;
+import core::{vec, int, uint, option};
+import option::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::codemap::span;
@@ -989,7 +989,7 @@ fn args_mention<T>(args: [@constr_arg_use], q: fn([T], node_id) -> bool,
 
 fn use_var(fcx: fn_ctxt, v: node_id) { *fcx.enclosing.used_vars += [v]; }
 
-// FIXME: This should be a function in std::vec::.
+// FIXME: This should be a function in vec::.
 fn vec_contains(v: @mutable [node_id], i: node_id) -> bool {
     for d: node_id in *v { if d == i { ret true; } }
     ret false;

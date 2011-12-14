@@ -1,8 +1,8 @@
 use std;
-import std::vec;
-import std::task;
-import std::uint;
-import std::str;
+import vec;
+import task;
+import uint;
+import str;
 
 fn f(&&n: uint) {
     let i = 0u;

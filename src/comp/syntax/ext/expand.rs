@@ -1,9 +1,9 @@
 import driver::session;
 
-import std::option::{none, some};
+import option::{none, some};
 
 import std::map::hashmap;
-import std::{vec};
+import vec;
 
 import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
 import syntax::fold::*;

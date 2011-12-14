@@ -1,3 +1,4 @@
+import core::*;
 
 use std;
 import opt = std::getopts;

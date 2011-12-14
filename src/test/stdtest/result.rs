@@ -1,4 +1,6 @@
-import std::result;
+import core::*;
+
+import result;
 
 fn op1() -> result::t<int, str> { result::ok(666) }
 

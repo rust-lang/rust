@@ -1,6 +1,7 @@
 // Metadata encoding
 
-import std::{vec, str, uint, io, ebml, map};
+import core::{vec, str, uint};
+import std::{io, ebml, map};
 import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::local_def;

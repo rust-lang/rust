@@ -4,6 +4,8 @@ Module: term
 Simple ANSI color library
 */
 
+import core::option;
+
 // TODO: Windows support.
 
 /* Const: color_black */

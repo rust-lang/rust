@@ -1,4 +1,4 @@
 // error-pattern: unresolved import
-import vec;
+import thing;
 
-fn main() { let foo = vec::len([]); }
+fn main() { let foo = thing::len([]); }

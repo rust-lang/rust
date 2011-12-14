@@ -1,8 +1,9 @@
 // Type encoding
 
-import std::{io, int, uint};
+import core::{int, uint};
+import std::io;
 import std::map::hashmap;
-import std::option::{some, none};
+import option::{some, none};
 import syntax::ast::*;
 import middle::ty;
 import syntax::print::pprust::*;

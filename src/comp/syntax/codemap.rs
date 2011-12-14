@@ -1,5 +1,6 @@
-import std::{vec, uint, str, term, io, option, result};
-import std::option::{some, none};
+import core::{vec, uint, str, option, result};
+import std::{term, io};
+import option::{some, none};
 
 type filename = str;
 

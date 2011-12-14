@@ -1,8 +1,10 @@
-import std::str;
+import core::*;
+
+import str;
 import std::rope::*;
-import std::option;
-import std::uint;
-import std::vec;
+import option;
+import uint;
+import vec;
 
 //Utility function, used for sanity check
 fn rope_to_string(r: rope) -> str {

@@ -6,9 +6,9 @@
 
 use std;
 
-import std::str;
-import std::comm;
-import std::task;
+import str;
+import comm;
+import task;
 
 type ctx = comm::chan<int>;
 

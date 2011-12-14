@@ -1,8 +1,10 @@
+import core::*;
+
 import std::test;
-import std::str;
-import std::option;
-import std::either;
-import std::vec;
+import str;
+import option;
+import either;
+import vec;
 
 #[test]
 fn do_not_run_ignored_tests() {

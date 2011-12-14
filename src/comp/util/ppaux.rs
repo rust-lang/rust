@@ -1,5 +1,5 @@
-import std::{vec, str, int, option};
-import std::option::{none, some};
+import core::{vec, str, int, option};
+import option::{none, some};
 import middle::ty;
 import middle::ty::*;
 import metadata::encoder;

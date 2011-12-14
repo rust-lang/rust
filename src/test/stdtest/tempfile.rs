@@ -1,7 +1,10 @@
+import core::*;
+
 use std;
+import option;
 import std::fs;
-import std::option::some;
-import std::str;
+import option::some;
+import str;
 import std::tempfile;
 
 #[test]

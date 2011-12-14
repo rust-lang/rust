@@ -1,11 +1,12 @@
+import core::*;
 
-use std;
-import std::vec;
-import std::vec::*;
-import std::option;
-import std::option::none;
-import std::option::some;
-import std::task;
+import vec;
+import vec::*;
+import option;
+import option::none;
+import option::some;
+import task;
+
 
 fn square(n: uint) -> uint { ret n * n; }
 

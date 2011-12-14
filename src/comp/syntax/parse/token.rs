@@ -1,6 +1,6 @@
 
 import util::interner;
-import std::{int, uint, str};
+import core::{int, uint, str};
 
 type str_num = uint;
 

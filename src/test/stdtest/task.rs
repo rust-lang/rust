@@ -1,6 +1,8 @@
+import core::*;
+
 use std;
-import std::task;
-import std::comm;
+import task;
+import comm;
 
 #[test]
 fn test_sleep() { task::sleep(1000000u); }

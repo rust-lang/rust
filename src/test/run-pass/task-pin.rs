@@ -5,6 +5,6 @@
 
 use std;
 
-import std::task;
+import task;
 
 fn main() { task::pin(); task::unpin(); }

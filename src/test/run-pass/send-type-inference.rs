@@ -1,7 +1,7 @@
 use std;
-import std::comm::chan;
-import std::comm::send;
-import std::comm::port;
+import comm::chan;
+import comm::send;
+import comm::port;
 
 // tests that ctrl's type gets inferred properly
 type command<send K, send V> = {key: K, val: V};

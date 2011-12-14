@@ -1,5 +1,5 @@
-import std::{vec, str};
-import std::str::sbuf;
+import core::{vec, str};
+import str::sbuf;
 import lib::llvm::llvm;
 import syntax::codemap::span;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, Opcode,
@@ -84,7 +84,7 @@ fn IndirectBr(cx: @block_ctxt, Addr: ValueRef, NumDests: uint) {
 // lot more efficient) than doing str::as_buf("", ...) every time.
 fn noname() -> sbuf unsafe {
     const cnull: uint = 0u;
-    ret std::unsafe::reinterpret_cast(std::ptr::addr_of(cnull));
+    ret unsafe::reinterpret_cast(ptr::addr_of(cnull));
 }
 
 fn Invoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
@@ -491,8 +491,8 @@ fn Phi(cx: @block_ctxt, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
 fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     if llvm::LLVMIsUndef(phi) == lib::llvm::True { ret; }
     unsafe {
-        let valptr = std::unsafe::reinterpret_cast(std::ptr::addr_of(val));
-        let bbptr = std::unsafe::reinterpret_cast(std::ptr::addr_of(bb));
+        let valptr = unsafe::reinterpret_cast(ptr::addr_of(val));
+        let bbptr = unsafe::reinterpret_cast(ptr::addr_of(bb));
         llvm::LLVMAddIncoming(phi, valptr, bbptr, 1u);
     }
 }

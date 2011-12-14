@@ -1,5 +1,5 @@
 use std;
-import std::option::*;
+import option::*;
 
 pure fn p(x: int) -> bool { true }
 

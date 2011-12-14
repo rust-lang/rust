@@ -1,5 +1,5 @@
 use std;
-import std::task;
+import task;
 
 fn main() { test00(); }
 

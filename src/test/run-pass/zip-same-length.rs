@@ -1,10 +1,10 @@
 // In this case, the code should compile and should
 // succeed at runtime
 use std;
-import std::uint;
-import std::u8;
+import uint;
+import u8;
 
-import std::vec::*;
+import vec::*;
 
 fn main() {
     let a = 'a' as u8, j = 'j' as u8, k = 1u, l = 10u;

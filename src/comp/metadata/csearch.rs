@@ -2,7 +2,7 @@
 
 import syntax::ast;
 import middle::ty;
-import std::option;
+import option;
 import driver::session;
 
 export get_symbol;

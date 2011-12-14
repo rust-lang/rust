@@ -12,20 +12,20 @@
 
 use std;
 
-import std::vec;
-import std::uint;
+import vec;
+import uint;
 import std::time;
-import std::str;
-import std::int::range;
+import str;
+import int::range;
 import std::io;
 import std::getopts;
-import std::task;
-import std::u64;
-import std::comm;
-import std::comm::port;
-import std::comm::chan;
-import std::comm::send;
-import std::comm::recv;
+import task;
+import u64;
+import comm;
+import comm::port;
+import comm::chan;
+import comm::send;
+import comm::recv;
 
 fn fib(n: int) -> int {
     fn pfib(args: (chan<int>, int)) {

@@ -5,10 +5,10 @@ import front::attr;
 import middle::ty;
 import metadata::{encoder, cstore};
 import middle::trans_common::crate_ctxt;
-import std::str;
+import str;
 import std::fs;
-import std::vec;
-import std::option;
+import vec;
+import option;
 import std::run;
 import option::some;
 import option::none;
@@ -32,7 +32,7 @@ tag output_type {
 
 fn llvm_err(sess: session::session, msg: str) unsafe {
     let buf = llvm::LLVMRustGetLastError();
-    if buf == std::ptr::null() {
+    if buf == ptr::null() {
         sess.fatal(msg);
     } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
 }

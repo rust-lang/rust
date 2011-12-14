@@ -2,9 +2,9 @@
 // FIXME: I'm not happy how this module turned out. Should probably
 // just be folded into cstore.
 
-import std::option;
+import core::option;
 import std::fs;
-import std::vec;
+import vec;
 import std::os;
 
 export filesearch;

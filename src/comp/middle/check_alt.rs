@@ -2,7 +2,7 @@ import syntax::ast::*;
 import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit_exprs,
                           lit_expr_eq};
 import syntax::visit;
-import std::option::{some, none};
+import option::{some, none};
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     let v =
@@ -25,7 +25,7 @@ fn check_arms(tcx: ty::ctxt, arms: [arm]) {
             let reachable = true;
             let j = 0;
             while j < i {
-                if std::option::is_none(arms[j].guard) {
+                if option::is_none(arms[j].guard) {
                     for prev_pat: @pat in arms[j].pats {
                         if pattern_supersedes(tcx, prev_pat, arm_pat) {
                             reachable = false;
@@ -149,7 +149,7 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       }
       pat_tag(_, args) {
         let vdef = variant_def_ids(tcx.def_map.get(pat.id));
-        if std::vec::len(ty::tag_variants(tcx, vdef.tg)) != 1u { ret true; }
+        if vec::len(ty::tag_variants(tcx, vdef.tg)) != 1u { ret true; }
         for p: @pat in args { if is_refutable(tcx, p) { ret true; } }
         false
       }

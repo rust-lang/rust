@@ -1,8 +1,8 @@
 // -*- rust -*-
 
 use std;
-import std::task::yield;
-import std::task;
+import task::yield;
+import task;
 
 fn x(&&args: (str, int)) {
     let (s, n) = args;

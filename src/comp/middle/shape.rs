@@ -14,9 +14,9 @@ import syntax::ast_util::dummy_sp;
 import syntax::util::interner;
 import util::common;
 
-import std::{vec, str};
+import core::{vec, str};
 import std::map::hashmap;
-import std::option::{none, some};
+import option::{none, some};
 
 import ty_ctxt = middle::ty::ctxt;
 

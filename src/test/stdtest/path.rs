@@ -1,3 +1,4 @@
+import core::*;
 
 // Testing a few of the path manipuation functions
 

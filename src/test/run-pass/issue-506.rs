@@ -8,7 +8,7 @@
 */
 
 use std;
-import std::task;
+import task;
 
 #[abi = "cdecl"]
 native mod rustrt {

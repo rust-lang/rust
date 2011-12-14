@@ -1,9 +1,9 @@
 use std;
 
-import std::comm;
-import std::comm::chan;
-import std::comm::send;
-import std::task;
+import comm;
+import comm::chan;
+import comm::send;
+import task;
 
 fn main() { test05(); }
 

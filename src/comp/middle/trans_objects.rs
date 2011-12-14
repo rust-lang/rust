@@ -1,6 +1,6 @@
 // Translation of object-related things to LLVM IR.
 
-import std::{str, option, vec};
+import core::{str, option, vec};
 import option::{none, some};
 
 import lib::llvm::{llvm, True};

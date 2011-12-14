@@ -1,6 +1,7 @@
+import core::*;
 
 use std;
-import std::box;
+import box;
 
 #[test]
 fn test() {

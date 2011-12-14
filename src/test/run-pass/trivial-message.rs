@@ -1,5 +1,5 @@
 use std;
-import std::comm::*;
+import comm::*;
 
 /*
   This is about the simplest program that can successfully send a

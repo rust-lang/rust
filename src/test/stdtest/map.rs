@@ -1,11 +1,11 @@
-
+import core::*;
 
 // -*- rust -*-
 use std;
 import std::map;
-import std::str;
-import std::uint;
-import std::option;
+import str;
+import uint;
+import option;
 
 
 #[test]
@@ -257,7 +257,7 @@ fn test_contains_key() {
 fn test_find() {
     let key = "k";
     let map = map::mk_hashmap::<str, str>(str::hash, str::eq);
-    assert (std::option::is_none(map.find(key)));
+    assert (option::is_none(map.find(key)));
     map.insert(key, "val");
-    assert (std::option::get(map.find(key)) == "val");
+    assert (option::get(map.find(key)) == "val");
 }

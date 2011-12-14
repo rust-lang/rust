@@ -72,14 +72,14 @@ type hashmap<K, V> = obj {
     Get the value for the specified key. If the key does not exist
     in the map then returns none.
     */
-    fn find(K) -> option::t<V>;
+    fn find(K) -> core::option::t<V>;
     /*
     Method: remove
 
     Remove and return a value from the map. If the key does not exist
     in the map then returns none.
     */
-    fn remove(K) -> option::t<V>;
+    fn remove(K) -> core::option::t<V>;
     /*
     Method: rehash
 
@@ -210,38 +210,38 @@ mod chained {
         }
     }
 
-    fn get<copy K, copy V>(tbl: t<K,V>, k: K) -> option::t<V> {
+    fn get<copy K, copy V>(tbl: t<K,V>, k: K) -> core::option::t<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
           not_found. {
-            ret option::none;
+            ret core::option::none;
           }
 
           found_first(_, entry) {
-            ret option::some(entry.value);
+            ret core::option::some(entry.value);
           }
 
           found_after(_, entry) {
-            ret option::some(entry.value);
+            ret core::option::some(entry.value);
           }
         }
     }
 
-    fn remove<copy K, copy V>(tbl: t<K,V>, k: K) -> option::t<V> {
+    fn remove<copy K, copy V>(tbl: t<K,V>, k: K) -> core::option::t<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
           not_found. {
-            ret option::none;
+            ret core::option::none;
           }
 
           found_first(idx, entry) {
             tbl.size -= 1u;
             tbl.chains[idx] = entry.next;
-            ret option::some(entry.value);
+            ret core::option::some(entry.value);
           }
 
           found_after(eprev, entry) {
             tbl.size -= 1u;
             eprev.next = entry.next;
-            ret option::some(entry.value);
+            ret core::option::some(entry.value);
           }
         }
     }
@@ -311,18 +311,18 @@ mod chained {
         }
 
         fn contains_key(k: K) -> bool {
-            ret option::is_some(get(*tbl, k));
+            ret core::option::is_some(get(*tbl, k));
         }
 
         fn get(k: K) -> V {
-            ret option::get(get(*tbl, k));
+            ret core::option::get(get(*tbl, k));
         }
 
-        fn find(k: K) -> option::t<V> {
+        fn find(k: K) -> core::option::t<V> {
             ret get(*tbl, k);
         }
 
-        fn remove(k: K) -> option::t<V> {
+        fn remove(k: K) -> core::option::t<V> {
             ret remove(*tbl, k);
         }
 

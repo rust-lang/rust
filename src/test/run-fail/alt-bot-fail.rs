@@ -2,7 +2,7 @@
 
 // error-pattern:explicit failure
 use std;
-import std::option::*;
+import option::*;
 
 fn foo(s: str) { }
 

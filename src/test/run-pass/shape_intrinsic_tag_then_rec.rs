@@ -5,7 +5,7 @@
 use std;
 import std::list;
 import std::list::list;
-import std::option;
+import option;
 
 tag opt_span {
 

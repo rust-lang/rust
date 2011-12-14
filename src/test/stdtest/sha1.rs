@@ -1,11 +1,11 @@
-
+import core::*;
 
 // -*- rust -*-
 
 use std;
 import std::sha1;
-import std::vec;
-import std::str;
+import vec;
+import str;
 
 #[test]
 fn test() {

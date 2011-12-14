@@ -1,9 +1,9 @@
 // Sanity-check the code examples that appear in the object system
 // documentation.
 use std;
-import std::comm::chan;
-import std::comm::send;
-import std::comm::port;
+import comm::chan;
+import comm::send;
+import comm::port;
 
 fn main() {
 

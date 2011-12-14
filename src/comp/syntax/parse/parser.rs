@@ -1,7 +1,8 @@
 
-import std::{io, vec, str, option, either, result, fs};
-import std::option::{some, none};
-import std::either::{left, right};
+import core::{vec, str, option, either, result};
+import std::{io, fs};
+import option::{some, none};
+import either::{left, right};
 import std::map::{hashmap, new_str_hash};
 import token::can_begin_expr;
 import codemap::span;

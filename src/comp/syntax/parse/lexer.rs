@@ -1,6 +1,7 @@
 
-import std::{io, vec, str, option, either};
-import std::option::{some, none};
+import core::{vec, str, option, either};
+import std::io;
+import option::{some, none};
 import util::interner;
 import util::interner::intern;
 import codemap;
@@ -180,7 +181,7 @@ fn scan_digits(rdr: reader, radix: uint) -> str {
     while true {
         let c = rdr.curr();
         if c == '_' { rdr.bump(); cont; }
-        alt std::char::maybe_digit(c) {
+        alt char::maybe_digit(c) {
           some(d) when (d as uint) < radix {
             str::push_byte(rslt, c as u8);
             rdr.bump();
@@ -232,7 +233,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             tp = signed ? either::left(ast::ty_i64)
                         : either::right(ast::ty_u64);
         }
-        let parsed = std::u64::from_str(num_str, base as u64);
+        let parsed = u64::from_str(num_str, base as u64);
         alt tp {
           either::left(t) { ret token::LIT_INT(parsed as i64, t); }
           either::right(t) { ret token::LIT_UINT(parsed, t); }
@@ -276,7 +277,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         ret token::LIT_FLOAT(interner::intern(*rdr.get_interner(), num_str),
                              ast::ty_f);
     } else {
-        let parsed = std::u64::from_str(num_str, base as u64);
+        let parsed = u64::from_str(num_str, base as u64);
         ret token::LIT_INT(parsed as i64, ast::ty_i);
     }
 }

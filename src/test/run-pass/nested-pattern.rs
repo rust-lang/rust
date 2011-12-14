@@ -2,9 +2,9 @@
 
 // a bug was causing this to complain about leaked memory on exit
 use std;
-import std::option;
-import std::option::some;
-import std::option::none;
+import option;
+import option::some;
+import option::none;
 
 tag t { foo(int, uint); bar(int, option::t<int>); }
 

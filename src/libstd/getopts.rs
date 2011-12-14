@@ -45,6 +45,7 @@ name following -o, and accepts both -h and --help as optional flags.
 
 */
 
+import core::option;
 import option::{some, none};
 export opt;
 export reqopt;

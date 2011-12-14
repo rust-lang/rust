@@ -1,10 +1,10 @@
 import std::io;
-import std::str;
-import std::option;
+import str;
+import option;
 import std::fs;
 import std::os;
-import std::vec;
-import std::result;
+import vec;
+import result;
 
 import common::mode_run_pass;
 import common::mode_run_fail;

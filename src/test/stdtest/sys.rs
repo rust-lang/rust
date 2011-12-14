@@ -1,4 +1,6 @@
-import std::sys;
+import core::*;
+
+import sys;
 
 #[test]
 fn last_os_error() {

@@ -1,4 +1,4 @@
-import std::{vec, str, option};
+import core::{vec, str, option};
 import option::{some, none};
 import syntax::ast::*;
 import syntax::visit;

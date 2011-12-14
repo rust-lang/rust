@@ -1,7 +1,7 @@
 use std;
-import std::comm;
-import std::task;
-import std::uint;
+import comm;
+import task;
+import uint;
 
 fn child(args: (comm::chan<~uint>, uint)) {
     let (c, i) = args;

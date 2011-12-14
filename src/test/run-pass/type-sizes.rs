@@ -1,5 +1,5 @@
 // xfail-test
-import std::sys::rustrt::size_of;
+import sys::rustrt::size_of;
 use std;
 
 fn main() {

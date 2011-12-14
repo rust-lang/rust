@@ -6,7 +6,7 @@
 
 mod m {
     use std;
-    import std::vec;
+    import vec;
     fn f() -> [int] { vec::init_elt(0, 1u) }
 }
 

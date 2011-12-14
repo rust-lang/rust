@@ -1,8 +1,10 @@
+import core::*;
+
 use std;
 
 import std::math::*;
-import std::float;
-import c_int = std::ctypes::c_int;
+import float;
+import c_int = ctypes::c_int;
 
 #[test]
 fn test_max_min() {

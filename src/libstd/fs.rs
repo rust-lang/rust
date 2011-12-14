@@ -4,6 +4,8 @@ Module: fs
 File system manipulation
 */
 
+import core::vec;
+import core::option;
 import os;
 import os::getcwd;
 import os_fs;

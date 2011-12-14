@@ -1,7 +1,7 @@
 // -*- rust -*-
 
 use std;
-import std::task::spawn;
+import task::spawn;
 
 fn main() { spawn((10, 20, 30, 40, 50, 60, 70, 80, 90), child); }
 

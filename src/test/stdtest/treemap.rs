@@ -1,8 +1,11 @@
+import core::*;
+
 use std;
+import option;
 import std::treemap::*;
-import std::option::some;
-import std::option::none;
-import std::str;
+import option::some;
+import option::none;
+import str;
 
 #[test]
 fn init_treemap() { let _m = init::<int, int>(); }

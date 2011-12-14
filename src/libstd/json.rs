@@ -3,7 +3,7 @@
 
 import float;
 import map;
-import option;
+import core::option;
 import option::{some, none};
 import str;
 import vec;

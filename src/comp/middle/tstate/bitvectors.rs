@@ -1,7 +1,7 @@
 import syntax::ast::*;
 import syntax::visit;
-import std::vec;
-import std::option::*;
+import vec;
+import option::*;
 import aux::*;
 import tstate::ann::{pre_and_post, precond, postcond, prestate, poststate,
                      relax_prestate, relax_precond, relax_poststate,

@@ -1,7 +1,7 @@
 // xfail-win32
 use std;
-import std::comm;
-import std::task;
+import comm;
+import task;
 
 fn start(&&args: (comm::chan<int>, int)) {
     let (c, i) = args;

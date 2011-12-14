@@ -26,6 +26,8 @@ The following operations are algorithmically faster in ropes:
  */
 
 
+import core::option;
+
 
 
 /*
@@ -209,7 +211,6 @@ fn concat(v: [rope]) -> rope {
 /*
 Section: Keeping ropes healthy
  */
-
 
 
 /*

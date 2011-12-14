@@ -1,6 +1,6 @@
 // error-pattern:quux
 use std;
-import std::uint::*;
+import uint::*;
 
 fn nop(a: uint, b: uint) : le(a, b) { fail "quux"; }
 

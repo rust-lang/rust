@@ -1,7 +1,7 @@
 
 import ast::*;
-import std::option;
-import std::option::{none, some};
+import option;
+import option::{none, some};
 import codemap::span;
 
 

@@ -1,5 +1,5 @@
-import std::vec;
-import std::option::none;
+import vec;
+import option::none;
 import syntax::ast;
 import lib::llvm::llvm::{ValueRef, TypeRef};
 import back::abi;
@@ -131,7 +131,7 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
 }
 
 fn trans_str(bcx: @block_ctxt, s: str, dest: dest) -> @block_ctxt {
-    let veclen = std::str::byte_len(s) + 1u; // +1 for \0
+    let veclen = str::byte_len(s) + 1u; // +1 for \0
     let {bcx: bcx, val: sptr, _} =
         alloc(bcx, ty::mk_str(bcx_tcx(bcx)), veclen);
 

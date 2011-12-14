@@ -4,7 +4,8 @@ Module: smallintmap
 A simple map based on a vector for small integer keys. Space requirements
 are O(highest integer key).
 */
-import option::{some, none};
+import core::option;
+import core::option::{some, none};
 
 // FIXME: Should not be @; there's a bug somewhere in rustc that requires this
 // to be.

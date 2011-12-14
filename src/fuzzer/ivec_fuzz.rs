@@ -17,10 +17,10 @@ vec_edits is not an iter because iters might go away.
 */
 
 use std;
-import std::vec;
-import std::vec::slice;
-import std::vec::len;
-import std::int;
+import vec;
+import vec::slice;
+import vec::len;
+import int;
 
 fn vec_omit<T>(v: [T], i: uint) -> [T] {
     slice(v, 0u, i) + slice(v, i + 1u, len(v))

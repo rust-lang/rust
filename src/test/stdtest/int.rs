@@ -1,8 +1,10 @@
+import core::*;
 
 use std;
-import std::int;
-import std::str::eq;
-import std::str::bytes;
+import str;
+import int;
+import str::eq;
+import str::bytes;
 
 #[test]
 fn test_from_str() {

@@ -1,6 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
-import std::{ebml, vec, option, str, io};
+import core::{vec, option, str};
+import std::{ebml, io};
 import syntax::{ast, ast_util};
 import front::attr;
 import middle::ty;

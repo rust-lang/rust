@@ -1,9 +1,9 @@
 
 use std;
-import std::option;
-import std::option::t;
-import std::option::none;
-import std::option::some;
+import option;
+import option::t;
+import option::none;
+import option::some;
 
 fn foo<T>(y: option::t<T>) {
     let x: int;

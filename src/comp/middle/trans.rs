@@ -12,10 +12,12 @@
 //     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
-import std::{either, str, uint, map, option, time, vec};
+
+import core::{either, str, uint, option, vec};
+import std::{map, time};
 import std::map::hashmap;
 import std::map::{new_int_hash, new_str_hash};
-import std::option::{some, none};
+import option::{some, none};
 import driver::session;
 import front::attr;
 import middle::{ty, gc};
@@ -205,7 +207,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
 
 fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
     -> TypeRef {
-    let degen = std::vec::len(ty::tag_variants(cx.tcx, did)) == 1u;
+    let degen = vec::len(ty::tag_variants(cx.tcx, did)) == 1u;
     if check type_has_static_size(cx, t) {
         let size = static_size_of_tag(cx, sp, t);
         if !degen { T_tag(cx, size) }
@@ -225,7 +227,7 @@ fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: span,
     alt ty::struct(cx.tcx, t) {
       ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _) {
         check returns_non_ty_var(cx, t);
-        ret type_of_fn_from_ty(cx, sp, t, std::vec::len(tpt.kinds));
+        ret type_of_fn_from_ty(cx, sp, t, vec::len(tpt.kinds));
       }
       _ {
         // fall through
@@ -328,7 +330,7 @@ fn get_simple_extern_fn(cx: @block_ctxt,
                         llmod: ModuleRef,
                         name: str, n_args: int) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
-    let inputs = std::vec::init_elt::<TypeRef>(ccx.int_type, n_args as uint);
+    let inputs = vec::init_elt::<TypeRef>(ccx.int_type, n_args as uint);
     let output = ccx.int_type;
     let t = T_fn(inputs, output);
     ret get_extern_fn(externs, llmod, name, lib::llvm::LLVMCCallConv, t);
@@ -337,7 +339,7 @@ fn get_simple_extern_fn(cx: @block_ctxt,
 fn trans_native_call(cx: @block_ctxt, externs: hashmap<str, ValueRef>,
                      llmod: ModuleRef, name: str, args: [ValueRef]) ->
    ValueRef {
-    let n: int = std::vec::len::<ValueRef>(args) as int;
+    let n: int = vec::len::<ValueRef>(args) as int;
     let llnative: ValueRef =
         get_simple_extern_fn(cx, externs, llmod, name, n);
     let call_args: [ValueRef] = [];
@@ -600,7 +602,7 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
         }
         let max_size_val = Load(bcx, max_size);
         let total_size =
-            if std::vec::len(variants) != 1u {
+            if vec::len(variants) != 1u {
                 Add(bcx, max_size_val, llsize_of(ccx, ccx.int_type))
             } else { max_size_val };
         ret rslt(bcx, total_size);
@@ -693,7 +695,7 @@ fn GEP_tup_like(cx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
 
     fn split_type(ccx: @crate_ctxt, t: ty::t, ixs: [int], n: uint) ->
        {prefix: [ty::t], target: ty::t} {
-        let len: uint = std::vec::len::<int>(ixs);
+        let len: uint = vec::len::<int>(ixs);
         // We don't support 0-index or 1-index GEPs: The former is nonsense
         // and the latter would only be meaningful if we supported non-0
         // values for the 0th index (we don't).
@@ -972,8 +974,8 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     // promising to do so itself.
     let n_params = ty::count_ty_params(bcx_tcx(bcx), t);
 
-    assert (n_params == std::vec::len::<uint>(tys.params));
-    assert (n_params == std::vec::len::<ValueRef>(tys.descs));
+    assert (n_params == vec::len::<uint>(tys.params));
+    assert (n_params == vec::len::<ValueRef>(tys.descs));
 
     let llparamtydescs =
         alloca(bcx, T_array(T_ptr(bcx_ccx(bcx).tydesc_type), n_params + 1u));
@@ -1042,7 +1044,7 @@ fn get_tydesc(cx: @block_ctxt, orig_t: ty::t, escapes: bool,
                                           "orig_t = " +
                                           ty_to_str(bcx_tcx(cx), orig_t) +
                                           " ty_param = " +
-                                          std::uint::str(id));
+                                          uint::str(id));
         }
       }
       none. {/* fall through */ }
@@ -1192,7 +1194,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
             T_ptr(type_of(ccx, sp, t))
         } else { T_ptr(T_i8()) };
 
-    let ty_param_count = std::vec::len::<uint>(ty_params);
+    let ty_param_count = vec::len::<uint>(ty_params);
     let lltyparams = llvm::LLVMGetParam(llfn, 2u);
     let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
     let lltydescs = [mutable];
@@ -1200,7 +1202,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
     while p < ty_param_count {
         let llparam = GEPi(load_env_bcx, lltyparams, [p as int]);
         llparam = Load(load_env_bcx, llparam);
-        std::vec::grow_set(lltydescs, ty_params[p], 0 as ValueRef, llparam);
+        vec::grow_set(lltydescs, ty_params[p], 0 as ValueRef, llparam);
         p += 1u;
     }
 
@@ -1453,7 +1455,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     // for type variables.
     let val_llty = lib::llvm::fn_ty_param_tys
         (llvm::LLVMGetElementType
-         (llvm::LLVMTypeOf(dtor_addr)))[std::vec::len(args)];
+         (llvm::LLVMTypeOf(dtor_addr)))[vec::len(args)];
     let val_cast = BitCast(cx, val.val, val_llty);
     Call(cx, dtor_addr, args + [val_cast]);
 
@@ -1608,7 +1610,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
     fn iter_variant(cx: @block_ctxt, a_tup: ValueRef,
                     variant: ty::variant_info, tps: [ty::t], tid: ast::def_id,
                     f: val_and_ty_fn) -> @block_ctxt {
-        if std::vec::len::<ty::t>(variant.args) == 0u { ret cx; }
+        if vec::len::<ty::t>(variant.args) == 0u { ret cx; }
         let fn_ty = variant.ctor_ty;
         let ccx = bcx_ccx(cx);
         let cx = cx;
@@ -1667,7 +1669,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
       }
       ty::ty_tag(tid, tps) {
         let variants = ty::tag_variants(bcx_tcx(cx), tid);
-        let n_variants = std::vec::len(variants);
+        let n_variants = vec::len(variants);
 
         // Cast the tags to types we can GEP into.
         if n_variants == 1u {
@@ -2351,8 +2353,8 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
           }
           ty::ty_tag(did, tps) {
             let variants = ty::tag_variants(ccx.tcx, did);
-            if std::vec::len(variants) != 1u ||
-                   std::vec::len(variants[0].args) != 1u {
+            if vec::len(variants) != 1u ||
+                   vec::len(variants[0].args) != 1u {
                 break;
             }
             t1 =
@@ -2580,9 +2582,9 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
 
     // Make a vector that contains ty_param_count copies of tydesc_ty.
     // (We'll need room for that many tydescs in the closure.)
-    let ty_param_count = std::vec::len(lltydescs);
+    let ty_param_count = vec::len(lltydescs);
     let tydesc_ty: ty::t = ty::mk_type(tcx);
-    let captured_tys: [ty::t] = std::vec::init_elt(tydesc_ty, ty_param_count);
+    let captured_tys: [ty::t] = vec::init_elt(tydesc_ty, ty_param_count);
 
     // Get all the types we've got (some of which we synthesized
     // ourselves) into a vector.  The whole things ends up looking
@@ -2746,7 +2748,7 @@ fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
     // Populate the type parameters from the environment. We need to
     // do this first because the tydescs are needed to index into
     // the bindings if they are dynamically sized.
-    let tydesc_count = std::vec::len(enclosing_cx.fcx.lltydescs);
+    let tydesc_count = vec::len(enclosing_cx.fcx.lltydescs);
     let lltydescs = find_environment_tydescs(bcx, envty, llclosure);
     let i = 0u;
     while i < tydesc_count {
@@ -2854,7 +2856,7 @@ fn lval_static_fn(bcx: @block_ctxt, tpt: ty::ty_param_kinds_and_ty,
     };
     let tys = ty::node_id_to_type_params(bcx_tcx(bcx), id);
     let gen = none, bcx = bcx;
-    if std::vec::len::<ty::t>(tys) != 0u {
+    if vec::len::<ty::t>(tys) != 0u {
         let tydescs = [], tis = [];
         for t in tys {
             // TODO: Doesn't always escape.
@@ -2950,7 +2952,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             let bcx = alloc_result.bcx;
             let lltagptr = PointerCast(bcx, lltagblob, T_ptr(lltagty));
             let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
-            let d = if std::vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
+            let d = if vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
                 let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
                 let lldiscrim = Load(bcx, lldiscrim_gv);
                 lldiscrim
@@ -3166,8 +3168,8 @@ fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
     alt c.generic {
       some(gi) {
-        let n_args = std::vec::len(ty::ty_fn_args(bcx_tcx(c.bcx), ty));
-        let args = std::vec::init_elt(none::<@ast::expr>, n_args);
+        let n_args = vec::len(ty::ty_fn_args(bcx_tcx(c.bcx), ty));
+        let args = vec::init_elt(none::<@ast::expr>, n_args);
         let space = alloc_ty(c.bcx, ty);
         let bcx = trans_bind_1(space.bcx, ty, c, args, ty,
                                save_in(space.val));
@@ -3490,8 +3492,8 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
       }
     }
 
-    let ty_param_count = std::vec::len(lltydescs);
-    if std::vec::len(bound) == 0u && ty_param_count == 0u {
+    let ty_param_count = vec::len(lltydescs);
+    if vec::len(bound) == 0u && ty_param_count == 0u {
         // Trivial 'binding': just return the closure
         let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
         bcx = lv.bcx;
@@ -4598,9 +4600,9 @@ fn trans_block_cleanups(bcx: @block_ctxt, cleanup_cx: @block_ctxt) ->
    @block_ctxt {
     if bcx.unreachable { ret bcx; }
     if cleanup_cx.kind == NON_SCOPE_BLOCK {
-        assert (std::vec::len::<cleanup>(cleanup_cx.cleanups) == 0u);
+        assert (vec::len::<cleanup>(cleanup_cx.cleanups) == 0u);
     }
-    let i = std::vec::len::<cleanup>(cleanup_cx.cleanups), bcx = bcx;
+    let i = vec::len::<cleanup>(cleanup_cx.cleanups), bcx = bcx;
     while i > 0u {
         i -= 1u;
         let c = cleanup_cx.cleanups[i];
@@ -4913,7 +4915,7 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
     // its magic.
 
     let fields_tup_ty = ty::mk_tup(fcx.lcx.ccx.tcx, field_tys);
-    let n_typarams = std::vec::len::<ast::ty_param>(bcx.fcx.lcx.obj_typarams);
+    let n_typarams = vec::len::<ast::ty_param>(bcx.fcx.lcx.obj_typarams);
     let llobj_box_ty: TypeRef = T_obj_ptr(ccx, n_typarams);
     let box_cell = GEPi(bcx, llself.v, [0, abi::obj_field_box]);
     let box_ptr = Load(bcx, box_cell);
@@ -5073,7 +5075,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
                      ty_params: [ast::ty_param]) {
     let ccx = cx.ccx;
 
-    if std::vec::len::<ast::variant_arg>(variant.node.args) == 0u {
+    if vec::len::<ast::variant_arg>(variant.node.args) == 0u {
         ret; // nullary constructors are just constants
 
     }
@@ -5474,7 +5476,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
       }
       ast::item_tag(variants, tps) {
         let sub_cx = extend_path(cx, item.ident);
-        let degen = std::vec::len(variants) == 1u;
+        let degen = vec::len(variants) == 1u;
         let i = 0;
         for variant: ast::variant in variants {
             trans_tag_variant(sub_cx, item.id, variant, i, degen, tps);
@@ -5522,7 +5524,7 @@ fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
     : returns_non_ty_var(ccx, node_type) {
     let path = path;
     let llfty =
-        type_of_fn_from_ty(ccx, sp, node_type, std::vec::len(ty_params));
+        type_of_fn_from_ty(ccx, sp, node_type, vec::len(ty_params));
     let ps: str = mangle_exported_name(ccx, path, node_type);
     let llfn: ValueRef = decl_cdecl_fn(ccx.llmod, ps, llfty);
     ccx.item_ids.insert(node_id, llfn);
@@ -5543,7 +5545,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
 
     let main_takes_argv =
         alt ty::struct(ccx.tcx, main_node_type) {
-          ty::ty_fn(_, args, _, _, _) { std::vec::len(args) != 0u }
+          ty::ty_fn(_, args, _, _, _) { vec::len(args) != 0u }
         };
 
     let llfn = create_main(ccx, sp, main_llfn, main_takes_argv);
@@ -5645,7 +5647,7 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
                         actually a fn");
       }
       ast::native_item_fn(_, tps) {
-        count = std::vec::len::<ast::ty_param>(tps);
+        count = vec::len::<ast::ty_param>(tps);
       }
     }
     ret count;
@@ -5812,7 +5814,7 @@ fn collect_tag_ctor(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
     alt i.node {
       ast::item_tag(variants, tps) {
         for variant: ast::variant in variants {
-            if std::vec::len(variant.node.args) != 0u {
+            if vec::len(variant.node.args) != 0u {
                 register_fn(ccx, i.span, new_pt + [variant.node.name],
                             "tag", tps, variant.node.id);
             }
@@ -5838,7 +5840,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
     alt it.node {
       ast::item_tag(variants, _) {
         let i = 0u;
-        let n_variants = std::vec::len::<ast::variant>(variants);
+        let n_variants = vec::len::<ast::variant>(variants);
         while i < n_variants {
             let variant = variants[i];
             let p = new_pt + [it.ident, variant.node.name, "discrim"];

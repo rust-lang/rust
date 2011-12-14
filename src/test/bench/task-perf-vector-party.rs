@@ -4,10 +4,10 @@
 // allocating and freeing vectors.
 
 use std;
-import std::vec;
-import std::uint;
-import std::str;
-import std::task;
+import vec;
+import uint;
+import str;
+import task;
 
 fn f(&&n: uint) {
     uint::range(0u, n) {|i|

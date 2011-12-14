@@ -1,9 +1,9 @@
 // -*- rust -*-
 // xfail-win32
 use std;
-import std::task;
-import std::comm::port;
-import std::comm::recv;
+import task;
+import comm::port;
+import comm::recv;
 
 fn child(&&_i: ()) { assert (1 == 2); }
 

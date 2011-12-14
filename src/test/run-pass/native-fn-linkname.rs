@@ -1,7 +1,7 @@
 use std;
 
-import std::vec;
-import std::str;
+import vec;
+import str;
 
 #[link_name = ""]
 #[abi = "cdecl"]

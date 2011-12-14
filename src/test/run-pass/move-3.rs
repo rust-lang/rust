@@ -1,5 +1,5 @@
 use std;
-import std::uint;
+import uint;
 
 fn test(x: bool, foo: @{x: int, y: int, z: int}) -> int {
     let bar = foo;

@@ -4,7 +4,7 @@
 // This test will call __morestack with various minimum stack sizes
 
 use std;
-import std::task;
+import task;
 
 native mod rustrt {
     fn set_min_stack(size: uint);

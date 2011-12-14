@@ -2,9 +2,9 @@
 
 // error-pattern:fail
 use std;
-import std::task;
-import std::comm::port;
-import std::comm::recv;
+import task;
+import comm::port;
+import comm::recv;
 
 fn grandchild(&&_i: ()) { fail; }
 

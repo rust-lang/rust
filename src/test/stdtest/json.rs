@@ -1,6 +1,9 @@
+import core::*;
+
 use std;
+import option;
 import std::json::*;
-import std::option::{none, some};
+import option::{none, some};
 
 #[test]
 fn test_from_str_num() {

@@ -1,6 +1,7 @@
+import core::*;
 
 use std;
-import std::vec;
+import vec;
 import std::bitv;
 
 #[test]

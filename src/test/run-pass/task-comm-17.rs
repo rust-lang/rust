@@ -6,7 +6,7 @@
 // until such time as we have unique closures.
 
 use std;
-import std::task;
+import task;
 
 fn f() {
 }

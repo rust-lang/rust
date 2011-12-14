@@ -1,18 +1,18 @@
 // FIXME: The way this module sets up tests is a relic and more convoluted
 // than it needs to be
 
-import std::option;
+import option;
 import std::getopts;
 import std::test;
 import std::fs;
-import std::str;
-import std::vec;
-import std::task;
+import str;
+import vec;
+import task;
 
-import std::comm::port;
-import std::comm::chan;
-import std::comm::send;
-import std::comm::recv;
+import comm::port;
+import comm::chan;
+import comm::send;
+import comm::recv;
 
 import common::cx;
 import common::config;

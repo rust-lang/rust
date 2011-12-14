@@ -1,5 +1,5 @@
 use std;
-import std::uint;
+import uint;
 
 fn test(foo: ~{a: int, b: int, c: int}) -> ~{a: int, b: int, c: int} {
     let foo = foo;

@@ -1,7 +1,7 @@
 // -*- rust -*-
 
 use std;
-import std::task;
+import task;
 
 fn main() {
     let i = 10;

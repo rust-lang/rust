@@ -1,7 +1,7 @@
 // error-pattern:Unsatisfied precondition constraint (for example, le(b, d
 use std;
-import std::str::*;
-import std::uint::*;
+import str::*;
+import uint::*;
 
 fn main() {
     let a: uint = 1u;

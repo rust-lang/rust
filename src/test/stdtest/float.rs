@@ -1,5 +1,7 @@
+import core::*;
+
 use std;
-import std::float;
+import float;
 
 #[test]
 fn test_from_str() {

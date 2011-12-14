@@ -12,9 +12,10 @@ import middle::ty::{node_id_to_type, arg, bind_params_in_type, block_ty,
                     ty_param_substs_opt_and_ty, ty_param_kinds_and_ty};
 import util::ppaux::ty_to_str;
 import middle::ty::unify::{ures_ok, ures_err, fix_ok, fix_err};
-import std::{int, vec, str, option, smallintmap};
+import core::{int, vec, str, option};
+import std::smallintmap;
 import std::map::{hashmap, new_int_hash};
-import std::option::{none, some};
+import option::{none, some};
 import syntax::print::pprust::*;
 
 export check_crate;
@@ -1256,8 +1257,8 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
             let arg_types =
                 variant_arg_types(fcx.ccx, pat.span, v_def_ids.var,
                                   expected_tps);
-            let subpats_len = std::vec::len::<@ast::pat>(subpats);
-            if std::vec::len::<ty::t>(arg_types) > 0u {
+            let subpats_len = vec::len::<@ast::pat>(subpats);
+            if vec::len::<ty::t>(arg_types) > 0u {
                 // N-ary variant.
 
                 let arg_len = vec::len::<ty::t>(arg_types);
@@ -2270,7 +2271,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
             let f = bind filtering_fn(fcx.ccx, _, ao.methods);
             inner_obj_methods =
-                std::vec::filter_map::<ty::method,
+                vec::filter_map::<ty::method,
                                        ty::method>(f, inner_obj_methods);
 
             method_types += inner_obj_methods;

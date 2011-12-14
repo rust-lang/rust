@@ -1,7 +1,7 @@
 // error-pattern: mismatched types
 
 use std;
-import std::task;
+import task;
 
 fn f(&&x: int) -> int { ret x; }
 

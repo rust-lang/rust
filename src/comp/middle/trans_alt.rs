@@ -1,4 +1,4 @@
-import std::{str, vec, option};
+import core::{str, vec, option};
 import option::{some, none};
 
 import lib::llvm::llvm;

@@ -1,11 +1,11 @@
 // -*- rust -*-
 
 use std;
-import std::comm;
-import std::comm::send;
-import std::comm::port;
-import std::comm::recv;
-import std::comm::chan;
+import comm;
+import comm::send;
+import comm::port;
+import comm::recv;
+import comm::chan;
 
 // Tests of ports and channels on various types
 fn test_rec() {

@@ -938,15 +938,13 @@ Escapes a single character.
 */
 fn escape_char(c: char) -> str {
     alt c {
-        '"' { "\\\"" }
-        '\\' { "\\\\" }
-// TODO: uncomment these when https://github.com/graydon/rust/issues/1170 is
-// fixed.
-//        '\n' { "\\n" }
-//        '\t' { "\\t" }
-//        '\r' { "\\r" }
-        '\x00' to '\x1f' { #fmt["\\x%02x", c as uint] }
-        v { from_char(c) }
+      '"' { "\\\"" }
+      '\\' { "\\\\" }
+      '\n' { "\\n" }
+      '\t' { "\\t" }
+      '\r' { "\\r" }
+      '\x00' to '\x1f' { #fmt["\\x%02x", c as uint] }
+      v { from_char(c) }
     }
 }
 

@@ -1,6 +1,6 @@
 // xfail-win32
 use std;
-import std::task;
+import task;
 
 fn f(&&_i: ()) {
     task::unsupervise();

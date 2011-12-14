@@ -1,4 +1,4 @@
-import std::option;
+import option;
 
 tag mode { mode_compile_fail; mode_run_fail; mode_run_pass; mode_pretty; }
 

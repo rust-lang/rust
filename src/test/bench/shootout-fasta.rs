@@ -6,10 +6,10 @@
  * http://shootout.alioth.debian.org/
  */
 use std;
-import std::vec;
-import std::uint;
-import std::int;
-import std::str;
+import vec;
+import uint;
+import int;
+import str;
 
 fn LINE_LENGTH() -> uint { ret 60u; }
 

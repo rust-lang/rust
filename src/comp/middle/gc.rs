@@ -6,8 +6,8 @@ import middle::trans;
 import middle::trans::{get_tydesc, tps_normal};
 import middle::trans_common::*;
 import middle::ty;
-import std::option::none;
-import std::str;
+import option::none;
+import str;
 
 import lll = lib::llvm::llvm;
 import bld = trans_build;

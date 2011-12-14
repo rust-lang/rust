@@ -5,8 +5,8 @@
  * http://99-bottles-of-beer.net/
  */
 use std;
-import std::int;
-import std::str;
+import int;
+import str;
 
 fn b1() -> str { ret "# of beer on the wall, # of beer."; }
 

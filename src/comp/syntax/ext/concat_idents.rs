@@ -1,4 +1,4 @@
-import std::option;
+import option;
 import base::*;
 import syntax::ast;
 

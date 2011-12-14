@@ -1,5 +1,5 @@
 
-import std::{int, uint};
+import core::{int, uint};
 import syntax::ast::*;
 import syntax::ast_util::pat_binding_ids;
 import syntax::visit;

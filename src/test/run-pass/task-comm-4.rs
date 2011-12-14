@@ -1,6 +1,6 @@
 use std;
-import std::comm;
-import std::comm::send;
+import comm;
+import comm::send;
 
 fn main() { test00(); }
 

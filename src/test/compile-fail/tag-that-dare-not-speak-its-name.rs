@@ -2,7 +2,7 @@
 // xfail-test
 // error-pattern:option::t
 use std;
-import std::vec::*;
+import vec::*;
 
 fn main() {
     let y;

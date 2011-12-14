@@ -1,7 +1,7 @@
 use std;
-import std::task;
-import std::comm;
-import std::comm::send;
+import task;
+import comm;
+import comm::send;
 
 fn start(&&args: (comm::chan<int>, int, int)) {
     let (c, start, number_of_messages) = args;

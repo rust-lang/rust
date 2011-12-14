@@ -1,6 +1,6 @@
 use std;
-import std::task;
-import std::comm;
+import task;
+import comm;
 
 fn start(c: comm::chan<comm::chan<str>>) {
     let p = comm::port();

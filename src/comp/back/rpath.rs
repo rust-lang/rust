@@ -1,11 +1,11 @@
 import std::os;
 import std::fs;
 import std::os_fs;
-import std::vec;
+import vec;
 import std::map;
 import std::math;
-import std::str;
-import std::uint;
+import str;
+import uint;
 import metadata::cstore;
 import driver::session;
 import util::filesearch;

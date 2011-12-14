@@ -4,20 +4,21 @@
 // child process. Because of that we have to use a complicated scheme with a
 // dedicated server for spawning processes.
 
-import std::option;
-import std::task;
+import core::comm;
+import core::option;
+import task;
 import std::generic_os::setenv;
 import std::generic_os::getenv;
-import std::vec;
+import vec;
 import std::os;
 import std::run;
 import std::io;
-import std::str;
-import std::comm::chan;
-import std::comm::port;
-import std::comm::send;
-import std::comm::recv;
-import std::ctypes::{pid_t, fd_t};
+import str;
+import comm::chan;
+import comm::port;
+import comm::send;
+import comm::recv;
+import ctypes::{pid_t, fd_t};
 
 export handle;
 export mk;

@@ -1,5 +1,5 @@
 use std;
-import std::str;
+import str;
 
 #[abi = "cdecl"]
 #[link_name = ""]

@@ -1,9 +1,9 @@
 use std;
-import std::task;
-import std::comm;
-import std::comm::chan;
-import std::comm::send;
-import std::comm::recv;
+import task;
+import comm;
+import comm::chan;
+import comm::send;
+import comm::recv;
 
 fn main() { log "===== WITHOUT THREADS ====="; test00(); }
 

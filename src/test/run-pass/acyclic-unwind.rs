@@ -2,8 +2,8 @@
 // -*- rust -*-
 
 use std;
-import std::comm;
-import std::task;
+import comm;
+import task;
 
 fn f(c: comm::_chan<int>) {
     type t = {_0: int, _1: int, _2: int};

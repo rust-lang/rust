@@ -1,12 +1,12 @@
 use std;
 
-import std::task;
-import std::task::task;
-import std::comm;
-import std::comm::chan;
-import std::comm::port;
-import std::comm::send;
-import std::comm::recv;
+import task;
+import task::task;
+import comm;
+import comm::chan;
+import comm::port;
+import comm::send;
+import comm::recv;
 
 fn main() {
     test00();

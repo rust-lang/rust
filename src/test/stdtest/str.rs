@@ -1,5 +1,7 @@
-import std::str;
-import std::vec;
+import core::*;
+
+import str;
+import vec;
 
 #[test]
 fn test_eq() {
@@ -333,6 +335,6 @@ fn iter_chars() {
 fn escape() {
     assert(str::escape("abcdef") == "abcdef");
     assert(str::escape("abc\\def") == "abc\\\\def");
-    assert(str::escape("abc\ndef") == "abc\\x0adef");
+    assert(str::escape("abc\ndef") == "abc\\ndef");
     assert(str::escape("abc\"def") == "abc\\\"def");
 }

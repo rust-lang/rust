@@ -1,10 +1,10 @@
 // -*- rust -*-
 // error-pattern:1 == 2
 use std;
-import std::task;
-import std::comm::chan;
-import std::comm::port;
-import std::comm::recv;
+import task;
+import comm::chan;
+import comm::port;
+import comm::recv;
 
 fn child(&&_args: ()) { assert (1 == 2); }
 

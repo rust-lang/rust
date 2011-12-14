@@ -1,10 +1,12 @@
+import core::*;
+
 use std;
 import std::run;
 import std::os;
 import std::io;
-import std::option;
-import std::str;
-import std::ctypes::fd_t;
+import option;
+import str;
+import ctypes::fd_t;
 
 // Regression test for memory leaks
 #[ignore(cfg(target_os = "win32"))] // FIXME

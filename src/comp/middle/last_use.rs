@@ -1,7 +1,8 @@
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import std::list::{list, nil, cons, tail};
-import std::{vec, list, option};
+import core::{vec, option};
+import std::list;
 
 // Last use analysis pass.
 //

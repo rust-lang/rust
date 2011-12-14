@@ -1,5 +1,5 @@
 use std;
-import std::str;
+import str;
 
 fn test(actual: str, expected: str) {
     log actual;

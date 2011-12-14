@@ -1,5 +1,5 @@
-import std::option;
-import std::str;
+import option;
+import str;
 import std::io;
 import std::fs;
 
@@ -63,7 +63,7 @@ fn is_test_ignored(config: config, testfile: str) -> bool {
 }
 
 fn iter_header(testfile: str, it: block(str)) {
-    let rdr = std::result::get(io::file_reader(testfile));
+    let rdr = result::get(io::file_reader(testfile));
     while !rdr.eof() {
         let ln = rdr.read_line();
 

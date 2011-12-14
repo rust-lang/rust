@@ -1,6 +1,6 @@
 use std;
-import std::str;
-import std::vec;
+import str;
+import vec;
 
 fn main() {
     // Chars of 1, 2, 3, and 4 bytes

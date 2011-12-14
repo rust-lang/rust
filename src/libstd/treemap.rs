@@ -9,6 +9,7 @@ red-black tree or something else.
 
 */
 
+import core::option;
 import option::{some, none};
 import option = option::t;
 

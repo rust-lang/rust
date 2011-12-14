@@ -1,12 +1,13 @@
+import core::*;
 
 use std;
 
 import std::sort;
-import std::vec;
-import std::int;
+import vec;
+import int;
 
 fn check_sort(v1: [mutable int], v2: [mutable int]) {
-    let len = std::vec::len::<int>(v1);
+    let len = vec::len::<int>(v1);
     fn ltequal(&&a: int, &&b: int) -> bool { ret a <= b; }
     let f = ltequal;
     std::sort::quick_sort::<int>(f, v1);

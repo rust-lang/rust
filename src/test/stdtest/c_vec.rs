@@ -1,7 +1,9 @@
+import core::*;
+
 // -*- rust -*-
 use std;
 import std::c_vec::*;
-import std::ctypes::*;
+import ctypes::*;
 
 #[link_name = ""]
 #[abi = "cdecl"]

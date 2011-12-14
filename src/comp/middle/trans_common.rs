@@ -3,10 +3,10 @@
 
 */
 
-import std::{int, vec, str, uint, option, unsafe};
-import std::vec::to_ptr;
+import core::{int, vec, str, uint, option, unsafe};
+import vec::to_ptr;
 import std::map::hashmap;
-import std::option::some;
+import option::some;
 import syntax::ast;
 import driver::session;
 import middle::ty;
@@ -301,9 +301,9 @@ fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
     if found == -1 { ret; }
     // We found the cleanup and remove it
     sc_cx.cleanups =
-        std::vec::slice(sc_cx.cleanups, 0u, found as uint) +
-            std::vec::slice(sc_cx.cleanups, (found as uint) + 1u,
-                            std::vec::len(sc_cx.cleanups));
+        vec::slice(sc_cx.cleanups, 0u, found as uint) +
+            vec::slice(sc_cx.cleanups, (found as uint) + 1u,
+                            vec::len(sc_cx.cleanups));
     sc_cx.lpad_dirty = true;
     ret;
 }
@@ -411,7 +411,7 @@ fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
 fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
     let elt_count = llvm::LLVMCountStructElementTypes(llstructty);
     assert (n < elt_count);
-    let elt_tys = std::vec::init_elt(T_nil(), elt_count);
+    let elt_tys = vec::init_elt(T_nil(), elt_count);
     llvm::LLVMGetStructElementTypes(llstructty, to_ptr(elt_tys));
     ret llvm::LLVMGetElementType(elt_tys[n]);
 }
@@ -531,7 +531,7 @@ fn T_size_t(targ_cfg: @session::config) -> TypeRef {
 fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef {
     unsafe {
         ret llvm::LLVMFunctionType(output, to_ptr(inputs),
-                                   std::vec::len::<TypeRef>(inputs), False);
+                                   vec::len::<TypeRef>(inputs), False);
     }
 }
 
@@ -543,7 +543,7 @@ fn T_ptr(t: TypeRef) -> TypeRef { ret llvm::LLVMPointerType(t, 0u); }
 
 fn T_struct(elts: [TypeRef]) -> TypeRef {
     unsafe {
-        ret llvm::LLVMStructType(to_ptr(elts), std::vec::len(elts), False);
+        ret llvm::LLVMStructType(to_ptr(elts), vec::len(elts), False);
     }
 }
 
@@ -553,7 +553,7 @@ fn T_named_struct(name: str) -> TypeRef {
 }
 
 fn set_struct_body(t: TypeRef, elts: [TypeRef]) unsafe {
-    llvm::LLVMStructSetBody(t, to_ptr(elts), std::vec::len(elts), False);
+    llvm::LLVMStructSetBody(t, to_ptr(elts), vec::len(elts), False);
 }
 
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
@@ -595,7 +595,7 @@ fn T_tydesc_field(cx: @crate_ctxt, field: int) -> TypeRef unsafe {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     let tydesc_elts: [TypeRef] =
-        std::vec::init_elt::<TypeRef>(T_nil(),
+        vec::init_elt::<TypeRef>(T_nil(),
                                       abi::n_tydesc_fields as uint);
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
                                     to_ptr::<TypeRef>(tydesc_elts));
@@ -733,7 +733,7 @@ fn T_opaque_tag_ptr(cx: @crate_ctxt) -> TypeRef {
 }
 
 fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
-    ret T_struct(std::vec::init_elt::<TypeRef>(T_ptr(cx.tydesc_type), n));
+    ret T_struct(vec::init_elt::<TypeRef>(T_ptr(cx.tydesc_type), n));
 }
 
 fn T_obj_ptr(cx: @crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
@@ -823,23 +823,23 @@ fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let i = 0u;
     let elts: [ValueRef] = [];
     while i < size { elts += [C_u8(0u)]; i += 1u; }
-    ret llvm::LLVMConstArray(T_i8(), std::vec::to_ptr(elts),
-                             std::vec::len(elts));
+    ret llvm::LLVMConstArray(T_i8(), vec::to_ptr(elts),
+                             vec::len(elts));
 }
 
 fn C_struct(elts: [ValueRef]) -> ValueRef unsafe {
-    ret llvm::LLVMConstStruct(std::vec::to_ptr(elts), std::vec::len(elts),
+    ret llvm::LLVMConstStruct(vec::to_ptr(elts), vec::len(elts),
                               False);
 }
 
 fn C_named_struct(T: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
-    ret llvm::LLVMConstNamedStruct(T, std::vec::to_ptr(elts),
-                                   std::vec::len(elts));
+    ret llvm::LLVMConstNamedStruct(T, vec::to_ptr(elts),
+                                   vec::len(elts));
 }
 
 fn C_array(ty: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
-    ret llvm::LLVMConstArray(ty, std::vec::to_ptr(elts),
-                             std::vec::len(elts));
+    ret llvm::LLVMConstArray(ty, vec::to_ptr(elts),
+                             vec::len(elts));
 }
 
 fn C_bytes(bytes: [u8]) -> ValueRef unsafe {

@@ -9,7 +9,7 @@ import middle::ty::{type_is_nil, ret_ty_of_fn};
 import tstate::ann::{
                      precond, prestate,
                      implies, ann_precond, ann_prestate};
-import std::{option};
+import option;
 import aux::*;
 import syntax::print::pprust::ty_to_str;
 import bitvectors::*;

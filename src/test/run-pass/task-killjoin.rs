@@ -7,7 +7,7 @@
 // the supervised task exits.
 
 use std;
-import std::task;
+import task;
 
 fn supervised(&&_args: ()) {
     // Yield to make sure the supervisor joins before we

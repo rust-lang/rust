@@ -1,5 +1,7 @@
+import core::*;
+
 use std;
-import std::comm;
+import comm;
 
 #[test]
 fn create_port_and_chan() { let p = comm::port::<int>(); comm::chan(p); }

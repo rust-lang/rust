@@ -2,6 +2,7 @@
 Module: vec
 */
 
+import core::option;
 import option::{some, none};
 import uint::next_power_of_two;
 import ptr::addr_of;

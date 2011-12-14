@@ -2,8 +2,8 @@
 // pattern-bound var is an upvar (when translating
 // the for-each body)
 use std;
-import std::option::*;
-import std::uint;
+import option::*;
+import uint;
 
 fn foo(src: uint) {
 

@@ -1,6 +1,6 @@
 use std;
 
-import std::ctypes::*;
+import ctypes::*;
 
 // This will be more interesting once there is support
 // for consts that refer to other consts, i.e. math_f64::consts::pi as m_float

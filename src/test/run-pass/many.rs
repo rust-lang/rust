@@ -1,8 +1,8 @@
 // -*- rust -*-
 
 use std;
-import std::task;
-import std::comm;
+import task;
+import comm;
 
 fn sub(&&args: (comm::chan<int>, int)) {
     let (parent, id) = args;

@@ -1,11 +1,11 @@
 // -*- rust -*-
 
 use std;
-import std::comm;
-import std::comm::send;
-import std::comm::chan;
-import std::comm::recv;
-import std::task;
+import comm;
+import comm::send;
+import comm::chan;
+import comm::recv;
+import task;
 
 fn a(c: chan<int>) {
     if true {

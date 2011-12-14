@@ -1,5 +1,5 @@
 use std;
-import std::comm;
+import comm;
 
 fn main() {
     let c = {

@@ -1,12 +1,12 @@
 // Issue #763
 
 use std;
-import std::task;
-import std::comm::chan;
-import std::comm::send;
-import std::comm;
-import std::comm::port;
-import std::comm::recv;
+import task;
+import comm::chan;
+import comm::send;
+import comm;
+import comm::port;
+import comm::recv;
 
 tag request { quit; close(chan<bool>); }
 

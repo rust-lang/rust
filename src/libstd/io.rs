@@ -4,6 +4,8 @@ Module: io
 Basic input/output
 */
 
+import core::option;
+import core::result;
 import ctypes::fd_t;
 import ctypes::c_int;
 

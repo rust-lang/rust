@@ -1,5 +1,5 @@
 use std;
-import std::option;
+import option;
 
 fn f<T>(&o: option::t<T>) {
     assert o == option::none;

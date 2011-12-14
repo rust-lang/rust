@@ -7,8 +7,9 @@ import front::attr;
 import syntax::visit;
 import syntax::codemap::span;
 import util::{filesearch};
-import std::{either, vec, str, fs, io, option};
-import std::option::{none, some};
+import core::{either, vec, str, option};
+import std::{io, fs};
+import option::{none, some};
 import std::map::{hashmap, new_int_hash};
 import syntax::print::pprust;
 import common::*;
@@ -206,7 +207,7 @@ fn get_metadata_section(sess: session::session,
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi);
             unsafe {
-                let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);
+                let cvbuf: *u8 = unsafe::reinterpret_cast(cbuf);
                 ret option::some::<@[u8]>(@vec::unsafe::from_buf(cvbuf, csz));
             }
         }

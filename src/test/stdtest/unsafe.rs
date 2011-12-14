@@ -1,4 +1,6 @@
-import std::unsafe;
+import core::*;
+
+import unsafe;
 
 #[test]
 fn reinterpret_cast() unsafe {

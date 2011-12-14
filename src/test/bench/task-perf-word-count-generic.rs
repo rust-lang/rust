@@ -12,24 +12,24 @@
 
 use std;
 
-import option = std::option::t;
-import std::option::some;
-import std::option::none;
-import std::str;
+import option = option::t;
+import option::some;
+import option::none;
+import str;
 import std::treemap;
-import std::vec;
+import vec;
 import std::io;
 
 import std::time;
-import std::u64;
+import u64;
 
-import std::task;
-import std::task::joinable_task;
-import std::comm;
-import std::comm::chan;
-import std::comm::port;
-import std::comm::recv;
-import std::comm::send;
+import task;
+import task::joinable_task;
+import comm;
+import comm::chan;
+import comm::port;
+import comm::recv;
+import comm::send;
 
 fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
     let f = io::file_reader(str::unsafe_from_bytes(filename));

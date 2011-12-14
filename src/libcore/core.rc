@@ -7,6 +7,47 @@
 #[license = "BSD"];
 #[crate_type = "lib"];
 
+export box, char, float, int, str, ptr, uint, u8, u32, u64, vec, bool;
+export either, option, result;
+export ctypes, sys, unsafe, comm, task;
+export extfmt;
+
+// Built-in-type support modules
+
+mod box;
+mod char;
+mod float;
+mod int;
+mod str;
+mod ptr;
+mod uint;
+mod u8;
+mod u32;
+mod u64;
+mod vec;
+mod bool;
+
+
+// Ubiquitous-utility-type modules
+
+mod either;
+mod option;
+mod result;
+
+
+// Runtime and language-primitive support
+
+mod ctypes;
+mod sys;
+mod unsafe;
+mod comm;
+mod task;
+
+// Compiler support modules
+
+mod extfmt;
+
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

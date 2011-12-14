@@ -1,7 +1,7 @@
 use std;
 
-import std::task::spawn_joinable;
-import std::task::join;
+import task::spawn_joinable;
+import task::join;
 
 fn main() { test00(); }
 

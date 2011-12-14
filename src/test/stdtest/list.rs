@@ -1,10 +1,11 @@
+import core::*;
 
 use std;
 import std::list;
 import std::list::head;
 import std::list::tail;
 import std::list::from_vec;
-import std::option;
+import option;
 
 #[test]
 fn test_from_vec() {

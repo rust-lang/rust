@@ -4,8 +4,9 @@ import ast::{ident, fn_ident, node_id};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
-import std::{vec, option, list};
-import std::option::{some, none, is_none};
+import core::{vec, option};
+import std::list;
+import option::{some, none, is_none};
 import list::list;
 
 // This is not an alias-analyser (though it would merit from becoming one, or

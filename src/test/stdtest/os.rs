@@ -1,6 +1,8 @@
+import core::*;
+
 import std::generic_os::setenv;
 import std::generic_os::getenv;
-import std::option;
+import option;
 
 #[test]
 #[ignore(reason = "fails periodically on mac")]
@@ -38,7 +40,7 @@ fn get_exe_path() {
 
     // Hard to test this function
     if std::os::target_os() != "win32" {
-        assert std::str::starts_with(path, std::fs::path_sep());
+        assert str::starts_with(path, std::fs::path_sep());
     } else {
         assert path[1] == ':' as u8;
     }

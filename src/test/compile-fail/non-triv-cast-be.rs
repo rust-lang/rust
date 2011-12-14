@@ -1,7 +1,7 @@
 // error-pattern: non-trivial cast of tail-call return value
 use std;
 
-import std::ctypes::*;
+import ctypes::*;
 
 fn foo_float() -> m_float { ret 0.0 as m_float; }
 fn bar_float() -> bool { be foo_float() as bool; }

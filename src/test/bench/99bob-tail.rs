@@ -3,8 +3,8 @@
  * http://99-bottles-of-beer.net/
  */
 use std;
-import std::int;
-import std::str;
+import int;
+import str;
 
 fn main() {
     fn multiple(n: int) {

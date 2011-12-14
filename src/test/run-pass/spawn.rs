@@ -2,7 +2,7 @@
 
 use std;
 
-import std::task;
+import task;
 
 fn main() { let t = task::spawn_joinable(10, child); task::join(t); }
 

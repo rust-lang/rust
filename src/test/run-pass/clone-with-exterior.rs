@@ -1,7 +1,7 @@
 //xfail-test
 
 use std;
-import std::task;
+import task;
 
 fn f(x : @{a:int, b:int}) {
     assert (x.a == 10);

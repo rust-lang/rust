@@ -1,6 +1,6 @@
 
-import std::{vec, option};
-import std::option::{none, some};
+import core::{vec, option};
+import option::{none, some};
 
 import tstate::ann::*;
 import aux::*;

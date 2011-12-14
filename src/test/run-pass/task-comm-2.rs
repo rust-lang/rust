@@ -1,7 +1,7 @@
 // xfail-win32
 use std;
 
-import std::task;
+import task;
 
 fn main() { log "===== SPAWNING and JOINING THREAD TASKS ====="; test00(); }
 

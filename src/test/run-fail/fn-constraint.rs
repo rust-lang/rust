@@ -1,7 +1,7 @@
 // error-pattern:Predicate le(a, b) failed
 use std;
-import std::str::*;
-import std::uint::le;
+import str::*;
+import uint::le;
 
 fn main() {
     let a: uint = 4u;

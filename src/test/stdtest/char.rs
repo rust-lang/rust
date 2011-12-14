@@ -1,5 +1,7 @@
+import core::*;
+
 use std;
-import std::char;
+import char;
 
 #[test]
 fn test_is_whitespace() {

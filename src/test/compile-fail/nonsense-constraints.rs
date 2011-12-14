@@ -1,7 +1,7 @@
 // Tests that the typechecker checks constraints
 // error-pattern:mismatched types: expected uint but found u8
 use std;
-import std::uint;
+import uint;
 
 fn enum_chars(start: u8, end: u8) : uint::le(start, end) -> [char] {
     let i = start;

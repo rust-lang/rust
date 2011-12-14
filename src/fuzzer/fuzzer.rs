@@ -1,4 +1,5 @@
-import std::{fs, io, math, vec, str, int, uint, option, result};
+import core::{vec, str, int, uint, option, result};
+import std::{fs, io, math};
 
 import rustc::syntax::{ast, ast_util, fold, visit, codemap};
 import rustc::syntax::parse::parser;

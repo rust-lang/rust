@@ -1,7 +1,7 @@
 // Reported as issue #126, child leaks the string.
 
 use std;
-import std::task;
+import task;
 
 fn child2(&&s: str) { }
 

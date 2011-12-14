@@ -1,9 +1,10 @@
-
+import core::*;
 
 // -*- rust -*-
 use std;
-import std::uint;
-import std::str::bytes;
+import str;
+import uint;
+import str::bytes;
 
 #[test]
 fn test_from_str() {

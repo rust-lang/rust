@@ -1,6 +1,6 @@
 import syntax::ast;
 import syntax::visit;
-import std::option::some;
+import option::some;
 import syntax::print::pprust::expr_to_str;
 
 export check_crate_fn_usage;

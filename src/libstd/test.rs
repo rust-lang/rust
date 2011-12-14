@@ -3,7 +3,12 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+import core::comm;
+import core::task;
 import task::task;
+import core::option;
+import core::either;
+import core::vec;
 
 export test_name;
 export test_fn;

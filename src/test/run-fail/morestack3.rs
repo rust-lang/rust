@@ -30,5 +30,5 @@ resource and_then_get_big_again(_i: @int) {
 
 fn main() {
     rustrt::set_min_stack(1024u);
-    std::task::spawn(400, getbig_and_fail);
+    task::spawn(400, getbig_and_fail);
 }

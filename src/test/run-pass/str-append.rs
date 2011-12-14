@@ -2,7 +2,7 @@
 
 // -*- rust -*-
 use std;
-import std::str;
+import str;
 
 fn test1() {
     let s: str = "hello";

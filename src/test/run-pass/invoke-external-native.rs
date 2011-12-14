@@ -1,5 +1,5 @@
 use std;
-import std::sys;
+import sys;
 
 // The purpose of this test is to check that we can
 // successfully (and safely) invoke external, cdecl

@@ -3,6 +3,7 @@ Module: run
 
 Process spawning
 */
+import core::option;
 import str::sbuf;
 import ctypes::{fd_t, pid_t};
 

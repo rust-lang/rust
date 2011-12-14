@@ -1,8 +1,11 @@
+
 #[cfg(target_os = "linux")];
 #[cfg(target_os = "macos")];
 
+import core::*;
+
 import std::uv;
-import std::ptr;
+import ptr;
 
 #[test]
 fn sanity_check() {

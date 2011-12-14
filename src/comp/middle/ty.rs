@@ -1,13 +1,13 @@
-import std::vec;
-import std::str;
-import std::uint;
+import vec;
+import str;
+import uint;
 import std::ufind;
 import std::map;
 import std::map::hashmap;
 import std::math;
-import std::option;
-import std::option::none;
-import std::option::some;
+import option;
+import option::none;
+import option::some;
 import std::smallintmap;
 import driver::session;
 import syntax::ast;
@@ -1471,7 +1471,7 @@ fn node_id_to_ty_param_substs_opt_and_ty(cx: ctxt, id: ast::node_id) ->
     alt smallintmap::find(*cx.node_types, id as uint) {
       none. {
         cx.sess.bug("node_id_to_ty_param_substs_opt_and_ty() called on " +
-                        "an untyped node (" + std::int::to_str(id, 10u) +
+                        "an untyped node (" + int::to_str(id, 10u) +
                         ")");
       }
       some(tpot) { ret tpot; }
@@ -2712,7 +2712,7 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> [variant_info] {
             for variant: ast::variant in variants {
                 let ctor_ty = node_id_to_monotype(cx, variant.node.id);
                 let arg_tys: [t] = [];
-                if std::vec::len(variant.node.args) > 0u {
+                if vec::len(variant.node.args) > 0u {
                     for a: arg in ty_fn_args(cx, ctor_ty) {
                         arg_tys += [a.ty];
                     }

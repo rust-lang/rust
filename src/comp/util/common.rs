@@ -1,7 +1,7 @@
-import std::{str, option};
+import core::{str, option};
 import std::math::{max, min};
 import std::map::hashmap;
-import std::option::{some};
+import option::{some};
 import syntax::ast;
 import ast::{ty, pat};
 import syntax::codemap::{span};
@@ -82,7 +82,7 @@ fn local_rhs_span(l: @ast::local, def: span) -> span {
 }
 
 fn is_main_name(path: [ast::ident]) -> bool {
-    str::eq(option::get(std::vec::last(path)), "main")
+    str::eq(option::get(vec::last(path)), "main")
 }
 
 

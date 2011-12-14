@@ -1,4 +1,5 @@
-import std::{smallintmap, option};
+import option;
+import std::smallintmap;
 import syntax::ast::*;
 import syntax::ast_util;
 import syntax::{visit, codemap};

@@ -6,18 +6,18 @@
 
 use std;
 
-import option = std::option::t;
-import std::option::some;
-import std::option::none;
-import std::str;
-import std::vec;
+import option = option::t;
+import option::some;
+import option::none;
+import str;
+import vec;
 import std::map;
-import std::task;
-import std::comm::chan;
-import std::comm::port;
-import std::comm::send;
-import std::comm::recv;
-import std::comm;
+import task;
+import comm::chan;
+import comm::port;
+import comm::send;
+import comm::recv;
+import comm;
 
 fn map(filename: str, emit: map_reduce::putter) { emit(filename, "1"); }
 

@@ -4,6 +4,7 @@ Module: os
 TODO: Restructure and document
 */
 
+import core::option;
 import ctypes::*;
 
 export libc;

@@ -1,4 +1,5 @@
-import std::{str, option, int, map};
+import core::{str, option, int};
+import std::map;
 import codemap::span;
 import ast::*;
 
@@ -212,7 +213,7 @@ fn is_constraint_arg(e: @expr) -> bool {
     }
 }
 
-fn eq_ty(&&a: @ty, &&b: @ty) -> bool { ret std::box::ptr_eq(a, b); }
+fn eq_ty(&&a: @ty, &&b: @ty) -> bool { ret box::ptr_eq(a, b); }
 
 fn hash_ty(&&t: @ty) -> uint {
     let res = (t.span.lo << 16u) + t.span.hi;
@@ -333,7 +334,7 @@ fn lit_to_const(lit: @lit) -> const_val {
       lit_str(s) { const_str(s) }
       lit_int(n, _) { const_int(n) }
       lit_uint(n, _) { const_uint(n) }
-      lit_float(n, _) { const_float(std::float::from_str(n)) }
+      lit_float(n, _) { const_float(float::from_str(n)) }
       lit_nil. { const_int(0i64) }
       lit_bool(b) { const_int(b as i64) }
     }

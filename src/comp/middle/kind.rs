@@ -1,4 +1,4 @@
-import std::option::{some, none};
+import option::{some, none};
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
@@ -64,7 +64,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             let t = ty::expr_ty(cx.tcx, ex);
             let ty_fields = alt ty::struct(cx.tcx, t) { ty::ty_rec(f) { f } };
             for tf in ty_fields {
-                if !std::vec::any({|f| f.node.ident == tf.ident}, fields) &&
+                if !vec::any({|f| f.node.ident == tf.ident}, fields) &&
                    ty::type_kind(cx.tcx, tf.mt.ty) == kind_noncopyable {
                     cx.tcx.sess.span_err(ex.span,
                                          "copying a noncopyable value");

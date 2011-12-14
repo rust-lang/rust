@@ -5,7 +5,7 @@
 // external symbols as close to the red zone as possible.
 
 use std;
-import std::task;
+import task;
 import std::rand;
 
 native mod rustrt {

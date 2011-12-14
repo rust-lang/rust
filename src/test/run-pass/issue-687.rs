@@ -1,11 +1,11 @@
 use std;
-import std::vec;
-import std::task;
-import std::comm;
-import std::comm::chan;
-import std::comm::port;
-import std::comm::recv;
-import std::comm::send;
+import vec;
+import task;
+import comm;
+import comm::chan;
+import comm::port;
+import comm::recv;
+import comm::send;
 
 tag msg { closed; received([u8]); }
 

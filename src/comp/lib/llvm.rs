@@ -1,5 +1,5 @@
-import std::{vec, str, option};
-import std::str::sbuf;
+import core::{vec, str, option};
+import str::sbuf;
 
 import llvm::{TypeRef, MemoryBufferRef,
               PassManagerRef, TargetDataRef,
@@ -960,7 +960,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       5 { ret "PPC_FP128"; }
       6 { ret "Label"; }
       7 {
-        ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
+        ret "i" + int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
       8 {
         let s = "fn(";
@@ -996,7 +996,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
             i += 1u;
             if tout as int == ty as int {
                 let n: uint = vec::len::<TypeRef>(outer0) - i;
-                ret "*\\" + std::int::str(n as int);
+                ret "*\\" + int::str(n as int);
             }
         }
         ret "*" +

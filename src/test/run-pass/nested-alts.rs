@@ -1,6 +1,6 @@
 
 use std;
-import std::option::*;
+import option::*;
 
 fn baz() -> ! { fail; }
 

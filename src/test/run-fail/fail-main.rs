@@ -1,4 +1,4 @@
 // error-pattern:moop
 use std;
-import std::uint;
+import uint;
 fn main() { fail "moop"; }

@@ -4,6 +4,8 @@ Module: list
 A standard linked list
 */
 
+import core::option;
+import option::*;
 import option::{some, none};
 
 /* Section: Types */

@@ -1,7 +1,7 @@
 // -*- rust -*-
 use std;
-import std::task;
-import std::task::*;
+import task;
+import task::*;
 
 fn main() {
     let other = task::spawn_joinable((), child);

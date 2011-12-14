@@ -1,6 +1,6 @@
 use std;
-import std::comm::*;
-import std::task::*;
+import comm::*;
+import task::*;
 
 fn a(&&_args: ()) {
     fn doit() {

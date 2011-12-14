@@ -1,9 +1,9 @@
-
+import core::*;
 
 // -*- rust -*-
 use std;
 import std::rand;
-import std::str;
+import str;
 
 #[test]
 fn test() {

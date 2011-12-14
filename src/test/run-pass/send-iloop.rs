@@ -1,8 +1,8 @@
 // xfail-win32
 use std;
-import std::task;
-import std::comm;
-import std::uint;
+import task;
+import comm;
+import uint;
 
 fn die(&&_i: ()) {
     fail;

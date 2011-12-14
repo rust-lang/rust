@@ -1,6 +1,6 @@
 use std;
-import std::str::*;
-import std::uint::*;
+import str::*;
+import uint::*;
 
 fn main() {
     let a: uint = 4u;

@@ -1,8 +1,8 @@
 // error-pattern:Unsatisfied precondition constraint (for example, same_length
 use std;
-import std::uint;
-import std::u8;
-import std::vec::*;
+import uint;
+import u8;
+import vec::*;
 
 fn main() {
     let a = 'a' as u8, j = 'j' as u8, k = 1u, l = 10u;

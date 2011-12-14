@@ -6,6 +6,7 @@ Some miscellaneous platform functions.
 These should be rolled into another module.
 */
 
+import core::option;
 
 // Wow, this is an ugly way to write doc comments
 

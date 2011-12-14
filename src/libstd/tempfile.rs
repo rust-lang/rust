@@ -4,8 +4,8 @@ Module: tempfile
 Temporary files and directories
 */
 
+import core::option;
 import fs;
-import option;
 import option::{none, some};
 import rand;
 

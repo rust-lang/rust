@@ -1,7 +1,7 @@
 use std;
-import std::vec;
+import vec;
 import std::rand;
-import std::option;
+import option;
 
 // random uint less than n
 fn under(r : rand::rng, n : uint) -> uint { assert n != 0u; r.next() as uint % n }

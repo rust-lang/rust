@@ -1,3 +1,4 @@
+import core::option;
 import ctypes::*;
 
 export libc;

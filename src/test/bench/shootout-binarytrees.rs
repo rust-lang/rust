@@ -1,5 +1,5 @@
 use std;
-import std::int;
+import int;
 
 tag tree { nil; node(@tree, @tree, int); }
 

@@ -6,13 +6,13 @@ import rustc::syntax::parse::parser;
 import std::fs;
 import std::generic_os;
 import std::io;
-import std::option;
-import std::option::{none, some};
+import option;
+import option::{none, some};
 import std::os;
 import std::run;
-import std::str;
+import str;
 import std::tempfile;
-import std::vec;
+import vec;
 
 type cargo = {
     root: str,

@@ -1,8 +1,8 @@
 // error-pattern:goodfail
 
 use std;
-import std::task;
-import std::comm;
+import task;
+import comm;
 
 fn goodfail(&&_i: ()) {
     task::yield();

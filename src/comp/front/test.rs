@@ -1,6 +1,6 @@
 // Code that generates a test runner to run all the tests in a crate
 
-import std::{option, vec};
+import core::{option, vec};
 import syntax::{ast, ast_util};
 import syntax::ast_util::*;
 //import syntax::ast_util::dummy_sp;

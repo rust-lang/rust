@@ -3,7 +3,7 @@
 
 use std;
 // expecting swap to be defined in vec
-import std::vec::*;
+import vec::*;
 import alternate_supplier::*;
 
 mod alternate_supplier {

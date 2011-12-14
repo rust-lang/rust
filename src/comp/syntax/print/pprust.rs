@@ -1,5 +1,6 @@
 
-import std::{vec, int, io, str, uint, option};
+import core::{vec, int, str, uint, option};
+import std::io;
 import parse::lexer;
 import syntax::codemap::codemap;
 import ast;

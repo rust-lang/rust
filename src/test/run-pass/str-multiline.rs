@@ -2,7 +2,7 @@
 
 // -*- rust -*-
 use std;
-import std::str;
+import str;
 
 fn main() {
     let a: str = "this \

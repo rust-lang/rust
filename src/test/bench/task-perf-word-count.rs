@@ -10,25 +10,25 @@
 
 use std;
 
-import option = std::option::t;
-import std::option::some;
-import std::option::none;
-import std::str;
+import option = option::t;
+import option::some;
+import option::none;
+import str;
 import std::map;
-import std::vec;
+import vec;
 import std::io;
 
 import std::time;
-import std::u64;
-import std::result;
+import u64;
+import result;
 
-import std::task;
-import std::task::joinable_task;
-import std::comm;
-import std::comm::chan;
-import std::comm::port;
-import std::comm::recv;
-import std::comm::send;
+import task;
+import task::joinable_task;
+import comm;
+import comm::chan;
+import comm::port;
+import comm::recv;
+import comm::send;
 
 fn map(input: str, emit: map_reduce::putter) {
     let f = io::string_reader(input);

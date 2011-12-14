@@ -1,5 +1,5 @@
 use std;
-import std::option::*;
+import option::*;
 
 fn main() {
     let i: int =
