@@ -11,6 +11,7 @@
 #include <iostream>
 #include <cassert>
 #include <cstring>
+#include <algorithm>
 
 #include "globals.h"
 
@@ -44,25 +45,55 @@ get_min_stk_size(size_t default_size) {
     }
 }
 
+static size_t
+get_next_stk_size(rust_scheduler *sched, rust_task *task,
+                  size_t min, size_t current, size_t requested) {
+    LOG(task, mem, "calculating new stack size for 0x%" PRIxPTR, task);
+    LOG(task, mem,
+        "min: %" PRIdPTR " current: %" PRIdPTR " requested: %" PRIdPTR,
+        min, current, requested);
+
+    // Allocate at least enough to accomodate the next frame
+    size_t sz = std::max(min, requested);
+
+    // And double the stack size each allocation
+    const size_t max = 1024 * 1024;
+    size_t next = std::min(max, current * 2);
+
+    sz = std::max(sz, next);
+
+    LOG(task, mem, "next stack size: %" PRIdPTR, sz);
+    return sz;
+}
 
 // Task stack segments. Heap allocated and chained together.
 
 static stk_seg*
-new_stk(rust_scheduler *sched, rust_task *task, size_t minsz)
+new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
 {
-    size_t min_stk_bytes = get_min_stk_size(sched->min_stack_size);
-    if (minsz < min_stk_bytes)
-        minsz = min_stk_bytes;
-    size_t sz = sizeof(stk_seg) + minsz + RED_ZONE_SIZE;
+    // The minimum stack size, in bytes, of a Rust stack, excluding red zone
+    size_t min_sz = get_min_stk_size(sched->min_stack_size);
+    // The size of the current stack segment, excluding red zone
+    size_t current_sz = 0;
+    if (task->stk != NULL) {
+        current_sz = (size_t)(task->stk->end
+                              - (uintptr_t)&task->stk->data[0]
+                              - RED_ZONE_SIZE);
+    }
+    // The calculated size of the new stack, excluding red zone
+    size_t rust_stk_sz = get_next_stk_size(sched, task, min_sz,
+                                           current_sz, requested_sz);
+
+    size_t sz = sizeof(stk_seg) + rust_stk_sz + RED_ZONE_SIZE;
     stk_seg *stk = (stk_seg *)task->malloc(sz, "stack");
     LOGPTR(task->sched, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
     stk->next = task->stk;
-    stk->end = (uintptr_t) &stk->data[minsz + RED_ZONE_SIZE];
+    stk->end = (uintptr_t) &stk->data[rust_stk_sz + RED_ZONE_SIZE];
     LOGPTR(task->sched, "stk end", stk->end);
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
-                                &stk->data[minsz + RED_ZONE_SIZE]);
+                                &stk->data[rust_stk_sz + RED_ZONE_SIZE]);
 #ifndef NVALGRIND
     VALGRIND_MAKE_MEM_NOACCESS(stk->data, STACK_NOACCESS_SIZE);
 #endif
