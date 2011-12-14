@@ -15,7 +15,7 @@
 //
 // 0 --- no headers, no debugging support
 // 1 --- support poison, but do not track allocations
-// 2 --- track allocations in deatil
+// 2 --- track allocations in detail
 //
 // NB: please do not commit code with level 2. It's
 // hugely expensive and should only be used as a last resort.

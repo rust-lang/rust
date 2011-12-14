@@ -58,6 +58,7 @@ upcall_dynastack_free
 upcall_dynastack_mark
 upcall_fail
 upcall_free
+upcall_clone_type_desc
 upcall_get_type_desc
 upcall_log_type
 upcall_malloc

@@ -224,7 +224,7 @@ void upcall_s_clone_type_desc(s_clone_type_desc_args *args)
  * Called to deep-clone type descriptors so they can be attached to a sendable
  * function.  Eventually this should perhaps move to a centralized hashtable.
  */
-type_desc *
+extern "C" CDECL type_desc *
 upcall_clone_type_desc(type_desc *td) {
     s_clone_type_desc_args args = { td, 0 };
     SWITCH_STACK(&args, upcall_s_clone_type_desc);
