@@ -444,10 +444,11 @@ fn test_unrecognized_option_short() {
 fn test_combined() {
     let args =
         ["prog", "free1", "-s", "20", "free2", "--flag", "--long=30", "-f",
-         "-m", "40", "-m", "50"];
+         "-m", "40", "-m", "50", "-n", "-A B", "-n", "-60 70"];
     let opts =
         [opt::optopt("s"), opt::optflag("flag"), opt::reqopt("long"),
-         opt::optflag("f"), opt::optmulti("m"), opt::optopt("notpresent")];
+         opt::optflag("f"), opt::optmulti("m"), opt::optmulti("n"),
+         opt::optopt("notpresent")];
     let rs = opt::getopts(args, opts);
     alt rs {
       ok(m) {
@@ -460,6 +461,8 @@ fn test_combined() {
         assert (opt::opt_present(m, "f"));
         assert (opt::opt_strs(m, "m")[0] == "40");
         assert (opt::opt_strs(m, "m")[1] == "50");
+        assert (opt::opt_strs(m, "n")[0] == "-A B");
+        assert (opt::opt_strs(m, "n")[1] == "-60 70");
         assert (!opt::opt_present(m, "notpresent"));
       }
       _ { fail; }
