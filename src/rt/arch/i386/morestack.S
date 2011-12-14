@@ -122,11 +122,13 @@ MORESTACK:
 
 	subl $8, %esp // Alignment
 
+	// Now that we're on the return path we want to avoid
+	// stomping on %eax
 #ifdef __APPLE__
 	call 1f
-1:	popl %eax
-	movl L_upcall_del_stack$non_lazy_ptr-1b(%eax),%eax
-	pushl %eax
+1:	popl %ecx
+	movl L_upcall_del_stack$non_lazy_ptr-1b(%ecx),%ecx
+	pushl %ecx
 #else
 	pushl $UPCALL_DEL_STACK
 #endif
