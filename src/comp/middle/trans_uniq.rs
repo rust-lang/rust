@@ -15,7 +15,8 @@ import trans::{
     dest
 };
 
-export trans_uniq, make_free_glue, type_is_unique_box, autoderef, duplicate;
+export trans_uniq, make_free_glue, type_is_unique_box, autoderef, duplicate,
+       alloc_uniq;
 
 pure fn type_is_unique_box(bcx: @block_ctxt, ty: ty::t) -> bool {
     ty::type_is_unique_box(bcx_tcx(bcx), ty)

@@ -2553,9 +2553,27 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
                      bound_values: [environment_value],
                      mode: closure_constr_mode) ->
    {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
-    let ccx = bcx_ccx(bcx);
+
+    fn dummy_environment_box(bcx: @block_ctxt, r: result)
+        -> (@block_ctxt, ValueRef, ValueRef) {
+        // Prevent glue from trying to free this.
+        let ccx = bcx_ccx(bcx);
+        let ref_cnt = GEPi(bcx, r.val, [0, abi::box_rc_field_refcnt]);
+        Store(r.bcx, C_int(ccx, 2), ref_cnt);
+        let closure = GEPi(r.bcx, r.val, [0, abi::box_rc_field_body]);
+        (r.bcx, closure, r.val)
+    }
+
+    fn clone_tydesc(bcx: @block_ctxt,
+                    mode: closure_constr_mode,
+                    td: ValueRef) -> ValueRef {
+        ret alt mode {
+          for_block. | for_closure. { td }
+          for_send. { Call(bcx, bcx_ccx(bcx).upcalls.clone_type_desc, [td]) }
+        };
+    }
+
     let tcx = bcx_tcx(bcx);
-    // Synthesize a closure type.
 
     // First, synthesize a tuple type containing the types of all the
     // bound expressions.
@@ -2591,26 +2609,37 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     // Finally, synthesize a type for that whole vector.
     let closure_ty: ty::t = ty::mk_tup(tcx, closure_tys);
 
-    let temp_cleanups = [], bcx = bcx;
+    let temp_cleanups = [];
+
     // Allocate a box that can hold something closure-sized.
-    let (closure, box) = alt mode {
-      for_closure. | for_send. {
+    //
+    // For now, no matter what kind of closure we have, we always allocate
+    // space for a ref cnt in the closure.  If the closure is a block or
+    // unique closure, this ref count isn't really used: we initialize it to 2
+    // so that it will never drop to zero.  This is a hack and could go away
+    // but then we'd have to modify the code to do the right thing when
+    // casting from a shared closure to a block.
+    let (bcx, closure, box) = alt mode {
+      for_closure. {
         let r = trans_malloc_boxed(bcx, closure_ty);
         add_clean_free(bcx, r.box, false);
         temp_cleanups += [r.box];
-        bcx = r.bcx;
-        (r.body, r.box)
+        (r.bcx, r.body, r.box)
+      }
+      for_send. {
+        // Dummy up a box in the exchange heap.
+        let tup_ty = ty::mk_tup(tcx, [ty::mk_int(tcx), closure_ty]);
+        let box_ty = ty::mk_uniq(tcx, {ty: tup_ty, mut: ast::imm});
+        check trans_uniq::type_is_unique_box(bcx, box_ty);
+        let r = trans_uniq::alloc_uniq(bcx, box_ty);
+        add_clean_free(bcx, r.val, true);
+        dummy_environment_box(bcx, r)
       }
       for_block. {
-        // We need to dummy up a box on the stack
+        // Dummy up a box on the stack,
         let ty = ty::mk_tup(tcx, [ty::mk_int(tcx), closure_ty]);
         let r = alloc_ty(bcx, ty);
-        bcx = r.bcx;
-        // Prevent glue from trying to free this.
-        Store(bcx,
-              C_int(ccx, 2),
-              GEPi(bcx, r.val, [0, abi::box_rc_field_refcnt]));
-        (GEPi(bcx, r.val, [0, abi::box_rc_field_body]), r.val)
+        dummy_environment_box(bcx, r)
       }
     };
 
@@ -2624,7 +2653,8 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = bindings_tydesc.bcx;
-        Store(bcx, bindings_tydesc.val, bound_tydesc);
+        let td = clone_tydesc(bcx, mode, bindings_tydesc.val);
+        Store(bcx, td, bound_tydesc);
       }
       for_block. {}
     }
@@ -2675,15 +2705,8 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     i = 0u;
     for td: ValueRef in lltydescs {
         let ty_param_slot = GEPi(bcx, ty_params_slot.val, [0, i as int]);
-        alt mode {
-          for_closure. | for_block. {
-            Store(bcx, td, ty_param_slot);
-          }
-          for_send. {
-            let cloned_td = Call(bcx, ccx.upcalls.clone_type_desc, [td]);
-            Store(bcx, cloned_td, ty_param_slot);
-          }
-        }
+        let cloned_td = clone_tydesc(bcx, mode, td);
+        Store(bcx, cloned_td, ty_param_slot);
         i += 1u;
     }
 
