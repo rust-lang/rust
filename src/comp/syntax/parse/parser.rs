@@ -151,40 +151,14 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
 // interpreted as a specific kind of statement, which would be confusing.
 fn bad_expr_word_table() -> hashmap<str, ()> {
     let words = new_str_hash();
-    words.insert("mod", ());
-    words.insert("if", ());
-    words.insert("else", ());
-    words.insert("while", ());
-    words.insert("do", ());
-    words.insert("alt", ());
-    words.insert("for", ());
-    words.insert("break", ());
-    words.insert("cont", ());
-    words.insert("ret", ());
-    words.insert("be", ());
-    words.insert("fail", ());
-    words.insert("type", ());
-    words.insert("resource", ());
-    words.insert("check", ());
-    words.insert("assert", ());
-    words.insert("claim", ());
-    words.insert("native", ());
-    words.insert("fn", ());
-    words.insert("lambda", ());
-    words.insert("pure", ());
-    words.insert("unsafe", ());
-    words.insert("block", ());
-    words.insert("import", ());
-    words.insert("export", ());
-    words.insert("let", ());
-    words.insert("const", ());
-    words.insert("log", ());
-    words.insert("log_err", ());
-    words.insert("sendfn", ());
-    words.insert("tag", ());
-    words.insert("obj", ());
-    words.insert("copy", ());
-    ret words;
+    for word in ["mod", "if", "else", "while", "do", "alt", "for", "break",
+                 "cont", "ret", "be", "fail", "type", "resource", "check",
+                 "assert", "claim", "native", "fn", "lambda", "pure",
+                 "unsafe", "block", "import", "export", "let", "const",
+                 "log", "log_err", "tag", "obj", "self", "copy", "sendfn"] {
+        words.insert(word, ());
+    }
+    words
 }
 
 fn unexpected(p: parser, t: token::token) -> ! {
@@ -828,10 +802,6 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         ret parse_do_while_expr(p);
     } else if eat_word(p, "alt") {
         ret parse_alt_expr(p);
-        /*
-            } else if (eat_word(p, "spawn")) {
-                ret parse_spawn_expr(p);
-        */
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         ret parse_fn_expr(p, proto);
