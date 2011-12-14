@@ -7,9 +7,10 @@
 #[license = "BSD"];
 #[crate_type = "lib"];
 
-export box, char, float, int, str, ptr, uint, u8, u32, u64, vec, bool;
+export box, char, float, f32, f64, int, str, ptr;
+export uint, u8, u32, u64, vec, bool;
 export either, option, result;
-export ctypes, sys, unsafe, comm, task;
+export ctypes, mtypes, sys, unsafe, comm, task;
 export extfmt;
 
 // Built-in-type support modules
@@ -17,6 +18,8 @@ export extfmt;
 mod box;
 mod char;
 mod float;
+mod f32;
+mod f64;
 mod int;
 mod str;
 mod ptr;
@@ -38,6 +41,8 @@ mod result;
 // Runtime and language-primitive support
 
 mod ctypes;
+mod mtypes;
+mod cmath;
 mod sys;
 mod unsafe;
 mod comm;
