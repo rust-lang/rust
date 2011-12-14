@@ -4028,7 +4028,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
                     bcx = init_ref_local(bcx, local);
                 }
                 if bcx_ccx(cx).sess.get_opts().debuginfo {
-                    debuginfo::get_local_var_metadata(bcx, local);
+                    debuginfo::create_local_var(bcx, local);
                 }
             }
           }
@@ -4426,7 +4426,6 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
         llvm::LLVMAddAttribute(llvm::LLVMGetFirstParam(fcx.llfn),
                                lib::llvm::LLVMStructRetAttribute as
                                    lib::llvm::llvm::Attribute);
-        //let _ = debuginfo::get_retval_metadata(bcx);
     }
     let arg_n: uint = 0u, bcx = bcx;
     for arg in arg_tys {
@@ -4448,7 +4447,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
           ast::by_ref. {}
         }
         if fcx_ccx(fcx).sess.get_opts().debuginfo {
-            let _ = debuginfo::get_arg_metadata(bcx, args[arg_n]);
+            debuginfo::create_arg(bcx, args[arg_n]);
         }
         arg_n += 1u;
     }
@@ -4589,7 +4588,7 @@ fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
         let item = alt option::get(cx.ccx.ast_map.find(id)) {
             ast_map::node_item(item) { item }
         };
-        debuginfo::get_function_metadata(option::get(fcx), item, llfndecl);
+        debuginfo::create_function(option::get(fcx), item, llfndecl);
     }
     if do_time {
         let end = time::get_time();

@@ -8,6 +8,15 @@ import syntax::{ast, codemap};
 import ast::ty;
 import util::ppaux::ty_to_str;
 
+export create_local_var;
+export create_function;
+export create_arg;
+export add_line_info;
+export update_source_pos;
+export invalidate_source_pos;
+export revalidate_source_pos;
+export debug_ctxt;
+
 const LLVMDebugVersion: int = (9 << 16);
 
 const DW_LANG_RUST: int = 0x9000;
@@ -35,13 +44,11 @@ const DW_ATE_signed_char: int = 0x06;
 const DW_ATE_unsigned: int = 0x07;
 const DW_ATE_unsigned_char: int = 0x08;
 
-fn as_buf(s: str) -> str::sbuf {
-    str::as_buf(s, {|sbuf| sbuf})
-}
 fn llstr(s: str) -> ValueRef {
-    llvm::LLVMMDString(as_buf(s), str::byte_len(s))
+    str::as_buf(s, {|sbuf|
+        llvm::LLVMMDString(sbuf, str::byte_len(s))
+    })
 }
-
 fn lltag(lltag: int) -> ValueRef {
     lli32(LLVMDebugVersion | lltag)
 }
@@ -65,6 +72,19 @@ fn llnull() -> ValueRef unsafe {
     unsafe::reinterpret_cast(std::ptr::null::<ValueRef>())
 }
 
+fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
+    str::as_buf(name, {|sbuf|
+        llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, str::byte_len(name), val)
+    })
+}
+
+////////////////
+
+type debug_ctxt = {
+    llmetadata: metadata_cache,
+    names: trans_common::namegen
+};
+
 fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
     let existing = if cache.contains_key(mdtag) {
         cache.get(mdtag)
@@ -73,17 +93,6 @@ fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
     };
     cache.insert(mdtag, existing + [val]);
 }
-
-////////////////
-
-type debug_ctxt = {
-    llmetadata: metadata_cache,
-    //llmod: ValueRef,
-    //opt: bool,
-    names: trans_common::namegen
-};
-
-////////////////
 
 type metadata<T> = {node: ValueRef, data: T};
 
@@ -143,17 +152,19 @@ fn cached_metadata<copy T>(cache: metadata_cache, mdtag: int,
     ret option::none;
 }
 
-fn get_compile_unit_metadata(cx: @crate_ctxt, full_path: str)
+fn create_compile_unit(cx: @crate_ctxt, full_path: str)
     -> @metadata<compile_unit_md> {
     let cache = get_cache(cx);
-    alt cached_metadata::<@metadata<compile_unit_md>>(cache, CompileUnitTag,
+    let tg = CompileUnitTag;
+    alt cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
                         {|md| md.data.path == full_path}) {
       option::some(md) { ret md; }
       option::none. {}
     }
+
     let fname = fs::basename(full_path);
     let path = fs::dirname(full_path);
-    let unit_metadata = [lltag(CompileUnitTag),
+    let unit_metadata = [lltag(tg),
                          llunused(),
                          lli32(DW_LANG_RUST),
                          llstr(fname),
@@ -169,11 +180,9 @@ fn get_compile_unit_metadata(cx: @crate_ctxt, full_path: str)
                          // list of global variables
                         ];
     let unit_node = llmdnode(unit_metadata);
-    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.cu"),
-                                  str::byte_len("llvm.dbg.cu"),
-                                  unit_node);
+    add_named_metadata(cx, "llvm.dbg.cu", unit_node);
     let mdval = @{node: unit_node, data: {path: full_path}};
-    update_cache(cache, CompileUnitTag, compile_unit_metadata(mdval));
+    update_cache(cache, tg, compile_unit_metadata(mdval));
     ret mdval;
 }
 
@@ -181,7 +190,7 @@ fn get_cache(cx: @crate_ctxt) -> metadata_cache {
     option::get(cx.dbg_cx).llmetadata
 }
 
-fn get_file_metadata(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
+fn create_file(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
     alt cached_metadata::<@metadata<file_md>>(
@@ -189,9 +198,10 @@ fn get_file_metadata(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
         option::some(md) { ret md; }
         option::none. {}
     }
+
     let fname = fs::basename(full_path);
     let path = fs::dirname(full_path);
-    let unit_node = get_compile_unit_metadata(cx, full_path).node;
+    let unit_node = create_compile_unit(cx, full_path).node;
     let file_md = [lltag(tg),
                    llstr(fname),
                    llstr(path),
@@ -206,7 +216,7 @@ fn line_from_span(cm: codemap::codemap, sp: codemap::span) -> uint {
     codemap::lookup_char_pos(cm, sp.lo).line
 }
 
-fn get_block_metadata(cx: @block_ctxt) -> @metadata<block_md> {
+fn create_block(cx: @block_ctxt) -> @metadata<block_md> {
     let cache = get_cache(bcx_ccx(cx));
     let start = codemap::lookup_char_pos(bcx_ccx(cx).sess.get_codemap(),
                                          cx.sp.lo);
@@ -220,11 +230,12 @@ fn get_block_metadata(cx: @block_ctxt) -> @metadata<block_md> {
       option::some(md) { ret md; }
       option::none. {}
     }
+
     let parent = alt cx.parent {
       trans_common::parent_none. { function_metadata_from_block(cx).node }
-      trans_common::parent_some(bcx) { get_block_metadata(cx).node }
+      trans_common::parent_some(bcx) { create_block(cx).node }
     };
-    let file_node = get_file_metadata(bcx_ccx(cx), fname);
+    let file_node = create_file(bcx_ccx(cx), fname);
     let unique_id = alt cache.find(LexicalBlockTag) {
       option::some(v) { vec::len(v) as int }
       option::none. { 0 }
@@ -246,7 +257,7 @@ fn size_and_align_of<T>() -> (int, int) {
     (sys::size_of::<T>() as int, sys::align_of::<T>() as int)
 }
 
-fn get_basic_type_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
+fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     -> @metadata<tydesc_md> {
     let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
@@ -256,6 +267,7 @@ fn get_basic_type_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
       option::some(md) { ret md; }
       option::none. {}
     }
+
     let (name, (size, align), encoding) = alt ty.node {
       ast::ty_bool. {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
       ast::ty_int(m) { alt m {
@@ -279,9 +291,10 @@ fn get_basic_type_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
         ast::ty_f64. {("f64", size_and_align_of::<f64>(), DW_ATE_float)}
       }}
     };
+
     let fname = filename_from_span(cx, ty.span);
-    let file_node = get_file_metadata(cx, fname);
-    let cu_node = get_compile_unit_metadata(cx, fname);
+    let file_node = create_file(cx, fname);
+    let cu_node = create_compile_unit(cx, fname);
     let lldata = [lltag(tg),
                   cu_node.node,
                   llstr(name),
@@ -295,14 +308,12 @@ fn get_basic_type_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     let llnode = llmdnode(lldata);
     let mdval = @{node: llnode, data: {hash: ty::hash_ty(t)}};
     update_cache(cache, tg, tydesc_metadata(mdval));
-    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
-                                      str::byte_len("llvm.dbg.ty"),
-                                      llnode);
+    add_named_metadata(cx, "llvm.dbg.ty", llnode);
     ret mdval;
 }
 
-fn get_pointer_type_metadata(cx: @crate_ctxt, t: ty::t, span: codemap::span,
-                             pointee: @metadata<tydesc_md>)
+fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: codemap::span,
+                       pointee: @metadata<tydesc_md>)
     -> @metadata<tydesc_md> {
     let tg = PointerTypeTag;
     /*let cache = cx.llmetadata;
@@ -313,24 +324,13 @@ fn get_pointer_type_metadata(cx: @crate_ctxt, t: ty::t, span: codemap::span,
     }*/
     let (size, align) = size_and_align_of::<ctypes::intptr_t>();
     let fname = filename_from_span(cx, span);
-    let file_node = get_file_metadata(cx, fname);
-    //let cu_node = get_compile_unit_metadata(cx, fname);
-    let lldata = [lltag(tg),
-                  file_node.node,
-                  llstr(""),
-                  file_node.node,
-                  lli32(0), //XXX source line
-                  lli64(size * 8),  // size in bits
-                  lli64(align * 8), // alignment in bits
-                  lli64(0), //XXX offset?
-                  lli32(0),
-                  pointee.node];
-    let llnode = llmdnode(lldata);
+    let file_node = create_file(cx, fname);
+    //let cu_node = create_compile_unit(cx, fname);
+    let llnode = create_derived_type(tg, file_node.node, "", 0, size * 8,
+                                     align * 8, 0, pointee.node);
     let mdval = @{node: llnode, data: {hash: ty::hash_ty(t)}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
-    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
-                                      str::byte_len("llvm.dbg.ty"),
-                                      llnode);
+    add_named_metadata(cx, "llvm.dbg.ty", llnode);
     ret mdval;
 }
 
@@ -361,33 +361,40 @@ fn create_structure(file: @metadata<file_md>, name: str, line: int)
     ret cx;
 }
 
-fn add_member(cx: @struct_ctxt, name: str, line: int, size: int, align: int,
-              ty: ValueRef) {
-    let lldata = [lltag(MemberTag),
-                  cx.file,
+fn create_derived_type(type_tag: int, file: ValueRef, name: str, line: int,
+                       size: int, align: int, offset: int, ty: ValueRef)
+    -> ValueRef {
+    let lldata = [lltag(type_tag),
+                  file,
                   llstr(name),
-                  cx.file,
+                  file,
                   lli32(line),
-                  lli64(size * 8),
-                  lli64(align * 8),
-                  lli64(cx.total_size),
+                  lli64(size),
+                  lli64(align),
+                  lli64(offset),
                   lli32(0),
                   ty];
-    cx.total_size += size * 8;
-    cx.members += [llmdnode(lldata)];
+    ret llmdnode(lldata);
 }
 
-fn get_record_metadata(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
-                       span: codemap::span) -> @metadata<tydesc_md> {
+fn add_member(cx: @struct_ctxt, name: str, line: int, size: int, align: int,
+              ty: ValueRef) {
+    cx.members += [create_derived_type(MemberTag, cx.file, name, line, size * 8,
+                                       align * 8, cx.total_size, ty)];
+    cx.total_size += size * 8;
+}
+
+fn create_record(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
+                 span: codemap::span) -> @metadata<tydesc_md> {
     let fname = filename_from_span(cx, span);
-    let file_node = get_file_metadata(cx, fname);
+    let file_node = create_file(cx, fname);
     let scx = create_structure(file_node,
                                option::get(cx.dbg_cx).names.next("rec"),
                                line_from_span(cx.sess.get_codemap(),
                                               span) as int);
     for field in fields {
         let field_t = ty::get_field(ccx_tcx(cx), t, field.node.ident).mt.ty;
-        let ty_md = get_ty_metadata(cx, field_t, field.node.mt.ty);
+        let ty_md = create_ty(cx, field_t, field.node.mt.ty);
         let (size, align) = member_size_and_align(field.node.mt.ty);
         add_member(scx, field.node.ident,
                    line_from_span(cx.sess.get_codemap(), field.span) as int,
@@ -397,10 +404,10 @@ fn get_record_metadata(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
     ret mdval;
 }
 
-fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
-                           span: codemap::span, boxed: @metadata<tydesc_md>)
+fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
+                     span: codemap::span, boxed: @metadata<tydesc_md>)
     -> @metadata<tydesc_md> {
-    let tg = StructureTypeTag;
+    //let tg = StructureTypeTag;
     /*let cache = cx.llmetadata;
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(outer) == ty::hash_ty(md.data.hash)}) {
@@ -408,12 +415,12 @@ fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
       option::none. {}
     }*/
     let fname = filename_from_span(cx, span);
-    let file_node = get_file_metadata(cx, fname);
-    //let cu_node = get_compile_unit_metadata(cx, fname);
+    let file_node = create_file(cx, fname);
+    //let cu_node = create_compile_unit_metadata(cx, fname);
     let tcx = ccx_tcx(cx);
     let uint_t = ty::mk_uint(tcx);
     let uint_ty = @{node: ast::ty_uint(ast::ty_u), span: span};
-    let refcount_type = get_basic_type_metadata(cx, uint_t, uint_ty);
+    let refcount_type = create_basic_type(cx, uint_t, uint_ty);
     let scx = create_structure(file_node, ty_to_str(ccx_tcx(cx), outer), 0);
     add_member(scx, "refcnt", 0, sys::size_of::<uint>() as int, 
                sys::align_of::<uint>() as int, refcount_type.node);
@@ -423,9 +430,7 @@ fn get_boxed_type_metadata(cx: @crate_ctxt, outer: ty::t, inner: ty::t,
     let llnode = finish_structure(scx);
     let mdval = @{node: llnode, data: {hash: outer}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
-    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.ty"),
-                                      str::byte_len("llvm.dbg.ty"),
-                                      llnode);
+    add_named_metadata(cx, "llvm.dbg.ty", llnode);
     ret mdval;
 }
 
@@ -453,16 +458,16 @@ fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
     ret llmdnode(lldata);
 }
 
-fn get_vec_metadata(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t, vec_ty: @ast::ty)
+fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t, vec_ty: @ast::ty)
     -> @metadata<tydesc_md> {
     let fname = filename_from_span(cx, vec_ty.span);
-    let file_node = get_file_metadata(cx, fname);
+    let file_node = create_file(cx, fname);
     let elem_ty = alt vec_ty.node { ast::ty_vec(mt) { mt.ty } };
-    let elem_ty_md = get_ty_metadata(cx, elem_t, elem_ty);
+    let elem_ty_md = create_ty(cx, elem_t, elem_ty);
     let tcx = ccx_tcx(cx);
     let scx = create_structure(file_node, ty_to_str(tcx, vec_t), 0);
     let uint_ty = @{node: ast::ty_uint(ast::ty_u), span: vec_ty.span};
-    let size_t_type = get_basic_type_metadata(cx, ty::mk_uint(tcx), uint_ty);
+    let size_t_type = create_basic_type(cx, ty::mk_uint(tcx), uint_ty);
     add_member(scx, "fill", 0, sys::size_of::<ctypes::size_t>() as int,
                sys::align_of::<ctypes::size_t>() as int, size_t_type.node);
     add_member(scx, "alloc", 0, sys::size_of::<ctypes::size_t>() as int,
@@ -517,7 +522,7 @@ fn member_size_and_align(ty: @ast::ty) -> (int, int) {
     }
 }
 
-fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_md> {
+fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_md> {
     /*let cache = get_cache(cx);
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| t == md.data.hash}) {
@@ -558,30 +563,35 @@ fn get_ty_metadata(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_
         let inner_t = alt ty::struct(ccx_tcx(cx), t) {
           ty::ty_box(boxed) { boxed.ty }
         };
-        let md = get_ty_metadata(cx, inner_t, mt.ty);
-        let box = get_boxed_type_metadata(cx, t, inner_t, ty.span, md);
-        ret get_pointer_type_metadata(cx, t, ty.span, box);
+        let md = create_ty(cx, inner_t, mt.ty);
+        let box = create_boxed_type(cx, t, inner_t, ty.span, md);
+        ret create_pointer_type(cx, t, ty.span, box);
       }
+
       ast::ty_uniq(mt) {
         let inner_t = alt ty::struct(ccx_tcx(cx), t) {
           ty::ty_uniq(boxed) { boxed.ty }
         };
-        let md = get_ty_metadata(cx, inner_t, mt.ty);
-        ret get_pointer_type_metadata(cx, t, ty.span, md);
+        let md = create_ty(cx, inner_t, mt.ty);
+        ret create_pointer_type(cx, t, ty.span, md);
       }
+
       ast::ty_infer. {
         let inferred = t_to_ty(cx, t, ty.span);
-        ret get_ty_metadata(cx, t, inferred);
+        ret create_ty(cx, t, inferred);
       }
+
       ast::ty_rec(fields) {
-        ret get_record_metadata(cx, t, fields, ty.span);
+        ret create_record(cx, t, fields, ty.span);
       }
+
       ast::ty_vec(mt) {
         let inner_t = ty::sequence_element_type(ccx_tcx(cx), t);
-        let v = get_vec_metadata(cx, t, inner_t, ty);
-        ret get_pointer_type_metadata(cx, t, ty.span, v);
+        let v = create_vec(cx, t, inner_t, ty);
+        ret create_pointer_type(cx, t, ty.span, v);
       }
-      _ { ret get_basic_type_metadata(cx, t, ty); }
+
+      _ { ret create_basic_type(cx, t, ty); }
     };
 }
 
@@ -590,45 +600,54 @@ fn function_metadata_from_block(bcx: @block_ctxt) -> @metadata<subprogram_md> {
     let fcx = bcx_fcx(bcx);
     let fn_node = cx.ast_map.get(fcx.id);
     let fn_item = alt fn_node { ast_map::node_item(item) { item } };
-    get_function_metadata(fcx, fn_item, fcx.llfn)
+    ret create_function(fcx, fn_item, fcx.llfn);
 }
 
 fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> str {
     codemap::lookup_char_pos(cx.sess.get_codemap(), sp.lo).filename
 }
 
-fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
+fn create_var(type_tag: int, context: ValueRef, name: str, file: ValueRef,
+              line: int, ret_ty: ValueRef) -> ValueRef {
+    let lldata = [lltag(type_tag),
+                  context,
+                  llstr(name),
+                  file,
+                  lli32(line),
+                  ret_ty,
+                  lli32(0)
+                 ];
+    ret llmdnode(lldata);
+}
+
+fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     -> @metadata<local_var_md> unsafe {
     let cx = bcx_ccx(bcx);
     let cache = get_cache(cx);
+    let tg = AutoVariableTag;
     alt cached_metadata::<@metadata<local_var_md>>(
-        cache, AutoVariableTag, {|md| md.data.id == local.node.id}) {
+        cache, tg, {|md| md.data.id == local.node.id}) {
       option::some(md) { ret md; }
       option::none. {}
     }
+
     let name = alt local.node.pat.node {
       ast::pat_bind(ident) { ident }
     };
     let loc = codemap::lookup_char_pos(cx.sess.get_codemap(),
                                        local.span.lo);
     let ty = trans::node_id_type(cx, local.node.id);
-    let tymd = get_ty_metadata(cx, ty, local.node.ty);
-    let filemd = get_file_metadata(cx, loc.filename);
+    let tymd = create_ty(cx, ty, local.node.ty);
+    let filemd = create_file(cx, loc.filename);
     let context = alt bcx.parent {
       trans_common::parent_none. { function_metadata_from_block(bcx).node }
-      trans_common::parent_some(_) { get_block_metadata(bcx).node }
+      trans_common::parent_some(_) { create_block(bcx).node }
     };
-    let lldata = [lltag(AutoVariableTag),
-                  context, // context
-                  llstr(name), // name
-                  filemd.node,
-                  lli32(loc.line as int), // line
-                  tymd.node,
-                  lli32(0) //XXX flags
-                 ];
-    let mdnode = llmdnode(lldata);
+    let mdnode = create_var(tg, context, name, filemd.node,
+                            loc.line as int, tymd.node);
     let mdval = @{node: mdnode, data: {id: local.node.id}};
     update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
+
     let llptr = alt bcx.fcx.lllocals.find(local.node.id) {
       option::some(local_mem(v)) { v }
       option::none. {
@@ -643,89 +662,35 @@ fn get_local_var_metadata(bcx: @block_ctxt, local: @ast::local)
     ret mdval;
 }
 
-//FIXME: consolidate with get_local_var_metadata
-/*fn get_retval_metadata(bcx: @block_ctxt)
-    -> @metadata<retval_md> unsafe {
-    let fcx = bcx_fcx(bcx);
-    let cx = fcx_ccx(fcx);
-    let cache = cx.llmetadata;
-    alt cached_metadata::<@metadata<retval_md>>(
-        cache, ReturnVariableTag, {|md| md.data.id == fcx.id}) {
-      option::some(md) { ret md; }
-      option::none. {}
-    }
-    let item = alt option::get(cx.ast_map.find(fcx.id)) {
-      ast_map::node_item(item) { item }
-    };
-    let loc = codemap::lookup_char_pos(cx.sess.get_codemap(),
-                                       fcx.sp.lo);
-    let ret_ty = alt item.node {
-      ast::item_fn(f, _) { f.decl.output }
-    };
-    let ty_node = alt ret_ty.node {
-      ast::ty_nil. { llnull() }
-      _ { get_ty_metadata(cx, ty::node_id_to_type(ccx_tcx(cx), item.id),
-                          ret_ty).node }
-    };
-    /*let ty_node = get_ty_metadata(cx, ty::node_id_to_type(ccx_tcx(cx), fcx.id),
-                                  ty).node;*/
-    //let ty = trans::node_id_type(cx, arg.id);
-    //let tymd = get_ty_metadata(cx, ty, arg.ty);
-    let filemd = get_file_metadata(cx, loc.filename);
-    let fn_node = cx.ast_map.get(fcx.id);
-    let fn_item = alt fn_node { ast_map::node_item(item) { item } };
-    let context = get_function_metadata(fcx, fn_item, fcx.llfn);
-    let lldata = [lltag(ReturnVariableTag),
-                  context.node, // context
-                  llstr("%0"), // name
-                  filemd.node,
-                  lli32(loc.line as int), // line
-                  ty_node,
-                  lli32(0) //XXX flags
-                 ];
-    let mdnode = llmdnode(lldata);
-    let mdval = @{node: mdnode, data: {id: fcx.id}};
-    update_cache(cache, ReturnVariableTag, retval_metadata(mdval));
-    let llptr = fcx.llretptr;
-    let declargs = [llmdnode([llptr]), mdnode];
-    trans_build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
-                      declargs);
-    ret mdval;
-}*/
-
-//FIXME: consolidate with get_local_var_metadata
-fn get_arg_metadata(bcx: @block_ctxt, arg: ast::arg)
+//FIXME: consolidate with create_local_var
+fn create_arg(bcx: @block_ctxt, arg: ast::arg)
     -> @metadata<argument_md> unsafe {
     let fcx = bcx_fcx(bcx);
     let cx = fcx_ccx(fcx);
     let cache = get_cache(cx);
+    let tg = ArgVariableTag;
     alt cached_metadata::<@metadata<argument_md>>(
         cache, ArgVariableTag, {|md| md.data.id == arg.id}) {
       option::some(md) { ret md; }
       option::none. {}
     }
-    let arg_n = alt cx.ast_map.get(arg.id) {
+
+    /*let arg_n = alt cx.ast_map.get(arg.id) {
       ast_map::node_arg(_, n) { n - 2u }
-    };
+    };*/
     let loc = codemap::lookup_char_pos(cx.sess.get_codemap(),
                                        fcx.sp.lo);
     let ty = trans::node_id_type(cx, arg.id);
-    let tymd = get_ty_metadata(cx, ty, arg.ty);
-    let filemd = get_file_metadata(cx, loc.filename);
+    let tymd = create_ty(cx, ty, arg.ty);
+    let filemd = create_file(cx, loc.filename);
     let fn_node = cx.ast_map.get(fcx.id);
     let fn_item = alt fn_node { ast_map::node_item(item) { item } };
-    let context = get_function_metadata(fcx, fn_item, fcx.llfn);
-    let lldata = [lltag(ArgVariableTag),
-                  context.node, // context
-                  llstr(arg.ident), // name
-                  filemd.node,
-                  lli32(loc.line as int), // line
-                  tymd.node,
-                  lli32(0) //XXX flags
-                 ];
-    let mdnode = llmdnode(lldata);
+    let context = create_function(fcx, fn_item, fcx.llfn);
+    let mdnode = create_var(tg, context.node, arg.ident, filemd.node,
+                            loc.line as int, tymd.node);
     let mdval = @{node: mdnode, data: {id: arg.id}};
-    update_cache(cache, ArgVariableTag, argument_metadata(mdval));
+    update_cache(cache, tg, argument_metadata(mdval));
+
     let llptr = alt fcx.llargs.get(arg.id) {
       local_mem(v) | local_imm(v) { v }
     };
@@ -785,54 +750,46 @@ fn add_line_info(cx: @block_ctxt, llinstr: ValueRef) {
         ret;
     }
     let loc = option::get(vec::last(cx.source_pos.pos));
-    let blockmd = get_block_metadata(cx);
-    let kind_id = llvm::LLVMGetMDKindID(as_buf("dbg"),
-                                        str::byte_len("dbg"));
-    let scopedata = [lli32(loc.line as int),
-                     lli32(loc.col as int),
-                     blockmd.node,
-                     llnull()];
-    let dbgscope = llmdnode(scopedata);
-    llvm::LLVMSetMetadata(llinstr, kind_id, dbgscope);
+    let blockmd = create_block(cx);
+    let kind = "dbg";
+    str::as_buf(kind, {|sbuf| 
+        let kind_id = llvm::LLVMGetMDKindID(sbuf,
+                                            str::byte_len(kind));
+        let scopedata = [lli32(loc.line as int),
+                         lli32(loc.col as int),
+                         blockmd.node,
+                         llnull()];
+        let dbgscope = llmdnode(scopedata);
+        llvm::LLVMSetMetadata(llinstr, kind_id, dbgscope)
+    });
 }
 
-fn get_function_metadata(fcx: @fn_ctxt, item: @ast::item,
-                         llfndecl: ValueRef) -> @metadata<subprogram_md> {
+fn create_function(fcx: @fn_ctxt, item: @ast::item, llfndecl: ValueRef)
+    -> @metadata<subprogram_md> {
     let cx = fcx_ccx(fcx);
     let cache = get_cache(cx);
     alt cached_metadata::<@metadata<subprogram_md>>(
         cache, SubprogramTag, {|md| md.data.name == item.ident &&
-                                    /*sub.path == ??*/ true}) {
+                                    /*md.data.path == ??*/ true}) {
       option::some(md) { ret md; }
       option::none. {}
     }
+
     let loc = codemap::lookup_char_pos(cx.sess.get_codemap(),
-                                           item.span.lo);
-    let file_node = get_file_metadata(cx, loc.filename).node;
+                                       item.span.lo);
+    let file_node = create_file(cx, loc.filename).node;
     let mangled = cx.item_symbols.get(item.id);
     let ret_ty = alt item.node {
       ast::item_fn(f, _) { f.decl.output }
     };
     let ty_node = alt ret_ty.node {
       ast::ty_nil. { llnull() }
-      _ { get_ty_metadata(cx, ty::node_id_to_type(ccx_tcx(cx), item.id),
-                          ret_ty).node }
+      _ { create_ty(cx, ty::node_id_to_type(ccx_tcx(cx), item.id), ret_ty).node }
     };
-    let sub_type = llmdnode([ty_node]);
-    let sub_metadata = [lltag(SubroutineTag),
-                        file_node,
-                        llstr(""),
-                        file_node,
-                        lli32(0),
-                        lli64(0),
-                        lli64(0),
-                        lli64(0),
-                        lli32(0),
-                        llnull(),
-                        sub_type,
-                        lli32(0),
-                        llnull()];
-    let sub_node = llmdnode(sub_metadata);
+    let sub_node = create_composite_type(SubroutineTag, "", file_node, 0, 0,
+                                         0, 0, option::none,
+                                         option::some([ty_node]));
+
     let fn_metadata = [lltag(SubprogramTag),
                        llunused(),
                        file_node,
@@ -855,15 +812,9 @@ fn get_function_metadata(fcx: @fn_ctxt, item: @ast::item,
                        //list of func vars
                       ];
     let val = llmdnode(fn_metadata);
-    llvm::LLVMAddNamedMetadataOperand(cx.llmod, as_buf("llvm.dbg.sp"),
-                                      str::byte_len("llvm.dbg.sp"),
-                                      val);
+    add_named_metadata(cx, "llvm.dbg.sp", val);
     let mdval = @{node: val, data: {name: item.ident,
                                     file: loc.filename}};
     update_cache(cache, SubprogramTag, subprogram_metadata(mdval));
-    /*alt ret_ty.node {
-      ast::ty_nil. {}
-      _ { let _ = get_retval_metadata(fcx, ret_ty); }
-    }*/
     ret mdval;
 }
