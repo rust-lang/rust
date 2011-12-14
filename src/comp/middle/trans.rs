@@ -349,10 +349,13 @@ fn trans_native_call(cx: @block_ctxt, externs: hashmap<str, ValueRef>,
     ret Call(cx, llnative, call_args);
 }
 
-fn trans_non_gc_free(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
-    Call(cx, bcx_ccx(cx).upcalls.free,
-         [PointerCast(cx, v, T_ptr(T_i8())),
-          C_int(bcx_ccx(cx), 0)]);
+fn trans_free_if_not_gc(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
+    let ccx = bcx_ccx(cx);
+    if !ccx.sess.get_opts().do_gc {
+        Call(cx, ccx.upcalls.free,
+             [PointerCast(cx, v, T_ptr(T_i8())),
+              C_int(bcx_ccx(cx), 0)]);
+    }
     ret cx;
 }
 
@@ -1291,29 +1294,62 @@ fn emit_tydescs(ccx: @crate_ctxt) {
 }
 
 fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
+
+    fn take_fn_env(cx: @block_ctxt,
+                   v: ValueRef,
+                   blk: block(@block_ctxt, ValueRef) -> @block_ctxt)
+        -> @block_ctxt {
+        let box_cell_v = GEPi(cx, v, [0, abi::fn_field_box]);
+        let box_ptr_v = Load(cx, box_cell_v);
+        let inner_cx = new_sub_block_ctxt(cx, "iter box");
+        let next_cx = new_sub_block_ctxt(cx, "next");
+        let null_test = IsNull(cx, box_ptr_v);
+        CondBr(cx, null_test, next_cx.llbb, inner_cx.llbb);
+        inner_cx = blk(inner_cx, box_ptr_v);
+        Br(inner_cx, next_cx.llbb);
+        ret next_cx;
+    }
+
+
     let bcx = cx;
     let tcx = bcx_tcx(cx);
     // NB: v is an *alias* of type t here, not a direct value.
-    alt ty::struct(tcx, t) {
+    bcx = alt ty::struct(tcx, t) {
       ty::ty_box(_) {
-        bcx = incr_refcnt_of_boxed(bcx, Load(bcx, v));
+        incr_refcnt_of_boxed(bcx, Load(bcx, v))
       }
       ty::ty_uniq(_) {
         check trans_uniq::type_is_unique_box(bcx, t);
-        let {bcx: cx, val} = trans_uniq::duplicate(bcx, Load(bcx, v), t);
-        bcx = cx;
-        Store(bcx, val, v);
+        let r = trans_uniq::duplicate(bcx, Load(bcx, v), t);
+        Store(r.bcx, r.val, v);
+        r.bcx
       }
       ty::ty_vec(_) | ty::ty_str. {
-        let {bcx: cx, val} = tvec::duplicate(bcx, Load(bcx, v), t);
-        bcx = cx;
-        Store(bcx, val, v);
+        let r = tvec::duplicate(bcx, Load(bcx, v), t);
+        Store(r.bcx, r.val, v);
+        r.bcx
+      }
+      ty::ty_fn(ast::proto_bare., _, _, _, _) {
+        bcx
+      }
+      ty::ty_fn(ast::proto_block., _, _, _, _) {
+        bcx
+      }
+      ty::ty_fn(ast::proto_send., _, _, _, _) {
+        take_fn_env(bcx, v, { |bcx, _box_ptr_v|
+            bcx // NDM
+        })
+      }
+      ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
+        take_fn_env(bcx, v, { |bcx, box_ptr_v|
+            incr_refcnt_of_boxed(bcx, box_ptr_v)
+        })
       }
       _ when ty::type_is_structural(bcx_tcx(bcx), t) {
-        bcx = iter_structural_ty(bcx, v, t, take_ty);
+        iter_structural_ty(bcx, v, t, take_ty)
       }
-      _ { /* fallthrough */ }
-    }
+      _ { bcx }
+    };
 
     build_return(bcx);
 }
@@ -1350,9 +1386,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         let v = PointerCast(bcx, v, type_of_1(bcx, t));
         let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
         let bcx = drop_ty(bcx, body, body_mt.ty);
-        if !bcx_ccx(bcx).sess.get_opts().do_gc {
-            trans_non_gc_free(bcx, v)
-        } else { bcx }
+        trans_free_if_not_gc(bcx, v)
       }
       ty::ty_uniq(content_mt) {
         check trans_uniq::type_is_unique_box(bcx, t);
@@ -1375,9 +1409,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         let ti = none;
         call_tydesc_glue_full(bcx, body, tydesc,
                               abi::tydesc_field_drop_glue, ti);
-        if !bcx_ccx(bcx).sess.get_opts().do_gc {
-            trans_non_gc_free(bcx, b)
-        } else { bcx }
+        trans_free_if_not_gc(bcx, b)
       }
       ty::ty_fn(ast::proto_bare., _, _, _, _) {
         bcx
@@ -1395,9 +1427,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         // n.b.: When we drop a function, we actually invoke the
         // free glue only on the environment part.
         call_bound_data_glue_for_closure(bcx, v, abi::tydesc_field_drop_glue);
-        if !bcx_ccx(bcx).sess.get_opts().do_gc {
-            trans_non_gc_free(bcx, v)
-        } else { bcx }
+        trans_free_if_not_gc(bcx, v)
       }
       _ { bcx }
     };
@@ -1727,10 +1757,6 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
             i += 1u;
         }
         ret next_cx;
-      }
-      ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _) {
-        let box_cell_a = GEPi(cx, av, [0, abi::fn_field_box]);
-        ret iter_boxpp(cx, box_cell_a, f);
       }
       ty::ty_obj(_) {
         let box_cell_a = GEPi(cx, av, [0, abi::obj_field_box]);
