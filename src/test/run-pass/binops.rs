@@ -118,7 +118,7 @@ fn test_fn() {
 }
 
 #[abi = "cdecl"]
-#[link_name = ""]
+#[nolink]
 native mod test {
     fn do_gc();
     fn unsupervise();

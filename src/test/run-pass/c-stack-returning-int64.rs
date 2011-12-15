@@ -2,7 +2,7 @@ use std;
 import str;
 
 #[abi = "cdecl"]
-#[link_name = ""]
+#[nolink]
 native mod libc {
     fn atol(x: str::sbuf) -> int;
     fn atoll(x: str::sbuf) -> i64;

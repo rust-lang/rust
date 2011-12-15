@@ -6,21 +6,21 @@ native mod rustrt {
 }
 
 #[abi = "cdecl"]
-#[link_name = ""]
+#[nolink]
 native mod bar { }
 
 #[abi = "cdecl"]
-#[link_name = ""]
+#[nolink]
 native mod zed { }
 
 #[abi = "cdecl"]
-#[link_name = ""]
+#[nolink]
 native mod libc {
     fn write(fd: int, buf: *u8, count: uint) -> int;
 }
 
 #[abi = "cdecl"]
-#[link_name = ""]
+#[nolink]
 native mod baz { }
 
 fn main(args: [str]) { }
