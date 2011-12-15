@@ -17,7 +17,8 @@ type upcalls =
      shared_malloc: ValueRef,
      shared_free: ValueRef,
      mark: ValueRef,
-     clone_type_desc: ValueRef,
+     create_shared_type_desc: ValueRef,
+     free_shared_type_desc: ValueRef,
      get_type_desc: ValueRef,
      vec_grow: ValueRef,
      vec_push: ValueRef,
@@ -64,9 +65,11 @@ fn declare_upcalls(targ_cfg: @session::config,
               dv("shared_free", [T_ptr(T_i8())]),
           mark:
               d("mark", [T_ptr(T_i8())], int_t),
-          clone_type_desc:
-              d("clone_type_desc", [T_ptr(tydesc_type)],
+          create_shared_type_desc:
+              d("create_shared_type_desc", [T_ptr(tydesc_type)],
                 T_ptr(tydesc_type)),
+          free_shared_type_desc:
+              dv("free_shared_type_desc", [T_ptr(tydesc_type)]),
           get_type_desc:
               d("get_type_desc",
                 [T_ptr(T_nil()), size_t,

@@ -1,6 +1,7 @@
 import syntax::ast;
 import syntax::ast_util;
-import lib::llvm::llvm::ValueRef;
+import lib::llvm::llvm;
+import llvm::{ValueRef, TypeRef};
 import trans_common::*;
 import trans_build::*;
 import trans::*;
@@ -8,7 +9,9 @@ import middle::freevars::get_freevars;
 import option::{some, none};
 import back::abi;
 import syntax::codemap::span;
-import back::link::mangle_internal_name_by_path;
+import back::link::{
+    mangle_internal_name_by_path,
+    mangle_internal_name_by_path_and_seq};
 import trans::{
     trans_shared_malloc,
     type_of_inner,
@@ -22,19 +25,91 @@ import trans::{
     dest
 };
 
+// ___Good to know (tm)__________________________________________________
+//
+// The layout of a closure environment in memory is
+// roughly as follows:
+//
+// struct closure_box {
+//    unsigned ref_count; // only used for sharid environments
+//    struct closure {
+//      type_desc *tydesc;         // descriptor for the env type
+//      type_desc *bound_tdescs[]; // bound descriptors
+//      struct {
+//          upvar1_t upvar1;
+//          ...
+//          upvarN_t upvarN;
+//      } bound_data;
+//   };
+// };
+//
+// NB: this is defined in the code in T_closure_ptr and
+// closure_ty_to_tuple_ty (below).
+//
+// Note that the closure carries a type descriptor that describes
+// itself.  Trippy.  This is needed because the precise types of the
+// closed over data are lost in the closure type (`fn(T)->U`), so if
+// we need to take/drop, we must know what data is in the upvars and
+// so forth.
+//
+// The allocation strategy for this closure depends on the closure
+// type.  For a sendfn, the closure (and the referenced type
+// descriptors) will be allocated in the exchange heap.  For a fn, the
+// closure is allocated in the task heap and is reference counted.
+// For a block, the closure is allocated on the stack.  Note that in
+// all cases we allocate space for a ref count just to make our lives
+// easier when upcasting to block(T)->U, in the shape code, and so
+// forth.
+//
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 tag environment_value {
     env_expr(@ast::expr);
     env_direct(ValueRef, ty::t, bool);
 }
 
+// Given a closure ty, emits a corresponding tuple ty
+fn mk_closure_ty(tcx: ty::ctxt,
+                 ck: ty::closure_kind,
+                 n_bound_tds: uint,
+                 bound_data_ty: ty::t)
+    -> ty::t {
+    let tydesc_ty = alt ck {
+      ty::closure_block. | ty::closure_shared. { ty::mk_type(tcx) }
+      ty::closure_send. { ty::mk_send_type(tcx) }
+    };
+    ret ty::mk_tup(tcx, [
+        tydesc_ty,
+        ty::mk_tup(tcx, vec::init_elt(tydesc_ty, n_bound_tds)),
+        bound_data_ty]);
+}
+
+fn shared_opaque_closure_box_ty(tcx: ty::ctxt) -> ty::t {
+    let opaque_closure_ty = ty::mk_opaque_closure(tcx);
+    ret ty::mk_imm_box(tcx, opaque_closure_ty);
+}
+
+fn send_opaque_closure_box_ty(tcx: ty::ctxt) -> ty::t {
+    let opaque_closure_ty = ty::mk_opaque_closure(tcx);
+    let tup_ty = ty::mk_tup(tcx, [ty::mk_int(tcx), opaque_closure_ty]);
+    ret ty::mk_uniq(tcx, {ty: tup_ty, mut: ast::imm});
+}
+
+type closure_result = {
+    llbox: ValueRef,  // llvalue of boxed environment
+    box_ty: ty::t,    // type of boxed environment
+    bcx: @block_ctxt  // final bcx
+};
+
 // Given a block context and a list of tydescs and values to bind
 // construct a closure out of them. If copying is true, it is a
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
-fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
-                     bound_values: [environment_value],
-                     mode: closure_constr_mode) ->
-   {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
+fn store_environment(
+    bcx: @block_ctxt, lltydescs: [ValueRef],
+    bound_values: [environment_value],
+    ck: ty::closure_kind)
+    -> closure_result {
 
     fn dummy_environment_box(bcx: @block_ctxt, r: result)
         -> (@block_ctxt, ValueRef, ValueRef) {
@@ -46,12 +121,16 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         (r.bcx, closure, r.val)
     }
 
-    fn clone_tydesc(bcx: @block_ctxt,
-                    mode: closure_constr_mode,
-                    td: ValueRef) -> ValueRef {
-        ret alt mode {
-          for_block. | for_closure. { td }
-          for_send. { Call(bcx, bcx_ccx(bcx).upcalls.clone_type_desc, [td]) }
+    fn maybe_clone_tydesc(bcx: @block_ctxt,
+                          ck: ty::closure_kind,
+                          td: ValueRef) -> ValueRef {
+        ret alt ck {
+          ty::closure_block. | ty::closure_shared. {
+            td
+          }
+          ty::closure_send. {
+            Call(bcx, bcx_ccx(bcx).upcalls.create_shared_type_desc, [td])
+          }
         };
     }
 
@@ -68,29 +147,9 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
           env_expr(e) { ty::expr_ty(tcx, e) }
         }];
     }
-    let bindings_ty: ty::t = ty::mk_tup(tcx, bound_tys);
-
-    // NB: keep this in sync with T_closure_ptr; we're making
-    // a ty::t structure that has the same "shape" as the LLVM type
-    // it constructs.
-
-    // Make a vector that contains ty_param_count copies of tydesc_ty.
-    // (We'll need room for that many tydescs in the closure.)
-    let ty_param_count = vec::len(lltydescs);
-    let tydesc_ty: ty::t = ty::mk_type(tcx);
-    let captured_tys: [ty::t] = vec::init_elt(tydesc_ty, ty_param_count);
-
-    // Get all the types we've got (some of which we synthesized
-    // ourselves) into a vector.  The whole things ends up looking
-    // like:
-
-    // closure_ty = (
-    //   tydesc_ty, (bound_ty1, bound_ty2, ...),
-    //   /*int,*/ (tydesc_ty, tydesc_ty, ...))
-    let closure_tys: [ty::t] =
-        [tydesc_ty, bindings_ty,
-         /*ty::mk_uint(tcx),*/ ty::mk_tup(tcx, captured_tys)];
-    let closure_ty: ty::t = ty::mk_tup(tcx, closure_tys);
+    let bound_data_ty = ty::mk_tup(tcx, bound_tys);
+    let closure_ty =
+        mk_closure_ty(tcx, ck, vec::len(lltydescs), bound_data_ty);
 
     let temp_cleanups = [];
 
@@ -102,14 +161,14 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     // so that it will never drop to zero.  This is a hack and could go away
     // but then we'd have to modify the code to do the right thing when
     // casting from a shared closure to a block.
-    let (bcx, closure, box) = alt mode {
-      for_closure. {
+    let (bcx, closure, box) = alt ck {
+      ty::closure_shared. {
         let r = trans::trans_malloc_boxed(bcx, closure_ty);
         add_clean_free(bcx, r.box, false);
         temp_cleanups += [r.box];
         (r.bcx, r.body, r.box)
       }
-      for_send. {
+      ty::closure_send. {
         // Dummy up a box in the exchange heap.
         let tup_ty = ty::mk_tup(tcx, [ty::mk_int(tcx), closure_ty]);
         let box_ty = ty::mk_uniq(tcx, {ty: tup_ty, mut: ast::imm});
@@ -118,7 +177,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         add_clean_free(bcx, r.val, true);
         dummy_environment_box(bcx, r)
       }
-      for_block. {
+      ty::closure_block. {
         // Dummy up a box on the stack,
         let ty = ty::mk_tup(tcx, [ty::mk_int(tcx), closure_ty]);
         let r = trans::alloc_ty(bcx, ty);
@@ -127,30 +186,40 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
     };
 
     // Store bindings tydesc.
-    alt mode {
-      for_closure. | for_send. {
+    alt ck {
+      ty::closure_shared. | ty::closure_send. {
         let bound_tydesc = GEPi(bcx, closure, [0, abi::closure_elt_tydesc]);
         let ti = none;
         let tps = tps_fn(vec::len(lltydescs));
-        let {result:bindings_tydesc, _} =
-            trans::get_tydesc(bcx, bindings_ty, true, tps, ti);
+        let {result:closure_td, _} =
+            trans::get_tydesc(bcx, closure_ty, true, tps, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
-        bcx = bindings_tydesc.bcx;
-        let td = clone_tydesc(bcx, mode, bindings_tydesc.val);
+        bcx = closure_td.bcx;
+        let td = maybe_clone_tydesc(bcx, ck, closure_td.val);
         Store(bcx, td, bound_tydesc);
       }
-      for_block. {}
+      ty::closure_block. { /* skip this for blocks, not really relevant */ }
+    }
+
+    check type_is_tup_like(bcx, closure_ty);
+    let box_ty = ty::mk_imm_box(bcx_tcx(bcx), closure_ty);
+
+    // If necessary, copy tydescs describing type parameters into the
+    // appropriate slot in the closure.
+    let {bcx:bcx, val:ty_params_slot} =
+        GEP_tup_like_1(bcx, closure_ty, closure,
+                       [0, abi::closure_elt_ty_params]);
+    vec::iter2(lltydescs) { |i, td|
+        let ty_param_slot = GEPi(bcx, ty_params_slot, [0, i as int]);
+        let cloned_td = maybe_clone_tydesc(bcx, ck, td);
+        Store(bcx, cloned_td, ty_param_slot);
     }
 
     // Copy expr values into boxed bindings.
     // Silly check
-    check type_is_tup_like(bcx, closure_ty);
-    let closure_box = box;
-    let closure_box_ty = ty::mk_imm_box(bcx_tcx(bcx), closure_ty);
-    let i = 0u;
-    for bv in bound_values {
-        let bound = trans::GEP_tup_like_1(bcx, closure_box_ty, closure_box,
+    vec::iter2(bound_values) { |i, bv|
+        let bound = trans::GEP_tup_like_1(bcx, box_ty, box,
                                           [0, abi::box_rc_field_body,
                                            abi::closure_elt_bindings,
                                            i as int]);
@@ -162,150 +231,89 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
             temp_cleanups += [bound.val];
           }
           env_direct(val, ty, is_mem) {
-            alt mode {
-              for_closure. | for_send. {
+            alt ck {
+              ty::closure_shared. | ty::closure_send. {
                 let val1 = is_mem ? load_if_immediate(bcx, val, ty) : val;
                 bcx = trans::copy_val(bcx, INIT, bound.val, val1, ty);
               }
-              for_block. {
+              ty::closure_block. {
                 let addr = is_mem ? val : do_spill_noroot(bcx, val);
                 Store(bcx, addr, bound.val);
               }
             }
           }
         }
-        i += 1u;
     }
     for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
 
-    // If necessary, copy tydescs describing type parameters into the
-    // appropriate slot in the closure.
-    // Silly check as well
-    //check type_is_tup_like(bcx, closure_ty);
-    //let {bcx:bcx, val:n_ty_params_slot} =
-    //    GEP_tup_like(bcx, closure_ty, closure,
-    //                 [0, abi::closure_elt_n_ty_params]);
-    //Store(bcx, C_uint(ccx, vec::len(lltydescs)), n_ty_params_slot);
-    check type_is_tup_like(bcx, closure_ty);
-    let {bcx:bcx, val:ty_params_slot} =
-        GEP_tup_like(bcx, closure_ty, closure,
-                     [0, abi::closure_elt_ty_params]);
-    i = 0u;
-    for td: ValueRef in lltydescs {
-        let ty_param_slot = GEPi(bcx, ty_params_slot, [0, i as int]);
-        let cloned_td = clone_tydesc(bcx, mode, td);
-        Store(bcx, cloned_td, ty_param_slot);
-        i += 1u;
-    }
-
-    ret {ptr: box, ptrty: closure_ty, bcx: bcx};
-}
-
-tag closure_constr_mode {
-    for_block;
-    for_closure;
-    for_send;
+    ret {llbox: box, box_ty: box_ty, bcx: bcx};
 }
 
 // Given a context and a list of upvars, build a closure. This just
-// collects the upvars and packages them up for build_environment.
+// collects the upvars and packages them up for store_environment.
 fn build_closure(cx: @block_ctxt,
                  upvars: @[ast::def],
-                 mode: closure_constr_mode)
-    -> {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
+                 ck: ty::closure_kind)
+    -> closure_result {
     // If we need to, package up the iterator body to call
     let env_vals = [];
+    let tcx = bcx_tcx(cx);
     // Package up the upvars
-    for def in *upvars {
+    vec::iter(*upvars) { |def|
         let lv = trans_local_var(cx, def);
         let nid = ast_util::def_id_of_def(def).node;
-        let ty = ty::node_id_to_monotype(bcx_tcx(cx), nid);
-        alt mode {
-          for_block. { ty = ty::mk_mut_ptr(bcx_tcx(cx), ty); }
-          for_send. | for_closure. {}
+        let ty = ty::node_id_to_monotype(tcx, nid);
+        alt ck {
+          ty::closure_block. { ty = ty::mk_mut_ptr(tcx, ty); }
+          ty::closure_send. | ty::closure_shared. {}
         }
         env_vals += [env_direct(lv.val, ty, lv.kind == owned)];
     }
-    ret build_environment(cx, copy cx.fcx.lltydescs, env_vals, mode);
-}
-
-// Return a pointer to the stored typarams in a closure.
-// This is awful. Since the size of the bindings stored in the closure might
-// be dynamically sized, we can't skip past them to get to the tydescs until
-// we have loaded the tydescs. Thus we use the stored size of the bindings
-// in the tydesc for the closure to skip over them. Ugh.
-fn find_environment_tydescs(bcx: @block_ctxt, envty: ty::t, closure: ValueRef)
-   -> ValueRef {
-    ret if !ty::type_has_dynamic_size(bcx_tcx(bcx), envty) {
-
-            // If we can find the typarams statically, do it
-            GEPi(bcx, closure,
-                 [0, abi::box_rc_field_body, abi::closure_elt_ty_params])
-        } else {
-            // Ugh. We need to load the size of the bindings out of the
-            // closure's tydesc and use that to skip over the bindings.
-            let descsty =
-                ty::get_element_type(bcx_tcx(bcx), envty,
-                                     abi::closure_elt_ty_params as uint);
-            let llenv = GEPi(bcx, closure, [0, abi::box_rc_field_body]);
-            // Load the tydesc and find the size of the body
-            let lldesc =
-                Load(bcx, GEPi(bcx, llenv, [0, abi::closure_elt_tydesc]));
-            let llsz =
-                Load(bcx, GEPi(bcx, lldesc, [0, abi::tydesc_field_size]));
-
-            // Get the bindings pointer and add the size to it
-            let llbinds = GEPi(bcx, llenv, [0, abi::closure_elt_bindings]);
-            bump_ptr(bcx, descsty, llbinds, llsz)
-        }
+    ret store_environment(cx, copy cx.fcx.lltydescs, env_vals, ck);
 }
 
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
-fn load_environment(enclosing_cx: @block_ctxt, fcx: @fn_ctxt, envty: ty::t,
-                    upvars: @[ast::def], mode: closure_constr_mode) {
+fn load_environment(enclosing_cx: @block_ctxt,
+                    fcx: @fn_ctxt,
+                    boxed_closure_ty: ty::t,
+                    upvars: @[ast::def],
+                    ck: ty::closure_kind) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
-
-    let ty = ty::mk_imm_box(bcx_tcx(bcx), envty);
 
     let ccx = bcx_ccx(bcx);
     let sp = bcx.sp;
-    // FIXME: should have postcondition on mk_imm_box,
-    // so this check won't be necessary
-    check (type_has_static_size(ccx, ty));
-    let llty = type_of(ccx, sp, ty);
+    check (type_has_static_size(ccx, boxed_closure_ty));
+    let llty = type_of(ccx, sp, boxed_closure_ty);
     let llclosure = PointerCast(bcx, fcx.llenv, llty);
 
     // Populate the type parameters from the environment. We need to
     // do this first because the tydescs are needed to index into
     // the bindings if they are dynamically sized.
     let tydesc_count = vec::len(enclosing_cx.fcx.lltydescs);
-    let lltydescs = find_environment_tydescs(bcx, envty, llclosure);
-    let i = 0u;
-    while i < tydesc_count {
+    let lltydescs = GEPi(bcx, llclosure,
+                         [0, abi::box_rc_field_body,
+                          abi::closure_elt_ty_params]);
+    uint::range(0u, tydesc_count) { |i|
         let lltydescptr = GEPi(bcx, lltydescs, [0, i as int]);
         fcx.lltydescs += [Load(bcx, lltydescptr)];
-        i += 1u;
     }
 
     // Populate the upvars from the environment.
     let path = [0, abi::box_rc_field_body, abi::closure_elt_bindings];
-    i = 0u;
-    // Load the actual upvars.
-    for upvar_def in *upvars {
-        // Silly check
-        check type_is_tup_like(bcx, ty);
-        let upvarptr = GEP_tup_like(bcx, ty, llclosure, path + [i as int]);
+    vec::iter2(*upvars) { |i, upvar_def|
+        check type_is_tup_like(bcx, boxed_closure_ty);
+        let upvarptr =
+            GEP_tup_like(bcx, boxed_closure_ty, llclosure, path + [i as int]);
         bcx = upvarptr.bcx;
         let llupvarptr = upvarptr.val;
-        alt mode {
-          for_block. { llupvarptr = Load(bcx, llupvarptr); }
-          for_send. | for_closure. { }
+        alt ck {
+          ty::closure_block. { llupvarptr = Load(bcx, llupvarptr); }
+          ty::closure_send. | ty::closure_shared. { }
         }
         let def_id = ast_util::def_id_of_def(upvar_def);
         fcx.llupvars.insert(def_id.node, llupvarptr);
-        i += 1u;
     }
 }
 
@@ -320,28 +328,26 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
     let s = mangle_internal_name_by_path(ccx, sub_cx.path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let mode = alt f.proto {
-      ast::proto_shared(_) { for_closure }
-      ast::proto_send. { for_send }
-      ast::proto_bare. | ast::proto_block. { for_block }
-    };
-    let env;
-    alt f.proto {
-      ast::proto_block. | ast::proto_shared(_) | ast::proto_send. {
+    let trans_closure_env = lambda(ck: ty::closure_kind) -> ValueRef {
         let upvars = get_freevars(ccx.tcx, id);
-        let env_r = build_closure(bcx, upvars, mode);
-        env = env_r.ptr;
-        bcx = env_r.bcx;
+        let {llbox, box_ty, bcx} = build_closure(bcx, upvars, ck);
         trans_closure(sub_cx, sp, f, llfn, none, [], id, {|fcx|
-            load_environment(bcx, fcx, env_r.ptrty, upvars, mode);
+            load_environment(bcx, fcx, box_ty, upvars, ck);
         });
-      }
+        llbox
+    };
+
+    let closure = alt f.proto {
+      ast::proto_block. { trans_closure_env(ty::closure_block) }
+      ast::proto_shared(_) { trans_closure_env(ty::closure_shared) }
+      ast::proto_send. { trans_closure_env(ty::closure_send) }
       ast::proto_bare. {
-        env = C_null(T_opaque_closure_ptr(ccx));
+        let closure = C_null(T_opaque_boxed_closure_ptr(ccx));
         trans_closure(sub_cx, sp, f, llfn, none, [], id, {|_fcx|});
+        closure
       }
     };
-    fill_fn_pair(bcx, get_dest_addr(dest), llfn, env);
+    fill_fn_pair(bcx, get_dest_addr(dest), llfn, closure);
     ret bcx;
 }
 
@@ -410,18 +416,271 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     };
 
     // Actually construct the closure
-    let closure = build_environment(bcx, lltydescs, env_vals +
-                                    vec::map({|x| env_expr(x)}, bound),
-                                    for_closure);
-    bcx = closure.bcx;
+    let {llbox, box_ty, bcx} = store_environment(
+        bcx, lltydescs,
+        env_vals + vec::map({|x| env_expr(x)}, bound),
+        ty::closure_shared);
 
     // Make thunk
     let llthunk =
         trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real, args,
-                         closure.ptrty, ty_param_count, target_res);
+                         box_ty, ty_param_count, target_res);
 
     // Fill the function pair
-    fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, closure.ptr);
+    fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, llbox);
     ret bcx;
+}
+
+fn make_fn_glue(
+    cx: @block_ctxt,
+    v: ValueRef,
+    t: ty::t,
+    glue_fn: fn(@block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt)
+    -> @block_ctxt {
+    let bcx = cx;
+    let tcx = bcx_tcx(cx);
+
+    let fn_env = lambda(blk: block(@block_ctxt, ValueRef) -> @block_ctxt)
+        -> @block_ctxt {
+        let box_cell_v = GEPi(cx, v, [0, abi::fn_field_box]);
+        let box_ptr_v = Load(cx, box_cell_v);
+        let inner_cx = new_sub_block_ctxt(cx, "iter box");
+        let next_cx = new_sub_block_ctxt(cx, "next");
+        let null_test = IsNull(cx, box_ptr_v);
+        CondBr(cx, null_test, next_cx.llbb, inner_cx.llbb);
+        inner_cx = blk(inner_cx, box_cell_v);
+        Br(inner_cx, next_cx.llbb);
+        ret next_cx;
+    };
+
+    ret alt ty::struct(tcx, t) {
+      ty::ty_native_fn(_, _) | ty::ty_fn(ast::proto_bare., _, _, _, _) {
+        bcx
+      }
+      ty::ty_fn(ast::proto_block., _, _, _, _) {
+        bcx
+      }
+      ty::ty_fn(ast::proto_send., _, _, _, _) {
+        fn_env({ |bcx, box_cell_v|
+            let box_ty = trans_closure::send_opaque_closure_box_ty(tcx);
+            glue_fn(bcx, box_cell_v, box_ty)
+        })
+      }
+      ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
+        fn_env({ |bcx, box_cell_v|
+            let box_ty = trans_closure::shared_opaque_closure_box_ty(tcx);
+            glue_fn(bcx, box_cell_v, box_ty)
+        })
+      }
+      _ { fail "make_fn_glue invoked on non-function type" }
+    };
+}
+
+fn call_opaque_closure_glue(bcx: @block_ctxt,
+                            v: ValueRef,     // ptr to an opaque closure
+                            field: int) -> @block_ctxt {
+    let ccx = bcx_ccx(bcx);
+    let v = PointerCast(bcx, v, T_ptr(T_opaque_closure(ccx)));
+    let tydescptr = GEPi(bcx, v, [0, abi::closure_elt_tydesc]);
+    let tydesc = Load(bcx, tydescptr);
+    let ti = none;
+    call_tydesc_glue_full(bcx, v, tydesc, field, ti);
+    ret bcx;
+}
+
+// pth is cx.path
+fn trans_bind_thunk(cx: @local_ctxt,
+                    sp: span,
+                    incoming_fty: ty::t,
+                    outgoing_fty: ty::t,
+                    args: [option::t<@ast::expr>],
+                    boxed_closure_ty: ty::t,
+                    ty_param_count: uint,
+                    target_fn: option::t<ValueRef>)
+    -> {val: ValueRef, ty: TypeRef} {
+    // If we supported constraints on record fields, we could make the
+    // constraints for this function:
+    /*
+    : returns_non_ty_var(ccx, outgoing_fty),
+      type_has_static_size(ccx, incoming_fty) ->
+    */
+    // but since we don't, we have to do the checks at the beginning.
+    let ccx = cx.ccx;
+    check type_has_static_size(ccx, incoming_fty);
+
+    // Here we're not necessarily constructing a thunk in the sense of
+    // "function with no arguments".  The result of compiling 'bind f(foo,
+    // bar, baz)' would be a thunk that, when called, applies f to those
+    // arguments and returns the result.  But we're stretching the meaning of
+    // the word "thunk" here to also mean the result of compiling, say, 'bind
+    // f(foo, _, baz)', or any other bind expression that binds f and leaves
+    // some (or all) of the arguments unbound.
+
+    // Here, 'incoming_fty' is the type of the entire bind expression, while
+    // 'outgoing_fty' is the type of the function that is having some of its
+    // arguments bound.  If f is a function that takes three arguments of type
+    // int and returns int, and we're translating, say, 'bind f(3, _, 5)',
+    // then outgoing_fty is the type of f, which is (int, int, int) -> int,
+    // and incoming_fty is the type of 'bind f(3, _, 5)', which is int -> int.
+
+    // Once translated, the entire bind expression will be the call f(foo,
+    // bar, baz) wrapped in a (so-called) thunk that takes 'bar' as its
+    // argument and that has bindings of 'foo' to 3 and 'baz' to 5 and a
+    // pointer to 'f' all saved in its environment.  So, our job is to
+    // construct and return that thunk.
+
+    // Give the thunk a name, type, and value.
+    let s: str = mangle_internal_name_by_path_and_seq(ccx, cx.path, "thunk");
+    let llthunk_ty: TypeRef = get_pair_fn_ty(type_of(ccx, sp, incoming_fty));
+    let llthunk: ValueRef = decl_internal_cdecl_fn(ccx.llmod, s, llthunk_ty);
+
+    // Create a new function context and block context for the thunk, and hold
+    // onto a pointer to the first block in the function for later use.
+    let fcx = new_fn_ctxt(cx, sp, llthunk);
+    let bcx = new_top_block_ctxt(fcx);
+    let lltop = bcx.llbb;
+    // Since we might need to construct derived tydescs that depend on
+    // our bound tydescs, we need to load tydescs out of the environment
+    // before derived tydescs are constructed. To do this, we load them
+    // in the load_env block.
+    let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
+
+    // The 'llenv' that will arrive in the thunk we're creating is an
+    // environment that will contain the values of its arguments and a pointer
+    // to the original function.  So, let's create one of those:
+
+    // The llenv pointer needs to be the correct size.  That size is
+    // 'boxed_closure_ty', which was determined by trans_bind.
+    check (type_has_static_size(ccx, boxed_closure_ty));
+    let llclosure_ptr_ty = type_of(ccx, sp, boxed_closure_ty);
+    let llclosure = PointerCast(load_env_bcx, fcx.llenv, llclosure_ptr_ty);
+
+    // "target", in this context, means the function that's having some of its
+    // arguments bound and that will be called inside the thunk we're
+    // creating.  (In our running example, target is the function f.)  Pick
+    // out the pointer to the target function from the environment. The
+    // target function lives in the first binding spot.
+    let (lltargetfn, lltargetenv, starting_idx) = alt target_fn {
+      some(fptr) {
+        (fptr, llvm::LLVMGetUndef(T_opaque_boxed_closure_ptr(ccx)), 0)
+      }
+      none. {
+        // Silly check
+        check type_is_tup_like(bcx, boxed_closure_ty);
+        let {bcx: cx, val: pair} =
+            GEP_tup_like(bcx, boxed_closure_ty, llclosure,
+                         [0, abi::box_rc_field_body,
+                          abi::closure_elt_bindings, 0]);
+        let lltargetenv =
+            Load(cx, GEPi(cx, pair, [0, abi::fn_field_box]));
+        let lltargetfn = Load
+            (cx, GEPi(cx, pair, [0, abi::fn_field_code]));
+        bcx = cx;
+        (lltargetfn, lltargetenv, 1)
+      }
+    };
+
+    // And then, pick out the target function's own environment.  That's what
+    // we'll use as the environment the thunk gets.
+
+    // Get f's return type, which will also be the return type of the entire
+    // bind expression.
+    let outgoing_ret_ty = ty::ty_fn_ret(cx.ccx.tcx, outgoing_fty);
+
+    // Get the types of the arguments to f.
+    let outgoing_args = ty::ty_fn_args(cx.ccx.tcx, outgoing_fty);
+
+    // The 'llretptr' that will arrive in the thunk we're creating also needs
+    // to be the correct type.  Cast it to f's return type, if necessary.
+    let llretptr = fcx.llretptr;
+    let ccx = cx.ccx;
+    if ty::type_contains_params(ccx.tcx, outgoing_ret_ty) {
+        check non_ty_var(ccx, outgoing_ret_ty);
+        let llretty = type_of_inner(ccx, sp, outgoing_ret_ty);
+        llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
+    }
+
+    // Set up the three implicit arguments to the thunk.
+    let llargs: [ValueRef] = [llretptr, lltargetenv];
+
+    // Copy in the type parameters.
+    let i: uint = 0u;
+    while i < ty_param_count {
+        // Silly check
+        check type_is_tup_like(load_env_bcx, boxed_closure_ty);
+        let lltyparam_ptr =
+            GEP_tup_like(load_env_bcx, boxed_closure_ty, llclosure,
+                         [0, abi::box_rc_field_body,
+                          abi::closure_elt_ty_params, i as int]);
+        load_env_bcx = lltyparam_ptr.bcx;
+        let td = Load(load_env_bcx, lltyparam_ptr.val);
+        llargs += [td];
+        fcx.lltydescs += [td];
+        i += 1u;
+    }
+
+    let a: uint = 2u; // retptr, env come first
+    let b: int = starting_idx;
+    let outgoing_arg_index: uint = 0u;
+    let llout_arg_tys: [TypeRef] =
+        type_of_explicit_args(cx.ccx, sp, outgoing_args);
+    for arg: option::t<@ast::expr> in args {
+        let out_arg = outgoing_args[outgoing_arg_index];
+        let llout_arg_ty = llout_arg_tys[outgoing_arg_index];
+        alt arg {
+          // Arg provided at binding time; thunk copies it from
+          // closure.
+          some(e) {
+            // Silly check
+            check type_is_tup_like(bcx, boxed_closure_ty);
+            let bound_arg =
+                GEP_tup_like(bcx, boxed_closure_ty, llclosure,
+                             [0, abi::box_rc_field_body,
+                              abi::closure_elt_bindings, b]);
+            bcx = bound_arg.bcx;
+            let val = bound_arg.val;
+            if out_arg.mode == ast::by_val { val = Load(bcx, val); }
+            if out_arg.mode == ast::by_copy {
+                let {bcx: cx, val: alloc} = alloc_ty(bcx, out_arg.ty);
+                bcx = memmove_ty(cx, alloc, val, out_arg.ty);
+                bcx = take_ty(bcx, alloc, out_arg.ty);
+                val = alloc;
+            }
+            // If the type is parameterized, then we need to cast the
+            // type we actually have to the parameterized out type.
+            if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
+                val = PointerCast(bcx, val, llout_arg_ty);
+            }
+            llargs += [val];
+            b += 1;
+          }
+
+          // Arg will be provided when the thunk is invoked.
+          none. {
+            let arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
+            if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
+                arg = PointerCast(bcx, arg, llout_arg_ty);
+            }
+            llargs += [arg];
+            a += 1u;
+          }
+        }
+        outgoing_arg_index += 1u;
+    }
+
+    // Cast the outgoing function to the appropriate type.
+    // This is necessary because the type of the function that we have
+    // in the closure does not know how many type descriptors the function
+    // needs to take.
+    let ccx = bcx_ccx(bcx);
+
+    check returns_non_ty_var(ccx, outgoing_fty);
+    let lltargetty =
+        type_of_fn_from_ty(ccx, sp, outgoing_fty, ty_param_count);
+    lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
+    Call(bcx, lltargetfn, llargs);
+    build_return(bcx);
+    finish_fn(fcx, lltop);
+    ret {val: llthunk, ty: llthunk_ty};
 }
 

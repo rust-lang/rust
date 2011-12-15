@@ -73,9 +73,8 @@ const fn_field_code: int = 0;
 const fn_field_box: int = 1;
 
 const closure_elt_tydesc: int = 0;
-const closure_elt_bindings: int = 1;
-//const closure_elt_n_ty_params: int = 2;
-const closure_elt_ty_params: int = 2; // 3;
+const closure_elt_ty_params: int = 1;
+const closure_elt_bindings: int = 2;
 
 const vec_elt_fill: int = 0;
 

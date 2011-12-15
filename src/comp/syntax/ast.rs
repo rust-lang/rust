@@ -137,6 +137,15 @@ tag proto {
     proto_block;
 }
 
+fn proto_kind(p: proto) -> kind {
+    alt p {
+      ast::proto_block. { ast::kind_noncopyable }
+      ast::proto_shared(_) { ast::kind_copyable }
+      ast::proto_send. { ast::kind_sendable }
+      ast::proto_bare. { ast::kind_sendable }
+    }
+}
+
 tag binop {
     add;
     sub;

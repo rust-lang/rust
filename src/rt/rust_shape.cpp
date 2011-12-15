@@ -23,7 +23,6 @@ const uint8_t CMP_EQ = 0u;
 const uint8_t CMP_LT = 1u;
 const uint8_t CMP_LE = 2u;
 
-
 // Type parameters
 
 type_param *
@@ -50,9 +49,11 @@ type_param::make(const type_desc **tydescs, unsigned n_tydescs,
 type_param *
 type_param::from_fn_shape(const uint8_t *sp, ptr dp, arena &arena) {
     const type_desc *tydesc = bump_dp<const type_desc *>(dp);
-    const type_desc **descs = (const type_desc **)(dp + tydesc->size);
+    const type_desc **tydescs = (const type_desc **)dp;
     unsigned n_tydescs = tydesc->n_obj_params & 0x7fffffff;
-    return make(descs, n_tydescs, arena);
+    for (unsigned i = 0; i < n_tydescs; i++)
+        bump_dp<const type_desc*>(dp);
+    return make(tydescs, n_tydescs, arena);
 }
 
 // Constructs type parameters from an object shape. This is also a bit messy,
@@ -249,7 +250,6 @@ size_of::walk_struct(const uint8_t *end_sp) {
 
     sa = struct_sa;
 }
-
 
 // Copy constructors
 

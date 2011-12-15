@@ -51,6 +51,7 @@ const shape_obj: u8 = 19u8;
 const shape_res: u8 = 20u8;
 const shape_var: u8 = 21u8;
 const shape_uniq: u8 = 22u8;
+const shape_opaque_closure: u8 = 23u8; // the closure itself.
 
 // FIXME: This is a bad API in trans_common.
 fn C_u8(n: u8) -> ValueRef { ret trans_common::C_u8(n as uint); }
@@ -384,9 +385,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
         }
         add_substr(s, sub);
       }
-      ty::ty_fn(_, _, _, _, _) {
-        s += [shape_fn];
-      }
       ty::ty_native_fn(_, _) { s += [shape_u32]; }
       ty::ty_obj(_) { s += [shape_obj]; }
       ty::ty_res(did, raw_subt, tps) {
@@ -412,18 +410,17 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
             s += [shape_var, n as u8];
         } else {
             // Find the type parameter in the parameter list.
-            let found = false;
-            let i = 0u;
-            while i < vec::len(ty_param_map) {
-                if n == ty_param_map[i] {
-                    s += [shape_var, i as u8];
-                    found = true;
-                    break;
-                }
-                i += 1u;
+            alt vec::position(n, ty_param_map) {
+              some(i) { s += [shape_var, i as u8]; }
+              none. { fail "ty param not found in ty_param_map"; }
             }
-            assert (found);
         }
+      }
+      ty::ty_fn(_, _, _, _, _) {
+        s += [shape_fn];
+      }
+      ty::ty_opaque_closure. {
+        s += [shape_opaque_closure];
       }
     }
 

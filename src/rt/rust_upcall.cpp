@@ -18,10 +18,11 @@
 
 extern "C" void record_sp(void *limit);
 
-/**
+/**********************************************************************
  * Switches to the C-stack and invokes |fn_ptr|, passing |args| as argument.
  * This is used by the C compiler to call native functions and by other
- * upcalls to switch to the C stack.
+ * upcalls to switch to the C stack.  The return value is passed through a
+ * field in the args parameter.
  */
 extern "C" CDECL void
 upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
@@ -43,6 +44,8 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
     task = rust_scheduler::get_task();
     task->record_stack_limit();
 }
+
+/**********************************************************************/
 
 struct s_fail_args {
     char const *expr;
@@ -66,6 +69,10 @@ upcall_fail(char const *expr,
     s_fail_args args = {expr,file,line};
     SWITCH_STACK(&args, upcall_s_fail);
 }
+
+/**********************************************************************
+ * Allocate an object in the task-local heap.
+ */
 
 struct s_malloc_args {
     uintptr_t retval;
@@ -107,6 +114,10 @@ upcall_malloc(size_t nbytes, type_desc *td) {
     return args.retval;
 }
 
+/**********************************************************************
+ * Called whenever an object in the task-local heap is freed.
+ */
+
 struct s_free_args {
     void *ptr;
     uintptr_t is_gc;
@@ -128,14 +139,15 @@ upcall_s_free(s_free_args *args) {
     task->free(args->ptr, (bool) args->is_gc);
 }
 
-/**
- * Called whenever an object's ref count drops to zero.
- */
 extern "C" CDECL void
 upcall_free(void* ptr, uintptr_t is_gc) {
     s_free_args args = {ptr, is_gc};
     SWITCH_STACK(&args, upcall_s_free);
 }
+
+/**********************************************************************
+ * Allocate an object in the exchange heap.
+ */
 
 struct s_shared_malloc_args {
     uintptr_t retval;
@@ -167,13 +179,14 @@ upcall_shared_malloc(size_t nbytes, type_desc *td) {
     return args.retval;
 }
 
+/**********************************************************************
+ * Called whenever an object in the exchange heap is freed.
+ */
+
 struct s_shared_free_args {
     void *ptr;
 };
 
-/**
- * Called whenever an object's ref count drops to zero.
- */
 extern "C" CDECL void
 upcall_s_shared_free(s_shared_free_args *args) {
     rust_task *task = rust_scheduler::get_task();
@@ -186,21 +199,25 @@ upcall_s_shared_free(s_shared_free_args *args) {
     task->kernel->free(args->ptr);
 }
 
-/**
- * Called whenever an object's ref count drops to zero.
- */
 extern "C" CDECL void
 upcall_shared_free(void* ptr) {
     s_shared_free_args args = {ptr};
     SWITCH_STACK(&args, upcall_s_shared_free);
 }
 
-struct s_clone_type_desc_args {
+/**********************************************************************
+ * Called to deep copy a type descriptor onto the exchange heap.
+ * Used when sending closures.  It's possible that we should have
+ * a central hashtable to avoid copying and re-copying the same 
+ * type descriptors.
+ */
+
+struct s_create_shared_type_desc_args {
     const type_desc *td;
     type_desc *res;
 };
 
-void upcall_s_clone_type_desc(s_clone_type_desc_args *args)
+void upcall_s_create_shared_type_desc(s_create_shared_type_desc_args *args)
 {
     rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
@@ -209,27 +226,56 @@ void upcall_s_clone_type_desc(s_clone_type_desc_args *args)
     const type_desc *td = args->td;
     int n_descs = td->n_descs;
     size_t sz = sizeof(type_desc) + sizeof(type_desc*) * n_descs;
-    args->res = (type_desc*) task->kernel->malloc(sz, "clone_type_desc");
+    args->res = (type_desc*) task->kernel->malloc(sz, "create_shared_type_desc");
     memcpy(args->res, td, sizeof(type_desc));
 
     // Recursively copy any referenced descriptors:
-    for (int i = 0; i < n_descs; i++) {
-        s_clone_type_desc_args rec_args = { td->descs[i], 0 };
-        upcall_s_clone_type_desc(&rec_args);
-        args->res->descs[i] = rec_args.res;
+    if (n_descs == 0) {
+        args->res->first_param = NULL;
+    } else {
+        args->res->first_param = &args->res->descs[1];
+        args->res->descs[0] = args->res;
+        for (int i = 1; i < n_descs; i++) {
+            s_create_shared_type_desc_args rec_args = { td->descs[i], 0 };
+            upcall_s_create_shared_type_desc(&rec_args);
+            args->res->descs[i] = rec_args.res;
+        }
     }
 }
 
-/**
- * Called to deep-clone type descriptors so they can be attached to a sendable
- * function.  Eventually this should perhaps move to a centralized hashtable.
- */
 extern "C" CDECL type_desc *
-upcall_clone_type_desc(type_desc *td) {
-    s_clone_type_desc_args args = { td, 0 };
-    SWITCH_STACK(&args, upcall_s_clone_type_desc);
+upcall_create_shared_type_desc(type_desc *td) {
+    s_create_shared_type_desc_args args = { td, 0 };
+    SWITCH_STACK(&args, upcall_s_create_shared_type_desc);
     return args.res;
 }
+
+/**********************************************************************
+ * Called to deep free a type descriptor from the exchange heap.
+ */
+
+void upcall_s_free_shared_type_desc(type_desc *td)
+{
+    rust_task *task = rust_scheduler::get_task();
+    LOG_UPCALL_ENTRY(task);
+
+    // Recursively free any referenced descriptors:
+    for (unsigned i = 1; i < td->n_descs; i++) {
+        upcall_s_free_shared_type_desc((type_desc*) td->descs[i]);
+    }
+
+    task->kernel->free(td);
+}
+
+extern "C" CDECL void
+upcall_free_shared_type_desc(type_desc *td) {
+    SWITCH_STACK(td, upcall_s_free_shared_type_desc);
+}
+
+/**********************************************************************
+ * Called to intern a task-local type descriptor into the hashtable
+ * associated with each scheduler.
+ */
 
 struct s_get_type_desc_args {
     type_desc *retval;
@@ -266,6 +312,8 @@ upcall_get_type_desc(void *curr_crate, // ignored, legacy compat.
     SWITCH_STACK(&args, upcall_s_get_type_desc);
     return args.retval;
 }
+
+/**********************************************************************/
 
 struct s_vec_grow_args {
     rust_vec** vp;
@@ -305,6 +353,8 @@ copy_elements(rust_task *task, type_desc *elem_t,
     }
 }
 
+/**********************************************************************/
+
 struct s_vec_push_args {
     rust_vec** vp;
     type_desc* elt_ty;
@@ -331,6 +381,11 @@ upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
     upcall_s_vec_push(&args);
 }
 
+/**********************************************************************
+ * Returns a token that can be used to deallocate all of the allocated space
+ * space in the dynamic stack.
+ */
+
 struct s_dynastack_mark_args {
     void *retval;
 };
@@ -340,16 +395,18 @@ upcall_s_dynastack_mark(s_dynastack_mark_args *args) {
     args->retval = rust_scheduler::get_task()->dynastack.mark();
 }
 
-/**
- * Returns a token that can be used to deallocate all of the allocated space
- * space in the dynamic stack.
- */
 extern "C" CDECL void *
 upcall_dynastack_mark() {
     s_dynastack_mark_args args = {0};
     SWITCH_STACK(&args, upcall_s_dynastack_mark);
     return args.retval;
 }
+
+/**********************************************************************
+ * Allocates space in the dynamic stack and returns it.
+ *
+ * FIXME: Deprecated since dynamic stacks need to be self-describing for GC.
+ */
 
 struct s_dynastack_alloc_args {
     void *retval;
@@ -363,17 +420,17 @@ upcall_s_dynastack_alloc(s_dynastack_alloc_args *args) {
         rust_scheduler::get_task()->dynastack.alloc(sz, NULL) : NULL;
 }
 
-/**
- * Allocates space in the dynamic stack and returns it.
- *
- * FIXME: Deprecated since dynamic stacks need to be self-describing for GC.
- */
 extern "C" CDECL void *
 upcall_dynastack_alloc(size_t sz) {
     s_dynastack_alloc_args args = {0, sz};
     SWITCH_STACK(&args, upcall_s_dynastack_alloc);
     return args.retval;
 }
+
+/**********************************************************************
+ * Allocates space associated with a type descriptor in the dynamic stack and
+ * returns it.
+ */
 
 struct s_dynastack_alloc_2_args {
     void *retval;
@@ -389,10 +446,6 @@ upcall_s_dynastack_alloc_2(s_dynastack_alloc_2_args *args) {
         rust_scheduler::get_task()->dynastack.alloc(sz, ty) : NULL;
 }
 
-/**
- * Allocates space associated with a type descriptor in the dynamic stack and
- * returns it.
- */
 extern "C" CDECL void *
 upcall_dynastack_alloc_2(size_t sz, type_desc *ty) {
     s_dynastack_alloc_2_args args = {0, sz, ty};

@@ -336,16 +336,13 @@ public:
                        (unsigned long)n_obj_params, tydesc,
                        dp + sizeof(uintptr_t) + tydesc->size);
                 n_obj_params &= 0x7fffffff;
-                // FIXME: Is this right?
-                first_param = (const type_desc **)
-                    (dp + sizeof(uintptr_t) + tydesc->size);
+                first_param = (const type_desc **)(dp + sizeof(uintptr_t));
             } else {
                 // Object closure.
                 DPRINT("n_obj_params OBJ %lu, tydesc %p, starting at %p\n",
                        (unsigned long)n_obj_params, tydesc,
                        dp + sizeof(uintptr_t) * 2);
-                first_param = (const type_desc **)
-                    (dp + sizeof(uintptr_t) * 2);
+                first_param = (const type_desc **)(dp + sizeof(uintptr_t) * 2);
             }
             return make(first_param, n_obj_params, arena);
         }
@@ -568,6 +565,7 @@ public:
 
     void walk_fn()  { DPRINT("fn"); }
     void walk_obj() { DPRINT("obj"); }
+    void walk_closure();
 
     template<typename T>
     void walk_number() {}
@@ -612,6 +610,7 @@ public:
     void walk_box()     { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_fn()      { sa.set(sizeof(void *)*2, sizeof(void *)); }
     void walk_obj()     { sa.set(sizeof(void *)*2, sizeof(void *)); }
+    void walk_closure();
 
     void walk_vec(bool is_pod, uint16_t sp_size) {
         sa.set(sizeof(void *), sizeof(void *));

@@ -536,7 +536,7 @@ fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef {
 }
 
 fn T_fn_pair(cx: @crate_ctxt, tfn: TypeRef) -> TypeRef {
-    ret T_struct([T_ptr(tfn), T_opaque_closure_ptr(cx)]);
+    ret T_struct([T_ptr(tfn), T_opaque_boxed_closure_ptr(cx)]);
 }
 
 fn T_ptr(t: TypeRef) -> TypeRef { ret llvm::LLVMPointerType(t, 0u); }
@@ -688,21 +688,34 @@ fn T_typaram(tn: type_names) -> TypeRef {
 
 fn T_typaram_ptr(tn: type_names) -> TypeRef { ret T_ptr(T_typaram(tn)); }
 
-fn T_closure_ptr(cx: @crate_ctxt, llbindings_ty: TypeRef,
-                 n_ty_params: uint) -> TypeRef {
+fn T_closure(cx: @crate_ctxt,
+             llbindings_ty: TypeRef,
+             n_ty_params: uint) -> TypeRef {
+    ret T_struct([T_ptr(cx.tydesc_type),
+                  T_captured_tydescs(cx, n_ty_params),
+                  llbindings_ty])
+}
+
+fn T_opaque_closure(cx: @crate_ctxt) -> TypeRef {
+    let s = "closure";
+    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
+    let t = T_closure(cx, T_nil(), 0u);
+    cx.tn.associate(s, t);
+    ret t;
+}
+
+fn T_boxed_closure_ptr(cx: @crate_ctxt, llbindings_ty: TypeRef,
+                     n_ty_params: uint) -> TypeRef {
     // NB: keep this in sync with code in trans_bind; we're making
     // an LLVM typeref structure that has the same "shape" as the ty::t
     // it constructs.
-    ret T_ptr(T_box(cx, T_struct([T_ptr(cx.tydesc_type),
-                                  llbindings_ty,
-                                  //cx.int_type,
-                                  T_captured_tydescs(cx, n_ty_params)])));
+    ret T_ptr(T_box(cx, T_closure(cx, llbindings_ty, n_ty_params)));
 }
 
-fn T_opaque_closure_ptr(cx: @crate_ctxt) -> TypeRef {
+fn T_opaque_boxed_closure_ptr(cx: @crate_ctxt) -> TypeRef {
     let s = "*closure";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
-    let t = T_closure_ptr(cx, T_nil(), 0u);
+    let t = T_boxed_closure_ptr(cx, T_nil(), 0u);
     cx.tn.associate(s, t);
     ret t;
 }

@@ -94,7 +94,9 @@ fn type_of_fn(cx: @crate_ctxt, sp: span,
     // Arg 1: Env (closure-bindings / self-obj)
     if is_method {
         atys += [T_ptr(cx.rust_object_type)];
-    } else { atys += [T_opaque_closure_ptr(cx)]; }
+    } else {
+        atys += [T_opaque_boxed_closure_ptr(cx)];
+    }
 
     // Args >2: ty params, if not acquired via capture...
     if !is_method {
@@ -124,8 +126,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
     // Check the cache.
 
     if cx.lltypes.contains_key(t) { ret cx.lltypes.get(t); }
-    let llty =
-    alt ty::struct(cx.tcx, t) {
+    let llty = alt ty::struct(cx.tcx, t) {
       ty::ty_native(_) { T_ptr(T_i8()) }
       ty::ty_nil. { T_nil() }
       ty::ty_bot. {
@@ -199,6 +200,9 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
             tys += [type_of_inner(cx, sp, elt)];
         }
         T_struct(tys)
+      }
+      ty::ty_opaque_closure. {
+        T_opaque_closure(cx)
       }
     };
     cx.lltypes.insert(t, llty);
@@ -1295,22 +1299,6 @@ fn emit_tydescs(ccx: @crate_ctxt) {
 
 fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
 
-    fn take_fn_env(cx: @block_ctxt,
-                   v: ValueRef,
-                   blk: block(@block_ctxt, ValueRef, ValueRef) -> @block_ctxt)
-        -> @block_ctxt {
-        let box_cell_v = GEPi(cx, v, [0, abi::fn_field_box]);
-        let box_ptr_v = Load(cx, box_cell_v);
-        let inner_cx = new_sub_block_ctxt(cx, "iter box");
-        let next_cx = new_sub_block_ctxt(cx, "next");
-        let null_test = IsNull(cx, box_ptr_v);
-        CondBr(cx, null_test, next_cx.llbb, inner_cx.llbb);
-        inner_cx = blk(inner_cx, box_cell_v, box_ptr_v);
-        Br(inner_cx, next_cx.llbb);
-        ret next_cx;
-    }
-
-
     let bcx = cx;
     let tcx = bcx_tcx(cx);
     // NB: v is an *alias* of type t here, not a direct value.
@@ -1329,25 +1317,20 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
         Store(r.bcx, r.val, v);
         r.bcx
       }
-      ty::ty_fn(ast::proto_bare., _, _, _, _) {
+      ty::ty_send_type. {
+        // sendable type descriptors are basically unique pointers,
+        // they must be cloned when copied:
+        let r = Load(bcx, v);
+        let s = Call(bcx, bcx_ccx(bcx).upcalls.create_shared_type_desc, [r]);
+        Store(bcx, s, v);
         bcx
       }
-      ty::ty_fn(ast::proto_block., _, _, _, _) {
-        bcx
+      ty::ty_native_fn(_, _) | ty::ty_fn(_, _, _, _, _) {
+        trans_closure::make_fn_glue(bcx, v, t, take_ty)
       }
-      ty::ty_fn(ast::proto_send., _, _, _, _) {
-        take_fn_env(bcx, v, { |bcx, _box_cell_v, box_ptr_v|
-            // Here, box_ptr_v is a unique pointer which
-            // must be cloned.
-            call_bound_data_glue_for_closure(
-                bcx, box_ptr_v, abi::tydesc_field_take_glue);
-            bcx
-        })
-      }
-      ty::ty_native_fn(_, _) | ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
-        take_fn_env(bcx, v, { |bcx, _box_cell_v, box_ptr_v|
-            incr_refcnt_of_boxed(bcx, box_ptr_v)
-        })
+      ty::ty_opaque_closure. {
+        trans_closure::call_opaque_closure_glue(
+            bcx, v, abi::tydesc_field_take_glue)
       }
       _ when ty::type_is_structural(bcx_tcx(bcx), t) {
         iter_structural_ty(bcx, v, t, take_ty)
@@ -1368,17 +1351,17 @@ fn incr_refcnt_of_boxed(cx: @block_ctxt, box_ptr: ValueRef) -> @block_ctxt {
     ret cx;
 }
 
-fn call_bound_data_glue_for_closure(bcx: @block_ctxt,
-                                    v: ValueRef,
-                                    field: int) {
-    // Call through the closure's own fields-drop glue.
-    let ccx = bcx_ccx(bcx);
-    let v = PointerCast(bcx, v, T_opaque_closure_ptr(ccx));
-    let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
-    let bindings = GEPi(bcx, body, [0, abi::closure_elt_bindings]);
-    let tydescptr = GEPi(bcx, body, [0, abi::closure_elt_tydesc]);
-    let ti = none;
-    call_tydesc_glue_full(bcx, bindings, Load(bcx, tydescptr), field, ti);
+fn free_box(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
+    ret alt ty::struct(bcx_tcx(bcx), t) {
+      ty::ty_box(body_mt) {
+        let v = PointerCast(bcx, v, type_of_1(bcx, t));
+        let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
+        let bcx = drop_ty(bcx, body, body_mt.ty);
+        trans_free_if_not_gc(bcx, v)
+      }
+
+      _ { fail "free_box invoked with non-box type"; }
+    };
 }
 
 fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
@@ -1387,10 +1370,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
     // everything to a pointer to the type that the glue acts on).
     let bcx = alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_box(body_mt) {
-        let v = PointerCast(bcx, v, type_of_1(bcx, t));
-        let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
-        let bcx = drop_ty(bcx, body, body_mt.ty);
-        trans_free_if_not_gc(bcx, v)
+        free_box(bcx, v, t)
       }
       ty::ty_uniq(content_mt) {
         check trans_uniq::type_is_unique_box(bcx, t);
@@ -1415,23 +1395,17 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
                               abi::tydesc_field_drop_glue, ti);
         trans_free_if_not_gc(bcx, b)
       }
-      ty::ty_fn(ast::proto_bare., _, _, _, _) {
-        bcx
-      }
-      ty::ty_fn(ast::proto_block., _, _, _, _) {
-        bcx
-      }
-      ty::ty_fn(ast::proto_send., _, _, _, _) {
-        // n.b.: When we drop a function, we actually invoke the
-        // free glue only on the environment part.
-        call_bound_data_glue_for_closure(bcx, v, abi::tydesc_field_drop_glue);
+      ty::ty_send_type. {
+        // sendable type descriptors are basically unique pointers,
+        // they must be freed.
         trans_shared_free(bcx, v)
       }
-      ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
-        // n.b.: When we drop a function, we actually invoke the
-        // free glue only on the environment part.
-        call_bound_data_glue_for_closure(bcx, v, abi::tydesc_field_drop_glue);
-        trans_free_if_not_gc(bcx, v)
+      ty::ty_native_fn(_, _) | ty::ty_fn(_, _, _, _, _) {
+        trans_closure::make_fn_glue(bcx, v, t, free_ty)
+      }
+      ty::ty_opaque_closure. {
+        trans_closure::call_opaque_closure_glue(
+            bcx, v, abi::tydesc_field_free_glue)
       }
       _ { bcx }
     };
@@ -1444,7 +1418,7 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
     let bcx =
         alt ty::struct(ccx.tcx, t) {
           ty::ty_box(_) { decr_refcnt_maybe_free(bcx, Load(bcx, v0), t) }
-          ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str. {
+          ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str. | ty::ty_send_type. {
             free_ty(bcx, Load(bcx, v0), t)
           }
           ty::ty_obj(_) {
@@ -1455,21 +1429,12 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
           ty::ty_res(did, inner, tps) {
             trans_res_drop(bcx, v0, did, inner, tps)
           }
-          ty::ty_fn(ast::proto_bare., _, _, _, _) {
-            bcx // No environment to free.
+          ty::ty_native_fn(_, _) | ty::ty_fn(_, _, _, _, _) {
+            trans_closure::make_fn_glue(bcx, v0, t, drop_ty)
           }
-          ty::ty_fn(ast::proto_block., _, _, _, _) {
-            bcx // Environment is stack allocated and needs no free.
-          }
-          ty::ty_fn(ast::proto_send., _, _, _, _) {
-            // Environment is a unique pointer.
-            let box_cell = GEPi(bcx, v0, [0, abi::fn_field_box]);
-            free_ty(bcx, Load(bcx, box_cell), t)
-          }
-          ty::ty_native_fn(_, _) |
-          ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
-            let box_cell = GEPi(bcx, v0, [0, abi::fn_field_box]);
-            decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
+          ty::ty_opaque_closure. {
+            trans_closure::call_opaque_closure_glue(
+                bcx, v0, abi::tydesc_field_drop_glue)
           }
           _ {
             if ty::type_needs_drop(ccx.tcx, t) &&
@@ -2614,7 +2579,7 @@ type lval_maybe_callee = {bcx: @block_ctxt,
                           generic: option::t<generic_info>};
 
 fn null_env_ptr(bcx: @block_ctxt) -> ValueRef {
-    C_null(T_opaque_closure_ptr(bcx_ccx(bcx)))
+    C_null(T_opaque_boxed_closure_ptr(bcx_ccx(bcx)))
 }
 
 fn lval_from_local_var(bcx: @block_ctxt, r: local_var_result) -> lval_result {
@@ -3063,199 +3028,6 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     ret store_in_dest(e_res.bcx, newval, dest);
 }
 
-// pth is cx.path
-fn trans_bind_thunk(cx: @local_ctxt, sp: span, incoming_fty: ty::t,
-                    outgoing_fty: ty::t, args: [option::t<@ast::expr>],
-                    env_ty: ty::t, ty_param_count: uint,
-                    target_fn: option::t<ValueRef>)
-    -> {val: ValueRef, ty: TypeRef} {
-    // If we supported constraints on record fields, we could make the
-    // constraints for this function:
-    /*
-    : returns_non_ty_var(ccx, outgoing_fty),
-      type_has_static_size(ccx, incoming_fty) ->
-    */
-    // but since we don't, we have to do the checks at the beginning.
-    let ccx = cx.ccx;
-    check type_has_static_size(ccx, incoming_fty);
-
-    // Here we're not necessarily constructing a thunk in the sense of
-    // "function with no arguments".  The result of compiling 'bind f(foo,
-    // bar, baz)' would be a thunk that, when called, applies f to those
-    // arguments and returns the result.  But we're stretching the meaning of
-    // the word "thunk" here to also mean the result of compiling, say, 'bind
-    // f(foo, _, baz)', or any other bind expression that binds f and leaves
-    // some (or all) of the arguments unbound.
-
-    // Here, 'incoming_fty' is the type of the entire bind expression, while
-    // 'outgoing_fty' is the type of the function that is having some of its
-    // arguments bound.  If f is a function that takes three arguments of type
-    // int and returns int, and we're translating, say, 'bind f(3, _, 5)',
-    // then outgoing_fty is the type of f, which is (int, int, int) -> int,
-    // and incoming_fty is the type of 'bind f(3, _, 5)', which is int -> int.
-
-    // Once translated, the entire bind expression will be the call f(foo,
-    // bar, baz) wrapped in a (so-called) thunk that takes 'bar' as its
-    // argument and that has bindings of 'foo' to 3 and 'baz' to 5 and a
-    // pointer to 'f' all saved in its environment.  So, our job is to
-    // construct and return that thunk.
-
-    // Give the thunk a name, type, and value.
-    let s: str = mangle_internal_name_by_path_and_seq(ccx, cx.path, "thunk");
-    let llthunk_ty: TypeRef = get_pair_fn_ty(type_of(ccx, sp, incoming_fty));
-    let llthunk: ValueRef = decl_internal_cdecl_fn(ccx.llmod, s, llthunk_ty);
-
-    // Create a new function context and block context for the thunk, and hold
-    // onto a pointer to the first block in the function for later use.
-    let fcx = new_fn_ctxt(cx, sp, llthunk);
-    let bcx = new_top_block_ctxt(fcx);
-    let lltop = bcx.llbb;
-    // Since we might need to construct derived tydescs that depend on
-    // our bound tydescs, we need to load tydescs out of the environment
-    // before derived tydescs are constructed. To do this, we load them
-    // in the load_env block.
-    let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
-
-    // The 'llenv' that will arrive in the thunk we're creating is an
-    // environment that will contain the values of its arguments and a pointer
-    // to the original function.  So, let's create one of those:
-
-    // The llenv pointer needs to be the correct size.  That size is
-    // 'closure_ty', which was determined by trans_bind.
-    let closure_ty = ty::mk_imm_box(ccx.tcx, env_ty);
-    // FIXME: would be nice to have a postcondition on mk_imm_box
-    // (Issue #586)
-    check (type_has_static_size(ccx, closure_ty));
-    let llclosure_ptr_ty = type_of(ccx, sp, closure_ty);
-    let llclosure = PointerCast(load_env_bcx, fcx.llenv, llclosure_ptr_ty);
-
-    // "target", in this context, means the function that's having some of its
-    // arguments bound and that will be called inside the thunk we're
-    // creating.  (In our running example, target is the function f.)  Pick
-    // out the pointer to the target function from the environment. The
-    // target function lives in the first binding spot.
-    let (lltargetfn, lltargetenv, starting_idx) = alt target_fn {
-      some(fptr) { (fptr, llvm::LLVMGetUndef(T_opaque_closure_ptr(ccx)), 0) }
-      none. {
-        // Silly check
-        check type_is_tup_like(bcx, closure_ty);
-        let {bcx: cx, val: pair} =
-            GEP_tup_like(bcx, closure_ty, llclosure,
-                         [0, abi::box_rc_field_body,
-                          abi::closure_elt_bindings, 0]);
-        let lltargetenv =
-            Load(cx, GEPi(cx, pair, [0, abi::fn_field_box]));
-        let lltargetfn = Load
-            (cx, GEPi(cx, pair, [0, abi::fn_field_code]));
-        bcx = cx;
-        (lltargetfn, lltargetenv, 1)
-      }
-    };
-
-    // And then, pick out the target function's own environment.  That's what
-    // we'll use as the environment the thunk gets.
-
-    // Get f's return type, which will also be the return type of the entire
-    // bind expression.
-    let outgoing_ret_ty = ty::ty_fn_ret(cx.ccx.tcx, outgoing_fty);
-
-    // Get the types of the arguments to f.
-    let outgoing_args = ty::ty_fn_args(cx.ccx.tcx, outgoing_fty);
-
-    // The 'llretptr' that will arrive in the thunk we're creating also needs
-    // to be the correct type.  Cast it to f's return type, if necessary.
-    let llretptr = fcx.llretptr;
-    let ccx = cx.ccx;
-    if ty::type_contains_params(ccx.tcx, outgoing_ret_ty) {
-        check non_ty_var(ccx, outgoing_ret_ty);
-        let llretty = type_of_inner(ccx, sp, outgoing_ret_ty);
-        llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
-    }
-
-    // Set up the three implicit arguments to the thunk.
-    let llargs: [ValueRef] = [llretptr, lltargetenv];
-
-    // Copy in the type parameters.
-    let i: uint = 0u;
-    while i < ty_param_count {
-        // Silly check
-        check type_is_tup_like(load_env_bcx, closure_ty);
-        let lltyparam_ptr =
-            GEP_tup_like(load_env_bcx, closure_ty, llclosure,
-                         [0, abi::box_rc_field_body,
-                          abi::closure_elt_ty_params, i as int]);
-        load_env_bcx = lltyparam_ptr.bcx;
-        let td = Load(load_env_bcx, lltyparam_ptr.val);
-        llargs += [td];
-        fcx.lltydescs += [td];
-        i += 1u;
-    }
-
-    let a: uint = 2u; // retptr, env come first
-    let b: int = starting_idx;
-    let outgoing_arg_index: uint = 0u;
-    let llout_arg_tys: [TypeRef] =
-        type_of_explicit_args(cx.ccx, sp, outgoing_args);
-    for arg: option::t<@ast::expr> in args {
-        let out_arg = outgoing_args[outgoing_arg_index];
-        let llout_arg_ty = llout_arg_tys[outgoing_arg_index];
-        alt arg {
-          // Arg provided at binding time; thunk copies it from
-          // closure.
-          some(e) {
-            // Silly check
-            check type_is_tup_like(bcx, closure_ty);
-            let bound_arg =
-                GEP_tup_like(bcx, closure_ty, llclosure,
-                             [0, abi::box_rc_field_body,
-                              abi::closure_elt_bindings, b]);
-            bcx = bound_arg.bcx;
-            let val = bound_arg.val;
-            if out_arg.mode == ast::by_val { val = Load(bcx, val); }
-            if out_arg.mode == ast::by_copy {
-                let {bcx: cx, val: alloc} = alloc_ty(bcx, out_arg.ty);
-                bcx = memmove_ty(cx, alloc, val, out_arg.ty);
-                bcx = take_ty(bcx, alloc, out_arg.ty);
-                val = alloc;
-            }
-            // If the type is parameterized, then we need to cast the
-            // type we actually have to the parameterized out type.
-            if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
-                val = PointerCast(bcx, val, llout_arg_ty);
-            }
-            llargs += [val];
-            b += 1;
-          }
-
-          // Arg will be provided when the thunk is invoked.
-          none. {
-            let arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
-            if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
-                arg = PointerCast(bcx, arg, llout_arg_ty);
-            }
-            llargs += [arg];
-            a += 1u;
-          }
-        }
-        outgoing_arg_index += 1u;
-    }
-
-    // Cast the outgoing function to the appropriate type.
-    // This is necessary because the type of the function that we have
-    // in the closure does not know how many type descriptors the function
-    // needs to take.
-    let ccx = bcx_ccx(bcx);
-
-    check returns_non_ty_var(ccx, outgoing_fty);
-    let lltargetty =
-        type_of_fn_from_ty(ccx, sp, outgoing_fty, ty_param_count);
-    lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
-    Call(bcx, lltargetfn, llargs);
-    build_return(bcx);
-    finish_fn(fcx, lltop);
-    ret {val: llthunk, ty: llthunk_ty};
-}
-
 fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
                   &to_zero: [{v: ValueRef, t: ty::t}],
                   &to_revoke: [{v: ValueRef, t: ty::t}], e: @ast::expr) ->
@@ -3431,7 +3203,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let llenv;
     alt f_res.env {
       null_env. {
-        llenv = llvm::LLVMGetUndef(T_opaque_closure_ptr(bcx_ccx(cx)));
+        llenv = llvm::LLVMGetUndef(T_opaque_boxed_closure_ptr(bcx_ccx(cx)));
       }
       obj_env(e) { llenv = e; }
       is_closure. {
@@ -5351,7 +5123,7 @@ fn fill_fn_pair(bcx: @block_ctxt, pair: ValueRef, llfn: ValueRef,
     Store(bcx, llfn, code_cell);
     let env_cell = GEPi(bcx, pair, [0, abi::fn_field_box]);
     let llenvblobptr =
-        PointerCast(bcx, llenvptr, T_opaque_closure_ptr(ccx));
+        PointerCast(bcx, llenvptr, T_opaque_boxed_closure_ptr(ccx));
     Store(bcx, llenvblobptr, env_cell);
 }
 
