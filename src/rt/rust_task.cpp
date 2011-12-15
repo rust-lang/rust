@@ -63,16 +63,71 @@ get_next_stk_size(rust_scheduler *sched, rust_task *task,
     sz = std::max(sz, next);
 
     LOG(task, mem, "next stack size: %" PRIdPTR, sz);
+    I(sched, requested <= sz);
     return sz;
 }
 
 // Task stack segments. Heap allocated and chained together.
 
+static void
+config_valgrind_stack(stk_seg *stk) {
+    stk->valgrind_id =
+        VALGRIND_STACK_REGISTER(&stk->data[0],
+                                stk->end);
+#ifndef NVALGRIND
+    // Establish that the stack is accessible.  This must be done when reusing
+    // old stack segments, since the act of popping the stack previously
+    // caused valgrind to consider the whole thing inaccessible.
+    size_t sz = stk->end - (uintptr_t)&stk->data[0];
+    VALGRIND_MAKE_MEM_UNDEFINED(stk->data, sz);
+
+    // Establish some guard bytes so valgrind will tell
+    // us if we run off the end of the stack
+    VALGRIND_MAKE_MEM_NOACCESS(stk->data, STACK_NOACCESS_SIZE);
+#endif
+}
+
+static void
+unconfig_valgrind_stack(stk_seg *stk) {
+#ifndef NVALGRIND
+    // Make the guard bytes accessible again, but undefined
+    VALGRIND_MAKE_MEM_UNDEFINED(stk->data, STACK_NOACCESS_SIZE);
+#endif
+VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
+}
+
+static void
+free_stk(rust_task *task, stk_seg *stk) {
+    LOGPTR(task->sched, "freeing stk segment", (uintptr_t)stk);
+    task->free(stk);
+}
+
 static stk_seg*
 new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
 {
+    LOG(task, mem, "creating new stack for task %" PRIxPTR, task);
+
     // The minimum stack size, in bytes, of a Rust stack, excluding red zone
     size_t min_sz = get_min_stk_size(sched->min_stack_size);
+
+    // Try to reuse an existing stack segment
+    if (task->stk != NULL && task->stk->prev != NULL) {
+        size_t prev_sz = (size_t)(task->stk->prev->end
+                                  - (uintptr_t)&task->stk->prev->data[0]
+                                  - RED_ZONE_SIZE);
+        if (min_sz <= prev_sz) {
+            LOG(task, mem, "reusing existing stack");
+            task->stk = task->stk->prev;
+            A(sched, task->stk->prev == NULL, "Bogus stack ptr");
+            config_valgrind_stack(task->stk);
+            return task->stk;
+        } else {
+            LOG(task, mem, "existing stack is not big enough");
+            free_stk(task, task->stk->prev);
+            task->stk->prev = NULL;
+        }
+    }
+
     // The size of the current stack segment, excluding red zone
     size_t current_sz = 0;
     if (task->stk != NULL) {
@@ -88,16 +143,13 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
     stk_seg *stk = (stk_seg *)task->malloc(sz, "stack");
     LOGPTR(task->sched, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
+    stk->prev = NULL;
     stk->next = task->stk;
     stk->end = (uintptr_t) &stk->data[rust_stk_sz + RED_ZONE_SIZE];
     LOGPTR(task->sched, "stk end", stk->end);
-    stk->valgrind_id =
-        VALGRIND_STACK_REGISTER(&stk->data[0],
-                                &stk->data[rust_stk_sz + RED_ZONE_SIZE]);
-#ifndef NVALGRIND
-    VALGRIND_MAKE_MEM_NOACCESS(stk->data, STACK_NOACCESS_SIZE);
-#endif
+
     task->stk = stk;
+    config_valgrind_stack(task->stk);
     return stk;
 }
 
@@ -108,12 +160,27 @@ del_stk(rust_task *task, stk_seg *stk)
 
     task->stk = stk->next;
 
-#ifndef NVALGRIND
-    VALGRIND_MAKE_MEM_DEFINED(stk->data, STACK_NOACCESS_SIZE);
-#endif
-    VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
-    LOGPTR(task->sched, "freeing stk segment", (uintptr_t)stk);
-    task->free(stk);
+    bool delete_stack = false;
+    if (task->stk != NULL) {
+        // Don't actually delete this stack. Save it to reuse later,
+        // preventing the pathological case where we repeatedly reallocate
+        // the stack for the next frame.
+        task->stk->prev = stk;
+    } else {
+        // This is the last stack, delete it.
+        delete_stack = true;
+    }
+
+    // Delete the previous previous stack
+    if (stk->prev != NULL) {
+        free_stk(task, stk->prev);
+        stk->prev = NULL;
+    }
+
+    unconfig_valgrind_stack(stk);
+    if (delete_stack) {
+        free_stk(task, stk);
+    }
 }
 
 // Tasks
