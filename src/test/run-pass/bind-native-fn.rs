@@ -5,7 +5,7 @@ use std;
 import str;
 import ctypes::*;
 
-#[link_name = ""]
+#[nolink]
 native mod libc {
     fn write(fd: c_int, buf: *u8, nbyte: size_t);
 }

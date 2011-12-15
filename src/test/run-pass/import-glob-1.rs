@@ -21,7 +21,7 @@ mod a1 {
 mod a2 {
     //   |   |   |
     #[abi = "cdecl"]
-    #[link_name = ""]
+    #[nolink]
     native mod b1 {
         //   |   |   |
         import a1::b2::*;

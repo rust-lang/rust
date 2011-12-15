@@ -5,7 +5,7 @@ use std;
 import std::c_vec::*;
 import ctypes::*;
 
-#[link_name = ""]
+#[nolink]
 #[abi = "cdecl"]
 native mod libc {
     fn malloc(n: size_t) -> *mutable u8;

@@ -18,7 +18,7 @@ export fsync_fd;
 // FIXME Refactor into unix_os module or some such. Doesn't
 // seem to work right now.
 
-#[link_name = ""]
+#[nolink]
 #[abi = "cdecl"]
 native mod libc {
     fn read(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;
@@ -118,7 +118,8 @@ native mod rustrt {
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 
-#[link_name = ""]
+#[link_name = ""]               // FIXME remove after #[nolink] is snapshotted
+#[nolink]
 #[abi = "cdecl"]
 native mod mac_libc {
     fn _NSGetExecutablePath(buf: str::sbuf,

@@ -3,7 +3,7 @@ use std;
 import vec;
 import str;
 
-#[link_name = ""]
+#[nolink]
 #[abi = "cdecl"]
 native mod libc {
     #[link_name = "strlen"]

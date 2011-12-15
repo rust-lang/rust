@@ -93,7 +93,6 @@ fn add_used_library(cstore: cstore, lib: str) -> bool {
     if lib == "" { ret false; }
 
     if vec::member(lib, p(cstore).used_libraries) { ret false; }
-
     p(cstore).used_libraries += [lib];
     ret true;
 }
