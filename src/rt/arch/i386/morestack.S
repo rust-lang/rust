@@ -64,6 +64,9 @@ MORESTACK:
 	// NB: This can be called with the fastcc convention so we
 	// have to preserve any argument registers we want to use
 
+	// NB: __morestack is called misaligned by 4 bytes, i.e.
+	// subl $4, %esp would get us to a normal alignment
+
 	// FIXME (1226): main is compiled with the split-stack prologue,
 	// causing it to call __morestack, so we have to jump back out
 	subl $28,%esp
@@ -120,7 +123,9 @@ MORESTACK:
 	// Switch back to the rust stack
 	movl %ebp, %esp
 
-	subl $8, %esp // Alignment
+	// Remember that __morestack is called misaligned so %ebp
+	// is not aligned to a 16-byte boundary, these 4 bytes realign.
+	subl $4, %esp
 
 	// Now that we're on the return path we want to avoid
 	// stomping on %eax. FIXME: Need to save and restore
@@ -137,7 +142,7 @@ MORESTACK:
 	pushl $0
 	call UPCALL_CALL_C
 
-	addl $16,%esp
+	addl $12,%esp
 
 	popl %ebp
 #if defined(__linux__) || defined(__APPLE__)
