@@ -154,12 +154,13 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
         name = str::slice(name, 0u, ri as uint);
     }
     log #fmt["Installing: %s", name];
-    let old = fs::list_dir(".");
-    run::run_program("rustc", [cf]);
-    let new = fs::list_dir(".");
+    let old = vec::map({|x| str::slice(x, 2u, str::byte_len(x))}, fs::list_dir("."));
+    run::run_program("rustc", [name + ".rc"]);
+    let new = vec::map({|x| str::slice(x, 2u, str::byte_len(x))}, fs::list_dir("."));
     let created = vec::filter::<str>({ |n| !vec::member::<str>(n, old) }, new);
     for ct: str in created {
-        if str::ends_with(ct, os::exec_suffix()) {
+        if (os::exec_suffix() != "" && str::ends_with(ct, os::exec_suffix())) ||
+           (os::exec_suffix() == "" && !str::starts_with(ct, "lib")) {
             log #fmt["  bin: %s", ct];
             // FIXME: need libstd fs::copy or something
             run::run_program("cp", [ct, c.bindir]);
