@@ -7,33 +7,15 @@
 #[license = "BSD"];
 #[crate_type = "lib"];
 
-export box, char, float, int, str, ptr;
-export uint, u8, u32, u64, vec, bool;
-export comm, fs, io, net, run, sys, task, uv;
-export c_vec, ctypes, either, option, result, four, tri, util;
+export comm, fs, io, net, run, uv;
+export c_vec, ctypes, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
 export math;
-export ebml, dbg, getopts, json, rand, sha1, term, time, unsafe;
+export ebml, dbg, getopts, json, rand, sha1, term, time;
 export extfmt, test, tempfile;
 // FIXME: generic_os and os_fs shouldn't be exported
 export generic_os, os, os_fs;
-
-
-// Built-in types support modules
-
-mod box;
-mod char;
-mod float;
-mod int;
-mod str;
-mod ptr;
-mod uint;
-mod u8;
-mod u32;
-mod u64;
-mod bool;
-mod vec;
 
 
 // General io and system-services modules
@@ -44,8 +26,6 @@ mod io;
 mod net;
 #[path =  "run_program.rs"]
 mod run;
-mod sys;
-mod task;
 mod uv;
 
 
@@ -56,9 +36,6 @@ mod ctypes;
 mod cmath; /* unexported */
 mod math_f32;
 mod math_f64;
-mod either;
-mod option;
-mod result;
 mod four;
 mod tri;
 mod util;
@@ -90,7 +67,6 @@ mod sha1;
 mod tempfile;
 mod term;
 mod time;
-mod unsafe;
 
 #[cfg(unicode)]
 mod unicode;
