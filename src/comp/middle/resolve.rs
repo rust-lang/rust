@@ -15,12 +15,13 @@ import core::{vec, option, str};
 import std::list;
 import std::map::hashmap;
 import std::list::{list, nil, cons};
-import option::{some, none, is_none};
+import option::{some, none, is_none, is_some};
 import syntax::print::pprust::*;
 
 export resolve_crate;
 export def_map;
 export ext_map;
+export exp_map;
 
 // Resolving happens in two passes. The first pass collects defids of all
 // (internal) imports and modules, so that they can be looked up when needed,
@@ -97,15 +98,17 @@ type indexed_mod = {
 
 type def_map = hashmap<node_id, def>;
 type ext_map = hashmap<def_id, [ident]>;
+type exp_map = hashmap<str, def>;
 
 type env =
     {cstore: cstore::cstore,
      def_map: def_map,
      ast_map: ast_map::map,
      imports: hashmap<ast::node_id, import_state>,
+     exp_map: exp_map,
      mod_map: hashmap<ast::node_id, @indexed_mod>,
      block_map: hashmap<ast::node_id, [glob_imp_def]>,
-     ext_map: hashmap<def_id, [ident]>,
+     ext_map: ext_map,
      ext_cache: ext_hash,
      used_imports: {mutable track: bool,
                     mutable data: [ast::node_id]},
@@ -121,12 +124,13 @@ tag dir { inside; outside; }
 tag namespace { ns_value; ns_type; ns_module; }
 
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
-   {def_map: def_map, ext_map: ext_map} {
+   {def_map: def_map, ext_map: ext_map, exp_map: exp_map} {
     let e =
         @{cstore: sess.get_cstore(),
           def_map: new_int_hash(),
           ast_map: amap,
           imports: new_int_hash(),
+          exp_map: new_str_hash(),
           mod_map: new_int_hash(),
           block_map: new_int_hash(),
           ext_map: new_def_hash(),
@@ -138,12 +142,12 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     map_crate(e, crate);
     resolve_imports(*e);
     check_for_collisions(e, *crate);
-    check_bad_exports(e);
+    check_exports(e);
     resolve_names(e, crate);
     if sess.get_opts().warn_unused_imports {
         check_unused_imports(e);
     }
-    ret {def_map: e.def_map, ext_map: e.ext_map};
+    ret {def_map: e.def_map, ext_map: e.ext_map, exp_map: e.exp_map};
 }
 
 // Locate all modules and imports and index them, so that the next passes can
@@ -1527,15 +1531,50 @@ fn ensure_unique<T>(e: env, sp: span, elts: [T], id: fn(T) -> ident,
     for elt: T in elts { add_name(ch, sp, id(elt)); }
 }
 
-fn check_bad_exports(e: @env) {
-    fn lookup_glob_any(e: env, info: @indexed_mod, sp: span, ident: ident) ->
-       bool {
-        ret !option::is_none(lookup_glob_in_mod(e, info, sp, ident, ns_module,
-                                                inside)) ||
-                !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
-                                                    ns_value, inside)) ||
-                !option::is_none(lookup_glob_in_mod(e, info, sp, ident,
-                                                    ns_type, inside));
+fn check_exports(e: @env) {
+    fn lookup_glob_any(e: @env, info: @indexed_mod, sp: span, path: str,
+                       ident: ident) -> bool {
+        let lookup =
+            bind lookup_glob_in_mod(*e, info, sp, ident, _, inside);
+        let (m, v, t) = (lookup(ns_module),
+                         lookup(ns_value),
+                         lookup(ns_type));
+        maybe_add_reexport(e, path + ident, m);
+        maybe_add_reexport(e, path + ident, v);
+        maybe_add_reexport(e, path + ident, t);
+        ret is_some(m) || is_some(v) || is_some(t);
+    }
+
+    fn maybe_add_reexport(e: @env, path: str, def: option::t<def>) {
+        if option::is_some(def) {
+            e.exp_map.insert(path, option::get(def));
+        }
+    }
+
+    fn check_export(e: @env, ident: str, val: @indexed_mod, vi: @view_item) {
+        if val.index.contains_key(ident) {
+            let xs = val.index.get(ident);
+            list::iter(xs) {|x|
+                alt x {
+                  mie_import_ident(id, _) {
+                    alt e.imports.get(id) {
+                      resolved(v, t, m, rid, _) {
+                        maybe_add_reexport(e, val.path + rid, v);
+                        maybe_add_reexport(e, val.path + rid, t);
+                        maybe_add_reexport(e, val.path + rid, m);
+                      }
+                      _ { }
+                    }
+                  }
+                  _ { }
+                }
+            }
+        } else if lookup_glob_any(e, val, vi.span, val.path, ident) {
+            // do nothing
+        } else {
+            e.sess.span_warn(vi.span,
+                             #fmt("exported item %s is not defined", ident));
+        }
     }
 
     e.mod_map.values {|val|
@@ -1545,12 +1584,7 @@ fn check_bad_exports(e: @env) {
                 alt vi.node {
                   ast::view_item_export(idents, _) {
                     for ident in idents {
-                        if !val.index.contains_key(ident) &&
-                               !lookup_glob_any(*e, val, vi.span, ident) {
-                            e.sess.span_warn(vi.span,
-                                             "exported item " + ident +
-                                                 " is not defined");
-                        }
+                        check_export(e, ident, val, vi);
                     }
                   }
                   _ { }

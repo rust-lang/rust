@@ -15,7 +15,8 @@ export get_tag_variants;
 export get_type;
 export get_type_param_count;
 export get_type_param_kinds;
-export lookup_defs;
+export lookup_def;
+export resolve_path;
 export get_crate_attributes;
 export list_crate_metadata;
 export crate_dep;
@@ -158,14 +159,8 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     ret result;
 }
 
-// Crate metadata queries
-fn lookup_defs(data: @[u8], cnum: ast::crate_num, path: [ast::ident]) ->
-   [ast::def] {
-    ret vec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
-}
 
-
-// FIXME doesn't yet handle re-exported externals
+// FIXME doesn't yet handle renamed re-exported externals
 fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
    ast::def {
     let item = lookup_item(did_.node, data);

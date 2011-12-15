@@ -23,8 +23,33 @@ fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
 
 fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
                path: [ast::ident]) -> [ast::def] {
-    let cdata = cstore::get_crate_data(cstore, cnum).data;
-    ret decoder::lookup_defs(cdata, cnum, path);
+    let result = [];
+    for (c, data, def) in resolve_path(cstore, cnum, path) {
+        result += [decoder::lookup_def(c, data, def)];
+    }
+    ret result;
+}
+
+fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
+                path: [ast::ident]) ->
+    [(ast::crate_num, @[u8], ast::def_id)] {
+    let cm = cstore::get_crate_data(cstore, cnum);
+    log #fmt("resolve_path %s in crates[%d]:%s",
+             str::connect(path, "::"), cnum, cm.name);
+    let result = [];
+    for def in decoder::resolve_path(path, cm.data) {
+        if def.crate == ast::local_crate {
+            result += [(cnum, cm.data, def)];
+        } else {
+            if cm.cnum_map.contains_key(def.crate) {
+                // This reexport is itself a reexport from anther crate
+                let next_cnum = cm.cnum_map.get(def.crate);
+                let next_cm_data = cstore::get_crate_data(cstore, next_cnum);
+                result += [(next_cnum, next_cm_data.data, def)];
+            }
+        }
+    }
+    ret result;
 }
 
 fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {

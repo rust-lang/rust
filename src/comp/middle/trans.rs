@@ -20,7 +20,7 @@ import std::map::{new_int_hash, new_str_hash};
 import option::{some, none};
 import driver::session;
 import front::attr;
-import middle::{ty, gc};
+import middle::{ty, gc, resolve};
 import middle::freevars::*;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util};
@@ -5511,8 +5511,9 @@ fn write_abi_version(ccx: @crate_ctxt) {
 }
 
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
-               output: str, amap: ast_map::map, mut_map: mut::mut_map,
-               copy_map: alias::copy_map, last_uses: last_use::last_uses)
+               output: str, emap: resolve::exp_map, amap: ast_map::map,
+               mut_map: mut::mut_map, copy_map: alias::copy_map,
+               last_uses: last_use::last_uses)
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::mk_sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
@@ -5567,6 +5568,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           intrinsics: intrinsics,
           item_ids: new_int_hash::<ValueRef>(),
           ast_map: amap,
+          exp_map: emap,
           item_symbols: new_int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
           link_meta: link_meta,

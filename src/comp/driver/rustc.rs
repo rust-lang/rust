@@ -162,7 +162,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
              bind middle::ast_map::map_crate(*crate));
     time(time_passes, "external crate/lib resolution",
          bind creader::read_crates(sess, *crate));
-    let {def_map: def_map, ext_map: ext_map} =
+    let {def_map: def_map, ext_map: ext_map, exp_map: exp_map} =
         time(time_passes, "resolution",
              bind resolve::resolve_crate(sess, ast_map, crate));
     let freevars =
@@ -197,7 +197,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let (llmod, link_meta) =
         time(time_passes, "translation",
              bind trans::trans_crate(sess, crate, ty_cx,
-                                     outputs.obj_filename, ast_map,
+                                     outputs.obj_filename, exp_map, ast_map,
                                      mut_map, copy_map, last_uses));
     time(time_passes, "LLVM passes",
          bind link::write::run_passes(sess, llmod, outputs.obj_filename));
@@ -267,7 +267,7 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
       ppm_typed. {
         crate = syntax::ext::expand::expand_crate(sess, crate);
         let amap = middle::ast_map::map_crate(*crate);
-        let {def_map: def_map, ext_map: ext_map} =
+        let {def_map: def_map, ext_map: ext_map, exp_map: _exp_map} =
             resolve::resolve_crate(sess, amap, crate);
         let freevars = freevars::annotate_freevars(def_map, crate);
         let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, amap, freevars);

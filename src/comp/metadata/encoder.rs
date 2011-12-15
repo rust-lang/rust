@@ -141,13 +141,26 @@ fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
     }
 }
 
-fn encode_item_paths(ebml_w: ebml::writer, crate: @crate) -> [entry<str>] {
+fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
+    -> [entry<str>] {
     let index: [entry<str>] = [];
     let path: [str] = [];
     ebml::start_tag(ebml_w, tag_paths);
     encode_module_item_paths(ebml_w, crate.node.module, path, index);
+    encode_reexport_paths(ebml_w, ecx, index);
     ebml::end_tag(ebml_w);
     ret index;
+}
+
+fn encode_reexport_paths(ebml_w: ebml::writer,
+                         ecx: @encode_ctxt, &index: [entry<str>]) {
+    ecx.ccx.exp_map.items {|path, def|
+        index += [{val: path, pos: ebml_w.writer.tell()}];
+        ebml::start_tag(ebml_w, tag_paths_data_item);
+        encode_name(ebml_w, path);
+        encode_def_id(ebml_w, ast_util::def_id_of_def(def));
+        ebml::end_tag(ebml_w);
+    }
 }
 
 
@@ -602,7 +615,7 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
     // Encode and index the paths.
 
     ebml::start_tag(ebml_w, tag_paths);
-    let paths_index = encode_item_paths(ebml_w, crate);
+    let paths_index = encode_item_paths(ebml_w, ecx, crate);
     let paths_buckets = create_index(paths_index, hash_path);
     encode_index(ebml_w, paths_buckets, write_str);
     ebml::end_tag(ebml_w);
