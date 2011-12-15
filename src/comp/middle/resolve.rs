@@ -613,7 +613,7 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
         let did = def_id_of_def(def);
         if did.crate == ast::local_crate {
             path = e.mod_map.get(did.node).path + path;
-        } else {
+        } else if did.node != -1 {
             let paths = e.ext_map.get(did);
             if vec::len(paths) > 0u {
                 path = str::connect(paths, "::") + "::" + path;
