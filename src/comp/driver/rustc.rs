@@ -561,7 +561,10 @@ fn build_output_filenames(ifile: str, ofile: option::t<str>,
         obj_filename = base_filename + "." + suffix;
 
         if sess.building_library() {
-            saved_out_filename = std::os::dylib_filename(base_filename);
+            let dirname = fs::dirname(base_filename);
+            let basename = fs::basename(base_filename);
+            let dylibname = std::os::dylib_filename(basename);
+            saved_out_filename = fs::connect(dirname, dylibname);
         } else {
             saved_out_filename = base_filename;
         }

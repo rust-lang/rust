@@ -588,8 +588,15 @@ fn link_binary(sess: session::session,
         let long_libname =
             std::os::dylib_filename(#fmt("%s-%s-%s",
                                          lm.name, lm.extras_hash, lm.vers));
+        log "link_meta.name: " + lm.name;
+        log "long_libname: " + long_libname;
+        log "out_filename: " + out_filename;
+        log "dirname(out_filename): " + fs::dirname(out_filename);
+
         fs::connect(fs::dirname(out_filename), long_libname)
     } else { out_filename };
+
+    log "output: " + output;
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
