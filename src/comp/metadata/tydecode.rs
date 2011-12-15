@@ -294,6 +294,8 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       'X' { ret ty::mk_var(st.tcx, parse_int(st)); }
       'E' { let def = parse_def(st, sd); ret ty::mk_native(st.tcx, def); }
       'Y' { ret ty::mk_type(st.tcx); }
+      'y' { ret ty::mk_send_type(st.tcx); }
+      'C' { ret ty::mk_opaque_closure(st.tcx); }
       '#' {
         let pos = parse_hex(st);
         assert (next(st) as char == ':');

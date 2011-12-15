@@ -192,7 +192,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         std::util::unreachable()
       }
       ty::ty_param(_, _) { T_typaram(cx.tn) }
-      ty::ty_type. { T_ptr(cx.tydesc_type) }
+      ty::ty_send_type. | ty::ty_type. { T_ptr(cx.tydesc_type) }
       ty::ty_tup(elts) {
         let tys = [];
         for elt in elts {
@@ -203,6 +203,11 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
       }
       ty::ty_opaque_closure. {
         T_opaque_closure(cx)
+      }
+      _ {
+        log_err ("type_of_inner not implemented for ",
+                ty::struct(cx.tcx, t));
+        fail "type_of_inner not implemented for this kind of type";
       }
     };
     cx.lltypes.insert(t, llty);
