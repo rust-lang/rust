@@ -596,10 +596,8 @@ rust_task::new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     stk_seg *stk_seg = new_stk(sched, this, stk_sz + args_sz);
 
     uint8_t *new_sp = (uint8_t*)stk_seg->end;
-    size_t sizeof_retaddr = sizeof(void*);
-    // Make enough room on the new stack to hold the old stack pointer
-    // in addition to the function arguments
-    new_sp = align_down(new_sp - (args_sz + sizeof_retaddr));
+    // Push the function arguments to the new stack
+    new_sp = align_down(new_sp - args_sz);
     memcpy(new_sp, args_addr, args_sz);
     record_stack_limit();
     return new_sp;
