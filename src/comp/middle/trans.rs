@@ -937,7 +937,7 @@ fn trans_stack_local_derived_tydesc(cx: @block_ctxt, llsz: ValueRef,
 
 // Objects and closures store their type parameters differently (in the object
 // or closure itself rather than in the type descriptor).
-tag ty_param_storage { tps_normal; tps_obj(uint); }
+tag ty_param_storage { tps_normal; tps_obj(uint); tps_fn(uint); }
 
 fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
                       storage: ty_param_storage,
@@ -958,7 +958,7 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     let is_obj_body;
     alt storage {
         tps_normal. { is_obj_body = false; }
-        tps_obj(_) { is_obj_body = true; }
+        tps_obj(_) | tps_fn(_) { is_obj_body = true; }
     }
 
     bcx_ccx(cx).stats.n_derived_tydescs += 1u;
@@ -1006,6 +1006,7 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     alt storage {
       tps_normal. { obj_params = 0u; }
       tps_obj(np) { obj_params = np; }
+      tps_fn(np) { obj_params = 0x80000000u | np; }
     }
 
     let v;

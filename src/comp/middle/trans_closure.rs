@@ -131,8 +131,9 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
       for_closure. | for_send. {
         let bound_tydesc = GEPi(bcx, closure, [0, abi::closure_elt_tydesc]);
         let ti = none;
+        let tps = tps_fn(vec::len(lltydescs));
         let {result:bindings_tydesc, _} =
-            trans::get_tydesc(bcx, bindings_ty, true, trans::tps_normal, ti);
+            trans::get_tydesc(bcx, bindings_ty, true, tps, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = bindings_tydesc.bcx;
