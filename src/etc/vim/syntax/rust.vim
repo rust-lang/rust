@@ -46,7 +46,7 @@ syn match	rustFloat		display contained "\d\+e[-+]\=\d\+[fl]\=\>"
 syn match   rustCharacter   "'[^']*'"
 
 syn case match
-syn region    rustComment     start="/\*" end="\*/"
+syn region    rustComment     start="/\*" end="\*/" contains=rustComment
 syn region    rustComment     start="//" skip="\\$" end="$" keepend
 
 hi def link rustString        String
@@ -59,5 +59,7 @@ hi def link rustComment       Comment
 hi def link rustMacro         Macro
 hi def link rustType          Type
 
-let b:current_syntax = "rust"
+syn sync minlines=200
+syn sync maxlines=500
 
+let b:current_syntax = "rust"
