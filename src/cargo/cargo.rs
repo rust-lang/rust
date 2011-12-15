@@ -147,7 +147,7 @@ fn configure() -> cargo {
     c
 }
 
-fn install_one_crate(c: cargo, path: str, cf: str, p: pkg) {
+fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     let name = fs::basename(cf);
     let ri = str::index(name, '.' as u8);
     if ri != -1 {
