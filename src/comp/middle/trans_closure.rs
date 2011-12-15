@@ -190,7 +190,15 @@ fn store_environment(
       ty::closure_shared. | ty::closure_send. {
         let bound_tydesc = GEPi(bcx, closure, [0, abi::closure_elt_tydesc]);
         let ti = none;
-        let tps = tps_fn(vec::len(lltydescs));
+
+        // NDM I believe this is the correct value,
+        // but using it exposes bugs and limitations
+        // in the shape code.  Therefore, I am using
+        // tps_normal, which is what we used before.
+        //
+        // let tps = tps_fn(vec::len(lltydescs));
+
+        let tps = tps_normal;
         let {result:closure_td, _} =
             trans::get_tydesc(bcx, closure_ty, true, tps, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
