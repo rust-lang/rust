@@ -132,7 +132,7 @@ fn inject_libcore_reference(sess: session::session,
 
 
 fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
-                 output: option::t<str>) {
+                 outdir: option::t<str>, output: option::t<str>) {
 
     let time_passes = sess.get_opts().time_passes;
     let crate =
@@ -192,7 +192,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
          bind kind::check_crate(ty_cx, last_uses, crate));
     if sess.get_opts().no_trans { ret; }
 
-    let outputs = build_output_filenames(input, output, sess);
+    let outputs = build_output_filenames(input, outdir, output, sess);
 
     let (llmod, link_meta) =
         time(time_passes, "translation",
@@ -300,6 +300,7 @@ options:
     -v --version       print version info and exit
 
     -o <filename>      write output to <filename>
+    --out-dir <dir>    write output to compiler-chosen filename in <dir>
     --lib              compile a library crate
     --bin              compile an executable crate (default)
     --static           use or produce static libraries
@@ -515,7 +516,8 @@ fn opts() -> [getopts::opt] {
          optflag("emit-llvm"), optflagopt("pretty"),
          optflag("ls"), optflag("parse-only"), optflag("no-trans"),
          optflag("O"), optopt("opt-level"), optmulti("L"), optflag("S"),
-         optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
+         optopt("o"), optopt("out-dir"),
+         optflag("c"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optopt("target"), optflag("stats"),
          optflag("time-passes"), optflag("time-llvm-passes"),
          optflag("no-verify"),
@@ -527,56 +529,89 @@ fn opts() -> [getopts::opt] {
          optflag("warn-unused-imports")];
 }
 
-fn build_output_filenames(ifile: str, ofile: option::t<str>,
+fn build_output_filenames(ifile: str,
+                          odir: option::t<str>,
+                          ofile: option::t<str>,
                           sess: session::session)
         -> @{out_filename: str, obj_filename:str} {
-    let obj_filename = "";
-    let saved_out_filename: str = "";
+    let obj_path = "";
+    let out_path: str = "";
     let sopts = sess.get_opts();
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
             sopts.static && sess.building_library();
+
+
+    let obj_suffix =
+        alt sopts.output_type {
+          link::output_type_none. { "none" }
+          link::output_type_bitcode. { "bc" }
+          link::output_type_assembly. { "s" }
+          link::output_type_llvm_assembly. { "ll" }
+          // Object and exe output both use the '.o' extension here
+          link::output_type_object. | link::output_type_exe. {
+            "o"
+          }
+        };
+
     alt ofile {
       none. {
         // "-" as input file will cause the parser to read from stdin so we
         // have to make up a name
         // We want to toss everything after the final '.'
-        let parts =
-            if !input_is_stdin(ifile) {
-                str::split(ifile, '.' as u8)
-            } else { ["default", "rs"] };
-        vec::pop(parts);
-        let base_filename = str::connect(parts, ".");
-        let suffix =
-            alt sopts.output_type {
-              link::output_type_none. { "none" }
-              link::output_type_bitcode. { "bc" }
-              link::output_type_assembly. { "s" }
-              link::output_type_llvm_assembly. { "ll" }
-              // Object and exe output both use the '.o' extension here
-              link::output_type_object. | link::output_type_exe. {
-                "o"
-              }
-            };
-        obj_filename = base_filename + "." + suffix;
+        let dirname = alt odir {
+          some(d) { d }
+          none. {
+            if input_is_stdin(ifile) {
+                std::os::getcwd()
+            } else {
+                fs::dirname(ifile)
+            }
+          }
+        };
+
+        let (base_path, _) = if !input_is_stdin(ifile) {
+            fs::splitext(ifile)
+        } else {
+            (fs::connect(dirname, "rust_out"), "")
+        };
+
 
         if sess.building_library() {
-            let dirname = fs::dirname(base_filename);
-            let basename = fs::basename(base_filename);
+            let basename = fs::basename(base_path);
             let dylibname = std::os::dylib_filename(basename);
-            saved_out_filename = fs::connect(dirname, dylibname);
+            out_path = fs::connect(dirname, dylibname);
+            obj_path = fs::connect(dirname, basename + "." + obj_path);
         } else {
-            saved_out_filename = base_filename;
+            out_path = base_path;
+            obj_path = base_path + "." + obj_suffix;
         }
       }
+
       some(out_file) {
-        // FIXME: what about windows? This will create a foo.exe.o.
-        saved_out_filename = out_file;
-        obj_filename =
-            if stop_after_codegen { out_file } else { out_file + ".o" };
+        out_path = out_file;
+        obj_path = if stop_after_codegen {
+            out_file
+        } else {
+            let (base, _) = fs::splitext(out_file);
+            let modified = base + "." + obj_suffix;
+            modified
+        };
+
+        if sess.building_library() {
+            // FIXME: We might want to warn here; we're actually not going to
+            // respect the user's choice of library name when it comes time to
+            // link, we'll be linking to lib<basename>-<hash>-<version>.so no
+            // matter what.
+        }
+
+        if odir != none {
+            sess.warn("Ignoring --out-dir flag due to -o flag.");
+        }
       }
     }
-    ret @{out_filename: saved_out_filename, obj_filename: obj_filename};
+    ret @{out_filename: out_path,
+          obj_filename: obj_path};
 }
 
 fn early_error(msg: str) -> ! {
@@ -609,6 +644,7 @@ fn main(args: [str]) {
 
     let sopts = build_session_options(match);
     let sess = build_session(sopts);
+    let odir = getopts::opt_maybe_str(match, "out-dir");
     let ofile = getopts::opt_maybe_str(match, "o");
     let cfg = build_configuration(sess, binary, ifile);
     let pretty =
@@ -626,7 +662,7 @@ fn main(args: [str]) {
         ret;
     }
 
-    compile_input(sess, cfg, ifile, ofile);
+    compile_input(sess, cfg, ifile, odir, ofile);
 }
 
 #[cfg(test)]
