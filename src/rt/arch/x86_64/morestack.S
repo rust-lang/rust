@@ -68,7 +68,7 @@ MORESTACK:
 	.cfi_offset %rsp, -24
 
 	// Save the grandparent stack pointer for the unwinder
-	leaq 16(%rbp), %rax
+	leaq 24(%rbp), %rax
 	pushq %rax
 
 	// FIXME: libgcc also saves rax. not sure if we need to
