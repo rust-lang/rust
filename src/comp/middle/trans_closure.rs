@@ -175,6 +175,7 @@ fn store_environment(
         check trans_uniq::type_is_unique_box(bcx, box_ty);
         let r = trans_uniq::alloc_uniq(bcx, box_ty);
         add_clean_free(bcx, r.val, true);
+        temp_cleanups += [r.val];
         dummy_environment_box(bcx, r)
       }
       ty::closure_block. {
