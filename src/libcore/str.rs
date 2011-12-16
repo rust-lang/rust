@@ -6,11 +6,11 @@ String manipulation.
 
 export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        byte_len_range, index,
-       rindex, find, starts_with, ends_with, substr, slice, split, concat,
-       connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
-       unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars,
-       to_chars, char_len, char_len_range, char_at, bytes, is_ascii,
-       shift_byte, pop_byte,
+       rindex, find, starts_with, ends_with, substr, slice, split, split_str,
+       concat, connect, to_upper, replace, char_slice, trim_left, trim_right,
+       trim, unshift_char, shift_char, pop_char, push_char, is_utf8,
+       from_chars, to_chars, char_len, char_len_range, char_at, bytes,
+       is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
        contains, iter_chars, loop_chars, loop_chars_sub,
@@ -741,6 +741,42 @@ fn split(s: str, sep: u8) -> [str] {
         } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
     }
     if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
+    ret v;
+}
+
+/*
+Function: split_str
+
+Splits a string at each occurrence of the given separator string. Empty
+leading fields are suppressed, and empty trailing fields are preserved.
+
+Returns:
+
+A vector containing all the strings between each occurrence of the separator.
+*/
+fn split_str(s: str, sep: str) -> [str] {
+    assert byte_len(sep) > 0u;
+    let v: [str] = [], accum = "", sep_match = 0u, leading = true;
+    for c: u8 in s {
+        // Did we match the entire separator?
+        if sep_match == byte_len(sep) {
+            if !leading { v += [accum]; }
+            accum = "";
+            sep_match = 0u;
+        }
+
+        if c == sep[sep_match] {
+            sep_match += 1u;
+        } else {
+            sep_match = 0u;
+            accum += unsafe_from_byte(c);
+            leading = false;
+        }
+    }
+
+    if byte_len(accum) > 0u { v += [accum]; }
+    if sep_match == byte_len(sep) { v += [""]; }
+
     ret v;
 }
 

@@ -60,6 +60,20 @@ fn test_split() {
 }
 
 #[test]
+fn test_split_str() {
+    fn t(s: str, sep: str, i: int, k: str) {
+        let v = str::split_str(s, sep);
+        assert str::eq(v[i], k);
+    }
+    t("abc::hello::there", "::", 0, "abc");
+    t("abc::hello::there", "::", 1, "hello");
+    t("abc::hello::there", "::", 2, "there");
+    t("::hello::there", "::", 0, "hello");
+    t("hello::there::", "::", 2, "");
+    t("::hello::there::", "::", 2, "");
+}
+
+#[test]
 fn test_find() {
     fn t(haystack: str, needle: str, i: int) {
         let j: int = str::find(haystack, needle);
