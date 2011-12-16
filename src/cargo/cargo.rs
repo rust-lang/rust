@@ -6,6 +6,7 @@ import rustc::syntax::parse::parser;
 import std::fs;
 import std::generic_os;
 import std::io;
+import std::json;
 import option;
 import option::{none, some};
 import std::os;
@@ -206,6 +207,36 @@ fn install_file(c: cargo, wd: str, _path: str) {
     install_source(c, wd);
 }
 
+fn install_resolved(c: cargo, wd: str, key: str) {
+    fs::remove_dir(wd);
+    let u = "https://rust-package-index.appspot.com/pkg/" + key;
+    let p = run::program_output("curl", [u]);
+    if p.status != 0 {
+        fail #fmt["Fetch of %s failed: %s", u, p.err];
+    }
+    let j = json::from_str(p.out);
+    alt j {
+        some (json::dict(_j)) {
+            alt _j.find("install") {
+                some (json::string(g)) {
+                    log #fmt["Resolved: %s -> %s", key, g];
+                    cmd_install(c, ["cargo", "install", g]);
+                }
+                _ { fail #fmt["Bogus install: '%s'", p.out]; }
+            }
+        }
+        _ { fail #fmt["Bad json: '%s'", p.out]; }
+    }
+}
+
+fn install_uuid(c: cargo, wd: str, uuid: str) {
+    install_resolved(c, wd, "by-uuid/" + uuid);
+}
+
+fn install_named(c: cargo, wd: str, name: str) {
+    install_resolved(c, wd, "by-name/" + name);
+}
+
 fn cmd_install(c: cargo, argv: [str]) {
     // cargo install <pkg>
     if vec::len(argv) < 3u {
@@ -226,6 +257,11 @@ fn cmd_install(c: cargo, argv: [str]) {
     } else if str::starts_with(argv[2], "file:") {
         let path = rest(argv[2], 5u);
         install_file(c, wd, path);
+    } else if str::starts_with(argv[2], "uuid:") {
+        let uuid = rest(argv[2], 5u);
+        install_uuid(c, wd, uuid);
+    } else {
+        install_named(c, wd, argv[2]);
     }
 }
 
