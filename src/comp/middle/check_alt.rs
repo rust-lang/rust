@@ -149,7 +149,7 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       }
       pat_tag(_, args) {
         let vdef = variant_def_ids(tcx.def_map.get(pat.id));
-        if vec::len(ty::tag_variants(tcx, vdef.tg)) != 1u { ret true; }
+        if vec::len(*ty::tag_variants(tcx, vdef.tg)) != 1u { ret true; }
         for p: @pat in args { if is_refutable(tcx, p) { ret true; } }
         false
       }

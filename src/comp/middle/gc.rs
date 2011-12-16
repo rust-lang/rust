@@ -128,7 +128,7 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
 
       ty::ty_tag(did, tps) {
         let variants = ty::tag_variants(cx, did);
-        for variant in variants {
+        for variant in *variants {
             for aty in variant.args {
                 let arg_ty = ty::substitute_type_params(cx, tps, aty);
                 if type_is_gc_relevant(cx, arg_ty) { ret true; }

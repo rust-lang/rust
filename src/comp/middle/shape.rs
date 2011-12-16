@@ -106,7 +106,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     // just T.
     let ranges = [];
     let variants = ty::tag_variants(ccx.tcx, tag_id);
-    for variant: ty::variant_info in variants {
+    for variant: ty::variant_info in *variants {
         let bounded = true;
         let {a: min_size, b: min_align} = {a: 0u, b: 0u};
         for elem_t: ty::t in variant.args {
@@ -134,7 +134,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
 
     // Initialize the candidate set to contain all variants.
     let candidates = [mutable];
-    for variant in variants { candidates += [mutable true]; }
+    for variant in *variants { candidates += [mutable true]; }
 
     // Do a pairwise comparison among all variants still in the candidate set.
     // Throw out any variant that we know has size and alignment at least as
@@ -214,7 +214,7 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
     // Add space for the tag if applicable.
     // FIXME (issue #792): This is wrong. If the tag starts with an 8 byte
     // aligned quantity, we don't align it.
-    if vec::len(variants) > 1u {
+    if vec::len(*variants) > 1u {
         let variant_t = T_tag_variant(ccx);
         max_size += trans::llsize_of_real(ccx, variant_t) as u16;
         let align = trans::llalign_of_real(ccx, variant_t) as u8;
@@ -228,11 +228,11 @@ tag tag_kind { tk_unit; tk_enum; tk_complex; }
 
 fn tag_kind(ccx: @crate_ctxt, did: ast::def_id) -> tag_kind {
     let variants = ty::tag_variants(ccx.tcx, did);
-    if vec::len(variants) == 0u { ret tk_complex; }
-    for v: ty::variant_info in variants {
+    if vec::len(*variants) == 0u { ret tk_complex; }
+    for v: ty::variant_info in *variants {
         if vec::len(v.args) > 0u { ret tk_complex; }
     }
-    if vec::len(variants) == 1u { ret tk_unit; }
+    if vec::len(*variants) == 1u { ret tk_unit; }
     ret tk_enum;
 }
 
@@ -452,7 +452,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
         let item_tyt = ty::lookup_item_type(ccx.tcx, did);
         let ty_param_count = vec::len(item_tyt.kinds);
 
-        for v: ty::variant_info in variants {
+        for v: ty::variant_info in *variants {
             offsets += [vec::len(data) as u16];
 
             let variant_shape = shape_of_variant(ccx, v, ty_param_count);
@@ -476,7 +476,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
         let did = did_; // Satisfy alias checker.
         let variants = ty::tag_variants(ccx.tcx, did);
         add_u16(header, header_sz + info_sz);
-        info_sz += 2u16 * ((vec::len(variants) as u16) + 2u16) + 3u16;
+        info_sz += 2u16 * ((vec::len(*variants) as u16) + 2u16) + 3u16;
     }
 
     // Construct the info tables, which contain offsets to the shape of each
@@ -488,7 +488,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
     for did_: ast::def_id in ccx.shape_cx.tag_order {
         let did = did_; // Satisfy alias checker.
         let variants = ty::tag_variants(ccx.tcx, did);
-        add_u16(info, vec::len(variants) as u16);
+        add_u16(info, vec::len(*variants) as u16);
 
         // Construct the largest-variants table.
         add_u16(info,
@@ -500,7 +500,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
 
         // Determine whether the tag has dynamic size.
         let dynamic = false;
-        for variant: ty::variant_info in variants {
+        for variant: ty::variant_info in *variants {
             for typ: ty::t in variant.args {
                 if ty::type_has_dynamic_size(ccx.tcx, typ) { dynamic = true; }
             }
@@ -516,7 +516,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
         info += [size_align.align];
 
         // Now write in the offset of each variant.
-        for v: ty::variant_info in variants {
+        for v: ty::variant_info in *variants {
             add_u16(info, header_sz + info_sz + offsets[i]);
             i += 1u;
         }

@@ -817,7 +817,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
           }
           ty::ty_tag(did, tps) {
             let variants = ty::tag_variants(fcx.ccx.tcx, did);
-            if vec::len(variants) != 1u || vec::len(variants[0].args) != 1u {
+            if vec::len(*variants) != 1u || vec::len(variants[0].args) != 1u {
                 ret t1;
             }
             t1 =
@@ -1693,7 +1693,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               ty::ty_res(_, inner, _) { oper_t = inner; }
               ty::ty_tag(id, tps) {
                 let variants = ty::tag_variants(tcx, id);
-                if vec::len(variants) != 1u ||
+                if vec::len(*variants) != 1u ||
                        vec::len(variants[0].args) != 1u {
                     tcx.sess.span_fatal(expr.span,
                                         "can only dereference tags " +

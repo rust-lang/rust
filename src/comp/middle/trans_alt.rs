@@ -65,7 +65,7 @@ fn variant_opt(ccx: @crate_ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat_id));
     let variants = ty::tag_variants(ccx.tcx, vdef.tg);
     let i = 0u;
-    for v: ty::variant_info in variants {
+    for v: ty::variant_info in *variants {
         if vdef.var == v.id { ret var(i, vdef); }
         i += 1u;
     }
@@ -265,7 +265,7 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
     let args = [];
     let size =
         vec::len(ty::tag_variant_with_id(ccx.tcx, vdefs.tg, vdefs.var).args);
-    if size > 0u && vec::len(variants) != 1u {
+    if size > 0u && vec::len(*variants) != 1u {
         let tagptr =
             PointerCast(bcx, val, trans_common::T_opaque_tag_ptr(ccx));
         blobptr = GEPi(bcx, tagptr, [0, 1]);
@@ -470,7 +470,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     if vec::len(opts) > 0u {
         alt opts[0] {
           var(_, vdef) {
-            if vec::len(ty::tag_variants(ccx.tcx, vdef.tg)) == 1u {
+            if vec::len(*ty::tag_variants(ccx.tcx, vdef.tg)) == 1u {
                 kind = single;
             } else {
                 let tagptr =

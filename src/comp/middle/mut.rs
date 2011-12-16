@@ -32,7 +32,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
               }
               ty::ty_tag(did, tps) {
                 let variants = ty::tag_variants(tcx, did);
-                if vec::len(variants) != 1u ||
+                if vec::len(*variants) != 1u ||
                        vec::len(variants[0].args) != 1u {
                     break;
                 }

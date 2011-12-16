@@ -962,7 +962,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       }
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
-        for variant in variants {
+        for variant in *variants {
             for aty in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
@@ -1031,7 +1031,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // Tags lower to the lowest of their variants.
       ty_tag(did, tps) {
         let lowest = ast::kind_sendable;
-        for variant in tag_variants(cx, did) {
+        for variant in *tag_variants(cx, did) {
             for aty in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
@@ -1063,7 +1063,7 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
     if test(sty) { ret true; }
     alt sty {
       ty_tag(did, tps) {
-        for variant in tag_variants(cx, did) {
+        for variant in *tag_variants(cx, did) {
             for aty in variant.args {
                 let sty = substitute_type_params(cx, tps, aty);
                 if type_structurally_contains(cx, sty, test) { ret true; }
@@ -1187,7 +1187,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       // Structural types
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
-        for variant: variant_info in variants {
+        for variant: variant_info in *variants {
             let tup_ty = mk_tup(cx, variant.args);
 
             // Perform any type parameter substitutions.
@@ -1247,7 +1247,7 @@ fn type_autoderef(cx: ctxt, t: ty::t) -> ty::t {
           }
           ty_tag(did, tps) {
             let variants = tag_variants(cx, did);
-            if vec::len(variants) != 1u || vec::len(variants[0].args) != 1u {
+            if vec::len(*variants) != 1u || vec::len(variants[0].args) != 1u {
                 break;
             }
             t1 = substitute_type_params(cx, tps, variants[0].args[0]);
@@ -2723,11 +2723,13 @@ fn def_has_ty_params(def: ast::def) -> bool {
 // Tag information
 type variant_info = {args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
 
-fn tag_variants(cx: ctxt, id: ast::def_id) -> [variant_info] {
-    if ast::local_crate != id.crate { ret csearch::get_tag_variants(cx, id); }
+fn tag_variants(cx: ctxt, id: ast::def_id) -> @mutable [variant_info] {
+    if ast::local_crate != id.crate {
+        ret @mutable csearch::get_tag_variants(cx, id);
+    }
     assert (id.node >= 0);
     alt smallintmap::find(*cx.tag_var_cache, id.node as uint) {
-      option::some(variants) { ret *variants; }
+      option::some(variants) { ret variants; }
       _ { /* fallthrough */ }
     }
     let item =
@@ -2755,7 +2757,7 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> [variant_info] {
                       id: ast_util::local_def(did)}];
             }
             smallintmap::insert(*cx.tag_var_cache, id.node as uint, result);
-            ret *result;
+            ret result;
           }
         }
       }
@@ -2768,7 +2770,7 @@ fn tag_variant_with_id(cx: ctxt, tag_id: ast::def_id, variant_id: ast::def_id)
    -> variant_info {
     let variants = tag_variants(cx, tag_id);
     let i = 0u;
-    while i < vec::len::<variant_info>(variants) {
+    while i < vec::len::<variant_info>(*variants) {
         let variant = variants[i];
         if def_eq(variant.id, variant_id) { ret variant; }
         i += 1u;

@@ -211,7 +211,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
 
 fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
     -> TypeRef {
-    let degen = vec::len(ty::tag_variants(cx.tcx, did)) == 1u;
+    let degen = vec::len(*ty::tag_variants(cx.tcx, did)) == 1u;
     if check type_has_static_size(cx, t) {
         let size = static_size_of_tag(cx, sp, t);
         if !degen { T_tag(cx, size) }
@@ -511,7 +511,7 @@ fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
 
         let max_size = 0u;
         let variants = ty::tag_variants(cx.tcx, tid);
-        for variant: ty::variant_info in variants {
+        for variant: ty::variant_info in *variants {
             let tup_ty = simplify_type(cx, ty::mk_tup(cx.tcx, variant.args));
             // Perform any type parameter substitutions.
 
@@ -592,7 +592,7 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
         let max_size: ValueRef = alloca(bcx, ccx.int_type);
         Store(bcx, C_int(ccx, 0), max_size);
         let variants = ty::tag_variants(bcx_tcx(bcx), tid);
-        for variant: ty::variant_info in variants {
+        for variant: ty::variant_info in *variants {
             // Perform type substitution on the raw argument types.
 
             let raw_tys: [ty::t] = variant.args;
@@ -609,7 +609,7 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
         }
         let max_size_val = Load(bcx, max_size);
         let total_size =
-            if vec::len(variants) != 1u {
+            if vec::len(*variants) != 1u {
                 Add(bcx, max_size_val, llsize_of(ccx, ccx.int_type))
             } else { max_size_val };
         ret rslt(bcx, total_size);
@@ -1693,7 +1693,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
       }
       ty::ty_tag(tid, tps) {
         let variants = ty::tag_variants(bcx_tcx(cx), tid);
-        let n_variants = vec::len(variants);
+        let n_variants = vec::len(*variants);
 
         // Cast the tags to types we can GEP into.
         if n_variants == 1u {
@@ -1715,7 +1715,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb, n_variants);
         let next_cx = new_sub_block_ctxt(cx, "tag-iter-next");
         let i = 0u;
-        for variant: ty::variant_info in variants {
+        for variant: ty::variant_info in *variants {
             let variant_cx =
                 new_sub_block_ctxt(cx,
                                    "tag-iter-variant-" +
@@ -2340,7 +2340,7 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
           }
           ty::ty_tag(did, tps) {
             let variants = ty::tag_variants(ccx.tcx, did);
-            if vec::len(variants) != 1u ||
+            if vec::len(*variants) != 1u ||
                    vec::len(variants[0].args) != 1u {
                 break;
             }
@@ -2714,7 +2714,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             let bcx = alloc_result.bcx;
             let lltagptr = PointerCast(bcx, lltagblob, T_ptr(lltagty));
             let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
-            let d = if vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
+            let d = if vec::len(*ty::tag_variants(ccx.tcx, tid)) != 1u {
                 let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
                 let lldiscrim = Load(bcx, lldiscrim_gv);
                 lldiscrim
