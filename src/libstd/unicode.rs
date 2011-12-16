@@ -151,16 +151,16 @@ mod icu {
     #[link_name = "icuuc"]
     #[abi = "cdecl"]
     native mod libicu {
-        fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
+        pure fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
     }
 }
 
-fn is_XID_start(c: char) -> bool {
+pure fn is_XID_start(c: char) -> bool {
     ret icu::libicu::u_hasBinaryProperty(c, icu::UCHAR_XID_START)
         == icu::TRUE;
 }
 
-fn is_XID_continue(c: char) -> bool {
+pure fn is_XID_continue(c: char) -> bool {
     ret icu::libicu::u_hasBinaryProperty(c, icu::UCHAR_XID_START)
         == icu::TRUE;
 }

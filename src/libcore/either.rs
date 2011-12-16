@@ -78,6 +78,31 @@ fn partition<copy T, copy U>(eithers: [t<T, U>])
     ret {lefts: lefts, rights: rights};
 }
 
+/*
+Function: flip
+
+Flips between left and right of a given either
+*/
+pure fn flip<copy T, copy U>(eith: t<T, U>) -> t<U, T> {
+    alt eith {
+      right(r) { left(r) }
+      left(l) { right(l) }
+    }
+}
+
+/*
+Function: to_result
+
+Converts either::t to a result::t, making the "right" choice
+an ok result, and the "left" choice a fail
+*/
+pure fn to_result<copy T, copy U>(eith: t<T, U>) -> result::t<U, T> {
+    alt eith {
+      right(r) { result::ok(r) }
+      left(l) { result::err(l) }
+    }
+}
+
 //
 // Local Variables:
 // mode: rust

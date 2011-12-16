@@ -42,7 +42,7 @@ Function: last_os_error
 Get a string representing the platform-dependent last error
 */
 fn last_os_error() -> str {
-    ret rustrt::last_os_error();
+    rustrt::last_os_error()
 }
 
 /*

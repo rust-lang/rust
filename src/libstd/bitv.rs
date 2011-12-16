@@ -128,7 +128,7 @@ Function: get
 
 Retreive the value at index `i`
 */
-fn get(v: t, i: uint) -> bool {
+pure fn get(v: t, i: uint) -> bool {
     assert (i < v.nbits);
     let bits = uint_bits;
     let w = i / bits;

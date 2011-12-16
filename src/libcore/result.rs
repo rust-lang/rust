@@ -42,7 +42,7 @@ fn get<T, U>(res: t<T, U>) -> T {
       ok(t) { t }
       err(_) {
         // FIXME: Serialize the error value
-        // and include it in the fail message
+        // and include it in the fail message (maybe just note it)
         fail "get called on error result";
       }
     }
@@ -71,7 +71,7 @@ Function: success
 
 Returns true if the result is <ok>
 */
-fn success<T, U>(res: t<T, U>) -> bool {
+pure fn success<T, U>(res: t<T, U>) -> bool {
     alt res {
       ok(_) { true }
       err(_) { false }
@@ -83,8 +83,15 @@ Function: failure
 
 Returns true if the result is <error>
 */
-fn failure<T, U>(res: t<T, U>) -> bool {
+pure fn failure<T, U>(res: t<T, U>) -> bool {
     !success(res)
+}
+
+pure fn to_either<copy T, copy U>(res: t<U, T>) -> either::t<T, U> {
+    alt res {
+      ok(res) { either::right(res) }
+      err(fail_) { either::left(fail_) }
+    }
 }
 
 /*
