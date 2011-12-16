@@ -137,6 +137,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
+          item_impl(_, _, _) {}
         }
     }
 }
@@ -278,10 +279,20 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_symbol(ecx, ebml_w, item.id);
         ebml::end_tag(ebml_w);
       }
-      item_mod(_) {
+      item_mod(m) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'm' as u8);
+        for i in m.items {
+            alt i.node {
+              item_impl(_, _, _) {
+                ebml::start_tag(ebml_w, tag_mod_impl);
+                ebml_w.writer.write(str::bytes(def_to_str(local_def(i.id))));
+                ebml::end_tag(ebml_w);
+              }
+              _ {}
+            }
+        }
         ebml::end_tag(ebml_w);
       }
       item_native_mod(_) {
@@ -348,6 +359,31 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, fn_ty);
         encode_symbol(ecx, ebml_w, ctor_id);
         ebml::end_tag(ebml_w);
+      }
+      item_impl(tps, _, methods) {
+        ebml::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_family(ebml_w, 'I' as u8);
+        encode_type_param_kinds(ebml_w, tps);
+        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        for m in methods {
+            ebml::start_tag(ebml_w, tag_impl_method);
+            ebml_w.writer.write(str::bytes(def_to_str(local_def(m.node.id))));
+            ebml::end_tag(ebml_w);
+        }
+        ebml::end_tag(ebml_w);
+
+        for m in methods {
+            index += [{val: m.node.id, pos: ebml_w.writer.tell()}];
+            ebml::start_tag(ebml_w, tag_items_data_item);
+            encode_def_id(ebml_w, local_def(m.node.id));
+            encode_family(ebml_w, 'i' as u8);
+            encode_type_param_kinds(ebml_w, tps + m.node.tps);
+            encode_type(ecx, ebml_w,
+                        node_id_to_monotype(ecx.ccx.tcx, m.node.id));
+            encode_symbol(ecx, ebml_w, m.node.id);
+            ebml::end_tag(ebml_w);
+        }
       }
     }
 }
