@@ -53,7 +53,7 @@ fn create(nbits: uint, init: bool) -> t {
     ret @{storage: storage, nbits: nbits};
 }
 
-fn process(op: block(uint, uint) -> uint, v0: t, v1: t) -> bool {
+fn process(v0: t, v1: t, op: block(uint, uint) -> uint) -> bool {
     let len = vec::len(v1.storage);
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
@@ -70,7 +70,7 @@ fn process(op: block(uint, uint) -> uint, v0: t, v1: t) -> bool {
 
 fn lor(w0: uint, w1: uint) -> uint { ret w0 | w1; }
 
-fn union(v0: t, v1: t) -> bool { let sub = lor; ret process(sub, v0, v1); }
+fn union(v0: t, v1: t) -> bool { let sub = lor; ret process(v0, v1, sub); }
 
 fn land(w0: uint, w1: uint) -> uint { ret w0 & w1; }
 
@@ -91,7 +91,7 @@ True if `v0` was changed
 */
 fn intersect(v0: t, v1: t) -> bool {
     let sub = land;
-    ret process(sub, v0, v1);
+    ret process(v0, v1, sub);
 }
 
 fn right(_w0: uint, w1: uint) -> uint { ret w1; }
@@ -109,7 +109,7 @@ Returns:
 
 True if `v0` was changed
 */
-fn assign(v0: t, v1: t) -> bool { let sub = right; ret process(sub, v0, v1); }
+fn assign(v0: t, v1: t) -> bool { let sub = right; ret process(v0, v1, sub); }
 
 /*
 Function: clone
