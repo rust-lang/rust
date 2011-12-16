@@ -28,7 +28,8 @@ rand_free
 rand_new
 rand_next
 refcount
-rust_file_is_dir
+rust_path_is_dir
+rust_path_exists
 rust_getcwd
 rust_get_stdin
 rust_get_stdout
