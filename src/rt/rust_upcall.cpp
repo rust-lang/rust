@@ -224,21 +224,23 @@ void upcall_s_create_shared_type_desc(s_create_shared_type_desc_args *args)
 
     // Copy the main part of the type descriptor:
     const type_desc *td = args->td;
-    int n_descs = td->n_descs;
-    size_t sz = sizeof(type_desc) + sizeof(type_desc*) * n_descs;
+    int n_params = td->n_params;
+    size_t sz = sizeof(type_desc) + sizeof(type_desc*) * n_params;
     args->res = (type_desc*) task->kernel->malloc(sz, "create_shared_type_desc");
     memcpy(args->res, td, sizeof(type_desc));
 
     // Recursively copy any referenced descriptors:
-    if (n_descs == 0) {
+    if (n_params == 0) {
         args->res->first_param = NULL;
     } else {
         args->res->first_param = &args->res->descs[1];
         args->res->descs[0] = args->res;
-        for (int i = 1; i < n_descs; i++) {
-            s_create_shared_type_desc_args rec_args = { td->descs[i], 0 };
+        for (int i = 0; i < n_params; i++) {
+            s_create_shared_type_desc_args rec_args = {
+                td->first_param[i], 0
+            };
             upcall_s_create_shared_type_desc(&rec_args);
-            args->res->descs[i] = rec_args.res;
+            args->res->first_param[i] = rec_args.res;
         }
     }
 }
@@ -260,8 +262,8 @@ void upcall_s_free_shared_type_desc(type_desc *td)
     LOG_UPCALL_ENTRY(task);
 
     // Recursively free any referenced descriptors:
-    for (unsigned i = 1; i < td->n_descs; i++) {
-        upcall_s_free_shared_type_desc((type_desc*) td->descs[i]);
+    for (unsigned i = 0; i < td->n_params; i++) {
+        upcall_s_free_shared_type_desc((type_desc*) td->first_param[i]);
     }
 
     task->kernel->free(td);
