@@ -9,6 +9,9 @@ import str;
 import vec;
 import task;
 
+import core::result;
+import result::{ok, err};
+
 import comm::port;
 import comm::chan;
 import comm::send;
@@ -42,8 +45,8 @@ fn parse_config(args: [str]) -> config {
     let args_ = vec::tail(args);
     let match =
         alt getopts::getopts(args_, opts) {
-          getopts::success(m) { m }
-          getopts::failure(f) { fail getopts::fail_str(f) }
+          ok(m) { m }
+          err(f) { fail getopts::fail_str(f) }
         };
 
     ret {compile_lib_path: getopts::opt_str(match, "compile-lib-path"),

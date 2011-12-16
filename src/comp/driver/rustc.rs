@@ -11,6 +11,7 @@ import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
 import core::{option, str, vec, int, result};
+import result::{ok, err};
 import std::{fs, io, getopts};
 import option::{some, none};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
@@ -623,8 +624,8 @@ fn main(args: [str]) {
     let args = args, binary = vec::shift(args);
     let match =
         alt getopts::getopts(args, opts()) {
-          getopts::success(m) { m }
-          getopts::failure(f) {
+          ok(m) { m }
+          err(f) {
             early_error(getopts::fail_str(f))
           }
         };
@@ -673,7 +674,7 @@ mod test {
     fn test_switch_implies_cfg_test() {
         let match =
             alt getopts::getopts(["--test"], opts()) {
-              getopts::success(m) { m }
+              ok(m) { m }
             };
         let sessopts = build_session_options(match);
         let sess = build_session(sessopts);
@@ -687,7 +688,7 @@ mod test {
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let match =
             alt getopts::getopts(["--test", "--cfg=test"], opts()) {
-              getopts::success(m) { m }
+              ok(m) { m }
             };
         let sessopts = build_session_options(match);
         let sess = build_session(sessopts);

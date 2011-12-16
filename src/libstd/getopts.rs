@@ -26,8 +26,8 @@ name following -o, and accepts both -h and --help as optional flags.
 >     optflag("help")
 >   ];
 >   let match = alt getopts(vec::shift(args), opts) {
->     success(m) { m }
->     failure(f) { fail fail_str(f) }
+>     ok(m) { m }
+>     err(f) { fail fail_str(f) }
 >   };
 >   if opt_present(match, "h") || opt_present(match, "help") {
 >     print_usage();
@@ -45,8 +45,10 @@ name following -o, and accepts both -h and --help as optional flags.
 
 */
 
+import core::result;
+import core::result::{err, ok};
 import core::option;
-import option::{some, none};
+import core::option::{some, none};
 export opt;
 export reqopt;
 export optopt;
@@ -54,9 +56,6 @@ export optflag;
 export optflagopt;
 export optmulti;
 export getopts;
-export result;
-export success;
-export failure;
 export match;
 export fail_;
 export fail_str;
@@ -193,13 +192,14 @@ fn fail_str(f: fail_) -> str {
 Type: result
 
 The result of parsing a command line with a set of options
+(result::t<match, fail_>)
 
 Variants:
 
-success(match) - Returned from getopts on success
-failure(fail_) - Returned from getopts on failure
+ok(match) - Returned from getopts on success
+err(fail_) - Returned from getopts on failure
 */
-tag result { success(match); failure(fail_); }
+type result = result::t<match, fail_>;
 
 /*
 Function: getopts
@@ -208,9 +208,9 @@ Parse command line arguments according to the provided options
 
 Returns:
 
-success(match) - On success. Use functions such as <opt_present>
-                 <opt_str>, etc. to interrogate results.
-failure(fail_) - On failure. Use <fail_str> to get an error message.
+ok(match) - On success. Use functions such as <opt_present>
+            <opt_str>, etc. to interrogate results.
+err(fail_) - On failure. Use <fail_str> to get an error message.
 */
 fn getopts(args: [str], opts: [opt]) -> result {
     let n_opts = vec::len::<opt>(opts);
@@ -258,12 +258,12 @@ fn getopts(args: [str], opts: [opt]) -> result {
                 let optid;
                 alt find_opt(opts, nm) {
                   some(id) { optid = id; }
-                  none. { ret failure(unrecognized_option(name_str(nm))); }
+                  none. { ret err(unrecognized_option(name_str(nm))); }
                 }
                 alt opts[optid].hasarg {
                   no. {
                     if !option::is_none::<str>(i_arg) {
-                        ret failure(unexpected_argument(name_str(nm)));
+                        ret err(unexpected_argument(name_str(nm)));
                     }
                     vals[optid] += [given];
                   }
@@ -279,7 +279,7 @@ fn getopts(args: [str], opts: [opt]) -> result {
                     if !option::is_none::<str>(i_arg) {
                         vals[optid] += [val(option::get::<str>(i_arg))];
                     } else if i + 1u == l {
-                        ret failure(argument_missing(name_str(nm)));
+                        ret err(argument_missing(name_str(nm)));
                     } else { i += 1u; vals[optid] += [val(args[i])]; }
                   }
                 }
@@ -293,17 +293,17 @@ fn getopts(args: [str], opts: [opt]) -> result {
         let occ = opts[i].occur;
         if occ == req {
             if n == 0u {
-                ret failure(option_missing(name_str(opts[i].name)));
+                ret err(option_missing(name_str(opts[i].name)));
             }
         }
         if occ != multi {
             if n > 1u {
-                ret failure(option_duplicated(name_str(opts[i].name)));
+                ret err(option_duplicated(name_str(opts[i].name)));
             }
         }
         i += 1u;
     }
-    ret success({opts: opts, vals: vals, free: free});
+    ret ok({opts: opts, vals: vals, free: free});
 }
 
 fn opt_vals(m: match, nm: str) -> [optval] {
