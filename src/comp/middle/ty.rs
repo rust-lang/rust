@@ -211,6 +211,9 @@ type mt = {ty: t, mut: ast::mutability};
 // the types of AST nodes.
 type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, ty::t>;
 
+type tag_var_cache =
+    @smallintmap::smallintmap<@mutable [variant_info]>;
+
 tag cast_type {
     /* cast may be ignored after substituting primitive with machine types
        since expr already has the right type */
@@ -234,7 +237,8 @@ type ctxt =
       short_names_cache: hashmap<t, @str>,
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, ast::kind>,
-      ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>};
+      ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
+      tag_var_cache: tag_var_cache};
 
 type ty_ctxt = ctxt;
 
@@ -433,7 +437,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map,
           needs_drop_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           kind_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           ast_ty_to_ty_cache:
-              map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty)};
+              map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
+          tag_var_cache: @smallintmap::mk()};
     populate_type_store(cx);
     ret cx;
 }
@@ -2720,6 +2725,11 @@ type variant_info = {args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
 
 fn tag_variants(cx: ctxt, id: ast::def_id) -> [variant_info] {
     if ast::local_crate != id.crate { ret csearch::get_tag_variants(cx, id); }
+    assert (id.node >= 0);
+    alt smallintmap::find(*cx.tag_var_cache, id.node as uint) {
+      option::some(variants) { ret *variants; }
+      _ { /* fallthrough */ }
+    }
     let item =
         alt cx.items.find(id.node) {
           some(i) { i }
@@ -2729,7 +2739,7 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> [variant_info] {
       ast_map::node_item(item) {
         alt item.node {
           ast::item_tag(variants, _) {
-            let result: [variant_info] = [];
+            let result: @mutable [variant_info] = @mutable [];
             for variant: ast::variant in variants {
                 let ctor_ty = node_id_to_monotype(cx, variant.node.id);
                 let arg_tys: [t] = [];
@@ -2739,12 +2749,13 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> [variant_info] {
                     }
                 }
                 let did = variant.node.id;
-                result +=
+                *result +=
                     [{args: arg_tys,
                       ctor_ty: ctor_ty,
                       id: ast_util::local_def(did)}];
             }
-            ret result;
+            smallintmap::insert(*cx.tag_var_cache, id.node as uint, result);
+            ret *result;
           }
         }
       }
