@@ -310,7 +310,7 @@ Returns:
 
 A negative value if `left < right`, 0 if eq(left, right) or a positive
 value if `left > right`
- */
+*/
 fn cmp(left: rope, right: rope) -> int {
     alt((left, right)) {
       (node::empty., node::empty.) { ret 0; }

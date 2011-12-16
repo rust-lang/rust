@@ -123,7 +123,7 @@ Returns:
 
 An u8 whose first bit is set if `if_true(v)` holds
 */
-fn to_bit(v: t) -> u8 { if v { 1u8 } else { 0u8 } }
+pure fn to_bit(v: t) -> u8 { if v { 1u8 } else { 0u8 } }
 
 // Local Variables:
 // mode: rust;

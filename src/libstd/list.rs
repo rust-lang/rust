@@ -112,7 +112,7 @@ Function: tail
 
 Returns all but the first element of a list
 */
-fn tail<copy T>(ls: list<T>) -> list<T> {
+pure fn tail<copy T>(ls: list<T>) -> list<T> {
     alt ls { cons(_, tl) { ret *tl; } nil. { fail "list empty" } }
 }
 
@@ -121,7 +121,7 @@ Function: head
 
 Returns the first element of a list
 */
-fn head<copy T>(ls: list<T>) -> T {
+pure fn head<copy T>(ls: list<T>) -> T {
     alt ls { cons(hd, _) { ret hd; } nil. { fail "list empty" } }
 }
 
@@ -130,7 +130,7 @@ Function: append
 
 Appends one list to another
 */
-fn append<copy T>(l: list<T>, m: list<T>) -> list<T> {
+pure fn append<copy T>(l: list<T>, m: list<T>) -> list<T> {
     alt l {
       nil. { ret m; }
       cons(x, xs) { let rest = append(*xs, m); ret cons(x, @rest); }
