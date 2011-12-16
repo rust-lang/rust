@@ -19,8 +19,13 @@
 // correctly. Strategically placed at entry to upcalls because they begin on
 // the rust stack and happen frequently enough to catch most stack changes,
 // including at the beginning of all landing pads.
+// FIXME: Only seems to work on linux
+#ifdef __linux__
 extern "C" void
 check_stack_alignment() __attribute__ ((aligned (16)));
+#else
+static void check_stack_alignment() { }
+#endif
 
 #define SWITCH_STACK(A, F) upcall_call_shim_on_c_stack((void*)A, (void*)F)
 
