@@ -155,11 +155,9 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
         name = str::slice(name, 0u, ri as uint);
     }
     log #fmt["Installing: %s", name];
-    let old = vec::map(fs::list_dir("."),
-                       {|x| str::slice(x, 2u, str::byte_len(x))});
+    let old = fs::list_dir(".");
     run::run_program("rustc", [name + ".rc"]);
-    let new = vec::map(fs::list_dir("."),
-                       {|x| str::slice(x, 2u, str::byte_len(x))});
+    let new = fs::list_dir(".");
     let created =
         vec::filter::<str>(new, { |n| !vec::member::<str>(n, old) });
     let exec_suffix = os::exec_suffix();
