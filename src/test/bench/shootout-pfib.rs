@@ -27,6 +27,9 @@ import comm::chan;
 import comm::send;
 import comm::recv;
 
+import core::result;
+import result::{ok, err};
+
 fn fib(n: int) -> int {
     fn pfib(args: (chan<int>, int)) {
         let (c, n) = args;
@@ -58,8 +61,8 @@ fn parse_opts(argv: [str]) -> config {
 
 
     alt getopts::getopts(opt_args, opts) {
-      getopts::success(m) { ret {stress: getopts::opt_present(m, "stress")} }
-      getopts::failure(_) { fail; }
+      ok(m) { ret {stress: getopts::opt_present(m, "stress")} }
+      err(_) { fail; }
     }
 }
 
