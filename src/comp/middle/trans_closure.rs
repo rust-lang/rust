@@ -218,7 +218,7 @@ fn store_environment(
     let {bcx:bcx, val:ty_params_slot} =
         GEP_tup_like_1(bcx, closure_ty, closure,
                        [0, abi::closure_elt_ty_params]);
-    vec::iter2(lltydescs) { |i, td|
+    vec::iteri(lltydescs) { |i, td|
         let ty_param_slot = GEPi(bcx, ty_params_slot, [0, i as int]);
         let cloned_td = maybe_clone_tydesc(bcx, ck, td);
         Store(bcx, cloned_td, ty_param_slot);
@@ -226,7 +226,7 @@ fn store_environment(
 
     // Copy expr values into boxed bindings.
     // Silly check
-    vec::iter2(bound_values) { |i, bv|
+    vec::iteri(bound_values) { |i, bv|
         let bound = trans::GEP_tup_like_1(bcx, box_ty, box,
                                           [0, abi::box_rc_field_body,
                                            abi::closure_elt_bindings,
@@ -310,7 +310,7 @@ fn load_environment(enclosing_cx: @block_ctxt,
 
     // Populate the upvars from the environment.
     let path = [0, abi::box_rc_field_body, abi::closure_elt_bindings];
-    vec::iter2(*upvars) { |i, upvar_def|
+    vec::iteri(*upvars) { |i, upvar_def|
         check type_is_tup_like(bcx, boxed_closure_ty);
         let upvarptr =
             GEP_tup_like(bcx, boxed_closure_ty, llclosure, path + [i as int]);

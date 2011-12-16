@@ -329,9 +329,9 @@ fn iter_nonempty() {
 }
 
 #[test]
-fn iter2() {
+fn iteri() {
     let i = 0;
-    vec::iter2([1, 2, 3], { |j, v|
+    vec::iteri([1, 2, 3], { |j, v|
         if i == 0 { assert v == 1; }
         assert j + 1u == v as uint;
         i += v;
@@ -357,9 +357,9 @@ fn riter_nonempty() {
 }
 
 #[test]
-fn riter2() {
+fn riteri() {
     let i = 0;
-    vec::riter2([0, 1, 2], { |j, v|
+    vec::riteri([0, 1, 2], { |j, v|
         if i == 0 { assert v == 2; }
         assert j == v as uint;
         i += v;

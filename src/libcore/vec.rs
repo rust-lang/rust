@@ -697,18 +697,18 @@ element's value.
 
 */
 fn iter<T>(v: [const T], f: block(T)) {
-    iter2(v) { |_i, v| f(v) }
+    iteri(v) { |_i, v| f(v) }
 }
 
 /*
-Function: iter2
+Function: iteri
 
 Iterates over a vector's elements and indexes
 
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
 */
-fn iter2<T>(v: [const T], f: block(uint, T)) {
+fn iteri<T>(v: [const T], f: block(uint, T)) {
     let i = 0u, l = len(v);
     while i < l { f(i, v[i]); i += 1u; }
 }
@@ -723,18 +723,18 @@ element's value.
 
 */
 fn riter<T>(v: [const T], f: block(T)) {
-    riter2(v) { |_i, v| f(v) }
+    riteri(v) { |_i, v| f(v) }
 }
 
 /*
-Function: riter2
+Function: riteri
 
 Iterates over a vector's elements and indexes in reverse
 
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
 */
-fn riter2<T>(v: [const T], f: block(uint, T)) {
+fn riteri<T>(v: [const T], f: block(uint, T)) {
     let i = len(v);
     while 0u < i {
         i -= 1u;
