@@ -181,7 +181,7 @@ Returns the first element of a vector
 Predicates:
 <is_not_empty> (v)
 */
-fn head<copy T>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
+pure fn head<copy T>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
 
 /*
 Function: tail
@@ -221,7 +221,7 @@ Returns:
 An option containing the last element of `v` if `v` is not empty, or
 none if `v` is empty.
 */
-fn last<copy T>(v: [const T]) -> option::t<T> {
+pure fn last<copy T>(v: [const T]) -> option::t<T> {
     if len(v) == 0u { ret none; }
     ret some(v[len(v) - 1u]);
 }
@@ -234,7 +234,7 @@ Returns the last element of a non-empty vector `v`
 Predicates:
 <is_not_empty> (v)
 */
-fn last_total<copy T>(v: [const T]) : is_not_empty(v) -> T {
+pure fn last_total<copy T>(v: [const T]) : is_not_empty(v) -> T {
     ret v[len(v) - 1u];
 }
 

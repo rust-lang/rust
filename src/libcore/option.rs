@@ -30,7 +30,7 @@ Failure:
 
 Fails if the value equals `none`.
 */
-fn get<copy T>(opt: t<T>) -> T {
+pure fn get<copy T>(opt: t<T>) -> T {
     alt opt { some(x) { ret x; } none. { fail "option none"; } }
 }
 
@@ -61,7 +61,7 @@ Function: from_maybe
 
 Returns the contained value or a default
 */
-fn from_maybe<T>(def: T, opt: t<T>) -> T {
+pure fn from_maybe<T>(def: T, opt: t<T>) -> T {
     alt opt { some(x) { x } none. { def } }
 }
 

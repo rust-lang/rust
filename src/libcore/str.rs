@@ -26,14 +26,14 @@ Function: eq
 
 Bytewise string equality
 */
-fn eq(&&a: str, &&b: str) -> bool { a == b }
+pure fn eq(&&a: str, &&b: str) -> bool { a == b }
 
 /*
 Function: lteq
 
 Bytewise less than or equal
 */
-fn lteq(&&a: str, &&b: str) -> bool { a <= b }
+pure fn lteq(&&a: str, &&b: str) -> bool { a <= b }
 
 /*
 Function: hash
@@ -131,7 +131,7 @@ Function: byte_len
 
 Returns the length in bytes of a string
 */
-fn byte_len(s: str) -> uint unsafe {
+pure fn byte_len(s: str) -> uint unsafe {
     let v: [u8] = unsafe::reinterpret_cast(s);
     let vlen = vec::len(v);
     unsafe::leak(v);
@@ -261,7 +261,7 @@ Function: utf8_char_width
 
 FIXME: What does this function do?
 */
-fn utf8_char_width(b: u8) -> uint {
+pure fn utf8_char_width(b: u8) -> uint {
     let byte: uint = b as uint;
     if byte < 128u { ret 1u; }
     if byte < 192u {

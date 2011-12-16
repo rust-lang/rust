@@ -10,7 +10,7 @@ Function: ptr_eq
 
 Determine if two shared boxes point to the same object
 */
-fn ptr_eq<T>(a: @T, b: @T) -> bool {
+pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     // FIXME: ptr::addr_of
     unsafe {
         let a_ptr: uint = unsafe::reinterpret_cast(a);

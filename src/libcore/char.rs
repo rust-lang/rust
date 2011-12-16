@@ -122,7 +122,7 @@ pure fn to_digit(c: char) -> u8 unsafe {
  Convert a char to the corresponding digit. Returns none when the
  character is not a valid hexadecimal digit.
 */
-fn maybe_digit(c: char) -> option::t<u8> {
+pure fn maybe_digit(c: char) -> option::t<u8> {
     alt c {
       '0' to '9' { option::some(c as u8 - ('0' as u8)) }
       'a' to 'z' { option::some(c as u8 + 10u8 - ('a' as u8)) }
@@ -143,7 +143,7 @@ fn maybe_digit(c: char) -> option::t<u8> {
  Returns:
   -1 if a<b, 0 if a==b, +1 if a>b
 */
-fn cmp(a: char, b: char) -> int {
+pure fn cmp(a: char, b: char) -> int {
     ret  if b > a { -1 }
     else if b < a { 1 }
     else { 0 }
