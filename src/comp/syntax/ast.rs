@@ -22,6 +22,7 @@ type node_id = int;
 type def_id = {crate: crate_num, node: node_id};
 
 const local_crate: crate_num = 0;
+const crate_node_id: node_id = 0;
 
 type ty_param = {ident: ident, kind: kind};
 
