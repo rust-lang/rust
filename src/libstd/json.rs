@@ -50,7 +50,7 @@ fn to_str(j: json) -> str {
         list(@js) {
             str::concat(["[",
                     str::connect(
-                        vec::map::<json,str>({ |e| to_str(e) }, js),
+                        vec::map::<json,str>(js, { |e| to_str(e) }),
                         ", "),
                     "]"])
         }

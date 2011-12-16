@@ -197,7 +197,7 @@ fn join_branches(branches: [set]) -> set {
     for set in branches {
         i += 1u;
         for {def, exprs} in set {
-            if !vec::any({|v| v.def == def}, found) {
+            if !vec::any(found, {|v| v.def == def}) {
                 let j = i, ne = exprs;
                 while j < l {
                     for {def: d2, exprs} in branches[j] {
@@ -234,8 +234,8 @@ fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
                      cx.last_uses.insert(expr, to);
                 }
             }
-            cx.current = vec::filter({|x| x.def != my_def},
-                                     copy cx.current);
+            cx.current = vec::filter(copy cx.current,
+                                     {|x| x.def != my_def});
             break;
         }
     }

@@ -36,7 +36,7 @@ fn get<copy T>(opt: t<T>) -> T {
 
 /*
 */
-fn map<T, U>(f: block(T) -> U, opt: t<T>) -> t<U> {
+fn map<T, U>(opt: t<T>, f: block(T) -> U) -> t<U> {
     alt opt { some(x) { some(f(x)) } none. { none } }
 }
 
@@ -70,7 +70,7 @@ Function: maybe
 
 Applies a function to the contained value or returns a default
 */
-fn maybe<T, U>(def: U, f: block(T) -> U, opt: t<T>) -> U {
+fn maybe<T, U>(def: U, opt: t<T>, f: block(T) -> U) -> U {
     alt opt { none. { def } some(t) { f(t) } }
 }
 
@@ -80,7 +80,7 @@ Function: may
 
 Performs an operation on the contained value or does nothing
 */
-fn may<T>(f: block(T), opt: t<T>) {
+fn may<T>(opt: t<T>, f: block(T)) {
     alt opt { none. {/* nothing */ } some(t) { f(t); } }
 }
 

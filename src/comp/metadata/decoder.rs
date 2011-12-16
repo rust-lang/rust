@@ -159,7 +159,6 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     ret result;
 }
 
-
 // FIXME doesn't yet handle renamed re-exported externals
 fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
    ast::def {

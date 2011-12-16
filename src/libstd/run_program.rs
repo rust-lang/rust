@@ -122,7 +122,7 @@ fn spawn_process(prog: str, args: [str], in_fd: fd_t,
     // Note: we have to hold on to these vector references while we hold a
     // pointer to their buffers
     let prog = prog;
-    let args = vec::map({|arg| @arg }, args);
+    let args = vec::map(args, {|arg| @arg });
     let argv = arg_vec(prog, args);
     let pid =
         rustrt::rust_run_program(vec::unsafe::to_ptr(argv), in_fd, out_fd,

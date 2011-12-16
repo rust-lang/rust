@@ -281,7 +281,7 @@ fn split_maybe_args(argstr: option::t<str>) -> [str] {
             for c: u8 in s { if c != ' ' as u8 { ret false; } }
             ret true;
         }
-        vec::filter_map(flt, v)
+        vec::filter_map(v, flt)
     }
 
     alt argstr {

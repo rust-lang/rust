@@ -220,7 +220,8 @@ fn as_str(f: fn@(io::writer)) -> str {
 fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
                          filename: str, cx: context) {
     let stolen = steal(crate, cx.mode);
-    let extra_exprs = vec::filter(bind safe_to_use_expr(_, cx.mode), common_exprs());
+    let extra_exprs = vec::filter(common_exprs(),
+                                  bind safe_to_use_expr(_, cx.mode));
     check_variants_T(crate, codemap, filename, "expr", extra_exprs + stolen.exprs, pprust::expr_to_str, replace_expr_in_crate, cx);
     check_variants_T(crate, codemap, filename, "ty", stolen.tys, pprust::ty_to_str, replace_ty_in_crate, cx);
 }

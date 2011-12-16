@@ -317,13 +317,13 @@ fn normalize(p: path) -> path {
     ret s;
 
     fn strip_dots(s: [path]) -> [path] {
-        vec::filter_map({ |elem|
+        vec::filter_map(s, { |elem|
             if elem == "." {
                 option::none
             } else {
                 option::some(elem)
             }
-        }, s)
+        })
     }
 
     fn rollup_doubledots(s: [path]) -> [path] {

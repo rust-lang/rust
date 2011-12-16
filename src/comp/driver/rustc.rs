@@ -650,10 +650,9 @@ fn main(args: [str]) {
     let ofile = getopts::opt_maybe_str(match, "o");
     let cfg = build_configuration(sess, binary, ifile);
     let pretty =
-        option::map::<str,
-                      pp_mode>(bind parse_pretty(sess, _),
-                               getopts::opt_default(match, "pretty",
-                                                    "normal"));
+        option::map(getopts::opt_default(match, "pretty",
+                                         "normal"),
+                    bind parse_pretty(sess, _));
     alt pretty {
       some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, ifile, ppm); ret; }
       none::<pp_mode>. {/* continue */ }

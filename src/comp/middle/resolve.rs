@@ -1152,8 +1152,8 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
           none. { none }
         }
     }
-    let matches = vec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
-                                  copy globs);
+    let matches = vec::filter_map(copy globs,
+                                  bind lookup_in_mod_(e, _, sp, id, ns, dr));
     if vec::len(matches) == 0u {
         ret none;
     } else if vec::len(matches) == 1u {
@@ -1448,7 +1448,7 @@ fn check_arm(e: @env, a: ast::arm, &&x: (), v: vt<()>) {
                             "inconsistent number of bindings");
         } else {
             for name: ident in ch.seen {
-                if is_none(vec::find(bind str::eq(name, _), seen0)) {
+                if is_none(vec::find(seen0, bind str::eq(name, _))) {
                     // Fight the alias checker
                     let name_ = name;
                     e.sess.span_err(a.pats[i].span,

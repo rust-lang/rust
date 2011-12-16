@@ -426,7 +426,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     // Actually construct the closure
     let {llbox, box_ty, bcx} = store_environment(
         bcx, lltydescs,
-        env_vals + vec::map({|x| env_expr(x)}, bound),
+        env_vals + vec::map(bound, {|x| env_expr(x)}),
         ty::closure_shared);
 
     // Make thunk

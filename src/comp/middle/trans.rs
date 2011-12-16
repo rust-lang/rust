@@ -3428,9 +3428,9 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
     let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
     let temp_cleanups = [];
     for fld in fields {
-        let ix = option::get(vec::position_pred({|ft|
+        let ix = option::get(vec::position_pred(ty_fields, {|ft|
             str::eq(fld.node.ident, ft.ident)
-        }, ty_fields));
+        }));
         let dst = GEP_tup_like_1(bcx, t, addr, [0, ix as int]);
         bcx = trans_expr_save_in(dst.bcx, fld.node.expr, dst.val);
         add_clean_temp_mem(bcx, dst.val, ty_fields[ix].mt.ty);
@@ -3442,7 +3442,7 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
         bcx = cx;
         // Copy over inherited fields
         for tf in ty_fields {
-            if !vec::any({|f| str::eq(f.node.ident, tf.ident)}, fields) {
+            if !vec::any(fields, {|f| str::eq(f.node.ident, tf.ident)}) {
                 let dst = GEP_tup_like_1(bcx, t, addr, [0, i]);
                 let base = GEP_tup_like_1(bcx, t, base_val, [0, i]);
                 let val = load_if_immediate(base.bcx, base.val, tf.mt.ty);

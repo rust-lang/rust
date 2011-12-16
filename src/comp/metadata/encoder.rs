@@ -610,7 +610,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
         fn name(kv: numname) -> str { kv.ident }
         // mutable -> immutable hack for vec::map
         let immpairs = vec::slice(pairs, 0u, vec::len(pairs));
-        ret vec::map(name, immpairs);
+        ret vec::map(immpairs, name);
     }
 
     // We're just going to write a list of crate names, with the assumption

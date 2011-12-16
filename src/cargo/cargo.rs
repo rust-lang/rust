@@ -155,13 +155,13 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
         name = str::slice(name, 0u, ri as uint);
     }
     log #fmt["Installing: %s", name];
-    let old = vec::map({|x| str::slice(x, 2u, str::byte_len(x))},
-                       fs::list_dir("."));
+    let old = vec::map(fs::list_dir("."),
+                       {|x| str::slice(x, 2u, str::byte_len(x))});
     run::run_program("rustc", [name + ".rc"]);
-    let new = vec::map({|x| str::slice(x, 2u, str::byte_len(x))},
-                       fs::list_dir("."));
+    let new = vec::map(fs::list_dir("."),
+                       {|x| str::slice(x, 2u, str::byte_len(x))});
     let created =
-        vec::filter::<str>({ |n| !vec::member::<str>(n, old) }, new);
+        vec::filter::<str>(new, { |n| !vec::member::<str>(n, old) });
     let exec_suffix = os::exec_suffix();
     for ct: str in created {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
@@ -184,7 +184,7 @@ fn install_source(c: cargo, path: str) {
     log #fmt["contents: %s", str::connect(contents, ", ")];
 
     let cratefiles =
-        vec::filter::<str>({ |n| str::ends_with(n, ".rc") }, contents);
+        vec::filter::<str>(contents, { |n| str::ends_with(n, ".rc") });
 
     if vec::is_empty(cratefiles) {
         fail "This doesn't look like a rust package (no .rc files).";

@@ -244,8 +244,8 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: span, anon_obj: ast::anon_obj,
     // methods, not inner ones.
     let wrapper_obj: ast::_obj =
         {fields:
-             vec::map(ast_util::obj_field_from_anon_obj_field,
-                           additional_fields),
+             vec::map(additional_fields,
+                      ast_util::obj_field_from_anon_obj_field),
          methods: anon_obj.methods};
 
     let inner_obj_ty: ty::t;
@@ -481,7 +481,7 @@ fn create_vtbl(cx: @local_ctxt, sp: span, outer_obj_ty: ty::t, ob: ast::_obj,
         // Filter out any methods that we don't need forwarding slots for
         // because they're being overridden.
         let f = bind filtering_fn(cx, _, ob.methods);
-        meths = vec::filter_map(f, meths);
+        meths = vec::filter_map(meths, f);
 
         // And now add the additional ones, both overriding ones and entirely
         // new ones.  These will just be normal methods.

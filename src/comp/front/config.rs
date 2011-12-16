@@ -29,9 +29,9 @@ fn filter_item(cfg: ast::crate_cfg, &&item: @ast::item) ->
 fn fold_mod(cfg: ast::crate_cfg, m: ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
     let filter = bind filter_item(cfg, _);
-    let filtered_items = vec::filter_map(filter, m.items);
-    ret {view_items: vec::map(fld.fold_view_item, m.view_items),
-         items: vec::map(fld.fold_item, filtered_items)};
+    let filtered_items = vec::filter_map(m.items, filter);
+    ret {view_items: vec::map(m.view_items, fld.fold_view_item),
+         items: vec::map(filtered_items, fld.fold_item)};
 }
 
 fn filter_native_item(cfg: ast::crate_cfg, &&item: @ast::native_item) ->
@@ -44,8 +44,8 @@ fn filter_native_item(cfg: ast::crate_cfg, &&item: @ast::native_item) ->
 fn fold_native_mod(cfg: ast::crate_cfg, nm: ast::native_mod,
                    fld: fold::ast_fold) -> ast::native_mod {
     let filter = bind filter_native_item(cfg, _);
-    let filtered_items = vec::filter_map(filter, nm.items);
-    ret {view_items: vec::map(fld.fold_view_item, nm.view_items),
+    let filtered_items = vec::filter_map(nm.items, filter);
+    ret {view_items: vec::map(nm.view_items, fld.fold_view_item),
          items: filtered_items};
 }
 
@@ -69,10 +69,10 @@ fn filter_stmt(cfg: ast::crate_cfg, &&stmt: @ast::stmt) ->
 fn fold_block(cfg: ast::crate_cfg, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
     let filter = bind filter_stmt(cfg, _);
-    let filtered_stmts = vec::filter_map(filter, b.stmts);
+    let filtered_stmts = vec::filter_map(b.stmts, filter);
     ret {view_items: b.view_items,
-         stmts: vec::map(fld.fold_stmt, filtered_stmts),
-         expr: option::map(fld.fold_expr, b.expr),
+         stmts: vec::map(filtered_stmts, fld.fold_stmt),
+         expr: option::map(b.expr, fld.fold_expr),
          id: b.id,
          rules: b.rules};
 }
@@ -99,8 +99,8 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: [@ast::meta_item]) -> bool {
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
     // so we can match against them. This is the list of configurations for
     // which the item is valid
-    let cfg_metas = vec::concat(vec::filter_map(
-        {|&&i| attr::get_meta_item_list(i)}, cfg_metas));
+    let cfg_metas = vec::concat(vec::filter_map(cfg_metas,
+        {|&&i| attr::get_meta_item_list(i)}));
 
     let has_cfg_metas = vec::len(cfg_metas) > 0u;
     if !has_cfg_metas { ret true; }

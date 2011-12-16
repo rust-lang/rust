@@ -1708,7 +1708,7 @@ fn field_idx(sess: session::session, sp: span, id: ast::ident,
 fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
     alt struct(tcx, rec_ty) {
       ty_rec(fields) {
-        alt vec::find({|f| str::eq(f.ident, id) }, fields) {
+        alt vec::find(fields, {|f| str::eq(f.ident, id) }) {
             some(f) { ret f; }
         }
       }

@@ -325,7 +325,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         for pat in a.pats {
             for proot in pattern_roots(cx.tcx, root.mut, pat) {
                 let canon_id = pat_id_map.get(proot.name);
-                alt vec::find({|x| x.id == canon_id}, binding_info) {
+                alt vec::find(binding_info, {|x| x.id == canon_id}) {
                   some(s) { s.unsafe_tys += unsafe_set(proot.mut); }
                   none. {
                       binding_info += [
@@ -683,7 +683,7 @@ fn filter_invalid(src: list<@invalid>, bs: [binding]) -> list<@invalid> {
     while cur != list::nil {
         alt cur {
           list::cons(head, tail) {
-            let p = vec::position_pred({|b| b.node_id == head.node_id}, bs);
+            let p = vec::position_pred(bs, {|b| b.node_id == head.node_id});
             if !is_none(p) { out = list::cons(head, @out); }
             cur = *tail;
           }

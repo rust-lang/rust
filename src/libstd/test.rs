@@ -276,7 +276,7 @@ fn filter_tests<copy T>(opts: test_opts,
 
         let filter = bind filter_fn(_, filter_str);
 
-        vec::filter_map(filter, filtered)
+        vec::filter_map(filtered, filter)
     };
 
     // Maybe pull out the ignored test and unignore them
@@ -292,7 +292,7 @@ fn filter_tests<copy T>(opts: test_opts,
             } else { ret option::none; }
         };
 
-        vec::filter_map(bind filter(_), filtered)
+        vec::filter_map(filtered, bind filter(_))
     };
 
     // Sort the tests alphabetically

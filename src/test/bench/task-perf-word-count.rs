@@ -192,8 +192,8 @@ fn main(argv: [str]) {
     let inputs = if vec::len(argv) < 2u {
         [input1(), input2(), input3()]
     } else {
-        vec::map({|f| result::get(io::read_whole_file_str(f)) },
-                 vec::slice(argv, 1u, vec::len(argv)))
+        vec::map(vec::slice(argv, 1u, vec::len(argv)),
+                 {|f| result::get(io::read_whole_file_str(f)) })
     };
 
     let start = time::precise_time_ns();

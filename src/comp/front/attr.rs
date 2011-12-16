@@ -50,7 +50,7 @@ fn find_attrs_by_name(attrs: [ast::attribute], name: ast::ident) ->
                      option::some(a)
                  } else { option::none }
              }(_, name);
-    ret vec::filter_map(filter, attrs);
+    ret vec::filter_map(attrs, filter);
 }
 
 fn get_attr_name(attr: ast::attribute) -> ast::ident {
@@ -66,7 +66,7 @@ fn find_meta_items_by_name(metas: [@ast::meta_item], name: ast::ident) ->
                      option::some(m)
                  } else { option::none }
              }(_, name);
-    ret vec::filter_map(filter, metas);
+    ret vec::filter_map(metas, filter);
 }
 
 fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
@@ -186,7 +186,7 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
                  } else { option::none }
              }(_, name);
 
-    ret vec::filter_map(filter, items);
+    ret vec::filter_map(items, filter);
 }
 
 fn require_unique_names(sess: session::session, metas: [@ast::meta_item]) {

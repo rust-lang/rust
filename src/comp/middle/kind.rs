@@ -78,7 +78,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             let t = ty::expr_ty(cx.tcx, ex);
             let ty_fields = alt ty::struct(cx.tcx, t) { ty::ty_rec(f) { f } };
             for tf in ty_fields {
-                if !vec::any({|f| f.node.ident == tf.ident}, fields) &&
+                if !vec::any(fields, {|f| f.node.ident == tf.ident}) &&
                     !kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
                     cx.tcx.sess.span_err(ex.span,
                                          "copying a noncopyable value");

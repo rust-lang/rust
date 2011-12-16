@@ -291,7 +291,7 @@ fn collect_record_fields(m: match, col: uint) -> [ast::ident] {
         alt br.pats[col].node {
           ast::pat_rec(fs, _) {
             for f: ast::field_pat in fs {
-                if !vec::any(bind str::eq(f.ident, _), fields) {
+                if !vec::any(fields, bind str::eq(f.ident, _)) {
                     fields += [f.ident];
                 }
             }

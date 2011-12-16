@@ -323,7 +323,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt));
       }
       ast::ty_tup(fields) {
-        let flds = vec::map(bind ast_ty_to_ty(tcx, mode, _), fields);
+        let flds = vec::map(fields, bind ast_ty_to_ty(tcx, mode, _));
         typ = ty::mk_tup(tcx, flds);
       }
       ast::ty_rec(fields) {
@@ -516,8 +516,8 @@ fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
     ret tpt;
 }
 fn ty_of_method(tcx: ty::ctxt, mode: mode, m: @ast::method) -> ty::method {
-    let inputs = vec::map({|i| ty_of_arg(tcx, mode, i)},
-                          m.node.meth.decl.inputs);
+    let inputs = vec::map(m.node.meth.decl.inputs,
+                          {|i| ty_of_arg(tcx, mode, i)});
     let output = ast_ty_to_ty(tcx, mode, m.node.meth.decl.output);
 
     let out_constrs = [];
@@ -540,7 +540,7 @@ fn ty_of_obj(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
 }
 fn ty_of_obj_methods(tcx: ty::ctxt, mode: mode, object: ast::_obj)
     -> [ty::method] {
-    vec::map({|m| ty_of_method(tcx, mode, m)}, object.methods)
+    vec::map(object.methods, {|m| ty_of_method(tcx, mode, m)})
 }
 fn ty_of_obj_ctor(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
             ctor_id: ast::node_id, ty_params: [ast::ty_param])
@@ -1331,7 +1331,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
             ret str::eq(name, f.ident);
         }
         for f: ast::field_pat in fields {
-            alt vec::find(bind matches(f.ident, _), ex_fields) {
+            alt vec::find(ex_fields, bind matches(f.ident, _)) {
               some(field) { check_pat(fcx, map, f.pat, field.mt.ty); }
               none. {
                 fcx.ccx.tcx.sess.span_fatal(pat.span,
@@ -2091,7 +2091,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         alt base {
           none. {
             fn get_node(f: spanned<field>) -> field { f.node }
-            let typ = ty::mk_rec(tcx, vec::map(get_node, fields_t));
+            let typ = ty::mk_rec(tcx, vec::map(fields_t, get_node));
             write::ty_only_fixup(fcx, id, typ);
           }
           some(bexpr) {
@@ -2140,7 +2140,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 ids += b.ids;
                 fty = b.ty;
             }
-            let substs = vec::map({|id| ty::mk_var(tcx, id)}, ids);
+            let substs = vec::map(ids, {|id| ty::mk_var(tcx, id)});
             write::ty_fixup(fcx, id, {substs: some(substs), ty: fty});
             fcx.ccx.method_map.insert(id, local_def(method.node.id));
           }
@@ -2268,7 +2268,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
 
             let f = bind filtering_fn(fcx.ccx, _, ao.methods);
-            inner_obj_methods = vec::filter_map(f, inner_obj_methods);
+            inner_obj_methods = vec::filter_map(inner_obj_methods, f);
 
             method_types += inner_obj_methods;
         }
@@ -2287,8 +2287,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
 
         fcx.ccx.self_infos +=
-            [self_obj(vec::map(ast_util::obj_field_from_anon_obj_field,
-                               fields), ot)];
+            [self_obj(
+                vec::map(fields, ast_util::obj_field_from_anon_obj_field),
+                ot)];
         // Typecheck the methods.
         for method: @ast::method in ao.methods {
             check_method(fcx.ccx, method);

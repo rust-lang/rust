@@ -213,7 +213,7 @@ fn test_grow_set() {
 fn test_map() {
     // Test on-stack map.
     let v = [1u, 2u, 3u];
-    let w = vec::map(square_ref, v);
+    let w = vec::map(v, square_ref);
     assert (vec::len(w) == 3u);
     assert (w[0] == 1u);
     assert (w[1] == 4u);
@@ -221,7 +221,7 @@ fn test_map() {
 
     // Test on-heap map.
     v = [1u, 2u, 3u, 4u, 5u];
-    w = vec::map(square_ref, v);
+    w = vec::map(v, square_ref);
     assert (vec::len(w) == 5u);
     assert (w[0] == 1u);
     assert (w[1] == 4u);
@@ -236,7 +236,7 @@ fn test_map2() {
     let f = times;
     let v0 = [1, 2, 3, 4, 5];
     let v1 = [5, 4, 3, 2, 1];
-    let u = vec::map2::<int, int, int>(f, v0, v1);
+    let u = vec::map2::<int, int, int>(v0, v1, f);
     let i = 0;
     while i < 5 { assert (v0[i] * v1[i] == u[i]); i += 1; }
 }
@@ -245,14 +245,14 @@ fn test_map2() {
 fn test_filter_map() {
     // Test on-stack filter-map.
     let v = [1u, 2u, 3u];
-    let w = vec::filter_map(square_if_odd, v);
+    let w = vec::filter_map(v, square_if_odd);
     assert (vec::len(w) == 2u);
     assert (w[0] == 1u);
     assert (w[1] == 9u);
 
     // Test on-heap filter-map.
     v = [1u, 2u, 3u, 4u, 5u];
-    w = vec::filter_map(square_if_odd, v);
+    w = vec::filter_map(v, square_if_odd);
     assert (vec::len(w) == 3u);
     assert (w[0] == 1u);
     assert (w[1] == 9u);
@@ -269,28 +269,28 @@ fn test_filter_map() {
     let all_odd2: [int] = [];
     let mix: [int] = [9, 2, 6, 7, 1, 0, 0, 3];
     let mix_dest: [int] = [1, 3, 0, 0];
-    assert (filter_map(halve, all_even) == map(halve_for_sure, all_even));
-    assert (filter_map(halve, all_odd1) == []);
-    assert (filter_map(halve, all_odd2) == []);
-    assert (filter_map(halve, mix) == mix_dest);
+    assert (filter_map(all_even, halve) == map(all_even, halve_for_sure));
+    assert (filter_map(all_odd1, halve) == []);
+    assert (filter_map(all_odd2, halve) == []);
+    assert (filter_map(mix, halve) == mix_dest);
 }
 
 #[test]
 fn test_filter() {
-    assert filter(is_odd, [1u, 2u, 3u]) == [1u, 3u];
-    assert filter(is_three, [1u, 2u, 4u, 8u, 16u]) == [];
+    assert filter([1u, 2u, 3u], is_odd) == [1u, 3u];
+    assert filter([1u, 2u, 4u, 8u, 16u], is_three) == [];
 }
 
 #[test]
 fn test_foldl() {
     // Test on-stack fold.
     let v = [1u, 2u, 3u];
-    let sum = vec::foldl(add, 0u, v);
+    let sum = vec::foldl(0u, v, add);
     assert (sum == 6u);
 
     // Test on-heap fold.
     v = [1u, 2u, 3u, 4u, 5u];
-    sum = vec::foldl(add, 0u, v);
+    sum = vec::foldl(0u, v, add);
     assert (sum == 15u);
 }
 
@@ -300,7 +300,7 @@ fn test_foldl2() {
         a - b
     }
     let v = [1, 2, 3, 4];
-    let sum = vec::foldl(sub, 0, v);
+    let sum = vec::foldl(0, v, sub);
     assert sum == -10;
 }
 
@@ -310,7 +310,7 @@ fn test_foldr() {
         a - b
     }
     let v = [1, 2, 3, 4];
-    let sum = vec::foldr(sub, 0, v);
+    let sum = vec::foldr(v, 0, sub);
     assert sum == -2;
 }
 
@@ -390,15 +390,15 @@ fn test_permute() {
 
 #[test]
 fn test_any_and_all() {
-    assert (vec::any(is_three, [1u, 2u, 3u]));
-    assert (!vec::any(is_three, [0u, 1u, 2u]));
-    assert (vec::any(is_three, [1u, 2u, 3u, 4u, 5u]));
-    assert (!vec::any(is_three, [1u, 2u, 4u, 5u, 6u]));
+    assert (vec::any([1u, 2u, 3u], is_three));
+    assert (!vec::any([0u, 1u, 2u], is_three));
+    assert (vec::any([1u, 2u, 3u, 4u, 5u], is_three));
+    assert (!vec::any([1u, 2u, 4u, 5u, 6u], is_three));
 
-    assert (vec::all(is_three, [3u, 3u, 3u]));
-    assert (!vec::all(is_three, [3u, 3u, 2u]));
-    assert (vec::all(is_three, [3u, 3u, 3u, 3u, 3u]));
-    assert (!vec::all(is_three, [3u, 3u, 0u, 1u, 2u]));
+    assert (vec::all([3u, 3u, 3u], is_three));
+    assert (!vec::all([3u, 3u, 2u], is_three));
+    assert (vec::all([3u, 3u, 3u, 3u, 3u], is_three));
+    assert (!vec::all([3u, 3u, 0u, 1u, 2u], is_three));
 }
 
 #[test]
@@ -434,8 +434,8 @@ fn test_position_pred() {
     fn less_than_three(&&i: int) -> bool { ret i < 3; }
     fn is_eighteen(&&i: int) -> bool { ret i == 18; }
     let v1: [int] = [5, 4, 3, 2, 1];
-    assert (position_pred(less_than_three, v1) == option::some::<uint>(3u));
-    assert (position_pred(is_eighteen, v1) == option::none::<uint>);
+    assert (position_pred(v1, less_than_three) == option::some::<uint>(3u));
+    assert (position_pred(v1, is_eighteen) == option::none::<uint>);
 }
 
 #[test]

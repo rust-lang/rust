@@ -384,7 +384,7 @@ Function: map
 
 Apply a function to each element of a vector and return the results
 */
-fn map<T, U>(f: block(T) -> U, v: [T]) -> [U] {
+fn map<T, U>(v: [T], f: block(T) -> U) -> [U] {
     let result = [];
     reserve(result, len(v));
     for elem: T in v { result += [f(elem)]; }
@@ -396,7 +396,7 @@ Function: map_mut
 
 Apply a function to each element of a mutable vector and return the results
 */
-fn map_mut<copy T, U>(f: block(T) -> U, v: [const T]) -> [U] {
+fn map_mut<copy T, U>(v: [const T], f: block(T) -> U) -> [U] {
     let result = [];
     reserve(result, len(v));
     for elem: T in v {
@@ -411,7 +411,7 @@ Function: map2
 
 Apply a function to each pair of elements and return the results
 */
-fn map2<copy T, copy U, V>(f: block(T, U) -> V, v0: [T], v1: [U]) -> [V] {
+fn map2<copy T, copy U, V>(v0: [T], v1: [U], f: block(T, U) -> V) -> [V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail; }
     let u: [V] = [];
@@ -428,7 +428,7 @@ Apply a function to each element of a vector and return the results
 If function `f` returns `none` then that element is excluded from
 the resulting vector.
 */
-fn filter_map<copy T, copy U>(f: block(T) -> option::t<U>, v: [const T])
+fn filter_map<copy T, copy U>(v: [const T], f: block(T) -> option::t<U>)
     -> [U] {
     let result = [];
     for elem: T in v {
@@ -449,7 +449,7 @@ holds.
 Apply function `f` to each element of `v` and return a vector containing
 only those elements for which `f` returned true.
 */
-fn filter<copy T>(f: block(T) -> bool, v: [T]) -> [T] {
+fn filter<copy T>(v: [T], f: block(T) -> bool) -> [T] {
     let result = [];
     for elem: T in v {
         if f(elem) { result += [elem]; }
@@ -474,7 +474,7 @@ Function: foldl
 
 Reduce a vector from left to right
 */
-fn foldl<copy T, U>(p: block(T, U) -> T, z: T, v: [const U]) -> T {
+fn foldl<copy T, U>(z: T, v: [const U], p: block(T, U) -> T) -> T {
     let accum = z;
     iter(v) { |elt|
         accum = p(accum, elt);
@@ -487,7 +487,7 @@ Function: foldr
 
 Reduce a vector from right to left
 */
-fn foldr<T, copy U>(p: block(T, U) -> U, z: U, v: [const T]) -> U {
+fn foldr<T, copy U>(v: [const T], z: U, p: block(T, U) -> U) -> U {
     let accum = z;
     riter(v) { |elt|
         accum = p(elt, accum);
@@ -502,7 +502,7 @@ Return true if a predicate matches any elements
 
 If the vector contains no elements then false is returned.
 */
-fn any<T>(f: block(T) -> bool, v: [T]) -> bool {
+fn any<T>(v: [T], f: block(T) -> bool) -> bool {
     for elem: T in v { if f(elem) { ret true; } }
     ret false;
 }
@@ -514,7 +514,7 @@ Return true if a predicate matches all elements
 
 If the vector contains no elements then true is returned.
 */
-fn all<T>(f: block(T) -> bool, v: [T]) -> bool {
+fn all<T>(v: [T], f: block(T) -> bool) -> bool {
     for elem: T in v { if !f(elem) { ret false; } }
     ret true;
 }
@@ -549,7 +549,7 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<copy T>(f: block(T) -> bool, v: [T]) -> option::t<T> {
+fn find<copy T>(v: [T], f: block(T) -> bool) -> option::t<T> {
     for elt: T in v { if f(elt) { ret some(elt); } }
     ret none;
 }
@@ -575,7 +575,7 @@ Function: position_pred
 
 Find the first index for which the value matches some predicate
 */
-fn position_pred<T>(f: block(T) -> bool, v: [T]) -> option::t<uint> {
+fn position_pred<T>(v: [T], f: block(T) -> bool) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;

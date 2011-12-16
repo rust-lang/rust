@@ -140,7 +140,7 @@ fn get_dep_hashes(cstore: cstore) -> [str] {
         log #fmt("  hash[%s]: %s", x.name, x.hash);
     }
     fn mapper(ch: crate_hash) -> str { ret ch.hash; }
-    ret vec::map(mapper, sorted);
+    ret vec::map(sorted, mapper);
 }
 // Local Variables:
 // mode: rust
