@@ -505,7 +505,7 @@ tag item_ {
              node_id /* dtor id */,
              [ty_param],
              node_id /* ctor id */);
-    item_impl(@path /* iface */, @ty /* self */, [@method]);
+    item_impl([ty_param], @ty /* self */, [@method]);
 }
 
 type native_item =

@@ -1859,14 +1859,14 @@ fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
 }
 
 fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.get_last_lo_pos(), ty = parse_ty(p, false);
-    expect(p, token::COLON);
-    let path = parse_path(p), meths = [];
+    let lo = p.get_last_lo_pos(), ident = parse_ident(p),
+        tps = parse_ty_params(p);
+    expect_word(p, "for");
+    let ty = parse_ty(p, false), meths = [];
     expect(p, token::LBRACE);
     while !eat(p, token::RBRACE) { meths += [parse_method(p)]; }
-    ret mk_item(p, lo, p.get_last_hi_pos(),
-                path.node.idents[vec::len(path.node.idents) - 1u],
-                ast::item_impl(path, ty, meths), attrs);
+    ret mk_item(p, lo, p.get_last_hi_pos(), ident,
+                ast::item_impl(tps, ty, meths), attrs);
 }
 
 fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {

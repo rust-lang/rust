@@ -347,12 +347,6 @@ fn print_native_item(s: ps, item: @ast::native_item) {
         end(s); // end the outer ibox
 
       }
-
-
-
-
-
-
       ast::native_item_fn(decl, typarams) {
         print_fn(s, decl, ast::proto_bare, item.ident, typarams,
                  decl.constraints);
@@ -483,11 +477,14 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_impl(path, ty, methods) {
+      ast::item_impl(tps, ty, methods) {
         head(s, "impl");
+        word(s.s, item.ident);
+        print_type_params(s, tps);
+        nbsp(s);
+        word_nbsp(s, "for");
         print_type(s, ty);
-        word_space(s, ":");
-        print_path(s, path, false);
+        space(s.s);
         bopen(s);
         for meth in methods {
             hardbreak_if_not_bol(s);
