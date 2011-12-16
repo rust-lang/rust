@@ -962,8 +962,7 @@ mod writeback {
                                   typ) {
           fix_ok(new_type) { ret some(new_type); }
           fix_err(vid) {
-            fcx.ccx.tcx.sess.span_err(sp,
-                                      "cannot determine a type \
+            fcx.ccx.tcx.sess.span_err(sp, "cannot determine a type \
                                            for this expression");
             ret none;
           }
@@ -1459,6 +1458,42 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr) -> bool {
 }
 fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
     ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
+}
+
+// FIXME[impl] notice/resolve conflicts
+fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
+                 name: ast::ident, ty: ty::t)
+    -> option::t<{method: @ast::method, ids: [int]}> {
+    let result = none;
+    std::list::iter(isc) {|impls|
+        for im in *impls {
+            alt im.node {
+              ast::item_impl(tps, slf, mthds) {
+                let self_ty = ast_ty_to_ty_crate(fcx.ccx, slf);
+                let tp_count = vec::len(tps);
+                let {ids, ty: self_ty} = if tp_count > 0u {
+                    bind_params_in_type(ast_util::dummy_sp(), fcx.ccx.tcx,
+                                        bind next_ty_var_id(fcx), self_ty,
+                                        tp_count)
+                } else { {ids: [], ty: self_ty} };
+                // FIXME[impl] Don't unify in the current fcx, use
+                // scratch context
+                alt unify::unify(fcx, ty, self_ty) {
+                  ures_ok(_) {
+                    for m in mthds {
+                        if m.node.ident == name {
+                            result = some({method: m, ids: ids});
+                            ret;
+                        }
+                    }
+                  }
+                  _ {}
+                }
+              }
+            }
+        }
+    }
+    result
 }
 
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
@@ -2089,42 +2124,24 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
       }
       ast::expr_field(base, field) {
-        // FIXME proper type compare, notice conflicts
-        fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
-                         name: ast::ident, ty: ty::t)
-            -> option::t<@ast::method> {
-            let result = none;
-            std::list::iter(isc) {|impls|
-                for im in *impls {
-                    alt im.node {
-                      ast::item_impl(_, slf, mthds) {
-                        let self_ty = ast_ty_to_ty_crate(fcx.ccx, slf);
-                        alt unify::unify(fcx, ty, self_ty) {
-                          ures_ok(_) {}
-                          _ { cont; }
-                        }
-                        for m in mthds {
-                            if m.node.ident == name {
-                                result = some(m);
-                                ret;
-                            }
-                        }
-                      }
-                    }
-                }
-            }
-            result
-        }
-
         bot |= check_expr(fcx, base);
         let base_t = expr_ty(tcx, base);
         let iscope = fcx.ccx.impl_map.get(expr.id);
         alt lookup_method(fcx, iscope, field, base_t) {
-          some(method) {
-            let mt = ty_of_method(fcx.ccx.tcx, m_check, method);
+          some({method, ids}) {
+            let mt = ty_of_method(fcx.ccx.tcx, m_check, method), ids = ids;
             let fty = ty::mk_fn(fcx.ccx.tcx, mt.proto, mt.inputs,
                                 mt.output, mt.cf, mt.constrs);
-            write::ty_only_fixup(fcx, id, fty);
+            let tp_count = vec::len(method.node.tps);
+            if tp_count > 0u {
+                let b = bind_params_in_type(expr.span, tcx,
+                                            bind next_ty_var_id(fcx),
+                                            fty, tp_count);
+                ids += b.ids;
+                fty = b.ty;
+            }
+            let substs = vec::map({|id| ty::mk_var(tcx, id)}, ids);
+            write::ty_fixup(fcx, id, {substs: some(substs), ty: fty});
             fcx.ccx.method_map.insert(id, local_def(method.node.id));
           }
           _ {

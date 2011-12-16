@@ -751,10 +751,11 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               ast::item_obj(ob, ty_params, _) {
                 ret lookup_in_obj(name, ob, ty_params, ns, it.id);
               }
-              ast::item_impl(_, _, _) {
+              ast::item_impl(ty_params, _, _) {
                 if (name == "self" && ns == ns_value) {
                     ret some(ast::def_self(local_def(it.id)));
                 }
+                if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }
               }
               ast::item_tag(_, ty_params) {
                 if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }

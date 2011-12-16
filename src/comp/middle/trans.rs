@@ -4353,15 +4353,19 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
     // way.
     let arg_n = 2u;
     alt ty_self {
-      obj_self(tt) | impl_self(tt) { cx.llself = some({v: cx.llenv, t: tt}); }
-      no_self. {
-        let i = 0u;
-        for tp: ast::ty_param in ty_params {
+      obj_self(tt) | impl_self(tt) {
+        cx.llself = some({v: cx.llenv, t: tt});
+      }
+      no_self. {}
+    }
+    alt ty_self {
+      obj_self(_) {}
+      _ {
+        for tp in ty_params {
             let llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
             assert (llarg as int != 0);
             cx.lltydescs += [llarg];
             arg_n += 1u;
-            i += 1u;
         }
       }
     }
@@ -4659,14 +4663,14 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
 }
 
 fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
-              id: ast::node_id) {
+              id: ast::node_id, tps: [ast::ty_param]) {
     let sub_cx = extend_path(cx, name);
     for m in methods {
         alt cx.ccx.item_ids.find(m.node.id) {
           some(llfn) {
             trans_fn(extend_path(sub_cx, m.node.ident), m.span, m.node.meth,
                      llfn, impl_self(ty::node_id_to_monotype(cx.ccx.tcx, id)),
-                     [], m.node.id);
+                     tps + m.node.tps, m.node.id);
           }
         }
     }
@@ -4980,7 +4984,9 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
                  with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
-      ast::item_impl(_, _, ms) { trans_impl(cx, item.ident, ms, item.id); }
+      ast::item_impl(tps, _, ms) {
+        trans_impl(cx, item.ident, ms, item.id, tps);
+      }
       ast::item_res(dtor, dtor_id, tps, ctor_id) {
         trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
 
@@ -5304,11 +5310,11 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
             ccx.obj_methods.insert(m.node.id, ());
         }
       }
-      ast::item_impl(_, _, methods) {
+      ast::item_impl(tps, _, methods) {
         let name = ccx.names.next(i.ident);
         for m in methods {
             register_fn(ccx, i.span, pt + [name, m.node.ident],
-                        "impl_method", [], m.node.id);
+                        "impl_method", tps + m.node.tps, m.node.id);
         }
       }
       ast::item_res(_, dtor_id, tps, ctor_id) {

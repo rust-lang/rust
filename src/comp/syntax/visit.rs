@@ -101,15 +101,15 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       item_obj(ob, _, _) {
         for f: obj_field in ob.fields { v.visit_ty(f.ty, e, v); }
         for m: @method in ob.methods {
-            v.visit_fn(m.node.meth, [], m.span, some(m.node.ident), m.node.id,
-                       e, v);
+            v.visit_fn(m.node.meth, m.node.tps, m.span, some(m.node.ident),
+                       m.node.id, e, v);
         }
       }
       item_impl(_, ty, methods) {
         visit_ty(ty, e, v);
         for m in methods {
-            v.visit_fn(m.node.meth, [], m.span, some(m.node.ident), m.node.id,
-                       e, v);
+            v.visit_fn(m.node.meth, m.node.tps, m.span, some(m.node.ident),
+                       m.node.id, e, v);
         }
       }
     }
@@ -321,8 +321,8 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
           some(ex) { v.visit_expr(ex, e, v); }
         }
         for m: @method in anon_obj.methods {
-            v.visit_fn(m.node.meth, [], m.span, some(m.node.ident), m.node.id,
-                       e, v);
+            v.visit_fn(m.node.meth, m.node.tps, m.span, some(m.node.ident),
+                       m.node.id, e, v);
         }
       }
       expr_mac(mac) { visit_mac(mac, e, v); }

@@ -246,7 +246,8 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
 }
 
 fn noop_fold_method(m: method_, fld: ast_fold) -> method_ {
-    ret {ident: fld.fold_ident(m.ident), meth: fld.fold_fn(m.meth), id: m.id};
+    ret {ident: fld.fold_ident(m.ident), meth: fld.fold_fn(m.meth)
+         with m};
 }
 
 

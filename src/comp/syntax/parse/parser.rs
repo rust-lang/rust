@@ -854,7 +854,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         while p.peek() != token::RBRACE {
             if eat_word(p, "with") {
                 inner_obj = some(parse_expr(p));
-            } else { meths += [parse_method(p)]; }
+            } else { meths += [parse_method(p, false)]; }
         }
         hi = p.get_hi_pos();
         expect(p, token::RBRACE);
@@ -1832,12 +1832,13 @@ fn parse_anon_obj_field(p: parser) -> ast::anon_obj_field {
     ret {mut: mut, ty: ty, expr: expr, ident: ident, id: p.get_id()};
 }
 
-fn parse_method(p: parser) -> @ast::method {
+fn parse_method(p: parser, allow_tps: bool) -> @ast::method {
     let lo = p.get_lo_pos();
     let proto = parse_method_proto(p);
     let ident = parse_value_ident(p);
+    let tps = allow_tps ? parse_ty_params(p) : [];
     let f = parse_fn(p, proto, ast::impure_fn, ast::il_normal);
-    let meth = {ident: ident, meth: f, id: p.get_id()};
+    let meth = {ident: ident, meth: f, id: p.get_id(), tps: tps};
     ret @spanned(lo, f.body.span.hi, meth);
 }
 
@@ -1850,7 +1851,7 @@ fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
                   parse_obj_field, p);
     let meths: [@ast::method] = [];
     expect(p, token::LBRACE);
-    while p.peek() != token::RBRACE { meths += [parse_method(p)]; }
+    while p.peek() != token::RBRACE { meths += [parse_method(p, false)]; }
     let hi = p.get_hi_pos();
     expect(p, token::RBRACE);
     let ob: ast::_obj = {fields: fields.node, methods: meths};
@@ -1864,7 +1865,7 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     expect_word(p, "for");
     let ty = parse_ty(p, false), meths = [];
     expect(p, token::LBRACE);
-    while !eat(p, token::RBRACE) { meths += [parse_method(p)]; }
+    while !eat(p, token::RBRACE) { meths += [parse_method(p, true)]; }
     ret mk_item(p, lo, p.get_last_hi_pos(), ident,
                 ast::item_impl(tps, ty, meths), attrs);
 }

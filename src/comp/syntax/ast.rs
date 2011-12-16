@@ -423,7 +423,7 @@ tag ret_style {
 
 type _fn = {decl: fn_decl, proto: proto, body: blk};
 
-type method_ = {ident: ident, meth: _fn, id: node_id};
+type method_ = {ident: ident, meth: _fn, id: node_id, tps: [ty_param]};
 
 type method = spanned<method_>;
 
