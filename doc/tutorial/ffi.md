@@ -189,7 +189,7 @@ microsecond-resolution timer.
     use std;
     type timeval = {mutable tv_sec: u32,
                     mutable tv_usec: u32};
-    #[link_name = ""]
+    #[nolink]
     native mod libc {
         fn gettimeofday(tv: *timeval, tz: *()) -> i32;
     }
@@ -199,7 +199,7 @@ microsecond-resolution timer.
         ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
     }
 
-The `#[link_name = ""]` sets the name of the native module to the
+The `#[nolink]` sets the name of the native module to the
 empty string to prevent the rust compiler from trying to link it.
 The standard C library is already linked with Rust programs.
 

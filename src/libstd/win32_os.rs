@@ -2,7 +2,8 @@ import core::option;
 import ctypes::*;
 
 #[abi = "cdecl"]
-#[link_name = ""]
+#[link_name = ""]               // FIXME remove after #[nolink] is snapshotted
+#[nolink]
 native mod libc {
     fn read(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;
     fn write(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;

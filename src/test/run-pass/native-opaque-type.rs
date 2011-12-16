@@ -1,7 +1,7 @@
 
 
 #[abi = "cdecl"]
-#[link_name = ""]
+#[nolink]
 native mod libc {
     type file_handle;
 }
