@@ -230,11 +230,11 @@ fn install_resolved(c: cargo, wd: str, key: str) {
 }
 
 fn install_uuid(c: cargo, wd: str, uuid: str) {
-    install_resolved(c, wd, uuid);
+    install_resolved(c, wd, "by-uuid/" + uuid);
 }
 
 fn install_named(c: cargo, wd: str, name: str) {
-    install_resolved(c, wd, name);
+    install_resolved(c, wd, "by-name/" + name);
 }
 
 fn cmd_install(c: cargo, argv: [str]) {
