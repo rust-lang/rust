@@ -1701,10 +1701,11 @@ fn find_impls_in_item(i: @ast::item, &impls: [@_impl],
            alt ck_exports { some(m) { is_exported(i.ident, m) } _ { true } } {
             impls += [@{did: local_def(i.id),
                         ident: i.ident,
-                        methods: vec::map({|m| @{did: local_def(m.node.id),
-                                                 n_tps: vec::len(m.node.tps),
-                                                 ident: m.node.ident}},
-                                          mthds)}];
+                        methods: vec::map(mthds, {|m|
+                            @{did: local_def(m.node.id),
+                              n_tps: vec::len(m.node.tps),
+                              ident: m.node.ident}
+                        })}];
         }
       }
       _ {}
