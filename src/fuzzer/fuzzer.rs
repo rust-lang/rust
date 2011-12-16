@@ -23,7 +23,7 @@ fn contains(haystack: str, needle: str) -> bool {
 fn find_rust_files(&files: [str], path: str) {
     if str::ends_with(path, ".rs") {
         files += [path];
-    } else if fs::file_is_dir(path)
+    } else if fs::path_is_dir(path)
         && !contains(path, "compile-fail")
         && !contains(path, "build") {
         for p in fs::list_dir(path) {

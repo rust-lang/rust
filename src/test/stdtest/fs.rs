@@ -26,9 +26,15 @@ fn list_dir() {
 }
 
 #[test]
-fn file_is_dir() {
-    assert (fs::file_is_dir("."));
-    assert (!fs::file_is_dir("test/stdtest/fs.rs"));
+fn path_is_dir() {
+    assert (fs::path_is_dir("."));
+    assert (!fs::path_is_dir("test/stdtest/fs.rs"));
+}
+
+#[test]
+fn path_exists() {
+    assert (fs::path_exists("."));
+    assert (!fs::path_exists("test/nonexistent-bogus-path"));
 }
 
 fn ps() -> str {
