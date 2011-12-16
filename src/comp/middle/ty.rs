@@ -2721,7 +2721,7 @@ fn def_has_ty_params(def: ast::def) -> bool {
 
 
 // Tag information
-type variant_info = {args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
+type variant_info = @{args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
 
 fn tag_variants(cx: ctxt, id: ast::def_id) -> @mutable [variant_info] {
     if ast::local_crate != id.crate {
@@ -2752,9 +2752,9 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> @mutable [variant_info] {
                 }
                 let did = variant.node.id;
                 *result +=
-                    [{args: arg_tys,
-                      ctor_ty: ctor_ty,
-                      id: ast_util::local_def(did)}];
+                    [@{args: arg_tys,
+                       ctor_ty: ctor_ty,
+                       id: ast_util::local_def(did)}];
             }
             smallintmap::insert(*cx.tag_var_cache, id.node as uint, result);
             ret result;

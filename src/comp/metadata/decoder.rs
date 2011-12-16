@@ -244,7 +244,7 @@ fn get_tag_variants(_data: @[u8], def: ast::def_id, tcx: ty::ctxt,
 
           }
         }
-        infos += [{args: arg_tys, ctor_ty: ctor_ty, id: did}];
+        infos += [@{args: arg_tys, ctor_ty: ctor_ty, id: did}];
     }
     ret infos;
 }
