@@ -93,6 +93,8 @@ tidy:
               $(STDLIB_INPUTS) \
               $(COMPILETEST_CRATE) \
               $(COMPILETEST_INPUTS) \
+              $(CARGO_CRATE) \
+              $(CARGO_INPUTS) \
 		  | xargs -n 10 python $(S)src/etc/tidy.py
 		$(Q)echo \
               $(ALL_TEST_INPUTS) \
