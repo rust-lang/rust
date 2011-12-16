@@ -19,7 +19,8 @@ import option::{some, none, is_none, is_some};
 import syntax::print::pprust::*;
 
 export resolve_crate;
-export def_map, ext_map, exp_map, impl_map, iscopes;
+export def_map, ext_map, exp_map, impl_map;
+export _impl, iscopes, method_info;
 
 // Resolving happens in two passes. The first pass collects defids of all
 // (internal) imports and modules, so that they can be looked up when needed,
@@ -47,7 +48,7 @@ tag import_state {
     resolved(option::t<def>, /* value */
              option::t<def>, /* type */
              option::t<def>, /* module */
-             @[@ast::item],
+             @[@_impl], /* impls */
              /* used for reporting unused import warning */
              ast::ident, codemap::span);
 }
@@ -106,6 +107,7 @@ type def_map = hashmap<node_id, def>;
 type ext_map = hashmap<def_id, [ident]>;
 type exp_map = hashmap<str, def>;
 type impl_map = hashmap<node_id, iscopes>;
+type impl_cache = hashmap<def_id, @[@_impl]>;
 
 type env =
     {cstore: cstore::cstore,
@@ -117,6 +119,7 @@ type env =
      block_map: hashmap<ast::node_id, [glob_imp_def]>,
      ext_map: ext_map,
      impl_map: impl_map,
+     impl_cache: impl_cache,
      ext_cache: ext_hash,
      used_imports: {mutable track: bool,
                     mutable data: [ast::node_id]},
@@ -144,6 +147,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           block_map: new_int_hash(),
           ext_map: new_def_hash(),
           impl_map: new_int_hash(),
+          impl_cache: new_def_hash(),
           ext_cache: new_ext_hash(),
           used_imports: {mutable track: false, mutable data:  []},
           mutable reported: [],
@@ -489,7 +493,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                   ids: [ast::ident], sp: codemap::span, sc: scopes) {
     fn register(e: env, id: node_id, cx: ctxt, sp: codemap::span,
                 name: ast::ident, lookup: block(namespace) -> option::t<def>,
-                impls: [@ast::item]) {
+                impls: [@_impl]) {
         let val = lookup(ns_value), typ = lookup(ns_type),
             md = lookup(ns_module);
         if is_none(val) && is_none(typ) && is_none(md) &&
@@ -1058,7 +1062,7 @@ fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
         if !is_none(cached) { ret cached; }
         let path = [name];
         if defid.node != ast::crate_node_id {
-            path = e.ext_map.get(defid) + path; 
+            path = e.ext_map.get(defid) + path;
         }
         let fnd = lookup_external(e, defid.crate, path, ns);
         if !is_none(fnd) {
@@ -1631,6 +1635,10 @@ fn check_exports(e: @env) {
 
 // Impl resolution
 
+type method_info = {did: def_id, n_tps: uint, ident: ast::ident};
+type _impl = {did: def_id, ident: ast::ident, methods: [@method_info]};
+type iscopes = list<@[@_impl]>;
+
 fn resolve_impls(e: @env, c: @ast::crate) {
     visit::visit_crate(*c, nil, visit::mk_vt(@{
         visit_block: bind visit_block_with_impl_scope(e, _, _, _),
@@ -1641,21 +1649,25 @@ fn resolve_impls(e: @env, c: @ast::crate) {
 }
 
 fn find_impls_in_view_item(e: env, vi: @ast::view_item,
-                           &impls: [@ast::item], sc: iscopes) {
+                           &impls: [@_impl], sc: iscopes) {
     alt vi.node {
-      ast::view_item_import(_, pt, id) {
+      ast::view_item_import(name, pt, id) {
         let found = [];
         if vec::len(*pt) == 1u {
             list::iter(sc) {|level|
                 if vec::len(found) > 0u { ret; }
                 for imp in *level {
-                    if imp.ident == pt[0] { found += [imp]; }
+                    if imp.ident == pt[0] {
+                        found += [@{ident: name with *imp}];
+                    }
                 }
                 if vec::len(found) > 0u { impls += found; }
             }
         } else {
             alt e.imports.get(id) {
-              resolved(_, _, _, is, _, _) { impls += *is; }
+              resolved(_, _, _, is, _, _) {
+                for i in *is { impls += [@{ident: name with *i}]; }
+              }
             }
         }
       }
@@ -1680,37 +1692,50 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
     }
 }
 
-fn find_impls_in_item(i: @ast::item, &impls: [@ast::item],
+fn find_impls_in_item(i: @ast::item, &impls: [@_impl],
                       name: option::t<ident>,
                       ck_exports: option::t<ast::_mod>) {
     alt i.node {
-      ast::item_impl(_, _, _) {
+      ast::item_impl(_, _, mthds) {
         if alt name { some(n) { n == i.ident } _ { true } } &&
            alt ck_exports { some(m) { is_exported(i.ident, m) } _ { true } } {
-            impls += [i];
+            impls += [@{did: local_def(i.id),
+                        ident: i.ident,
+                        methods: vec::map({|m| @{did: local_def(m.node.id),
+                                                 n_tps: vec::len(m.node.tps),
+                                                 ident: m.node.ident}},
+                                          mthds)}];
         }
       }
       _ {}
     }
 }
 
-// FIXME[impl] external importing of impls
-fn find_impls_in_mod(e: env, m: def, &impls: [@ast::item],
+// FIXME[impl] we should probably cache this
+fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
                      name: option::t<ident>) {
     alt m {
       ast::def_mod(defid) {
-        if defid.crate == ast::local_crate {
-            let md = option::get(e.mod_map.get(defid.node).m);
-            for i in md.items {
-                find_impls_in_item(i, impls, name, some(md));
+        alt e.impl_cache.find(defid) {
+          some(v) { impls += *v; }
+          none. {
+            let found = [];
+            if defid.crate == ast::local_crate {
+                let md = option::get(e.mod_map.get(defid.node).m);
+                for i in md.items {
+                    find_impls_in_item(i, found, name, some(md));
+                }
+            } else {
+                found = csearch::get_impls_for_mod(e.cstore, defid, name);
             }
+            impls += found;
+            e.impl_cache.insert(defid, @found);
+          }
         }
       }
       _ {}
     }
 }
-
-type iscopes = list<@[@ast::item]>;
 
 fn visit_block_with_impl_scope(e: @env, b: ast::blk, sc: iscopes,
                                v: vt<iscopes>) {

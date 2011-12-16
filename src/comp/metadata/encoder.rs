@@ -249,6 +249,26 @@ fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
     }
 }
 
+fn encode_info_for_mod(ebml_w: ebml::writer, md: _mod,
+                       id: node_id) {
+    ebml::start_tag(ebml_w, tag_items_data_item);
+    encode_def_id(ebml_w, local_def(id));
+    encode_family(ebml_w, 'm' as u8);
+    for i in md.items {
+        alt i.node {
+          item_impl(_, _, _) {
+            if ast_util::is_exported(i.ident, md) {
+                ebml::start_tag(ebml_w, tag_mod_impl);
+                ebml_w.writer.write(str::bytes(def_to_str(local_def(i.id))));
+                ebml::end_tag(ebml_w);
+            }
+          }
+          _ {}
+        }
+    }
+    ebml::end_tag(ebml_w);
+}
+
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                         &index: [entry<int>]) {
     alt item.node {
@@ -280,20 +300,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml::end_tag(ebml_w);
       }
       item_mod(m) {
-        ebml::start_tag(ebml_w, tag_items_data_item);
-        encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'm' as u8);
-        for i in m.items {
-            alt i.node {
-              item_impl(_, _, _) {
-                ebml::start_tag(ebml_w, tag_mod_impl);
-                ebml_w.writer.write(str::bytes(def_to_str(local_def(i.id))));
-                ebml::end_tag(ebml_w);
-              }
-              _ {}
-            }
-        }
-        ebml::end_tag(ebml_w);
+        encode_info_for_mod(ebml_w, m, item.id);
       }
       item_native_mod(_) {
         ebml::start_tag(ebml_w, tag_items_data_item);
@@ -363,9 +370,10 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_impl(tps, _, methods) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'I' as u8);
+        encode_family(ebml_w, 'i' as u8);
         encode_type_param_kinds(ebml_w, tps);
         encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_name(ebml_w, item.ident);
         for m in methods {
             ebml::start_tag(ebml_w, tag_impl_method);
             ebml_w.writer.write(str::bytes(def_to_str(local_def(m.node.id))));
@@ -377,10 +385,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             index += [{val: m.node.id, pos: ebml_w.writer.tell()}];
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(m.node.id));
-            encode_family(ebml_w, 'i' as u8);
+            encode_family(ebml_w, 'f' as u8);
+            encode_inlineness(ebml_w, 'n' as u8);
             encode_type_param_kinds(ebml_w, tps + m.node.tps);
             encode_type(ecx, ebml_w,
                         node_id_to_monotype(ecx.ccx.tcx, m.node.id));
+            encode_name(ebml_w, m.node.ident);
             encode_symbol(ecx, ebml_w, m.node.id);
             ebml::end_tag(ebml_w);
         }
@@ -415,10 +425,12 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
     ebml::end_tag(ebml_w);
 }
 
-fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer) ->
-   [entry<int>] {
+fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
+                         crate_mod: _mod) -> [entry<int>] {
     let index: [entry<int>] = [];
     ebml::start_tag(ebml_w, tag_items_data);
+    index += [{val: crate_node_id, pos: ebml_w.writer.tell()}];
+    encode_info_for_mod(ebml_w, crate_mod, crate_node_id);
     ecx.ccx.ast_map.items {|key, val|
         alt val {
           middle::ast_map::node_item(i) {
@@ -658,7 +670,7 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
     // Encode and index the items.
 
     ebml::start_tag(ebml_w, tag_items);
-    let items_index = encode_info_for_items(ecx, ebml_w);
+    let items_index = encode_info_for_items(ecx, ebml_w, crate.node.module);
     let items_buckets = create_index(items_index, hash_node_id);
     encode_index(ebml_w, items_buckets, write_int);
     ebml::end_tag(ebml_w);

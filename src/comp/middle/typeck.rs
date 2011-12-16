@@ -1463,33 +1463,36 @@ fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
 // FIXME[impl] notice/resolve conflicts
 fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                  name: ast::ident, ty: ty::t)
-    -> option::t<{method: @ast::method, ids: [int]}> {
+    -> option::t<{method: @resolve::method_info, ids: [int]}> {
     let result = none;
     std::list::iter(isc) {|impls|
-        for im in *impls {
-            alt im.node {
-              ast::item_impl(tps, slf, mthds) {
-                let self_ty = ast_ty_to_ty_crate(fcx.ccx, slf);
-                let tp_count = vec::len(tps);
-                let {ids, ty: self_ty} = if tp_count > 0u {
-                    bind_params_in_type(ast_util::dummy_sp(), fcx.ccx.tcx,
-                                        bind next_ty_var_id(fcx), self_ty,
-                                        tp_count)
-                } else { {ids: [], ty: self_ty} };
-                // FIXME[impl] Don't unify in the current fcx, use
-                // scratch context
-                alt unify::unify(fcx, ty, self_ty) {
-                  ures_ok(_) {
-                    for m in mthds {
-                        if m.node.ident == name {
-                            result = some({method: m, ids: ids});
-                            ret;
-                        }
-                    }
+        for @{did, methods, _} in *impls {
+            let (n_tps, self_ty) = if did.crate == ast::local_crate {
+                alt fcx.ccx.tcx.items.get(did.node) {
+                  ast_map::node_item(@{node: ast::item_impl(tps, st, _), _}) {
+                    (vec::len(tps), ast_ty_to_ty_crate(fcx.ccx, st))
                   }
-                  _ {}
+                }
+            } else {
+                let tpt = csearch::get_type(fcx.ccx.tcx, did);
+                (vec::len(tpt.kinds), tpt.ty)
+            };
+            let {ids, ty: self_ty} = if n_tps > 0u {
+                bind_params_in_type(ast_util::dummy_sp(), fcx.ccx.tcx,
+                                    bind next_ty_var_id(fcx), self_ty, n_tps)
+            } else { {ids: [], ty: self_ty} };
+            // FIXME[impl] Don't unify in the current fcx, use
+            // scratch context
+            alt unify::unify(fcx, ty, self_ty) {
+              ures_ok(_) {
+                for m in methods {
+                    if m.ident == name {
+                        result = some({method: m, ids: ids});
+                        ret;
+                    }
                 }
               }
+              _ {}
             }
         }
     }
@@ -2129,20 +2132,26 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let iscope = fcx.ccx.impl_map.get(expr.id);
         alt lookup_method(fcx, iscope, field, base_t) {
           some({method, ids}) {
-            let mt = ty_of_method(fcx.ccx.tcx, m_check, method), ids = ids;
-            let fty = ty::mk_fn(fcx.ccx.tcx, mt.proto, mt.inputs,
-                                mt.output, mt.cf, mt.constrs);
-            let tp_count = vec::len(method.node.tps);
-            if tp_count > 0u {
+            let fty = if method.did.crate == ast::local_crate {
+                alt tcx.items.get(method.did.node) {
+                  ast_map::node_method(m) {
+                    let mt = ty_of_method(tcx, m_check, m);
+                    ty::mk_fn(tcx, mt.proto, mt.inputs,
+                              mt.output, mt.cf, mt.constrs)
+                  }
+                }
+            } else { csearch::get_type(tcx, method.did).ty };
+            let ids = ids;
+            if method.n_tps > 0u {
                 let b = bind_params_in_type(expr.span, tcx,
                                             bind next_ty_var_id(fcx),
-                                            fty, tp_count);
+                                            fty, method.n_tps);
                 ids += b.ids;
                 fty = b.ty;
             }
             let substs = vec::map(ids, {|id| ty::mk_var(tcx, id)});
             write::ty_fixup(fcx, id, {substs: some(substs), ty: fty});
-            fcx.ccx.method_map.insert(id, local_def(method.node.id));
+            fcx.ccx.method_map.insert(id, method.did);
           }
           _ {
             base_t = do_autoderef(fcx, expr.span, base_t);

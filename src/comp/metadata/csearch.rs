@@ -2,13 +2,15 @@
 
 import syntax::ast;
 import middle::ty;
-import option;
+import option::{some, none};
 import driver::session;
 
 export get_symbol;
 export get_type_param_count;
 export lookup_defs;
 export get_tag_variants;
+export get_impls_for_mod;
+export get_impl_methods;
 export get_type;
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
@@ -56,15 +58,38 @@ fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
     let cstore = tcx.sess.get_cstore();
     let cnum = def.crate;
     let cdata = cstore::get_crate_data(cstore, cnum).data;
-    let resolver = bind translate_def_id(tcx.sess, cnum, _);
+    let resolver = bind translate_def_id(cstore, cnum, _);
     ret decoder::get_tag_variants(cdata, def, tcx, resolver)
+}
+
+fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
+                     name: option::t<ast::ident>)
+    -> [@middle::resolve::_impl] {
+    let cdata = cstore::get_crate_data(cstore, def.crate).data;
+    let result = [];
+    for did in decoder::get_impls_for_mod(cdata, def.node, def.crate) {
+        let nm = decoder::lookup_item_name(cdata, did.node);
+        if alt name { some(n) { n == nm } none. { true } } {
+            result += [@{did: did,
+                         ident: nm,
+                         methods: decoder::lookup_impl_methods(
+                             cdata, did.node, did.crate)}];
+        }
+    }
+    result
+}
+
+fn get_impl_methods(cstore: cstore::cstore, def: ast::def_id)
+    -> [@middle::resolve::method_info] {
+    let cdata = cstore::get_crate_data(cstore, def.crate).data;
+    decoder::lookup_impl_methods(cdata, def.node, def.crate)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_kinds_and_ty {
     let cstore = tcx.sess.get_cstore();
     let cnum = def.crate;
     let cdata = cstore::get_crate_data(cstore, cnum).data;
-    let resolver = bind translate_def_id(tcx.sess, cnum, _);
+    let resolver = bind translate_def_id(cstore, cnum, _);
     decoder::get_type(cdata, def, tcx, resolver)
 }
 
@@ -73,7 +98,7 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_kinds_and_ty {
 // external crates - if those types further refer to types in other crates
 // then we must translate the crate number from that encoded in the external
 // crate to the correct local crate number.
-fn translate_def_id(sess: session::session, searched_crate: ast::crate_num,
+fn translate_def_id(cstore: cstore::cstore, searched_crate: ast::crate_num,
                     def_id: ast::def_id) -> ast::def_id {
 
     let ext_cnum = def_id.crate;
@@ -82,13 +107,12 @@ fn translate_def_id(sess: session::session, searched_crate: ast::crate_num,
     assert (searched_crate != ast::local_crate);
     assert (ext_cnum != ast::local_crate);
 
-    let cstore = sess.get_cstore();
     let cmeta = cstore::get_crate_data(cstore, searched_crate);
 
     let local_cnum =
         alt cmeta.cnum_map.find(ext_cnum) {
           option::some(n) { n }
-          option::none. { sess.bug("didn't find a crate in the cnum_map") }
+          option::none. { fail "didn't find a crate in the cnum_map"; }
         };
 
     ret {crate: local_cnum, node: node_id};

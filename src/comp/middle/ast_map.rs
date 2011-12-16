@@ -8,6 +8,7 @@ tag ast_node {
     node_item(@item);
     node_obj_ctor(@item);
     node_native_item(@native_item);
+    node_method(@method);
     node_expr(@expr);
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
@@ -63,6 +64,9 @@ fn map_item(cx: ctx, i: @item) {
     cx.map.insert(i.id, node_item(i));
     alt i.node {
       item_obj(_, _, ctor_id) { cx.map.insert(ctor_id, node_obj_ctor(i)); }
+      item_impl(_, _, ms) {
+        for m in ms { cx.map.insert(m.node.id, node_method(m)); }
+      }
       _ { }
     }
 }

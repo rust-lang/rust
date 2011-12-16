@@ -497,7 +497,7 @@ fn build_session(sopts: @session::options) -> session::session {
         sopts.target_triple,
         sopts.addl_lib_search_paths);
     ret session::session(target_cfg, sopts, cstore,
-                         @{cm: codemap::new_codemap(), mutable next_id: 0},
+                         @{cm: codemap::new_codemap(), mutable next_id: 1},
                          none, 0u, filesearch, false);
 }
 
