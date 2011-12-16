@@ -18,6 +18,7 @@ export fsync_fd;
 // FIXME Refactor into unix_os module or some such. Doesn't
 // seem to work right now.
 
+#[link_name = ""] // FIXME: Remove after snapshotting
 #[nolink]
 #[abi = "cdecl"]
 native mod libc {
