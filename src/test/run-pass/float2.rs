@@ -7,7 +7,7 @@ fn main() {
     let d = 1E6;
     let e = 3.0f32;
     let f = 5.9f64;
-    let g = 1.e6f32;
+    let g = 1e6f32;
     let h = 1.0e7f64;
     let i = 1.0E7f64;
     let j = 3.1e+9;

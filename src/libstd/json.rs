@@ -171,11 +171,11 @@ fn from_str_float(s: str) -> (option::t<json>, str) {
     let pos = 0u;
     let len = str::byte_len(s);
     let res = 0f;
-    let neg = 1.f;
+    let neg = 1f;
 
     alt str::char_at(s, 0u) {
         '-' {
-            neg = -1.f;
+            neg = -1f;
             pos = 1u;
         }
         '+' {
@@ -205,7 +205,7 @@ fn from_str_float(s: str) -> (option::t<json>, str) {
         ret (some(num(neg * res)), str::char_slice(s, pos, str::char_len(s)));
     }
 
-    let dec = 1.f;
+    let dec = 1f;
     while (pos < len) {
         let opos = pos;
         let chr = str::char_range_at(s, pos);
@@ -213,7 +213,7 @@ fn from_str_float(s: str) -> (option::t<json>, str) {
         pos = chr.next;
         alt c {
             '0' to '9' {
-                dec /= 10.f;
+                dec /= 10f;
                 res += (((c as int) - ('0' as int)) as float) * dec;
             }
             _ { ret (some(num(neg * res)),

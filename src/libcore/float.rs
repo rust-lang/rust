@@ -173,14 +173,14 @@ fn from_str(num: str) -> float {
    }
 
    if c == '.' {//Examine decimal part
-      let decimal = 1.f;
+      let decimal = 1f;
       while(pos < len) {
          let char_range = str::char_range_at(num, pos);
          c = char_range.ch;
          pos = char_range.next;
          alt c {
             '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9'  {
-                 decimal /= 10.f;
+                 decimal /= 10f;
                  total += (((c as int) - ('0' as int)) as float)*decimal;
              }
              'e' | 'E' {

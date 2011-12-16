@@ -240,7 +240,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         }
     }
     let is_float = false;
-    if rdr.curr() == '.' {
+    if rdr.curr() == '.' && !(is_alpha(rdr.next()) || rdr.next() == '_') {
         is_float = true;
         rdr.bump();
         let dec_part = scan_digits(rdr, 10u);
