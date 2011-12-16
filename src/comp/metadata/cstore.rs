@@ -90,7 +90,7 @@ fn get_used_crate_files(cstore: cstore) -> [str] {
 }
 
 fn add_used_library(cstore: cstore, lib: str) -> bool {
-    if lib == "" { ret false; }
+    assert lib != "";
 
     if vec::member(lib, p(cstore).used_libraries) { ret false; }
     p(cstore).used_libraries += [lib];
