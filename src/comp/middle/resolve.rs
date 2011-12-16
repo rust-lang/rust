@@ -2,7 +2,7 @@
 import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
-import syntax::ast_util::{local_def, def_id_of_def};
+import syntax::ast_util::{local_def, def_id_of_def, is_exported};
 
 import metadata::{csearch, cstore};
 import driver::session::session;
@@ -494,7 +494,8 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                 impls: [@ast::item]) {
         let val = lookup(ns_value), typ = lookup(ns_type),
             md = lookup(ns_module);
-        if is_none(val) && is_none(typ) && is_none(md) {
+        if is_none(val) && is_none(typ) && is_none(md) &&
+           vec::len(impls) == 0u {
             unresolved_err(e, cx, sp, name, "import");
         } else {
             e.imports.insert(id, resolved(val, typ, md, @impls, name, sp));
@@ -1112,7 +1113,7 @@ fn lookup_in_local_native_mod(e: env, node_id: node_id, sp: span, id: ident,
 fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
                        ns: namespace, dr: dir) -> option::t<def> {
     let info = e.mod_map.get(node_id);
-    if dr == outside && !ast_util::is_exported(id, option::get(info.m)) {
+    if dr == outside && !is_exported(id, option::get(info.m)) {
         // if we're in a native mod, then dr==inside, so info.m is some _mod
         ret none::<def>; // name is not visible
     }
@@ -1637,12 +1638,22 @@ fn resolve_impls(e: @env, c: @ast::crate) {
 }
 
 fn find_impls_in_view_item(e: env, vi: @ast::view_item,
-                           &impls: [@ast::item]) {
+                           &impls: [@ast::item], sc: iscopes) {
     alt vi.node {
-      ast::view_item_import(ident, _, id) {
-        // FIXME if single name, simply look in our own iscope
-        alt e.imports.get(id) {
-          resolved(_, _, _, is, _, _) { impls += *is; }
+      ast::view_item_import(_, pt, id) {
+        let found = [];
+        if vec::len(*pt) == 1u {
+            list::iter(sc) {|level|
+                if vec::len(found) > 0u { ret; }
+                for imp in *level {
+                    if imp.ident == pt[0] { found += [imp]; }
+                }
+                if vec::len(found) > 0u { impls += found; }
+            }
+        } else {
+            alt e.imports.get(id) {
+              resolved(_, _, _, is, _, _) { impls += *is; }
+            }
         }
       }
       ast::view_item_import_from(base, names, _) {
@@ -1667,11 +1678,12 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
 }
 
 fn find_impls_in_item(i: @ast::item, &impls: [@ast::item],
-                      name: option::t<ident>, _dir: dir) {
-    // FIXME check exports
+                      name: option::t<ident>,
+                      ck_exports: option::t<ast::_mod>) {
     alt i.node {
       ast::item_impl(_, _, _) {
-        if alt name { some(n) { n == i.ident } _ { true } } {
+        if alt name { some(n) { n == i.ident } _ { true } } &&
+           alt ck_exports { some(m) { is_exported(i.ident, m) } _ { true } } {
             impls += [i];
         }
       }
@@ -1679,14 +1691,15 @@ fn find_impls_in_item(i: @ast::item, &impls: [@ast::item],
     }
 }
 
+// FIXME[impl] external importing of impls
 fn find_impls_in_mod(e: env, m: def, &impls: [@ast::item],
                      name: option::t<ident>) {
     alt m {
       ast::def_mod(defid) {
-        // FIXME external importing of impls
         if defid.crate == ast::local_crate {
-            for i in option::get(e.mod_map.get(defid.node).m).items {
-                find_impls_in_item(i, impls, name, outside);
+            let md = option::get(e.mod_map.get(defid.node).m);
+            for i in md.items {
+                find_impls_in_item(i, impls, name, some(md));
             }
         }
       }
@@ -1699,11 +1712,13 @@ type iscopes = list<@[@ast::item]>;
 fn visit_block_with_impl_scope(e: @env, b: ast::blk, sc: iscopes,
                                v: vt<iscopes>) {
     let impls = [];
-    for vi in b.node.view_items { find_impls_in_view_item(*e, vi, impls); }
+    for vi in b.node.view_items {
+        find_impls_in_view_item(*e, vi, impls, sc);
+    }
     for st in b.node.stmts {
         alt st.node {
           ast::stmt_decl(@{node: ast::decl_item(i), _}, _) {
-            find_impls_in_item(i, impls, none, inside);
+            find_impls_in_item(i, impls, none, none);
           }
           _ {}
         }
@@ -1715,8 +1730,8 @@ fn visit_block_with_impl_scope(e: @env, b: ast::blk, sc: iscopes,
 fn visit_mod_with_impl_scope(e: @env, m: ast::_mod, s: span, sc: iscopes,
                              v: vt<iscopes>) {
     let impls = [];
-    for vi in m.view_items { find_impls_in_view_item(*e, vi, impls); }
-    for i in m.items { find_impls_in_item(i, impls, none, inside); }
+    for vi in m.view_items { find_impls_in_view_item(*e, vi, impls, sc); }
+    for i in m.items { find_impls_in_item(i, impls, none, none); }
     visit::visit_mod(m, s, vec::len(impls) > 0u ? cons(@impls, @sc) : sc, v);
 }
 
