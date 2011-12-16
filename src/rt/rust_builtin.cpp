@@ -319,12 +319,21 @@ rust_list_files(rust_str *path) {
 }
 
 extern "C" CDECL int
-rust_file_is_dir(char *path) {
+rust_path_is_dir(char *path) {
     struct stat buf;
     if (stat(path, &buf)) {
         return 0;
     }
     return S_ISDIR(buf.st_mode);
+}
+
+extern "C" CDECL int
+rust_path_exists(char *path) {
+    struct stat buf;
+    if (stat(path, &buf)) {
+        return 0;
+    }
+    return 1;
 }
 
 extern "C" CDECL FILE* rust_get_stdin() {return stdin;}

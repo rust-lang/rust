@@ -112,7 +112,7 @@ fn rest(s: str, start: uint) -> str {
 }
 
 fn need_dir(s: str) {
-    if fs::file_is_dir(s) { ret; }
+    if fs::path_is_dir(s) { ret; }
     if !fs::make_dir(s, 0x1c0i32) {
         fail #fmt["can't make_dir %s", s];
     }
