@@ -62,14 +62,19 @@ MORESTACK:
 #endif
 
 	// NB: This can be called with the fastcc convention so we
-	// have to preserve any argument registers we want to use
+	// have to preserve any argument registers
 
 	// NB: __morestack is called misaligned by 4 bytes, i.e.
 	// subl $4, %esp would get us to a normal alignment
 
+	subl $44,%esp
+
+	// Save fastcc arguments
+	movl %ecx, 28(%esp)
+	movl %edx, 24(%esp)
+
 	// FIXME (1226): main is compiled with the split-stack prologue,
 	// causing it to call __morestack, so we have to jump back out
-	subl $28,%esp
 	calll RUST_GET_TASK
 	testl %eax,%eax
 	jz .L$bail
@@ -88,13 +93,13 @@ MORESTACK:
 	// for the unwinder
 	leal 20(%ebp), %eax
 	movl %eax, -4(%ebp)
-	
+
 	// The arguments to rust_new_stack2
-	movl 40(%esp),%eax  // Size of stack arguments
+	movl 56(%esp),%eax  // Size of stack arguments
 	movl %eax,20(%esp)
-	leal 48(%esp),%eax // Address of stack arguments
+	leal 64(%esp),%eax // Address of stack arguments
 	movl %eax,16(%esp)
-	movl 36(%esp),%eax // The amount of stack needed
+	movl 52(%esp),%eax // The amount of stack needed
 	movl %eax,12(%esp)
 	movl $0, 8(%esp)   // Out pointer
 
@@ -111,11 +116,15 @@ MORESTACK:
 	movl %eax,(%esp)
 	call UPCALL_CALL_C
 
-	movl 32(%esp),%eax          // Grab the return pointer.
+	movl 48(%esp),%eax          // Grab the return pointer.
 	inc  %eax    // Skip past the ret instruction in the parent fn
 
+	// Restore fastcc arguments
+	movl 28(%esp), %ecx
+	movl 24(%esp), %edx
+
 	movl 8(%esp),%esp          // Switch stacks.
-	call *%eax             // Re-enter the function that called us.
+	call *%eax                 // Re-enter the function that called us.
 
 	// Now the function that called us has returned, so we need to delete the
 	// old stack space.
@@ -155,7 +164,7 @@ MORESTACK:
 	movl 32(%esp),%eax
 	inc %eax
 	
-	addl $28, %esp
+	addl $44, %esp
 	popl %ebp
 	addl $4+8,%esp
 	
