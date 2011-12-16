@@ -96,13 +96,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
         let recexpr = ast::expr_rec(astfields, option::none::<@ast::expr>);
         ret @{id: cx.next_id(), node: recexpr, span: sp};
     }
-    fn make_path_vec(cx: ext_ctxt, ident: ast::ident) -> [ast::ident] {
-        fn compiling_std(cx: ext_ctxt) -> bool {
-            ret str::find(cx.crate_file_name(), "std.rc") >= 0;
-        }
-        if compiling_std(cx) {
-            ret ["extfmt", "rt", ident];
-        } else { ret ["std", "extfmt", "rt", ident]; }
+    fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> [ast::ident] {
+        ret ["extfmt", "rt", ident];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span, ident: str) -> @ast::expr {
         let path = make_path_vec(cx, ident);
