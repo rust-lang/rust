@@ -242,7 +242,8 @@ fn load_source_packages(&c: cargo, &src: source) {
                         load_one_source_package(src, _p);
                     }
                     _ {
-                        warn("Malformed source json: " + src.name + " (non-dict pkg)");
+                        warn("Malformed source json: " + src.name +
+                             " (non-dict pkg)");
                     }
                 }
             }
