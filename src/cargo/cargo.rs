@@ -373,28 +373,6 @@ fn install_file(c: cargo, wd: str, path: str) {
     install_source(c, wd);
 }
 
-fn install_resolved(c: cargo, wd: str, key: str) {
-    fs::remove_dir(wd);
-    let u = "https://rust-package-index.appspot.com/pkg/" + key;
-    let p = run::program_output("curl", [u]);
-    if p.status != 0 {
-        fail #fmt["Fetch of %s failed: %s", u, p.err];
-    }
-    let j = json::from_str(p.out);
-    alt j {
-        some (json::dict(_j)) {
-            alt _j.find("install") {
-                some (json::string(g)) {
-                    log #fmt["Resolved: %s -> %s", key, g];
-                    cmd_install(c, ["cargo", "install", g]);
-                }
-                _ { fail #fmt["Bogus install: '%s'", p.out]; }
-            }
-        }
-        _ { fail #fmt["Bad json: '%s'", p.out]; }
-    }
-}
-
 fn install_package(c: cargo, wd: str, pkg: package) {
     info("Installing with " + pkg.method + " from " + pkg.url + "...");
     if pkg.method == "git" {
