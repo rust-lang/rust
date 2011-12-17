@@ -19,8 +19,8 @@
 // correctly. Strategically placed at entry to upcalls because they begin on
 // the rust stack and happen frequently enough to catch most stack changes,
 // including at the beginning of all landing pads.
-// FIXME: Only seems to work on linux
-#ifdef __linux__
+// FIXME: Enable this for windows
+#if defined __linux__ || defined __APPLE__
 extern "C" void
 check_stack_alignment() __attribute__ ((aligned (16)));
 #else
