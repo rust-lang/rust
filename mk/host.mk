@@ -68,6 +68,14 @@ $$(HLIB$(2)_H_$(4))/libstd.rlib: \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
+$$(HLIB$(2)_H_$(4))/librustc.rlib: \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/librustc.rlib \
+	$$(HLIB$(2)_H_$(4))/libcore.rlib \
+	$$(HLIB$(2)_H_$(4))/libstd.rlib \
+	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
 $$(HLIB$(2)_H_$(4))/$$(CFG_RUSTLLVM): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_RUSTLLVM)
 	@$$(call E, cp: $$@)

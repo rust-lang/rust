@@ -289,19 +289,31 @@ ifdef CFG_DISABLE_SHAREDSTD
     $$(HLIB$(1)_H_$(3))/libcore.rlib
   TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/libcore.rlib
+
   HSTDLIB_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/libstd.rlib
   TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
+
+  HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/librustc.rlib
+  TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/librustc.rlib
 else
   HCORELIB_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/$(CFG_CORELIB)
   TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB)
+
   HSTDLIB_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/$(CFG_STDLIB)
   TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB)
+
+  HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTC)
+  TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC)
 endif
 
 # Preqrequisites for using the stageN compiler
@@ -311,6 +323,7 @@ HSREQ$(1)_H_$(3) = \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLLVM) \
 	$$(HCORELIB_DEFAULT$(1)_H_$(3)) \
 	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
+	$$(HLIBRUSTC_DEFAULT$(1)_H_$(3)) \
 	$$(MKFILE_DEPS)
 
 # Prerequisites for using the stageN compiler to build target artifacts
@@ -324,7 +337,8 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)  \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed
