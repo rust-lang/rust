@@ -223,9 +223,32 @@ included:
   details.
 
 
+* Additional copyright may be retained by contributors other
+  than Mozilla or the parties enumerated in this file. Such
+  copyright can be determined on a case-by-case basis by
+  examining the author of each portion of a file in the
+  revision-control commit records of the project, or by
+  consulting representative comments claiming copyright
+  ownership for a file.
+
+   For example, the text:
+
+      "Copyright (c) 2011 Google Inc."
+
+   appears in some files, and these files thereby denote
+   that their author and copyright-holder is Google Inc.
+
+   In all such cases, the absence of explicit licensing text
+   indicates that the contributor chose to license their
+   work for distribution under identical terms to those
+   Mozilla has chosen for the collective work, enumerated
+   below.  The only difference is the retention of copyright
+   itself, held by the contributor.
+
+
 The remaining code and documentation in the collective work
 presented here, as well as the collective work itslf, is
-distributed under the following terms:
+distributed under the following terms ("The Rust License"):
 
     Copyright (c) 2006-2011 Graydon Hoare
     Copyright (c) 2009-2011 Mozilla Foundation
