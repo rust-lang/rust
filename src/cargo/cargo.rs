@@ -184,7 +184,7 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
     }
 }
 
-fn load_one_source_package(&c: cargo, &src: source, p: map::hashmap<str, json::json>) {
+fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let name = alt p.find("name") {
         some(json::string(_n)) { _n }
         _ {
@@ -239,7 +239,7 @@ fn load_source_packages(&c: cargo, &src: source) {
             for _j: json::json in *js {
                 alt _j {
                     json::dict(_p) {
-                        load_one_source_package(c, src, _p);
+                        load_one_source_package(src, _p);
                     }
                     _ {
                         warn("Malformed source json: " + src.name + " (non-dict pkg)");
@@ -364,6 +364,7 @@ fn install_curl(c: cargo, wd: str, url: str) {
     }
     run::run_program("tar", ["-x", "--strip-components=1",
                              "-C", wd, "-f", tarpath]);
+    install_source(c, wd);
 }
 
 fn install_file(c: cargo, wd: str, path: str) {
@@ -414,7 +415,7 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
         }
     });
     if vec::len(ps) == 1u {
-        let (s, p) = ps[0];
+        let (_, p) = ps[0];
         install_package(c, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
@@ -435,7 +436,7 @@ fn install_named(c: cargo, wd: str, name: str) {
         }
     });
     if vec::len(ps) == 1u {
-        let (s, p) = ps[0];
+        let (_, p) = ps[0];
         install_package(c, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
