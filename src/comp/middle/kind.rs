@@ -55,10 +55,10 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     fn check_free_vars(e: @expr,
                        cx: ctx,
                        check_fn: fn(ctx, ty::t, sp: span)) {
-        for free in *freevars::get_freevars(cx.tcx, e.id) {
-            let id = ast_util::def_id_of_def(free).node;
+        for @{def, span} in *freevars::get_freevars(cx.tcx, e.id) {
+            let id = ast_util::def_id_of_def(def).node;
             let ty = ty::node_id_to_type(cx.tcx, id);
-            check_fn(cx, ty, e.span);
+            check_fn(cx, ty, span);
         }
     }
 

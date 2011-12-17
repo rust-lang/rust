@@ -342,7 +342,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_fn(f, _) { // NDM captures
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
-        for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
+        for @{def, span} in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
             log ("handle_var_def: def=", def);
             handle_var_def(fcx, rslt, def, "upvar");
         }

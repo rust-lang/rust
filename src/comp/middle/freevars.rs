@@ -10,12 +10,17 @@ import syntax::codemap::span;
 
 export annotate_freevars;
 export freevar_map;
+export freevar_info;
 export get_freevars;
 export has_freevars;
 
 // A vector of defs representing the free variables referred to in a function.
 // (The def_upvar will already have been stripped).
-type freevar_info = @[ast::def];
+type freevar_entry = {
+    def: ast::def, //< The variable being accessed free.
+    span: span     //< First span where it is accessed (there can be multiple)
+};
+type freevar_info = @[@freevar_entry];
 type freevar_map = hashmap<ast::node_id, freevar_info>;
 
 // Searches through part of the AST for all references to locals or
@@ -50,7 +55,7 @@ fn collect_freevars(def_map: resolve::def_map, walker: fn@(visit::vt<int>)) ->
                 if i == depth { // Made it to end of loop
                     let dnum = ast_util::def_id_of_def(def).node;
                     if !seen.contains_key(dnum) {
-                        *refs += [def];
+                        *refs += [@{def:def, span:expr.span}];
                         seen.insert(dnum, ());
                     }
                 }

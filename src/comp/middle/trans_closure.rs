@@ -5,7 +5,7 @@ import llvm::{ValueRef, TypeRef};
 import trans_common::*;
 import trans_build::*;
 import trans::*;
-import middle::freevars::get_freevars;
+import middle::freevars::{get_freevars, freevar_info};
 import option::{some, none};
 import back::abi;
 import syntax::codemap::span;
@@ -261,16 +261,16 @@ fn store_environment(
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
 fn build_closure(cx: @block_ctxt,
-                 upvars: @[ast::def],
+                 upvars: freevar_info,
                  ck: ty::closure_kind)
     -> closure_result {
     // If we need to, package up the iterator body to call
     let env_vals = [];
     let tcx = bcx_tcx(cx);
     // Package up the upvars
-    vec::iter(*upvars) { |def|
-        let lv = trans_local_var(cx, def);
-        let nid = ast_util::def_id_of_def(def).node;
+    vec::iter(*upvars) { |upvar|
+        let lv = trans_local_var(cx, upvar.def);
+        let nid = ast_util::def_id_of_def(upvar.def).node;
         let ty = ty::node_id_to_monotype(tcx, nid);
         alt ck {
           ty::closure_block. { ty = ty::mk_mut_ptr(tcx, ty); }
@@ -287,7 +287,7 @@ fn build_closure(cx: @block_ctxt,
 fn load_environment(enclosing_cx: @block_ctxt,
                     fcx: @fn_ctxt,
                     boxed_closure_ty: ty::t,
-                    upvars: @[ast::def],
+                    upvars: freevar_info,
                     ck: ty::closure_kind) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
 
@@ -311,7 +311,7 @@ fn load_environment(enclosing_cx: @block_ctxt,
 
     // Populate the upvars from the environment.
     let path = [0, abi::box_rc_field_body, abi::closure_elt_bindings];
-    vec::iteri(*upvars) { |i, upvar_def|
+    vec::iteri(*upvars) { |i, upvar|
         check type_is_tup_like(bcx, boxed_closure_ty);
         let upvarptr =
             GEP_tup_like(bcx, boxed_closure_ty, llclosure, path + [i as int]);
@@ -321,7 +321,7 @@ fn load_environment(enclosing_cx: @block_ctxt,
           ty::closure_block. { llupvarptr = Load(bcx, llupvarptr); }
           ty::closure_send. | ty::closure_shared. { }
         }
-        let def_id = ast_util::def_id_of_def(upvar_def);
+        let def_id = ast_util::def_id_of_def(upvar.def);
         fcx.llupvars.insert(def_id.node, llupvarptr);
     }
 }
