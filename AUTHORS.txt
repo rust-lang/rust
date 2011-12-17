@@ -17,6 +17,7 @@ Elly Jones <elly@leptoquark.net>
 Eric Holk <eric.holk@gmail.com>
 Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Erik Rose <erik@mozilla.com>
+Graham Fawcett <fawcett@uwindsor.ca>
 Haitao Li <lihaitao@gmail.com>
 Jason Orendorff <jorendorff@mozilla.com>
 Jeff Balogh <jbalogh@mozilla.com>
