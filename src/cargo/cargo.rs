@@ -541,6 +541,10 @@ fn cmd_sync(c: cargo, argv: [str]) {
 
 fn cmd_usage() {
     print("Usage: cargo <verb> [args...]");
+    print("  install [source/]package-name        Install by name");
+    print("  install uuid:[source/]package-uuid   Install by uuid");
+    print("  sync                                 Sync all sources");
+    print("  usage                                This");
 }
 
 fn main(argv: [str]) {
