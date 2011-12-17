@@ -1,5 +1,8 @@
 // cargo.rs - Rust package manager
 
+use rustc;
+use std;
+
 import rustc::syntax::{ast, codemap, visit};
 import rustc::syntax::parse::parser;
 
@@ -9,18 +12,39 @@ import std::io;
 import std::json;
 import option;
 import option::{none, some};
+import result;
+import std::map;
 import std::os;
 import std::run;
 import str;
 import std::tempfile;
 import vec;
 
+tag _src {
+    /* Break cycles in package <-> source */
+    _source(source);
+}
+
+type package = {
+    source: _src,
+    name: str,
+    uuid: str,
+    url: str
+};
+
+type source = {
+    name: str,
+    url: str,
+    mutable packages: [package]
+};
+
 type cargo = {
     root: str,
     bindir: str,
     libdir: str,
     workdir: str,
-    fetchdir: str
+    sourcedir: str,
+    sources: map::hashmap<str, source>
 };
 
 type pkg = {
@@ -31,6 +55,14 @@ type pkg = {
     sigs: option::t<str>,
     crate_type: option::t<str>
 };
+
+fn info(msg: str) {
+    io::stdout().write_line(msg);
+}
+
+fn warn(msg: str) {
+    io::stdout().write_line("warning: " + msg);
+}
 
 fn load_link(mis: [@ast::meta_item]) -> (option::t<str>,
                                          option::t<str>,
@@ -118,6 +150,96 @@ fn need_dir(s: str) {
     }
 }
 
+fn parse_source(name: str, j: json::json) -> source {
+    alt j {
+        json::dict(_j) {
+            alt _j.find("url") {
+                some(json::string(u)) {
+                    ret { name: name, url: u, mutable packages: [] };
+                }
+                _ { fail "Needed 'url' field in source."; }
+            };
+        }
+        _ { fail "Needed dict value in source."; }
+    };
+}
+
+fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
+    if !fs::path_exists(filename)  { ret; }
+    let c = io::read_whole_file_str(filename);
+    let j = json::from_str(result::get(c));
+    alt j {
+        some(json::dict(_j)) {
+            _j.items { |k, v|
+                sources.insert(k, parse_source(k, v));
+                log #fmt["source: %s", k];
+            }
+        }
+        _ { fail "malformed sources.json"; }
+    }
+}
+
+fn load_one_source_package(c: cargo, src: source, p: map::hashmap<str, json::json>) {
+    let name = alt p.find("name") {
+        some(json::string(_n)) { _n }
+        _ {
+            warn("Malformed source json: " + src.name + " (missing name)");
+            ret;
+        }
+    };
+
+    let uuid = alt p.find("uuid") {
+        some(json::string(_n)) { _n }
+        _ {
+            warn("Malformed source json: " + src.name + " (missing uuid)");
+            ret;
+        }
+    };
+
+    let url = alt p.find("url") {
+        some(json::string(_n)) { _n }
+        _ {
+            warn("Malformed source json: " + src.name + " (missing url)");
+            ret;
+        }
+    };
+
+    vec::grow(src.packages, 1u, {
+        source: _source(src),
+        name: name,
+        uuid: uuid,
+        url: url
+    });
+    info("  Loaded package: " + src.name + "/" + name);
+}
+
+fn load_source_packages(c: cargo, src: source) {
+    info("Loading source: " + src.name);
+    let dir = fs::connect(c.sourcedir, src.name);
+    let pkgfile = fs::connect(dir, "packages.json");
+    if !fs::path_exists(pkgfile) { ret; }
+    let pkgstr = io::read_whole_file_str(pkgfile);
+    let j = json::from_str(result::get(pkgstr));
+    alt j {
+        some(json::list(js)) {
+            for _j: json::json in *js {
+                alt _j {
+                    json::dict(_p) {
+                        load_one_source_package(c, src, _p);
+                    }
+                    _ {
+                        warn("Malformed source json: " + src.name + " (non-dict pkg)");
+                        ret;
+                    }
+                }
+            }
+        }
+        _ {
+            warn("Malformed source json: " + src.name);
+        }
+    };
+}
+
 fn configure() -> cargo {
     let p = alt generic_os::getenv("CARGO_ROOT") {
         some(_p) { _p }
@@ -129,23 +251,37 @@ fn configure() -> cargo {
         }
     };
 
-    log #fmt["p: %s", p];
-
+    let sources = map::new_str_hash::<source>();
+    try_parse_sources(fs::connect(p, "sources.json"), sources);
+    try_parse_sources(fs::connect(p, "local-sources.json"), sources);
     let c = {
         root: p,
         bindir: fs::connect(p, "bin"),
         libdir: fs::connect(p, "lib"),
         workdir: fs::connect(p, "work"),
-        fetchdir: fs::connect(p, "fetch")
+        sourcedir: fs::connect(p, "sources"),
+        sources: sources
     };
 
     need_dir(c.root);
-    need_dir(c.fetchdir);
+    need_dir(c.sourcedir);
     need_dir(c.workdir);
     need_dir(c.libdir);
     need_dir(c.bindir);
 
+    sources.values { |v|
+        load_source_packages(c, v);
+    };
+
     c
+}
+
+fn for_each_package(c: cargo, b: block(package)) {
+    c.sources.values({ |v|
+        for p in v.packages {
+            b(p);
+        }
+    })
 }
 
 fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
@@ -233,11 +369,29 @@ fn install_resolved(c: cargo, wd: str, key: str) {
 }
 
 fn install_uuid(c: cargo, wd: str, uuid: str) {
-    install_resolved(c, wd, "by-uuid/" + uuid);
+    let ps = [];
+    for_each_package(c, { |p|
+        if p.uuid == uuid {
+            vec::grow(ps, 1u, p);
+        }
+    });
+    info("Found:");
+    for p in ps {
+        info("  " + p.source.name + "/" + p.name);
+    }
 }
 
 fn install_named(c: cargo, wd: str, name: str) {
-    install_resolved(c, wd, "by-name/" + name);
+    let ps = [];
+    for_each_package(c, { |p|
+        if p.name == name {
+            vec::grow(ps, 1u, p);
+        }
+    });
+    info("Found:");
+    for p in ps {
+        info("  " + p.source.name + "/" + p.name);
+    }
 }
 
 fn cmd_install(c: cargo, argv: [str]) {
@@ -268,6 +422,29 @@ fn cmd_install(c: cargo, argv: [str]) {
     }
 }
 
+fn sync_one(c: cargo, name: str, src: source) {
+    let dir = fs::connect(c.sourcedir, name);
+    let pkgfile = fs::connect(dir, "packages.json");
+    let url = src.url;
+    need_dir(dir);
+    let p = run::program_output("curl", ["-f", "-s", "-o", pkgfile, url]);
+    if p.status != 0 {
+        warn(#fmt["fetch for source %s (url %s) failed", name, url]);
+    } else {
+        info(#fmt["fetched source: %s", name]);
+    }
+}
+
+fn cmd_sync(c: cargo, argv: [str]) {
+    if vec::len(argv) == 3u {
+        sync_one(c, argv[2], c.sources.get(argv[2]));
+    } else {
+        c.sources.items { |k, v|
+            sync_one(c, k, v);
+        }
+    }
+}
+
 fn cmd_usage() {
     print("Usage: cargo <verb> [args...]");
 }
@@ -280,6 +457,7 @@ fn main(argv: [str]) {
     let c = configure();
     alt argv[1] {
         "install" { cmd_install(c, argv); }
+        "sync" { cmd_sync(c, argv); }
         "usage" { cmd_usage(); }
         _ { cmd_usage(); }
     }

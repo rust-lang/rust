@@ -2,9 +2,6 @@
 
 // cargo.rs - Rust package manager
 
-use std;
-use rustc;
-
 // Local Variables:
 // fill-column: 78;
 // indent-tabs-mode: nil
@@ -12,3 +9,8 @@ use rustc;
 // buffer-file-coding-system: utf-8-unix
 // compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
+
+#[link(name = "cargo",
+       vers = "0.1",
+       uuid = "9ff87a04-8fed-4295-9ff8-f99bb802650b",
+       url = "http://rust-lang.org/doc/cargo")];
