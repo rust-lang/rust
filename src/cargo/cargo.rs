@@ -314,7 +314,7 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     let exec_suffix = os::exec_suffix();
     for ct: str in created {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
-            (exec_suffix == "" && !str::starts_with(ct, "lib")) {
+            (exec_suffix == "" && !str::starts_with(ct, "./lib")) {
             log #fmt["  bin: %s", ct];
             // FIXME: need libstd fs::copy or something
             run::run_program("cp", [ct, c.bindir]);
