@@ -308,7 +308,11 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     }
     log #fmt["Installing: %s", name];
     let old = fs::list_dir(".");
-    run::run_program("rustc", [name + ".rc"]);
+    let p = run::program_output("rustc", [name + ".rc"]);
+    if p.status != 0 {
+        error(#fmt["rustc failed: %d %s", p.status, p.err]);
+        ret;
+    }
     let new = fs::list_dir(".");
     let created =
         vec::filter::<str>(new, { |n| !vec::member::<str>(n, old) });
