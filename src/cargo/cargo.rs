@@ -26,10 +26,11 @@ tag _src {
 }
 
 type package = {
-    source: _src,
+//    source: _src,
     name: str,
     uuid: str,
-    url: str
+    url: str,
+    method: str
 };
 
 type source = {
@@ -62,6 +63,10 @@ fn info(msg: str) {
 
 fn warn(msg: str) {
     io::stdout().write_line("warning: " + msg);
+}
+
+fn error(msg: str) {
+    io::stdout().write_line("error: " + msg);
 }
 
 fn load_link(mis: [@ast::meta_item]) -> (option::t<str>,
@@ -179,7 +184,7 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
     }
 }
 
-fn load_one_source_package(c: cargo, src: source, p: map::hashmap<str, json::json>) {
+fn load_one_source_package(&c: cargo, &src: source, p: map::hashmap<str, json::json>) {
     let name = alt p.find("name") {
         some(json::string(_n)) { _n }
         _ {
@@ -204,16 +209,25 @@ fn load_one_source_package(c: cargo, src: source, p: map::hashmap<str, json::jso
         }
     };
 
+    let method = alt p.find("method") {
+        some(json::string(_n)) { _n }
+        _ {
+            warn("Malformed source json: " + src.name + " (missing method)");
+            ret;
+        }
+    };
+
     vec::grow(src.packages, 1u, {
-        source: _source(src),
+        // source: _source(src),
         name: name,
         uuid: uuid,
-        url: url
+        url: url,
+        method: method
     });
     info("  Loaded package: " + src.name + "/" + name);
 }
 
-fn load_source_packages(c: cargo, src: source) {
+fn load_source_packages(&c: cargo, &src: source) {
     info("Loading source: " + src.name);
     let dir = fs::connect(c.sourcedir, src.name);
     let pkgfile = fs::connect(dir, "packages.json");
@@ -229,7 +243,6 @@ fn load_source_packages(c: cargo, src: source) {
                     }
                     _ {
                         warn("Malformed source json: " + src.name + " (non-dict pkg)");
-                        ret;
                     }
                 }
             }
@@ -269,17 +282,19 @@ fn configure() -> cargo {
     need_dir(c.libdir);
     need_dir(c.bindir);
 
-    sources.values { |v|
-        load_source_packages(c, v);
+    sources.keys { |k|
+        let s = sources.get(k);
+        load_source_packages(c, s);
+        sources.insert(k, s);
     };
 
     c
 }
 
-fn for_each_package(c: cargo, b: block(package)) {
+fn for_each_package(c: cargo, b: block(source, package)) {
     c.sources.values({ |v|
         for p in v.packages {
-            b(p);
+            b(v, p);
         }
     })
 }
@@ -335,14 +350,25 @@ fn install_source(c: cargo, path: str) {
     }
 }
 
-fn install_git(c: cargo, wd: str, _path: str) {
-    run::run_program("git", ["clone", _path, wd]);
+fn install_git(c: cargo, wd: str, url: str) {
+    run::run_program("git", ["clone", url, wd]);
     install_source(c, wd);
 }
 
-fn install_file(c: cargo, wd: str, _path: str) {
+fn install_curl(c: cargo, wd: str, url: str) {
+    let tarpath = fs::connect(wd, "pkg.tar");
+    let p = run::program_output("curl", ["-f", "-s", "-o",
+                                         tarpath, url]);
+    if p.status != 0 {
+        fail #fmt["Fetch of %s failed: %s", url, p.err];
+    }
     run::run_program("tar", ["-x", "--strip-components=1",
-                             "-C", wd, "-f", _path]);
+                             "-C", wd, "-f", tarpath]);
+}
+
+fn install_file(c: cargo, wd: str, path: str) {
+    run::run_program("tar", ["-x", "--strip-components=1",
+                             "-C", wd, "-f", path]);
     install_source(c, wd);
 }
 
@@ -368,30 +394,90 @@ fn install_resolved(c: cargo, wd: str, key: str) {
     }
 }
 
+fn install_package(c: cargo, wd: str, pkg: package) {
+    info("Installing with " + pkg.method + " from " + pkg.url + "...");
+    if pkg.method == "git" {
+        install_git(c, wd, pkg.url);
+    } else if pkg.method == "http" {
+        install_curl(c, wd, pkg.url);
+    } else if pkg.method == "file" {
+        install_file(c, wd, pkg.url);
+    }
+}
+
 fn install_uuid(c: cargo, wd: str, uuid: str) {
     let ps = [];
-    for_each_package(c, { |p|
+    for_each_package(c, { |s, p|
+        info(#fmt["%s ? %s", p.uuid, uuid]);
         if p.uuid == uuid {
-            vec::grow(ps, 1u, p);
+            vec::grow(ps, 1u, (s, p));
         }
     });
-    info("Found:");
-    for p in ps {
-        info("  " + p.source.name + "/" + p.name);
+    if vec::len(ps) == 1u {
+        let (s, p) = ps[0];
+        install_package(c, wd, p);
+        ret;
+    } else if vec::len(ps) == 0u {
+        error("No packages.");
+        ret;
+    }
+    error("Found multiple packages:");
+    for (s,p) in ps {
+        info("  " + s.name + "/" + p.uuid + " (" + p.name + ")");
     }
 }
 
 fn install_named(c: cargo, wd: str, name: str) {
     let ps = [];
-    for_each_package(c, { |p|
+    for_each_package(c, { |s, p|
         if p.name == name {
-            vec::grow(ps, 1u, p);
+            vec::grow(ps, 1u, (s, p));
         }
     });
-    info("Found:");
-    for p in ps {
-        info("  " + p.source.name + "/" + p.name);
+    if vec::len(ps) == 1u {
+        let (s, p) = ps[0];
+        install_package(c, wd, p);
+        ret;
+    } else if vec::len(ps) == 0u {
+        error("No packages.");
+        ret;
     }
+    error("Found multiple packages:");
+    for (s,p) in ps {
+        info("  " + s.name + "/" + p.uuid + " (" + p.name + ")");
+    }
+}
+
+fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
+    alt c.sources.find(src) {
+        some(s) {
+            if vec::any(s.packages, { |p|
+                if p.uuid == uuid {
+                    install_package(c, wd, p);
+                    ret true;
+                }
+                ret false;
+            }) { ret; }
+        }
+        _ { }
+    }
+    error("Can't find package " + src + "/" + uuid);
+}
+
+fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
+    alt c.sources.find(src) {
+        some(s) {
+            if vec::any(s.packages, { |p|
+                if p.name == name {
+                    install_package(c, wd, p);
+                    ret true;
+                }
+                ret false;
+            }) { ret; }
+        }
+        _ { }
+    }
+    error("Can't find package " + src + "/" + name);
 }
 
 fn cmd_install(c: cargo, argv: [str]) {
@@ -406,19 +492,26 @@ fn cmd_install(c: cargo, argv: [str]) {
         none. { fail "needed temp dir"; }
     };
 
-    if str::starts_with(argv[2], "git:") {
-        install_git(c, wd, argv[2]);
-    } else if str::starts_with(argv[2], "github:") {
-        let path = rest(argv[2], 7u);
-        install_git(c, wd, "git://github.com/" + path);
-    } else if str::starts_with(argv[2], "file:") {
-        let path = rest(argv[2], 5u);
-        install_file(c, wd, path);
-    } else if str::starts_with(argv[2], "uuid:") {
+    if str::starts_with(argv[2], "uuid:") {
         let uuid = rest(argv[2], 5u);
-        install_uuid(c, wd, uuid);
+        let idx = str::index(uuid, '/' as u8);
+        if idx != -1 {
+            let source = str::slice(uuid, 0u, idx as uint);
+            uuid = str::slice(uuid, idx as uint + 1u, str::byte_len(uuid));
+            install_uuid_specific(c, wd, source, uuid);
+        } else {
+            install_uuid(c, wd, uuid);
+        }
     } else {
-        install_named(c, wd, argv[2]);
+        let name = argv[2];
+        let idx = str::index(name, '/' as u8);
+        if idx != -1 {
+            let source = str::slice(name, 0u, idx as uint);
+            name = str::slice(name, idx as uint + 1u, str::byte_len(name));
+            install_named_specific(c, wd, source, name);
+        } else {
+            install_named(c, wd, name);
+        }
     }
 }
 
@@ -427,6 +520,7 @@ fn sync_one(c: cargo, name: str, src: source) {
     let pkgfile = fs::connect(dir, "packages.json");
     let url = src.url;
     need_dir(dir);
+    info(#fmt["fetching source %s...", name]);
     let p = run::program_output("curl", ["-f", "-s", "-o", pkgfile, url]);
     if p.status != 0 {
         warn(#fmt["fetch for source %s (url %s) failed", name, url]);
