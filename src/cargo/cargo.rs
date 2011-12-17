@@ -293,7 +293,7 @@ fn configure() -> cargo {
 
 fn for_each_package(c: cargo, b: block(source, package)) {
     c.sources.values({ |v|
-        for p in v.packages {
+        for p in copy v.packages {
             b(v, p);
         }
     })
@@ -430,7 +430,7 @@ fn install_named(c: cargo, wd: str, name: str) {
 fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
     alt c.sources.find(src) {
         some(s) {
-            if vec::any(s.packages, { |p|
+            if vec::any(copy s.packages, { |p|
                 if p.uuid == uuid {
                     install_package(c, wd, p);
                     ret true;
@@ -446,7 +446,7 @@ fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
 fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
     alt c.sources.find(src) {
         some(s) {
-            if vec::any(s.packages, { |p|
+            if vec::any(copy s.packages, { |p|
                 if p.name == name {
                     install_package(c, wd, p);
                     ret true;
