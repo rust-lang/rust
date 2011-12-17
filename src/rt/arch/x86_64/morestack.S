@@ -54,18 +54,10 @@ MORESTACK:
 	
 	// Set up a normal backtrace
 	pushq %rbp
-	.cfi_def_cfa_offset 16
-	.cfi_offset %rbp, -16
+	.cfi_def_cfa_offset 24
+	.cfi_offset %rbp, -24
 	movq %rsp, %rbp
 	.cfi_def_cfa_register %rbp
-
-	// During unwinding we want to skip our caller since it's not
-	// a complete frame and will make the unwinder sad
-	// Don't understand this line
-	.cfi_offset 16, 0
-	// Tell the unwinding where to get the stack pointer for
-	// our grandparent frame
-	.cfi_offset %rsp, -24
 
 	// Save the grandparent stack pointer for the unwinder
 	leaq 24(%rbp), %rax
@@ -140,7 +132,7 @@ MORESTACK:
 	addq $8, %rsp
 	popq %rbp
 	.cfi_restore %rbp
-	.cfi_def_cfa %rsp, 8
+	.cfi_def_cfa %rsp, 16
 	ret
 	
 	.cfi_endproc

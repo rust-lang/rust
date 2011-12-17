@@ -53,8 +53,8 @@ MORESTACK:
 
 	pushl %ebp
 #if defined(__linux__) || defined(__APPLE__)
-	.cfi_def_cfa_offset 8
-	.cfi_offset %ebp, -8
+	.cfi_def_cfa_offset 20
+	.cfi_offset %ebp, -20
 #endif
 	movl %esp, %ebp
 #if defined(__linux__) || defined(__APPLE__)
@@ -78,16 +78,6 @@ MORESTACK:
 	calll RUST_GET_TASK
 	testl %eax,%eax
 	jz .L$bail
-
-	// During unwinding we want to skip our caller.
-#if defined(__linux__) || defined(__APPLE__)
-	// Don't understand this line. I think it means that
-	// the next frame's pc is the return address of our caller.
-	.cfi_offset 8, 8
-	// The next frame's esp is stored at our CFA - 12
-	// (by the code below)
-	.cfi_offset %esp, -12
-#endif
 
 	// Save the the correct %esp value for our grandparent frame,
 	// for the unwinder
@@ -156,7 +146,7 @@ MORESTACK:
 	popl %ebp
 #if defined(__linux__) || defined(__APPLE__)
 	.cfi_restore %ebp
-	.cfi_def_cfa %esp, 4
+	.cfi_def_cfa %esp, 16
 #endif
 	retl $8
 
