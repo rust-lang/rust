@@ -63,7 +63,7 @@ Function: color_supported
 Returns true if the terminal supports color
 */
 fn color_supported() -> bool {
-    let supported_terms = ["xterm-color", "xterm", "screen-bce"];
+    let supported_terms = ["xterm-color", "xterm", "screen-bce", "xterm-256color"];
     ret alt generic_os::getenv("TERM") {
           option::some(env) {
             for term: str in supported_terms {
