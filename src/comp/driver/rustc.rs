@@ -329,7 +329,6 @@ options:
     --target <triple>  target to compile for (default: host triple)
     --test             build test harness
     --gc               garbage collect shared data (experimental/temporary)
-    --stack-growth     perform stack checks (experimental)
     --warn-unused-imports
                        warn about unnecessary imports
 
@@ -461,7 +460,6 @@ fn build_session_options(match: getopts::match)
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let do_gc = opt_present(match, "gc");
-    let stack_growth = opt_present(match, "stack-growth");
     let warn_unused_imports = opt_present(match, "warn-unused-imports");
     let sopts: @session::options =
         @{crate_type: crate_type,
@@ -483,7 +481,6 @@ fn build_session_options(match: getopts::match)
           parse_only: parse_only,
           no_trans: no_trans,
           do_gc: do_gc,
-          stack_growth: stack_growth,
           no_asm_comments: no_asm_comments,
           warn_unused_imports: warn_unused_imports};
     ret sopts;
@@ -526,7 +523,6 @@ fn opts() -> [getopts::opt] {
          optmulti("cfg"), optflag("test"),
          optflag("no-core"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
-         optflag("stack-growth"),
          optflag("no-asm-comments"),
          optflag("warn-unused-imports")];
 }
