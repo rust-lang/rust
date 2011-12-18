@@ -1244,7 +1244,7 @@ fn parse_if_expr(p: parser) -> @ast::expr {
 //   CC := [copy ID*; move ID*]
 //
 // where any part is optional and trailing ; is permitted.
-fn parse_capture_clause(p: parser) -> @ast::capture {
+fn parse_capture_clause(p: parser) -> @ast::capture_clause {
     fn expect_opt_trailing_semi(p: parser) {
         if !eat(p, token::SEMI) {
             if p.peek() != token::RBRACKET {
@@ -1253,15 +1253,15 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
         }
     }
 
-    fn eat_ident_list(p: parser) -> [ast::spanned<ast::ident>] {
+    fn eat_ident_list(p: parser) -> [@ast::capture_item] {
         let res = [];
         while true {
             alt p.peek() {
               token::IDENT(_, _) {
-                let i = spanned(p.get_lo_pos(),
-                                p.get_hi_pos(),
-                                parse_ident(p));
-                res += [i];
+                let id = p.get_id();
+                let sp = ast_util::mk_sp(p.get_lo_pos(), p.get_hi_pos());
+                let ident = parse_ident(p);
+                res += [@{id:id, name:ident, span:sp}];
                 if !eat(p, token::COMMA) {
                     ret res;
                 }
@@ -1276,7 +1276,6 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
     let copies = [];
     let moves = [];
 
-    let lo = p.get_lo_pos();
     if eat(p, token::LBRACKET) {
         while !eat(p, token::RBRACKET) {
             if eat_word(p, "copy") {
@@ -1291,27 +1290,25 @@ fn parse_capture_clause(p: parser) -> @ast::capture {
             }
         }
     }
-    let hi = p.get_last_hi_pos();
 
-    ret @spanned(lo, hi, {copies: copies, moves: moves});
+    ret @{copies: copies, moves: moves};
 }
 
 fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
     let lo = p.get_last_lo_pos();
-    let captures = parse_capture_clause(p);
+    let capture_clause = parse_capture_clause(p);
     let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
     let body = parse_block(p);
     let _fn = {decl: decl, proto: proto, body: body};
-    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
+    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, capture_clause));
 }
 
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let decl = parse_fn_block_decl(p);
-    let mid = p.get_last_hi_pos();
     let body = parse_block_tail(p, lo, ast::default_blk);
     let _fn = {decl: decl, proto: ast::proto_block, body: body};
-    let captures = @spanned(lo, mid, {copies: [], moves: []});
+    let captures = @{copies: [], moves: []};
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
 }
 

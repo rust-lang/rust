@@ -226,7 +226,7 @@ tag expr_ {
     expr_for(@local, @expr, blk);
     expr_do_while(blk, @expr);
     expr_alt(@expr, [arm]);
-    expr_fn(_fn, @capture);
+    expr_fn(_fn, @capture_clause);
     expr_block(blk);
 
     /*
@@ -261,13 +261,15 @@ tag expr_ {
     expr_mac(mac);
 }
 
-// At the moment, one can only capture local variables.
-type capture_ = {
-    copies: [spanned<ident>],
-    moves: [spanned<ident>]
+type capture_item = {
+    id: int,
+    name: ident, // Currently, can only capture a local var.
+    span: span
 };
-
-type capture = spanned<capture_>;
+type capture_clause = {
+    copies: [@capture_item],
+    moves: [@capture_item]
+};
 
 /*
 // Says whether this is a block the user marked as

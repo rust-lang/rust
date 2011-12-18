@@ -347,12 +347,9 @@ fn mk_test_wrapper(cx: test_ctxt,
         body: wrapper_body
     };
 
-    let wrapper_capture: @ast::capture = @{
-        node: {
-            copies: [],
-            moves: []
-        },
-        span: span
+    let wrapper_capture: @ast::capture_clause = @{
+        copies: [],
+        moves: []
     };
 
     let wrapper_expr: ast::expr = {

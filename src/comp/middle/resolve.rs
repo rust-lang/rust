@@ -299,6 +299,16 @@ fn check_unused_imports(e: @env) {
     };
 }
 
+fn resolve_capture_item(e: @env, sc: scopes, &&cap_item: @ast::capture_item) {
+    let dcur = lookup_in_scope_strict(
+        *e, sc, cap_item.span, cap_item.name, ns_value);
+    maybe_insert(e, cap_item.id, dcur);
+}
+
+fn maybe_insert(e: @env, id: node_id, def: option::t<def>) {
+    if option::is_some(def) { e.def_map.insert(id, option::get(def)); }
+}
+
 fn resolve_names(e: @env, c: @ast::crate) {
     e.used_imports.track = true;
     let v =
@@ -324,6 +334,11 @@ fn resolve_names(e: @env, c: @ast::crate) {
             maybe_insert(e, exp.id,
                          lookup_path_strict(*e, sc, exp.span, p.node,
                                             ns_value));
+          }
+          ast::expr_fn(_, cap_clause) {
+            let rci = bind resolve_capture_item(e, sc, _);
+            vec::iter(cap_clause.copies, rci);
+            vec::iter(cap_clause.moves, rci);
           }
           _ { }
         }
@@ -360,10 +375,6 @@ fn resolve_names(e: @env, c: @ast::crate) {
           }
           _ { }
         }
-    }
-
-    fn maybe_insert(e: @env, id: node_id, def: option::t<def>) {
-        if option::is_some(def) { e.def_map.insert(id, option::get(def)); }
     }
 }
 
