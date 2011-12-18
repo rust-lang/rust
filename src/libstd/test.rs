@@ -9,6 +9,7 @@ import task::task;
 import core::option;
 import core::either;
 import core::vec;
+import core::result::{ok, err};
 
 export test_name;
 export test_fn;
@@ -82,8 +83,8 @@ fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
     let opts = [getopts::optflag("ignored")];
     let match =
         alt getopts::getopts(args_, opts) {
-          getopts::success(m) { m }
-          getopts::failure(f) { ret either::right(getopts::fail_str(f)) }
+          ok(m) { m }
+          err(f) { ret either::right(getopts::fail_str(f)) }
         };
 
     let filter =

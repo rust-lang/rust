@@ -2,6 +2,7 @@ import core::*;
 
 use std;
 import opt = std::getopts;
+import result::{err, ok};
 
 tag fail_type {
     argument_missing;
@@ -30,7 +31,7 @@ fn test_reqopt_long() {
     let opts = [opt::reqopt("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (opt::opt_present(m, "test"));
         assert (opt::opt_str(m, "test") == "20");
       }
@@ -44,7 +45,7 @@ fn test_reqopt_long_missing() {
     let opts = [opt::reqopt("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, option_missing); }
+      err(f) { check_fail_type(f, option_missing); }
       _ { fail; }
     }
 }
@@ -55,7 +56,7 @@ fn test_reqopt_long_no_arg() {
     let opts = [opt::reqopt("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, argument_missing); }
+      err(f) { check_fail_type(f, argument_missing); }
       _ { fail; }
     }
 }
@@ -66,7 +67,7 @@ fn test_reqopt_long_multi() {
     let opts = [opt::reqopt("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, option_duplicated); }
+      err(f) { check_fail_type(f, option_duplicated); }
       _ { fail; }
     }
 }
@@ -77,7 +78,7 @@ fn test_reqopt_short() {
     let opts = [opt::reqopt("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (opt::opt_present(m, "t"));
         assert (opt::opt_str(m, "t") == "20");
       }
@@ -91,7 +92,7 @@ fn test_reqopt_short_missing() {
     let opts = [opt::reqopt("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, option_missing); }
+      err(f) { check_fail_type(f, option_missing); }
       _ { fail; }
     }
 }
@@ -102,7 +103,7 @@ fn test_reqopt_short_no_arg() {
     let opts = [opt::reqopt("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, argument_missing); }
+      err(f) { check_fail_type(f, argument_missing); }
       _ { fail; }
     }
 }
@@ -113,7 +114,7 @@ fn test_reqopt_short_multi() {
     let opts = [opt::reqopt("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, option_duplicated); }
+      err(f) { check_fail_type(f, option_duplicated); }
       _ { fail; }
     }
 }
@@ -126,7 +127,7 @@ fn test_optopt_long() {
     let opts = [opt::optopt("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (opt::opt_present(m, "test"));
         assert (opt::opt_str(m, "test") == "20");
       }
@@ -140,7 +141,7 @@ fn test_optopt_long_missing() {
     let opts = [opt::optopt("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) { assert (!opt::opt_present(m, "test")); }
+      ok(m) { assert (!opt::opt_present(m, "test")); }
       _ { fail; }
     }
 }
@@ -151,7 +152,7 @@ fn test_optopt_long_no_arg() {
     let opts = [opt::optopt("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, argument_missing); }
+      err(f) { check_fail_type(f, argument_missing); }
       _ { fail; }
     }
 }
@@ -162,7 +163,7 @@ fn test_optopt_long_multi() {
     let opts = [opt::optopt("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, option_duplicated); }
+      err(f) { check_fail_type(f, option_duplicated); }
       _ { fail; }
     }
 }
@@ -173,7 +174,7 @@ fn test_optopt_short() {
     let opts = [opt::optopt("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (opt::opt_present(m, "t"));
         assert (opt::opt_str(m, "t") == "20");
       }
@@ -187,7 +188,7 @@ fn test_optopt_short_missing() {
     let opts = [opt::optopt("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) { assert (!opt::opt_present(m, "t")); }
+      ok(m) { assert (!opt::opt_present(m, "t")); }
       _ { fail; }
     }
 }
@@ -198,7 +199,7 @@ fn test_optopt_short_no_arg() {
     let opts = [opt::optopt("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, argument_missing); }
+      err(f) { check_fail_type(f, argument_missing); }
       _ { fail; }
     }
 }
@@ -209,7 +210,7 @@ fn test_optopt_short_multi() {
     let opts = [opt::optopt("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, option_duplicated); }
+      err(f) { check_fail_type(f, option_duplicated); }
       _ { fail; }
     }
 }
@@ -222,7 +223,7 @@ fn test_optflag_long() {
     let opts = [opt::optflag("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) { assert (opt::opt_present(m, "test")); }
+      ok(m) { assert (opt::opt_present(m, "test")); }
       _ { fail; }
     }
 }
@@ -233,7 +234,7 @@ fn test_optflag_long_missing() {
     let opts = [opt::optflag("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) { assert (!opt::opt_present(m, "test")); }
+      ok(m) { assert (!opt::opt_present(m, "test")); }
       _ { fail; }
     }
 }
@@ -244,7 +245,7 @@ fn test_optflag_long_arg() {
     let opts = [opt::optflag("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) {
+      err(f) {
         log_err opt::fail_str(f);
         check_fail_type(f, unexpected_argument);
       }
@@ -258,7 +259,7 @@ fn test_optflag_long_multi() {
     let opts = [opt::optflag("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, option_duplicated); }
+      err(f) { check_fail_type(f, option_duplicated); }
       _ { fail; }
     }
 }
@@ -269,7 +270,7 @@ fn test_optflag_short() {
     let opts = [opt::optflag("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) { assert (opt::opt_present(m, "t")); }
+      ok(m) { assert (opt::opt_present(m, "t")); }
       _ { fail; }
     }
 }
@@ -280,7 +281,7 @@ fn test_optflag_short_missing() {
     let opts = [opt::optflag("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) { assert (!opt::opt_present(m, "t")); }
+      ok(m) { assert (!opt::opt_present(m, "t")); }
       _ { fail; }
     }
 }
@@ -291,7 +292,7 @@ fn test_optflag_short_arg() {
     let opts = [opt::optflag("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         // The next variable after the flag is just a free argument
 
         assert (m.free[0] == "20");
@@ -306,7 +307,7 @@ fn test_optflag_short_multi() {
     let opts = [opt::optflag("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, option_duplicated); }
+      err(f) { check_fail_type(f, option_duplicated); }
       _ { fail; }
     }
 }
@@ -319,7 +320,7 @@ fn test_optmulti_long() {
     let opts = [opt::optmulti("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (opt::opt_present(m, "test"));
         assert (opt::opt_str(m, "test") == "20");
       }
@@ -333,7 +334,7 @@ fn test_optmulti_long_missing() {
     let opts = [opt::optmulti("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) { assert (!opt::opt_present(m, "test")); }
+      ok(m) { assert (!opt::opt_present(m, "test")); }
       _ { fail; }
     }
 }
@@ -344,7 +345,7 @@ fn test_optmulti_long_no_arg() {
     let opts = [opt::optmulti("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, argument_missing); }
+      err(f) { check_fail_type(f, argument_missing); }
       _ { fail; }
     }
 }
@@ -355,7 +356,7 @@ fn test_optmulti_long_multi() {
     let opts = [opt::optmulti("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (opt::opt_present(m, "test"));
         assert (opt::opt_str(m, "test") == "20");
         assert (opt::opt_strs(m, "test")[0] == "20");
@@ -371,7 +372,7 @@ fn test_optmulti_short() {
     let opts = [opt::optmulti("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (opt::opt_present(m, "t"));
         assert (opt::opt_str(m, "t") == "20");
       }
@@ -385,7 +386,7 @@ fn test_optmulti_short_missing() {
     let opts = [opt::optmulti("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) { assert (!opt::opt_present(m, "t")); }
+      ok(m) { assert (!opt::opt_present(m, "t")); }
       _ { fail; }
     }
 }
@@ -396,7 +397,7 @@ fn test_optmulti_short_no_arg() {
     let opts = [opt::optmulti("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, argument_missing); }
+      err(f) { check_fail_type(f, argument_missing); }
       _ { fail; }
     }
 }
@@ -407,7 +408,7 @@ fn test_optmulti_short_multi() {
     let opts = [opt::optmulti("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (opt::opt_present(m, "t"));
         assert (opt::opt_str(m, "t") == "20");
         assert (opt::opt_strs(m, "t")[0] == "20");
@@ -423,7 +424,7 @@ fn test_unrecognized_option_long() {
     let opts = [opt::optmulti("t")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, unrecognized_option); }
+      err(f) { check_fail_type(f, unrecognized_option); }
       _ { fail; }
     }
 }
@@ -434,7 +435,7 @@ fn test_unrecognized_option_short() {
     let opts = [opt::optmulti("test")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::failure(f) { check_fail_type(f, unrecognized_option); }
+      err(f) { check_fail_type(f, unrecognized_option); }
       _ { fail; }
     }
 }
@@ -449,7 +450,7 @@ fn test_combined() {
          opt::optflag("f"), opt::optmulti("m"), opt::optopt("notpresent")];
     let rs = opt::getopts(args, opts);
     alt rs {
-      opt::success(m) {
+      ok(m) {
         assert (m.free[0] == "prog");
         assert (m.free[1] == "free1");
         assert (opt::opt_str(m, "s") == "20");
