@@ -284,7 +284,9 @@ void task_start_wrapper(spawn_args *a)
         failed = true;
     }
 
-    cc::do_cc(task);
+    // We're on the Rust stack and the cycle collector may recurse arbitrarily
+    // deep, so switch to the C stack
+    task->sched->c_context.call_shim_on_c_stack(task, (void*)cc::do_cc);
 
     rust_closure_env* env = (rust_closure_env*)a->a3;
     if(env) {
