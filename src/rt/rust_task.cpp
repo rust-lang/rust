@@ -15,22 +15,15 @@
 
 #include "globals.h"
 
-// Each stack gets some guard bytes that valgrind will verify we don't touch
-#ifndef NVALGRIND
-#define STACK_NOACCESS_SIZE 16
-#else
-#define STACK_NOACCESS_SIZE 0
-#endif
-
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
 // FIXME: We want this to be 128 but need to slim the red zone calls down
 #ifdef __i386__
-#define RED_ZONE_SIZE (65536 + STACK_NOACCESS_SIZE)
+#define RED_ZONE_SIZE 65536
 #endif
 
 #ifdef __x86_64__
-#define RED_ZONE_SIZE (65536 + STACK_NOACCESS_SIZE)
+#define RED_ZONE_SIZE 65536
 #endif
 
 // Stack size
@@ -80,19 +73,11 @@ config_valgrind_stack(stk_seg *stk) {
     // caused valgrind to consider the whole thing inaccessible.
     size_t sz = stk->end - (uintptr_t)&stk->data[0];
     VALGRIND_MAKE_MEM_UNDEFINED(stk->data, sz);
-
-    // Establish some guard bytes so valgrind will tell
-    // us if we run off the end of the stack
-    VALGRIND_MAKE_MEM_NOACCESS(stk->data, STACK_NOACCESS_SIZE);
 #endif
 }
 
 static void
 unconfig_valgrind_stack(stk_seg *stk) {
-#ifndef NVALGRIND
-    // Make the guard bytes accessible again, but undefined
-    VALGRIND_MAKE_MEM_UNDEFINED(stk->data, STACK_NOACCESS_SIZE);
-#endif
 VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
 }
 
