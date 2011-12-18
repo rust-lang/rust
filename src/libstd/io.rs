@@ -6,8 +6,8 @@ Basic input/output
 
 import core::option;
 import core::result;
-import ctypes::fd_t;
-import ctypes::c_int;
+import core::ctypes::fd_t;
+import core::ctypes::c_int;
 
 #[abi = "cdecl"]
 native mod rustrt {

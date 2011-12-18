@@ -1,5 +1,5 @@
 import core::option;
-import ctypes::*;
+import core::ctypes::*;
 
 export libc;
 export libc_constants;
