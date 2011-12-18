@@ -657,6 +657,14 @@ fn link_binary(sess: session::session,
         gcc_args += ["-lrt", "-ldl"];
     }
 
+    // OS X 10.6 introduced 'compact unwind info', which is produced by the
+    // linker from the dwarf unwind info. Unfortunately, it does not seem to
+    // understand how to unwind our __morestack frame, so we have to turn it
+    // off. This has impacted some other projects like GHC.
+    if sess.get_targ_cfg().os == session::os_macos {
+        gcc_args += ["-Wl,-no_compact_unwind"];
+    }
+
     // Stack growth requires statically linking a __morestack function
     gcc_args += ["-lmorestack"];
 
