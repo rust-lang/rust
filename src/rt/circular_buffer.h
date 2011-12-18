@@ -7,7 +7,7 @@
 
 class
 circular_buffer : public kernel_owned<circular_buffer> {
-    static const size_t INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS = 8;
+    static const size_t INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS = 1;
     static const size_t MAX_CIRCULAR_BUFFER_SIZE = 1 << 24;
 
 public:

@@ -203,6 +203,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     void reset_stack_limit();
     bool on_rust_stack();
     void check_stack_canary();
+    void clear_stack_cache();
 };
 
 //
