@@ -18,12 +18,35 @@
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
 // FIXME: We want this to be 128 but need to slim the red zone calls down
-#ifdef __i386__
-#define RED_ZONE_SIZE 1024*20
-#endif
+#define RZ_LINUX_32 1024*20
+#define RZ_LINUX_64 1024*20
+#define RZ_MAC_32   1024*20
+#define RZ_MAC_64   1024*20
+#define RZ_WIN_32   1024*20
 
+#ifdef __linux__
+#ifdef __i386__
+#define RED_ZONE_SIZE RZ_LINUX_32
+#endif
 #ifdef __x86_64__
-#define RED_ZONE_SIZE 1024*20
+#define RED_ZONE_SIZE RZ_LINUX_64
+#endif
+#endif
+#ifdef __APPLE__
+#ifdef __i386__
+#define RED_ZONE_SIZE RZ_MAC_32
+#endif
+#ifdef __x86_64__
+#define RED_ZONE_SIZE RZ_MAC_64
+#endif
+#endif
+#ifdef __WIN32__
+#ifdef __i386__
+#define RED_ZONE_SIZE RZ_WIN_32
+#endif
+#ifdef __x86_64__
+#define RED_ZONE_SIZE RZ_WIN_64
+#endif
 #endif
 
 // Stack size
