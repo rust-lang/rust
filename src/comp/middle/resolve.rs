@@ -1717,21 +1717,26 @@ fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
                      name: option::t<ident>) {
     alt m {
       ast::def_mod(defid) {
+        let cached;
         alt e.impl_cache.find(defid) {
-          some(v) { impls += *v; }
+          some(v) { cached = v; }
           none. {
-            let found = [];
-            if defid.crate == ast::local_crate {
-                let md = option::get(e.mod_map.get(defid.node).m);
-                for i in md.items {
-                    find_impls_in_item(i, found, name, some(md));
+            cached = if defid.crate == ast::local_crate {
+                let tmp = [];
+                for i in option::get(e.mod_map.get(defid.node).m).items {
+                    find_impls_in_item(i, tmp, name, none);
                 }
+                @tmp
             } else {
-                found = csearch::get_impls_for_mod(e.cstore, defid, name);
-            }
-            impls += found;
-            e.impl_cache.insert(defid, @found);
+                @csearch::get_impls_for_mod(e.cstore, defid, name)
+            };
+            e.impl_cache.insert(defid, cached);
           }
+        }
+        for im in *cached {
+            if alt name { some(n) { n == im.ident } _ { true } } {
+                impls += [im];
+            }
         }
       }
       _ {}
