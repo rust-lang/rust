@@ -74,7 +74,7 @@ get_min_stk_size() {
         return strtol(stack_size, NULL, 0);
     }
     else {
-        return 0x300;
+        return 0x300000;
     }
 }
 
