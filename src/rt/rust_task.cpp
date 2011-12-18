@@ -19,11 +19,11 @@
 // to the rt, compiler and dynamic linker for running small functions
 // FIXME: We want this to be 128 but need to slim the red zone calls down
 #ifdef __i386__
-#define RED_ZONE_SIZE 65536
+#define RED_ZONE_SIZE 1024*20
 #endif
 
 #ifdef __x86_64__
-#define RED_ZONE_SIZE 65536
+#define RED_ZONE_SIZE 1024*20
 #endif
 
 // Stack size
