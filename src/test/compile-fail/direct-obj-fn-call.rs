@@ -1,4 +1,4 @@
-// error-pattern: attempted field access
+// error-pattern: attempted access of field hello
 
 obj x() {
     fn hello() { log "hello"; }

@@ -467,11 +467,10 @@ fn print_item(s: ps, &&item: @ast::item) {
         space(s.s);
         bopen(s);
         for meth: @ast::method in _obj.methods {
-            let typarams: [ast::ty_param] = [];
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
             print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
-                     meth.node.ident, typarams, []);
+                     meth.node.ident, meth.node.tps, []);
             word(s.s, " ");
             print_block(s, meth.node.meth.body);
         }
@@ -490,7 +489,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
             print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
-                     meth.node.ident, [], []);
+                     meth.node.ident, meth.node.tps, []);
             word(s.s, " ");
             print_block(s, meth.node.meth.body);
         }
@@ -964,11 +963,10 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
 
         // Methods
         for meth: @ast::method in anon_obj.methods {
-            let typarams: [ast::ty_param] = [];
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
             print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
-                     meth.node.ident, typarams, []);
+                     meth.node.ident, meth.node.tps, []);
             word(s.s, " ");
             print_block(s, meth.node.meth.body);
         }

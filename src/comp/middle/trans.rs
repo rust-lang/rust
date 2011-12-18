@@ -2759,7 +2759,7 @@ fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
     let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
     let mths = alt ty::struct(tcx, o_ty) { ty::ty_obj(ms) { ms } };
 
-    let ix = ty::method_idx(ccx.sess, bcx.sp, field, mths);
+    let ix = option::get(ty::method_idx(field, mths));
     let vtbl = Load(bcx, GEPi(bcx, o, [0, abi::obj_field_vtbl]));
     let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
     vtbl = PointerCast(bcx, vtbl, vtbl_type);
@@ -2782,7 +2782,7 @@ fn trans_rec_field(bcx: @block_ctxt, base: @ast::expr,
     let {bcx, val} = trans_temp_expr(bcx, base);
     let {bcx, val, ty} = autoderef(bcx, val, ty::expr_ty(bcx_tcx(bcx), base));
     let fields = alt ty::struct(bcx_tcx(bcx), ty) { ty::ty_rec(fs) { fs } };
-    let ix = ty::field_idx(bcx_ccx(bcx).sess, bcx.sp, field, fields);
+    let ix = option::get(ty::field_idx(field, fields));
     // Silly check
     check type_is_tup_like(bcx, ty);
     let {bcx, val} = GEP_tup_like(bcx, ty, val, [0, ix as int]);

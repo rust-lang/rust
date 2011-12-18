@@ -1,4 +1,4 @@
-// error-pattern:attempted field access on type fn
+// error-pattern:attempted access of field m on type fn
 fn main() {
 
   obj foo() {

@@ -1466,30 +1466,32 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
     -> option::t<{method: @resolve::method_info, ids: [int]}> {
     let result = none;
     std::list::iter(isc) {|impls|
+        if option::is_some(result) { ret; }
         for @{did, methods, _} in *impls {
-            let (n_tps, self_ty) = if did.crate == ast::local_crate {
-                alt fcx.ccx.tcx.items.get(did.node) {
-                  ast_map::node_item(@{node: ast::item_impl(tps, st, _), _}) {
-                    (vec::len(tps), ast_ty_to_ty_crate(fcx.ccx, st))
-                  }
-                }
-            } else {
-                let tpt = csearch::get_type(fcx.ccx.tcx, did);
-                (vec::len(tpt.kinds), tpt.ty)
-            };
-            let {ids, ty: self_ty} = if n_tps > 0u {
-                bind_params_in_type(ast_util::dummy_sp(), fcx.ccx.tcx,
-                                    bind next_ty_var_id(fcx), self_ty, n_tps)
-            } else { {ids: [], ty: self_ty} };
-            // FIXME[impl] Don't unify in the current fcx, use
-            // scratch context
-            alt unify::unify(fcx, ty, self_ty) {
-              ures_ok(_) {
-                for m in methods {
-                    if m.ident == name {
-                        result = some({method: m, ids: ids});
-                        ret;
+            alt vec::find(methods, {|m| m.ident == name}) {
+              some(m) {
+                let (n_tps, self_ty) = if did.crate == ast::local_crate {
+                    alt fcx.ccx.tcx.items.get(did.node) {
+                      ast_map::node_item(@{node: ast::item_impl(tps, st, _),
+                                           _}) {
+                        (vec::len(tps), ast_ty_to_ty_crate(fcx.ccx, st))
+                      }
                     }
+                } else {
+                    let tpt = csearch::get_type(fcx.ccx.tcx, did);
+                    (vec::len(tpt.kinds), tpt.ty)
+                };
+                let {ids, ty: self_ty} = if n_tps > 0u {
+                    bind_params_in_type(ast_util::dummy_sp(), fcx.ccx.tcx,
+                                        bind next_ty_var_id(fcx), self_ty,
+                                        n_tps)
+                } else { {ids: [], ty: self_ty} };
+                alt unify::unify(fcx, ty, self_ty) {
+                  ures_ok(_) {
+                    result = some({method: m, ids: ids});
+                    ret;
+                  }
+                  _ {}
                 }
               }
               _ {}
@@ -2128,60 +2130,66 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_field(base, field) {
         bot |= check_expr(fcx, base);
-        let base_t = expr_ty(tcx, base);
-        let iscope = fcx.ccx.impl_map.get(expr.id);
-        alt lookup_method(fcx, iscope, field, base_t) {
-          some({method, ids}) {
-            let fty = if method.did.crate == ast::local_crate {
-                alt tcx.items.get(method.did.node) {
-                  ast_map::node_method(m) {
-                    let mt = ty_of_method(tcx, m_check, m);
-                    ty::mk_fn(tcx, mt.proto, mt.inputs,
-                              mt.output, mt.cf, mt.constrs)
-                  }
-                }
-            } else { csearch::get_type(tcx, method.did).ty };
-            let ids = ids;
-            if method.n_tps > 0u {
-                let b = bind_params_in_type(expr.span, tcx,
-                                            bind next_ty_var_id(fcx),
-                                            fty, method.n_tps);
-                ids += b.ids;
-                fty = b.ty;
-            }
-            let substs = vec::map(ids, {|id| ty::mk_var(tcx, id)});
-            write::ty_fixup(fcx, id, {substs: some(substs), ty: fty});
-            fcx.ccx.method_map.insert(id, method.did);
-          }
-          _ {
-            base_t = do_autoderef(fcx, expr.span, base_t);
-            alt structure_of(fcx, expr.span, base_t) {
-              ty::ty_rec(fields) {
-                let ix = ty::field_idx(tcx.sess, expr.span, field, fields);
-                if ix >= vec::len::<ty::field>(fields) {
-                    tcx.sess.span_fatal(expr.span, "bad index on record");
-                }
+        let expr_t = expr_ty(tcx, base);
+        let base_t = do_autoderef(fcx, expr.span, expr_t);
+        let handled = false;
+        alt structure_of(fcx, expr.span, base_t) {
+          ty::ty_rec(fields) {
+            alt ty::field_idx(field, fields) {
+              some(ix) {
                 write::ty_only_fixup(fcx, id, fields[ix].mt.ty);
+                handled = true;
               }
-              ty::ty_obj(methods) {
-                let ix = ty::method_idx(tcx.sess, expr.span, field, methods);
-                if ix >= vec::len::<ty::method>(methods) {
-                    tcx.sess.span_fatal(expr.span, "bad index on obj");
-                }
+              _ {}
+            }
+          }
+          ty::ty_obj(methods) {
+            alt ty::method_idx(field, methods) {
+              some(ix) {
                 let meth = methods[ix];
-                let t = ty::mk_fn(tcx, meth.proto, meth.inputs, meth.output,
-                                  meth.cf, meth.constrs);
+                let t = ty::mk_fn(tcx, meth.proto, meth.inputs,
+                                  meth.output, meth.cf, meth.constrs);
                 write::ty_only_fixup(fcx, id, t);
+                handled = true;
               }
-              _ {
-                let t_err = resolve_type_vars_if_possible(fcx, base_t);
-                let msg = #fmt["attempted field access on type %s, but no \
-                                method implementation was found",
-                               ty_to_str(tcx, t_err)];
+              _ {}
+            }
+          }
+          _ {}
+        }
+        if !handled {
+            let iscope = fcx.ccx.impl_map.get(expr.id);
+            alt lookup_method(fcx, iscope, field, expr_t) {
+              some({method, ids}) {
+                let fty = if method.did.crate == ast::local_crate {
+                    alt tcx.items.get(method.did.node) {
+                      ast_map::node_method(m) {
+                        let mt = ty_of_method(tcx, m_check, m);
+                        ty::mk_fn(tcx, mt.proto, mt.inputs,
+                                  mt.output, mt.cf, mt.constrs)
+                      }
+                    }
+                } else { csearch::get_type(tcx, method.did).ty };
+                let ids = ids;
+                if method.n_tps > 0u {
+                    let b = bind_params_in_type(expr.span, tcx,
+                                                bind next_ty_var_id(fcx),
+                                                fty, method.n_tps);
+                    ids += b.ids;
+                    fty = b.ty;
+                }
+                let substs = vec::map(ids, {|id| ty::mk_var(tcx, id)});
+                write::ty_fixup(fcx, id, {substs: some(substs), ty: fty});
+                fcx.ccx.method_map.insert(id, method.did);
+              }
+              none. {
+                let t_err = resolve_type_vars_if_possible(fcx, expr_t);
+                let msg = #fmt["attempted access of field %s on type %s, but \
+                                no method implementation was found",
+                               field, ty_to_str(tcx, t_err)];
                 tcx.sess.span_fatal(expr.span, msg);
               }
             }
-          }
         }
       }
       ast::expr_index(base, idx) {

@@ -642,7 +642,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     let ix: uint = 0u;
     alt ty::struct(bcx_tcx(bcx), outer_obj_ty) {
       ty::ty_obj(methods) {
-        ix = ty::method_idx(cx.ccx.sess, sp, m.ident, methods);
+        ix = option::get(ty::method_idx(m.ident, methods));
       }
       _ {
         // Shouldn't happen.
@@ -787,7 +787,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     let ix: uint = 0u;
     alt ty::struct(bcx_tcx(bcx), inner_obj_ty) {
       ty::ty_obj(methods) {
-        ix = ty::method_idx(cx.ccx.sess, sp, m.ident, methods);
+        ix = option::get(ty::method_idx(m.ident, methods));
       }
       _ {
         // Shouldn't happen.

@@ -413,8 +413,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
         let rec_vals = [];
         for field_name: ast::ident in rec_fields {
-            let ix: uint =
-                ty::field_idx(ccx.sess, dummy_sp(), field_name, fields);
+            let ix = option::get(ty::field_idx(field_name, fields));
             // not sure how to get rid of this check
             check type_is_tup_like(bcx, rec_ty);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
@@ -722,8 +721,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         let rec_fields =
             alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
         for f: ast::field_pat in fields {
-            let ix: uint =
-                ty::field_idx(ccx.sess, pat.span, f.ident, rec_fields);
+            let ix = option::get(ty::field_idx(f.ident, rec_fields));
             // how to get rid of this check?
             check type_is_tup_like(bcx, rec_ty);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);

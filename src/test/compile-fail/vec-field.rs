@@ -1,4 +1,4 @@
-// error-pattern:attempted field access on type [int]
+// error-pattern:attempted access of field some_field_name on type [int]
 // issue #367
 
 fn f() {

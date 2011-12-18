@@ -1698,11 +1698,10 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     }
 }
 
-fn field_idx(sess: session::session, sp: span, id: ast::ident,
-             fields: [field]) -> uint {
-    let i: uint = 0u;
-    for f: field in fields { if str::eq(f.ident, id) { ret i; } i += 1u; }
-    sess.span_fatal(sp, "unknown field '" + id + "' of record");
+fn field_idx(id: ast::ident, fields: [field]) -> option::t<uint> {
+    let i = 0u;
+    for f in fields { if f.ident == id { ret some(i); } i += 1u; }
+    ret none;
 }
 
 fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
@@ -1715,11 +1714,10 @@ fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
     }
 }
 
-fn method_idx(sess: session::session, sp: span, id: ast::ident,
-              meths: [method]) -> uint {
-    let i: uint = 0u;
-    for m: method in meths { if str::eq(m.ident, id) { ret i; } i += 1u; }
-    sess.span_fatal(sp, "unknown method '" + id + "' of obj");
+fn method_idx(id: ast::ident, meths: [method]) -> option::t<uint> {
+    let i = 0u;
+    for m in meths { if m.ident == id { ret some(i); } i += 1u; }
+    ret none;
 }
 
 fn sort_methods(meths: [method]) -> [method] {
