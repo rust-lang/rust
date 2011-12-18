@@ -8,7 +8,6 @@
 use std;
 
 native mod rustrt {
-    fn set_min_stack(size: uint);
     fn pin_task();
 }
 
@@ -31,7 +30,6 @@ resource and_then_get_big_again(_i: ()) {
 }
 
 fn main() {
-    rustrt::set_min_stack(1024u);
     task::spawn((), fn (&&_i: ()) {
         let r = and_then_get_big_again(());
         getbig_call_c_and_fail(10000);

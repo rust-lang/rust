@@ -185,10 +185,6 @@ mod map_reduce {
 }
 
 fn main(argv: [str]) {
-    // We can get by with 8k stacks, and we'll probably exhaust our
-    // address space otherwise.
-    task::set_min_stack(8192u);
-
     let inputs = if vec::len(argv) < 2u {
         [input1(), input2(), input3()]
     } else {

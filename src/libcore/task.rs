@@ -41,7 +41,6 @@ export join;
 export unsupervise;
 export pin;
 export unpin;
-export set_min_stack;
 export task_result;
 export tr_success;
 export tr_failure;
@@ -64,8 +63,6 @@ native mod rustrt {
     fn unpin_task();
     fn get_task_id() -> task_id;
     fn rust_get_task() -> *rust_task;
-
-    fn set_min_stack(stack_size: uint);
 
     fn new_task() -> task_id;
     fn drop_task(task_id: *rust_task);
@@ -215,15 +212,6 @@ Function: unpin
 Unpin the current task and future child tasks
 */
 fn unpin() { rustrt::unpin_task(); }
-
-/*
-Function: set_min_stack
-
-Set the minimum stack size (in bytes) for tasks spawned in the future.
-
-This function has global effect and should probably not be used.
-*/
-fn set_min_stack(stack_size: uint) { rustrt::set_min_stack(stack_size); }
 
 /*
 Function: spawn

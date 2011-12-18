@@ -220,10 +220,6 @@ fn main(argv: [str]) {
         iargs += [str::bytes(a)];
     }
 
-    // We can get by with 8k stacks, and we'll probably exhaust our
-    // address space otherwise.
-    task::set_min_stack(8192u);
-
     let start = time::precise_time_ns();
 
     map_reduce::map_reduce(map, reduce, iargs);
