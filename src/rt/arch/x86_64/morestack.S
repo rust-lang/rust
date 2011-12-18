@@ -1,9 +1,10 @@
-    .text
+/*
+	__morestack
 
-// __morestack
-//
-// LLVM generates a call to this to allocate more stack space in a functiono
-// prolog when we run out.
+	See i386/morestack.S for the lengthy, general explanation.
+*/
+
+.text
 
 #if defined(__APPLE__) || defined(_WIN32)
 #define UPCALL_NEW_STACK        _upcall_new_stack
@@ -17,25 +18,11 @@
 #define MORESTACK               __morestack
 #endif
 
-        // Naturally, nobody can agree as to
-        // which arguments should go in which
-        // registers:
-#if defined(_WIN32)
-#  define ARG0 %rcx
-#  define ARG1 %rdx
-#  define ARG2 %r8
-#else
-#  define ARG0 %rdi
-#  define ARG1 %rsi
-#  define ARG2 %rdx
-#endif
-
 .globl UPCALL_NEW_STACK
 .globl UPCALL_DEL_STACK
 .globl UPCALL_CALL_C
 .globl MORESTACK
 
-// FIXME: What about _WIN32?	
 #if defined(__linux__)
 	.hidden MORESTACK
 #else
@@ -48,24 +35,31 @@
 	.type MORESTACK,@function
 #endif
 
+
 #if defined(__linux__) || defined(__APPLE__)
 MORESTACK:
 	.cfi_startproc
-	
-	// Set up a normal backtrace
+
 	pushq %rbp
+	// The CFA is 24 bytes above the register that it will
+	// be associated with for this frame (%rbp). That is 8
+	// bytes greater than a normal frame, to allow the unwinder
+	// to skip the partial frame of the original function.
 	.cfi_def_cfa_offset 24
+	// %rbp is -24 bytes from the CFA
 	.cfi_offset %rbp, -24
 	movq %rsp, %rbp
+	// Calculate the CFA as on offset from %ebp
 	.cfi_def_cfa_register %rbp
 
 	// Save the grandparent stack pointer for the unwinder
+	// FIXME: This isn't used
 	leaq 24(%rbp), %rax
 	pushq %rax
 
 	// FIXME: libgcc also saves rax. not sure if we need to
 
-	// Save argument registers
+	// Save argument registers of the original function
 	pushq	%rdi
 	pushq	%rsi
 	pushq	%rdx
@@ -78,6 +72,8 @@ MORESTACK:
 	// and __morestack's caller's return address to skip
 	movq %rbp, %rcx
 	addq $24, %rcx  // Base pointer, return address x2
+
+	// The arguments to __morestack are passed in %r10 & %r11
 
 	pushq %r11 // Size of stack arguments
 	pushq %rcx // Address of stack arguments
@@ -119,7 +115,8 @@ MORESTACK:
 
 	// Align the stack again
 	pushq $0
-	
+
+	// FIXME: Should preserve %rax here
 	movq UPCALL_DEL_STACK@GOTPCREL(%rip), %rsi
 	movq $0, %rdi
 #ifdef __APPLE__
@@ -131,6 +128,9 @@ MORESTACK:
 
 	addq $8, %rsp
 	popq %rbp
+	// FIXME: I don't think these rules are necessary
+	// since the unwinder should never encounter an instruction
+	// pointer pointing here.
 	.cfi_restore %rbp
 	.cfi_def_cfa %rsp, 16
 	ret
