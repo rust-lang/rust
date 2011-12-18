@@ -1,5 +1,3 @@
-// xfail-test
-// compile-flags:--stack-growth
 fn getbig(i: int) {
     if i != 0 {
         getbig(i - 1);
@@ -7,5 +5,5 @@ fn getbig(i: int) {
 }
 
 fn main() {
-    getbig(10000000);
+    getbig(100000);
 }

@@ -1,6 +1,4 @@
-// xfail-test
 // error-pattern:explicit failure
-// compile-flags:--stack-growth
 
 // This time we're testing that the stack limits are restored
 // correctly after calling into the C stack and unwinding.

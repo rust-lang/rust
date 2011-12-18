@@ -1,6 +1,3 @@
-// xfail-test
-// compile-flags:--stack-growth
-
 // This test attempts to force the dynamic linker to resolve
 // external symbols as close to the red zone as possible.
 

@@ -1,6 +1,3 @@
-// xfail-test
-// compile-flags:--stack-growth
-
 // This test will call __morestack with various minimum stack sizes
 
 use std;

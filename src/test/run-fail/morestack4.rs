@@ -1,6 +1,4 @@
-// xfail-test
 // error-pattern:explicit failure
-// compile-flags:--stack-growth
 
 // Just testing unwinding
 

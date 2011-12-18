@@ -1,6 +1,3 @@
-// xfail-test
-// compile-flags:--stack-growth
-
 // This is testing for stack frames greater than 256 bytes,
 // for which function prologues are generated differently
 

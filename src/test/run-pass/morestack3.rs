@@ -1,6 +1,3 @@
-// xfail-test
-// compile-flags:--stack-growth
-
 // Here we're testing that all of the argument registers, argument
 // stack slots, and return value are preserved across split stacks.
 fn getbig(a0: int,
@@ -40,6 +37,6 @@ fn getbig(a0: int,
 }
 
 fn main() {
-    let a = 1000000;
+    let a = 100000;
     getbig(a, a+1, a+2, a+3, a+4, a+5, a+6, a+7, a+8, a+9);
 }
