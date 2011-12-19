@@ -385,9 +385,7 @@ type block_ctxt =
      mutable lpad_dirty: bool,
      mutable lpad: option::t<BasicBlockRef>,
      sp: span,
-     fcx: @fn_ctxt,
-     source_pos: {mutable usable: bool,
-                  mutable pos: [syntax::codemap::loc]}};
+     fcx: @fn_ctxt};
 
 // FIXME: we should be able to use option::t<@block_parent> here but
 // the infinite-tag check in rustboot gets upset.

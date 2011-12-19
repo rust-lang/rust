@@ -11,10 +11,7 @@ import util::ppaux::ty_to_str;
 export create_local_var;
 export create_function;
 export create_arg;
-export add_line_info;
 export update_source_pos;
-export invalidate_source_pos;
-export revalidate_source_pos;
 export debug_ctxt;
 
 const LLVMDebugVersion: int = (9 << 16);
@@ -98,7 +95,7 @@ type metadata<T> = {node: ValueRef, data: T};
 
 type file_md = {path: str};
 type compile_unit_md = {path: str};
-type subprogram_md = {name: str, file: str};
+type subprogram_md = {path: str};
 type local_var_md = {id: ast::node_id};
 type tydesc_md = {hash: uint};
 type block_md = {start: codemap::loc, end: codemap::loc};
@@ -232,7 +229,7 @@ fn create_block(cx: @block_ctxt) -> @metadata<block_md> {
     }
 
     let parent = alt cx.parent {
-      trans_common::parent_none. { function_metadata_from_block(cx).node }
+      trans_common::parent_none. { create_function(cx.fcx).node }
       trans_common::parent_some(bcx) { create_block(cx).node }
     };
     let file_node = create_file(bcx_ccx(cx), fname);
@@ -595,14 +592,6 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_md> {
     };
 }
 
-fn function_metadata_from_block(bcx: @block_ctxt) -> @metadata<subprogram_md> {
-    let cx = bcx_ccx(bcx);
-    let fcx = bcx_fcx(bcx);
-    let fn_node = cx.ast_map.get(fcx.id);
-    let fn_item = alt fn_node { ast_map::node_item(item) { item } };
-    ret create_function(fcx, fn_item, fcx.llfn);
-}
-
 fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> str {
     codemap::lookup_char_pos(cx.sess.get_codemap(), sp.lo).filename
 }
@@ -640,7 +629,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.filename);
     let context = alt bcx.parent {
-      trans_common::parent_none. { function_metadata_from_block(bcx).node }
+      trans_common::parent_none. { create_function(bcx.fcx).node }
       trans_common::parent_some(_) { create_block(bcx).node }
     };
     let mdnode = create_var(tg, context, name, filemd.node,
@@ -662,7 +651,6 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     ret mdval;
 }
 
-//FIXME: consolidate with create_local_var
 fn create_arg(bcx: @block_ctxt, arg: ast::arg)
     -> @metadata<argument_md> unsafe {
     let fcx = bcx_fcx(bcx);
@@ -683,9 +671,7 @@ fn create_arg(bcx: @block_ctxt, arg: ast::arg)
     let ty = trans::node_id_type(cx, arg.id);
     let tymd = create_ty(cx, ty, arg.ty);
     let filemd = create_file(cx, loc.filename);
-    let fn_node = cx.ast_map.get(fcx.id);
-    let fn_item = alt fn_node { ast_map::node_item(item) { item } };
-    let context = create_function(fcx, fn_item, fcx.llfn);
+    let context = create_function(bcx.fcx);
     let mdnode = create_var(tg, context.node, arg.ident, filemd.node,
                             loc.line as int, tymd.node);
     let mdval = @{node: mdnode, data: {id: arg.id}};
@@ -700,92 +686,76 @@ fn create_arg(bcx: @block_ctxt, arg: ast::arg)
     ret mdval;
 }
 
-fn update_source_pos(cx: @block_ctxt, s: codemap::span) -> @debug_source_pos {
-    let dsp = @debug_source_pos(cx);
+fn update_source_pos(cx: @block_ctxt, s: codemap::span) {
     if !bcx_ccx(cx).sess.get_opts().debuginfo {
-        ret dsp;
+        ret;
     }
     let cm = bcx_ccx(cx).sess.get_codemap();
-    if vec::is_empty(cx.source_pos.pos) {
-        cx.source_pos.usable = true;
-    }
-    cx.source_pos.pos += [codemap::lookup_char_pos(cm, s.lo)]; //XXX maybe hi
-    ret dsp;
-}
-
-fn invalidate_source_pos(cx: @block_ctxt) -> @invalidated_source_pos {
-    let isp = @invalidated_source_pos(cx);
-    if !bcx_ccx(cx).sess.get_opts().debuginfo {
-        ret isp;
-    }
-    cx.source_pos.usable = false;
-    ret isp;
-}
-
-fn revalidate_source_pos(cx: @block_ctxt) {
-    if !bcx_ccx(cx).sess.get_opts().debuginfo {
-        ret;
-    }
-    cx.source_pos.usable = true;
-}
-
-fn reset_source_pos(cx: @block_ctxt) {
-    if !bcx_ccx(cx).sess.get_opts().debuginfo {
-        ret;
-    }
-    vec::pop(cx.source_pos.pos);
-}
-
-resource debug_source_pos(bcx: @block_ctxt) {
-    reset_source_pos(bcx);
-}
-resource invalidated_source_pos(bcx: @block_ctxt) {
-    revalidate_source_pos(bcx);
-}
-
-fn add_line_info(cx: @block_ctxt, llinstr: ValueRef) {
-    if !bcx_ccx(cx).sess.get_opts().debuginfo ||
-       !cx.source_pos.usable ||
-       vec::is_empty(cx.source_pos.pos) {
-        ret;
-    }
-    let loc = option::get(vec::last(cx.source_pos.pos));
     let blockmd = create_block(cx);
-    let kind = "dbg";
-    str::as_buf(kind, {|sbuf| 
-        let kind_id = llvm::LLVMGetMDKindID(sbuf,
-                                            str::byte_len(kind));
-        let scopedata = [lli32(loc.line as int),
-                         lli32(loc.col as int),
-                         blockmd.node,
-                         llnull()];
-        let dbgscope = llmdnode(scopedata);
-        llvm::LLVMSetMetadata(llinstr, kind_id, dbgscope)
-    });
+    let loc = codemap::lookup_char_pos(cm, s.lo);
+    let scopedata = [lli32(loc.line as int),
+                     lli32(loc.col as int),
+                     blockmd.node,
+                     llnull()];
+    let dbgscope = llmdnode(scopedata);
+    llvm::LLVMSetCurrentDebugLocation(trans_build::B(cx), dbgscope);
 }
 
-fn create_function(fcx: @fn_ctxt, item: @ast::item, llfndecl: ValueRef)
-    -> @metadata<subprogram_md> {
+fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
     let cx = fcx_ccx(fcx);
+    let dbg_cx = option::get(cx.dbg_cx);
+
+    log "~~";
+    log fcx.id;
+    log cx.sess.span_str(fcx.sp);
+
+    let (ident, ret_ty, id) = alt cx.ast_map.get(fcx.id) {
+      ast_map::node_item(item) {
+        alt item.node {
+          ast::item_fn(f, _) | ast::item_res(f, _, _, _) {
+            (item.ident, f.decl.output, item.id)
+          }
+        }
+      }
+      ast_map::node_obj_method(method) {
+        (method.node.ident, method.node.meth.decl.output, method.node.id)
+      }
+      ast_map::node_res_ctor(item) {
+        alt item.node { ast::item_res(f, _, _, ctor_id) {
+          (item.ident, f.decl.output, ctor_id)
+        }}
+      }
+      ast_map::node_expr(expr) {
+        alt expr.node {
+          ast::expr_fn(f) {
+            (dbg_cx.names.next("fn"), f.decl.output, expr.id)
+          }
+        }
+      }
+    };
+
+    log ident;
+    log id;
+
+    let path = str::connect(fcx.lcx.path + [ident], "::");
+
     let cache = get_cache(cx);
     alt cached_metadata::<@metadata<subprogram_md>>(
-        cache, SubprogramTag, {|md| md.data.name == item.ident &&
+        cache, SubprogramTag, {|md| md.data.path == path &&
                                     /*md.data.path == ??*/ true}) {
       option::some(md) { ret md; }
       option::none. {}
     }
 
     let loc = codemap::lookup_char_pos(cx.sess.get_codemap(),
-                                       item.span.lo);
+                                       fcx.sp.lo);
     let file_node = create_file(cx, loc.filename).node;
-    let mangled = cx.item_symbols.get(item.id);
-    let ret_ty = alt item.node {
-      ast::item_fn(f, _) { f.decl.output }
-    };
+    let key = cx.item_symbols.contains_key(fcx.id) ? fcx.id : id;
+    let mangled = cx.item_symbols.get(key);
     let ty_node = if cx.sess.get_opts().extra_debuginfo {
         alt ret_ty.node {
           ast::ty_nil. { llnull() }
-          _ { create_ty(cx, ty::node_id_to_type(ccx_tcx(cx), item.id),
+          _ { create_ty(cx, ty::node_id_to_type(ccx_tcx(cx), id),
                         ret_ty).node }
         }
     } else {
@@ -798,8 +768,8 @@ fn create_function(fcx: @fn_ctxt, item: @ast::item, llfndecl: ValueRef)
     let fn_metadata = [lltag(SubprogramTag),
                        llunused(),
                        file_node,
-                       llstr(item.ident),
-                       llstr(item.ident), //XXX fully-qualified C++ name
+                       llstr(ident),
+                       llstr(path), //XXX fully-qualified C++ name
                        llstr(mangled), //XXX MIPS name?????
                        file_node,
                        lli32(loc.line as int),
@@ -811,15 +781,14 @@ fn create_function(fcx: @fn_ctxt, item: @ast::item, llfndecl: ValueRef)
                        llnull(), // base type with vtbl
                        lli1(false), // artificial
                        lli1(cx.sess.get_opts().optimize != 0u),
-                       llfndecl
+                       fcx.llfn
                        //list of template params
                        //func decl descriptor
                        //list of func vars
                       ];
     let val = llmdnode(fn_metadata);
     add_named_metadata(cx, "llvm.dbg.sp", val);
-    let mdval = @{node: val, data: {name: item.ident,
-                                    file: loc.filename}};
+    let mdval = @{node: val, data: {path: path}};
     update_cache(cache, SubprogramTag, subprogram_metadata(mdval));
     ret mdval;
 }

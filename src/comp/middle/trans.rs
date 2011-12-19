@@ -3519,7 +3519,7 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
 // - exprs with non-immediate type never get dest=by_val
 fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
-    let _s = debuginfo::update_source_pos(bcx, e.span);
+    debuginfo::update_source_pos(bcx, e.span);
 
     if expr_is_lval(bcx, e) {
         ret lval_to_dps(bcx, e, dest);
@@ -4014,7 +4014,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     }
 
     let bcx = cx;
-    let _s = debuginfo::update_source_pos(cx, s.span);
+    debuginfo::update_source_pos(cx, s.span);
     
     alt s.node {
       ast::stmt_expr(e, _) { bcx = trans_expr(cx, e, ignore); }
@@ -4041,19 +4041,6 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     ret bcx;
 }
 
-fn source_pos_from_block_parent(parent: block_parent)
-    -> (bool, [codemap::loc]) {
-    alt parent {
-      parent_none. { (false, []) }
-      parent_some(bcx) { (bcx.source_pos.usable,
-                          alt vec::last(bcx.source_pos.pos) {
-                            option::some(p) { [p] }
-                            option::none. { [] }
-                          })
-                       }
-    }
-}
-
 // You probably don't want to use this one. See the
 // next three functions instead.
 fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
@@ -4065,7 +4052,6 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
     }
     let llbb: BasicBlockRef =
         str::as_buf(s, {|buf| llvm::LLVMAppendBasicBlock(cx.llfn, buf) });
-    let (usable, pos) = source_pos_from_block_parent(parent);
     let bcx = @{llbb: llbb,
                 mutable terminated: false,
                 mutable unreachable: false,
@@ -4075,8 +4061,7 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
                 mutable lpad_dirty: true,
                 mutable lpad: option::none,
                 sp: cx.sp,
-                fcx: cx,
-                source_pos: {mutable usable: usable, mutable pos: pos}};
+                fcx: cx};
     alt parent {
       parent_some(cx) {
         if cx.unreachable { Unreachable(bcx); }
@@ -4111,7 +4096,6 @@ fn new_sub_block_ctxt(bcx: @block_ctxt, n: str) -> @block_ctxt {
 }
 
 fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
-    let (usable, pos) = source_pos_from_block_parent(parent_none);
     ret @{llbb: llbb,
           mutable terminated: false,
           mutable unreachable: false,
@@ -4121,8 +4105,7 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
           mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
-          fcx: fcx,
-          source_pos: {mutable usable: usable, mutable pos: pos}};
+          fcx: fcx};
 }
 
 
@@ -4180,7 +4163,6 @@ fn block_locals(b: ast::blk, it: block(@ast::local)) {
 }
 
 fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
-    let (usable, pos) = source_pos_from_block_parent(parent_none);
     ret @{llbb: fcx.llstaticallocas,
           mutable terminated: false,
           mutable unreachable: false,
@@ -4190,12 +4172,10 @@ fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
-          fcx: fcx,
-          source_pos: {mutable usable: usable, mutable pos: pos}};
+          fcx: fcx};
 }
 
 fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
-    let (usable, pos) = source_pos_from_block_parent(parent_none);
     ret @{llbb: fcx.llderivedtydescs,
           mutable terminated: false,
           mutable unreachable: false,
@@ -4205,8 +4185,7 @@ fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           mutable lpad_dirty: true,
           mutable lpad: option::none,
           sp: fcx.sp,
-          fcx: fcx,
-          source_pos: {mutable usable: usable, mutable pos: pos}};
+          fcx: fcx};
 }
 
 
@@ -4281,13 +4260,13 @@ fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
     let bcx = bcx;
     block_locals(b) {|local| bcx = alloc_local(bcx, local); };
     for s: @ast::stmt in b.node.stmts {
-        let _s = debuginfo::update_source_pos(bcx, b.span);
+        debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
     }
     alt b.node.expr {
       some(e) {
         let bt = ty::type_is_bot(bcx_tcx(bcx), ty::expr_ty(bcx_tcx(bcx), e));
-        let _s = debuginfo::update_source_pos(bcx, e.span);
+        debuginfo::update_source_pos(bcx, e.span);
         bcx = trans_expr(bcx, e, bt ? ignore : dest);
       }
       _ { assert dest == ignore || bcx.unreachable; }
@@ -4585,10 +4564,7 @@ fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     let fcx = option::none;
     trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|new_fcx| fcx = option::some(new_fcx);});
     if cx.ccx.sess.get_opts().extra_debuginfo {
-        let item = alt option::get(cx.ccx.ast_map.find(id)) {
-            ast_map::node_item(item) { item }
-        };
-        debuginfo::create_function(option::get(fcx), item, llfndecl);
+        debuginfo::create_function(option::get(fcx));
     }
     if do_time {
         let end = time::get_time();
