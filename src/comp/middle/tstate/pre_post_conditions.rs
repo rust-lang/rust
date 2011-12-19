@@ -339,13 +339,21 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         find_pre_post_expr(fcx, arg);
         copy_pre_post(fcx.ccx, e.id, arg);
       }
-      expr_fn(f, _) { // NDM captures
+      expr_fn(f, cap_clause) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
-        for @{def, span} in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
+        for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
             log ("handle_var_def: def=", def);
-            handle_var_def(fcx, rslt, def, "upvar");
+            handle_var_def(fcx, rslt, def.def, "upvar");
         }
+
+        vec::iter(cap_clause.moves) { |cap_item|
+            log ("forget_in_postcond: ", cap_item);
+            forget_in_postcond(fcx, e.id, cap_item.id);
+        }
+
+        let ann = node_id_to_ts_ann(fcx.ccx, e.id);
+        log_cond(tritv::to_vec(ann.conditions.postcondition));
       }
       expr_block(b) {
         find_pre_post_block(fcx, b);

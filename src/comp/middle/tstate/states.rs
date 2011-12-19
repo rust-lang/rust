@@ -320,6 +320,19 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
     ret changed;
 }
 
+fn find_pre_post_state_cap_clause(fcx: fn_ctxt, e_id: node_id,
+                                  pres: prestate, cap_clause: capture_clause)
+    -> bool
+{
+    let ccx = fcx.ccx;
+    let pres_changed = set_prestate_ann(ccx, e_id, pres);
+    let post = tritv_clone(pres);
+    vec::iter(cap_clause.moves) { |cap_item|
+        forget_in_poststate(fcx, post, cap_item.id);
+    }
+    ret set_poststate_ann(ccx, e_id, post) || pres_changed;
+}
+
 fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
     let num_constrs = num_constraints(fcx.enclosing);
 
@@ -358,7 +371,9 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
       expr_lit(l) { ret pure_exp(fcx.ccx, e.id, pres); }
-      expr_fn(f, _) { ret pure_exp(fcx.ccx, e.id, pres); } // NDM Captures
+      expr_fn(_, cap_clause) {
+        ret find_pre_post_state_cap_clause(fcx, e.id, pres, *cap_clause);
+      }
       expr_block(b) {
         ret find_pre_post_state_block(fcx, pres, b) |
                 set_prestate_ann(fcx.ccx, e.id, pres) |

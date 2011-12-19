@@ -865,7 +865,6 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
     };
 }
 
-
 /* FIXME should refactor this better */
 fn forget_in_postcond(fcx: fn_ctxt, parent_exp: node_id, dead_v: node_id) {
     // In the postcondition given by parent_exp, clear the bits
@@ -875,6 +874,9 @@ fn forget_in_postcond(fcx: fn_ctxt, parent_exp: node_id, dead_v: node_id) {
       some(d_id) {
         for c: norm_constraint in constraints(fcx) {
             if constraint_mentions(fcx, c, d_id) {
+                log ("clearing constraint ",
+                     c.bit_num,
+                     constraint_to_str(fcx.ccx.tcx, c.c));
                 clear_in_postcond(c.bit_num,
                                   node_id_to_ts_ann(fcx.ccx,
                                                     parent_exp).conditions);

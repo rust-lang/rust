@@ -3,7 +3,7 @@ import syntax::ast;
 import ast::{_fn, stmt,
              fn_ident, node_id, crate, return_val, noreturn,
              expr};
-import syntax::visit;
+import syntax::{visit, print};
 import syntax::codemap::span;
 import middle::ty::{type_is_nil, ret_ty_of_fn};
 import tstate::ann::{
@@ -73,14 +73,12 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     let pres: prestate = ann_prestate(a);
 
 
-    /*
-      log_err("check_states_stmt:");
-      log_stmt_err(*s);
-      log_err("prec = ");
-      log_tritv_err(fcx, prec);
-      log_err("pres = ");
-      log_tritv_err(fcx, pres);
-    */
+    log("check_states_stmt:");
+    log print::pprust::stmt_to_str(*s);
+    log("prec = ");
+    log_tritv(fcx, prec);
+    log("pres = ");
+    log_tritv(fcx, pres);
 
     if !implies(pres, prec) {
         let ss = "";

@@ -3551,7 +3551,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_unary(bcx, op, x, e.id, dest);
       }
       // NDM captures
-      ast::expr_fn(f, cap) {
+      ast::expr_fn(f, cap_clause) {
         ret trans_closure::trans_expr_fn(bcx, f, e.span, e.id, dest);
       }
       ast::expr_bind(f, args) {
