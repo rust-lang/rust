@@ -4015,7 +4015,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
 
     let bcx = cx;
     debuginfo::update_source_pos(cx, s.span);
-    
+
     alt s.node {
       ast::stmt_expr(e, _) { bcx = trans_expr(cx, e, ignore); }
       ast::stmt_decl(d, _) {
@@ -4562,7 +4562,8 @@ fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     let do_time = cx.ccx.sess.get_opts().stats;
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
     let fcx = option::none;
-    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|new_fcx| fcx = option::some(new_fcx);});
+    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id,
+                  {|new_fcx| fcx = option::some(new_fcx);});
     if cx.ccx.sess.get_opts().extra_debuginfo {
         debuginfo::create_function(option::get(fcx));
     }

@@ -631,7 +631,8 @@ fn Trap(cx: @block_ctxt) {
     assert (T as int != 0);
     let Args: [ValueRef] = [];
     unsafe {
-        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args), vec::len(Args), noname());
+        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args), vec::len(Args),
+                            noname());
     }
 }
 

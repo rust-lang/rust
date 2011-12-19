@@ -73,7 +73,8 @@ fn llnull() -> ValueRef unsafe {
 
 fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
     str::as_buf(name, {|sbuf|
-        llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, str::byte_len(name), val)
+        llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, str::byte_len(name),
+                                          val)
     })
 }
 
@@ -356,7 +357,7 @@ fn create_structure(file: @metadata<file_md>, name: str, line: int)
                mutable members: [],
                mutable total_size: 0,
                align: 64 //XXX different alignment per arch?
-              }; 
+              };
     ret cx;
 }
 
@@ -378,8 +379,9 @@ fn create_derived_type(type_tag: int, file: ValueRef, name: str, line: int,
 
 fn add_member(cx: @struct_ctxt, name: str, line: int, size: int, align: int,
               ty: ValueRef) {
-    cx.members += [create_derived_type(MemberTag, cx.file, name, line, size * 8,
-                                       align * 8, cx.total_size, ty)];
+    cx.members += [create_derived_type(MemberTag, cx.file, name, line,
+                                       size * 8, align * 8, cx.total_size,
+                                       ty)];
     cx.total_size += size * 8;
 }
 
@@ -421,10 +423,10 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     let uint_ty = @{node: ast::ty_uint(ast::ty_u), span: span};
     let refcount_type = create_basic_type(cx, uint_t, uint_ty);
     let scx = create_structure(file_node, ty_to_str(ccx_tcx(cx), outer), 0);
-    add_member(scx, "refcnt", 0, sys::size_of::<uint>() as int, 
+    add_member(scx, "refcnt", 0, sys::size_of::<uint>() as int,
                sys::align_of::<uint>() as int, refcount_type.node);
     add_member(scx, "boxed", 0, 8, //XXX member_size_and_align(??)
-               8, //XXX just a guess 
+               8, //XXX just a guess
                boxed.node);
     let llnode = finish_structure(scx);
     let mdval = @{node: llnode, data: {hash: outer}};
@@ -477,7 +479,7 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t, vec_ty: @ast::ty)
                                          arr_size, arr_align, 0,
                                          option::some(elem_ty_md.node),
                                          option::some([subrange]));
-    add_member(scx, "data", 0, 0, // according to an equivalent clang dump, the size should be 0
+    add_member(scx, "data", 0, 0, // clang says the size should be 0
                sys::align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
     ret @{node: llnode, data: {hash: vec_t}};
@@ -521,7 +523,8 @@ fn member_size_and_align(ty: @ast::ty) -> (int, int) {
     }
 }
 
-fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty) -> @metadata<tydesc_md> {
+fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
+    -> @metadata<tydesc_md> {
     /*let cache = get_cache(cx);
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| t == md.data.hash}) {
@@ -623,7 +626,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     }
 
     let name = alt local.node.pat.node {
-      ast::pat_bind(ident, _) { ident /*XXX deal with optional node binding */ }
+      ast::pat_bind(ident, _) { ident /*XXX deal w/ optional node binding*/ }
     };
     let loc = codemap::lookup_char_pos(cx.sess.get_codemap(),
                                        local.span.lo);
