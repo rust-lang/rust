@@ -162,8 +162,8 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
 }
 
 fn unexpected(p: parser, t: token::token) -> ! {
-    let s: str = "unexpected token: ";
-    s += token::to_str(p.get_reader(), t);
+    let s: str = "unexpected token: '" + token::to_str(p.get_reader(), t) +
+        "'";
     p.fatal(s);
 }
 
@@ -171,11 +171,11 @@ fn expect(p: parser, t: token::token) {
     if p.peek() == t {
         p.bump();
     } else {
-        let s: str = "expecting ";
+        let s: str = "expecting '";
         s += token::to_str(p.get_reader(), t);
-        s += ", found ";
+        s += "' but found '";
         s += token::to_str(p.get_reader(), p.peek());
-        p.fatal(s);
+        p.fatal(s + "'");
     }
 }
 
@@ -1703,9 +1703,9 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
                   token::RBRACE. { expr = some(e); }
                   t {
                     if stmt_ends_with_semi(*stmt) {
-                        p.fatal("expected ';' or '}' after " +
-                                    "expression but found " +
-                                    token::to_str(p.get_reader(), t));
+                        p.fatal("expected ';' or '}' after expression but \
+                                 found '" + token::to_str(p.get_reader(), t) +
+                                "'");
                     }
                     stmts += [stmt];
                   }
@@ -1908,8 +1908,8 @@ fn parse_mod_items(p: parser, term: token::token,
         alt parse_item(p, attrs) {
           some(i) { items += [i]; }
           _ {
-            p.fatal("expected item but found " +
-                        token::to_str(p.get_reader(), p.peek()));
+            p.fatal("expected item but found '" +
+                    token::to_str(p.get_reader(), p.peek()) + "'");
           }
         }
     }
@@ -2079,8 +2079,8 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
           }
           token::RBRACE. {/* empty */ }
           _ {
-            p.fatal("expected name of variant or '}' but found " +
-                        token::to_str(p.get_reader(), tok));
+            p.fatal("expected name of variant or '}' but found '" +
+                        token::to_str(p.get_reader(), tok) + "'");
           }
         }
     }
