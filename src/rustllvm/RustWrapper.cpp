@@ -165,3 +165,17 @@ extern "C" LLVMValueRef LLVMGetOrInsertFunction(LLVMModuleRef M,
   return wrap(unwrap(M)->getOrInsertFunction(Name,
                                              unwrap<FunctionType>(FunctionTy)));
 }
+
+extern "C" LLVMTypeRef LLVMMetadataTypeInContext(LLVMContextRef C) {
+  return wrap(Type::getMetadataTy(*unwrap(C)));
+}
+extern "C" LLVMTypeRef LLVMMetadataType(void) {
+  return LLVMMetadataTypeInContext(LLVMGetGlobalContext());
+}
+
+extern "C" void LLVMAddNamedMetadataOperand(LLVMModuleRef M, const char *Str,
+                                            unsigned SLen, LLVMValueRef Val)
+{
+  NamedMDNode *N = unwrap(M)->getOrInsertNamedMetadata(StringRef(Str, SLen));
+  N->addOperand(unwrap<MDNode>(Val));
+}

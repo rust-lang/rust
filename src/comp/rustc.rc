@@ -37,6 +37,7 @@ mod middle {
     mod freevars;
     mod shape;
     mod gc;
+    mod debuginfo;
 
     mod tstate {
         mod ck;

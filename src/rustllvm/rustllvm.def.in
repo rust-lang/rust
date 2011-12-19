@@ -60,6 +60,7 @@ LLVMAddLoopRotatePass
 LLVMAddLoopUnrollPass
 LLVMAddLoopUnswitchPass
 LLVMAddMemCpyOptPass
+LLVMAddNamedMetadataOperand
 LLVMAddPromoteMemoryToRegisterPass
 LLVMAddPruneEHPass
 LLVMAddReassociatePass
@@ -487,6 +488,8 @@ LLVMMDNode
 LLVMMDNodeInContext
 LLVMMDString
 LLVMMDStringInContext
+LLVMMetadataType
+LLVMMetadataTypeInContext
 LLVMModuleCreateWithName
 LLVMModuleCreateWithNameInContext
 LLVMMoveBasicBlockAfter

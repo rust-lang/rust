@@ -421,7 +421,8 @@ fn build_session_options(match: getopts::match)
     let libcore = !opt_present(match, "no-core");
     let verify = !opt_present(match, "no-verify");
     let save_temps = opt_present(match, "save-temps");
-    let debuginfo = opt_present(match, "g");
+    let extra_debuginfo = opt_present(match, "xg");
+    let debuginfo = opt_present(match, "g") || extra_debuginfo;
     let stats = opt_present(match, "stats");
     let time_passes = opt_present(match, "time-passes");
     let time_llvm_passes = opt_present(match, "time-llvm-passes");
@@ -468,6 +469,7 @@ fn build_session_options(match: getopts::match)
           libcore: libcore,
           optimize: opt_level,
           debuginfo: debuginfo,
+          extra_debuginfo: extra_debuginfo,
           verify: verify,
           save_temps: save_temps,
           stats: stats,
@@ -487,7 +489,7 @@ fn build_session_options(match: getopts::match)
     ret sopts;
 }
 
-fn build_session(sopts: @session::options) -> session::session {
+fn build_session(sopts: @session::options, input: str) -> session::session {
     let target_cfg = build_target_config(sopts);
     let cstore = cstore::mk_cstore();
     let filesearch = filesearch::mk_filesearch(
@@ -496,7 +498,7 @@ fn build_session(sopts: @session::options) -> session::session {
         sopts.addl_lib_search_paths);
     ret session::session(target_cfg, sopts, cstore,
                          @{cm: codemap::new_codemap(), mutable next_id: 1},
-                         none, 0u, filesearch, false);
+                         none, 0u, filesearch, false, fs::dirname(input));
 }
 
 fn parse_pretty(sess: session::session, &&name: str) -> pp_mode {
@@ -516,7 +518,7 @@ fn opts() -> [getopts::opt] {
          optflag("emit-llvm"), optflagopt("pretty"),
          optflag("ls"), optflag("parse-only"), optflag("no-trans"),
          optflag("O"), optopt("opt-level"), optmulti("L"), optflag("S"),
-         optopt("o"), optopt("out-dir"),
+         optopt("o"), optopt("out-dir"), optflag("xg"),
          optflag("c"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optopt("target"), optflag("stats"),
          optflag("time-passes"), optflag("time-llvm-passes"),
@@ -642,7 +644,7 @@ fn main(args: [str]) {
     };
 
     let sopts = build_session_options(match);
-    let sess = build_session(sopts);
+    let sess = build_session(sopts, ifile);
     let odir = getopts::opt_maybe_str(match, "out-dir");
     let ofile = getopts::opt_maybe_str(match, "o");
     let cfg = build_configuration(sess, binary, ifile);
@@ -674,7 +676,7 @@ mod test {
               ok(m) { m }
             };
         let sessopts = build_session_options(match);
-        let sess = build_session(sessopts);
+        let sess = build_session(sessopts, "");
         let cfg = build_configuration(sess, "whatever", "whatever");
         assert (attr::contains_name(cfg, "test"));
     }
@@ -688,7 +690,7 @@ mod test {
               ok(m) { m }
             };
         let sessopts = build_session_options(match);
-        let sess = build_session(sessopts);
+        let sess = build_session(sessopts, "");
         let cfg = build_configuration(sess, "whatever", "whatever");
         let test_items = attr::find_meta_items_by_name(cfg, "test");
         assert (vec::len(test_items) == 1u);

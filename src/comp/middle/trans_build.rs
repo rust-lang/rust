@@ -93,8 +93,14 @@ fn Invoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
     assert (!cx.terminated);
     cx.terminated = true;
     unsafe {
-        llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
-                              vec::len(Args), Then, Catch, noname());
+        let instr = llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
+                                          vec::len(Args), Then, Catch,
+                                          noname());
+        if bcx_ccx(cx).sess.get_opts().debuginfo {
+            llvm::LLVMAddInstrAttribute(instr, 1u,
+                                        lib::llvm::LLVMStructRetAttribute as
+                                            lib::llvm::llvm::Attribute);
+        }
     }
 }
 
@@ -338,7 +344,8 @@ fn InBoundsGEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) ->
    ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
-        ret llvm::LLVMBuildInBoundsGEP(B(cx), Pointer, vec::to_ptr(Indices),
+        ret llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
+                                       vec::to_ptr(Indices),
                                        vec::len(Indices), noname());
     }
 }
@@ -508,7 +515,9 @@ fn _UndefReturn(cx: @block_ctxt, Fn: ValueRef) -> ValueRef {
 fn add_span_comment(bcx: @block_ctxt, sp: span, text: str) {
     let ccx = bcx_ccx(bcx);
     if (!ccx.sess.get_opts().no_asm_comments) {
-        add_comment(bcx, text + " (" + ccx.sess.span_str(sp) + ")");
+        let s = text + " (" + ccx.sess.span_str(sp) + ")";
+        log s;
+        add_comment(bcx, s);
     }
 }
 
@@ -622,8 +631,8 @@ fn Trap(cx: @block_ctxt) {
     assert (T as int != 0);
     let Args: [ValueRef] = [];
     unsafe {
-        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args),
-                            vec::len(Args), noname());
+        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args), vec::len(Args),
+                            noname());
     }
 }
 

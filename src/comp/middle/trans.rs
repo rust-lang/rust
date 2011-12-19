@@ -20,10 +20,10 @@ import std::map::{new_int_hash, new_str_hash};
 import option::{some, none};
 import driver::session;
 import front::attr;
-import middle::{ty, gc, resolve};
+import middle::{ty, gc, resolve, debuginfo};
 import middle::freevars::*;
 import back::{link, abi, upcall};
-import syntax::{ast, ast_util};
+import syntax::{ast, ast_util, codemap};
 import syntax::visit;
 import syntax::codemap::span;
 import syntax::print::pprust::{expr_to_str, stmt_to_str};
@@ -3519,6 +3519,8 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
 // - exprs with non-immediate type never get dest=by_val
 fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
+    debuginfo::update_source_pos(bcx, e.span);
+
     if expr_is_lval(bcx, e) {
         ret lval_to_dps(bcx, e, dest);
     }
@@ -4012,6 +4014,8 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     }
 
     let bcx = cx;
+    debuginfo::update_source_pos(cx, s.span);
+
     alt s.node {
       ast::stmt_expr(e, _) { bcx = trans_expr(cx, e, ignore); }
       ast::stmt_decl(d, _) {
@@ -4023,6 +4027,9 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
                 } else {
                     bcx = init_ref_local(bcx, local);
                 }
+                if bcx_ccx(cx).sess.get_opts().extra_debuginfo {
+                    debuginfo::create_local_var(bcx, local);
+                }
             }
           }
           ast::decl_item(i) { trans_item(cx.fcx.lcx, *i); }
@@ -4030,6 +4037,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
       }
       _ { bcx_ccx(cx).sess.unimpl("stmt variant"); }
     }
+
     ret bcx;
 }
 
@@ -4252,16 +4260,19 @@ fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
     let bcx = bcx;
     block_locals(b) {|local| bcx = alloc_local(bcx, local); };
     for s: @ast::stmt in b.node.stmts {
+        debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
     }
     alt b.node.expr {
       some(e) {
         let bt = ty::type_is_bot(bcx_tcx(bcx), ty::expr_ty(bcx_tcx(bcx), e));
+        debuginfo::update_source_pos(bcx, e.span);
         bcx = trans_expr(bcx, e, bt ? ignore : dest);
       }
       _ { assert dest == ignore || bcx.unreachable; }
     }
-    ret trans_block_cleanups(bcx, find_scope_cx(bcx));
+    let rv = trans_block_cleanups(bcx, find_scope_cx(bcx));
+    ret rv;
 }
 
 fn new_local_ctxt(ccx: @crate_ctxt) -> @local_ctxt {
@@ -4390,6 +4401,11 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
 
 fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
                         arg_tys: [ty::arg]) -> @block_ctxt {
+    if fcx_ccx(fcx).sess.get_opts().extra_debuginfo {
+        llvm::LLVMAddAttribute(llvm::LLVMGetFirstParam(fcx.llfn),
+                               lib::llvm::LLVMStructRetAttribute as
+                                   lib::llvm::llvm::Attribute);
+    }
     let arg_n: uint = 0u, bcx = bcx;
     for arg in arg_tys {
         let id = args[arg_n].id;
@@ -4408,6 +4424,9 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
             }
           }
           ast::by_ref. {}
+        }
+        if fcx_ccx(fcx).sess.get_opts().extra_debuginfo {
+            debuginfo::create_arg(bcx, args[arg_n]);
         }
         arg_n += 1u;
     }
@@ -4542,7 +4561,12 @@ fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
             id: ast::node_id) {
     let do_time = cx.ccx.sess.get_opts().stats;
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
-    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id, {|_fcx|});
+    let fcx = option::none;
+    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id,
+                  {|new_fcx| fcx = option::some(new_fcx);});
+    if cx.ccx.sess.get_opts().extra_debuginfo {
+        debuginfo::create_function(option::get(fcx));
+    }
     if do_time {
         let end = time::get_time();
         log_fn_time(cx.ccx, str::connect(cx.path, "::"), start, end);
@@ -5459,6 +5483,18 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
     ret intrinsics;
 }
 
+fn declare_dbg_intrinsics(llmod: ModuleRef,
+                          intrinsics: hashmap<str, ValueRef>) {
+    let declare =
+        decl_cdecl_fn(llmod, "llvm.dbg.declare",
+                      T_fn([T_metadata(), T_metadata()], T_void()));
+    let value =
+        decl_cdecl_fn(llmod, "llvm.dbg.value",
+                      T_fn([T_metadata(), T_i64(), T_metadata()], T_void()));
+    intrinsics.insert("llvm.dbg.declare", declare);
+    intrinsics.insert("llvm.dbg.value", value);
+}
+
 fn trap(bcx: @block_ctxt) {
     let v: [ValueRef] = [];
     alt bcx_ccx(bcx).intrinsics.find("llvm.trap") {
@@ -5595,6 +5631,9 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let td = mk_target_data(sess.get_targ_cfg().target_strs.data_layout);
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
+    if sess.get_opts().extra_debuginfo {
+        declare_dbg_intrinsics(llmod, intrinsics);
+    }
     let int_type = T_int(targ_cfg);
     let float_type = T_float(targ_cfg);
     let task_type = T_task(targ_cfg);
@@ -5610,6 +5649,12 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let sha1s = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let short_names = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
+    let dbg_cx = if sess.get_opts().debuginfo {
+        option::some(@{llmetadata: map::new_int_hash(),
+                       names: namegen(0)})
+    } else {
+        option::none
+    };
     let ccx =
         @{sess: sess,
           llmod: llmod,
@@ -5659,7 +5704,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: shape::mk_ctxt(llmod),
           gc_cx: gc::mk_ctxt(),
-          crate_map: crate_map};
+          crate_map: crate_map,
+          dbg_cx: dbg_cx};
     let cx = new_local_ctxt(ccx);
     collect_items(ccx, crate);
     collect_tag_ctors(ccx, crate);
