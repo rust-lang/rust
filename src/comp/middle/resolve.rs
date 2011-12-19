@@ -1353,7 +1353,25 @@ fn ns_for_def(d: def) -> namespace {
 fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
    option::t<def> {
     for d: def in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids) {
-        e.ext_map.insert(def_id_of_def(d), ids);
+        let did = def_id_of_def(d);
+        alt d {
+          def_mod(_) | def_native_mod(_) {
+            // The [native] module name might have renamed when importing,
+            // find the original name for further lookup of names inside the
+            // [native] module
+            if did.crate != ast::local_crate {
+                let cname = cstore::get_crate_data(e.cstore, did.crate).name;
+                let name =
+                    csearch::get_item_name(e.cstore, did.crate, did.node);
+                e.ext_map.insert(did, vec::init(ids) + [name]);
+            } else {
+                e.ext_map.insert(did, ids);
+            }
+          }
+          _ {
+            e.ext_map.insert(did, ids);
+          }
+        }
         if ns == ns_for_def(d) { ret some(d); }
     }
     ret none::<def>;

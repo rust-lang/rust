@@ -12,6 +12,7 @@ export get_tag_variants;
 export get_impls_for_mod;
 export get_impl_methods;
 export get_type;
+export get_item_name;
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
@@ -91,6 +92,11 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_kinds_and_ty {
     let cdata = cstore::get_crate_data(cstore, cnum).data;
     let resolver = bind translate_def_id(cstore, cnum, _);
     decoder::get_type(cdata, def, tcx, resolver)
+}
+
+fn get_item_name(cstore: cstore::cstore, cnum: int, id: int) -> ast::ident {
+    let cdata = cstore::get_crate_data(cstore, cnum).data;
+    ret decoder::lookup_item_name(cdata, id);
 }
 
 // Translates a def_id from an external crate to a def_id for the current

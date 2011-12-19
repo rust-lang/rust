@@ -183,7 +183,6 @@ fn lookup_item_name(data: @[u8], id: ast::node_id) -> ast::ident {
     item_name(lookup_item(id, data))
 }
 
-// FIXME doesn't yet handle renamed re-exported externals
 fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
    ast::def {
     let item = lookup_item(did_.node, data);

@@ -250,10 +250,11 @@ fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
 }
 
 fn encode_info_for_mod(ebml_w: ebml::writer, md: _mod,
-                       id: node_id) {
+                       id: node_id, name: ident) {
     ebml::start_tag(ebml_w, tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm' as u8);
+    encode_name(ebml_w, name);
     for i in md.items {
         alt i.node {
           item_impl(_, _, _) {
@@ -300,12 +301,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml::end_tag(ebml_w);
       }
       item_mod(m) {
-        encode_info_for_mod(ebml_w, m, item.id);
+        encode_info_for_mod(ebml_w, m, item.id, item.ident);
       }
       item_native_mod(_) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'n' as u8);
+        encode_name(ebml_w, item.ident);
         ebml::end_tag(ebml_w);
       }
       item_ty(_, tps) {
@@ -434,7 +436,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
     let index: [entry<int>] = [];
     ebml::start_tag(ebml_w, tag_items_data);
     index += [{val: crate_node_id, pos: ebml_w.writer.tell()}];
-    encode_info_for_mod(ebml_w, crate_mod, crate_node_id);
+    encode_info_for_mod(ebml_w, crate_mod, crate_node_id, "");
     ecx.ccx.ast_map.items {|key, val|
         alt val {
           middle::ast_map::node_item(i) {
