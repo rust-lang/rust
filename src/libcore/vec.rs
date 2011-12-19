@@ -300,6 +300,15 @@ fn pop<copy T>(&v: [const T]) -> T {
     ret e;
 }
 
+/*
+Function: push
+
+Append an element to a vector and return it
+*/
+fn push<copy T>(&v: [T], initval: T) {
+    grow(v, 1u, initval)
+}
+
 // TODO: More.
 
 

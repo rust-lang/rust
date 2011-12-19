@@ -171,6 +171,21 @@ fn test_pop() {
 }
 
 #[test]
+fn test_push() {
+    // Test on-stack push().
+    let v = [];
+    vec::push(v, 1);
+    assert (vec::len(v) == 1u);
+    assert (v[0] == 1);
+
+    // Test on-heap push().
+    vec::push(v, 2);
+    assert (vec::len(v) == 2u);
+    assert (v[0] == 1);
+    assert (v[1] == 2);
+}
+
+#[test]
 fn test_grow() {
     // Test on-stack grow().
     let v = [];
