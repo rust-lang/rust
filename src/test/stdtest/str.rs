@@ -41,22 +41,37 @@ fn test_index_and_rindex() {
 
 #[test]
 fn test_split() {
-    fn t(s: str, c: char, i: int, k: str) {
-        log "splitting: " + s;
-        log i;
+    fn t(s: str, c: char, u: [str]) {
+        log "split: " + s;
         let v = str::split(s, c as u8);
         log "split to: ";
-        for z: str in v { log z; }
-        log "comparing: " + v[i] + " vs. " + k;
-        assert (str::eq(v[i], k));
+        log v;
+        assert (vec::all2(v, u, { |a,b| a == b }));
     }
-    t("abc.hello.there", '.', 0, "abc");
-    t("abc.hello.there", '.', 1, "hello");
-    t("abc.hello.there", '.', 2, "there");
-    t(".hello.there", '.', 0, "");
-    t(".hello.there", '.', 1, "hello");
-    t("...hello.there.", '.', 3, "hello");
-    t("...hello.there.", '.', 5, "");
+    t("abc.hello.there", '.', ["abc", "hello", "there"]);
+    t(".hello.there", '.', ["", "hello", "there"]);
+    t("...hello.there.", '.', ["", "", "", "hello", "there", ""]);
+}
+
+#[test]
+fn test_splitn() {
+    fn t(s: str, c: char, n: uint, u: [str]) {
+        log "splitn: " + s;
+        let v = str::splitn(s, c as u8, n);
+        log "split to: ";
+        log v;
+        log "comparing vs. ";
+        log u;
+        assert (vec::all2(v, u, { |a,b| a == b }));
+    }
+    t("abc.hello.there", '.', 0u, ["abc.hello.there"]);
+    t("abc.hello.there", '.', 1u, ["abc", "hello.there"]);
+    t("abc.hello.there", '.', 2u, ["abc", "hello", "there"]);
+    t("abc.hello.there", '.', 3u, ["abc", "hello", "there"]);
+    t(".hello.there", '.', 0u, [".hello.there"]);
+    t(".hello.there", '.', 1u, ["", "hello.there"]);
+    t("...hello.there.", '.', 3u, ["", "", "", "hello.there."]);
+    t("...hello.there.", '.', 5u, ["", "", "", "hello", "there", ""]);
 }
 
 #[test]

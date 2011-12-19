@@ -6,11 +6,11 @@ String manipulation.
 
 export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        byte_len_range, index,
-       rindex, find, starts_with, ends_with, substr, slice, split, split_str,
-       concat, connect, to_upper, replace, char_slice, trim_left, trim_right,
-       trim, unshift_char, shift_char, pop_char, push_char, is_utf8,
-       from_chars, to_chars, char_len, char_len_range, char_at, bytes,
-       is_ascii, shift_byte, pop_byte,
+       rindex, find, starts_with, ends_with, substr, slice, split, splitn,
+       split_str, concat, connect, to_upper, replace, char_slice, trim_left,
+       trim_right, trim, unshift_char, shift_char, pop_char, push_char,
+       is_utf8, from_chars, to_chars, char_len, char_len_range, char_at,
+       bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
        contains, iter_chars, loop_chars, loop_chars_sub,
@@ -735,6 +735,32 @@ fn split(s: str, sep: u8) -> [str] {
     let ends_with_sep: bool = false;
     for c: u8 in s {
         if c == sep {
+            v += [accum];
+            accum = "";
+            ends_with_sep = true;
+        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
+    }
+    if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
+    ret v;
+}
+
+/*
+Function: splitn
+
+Split a string at each occurance of a given separator up to count times.
+
+Returns:
+
+A vector containing all the strings between each occurance of the separator
+*/
+fn splitn(s: str, sep: u8, count: uint) -> [str] {
+    let v = [];
+    let accum = "";
+    let n = count;
+    let ends_with_sep: bool = false;
+    for c in s {
+        if n > 0u && c == sep {
+            n -= 1u;
             v += [accum];
             accum = "";
             ends_with_sep = true;
