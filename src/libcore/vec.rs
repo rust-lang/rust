@@ -300,6 +300,15 @@ fn pop<copy T>(&v: [const T]) -> T {
     ret e;
 }
 
+/*
+Function: push
+
+Append an element to a vector and return it
+*/
+fn push<copy T>(&v: [T], initval: T) {
+    grow(v, 1u, initval)
+}
+
 // TODO: More.
 
 
@@ -508,6 +517,24 @@ fn any<T>(v: [T], f: block(T) -> bool) -> bool {
 }
 
 /*
+Function: any2
+
+Return true if a predicate matches any elements in both vectors.
+
+If the vectors contains no elements then false is returned.
+*/
+fn any2<T, U>(v0: [T], v1: [U], f: block(T, U) -> bool) -> bool {
+    let v0_len = len(v0);
+    let v1_len = len(v1);
+    let i = 0u;
+    while i < v0_len && i < v1_len {
+        if f(v0[i], v1[i]) { ret true; };
+        i += 1u;
+    }
+    ret false;
+}
+
+/*
 Function: all
 
 Return true if a predicate matches all elements
@@ -516,6 +543,21 @@ If the vector contains no elements then true is returned.
 */
 fn all<T>(v: [T], f: block(T) -> bool) -> bool {
     for elem: T in v { if !f(elem) { ret false; } }
+    ret true;
+}
+
+/*
+Function: all2
+
+Return true if a predicate matches all elements in both vectors.
+
+If the vectors are not the same size then false is returned.
+*/
+fn all2<T, U>(v0: [T], v1: [U], f: block(T, U) -> bool) -> bool {
+    let v0_len = len(v0);
+    if v0_len != len(v1) { ret false; }
+    let i = 0u;
+    while i < v0_len { if !f(v0[i], v1[i]) { ret false; }; i += 1u; }
     ret true;
 }
 
