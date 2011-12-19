@@ -489,7 +489,7 @@ fn build_session_options(match: getopts::match)
     ret sopts;
 }
 
-fn build_session(sopts: @session::options) -> session::session {
+fn build_session(sopts: @session::options, input: str) -> session::session {
     let target_cfg = build_target_config(sopts);
     let cstore = cstore::mk_cstore();
     let filesearch = filesearch::mk_filesearch(
@@ -498,7 +498,7 @@ fn build_session(sopts: @session::options) -> session::session {
         sopts.addl_lib_search_paths);
     ret session::session(target_cfg, sopts, cstore,
                          @{cm: codemap::new_codemap(), mutable next_id: 1},
-                         none, 0u, filesearch, false);
+                         none, 0u, filesearch, false, fs::dirname(input));
 }
 
 fn parse_pretty(sess: session::session, &&name: str) -> pp_mode {
@@ -644,7 +644,7 @@ fn main(args: [str]) {
     };
 
     let sopts = build_session_options(match);
-    let sess = build_session(sopts);
+    let sess = build_session(sopts, ifile);
     let odir = getopts::opt_maybe_str(match, "out-dir");
     let ofile = getopts::opt_maybe_str(match, "o");
     let cfg = build_configuration(sess, binary, ifile);
@@ -676,7 +676,7 @@ mod test {
               ok(m) { m }
             };
         let sessopts = build_session_options(match);
-        let sess = build_session(sessopts);
+        let sess = build_session(sessopts, "");
         let cfg = build_configuration(sess, "whatever", "whatever");
         assert (attr::contains_name(cfg, "test"));
     }
@@ -690,7 +690,7 @@ mod test {
               ok(m) { m }
             };
         let sessopts = build_session_options(match);
-        let sess = build_session(sessopts);
+        let sess = build_session(sessopts, "");
         let cfg = build_configuration(sess, "whatever", "whatever");
         let test_items = attr::find_meta_items_by_name(cfg, "test");
         assert (vec::len(test_items) == 1u);

@@ -162,13 +162,18 @@ fn create_compile_unit(cx: @crate_ctxt, full_path: str)
       option::none. {}
     }
 
-    let fname = fs::basename(full_path);
-    let path = fs::dirname(full_path);
+    let work_dir = cx.sess.get_working_dir();
+    let file_path = if str::starts_with(full_path, work_dir) {
+        str::slice(full_path, str::byte_len(work_dir),
+                   str::byte_len(full_path))
+    } else {
+        full_path
+    };
     let unit_metadata = [lltag(tg),
                          llunused(),
                          lli32(DW_LANG_RUST),
-                         llstr(fname),
-                         llstr(path),
+                         llstr(file_path),
+                         llstr(work_dir),
                          llstr(#env["CFG_VERSION"]),
                          lli1(false), // main compile unit
                          lli1(cx.sess.get_opts().optimize != 0u),
