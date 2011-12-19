@@ -1460,9 +1460,8 @@ fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
     ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
 }
 
-// FIXME[impl] notice/resolve conflicts
 fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
-                 name: ast::ident, ty: ty::t)
+                 name: ast::ident, ty: ty::t, sp: span)
     -> option::t<{method: @resolve::method_info, ids: [int]}> {
     let result = none;
     std::list::iter(isc) {|impls|
@@ -1488,8 +1487,13 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                 } else { {ids: [], ty: self_ty} };
                 alt unify::unify(fcx, ty, self_ty) {
                   ures_ok(_) {
-                    result = some({method: m, ids: ids});
-                    ret;
+                    if option::is_some(result) {
+                        // FIXME[impl] score specificity to resolve ambiguity?
+                        fcx.ccx.tcx.sess.span_err(
+                            sp, "multiple applicable methods in scope");
+                    } else {
+                        result = some({method: m, ids: ids});
+                    }
                   }
                   _ {}
                 }
@@ -2159,7 +2163,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
         if !handled {
             let iscope = fcx.ccx.impl_map.get(expr.id);
-            alt lookup_method(fcx, iscope, field, expr_t) {
+            alt lookup_method(fcx, iscope, field, expr_t, expr.span) {
               some({method, ids}) {
                 let fty = if method.did.crate == ast::local_crate {
                     alt tcx.items.get(method.did.node) {
