@@ -79,6 +79,22 @@ fn new_ext_hash() -> ext_hash {
     ret std::map::mk_hashmap::<key, def>(hash, eq);
 }
 
+fn new_exp_hash() -> exp_map {
+    type key = {path: str, ns: namespace};
+    fn hash(v: key) -> uint {
+        ret str::hash(v.path) +
+                alt v.ns {
+                  ns_value. { 1u }
+                  ns_type. { 2u }
+                  ns_module. { 3u }
+                };
+    }
+    fn eq(v1: key, v2: key) -> bool {
+        ret str::eq(v1.path, v2.path) && v1.ns == v2.ns;
+    }
+    ret std::map::mk_hashmap::<key, def>(hash, eq);
+}
+
 tag mod_index_entry {
     mie_view_item(@ast::view_item);
     mie_import_ident(node_id, codemap::span);
@@ -105,7 +121,7 @@ type indexed_mod = {
 
 type def_map = hashmap<node_id, def>;
 type ext_map = hashmap<def_id, [ident]>;
-type exp_map = hashmap<str, def>;
+type exp_map = hashmap<{path: str, ns: namespace}, def>;
 type impl_map = hashmap<node_id, iscopes>;
 type impl_cache = hashmap<def_id, @[@_impl]>;
 
@@ -142,7 +158,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           def_map: new_int_hash(),
           ast_map: amap,
           imports: new_int_hash(),
-          exp_map: new_str_hash(),
+          exp_map: new_exp_hash(),
           mod_map: new_int_hash(),
           block_map: new_int_hash(),
           ext_map: new_def_hash(),
@@ -1363,6 +1379,9 @@ fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
                 let cname = cstore::get_crate_data(e.cstore, did.crate).name;
                 let name =
                     csearch::get_item_name(e.cstore, did.crate, did.node);
+                log #fmt("lookup_external: %s %d, %d, %s, %s", cname,
+                         did.crate, did.node,
+                         str::connect(ids, "::"), name);
                 e.ext_map.insert(did, vec::init(ids) + [name]);
             } else {
                 e.ext_map.insert(did, ids);
@@ -1615,15 +1634,16 @@ fn check_exports(e: @env) {
         let (m, v, t) = (lookup(ns_module),
                          lookup(ns_value),
                          lookup(ns_type));
-        maybe_add_reexport(e, path + ident, m);
-        maybe_add_reexport(e, path + ident, v);
-        maybe_add_reexport(e, path + ident, t);
+        maybe_add_reexport(e, path + ident, ns_module, m);
+        maybe_add_reexport(e, path + ident, ns_value, v);
+        maybe_add_reexport(e, path + ident, ns_type, t);
         ret is_some(m) || is_some(v) || is_some(t);
     }
 
-    fn maybe_add_reexport(e: @env, path: str, def: option::t<def>) {
+    fn maybe_add_reexport(e: @env, path: str, ns: namespace,
+                          def: option::t<def>) {
         if option::is_some(def) {
-            e.exp_map.insert(path, option::get(def));
+            e.exp_map.insert({path: path, ns: ns}, option::get(def));
         }
     }
 
@@ -1635,9 +1655,9 @@ fn check_exports(e: @env) {
                   mie_import_ident(id, _) {
                     alt e.imports.get(id) {
                       resolved(v, t, m, _, rid, _) {
-                        maybe_add_reexport(e, val.path + rid, v);
-                        maybe_add_reexport(e, val.path + rid, t);
-                        maybe_add_reexport(e, val.path + rid, m);
+                        maybe_add_reexport(e, val.path + rid, ns_value, v);
+                        maybe_add_reexport(e, val.path + rid, ns_type, t);
+                        maybe_add_reexport(e, val.path + rid, ns_module, m);
                       }
                       _ { }
                     }

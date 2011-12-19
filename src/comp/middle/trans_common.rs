@@ -9,7 +9,7 @@ import std::map::hashmap;
 import option::some;
 import syntax::ast;
 import driver::session;
-import middle::ty;
+import middle::{resolve, ty};
 import back::{link, abi, upcall};
 import util::common::*;
 import syntax::codemap::span;
@@ -84,7 +84,7 @@ type crate_ctxt =
      intrinsics: hashmap<str, ValueRef>,
      item_ids: hashmap<ast::node_id, ValueRef>,
      ast_map: ast_map::map,
-     exp_map: hashmap<str, ast::def>,
+     exp_map: resolve::exp_map,
      item_symbols: hashmap<ast::node_id, str>,
      mutable main_fn: option::t<ValueRef>,
      link_meta: link::link_meta,

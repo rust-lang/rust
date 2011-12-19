@@ -155,7 +155,8 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
 
 fn encode_reexport_paths(ebml_w: ebml::writer,
                          ecx: @encode_ctxt, &index: [entry<str>]) {
-    ecx.ccx.exp_map.items {|path, def|
+    ecx.ccx.exp_map.items {|key, def|
+        let path = key.path;
         index += [{val: path, pos: ebml_w.writer.tell()}];
         ebml::start_tag(ebml_w, tag_paths_data_item);
         encode_name(ebml_w, path);
