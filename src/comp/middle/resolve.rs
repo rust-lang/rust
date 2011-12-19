@@ -1712,7 +1712,6 @@ fn find_impls_in_item(i: @ast::item, &impls: [@_impl],
     }
 }
 
-// FIXME[impl] we should probably cache this
 fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
                      name: option::t<ident>) {
     alt m {

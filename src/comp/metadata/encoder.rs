@@ -314,6 +314,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_family(ebml_w, 'y' as u8);
         encode_type_param_kinds(ebml_w, tps);
         encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_name(ebml_w, item.ident);
         ebml::end_tag(ebml_w);
       }
       item_tag(variants, tps) {
@@ -322,6 +323,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_family(ebml_w, 't' as u8);
         encode_type_param_kinds(ebml_w, tps);
         encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_name(ebml_w, item.ident);
         for v: variant in variants {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
@@ -336,6 +338,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_family(ebml_w, 'y' as u8);
         encode_type_param_kinds(ebml_w, tps);
         encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
+        encode_name(ebml_w, item.ident);
         encode_symbol(ecx, ebml_w, item.id);
         ebml::end_tag(ebml_w);
 
@@ -356,6 +359,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_family(ebml_w, 'y' as u8);
         encode_type_param_kinds(ebml_w, tps);
         encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
+        encode_name(ebml_w, item.ident);
         ebml::end_tag(ebml_w);
 
         index += [{val: ctor_id, pos: ebml_w.writer.tell()}];

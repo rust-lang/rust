@@ -90,19 +90,18 @@ export mk_uint;
 export mk_uniq;
 export mk_var;
 export mk_opaque_closure;
+export mk_named;
 export gen_ty;
 export mode;
 export mt;
 export node_type_table;
 export pat_ty;
-export cname;
-export rename;
 export ret_ty_of_fn;
 export sequence_element_type;
 export struct;
+export ty_name;
 export sort_methods;
 export stmt_node_id;
-export strip_cname;
 export sty;
 export substitute_type_params;
 export t;
@@ -142,6 +141,7 @@ export ty_send_type;
 export ty_uint;
 export ty_uniq;
 export ty_var;
+export ty_named;
 export ty_var_id;
 export ty_param_substs_opt_and_ty_to_monotype;
 export ty_fn_args;
@@ -222,13 +222,9 @@ tag cast_type {
 }
 
 type ctxt =
-    //        constr_table fn_constrs,
-    // We need the ext_map just for printing the types of tags defined in
-    // other crates. Once we get cnames back it should go.
     @{ts: @type_store,
       sess: session::session,
       def_map: resolve::def_map,
-      ext_map: resolve::ext_map,
       cast_map: hashmap<ast::node_id, cast_type>,
       node_types: node_type_table,
       items: ast_map::map,
@@ -253,12 +249,10 @@ fn method_ty_to_fn_ty(cx: ctxt, m: method) -> t {
 
 
 // Never construct these manually. These are interned.
-type raw_t =
-    {struct: sty,
-     cname: option::t<str>,
-     hash: uint,
-     has_params: bool,
-     has_vars: bool};
+type raw_t = {struct: sty,
+              hash: uint,
+              has_params: bool,
+              has_vars: bool};
 
 type t = uint;
 
@@ -298,6 +292,7 @@ tag sty {
     ty_native(def_id);
     ty_constr(t, [@type_constr]);
     ty_opaque_closure; // type of a captured environment.
+    ty_named(t, @str);
 }
 
 // In the middle end, constraints have a def_id attached, referring
@@ -380,27 +375,27 @@ type node_type_table =
     @smallintmap::smallintmap<ty::ty_param_substs_opt_and_ty>;
 
 fn populate_type_store(cx: ctxt) {
-    intern(cx, ty_nil, none);
-    intern(cx, ty_bool, none);
-    intern(cx, ty_int(ast::ty_i), none);
-    intern(cx, ty_float(ast::ty_f), none);
-    intern(cx, ty_uint(ast::ty_u), none);
-    intern(cx, ty_int(ast::ty_i8), none);
-    intern(cx, ty_int(ast::ty_i16), none);
-    intern(cx, ty_int(ast::ty_i32), none);
-    intern(cx, ty_int(ast::ty_i64), none);
-    intern(cx, ty_uint(ast::ty_u8), none);
-    intern(cx, ty_uint(ast::ty_u16), none);
-    intern(cx, ty_uint(ast::ty_u32), none);
-    intern(cx, ty_uint(ast::ty_u64), none);
-    intern(cx, ty_float(ast::ty_f32), none);
-    intern(cx, ty_float(ast::ty_f64), none);
-    intern(cx, ty_int(ast::ty_char), none);
-    intern(cx, ty_str, none);
-    intern(cx, ty_type, none);
-    intern(cx, ty_send_type, none);
-    intern(cx, ty_bot, none);
-    intern(cx, ty_opaque_closure, none);
+    intern(cx, ty_nil);
+    intern(cx, ty_bool);
+    intern(cx, ty_int(ast::ty_i));
+    intern(cx, ty_float(ast::ty_f));
+    intern(cx, ty_uint(ast::ty_u));
+    intern(cx, ty_int(ast::ty_i8));
+    intern(cx, ty_int(ast::ty_i16));
+    intern(cx, ty_int(ast::ty_i32));
+    intern(cx, ty_int(ast::ty_i64));
+    intern(cx, ty_uint(ast::ty_u8));
+    intern(cx, ty_uint(ast::ty_u16));
+    intern(cx, ty_uint(ast::ty_u32));
+    intern(cx, ty_uint(ast::ty_u64));
+    intern(cx, ty_float(ast::ty_f32));
+    intern(cx, ty_float(ast::ty_f64));
+    intern(cx, ty_int(ast::ty_char));
+    intern(cx, ty_str);
+    intern(cx, ty_type);
+    intern(cx, ty_send_type);
+    intern(cx, ty_bot);
+    intern(cx, ty_opaque_closure);
     assert (vec::len(cx.ts.vect) == idx_first_others);
 }
 
@@ -417,7 +412,7 @@ fn mk_rcache() -> creader_cache {
 
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map,
-           em: hashmap<def_id, [ident]>, amap: ast_map::map,
+           _em: hashmap<def_id, [ident]>, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
     let ntt: node_type_table =
         @smallintmap::mk::<ty::ty_param_substs_opt_and_ty>();
@@ -427,7 +422,6 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map,
         @{ts: ts,
           sess: s,
           def_map: dm,
-          ext_map: em,
           cast_map: ast_util::new_node_hash(),
           node_types: ntt,
           items: amap,
@@ -446,9 +440,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map,
 
 
 // Type constructors
-fn mk_raw_ty(cx: ctxt, st: sty, _in_cname: option::t<str>) -> @raw_t {
-    let cname: option::t<str> = none;
-    let h = hash_type_info(st, cname);
+fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
+    let h = hash_type_structure(st);
     let has_params: bool = false;
     let has_vars: bool = false;
     fn derive_flags_t(cx: ctxt, &has_params: bool, &has_vars: bool, tt: t) {
@@ -505,28 +498,26 @@ fn mk_raw_ty(cx: ctxt, st: sty, _in_cname: option::t<str>) -> @raw_t {
         derive_flags_t(cx, has_params, has_vars, tt);
         for tt: t in tps { derive_flags_t(cx, has_params, has_vars, tt); }
       }
-      ty_constr(tt, _) { derive_flags_t(cx, has_params, has_vars, tt); }
+      ty_constr(tt, _) | ty_named(tt, _) {
+        derive_flags_t(cx, has_params, has_vars, tt);
+      }
     }
     ret @{struct: st,
-          cname: cname,
           hash: h,
           has_params: has_params,
           has_vars: has_vars};
 }
 
-fn intern(cx: ctxt, st: sty, cname: option::t<str>) {
-    interner::intern(*cx.ts, mk_raw_ty(cx, st, cname));
+fn intern(cx: ctxt, st: sty) {
+    interner::intern(*cx.ts, mk_raw_ty(cx, st));
 }
-
-fn gen_ty_full(cx: ctxt, st: sty, cname: option::t<str>) -> t {
-    let raw_type = mk_raw_ty(cx, st, cname);
-    ret interner::intern(*cx.ts, raw_type);
-}
-
 
 // These are private constructors to this module. External users should always
 // use the mk_foo() functions below.
-fn gen_ty(cx: ctxt, st: sty) -> t { ret gen_ty_full(cx, st, none); }
+fn gen_ty(cx: ctxt, st: sty) -> t {
+    let raw_type = mk_raw_ty(cx, st);
+    ret interner::intern(*cx.ts, raw_type);
+}
 
 fn mk_nil(_cx: ctxt) -> t { ret idx_nil; }
 
@@ -637,13 +628,23 @@ fn mk_opaque_closure(_cx: ctxt) -> t {
     ret idx_opaque_closure;
 }
 
+fn mk_named(cx: ctxt, base: t, name: @str) -> t {
+    gen_ty(cx, ty_named(base, name))
+}
+
 // Returns the one-level-deep type structure of the given type.
-pure fn struct(cx: ctxt, typ: t) -> sty { interner::get(*cx.ts, typ).struct }
+pure fn struct(cx: ctxt, typ: t) -> sty {
+    alt interner::get(*cx.ts, typ).struct {
+      ty_named(t, _) { struct(cx, t) }
+      s { s }
+    }
+}
 
-
-// Returns the canonical name of the given type.
-fn cname(cx: ctxt, typ: t) -> option::t<str> {
-    ret interner::get(*cx.ts, typ).cname;
+pure fn ty_name(cx: ctxt, typ: t) -> option::t<@str> {
+    alt interner::get(*cx.ts, typ).struct {
+      ty_named(_, n) { some(n) }
+      _ { none }
+    }
 }
 
 
@@ -705,7 +706,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       fm_param(_) { if !type_contains_params(cx, ty) { ret ty; } }
       fm_general(_) {/* no fast path */ }
     }
-    alt struct(cx, ty) {
+    alt interner::get(*cx.ts, ty).struct {
       ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str. | ty_send_type. | ty_type. | ty_native(_) | ty_opaque_closure. {
         /* no-op */
@@ -716,6 +717,9 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_uniq(tm) {
         ty = mk_uniq(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
+      ty_named(t, nm) {
+        ty = mk_named(cx, fold_ty(cx, fld, t), nm);
+      }
       ty_ptr(tm) {
         ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
@@ -725,7 +729,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_tag(tid, subtys) {
         let new_subtys: [t] = [];
         for subty: t in subtys { new_subtys += [fold_ty(cx, fld, subty)]; }
-        ty = copy_cname(cx, mk_tag(cx, tid, new_subtys), ty);
+        ty = mk_tag(cx, tid, new_subtys);
       }
       ty_rec(fields) {
         let new_fields: [field] = [];
@@ -734,12 +738,12 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
             let new_mt = {ty: new_ty, mut: fl.mt.mut};
             new_fields += [{ident: fl.ident, mt: new_mt}];
         }
-        ty = copy_cname(cx, mk_rec(cx, new_fields), ty);
+        ty = mk_rec(cx, new_fields);
       }
       ty_tup(ts) {
         let new_ts = [];
         for tt in ts { new_ts += [fold_ty(cx, fld, tt)]; }
-        ty = copy_cname(cx, mk_tup(cx, new_ts), ty);
+        ty = mk_tup(cx, new_ts);
       }
       ty_fn(proto, args, ret_ty, cf, constrs) {
         let new_args: [arg] = [];
@@ -747,8 +751,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
             let new_ty = fold_ty(cx, fld, a.ty);
             new_args += [{mode: a.mode, ty: new_ty}];
         }
-        ty = copy_cname(cx, mk_fn(cx, proto, new_args,
-                                  fold_ty(cx, fld, ret_ty), cf, constrs), ty);
+        ty = mk_fn(cx, proto, new_args, fold_ty(cx, fld, ret_ty), cf,
+                   constrs);
       }
       ty_native_fn(args, ret_ty) {
         let new_args: [arg] = [];
@@ -756,8 +760,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
             let new_ty = fold_ty(cx, fld, a.ty);
             new_args += [{mode: a.mode, ty: new_ty}];
         }
-        ty = copy_cname(cx, mk_native_fn(cx, new_args,
-                                         fold_ty(cx, fld, ret_ty)), ty);
+        ty = mk_native_fn(cx, new_args, fold_ty(cx, fld, ret_ty));
       }
       ty_obj(methods) {
         let new_methods: [method] = [];
@@ -774,14 +777,12 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
                   cf: m.cf,
                   constrs: m.constrs}];
         }
-        ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
+        ty = mk_obj(cx, new_methods);
       }
       ty_res(did, subty, tps) {
         let new_tps = [];
         for tp: t in tps { new_tps += [fold_ty(cx, fld, tp)]; }
-        ty =
-            copy_cname(cx, mk_res(cx, did, fold_ty(cx, fld, subty), new_tps),
-                       ty);
+        ty = mk_res(cx, did, fold_ty(cx, fld, subty), new_tps);
       }
       ty_var(id) {
         alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
@@ -797,20 +798,6 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
 
 
 // Type utilities
-
-fn rename(cx: ctxt, typ: t, new_cname: str) -> t {
-    ret gen_ty_full(cx, struct(cx, typ), some(new_cname));
-}
-
-fn strip_cname(cx: ctxt, typ: t) -> t {
-    ret gen_ty_full(cx, struct(cx, typ), none);
-}
-
-// Returns a type with the structural part taken from `struct_ty` and the
-// canonical name from `cname_ty`.
-fn copy_cname(cx: ctxt, struct_ty: t, cname_ty: t) -> t {
-    ret gen_ty_full(cx, struct(cx, struct_ty), cname(cx, cname_ty));
-}
 
 fn type_is_nil(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) { ty_nil. { ret true; } _ { ret false; } }
@@ -1367,23 +1354,15 @@ fn hash_type_structure(st: sty) -> uint {
         ret hash_subtys(h, tps);
       }
       ty_constr(t, cs) {
-        let h = 36u;
+        let h = hash_subty(36u, t);
         for c: @type_constr in cs { h += (h << 5u) + hash_type_constr(h, c); }
         ret h;
       }
       ty_uniq(mt) { ret hash_subty(37u, mt.ty); }
       ty_send_type. { ret 38u; }
       ty_opaque_closure. { ret 39u; }
+      ty_named(t, name) { (str::hash(*name) << 5u) + hash_subty(40u, t) }
     }
-}
-
-fn hash_type_info(st: sty, cname_opt: option::t<str>) -> uint {
-    let h = hash_type_structure(st);
-    alt cname_opt {
-      none. {/* no-op */ }
-      some(s) { h += (h << 5u) + str::hash(s); }
-    }
-    ret h;
 }
 
 fn hash_raw_ty(&&rt: @raw_t) -> uint { ret rt.hash; }
@@ -1435,32 +1414,15 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
     ret true;
 }
 
-// An expensive type equality function. This function is private to this
-// module.
+// This function is private to this module.
 fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
-    // Check hashes (fast path).
-
-    if a.hash != b.hash { ret false; }
-    // Check canonical names.
-
-    alt a.cname {
-      none. { alt b.cname { none. {/* ok */ } _ { ret false; } } }
-      some(s_a) {
-        alt b.cname {
-          some(s_b) { if !str::eq(s_a, s_b) { ret false; } }
-          _ { ret false; }
-        }
-      }
-    }
-    // Check structures.
-
-    ret a.struct == b.struct;
+    ret a.hash == b.hash && a.struct == b.struct;
 }
 
 
 // This is the equality function the public should use. It works as long as
 // the types are interned.
-fn eq_ty(&&a: t, &&b: t) -> bool { ret a == b; }
+fn eq_ty(&&a: t, &&b: t) -> bool { a == b }
 
 
 // Convert type to machine type
@@ -1491,8 +1453,11 @@ fn ty_to_machine_ty(cx: ctxt, ty: t) -> t {
 //  machine independent primitive types by their machine type equivalents
 // for the current target architecture
 fn triv_eq_ty(cx: ctxt, &&a: t, &&b: t) -> bool {
-    ret eq_ty(a, b)
-        || eq_ty(ty_to_machine_ty(cx, a), ty_to_machine_ty(cx, b));
+    let a = alt interner::get(*cx.ts, a).struct
+        { ty_named(t, _) { t } _ { a } };
+    let b = alt interner::get(*cx.ts, b).struct
+        { ty_named(t, _) { t } _ { b } };
+    a == b || ty_to_machine_ty(cx, a) == ty_to_machine_ty(cx, b)
 }
 
 // Type lookups
@@ -1854,13 +1819,6 @@ mod unify {
         smallintmap::insert::<t>(cx.vb.types, root, result_type);
         ret ures_ok(typ);
     }
-
-    // Wraps the given type in an appropriate cname.
-    //
-    // TODO: This doesn't do anything yet. We should carry the cname up from
-    // the expected and/or actual types when unification results in a type
-    // identical to one or both of the two. The precise algorithm for this is
-    // something we'll probably need to develop over time.
 
     // Simple structural type comparison.
     fn struct_cmp(cx: @ctxt, expected: t, actual: t) -> result {

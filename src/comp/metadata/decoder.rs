@@ -107,8 +107,12 @@ fn item_type(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
     }
     let tp = ebml::get_doc(item, tag_items_data_item_type);
     let def_parser = bind parse_external_def_id(this_cnum, extres, _);
-    ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
-                      def_parser, tcx);
+    let t = parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
+                          def_parser, tcx);
+    if family_names_type(item_family(item)) {
+        t = ty::mk_named(tcx, t, @item_name(item));
+    }
+    t
 }
 
 fn item_ty_param_kinds(item: ebml::doc) -> [ast::kind] {
@@ -305,6 +309,10 @@ fn family_has_type_params(fam_ch: u8) -> bool {
           'v' { true }
           'i' { true }
         };
+}
+
+fn family_names_type(fam_ch: u8) -> bool {
+    alt fam_ch as char { 'y' | 't' { true } _ { false } }
 }
 
 fn read_path(d: ebml::doc) -> {path: str, pos: uint} {

@@ -27,20 +27,6 @@ fn fn_ident_to_string(id: ast::node_id, i: ast::fn_ident) -> str {
     ret alt i { none. { "anon" + int::str(id) } some(s) { s } };
 }
 
-fn get_id_ident(cx: ctxt, id: ast::def_id) -> str {
-    if id.crate != ast::local_crate {
-        alt cx.ext_map.find(id) {
-          some(j) { str::connect(j, "::") }
-          none. { "<#" + int::str(id.crate) + ":" + int::str(id.node) + ">" }
-        }
-    } else {
-        alt cx.items.find(id.node) {
-          some(ast_map::node_item(it)) { it.ident }
-          _ { fail "get_id_ident: can't find item in ast_map" }
-        }
-    }
-}
-
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: middle::ty::mode, ty: t}) ->
        str {
@@ -83,7 +69,21 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         }
         ret mstr + ty_to_str(cx, m.ty);
     }
-    alt cname(cx, typ) { some(cs) { ret cs; } _ { } }
+    alt ty_name(cx, typ) {
+      some(cs) {
+        alt struct(cx, typ) {
+          ty_tag(_, tps) | ty_res(_, _, tps) {
+            if vec::len(tps) > 0u {
+                let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
+                ret *cs + "<" + str::connect(strs, ",") + ">";
+            }
+          }
+          _ {}
+        }
+        ret *cs;
+      }
+      _ { }
+    }
     ret alt struct(cx, typ) {
       ty_native(_) { "native" }
       ty_nil. { "()" }
@@ -111,15 +111,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         for elem in elems { strs += [ty_to_str(cx, elem)]; }
         "(" + str::connect(strs, ",") + ")"
       }
-      ty_tag(id, tps) {
-        let s = get_id_ident(cx, id);
-        if vec::len::<t>(tps) > 0u {
-            let strs: [str] = [];
-            for typ: t in tps { strs += [ty_to_str(cx, typ)]; }
-            s += "<" + str::connect(strs, ",") + ">";
-        }
-        s
-      }
       ty_fn(proto, inputs, output, cf, constrs) {
         fn_to_str(cx, proto, none, inputs, output, cf, constrs)
       }
@@ -132,7 +123,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         for m: method in meths { strs += [method_to_str(cx, m)]; }
         "obj {\n\t" + str::connect(strs, "\n\t") + "\n}"
       }
-      ty_res(id, _, _) { get_id_ident(cx, id) }
       ty_var(v) { "<T" + int::str(v) + ">" }
       ty_param(id, _) {
         "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)])

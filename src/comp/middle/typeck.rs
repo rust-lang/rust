@@ -301,7 +301,6 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         ret typ;
     }
     let typ;
-    let cname = none::<str>;
     alt ast_ty.node {
       ast::ty_nil. { typ = ty::mk_nil(tcx); }
       ast::ty_bot. { typ = ty::mk_bot(tcx); }
@@ -362,7 +361,6 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             tcx.sess.span_fatal(ast_ty.span, "internal error in instantiate");
           }
         }
-        cname = some(path_to_str(path));
       }
       ast::ty_obj(meths) {
         let tmeths: [ty::method] = [];
@@ -403,10 +401,6 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         }
       }
     }
-    alt cname {
-      none. {/* no-op */ }
-      some(cname_str) { typ = ty::rename(tcx, typ, cname_str); }
-    }
     tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
     ret typ;
 }
@@ -436,25 +430,25 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         }
         // Tell ast_ty_to_ty() that we want to perform a recursive
         // call to resolve any named types.
-
-        let typ = ast_ty_to_ty(tcx, mode, t);
+        let typ = ty::mk_named(tcx, ast_ty_to_ty(tcx, mode, t), @it.ident);
         let tpt = {kinds: ty_param_kinds(tps), ty: typ};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
       ast::item_res(f, _, tps, _) {
         let t_arg = ty_of_arg(tcx, mode, f.decl.inputs[0]);
-        let t_res =
-            {kinds: ty_param_kinds(tps),
-             ty: ty::mk_res(tcx, local_def(it.id), t_arg.ty,
-                            mk_ty_params(tcx, tps))};
+        let t = ty::mk_named(tcx, ty::mk_res(tcx, local_def(it.id), t_arg.ty,
+                                             mk_ty_params(tcx, tps)),
+                             @it.ident);
+        let t_res = {kinds: ty_param_kinds(tps), ty: t};
         tcx.tcache.insert(local_def(it.id), t_res);
         ret t_res;
       }
       ast::item_tag(_, tps) {
         // Create a new generic polytype.
         let subtys: [ty::t] = mk_ty_params(tcx, tps);
-        let t = ty::mk_tag(tcx, local_def(it.id), subtys);
+        let t = ty::mk_named(tcx, ty::mk_tag(tcx, local_def(it.id), subtys),
+                             @it.ident);
         let tpt = {kinds: ty_param_kinds(tps), ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
@@ -534,8 +528,8 @@ fn ty_of_method(tcx: ty::ctxt, mode: mode, m: @ast::method) -> ty::method {
 fn ty_of_obj(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
         ty_params: [ast::ty_param]) -> ty::ty_param_kinds_and_ty {
     let methods = ty_of_obj_methods(tcx, mode, ob);
-    let t_obj = ty::mk_obj(tcx, ty::sort_methods(methods));
-    t_obj = ty::rename(tcx, t_obj, id);
+    let t_obj = ty::mk_named(tcx, ty::mk_obj(tcx, ty::sort_methods(methods)),
+                             @id);
     ret {kinds: ty_param_kinds(ty_params), ty: t_obj};
 }
 fn ty_of_obj_methods(tcx: ty::ctxt, mode: mode, object: ast::_obj)
@@ -655,19 +649,17 @@ fn ty_param_kinds(tps: [ast::ty_param]) -> [ast::kind] {
 mod collect {
     type ctxt = {tcx: ty::ctxt};
 
-    fn get_tag_variant_types(cx: @ctxt, tag_id: ast::def_id,
+    fn get_tag_variant_types(cx: @ctxt, tag_ty: ty::t,
                              variants: [ast::variant],
                              ty_params: [ast::ty_param]) {
         // Create a set of parameter types shared among all the variants.
 
-        let ty_param_tys: [ty::t] = mk_ty_params(cx.tcx, ty_params);
         for variant: ast::variant in variants {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
 
-            let result_ty;
-            if vec::len::<ast::variant_arg>(variant.node.args) == 0u {
-                result_ty = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
+            let result_ty = if vec::len(variant.node.args) == 0u {
+                tag_ty
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
@@ -676,13 +668,11 @@ mod collect {
                     let arg_ty = ast_ty_to_ty(cx.tcx, m_collect, va.ty);
                     args += [{mode: ast::by_copy, ty: arg_ty}];
                 }
-                let tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
-                result_ty =
-                    ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
-                              args, tag_t,
-                              ast::return_val, []);
-            }
+                ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
+                          args, tag_ty,
+                          ast::return_val, [])
+            };
             let tpt = {kinds: ty_param_kinds(ty_params), ty: result_ty};
             cx.tcx.tcache.insert(local_def(variant.node.id), tpt);
             write::ty_only(cx.tcx, variant.node.id, result_ty);
@@ -695,7 +685,7 @@ mod collect {
           ast::item_tag(variants, ty_params) {
             let tpt = ty_of_item(cx.tcx, m_collect, it);
             write::ty_only(cx.tcx, it.id, tpt.ty);
-            get_tag_variant_types(cx, local_def(it.id), variants, ty_params);
+            get_tag_variant_types(cx, tpt.ty, variants, ty_params);
           }
           ast::item_impl(_, selfty, ms) {
             for m in ms {

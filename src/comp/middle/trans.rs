@@ -1037,11 +1037,9 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
 
 type get_tydesc_result = {kind: tydesc_kind, result: result};
 
-fn get_tydesc(cx: @block_ctxt, orig_t: ty::t, escapes: bool,
+fn get_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
               storage: ty_param_storage, &static_ti: option::t<@tydesc_info>)
    -> get_tydesc_result {
-
-    let t = ty::strip_cname(bcx_tcx(cx), orig_t);
 
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt ty::type_param(bcx_tcx(cx), t) {
@@ -1051,8 +1049,8 @@ fn get_tydesc(cx: @block_ctxt, orig_t: ty::t, escapes: bool,
         } else {
             bcx_tcx(cx).sess.span_bug(cx.sp,
                                       "Unbound typaram in get_tydesc: " +
-                                          "orig_t = " +
-                                          ty_to_str(bcx_tcx(cx), orig_t) +
+                                          "t = " +
+                                          ty_to_str(bcx_tcx(cx), t) +
                                           " ty_param = " +
                                           uint::str(id));
         }
@@ -1071,11 +1069,8 @@ fn get_tydesc(cx: @block_ctxt, orig_t: ty::t, escapes: bool,
     ret {kind: tk_static, result: rslt(cx, info.tydesc)};
 }
 
-fn get_static_tydesc(cx: @block_ctxt, orig_t: ty::t, ty_params: [uint],
+fn get_static_tydesc(cx: @block_ctxt, t: ty::t, ty_params: [uint],
                      is_obj_body: bool) -> @tydesc_info {
-    let t = ty::strip_cname(bcx_tcx(cx), orig_t);
-
-
     alt bcx_ccx(cx).tydescs.find(t) {
       some(info) { ret info; }
       none. {
