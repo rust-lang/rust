@@ -49,10 +49,7 @@ MORESTACK:
 	// Calculate the CFA as on offset from %ebp
 	.cfi_def_cfa_register %rbp
 
-	// Save the grandparent stack pointer for the unwinder
-	// FIXME: This isn't used
-	leaq 24(%rbp), %rax
-	pushq %rax
+	pushq $0 // Alignment
 
 	// FIXME: libgcc also saves rax. not sure if we need to
 

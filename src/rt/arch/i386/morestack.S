@@ -156,12 +156,6 @@ MORESTACK:
 	testl %eax,%eax
 	jz .L$bail
 
-	// Save the the correct %esp value for our grandparent frame,
-	// for the unwinder
-	// FIXME: This isn't used
-	leal 20(%ebp), %eax
-	movl %eax, -4(%ebp)
-
 	// The arguments to upcall_new_stack
 
 	// The size of the stack arguments to copy to the new stack,
