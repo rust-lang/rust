@@ -1678,7 +1678,7 @@ fn expr_is_lval(method_map: typeck::method_map, tcx: ty::ctxt,
     alt e.node {
       ast::expr_path(_) | ast::expr_index(_, _) |
       ast::expr_unary(ast::deref., _) { true }
-      ast::expr_field(base, ident) {
+      ast::expr_field(base, ident, _) {
         method_map.contains_key(e.id) ? false : {
             let basety = type_autoderef(tcx, expr_ty(tcx, base));
             alt struct(tcx, basety) {

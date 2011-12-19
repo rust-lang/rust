@@ -238,7 +238,7 @@ tag expr_ {
     expr_assign(@expr, @expr);
     expr_swap(@expr, @expr);
     expr_assign_op(binop, @expr, @expr);
-    expr_field(@expr, ident);
+    expr_field(@expr, ident, [@ty]);
     expr_index(@expr, @expr);
     expr_path(@path);
     expr_fail(option::t<@expr>);

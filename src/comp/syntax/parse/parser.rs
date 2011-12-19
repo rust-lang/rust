@@ -1025,7 +1025,12 @@ fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
               token::IDENT(i, _) {
                 hi = p.get_hi_pos();
                 p.bump();
-                e = mk_expr(p, lo, hi, ast::expr_field(e, p.get_str(i)));
+                let tys = if eat(p, token::MOD_SEP) {
+                    expect(p, token::LT);
+                    parse_seq_to_gt(some(token::COMMA),
+                                    {|p| parse_ty(p, false)}, p)
+                } else { [] };
+                e = mk_expr(p, lo, hi, ast::expr_field(e, p.get_str(i), tys));
               }
               t { unexpected(p, t); }
             }

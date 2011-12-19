@@ -47,7 +47,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
     let ds: [deref] = [], ex = ex;
     while true {
         alt copy ex.node {
-          expr_field(base, ident) {
+          expr_field(base, ident, _) {
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));
             let is_mut = false;
             alt ty::struct(tcx, auto_unbox.t) {

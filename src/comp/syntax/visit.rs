@@ -295,7 +295,10 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_expr(b, e, v);
         v.visit_expr(a, e, v);
       }
-      expr_field(x, _) { v.visit_expr(x, e, v); }
+      expr_field(x, _, tys) {
+        v.visit_expr(x, e, v);
+        for tp in tys { v.visit_ty(tp, e, v); }
+      }
       expr_index(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_path(p) { visit_path(p, e, v); }
       expr_fail(eo) { visit_expr_opt(eo, e, v); }

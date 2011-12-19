@@ -476,7 +476,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         set_pre_and_post(fcx.ccx, e.id, alts_overall_pp.precondition,
                          alts_overall_pp.postcondition);
       }
-      expr_field(operator, _) {
+      expr_field(operator, _, _) {
         find_pre_post_expr(fcx, operator);
         copy_pre_post(fcx.ccx, e.id, operator);
       }

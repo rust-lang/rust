@@ -35,6 +35,7 @@ fn main() {
 
     assert [1].len().str() == "1";
     assert [3, 4].map({|a| a + 4})[0] == 7;
+    assert [3, 4].map::<uint>({|a| a as uint + 4u})[0] == 7u;
     let x = 0u;
     10u.times {|_n| x += 2u;}
     assert x == 20u;

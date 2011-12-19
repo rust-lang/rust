@@ -2858,7 +2858,7 @@ fn trans_method_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
 fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     alt e.node {
       ast::expr_path(p) { ret trans_path(bcx, p, e.id); }
-      ast::expr_field(base, ident) {
+      ast::expr_field(base, ident, _) {
         // Lval means this is a record field, so not a method
         if !expr_is_lval(bcx, e) {
             alt bcx_ccx(bcx).method_map.find(e.id) {
@@ -2889,7 +2889,7 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         let v = trans_path(cx, p, e.id);
         ret lval_maybe_callee_to_lval(v, ty::expr_ty(bcx_tcx(cx), e));
       }
-      ast::expr_field(base, ident) {
+      ast::expr_field(base, ident, _) {
         ret trans_rec_field(cx, base, ident);
       }
       ast::expr_index(base, idx) {
@@ -3580,7 +3580,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       ast::expr_call(f, args, _) {
         ret trans_call(bcx, f, args, e.id, dest);
       }
-      ast::expr_field(_, _) {
+      ast::expr_field(_, _, _) {
         fail "Taking the value of a method does not work yet (issue #435)";
       }
 

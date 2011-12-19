@@ -879,7 +879,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         word_space(s, "=");
         print_expr(s, rhs);
       }
-      ast::expr_field(expr, id) {
+      ast::expr_field(expr, id, tys) {
         // Deal with '10.x'
         if ends_in_lit_int(expr) {
             popen(s); print_expr(s, expr); pclose(s);
@@ -888,6 +888,11 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         word(s.s, ".");
         word(s.s, id);
+        if vec::len(tys) > 0u {
+            word(s.s, "::<");
+            commasep(s, inconsistent, tys, print_type);
+            word(s.s, ">");
+        }
       }
       ast::expr_index(expr, index) {
         print_expr_parens_if_not_bot(s, expr);

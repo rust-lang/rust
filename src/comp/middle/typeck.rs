@@ -2132,15 +2132,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           }
         }
       }
-      ast::expr_field(base, field) {
+      ast::expr_field(base, field, tys) {
         bot |= check_expr(fcx, base);
         let expr_t = expr_ty(tcx, base);
         let base_t = do_autoderef(fcx, expr.span, expr_t);
-        let handled = false;
+        let handled = false, n_tys = vec::len(tys);
         alt structure_of(fcx, expr.span, base_t) {
           ty::ty_rec(fields) {
             alt ty::field_idx(field, fields) {
               some(ix) {
+                if n_tys > 0u {
+                    tcx.sess.span_err(expr.span,
+                                      "can't provide type parameters \
+                                       to a field access");
+                }
                 write::ty_only_fixup(fcx, id, fields[ix].mt.ty);
                 handled = true;
               }
@@ -2150,6 +2155,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           ty::ty_obj(methods) {
             alt ty::method_idx(field, methods) {
               some(ix) {
+                if n_tys > 0u {
+                    tcx.sess.span_err(expr.span,
+                                      "can't provide type parameters \
+                                       to an obj method");
+                }
                 let meth = methods[ix];
                 let t = ty::mk_fn(tcx, meth.proto, meth.inputs,
                                   meth.output, meth.cf, meth.constrs);
@@ -2181,6 +2191,25 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                                 fty, method.n_tps);
                     ids += b.ids;
                     fty = b.ty;
+                    if n_tys > 0u {
+                        if n_tys != method.n_tps {
+                            tcx.sess.span_fatal
+                                (expr.span, "incorrect number of type \
+                                           parameters given for this method");
+
+                        }
+                        let i = 0u;
+                        for ty in tys {
+                            let tvar = ty::mk_var(fcx.ccx.tcx, b.ids[i]);
+                            let t_subst = ast_ty_to_ty_crate(fcx.ccx, ty);
+                            demand::simple(fcx, expr.span, tvar, t_subst);
+                            i += 1u;
+                        }
+                    }
+                } else if n_tys > 0u {
+                    tcx.sess.span_fatal(expr.span,
+                                        "this method does not take type \
+                                         parameters");
                 }
                 let substs = vec::map(ids, {|id| ty::mk_var(tcx, id)});
                 write::ty_fixup(fcx, id, {substs: some(substs), ty: fty});

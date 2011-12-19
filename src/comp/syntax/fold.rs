@@ -401,8 +401,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_assign_op(op, el, er) {
             expr_assign_op(op, fld.fold_expr(el), fld.fold_expr(er))
           }
-          expr_field(el, id) {
-            expr_field(fld.fold_expr(el), fld.fold_ident(id))
+          expr_field(el, id, tys) {
+            expr_field(fld.fold_expr(el), fld.fold_ident(id),
+                       vec::map(tys, fld.fold_ty))
           }
           expr_index(el, er) {
             expr_index(fld.fold_expr(el), fld.fold_expr(er))

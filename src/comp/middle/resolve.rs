@@ -1771,7 +1771,7 @@ fn visit_mod_with_impl_scope(e: @env, m: ast::_mod, s: span, sc: iscopes,
 
 fn resolve_impl_in_expr(e: @env, x: @ast::expr, sc: iscopes, v: vt<iscopes>) {
     alt x.node {
-      ast::expr_field(_, _) { e.impl_map.insert(x.id, sc); }
+      ast::expr_field(_, _, _) { e.impl_map.insert(x.id, sc); }
       _ {}
     }
     visit::visit_expr(x, sc, v);
