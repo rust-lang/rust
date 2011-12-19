@@ -151,8 +151,7 @@ tag dir { inside; outside; }
 tag namespace { ns_value; ns_type; ns_module; }
 
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
-   {def_map: def_map, ext_map: ext_map,
-    exp_map: exp_map, impl_map: impl_map} {
+   {def_map: def_map, exp_map: exp_map, impl_map: impl_map} {
     let e =
         @{cstore: sess.get_cstore(),
           def_map: new_int_hash(),
@@ -178,8 +177,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     if sess.get_opts().warn_unused_imports {
         check_unused_imports(e);
     }
-    ret {def_map: e.def_map, ext_map: e.ext_map,
-         exp_map: e.exp_map, impl_map: e.impl_map};
+    ret {def_map: e.def_map, exp_map: e.exp_map, impl_map: e.impl_map};
 }
 
 // Locate all modules and imports and index them, so that the next passes can

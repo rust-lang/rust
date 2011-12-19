@@ -411,8 +411,7 @@ fn mk_rcache() -> creader_cache {
 }
 
 
-fn mk_ctxt(s: session::session, dm: resolve::def_map,
-           _em: hashmap<def_id, [ident]>, amap: ast_map::map,
+fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
     let ntt: node_type_table =
         @smallintmap::mk::<ty::ty_param_substs_opt_and_ty>();
