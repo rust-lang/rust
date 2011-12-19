@@ -595,23 +595,26 @@ upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
     UPCALL_SWITCH_STACK(&args, upcall_s_log_type);
 }
 
-struct rust_new_stack2_args {
-    void *new_stack;
+struct s_new_stack_args {
+    void *result;
     size_t stk_sz;
     void *args_addr;
     size_t args_sz;
 };
 
-// A new stack function suitable for calling through
-// upcall_call_shim_on_c_stack
-// FIXME: Convert this to the same arrangement as
-// the other upcalls, simplify __morestack
 extern "C" CDECL void
-upcall_new_stack(struct rust_new_stack2_args *args) {
+upcall_s_new_stack(struct s_new_stack_args *args) {
     rust_task *task = rust_scheduler::get_task();
-    args->new_stack = task->new_stack(args->stk_sz,
-                                      args->args_addr,
-                                      args->args_sz);
+    args->result = task->new_stack(args->stk_sz,
+                                   args->args_addr,
+                                   args->args_sz);
+}
+
+extern "C" CDECL void *
+upcall_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
+    s_new_stack_args args = {NULL, stk_sz, args_addr, args_sz};
+    UPCALL_SWITCH_STACK(&args, upcall_s_new_stack);
+    return args.result;
 }
 
 extern "C" CDECL void

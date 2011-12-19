@@ -68,30 +68,27 @@
 
 #if defined(__APPLE__)
 #define RUST_GET_TASK           L_rust_get_task$stub
+#define UPCALL_NEW_STACK        L_upcall_new_stack$stub
 #define UPCALL_DEL_STACK        L_upcall_del_stack$stub
-#define UPCALL_CALL_C           L_upcall_call_shim_on_c_stack$stub
 #define MORESTACK               ___morestack
 #else
 #if defined(__linux__)
 #define UPCALL_NEW_STACK        upcall_new_stack
 #define UPCALL_DEL_STACK        upcall_del_stack
 #define RUST_GET_TASK           rust_get_task
-#define UPCALL_CALL_C           upcall_call_shim_on_c_stack
 #define MORESTACK               __morestack
 #else
 #define UPCALL_NEW_STACK        _upcall_new_stack
 #define UPCALL_DEL_STACK        _upcall_del_stack
 #define RUST_GET_TASK           _rust_get_task
-#define UPCALL_CALL_C           _upcall_call_shim_on_c_stack
 #define MORESTACK               ___morestack
 #endif
 #endif
 
-.globl UPCALL_NEW_STACK
 #ifndef __APPLE__
+.globl UPCALL_NEW_STACK
 .globl UPCALL_DEL_STACK
 .globl RUST_GET_TASK
-.globl UPCALL_CALL_C_STACK
 #endif
 .globl MORESTACK
 
@@ -170,29 +167,19 @@ MORESTACK:
 	// The size of the stack arguments to copy to the new stack,
 	// ane of the the arguments to __morestack
 	movl 56(%esp),%eax
-	movl %eax,20(%esp)
+	movl %eax,8(%esp)
 	// The address of the stack arguments to the original function
 	leal 64(%esp),%eax
-	movl %eax,16(%esp)
+	movl %eax,4(%esp)
 	// The amount of stack needed for the original function,
 	// the other argument to __morestack
 	movl 52(%esp),%eax // The amount of stack needed
-	movl %eax,12(%esp)
-	// Out pointer to the new stack
-	movl $0, 8(%esp)
-
-#ifdef __APPLE__
-	call 1f
-1:	popl %eax
-	movl L_upcall_new_stack$non_lazy_ptr-1b(%eax),%eax
-	movl %eax, 4(%esp)
-#else
-	movl $UPCALL_NEW_STACK,4(%esp)
-#endif
-
-	leal 8(%esp), %eax
 	movl %eax,(%esp)
-	call UPCALL_CALL_C
+
+	call UPCALL_NEW_STACK
+
+	// Save the address of the new stack
+	movl %eax, (%esp)
 
 	// Grab the __morestack return pointer
 	movl 48(%esp),%eax
@@ -204,7 +191,7 @@ MORESTACK:
 	movl 24(%esp), %edx
 
         // Switch stacks
-	movl 8(%esp),%esp
+	movl (%esp),%esp
         // Re-enter the function that called us
 	call *%eax
 
@@ -253,11 +240,6 @@ MORESTACK:
 
 #ifdef __APPLE__
 
-	.section __IMPORT,__pointers,non_lazy_symbol_pointers
-L_upcall_new_stack$non_lazy_ptr:
-	.indirect_symbol _upcall_new_stack
-	.long 0
-
 .section __IMPORT,__jump_table,symbol_stubs,pure_instructions+self_modifying_code,5
 
 	// Linker will replace the hlts (the ascii) with jmp
@@ -265,12 +247,12 @@ L_rust_get_task$stub:
 	.indirect_symbol _rust_get_task
 	.ascii	 "\364\364\364\364\364"
 
+L_upcall_new_stack$stub:
+	.indirect_symbol _upcall_new_stack
+	.ascii	 "\364\364\364\364\364"
+	
 L_upcall_del_stack$stub:
 	.indirect_symbol _upcall_del_stack
-	.ascii	 "\364\364\364\364\364"
-
-L_upcall_call_shim_on_c_stack$stub:
-	.indirect_symbol _upcall_call_shim_on_c_stack
 	.ascii	 "\364\364\364\364\364"
 
 	.subsections_via_symbols

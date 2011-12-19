@@ -9,18 +9,15 @@
 #if defined(__APPLE__) || defined(_WIN32)
 #define UPCALL_NEW_STACK        _upcall_new_stack
 #define UPCALL_DEL_STACK        _upcall_del_stack
-#define UPCALL_CALL_C           _upcall_call_shim_on_c_stack
 #define MORESTACK               ___morestack
 #else
 #define UPCALL_NEW_STACK        upcall_new_stack
 #define UPCALL_DEL_STACK        upcall_del_stack
-#define UPCALL_CALL_C           upcall_call_shim_on_c_stack
 #define MORESTACK               __morestack
 #endif
 
 .globl UPCALL_NEW_STACK
 .globl UPCALL_DEL_STACK
-.globl UPCALL_CALL_C
 .globl MORESTACK
 
 #if defined(__linux__)
@@ -70,28 +67,21 @@ MORESTACK:
 	// Calculate the address of the stack arguments.
 	// We have the base pointer, __morestack's return address,
 	// and __morestack's caller's return address to skip
-	movq %rbp, %rcx
-	addq $24, %rcx  // Base pointer, return address x2
+	movq %rbp, %rax
+	addq $24, %rax  // Base pointer, return address x2
 
 	// The arguments to __morestack are passed in %r10 & %r11
 
-	pushq %r11 // Size of stack arguments
-	pushq %rcx // Address of stack arguments
-	pushq %r10 // The amount of stack needed
-	pushq $0   // Out pointer
+	movq %r11, %rdx // Size of stack arguments
+	movq %rax, %rsi // Address of stack arguments
+	movq %r10, %rdi // The amount of stack needed
 
-	movq UPCALL_NEW_STACK@GOTPCREL(%rip), %rsi
-	movq %rsp, %rdi
 #ifdef __APPLE__
-	call UPCALL_CALL_C
+	call UPCALL_NEW_STACK
 #endif
 #ifdef __linux__
-	call UPCALL_CALL_C@PLT
+	call UPCALL_NEW_STACK@PLT
 #endif
-
-	// Pop the new_stack_args struct
-	popq %rax
-	addq $24, %rsp
 
 	// Pop the saved arguments
 	popq %r9
