@@ -614,11 +614,15 @@ upcall_new_stack(struct rust_new_stack2_args *args) {
                                       args->args_sz);
 }
 
-// FIXME: As above
 extern "C" CDECL void
-upcall_del_stack() {
+upcall_s_del_stack() {
     rust_task *task = rust_scheduler::get_task();
     task->del_stack();
+}
+
+extern "C" CDECL void
+upcall_del_stack() {
+    UPCALL_SWITCH_STACK(NULL, upcall_s_del_stack);
 }
 
 // Landing pads need to call this to insert the

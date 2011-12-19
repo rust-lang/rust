@@ -68,6 +68,7 @@
 
 #if defined(__APPLE__)
 #define RUST_GET_TASK           L_rust_get_task$stub
+#define UPCALL_DEL_STACK        L_upcall_del_stack$stub
 #define UPCALL_CALL_C           L_upcall_call_shim_on_c_stack$stub
 #define MORESTACK               ___morestack
 #else
@@ -87,8 +88,8 @@
 #endif
 
 .globl UPCALL_NEW_STACK
-.globl UPCALL_DEL_STACK
 #ifndef __APPLE__
+.globl UPCALL_DEL_STACK
 .globl RUST_GET_TASK
 .globl UPCALL_CALL_C_STACK
 #endif
@@ -213,24 +214,13 @@ MORESTACK:
 	// Switch back to the rust stack
 	movl %ebp, %esp
 
-	// Remember that __morestack is called misaligned so %ebp
-	// is not aligned to a 16-byte boundary, these 4 bytes realign.
-	subl $4, %esp
+	// Realign stack - remember that __morestack was called misaligned
+	subl $12, %esp
 
 	// Now that we're on the return path we want to avoid
 	// stomping on %eax. FIXME: Need to save and restore %eax to
 	// actually preserve it across the call to delete the stack
-#ifdef __APPLE__
-	call 1f
-1:	popl %ecx
-	movl L_upcall_del_stack$non_lazy_ptr-1b(%ecx),%ecx
-	pushl %ecx
-#else
-	pushl $UPCALL_DEL_STACK
-#endif
-
-	pushl $0
-	call UPCALL_CALL_C
+	call UPCALL_DEL_STACK
 
 	addl $12,%esp
 
@@ -267,15 +257,16 @@ MORESTACK:
 L_upcall_new_stack$non_lazy_ptr:
 	.indirect_symbol _upcall_new_stack
 	.long 0
-L_upcall_del_stack$non_lazy_ptr:
-	.indirect_symbol _upcall_del_stack
-	.long 0
 
 .section __IMPORT,__jump_table,symbol_stubs,pure_instructions+self_modifying_code,5
 
 	// Linker will replace the hlts (the ascii) with jmp
 L_rust_get_task$stub:
 	.indirect_symbol _rust_get_task
+	.ascii	 "\364\364\364\364\364"
+
+L_upcall_del_stack$stub:
+	.indirect_symbol _upcall_del_stack
 	.ascii	 "\364\364\364\364\364"
 
 L_upcall_call_shim_on_c_stack$stub:

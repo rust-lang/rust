@@ -117,13 +117,11 @@ MORESTACK:
 	pushq $0
 
 	// FIXME: Should preserve %rax here
-	movq UPCALL_DEL_STACK@GOTPCREL(%rip), %rsi
-	movq $0, %rdi
 #ifdef __APPLE__
-	call UPCALL_CALL_C
+	call UPCALL_DEL_STACK
 #endif
 #ifdef __linux__
-	call UPCALL_CALL_C@PLT
+	call UPCALL_DEL_STACK@PLT
 #endif
 
 	addq $8, %rsp
