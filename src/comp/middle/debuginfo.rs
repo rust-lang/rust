@@ -1,8 +1,10 @@
-import std::{vec, str, option, unsafe, fs, sys, ctypes};
+import core::{vec, str, option, sys, ctypes, unsafe};
+import std::fs;
 import std::map::hashmap;
 import lib::llvm::llvm;
 import lib::llvm::llvm::ValueRef;
 import middle::trans_common::*;
+import middle::trans_build::B;
 import middle::ty;
 import syntax::{ast, codemap};
 import ast::ty;
@@ -66,7 +68,7 @@ fn llunused() -> ValueRef {
     lli32(0x0)
 }
 fn llnull() -> ValueRef unsafe {
-    unsafe::reinterpret_cast(std::ptr::null::<ValueRef>())
+    unsafe::reinterpret_cast(ptr::null::<ValueRef>())
 }
 
 fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
@@ -621,7 +623,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     }
 
     let name = alt local.node.pat.node {
-      ast::pat_bind(ident) { ident }
+      ast::pat_bind(ident, _) { ident /*XXX deal with optional node binding */ }
     };
     let loc = codemap::lookup_char_pos(cx.sess.get_codemap(),
                                        local.span.lo);
@@ -727,7 +729,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
       }
       ast_map::node_expr(expr) {
         alt expr.node {
-          ast::expr_fn(f) {
+          ast::expr_fn(f, _) {
             (dbg_cx.names.next("fn"), f.decl.output, expr.id)
           }
         }

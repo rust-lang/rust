@@ -336,6 +336,7 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
     let sub_cx = extend_path(bcx.fcx.lcx, ccx.names.next("anon"));
     let s = mangle_internal_name_by_path(ccx, sub_cx.path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
+    register_fn(ccx, sp, sub_cx.path, "anon fn", [], id);
 
     let trans_closure_env = lambda(ck: ty::closure_kind) -> ValueRef {
         let upvars = get_freevars(ccx.tcx, id);

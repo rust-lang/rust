@@ -73,6 +73,7 @@ fn map_item(cx: ctx, i: @item) {
       }
       item_impl(_, _, ms) {
         for m in ms { cx.map.insert(m.node.id, node_method(m)); }
+      }
       item_res(_, dtor_id, _, ctor_id) {
         cx.map.insert(ctor_id, node_res_ctor(i));
         cx.map.insert(dtor_id, node_item(i));
