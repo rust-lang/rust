@@ -23,9 +23,9 @@ import f32 = math_f32;
 
 // These two must match in width according to architecture
 
-import ctypes::m_float;
-import ctypes::c_int;
-import ptr;
+import core::mtypes::m_float;
+import core::ctypes::c_int;
+import core::ptr;
 import m_float = math_f64;
 
 /*

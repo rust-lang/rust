@@ -1,5 +1,5 @@
 import core::option;
-import ctypes::*;
+import core::ctypes::*;
 
 #[abi = "cdecl"]
 #[link_name = ""]               // FIXME remove after #[nolink] is snapshotted

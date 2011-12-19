@@ -29,6 +29,8 @@ Example:
 import sys;
 import task;
 
+import core::ctypes;
+
 export send;
 export recv;
 export chan;

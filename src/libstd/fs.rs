@@ -4,6 +4,7 @@ Module: fs
 File system manipulation
 */
 
+import core::ctypes;
 import core::vec;
 import core::option;
 import os;
