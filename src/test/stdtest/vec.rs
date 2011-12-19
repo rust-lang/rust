@@ -16,6 +16,8 @@ pure fn is_three(&&n: uint) -> bool { ret n == 3u; }
 
 pure fn is_odd(&&n: uint) -> bool { ret n % 2u == 1u; }
 
+pure fn is_equal(&&x: uint, &&y:uint) -> bool { ret x == y; }
+
 fn square_if_odd(&&n: uint) -> option::t<uint> {
     ret if n % 2u == 1u { some(n * n) } else { none };
 }
@@ -399,6 +401,20 @@ fn test_any_and_all() {
     assert (!vec::all([3u, 3u, 2u], is_three));
     assert (vec::all([3u, 3u, 3u, 3u, 3u], is_three));
     assert (!vec::all([3u, 3u, 0u, 1u, 2u], is_three));
+}
+
+#[test]
+fn test_any2_and_all2() {
+
+    assert (vec::any2([2u, 4u, 6u], [2u, 4u, 6u], is_equal));
+    assert (vec::any2([1u, 2u, 3u], [4u, 5u, 3u], is_equal));
+    assert (!vec::any2([1u, 2u, 3u], [4u, 5u, 6u], is_equal));
+    assert (vec::any2([2u, 4u, 6u], [2u, 4u], is_equal));
+
+    assert (vec::all2([2u, 4u, 6u], [2u, 4u, 6u], is_equal));
+    assert (!vec::all2([1u, 2u, 3u], [4u, 5u, 3u], is_equal));
+    assert (!vec::all2([1u, 2u, 3u], [4u, 5u, 6u], is_equal));
+    assert (!vec::all2([2u, 4u, 6u], [2u, 4u], is_equal));
 }
 
 #[test]
