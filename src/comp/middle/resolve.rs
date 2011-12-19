@@ -370,7 +370,17 @@ fn resolve_names(e: @env, c: @ast::crate) {
 
 // Visit helper functions
 fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
-    visit::visit_item(i, cons(scope_item(i), @sc), v);
+    let sc = cons(scope_item(i), @sc);
+    alt i.node {
+      ast::item_impl(tps, sty, methods) {
+        visit::visit_ty(sty, sc, v);
+        for m in methods {
+            v.visit_fn(m.node.meth, tps + m.node.tps, m.span,
+                       some(m.node.ident), m.node.id, sc, v);
+        }
+      }
+      _ { visit::visit_item(i, sc, v); }
+    }
 }
 
 fn visit_native_item_with_scope(ni: @ast::native_item, sc: scopes,

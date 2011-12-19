@@ -692,7 +692,8 @@ mod collect {
                 let ty = ty::method_ty_to_fn_ty(
                     cx.tcx, ty_of_method(cx.tcx, m_collect, m));
                 cx.tcx.tcache.insert(local_def(m.node.id),
-                                     {kinds: [], ty: ty});
+                                     {kinds: ty_param_kinds(m.node.tps),
+                                      ty: ty});
                 write::ty_only(cx.tcx, m.node.id, ty);
             }
             write::ty_only(cx.tcx, it.id, ast_ty_to_ty(cx.tcx, m_collect,
@@ -2174,12 +2175,19 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                       }
                     }
                 } else { csearch::get_type(tcx, method.did).ty };
-                let ids = ids;
-                if method.n_tps > 0u {
+                let tvars = vec::map(ids, {|id| ty::mk_var(tcx, id)});
+                let n_tps = vec::len(ids);
+                if method.n_tps + n_tps  > 0u {
                     let b = bind_params_in_type(expr.span, tcx,
-                                                bind next_ty_var_id(fcx),
-                                                fty, method.n_tps);
-                    ids += b.ids;
+                                                bind next_ty_var_id(fcx), fty,
+                                                n_tps + method.n_tps);
+                    let _tvars = vec::map(b.ids, {|id| ty::mk_var(tcx, id)});
+                    let i = 0;
+                    for v in tvars {
+                        demand::simple(fcx, expr.span, v, _tvars[i]);
+                        i += 1;
+                    }
+                    tvars = _tvars;
                     fty = b.ty;
                     if n_tys > 0u {
                         if n_tys != method.n_tps {
@@ -2190,7 +2198,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         }
                         let i = 0u;
                         for ty in tys {
-                            let tvar = ty::mk_var(fcx.ccx.tcx, b.ids[i]);
+                            let tvar = tvars[i + n_tps];
                             let t_subst = ast_ty_to_ty_crate(fcx.ccx, ty);
                             demand::simple(fcx, expr.span, tvar, t_subst);
                             i += 1u;
@@ -2201,8 +2209,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                         "this method does not take type \
                                          parameters");
                 }
-                let substs = vec::map(ids, {|id| ty::mk_var(tcx, id)});
-                write::ty_fixup(fcx, id, {substs: some(substs), ty: fty});
+                write::ty_fixup(fcx, id, {substs: some(tvars), ty: fty});
                 fcx.ccx.method_map.insert(id, method.did);
               }
               none. {
