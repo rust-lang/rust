@@ -12,6 +12,8 @@ export loop_new, loop_delete, default_loop, run, unref;
 export idle_init, idle_start;
 export idle_new;
 
+import core::ctypes;
+
 #[link_name = "rustrt"]
 native mod uv {
     fn rust_uv_loop_new() -> *loop_t;
