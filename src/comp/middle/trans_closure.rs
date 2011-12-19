@@ -43,8 +43,10 @@ import trans::{
 //   };
 // };
 //
-// NB: this is defined in the code in T_closure_ptr and
-// closure_ty_to_tuple_ty (below).
+// NB: this struct is defined in the code in trans_common::T_closure()
+// and mk_closure_ty() below.  The former defines the LLVM version and
+// the latter the Rust equivalent.  It occurs to me that these could
+// perhaps be unified, but currently they are not.
 //
 // Note that the closure carries a type descriptor that describes
 // itself.  Trippy.  This is needed because the precise types of the
@@ -64,8 +66,17 @@ import trans::{
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 tag environment_value {
+    // Evaluate expr and store result in env (used for bind).
     env_expr(@ast::expr);
-    env_direct(ValueRef, ty::t, bool);
+
+    // Copy the value from this llvm ValueRef into the environment.
+    env_copy(ValueRef, ty::t, lval_kind);
+
+    // Move the value from this llvm ValueRef into the environment.
+    env_move(ValueRef, ty::t, lval_kind);
+
+    // Access by reference (used for blocks).
+    env_ref(ValueRef, ty::t, lval_kind);
 }
 
 // Given a closure ty, emits a corresponding tuple ty
@@ -143,8 +154,10 @@ fn store_environment(
     let bound_tys = [];
     for bv in bound_values {
         bound_tys += [alt bv {
-          env_direct(_, t, _) { t }
-          env_expr(e) { ty::expr_ty(tcx, e) }
+            env_copy(_, t, _) { t }
+            env_move(_, t, _) { t }
+            env_ref(_, t, _) { t }
+            env_expr(e) { ty::expr_ty(tcx, e) }
         }];
     }
     let bound_data_ty = ty::mk_tup(tcx, bound_tys);
@@ -239,17 +252,29 @@ fn store_environment(
             add_clean_temp_mem(bcx, bound.val, bound_tys[i]);
             temp_cleanups += [bound.val];
           }
-          env_direct(val, ty, is_mem) {
-            alt ck {
-              ty::closure_shared. | ty::closure_send. {
-                let val1 = is_mem ? load_if_immediate(bcx, val, ty) : val;
-                bcx = trans::copy_val(bcx, INIT, bound.val, val1, ty);
-              }
-              ty::closure_block. {
-                let addr = is_mem ? val : do_spill_noroot(bcx, val);
-                Store(bcx, addr, bound.val);
-              }
-            }
+          env_copy(val, ty, owned.) {
+            let val1 = load_if_immediate(bcx, val, ty);
+            bcx = trans::copy_val(bcx, INIT, bound.val, val1, ty);
+          }
+          env_copy(val, ty, owned_imm.) {
+            bcx = trans::copy_val(bcx, INIT, bound.val, val, ty);
+          }
+          env_copy(_, _, temporary.) {
+            fail "Cannot capture temporary upvar";
+          }
+          env_move(val, ty, kind) {
+            let src = {bcx:bcx, val:val, kind:kind};
+            bcx = move_val(bcx, INIT, bound.val, src, ty);
+          }
+          env_ref(val, ty, owned.) {
+            Store(bcx, val, bound.val);
+          }
+          env_ref(val, ty, owned_imm.) {
+            let addr = do_spill_noroot(bcx, val);
+            Store(bcx, addr, bound.val);
+          }
+          env_ref(_, _, temporary.) {
+            fail "Cannot capture temporary upvar";
           }
         }
     }
@@ -260,25 +285,38 @@ fn store_environment(
 
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
-fn build_closure(cx: @block_ctxt,
-                 upvars: freevar_info,
+fn build_closure(bcx0: @block_ctxt,
+                 cap_vars: [capture::capture_var],
                  ck: ty::closure_kind)
     -> closure_result {
     // If we need to, package up the iterator body to call
     let env_vals = [];
-    let tcx = bcx_tcx(cx);
-    // Package up the upvars
-    vec::iter(*upvars) { |upvar|
-        let lv = trans_local_var(cx, upvar.def);
-        let nid = ast_util::def_id_of_def(upvar.def).node;
+    let bcx = bcx0;
+    let tcx = bcx_tcx(bcx);
+
+    // Package up the captured upvars
+    vec::iter(cap_vars) { |cap_var|
+        let lv = trans_local_var(bcx, cap_var.def);
+        let nid = ast_util::def_id_of_def(cap_var.def).node;
         let ty = ty::node_id_to_monotype(tcx, nid);
-        alt ck {
-          ty::closure_block. { ty = ty::mk_mut_ptr(tcx, ty); }
-          ty::closure_send. | ty::closure_shared. {}
+        alt cap_var.mode {
+          capture::cap_ref. {
+            assert ck == ty::closure_block;
+            ty = ty::mk_mut_ptr(tcx, ty);
+            env_vals += [env_ref(lv.val, ty, lv.kind)];
+          }
+          capture::cap_copy. {
+            env_vals += [env_copy(lv.val, ty, lv.kind)];
+          }
+          capture::cap_move. {
+            env_vals += [env_move(lv.val, ty, lv.kind)];
+          }
+          capture::cap_drop. {
+            bcx = drop_ty(bcx, lv.val, ty);
+          }
         }
-        env_vals += [env_direct(lv.val, ty, lv.kind == owned)];
     }
-    ret store_environment(cx, copy cx.fcx.lltydescs, env_vals, ck);
+    ret store_environment(bcx, copy bcx.fcx.lltydescs, env_vals, ck);
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -287,7 +325,7 @@ fn build_closure(cx: @block_ctxt,
 fn load_environment(enclosing_cx: @block_ctxt,
                     fcx: @fn_ctxt,
                     boxed_closure_ty: ty::t,
-                    upvars: freevar_info,
+                    cap_vars: [capture::capture_var],
                     ck: ty::closure_kind) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
 
@@ -311,23 +349,34 @@ fn load_environment(enclosing_cx: @block_ctxt,
 
     // Populate the upvars from the environment.
     let path = [0, abi::box_rc_field_body, abi::closure_elt_bindings];
-    vec::iteri(*upvars) { |i, upvar|
-        check type_is_tup_like(bcx, boxed_closure_ty);
-        let upvarptr =
-            GEP_tup_like(bcx, boxed_closure_ty, llclosure, path + [i as int]);
-        bcx = upvarptr.bcx;
-        let llupvarptr = upvarptr.val;
-        alt ck {
-          ty::closure_block. { llupvarptr = Load(bcx, llupvarptr); }
-          ty::closure_send. | ty::closure_shared. { }
+    let i = 0u;
+    vec::iter(cap_vars) { |cap_var|
+        alt cap_var.mode {
+          capture::cap_drop. { /* ignore */ }
+          _ {
+            check type_is_tup_like(bcx, boxed_closure_ty);
+            let upvarptr = GEP_tup_like(
+                bcx, boxed_closure_ty, llclosure, path + [i as int]);
+            bcx = upvarptr.bcx;
+            let llupvarptr = upvarptr.val;
+            alt ck {
+              ty::closure_block. { llupvarptr = Load(bcx, llupvarptr); }
+              ty::closure_send. | ty::closure_shared. { }
+            }
+            let def_id = ast_util::def_id_of_def(cap_var.def);
+            fcx.llupvars.insert(def_id.node, llupvarptr);
+            i += 1u;
+          }
         }
-        let def_id = ast_util::def_id_of_def(upvar.def);
-        fcx.llupvars.insert(def_id.node, llupvarptr);
     }
 }
 
-fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
-                 id: ast::node_id, dest: dest) -> @block_ctxt {
+fn trans_expr_fn(bcx: @block_ctxt,
+                 f: ast::_fn,
+                 sp: span,
+                 id: ast::node_id,
+                 cap_clause: ast::capture_clause,
+                 dest: dest) -> @block_ctxt {
     if dest == ignore { ret bcx; }
     let ccx = bcx_ccx(bcx), bcx = bcx;
     let fty = node_id_type(ccx, id);
@@ -339,10 +388,11 @@ fn trans_expr_fn(bcx: @block_ctxt, f: ast::_fn, sp: span,
     register_fn(ccx, sp, sub_cx.path, "anon fn", [], id);
 
     let trans_closure_env = lambda(ck: ty::closure_kind) -> ValueRef {
-        let upvars = get_freevars(ccx.tcx, id);
-        let {llbox, box_ty, bcx} = build_closure(bcx, upvars, ck);
+        let cap_vars = capture::compute_capture_vars(
+            ccx.tcx, id, f.proto, cap_clause);
+        let {llbox, box_ty, bcx} = build_closure(bcx, cap_vars, ck);
         trans_closure(sub_cx, sp, f, llfn, no_self, [], id, {|fcx|
-            load_environment(bcx, fcx, box_ty, upvars, ck);
+            load_environment(bcx, fcx, box_ty, cap_vars, ck);
         });
         llbox
     };
@@ -420,7 +470,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
         let sp = cx.sp;
         let llclosurety = T_ptr(type_of(ccx, sp, outgoing_fty));
         let src_loc = PointerCast(bcx, cl, llclosurety);
-        ([env_direct(src_loc, pair_ty, true)], none)
+        ([env_copy(src_loc, pair_ty, owned)], none)
       }
       none. { ([], some(f_res.val)) }
     };

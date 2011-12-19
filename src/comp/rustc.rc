@@ -38,6 +38,7 @@ mod middle {
     mod shape;
     mod gc;
     mod debuginfo;
+    mod capture;
 
     mod tstate {
         mod ck;

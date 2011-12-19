@@ -1939,9 +1939,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         if !arm_non_bot { result_ty = ty::mk_bot(tcx); }
         write::ty_only_fixup(fcx, id, result_ty);
       }
-      ast::expr_fn(f, captures) { // NDM captures
-        let cx = @{tcx: tcx};
-        let fty = ty_of_fn_decl(cx.tcx, m_check_tyvar(fcx), f.decl,
+      ast::expr_fn(f, captures) {
+        let fty = ty_of_fn_decl(tcx, m_check_tyvar(fcx), f.decl,
                                  f.proto, [], none).ty;
 
         write::ty_only_fixup(fcx, id, fty);
@@ -1956,6 +1955,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         if f.proto == ast::proto_block {
             write::ty_only_fixup(fcx, id, expected);
         }
+
+        capture::check_capture_clause(tcx, expr.id, f.proto, *captures);
       }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking

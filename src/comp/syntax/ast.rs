@@ -261,6 +261,10 @@ tag expr_ {
     expr_mac(mac);
 }
 
+// AST nodes that represent a capture clause, which is used to declare
+// variables that are copied or moved explicitly into the closure.  In some
+// cases, local variables can also be copied implicitly into the closure if
+// they are used in the closure body.
 type capture_item = {
     id: int,
     name: ident, // Currently, can only capture a local var.

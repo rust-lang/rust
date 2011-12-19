@@ -2566,7 +2566,11 @@ type generic_info =
      static_tis: [option::t<@tydesc_info>],
      tydescs: [ValueRef]};
 
-tag lval_kind { temporary; owned; owned_imm; }
+tag lval_kind {
+    temporary; //< Temporary value passed by value if of immediate type
+    owned;     //< Non-temporary value passed by pointer
+    owned_imm; //< Non-temporary value passed by value
+}
 type local_var_result = {val: ValueRef, kind: lval_kind};
 type lval_result = {bcx: @block_ctxt, val: ValueRef, kind: lval_kind};
 tag callee_env { obj_env(ValueRef); null_env; is_closure; }
@@ -3550,12 +3554,13 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         assert op != ast::deref; // lvals are handled above
         ret trans_unary(bcx, op, x, e.id, dest);
       }
-      // NDM captures
       ast::expr_fn(f, cap_clause) {
-        ret trans_closure::trans_expr_fn(bcx, f, e.span, e.id, dest);
+        ret trans_closure::trans_expr_fn(
+            bcx, f, e.span, e.id, *cap_clause, dest);
       }
       ast::expr_bind(f, args) {
-        ret trans_closure::trans_bind(bcx, f, args, e.id, dest);
+        ret trans_closure::trans_bind(
+            bcx, f, args, e.id, dest);
       }
       ast::expr_copy(a) {
         if !expr_is_lval(bcx, a) {
