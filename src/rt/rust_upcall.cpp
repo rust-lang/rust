@@ -88,12 +88,8 @@ extern "C" CDECL void
 upcall_fail(char const *expr,
             char const *file,
             size_t line) {
-    try {
-        s_fail_args args = {expr,file,line};
-        UPCALL_SWITCH_STACK(&args, upcall_s_fail);
-    } catch (rust_task*) {
-        throw;
-    }
+    s_fail_args args = {expr,file,line};
+    UPCALL_SWITCH_STACK(&args, upcall_s_fail);
 }
 
 /**********************************************************************
@@ -536,7 +532,18 @@ upcall_rust_personality(int version,
     s_rust_personality_args args = {(_Unwind_Reason_Code)0,
                                     version, actions, exception_class,
                                     ue_header, context};
-    UPCALL_SWITCH_STACK(&args, upcall_s_rust_personality);
+    rust_task *task = rust_scheduler::get_task();
+
+    // The personality function is run on the stack of the
+    // last function that threw or landed, which is going
+    // to sometimes be the C stack. If we're on the Rust stack
+    // then switch to the C stack.
+
+    if (task->on_rust_stack()) {
+        UPCALL_SWITCH_STACK(&args, upcall_s_rust_personality);
+    } else {
+        upcall_s_rust_personality(&args);
+    }
     return args.retval;
 }
 

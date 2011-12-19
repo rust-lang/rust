@@ -732,6 +732,17 @@ rust_task::record_stack_limit() {
 
 extern "C" uintptr_t get_sp();
 
+static bool
+sp_in_stk_seg(uintptr_t sp, stk_seg *stk) {
+    // Not positive these bounds for sp are correct.  I think that the first
+    // possible value for esp on a new stack is stk->end, which points to the
+    // address before the first value to be pushed onto a new stack. The last
+    // possible address we can push data to is stk->data.  Regardless, there's
+    // so much slop at either end that we should never hit one of these
+    // boundaries.
+    return (uintptr_t)stk->data <= sp && sp <= stk->end;
+}
+
 /*
 Called by landing pads during unwinding to figure out which
 stack segment we are currently running on, delete the others,
@@ -741,15 +752,19 @@ through __morestack).
 void
 rust_task::reset_stack_limit() {
     uintptr_t sp = get_sp();
-    // Not positive these bounds for sp are correct.
-    // I think that the first possible value for esp on a new
-    // stack is stk->end, which points one word in front of
-    // the first work to be pushed onto a new stack.
-    while (sp <= (uintptr_t)stk->data || stk->end < sp) {
+    while (!sp_in_stk_seg(sp, stk)) {
         del_stk(this, stk);
         A(sched, stk != NULL, "Failed to find the current stack");
     }
     record_stack_limit();
+}
+
+/*
+Returns true if we're currently running on the Rust stack
+ */
+bool
+rust_task::on_rust_stack() {
+    return sp_in_stk_seg(get_sp(), stk);
 }
 
 //
