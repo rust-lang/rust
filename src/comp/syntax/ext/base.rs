@@ -34,9 +34,7 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
 }
 
 obj ext_ctxt(sess: @session,
-             crate_file_name_hack: str,
              mutable backtrace: codemap::opt_span) {
-    fn crate_file_name() -> str { ret crate_file_name_hack; }
 
     fn session() -> @session { ret sess; }
 
@@ -82,16 +80,7 @@ obj ext_ctxt(sess: @session,
 }
 
 fn mk_ctxt(sess: session) -> ext_ctxt {
-    // FIXME: Some extensions work by building ASTs with paths to functions
-    // they need to call at runtime. As those functions live in the std crate,
-    // the paths are prefixed with "std::". Unfortunately, these paths can't
-    // work for code called from inside the stdard library, so here we pass
-    // the extensions the file name of the crate being compiled so they can
-    // use it to guess whether paths should be prepended with "std::". This is
-    // super-ugly and needs a better solution.
-    let crate_file_name_hack = sess.get_codemap().files[0].name;
-
-    ret ext_ctxt(@sess, crate_file_name_hack, codemap::os_none);
+    ret ext_ctxt(@sess, codemap::os_none);
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {

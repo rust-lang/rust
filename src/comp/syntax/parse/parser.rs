@@ -71,6 +71,16 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
     ret new_parser(sess, cfg, rdr, ftype);
 }
 
+fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
+                              name: str, source: str) -> parser {
+    let ftype = SOURCE_FILE;
+    let filemap = codemap::new_filemap(name, 0u, 0u);
+    sess.cm.files += [filemap];
+    let itr = @interner::mk(str::hash, str::eq);
+    let rdr = lexer::new_reader(sess.cm, source, filemap, itr);
+    ret new_parser(sess, cfg, rdr, ftype);
+}
+
 fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
               ftype: file_type) -> parser {
     obj stdio_parser(sess: parse_sess,
@@ -2417,14 +2427,16 @@ fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
     ret parse_crate_mod(p, cfg);
 }
 
+
+fn parse_expr_from_source_str(name: str, source: str, cfg: ast::crate_cfg,
+                              sess: parse_sess) -> @ast::expr {
+    let p = new_parser_from_source_str(sess, cfg, name, source);
+    ret parse_expr(p);
+}
+
 fn parse_crate_from_source_str(name: str, source: str, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
-    let ftype = SOURCE_FILE;
-    let filemap = codemap::new_filemap(name, 0u, 0u);
-    sess.cm.files += [filemap];
-    let itr = @interner::mk(str::hash, str::eq);
-    let rdr = lexer::new_reader(sess.cm, source, filemap, itr);
-    let p = new_parser(sess, cfg, rdr, ftype);
+    let p = new_parser_from_source_str(sess, cfg, name, source);
     ret parse_crate_mod(p, cfg);
 }
 

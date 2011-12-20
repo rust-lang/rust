@@ -34,11 +34,15 @@ fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
 type lookup_fn = fn(file_pos) -> uint;
 
 fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
+    let len = vec::len(map.files);
     let a = 0u;
-    let b = vec::len(map.files);
+    let b = len;
     while b - a > 1u {
         let m = (a + b) / 2u;
         if lookup(map.files[m].start_pos) > pos { b = m; } else { a = m; }
+    }
+    if (a >= len) {
+        ret { filename: "-", line: 0u, col: 0u };
     }
     let f = map.files[a];
     a = 0u;

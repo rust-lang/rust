@@ -8,7 +8,7 @@ import vec;
 import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
 import syntax::fold::*;
 import syntax::ext::base::*;
-
+import syntax::parse::parser::parse_expr_from_source_str;
 
 fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
                fld: ast_fold, orig: fn@(expr_, ast_fold) -> expr_) -> expr_ {
@@ -47,6 +47,21 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
         };
 }
 
+// FIXME: this is a terrible kludge to inject some macros into the default
+// compilation environment. When the macro-definition system is substantially
+// more mature, these should move from here, into a compiled part of libcore
+// at very least.
+
+fn core_macros() -> str {
+    ret
+"{
+    #macro[[#error[f, ...], log_err #fmt[f, ...]]];
+    #macro[[#warn[f, ...], log_err #fmt[f, ...]]];
+    #macro[[#info[f, ...], log_err #fmt[f, ...]]];
+    #macro[[#debug[f, ...], log_err #fmt[f, ...]]];
+}";
+}
+
 fn expand_crate(sess: session::session, c: @crate) -> @crate {
     let exts = syntax_expander_table();
     let afp = default_ast_fold();
@@ -55,9 +70,16 @@ fn expand_crate(sess: session::session, c: @crate) -> @crate {
         {fold_expr: bind expand_expr(exts, cx, _, _, afp.fold_expr)
             with *afp};
     let f = make_fold(f_pre);
+    let cm = parse_expr_from_source_str("-", core_macros(),
+                                        sess.get_opts().cfg,
+                                        sess.get_parse_sess());
+
+    // This is run for its side-effects on the expander env,
+    // as it registers all the core macros as expanders.
+    f.fold_expr(cm);
+
     let res = @f.fold_crate(*c);
     ret res;
-
 }
 // Local Variables:
 // mode: rust
