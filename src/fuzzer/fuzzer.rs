@@ -1,5 +1,5 @@
 import core::{vec, str, int, uint, option, result};
-import std::{fs, io, math};
+import std::{fs, io};
 
 import rustc::syntax::{ast, ast_util, fold, visit, codemap};
 import rustc::syntax::parse::parser;
@@ -241,9 +241,9 @@ fn check_variants_T<copy T>(
     let L = vec::len(things);
 
     if L < 100u {
-        under(math::min(L, 20u)) {|i|
+        under(float::min(L, 20u)) {|i|
             log_err "Replacing... #" + uint::str(i);
-            under(math::min(L, 30u)) {|j|
+            under(float::min(L, 30u)) {|j|
                 log_err "With... " + stringifier(@things[j]);
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but testing the
