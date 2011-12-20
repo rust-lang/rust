@@ -49,6 +49,12 @@
 #endif
 #endif
 
+// A value that goes at the end of the stack and must not be touched
+const uint8_t stack_canary[] = {0xAB, 0xCD, 0xAB, 0xCD,
+                                0xAB, 0xCD, 0xAB, 0xCD,
+                                0xAB, 0xCD, 0xAB, 0xCD,
+                                0xAB, 0xCD, 0xAB, 0xCD};
+
 // Stack size
 size_t g_custom_min_stack_size = 0;
 
@@ -95,7 +101,8 @@ config_valgrind_stack(stk_seg *stk) {
     // old stack segments, since the act of popping the stack previously
     // caused valgrind to consider the whole thing inaccessible.
     size_t sz = stk->end - (uintptr_t)&stk->data[0];
-    VALGRIND_MAKE_MEM_UNDEFINED(stk->data, sz);
+    VALGRIND_MAKE_MEM_UNDEFINED(stk->data + sizeof(stack_canary),
+                                sz - sizeof(stack_canary));
 #endif
 }
 
@@ -108,6 +115,18 @@ static void
 free_stk(rust_task *task, stk_seg *stk) {
     LOGPTR(task->sched, "freeing stk segment", (uintptr_t)stk);
     task->free(stk);
+}
+
+static void
+add_stack_canary(stk_seg *stk) {
+    memcpy(stk->data, stack_canary, sizeof(stack_canary));
+    assert(sizeof(stack_canary) == 16 && "Stack canary was not the expected size");
+}
+
+static void
+check_stack_canary(stk_seg *stk) {
+    assert(!memcmp(stk->data, stack_canary, sizeof(stack_canary))
+      && "Somebody killed the canary");
 }
 
 static stk_seg*
@@ -151,6 +170,7 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
     stk_seg *stk = (stk_seg *)task->malloc(sz, "stack");
     LOGPTR(task->sched, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
+    add_stack_canary(stk);
     stk->prev = NULL;
     stk->next = task->stk;
     stk->end = (uintptr_t) &stk->data[rust_stk_sz + RED_ZONE_SIZE];
@@ -165,6 +185,7 @@ static void
 del_stk(rust_task *task, stk_seg *stk)
 {
     assert(stk == task->stk && "Freeing stack segments out of order!");
+    check_stack_canary(stk);
 
     task->stk = stk->next;
 
@@ -782,6 +803,11 @@ Returns true if we're currently running on the Rust stack
 bool
 rust_task::on_rust_stack() {
     return sp_in_stk_seg(get_sp(), stk);
+}
+
+void
+rust_task::check_stack_canary() {
+    ::check_stack_canary(stk);
 }
 
 //
