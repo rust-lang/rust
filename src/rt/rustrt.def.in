@@ -73,7 +73,6 @@ upcall_call_shim_on_c_stack
 upcall_new_stack
 upcall_del_stack
 upcall_reset_stack_limit
-asm_call_on_stack
 rust_uv_default_loop
 rust_uv_loop_new
 rust_uv_loop_delete

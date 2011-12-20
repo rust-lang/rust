@@ -29,7 +29,7 @@ struct registers_t {
   uint32_t eip;
 };
 
-extern "C" void asm_call_on_stack(void *args, void *fn_ptr, uintptr_t stack_ptr);
+extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
 
 class context {
 public:
@@ -57,7 +57,7 @@ public:
   }
 
   void call_shim_on_c_stack(void *args, void *fn_ptr) {
-      asm_call_on_stack(args, fn_ptr, regs.esp);
+      __morestack(args, fn_ptr, regs.esp);
   }
 };
 

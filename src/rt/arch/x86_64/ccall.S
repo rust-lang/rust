@@ -1,3 +1,10 @@
+/*
+	The function for switching to the C stack.  It is called
+	__morestack because gdb allows any frame with that name to
+	move the stack pointer to a different stack, which it usually
+	considers an error.
+*/
+
 #include "regs.h"
 
 #define ARG0 RUSTRT_ARG0_S
@@ -7,11 +14,13 @@
         .text
 
 #if defined(__APPLE__) || defined(_WIN32)
-.globl _asm_call_on_stack
-_asm_call_on_stack:
+.globl ___morestack
+.private_extern MORESTACK
+___morestack:
 #else
-.globl asm_call_on_stack
-asm_call_on_stack:
+.globl __morestack
+.hidden __morestack
+__morestack:
 #endif
 
 #if defined(__linux__) || defined(__APPLE__)
