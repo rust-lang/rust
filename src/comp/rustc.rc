@@ -121,7 +121,7 @@ mod metadata {
 }
 
 mod driver {
-    mod rustc;
+    mod driver;
     mod session;
 }
 
