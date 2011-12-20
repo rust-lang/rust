@@ -1159,7 +1159,8 @@ fn type_is_signed(cx: ctxt, ty: t) -> bool {
     }
 }
 
-// Whether a type is Plain Old Data (i.e. can be safely memmoved).
+// Whether a type is Plain Old Data -- meaning it does not contain pointers
+// that the cycle collector might care about.
 fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let result = true;
     alt struct(cx, ty) {
