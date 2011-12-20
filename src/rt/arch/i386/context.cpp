@@ -31,10 +31,14 @@ void context::call(void *f, void *arg, void *stack) {
   // Shift the stack pointer so the alignment works out right.
   sp = align_down(sp) - 3;
   *--sp = (uint32_t)arg;
-  *--sp = 0xdeadbeef;
+  // The final return address. 0 indicates the bottom of the stack
+  *--sp = 0;
 
   regs.esp = (uint32_t)sp;
   regs.eip = (uint32_t)f;
+
+  // Last base pointer on the stack should be 0
+  regs.ebp = 0;
 }
 
 #if 0
