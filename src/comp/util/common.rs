@@ -1,5 +1,5 @@
 import core::{str, option};
-import std::math::{max, min};
+import core::float::{max, min};
 import std::map::hashmap;
 import option::{some};
 import syntax::ast;

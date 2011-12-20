@@ -251,7 +251,7 @@ fn test_angle() {
         alt vec {
           (0f, y) when y < 0f { 1.5 * consts::pi }
           (0f, y) { 0.5 * consts::pi }
-          (x, y) { std::math::atan(y / x) }
+          (x, y) { float::atan(y / x) }
         }
     }
     assert angle((1f, 0f)) == 0f;

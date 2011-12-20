@@ -8,10 +8,9 @@
 #[crate_type = "lib"];
 
 export comm, fs, io, net, run, uv;
-export c_vec, ctypes, four, tri, util;
+export c_vec, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
-export math;
 export ebml, dbg, getopts, json, rand, sha1, term, time;
 export extfmt, test, tempfile;
 // FIXME: generic_os and os_fs shouldn't be exported
@@ -32,10 +31,6 @@ mod uv;
 // Utility modules
 
 mod c_vec;
-mod ctypes;
-mod cmath; /* unexported */
-mod math_f32;
-mod math_f64;
 mod four;
 mod tri;
 mod util;
@@ -61,7 +56,6 @@ mod ebml;
 mod dbg;
 mod getopts;
 mod json;
-mod math;
 mod rand;
 mod sha1;
 mod tempfile;
