@@ -123,7 +123,7 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
         size_t prev_sz = (size_t)(task->stk->prev->end
                                   - (uintptr_t)&task->stk->prev->data[0]
                                   - RED_ZONE_SIZE);
-        if (min_sz <= prev_sz) {
+        if (min_sz <= prev_sz && requested_sz <= prev_sz) {
             LOG(task, mem, "reusing existing stack");
             task->stk = task->stk->prev;
             A(sched, task->stk->prev == NULL, "Bogus stack ptr");
@@ -700,7 +700,8 @@ void *
 rust_task::new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
 
     stk_seg *stk_seg = new_stk(sched, this, stk_sz + args_sz);
-
+    A(sched, stk_seg->end - (uintptr_t)stk_seg->data >= stk_sz + args_sz,
+      "Did not receive enough stack");
     uint8_t *new_sp = (uint8_t*)stk_seg->end;
     // Push the function arguments to the new stack
     new_sp = align_down(new_sp - args_sz);
