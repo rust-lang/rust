@@ -268,25 +268,18 @@ struct rust_closure_env {
     type_desc *td;
 };
 
-// This runs on the Rust stack
-extern "C" CDECL
-void task_start_wrapper(spawn_args *a)
-{
+struct cleanup_args {
+    spawn_args *spargs;
+    bool failed;
+};
+
+void
+cleanup_task(cleanup_args *args) {
+    spawn_args *a = args->spargs;
+    bool failed = args->failed;
     rust_task *task = a->task;
-    int rval = 42;
 
-    bool failed = false;
-    try {
-        a->f(&rval, a->a3, a->a4);
-    } catch (rust_task *ex) {
-        A(task->sched, ex == task,
-          "Expected this task to be thrown for unwinding");
-        failed = true;
-    }
-
-    // We're on the Rust stack and the cycle collector may recurse arbitrarily
-    // deep, so switch to the C stack
-    task->sched->c_context.call_shim_on_c_stack(task, (void*)cc::do_cc);
+    cc::do_cc(task);
 
     rust_closure_env* env = (rust_closure_env*)a->a3;
     if(env) {
@@ -313,6 +306,29 @@ void task_start_wrapper(spawn_args *a)
         A(task->sched, false, "Shouldn't happen");
 #endif
     }
+}
+
+// This runs on the Rust stack
+extern "C" CDECL
+void task_start_wrapper(spawn_args *a)
+{
+    rust_task *task = a->task;
+    int rval = 42;
+
+    bool failed = false;
+    try {
+        a->f(&rval, a->a3, a->a4);
+    } catch (rust_task *ex) {
+        A(task->sched, ex == task,
+          "Expected this task to be thrown for unwinding");
+        failed = true;
+    }
+
+    cleanup_args ca = {a, failed};
+
+    // The cleanup work needs lots of stack
+    task->sched->c_context.call_shim_on_c_stack(&ca, (void*)cleanup_task);
+
     task->ctx.next->swap(task->ctx);
 }
 
