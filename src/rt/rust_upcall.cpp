@@ -41,7 +41,6 @@ call_upcall_on_c_stack(void *args, void *fn_ptr) {
     do_sanity_check(task);
     rust_scheduler *sched = task->sched;
     sched->c_context.call_shim_on_c_stack(args, fn_ptr);
-    do_sanity_check(task);
 }
 
 extern "C" void record_sp(void *limit);
@@ -72,7 +71,6 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
 
     task = rust_scheduler::get_task();
     task->record_stack_limit();
-    do_sanity_check(task);
 }
 
 /**********************************************************************/
@@ -411,6 +409,10 @@ upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
     // because this upcall calls take glue
     s_vec_push_args args = {vp, elt_ty, elt};
     upcall_s_vec_push(&args);
+
+    // Do the stack check to make sure this op, on the Rust stack, is behaving
+    rust_task *task = rust_scheduler::get_task();
+    task->check_stack_canary();
 }
 
 /**********************************************************************
@@ -645,7 +647,7 @@ upcall_reset_stack_limit() {
     rust_task *task = rust_scheduler::get_task();
     do_sanity_check(task);
     task->reset_stack_limit();
-    do_sanity_check(task);
+    task->check_stack_canary();
 }
 
 //
