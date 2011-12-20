@@ -1,4 +1,4 @@
-// error-pattern: error: Upvars (like 'x') cannot be moved into a closure
+// error-pattern:Upvars (like 'x') cannot be moved into a closure
 fn main() {
     let x = 5;
     let _y = sendfn[move x]() -> int {
