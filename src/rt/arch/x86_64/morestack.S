@@ -100,8 +100,8 @@ MORESTACK:
 	// Switch back to the rust stack
 	movq %rbp, %rsp
 
-	// Align the stack again
-	pushq $0
+	// Save the return value
+	pushq %rax
 
 	// FIXME: Should preserve %rax here
 #ifdef __APPLE__
@@ -111,7 +111,7 @@ MORESTACK:
 	call UPCALL_DEL_STACK@PLT
 #endif
 
-	addq $8, %rsp
+	popq %rax // Restore the return value
 	popq %rbp
 	// FIXME: I don't think these rules are necessary
 	// since the unwinder should never encounter an instruction

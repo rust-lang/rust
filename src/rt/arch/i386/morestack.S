@@ -198,10 +198,16 @@ MORESTACK:
 	// Realign stack - remember that __morestack was called misaligned
 	subl $12, %esp
 
+	// Save the return value of the function we allocated space for
+	movl %eax, (%esp)
+
 	// Now that we're on the return path we want to avoid
 	// stomping on %eax. FIXME: Need to save and restore %eax to
 	// actually preserve it across the call to delete the stack
 	call UPCALL_DEL_STACK
+
+	// And restore it
+	movl (%esp), %eax
 
 	addl $12,%esp
 
