@@ -144,11 +144,11 @@ MORESTACK:
 	// NB: __morestack is called misaligned by 4 bytes, i.e.
 	// subl $4, %esp would get us to a normal alignment
 
-	subl $44,%esp
+	subl $28,%esp
 
 	// Save fastcc arguments
-	movl %ecx, 28(%esp)
-	movl %edx, 24(%esp)
+	movl %ecx, 16(%esp)
+	movl %edx, 12(%esp)
 
 	// FIXME (1226): main is compiled with the split-stack prologue,
 	// causing it to call __morestack, so we have to jump back out
@@ -160,14 +160,14 @@ MORESTACK:
 
 	// The size of the stack arguments to copy to the new stack,
 	// ane of the the arguments to __morestack
-	movl 56(%esp),%eax
+	movl 40(%esp),%eax
 	movl %eax,8(%esp)
 	// The address of the stack arguments to the original function
-	leal 64(%esp),%eax
+	leal 48(%esp),%eax
 	movl %eax,4(%esp)
 	// The amount of stack needed for the original function,
 	// the other argument to __morestack
-	movl 52(%esp),%eax // The amount of stack needed
+	movl 36(%esp),%eax // The amount of stack needed
 	movl %eax,(%esp)
 
 	call UPCALL_NEW_STACK
@@ -176,13 +176,13 @@ MORESTACK:
 	movl %eax, (%esp)
 
 	// Grab the __morestack return pointer
-	movl 48(%esp),%eax
+	movl 32(%esp),%eax
 	// Skip past the ret instruction in the parent fn
 	inc  %eax
 
 	// Restore the fastcc arguments to the original function
-	movl 28(%esp), %ecx
-	movl 24(%esp), %edx
+	movl 16(%esp), %ecx
+	movl 12(%esp), %edx
 
         // Switch stacks
 	movl (%esp),%esp
