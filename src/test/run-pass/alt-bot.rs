@@ -1,5 +1,3 @@
-use std;
-import option::*;
 
 fn main() {
     let i: int =

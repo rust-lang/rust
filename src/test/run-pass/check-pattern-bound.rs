@@ -1,5 +1,4 @@
 use std;
-import option::*;
 
 pure fn p(x: int) -> bool { true }
 

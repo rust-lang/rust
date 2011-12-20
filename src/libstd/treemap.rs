@@ -9,9 +9,8 @@ red-black tree or something else.
 
 */
 
-import core::option;
-import option::{some, none};
-import option = option::t;
+import core::option::{some, none};
+import option = core::option::t;
 
 export treemap;
 export init;

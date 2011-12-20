@@ -1,7 +1,4 @@
 
-use std;
-import option::*;
-
 fn baz() -> ! { fail; }
 
 fn foo() {

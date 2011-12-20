@@ -1,8 +1,4 @@
-
-
 // error-pattern:explicit failure
-use std;
-import option::*;
 
 fn foo(s: str) { }
 

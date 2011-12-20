@@ -1,12 +1,8 @@
 // Tests that trans_path checks whether a
 // pattern-bound var is an upvar (when translating
 // the for-each body)
-use std;
-import option::*;
-import uint;
 
 fn foo(src: uint) {
-
 
     alt some(src) {
       some(src_id) {
