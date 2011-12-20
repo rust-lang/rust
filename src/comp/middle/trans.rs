@@ -3558,6 +3558,19 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_closure::trans_expr_fn(
             bcx, f, e.span, e.id, *cap_clause, dest);
       }
+      ast::expr_fn_block(decl, body) {
+        alt ty::struct(tcx, ty::expr_ty(tcx, e)) {
+          ty::ty_fn(proto, _, _, _, _) {
+            let f: ast::_fn = { decl: decl, proto: proto, body: body };
+            let cap_clause = { copies: [], moves: [] };
+            ret trans_closure::trans_expr_fn(
+                bcx, f, e.span, e.id, cap_clause, dest);
+          }
+          _ {
+            fail "Type of fn block is not a function!";
+          }
+        }
+      }
       ast::expr_bind(f, args) {
         ret trans_closure::trans_bind(
             bcx, f, args, e.id, dest);

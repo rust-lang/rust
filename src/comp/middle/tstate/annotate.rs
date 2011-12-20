@@ -32,15 +32,14 @@ fn collect_ids_local(l: @local, rs: @mutable [node_id]) {
     *rs += pat_binding_ids(l.node.pat);
 }
 
-fn node_ids_in_fn(f: _fn, tps: [ty_param], sp: span, i: fn_ident, id: node_id,
-                  rs: @mutable [node_id]) {
+fn node_ids_in_fn(body: blk, rs: @mutable [node_id]) {
     let collect_ids =
         visit::mk_simple_visitor(@{visit_expr: bind collect_ids_expr(_, rs),
                                    visit_block: bind collect_ids_block(_, rs),
                                    visit_stmt: bind collect_ids_stmt(_, rs),
                                    visit_local: bind collect_ids_local(_, rs)
                                       with *visit::default_simple_visitor()});
-    visit::visit_fn(f, tps, sp, i, id, (), collect_ids);
+    collect_ids.visit_block(body, (), collect_ids);
 }
 
 fn init_vecs(ccx: crate_ctxt, node_ids: [node_id], len: uint) {
@@ -50,25 +49,24 @@ fn init_vecs(ccx: crate_ctxt, node_ids: [node_id], len: uint) {
     }
 }
 
-fn visit_fn(ccx: crate_ctxt, num_constraints: uint, f: _fn, tps: [ty_param],
-            sp: span, i: fn_ident, id: node_id) {
+fn visit_fn(ccx: crate_ctxt, num_constraints: uint, body: blk) {
     let node_ids: @mutable [node_id] = @mutable [];
-    node_ids_in_fn(f, tps, sp, i, id, node_ids);
+    node_ids_in_fn(body, node_ids);
     let node_id_vec = *node_ids;
     init_vecs(ccx, node_id_vec, num_constraints);
 }
 
-fn annotate_in_fn(ccx: crate_ctxt, f: _fn, tps: [ty_param], sp: span,
-                  i: fn_ident, id: node_id) {
+fn annotate_in_fn_body(ccx: crate_ctxt, _decl: fn_decl, body: blk,
+                       _sp: span, _n: fn_ident, id: node_id) {
     let f_info = get_fn_info(ccx, id);
-    visit_fn(ccx, num_constraints(f_info), f, tps, sp, i, id);
+    visit_fn(ccx, num_constraints(f_info), body);
 }
 
 fn annotate_crate(ccx: crate_ctxt, crate: crate) {
     let do_ann =
-        visit::mk_simple_visitor(@{visit_fn:
-                                       bind annotate_in_fn(ccx, _, _, _, _, _)
-                                      with *visit::default_simple_visitor()});
+        visit::mk_simple_visitor(
+            @{visit_fn_body: bind annotate_in_fn_body(ccx, _, _, _, _, _)
+              with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), do_ann);
 }
 //

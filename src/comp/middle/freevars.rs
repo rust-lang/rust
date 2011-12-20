@@ -28,8 +28,8 @@ type freevar_map = hashmap<ast::node_id, freevar_info>;
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: resolve::def_map, walker: fn@(visit::vt<int>)) ->
-   freevar_info {
+fn collect_freevars(def_map: resolve::def_map, blk: ast::blk)
+    -> freevar_info {
     let seen = new_int_hash();
     let refs = @mutable [];
 
@@ -42,6 +42,9 @@ fn collect_freevars(def_map: resolve::def_map, walker: fn@(visit::vt<int>)) ->
                 if f.proto != ast::proto_bare {
                     visit::visit_expr(expr, depth + 1, v);
                 }
+              }
+              ast::expr_fn_block(_, _) {
+                visit::visit_expr(expr, depth + 1, v);
               }
               ast::expr_path(path) {
                 let def = def_map.get(expr.id), i = 0;
@@ -64,8 +67,9 @@ fn collect_freevars(def_map: resolve::def_map, walker: fn@(visit::vt<int>)) ->
             }
         };
 
-    walker(visit::mk_vt(@{visit_item: ignore_item, visit_expr: walk_expr
-                             with *visit::default_visitor()}));
+    let v = visit::mk_vt(@{visit_item: ignore_item, visit_expr: walk_expr
+                           with *visit::default_visitor()});
+    v.visit_block(blk, 1, v);
     ret @*refs;
 }
 
@@ -78,20 +82,16 @@ fn annotate_freevars(def_map: resolve::def_map, crate: @ast::crate) ->
    freevar_map {
     let freevars = new_int_hash();
 
-    let walk_fn =
-        lambda (f: ast::_fn, tps: [ast::ty_param], sp: span, i: ast::fn_ident,
-                nid: ast::node_id) {
-            let start_walk =
-                lambda (v: visit::vt<int>) {
-                    v.visit_fn(f, tps, sp, i, nid, 1, v);
-                };
-            let vars = collect_freevars(def_map, start_walk);
-            freevars.insert(nid, vars);
-        };
+    let walk_fn_body = lambda (_decl: ast::fn_decl, blk: ast::blk,
+                               _sp: span, _nm: ast::fn_ident,
+                               nid: ast::node_id) {
+        let vars = collect_freevars(def_map, blk);
+        freevars.insert(nid, vars);
+    };
 
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn: walk_fn
-                                      with *visit::default_simple_visitor()});
+        visit::mk_simple_visitor(@{visit_fn_body: walk_fn_body
+                                   with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visitor);
 
     ret freevars;

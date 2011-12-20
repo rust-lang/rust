@@ -31,7 +31,15 @@ type visitor<E> =
       visit_expr: fn@(@expr, E, vt<E>),
       visit_ty: fn@(@ty, E, vt<E>),
       visit_constr: fn@(@path, span, node_id, E, vt<E>),
-      visit_fn: fn@(_fn, [ty_param], span, fn_ident, node_id, E, vt<E>)};
+
+      // A function with a fully specified prototype:
+      visit_fn_proto: fn@(_fn, [ty_param], span, fn_ident, node_id, E, vt<E>),
+
+      // Function sugar like { || ... }:
+      visit_fn_block: fn@(fn_decl, blk, span, node_id, E, vt<E>),
+
+      // Invoked by both visit_fn_proto and visit_fn_block above.
+      visit_fn_body: fn@(fn_decl, blk, span, fn_ident, node_id, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
     ret @{visit_mod: bind visit_mod::<E>(_, _, _, _),
@@ -47,7 +55,9 @@ fn default_visitor<E>() -> visitor<E> {
           visit_expr: bind visit_expr::<E>(_, _, _),
           visit_ty: bind skip_ty::<E>(_, _, _),
           visit_constr: bind visit_constr::<E>(_, _, _, _, _),
-          visit_fn: bind visit_fn::<E>(_, _, _, _, _, _, _)};
+          visit_fn_proto: bind visit_fn_proto::<E>(_, _, _, _, _, _, _),
+          visit_fn_block: bind visit_fn_block::<E>(_, _, _, _, _, _),
+          visit_fn_body: bind visit_fn_body::<E>(_, _, _, _, _, _, _)};
 }
 
 fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
@@ -83,7 +93,8 @@ fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
 fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     alt i.node {
       item_const(t, ex) { v.visit_ty(t, e, v); v.visit_expr(ex, e, v); }
-      item_fn(f, tp) { v.visit_fn(f, tp, i.span, some(i.ident), i.id, e, v); }
+      item_fn(f, tp) { v.visit_fn_proto(f, tp, i.span,
+                                        some(i.ident), i.id, e, v); }
       item_mod(m) { v.visit_mod(m, i.span, e, v); }
       item_native_mod(nm) {
         for vi: @view_item in nm.view_items { v.visit_view_item(vi, e, v); }
@@ -91,7 +102,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       }
       item_ty(t, _) { v.visit_ty(t, e, v); }
       item_res(f, dtor_id, tps, _) {
-        v.visit_fn(f, tps, i.span, some(i.ident), dtor_id, e, v);
+        v.visit_fn_proto(f, tps, i.span, some(i.ident), dtor_id, e, v);
       }
       item_tag(variants, _) {
         for vr: variant in variants {
@@ -101,15 +112,15 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       item_obj(ob, _, _) {
         for f: obj_field in ob.fields { v.visit_ty(f.ty, e, v); }
         for m: @method in ob.methods {
-            v.visit_fn(m.node.meth, m.node.tps, m.span, some(m.node.ident),
-                       m.node.id, e, v);
+            v.visit_fn_proto(m.node.meth, m.node.tps, m.span,
+                             some(m.node.ident), m.node.id, e, v);
         }
       }
       item_impl(_, ty, methods) {
         visit_ty(ty, e, v);
         for m in methods {
-            v.visit_fn(m.node.meth, m.node.tps, m.span, some(m.node.ident),
-                       m.node.id, e, v);
+            v.visit_fn_proto(m.node.meth, m.node.tps, m.span,
+                             some(m.node.ident), m.node.id, e, v);
         }
       }
     }
@@ -193,10 +204,21 @@ fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
     v.visit_ty(fd.output, e, v);
 }
 
-fn visit_fn<E>(f: _fn, _tp: [ty_param], _sp: span, _i: fn_ident, _id: node_id,
-               e: E, v: vt<E>) {
-    visit_fn_decl(f.decl, e, v);
-    v.visit_block(f.body, e, v);
+fn visit_fn_proto<E>(f: _fn, _tp: [ty_param], sp: span, i: fn_ident,
+                     id: node_id, e: E, v: vt<E>) {
+    v.visit_fn_body(f.decl, f.body, sp, i, id, e, v);
+}
+
+fn visit_fn_block<E>(decl: fn_decl, body: blk, sp: span, id: node_id,
+                     e: E, v: vt<E>) {
+    v.visit_fn_body(decl, body, sp, option::none, id, e, v);
+}
+
+fn visit_fn_body<E>(decl: fn_decl, body: blk, _sp: span,
+                    _name: fn_ident, _id: node_id,
+                    e: E, v: vt<E>) {
+    visit_fn_decl(decl, e, v);
+    v.visit_block(body, e, v);
 }
 
 fn visit_block<E>(b: ast::blk, e: E, v: vt<E>) {
@@ -284,8 +306,12 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_expr(x, e, v);
         for a: arm in arms { v.visit_arm(a, e, v); }
       }
-      // NDM add visit routine?
-      expr_fn(f, captures) { v.visit_fn(f, [], ex.span, none, ex.id, e, v); }
+      expr_fn(f, captures) {
+        v.visit_fn_proto(f, [], ex.span, none, ex.id, e, v);
+      }
+      expr_fn_block(decl, body) {
+        v.visit_fn_block(decl, body, ex.span, ex.id, e, v);
+      }
       expr_block(b) { v.visit_block(b, e, v); }
       expr_assign(a, b) { v.visit_expr(b, e, v); v.visit_expr(a, e, v); }
       expr_copy(a) { v.visit_expr(a, e, v); }
@@ -324,8 +350,8 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
           some(ex) { v.visit_expr(ex, e, v); }
         }
         for m: @method in anon_obj.methods {
-            v.visit_fn(m.node.meth, m.node.tps, m.span, some(m.node.ident),
-                       m.node.id, e, v);
+            v.visit_fn_proto(m.node.meth, m.node.tps, m.span,
+                             some(m.node.ident), m.node.id, e, v);
         }
       }
       expr_mac(mac) { visit_mac(mac, e, v); }
@@ -357,7 +383,9 @@ type simple_visitor =
       visit_expr: fn@(@expr),
       visit_ty: fn@(@ty),
       visit_constr: fn@(@path, span, node_id),
-      visit_fn: fn@(_fn, [ty_param], span, fn_ident, node_id)};
+      visit_fn_proto: fn@(_fn, [ty_param], span, fn_ident, node_id),
+      visit_fn_block: fn@(fn_decl, blk, span, node_id),
+      visit_fn_body: fn@(fn_decl, blk, span, fn_ident, node_id)};
 
 fn simple_ignore_ty(_t: @ty) {}
 
@@ -375,10 +403,15 @@ fn default_simple_visitor() -> simple_visitor {
           visit_expr: fn(_e: @expr) { },
           visit_ty: simple_ignore_ty,
           visit_constr: fn(_p: @path, _sp: span, _id: node_id) { },
-          visit_fn:
+          visit_fn_proto:
               fn(_f: _fn, _tps: [ty_param], _sp: span, _ident: fn_ident,
-                  _id: node_id) {
-              }};
+                  _id: node_id) { },
+          visit_fn_block:
+              fn(_f: fn_decl, _b: blk, _sp: span, _node_id: node_id) { },
+          visit_fn_body:
+              fn(_f: fn_decl, _b: blk, _sp: span,
+                 _nm: fn_ident, _node_id: node_id) { }
+         };
 }
 
 fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
@@ -440,7 +473,21 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
             tps: [ty_param], sp: span, ident: fn_ident, id: node_id, &&e: (),
             v: vt<()>) {
         f(ff, tps, sp, ident, id);
-        visit_fn(ff, tps, sp, ident, id, e, v);
+        visit_fn_proto(ff, tps, sp, ident, id, e, v);
+    }
+    fn v_fn_block(f: fn@(fn_decl, blk, span, node_id),
+                  fn_decl: fn_decl, blk: blk,
+                  sp: span, node_id: node_id,
+                  &&e: (), v: vt<()>) {
+        f(fn_decl, blk, sp, node_id);
+        visit_fn_block(fn_decl, blk, sp, node_id, e, v);
+    }
+    fn v_fn_body(f: fn@(fn_decl, blk, span, fn_ident, node_id),
+                 fn_decl: fn_decl, blk: blk,
+                 sp: span, name: fn_ident, node_id: node_id,
+                 &&e: (), v: vt<()>) {
+        f(fn_decl, blk, sp, name, node_id);
+        visit_fn_body(fn_decl, blk, sp, name, node_id, e, v);
     }
     let visit_ty = if v.visit_ty == simple_ignore_ty {
         bind skip_ty(_, _, _)
@@ -461,7 +508,13 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
                 visit_expr: bind v_expr(v.visit_expr, _, _, _),
                 visit_ty: visit_ty,
                 visit_constr: bind v_constr(v.visit_constr, _, _, _, _, _),
-                visit_fn: bind v_fn(v.visit_fn, _, _, _, _, _, _, _)});
+                visit_fn_proto:
+                    bind v_fn(v.visit_fn_proto, _, _, _, _, _, _, _),
+                visit_fn_block:
+                    bind v_fn_block(v.visit_fn_block, _, _, _, _, _, _),
+                visit_fn_body:
+                    bind v_fn_body(v.visit_fn_body, _, _, _, _, _, _, _),
+               });
 }
 
 // Local Variables:

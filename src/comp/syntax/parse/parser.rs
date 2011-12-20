@@ -1317,9 +1317,7 @@ fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let decl = parse_fn_block_decl(p);
     let body = parse_block_tail(p, lo, ast::default_blk);
-    let _fn = {decl: decl, proto: ast::proto_block, body: body};
-    let captures = @{copies: [], moves: []};
-    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, captures));
+    ret mk_expr(p, lo, body.span.hi, ast::expr_fn_block(decl, body));
 }
 
 fn parse_else_expr(p: parser) -> @ast::expr {

@@ -999,8 +999,9 @@ mod writeback {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, e.span, e.id);
         alt e.node {
-          ast::expr_fn(f, _) { // NDM captures?
-            for input in f.decl.inputs {
+          ast::expr_fn({decl: decl, _}, _) |
+          ast::expr_fn_block(decl, _) {
+            for input in decl.inputs {
                 resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
           }
@@ -1077,7 +1078,10 @@ type gather_result =
      next_var_id: @mutable int};
 
 // Used only as a helper for check_fn.
-fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
+fn gather_locals(ccx: @crate_ctxt,
+                 decl: ast::fn_decl,
+                 body: ast::blk,
+                 id: ast::node_id,
                  old_fcx: option::t<@fn_ctxt>) -> gather_result {
     let {vb: vb, locals: locals, nvi: nvi} =
         alt old_fcx {
@@ -1121,7 +1125,7 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     let args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
     let i = 0u;
     for arg: ty::arg in args {
-        assign(f.decl.inputs[i].id, some(arg.ty));
+        assign(decl.inputs[i].id, some(arg.ty));
         i += 1u;
     }
 
@@ -1144,20 +1148,20 @@ fn gather_locals(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
         };
 
     // Don't descend into fns and items
-    fn visit_fn<E>(_f: ast::_fn, _tp: [ast::ty_param], _sp: span,
-                   _i: ast::fn_ident, _id: ast::node_id, _e: E,
-                   _v: visit::vt<E>) {
+    fn visit_fn_body<T>(_decl: ast::fn_decl, _body: ast::blk,
+                        _sp: span, _nm: ast::fn_ident, _id: ast::node_id,
+                        _t: T, _v: visit::vt<T>) {
     }
     fn visit_item<E>(_i: @ast::item, _e: E, _v: visit::vt<E>) { }
 
     let visit =
         @{visit_local: visit_local,
           visit_pat: visit_pat,
-          visit_fn: bind visit_fn(_, _, _, _, _, _, _),
+          visit_fn_body: bind visit_fn_body(_, _, _, _, _, _, _),
           visit_item: bind visit_item(_, _, _)
               with *visit::default_visitor()};
 
-    visit::visit_block(f.body, (), visit::mk_vt(visit));
+    visit::visit_block(body, (), visit::mk_vt(visit));
     ret {var_bindings: vb,
          locals: locals,
          next_var_id: nvi};
@@ -1496,6 +1500,32 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
     result
 }
 
+fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
+                              expr: @ast::expr,
+                              decl: ast::fn_decl,
+                              proto: ast::proto,
+                              body: ast::blk,
+                              unify: unifier,
+                              expected: ty::t) {
+    let tcx = fcx.ccx.tcx;
+
+    let fty = ty_of_fn_decl(tcx, m_check_tyvar(fcx), decl,
+                            proto, [], none).ty;
+
+    write::ty_only_fixup(fcx, expr.id, fty);
+
+    // Unify the type of the function with the expected type before we
+    // typecheck the body so that we have more information about the
+    // argument types in the body. This is needed to make binops and
+    // record projection work on type inferred arguments.
+    unify(fcx, expr.span, expected, fty);
+
+    check_fn1(fcx.ccx, decl, proto, body, expr.id, some(fcx));
+    if proto == ast::proto_block {
+        write::ty_only_fixup(fcx, expr.id, expected);
+    }
+}
+
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                            expected: ty::t) -> bool {
     //log_err "typechecking expr " + syntax::print::pprust::expr_to_str(expr);
@@ -1563,7 +1593,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                       some(a) {
                         let is_block =
                             alt a.node {
-                              ast::expr_fn(_, _) { true }
+                              ast::expr_fn_block(_, _) { true }
                               _ { false }
                             };
                         if is_block == check_blocks {
@@ -1940,23 +1970,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         write::ty_only_fixup(fcx, id, result_ty);
       }
       ast::expr_fn(f, captures) {
-        let fty = ty_of_fn_decl(tcx, m_check_tyvar(fcx), f.decl,
-                                 f.proto, [], none).ty;
-
-        write::ty_only_fixup(fcx, id, fty);
-
-        // Unify the type of the function with the expected type before we
-        // typecheck the body so that we have more information about the
-        // argument types in the body. This is needed to make binops and
-        // record projection work on type inferred arguments.
-        unify(fcx, expr.span, expected, fty);
-
-        check_fn(fcx.ccx, f, id, some(fcx));
-        if f.proto == ast::proto_block {
-            write::ty_only_fixup(fcx, id, expected);
-        }
-
+        check_expr_fn_with_unifier(fcx, expr, f.decl,
+                                   f.proto, f.body,
+                                   unify, expected);
         capture::check_capture_clause(tcx, expr.id, f.proto, *captures);
+      }
+      ast::expr_fn_block(decl, body) {
+        // Take the prototype from the expected type, but default to block:
+        let proto = alt ty::struct(tcx, expected) {
+          ty::ty_fn(proto, _, _, _, _) { proto }
+          _ { ast::proto_block }
+        };
+        check_expr_fn_with_unifier(fcx, expr, decl,
+                                   proto, body,
+                                   unify, expected);
       }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking
@@ -2581,12 +2608,19 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
     }
 }
 
-fn check_fn(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
+fn check_fn(ccx: @crate_ctxt,
+            f: ast::_fn,
+            id: ast::node_id,
             old_fcx: option::t<@fn_ctxt>) {
+    check_fn1(ccx, f.decl, f.proto, f.body, id, old_fcx);
+}
 
-    let decl = f.decl;
-    let body = f.body;
-
+fn check_fn1(ccx: @crate_ctxt,
+             decl: ast::fn_decl,
+             proto: ast::proto,
+             body: ast::blk,
+             id: ast::node_id,
+             old_fcx: option::t<@fn_ctxt>) {
     // If old_fcx is some(...), this is a block fn { |x| ... }.
     // In that case, the purity is inherited from the context.
     let purity = alt old_fcx {
@@ -2594,12 +2628,12 @@ fn check_fn(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
       some(f) { assert decl.purity == ast::impure_fn; f.purity }
     };
 
-    let gather_result = gather_locals(ccx, f, id, old_fcx);
+    let gather_result = gather_locals(ccx, decl, body, id, old_fcx);
     let fixups: [ast::node_id] = [];
     let fcx: @fn_ctxt =
         @{ret_ty: ty::ty_fn_ret(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)),
           purity: purity,
-          proto: f.proto,
+          proto: proto,
           var_bindings: gather_result.var_bindings,
           locals: gather_result.locals,
           next_var_id: gather_result.next_var_id,
@@ -2622,7 +2656,7 @@ fn check_fn(ccx: @crate_ctxt, f: ast::_fn, id: ast::node_id,
     let args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
     let i = 0u;
     for arg: ty::arg in args {
-        write::ty_only_fixup(fcx, f.decl.inputs[i].id, arg.ty);
+        write::ty_only_fixup(fcx, decl.inputs[i].id, arg.ty);
         i += 1u;
     }
 

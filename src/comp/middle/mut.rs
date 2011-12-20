@@ -171,7 +171,7 @@ fn check_lval(cx: @ctx, dest: @expr, msg: msg) {
     alt dest.node {
       expr_path(p) {
         let def = cx.tcx.def_map.get(dest.id);
-        alt is_immutable_def(def) {
+        alt is_immutable_def(cx, def) {
           some(name) { mk_err(cx, dest.span, msg, name); }
           _ { }
         }
@@ -258,7 +258,7 @@ fn check_bind(cx: @ctx, f: @expr, args: [option::t<@expr>]) {
     }
 }
 
-fn is_immutable_def(def: def) -> option::t<str> {
+fn is_immutable_def(cx: @ctx, def: def) -> option::t<str> {
     alt def {
       def_fn(_, _) | def_mod(_) | def_native_mod(_) | def_const(_) |
       def_use(_) {
@@ -268,8 +268,13 @@ fn is_immutable_def(def: def) -> option::t<str> {
       def_arg(_, mode_infer.) { some("argument") }
       def_obj_field(_, imm.) { some("immutable object field") }
       def_self(_) { some("self argument") }
-      def_upvar(_, inner, mut) {
-        if !mut { some("upvar") } else { is_immutable_def(*inner) }
+      def_upvar(_, inner, node_id) {
+        let ty = ty::node_id_to_monotype(cx.tcx, node_id);
+        let proto = ty::ty_fn_proto(cx.tcx, ty);
+        ret alt proto {
+          proto_block. { is_immutable_def(cx, *inner) }
+          _ { some("upvar") }
+        };
       }
       def_binding(_) { some("binding") }
       def_local(_, let_ref.) { some("by-reference binding") }

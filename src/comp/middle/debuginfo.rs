@@ -740,6 +740,9 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
           ast::expr_fn(f, _) {
             (dbg_cx.names.next("fn"), f.decl.output, expr.id)
           }
+          ast::expr_fn_block(decl, _) {
+            (dbg_cx.names.next("fn"), decl.output, expr.id)
+          }
         }
       }
     };

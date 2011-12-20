@@ -827,24 +827,19 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         bclose_(s, expr.span, alt_indent_unit);
       }
       ast::expr_fn(f, captures) { // NDM captures
-
-        // If the return type is the magic ty_infer, then we need to
-        // pretty print as a lambda-block
-        if f.decl.output.node == ast::ty_infer {
-            // containing cbox, will be closed by print-block at }
-            cbox(s, indent_unit);
-            // head-box, will be closed by print-block at start
-            ibox(s, 0u);
-            word(s.s, "{");
-            print_fn_block_args(s, f.decl);
-            print_possibly_embedded_block(s, f.body, block_block_fn,
-                                          indent_unit);
-        } else {
-            head(s, proto_to_str(f.proto));
-            print_fn_args_and_ret(s, f.decl, []);
-            space(s.s);
-            print_block(s, f.body);
-        }
+        head(s, proto_to_str(f.proto));
+        print_fn_args_and_ret(s, f.decl, []);
+        space(s.s);
+        print_block(s, f.body);
+      }
+      ast::expr_fn_block(decl, body) {
+        // containing cbox, will be closed by print-block at }
+        cbox(s, indent_unit);
+        // head-box, will be closed by print-block at start
+        ibox(s, 0u);
+        word(s.s, "{");
+        print_fn_block_args(s, decl);
+        print_possibly_embedded_block(s, body, block_block_fn, indent_unit);
       }
       ast::expr_block(blk) {
         // containing cbox, will be closed by print-block at }

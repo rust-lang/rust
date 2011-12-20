@@ -42,7 +42,7 @@ tag def {
     def_use(def_id);
     def_native_ty(def_id);
     def_native_fn(def_id, purity);
-    def_upvar(def_id, @def, /* writable */bool);
+    def_upvar(def_id, @def, node_id); // node_id == expr_fn or expr_fn_block
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -227,6 +227,7 @@ tag expr_ {
     expr_do_while(blk, @expr);
     expr_alt(@expr, [arm]);
     expr_fn(_fn, @capture_clause);
+    expr_fn_block(fn_decl, blk);
     expr_block(blk);
 
     /*
@@ -261,10 +262,6 @@ tag expr_ {
     expr_mac(mac);
 }
 
-// AST nodes that represent a capture clause, which is used to declare
-// variables that are copied or moved explicitly into the closure.  In some
-// cases, local variables can also be copied implicitly into the closure if
-// they are used in the closure body.
 type capture_item = {
     id: int,
     name: ident, // Currently, can only capture a local var.

@@ -1,5 +1,6 @@
 import syntax::{visit, ast_util};
 import syntax::ast::*;
+import syntax::codemap::span;
 import std::list::{list, nil, cons, tail};
 import core::{vec, option};
 import std::list;
@@ -42,7 +43,7 @@ type ctx = {last_uses: std::map::hashmap<node_id, bool>,
 fn find_last_uses(c: @crate, def_map: resolve::def_map,
                   ref_map: alias::ref_map, tcx: ty::ctxt) -> last_uses {
     let v = visit::mk_vt(@{visit_expr: visit_expr,
-                           visit_fn: visit_fn
+                           visit_fn_body: visit_fn_body
                            with *visit::default_visitor()});
     let cx = {last_uses: std::map::new_int_hash(),
               def_map: def_map,
@@ -136,6 +137,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
             alt arg.node {
               //NDM--register captured as uses
               expr_fn(_, captured) { fns += [arg]; }
+              expr_fn_block(_, _) { fns += [arg]; }
               _ {
                 alt arg_ts[i].mode {
                   by_mut_ref. { clear_if_path(cx, arg, v, false); }
@@ -151,16 +153,19 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     }
 }
 
-fn visit_fn(f: _fn, tps: [ty_param], sp: syntax::codemap::span,
-            ident: fn_ident, id: node_id, cx: ctx, v: visit::vt<ctx>) {
-    if f.proto == proto_block {
+fn visit_fn_body(decl: fn_decl, body: blk,
+                 sp: span, nm: fn_ident, id: node_id,
+                 cx: ctx, v: visit::vt<ctx>) {
+    let fty = ty::node_id_to_type(cx.tcx, id);
+    let proto = ty::ty_fn_proto(cx.tcx, fty);
+    if proto == proto_block {
         visit_block(func, cx, {||
-            visit::visit_fn(f, tps, sp, ident, id, cx, v);
+            visit::visit_fn_body(decl, body, sp, nm, id, cx, v);
         });
     } else {
         let old = nil;
         cx.blocks <-> old;
-        visit::visit_fn(f, tps, sp, ident, id, cx, v);
+        visit::visit_fn_body(decl, body, sp, nm, id, cx, v);
         cx.blocks <-> old;
         leave_fn(cx);
     }

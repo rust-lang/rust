@@ -31,7 +31,8 @@ export _impl, iscopes, method_info;
 tag scope {
     scope_crate;
     scope_item(@ast::item);
-    scope_fn(ast::fn_decl, ast::proto, [ast::ty_param]);
+    scope_bare_fn(ast::fn_decl, node_id, [ast::ty_param]);
+    scope_fn_expr(ast::fn_decl, node_id, [ast::ty_param]);
     scope_native_item(@ast::native_item);
     scope_loop(@ast::local); // there's only 1 decl per loop.
     scope_block(ast::blk, @mutable uint, @mutable uint);
@@ -335,8 +336,11 @@ fn resolve_names(e: @env, c: @ast::crate) {
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
-          visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
-             with *visit::default_visitor()};
+          visit_fn_proto:
+              bind visit_fn_proto_with_scope(e, _, _, _, _, _, _, _),
+          visit_fn_block:
+              bind visit_fn_block_with_scope(e, _, _, _, _, _, _)
+          with *visit::default_visitor()};
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v));
     e.used_imports.track = false;
     e.sess.abort_if_errors();
@@ -400,8 +404,8 @@ fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
       ast::item_impl(tps, sty, methods) {
         visit::visit_ty(sty, sc, v);
         for m in methods {
-            v.visit_fn(m.node.meth, tps + m.node.tps, m.span,
-                       some(m.node.ident), m.node.id, sc, v);
+            v.visit_fn_proto(m.node.meth, tps + m.node.tps, m.span,
+                             some(m.node.ident), m.node.id, sc, v);
         }
       }
       _ { visit::visit_item(i, sc, v); }
@@ -413,9 +417,9 @@ fn visit_native_item_with_scope(ni: @ast::native_item, sc: scopes,
     visit::visit_native_item(ni, cons(scope_native_item(ni), @sc), v);
 }
 
-fn visit_fn_with_scope(e: @env, f: ast::_fn, tp: [ast::ty_param], sp: span,
-                       name: fn_ident, id: node_id, sc: scopes,
-                       v: vt<scopes>) {
+fn visit_fn_proto_with_scope(e: @env, f: ast::_fn, tp: [ast::ty_param],
+                             sp: span, name: fn_ident, id: node_id,
+                             sc: scopes, v: vt<scopes>) {
     // is this a main fn declaration?
     alt name {
       some(nm) {
@@ -431,8 +435,21 @@ fn visit_fn_with_scope(e: @env, f: ast::_fn, tp: [ast::ty_param], sp: span,
     // here's where we need to set up the mapping
     // for f's constrs in the table.
     for c: @ast::constr in f.decl.constraints { resolve_constr(e, c, sc, v); }
-    visit::visit_fn(f, tp, sp, name, id,
-                    cons(scope_fn(f.decl, f.proto, tp), @sc), v);
+    let scope = alt f.proto {
+      ast::proto_bare. { scope_bare_fn(f.decl, id, tp) }
+      _ { scope_fn_expr(f.decl, id, tp) }
+    };
+
+    visit::visit_fn_proto(f, tp, sp, name, id, cons(scope, @sc), v);
+}
+
+fn visit_fn_block_with_scope(_e: @env, decl: fn_decl, blk: ast::blk,
+                             span: span, id: node_id,
+                             sc: scopes, v: vt<scopes>) {
+    let scope = scope_fn_expr(decl, id, []);
+    log ("scope=", scope);
+    visit::visit_fn_block(decl, blk, span, id, cons(scope, @sc), v);
+    log ("unscope");
 }
 
 fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {
@@ -648,7 +665,8 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
             alt sc {
               cons(cur, rest) {
                 alt cur {
-                  scope_crate. | scope_fn(_, _, _) |
+                  scope_crate. | scope_bare_fn(_, _, _) |
+                  scope_fn_expr(_, _, _) |
                   scope_item(@{node: ast::item_mod(_), _}) {
                     ret some(cur);
                   }
@@ -734,23 +752,17 @@ fn lookup_in_scope_strict(e: env, sc: scopes, sp: span, name: ident,
 
 fn scope_is_fn(sc: scope) -> bool {
     ret alt sc {
-          scope_fn(_, ast::proto_bare., _) |
-          scope_native_item(_) {
-            true
-          }
-          _ { false }
-        };
+      scope_bare_fn(_, _, _) | scope_native_item(_) { true }
+      _ { false }
+    };
 }
 
 // Returns:
 //   none - does not close
-//   some(true) - closes and permits mutation
-//   some(false) - closes but no mutation
-fn scope_closes(sc: scope) -> option::t<bool> {
+//   some(node_id) - closes via the expr w/ node_id
+fn scope_closes(sc: scope) -> option::t<node_id> {
     alt sc {
-      scope_fn(_, ast::proto_block., _) { some(true) }
-      scope_fn(_, ast::proto_send., _) { some(false) }
-      scope_fn(_, ast::proto_shared(_), _) { some(false) }
+      scope_fn_expr(_, node_id, _) { some(node_id) }
       _ { none }
     }
 }
@@ -823,7 +835,8 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               }
             }
           }
-          scope_fn(decl, _, ty_params) {
+          scope_bare_fn(decl, _, ty_params) |
+          scope_fn_expr(decl, _, ty_params) {
             ret lookup_in_fn(name, decl, ty_params, ns);
           }
           scope_loop(local) {
@@ -887,7 +900,10 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                 left_fn_level2 = true;
             } else if ns == ns_value || ns == ns_type {
                 left_fn = scope_is_fn(hd);
-                alt scope_closes(hd) { some(mut) { closing += [mut]; } _ { } }
+                alt scope_closes(hd) {
+                  some(node_id) { closing += [node_id]; }
+                  _ { }
+                }
             }
             sc = *tl;
           }

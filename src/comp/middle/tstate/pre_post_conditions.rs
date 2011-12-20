@@ -33,7 +33,7 @@ fn find_pre_post_method(ccx: crate_ctxt, m: @method) {
          id: m.node.id,
          name: m.node.ident,
          ccx: ccx};
-    find_pre_post_fn(fcx, m.node.meth);
+    find_pre_post_fn(fcx, m.node.meth.body);
 }
 
 fn find_pre_post_item(ccx: crate_ctxt, i: item) {
@@ -60,7 +60,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
         assert (ccx.fm.contains_key(i.id));
         let fcx =
             {enclosing: ccx.fm.get(i.id), id: i.id, name: i.ident, ccx: ccx};
-        find_pre_post_fn(fcx, f);
+        find_pre_post_fn(fcx, f.body);
       }
       item_mod(m) { find_pre_post_mod(m); }
       item_native_mod(nm) { find_pre_post_native_mod(nm); }
@@ -72,7 +72,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
              id: dtor_id,
              name: i.ident,
              ccx: ccx};
-        find_pre_post_fn(fcx, dtor);
+        find_pre_post_fn(fcx, dtor.body);
       }
       item_obj(o, _, _) {for m in o.methods { find_pre_post_method(ccx, m); }}
       item_impl(_, _, ms) { for m in ms { find_pre_post_method(ccx, m); } }
@@ -298,6 +298,15 @@ fn forget_args_moved_in(fcx: fn_ctxt, parent: @expr, modes: [ty::mode],
     }
 }
 
+fn find_pre_post_expr_fn_upvars(fcx: fn_ctxt, e: @expr) {
+    let rslt = expr_pp(fcx.ccx, e);
+    clear_pp(rslt);
+    for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
+        log ("handle_var_def: def=", def);
+        handle_var_def(fcx, rslt, def.def, "upvar");
+    }
+}
+
 /* Fills in annotations as a side effect. Does not rebuild the expr */
 fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
     let enclosing = fcx.enclosing;
@@ -340,12 +349,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         copy_pre_post(fcx.ccx, e.id, arg);
       }
       expr_fn(f, cap_clause) {
-        let rslt = expr_pp(fcx.ccx, e);
-        clear_pp(rslt);
-        for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
-            log ("handle_var_def: def=", def);
-            handle_var_def(fcx, rslt, def.def, "upvar");
-        }
+        find_pre_post_expr_fn_upvars(fcx, e);
 
         let use_cap_item = lambda(&&cap_item: @capture_item) {
             let d = local_node_id_to_local_def_id(fcx, cap_item.id);
@@ -358,9 +362,9 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
             log ("forget_in_postcond: ", cap_item);
             forget_in_postcond(fcx, e.id, cap_item.id);
         }
-
-        let ann = node_id_to_ts_ann(fcx.ccx, e.id);
-        log_cond(tritv::to_vec(ann.conditions.postcondition));
+      }
+      expr_fn_block(_, _) {
+        find_pre_post_expr_fn_upvars(fcx, e);
       }
       expr_block(b) {
         find_pre_post_block(fcx, b);
@@ -711,32 +715,33 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     set_pre_and_post(fcx.ccx, b.node.id, block_precond, block_postcond);
 }
 
-fn find_pre_post_fn(fcx: fn_ctxt, f: _fn) {
+fn find_pre_post_fn(fcx: fn_ctxt, body: blk) {
     // hack
     use_var(fcx, tsconstr_to_node_id(fcx.enclosing.i_return));
     use_var(fcx, tsconstr_to_node_id(fcx.enclosing.i_diverge));
 
-    find_pre_post_block(fcx, f.body);
-
+    find_pre_post_block(fcx, body);
 
     // Treat the tail expression as a return statement
-    alt f.body.node.expr {
+    alt body.node.expr {
       some(tailexpr) { set_postcond_false(fcx.ccx, tailexpr.id); }
       none. {/* fallthrough */ }
     }
 }
 
-fn fn_pre_post(f: _fn, tps: [ty_param], sp: span, i: fn_ident, id: node_id,
+fn fn_pre_post(decl: fn_decl, body: blk, sp: span,
+               i: fn_ident, id: node_id,
                ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
-    visit::visit_fn(f, tps, sp, i, id, ccx, v);
+    visit::visit_fn_body(decl, body, sp, i, id, ccx, v);
     assert (ccx.fm.contains_key(id));
     let fcx =
         {enclosing: ccx.fm.get(id),
          id: id,
          name: fn_ident_to_string(id, i),
          ccx: ccx};
-    find_pre_post_fn(fcx, f);
+    find_pre_post_fn(fcx, body);
 }
+
 //
 // Local Variables:
 // mode: rust

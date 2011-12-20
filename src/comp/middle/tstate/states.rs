@@ -374,6 +374,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_fn(_, cap_clause) {
         ret find_pre_post_state_cap_clause(fcx, e.id, pres, *cap_clause);
       }
+      expr_fn_block(_, _) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_block(b) {
         ret find_pre_post_state_block(fcx, pres, b) |
                 set_prestate_ann(fcx.ccx, e.id, pres) |
@@ -732,28 +733,30 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
     ret changed;
 }
 
-fn find_pre_post_state_fn(fcx: fn_ctxt, f: _fn) -> bool {
+fn find_pre_post_state_fn(fcx: fn_ctxt,
+                          f_decl: fn_decl,
+                          f_body: blk) -> bool {
     let num_constrs = num_constraints(fcx.enclosing);
     // All constraints are considered false until proven otherwise.
     // This ensures that intersect works correctly.
-    kill_all_prestate(fcx, f.body.node.id);
+    kill_all_prestate(fcx, f_body.node.id);
 
     // Arguments start out initialized
-    let block_pre = block_prestate(fcx.ccx, f.body);
-    for a: arg in f.decl.inputs {
+    let block_pre = block_prestate(fcx.ccx, f_body);
+    for a: arg in f_decl.inputs {
         set_in_prestate_constr(fcx, ninit(a.id, a.ident), block_pre);
     }
 
     // Instantiate any constraints on the arguments so we can use them
-    for c: @constr in f.decl.constraints {
-        let tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f.decl.inputs, c);
+    for c: @constr in f_decl.constraints {
+        let tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f_decl.inputs, c);
         set_in_prestate_constr(fcx, tsc, block_pre);
     }
 
-    let changed = find_pre_post_state_block(fcx, block_pre, f.body);
+    let changed = find_pre_post_state_block(fcx, block_pre, f_body);
 
     // Treat the tail expression as a return statement
-    alt f.body.node.expr {
+    alt f_body.node.expr {
       some(tailexpr) {
 
         // We don't want to clear the diverges bit for bottom typed things,
@@ -763,7 +766,7 @@ fn find_pre_post_state_fn(fcx: fn_ctxt, f: _fn) -> bool {
             let post = false_postcond(num_constrs);
             // except for the "diverges" bit...
             kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
-            set_poststate_ann(fcx.ccx, f.body.node.id, post);
+            set_poststate_ann(fcx.ccx, f_body.node.id, post);
         }
       }
       none. {/* fallthrough */ }
@@ -772,7 +775,7 @@ fn find_pre_post_state_fn(fcx: fn_ctxt, f: _fn) -> bool {
     /*
         log_err "find_pre_post_state_fn";
         log_err changed;
-        fcx.ccx.tcx.sess.span_note(f.body.span, fcx.name);
+        fcx.ccx.tcx.sess.span_note(f_body.span, fcx.name);
     */
 
     ret changed;

@@ -44,7 +44,11 @@ fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
     visit::visit_expr(e, cx, v);
 }
 
-fn find_locals(tcx: ty::ctxt, f: _fn, tps: [ty_param], sp: span, i: fn_ident,
+fn find_locals(tcx: ty::ctxt,
+               f_decl: fn_decl,
+               f_body: blk,
+               sp: span,
+               n: fn_ident,
                id: node_id) -> ctxt {
     let cx: ctxt = {cs: @mutable [], tcx: tcx};
     let visitor = visit::default_visitor::<ctxt>();
@@ -52,9 +56,10 @@ fn find_locals(tcx: ty::ctxt, f: _fn, tps: [ty_param], sp: span, i: fn_ident,
     visitor =
         @{visit_local: collect_local,
           visit_expr: collect_pred,
-          visit_fn: bind do_nothing(_, _, _, _, _, _, _)
-              with *visitor};
-    visit::visit_fn(f, tps, sp, i, id, cx, visit::mk_vt(visitor));
+          visit_fn_body: bind do_nothing(_, _, _, _, _, _, _)
+          with *visitor};
+    visit::visit_fn_body(f_decl, f_body, sp,
+                         n, id, cx, visit::mk_vt(visitor));
     ret cx;
 }
 
@@ -90,13 +95,17 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
-fn mk_fn_info(ccx: crate_ctxt, f: _fn, tp: [ty_param], f_sp: span,
-              f_name: fn_ident, id: node_id) {
+fn mk_fn_info(ccx: crate_ctxt,
+              f_decl: fn_decl,
+              f_body: blk,
+              f_sp: span,
+              f_name: fn_ident,
+              id: node_id) {
     let name = fn_ident_to_string(id, f_name);
     let res_map = @new_def_hash::<constraint>();
     let next: uint = 0u;
 
-    let cx: ctxt = find_locals(ccx.tcx, f, tp, f_sp, f_name, id);
+    let cx: ctxt = find_locals(ccx.tcx, f_decl, f_body, f_sp, f_name, id);
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
@@ -106,17 +115,19 @@ fn mk_fn_info(ccx: crate_ctxt, f: _fn, tp: [ty_param], f_sp: span,
     /* if this function has any constraints, instantiate them to the
        argument names and add them */
     let sc;
-    for c: @constr in f.decl.constraints {
-        sc = ast_constr_to_sp_constr(cx.tcx, f.decl.inputs, c);
+    for c: @constr in f_decl.constraints {
+        sc = ast_constr_to_sp_constr(cx.tcx, f_decl.inputs, c);
         next = add_constraint(cx.tcx, sc, next, res_map);
     }
 
     /* Need to add constraints for args too, b/c they
     can be deinitialized */
-    for a: arg in f.decl.inputs {
-        next =
-            add_constraint(cx.tcx, respan(f_sp, ninit(a.id, a.ident)), next,
-                           res_map);
+    for a: arg in f_decl.inputs {
+        next = add_constraint(
+            cx.tcx,
+            respan(f_sp, ninit(a.id, a.ident)),
+            next,
+            res_map);
     }
 
     /* add the special i_diverge and i_return constraints
@@ -137,7 +148,7 @@ fn mk_fn_info(ccx: crate_ctxt, f: _fn, tp: [ty_param], f_sp: span,
     let rslt =
         {constrs: res_map,
          num_constraints: next,
-         cf: f.decl.cf,
+         cf: f_decl.cf,
          i_return: ninit(id, name),
          i_diverge: ninit(diverges_id, diverges_name),
          used_vars: v};
@@ -152,9 +163,9 @@ fn mk_fn_info(ccx: crate_ctxt, f: _fn, tp: [ty_param], f_sp: span,
    to bit number) */
 fn mk_f_to_fn_info(ccx: crate_ctxt, c: @crate) {
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn:
+        visit::mk_simple_visitor(@{visit_fn_body:
                                        bind mk_fn_info(ccx, _, _, _, _, _)
-                                      with *visit::default_simple_visitor()});
+                                   with *visit::default_simple_visitor()});
     visit::visit_crate(*c, (), visitor);
 }
 //

@@ -95,45 +95,47 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     }
 }
 
-fn check_states_against_conditions(fcx: fn_ctxt, f: _fn, tps: [ast::ty_param],
-                                   id: node_id, sp: span, i: fn_ident) {
+fn check_states_against_conditions(fcx: fn_ctxt,
+                                   f_decl: ast::fn_decl,
+                                   f_body: ast::blk,
+                                   sp: span,
+                                   nm: fn_ident,
+                                   id: node_id) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement
        or expression. */
 
-    let visitor = visit::default_visitor::<fn_ctxt>();
-
-    visitor =
+    let visitor = visit::mk_vt(
         @{visit_stmt: check_states_stmt,
           visit_expr: check_states_expr,
-          visit_fn: bind do_nothing(_, _, _, _, _, _, _)
-              with *visitor};
-    visit::visit_fn(f, tps, sp, i, id, fcx, visit::mk_vt(visitor));
+          visit_fn_body: bind do_nothing::<fn_ctxt>(_, _, _, _, _, _, _)
+          with *visit::default_visitor::<fn_ctxt>()});
+    visit::visit_fn_body(f_decl, f_body, sp, nm, id, fcx, visitor);
 
     /* Check that the return value is initialized */
-    let post = aux::block_poststate(fcx.ccx, f.body);
+    let post = aux::block_poststate(fcx.ccx, f_body);
     if !promises(fcx, post, fcx.enclosing.i_return) &&
        !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
-       f.decl.cf == return_val {
-        fcx.ccx.tcx.sess.span_err(f.body.span,
+       f_decl.cf == return_val {
+        fcx.ccx.tcx.sess.span_err(f_body.span,
                                   "In function " + fcx.name +
                                       ", not all control paths \
                                         return a value");
-        fcx.ccx.tcx.sess.span_fatal(f.decl.output.span,
+        fcx.ccx.tcx.sess.span_fatal(f_decl.output.span,
                                     "see declared return type of '" +
-                                        ty_to_str(f.decl.output) + "'");
-    } else if f.decl.cf == noreturn {
+                                    ty_to_str(f_decl.output) + "'");
+    } else if f_decl.cf == noreturn {
 
         // check that this really always fails
         // Note that it's ok for i_diverge and i_return to both be true.
         // In fact, i_diverge implies i_return. (But not vice versa!)
 
         if !promises(fcx, post, fcx.enclosing.i_diverge) {
-            fcx.ccx.tcx.sess.span_fatal(f.body.span,
+            fcx.ccx.tcx.sess.span_fatal(f_body.span,
                                         "In non-returning function " +
-                                            fcx.name +
-                                            ", some control paths may \
-                                           return to the caller");
+                                        fcx.name +
+                                        ", some control paths may \
+                                         return to the caller");
         }
     }
 
@@ -141,29 +143,34 @@ fn check_states_against_conditions(fcx: fn_ctxt, f: _fn, tps: [ast::ty_param],
     check_unused_vars(fcx);
 }
 
-fn check_fn_states(fcx: fn_ctxt, f: _fn, tps: [ast::ty_param], id: node_id,
-                   sp: span, i: fn_ident) {
+fn check_fn_states(fcx: fn_ctxt,
+                   f_decl: ast::fn_decl,
+                   f_body: ast::blk,
+                   sp: span,
+                   nm: fn_ident,
+                   id: node_id) {
     /* Compute the pre- and post-states for this function */
 
     // Fixpoint iteration
-    while find_pre_post_state_fn(fcx, f) { }
+    while find_pre_post_state_fn(fcx, f_decl, f_body) { }
 
     /* Now compare each expr's pre-state to its precondition
        and post-state to its postcondition */
 
-    check_states_against_conditions(fcx, f, tps, id, sp, i);
+    check_states_against_conditions(fcx, f_decl, f_body, sp, nm, id);
 }
 
-fn fn_states(f: _fn, tps: [ast::ty_param], sp: span, i: fn_ident, id: node_id,
+fn fn_states(f_decl: ast::fn_decl, f_body: ast::blk,
+             sp: span, i: ast::fn_ident, id: node_id,
              ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
-    visit::visit_fn(f, tps, sp, i, id, ccx, v);
+    visit::visit_fn_body(f_decl, f_body, sp, i, id, ccx, v);
     /* Look up the var-to-bit-num map for this function */
 
     assert (ccx.fm.contains_key(id));
     let f_info = ccx.fm.get(id);
-    let name = option::from_maybe("anon", i);
+    let name = option::from_maybe("anon", i); // XXXX
     let fcx = {enclosing: f_info, id: id, name: name, ccx: ccx};
-    check_fn_states(fcx, f, tps, id, sp, i);
+    check_fn_states(fcx, f_decl, f_body, sp, i, id)
 }
 
 fn check_crate(cx: ty::ctxt, crate: @crate) {
@@ -177,12 +184,13 @@ fn check_crate(cx: ty::ctxt, crate: @crate) {
     /* Compute the pre and postcondition for every subexpression */
 
     let vtor = visit::default_visitor::<crate_ctxt>();
-    vtor = @{visit_fn: fn_pre_post with *vtor};
+    vtor = @{visit_fn_body: fn_pre_post with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 
     /* Check the pre- and postcondition against the pre- and poststate
        for every expression */
-    vtor = @{visit_fn: fn_states with *vtor};
+    let vtor = visit::default_visitor::<crate_ctxt>();
+    vtor = @{visit_fn_body: fn_states with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 }
 //

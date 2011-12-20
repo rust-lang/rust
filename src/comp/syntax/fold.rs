@@ -145,6 +145,14 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
          span: m.span};
 }
 
+fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
+    ret {inputs: vec::map(decl.inputs, bind fold_arg_(_, fld)),
+         output: fld.fold_ty(decl.output),
+         purity: decl.purity,
+         il: decl.il,
+         cf: decl.cf,
+         constraints: vec::map(decl.constraints, fld.fold_constr)}
+}
 
 fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
     let fold_meta_item = bind fold_meta_item_(_, fld);
@@ -385,8 +393,10 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_alt(expr, arms) {
             expr_alt(fld.fold_expr(expr), vec::map(arms, fld.fold_arm))
           }
-          // NDM fold_captures
           expr_fn(f, captures) { expr_fn(fld.fold_fn(f), captures) }
+          expr_fn_block(decl, body) {
+            expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block(body))
+          }
           expr_block(blk) { expr_block(fld.fold_block(blk)) }
           expr_move(el, er) {
             expr_move(fld.fold_expr(el), fld.fold_expr(er))
@@ -437,15 +447,7 @@ fn noop_fold_constr(c: constr_, fld: ast_fold) -> constr_ {
 
 // functions just don't get spans, for some reason
 fn noop_fold_fn(f: _fn, fld: ast_fold) -> _fn {
-    let fold_arg = bind fold_arg_(_, fld);
-
-    ret {decl:
-             {inputs: vec::map(f.decl.inputs, fold_arg),
-              output: fld.fold_ty(f.decl.output),
-              purity: f.decl.purity,
-              il: f.decl.il,
-              cf: f.decl.cf,
-              constraints: vec::map(f.decl.constraints, fld.fold_constr)},
+    ret {decl: fold_fn_decl(f.decl, fld),
          proto: f.proto,
          body: fld.fold_block(f.body)};
 }
