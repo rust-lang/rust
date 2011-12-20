@@ -316,8 +316,9 @@ fn unsafe_spawn_inner(-thunk: fn@(),
     let thunkenv: *mutable uint = cast(sp - ptrsize);
     *thunkfn = cast(raw_thunk.code);;
     *thunkenv = cast(raw_thunk.env);;
-    // align the stack to 16 bytes
-    (**task_ptr).stack_ptr = cast(sp - ptrsize * 4u);
+    // Advance the stack pointer. No need to align because
+    // the native code will do that for us
+    (**task_ptr).stack_ptr = cast(sp - ptrsize * 2u);
 
     // set up notifications if they are enabled.
     alt notify {
