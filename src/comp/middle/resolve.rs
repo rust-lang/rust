@@ -401,8 +401,9 @@ fn resolve_names(e: @env, c: @ast::crate) {
 fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
     let sc = cons(scope_item(i), @sc);
     alt i.node {
-      ast::item_impl(tps, sty, methods) {
-        visit::visit_ty(sty, sc, v);
+      ast::item_impl(tps, ifce, sty, methods) {
+        alt ifce { some(ty) { v.visit_ty(ty, sc, v); } _ {} }
+        v.visit_ty(sty, sc, v);
         for m in methods {
             v.visit_fn_proto(m.decl, tps + m.tps, m.body, m.span,
                              some(m.ident), m.id, sc, v);
@@ -802,23 +803,21 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               ast::item_obj(ob, ty_params, _) {
                 ret lookup_in_obj(name, ob, ty_params, ns, it.id);
               }
-              ast::item_impl(ty_params, _, _) {
+              ast::item_impl(ty_params, _, _, _) {
                 if (name == "self" && ns == ns_value) {
                     ret some(ast::def_self(local_def(it.id)));
                 }
                 if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }
               }
-              ast::item_tag(_, ty_params) {
-                if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }
+              ast::item_iface(tps, _) | ast::item_tag(_, tps) |
+              ast::item_ty(_, tps) {
+                if ns == ns_type { ret lookup_in_ty_params(name, tps); }
               }
               ast::item_mod(_) {
                 ret lookup_in_local_mod(e, it.id, sp, name, ns, inside);
               }
               ast::item_native_mod(m) {
                 ret lookup_in_local_native_mod(e, it.id, sp, name, ns);
-              }
-              ast::item_ty(_, ty_params) {
-                if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }
               }
               _ { }
             }
@@ -1064,7 +1063,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
       ast::item_native_mod(_) {
         if ns == ns_module { ret some(ast::def_native_mod(local_def(i.id))); }
       }
-      ast::item_ty(_, _) {
+      ast::item_ty(_, _) | item_iface(_, _) | item_tag(_, _) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
       ast::item_res(_, _, _, _, ctor_id) {
@@ -1075,9 +1074,6 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
           ns_type. { ret some(ast::def_ty(local_def(i.id))); }
           _ { }
         }
-      }
-      ast::item_tag(_, _) {
-        if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
       ast::item_obj(_, _, ctor_id) {
         alt ns {
@@ -1322,7 +1318,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
           ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
           ast::item_native_mod(_) | ast::item_ty(_, _) |
           ast::item_res(_, _, _, _, _) | ast::item_obj(_, _, _) |
-          ast::item_impl(_, _, _) {
+          ast::item_impl(_, _, _, _) | ast::item_iface(_, _) {
             add_to_index(index, it.ident, mie_item(it));
           }
           ast::item_tag(variants, _) {
@@ -1570,7 +1566,9 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                   ast::item_const(_, _) | ast::item_fn(_, _, _) {
                     add_name(values, it.span, it.ident);
                   }
-                  ast::item_ty(_, _) { add_name(types, it.span, it.ident); }
+                  ast::item_ty(_, _) | ast::item_iface(_, _) {
+                    add_name(types, it.span, it.ident);
+                  }
                   ast::item_res(_, _, _, _, _) | ast::item_obj(_, _, _) {
                     add_name(types, it.span, it.ident);
                     add_name(values, it.span, it.ident);
@@ -1768,7 +1766,7 @@ fn find_impls_in_item(i: @ast::item, &impls: [@_impl],
                       name: option::t<ident>,
                       ck_exports: option::t<ast::_mod>) {
     alt i.node {
-      ast::item_impl(_, _, mthds) {
+      ast::item_impl(_, _, _, mthds) {
         if alt name { some(n) { n == i.ident } _ { true } } &&
            alt ck_exports { some(m) { is_exported(i.ident, m) } _ { true } } {
             impls += [@{did: local_def(i.id),

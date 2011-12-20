@@ -64,8 +64,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
       }
       item_mod(m) { find_pre_post_mod(m); }
       item_native_mod(nm) { find_pre_post_native_mod(nm); }
-      item_ty(_, _) { ret; }
-      item_tag(_, _) { ret; }
+      item_ty(_, _) | item_tag(_, _) | item_iface(_, _) { ret; }
       item_res(_, _, body, dtor_id, _) {
         let fcx =
             {enclosing: ccx.fm.get(dtor_id),
@@ -75,7 +74,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
         find_pre_post_fn(fcx, body);
       }
       item_obj(o, _, _) {for m in o.methods { find_pre_post_method(ccx, m); }}
-      item_impl(_, _, ms) { for m in ms { find_pre_post_method(ccx, m); } }
+      item_impl(_, _, _, ms) { for m in ms { find_pre_post_method(ccx, m); } }
     }
 }
 

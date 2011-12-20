@@ -73,6 +73,7 @@ export mk_native;
 export mk_native_fn;
 export mk_nil;
 export mk_obj;
+export mk_iface;
 export mk_res;
 export mk_param;
 export mk_ptr;
@@ -123,6 +124,7 @@ export ty_vec;
 export ty_native;
 export ty_nil;
 export ty_obj;
+export ty_iface;
 export ty_res;
 export ty_param;
 export ty_ptr;
@@ -256,6 +258,7 @@ tag sty {
     ty_fn(fn_ty);
     ty_native_fn([arg], t);
     ty_obj([method]);
+    ty_iface(def_id, [t]);
     ty_res(def_id, t, [t]);
     ty_tup([t]);
     ty_var(int); // type variable
@@ -444,7 +447,7 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
       }
       ty_param(_, _) { has_params = true; }
       ty_var(_) { has_vars = true; }
-      ty_tag(_, tys) {
+      ty_tag(_, tys) | ty_iface(_, tys) {
         for tt: t in tys { derive_flags_t(cx, has_params, has_vars, tt); }
       }
       ty_box(m) { derive_flags_mt(cx, has_params, has_vars, m); }
@@ -584,6 +587,10 @@ fn mk_native_fn(cx: ctxt, args: [arg], ty: t) -> t {
 
 fn mk_obj(cx: ctxt, meths: [method]) -> t { ret gen_ty(cx, ty_obj(meths)); }
 
+fn mk_iface(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
+    ret gen_ty(cx, ty_iface(did, tys));
+}
+
 fn mk_res(cx: ctxt, did: ast::def_id, inner: t, tps: [t]) -> t {
     ret gen_ty(cx, ty_res(did, inner, tps));
 }
@@ -634,7 +641,7 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
         /* no-op */
       }
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
-      ty_tag(tid, subtys) {
+      ty_tag(_, subtys) | ty_iface(_, subtys) {
         for subty: t in subtys { walk_ty(cx, walker, subty); }
       }
       ty_rec(fields) {
@@ -703,9 +710,10 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
       ty_tag(tid, subtys) {
-        let new_subtys: [t] = [];
-        for subty: t in subtys { new_subtys += [fold_ty(cx, fld, subty)]; }
-        ty = mk_tag(cx, tid, new_subtys);
+        ty = mk_tag(cx, tid, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
+      }
+      ty_iface(did, subtys) {
+        ty = mk_iface(cx, did, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
       }
       ty_rec(fields) {
         let new_fields: [field] = [];
@@ -785,14 +793,10 @@ fn type_is_bool(cx: ctxt, ty: t) -> bool {
 
 fn type_is_structural(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_rec(_) { ret true; }
-      ty_tup(_) { ret true; }
-      ty_tag(_, _) { ret true; }
-      ty_fn(_) { ret true; }
-      ty_native_fn(_, _) { ret true; }
-      ty_obj(_) { ret true; }
-      ty_res(_, _, _) { ret true; }
-      _ { ret false; }
+      ty_rec(_) | ty_tup(_) | ty_tag(_, _) | ty_fn(_) |
+      ty_native_fn(_, _) | ty_obj(_) | ty_res(_, _, _) |
+      ty_iface(_, _) { true }
+      _ { false }
     }
 }
 
@@ -973,7 +977,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       ty_opaque_closure. { kind_noncopyable }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
-      ty_box(mt) { ast::kind_copyable }
+      ty_box(_) | ty_iface(_, _) { ast::kind_copyable }
       // Boxes and unique pointers raise pinned to shared.
       ty_vec(tm) | ty_uniq(tm) { type_kind(cx, tm.ty) }
       // Records lower to the lowest of their members.
@@ -1142,9 +1146,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_send_type. | ty_type. | ty_native(_) | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str. | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
-      ty_native_fn(_, _) | ty_obj(_) {
-        result = false;
-      }
+      ty_native_fn(_, _) | ty_obj(_) | ty_iface(_, _) { result = false; }
       // Structural types
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
@@ -1332,6 +1334,11 @@ fn hash_type_structure(st: sty) -> uint {
       ty_send_type. { ret 38u; }
       ty_opaque_closure. { ret 39u; }
       ty_named(t, name) { (str::hash(*name) << 5u) + hash_subty(40u, t) }
+      ty_iface(did, tys) {
+        let h = hash_def(41u, did);
+        for typ: t in tys { h += (h << 5u) + typ; }
+        ret h;
+      }
     }
 }
 
@@ -2024,6 +2031,20 @@ mod unify {
         }
     }
 
+    fn unify_tps(cx: @ctxt, expected_tps: [t], actual_tps: [t],
+                 variance: variance, finish: block([t]) -> result) -> result {
+        let result_tps = [], i = 0u;
+        for exp in expected_tps {
+            let act = actual_tps[i];
+            i += 1u;
+            let result = unify_step(cx, exp, act, variance);
+            alt result {
+              ures_ok(rty) { result_tps += [rty]; }
+              _ { ret result; }
+            }
+        }
+        finish(result_tps)
+    }
     fn unify_step(cx: @ctxt, expected: t, actual: t,
                   variance: variance) -> result {
         // FIXME: rewrite this using tuple pattern matching when available, to
@@ -2109,28 +2130,28 @@ mod unify {
           ty::ty_tag(expected_id, expected_tps) {
             alt struct(cx.tcx, actual) {
               ty::ty_tag(actual_id, actual_tps) {
-                if expected_id.crate != actual_id.crate ||
-                       expected_id.node != actual_id.node {
+                if expected_id != actual_id {
                     ret ures_err(terr_mismatch);
                 }
-                // TODO: factor this cruft out
-                let result_tps: [t] = [];
-                let i = 0u;
-                let expected_len = vec::len::<t>(expected_tps);
-                while i < expected_len {
-                    let expected_tp = expected_tps[i];
-                    let actual_tp = actual_tps[i];
-                    let result = unify_step(
-                        cx, expected_tp, actual_tp, variance);
-                    alt result {
-                      ures_ok(rty) { result_tps += [rty]; }
-                      _ { ret result; }
-                    }
-                    i += 1u;
-                }
-                ret ures_ok(mk_tag(cx.tcx, expected_id, result_tps));
+                ret unify_tps(cx, expected_tps, actual_tps, variance, {|tps|
+                    ures_ok(mk_tag(cx.tcx, expected_id, tps))
+                });
               }
               _ {/* fall through */ }
+            }
+            ret ures_err(terr_mismatch);
+          }
+          ty_iface(expected_id, expected_tps) {
+            alt struct(cx.tcx, actual) {
+              ty::ty_iface(actual_id, actual_tps) {
+                if expected_id != actual_id {
+                    ret ures_err(terr_mismatch);
+                }
+                ret unify_tps(cx, expected_tps, actual_tps, variance, {|tps|
+                    ures_ok(mk_iface(cx.tcx, expected_id, tps))
+                });
+              }
+              _ {}
             }
             ret ures_err(terr_mismatch);
           }

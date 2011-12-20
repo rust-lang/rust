@@ -64,6 +64,7 @@ fn encode_native_module_item_paths(ebml_w: ebml::writer, nmod: native_mod,
 
 fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
                             &index: [entry<str>]) {
+    // FIXME factor out add_to_index/start/encode_name/encode_def_id/end ops
     for it: @item in module.items {
         if !ast_util::is_exported(it.ident, module) { cont; }
         alt it.node {
@@ -137,7 +138,14 @@ fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
-          item_impl(_, _, _) {}
+          item_iface(_, _) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebml::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            ebml::end_tag(ebml_w);
+          }
+          item_impl(_, _, _, _) {}
         }
     }
 }
@@ -252,7 +260,7 @@ fn encode_info_for_mod(ebml_w: ebml::writer, md: _mod,
     encode_name(ebml_w, name);
     for i in md.items {
         alt i.node {
-          item_impl(_, _, _) {
+          item_impl(_, _, _, _) {
             if ast_util::is_exported(i.ident, md) {
                 ebml::start_tag(ebml_w, tag_mod_impl);
                 ebml_w.writer.write(str::bytes(def_to_str(local_def(i.id))));
@@ -363,7 +371,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_symbol(ecx, ebml_w, ctor_id);
         ebml::end_tag(ebml_w);
       }
-      item_impl(tps, _, methods) {
+      item_impl(tps, _, _, methods) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i' as u8);
@@ -390,6 +398,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             ebml::end_tag(ebml_w);
         }
       }
+      item_iface(_, _) { /* FIXME[impl] */ }
     }
 }
 

@@ -311,14 +311,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
       ast::ty_obj(methods) {
         head(s, "obj");
         bopen(s);
-        for m: ast::ty_method in methods {
-            hardbreak_if_not_bol(s);
-            cbox(s, indent_unit);
-            maybe_print_comment(s, m.span.lo);
-            print_ty_fn(s, m.decl, some(m.ident));
-            word(s.s, ";");
-            end(s);
-        }
+        for m in methods { print_ty_method(s, m); }
         bclose(s, ty.span);
       }
       ast::ty_path(path, _) { print_path(s, path, false); }
@@ -473,11 +466,19 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_impl(tps, ty, methods) {
+      ast::item_impl(tps, ifce, ty, methods) {
         head(s, "impl");
         word(s.s, item.ident);
         print_type_params(s, tps);
-        nbsp(s);
+        space(s.s);
+        alt ifce {
+          some(ty) {
+            word_nbsp(s, "of");
+            print_type(s, ty);
+            space(s.s);
+          }
+          _ {}
+        }
         word_nbsp(s, "for");
         print_type(s, ty);
         space(s.s);
@@ -489,6 +490,14 @@ fn print_item(s: ps, &&item: @ast::item) {
             word(s.s, " ");
             print_block(s, meth.body);
         }
+        bclose(s, item.span);
+      }
+      ast::item_iface(tps, methods) {
+        head(s, "iface");
+        word(s.s, item.ident);
+        print_type_params(s, tps);
+        bopen(s);
+        for meth in methods { print_ty_method(s, meth); }
         bclose(s, item.span);
       }
       ast::item_res(decl, tps, body, dt_id, ct_id) {
@@ -504,6 +513,15 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
     }
     s.ann.post(ann_node);
+}
+
+fn print_ty_method(s: ps, m: ast::ty_method) {
+    hardbreak_if_not_bol(s);
+    cbox(s, indent_unit);
+    maybe_print_comment(s, m.span.lo);
+    print_ty_fn(s, m.decl, some(m.ident));
+    word(s.s, ";");
+    end(s);
 }
 
 fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {

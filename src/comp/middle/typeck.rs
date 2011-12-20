@@ -422,7 +422,15 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_impl(_, _, _) | ast::item_mod(_) |
+      ast::item_iface(tps, methods) {
+        let t = ty::mk_named(tcx, ty::mk_iface(tcx, local_def(it.id),
+                                               mk_ty_params(tcx, tps)),
+                             @it.ident);
+        let tpt = {kinds: ty_param_kinds(tps), ty: t};
+        tcx.tcache.insert(local_def(it.id), tpt);
+        ret tpt;
+      }
+      ast::item_impl(_, _, _, _) | ast::item_mod(_) |
       ast::item_native_mod(_) { fail; }
     }
 }
@@ -647,7 +655,7 @@ mod collect {
             write::ty_only(cx.tcx, it.id, tpt.ty);
             get_tag_variant_types(cx, tpt.ty, variants, ty_params);
           }
-          ast::item_impl(_, selfty, ms) {
+          ast::item_impl(_, _, selfty, ms) {
             for m in ms {
                 let ty = ty::mk_fn(cx.tcx, ty_of_fn_decl(cx.tcx, m_collect,
                                                          m.decl));
@@ -1429,9 +1437,9 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
               some(m) {
                 let (n_tps, self_ty) = if did.crate == ast::local_crate {
                     alt fcx.ccx.tcx.items.get(did.node) {
-                      ast_map::node_item(@{node: ast::item_impl(tps, st, _),
+                      ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
                                            _}) {
-                        (vec::len(tps), ast_ty_to_ty_crate(fcx.ccx, st))
+                        (vec::len(ts), ast_ty_to_ty_crate(fcx.ccx, st))
                       }
                     }
                 } else {
@@ -2637,7 +2645,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         // Now remove the info from the stack.
         vec::pop(ccx.self_infos);
       }
-      ast::item_impl(_, ty, ms) {
+      ast::item_impl(_, _, ty, ms) {
         ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];
         for m in ms { check_method(ccx, m); }
         vec::pop(ccx.self_infos);

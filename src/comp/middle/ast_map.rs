@@ -71,7 +71,7 @@ fn map_item(cx: ctx, i: @item) {
             cx.map.insert(m.id, node_obj_method(m));
         }
       }
-      item_impl(_, _, ms) {
+      item_impl(_, _, _, ms) {
         for m in ms { cx.map.insert(m.id, node_method(m)); }
       }
       item_res(_, _, _, dtor_id, ctor_id) {

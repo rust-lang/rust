@@ -165,7 +165,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "lambda", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
-                 "log", "tag", "obj", "copy", "sendfn", "impl"] {
+                 "log", "tag", "obj", "copy", "sendfn", "impl", "iface"] {
         words.insert(word, ());
     }
     words
@@ -285,7 +285,7 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
                     constraints: constrs});
 }
 
-fn parse_ty_obj(p: parser) -> ast::ty_ {
+fn parse_ty_methods(p: parser) -> [ast::ty_method] {
     fn parse_method_sig(p: parser) -> ast::ty_method {
         let flo = p.get_lo_pos();
         let proto: ast::proto = parse_method_proto(p);
@@ -298,10 +298,8 @@ fn parse_ty_obj(p: parser) -> ast::ty_ {
           }
         }
     }
-    let meths =
-        parse_seq(token::LBRACE, token::RBRACE, seq_sep_none(),
-                  parse_method_sig, p);
-    ret ast::ty_obj(meths.node);
+    parse_seq(token::LBRACE, token::RBRACE, seq_sep_none(),
+              parse_method_sig, p).node
 }
 
 fn parse_mt(p: parser) -> ast::mt {
@@ -519,7 +517,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "sendfn") {
         t = parse_ty_fn(ast::proto_send, p);
     } else if eat_word(p, "obj") {
-        t = parse_ty_obj(p);
+        t = ast::ty_obj(parse_ty_methods(p));
     } else if p.peek() == token::MOD_SEP || is_ident(p.peek()) {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
@@ -676,47 +674,22 @@ fn is_plain_ident(p: parser) -> bool {
 
 fn parse_path(p: parser) -> @ast::path {
     let lo = p.get_lo_pos();
-    let hi = lo;
-
-    let global;
-    if p.peek() == token::MOD_SEP {
-        global = true;
-        p.bump();
-    } else { global = false; }
-
-    let ids: [ast::ident] = [];
-    while true {
-        alt p.peek() {
-          token::IDENT(i, _) {
-            hi = p.get_hi_pos();
-            ids += [p.get_str(i)];
-            hi = p.get_hi_pos();
-            p.bump();
-            if p.peek() == token::MOD_SEP && p.look_ahead(1u) != token::LT {
-                p.bump();
-            } else { break; }
-          }
-          _ { break; }
-        }
+    let global = eat(p, token::MOD_SEP), ids = [parse_ident(p)];
+    while p.look_ahead(1u) != token::LT && eat(p, token::MOD_SEP) {
+        ids += [parse_ident(p)];
     }
-    ret @spanned(lo, hi, {global: global, idents: ids, types: []});
+    ret @spanned(lo, p.get_last_hi_pos(),
+                 {global: global, idents: ids, types: []});
 }
 
-fn parse_path_and_ty_param_substs(p: parser) -> @ast::path {
+fn parse_path_and_ty_param_substs(p: parser, colons: bool) -> @ast::path {
     let lo = p.get_lo_pos();
     let path = parse_path(p);
-    if p.peek() == token::MOD_SEP {
-        p.bump();
-
-        let seq =
-            parse_seq_lt_gt(some(token::COMMA), {|p| parse_ty(p, false)}, p);
-        let hi = seq.span.hi;
-        path = @spanned(lo, hi,
-                        {global: path.node.global,
-                         idents: path.node.idents,
-                         types: seq.node});
-    }
-    ret path;
+    if colons ? eat(p, token::MOD_SEP) : p.peek() == token::LT {
+        let seq = parse_seq_lt_gt(some(token::COMMA),
+                                  {|p| parse_ty(p, false)}, p);
+        @spanned(lo, seq.span.hi, {types: seq.node with path.node})
+    } else { path }
 }
 
 fn parse_mutability(p: parser) -> ast::mutability {
@@ -958,7 +931,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
                   is_ident(p.peek()) && !is_word(p, "true") &&
                       !is_word(p, "false") {
         check_bad_word(p);
-        let pth = parse_path_and_ty_param_substs(p);
+        let pth = parse_path_and_ty_param_substs(p, true);
         hi = pth.span.hi;
         ex = ast::expr_path(pth);
     } else {
@@ -984,10 +957,11 @@ fn parse_syntax_ext(p: parser) -> @ast::expr {
 }
 
 fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
-    let pth = parse_path(p);
-    if vec::len(pth.node.idents) == 0u {
-        p.fatal("expected a syntax expander name");
+    alt p.peek() {
+      token::IDENT(_, _) {}
+      _ { p.fatal("expected a syntax expander name"); }
     }
+    let pth = parse_path(p);
     //temporary for a backwards-compatible cycle:
     let sep = seq_sep(token::COMMA);
     let es =
@@ -1518,7 +1492,7 @@ fn parse_pat(p: parser) -> @ast::pat {
             let sub = eat(p, token::AT) ? some(parse_pat(p)) : none;
             pat = ast::pat_bind(name, sub);
         } else {
-            let tag_path = parse_path_and_ty_param_substs(p);
+            let tag_path = parse_path_and_ty_param_substs(p, true);
             hi = tag_path.span.hi;
             let args: [@ast::pat];
             alt p.peek() {
@@ -1751,12 +1725,9 @@ fn parse_ty_param(p: parser) -> ast::ty_param {
 }
 
 fn parse_ty_params(p: parser) -> [ast::ty_param] {
-    let ty_params: [ast::ty_param] = [];
-    if p.peek() == token::LT {
-        p.bump();
-        ty_params = parse_seq_to_gt(some(token::COMMA), parse_ty_param, p);
-    }
-    ret ty_params;
+    if eat(p, token::LT) {
+        parse_seq_to_gt(some(token::COMMA), parse_ty_param, p)
+    } else { [] }
 }
 
 fn parse_fn_decl(p: parser, proto: ast::proto, purity: ast::purity)
@@ -1866,15 +1837,47 @@ fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
                 attrs);
 }
 
-fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
+fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos(), ident = parse_ident(p),
+        tps = parse_ty_params(p), meths = parse_ty_methods(p);
+    ret mk_item(p, lo, p.get_last_hi_pos(), ident,
+                ast::item_iface(tps, meths), attrs);
+}
+
+fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
+    let lo = p.get_last_lo_pos(), ident, tps, ifce;
+    fn wrap_path(p: parser, pt: @ast::path) -> @ast::ty {
+        @{node: ast::ty_path(pt, p.get_id()), span: pt.span}
+    }
+    if eat_word(p, "of") {
+        let path = parse_path_and_ty_param_substs(p, false);
+        tps = vec::map(path.node.types, {|tp|
+            alt tp.node {
+              ast::ty_path(pt, _) {
+                if vec::len(pt.node.idents) == 1u &&
+                   vec::len(pt.node.types) == 0u {
+                     ret {ident: pt.node.idents[0], kind: ast::kind_sendable};
+                }
+              }
+              _ {}
+            }
+            p.fatal("only single-word, parameter-less types allowed here");
+        });
+        ident = path.node.idents[vec::len(path.node.idents)-1u];
+        ifce = some(wrap_path(p, path));
+    } else {
+        ident = parse_ident(p);
         tps = parse_ty_params(p);
+        ifce = if eat_word(p, "of") {
+            some(wrap_path(p, parse_path_and_ty_param_substs(p, false)))
+        } else { none };
+    };
     expect_word(p, "for");
     let ty = parse_ty(p, false), meths = [];
     expect(p, token::LBRACE);
     while !eat(p, token::RBRACE) { meths += [parse_method(p, true)]; }
     ret mk_item(p, lo, p.get_last_hi_pos(), ident,
-                ast::item_impl(tps, ty, meths), attrs);
+                ast::item_impl(tps, ifce, ty, meths), attrs);
 }
 
 fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
@@ -2145,6 +2148,8 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
     } else if is_word(p, "obj") && p.look_ahead(1u) != token::LPAREN {
         p.bump();
         ret some(parse_item_obj(p, attrs));
+    } else if eat_word(p, "iface") {
+        ret some(parse_item_iface(p, attrs));
     } else if eat_word(p, "impl") {
         ret some(parse_item_impl(p, attrs));
     } else if eat_word(p, "resource") {

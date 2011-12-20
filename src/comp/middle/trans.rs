@@ -5013,7 +5013,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
                  with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
-      ast::item_impl(tps, _, ms) {
+      ast::item_impl(tps, _, _, ms) {
         trans_impl(cx, item.ident, ms, item.id, tps);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
@@ -5340,7 +5340,7 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
             ccx.obj_methods.insert(m.id, ());
         }
       }
-      ast::item_impl(tps, _, methods) {
+      ast::item_impl(tps, _, _, methods) {
         let name = ccx.names.next(i.ident);
         for m in methods {
             register_fn(ccx, i.span, pt + [name, m.ident],

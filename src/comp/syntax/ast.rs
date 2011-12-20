@@ -490,7 +490,9 @@ tag item_ {
     item_obj(_obj, [ty_param], /* constructor id */node_id);
     item_res(fn_decl /* dtor */, [ty_param], blk,
              node_id /* dtor id */, node_id /* ctor id */);
-    item_impl([ty_param], @ty /* self */, [@method]);
+    item_iface([ty_param], [ty_method]);
+    item_impl([ty_param], option::t<@ty> /* iface */,
+              @ty /* self */, [@method]);
 }
 
 type native_item =

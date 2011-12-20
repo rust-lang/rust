@@ -120,11 +120,18 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
                              some(m.ident), m.id, e, v);
         }
       }
-      item_impl(_, ty, methods) {
-        visit_ty(ty, e, v);
+      item_impl(_, ifce, ty, methods) {
+        alt ifce { some(ty) { v.visit_ty(ty, e, v); } _ {} }
+        v.visit_ty(ty, e, v);
         for m in methods {
             v.visit_fn_proto(m.decl, m.tps, m.body, m.span,
                              some(m.ident), m.id, e, v);
+        }
+      }
+      item_iface(_, methods) {
+        for m in methods {
+            for a in m.decl.inputs { v.visit_ty(a.ty, e, v); }
+            v.visit_ty(m.decl.output, e, v);
         }
       }
     }
