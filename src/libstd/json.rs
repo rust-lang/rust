@@ -65,6 +65,7 @@ fn to_str(j: json) -> str {
             });
             str::concat(["{ ", str::connect(parts, ", "), " }"])
         }
+        null { "null" }
     }
 }
 
