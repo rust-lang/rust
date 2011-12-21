@@ -4,5 +4,5 @@
 	},
 	"brson": {
 		"url": "https://raw.github.com/brson/rust-packages/master/packages.json"
-	},
+	}
 }
