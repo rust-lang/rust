@@ -1,5 +1,8 @@
 {
 	"elly": {
 		"url": "https://raw.github.com/elly/rust-packages/master/packages.json"
-	}
+	},
+	"brson": {
+		"url": "https://raw.github.com/brson/rust-packages/master/packages.json"
+	},
 }
