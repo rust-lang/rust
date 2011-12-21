@@ -910,8 +910,8 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
             ex = ast::expr_fail(some(e));
         } else { ex = ast::expr_fail(none); }
     } else if eat_word(p, "log_full") {
-        let e = parse_expr(p);
         let lvl = parse_expr(p);
+        let e = parse_expr(p);
         ex = ast::expr_log(2, lvl, e);
         hi = e.span.hi;
     } else if eat_word(p, "log") {
