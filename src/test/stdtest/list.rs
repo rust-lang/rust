@@ -16,6 +16,12 @@ fn test_from_vec() {
 }
 
 #[test]
+fn test_from_vec_empty() {
+    let empty : list::list<int> = from_vec([]);
+    assert (empty == list::nil::<int>);
+}
+
+#[test]
 fn test_from_vec_mut() {
     let l = from_vec([mutable 0, 1, 2]);
     assert (head(l) == 0);
@@ -25,10 +31,11 @@ fn test_from_vec_mut() {
 
 #[test]
 fn test_foldl() {
-    let l = from_vec([0, 1, 2, 3, 4]);
     fn add(&&a: uint, &&b: int) -> uint { ret a + (b as uint); }
-    let rs = list::foldl(l, 0u, add);
-    assert (rs == 10u);
+    let l = from_vec([0, 1, 2, 3, 4]);
+    let empty = list::nil::<int>;
+    assert (list::foldl(l, 0u, add) == 10u);
+    assert (list::foldl(empty, 0u, add) == 0u);
 }
 
 #[test]
@@ -37,26 +44,25 @@ fn test_foldl2() {
         a - b
     }
     let l = from_vec([1, 2, 3, 4]);
-    let sum = list::foldl(l, 0, sub);
-    assert sum == -10;
+    assert (list::foldl(l, 0, sub) == -10);
 }
 
 #[test]
 fn test_find_success() {
-    let l = from_vec([0, 1, 2]);
     fn match(&&i: int) -> option::t<int> {
         ret if i == 2 { option::some(i) } else { option::none::<int> };
     }
-    let rs = list::find(l, match);
-    assert (rs == option::some(2));
+    let l = from_vec([0, 1, 2]);
+    assert (list::find(l, match) == option::some(2));
 }
 
 #[test]
 fn test_find_fail() {
-    let l = from_vec([0, 1, 2]);
     fn match(&&_i: int) -> option::t<int> { ret option::none::<int>; }
-    let rs = list::find(l, match);
-    assert (rs == option::none::<int>);
+    let l = from_vec([0, 1, 2]);
+    let empty = list::nil::<int>;
+    assert (list::find(l, match) == option::none::<int>);
+    assert (list::find(empty, match) == option::none::<int>);
 }
 
 #[test]
@@ -72,6 +78,8 @@ fn test_has() {
 #[test]
 fn test_len() {
     let l = from_vec([0, 1, 2]);
+    let empty = list::nil::<int>;
     assert (list::len(l) == 3u);
+    assert (list::len(empty) == 0u);
 }
 
