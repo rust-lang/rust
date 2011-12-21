@@ -10,7 +10,12 @@ import util::interner;
 import ast::{node_id, spanned};
 import front::attr;
 
-tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; RESTRICT_NO_BAR_OP; }
+tag restriction {
+    UNRESTRICTED;
+    RESTRICT_STMT_EXPR;
+    RESTRICT_NO_CALL_EXPRS;
+    RESTRICT_NO_BAR_OP;
+}
 
 tag file_type { CRATE_FILE; SOURCE_FILE; }
 
@@ -977,28 +982,45 @@ fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
 
 fn parse_dot_or_call_expr(p: parser) -> @ast::expr {
     let b = parse_bottom_expr(p);
-    if expr_has_value(b) { parse_dot_or_call_expr_with(p, b) }
-    else { b }
+    parse_dot_or_call_expr_with(p, b)
+}
+
+fn permits_call(p: parser) -> bool {
+    ret p.get_restriction() != RESTRICT_NO_CALL_EXPRS;
 }
 
 fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
     let lo = e.span.lo;
     let hi = e.span.hi;
     let e = e;
-    while true {
+    while !expr_is_complete(p, e) {
         alt p.peek() {
-          token::LPAREN. {
-            if p.get_restriction() == RESTRICT_NO_CALL_EXPRS {
-                ret e;
-            } else {
-                // Call expr.
-                let es = parse_seq(token::LPAREN, token::RPAREN,
-                                   seq_sep(token::COMMA), parse_expr, p);
-                hi = es.span.hi;
-                let nd = ast::expr_call(e, es.node, false);
-                e = mk_expr(p, lo, hi, nd);
+          // expr(...)
+          token::LPAREN. when permits_call(p) {
+            let es = parse_seq(token::LPAREN, token::RPAREN,
+                               seq_sep(token::COMMA), parse_expr, p);
+            hi = es.span.hi;
+            let nd = ast::expr_call(e, es.node, false);
+            e = mk_expr(p, lo, hi, nd);
+          }
+
+          // expr { || ... }
+          token::LBRACE. when is_bar(p.look_ahead(1u)) && permits_call(p) {
+            p.bump();
+            let blk = parse_fn_block_expr(p);
+            alt e.node {
+              ast::expr_call(f, args, false) {
+                e = @{node: ast::expr_call(f, args + [blk], true)
+                      with *e};
+              }
+              _ {
+                e = mk_expr(p, lo, p.get_last_hi_pos(),
+                            ast::expr_call(e, [blk], true));
+              }
             }
           }
+
+          // expr[...]
           token::LBRACKET. {
             p.bump();
             let ix = parse_expr(p);
@@ -1006,6 +1028,8 @@ fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
             expect(p, token::RBRACKET);
             e = mk_expr(p, lo, hi, ast::expr_index(e, ix));
           }
+
+          // expr.f
           token::DOT. {
             p.bump();
             alt p.peek() {
@@ -1022,6 +1046,7 @@ fn parse_dot_or_call_expr_with(p: parser, e: @ast::expr) -> @ast::expr {
               t { unexpected(p, t); }
             }
           }
+
           _ { ret e; }
         }
     }
@@ -1126,7 +1151,7 @@ const ternary_prec: int = 0;
 
 fn parse_more_binops(p: parser, lhs: @ast::expr, min_prec: int) ->
    @ast::expr {
-    if !expr_has_value(lhs) { ret lhs; }
+    if expr_is_complete(p, lhs) { ret lhs; }
     let peeked = p.peek();
     if peeked == token::BINOP(token::OR) &&
        p.get_restriction() == RESTRICT_NO_BAR_OP { ret lhs; }
@@ -1550,61 +1575,40 @@ fn parse_stmt(p: parser) -> @ast::stmt {
           }
         }
 
-        let maybe_item = parse_item(p, item_attrs);
-
-        // If we have attributes then we should have an item
-        if vec::len(item_attrs) > 0u {
-            alt maybe_item {
-              some(_) {/* fallthrough */ }
-              _ { ret p.fatal("expected item"); }
-            }
-        }
-
-        alt maybe_item {
+        alt parse_item(p, item_attrs) {
           some(i) {
             let hi = i.span.hi;
             let decl = @spanned(lo, hi, ast::decl_item(i));
             ret @spanned(lo, hi, ast::stmt_decl(decl, p.get_id()));
           }
-          none. {
-            // Remainder are line-expr stmts.
-            let e = parse_expr(p);
-            // See if it is a block call
-            if expr_has_value(e) && p.peek() == token::LBRACE &&
-               is_bar(p.look_ahead(1u)) {
-                p.bump();
-                let blk = parse_fn_block_expr(p);
-                alt e.node {
-                  ast::expr_call(f, args, false) {
-                    e = @{node: ast::expr_call(f, args + [blk], true)
-                        with *e};
-                  }
-                  _ {
-                    e = mk_expr(p, lo, p.get_last_hi_pos(),
-                                ast::expr_call(e, [blk], true));
-                  }
-                }
-            }
-            ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_id()));
-          }
-          _ { p.fatal("expected statement"); }
+          none() { /* fallthrough */ }
         }
+
+        // If we have attributes then we should have an item
+        if vec::len(item_attrs) > 0u {
+            ret p.fatal("expected item");
+        }
+
+        // Remainder are line-expr stmts.
+        let e = parse_expr_res(p, RESTRICT_STMT_EXPR);
+        ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_id()));
     }
 }
 
-fn expr_has_value(e: @ast::expr) -> bool {
+fn expr_is_complete(p: parser, e: @ast::expr) -> bool {
+    ret p.get_restriction() == RESTRICT_STMT_EXPR &&
+        !expr_requires_semi_to_be_stmt(e);
+}
+
+fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     alt e.node {
       ast::expr_if(_, th, els) | ast::expr_if_check(_, th, els) {
         if option::is_none(els) { false }
         else { !option::is_none(th.node.expr) ||
-            expr_has_value(option::get(els)) }
+                  expr_requires_semi_to_be_stmt(option::get(els)) }
       }
       ast::expr_alt(_, arms) {
-        let found_expr = false;
-        for arm in arms {
-            if !option::is_none(arm.body.node.expr) { found_expr = true; }
-        }
-        found_expr
+        vec::any({|arm| !option::is_none(arm.body.node.expr)}, arms)
       }
       ast::expr_block(blk) | ast::expr_while(_, blk) |
       ast::expr_for(_, _, blk) | ast::expr_do_while(blk, _) {
@@ -1615,19 +1619,11 @@ fn expr_has_value(e: @ast::expr) -> bool {
     }
 }
 
-fn stmt_is_expr(stmt: @ast::stmt) -> bool {
-    ret alt stmt.node {
-      ast::stmt_expr(e, _) { expr_has_value(e) }
-      _ { false }
-    };
-}
-
 fn stmt_to_expr(stmt: @ast::stmt) -> option::t<@ast::expr> {
-    ret if stmt_is_expr(stmt) {
-        alt stmt.node {
-          ast::stmt_expr(e, _) { some(e) }
-        }
-    } else { none };
+    alt stmt.node {
+      ast::stmt_expr(e, _) { some(e) }
+      ast::stmt_decl(_, _) { none }
+    }
 }
 
 fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
@@ -1639,7 +1635,7 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
             }
       }
       ast::stmt_expr(e, _) {
-        ret expr_has_value(e);
+        ret expr_requires_semi_to_be_stmt(e);
       }
     }
 }
