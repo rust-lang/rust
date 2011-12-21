@@ -138,7 +138,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     void start(uintptr_t spawnee_fn,
                uintptr_t args);
     void start();
-    void grow(size_t n_frame_bytes);
     bool running();
     bool blocked();
     bool blocked_on(rust_cond *cond);

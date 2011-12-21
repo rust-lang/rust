@@ -397,16 +397,6 @@ void rust_task::start()
     sched->lock.signal();
 }
 
-void
-rust_task::grow(size_t n_frame_bytes)
-{
-    // FIXME (issue #151): Just fail rather than almost certainly crashing
-    // mysteriously later. The commented-out logic below won't work at all in
-    // the presence of non-word-aligned pointers.
-    abort();
-
-}
-
 // Only run this on the rust stack
 void
 rust_task::yield(size_t time_in_us, bool *killed) {
