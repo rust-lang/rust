@@ -133,6 +133,9 @@ static stk_seg*
 new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
 {
     LOG(task, mem, "creating new stack for task %" PRIxPTR, task);
+    if (task->stk) {
+        check_stack_canary(task->stk);
+    }
 
     // The minimum stack size, in bytes, of a Rust stack, excluding red zone
     size_t min_sz = get_min_stk_size(sched->min_stack_size);
