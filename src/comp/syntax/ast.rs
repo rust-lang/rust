@@ -247,7 +247,7 @@ tag expr_ {
     expr_cont;
     expr_ret(option::t<@expr>);
     expr_be(@expr);
-    expr_log(int, @expr);
+    expr_log(int, @expr, @expr);
 
     /* just an assert, no significance to typestate */
     expr_assert(@expr);

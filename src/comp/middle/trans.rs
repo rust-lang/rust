@@ -3622,7 +3622,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         assert dest == ignore;
         ret trans_fail_expr(bcx, some(e.span), expr);
       }
-      ast::expr_log(lvl, a) {
+      ast::expr_log(_, lvl, a) {
         assert dest == ignore;
         ret trans_log(lvl, bcx, a);
       }
@@ -3768,7 +3768,7 @@ fn load_if_immediate(cx: @block_ctxt, v: ValueRef, t: ty::t) -> ValueRef {
     ret v;
 }
 
-fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
+fn trans_log(lvl: @ast::expr, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
     let lcx = cx.fcx.lcx;
     let modname = str::connect(lcx.module_path, "::");
@@ -3778,20 +3778,26 @@ fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
         let s = link::mangle_internal_name_by_path_and_seq(
             lcx.ccx, lcx.module_path, "loglevel");
         let global = str::as_buf(s, {|buf|
-            llvm::LLVMAddGlobal(lcx.ccx.llmod, ccx.int_type, buf)
+            llvm::LLVMAddGlobal(lcx.ccx.llmod, T_i32(), buf)
         });
         llvm::LLVMSetGlobalConstant(global, False);
-        llvm::LLVMSetInitializer(global, C_null(ccx.int_type));
+        llvm::LLVMSetInitializer(global, C_null(T_i32()));
         llvm::LLVMSetLinkage(global,
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
         lcx.ccx.module_data.insert(modname, global);
         global
     };
+    let level_cx = new_scope_block_ctxt(cx, "level");
     let log_cx = new_scope_block_ctxt(cx, "log");
     let after_cx = new_sub_block_ctxt(cx, "after");
     let load = Load(cx, global);
-    let test = ICmp(cx, lib::llvm::LLVMIntSGE, load, C_int(ccx, lvl));
-    CondBr(cx, test, log_cx.llbb, after_cx.llbb);
+
+    Br(cx, level_cx.llbb);
+    let level_res = trans_temp_expr(level_cx, lvl);
+    let test = ICmp(level_res.bcx, lib::llvm::LLVMIntUGE,
+                    load, level_res.val);
+
+    CondBr(level_res.bcx, test, log_cx.llbb, after_cx.llbb);
     let sub = trans_temp_expr(log_cx, e);
     let e_ty = ty::expr_ty(bcx_tcx(cx), e);
     let log_bcx = sub.bcx;
@@ -3807,14 +3813,12 @@ fn trans_log(lvl: int, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let llvalptr = r.val;
     let llval_i8 = PointerCast(log_bcx, llvalptr, T_ptr(T_i8()));
 
-    // FIXME lvl should not be int, but actually u32,
-    // and the upcall should take a u32, not an i32
     Call(log_bcx, ccx.upcalls.log_type,
-         [lltydesc, llval_i8, C_i32(lvl as i32)]);
+         [lltydesc, llval_i8, level_res.val]);
 
     log_bcx = trans_block_cleanups(log_bcx, log_cx);
     Br(log_bcx, after_cx.llbb);
-    ret after_cx;
+    ret trans_block_cleanups(after_cx, level_cx);
 }
 
 fn trans_check_expr(cx: @block_ctxt, e: @ast::expr, s: str) -> @block_ctxt {

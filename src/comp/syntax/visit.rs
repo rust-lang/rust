@@ -333,7 +333,10 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_cont. { }
       expr_ret(eo) { visit_expr_opt(eo, e, v); }
       expr_be(x) { v.visit_expr(x, e, v); }
-      expr_log(_, x) { v.visit_expr(x, e, v); }
+      expr_log(_, lv, x) {
+        v.visit_expr(lv, e, v);
+        v.visit_expr(x, e, v);
+      }
       expr_check(_, x) { v.visit_expr(x, e, v); }
       expr_assert(x) { v.visit_expr(x, e, v); }
       expr_anon_obj(anon_obj) {

@@ -165,7 +165,8 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "lambda", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
-                 "log", "log_err", "tag", "obj", "copy", "sendfn", "impl"] {
+                 "log", "log_err", "log_full",
+                 "tag", "obj", "copy", "sendfn", "impl"] {
         words.insert(word, ());
     }
     words
@@ -758,6 +759,15 @@ fn is_bar(t: token::token) -> bool {
     alt t { token::BINOP(token::OR.) | token::OROR. { true } _ { false } }
 }
 
+fn mk_lit_u32(p: parser, i: u32) -> @ast::expr {
+    let span = p.get_span();
+
+    let lv_lit = @{node: ast::lit_uint(i as u64, ast::ty_u32),
+                   span: span};
+
+    ret @{id: p.get_id(), node: ast::expr_lit(lv_lit), span: span};
+}
+
 fn parse_bottom_expr(p: parser) -> @ast::expr {
     let lo = p.get_lo_pos();
     let hi = p.get_hi_pos();
@@ -899,13 +909,18 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
             hi = e.span.hi;
             ex = ast::expr_fail(some(e));
         } else { ex = ast::expr_fail(none); }
+    } else if eat_word(p, "log_full") {
+        let e = parse_expr(p);
+        let lvl = parse_expr(p);
+        ex = ast::expr_log(2, lvl, e);
+        hi = e.span.hi;
     } else if eat_word(p, "log") {
         let e = parse_expr(p);
-        ex = ast::expr_log(1, e);
+        ex = ast::expr_log(1, mk_lit_u32(p, 1u32), e);
         hi = e.span.hi;
     } else if eat_word(p, "log_err") {
         let e = parse_expr(p);
-        ex = ast::expr_log(0, e);
+        ex = ast::expr_log(0, mk_lit_u32(p, 0u32), e);
         hi = e.span.hi;
     } else if eat_word(p, "assert") {
         let e = parse_expr(p);

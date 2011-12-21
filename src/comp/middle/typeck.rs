@@ -1868,8 +1868,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         bot = true;
         write::nil_ty(tcx, id);
       }
-      ast::expr_log(l, e) {
-        bot = check_expr(fcx, e);
+      ast::expr_log(_, lv, e) {
+        bot = check_expr_with(fcx, lv, ty::mk_mach_uint(tcx, ast::ty_u32));
+        bot |= check_expr(fcx, e);
         write::nil_ty(tcx, id);
       }
       ast::expr_check(_, e) {

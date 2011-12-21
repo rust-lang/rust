@@ -913,9 +913,16 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
       }
       ast::expr_be(result) { word_nbsp(s, "be"); print_expr(s, result); }
-      ast::expr_log(lvl, expr) {
-        alt lvl { 1 { word_nbsp(s, "log"); } 0 { word_nbsp(s, "log_err"); } }
-        print_expr(s, expr);
+      ast::expr_log(lvl, lexp, expr) {
+        alt lvl {
+          1 { word_nbsp(s, "log"); print_expr(s, expr); }
+          0 { word_nbsp(s, "log_err"); print_expr(s, expr); }
+          2 {
+            word_nbsp(s, "log_full");
+            word(s.s, " ");
+            print_expr(s, lexp);
+          }
+        }
       }
       ast::expr_check(m, expr) {
         alt m {
@@ -990,7 +997,7 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
       ast::expr_ternary(_, _, _) | ast::expr_move(_, _) |
       ast::expr_copy(_) | ast::expr_assign(_, _) | ast::expr_be(_) |
       ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
-      ast::expr_log(_, _) | ast::expr_assert(_) |
+      ast::expr_log(_, _, _) | ast::expr_assert(_) |
       ast::expr_check(_, _) { true }
       _ { false }
     };
@@ -1305,7 +1312,7 @@ fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
       ast::expr_be(_) { true }
       ast::expr_assert(_) { true }
       ast::expr_check(_, _) { true }
-      ast::expr_log(_, _) { true }
+      ast::expr_log(_, _, _) { true }
       _ { false }
     }
 }
@@ -1644,7 +1651,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
       ast::expr_ternary(_, _, sub) | ast::expr_move(_, sub) |
       ast::expr_copy(sub) | ast::expr_assign(_, sub) | ast::expr_be(sub) |
       ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
-      ast::expr_log(_, sub) | ast::expr_assert(sub) |
+      ast::expr_log(_, _, sub) | ast::expr_assert(sub) |
       ast::expr_check(_, sub) { ends_in_lit_int(sub) }
       ast::expr_fail(osub) | ast::expr_ret(osub) {
         alt osub {

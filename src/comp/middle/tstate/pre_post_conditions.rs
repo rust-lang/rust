@@ -344,9 +344,8 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         clear_pp(rslt);
         handle_var(fcx, rslt, e.id, path_to_ident(fcx.ccx.tcx, p));
       }
-      expr_log(_, arg) {
-        find_pre_post_expr(fcx, arg);
-        copy_pre_post(fcx.ccx, e.id, arg);
+      expr_log(_, lvl, arg) {
+        find_pre_post_exprs(fcx, [lvl, arg], e.id);
       }
       expr_fn(f, cap_clause) {
         find_pre_post_expr_fn_upvars(fcx, e);
