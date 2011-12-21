@@ -1161,6 +1161,11 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
     }
     commasep(s, inconsistent, decl.inputs, print_arg);
     word(s.s, "|");
+    if decl.output.node != ast::ty_infer {
+        space_if_not_bol(s);
+        word_space(s, "->");
+        print_type(s, decl.output);
+    }
     maybe_print_comment(s, decl.output.span.lo);
 }
 

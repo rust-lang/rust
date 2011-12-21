@@ -1512,6 +1512,10 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
     let fty = ty_of_fn_decl(tcx, m_check_tyvar(fcx), decl,
                             proto, [], none).ty;
 
+    log #fmt("check_expr_fn_with_unifier %s fty=%s",
+             expr_to_str(expr),
+             ty_to_str(tcx, fty));
+
     write::ty_only_fixup(fcx, expr.id, fty);
 
     // Unify the type of the function with the expected type before we
@@ -1521,9 +1525,6 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
     unify(fcx, expr.span, expected, fty);
 
     check_fn1(fcx.ccx, decl, proto, body, expr.id, some(fcx));
-    if proto == ast::proto_block {
-        write::ty_only_fixup(fcx, expr.id, expected);
-    }
 }
 
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
@@ -1979,11 +1980,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Take the prototype from the expected type, but default to block:
         let proto = alt ty::struct(tcx, expected) {
           ty::ty_fn(proto, _, _, _, _) { proto }
-          _ { ast::proto_block }
+          _ {
+            fcx.ccx.tcx.sess.span_warn(
+                expr.span,
+                "unable to infer kind of closure, defaulting to block");
+            ast::proto_block
+          }
         };
+        log #fmt("checking expr_fn_block %s expected=%s",
+                 expr_to_str(expr),
+                 ty_to_str(tcx, expected));
         check_expr_fn_with_unifier(fcx, expr, decl,
                                    proto, body,
                                    unify, expected);
+        write::ty_only_fixup(fcx, id, expected);
       }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking
