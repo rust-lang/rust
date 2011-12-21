@@ -98,6 +98,7 @@ type hashmap<K, V> = obj {
     Iterate over all the keys in the map
     */
     fn keys(block(K));
+
     /*
     Iterate over all the values in the map
     */
