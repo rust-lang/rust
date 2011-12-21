@@ -431,8 +431,9 @@ TSREQS :=											\
 		$(SREQ3_T_$(target)_H_$(CFG_HOST_TRIPLE)))
 FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
+RUSTDOC := $(HBIN3_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
 
-all: rustc $(GENERATED) $(DOCS) $(FUZZ) $(CARGO)
+all: rustc $(GENERATED) $(DOCS) $(FUZZ) $(CARGO) $(RUSTDOC)
 
 endif
 
