@@ -404,9 +404,6 @@ rust_task::yield(size_t time_in_us, bool *killed) {
         *killed = true;
     }
 
-    // We're not going to need any extra stack for a while
-    clear_stack_cache();
-
     yield_timer.reset_us(time_in_us);
 
     // Return to the scheduler.
@@ -747,15 +744,6 @@ void
 rust_task::del_stack() {
     del_stk(this, stk);
     record_stack_limit();
-}
-
-void
-rust_task::clear_stack_cache() {
-    A(sched, stk != NULL, "Expected to have a stack");
-    if (stk->prev != NULL) {
-        free_stk(this, stk->prev);
-        stk->prev = NULL;
-    }
 }
 
 void
