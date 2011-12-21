@@ -39,6 +39,7 @@ type visitor<E> =
       visit_fn_block: fn@(fn_decl, blk, span, node_id, E, vt<E>),
 
       // Invoked by both visit_fn_proto and visit_fn_block above.
+      // Intended to be a common flow point for all fn decls in AST.
       visit_fn_body: fn@(fn_decl, blk, span, fn_ident, node_id, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {

@@ -42,7 +42,8 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
                last_uses: last_uses};
     let visit = visit::mk_vt(@{
         visit_expr: check_expr,
-        visit_stmt: check_stmt
+        visit_stmt: check_stmt,
+        visit_fn_body: check_fn_body
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, ctx, visit);
@@ -50,17 +51,60 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
     ret ctx.rval_map;
 }
 
-fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
+// Yields the appropriate function to check the kind of closed over
+// variables. `id` is the node_id for some expression that creates the
+// closure.
+fn with_closure_check_fn(cx: ctx, id: node_id,
+                         b: block(fn(ctx, ty::t, sp: span))) {
+    let fty = ty::node_id_to_monotype(cx.tcx, id);
+    alt ty::ty_fn_proto(cx.tcx, fty) {
+      proto_send. { b(check_send); }
+      proto_shared(_) { b(check_copy); }
+      proto_block. | proto_bare. { /* no check needed */ }
+    }
+}
 
-    fn check_free_vars(e: @expr,
-                       cx: ctx,
-                       check_fn: fn(ctx, ty::t, sp: span)) {
-        for @{def, span} in *freevars::get_freevars(cx.tcx, e.id) {
+// Check that the free variables used in a shared/sendable closure conform
+// to the copy/move kind bounds. Then recursively check the function body.
+fn check_fn_body(decl: fn_decl, body: blk, sp: span, i: fn_ident, id: node_id,
+                 cx: ctx, v: visit::vt<ctx>) {
+
+    // n.b.: This could be the body of either a fn decl or a fn expr.  In the
+    // former case, the prototype will be proto_bare and no check occurs.  In
+    // the latter case, we do not check the variables that in the capture
+    // clause (as we don't have access to that here) but just those that
+    // appear free.  The capture clauses are checked below, in check_expr().
+    //
+    // We could do this check also in check_expr(), but it seems more
+    // "future-proof" to do it this way, as check_fn_body() is supposed to be
+    // the common flow point for all functions that appear in the AST.
+
+    with_closure_check_fn(cx, id) { |check_fn|
+        for @{def, span} in *freevars::get_freevars(cx.tcx, id) {
             let id = ast_util::def_id_of_def(def).node;
             let ty = ty::node_id_to_type(cx.tcx, id);
             check_fn(cx, ty, span);
         }
     }
+
+    visit::visit_fn_body(decl, body, sp, i, id, cx, v);
+}
+
+fn check_fn_cap_clause(_cx: ctx,
+                       _id: node_id,
+                       _cap_clause: capture_clause) {
+//    let freevars = freevars::get_freevars(cx.tcx, i);
+//    let contains_var = lambda(id: def_id) -> bool {
+//        vec::any(freevars, { |freevar|
+//            ast_util::def_id_of_def(freevar).node == def_id
+//        })
+//    }
+//    with_closure_check_fn(cx, id) { |check_fn|
+//        let check_var = lambda(
+//    }
+}
+
+fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 
     alt e.node {
       expr_assign(_, ex) | expr_assign_op(_, _, ex) |
@@ -121,13 +165,9 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           none. {}
         }
       }
-      expr_fn({proto: proto_send., _}, captures) { // NDM captures
-        check_free_vars(e, cx, check_send);
-      }
-      expr_fn({proto: proto_shared(_), _}, captures) { // NDM captures
-        check_free_vars(e, cx, check_copy);
-      }
       expr_ternary(_, a, b) { maybe_copy(cx, a); maybe_copy(cx, b); }
+      expr_fn(_, cap_clause) { check_fn_cap_clause(cx, e.id, *cap_clause); }
+
       _ { }
     }
     visit::visit_expr(e, cx, v);
