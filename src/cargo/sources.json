@@ -10,5 +10,8 @@
 	},
 	"brson": {
 		"url": "https://raw.github.com/brson/rust-packages/master/packages.json"
+	},
+	"erickt": {
+		"url": "https://raw.github.com/erickt/rust-packages/master/packages.json"
 	}
 }
