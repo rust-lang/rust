@@ -559,7 +559,8 @@ fn sync_one(c: cargo, name: str, src: source) {
     }
     alt src.sig {
         some(u) {
-            let p = run::program_output("curl", ["-f", "-s", "-o", sigfile, u]);
+            let p = run::program_output("curl", ["-f", "-s", "-o", sigfile,
+                                                 u]);
             if p.status != 0 {
                 warn(#fmt["fetch for source %s (sig %s) failed", name, u]);
             }
@@ -568,7 +569,8 @@ fn sync_one(c: cargo, name: str, src: source) {
     }
     alt src.key {
         some(u) {
-            let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile, u]);
+            let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
+                                                  u]);
             if p.status != 0 {
                 warn(#fmt["fetch for source %s (key %s) failed", name, u]);
             }
@@ -580,7 +582,8 @@ fn sync_one(c: cargo, name: str, src: source) {
         (some(_), some(_), some(f)) {
             let r = pgp::verify(c.root, pkgfile, sigfile, f);
             if !r {
-                warn(#fmt["signature verification failed for source %s", name]);
+                warn(#fmt["signature verification failed for source %s",
+                          name]);
                 ret;
             } else {
                 info(#fmt["signature ok for source %s", name]);
@@ -603,7 +606,7 @@ fn cmd_sync(c: cargo, argv: [str]) {
     }
 }
 
-fn cmd_init(c: cargo, argv: [str]) {
+fn cmd_init(c: cargo) {
     let srcurl = "http://www.rust-lang.org/cargo/sources.json";
     let sigurl = "http://www.rust-lang.org/cargo/sources.json.sig";
 
@@ -667,7 +670,7 @@ fn cmd_search(c: cargo, argv: [str]) {
 
 fn cmd_usage() {
     print("Usage: cargo <verb> [args...]");
-    print("  init                                 Fetch default sources.json");
+    print("  init                                 Fetch default sources");
     print("  install [source/]package-name        Install by name");
     print("  install uuid:[source/]package-uuid   Install by uuid");
     print("  list [source]                        List packages");
@@ -683,7 +686,7 @@ fn main(argv: [str]) {
     }
     let c = configure();
     alt argv[1] {
-        "init" { cmd_init(c, argv); }
+        "init" { cmd_init(c); }
         "install" { cmd_install(c, argv); }
         "list" { cmd_list(c, argv); }
         "search" { cmd_search(c, argv); }

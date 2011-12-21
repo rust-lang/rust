@@ -91,7 +91,8 @@ fn add(root: str, key: str) {
 
 fn verify(root: str, data: str, sig: str, keyfp: str) -> bool {
     let path = fs::connect(root, "gpg");
-    let p = gpg(["--homedir", path, "--with-fingerprint", "--verify", sig, data]);
+    let p = gpg(["--homedir", path, "--with-fingerprint", "--verify", sig,
+                 data]);
     let res = "Primary key fingerprint: " + keyfp;
     for line in str::split(p.err, '\n' as u8) {
         if line == res {
