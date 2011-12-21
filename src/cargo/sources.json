@@ -1,4 +1,7 @@
 {
+	"central": {
+		"url": "https://raw.github.com/graydon/cargo-central/master/packages.json"
+	},
 	"elly": {
 		"url": "https://raw.github.com/elly/rust-packages/master/packages.json"
 		"sig": "https://raw.github.com/elly/rust-packages/master/packages.json.sig",
