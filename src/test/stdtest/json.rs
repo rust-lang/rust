@@ -6,6 +6,11 @@ import std::json::*;
 import option::{none, some};
 
 #[test]
+fn test_from_str_null() {
+    assert(from_str("null") == some(null));
+}
+
+#[test]
 fn test_from_str_num() {
     assert(from_str("3") == some(num(3f)));
     assert(from_str("3.1") == some(num(3.1f)));
@@ -31,6 +36,7 @@ fn test_from_str_bool() {
 fn test_from_str_list() {
     assert(from_str("[]") == some(list(@[])));
     assert(from_str("[true]") == some(list(@[boolean(true)])));
+    assert(from_str("[null]") == some(list(@[null])));
     assert(from_str("[3, 1]") == some(list(@[num(3f), num(1f)])));
     assert(from_str("[2, [4, 1]]") ==
         some(list(@[num(2f), list(@[num(4f), num(1f)])])));
@@ -44,6 +50,7 @@ fn test_from_str_list() {
 fn test_from_str_dict() {
     assert(from_str("{}") != none);
     assert(from_str("{\"a\": 3}") != none);
+    assert(from_str("{\"a\": null}") != none);
     assert(from_str("{\"a\": }") == none);
     assert(from_str("{\"a\" }") == none);
     assert(from_str("{\"a\"") == none);
