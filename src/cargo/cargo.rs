@@ -31,6 +31,7 @@ type package = {
     uuid: str,
     url: str,
     method: str,
+    ref: option::t<str>,
     tags: [str]
 };
 
@@ -242,6 +243,11 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         }
     };
 
+    let ref = alt p.find("ref") {
+        some(json::string(_n)) { some(_n) }
+        _ { none }
+    };
+
     let tags = [];
     alt p.find("tags") {
         some(json::list(js)) {
@@ -260,6 +266,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         uuid: uuid,
         url: url,
         method: method,
+        ref: ref,
         tags: tags
     });
     log "  Loaded package: " + src.name + "/" + name;
@@ -398,8 +405,14 @@ fn install_source(c: cargo, path: str) {
     }
 }
 
-fn install_git(c: cargo, wd: str, url: str) {
+fn install_git(c: cargo, wd: str, url: str, ref: option::t<str>) {
     run::run_program("git", ["clone", url, wd]);
+    if option::is_some::<str>(ref) {
+        let r = option::get::<str>(ref);
+        fs::change_dir(wd);
+        run::run_program("git", ["checkout", r]);
+    }
+
     install_source(c, wd);
 }
 
@@ -424,7 +437,7 @@ fn install_file(c: cargo, wd: str, path: str) {
 fn install_package(c: cargo, wd: str, pkg: package) {
     info("Installing with " + pkg.method + " from " + pkg.url + "...");
     if pkg.method == "git" {
-        install_git(c, wd, pkg.url);
+        install_git(c, wd, pkg.url, pkg.ref);
     } else if pkg.method == "http" {
         install_curl(c, wd, pkg.url);
     } else if pkg.method == "file" {
