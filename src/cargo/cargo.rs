@@ -30,7 +30,8 @@ type package = {
     name: str,
     uuid: str,
     url: str,
-    method: str
+    method: str,
+    tags: [str]
 };
 
 type source = {
@@ -241,18 +242,31 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         }
     };
 
+    let tags = [];
+    alt p.find("tags") {
+        some(json::list(js)) {
+            for j in *js {
+                alt j {
+                    json::string(_j) { vec::grow(tags, 1u, _j); }
+                    _ { }
+                }
+            }
+        }
+        _ { }
+    }
     vec::grow(src.packages, 1u, {
         // source: _source(src),
         name: name,
         uuid: uuid,
         url: url,
-        method: method
+        method: method,
+        tags: tags
     });
-    info("  Loaded package: " + src.name + "/" + name);
+    log "  Loaded package: " + src.name + "/" + name;
 }
 
 fn load_source_packages(&c: cargo, &src: source) {
-    info("Loading source: " + src.name);
+    log "Loading source: " + src.name;
     let dir = fs::connect(c.sourcedir, src.name);
     let pkgfile = fs::connect(dir, "packages.json");
     if !fs::path_exists(pkgfile) { ret; }
@@ -618,11 +632,46 @@ fn cmd_init(c: cargo, argv: [str]) {
     run::run_program("cp", [srcfile, destsrcfile]);
 }
 
+fn print_pkg(s: source, p: package) {
+    let m = s.name + "/" + p.name + " (" + p.uuid + ")";
+    if vec::len(p.tags) > 0u {
+        m = m + " [" + str::connect(p.tags, ", ") + "]";
+    }
+    info(m);
+}
+fn cmd_list(c: cargo, argv: [str]) {
+    for_each_package(c, { |s, p|
+        if vec::len(argv) <= 2u || argv[2] == s.name {
+            print_pkg(s, p);
+        }
+    });
+}
+
+fn cmd_search(c: cargo, argv: [str]) {
+    if vec::len(argv) < 3u {
+        cmd_usage();
+        ret;
+    }
+    let n = 0;
+    let name = argv[2];
+    let tags = vec::slice(argv, 3u, vec::len(argv));
+    for_each_package(c, { |s, p|
+        if (str::contains(p.name, name) || name == "*") &&
+            vec::all(tags, { |t| vec::member(t, p.tags) }) {
+            print_pkg(s, p);
+            n += 1;
+        }
+    });
+    info(#fmt["Found %d packages.", n]);
+}
+
 fn cmd_usage() {
     print("Usage: cargo <verb> [args...]");
     print("  init                                 Fetch default sources.json");
     print("  install [source/]package-name        Install by name");
     print("  install uuid:[source/]package-uuid   Install by uuid");
+    print("  list [source]                        List packages");
+    print("  search <name | '*'> [tags...]        Search packages");
     print("  sync                                 Sync all sources");
     print("  usage                                This");
 }
@@ -636,6 +685,8 @@ fn main(argv: [str]) {
     alt argv[1] {
         "init" { cmd_init(c, argv); }
         "install" { cmd_install(c, argv); }
+        "list" { cmd_list(c, argv); }
+        "search" { cmd_search(c, argv); }
         "sync" { cmd_sync(c, argv); }
         "usage" { cmd_usage(); }
         _ { cmd_usage(); }
