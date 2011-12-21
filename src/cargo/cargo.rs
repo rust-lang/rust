@@ -36,10 +36,14 @@ type package = {
 type source = {
     name: str,
     url: str,
+    sig: option::t<str>,
+    key: option::t<str>,
+    keyfp: option::t<str>,
     mutable packages: [package]
 };
 
 type cargo = {
+    pgp: bool,
     root: str,
     bindir: str,
     libdir: str,
@@ -158,12 +162,32 @@ fn need_dir(s: str) {
 fn parse_source(name: str, j: json::json) -> source {
     alt j {
         json::dict(_j) {
-            alt _j.find("url") {
+            let url = alt _j.find("url") {
                 some(json::string(u)) {
-                    ret { name: name, url: u, mutable packages: [] };
+                    u
                 }
                 _ { fail "Needed 'url' field in source."; }
             };
+            let sig = alt _j.find("sig") {
+                some(json::string(u)) {
+                    some(u)
+                }
+                _ { none }
+            };
+            let key = alt _j.find("key") {
+                some(json::string(u)) {
+                    some(u)
+                }
+                _ { none }
+            };
+            let keyfp = alt _j.find("keyfp") {
+                some(json::string(u)) {
+                    some(u)
+                }
+                _ { none }
+            };
+            ret { name: name, url: url, sig: sig, key: key, keyfp: keyfp,
+                  mutable packages: [] };
         }
         _ { fail "Needed dict value in source."; }
     };
@@ -269,6 +293,7 @@ fn configure() -> cargo {
     try_parse_sources(fs::connect(p, "sources.json"), sources);
     try_parse_sources(fs::connect(p, "local-sources.json"), sources);
     let c = {
+        pgp: pgp::supported(),
         root: p,
         bindir: fs::connect(p, "bin"),
         libdir: fs::connect(p, "lib"),
@@ -288,6 +313,10 @@ fn configure() -> cargo {
         load_source_packages(c, s);
         sources.insert(k, s);
     };
+
+    if c.pgp {
+        pgp::init(c.root);
+    }
 
     c
 }
@@ -501,7 +530,10 @@ fn cmd_install(c: cargo, argv: [str]) {
 
 fn sync_one(c: cargo, name: str, src: source) {
     let dir = fs::connect(c.sourcedir, name);
-    let pkgfile = fs::connect(dir, "packages.json");
+    let pkgfile = fs::connect(dir, "packages.json.new");
+    let destpkgfile = fs::connect(dir, "packages.json");
+    let sigfile = fs::connect(dir, "packages.json.sig");
+    let keyfile = fs::connect(dir, "key.gpg");
     let url = src.url;
     need_dir(dir);
     info(#fmt["fetching source %s...", name]);
@@ -511,6 +543,40 @@ fn sync_one(c: cargo, name: str, src: source) {
     } else {
         info(#fmt["fetched source: %s", name]);
     }
+    alt src.sig {
+        some(u) {
+            let p = run::program_output("curl", ["-f", "-s", "-o", sigfile, u]);
+            if p.status != 0 {
+                warn(#fmt["fetch for source %s (sig %s) failed", name, u]);
+            }
+        }
+        _ { }
+    }
+    alt src.key {
+        some(u) {
+            let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile, u]);
+            if p.status != 0 {
+                warn(#fmt["fetch for source %s (key %s) failed", name, u]);
+            }
+            pgp::add(c.root, keyfile);
+        }
+        _ { }
+    }
+    alt (src.sig, src.key, src.keyfp) {
+        (some(_), some(_), some(f)) {
+            let r = pgp::verify(c.root, pkgfile, sigfile, f);
+            if !r {
+                warn(#fmt["signature verification failed for source %s", name]);
+                ret;
+            } else {
+                info(#fmt["signature ok for source %s", name]);
+            }
+        }
+        _ {
+            info(#fmt["no signature for source %s", name]);
+        }
+    }
+    run::run_program("cp", [pkgfile, destpkgfile]);
 }
 
 fn cmd_sync(c: cargo, argv: [str]) {
@@ -523,8 +589,38 @@ fn cmd_sync(c: cargo, argv: [str]) {
     }
 }
 
+fn cmd_init(c: cargo, argv: [str]) {
+    let srcurl = "http://www.rust-lang.org/cargo/sources.json";
+    let sigurl = "http://www.rust-lang.org/cargo/sources.json.sig";
+
+    let srcfile = fs::connect(c.root, "sources.json.new");
+    let sigfile = fs::connect(c.root, "sources.json.sig");
+    let destsrcfile = fs::connect(c.root, "sources.json");
+
+    let p = run::program_output("curl", ["-f", "-s", "-o", srcfile, srcurl]);
+    if p.status != 0 {
+        warn(#fmt["fetch of sources.json failed: %s", p.out]);
+        ret;
+    }
+
+    let p = run::program_output("curl", ["-f", "-s", "-o", sigfile, sigurl]);
+    if p.status != 0 {
+        warn(#fmt["fetch of sources.json.sig failed: %s", p.out]);
+        ret;
+    }
+
+    let r = pgp::verify(c.root, srcfile, sigfile, pgp::signing_key_fp());
+    if !r {
+        warn(#fmt["signature verification failed for sources.json"]);
+        ret;
+    }
+    info(#fmt["signature ok for sources.json"]);
+    run::run_program("cp", [srcfile, destsrcfile]);
+}
+
 fn cmd_usage() {
     print("Usage: cargo <verb> [args...]");
+    print("  init                                 Fetch default sources.json");
     print("  install [source/]package-name        Install by name");
     print("  install uuid:[source/]package-uuid   Install by uuid");
     print("  sync                                 Sync all sources");
@@ -538,6 +634,7 @@ fn main(argv: [str]) {
     }
     let c = configure();
     alt argv[1] {
+        "init" { cmd_init(c, argv); }
         "install" { cmd_install(c, argv); }
         "sync" { cmd_sync(c, argv); }
         "usage" { cmd_usage(); }

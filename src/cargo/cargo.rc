@@ -14,3 +14,5 @@
        vers = "0.1",
        uuid = "9ff87a04-8fed-4295-9ff8-f99bb802650b",
        url = "http://rust-lang.org/doc/cargo")];
+
+mod pgp;
