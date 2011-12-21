@@ -90,18 +90,30 @@ fn check_fn_body(decl: fn_decl, body: blk, sp: span, i: fn_ident, id: node_id,
     visit::visit_fn_body(decl, body, sp, i, id, cx, v);
 }
 
-fn check_fn_cap_clause(_cx: ctx,
-                       _id: node_id,
-                       _cap_clause: capture_clause) {
-//    let freevars = freevars::get_freevars(cx.tcx, i);
-//    let contains_var = lambda(id: def_id) -> bool {
-//        vec::any(freevars, { |freevar|
-//            ast_util::def_id_of_def(freevar).node == def_id
-//        })
-//    }
-//    with_closure_check_fn(cx, id) { |check_fn|
-//        let check_var = lambda(
-//    }
+fn check_fn_cap_clause(cx: ctx,
+                       id: node_id,
+                       cap_clause: capture_clause) {
+    // Check that the variables named in the clause which are not free vars
+    // (if any) are also legal.  freevars are checked above in check_fn_body.
+    // This is kind of a degenerate case, as captured variables will generally
+    // appear free in the body.
+    let freevars = freevars::get_freevars(cx.tcx, id);
+    let freevar_ids = vec::map(*freevars, { |freevar|
+        ast_util::def_id_of_def(freevar.def).node
+    });
+    //log("freevar_ids", freevar_ids);
+    with_closure_check_fn(cx, id) { |check_fn|
+        let check_var = lambda(&&cap_item: @capture_item) {
+            let cap_def = cx.tcx.def_map.get(cap_item.id);
+            let cap_def_id = ast_util::def_id_of_def(cap_def).node;
+            if !vec::member(cap_def_id, freevar_ids) {
+                let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
+                check_fn(cx, ty, cap_item.span);
+            }
+        };
+        vec::iter(cap_clause.copies, check_var);
+        vec::iter(cap_clause.moves, check_var);
+    }
 }
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
