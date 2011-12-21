@@ -3,7 +3,7 @@
 		"url": "https://raw.github.com/graydon/cargo-central/master/packages.json"
 	},
 	"elly": {
-		"url": "https://raw.github.com/elly/rust-packages/master/packages.json"
+		"url": "https://raw.github.com/elly/rust-packages/master/packages.json",
 		"sig": "https://raw.github.com/elly/rust-packages/master/packages.json.sig",
 		"key": "https://raw.github.com/elly/rust-packages/master/signing-key.gpg",
 		"keyfp": "4107 21C0 FF32 858F 61FF  33F6 E595 8E36 FDC8 EA00"
