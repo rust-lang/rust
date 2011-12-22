@@ -1608,7 +1608,7 @@ fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
                   expr_requires_semi_to_be_stmt(option::get(els)) }
       }
       ast::expr_alt(_, arms) {
-        vec::any({|arm| !option::is_none(arm.body.node.expr)}, arms)
+        vec::any(arms, {|arm| !option::is_none(arm.body.node.expr)})
       }
       ast::expr_block(blk) | ast::expr_while(_, blk) |
       ast::expr_for(_, _, blk) | ast::expr_do_while(blk, _) {
