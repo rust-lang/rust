@@ -32,7 +32,7 @@ type m_uint = u32;
 #[cfg(target_arch="x86_64")]
 type m_uint = u64;
 
-// PORT *must* match with "import m_float = fXX" in std::math per arch
+// PORT *must* match with "import m_float = fXX" in core::float per arch
 
 /*
 Type: m_float
