@@ -49,14 +49,6 @@ fn log_block_err(b: ast::blk) { log_err print::pprust::block_to_str(b); }
 
 fn log_item_err(i: @ast::item) { log_err print::pprust::item_to_str(i); }
 
-fn log_fn(f: ast::_fn, name: ast::ident, params: [ast::ty_param]) {
-    log print::pprust::fun_to_str(f, name, params);
-}
-
-fn log_fn_err(f: ast::_fn, name: ast::ident, params: [ast::ty_param]) {
-    log_err print::pprust::fun_to_str(f, name, params);
-}
-
 fn log_stmt(st: ast::stmt) { log print::pprust::stmt_to_str(st); }
 
 fn log_stmt_err(st: ast::stmt) { log_err print::pprust::stmt_to_str(st); }

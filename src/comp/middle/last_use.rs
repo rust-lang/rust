@@ -136,7 +136,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         for arg in args {
             alt arg.node {
               //NDM--register captured as uses
-              expr_fn(_, captured) { fns += [arg]; }
+              expr_fn(_, _, captured) { fns += [arg]; }
               expr_fn_block(_, _) { fns += [arg]; }
               _ {
                 alt arg_ts[i].mode {

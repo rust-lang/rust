@@ -337,7 +337,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           visit_ty: bind walk_ty(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
           visit_fn_proto:
-              bind visit_fn_proto_with_scope(e, _, _, _, _, _, _, _),
+              bind visit_fn_proto_with_scope(e, _, _, _, _, _, _, _, _),
           visit_fn_block:
               bind visit_fn_block_with_scope(e, _, _, _, _, _, _)
           with *visit::default_visitor()};
@@ -353,7 +353,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
                          lookup_path_strict(*e, sc, exp.span, p.node,
                                             ns_value));
           }
-          ast::expr_fn(_, cap_clause) {
+          ast::expr_fn(_, _, cap_clause) {
             let rci = bind resolve_capture_item(e, sc, _);
             vec::iter(cap_clause.copies, rci);
             vec::iter(cap_clause.moves, rci);
@@ -404,8 +404,8 @@ fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
       ast::item_impl(tps, sty, methods) {
         visit::visit_ty(sty, sc, v);
         for m in methods {
-            v.visit_fn_proto(m.node.meth, tps + m.node.tps, m.span,
-                             some(m.node.ident), m.node.id, sc, v);
+            v.visit_fn_proto(m.decl, tps + m.tps, m.body, m.span,
+                             some(m.ident), m.id, sc, v);
         }
       }
       _ { visit::visit_item(i, sc, v); }
@@ -417,9 +417,9 @@ fn visit_native_item_with_scope(ni: @ast::native_item, sc: scopes,
     visit::visit_native_item(ni, cons(scope_native_item(ni), @sc), v);
 }
 
-fn visit_fn_proto_with_scope(e: @env, f: ast::_fn, tp: [ast::ty_param],
-                             sp: span, name: fn_ident, id: node_id,
-                             sc: scopes, v: vt<scopes>) {
+fn visit_fn_proto_with_scope(e: @env, decl: ast::fn_decl, tp: [ast::ty_param],
+                             body: ast::blk, sp: span, name: fn_ident,
+                             id: node_id, sc: scopes, v: vt<scopes>) {
     // is this a main fn declaration?
     alt name {
       some(nm) {
@@ -434,13 +434,13 @@ fn visit_fn_proto_with_scope(e: @env, f: ast::_fn, tp: [ast::ty_param],
 
     // here's where we need to set up the mapping
     // for f's constrs in the table.
-    for c: @ast::constr in f.decl.constraints { resolve_constr(e, c, sc, v); }
-    let scope = alt f.proto {
-      ast::proto_bare. { scope_bare_fn(f.decl, id, tp) }
-      _ { scope_fn_expr(f.decl, id, tp) }
+    for c: @ast::constr in decl.constraints { resolve_constr(e, c, sc, v); }
+    let scope = alt decl.proto {
+      ast::proto_bare. { scope_bare_fn(decl, id, tp) }
+      _ { scope_fn_expr(decl, id, tp) }
     };
 
-    visit::visit_fn_proto(f, tp, sp, name, id, cons(scope, @sc), v);
+    visit::visit_fn_proto(decl, tp, body, sp, name, id, cons(scope, @sc), v);
 }
 
 fn visit_fn_block_with_scope(_e: @env, decl: fn_decl, blk: ast::blk,
@@ -1053,9 +1053,9 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
       ast::item_const(_, _) {
         if ns == ns_value { ret some(ast::def_const(local_def(i.id))); }
       }
-      ast::item_fn(f, _) {
+      ast::item_fn(decl, _, _) {
         if ns == ns_value {
-            ret some(ast::def_fn(local_def(i.id), f.decl.purity));
+            ret some(ast::def_fn(local_def(i.id), decl.purity));
         }
       }
       ast::item_mod(_) {
@@ -1067,7 +1067,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
       ast::item_ty(_, _) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
-      ast::item_res(_, _, _, ctor_id) {
+      ast::item_res(_, _, _, _, ctor_id) {
         alt ns {
           ns_value. {
             ret some(ast::def_fn(local_def(ctor_id), ast::impure_fn));
@@ -1319,9 +1319,9 @@ fn index_mod(md: ast::_mod) -> mod_index {
     }
     for it: @ast::item in md.items {
         alt it.node {
-          ast::item_const(_, _) | ast::item_fn(_, _) | ast::item_mod(_) |
+          ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
           ast::item_native_mod(_) | ast::item_ty(_, _) |
-          ast::item_res(_, _, _, _) | ast::item_obj(_, _, _) |
+          ast::item_res(_, _, _, _, _) | ast::item_obj(_, _, _) |
           ast::item_impl(_, _, _) {
             add_to_index(index, it.ident, mie_item(it));
           }
@@ -1479,8 +1479,8 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
     }
     visit::visit_item(i, x, v);
     alt i.node {
-      ast::item_fn(f, ty_params) {
-        check_fn(*e, i.span, f);
+      ast::item_fn(decl, ty_params, _) {
+        check_fn(*e, i.span, decl);
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
                       "type parameter");
       }
@@ -1488,7 +1488,7 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
         fn field_name(field: ast::obj_field) -> ident { ret field.ident; }
         ensure_unique(*e, i.span, ob.fields, field_name, "object field");
         for m: @ast::method in ob.methods {
-            check_fn(*e, m.span, m.node.meth);
+            check_fn(*e, m.span, m.decl);
         }
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
                       "type parameter");
@@ -1568,11 +1568,11 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                   ast::item_mod(_) | ast::item_native_mod(_) {
                     add_name(mods, it.span, it.ident);
                   }
-                  ast::item_const(_, _) | ast::item_fn(_, _) {
+                  ast::item_const(_, _) | ast::item_fn(_, _, _) {
                     add_name(values, it.span, it.ident);
                   }
                   ast::item_ty(_, _) { add_name(types, it.span, it.ident); }
-                  ast::item_res(_, _, _, _) | ast::item_obj(_, _, _) {
+                  ast::item_res(_, _, _, _, _) | ast::item_obj(_, _, _) {
                     add_name(types, it.span, it.ident);
                     add_name(values, it.span, it.ident);
                   }
@@ -1586,9 +1586,9 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
     }
 }
 
-fn check_fn(e: env, sp: span, f: ast::_fn) {
+fn check_fn(e: env, sp: span, decl: ast::fn_decl) {
     fn arg_name(a: ast::arg) -> ident { ret a.ident; }
-    ensure_unique(e, sp, f.decl.inputs, arg_name, "argument");
+    ensure_unique(e, sp, decl.inputs, arg_name, "argument");
 }
 
 fn check_expr(e: @env, ex: @ast::expr, &&x: (), v: vt<()>) {
@@ -1775,9 +1775,9 @@ fn find_impls_in_item(i: @ast::item, &impls: [@_impl],
             impls += [@{did: local_def(i.id),
                         ident: i.ident,
                         methods: vec::map(mthds, {|m|
-                            @{did: local_def(m.node.id),
-                              n_tps: vec::len(m.node.tps),
-                              ident: m.node.ident}
+                            @{did: local_def(m.id),
+                              n_tps: vec::len(m.tps),
+                              ident: m.ident}
                         })}];
         }
       }

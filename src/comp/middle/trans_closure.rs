@@ -372,7 +372,8 @@ fn load_environment(enclosing_cx: @block_ctxt,
 }
 
 fn trans_expr_fn(bcx: @block_ctxt,
-                 f: ast::_fn,
+                 decl: ast::fn_decl,
+                 body: ast::blk,
                  sp: span,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
@@ -389,21 +390,22 @@ fn trans_expr_fn(bcx: @block_ctxt,
 
     let trans_closure_env = lambda(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(
-            ccx.tcx, id, f.proto, cap_clause);
+            ccx.tcx, id, decl.proto, cap_clause);
         let {llbox, box_ty, bcx} = build_closure(bcx, cap_vars, ck);
-        trans_closure(sub_cx, sp, f, llfn, no_self, [], id, {|fcx|
+        trans_closure(sub_cx, sp, decl, body, llfn, no_self, [], id, {|fcx|
             load_environment(bcx, fcx, box_ty, cap_vars, ck);
         });
         llbox
     };
 
-    let closure = alt f.proto {
+    let closure = alt decl.proto {
       ast::proto_block. { trans_closure_env(ty::closure_block) }
       ast::proto_shared(_) { trans_closure_env(ty::closure_shared) }
       ast::proto_send. { trans_closure_env(ty::closure_send) }
       ast::proto_bare. {
         let closure = C_null(T_opaque_boxed_closure_ptr(ccx));
-        trans_closure(sub_cx, sp, f, llfn, no_self, [], id, {|_fcx|});
+        trans_closure(sub_cx, sp, decl, body, llfn, no_self, [],
+                      id, {|_fcx|});
         closure
       }
     };

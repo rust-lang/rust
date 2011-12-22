@@ -1,8 +1,6 @@
 
 import syntax::ast;
-import ast::{_fn, stmt,
-             fn_ident, node_id, crate, return_val, noreturn,
-             expr};
+import ast::{stmt, fn_ident, node_id, crate, return_val, noreturn, expr};
 import syntax::{visit, print};
 import syntax::codemap::span;
 import middle::ty::{type_is_nil, ret_ty_of_fn};

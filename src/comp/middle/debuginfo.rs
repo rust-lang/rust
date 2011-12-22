@@ -721,23 +721,23 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
     let (ident, ret_ty, id) = alt cx.ast_map.get(fcx.id) {
       ast_map::node_item(item) {
         alt item.node {
-          ast::item_fn(f, _) | ast::item_res(f, _, _, _) {
-            (item.ident, f.decl.output, item.id)
+          ast::item_fn(decl, _, _) | ast::item_res(decl, _, _, _, _) {
+            (item.ident, decl.output, item.id)
           }
         }
       }
       ast_map::node_obj_method(method) {
-        (method.node.ident, method.node.meth.decl.output, method.node.id)
+        (method.ident, method.decl.output, method.id)
       }
       ast_map::node_res_ctor(item) {
-        alt item.node { ast::item_res(f, _, _, ctor_id) {
-          (item.ident, f.decl.output, ctor_id)
+        alt item.node { ast::item_res(decl, _, _, _, ctor_id) {
+          (item.ident, decl.output, ctor_id)
         }}
       }
       ast_map::node_expr(expr) {
         alt expr.node {
-          ast::expr_fn(f, _) {
-            (dbg_cx.names.next("fn"), f.decl.output, expr.id)
+          ast::expr_fn(decl, _, _) {
+            (dbg_cx.names.next("fn"), decl.output, expr.id)
           }
           ast::expr_fn_block(decl, _) {
             (dbg_cx.names.next("fn"), decl.output, expr.id)

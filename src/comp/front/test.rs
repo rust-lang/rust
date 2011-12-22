@@ -51,7 +51,7 @@ fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     // we want to be main.
     fn nomain(&&item: @ast::item) -> option::t<@ast::item> {
         alt item.node {
-          ast::item_fn(f, _) {
+          ast::item_fn(_, _, _) {
             if item.ident == "main" {
                 option::none
             } else { option::some(item) }
@@ -83,7 +83,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
 
     if is_test_fn(i) {
         alt i.node {
-          ast::item_fn(f, _) when f.decl.purity == ast::unsafe_fn {
+          ast::item_fn(decl, _, _) when decl.purity == ast::unsafe_fn {
             cx.sess.span_fatal(
                 i.span,
                 "unsafe functions cannot be used for tests");
@@ -110,9 +110,9 @@ fn is_test_fn(i: @ast::item) -> bool {
 
     fn has_test_signature(i: @ast::item) -> bool {
         alt i.node {
-          ast::item_fn(f, tps) {
-            let input_cnt = vec::len(f.decl.inputs);
-            let no_output = f.decl.output.node == ast::ty_nil;
+          ast::item_fn(decl, tps, _) {
+            let input_cnt = vec::len(decl.inputs);
+            let no_output = decl.output.node == ast::ty_nil;
             let tparm_cnt = vec::len(tps);
             input_cnt == 0u && no_output && tparm_cnt == 0u
           }
@@ -190,13 +190,12 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     let ret_ty = mk_test_desc_vec_ty(cx);
 
     let decl: ast::fn_decl =
-        {inputs: [],
+        {proto: ast::proto_bare,
+         inputs: [],
          output: ret_ty,
          purity: ast::impure_fn,
-         il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-    let proto = ast::proto_bare;
 
     // The vector of test_descs for this crate
     let test_descs = mk_test_desc_vec(cx);
@@ -205,9 +204,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
         default_block([], option::some(test_descs), cx.sess.next_node_id());
     let body = nospan(body_);
 
-    let fn_ = {decl: decl, proto: proto, body: body};
-
-    let item_ = ast::item_fn(fn_, []);
+    let item_ = ast::item_fn(decl, [], body);
     let item: ast::item =
         {ident: "tests",
          attrs: [],
@@ -325,10 +322,10 @@ fn mk_test_wrapper(cx: test_ctxt,
         ast::stmt_expr(@call_expr, cx.sess.next_node_id()));
 
     let wrapper_decl: ast::fn_decl = {
+        proto: ast::proto_bare,
         inputs: [],
         output: @nospan(ast::ty_nil),
         purity: ast::impure_fn,
-        il: ast::il_normal,
         cf: ast::return_val,
         constraints: []
     };
@@ -341,12 +338,6 @@ fn mk_test_wrapper(cx: test_ctxt,
         rules: ast::default_blk
     });
 
-    let wrapper_fn: ast::_fn = {
-        decl: wrapper_decl,
-        proto: ast::proto_bare,
-        body: wrapper_body
-    };
-
     let wrapper_capture: @ast::capture_clause = @{
         copies: [],
         moves: []
@@ -354,7 +345,7 @@ fn mk_test_wrapper(cx: test_ctxt,
 
     let wrapper_expr: ast::expr = {
         id: cx.sess.next_node_id(),
-        node: ast::expr_fn(wrapper_fn, wrapper_capture),
+        node: ast::expr_fn(wrapper_decl, wrapper_body, wrapper_capture),
         span: span
     };
 
@@ -375,13 +366,12 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let ret_ty = nospan(ast::ty_nil);
 
     let decl: ast::fn_decl =
-        {inputs: [args_arg],
+        {proto: ast::proto_bare,
+         inputs: [args_arg],
          output: @ret_ty,
          purity: ast::impure_fn,
-         il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-    let proto = ast::proto_bare;
 
     let test_main_call_expr = mk_test_main_call(cx);
 
@@ -390,9 +380,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
                       cx.sess.next_node_id());
     let body = {node: body_, span: dummy_sp()};
 
-    let fn_ = {decl: decl, proto: proto, body: body};
-
-    let item_ = ast::item_fn(fn_, []);
+    let item_ = ast::item_fn(decl, [], body);
     let item: ast::item =
         {ident: "main",
          attrs: [],

@@ -265,16 +265,14 @@ fn check_bad_word(p: parser) {
 }
 
 fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
-    fn parse_fn_input_ty(p: parser) -> ast::ty_arg {
-        let lo = p.get_lo_pos();
+    fn parse_fn_input_ty(p: parser) -> ast::arg {
         let mode = parse_arg_mode(p);
-        // Ignore arg name, if present
-        if is_plain_ident(p) && p.look_ahead(1u) == token::COLON {
+        let name = if is_plain_ident(p) && p.look_ahead(1u) == token::COLON {
+            let name = parse_value_ident(p);
             p.bump();
-            p.bump();
-        }
-        let t = parse_ty(p, false);
-        ret spanned(lo, t.span.hi, {mode: mode, ty: t});
+            name
+        } else { "" };
+        ret {mode: mode, ty: parse_ty(p, false), ident: name, id: p.get_id()};
     }
     let inputs =
         parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
@@ -283,7 +281,9 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
     //  auto constrs = parse_constrs(~[], p);
     let constrs: [@ast::constr] = [];
     let (ret_style, ret_ty) = parse_ret_ty(p);
-    ret ast::ty_fn(proto, inputs.node, ret_ty, ret_style, constrs);
+    ret ast::ty_fn({proto: proto, inputs: inputs.node, output: ret_ty,
+                    purity: ast::impure_fn, cf: ret_style,
+                    constraints: constrs});
 }
 
 fn parse_ty_obj(p: parser) -> ast::ty_ {
@@ -291,17 +291,18 @@ fn parse_ty_obj(p: parser) -> ast::ty_ {
         let flo = p.get_lo_pos();
         let proto: ast::proto = parse_method_proto(p);
         let ident = parse_value_ident(p);
-        let f = parse_ty_fn(proto, p);
+        let f = parse_ty_fn(proto, p), fhi = p.get_last_hi_pos();
         expect(p, token::SEMI);
         alt f {
-          ast::ty_fn(proto, inputs, output, cf, constrs) {
-            ret spanned(flo, output.span.hi,
-                        {proto: proto,
+          ast::ty_fn(d) {
+            // FIXME[fn_decl]
+            ret spanned(flo, fhi,
+                        {proto: d.proto,
                          ident: ident,
-                         inputs: inputs,
-                         output: output,
-                         cf: cf,
-                         constrs: constrs});
+                         inputs: d.inputs,
+                         output: d.output,
+                         cf: d.cf,
+                         constrs: d.constraints});
           }
         }
     }
@@ -1325,10 +1326,10 @@ fn parse_capture_clause(p: parser) -> @ast::capture_clause {
 fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let capture_clause = parse_capture_clause(p);
-    let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
+    let decl = parse_fn_decl(p, proto, ast::impure_fn);
     let body = parse_block(p);
-    let _fn = {decl: decl, proto: proto, body: body};
-    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn, capture_clause));
+    ret mk_expr(p, lo, body.span.hi,
+                ast::expr_fn(decl, body, capture_clause));
 }
 
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
@@ -1774,8 +1775,8 @@ fn parse_ty_params(p: parser) -> [ast::ty_param] {
     ret ty_params;
 }
 
-fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
-   ast::fn_decl {
+fn parse_fn_decl(p: parser, proto: ast::proto, purity: ast::purity)
+    -> ast::fn_decl {
     let inputs: ast::spanned<[ast::arg]> =
         parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
                   parse_arg, p);
@@ -1788,10 +1789,10 @@ fn parse_fn_decl(p: parser, purity: ast::purity, il: ast::inlineness) ->
         constrs = parse_constrs({|x| parse_ty_constr(inputs.node, x) }, p);
     }
     let (ret_style, ret_ty) = parse_ret_ty(p);
-    ret {inputs: inputs.node,
+    ret {proto: proto,
+         inputs: inputs.node,
          output: ret_ty,
          purity: purity,
-         il: il,
          cf: ret_style,
          constraints: constrs};
 }
@@ -1802,19 +1803,12 @@ fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
                   seq_sep(token::COMMA), parse_fn_block_arg, p).node;
     let output = eat(p, token::RARROW) ? parse_ty(p, false) :
         @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer);
-    ret {inputs: inputs,
+    ret {proto: ast::proto_block,
+         inputs: inputs,
          output: output,
          purity: ast::impure_fn,
-         il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-}
-
-fn parse_fn(p: parser, proto: ast::proto, purity: ast::purity,
-            il: ast::inlineness) -> ast::_fn {
-    let decl = parse_fn_decl(p, purity, il);
-    let body = parse_block(p);
-    ret {decl: decl, proto: proto, body: body};
 }
 
 fn parse_fn_header(p: parser) -> {ident: ast::ident, tps: [ast::ty_param]} {
@@ -1833,13 +1827,13 @@ fn mk_item(p: parser, lo: uint, hi: uint, ident: ast::ident, node: ast::item_,
 }
 
 fn parse_item_fn(p: parser, purity: ast::purity, proto: ast::proto,
-                         attrs: [ast::attribute], il: ast::inlineness) ->
-   @ast::item {
+                 attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
-    let f = parse_fn(p, proto, purity, il);
-    ret mk_item(p, lo, f.body.span.hi, t.ident, ast::item_fn(f, t.tps),
-                attrs);
+    let decl = parse_fn_decl(p, proto, purity);
+    let body = parse_block(p);
+    ret mk_item(p, lo, body.span.hi, t.ident,
+                ast::item_fn(decl, t.tps, body), attrs);
 }
 
 fn parse_obj_field(p: parser) -> ast::obj_field {
@@ -1865,9 +1859,10 @@ fn parse_method(p: parser, allow_tps: bool) -> @ast::method {
     let proto = parse_method_proto(p);
     let ident = parse_value_ident(p);
     let tps = allow_tps ? parse_ty_params(p) : [];
-    let f = parse_fn(p, proto, ast::impure_fn, ast::il_normal);
-    let meth = {ident: ident, meth: f, id: p.get_id(), tps: tps};
-    ret @spanned(lo, f.body.span.hi, meth);
+    let decl = parse_fn_decl(p, proto, ast::impure_fn);
+    let body = parse_block(p);
+    @{ident: ident, tps: tps, decl: decl, body: body,
+      id: p.get_id(), span: ast_util::mk_sp(lo, body.span.hi)}
 }
 
 fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
@@ -1909,18 +1904,17 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
     expect(p, token::RPAREN);
     let dtor = parse_block_no_value(p);
     let decl =
-        {inputs:
+        {proto: ast::proto_bare,
+         inputs:
              [{mode: ast::by_ref, ty: t, ident: arg_ident,
                id: p.get_id()}],
          output: @spanned(lo, lo, ast::ty_nil),
          purity: ast::impure_fn,
-         il: ast::il_normal,
          cf: ast::return_val,
          constraints: []};
-    let f = {decl: decl, proto: ast::proto_shared(ast::sugar_normal),
-             body: dtor};
     ret mk_item(p, lo, dtor.span.hi, ident,
-                ast::item_res(f, p.get_id(), ty_params, p.get_id()), attrs);
+                ast::item_res(decl, ty_params, dtor, p.get_id(), p.get_id()),
+                attrs);
 }
 
 fn parse_mod_items(p: parser, term: token::token,
@@ -1984,7 +1978,7 @@ fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
                         purity: ast::purity) -> @ast::native_item {
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
-    let decl = parse_fn_decl(p, purity, ast::il_normal);
+    let decl = parse_fn_decl(p, ast::proto_bare, purity);
     let hi = p.get_hi_pos();
     expect(p, token::SEMI);
     ret @{ident: t.ident,
@@ -2142,24 +2136,20 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
     } else if eat_word(p, "inline") {
         expect_word(p, "fn");
         let proto = parse_fn_item_proto(p);
-        ret some(parse_item_fn(p, ast::impure_fn, proto,
-                                       attrs, ast::il_inline));
+        ret some(parse_item_fn(p, ast::impure_fn, proto, attrs));
     } else if is_word(p, "fn") && p.look_ahead(1u) != token::LPAREN {
         p.bump();
         let proto = parse_fn_item_proto(p);
-        ret some(parse_item_fn(p, ast::impure_fn, proto,
-                               attrs, ast::il_normal));
+        ret some(parse_item_fn(p, ast::impure_fn, proto, attrs));
     } else if eat_word(p, "pure") {
         expect_word(p, "fn");
         let proto = parse_fn_item_proto(p);
-        ret some(parse_item_fn(p, ast::pure_fn, proto, attrs,
-                               ast::il_normal));
+        ret some(parse_item_fn(p, ast::pure_fn, proto, attrs));
     } else if is_word(p, "unsafe") && p.look_ahead(1u) != token::LBRACE {
         p.bump();
         expect_word(p, "fn");
         let proto = parse_fn_item_proto(p);
-        ret some(parse_item_fn(p, ast::unsafe_fn, proto,
-                               attrs, ast::il_normal));
+        ret some(parse_item_fn(p, ast::unsafe_fn, proto, attrs));
     } else if eat_word(p, "mod") {
         ret some(parse_item_mod(p, attrs));
     } else if eat_word(p, "native") {
