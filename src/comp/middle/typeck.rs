@@ -791,7 +791,8 @@ mod collect {
 mod unify {
     fn unify(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) ->
        ty::unify::result {
-        ret ty::unify::unify(expected, actual, fcx.var_bindings, fcx.ccx.tcx);
+        ret ty::unify::unify(expected, actual, some(fcx.var_bindings),
+                             fcx.ccx.tcx);
     }
 }
 
@@ -1106,7 +1107,7 @@ fn gather_locals(ccx: @crate_ctxt,
             alt ty_opt {
               none. {/* nothing to do */ }
               some(typ) {
-                ty::unify::unify(ty::mk_var(tcx, var_id), typ, vb, tcx);
+                ty::unify::unify(ty::mk_var(tcx, var_id), typ, some(vb), tcx);
               }
             }
         };
@@ -1198,8 +1199,8 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
         check_expr_with(fcx, end, expected);
         let b_ty = resolve_type_vars_if_possible(fcx, expr_ty(fcx.ccx.tcx,
                                                               begin));
-        if b_ty != resolve_type_vars_if_possible(fcx, expr_ty(fcx.ccx.tcx,
-                                                              end)) {
+        if !ty::same_type(fcx.ccx.tcx, b_ty, resolve_type_vars_if_possible(
+            fcx, expr_ty(fcx.ccx.tcx, end))) {
             fcx.ccx.tcx.sess.span_err(pat.span, "mismatched types in range");
         } else if !ty::type_is_numeric(fcx.ccx.tcx, b_ty) {
             fcx.ccx.tcx.sess.span_err(pat.span,
@@ -2324,7 +2325,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         // We'd better be overriding with one of the same
                         // type.  Check to make sure.
                         let new_type = ty_of_method(ccx.tcx, m_check, om);
-                        if new_type != m {
+                        if !ty::same_method(ccx.tcx, new_type, m) {
                             ccx.tcx.sess.span_fatal
                                 (om.span, "attempted to override method "
                                  + m.ident + " with one of a different type");

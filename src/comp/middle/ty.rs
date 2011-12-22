@@ -136,6 +136,7 @@ export ty_uint;
 export ty_uniq;
 export ty_var;
 export ty_named;
+export same_type, same_method;
 export ty_var_id;
 export ty_param_substs_opt_and_ty_to_monotype;
 export ty_fn_args;
@@ -1683,7 +1684,7 @@ mod unify {
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
 
-    type ctxt = {vb: @var_bindings, tcx: ty_ctxt};
+    type ctxt = {vb: option::t<@var_bindings>, tcx: ty_ctxt};
 
     fn mk_var_bindings() -> @var_bindings {
         ret @{sets: ufind::make(), types: smallintmap::mk::<t>()};
@@ -1692,31 +1693,32 @@ mod unify {
     // Unifies two sets.
     fn union(cx: @ctxt, set_a: uint, set_b: uint,
              variance: variance) -> union_result {
-        ufind::grow(cx.vb.sets, float::max(set_a, set_b) + 1u);
-        let root_a = ufind::find(cx.vb.sets, set_a);
-        let root_b = ufind::find(cx.vb.sets, set_b);
+        let vb = option::get(cx.vb);
+        ufind::grow(vb.sets, float::max(set_a, set_b) + 1u);
+        let root_a = ufind::find(vb.sets, set_a);
+        let root_b = ufind::find(vb.sets, set_b);
 
         let replace_type =
-            bind fn (cx: @ctxt, t: t, set_a: uint, set_b: uint) {
-                     ufind::union(cx.vb.sets, set_a, set_b);
-                     let root_c: uint = ufind::find(cx.vb.sets, set_a);
-                     smallintmap::insert::<t>(cx.vb.types, root_c, t);
+            bind fn (vb: @var_bindings, t: t, set_a: uint, set_b: uint) {
+                     ufind::union(vb.sets, set_a, set_b);
+                     let root_c: uint = ufind::find(vb.sets, set_a);
+                     smallintmap::insert::<t>(vb.types, root_c, t);
                  }(_, _, set_a, set_b);
 
 
-        alt smallintmap::find(cx.vb.types, root_a) {
+        alt smallintmap::find(vb.types, root_a) {
           none. {
-            alt smallintmap::find(cx.vb.types, root_b) {
-              none. { ufind::union(cx.vb.sets, set_a, set_b); ret unres_ok; }
-              some(t_b) { replace_type(cx, t_b); ret unres_ok; }
+            alt smallintmap::find(vb.types, root_b) {
+              none. { ufind::union(vb.sets, set_a, set_b); ret unres_ok; }
+              some(t_b) { replace_type(vb, t_b); ret unres_ok; }
             }
           }
           some(t_a) {
-            alt smallintmap::find(cx.vb.types, root_b) {
-              none. { replace_type(cx, t_a); ret unres_ok; }
+            alt smallintmap::find(vb.types, root_b) {
+              none. { replace_type(vb, t_a); ret unres_ok; }
               some(t_b) {
                 alt unify_step(cx, t_a, t_b, variance) {
-                  ures_ok(t_c) { replace_type(cx, t_c); ret unres_ok; }
+                  ures_ok(t_c) { replace_type(vb, t_c); ret unres_ok; }
                   ures_err(terr) { ret unres_err(terr); }
                 }
               }
@@ -1741,10 +1743,11 @@ mod unify {
     fn record_var_binding(
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
 
-        ufind::grow(cx.vb.sets, (key as uint) + 1u);
-        let root = ufind::find(cx.vb.sets, key as uint);
+        let vb = option::get(cx.vb);
+        ufind::grow(vb.sets, (key as uint) + 1u);
+        let root = ufind::find(vb.sets, key as uint);
         let result_type = typ;
-        alt smallintmap::find::<t>(cx.vb.types, root) {
+        alt smallintmap::find(vb.types, root) {
           some(old_type) {
             alt unify_step(cx, old_type, typ, variance) {
               ures_ok(unified_type) { result_type = unified_type; }
@@ -1753,7 +1756,7 @@ mod unify {
           }
           none. {/* fall through */ }
         }
-        smallintmap::insert::<t>(cx.vb.types, root, result_type);
+        smallintmap::insert::<t>(vb.types, root, result_type);
         ret ures_ok(typ);
     }
 
@@ -2090,6 +2093,7 @@ mod unify {
           // If the RHS is a variable type, then just do the
           // appropriate binding.
           ty::ty_var(actual_id) {
+            assert option::is_some(cx.vb);
             let actual_n = actual_id as uint;
             alt struct(cx.tcx, expected) {
               ty::ty_var(expected_id) {
@@ -2114,8 +2118,8 @@ mod unify {
         }
         alt struct(cx.tcx, expected) {
           ty::ty_var(expected_id) {
+            assert option::is_some(cx.vb);
             // Add a binding. (`actual` can't actually be a var here.)
-
             alt record_var_binding_for_expected(
                 cx, expected_id, actual,
                 variance) {
@@ -2431,8 +2435,8 @@ mod unify {
           }
         }
     }
-    fn unify(expected: t, actual: t, vb: @var_bindings, tcx: ty_ctxt) ->
-       result {
+    fn unify(expected: t, actual: t, vb: option::t<@var_bindings>,
+             tcx: ty_ctxt) -> result {
         let cx = @{vb: vb, tcx: tcx};
         ret unify_step(cx, expected, actual, covariant);
     }
@@ -2503,6 +2507,19 @@ mod unify {
           some(rt) { ret fixup_vars(tcx, sp, vb, rt); }
         }
     }
+}
+
+fn same_type(cx: ctxt, a: t, b: t) -> bool {
+    alt unify::unify(a, b, none, cx) {
+      unify::ures_ok(_) { true }
+      _ { false }
+    }
+}
+fn same_method(cx: ctxt, a: method, b: method) -> bool {
+    a.proto == b.proto && a.ident == b.ident &&
+    vec::all2(a.inputs, b.inputs,
+              {|a, b| a.mode == b.mode && same_type(cx, a.ty, b.ty) }) &&
+    same_type(cx, a.output, b.output) && a.cf == b.cf
 }
 
 fn type_err_to_str(err: ty::type_err) -> str {
