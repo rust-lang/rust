@@ -27,13 +27,13 @@ fn find_pre_post_native_mod(_m: native_mod) -> native_mod {
 }
 
 fn find_pre_post_method(ccx: crate_ctxt, m: @method) {
-    assert (ccx.fm.contains_key(m.node.id));
+    assert (ccx.fm.contains_key(m.id));
     let fcx: fn_ctxt =
-        {enclosing: ccx.fm.get(m.node.id),
-         id: m.node.id,
-         name: m.node.ident,
+        {enclosing: ccx.fm.get(m.id),
+         id: m.id,
+         name: m.ident,
          ccx: ccx};
-    find_pre_post_fn(fcx, m.node.meth.body);
+    find_pre_post_fn(fcx, m.body);
 }
 
 fn find_pre_post_item(ccx: crate_ctxt, i: item) {
@@ -56,23 +56,23 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
              ccx: ccx};
         find_pre_post_expr(fake_fcx, e);
       }
-      item_fn(f, _) {
+      item_fn(_, _, body) {
         assert (ccx.fm.contains_key(i.id));
         let fcx =
             {enclosing: ccx.fm.get(i.id), id: i.id, name: i.ident, ccx: ccx};
-        find_pre_post_fn(fcx, f.body);
+        find_pre_post_fn(fcx, body);
       }
       item_mod(m) { find_pre_post_mod(m); }
       item_native_mod(nm) { find_pre_post_native_mod(nm); }
       item_ty(_, _) { ret; }
       item_tag(_, _) { ret; }
-      item_res(dtor, dtor_id, _, _) {
+      item_res(_, _, body, dtor_id, _) {
         let fcx =
             {enclosing: ccx.fm.get(dtor_id),
              id: dtor_id,
              name: i.ident,
              ccx: ccx};
-        find_pre_post_fn(fcx, dtor.body);
+        find_pre_post_fn(fcx, body);
       }
       item_obj(o, _, _) {for m in o.methods { find_pre_post_method(ccx, m); }}
       item_impl(_, _, ms) { for m in ms { find_pre_post_method(ccx, m); } }
@@ -347,7 +347,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_log(_, lvl, arg) {
         find_pre_post_exprs(fcx, [lvl, arg], e.id);
       }
-      expr_fn(f, cap_clause) {
+      expr_fn(_, _, cap_clause) {
         find_pre_post_expr_fn_upvars(fcx, e);
 
         let use_cap_item = lambda(&&cap_item: @capture_item) {

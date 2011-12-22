@@ -68,13 +68,13 @@ fn map_item(cx: ctx, i: @item) {
       item_obj(ob, _, ctor_id) {
         cx.map.insert(ctor_id, node_obj_ctor(i));
         for m in ob.methods {
-            cx.map.insert(m.node.id, node_obj_method(m));
+            cx.map.insert(m.id, node_obj_method(m));
         }
       }
       item_impl(_, _, ms) {
-        for m in ms { cx.map.insert(m.node.id, node_method(m)); }
+        for m in ms { cx.map.insert(m.id, node_method(m)); }
       }
-      item_res(_, dtor_id, _, ctor_id) {
+      item_res(_, _, _, dtor_id, ctor_id) {
         cx.map.insert(ctor_id, node_res_ctor(i));
         cx.map.insert(dtor_id, node_item(i));
       }

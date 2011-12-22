@@ -386,7 +386,7 @@ tag vtbl_mthd {
 
 // Alphabetize ast::methods by ident.  A helper for create_vtbl.
 fn ast_mthd_lteq(&&a: @ast::method, &&b: @ast::method) -> bool {
-    ret str::lteq(a.node.ident, b.node.ident);
+    ret str::lteq(a.ident, b.ident);
 }
 
 // Alphabetize vtbl_mthds by ident.  A helper for create_vtbl.
@@ -394,13 +394,13 @@ fn vtbl_mthd_lteq(a: vtbl_mthd, b: vtbl_mthd) -> bool {
     alt a {
       normal_mthd(ma) {
         alt b {
-          normal_mthd(mb) { ret str::lteq(ma.node.ident, mb.node.ident); }
-          fwding_mthd(mb) { ret str::lteq(ma.node.ident, mb.ident); }
+          normal_mthd(mb) { ret str::lteq(ma.ident, mb.ident); }
+          fwding_mthd(mb) { ret str::lteq(ma.ident, mb.ident); }
         }
       }
       fwding_mthd(ma) {
         alt b {
-          normal_mthd(mb) { ret str::lteq(ma.ident, mb.node.ident); }
+          normal_mthd(mb) { ret str::lteq(ma.ident, mb.ident); }
           fwding_mthd(mb) { ret str::lteq(ma.ident, mb.ident); }
         }
       }
@@ -420,7 +420,7 @@ fn filtering_fn(cx: @local_ctxt, m: vtbl_mthd, addtl_meths: [@ast::method]) ->
     alt m {
       fwding_mthd(fm) {
         for am: @ast::method in addtl_meths {
-            if str::eq(am.node.ident, fm.ident) { ret none; }
+            if str::eq(am.ident, fm.ident) { ret none; }
         }
         ret some(fwding_mthd(fm));
       }
@@ -876,7 +876,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
 
     let llfnty = T_nil();
     let ccx = cx.ccx;
-    alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.node.id)) {
+    alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.id)) {
       ty::ty_fn(_, inputs, output, rs, _) {
         check non_ty_var(ccx, output);
         llfnty = type_of_fn(ccx, m.span, true, inputs, output,
@@ -884,17 +884,17 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
       }
     }
     let mcx: @local_ctxt =
-        @{path: cx.path + ["method", m.node.ident] with *cx};
+        @{path: cx.path + ["method", m.ident] with *cx};
     let s: str = mangle_internal_name_by_path(mcx.ccx, mcx.path);
     let llfn: ValueRef = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
     // Every method on an object gets its node_id inserted into the crate-wide
     // item_ids map, together with the ValueRef that points to where that
     // method's definition will be in the executable.
-    ccx.item_ids.insert(m.node.id, llfn);
-    ccx.item_symbols.insert(m.node.id, s);
-    trans_fn(mcx, m.span, m.node.meth, llfn, obj_self(self_ty), ty_params,
-             m.node.id);
+    ccx.item_ids.insert(m.id, llfn);
+    ccx.item_symbols.insert(m.id, s);
+    trans_fn(mcx, m.span, m.decl, m.body, llfn, obj_self(self_ty), ty_params,
+             m.id);
 
     ret llfn;
 }

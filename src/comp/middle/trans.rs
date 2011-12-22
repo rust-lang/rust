@@ -3554,17 +3554,16 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         assert op != ast::deref; // lvals are handled above
         ret trans_unary(bcx, op, x, e.id, dest);
       }
-      ast::expr_fn(f, cap_clause) {
+      ast::expr_fn(decl, body, cap_clause) {
         ret trans_closure::trans_expr_fn(
-            bcx, f, e.span, e.id, *cap_clause, dest);
+            bcx, decl, body, e.span, e.id, *cap_clause, dest);
       }
       ast::expr_fn_block(decl, body) {
         alt ty::struct(tcx, ty::expr_ty(tcx, e)) {
           ty::ty_fn(proto, _, _, _, _) {
-            let f: ast::_fn = { decl: decl, proto: proto, body: body };
             let cap_clause = { copies: [], moves: [] };
             ret trans_closure::trans_expr_fn(
-                bcx, f, e.span, e.id, cap_clause, dest);
+                bcx, decl, body, e.span, e.id, cap_clause, dest);
           }
           _ {
             fail "Type of fn block is not a function!";
@@ -4516,14 +4515,15 @@ tag self_arg { obj_self(ty::t); impl_self(ty::t); no_self; }
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
-fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
+fn trans_closure(cx: @local_ctxt, sp: span, decl: ast::fn_decl,
+                 body: ast::blk, llfndecl: ValueRef,
                  ty_self: self_arg, ty_params: [ast::ty_param],
                  id: ast::node_id, maybe_load_env: block(@fn_ctxt)) {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(cx, sp, llfndecl, id, f.decl.cf);
-    create_llargs_for_fn_args(fcx, ty_self, f.decl.inputs, ty_params);
+    let fcx = new_fn_ctxt_w_id(cx, sp, llfndecl, id, decl.cf);
+    create_llargs_for_fn_args(fcx, ty_self, decl.inputs, ty_params);
     alt ty_self {
       obj_self(_) {
           populate_fn_ctxt_from_llself(fcx, option::get(fcx.llself));
@@ -4535,10 +4535,10 @@ fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     //  pass to finish_fn later.
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
-    let block_ty = node_id_type(cx.ccx, f.body.node.id);
+    let block_ty = node_id_type(cx.ccx, body.node.id);
 
     let arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
-    bcx = copy_args_to_allocas(fcx, bcx, f.decl.inputs, arg_tys);
+    bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, arg_tys);
 
     maybe_load_env(fcx);
 
@@ -4548,14 +4548,14 @@ fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     // (trans_block, trans_expr, et cetera).
     if ty::type_is_bot(cx.ccx.tcx, block_ty) ||
        ty::type_is_nil(cx.ccx.tcx, block_ty) ||
-       option::is_none(f.body.node.expr) {
-        bcx = trans_block_dps(bcx, f.body, ignore);
+       option::is_none(body.node.expr) {
+        bcx = trans_block_dps(bcx, body, ignore);
     } else if ty::type_is_immediate(cx.ccx.tcx, block_ty) {
         let cell = empty_dest_cell();
-        bcx = trans_block_dps(bcx, f.body, by_val(cell));
+        bcx = trans_block_dps(bcx, body, by_val(cell));
         Store(bcx, *cell, fcx.llretptr);
     } else {
-        bcx = trans_block_dps(bcx, f.body, save_in(fcx.llretptr));
+        bcx = trans_block_dps(bcx, body, save_in(fcx.llretptr));
     }
 
     // FIXME: until LLVM has a unit type, we are moving around
@@ -4567,13 +4567,13 @@ fn trans_closure(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
 
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
-fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
-            ty_self: self_arg, ty_params: [ast::ty_param],
+fn trans_fn(cx: @local_ctxt, sp: span, decl: ast::fn_decl, body: ast::blk,
+            llfndecl: ValueRef, ty_self: self_arg, ty_params: [ast::ty_param],
             id: ast::node_id) {
     let do_time = cx.ccx.sess.get_opts().stats;
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
     let fcx = option::none;
-    trans_closure(cx, sp, f, llfndecl, ty_self, ty_params, id,
+    trans_closure(cx, sp, decl, body, llfndecl, ty_self, ty_params, id,
                   {|new_fcx| fcx = option::some(new_fcx);});
     if cx.ccx.sess.get_opts().extra_debuginfo {
         debuginfo::create_function(option::get(fcx));
@@ -4584,7 +4584,7 @@ fn trans_fn(cx: @local_ctxt, sp: span, f: ast::_fn, llfndecl: ValueRef,
     }
 }
 
-fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
+fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::fn_decl,
                   ctor_id: ast::node_id, ty_params: [ast::ty_param]) {
     let ccx = cx.ccx;
 
@@ -4596,12 +4596,12 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::_fn,
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
     let ret_t = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
-    create_llargs_for_fn_args(fcx, no_self, dtor.decl.inputs, ty_params);
+    create_llargs_for_fn_args(fcx, no_self, dtor.inputs, ty_params);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
     let arg_t = arg_tys_of_fn(ccx, ctor_id)[0].ty;
     let tup_t = ty::mk_tup(ccx.tcx, [ty::mk_int(ccx.tcx), arg_t]);
-    let arg = alt fcx.llargs.find(dtor.decl.inputs[0].id) {
+    let arg = alt fcx.llargs.find(dtor.inputs[0].id) {
       some(local_mem(x)) { x }
     };
     let llretptr = fcx.llretptr;
@@ -4706,11 +4706,11 @@ fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
               id: ast::node_id, tps: [ast::ty_param]) {
     let sub_cx = extend_path(cx, name);
     for m in methods {
-        alt cx.ccx.item_ids.find(m.node.id) {
+        alt cx.ccx.item_ids.find(m.id) {
           some(llfn) {
-            trans_fn(extend_path(sub_cx, m.node.ident), m.span, m.node.meth,
+            trans_fn(extend_path(sub_cx, m.ident), m.span, m.decl, m.body,
                      llfn, impl_self(ty::node_id_to_monotype(cx.ccx.tcx, id)),
-                     tps + m.node.tps, m.node.id);
+                     tps + m.tps, m.id);
           }
         }
     }
@@ -4996,11 +4996,12 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
 
 fn trans_item(cx: @local_ctxt, item: ast::item) {
     alt item.node {
-      ast::item_fn(f, tps) {
+      ast::item_fn(decl, tps, body) {
         let sub_cx = extend_path(cx, item.ident);
         alt cx.ccx.item_ids.find(item.id) {
           some(llfndecl) {
-            trans_fn(sub_cx, item.span, f, llfndecl, no_self, tps, item.id);
+            trans_fn(sub_cx, item.span, decl, body, llfndecl, no_self, tps,
+                     item.id);
           }
           _ {
             cx.ccx.sess.span_fatal(item.span,
@@ -5017,13 +5018,14 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
       ast::item_impl(tps, _, ms) {
         trans_impl(cx, item.ident, ms, item.id, tps);
       }
-      ast::item_res(dtor, dtor_id, tps, ctor_id) {
-        trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
+      ast::item_res(decl, tps, body, dtor_id, ctor_id) {
+        trans_res_ctor(cx, item.span, decl, ctor_id, tps);
 
         // Create a function for the destructor
         alt cx.ccx.item_ids.find(item.id) {
           some(lldtor_decl) {
-            trans_fn(cx, item.span, dtor, lldtor_decl, no_self, tps, dtor_id);
+            trans_fn(cx, item.span, decl, body, lldtor_decl, no_self,
+                     tps, dtor_id);
           }
           _ {
             cx.ccx.sess.span_fatal(item.span, "unbound dtor in trans_item");
@@ -5329,7 +5331,7 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
     let new_pt = pt + [i.ident];
     visit::visit_item(i, new_pt, v);
     alt i.node {
-      ast::item_fn(f, tps) {
+      ast::item_fn(_, tps, _) {
         if !ccx.obj_methods.contains_key(i.id) {
             register_fn(ccx, i.span, new_pt, "fn", tps, i.id);
         }
@@ -5337,17 +5339,17 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
       ast::item_obj(ob, tps, ctor_id) {
         register_fn(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
         for m: @ast::method in ob.methods {
-            ccx.obj_methods.insert(m.node.id, ());
+            ccx.obj_methods.insert(m.id, ());
         }
       }
       ast::item_impl(tps, _, methods) {
         let name = ccx.names.next(i.ident);
         for m in methods {
-            register_fn(ccx, i.span, pt + [name, m.node.ident],
-                        "impl_method", tps + m.node.tps, m.node.id);
+            register_fn(ccx, i.span, pt + [name, m.ident],
+                        "impl_method", tps + m.tps, m.id);
         }
       }
-      ast::item_res(_, dtor_id, tps, ctor_id) {
+      ast::item_res(_, tps, _, dtor_id, ctor_id) {
         register_fn(ccx, i.span, new_pt, "res_ctor", tps, ctor_id);
         // Note that the destructor is associated with the item's id, not
         // the dtor_id. This is a bit counter-intuitive, but simplifies

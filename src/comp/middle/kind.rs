@@ -178,8 +178,9 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_ternary(_, a, b) { maybe_copy(cx, a); maybe_copy(cx, b); }
-      expr_fn(_, cap_clause) { check_fn_cap_clause(cx, e.id, *cap_clause); }
-
+      expr_fn(_, _, cap_clause) {
+        check_fn_cap_clause(cx, e.id, *cap_clause);
+      }
       _ { }
     }
     visit::visit_expr(e, cx, v);

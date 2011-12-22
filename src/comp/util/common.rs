@@ -62,15 +62,6 @@ fn log_block_err(b: ast::blk) {
 fn log_item_err(i: @ast::item) {
     log_full(core::error, print::pprust::item_to_str(i));
 }
-
-fn log_fn(f: ast::_fn, name: ast::ident, params: [ast::ty_param]) {
-    log_full(core::debug, print::pprust::fun_to_str(f, name, params));
-}
-
-fn log_fn_err(f: ast::_fn, name: ast::ident, params: [ast::ty_param]) {
-    log_full(core::error, print::pprust::fun_to_str(f, name, params));
-}
-
 fn log_stmt(st: ast::stmt) {
     log_full(core::debug, print::pprust::stmt_to_str(st));
 }

@@ -226,7 +226,7 @@ tag expr_ {
     expr_for(@local, @expr, blk);
     expr_do_while(blk, @expr);
     expr_alt(@expr, [arm]);
-    expr_fn(_fn, @capture_clause);
+    expr_fn(fn_decl, blk, @capture_clause);
     expr_fn_block(fn_decl, blk);
     expr_block(blk);
 
@@ -307,19 +307,15 @@ type mt = {ty: @ty, mut: mutability};
 
 type ty_field_ = {ident: ident, mt: mt};
 
-type ty_arg_ = {mode: mode, ty: @ty};
-
 type ty_method_ =
     {proto: proto,
      ident: ident,
-     inputs: [ty_arg],
+     inputs: [arg],
      output: @ty,
      cf: ret_style,
      constrs: [@constr]};
 
 type ty_field = spanned<ty_field_>;
-
-type ty_arg = spanned<ty_arg_>;
 
 type ty_method = spanned<ty_method_>;
 
@@ -353,7 +349,7 @@ tag ty_ {
     ty_port(@ty);
     ty_chan(@ty);
     ty_rec([ty_field]);
-    ty_fn(proto, [ty_arg], @ty, ret_style, [@constr]);
+    ty_fn(fn_decl);
     ty_obj([ty_method]);
     ty_tup([@ty]);
     ty_path(@path, node_id);
@@ -403,13 +399,11 @@ type ty_constr = spanned<ty_constr_>;
  corresponding to these. */
 type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 
-tag inlineness { il_normal; il_inline; }
-
 type fn_decl =
-    {inputs: [arg],
+    {proto: proto,
+     inputs: [arg],
      output: @ty,
      purity: purity,
-     il: inlineness,
      cf: ret_style,
      constraints: [@constr]};
 
@@ -425,11 +419,8 @@ tag ret_style {
     return_val; // everything else
 }
 
-type _fn = {decl: fn_decl, proto: proto, body: blk};
-
-type method_ = {ident: ident, meth: _fn, id: node_id, tps: [ty_param]};
-
-type method = spanned<method_>;
+type method = {ident: ident, tps: [ty_param], decl: fn_decl, body: blk,
+               id: node_id, span: span};
 
 type obj_field = {mut: mutability, ty: @ty, ident: ident, id: node_id};
 type anon_obj_field =
@@ -499,16 +490,14 @@ type item =  // For objs and resources, this is the type def_id
 
 tag item_ {
     item_const(@ty, @expr);
-    item_fn(_fn, [ty_param]);
+    item_fn(fn_decl, [ty_param], blk);
     item_mod(_mod);
     item_native_mod(native_mod);
     item_ty(@ty, [ty_param]);
     item_tag([variant], [ty_param]);
     item_obj(_obj, [ty_param], /* constructor id */node_id);
-    item_res(_fn /* dtor */,
-             node_id /* dtor id */,
-             [ty_param],
-             node_id /* ctor id */);
+    item_res(fn_decl /* dtor */, [ty_param], blk,
+             node_id /* dtor id */, node_id /* ctor id */);
     item_impl([ty_param], @ty /* self */, [@method]);
 }
 
