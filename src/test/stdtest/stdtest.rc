@@ -39,6 +39,10 @@ mod test;
 mod tri;
 mod treemap;
 mod uint;
+
+#[cfg(unicode)]
+mod unicode;
+
 mod unsafe;
 mod uv;
 mod vec;
