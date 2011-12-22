@@ -10,9 +10,51 @@ export t;
 export consts;
 
 export
-    acos, asin, atan, atan2, ceil, cos, cosh, exp, abs, floor, fmod, frexp,
-    ldexp, ln, ln1p, log10, log2, modf, rint, round, pow, sin, sinh, sqrt,
-    tan, tanh, trunc;
+    acos,
+    asin,
+    atan,
+    atan2,
+    cbrt,
+    ceil,
+    cos,
+    cosh,
+    erf,
+    erfc,
+    exp,
+    expm1,
+    exp2,
+    abs,
+    sub_pos,
+    floor,
+    mul_add,
+    max,
+    min,
+    nextafter,
+    rem,
+    frexp,
+    hypot,
+    ldexp,
+    lgamma,
+    ln,
+    logb,
+    ln1p,
+    log10,
+    log2,
+    ilogb,
+    modf,
+    pow,
+    rint,
+    round,
+    sin,
+    sinh,
+    sqrt,
+    tan,
+    tanh,
+    tgamma,
+    trunc;
+
+export radix, mantissa_digits, digits, epsilon, min_value, max_value,
+       min_exp, max_exp, min_10_exp, max_10_exp;
 
 export to_str_common, to_str_exact, to_str, from_str;
 export lt, le, eq, ne, gt, eq;
@@ -27,9 +69,9 @@ import ctypes::c_int;
 import ptr;
 
 // PORT This must match in width according to architecture
+
 import f64;
 import m_float = f64;
-
 type t = m_float;
 
 /**

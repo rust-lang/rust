@@ -8,19 +8,107 @@ This exposes the same operations as `math`, just for `f64` even though
 they do not show up in the docs right now!
 */
 
-import cmath::f64::*;
+export t;
 
 export
-    acos, asin, atan, atan2, ceil, cos, cosh, exp, abs, floor, fmod,
-    frexp, ldexp, ln, ln1p, log10, log2, modf, rint, round, pow, sin,
-    sinh, sqrt, tan, tanh, trunc, t;
+    acos,
+    asin,
+    atan,
+    atan2,
+    cbrt,
+    ceil,
+    cos,
+    cosh,
+    erf,
+    erfc,
+    exp,
+    expm1,
+    exp2,
+    abs,
+    sub_pos,
+    floor,
+    mul_add,
+    fmax,
+    fmin,
+    nextafter,
+    frexp,
+    hypot,
+    ldexp,
+    lgamma,
+    ln,
+    logb,
+    ln1p,
+    log10,
+    log2,
+    ilogb,
+    modf,
+    pow,
+    rem,
+    rint,
+    round,
+    sin,
+    sinh,
+    sqrt,
+    tan,
+    tanh,
+    tgamma,
+    trunc;
+
+export consts;
 
 export radix, mantissa_digits, digits, epsilon, min_value, max_value,
        min_exp, max_exp, min_10_exp, max_10_exp;
 
-export consts;
+// PORT
+
+import cops = cmath::c_double;
 
 type t = f64;
+
+import
+    cops::acos,
+    cops::asin,
+    cops::atan,
+    cops::atan2,
+    cops::cbrt,
+    cops::ceil,
+    cops::cos,
+    cops::cosh,
+    cops::erf,
+    cops::erfc,
+    cops::exp,
+    cops::expm1,
+    cops::exp2,
+    cops::abs,
+    cops::sub_pos,
+    cops::floor,
+    cops::mul_add,
+    cops::max,
+    cops::min,
+    cops::nextafter,
+    cops::fmod,
+    cops::frexp,
+    cops::hypot,
+    cops::ldexp,
+    cops::lgamma,
+    cops::ln,
+    cops::logb,
+    cops::ln1p,
+    cops::log10,
+    cops::log2,
+    cops::ilogb,
+    cops::modf,
+    cops::pow,
+    cops::rem,
+    cops::rint,
+    cops::round,
+    cops::sin,
+    cops::sinh,
+    cops::sqrt,
+    cops::tan,
+    cops::tanh,
+    cops::tgamma,
+    cops::trunc;
 
 /* Module: consts */
 mod consts {

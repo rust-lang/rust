@@ -41,10 +41,10 @@ Machine type equivalent of a float
 */
 type m_float = f64;
 
-// PORT  *must* match "import m_complex = ..." in std::complex per arch
-
 /*
 FIXME Type m_complex
+
+// PORT  *must* match "import m_complex = ..." in core::complex per arch
 
 Machine type representing a complex value that uses floats for
 both the real and the imaginary part.
