@@ -36,7 +36,6 @@ export constr_table;
 export count_ty_params;
 export ctxt;
 export def_has_ty_params;
-export eq_ty;
 export expr_has_ty_params;
 export expr_ty;
 export expr_ty_params_and_ty;
@@ -47,7 +46,6 @@ export field_idx;
 export get_field;
 export fm_general;
 export get_element_type;
-export hash_ty;
 export idx_nil;
 export is_binopable;
 export is_pred_ty;
@@ -103,6 +101,7 @@ export stmt_node_id;
 export sty;
 export substitute_type_params;
 export t;
+export new_ty_hash;
 export tag_variants;
 export tag_variant_with_id;
 export ty_param_substs_opt_and_ty;
@@ -398,12 +397,16 @@ fn mk_rcache() -> creader_cache {
     ret map::mk_hashmap(hash_cache_entry, eq_cache_entries);
 }
 
+fn new_ty_hash<copy V>() -> map::hashmap<t, V> { map::new_uint_hash() }
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
     let ntt: node_type_table =
         @smallintmap::mk::<ty::ty_param_substs_opt_and_ty>();
     let tcache = new_def_hash::<ty::ty_param_kinds_and_ty>();
+    fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
+        ret a.hash == b.hash && a.struct == b.struct;
+    }
     let ts = @interner::mk::<@raw_t>(hash_raw_ty, eq_raw_ty);
     let cx =
         @{ts: ts,
@@ -414,9 +417,9 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
           freevars: freevars,
           tcache: tcache,
           rcache: mk_rcache(),
-          short_names_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
-          needs_drop_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
-          kind_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+          short_names_cache: new_ty_hash(),
+          needs_drop_cache: new_ty_hash(),
+          kind_cache: new_ty_hash(),
           ast_ty_to_ty_cache:
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
           tag_var_cache: @smallintmap::mk()};
@@ -1233,8 +1236,7 @@ fn type_autoderef(cx: ctxt, t: ty::t) -> ty::t {
     ret t1;
 }
 
-// Type hashing. This function is private to this module (and slow); external
-// users should use `hash_ty()` instead.
+// Type hashing.
 fn hash_type_structure(st: sty) -> uint {
     fn hash_uint(id: uint, n: uint) -> uint {
         let h = id;
@@ -1249,7 +1251,7 @@ fn hash_type_structure(st: sty) -> uint {
     }
     fn hash_subty(id: uint, subty: t) -> uint {
         let h = id;
-        h += (h << 5u) + hash_ty(subty);
+        h += (h << 5u) + subty;
         ret h;
     }
     fn hash_subtys(id: uint, subtys: [t]) -> uint {
@@ -1284,8 +1286,8 @@ fn hash_type_structure(st: sty) -> uint {
 
     fn hash_fn(id: uint, args: [arg], rty: t) -> uint {
         let h = id;
-        for a: arg in args { h += (h << 5u) + hash_ty(a.ty); }
-        h += (h << 5u) + hash_ty(rty);
+        for a: arg in args { h += (h << 5u) + a.ty; }
+        h += (h << 5u) + rty;
         ret h;
     }
     alt st {
@@ -1308,14 +1310,14 @@ fn hash_type_structure(st: sty) -> uint {
       ty_str. { ret 17u; }
       ty_tag(did, tys) {
         let h = hash_def(18u, did);
-        for typ: t in tys { h += (h << 5u) + hash_ty(typ); }
+        for typ: t in tys { h += (h << 5u) + typ; }
         ret h;
       }
       ty_box(mt) { ret hash_subty(19u, mt.ty); }
       ty_vec(mt) { ret hash_subty(21u, mt.ty); }
       ty_rec(fields) {
         let h = 26u;
-        for f: field in fields { h += (h << 5u) + hash_ty(f.mt.ty); }
+        for f: field in fields { h += (h << 5u) + f.mt.ty; }
         ret h;
       }
       ty_tup(ts) { ret hash_subtys(25u, ts); }
@@ -1354,13 +1356,6 @@ fn hash_type_structure(st: sty) -> uint {
 
 fn hash_raw_ty(&&rt: @raw_t) -> uint { ret rt.hash; }
 
-fn hash_ty(&&typ: t) -> uint { ret typ; }
-
-
-// Type equality. This function is private to this module (and slow); external
-// users should use `eq_ty()` instead.
-fn eq_int(&&x: uint, &&y: uint) -> bool { ret x == y; }
-
 fn arg_eq<T>(eq: fn(T, T) -> bool, a: @sp_constr_arg<T>, b: @sp_constr_arg<T>)
    -> bool {
     alt a.node {
@@ -1389,6 +1384,7 @@ fn args_eq<T>(eq: fn(T, T) -> bool, a: [@sp_constr_arg<T>],
 }
 
 fn constr_eq(c: @constr, d: @constr) -> bool {
+    fn eq_int(&&x: uint, &&y: uint) -> bool { ret x == y; }
     ret path_to_str(c.node.path) == path_to_str(d.node.path) &&
             // FIXME: hack
             args_eq(eq_int, c.node.args, d.node.args);
@@ -1400,16 +1396,6 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
     for c: @constr in cs { if !constr_eq(c, ds[i]) { ret false; } i += 1u; }
     ret true;
 }
-
-// This function is private to this module.
-fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
-    ret a.hash == b.hash && a.struct == b.struct;
-}
-
-
-// This is the equality function the public should use. It works as long as
-// the types are interned.
-fn eq_ty(&&a: t, &&b: t) -> bool { a == b }
 
 // Type lookups
 fn node_id_to_ty_param_substs_opt_and_ty(cx: ctxt, id: ast::node_id) ->
@@ -2088,12 +2074,15 @@ mod unify {
 
     fn unify_step(cx: @ctxt, expected: t, actual: t,
                   variance: variance) -> result {
-        // TODO: rewrite this using tuple pattern matching when available, to
+        // FIXME: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
+        // NOTE: we have tuple matching now, but that involves copying the
+        // matched elements into a tuple first, which is expensive, since sty
+        // holds vectors, which are currently unique
 
         // Fast path.
+        if expected == actual { ret ures_ok(expected); }
 
-        if eq_ty(expected, actual) { ret ures_ok(expected); }
         // Stage 1: Handle the cases in which one side or another is a type
         // variable.
 

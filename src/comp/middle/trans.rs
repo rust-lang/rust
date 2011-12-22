@@ -4348,7 +4348,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
           lllocals: new_int_hash::<local_val>(),
           llupvars: new_int_hash::<ValueRef>(),
           mutable lltydescs: [],
-          derived_tydescs: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+          derived_tydescs: ty::new_ty_hash(),
           id: id,
           ret_style: rstyle,
           sp: sp,
@@ -5642,13 +5642,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     tn.associate("taskptr", taskptr_type);
     let tydesc_type = T_tydesc(targ_cfg);
     tn.associate("tydesc", tydesc_type);
-    let hasher = ty::hash_ty;
-    let eqer = ty::eq_ty;
-    let tag_sizes = map::mk_hashmap::<ty::t, uint>(hasher, eqer);
-    let tydescs = map::mk_hashmap::<ty::t, @tydesc_info>(hasher, eqer);
-    let lltypes = map::mk_hashmap::<ty::t, TypeRef>(hasher, eqer);
-    let sha1s = map::mk_hashmap::<ty::t, str>(hasher, eqer);
-    let short_names = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
     let dbg_cx = if sess.get_opts().debuginfo {
         option::some(@{llmetadata: map::new_int_hash(),
@@ -5669,18 +5662,18 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           item_symbols: new_int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
           link_meta: link_meta,
-          tag_sizes: tag_sizes,
+          tag_sizes: ty::new_ty_hash(),
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
           consts: new_int_hash::<ValueRef>(),
           obj_methods: new_int_hash::<()>(),
-          tydescs: tydescs,
+          tydescs: ty::new_ty_hash(),
           module_data: new_str_hash::<ValueRef>(),
-          lltypes: lltypes,
+          lltypes: ty::new_ty_hash(),
           names: namegen(0),
           sha: sha,
-          type_sha1s: sha1s,
-          type_short_names: short_names,
+          type_sha1s: ty::new_ty_hash(),
+          type_short_names: ty::new_ty_hash(),
           tcx: tcx,
           mut_map: mut_map,
           copy_map: copy_map,

@@ -653,7 +653,7 @@ fn encode_hash(ebml_w: ebml::writer, hash: str) {
 
 fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
 
-    let abbrevs = map::mk_hashmap(ty::hash_ty, ty::eq_ty);
+    let abbrevs = ty::new_ty_hash();
     let ecx = @{ccx: cx, type_abbrevs: abbrevs};
 
     let string_w = io::string_writer();
