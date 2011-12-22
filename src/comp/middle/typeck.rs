@@ -422,12 +422,15 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_iface(tps, methods) {
+      ast::item_iface(tps, ms) {
         let t = ty::mk_named(tcx, ty::mk_iface(tcx, local_def(it.id),
                                                mk_ty_params(tcx, tps)),
                              @it.ident);
         let tpt = {kinds: ty_param_kinds(tps), ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
+        ty::store_iface_methods(tcx, it.id, @vec::map(ms, {|m|
+            ty_of_ty_method(tcx, m_collect, m)
+        }));
         ret tpt;
       }
       ast::item_impl(_, _, _, _) | ast::item_mod(_) |
@@ -490,11 +493,13 @@ fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
     ret tpt;
 }
 fn ty_of_method(tcx: ty::ctxt, mode: mode, m: @ast::method) -> ty::method {
-    {ident: m.ident, fty: ty_of_fn_decl(tcx, mode, m.decl)}
+    {ident: m.ident, tps: vec::map(m.tps, {|tp| tp.kind}),
+     fty: ty_of_fn_decl(tcx, mode, m.decl)}
 }
 fn ty_of_ty_method(tcx: ty::ctxt, mode: mode, m: ast::ty_method)
     -> ty::method {
-    {ident: m.ident, fty: ty_of_fn_decl(tcx, mode, m.decl)}
+    {ident: m.ident, tps: vec::map(m.tps, {|tp| tp.kind}),
+     fty: ty_of_fn_decl(tcx, mode, m.decl)}
 }
 fn ty_of_obj(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
         ty_params: [ast::ty_param]) -> ty::ty_param_kinds_and_ty {
@@ -1493,7 +1498,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
     // record projection work on type inferred arguments.
     unify(fcx, expr.span, expected, fty);
 
-    check_fn1(fcx.ccx, decl, body, expr.id, some(fcx));
+    check_fn(fcx.ccx, decl, body, expr.id, some(fcx));
 }
 
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
@@ -2565,14 +2570,6 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
 }
 
 fn check_fn(ccx: @crate_ctxt,
-            decl: ast::fn_decl,
-            body: ast::blk,
-            id: ast::node_id,
-            old_fcx: option::t<@fn_ctxt>) {
-    check_fn1(ccx, decl, body, id, old_fcx);
-}
-
-fn check_fn1(ccx: @crate_ctxt,
              decl: ast::fn_decl,
              body: ast::blk,
              id: ast::node_id,
@@ -2645,10 +2642,41 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         // Now remove the info from the stack.
         vec::pop(ccx.self_infos);
       }
-      ast::item_impl(_, _, ty, ms) {
+      ast::item_impl(_, ifce, ty, ms) {
         ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];
-        for m in ms { check_method(ccx, m); }
+        let my_methods = vec::map(ms, {|m|
+            check_method(ccx, m);
+            ty_of_method(ccx.tcx, m_check, m)
+        });
         vec::pop(ccx.self_infos);
+        alt ifce {
+          some(ty) {
+            alt ty::struct(ccx.tcx, ast_ty_to_ty(ccx.tcx, m_check, ty)) {
+              ty::ty_iface(did, tys) {
+                for if_m in *ty::iface_methods(ccx.tcx, did) {
+                    alt vec::find(my_methods, {|m| if_m.ident == m.ident}) {
+                      some(m) {
+                        if !ty::same_method(ccx.tcx, m, if_m) {
+                            ccx.tcx.sess.span_err(
+                                ty.span, "method " + if_m.ident +
+                                " has the wrong type");
+                        }
+                      }
+                      none. {
+                        ccx.tcx.sess.span_err(ty.span, "missing method " +
+                                              if_m.ident);
+                      }
+                    }
+                }
+              }
+              _ {
+                ccx.tcx.sess.span_err(ty.span, "can only implement interface \
+                                                types");
+              }
+            }
+          }
+          _ {}
+        }
       }
       _ {/* nothing to do */ }
     }

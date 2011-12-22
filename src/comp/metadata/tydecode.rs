@@ -267,7 +267,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
             while peek(st) as char != '[' {
                 name += str::unsafe_from_byte(next(st));
             }
-            methods += [{ident: name,
+            methods += [{ident: name, tps: [],
                          fty: {proto: proto with parse_ty_fn(st, sd)}}];
         }
         st.pos += 1u;

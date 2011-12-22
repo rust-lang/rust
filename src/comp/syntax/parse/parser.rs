@@ -285,21 +285,21 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
                     constraints: constrs});
 }
 
-fn parse_ty_methods(p: parser) -> [ast::ty_method] {
-    fn parse_method_sig(p: parser) -> ast::ty_method {
+fn parse_ty_methods(p: parser, allow_tps: bool) -> [ast::ty_method] {
+    parse_seq(token::LBRACE, token::RBRACE, seq_sep_none(), {|p|
         let flo = p.get_lo_pos();
         let proto: ast::proto = parse_method_proto(p);
         let ident = parse_value_ident(p);
+        let tps = allow_tps ? parse_ty_params(p) : [];
         let f = parse_ty_fn(proto, p), fhi = p.get_last_hi_pos();
         expect(p, token::SEMI);
         alt f {
           ast::ty_fn(d) {
-            {ident: ident, decl: d, span: ast_util::mk_sp(flo, fhi)}
+            {ident: ident, decl: d, tps: tps,
+             span: ast_util::mk_sp(flo, fhi)}
           }
         }
-    }
-    parse_seq(token::LBRACE, token::RBRACE, seq_sep_none(),
-              parse_method_sig, p).node
+    }, p).node
 }
 
 fn parse_mt(p: parser) -> ast::mt {
@@ -517,7 +517,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "sendfn") {
         t = parse_ty_fn(ast::proto_send, p);
     } else if eat_word(p, "obj") {
-        t = ast::ty_obj(parse_ty_methods(p));
+        t = ast::ty_obj(parse_ty_methods(p, false));
     } else if p.peek() == token::MOD_SEP || is_ident(p.peek()) {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
@@ -1839,7 +1839,7 @@ fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
 
 fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos(), ident = parse_ident(p),
-        tps = parse_ty_params(p), meths = parse_ty_methods(p);
+        tps = parse_ty_params(p), meths = parse_ty_methods(p, true);
     ret mk_item(p, lo, p.get_last_hi_pos(), ident,
                 ast::item_iface(tps, meths), attrs);
 }

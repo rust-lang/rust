@@ -309,7 +309,7 @@ type ty_field_ = {ident: ident, mt: mt};
 
 type ty_field = spanned<ty_field_>;
 
-type ty_method = {ident: ident, decl: fn_decl, span: span};
+type ty_method = {ident: ident, decl: fn_decl, tps: [ty_param], span: span};
 
 tag int_ty { ty_i; ty_char; ty_i8; ty_i16; ty_i32; ty_i64; }
 

@@ -103,6 +103,7 @@ export substitute_type_params;
 export t;
 export new_ty_hash;
 export tag_variants;
+export iface_methods, store_iface_methods;
 export tag_variant_with_id;
 export ty_param_substs_opt_and_ty;
 export ty_param_kinds_and_ty;
@@ -191,7 +192,7 @@ type arg = {mode: mode, ty: t};
 
 type field = {ident: ast::ident, mt: mt};
 
-type method = {ident: ast::ident, fty: fn_ty};
+type method = {ident: ast::ident, tps: [ast::kind], fty: fn_ty};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
@@ -215,7 +216,8 @@ type ctxt =
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, ast::kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
-      tag_var_cache: hashmap<ast::def_id, @[variant_info]>};
+      tag_var_cache: hashmap<ast::def_id, @[variant_info]>,
+      iface_method_cache: hashmap<def_id, @[method]>};
 
 type ty_ctxt = ctxt;
 
@@ -412,7 +414,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
           kind_cache: new_ty_hash(),
           ast_ty_to_ty_cache:
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
-          tag_var_cache: new_def_hash()};
+          tag_var_cache: new_def_hash(),
+          iface_method_cache: new_def_hash()};
     populate_type_store(cx);
     ret cx;
 }
@@ -752,7 +755,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
             let new_args = vec::map(m.fty.inputs, {|a|
                 {mode: a.mode, ty: fold_ty(cx, fld, a.ty)}
             });
-            {ident: m.ident,
+            {ident: m.ident, tps: m.tps,
              fty: {inputs: new_args,
                    output: fold_ty(cx, fld, m.fty.output)
                    with m.fty}}
@@ -1961,7 +1964,8 @@ mod unify {
               ures_ok(tfn) {
                 alt struct(cx.tcx, tfn) {
                   ty_fn(f) {
-                    result_meths += [{ident: e_meth.ident, fty: f}];
+                    result_meths += [{ident: e_meth.ident,
+                                      tps: a_meth.tps, fty: f}];
                   }
                 }
               }
@@ -2479,7 +2483,7 @@ fn same_type(cx: ctxt, a: t, b: t) -> bool {
     }
 }
 fn same_method(cx: ctxt, a: method, b: method) -> bool {
-    a.fty.proto == b.fty.proto && a.ident == b.ident &&
+    a.tps == b.tps && a.fty.proto == b.fty.proto && a.ident == b.ident &&
     vec::all2(a.fty.inputs, b.fty.inputs,
               {|a, b| a.mode == b.mode && same_type(cx, a.ty, b.ty) }) &&
     same_type(cx, a.fty.output, b.fty.output) &&
@@ -2587,6 +2591,21 @@ fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
+fn store_iface_methods(cx: ctxt, id: ast::node_id, ms: @[method]) {
+    cx.iface_method_cache.insert(ast_util::local_def(id), ms);
+}
+
+fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method] {
+    alt cx.iface_method_cache.find(id) {
+      some(ms) { ret ms; }
+      _ {}
+    }
+    // Local interfaces are supposed to have been added explicitly.
+    assert id.crate != ast::local_crate;
+    let result = @[]; // FIXME[impl]
+    cx.iface_method_cache.insert(id, result);
+    result
+}
 
 // Tag information
 type variant_info = @{args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
@@ -2600,20 +2619,16 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
         @csearch::get_tag_variants(cx, id)
     } else {
         alt cx.items.get(id.node) {
-          ast_map::node_item(item) {
-            alt item.node {
-              ast::item_tag(variants, _) {
-                @vec::map(variants, {|variant|
-                    let ctor_ty = node_id_to_monotype(cx, variant.node.id);
-                    let arg_tys = if vec::len(variant.node.args) > 0u {
-                        vec::map(ty_fn_args(cx, ctor_ty), {|a| a.ty})
-                    } else { [] };
-                    @{args: arg_tys,
-                      ctor_ty: ctor_ty,
-                      id: ast_util::local_def(variant.node.id)}
-                })
-              }
-            }
+          ast_map::node_item(@{node: ast::item_tag(variants, _), _}) {
+            @vec::map(variants, {|variant|
+                let ctor_ty = node_id_to_monotype(cx, variant.node.id);
+                let arg_tys = if vec::len(variant.node.args) > 0u {
+                    vec::map(ty_fn_args(cx, ctor_ty), {|a| a.ty})
+                } else { [] };
+                @{args: arg_tys,
+                  ctor_ty: ctor_ty,
+                  id: ast_util::local_def(variant.node.id)}
+            })
           }
         }
     };
