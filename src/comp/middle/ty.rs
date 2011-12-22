@@ -207,9 +207,6 @@ type mt = {ty: t, mut: ast::mutability};
 // the types of AST nodes.
 type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, ty::t>;
 
-type tag_var_cache =
-    @smallintmap::smallintmap<@mutable [variant_info]>;
-
 type ctxt =
     @{ts: @type_store,
       sess: session::session,
@@ -223,7 +220,7 @@ type ctxt =
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, ast::kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
-      tag_var_cache: tag_var_cache};
+      tag_var_cache: hashmap<ast::def_id, @[variant_info]>};
 
 type ty_ctxt = ctxt;
 
@@ -404,7 +401,6 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
     let ntt: node_type_table =
         @smallintmap::mk::<ty::ty_param_substs_opt_and_ty>();
-    let tcache = new_def_hash::<ty::ty_param_kinds_and_ty>();
     fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
         ret a.hash == b.hash && a.struct == b.struct;
     }
@@ -416,14 +412,14 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
           node_types: ntt,
           items: amap,
           freevars: freevars,
-          tcache: tcache,
+          tcache: new_def_hash(),
           rcache: mk_rcache(),
           short_names_cache: new_ty_hash(),
           needs_drop_cache: new_ty_hash(),
           kind_cache: new_ty_hash(),
           ast_ty_to_ty_cache:
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
-          tag_var_cache: @smallintmap::mk()};
+          tag_var_cache: new_def_hash()};
     populate_type_store(cx);
     ret cx;
 }
@@ -2627,45 +2623,34 @@ fn def_has_ty_params(def: ast::def) -> bool {
 // Tag information
 type variant_info = @{args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
 
-fn tag_variants(cx: ctxt, id: ast::def_id) -> @mutable [variant_info] {
-    if ast::local_crate != id.crate {
-        ret @mutable csearch::get_tag_variants(cx, id);
-    }
-    assert (id.node >= 0);
-    alt smallintmap::find(*cx.tag_var_cache, id.node as uint) {
-      option::some(variants) { ret variants; }
+fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
+    alt cx.tag_var_cache.find(id) {
+      some(variants) { ret variants; }
       _ { /* fallthrough */ }
     }
-    let item =
-        alt cx.items.find(id.node) {
-          some(i) { i }
-          none. { cx.sess.bug("expected to find cached node_item") }
-        };
-    alt item {
-      ast_map::node_item(item) {
-        alt item.node {
-          ast::item_tag(variants, _) {
-            let result: @mutable [variant_info] = @mutable [];
-            for variant: ast::variant in variants {
-                let ctor_ty = node_id_to_monotype(cx, variant.node.id);
-                let arg_tys: [t] = [];
-                if vec::len(variant.node.args) > 0u {
-                    for a: arg in ty_fn_args(cx, ctor_ty) {
-                        arg_tys += [a.ty];
-                    }
-                }
-                let did = variant.node.id;
-                *result +=
-                    [@{args: arg_tys,
-                       ctor_ty: ctor_ty,
-                       id: ast_util::local_def(did)}];
+    let result = if ast::local_crate != id.crate {
+        @csearch::get_tag_variants(cx, id)
+    } else {
+        alt cx.items.get(id.node) {
+          ast_map::node_item(item) {
+            alt item.node {
+              ast::item_tag(variants, _) {
+                @vec::map(variants, {|variant|
+                    let ctor_ty = node_id_to_monotype(cx, variant.node.id);
+                    let arg_tys = if vec::len(variant.node.args) > 0u {
+                        vec::map(ty_fn_args(cx, ctor_ty), {|a| a.ty})
+                    } else { [] };
+                    @{args: arg_tys,
+                      ctor_ty: ctor_ty,
+                      id: ast_util::local_def(variant.node.id)}
+                })
+              }
             }
-            smallintmap::insert(*cx.tag_var_cache, id.node as uint, result);
-            ret result;
           }
         }
-      }
-    }
+    };
+    cx.tag_var_cache.insert(id, result);
+    result
 }
 
 
