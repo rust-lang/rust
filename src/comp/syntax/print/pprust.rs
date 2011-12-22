@@ -919,8 +919,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           0 { word_nbsp(s, "log_err"); print_expr(s, expr); }
           2 {
             word_nbsp(s, "log_full");
-            word(s.s, " ");
+            popen(s);
             print_expr(s, lexp);
+            word(s.s, ",");
+            space_if_not_bol(s);
+            print_expr(s, expr);
+            pclose(s);
           }
         }
       }
