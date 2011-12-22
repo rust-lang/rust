@@ -15,6 +15,9 @@ export
     frexp, ldexp, ln, ln1p, log10, log2, modf, rint, round, pow, sin,
     sinh, sqrt, tan, tanh, trunc, t;
 
+export radix, mantissa_digits, digits, epsilon, min_value, max_value,
+       min_exp, max_exp, min_10_exp, max_10_exp;
+
 export consts;
 
 type t = f32;
@@ -113,6 +116,27 @@ mod consts {
     */
     const ln_10: f32 = 2.30258509299404568401799145468436421f32;
 }
+
+// These are not defined inside consts:: for consistency with
+// the integer types
+
+// PORT check per architecture
+
+const radix: uint = 2u;
+
+const mantissa_digits: uint = 24u;
+const digits: uint = 6u;
+
+const epsilon: f32 = 1.19209290e-07f32;
+
+const min_value: f32 = 1.17549435e-38f32;
+const max_value: f32 = 3.40282347e+38f32;
+
+const min_exp: int = -125;
+const max_exp: int = 128;
+
+const min_10_exp: int = -37;
+const max_10_exp: int = 38;
 
 //
 // Local Variables:

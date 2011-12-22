@@ -719,6 +719,31 @@ Returns the integral value nearest to but no larger in magnitude than `x`
 pure fn trunc(x: float) -> float
     { ret m_float::trunc(x as m_float) as float }
 
+/*
+
+FIXME implement this as soon as const expressions may refer to each other
+
+export radix, mantissa_digits, digits, epsilon, min_value, max_value,
+       min_exp, max_exp, min_10_exp, max_10_exp;
+
+const radix: m_float = m_float::radix as m_float;
+
+const mantissa_digits: m_float = m_float::mantissa_digits as m_float;
+const digits: m_float = m_float::digits as m_float;
+
+const epsilon: m_float = m_float::epsilon as m_float;
+
+const min_value: m_float = m_float::min_value as m_float;
+const max_value: m_float = m_float::max_value as m_float;
+
+const min_exp: m_float = m_float::min_exp as m_float;
+const max_exp: m_float = m_float::max_exp as m_float;
+
+const min_10_exp: m_float = m_float::min_10_exp as m_float;
+const max_10_exp: m_float = m_float::max_10_exp as m_float;
+
+*/
+
 //
 // Local Variables:
 // mode: rust
@@ -728,3 +753,8 @@ pure fn trunc(x: float) -> float
 // buffer-file-coding-system: utf-8-unix
 // End:
 //
+
+
+
+
+
