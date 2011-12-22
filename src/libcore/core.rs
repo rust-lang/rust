@@ -11,7 +11,8 @@ export option, some, none;
 // more-verbosity. Error is the bottom level, default logging level is
 // warn-and-below.
 
-const error : int = 0;
-const warn : int = 1;
-const info : int = 2;
-const debug : int = 3;
+export error, warn, info, debug;
+const error : u32 = 0_u32;
+const warn : u32 = 1_u32;
+const info : u32 = 2_u32;
+const debug : u32 = 3_u32;

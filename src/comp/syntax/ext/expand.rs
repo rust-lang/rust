@@ -55,10 +55,10 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
 fn core_macros() -> str {
     ret
 "{
-    #macro[[#error[f, ...], log_err #fmt[f, ...]]];
-    #macro[[#warn[f, ...], log_err #fmt[f, ...]]];
-    #macro[[#info[f, ...], log_err #fmt[f, ...]]];
-    #macro[[#debug[f, ...], log_err #fmt[f, ...]]];
+    #macro[[#error[f, ...], log_full(core::error, #fmt[f, ...])]];
+    #macro[[#warn[f, ...], log_full(core::warn, #fmt[f, ...])]];
+    #macro[[#info[f, ...], log_full(core::info, #fmt[f, ...])]];
+    #macro[[#debug[f, ...], log_full(core::debug, #fmt[f, ...])]];
 }";
 }
 

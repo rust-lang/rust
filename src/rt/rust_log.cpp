@@ -129,12 +129,12 @@ struct log_directive {
 };
 
 const size_t max_log_directives = 255;
-const size_t max_log_level = 1;
+const size_t max_log_level = 255;
 const size_t default_log_level = 0;
 
 // This is a rather ugly parser for strings in the form
-// "crate1,crate2.mod3,crate3.x=1". Log levels are 0-1 for now,
-// eventually we'll have 0-3.
+// "crate1,crate2.mod3,crate3.x=1". Log levels are 0-255,
+// with the most likely ones being 0-3 (defined in core::).
 size_t parse_logging_spec(char* spec, log_directive* dirs) {
     size_t dir = 0;
     while (dir < max_log_directives && *spec) {
