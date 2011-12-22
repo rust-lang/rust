@@ -34,7 +34,7 @@ type fndoc = {
        doc = "Function docs extracted from attributes",
        _fn = "AST object representing this function")
 )]
-fn doc_fn(rd: rustdoc, ident: str, doc: fndoc, _fn: ast::_fn) {
+fn doc_fn(rd: rustdoc, ident: str, doc: fndoc, decl: ast::fn_decl) {
     rd.w.write_line("## Function `" + ident + "`");
     rd.w.write_line(doc.brief);
     alt doc.desc {
@@ -45,7 +45,7 @@ fn doc_fn(rd: rustdoc, ident: str, doc: fndoc, _fn: ast::_fn) {
         }
         none. { }
     }
-    for arg: ast::arg in _fn.decl.inputs {
+    for arg: ast::arg in decl.inputs {
         rd.w.write_str("### Argument `" + arg.ident + "`: ");
         rd.w.write_line("`" + pprust::ty_to_str(arg.ty) + "`");
         alt doc.args.find(arg.ident) {
@@ -55,7 +55,7 @@ fn doc_fn(rd: rustdoc, ident: str, doc: fndoc, _fn: ast::_fn) {
             none. { }
         };
     }
-    rd.w.write_line("### Returns `" + pprust::ty_to_str(_fn.decl.output) + "`");
+    rd.w.write_line("### Returns `" + pprust::ty_to_str(decl.output) + "`");
     alt doc.return {
         some(_r) { rd.w.write_line(_r); }
         none. { }
@@ -152,14 +152,14 @@ fn doc_item(rd: rustdoc, item: @ast::item) {
 
     alt item.node {
         ast::item_const(ty, expr) { }
-        ast::item_fn(_fn, _) {
-            doc_fn(rd, item.ident, _fndoc0, _fn);
+        ast::item_fn(decl, _, _) {
+            doc_fn(rd, item.ident, _fndoc0, decl);
         }
         ast::item_mod(_mod) { }
         ast::item_ty(ty, typarams) { }
         ast::item_tag(variant, typarams) { }
         ast::item_obj(_obj, typarams, node_id) { }
-        ast::item_res(dtor, dtorid, typarams, ctorid) { }
+        ast::item_res(_, _, _, _, _) { }
     };
 }
 
