@@ -31,13 +31,11 @@ export ast_constr_to_constr;
 export bind_params_in_type;
 export block_ty;
 export constr;
-export cast_type;
 export constr_general;
 export constr_table;
 export count_ty_params;
 export ctxt;
 export def_has_ty_params;
-export eq_ty;
 export expr_has_ty_params;
 export expr_ty;
 export expr_ty_params_and_ty;
@@ -48,7 +46,6 @@ export field_idx;
 export get_field;
 export fm_general;
 export get_element_type;
-export hash_ty;
 export idx_nil;
 export is_binopable;
 export is_pred_ty;
@@ -104,10 +101,9 @@ export stmt_node_id;
 export sty;
 export substitute_type_params;
 export t;
+export new_ty_hash;
 export tag_variants;
 export tag_variant_with_id;
-export triv_cast;
-export triv_eq_ty;
 export ty_param_substs_opt_and_ty;
 export ty_param_kinds_and_ty;
 export ty_native_fn;
@@ -133,7 +129,6 @@ export ty_param;
 export ty_ptr;
 export ty_rec;
 export ty_tag;
-export ty_to_machine_ty;
 export ty_tup;
 export ty_type;
 export ty_send_type;
@@ -141,6 +136,7 @@ export ty_uint;
 export ty_uniq;
 export ty_var;
 export ty_named;
+export same_type, same_method;
 export ty_var_id;
 export ty_param_substs_opt_and_ty_to_monotype;
 export ty_fn_args;
@@ -211,20 +207,10 @@ type mt = {ty: t, mut: ast::mutability};
 // the types of AST nodes.
 type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, ty::t>;
 
-type tag_var_cache =
-    @smallintmap::smallintmap<@mutable [variant_info]>;
-
-tag cast_type {
-    /* cast may be ignored after substituting primitive with machine types
-       since expr already has the right type */
-    triv_cast;
-}
-
 type ctxt =
     @{ts: @type_store,
       sess: session::session,
       def_map: resolve::def_map,
-      cast_map: hashmap<ast::node_id, cast_type>,
       node_types: node_type_table,
       items: ast_map::map,
       freevars: freevars::freevar_map,
@@ -234,7 +220,7 @@ type ctxt =
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, ast::kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
-      tag_var_cache: tag_var_cache};
+      tag_var_cache: hashmap<ast::def_id, @[variant_info]>};
 
 type ty_ctxt = ctxt;
 
@@ -409,29 +395,31 @@ fn mk_rcache() -> creader_cache {
     ret map::mk_hashmap(hash_cache_entry, eq_cache_entries);
 }
 
+fn new_ty_hash<copy V>() -> map::hashmap<t, V> { map::new_uint_hash() }
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
     let ntt: node_type_table =
         @smallintmap::mk::<ty::ty_param_substs_opt_and_ty>();
-    let tcache = new_def_hash::<ty::ty_param_kinds_and_ty>();
+    fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
+        ret a.hash == b.hash && a.struct == b.struct;
+    }
     let ts = @interner::mk::<@raw_t>(hash_raw_ty, eq_raw_ty);
     let cx =
         @{ts: ts,
           sess: s,
           def_map: dm,
-          cast_map: ast_util::new_node_hash(),
           node_types: ntt,
           items: amap,
           freevars: freevars,
-          tcache: tcache,
+          tcache: new_def_hash(),
           rcache: mk_rcache(),
-          short_names_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
-          needs_drop_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
-          kind_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+          short_names_cache: new_ty_hash(),
+          needs_drop_cache: new_ty_hash(),
+          kind_cache: new_ty_hash(),
           ast_ty_to_ty_cache:
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
-          tag_var_cache: @smallintmap::mk()};
+          tag_var_cache: new_def_hash()};
     populate_type_store(cx);
     ret cx;
 }
@@ -1245,8 +1233,7 @@ fn type_autoderef(cx: ctxt, t: ty::t) -> ty::t {
     ret t1;
 }
 
-// Type hashing. This function is private to this module (and slow); external
-// users should use `hash_ty()` instead.
+// Type hashing.
 fn hash_type_structure(st: sty) -> uint {
     fn hash_uint(id: uint, n: uint) -> uint {
         let h = id;
@@ -1261,7 +1248,7 @@ fn hash_type_structure(st: sty) -> uint {
     }
     fn hash_subty(id: uint, subty: t) -> uint {
         let h = id;
-        h += (h << 5u) + hash_ty(subty);
+        h += (h << 5u) + subty;
         ret h;
     }
     fn hash_subtys(id: uint, subtys: [t]) -> uint {
@@ -1296,8 +1283,8 @@ fn hash_type_structure(st: sty) -> uint {
 
     fn hash_fn(id: uint, args: [arg], rty: t) -> uint {
         let h = id;
-        for a: arg in args { h += (h << 5u) + hash_ty(a.ty); }
-        h += (h << 5u) + hash_ty(rty);
+        for a: arg in args { h += (h << 5u) + a.ty; }
+        h += (h << 5u) + rty;
         ret h;
     }
     alt st {
@@ -1320,14 +1307,14 @@ fn hash_type_structure(st: sty) -> uint {
       ty_str. { ret 17u; }
       ty_tag(did, tys) {
         let h = hash_def(18u, did);
-        for typ: t in tys { h += (h << 5u) + hash_ty(typ); }
+        for typ: t in tys { h += (h << 5u) + typ; }
         ret h;
       }
       ty_box(mt) { ret hash_subty(19u, mt.ty); }
       ty_vec(mt) { ret hash_subty(21u, mt.ty); }
       ty_rec(fields) {
         let h = 26u;
-        for f: field in fields { h += (h << 5u) + hash_ty(f.mt.ty); }
+        for f: field in fields { h += (h << 5u) + f.mt.ty; }
         ret h;
       }
       ty_tup(ts) { ret hash_subtys(25u, ts); }
@@ -1366,13 +1353,6 @@ fn hash_type_structure(st: sty) -> uint {
 
 fn hash_raw_ty(&&rt: @raw_t) -> uint { ret rt.hash; }
 
-fn hash_ty(&&typ: t) -> uint { ret typ; }
-
-
-// Type equality. This function is private to this module (and slow); external
-// users should use `eq_ty()` instead.
-fn eq_int(&&x: uint, &&y: uint) -> bool { ret x == y; }
-
 fn arg_eq<T>(eq: fn(T, T) -> bool, a: @sp_constr_arg<T>, b: @sp_constr_arg<T>)
    -> bool {
     alt a.node {
@@ -1401,6 +1381,7 @@ fn args_eq<T>(eq: fn(T, T) -> bool, a: [@sp_constr_arg<T>],
 }
 
 fn constr_eq(c: @constr, d: @constr) -> bool {
+    fn eq_int(&&x: uint, &&y: uint) -> bool { ret x == y; }
     ret path_to_str(c.node.path) == path_to_str(d.node.path) &&
             // FIXME: hack
             args_eq(eq_int, c.node.args, d.node.args);
@@ -1411,52 +1392,6 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
     let i = 0u;
     for c: @constr in cs { if !constr_eq(c, ds[i]) { ret false; } i += 1u; }
     ret true;
-}
-
-// This function is private to this module.
-fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
-    ret a.hash == b.hash && a.struct == b.struct;
-}
-
-
-// This is the equality function the public should use. It works as long as
-// the types are interned.
-fn eq_ty(&&a: t, &&b: t) -> bool { a == b }
-
-
-// Convert type to machine type
-// (i.e. replace uint, int, float with target architecture machine types)
-//
-// FIXME somewhat expensive but this should only be called rarely
-fn ty_to_machine_ty(cx: ctxt, ty: t) -> t {
-    fn sub_fn(cx: ctxt, uint_ty: t, int_ty: t, float_ty: t, in: t) -> t {
-        alt struct(cx, in) {
-          ty_uint(ast::ty_u.) { ret uint_ty; }
-          ty_int(ast::ty_i.) { ret int_ty; }
-          ty_float(ast::ty_f.) { ret float_ty; }
-          _ { ret in; }
-        }
-    }
-
-    let cfg      = cx.sess.get_targ_cfg();
-    let uint_ty  = mk_mach_uint(cx, cfg.uint_type);
-    let int_ty   = mk_mach_int(cx, cfg.int_type);
-    let float_ty = mk_mach_float(cx, cfg.float_type);
-    let fold_m   = fm_general(bind sub_fn(cx, uint_ty, int_ty, float_ty, _));
-
-    ret fold_ty(cx, fold_m, ty);
-}
-
-// Two types are trivially equal if they are either
-// equal or if they are equal after substituting all occurences of
-//  machine independent primitive types by their machine type equivalents
-// for the current target architecture
-fn triv_eq_ty(cx: ctxt, &&a: t, &&b: t) -> bool {
-    let a = alt interner::get(*cx.ts, a).struct
-        { ty_named(t, _) { t } _ { a } };
-    let b = alt interner::get(*cx.ts, b).struct
-        { ty_named(t, _) { t } _ { b } };
-    a == b || ty_to_machine_ty(cx, a) == ty_to_machine_ty(cx, b)
 }
 
 // Type lookups
@@ -1745,7 +1680,7 @@ mod unify {
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
 
-    type ctxt = {vb: @var_bindings, tcx: ty_ctxt};
+    type ctxt = {vb: option::t<@var_bindings>, tcx: ty_ctxt};
 
     fn mk_var_bindings() -> @var_bindings {
         ret @{sets: ufind::make(), types: smallintmap::mk::<t>()};
@@ -1754,31 +1689,32 @@ mod unify {
     // Unifies two sets.
     fn union(cx: @ctxt, set_a: uint, set_b: uint,
              variance: variance) -> union_result {
-        ufind::grow(cx.vb.sets, float::max(set_a, set_b) + 1u);
-        let root_a = ufind::find(cx.vb.sets, set_a);
-        let root_b = ufind::find(cx.vb.sets, set_b);
+        let vb = option::get(cx.vb);
+        ufind::grow(vb.sets, float::max(set_a, set_b) + 1u);
+        let root_a = ufind::find(vb.sets, set_a);
+        let root_b = ufind::find(vb.sets, set_b);
 
         let replace_type =
-            bind fn (cx: @ctxt, t: t, set_a: uint, set_b: uint) {
-                     ufind::union(cx.vb.sets, set_a, set_b);
-                     let root_c: uint = ufind::find(cx.vb.sets, set_a);
-                     smallintmap::insert::<t>(cx.vb.types, root_c, t);
+            bind fn (vb: @var_bindings, t: t, set_a: uint, set_b: uint) {
+                     ufind::union(vb.sets, set_a, set_b);
+                     let root_c: uint = ufind::find(vb.sets, set_a);
+                     smallintmap::insert::<t>(vb.types, root_c, t);
                  }(_, _, set_a, set_b);
 
 
-        alt smallintmap::find(cx.vb.types, root_a) {
+        alt smallintmap::find(vb.types, root_a) {
           none. {
-            alt smallintmap::find(cx.vb.types, root_b) {
-              none. { ufind::union(cx.vb.sets, set_a, set_b); ret unres_ok; }
-              some(t_b) { replace_type(cx, t_b); ret unres_ok; }
+            alt smallintmap::find(vb.types, root_b) {
+              none. { ufind::union(vb.sets, set_a, set_b); ret unres_ok; }
+              some(t_b) { replace_type(vb, t_b); ret unres_ok; }
             }
           }
           some(t_a) {
-            alt smallintmap::find(cx.vb.types, root_b) {
-              none. { replace_type(cx, t_a); ret unres_ok; }
+            alt smallintmap::find(vb.types, root_b) {
+              none. { replace_type(vb, t_a); ret unres_ok; }
               some(t_b) {
                 alt unify_step(cx, t_a, t_b, variance) {
-                  ures_ok(t_c) { replace_type(cx, t_c); ret unres_ok; }
+                  ures_ok(t_c) { replace_type(vb, t_c); ret unres_ok; }
                   ures_err(terr) { ret unres_err(terr); }
                 }
               }
@@ -1803,10 +1739,11 @@ mod unify {
     fn record_var_binding(
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
 
-        ufind::grow(cx.vb.sets, (key as uint) + 1u);
-        let root = ufind::find(cx.vb.sets, key as uint);
+        let vb = option::get(cx.vb);
+        ufind::grow(vb.sets, (key as uint) + 1u);
+        let root = ufind::find(vb.sets, key as uint);
         let result_type = typ;
-        alt smallintmap::find::<t>(cx.vb.types, root) {
+        alt smallintmap::find(vb.types, root) {
           some(old_type) {
             alt unify_step(cx, old_type, typ, variance) {
               ures_ok(unified_type) { result_type = unified_type; }
@@ -1815,7 +1752,7 @@ mod unify {
           }
           none. {/* fall through */ }
         }
-        smallintmap::insert::<t>(cx.vb.types, root, result_type);
+        smallintmap::insert::<t>(vb.types, root, result_type);
         ret ures_ok(typ);
     }
 
@@ -2136,12 +2073,15 @@ mod unify {
 
     fn unify_step(cx: @ctxt, expected: t, actual: t,
                   variance: variance) -> result {
-        // TODO: rewrite this using tuple pattern matching when available, to
+        // FIXME: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
+        // NOTE: we have tuple matching now, but that involves copying the
+        // matched elements into a tuple first, which is expensive, since sty
+        // holds vectors, which are currently unique
 
         // Fast path.
+        if expected == actual { ret ures_ok(expected); }
 
-        if eq_ty(expected, actual) { ret ures_ok(expected); }
         // Stage 1: Handle the cases in which one side or another is a type
         // variable.
 
@@ -2149,6 +2089,7 @@ mod unify {
           // If the RHS is a variable type, then just do the
           // appropriate binding.
           ty::ty_var(actual_id) {
+            assert option::is_some(cx.vb);
             let actual_n = actual_id as uint;
             alt struct(cx.tcx, expected) {
               ty::ty_var(expected_id) {
@@ -2173,8 +2114,8 @@ mod unify {
         }
         alt struct(cx.tcx, expected) {
           ty::ty_var(expected_id) {
+            assert option::is_some(cx.vb);
             // Add a binding. (`actual` can't actually be a var here.)
-
             alt record_var_binding_for_expected(
                 cx, expected_id, actual,
                 variance) {
@@ -2490,8 +2431,8 @@ mod unify {
           }
         }
     }
-    fn unify(expected: t, actual: t, vb: @var_bindings, tcx: ty_ctxt) ->
-       result {
+    fn unify(expected: t, actual: t, vb: option::t<@var_bindings>,
+             tcx: ty_ctxt) -> result {
         let cx = @{vb: vb, tcx: tcx};
         ret unify_step(cx, expected, actual, covariant);
     }
@@ -2562,6 +2503,19 @@ mod unify {
           some(rt) { ret fixup_vars(tcx, sp, vb, rt); }
         }
     }
+}
+
+fn same_type(cx: ctxt, a: t, b: t) -> bool {
+    alt unify::unify(a, b, none, cx) {
+      unify::ures_ok(_) { true }
+      _ { false }
+    }
+}
+fn same_method(cx: ctxt, a: method, b: method) -> bool {
+    a.proto == b.proto && a.ident == b.ident &&
+    vec::all2(a.inputs, b.inputs,
+              {|a, b| a.mode == b.mode && same_type(cx, a.ty, b.ty) }) &&
+    same_type(cx, a.output, b.output) && a.cf == b.cf
 }
 
 fn type_err_to_str(err: ty::type_err) -> str {
@@ -2669,45 +2623,34 @@ fn def_has_ty_params(def: ast::def) -> bool {
 // Tag information
 type variant_info = @{args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
 
-fn tag_variants(cx: ctxt, id: ast::def_id) -> @mutable [variant_info] {
-    if ast::local_crate != id.crate {
-        ret @mutable csearch::get_tag_variants(cx, id);
-    }
-    assert (id.node >= 0);
-    alt smallintmap::find(*cx.tag_var_cache, id.node as uint) {
-      option::some(variants) { ret variants; }
+fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
+    alt cx.tag_var_cache.find(id) {
+      some(variants) { ret variants; }
       _ { /* fallthrough */ }
     }
-    let item =
-        alt cx.items.find(id.node) {
-          some(i) { i }
-          none. { cx.sess.bug("expected to find cached node_item") }
-        };
-    alt item {
-      ast_map::node_item(item) {
-        alt item.node {
-          ast::item_tag(variants, _) {
-            let result: @mutable [variant_info] = @mutable [];
-            for variant: ast::variant in variants {
-                let ctor_ty = node_id_to_monotype(cx, variant.node.id);
-                let arg_tys: [t] = [];
-                if vec::len(variant.node.args) > 0u {
-                    for a: arg in ty_fn_args(cx, ctor_ty) {
-                        arg_tys += [a.ty];
-                    }
-                }
-                let did = variant.node.id;
-                *result +=
-                    [@{args: arg_tys,
-                       ctor_ty: ctor_ty,
-                       id: ast_util::local_def(did)}];
+    let result = if ast::local_crate != id.crate {
+        @csearch::get_tag_variants(cx, id)
+    } else {
+        alt cx.items.get(id.node) {
+          ast_map::node_item(item) {
+            alt item.node {
+              ast::item_tag(variants, _) {
+                @vec::map(variants, {|variant|
+                    let ctor_ty = node_id_to_monotype(cx, variant.node.id);
+                    let arg_tys = if vec::len(variant.node.args) > 0u {
+                        vec::map(ty_fn_args(cx, ctor_ty), {|a| a.ty})
+                    } else { [] };
+                    @{args: arg_tys,
+                      ctor_ty: ctor_ty,
+                      id: ast_util::local_def(variant.node.id)}
+                })
+              }
             }
-            smallintmap::insert(*cx.tag_var_cache, id.node as uint, result);
-            ret result;
           }
         }
-      }
-    }
+    };
+    cx.tag_var_cache.insert(id, result);
+    result
 }
 
 

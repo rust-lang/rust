@@ -961,7 +961,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         let e = parse_expr(p);
 
         // FIXME: Is this the right place for this check?
-        if /*check*/ ast_util::is_tail_call_expr(e) {
+        if /*check*/ast_util::is_call_expr(e) {
             hi = e.span.hi;
             ex = ast::expr_be(e);
         } else { p.fatal("Non-call expression in tail call"); }

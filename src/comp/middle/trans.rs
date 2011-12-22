@@ -3581,12 +3581,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         }
         else { ret lval_to_dps(bcx, a, dest); }
       }
-      ast::expr_cast(val, _) {
-        alt tcx.cast_map.find(e.id) {
-          some(ty::triv_cast.) { ret trans_expr(bcx, val, dest); }
-          _ { ret trans_cast(bcx, val, e.id, dest); }
-        }
-      }
+      ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(bcx, e.span, anon_obj, e.id, dest);
       }
@@ -3615,7 +3610,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         // that is_call_expr(ex) -- but we don't support that
         // yet
         // FIXME
-        check (ast_util::is_tail_call_expr(ex));
+        check (ast_util::is_call_expr(ex));
         ret trans_be(bcx, ex);
       }
       ast::expr_fail(expr) {
@@ -3952,8 +3947,7 @@ fn trans_ret(bcx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
 fn build_return(bcx: @block_ctxt) { Br(bcx, bcx_fcx(bcx).llreturn); }
 
 // fn trans_be(cx: &@block_ctxt, e: &@ast::expr) -> result {
-fn trans_be(cx: @block_ctxt, e: @ast::expr) :
-ast_util::is_tail_call_expr(e) ->
+fn trans_be(cx: @block_ctxt, e: @ast::expr) : ast_util::is_call_expr(e) ->
    @block_ctxt {
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled
@@ -4354,7 +4348,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
           lllocals: new_int_hash::<local_val>(),
           llupvars: new_int_hash::<ValueRef>(),
           mutable lltydescs: [],
-          derived_tydescs: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+          derived_tydescs: ty::new_ty_hash(),
           id: id,
           ret_style: rstyle,
           sp: sp,
@@ -4728,16 +4722,6 @@ fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
 // that does so later on?
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     alt e.node {
-      ast::expr_cast(e1, _) {
-        alt ccx_tcx(cx).cast_map.find(e.id) {
-          some(ty::triv_cast.) { trans_const_expr(cx, e1) }
-          _ {
-              cx.sess.span_err(e.span,
-                               "non-trivial cast in constant expression");
-              fail;
-            }
-        }
-      }
       ast::expr_lit(lit) { ret trans_crate_lit(cx, *lit); }
       ast::expr_binary(b, e1, e2) {
         let te1 = trans_const_expr(cx, e1);
@@ -5658,13 +5642,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     tn.associate("taskptr", taskptr_type);
     let tydesc_type = T_tydesc(targ_cfg);
     tn.associate("tydesc", tydesc_type);
-    let hasher = ty::hash_ty;
-    let eqer = ty::eq_ty;
-    let tag_sizes = map::mk_hashmap::<ty::t, uint>(hasher, eqer);
-    let tydescs = map::mk_hashmap::<ty::t, @tydesc_info>(hasher, eqer);
-    let lltypes = map::mk_hashmap::<ty::t, TypeRef>(hasher, eqer);
-    let sha1s = map::mk_hashmap::<ty::t, str>(hasher, eqer);
-    let short_names = map::mk_hashmap::<ty::t, str>(hasher, eqer);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
     let dbg_cx = if sess.get_opts().debuginfo {
         option::some(@{llmetadata: map::new_int_hash(),
@@ -5685,18 +5662,18 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           item_symbols: new_int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
           link_meta: link_meta,
-          tag_sizes: tag_sizes,
+          tag_sizes: ty::new_ty_hash(),
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
           consts: new_int_hash::<ValueRef>(),
           obj_methods: new_int_hash::<()>(),
-          tydescs: tydescs,
+          tydescs: ty::new_ty_hash(),
           module_data: new_str_hash::<ValueRef>(),
-          lltypes: lltypes,
+          lltypes: ty::new_ty_hash(),
           names: namegen(0),
           sha: sha,
-          type_sha1s: sha1s,
-          type_short_names: short_names,
+          type_sha1s: ty::new_ty_hash(),
+          type_short_names: ty::new_ty_hash(),
           tcx: tcx,
           mut_map: mut_map,
           copy_map: copy_map,

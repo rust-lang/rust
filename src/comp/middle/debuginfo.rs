@@ -267,8 +267,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
     alt cached_metadata::<@metadata<tydesc_md>>(
-        cache, tg,
-        {|md| ty::hash_ty(t) == ty::hash_ty(md.data.hash)}) {
+        cache, tg, {|md| t == md.data.hash}) {
       option::some(md) { ret md; }
       option::none. {}
     }
@@ -311,7 +310,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
                   lli32(0), //XXX flags?
                   lli32(encoding)];
     let llnode = llmdnode(lldata);
-    let mdval = @{node: llnode, data: {hash: ty::hash_ty(t)}};
+    let mdval = @{node: llnode, data: {hash: t}};
     update_cache(cache, tg, tydesc_metadata(mdval));
     add_named_metadata(cx, "llvm.dbg.ty", llnode);
     ret mdval;
@@ -333,7 +332,7 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: codemap::span,
     //let cu_node = create_compile_unit(cx, fname);
     let llnode = create_derived_type(tg, file_node.node, "", 0, size * 8,
                                      align * 8, 0, pointee.node);
-    let mdval = @{node: llnode, data: {hash: ty::hash_ty(t)}};
+    let mdval = @{node: llnode, data: {hash: t}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
     add_named_metadata(cx, "llvm.dbg.ty", llnode);
     ret mdval;

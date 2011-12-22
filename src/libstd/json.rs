@@ -34,6 +34,8 @@ tag json {
     list(@[json]);
     /* Variant: dict */
     dict(map::hashmap<str,json>);
+    /* Variant: null */
+    null;
 }
 
 /*
@@ -63,6 +65,7 @@ fn to_str(j: json) -> str {
             });
             str::concat(["{ ", str::connect(parts, ", "), " }"])
         }
+        null { "null" }
     }
 }
 
@@ -233,6 +236,14 @@ fn from_str_bool(s: str) -> (option::t<json>, str) {
     }
 }
 
+fn from_str_null(s: str) -> (option::t<json>, str) {
+    if (str::starts_with(s, "null")) {
+        (some(null), str::slice(s, 4u, str::byte_len(s)))
+    } else {
+        (none, s)
+    }
+}
+
 fn from_str_helper(s: str) -> (option::t<json>, str) {
     let s = str::trim_left(s);
     if str::is_empty(s) { ret (none, s); }
@@ -243,6 +254,7 @@ fn from_str_helper(s: str) -> (option::t<json>, str) {
         '{' { from_str_dict(s) }
         '0' to '9' | '-' | '+' | '.' { from_str_float(s) }
         't' | 'f' { from_str_bool(s) }
+        'n' { from_str_null(s) }
         _ { ret (none, s); }
     }
 }

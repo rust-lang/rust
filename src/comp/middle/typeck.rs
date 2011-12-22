@@ -791,7 +791,8 @@ mod collect {
 mod unify {
     fn unify(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) ->
        ty::unify::result {
-        ret ty::unify::unify(expected, actual, fcx.var_bindings, fcx.ccx.tcx);
+        ret ty::unify::unify(expected, actual, some(fcx.var_bindings),
+                             fcx.ccx.tcx);
     }
 }
 
@@ -1106,7 +1107,7 @@ fn gather_locals(ccx: @crate_ctxt,
             alt ty_opt {
               none. {/* nothing to do */ }
               some(typ) {
-                ty::unify::unify(ty::mk_var(tcx, var_id), typ, vb, tcx);
+                ty::unify::unify(ty::mk_var(tcx, var_id), typ, some(vb), tcx);
               }
             }
         };
@@ -1198,8 +1199,8 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
         check_expr_with(fcx, end, expected);
         let b_ty = resolve_type_vars_if_possible(fcx, expr_ty(fcx.ccx.tcx,
                                                               begin));
-        if b_ty != resolve_type_vars_if_possible(fcx, expr_ty(fcx.ccx.tcx,
-                                                              end)) {
+        if !ty::same_type(fcx.ccx.tcx, b_ty, resolve_type_vars_if_possible(
+            fcx, expr_ty(fcx.ccx.tcx, end))) {
             fcx.ccx.tcx.sess.span_err(pat.span, "mismatched types in range");
         } else if !ty::type_is_numeric(fcx.ccx.tcx, b_ty) {
             fcx.ccx.tcx.sess.span_err(pat.span,
@@ -1850,21 +1851,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_be(e) {
         // FIXME: prove instead of assert
-        assert (ast_util::is_tail_call_expr(e));
+        assert (ast_util::is_call_expr(e));
         check_expr_with(fcx, e, fcx.ret_ty);
-
-        alt e.node {
-          ast::expr_cast(_, _) {
-            alt tcx.cast_map.find(e.id) {
-              option::some(ty::triv_cast.) { }
-              _ { tcx.sess.span_err(expr.span,
-                    "non-trivial cast of tail-call return value");
-                }
-            }
-          }
-          _ { /* regular tail call */ }
-        }
-
         bot = true;
         write::nil_ty(tcx, id);
       }
@@ -2066,19 +2054,19 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_cast(e, t) {
         bot = check_expr(fcx, e);
         let t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
-        let t_e = expr_ty(tcx, e);
+        let t_e = ty::expr_ty(tcx, e);
 
         if ty::type_is_nil(tcx, t_e) {
             tcx.sess.span_err(expr.span,
                               "cast from nil: " +
-                                  ty_to_str(tcx, expr_ty(tcx, e)) + " as " +
+                                  ty_to_str(tcx, t_e) + " as " +
                                   ty_to_str(tcx, t_1));
         }
 
         if ty::type_is_nil(tcx, t_1) {
             tcx.sess.span_err(expr.span,
                               "cast to nil: " +
-                                  ty_to_str(tcx, expr_ty(tcx, e)) + " as " +
+                                  ty_to_str(tcx, t_e) + " as " +
                                   ty_to_str(tcx, t_1));
         }
 
@@ -2087,14 +2075,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
              && type_is_scalar(fcx, expr.span, t_1)) {
             tcx.sess.span_err(expr.span,
                               "non-scalar cast: " +
-                                  ty_to_str(tcx, expr_ty(tcx, e)) + " as " +
+                                  ty_to_str(tcx, t_e) + " as " +
                                   ty_to_str(tcx, t_1));
         }
-
-        // mark as triv_cast for later dropping in trans
-        if ty::triv_eq_ty(tcx, t_1, t_e)
-            { tcx.cast_map.insert(expr.id, ty::triv_cast); }
-
         write::ty_only_fixup(fcx, id, t_1);
       }
       ast::expr_vec(args, mut) {
@@ -2342,7 +2325,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         // We'd better be overriding with one of the same
                         // type.  Check to make sure.
                         let new_type = ty_of_method(ccx.tcx, m_check, om);
-                        if new_type != m {
+                        if !ty::same_method(ccx.tcx, new_type, m) {
                             ccx.tcx.sess.span_fatal
                                 (om.span, "attempted to override method "
                                  + m.ident + " with one of a different type");

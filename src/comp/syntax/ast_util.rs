@@ -1,17 +1,8 @@
-import core::{str, option, int};
-import std::map;
 import codemap::span;
 import ast::*;
 
 fn respan<copy T>(sp: span, t: T) -> spanned<T> {
     ret {node: t, span: sp};
-}
-
-fn new_node_hash<copy V>() -> map::hashmap<node_id, V> {
-    fn node_id_hash(&&i: node_id) -> uint { ret int::hash(i as int); }
-    fn node_id_eq(&&a: node_id, &&b: node_id) -> bool
-        { ret int::eq(a as int, b as int); }
-    ret map::mk_hashmap(node_id_hash, node_id_eq);
 }
 
 /* assuming that we're not in macro expansion */
@@ -196,14 +187,6 @@ fn is_exported(i: ident, m: _mod) -> bool {
 
 pure fn is_call_expr(e: @expr) -> bool {
     alt e.node { expr_call(_, _, _) { true } _ { false } }
-}
-
-pure fn is_tail_call_expr(e: @expr) -> bool {
-    alt e.node {
-      expr_call(_, _, _) { true }
-      expr_cast(inner_e, _) { is_call_expr(inner_e) }
-      _ { false }
-    }
 }
 
 fn is_constraint_arg(e: @expr) -> bool {
