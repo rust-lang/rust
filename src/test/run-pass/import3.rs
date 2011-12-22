@@ -4,7 +4,7 @@ import zed::bar;
 
 mod baz {
     mod zed {
-        fn bar() { log "bar2"; }
+        fn bar() { #debug("bar2"); }
     }
 }
 

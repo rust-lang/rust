@@ -7,5 +7,5 @@
  */
 
 fn main() {
-  log "hello, world.";
+  #debug("hello, world.");
 }

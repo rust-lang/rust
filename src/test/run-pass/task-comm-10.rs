@@ -10,10 +10,10 @@ fn start(c: comm::chan<comm::chan<str>>) {
     let b;
     a = comm::recv(p);
     assert a == "A";
-    log_err a;
+    log_full(core::error, a);
     b = comm::recv(p);
     assert b == "B";
-    log_err b;
+    log_full(core::error, b);
 }
 
 fn main() {

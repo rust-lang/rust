@@ -22,7 +22,7 @@ Tasks may execute in parallel and are scheduled automatically by the runtime.
 Example:
 
 > spawn("Hello, World", fn (&&msg: str) {
->   log msg;
+>   log_full(core::debug, msg);
 > });
 
 */
@@ -145,7 +145,7 @@ fn sleep(time_in_us: uint) {
     let killed = false;
     // FIXME: uncomment this when extfmt is moved to core
     // in a snapshot.
-    // log #fmt("yielding for %u us", time_in_us);
+    // #debug("yielding for %u us", time_in_us);
     rusti::task_sleep(task, time_in_us, killed);
     if killed {
         fail "killed";

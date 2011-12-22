@@ -24,7 +24,7 @@ fn run(cx: cx, -_testfile: [u8]) {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str("\n\n");
     }
-    log #fmt["running %s", testfile];
+    #debug("running %s", testfile);
     let props = load_props(testfile);
     alt cx.config.mode {
       mode_compile_fail. { run_cfail_test(cx, props, testfile); }
@@ -194,10 +194,10 @@ fn check_error_patterns(props: test_props, testfile: str, procres: procres) {
     let next_err_pat = props.error_patterns[next_err_idx];
     for line: str in str::split(procres.stdout, '\n' as u8) {
         if str::find(line, next_err_pat) > 0 {
-            log #fmt["found error pattern %s", next_err_pat];
+            #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {
-                log "found all error patterns";
+                #debug("found all error patterns");
                 ret;
             }
             next_err_pat = props.error_patterns[next_err_idx];

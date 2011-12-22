@@ -236,15 +236,15 @@ fn check_variants_T<copy T>(
   replacer: fn(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {
-    log_err #fmt("%s contains %u %s objects", filename, vec::len(things), thing_label);
+    #error("%s contains %u %s objects", filename, vec::len(things), thing_label);
 
     let L = vec::len(things);
 
     if L < 100u {
         under(float::min(L, 20u)) {|i|
-            log_err "Replacing... #" + uint::str(i);
+            log_full(core::error, "Replacing... #" + uint::str(i));
             under(float::min(L, 30u)) {|j|
-                log_err "With... " + stringifier(@things[j]);
+                log_full(core::error, "With... " + stringifier(@things[j]));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
@@ -298,8 +298,8 @@ fn check_whole_compiler(code: str, suggested_filename_prefix: str, allow_running
         removeDirIfExists(suggested_filename_prefix + ".dSYM");
       }
       failed(s) {
-        log_err "check_whole_compiler failure: " + s;
-        log_err "Saved as: " + filename;
+        log_full(core::error, "check_whole_compiler failure: " + s);
+        log_full(core::error, "Saved as: " + filename);
       }
     }
 }
@@ -320,7 +320,7 @@ fn check_running(exe_filename: str) -> happiness {
     let p = std::run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
     let comb = p.out + "\n" + p.err;
     if str::byte_len(comb) > 1u {
-        log_err "comb comb comb: " + comb;
+        log_full(core::error, "comb comb comb: " + comb);
     }
 
     if contains(comb, "Assertion failed: (0), function alloc, file ../src/rt/rust_obstack.cpp") {
@@ -358,7 +358,7 @@ fn check_compiling(filename: str) -> happiness {
 
     let p = std::run::program_output("bash", ["-c", "DYLD_LIBRARY_PATH=/Users/jruderman/code/rust/build/stage0/lib:/Users/jruderman/code/rust/build/rustllvm/ /Users/jruderman/code/rust/build/stage1/rustc " + filename]);
 
-    //log_err #fmt("Status: %d", p.status);
+    //#error("Status: %d", p.status);
     if p.err != "" {
         if contains(p.err, "Ptr must be a pointer to Val type") {
             known_bug("https://github.com/graydon/rust/issues/897")
@@ -369,7 +369,7 @@ fn check_compiling(filename: str) -> happiness {
         } else if contains(p.err, "cast<Ty>() argument of incompatible type!") {
             known_bug("https://github.com/graydon/rust/issues/973")
         } else {
-            log_err "Stderr: " + p.err;
+            log_full(core::error, "Stderr: " + p.err);
             failed("Unfamiliar error message")
         }
     } else if p.status == 0 {
@@ -382,7 +382,7 @@ fn check_compiling(filename: str) -> happiness {
     } else if contains(p.out, "trans_rec expected a rec but found _|_") {
         known_bug("https://github.com/graydon/rust/issues/924")
     } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
-        log_err "Stdout: " + p.out;
+        log_full(core::error, "Stdout: " + p.out);
         failed("Looks like an llvm assertion failure")
 
     } else if contains(p.out, "internal compiler error fail called with unsupported type _|_") {
@@ -396,14 +396,14 @@ fn check_compiling(filename: str) -> happiness {
     } else if contains(p.out, "internal compiler error unimplemented") {
         known_bug("Something unimplemented")
     } else if contains(p.out, "internal compiler error") {
-        log_err "Stdout: " + p.out;
+        log_full(core::error, "Stdout: " + p.out);
         failed("internal compiler error")
 
     } else if contains(p.out, "error:") {
         cleanly_rejected("rejected with span_error")
     } else {
-        log_err p.status;
-        log_err "!Stdout: " + p.out;
+        log_full(core::error, p.status);
+        log_full(core::error, "!Stdout: " + p.out);
         failed("What happened?")
     }
 }
@@ -500,9 +500,9 @@ fn check_roundtrip_convergence(code: str, maxIters: uint) {
     }
 
     if old == new {
-        log_err #fmt["Converged after %u iterations", i];
+        #error("Converged after %u iterations", i);
     } else {
-        log_err #fmt["Did not converge after %u iterations!", i];
+        #error("Did not converge after %u iterations!", i);
         write_file("round-trip-a.rs", old);
         write_file("round-trip-b.rs", new);
         std::run::run_program("diff",
@@ -513,12 +513,12 @@ fn check_roundtrip_convergence(code: str, maxIters: uint) {
 }
 
 fn check_convergence(files: [str]) {
-    log_err #fmt["pp convergence tests: %u files", vec::len(files)];
+    #error("pp convergence tests: %u files", vec::len(files));
     for file in files {
         if !file_might_not_converge(file) {
             let s = result::get(io::read_whole_file_str(file));
             if !content_might_not_converge(s) {
-                log_err #fmt["pp converge: %s", file];
+                #error("pp converge: %s", file);
                 // Change from 7u to 2u once https://github.com/graydon/rust/issues/850 is fixed
                 check_roundtrip_convergence(s, 7u);
             }
@@ -543,7 +543,7 @@ fn check_variants(files: [str], cx: context) {
             cont;
         }
 
-        log_err "check_variants: " + file;
+        log_full(core::error, "check_variants: " + file);
         let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
         let crate =
             parser::parse_crate_from_source_str(
@@ -559,7 +559,7 @@ fn check_variants(files: [str], cx: context) {
 
 fn main(args: [str]) {
     if vec::len(args) != 2u {
-        log_err #fmt["usage: %s <testdir>", args[0]];
+        #error("usage: %s <testdir>", args[0]);
         ret;
     }
     let files = [];
@@ -570,7 +570,7 @@ fn main(args: [str]) {
     check_variants(files, { mode: tm_converge });
     check_variants(files, { mode: tm_run });
 
-    log_err "Fuzzer done";
+    #error("Fuzzer done");
 }
 
 // Local Variables:

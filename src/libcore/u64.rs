@@ -71,7 +71,7 @@ Parse a string as an unsigned integer.
 */
 fn from_str(buf: str, radix: u64) -> u64 {
     if str::byte_len(buf) == 0u {
-        log_err "parse_buf(): buf is empty";
+        #error("parse_buf(): buf is empty");
         fail;
     }
     let i = str::byte_len(buf) - 1u;

@@ -1,3 +1,3 @@
 
 
-fn other() { log "yes"; }
+fn other() { #debug("yes"); }

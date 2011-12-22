@@ -3,7 +3,7 @@
 
 // error-pattern: dead
 
-fn f(caller: str) { log caller; }
+fn f(caller: str) { log_full(core::debug, caller); }
 
-fn main() { be f("main"); log "Paul is dead"; }
+fn main() { be f("main"); #debug("Paul is dead"); }
 

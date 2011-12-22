@@ -77,7 +77,9 @@ fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> str {
     ret s;
 }
 
-fn log_tritv(fcx: fn_ctxt, v: tritv::t) { log tritv_to_str(fcx, v); }
+fn log_tritv(fcx: fn_ctxt, v: tritv::t) {
+    log_full(core::debug, tritv_to_str(fcx, v));
+}
 
 fn first_difference_string(fcx: fn_ctxt, expected: tritv::t, actual: tritv::t)
    -> str {
@@ -91,7 +93,9 @@ fn first_difference_string(fcx: fn_ctxt, expected: tritv::t, actual: tritv::t)
     ret s;
 }
 
-fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) { log_err tritv_to_str(fcx, v); }
+fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) {
+    log_full(core::error, tritv_to_str(fcx, v));
+}
 
 fn tos(v: [uint]) -> str {
     let rslt = "";
@@ -103,51 +107,51 @@ fn tos(v: [uint]) -> str {
     ret rslt;
 }
 
-fn log_cond(v: [uint]) { log tos(v); }
+fn log_cond(v: [uint]) { log_full(core::debug, tos(v)); }
 
-fn log_cond_err(v: [uint]) { log_err tos(v); }
+fn log_cond_err(v: [uint]) { log_full(core::error, tos(v)); }
 
 fn log_pp(pp: pre_and_post) {
     let p1 = tritv::to_vec(pp.precondition);
     let p2 = tritv::to_vec(pp.postcondition);
-    log "pre:";
+    #debug("pre:");
     log_cond(p1);
-    log "post:";
+    #debug("post:");
     log_cond(p2);
 }
 
 fn log_pp_err(pp: pre_and_post) {
     let p1 = tritv::to_vec(pp.precondition);
     let p2 = tritv::to_vec(pp.postcondition);
-    log_err "pre:";
+    #error("pre:");
     log_cond_err(p1);
-    log_err "post:";
+    #error("post:");
     log_cond_err(p2);
 }
 
 fn log_states(pp: pre_and_post_state) {
     let p1 = tritv::to_vec(pp.prestate);
     let p2 = tritv::to_vec(pp.poststate);
-    log "prestate:";
+    #debug("prestate:");
     log_cond(p1);
-    log "poststate:";
+    #debug("poststate:");
     log_cond(p2);
 }
 
 fn log_states_err(pp: pre_and_post_state) {
     let p1 = tritv::to_vec(pp.prestate);
     let p2 = tritv::to_vec(pp.poststate);
-    log_err "prestate:";
+    #error("prestate:");
     log_cond_err(p1);
-    log_err "poststate:";
+    #error("poststate:");
     log_cond_err(p2);
 }
 
-fn print_ident(i: ident) { log " " + i + " "; }
+fn print_ident(i: ident) { log_full(core::debug, " " + i + " "); }
 
 fn print_idents(&idents: [ident]) {
     if vec::len::<ident>(idents) == 0u { ret; }
-    log "an ident: " + vec::pop::<ident>(idents);
+    log_full(core::debug, "an ident: " + vec::pop::<ident>(idents));
     print_idents(idents);
 }
 
@@ -303,7 +307,7 @@ fn get_ts_ann(ccx: crate_ctxt, i: node_id) -> option::t<ts_ann> {
 fn node_id_to_ts_ann(ccx: crate_ctxt, id: node_id) -> ts_ann {
     alt get_ts_ann(ccx, id) {
       none. {
-        log_err "node_id_to_ts_ann: no ts_ann for node_id " + int::str(id);
+        #error("node_id_to_ts_ann: no ts_ann for node_id %d", id);
         fail;
       }
       some(t) { ret t; }
@@ -311,12 +315,12 @@ fn node_id_to_ts_ann(ccx: crate_ctxt, id: node_id) -> ts_ann {
 }
 
 fn node_id_to_poststate(ccx: crate_ctxt, id: node_id) -> poststate {
-    log "node_id_to_poststate";
+    #debug("node_id_to_poststate");
     ret node_id_to_ts_ann(ccx, id).states.poststate;
 }
 
 fn stmt_to_ann(ccx: crate_ctxt, s: stmt) -> ts_ann {
-    log "stmt_to_ann";
+    #debug("stmt_to_ann");
     alt s.node {
       stmt_decl(_, id) { ret node_id_to_ts_ann(ccx, id); }
       stmt_expr(_, id) { ret node_id_to_ts_ann(ccx, id); }
@@ -326,14 +330,14 @@ fn stmt_to_ann(ccx: crate_ctxt, s: stmt) -> ts_ann {
 
 /* fails if e has no annotation */
 fn expr_states(ccx: crate_ctxt, e: @expr) -> pre_and_post_state {
-    log "expr_states";
+    #debug("expr_states");
     ret node_id_to_ts_ann(ccx, e.id).states;
 }
 
 
 /* fails if e has no annotation */
 fn expr_pp(ccx: crate_ctxt, e: @expr) -> pre_and_post {
-    log "expr_pp";
+    #debug("expr_pp");
     ret node_id_to_ts_ann(ccx, e.id).conditions;
 }
 
@@ -344,7 +348,7 @@ fn stmt_pp(ccx: crate_ctxt, s: stmt) -> pre_and_post {
 
 /* fails if b has no annotation */
 fn block_pp(ccx: crate_ctxt, b: blk) -> pre_and_post {
-    log "block_pp";
+    #debug("block_pp");
     ret node_id_to_ts_ann(ccx, b.node.id).conditions;
 }
 
@@ -359,7 +363,7 @@ fn clear_precond(ccx: crate_ctxt, id: node_id) {
 }
 
 fn block_states(ccx: crate_ctxt, b: blk) -> pre_and_post_state {
-    log "block_states";
+    #debug("block_states");
     ret node_id_to_ts_ann(ccx, b.node.id).states;
 }
 
@@ -420,43 +424,43 @@ fn block_poststate(ccx: crate_ctxt, b: blk) -> poststate {
 }
 
 fn set_prestate_ann(ccx: crate_ctxt, id: node_id, pre: prestate) -> bool {
-    log "set_prestate_ann";
+    #debug("set_prestate_ann");
     ret set_prestate(node_id_to_ts_ann(ccx, id), pre);
 }
 
 fn extend_prestate_ann(ccx: crate_ctxt, id: node_id, pre: prestate) -> bool {
-    log "extend_prestate_ann";
+    #debug("extend_prestate_ann");
     ret extend_prestate(node_id_to_ts_ann(ccx, id).states.prestate, pre);
 }
 
 fn set_poststate_ann(ccx: crate_ctxt, id: node_id, post: poststate) -> bool {
-    log "set_poststate_ann";
+    #debug("set_poststate_ann");
     ret set_poststate(node_id_to_ts_ann(ccx, id), post);
 }
 
 fn extend_poststate_ann(ccx: crate_ctxt, id: node_id, post: poststate) ->
    bool {
-    log "extend_poststate_ann";
+    #debug("extend_poststate_ann");
     ret extend_poststate(node_id_to_ts_ann(ccx, id).states.poststate, post);
 }
 
 fn set_pre_and_post(ccx: crate_ctxt, id: node_id, pre: precond,
                     post: postcond) {
-    log "set_pre_and_post";
+    #debug("set_pre_and_post");
     let t = node_id_to_ts_ann(ccx, id);
     set_precondition(t, pre);
     set_postcondition(t, post);
 }
 
 fn copy_pre_post(ccx: crate_ctxt, id: node_id, sub: @expr) {
-    log "set_pre_and_post";
+    #debug("set_pre_and_post");
     let p = expr_pp(ccx, sub);
     copy_pre_post_(ccx, id, p.precondition, p.postcondition);
 }
 
 fn copy_pre_post_(ccx: crate_ctxt, id: node_id, pre: prestate,
                   post: poststate) {
-    log "set_pre_and_post";
+    #debug("set_pre_and_post");
     let t = node_id_to_ts_ann(ccx, id);
     set_precondition(t, pre);
     set_postcondition(t, post);
@@ -499,7 +503,7 @@ fn constraints_expr(cx: ty::ctxt, e: @expr) -> [@ty::constr] {
 fn node_id_to_def_strict(cx: ty::ctxt, id: node_id) -> def {
     alt cx.def_map.find(id) {
       none. {
-        log_err "node_id_to_def: node_id " + int::str(id) + " has no def";
+        #error("node_id_to_def: node_id %d has no def", id);
         fail;
       }
       some(d) { ret d; }
@@ -546,7 +550,8 @@ fn match_args(fcx: fn_ctxt, occs: @mutable [pred_args],
     log "match_args: looking at " +
             constr_args_to_str(fn (i: inst) -> str { ret i.ident; }, occ);
     for pd: pred_args in *occs {
-        log "match_args: candidate " + pred_args_to_str(pd);
+        log_full(core::debug,
+                 "match_args: candidate " + pred_args_to_str(pd));
         fn eq(p: inst, q: inst) -> bool { ret p.node == q.node; }
         if ty::args_eq(eq, pd.node.args, occ) { ret pd.node.bit_num; }
     }
@@ -750,7 +755,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
             }
           }
           _ {
-            //  log_err "##";
+            //  #error("##");
             rslt += [c.node];
           }
         }
@@ -760,7 +765,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
     for (constr_arg_general_<tup(ident, def_id)> p in rslt) {
         alt (p) {
             case (carg_ident(?p)) {
-                log_err p._0;
+                log_full(core::error, p._0);
             }
             case (_) {}
         }
@@ -975,7 +980,7 @@ fn args_mention<T>(args: [@constr_arg_use], q: fn([T], node_id) -> bool,
         alt (a.node) {
             case (carg_ident(?p1)) {
                 auto res = q(s, p1._1);
-                log_err (res);
+                log_full(core::error, (res));
                 res
                     }
             case (_)               { false }

@@ -7,7 +7,7 @@ import vec;
 #[test]
 fn test_connect() {
     let slash = fs::path_sep();
-    log_err fs::connect("a", "b");
+    log_full(core::error, fs::connect("a", "b"));
     assert (fs::connect("a", "b") == "a" + slash + "b");
     assert (fs::connect("a" + slash, "b") == "a" + slash + "b");
 }
@@ -22,7 +22,7 @@ fn list_dir() {
     // Just assuming that we've got some contents in the current directory
     assert (vec::len(dirs) > 0u);
 
-    for dir in dirs { log dir; }
+    for dir in dirs { log_full(core::debug, dir); }
 }
 
 #[test]
@@ -140,7 +140,7 @@ fn normalize9() {
 fn normalize10() {
     let actual = fs::normalize("/a/b/c/../d/./../../e/");
     let expected = "/a/e/";
-    log_err actual;
+    log_full(core::error, actual);
     assert actual == expected;
 }
 
@@ -156,7 +156,7 @@ fn normalize11() {
 fn normalize12() {
    let actual = fs::normalize("C:/whatever");
    let expected = "C:/whatever";
-   log_err actual;
+   log_full(core::error, actual);
    assert actual == expected;
 }
 

@@ -1,8 +1,8 @@
 // error-pattern: unresolved name
 mod foo {
     export x;
-    fn x(y: int) { log y; }
-    fn z(y: int) { log y; }
+    fn x(y: int) { log_full(core::debug, y); }
+    fn z(y: int) { log_full(core::debug, y); }
 }
 
 fn main() { foo::z(10); }

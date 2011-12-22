@@ -38,7 +38,7 @@ fn test_loop() {
     let i = 20;
     let expected_len = 1u;
     while i > 0 {
-        log_err vec::len(a);
+        log_full(core::error, vec::len(a));
         assert (vec::len(a) == expected_len);
         a += a;
         i -= 1;

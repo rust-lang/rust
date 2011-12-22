@@ -5,7 +5,13 @@ fn foo(c: [int]) {
 
 
     alt none::<int> {
-      some::<int>(_) { for i: int in c { log a; let a = 17; b += [a]; } }
+      some::<int>(_) {
+        for i: int in c {
+            log_full(core::debug, a);
+            let a = 17;
+            b += [a];
+        }
+      }
       _ { }
     }
 }

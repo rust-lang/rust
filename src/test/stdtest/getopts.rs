@@ -246,7 +246,7 @@ fn test_optflag_long_arg() {
     let rs = opt::getopts(args, opts);
     alt rs {
       err(f) {
-        log_err opt::fail_str(f);
+        log_full(core::error, opt::fail_str(f));
         check_fail_type(f, unexpected_argument);
       }
       _ { fail; }

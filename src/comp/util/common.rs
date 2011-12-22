@@ -35,31 +35,49 @@ fn field_exprs(fields: [ast::field]) -> [@ast::expr] {
     ret es;
 }
 
-fn log_expr(e: ast::expr) { log print::pprust::expr_to_str(@e); }
+fn log_expr(e: ast::expr) {
+    log_full(core::debug, print::pprust::expr_to_str(@e));
+}
 
-fn log_expr_err(e: ast::expr) { log_err print::pprust::expr_to_str(@e); }
+fn log_expr_err(e: ast::expr) {
+    log_full(core::error, print::pprust::expr_to_str(@e));
+}
 
-fn log_ty_err(t: @ty) { log_err print::pprust::ty_to_str(t); }
+fn log_ty_err(t: @ty) {
+    log_full(core::error, print::pprust::ty_to_str(t));
+}
 
-fn log_pat_err(p: @pat) { log_err print::pprust::pat_to_str(p); }
+fn log_pat_err(p: @pat) {
+    log_full(core::error, print::pprust::pat_to_str(p));
+}
 
-fn log_block(b: ast::blk) { log print::pprust::block_to_str(b); }
+fn log_block(b: ast::blk) {
+    log_full(core::debug, print::pprust::block_to_str(b));
+}
 
-fn log_block_err(b: ast::blk) { log_err print::pprust::block_to_str(b); }
+fn log_block_err(b: ast::blk) {
+    log_full(core::error, print::pprust::block_to_str(b));
+}
 
-fn log_item_err(i: @ast::item) { log_err print::pprust::item_to_str(i); }
+fn log_item_err(i: @ast::item) {
+    log_full(core::error, print::pprust::item_to_str(i));
+}
 
 fn log_fn(f: ast::_fn, name: ast::ident, params: [ast::ty_param]) {
-    log print::pprust::fun_to_str(f, name, params);
+    log_full(core::debug, print::pprust::fun_to_str(f, name, params));
 }
 
 fn log_fn_err(f: ast::_fn, name: ast::ident, params: [ast::ty_param]) {
-    log_err print::pprust::fun_to_str(f, name, params);
+    log_full(core::error, print::pprust::fun_to_str(f, name, params));
 }
 
-fn log_stmt(st: ast::stmt) { log print::pprust::stmt_to_str(st); }
+fn log_stmt(st: ast::stmt) {
+    log_full(core::debug, print::pprust::stmt_to_str(st));
+}
 
-fn log_stmt_err(st: ast::stmt) { log_err print::pprust::stmt_to_str(st); }
+fn log_stmt_err(st: ast::stmt) {
+    log_full(core::error, print::pprust::stmt_to_str(st));
+}
 
 fn has_nonlocal_exits(b: ast::blk) -> bool {
     let has_exits = @mutable false;

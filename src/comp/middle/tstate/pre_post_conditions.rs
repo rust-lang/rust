@@ -17,12 +17,12 @@ import syntax::codemap::span;
 import util::ppaux::fn_ident_to_string;
 
 fn find_pre_post_mod(_m: _mod) -> _mod {
-    log "implement find_pre_post_mod!";
+    #debug("implement find_pre_post_mod!");
     fail;
 }
 
 fn find_pre_post_native_mod(_m: native_mod) -> native_mod {
-    log "implement find_pre_post_native_mod";
+    #debug("implement find_pre_post_native_mod");
     fail;
 }
 
@@ -86,7 +86,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
    be the union of all postconditions for <args> */
 fn find_pre_post_exprs(fcx: fn_ctxt, args: [@expr], id: node_id) {
     if vec::len::<@expr>(args) > 0u {
-        log "find_pre_post_exprs: oper =";
+        #debug("find_pre_post_exprs: oper =");
         log_expr(*args[0]);
     }
     fn do_one(fcx: fn_ctxt, e: @expr) { find_pre_post_expr(fcx, e); }
@@ -276,7 +276,7 @@ fn handle_var(fcx: fn_ctxt, rslt: pre_and_post, id: node_id, name: ident) {
 }
 
 fn handle_var_def(fcx: fn_ctxt, rslt: pre_and_post, def: def, name: ident) {
-    log ("handle_var_def: ", def, name);
+    log_full(core::debug, ("handle_var_def: ", def, name));
     alt def {
       def_local(d_id, _) | def_arg(d_id, _) {
         use_var(fcx, d_id.node);
@@ -302,7 +302,7 @@ fn find_pre_post_expr_fn_upvars(fcx: fn_ctxt, e: @expr) {
     let rslt = expr_pp(fcx.ccx, e);
     clear_pp(rslt);
     for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
-        log ("handle_var_def: def=", def);
+        log_full(core::debug, ("handle_var_def: def=", def));
         handle_var_def(fcx, rslt, def.def, "upvar");
     }
 }
@@ -358,7 +358,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         vec::iter(cap_clause.moves, use_cap_item);
 
         vec::iter(cap_clause.moves) { |cap_item|
-            log ("forget_in_postcond: ", cap_item);
+            log_full(core::debug, ("forget_in_postcond: ", cap_item));
             forget_in_postcond(fcx, e.id, cap_item.id);
         }
       }
@@ -565,7 +565,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 }
 
 fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
-    log "stmt =";
+    #debug("stmt =");
     log_stmt(s);
     alt s.node {
       stmt_decl(adecl, id) {
@@ -678,9 +678,9 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     fn do_one_(fcx: fn_ctxt, s: @stmt) {
         find_pre_post_stmt(fcx, *s);
         /*
-                log_err "pre_post for stmt:";
+                #error("pre_post for stmt:");
                 log_stmt_err(*s);
-                log_err "is:";
+                #error("is:");
                 log_pp_err(stmt_pp(fcx.ccx, *s));
         */
     }

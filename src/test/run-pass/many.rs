@@ -20,7 +20,7 @@ fn main() {
     let p = comm::port();
     let child = task::spawn((comm::chan(p), 200), sub);
     let y = comm::recv(p);
-    log "transmission complete";
-    log y;
+    #debug("transmission complete");
+    log_full(core::debug, y);
     assert (y == 200);
 }

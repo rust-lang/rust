@@ -139,7 +139,7 @@ fn test_four_to_tri() {
     assert tri::eq( four::to_trit(four::true), tri::true );
     assert tri::eq( four::to_trit(four::false), tri::false );
     assert tri::eq( four::to_trit(four::none), tri::unknown );
-    log four::to_trit(four::both);
+    log_full(core::debug, four::to_trit(four::both));
     assert tri::eq( four::to_trit(four::both), tri::unknown );
 }
 

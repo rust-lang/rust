@@ -35,8 +35,8 @@ fn test_pipes() {
     readclose(pipe_err.in);
     os::waitpid(pid);
 
-    log expected;
-    log actual;
+    log_full(core::debug, expected);
+    log_full(core::debug, actual);
     assert (expected == actual);
 
     fn writeclose(fd: fd_t, s: str) {

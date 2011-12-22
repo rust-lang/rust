@@ -2,4 +2,4 @@
 
 mod m1 { }
 
-fn main(args: [str]) { log m1::a; }
+fn main(args: [str]) { log_full(core::debug, m1::a); }

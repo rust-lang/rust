@@ -101,7 +101,7 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
     // fall behind.
 
     let n: uint = 3u * linewidth;
-    log #fmt["mk_printer %u", linewidth];
+    #debug("mk_printer %u", linewidth);
     let token: [mutable token] = vec::init_elt_mut(EOF, n);
     let size: [mutable int] = vec::init_elt_mut(0, n);
     let scan_stack: [mutable uint] = vec::init_elt_mut(0u, n);
@@ -241,7 +241,7 @@ obj printer(out: io::writer,
     fn replace_last_token(t: token) { token[right] = t; }
 
     fn pretty_print(t: token) {
-        log #fmt["pp [%u,%u]", left, right];
+        #debug("pp [%u,%u]", left, right);
         alt t {
           EOF. {
             if !scan_stack_empty {
@@ -257,17 +257,17 @@ obj printer(out: io::writer,
                 left = 0u;
                 right = 0u;
             } else { self.advance_right(); }
-            log #fmt["pp BEGIN/buffer [%u,%u]", left, right];
+            #debug("pp BEGIN/buffer [%u,%u]", left, right);
             token[right] = t;
             size[right] = -right_total;
             self.scan_push(right);
           }
           END. {
             if scan_stack_empty {
-                log #fmt["pp END/print [%u,%u]", left, right];
+                #debug("pp END/print [%u,%u]", left, right);
                 self.print(t, 0);
             } else {
-                log #fmt["pp END/buffer [%u,%u]", left, right];
+                #debug("pp END/buffer [%u,%u]", left, right);
                 self.advance_right();
                 token[right] = t;
                 size[right] = -1;
@@ -281,7 +281,7 @@ obj printer(out: io::writer,
                 left = 0u;
                 right = 0u;
             } else { self.advance_right(); }
-            log #fmt["pp BREAK/buffer [%u,%u]", left, right];
+            #debug("pp BREAK/buffer [%u,%u]", left, right);
             self.check_stack(0);
             self.scan_push(right);
             token[right] = t;
@@ -290,10 +290,10 @@ obj printer(out: io::writer,
           }
           STRING(s, len) {
             if scan_stack_empty {
-                log #fmt["pp STRING/print [%u,%u]", left, right];
+                #debug("pp STRING/print [%u,%u]", left, right);
                 self.print(t, len);
             } else {
-                log #fmt["pp STRING/buffer [%u,%u]", left, right];
+                #debug("pp STRING/buffer [%u,%u]", left, right);
                 self.advance_right();
                 token[right] = t;
                 size[right] = len;
@@ -311,7 +311,7 @@ obj printer(out: io::writer,
                      right_total - left_total, space];
             if !scan_stack_empty {
                 if left == scan_stack[bottom] {
-                    log #fmt["setting %u to infinity and popping", left];
+                    #debug("setting %u to infinity and popping", left);
                     size[self.scan_pop_bottom()] = size_infinity;
                 }
             }
@@ -320,7 +320,7 @@ obj printer(out: io::writer,
         }
     }
     fn scan_push(x: uint) {
-        log #fmt["scan_push %u", x];
+        #debug("scan_push %u", x);
         if scan_stack_empty {
             scan_stack_empty = false;
         } else { top += 1u; top %= buf_len; assert (top != bottom); }
@@ -349,7 +349,7 @@ obj printer(out: io::writer,
         assert (right != left);
     }
     fn advance_left(x: token, L: int) {
-        log #fmt["advnce_left [%u,%u], sizeof(%u)=%d", left, right, left, L];
+        #debug("advnce_left [%u,%u], sizeof(%u)=%d", left, right, left, L);
         if L >= 0 {
             self.print(x, L);
             alt x {
@@ -388,13 +388,13 @@ obj printer(out: io::writer,
         }
     }
     fn print_newline(amount: int) {
-        log #fmt["NEWLINE %d", amount];
+        #debug("NEWLINE %d", amount);
         out.write_str("\n");
         pending_indentation = 0;
         self.indent(amount);
     }
     fn indent(amount: int) {
-        log #fmt["INDENT %d", amount];
+        #debug("INDENT %d", amount);
         pending_indentation += amount;
     }
     fn top() -> print_stack_elt {
@@ -413,20 +413,20 @@ obj printer(out: io::writer,
     fn print(x: token, L: int) {
         log #fmt["print %s %d (remaining line space=%d)", tok_str(x), L,
                  space];
-        log buf_str(token, size, left, right, 6u);
+        log_full(core::debug, buf_str(token, size, left, right, 6u));
         alt x {
           BEGIN(b) {
             if L > space {
                 let col = margin - space + b.offset;
-                log #fmt["print BEGIN -> push broken block at col %d", col];
+                #debug("print BEGIN -> push broken block at col %d", col);
                 print_stack += [{offset: col, pbreak: broken(b.breaks)}];
             } else {
-                log "print BEGIN -> push fitting block";
+                #debug("print BEGIN -> push fitting block");
                 print_stack += [{offset: 0, pbreak: fits}];
             }
           }
           END. {
-            log "print END -> pop END";
+            #debug("print END -> pop END");
             assert (vec::len(print_stack) != 0u);
             vec::pop(print_stack);
           }
@@ -434,22 +434,22 @@ obj printer(out: io::writer,
             let top = self.top();
             alt top.pbreak {
               fits. {
-                log "print BREAK in fitting block";
+                #debug("print BREAK in fitting block");
                 space -= b.blank_space;
                 self.indent(b.blank_space);
               }
               broken(consistent.) {
-                log "print BREAK in consistent block";
+                #debug("print BREAK in consistent block");
                 self.print_newline(top.offset + b.offset);
                 space = margin - (top.offset + b.offset);
               }
               broken(inconsistent.) {
                 if L > space {
-                    log "print BREAK w/ newline in inconsistent";
+                    #debug("print BREAK w/ newline in inconsistent");
                     self.print_newline(top.offset + b.offset);
                     space = margin - (top.offset + b.offset);
                 } else {
-                    log "print BREAK w/o newline in inconsistent";
+                    #debug("print BREAK w/o newline in inconsistent");
                     self.indent(b.blank_space);
                     space -= b.blank_space;
                 }
@@ -457,7 +457,7 @@ obj printer(out: io::writer,
             }
           }
           STRING(s, len) {
-            log "print STRING";
+            #debug("print STRING");
             assert (L == len);
             // assert L <= space;
 

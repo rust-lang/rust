@@ -1122,7 +1122,7 @@ fn set_glue_inlining(cx: @local_ctxt, f: ValueRef, t: ty::t) {
 fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
                   is_obj_body: bool) ->
    @tydesc_info {
-    log "+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
+    log_full(core::debug, "+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t));
     let ccx = cx.ccx;
     let llsize;
     let llalign;
@@ -1158,7 +1158,7 @@ fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
           mutable cmp_glue: none::<ValueRef>,
           ty_params: ty_params,
           is_obj_body: is_obj_body};
-    log "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
+    log_full(core::debug, "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t));
     ret info;
 }
 
@@ -5713,16 +5713,16 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     // Translate the metadata.
     write_metadata(cx.ccx, crate);
     if ccx.sess.get_opts().stats {
-        log_err "--- trans stats ---";
-        log_err #fmt["n_static_tydescs: %u", ccx.stats.n_static_tydescs];
-        log_err #fmt["n_derived_tydescs: %u", ccx.stats.n_derived_tydescs];
-        log_err #fmt["n_glues_created: %u", ccx.stats.n_glues_created];
-        log_err #fmt["n_null_glues: %u", ccx.stats.n_null_glues];
-        log_err #fmt["n_real_glues: %u", ccx.stats.n_real_glues];
+        #error("--- trans stats ---");
+        #error("n_static_tydescs: %u", ccx.stats.n_static_tydescs);
+        #error("n_derived_tydescs: %u", ccx.stats.n_derived_tydescs);
+        #error("n_glues_created: %u", ccx.stats.n_glues_created);
+        #error("n_null_glues: %u", ccx.stats.n_null_glues);
+        #error("n_real_glues: %u", ccx.stats.n_real_glues);
 
 
         for timing: {ident: str, time: int} in *ccx.stats.fn_times {
-            log_err #fmt["time: %s took %d ms", timing.ident, timing.time];
+            #error("time: %s took %d ms", timing.ident, timing.time);
         }
     }
     ret (llmod, link_meta);

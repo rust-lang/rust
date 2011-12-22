@@ -10,14 +10,14 @@ import option;
 
 #[test]
 fn test_simple() {
-    log "*** starting test_simple";
+    #debug("*** starting test_simple");
     fn eq_uint(&&x: uint, &&y: uint) -> bool { ret x == y; }
     fn uint_id(&&x: uint) -> uint { x }
     let hasher_uint: map::hashfn<uint> = uint_id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
     let hasher_str: map::hashfn<str> = str::hash;
     let eqer_str: map::eqfn<str> = str::eq;
-    log "uint -> uint";
+    #debug("uint -> uint");
     let hm_uu: map::hashmap<uint, uint> =
         map::mk_hashmap::<uint, uint>(hasher_uint, eqer_uint);
     assert (hm_uu.insert(10u, 12u));
@@ -33,7 +33,7 @@ fn test_simple() {
     let ten: str = "ten";
     let eleven: str = "eleven";
     let twelve: str = "twelve";
-    log "str -> uint";
+    #debug("str -> uint");
     let hm_su: map::hashmap<str, uint> =
         map::mk_hashmap::<str, uint>(hasher_str, eqer_str);
     assert (hm_su.insert("ten", 12u));
@@ -47,7 +47,7 @@ fn test_simple() {
     assert (hm_su.get("twelve") == 14u);
     assert (!hm_su.insert("twelve", 12u));
     assert (hm_su.get("twelve") == 12u);
-    log "uint -> str";
+    #debug("uint -> str");
     let hm_us: map::hashmap<uint, str> =
         map::mk_hashmap::<uint, str>(hasher_uint, eqer_uint);
     assert (hm_us.insert(10u, "twelve"));
@@ -60,7 +60,7 @@ fn test_simple() {
     assert (str::eq(hm_us.get(12u), "fourteen"));
     assert (!hm_us.insert(12u, "twelve"));
     assert (str::eq(hm_us.get(12u), "twelve"));
-    log "str -> str";
+    #debug("str -> str");
     let hm_ss: map::hashmap<str, str> =
         map::mk_hashmap::<str, str>(hasher_str, eqer_str);
     assert (hm_ss.insert(ten, "twelve"));
@@ -73,7 +73,7 @@ fn test_simple() {
     assert (str::eq(hm_ss.get("twelve"), "fourteen"));
     assert (!hm_ss.insert("twelve", "twelve"));
     assert (str::eq(hm_ss.get("twelve"), "twelve"));
-    log "*** finished test_simple";
+    #debug("*** finished test_simple");
 }
 
 
@@ -82,11 +82,11 @@ fn test_simple() {
  */
 #[test]
 fn test_growth() {
-    log "*** starting test_growth";
+    #debug("*** starting test_growth");
     let num_to_insert: uint = 64u;
     fn eq_uint(&&x: uint, &&y: uint) -> bool { ret x == y; }
     fn uint_id(&&x: uint) -> uint { x }
-    log "uint -> uint";
+    #debug("uint -> uint");
     let hasher_uint: map::hashfn<uint> = uint_id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
     let hm_uu: map::hashmap<uint, uint> =
@@ -98,7 +98,7 @@ fn test_growth() {
                 uint::to_str(i * i, 10u);
         i += 1u;
     }
-    log "-----";
+    #debug("-----");
     i = 0u;
     while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
@@ -108,7 +108,7 @@ fn test_growth() {
     }
     assert (hm_uu.insert(num_to_insert, 17u));
     assert (hm_uu.get(num_to_insert) == 17u);
-    log "-----";
+    #debug("-----");
     hm_uu.rehash();
     i = 0u;
     while i < num_to_insert {
@@ -117,7 +117,7 @@ fn test_growth() {
         assert (hm_uu.get(i) == i * i);
         i += 1u;
     }
-    log "str -> str";
+    #debug("str -> str");
     let hasher_str: map::hashfn<str> = str::hash;
     let eqer_str: map::eqfn<str> = str::eq;
     let hm_ss: map::hashmap<str, str> =
@@ -129,7 +129,7 @@ fn test_growth() {
                 uint::to_str(i * i, 2u) + "\"";
         i += 1u;
     }
-    log "-----";
+    #debug("-----");
     i = 0u;
     while i < num_to_insert {
         log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
@@ -142,7 +142,7 @@ fn test_growth() {
                          uint::to_str(17u, 2u)));
     assert (str::eq(hm_ss.get(uint::to_str(num_to_insert, 2u)),
                     uint::to_str(17u, 2u)));
-    log "-----";
+    #debug("-----");
     hm_ss.rehash();
     i = 0u;
     while i < num_to_insert {
@@ -152,12 +152,12 @@ fn test_growth() {
                         uint::to_str(i * i, 2u)));
         i += 1u;
     }
-    log "*** finished test_growth";
+    #debug("*** finished test_growth");
 }
 
 #[test]
 fn test_removal() {
-    log "*** starting test_removal";
+    #debug("*** starting test_removal");
     let num_to_insert: uint = 64u;
     fn eq(&&x: uint, &&y: uint) -> bool { ret x == y; }
     fn hash(&&u: uint) -> uint {
@@ -181,8 +181,8 @@ fn test_removal() {
         i += 1u;
     }
     assert (hm.size() == num_to_insert);
-    log "-----";
-    log "removing evens";
+    #debug("-----");
+    #debug("removing evens");
     i = 0u;
     while i < num_to_insert {
         let v = hm.remove(i);
@@ -193,7 +193,7 @@ fn test_removal() {
         i += 2u;
     }
     assert (hm.size() == num_to_insert / 2u);
-    log "-----";
+    #debug("-----");
     i = 1u;
     while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
@@ -201,10 +201,10 @@ fn test_removal() {
         assert (hm.get(i) == i * i);
         i += 2u;
     }
-    log "-----";
-    log "rehashing";
+    #debug("-----");
+    #debug("rehashing");
     hm.rehash();
-    log "-----";
+    #debug("-----");
     i = 1u;
     while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
@@ -212,7 +212,7 @@ fn test_removal() {
         assert (hm.get(i) == i * i);
         i += 2u;
     }
-    log "-----";
+    #debug("-----");
     i = 0u;
     while i < num_to_insert {
         assert (hm.insert(i, i * i));
@@ -221,7 +221,7 @@ fn test_removal() {
         i += 2u;
     }
     assert (hm.size() == num_to_insert);
-    log "-----";
+    #debug("-----");
     i = 0u;
     while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
@@ -229,10 +229,10 @@ fn test_removal() {
         assert (hm.get(i) == i * i);
         i += 1u;
     }
-    log "-----";
-    log "rehashing";
+    #debug("-----");
+    #debug("rehashing");
     hm.rehash();
-    log "-----";
+    #debug("-----");
     assert (hm.size() == num_to_insert);
     i = 0u;
     while i < num_to_insert {
@@ -241,7 +241,7 @@ fn test_removal() {
         assert (hm.get(i) == i * i);
         i += 1u;
     }
-    log "*** finished test_removal";
+    #debug("*** finished test_removal");
 }
 
 #[test]

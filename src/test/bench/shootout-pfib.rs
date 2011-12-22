@@ -72,7 +72,7 @@ fn stress_task(&&id: int) {
         let n = 15;
         assert (fib(n) == fib(n));
         i += 1;
-        log_err #fmt["%d: Completed %d iterations", id, i];
+        #error("%d: Completed %d iterations", id, i);
     }
 }
 
@@ -87,7 +87,7 @@ fn stress(num_tasks: int) {
 fn main(argv: [str]) {
     if vec::len(argv) == 1u {
         assert (fib(8) == 21);
-        log fib(8);
+        log_full(core::debug, fib(8));
     } else {
         // Interactive mode! Wooo!!!!
         let opts = parse_opts(argv);

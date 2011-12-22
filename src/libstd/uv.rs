@@ -111,7 +111,7 @@ fn unref(loop: *loop_t) {
 
 fn sanity_check() {
     fn check_size(t: str, uv: ctypes::size_t, rust: ctypes::size_t) {
-        log #fmt("size of %s: uv: %u, rust: %u", t, uv, rust);
+        #debug("size of %s: uv: %u, rust: %u", t, uv, rust);
         assert uv == rust;
     }
     check_size("idle_t",

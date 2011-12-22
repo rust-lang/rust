@@ -468,7 +468,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       }
       expr_while(test, body) {
         /*
-        log_err "in a while loop:";
+        #error("in a while loop:");
         log_expr_err(*e);
         aux::log_tritv_err(fcx, block_poststate(fcx.ccx, body));
         aux::log_tritv_err(fcx, pres);
@@ -476,7 +476,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let loop_pres =
             intersect_states(block_poststate(fcx.ccx, body), pres);
         // aux::log_tritv_err(fcx, loop_pres);
-        // log_err "---------------";
+        // #error("---------------");
 
         let changed =
             set_prestate_ann(fcx.ccx, e.id, loop_pres) |
@@ -621,14 +621,14 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
 
     /*
-        log_err ("[" + fcx.name + "]");
-        log_err "*At beginning: stmt = ";
+        log_full(core::error, ("[" + fcx.name + "]"));
+        #error("*At beginning: stmt = ");
         log_stmt_err(*s);
-        log_err "*prestate = ";
+        #error("*prestate = ");
         log_tritv_err(fcx, stmt_ann.states.prestate);
-        log_err "*poststate =";
+        #error("*poststate =");
         log_tritv_err(fcx, stmt_ann.states.poststate);
-        log_err "pres = ";
+        #error("pres = ");
         log_tritv_err(fcx, pres);
     */
 
@@ -646,14 +646,14 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
                 set_poststate(stmt_ann, c_and_p.post) | c_and_p.changed;
 
             /*
-                            log_err "Summary: stmt = ";
+                            #error("Summary: stmt = ");
                             log_stmt_err(*s);
-                            log_err "prestate = ";
+                            #error("prestate = ");
                             log_tritv_err(fcx, stmt_ann.states.prestate);
-                            log_err "poststate =";
+                            #error("poststate =");
                             log_tritv_err(fcx, stmt_ann.states.poststate);
-                            log_err "changed =";
-                            log_err changed;
+                            #error("changed =");
+                            log_full(core::error, changed);
             */
 
             ret changed;
@@ -671,7 +671,7 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
                 set_poststate(stmt_ann, expr_poststate(fcx.ccx, ex));
 
         /*
-        log_err "Finally:";
+        #error("Finally:");
         log_stmt_err(*s);
         log_err("prestate = ");
         log_err(bitv::to_str(stmt_ann.states.prestate));
@@ -718,16 +718,16 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
 
 
     /*
-        log_err "For block:";
+        #error("For block:");
         log_block_err(b);
-        log_err "poststate = ";
+        #error("poststate = ");
         log_states_err(block_states(fcx.ccx, b));
-        log_err "pres0:";
+        #error("pres0:");
         log_tritv_err(fcx, pres0);
-        log_err "post:";
+        #error("post:");
         log_tritv_err(fcx, post);
-        log_err "changed = ";
-        log_err changed;
+        #error("changed = ");
+        log_full(core::error, changed);
     */
 
     ret changed;
@@ -773,8 +773,8 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
     }
 
     /*
-        log_err "find_pre_post_state_fn";
-        log_err changed;
+        #error("find_pre_post_state_fn");
+        log_full(core::error, changed);
         fcx.ccx.tcx.sess.span_note(f_body.span, fcx.name);
     */
 

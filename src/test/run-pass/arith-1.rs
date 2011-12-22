@@ -18,6 +18,6 @@ fn main() {
     assert (i32_b << 1 == i32_b << 1);
     assert (i32_b >> 1 == i32_b >> 1);
     assert (i32_b & i32_b << 1 == 0);
-    log i32_b | i32_b << 1;
+    log_full(core::debug, i32_b | i32_b << 1);
     assert (i32_b | i32_b << 1 == 0x30303030);
 }

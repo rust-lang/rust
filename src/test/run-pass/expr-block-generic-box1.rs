@@ -11,8 +11,8 @@ fn test_generic<T>(expected: @T, eq: compare<T>) {
 
 fn test_box() {
     fn compare_box(b1: @bool, b2: @bool) -> bool {
-        log *b1;
-        log *b2;
+        log_full(core::debug, *b1);
+        log_full(core::debug, *b2);
         ret *b1 == *b2;
     }
     let eq = bind compare_box(_, _);

@@ -74,7 +74,7 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
 
 
     log("check_states_stmt:");
-    log print::pprust::stmt_to_str(*s);
+    log_full(core::debug, print::pprust::stmt_to_str(*s));
     log("prec = ");
     log_tritv(fcx, prec);
     log("pres = ");

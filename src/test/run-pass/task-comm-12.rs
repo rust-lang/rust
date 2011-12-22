@@ -3,7 +3,7 @@ import task;
 
 fn main() { test00(); }
 
-fn start(&&task_number: int) { log "Started / Finished task."; }
+fn start(&&task_number: int) { #debug("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
@@ -15,5 +15,5 @@ fn test00() {
     // Try joining tasks that have already finished.
     task::join(t);
 
-    log "Joined task.";
+    #debug("Joined task.");
 }

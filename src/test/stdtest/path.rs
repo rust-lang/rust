@@ -11,8 +11,8 @@ import std::os;
 fn test() {
     assert (!fs::path_is_absolute("test-path"));
 
-    log "Current working directory: " + os::getcwd();
+    log_full(core::debug, "Current working directory: " + os::getcwd());
 
-    log fs::make_absolute("test-path");
-    log fs::make_absolute("/usr/bin");
+    log_full(core::debug, fs::make_absolute("test-path"));
+    log_full(core::debug, fs::make_absolute("/usr/bin"));
 }

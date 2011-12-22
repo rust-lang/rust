@@ -2,5 +2,5 @@
 
 fn main() {
     let v: [mutable {mutable x: int}] = [mutable {mutable x: 1}];
-    for x in v { v[0] = {mutable x: 2}; log x; }
+    for x in v { v[0] = {mutable x: 2}; log_full(core::debug, x); }
 }

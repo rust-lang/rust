@@ -588,15 +588,15 @@ fn link_binary(sess: session::session,
         let long_libname =
             std::os::dylib_filename(#fmt("%s-%s-%s",
                                          lm.name, lm.extras_hash, lm.vers));
-        log "link_meta.name: " + lm.name;
-        log "long_libname: " + long_libname;
-        log "out_filename: " + out_filename;
-        log "dirname(out_filename): " + fs::dirname(out_filename);
+        #debug("link_meta.name:  %s", lm.name);
+        #debug("long_libname: %s", long_libname);
+        #debug("out_filename: %s", out_filename);
+        #debug("dirname(out_filename): %s", fs::dirname(out_filename));
 
         fs::connect(fs::dirname(out_filename), long_libname)
     } else { out_filename };
 
-    log "output: " + output;
+    log_full(core::debug, "output: " + output);
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -670,7 +670,7 @@ fn link_binary(sess: session::session,
 
     gcc_args += rpath::get_rpath_flags(sess, output);
 
-    log #fmt("gcc link args: %s", str::connect(gcc_args, " "));
+    #debug("gcc link args: %s", str::connect(gcc_args, " "));
     // We run 'gcc' here
     let prog = run::program_output(prog, gcc_args);
     if 0 != prog.status {

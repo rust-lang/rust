@@ -7,7 +7,7 @@ fn main() {
         let a = r(i);
         let b = (a, 10);
         let (c, _d) = b;
-        log c;
+        log_full(core::debug, c);
     }
     assert *i == 1;
 }

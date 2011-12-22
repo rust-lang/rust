@@ -28,8 +28,8 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
         expr_to_str(cx, args[0],
                     "first argument to #fmt must be a " + "string literal.");
     let fmtspan = args[0].span;
-    log "Format string:";
-    log fmt;
+    #debug("Format string:");
+    log_full(core::debug, fmt);
     fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: str) -> ! {
         cx.span_fatal(sp, msg);
     }
@@ -252,53 +252,57 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     }
     fn log_conv(c: conv) {
         alt c.param {
-          some(p) { log "param: " + int::to_str(p, 10u); }
-          _ { log "param: none"; }
+          some(p) { log_full(core::debug, "param: " + int::to_str(p, 10u)); }
+          _ { #debug("param: none"); }
         }
         for f: flag in c.flags {
             alt f {
-              flag_left_justify. { log "flag: left justify"; }
-              flag_left_zero_pad. { log "flag: left zero pad"; }
-              flag_space_for_sign. { log "flag: left space pad"; }
-              flag_sign_always. { log "flag: sign always"; }
-              flag_alternate. { log "flag: alternate"; }
+              flag_left_justify. { #debug("flag: left justify"); }
+              flag_left_zero_pad. { #debug("flag: left zero pad"); }
+              flag_space_for_sign. { #debug("flag: left space pad"); }
+              flag_sign_always. { #debug("flag: sign always"); }
+              flag_alternate. { #debug("flag: alternate"); }
             }
         }
         alt c.width {
-          count_is(i) { log "width: count is " + int::to_str(i, 10u); }
+          count_is(i) { log_full(core::debug,
+                                 "width: count is " + int::to_str(i, 10u)); }
           count_is_param(i) {
-            log "width: count is param " + int::to_str(i, 10u);
+            log_full(core::debug,
+                     "width: count is param " + int::to_str(i, 10u));
           }
-          count_is_next_param. { log "width: count is next param"; }
-          count_implied. { log "width: count is implied"; }
+          count_is_next_param. { #debug("width: count is next param"); }
+          count_implied. { #debug("width: count is implied"); }
         }
         alt c.precision {
-          count_is(i) { log "prec: count is " + int::to_str(i, 10u); }
+          count_is(i) { log_full(core::debug,
+                                 "prec: count is " + int::to_str(i, 10u)); }
           count_is_param(i) {
-            log "prec: count is param " + int::to_str(i, 10u);
+            log_full(core::debug,
+                     "prec: count is param " + int::to_str(i, 10u));
           }
-          count_is_next_param. { log "prec: count is next param"; }
-          count_implied. { log "prec: count is implied"; }
+          count_is_next_param. { #debug("prec: count is next param"); }
+          count_implied. { #debug("prec: count is implied"); }
         }
         alt c.ty {
-          ty_bool. { log "type: bool"; }
-          ty_str. { log "type: str"; }
-          ty_char. { log "type: char"; }
+          ty_bool. { #debug("type: bool"); }
+          ty_str. { #debug("type: str"); }
+          ty_char. { #debug("type: char"); }
           ty_int(s) {
             alt s {
-              signed. { log "type: signed"; }
-              unsigned. { log "type: unsigned"; }
+              signed. { #debug("type: signed"); }
+              unsigned. { #debug("type: unsigned"); }
             }
           }
-          ty_bits. { log "type: bits"; }
+          ty_bits. { #debug("type: bits"); }
           ty_hex(cs) {
             alt cs {
-              case_upper. { log "type: uhex"; }
-              case_lower. { log "type: lhex"; }
+              case_upper. { #debug("type: uhex"); }
+              case_lower. { #debug("type: lhex"); }
             }
           }
-          ty_octal. { log "type: octal"; }
-          ty_float. { log "type: float"; }
+          ty_octal. { #debug("type: octal"); }
+          ty_float. { #debug("type: float"); }
         }
     }
     let fmt_sp = args[0].span;
@@ -318,7 +322,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
                               "not enough arguments to #fmt " +
                                   "for the given format string");
             }
-            log "Building conversion:";
+            #debug("Building conversion:");
             log_conv(conv);
             let arg_expr = args[n];
             let c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);

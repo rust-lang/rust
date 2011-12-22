@@ -124,7 +124,7 @@ fn parse_constr_arg(st: @pstate, _sd: str_def) -> ast::fn_constr_arg {
             // FIXME
             ret ast::carg_ident((c as uint) - 48u);
         } else {
-            log_err "Lit args are unimplemented";
+            #error("Lit args are unimplemented");
             fail; // FIXME
         }
         /*
@@ -210,8 +210,8 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
               'c' { kind_copyable }
               'a' { kind_noncopyable }
               c {
-                log_err "unexpected char in encoded type param: ";
-                log_err c;
+                #error("unexpected char in encoded type param: ");
+                log_full(core::error, c);
                 fail
               }
             };
@@ -318,7 +318,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         assert (next(st) as char == ']');
         ret ty::mk_constr(st.tcx, tt, tcs);
       }
-      c { log_err "unexpected char in type string: "; log_err c; fail; }
+      c { #error("unexpected char in type string: %c", c); fail;}
     }
 }
 
@@ -393,7 +393,7 @@ fn parse_def_id(buf: [u8]) -> ast::def_id {
     let len = vec::len::<u8>(buf);
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
     if colon_idx == len {
-        log_err "didn't find ':' when parsing def id";
+        #error("didn't find ':' when parsing def id");
         fail;
     }
     let crate_part = vec::slice::<u8>(buf, 0u, colon_idx);

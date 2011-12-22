@@ -2,7 +2,7 @@
 
 fn main() {
     obj foo() {
-        fn m1() { log "hi!"; }
+        fn m1() { #debug("hi!"); }
         fn m2() { self.m1(); }
     }
     let a = foo();

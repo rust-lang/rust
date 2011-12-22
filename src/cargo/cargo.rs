@@ -203,7 +203,7 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
         some(json::dict(_j)) {
             _j.items { |k, v|
                 sources.insert(k, parse_source(k, v));
-                log #fmt["source: %s", k];
+                #debug("source: %s", k);
             }
         }
         _ { fail "malformed sources.json"; }
@@ -269,11 +269,11 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         ref: ref,
         tags: tags
     });
-    log "  Loaded package: " + src.name + "/" + name;
+    log_full(core::debug, "  Loaded package: " + src.name + "/" + name);
 }
 
 fn load_source_packages(&c: cargo, &src: source) {
-    log "Loading source: " + src.name;
+    log_full(core::debug, "Loading source: " + src.name);
     let dir = fs::connect(c.sourcedir, src.name);
     let pkgfile = fs::connect(dir, "packages.json");
     if !fs::path_exists(pkgfile) { ret; }
@@ -356,7 +356,7 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     if ri != -1 {
         name = str::slice(name, 0u, ri as uint);
     }
-    log #fmt["Installing: %s", name];
+    #debug("Installing: %s", name);
     let old = fs::list_dir(".");
     let p = run::program_output("rustc", [name + ".rc"]);
     if p.status != 0 {
@@ -370,22 +370,22 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     for ct: str in created {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(ct, "./lib")) {
-            log #fmt["  bin: %s", ct];
+            #debug("  bin: %s", ct);
             // FIXME: need libstd fs::copy or something
             run::run_program("cp", [ct, c.bindir]);
         } else {
-            log #fmt["  lib: %s", ct];
+            #debug("  lib: %s", ct);
             run::run_program("cp", [ct, c.libdir]);
         }
     }
 }
 
 fn install_source(c: cargo, path: str) {
-    log #fmt["source: %s", path];
+    #debug("source: %s", path);
     fs::change_dir(path);
     let contents = fs::list_dir(".");
 
-    log #fmt["contents: %s", str::connect(contents, ", ")];
+    #debug("contents: %s", str::connect(contents, ", "));
 
     let cratefiles =
         vec::filter::<str>(contents, { |n| str::ends_with(n, ".rc") });

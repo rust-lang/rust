@@ -6,9 +6,9 @@ fn foo() -> int {
 
     do  { i = 0; break; x = 0; } while 1 != 2
 
-    log x;
+    log_full(core::debug, x);
 
     ret 17;
 }
 
-fn main() { log foo(); }
+fn main() { log_full(core::debug, foo()); }

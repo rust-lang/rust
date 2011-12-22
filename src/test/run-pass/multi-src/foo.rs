@@ -1,3 +1,3 @@
 
 
-fn main() { log "hello, multi-file world."; bar::other(); }
+fn main() { #debug("hello, multi-file world."); bar::other(); }

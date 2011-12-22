@@ -14,6 +14,6 @@ fn fib(n: int) -> int {
 fn main() {
     assert (fib(8) == 21);
     assert (fib(15) == 610);
-    log fib(8);
-    log fib(15);
+    log_full(core::debug, fib(8));
+    log_full(core::debug, fib(15));
 }

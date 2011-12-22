@@ -3,13 +3,16 @@ use std;
 
 import task;
 
-fn main() { log "===== SPAWNING and JOINING THREAD TASKS ====="; test00(); }
+fn main() {
+    #debug("===== SPAWNING and JOINING THREAD TASKS =====");
+    test00();
+}
 
 fn start(&&task_number: int) {
-    log "Started task.";
+    #debug("Started task.");
     let i: int = 0;
     while i < 10000 { i = i + 1; }
-    log "Finished task.";
+    #debug("Finished task.");
 }
 
 fn test00() {
@@ -24,5 +27,5 @@ fn test00() {
 
     for t in tasks { task::join(t); }
 
-    log "Joined all task.";
+    #debug("Joined all task.");
 }

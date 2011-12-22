@@ -2,4 +2,4 @@
 
 
 // -*- rust -*-
-fn main() { log "hello, world."; }
+fn main() { #debug("hello, world."); }

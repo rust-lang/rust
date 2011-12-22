@@ -36,7 +36,7 @@ fn vint_at(data: [u8], start: uint) -> {val: uint, next: uint} {
                      (data[start + 2u] as uint) << 8u |
                      (data[start + 3u] as uint),
              next: start + 4u};
-    } else { log_err "vint too big"; fail; }
+    } else { #error("vint too big"); fail; }
 }
 
 fn new_doc(data: @[u8]) -> doc {
@@ -67,7 +67,7 @@ fn get_doc(d: doc, tg: uint) -> doc {
     alt maybe_get_doc(d, tg) {
       some(d) { ret d; }
       none. {
-        log_err "failed to find block with tag " + uint::to_str(tg, 10u);
+        #error("failed to find block with tag %u", tg);
         fail;
       }
     }
@@ -133,7 +133,7 @@ fn write_sized_vint(w: io::buf_writer, n: uint, size: uint) {
             [0x10u8 | (n >> 24u as u8), n >> 16u & 0xffu as u8,
              n >> 8u & 0xffu as u8, n & 0xffu as u8];
       }
-      _ { log_err "vint to write too big"; fail; }
+      _ { #error("vint to write too big"); fail; }
     }
     w.write(buf);
 }
@@ -143,7 +143,7 @@ fn write_vint(w: io::buf_writer, n: uint) {
     if n < 0x4000u { write_sized_vint(w, n, 2u); ret; }
     if n < 0x200000u { write_sized_vint(w, n, 3u); ret; }
     if n < 0x10000000u { write_sized_vint(w, n, 4u); ret; }
-    log_err "vint to write too big";
+    #error("vint to write too big");
     fail;
 }
 

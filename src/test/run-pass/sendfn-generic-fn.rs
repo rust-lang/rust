@@ -14,12 +14,12 @@ fn make_generic_record<copy A,copy B>(a: A, b: B) -> pair<A,B> {
 
 fn test05_start(&&f: sendfn(&&float, &&str) -> pair<float, str>) {
     let p = f(22.22f, "Hi");
-    log p;
+    log_full(core::debug, p);
     assert p.a == 22.22f;
     assert p.b == "Hi";
 
     let q = f(44.44f, "Ho");
-    log q;
+    log_full(core::debug, q);
     assert q.a == 44.44f;
     assert q.b == "Ho";
 }

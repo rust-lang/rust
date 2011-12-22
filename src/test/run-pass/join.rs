@@ -6,10 +6,10 @@ import task::*;
 
 fn main() {
     let other = spawn_joinable((), child);
-    log_err "1";
+    #error("1");
     yield();
     join(other);
-    log_err "3";
+    #error("3");
 }
 
-fn child(&&_i: ()) { log_err "2"; }
+fn child(&&_i: ()) { #error("2"); }

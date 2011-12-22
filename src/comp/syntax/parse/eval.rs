@@ -29,7 +29,7 @@ fn eval_crate_directives(cx: ctx, cdirs: [@ast::crate_directive], prefix: str,
 fn eval_crate_directives_to_mod(cx: ctx, cdirs: [@ast::crate_directive],
                                 prefix: str, suffix: option::t<str>)
     -> (ast::_mod, [ast::attribute]) {
-    log #fmt("eval crate prefix: %s", prefix);
+    #debug("eval crate prefix: %s", prefix);
     log #fmt("eval crate suffix: %s",
              option::from_maybe("none", suffix));
     let (cview_items, citems, cattrs)
@@ -72,9 +72,9 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option::t<str>)
     }
 
     let modpath = companion_file(prefix, suffix);
-    log #fmt("looking for companion mod %s", modpath);
+    #debug("looking for companion mod %s", modpath);
     if file_exists(modpath) {
-        log "found companion mod";
+        #debug("found companion mod");
         let p0 = new_parser_from_file(cx.sess, cx.cfg, modpath,
                                      cx.chpos, cx.byte_pos, SOURCE_FILE);
         let inner_attrs = parse_inner_attrs_and_next(p0);

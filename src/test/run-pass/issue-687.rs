@@ -20,18 +20,21 @@ fn packager(&&args: (chan<chan<[u8]>>, chan<msg>)) {
     let p: port<[u8]> = port();
     send(cb, chan(p));
     while true {
-        log "waiting for bytes";
+        #debug("waiting for bytes");
         let data = recv(p);
-        log "got bytes";
-        if vec::len(data) == 0u { log "got empty bytes, quitting"; break; }
-        log "sending non-empty buffer of length";
-        log vec::len(data);
+        #debug("got bytes");
+        if vec::len(data) == 0u {
+            #debug("got empty bytes, quitting");
+            break;
+        }
+        #debug("sending non-empty buffer of length");
+        log_full(core::debug, vec::len(data));
         send(msg, received(data));
-        log "sent non-empty buffer";
+        #debug("sent non-empty buffer");
     }
-    log "sending closed message";
+    #debug("sending closed message");
     send(msg, closed);
-    log "sent closed message";
+    #debug("sent closed message");
 }
 
 fn main() {
@@ -45,10 +48,10 @@ fn main() {
     while true {
         let msg = recv(p);
         alt msg {
-          closed. { log "Got close message"; break; }
+          closed. { #debug("Got close message"); break; }
           received(data) {
-            log "Got data. Length is:";
-            log vec::len::<u8>(data);
+            #debug("Got data. Length is:");
+            log_full(core::debug, vec::len::<u8>(data));
           }
         }
     }

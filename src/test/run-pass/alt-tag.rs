@@ -11,9 +11,9 @@ tag color {
 fn process(c: color) -> int {
     let x: int;
     alt c {
-      rgb(r, _, _) { log "rgb"; log r; x = r; }
-      rgba(_, _, _, a) { log "rgba"; log a; x = a; }
-      hsl(_, s, _) { log "hsl"; log s; x = s; }
+      rgb(r, _, _) { #debug("rgb"); log_full(core::debug, r); x = r; }
+      rgba(_, _, _, a) { #debug("rgba"); log_full(core::debug, a); x = a; }
+      hsl(_, s, _) { #debug("hsl"); log_full(core::debug, s); x = s; }
     }
     ret x;
 }

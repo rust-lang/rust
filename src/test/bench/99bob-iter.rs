@@ -47,10 +47,10 @@ fn ninetynine(it: block(int)) {
 
 fn main() {
     ninetynine {|n|
-        log sub(b1(), n);
-        log sub(b2(), n - 1);
-        log "";
+        log_full(core::debug, sub(b1(), n));
+        log_full(core::debug, sub(b2(), n - 1));
+        #debug("");
     };
-    log b7();
-    log b8();
+    log_full(core::debug, b7());
+    log_full(core::debug, b8());
 }

@@ -3,26 +3,26 @@
 
 // -*- rust -*-
 fn f(x: int) -> int {
-    // log "in f:";
+    // #debug("in f:");
 
-    log x;
+    log_full(core::debug, x);
     if x == 1 {
-        // log "bottoming out";
+        // #debug("bottoming out");
 
         ret 1;
     } else {
-        // log "recurring";
+        // #debug("recurring");
 
         let y: int = x * f(x - 1);
-        // log "returned";
+        // #debug("returned");
 
-        log y;
+        log_full(core::debug, y);
         ret y;
     }
 }
 
 fn main() {
     assert (f(5) == 120);
-    // log "all done";
+    // #debug("all done");
 
 }

@@ -1535,7 +1535,7 @@ fn is_pred_ty(cx: ctxt, fty: t) -> bool {
 fn ty_var_id(cx: ctxt, typ: t) -> int {
     alt struct(cx, typ) {
       ty::ty_var(vid) { ret vid; }
-      _ { log_err "ty_var_id called on non-var ty"; fail; }
+      _ { #error("ty_var_id called on non-var ty"); fail; }
     }
 }
 
@@ -2450,7 +2450,7 @@ mod unify {
               none. { typespec = ""; }
               some(typ) { typespec = " =" + ty_to_str(tcx, typ); }
             }
-            log_err #fmt["set %u:%s%s", i, typespec, sets];
+            #error("set %u:%s%s", i, typespec, sets);
             i += 1u;
         }
     }

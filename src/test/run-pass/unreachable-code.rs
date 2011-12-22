@@ -19,13 +19,13 @@ fn bind_id_2() { bind id(ret); }
 
 fn fail_fail() { fail fail; }
 
-fn log_fail() { log_err fail; }
+fn log_fail() { log_full(core::error, fail); }
 
-fn log_ret() { log_err ret; }
+fn log_ret() { log_full(core::error, ret); }
 
-fn log_break() { while true { log_err break; } }
+fn log_break() { while true { log_full(core::error, break); } }
 
-fn log_cont() { do { log_err cont; } while false }
+fn log_cont() { do { log_full(core::error, cont); } while false }
 
 fn ret_ret() -> int { ret (ret 2) + 3; }
 

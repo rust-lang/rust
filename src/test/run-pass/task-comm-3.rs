@@ -5,25 +5,25 @@ import comm::chan;
 import comm::send;
 import comm::recv;
 
-fn main() { log "===== WITHOUT THREADS ====="; test00(); }
+fn main() { #debug("===== WITHOUT THREADS ====="); test00(); }
 
 fn test00_start(&&args: (chan<int>, int, int)) {
     let (ch, message, count) = args;
-    log "Starting test00_start";
+    #debug("Starting test00_start");
     let i: int = 0;
     while i < count {
-        log "Sending Message";
+        #debug("Sending Message");
         send(ch, message + 0);
         i = i + 1;
     }
-    log "Ending test00_start";
+    #debug("Ending test00_start");
 }
 
 fn test00() {
     let number_of_tasks: int = 16;
     let number_of_messages: int = 4;
 
-    log "Creating tasks";
+    #debug("Creating tasks");
 
     let po = comm::port();
     let ch = chan(po);
@@ -52,8 +52,8 @@ fn test00() {
     // Join spawned tasks...
     for t in tasks { task::join(t); }
 
-    log "Completed: Final number is: ";
-    log_err sum;
+    #debug("Completed: Final number is: ");
+    log_full(core::error, sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));
     assert (sum == 480);

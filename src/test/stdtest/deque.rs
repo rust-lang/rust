@@ -14,21 +14,21 @@ fn test_simple() {
     assert (d.size() == 3u);
     d.add_back(137);
     assert (d.size() == 4u);
-    log d.peek_front();
+    log_full(core::debug, d.peek_front());
     assert (d.peek_front() == 42);
-    log d.peek_back();
+    log_full(core::debug, d.peek_back());
     assert (d.peek_back() == 137);
     let i: int = d.pop_front();
-    log i;
+    log_full(core::debug, i);
     assert (i == 42);
     i = d.pop_back();
-    log i;
+    log_full(core::debug, i);
     assert (i == 137);
     i = d.pop_back();
-    log i;
+    log_full(core::debug, i);
     assert (i == 137);
     i = d.pop_back();
-    log i;
+    log_full(core::debug, i);
     assert (i == 17);
     assert (d.size() == 0u);
     d.add_back(3);
@@ -39,10 +39,10 @@ fn test_simple() {
     assert (d.size() == 3u);
     d.add_front(1);
     assert (d.size() == 4u);
-    log d.get(0);
-    log d.get(1);
-    log d.get(2);
-    log d.get(3);
+    log_full(core::debug, d.get(0));
+    log_full(core::debug, d.get(1));
+    log_full(core::debug, d.get(2));
+    log_full(core::debug, d.get(3));
     assert (d.get(0) == 1);
     assert (d.get(1) == 2);
     assert (d.get(2) == 3);
@@ -162,36 +162,36 @@ fn test() {
     fn reccyeq(a: reccy, b: reccy) -> bool {
         ret a.x == b.x && a.y == b.y && taggyeq(a.t, b.t);
     }
-    log "*** test boxes";
+    #debug("*** test boxes");
     test_boxes(@5, @72, @64, @175);
-    log "*** end test boxes";
-    log "test parameterized: int";
+    #debug("*** end test boxes");
+    #debug("test parameterized: int");
     let eq1: eqfn<int> = inteq;
     test_parameterized::<int>(eq1, 5, 72, 64, 175);
-    log "*** test parameterized: @int";
+    #debug("*** test parameterized: @int");
     let eq2: eqfn<@int> = intboxeq;
     test_parameterized::<@int>(eq2, @5, @72, @64, @175);
-    log "*** end test parameterized @int";
-    log "test parameterized: taggy";
+    #debug("*** end test parameterized @int");
+    #debug("test parameterized: taggy");
     let eq3: eqfn<taggy> = taggyeq;
     test_parameterized::<taggy>(eq3, one(1), two(1, 2), three(1, 2, 3),
                                 two(17, 42));
 
-    log "*** test parameterized: taggypar<int>";
+    #debug("*** test parameterized: taggypar<int>");
     let eq4: eqfn<taggypar<int>> = bind taggypareq::<int>(_, _);
     test_parameterized::<taggypar<int>>(eq4, onepar::<int>(1),
                                         twopar::<int>(1, 2),
                                         threepar::<int>(1, 2, 3),
                                         twopar::<int>(17, 42));
-    log "*** end test parameterized: taggypar::<int>";
+    #debug("*** end test parameterized: taggypar::<int>");
 
-    log "*** test parameterized: reccy";
+    #debug("*** test parameterized: reccy");
     let reccy1: reccy = {x: 1, y: 2, t: one(1)};
     let reccy2: reccy = {x: 345, y: 2, t: two(1, 2)};
     let reccy3: reccy = {x: 1, y: 777, t: three(1, 2, 3)};
     let reccy4: reccy = {x: 19, y: 252, t: two(17, 42)};
     let eq5: eqfn<reccy> = reccyeq;
     test_parameterized::<reccy>(eq5, reccy1, reccy2, reccy3, reccy4);
-    log "*** end test parameterized: reccy";
-    log "*** done";
+    #debug("*** end test parameterized: reccy");
+    #debug("*** done");
 }

@@ -56,7 +56,7 @@ If the key does not exist in the map
 */
 fn get<copy T>(m: smallintmap<T>, key: uint) -> T {
     alt find(m, key) {
-      none. { log_err "smallintmap::get(): key not present"; fail; }
+      none. { #error("smallintmap::get(): key not present"); fail; }
       some(v) { ret v; }
     }
 }

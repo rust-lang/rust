@@ -18,5 +18,5 @@ fn main() {
             my_a
         };
 
-    log_err my_b.foo();
+    log_full(core::error, my_b.foo());
 }

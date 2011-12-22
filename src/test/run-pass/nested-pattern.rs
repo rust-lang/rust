@@ -10,8 +10,8 @@ tag t { foo(int, uint); bar(int, option::t<int>); }
 
 fn nested(o: t) {
     alt o {
-      bar(i, some::<int>(_)) { log_err "wrong pattern matched"; fail; }
-      _ { log_err "succeeded"; }
+      bar(i, some::<int>(_)) { #error("wrong pattern matched"); fail; }
+      _ { #error("succeeded"); }
     }
 }
 

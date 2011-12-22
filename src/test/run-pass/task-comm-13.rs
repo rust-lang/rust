@@ -10,9 +10,9 @@ fn start(&&args: (comm::chan<int>, int, int)) {
 }
 
 fn main() {
-    log "Check that we don't deadlock.";
+    #debug("Check that we don't deadlock.");
     let p = comm::port::<int>();
     let a = task::spawn_joinable((comm::chan(p), 0, 10), start);
     task::join(a);
-    log "Joined task";
+    #debug("Joined task");
 }

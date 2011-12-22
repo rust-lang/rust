@@ -14,7 +14,7 @@ fn mk<T>() -> smallintmap<T> {
 
 fn f<T,U>() {
     let sim = mk::<U>();
-    log_err sim;
+    log_full(core::error, sim);
 }
 
 fn main() {

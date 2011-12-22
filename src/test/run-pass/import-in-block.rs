@@ -3,9 +3,9 @@ use std;
 fn main() {
     import vec;
     import vec::to_mut;
-    log vec::len(to_mut([1, 2]));
+    log_full(core::debug, vec::len(to_mut([1, 2])));
     {
         import vec::*;
-        log len([2]);
+        log_full(core::debug, len([2]));
     }
 }

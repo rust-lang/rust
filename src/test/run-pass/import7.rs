@@ -2,7 +2,7 @@ import bar::baz;
 import foo::zed;
 mod foo {
     mod zed {
-        fn baz() { log "baz"; }
+        fn baz() { #debug("baz"); }
     }
 }
 mod bar {

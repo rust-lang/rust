@@ -158,7 +158,7 @@ fn relax_precond_block(fcx: fn_ctxt, i: node_id, b: blk) {
 }
 
 fn gen_poststate(fcx: fn_ctxt, id: node_id, c: tsconstr) -> bool {
-    log "gen_poststate";
+    #debug("gen_poststate");
     ret set_in_poststate(bit_num(fcx, c),
                          node_id_to_ts_ann(fcx.ccx, id).states);
 }
@@ -174,7 +174,7 @@ fn kill_all_prestate(fcx: fn_ctxt, id: node_id) {
 
 
 fn kill_poststate(fcx: fn_ctxt, id: node_id, c: tsconstr) -> bool {
-    log "kill_poststate";
+    #debug("kill_poststate");
     ret clear_in_poststate(bit_num(fcx, c),
                            node_id_to_ts_ann(fcx.ccx, id).states);
 }
@@ -203,7 +203,7 @@ fn clear_in_poststate_expr(fcx: fn_ctxt, e: @expr, t: poststate) {
 }
 
 fn kill_poststate_(fcx: fn_ctxt, c: tsconstr, post: poststate) -> bool {
-    log "kill_poststate_";
+    #debug("kill_poststate_");
     ret clear_in_poststate_(bit_num(fcx, c), post);
 }
 

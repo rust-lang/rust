@@ -5,4 +5,4 @@ fn f(a: {mutable x: int}, &b: {mutable x: int}) -> int {
     ret a.x + b.x;
 }
 
-fn main() { let i = {mutable x: 4}; log f(i, i); }
+fn main() { let i = {mutable x: 4}; log_full(core::debug, f(i, i)); }

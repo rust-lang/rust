@@ -16,15 +16,15 @@ fn main() {
     let n: int = 0;
     n = recv(p);
     n = recv(p);
-    //    log "Finished.";
+    //    #debug("Finished.");
 }
 
 fn b(c: chan<int>) {
-    //    log "task b0";
-    //    log "task b1";
-    //    log "task b2";
-    //    log "task b3";
-    //    log "task b4";
-    //    log "task b5";
+    //    #debug("task b0");
+    //    #debug("task b1");
+    //    #debug("task b2");
+    //    #debug("task b3");
+    //    #debug("task b4");
+    //    #debug("task b5");
     send(c, 10);
 }

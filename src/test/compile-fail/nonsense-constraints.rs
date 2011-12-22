@@ -10,4 +10,4 @@ fn enum_chars(start: u8, end: u8) : uint::le(start, end) -> [char] {
     ret r;
 }
 
-fn main() { log enum_chars('a' as u8, 'z' as u8); }
+fn main() { log_full(core::debug, enum_chars('a' as u8, 'z' as u8)); }

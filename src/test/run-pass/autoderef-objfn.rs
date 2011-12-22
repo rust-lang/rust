@@ -3,7 +3,7 @@
 
 // -*- rust -*-
 obj clam() {
-    fn chowder() { log "in clam chowder"; }
+    fn chowder() { #debug("in clam chowder"); }
 }
 
 fn foo(c: @clam) { c.chowder(); }

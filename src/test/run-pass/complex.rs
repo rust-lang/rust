@@ -25,4 +25,9 @@ fn foo(x: int) -> int {
     ret 0;
 }
 
-fn main() { let x: int = 2 + 2; log x; log "hello, world"; log 10; }
+fn main() {
+    let x: int = 2 + 2;
+    log_full(core::debug, x);
+    #debug("hello, world");
+    log_full(core::debug, 10);
+}

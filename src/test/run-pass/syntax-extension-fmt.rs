@@ -2,8 +2,8 @@ use std;
 import str;
 
 fn test(actual: str, expected: str) {
-    log actual;
-    log expected;
+    log_full(core::debug, actual);
+    log_full(core::debug, expected);
     assert (str::eq(actual, expected));
 }
 

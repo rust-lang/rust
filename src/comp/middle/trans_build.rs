@@ -516,7 +516,7 @@ fn add_span_comment(bcx: @block_ctxt, sp: span, text: str) {
     let ccx = bcx_ccx(bcx);
     if (!ccx.sess.get_opts().no_asm_comments) {
         let s = text + " (" + ccx.sess.span_str(sp) + ")";
-        log s;
+        log_full(core::debug, s);
         add_comment(bcx, s);
     }
 }

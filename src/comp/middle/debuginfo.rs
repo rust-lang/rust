@@ -714,9 +714,9 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
     let cx = fcx_ccx(fcx);
     let dbg_cx = option::get(cx.dbg_cx);
 
-    log "~~";
-    log fcx.id;
-    log cx.sess.span_str(fcx.sp);
+    #debug("~~");
+    log_full(core::debug, fcx.id);
+    log_full(core::debug, cx.sess.span_str(fcx.sp));
 
     let (ident, ret_ty, id) = alt cx.ast_map.get(fcx.id) {
       ast_map::node_item(item) {
@@ -746,8 +746,8 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
       }
     };
 
-    log ident;
-    log id;
+    log_full(core::debug, ident);
+    log_full(core::debug, id);
 
     let path = str::connect(fcx.lcx.path + [ident], "::");
 

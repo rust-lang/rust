@@ -36,7 +36,7 @@ fn get_exe_path() {
     let path = std::os::get_exe_path();
     assert option::is_some(path);
     let path = option::get(path);
-    log path;
+    log_full(core::debug, path);
 
     // Hard to test this function
     if std::os::target_os() != "win32" {

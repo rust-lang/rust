@@ -10,4 +10,7 @@ fn coerce(b: block()) -> fn() {
 }
 
 
-fn main() { let i = 8; let f = coerce(block () { log_err i; }); f(); }
+fn main() {
+    let i = 8;
+    let f = coerce(block () { log_full(core::error, i); });
+    f(); }

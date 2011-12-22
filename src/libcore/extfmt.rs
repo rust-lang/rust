@@ -19,7 +19,7 @@ combinations at the moment.
 
 Example:
 
-log #fmt("hello, %s!", "world");
+#debug("hello, %s!", "world");
 
 */
 

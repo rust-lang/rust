@@ -78,7 +78,7 @@ mod map_reduce {
 
     fn map_task(args: (chan<ctrl_proto>, str)) {
         let (ctrl, input) = args;
-        // log_err "map_task " + input;
+        // log_full(core::error, "map_task " + input);
         let intermediates = map::new_str_hash();
 
         fn emit(im: map::hashmap<str, chan<reduce_proto>>,
@@ -120,11 +120,11 @@ mod map_reduce {
             while !state.is_done || state.ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {
-                    // log_err #fmt("received %d", v);
+                    // #error("received %d", v);
                     ret some(v);
                   }
                   done. {
-                    // log_err "all done";
+                    // #error("all done");
                     state.is_done = true;
                   }
                   ref. { state.ref_count += 1; }
@@ -153,19 +153,20 @@ mod map_reduce {
         while num_mappers > 0 {
             alt recv(ctrl) {
               mapper_done. {
-                // log_err "received mapper terminated.";
+                // #error("received mapper terminated.");
                 num_mappers -= 1;
               }
               find_reducer(k, cc) {
                 let c;
-                // log_err "finding reducer for " + k;
+                // log_full(core::error, "finding reducer for " + k);
                 alt reducers.find(k) {
                   some(_c) {
-                    // log_err "reusing existing reducer for " + k;
+                    // log_full(core::error,
+                    // "reusing existing reducer for " + k);
                     c = _c;
                   }
                   none. {
-                    // log_err "creating new reducer for " + k;
+                    // log_full(core::error, "creating new reducer for " + k);
                     let p = port();
                     tasks +=
                         [task::spawn_joinable((k, chan(p)), reduce_task)];
@@ -200,7 +201,8 @@ fn main(argv: [str]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
+    log_full(core::error, "MapReduce completed in "
+             + u64::str(elapsed) + "ms");
 }
 
 fn read_word(r: io::reader) -> option<str> {

@@ -227,7 +227,7 @@ obj byte_buf_reader(bbuf: byte_buf) {
         bbuf.pos += 1u;
         ret b as int;
     }
-    fn unread_byte(_byte: int) { log_err "TODO: unread_byte"; fail; }
+    fn unread_byte(_byte: int) { #error("TODO: unread_byte"); fail; }
     fn eof() -> bool { ret bbuf.pos == vec::len::<u8>(bbuf.buf); }
     fn seek(offset: int, whence: seek_style) {
         let pos = bbuf.pos;
@@ -268,7 +268,7 @@ obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
         let len = vec::len::<u8>(v);
         let vbuf = vec::unsafe::to_ptr::<u8>(v);
         let nout = os::libc::fwrite(vbuf, len, 1u, f);
-        if nout < 1u { log_err "error dumping buffer"; }
+        if nout < 1u { #error("error dumping buffer"); }
     }
     fn seek(offset: int, whence: seek_style) {
         assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0i32);
@@ -291,19 +291,19 @@ obj fd_buf_writer(fd: fd_t, res: option::t<@fd_res>) {
             vbuf = ptr::offset(vec::unsafe::to_ptr::<u8>(v), count);
             let nout = os::libc::write(fd, vbuf, len);
             if nout < 0 {
-                log_err "error dumping buffer";
-                log_err sys::last_os_error();
+                #error("error dumping buffer");
+                log_full(core::error, sys::last_os_error());
                 fail;
             }
             count += nout as uint;
         }
     }
     fn seek(_offset: int, _whence: seek_style) {
-        log_err "need 64-bit native calls for seek, sorry";
+        #error("need 64-bit native calls for seek, sorry");
         fail;
     }
     fn tell() -> uint {
-        log_err "need 64-bit native calls for tell, sorry";
+        #error("need 64-bit native calls for tell, sorry");
         fail;
     }
 
@@ -334,7 +334,7 @@ fn file_buf_writer(path: str,
                                            os::libc_constants::S_IWUSR)
                     });
     ret if fd < 0i32 {
-        log_err sys::last_os_error();
+        log_full(core::error, sys::last_os_error());
         result::err("error opening " + path)
     } else {
         result::ok(fd_buf_writer(fd, option::some(@fd_res(fd))))

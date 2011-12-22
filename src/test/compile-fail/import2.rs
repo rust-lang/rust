@@ -2,6 +2,6 @@
 import baz::zed::bar;
 mod baz { }
 mod zed {
-    fn bar() { log "bar3"; }
+    fn bar() { #debug("bar3"); }
 }
 fn main(args: [str]) { bar(); }

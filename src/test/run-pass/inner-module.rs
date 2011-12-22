@@ -4,7 +4,7 @@
 // -*- rust -*-
 mod inner {
     mod inner2 {
-        fn hello() { log "hello, modular world"; }
+        fn hello() { #debug("hello, modular world"); }
     }
     fn hello() { inner2::hello(); }
 }

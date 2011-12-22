@@ -11,6 +11,6 @@ fn main() {
     grow(v);
     grow(v);
     let len = vec::len::<int>(v);
-    log len;
+    log_full(core::debug, len);
     assert (len == 3 as uint);
 }

@@ -447,9 +447,9 @@ fn visit_fn_block_with_scope(_e: @env, decl: fn_decl, blk: ast::blk,
                              span: span, id: node_id,
                              sc: scopes, v: vt<scopes>) {
     let scope = scope_fn_expr(decl, id, []);
-    log ("scope=", scope);
+    log_full(core::debug, ("scope=", scope));
     visit::visit_fn_block(decl, blk, span, id, cons(scope, @sc), v);
-    log ("unscope");
+    log_full(core::debug, ("unscope"));
 }
 
 fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {

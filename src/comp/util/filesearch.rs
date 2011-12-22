@@ -50,22 +50,22 @@ fn mk_filesearch(maybe_sysroot: option::t<fs::path>,
     }
 
     let sysroot = get_sysroot(maybe_sysroot);
-    log #fmt("using sysroot = %s", sysroot);
+    #debug("using sysroot = %s", sysroot);
     ret filesearch_impl(sysroot, addl_lib_search_paths, target_triple);
 }
 
 // FIXME #1001: This can't be an obj method
 fn search<copy T>(filesearch: filesearch, pick: pick<T>) -> option::t<T> {
     for lib_search_path in filesearch.lib_search_paths() {
-        log #fmt["searching %s", lib_search_path];
+        #debug("searching %s", lib_search_path);
         for path in fs::list_dir(lib_search_path) {
-            log #fmt["testing %s", path];
+            #debug("testing %s", path);
             let maybe_picked = pick(path);
             if option::is_some(maybe_picked) {
-                log #fmt("picked %s", path);
+                #debug("picked %s", path);
                 ret maybe_picked;
             } else {
-                log #fmt("rejected %s", path);
+                #debug("rejected %s", path);
             }
         }
     }

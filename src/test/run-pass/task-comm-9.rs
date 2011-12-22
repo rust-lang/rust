@@ -20,7 +20,11 @@ fn test00() {
                                   test00_start);
 
     let i: int = 0;
-    while i < number_of_messages { sum += comm::recv(p); log r; i += 1; }
+    while i < number_of_messages {
+        sum += comm::recv(p);
+        log_full(core::debug, r);
+        i += 1;
+    }
 
     task::join(t0);
 

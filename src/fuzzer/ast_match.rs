@@ -23,5 +23,5 @@ fn main() {
     assert (!vec_equal([5, 5], [4, 5], builtin_equal));
     assert (vec_equal([5, 5], [5, 5], builtin_equal));
 
-    log_err "Pass";
+    #error("Pass");
 }

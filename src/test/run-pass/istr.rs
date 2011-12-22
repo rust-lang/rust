@@ -1,6 +1,6 @@
 fn test_stack_assign() {
     let s: str = "a";
-    log s;
+    log_full(core::debug, s);
     let t: str = "a";
     assert (s == t);
     let u: str = "b";
@@ -17,7 +17,7 @@ fn test_heap_assign() {
     assert (s != u);
 }
 
-fn test_heap_log() { let s = "a big ol' string"; log s; }
+fn test_heap_log() { let s = "a big ol' string"; log_full(core::debug, s); }
 
 fn test_stack_add() {
     assert ("a" + "b" == "ab");
@@ -39,7 +39,7 @@ fn test_append() {
 
     let s = "a";
     s += "b";
-    log s;
+    log_full(core::debug, s);
     assert (s == "ab");
 
     let s = "c";

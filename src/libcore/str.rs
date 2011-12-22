@@ -287,7 +287,7 @@ Example:
 > let i = 0;
 > while i < len(s) {
 >   let {ch, next} = char_range_at(s, i);
->   log ch;
+>   log_full(core::debug, ch);
 >   i = next;
 > }
 

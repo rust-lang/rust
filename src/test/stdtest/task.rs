@@ -17,7 +17,7 @@ fn test_unsupervise() {
 
 #[test]
 fn test_lib_spawn() {
-    fn foo(&&_i: ()) { log_err "Hello, World!"; }
+    fn foo(&&_i: ()) { #error("Hello, World!"); }
     task::spawn((), foo);
 }
 
@@ -34,8 +34,8 @@ fn test_join_chan() {
     let p = comm::port();
     task::spawn_notify((), winner, comm::chan(p));
     let s = comm::recv(p);
-    log_err "received task status message";
-    log_err s;
+    #error("received task status message");
+    log_full(core::error, s);
     alt s {
       task::exit(_, task::tr_success.) {/* yay! */ }
       _ { fail "invalid task status received" }
@@ -51,8 +51,8 @@ fn test_join_chan_fail() {
     let p = comm::port();
     task::spawn_notify((), failer, comm::chan(p));
     let s = comm::recv(p);
-    log_err "received task status message";
-    log_err s;
+    #error("received task status message");
+    log_full(core::error, s);
     alt s {
       task::exit(_, task::tr_failure.) {/* yay! */ }
       _ { fail "invalid task status received" }
@@ -70,7 +70,7 @@ fn test_join_convenient() {
 #[ignore]
 fn spawn_polymorphic() {
     // FIXME #1038: Can't spawn palymorphic functions
-    /*fn foo<send T>(x: T) { log_err x; }
+    /*fn foo<send T>(x: T) { log_full(core::error, x); }
 
     task::spawn(true, foo);
     task::spawn(42, foo);*/

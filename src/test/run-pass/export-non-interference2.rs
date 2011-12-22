@@ -6,7 +6,7 @@ mod foo {
         fn y() { x(); }
     }
 
-    fn x() { log "x"; }
+    fn x() { #debug("x"); }
 }
 
 fn main() { foo::bar::y(); }

@@ -5,14 +5,14 @@ import task::*;
 
 fn main() {
     let other = task::spawn_joinable((), child);
-    log_err "1";
+    #error("1");
     yield();
-    log_err "2";
+    #error("2");
     yield();
-    log_err "3";
+    #error("3");
     join(other);
 }
 
 fn child(&&_i: ()) {
-    log_err "4"; yield(); log_err "5"; yield(); log_err "6";
+    #error("4"); yield(); #error("5"); yield(); #error("6");
 }

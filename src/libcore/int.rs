@@ -105,7 +105,7 @@ buf must not be empty
 */
 fn parse_buf(buf: [u8], radix: uint) -> int {
     if vec::len::<u8>(buf) == 0u {
-        log_err "parse_buf(): buf is empty";
+        #error("parse_buf(): buf is empty");
         fail;
     }
     let i = vec::len::<u8>(buf) - 1u;

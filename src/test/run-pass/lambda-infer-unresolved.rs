@@ -2,6 +2,6 @@
 // resolved when we finish typechecking the lambda.
 fn main() {
     let e = @{mutable refs: [], n: 0};
-    let f = lambda () { log_err e.n; };
+    let f = lambda () { log_full(core::error, e.n); };
     e.refs += [1];
 }

@@ -231,7 +231,7 @@ fn run_tests<copy T>(opts: test_opts, tests: [test_desc<T>],
     // provide a great user experience because you might sit waiting for the
     // result of a particular test for an unusually long amount of time.
     let concurrency = get_concurrency();
-    log #fmt["using %u test tasks", concurrency];
+    #debug("using %u test tasks", concurrency);
     let total = vec::len(filtered_tests);
     let run_idx = 0u;
     let wait_idx = 0u;

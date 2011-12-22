@@ -5,5 +5,5 @@ import str::*;
 fn main() {
     let a: uint = 4u;
     let b: uint = 1u;
-    log_err safe_slice("kitties", a, b);
+    log_full(core::error, safe_slice("kitties", a, b));
 }

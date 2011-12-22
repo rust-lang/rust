@@ -11,8 +11,8 @@ fn f<copy T>(t: T) -> {a: T, b: T} {
 
 fn main() {
     let b = f::<int>(10);
-    log b.a;
-    log b.b;
+    log_full(core::debug, b.a);
+    log_full(core::debug, b.b);
     assert (b.a == 10);
     assert (b.b == 10);
 }

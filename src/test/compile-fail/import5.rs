@@ -1,7 +1,7 @@
 // error-pattern:unresolved import
 
 mod m1 {
-    fn foo() { log "foo"; }
+    fn foo() { #debug("foo"); }
 }
 
 mod m2 {

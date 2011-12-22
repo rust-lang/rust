@@ -1530,7 +1530,8 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
 
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                            expected: ty::t) -> bool {
-    //log_err "typechecking expr " + syntax::print::pprust::expr_to_str(expr);
+    #debug("typechecking expr %s",
+           syntax::print::pprust::expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
     // expressions.

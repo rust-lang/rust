@@ -560,7 +560,7 @@ fn consume_non_eol_whitespace(rdr: reader) {
 }
 
 fn push_blank_line_comment(rdr: reader, &comments: [cmnt]) {
-    log ">>> blank-line comment";
+    #debug(">>> blank-line comment");
     let v: [str] = [];
     comments += [{style: blank_line, lines: v, pos: rdr.get_chpos()}];
 }
@@ -575,16 +575,16 @@ fn consume_whitespace_counting_blank_lines(rdr: reader, &comments: [cmnt]) {
 }
 
 fn read_line_comments(rdr: reader, code_to_the_left: bool) -> cmnt {
-    log ">>> line comments";
+    #debug(">>> line comments");
     let p = rdr.get_chpos();
     let lines: [str] = [];
     while rdr.curr() == '/' && rdr.next() == '/' {
         let line = read_one_line_comment(rdr);
-        log line;
+        log_full(core::debug, line);
         lines += [line];
         consume_non_eol_whitespace(rdr);
     }
-    log "<<< line comments";
+    #debug("<<< line comments");
     ret {style: if code_to_the_left { trailing } else { isolated },
          lines: lines,
          pos: p};
@@ -603,12 +603,12 @@ fn trim_whitespace_prefix_and_push_line(&lines: [str], s: str, col: uint) {
             s1 = str::slice(s, col, str::byte_len(s));
         } else { s1 = ""; }
     } else { s1 = s; }
-    log "pushing line: " + s1;
+    log_full(core::debug, "pushing line: " + s1);
     lines += [s1];
 }
 
 fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
-    log ">>> block comment";
+    #debug(">>> block comment");
     let p = rdr.get_chpos();
     let lines: [str] = [];
     let col: uint = rdr.get_col();
@@ -617,7 +617,7 @@ fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
     let curr_line = "/*";
     let level: int = 1;
     while level > 0 {
-        log #fmt["=== block comment level %d", level];
+        #debug("=== block comment level %d", level);
         if rdr.is_eof() { rdr.err("unterminated block comment"); fail; }
         if rdr.curr() == '\n' {
             trim_whitespace_prefix_and_push_line(lines, curr_line, col);
@@ -648,7 +648,7 @@ fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
     if !rdr.is_eof() && rdr.curr() != '\n' && vec::len(lines) == 1u {
         style = mixed;
     }
-    log "<<< block comment";
+    #debug("<<< block comment");
     ret {style: style, lines: lines, pos: p};
 }
 
@@ -658,13 +658,13 @@ fn peeking_at_comment(rdr: reader) -> bool {
 }
 
 fn consume_comment(rdr: reader, code_to_the_left: bool, &comments: [cmnt]) {
-    log ">>> consume comment";
+    #debug(">>> consume comment");
     if rdr.curr() == '/' && rdr.next() == '/' {
         comments += [read_line_comments(rdr, code_to_the_left)];
     } else if rdr.curr() == '/' && rdr.next() == '*' {
         comments += [read_block_comment(rdr, code_to_the_left)];
     } else { fail; }
-    log "<<< consume comment";
+    #debug("<<< consume comment");
 }
 
 fn is_lit(t: token::token) -> bool {
@@ -707,7 +707,7 @@ fn gather_comments_and_literals(cm: codemap::codemap, path: str,
         if is_lit(tok.tok) {
             literals += [{lit: rdr.get_str_from(tok.bpos), pos: tok.chpos}];
         }
-        log "tok: " + token::to_str(rdr, tok.tok);
+        log_full(core::debug, "tok: " + token::to_str(rdr, tok.tok));
         first_read = false;
     }
     ret {cmnts: comments, lits: literals};

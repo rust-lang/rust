@@ -21,7 +21,7 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
         ret [];
     }
 
-    log "preparing the RPATH!";
+    #debug("preparing the RPATH!");
 
     let cwd = os::getcwd();
     let sysroot = sess.filesearch().sysroot();
@@ -52,14 +52,14 @@ fn rpaths_to_flags(rpaths: [str]) -> [str] {
 fn get_rpaths(os: session::os, cwd: fs::path, sysroot: fs::path,
               output: fs::path, libs: [fs::path],
               target_triple: str) -> [str] {
-    log #fmt("cwd: %s", cwd);
-    log #fmt("sysroot: %s", sysroot);
-    log #fmt("output: %s", output);
-    log #fmt("libs:");
+    #debug("cwd: %s", cwd);
+    #debug("sysroot: %s", sysroot);
+    #debug("output: %s", output);
+    #debug("libs:");
     for libpath in libs {
-        log #fmt("    %s", libpath);
+        #debug("    %s", libpath);
     }
-    log #fmt("target_triple: %s", target_triple);
+    #debug("target_triple: %s", target_triple);
 
     // Use relative paths to the libraries. Binaries can be moved
     // as long as they maintain the relative relationship to the
@@ -74,9 +74,9 @@ fn get_rpaths(os: session::os, cwd: fs::path, sysroot: fs::path,
     let fallback_rpaths = [get_install_prefix_rpath(cwd, target_triple)];
 
     fn log_rpaths(desc: str, rpaths: [str]) {
-        log #fmt("%s rpaths:", desc);
+        #debug("%s rpaths:", desc);
         for rpath in rpaths {
-            log #fmt("    %s", rpath);
+            #debug("    %s", rpath);
         }
     }
 

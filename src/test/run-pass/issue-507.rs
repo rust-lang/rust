@@ -29,7 +29,7 @@ fn main() {
 
     let x: int = recv(p);
 
-    log x;
+    log_full(core::debug, x);
 
     assert (x == 42);
 

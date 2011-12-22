@@ -135,12 +135,12 @@ type tests_and_conv_fn = {
 };
 
 fn make_tests(cx: cx) -> tests_and_conv_fn {
-    log #fmt["making tests from %s", cx.config.src_base];
+    #debug("making tests from %s", cx.config.src_base);
     let configport = port::<[u8]>();
     let tests = [];
     for file: str in fs::list_dir(cx.config.src_base) {
         let file = file;
-        log #fmt["inspecting file %s", file];
+        #debug("inspecting file %s", file);
         if is_test(cx.config, file) {
             tests += [make_test(cx, file, configport)];
         }

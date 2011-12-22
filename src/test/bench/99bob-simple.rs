@@ -42,7 +42,11 @@ fn sub(t: str, n: int) -> str {
 /* Straightforward counter */
 fn main() {
     let n: int = 99;
-    while n > 0 { log sub(b1(), n); log sub(b2(), n - 1); log ""; n -= 1; }
-    log b7();
-    log sub(b8(), 99);
+    while n > 0 {
+        log_full(core::debug, sub(b1(), n));
+        log_full(core::debug, sub(b2(), n - 1));
+        #debug(""); n -= 1;
+    }
+    log_full(core::debug, b7());
+    log_full(core::debug, sub(b8(), 99));
 }

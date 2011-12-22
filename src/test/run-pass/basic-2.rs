@@ -7,7 +7,7 @@ import comm::chan;
 import comm::recv;
 import task;
 
-fn a(c: chan<int>) { log "task a0"; log "task a1"; send(c, 10); }
+fn a(c: chan<int>) { #debug("task a0"); #debug("task a1"); send(c, 10); }
 
 fn main() {
     let p = comm::port();
@@ -16,14 +16,14 @@ fn main() {
     let n: int = 0;
     n = recv(p);
     n = recv(p);
-    log "Finished.";
+    #debug("Finished.");
 }
 
 fn b(c: chan<int>) {
-    log "task b0";
-    log "task b1";
-    log "task b2";
-    log "task b2";
-    log "task b3";
+    #debug("task b0");
+    #debug("task b1");
+    #debug("task b2");
+    #debug("task b2");
+    #debug("task b3");
     send(c, 10);
 }

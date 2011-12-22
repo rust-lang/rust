@@ -107,15 +107,15 @@ fn metadata_matches(crate_data: @[u8], metas: [@ast::meta_item]) -> bool {
     log #fmt["matching %u metadata requirements against %u items",
              vec::len(metas), vec::len(linkage_metas)];
 
-    log #fmt("crate metadata:");
+    #debug("crate metadata:");
     for have: @ast::meta_item in linkage_metas {
-        log #fmt("  %s", pprust::meta_item_to_str(*have));
+        #debug("  %s", pprust::meta_item_to_str(*have));
     }
 
     for needed: @ast::meta_item in metas {
-        log #fmt["looking for %s", pprust::meta_item_to_str(*needed)];
+        #debug("looking for %s", pprust::meta_item_to_str(*needed));
         if !attr::contains(linkage_metas, needed) {
-            log #fmt["missing %s", pprust::meta_item_to_str(*needed)];
+            #debug("missing %s", pprust::meta_item_to_str(*needed));
             ret false;
         }
     }
@@ -175,26 +175,26 @@ fn find_library_crate_aux(sess: session::session,
     let suffix: str = nn.suffix;
 
     ret filesearch::search(filesearch, { |path|
-        log #fmt("inspecting file %s", path);
+        #debug("inspecting file %s", path);
         let f: str = fs::basename(path);
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
             log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
                      suffix];
             option::none
         } else {
-            log #fmt("%s is a candidate", path);
+            #debug("%s is a candidate", path);
             alt get_metadata_section(sess, path) {
               option::some(cvec) {
                 if !metadata_matches(cvec, metas) {
-                    log #fmt["skipping %s, metadata doesn't match", path];
+                    #debug("skipping %s, metadata doesn't match", path);
                     option::none
                 } else {
-                    log #fmt["found %s with matching metadata", path];
+                    #debug("found %s with matching metadata", path);
                     option::some({ident: path, data: cvec})
                 }
               }
               _ {
-                log #fmt("could not load metadata for %s", path);
+                #debug("could not load metadata for %s", path);
                 option::none
               }
             }
@@ -270,21 +270,21 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
 
 // Go through the crate metadata and load any crates that it references
 fn resolve_crate_deps(e: env, cdata: @[u8]) -> cstore::cnum_map {
-    log "resolving deps of external crate";
+    #debug("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let cnum_map = new_int_hash::<ast::crate_num>();
     for dep: decoder::crate_dep in decoder::get_crate_deps(cdata) {
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;
-        log #fmt["resolving dep %s", cname];
+        #debug("resolving dep %s", cname);
         if e.crate_cache.contains_key(cname) {
-            log "already have it";
+            #debug("already have it");
             // We've already seen this crate
             let local_cnum = e.crate_cache.get(cname);
             cnum_map.insert(extrn_cnum, local_cnum);
         } else {
-            log "need to load it";
+            #debug("need to load it");
             // This is a new one so we've got to load it
             // FIXME: Need better error reporting than just a bogus span
             let fake_span = ast_util::dummy_sp();
