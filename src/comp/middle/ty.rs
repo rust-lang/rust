@@ -31,7 +31,6 @@ export ast_constr_to_constr;
 export bind_params_in_type;
 export block_ty;
 export constr;
-export cast_type;
 export constr_general;
 export constr_table;
 export count_ty_params;
@@ -106,8 +105,6 @@ export substitute_type_params;
 export t;
 export tag_variants;
 export tag_variant_with_id;
-export triv_cast;
-export triv_eq_ty;
 export ty_param_substs_opt_and_ty;
 export ty_param_kinds_and_ty;
 export ty_native_fn;
@@ -133,7 +130,6 @@ export ty_param;
 export ty_ptr;
 export ty_rec;
 export ty_tag;
-export ty_to_machine_ty;
 export ty_tup;
 export ty_type;
 export ty_send_type;
@@ -214,17 +210,10 @@ type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, ty::t>;
 type tag_var_cache =
     @smallintmap::smallintmap<@mutable [variant_info]>;
 
-tag cast_type {
-    /* cast may be ignored after substituting primitive with machine types
-       since expr already has the right type */
-    triv_cast;
-}
-
 type ctxt =
     @{ts: @type_store,
       sess: session::session,
       def_map: resolve::def_map,
-      cast_map: hashmap<ast::node_id, cast_type>,
       node_types: node_type_table,
       items: ast_map::map,
       freevars: freevars::freevar_map,
@@ -420,7 +409,6 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
         @{ts: ts,
           sess: s,
           def_map: dm,
-          cast_map: ast_util::new_node_hash(),
           node_types: ntt,
           items: amap,
           freevars: freevars,
@@ -1422,42 +1410,6 @@ fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
 // This is the equality function the public should use. It works as long as
 // the types are interned.
 fn eq_ty(&&a: t, &&b: t) -> bool { a == b }
-
-
-// Convert type to machine type
-// (i.e. replace uint, int, float with target architecture machine types)
-//
-// FIXME somewhat expensive but this should only be called rarely
-fn ty_to_machine_ty(cx: ctxt, ty: t) -> t {
-    fn sub_fn(cx: ctxt, uint_ty: t, int_ty: t, float_ty: t, in: t) -> t {
-        alt struct(cx, in) {
-          ty_uint(ast::ty_u.) { ret uint_ty; }
-          ty_int(ast::ty_i.) { ret int_ty; }
-          ty_float(ast::ty_f.) { ret float_ty; }
-          _ { ret in; }
-        }
-    }
-
-    let cfg      = cx.sess.get_targ_cfg();
-    let uint_ty  = mk_mach_uint(cx, cfg.uint_type);
-    let int_ty   = mk_mach_int(cx, cfg.int_type);
-    let float_ty = mk_mach_float(cx, cfg.float_type);
-    let fold_m   = fm_general(bind sub_fn(cx, uint_ty, int_ty, float_ty, _));
-
-    ret fold_ty(cx, fold_m, ty);
-}
-
-// Two types are trivially equal if they are either
-// equal or if they are equal after substituting all occurences of
-//  machine independent primitive types by their machine type equivalents
-// for the current target architecture
-fn triv_eq_ty(cx: ctxt, &&a: t, &&b: t) -> bool {
-    let a = alt interner::get(*cx.ts, a).struct
-        { ty_named(t, _) { t } _ { a } };
-    let b = alt interner::get(*cx.ts, b).struct
-        { ty_named(t, _) { t } _ { b } };
-    a == b || ty_to_machine_ty(cx, a) == ty_to_machine_ty(cx, b)
-}
 
 // Type lookups
 fn node_id_to_ty_param_substs_opt_and_ty(cx: ctxt, id: ast::node_id) ->
