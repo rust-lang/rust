@@ -106,9 +106,9 @@ fn check_states_against_conditions(fcx: fn_ctxt,
     let visitor = visit::mk_vt(
         @{visit_stmt: check_states_stmt,
           visit_expr: check_states_expr,
-          visit_fn_body: bind do_nothing::<fn_ctxt>(_, _, _, _, _, _, _)
+          visit_fn: bind do_nothing::<fn_ctxt>(_, _, _, _, _, _, _, _)
           with *visit::default_visitor::<fn_ctxt>()});
-    visit::visit_fn_body(f_decl, f_body, sp, nm, id, fcx, visitor);
+    visit::visit_fn(f_decl, [], f_body, sp, nm, id, fcx, visitor);
 
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f_body);
@@ -158,10 +158,10 @@ fn check_fn_states(fcx: fn_ctxt,
     check_states_against_conditions(fcx, f_decl, f_body, sp, nm, id);
 }
 
-fn fn_states(f_decl: ast::fn_decl, f_body: ast::blk,
+fn fn_states(f_decl: ast::fn_decl, tps: [ast::ty_param], f_body: ast::blk,
              sp: span, i: ast::fn_ident, id: node_id,
              ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
-    visit::visit_fn_body(f_decl, f_body, sp, i, id, ccx, v);
+    visit::visit_fn(f_decl, tps, f_body, sp, i, id, ccx, v);
     /* Look up the var-to-bit-num map for this function */
 
     assert (ccx.fm.contains_key(id));
@@ -182,13 +182,13 @@ fn check_crate(cx: ty::ctxt, crate: @crate) {
     /* Compute the pre and postcondition for every subexpression */
 
     let vtor = visit::default_visitor::<crate_ctxt>();
-    vtor = @{visit_fn_body: fn_pre_post with *vtor};
+    vtor = @{visit_fn: fn_pre_post with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 
     /* Check the pre- and postcondition against the pre- and poststate
        for every expression */
     let vtor = visit::default_visitor::<crate_ctxt>();
-    vtor = @{visit_fn_body: fn_states with *vtor};
+    vtor = @{visit_fn: fn_states with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 }
 //

@@ -43,7 +43,7 @@ type ctx = {last_uses: std::map::hashmap<node_id, bool>,
 fn find_last_uses(c: @crate, def_map: resolve::def_map,
                   ref_map: alias::ref_map, tcx: ty::ctxt) -> last_uses {
     let v = visit::mk_vt(@{visit_expr: visit_expr,
-                           visit_fn_body: visit_fn_body
+                           visit_fn: visit_fn
                            with *visit::default_visitor()});
     let cx = {last_uses: std::map::new_int_hash(),
               def_map: def_map,
@@ -153,19 +153,19 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     }
 }
 
-fn visit_fn_body(decl: fn_decl, body: blk,
-                 sp: span, nm: fn_ident, id: node_id,
-                 cx: ctx, v: visit::vt<ctx>) {
+fn visit_fn(decl: fn_decl, tps: [ty_param], body: blk,
+            sp: span, nm: fn_ident, id: node_id,
+            cx: ctx, v: visit::vt<ctx>) {
     let fty = ty::node_id_to_type(cx.tcx, id);
     let proto = ty::ty_fn_proto(cx.tcx, fty);
     if proto == proto_block {
         visit_block(func, cx, {||
-            visit::visit_fn_body(decl, body, sp, nm, id, cx, v);
+            visit::visit_fn(decl, tps, body, sp, nm, id, cx, v);
         });
     } else {
         let old = nil;
         cx.blocks <-> old;
-        visit::visit_fn_body(decl, body, sp, nm, id, cx, v);
+        visit::visit_fn(decl, tps, body, sp, nm, id, cx, v);
         cx.blocks <-> old;
         leave_fn(cx);
     }

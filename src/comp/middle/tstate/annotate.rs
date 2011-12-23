@@ -56,8 +56,8 @@ fn visit_fn(ccx: crate_ctxt, num_constraints: uint, body: blk) {
     init_vecs(ccx, node_id_vec, num_constraints);
 }
 
-fn annotate_in_fn_body(ccx: crate_ctxt, _decl: fn_decl, body: blk,
-                       _sp: span, _n: fn_ident, id: node_id) {
+fn annotate_in_fn(ccx: crate_ctxt, _decl: fn_decl, _ts: [ty_param], body: blk,
+                  _sp: span, _n: fn_ident, id: node_id) {
     let f_info = get_fn_info(ccx, id);
     visit_fn(ccx, num_constraints(f_info), body);
 }
@@ -65,7 +65,7 @@ fn annotate_in_fn_body(ccx: crate_ctxt, _decl: fn_decl, body: blk,
 fn annotate_crate(ccx: crate_ctxt, crate: crate) {
     let do_ann =
         visit::mk_simple_visitor(
-            @{visit_fn_body: bind annotate_in_fn_body(ccx, _, _, _, _, _)
+            @{visit_fn: bind annotate_in_fn(ccx, _, _, _, _, _, _)
               with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), do_ann);
 }

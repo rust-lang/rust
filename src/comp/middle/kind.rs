@@ -43,7 +43,7 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
     let visit = visit::mk_vt(@{
         visit_expr: check_expr,
         visit_stmt: check_stmt,
-        visit_fn_body: check_fn_body
+        visit_fn: check_fn
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, ctx, visit);
@@ -66,8 +66,8 @@ fn with_closure_check_fn(cx: ctx, id: node_id,
 
 // Check that the free variables used in a shared/sendable closure conform
 // to the copy/move kind bounds. Then recursively check the function body.
-fn check_fn_body(decl: fn_decl, body: blk, sp: span, i: fn_ident, id: node_id,
-                 cx: ctx, v: visit::vt<ctx>) {
+fn check_fn(decl: fn_decl, tps: [ty_param], body: blk, sp: span,
+            i: fn_ident, id: node_id, cx: ctx, v: visit::vt<ctx>) {
 
     // n.b.: This could be the body of either a fn decl or a fn expr.  In the
     // former case, the prototype will be proto_bare and no check occurs.  In
@@ -87,7 +87,7 @@ fn check_fn_body(decl: fn_decl, body: blk, sp: span, i: fn_ident, id: node_id,
         }
     }
 
-    visit::visit_fn_body(decl, body, sp, i, id, cx, v);
+    visit::visit_fn(decl, tps, body, sp, i, id, cx, v);
 }
 
 fn check_fn_cap_clause(cx: ctx,

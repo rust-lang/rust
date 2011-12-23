@@ -1008,7 +1008,7 @@ fn op_to_oper_ty(io: init_op) -> oper_type {
 }
 
 // default function visitor
-fn do_nothing<T>(_decl: fn_decl, _body: blk,
+fn do_nothing<T>(_decl: fn_decl, _ts: [ty_param], _body: blk,
                  _sp: span, _i: fn_ident, _id: node_id,
                  _t: T, _v: visit::vt<T>) {
 }

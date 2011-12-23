@@ -46,6 +46,7 @@ fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
 
 fn find_locals(tcx: ty::ctxt,
                f_decl: fn_decl,
+               tps: [ty_param],
                f_body: blk,
                sp: span,
                n: fn_ident,
@@ -56,10 +57,10 @@ fn find_locals(tcx: ty::ctxt,
     visitor =
         @{visit_local: collect_local,
           visit_expr: collect_pred,
-          visit_fn_body: bind do_nothing(_, _, _, _, _, _, _)
+          visit_fn: bind do_nothing(_, _, _, _, _, _, _, _)
           with *visitor};
-    visit::visit_fn_body(f_decl, f_body, sp,
-                         n, id, cx, visit::mk_vt(visitor));
+    visit::visit_fn(f_decl, tps, f_body, sp,
+                    n, id, cx, visit::mk_vt(visitor));
     ret cx;
 }
 
@@ -98,6 +99,7 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
    to a bit number in the precondition/postcondition vectors */
 fn mk_fn_info(ccx: crate_ctxt,
               f_decl: fn_decl,
+              tps: [ty_param],
               f_body: blk,
               f_sp: span,
               f_name: fn_ident,
@@ -106,7 +108,8 @@ fn mk_fn_info(ccx: crate_ctxt,
     let res_map = @new_def_hash::<constraint>();
     let next: uint = 0u;
 
-    let cx: ctxt = find_locals(ccx.tcx, f_decl, f_body, f_sp, f_name, id);
+    let cx: ctxt = find_locals(ccx.tcx, f_decl, tps, f_body, f_sp,
+                               f_name, id);
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
@@ -163,8 +166,8 @@ fn mk_fn_info(ccx: crate_ctxt,
    to bit number) */
 fn mk_f_to_fn_info(ccx: crate_ctxt, c: @crate) {
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn_body:
-                                       bind mk_fn_info(ccx, _, _, _, _, _)
+        visit::mk_simple_visitor(@{visit_fn:
+                                       bind mk_fn_info(ccx, _, _, _, _, _, _)
                                    with *visit::default_simple_visitor()});
     visit::visit_crate(*c, (), visitor);
 }

@@ -336,8 +336,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
-          visit_fn_proto:
-              bind visit_fn_proto_with_scope(e, _, _, _, _, _, _, _, _)
+          visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _, _)
           with *visit::default_visitor()};
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v));
     e.used_imports.track = false;
@@ -403,8 +402,8 @@ fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
         alt ifce { some(ty) { v.visit_ty(ty, sc, v); } _ {} }
         v.visit_ty(sty, sc, v);
         for m in methods {
-            v.visit_fn_proto(m.decl, tps + m.tps, m.body, m.span,
-                             some(m.ident), m.id, sc, v);
+            v.visit_fn(m.decl, tps + m.tps, m.body, m.span,
+                       some(m.ident), m.id, sc, v);
         }
       }
       _ { visit::visit_item(i, sc, v); }
@@ -416,9 +415,9 @@ fn visit_native_item_with_scope(ni: @ast::native_item, sc: scopes,
     visit::visit_native_item(ni, cons(scope_native_item(ni), @sc), v);
 }
 
-fn visit_fn_proto_with_scope(e: @env, decl: ast::fn_decl, tp: [ast::ty_param],
-                             body: ast::blk, sp: span, name: fn_ident,
-                             id: node_id, sc: scopes, v: vt<scopes>) {
+fn visit_fn_with_scope(e: @env, decl: ast::fn_decl, tp: [ast::ty_param],
+                       body: ast::blk, sp: span, name: fn_ident,
+                       id: node_id, sc: scopes, v: vt<scopes>) {
     // is this a main fn declaration?
     alt name {
       some(nm) {
@@ -439,7 +438,7 @@ fn visit_fn_proto_with_scope(e: @env, decl: ast::fn_decl, tp: [ast::ty_param],
       _ { scope_fn_expr(decl, id, tp) }
     };
 
-    visit::visit_fn_proto(decl, tp, body, sp, name, id, cons(scope, @sc), v);
+    visit::visit_fn(decl, tp, body, sp, name, id, cons(scope, @sc), v);
 }
 
 fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {

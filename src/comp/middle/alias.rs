@@ -61,7 +61,7 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
                copy_map: std::map::new_int_hash(),
                ref_map: std::map::new_int_hash(),
                mutable silent: false};
-    let v = @{visit_fn_body: bind visit_fn_body(cx, _, _, _, _, _, _, _),
+    let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_block: bind visit_block(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
@@ -71,9 +71,9 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
     ret (cx.copy_map, cx.ref_map);
 }
 
-fn visit_fn_body(cx: @ctx, decl: ast::fn_decl, body: ast::blk,
-                 sp: span, _name: ast::fn_ident,
-                 id: ast::node_id, sc: scope, v: vt<scope>) {
+fn visit_fn(cx: @ctx, decl: ast::fn_decl, _ts: [ast::ty_param],
+            body: ast::blk, sp: span, _name: ast::fn_ident,
+            id: ast::node_id, sc: scope, v: vt<scope>) {
     visit::visit_fn_decl(decl, sc, v);
     let fty = ty::node_id_to_type(cx.tcx, id);
     let args = ty::ty_fn_args(cx.tcx, fty);

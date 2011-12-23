@@ -82,15 +82,15 @@ fn annotate_freevars(def_map: resolve::def_map, crate: @ast::crate) ->
    freevar_map {
     let freevars = new_int_hash();
 
-    let walk_fn_body = lambda (_decl: ast::fn_decl, blk: ast::blk,
-                               _sp: span, _nm: ast::fn_ident,
-                               nid: ast::node_id) {
+    let walk_fn = lambda (_decl: ast::fn_decl, _tps: [ast::ty_param],
+                          blk: ast::blk, _sp: span, _nm: ast::fn_ident,
+                          nid: ast::node_id) {
         let vars = collect_freevars(def_map, blk);
         freevars.insert(nid, vars);
     };
 
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn_body: walk_fn_body
+        visit::mk_simple_visitor(@{visit_fn: walk_fn
                                    with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visitor);
 

@@ -727,10 +727,10 @@ fn find_pre_post_fn(fcx: fn_ctxt, body: blk) {
     }
 }
 
-fn fn_pre_post(decl: fn_decl, body: blk, sp: span,
+fn fn_pre_post(decl: fn_decl, tps: [ty_param], body: blk, sp: span,
                i: fn_ident, id: node_id,
                ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
-    visit::visit_fn_body(decl, body, sp, i, id, ccx, v);
+    visit::visit_fn(decl, tps, body, sp, i, id, ccx, v);
     assert (ccx.fm.contains_key(id));
     let fcx =
         {enclosing: ccx.fm.get(id),
