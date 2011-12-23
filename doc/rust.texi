@@ -3046,7 +3046,51 @@ Executing a @code{log} expression may, depending on runtime configuration,
 cause a value to be appended to an internal diagnostic logging buffer provided
 by the runtime or emitted to a system console. Log expressions are enabled or
 disabled dynamically at run-time on a per-task and per-item
-basis. @xref{Ref.Run.Log}.
+basis.  @xref{Ref.Run.Log}.
+
+Each @code{log} expression must be provided with a @emph{level} argument in
+addition to the value to log. The logging level is a @code{u32} value, where
+lower levels indicate more-urgent levels of logging. By default, the lowest
+four logging levels (@code{0_u32 ... 3_u32}) are predefined as the constants
+@code{error}, @code{warn}, @code{info} and @code{debug} in the @code{core}
+library.
+
+Additionally, the macros @code{#error}, @code{#warn}, @code{#info} and
+@code{#debug} are defined in the default syntax-extension namespace. These
+expand into calls to the logging facility composed with calls to the
+@code{#fmt} string formatting syntax-extension.
+
+The following examples all produce the same output, logged at the @code{error}
+logging level:
+
+@example
+// Full version, logging a value.
+log(core::error, "file not found: " + filename);
+
+// Log-level abbreviated, since core::* is imported by default.
+log(error, "file not found: " + filename);
+
+// Formatting the message using a format-string and #fmt
+log(error, #fmt("file not found: %s", filename));
+
+// Using the #error macro, that expands to the previous call.
+#error("file not found: %s", filename);
+@end example
+
+A @code{log} expression is @emph{not evaluated} when logging at the specified
+logging-level, module or task is disabled at runtime. This makes inactive
+@code{log} expressions very cheap; they should be used extensively in Rust
+code, as diagnostic aids, as they add little overhead beyond a single
+integer-compare and branch at runtime.
+
+Logging is presently implemented as a language built-in feature, as it makes
+use of compiler-provided logic for allocating the associated per-module
+logging-control structures visible to the runtime, and lazily evaluating
+arguments. In the future, as more of the supporting compiler-provided logic is
+moved into libraries, logging is likely to move to a component of the core
+library. It is best to use the macro forms of logging (@emph{#error},
+@emph{#debug}, etc.) to minimize disruption to code using the logging facility
+when it is changed.
 
 @example
 @end example
