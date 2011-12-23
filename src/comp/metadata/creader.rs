@@ -104,8 +104,8 @@ fn metadata_matches(crate_data: @[u8], metas: [@ast::meta_item]) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
 
-    log #fmt["matching %u metadata requirements against %u items",
-             vec::len(metas), vec::len(linkage_metas)];
+    #debug("matching %u metadata requirements against %u items",
+           vec::len(metas), vec::len(linkage_metas));
 
     #debug("crate metadata:");
     for have: @ast::meta_item in linkage_metas {
@@ -178,8 +178,8 @@ fn find_library_crate_aux(sess: session::session,
         #debug("inspecting file %s", path);
         let f: str = fs::basename(path);
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
-            log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
-                     suffix];
+            #debug("skipping %s, doesn't look like %s*%s", path, prefix,
+                   suffix);
             option::none
         } else {
             #debug("%s is a candidate", path);

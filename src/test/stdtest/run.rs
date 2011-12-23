@@ -40,7 +40,7 @@ fn test_pipes() {
     assert (expected == actual);
 
     fn writeclose(fd: fd_t, s: str) {
-        log_err("writeclose", (fd, s));
+        #error("writeclose %d, %s", fd as int, s);
         let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
         writer.write_str(s);
 

@@ -910,7 +910,10 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
             hi = e.span.hi;
             ex = ast::expr_fail(some(e));
         } else { ex = ast::expr_fail(none); }
-    } else if eat_word(p, "log_full") {
+    } else if
+        (eat_word(p, "log_full")
+         || eat_word(p, "log")
+         || eat_word(p, "log_err")) {
         expect(p, token::LPAREN);
         let lvl = parse_expr(p);
         expect(p, token::COMMA);
@@ -918,14 +921,6 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
         ex = ast::expr_log(2, lvl, e);
         hi = p.get_hi_pos();
         expect(p, token::RPAREN);
-    } else if eat_word(p, "log") {
-        let e = parse_expr(p);
-        ex = ast::expr_log(1, mk_lit_u32(p, 1u32), e);
-        hi = e.span.hi;
-    } else if eat_word(p, "log_err") {
-        let e = parse_expr(p);
-        ex = ast::expr_log(0, mk_lit_u32(p, 0u32), e);
-        hi = e.span.hi;
     } else if eat_word(p, "assert") {
         let e = parse_expr(p);
         ex = ast::expr_assert(e);

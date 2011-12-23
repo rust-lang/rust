@@ -94,15 +94,13 @@ fn test_growth() {
     let i: uint = 0u;
     while i < num_to_insert {
         assert (hm_uu.insert(i, i * i));
-        log "inserting " + uint::to_str(i, 10u) + " -> " +
-                uint::to_str(i * i, 10u);
+        #debug("inserting %u -> %u", i, i*i);
         i += 1u;
     }
     #debug("-----");
     i = 0u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
-                uint::to_str(hm_uu.get(i), 10u);
+        #debug("get(%u) = %u", i, hm_uu.get(i));
         assert (hm_uu.get(i) == i * i);
         i += 1u;
     }
@@ -112,8 +110,7 @@ fn test_growth() {
     hm_uu.rehash();
     i = 0u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
-                uint::to_str(hm_uu.get(i), 10u);
+        #debug("get(%u) = %u", i, hm_uu.get(i));
         assert (hm_uu.get(i) == i * i);
         i += 1u;
     }
@@ -125,15 +122,17 @@ fn test_growth() {
     i = 0u;
     while i < num_to_insert {
         assert (hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u)));
-        log "inserting \"" + uint::to_str(i, 2u) + "\" -> \"" +
-                uint::to_str(i * i, 2u) + "\"";
+        #debug("inserting \"%s\" -> \"%s\"",
+               uint::to_str(i, 2u),
+               uint::to_str(i*i, 2u));
         i += 1u;
     }
     #debug("-----");
     i = 0u;
     while i < num_to_insert {
-        log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
-                hm_ss.get(uint::to_str(i, 2u)) + "\"";
+        #debug("get(\"%s\") = \"%s\"",
+               uint::to_str(i, 2u),
+               hm_ss.get(uint::to_str(i, 2u)));
         assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
                         uint::to_str(i * i, 2u)));
         i += 1u;
@@ -146,8 +145,9 @@ fn test_growth() {
     hm_ss.rehash();
     i = 0u;
     while i < num_to_insert {
-        log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
-                hm_ss.get(uint::to_str(i, 2u)) + "\"";
+        #debug("get(\"%s\") = \"%s\"",
+               uint::to_str(i, 2u),
+               hm_ss.get(uint::to_str(i, 2u)));
         assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
                         uint::to_str(i * i, 2u)));
         i += 1u;
@@ -176,8 +176,7 @@ fn test_removal() {
     let i: uint = 0u;
     while i < num_to_insert {
         assert (hm.insert(i, i * i));
-        log "inserting " + uint::to_str(i, 10u) + " -> " +
-                uint::to_str(i * i, 10u);
+        #debug("inserting %u -> %u", i, i*i);
         i += 1u;
     }
     assert (hm.size() == num_to_insert);
@@ -196,8 +195,7 @@ fn test_removal() {
     #debug("-----");
     i = 1u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
-                uint::to_str(hm.get(i), 10u);
+        #debug("get(%u) = %u", i, hm.get(i));
         assert (hm.get(i) == i * i);
         i += 2u;
     }
@@ -207,8 +205,7 @@ fn test_removal() {
     #debug("-----");
     i = 1u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
-                uint::to_str(hm.get(i), 10u);
+        #debug("get(%u) = %u", i, hm.get(i));
         assert (hm.get(i) == i * i);
         i += 2u;
     }
@@ -216,16 +213,14 @@ fn test_removal() {
     i = 0u;
     while i < num_to_insert {
         assert (hm.insert(i, i * i));
-        log "inserting " + uint::to_str(i, 10u) + " -> " +
-                uint::to_str(i * i, 10u);
+        #debug("inserting %u -> %u", i, i*i);
         i += 2u;
     }
     assert (hm.size() == num_to_insert);
     #debug("-----");
     i = 0u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
-                uint::to_str(hm.get(i), 10u);
+        #debug("get(%u) = %u", i, hm.get(i));
         assert (hm.get(i) == i * i);
         i += 1u;
     }
@@ -236,8 +231,7 @@ fn test_removal() {
     assert (hm.size() == num_to_insert);
     i = 0u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
-                uint::to_str(hm.get(i), 10u);
+        #debug("get(%u) = %u", i, hm.get(i));
         assert (hm.get(i) == i * i);
         i += 1u;
     }

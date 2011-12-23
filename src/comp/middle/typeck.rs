@@ -1502,9 +1502,9 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
 
     let fty = ty_of_fn_decl(tcx, m_check_tyvar(fcx), decl);
 
-    log #fmt("check_expr_fn_with_unifier %s fty=%s",
-             expr_to_str(expr),
-             ty_to_str(tcx, fty));
+    #debug("check_expr_fn_with_unifier %s fty=%s",
+           expr_to_str(expr),
+           ty_to_str(tcx, fty));
 
     write::ty_only_fixup(fcx, expr.id, fty);
 
@@ -1965,9 +1965,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             ast::proto_block
           }
         };
-        log #fmt("checking expr_fn_block %s expected=%s",
-                 expr_to_str(expr),
-                 ty_to_str(tcx, expected));
+        #debug("checking expr_fn_block %s expected=%s",
+               expr_to_str(expr),
+               ty_to_str(tcx, expected));
         check_expr_fn_with_unifier(fcx, expr, {proto: proto with decl}, body,
                                    unify, expected);
         write::ty_only_fixup(fcx, id, expected);

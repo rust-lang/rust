@@ -1393,9 +1393,8 @@ fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
                 let cname = cstore::get_crate_data(e.cstore, did.crate).name;
                 let name =
                     csearch::get_item_name(e.cstore, did.crate, did.node);
-                log #fmt("lookup_external: %s %d, %d, %s, %s", cname,
-                         did.crate, did.node,
-                         str::connect(ids, "::"), name);
+                #debug("lookup_external: %s %d, %d, %s, %s", cname,
+                       did.crate, did.node, str::connect(ids, "::"), name);
                 e.ext_map.insert(did, vec::init(ids) + [name]);
             } else {
                 e.ext_map.insert(did, ids);

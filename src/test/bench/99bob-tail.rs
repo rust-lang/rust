@@ -23,16 +23,16 @@ fn main() {
     }
     fn single() {
         #debug("1 bottle of beer on the wall, 1 bottle of beer,");
-        log "Take one down and pass it around, " +
-                "no more bottles of beer on the wall.";
+        #debug("Take one down and pass it around, \
+                no more bottles of beer on the wall.");
         #debug("");
         be none();
     }
     fn none() {
         #debug("No more bottles of beer on the wall, \
                 no more bottles of beer,");
-        log "Go to the store and buy some more, " +
-                "99 bottles of beer on the wall.";
+        #debug("Go to the store and buy some more, \
+                99 bottles of beer on the wall.");
         #debug("");
     }
     multiple(99);

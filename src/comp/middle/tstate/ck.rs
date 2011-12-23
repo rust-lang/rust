@@ -71,11 +71,11 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     let pres: prestate = ann_prestate(a);
 
 
-    log("check_states_stmt:");
+    #debug("check_states_stmt:");
     log_full(core::debug, print::pprust::stmt_to_str(*s));
-    log("prec = ");
+    #debug("prec = ");
     log_tritv(fcx, prec);
-    log("pres = ");
+    #debug("pres = ");
     log_tritv(fcx, pres);
 
     if !implies(pres, prec) {

@@ -205,8 +205,6 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         T_opaque_closure(cx)
       }
       _ {
-        log_err ("type_of_inner not implemented for ",
-                ty::struct(cx.tcx, t));
         fail "type_of_inner not implemented for this kind of type";
       }
     };
@@ -1759,8 +1757,8 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
             alt ti.take_glue {
               some(_) { }
               none. {
-                log #fmt["+++ lazily_emit_tydesc_glue TAKE %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                #debug("+++ lazily_emit_tydesc_glue TAKE %s",
+                       ty_to_str(bcx_tcx(cx), ti.ty));
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(lcx.ccx),
@@ -1769,16 +1767,16 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   make_take_glue,
                                   ti.ty_params, "take");
-                log #fmt["--- lazily_emit_tydesc_glue TAKE %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                #debug("--- lazily_emit_tydesc_glue TAKE %s",
+                       ty_to_str(bcx_tcx(cx), ti.ty));
               }
             }
         } else if field == abi::tydesc_field_drop_glue {
             alt ti.drop_glue {
               some(_) { }
               none. {
-                log #fmt["+++ lazily_emit_tydesc_glue DROP %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                #debug("+++ lazily_emit_tydesc_glue DROP %s",
+                       ty_to_str(bcx_tcx(cx), ti.ty));
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(lcx.ccx),
@@ -1787,16 +1785,16 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   make_drop_glue,
                                   ti.ty_params, "drop");
-                log #fmt["--- lazily_emit_tydesc_glue DROP %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                #debug("--- lazily_emit_tydesc_glue DROP %s",
+                       ty_to_str(bcx_tcx(cx), ti.ty));
               }
             }
         } else if field == abi::tydesc_field_free_glue {
             alt ti.free_glue {
               some(_) { }
               none. {
-                log #fmt["+++ lazily_emit_tydesc_glue FREE %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                #debug("+++ lazily_emit_tydesc_glue FREE %s",
+                       ty_to_str(bcx_tcx(cx), ti.ty));
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(lcx.ccx),
@@ -1805,19 +1803,19 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   make_free_glue,
                                   ti.ty_params, "free");
-                log #fmt["--- lazily_emit_tydesc_glue FREE %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                #debug("--- lazily_emit_tydesc_glue FREE %s",
+                       ty_to_str(bcx_tcx(cx), ti.ty));
               }
             }
         } else if field == abi::tydesc_field_cmp_glue {
             alt ti.cmp_glue {
               some(_) { }
               none. {
-                log #fmt["+++ lazily_emit_tydesc_glue CMP %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                #debug("+++ lazily_emit_tydesc_glue CMP %s",
+                       ty_to_str(bcx_tcx(cx), ti.ty));
                 ti.cmp_glue = some(bcx_ccx(cx).upcalls.cmp_type);
-                log #fmt["--- lazily_emit_tydesc_glue CMP %s",
-                         ty_to_str(bcx_tcx(cx), ti.ty)];
+                #debug("--- lazily_emit_tydesc_glue CMP %s",
+                       ty_to_str(bcx_tcx(cx), ti.ty));
               }
             }
         }

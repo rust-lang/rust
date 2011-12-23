@@ -19,5 +19,5 @@ fn main() {
 fn child(c: chan<int>) {
     #error("sending");
     send(c, 10);
-    log_err "value sent"
+    #error("value sent");
 }

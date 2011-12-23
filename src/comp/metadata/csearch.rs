@@ -37,8 +37,8 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
                 path: [ast::ident]) ->
     [(ast::crate_num, @[u8], ast::def_id)] {
     let cm = cstore::get_crate_data(cstore, cnum);
-    log #fmt("resolve_path %s in crates[%d]:%s",
-             str::connect(path, "::"), cnum, cm.name);
+    #debug("resolve_path %s in crates[%d]:%s",
+           str::connect(path, "::"), cnum, cm.name);
     let result = [];
     for def in decoder::resolve_path(path, cm.data) {
         if def.crate == ast::local_crate {

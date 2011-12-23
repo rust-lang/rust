@@ -117,8 +117,8 @@ fn get_rpath_relative_to_output(os: session::os,
 fn get_relative_to(abs1: fs::path, abs2: fs::path) -> fs::path {
     assert fs::path_is_absolute(abs1);
     assert fs::path_is_absolute(abs2);
-    log #fmt("finding relative path from %s to %s",
-             abs1, abs2);
+    #debug("finding relative path from %s to %s",
+           abs1, abs2);
     let normal1 = fs::normalize(abs1);
     let normal2 = fs::normalize(abs2);
     let split1 = str::split(normal1, os_fs::path_sep as u8);

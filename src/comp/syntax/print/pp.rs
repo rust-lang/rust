@@ -304,11 +304,11 @@ obj printer(out: io::writer,
         }
     }
     fn check_stream() {
-        log #fmt["check_stream [%u, %u] with left_total=%d, right_total=%d",
-                 left, right, left_total, right_total];
+        #debug("check_stream [%u, %u] with left_total=%d, right_total=%d",
+               left, right, left_total, right_total);
         if right_total - left_total > space {
-            log #fmt["scan window is %d, longer than space on line (%d)",
-                     right_total - left_total, space];
+            #debug("scan window is %d, longer than space on line (%d)",
+                   right_total - left_total, space);
             if !scan_stack_empty {
                 if left == scan_stack[bottom] {
                     #debug("setting %u to infinity and popping", left);
@@ -411,8 +411,8 @@ obj printer(out: io::writer,
         out.write_str(s);
     }
     fn print(x: token, L: int) {
-        log #fmt["print %s %d (remaining line space=%d)", tok_str(x), L,
-                 space];
+        #debug("print %s %d (remaining line space=%d)", tok_str(x), L,
+               space);
         log_full(core::debug, buf_str(token, size, left, right, 6u));
         alt x {
           BEGIN(b) {

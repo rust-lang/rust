@@ -549,10 +549,11 @@ fn check_variants(files: [str], cx: context) {
             parser::parse_crate_from_source_str(
                 file,
                 s, [], sess);
-        log_err as_str(bind pprust::print_crate(sess.cm, crate,
-                                                file,
-                                                io::string_reader(s), _,
-                                                pprust::no_ann()));
+        #error("%s",
+               as_str(bind pprust::print_crate(sess.cm, crate,
+                                               file,
+                                               io::string_reader(s), _,
+                                               pprust::no_ann())));
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }
 }

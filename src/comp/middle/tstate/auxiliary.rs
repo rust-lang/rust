@@ -547,8 +547,8 @@ fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
 // should freeze it at some earlier point.
 fn match_args(fcx: fn_ctxt, occs: @mutable [pred_args],
               occ: [@constr_arg_use]) -> uint {
-    log "match_args: looking at " +
-            constr_args_to_str(fn (i: inst) -> str { ret i.ident; }, occ);
+    #debug("match_args: looking at %s",
+           constr_args_to_str(fn (i: inst) -> str { ret i.ident; }, occ));
     for pd: pred_args in *occs {
         log_full(core::debug,
                  "match_args: candidate " + pred_args_to_str(pd));
@@ -879,9 +879,9 @@ fn forget_in_postcond(fcx: fn_ctxt, parent_exp: node_id, dead_v: node_id) {
       some(d_id) {
         for c: norm_constraint in constraints(fcx) {
             if constraint_mentions(fcx, c, d_id) {
-                log ("clearing constraint ",
-                     c.bit_num,
-                     constraint_to_str(fcx.ccx.tcx, c.c));
+                #debug("clearing constraint %u %s",
+                       c.bit_num,
+                       constraint_to_str(fcx.ccx.tcx, c.c));
                 clear_in_postcond(c.bit_num,
                                   node_id_to_ts_ann(fcx.ccx,
                                                     parent_exp).conditions);

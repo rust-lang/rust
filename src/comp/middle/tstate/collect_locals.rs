@@ -154,8 +154,7 @@ fn mk_fn_info(ccx: crate_ctxt,
          i_diverge: ninit(diverges_id, diverges_name),
          used_vars: v};
     ccx.fm.insert(id, rslt);
-    log name + " has " + uint::str(num_constraints(rslt)) +
-            " constraints";
+    #debug("%s has %u constraints", name, num_constraints(rslt));
 }
 
 
