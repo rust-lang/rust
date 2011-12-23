@@ -1,114 +1,95 @@
-
 /*
 Module: f64
 
-Floating point operations and constants for `f64`s
-
-This exposes the same operations as `math`, just for `f64` even though
-they do not show up in the docs right now!
+Floating point operations and constants for `f64`
 */
-
-export t;
-
-export
-    acos,
-    asin,
-    atan,
-    atan2,
-    cbrt,
-    ceil,
-    cos,
-    cosh,
-    erf,
-    erfc,
-    exp,
-    expm1,
-    exp2,
-    abs,
-    sub_pos,
-    floor,
-    mul_add,
-    fmax,
-    fmin,
-    nextafter,
-    frexp,
-    hypot,
-    ldexp,
-    lgamma,
-    ln,
-    logb,
-    ln1p,
-    log10,
-    log2,
-    ilogb,
-    modf,
-    pow,
-    rem,
-    rint,
-    round,
-    sin,
-    sinh,
-    sqrt,
-    tan,
-    tanh,
-    tgamma,
-    trunc;
-
-export consts;
-
-export radix, mantissa_digits, digits, epsilon, min_value, max_value,
-       min_exp, max_exp, min_10_exp, max_10_exp;
 
 // PORT
 
-import cops = cmath::c_double;
+import cmath::c_double::*;
 
 type t = f64;
 
-import
-    cops::acos,
-    cops::asin,
-    cops::atan,
-    cops::atan2,
-    cops::cbrt,
-    cops::ceil,
-    cops::cos,
-    cops::cosh,
-    cops::erf,
-    cops::erfc,
-    cops::exp,
-    cops::expm1,
-    cops::exp2,
-    cops::abs,
-    cops::sub_pos,
-    cops::floor,
-    cops::mul_add,
-    cops::max,
-    cops::min,
-    cops::nextafter,
-    cops::fmod,
-    cops::frexp,
-    cops::hypot,
-    cops::ldexp,
-    cops::lgamma,
-    cops::ln,
-    cops::logb,
-    cops::ln1p,
-    cops::log10,
-    cops::log2,
-    cops::ilogb,
-    cops::modf,
-    cops::pow,
-    cops::rem,
-    cops::rint,
-    cops::round,
-    cops::sin,
-    cops::sinh,
-    cops::sqrt,
-    cops::tan,
-    cops::tanh,
-    cops::tgamma,
-    cops::trunc;
+/* Const: NaN */
+const NaN: f64 = 0.0f64/0.0f64;
+
+/* Const: infinity */
+const infinity: f64 = 1.0f64/0.0f64;
+
+/* Const: neg_infinity */
+const neg_infinity: f64 = -1.0f64/0.0f64;
+
+/* Predicate: isNaN */
+pure fn isNaN(f: f64) -> bool { f != f }
+
+/* Function: add */
+pure fn add(x: f64, y: f64) -> f64 { ret x + y; }
+
+/* Function: sub */
+pure fn sub(x: f64, y: f64) -> f64 { ret x - y; }
+
+/* Function: mul */
+pure fn mul(x: f64, y: f64) -> f64 { ret x * y; }
+
+/* Function: div */
+pure fn div(x: f64, y: f64) -> f64 { ret x / y; }
+
+/* Function: rem */
+pure fn rem(x: f64, y: f64) -> f64 { ret x % y; }
+
+/* Predicate: lt */
+pure fn lt(x: f64, y: f64) -> bool { ret x < y; }
+
+/* Predicate: le */
+pure fn le(x: f64, y: f64) -> bool { ret x <= y; }
+
+/* Predicate: eq */
+pure fn eq(x: f64, y: f64) -> bool { ret x == y; }
+
+/* Predicate: ne */
+pure fn ne(x: f64, y: f64) -> bool { ret x != y; }
+
+/* Predicate: ge */
+pure fn ge(x: f64, y: f64) -> bool { ret x >= y; }
+
+/* Predicate: gt */
+pure fn gt(x: f64, y: f64) -> bool { ret x > y; }
+
+/*
+Predicate: positive
+
+Returns true if `x` is a positive number, including +0.0f640 and +Infinity.
+ */
+pure fn positive(x: f64) -> bool
+    { ret x > 0.0f64 || (1.0f64/x) == infinity; }
+
+/*
+Predicate: negative
+
+Returns true if `x` is a negative number, including -0.0f640 and -Infinity.
+ */
+pure fn negative(x: f64) -> bool
+    { ret x < 0.0f64 || (1.0f64/x) == neg_infinity; }
+
+/*
+Predicate: nonpositive
+
+Returns true if `x` is a negative number, including -0.0f640 and -Infinity.
+(This is the same as `f64::negative`.)
+*/
+pure fn nonpositive(x: f64) -> bool {
+  ret x < 0.0f64 || (1.0f64/x) == neg_infinity;
+}
+
+/*
+Predicate: nonnegative
+
+Returns true if `x` is a positive number, including +0.0f640 and +Infinity.
+(This is the same as `f64::positive`.)
+*/
+pure fn nonnegative(x: f64) -> bool {
+  ret x > 0.0f64 || (1.0f64/x) == infinity;
+}
 
 /* Module: consts */
 mod consts {

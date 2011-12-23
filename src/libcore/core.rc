@@ -10,7 +10,7 @@
 export box, char, float, f32, f64, int, str, ptr;
 export uint, u8, u32, u64, vec, bool;
 export either, option, result;
-export ctypes, mtypes, sys, unsafe, comm, task;
+export ctypes, sys, unsafe, comm, task;
 export extfmt;
 
 // Built-in-type support modules
