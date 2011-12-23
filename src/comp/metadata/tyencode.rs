@@ -143,20 +143,21 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         }
         w.write_char(']');
       }
-      ty::ty_fn(proto, args, out, cf, constrs) {
-        enc_proto(w, proto);
-        enc_ty_fn(w, cx, args, out, cf, constrs);
+      ty::ty_fn(f) {
+        enc_proto(w, f.proto);
+        enc_ty_fn(w, cx, f);
       }
       ty::ty_native_fn(args, out) {
         w.write_char('N');
-        enc_ty_fn(w, cx, args, out, return_val, []);
+        enc_ty_fn(w, cx, {proto: proto_bare, inputs: args, output: out,
+                          ret_style: return_val, constraints: []});
       }
       ty::ty_obj(methods) {
         w.write_str("O[");
         for m: ty::method in methods {
-            enc_proto(w, m.proto);
+            enc_proto(w, m.fty.proto);
             w.write_str(m.ident);
-            enc_ty_fn(w, cx, m.inputs, m.output, m.cf, m.constrs);
+            enc_ty_fn(w, cx, m.fty);
         }
         w.write_char(']');
       }
@@ -202,10 +203,9 @@ fn enc_proto(w: io::writer, proto: proto) {
     }
 }
 
-fn enc_ty_fn(w: io::writer, cx: @ctxt, args: [ty::arg], out: ty::t,
-             cf: ret_style, constrs: [@ty::constr]) {
+fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     w.write_char('[');
-    for arg: ty::arg in args {
+    for arg: ty::arg in ft.inputs {
         alt arg.mode {
           by_mut_ref. { w.write_char('&'); }
           by_move. { w.write_char('-'); }
@@ -217,16 +217,16 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, args: [ty::arg], out: ty::t,
     }
     w.write_char(']');
     let colon = true;
-    for c: @ty::constr in constrs {
+    for c: @ty::constr in ft.constraints {
         if colon {
             w.write_char(':');
             colon = false;
         } else { w.write_char(';'); }
         enc_constr(w, cx, c);
     }
-    alt cf {
+    alt ft.ret_style {
       noreturn. { w.write_char('!'); }
-      _ { enc_ty(w, cx, out); }
+      _ { enc_ty(w, cx, ft.output); }
     }
 }
 

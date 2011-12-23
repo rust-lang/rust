@@ -631,8 +631,8 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     // return type, if necessary.
     let llretptr = fcx.llretptr;
     let ccx = cx.ccx;
-    if ty::type_contains_params(ccx.tcx, m.output) {
-        let m_output = m.output;
+    if ty::type_contains_params(ccx.tcx, m.fty.output) {
+        let m_output = m.fty.output;
         check non_ty_var(ccx, m_output);
         let llretty = type_of_inner(ccx, sp, m_output);
         llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
@@ -676,7 +676,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     // function (they're in fcx.llargs) to llouter_mthd_args.
 
     let a: uint = 2u; // retptr, env come first
-    for arg: ty::arg in m.inputs {
+    for arg: ty::arg in m.fty.inputs {
         llouter_mthd_args += [llvm::LLVMGetParam(llbackwarding_fn, a)];
         a += 1u;
     }
@@ -725,8 +725,8 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     // return type, if necessary.
     let llretptr = fcx.llretptr;
     let ccx = cx.ccx;
-    if ty::type_contains_params(ccx.tcx, m.output) {
-        let m_output = m.output;
+    if ty::type_contains_params(ccx.tcx, m.fty.output) {
+        let m_output = m.fty.output;
         check non_ty_var(ccx, m_output);
         let llretty = type_of_inner(ccx, sp, m_output);
         llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
@@ -828,7 +828,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: span, m: @ty::method,
     // function (they're in fcx.llargs) to llorig_mthd_args.
 
     let a: uint = 2u; // retptr, env come first
-    for arg: ty::arg in m.inputs {
+    for arg: ty::arg in m.fty.inputs {
         llorig_mthd_args += [llvm::LLVMGetParam(llforwarding_fn, a)];
         a += 1u;
     }
@@ -877,9 +877,10 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
     let llfnty = T_nil();
     let ccx = cx.ccx;
     alt ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.id)) {
-      ty::ty_fn(_, inputs, output, rs, _) {
-        check non_ty_var(ccx, output);
-        llfnty = type_of_fn(ccx, m.span, true, inputs, output,
+      ty::ty_fn(f) {
+        let out = f.output;
+        check non_ty_var(ccx, out);
+        llfnty = type_of_fn(ccx, m.span, true, f.inputs, out,
                             vec::len(ty_params));
       }
     }
@@ -930,9 +931,9 @@ fn populate_self_stack(bcx: @block_ctxt, self_stack: ValueRef,
 
 fn type_of_meth(ccx: @crate_ctxt, sp: span, m: @ty::method,
                 tps: [ast::ty_param]) -> TypeRef {
-    let out_ty = m.output;
+    let out_ty = m.fty.output;
     check non_ty_var(ccx, out_ty);
-    type_of_fn(ccx, sp, true, m.inputs, out_ty, vec::len(tps))
+    type_of_fn(ccx, sp, true, m.fty.inputs, out_ty, vec::len(tps))
 }
 
 //

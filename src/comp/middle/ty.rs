@@ -52,7 +52,6 @@ export is_pred_ty;
 export lookup_item_type;
 export method;
 export method_idx;
-export method_ty_to_fn_ty;
 export mk_bool;
 export mk_bot;
 export mk_box;
@@ -114,7 +113,7 @@ export ty_constr;
 export ty_opaque_closure;
 export ty_constr_arg;
 export ty_float;
-export ty_fn;
+export ty_fn, fn_ty;
 export ty_fn_proto;
 export ty_fn_ret;
 export ty_fn_ret_style;
@@ -190,13 +189,7 @@ type arg = {mode: mode, ty: t};
 
 type field = {ident: ast::ident, mt: mt};
 
-type method =
-    {proto: ast::proto,
-     ident: ast::ident,
-     inputs: [arg],
-     output: t,
-     cf: ret_style,
-     constrs: [@constr]};
+type method = {ident: ast::ident, fty: fn_ty};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
@@ -224,15 +217,6 @@ type ctxt =
 
 type ty_ctxt = ctxt;
 
-
-// Needed for disambiguation from unify::ctxt.
-// Convert from method type to function type.  Pretty easy; we just drop
-// 'ident'.
-fn method_ty_to_fn_ty(cx: ctxt, m: method) -> t {
-    ret mk_fn(cx, m.proto, m.inputs, m.output, m.cf, m.constrs);
-}
-
-
 // Never construct these manually. These are interned.
 type raw_t = {struct: sty,
               hash: uint,
@@ -246,6 +230,12 @@ tag closure_kind {
     closure_shared;
     closure_send;
 }
+
+type fn_ty = {proto: ast::proto,
+              inputs: [arg],
+              output: t,
+              ret_style: ret_style,
+              constraints: [@constr]};
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast::rs as well.
@@ -263,7 +253,7 @@ tag sty {
     ty_vec(mt);
     ty_ptr(mt);
     ty_rec([field]);
-    ty_fn(ast::proto, [arg], t, ret_style, [@constr]);
+    ty_fn(fn_ty);
     ty_native_fn([arg], t);
     ty_obj([method]);
     ty_res(def_id, t, [t]);
@@ -469,15 +459,16 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
       ty_tup(ts) {
         for tt in ts { derive_flags_t(cx, has_params, has_vars, tt); }
       }
-      ty_fn(_, args, tt, _, _) {
-        derive_flags_sig(cx, has_params, has_vars, args, tt);
+      ty_fn(f) {
+        derive_flags_sig(cx, has_params, has_vars, f.inputs, f.output);
       }
       ty_native_fn(args, tt) {
         derive_flags_sig(cx, has_params, has_vars, args, tt);
       }
       ty_obj(meths) {
         for m: method in meths {
-            derive_flags_sig(cx, has_params, has_vars, m.inputs, m.output);
+            derive_flags_sig(cx, has_params, has_vars, m.fty.inputs,
+                             m.fty.output);
         }
       }
       ty_res(_, tt, tps) {
@@ -583,9 +574,8 @@ fn mk_constr(cx: ctxt, t: t, cs: [@type_constr]) -> t {
 
 fn mk_tup(cx: ctxt, ts: [t]) -> t { ret gen_ty(cx, ty_tup(ts)); }
 
-fn mk_fn(cx: ctxt, proto: ast::proto, args: [arg], ty: t, cf: ret_style,
-         constrs: [@constr]) -> t {
-    ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
+fn mk_fn(cx: ctxt, fty: fn_ty) -> t {
+    ret gen_ty(cx, ty_fn(fty));
 }
 
 fn mk_native_fn(cx: ctxt, args: [arg], ty: t) -> t {
@@ -651,9 +641,9 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
         for fl: field in fields { walk_ty(cx, walker, fl.mt.ty); }
       }
       ty_tup(ts) { for tt in ts { walk_ty(cx, walker, tt); } }
-      ty_fn(proto, args, ret_ty, _, _) {
-        for a: arg in args { walk_ty(cx, walker, a.ty); }
-        walk_ty(cx, walker, ret_ty);
+      ty_fn(f) {
+        for a: arg in f.inputs { walk_ty(cx, walker, a.ty); }
+        walk_ty(cx, walker, f.output);
       }
       ty_native_fn(args, ret_ty) {
         for a: arg in args { walk_ty(cx, walker, a.ty); }
@@ -661,8 +651,8 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
       }
       ty_obj(methods) {
         for m: method in methods {
-            for a: arg in m.inputs { walk_ty(cx, walker, a.ty); }
-            walk_ty(cx, walker, m.output);
+            for a: arg in m.fty.inputs { walk_ty(cx, walker, a.ty); }
+            walk_ty(cx, walker, m.fty.output);
         }
       }
       ty_res(_, sub, tps) {
@@ -731,14 +721,15 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         for tt in ts { new_ts += [fold_ty(cx, fld, tt)]; }
         ty = mk_tup(cx, new_ts);
       }
-      ty_fn(proto, args, ret_ty, cf, constrs) {
+      ty_fn(f) {
         let new_args: [arg] = [];
-        for a: arg in args {
+        for a: arg in f.inputs {
             let new_ty = fold_ty(cx, fld, a.ty);
             new_args += [{mode: a.mode, ty: new_ty}];
         }
-        ty = mk_fn(cx, proto, new_args, fold_ty(cx, fld, ret_ty), cf,
-                   constrs);
+        ty = mk_fn(cx, {inputs: new_args,
+                        output: fold_ty(cx, fld, f.output)
+                        with f});
       }
       ty_native_fn(args, ret_ty) {
         let new_args: [arg] = [];
@@ -749,20 +740,15 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         ty = mk_native_fn(cx, new_args, fold_ty(cx, fld, ret_ty));
       }
       ty_obj(methods) {
-        let new_methods: [method] = [];
-        for m: method in methods {
-            let new_args: [arg] = [];
-            for a: arg in m.inputs {
-                new_args += [{mode: a.mode, ty: fold_ty(cx, fld, a.ty)}];
-            }
-            new_methods +=
-                [{proto: m.proto,
-                  ident: m.ident,
-                  inputs: new_args,
-                  output: fold_ty(cx, fld, m.output),
-                  cf: m.cf,
-                  constrs: m.constrs}];
-        }
+        let new_methods = vec::map(methods, {|m|
+            let new_args = vec::map(m.fty.inputs, {|a|
+                {mode: a.mode, ty: fold_ty(cx, fld, a.ty)}
+            });
+            {ident: m.ident,
+             fty: {inputs: new_args,
+                   output: fold_ty(cx, fld, m.fty.output)
+                   with m.fty}}
+        });
         ty = mk_obj(cx, new_methods);
       }
       ty_res(did, subty, tps) {
@@ -802,7 +788,7 @@ fn type_is_structural(cx: ctxt, ty: t) -> bool {
       ty_rec(_) { ret true; }
       ty_tup(_) { ret true; }
       ty_tag(_, _) { ret true; }
-      ty_fn(_, _, _, _, _) { ret true; }
+      ty_fn(_) { ret true; }
       ty_native_fn(_, _) { ret true; }
       ty_obj(_) { ret true; }
       ty_res(_, _, _) { ret true; }
@@ -983,7 +969,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
       ty_obj(_) { kind_copyable }
-      ty_fn(proto, _, _, _, _) { ast::proto_kind(proto) }
+      ty_fn(f) { ast::proto_kind(f.proto) }
       ty_opaque_closure. { kind_noncopyable }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
@@ -1155,7 +1141,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_send_type. | ty_type. | ty_native(_) | ty_ptr(_) { result = true; }
       // Boxed types
-      ty_str. | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_, _, _, _, _) |
+      ty_str. | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
       ty_native_fn(_, _) | ty_obj(_) {
         result = false;
       }
@@ -1320,9 +1306,7 @@ fn hash_type_structure(st: sty) -> uint {
       ty_tup(ts) { ret hash_subtys(25u, ts); }
 
       // ???
-      ty_fn(_, args, rty, _, _) {
-        ret hash_fn(27u, args, rty);
-      }
+      ty_fn(f) { ret hash_fn(27u, f.inputs, f.output); }
       ty_native_fn(args, rty) { ret hash_fn(28u, args, rty); }
       ty_obj(methods) {
         let h = 29u;
@@ -1477,7 +1461,7 @@ fn type_contains_params(cx: ctxt, typ: t) -> bool {
 // Type accessors for substructures of types
 fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
     alt struct(cx, fty) {
-      ty::ty_fn(_, a, _, _, _) { ret a; }
+      ty::ty_fn(f) { ret f.inputs; }
       ty::ty_native_fn(a, _) { ret a; }
       _ { cx.sess.bug("ty_fn_args() called on non-fn type"); }
     }
@@ -1485,7 +1469,7 @@ fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
 
 fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
     alt struct(cx, fty) {
-      ty::ty_fn(p, _, _, _, _) { ret p; }
+      ty::ty_fn(f) { ret f.proto; }
       ty::ty_native_fn(_, _) {
         // FIXME: This should probably be proto_bare
         ret ast::proto_shared(ast::sugar_normal);
@@ -1497,7 +1481,7 @@ fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
 pure fn ty_fn_ret(cx: ctxt, fty: t) -> t {
     let sty = struct(cx, fty);
     alt sty {
-      ty::ty_fn(_, _, r, _, _) { ret r; }
+      ty::ty_fn(f) { ret f.output; }
       ty::ty_native_fn(_, r) { ret r; }
       _ {
         // Unchecked is ok since we diverge here
@@ -1512,7 +1496,7 @@ pure fn ty_fn_ret(cx: ctxt, fty: t) -> t {
 
 fn ty_fn_ret_style(cx: ctxt, fty: t) -> ast::ret_style {
     alt struct(cx, fty) {
-      ty::ty_fn(_, _, _, rs, _) { rs }
+      ty::ty_fn(f) { f.ret_style }
       ty::ty_native_fn(_, _) { ast::return_val }
       _ { cx.sess.bug("ty_fn_ret_style() called on non-fn type"); }
     }
@@ -1520,7 +1504,7 @@ fn ty_fn_ret_style(cx: ctxt, fty: t) -> ast::ret_style {
 
 fn is_fn_ty(cx: ctxt, fty: t) -> bool {
     alt struct(cx, fty) {
-      ty::ty_fn(_, _, _, _, _) { ret true; }
+      ty::ty_fn(_) { ret true; }
       ty::ty_native_fn(_, _) { ret true; }
       _ { ret false; }
     }
@@ -1623,7 +1607,7 @@ fn sort_methods(meths: [method]) -> [method] {
     fn method_lteq(a: method, b: method) -> bool {
         ret str::lteq(a.ident, b.ident);
     }
-    ret std::sort::merge_sort::<method>(bind method_lteq(_, _), meths);
+    ret std::sort::merge_sort(bind method_lteq(_, _), meths);
 }
 
 fn occurs_check_fails(tcx: ctxt, sp: option::t<span>, vid: int, rt: t) ->
@@ -1845,57 +1829,6 @@ mod unify {
         }
         ret none;
     }
-    tag fn_common_res {
-        fn_common_res_err(result);
-        fn_common_res_ok([arg], t);
-    }
-    fn unify_fn_common(cx: @ctxt, _expected: t, _actual: t,
-                       expected_inputs: [arg], expected_output: t,
-                       actual_inputs: [arg], actual_output: t,
-                       variance: variance) ->
-       fn_common_res {
-        if !vec::same_length(expected_inputs, actual_inputs) {
-            ret fn_common_res_err(ures_err(terr_arg_count));
-        }
-
-        // Would use vec::map2(), but for the need to return in case of
-        // error:
-        let i = 0u, n = vec::len(expected_inputs);
-        let result_ins = [];
-        while i < n {
-            let expected_input = expected_inputs[i];
-            let actual_input = actual_inputs[i];
-
-            // Unify the result modes.
-            let result_mode = if expected_input.mode == ast::mode_infer {
-                actual_input.mode
-            } else if actual_input.mode == ast::mode_infer {
-                expected_input.mode
-            } else if expected_input.mode != actual_input.mode {
-                ret fn_common_res_err
-                    (ures_err(terr_mode_mismatch(expected_input.mode,
-                                                 actual_input.mode)));
-            } else { expected_input.mode };
-
-            // The variance changes (flips basically) when descending
-            // into arguments of function types
-            let result = unify_step(
-                cx, expected_input.ty, actual_input.ty,
-                variance_transform(variance, contravariant));
-            alt result {
-              ures_ok(rty) { result_ins += [{mode: result_mode, ty: rty}]; }
-              _ { ret fn_common_res_err(result); }
-            };
-            i += 1u;
-        }
-
-        // Check the output.
-        let result = unify_step(cx, expected_output, actual_output, variance);
-        alt result {
-          ures_ok(rty) { ret fn_common_res_ok(result_ins, rty); }
-          _ { ret fn_common_res_err(result); }
-        }
-    }
     fn unify_fn_proto(e_proto: ast::proto, a_proto: ast::proto,
                       variance: variance) -> option::t<result> {
         // Prototypes form a diamond-shaped partial order:
@@ -1926,63 +1859,90 @@ mod unify {
           _ { some(ures_err(terr_mismatch)) }
         };
     }
-    fn unify_fn(cx: @ctxt, e_proto: ast::proto, a_proto: ast::proto,
-                expected: t, actual: t, expected_inputs: [arg],
-                expected_output: t, actual_inputs: [arg], actual_output: t,
-                expected_cf: ret_style, actual_cf: ret_style,
-                _expected_constrs: [@constr], actual_constrs: [@constr],
-                variance: variance) ->
-       result {
+    fn unify_args(cx: @ctxt, e_args: [arg], a_args: [arg], variance: variance)
+        -> either::t<result, [arg]> {
+        if !vec::same_length(e_args, a_args) {
+            ret either::left(ures_err(terr_arg_count));
+        }
+        // The variance changes (flips basically) when descending
+        // into arguments of function types
+        let variance = variance_transform(variance, contravariant);
+        // Would use vec::map2(), but for the need to return in case of
+        // error:
+        let i = 0u, result = [];
+        for expected_input in e_args {
+            let actual_input = a_args[i];
+            i += 1u;
+            // Unify the result modes.
+            let result_mode = if expected_input.mode == ast::mode_infer {
+                actual_input.mode
+            } else if actual_input.mode == ast::mode_infer {
+                expected_input.mode
+            } else if expected_input.mode != actual_input.mode {
+                ret either::left(ures_err(terr_mode_mismatch(
+                    expected_input.mode, actual_input.mode)));
+            } else { expected_input.mode };
 
-        alt unify_fn_proto(e_proto, a_proto, variance) {
+            alt unify_step(cx, expected_input.ty, actual_input.ty,
+                           variance) {
+              ures_ok(rty) { result += [{mode: result_mode, ty: rty}]; }
+              err { ret either::left(err); }
+            }
+        }
+        either::right(result)
+    }
+    fn unify_fn(cx: @ctxt, e_f: fn_ty, a_f: fn_ty, variance: variance)
+        -> result {
+        alt unify_fn_proto(e_f.proto, a_f.proto, variance) {
           some(err) { ret err; }
           none. { /* fall through */ }
         }
 
-        if actual_cf != ast::noreturn && actual_cf != expected_cf {
+        if a_f.ret_style != ast::noreturn && a_f.ret_style != e_f.ret_style {
             /* even though typestate checking is mostly
                responsible for checking control flow annotations,
                this check is necessary to ensure that the
                annotation in an object method matches the
                declared object type */
-            ret ures_err(terr_ret_style_mismatch(expected_cf, actual_cf));
+            ret ures_err(terr_ret_style_mismatch(e_f.ret_style,
+                                                 a_f.ret_style));
         }
-        let t =
-            unify_fn_common(cx, expected, actual, expected_inputs,
-                            expected_output, actual_inputs, actual_output,
-                            variance);
-        alt t {
-          fn_common_res_err(r) { ret r; }
-          fn_common_res_ok(result_ins, result_out) {
-            let t2 =
-                mk_fn(cx.tcx, e_proto, result_ins, result_out, actual_cf,
-                      actual_constrs);
-            ret ures_ok(t2);
+        let result_ins = alt unify_args(cx, e_f.inputs, a_f.inputs,
+                                        variance) {
+            either::left(err) { ret err; }
+            either::right(ts) { ts }
+        };
+
+        // Check the output.
+        alt unify_step(cx, e_f.output, a_f.output, variance) {
+          ures_ok(rty) {
+            ures_ok(mk_fn(cx.tcx, {proto: e_f.proto,
+                                   inputs: result_ins,
+                                   output: rty
+                                   with a_f}))
           }
+          x { x }
         }
     }
-    fn unify_native_fn(cx: @ctxt, expected: t, actual: t,
-                       expected_inputs: [arg], expected_output: t,
+    fn unify_native_fn(cx: @ctxt, expected_inputs: [arg], expected_output: t,
                        actual_inputs: [arg], actual_output: t,
                        variance: variance) -> result {
-        let t =
-            unify_fn_common(cx, expected, actual, expected_inputs,
-                            expected_output, actual_inputs, actual_output,
-                            variance);
-        alt t {
-          fn_common_res_err(r) { ret r; }
-          fn_common_res_ok(result_ins, result_out) {
-            let t2 = mk_native_fn(cx.tcx, result_ins, result_out);
-            ret ures_ok(t2);
-          }
+        let result_ins = alt unify_args(cx, expected_inputs,
+                                        actual_inputs, variance) {
+            either::left(err) { ret err; }
+            either::right(ts) { ts }
+        };
+        alt unify_step(cx, expected_output, actual_output, variance) {
+          ures_ok(out) { ures_ok(mk_native_fn(cx.tcx, result_ins, out)) }
+          err { err }
         }
     }
-    fn unify_obj(cx: @ctxt, expected: t, actual: t, expected_meths: [method],
+    fn unify_obj(cx: @ctxt, expected_meths: [method],
                  actual_meths: [method], variance: variance) -> result {
         let result_meths: [method] = [];
         let i: uint = 0u;
-        let expected_len: uint = vec::len::<method>(expected_meths);
-        let actual_len: uint = vec::len::<method>(actual_meths);
+        let expected_len: uint = vec::len(expected_meths);
+        let actual_len: uint = vec::len(actual_meths);
         if expected_len != actual_len { ret ures_err(terr_meth_count); }
         while i < expected_len {
             let e_meth = expected_meths[i];
@@ -1990,22 +1950,15 @@ mod unify {
             if !str::eq(e_meth.ident, a_meth.ident) {
                 ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident));
             }
-            let r =
-                unify_fn(cx, e_meth.proto, a_meth.proto, expected, actual,
-                         e_meth.inputs, e_meth.output, a_meth.inputs,
-                         a_meth.output, e_meth.cf, a_meth.cf, e_meth.constrs,
-                         a_meth.constrs, variance);
-            alt r {
+            alt unify_fn(cx, e_meth.fty, a_meth.fty, variance) {
               ures_ok(tfn) {
                 alt struct(cx.tcx, tfn) {
-                  ty_fn(proto, ins, out, cf, constrs) {
-                    result_meths +=
-                        [{inputs: ins, output: out, cf: cf, constrs: constrs
-                             with e_meth}];
+                  ty_fn(f) {
+                    result_meths += [{ident: e_meth.ident, fty: f}];
                   }
                 }
               }
-              _ { ret r; }
+              err { ret err; }
             }
             i += 1u;
         }
@@ -2370,15 +2323,10 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_fn(ep, expected_inputs, expected_output, expected_cf,
-                    expected_constrs) {
+          ty::ty_fn(expected_f) {
             alt struct(cx.tcx, actual) {
-              ty::ty_fn(ap, actual_inputs, actual_output, actual_cf,
-                        actual_constrs) {
-                ret unify_fn(cx, ep, ap, expected, actual, expected_inputs,
-                             expected_output, actual_inputs, actual_output,
-                             expected_cf, actual_cf, expected_constrs,
-                             actual_constrs, variance);
+              ty::ty_fn(actual_f) {
+                ret unify_fn(cx, expected_f, actual_f, variance);
               }
               _ { ret ures_err(terr_mismatch); }
             }
@@ -2386,8 +2334,7 @@ mod unify {
           ty::ty_native_fn(expected_inputs, expected_output) {
             alt struct(cx.tcx, actual) {
               ty::ty_native_fn(actual_inputs, actual_output) {
-                ret unify_native_fn(cx, expected, actual,
-                                    expected_inputs, expected_output,
+                ret unify_native_fn(cx, expected_inputs, expected_output,
                                     actual_inputs, actual_output, variance);
               }
               _ { ret ures_err(terr_mismatch); }
@@ -2396,8 +2343,7 @@ mod unify {
           ty::ty_obj(expected_meths) {
             alt struct(cx.tcx, actual) {
               ty::ty_obj(actual_meths) {
-                ret unify_obj(cx, expected, actual, expected_meths,
-                              actual_meths, variance);
+                ret unify_obj(cx, expected_meths, actual_meths, variance);
               }
               _ { ret ures_err(terr_mismatch); }
             }
@@ -2512,10 +2458,11 @@ fn same_type(cx: ctxt, a: t, b: t) -> bool {
     }
 }
 fn same_method(cx: ctxt, a: method, b: method) -> bool {
-    a.proto == b.proto && a.ident == b.ident &&
-    vec::all2(a.inputs, b.inputs,
+    a.fty.proto == b.fty.proto && a.ident == b.ident &&
+    vec::all2(a.fty.inputs, b.fty.inputs,
               {|a, b| a.mode == b.mode && same_type(cx, a.ty, b.ty) }) &&
-    same_type(cx, a.output, b.output) && a.cf == b.cf
+    same_type(cx, a.fty.output, b.fty.output) &&
+    a.fty.ret_style == b.fty.ret_style
 }
 
 fn type_err_to_str(err: ty::type_err) -> str {

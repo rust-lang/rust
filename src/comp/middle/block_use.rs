@@ -13,7 +13,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     if !cx.allow_block {
         alt ty::struct(cx.tcx, ty::expr_ty(cx.tcx, ex)) {
-          ty::ty_fn(proto_block., _, _, _, _) {
+          ty::ty_fn({proto: proto_block., _}) {
             cx.tcx.sess.span_err(ex.span, "expressions with block type \
                 can only appear in callee or (by-ref) argument position");
           }

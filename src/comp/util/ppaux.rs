@@ -54,8 +54,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         ret s;
     }
     fn method_to_str(cx: ctxt, m: method) -> str {
-        ret fn_to_str(cx, m.proto, some::<ast::ident>(m.ident), m.inputs,
-                      m.output, m.cf, m.constrs) + ";";
+        ret fn_to_str(cx, m.fty.proto, some(m.ident), m.fty.inputs,
+                      m.fty.output, m.fty.ret_style, m.fty.constraints) + ";";
     }
     fn field_to_str(cx: ctxt, f: field) -> str {
         ret f.ident + ": " + mt_to_str(cx, f.mt);
@@ -111,8 +111,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         for elem in elems { strs += [ty_to_str(cx, elem)]; }
         "(" + str::connect(strs, ",") + ")"
       }
-      ty_fn(proto, inputs, output, cf, constrs) {
-        fn_to_str(cx, proto, none, inputs, output, cf, constrs)
+      ty_fn(f) {
+        fn_to_str(cx, f.proto, none, f.inputs, f.output, f.ret_style,
+                  f.constraints)
       }
       ty_native_fn(inputs, output) {
         fn_to_str(cx, ast::proto_bare, none, inputs, output,

@@ -165,10 +165,7 @@ fn parse_constr<copy T>(st: @pstate, sd: str_def, pser: arg_parser<T>) ->
 }
 
 fn parse_ty_rust_fn(st: @pstate, sd: str_def, p: ast::proto) -> ty::t {
-    let func = parse_ty_fn(st, sd);
-    ret ty::mk_fn(st.tcx, p,
-                  func.args, func.ty, func.cf,
-                  func.cs);
+    ret ty::mk_fn(st.tcx, {proto: p with parse_ty_fn(st, sd)});
 }
 
 fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
@@ -256,7 +253,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       }
       'N' {
         let func = parse_ty_fn(st, sd);
-        ret ty::mk_native_fn(st.tcx, func.args, func.ty);
+        ret ty::mk_native_fn(st.tcx, func.inputs, func.output);
       }
       'O' {
         assert (next(st) as char == '[');
@@ -270,14 +267,8 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
             while peek(st) as char != '[' {
                 name += str::unsafe_from_byte(next(st));
             }
-            let func = parse_ty_fn(st, sd);
-            methods +=
-                [{proto: proto,
-                  ident: name,
-                  inputs: func.args,
-                  output: func.ty,
-                  cf: func.cf,
-                  constrs: func.cs}];
+            methods += [{ident: name,
+                         fty: {proto: proto with parse_ty_fn(st, sd)}}];
         }
         st.pos += 1u;
         ret ty::mk_obj(st.tcx, methods);
@@ -365,8 +356,7 @@ fn parse_hex(st: @pstate) -> uint {
     ret n;
 }
 
-fn parse_ty_fn(st: @pstate, sd: str_def) ->
-   {args: [ty::arg], ty: ty::t, cf: ast::ret_style, cs: [@ty::constr]} {
+fn parse_ty_fn(st: @pstate, sd: str_def) -> ty::fn_ty {
     assert (next(st) as char == '[');
     let inputs: [ty::arg] = [];
     while peek(st) as char != ']' {
@@ -383,7 +373,8 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
     st.pos += 1u; // eat the ']'
     let cs = parse_constrs(st, sd);
     let (ret_style, ret_ty) = parse_ret_ty(st, sd);
-    ret {args: inputs, ty: ret_ty, cf: ret_style, cs: cs};
+    ret {proto: ast::proto_bare, inputs: inputs, output: ret_ty,
+         ret_style: ret_style, constraints: cs};
 }
 
 

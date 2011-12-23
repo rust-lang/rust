@@ -168,7 +168,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         }
         T_struct(tys)
       }
-      ty::ty_fn(_, _, _, _, _) {
+      ty::ty_fn(_) {
         // FIXME: could be a constraint on ty_fn
         check returns_non_ty_var(cx, t);
         T_fn_pair(cx, type_of_fn_from_ty(cx, sp, t, 0u))
@@ -232,7 +232,7 @@ fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: span,
     let cx = lcx.ccx;
     let t = tpt.ty;
     alt ty::struct(cx.tcx, t) {
-      ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _) {
+      ty::ty_fn(_) | ty::ty_native_fn(_, _) {
         check returns_non_ty_var(cx, t);
         ret type_of_fn_from_ty(cx, sp, t, vec::len(tpt.kinds));
       }
@@ -482,7 +482,7 @@ fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
           ty::ty_uniq(_) {
             ret ty::mk_imm_uniq(ccx.tcx, ty::mk_nil(ccx.tcx));
           }
-          ty::ty_fn(_, _, _, _, _) {
+          ty::ty_fn(_) {
             ret ty::mk_tup(ccx.tcx,
                            [ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)),
                             ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx))]);
@@ -1321,7 +1321,7 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
         Store(bcx, s, v);
         bcx
       }
-      ty::ty_native_fn(_, _) | ty::ty_fn(_, _, _, _, _) {
+      ty::ty_native_fn(_, _) | ty::ty_fn(_) {
         trans_closure::make_fn_glue(bcx, v, t, take_ty)
       }
       ty::ty_opaque_closure. {
@@ -1396,7 +1396,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         // they must be freed.
         trans_shared_free(bcx, v)
       }
-      ty::ty_native_fn(_, _) | ty::ty_fn(_, _, _, _, _) {
+      ty::ty_native_fn(_, _) | ty::ty_fn(_) {
         trans_closure::make_fn_glue(bcx, v, t, free_ty)
       }
       ty::ty_opaque_closure. {
@@ -1425,7 +1425,7 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
           ty::ty_res(did, inner, tps) {
             trans_res_drop(bcx, v0, did, inner, tps)
           }
-          ty::ty_native_fn(_, _) | ty::ty_fn(_, _, _, _, _) {
+          ty::ty_native_fn(_, _) | ty::ty_fn(_) {
             trans_closure::make_fn_glue(bcx, v0, t, drop_ty)
           }
           ty::ty_opaque_closure. {
@@ -1635,7 +1635,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         let ccx = bcx_ccx(cx);
         let cx = cx;
         alt ty::struct(ccx.tcx, fn_ty) {
-          ty::ty_fn(_, args, _, _, _) {
+          ty::ty_fn({inputs: args, _}) {
             let j = 0u;
             let v_id = variant.id;
             for a: ty::arg in args {
@@ -2762,7 +2762,7 @@ fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
     vtbl = PointerCast(bcx, vtbl, vtbl_type);
 
     let v = GEPi(bcx, vtbl, [0, ix as int]);
-    let fn_ty: ty::t = ty::method_ty_to_fn_ty(tcx, mths[ix]);
+    let fn_ty: ty::t = ty::mk_fn(tcx, mths[ix].fty);
     let ret_ty = ty::ty_fn_ret(tcx, fn_ty);
     // FIXME: constrain ty_obj?
     check non_ty_var(ccx, ret_ty);
@@ -3558,7 +3558,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       }
       ast::expr_fn_block(decl, body) {
         alt ty::struct(tcx, ty::expr_ty(tcx, e)) {
-          ty::ty_fn(proto, _, _, _, _) {
+          ty::ty_fn({proto, _}) {
             let cap_clause = { copies: [], moves: [] };
             ret trans_closure::trans_expr_fn(
                 bcx, decl, body, e.span, e.id, cap_clause, dest);
@@ -4443,7 +4443,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
 
 fn arg_tys_of_fn(ccx: @crate_ctxt, id: ast::node_id) -> [ty::arg] {
     alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)) {
-      ty::ty_fn(_, arg_tys, _, _, _) { ret arg_tys; }
+      ty::ty_fn({inputs, _}) { inputs }
     }
 }
 
@@ -5107,7 +5107,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
 
     let main_takes_argv =
         alt ty::struct(ccx.tcx, main_node_type) {
-          ty::ty_fn(_, args, _, _, _) { vec::len(args) != 0u }
+          ty::ty_fn({inputs, _}) { vec::len(inputs) != 0u }
         };
 
     let llfn = create_main(ccx, sp, main_llfn, main_takes_argv);

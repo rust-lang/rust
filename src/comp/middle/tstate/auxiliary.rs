@@ -488,14 +488,14 @@ fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
 the answer is noreturn. */
 fn controlflow_expr(ccx: crate_ctxt, e: @expr) -> ret_style {
     alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, e.id)) {
-      ty::ty_fn(_, _, _, cf, _) { ret cf; }
+      ty::ty_fn(f) { ret f.ret_style; }
       _ { ret return_val; }
     }
 }
 
 fn constraints_expr(cx: ty::ctxt, e: @expr) -> [@ty::constr] {
     alt ty::struct(cx, ty::node_id_to_type(cx, e.id)) {
-      ty::ty_fn(_, _, _, _, cs) { ret cs; }
+      ty::ty_fn(f) { ret f.constraints; }
       _ { ret []; }
     }
 }
@@ -1074,7 +1074,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [ty::mode] {
         ty::type_autoderef(fcx.ccx.tcx,
                            ty::node_id_to_type(fcx.ccx.tcx, callee));
     alt ty::struct(fcx.ccx.tcx, ty) {
-      ty::ty_fn(_, args, _, _, _) | ty::ty_native_fn(args, _) {
+      ty::ty_fn({inputs: args, _}) | ty::ty_native_fn(args, _) {
         let modes = [];
         for arg: ty::arg in args { modes += [arg.mode]; }
         ret modes;

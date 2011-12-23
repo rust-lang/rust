@@ -32,7 +32,7 @@ fn fn_usage_expr(expr: @ast::expr,
         if !ctx.generic_bare_fn_legal
             && ty::expr_has_ty_params(ctx.tcx, expr) {
             alt ty::struct(ctx.tcx, ty::expr_ty(ctx.tcx, expr)) {
-              ty::ty_fn(ast::proto_bare., _, _, _, _) {
+              ty::ty_fn({proto: ast::proto_bare., _}) {
                 ctx.tcx.sess.span_fatal(
                     expr.span,
                     "generic bare functions can only be called or bound");

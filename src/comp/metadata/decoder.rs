@@ -253,13 +253,10 @@ fn get_tag_variants(_data: @[u8], def: ast::def_id, tcx: ty::ctxt,
         let ctor_ty = item_type(item, external_crate_id, tcx, extres);
         let arg_tys: [ty::t] = [];
         alt ty::struct(tcx, ctor_ty) {
-          ty::ty_fn(_, args, _, _, _) {
-            for a: ty::arg in args { arg_tys += [a.ty]; }
+          ty::ty_fn(f) {
+            for a: ty::arg in f.inputs { arg_tys += [a.ty]; }
           }
-          _ {
-            // Nullary tag variant.
-
-          }
+          _ { /* Nullary tag variant. */ }
         }
         infos += [@{args: arg_tys, ctor_ty: ctor_ty, id: did}];
     }

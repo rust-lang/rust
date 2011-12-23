@@ -145,21 +145,9 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
         ret type_is_gc_relevant(cx, tm.ty);
       }
       ty::ty_constr(sub, _) { ret type_is_gc_relevant(cx, sub); }
-
-
-
-
-
-      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_fn(_, _, _, _, _) |
+      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_fn(_) |
       ty::ty_native_fn(_, _) | ty::ty_obj(_) | ty::ty_param(_, _) |
-      ty::ty_res(_, _, _) {
-        ret true;
-      }
-
-
-
-
-
+      ty::ty_res(_, _, _) { ret true; }
       ty::ty_var(_) {
         fail "ty_var in type_is_gc_relevant";
       }

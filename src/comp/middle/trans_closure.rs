@@ -516,19 +516,19 @@ fn make_fn_glue(
     };
 
     ret alt ty::struct(tcx, t) {
-      ty::ty_native_fn(_, _) | ty::ty_fn(ast::proto_bare., _, _, _, _) {
+      ty::ty_native_fn(_, _) | ty::ty_fn({proto: ast::proto_bare., _}) {
         bcx
       }
-      ty::ty_fn(ast::proto_block., _, _, _, _) {
+      ty::ty_fn({proto: ast::proto_block., _}) {
         bcx
       }
-      ty::ty_fn(ast::proto_send., _, _, _, _) {
+      ty::ty_fn({proto: ast::proto_send., _}) {
         fn_env({ |bcx, box_cell_v|
             let box_ty = trans_closure::send_opaque_closure_box_ty(tcx);
             glue_fn(bcx, box_cell_v, box_ty)
         })
       }
-      ty::ty_fn(ast::proto_shared(_), _, _, _, _) {
+      ty::ty_fn({proto: ast::proto_shared(_), _}) {
         fn_env({ |bcx, box_cell_v|
             let box_ty = trans_closure::shared_opaque_closure_box_ty(tcx);
             glue_fn(bcx, box_cell_v, box_ty)

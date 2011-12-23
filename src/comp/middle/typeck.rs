@@ -334,7 +334,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         typ = ty::mk_rec(tcx, flds);
       }
       ast::ty_fn(decl) {
-        typ = ty_of_fn_decl(tcx, mode, decl);
+        typ = ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, decl));
       }
       ast::ty_path(path, id) {
         alt tcx.def_map.find(id) {
@@ -353,28 +353,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         }
       }
       ast::ty_obj(meths) {
-        let tmeths: [ty::method] = [];
-        for m: ast::ty_method in meths {
-            let ins = [];
-            for ta: ast::arg in m.decl.inputs {
-                ins += [ast_arg_to_arg(tcx, mode, ta)];
-            }
-            let out = ast_ty_to_ty(tcx, mode, m.decl.output);
-
-            let out_constrs = [];
-            for constr: @ast::constr in m.decl.constraints {
-                out_constrs += [ty::ast_constr_to_constr(tcx, constr)];
-            }
-            let new_m: ty::method =
-                {proto: m.decl.proto,
-                 ident: m.ident,
-                 inputs: ins,
-                 output: out,
-                 cf: m.decl.cf,
-                 constrs: out_constrs};
-            tmeths += [new_m];
-        }
-        typ = ty::mk_obj(tcx, ty::sort_methods(tmeths));
+        let ms = vec::map(meths, {|m| ty_of_ty_method(tcx, mode, m) });
+        typ = ty::mk_obj(tcx, ty::sort_methods(ms));
       }
       ast::ty_constr(t, cs) {
         let out_cs = [];
@@ -469,7 +449,7 @@ fn ty_of_arg(tcx: ty::ctxt, mode: mode, a: ast::arg) -> ty::arg {
     let ty = ast_ty_to_ty(tcx, mode, a.ty);
     {mode: default_arg_mode_for_ty(tcx, a.mode, ty), ty: ty}
 }
-fn ty_of_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl) -> ty::t {
+fn ty_of_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl) -> ty::fn_ty {
     let input_tys = [];
     for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(tcx, mode, a)]; }
     let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
@@ -478,13 +458,14 @@ fn ty_of_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl) -> ty::t {
     for constr: @ast::constr in decl.constraints {
         out_constrs += [ty::ast_constr_to_constr(tcx, constr)];
     }
-    ty::mk_fn(tcx, decl.proto, input_tys, output_ty, decl.cf, out_constrs)
+    {proto: decl.proto, inputs: input_tys,
+     output: output_ty, ret_style: decl.cf, constraints: out_constrs}
 }
 fn ty_of_fn(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
             ty_params: [ast::ty_param], def_id: ast::def_id)
     -> ty::ty_param_kinds_and_ty {
     let tpt = {kinds: ty_param_kinds(ty_params),
-               ty: ty_of_fn_decl(tcx, mode, decl)};
+               ty: ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, decl))};
     tcx.tcache.insert(def_id, tpt);
     ret tpt;
 }
@@ -501,31 +482,18 @@ fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
     ret tpt;
 }
 fn ty_of_method(tcx: ty::ctxt, mode: mode, m: @ast::method) -> ty::method {
-    let inputs = vec::map(m.decl.inputs,
-                          {|i| ty_of_arg(tcx, mode, i)});
-    let output = ast_ty_to_ty(tcx, mode, m.decl.output);
-
-    let out_constrs = [];
-    for constr: @ast::constr in m.decl.constraints {
-        out_constrs += [ty::ast_constr_to_constr(tcx, constr)];
-    }
-    ret {proto: m.decl.proto,
-         ident: m.ident,
-         inputs: inputs,
-         output: output,
-         cf: m.decl.cf,
-         constrs: out_constrs};
+    {ident: m.ident, fty: ty_of_fn_decl(tcx, mode, m.decl)}
+}
+fn ty_of_ty_method(tcx: ty::ctxt, mode: mode, m: ast::ty_method)
+    -> ty::method {
+    {ident: m.ident, fty: ty_of_fn_decl(tcx, mode, m.decl)}
 }
 fn ty_of_obj(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
         ty_params: [ast::ty_param]) -> ty::ty_param_kinds_and_ty {
-    let methods = ty_of_obj_methods(tcx, mode, ob);
+    let methods = vec::map(ob.methods, {|m| ty_of_method(tcx, mode, m)});
     let t_obj = ty::mk_named(tcx, ty::mk_obj(tcx, ty::sort_methods(methods)),
                              @id);
     ret {kinds: ty_param_kinds(ty_params), ty: t_obj};
-}
-fn ty_of_obj_methods(tcx: ty::ctxt, mode: mode, object: ast::_obj)
-    -> [ty::method] {
-    vec::map(object.methods, {|m| ty_of_method(tcx, mode, m)})
 }
 fn ty_of_obj_ctor(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
             ctor_id: ast::node_id, ty_params: [ast::ty_param])
@@ -536,9 +504,9 @@ fn ty_of_obj_ctor(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
         let t_field = ast_ty_to_ty(tcx, mode, f.ty);
         t_inputs += [{mode: ast::by_copy, ty: t_field}];
     }
-    let t_fn = ty::mk_fn(tcx, ast::proto_shared(ast::sugar_normal),
-                         t_inputs, t_obj.ty,
-                         ast::return_val, []);
+    let t_fn = ty::mk_fn(tcx, {proto: ast::proto_shared(ast::sugar_normal),
+                               inputs: t_inputs, output: t_obj.ty,
+                               ret_style: ast::return_val, constraints: []});
     let tpt = {kinds: ty_param_kinds(ty_params), ty: t_fn};
     tcx.tcache.insert(local_def(ctor_id), tpt);
     ret tpt;
@@ -660,9 +628,10 @@ mod collect {
                     args += [{mode: ast::by_copy, ty: arg_ty}];
                 }
                 // FIXME: this will be different for constrained types
-                ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
-                          args, tag_ty,
-                          ast::return_val, [])
+                ty::mk_fn(cx.tcx,
+                          {proto: ast::proto_shared(ast::sugar_normal),
+                           inputs: args, output: tag_ty,
+                           ret_style: ast::return_val, constraints: []})
             };
             let tpt = {kinds: ty_param_kinds(ty_params), ty: result_ty};
             cx.tcx.tcache.insert(local_def(variant.node.id), tpt);
@@ -680,8 +649,8 @@ mod collect {
           }
           ast::item_impl(_, selfty, ms) {
             for m in ms {
-                let ty = ty::method_ty_to_fn_ty(
-                    cx.tcx, ty_of_method(cx.tcx, m_collect, m));
+                let ty = ty::mk_fn(cx.tcx, ty_of_fn_decl(cx.tcx, m_collect,
+                                                         m.decl));
                 cx.tcx.tcache.insert(local_def(m.id),
                                      {kinds: ty_param_kinds(m.tps),
                                       ty: ty});
@@ -702,12 +671,12 @@ mod collect {
             // FIXME: Inefficient; this ends up calling
             // get_obj_method_types() twice. (The first time was above in
             // ty_of_obj().)
-            let method_types = ty_of_obj_methods(cx.tcx, m_collect, object);
+            let m_types = vec::map(object.methods,
+                                   {|m| ty_of_method(cx.tcx, m_collect, m)});
             let i = 0u;
             for m in object.methods {
                 write::ty_only(cx.tcx, m.id,
-                               ty::method_ty_to_fn_ty(cx.tcx,
-                                                      method_types[i]));
+                               ty::mk_fn(cx.tcx, m_types[i].fty));
                 i += 1u;
             }
             // Write in the types of the object fields.
@@ -727,15 +696,17 @@ mod collect {
             let t_res =
                 ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
                            mk_ty_params(cx.tcx, tps));
-            let t_ctor =
-                ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
-                          [{mode: ast::by_copy with t_arg}], t_res,
-                          ast::return_val, []);
-            let t_dtor =
-                ty::mk_fn(cx.tcx, ast::proto_shared(ast::sugar_normal),
-                          [t_arg],
-                          ty::mk_nil(cx.tcx),
-                          ast::return_val, []);
+            let t_ctor = ty::mk_fn(cx.tcx, {
+                proto: ast::proto_shared(ast::sugar_normal),
+                inputs: [{mode: ast::by_copy with t_arg}],
+                output: t_res,
+                ret_style: ast::return_val, constraints: []
+            });
+            let t_dtor = ty::mk_fn(cx.tcx, {
+                proto: ast::proto_shared(ast::sugar_normal),
+                inputs: [t_arg], output: ty::mk_nil(cx.tcx),
+                ret_style: ast::return_val, constraints: []
+            });
             write::ty_only(cx.tcx, it.id, t_res);
             write::ty_only(cx.tcx, ctor_id, t_ctor);
             cx.tcx.tcache.insert(local_def(ctor_id),
@@ -909,9 +880,9 @@ fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
     let result: [ty::t] = [];
     let tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt ty::struct(ccx.tcx, tpt.ty) {
-      ty::ty_fn(_, ins, _, _, _) {
+      ty::ty_fn(f) {
         // N-ary variant.
-        for arg: ty::arg in ins {
+        for arg: ty::arg in f.inputs {
             let arg_ty =
                 ty::substitute_type_params(ccx.tcx, tag_ty_params, arg.ty);
             result += [arg_ty];
@@ -1500,7 +1471,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
                               expected: ty::t) {
     let tcx = fcx.ccx.tcx;
 
-    let fty = ty_of_fn_decl(tcx, m_check_tyvar(fcx), decl);
+    let fty = ty::mk_fn(tcx, ty_of_fn_decl(tcx, m_check_tyvar(fcx), decl));
 
     #debug("check_expr_fn_with_unifier %s fty=%s",
            expr_to_str(expr),
@@ -1537,8 +1508,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Grab the argument types
         let arg_tys =
             alt sty {
-              ty::ty_fn(_, arg_tys, _, _, _) | ty::ty_native_fn(arg_tys, _)
-              {
+              ty::ty_fn({inputs: arg_tys, _}) | ty::ty_native_fn(arg_tys, _) {
                 arg_tys
               }
               _ {
@@ -1642,9 +1612,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let rt_1;
         let fty = ty::expr_ty(fcx.ccx.tcx, f);
         alt structure_of(fcx, sp, fty) {
-          ty::ty_fn(_, _, rt, cf, _) {
-            bot |= cf == ast::noreturn;
-            rt_1 = rt;
+          ty::ty_fn(f) {
+            bot |= f.ret_style == ast::noreturn;
+            rt_1 = f.output;
           }
           ty::ty_native_fn(_, rt) { rt_1 = rt; }
           _ { fcx.ccx.tcx.sess.span_fatal(sp, "calling non-function"); }
@@ -1957,7 +1927,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_fn_block(decl, body) {
         // Take the prototype from the expected type, but default to block:
         let proto = alt ty::struct(tcx, expected) {
-          ty::ty_fn(proto, _, _, _, _) { proto }
+          ty::ty_fn({proto, _}) { proto }
           _ {
             fcx.ccx.tcx.sess.span_warn(
                 expr.span,
@@ -1989,17 +1959,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Pull the argument and return types out.
         let proto, arg_tys, rt, cf, constrs;
         alt structure_of(fcx, expr.span, expr_ty(tcx, f)) {
-
-
           // FIXME:
           // probably need to munge the constrs to drop constraints
           // for any bound args
-          ty::ty_fn(proto_, arg_tys_, rt_, cf_, constrs_) {
-            proto = proto_;
-            arg_tys = arg_tys_;
-            rt = rt_;
-            cf = cf_;
-            constrs = constrs_;
+          ty::ty_fn(f) {
+            proto = f.proto;
+            arg_tys = f.inputs;
+            rt = f.output;
+            cf = f.ret_style;
+            constrs = f.constraints;
           }
           ty::ty_native_fn(arg_tys_, rt_) {
             proto = ast::proto_bare;
@@ -2032,8 +2000,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
         }
 
-        let ft = ty::mk_fn(tcx, lower_bound_proto(proto),
-                           out_args, rt, cf, constrs);
+        let ft = ty::mk_fn(tcx, {proto: lower_bound_proto(proto),
+                                 inputs: out_args, output: rt,
+                                 ret_style: cf, constraints: constrs});
         write::ty_only_fixup(fcx, id, ft);
       }
       ast::expr_call(f, args, _) {
@@ -2161,10 +2130,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                       "can't provide type parameters \
                                        to an obj method");
                 }
-                let meth = methods[ix];
-                let t = ty::mk_fn(tcx, meth.proto, meth.inputs,
-                                  meth.output, meth.cf, meth.constrs);
-                write::ty_only_fixup(fcx, id, t);
+                write::ty_only_fixup(fcx, id,
+                                     ty::mk_fn(tcx, methods[ix].fty));
                 handled = true;
               }
               _ {}
@@ -2180,8 +2147,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                     alt tcx.items.get(method.did.node) {
                       ast_map::node_method(m) {
                         let mt = ty_of_method(tcx, m_check, m);
-                        ty::mk_fn(tcx, mt.proto, mt.inputs,
-                                  mt.output, mt.cf, mt.constrs)
+                        ty::mk_fn(tcx, mt.fty)
                       }
                     }
                 } else { csearch::get_type(tcx, method.did).ty };
@@ -2339,7 +2305,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let i = 0u;
         while i < vec::len(ao.methods) {
             write::ty_only(tcx, ao.methods[i].id,
-                           ty::method_ty_to_fn_ty(tcx, method_types[i]));
+                           ty::mk_fn(tcx, method_types[i].fty));
             i += 1u;
         }
 
@@ -2696,12 +2662,13 @@ fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
 fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
     let main_t = ty::node_id_to_monotype(tcx, main_id);
     alt ty::struct(tcx, main_t) {
-      ty::ty_fn(ast::proto_bare., args, rs, ast::return_val., constrs) {
-        let ok = vec::len(constrs) == 0u;
-        ok &= ty::type_is_nil(tcx, rs);
-        let num_args = vec::len(args);
-        ok &=
-            num_args == 0u || num_args == 1u && arg_is_argv_ty(tcx, args[0]);
+      ty::ty_fn({proto: ast::proto_bare., inputs, output,
+                 ret_style: ast::return_val., constraints}) {
+        let ok = vec::len(constraints) == 0u;
+        ok &= ty::type_is_nil(tcx, output);
+        let num_args = vec::len(inputs);
+        ok &= num_args == 0u || num_args == 1u &&
+              arg_is_argv_ty(tcx, inputs[0]);
         if !ok {
             let span = ast_map::node_span(tcx.items.get(main_id));
             tcx.sess.span_err(span,

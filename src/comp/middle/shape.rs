@@ -416,7 +416,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
             }
         }
       }
-      ty::ty_fn(_, _, _, _, _) {
+      ty::ty_fn(_) {
         s += [shape_fn];
       }
       ty::ty_opaque_closure. {

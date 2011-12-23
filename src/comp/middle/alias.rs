@@ -518,9 +518,9 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
             for t in ts { if helper(tcx, needle, t, mut) { ret true; } }
             ret false;
           }
-          ty::ty_fn(ast::proto_bare., _, _, _, _) { ret false; }
+          ty::ty_fn({proto: ast::proto_bare., _}) { ret false; }
           // These may contain anything.
-          ty::ty_fn(_, _, _, _, _) | ty::ty_obj(_) { ret true; }
+          ty::ty_fn(_) | ty::ty_obj(_) { ret true; }
           // A type param may include everything, but can only be
           // treated as opaque downstream, and is thus safe unless we
           // saw mutable fields, in which case the whole thing can be
@@ -558,7 +558,7 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_ptr(_) { 1u }
           ty::ty_box(_) { 3u }
           ty::ty_constr(t, _) | ty::ty_res(_, t, _) { score_ty(tcx, t) }
-          ty::ty_fn(_, _, _, _, _) | ty::ty_native_fn(_, _) |
+          ty::ty_fn(_) | ty::ty_native_fn(_, _) |
           ty::ty_obj(_) { 4u }
           ty::ty_str. | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
           ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }
