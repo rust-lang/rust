@@ -44,7 +44,6 @@ mod result;
 // Runtime and language-primitive support
 
 mod ctypes;
-mod mtypes;
 mod cmath;
 mod sys;
 mod unsafe;
