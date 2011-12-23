@@ -626,6 +626,25 @@ pure fn struct(cx: ctxt, typ: t) -> sty {
     }
 }
 
+// Returns struact(cx, typ) but replaces all occurences of platform
+// dependent primitive types with their machine type equivalent
+pure fn mach_struct(cx: ctxt, cfg: @session::config, typ: t) -> sty {
+    alt interner::get(*cx.ts, typ).struct {
+      ty_named(t, _) { mach_struct(cx, cfg, t) }
+      s { mach_sty(cfg, s) }
+    }
+}
+
+// Converts s to its machine type equivalent
+pure fn mach_sty(cfg: @session::config, s: sty) -> sty {
+    alt s {
+      ty_int(ast::ty_i.) { ty_int(cfg.int_type) }
+      ty_uint(ast::ty_u.) { ty_uint(cfg.uint_type) }
+      ty_float(ast::ty_f.) { ty_float(cfg.float_type) }
+      s { s }
+    }
+}
+
 pure fn ty_name(cx: ctxt, typ: t) -> option::t<@str> {
     alt interner::get(*cx.ts, typ).struct {
       ty_named(_, n) { some(n) }
@@ -1752,7 +1771,9 @@ mod unify {
 
     // Simple structural type comparison.
     fn struct_cmp(cx: @ctxt, expected: t, actual: t) -> result {
-        if struct(cx.tcx, expected) == struct(cx.tcx, actual) {
+        let tcx = cx.tcx;
+        let cfg = tcx.sess.get_targ_cfg();
+        if mach_struct(tcx, cfg, expected) == mach_struct(tcx, cfg, actual) {
             ret ures_ok(expected);
         }
         ret ures_err(terr_mismatch);
