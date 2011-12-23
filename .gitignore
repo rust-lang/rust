@@ -58,6 +58,7 @@ config.mk
 /rustllvm/
 /test/
 /build/
+/inst/
 /mingw-build/
 src/.DS_Store
 /stage0/
