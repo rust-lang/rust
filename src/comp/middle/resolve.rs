@@ -337,9 +337,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           visit_ty: bind walk_ty(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
           visit_fn_proto:
-              bind visit_fn_proto_with_scope(e, _, _, _, _, _, _, _, _),
-          visit_fn_block:
-              bind visit_fn_block_with_scope(e, _, _, _, _, _, _)
+              bind visit_fn_proto_with_scope(e, _, _, _, _, _, _, _, _)
           with *visit::default_visitor()};
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v));
     e.used_imports.track = false;
@@ -442,15 +440,6 @@ fn visit_fn_proto_with_scope(e: @env, decl: ast::fn_decl, tp: [ast::ty_param],
     };
 
     visit::visit_fn_proto(decl, tp, body, sp, name, id, cons(scope, @sc), v);
-}
-
-fn visit_fn_block_with_scope(_e: @env, decl: fn_decl, blk: ast::blk,
-                             span: span, id: node_id,
-                             sc: scopes, v: vt<scopes>) {
-    let scope = scope_fn_expr(decl, id, []);
-    log(debug, ("scope=", scope));
-    visit::visit_fn_block(decl, blk, span, id, cons(scope, @sc), v);
-    log(debug, ("unscope"));
 }
 
 fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {
