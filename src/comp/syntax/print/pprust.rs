@@ -306,8 +306,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         pclose(s);
       }
       ast::ty_fn(d) {
-        print_ty_fn(s, d.proto, none::<str>, d.inputs, d.output, d.cf,
-                    d.constraints);
+        print_ty_fn(s, d, none::<str>);
       }
       ast::ty_obj(methods) {
         head(s, "obj");
@@ -316,8 +315,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
             hardbreak_if_not_bol(s);
             cbox(s, indent_unit);
             maybe_print_comment(s, m.span.lo);
-            print_ty_fn(s, m.node.proto, some(m.node.ident), m.node.inputs,
-                        m.node.output, m.node.cf, m.node.constrs);
+            print_ty_fn(s, m.decl, some(m.ident));
             word(s.s, ";");
             end(s);
         }
@@ -1338,11 +1336,9 @@ fn print_mt(s: ps, mt: ast::mt) {
     print_type(s, mt.ty);
 }
 
-fn print_ty_fn(s: ps, proto: ast::proto, id: option::t<ast::ident>,
-               inputs: [ast::arg], output: @ast::ty, cf: ast::ret_style,
-               constrs: [@ast::constr]) {
+fn print_ty_fn(s: ps, decl: ast::fn_decl, id: option::t<ast::ident>) {
     ibox(s, indent_unit);
-    word(s.s, proto_to_str(proto));
+    word(s.s, proto_to_str(decl.proto));
     alt id { some(id) { word(s.s, " "); word(s.s, id); } _ { } }
     zerobreak(s.s);
     popen(s);
@@ -1353,18 +1349,18 @@ fn print_ty_fn(s: ps, proto: ast::proto, id: option::t<ast::ident>,
         }
         print_type(s, input.ty);
     }
-    commasep(s, inconsistent, inputs, print_arg);
+    commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
-    maybe_print_comment(s, output.span.lo);
-    if output.node != ast::ty_nil {
+    maybe_print_comment(s, decl.output.span.lo);
+    if decl.output.node != ast::ty_nil {
         space_if_not_bol(s);
         ibox(s, indent_unit);
         word_space(s, "->");
-        if cf == ast::noreturn { word_nbsp(s, "!"); }
-        else { print_type(s, output); }
+        if decl.cf == ast::noreturn { word_nbsp(s, "!"); }
+        else { print_type(s, decl.output); }
         end(s);
     }
-    word(s.s, ast_ty_fn_constrs_str(constrs));
+    word(s.s, ast_ty_fn_constrs_str(decl.constraints));
     end(s);
 }
 

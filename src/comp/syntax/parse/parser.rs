@@ -294,14 +294,7 @@ fn parse_ty_obj(p: parser) -> ast::ty_ {
         expect(p, token::SEMI);
         alt f {
           ast::ty_fn(d) {
-            // FIXME[fn_decl]
-            ret spanned(flo, fhi,
-                        {proto: d.proto,
-                         ident: ident,
-                         inputs: d.inputs,
-                         output: d.output,
-                         cf: d.cf,
-                         constrs: d.constraints});
+            {ident: ident, decl: d, span: ast_util::mk_sp(flo, fhi)}
           }
         }
     }

@@ -151,8 +151,8 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       }
       ty_obj(tmeths) {
         for m: ty_method in tmeths {
-            for a in m.node.inputs { v.visit_ty(a.ty, e, v); }
-            v.visit_ty(m.node.output, e, v);
+            for a in m.decl.inputs { v.visit_ty(a.ty, e, v); }
+            v.visit_ty(m.decl.output, e, v);
         }
       }
       ty_path(p, _) { visit_path(p, e, v); }

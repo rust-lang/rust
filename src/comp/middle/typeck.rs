@@ -356,21 +356,21 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         let tmeths: [ty::method] = [];
         for m: ast::ty_method in meths {
             let ins = [];
-            for ta: ast::arg in m.node.inputs {
+            for ta: ast::arg in m.decl.inputs {
                 ins += [ast_arg_to_arg(tcx, mode, ta)];
             }
-            let out = ast_ty_to_ty(tcx, mode, m.node.output);
+            let out = ast_ty_to_ty(tcx, mode, m.decl.output);
 
             let out_constrs = [];
-            for constr: @ast::constr in m.node.constrs {
+            for constr: @ast::constr in m.decl.constraints {
                 out_constrs += [ty::ast_constr_to_constr(tcx, constr)];
             }
             let new_m: ty::method =
-                {proto: m.node.proto,
-                 ident: m.node.ident,
+                {proto: m.decl.proto,
+                 ident: m.ident,
                  inputs: ins,
                  output: out,
-                 cf: m.node.cf,
+                 cf: m.decl.cf,
                  constrs: out_constrs};
             tmeths += [new_m];
         }

@@ -307,17 +307,9 @@ type mt = {ty: @ty, mut: mutability};
 
 type ty_field_ = {ident: ident, mt: mt};
 
-type ty_method_ =
-    {proto: proto,
-     ident: ident,
-     inputs: [arg],
-     output: @ty,
-     cf: ret_style,
-     constrs: [@constr]};
-
 type ty_field = spanned<ty_field_>;
 
-type ty_method = spanned<ty_method_>;
+type ty_method = {ident: ident, decl: fn_decl, span: span};
 
 tag int_ty { ty_i; ty_char; ty_i8; ty_i16; ty_i32; ty_i64; }
 
