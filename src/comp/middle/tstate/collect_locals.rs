@@ -13,7 +13,7 @@ type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 fn collect_local(loc: @local, cx: ctxt, v: visit::vt<ctxt>) {
     pat_bindings(loc.node.pat) {|p|
         let ident = alt p.node { pat_bind(id, _) { id } };
-        log_full(core::debug, "collect_local: pushing " + ident);;
+        log(debug, "collect_local: pushing " + ident);;
         *cx.cs += [respan(loc.span, ninit(p.id, ident))];
     };
     visit::visit_local(loc, cx, v);
@@ -65,7 +65,7 @@ fn find_locals(tcx: ty::ctxt,
 
 fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
    uint {
-    log_full(core::debug,
+    log(debug,
              constraint_to_str(tcx, c) + " |-> " + uint::str(next));
     alt c.node {
       ninit(id, i) { tbl.insert(local_def(id), cinit(next, c.span, i)); }

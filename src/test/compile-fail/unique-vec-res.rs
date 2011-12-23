@@ -14,6 +14,6 @@ fn main() {
     let r1 <- [~r(i1)];
     let r2 <- [~r(i2)];
     f(r1, r2);
-    log_full(core::debug, (r2, *i1));
-    log_full(core::debug, (r1, *i2));
+    log(debug, (r2, *i1));
+    log(debug, (r1, *i2));
 }

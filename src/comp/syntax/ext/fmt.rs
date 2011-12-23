@@ -29,7 +29,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
                     "first argument to #fmt must be a " + "string literal.");
     let fmtspan = args[0].span;
     #debug("Format string:");
-    log_full(core::debug, fmt);
+    log(debug, fmt);
     fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: str) -> ! {
         cx.span_fatal(sp, msg);
     }
@@ -252,7 +252,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     }
     fn log_conv(c: conv) {
         alt c.param {
-          some(p) { log_full(core::debug, "param: " + int::to_str(p, 10u)); }
+          some(p) { log(debug, "param: " + int::to_str(p, 10u)); }
           _ { #debug("param: none"); }
         }
         for f: flag in c.flags {
@@ -265,20 +265,20 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
             }
         }
         alt c.width {
-          count_is(i) { log_full(core::debug,
+          count_is(i) { log(debug,
                                  "width: count is " + int::to_str(i, 10u)); }
           count_is_param(i) {
-            log_full(core::debug,
+            log(debug,
                      "width: count is param " + int::to_str(i, 10u));
           }
           count_is_next_param. { #debug("width: count is next param"); }
           count_implied. { #debug("width: count is implied"); }
         }
         alt c.precision {
-          count_is(i) { log_full(core::debug,
+          count_is(i) { log(debug,
                                  "prec: count is " + int::to_str(i, 10u)); }
           count_is_param(i) {
-            log_full(core::debug,
+            log(debug,
                      "prec: count is param " + int::to_str(i, 10u));
           }
           count_is_next_param. { #debug("prec: count is next param"); }

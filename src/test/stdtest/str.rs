@@ -42,10 +42,10 @@ fn test_index_and_rindex() {
 #[test]
 fn test_split() {
     fn t(s: str, c: char, u: [str]) {
-        log_full(core::debug, "split: " + s);
+        log(debug, "split: " + s);
         let v = str::split(s, c as u8);
         #debug("split to: ");
-        log_full(core::debug, v);
+        log(debug, v);
         assert (vec::all2(v, u, { |a,b| a == b }));
     }
     t("abc.hello.there", '.', ["abc", "hello", "there"]);
@@ -56,12 +56,12 @@ fn test_split() {
 #[test]
 fn test_splitn() {
     fn t(s: str, c: char, n: uint, u: [str]) {
-        log_full(core::debug, "splitn: " + s);
+        log(debug, "splitn: " + s);
         let v = str::splitn(s, c as u8, n);
         #debug("split to: ");
-        log_full(core::debug, v);
+        log(debug, v);
         #debug("comparing vs. ");
-        log_full(core::debug, u);
+        log(debug, u);
         assert (vec::all2(v, u, { |a,b| a == b }));
     }
     t("abc.hello.there", '.', 0u, ["abc.hello.there"]);
@@ -92,8 +92,8 @@ fn test_split_str() {
 fn test_find() {
     fn t(haystack: str, needle: str, i: int) {
         let j: int = str::find(haystack, needle);
-        log_full(core::debug, "searched for " + needle);
-        log_full(core::debug, j);
+        log(debug, "searched for " + needle);
+        log(debug, j);
         assert (i == j);
     }
     t("this is a simple", "is a", 5);
@@ -329,8 +329,8 @@ fn vec_str_conversions() {
     while i < n1 {
         let a: u8 = s1[i];
         let b: u8 = s2[i];
-        log_full(core::debug, a);
-        log_full(core::debug, b);
+        log(debug, a);
+        log(debug, b);
         assert (a == b);
         i += 1u;
     }

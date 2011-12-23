@@ -9,9 +9,9 @@ import result;
 #[test]
 fn test_simple() {
     let tmpfile: str = "tmp/lib-io-test-simple.tmp";
-    log_full(core::debug, tmpfile);
+    log(debug, tmpfile);
     let frood: str = "A hoopy frood who really knows where his towel is.";
-    log_full(core::debug, frood);
+    log(debug, frood);
     {
         let out: io::writer =
             result::get(io::file_writer(tmpfile, [io::create, io::truncate]));
@@ -19,7 +19,7 @@ fn test_simple() {
     }
     let inp: io::reader = result::get(io::file_reader(tmpfile));
     let frood2: str = inp.read_c_str();
-    log_full(core::debug, frood2);
+    log(debug, frood2);
     assert (str::eq(frood, frood2));
 }
 

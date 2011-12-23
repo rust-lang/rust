@@ -3,10 +3,10 @@
 fn main() {
     let i = 0;
     let ctr = lambda () -> int { i = i + 1; ret i; };
-    log_full(core::error, ctr());
-    log_full(core::error, ctr());
-    log_full(core::error, ctr());
-    log_full(core::error, ctr());
-    log_full(core::error, ctr());
-    log_full(core::error, i);
+    log(error, ctr());
+    log(error, ctr());
+    log(error, ctr());
+    log(error, ctr());
+    log(error, ctr());
+    log(error, i);
 }

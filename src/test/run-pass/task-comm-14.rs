@@ -8,7 +8,7 @@ fn main() {
     // Spawn 10 tasks each sending us back one int.
     let i = 10;
     while (i > 0) {
-        log_full(core::debug, i);
+        log(debug, i);
         task::spawn((i, comm::chan(po)), child);
         i = i - 1;
     }
@@ -19,7 +19,7 @@ fn main() {
     i = 10;
     let value = 0;
     while (i > 0) {
-        log_full(core::debug, i);
+        log(debug, i);
         value = comm::recv(po);
         i = i - 1;
     }
@@ -29,6 +29,6 @@ fn main() {
 
 fn child(&&args: (int, comm::chan<int>)) {
     let (x, ch) = args;
-    log_full(core::debug, x);
+    log(debug, x);
     comm::send(ch, x);
 }

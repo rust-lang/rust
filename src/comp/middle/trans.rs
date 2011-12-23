@@ -1120,7 +1120,7 @@ fn set_glue_inlining(cx: @local_ctxt, f: ValueRef, t: ty::t) {
 fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
                   is_obj_body: bool) ->
    @tydesc_info {
-    log_full(core::debug, "+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t));
+    log(debug, "+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t));
     let ccx = cx.ccx;
     let llsize;
     let llalign;
@@ -1156,7 +1156,7 @@ fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
           mutable cmp_glue: none::<ValueRef>,
           ty_params: ty_params,
           is_obj_body: is_obj_body};
-    log_full(core::debug, "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t));
+    log(debug, "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t));
     ret info;
 }
 

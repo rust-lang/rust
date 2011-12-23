@@ -1,5 +1,5 @@
 mod foo {
-    fn x(y: int) { log_full(core::debug, y); }
+    fn x(y: int) { log(debug, y); }
 }
 
 mod bar {

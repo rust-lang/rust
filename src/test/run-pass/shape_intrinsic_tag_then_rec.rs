@@ -26,6 +26,6 @@ fn main() {
     let p_: path_ = { global: true, idents: ["hi"], types: [t] };
     let p: path = { data: p_, span: sp };
     let x = { sp: sp, path: p };
-    log_full(core::error, x.path);
-    log_full(core::error, x);
+    log(error, x.path);
+    log(error, x);
 }

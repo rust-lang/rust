@@ -413,7 +413,7 @@ obj printer(out: io::writer,
     fn print(x: token, L: int) {
         #debug("print %s %d (remaining line space=%d)", tok_str(x), L,
                space);
-        log_full(core::debug, buf_str(token, size, left, right, 6u));
+        log(debug, buf_str(token, size, left, right, 6u));
         alt x {
           BEGIN(b) {
             if L > space {

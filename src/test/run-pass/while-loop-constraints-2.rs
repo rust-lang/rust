@@ -6,7 +6,7 @@ fn main() {
     while z < 50 {
         z += 1;
         while false { x <- y; y = z; }
-        log_full(core::debug, y);
+        log(debug, y);
     }
     assert (y == 42 && z == 50);
 }

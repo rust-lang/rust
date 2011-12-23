@@ -1,3 +1,3 @@
 
 
-fn main() { if false { log_full(core::error, "foo" + "bar"); } }
+fn main() { if false { log(error, "foo" + "bar"); } }

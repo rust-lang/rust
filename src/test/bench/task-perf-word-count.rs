@@ -78,7 +78,7 @@ mod map_reduce {
 
     fn map_task(args: (chan<ctrl_proto>, str)) {
         let (ctrl, input) = args;
-        // log_full(core::error, "map_task " + input);
+        // log(error, "map_task " + input);
         let intermediates = map::new_str_hash();
 
         fn emit(im: map::hashmap<str, chan<reduce_proto>>,
@@ -158,15 +158,15 @@ mod map_reduce {
               }
               find_reducer(k, cc) {
                 let c;
-                // log_full(core::error, "finding reducer for " + k);
+                // log(error, "finding reducer for " + k);
                 alt reducers.find(k) {
                   some(_c) {
-                    // log_full(core::error,
+                    // log(error,
                     // "reusing existing reducer for " + k);
                     c = _c;
                   }
                   none. {
-                    // log_full(core::error, "creating new reducer for " + k);
+                    // log(error, "creating new reducer for " + k);
                     let p = port();
                     tasks +=
                         [task::spawn_joinable((k, chan(p)), reduce_task)];
@@ -201,7 +201,7 @@ fn main(argv: [str]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_full(core::error, "MapReduce completed in "
+    log(error, "MapReduce completed in "
              + u64::str(elapsed) + "ms");
 }
 

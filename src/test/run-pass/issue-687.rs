@@ -28,7 +28,7 @@ fn packager(&&args: (chan<chan<[u8]>>, chan<msg>)) {
             break;
         }
         #debug("sending non-empty buffer of length");
-        log_full(core::debug, vec::len(data));
+        log(debug, vec::len(data));
         send(msg, received(data));
         #debug("sent non-empty buffer");
     }
@@ -51,7 +51,7 @@ fn main() {
           closed. { #debug("Got close message"); break; }
           received(data) {
             #debug("Got data. Length is:");
-            log_full(core::debug, vec::len::<u8>(data));
+            log(debug, vec::len::<u8>(data));
           }
         }
     }

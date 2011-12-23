@@ -1,6 +1,6 @@
 // error-pattern:may alias with argument
 
-fn foo(x: {mutable x: int}, f: fn@()) { log_full(core::debug, x); }
+fn foo(x: {mutable x: int}, f: fn@()) { log(debug, x); }
 
 fn whoknows(x: @mutable {mutable x: int}) { *x = {mutable x: 10}; }
 

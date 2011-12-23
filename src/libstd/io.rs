@@ -292,7 +292,7 @@ obj fd_buf_writer(fd: fd_t, res: option::t<@fd_res>) {
             let nout = os::libc::write(fd, vbuf, len);
             if nout < 0 {
                 #error("error dumping buffer");
-                log_full(core::error, sys::last_os_error());
+                log(error, sys::last_os_error());
                 fail;
             }
             count += nout as uint;
@@ -334,7 +334,7 @@ fn file_buf_writer(path: str,
                                            os::libc_constants::S_IWUSR)
                     });
     ret if fd < 0i32 {
-        log_full(core::error, sys::last_os_error());
+        log(error, sys::last_os_error());
         result::err("error opening " + path)
     } else {
         result::ok(fd_buf_writer(fd, option::some(@fd_res(fd))))

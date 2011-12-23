@@ -21,8 +21,8 @@ fn a(c: chan<int>) {
 fn k(x: int) -> int { ret 15; }
 
 fn g(x: int, y: str) -> int {
-    log_full(core::debug, x);
-    log_full(core::debug, y);
+    log(debug, x);
+    log(debug, y);
     let z: int = k(1);
     ret z;
 }
@@ -35,7 +35,7 @@ fn main() {
     task::spawn(chan(p), b);
     let x: int = 10;
     x = g(n, s);
-    log_full(core::debug, x);
+    log(debug, x);
     n = recv(p);
     n = recv(p);
     // FIXME: use signal-channel for this.

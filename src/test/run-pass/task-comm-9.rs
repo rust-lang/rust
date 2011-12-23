@@ -22,7 +22,7 @@ fn test00() {
     let i: int = 0;
     while i < number_of_messages {
         sum += comm::recv(p);
-        log_full(core::debug, r);
+        log(debug, r);
         i += 1;
     }
 

@@ -10,7 +10,7 @@ tag bar { t1((), option::t<[int]>); t2; }
 fn foo(t: bar) {
     alt t {
       t1(_, some::<int>(x)) {
-        log_full(core::debug, x);
+        log(debug, x);
       }
       _ { fail; }
     }

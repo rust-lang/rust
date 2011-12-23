@@ -3,8 +3,8 @@
 fn main() {
     let x = [1, 2, 3];
     let y = 0;
-    for i: int in x { log_full(core::debug, i); y += i; }
-    log_full(core::debug, y);
+    for i: int in x { log(debug, i); y += i; }
+    log(debug, y);
     assert (y == 6);
     let s = "hello there";
     let i: int = 0;
@@ -17,8 +17,8 @@ fn main() {
         // ...
 
         i += 1;
-        log_full(core::debug, i);
-        log_full(core::debug, c);
+        log(debug, i);
+        log(debug, c);
     }
     assert (i == 11);
 }

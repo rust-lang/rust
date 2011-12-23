@@ -276,7 +276,7 @@ fn handle_var(fcx: fn_ctxt, rslt: pre_and_post, id: node_id, name: ident) {
 }
 
 fn handle_var_def(fcx: fn_ctxt, rslt: pre_and_post, def: def, name: ident) {
-    log_full(core::debug, ("handle_var_def: ", def, name));
+    log(debug, ("handle_var_def: ", def, name));
     alt def {
       def_local(d_id, _) | def_arg(d_id, _) {
         use_var(fcx, d_id.node);
@@ -302,7 +302,7 @@ fn find_pre_post_expr_fn_upvars(fcx: fn_ctxt, e: @expr) {
     let rslt = expr_pp(fcx.ccx, e);
     clear_pp(rslt);
     for def in *freevars::get_freevars(fcx.ccx.tcx, e.id) {
-        log_full(core::debug, ("handle_var_def: def=", def));
+        log(debug, ("handle_var_def: def=", def));
         handle_var_def(fcx, rslt, def.def, "upvar");
     }
 }
@@ -358,7 +358,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         vec::iter(cap_clause.moves, use_cap_item);
 
         vec::iter(cap_clause.moves) { |cap_item|
-            log_full(core::debug, ("forget_in_postcond: ", cap_item));
+            log(debug, ("forget_in_postcond: ", cap_item));
             forget_in_postcond(fcx, e.id, cap_item.id);
         }
       }

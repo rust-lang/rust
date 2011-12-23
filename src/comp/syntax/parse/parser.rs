@@ -165,8 +165,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "lambda", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
-                 "log", "log_err", "log_full",
-                 "tag", "obj", "copy", "sendfn", "impl"] {
+                 "log", "tag", "obj", "copy", "sendfn", "impl"] {
         words.insert(word, ());
     }
     words
@@ -910,10 +909,7 @@ fn parse_bottom_expr(p: parser) -> @ast::expr {
             hi = e.span.hi;
             ex = ast::expr_fail(some(e));
         } else { ex = ast::expr_fail(none); }
-    } else if
-        (eat_word(p, "log_full")
-         || eat_word(p, "log")
-         || eat_word(p, "log_err")) {
+    } else if eat_word(p, "log") {
         expect(p, token::LPAREN);
         let lvl = parse_expr(p);
         expect(p, token::COMMA);

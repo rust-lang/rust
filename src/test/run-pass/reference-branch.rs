@@ -5,5 +5,5 @@ fn main() {
     let x = [];
     let &y = x;
     if true { x = [1]; }
-    else { log_full(core::error, y); }
+    else { log(error, y); }
 }

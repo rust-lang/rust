@@ -13,9 +13,9 @@ obj buf<copy T>(data: {_0: T, _1: T, _2: T}) {
 fn main() {
     let b: buf<int> = buf::<int>({_0: 1, _1: 2, _2: 3});
     #debug("constructed object");
-    log_full(core::debug, b.get(0));
-    log_full(core::debug, b.get(1));
-    log_full(core::debug, b.get(2));
+    log(debug, b.get(0));
+    log(debug, b.get(1));
+    log(debug, b.get(2));
     assert (b.get(0) == 1);
     assert (b.get(1) == 2);
     assert (b.get(2) == 3);

@@ -12,5 +12,5 @@ fn coerce(b: block()) -> fn() {
 
 fn main() {
     let i = 8;
-    let f = coerce(block () { log_full(core::error, i); });
+    let f = coerce(block () { log(error, i); });
     f(); }

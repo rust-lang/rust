@@ -5,10 +5,10 @@ fn main() {
     let sum = 0;
     iter_vec(v, {|i|
         iter_vec(v, {|j|
-            log_full(core::error, i * j);
+            log(error, i * j);
             sum += i * j;
         });
     });
-    log_full(core::error, sum);
+    log(error, sum);
     assert (sum == 225);
 }

@@ -35,7 +35,7 @@ fn test_join_chan() {
     task::spawn_notify((), winner, comm::chan(p));
     let s = comm::recv(p);
     #error("received task status message");
-    log_full(core::error, s);
+    log(error, s);
     alt s {
       task::exit(_, task::tr_success.) {/* yay! */ }
       _ { fail "invalid task status received" }
@@ -52,7 +52,7 @@ fn test_join_chan_fail() {
     task::spawn_notify((), failer, comm::chan(p));
     let s = comm::recv(p);
     #error("received task status message");
-    log_full(core::error, s);
+    log(error, s);
     alt s {
       task::exit(_, task::tr_failure.) {/* yay! */ }
       _ { fail "invalid task status received" }
@@ -70,7 +70,7 @@ fn test_join_convenient() {
 #[ignore]
 fn spawn_polymorphic() {
     // FIXME #1038: Can't spawn palymorphic functions
-    /*fn foo<send T>(x: T) { log_full(core::error, x); }
+    /*fn foo<send T>(x: T) { log(error, x); }
 
     task::spawn(true, foo);
     task::spawn(42, foo);*/

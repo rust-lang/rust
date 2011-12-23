@@ -12,7 +12,7 @@ fn main() {
     let t = task::spawn(chan(p), child);
     let y = recv(p);
     #error("received");
-    log_full(core::error, y);
+    log(error, y);
     assert (y == 10);
 }
 

@@ -596,7 +596,7 @@ fn link_binary(sess: session::session,
         fs::connect(fs::dirname(out_filename), long_libname)
     } else { out_filename };
 
-    log_full(core::debug, "output: " + output);
+    log(debug, "output: " + output);
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.

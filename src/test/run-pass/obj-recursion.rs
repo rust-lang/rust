@@ -6,7 +6,7 @@ type adder =
     };
 
 obj leaf_adder(x: int) {
-    fn add() { #debug("leaf"); log_full(core::debug, x); }
+    fn add() { #debug("leaf"); log(debug, x); }
 }
 
 obj delegate_adder(a: adder) {

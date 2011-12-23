@@ -7,7 +7,7 @@ fn main() {
     let i = 20;
     let expected_len = 1u;
     while i > 0 {
-        log_full(core::error, str::byte_len(a));
+        log(error, str::byte_len(a));
         assert (str::byte_len(a) == expected_len);
         a += a;
         i -= 1;

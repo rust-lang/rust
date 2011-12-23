@@ -88,7 +88,7 @@ mod map_reduce {
                 send V>(-map: mapper<K1, K2, V>,
                           -ctrl: chan<ctrl_proto<K2, V>>,
                     -input: K1) {
-        // log_full(core::error, "map_task " + input);
+        // log(error, "map_task " + input);
         let intermediates = treemap::init();
 
         fn emit<send K2,
@@ -172,15 +172,15 @@ mod map_reduce {
               }
               find_reducer(k, cc) {
                 let c;
-                // log_full(core::error, "finding reducer for " + k);
+                // log(error, "finding reducer for " + k);
                 alt treemap::find(reducers, k) {
                   some(_c) {
-                    // log_full(core::error,
+                    // log(error,
                     // "reusing existing reducer for " + k);
                     c = _c;
                   }
                   none. {
-                    // log_full(core::error, "creating new reducer for " + k);
+                    // log(error, "creating new reducer for " + k);
                     let p = port();
                     let r = reduce, kk = k;
                     tasks +=
@@ -229,7 +229,7 @@ fn main(argv: [str]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_full(core::error, "MapReduce completed in "
+    log(error, "MapReduce completed in "
              + u64::str(elapsed) + "ms");
 }
 

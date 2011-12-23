@@ -10,7 +10,7 @@ fn main() {
         // Can't do this copy
         let x = ~~~{y: r(i)};
         let z = x;
-        log_full(core::debug, x);
+        log(debug, x);
     }
-    log_full(core::error, *i);
+    log(error, *i);
 }

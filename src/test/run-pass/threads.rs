@@ -9,5 +9,5 @@ fn main() {
     #debug("main thread exiting");
 }
 
-fn child(&&x: int) { log_full(core::debug, x); }
+fn child(&&x: int) { log(debug, x); }
 

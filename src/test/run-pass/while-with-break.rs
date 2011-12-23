@@ -5,7 +5,7 @@
 fn main() {
     let i: int = 90;
     while i < 100 {
-        log_full(core::debug, i);
+        log(debug, i);
         i = i + 1;
         if i == 95 {
             let v: [int] =

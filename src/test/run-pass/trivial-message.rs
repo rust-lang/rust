@@ -10,5 +10,5 @@ fn main() {
     let ch = chan(po);
     send(ch, 42);
     let r = recv(po);
-    log_full(core::error, r);
+    log(error, r);
 }

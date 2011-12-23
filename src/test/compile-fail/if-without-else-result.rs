@@ -2,5 +2,5 @@
 
 fn main() {
     let a = if true { true };
-    log_full(core::debug, a);
+    log(debug, a);
 }

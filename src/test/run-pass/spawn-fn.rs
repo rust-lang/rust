@@ -6,7 +6,7 @@ import task;
 
 fn x(&&args: (str, int)) {
     let (s, n) = args;
-    log_full(core::debug, s); log_full(core::debug, n);
+    log(debug, s); log(debug, n);
 }
 
 fn main() {

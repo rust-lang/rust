@@ -6,7 +6,7 @@ tag clam<T> { a(T, int); b; }
 
 fn uhoh<T>(v: [clam<T>]) {
     alt v[1] {
-      a::<T>(t, u) { #debug("incorrect"); log_full(core::debug, u); fail; }
+      a::<T>(t, u) { #debug("incorrect"); log(debug, u); fail; }
       b::<T>. { #debug("correct"); }
     }
 }

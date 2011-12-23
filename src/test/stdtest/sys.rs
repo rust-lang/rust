@@ -4,7 +4,7 @@ import sys;
 
 #[test]
 fn last_os_error() {
-    log_full(core::debug, sys::last_os_error());
+    log(debug, sys::last_os_error());
 }
 
 #[test]

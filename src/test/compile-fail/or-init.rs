@@ -3,6 +3,6 @@
 fn main() {
     let i: int;
 
-    log_full(core::debug, false || { i = 5; true });
-    log_full(core::debug, i);
+    log(debug, false || { i = 5; true });
+    log(debug, i);
 }

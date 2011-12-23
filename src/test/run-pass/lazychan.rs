@@ -11,13 +11,13 @@ fn main() {
     task::spawn(chan(p), child);
     y = recv(p);
     #debug("received 1");
-    log_full(core::debug, y);
+    log(debug, y);
     assert (y == 10);
 
     task::spawn(chan(p), child);
     y = recv(p);
     #debug("received 2");
-    log_full(core::debug, y);
+    log(debug, y);
     assert (y == 10);
 }
 

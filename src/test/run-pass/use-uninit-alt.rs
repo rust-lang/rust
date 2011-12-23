@@ -8,4 +8,4 @@ fn foo<T>(o: myoption<T>) -> int {
 
 tag myoption<T> { none; some(T); }
 
-fn main() { log_full(core::debug, 5); }
+fn main() { log(debug, 5); }

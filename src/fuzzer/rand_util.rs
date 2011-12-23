@@ -69,13 +69,13 @@ fn main()
 {
     let r = rand::mk_rng();
 
-    log_full(core::error, under(r, 5u));
-    log_full(core::error, choice(r, [10, 20, 30]));
-    log_full(core::error, if unlikely(r, 5u) { "unlikely" } else { "likely" });
+    log(error, under(r, 5u));
+    log(error, choice(r, [10, 20, 30]));
+    log(error, if unlikely(r, 5u) { "unlikely" } else { "likely" });
 
     let a = [mutable 1, 2, 3];
     shuffle(r, a);
-    log_full(core::error, a);
+    log(error, a);
 
     let i = 0u;
     let v = [
@@ -86,8 +86,8 @@ fn main()
     let w = weighted_vec(v);
 
     while i < 1000u {
-        log_full(core::error, "Immed: " + weighted_choice(r, v));
-        log_full(core::error, "Fast: " + choice(r, w));
+        log(error, "Immed: " + weighted_choice(r, v));
+        log(error, "Fast: " + choice(r, w));
         i += 1u;
     }
 }

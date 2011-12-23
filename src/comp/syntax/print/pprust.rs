@@ -916,7 +916,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           1 { word_nbsp(s, "log"); print_expr(s, expr); }
           0 { word_nbsp(s, "log_err"); print_expr(s, expr); }
           2 {
-            word_nbsp(s, "log_full");
+            word_nbsp(s, "log");
             popen(s);
             print_expr(s, lexp);
             word(s.s, ",");

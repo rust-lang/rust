@@ -621,7 +621,7 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
 
     /*
-        log_full(core::error, ("[" + fcx.name + "]"));
+        log(error, ("[" + fcx.name + "]"));
         #error("*At beginning: stmt = ");
         log_stmt_err(*s);
         #error("*prestate = ");
@@ -653,7 +653,7 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
                             #error("poststate =");
                             log_tritv_err(fcx, stmt_ann.states.poststate);
                             #error("changed =");
-                            log_full(core::error, changed);
+                            log(error, changed);
             */
 
             ret changed;
@@ -727,7 +727,7 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
         #error("post:");
         log_tritv_err(fcx, post);
         #error("changed = ");
-        log_full(core::error, changed);
+        log(error, changed);
     */
 
     ret changed;
@@ -774,7 +774,7 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
 
     /*
         #error("find_pre_post_state_fn");
-        log_full(core::error, changed);
+        log(error, changed);
         fcx.ccx.tcx.sess.span_note(f_body.span, fcx.name);
     */
 

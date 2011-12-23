@@ -27,7 +27,7 @@ fn foo(x: int) -> int {
 
 fn main() {
     let x: int = 2 + 2;
-    log_full(core::debug, x);
+    log(debug, x);
     #debug("hello, world");
-    log_full(core::debug, 10);
+    log(debug, 10);
 }

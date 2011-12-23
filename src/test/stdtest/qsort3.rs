@@ -11,7 +11,7 @@ fn check_sort(v1: [mutable int], v2: [mutable int]) {
     std::sort::quick_sort3::<int>(f1, f2, v1);
     let i = 0u;
     while i < len {
-        log_full(core::debug, v2[i]);
+        log(debug, v2[i]);
         assert (v2[i] == v1[i]);
         i += 1u;
     }

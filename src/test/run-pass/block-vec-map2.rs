@@ -6,6 +6,6 @@ fn main() {
         vec::map2([1, 2, 3, 4, 5],
                   [true, false, false, true, true],
                   {|i, b| if b { -i } else { i } });
-    log_full(core::error, v);
+    log(error, v);
     assert (v == [-1, 2, 3, -4, -5]);
 }

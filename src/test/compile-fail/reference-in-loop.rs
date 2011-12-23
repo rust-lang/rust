@@ -4,7 +4,7 @@ fn main() {
     let x = [];
     let &y = x;
     while true {
-        log_full(core::error, y);
+        log(error, y);
         x = [1];
     }
 }

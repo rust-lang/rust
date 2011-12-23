@@ -33,6 +33,6 @@ fn path_div() -> str { ":" }
 fn path_div() -> str { ";" }
 
 fn logv(config: config, s: str) {
-    log_full(core::debug, s);
+    log(debug, s);
     if config.verbose { io::stdout().write_line(s); }
 }

@@ -1,6 +1,6 @@
 // error-pattern: Unsatisfied precondition constraint (for example, even(y
 
-fn print_even(y: int) : even(y) { log_full(core::debug, y); }
+fn print_even(y: int) : even(y) { log(debug, y); }
 
 pure fn even(y: int) -> bool { true }
 

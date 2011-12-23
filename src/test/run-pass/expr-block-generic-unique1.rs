@@ -10,8 +10,8 @@ fn test_generic<copy T>(expected: ~T, eq: compare<T>) {
 
 fn test_box() {
     fn compare_box(b1: ~bool, b2: ~bool) -> bool {
-        log_full(core::debug, *b1);
-        log_full(core::debug, *b2);
+        log(debug, *b1);
+        log(debug, *b2);
         ret *b1 == *b2;
     }
     let eq = bind compare_box(_, _);

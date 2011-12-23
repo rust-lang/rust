@@ -18,8 +18,8 @@ fn general() {
     a ^= b;
     b ^= a;
     a = a ^ b;
-    log_full(core::debug, a);
-    log_full(core::debug, b);
+    log(debug, a);
+    log(debug, b);
     assert (b == 1);
     assert (a == 2);
     assert (!0xf0 & 0xff == 0xf);

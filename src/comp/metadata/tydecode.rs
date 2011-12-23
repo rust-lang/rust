@@ -211,7 +211,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
               'a' { kind_noncopyable }
               c {
                 #error("unexpected char in encoded type param: ");
-                log_full(core::error, c);
+                log(error, c);
                 fail
               }
             };

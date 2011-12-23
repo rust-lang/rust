@@ -8,8 +8,8 @@ use std (name = "std",
 fn main() {
   auto s = str.alloc(10 as uint);
   s += "hello ";
-  log_full(core::debug, s);
+  log(debug, s);
   s += "there";
-  log_full(core::debug, s);
+  log(debug, s);
   auto z = vec.alloc::<int>(10 as uint);
 }

@@ -7,6 +7,6 @@ fn my_fail() -> ! { fail; }
 fn main() {
     alt true { false { my_fail(); } true { } }
 
-    log_full(core::debug, x);
+    log(debug, x);
     let x: int;
 }

@@ -43,10 +43,10 @@ fn sub(t: str, n: int) -> str {
 fn main() {
     let n: int = 99;
     while n > 0 {
-        log_full(core::debug, sub(b1(), n));
-        log_full(core::debug, sub(b2(), n - 1));
+        log(debug, sub(b1(), n));
+        log(debug, sub(b2(), n - 1));
         #debug(""); n -= 1;
     }
-    log_full(core::debug, b7());
-    log_full(core::debug, sub(b8(), 99));
+    log(debug, b7());
+    log(debug, sub(b8(), 99));
 }

@@ -6,5 +6,5 @@ fn test(f: lambda(uint) -> uint) -> uint {
 
 fn main() {
     let f = sendfn(x: uint) -> uint { ret 4u; };
-    log_full(core::debug, test(f));
+    log(debug, test(f));
 }

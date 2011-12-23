@@ -36,14 +36,14 @@ fn notsure() {
 }
 
 fn hammertime() -> int {
-    let _x = log_full(core::debug, true == (ret 0));
+    let _x = log(debug, true == (ret 0));
 }
 
 fn canttouchthis() -> uint {
     pure fn p() -> bool { true }
     let _a = (assert (true)) == (check (p()));
     let _c = (check (p())) == ();
-    let _b = (log_full(core::debug, 0) == (ret 0u));
+    let _b = (log(debug, 0) == (ret 0u));
 }
 
 fn angrydome() {

@@ -13,12 +13,12 @@ fn foo(s: @int) {
 
     alt x {
       make_t(y) {
-        log_full(core::debug, y); // ref up then down
+        log(debug, y); // ref up then down
 
       }
       _ { #debug("?"); fail; }
     }
-    log_full(core::debug, dbg::refcount(s));
+    log(debug, dbg::refcount(s));
     assert (dbg::refcount(s) == count + 1u);
 }
 
@@ -27,6 +27,6 @@ fn main() {
 
     foo(s); // ref up then down
 
-    log_full(core::debug, dbg::refcount(s));
+    log(debug, dbg::refcount(s));
     assert (dbg::refcount(s) == 1u);
 }

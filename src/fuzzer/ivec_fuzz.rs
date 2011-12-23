@@ -91,9 +91,9 @@ fn vec_to_str(v: [int]) -> str {
 }
 
 fn show_edits(a: [int], xs: [int]) {
-    log_full(core::error, "=== Edits of " + vec_to_str(a) + " ===");
+    log(error, "=== Edits of " + vec_to_str(a) + " ===");
     let b = vec_edits(a, xs);
-    ix(0u, 1u, len(b)) {|i| log_full(core::error, vec_to_str(b[i])); }
+    ix(0u, 1u, len(b)) {|i| log(error, vec_to_str(b[i])); }
 }
 
 fn demo_edits() {

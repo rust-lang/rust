@@ -9,7 +9,7 @@ fn check_sort(v1: [int], v2: [int]) {
     let v3 = std::sort::merge_sort::<int>(f, v1);
     let i = 0u;
     while i < len {
-        log_full(core::debug, v3[i]);
+        log(debug, v3[i]);
         assert (v3[i] == v2[i]);
         i += 1u;
     }

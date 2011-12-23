@@ -78,7 +78,7 @@ fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> str {
 }
 
 fn log_tritv(fcx: fn_ctxt, v: tritv::t) {
-    log_full(core::debug, tritv_to_str(fcx, v));
+    log(debug, tritv_to_str(fcx, v));
 }
 
 fn first_difference_string(fcx: fn_ctxt, expected: tritv::t, actual: tritv::t)
@@ -94,7 +94,7 @@ fn first_difference_string(fcx: fn_ctxt, expected: tritv::t, actual: tritv::t)
 }
 
 fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) {
-    log_full(core::error, tritv_to_str(fcx, v));
+    log(error, tritv_to_str(fcx, v));
 }
 
 fn tos(v: [uint]) -> str {
@@ -107,9 +107,9 @@ fn tos(v: [uint]) -> str {
     ret rslt;
 }
 
-fn log_cond(v: [uint]) { log_full(core::debug, tos(v)); }
+fn log_cond(v: [uint]) { log(debug, tos(v)); }
 
-fn log_cond_err(v: [uint]) { log_full(core::error, tos(v)); }
+fn log_cond_err(v: [uint]) { log(error, tos(v)); }
 
 fn log_pp(pp: pre_and_post) {
     let p1 = tritv::to_vec(pp.precondition);
@@ -147,11 +147,11 @@ fn log_states_err(pp: pre_and_post_state) {
     log_cond_err(p2);
 }
 
-fn print_ident(i: ident) { log_full(core::debug, " " + i + " "); }
+fn print_ident(i: ident) { log(debug, " " + i + " "); }
 
 fn print_idents(&idents: [ident]) {
     if vec::len::<ident>(idents) == 0u { ret; }
-    log_full(core::debug, "an ident: " + vec::pop::<ident>(idents));
+    log(debug, "an ident: " + vec::pop::<ident>(idents));
     print_idents(idents);
 }
 
@@ -550,7 +550,7 @@ fn match_args(fcx: fn_ctxt, occs: @mutable [pred_args],
     #debug("match_args: looking at %s",
            constr_args_to_str(fn (i: inst) -> str { ret i.ident; }, occ));
     for pd: pred_args in *occs {
-        log_full(core::debug,
+        log(debug,
                  "match_args: candidate " + pred_args_to_str(pd));
         fn eq(p: inst, q: inst) -> bool { ret p.node == q.node; }
         if ty::args_eq(eq, pd.node.args, occ) { ret pd.node.bit_num; }
@@ -765,7 +765,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
     for (constr_arg_general_<tup(ident, def_id)> p in rslt) {
         alt (p) {
             case (carg_ident(?p)) {
-                log_full(core::error, p._0);
+                log(error, p._0);
             }
             case (_) {}
         }
@@ -980,7 +980,7 @@ fn args_mention<T>(args: [@constr_arg_use], q: fn([T], node_id) -> bool,
         alt (a.node) {
             case (carg_ident(?p1)) {
                 auto res = q(s, p1._1);
-                log_full(core::error, (res));
+                log(error, (res));
                 res
                     }
             case (_)               { false }

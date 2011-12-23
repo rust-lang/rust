@@ -3,7 +3,7 @@ fn even(&&e: int) -> bool {
 }
 
 fn log_if<T>(c: fn(T)->bool, e: T) {
-    if c(e) { log_full(core::debug, e); }
+    if c(e) { log(debug, e); }
 }
 
 fn main() {

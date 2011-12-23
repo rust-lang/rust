@@ -10,11 +10,11 @@ fn main() {
     assert (v[3i8] == 3);
     assert (v[3u32] == 3);
     assert (v[3i32] == 3);
-    log_full(core::debug, v[3u8]);
+    log(debug, v[3u8]);
     assert (s[3u] == 'd' as u8);
     assert (s[3u8] == 'd' as u8);
     assert (s[3i8] == 'd' as u8);
     assert (s[3u32] == 'd' as u8);
     assert (s[3i32] == 'd' as u8);
-    log_full(core::debug, s[3u8]);
+    log(debug, s[3u8]);
 }

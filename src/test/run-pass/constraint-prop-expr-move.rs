@@ -8,5 +8,5 @@ fn main() {
     let c: uint = 17u;
     check (le(a, b));
     c <- a;
-    log_full(core::debug, safe_slice("kitties", c, b));
+    log(debug, safe_slice("kitties", c, b));
 }

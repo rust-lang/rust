@@ -21,6 +21,6 @@ fn main() {
     let child = task::spawn((comm::chan(p), 200), sub);
     let y = comm::recv(p);
     #debug("transmission complete");
-    log_full(core::debug, y);
+    log(debug, y);
     assert (y == 200);
 }

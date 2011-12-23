@@ -36,38 +36,38 @@ fn field_exprs(fields: [ast::field]) -> [@ast::expr] {
 }
 
 fn log_expr(e: ast::expr) {
-    log_full(core::debug, print::pprust::expr_to_str(@e));
+    log(debug, print::pprust::expr_to_str(@e));
 }
 
 fn log_expr_err(e: ast::expr) {
-    log_full(core::error, print::pprust::expr_to_str(@e));
+    log(error, print::pprust::expr_to_str(@e));
 }
 
 fn log_ty_err(t: @ty) {
-    log_full(core::error, print::pprust::ty_to_str(t));
+    log(error, print::pprust::ty_to_str(t));
 }
 
 fn log_pat_err(p: @pat) {
-    log_full(core::error, print::pprust::pat_to_str(p));
+    log(error, print::pprust::pat_to_str(p));
 }
 
 fn log_block(b: ast::blk) {
-    log_full(core::debug, print::pprust::block_to_str(b));
+    log(debug, print::pprust::block_to_str(b));
 }
 
 fn log_block_err(b: ast::blk) {
-    log_full(core::error, print::pprust::block_to_str(b));
+    log(error, print::pprust::block_to_str(b));
 }
 
 fn log_item_err(i: @ast::item) {
-    log_full(core::error, print::pprust::item_to_str(i));
+    log(error, print::pprust::item_to_str(i));
 }
 fn log_stmt(st: ast::stmt) {
-    log_full(core::debug, print::pprust::stmt_to_str(st));
+    log(debug, print::pprust::stmt_to_str(st));
 }
 
 fn log_stmt_err(st: ast::stmt) {
-    log_full(core::error, print::pprust::stmt_to_str(st));
+    log(error, print::pprust::stmt_to_str(st));
 }
 
 fn has_nonlocal_exits(b: ast::blk) -> bool {

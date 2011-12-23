@@ -15,12 +15,12 @@ fn collect_ids_block(b: blk, rs: @mutable [node_id]) { *rs += [b.node.id]; }
 fn collect_ids_stmt(s: @stmt, rs: @mutable [node_id]) {
     alt s.node {
       stmt_decl(_, id) {
-        log_full(core::debug, "node_id " + int::str(id));
+        log(debug, "node_id " + int::str(id));
         log_stmt(*s);;
         *rs += [id];
       }
       stmt_expr(_, id) {
-        log_full(core::debug, "node_id " + int::str(id));
+        log(debug, "node_id " + int::str(id));
         log_stmt(*s);;
         *rs += [id];
       }
@@ -44,7 +44,7 @@ fn node_ids_in_fn(body: blk, rs: @mutable [node_id]) {
 
 fn init_vecs(ccx: crate_ctxt, node_ids: [node_id], len: uint) {
     for i: node_id in node_ids {
-        log_full(core::debug, int::str(i) + " |-> " + uint::str(len));
+        log(debug, int::str(i) + " |-> " + uint::str(len));
         add_node(ccx, i, empty_ann(len));
     }
 }

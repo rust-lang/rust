@@ -7,6 +7,6 @@ fn main() {
     while b <= 32u {
         0u << b;
         b <<= 1u;
-        log_full(core::debug, b);
+        log(debug, b);
     }
 }

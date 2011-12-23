@@ -242,9 +242,9 @@ fn check_variants_T<copy T>(
 
     if L < 100u {
         under(float::min(L, 20u)) {|i|
-            log_full(core::error, "Replacing... #" + uint::str(i));
+            log(error, "Replacing... #" + uint::str(i));
             under(float::min(L, 30u)) {|j|
-                log_full(core::error, "With... " + stringifier(@things[j]));
+                log(error, "With... " + stringifier(@things[j]));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
@@ -298,8 +298,8 @@ fn check_whole_compiler(code: str, suggested_filename_prefix: str, allow_running
         removeDirIfExists(suggested_filename_prefix + ".dSYM");
       }
       failed(s) {
-        log_full(core::error, "check_whole_compiler failure: " + s);
-        log_full(core::error, "Saved as: " + filename);
+        log(error, "check_whole_compiler failure: " + s);
+        log(error, "Saved as: " + filename);
       }
     }
 }
@@ -320,7 +320,7 @@ fn check_running(exe_filename: str) -> happiness {
     let p = std::run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
     let comb = p.out + "\n" + p.err;
     if str::byte_len(comb) > 1u {
-        log_full(core::error, "comb comb comb: " + comb);
+        log(error, "comb comb comb: " + comb);
     }
 
     if contains(comb, "Assertion failed: (0), function alloc, file ../src/rt/rust_obstack.cpp") {
@@ -369,7 +369,7 @@ fn check_compiling(filename: str) -> happiness {
         } else if contains(p.err, "cast<Ty>() argument of incompatible type!") {
             known_bug("https://github.com/graydon/rust/issues/973")
         } else {
-            log_full(core::error, "Stderr: " + p.err);
+            log(error, "Stderr: " + p.err);
             failed("Unfamiliar error message")
         }
     } else if p.status == 0 {
@@ -382,7 +382,7 @@ fn check_compiling(filename: str) -> happiness {
     } else if contains(p.out, "trans_rec expected a rec but found _|_") {
         known_bug("https://github.com/graydon/rust/issues/924")
     } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
-        log_full(core::error, "Stdout: " + p.out);
+        log(error, "Stdout: " + p.out);
         failed("Looks like an llvm assertion failure")
 
     } else if contains(p.out, "internal compiler error fail called with unsupported type _|_") {
@@ -396,14 +396,14 @@ fn check_compiling(filename: str) -> happiness {
     } else if contains(p.out, "internal compiler error unimplemented") {
         known_bug("Something unimplemented")
     } else if contains(p.out, "internal compiler error") {
-        log_full(core::error, "Stdout: " + p.out);
+        log(error, "Stdout: " + p.out);
         failed("internal compiler error")
 
     } else if contains(p.out, "error:") {
         cleanly_rejected("rejected with span_error")
     } else {
-        log_full(core::error, p.status);
-        log_full(core::error, "!Stdout: " + p.out);
+        log(error, p.status);
+        log(error, "!Stdout: " + p.out);
         failed("What happened?")
     }
 }
@@ -543,7 +543,7 @@ fn check_variants(files: [str], cx: context) {
             cont;
         }
 
-        log_full(core::error, "check_variants: " + file);
+        log(error, "check_variants: " + file);
         let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
         let crate =
             parser::parse_crate_from_source_str(

@@ -53,7 +53,7 @@ fn test00() {
     for t in tasks { task::join(t); }
 
     #debug("Completed: Final number is: ");
-    log_full(core::error, sum);
+    log(error, sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));
     assert (sum == 480);

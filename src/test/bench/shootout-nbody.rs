@@ -20,11 +20,11 @@ fn main() {
 
 
     for n: int in inputs {
-        log_full(core::debug, NBodySystem::energy(bodies));
+        log(debug, NBodySystem::energy(bodies));
 
         let i: int = 0;
         while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
-        log_full(core::debug, NBodySystem::energy(bodies));
+        log(debug, NBodySystem::energy(bodies));
     }
 }
 

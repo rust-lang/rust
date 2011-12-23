@@ -10,7 +10,7 @@ fn len(v: [const int]) -> uint {
 
 fn main() {
     let v0 = [1, 2, 3, 4, 5];
-    log_full(core::debug, len(v0));
+    log(debug, len(v0));
     let v1 = [mutable 1, 2, 3, 4, 5];
-    log_full(core::debug, len(v1));
+    log(debug, len(v1));
 }

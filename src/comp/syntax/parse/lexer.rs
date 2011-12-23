@@ -580,7 +580,7 @@ fn read_line_comments(rdr: reader, code_to_the_left: bool) -> cmnt {
     let lines: [str] = [];
     while rdr.curr() == '/' && rdr.next() == '/' {
         let line = read_one_line_comment(rdr);
-        log_full(core::debug, line);
+        log(debug, line);
         lines += [line];
         consume_non_eol_whitespace(rdr);
     }
@@ -603,7 +603,7 @@ fn trim_whitespace_prefix_and_push_line(&lines: [str], s: str, col: uint) {
             s1 = str::slice(s, col, str::byte_len(s));
         } else { s1 = ""; }
     } else { s1 = s; }
-    log_full(core::debug, "pushing line: " + s1);
+    log(debug, "pushing line: " + s1);
     lines += [s1];
 }
 
@@ -707,7 +707,7 @@ fn gather_comments_and_literals(cm: codemap::codemap, path: str,
         if is_lit(tok.tok) {
             literals += [{lit: rdr.get_str_from(tok.bpos), pos: tok.chpos}];
         }
-        log_full(core::debug, "tok: " + token::to_str(rdr, tok.tok));
+        log(debug, "tok: " + token::to_str(rdr, tok.tok));
         first_read = false;
     }
     ret {cmnts: comments, lits: literals};

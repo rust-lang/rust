@@ -43,7 +43,7 @@ fn fannkuch(n: int) -> int {
 
         let go = true;
         while go {
-            if r == n { log_full(core::debug, checksum); ret flips; }
+            if r == n { log(debug, checksum); ret flips; }
             let p0 = perm1[0];
             i = 0;
             while i < r { let j = i + 1; perm1[i] = perm1[j]; i = j; }

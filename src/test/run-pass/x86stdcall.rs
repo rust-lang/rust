@@ -13,7 +13,7 @@ fn main() {
     let expected = 1234u;
     kernel32::SetLastError(expected);
     let actual = kernel32::GetLastError();
-    log_full(core::error, actual);
+    log(error, actual);
     assert (expected == actual);
 }
 

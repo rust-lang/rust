@@ -87,7 +87,7 @@ fn stress(num_tasks: int) {
 fn main(argv: [str]) {
     if vec::len(argv) == 1u {
         assert (fib(8) == 21);
-        log_full(core::debug, fib(8));
+        log(debug, fib(8));
     } else {
         // Interactive mode! Wooo!!!!
         let opts = parse_opts(argv);

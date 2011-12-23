@@ -65,7 +65,7 @@ fn test01() {
     let p = port();
     #debug("Reading from a port that is never written to.");
     let value: int = recv(p);
-    log_full(core::debug, value);
+    log(debug, value);
 }
 
 fn test02() {
@@ -75,7 +75,7 @@ fn test02() {
     send(c, 42);
     #debug("Reading from a local task port.");
     let value: int = recv(p);
-    log_full(core::debug, value);
+    log(debug, value);
 }
 
 obj vector(mutable x: int, y: int) {
@@ -87,7 +87,7 @@ fn test03() {
     let v: vector = vector(1, 2);
     #debug("created object ...");
     let t: vector = v;
-    log_full(core::debug, v.length());
+    log(debug, v.length());
 }
 
 fn test04_start(&&_args: ()) {
@@ -120,7 +120,7 @@ fn test05() {
     value = recv(po);
     value = recv(po);
     value = recv(po);
-    log_full(core::debug, value);
+    log(debug, value);
 }
 
 fn test06_start(&&task_number: int) {

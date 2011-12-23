@@ -3,7 +3,7 @@
 
 fn f() {
     let v = [1];
-    log_full(core::debug, v.some_field_name); //type error
+    log(debug, v.some_field_name); //type error
 }
 
 fn main() { }

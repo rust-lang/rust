@@ -4,7 +4,7 @@ fn test1() {
     let x = u(~10);
     assert alt x {
       u(a) {
-        log_full(core::error, a);
+        log(error, a);
         *a
       }
       _ { 66 }

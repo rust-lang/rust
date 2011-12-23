@@ -269,11 +269,11 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         ref: ref,
         tags: tags
     });
-    log_full(core::debug, "  Loaded package: " + src.name + "/" + name);
+    log(debug, "  Loaded package: " + src.name + "/" + name);
 }
 
 fn load_source_packages(&c: cargo, &src: source) {
-    log_full(core::debug, "Loading source: " + src.name);
+    log(debug, "Loading source: " + src.name);
     let dir = fs::connect(c.sourcedir, src.name);
     let pkgfile = fs::connect(dir, "packages.json");
     if !fs::path_exists(pkgfile) { ret; }

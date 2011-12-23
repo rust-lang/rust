@@ -8,7 +8,7 @@ import task;
 fn main() { test05(); }
 
 fn test05_start(ch : chan<int>) {
-    log_full(core::error, ch);
+    log(error, ch);
     send(ch, 10);
     #error("sent 10");
     send(ch, 20);
@@ -22,10 +22,10 @@ fn test05() {
     let ch = comm::chan(po);
     task::spawn(ch, test05_start);
     let value = comm::recv(po);
-    log_full(core::error, value);
+    log(error, value);
     value = comm::recv(po);
-    log_full(core::error, value);
+    log(error, value);
     value = comm::recv(po);
-    log_full(core::error, value);
+    log(error, value);
     assert (value == 30);
 }

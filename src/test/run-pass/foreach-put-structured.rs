@@ -11,8 +11,8 @@ fn main() {
     let j: int = 0;
     pairs() {|p|
         let (_0, _1) = p;
-        log_full(core::debug, _0);
-        log_full(core::debug, _1);
+        log(debug, _0);
+        log(debug, _1);
         assert (_0 + 10 == i);
         i += 1;
         j = _1;

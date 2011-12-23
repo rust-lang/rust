@@ -1,6 +1,6 @@
 fn wrapper3<copy T>(i: T, j: int) {
-    log_full(core::debug, i);
-    log_full(core::debug, j);
+    log(debug, i);
+    log(debug, j);
     // This is a regression test that the spawn3 thunk to wrapper3
     // correctly finds the value of j
     assert j == 123456789;

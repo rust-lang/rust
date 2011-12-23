@@ -2,7 +2,7 @@
 
 fn mk() -> int { ret 1; }
 
-fn chk(&&a: int) { log_full(core::debug, a); assert (a == 1); }
+fn chk(&&a: int) { log(debug, a); assert (a == 1); }
 
 fn apply<T>(produce: fn() -> T, consume: fn(T)) { consume(produce()); }
 
