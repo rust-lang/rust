@@ -30,6 +30,9 @@ mod u64;
 mod vec;
 mod bool;
 
+// For internal use by char, not exported
+mod unicode;
+
 
 // Ubiquitous-utility-type modules
 
