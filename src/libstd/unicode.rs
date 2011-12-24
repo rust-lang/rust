@@ -152,6 +152,12 @@ mod icu {
     #[abi = "cdecl"]
     native mod libicu {
         pure fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
+        pure fn u_isdigit(c: UChar32) -> UBool;
+        pure fn u_islower(c: UChar32) -> UBool;
+        pure fn u_isspace(c: UChar32) -> UBool;
+        pure fn u_isupper(c: UChar32) -> UBool;
+        pure fn u_tolower(c: UChar32) -> UChar32;
+        pure fn u_toupper(c: UChar32) -> UChar32;
     }
 }
 
@@ -164,3 +170,40 @@ pure fn is_XID_continue(c: char) -> bool {
     ret icu::libicu::u_hasBinaryProperty(c, icu::UCHAR_XID_START)
         == icu::TRUE;
 }
+
+/*
+Function: is_digit
+
+Returns true if a character is a digit.
+*/
+pure fn is_digit(c: char) -> bool {
+    ret icu::libicu::u_isdigit(c) == icu::TRUE;
+}
+
+/*
+Function: is_lower
+
+Returns true if a character is a lowercase letter.
+*/
+pure fn is_lower(c: char) -> bool {
+    ret icu::libicu::u_islower(c) == icu::TRUE;
+}
+
+/*
+Function: is_space
+
+Returns true if a character is space.
+*/
+pure fn is_space(c: char) -> bool {
+    ret icu::libicu::u_isspace(c) == icu::TRUE;
+}
+
+/*
+Function: is_upper
+
+Returns true if a character is an uppercase letter.
+*/
+pure fn is_upper(c: char) -> bool {
+    ret icu::libicu::u_isupper(c) == icu::TRUE;
+}
+
