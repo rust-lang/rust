@@ -50,7 +50,7 @@ the Unicode General Categories 'Zs', 'Zl', 'Zp' and the additional
 
 */
 pure fn is_whitespace(c: char) -> bool {
-    ret ('\x09' <= c && c <= '\x0x0d')
+    ret ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
         || unicode::general_category::Zl(c)
         || unicode::general_category::Zp(c);
