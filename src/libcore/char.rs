@@ -42,6 +42,26 @@ import is_XID_start = unicode::derived_property::XID_Start;
 import is_XID_continue = unicode::derived_property::XID_Continue;
 
 /*
+Function: is_lowercase
+
+Indicates whether a character is in lower case, defined in terms of the
+Unicode General Category 'Ll'.
+*/
+pure fn is_lowercase(c: char) -> bool {
+    ret unicode::general_category::Ll(c);
+}
+
+/*
+Function: is_uppercase
+
+Indicates whether a character is in upper case, defined in terms of the
+Unicode General Category 'Lu'.
+*/
+pure fn is_uppercase(c: char) -> bool {
+    ret unicode::general_category::Lu(c);
+}
+
+/*
 Function: is_whitespace
 
 Indicates whether a character is whitespace, defined in terms of

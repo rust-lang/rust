@@ -4,6 +4,24 @@ use std;
 import char;
 
 #[test]
+fn test_is_lowercase() {
+    assert char::is_lowercase('a');
+    assert char::is_lowercase('ö');
+    assert char::is_lowercase('ß');
+    assert !char::is_lowercase('Ü');
+    assert !char::is_lowercase('P');
+}
+
+#[test]
+fn test_is_uppercase() {
+    assert !char::is_uppercase('h');
+    assert !char::is_uppercase('ä');
+    assert !char::is_uppercase('ß');
+    assert char::is_uppercase('Ö');
+    assert char::is_uppercase('T');
+}
+
+#[test]
 fn test_is_whitespace() {
     assert char::is_whitespace(' ');
     assert char::is_whitespace('\u2007');
