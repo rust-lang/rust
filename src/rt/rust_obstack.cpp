@@ -20,8 +20,8 @@
 #undef DPRINT
 #define DPRINT(fmt, ...)
 
-//const size_t DEFAULT_CHUNK_SIZE = 4096;
-const size_t DEFAULT_CHUNK_SIZE = 500000;
+const size_t DEFAULT_CHUNK_SIZE = 128;
+const size_t MAX_CHUNK_SIZE = (1024*64);
 const size_t DEFAULT_ALIGNMENT = 16;
 
 // A single type-tagged allocation in a chunk.
@@ -42,7 +42,6 @@ rust_obstack_chunk::alloc(size_t len, type_desc *tydesc) {
 
     if (sizeof(rust_obstack_alloc) + len > size - alen) {
         DPRINT("Not enough space, len=%lu!\n", len);
-        assert(0);      // FIXME
         return NULL;    // Not enough space.
     }
 
@@ -70,9 +69,15 @@ rust_obstack_chunk::mark() {
 // Allocates the given number of bytes in a new chunk.
 void *
 rust_obstack::alloc_new(size_t len, type_desc *tydesc) {
+    size_t default_chunk_size = DEFAULT_CHUNK_SIZE;
+    if (chunk) {
+	default_chunk_size = std::min(chunk->size * 2, MAX_CHUNK_SIZE);
+    }
+
     size_t chunk_size = std::max(sizeof(rust_obstack_alloc) + len,
-                                 DEFAULT_CHUNK_SIZE);
-    void *ptr = task->malloc(sizeof(chunk) + chunk_size, "obstack");
+                                 default_chunk_size);
+    void *ptr = task->malloc(sizeof(rust_obstack_chunk) + chunk_size,
+			     "obstack");
     DPRINT("making new chunk at %p, len %lu\n", ptr, chunk_size);
     chunk = new(ptr) rust_obstack_chunk(chunk, chunk_size);
     return chunk->alloc(len, tydesc);
