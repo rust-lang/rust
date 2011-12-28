@@ -2,7 +2,7 @@
 Module: float
 */
 
-// PORT This must match in width according to architecture
+// PORT this must match in width according to architecture
 
 import m_float = f64;
 import m_float::*;
@@ -25,11 +25,12 @@ digits - The number of significant digits
 exact - Whether to enforce the exact number of significant digits
 */
 fn to_str_common(num: float, digits: uint, exact: bool) -> str {
+    if isNaN(num) { ret "NaN"; }
     let (num, accum) = num < 0.0 ? (-num, "-") : (num, "");
     let trunc = num as uint;
     let frac = num - (trunc as float);
     accum += uint::str(trunc);
-    if frac == 0.0 || digits == 0u { ret accum; }
+    if frac < epsilon || digits == 0u { ret accum; }
     accum += ".";
     let i = digits;
     let epsilon = 1. / pow_uint_to_uint_as_float(10u, i);

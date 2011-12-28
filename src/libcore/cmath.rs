@@ -1,6 +1,5 @@
 export c_double;
 export c_float;
-export bessel;
 
 import ctypes::c_int;
 import ctypes::c_float;
@@ -57,6 +56,16 @@ native mod c_double {
     pure fn tanh(n: c_double) -> c_double;
     pure fn tgamma(n: c_double) -> c_double;
     pure fn trunc(n: c_double) -> c_double;
+
+    // These are commonly only available for doubles
+
+    pure fn j0(n: c_double) -> c_double;
+    pure fn j1(n: c_double) -> c_double;
+    pure fn jn(i: c_int, n: c_double) -> c_double;
+
+    pure fn y0(n: c_double) -> c_double;
+    pure fn y1(n: c_double) -> c_double;
+    pure fn yn(i: c_int, n: c_double) -> c_double;
 }
 
 #[link_name = "m"]
@@ -83,7 +92,7 @@ native mod c_float {
     #[link_name="fabsf"] pure fn abs(n: c_float) -> c_float;
     #[link_name="fdimf"] pure fn sub_pos(a: c_float, b: c_float) -> c_float;
     #[link_name="floorf"] pure fn floor(n: c_float) -> c_float;
-    #[link_name="frexpf"] pure fn frexp(n: c_double,
+    #[link_name="frexpf"] pure fn frexp(n: c_float,
                                         &value: c_int) -> c_float;
     #[link_name="fmaf"] pure fn mul_add(a: c_float,
                                         b: c_float, c: c_float) -> c_float;
@@ -97,7 +106,7 @@ native mod c_float {
                                             &sign: c_int) -> c_float;
     #[link_name="logf"] pure fn ln(n: c_float) -> c_float;
     #[link_name="logbf"] pure fn logb(n: c_float) -> c_float;
-    #[link_name="log1p"] pure fn ln1p(n: c_double) -> c_double;
+    #[link_name="log1pf"] pure fn ln1p(n: c_float) -> c_float;
     #[link_name="log2f"] pure fn log2(n: c_float) -> c_float;
     #[link_name="log10f"] pure fn log10(n: c_float) -> c_float;
     #[link_name="ilogbf"] pure fn ilogb(n: c_float) -> c_int;
@@ -114,18 +123,6 @@ native mod c_float {
     #[link_name="tanhf"] pure fn tanh(n: c_float) -> c_float;
     #[link_name="tgammaf"] pure fn tgamma(n: c_float) -> c_float;
     #[link_name="truncf"] pure fn trunc(n: c_float) -> c_float;
-}
-
-#[link_name = "m"]
-#[abi = "cdecl"]
-native mod bessel {
-    pure fn j0(n: c_double) -> c_double;
-    pure fn j1(n: c_double) -> c_double;
-    pure fn jn(i: c_int, n: c_double) -> c_double;
-
-    pure fn y0(n: c_double) -> c_double;
-    pure fn y1(n: c_double) -> c_double;
-    pure fn yn(i: c_int, n: c_double) -> c_double;
 }
 
 //

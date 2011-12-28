@@ -10,14 +10,36 @@ import cmath::c_double::*;
 
 type t = f64;
 
+
+// These are not defined inside consts:: for consistency with
+// the integer types
+
+// PORT check per architecture
+
+const radix: uint = 2u;
+
+const mantissa_digits: uint = 53u;
+const digits: uint = 15u;
+
+const epsilon: f64 = 2.2204460492503131e-16_f64;
+
+const min_value: f64 = 2.2250738585072014e-308_f64;
+const max_value: f64 = 1.7976931348623157e+308_f64;
+
+const min_exp: int = -1021;
+const max_exp: int = 1024;
+
+const min_10_exp: int = -307;
+const max_10_exp: int = 308;
+
 /* Const: NaN */
-const NaN: f64 = 0.0f64/0.0f64;
+const NaN: f64 = 0.0_f64/0.0_f64;
 
 /* Const: infinity */
-const infinity: f64 = 1.0f64/0.0f64;
+const infinity: f64 = 1.0_f64/0.0_f64;
 
 /* Const: neg_infinity */
-const neg_infinity: f64 = -1.0f64/0.0f64;
+const neg_infinity: f64 = -1.0_f64/0.0_f64;
 
 /* Predicate: isNaN */
 pure fn isNaN(f: f64) -> bool { f != f }
@@ -99,113 +121,92 @@ mod consts {
 
     Archimedes' constant
     */
-    const pi: f64 = 3.14159265358979323846264338327950288f64;
+    const pi: f64 = 3.14159265358979323846264338327950288_f64;
 
     /*
     Const: frac_pi_2
 
     pi/2.0
     */
-    const frac_pi_2: f64 = 1.57079632679489661923132169163975144f64;
+    const frac_pi_2: f64 = 1.57079632679489661923132169163975144_f64;
 
     /*
     Const: frac_pi_4
 
     pi/4.0
     */
-    const frac_pi_4: f64 = 0.785398163397448309615660845819875721f64;
+    const frac_pi_4: f64 = 0.785398163397448309615660845819875721_f64;
 
     /*
     Const: frac_1_pi
 
     1.0/pi
     */
-    const frac_1_pi: f64 = 0.318309886183790671537767526745028724f64;
+    const frac_1_pi: f64 = 0.318309886183790671537767526745028724_f64;
 
     /*
     Const: frac_2_pi
 
     2.0/pi
     */
-    const frac_2_pi: f64 = 0.636619772367581343075535053490057448f64;
+    const frac_2_pi: f64 = 0.636619772367581343075535053490057448_f64;
 
     /*
     Const: frac_2_sqrtpi
 
     2.0/sqrt(pi)
     */
-    const frac_2_sqrtpi: f64 = 1.12837916709551257389615890312154517f64;
+    const frac_2_sqrtpi: f64 = 1.12837916709551257389615890312154517_f64;
 
     /*
     Const: sqrt2
 
     sqrt(2.0)
     */
-    const sqrt2: f64 = 1.41421356237309504880168872420969808f64;
+    const sqrt2: f64 = 1.41421356237309504880168872420969808_f64;
 
     /*
     Const: frac_1_sqrt2
 
     1.0/sqrt(2.0)
     */
-    const frac_1_sqrt2: f64 = 0.707106781186547524400844362104849039f64;
+    const frac_1_sqrt2: f64 = 0.707106781186547524400844362104849039_f64;
 
     /*
     Const: e
 
     Euler's number
     */
-    const e: f64 = 2.71828182845904523536028747135266250f64;
+    const e: f64 = 2.71828182845904523536028747135266250_f64;
 
     /*
     Const: log2_e
 
     log2(e)
     */
-    const log2_e: f64 = 1.44269504088896340735992468100189214f64;
+    const log2_e: f64 = 1.44269504088896340735992468100189214_f64;
 
     /*
     Const: log10_e
 
     log10(e)
     */
-    const log10_e: f64 = 0.434294481903251827651128918916605082f64;
+    const log10_e: f64 = 0.434294481903251827651128918916605082_f64;
 
     /*
     Const: ln_2
 
     ln(2.0)
     */
-    const ln_2: f64 = 0.693147180559945309417232121458176568f64;
+    const ln_2: f64 = 0.693147180559945309417232121458176568_f64;
 
     /*
     Const: ln_10
 
     ln(10.0)
     */
-    const ln_10: f64 = 2.30258509299404568401799145468436421f64;
+    const ln_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
-
-// These are not defined inside consts:: for consistency with
-// the integer types
-
-// PORT check per architecture
-
-const radix: uint = 2u;
-
-const mantissa_digits: uint = 53u;
-const digits: uint = 15u;
-
-const epsilon: f64 = 2.2204460492503131e-16f64;
-
-const min_value: f64 = 2.2250738585072014e-308f64;
-const max_value: f64 = 1.7976931348623157e+308f64;
-
-const min_exp: int = -1021;
-const max_exp: int = 1024;
-
-const min_10_exp: int = -307;
-const max_10_exp: int = 308;
 
 //
 // Local Variables:

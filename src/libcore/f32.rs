@@ -3,20 +3,43 @@ Module: f32
 
 Floating point operations and constants for `f32`
 */
+
 // PORT
 
 import cmath::c_float::*;
 
 type t = f32;
 
+
+// These are not defined inside consts:: for consistency with
+// the integer types
+
+// PORT check per architecture
+
+const radix: uint = 2u;
+
+const mantissa_digits: uint = 24u;
+const digits: uint = 6u;
+
+const epsilon: f32 = 1.19209290e-07_f32;
+
+const min_value: f32 = 1.17549435e-38_f32;
+const max_value: f32 = 3.40282347e+38_f32;
+
+const min_exp: int = -125;
+const max_exp: int = 128;
+
+const min_10_exp: int = -37;
+const max_10_exp: int = 38;
+
 /* Const: NaN */
-const NaN: f32 = 0.0f32/0.0f32;
+const NaN: f32 = 0.0_f32/0.0_f32;
 
 /* Const: infinity */
-const infinity: f32 = 1.0f32/0.0f32;
+const infinity: f32 = 1.0_f32/0.0_f32;
 
 /* Const: neg_infinity */
-const neg_infinity: f32 = -1.0f32/0.0f32;
+const neg_infinity: f32 = -1.0_f32/0.0_f32;
 
 /* Predicate: isNaN */
 pure fn isNaN(f: f32) -> bool { f != f }
@@ -98,113 +121,92 @@ mod consts {
 
     Archimedes' constant
     */
-    const pi: f32 = 3.14159265358979323846264338327950288f32;
+    const pi: f32 = 3.14159265358979323846264338327950288_f32;
 
     /*
     Const: frac_pi_2
 
     pi/2.0
     */
-    const frac_pi_2: f32 = 1.57079632679489661923132169163975144f32;
+    const frac_pi_2: f32 = 1.57079632679489661923132169163975144_f32;
 
     /*
     Const: frac_pi_4
 
     pi/4.0
     */
-    const frac_pi_4: f32 = 0.785398163397448309615660845819875721f32;
+    const frac_pi_4: f32 = 0.785398163397448309615660845819875721_f32;
 
     /*
     Const: frac_1_pi
 
     1.0/pi
     */
-    const frac_1_pi: f32 = 0.318309886183790671537767526745028724f32;
+    const frac_1_pi: f32 = 0.318309886183790671537767526745028724_f32;
 
     /*
     Const: frac_2_pi
 
     2.0/pi
     */
-    const frac_2_pi: f32 = 0.636619772367581343075535053490057448f32;
+    const frac_2_pi: f32 = 0.636619772367581343075535053490057448_f32;
 
     /*
     Const: frac_2_sqrtpi
 
     2.0/sqrt(pi)
     */
-    const frac_2_sqrtpi: f32 = 1.12837916709551257389615890312154517f32;
+    const frac_2_sqrtpi: f32 = 1.12837916709551257389615890312154517_f32;
 
     /*
     Const: sqrt2
 
     sqrt(2.0)
     */
-    const sqrt2: f32 = 1.41421356237309504880168872420969808f32;
+    const sqrt2: f32 = 1.41421356237309504880168872420969808_f32;
 
     /*
     Const: frac_1_sqrt2
 
     1.0/sqrt(2.0)
     */
-    const frac_1_sqrt2: f32 = 0.707106781186547524400844362104849039f32;
+    const frac_1_sqrt2: f32 = 0.707106781186547524400844362104849039_f32;
 
     /*
     Const: e
 
     Euler's number
     */
-    const e: f32 = 2.71828182845904523536028747135266250f32;
+    const e: f32 = 2.71828182845904523536028747135266250_f32;
 
     /*
     Const: log2_e
 
     log2(e)
     */
-    const log2_e: f32 = 1.44269504088896340735992468100189214f32;
+    const log2_e: f32 = 1.44269504088896340735992468100189214_f32;
 
     /*
     Const: log10_e
 
     log10(e)
     */
-    const log10_e: f32 = 0.434294481903251827651128918916605082f32;
+    const log10_e: f32 = 0.434294481903251827651128918916605082_f32;
 
     /*
     Const: ln_2
 
     ln(2.0)
     */
-    const ln_2: f32 = 0.693147180559945309417232121458176568f32;
+    const ln_2: f32 = 0.693147180559945309417232121458176568_f32;
 
     /*
     Const: ln_10
 
     ln(10.0)
     */
-    const ln_10: f32 = 2.30258509299404568401799145468436421f32;
+    const ln_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
-
-// These are not defined inside consts:: for consistency with
-// the integer types
-
-// PORT check per architecture
-
-const radix: uint = 2u;
-
-const mantissa_digits: uint = 24u;
-const digits: uint = 6u;
-
-const epsilon: f32 = 1.19209290e-07f32;
-
-const min_value: f32 = 1.17549435e-38f32;
-const max_value: f32 = 3.40282347e+38f32;
-
-const min_exp: int = -125;
-const max_exp: int = 128;
-
-const min_10_exp: int = -37;
-const max_10_exp: int = 38;
 
 //
 // Local Variables:
