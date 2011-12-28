@@ -227,14 +227,14 @@ fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
     }
 }
 
-fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: span,
-                                 tpt: ty::ty_param_kinds_and_ty) -> TypeRef {
+fn type_of_ty_param_bounds_and_ty(lcx: @local_ctxt, sp: span,
+                                 tpt: ty::ty_param_bounds_and_ty) -> TypeRef {
     let cx = lcx.ccx;
     let t = tpt.ty;
     alt ty::struct(cx.tcx, t) {
       ty::ty_fn(_) | ty::ty_native_fn(_, _) {
         check returns_non_ty_var(cx, t);
-        ret type_of_fn_from_ty(cx, sp, t, vec::len(tpt.kinds));
+        ret type_of_fn_from_ty(cx, sp, t, vec::len(tpt.bounds));
       }
       _ {
         // fall through
@@ -2599,11 +2599,11 @@ fn lval_no_env(bcx: @block_ctxt, val: ValueRef, kind: lval_kind)
 }
 
 fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
-                       tpt: ty::ty_param_kinds_and_ty) -> ValueRef {
+                       tpt: ty::ty_param_bounds_and_ty) -> ValueRef {
     let lcx = cx.fcx.lcx;
     let name = csearch::get_symbol(lcx.ccx.sess.get_cstore(), did);
     ret get_extern_const(lcx.ccx.externs, lcx.ccx.llmod, name,
-                         type_of_ty_param_kinds_and_ty(lcx, cx.sp, tpt));
+                         type_of_ty_param_bounds_and_ty(lcx, cx.sp, tpt));
 }
 
 fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
@@ -2731,8 +2731,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             ret lval_no_env(cx, ccx.consts.get(did.node), owned);
         } else {
             let tp = ty::node_id_to_monotype(ccx.tcx, id);
-            let k: [ast::kind] = [];
-            let val = trans_external_path(cx, did, {kinds: k, ty: tp});
+            let val = trans_external_path(cx, did, {bounds: [], ty: tp});
             ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
         }
       }
@@ -4657,8 +4656,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     let ty_param_substs: [ty::t] = [];
     i = 0u;
     for tp: ast::ty_param in ty_params {
-        ty_param_substs += [ty::mk_param(ccx.tcx, i,
-                                         ast_util::ty_param_kind(tp))];
+        ty_param_substs += [ty::mk_param(ccx.tcx, i, @[])];
         i += 1u;
     }
     let arg_tys = arg_tys_of_fn(ccx, variant.node.id);

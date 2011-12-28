@@ -1718,10 +1718,18 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
 }
 
 fn parse_ty_param(p: parser) -> ast::ty_param {
-    let k = if eat_word(p, "send") { ast::kind_sendable }
-            else if eat_word(p, "copy") { ast::kind_copyable }
-            else { ast::kind_noncopyable };
-    ret {ident: parse_ident(p), kind: k};
+    let bounds = [];
+    if eat_word(p, "send") { bounds += [ast::bound_send]; }
+    else if eat_word(p, "copy") { bounds += [ast::bound_copy]; }
+    let ident = parse_ident(p);
+    if eat(p, token::COLON) {
+        while p.peek() != token::COMMA && p.peek() != token::GT {
+            if eat_word(p, "send") { bounds += [ast::bound_send]; }
+            else if eat_word(p, "copy") { bounds += [ast::bound_copy]; }
+            else { bounds += [ast::bound_iface(parse_ty(p, false))]; }
+        }
+    }
+    ret {ident: ident, id: p.get_id(), bounds: @bounds};
 }
 
 fn parse_ty_params(p: parser) -> [ast::ty_param] {
@@ -1856,7 +1864,8 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
               ast::ty_path(pt, _) {
                 if vec::len(pt.node.idents) == 1u &&
                    vec::len(pt.node.types) == 0u {
-                     ret {ident: pt.node.idents[0], kind: ast::kind_sendable};
+                     ret {ident: pt.node.idents[0], id: p.get_id(),
+                          bounds: @[]};
                 }
               }
               _ {}

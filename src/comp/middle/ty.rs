@@ -106,7 +106,7 @@ export tag_variants;
 export iface_methods, store_iface_methods;
 export tag_variant_with_id;
 export ty_param_substs_opt_and_ty;
-export ty_param_kinds_and_ty;
+export ty_param_bounds_and_ty;
 export ty_native_fn;
 export ty_bool;
 export ty_bot;
@@ -185,6 +185,8 @@ export closure_kind;
 export closure_block;
 export closure_shared;
 export closure_send;
+export param_bound, bound_copy, bound_send, bound_iface;
+export param_bounds_to_kind;
 
 // Data types
 
@@ -192,7 +194,7 @@ type arg = {mode: mode, ty: t};
 
 type field = {ident: ast::ident, mt: mt};
 
-type method = {ident: ast::ident, tps: [ast::kind], fty: fn_ty};
+type method = {ident: ast::ident, tps: [@[param_bound]], fty: fn_ty};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
@@ -217,7 +219,8 @@ type ctxt =
       kind_cache: hashmap<t, ast::kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
       tag_var_cache: hashmap<ast::def_id, @[variant_info]>,
-      iface_method_cache: hashmap<def_id, @[method]>};
+      iface_method_cache: hashmap<def_id, @[method]>,
+      ty_param_bounds: hashmap<def_id, @[param_bound]>};
 
 type ty_ctxt = ctxt;
 
@@ -265,7 +268,7 @@ tag sty {
     ty_tup([t]);
     ty_var(int); // type variable
 
-    ty_param(uint, ast::kind); // fn/tag type param
+    ty_param(uint, @[param_bound]); // fn/tag type param
 
     ty_type; // type_desc*
     ty_send_type; // type_desc* that has been cloned into exchange heap
@@ -299,9 +302,29 @@ tag type_err {
     terr_constr_mismatch(@type_constr, @type_constr);
 }
 
-type ty_param_kinds_and_ty = {kinds: [ast::kind], ty: t};
+tag param_bound {
+    bound_copy;
+    bound_send;
+    bound_iface(t);
+}
 
-type type_cache = hashmap<ast::def_id, ty_param_kinds_and_ty>;
+fn param_bounds_to_kind(bounds: @[param_bound]) -> ast::kind {
+    let kind = ast::kind_noncopyable;
+    for bound in *bounds {
+        alt bound {
+          bound_copy. {
+            if kind != ast::kind_sendable { kind = ast::kind_copyable; }
+          }
+          bound_send. { kind = ast::kind_sendable; }
+          _ {}
+        }
+    }
+    kind
+}
+
+type ty_param_bounds_and_ty = {bounds: [@[param_bound]], ty: t};
+
+type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 
 const idx_nil: uint = 0u;
 
@@ -415,7 +438,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
           ast_ty_to_ty_cache:
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
           tag_var_cache: new_def_hash(),
-          iface_method_cache: new_def_hash()};
+          iface_method_cache: new_def_hash(),
+          ty_param_bounds: new_def_hash()};
     populate_type_store(cx);
     ret cx;
 }
@@ -600,7 +624,7 @@ fn mk_res(cx: ctxt, did: ast::def_id, inner: t, tps: [t]) -> t {
 
 fn mk_var(cx: ctxt, v: int) -> t { ret gen_ty(cx, ty_var(v)); }
 
-fn mk_param(cx: ctxt, n: uint, k: ast::kind) -> t {
+fn mk_param(cx: ctxt, n: uint, k: @[param_bound]) -> t {
     ret gen_ty(cx, ty_param(n, k));
 }
 
@@ -698,7 +722,7 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
 
 tag fold_mode {
     fm_var(fn@(int) -> t);
-    fm_param(fn@(uint, ast::kind) -> t);
+    fm_param(fn@(uint, @[param_bound]) -> t);
     fm_general(fn@(t) -> t);
 }
 
@@ -1029,7 +1053,7 @@ fn type_kind(cx: ctxt, ty: t) -> ast::kind {
       }
       // Resources are always noncopyable.
       ty_res(did, inner, tps) { ast::kind_noncopyable }
-      ty_param(_, k) { k }
+      ty_param(_, bounds) { param_bounds_to_kind(bounds) }
       ty_constr(t, _) { type_kind(cx, t) }
     };
 
@@ -2574,7 +2598,7 @@ fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
     while i < ty_param_count { *param_var_ids += [next_ty_var()]; i += 1u; }
     fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
               _next_ty_var: fn@() -> int, index: uint,
-              _kind: ast::kind) -> t {
+              _bounds: @[param_bound]) -> t {
         if index < vec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids[index]);
         } else {
@@ -2593,7 +2617,8 @@ fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
     if !type_contains_params(cx, typ) { ret typ; }
-    fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint, _kind: ast::kind)
+    fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint,
+                   _bounds: @[param_bound])
        -> t {
         // FIXME: bounds check can fail
         ret substs[idx];
@@ -2674,7 +2699,7 @@ fn tag_variant_with_id(cx: ctxt, tag_id: ast::def_id, variant_id: ast::def_id)
 
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
-fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_kinds_and_ty {
+fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     if did.crate == ast::local_crate {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.

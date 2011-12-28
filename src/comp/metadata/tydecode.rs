@@ -10,6 +10,7 @@ import middle::ty;
 
 export parse_def_id;
 export parse_ty_data;
+export parse_bounds_data;
 
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
@@ -21,7 +22,9 @@ type str_def = fn@(str) -> ast::def_id;
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
 
-fn peek(st: @pstate) -> u8 { ret st.data[st.pos]; }
+fn peek(st: @pstate) -> u8 {
+    if st.pos < vec::len(*st.data) { st.data[st.pos] } else { 0u8 }
+}
 
 fn next(st: @pstate) -> u8 {
     let ch = st.data[st.pos];
@@ -48,8 +51,7 @@ fn parse_ty_data(data: @[u8], crate_num: int, pos: uint, len: uint,
                  sd: str_def, tcx: ty::ctxt) -> ty::t {
     let st =
         @{data: data, crate: crate_num, mutable pos: pos, len: len, tcx: tcx};
-    let result = parse_ty(st, sd);
-    ret result;
+    parse_ty(st, sd)
 }
 
 fn parse_ret_ty(st: @pstate, sd: str_def) -> (ast::ret_style, ty::t) {
@@ -201,18 +203,8 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         ret ty::mk_tag(st.tcx, def, params);
       }
       'p' {
-        let k =
-            alt next(st) as char {
-              's' { kind_sendable }
-              'c' { kind_copyable }
-              'a' { kind_noncopyable }
-              c {
-                #error("unexpected char in encoded type param: ");
-                log(error, c);
-                fail
-              }
-            };
-        ret ty::mk_param(st.tcx, parse_int(st) as uint, k);
+        let bounds = parse_bounds(st, sd);
+        ret ty::mk_param(st.tcx, parse_int(st) as uint, bounds);
       }
       '@' { ret ty::mk_box(st.tcx, parse_mt(st, sd)); }
       '~' { ret ty::mk_uniq(st.tcx, parse_mt(st, sd)); }
@@ -398,6 +390,26 @@ fn parse_def_id(buf: [u8]) -> ast::def_id {
     let crate_num = uint::parse_buf(crate_part_vec, 10u) as int;
     let def_num = uint::parse_buf(def_part_vec, 10u) as int;
     ret {crate: crate_num, node: def_num};
+}
+
+fn parse_bounds_data(data: @[u8], crate_num: int, sd: str_def, tcx: ty::ctxt)
+    -> @[ty::param_bound] {
+    let st = @{data: data, crate: crate_num, mutable pos: 0u,
+               len: vec::len(*data), tcx: tcx};
+    parse_bounds(st, sd)
+}
+
+fn parse_bounds(st: @pstate, sd: str_def) -> @[ty::param_bound] {
+    let bounds = [];
+    while peek(st) as char == '.' {
+        next(st);
+        bounds += [alt next(st) as char {
+          'S' { ty::bound_send }
+          'C' { ty::bound_copy }
+          'I' { ty::bound_iface(parse_ty(st, sd)) }
+        }];
+    }
+    @bounds
 }
 
 //

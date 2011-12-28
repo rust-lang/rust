@@ -86,7 +86,7 @@ fn get_impl_methods(cstore: cstore::cstore, def: ast::def_id)
     decoder::lookup_impl_methods(cdata, def.node, def.crate)
 }
 
-fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_kinds_and_ty {
+fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.sess.get_cstore();
     let cnum = def.crate;
     let cdata = cstore::get_crate_data(cstore, cnum).data;

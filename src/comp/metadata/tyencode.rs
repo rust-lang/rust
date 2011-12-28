@@ -13,6 +13,7 @@ export ty_abbrev;
 export ac_no_abbrevs;
 export ac_use_abbrevs;
 export enc_ty;
+export enc_bounds;
 
 type ctxt =
     // Def -> str Callback:
@@ -175,12 +176,9 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_str(cx.ds(def));
         w.write_char('|');
       }
-      ty::ty_param(id, k) {
-        alt k {
-          kind_sendable. { w.write_str("ps"); }
-          kind_copyable. { w.write_str("pc"); }
-          kind_noncopyable. { w.write_str("pa"); }
-        }
+      ty::ty_param(id, bounds) {
+        w.write_char('p');
+        enc_bounds(w, cx, bounds);
         w.write_str(uint::str(id));
       }
       ty::ty_type. { w.write_char('Y'); }
@@ -265,6 +263,19 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
     w.write_char(')');
 }
 
+fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]) {
+    for bound in *bs {
+        w.write_char('.');
+        alt bound {
+          ty::bound_send. { w.write_char('S'); }
+          ty::bound_copy. { w.write_char('C'); }
+          ty::bound_iface(tp) {
+            w.write_char('I');
+            enc_ty(w, cx, tp);
+          }
+        }
+    }
+}
 
 //
 // Local Variables:

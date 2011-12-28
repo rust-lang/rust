@@ -92,24 +92,27 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         for vi: @view_item in nm.view_items { v.visit_view_item(vi, e, v); }
         for ni: @native_item in nm.items { v.visit_native_item(ni, e, v); }
       }
-      item_ty(t, _) { v.visit_ty(t, e, v); }
+      item_ty(t, tps) { v.visit_ty(t, e, v); visit_ty_params(tps, e, v); }
       item_res(decl, tps, body, dtor_id, _) {
         v.visit_fn(decl, tps, body, i.span, some(i.ident), dtor_id,
                    e, v);
       }
-      item_tag(variants, _) {
+      item_tag(variants, tps) {
+        visit_ty_params(tps, e, v);
         for vr: variant in variants {
             for va: variant_arg in vr.node.args { v.visit_ty(va.ty, e, v); }
         }
       }
-      item_obj(ob, _, _) {
+      item_obj(ob, tps, _) {
+        visit_ty_params(tps, e, v);
         for f: obj_field in ob.fields { v.visit_ty(f.ty, e, v); }
         for m: @method in ob.methods {
             v.visit_fn(m.decl, m.tps, m.body, m.span,
                        some(m.ident), m.id, e, v);
         }
       }
-      item_impl(_, ifce, ty, methods) {
+      item_impl(tps, ifce, ty, methods) {
+        visit_ty_params(tps, e, v);
         alt ifce { some(ty) { v.visit_ty(ty, e, v); } _ {} }
         v.visit_ty(ty, e, v);
         for m in methods {
@@ -117,7 +120,8 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
                        some(m.ident), m.id, e, v);
         }
       }
-      item_iface(_, methods) {
+      item_iface(tps, methods) {
+        visit_ty_params(tps, e, v);
         for m in methods {
             for a in m.decl.inputs { v.visit_ty(a.ty, e, v); }
             v.visit_ty(m.decl.output, e, v);
@@ -191,8 +195,22 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
 
 fn visit_native_item<E>(ni: @native_item, e: E, v: vt<E>) {
     alt ni.node {
-      native_item_fn(fd, _) { visit_fn_decl(fd, e, v); }
+      native_item_fn(fd, tps) {
+        visit_ty_params(tps, e, v);
+        visit_fn_decl(fd, e, v);
+      }
       native_item_ty. { }
+    }
+}
+
+fn visit_ty_params<E>(tps: [ty_param], e: E, v: vt<E>) {
+    for tp in tps {
+        for bound in *tp.bounds {
+            alt bound {
+              bound_iface(t) { v.visit_ty(t, e, v); }
+              _ {}
+            }
+        }
     }
 }
 
@@ -204,9 +222,10 @@ fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
     v.visit_ty(fd.output, e, v);
 }
 
-fn visit_fn<E>(decl: fn_decl, _tp: [ty_param], body: blk, _sp: span,
+fn visit_fn<E>(decl: fn_decl, tp: [ty_param], body: blk, _sp: span,
                _i: fn_ident, _id: node_id, e: E, v: vt<E>) {
     visit_fn_decl(decl, e, v);
+    visit_ty_params(tp, e, v);
     v.visit_block(body, e, v);
 }
 

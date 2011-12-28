@@ -450,7 +450,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
         let did = ccx.shape_cx.tag_order[i];
         let variants = ty::tag_variants(ccx.tcx, did);
         let item_tyt = ty::lookup_item_type(ccx.tcx, did);
-        let ty_param_count = vec::len(item_tyt.kinds);
+        let ty_param_count = vec::len(item_tyt.bounds);
 
         for v: ty::variant_info in *variants {
             offsets += [vec::len(data) as u16];

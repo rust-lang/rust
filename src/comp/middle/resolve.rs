@@ -399,6 +399,7 @@ fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
     let sc = cons(scope_item(i), @sc);
     alt i.node {
       ast::item_impl(tps, ifce, sty, methods) {
+        visit::visit_ty_params(tps, sc, v);
         alt ifce { some(ty) { v.visit_ty(ty, sc, v); } _ {} }
         v.visit_ty(sty, sc, v);
         for m in methods {
@@ -901,12 +902,12 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
 
 fn lookup_in_ty_params(name: ident, ty_params: [ast::ty_param]) ->
    option::t<def> {
-    let i = 0u;
+    let n = 0u;
     for tp: ast::ty_param in ty_params {
         if str::eq(tp.ident, name) {
-            ret some(ast::def_ty_param(i, ast_util::ty_param_kind(tp)));
+            ret some(ast::def_ty_param(local_def(tp.id), n));
         }
-        i += 1u;
+        n += 1u;
     }
     ret none::<def>;
 }

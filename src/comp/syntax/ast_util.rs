@@ -25,22 +25,11 @@ fn variant_def_ids(d: def) -> {tg: def_id, var: def_id} {
 
 fn def_id_of_def(d: def) -> def_id {
     alt d {
-      def_fn(id, _) { ret id; }
-      def_obj_field(id, _) { ret id; }
-      def_self(id) { ret id; }
-      def_mod(id) { ret id; }
-      def_native_mod(id) { ret id; }
-      def_const(id) { ret id; }
-      def_arg(id, _) { ret id; }
-      def_local(id, _) { ret id; }
-      def_variant(_, id) { ret id; }
-      def_ty(id) { ret id; }
-      def_ty_param(_, _) { fail; }
-      def_binding(id) { ret id; }
-      def_use(id) { ret id; }
-      def_native_ty(id) { ret id; }
-      def_native_fn(id, _) { ret id; }
-      def_upvar(id, _, _) { ret id; }
+      def_fn(id, _) | def_obj_field(id, _) | def_self(id) | def_mod(id) |
+      def_native_mod(id) | def_const(id) | def_arg(id, _) | def_local(id, _) |
+      def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
+      def_binding(id) | def_use(id) | def_native_ty(id) |
+      def_native_fn(id, _) | def_upvar(id, _, _) { id }
     }
 }
 
@@ -246,8 +235,6 @@ fn ternary_to_if(e: @expr) -> @expr {
       _ { fail; }
     }
 }
-
-fn ty_param_kind(tp: ty_param) -> kind { tp.kind }
 
 // FIXME this doesn't handle big integer/float literals correctly (nor does
 // the rest of our literal handling)

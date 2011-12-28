@@ -24,7 +24,13 @@ type def_id = {crate: crate_num, node: node_id};
 const local_crate: crate_num = 0;
 const crate_node_id: node_id = 0;
 
-type ty_param = {ident: ident, kind: kind};
+tag ty_param_bound {
+    bound_copy;
+    bound_send;
+    bound_iface(@ty);
+}
+
+type ty_param = {ident: ident, id: node_id, bounds: @[ty_param_bound]};
 
 tag def {
     def_fn(def_id, purity);
@@ -37,7 +43,7 @@ tag def {
     def_local(def_id, let_style);
     def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
-    def_ty_param(uint, kind);
+    def_ty_param(def_id, uint);
     def_binding(def_id);
     def_use(def_id);
     def_native_ty(def_id);

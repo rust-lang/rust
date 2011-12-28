@@ -14,7 +14,6 @@ export get_symbol;
 export get_tag_variants;
 export get_type;
 export get_type_param_count;
-export get_type_param_kinds;
 export lookup_def;
 export lookup_item_name;
 export resolve_path;
@@ -90,21 +89,22 @@ fn variant_tag_id(d: ebml::doc) -> ast::def_id {
     ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
+fn parse_external_def_id(this_cnum: ast::crate_num,
+                         extres: external_resolver, s: str) ->
+    ast::def_id {
+    let buf = str::bytes(s);
+    let external_def_id = parse_def_id(buf);
+
+
+    // This item was defined in the crate we're searching if it's has the
+    // local crate number, otherwise we need to search a different crate
+    if external_def_id.crate == ast::local_crate {
+        ret {crate: this_cnum, node: external_def_id.node};
+    } else { ret extres(external_def_id); }
+}
+
 fn item_type(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
              extres: external_resolver) -> ty::t {
-    fn parse_external_def_id(this_cnum: ast::crate_num,
-                             extres: external_resolver, s: str) ->
-       ast::def_id {
-        let buf = str::bytes(s);
-        let external_def_id = parse_def_id(buf);
-
-
-        // This item was defined in the crate we're searching if it's has the
-        // local crate number, otherwise we need to search a different crate
-        if external_def_id.crate == ast::local_crate {
-            ret {crate: this_cnum, node: external_def_id.node};
-        } else { ret extres(external_def_id); }
-    }
     let tp = ebml::get_doc(item, tag_items_data_item_type);
     let def_parser = bind parse_external_def_id(this_cnum, extres, _);
     let t = parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
@@ -115,32 +115,24 @@ fn item_type(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
     t
 }
 
-fn item_ty_param_kinds(item: ebml::doc) -> [ast::kind] {
-    let ks: [ast::kind] = [];
-    let tp = tag_items_data_item_ty_param_kinds;
-    ebml::tagged_docs(item, tp) {|p|
-        let dat: [u8] = ebml::doc_data(p);
-        let vi = ebml::vint_at(dat, 0u);
-        let i = 0u;
-        while i < vi.val {
-            let k =
-                alt dat[vi.next + i] as char {
-                  's' { ast::kind_sendable }
-                  'c' { ast::kind_copyable }
-                  'a' { ast::kind_noncopyable }
-                };
-            ks += [k];
-            i += 1u;
-        }
-    };
-    ret ks;
+fn item_ty_param_bounds(item: ebml::doc, this_cnum: ast::crate_num,
+                        tcx: ty::ctxt, extres: external_resolver)
+    -> [@[ty::param_bound]] {
+    let bounds = [];
+    let def_parser = bind parse_external_def_id(this_cnum, extres, _);
+    ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
+        bounds += [tydecode::parse_bounds_data(@ebml::doc_data(p), this_cnum,
+                                               def_parser, tcx)];
+    }
+    bounds
 }
 
 fn item_ty_param_count(item: ebml::doc) -> uint {
     let n = 0u;
-    let tp = tag_items_data_item_ty_param_kinds;
-    ebml::tagged_docs(item, tp) {|p|
-        n += ebml::vint_at(ebml::doc_data(p), 0u).val;
+    ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
+        for byte in ebml::doc_data(p) {
+            if byte as char == '.' { n += 1u; }
+        }
     }
     n
 }
@@ -213,26 +205,19 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
 }
 
 fn get_type(data: @[u8], def: ast::def_id, tcx: ty::ctxt,
-            extres: external_resolver) -> ty::ty_param_kinds_and_ty {
+            extres: external_resolver) -> ty::ty_param_bounds_and_ty {
     let this_cnum = def.crate;
     let node_id = def.node;
     let item = lookup_item(node_id, data);
     let t = item_type(item, this_cnum, tcx, extres);
-    let tp_kinds: [ast::kind];
-    let fam_ch = item_family(item);
-    let has_ty_params = family_has_type_params(fam_ch);
-    if has_ty_params {
-        tp_kinds = item_ty_param_kinds(item);
-    } else { tp_kinds = []; }
-    ret {kinds: tp_kinds, ty: t};
+    let tp_bounds = if family_has_type_params(item_family(item)) {
+        item_ty_param_bounds(item, this_cnum, tcx, extres)
+    } else { [] };
+    ret {bounds: tp_bounds, ty: t};
 }
 
 fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {
     item_ty_param_count(lookup_item(id, data))
-}
-
-fn get_type_param_kinds(data: @[u8], id: ast::node_id) -> [ast::kind] {
-    ret item_ty_param_kinds(lookup_item(id, data));
 }
 
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {

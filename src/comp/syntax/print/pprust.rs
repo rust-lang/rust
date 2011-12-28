@@ -1204,11 +1204,17 @@ fn print_arg_mode(s: ps, m: ast::mode) {
     }
 }
 
-fn print_kind(s: ps, kind: ast::kind) {
-    alt kind {
-      ast::kind_sendable. { word_nbsp(s, "send"); }
-      ast::kind_copyable. { word_nbsp(s, "copy"); }
-      ast::kind_noncopyable. {}
+fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {
+    if vec::len(*bounds) > 0u {
+        word(s.s, ":");
+        for bound in *bounds {
+            nbsp(s);
+            alt bound {
+              ast::bound_copy. { word(s.s, "copy"); }
+              ast::bound_send. { word(s.s, "send"); }
+              ast::bound_iface(t) { print_type(s, t); }
+            }
+        }
     }
 }
 
@@ -1216,8 +1222,8 @@ fn print_type_params(s: ps, params: [ast::ty_param]) {
     if vec::len(params) > 0u {
         word(s.s, "<");
         fn printParam(s: ps, param: ast::ty_param) {
-            print_kind(s, param.kind);
             word(s.s, param.ident);
+            print_bounds(s, param.bounds);
         }
         commasep(s, inconsistent, params, printParam);
         word(s.s, ">");

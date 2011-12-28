@@ -162,7 +162,9 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         alt substs.substs {
           some(ts) {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
-            let kinds = ty::lookup_item_type(cx.tcx, did).kinds, i = 0u;
+            let kinds = vec::map(ty::lookup_item_type(cx.tcx, did).bounds,
+                                 {|bs| ty::param_bounds_to_kind(bs)});
+            let i = 0u;
             for ty in ts {
                 let kind = ty::type_kind(cx.tcx, ty);
                 if !ty::kind_lteq(kinds[i], kind) {
