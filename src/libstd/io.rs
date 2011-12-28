@@ -242,6 +242,10 @@ fn new_byte_buf_reader(buf: [u8]) -> buf_reader {
     ret byte_buf_reader(@{buf: buf, mutable pos: 0u});
 }
 
+fn bytes_reader(bytes: [u8]) -> reader {
+    ret new_reader(new_byte_buf_reader(bytes));
+}
+
 fn string_reader(s: str) -> reader {
     ret new_reader(new_byte_buf_reader(str::bytes(s)));
 }
@@ -426,6 +430,12 @@ fn stderr() -> writer { ret new_writer(fd_buf_writer(2i32, option::none)); }
 fn print(s: str) { stdout().write_str(s); }
 fn println(s: str) { stdout().write_str(s + "\n"); }
 
+type bytes_writer =
+    obj {
+        fn get_writer() -> writer;
+        fn get_bytes() -> [mutable u8];
+    };
+
 type str_writer =
     obj {
         fn get_writer() -> writer;
@@ -466,17 +476,26 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
     fn fsync(_level: fsync::level) -> int { ret 0; }
 }
 
-fn string_writer() -> str_writer {
+fn bytes_writer() -> bytes_writer {
     // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
 
     let b: [mutable u8] = [mutable 0u8];
     vec::pop(b);
-    let buf: mutable_byte_buf = @{mutable buf: b, mutable pos: 0u};
-    obj str_writer_wrap(wr: writer, buf: mutable_byte_buf) {
+    let buf = @{mutable buf: b, mutable pos: 0u};
+    obj byte_buf_writer_wrap(wr: writer, buf: mutable_byte_buf) {
         fn get_writer() -> writer { ret wr; }
-        fn get_str() -> str { ret str::unsafe_from_bytes(buf.buf); }
+        fn get_bytes() -> [mutable u8] { ret buf.buf; }
     }
-    ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
+    ret byte_buf_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
+}
+
+fn string_writer() -> str_writer {
+    let writer = bytes_writer();
+    obj str_writer_wrap(wr: bytes_writer) {
+        fn get_writer() -> writer { wr.get_writer() }
+        fn get_str() -> str { str::unsafe_from_bytes(wr.get_bytes()) }
+    }
+    str_writer_wrap(writer)
 }
 
 
