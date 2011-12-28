@@ -555,8 +555,6 @@ shape_cmp_type(int8_t *result, const type_desc *tydesc,
 extern "C" void
 shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
     rust_task *task = rust_scheduler::get_task();
-    if (task->sched->log_lvl < level)
-        return;     // TODO: Don't evaluate at all?
 
     shape::arena arena;
     shape::type_param *params =

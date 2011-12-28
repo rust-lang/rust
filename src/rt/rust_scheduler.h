@@ -43,7 +43,15 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
 
     // Fields known only by the runtime:
     rust_log _log;
+
+    // NB: this is used to filter *runtime-originating* debug
+    // logging, on a per-scheduler basis. It's not likely what
+    // you want to expose to the user in terms of per-task
+    // or per-module logging control. By default all schedulers
+    // are set to debug-level logging here, and filtered by
+    // runtime category using the pseudo-modules ::rt::foo.
     uint32_t log_lvl;
+
     rust_srv *srv;
     const char *const name;
 

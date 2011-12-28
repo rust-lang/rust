@@ -19,7 +19,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     ref_count(1),
     interrupt_flag(0),
     _log(srv, this),
-    log_lvl(log_note),
+    log_lvl(log_debug),
     srv(srv),
     // TODO: calculate a per scheduler name.
     name("main"),
@@ -203,12 +203,12 @@ rust_scheduler::schedule_task(int id) {
 
 void
 rust_scheduler::log_state() {
-    if (log_rt_task < log_note) return;
+    if (log_rt_task < log_debug) return;
 
     if (!running_tasks.is_empty()) {
-        log(NULL, log_note, "running tasks:");
+        log(NULL, log_debug, "running tasks:");
         for (size_t i = 0; i < running_tasks.length(); i++) {
-            log(NULL, log_note, "\t task: %s @0x%" PRIxPTR
+            log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR
                 " remaining: %" PRId64 " us",
                 running_tasks[i]->name,
                 running_tasks[i],
@@ -217,9 +217,9 @@ rust_scheduler::log_state() {
     }
 
     if (!blocked_tasks.is_empty()) {
-        log(NULL, log_note, "blocked tasks:");
+        log(NULL, log_debug, "blocked tasks:");
         for (size_t i = 0; i < blocked_tasks.length(); i++) {
-            log(NULL, log_note, "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%"
+            log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%"
                 PRIxPTR " '%s'",
                 blocked_tasks[i]->name, blocked_tasks[i],
                 blocked_tasks[i]->cond, blocked_tasks[i]->cond_name);
@@ -227,9 +227,9 @@ rust_scheduler::log_state() {
     }
 
     if (!dead_tasks.is_empty()) {
-        log(NULL, log_note, "dead tasks:");
+        log(NULL, log_debug, "dead tasks:");
         for (size_t i = 0; i < dead_tasks.length(); i++) {
-            log(NULL, log_note, "\t task: %s 0x%" PRIxPTR,
+            log(NULL, log_debug, "\t task: %s 0x%" PRIxPTR,
                 dead_tasks[i]->name, dead_tasks[i]);
         }
     }

@@ -3,18 +3,20 @@
 #define RUST_LOG_H
 
 const uint32_t log_err = 0;
-const uint32_t log_note = 1;
+const uint32_t log_warn = 1;
+const uint32_t log_info = 2;
+const uint32_t log_debug = 3;
 
 #define LOG(task, field, ...)                                   \
-    DLOG_LVL(log_note, task, task->sched, field, __VA_ARGS__)
+    DLOG_LVL(log_debug, task, task->sched, field, __VA_ARGS__)
 #define LOG_ERR(task, field, ...)                               \
     DLOG_LVL(log_err, task, task->sched, field, __VA_ARGS__)
 #define DLOG(sched, field, ...)                                   \
-    DLOG_LVL(log_note, NULL, sched, field, __VA_ARGS__)
+    DLOG_LVL(log_debug, NULL, sched, field, __VA_ARGS__)
 #define DLOG_ERR(sched, field, ...)                               \
     DLOG_LVL(log_err, NULL, sched, field, __VA_ARGS__)
 #define LOGPTR(sched, msg, ptrval)                                \
-    DLOG_LVL(log_note, NULL, sched, mem, "%s 0x%" PRIxPTR, msg, ptrval)
+    DLOG_LVL(log_debug, NULL, sched, mem, "%s 0x%" PRIxPTR, msg, ptrval)
 #define DLOG_LVL(lvl, task, sched, field, ...)                    \
     do {                                                        \
         rust_scheduler* _d_ = sched;                            \
@@ -24,7 +26,7 @@ const uint32_t log_note = 1;
     } while (0)
 
 #define KLOG(k, field, ...) \
-    KLOG_LVL(k, field, log_note, __VA_ARGS__)
+    KLOG_LVL(k, field, log_debug, __VA_ARGS__)
 #define KLOG_LVL(k, field, lvl, ...)                          \
     do {                                                      \
         if (log_rt_##field >= lvl) {                          \
