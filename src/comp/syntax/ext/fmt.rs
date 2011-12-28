@@ -26,7 +26,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
     }
     let fmt =
         expr_to_str(cx, args[0],
-                    "first argument to #fmt must be a " + "string literal.");
+                    "first argument to #fmt must be a string literal.");
     let fmtspan = args[0].span;
     #debug("Format string:");
     log(debug, fmt);

@@ -65,7 +65,7 @@ Convert to a string
 fn str(n: u64) -> str { ret to_str(n, 10u); }
 
 /*
-Function: parse_buf
+Function: from_str
 
 Parse a string as an unsigned integer.
 */
