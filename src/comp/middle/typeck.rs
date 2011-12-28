@@ -369,7 +369,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         alt mode {
           m_check_tyvar(fcx) { ret next_ty_var(fcx); }
           _ { tcx.sess.span_bug(ast_ty.span,
-                                "found 'ty_infer' in unexpected place"); }
+                                "found `ty_infer` in unexpected place"); }
         }
       }
     }
@@ -895,11 +895,11 @@ mod demand {
             let e_err = resolve_type_vars_if_possible(fcx, expected);
             let a_err = resolve_type_vars_if_possible(fcx, actual);
             fcx.ccx.tcx.sess.span_err(sp,
-                                      "mismatched types: expected '" +
+                                      "mismatched types: expected `" +
                                           ty_to_str(fcx.ccx.tcx, e_err) +
-                                          "' but found '" +
+                                          "` but found `" +
                                           ty_to_str(fcx.ccx.tcx, a_err) +
-                                          "' (" + ty::type_err_to_str(err) +
+                                          "` (" + ty::type_err_to_str(err) +
                                           ")");
             ret mk_result(fcx, expected, ty_param_subst_var_ids);
           }
@@ -1303,7 +1303,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
             // can never tell.
             fcx.ccx.tcx.sess.span_fatal
                 (pat.span,
-                 #fmt["mismatched types: expected '%s' but found tag",
+                 #fmt["mismatched types: expected `%s` but found tag",
                       ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
@@ -1316,7 +1316,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
           _ {
             fcx.ccx.tcx.sess.span_fatal
                 (pat.span,
-                #fmt["mismatched types: expected '%s' but found record",
+                #fmt["mismatched types: expected `%s` but found record",
                                 ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
@@ -1338,7 +1338,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
               none. {
                 fcx.ccx.tcx.sess.span_fatal(pat.span,
                                             #fmt["mismatched types: did not \
-                                           expect a record with a field '%s'",
+                                           expect a record with a field `%s`",
                                                  f.ident]);
               }
             }
@@ -1352,7 +1352,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
           _ {
             fcx.ccx.tcx.sess.span_fatal
                 (pat.span,
-                 #fmt["mismatched types: expected '%s', found tuple",
+                 #fmt["mismatched types: expected `%s`, found tuple",
                         ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
@@ -1375,9 +1375,9 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
           }
           _ {
             fcx.ccx.tcx.sess.span_fatal(pat.span,
-                                        "mismatched types: expected '" +
+                                        "mismatched types: expected `" +
                                             ty_to_str(fcx.ccx.tcx, expected) +
-                                            "' found box");
+                                            "` found box");
           }
         }
       }
@@ -1389,9 +1389,9 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
           }
           _ {
             fcx.ccx.tcx.sess.span_fatal(pat.span,
-                                        "mismatched types: expected '" +
+                                        "mismatched types: expected `" +
                                             ty_to_str(fcx.ccx.tcx, expected) +
-                                            "' found uniq");
+                                            "` found uniq");
           }
         }
       }
@@ -1793,8 +1793,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             if !type_is_integral(fcx, oper.span, oper_t) &&
                    structure_of(fcx, oper.span, oper_t) != ty::ty_bool {
                 tcx.sess.span_err(expr.span,
-                                  #fmt["mismatched types: expected 'bool' \
-                          or 'integer' but found '%s'",
+                                  #fmt["mismatched types: expected `bool` \
+                          or `integer` but found `%s`",
                                        ty_to_str(tcx, oper_t)]);
             }
           }
@@ -1804,8 +1804,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                      ty::type_is_fp(tcx, oper_t)) {
                 tcx.sess.span_err(expr.span,
                                   "applying unary minus to \
-                   non-numeric type '"
-                                      + ty_to_str(tcx, oper_t) + "'");
+                   non-numeric type `"
+                                      + ty_to_str(tcx, oper_t) + "`");
             }
           }
         }
@@ -1921,7 +1921,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           _ {
             tcx.sess.span_fatal(expr.span,
                                 "mismatched types: expected vector or string "
-                                + "but found '" + ty_to_str(tcx, ety) + "'");
+                                + "but found `" + ty_to_str(tcx, ety) + "`");
           }
         }
         bot |= check_for(fcx, decl, elt_ty, body, id);
@@ -2252,8 +2252,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         if !type_is_integral(fcx, idx.span, idx_t) {
             tcx.sess.span_err(idx.span,
                               "mismatched types: expected \
-                               'integer' but found '"
-                                  + ty_to_str(tcx, idx_t) + "'");
+                               `integer` but found `"
+                                  + ty_to_str(tcx, idx_t) + "`");
         }
         alt structure_of(fcx, expr.span, base_t) {
           ty::ty_vec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
@@ -2690,13 +2690,13 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                       some(m) {
                         if !ty::same_method(ccx.tcx, m, if_m) {
                             ccx.tcx.sess.span_err(
-                                ty.span, "method '" + if_m.ident +
-                                "' has the wrong type");
+                                ty.span, "method `" + if_m.ident +
+                                "` has the wrong type");
                         }
                       }
                       none. {
-                        ccx.tcx.sess.span_err(ty.span, "missing method '" +
-                                              if_m.ident + "'");
+                        ccx.tcx.sess.span_err(ty.span, "missing method `" +
+                                              if_m.ident + "`");
                       }
                     }
                 }
@@ -2740,15 +2740,15 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
         if !ok {
             let span = ast_map::node_span(tcx.items.get(main_id));
             tcx.sess.span_err(span,
-                              "wrong type in main function: found '" +
-                                  ty_to_str(tcx, main_t) + "'");
+                              "wrong type in main function: found `" +
+                                  ty_to_str(tcx, main_t) + "`");
         }
       }
       _ {
         let span = ast_map::node_span(tcx.items.get(main_id));
         tcx.sess.span_bug(span,
-                          "main has a non-function type: found '" +
-                              ty_to_str(tcx, main_t) + "'");
+                          "main has a non-function type: found `" +
+                              ty_to_str(tcx, main_t) + "`");
       }
     }
 }

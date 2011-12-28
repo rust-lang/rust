@@ -1,4 +1,4 @@
-// error-pattern:expected 'int' but found 'bool'
+// error-pattern:expected `int` but found `bool`
 
 fn main() {
 

@@ -1,5 +1,5 @@
 // Tests that the typechecker checks constraints
-// error-pattern:mismatched types: expected 'uint' but found 'u8'
+// error-pattern:mismatched types: expected `uint` but found `u8`
 use std;
 import uint;
 
