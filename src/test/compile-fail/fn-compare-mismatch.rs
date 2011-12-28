@@ -1,4 +1,4 @@
-// error-pattern:expected fn() but found fn(++int)
+// error-pattern:expected 'fn()' but found 'fn(++int)'
 
 fn main() {
     fn f() { }
