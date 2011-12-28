@@ -256,7 +256,7 @@ type buf_writer =
     // FIXME: eventually u64
 
     obj {
-        fn write([u8]);
+        fn write([const u8]);
         fn seek(int, seek_style);
         fn tell() -> uint;
         fn flush() -> int;
@@ -264,7 +264,7 @@ type buf_writer =
     };
 
 obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
-    fn write(v: [u8]) unsafe {
+    fn write(v: [const u8]) unsafe {
         let len = vec::len::<u8>(v);
         let vbuf = vec::unsafe::to_ptr::<u8>(v);
         let nout = os::libc::fwrite(vbuf, len, 1u, f);
@@ -283,7 +283,7 @@ obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
 resource fd_res(fd: fd_t) { os::libc::close(fd); }
 
 obj fd_buf_writer(fd: fd_t, res: option::t<@fd_res>) {
-    fn write(v: [u8]) unsafe {
+    fn write(v: [const u8]) unsafe {
         let len = vec::len::<u8>(v);
         let count = 0u;
         let vbuf;
@@ -351,7 +351,7 @@ type writer =
         fn write_char(char);
         fn write_int(int);
         fn write_uint(uint);
-        fn write_bytes([u8]);
+        fn write_bytes([const u8]);
         fn write_le_uint(uint, uint);
         fn write_le_int(int, uint);
         fn write_be_uint(uint, uint);
@@ -384,7 +384,7 @@ obj new_writer(out: buf_writer) {
     }
     fn write_int(n: int) { out.write(str::bytes(int::to_str(n, 10u))); }
     fn write_uint(n: uint) { out.write(str::bytes(uint::to_str(n, 10u))); }
-    fn write_bytes(bytes: [u8]) { out.write(bytes); }
+    fn write_bytes(bytes: [const u8]) { out.write(bytes); }
     fn write_le_uint(n: uint, size: uint) {
         out.write(uint_to_le_bytes(n, size));
     }
@@ -435,7 +435,7 @@ type str_writer =
 type mutable_byte_buf = @{mutable buf: [mutable u8], mutable pos: uint};
 
 obj byte_buf_writer(buf: mutable_byte_buf) {
-    fn write(v: [u8]) {
+    fn write(v: [const u8]) {
         // Fast path.
 
         if buf.pos == vec::len(buf.buf) {
