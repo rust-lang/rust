@@ -39,6 +39,13 @@ type rng = obj {
     Return a random string composed of A-Z, a-z, 0-9.
     */
     fn gen_str(len: uint) -> str;
+
+    /*
+    Method: gen_bytes
+
+    Return a random byte string.
+    */
+    fn gen_bytes(len: uint) -> [u8];
 };
 
 resource rand_res(c: rustrt::rctx) { rustrt::rand_free(c); }
@@ -73,6 +80,16 @@ fn mk_rng() -> rng {
                 i += 1u;
             }
             s
+        }
+        fn gen_bytes(len: uint) -> [u8] {
+            let v = [];
+            let i = 0u;
+            while i < len {
+                let n = rustrt::rand_next(**c) as uint;
+                v += [(n % (u8::max_value as uint)) as u8];
+                i += 1u;
+            }
+            v
         }
     }
     ret rt_rng(@rand_res(rustrt::rand_new()));
