@@ -145,8 +145,8 @@ export ty_fn_args;
 export type_constr;
 export type_contains_params;
 export type_contains_vars;
-export kind_lteq;
-export type_kind;
+export kind, kind_sendable, kind_copyable, kind_noncopyable;
+export kind_can_be_copied, kind_can_be_sent, proto_kind, kind_lteq, type_kind;
 export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
@@ -216,7 +216,7 @@ type ctxt =
       rcache: creader_cache,
       short_names_cache: hashmap<t, @str>,
       needs_drop_cache: hashmap<t, bool>,
-      kind_cache: hashmap<t, ast::kind>,
+      kind_cache: hashmap<t, kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
       tag_var_cache: hashmap<ast::def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
@@ -308,14 +308,14 @@ tag param_bound {
     bound_iface(t);
 }
 
-fn param_bounds_to_kind(bounds: @[param_bound]) -> ast::kind {
-    let kind = ast::kind_noncopyable;
+fn param_bounds_to_kind(bounds: @[param_bound]) -> kind {
+    let kind = kind_noncopyable;
     for bound in *bounds {
         alt bound {
           bound_copy. {
-            if kind != ast::kind_sendable { kind = ast::kind_copyable; }
+            if kind != kind_sendable { kind = kind_copyable; }
           }
-          bound_send. { kind = ast::kind_sendable; }
+          bound_send. { kind = kind_sendable; }
           _ {}
         }
     }
@@ -847,7 +847,7 @@ fn type_is_structural(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_is_copyable(cx: ctxt, ty: t) -> bool {
-    ret ast::kind_can_be_copied(type_kind(cx, ty));
+    ret kind_can_be_copied(type_kind(cx, ty));
 }
 
 fn type_is_sequence(cx: ctxt, ty: t) -> bool {
@@ -989,6 +989,36 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     ret result;
 }
 
+tag kind { kind_sendable; kind_copyable; kind_noncopyable; }
+
+// Using these query functons is preferable to direct comparison or matching
+// against the kind constants, as we may modify the kind hierarchy in the
+// future.
+pure fn kind_can_be_copied(k: kind) -> bool {
+    ret alt k {
+      kind_sendable. { true }
+      kind_copyable. { true }
+      kind_noncopyable. { false }
+    };
+}
+
+pure fn kind_can_be_sent(k: kind) -> bool {
+    ret alt k {
+      kind_sendable. { true }
+      kind_copyable. { false }
+      kind_noncopyable. { false }
+    };
+}
+
+fn proto_kind(p: proto) -> kind {
+    alt p {
+      ast::proto_block. { kind_noncopyable }
+      ast::proto_shared(_) { kind_copyable }
+      ast::proto_send. { kind_sendable }
+      ast::proto_bare. { kind_sendable }
+    }
+}
+
 fn kind_lteq(a: kind, b: kind) -> bool {
     alt a {
       kind_noncopyable. { true }
@@ -1001,58 +1031,58 @@ fn lower_kind(a: kind, b: kind) -> kind {
     if ty::kind_lteq(a, b) { a } else { b }
 }
 
-fn type_kind(cx: ctxt, ty: t) -> ast::kind {
+fn type_kind(cx: ctxt, ty: t) -> kind {
     alt cx.kind_cache.find(ty) {
       some(result) { ret result; }
       none. {/* fall through */ }
     }
 
     // Insert a default in case we loop back on self recursively.
-    cx.kind_cache.insert(ty, ast::kind_sendable);
+    cx.kind_cache.insert(ty, kind_sendable);
 
     let result = alt struct(cx, ty) {
       // Scalar and unique types are sendable
       ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_native(_) | ty_ptr(_) |
-      ty_send_type. | ty_str. | ty_native_fn(_, _) { ast::kind_sendable }
+      ty_send_type. | ty_str. | ty_native_fn(_, _) { kind_sendable }
       ty_type. { kind_copyable }
       // FIXME: obj is broken for now, since we aren't asserting
       // anything about its fields.
       ty_obj(_) { kind_copyable }
-      ty_fn(f) { ast::proto_kind(f.proto) }
+      ty_fn(f) { proto_kind(f.proto) }
       ty_opaque_closure. { kind_noncopyable }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
-      ty_box(_) | ty_iface(_, _) { ast::kind_copyable }
+      ty_box(_) | ty_iface(_, _) { kind_copyable }
       // Boxes and unique pointers raise pinned to shared.
       ty_vec(tm) | ty_uniq(tm) { type_kind(cx, tm.ty) }
       // Records lower to the lowest of their members.
       ty_rec(flds) {
-        let lowest = ast::kind_sendable;
+        let lowest = kind_sendable;
         for f in flds { lowest = lower_kind(lowest, type_kind(cx, f.mt.ty)); }
         lowest
       }
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
-        let lowest = ast::kind_sendable;
+        let lowest = kind_sendable;
         for ty in tys { lowest = lower_kind(lowest, type_kind(cx, ty)); }
         lowest
       }
       // Tags lower to the lowest of their variants.
       ty_tag(did, tps) {
-        let lowest = ast::kind_sendable;
+        let lowest = kind_sendable;
         for variant in *tag_variants(cx, did) {
             for aty in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
                 lowest = lower_kind(lowest, type_kind(cx, arg_ty));
-                if lowest == ast::kind_noncopyable { break; }
+                if lowest == kind_noncopyable { break; }
             }
         }
         lowest
       }
       // Resources are always noncopyable.
-      ty_res(did, inner, tps) { ast::kind_noncopyable }
+      ty_res(did, inner, tps) { kind_noncopyable }
       ty_param(_, bounds) { param_bounds_to_kind(bounds) }
       ty_constr(t, _) { type_kind(cx, t) }
     };
@@ -1143,7 +1173,7 @@ fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
           }
           _ { false }
         };
-    }) && type_kind(cx, ty) != ast::kind_noncopyable;
+    }) && type_kind(cx, ty) != kind_noncopyable;
 }
 
 fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {

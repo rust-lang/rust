@@ -2,6 +2,7 @@ import option::{some, none};
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
+import ty::{kind, kind_copyable, kind_sendable, kind_noncopyable};
 
 // Kind analysis pass. There are three kinds:
 //
@@ -135,7 +136,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             let ty_fields = alt ty::struct(cx.tcx, t) { ty::ty_rec(f) { f } };
             for tf in ty_fields {
                 if !vec::any(fields, {|f| f.node.ident == tf.ident}) &&
-                    !kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
+                    !ty::kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
                     cx.tcx.sess.span_err(ex.span,
                                          "copying a noncopyable value");
                 }
@@ -221,13 +222,13 @@ fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
 }
 
 fn check_copy(cx: ctx, ty: ty::t, sp: span) {
-    if !kind_can_be_copied(ty::type_kind(cx.tcx, ty)) {
+    if !ty::kind_can_be_copied(ty::type_kind(cx.tcx, ty)) {
         cx.tcx.sess.span_err(sp, "copying a noncopyable value");
     }
 }
 
 fn check_send(cx: ctx, ty: ty::t, sp: span) {
-    if !kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
+    if !ty::kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
         cx.tcx.sess.span_err(sp, "not a sendable value");
     }
 }
