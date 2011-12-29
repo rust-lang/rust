@@ -1701,7 +1701,8 @@ fn check_exports(e: @env) {
 // Impl resolution
 
 type method_info = {did: def_id, n_tps: uint, ident: ast::ident};
-type _impl = {did: def_id, ident: ast::ident, methods: [@method_info]};
+type _impl = {did: def_id, iface_did: option::t<def_id>,
+              ident: ast::ident, methods: [@method_info]};
 type iscopes = list<@[@_impl]>;
 
 fn resolve_impls(e: @env, c: @ast::crate) {
@@ -1757,14 +1758,20 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
     }
 }
 
-fn find_impls_in_item(i: @ast::item, &impls: [@_impl],
+fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
                       name: option::t<ident>,
                       ck_exports: option::t<ast::_mod>) {
     alt i.node {
-      ast::item_impl(_, _, _, mthds) {
+      ast::item_impl(_, ifce, _, mthds) {
         if alt name { some(n) { n == i.ident } _ { true } } &&
            alt ck_exports { some(m) { is_exported(i.ident, m) } _ { true } } {
             impls += [@{did: local_def(i.id),
+                        iface_did: alt ifce {
+                            some(@{node: ast::ty_path(_, id), _}) {
+                                some(def_id_of_def(e.def_map.get(id)))
+                            }
+                            _ { none }
+                        },
                         ident: i.ident,
                         methods: vec::map(mthds, {|m|
                             @{did: local_def(m.id),
@@ -1788,7 +1795,7 @@ fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
             cached = if defid.crate == ast::local_crate {
                 let tmp = [];
                 for i in option::get(e.mod_map.get(defid.node).m).items {
-                    find_impls_in_item(i, tmp, name, none);
+                    find_impls_in_item(e, i, tmp, name, none);
                 }
                 @tmp
             } else {
@@ -1816,7 +1823,7 @@ fn visit_block_with_impl_scope(e: @env, b: ast::blk, sc: iscopes,
     for st in b.node.stmts {
         alt st.node {
           ast::stmt_decl(@{node: ast::decl_item(i), _}, _) {
-            find_impls_in_item(i, impls, none, none);
+            find_impls_in_item(*e, i, impls, none, none);
           }
           _ {}
         }
@@ -1829,13 +1836,15 @@ fn visit_mod_with_impl_scope(e: @env, m: ast::_mod, s: span, sc: iscopes,
                              v: vt<iscopes>) {
     let impls = [];
     for vi in m.view_items { find_impls_in_view_item(*e, vi, impls, sc); }
-    for i in m.items { find_impls_in_item(i, impls, none, none); }
+    for i in m.items { find_impls_in_item(*e, i, impls, none, none); }
     visit::visit_mod(m, s, vec::len(impls) > 0u ? cons(@impls, @sc) : sc, v);
 }
 
 fn resolve_impl_in_expr(e: @env, x: @ast::expr, sc: iscopes, v: vt<iscopes>) {
     alt x.node {
-      ast::expr_field(_, _, _) { e.impl_map.insert(x.id, sc); }
+      ast::expr_field(_, _, _) | ast::expr_path(_) {
+        e.impl_map.insert(x.id, sc);
+      }
       _ {}
     }
     visit::visit_expr(x, sc, v);

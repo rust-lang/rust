@@ -814,7 +814,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
       }
       ty_param(id, did) {
-        alt fld { fm_param(folder) { ty = folder(id, did); } _ {/* no-op */ } }
+        alt fld { fm_param(folder) { ty = folder(id, did); } _ {} }
       }
     }
 
@@ -1731,6 +1731,7 @@ mod unify {
     export ures_ok;
     export ures_err;
     export var_bindings;
+    export precise, in_bindings, bind_params;
 
     tag result { ures_ok(t); ures_err(type_err); }
     tag union_result { unres_ok; unres_err(type_err); }
@@ -1741,7 +1742,12 @@ mod unify {
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
 
-    type ctxt = {vb: option::t<@var_bindings>, tcx: ty_ctxt};
+    tag unify_style {
+        precise;
+        in_bindings(@var_bindings);
+        bind_params(@mutable [mutable option::t<t>]);
+    }
+    type ctxt = {st: unify_style, tcx: ty_ctxt};
 
     fn mk_var_bindings() -> @var_bindings {
         ret @{sets: ufind::make(), types: smallintmap::mk::<t>()};
@@ -1750,7 +1756,9 @@ mod unify {
     // Unifies two sets.
     fn union(cx: @ctxt, set_a: uint, set_b: uint,
              variance: variance) -> union_result {
-        let vb = option::get(cx.vb);
+        let vb = alt cx.st {
+            in_bindings(vb) { vb }
+        };
         ufind::grow(vb.sets, float::max(set_a, set_b) + 1u);
         let root_a = ufind::find(vb.sets, set_a);
         let root_b = ufind::find(vb.sets, set_b);
@@ -1800,7 +1808,7 @@ mod unify {
     fn record_var_binding(
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
 
-        let vb = option::get(cx.vb);
+        let vb = alt cx.st { in_bindings(vb) { vb } };
         ufind::grow(vb.sets, (key as uint) + 1u);
         let root = ufind::find(vb.sets, key as uint);
         let result_type = typ;
@@ -2136,7 +2144,6 @@ mod unify {
           // If the RHS is a variable type, then just do the
           // appropriate binding.
           ty::ty_var(actual_id) {
-            assert option::is_some(cx.vb);
             let actual_n = actual_id as uint;
             alt struct(cx.tcx, expected) {
               ty::ty_var(expected_id) {
@@ -2157,11 +2164,20 @@ mod unify {
             }
             ret ures_ok(mk_var(cx.tcx, actual_id));
           }
+          ty::ty_param(n, _) {
+            alt cx.st {
+              bind_params(cell) {
+                while vec::len(*cell) < n + 1u { *cell += [mutable none]; }
+                cell[n] = some(expected);
+                ret ures_ok(expected);
+              }
+              _ {}
+            }
+          }
           _ {/* empty */ }
         }
         alt struct(cx.tcx, expected) {
           ty::ty_var(expected_id) {
-            assert option::is_some(cx.vb);
             // Add a binding. (`actual` can't actually be a var here.)
             alt record_var_binding_for_expected(
                 cx, expected_id, actual,
@@ -2478,9 +2494,9 @@ mod unify {
           }
         }
     }
-    fn unify(expected: t, actual: t, vb: option::t<@var_bindings>,
+    fn unify(expected: t, actual: t, st: unify_style,
              tcx: ty_ctxt) -> result {
-        let cx = @{vb: vb, tcx: tcx};
+        let cx = @{st: st, tcx: tcx};
         ret unify_step(cx, expected, actual, covariant);
     }
     fn dump_var_bindings(tcx: ty_ctxt, vb: @var_bindings) {
@@ -2553,7 +2569,7 @@ mod unify {
 }
 
 fn same_type(cx: ctxt, a: t, b: t) -> bool {
-    alt unify::unify(a, b, none, cx) {
+    alt unify::unify(a, b, unify::precise, cx) {
       unify::ures_ok(_) { true }
       _ { false }
     }

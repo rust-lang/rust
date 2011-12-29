@@ -2858,8 +2858,11 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
         // Lval means this is a record field, so not a method
         if !expr_is_lval(bcx, e) {
             alt bcx_ccx(bcx).method_map.find(e.id) {
-              some(did) { // An impl method
+              some(typeck::method_static(did)) { // An impl method
                 ret trans_method_callee(bcx, e, base, did);
+              }
+              some(typeck::method_param(_)) {
+                fail "not implemented"; // FIXME[impl]
               }
               none. { // An object method
                 let of = trans_object_field(bcx, base, ident);

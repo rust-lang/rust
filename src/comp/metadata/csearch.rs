@@ -72,6 +72,7 @@ fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
         let nm = decoder::lookup_item_name(cdata, did.node);
         if alt name { some(n) { n == nm } none. { true } } {
             result += [@{did: did,
+                         iface_did: none::<ast::def_id>, // FIXME[impl]
                          ident: nm,
                          methods: decoder::lookup_impl_methods(
                              cdata, did.node, did.crate)}];

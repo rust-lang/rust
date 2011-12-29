@@ -163,14 +163,14 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         alt substs.substs {
           some(ts) {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
-            let kinds = vec::map(ty::lookup_item_type(cx.tcx, did).bounds,
-                                 {|bs| ty::param_bounds_to_kind(bs)});
+            let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             let i = 0u;
             for ty in ts {
                 let kind = ty::type_kind(cx.tcx, ty);
-                if !ty::kind_lteq(kinds[i], kind) {
+                let p_kind = ty::param_bounds_to_kind(bounds[i]);
+                if !ty::kind_lteq(p_kind, kind) {
                     cx.tcx.sess.span_err(e.span, "instantiating a " +
-                                         kind_to_str(kinds[i]) +
+                                         kind_to_str(p_kind) +
                                          " type parameter with a "
                                          + kind_to_str(kind) + " type");
                 }
