@@ -2731,7 +2731,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             ret lval_no_env(cx, ccx.consts.get(did.node), owned);
         } else {
             let tp = ty::node_id_to_monotype(ccx.tcx, id);
-            let val = trans_external_path(cx, did, {bounds: [], ty: tp});
+            let val = trans_external_path(cx, did, @{bounds: [], ty: tp});
             ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
         }
       }

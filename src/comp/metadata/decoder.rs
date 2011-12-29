@@ -213,7 +213,7 @@ fn get_type(data: @[u8], def: ast::def_id, tcx: ty::ctxt,
     let tp_bounds = if family_has_type_params(item_family(item)) {
         item_ty_param_bounds(item, this_cnum, tcx, extres)
     } else { [] };
-    ret {bounds: tp_bounds, ty: t};
+    ret @{bounds: tp_bounds, ty: t};
 }
 
 fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {

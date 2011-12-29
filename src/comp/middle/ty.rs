@@ -322,7 +322,7 @@ fn param_bounds_to_kind(bounds: @[param_bound]) -> kind {
     kind
 }
 
-type ty_param_bounds_and_ty = {bounds: [@[param_bound]], ty: t};
+type ty_param_bounds_and_ty = @{bounds: [@[param_bound]], ty: t};
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 
