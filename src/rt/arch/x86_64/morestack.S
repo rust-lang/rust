@@ -103,7 +103,6 @@ MORESTACK:
 	// Save the return value
 	pushq %rax
 
-	// FIXME: Should preserve %rax here
 #ifdef __APPLE__
 	call UPCALL_DEL_STACK
 #endif
