@@ -150,6 +150,9 @@ MORESTACK:
 	movl %ecx, 16(%esp)
 	movl %edx, 12(%esp)
 
+	// FIXME (1388): it's possible we also need to save/restore some
+	// SSE2 registers here, if floats-go-in-regs on x86+SSE2. Unclear.
+
 	// FIXME (1226): main is compiled with the split-stack prologue,
 	// causing it to call __morestack, so we have to jump back out
 	calll RUST_GET_TASK

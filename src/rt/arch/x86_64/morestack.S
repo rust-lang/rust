@@ -61,6 +61,19 @@ MORESTACK:
 	pushq	%r8
 	pushq	%r9
 
+	pushq $0 // Alignment
+	pushq $0 // Alignment
+
+	subq $128, %rsp
+	movdqa %xmm0,	 (%rsp)
+	movdqa %xmm1,  16(%rsp)
+	movdqa %xmm2,  32(%rsp)
+	movdqa %xmm3,  48(%rsp)
+	movdqa %xmm4,  64(%rsp)
+	movdqa %xmm5,  80(%rsp)
+	movdqa %xmm6,  96(%rsp)
+	movdqa %xmm7, 112(%rsp)
+
 	// Calculate the address of the stack arguments.
 	// We have the base pointer, __morestack's return address,
 	// and __morestack's caller's return address to skip
@@ -72,7 +85,7 @@ MORESTACK:
 	movq %r11, %rdx // Size of stack arguments
 	movq %rax, %rsi // Address of stack arguments
 	movq %r10, %rdi // The amount of stack needed
-
+        
 #ifdef __APPLE__
 	call UPCALL_NEW_STACK
 #endif
@@ -81,6 +94,19 @@ MORESTACK:
 #endif
 
 	// Pop the saved arguments
+	movdqa    (%rsp), %xmm0
+	movdqa  16(%rsp), %xmm1
+	movdqa  32(%rsp), %xmm2
+	movdqa  48(%rsp), %xmm3
+	movdqa  64(%rsp), %xmm4
+	movdqa  80(%rsp), %xmm5
+	movdqa  96(%rsp), %xmm6
+	movdqa 112(%rsp), %xmm7
+	addq $128, %rsp
+
+	popq %r9 // Alignment
+	popq %r9 // Alignment
+
 	popq %r9
 	popq %r8
 	popq %rcx
