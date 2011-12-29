@@ -1232,11 +1232,6 @@ fn parse_if_expr_1(p: parser) ->
         let elexpr = parse_else_expr(p);
         els = some(elexpr);
         hi = elexpr.span.hi;
-    } else if !option::is_none(thn.node.expr) {
-        let sp = option::get(thn.node.expr).span;
-        p.span_fatal(sp, "`if` without `else` can not produce a result");
-        //TODO: If a suggestion mechanism appears, suggest that the
-        //user may have forgotten a ';'
     }
     ret {cond: cond, then: thn, els: els, lo: lo, hi: hi};
 }
@@ -1596,32 +1591,29 @@ fn parse_stmt(p: parser) -> @ast::stmt {
 }
 
 fn expr_is_complete(p: parser, e: @ast::expr) -> bool {
+    log(debug, ("expr_is_complete", p.get_restriction(),
+                print::pprust::expr_to_str(e),
+                expr_requires_semi_to_be_stmt(e)));
     ret p.get_restriction() == RESTRICT_STMT_EXPR &&
         !expr_requires_semi_to_be_stmt(e);
 }
 
 fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     alt e.node {
-      ast::expr_if(_, th, els) | ast::expr_if_check(_, th, els) {
-        if option::is_none(els) { false }
-        else { !option::is_none(th.node.expr) ||
-                  expr_requires_semi_to_be_stmt(option::get(els)) }
+      ast::expr_if(_, _, _) | ast::expr_if_check(_, _, _)
+      | ast::expr_alt(_, _) | ast::expr_block(_)
+      | ast::expr_do_while(_, _) | ast::expr_while(_, _)
+      | ast::expr_for(_, _, _)
+      | ast::expr_call(_, _, true) {
+        false
       }
-      ast::expr_alt(_, arms) {
-        vec::any(arms, {|arm| !option::is_none(arm.body.node.expr)})
-      }
-      ast::expr_block(blk) | ast::expr_while(_, blk) |
-      ast::expr_for(_, _, blk) | ast::expr_do_while(blk, _) {
-        !option::is_none(blk.node.expr)
-      }
-      ast::expr_call(_, _, true) { false }
       _ { true }
     }
 }
 
 fn stmt_to_expr(stmt: @ast::stmt) -> option::t<@ast::expr> {
     alt stmt.node {
-      ast::stmt_expr(e, _) when expr_requires_semi_to_be_stmt(e) { some(e) }
+      ast::stmt_expr(e, _) { some(e) }
       _ { none }
     }
 }
@@ -1655,14 +1647,10 @@ fn parse_block(p: parser) -> ast::blk {
 }
 
 fn parse_block_no_value(p: parser) -> ast::blk {
-    let blk = parse_block(p);
-    if !option::is_none(blk.node.expr) {
-        let sp = option::get(blk.node.expr).span;
-        p.span_fatal(sp, "this block must not have a result");
-        //TODO: If a suggestion mechanism appears, suggest that the
-        //user may have forgotten a ';'
-    }
-    ret blk;
+    // We parse blocks that cannot have a value the same as any other block;
+    // the type checker will make sure that the tail expression (if any) has
+    // unit type.
+    ret parse_block(p);
 }
 
 // Precondition: already parsed the '{' or '#{'

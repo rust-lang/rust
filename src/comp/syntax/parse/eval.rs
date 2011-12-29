@@ -56,10 +56,10 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option::t<str>)
     -> ([@ast::view_item], [@ast::item], [ast::attribute]) {
 
     fn companion_file(prefix: str, suffix: option::t<str>) -> str {
-        alt suffix {
+        ret alt suffix {
           option::some(s) { fs::connect(prefix, s) }
           option::none. { prefix }
-        } + ".rs"
+        } + ".rs";
     }
 
     fn file_exists(path: str) -> bool {

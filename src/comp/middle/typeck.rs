@@ -1741,7 +1741,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let element_ty = demand::simple(fcx, local.span, element_ty,
                                         ty::mk_var(fcx.ccx.tcx, locid));
         let bot = check_decl_local(fcx, local);
-        check_block(fcx, body);
+        check_block_no_value(fcx, body);
         // Unify type of decl with element type of the seq
         demand::simple(fcx, local.span,
                        ty::node_id_to_type(fcx.ccx.tcx, local.node.id),
@@ -1756,22 +1756,27 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     fn check_then_else(fcx: @fn_ctxt, thn: ast::blk,
                        elsopt: option::t<@ast::expr>, id: ast::node_id,
                        _sp: span) -> bool {
-        let then_bot = check_block(fcx, thn);
-        let els_bot = false;
-        let if_t =
+        let (if_t, if_bot) =
             alt elsopt {
               some(els) {
+                let thn_bot = check_block(fcx, thn);
                 let thn_t = block_ty(fcx.ccx.tcx, thn);
-                els_bot = check_expr_with(fcx, els, thn_t);
-                let elsopt_t = expr_ty(fcx.ccx.tcx, els);
-                if !ty::type_is_bot(fcx.ccx.tcx, elsopt_t) {
-                    elsopt_t
-                } else { thn_t }
+                let els_bot = check_expr_with(fcx, els, thn_t);
+                let els_t = expr_ty(fcx.ccx.tcx, els);
+                let if_t = if !ty::type_is_bot(fcx.ccx.tcx, els_t) {
+                    els_t
+                } else {
+                    thn_t
+                };
+                (if_t, thn_bot & els_bot)
               }
-              none. { ty::mk_nil(fcx.ccx.tcx) }
+              none. {
+                check_block_no_value(fcx, thn);
+                (ty::mk_nil(fcx.ccx.tcx), false)
+              }
             };
         write::ty_only_fixup(fcx, id, if_t);
-        ret then_bot & els_bot;
+        ret if_bot;
     }
 
     // Checks the compatibility
@@ -1993,12 +1998,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_while(cond, body) {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx));
-        check_block(fcx, body);
+        check_block_no_value(fcx, body);
         write::ty_only_fixup(fcx, id, ty::mk_nil(tcx));
       }
       ast::expr_do_while(body, cond) {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
-              check_block(fcx, body);
+              check_block_no_value(fcx, body);
         write::ty_only_fixup(fcx, id, block_ty(tcx, body));
       }
       ast::expr_alt(expr, arms) {
@@ -2487,6 +2492,16 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
       ast::stmt_expr(expr, id) { node_id = id; bot = check_expr(fcx, expr); }
     }
     write::nil_ty(fcx.ccx.tcx, node_id);
+    ret bot;
+}
+
+fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
+    let bot = check_block(fcx, blk);
+    if !bot {
+        let blkty = ty::node_id_to_monotype(fcx.ccx.tcx, blk.node.id);
+        let nilty = ty::mk_nil(fcx.ccx.tcx);
+        demand::simple(fcx, blk.span, nilty, blkty);
+    }
     ret bot;
 }
 
