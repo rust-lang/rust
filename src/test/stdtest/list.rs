@@ -2,17 +2,23 @@ import core::*;
 
 use std;
 import std::list;
-import std::list::head;
-import std::list::tail;
-import std::list::from_vec;
+import std::list::{from_vec, head, is_not_empty, tail};
 import option;
 
 #[test]
 fn test_from_vec() {
     let l = from_vec([0, 1, 2]);
+
+    check is_not_empty(l);
     assert (head(l) == 0);
-    assert (head(tail(l)) == 1);
-    assert (head(tail(tail(l))) == 2);
+
+    let tail_l = tail(l);
+    check is_not_empty(tail_l);
+    assert (head(tail_l) == 1);
+
+    let tail_tail_l = tail(tail_l);
+    check is_not_empty(tail_tail_l);
+    assert (head(tail_tail_l) == 2);
 }
 
 #[test]
@@ -24,9 +30,17 @@ fn test_from_vec_empty() {
 #[test]
 fn test_from_vec_mut() {
     let l = from_vec([mutable 0, 1, 2]);
+
+    check is_not_empty(l);
     assert (head(l) == 0);
-    assert (head(tail(l)) == 1);
-    assert (head(tail(tail(l))) == 2);
+
+    let tail_l = tail(l);
+    check is_not_empty(tail_l);
+    assert (head(tail_l) == 1);
+
+    let tail_tail_l = tail(tail_l);
+    check is_not_empty(tail_tail_l);
+    assert (head(tail_tail_l) == 2);
 }
 
 #[test]

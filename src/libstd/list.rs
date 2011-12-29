@@ -98,6 +98,27 @@ fn has<copy T>(ls: list<T>, elt: T) -> bool {
 }
 
 /*
+Function: is_empty
+
+Returns true if the list is empty.
+*/
+pure fn is_empty<copy T>(ls: list<T>) -> bool {
+    alt ls {
+        nil. { true }
+        _ { false }
+    }
+}
+
+/*
+Function: is_not_empty
+
+Returns true if the list is not empty.
+*/
+pure fn is_not_empty<copy T>(ls: list<T>) -> bool {
+    ret !is_empty(ls);
+}
+
+/*
 Function: len
 
 Returns the length of a list
@@ -112,8 +133,11 @@ Function: tail
 
 Returns all but the first element of a list
 */
-pure fn tail<copy T>(ls: list<T>) -> list<T> {
-    alt ls { cons(_, tl) { ret *tl; } nil. { fail "list empty" } }
+pure fn tail<copy T>(ls: list<T>) : is_not_empty(ls) -> list<T> {
+    alt ls {
+        cons(_, tl) { ret *tl; }
+        nil. { fail "list empty" }
+    }
 }
 
 /*
@@ -121,8 +145,11 @@ Function: head
 
 Returns the first element of a list
 */
-pure fn head<copy T>(ls: list<T>) -> T {
-    alt ls { cons(hd, _) { ret hd; } nil. { fail "list empty" } }
+pure fn head<copy T>(ls: list<T>) : is_not_empty(ls) -> T {
+    alt ls {
+        cons(hd, _) { ret hd; }
+        nil. { fail "list empty" }
+    }
 }
 
 /*
