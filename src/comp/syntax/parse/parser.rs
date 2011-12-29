@@ -1621,8 +1621,8 @@ fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
 
 fn stmt_to_expr(stmt: @ast::stmt) -> option::t<@ast::expr> {
     alt stmt.node {
-      ast::stmt_expr(e, _) { some(e) }
-      ast::stmt_decl(_, _) { none }
+      ast::stmt_expr(e, _) when expr_requires_semi_to_be_stmt(e) { some(e) }
+      _ { none }
     }
 }
 
