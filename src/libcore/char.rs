@@ -37,6 +37,12 @@ Utilities for manipulating the char type
     Cn  Unassigned  a reserved unassigned code point or a noncharacter
 */
 
+export is_alphabetic,
+       is_XID_start, is_XID_continue,
+       is_lowercase, is_uppercase,
+       is_whitespace, is_alphanumeric,
+       to_digit, maybe_digit, cmp;
+
 import is_alphabetic = unicode::derived_property::Alphabetic;
 import is_XID_start = unicode::derived_property::XID_Start;
 import is_XID_continue = unicode::derived_property::XID_Continue;

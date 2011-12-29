@@ -595,9 +595,10 @@ otherwise defined as keywords or reserved
 tokens. @xref{Ref.Lex.Key}. @xref{Ref.Lex.Res}.
 
 That is: an identifier starts with any character having derived property
-@code{XID_Start} and continues with zero or more characters having derived
-property @code{XID_Continue}; and such an identifier is NFKC-normalized during
-lexing, such that all subsequent comparison of identifiers is performed on the
+@code{XID_Start}, or the character U+005F (underscore, @code{_}), and
+continues with zero or more characters having derived property
+@code{XID_Continue}. An identifier is NFKC-normalized during lexing, such
+that all subsequent comparison of identifiers is performed on the
 NFKC-normalized forms.
 
 @emph{TODO: define relationship between Unicode and Rust versions}.

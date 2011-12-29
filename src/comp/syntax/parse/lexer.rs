@@ -309,14 +309,16 @@ fn next_token(rdr: reader) -> {tok: token::token, chpos: uint, bpos: uint} {
 fn next_token_inner(rdr: reader) -> token::token {
     let accum_str = "";
     let c = rdr.curr();
-    if is_alpha(c) || c == '_' {
-        while is_alnum(c) || c == '_' {
+    if char::is_XID_start(c) || c == '_' {
+        while char::is_XID_continue(c) {
             str::push_char(accum_str, c);
             rdr.bump();
             c = rdr.curr();
         }
         if str::eq(accum_str, "_") { ret token::UNDERSCORE; }
         let is_mod_name = c == ':' && rdr.next() == ':';
+
+        // FIXME: perform NFKC normalization here.
         ret token::IDENT(interner::intern::<str>(*rdr.get_interner(),
                                                  accum_str), is_mod_name);
     }
