@@ -343,7 +343,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           }
           some(ast::def_native_ty(id)) { typ = getter(tcx, mode, id).ty; }
           some(ast::def_ty_param(id, n)) {
-            typ = ty::mk_param(tcx, n, tcx.ty_param_bounds.get(id));
+            typ = ty::mk_param(tcx, n, id);
           }
           some(_) {
             tcx.sess.span_fatal(ast_ty.span,
@@ -625,8 +625,8 @@ fn mk_ty_params(tcx: ty::ctxt, atps: [ast::ty_param])
     -> {bounds: [@[ty::param_bound]], params: [ty::t]} {
     let i = 0u, bounds = ty_param_bounds(tcx, m_collect, atps);
     {bounds: bounds,
-     params: vec::map(atps, {|_atp|
-         let t = ty::mk_param(tcx, i, bounds[i]);
+     params: vec::map(atps, {|atp|
+         let t = ty::mk_param(tcx, i, local_def(atp.id));
          i += 1u;
          t
      })}
@@ -2666,13 +2666,16 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method) {
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
-      ast::item_fn(decl, _, body) {
+      ast::item_fn(decl, tps, body) {
+        check_ty_params(ccx, tps);
         check_fn(ccx, ast::proto_bare, decl, body, it.id, none);
       }
-      ast::item_res(decl, _, body, dtor_id, _) {
+      ast::item_res(decl, tps, body, dtor_id, _) {
+        check_ty_params(ccx, tps);
         check_fn(ccx, ast::proto_bare, decl, body, dtor_id, none);
       }
-      ast::item_obj(ob, _, _) {
+      ast::item_obj(ob, tps, _) {
+        check_ty_params(ccx, tps);
         // We're entering an object, so gather up the info we need.
         ccx.self_infos += [self_obj(ob.fields,
                                     ccx.tcx.tcache.get(local_def(it.id)).ty)];
@@ -2681,9 +2684,11 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         // Now remove the info from the stack.
         vec::pop(ccx.self_infos);
       }
-      ast::item_impl(_, ifce, ty, ms) {
+      ast::item_impl(tps, ifce, ty, ms) {
+        check_ty_params(ccx, tps);
         ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];
         let my_methods = vec::map(ms, {|m|
+            check_ty_params(ccx, m.tps);
             check_method(ccx, m);
             ty_of_method(ccx.tcx, m_check, m)
         });
@@ -2717,7 +2722,40 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           _ {}
         }
       }
+      ast::item_iface(tps, _) | ast::item_ty(_, tps) | ast::item_tag(_, tps) {
+        check_ty_params(ccx, tps);
+      }
       _ {/* nothing to do */ }
+    }
+}
+
+fn check_native_item(ccx: @crate_ctxt, it: @ast::native_item) {
+    alt it.node {
+      ast::native_item_fn(_, tps) { check_ty_params(ccx, tps); }
+      _ {}
+    }
+}
+
+fn check_ty_params(ccx: @crate_ctxt, tps: [ast::ty_param]) {
+    for tp in tps {
+        let i = 0u;
+        for bound in *tp.bounds {
+            alt bound {
+              ast::bound_iface(at) {
+                let tbound = ccx.tcx.ty_param_bounds.get(local_def(tp.id))[i];
+                let bound_ty = alt tbound { ty::bound_iface(t) { t } };
+                alt ty::struct(ccx.tcx, bound_ty) {
+                  ty::ty_iface(_, _) {}
+                  _ {
+                    ccx.tcx.sess.span_err(at.span, "type parameter bounds \
+                                                    must be interface types");
+                  }
+                }
+              }
+              _ {}
+            }
+            i += 1u;
+        }
     }
 }
 
@@ -2778,8 +2816,10 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                 method_map: std::map::new_int_hash(),
                 tcx: tcx};
     let visit =
-        visit::mk_simple_visitor(@{visit_item: bind check_item(ccx, _)
-                                      with *visit::default_simple_visitor()});
+        visit::mk_simple_visitor(@{visit_item: bind check_item(ccx, _),
+                                   visit_native_item:
+                                       bind check_native_item(ccx, _)
+                                   with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visit);
     check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();

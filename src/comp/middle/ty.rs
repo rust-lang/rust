@@ -218,7 +218,7 @@ type ctxt =
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
-      tag_var_cache: hashmap<ast::def_id, @[variant_info]>,
+      tag_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
       ty_param_bounds: hashmap<def_id, @[param_bound]>};
 
@@ -268,7 +268,7 @@ tag sty {
     ty_tup([t]);
     ty_var(int); // type variable
 
-    ty_param(uint, @[param_bound]); // fn/tag type param
+    ty_param(uint, def_id); // fn/tag type param
 
     ty_type; // type_desc*
     ty_send_type; // type_desc* that has been cloned into exchange heap
@@ -624,7 +624,7 @@ fn mk_res(cx: ctxt, did: ast::def_id, inner: t, tps: [t]) -> t {
 
 fn mk_var(cx: ctxt, v: int) -> t { ret gen_ty(cx, ty_var(v)); }
 
-fn mk_param(cx: ctxt, n: uint, k: @[param_bound]) -> t {
+fn mk_param(cx: ctxt, n: uint, k: def_id) -> t {
     ret gen_ty(cx, ty_param(n, k));
 }
 
@@ -722,7 +722,7 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
 
 tag fold_mode {
     fm_var(fn@(int) -> t);
-    fm_param(fn@(uint, @[param_bound]) -> t);
+    fm_param(fn@(uint, def_id) -> t);
     fm_general(fn@(t) -> t);
 }
 
@@ -813,8 +813,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_var(id) {
         alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
       }
-      ty_param(id, k) {
-        alt fld { fm_param(folder) { ty = folder(id, k); } _ {/* no-op */ } }
+      ty_param(id, did) {
+        alt fld { fm_param(folder) { ty = folder(id, did); } _ {/* no-op */ } }
       }
     }
 
@@ -1083,7 +1083,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       }
       // Resources are always noncopyable.
       ty_res(did, inner, tps) { kind_noncopyable }
-      ty_param(_, bounds) { param_bounds_to_kind(bounds) }
+      ty_param(_, did) { param_bounds_to_kind(cx.ty_param_bounds.get(did)) }
       ty_constr(t, _) { type_kind(cx, t) }
     };
 
@@ -1131,7 +1131,7 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
     }
 }
 
-pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool {
+pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
 
     /* type_structurally_contains can't be declared pure
     because it takes a function argument. But it should be
@@ -1141,15 +1141,9 @@ pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool {
     actually checkable. It seems to me like a lot of properties
     that the type context tracks about types should be immutable.)
     */
-    unchecked{
-        type_structurally_contains(cx, ty,
-                                   fn (sty: sty) -> bool {
-                                       ret alt sty {
-                                             ty_param(_, _) { true }
-                                             _ { false }
-                                           };
-                                   })
-    }
+    type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
+        alt sty { ty_param(_, _) { true } _ { false }}
+    })
 }
 
 // Returns true for noncopyable types and types where a copy of a value can be
@@ -2205,7 +2199,14 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_param(_, _) { ret struct_cmp(cx, expected, actual); }
+          ty::ty_param(expected_n, _) {
+            alt struct(cx.tcx, actual) {
+              ty::ty_param(actual_n, _) when expected_n == actual_n {
+                ret ures_ok(expected);
+              }
+              _ { ret ures_err(terr_mismatch); }
+            }
+          }
           ty::ty_tag(expected_id, expected_tps) {
             alt struct(cx.tcx, actual) {
               ty::ty_tag(actual_id, actual_tps) {
@@ -2627,8 +2628,7 @@ fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
     let i = 0u;
     while i < ty_param_count { *param_var_ids += [next_ty_var()]; i += 1u; }
     fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
-              _next_ty_var: fn@() -> int, index: uint,
-              _bounds: @[param_bound]) -> t {
+              _next_ty_var: fn@() -> int, index: uint, _did: def_id) -> t {
         if index < vec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids[index]);
         } else {
@@ -2647,9 +2647,8 @@ fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
     if !type_contains_params(cx, typ) { ret typ; }
-    fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint,
-                   _bounds: @[param_bound])
-       -> t {
+    fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint, _did: def_id)
+        -> t {
         // FIXME: bounds check can fail
         ret substs[idx];
     }

@@ -129,11 +129,8 @@ fn item_ty_param_bounds(item: ebml::doc, this_cnum: ast::crate_num,
 
 fn item_ty_param_count(item: ebml::doc) -> uint {
     let n = 0u;
-    ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
-        for byte in ebml::doc_data(p) {
-            if byte as char == '.' { n += 1u; }
-        }
-    }
+    ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds,
+                      {|_p| n += 1u; });
     n
 }
 

@@ -4658,7 +4658,8 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     let ty_param_substs: [ty::t] = [];
     i = 0u;
     for tp: ast::ty_param in ty_params {
-        ty_param_substs += [ty::mk_param(ccx.tcx, i, @[])];
+        ty_param_substs += [ty::mk_param(ccx.tcx, i,
+                                         ast_util::local_def(tp.id))];
         i += 1u;
     }
     let arg_tys = arg_tys_of_fn(ccx, variant.node.id);

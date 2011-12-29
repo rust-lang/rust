@@ -202,9 +202,17 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         st.pos = st.pos + 1u;
         ret ty::mk_tag(st.tcx, def, params);
       }
+      'x' {
+        assert (next(st) as char == '[');
+        let def = parse_def(st, sd);
+        let params: [ty::t] = [];
+        while peek(st) as char != ']' { params += [parse_ty(st, sd)]; }
+        st.pos = st.pos + 1u;
+        ret ty::mk_iface(st.tcx, def, params);
+      }
       'p' {
-        let bounds = parse_bounds(st, sd);
-        ret ty::mk_param(st.tcx, parse_int(st) as uint, bounds);
+        let did = parse_def(st, sd);
+        ret ty::mk_param(st.tcx, parse_int(st) as uint, did);
       }
       '@' { ret ty::mk_box(st.tcx, parse_mt(st, sd)); }
       '~' { ret ty::mk_uniq(st.tcx, parse_mt(st, sd)); }
@@ -401,8 +409,7 @@ fn parse_bounds_data(data: @[u8], crate_num: int, sd: str_def, tcx: ty::ctxt)
 
 fn parse_bounds(st: @pstate, sd: str_def) -> @[ty::param_bound] {
     let bounds = [];
-    while peek(st) as char == '.' {
-        next(st);
+    while peek(st) != 0u8 {
         bounds += [alt next(st) as char {
           'S' { ty::bound_send }
           'C' { ty::bound_copy }
