@@ -143,8 +143,10 @@ def emit_decomp_module(f, canon, compat):
     compat_keys.sort()
     f.write("mod decompose {\n\n");
     f.write("    export canonical, compatibility;\n\n")
-    f.write("    fn canonical(c: char, i: block(char)) { d(c, i, false); }\n\n")
-    f.write("    fn compatibility(c: char, i: block(char)) { d(c, i, true); }\n\n")
+    f.write("    fn canonical(c: char, i: block(char)) "
+            + "{ d(c, i, false); }\n\n")
+    f.write("    fn compatibility(c: char, i: block(char)) "
+            +"{ d(c, i, true); }\n\n")
     f.write("    fn d(c: char, i: block(char), k: bool) {\n")
 
     f.write("        if c <= '\\x7f' { i(c); ret; }\n")
@@ -193,5 +195,5 @@ rf = open(r, "w")
 emit_decomp_module(rf, canon_decomp, compat_decomp)
 emit_property_module(rf, "general_category", gencats)
 
-emit_property_module(rf, "derived_property",
-                     load_derived_core_properties("DerivedCoreProperties.txt"))
+derived = load_derived_core_properties("DerivedCoreProperties.txt")
+emit_property_module(rf, "derived_property", derived)
