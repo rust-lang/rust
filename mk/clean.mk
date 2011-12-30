@@ -29,24 +29,34 @@ clean-misc:
 	$(Q)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -f $(C_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
-	$(Q)rm -f $(GENERATED)
+	$(Q)rm -Rf $(DOCS)
+	$(Q)rm -Rf $(GENERATED)
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
-	$(Q)find rt -name '*.o' -delete
-	$(Q)find rt -name '*.a' -delete
+	$(Q)find rustllvm llvm rt -name '*.[odasS]' -delete
+	$(Q)find rustllvm llvm rt -name '*.so' -delete
+	$(Q)find rustllvm llvm rt -name '*.dylib' -delete
+	$(Q)find rustllvm llvm rt -name '*.dll' -delete
+	$(Q)find rustllvm rt -name '*.def' -delete
+	$(Q)rm -Rf $(wildcard rt/*/libuv/Default)
 	$(Q)rm -f test/run_pass_stage2.rc test/run_pass_stage2_driver.rs
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
-	$(Q)rm -f $(foreach ext,o a d bc s exe,$(wildcard stage*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext,out out.tmp                      \
                              stage0$(X) stage1$(X) stage2$(X) \
-                             bc o s exe dSYM,                 \
+                             bc o s so dll exe dSYM,          \
                         $(wildcard test/*.$(ext) \
                                    test/*/*.$(ext) \
                                    test/bench/*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext, \
-                 aux cp fn ky log pdf html pg toc tp vr cps, \
-                 $(wildcard doc/*.$(ext)))
+                 css html js \
+                 aux cp fn ky log pdf pg toc tp vr cps, \
+                 $(wildcard doc/*.$(ext) \
+                            doc/*/*.$(ext) \
+                            doc/*/*/*.$(ext)))
+	$(Q)rm -Rf doc/keywords.texi
 	$(Q)rm -Rf doc/version.texi
+	$(Q)rm -Rf $(foreach sub, index styles files search javascript, \
+                 $(wildcard doc/*/$(sub)))
 	$(Q)rm -rf libuv
 
 define CLEAN_HOST_STAGE_N
@@ -55,6 +65,7 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustc$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/fuzzer$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/cargo$(X)
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustdoc$(X)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_CORELIB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB)
@@ -76,6 +87,8 @@ define CLEAN_TARGET_STAGE_N
 clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$(X)
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/fuzzer$(X)
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/cargo$(X)
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustdoc$(X)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB)
@@ -86,7 +99,8 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.bc
-
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.ll
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 endef
 
 $(foreach host, $(CFG_TARGET_TRIPLES), \
