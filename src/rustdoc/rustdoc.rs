@@ -179,9 +179,17 @@ fn doc_header(rd: rustdoc, name: str) {
 *  argv[1]: crate file name",
   args(argv = "Command-line arguments.")
 )]
+
 fn main(argv: [str]) {
-    let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
+
     let w = io::stdout();
+
+    if vec::len(argv) != 2u {
+        w.write_str(#fmt("usage: %s <input>\n", argv[0]));
+        ret;
+    }
+
+    let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
     let rd = { ps: pprust::rust_printer(w), w: w };
     doc_header(rd, argv[1]);
     let p = parser::parse_crate_from_source_file(argv[1], [], sess);

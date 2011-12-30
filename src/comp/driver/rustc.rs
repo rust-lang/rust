@@ -61,6 +61,9 @@ options:
 
 fn main(args: [str]) {
     let args = args, binary = vec::shift(args);
+
+    if vec::len(args) == 0u { usage(binary); ret; }
+
     let match =
         alt getopts::getopts(args, opts()) {
           ok(m) { m }
