@@ -840,8 +840,13 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, alt_indent_unit);
       }
-      ast::expr_fn(proto, decl, body, captures) { // NDM captures
-        head(s, proto_to_str(proto));
+      ast::expr_fn(proto, decl, body, cap_clause) {
+        // containing cbox, will be closed by print-block at }
+        cbox(s, indent_unit);
+        // head-box, will be closed by print-block at start
+        ibox(s, 0u);
+        word(s.s, proto_to_str(proto));
+        print_cap_clause(s, *cap_clause);
         print_fn_args_and_ret(s, decl);
         space(s.s);
         print_block(s, body);
@@ -1154,6 +1159,33 @@ fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
     word(s.s, name);
     print_type_params(s, typarams);
     print_fn_args_and_ret(s, decl);
+}
+
+fn print_cap_clause(s: ps, cap_clause: ast::capture_clause) {
+    fn print_cap_item(s: ps, &&cap_item: @ast::capture_item) {
+        word(s.s, cap_item.name);
+    }
+
+    let has_copies = vec::is_not_empty(cap_clause.copies);
+    let has_moves = vec::is_not_empty(cap_clause.moves);
+    if !has_copies && !has_moves { ret; }
+
+    word(s.s, "[");
+
+    if has_copies {
+        word_nbsp(s, "copy");
+        commasep(s, inconsistent, cap_clause.copies, print_cap_item);
+        if has_moves {
+            word_space(s, ";");
+        }
+    }
+
+    if has_moves {
+        word_nbsp(s, "move");
+        commasep(s, inconsistent, cap_clause.moves, print_cap_item);
+    }
+
+    word(s.s, "]");
 }
 
 fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl) {
