@@ -143,8 +143,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
 }
 
 fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
-    ret {proto: decl.proto,
-         inputs: vec::map(decl.inputs, bind fold_arg_(_, fld)),
+    ret {inputs: vec::map(decl.inputs, bind fold_arg_(_, fld)),
          output: fld.fold_ty(decl.output),
          purity: decl.purity,
          cf: decl.cf,
@@ -192,8 +191,7 @@ fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
               alt ni.node {
                 native_item_ty. { native_item_ty }
                 native_item_fn(fdec, typms) {
-                  native_item_fn({proto: fdec.proto,
-                                  inputs: vec::map(fdec.inputs, fold_arg),
+                  native_item_fn({inputs: vec::map(fdec.inputs, fold_arg),
                                   output: fld.fold_ty(fdec.output),
                                   purity: fdec.purity,
                                   cf: fdec.cf,
@@ -398,8 +396,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_alt(expr, arms) {
             expr_alt(fld.fold_expr(expr), vec::map(arms, fld.fold_arm))
           }
-          expr_fn(decl, body, captures) {
-              expr_fn(fold_fn_decl(decl, fld), fld.fold_block(body), captures)
+          expr_fn(proto, decl, body, captures) {
+              expr_fn(proto, fold_fn_decl(decl, fld),
+                      fld.fold_block(body), captures)
           }
           expr_fn_block(decl, body) {
             expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block(body))

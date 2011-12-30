@@ -305,8 +305,8 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         commasep(s, inconsistent, elts, print_type);
         pclose(s);
       }
-      ast::ty_fn(d) {
-        print_ty_fn(s, d, none::<str>);
+      ast::ty_fn(proto, d) {
+        print_ty_fn(s, proto, d, none::<str>);
       }
       ast::ty_obj(methods) {
         head(s, "obj");
@@ -519,7 +519,7 @@ fn print_ty_method(s: ps, m: ast::ty_method) {
     hardbreak_if_not_bol(s);
     cbox(s, indent_unit);
     maybe_print_comment(s, m.span.lo);
-    print_ty_fn(s, m.decl, some(m.ident));
+    print_ty_fn(s, ast::proto_bare, m.decl, some(m.ident));
     word(s.s, ";");
     end(s);
 }
@@ -840,8 +840,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, alt_indent_unit);
       }
-      ast::expr_fn(decl, body, captures) { // NDM captures
-        head(s, proto_to_str(decl.proto));
+      ast::expr_fn(proto, decl, body, captures) { // NDM captures
+        head(s, proto_to_str(proto));
         print_fn_args_and_ret(s, decl);
         space(s.s);
         print_block(s, body);
@@ -1147,8 +1147,9 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
 fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
             typarams: [ast::ty_param]) {
     alt decl.purity {
-      ast::impure_fn. { head(s, proto_to_str(decl.proto)); }
-      _ { head(s, "pure fn"); }
+      ast::impure_fn. { head(s, "fn"); }
+      ast::unsafe_fn. { head(s, "unsafe fn"); }
+      ast::pure_fn. { head(s, "pure fn"); }
     }
     word(s.s, name);
     print_type_params(s, typarams);
@@ -1360,9 +1361,10 @@ fn print_mt(s: ps, mt: ast::mt) {
     print_type(s, mt.ty);
 }
 
-fn print_ty_fn(s: ps, decl: ast::fn_decl, id: option::t<ast::ident>) {
+fn print_ty_fn(s: ps, proto: ast::proto,
+               decl: ast::fn_decl, id: option::t<ast::ident>) {
     ibox(s, indent_unit);
-    word(s.s, proto_to_str(decl.proto));
+    word(s.s, proto_to_str(proto));
     alt id { some(id) { word(s.s, " "); word(s.s, id); } _ { } }
     zerobreak(s.s);
     popen(s);

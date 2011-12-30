@@ -23,10 +23,6 @@ fn mode_str_1(m: ty::mode) -> str {
     alt m { ast::by_ref. { "ref" } _ { mode_str(m) } }
 }
 
-fn fn_ident_to_string(id: ast::node_id, i: ast::fn_ident) -> str {
-    ret alt i { none. { "anon" + int::str(id) } some(s) { s } };
-}
-
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: middle::ty::mode, ty: t}) ->
        str {

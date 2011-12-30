@@ -94,21 +94,20 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
 }
 
 fn check_states_against_conditions(fcx: fn_ctxt,
+                                   fk: visit::fn_kind,
                                    f_decl: ast::fn_decl,
                                    f_body: ast::blk,
                                    sp: span,
-                                   nm: fn_ident,
                                    id: node_id) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement
        or expression. */
-
     let visitor = visit::mk_vt(
         @{visit_stmt: check_states_stmt,
           visit_expr: check_states_expr,
-          visit_fn: bind do_nothing::<fn_ctxt>(_, _, _, _, _, _, _, _)
+          visit_fn: bind do_nothing::<fn_ctxt>(_, _, _, _, _, _, _)
           with *visit::default_visitor::<fn_ctxt>()});
-    visit::visit_fn(f_decl, [], f_body, sp, nm, id, fcx, visitor);
+    visit::visit_fn(fk, f_decl, f_body, sp, id, fcx, visitor);
 
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f_body);
@@ -142,10 +141,10 @@ fn check_states_against_conditions(fcx: fn_ctxt,
 }
 
 fn check_fn_states(fcx: fn_ctxt,
+                   fk: visit::fn_kind,
                    f_decl: ast::fn_decl,
                    f_body: ast::blk,
                    sp: span,
-                   nm: fn_ident,
                    id: node_id) {
     /* Compute the pre- and post-states for this function */
 
@@ -155,20 +154,20 @@ fn check_fn_states(fcx: fn_ctxt,
     /* Now compare each expr's pre-state to its precondition
        and post-state to its postcondition */
 
-    check_states_against_conditions(fcx, f_decl, f_body, sp, nm, id);
+    check_states_against_conditions(fcx, fk, f_decl, f_body, sp, id);
 }
 
-fn fn_states(f_decl: ast::fn_decl, tps: [ast::ty_param], f_body: ast::blk,
-             sp: span, i: ast::fn_ident, id: node_id,
+fn fn_states(fk: visit::fn_kind, f_decl: ast::fn_decl, f_body: ast::blk,
+             sp: span, id: node_id,
              ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
-    visit::visit_fn(f_decl, tps, f_body, sp, i, id, ccx, v);
+    visit::visit_fn(fk, f_decl, f_body, sp, id, ccx, v);
     /* Look up the var-to-bit-num map for this function */
 
     assert (ccx.fm.contains_key(id));
     let f_info = ccx.fm.get(id);
-    let name = option::from_maybe("anon", i); // XXXX
+    let name = visit::name_of_fn(fk);
     let fcx = {enclosing: f_info, id: id, name: name, ccx: ccx};
-    check_fn_states(fcx, f_decl, f_body, sp, i, id)
+    check_fn_states(fcx, fk, f_decl, f_body, sp, id)
 }
 
 fn check_crate(cx: ty::ctxt, crate: @crate) {

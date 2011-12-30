@@ -67,8 +67,8 @@ fn with_closure_check_fn(cx: ctx, id: node_id,
 
 // Check that the free variables used in a shared/sendable closure conform
 // to the copy/move kind bounds. Then recursively check the function body.
-fn check_fn(decl: fn_decl, tps: [ty_param], body: blk, sp: span,
-            i: fn_ident, id: node_id, cx: ctx, v: visit::vt<ctx>) {
+fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
+            id: node_id, cx: ctx, v: visit::vt<ctx>) {
 
     // n.b.: This could be the body of either a fn decl or a fn expr.  In the
     // former case, the prototype will be proto_bare and no check occurs.  In
@@ -88,7 +88,7 @@ fn check_fn(decl: fn_decl, tps: [ty_param], body: blk, sp: span,
         }
     }
 
-    visit::visit_fn(decl, tps, body, sp, i, id, cx, v);
+    visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
 
 fn check_fn_cap_clause(cx: ctx,
@@ -181,7 +181,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_ternary(_, a, b) { maybe_copy(cx, a); maybe_copy(cx, b); }
-      expr_fn(_, _, cap_clause) {
+      expr_fn(_, _, _, cap_clause) {
         check_fn_cap_clause(cx, e.id, *cap_clause);
       }
       _ { }

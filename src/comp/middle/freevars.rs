@@ -38,8 +38,8 @@ fn collect_freevars(def_map: resolve::def_map, blk: ast::blk)
     let walk_expr =
         lambda (expr: @ast::expr, &&depth: int, v: visit::vt<int>) {
             alt expr.node {
-              ast::expr_fn(decl, _, captures) {
-                if decl.proto != ast::proto_bare {
+              ast::expr_fn(proto, decl, _, captures) {
+                if proto != ast::proto_bare {
                     visit::visit_expr(expr, depth + 1, v);
                 }
               }
@@ -82,9 +82,8 @@ fn annotate_freevars(def_map: resolve::def_map, crate: @ast::crate) ->
    freevar_map {
     let freevars = new_int_hash();
 
-    let walk_fn = lambda (_decl: ast::fn_decl, _tps: [ast::ty_param],
-                          blk: ast::blk, _sp: span, _nm: ast::fn_ident,
-                          nid: ast::node_id) {
+    let walk_fn = lambda (_fk: visit::fn_kind, _decl: ast::fn_decl,
+                          blk: ast::blk, _sp: span, nid: ast::node_id) {
         let vars = collect_freevars(def_map, blk);
         freevars.insert(nid, vars);
     };

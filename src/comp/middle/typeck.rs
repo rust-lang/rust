@@ -333,8 +333,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         }
         typ = ty::mk_rec(tcx, flds);
       }
-      ast::ty_fn(decl) {
-        typ = ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, decl));
+      ast::ty_fn(proto, decl) {
+        typ = ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, proto, decl));
       }
       ast::ty_path(path, id) {
         alt tcx.def_map.find(id) {
@@ -465,7 +465,8 @@ fn ty_of_arg(tcx: ty::ctxt, mode: mode, a: ast::arg) -> ty::arg {
     let ty = ast_ty_to_ty(tcx, mode, a.ty);
     {mode: default_arg_mode_for_ty(tcx, a.mode, ty), ty: ty}
 }
-fn ty_of_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl) -> ty::fn_ty {
+fn ty_of_fn_decl(tcx: ty::ctxt, mode: mode,
+                 proto: ast::proto, decl: ast::fn_decl) -> ty::fn_ty {
     let input_tys = [];
     for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(tcx, mode, a)]; }
     let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
@@ -474,19 +475,20 @@ fn ty_of_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl) -> ty::fn_ty {
     for constr: @ast::constr in decl.constraints {
         out_constrs += [ty::ast_constr_to_constr(tcx, constr)];
     }
-    {proto: decl.proto, inputs: input_tys,
+    {proto: proto, inputs: input_tys,
      output: output_ty, ret_style: decl.cf, constraints: out_constrs}
 }
 fn ty_of_fn(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
             ty_params: [ast::ty_param], def_id: ast::def_id)
     -> ty::ty_param_bounds_and_ty {
-    let tpt = @{bounds: ty_param_bounds(tcx, mode, ty_params),
-               ty: ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, decl))};
+    let bounds = ty_param_bounds(tcx, mode, ty_params);
+    let tofd = ty_of_fn_decl(tcx, mode, ast::proto_bare, decl);
+    let tpt = @{bounds: bounds, ty: ty::mk_fn(tcx, tofd)};
     tcx.tcache.insert(def_id, tpt);
     ret tpt;
 }
 fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
-                  ty_params: [ast::ty_param], def_id: ast::def_id)
+                        ty_params: [ast::ty_param], def_id: ast::def_id)
     -> ty::ty_param_bounds_and_ty {
     let input_tys = [], bounds = ty_param_bounds(tcx, mode, ty_params);
     for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(tcx, mode, a)]; }
@@ -524,12 +526,12 @@ fn ty_param_bounds(tcx: ty::ctxt, mode: mode, params: [ast::ty_param])
 }
 fn ty_of_method(tcx: ty::ctxt, mode: mode, m: @ast::method) -> ty::method {
     {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
-     fty: ty_of_fn_decl(tcx, mode, m.decl)}
+     fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl)}
 }
 fn ty_of_ty_method(tcx: ty::ctxt, mode: mode, m: ast::ty_method)
     -> ty::method {
     {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
-     fty: ty_of_fn_decl(tcx, mode, m.decl)}
+     fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl)}
 }
 fn ty_of_obj(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
         ty_params: [ast::ty_param]) -> ty::ty_param_bounds_and_ty {
@@ -691,8 +693,9 @@ mod collect {
             ty_param_bounds(cx.tcx, m_collect, tps);
             for m in ms {
                 let bounds = ty_param_bounds(cx.tcx, m_collect, m.tps);
-                let ty = ty::mk_fn(cx.tcx, ty_of_fn_decl(cx.tcx, m_collect,
-                                                         m.decl));
+                let ty = ty::mk_fn(cx.tcx,
+                                   ty_of_fn_decl(cx.tcx, m_collect,
+                                                 ast::proto_bare, m.decl));
                 cx.tcx.tcache.insert(local_def(m.id), @{bounds: bounds,
                                                        ty: ty});
                 write::ty_only(cx.tcx, m.id, ty);
@@ -1005,7 +1008,7 @@ mod writeback {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, e.span, e.id);
         alt e.node {
-          ast::expr_fn(decl, _, _) |
+          ast::expr_fn(_, decl, _, _) |
           ast::expr_fn_block(decl, _) {
             for input in decl.inputs {
                 resolve_type_vars_for_node(wbcx, e.span, input.id);
@@ -1154,16 +1157,15 @@ fn gather_locals(ccx: @crate_ctxt,
         };
 
     // Don't descend into fns and items
-    fn visit_fn<T>(_decl: ast::fn_decl, _ts: [ast::ty_param], _body: ast::blk,
-                   _sp: span, _nm: ast::fn_ident, _id: ast::node_id,
-                   _t: T, _v: visit::vt<T>) {
+    fn visit_fn<T>(_fk: visit::fn_kind, _decl: ast::fn_decl, _body: ast::blk,
+                   _sp: span, _id: ast::node_id, _t: T, _v: visit::vt<T>) {
     }
     fn visit_item<E>(_i: @ast::item, _e: E, _v: visit::vt<E>) { }
 
     let visit =
         @{visit_local: visit_local,
           visit_pat: visit_pat,
-          visit_fn: bind visit_fn(_, _, _, _, _, _, _, _),
+          visit_fn: bind visit_fn(_, _, _, _, _, _, _),
           visit_item: bind visit_item(_, _, _)
               with *visit::default_visitor()};
 
@@ -1510,13 +1512,15 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
 
 fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
                               expr: @ast::expr,
+                              proto: ast::proto,
                               decl: ast::fn_decl,
                               body: ast::blk,
                               unify: unifier,
                               expected: ty::t) {
     let tcx = fcx.ccx.tcx;
 
-    let fty = ty::mk_fn(tcx, ty_of_fn_decl(tcx, m_check_tyvar(fcx), decl));
+    let fty = ty::mk_fn(tcx, ty_of_fn_decl(tcx, m_check_tyvar(fcx),
+                                           proto, decl));
 
     #debug("check_expr_fn_with_unifier %s fty=%s",
            expr_to_str(expr),
@@ -1530,7 +1534,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
     // record projection work on type inferred arguments.
     unify(fcx, expr.span, expected, fty);
 
-    check_fn(fcx.ccx, decl, body, expr.id, some(fcx));
+    check_fn(fcx.ccx, proto, decl, body, expr.id, some(fcx));
 }
 
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
@@ -1964,10 +1968,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         if !arm_non_bot { result_ty = ty::mk_bot(tcx); }
         write::ty_only_fixup(fcx, id, result_ty);
       }
-      ast::expr_fn(decl, body, captures) {
-        check_expr_fn_with_unifier(fcx, expr, decl, body,
+      ast::expr_fn(proto, decl, body, captures) {
+        check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
                                    unify, expected);
-        capture::check_capture_clause(tcx, expr.id, decl.proto, *captures);
+        capture::check_capture_clause(tcx, expr.id, proto, *captures);
       }
       ast::expr_fn_block(decl, body) {
         // Take the prototype from the expected type, but default to block:
@@ -1983,7 +1987,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         #debug("checking expr_fn_block %s expected=%s",
                expr_to_str(expr),
                ty_to_str(tcx, expected));
-        check_expr_fn_with_unifier(fcx, expr, {proto: proto with decl}, body,
+        check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
                                    unify, expected);
         write::ty_only_fixup(fcx, id, expected);
       }
@@ -2602,10 +2606,11 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
 }
 
 fn check_fn(ccx: @crate_ctxt,
-             decl: ast::fn_decl,
-             body: ast::blk,
-             id: ast::node_id,
-             old_fcx: option::t<@fn_ctxt>) {
+            proto: ast::proto,
+            decl: ast::fn_decl,
+            body: ast::blk,
+            id: ast::node_id,
+            old_fcx: option::t<@fn_ctxt>) {
     // If old_fcx is some(...), this is a block fn { |x| ... }.
     // In that case, the purity is inherited from the context.
     let purity = alt old_fcx {
@@ -2618,7 +2623,7 @@ fn check_fn(ccx: @crate_ctxt,
     let fcx: @fn_ctxt =
         @{ret_ty: ty::ty_fn_ret(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)),
           purity: purity,
-          proto: decl.proto,
+          proto: proto,
           var_bindings: gather_result.var_bindings,
           locals: gather_result.locals,
           next_var_id: gather_result.next_var_id,
@@ -2655,15 +2660,17 @@ fn check_fn(ccx: @crate_ctxt,
 }
 
 fn check_method(ccx: @crate_ctxt, method: @ast::method) {
-    check_fn(ccx, method.decl, method.body, method.id, none);
+    check_fn(ccx, ast::proto_bare, method.decl, method.body, method.id, none);
 }
 
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
-      ast::item_fn(decl, _, body) { check_fn(ccx, decl, body, it.id, none); }
+      ast::item_fn(decl, _, body) {
+        check_fn(ccx, ast::proto_bare, decl, body, it.id, none);
+      }
       ast::item_res(decl, _, body, dtor_id, _) {
-        check_fn(ccx, decl, body, dtor_id, none);
+        check_fn(ccx, ast::proto_bare, decl, body, dtor_id, none);
       }
       ast::item_obj(ob, _, _) {
         // We're entering an object, so gather up the info we need.

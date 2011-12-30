@@ -372,6 +372,7 @@ fn load_environment(enclosing_cx: @block_ctxt,
 }
 
 fn trans_expr_fn(bcx: @block_ctxt,
+                 proto: ast::proto,
                  decl: ast::fn_decl,
                  body: ast::blk,
                  sp: span,
@@ -390,7 +391,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
 
     let trans_closure_env = lambda(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(
-            ccx.tcx, id, decl.proto, cap_clause);
+            ccx.tcx, id, proto, cap_clause);
         let {llbox, box_ty, bcx} = build_closure(bcx, cap_vars, ck);
         trans_closure(sub_cx, sp, decl, body, llfn, no_self, [], id, {|fcx|
             load_environment(bcx, fcx, box_ty, cap_vars, ck);
@@ -398,7 +399,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
         llbox
     };
 
-    let closure = alt decl.proto {
+    let closure = alt proto {
       ast::proto_block. { trans_closure_env(ty::closure_block) }
       ast::proto_shared(_) { trans_closure_env(ty::closure_shared) }
       ast::proto_send. { trans_closure_env(ty::closure_send) }

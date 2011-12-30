@@ -1,6 +1,5 @@
 import syntax::ast::*;
 import syntax::ast_util::*;
-import util::ppaux::fn_ident_to_string;
 import option::*;
 import syntax::visit;
 import aux::*;
@@ -45,11 +44,10 @@ fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
 }
 
 fn find_locals(tcx: ty::ctxt,
+               fk: visit::fn_kind,
                f_decl: fn_decl,
-               tps: [ty_param],
                f_body: blk,
                sp: span,
-               n: fn_ident,
                id: node_id) -> ctxt {
     let cx: ctxt = {cs: @mutable [], tcx: tcx};
     let visitor = visit::default_visitor::<ctxt>();
@@ -57,10 +55,10 @@ fn find_locals(tcx: ty::ctxt,
     visitor =
         @{visit_local: collect_local,
           visit_expr: collect_pred,
-          visit_fn: bind do_nothing(_, _, _, _, _, _, _, _)
+          visit_fn: bind do_nothing(_, _, _, _, _, _, _)
           with *visitor};
-    visit::visit_fn(f_decl, tps, f_body, sp,
-                    n, id, cx, visit::mk_vt(visitor));
+    visit::visit_fn(fk, f_decl, f_body, sp,
+                    id, cx, visit::mk_vt(visitor));
     ret cx;
 }
 
@@ -98,18 +96,16 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
 fn mk_fn_info(ccx: crate_ctxt,
+              fk: visit::fn_kind,
               f_decl: fn_decl,
-              tps: [ty_param],
               f_body: blk,
               f_sp: span,
-              f_name: fn_ident,
               id: node_id) {
-    let name = fn_ident_to_string(id, f_name);
+    let name = visit::name_of_fn(fk);
     let res_map = @new_def_hash::<constraint>();
     let next: uint = 0u;
 
-    let cx: ctxt = find_locals(ccx.tcx, f_decl, tps, f_body, f_sp,
-                               f_name, id);
+    let cx: ctxt = find_locals(ccx.tcx, fk, f_decl, f_body, f_sp, id);
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
@@ -167,7 +163,7 @@ fn mk_fn_info(ccx: crate_ctxt,
 fn mk_f_to_fn_info(ccx: crate_ctxt, c: @crate) {
     let visitor =
         visit::mk_simple_visitor(@{visit_fn:
-                                       bind mk_fn_info(ccx, _, _, _, _, _, _)
+                                       bind mk_fn_info(ccx, _, _, _, _, _)
                                    with *visit::default_simple_visitor()});
     visit::visit_crate(*c, (), visitor);
 }

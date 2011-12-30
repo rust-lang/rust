@@ -336,7 +336,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
-          visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _, _)
+          visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
           with *visit::default_visitor()};
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v));
     e.used_imports.track = false;
@@ -350,7 +350,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
                          lookup_path_strict(*e, sc, exp.span, p.node,
                                             ns_value));
           }
-          ast::expr_fn(_, _, cap_clause) {
+          ast::expr_fn(_, _, _, cap_clause) {
             let rci = bind resolve_capture_item(e, sc, _);
             vec::iter(cap_clause.copies, rci);
             vec::iter(cap_clause.moves, rci);
@@ -403,8 +403,9 @@ fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
         alt ifce { some(ty) { v.visit_ty(ty, sc, v); } _ {} }
         v.visit_ty(sty, sc, v);
         for m in methods {
-            v.visit_fn(m.decl, tps + m.tps, m.body, m.span,
-                       some(m.ident), m.id, sc, v);
+            v.visit_fn(visit::fk_method(m.ident, tps + m.tps),
+                       m.decl, m.body, m.span,
+                       m.id, sc, v);
         }
       }
       _ { visit::visit_item(i, sc, v); }
@@ -416,30 +417,35 @@ fn visit_native_item_with_scope(ni: @ast::native_item, sc: scopes,
     visit::visit_native_item(ni, cons(scope_native_item(ni), @sc), v);
 }
 
-fn visit_fn_with_scope(e: @env, decl: ast::fn_decl, tp: [ast::ty_param],
-                       body: ast::blk, sp: span, name: fn_ident,
+fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
+                       body: ast::blk, sp: span,
                        id: node_id, sc: scopes, v: vt<scopes>) {
     // is this a main fn declaration?
-    alt name {
-      some(nm) {
+    alt fk {
+      visit::fk_item_fn(nm, _) {
         if is_main_name([nm]) && !e.sess.building_library() {
             // This is a main function -- set it in the session
             // as the main ID
             e.sess.set_main_id(id);
         }
       }
-      _ { }
+      _ { /* fallthrough */ }
     }
 
     // here's where we need to set up the mapping
     // for f's constrs in the table.
     for c: @ast::constr in decl.constraints { resolve_constr(e, c, sc, v); }
-    let scope = alt decl.proto {
-      ast::proto_bare. { scope_bare_fn(decl, id, tp) }
-      _ { scope_fn_expr(decl, id, tp) }
+    let scope = alt fk {
+      visit::fk_item_fn(_, tps) | visit::fk_method(_, tps) |
+      visit::fk_res(_, tps) {
+        scope_bare_fn(decl, id, tps)
+      }
+      visit::fk_anon(_) | visit::fk_fn_block. {
+        scope_fn_expr(decl, id, [])
+      }
     };
 
-    visit::visit_fn(decl, tp, body, sp, name, id, cons(scope, @sc), v);
+    visit::visit_fn(fk, decl, body, sp, id, cons(scope, @sc), v);
 }
 
 fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {

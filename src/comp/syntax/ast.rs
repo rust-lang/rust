@@ -202,7 +202,7 @@ tag expr_ {
     expr_for(@local, @expr, blk);
     expr_do_while(blk, @expr);
     expr_alt(@expr, [arm]);
-    expr_fn(fn_decl, blk, @capture_clause);
+    expr_fn(proto, fn_decl, blk, @capture_clause);
     expr_fn_block(fn_decl, blk);
     expr_block(blk);
 
@@ -317,7 +317,7 @@ tag ty_ {
     ty_port(@ty);
     ty_chan(@ty);
     ty_rec([ty_field]);
-    ty_fn(fn_decl);
+    ty_fn(proto, fn_decl);
     ty_obj([ty_method]);
     ty_tup([@ty]);
     ty_path(@path, node_id);
@@ -368,8 +368,7 @@ type ty_constr = spanned<ty_constr_>;
 type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 
 type fn_decl =
-    {proto: proto,
-     inputs: [arg],
+    {inputs: [arg],
      output: @ty,
      purity: purity,
      cf: ret_style,

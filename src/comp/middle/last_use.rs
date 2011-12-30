@@ -136,7 +136,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         for arg in args {
             alt arg.node {
               //NDM--register captured as uses
-              expr_fn(_, _, captured) { fns += [arg]; }
+              expr_fn(_, _, _, captured) { fns += [arg]; }
               expr_fn_block(_, _) { fns += [arg]; }
               _ {
                 alt arg_ts[i].mode {
@@ -153,19 +153,19 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     }
 }
 
-fn visit_fn(decl: fn_decl, tps: [ty_param], body: blk,
-            sp: span, nm: fn_ident, id: node_id,
+fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
+            sp: span, id: node_id,
             cx: ctx, v: visit::vt<ctx>) {
     let fty = ty::node_id_to_type(cx.tcx, id);
     let proto = ty::ty_fn_proto(cx.tcx, fty);
     if proto == proto_block {
         visit_block(func, cx, {||
-            visit::visit_fn(decl, tps, body, sp, nm, id, cx, v);
+            visit::visit_fn(fk, decl, body, sp, id, cx, v);
         });
     } else {
         let old = nil;
         cx.blocks <-> old;
-        visit::visit_fn(decl, tps, body, sp, nm, id, cx, v);
+        visit::visit_fn(fk, decl, body, sp, id, cx, v);
         cx.blocks <-> old;
         leave_fn(cx);
     }

@@ -14,7 +14,6 @@ import syntax::visit;
 import util::common::{new_def_hash, log_expr, field_exprs,
                       has_nonlocal_exits, log_stmt};
 import syntax::codemap::span;
-import util::ppaux::fn_ident_to_string;
 
 fn find_pre_post_mod(_m: _mod) -> _mod {
     #debug("implement find_pre_post_mod!");
@@ -346,7 +345,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_log(_, lvl, arg) {
         find_pre_post_exprs(fcx, [lvl, arg], e.id);
       }
-      expr_fn(_, _, cap_clause) {
+      expr_fn(_, _, _, cap_clause) {
         find_pre_post_expr_fn_upvars(fcx, e);
 
         let use_cap_item = lambda(&&cap_item: @capture_item) {
@@ -727,15 +726,15 @@ fn find_pre_post_fn(fcx: fn_ctxt, body: blk) {
     }
 }
 
-fn fn_pre_post(decl: fn_decl, tps: [ty_param], body: blk, sp: span,
-               i: fn_ident, id: node_id,
+fn fn_pre_post(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
+               id: node_id,
                ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
-    visit::visit_fn(decl, tps, body, sp, i, id, ccx, v);
+    visit::visit_fn(fk, decl, body, sp, id, ccx, v);
     assert (ccx.fm.contains_key(id));
     let fcx =
         {enclosing: ccx.fm.get(id),
          id: id,
-         name: fn_ident_to_string(id, i),
+         name: visit::name_of_fn(fk),
          ccx: ccx};
     find_pre_post_fn(fcx, body);
 }

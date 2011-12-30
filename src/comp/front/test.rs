@@ -190,8 +190,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     let ret_ty = mk_test_desc_vec_ty(cx);
 
     let decl: ast::fn_decl =
-        {proto: ast::proto_bare,
-         inputs: [],
+        {inputs: [],
          output: ret_ty,
          purity: ast::impure_fn,
          cf: ast::return_val,
@@ -322,7 +321,6 @@ fn mk_test_wrapper(cx: test_ctxt,
         ast::stmt_expr(@call_expr, cx.sess.next_node_id()));
 
     let wrapper_decl: ast::fn_decl = {
-        proto: ast::proto_bare,
         inputs: [],
         output: @nospan(ast::ty_nil),
         purity: ast::impure_fn,
@@ -345,7 +343,8 @@ fn mk_test_wrapper(cx: test_ctxt,
 
     let wrapper_expr: ast::expr = {
         id: cx.sess.next_node_id(),
-        node: ast::expr_fn(wrapper_decl, wrapper_body, wrapper_capture),
+        node: ast::expr_fn(ast::proto_bare, wrapper_decl,
+                           wrapper_body, wrapper_capture),
         span: span
     };
 
@@ -366,8 +365,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let ret_ty = nospan(ast::ty_nil);
 
     let decl: ast::fn_decl =
-        {proto: ast::proto_bare,
-         inputs: [args_arg],
+        {inputs: [args_arg],
          output: @ret_ty,
          purity: ast::impure_fn,
          cf: ast::return_val,

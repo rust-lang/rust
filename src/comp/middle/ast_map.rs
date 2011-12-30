@@ -32,7 +32,7 @@ fn map_crate(c: crate) -> map {
         (@{visit_item: bind map_item(cx, _),
            visit_native_item: bind map_native_item(cx, _),
            visit_expr: bind map_expr(cx, _),
-           visit_fn: bind map_fn(cx, _, _, _, _, _, _),
+           visit_fn: bind map_fn(cx, _, _, _, _, _),
            visit_local: bind map_local(cx, _),
            visit_arm: bind map_arm(cx, _)
            with *visit::default_simple_visitor()});
@@ -40,8 +40,8 @@ fn map_crate(c: crate) -> map {
     ret cx.map;
 }
 
-fn map_fn(cx: ctx, decl: fn_decl, _tps: [ty_param], _body: blk,
-          _sp: codemap::span, _n: fn_ident, _id: node_id) {
+fn map_fn(cx: ctx, _fk: visit::fn_kind, decl: fn_decl, _body: blk,
+          _sp: codemap::span, _id: node_id) {
     for a in decl.inputs {
         cx.map.insert(a.id, node_arg(a, cx.local_id));
         cx.local_id += 1u;
