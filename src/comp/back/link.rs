@@ -220,6 +220,7 @@ mod write {
             } else { FileType = LLVMAssemblyFile; }
             // Write optimized bitcode if --save-temps was on.
 
+            let seg_stack = sess.get_targ_cfg().os != session::os_freebsd;
             if opts.save_temps {
                 // Always output the bitcode file with --save-temps
 
@@ -244,7 +245,7 @@ mod write {
                                     buf_o,
                                     LLVMAssemblyFile,
                                     CodeGenOptLevel,
-                                    true)})});
+                                    seg_stack)})});
                 }
 
 
@@ -264,7 +265,7 @@ mod write {
                                         buf_o,
                                         LLVMObjectFile,
                                         CodeGenOptLevel,
-                                        true)})});
+                                        seg_stack)})});
                 }
             } else {
                 // If we aren't saving temps then just output the file
@@ -282,7 +283,7 @@ mod write {
                                     buf_o,
                                     FileType,
                                     CodeGenOptLevel,
-                                    true)})});
+                                    seg_stack)})});
             }
             // Clean up and return
 
@@ -566,7 +567,8 @@ fn link_binary(sess: session::session,
         let rmlib =
             bind fn (config: @session::config, filename: str) -> str {
                      if config.os == session::os_macos ||
-                            config.os == session::os_linux &&
+                            (config.os == session::os_linux ||
+                             config.os == session::os_freebsd) &&
                                 str::find(filename, "lib") == 0 {
                          ret str::slice(filename, 3u,
                                         str::byte_len(filename));
@@ -580,6 +582,7 @@ fn link_binary(sess: session::session,
         ret alt config.os {
               session::os_macos. { rmext(rmlib(filename)) }
               session::os_linux. { rmext(rmlib(filename)) }
+              session::os_freebsd. { rmext(rmlib(filename)) }
               _ { rmext(filename) }
             };
     }
@@ -655,6 +658,10 @@ fn link_binary(sess: session::session,
     // and binutils 2.22+ won't add them automatically
     if sess.get_targ_cfg().os == session::os_linux {
         gcc_args += ["-lrt", "-ldl"];
+    }
+
+    if sess.get_targ_cfg().os == session::os_freebsd {
+        gcc_args += ["-lrt"];
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the

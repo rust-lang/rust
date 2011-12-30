@@ -266,6 +266,7 @@ fn waitpid(pid: pid_t) -> int {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
     fn waitpid_os(pid: pid_t) -> int {
         #[cfg(target_os = "linux")]
         fn WIFEXITED(status: i32) -> bool {
@@ -273,6 +274,7 @@ fn waitpid(pid: pid_t) -> int {
         }
 
         #[cfg(target_os = "macos")]
+        #[cfg(target_os = "freebsd")]
         fn WIFEXITED(status: i32) -> bool {
             (status & 0x7fi32) == 0i32
         }
@@ -283,6 +285,7 @@ fn waitpid(pid: pid_t) -> int {
         }
 
         #[cfg(target_os = "macos")]
+        #[cfg(target_os = "freebsd")]
         fn WEXITSTATUS(status: i32) -> i32 {
             status >> 8i32
         }

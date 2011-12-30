@@ -9,7 +9,7 @@ import syntax::parse::parser::parse_sess;
 import util::filesearch;
 import back::target_strs;
 
-tag os { os_win32; os_macos; os_linux; }
+tag os { os_win32; os_macos; os_linux; os_freebsd; }
 
 tag arch { arch_x86; arch_x86_64; arch_arm; }
 

@@ -5152,6 +5152,8 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         fn main_name() -> str { ret "main"; }
         #[cfg(target_os = "linux")]
         fn main_name() -> str { ret "main"; }
+        #[cfg(target_os = "freebsd")]
+        fn main_name() -> str { ret "main"; }
         let llfty = T_fn([ccx.int_type, ccx.int_type], ccx.int_type);
         let llfn = decl_cdecl_fn(ccx.llmod, main_name(), llfty);
         let llbb = str::as_buf("top", {|buf|

@@ -14,7 +14,7 @@
 .globl GET_SP
 .globl CHECK_STACK
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__FreeBSD__)
 RECORD_SP:
 	movl 4(%esp), %eax
 	movl %eax, %gs:48

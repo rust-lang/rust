@@ -98,6 +98,13 @@ mod os;
 #[path = "posix_fs.rs"]
 mod os_fs;
 
+#[cfg(target_os = "freebsd")]
+#[path = "freebsd_os.rs"]
+mod os;
+#[cfg(target_os = "freebsd")]
+#[path = "posix_fs.rs"]
+mod os_fs;
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

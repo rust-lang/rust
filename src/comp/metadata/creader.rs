@@ -129,6 +129,7 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
       session::os_win32. { ret {prefix: "", suffix: ".dll"}; }
       session::os_macos. { ret {prefix: "lib", suffix: ".dylib"}; }
       session::os_linux. { ret {prefix: "lib", suffix: ".so"}; }
+      session::os_freebsd. { ret {prefix: "lib", suffix: ".so"}; }
     }
 }
 

@@ -20,7 +20,7 @@
 .globl UPCALL_DEL_STACK
 .globl MORESTACK
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__FreeBSD__)
 	.hidden MORESTACK
 #else
 #if defined(__APPLE__)
@@ -33,7 +33,7 @@
 #endif
 
 
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 MORESTACK:
 	.cfi_startproc
 
@@ -92,6 +92,9 @@ MORESTACK:
 #ifdef __linux__
 	call UPCALL_NEW_STACK@PLT
 #endif
+#ifdef __FreeBSD__
+	call UPCALL_NEW_STACK@PLT
+#endif
 
 	// Pop the saved arguments
 	movdqa    (%rsp), %xmm0
@@ -133,6 +136,9 @@ MORESTACK:
 	call UPCALL_DEL_STACK
 #endif
 #ifdef __linux__
+	call UPCALL_DEL_STACK@PLT
+#endif
+#ifdef __FreeBSD__
 	call UPCALL_DEL_STACK@PLT
 #endif
 

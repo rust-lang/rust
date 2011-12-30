@@ -8,6 +8,7 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
           session::os_macos. { "__DATA,__note.rustc" }
           session::os_win32. { ".note.rustc" }
           session::os_linux. { ".note.rustc" }
+          session::os_freebsd. { ".note.rustc" }
         },
 
         data_layout: alt target_os {
@@ -24,12 +25,17 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
           session::os_linux. {
             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32"
           }
+
+          session::os_freebsd. {
+            "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32"
+          }
         },
 
         target_triple: alt target_os {
           session::os_macos. { "i686-apple-darwin" }
           session::os_win32. { "i686-pc-mingw32" }
           session::os_linux. { "i686-unknown-linux-gnu" }
+          session::os_freebsd. { "i686-unknown-freebsd" }
         },
 
         gcc_args: ["-m32"]

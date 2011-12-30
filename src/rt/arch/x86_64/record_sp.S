@@ -14,7 +14,7 @@
 .globl GET_SP
 .globl CHECK_STACK
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__FreeBSD__)
 RECORD_SP:
 	movq %rdi, %fs:112
 	ret

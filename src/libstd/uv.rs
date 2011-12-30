@@ -5,6 +5,7 @@ the C libuv API. Does very little right now pending scheduler improvements.
 
 #[cfg(target_os = "linux")];
 #[cfg(target_os = "macos")];
+#[cfg(target_os = "freebsd")];
 
 export sanity_check;
 export loop_t, idle_t;
@@ -39,6 +40,7 @@ type idle_cb = opaque_cb;
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
 type handle_private_fields = {
     a00: ctypes::c_int,
     a01: ctypes::c_int,
@@ -121,6 +123,7 @@ fn sanity_check() {
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
 fn handle_fields_new() -> handle_fields {
     {
         loop: ptr::null(),

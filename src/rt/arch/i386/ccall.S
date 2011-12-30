@@ -16,20 +16,20 @@ ___morestack:
 __morestack:
 #endif
 
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	.cfi_startproc
 #endif
 
 	pushl %ebp
 
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	.cfi_def_cfa_offset 8
 	.cfi_offset %ebp, -8
 #endif
 
 	movl %esp,%ebp          // save esp
 
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	.cfi_def_cfa_register %ebp
 #endif
 
@@ -42,6 +42,6 @@ __morestack:
 
 	ret
 
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	.cfi_endproc
 #endif
