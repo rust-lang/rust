@@ -22,9 +22,11 @@ def fetch(f):
         exit(1)
 
 
-def load_general_categories(f):
+def load_unicode_data(f):
     fetch(f)
     gencats = {}
+    canon_decomp = {}
+    compat_decomp = {}
     curr_cat = ""
     c_lo = 0
     c_hi = 0
@@ -37,6 +39,18 @@ def load_general_categories(f):
          old, iso, upcase, lowcsae, titlecase ] = fields
 
         code = int(code, 16)
+
+        if decomp != "":
+            if decomp.startswith('<'):
+                seq = []
+                for i in decomp.split()[1:]:
+                    seq.append(int(i, 16))
+                compat_decomp[code] = seq
+            else:
+                seq = []
+                for i in decomp.split():
+                    seq.append(int(i, 16))
+                canon_decomp[code] = seq
 
         if curr_cat == "":
             curr_cat = gencat
@@ -53,7 +67,8 @@ def load_general_categories(f):
             curr_cat = gencat
             c_lo = code
             c_hi = code
-    return gencats
+
+    return (canon_decomp, compat_decomp, gencats)
 
 
 def load_derived_core_properties(f):
@@ -96,7 +111,7 @@ def escape_char(c):
         return "'\\u%4.4x'" % c
     return "'\\U%8.8x'" % c
 
-def emit_rust_module(f, mod, tbl):
+def emit_property_module(f, mod, tbl):
     f.write("mod %s {\n" % mod)
     keys = tbl.keys()
     keys.sort()
@@ -120,53 +135,63 @@ def emit_rust_module(f, mod, tbl):
         f.write("    }\n\n")
     f.write("}\n")
 
+def emit_decomp_module(f, canon, compat):
+    canon_keys = canon.keys()
+    canon_keys.sort()
 
-def emit_cpp_module(f, mod, tbl):
-    keys = tbl.keys()
-    keys.sort()
+    compat_keys = compat.keys()
+    compat_keys.sort()
+    f.write("mod decompose {\n\n");
+    f.write("    export canonical, compatibility;\n\n")
+    f.write("    fn canonical(c: char, i: block(char)) { d(c, i, false); }\n\n")
+    f.write("    fn compatibility(c: char, i: block(char)) { d(c, i, true); }\n\n")
+    f.write("    fn d(c: char, i: block(char), k: bool) {\n")
 
-    for cat in keys:
+    f.write("        if c <= '\\x7f' { i(c); ret; }\n")
 
-        singles = []
-        ranges = []
+    # First check the canonical decompositions
+    f.write("        // Canonical decomposition\n")
+    f.write("        alt c {\n")
+    for char in canon_keys:
+        f.write("          %s {\n" % escape_char(char))
+        for d in canon[char]:
+            f.write("            d(%s, i, k);\n"
+                    % escape_char(d))
+        f.write("          }\n")
 
-        for pair in tbl[cat]:
-            if pair[0] == pair[1]:
-                singles.append(pair[0])
-            else:
-                ranges.append(pair)
+    f.write("          _ { }\n")
+    f.write("        }\n\n")
 
-        f.write("bool %s_%s(unsigned c) {\n" % (mod, cat))
-        for pair in ranges:
-            f.write("    if (0x%x <= c && c <= 0x%x) { return true; }\n"
-                    % pair)
-        if len(singles) > 0:
-            f.write("    switch (c) {\n");
-            for single in singles:
-                f.write("      case 0x%x:\n" % single)
-            f.write("        return true;\n");
-            f.write("      default:\n");
-            f.write("        return false;\n");
-            f.write("    }\n")
-        f.write("return false;\n")
-        f.write("}\n\n")
+    # Bottom out if we're not doing compat.
+    f.write("        if !k { i(c); ret; }\n\n ")
 
+    # Then check the compatibility decompositions
+    f.write("        // Compatibility decomposition\n")
+    f.write("        alt c {\n")
+    for char in compat_keys:
+        f.write("          %s {\n" % escape_char(char))
+        for d in compat[char]:
+            f.write("            d(%s, i, k);\n"
+                    % escape_char(d))
+        f.write("          }\n")
 
-def emit_module(rf, cf, mod, tbl):
-    emit_rust_module(rf, mod, tbl)
-    emit_cpp_module(cf, mod, tbl)
+    f.write("          _ { }\n")
+    f.write("        }\n\n")
+
+    # Finally bottom out.
+    f.write("        i(c);\n")
+    f.write("    }\n")
+    f.write("}\n\n")
 
 r = "unicode.rs"
-c = "unicode.cpp"
-for i in [r, c]:
+for i in [r]:
     if os.path.exists(i):
         os.remove(i);
-
 rf = open(r, "w")
-cf = open(c, "w")
 
-emit_module(rf, cf, "general_category",
-            load_general_categories("UnicodeData.txt"))
+(canon_decomp, compat_decomp, gencats) = load_unicode_data("UnicodeData.txt")
+emit_decomp_module(rf, canon_decomp, compat_decomp)
+emit_property_module(rf, "general_category", gencats)
 
-emit_module(rf, cf, "derived_property",
-            load_derived_core_properties("DerivedCoreProperties.txt"))
+emit_property_module(rf, "derived_property",
+                     load_derived_core_properties("DerivedCoreProperties.txt"))
