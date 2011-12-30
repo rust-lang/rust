@@ -52,7 +52,7 @@ GENERATED += nd/$(1)/Languages.txt \
              nd/$(1)/Menu.txt \
              nd/$(1)/Data
 
-DOCS += nd/$(1)/index.html nd/$(1)/lib.css
+DOCS += doc/$(1)/index.html nd/$(1)/lib.css
 
 endef
 

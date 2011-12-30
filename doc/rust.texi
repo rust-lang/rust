@@ -1701,12 +1701,14 @@ import std::option::*;
 import std::str::@{char_at, hash@};
 
 fn main() @{
-    // Equivalent to 'log std::math::sin(1.0);'
-    log sin(1.0);
-    // Equivalent to 'log std::option::some(1.0);'
-    log some(1.0);
-    // Equivalent to 'log std::str::hash(std::str::char_at("foo"));'
-    log hash(char_at("foo"));
+    // Equivalent to 'log(info, std::math::sin(1.0));'
+    log(info, sin(1.0));
+
+    // Equivalent to 'log(info, std::option::some(1.0));'
+    log(info, some(1.0));
+
+    // Equivalent to 'log(info, std::str::hash(std::str::char_at("foo")));'
+    log(info, hash(char_at("foo")));
 @}
 @end example
 
@@ -1801,7 +1803,7 @@ A special kind of function can be declared with a @code{!} character where the
 output slot type would normally be. For example:
 @example
 fn my_err(s: str) -> ! @{
-    log s;
+    log(info, s);
     fail;
 @}
 @end example
@@ -2767,6 +2769,9 @@ effects of the expression's evaluation.
 
 @menu
 * Ref.Expr.Copy::               Expression for copying a value.
+* Ref.Expr.Move::               Expression for moving a value.
+* Ref.Expr.Swap::               Expression for swapping two values.
+* Ref.Expr.Assign::             Expression for moving a copy of a value.
 * Ref.Expr.Call::               Expression for calling a function.
 * Ref.Expr.Bind::               Expression for binding arguments to functions.
 * Ref.Expr.Ret::                Expression for stopping and producing a value.
@@ -2788,32 +2793,114 @@ effects of the expression's evaluation.
 * Ref.Expr.AnonObj::            Expression for extending objects with additional methods.
 @end menu
 
-
 @node       Ref.Expr.Copy
 @subsection Ref.Expr.Copy
 @c * Ref.Expr.Copy::                Expression for copying a value.
 @cindex Copy expression
-@cindex Assignment operator, see @i{Copy expression}
+@cindex Copy operator, see @i{Move expression}
 
-A @dfn{copy expression} consists of an @emph{lval} followed by an equals-sign
-(@code{=}) and a primitive expression. @xref{Ref.Expr}.
+A unary @dfn{copy expression} consists of the unary @code{copy} operator
+applied to some argument expression.
 
-Executing a copy expression causes the value denoted by the expression --
-either a value or a primitive combination of values -- to be copied into the
-memory location denoted by the @emph{lval}.
+Evaluating a copy expression first evaluates the argument expression, then
+performs a copy of the resulting value, allocating any memory necessary to
+hold the new copy.
 
-A copy may entail the adjustment of reference counts, execution of destructors,
-or similar adjustments in order to respect the path through the memory graph
-implied by the @code{lval}, as well as any existing value held in the memory
-being written-to. All such adjustment is automatic and implied by the @code{=}
-operator.
+Shared boxes (type @code{@@}) are, as usual, shallow-copied, as they may be
+cyclic. Unique boxes, vectors and similar unique types are deep-copied.
 
-An example of three different copy expressions:
+Since the assignment operator @code{=} performs a copy implicitly, the unary
+copy operator is typically only used to cause an argument to a function should
+be copied, and the copy passed by-value. @xref{Ref.Expr.Assign}.
+
+An example of a copy expression:
 @example
-x = y;
-x.y = z;
-x.y = z + 2;
+fn mutate(vec: [mutable int]) @{
+   vec[0] = 10;
+@}
+
+let v = [mutable 1,2,3];
+
+mutate(copy v);   // Pass a copy
+
+assert v[0] == 1; // Original was not modified
 @end example
+
+
+@node       Ref.Expr.Move
+@subsection Ref.Expr.Move
+@c * Ref.Expr.Move::                Expression for moving a value.
+@cindex Move expression
+@cindex Move operator, see @i{Move expression}
+
+A @dfn{move experssion} consists of an @emph{lval} followed by a left-pointing
+arrow (@code{<-}) and an @emph{rval} expression. @xref{Ref.Expr}.
+
+Evaluating a move expression causes, as a side effect, the @emph{rval} to be
+@emph{moved} into the @emph{lval}. If the @emph{rval} was itself an @emph{lval},
+it must be a local variable, as it will be de-initialized in the process.
+
+Evaluating a move expression does not effect reference counts nor does it
+cause a deep copy of any unique structure pointed-to by the moved
+@emph{rval}. Instead, the move expression represents an indivisible
+@emph{transfer of ownership} from the right-hand-side to the left-hand-side of
+the expression. No allocation or destruction is entailed.
+
+An example of three different move expressions:
+@example
+x <- a;
+x[i] <- b;
+x.y <- c;
+@end example
+
+
+@node       Ref.Expr.Swap
+@subsection Ref.Expr.Swap
+@c * Ref.Expr.Swap::                Expression for swapping two values.
+@cindex Swap expression
+@cindex Swap operator, see @i{Move expression}
+
+A @dfn{swap experssion} consists of an @emph{lval} followed by a bi-directional
+arrow (@code{<->}) and another @emph{lval} expression. @xref{Ref.Expr}.
+
+Evaluating a swap expression causes, as a side effect, the vales held in the
+left-hand-side and right-hand-side @emph{lvals} to be exchanged indivisibly.
+
+Evaluating a move expression does not effect reference counts nor does it
+cause a deep copy of any unique structure pointed-to by the moved
+@emph{rval}. Instead, the move expression represents an indivisible
+@emph{exchange of ownership} between the right-hand-side to the left-hand-side
+of the expression. No allocation or destruction is entailed.
+
+An example of three different swap expressions:
+@example
+x <-> a;
+x[i] <-> b[i];
+x.y <-> a.b;
+@end example
+
+
+@node       Ref.Expr.Assign
+@subsection Ref.Expr.Assign
+@c * Ref.Expr.Copy::                Expression for moving a copy of a value.
+@cindex Assignment expression
+@cindex Assignment operator, see @i{Assignment expression}
+
+An @dfn{assignment expression} consists of an @emph{lval} expression followed
+by an equals-sign (@code{=}) and an @emph{rval} expression. @xref{Ref.Expr}.
+
+Evaluating an assignment expression is equivalent to evaluating a move
+expression combined with a unary copy expression. For example, the following
+two expressions have the same effect:
+
+@example
+x = y
+x <- copy y
+@end example
+
+The former is simply more terse and familiar. @xref{Ref.Expr.Copy},
+@xref{Ref.Expr.Move}.
+
 
 @node       Ref.Expr.Call
 @subsection Ref.Expr.Call
@@ -2822,9 +2909,9 @@ x.y = z + 2;
 @cindex Function calls
 
 A @dfn{call expression} invokes a function, providing a tuple of input slots
-and an reference slot to serve as the function's output, bound to the @var{lval}
-on the right hand side of the call. If the function eventually returns, then
-the expression completes.
+and a reference slot to serve as the function's output, bound to the
+@var{lval} on the right hand side of the call. If the function eventually
+returns, then the expression completes.
 
 A call expression statically requires that the precondition declared in the
 callee's signature is satisfied by the expression prestate. In this way,
@@ -3222,7 +3309,7 @@ fn main() @{
         choose_player(r)
       @}
       @{player: p, options: @{size: "small", _@}, _@} @{
-        log p + " is small";
+        log(info, p + " is small");
       @}
       _ @{
         next_player();
@@ -3445,7 +3532,7 @@ expressions can be enabled per module.
 
 Logging output is enabled by setting the @code{RUST_LOG} environment variable.
 @code{RUST_LOG} accepts a logging specification that is a comma-separated list
-of paths. For each module containing log statements, if @code{RUST_LOG}
+of paths. For each module containing log expressions, if @code{RUST_LOG}
 contains the path to that module or a parent of that module, then its logs
 will be output to the console. The path to an module consists of the crate
 name, any parent modules, then the module itself, all separated by double
@@ -3457,13 +3544,14 @@ As an example, to see all the logs generated by the compiler, you would set
 just crate resolution, you would set it to @code{rustc::metadata::creader}.
 
 Note that when compiling either .rs or .rc files that don't specifiy a crate
-name the crate is given a default name that matches the source file, sans
-extension. In that case, to turn on logging for a program compiled from, e.g.
-helloworld.rs, @code{RUST_LOG} should be set to @code{helloworld}.
+name the crate is given a default name that matches the source file, with the
+extension removed. In that case, to turn on logging for a program compiled
+from, e.g. @code{helloworld.rs}, @code{RUST_LOG} should be set to
+@code{helloworld}.
 
 As a convenience, the logging spec can also be set to a special psuedo-crate,
 @code{::help}. In this case, when the application starts, the runtime will
-simply output a list of loaded modules containing log statements, then exit.
+simply output a list of loaded modules containing log expressions, then exit.
 
 The Rust runtime itself generates logging information. The runtime's logs are
 generated for a number of artificial modules in the @code{::rt} psuedo-crate,
