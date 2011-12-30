@@ -2,8 +2,23 @@ import core::*;
 
 use std;
 import std::list;
-import std::list::{from_vec, head, is_not_empty, tail};
+import std::list::{from_vec, head, is_empty, is_not_empty, tail};
 import option;
+
+#[test]
+fn test_is_empty() {
+    let empty : list::list<int> = from_vec([]);
+    let full1 = from_vec([1]);
+    let full2 = from_vec(['r', 'u']);
+
+    assert is_empty(empty);
+    assert !is_empty(full1);
+    assert !is_empty(full2);
+
+    assert !is_not_empty(empty);
+    assert is_not_empty(full1);
+    assert is_not_empty(full2);
+}
 
 #[test]
 fn test_from_vec() {
