@@ -52,7 +52,7 @@ $(foreach target,$(CFG_TARGET_TRIPLES), \
 INSTALL_TARGET_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
  install-target-$(target)-host-$(CFG_HOST_TRIPLE))
 
-install: install-host install-targets
+install: all install-host install-targets
 
 # Shorthand for build/stageN/bin
 HB = $(HBIN$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
