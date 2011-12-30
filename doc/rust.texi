@@ -218,12 +218,11 @@ profilers, dynamic loaders). The compiled units include custom metadata that
 carries full type and version information.
 
 The Rust runtime library is a small collection of support code for scheduling,
-memory management, inter-task communication, reflection and runtime
-linkage. This library is written in standard C++ and is quite
-straightforward. It presents a simple interface to embeddings. No
-research-level virtual machine, JIT or garbage collection technology is
-required. It should be relatively easy to adapt a Rust front-end on to many
-existing native toolchains.
+memory management, inter-task communication and logging. This library is
+written in standard C++ and is quite straightforward. It presents a simple
+interface to embeddings. No research-level virtual machine, JIT or garbage
+collection technology is required. It should be relatively easy to adapt a
+Rust front-end on to many existing native toolchains.
 
 @sp 1
 @item Integrated system-construction facility
@@ -296,11 +295,12 @@ there can never be sharing of data between tasks, while keeping the costs of
 transferring data between tasks as cheap as moving a pointer.
 
 @sp 1
-@item Stack-based iterators
+@item Efficient closures
 
-Rust provides a type of function-like multiple-invocation iterator that is
-very efficient: the iterator state lives only on the stack and is tightly
-coupled to the loop that invoked it.
+Rust provides a variety of closure types, including a type that is guaranteed
+not to escape to the heap. This is represented as just a stack-frame pointer
+and a code pointer. Passing such ``downward'' closures into library code makes
+for very efficient iteration and accessor-function patterns.
 
 @sp 1
 @item Direct interface to C code
@@ -322,8 +322,8 @@ an @code{alt} expression.
 @sp 1
 @item Generic code
 
-Rust supports a simple form of parametric polymorphism: functions, iterators,
-types and objects can be parametrized by other types.
+Rust supports a simple form of parametric polymorphism: functions, types and
+objects can be parametrized by other types.
 
 @sp 1
 @item Argument binding
@@ -337,9 +337,9 @@ features of currying, in a smaller and simpler package.
 @item Local type inference
 
 To save some quantity of programmer key-pressing, Rust supports local type
-inference: signatures of functions, objects and iterators always require type
-annotation, but within the body of a function or iterator many slots can be
-declared without a type, and Rust will infer the slot's type from its uses.
+inference: signatures of functions and objects always require type annotation,
+but within the body of a function many slots can be declared without a type,
+and Rust will infer the slot's type from its uses.
 
 @sp 1
 @item Structural object system
@@ -362,10 +362,11 @@ the surrounding text by skipping over the bracketed ``extension text''.
 @sp 1
 @item Idempotent failure
 
-If a task fails due to a signal, or if it evaluates the special @code{fail}
-expression, it enters the @emph{failing} state. A failing task unwinds its
-control stack, frees all of its owned resources (executing destructors) and
-enters the @emph{dead} state. Failure is idempotent and non-recoverable.
+If a task is killed by some external event, or if it evaluates the special
+@code{fail} expression, it enters the @emph{failing} state. A failing task
+unwinds its control stack, frees all of its owned resources (executing
+destructors) and enters the @emph{dead} state. Failure is idempotent and
+non-recoverable.
 
 @sp 1
 @item Supervision hierarchy
@@ -685,7 +686,6 @@ suffix:
 
 @enumerate
 @item The @code{u} suffix gives the literal type @code{uint}.
-@item The @code{g} suffix gives the literal type @code{big}.
 @item Each of the signed and unsigned machine types @code{u8}, @code{i8},
 @code{u16}, @code{i16}, @code{u32}, @code{i32}, @code{u64} and @code{i64}
 give the literal the corresponding machine type.
@@ -734,7 +734,6 @@ Examples of integer literals of various forms:
 0xff00;                            // type int
 0xffu8;                            // type u8
 0b1111_1111_1001_0000_i32;         // type i32
-0xffff_ffff_ffff_ffff_ffff_ffffg;  // type big
 @end example
 
 
@@ -999,7 +998,6 @@ The compiled form of a crate is a loadable and executable object file full of
 machine code, in a standard loadable operating-system format such as ELF, PE
 or Mach-O. The loadable object contains metadata, describing:
 @itemize
-@item Metadata required for type reflection.
 @item The publicly exported module structure of the crate.
 @item Any metadata about the crate, defined by attributes.
 @item The crates to dynamically link with at run-time, with matching criteria
@@ -1202,10 +1200,10 @@ consist of @emph{boxes}.
 @cindex Shared box
 @cindex Task-local box
 
-The @dfn{items} of a program are those functions, iterators, objects, modules
-and types that have their value calculated at compile-time and stored uniquely
-in the memory image of the rust process. Items are neither dynamically
-allocated nor freed.
+The @dfn{items} of a program are those functions, objects, modules and types
+that have their value calculated at compile-time and stored uniquely in the
+memory image of the rust process. Items are neither dynamically allocated nor
+freed.
 
 A task's @dfn{stack} consists of activation frames automatically allocated on
 entry to each function as the task executes. A stack allocation is reclaimed
@@ -1479,25 +1477,24 @@ completed -- when a message arrives at a sender, or a queue drains
 sufficiently to complete a semi-synchronous send -- then the blocked task will
 unblock and transition back to @emph{running}.
 
-A task may transition to the @emph{failing} state at any time, due to an
-un-trapped signal or the evaluation of a @code{fail} expression. Once
-@emph{failing}, a task unwinds its stack and transitions to the @emph{dead}
-state. Unwinding the stack of a task is done by the task itself, on its own
-control stack. If a value with a destructor is freed during unwinding, the
-code for the destructor is run, also on the task's control
-stack. Running the destructor code causes a temporary transition to a
-@emph{running} state, and allows the destructor code to cause any
-subsequent state transitions.  The original task of unwinding and
-failing thereby may suspend temporarily, and may involve (recursive)
-unwinding of the stack of a failed destructor. Nonetheless, the
-outermost unwinding activity will continue until the stack is unwound
-and the task transitions to the @emph{dead} state. There is no way to
-``recover'' from task failure.  Once a task has temporarily suspended
-its unwinding in the @emph{failing} state, failure occurring from
-within this destructor results in @emph{hard} failure.  The unwinding
-procedure of hard failure frees resources but does not execute
-destructors.  The original (soft) failure is still resumed at the
-point where it was temporarily suspended.
+A task may transition to the @emph{failing} state at any time, due being
+killed by some external event or internally, from the evaluation of a
+@code{fail} expression. Once @emph{failing}, a task unwinds its stack and
+transitions to the @emph{dead} state. Unwinding the stack of a task is done by
+the task itself, on its own control stack. If a value with a destructor is
+freed during unwinding, the code for the destructor is run, also on the task's
+control stack. Running the destructor code causes a temporary transition to a
+@emph{running} state, and allows the destructor code to cause any subsequent
+state transitions.  The original task of unwinding and failing thereby may
+suspend temporarily, and may involve (recursive) unwinding of the stack of a
+failed destructor. Nonetheless, the outermost unwinding activity will continue
+until the stack is unwound and the task transitions to the @emph{dead}
+state. There is no way to ``recover'' from task failure.  Once a task has
+temporarily suspended its unwinding in the @emph{failing} state, failure
+occurring from within this destructor results in @emph{hard} failure.  The
+unwinding procedure of hard failure frees resources but does not execute
+destructors.  The original (soft) failure is still resumed at the point where
+it was temporarily suspended.
 
 A task in the @emph{dead} state cannot transition to other states; it exists
 only to have its termination status inspected by other tasks, and/or to await
@@ -1608,20 +1605,20 @@ An @dfn{item} is a component of a module. Items are entirely determined at
 compile-time, remain constant during execution, and may reside in read-only
 memory.
 
-There are five primary kinds of item: modules, functions, iterators, objects and
-type definitions.
+There are five primary kinds of item: modules, functions, objects and type
+definitions.
 
 All items form an implicit scope for the declaration of sub-items. In other
-words, within a function, object or iterator, declarations of items can (in
-many cases) be mixed with the statements, control blocks, and similar
-artifacts that otherwise compose the item body. The meaning of these scoped
-items is the same as if the item was declared outside the scope, except that
-the item's @emph{path name} within the module namespace is qualified by the
-name of the enclosing item. The exact locations in which sub-items may be
-declared is given by the grammar.  @xref{Ref.Gram}.
+words, within a function or object, declarations of items can (in many cases)
+be mixed with the statements, control blocks, and similar artifacts that
+otherwise compose the item body. The meaning of these scoped items is the same
+as if the item was declared outside the scope, except that the item's
+@emph{path name} within the module namespace is qualified by the name of the
+enclosing item. The exact locations in which sub-items may be declared is
+given by the grammar.  @xref{Ref.Gram}.
 
-Functions, iterators, objects and type definitions may be @emph{parametrized}
-by type. Type parameters are given as a comma-separated list of identifiers
+Functions, objects and type definitions may be @emph{parametrized} by
+type. Type parameters are given as a comma-separated list of identifiers
 enclosed in angle brackets (@code{<>}), after the name of the item and before
 its definition.  The type parameters of an item are part of the name, not the
 type of the item; in order to refer to the type-parametrized item, a
@@ -1787,11 +1784,11 @@ the value has the corresponding @emph{function type}, and can be used
 otherwise exactly as a function item (with a minor additional cost of calling
 the function, as such a call is indirect). @xref{Ref.Type.Fn}.
 
-Every control path in a function ends with a @code{ret} or @code{be}
-expression or with a diverging expression (described later in this
-section). If a control path lacks a @code{ret} expression in source code, an
-implicit @code{ret} expression is appended to the end of the control path
-during compilation, returning the implicit @code{()} value.
+Every control path in a function ends with a @code{ret} expression or with a
+diverging expression (described later in this section). If a control path
+lacks a @code{ret} expression in source code, an implicit @code{ret}
+expression is appended to the end of the control path during compilation,
+returning the implicit @code{()} value.
 
 An example of a function:
 @example
@@ -1818,9 +1815,8 @@ unifies with any type. Rust has no syntax for @math{\bot}.
 
 It might be necessary to declare a diverging function because as mentioned
 previously, the typechecker checks that every control path in a function ends
-with a @code{ret}, @code{be}, or diverging expression. So, if @code{my_err}
-were declared without the @code{!} annotation, the following code would not
-typecheck:
+with a @code{ret} or diverging expression. So, if @code{my_err} were declared
+without the @code{!} annotation, the following code would not typecheck:
 @example
 fn f(i: int) -> int @{
    if i == 42 @{
@@ -1850,7 +1846,7 @@ is declared with the additional keyword @code{pure}. In addition,
 the typechecker checks the body of a predicate with a restricted set of
 typechecking rules. A predicate
 @itemize
-@item may not contain a @code{put}, @code{send}, @code{recv}, assignment, or
+@item may not contain an assignment or
 self-call expression; and
 @item may only call other predicates, not general functions.
 @end itemize
@@ -2056,12 +2052,10 @@ built-in type or type-constructor name is reserved as a @emph{keyword} in
 Rust; they cannot be used as user-defined identifiers in any context.
 
 @menu
-* Ref.Type.Any::                An open union of every possible type.
 * Ref.Type.Mach::               Machine-level types.
 * Ref.Type.Int::                The machine-dependent integer types.
 * Ref.Type.Float::              The machine-dependent floating-point types.
 * Ref.Type.Prim::               Primitive types.
-* Ref.Type.Big::                The arbitrary-precision integer type.
 * Ref.Type.Text::               Strings and characters.
 * Ref.Type.Rec::                Labeled products of heterogeneous types.
 * Ref.Type.Tup::                Unlabeled products of heterogeneous types.
@@ -2072,20 +2066,6 @@ Rust; they cannot be used as user-defined identifiers in any context.
 * Ref.Type.Constr::             Constrained types.
 * Ref.Type.Type::               Types describing types.
 @end menu
-
-@node       Ref.Type.Any
-@subsection Ref.Type.Any
-@cindex Any type
-@cindex Dynamic type, see @i{Any type}
-@cindex Alt type expression
-
-The type @code{any} is the union of all possible Rust types. A value of type
-@code{any} is represented in memory as a pair consisting of a boxed value of
-some non-@code{any} type @var{T} and a reflection of the type @var{T}.
-
-Values of type @code{any} can be used in an @code{alt type} expression, in
-which the reflection is used to select a block corresponding to a particular
-type extraction. @xref{Ref.Expr.Alt}.
 
 @node       Ref.Type.Mach
 @subsection Ref.Type.Mach
@@ -2197,22 +2177,6 @@ The machine types.
 @item
 The machine-dependent integer and floating-point types.
 @end itemize
-
-
-@node       Ref.Type.Big
-@subsection Ref.Type.Big
-@cindex Integer types
-@cindex Big integer type
-
-The Rust type @code{big}@footnote{A Rust @code{big} is analogous to a Lisp
-bignum or a Python long integer.} is an arbitrary precision integer type that
-fits in a machine word @emph{when possible} and transparently expands to a
-boxed ``big integer'' allocated in the run-time heap when it overflows or
-underflows outside of the range of a machine word.
-
-A Rust @code{big} grows to accommodate extra binary digits as they are needed,
-by taking extra memory from the memory budget available to each Rust task, and
-should only exhaust its range due to memory exhaustion.
 
 @node       Ref.Type.Text
 @subsection Ref.Type.Text
@@ -2697,10 +2661,10 @@ to hold in order to execute properly.
 @cindex Statements
 
 A @dfn{statement} is a component of a block, which is in turn a component of
-an outer block-expression, a function or an iterator. When a function is
-spawned into a task, the task @emph{executes} statements in an order
-determined by the body of the enclosing structure. Each statement causes the
-task to perform certain actions.
+an outer block-expression or function. When a function is spawned into a task,
+the task @emph{executes} statements in an order determined by the body of the
+enclosing structure. Each statement causes the task to perform certain
+actions.
 
 Rust has two kinds of statement: declarations and expressions.
 
@@ -2748,11 +2712,10 @@ before and after the declaration.
 @c * Ref.Stmt.Decl.Item::                Statement declaring an item.
 
 An @dfn{item declaration statement} has a syntactic form identical to an item
-declaration within a module. Declaring an item -- a function, iterator,
-object, type or module -- locally within a statement block is simply a way of
-restricting its scope to a narrow region containing all of its uses; it is
-otherwise identical in meaning to declaring the item outside the statement
-block.
+declaration within a module. Declaring an item -- a function, object, type or
+module -- locally within a statement block is simply a way of restricting its
+scope to a narrow region containing all of its uses; it is otherwise identical
+in meaning to declaring the item outside the statement block.
 
 Note: there is no implicit capture of the function's dynamic environment when
 declaring a function-local item.
@@ -2783,9 +2746,8 @@ following the declaration statement.
 The former form, with no type annotation, causes the compiler to infer the
 static type of the slot through unification with the types of values assigned
 to the slot in the remaining code in the block scope. Inference only occurs on
-frame-local slots, not argument slots. Function, iterator and object
-signatures must always declared types for all argument slots.
-@xref{Ref.Mem.Slot}.
+frame-local slots, not argument slots. Function and object signatures must
+always declared types for all argument slots.  @xref{Ref.Mem.Slot}.
 
 @node       Ref.Stmt.Expr
 @subsection Ref.Stmt.Expr
@@ -2808,8 +2770,6 @@ effects of the expression's evaluation.
 * Ref.Expr.Call::               Expression for calling a function.
 * Ref.Expr.Bind::               Expression for binding arguments to functions.
 * Ref.Expr.Ret::                Expression for stopping and producing a value.
-@c * Ref.Expr.Be::                 Expression for stopping and executing a tail call.
-* Ref.Expr.Put::                Expression for pausing and producing a value.
 * Ref.Expr.As::                 Expression for casting a value to a different type.
 * Ref.Expr.Fail::               Expression for causing task failure.
 * Ref.Expr.Log::                Expression for logging values to diagnostic buffers.
@@ -2819,7 +2779,7 @@ effects of the expression's evaluation.
 * Ref.Expr.Cont::               Expression for terminating a single loop iteration.
 * Ref.Expr.For::                Expression for looping over strings and vectors.
 * Ref.Expr.If::                 Expression for simple conditional branching.
-* Ref.Expr.Alt::                Expression for complex conditional branching.
+* Ref.Expr.Alt::                Expression for branching on patterh matches.
 * Ref.Expr.Prove::              Expression for static assertion of typestate.
 * Ref.Expr.Check::              Expression for dynamic assertion of typestate.
 * Ref.Expr.Claim::              Expression for static (unsafe) or dynamic assertion of typestate.
@@ -2942,58 +2902,6 @@ fn max(a: int, b: int) -> int @{
    ret b;
 @}
 @end example
-
-@ignore
-@node       Ref.Expr.Be
-@subsection Ref.Expr.Be
-@c * Ref.Expr.Be::                 Expression for stopping and executing a tail call.
-@cindex Be expression
-@cindex Tail calls
-
-Executing a @code{be} expression @footnote{A @code{be} expression in is
-analogous to a @code{become} expression in Newsqueak or Alef.}  destroys the
-current function activation frame and replaces it with an activation frame for
-the called function. In other words, @code{be} executes a tail-call. The
-syntactic form of a @code{be} expression is therefore limited to @emph{tail
-position}: its argument must be a @emph{call expression} or a @{trivial cast}
-of a @emph{call expression}, and it must be the last expression in a block.
-An example of a @code{be} expression:
-@example
-fn print_loop(n: int) @{
-  if n <= 0 @{
-    ret;
-  @} else @{
-    print_int(n);
-    be print_loop(n-1);
-  @}
-@}
-@end example
-
-The above example executes in constant space, replacing each frame with a new
-copy of itself.
-
-@end ignore
-
-
-@node       Ref.Expr.Put
-@subsection Ref.Expr.Put
-@c * Ref.Expr.Put::                Expression for pausing and producing a value.
-@cindex Put expression
-@cindex Iterators
-
-Executing a @code{put} expression copies a value into the output slot of the
-current iterator, suspends execution of the current iterator, and transfers
-control to the current put-recipient frame.
-
-A @code{put} expression is only valid within an iterator.  @footnote{A
-@code{put} expression is analogous to a @code{yield} expression in the CLU, and
-Sather languages, or in more recent languages providing a ``generator''
-facility, such as Python, Javascript or C#. Like the generators of CLU and
-Sather but @emph{unlike} these later languages, Rust's iterators reside on the
-stack and obey a strict stack discipline.} The current put-recipient will
-eventually resume the suspended iterator containing the @code{put} expression,
-either continuing execution after the @code{put} expression, or terminating its
-execution and destroying the iterator frame.
 
 
 @node       Ref.Expr.As
@@ -3198,12 +3106,11 @@ enclosing it. It is only permitted in the body of a loop.
 @cindex Loops
 @cindex Control-flow
 
-Executing a @code{cont} expression immediately terminates the current iteration
-of the innermost loop enclosing it, returning control to the loop
+Executing a @code{cont} expression immediately terminates the current
+iteration of the innermost loop enclosing it, returning control to the loop
 @emph{head}. In the case of a @code{while} loop, the head is the conditional
-expression controlling the loop. In the case of a @code{for} or @code{for
-each} loop, the head is the iterator or vector-element increment controlling the
-loop.
+expression controlling the loop. In the case of a @code{for} loop, the head is
+the vector-element increment controlling the loop.
 
 A @code{cont} expression is only permitted in the body of a loop.
 
@@ -3247,50 +3154,26 @@ consequent block is skipped and any subsequent @code{else if} condition is
 evaluated. If all @code{if} and @code{else if} conditions evaluate to @code{false}
 then any @code{else} block is executed.
 
-@node       Ref.Expr.Alt
-@subsection Ref.Expr.Alt
-@c * Ref.Expr.Alt::                Expression for complex conditional branching.
-@cindex Alt expression
-@cindex Control-flow
-@cindex Switch expression, see @i{Alt expression}
-
-An @code{alt} expression is a multi-directional branch in program control.
-There are two kinds of @code{alt} expression: pattern @code{alt} expressions
-and @code{alt type} expressions.
-
-The form of each kind of @code{alt} is similar: an initial @emph{head} that
-describes the criteria for branching, followed by a sequence of zero or more
-@emph{arms}, each of which describes a @emph{case} and provides a @emph{block}
-of expressions associated with the case. When an @code{alt} is executed,
-control enters the head, determines which of the cases to branch to, branches
-to the block associated with the chosen case, and then proceeds to the
-expression following the @code{alt} when the case block completes.
-
-@menu
-* Ref.Expr.Alt.Pat::          Expression for branching on pattern matches.
-* Ref.Expr.Alt.Type::         Expression for branching on types.
-@end menu
-
-@node          Ref.Expr.Alt.Pat
-@subsubsection Ref.Expr.Alt.Pat
-@c * Ref.Expr.Alt.Pat::            Expression for branching on pattern matches.
+@node          Ref.Expr.Alt
+@subsection    Ref.Expr.Alt
+@c * Ref.Expr.Pat::            Expression for branching on pattern matches.
 @cindex Pattern alt expression
 @cindex Control-flow
 
-A pattern @code{alt} expression branches on a @emph{pattern}. The exact form
-of matching that occurs depends on the pattern. Patterns consist of some
+An @code{alt} expression branches on a @emph{pattern}. The exact form of
+matching that occurs depends on the pattern. Patterns consist of some
 combination of literals, destructured tag constructors, records and tuples,
-variable binding specifications and placeholders (@code{_}). A pattern
-@code{alt} has a @emph{head expression}, which is the value to compare to the
+variable binding specifications and placeholders (@code{_}). An @code{alt}
+expression has a @emph{head expression}, which is the value to compare to the
 patterns. The type of the patterns must equal the type of the head expression.
 
-To execute a pattern @code{alt} expression, first the head expression is
-evaluated, then its value is sequentially compared to the patterns in the arms
-until a match is found. The first arm with a matching pattern is chosen as the
-branch target of the @code{alt}, any variables bound by the pattern are
-assigned to local slots in the arm's block, and control enters the block.
+To execute an @code{alt} expression, first the head expression is evaluated,
+then its value is sequentially compared to the patterns in the arms until a
+match is found. The first arm with a matching pattern is chosen as the branch
+target of the @code{alt}, any variables bound by the pattern are assigned to
+local slots in the arm's block, and control enters the block.
 
-An example of a pattern @code{alt} expression:
+An example of an @code{alt} expression:
 
 @example
 tag list<X> @{ nil; cons(X, @@list<X>); @}
@@ -3370,42 +3253,6 @@ let message = alt maybe_digit @{
   some(x) @{ process_other(x) @}
 @}
 @end example
-
-
-@node          Ref.Expr.Alt.Type
-@subsubsection Ref.Expr.Alt.Type
-@c * Ref.Expr.Alt.Type::           Expression for branching on type.
-@cindex Type alt expression
-@cindex Control-flow
-
-An @code{alt type} expression is similar to a pattern @code{alt}, but branches
-on the @emph{type} of its head expression, rather than the value. The head
-expression of an @code{alt type} expression must be of type @code{any}, and the
-arms of the expression are slot patterns rather than value patterns. Control
-branches to the arm with a @code{case} that matches the @emph{actual type} of
-the value in the @code{any}.
-
-An example of an @code{alt type} expression:
-
-@example
-let x: any = foo();
-
-alt type (x) @{
-    case (int i) @{
-        ret i;
-    @}
-    case (list<int> li) @{
-        ret int_list_sum(li);
-    @}
-    case (list<X> lx) @{
-        ret list_len(lx);
-    @}
-    case (_) @{
-        ret 0;
-    @}
-@}
-@end example
-
 
 @node       Ref.Expr.Prove
 @subsection Ref.Expr.Prove
@@ -3538,14 +3385,13 @@ The Rust @dfn{runtime} is a relatively compact collection of C and Rust code
 that provides fundamental services and datatypes to all Rust tasks at
 run-time. It is smaller and simpler than many modern language runtimes. It is
 tightly integrated into the language's execution model of memory, tasks,
-communication, reflection, logging and signal handling.
+communication and logging.
 
 @menu
 * Ref.Run.Mem::                 Runtime memory management service.
 * Ref.Run.Type::                Runtime built-in type services.
 * Ref.Run.Comm::                Runtime communication service.
 * Ref.Run.Log::                 Runtime logging system.
-* Ref.Run.Sig::                 Runtime signal handler.
 @end menu
 
 @node       Ref.Run.Mem
@@ -3569,8 +3415,8 @@ allocating and freeing boxed values.
 @cindex Built-in types
 
 The runtime provides C and Rust code to assist with various built-in types,
-such as vectors, strings, bignums, and the low level communication system
-(ports, channels, tasks).
+such as vectors, strings, and the low level communication system (ports,
+channels, tasks).
 
 Support for other built-in types such as simple types, tuples, records, and
 tags is open-coded by the Rust compiler.
@@ -3639,18 +3485,6 @@ of runtime logging modules follows.
 @item @code{::rt::backtrace} Unused
 @item @code{::rt::callback} Unused
 @end itemize
-
-@node       Ref.Run.Sig
-@subsection Ref.Run.Sig
-@c * Ref.Run.Sig::               Runtime signal handler.
-@cindex Signals
-
-The runtime signal-handling system is driven by a signal-dispatch table and a
-signal queue associated with each task. Sending a signal to a task inserts the
-signal into the task's signal queue and marks the task as having a pending
-signal. At the next scheduling opportunity, the runtime processes signals in
-the task's queue using its dispatch table. The signal queue memory is charged
-to the task; if the queue grows too big, the task will fail.
 
 @c ############################################################
 @c end main body of nodes
