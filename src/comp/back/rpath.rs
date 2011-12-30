@@ -105,6 +105,7 @@ fn get_rpath_relative_to_output(os: session::os,
     // Mac doesn't appear to support $ORIGIN
     let prefix = alt os {
         session::os_linux. { "$ORIGIN" + fs::path_sep() }
+        session::os_freebsd. { "$ORIGIN" + fs::path_sep() }
         session::os_macos. { "@executable_path" + fs::path_sep() }
     };
 
@@ -191,6 +192,7 @@ fn minimize_rpaths(rpaths: [str]) -> [str] {
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
 #[cfg(test)]
 mod test {
     #[test]
@@ -311,6 +313,14 @@ mod test {
     #[cfg(target_os = "linux")]
     fn test_rpath_relative() {
         let res = get_rpath_relative_to_output(session::os_linux,
+            "/usr", "bin/rustc", "lib/libstd.so");
+        assert res == "$ORIGIN/../lib";
+    }
+
+    #[test]
+    #[cfg(target_os = "freebsd")]
+    fn test_rpath_relative() {
+        let res = get_rpath_relative_to_output(session::os_freebsd,
             "/usr", "bin/rustc", "lib/libstd.so");
         assert res == "$ORIGIN/../lib";
     }

@@ -23,6 +23,8 @@
 #define RZ_MAC_32   (1024*20)
 #define RZ_MAC_64   (1024*20)
 #define RZ_WIN_32   (1024*20)
+#define RZ_BSD_32   (1024*20)
+#define RZ_BSD_64   (1024*20)
 
 #ifdef __linux__
 #ifdef __i386__
@@ -46,6 +48,14 @@
 #endif
 #ifdef __x86_64__
 #define RED_ZONE_SIZE RZ_WIN_64
+#endif
+#endif
+#ifdef __FreeBSD__
+#ifdef __i386__
+#define RED_ZONE_SIZE RZ_BSD_32
+#endif
+#ifdef __x86_64__
+#define RED_ZONE_SIZE RZ_BSD_64
 #endif
 #endif
 

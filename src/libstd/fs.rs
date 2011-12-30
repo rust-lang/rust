@@ -148,6 +148,7 @@ fn make_dir(p: path, mode: ctypes::c_int) -> bool {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
     fn mkdir(_p: path, _mode: ctypes::c_int) -> bool {
         ret str::as_buf(_p, {|buf| os::libc::mkdir(buf, _mode) == 0i32 });
     }
@@ -186,6 +187,7 @@ fn remove_dir(p: path) -> bool {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
     fn rmdir(_p: path) -> bool {
         ret str::as_buf(_p, {|buf| os::libc::rmdir(buf) == 0i32 });
     }
@@ -201,6 +203,7 @@ fn change_dir(p: path) -> bool {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
     fn chdir(_p: path) -> bool {
         ret str::as_buf(_p, {|buf| os::libc::chdir(buf) == 0i32 });
     }
@@ -367,6 +370,7 @@ fn normalize(p: path) -> path {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
     fn reabsolute(orig: path, new: path) -> path {
         if path_is_absolute(orig) {
             path_sep() + new

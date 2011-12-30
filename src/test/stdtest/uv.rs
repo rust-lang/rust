@@ -1,6 +1,7 @@
 
 #[cfg(target_os = "linux")];
 #[cfg(target_os = "macos")];
+#[cfg(target_os = "freebsd")];
 
 import core::*;
 

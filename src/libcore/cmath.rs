@@ -22,6 +22,9 @@ native mod f64 {
     #[link_name="log"] pure fn ln(n: f64) -> f64;
     #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
     pure fn log10(n: f64) -> f64;
+    #[cfg(target_os="linux")]
+    #[cfg(target_os="macos")]
+    #[cfg(target_os="win32")]
     pure fn log2(n: f64) -> f64;
     pure fn modf(n: f64, iptr: *f64) -> f64;
     pure fn pow(n: f64, e: f64) -> f64;
@@ -56,6 +59,9 @@ native mod f32 {
     #[link_name="ldexpf"] pure fn ldexp(x: f32, n: c_int) -> f32;
     #[link_name="logf"] pure fn ln(n: f32) -> f32;
     #[link_name="log1p"] pure fn ln1p(n: f64) -> f64;
+    #[cfg(target_os="linux")]
+    #[cfg(target_os="macos")]
+    #[cfg(target_os="win32")]
     #[link_name="log2f"] pure fn log2(n: f32) -> f32;
     #[link_name="log10f"] pure fn log10(n: f32) -> f32;
     #[link_name="modff"] pure fn modf(n: f32, iptr: *f32) -> f32;

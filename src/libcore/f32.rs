@@ -114,6 +114,11 @@ mod consts {
     const ln_10: f32 = 2.30258509299404568401799145468436421f32;
 }
 
+#[cfg(target_os="freebsd")]
+pure fn log2(n: f32) -> f32 {
+    ret ln(n) / ln(2f32)
+}
+
 //
 // Local Variables:
 // mode: rust

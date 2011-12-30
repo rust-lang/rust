@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include "rust_abi.h"
 
-#if defined(__APPLE__) || defined(__linux__)
+#if defined(__APPLE__) || defined(__linux__) || defined(__FreeBSD__)
 #define HAVE_DLFCN_H
 #include <dlfcn.h>
 #elif defined(_WIN32)

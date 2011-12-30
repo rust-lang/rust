@@ -163,6 +163,7 @@ fn maybe_with_lib_path<T>(path: str, f: fn@() -> T) -> T {
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
 fn maybe_with_lib_path<T>(_path: str, f: fn@() -> T) -> T {
     f()
 }

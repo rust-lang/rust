@@ -31,7 +31,11 @@ extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
 
 class context {
 public:
+#ifdef __FreeBSD__
+    registers_t regs __attribute__(aligned(16));
+#else
     registers_t regs;
+#endif
     
     context();
     
