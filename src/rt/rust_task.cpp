@@ -292,14 +292,18 @@ rust_task::~rust_task()
 
 struct spawn_args {
     rust_task *task;
-    uintptr_t a3;
-    uintptr_t a4;
-    void (*CDECL f)(int *, uintptr_t, uintptr_t);
+    uintptr_t envptr;
+    spawn_fn f;
 };
 
-struct rust_closure_env {
+struct rust_closure {
+    const type_desc *td;
+    // ... see trans_closure.rs for full description ...
+};
+
+struct rust_boxed_closure {
     intptr_t ref_count;
-    type_desc *td;
+    rust_closure closure;
 };
 
 struct cleanup_args {
@@ -315,13 +319,12 @@ cleanup_task(cleanup_args *args) {
 
     cc::do_cc(task);
 
-    rust_closure_env* env = (rust_closure_env*)a->a3;
-    if(env) {
+    rust_boxed_closure* boxed_env = (rust_boxed_closure*)a->envptr;
+    if(boxed_env) {
         // free the environment.
-        I(task->sched, 1 == env->ref_count); // the ref count better be 1
-        //env->td->drop_glue(NULL, task, NULL, env->td->first_param, env);
-        //env->td->free_glue(NULL, task, NULL, env->td->first_param, env);
-        task->free(env);
+        rust_closure *env = &boxed_env->closure;
+        env->td->drop_glue(NULL, NULL, &env->td, env);
+        env->td->free_glue(NULL, NULL, &env->td, env);
     }
 
     task->die();
@@ -347,11 +350,12 @@ extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
 {
     rust_task *task = a->task;
-    int rval = 42;
 
     bool failed = false;
     try {
-        a->f(&rval, a->a3, a->a4);
+        // The first argument is the return pointer; as the task fn 
+        // must have void return type, we can safely pass 0.
+        a->f(0, a->envptr);
     } catch (rust_task *ex) {
         A(task->sched, ex == task,
           "Expected this task to be thrown for unwinding");
@@ -367,12 +371,11 @@ void task_start_wrapper(spawn_args *a)
 }
 
 void
-rust_task::start(uintptr_t spawnee_fn,
-                 uintptr_t args,
+rust_task::start(spawn_fn spawnee_fn,
                  uintptr_t env)
 {
     LOG(this, task, "starting task from fn 0x%" PRIxPTR
-        " with args 0x%" PRIxPTR, spawnee_fn, args);
+        " with env 0x%" PRIxPTR, spawnee_fn, env);
 
     I(sched, stk->data != NULL);
 
@@ -383,21 +386,12 @@ rust_task::start(uintptr_t spawnee_fn,
     spawn_args *a = (spawn_args *)sp;
 
     a->task = this;
-    a->a3 = env;
-    a->a4 = args;
-    void **f = (void **)&a->f;
-    *f = (void *)spawnee_fn;
+    a->envptr = env;
+    a->f = spawnee_fn;
 
     ctx.call((void *)task_start_wrapper, a, sp);
 
     this->start();
-}
-
-void
-rust_task::start(uintptr_t spawnee_fn,
-                 uintptr_t args)
-{
-    start(spawnee_fn, args, 0);
 }
 
 void rust_task::start()

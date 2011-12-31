@@ -98,7 +98,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
         DLOG(sched, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    root_task->start(main_fn, (uintptr_t)args->args);
+    root_task->start((spawn_fn)main_fn, (uintptr_t)args->args);
     root_task->deref();
     root_task = NULL;
 
@@ -119,6 +119,5 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //

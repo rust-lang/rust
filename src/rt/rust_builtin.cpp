@@ -2,6 +2,7 @@
 
 #include "rust_internal.h"
 #include "rust_scheduler.h"
+#include "rust_task.h"
 
 #if !defined(__WIN32__)
 #include <sys/time.h>
@@ -424,18 +425,11 @@ struct fn_env_pair {
     intptr_t env;
 };
 
-// FIXME This is probably not needed at all anymore. Have to rearrange some
-// argument passing to remove it.
-void rust_spawn_wrapper(void* retptr, void* envptr,
-                        void(*func)(void*, void*)) {
-    func(retptr, envptr);
-}
-
 extern "C" CDECL void
 start_task(rust_task_id id, fn_env_pair *f) {
     rust_task *task = rust_scheduler::get_task();
     rust_task *target = task->kernel->get_task_by_id(id);
-    target->start((uintptr_t)rust_spawn_wrapper, f->f, f->env);
+    target->start((spawn_fn)f->f, f->env);
     target->deref();
 }
 
@@ -578,6 +572,5 @@ port_recv(uintptr_t *dptr, rust_port *port,
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //

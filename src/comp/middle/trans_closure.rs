@@ -33,7 +33,7 @@ import trans::{
 // struct closure_box {
 //    unsigned ref_count; // only used for sharid environments
 //    struct closure {
-//      type_desc *tydesc;         // descriptor for the env type
+//      type_desc *tydesc;         // descriptor for the "struct closure" type
 //      type_desc *bound_tdescs[]; // bound descriptors
 //      struct {
 //          upvar1_t upvar1;

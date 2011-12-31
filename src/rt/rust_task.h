@@ -21,6 +21,8 @@ struct chan_handle {
     rust_port_id port;
 };
 
+typedef void (*CDECL spawn_fn)(uintptr_t, uintptr_t);
+
 struct rust_box;
 
 struct stk_seg {
@@ -132,10 +134,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     ~rust_task();
 
-    void start(uintptr_t spawnee_fn,
-               uintptr_t args,
-               uintptr_t env);
-    void start(uintptr_t spawnee_fn,
+    void start(spawn_fn spawnee_fn,
                uintptr_t args);
     void start();
     bool running();
@@ -212,7 +211,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //
 
