@@ -7,25 +7,16 @@ native mod llvm {
     fn sqrt(n: float) -> float;
 }
 
-fn main() {
-    //
-    // Leave these commented out to
-    // finish in a reasonable time
-    // during 'make check' under valgrind
-    // 5000000
-    // 50000000
-    let inputs: [int] = [50000, 500000];
+fn main(args: [str]) {
+    let n = int::from_str(args[1]);
 
     let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
 
+    log(debug, NBodySystem::energy(bodies));
 
-    for n: int in inputs {
-        log(debug, NBodySystem::energy(bodies));
-
-        let i: int = 0;
-        while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
-        log(debug, NBodySystem::energy(bodies));
-    }
+    let i: int = 0;
+    while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
+    log(debug, NBodySystem::energy(bodies));
 }
 
 // Body::props is a record of floats, so
