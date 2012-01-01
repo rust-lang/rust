@@ -153,7 +153,7 @@ pure fn to_lowercase(c: char) -> char {
 /*
  Function: to_uppercase
 
- Convert a char to the corresponding lower case.
+ Convert a char to the corresponding upper case.
 
  FIXME: works only on ASCII
 */
