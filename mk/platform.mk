@@ -25,7 +25,7 @@ ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
   CFG_LIB_GLOB=lib$(1)-*.so
   CFG_GCCISH_CFLAGS += -fPIC -I/usr/local/include
-  CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
+  CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt -L/usr/local/lib -lexecinfo
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
   CFG_GCCISH_PRE_LIB_FLAGS := -Wl,-whole-archive
   CFG_GCCISH_POST_LIB_FLAGS := -Wl,-no-whole-archive

@@ -220,7 +220,6 @@ mod write {
             } else { FileType = LLVMAssemblyFile; }
             // Write optimized bitcode if --save-temps was on.
 
-            let seg_stack = sess.get_targ_cfg().os != session::os_freebsd;
             if opts.save_temps {
                 // Always output the bitcode file with --save-temps
 
@@ -245,7 +244,7 @@ mod write {
                                     buf_o,
                                     LLVMAssemblyFile,
                                     CodeGenOptLevel,
-                                    seg_stack)})});
+                                    true)})});
                 }
 
 
@@ -265,7 +264,7 @@ mod write {
                                         buf_o,
                                         LLVMObjectFile,
                                         CodeGenOptLevel,
-                                        seg_stack)})});
+                                        true)})});
                 }
             } else {
                 // If we aren't saving temps then just output the file
@@ -283,7 +282,7 @@ mod write {
                                     buf_o,
                                     FileType,
                                     CodeGenOptLevel,
-                                    seg_stack)})});
+                                    true)})});
             }
             // Clean up and return
 
@@ -661,7 +660,7 @@ fn link_binary(sess: session::session,
     }
 
     if sess.get_targ_cfg().os == session::os_freebsd {
-        gcc_args += ["-lrt"];
+        gcc_args += ["-lrt", "-L/usr/local/lib", "-lexecinfo"];
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the
