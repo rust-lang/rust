@@ -60,3 +60,19 @@ fn test_to_digit_fail_1() {
 fn test_to_digit_fail_2() {
     char::to_digit('$');
 }
+
+#[test]
+fn test_to_lowercase() {
+    assert (char::to_lowercase('H') == 'h');
+    assert (char::to_lowercase('e') == 'e');
+    //assert (char::to_lowercase('Ö') == 'ö');
+    assert (char::to_lowercase('ß') == 'ß');
+}
+
+#[test]
+fn test_to_uppercase() {
+    assert (char::to_uppercase('l') == 'L');
+    assert (char::to_uppercase('Q') == 'Q');
+    //assert (char::to_uppercase('ü') == 'Ü');
+    assert (char::to_uppercase('ß') == 'ß');
+}

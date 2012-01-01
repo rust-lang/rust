@@ -7,10 +7,10 @@ String manipulation.
 export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        byte_len_range, index,
        rindex, find, starts_with, ends_with, substr, slice, split, splitn,
-       split_str, concat, connect, to_upper, replace, char_slice, trim_left,
-       trim_right, trim, unshift_char, shift_char, pop_char, push_char,
-       is_utf8, from_chars, to_chars, char_len, char_len_range, char_at,
-       bytes, is_ascii, shift_byte, pop_byte,
+       split_str, concat, connect, to_lower, to_upper, replace, char_slice,
+       trim_left, trim_right, trim, unshift_char, shift_char, pop_char,
+       push_char, is_utf8, from_chars, to_chars, char_len, char_len_range,
+       char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
        contains, iter_chars, loop_chars, loop_chars_sub,
@@ -832,7 +832,18 @@ fn connect(v: [str], sep: str) -> str {
     ret s;
 }
 
-// FIXME: This only handles ASCII
+/*
+Function: to_lower
+
+Convert a string to lowercase
+*/
+fn to_lower(s: str) -> str {
+    let outstr = "";
+    iter_chars(s) { |c|
+        push_char(outstr, char::to_lowercase(c));
+    }
+    ret outstr;
+}
 /*
 Function: to_upper
 
@@ -840,15 +851,8 @@ Convert a string to uppercase
 */
 fn to_upper(s: str) -> str {
     let outstr = "";
-    let ascii_a = 'a' as u8;
-    let ascii_z = 'z' as u8;
-    let diff = 32u8;
-    for byte: u8 in s {
-        let next;
-        if ascii_a <= byte && byte <= ascii_z {
-            next = byte - diff;
-        } else { next = byte; }
-        push_byte(outstr, next);
+    iter_chars(s) { |c|
+        push_char(outstr, char::to_uppercase(c));
     }
     ret outstr;
 }
