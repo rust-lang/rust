@@ -383,7 +383,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
     let ccx = bcx_ccx(bcx), bcx = bcx;
     let fty = node_id_type(ccx, id);
     check returns_non_ty_var(ccx, fty);
-    let llfnty = type_of_fn_from_ty(ccx, sp, fty, 0u);
+    let llfnty = type_of_fn_from_ty(ccx, sp, fty, []);
     let sub_cx = extend_path(bcx.fcx.lcx, ccx.names.next("anon"));
     let s = mangle_internal_name_by_path(ccx, sub_cx.path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
@@ -436,16 +436,13 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     }
 
     // Figure out which tydescs we need to pass, if any.
-    let outgoing_fty_real; // the type with typarams still in it
-    let lltydescs: [ValueRef];
-    alt f_res.generic {
-      none. { outgoing_fty_real = outgoing_fty; lltydescs = []; }
+    let (outgoing_fty_real, lltydescs, param_bounds) = alt f_res.generic {
+      none. { (outgoing_fty, [], []) }
       some(ginfo) {
         lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
-        outgoing_fty_real = ginfo.item_type;
-        lltydescs = ginfo.tydescs;
+        (ginfo.item_type, ginfo.tydescs, ginfo.param_bounds)
       }
-    }
+    };
 
     let ty_param_count = vec::len(lltydescs);
     if vec::len(bound) == 0u && ty_param_count == 0u {
@@ -487,7 +484,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     // Make thunk
     let llthunk =
         trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real, args,
-                         box_ty, ty_param_count, target_res);
+                         box_ty, param_bounds, target_res);
 
     // Fill the function pair
     fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, llbox);
@@ -558,7 +555,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
                     outgoing_fty: ty::t,
                     args: [option::t<@ast::expr>],
                     boxed_closure_ty: ty::t,
-                    ty_param_count: uint,
+                    param_bounds: [ty::param_bounds],
                     target_fn: option::t<ValueRef>)
     -> {val: ValueRef, ty: TypeRef} {
     // If we supported constraints on record fields, we could make the
@@ -667,7 +664,8 @@ fn trans_bind_thunk(cx: @local_ctxt,
     let llargs: [ValueRef] = [llretptr, lltargetenv];
 
     // Copy in the type parameters.
-    let i: uint = 0u;
+    // FIXME[impl] This will also have to copy the dicts
+    let i = 0u, ty_param_count = vec::len(param_bounds);
     while i < ty_param_count {
         // Silly check
         check type_is_tup_like(load_env_bcx, boxed_closure_ty);
@@ -739,11 +737,10 @@ fn trans_bind_thunk(cx: @local_ctxt,
 
     check returns_non_ty_var(ccx, outgoing_fty);
     let lltargetty =
-        type_of_fn_from_ty(ccx, sp, outgoing_fty, ty_param_count);
+        type_of_fn_from_ty(ccx, sp, outgoing_fty, param_bounds);
     lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
     Call(bcx, lltargetfn, llargs);
     build_return(bcx);
     finish_fn(fcx, lltop);
     ret {val: llthunk, ty: llthunk_ty};
 }
-

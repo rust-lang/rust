@@ -504,7 +504,7 @@ fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
     ret tpt;
 }
 fn ty_param_bounds(tcx: ty::ctxt, mode: mode, params: [ast::ty_param])
-    -> [@[ty::param_bound]] {
+    -> [ty::param_bounds] {
     let result = [];
     for param in params {
         result += [alt tcx.ty_param_bounds.find(local_def(param.id)) {
@@ -626,7 +626,7 @@ mod write {
 }
 
 fn mk_ty_params(tcx: ty::ctxt, atps: [ast::ty_param])
-    -> {bounds: [@[ty::param_bound]], params: [ty::t]} {
+    -> {bounds: [ty::param_bounds], params: [ty::t]} {
     let i = 0u, bounds = ty_param_bounds(tcx, m_collect, atps);
     {bounds: bounds,
      params: vec::map(atps, {|atp|
@@ -2896,6 +2896,7 @@ fn resolve_vtables(tcx: ty::ctxt, impl_map: resolve::impl_map,
             ty::ty_iface(did, _) { did }
             _ { ret; }
         };
+        // FIXME check against bounded param types
         let found = false;
         std::list::iter(isc) {|impls|
             if found { ret; }

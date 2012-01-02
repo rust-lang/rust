@@ -83,7 +83,7 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
 //  - trans_args
 fn type_of_fn(cx: @crate_ctxt, sp: span,
               is_method: bool, inputs: [ty::arg],
-              output: ty::t, ty_param_count: uint)
+              output: ty::t, params: [ty::param_bounds])
    : non_ty_var(cx, output) -> TypeRef {
     let atys: [TypeRef] = [];
 
@@ -100,8 +100,10 @@ fn type_of_fn(cx: @crate_ctxt, sp: span,
 
     // Args >2: ty params, if not acquired via capture...
     if !is_method {
-        let i = 0u;
-        while i < ty_param_count { atys += [T_ptr(cx.tydesc_type)]; i += 1u; }
+        // FIXME[impl] Also add args for the dicts
+        for _param in params {
+            atys += [T_ptr(cx.tydesc_type)];
+        }
     }
     // ... then explicit args.
     atys += type_of_explicit_args(cx, sp, inputs);
@@ -110,7 +112,7 @@ fn type_of_fn(cx: @crate_ctxt, sp: span,
 
 // Given a function type and a count of ty params, construct an llvm type
 fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
-                      ty_param_count: uint)
+                      param_bounds: [ty::param_bounds])
     : returns_non_ty_var(cx, fty) -> TypeRef {
     // FIXME: Check should be unnecessary, b/c it's implied
     // by returns_non_ty_var(t). Make that a postcondition
@@ -118,7 +120,7 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
     let ret_ty = ty::ty_fn_ret(cx.tcx, fty);
     check non_ty_var(cx, ret_ty);
     ret type_of_fn(cx, sp, false, ty::ty_fn_args(cx.tcx, fty),
-                   ret_ty, ty_param_count);
+                   ret_ty, param_bounds);
 }
 
 fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
@@ -171,10 +173,10 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
       ty::ty_fn(_) {
         // FIXME: could be a constraint on ty_fn
         check returns_non_ty_var(cx, t);
-        T_fn_pair(cx, type_of_fn_from_ty(cx, sp, t, 0u))
+        T_fn_pair(cx, type_of_fn_from_ty(cx, sp, t, []))
       }
       ty::ty_native_fn(args, out) {
-        let nft = native_fn_wrapper_type(cx, sp, 0u, t);
+        let nft = native_fn_wrapper_type(cx, sp, [], t);
         T_fn_pair(cx, nft)
       }
       ty::ty_obj(meths) { cx.rust_object_type }
@@ -234,7 +236,7 @@ fn type_of_ty_param_bounds_and_ty(lcx: @local_ctxt, sp: span,
     alt ty::struct(cx.tcx, t) {
       ty::ty_fn(_) | ty::ty_native_fn(_, _) {
         check returns_non_ty_var(cx, t);
-        ret type_of_fn_from_ty(cx, sp, t, vec::len(tpt.bounds));
+        ret type_of_fn_from_ty(cx, sp, t, tpt.bounds);
       }
       _ {
         // fall through
@@ -2562,7 +2564,8 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
 type generic_info =
     {item_type: ty::t,
      static_tis: [option::t<@tydesc_info>],
-     tydescs: [ValueRef]};
+     tydescs: [ValueRef],
+     param_bounds: [ty::param_bounds]};
 
 tag lval_kind {
     temporary; //< Temporary value passed by value if of immediate type
@@ -2608,18 +2611,19 @@ fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
 
 fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
     -> lval_maybe_callee {
-    let tpt = ty::lookup_item_type(bcx_tcx(bcx), fn_id);
+    let ccx = bcx_ccx(bcx);
+    let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let val = if fn_id.crate == ast::local_crate {
         // Internal reference.
-        assert (bcx_ccx(bcx).item_ids.contains_key(fn_id.node));
-        bcx_ccx(bcx).item_ids.get(fn_id.node)
+        assert (ccx.item_ids.contains_key(fn_id.node));
+        ccx.item_ids.get(fn_id.node)
     } else {
         // External reference.
         trans_external_path(bcx, fn_id, tpt)
     };
-    let tys = ty::node_id_to_type_params(bcx_tcx(bcx), id);
+    let tys = ty::node_id_to_type_params(ccx.tcx, id);
     let gen = none, bcx = bcx;
-    if vec::len::<ty::t>(tys) != 0u {
+    if vec::len(tys) != 0u {
         let tydescs = [], tis = [];
         for t in tys {
             // TODO: Doesn't always escape.
@@ -2629,7 +2633,11 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
             bcx = td.bcx;
             tydescs += [td.val];
         }
-        gen = some({item_type: tpt.ty, static_tis: tis, tydescs: tydescs});
+        let bounds = ty::lookup_item_type(ccx.tcx, fn_id).bounds;
+        gen = some({item_type: tpt.ty,
+                    static_tis: tis,
+                    tydescs: tydescs,
+                    param_bounds: bounds});
     }
     ret {bcx: bcx, val: val, kind: owned, env: null_env, generic: gen};
 }
@@ -2767,7 +2775,7 @@ fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
     check non_ty_var(ccx, ret_ty);
 
     let ll_fn_ty = type_of_fn(ccx, bcx.sp, true,
-                              ty::ty_fn_args(tcx, fn_ty), ret_ty, 0u);
+                              ty::ty_fn_args(tcx, fn_ty), ret_ty, []);
     v = Load(bcx, PointerCast(bcx, v, T_ptr(T_ptr(ll_fn_ty))));
     ret {bcx: bcx, mthptr: v, objptr: o};
 }
@@ -5084,13 +5092,17 @@ fn register_fn(ccx: @crate_ctxt, sp: span, path: [str], flav: str,
     register_fn_full(ccx, sp, path, flav, ty_params, node_id, t);
 }
 
+fn param_bounds(ccx: @crate_ctxt, tp: ast::ty_param) -> ty::param_bounds {
+    ccx.tcx.ty_param_bounds.get(ast_util::local_def(tp.id))
+}
+
 fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
-                    ty_params: [ast::ty_param], node_id: ast::node_id,
+                    tps: [ast::ty_param], node_id: ast::node_id,
                     node_type: ty::t)
     : returns_non_ty_var(ccx, node_type) {
     let path = path;
-    let llfty =
-        type_of_fn_from_ty(ccx, sp, node_type, vec::len(ty_params));
+    let llfty = type_of_fn_from_ty(ccx, sp, node_type,
+                                   vec::map(tps, {|p| param_bounds(ccx, p)}));
     let ps: str = mangle_exported_name(ccx, path, node_type);
     let llfn: ValueRef = decl_cdecl_fn(ccx.llmod, ps, llfty);
     ccx.item_ids.insert(node_id, llfn);
@@ -5128,7 +5140,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let nt = ty::mk_nil(ccx.tcx);
         check non_ty_var(ccx, nt);
 
-        let llfty = type_of_fn(ccx, sp, false, [vecarg_ty], nt, 0u);
+        let llfty = type_of_fn(ccx, sp, false, [vecarg_ty], nt, []);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::LLVMCCallConv, llfty);
 
@@ -5221,12 +5233,13 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
     ret count;
 }
 
-fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span, ty_param_count: uint,
+fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span,
+                          param_bounds: [ty::param_bounds],
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
       ty::ty_native_fn(args, out) {
         check non_ty_var(cx, out);
-        ret type_of_fn(cx, sp, false, args, out, ty_param_count);
+        ret type_of_fn(cx, sp, false, args, out, param_bounds);
       }
     }
 }
@@ -5273,10 +5286,10 @@ fn collect_native_item(ccx: @crate_ctxt,
               ast::native_abi_rust_intrinsic. {
                 // For intrinsics: link the function directly to the intrinsic
                 // function itself.
-                let num_ty_param = vec::len(tps);
                 check returns_non_ty_var(ccx, node_type);
-                let fn_type = type_of_fn_from_ty(ccx, sp, node_type,
-                                                 num_ty_param);
+                let fn_type = type_of_fn_from_ty(
+                    ccx, sp, node_type,
+                    vec::map(tps, {|p| param_bounds(ccx, p)}));
                 let ri_name = "rust_intrinsic_" + link_name(i);
                 let llnativefn = get_extern_fn(
                     ccx.externs, ccx.llmod, ri_name,

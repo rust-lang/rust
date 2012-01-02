@@ -185,7 +185,7 @@ export closure_kind;
 export closure_block;
 export closure_shared;
 export closure_send;
-export param_bound, bound_copy, bound_send, bound_iface;
+export param_bound, param_bounds, bound_copy, bound_send, bound_iface;
 export param_bounds_to_kind;
 
 // Data types
@@ -194,7 +194,9 @@ type arg = {mode: mode, ty: t};
 
 type field = {ident: ast::ident, mt: mt};
 
-type method = {ident: ast::ident, tps: [@[param_bound]], fty: fn_ty};
+type param_bounds = @[param_bound];
+
+type method = {ident: ast::ident, tps: [param_bounds], fty: fn_ty};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
@@ -220,7 +222,7 @@ type ctxt =
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
       tag_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
-      ty_param_bounds: hashmap<def_id, @[param_bound]>};
+      ty_param_bounds: hashmap<def_id, param_bounds>};
 
 type ty_ctxt = ctxt;
 
@@ -308,7 +310,7 @@ tag param_bound {
     bound_iface(t);
 }
 
-fn param_bounds_to_kind(bounds: @[param_bound]) -> kind {
+fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     let kind = kind_noncopyable;
     for bound in *bounds {
         alt bound {
@@ -322,7 +324,7 @@ fn param_bounds_to_kind(bounds: @[param_bound]) -> kind {
     kind
 }
 
-type ty_param_bounds_and_ty = @{bounds: [@[param_bound]], ty: t};
+type ty_param_bounds_and_ty = @{bounds: [param_bounds], ty: t};
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 
