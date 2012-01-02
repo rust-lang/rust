@@ -190,7 +190,7 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for param in params {
         ebml::start_tag(ebml_w, tag_items_data_item_ty_param_bounds);
-        let bs = ecx.ccx.tcx.ty_param_bounds.get(local_def(param.id));
+        let bs = ecx.ccx.tcx.ty_param_bounds.get(param.id);
         tyencode::enc_bounds(io::new_writer(ebml_w.writer), ty_str_ctxt, bs);
         ebml::end_tag(ebml_w);
     }

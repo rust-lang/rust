@@ -222,7 +222,7 @@ type ctxt =
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
       tag_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
-      ty_param_bounds: hashmap<def_id, param_bounds>};
+      ty_param_bounds: hashmap<ast::node_id, param_bounds>};
 
 type ty_ctxt = ctxt;
 
@@ -441,7 +441,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
           tag_var_cache: new_def_hash(),
           iface_method_cache: new_def_hash(),
-          ty_param_bounds: new_def_hash()};
+          ty_param_bounds: map::new_int_hash()};
     populate_type_store(cx);
     ret cx;
 }
@@ -1085,7 +1085,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       }
       // Resources are always noncopyable.
       ty_res(did, inner, tps) { kind_noncopyable }
-      ty_param(_, did) { param_bounds_to_kind(cx.ty_param_bounds.get(did)) }
+      ty_param(_, did) {
+          param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
+      }
       ty_constr(t, _) { type_kind(cx, t) }
     };
 

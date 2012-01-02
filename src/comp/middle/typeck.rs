@@ -507,7 +507,7 @@ fn ty_param_bounds(tcx: ty::ctxt, mode: mode, params: [ast::ty_param])
     -> @[ty::param_bounds] {
     let result = [];
     for param in params {
-        result += [alt tcx.ty_param_bounds.find(local_def(param.id)) {
+        result += [alt tcx.ty_param_bounds.find(param.id) {
           some(bs) { bs }
           none. {
             let bounds = [];
@@ -521,7 +521,7 @@ fn ty_param_bounds(tcx: ty::ctxt, mode: mode, params: [ast::ty_param])
                 }];
             }
             let boxed = @bounds;
-            tcx.ty_param_bounds.insert(local_def(param.id), boxed);
+            tcx.ty_param_bounds.insert(param.id, boxed);
             boxed
           }
         }];
@@ -1493,7 +1493,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
     // First, see whether this is an interface-bounded parameter
     alt ty::struct(tcx, ty) {
       ty::ty_param(n, did) {
-        for bound in *tcx.ty_param_bounds.get(did) {
+        for bound in *tcx.ty_param_bounds.get(did.node) {
             alt bound {
               ty::bound_iface(t) {
                 let (iid, _tps) = alt ty::struct(tcx, t) {
@@ -2789,7 +2789,7 @@ fn check_ty_params(ccx: @crate_ctxt, tps: [ast::ty_param]) {
         for bound in *tp.bounds {
             alt bound {
               ast::bound_iface(at) {
-                let tbound = ccx.tcx.ty_param_bounds.get(local_def(tp.id))[i];
+                let tbound = ccx.tcx.ty_param_bounds.get(tp.id)[i];
                 let bound_ty = alt tbound { ty::bound_iface(t) { t } };
                 alt ty::struct(ccx.tcx, bound_ty) {
                   ty::ty_iface(_, _) {}

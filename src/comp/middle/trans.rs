@@ -5093,7 +5093,7 @@ fn register_fn(ccx: @crate_ctxt, sp: span, path: [str], flav: str,
 }
 
 fn param_bounds(ccx: @crate_ctxt, tp: ast::ty_param) -> ty::param_bounds {
-    ccx.tcx.ty_param_bounds.get(ast_util::local_def(tp.id))
+    ccx.tcx.ty_param_bounds.get(tp.id)
 }
 
 fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
