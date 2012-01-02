@@ -95,6 +95,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_str. { "str" }
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
+      ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
       ty_type. { "type" }
       ty_rec(elems) {
