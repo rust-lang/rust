@@ -63,6 +63,13 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
     ret mini_table;
 }
 
+fn is_block(cx: ctx, id: node_id) -> bool {
+    alt ty::struct(cx.tcx, ty::node_id_to_monotype(cx.tcx, id)) {
+      ty::ty_fn({proto: proto_block., _}) { true }
+      _ { false }
+    }
+}
+
 fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     alt ex.node {
       expr_ret(oexpr) {
@@ -135,9 +142,8 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
         for arg in args {
             alt arg.node {
-              //NDM--register captured as uses
-              expr_fn(_, _, _, captured) { fns += [arg]; }
-              expr_fn_block(_, _) { fns += [arg]; }
+              expr_fn(proto_block., _, _, _) { fns += [arg]; }
+              expr_fn_block(_, _) when is_block(cx, arg.id) { fns += [arg]; }
               _ {
                 alt arg_ts[i].mode {
                   by_mut_ref. { clear_if_path(cx, arg, v, false); }
@@ -163,6 +169,15 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             visit::visit_fn(fk, decl, body, sp, id, cx, v);
         });
     } else {
+        alt cx.tcx.freevars.find(id) {
+          some(vars) {
+            for v in *vars {
+                clear_in_current(cx, ast_util::def_id_of_def(v.def).node,
+                                 false);
+            }
+          }
+          _ {}
+        }
         let old = nil;
         cx.blocks <-> old;
         visit::visit_fn(fk, decl, body, sp, id, cx, v);
