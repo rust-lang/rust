@@ -82,17 +82,21 @@ tag environment_value {
 // Given a closure ty, emits a corresponding tuple ty
 fn mk_closure_ty(tcx: ty::ctxt,
                  ck: ty::closure_kind,
-                 n_bound_tds: uint,
+                 ty_params: [fn_ty_param],
                  bound_data_ty: ty::t)
     -> ty::t {
     let tydesc_ty = alt ck {
       ty::closure_block. | ty::closure_shared. { ty::mk_type(tcx) }
       ty::closure_send. { ty::mk_send_type(tcx) }
     };
-    ret ty::mk_tup(tcx, [
-        tydesc_ty,
-        ty::mk_tup(tcx, vec::init_elt(tydesc_ty, n_bound_tds)),
-        bound_data_ty]);
+    let param_ptrs = [];
+    for tp in ty_params {
+        param_ptrs += [tydesc_ty];
+        option::may(tp.dicts) {|dicts|
+            for dict in dicts { param_ptrs += [tydesc_ty]; }
+        }
+    }
+    ty::mk_tup(tcx, [tydesc_ty, ty::mk_tup(tcx, param_ptrs), bound_data_ty])
 }
 
 fn shared_opaque_closure_box_ty(tcx: ty::ctxt) -> ty::t {
@@ -117,7 +121,7 @@ type closure_result = {
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 fn store_environment(
-    bcx: @block_ctxt, lltydescs: [ValueRef],
+    bcx: @block_ctxt, lltyparams: [fn_ty_param],
     bound_values: [environment_value],
     ck: ty::closure_kind)
     -> closure_result {
@@ -162,7 +166,7 @@ fn store_environment(
     }
     let bound_data_ty = ty::mk_tup(tcx, bound_tys);
     let closure_ty =
-        mk_closure_ty(tcx, ck, vec::len(lltydescs), bound_data_ty);
+        mk_closure_ty(tcx, ck, lltyparams, bound_data_ty);
 
     let temp_cleanups = [];
 
@@ -210,7 +214,7 @@ fn store_environment(
         // in the shape code.  Therefore, I am using
         // tps_normal, which is what we used before.
         //
-        // let tps = tps_fn(vec::len(lltydescs));
+        // let tps = tps_fn(vec::len(lltyparams));
 
         let tps = tps_normal;
         let {result:closure_td, _} =
@@ -232,10 +236,19 @@ fn store_environment(
     let {bcx:bcx, val:ty_params_slot} =
         GEP_tup_like_1(bcx, closure_ty, closure,
                        [0, abi::closure_elt_ty_params]);
-    vec::iteri(lltydescs) { |i, td|
-        let ty_param_slot = GEPi(bcx, ty_params_slot, [0, i as int]);
-        let cloned_td = maybe_clone_tydesc(bcx, ck, td);
-        Store(bcx, cloned_td, ty_param_slot);
+    let off = 0;
+
+    for tp in lltyparams {
+        let cloned_td = maybe_clone_tydesc(bcx, ck, tp.desc);
+        Store(bcx, cloned_td, GEPi(bcx, ty_params_slot, [0, off]));
+        off += 1;
+        option::may(tp.dicts, {|dicts|
+            for dict in dicts {
+                let cast = PointerCast(bcx, dict, val_ty(cloned_td));
+                Store(bcx, cast, GEPi(bcx, ty_params_slot, [0, off]));
+                off += 1;
+            }
+        });
     }
 
     // Copy expr values into boxed bindings.
@@ -316,7 +329,7 @@ fn build_closure(bcx0: @block_ctxt,
           }
         }
     }
-    ret store_environment(bcx, copy bcx.fcx.lltydescs, env_vals, ck);
+    ret store_environment(bcx, copy bcx.fcx.lltyparams, env_vals, ck);
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -338,13 +351,23 @@ fn load_environment(enclosing_cx: @block_ctxt,
     // Populate the type parameters from the environment. We need to
     // do this first because the tydescs are needed to index into
     // the bindings if they are dynamically sized.
-    let tydesc_count = vec::len(enclosing_cx.fcx.lltydescs);
     let lltydescs = GEPi(bcx, llclosure,
                          [0, abi::box_rc_field_body,
                           abi::closure_elt_ty_params]);
-    uint::range(0u, tydesc_count) { |i|
-        let lltydescptr = GEPi(bcx, lltydescs, [0, i as int]);
-        fcx.lltydescs += [Load(bcx, lltydescptr)];
+    let off = 0;
+    for tp in copy enclosing_cx.fcx.lltyparams {
+        let tydesc = Load(bcx, GEPi(bcx, lltydescs, [0, off]));
+        off += 1;
+        let dicts = option::map(tp.dicts, {|dicts|
+            let rslt = [];
+            for dict in dicts {
+                let dict = Load(bcx, GEPi(bcx, lltydescs, [0, off]));
+                rslt += [PointerCast(bcx, dict, T_ptr(T_dict()))];
+                off += 1;
+            }
+            rslt
+        });
+        fcx.lltyparams += [{desc: tydesc, dicts: dicts}];
     }
 
     // Populate the upvars from the environment.
@@ -439,13 +462,22 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     let (outgoing_fty_real, lltydescs, param_bounds) = alt f_res.generic {
       none. { (outgoing_fty, [], @[]) }
       some(ginfo) {
+        for bounds in *ginfo.param_bounds {
+            for bound in *bounds {
+                alt bound {
+                  ty::bound_iface(_) {
+                    fail "FIXME[impl] binding bounded types not implemented";
+                  }
+                  _ {}
+                }
+            }
+        }
         lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
         (ginfo.item_type, ginfo.tydescs, ginfo.param_bounds)
       }
     };
 
-    let ty_param_count = vec::len(lltydescs);
-    if vec::len(bound) == 0u && ty_param_count == 0u {
+    if vec::len(bound) == 0u && vec::len(lltydescs) == 0u {
         // Trivial 'binding': just return the closure
         let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
         bcx = lv.bcx;
@@ -477,7 +509,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
 
     // Actually construct the closure
     let {llbox, box_ty, bcx} = store_environment(
-        bcx, lltydescs,
+        bcx, vec::map(lltydescs, {|d| {desc: d, dicts: none}}),
         env_vals + vec::map(bound, {|x| env_expr(x)}),
         ty::closure_shared);
 
@@ -603,7 +635,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
     // our bound tydescs, we need to load tydescs out of the environment
     // before derived tydescs are constructed. To do this, we load them
     // in the load_env block.
-    let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
+    let l_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
 
     // The 'llenv' that will arrive in the thunk we're creating is an
     // environment that will contain the values of its arguments and a pointer
@@ -613,7 +645,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
     // 'boxed_closure_ty', which was determined by trans_bind.
     check (type_has_static_size(ccx, boxed_closure_ty));
     let llclosure_ptr_ty = type_of(ccx, sp, boxed_closure_ty);
-    let llclosure = PointerCast(load_env_bcx, fcx.llenv, llclosure_ptr_ty);
+    let llclosure = PointerCast(l_bcx, fcx.llenv, llclosure_ptr_ty);
 
     // "target", in this context, means the function that's having some of its
     // arguments bound and that will be called inside the thunk we're
@@ -664,20 +696,32 @@ fn trans_bind_thunk(cx: @local_ctxt,
     let llargs: [ValueRef] = [llretptr, lltargetenv];
 
     // Copy in the type parameters.
-    // FIXME[impl] This will also have to copy the dicts
-    let i = 0u, ty_param_count = vec::len(param_bounds);
-    while i < ty_param_count {
-        // Silly check
-        check type_is_tup_like(load_env_bcx, boxed_closure_ty);
-        let lltyparam_ptr =
-            GEP_tup_like(load_env_bcx, boxed_closure_ty, llclosure,
-                         [0, abi::box_rc_field_body,
-                          abi::closure_elt_ty_params, i as int]);
-        load_env_bcx = lltyparam_ptr.bcx;
-        let td = Load(load_env_bcx, lltyparam_ptr.val);
-        llargs += [td];
-        fcx.lltydescs += [td];
-        i += 1u;
+    check type_is_tup_like(l_bcx, boxed_closure_ty);
+    let {bcx: l_bcx, val: param_record} =
+        GEP_tup_like(l_bcx, boxed_closure_ty, llclosure,
+                     [0, abi::box_rc_field_body, abi::closure_elt_ty_params]);
+    let off = 0;
+    for param in param_bounds {
+        let dsc = Load(l_bcx, GEPi(l_bcx, param_record, [0, off])),
+            dicts = none;
+        llargs += [dsc];
+        off += 1;
+        for bound in *param {
+            alt bound {
+              ty::bound_iface(_) {
+                let dict = Load(l_bcx, GEPi(l_bcx, param_record, [0, off]));
+                dict = PointerCast(l_bcx, dict, T_ptr(T_dict()));
+                llargs += [dict];
+                off += 1;
+                dicts = some(alt dicts {
+                  none. { [dict] }
+                  some(ds) { ds + [dict] }
+                });
+              }
+              _ {}
+            }
+        }
+        fcx.lltyparams += [{desc: dsc, dicts: dicts}];
     }
 
     let a: uint = 2u; // retptr, env come first

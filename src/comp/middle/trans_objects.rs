@@ -158,7 +158,7 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         let typarams_ty: ty::t = ty::mk_tup(ccx.tcx, tps);
         let i: int = 0;
         for tp: ast::ty_param in ty_params {
-            let typaram = bcx.fcx.lltydescs[i];
+            let typaram = bcx.fcx.lltyparams[i].desc;
             // Silly check
             check type_is_tup_like(bcx, typarams_ty);
             let capture =

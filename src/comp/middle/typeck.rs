@@ -19,10 +19,12 @@ import option::{none, some};
 import syntax::print::pprust::*;
 
 export check_crate, method_map, method_origin, method_static, method_param;
+export dict_map, dict_res, dict_origin, dict_static, dict_param;
 
 tag method_origin {
     method_static(ast::def_id);
-    method_param(uint);
+    // iface id, method num, param num, bound num
+    method_param(ast::def_id, uint, uint, uint);
 }
 type method_map = hashmap<ast::node_id, method_origin>;
 
@@ -694,14 +696,15 @@ mod collect {
             get_tag_variant_types(cx, tpt.ty, variants, ty_params);
           }
           ast::item_impl(tps, _, selfty, ms) {
-            ty_param_bounds(cx.tcx, m_collect, tps);
+            let i_bounds = ty_param_bounds(cx.tcx, m_collect, tps);
             for m in ms {
                 let bounds = ty_param_bounds(cx.tcx, m_collect, m.tps);
                 let ty = ty::mk_fn(cx.tcx,
                                    ty_of_fn_decl(cx.tcx, m_collect,
                                                  ast::proto_bare, m.decl));
-                cx.tcx.tcache.insert(local_def(m.id), {bounds: bounds,
-                                                       ty: ty});
+                cx.tcx.tcache.insert(local_def(m.id),
+                                     {bounds: @(*i_bounds + *bounds),
+                                      ty: ty});
                 write::ty_only(cx.tcx, m.id, ty);
             }
             write::ty_only(cx.tcx, it.id, ast_ty_to_ty(cx.tcx, m_collect,
@@ -1493,6 +1496,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
     // First, see whether this is an interface-bounded parameter
     alt ty::struct(tcx, ty) {
       ty::ty_param(n, did) {
+        let bound_n = 0u;
         for bound in *tcx.ty_param_bounds.get(did.node) {
             alt bound {
               ty::bound_iface(t) {
@@ -1500,19 +1504,21 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                     ty::ty_iface(i, tps) { (i, tps) }
                     _ { ret none; }
                 };
-                alt vec::find(*ty::iface_methods(tcx, iid),
-                              {|m| m.ident == name}) {
-                  some(m) {
+                let ifce_methods = ty::iface_methods(tcx, iid);
+                alt vec::position_pred(*ifce_methods, {|m| m.ident == name}) {
+                  some(pos) {
+                    let m = ifce_methods[pos];
                     ret some({method_ty: ty::mk_fn(tcx, m.fty),
                               n_tps: vec::len(*m.tps),
                               ids: [], // FIXME[impl]
-                              origin: method_param(n)});
+                              origin: method_param(iid, pos, n, bound_n)});
                   }
                   _ {}
                 }
               }
               _ {}
             }
+            bound_n += 1u;
         }
         ret none;
       }
@@ -2742,7 +2748,8 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         vec::pop(ccx.self_infos);
         alt ifce {
           some(ty) {
-            alt ty::struct(ccx.tcx, ast_ty_to_ty(ccx.tcx, m_check, ty)) {
+            let iface_ty = ast_ty_to_ty(ccx.tcx, m_check, ty);
+            alt ty::struct(ccx.tcx, iface_ty) {
               ty::ty_iface(did, tys) {
                 for if_m in *ty::iface_methods(ccx.tcx, did) {
                     alt vec::find(my_methods, {|m| if_m.ident == m.ident}) {
@@ -2759,6 +2766,9 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                       }
                     }
                 }
+                let tpt = {bounds: ty_param_bounds(ccx.tcx, m_check, tps),
+                           ty: iface_ty};
+                ccx.tcx.tcache.insert(local_def(it.id), tpt);
               }
               _ {
                 ccx.tcx.sess.span_err(ty.span, "can only implement interface \
@@ -2854,12 +2864,22 @@ fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
     }
 }
 
+// Resolutions for bounds of all parameters, left to right, for a given path.
+type dict_res = @[dict_origin];
+tag dict_origin {
+    dict_static(ast::def_id, [ty::t], dict_res);
+    dict_param(uint);
+}
+type dict_map = hashmap<ast::node_id, dict_res>;
+
 // Detect points where an interface-bounded type parameter is instantiated,
 // resolve the impls for the parameters.
-fn resolve_vtables(tcx: ty::ctxt, impl_map: resolve::impl_map,
-                   crate: @ast::crate) {
-    type ccx = {tcx: ty::ctxt, impl_map: resolve::impl_map};
-    let cx = {tcx: tcx, impl_map: impl_map};
+fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
+                   crate: @ast::crate) -> dict_map {
+    type ccx = {tcx: ty::ctxt,
+                impl_map: resolve::impl_map,
+                dict_map: dict_map};
+    let cx = {tcx: tcx, impl_map: impl_map, dict_map: new_int_hash()};
     fn resolve_expr(ex: @ast::expr, cx: ccx, v: visit::vt<ccx>) {
         alt ex.node {
           ast::expr_path(_) {
@@ -2868,18 +2888,15 @@ fn resolve_vtables(tcx: ty::ctxt, impl_map: resolve::impl_map,
             alt substs.substs {
               some(ts) {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
-                let item_ty = ty::lookup_item_type(cx.tcx, did), i = 0u;
-                for s_ty in ts {
-                    for bound in *item_ty.bounds[i] {
-                        alt bound {
-                          ty::bound_iface(i_ty) {
-                            let impls = cx.impl_map.get(ex.id);
-                            lookup_impl(cx, impls, ex.span, s_ty, i_ty);
-                          }
-                          _ {}
-                        }
-                    }
-                    i += 1u;
+                let item_ty = ty::lookup_item_type(cx.tcx, did);
+                if vec::any(*item_ty.bounds, {|bs|
+                    vec::any(*bs, {|b|
+                        alt b { ty::bound_iface(_) { true } _ { false } }
+                    })
+                }) {
+                    let impls = cx.impl_map.get(ex.id);
+                    cx.dict_map.insert(ex.id, lookup_dicts(
+                        cx.tcx, impls, ex.span, *item_ty.bounds, ts));
                 }
               }
               _ {}
@@ -2889,52 +2906,94 @@ fn resolve_vtables(tcx: ty::ctxt, impl_map: resolve::impl_map,
         }
         visit::visit_expr(ex, cx, v);
     }
-    fn lookup_impl(cx: ccx, isc: resolve::iscopes, sp: span,
-                   sub_ty: ty::t, iface_ty: ty::t) {
-        let iface_id = alt ty::struct(cx.tcx, iface_ty) {
+    fn lookup_dicts(tcx: ty::ctxt, isc: resolve::iscopes, sp: span,
+                      bounds: [ty::param_bounds], tys: [ty::t])
+        -> dict_res {
+        let result = [], i = 0u;
+        for ty in tys {
+            for bound in *bounds[i] {
+                alt bound {
+                  ty::bound_iface(i_ty) {
+                    result += [lookup_dict(tcx, isc, sp, ty, i_ty)];
+                  }
+                  _ {}
+                }
+            }
+            i += 1u;
+        }
+        @result
+    }
+    fn lookup_dict(tcx: ty::ctxt, isc: resolve::iscopes, sp: span,
+                     ty: ty::t, iface_ty: ty::t) -> dict_origin {
+        let iface_id = alt ty::struct(tcx, iface_ty) {
             ty::ty_iface(did, _) { did }
-            _ { ret; }
+            _ { tcx.sess.abort_if_errors(); fail; }
         };
-        // FIXME check against bounded param types
-        let found = false;
-        std::list::iter(isc) {|impls|
-            if found { ret; }
-            for im in *impls {
-                if im.iface_did == some(iface_id) {
-                    let self_ty = impl_self_ty(cx.tcx, im.did).ty;
-                    let params = @mutable [mutable];
-                    alt ty::unify::unify(sub_ty, self_ty,
-                                         ty::unify::bind_params(params),
-                                         cx.tcx) {
-                      ures_ok(_) {
-                        if found {
-                            cx.tcx.sess.span_err(
-                                sp, "multiple applicable implementations in \
-                                     scope");
-                        } else {
-                            found = true;
-                        }
+        alt ty::struct(tcx, ty) {
+          ty::ty_param(n, did) {
+            for bound in *tcx.ty_param_bounds.get(did.node) {
+                alt bound {
+                  ty::bound_iface(ity) {
+                    alt ty::struct(tcx, ity) {
+                      ty::ty_iface(idid, _) {
+                        if did == idid { ret dict_param(n); }
                       }
-                      _ {}
+                    }
+                  }
+                  _ {}
+                }
+            }
+          }
+          _ {
+            let found = none;
+            std::list::iter(isc) {|impls|
+                if option::is_some(found) { ret; }
+                for im in *impls {
+                    if im.iface_did == some(iface_id) {
+                        let self_ty = impl_self_ty(tcx, im.did).ty;
+                        let params = @mutable [mutable];
+                        alt ty::unify::unify(ty, self_ty,
+                                             ty::unify::bind_params(params),
+                                             tcx) {
+                          ures_ok(_) {
+                            if option::is_some(found) {
+                                tcx.sess.span_err(
+                                    sp, "multiple applicable implementations \
+                                         in scope");
+                            } else {
+                                let params = vec::map_mut(
+                                    *params, {|p| option::get(p)});
+                                // FIXME[impl] check for sub-bounds
+                                found = some(dict_static(
+                                    im.did, params, @[]));
+                            }
+                          }
+                          _ {}
+                        }
                     }
                 }
             }
+            alt found {
+              some(rslt) { ret rslt; }
+              _ {}
+            }
+          }
         }
-        if !found {
-            cx.tcx.sess.span_err(
-                sp, "failed to find an implementation of interface " +
-                ty_to_str(cx.tcx, iface_ty) + " for " +
-                ty_to_str(cx.tcx, sub_ty));
-        }
+
+        tcx.sess.span_fatal(
+            sp, "failed to find an implementation of interface " +
+            ty_to_str(tcx, iface_ty) + " for " +
+            ty_to_str(tcx, ty));
     }
     visit::visit_crate(*crate, cx, visit::mk_vt(@{
         visit_expr: resolve_expr
         with *visit::default_visitor()
     }));
+    cx.dict_map
 }
 
 fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
-               crate: @ast::crate) -> method_map {
+               crate: @ast::crate) -> (method_map, dict_map) {
     collect::collect_item_types(tcx, crate);
 
     let ccx = @{mutable self_infos: [],
@@ -2947,10 +3006,10 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                                        bind check_native_item(ccx, _)
                                    with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visit);
-    resolve_vtables(tcx, impl_map, crate);
+    let dict_map = resolve_dicts(tcx, impl_map, crate);
     check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();
-    ccx.method_map
+    (ccx.method_map, dict_map)
 }
 //
 // Local Variables:

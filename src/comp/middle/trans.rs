@@ -98,9 +98,14 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, is_method: bool, inputs: [ty::arg],
 
     // Args >2: ty params, if not acquired via capture...
     if !is_method {
-        // FIXME[impl] Also add args for the dicts
-        for _param in params {
+        for bounds in params {
             atys += [T_ptr(cx.tydesc_type)];
+            for bound in *bounds {
+                alt bound {
+                  ty::bound_iface(_) { atys += [T_ptr(T_dict())]; }
+                  _ {}
+                }
+            }
         }
     }
     // ... then explicit args.
@@ -905,7 +910,10 @@ fn linearize_ty_params(cx: @block_ctxt, t: ty::t) ->
           ty::ty_param(pid, _) {
             let seen: bool = false;
             for d: uint in r.defs { if d == pid { seen = true; } }
-            if !seen { r.vals += [r.cx.fcx.lltydescs[pid]]; r.defs += [pid]; }
+            if !seen {
+                r.vals += [r.cx.fcx.lltyparams[pid].desc];
+                r.defs += [pid];
+            }
           }
           _ { }
         }
@@ -1041,8 +1049,9 @@ fn get_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt ty::type_param(bcx_tcx(cx), t) {
       some(id) {
-        if id < vec::len(cx.fcx.lltydescs) {
-            ret {kind: tk_param, result: rslt(cx, cx.fcx.lltydescs[id])};
+        if id < vec::len(cx.fcx.lltyparams) {
+            ret {kind: tk_param,
+                 result: rslt(cx, cx.fcx.lltyparams[id].desc)};
         } else {
             bcx_tcx(cx).sess.span_bug(cx.sp,
                                       "Unbound typaram in get_tydesc: " +
@@ -1205,10 +1214,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
         p += 1u;
     }
 
-    // FIXME: Implement some kind of freeze operation in the standard library.
-    let lltydescs_frozen = [];
-    for lltydesc: ValueRef in lltydescs { lltydescs_frozen += [lltydesc]; }
-    fcx.lltydescs = lltydescs_frozen;
+    fcx.lltyparams = vec::map_mut(lltydescs, {|d| {desc: d, dicts: none}});
 
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
@@ -2558,11 +2564,13 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
     ret next_cx;
 }
 
-type generic_info =
-    {item_type: ty::t,
-     static_tis: [option::t<@tydesc_info>],
-     tydescs: [ValueRef],
-     param_bounds: @[ty::param_bounds]};
+type generic_info = {
+    item_type: ty::t,
+    static_tis: [option::t<@tydesc_info>],
+    tydescs: [ValueRef],
+    param_bounds: @[ty::param_bounds],
+    origins: option::t<typeck::dict_res>
+};
 
 tag lval_kind {
     temporary; //< Temporary value passed by value if of immediate type
@@ -2571,7 +2579,12 @@ tag lval_kind {
 }
 type local_var_result = {val: ValueRef, kind: lval_kind};
 type lval_result = {bcx: @block_ctxt, val: ValueRef, kind: lval_kind};
-tag callee_env { obj_env(ValueRef); null_env; is_closure; }
+tag callee_env {
+    null_env;
+    is_closure;
+    obj_env(ValueRef);
+    dict_env(ValueRef, ValueRef);
+}
 type lval_maybe_callee = {bcx: @block_ctxt,
                           val: ValueRef,
                           kind: lval_kind,
@@ -2630,11 +2643,11 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
             bcx = td.bcx;
             tydescs += [td.val];
         }
-        let bounds = ty::lookup_item_type(ccx.tcx, fn_id).bounds;
         gen = some({item_type: tpt.ty,
                     static_tis: tis,
                     tydescs: tydescs,
-                    param_bounds: bounds});
+                    param_bounds: tpt.bounds,
+                    origins: ccx.dict_map.find(id)});
     }
     ret {bcx: bcx, val: val, kind: owned, env: null_env, generic: gen};
 }
@@ -2843,17 +2856,6 @@ fn expr_is_lval(bcx: @block_ctxt, e: @ast::expr) -> bool {
     ty::expr_is_lval(ccx.method_map, ccx.tcx, e)
 }
 
-// This is for impl methods, not obj methods.
-fn trans_method_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
-                       did: ast::def_id) -> lval_maybe_callee {
-    let tz = [], tr = [];
-    let basety = ty::expr_ty(bcx_tcx(bcx), base);
-    let {bcx, val} = trans_arg_expr(bcx, {mode: ast::by_ref, ty: basety},
-                                    type_of_or_i8(bcx, basety), tz, tr, base);
-    let val = PointerCast(bcx, val, T_opaque_boxed_closure_ptr(bcx_ccx(bcx)));
-    {env: obj_env(val) with lval_static_fn(bcx, did, e.id)}
-}
-
 fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
     alt e.node {
       ast::expr_path(p) { ret trans_path(bcx, p, e.id); }
@@ -2862,10 +2864,11 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
         if !expr_is_lval(bcx, e) {
             alt bcx_ccx(bcx).method_map.find(e.id) {
               some(typeck::method_static(did)) { // An impl method
-                ret trans_method_callee(bcx, e, base, did);
+                ret trans_impl::trans_static_callee(bcx, e, base, did);
               }
-              some(typeck::method_param(_)) {
-                fail "not implemented"; // FIXME[impl]
+              some(typeck::method_param(iid, off, p, b)) {
+                ret trans_impl::trans_dict_callee(
+                    bcx, e, base, iid, off, p, b);
               }
               none. { // An object method
                 let of = trans_object_field(bcx, base, ident);
@@ -2936,7 +2939,7 @@ fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
     -> (lval_kind, ValueRef) {
     alt c.env {
       is_closure. { (c.kind, c.val) }
-      obj_env(_) {
+      obj_env(_) | dict_env(_, _) {
         fail "Taking the value of a method does not work yet (issue #435)";
       }
       null_env. {
@@ -3149,7 +3152,23 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
     alt gen {
       some(g) {
         lazily_emit_all_generic_info_tydesc_glues(cx, g);
-        lltydescs = g.tydescs;
+        let i = 0u, n_orig = 0u;
+        for param in *g.param_bounds {
+            lltydescs += [g.tydescs[i]];
+            for bound in *param {
+                alt bound {
+                  ty::bound_iface(_) {
+                    let res = trans_impl::get_dict(
+                        bcx, option::get(g.origins)[n_orig]);
+                    lltydescs += [res.val];
+                    bcx = res.bcx;
+                    n_orig += 1u;
+                  }
+                  _ {}
+                }
+            }
+            i += 1u;
+        }
         args = ty::ty_fn_args(tcx, g.item_type);
         retty = ty::ty_fn_ret(tcx, g.item_type);
       }
@@ -3220,12 +3239,13 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let bcx = f_res.bcx;
 
     let faddr = f_res.val;
-    let llenv;
+    let llenv, dict_param = none;
     alt f_res.env {
       null_env. {
         llenv = llvm::LLVMGetUndef(T_opaque_boxed_closure_ptr(bcx_ccx(cx)));
       }
       obj_env(e) { llenv = e; }
+      dict_env(dict, e) { llenv = e; dict_param = some(dict); }
       is_closure. {
         // It's a closure. Have to fetch the elements
         if f_res.kind == owned {
@@ -3244,6 +3264,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
         trans_args(bcx, llenv, f_res.generic, args, fn_expr_ty, dest);
     bcx = args_res.bcx;
     let llargs = args_res.args;
+    option::may(dict_param) {|dict| llargs = [dict] + llargs}
     let llretslot = args_res.retslot;
 
     /* If the block is terminated,
@@ -3306,8 +3327,7 @@ fn invoke_(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
     // cleanups to run
     if bcx.unreachable { ret bcx; }
     let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
-    invoker(bcx, llfn, llargs,
-            normal_bcx.llbb,
+    invoker(bcx, llfn, llargs, normal_bcx.llbb,
             get_landing_pad(bcx, to_zero, to_revoke));
     ret normal_bcx;
 }
@@ -4351,7 +4371,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
           llobjfields: new_int_hash::<ValueRef>(),
           lllocals: new_int_hash::<local_val>(),
           llupvars: new_int_hash::<ValueRef>(),
-          mutable lltydescs: [],
+          mutable lltyparams: [],
           derived_tydescs: ty::new_ty_hash(),
           id: id,
           ret_style: rstyle,
@@ -4393,10 +4413,22 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
       obj_self(_) {}
       _ {
         for tp in ty_params {
-            let llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
-            assert (llarg as int != 0);
-            cx.lltydescs += [llarg];
+            let lltydesc = llvm::LLVMGetParam(cx.llfn, arg_n), dicts = none;
             arg_n += 1u;
+            for bound in *fcx_tcx(cx).ty_param_bounds.get(tp.id) {
+                alt bound {
+                  ty::bound_iface(_) {
+                    let dict = llvm::LLVMGetParam(cx.llfn, arg_n);
+                    arg_n += 1u;
+                    dicts = some(alt dicts {
+                      none. { [dict] }
+                      some(ds) { ds + [dict] }
+                    });
+                  }
+                  _ {}
+                }
+            }
+            cx.lltyparams += [{desc: lltydesc, dicts: dicts}];
         }
       }
     }
@@ -4485,7 +4517,7 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
         let lltyparam: ValueRef =
             GEPi(bcx, obj_typarams, [0, i]);
         lltyparam = Load(bcx, lltyparam);
-        fcx.lltydescs += [lltyparam];
+        fcx.lltyparams += [{desc: lltyparam, dicts: none}];
         i += 1;
     }
     i = 0;
@@ -5582,7 +5614,8 @@ fn write_abi_version(ccx: @crate_ctxt) {
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, emap: resolve::exp_map, amap: ast_map::map,
                mut_map: mut::mut_map, copy_map: alias::copy_map,
-               last_uses: last_use::last_uses, method_map: typeck::method_map)
+               last_uses: last_use::last_uses, method_map: typeck::method_map,
+               dict_map: typeck::dict_map)
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::mk_sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
@@ -5659,6 +5692,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           copy_map: copy_map,
           last_uses: last_uses,
           method_map: method_map,
+          dict_map: dict_map,
           stats:
               {mutable n_static_tydescs: 0u,
                mutable n_derived_tydescs: 0u,

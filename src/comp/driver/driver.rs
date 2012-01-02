@@ -173,8 +173,9 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     time(time_passes, "const checking",
          bind middle::check_const::check_crate(sess, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars);
-    let method_map = time(time_passes, "typechecking",
-                          bind typeck::check_crate(ty_cx, impl_map, crate));
+    let (method_map, dict_map) =
+        time(time_passes, "typechecking",
+             bind typeck::check_crate(ty_cx, impl_map, crate));
     time(time_passes, "block-use checking",
          bind middle::block_use::check_crate(ty_cx, crate));
     time(time_passes, "function usage",
@@ -202,7 +203,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
              bind trans::trans_crate(sess, crate, ty_cx,
                                      outputs.obj_filename, exp_map, ast_map,
                                      mut_map, copy_map, last_uses,
-                                     method_map));
+                                     method_map, dict_map));
     time(time_passes, "LLVM passes",
          bind link::write::run_passes(sess, llmod, outputs.obj_filename));
 
