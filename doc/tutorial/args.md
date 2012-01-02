@@ -104,11 +104,8 @@ Another style is by-move, which will cause the argument to become
 de-initialized on the caller side, and give ownership of it to the
 called function. This is written `-`.
 
-Sometimes you need to pass a structural type by value, such as when
-interfacing with external native functions. This is written `++`.
-
 Finally, the default passing styles (by-value for non-structural
-types, by-reference for structural ones) are written `+` for by-value
+types, by-reference for structural ones) are written `++` for by-value
 and `&&` for by(-immutable)-reference. It is sometimes necessary to
 override the defaults. We'll talk more about this when discussing
 [generics][gens].
