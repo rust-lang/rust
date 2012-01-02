@@ -437,7 +437,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
 
     // Figure out which tydescs we need to pass, if any.
     let (outgoing_fty_real, lltydescs, param_bounds) = alt f_res.generic {
-      none. { (outgoing_fty, [], []) }
+      none. { (outgoing_fty, [], @[]) }
       some(ginfo) {
         lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
         (ginfo.item_type, ginfo.tydescs, ginfo.param_bounds)
@@ -484,7 +484,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     // Make thunk
     let llthunk =
         trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real, args,
-                         box_ty, param_bounds, target_res);
+                         box_ty, *param_bounds, target_res);
 
     // Fill the function pair
     fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, llbox);

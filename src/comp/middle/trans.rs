@@ -236,7 +236,7 @@ fn type_of_ty_param_bounds_and_ty(lcx: @local_ctxt, sp: span,
     alt ty::struct(cx.tcx, t) {
       ty::ty_fn(_) | ty::ty_native_fn(_, _) {
         check returns_non_ty_var(cx, t);
-        ret type_of_fn_from_ty(cx, sp, t, tpt.bounds);
+        ret type_of_fn_from_ty(cx, sp, t, *tpt.bounds);
       }
       _ {
         // fall through
@@ -2565,7 +2565,7 @@ type generic_info =
     {item_type: ty::t,
      static_tis: [option::t<@tydesc_info>],
      tydescs: [ValueRef],
-     param_bounds: [ty::param_bounds]};
+     param_bounds: @[ty::param_bounds]};
 
 tag lval_kind {
     temporary; //< Temporary value passed by value if of immediate type
@@ -2739,7 +2739,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             ret lval_no_env(cx, ccx.consts.get(did.node), owned);
         } else {
             let tp = ty::node_id_to_monotype(ccx.tcx, id);
-            let val = trans_external_path(cx, did, @{bounds: [], ty: tp});
+            let val = trans_external_path(cx, did, {bounds: @[], ty: tp});
             ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
         }
       }

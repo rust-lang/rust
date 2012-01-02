@@ -196,7 +196,7 @@ type field = {ident: ast::ident, mt: mt};
 
 type param_bounds = @[param_bound];
 
-type method = {ident: ast::ident, tps: [param_bounds], fty: fn_ty};
+type method = {ident: ast::ident, tps: @[param_bounds], fty: fn_ty};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
@@ -324,7 +324,7 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     kind
 }
 
-type ty_param_bounds_and_ty = @{bounds: [param_bounds], ty: t};
+type ty_param_bounds_and_ty = {bounds: @[param_bounds], ty: t};
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 

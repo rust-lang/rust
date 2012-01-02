@@ -326,7 +326,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
     check non_ty_var(ccx, nil_res);
     let f_t = type_of_fn(ccx, sp, false,
                          [{mode: ast::by_ref, ty: inner_t}],
-                         nil_res, param_bounds);
+                         nil_res, *param_bounds);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.get_cstore(),
                                                     did), f_t);

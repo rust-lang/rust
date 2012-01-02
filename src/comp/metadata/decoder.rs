@@ -117,14 +117,14 @@ fn item_type(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
 
 fn item_ty_param_bounds(item: ebml::doc, this_cnum: ast::crate_num,
                         tcx: ty::ctxt, extres: external_resolver)
-    -> [@[ty::param_bound]] {
+    -> @[ty::param_bounds] {
     let bounds = [];
     let def_parser = bind parse_external_def_id(this_cnum, extres, _);
     ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
         bounds += [tydecode::parse_bounds_data(@ebml::doc_data(p), this_cnum,
                                                def_parser, tcx)];
     }
-    bounds
+    @bounds
 }
 
 fn item_ty_param_count(item: ebml::doc) -> uint {
@@ -209,8 +209,8 @@ fn get_type(data: @[u8], def: ast::def_id, tcx: ty::ctxt,
     let t = item_type(item, this_cnum, tcx, extres);
     let tp_bounds = if family_has_type_params(item_family(item)) {
         item_ty_param_bounds(item, this_cnum, tcx, extres)
-    } else { [] };
-    ret @{bounds: tp_bounds, ty: t};
+    } else { @[] };
+    ret {bounds: tp_bounds, ty: t};
 }
 
 fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {
