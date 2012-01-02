@@ -116,14 +116,7 @@ Function: is_whitespace
 Returns true if the string contains only whitespace
 */
 fn is_whitespace(s: str) -> bool {
-    let i = 0u;
-    let len = char_len(s);
-    while i < len {
-        // FIXME: This is not how char_at works
-        if !char::is_whitespace(char_at(s, i)) { ret false; }
-        i += 1u;
-    }
-    ret true;
+    ret loop_chars(s, char::is_whitespace);
 }
 
 /*
