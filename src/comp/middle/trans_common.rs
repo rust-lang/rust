@@ -405,7 +405,7 @@ fn ty_str(tn: type_names, t: TypeRef) -> str {
     ret lib::llvm::type_to_str(tn, t);
 }
 
-fn val_ty(v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
+fn val_ty(&&v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
 
 fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
 

@@ -80,13 +80,12 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn type_of_fn(cx: @crate_ctxt, sp: span,
-              is_method: bool, inputs: [ty::arg],
-              output: ty::t, params: [ty::param_bounds])
-   : non_ty_var(cx, output) -> TypeRef {
+fn type_of_fn(cx: @crate_ctxt, sp: span, is_method: bool, inputs: [ty::arg],
+              output: ty::t, params: [ty::param_bounds]) -> TypeRef {
     let atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
+    check non_ty_var(cx, output);
     let out_ty = T_ptr(type_of_inner(cx, sp, output));
     atys += [out_ty];
 
@@ -117,7 +116,6 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
     // by returns_non_ty_var(t). Make that a postcondition
     // (see Issue #586)
     let ret_ty = ty::ty_fn_ret(cx.tcx, fty);
-    check non_ty_var(cx, ret_ty);
     ret type_of_fn(cx, sp, false, ty::ty_fn_args(cx.tcx, fty),
                    ret_ty, param_bounds);
 }
@@ -2771,8 +2769,6 @@ fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
     let fn_ty: ty::t = ty::mk_fn(tcx, mths[ix].fty);
     let ret_ty = ty::ty_fn_ret(tcx, fn_ty);
     // FIXME: constrain ty_obj?
-    check non_ty_var(ccx, ret_ty);
-
     let ll_fn_ty = type_of_fn(ccx, bcx.sp, true,
                               ty::ty_fn_args(tcx, fn_ty), ret_ty, []);
     v = Load(bcx, PointerCast(bcx, v, T_ptr(T_ptr(ll_fn_ty))));
@@ -5123,8 +5119,6 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
         // FIXME: mk_nil should have a postcondition
         let nt = ty::mk_nil(ccx.tcx);
-        check non_ty_var(ccx, nt);
-
         let llfty = type_of_fn(ccx, sp, false, [vecarg_ty], nt, []);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::LLVMCCallConv, llfty);
@@ -5223,7 +5217,6 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span,
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
       ty::ty_native_fn(args, out) {
-        check non_ty_var(cx, out);
         ret type_of_fn(cx, sp, false, args, out, param_bounds);
       }
     }
@@ -5377,7 +5370,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
       ast::item_tag(variants, _) {
         let i = 0u;
         for variant in variants {
-            let p = new_pt + [it.ident, variant.node.name, "discrim"];
+            let p = new_pt + [variant.node.name, "discrim"];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let discrim_gvar = str::as_buf(s, {|buf|
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
@@ -5389,6 +5382,28 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
             ccx.discrim_symbols.insert(variant.node.id, s);
             i += 1u;
         }
+      }
+      ast::item_impl(tps, some(@{node: ast::ty_path(_, id), _}), _, ms) {
+        let i_did = ast_util::def_id_of_def(ccx.tcx.def_map.get(id));
+        let ty = ty::lookup_item_type(ccx.tcx, i_did).ty;
+        // FIXME[impl] use the same name as used in collect_items, for
+        // slightly more consistent symbol names?
+        let new_pt = pt + [ccx.names.next(it.ident)];
+        let extra_tps = vec::map(tps, {|p| param_bounds(ccx, p)});
+        let tbl = C_struct(vec::map(*ty::iface_methods(ccx.tcx, i_did), {|im|
+            alt vec::find(ms, {|m| m.ident == im.ident}) {
+              some(m) {
+                trans_impl::trans_wrapper(ccx, new_pt, extra_tps, m)
+              }
+            }
+        }));
+        let s = mangle_exported_name(ccx, new_pt + ["!vtable"], ty);
+        let vt_gvar = str::as_buf(s, {|buf|
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
+        });
+        llvm::LLVMSetInitializer(vt_gvar, tbl);
+        llvm::LLVMSetGlobalConstant(vt_gvar, True);
+        ccx.item_ids.insert(it.id, vt_gvar);
       }
       _ { }
     }
