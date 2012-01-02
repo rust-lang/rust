@@ -1,4 +1,4 @@
-// error-pattern:expected `*Mb` but found `native`
+// error-pattern:expected `*u8` but found `native`
 use std;
 
 fn main() unsafe {
