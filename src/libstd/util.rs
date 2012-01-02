@@ -7,7 +7,7 @@ Function: id
 
 The identity function
 */
-pure fn id<T>(x: T) -> T { x }
+pure fn id<copy T>(x: T) -> T { x }
 
 /*
 Function: unreachable
