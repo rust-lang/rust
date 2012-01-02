@@ -5010,8 +5010,8 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
                  with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
-      ast::item_impl(tps, _, _, ms) {
-        trans_impl::trans_impl(cx, item.ident, ms, item.id, tps);
+      ast::item_impl(tps, ifce, _, ms) {
+        trans_impl::trans_impl(cx, item.ident, ms, item.id, tps, ifce);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
         trans_res_ctor(cx, item.span, decl, ctor_id, tps);
@@ -5249,56 +5249,55 @@ fn collect_native_item(ccx: @crate_ctxt,
                        _v: vt<[str]>) {
     alt i.node {
       ast::native_item_fn(_, tps) {
-        if !ccx.obj_methods.contains_key(i.id) {
-            let sp = i.span;
-            let id = i.id;
-            let node_type = node_id_type(ccx, id);
-            let fn_abi =
-                alt attr::get_meta_item_value_str_by_name(i.attrs, "abi") {
-              option::none. {
+        let sp = i.span;
+        let id = i.id;
+        let node_type = node_id_type(ccx, id);
+        let fn_abi =
+            alt attr::get_meta_item_value_str_by_name(i.attrs, "abi") {
+            option::none. {
                 // if abi isn't specified for this function, inherit from
-                // its enclosing native module
-                option::get(*abi)
+                  // its enclosing native module
+                  option::get(*abi)
               }
-              _ {
-                alt attr::native_abi(i.attrs) {
-                  either::right(abi_) { abi_ }
-                  either::left(msg) { ccx.sess.span_fatal(i.span, msg) }
+                _ {
+                    alt attr::native_abi(i.attrs) {
+                      either::right(abi_) { abi_ }
+                      either::left(msg) { ccx.sess.span_fatal(i.span, msg) }
+                    }
                 }
-              }
             };
-            alt fn_abi {
-              ast::native_abi_rust_intrinsic. {
-                // For intrinsics: link the function directly to the intrinsic
-                // function itself.
-                check returns_non_ty_var(ccx, node_type);
-                let fn_type = type_of_fn_from_ty(
-                    ccx, sp, node_type,
-                    vec::map(tps, {|p| param_bounds(ccx, p)}));
-                let ri_name = "rust_intrinsic_" + link_name(i);
-                let llnativefn = get_extern_fn(
-                    ccx.externs, ccx.llmod, ri_name,
-                    lib::llvm::LLVMCCallConv, fn_type);
-                ccx.item_ids.insert(id, llnativefn);
-                ccx.item_symbols.insert(id, ri_name);
-              }
+        alt fn_abi {
+          ast::native_abi_rust_intrinsic. {
+            // For intrinsics: link the function directly to the intrinsic
+            // function itself.
+            check returns_non_ty_var(ccx, node_type);
+            let fn_type = type_of_fn_from_ty(
+                ccx, sp, node_type,
+                vec::map(tps, {|p| param_bounds(ccx, p)}));
+            let ri_name = "rust_intrinsic_" + link_name(i);
+            let llnativefn = get_extern_fn(
+                ccx.externs, ccx.llmod, ri_name,
+                lib::llvm::LLVMCCallConv, fn_type);
+            ccx.item_ids.insert(id, llnativefn);
+            ccx.item_symbols.insert(id, ri_name);
+          }
 
-              ast::native_abi_cdecl. | ast::native_abi_stdcall. {
-                // For true external functions: create a rust wrapper
-                // and link to that.  The rust wrapper will handle
-                // switching to the C stack.
-                let new_pt = pt + [i.ident];
-                register_fn(ccx, i.span, new_pt, "native fn", tps, i.id);
-              }
-            }
+          ast::native_abi_cdecl. | ast::native_abi_stdcall. {
+            // For true external functions: create a rust wrapper
+            // and link to that.  The rust wrapper will handle
+            // switching to the C stack.
+            let new_pt = pt + [i.ident];
+            register_fn(ccx, i.span, new_pt, "native fn", tps, i.id);
+          }
         }
       }
       _ { }
     }
 }
 
-fn collect_item_1(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
-                  i: @ast::item, &&pt: [str], v: vt<[str]>) {
+fn collect_item(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
+                i: @ast::item, &&pt: [str], v: vt<[str]>) {
+    let new_pt = pt + [i.ident];
     alt i.node {
       ast::item_const(_, _) {
         let typ = node_id_type(ccx, i.id);
@@ -5323,26 +5322,11 @@ fn collect_item_1(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
           }
         }
       }
-      _ { }
-    }
-    visit::visit_item(i, pt + [i.ident], v);
-}
-
-fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
-                  v: vt<[str]>) {
-    let new_pt = pt + [i.ident];
-    visit::visit_item(i, new_pt, v);
-    alt i.node {
       ast::item_fn(_, tps, _) {
-        if !ccx.obj_methods.contains_key(i.id) {
-            register_fn(ccx, i.span, new_pt, "fn", tps, i.id);
-        }
+        register_fn(ccx, i.span, new_pt, "fn", tps, i.id);
       }
       ast::item_obj(ob, tps, ctor_id) {
         register_fn(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
-        for m: @ast::method in ob.methods {
-            ccx.obj_methods.insert(m.id, ());
-        }
       }
       ast::item_impl(tps, _, _, methods) {
         let name = ccx.names.next(i.ident);
@@ -5362,46 +5346,27 @@ fn collect_item_2(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
         check returns_non_ty_var(ccx, t);
         register_fn_full(ccx, i.span, new_pt, "res_dtor", tps, i.id, t);
       }
-      _ { }
-    }
-}
-
-fn collect_items(ccx: @crate_ctxt, crate: @ast::crate) {
-    let abi = @mutable none::<ast::native_abi>;
-    let visitor0 = visit::default_visitor();
-    let visitor1 =
-        @{visit_native_item: bind collect_native_item(ccx, abi, _, _, _),
-          visit_item: bind collect_item_1(ccx, abi, _, _, _) with *visitor0};
-    let visitor2 =
-        @{visit_item: bind collect_item_2(ccx, _, _, _) with *visitor0};
-    visit::visit_crate(*crate, [], visit::mk_vt(visitor1));
-    visit::visit_crate(*crate, [], visit::mk_vt(visitor2));
-}
-
-fn collect_tag_ctor(ccx: @crate_ctxt, i: @ast::item, &&pt: [str],
-                    v: vt<[str]>) {
-    let new_pt = pt + [i.ident];
-    visit::visit_item(i, new_pt, v);
-    alt i.node {
       ast::item_tag(variants, tps) {
-        for variant: ast::variant in variants {
+        for variant in variants {
             if vec::len(variant.node.args) != 0u {
                 register_fn(ccx, i.span, new_pt + [variant.node.name],
                             "tag", tps, variant.node.id);
             }
         }
       }
-      _ {/* fall through */ }
+      _ { }
     }
+    visit::visit_item(i, new_pt, v);
 }
 
-fn collect_tag_ctors(ccx: @crate_ctxt, crate: @ast::crate) {
-    let visitor =
-        @{visit_item: bind collect_tag_ctor(ccx, _, _, _)
-             with *visit::default_visitor()};
-    visit::visit_crate(*crate, [], visit::mk_vt(visitor));
+fn collect_items(ccx: @crate_ctxt, crate: @ast::crate) {
+    let abi = @mutable none::<ast::native_abi>;
+    visit::visit_crate(*crate, [], visit::mk_vt(@{
+        visit_native_item: bind collect_native_item(ccx, abi, _, _, _),
+        visit_item: bind collect_item(ccx, abi, _, _, _)
+        with *visit::default_visitor()
+    }));
 }
-
 
 // The constant translation pass.
 fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
@@ -5411,15 +5376,12 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
     alt it.node {
       ast::item_tag(variants, _) {
         let i = 0u;
-        let n_variants = vec::len::<ast::variant>(variants);
-        while i < n_variants {
-            let variant = variants[i];
+        for variant in variants {
             let p = new_pt + [it.ident, variant.node.name, "discrim"];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
-            let discrim_gvar =
-                str::as_buf(s, {|buf|
-                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
-                });
+            let discrim_gvar = str::as_buf(s, {|buf|
+                llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+            });
             llvm::LLVMSetInitializer(discrim_gvar, C_int(ccx, i as int));
             llvm::LLVMSetGlobalConstant(discrim_gvar, True);
             ccx.discrims.insert(
@@ -5670,7 +5632,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
           consts: new_int_hash::<ValueRef>(),
-          obj_methods: new_int_hash::<()>(),
           tydescs: ty::new_ty_hash(),
           module_data: new_str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
@@ -5706,7 +5667,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           dbg_cx: dbg_cx};
     let cx = new_local_ctxt(ccx);
     collect_items(ccx, crate);
-    collect_tag_ctors(ccx, crate);
     trans_constants(ccx, crate);
     trans_mod(cx, crate.node.module);
     fill_crate_map(ccx, crate_map);
@@ -5723,7 +5683,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
         #error("n_glues_created: %u", ccx.stats.n_glues_created);
         #error("n_null_glues: %u", ccx.stats.n_null_glues);
         #error("n_real_glues: %u", ccx.stats.n_real_glues);
-
 
         for timing: {ident: str, time: int} in *ccx.stats.fn_times {
             #error("time: %s took %d ms", timing.ident, timing.time);

@@ -92,7 +92,6 @@ type crate_ctxt =
      discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
      consts: hashmap<ast::node_id, ValueRef>,
-     obj_methods: hashmap<ast::node_id, ()>,
      tydescs: hashmap<ty::t, @tydesc_info>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,

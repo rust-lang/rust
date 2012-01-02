@@ -1,10 +1,13 @@
 import trans::*;
 import trans_common::*;
+import trans_build::*;
 import option::{some, none};
 import syntax::ast;
+import lib::llvm;
 
 fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
-              id: ast::node_id, tps: [ast::ty_param]) {
+              id: ast::node_id, tps: [ast::ty_param],
+              _ifce: option::t<@ast::ty>) {
     let sub_cx = extend_path(cx, name);
     for m in methods {
         alt cx.ccx.item_ids.find(m.id) {
