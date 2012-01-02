@@ -122,7 +122,7 @@ pure fn to_digit(c: char) -> u8 unsafe {
 }
 
 /*
- Function: to_digit
+ Function: maybe_digit
 
  Convert a char to the corresponding digit. Returns none when the
  character is not a valid hexadecimal digit.
