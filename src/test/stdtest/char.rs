@@ -62,17 +62,17 @@ fn test_to_digit_fail_2() {
 }
 
 #[test]
-fn test_to_lowercase() {
-    assert (char::to_lowercase('H') == 'h');
-    assert (char::to_lowercase('e') == 'e');
-    //assert (char::to_lowercase('Ö') == 'ö');
-    assert (char::to_lowercase('ß') == 'ß');
+fn test_to_lower() {
+    assert (char::to_lower('H') == 'h');
+    assert (char::to_lower('e') == 'e');
+    //assert (char::to_lower('Ö') == 'ö');
+    assert (char::to_lower('ß') == 'ß');
 }
 
 #[test]
-fn test_to_uppercase() {
-    assert (char::to_uppercase('l') == 'L');
-    assert (char::to_uppercase('Q') == 'Q');
-    //assert (char::to_uppercase('ü') == 'Ü');
-    assert (char::to_uppercase('ß') == 'ß');
+fn test_to_upper() {
+    assert (char::to_upper('l') == 'L');
+    assert (char::to_upper('Q') == 'Q');
+    //assert (char::to_upper('ü') == 'Ü');
+    assert (char::to_upper('ß') == 'ß');
 }

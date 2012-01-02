@@ -833,7 +833,7 @@ Convert a string to lowercase
 fn to_lower(s: str) -> str {
     let outstr = "";
     iter_chars(s) { |c|
-        push_char(outstr, char::to_lowercase(c));
+        push_char(outstr, char::to_lower(c));
     }
     ret outstr;
 }
@@ -845,7 +845,7 @@ Convert a string to uppercase
 fn to_upper(s: str) -> str {
     let outstr = "";
     iter_chars(s) { |c|
-        push_char(outstr, char::to_uppercase(c));
+        push_char(outstr, char::to_upper(c));
     }
     ret outstr;
 }

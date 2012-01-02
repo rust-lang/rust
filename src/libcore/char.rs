@@ -41,7 +41,7 @@ export is_alphabetic,
        is_XID_start, is_XID_continue,
        is_lowercase, is_uppercase,
        is_whitespace, is_alphanumeric,
-       to_digit, to_lowercase, to_uppercase, maybe_digit, cmp;
+       to_digit, to_lower, to_upper, maybe_digit, cmp;
 
 import is_alphabetic = unicode::derived_property::Alphabetic;
 import is_XID_start = unicode::derived_property::XID_Start;
@@ -137,13 +137,13 @@ pure fn maybe_digit(c: char) -> option::t<u8> {
 }
 
 /*
- Function: to_lowercase
+ Function: to_lower
 
  Convert a char to the corresponding lower case.
 
  FIXME: works only on ASCII
 */
-pure fn to_lowercase(c: char) -> char {
+pure fn to_lower(c: char) -> char {
     alt c {
       'A' to 'Z' { ((c as u8) + 32u8) as char }
       _ { c }
@@ -151,13 +151,13 @@ pure fn to_lowercase(c: char) -> char {
 }
 
 /*
- Function: to_uppercase
+ Function: to_upper
 
  Convert a char to the corresponding upper case.
 
  FIXME: works only on ASCII
 */
-pure fn to_uppercase(c: char) -> char {
+pure fn to_upper(c: char) -> char {
     alt c {
       'a' to 'z' { ((c as u8) - 32u8) as char }
       _ { c }
