@@ -22,6 +22,7 @@ mod middle {
     mod trans_uniq;
     mod trans_closure;
     mod trans_vec;
+    mod trans_impl;
     mod ty;
     mod ast_map;
     mod resolve;

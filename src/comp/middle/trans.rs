@@ -13,7 +13,6 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-import core::{either, str, int, uint, option, vec};
 import std::{map, time};
 import std::map::hashmap;
 import std::map::{new_int_hash, new_str_hash};
@@ -4712,20 +4711,6 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     finish_fn(fcx, lltop);
 }
 
-fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
-              id: ast::node_id, tps: [ast::ty_param]) {
-    let sub_cx = extend_path(cx, name);
-    for m in methods {
-        alt cx.ccx.item_ids.find(m.id) {
-          some(llfn) {
-            trans_fn(extend_path(sub_cx, m.ident), m.span, m.decl, m.body,
-                     llfn, impl_self(ty::node_id_to_monotype(cx.ccx.tcx, id)),
-                     tps + m.tps, m.id);
-          }
-        }
-    }
-}
-
 
 // FIXME: this should do some structural hash-consing to avoid
 // duplicate constants. I think. Maybe LLVM has a magical mode
@@ -5026,7 +5011,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
       ast::item_impl(tps, _, _, ms) {
-        trans_impl(cx, item.ident, ms, item.id, tps);
+        trans_impl::trans_impl(cx, item.ident, ms, item.id, tps);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
         trans_res_ctor(cx, item.span, decl, ctor_id, tps);
