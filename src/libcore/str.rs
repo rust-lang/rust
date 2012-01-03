@@ -12,7 +12,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        push_char, is_utf8, from_chars, to_chars, char_len, char_len_range,
        char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
-       str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
+       from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
        contains, iter_chars, loop_chars, loop_chars_sub,
        escape;
 
@@ -973,11 +973,11 @@ fn as_buf<T>(s: str, f: block(sbuf) -> T) -> T unsafe {
 }
 
 /*
-Function: str_from_cstr
+Function: from_cstr
 
 Create a Rust string from a null-terminated C string
 */
-unsafe fn str_from_cstr(cstr: sbuf) -> str {
+unsafe fn from_cstr(cstr: sbuf) -> str {
     let res = "";
     let start = cstr;
     let curr = start;

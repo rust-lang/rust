@@ -35,7 +35,7 @@ fn getenv(n: str) -> option::t<str> unsafe {
             option::none::<str>
         } else {
             let s = unsafe::reinterpret_cast(s);
-            option::some::<str>(str::str_from_cstr(s))
+            option::some::<str>(str::from_cstr(s))
         };
 }
 

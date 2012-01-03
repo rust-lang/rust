@@ -287,10 +287,10 @@ fn unsafe_from_bytes() {
 }
 
 #[test]
-fn str_from_cstr() unsafe {
+fn from_cstr() unsafe {
     let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
     let b = vec::to_ptr(a);
-    let c = str::str_from_cstr(b);
+    let c = str::from_cstr(b);
     assert (c == "AAAAAAA");
 }
 
@@ -312,7 +312,7 @@ fn as_buf_small() unsafe {
 fn as_buf2() unsafe {
     let s = "hello";
     let sb = str::as_buf(s, {|b| b });
-    let s_cstr = str::str_from_cstr(sb);
+    let s_cstr = str::from_cstr(sb);
     assert (str::eq(s_cstr, s));
 }
 
