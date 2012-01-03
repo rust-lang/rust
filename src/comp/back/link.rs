@@ -34,7 +34,7 @@ fn llvm_err(sess: session::session, msg: str) unsafe {
     let buf = llvm::LLVMRustGetLastError();
     if buf == ptr::null() {
         sess.fatal(msg);
-    } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
+    } else { sess.fatal(msg + ": " + str::from_cstr(buf)); }
 }
 
 fn load_intrinsics_bc(sess: session::session) -> option::t<ModuleRef> {
