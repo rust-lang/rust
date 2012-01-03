@@ -147,6 +147,8 @@ fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
         }
         rslt(bcx, PointerCast(bcx, dict, T_ptr(T_dict())))
       }
-      typeck::dict_param(_param) { fail "FIXME[impl]"; }
+      typeck::dict_param(n_param, n_bound) {
+        rslt(bcx, option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound])
+      }
     }
 }

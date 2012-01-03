@@ -1515,10 +1515,10 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                   }
                   _ {}
                 }
+                bound_n += 1u;
               }
               _ {}
             }
-            bound_n += 1u;
         }
         ret none;
       }
@@ -2868,7 +2868,8 @@ fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
 type dict_res = @[dict_origin];
 tag dict_origin {
     dict_static(ast::def_id, [ty::t], dict_res);
-    dict_param(uint);
+    // Param number, bound number
+    dict_param(uint, uint);
 }
 type dict_map = hashmap<ast::node_id, dict_res>;
 
@@ -2882,7 +2883,7 @@ fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
                 dict_map: dict_map};
     let cx = {tcx: tcx, impl_map: impl_map,
               method_map: method_map, dict_map: new_int_hash()};
-    
+
     fn has_iface_bounds(tps: [ty::param_bounds]) -> bool {
         vec::any(tps, {|bs|
             vec::any(*bs, {|b|
@@ -2947,21 +2948,23 @@ fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
     }
 
     fn lookup_dict(tcx: ty::ctxt, isc: resolve::iscopes, sp: span,
-                     ty: ty::t, iface_ty: ty::t) -> dict_origin {
+                   ty: ty::t, iface_ty: ty::t) -> dict_origin {
         let iface_id = alt ty::struct(tcx, iface_ty) {
             ty::ty_iface(did, _) { did }
             _ { tcx.sess.abort_if_errors(); fail; }
         };
         alt ty::struct(tcx, ty) {
           ty::ty_param(n, did) {
+            let n_bound = 0u;
             for bound in *tcx.ty_param_bounds.get(did.node) {
                 alt bound {
                   ty::bound_iface(ity) {
                     alt ty::struct(tcx, ity) {
                       ty::ty_iface(idid, _) {
-                        if did == idid { ret dict_param(n); }
+                        if iface_id == idid { ret dict_param(n, n_bound); }
                       }
                     }
+                    n_bound += 1u;
                   }
                   _ {}
                 }
