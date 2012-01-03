@@ -14,7 +14,10 @@ pure fn nonempty_list<copy T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
 // knowledge that ls is a cons node. Future work.
 // Also, this is pretty contrived since nonempty_list
 // could be a "tag refinement", if we implement those.
-fn safe_head<copy T>(ls: list<T>) : nonempty_list(ls) -> T { head(ls) }
+fn safe_head<copy T>(ls: list<T>) : nonempty_list(ls) -> T {
+    check is_not_empty(ls);
+    ret head(ls);
+}
 
 fn main() {
     let mylist = cons(@1u, @nil);

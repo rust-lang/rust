@@ -1,7 +1,7 @@
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
-import std::list::{list, nil, cons, tail};
+import std::list::{is_not_empty, list, nil, cons, tail};
 import core::{vec, option};
 import std::list;
 
@@ -192,7 +192,9 @@ fn visit_block(tp: block_type, cx: ctx, visit: block()) {
     visit();
     local.second = true;
     visit();
-    cx.blocks = tail(cx.blocks);
+    let cx_blocks = cx.blocks;
+    check is_not_empty(cx_blocks);
+    cx.blocks = tail(cx_blocks);
     cx.current = join_branches(local.exits);
 }
 

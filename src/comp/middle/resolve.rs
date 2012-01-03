@@ -266,6 +266,7 @@ fn map_crate(e: @env, c: @ast::crate) {
             let imp = follow_import(*e, sc, *path, vi.span);
             if option::is_some(imp) {
                 let glob = {def: option::get(imp), item: vi};
+                check list::is_not_empty(sc);
                 alt list::head(sc) {
                   scope_item(i) {
                     e.mod_map.get(i.id).glob_imports += [glob];
@@ -461,6 +462,7 @@ fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {
 }
 
 fn visit_decl_with_scope(d: @decl, sc: scopes, v: vt<scopes>) {
+    check list::is_not_empty(sc);
     let loc_pos = alt list::head(sc) {
       scope_block(_, _, pos) { pos }
       _ { @mutable 0u }
