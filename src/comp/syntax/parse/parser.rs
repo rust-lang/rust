@@ -1850,34 +1850,29 @@ fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
                 ast::item_iface(tps, meths), attrs);
 }
 
+// Parses three variants (with the initial params always optional):
+//    impl <T: copy> of to_str for [T] { ... }
+//    impl name<T> of to_str for [T] { ... }
+//    impl name<T> for [T] { ... }
 fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.get_last_lo_pos(), ident, tps, ifce;
+    let lo = p.get_last_lo_pos();
     fn wrap_path(p: parser, pt: @ast::path) -> @ast::ty {
         @{node: ast::ty_path(pt, p.get_id()), span: pt.span}
     }
-    if eat_word(p, "of") {
+    let (ident, tps) = if !is_word(p, "of") {
+        if p.peek() == token::LT { (none, parse_ty_params(p)) }
+        else { (some(parse_ident(p)), parse_ty_params(p)) }
+    } else { (none, []) };
+    let ifce = if eat_word(p, "of") {
         let path = parse_path_and_ty_param_substs(p, false);
-        tps = vec::map(path.node.types, {|tp|
-            alt tp.node {
-              ast::ty_path(pt, _) {
-                if vec::len(pt.node.idents) == 1u &&
-                   vec::len(pt.node.types) == 0u {
-                     ret {ident: pt.node.idents[0], id: p.get_id(),
-                          bounds: @[]};
-                }
-              }
-              _ {}
-            }
-            p.fatal("only single-word, parameter-less types allowed here");
-        });
-        ident = path.node.idents[vec::len(path.node.idents)-1u];
-        ifce = some(wrap_path(p, path));
-    } else {
-        ident = parse_ident(p);
-        tps = parse_ty_params(p);
-        ifce = if eat_word(p, "of") {
-            some(wrap_path(p, parse_path_and_ty_param_substs(p, false)))
-        } else { none };
+        if option::is_none(ident) {
+            ident = some(path.node.idents[vec::len(path.node.idents) - 1u]);
+        }
+        some(wrap_path(p, path))
+    } else { none };
+    let ident = alt ident {
+        some(name) { name }
+        none. { expect_word(p, "of"); fail; }
     };
     expect_word(p, "for");
     let ty = parse_ty(p, false), meths = [];
