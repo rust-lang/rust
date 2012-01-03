@@ -208,6 +208,11 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
       ty::ty_opaque_closure. {
         T_opaque_closure(cx)
       }
+      ty::ty_constr(subt,_) {
+        // FIXME: could be a constraint on ty_fn
+          check non_ty_var(cx, subt);
+          type_of_inner(cx, sp, subt)
+      }
       _ {
         fail "type_of_inner not implemented for this kind of type";
       }

@@ -818,6 +818,12 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_param(id, did) {
         alt fld { fm_param(folder) { ty = folder(id, did); } _ {} }
       }
+      ty_constr(subty, cs) {
+          ty = mk_constr(cx, fold_ty(cx, fld, subty), cs);
+      }
+      _ {
+          cx.sess.fatal("Unsupported sort of type in fold_ty");
+      }
     }
 
     // If this is a general type fold, then we need to run it now.
