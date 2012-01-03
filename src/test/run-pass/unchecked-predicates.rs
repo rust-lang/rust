@@ -1,4 +1,6 @@
 // Uses foldl to exhibit the unchecked block syntax.
+// TODO: since list's head/tail require the predicate "is_not_empty" now and
+// we have unit tests for list, this test might me not necessary anymore?
 use std;
 
 import std::list::*;
@@ -6,7 +8,10 @@ import std::list::*;
 // Can't easily be written as a "pure fn" because there's
 // no syntax for specifying that f is pure.
 fn pure_foldl<copy T, copy U>(ls: list<T>, u: U, f: block(T, U) -> U) -> U {
-    alt ls { nil. { u } cons(hd, tl) { f(hd, pure_foldl(*tl, f(hd, u), f)) } }
+    alt ls {
+        nil. { u }
+        cons(hd, tl) { f(hd, pure_foldl(*tl, f(hd, u), f)) }
+    }
 }
 
 // Shows how to use an "unchecked" block to call a general
@@ -22,7 +27,10 @@ pure fn nonempty_list<copy T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
 // knowledge that ls is a cons node. Future work.
 // Also, this is pretty contrived since nonempty_list
 // could be a "tag refinement", if we implement those.
-fn safe_head<copy T>(ls: list<T>) : nonempty_list(ls) -> T { head(ls) }
+fn safe_head<copy T>(ls: list<T>) : nonempty_list(ls) -> T {
+    check is_not_empty(ls);
+    ret head(ls)
+}
 
 fn main() {
     let mylist = cons(@1u, @nil);
