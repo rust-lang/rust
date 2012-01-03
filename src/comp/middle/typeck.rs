@@ -2875,11 +2875,21 @@ type dict_map = hashmap<ast::node_id, dict_res>;
 // Detect points where an interface-bounded type parameter is instantiated,
 // resolve the impls for the parameters.
 fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
-                   crate: @ast::crate) -> dict_map {
+                 method_map: method_map, crate: @ast::crate) -> dict_map {
     type ccx = {tcx: ty::ctxt,
                 impl_map: resolve::impl_map,
+                method_map: method_map,
                 dict_map: dict_map};
-    let cx = {tcx: tcx, impl_map: impl_map, dict_map: new_int_hash()};
+    let cx = {tcx: tcx, impl_map: impl_map,
+              method_map: method_map, dict_map: new_int_hash()};
+    
+    fn has_iface_bounds(tps: [ty::param_bounds]) -> bool {
+        vec::any(tps, {|bs|
+            vec::any(*bs, {|b|
+                alt b { ty::bound_iface(_) { true } _ { false } }
+            })
+        })
+    }
     fn resolve_expr(ex: @ast::expr, cx: ccx, v: visit::vt<ccx>) {
         alt ex.node {
           ast::expr_path(_) {
@@ -2889,14 +2899,25 @@ fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
               some(ts) {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
                 let item_ty = ty::lookup_item_type(cx.tcx, did);
-                if vec::any(*item_ty.bounds, {|bs|
-                    vec::any(*bs, {|b|
-                        alt b { ty::bound_iface(_) { true } _ { false } }
-                    })
-                }) {
+                if has_iface_bounds(*item_ty.bounds) {
                     let impls = cx.impl_map.get(ex.id);
                     cx.dict_map.insert(ex.id, lookup_dicts(
-                        cx.tcx, impls, ex.span, *item_ty.bounds, ts));
+                        cx.tcx, impls, ex.span, item_ty.bounds, ts));
+                }
+              }
+              _ {}
+            }
+          }
+          // Must resolve bounds on methods with bounded params
+          ast::expr_field(_, _, _) {
+            alt cx.method_map.find(ex.id) {
+              some(method_static(did)) {
+                let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
+                if has_iface_bounds(*bounds) {
+                    let tys = ty::node_id_to_type_params(cx.tcx, ex.id);
+                    let iscs = cx.impl_map.get(ex.id);
+                    cx.dict_map.insert(ex.id, lookup_dicts(
+                        cx.tcx, iscs, ex.span, bounds, tys));
                 }
               }
               _ {}
@@ -2906,8 +2927,9 @@ fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
         }
         visit::visit_expr(ex, cx, v);
     }
+
     fn lookup_dicts(tcx: ty::ctxt, isc: resolve::iscopes, sp: span,
-                      bounds: [ty::param_bounds], tys: [ty::t])
+                    bounds: @[ty::param_bounds], tys: [ty::t])
         -> dict_res {
         let result = [], i = 0u;
         for ty in tys {
@@ -2923,6 +2945,7 @@ fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
         }
         @result
     }
+
     fn lookup_dict(tcx: ty::ctxt, isc: resolve::iscopes, sp: span,
                      ty: ty::t, iface_ty: ty::t) -> dict_origin {
         let iface_id = alt ty::struct(tcx, iface_ty) {
@@ -2951,6 +2974,7 @@ fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
                 for im in *impls {
                     if im.iface_did == some(iface_id) {
                         let self_ty = impl_self_ty(tcx, im.did).ty;
+                        let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
                         let params = @mutable [mutable];
                         alt ty::unify::unify(ty, self_ty,
                                              ty::unify::bind_params(params),
@@ -2963,9 +2987,10 @@ fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
                             } else {
                                 let params = vec::map_mut(
                                     *params, {|p| option::get(p)});
-                                // FIXME[impl] check for sub-bounds
-                                found = some(dict_static(
-                                    im.did, params, @[]));
+                                let subres = lookup_dicts(tcx, isc, sp,
+                                                          im_bs, params);
+                                found = some(dict_static(im.did, params,
+                                                         subres));
                             }
                           }
                           _ {}
@@ -2985,6 +3010,7 @@ fn resolve_dicts(tcx: ty::ctxt, impl_map: resolve::impl_map,
             ty_to_str(tcx, iface_ty) + " for " +
             ty_to_str(tcx, ty));
     }
+
     visit::visit_crate(*crate, cx, visit::mk_vt(@{
         visit_expr: resolve_expr
         with *visit::default_visitor()
@@ -3006,7 +3032,7 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                                        bind check_native_item(ccx, _)
                                    with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visit);
-    let dict_map = resolve_dicts(tcx, impl_map, crate);
+    let dict_map = resolve_dicts(tcx, impl_map, ccx.method_map, crate);
     check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();
     (ccx.method_map, dict_map)

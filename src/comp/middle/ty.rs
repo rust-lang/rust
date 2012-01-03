@@ -1462,8 +1462,6 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
 // Type lookups
 fn node_id_to_ty_param_substs_opt_and_ty(cx: ctxt, id: ast::node_id) ->
    ty_param_substs_opt_and_ty {
-
-
     // Pull out the node type table.
     alt smallintmap::find(*cx.node_types, id as uint) {
       none. {
