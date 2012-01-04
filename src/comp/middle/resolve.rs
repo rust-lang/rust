@@ -142,6 +142,7 @@ type env =
                     mutable data: [ast::node_id]},
      mutable reported: [{ident: str, sc: scope}],
      mutable ignored_imports: [node_id],
+     mutable current_tp: option::t<uint>,
      sess: session};
 
 
@@ -168,6 +169,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           used_imports: {mutable track: false, mutable data:  []},
           mutable reported: [],
           mutable ignored_imports: [],
+          mutable current_tp: none,
           sess: sess};
     map_crate(e, crate);
     resolve_imports(*e);
@@ -336,6 +338,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           visit_pat: bind walk_pat(e, _, _, _),
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
+          visit_ty_params: bind walk_tps(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
           visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
           with *visit::default_visitor()};
@@ -368,6 +371,20 @@ fn resolve_names(e: @env, c: @ast::crate) {
           }
           _ { }
         }
+    }
+    fn walk_tps(e: @env, tps: [ast::ty_param], sc: scopes, v: vt<scopes>) {
+        let outer_current_tp = e.current_tp, current = 0u;
+        for tp in tps {
+            e.current_tp = some(current);
+            for bound in *tp.bounds {
+                alt bound {
+                  bound_iface(t) { v.visit_ty(t, sc, v); }
+                  _ {}
+                }
+            }
+            current += 1u;
+        }
+        e.current_tp = outer_current_tp;
     }
     fn walk_constr(e: @env, p: @ast::path, sp: span, id: node_id, sc: scopes,
                    _v: vt<scopes>) {
@@ -806,14 +823,14 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           scope_item(it) {
             alt it.node {
               ast::item_obj(ob, ty_params, _) {
-                ret lookup_in_obj(name, ob, ty_params, ns, it.id);
+                ret lookup_in_obj(e, name, ob, ty_params, ns, it.id);
               }
-              ast::item_impl(ty_params, _, _, _) {
-                if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }
+              ast::item_impl(tps, _, _, _) {
+                if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
               ast::item_iface(tps, _) | ast::item_tag(_, tps) |
               ast::item_ty(_, tps) {
-                if ns == ns_type { ret lookup_in_ty_params(name, tps); }
+                if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
               ast::item_mod(_) {
                 ret lookup_in_local_mod(e, it.id, sp, name, ns, inside);
@@ -828,19 +845,19 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
             if (name == "self" && ns == ns_value) {
                 ret some(ast::def_self(local_def(id)));
             } else if ns == ns_type {
-                ret lookup_in_ty_params(name, tps);
+                ret lookup_in_ty_params(e, name, tps);
             }
           }
           scope_native_item(it) {
             alt it.node {
               ast::native_item_fn(decl, ty_params) {
-                ret lookup_in_fn(name, decl, ty_params, ns);
+                ret lookup_in_fn(e, name, decl, ty_params, ns);
               }
             }
           }
           scope_bare_fn(decl, _, ty_params) |
           scope_fn_expr(decl, _, ty_params) {
-            ret lookup_in_fn(name, decl, ty_params, ns);
+            ret lookup_in_fn(e, name, decl, ty_params, ns);
           }
           scope_loop(local) {
             if ns == ns_value {
@@ -915,13 +932,13 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
     e.sess.bug("reached unreachable code in lookup_in_scope"); // sigh
 }
 
-fn lookup_in_ty_params(name: ident, ty_params: [ast::ty_param]) ->
-   option::t<def> {
+fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
+    -> option::t<def> {
     let n = 0u;
     for tp: ast::ty_param in ty_params {
-        if str::eq(tp.ident, name) {
-            ret some(ast::def_ty_param(local_def(tp.id), n));
-        }
+        if str::eq(tp.ident, name) && alt e.current_tp {
+            some(cur) { n < cur } none. { true }
+        } { ret some(ast::def_ty_param(local_def(tp.id), n)); }
         n += 1u;
     }
     ret none::<def>;
@@ -936,7 +953,8 @@ fn lookup_in_pat(name: ident, pat: @ast::pat) -> option::t<def_id> {
     ret found;
 }
 
-fn lookup_in_fn(name: ident, decl: ast::fn_decl, ty_params: [ast::ty_param],
+fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
+                ty_params: [ast::ty_param],
                 ns: namespace) -> option::t<def> {
     alt ns {
       ns_value. {
@@ -947,12 +965,13 @@ fn lookup_in_fn(name: ident, decl: ast::fn_decl, ty_params: [ast::ty_param],
         }
         ret none::<def>;
       }
-      ns_type. { ret lookup_in_ty_params(name, ty_params); }
+      ns_type. { ret lookup_in_ty_params(e, name, ty_params); }
       _ { ret none::<def>; }
     }
 }
 
-fn lookup_in_obj(name: ident, ob: ast::_obj, ty_params: [ast::ty_param],
+fn lookup_in_obj(e: env, name: ident, ob: ast::_obj,
+                 ty_params: [ast::ty_param],
                  ns: namespace, id: node_id) -> option::t<def> {
     alt ns {
       ns_value. {
@@ -964,7 +983,7 @@ fn lookup_in_obj(name: ident, ob: ast::_obj, ty_params: [ast::ty_param],
         }
         ret none::<def>;
       }
-      ns_type. { ret lookup_in_ty_params(name, ty_params); }
+      ns_type. { ret lookup_in_ty_params(e, name, ty_params); }
       _ { ret none::<def>; }
     }
 }

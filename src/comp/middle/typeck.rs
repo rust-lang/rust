@@ -2748,7 +2748,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
         let substs = substs + vec::init_fn({|i|
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
         }, vec::len(*if_m.tps));
-        let if_fty = ty::substitute_type_params(tcx, substs, 
+        let if_fty = ty::substitute_type_params(tcx, substs,
                                                 ty::mk_fn(tcx, if_m.fty));
         alt ty::unify::unify(impl_fty, if_fty, ty::unify::precise, tcx) {
           ty::unify::ures_err(err) {
@@ -3064,8 +3064,8 @@ mod dict {
         visit::visit_expr(ex, fcx, v);
     }
 
-    // Detect points where an interface-bounded type parameter is instantiated,
-    // resolve the impls for the parameters.
+    // Detect points where an interface-bounded type parameter is
+    // instantiated, resolve the impls for the parameters.
     fn resolve_in_block(fcx: @fn_ctxt, bl: ast::blk) {
         visit::visit_block(bl, fcx, visit::mk_vt(@{
             visit_expr: resolve_expr,
