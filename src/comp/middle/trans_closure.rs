@@ -405,7 +405,6 @@ fn trans_expr_fn(bcx: @block_ctxt,
     if dest == ignore { ret bcx; }
     let ccx = bcx_ccx(bcx), bcx = bcx;
     let fty = node_id_type(ccx, id);
-    check returns_non_ty_var(ccx, fty);
     let llfnty = type_of_fn_from_ty(ccx, sp, fty, []);
     let sub_cx = extend_path(bcx.fcx.lcx, ccx.names.next("anon"));
     let s = mangle_internal_name_by_path(ccx, sub_cx.path);
@@ -779,7 +778,6 @@ fn trans_bind_thunk(cx: @local_ctxt,
     // needs to take.
     let ccx = bcx_ccx(bcx);
 
-    check returns_non_ty_var(ccx, outgoing_fty);
     let lltargetty =
         type_of_fn_from_ty(ccx, sp, outgoing_fty, param_bounds);
     lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));

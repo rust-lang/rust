@@ -44,9 +44,9 @@ fn trans_dict_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
     let {bcx, val} = trans_self_arg(bcx, base);
     let dict = option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound];
     let method = ty::iface_methods(tcx, iface_id)[n_method];
-    let bare_fn_ty = type_of_fn(bcx_ccx(bcx), ast_util::dummy_sp(),
-                                false, method.fty.inputs, method.fty.output,
-                                *method.tps);
+    let fty = ty::expr_ty(tcx, e);
+    let bare_fn_ty = type_of_fn_from_ty(bcx_ccx(bcx), ast_util::dummy_sp(),
+                                        fty, *method.tps);
     let {inputs: bare_inputs, output} = llfn_arg_tys(bare_fn_ty);
     let fn_ty = T_fn([val_ty(dict)] + bare_inputs, output);
     let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
@@ -63,7 +63,7 @@ fn trans_dict_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
             tydescs += [td.val];
             bcx = td.bcx;
         }
-        generic = some({item_type: ty::mk_fn(tcx, method.fty),
+        generic = some({item_type: fty,
                         static_tis: tis,
                         tydescs: tydescs,
                         param_bounds: method.tps,

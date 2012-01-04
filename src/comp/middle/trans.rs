@@ -115,8 +115,7 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, is_method: bool, inputs: [ty::arg],
 
 // Given a function type and a count of ty params, construct an llvm type
 fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
-                      param_bounds: [ty::param_bounds])
-    : returns_non_ty_var(cx, fty) -> TypeRef {
+                      param_bounds: [ty::param_bounds]) -> TypeRef {
     // FIXME: Check should be unnecessary, b/c it's implied
     // by returns_non_ty_var(t). Make that a postcondition
     // (see Issue #586)
@@ -173,8 +172,6 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         T_struct(tys)
       }
       ty::ty_fn(_) {
-        // FIXME: could be a constraint on ty_fn
-        check returns_non_ty_var(cx, t);
         T_fn_pair(cx, type_of_fn_from_ty(cx, sp, t, []))
       }
       ty::ty_native_fn(args, out) {
@@ -242,7 +239,6 @@ fn type_of_ty_param_bounds_and_ty(lcx: @local_ctxt, sp: span,
     let t = tpt.ty;
     alt ty::struct(cx.tcx, t) {
       ty::ty_fn(_) | ty::ty_native_fn(_, _) {
-        check returns_non_ty_var(cx, t);
         ret type_of_fn_from_ty(cx, sp, t, *tpt.bounds);
       }
       _ {
@@ -5300,7 +5296,6 @@ fn collect_native_item(ccx: @crate_ctxt,
           ast::native_abi_rust_intrinsic. {
             // For intrinsics: link the function directly to the intrinsic
             // function itself.
-            check returns_non_ty_var(ccx, node_type);
             let fn_type = type_of_fn_from_ty(
                 ccx, sp, node_type,
                 vec::map(tps, {|p| param_bounds(ccx, p)}));
