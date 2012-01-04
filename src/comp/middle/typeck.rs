@@ -1514,7 +1514,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
               ty::bound_iface(t) {
                 let (iid, tps) = alt ty::struct(tcx, t) {
                     ty::ty_iface(i, tps) { (i, tps) }
-                    _ { ret none; }
+                    _ { cont; }
                 };
                 let ifce_methods = ty::iface_methods(tcx, iid);
                 alt vec::position_pred(*ifce_methods, {|m| m.ident == name}) {
@@ -2765,15 +2765,12 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
       ast::item_fn(decl, tps, body) {
-        check_ty_params(ccx, tps);
         check_fn(ccx, ast::proto_bare, decl, body, it.id, none);
       }
       ast::item_res(decl, tps, body, dtor_id, _) {
-        check_ty_params(ccx, tps);
         check_fn(ccx, ast::proto_bare, decl, body, dtor_id, none);
       }
       ast::item_obj(ob, tps, _) {
-        check_ty_params(ccx, tps);
         // We're entering an object, so gather up the info we need.
         ccx.self_infos += [self_obj(ob.fields,
                                     ccx.tcx.tcache.get(local_def(it.id)).ty)];
@@ -2783,10 +2780,8 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         vec::pop(ccx.self_infos);
       }
       ast::item_impl(tps, ifce, ty, ms) {
-        check_ty_params(ccx, tps);
         ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];
         let my_methods = vec::map(ms, {|m|
-            check_ty_params(ccx, m.tps);
             check_method(ccx, m);
             ty_of_method(ccx.tcx, m_check, m)
         });
@@ -2821,17 +2816,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           _ {}
         }
       }
-      ast::item_iface(tps, _) | ast::item_ty(_, tps) | ast::item_tag(_, tps) {
-        check_ty_params(ccx, tps);
-      }
       _ {/* nothing to do */ }
-    }
-}
-
-fn check_native_item(ccx: @crate_ctxt, it: @ast::native_item) {
-    alt it.node {
-      ast::native_item_fn(_, tps) { check_ty_params(ccx, tps); }
-      _ {}
     }
 }
 
@@ -3100,11 +3085,11 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                 method_map: std::map::new_int_hash(),
                 dict_map: std::map::new_int_hash(),
                 tcx: tcx};
-    let visit =
-        visit::mk_simple_visitor(@{visit_item: bind check_item(ccx, _),
-                                   visit_native_item:
-                                       bind check_native_item(ccx, _)
-                                   with *visit::default_simple_visitor()});
+    let visit = visit::mk_simple_visitor(@{
+        visit_item: bind check_item(ccx, _),
+        visit_ty_params: bind check_ty_params(ccx, _)
+        with *visit::default_simple_visitor()
+    });
     visit::visit_crate(*crate, (), visit);
     check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();
