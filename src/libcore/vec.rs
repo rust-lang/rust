@@ -743,6 +743,17 @@ fn iter<T>(v: [const T], f: block(T)) {
 }
 
 /*
+Function: iter2
+
+Iterates over two vectors in parallel
+
+*/
+fn iter2<U, T>(v: [U], v2: [T], f: block(U, T)) {
+    let i = 0;
+    for elt in v { f(elt, v2[i]); i += 1; }
+}
+
+/*
 Function: iteri
 
 Iterates over a vector's elements and indexes

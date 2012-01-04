@@ -37,7 +37,7 @@ tag scope {
     scope_loop(@ast::local); // there's only 1 decl per loop.
     scope_block(ast::blk, @mutable uint, @mutable uint);
     scope_arm(ast::arm);
-    scope_self(ast::node_id);
+    scope_method(ast::node_id, [ast::ty_param]);
 }
 
 type scopes = list<scope>;
@@ -404,9 +404,17 @@ fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
         alt ifce { some(ty) { v.visit_ty(ty, sc, v); } _ {} }
         v.visit_ty(sty, sc, v);
         for m in methods {
-            v.visit_fn(visit::fk_method(m.ident, tps + m.tps),
-                       m.decl, m.body, m.span,
-                       m.id, sc, v);
+            let msc = cons(scope_method(i.id, tps + m.tps), @sc);
+            v.visit_fn(visit::fk_method(m.ident, []),
+                       m.decl, m.body, m.span, m.id, msc, v);
+        }
+      }
+      ast::item_iface(tps, methods) {
+        visit::visit_ty_params(tps, sc, v);
+        for m in methods {
+            let msc = cons(scope_method(i.id, tps + m.tps), @sc);
+            for a in m.decl.inputs { v.visit_ty(a.ty, msc, v); }
+            v.visit_ty(m.decl.output, msc, v);
         }
       }
       _ { visit::visit_item(i, sc, v); }
@@ -437,8 +445,8 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     // for f's constrs in the table.
     for c: @ast::constr in decl.constraints { resolve_constr(e, c, sc, v); }
     let scope = alt fk {
-      visit::fk_item_fn(_, tps) | visit::fk_method(_, tps) |
-      visit::fk_res(_, tps) {
+      visit::fk_item_fn(_, tps) | visit::fk_res(_, tps) |
+      visit::fk_method(_, tps) {
         scope_bare_fn(decl, id, tps)
       }
       visit::fk_anon(_) | visit::fk_fn_block. {
@@ -491,7 +499,7 @@ fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
         v.visit_block(blk, new_sc, v);
       }
       ast::expr_anon_obj(_) {
-        visit::visit_expr(x, cons(scope_self(x.id), @sc), v);
+        visit::visit_expr(x, cons(scope_method(x.id, []), @sc), v);
       }
       _ { visit::visit_expr(x, sc, v); }
     }
@@ -801,9 +809,6 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                 ret lookup_in_obj(name, ob, ty_params, ns, it.id);
               }
               ast::item_impl(ty_params, _, _, _) {
-                if (name == "self" && ns == ns_value) {
-                    ret some(ast::def_self(local_def(it.id)));
-                }
                 if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }
               }
               ast::item_iface(tps, _) | ast::item_tag(_, tps) |
@@ -819,9 +824,11 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               _ { }
             }
           }
-          scope_self(id) {
+          scope_method(id, tps) {
             if (name == "self" && ns == ns_value) {
                 ret some(ast::def_self(local_def(id)));
+            } else if ns == ns_type {
+                ret lookup_in_ty_params(name, tps);
             }
           }
           scope_native_item(it) {

@@ -19,10 +19,6 @@ fn mode_str(m: ty::mode) -> str {
     }
 }
 
-fn mode_str_1(m: ty::mode) -> str {
-    alt m { ast::by_ref. { "ref" } _ { mode_str(m) } }
-}
-
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: middle::ty::mode, ty: t}) ->
        str {

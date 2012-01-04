@@ -37,12 +37,13 @@ fn trans_static_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
     {env: obj_env(val) with lval_static_fn(bcx, did, e.id)}
 }
 
-fn trans_dict_callee(bcx: @block_ctxt, _e: @ast::expr, base: @ast::expr,
+fn trans_dict_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
                      iface_id: ast::def_id, n_method: uint,
                      n_param: uint, n_bound: uint) -> lval_maybe_callee {
+    let tcx = bcx_tcx(bcx);
     let {bcx, val} = trans_self_arg(bcx, base);
     let dict = option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound];
-    let method = ty::iface_methods(bcx_tcx(bcx), iface_id)[n_method];
+    let method = ty::iface_methods(tcx, iface_id)[n_method];
     let bare_fn_ty = type_of_fn(bcx_ccx(bcx), ast_util::dummy_sp(),
                                 false, method.fty.inputs, method.fty.output,
                                 *method.tps);
@@ -51,9 +52,26 @@ fn trans_dict_callee(bcx: @block_ctxt, _e: @ast::expr, base: @ast::expr,
     let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
                              T_ptr(T_array(T_ptr(fn_ty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
+    let generic = none;
+    if vec::len(*method.tps) > 0u {
+        let tydescs = [], tis = [];
+        for t in ty::node_id_to_type_params(tcx, e.id) {
+            // TODO: Doesn't always escape.
+            let ti = none;
+            let td = get_tydesc(bcx, t, true, tps_normal, ti).result;
+            tis += [ti];
+            tydescs += [td.val];
+            bcx = td.bcx;
+        }
+        generic = some({item_type: ty::mk_fn(tcx, method.fty),
+                        static_tis: tis,
+                        tydescs: tydescs,
+                        param_bounds: method.tps,
+                        origins: bcx_ccx(bcx).dict_map.find(e.id)});
+    }
     {bcx: bcx, val: mptr, kind: owned,
      env: dict_env(dict, val),
-     generic: none} // FIXME[impl] fetch generic info for method
+     generic: generic}
 }
 
 fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {

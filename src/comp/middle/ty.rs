@@ -18,7 +18,7 @@ import util::common::*;
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
 import util::ppaux::ty_constr_to_str;
-import util::ppaux::mode_str_1;
+import util::ppaux::mode_str;
 import syntax::print::pprust::*;
 
 export node_id_to_monotype;
@@ -1739,7 +1739,7 @@ mod unify {
     export ures_ok;
     export ures_err;
     export var_bindings;
-    export precise, in_bindings, bind_params;
+    export precise, in_bindings;
 
     tag result { ures_ok(t); ures_err(type_err); }
     tag union_result { unres_ok; unres_err(type_err); }
@@ -1753,7 +1753,6 @@ mod unify {
     tag unify_style {
         precise;
         in_bindings(@var_bindings);
-        bind_params(@mutable [mutable option::t<t>]);
     }
     type ctxt = {st: unify_style, tcx: ty_ctxt};
 
@@ -2171,16 +2170,6 @@ mod unify {
               }
             }
             ret ures_ok(mk_var(cx.tcx, actual_id));
-          }
-          ty::ty_param(n, _) {
-            alt cx.st {
-              bind_params(cell) {
-                while vec::len(*cell) < n + 1u { *cell += [mutable none]; }
-                cell[n] = some(expected);
-                ret ures_ok(expected);
-              }
-              _ {}
-            }
           }
           _ {/* empty */ }
         }
@@ -2627,8 +2616,8 @@ fn type_err_to_str(err: ty::type_err) -> str {
                 "' but found one with method '" + a_meth + "'";
       }
       terr_mode_mismatch(e_mode, a_mode) {
-        ret "expected argument mode " + mode_str_1(e_mode) + " but found " +
-                mode_str_1(a_mode);
+        ret "expected argument mode " + mode_str(e_mode) + " but found " +
+                mode_str(a_mode);
       }
       terr_constr_len(e_len, a_len) {
         ret "Expected a type with " + uint::str(e_len) +
@@ -2646,24 +2635,17 @@ fn type_err_to_str(err: ty::type_err) -> str {
 
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
-fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
+fn bind_params_in_type(cx: ctxt, next_ty_var: block() -> int, typ: t,
                        ty_param_count: uint) -> {ids: [int], ty: t} {
-    let param_var_ids: @mutable [int] = @mutable [];
-    let i = 0u;
-    while i < ty_param_count { *param_var_ids += [next_ty_var()]; i += 1u; }
-    fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
-              _next_ty_var: fn@() -> int, index: uint, _did: def_id) -> t {
-        if index < vec::len(*param_var_ids) {
-            ret mk_var(cx, param_var_ids[index]);
-        } else {
-            cx.sess.span_fatal(sp, "Unbound type parameter in callee's type");
-        }
+    let param_var_ids = [], i = 0u;
+    while i < ty_param_count { param_var_ids += [next_ty_var()]; i += 1u; }
+    let param_var_ids = @param_var_ids;
+    fn binder(cx: ctxt, param_var_ids: @[int], index: uint,
+              _did: def_id) -> t {
+        ret mk_var(cx, param_var_ids[index]);
     }
-    let new_typ =
-        fold_ty(cx,
-                fm_param(bind binder(sp, cx, param_var_ids, next_ty_var, _,
-                                     _)), typ);
-    ret {ids: *param_var_ids, ty: new_typ};
+    {ids: *param_var_ids,
+     ty: fold_ty(cx, fm_param(bind binder(cx, param_var_ids, _, _)), typ)}
 }
 
 
