@@ -17,6 +17,7 @@ fn make_new_path(path: str) -> str {
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "freebsd")]
 fn lib_path_env_var() -> str { "LD_LIBRARY_PATH" }
 
 #[cfg(target_os = "macos")]
@@ -27,6 +28,7 @@ fn lib_path_env_var() -> str { "PATH" }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
 fn path_div() -> str { ":" }
 
 #[cfg(target_os = "win32")]

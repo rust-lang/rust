@@ -443,7 +443,7 @@ fn iter_chars(rope: rope, it: block(char)) {
     loop_chars(rope) {|x|
         it(x);
         ret true
-    }
+    };
 }
 
 /*

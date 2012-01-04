@@ -37,7 +37,7 @@ tag scope {
     scope_loop(@ast::local); // there's only 1 decl per loop.
     scope_block(ast::blk, @mutable uint, @mutable uint);
     scope_arm(ast::arm);
-    scope_self(ast::node_id);
+    scope_method(ast::node_id, [ast::ty_param]);
 }
 
 type scopes = list<scope>;
@@ -142,6 +142,7 @@ type env =
                     mutable data: [ast::node_id]},
      mutable reported: [{ident: str, sc: scope}],
      mutable ignored_imports: [node_id],
+     mutable current_tp: option::t<uint>,
      sess: session};
 
 
@@ -168,6 +169,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           used_imports: {mutable track: false, mutable data:  []},
           mutable reported: [],
           mutable ignored_imports: [],
+          mutable current_tp: none,
           sess: sess};
     map_crate(e, crate);
     resolve_imports(*e);
@@ -266,6 +268,7 @@ fn map_crate(e: @env, c: @ast::crate) {
             let imp = follow_import(*e, sc, *path, vi.span);
             if option::is_some(imp) {
                 let glob = {def: option::get(imp), item: vi};
+                check list::is_not_empty(sc);
                 alt list::head(sc) {
                   scope_item(i) {
                     e.mod_map.get(i.id).glob_imports += [glob];
@@ -335,6 +338,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           visit_pat: bind walk_pat(e, _, _, _),
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
+          visit_ty_params: bind walk_tps(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
           visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
           with *visit::default_visitor()};
@@ -367,6 +371,20 @@ fn resolve_names(e: @env, c: @ast::crate) {
           }
           _ { }
         }
+    }
+    fn walk_tps(e: @env, tps: [ast::ty_param], sc: scopes, v: vt<scopes>) {
+        let outer_current_tp = e.current_tp, current = 0u;
+        for tp in tps {
+            e.current_tp = some(current);
+            for bound in *tp.bounds {
+                alt bound {
+                  bound_iface(t) { v.visit_ty(t, sc, v); }
+                  _ {}
+                }
+            }
+            current += 1u;
+        }
+        e.current_tp = outer_current_tp;
     }
     fn walk_constr(e: @env, p: @ast::path, sp: span, id: node_id, sc: scopes,
                    _v: vt<scopes>) {
@@ -403,9 +421,17 @@ fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
         alt ifce { some(ty) { v.visit_ty(ty, sc, v); } _ {} }
         v.visit_ty(sty, sc, v);
         for m in methods {
-            v.visit_fn(visit::fk_method(m.ident, tps + m.tps),
-                       m.decl, m.body, m.span,
-                       m.id, sc, v);
+            let msc = cons(scope_method(i.id, tps + m.tps), @sc);
+            v.visit_fn(visit::fk_method(m.ident, []),
+                       m.decl, m.body, m.span, m.id, msc, v);
+        }
+      }
+      ast::item_iface(tps, methods) {
+        visit::visit_ty_params(tps, sc, v);
+        for m in methods {
+            let msc = cons(scope_method(i.id, tps + m.tps), @sc);
+            for a in m.decl.inputs { v.visit_ty(a.ty, msc, v); }
+            v.visit_ty(m.decl.output, msc, v);
         }
       }
       _ { visit::visit_item(i, sc, v); }
@@ -436,8 +462,8 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     // for f's constrs in the table.
     for c: @ast::constr in decl.constraints { resolve_constr(e, c, sc, v); }
     let scope = alt fk {
-      visit::fk_item_fn(_, tps) | visit::fk_method(_, tps) |
-      visit::fk_res(_, tps) {
+      visit::fk_item_fn(_, tps) | visit::fk_res(_, tps) |
+      visit::fk_method(_, tps) {
         scope_bare_fn(decl, id, tps)
       }
       visit::fk_anon(_) | visit::fk_fn_block. {
@@ -461,6 +487,7 @@ fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {
 }
 
 fn visit_decl_with_scope(d: @decl, sc: scopes, v: vt<scopes>) {
+    check list::is_not_empty(sc);
     let loc_pos = alt list::head(sc) {
       scope_block(_, _, pos) { pos }
       _ { @mutable 0u }
@@ -489,7 +516,7 @@ fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
         v.visit_block(blk, new_sc, v);
       }
       ast::expr_anon_obj(_) {
-        visit::visit_expr(x, cons(scope_self(x.id), @sc), v);
+        visit::visit_expr(x, cons(scope_method(x.id, []), @sc), v);
       }
       _ { visit::visit_expr(x, sc, v); }
     }
@@ -796,17 +823,14 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           scope_item(it) {
             alt it.node {
               ast::item_obj(ob, ty_params, _) {
-                ret lookup_in_obj(name, ob, ty_params, ns, it.id);
+                ret lookup_in_obj(e, name, ob, ty_params, ns, it.id);
               }
-              ast::item_impl(ty_params, _, _, _) {
-                if (name == "self" && ns == ns_value) {
-                    ret some(ast::def_self(local_def(it.id)));
-                }
-                if ns == ns_type { ret lookup_in_ty_params(name, ty_params); }
+              ast::item_impl(tps, _, _, _) {
+                if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
               ast::item_iface(tps, _) | ast::item_tag(_, tps) |
               ast::item_ty(_, tps) {
-                if ns == ns_type { ret lookup_in_ty_params(name, tps); }
+                if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
               ast::item_mod(_) {
                 ret lookup_in_local_mod(e, it.id, sp, name, ns, inside);
@@ -817,21 +841,23 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               _ { }
             }
           }
-          scope_self(id) {
+          scope_method(id, tps) {
             if (name == "self" && ns == ns_value) {
                 ret some(ast::def_self(local_def(id)));
+            } else if ns == ns_type {
+                ret lookup_in_ty_params(e, name, tps);
             }
           }
           scope_native_item(it) {
             alt it.node {
               ast::native_item_fn(decl, ty_params) {
-                ret lookup_in_fn(name, decl, ty_params, ns);
+                ret lookup_in_fn(e, name, decl, ty_params, ns);
               }
             }
           }
           scope_bare_fn(decl, _, ty_params) |
           scope_fn_expr(decl, _, ty_params) {
-            ret lookup_in_fn(name, decl, ty_params, ns);
+            ret lookup_in_fn(e, name, decl, ty_params, ns);
           }
           scope_loop(local) {
             if ns == ns_value {
@@ -906,13 +932,13 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
     e.sess.bug("reached unreachable code in lookup_in_scope"); // sigh
 }
 
-fn lookup_in_ty_params(name: ident, ty_params: [ast::ty_param]) ->
-   option::t<def> {
+fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
+    -> option::t<def> {
     let n = 0u;
     for tp: ast::ty_param in ty_params {
-        if str::eq(tp.ident, name) {
-            ret some(ast::def_ty_param(local_def(tp.id), n));
-        }
+        if str::eq(tp.ident, name) && alt e.current_tp {
+            some(cur) { n < cur } none. { true }
+        } { ret some(ast::def_ty_param(local_def(tp.id), n)); }
         n += 1u;
     }
     ret none::<def>;
@@ -927,7 +953,8 @@ fn lookup_in_pat(name: ident, pat: @ast::pat) -> option::t<def_id> {
     ret found;
 }
 
-fn lookup_in_fn(name: ident, decl: ast::fn_decl, ty_params: [ast::ty_param],
+fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
+                ty_params: [ast::ty_param],
                 ns: namespace) -> option::t<def> {
     alt ns {
       ns_value. {
@@ -938,12 +965,13 @@ fn lookup_in_fn(name: ident, decl: ast::fn_decl, ty_params: [ast::ty_param],
         }
         ret none::<def>;
       }
-      ns_type. { ret lookup_in_ty_params(name, ty_params); }
+      ns_type. { ret lookup_in_ty_params(e, name, ty_params); }
       _ { ret none::<def>; }
     }
 }
 
-fn lookup_in_obj(name: ident, ob: ast::_obj, ty_params: [ast::ty_param],
+fn lookup_in_obj(e: env, name: ident, ob: ast::_obj,
+                 ty_params: [ast::ty_param],
                  ns: namespace, id: node_id) -> option::t<def> {
     alt ns {
       ns_value. {
@@ -955,7 +983,7 @@ fn lookup_in_obj(name: ident, ob: ast::_obj, ty_params: [ast::ty_param],
         }
         ret none::<def>;
       }
-      ns_type. { ret lookup_in_ty_params(name, ty_params); }
+      ns_type. { ret lookup_in_ty_params(e, name, ty_params); }
       _ { ret none::<def>; }
     }
 }
@@ -1701,7 +1729,8 @@ fn check_exports(e: @env) {
 // Impl resolution
 
 type method_info = {did: def_id, n_tps: uint, ident: ast::ident};
-type _impl = {did: def_id, ident: ast::ident, methods: [@method_info]};
+type _impl = {did: def_id, iface_did: option::t<def_id>,
+              ident: ast::ident, methods: [@method_info]};
 type iscopes = list<@[@_impl]>;
 
 fn resolve_impls(e: @env, c: @ast::crate) {
@@ -1757,14 +1786,20 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
     }
 }
 
-fn find_impls_in_item(i: @ast::item, &impls: [@_impl],
+fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
                       name: option::t<ident>,
                       ck_exports: option::t<ast::_mod>) {
     alt i.node {
-      ast::item_impl(_, _, _, mthds) {
+      ast::item_impl(_, ifce, _, mthds) {
         if alt name { some(n) { n == i.ident } _ { true } } &&
            alt ck_exports { some(m) { is_exported(i.ident, m) } _ { true } } {
             impls += [@{did: local_def(i.id),
+                        iface_did: alt ifce {
+                            some(@{node: ast::ty_path(_, id), _}) {
+                                some(def_id_of_def(e.def_map.get(id)))
+                            }
+                            _ { none }
+                        },
                         ident: i.ident,
                         methods: vec::map(mthds, {|m|
                             @{did: local_def(m.id),
@@ -1788,7 +1823,7 @@ fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
             cached = if defid.crate == ast::local_crate {
                 let tmp = [];
                 for i in option::get(e.mod_map.get(defid.node).m).items {
-                    find_impls_in_item(i, tmp, name, none);
+                    find_impls_in_item(e, i, tmp, name, none);
                 }
                 @tmp
             } else {
@@ -1816,7 +1851,7 @@ fn visit_block_with_impl_scope(e: @env, b: ast::blk, sc: iscopes,
     for st in b.node.stmts {
         alt st.node {
           ast::stmt_decl(@{node: ast::decl_item(i), _}, _) {
-            find_impls_in_item(i, impls, none, none);
+            find_impls_in_item(*e, i, impls, none, none);
           }
           _ {}
         }
@@ -1829,13 +1864,15 @@ fn visit_mod_with_impl_scope(e: @env, m: ast::_mod, s: span, sc: iscopes,
                              v: vt<iscopes>) {
     let impls = [];
     for vi in m.view_items { find_impls_in_view_item(*e, vi, impls, sc); }
-    for i in m.items { find_impls_in_item(i, impls, none, none); }
+    for i in m.items { find_impls_in_item(*e, i, impls, none, none); }
     visit::visit_mod(m, s, vec::len(impls) > 0u ? cons(@impls, @sc) : sc, v);
 }
 
 fn resolve_impl_in_expr(e: @env, x: @ast::expr, sc: iscopes, v: vt<iscopes>) {
     alt x.node {
-      ast::expr_field(_, _, _) { e.impl_map.insert(x.id, sc); }
+      ast::expr_field(_, _, _) | ast::expr_path(_) {
+        e.impl_map.insert(x.id, sc);
+      }
       _ {}
     }
     visit::visit_expr(x, sc, v);

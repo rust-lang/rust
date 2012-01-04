@@ -72,7 +72,7 @@
 #define UPCALL_DEL_STACK        L_upcall_del_stack$stub
 #define MORESTACK               ___morestack
 #else
-#if defined(__linux__)
+#if defined(__linux__) || defined(__FreeBSD__)
 #define UPCALL_NEW_STACK        upcall_new_stack
 #define UPCALL_DEL_STACK        upcall_del_stack
 #define RUST_GET_TASK           rust_get_task
@@ -93,7 +93,7 @@
 .globl MORESTACK
 
 // FIXME: What about _WIN32?	
-#if defined(__linux__)
+#if defined(__linux__) || defined(__FreeBSD__)
 	.hidden MORESTACK
 #else
 #if defined(__APPLE__)
@@ -106,7 +106,7 @@
 #endif
 
 MORESTACK:
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	.cfi_startproc
 #endif
 
@@ -125,7 +125,7 @@ MORESTACK:
 	// __morestack, and an extra return address.
 
 	pushl %ebp
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	// The CFA is 20 bytes above the register that it is
 	// associated with for this frame (which will be %ebp)
 	.cfi_def_cfa_offset 20
@@ -133,7 +133,7 @@ MORESTACK:
 	.cfi_offset %ebp, -20
 #endif
 	movl %esp, %ebp
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	// Calculate the CFA as an offset from %ebp
 	.cfi_def_cfa_register %ebp
 #endif
@@ -216,7 +216,7 @@ MORESTACK:
 	// FIXME: I don't think these rules are necessary
 	// since the unwinder should never encounter an instruction
 	// pointer pointing here.
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	// Restore the rule for how to find %ebp
 	.cfi_restore %ebp
 	// Tell the unwinder how to find the CFA in terms of %esp
@@ -234,7 +234,7 @@ MORESTACK:
 	
 	jmpl *%eax
 
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 	.cfi_endproc
 #endif
 

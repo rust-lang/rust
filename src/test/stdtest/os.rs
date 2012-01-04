@@ -14,6 +14,7 @@ fn test_setenv() {
 }
 
 #[test]
+#[ignore(reason = "fails periodically on mac")]
 fn test_setenv_overwrite() {
     setenv("NAME2", "1");
     setenv("NAME2", "2");
@@ -23,12 +24,14 @@ fn test_setenv_overwrite() {
 // Windows GetEnvironmentVariable requires some extra work to make sure
 // the buffer the variable is copied into is the right size
 #[test]
+#[ignore(reason = "fails periodically on mac")]
 fn test_getenv_big() {
     let s = "";
     let i = 0;
     while i < 100 { s += "aaaaaaaaaa"; i += 1; }
-    setenv("NAME3", s);
-    assert (getenv("NAME3") == option::some(s));
+    setenv("test_getenv_big", s);
+    log(debug, s);
+    assert (getenv("test_getenv_big") == option::some(s));
 }
 
 #[test]

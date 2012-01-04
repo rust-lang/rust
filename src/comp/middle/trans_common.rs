@@ -92,7 +92,6 @@ type crate_ctxt =
      discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
      consts: hashmap<ast::node_id, ValueRef>,
-     obj_methods: hashmap<ast::node_id, ()>,
      tydescs: hashmap<ty::t, @tydesc_info>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
@@ -105,6 +104,7 @@ type crate_ctxt =
      copy_map: alias::copy_map,
      last_uses: last_use::last_uses,
      method_map: typeck::method_map,
+     dict_map: typeck::dict_map,
      stats: stats,
      upcalls: @upcall::upcalls,
      rust_object_type: TypeRef,
@@ -130,6 +130,8 @@ type local_ctxt =
 type val_self_pair = {v: ValueRef, t: ty::t};
 
 tag local_val { local_mem(ValueRef); local_imm(ValueRef); }
+
+type fn_ty_param = {desc: ValueRef, dicts: option::t<[ValueRef]>};
 
 // Function context.  Every LLVM function we create will have one of
 // these.
@@ -236,7 +238,7 @@ type fn_ctxt =
      llobjfields: hashmap<ast::node_id, ValueRef>,
      lllocals: hashmap<ast::node_id, local_val>,
      llupvars: hashmap<ast::node_id, ValueRef>,
-     mutable lltydescs: [ValueRef],
+     mutable lltyparams: [fn_ty_param],
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
      id: ast::node_id,
      ret_style: ast::ret_style,
@@ -320,13 +322,13 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
         }
     }
 
-    let params = csearch::get_type_param_count(ccx.sess.get_cstore(), did);
+    let param_bounds = ty::lookup_item_type(ccx.tcx, did).bounds;
     let nil_res = ty::mk_nil(ccx.tcx);
     // FIXME: Silly check -- mk_nil should have a postcondition
     check non_ty_var(ccx, nil_res);
     let f_t = type_of_fn(ccx, sp, false,
                          [{mode: ast::by_ref, ty: inner_t}],
-                         nil_res, params);
+                         nil_res, *param_bounds);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.get_cstore(),
                                                     did), f_t);
@@ -406,7 +408,7 @@ fn ty_str(tn: type_names, t: TypeRef) -> str {
     ret lib::llvm::type_to_str(tn, t);
 }
 
-fn val_ty(v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
+fn val_ty(&&v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
 
 fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
 
@@ -533,11 +535,9 @@ fn T_size_t(targ_cfg: @session::config) -> TypeRef {
     ret T_int(targ_cfg);
 }
 
-fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef {
-    unsafe {
-        ret llvm::LLVMFunctionType(output, to_ptr(inputs),
-                                   vec::len::<TypeRef>(inputs), False);
-    }
+fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef unsafe {
+    ret llvm::LLVMFunctionType(output, to_ptr(inputs),
+                               vec::len::<TypeRef>(inputs), False);
 }
 
 fn T_fn_pair(cx: @crate_ctxt, tfn: TypeRef) -> TypeRef {
@@ -546,10 +546,8 @@ fn T_fn_pair(cx: @crate_ctxt, tfn: TypeRef) -> TypeRef {
 
 fn T_ptr(t: TypeRef) -> TypeRef { ret llvm::LLVMPointerType(t, 0u); }
 
-fn T_struct(elts: [TypeRef]) -> TypeRef {
-    unsafe {
-        ret llvm::LLVMStructType(to_ptr(elts), vec::len(elts), False);
-    }
+fn T_struct(elts: [TypeRef]) -> TypeRef unsafe {
+    ret llvm::LLVMStructType(to_ptr(elts), vec::len(elts), False);
 }
 
 fn T_named_struct(name: str) -> TypeRef {
@@ -573,6 +571,12 @@ fn T_rust_object() -> TypeRef {
     set_struct_body(t, [e, e]);
     ret t;
 }
+
+// A dict is, in reality, a vtable pointer followed by zero or more pointers
+// to tydescs and other dicts that it closes over. But the types and number of
+// those are rarely known to the code that needs to manipulate them, so they
+// are described by this opaque type.
+fn T_dict() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
 fn T_task(targ_cfg: @session::config) -> TypeRef {
     let t = T_named_struct("task");

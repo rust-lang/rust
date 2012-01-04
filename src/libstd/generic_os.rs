@@ -28,18 +28,20 @@ fn setenv(n: str, v: str) { }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
 fn getenv(n: str) -> option::t<str> unsafe {
     let s = str::as_buf(n, {|buf| os::libc::getenv(buf) });
     ret if unsafe::reinterpret_cast(s) == 0 {
             option::none::<str>
         } else {
             let s = unsafe::reinterpret_cast(s);
-            option::some::<str>(str::str_from_cstr(s))
+            option::some::<str>(str::from_cstr(s))
         };
 }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
 fn setenv(n: str, v: str) {
     // FIXME (868)
     str::as_buf(

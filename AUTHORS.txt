@@ -26,6 +26,7 @@ Jeffrey Yasskin <jyasskin@gmail.com>
 Jesse Ruderman <jruderman@gmail.com>
 Josh Matthews <josh@joshmatthews.net>
 Joshua Wise <joshua@joshuawise.com>
+Jyun-Yan You <jyyou@cs.nctu.edu.tw>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
 Lennart Kudling
 Lindsey Kuper <lkuper@mozilla.com>

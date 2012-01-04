@@ -34,7 +34,7 @@ fn llvm_err(sess: session::session, msg: str) unsafe {
     let buf = llvm::LLVMRustGetLastError();
     if buf == ptr::null() {
         sess.fatal(msg);
-    } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
+    } else { sess.fatal(msg + ": " + str::from_cstr(buf)); }
 }
 
 fn load_intrinsics_bc(sess: session::session) -> option::t<ModuleRef> {
@@ -566,7 +566,8 @@ fn link_binary(sess: session::session,
         let rmlib =
             bind fn (config: @session::config, filename: str) -> str {
                      if config.os == session::os_macos ||
-                            config.os == session::os_linux &&
+                            (config.os == session::os_linux ||
+                             config.os == session::os_freebsd) &&
                                 str::find(filename, "lib") == 0 {
                          ret str::slice(filename, 3u,
                                         str::byte_len(filename));
@@ -580,6 +581,7 @@ fn link_binary(sess: session::session,
         ret alt config.os {
               session::os_macos. { rmext(rmlib(filename)) }
               session::os_linux. { rmext(rmlib(filename)) }
+              session::os_freebsd. { rmext(rmlib(filename)) }
               _ { rmext(filename) }
             };
     }
@@ -655,6 +657,15 @@ fn link_binary(sess: session::session,
     // and binutils 2.22+ won't add them automatically
     if sess.get_targ_cfg().os == session::os_linux {
         gcc_args += ["-lrt", "-ldl"];
+    }
+
+    if sess.get_targ_cfg().os == session::os_freebsd {
+        gcc_args += ["-lrt", "-L/usr/local/lib", "-lexecinfo",
+                     "-L/usr/local/lib/gcc46",
+                     "-L/usr/local/lib/gcc44", "-lstdc++",
+                     "-Wl,-z,origin",
+                     "-Wl,-rpath,/usr/local/lib/gcc46",
+                     "-Wl,-rpath,/usr/local/lib/gcc44"];
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the

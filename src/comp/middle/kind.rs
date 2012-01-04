@@ -44,6 +44,7 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
     let visit = visit::mk_vt(@{
         visit_expr: check_expr,
         visit_stmt: check_stmt,
+        visit_block: check_block,
         visit_fn: check_fn
         with *visit::default_visitor()
     });
@@ -117,12 +118,18 @@ fn check_fn_cap_clause(cx: ctx,
     }
 }
 
-fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
+fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
+    alt b.node.expr {
+      some(ex) { maybe_copy(cx, ex); }
+      _ {}
+    }
+    visit::visit_block(b, cx, v);
+}
 
+fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     alt e.node {
       expr_assign(_, ex) | expr_assign_op(_, _, ex) |
-      expr_block({node: {expr: some(ex), _}, _}) |
-      expr_unary(box(_), ex) | expr_unary(uniq(_), ex) { maybe_copy(cx, ex); }
+      expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
       expr_ret(some(ex)) { maybe_copy(cx, ex); }
       expr_copy(expr) { check_copy_ex(cx, expr, false); }
       // Vector add copies.
@@ -163,14 +170,14 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         alt substs.substs {
           some(ts) {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
-            let kinds = vec::map(ty::lookup_item_type(cx.tcx, did).bounds,
-                                 {|bs| ty::param_bounds_to_kind(bs)});
+            let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             let i = 0u;
             for ty in ts {
                 let kind = ty::type_kind(cx.tcx, ty);
-                if !ty::kind_lteq(kinds[i], kind) {
+                let p_kind = ty::param_bounds_to_kind(bounds[i]);
+                if !ty::kind_lteq(p_kind, kind) {
                     cx.tcx.sess.span_err(e.span, "instantiating a " +
-                                         kind_to_str(kinds[i]) +
+                                         kind_to_str(p_kind) +
                                          " type parameter with a "
                                          + kind_to_str(kind) + " type");
                 }

@@ -119,6 +119,9 @@ ifeq ($$(CFG_WINDOWSY), 1)
 else ifeq ($(CFG_OSTYPE), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/libuv.a
+else ifeq ($(CFG_OSTYPE), unknown-freebsd)
+  LIBUV_OSTYPE_$(1) := freebsd
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/libuv/libuv.a
 else
   LIBUV_OSTYPE_$(1) := unix
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/libuv/libuv.a
@@ -174,6 +177,12 @@ $$(LIBUV_LIB_$(1)): $$(wildcard \
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
 # This regexp has a single $, escaped twice
+%.bsd.def:    %.def.in $$(MKFILE_DEPS)
+	@$$(call E, def: $$@)
+	$$(Q)echo "{" > $$@
+	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
+	$$(Q)echo "};" >> $$@
+
 %.linux.def:    %.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo "{" > $$@

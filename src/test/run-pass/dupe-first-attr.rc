@@ -9,3 +9,6 @@ mod hello;
 
 #[cfg(target_os = "win32")]
 mod hello;
+
+#[cfg(target_os = "freebsd")]
+mod hello;

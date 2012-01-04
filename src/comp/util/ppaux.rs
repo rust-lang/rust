@@ -19,10 +19,6 @@ fn mode_str(m: ty::mode) -> str {
     }
 }
 
-fn mode_str_1(m: ty::mode) -> str {
-    alt m { ast::by_ref. { "ref" } _ { mode_str(m) } }
-}
-
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: middle::ty::mode, ty: t}) ->
        str {
@@ -95,6 +91,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_str. { "str" }
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
+      ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
       ty_type. { "type" }
       ty_rec(elems) {

@@ -1,4 +1,4 @@
-// error-pattern:`if` without `else` can not produce a result
+// error-pattern:mismatched types: expected `()` but found `bool`
 
 fn main() {
     let a = if true { true };

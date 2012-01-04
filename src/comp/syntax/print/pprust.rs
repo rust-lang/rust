@@ -558,11 +558,39 @@ fn print_attribute(s: ps, attr: ast::attribute) {
     word(s.s, "]");
 }
 
+// An expression that begins with a dual-form statement/expression like `{
+// ... }-10` would be parsed as `{ ... };-10` unless parentheses are used (ie,
+// `({...}-10)`).  These parentheses are not, however, preserved by the
+// parser. This function specifies whether parentheses must be inserted.
+fn stmt_expr_requires_parens(ex: @ast::expr) -> bool {
+    fn helper(ex: @ast::expr, inner: bool) -> bool {
+        alt ex.node {
+          ast::expr_call(subex, _, _) | ast::expr_binary(_, subex, _) {
+            be helper(subex, true);
+          }
+          _ when !inner { ret false; }
+          _ { ret !parse::parser::expr_requires_semi_to_be_stmt(ex); }
+        }
+    }
+    ret helper(ex, false);
+}
+
 fn print_stmt(s: ps, st: ast::stmt) {
     maybe_print_comment(s, st.span.lo);
     alt st.node {
-      ast::stmt_decl(decl, _) { print_decl(s, decl); }
-      ast::stmt_expr(expr, _) { space_if_not_bol(s); print_expr(s, expr); }
+      ast::stmt_decl(decl, _) {
+        print_decl(s, decl);
+      }
+      ast::stmt_expr(expr, _) {
+        space_if_not_bol(s);
+        if stmt_expr_requires_parens(expr) {
+            popen(s);
+            print_expr(s, expr);
+            pclose(s);
+        } else {
+            print_expr(s, expr);
+        }
+      }
     }
     if parse::parser::stmt_ends_with_semi(st) { word(s.s, ";"); }
     maybe_print_trailing_comment(s, st.span, none::<uint>);

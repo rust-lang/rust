@@ -18,16 +18,18 @@
 RECORD_SP:
 	movq %rdi, %fs:112
 	ret
-#else
-#if defined(__APPLE__)
+#elif defined(__APPLE__)
 RECORD_SP:
 	movq $0x60+90*8, %rsi
 	movq %rdi, %gs:(%rsi)
 	ret
+#elif defined(__FreeBSD__)
+RECORD_SP:
+	movq %rdi, %fs:24
+	ret
 #else
 RECORD_SP:
 	ret
-#endif
 #endif
 
 GET_SP:

@@ -129,6 +129,7 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
       session::os_win32. { ret {prefix: "", suffix: ".dll"}; }
       session::os_macos. { ret {prefix: "lib", suffix: ".dylib"}; }
       session::os_linux. { ret {prefix: "lib", suffix: ".so"}; }
+      session::os_freebsd. { ret {prefix: "lib", suffix: ".so"}; }
     }
 }
 
@@ -215,7 +216,7 @@ fn get_metadata_section(sess: session::session,
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
         let name_buf = llvm::LLVMGetSectionName(si.llsi);
-        let name = unsafe { str::str_from_cstr(name_buf) };
+        let name = unsafe { str::from_cstr(name_buf) };
         if str::eq(name, sess.get_targ_cfg().target_strs.meta_sect_name) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi);

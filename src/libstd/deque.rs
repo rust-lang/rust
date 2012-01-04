@@ -57,7 +57,7 @@ fn create<copy T>() -> t<T> {
 
         ret rv;
     }
-    fn get<T>(elts: [mutable cell<T>], i: uint) -> T {
+    fn get<copy T>(elts: [mutable cell<T>], i: uint) -> T {
         ret alt elts[i] { option::some(t) { t } _ { fail } };
     }
     obj deque<copy T>(mutable nelts: uint,

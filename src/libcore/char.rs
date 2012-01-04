@@ -41,7 +41,7 @@ export is_alphabetic,
        is_XID_start, is_XID_continue,
        is_lowercase, is_uppercase,
        is_whitespace, is_alphanumeric,
-       to_digit, maybe_digit, cmp;
+       to_digit, to_lower, to_upper, maybe_digit, cmp;
 
 import is_alphabetic = unicode::derived_property::Alphabetic;
 import is_XID_start = unicode::derived_property::XID_Start;
@@ -122,7 +122,7 @@ pure fn to_digit(c: char) -> u8 unsafe {
 }
 
 /*
- Function: to_digit
+ Function: maybe_digit
 
  Convert a char to the corresponding digit. Returns none when the
  character is not a valid hexadecimal digit.
@@ -133,6 +133,34 @@ pure fn maybe_digit(c: char) -> option::t<u8> {
       'a' to 'z' { option::some(c as u8 + 10u8 - ('a' as u8)) }
       'A' to 'Z' { option::some(c as u8 + 10u8 - ('A' as u8)) }
       _ { option::none }
+    }
+}
+
+/*
+ Function: to_lower
+
+ Convert a char to the corresponding lower case.
+
+ FIXME: works only on ASCII
+*/
+pure fn to_lower(c: char) -> char {
+    alt c {
+      'A' to 'Z' { ((c as u8) + 32u8) as char }
+      _ { c }
+    }
+}
+
+/*
+ Function: to_upper
+
+ Convert a char to the corresponding upper case.
+
+ FIXME: works only on ASCII
+*/
+pure fn to_upper(c: char) -> char {
+    alt c {
+      'a' to 'z' { ((c as u8) - 32u8) as char }
+      _ { c }
     }
 }
 

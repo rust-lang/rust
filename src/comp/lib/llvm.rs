@@ -993,7 +993,8 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       }
       10 {
         let el_ty = llvm::LLVMGetElementType(ty);
-        ret "[" + type_to_str_inner(names, outer, el_ty) + "]";
+        ret "[" + type_to_str_inner(names, outer, el_ty) + " x " +
+            uint::str(llvm::LLVMGetArrayLength(ty)) + "]";
       }
       11 {
         let i: uint = 0u;

@@ -18,7 +18,7 @@ import util::common::*;
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
 import util::ppaux::ty_constr_to_str;
-import util::ppaux::mode_str_1;
+import util::ppaux::mode_str;
 import syntax::print::pprust::*;
 
 export node_id_to_monotype;
@@ -185,7 +185,7 @@ export closure_kind;
 export closure_block;
 export closure_shared;
 export closure_send;
-export param_bound, bound_copy, bound_send, bound_iface;
+export param_bound, param_bounds, bound_copy, bound_send, bound_iface;
 export param_bounds_to_kind;
 
 // Data types
@@ -194,7 +194,9 @@ type arg = {mode: mode, ty: t};
 
 type field = {ident: ast::ident, mt: mt};
 
-type method = {ident: ast::ident, tps: [@[param_bound]], fty: fn_ty};
+type param_bounds = @[param_bound];
+
+type method = {ident: ast::ident, tps: @[param_bounds], fty: fn_ty};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
@@ -218,9 +220,9 @@ type ctxt =
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
-      tag_var_cache: hashmap<ast::def_id, @[variant_info]>,
+      tag_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
-      ty_param_bounds: hashmap<def_id, @[param_bound]>};
+      ty_param_bounds: hashmap<ast::node_id, param_bounds>};
 
 type ty_ctxt = ctxt;
 
@@ -268,7 +270,7 @@ tag sty {
     ty_tup([t]);
     ty_var(int); // type variable
 
-    ty_param(uint, @[param_bound]); // fn/tag type param
+    ty_param(uint, def_id); // fn/tag type param
 
     ty_type; // type_desc*
     ty_send_type; // type_desc* that has been cloned into exchange heap
@@ -308,7 +310,7 @@ tag param_bound {
     bound_iface(t);
 }
 
-fn param_bounds_to_kind(bounds: @[param_bound]) -> kind {
+fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     let kind = kind_noncopyable;
     for bound in *bounds {
         alt bound {
@@ -322,7 +324,7 @@ fn param_bounds_to_kind(bounds: @[param_bound]) -> kind {
     kind
 }
 
-type ty_param_bounds_and_ty = @{bounds: [@[param_bound]], ty: t};
+type ty_param_bounds_and_ty = {bounds: @[param_bounds], ty: t};
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 
@@ -439,7 +441,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
           tag_var_cache: new_def_hash(),
           iface_method_cache: new_def_hash(),
-          ty_param_bounds: new_def_hash()};
+          ty_param_bounds: map::new_int_hash()};
     populate_type_store(cx);
     ret cx;
 }
@@ -624,7 +626,7 @@ fn mk_res(cx: ctxt, did: ast::def_id, inner: t, tps: [t]) -> t {
 
 fn mk_var(cx: ctxt, v: int) -> t { ret gen_ty(cx, ty_var(v)); }
 
-fn mk_param(cx: ctxt, n: uint, k: @[param_bound]) -> t {
+fn mk_param(cx: ctxt, n: uint, k: def_id) -> t {
     ret gen_ty(cx, ty_param(n, k));
 }
 
@@ -722,7 +724,7 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
 
 tag fold_mode {
     fm_var(fn@(int) -> t);
-    fm_param(fn@(uint, @[param_bound]) -> t);
+    fm_param(fn@(uint, def_id) -> t);
     fm_general(fn@(t) -> t);
 }
 
@@ -813,8 +815,14 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_var(id) {
         alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
       }
-      ty_param(id, k) {
-        alt fld { fm_param(folder) { ty = folder(id, k); } _ {/* no-op */ } }
+      ty_param(id, did) {
+        alt fld { fm_param(folder) { ty = folder(id, did); } _ {} }
+      }
+      ty_constr(subty, cs) {
+          ty = mk_constr(cx, fold_ty(cx, fld, subty), cs);
+      }
+      _ {
+          cx.sess.fatal("Unsupported sort of type in fold_ty");
       }
     }
 
@@ -1083,7 +1091,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       }
       // Resources are always noncopyable.
       ty_res(did, inner, tps) { kind_noncopyable }
-      ty_param(_, bounds) { param_bounds_to_kind(bounds) }
+      ty_param(_, did) {
+          param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
+      }
       ty_constr(t, _) { type_kind(cx, t) }
     };
 
@@ -1131,7 +1141,7 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
     }
 }
 
-pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool {
+pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
 
     /* type_structurally_contains can't be declared pure
     because it takes a function argument. But it should be
@@ -1141,15 +1151,9 @@ pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool {
     actually checkable. It seems to me like a lot of properties
     that the type context tracks about types should be immutable.)
     */
-    unchecked{
-        type_structurally_contains(cx, ty,
-                                   fn (sty: sty) -> bool {
-                                       ret alt sty {
-                                             ty_param(_, _) { true }
-                                             _ { false }
-                                           };
-                                   })
-    }
+    type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
+        alt sty { ty_param(_, _) { true } _ { false }}
+    })
 }
 
 // Returns true for noncopyable types and types where a copy of a value can be
@@ -1464,8 +1468,6 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
 // Type lookups
 fn node_id_to_ty_param_substs_opt_and_ty(cx: ctxt, id: ast::node_id) ->
    ty_param_substs_opt_and_ty {
-
-
     // Pull out the node type table.
     alt smallintmap::find(*cx.node_types, id as uint) {
       none. {
@@ -1737,6 +1739,7 @@ mod unify {
     export ures_ok;
     export ures_err;
     export var_bindings;
+    export precise, in_bindings;
 
     tag result { ures_ok(t); ures_err(type_err); }
     tag union_result { unres_ok; unres_err(type_err); }
@@ -1747,7 +1750,11 @@ mod unify {
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
 
-    type ctxt = {vb: option::t<@var_bindings>, tcx: ty_ctxt};
+    tag unify_style {
+        precise;
+        in_bindings(@var_bindings);
+    }
+    type ctxt = {st: unify_style, tcx: ty_ctxt};
 
     fn mk_var_bindings() -> @var_bindings {
         ret @{sets: ufind::make(), types: smallintmap::mk::<t>()};
@@ -1756,7 +1763,9 @@ mod unify {
     // Unifies two sets.
     fn union(cx: @ctxt, set_a: uint, set_b: uint,
              variance: variance) -> union_result {
-        let vb = option::get(cx.vb);
+        let vb = alt cx.st {
+            in_bindings(vb) { vb }
+        };
         ufind::grow(vb.sets, float::max(set_a, set_b) + 1u);
         let root_a = ufind::find(vb.sets, set_a);
         let root_b = ufind::find(vb.sets, set_b);
@@ -1806,7 +1815,7 @@ mod unify {
     fn record_var_binding(
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
 
-        let vb = option::get(cx.vb);
+        let vb = alt cx.st { in_bindings(vb) { vb } };
         ufind::grow(vb.sets, (key as uint) + 1u);
         let root = ufind::find(vb.sets, key as uint);
         let result_type = typ;
@@ -2142,7 +2151,6 @@ mod unify {
           // If the RHS is a variable type, then just do the
           // appropriate binding.
           ty::ty_var(actual_id) {
-            assert option::is_some(cx.vb);
             let actual_n = actual_id as uint;
             alt struct(cx.tcx, expected) {
               ty::ty_var(expected_id) {
@@ -2167,7 +2175,6 @@ mod unify {
         }
         alt struct(cx.tcx, expected) {
           ty::ty_var(expected_id) {
-            assert option::is_some(cx.vb);
             // Add a binding. (`actual` can't actually be a var here.)
             alt record_var_binding_for_expected(
                 cx, expected_id, actual,
@@ -2205,7 +2212,14 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_param(_, _) { ret struct_cmp(cx, expected, actual); }
+          ty::ty_param(expected_n, _) {
+            alt struct(cx.tcx, actual) {
+              ty::ty_param(actual_n, _) when expected_n == actual_n {
+                ret ures_ok(expected);
+              }
+              _ { ret ures_err(terr_mismatch); }
+            }
+          }
           ty::ty_tag(expected_id, expected_tps) {
             alt struct(cx.tcx, actual) {
               ty::ty_tag(actual_id, actual_tps) {
@@ -2477,9 +2491,9 @@ mod unify {
           }
         }
     }
-    fn unify(expected: t, actual: t, vb: option::t<@var_bindings>,
+    fn unify(expected: t, actual: t, st: unify_style,
              tcx: ty_ctxt) -> result {
-        let cx = @{vb: vb, tcx: tcx};
+        let cx = @{st: st, tcx: tcx};
         ret unify_step(cx, expected, actual, covariant);
     }
     fn dump_var_bindings(tcx: ty_ctxt, vb: @var_bindings) {
@@ -2552,7 +2566,7 @@ mod unify {
 }
 
 fn same_type(cx: ctxt, a: t, b: t) -> bool {
-    alt unify::unify(a, b, none, cx) {
+    alt unify::unify(a, b, unify::precise, cx) {
       unify::ures_ok(_) { true }
       _ { false }
     }
@@ -2602,8 +2616,8 @@ fn type_err_to_str(err: ty::type_err) -> str {
                 "' but found one with method '" + a_meth + "'";
       }
       terr_mode_mismatch(e_mode, a_mode) {
-        ret "expected argument mode " + mode_str_1(e_mode) + " but found " +
-                mode_str_1(a_mode);
+        ret "expected argument mode " + mode_str(e_mode) + " but found " +
+                mode_str(a_mode);
       }
       terr_constr_len(e_len, a_len) {
         ret "Expected a type with " + uint::str(e_len) +
@@ -2621,25 +2635,17 @@ fn type_err_to_str(err: ty::type_err) -> str {
 
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
-fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
+fn bind_params_in_type(cx: ctxt, next_ty_var: block() -> int, typ: t,
                        ty_param_count: uint) -> {ids: [int], ty: t} {
-    let param_var_ids: @mutable [int] = @mutable [];
-    let i = 0u;
-    while i < ty_param_count { *param_var_ids += [next_ty_var()]; i += 1u; }
-    fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
-              _next_ty_var: fn@() -> int, index: uint,
-              _bounds: @[param_bound]) -> t {
-        if index < vec::len(*param_var_ids) {
-            ret mk_var(cx, param_var_ids[index]);
-        } else {
-            cx.sess.span_fatal(sp, "Unbound type parameter in callee's type");
-        }
+    let param_var_ids = [], i = 0u;
+    while i < ty_param_count { param_var_ids += [next_ty_var()]; i += 1u; }
+    let param_var_ids = @param_var_ids;
+    fn binder(cx: ctxt, param_var_ids: @[int], index: uint,
+              _did: def_id) -> t {
+        ret mk_var(cx, param_var_ids[index]);
     }
-    let new_typ =
-        fold_ty(cx,
-                fm_param(bind binder(sp, cx, param_var_ids, next_ty_var, _,
-                                     _)), typ);
-    ret {ids: *param_var_ids, ty: new_typ};
+    {ids: *param_var_ids,
+     ty: fold_ty(cx, fm_param(bind binder(cx, param_var_ids, _, _)), typ)}
 }
 
 
@@ -2647,9 +2653,8 @@ fn bind_params_in_type(sp: span, cx: ctxt, next_ty_var: fn@() -> int, typ: t,
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
     if !type_contains_params(cx, typ) { ret typ; }
-    fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint,
-                   _bounds: @[param_bound])
-       -> t {
+    fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint, _did: def_id)
+        -> t {
         // FIXME: bounds check can fail
         ret substs[idx];
     }

@@ -16,6 +16,8 @@ type t = f32;
 
 // PORT check per architecture
 
+// FIXME obtain these in a different way
+
 const radix: uint = 2u;
 
 const mantissa_digits: uint = 24u;
@@ -42,7 +44,7 @@ const infinity: f32 = 1.0_f32/0.0_f32;
 const neg_infinity: f32 = -1.0_f32/0.0_f32;
 
 /* Predicate: isNaN */
-pure fn isNaN(f: f32) -> bool { f != f }
+pure fn is_NaN(f: f32) -> bool { f != f }
 
 /* Function: add */
 pure fn add(x: f32, y: f32) -> f32 { ret x + y; }
@@ -77,29 +79,32 @@ pure fn ge(x: f32, y: f32) -> bool { ret x >= y; }
 /* Predicate: gt */
 pure fn gt(x: f32, y: f32) -> bool { ret x > y; }
 
+// FIXME replace the predicates below with llvm intrinsics or calls
+// to the libmath macros in the rust runtime for performance
+
 /*
-Predicate: positive
+Predicate: is_positive
 
 Returns true if `x` is a positive number, including +0.0f320 and +Infinity.
  */
-pure fn positive(x: f32) -> bool
+pure fn is_positive(x: f32) -> bool
     { ret x > 0.0f32 || (1.0f32/x) == infinity; }
 
 /*
-Predicate: negative
+Predicate: is_negative
 
 Returns true if `x` is a negative number, including -0.0f320 and -Infinity.
  */
-pure fn negative(x: f32) -> bool
+pure fn is_negative(x: f32) -> bool
     { ret x < 0.0f32 || (1.0f32/x) == neg_infinity; }
 
 /*
-Predicate: nonpositive
+Predicate: is_nonpositive
 
 Returns true if `x` is a negative number, including -0.0f320 and -Infinity.
 (This is the same as `f32::negative`.)
 */
-pure fn nonpositive(x: f32) -> bool {
+pure fn is_nonpositive(x: f32) -> bool {
   ret x < 0.0f32 || (1.0f32/x) == neg_infinity;
 }
 
@@ -109,9 +114,38 @@ Predicate: nonnegative
 Returns true if `x` is a positive number, including +0.0f320 and +Infinity.
 (This is the same as `f32::positive`.)
 */
-pure fn nonnegative(x: f32) -> bool {
+pure fn is_nonnegative(x: f32) -> bool {
   ret x > 0.0f32 || (1.0f32/x) == infinity;
 }
+
+/*
+Predicate: is_zero
+
+Returns true if `x` is a zero number (positive or negative zero)
+*/
+pure fn is_zero(x: f32) -> bool {
+    ret x == 0.0f32 || x == -0.0f32;
+}
+
+/*
+Predicate: is_infinite
+
+Returns true if `x`is an infinite numer
+*/
+pure fn is_infinite(x: f32) -> bool {
+    ret x == infinity || x == neg_infinity;
+}
+
+/*
+Predicate: is_finite
+
+Returns true if `x`is a finite numer
+*/
+pure fn is_finite(x: f32) -> bool {
+    ret !(is_nan(x) || is_infinite(x));
+}
+
+// FIXME add is_normal, is_subnormal, and fpclassify
 
 /* Module: consts */
 mod consts {
@@ -206,6 +240,15 @@ mod consts {
     ln(10.0)
     */
     const ln_10: f32 = 2.30258509299404568401799145468436421_f32;
+}
+
+pure fn logarithm(n: f32, b: f32) -> f32 {
+    ret ln(n) / ln(b);
+}
+
+#[cfg(target_os="freebsd")]
+pure fn log2(n: f32) -> f32 {
+    ret ln(n) / consts::ln_2;
 }
 
 //

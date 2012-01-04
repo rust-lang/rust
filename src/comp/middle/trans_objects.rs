@@ -158,7 +158,7 @@ fn trans_obj(cx: @local_ctxt, sp: span, ob: ast::_obj, ctor_id: ast::node_id,
         let typarams_ty: ty::t = ty::mk_tup(ccx.tcx, tps);
         let i: int = 0;
         for tp: ast::ty_param in ty_params {
-            let typaram = bcx.fcx.lltydescs[i];
+            let typaram = bcx.fcx.lltyparams[i].desc;
             // Silly check
             check type_is_tup_like(bcx, typarams_ty);
             let capture =
@@ -880,8 +880,9 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
       ty::ty_fn(f) {
         let out = f.output;
         check non_ty_var(ccx, out);
-        llfnty = type_of_fn(ccx, m.span, true, f.inputs, out,
-                            vec::len(ty_params));
+        llfnty = type_of_fn(
+            ccx, m.span, true, f.inputs, out,
+            vec::map(ty_params, {|p| param_bounds(ccx, p)}));
       }
     }
     let mcx: @local_ctxt =
@@ -933,7 +934,8 @@ fn type_of_meth(ccx: @crate_ctxt, sp: span, m: @ty::method,
                 tps: [ast::ty_param]) -> TypeRef {
     let out_ty = m.fty.output;
     check non_ty_var(ccx, out_ty);
-    type_of_fn(ccx, sp, true, m.fty.inputs, out_ty, vec::len(tps))
+    type_of_fn(ccx, sp, true, m.fty.inputs, out_ty,
+               vec::map(tps, {|p| param_bounds(ccx, p)}))
 }
 
 //

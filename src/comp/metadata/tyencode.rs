@@ -126,6 +126,13 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         for t: ty::t in tys { enc_ty(w, cx, t); }
         w.write_char(']');
       }
+      ty::ty_iface(def, tys) {
+        w.write_str("x[");
+        w.write_str(cx.ds(def));
+        w.write_char('|');
+        for t: ty::t in tys { enc_ty(w, cx, t); }
+        w.write_char(']');
+      }
       ty::ty_tup(ts) {
         w.write_str("T[");
         for t in ts { enc_ty(w, cx, t); }
@@ -176,9 +183,10 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_str(cx.ds(def));
         w.write_char('|');
       }
-      ty::ty_param(id, bounds) {
+      ty::ty_param(id, did) {
         w.write_char('p');
-        enc_bounds(w, cx, bounds);
+        w.write_str(cx.ds(did));
+        w.write_char('|');
         w.write_str(uint::str(id));
       }
       ty::ty_type. { w.write_char('Y'); }
@@ -265,7 +273,6 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
 
 fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]) {
     for bound in *bs {
-        w.write_char('.');
         alt bound {
           ty::bound_send. { w.write_char('S'); }
           ty::bound_copy. { w.write_char('C'); }

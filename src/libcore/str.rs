@@ -7,12 +7,12 @@ String manipulation.
 export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        byte_len_range, index,
        rindex, find, starts_with, ends_with, substr, slice, split, splitn,
-       split_str, concat, connect, to_upper, replace, char_slice, trim_left,
-       trim_right, trim, unshift_char, shift_char, pop_char, push_char,
-       is_utf8, from_chars, to_chars, char_len, char_len_range, char_at,
-       bytes, is_ascii, shift_byte, pop_byte,
+       split_str, concat, connect, to_lower, to_upper, replace, char_slice,
+       trim_left, trim_right, trim, unshift_char, shift_char, pop_char,
+       push_char, is_utf8, from_chars, to_chars, char_len, char_len_range,
+       char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
-       str_from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
+       from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
        contains, iter_chars, loop_chars, loop_chars_sub,
        escape;
 
@@ -116,14 +116,7 @@ Function: is_whitespace
 Returns true if the string contains only whitespace
 */
 fn is_whitespace(s: str) -> bool {
-    let i = 0u;
-    let len = char_len(s);
-    while i < len {
-        // FIXME: This is not how char_at works
-        if !char::is_whitespace(char_at(s, i)) { ret false; }
-        i += 1u;
-    }
-    ret true;
+    ret loop_chars(s, char::is_whitespace);
 }
 
 /*
@@ -832,7 +825,18 @@ fn connect(v: [str], sep: str) -> str {
     ret s;
 }
 
-// FIXME: This only handles ASCII
+/*
+Function: to_lower
+
+Convert a string to lowercase
+*/
+fn to_lower(s: str) -> str {
+    let outstr = "";
+    iter_chars(s) { |c|
+        push_char(outstr, char::to_lower(c));
+    }
+    ret outstr;
+}
 /*
 Function: to_upper
 
@@ -840,15 +844,8 @@ Convert a string to uppercase
 */
 fn to_upper(s: str) -> str {
     let outstr = "";
-    let ascii_a = 'a' as u8;
-    let ascii_z = 'z' as u8;
-    let diff = 32u8;
-    for byte: u8 in s {
-        let next;
-        if ascii_a <= byte && byte <= ascii_z {
-            next = byte - diff;
-        } else { next = byte; }
-        push_byte(outstr, next);
+    iter_chars(s) { |c|
+        push_char(outstr, char::to_upper(c));
     }
     ret outstr;
 }
@@ -976,11 +973,11 @@ fn as_buf<T>(s: str, f: block(sbuf) -> T) -> T unsafe {
 }
 
 /*
-Function: str_from_cstr
+Function: from_cstr
 
 Create a Rust string from a null-terminated C string
 */
-unsafe fn str_from_cstr(cstr: sbuf) -> str {
+unsafe fn from_cstr(cstr: sbuf) -> str {
     let res = "";
     let start = cstr;
     let curr = start;

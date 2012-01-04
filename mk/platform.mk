@@ -24,14 +24,15 @@ endif
 ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
   CFG_LIB_GLOB=lib$(1)-*.so
-  CFG_GCCISH_CFLAGS += -fPIC -march=i686 -I/usr/local/include
+  CFG_GCCISH_CFLAGS += -fPIC -I/usr/local/include
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
-  ifeq ($(CFG_CPUTYPE), x86_64)
-	CFG_GCCISH_CFLAGS_i386 += -m32
-	CFG_GCCISH_LINK_FLAGS_i386 += -m32
-	CFG_GCCISH_CFLAGS_x86_64 += -m32
-	CFG_GCCISH_LINK_FLAGS_x86_64 += -m32
-  endif
+  CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
+  CFG_GCCISH_PRE_LIB_FLAGS := -Wl,-whole-archive
+  CFG_GCCISH_POST_LIB_FLAGS := -Wl,-no-whole-archive
+  CFG_GCCISH_CFLAGS_i386 += -m32
+  CFG_GCCISH_LINK_FLAGS_i386 += -m32
+  CFG_GCCISH_CFLAGS_x86_64 += -m64
+  CFG_GCCISH_LINK_FLAGS_x86_64 += -m64
   CFG_UNIXY := 1
   CFG_LDENV := LD_LIBRARY_PATH
   CFG_DEF_SUFFIX := .bsd.def

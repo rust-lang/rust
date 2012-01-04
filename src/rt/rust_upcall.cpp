@@ -20,7 +20,7 @@
 // the rust stack and happen frequently enough to catch most stack changes,
 // including at the beginning of all landing pads.
 // FIXME: Enable this for windows
-#if defined __linux__ || defined __APPLE__
+#if defined __linux__ || defined __APPLE__ || defined __FreeBSD__
 extern "C" void
 check_stack_alignment() __attribute__ ((aligned (16)));
 #else

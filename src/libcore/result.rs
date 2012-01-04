@@ -37,7 +37,7 @@ Failure:
 
 If the result is an error
 */
-fn get<T, U>(res: t<T, U>) -> T {
+fn get<copy T, U>(res: t<T, U>) -> T {
     alt res {
       ok(t) { t }
       err(_) {
@@ -57,7 +57,7 @@ Failure:
 
 If the result is not an error
 */
-fn get_err<T, U>(res: t<T, U>) -> U {
+fn get_err<T, copy U>(res: t<T, U>) -> U {
     alt res {
       err(u) { u }
       ok(_) {

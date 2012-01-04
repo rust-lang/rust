@@ -2,17 +2,38 @@ import core::*;
 
 use std;
 import std::list;
-import std::list::head;
-import std::list::tail;
-import std::list::from_vec;
+import std::list::{from_vec, head, is_empty, is_not_empty, tail};
 import option;
+
+#[test]
+fn test_is_empty() {
+    let empty : list::list<int> = from_vec([]);
+    let full1 = from_vec([1]);
+    let full2 = from_vec(['r', 'u']);
+
+    assert is_empty(empty);
+    assert !is_empty(full1);
+    assert !is_empty(full2);
+
+    assert !is_not_empty(empty);
+    assert is_not_empty(full1);
+    assert is_not_empty(full2);
+}
 
 #[test]
 fn test_from_vec() {
     let l = from_vec([0, 1, 2]);
+
+    check is_not_empty(l);
     assert (head(l) == 0);
-    assert (head(tail(l)) == 1);
-    assert (head(tail(tail(l))) == 2);
+
+    let tail_l = tail(l);
+    check is_not_empty(tail_l);
+    assert (head(tail_l) == 1);
+
+    let tail_tail_l = tail(tail_l);
+    check is_not_empty(tail_tail_l);
+    assert (head(tail_tail_l) == 2);
 }
 
 #[test]
@@ -24,9 +45,17 @@ fn test_from_vec_empty() {
 #[test]
 fn test_from_vec_mut() {
     let l = from_vec([mutable 0, 1, 2]);
+
+    check is_not_empty(l);
     assert (head(l) == 0);
-    assert (head(tail(l)) == 1);
-    assert (head(tail(tail(l))) == 2);
+
+    let tail_l = tail(l);
+    check is_not_empty(tail_l);
+    assert (head(tail_l) == 1);
+
+    let tail_tail_l = tail(tail_l);
+    check is_not_empty(tail_tail_l);
+    assert (head(tail_tail_l) == 2);
 }
 
 #[test]

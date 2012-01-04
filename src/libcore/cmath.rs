@@ -5,6 +5,9 @@ import ctypes::c_int;
 import ctypes::c_float;
 import ctypes::c_double;
 
+// function names are almost identical to C's libmath, a few have been
+// renamed, grep for "rename:"
+
 #[link_name = "m"]
 #[abi = "cdecl"]
 native mod c_double {
@@ -26,8 +29,10 @@ native mod c_double {
     pure fn expm1(n: c_double) -> c_double;
     pure fn exp2(n: c_double) -> c_double;
     #[link_name="fabs"] pure fn abs(n: c_double) -> c_double;
-    #[link_name="fdim"] pure fn sub_pos(a: c_double, b: c_double) -> c_double;
+    // rename: for clarity and consistency with add/sub/mul/div
+    #[link_name="fdim"] pure fn abs_sub(a: c_double, b: c_double) -> c_double;
     pure fn floor(n: c_double) -> c_double;
+    // rename: for clarity and consistency with add/sub/mul/div
     #[link_name="fma"] pure fn mul_add(a: c_double, b: c_double,
                                        c: c_double) -> c_double;
     #[link_name="fmax"] pure fn fmax(a: c_double, b: c_double) -> c_double;
@@ -38,17 +43,26 @@ native mod c_double {
     pure fn ldexp(x: c_double, n: c_int) -> c_double;
     #[link_name="lgamma_r"] pure fn lgamma(n: c_double,
                                            &sign: c_int) -> c_double;
+    // renamed: log is a reserved keyword; ln seems more natural, too
     #[link_name="log"] pure fn ln(n: c_double) -> c_double;
-    pure fn logb(n: c_double) -> c_double;
+    // renamed: "logb" /often/ is confused for log2 by beginners
+    #[link_name="logb"] pure fn log_radix(n: c_double) -> c_double;
+    // renamed: to be consitent with log as ln
     #[link_name="log1p"] pure fn ln1p(n: c_double) -> c_double;
     pure fn log10(n: c_double) -> c_double;
+    #[cfg(target_os="linux")]
+    #[cfg(target_os="macos")]
+    #[cfg(target_os="win32")]
     pure fn log2(n: c_double) -> c_double;
-    pure fn ilogb(n: c_double) -> c_int;
+    #[link_name="ilogb"] pure fn ilogradix(n: c_double) -> c_int;
     pure fn modf(n: c_double, &iptr: c_double) -> c_double;
     pure fn pow(n: c_double, e: c_double) -> c_double;
-    pure fn rint(n: c_double) -> c_double;
+// FIXME enable when rounding modes become available
+//    pure fn rint(n: c_double) -> c_double;
     pure fn round(n: c_double) -> c_double;
-    pure fn scalbn(n: c_double, i: c_int) -> c_double;
+    // rename: for consistency with logradix
+    #[link_name="scalbn"] pure fn ldexp_radix(n: c_double, i: c_int) ->
+        c_double;
     pure fn sin(n: c_double) -> c_double;
     pure fn sinh(n: c_double) -> c_double;
     pure fn sqrt(n: c_double) -> c_double;
@@ -90,7 +104,7 @@ native mod c_float {
     #[link_name="expm1f"]pure fn expm1(n: c_float) -> c_float;
     #[link_name="exp2f"] pure fn exp2(n: c_float) -> c_float;
     #[link_name="fabsf"] pure fn abs(n: c_float) -> c_float;
-    #[link_name="fdimf"] pure fn sub_pos(a: c_float, b: c_float) -> c_float;
+    #[link_name="fdimf"] pure fn abs_sub(a: c_float, b: c_float) -> c_float;
     #[link_name="floorf"] pure fn floor(n: c_float) -> c_float;
     #[link_name="frexpf"] pure fn frexp(n: c_float,
                                         &value: c_int) -> c_float;
@@ -105,17 +119,21 @@ native mod c_float {
     #[link_name="lgammaf_r"] pure fn lgamma(n: c_float,
                                             &sign: c_int) -> c_float;
     #[link_name="logf"] pure fn ln(n: c_float) -> c_float;
-    #[link_name="logbf"] pure fn logb(n: c_float) -> c_float;
+    #[link_name="logbf"] pure fn log_radix(n: c_float) -> c_float;
     #[link_name="log1pf"] pure fn ln1p(n: c_float) -> c_float;
+    #[cfg(target_os="linux")]
+    #[cfg(target_os="macos")]
+    #[cfg(target_os="win32")]
     #[link_name="log2f"] pure fn log2(n: c_float) -> c_float;
     #[link_name="log10f"] pure fn log10(n: c_float) -> c_float;
-    #[link_name="ilogbf"] pure fn ilogb(n: c_float) -> c_int;
+    #[link_name="ilogbf"] pure fn ilog_radix(n: c_float) -> c_int;
     #[link_name="modff"] pure fn modf(n: c_float,
                                       &iptr: c_float) -> c_float;
     #[link_name="powf"] pure fn pow(n: c_float, e: c_float) -> c_float;
-    #[link_name="rintf"] pure fn rint(n: c_float) -> c_float;
+// FIXME enable when rounding modes become available
+//    #[link_name="rintf"] pure fn rint(n: c_float) -> c_float;
     #[link_name="roundf"] pure fn round(n: c_float) -> c_float;
-    #[link_name="scalbnf"] pure fn scalbn(n: c_float, i: c_int) -> c_float;
+    #[link_name="scalbnf"] pure fn ldexp_radix(n: c_float, i: c_int) -> c_float;
     #[link_name="sinf"] pure fn sin(n: c_float) -> c_float;
     #[link_name="sinhf"] pure fn sinh(n: c_float) -> c_float;
     #[link_name="sqrtf"] pure fn sqrt(n: c_float) -> c_float;

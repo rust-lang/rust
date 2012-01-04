@@ -33,7 +33,13 @@ snapshot_files = {
               "lib/std-*.dll",
               "lib/rustc-*.dll",
               "lib/rustrt.dll",
-              "lib/rustllvm.dll"]
+              "lib/rustllvm.dll"],
+    "freebsd": ["bin/rustc",
+                "lib/libcore-*.so",
+                "lib/libstd-*.so",
+                "lib/librustc-*.so",
+                "lib/librustrt.so",
+                "lib/librustllvm.so"]
     }
 
 def parse_line(n, line):
@@ -73,6 +79,8 @@ def get_kernel(triple):
         return "winnt"
     if os_name == "darwin":
         return "macos"
+    if os_name == "freebsd":
+        return "freebsd"
     return "linux"
 
 def get_cpu(triple):
