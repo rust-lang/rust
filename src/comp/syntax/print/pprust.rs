@@ -558,22 +558,6 @@ fn print_attribute(s: ps, attr: ast::attribute) {
     word(s.s, "]");
 }
 
-// An expression that begins with a dual-form statement/expression like `{
-// ... }-10` would be parsed as `{ ... };-10` unless parentheses are used (ie,
-// `({...}-10)`).  These parentheses are not, however, preserved by the
-// parser. This function specifies whether parentheses must be inserted.
-fn stmt_expr_requires_parens(ex: @ast::expr) -> bool {
-    fn helper(ex: @ast::expr, inner: bool) -> bool {
-        alt ex.node {
-          ast::expr_call(subex, _, _) | ast::expr_binary(_, subex, _) {
-            be helper(subex, true);
-          }
-          _ when !inner { ret false; }
-          _ { ret !parse::parser::expr_requires_semi_to_be_stmt(ex); }
-        }
-    }
-    ret helper(ex, false);
-}
 
 fn print_stmt(s: ps, st: ast::stmt) {
     maybe_print_comment(s, st.span.lo);
@@ -583,13 +567,7 @@ fn print_stmt(s: ps, st: ast::stmt) {
       }
       ast::stmt_expr(expr, _) {
         space_if_not_bol(s);
-        if stmt_expr_requires_parens(expr) {
-            popen(s);
-            print_expr(s, expr);
-            pclose(s);
-        } else {
-            print_expr(s, expr);
-        }
+        print_tl_expr(s, expr);
       }
     }
     if parse::parser::stmt_ends_with_semi(st) { word(s.s, ";"); }
@@ -626,7 +604,7 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
     alt blk.node.expr {
       some(expr) {
         space_if_not_bol(s);
-        print_expr(s, expr);
+        print_tl_expr(s, expr);
         maybe_print_trailing_comment(s, expr.span, some(blk.span.hi));
       }
       _ { }
@@ -711,6 +689,37 @@ fn print_mac(s: ps, m: ast::mac) {
         print_possibly_embedded_block(s, blk, block_normal, indent_unit);
       }
       ast::mac_ellipsis. { word(s.s, "..."); }
+    }
+}
+
+// An expression that begins with a dual-form statement/expression like `{
+// ... }-10` would be parsed as `{ ... };-10` unless parentheses are used (ie,
+// `({...}-10)`).  These parentheses are not, however, preserved by the
+// parser. This function specifies whether parentheses must be inserted.
+fn print_tl_expr(s: ps, &&expr: @ast::expr) {
+    fn stmt_expr_requires_parens(ex: @ast::expr) -> bool {
+        fn helper(ex: @ast::expr, inner: bool) -> bool {
+            log(debug, ("helper", ex, inner));
+            if inner && !parse::parser::expr_requires_semi_to_be_stmt(ex) {
+                ret true;
+            }
+            alt ex.node {
+              ast::expr_call(subex, _, _) | ast::expr_binary(_, subex, _) {
+                be helper(subex, true);
+              }
+              _ { ret false; }
+            }
+        }
+        ret helper(ex, false);
+    }
+
+    #debug("print_tl_expr %s", expr_to_str(expr));
+    if stmt_expr_requires_parens(expr) {
+        popen(s);
+        print_expr(s, expr);
+        pclose(s);
+    } else {
+        print_expr(s, expr);
     }
 }
 
@@ -1380,15 +1389,8 @@ fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
       ast::expr_binary(op, _, _) { operator_prec(op) < outer_prec }
       ast::expr_cast(_, _) { parse::parser::as_prec < outer_prec }
       ast::expr_ternary(_, _, _) { parse::parser::ternary_prec < outer_prec }
-
-
-
-
-
       // This may be too conservative in some cases
-      ast::expr_assign(_, _) {
-        true
-      }
+      ast::expr_assign(_, _) { true }
       ast::expr_move(_, _) { true }
       ast::expr_swap(_, _) { true }
       ast::expr_assign_op(_, _, _) { true }
