@@ -50,12 +50,14 @@ fn comma_str(args: [@constr_arg_use]) -> str {
 fn constraint_to_str(tcx: ty::ctxt, c: sp_constr) -> str {
     alt c.node {
       ninit(id, i) {
-        ret #fmt("init(%s id=%d [%s])",
+        ret #fmt("init(%s id=%d - arising from %s)",
                  i, id, tcx.sess.span_str(c.span));
       }
       npred(p, _, args) {
-        ret path_to_str(p) + "(" + comma_str(args) + ")" + "[" +
-                tcx.sess.span_str(c.span) + "]";
+          ret #fmt("%s(%s) - arising from %s",
+                   path_to_str(p),
+                   comma_str(args),
+                   tcx.sess.span_str(c.span));
       }
     }
 }
