@@ -42,7 +42,16 @@ fn run_cfail_test(cx: cx, props: test_props, testfile: str) {
     }
 
     check_correct_failure_status(procres);
-    check_error_patterns(props, testfile, procres);
+
+    let expected_errors = errors::load_errors(testfile);
+    if vec::is_not_empty(expected_errors) {
+        if vec::is_not_empty(props.error_patterns) {
+            fatal("both error pattern and expected errors specified");
+        }
+        check_expected_errors(expected_errors, testfile, procres);
+    } else {
+        check_error_patterns(props, testfile, procres);
+    }
 }
 
 fn run_rfail_test(cx: cx, props: test_props, testfile: str) {
@@ -181,7 +190,9 @@ actual:\n\
     }
 }
 
-fn check_error_patterns(props: test_props, testfile: str, procres: procres) {
+fn check_error_patterns(props: test_props,
+                        testfile: str,
+                        procres: procres) {
     if vec::is_empty(props.error_patterns) {
         fatal("no error pattern specified in " + testfile);
     }
@@ -215,6 +226,60 @@ fn check_error_patterns(props: test_props, testfile: str, procres: procres) {
             error(#fmt["error pattern '%s' not found!", pattern]);
         }
         fatal_procres("multiple error patterns not found", procres);
+    }
+}
+
+fn check_expected_errors(expected_errors: [errors::expected_error],
+                         testfile: str,
+                         procres: procres) {
+
+    // true if we found the error in question
+    let found_flags = vec::init_elt_mut(false, vec::len(expected_errors));
+
+    if procres.status == 0 {
+        fatal("process did not return an error status");
+    }
+
+    // Scan and extract our error/warning messages,
+    // which look like:
+    //    filename:line1:col1: line2:col2: *error:* msg
+    //    filename:line1:col1: line2:col2: *warning:* msg
+    // where line1:col1: is the starting point, line2:col2:
+    // is the ending point, and * represents ANSI color codes.
+    for line: str in str::split(procres.stdout, '\n' as u8) {
+        let was_expected = false;
+        vec::iteri(expected_errors) {|i, ee|
+            if !found_flags[i] {
+                let needle = #fmt("%s:%u:", testfile, ee.line);
+                #debug["needle=%s ee.kind=%s ee.msg=%s line=%s",
+                       needle, ee.kind, ee.msg, line];
+                if (str::contains(line, needle) &&
+                    str::contains(line, ee.kind) &&
+                    str::contains(line, ee.msg)) {
+                    found_flags[i] = true;
+                    was_expected = true;
+                }
+            }
+        }
+
+        // ignore this msg which gets printed at the end
+        if str::contains(line, "aborting due to previous errors") {
+            was_expected = true;
+        }
+
+        if !was_expected && (str::contains(line, "error") ||
+                             str::contains(line, "warning")) {
+            fatal_procres(#fmt["unexpected error pattern '%s'!", line],
+                          procres);
+        }
+    }
+
+    uint::range(0u, vec::len(found_flags)) {|i|
+        if !found_flags[i] {
+            let ee = expected_errors[i];
+            fatal_procres(#fmt["expected %s on line %u not found: %s",
+                               ee.kind, ee.line, ee.msg], procres);
+        }
     }
 }
 
