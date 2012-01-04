@@ -103,6 +103,24 @@ pure fn to_result<copy T, copy U>(eith: t<T, U>) -> result::t<U, T> {
     }
 }
 
+/*
+Function: is_left
+
+Checks whether the given value is a left
+*/
+pure fn is_left<T, U>(eith: t<T, U>) -> bool {
+    alt eith { left(_) { true } _ { false } }
+}
+
+/*
+Function: is_left
+
+Checks whether the given value is a right
+*/
+pure fn is_right<T, U>(eith: t<T, U>) -> bool {
+    alt eith { right(_) { true } _ { false } }
+}
+
 //
 // Local Variables:
 // mode: rust
