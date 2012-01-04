@@ -240,6 +240,10 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
         fatal("process did not return an error status");
     }
 
+    let prefixes = vec::map(expected_errors, {|ee|
+        #fmt("%s:%u:", testfile, ee.line)
+    });
+
     // Scan and extract our error/warning messages,
     // which look like:
     //    filename:line1:col1: line2:col2: *error:* msg
@@ -250,10 +254,9 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
         let was_expected = false;
         vec::iteri(expected_errors) {|i, ee|
             if !found_flags[i] {
-                let needle = #fmt("%s:%u:", testfile, ee.line);
-                #debug["needle=%s ee.kind=%s ee.msg=%s line=%s",
-                       needle, ee.kind, ee.msg, line];
-                if (str::contains(line, needle) &&
+                #debug["prefix=%s ee.kind=%s ee.msg=%s line=%s",
+                       prefixes[i], ee.kind, ee.msg, line];
+                if (str::starts_with(line, prefixes[i]) &&
                     str::contains(line, ee.kind) &&
                     str::contains(line, ee.msg)) {
                     found_flags[i] = true;
