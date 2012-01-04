@@ -324,8 +324,9 @@ fn node_id_to_poststate(ccx: crate_ctxt, id: node_id) -> poststate {
 fn stmt_to_ann(ccx: crate_ctxt, s: stmt) -> ts_ann {
     #debug("stmt_to_ann");
     alt s.node {
-      stmt_decl(_, id) { ret node_id_to_ts_ann(ccx, id); }
-      stmt_expr(_, id) { ret node_id_to_ts_ann(ccx, id); }
+      stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
+        ret node_id_to_ts_ann(ccx, id);
+      }
     }
 }
 

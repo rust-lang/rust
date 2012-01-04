@@ -14,14 +14,9 @@ fn collect_ids_block(b: blk, rs: @mutable [node_id]) { *rs += [b.node.id]; }
 
 fn collect_ids_stmt(s: @stmt, rs: @mutable [node_id]) {
     alt s.node {
-      stmt_decl(_, id) {
+      stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
         log(debug, "node_id " + int::str(id));
-        log_stmt(*s);;
-        *rs += [id];
-      }
-      stmt_expr(_, id) {
-        log(debug, "node_id " + int::str(id));
-        log_stmt(*s);;
+        log_stmt(*s);
         *rs += [id];
       }
       _ { }

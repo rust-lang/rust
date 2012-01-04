@@ -1639,13 +1639,6 @@ fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     }
 }
 
-fn stmt_to_expr(stmt: @ast::stmt) -> option::t<@ast::expr> {
-    alt stmt.node {
-      ast::stmt_expr(e, _) { some(e) }
-      _ { none }
-    }
-}
-
 fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
     alt stmt.node {
       ast::stmt_decl(d, _) {
@@ -1656,6 +1649,9 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
       }
       ast::stmt_expr(e, _) {
         ret expr_requires_semi_to_be_stmt(e);
+      }
+      ast::stmt_semi(e, _) {
+        ret false;
       }
     }
 }
@@ -1695,11 +1691,16 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
           }
           _ {
             let stmt = parse_stmt(p);
-            alt stmt_to_expr(stmt) {
-              some(e) {
+            alt stmt.node {
+              ast::stmt_expr(e, stmt_id) { // Expression without semicolon:
                 alt p.peek() {
-                  token::SEMI. { p.bump(); stmts += [stmt]; }
-                  token::RBRACE. { expr = some(e); }
+                  token::SEMI. {
+                    p.bump();
+                    stmts += [@{node: ast::stmt_semi(e, stmt_id) with *stmt}];
+                  }
+                  token::RBRACE. {
+                    expr = some(e);
+                  }
                   t {
                     if stmt_ends_with_semi(*stmt) {
                         p.fatal("expected ';' or '}' after expression but \
@@ -1710,8 +1711,8 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
                   }
                 }
               }
-              none. {
-                // Not an expression statement.
+
+              _ { // All other kinds of statements:
                 stmts += [stmt];
 
                 if stmt_ends_with_semi(*stmt) {

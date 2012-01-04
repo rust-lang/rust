@@ -569,6 +569,11 @@ fn print_stmt(s: ps, st: ast::stmt) {
         space_if_not_bol(s);
         print_tl_expr(s, expr);
       }
+      ast::stmt_semi(expr, _) {
+        space_if_not_bol(s);
+        print_tl_expr(s, expr);
+        word(s.s, ";");
+      }
     }
     if parse::parser::stmt_ends_with_semi(st) { word(s.s, ";"); }
     maybe_print_trailing_comment(s, st.span, none::<uint>);

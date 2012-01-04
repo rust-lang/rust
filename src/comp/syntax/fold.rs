@@ -272,8 +272,9 @@ fn noop_fold_block(b: blk_, fld: ast_fold) -> blk_ {
 
 fn noop_fold_stmt(s: stmt_, fld: ast_fold) -> stmt_ {
     ret alt s {
-          stmt_decl(d, nid) { stmt_decl(fld.fold_decl(d), nid) }
-          stmt_expr(e, nid) { stmt_expr(fld.fold_expr(e), nid) }
+      stmt_decl(d, nid) { stmt_decl(fld.fold_decl(d), nid) }
+      stmt_expr(e, nid) { stmt_expr(fld.fold_expr(e), nid) }
+      stmt_semi(e, nid) { stmt_semi(fld.fold_expr(e), nid) }
     };
 }
 

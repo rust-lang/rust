@@ -4053,7 +4053,9 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     debuginfo::update_source_pos(cx, s.span);
 
     alt s.node {
-      ast::stmt_expr(e, _) { bcx = trans_expr(cx, e, ignore); }
+      ast::stmt_expr(e, _) | ast::stmt_semi(e, _) {
+        bcx = trans_expr(cx, e, ignore);
+      }
       ast::stmt_decl(d, _) {
         alt d.node {
           ast::decl_local(locals) {

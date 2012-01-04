@@ -1660,8 +1660,9 @@ fn expr_is_lval(method_map: typeck::method_map, tcx: ty::ctxt,
 
 fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     alt s.node {
-      ast::stmt_decl(_, id) { ret id; }
-      ast::stmt_expr(_, id) { ret id; }
+      ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
+        ret id;
+      }
     }
 }
 

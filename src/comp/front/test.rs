@@ -318,7 +318,7 @@ fn mk_test_wrapper(cx: test_ctxt,
     };
 
     let call_stmt: ast::stmt = nospan(
-        ast::stmt_expr(@call_expr, cx.sess.next_node_id()));
+        ast::stmt_semi(@call_expr, cx.sess.next_node_id()));
 
     let wrapper_decl: ast::fn_decl = {
         inputs: [],

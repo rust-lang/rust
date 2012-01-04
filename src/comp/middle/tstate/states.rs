@@ -664,7 +664,7 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
           }
         }
       }
-      stmt_expr(ex, _) {
+      stmt_expr(ex, _) | stmt_semi(ex, _) {
         let changed =
             find_pre_post_state_expr(fcx, pres, ex) |
                 set_prestate(stmt_ann, expr_prestate(fcx.ccx, ex)) |

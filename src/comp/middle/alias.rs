@@ -155,7 +155,7 @@ fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
                 }
             }
           }
-          ast::stmt_expr(ex, _) {
+          ast::stmt_expr(ex, _) | ast::stmt_semi(ex, _) {
             v.visit_expr(ex, sc, v);
           }
         }
