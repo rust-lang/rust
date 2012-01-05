@@ -9,7 +9,8 @@ import task;
 
 fn main() {
     let p = comm::port();
-    let t = task::spawn(chan(p), child);
+    let ch = comm::chan(p);
+    let t = task::spawn {|| child(ch); };
     let y = recv(p);
     #error("received");
     log(error, y);

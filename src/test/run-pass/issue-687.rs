@@ -15,8 +15,7 @@ fn producer(c: chan<[u8]>) {
     send(c, empty);
 }
 
-fn packager(&&args: (chan<chan<[u8]>>, chan<msg>)) {
-    let (cb, msg) = args;
+fn packager(cb: chan<chan<[u8]>>, msg: chan<msg>) {
     let p: port<[u8]> = port();
     send(cb, chan(p));
     while true {
@@ -39,11 +38,13 @@ fn packager(&&args: (chan<chan<[u8]>>, chan<msg>)) {
 
 fn main() {
     let p: port<msg> = port();
+    let ch = chan(p);
     let recv_reader: port<chan<[u8]>> = port();
-    let pack = task::spawn((chan(recv_reader), chan(p)), packager);
+    let recv_reader_chan = chan(recv_reader);
+    let pack = task::spawn {|| packager(recv_reader_chan, ch); };
 
     let source_chan: chan<[u8]> = recv(recv_reader);
-    let prod = task::spawn(source_chan, producer);
+    let prod = task::spawn {|| producer(source_chan); };
 
     while true {
         let msg = recv(p);

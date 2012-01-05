@@ -2,12 +2,12 @@
 use std;
 import task;
 
-fn f(&&_i: ()) {
+fn f() {
     task::unsupervise();
     let a = ~0;
     fail;
 }
 
 fn main() {
-    task::spawn((), f);
+    task::spawn {|| f(); };
 }

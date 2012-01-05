@@ -4,7 +4,10 @@ use std;
 
 import task;
 
-fn main() { let t = task::spawn_joinable(10, child); task::join(t); }
+fn main() {
+    let t = task::spawn_joinable {|| child(10); };
+    task::join(t);
+}
 
 fn child(&&i: int) { log(error, i); assert (i == 10); }
 

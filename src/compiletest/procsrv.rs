@@ -40,14 +40,13 @@ type response = {pid: pid_t, infd: fd_t,
 
 fn mk() -> handle {
     let setupport = port();
-    let task = task::spawn_joinable(
-        chan(setupport),
-        fn (setupchan: chan<chan<request>>) {
-            let reqport = port();
-            let reqchan = chan(reqport);
-            send(setupchan, reqchan);
-            worker(reqport);
-        });
+    let setupchan = chan(setupport);
+    let task = task::spawn_joinable {||
+        let reqport = port();
+        let reqchan = chan(reqport);
+        send(setupchan, reqchan);
+        worker(reqport);
+    };
     ret {task: option::some(task), chan: recv(setupport)};
 }
 

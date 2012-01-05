@@ -12,16 +12,17 @@ fn starship(&&ch: comm::chan<str>) {
     }
 }
 
-fn starbase(&&_args: ()) {
+fn starbase() {
     int::range(0, 10) { |_i|
         let p = comm::port();
-        task::spawn(comm::chan(p), starship);
+        let c = comm::chan(p);
+        task::spawn {|| starship(c);};
         task::yield();
     }
 }
 
 fn main() {
     int::range(0, 10) { |_i|
-        task::spawn((), starbase);
+        task::spawn {|| starbase();};
     }
 }

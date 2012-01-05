@@ -16,6 +16,6 @@ fn f(c: comm::chan<bool>) {
 fn main() {
     let p = comm::port();
     let c = comm::chan(p);
-    task::spawn(c, f);
+    task::spawn {|| f(c); };
     assert comm::recv(p);
 }

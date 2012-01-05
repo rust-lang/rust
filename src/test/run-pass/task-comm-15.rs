@@ -3,10 +3,12 @@ use std;
 import comm;
 import task;
 
-fn start(&&args: (comm::chan<int>, int)) {
-    let (c, i) = args;
-
-    while i > 0 { comm::send(c, 0); i = i - 1; }
+fn start(c: comm::chan<int>, i0: int) {
+    let i = i0;
+    while i > 0 {
+        comm::send(c, 0);
+        i = i - 1;
+    }
 }
 
 fn main() {
@@ -15,6 +17,7 @@ fn main() {
     // is likely to terminate before the child completes, so from
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
-    let child = task::spawn((comm::chan(p), 10), start);
+    let ch = comm::chan(p);
+    let child = task::spawn {|| start(ch, 10); };
     let c = comm::recv(p);
 }

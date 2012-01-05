@@ -12,12 +12,12 @@ import task;
 
 type ctx = comm::chan<int>;
 
-fn iotask(&&args: (ctx, str)) {
-    let (cx, ip) = args;
+fn iotask(cx: ctx, ip: str) {
     assert (str::eq(ip, "localhost"));
 }
 
 fn main() {
     let p = comm::port::<int>();
-    task::spawn((comm::chan(p), "localhost"), iotask);
+    let ch = comm::chan(p);
+    task::spawn {|| iotask(ch, "localhost"); };
 }

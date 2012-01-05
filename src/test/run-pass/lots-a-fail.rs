@@ -4,17 +4,17 @@ import task;
 import comm;
 import uint;
 
-fn die(&&_i: ()) {
+fn die() {
     fail;
 }
 
-fn iloop(&&_i: ()) {
+fn iloop() {
     task::unsupervise();
-    task::spawn((), die);
+    task::spawn {|| die(); };
 }
 
 fn main() {
     uint::range(0u, 100u) {|_i|
-        task::spawn((), iloop);
+        task::spawn {|| iloop(); };
     }
 }

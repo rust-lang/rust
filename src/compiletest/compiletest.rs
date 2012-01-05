@@ -193,21 +193,21 @@ fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn@()) ->
    test::joinable {
     testfn();
     let testfile = recv(configport);
-
-    ret task::spawn_joinable(
-        (cx.config, cx.procsrv.chan, testfile), run_test_task);
+    let (config, chan) = (cx.config, cx.procsrv.chan);
+    ret task::spawn_joinable {||
+        run_test_task(config, chan, testfile);
+    };
 }
 
-fn run_test_task(args: (common::config, procsrv::reqchan, [u8])) {
-
-    let (config, procsrv_chan, testfile) = args;
-
+fn run_test_task(config: common::config,
+                 procsrv_chan: procsrv::reqchan,
+                 testfile: [u8]) {
     test::configure_test_task();
 
     let procsrv = procsrv::from_chan(procsrv_chan);
     let cx = {config: config, procsrv: procsrv};
 
-    runtest::run(cx, testfile);
+    runtest::run(cx, copy testfile);
 }
 
 // Local Variables:

@@ -9,7 +9,7 @@
 use std;
 import task;
 
-fn supervised(&&_args: ()) {
+fn supervised() {
     // Yield to make sure the supervisor joins before we
     // fail. This is currently not needed because the supervisor
     // runs first, but I can imagine that changing.
@@ -17,17 +17,17 @@ fn supervised(&&_args: ()) {
     fail;
 }
 
-fn supervisor(&&_args: ()) {
+fn supervisor() {
     // Unsupervise this task so the process doesn't return a failure status as
     // a result of the main task being killed.
     task::unsupervise();
     let f = supervised;
-    let t = task::spawn_joinable((), supervised);
+    let t = task::spawn_joinable {|| supervised(); };
     task::join(t);
 }
 
 fn main() {
-    let dom2 = task::spawn_joinable((), supervisor);
+    let dom2 = task::spawn_joinable {|| supervisor(); };
     task::join(dom2);
 }
 

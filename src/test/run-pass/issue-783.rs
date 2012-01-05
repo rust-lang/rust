@@ -2,14 +2,15 @@ use std;
 import comm::*;
 import task::*;
 
-fn a(&&_args: ()) {
+fn a() {
     fn doit() {
         fn b(c: chan<chan<int>>) {
             let p = port();
             send(c, chan(p));
         }
         let p = port();
-        spawn(chan(p), b);
+        let ch = chan(p);
+        spawn {|| b(ch); };
         recv(p);
     }
     let i = 0;
@@ -20,6 +21,6 @@ fn a(&&_args: ()) {
 }
 
 fn main() {
-    let t = spawn_joinable((), a);
+    let t = spawn_joinable {|| a(); };
     join(t);
 }

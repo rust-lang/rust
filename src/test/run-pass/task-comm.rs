@@ -18,8 +18,7 @@ fn main() {
     test06();
 }
 
-fn test00_start(&&args: (chan<int>, int, int)) {
-    let (ch, message, count) = args;
+fn test00_start(ch: chan<int>, message: int, count: int) {
     #debug("Starting test00_start");
     let i: int = 0;
     while i < count {
@@ -43,8 +42,9 @@ fn test00() {
     let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [task::spawn_joinable(
-            (ch, i, number_of_messages), test00_start)];
+        tasks += [
+            task::spawn_joinable {|| test00_start(ch, i, number_of_messages);}
+        ];
     }
     let sum: int = 0;
     for t in tasks {
@@ -90,7 +90,7 @@ fn test03() {
     log(debug, v.length());
 }
 
-fn test04_start(&&_args: ()) {
+fn test04_start() {
     #debug("Started task");
     let i: int = 1024 * 1024;
     while i > 0 { i = i - 1; }
@@ -100,7 +100,7 @@ fn test04_start(&&_args: ()) {
 fn test04() {
     #debug("Spawning lots of tasks.");
     let i: int = 4;
-    while i > 0 { i = i - 1; task::spawn((), test04_start); }
+    while i > 0 { i = i - 1; task::spawn {|| test04_start(); }; }
     #debug("Finishing up.");
 }
 
@@ -115,7 +115,7 @@ fn test05_start(ch: chan<int>) {
 fn test05() {
     let po = comm::port();
     let ch = chan(po);
-    task::spawn(ch, test05_start);
+    task::spawn {|| test05_start(ch); };
     let value: int;
     value = recv(po);
     value = recv(po);
@@ -139,7 +139,7 @@ fn test06() {
     let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [task::spawn_joinable(copy i, test06_start)];
+        tasks += [task::spawn_joinable {|| test06_start(i);}];
     }
 
 

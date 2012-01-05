@@ -16,5 +16,7 @@ fn test05() {
         log(error, *three + n); // will copy x into the closure
         assert(*three == 3);
     };
-    task::spawn(fn_to_send, test05_start);
+    task::spawn(sendfn[move fn_to_send]() {
+        test05_start(fn_to_send);
+    });
 }

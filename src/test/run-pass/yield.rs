@@ -4,7 +4,7 @@ import task;
 import task::*;
 
 fn main() {
-    let other = task::spawn_joinable((), child);
+    let other = task::spawn_joinable {|| child(); };
     #error("1");
     yield();
     #error("2");
@@ -13,6 +13,6 @@ fn main() {
     join(other);
 }
 
-fn child(&&_i: ()) {
+fn child() {
     #error("4"); yield(); #error("5"); yield(); #error("6");
 }

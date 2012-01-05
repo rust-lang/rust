@@ -5,10 +5,10 @@ import task::join;
 
 fn main() { test00(); }
 
-fn start(&&_i: ()) { #debug("Started / Finished task."); }
+fn start() { #debug("Started / Finished task."); }
 
 fn test00() {
-    let t = spawn_joinable((), start);
+    let t = spawn_joinable {|| start(); };
     join(t);
     #debug("Completing.");
 }

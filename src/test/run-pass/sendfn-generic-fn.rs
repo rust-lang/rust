@@ -28,7 +28,7 @@ fn spawn<A: copy, B: copy>(f: fn(sendfn(A,B)->pair<A,B>)) {
     let arg = sendfn(a: A, b: B) -> pair<A,B> {
         ret make_generic_record(a, b);
     };
-    task::spawn(arg, f);
+    task::spawn {|| f(arg); };
 }
 
 fn test05() {

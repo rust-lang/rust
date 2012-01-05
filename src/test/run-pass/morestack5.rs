@@ -17,7 +17,7 @@ fn main() {
     let sz = 400u;
     while sz < 500u {
         rustrt::set_min_stack(sz);
-        task::join(task::spawn_joinable(200, getbig));
+        task::join(task::spawn_joinable {|| getbig(200) });
         sz += 1u;
     }
 }

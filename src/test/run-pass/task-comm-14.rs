@@ -4,12 +4,13 @@ import task;
 
 fn main() {
     let po = comm::port::<int>();
+    let ch = comm::chan(po);
 
     // Spawn 10 tasks each sending us back one int.
     let i = 10;
     while (i > 0) {
         log(debug, i);
-        task::spawn((i, comm::chan(po)), child);
+        task::spawn {|| child(i, ch); };
         i = i - 1;
     }
 
@@ -27,8 +28,7 @@ fn main() {
     #debug("main thread exiting");
 }
 
-fn child(&&args: (int, comm::chan<int>)) {
-    let (x, ch) = args;
+fn child(x: int, ch: comm::chan<int>) {
     log(debug, x);
-    comm::send(ch, x);
+    comm::send(ch, copy x);
 }

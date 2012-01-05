@@ -3,17 +3,17 @@ import comm;
 import task;
 import uint;
 
-fn child(args: (comm::chan<~uint>, uint)) {
-    let (c, i) = args;
+fn child(c: comm::chan<~uint>, i: uint) {
     comm::send(c, ~i);
 }
 
 fn main() {
     let p = comm::port();
+    let ch = comm::chan(p);
     let n = 100u;
     let expected = 0u;
     uint::range(0u, n) {|i|
-        task::spawn((comm::chan(p), i), child);
+        task::spawn {|| child(ch, i); };
         expected += i;
     }
 

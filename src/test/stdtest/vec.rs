@@ -509,10 +509,10 @@ fn init() {
 fn init_empty() {
 
     let r = task::join(
-        task::spawn_joinable((), fn (&&_i: ()) {
+        task::spawn_joinable {||
             task::unsupervise();
             vec::init::<int>([]);
-        }));
+        });
     assert r == task::tr_failure
 }
 

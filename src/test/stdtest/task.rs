@@ -12,13 +12,13 @@ fn test_sleep() { task::sleep(1000000u); }
 #[ignore(cfg(target_os = "win32"))]
 fn test_unsupervise() {
     fn f() { task::unsupervise(); fail; }
-    task::spawn {|| f};
+    task::spawn {|| f();};
 }
 
 #[test]
 fn test_lib_spawn() {
     fn foo() { #error("Hello, World!"); }
-    task::spawn {|| foo};
+    task::spawn {|| foo();};
 }
 
 #[test]
@@ -54,6 +54,6 @@ fn test_join_chan_fail() {
 #[test]
 fn spawn_polymorphic() {
     fn foo<send T>(x: T) { log(error, x); }
-    task::spawn {|| foo(true);}
-    task::spawn {|| foo(42);}
+    task::spawn {|| foo(true);};
+    task::spawn {|| foo(42);};
 }

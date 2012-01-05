@@ -18,7 +18,8 @@ fn start(c: comm::chan<comm::chan<str>>) {
 
 fn main() {
     let p = comm::port();
-    let child = task::spawn(comm::chan(p), start);
+    let ch = comm::chan(p);
+    let child = task::spawn {|| start(ch); };
 
     let c = comm::recv(p);
     comm::send(c, "A");

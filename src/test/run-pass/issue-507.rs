@@ -18,14 +18,15 @@ import comm::recv;
 fn grandchild(c: chan<int>) { send(c, 42); }
 
 fn child(c: chan<int>) {
-    let _grandchild = task::spawn_joinable(copy c, grandchild);
+    let _grandchild = task::spawn_joinable {|| grandchild(c); };
     join(_grandchild);
 }
 
 fn main() {
     let p = comm::port();
+    let ch = chan(p);
 
-    let _child = task::spawn_joinable(chan(p), child);
+    let _child = task::spawn_joinable {|| child(ch); };
 
     let x: int = recv(p);
 

@@ -5,7 +5,7 @@ import task;
 
 fn main() {
     let i = 10;
-    while i > 0 { task::spawn(copy i, child); i = i - 1; }
+    while i > 0 { task::spawn {|| child(i); }; i = i - 1; }
     #debug("main thread exiting");
 }
 
