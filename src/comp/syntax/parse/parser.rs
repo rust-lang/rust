@@ -394,16 +394,14 @@ fn parse_type_constraints(p: parser) -> [@ast::ty_constr] {
     ret parse_constrs(parse_constr_in_type, p);
 }
 
-fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool)
-   -> @ast::ty {
-    let lo = p.get_lo_pos();
-
+fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
+                    lo: uint) -> @ast::ty {
     if colons_before_params && p.peek() == token::MOD_SEP {
         p.bump();
         expect(p, token::LT);
     } else if !colons_before_params && p.peek() == token::LT {
         p.bump();
-    } else { ret @spanned(lo, p.get_lo_pos(), orig_t); }
+    } else { ret @spanned(lo, p.get_last_hi_pos(), orig_t); }
 
     // If we're here, we have explicit type parameter instantiation.
     let seq = parse_seq_to_gt(some(token::COMMA), {|p| parse_ty(p, false)},
@@ -411,9 +409,8 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool)
 
     alt orig_t {
       ast::ty_path(pth, ann) {
-        let hi = p.get_hi_pos();
-        ret @spanned(lo, hi,
-                     ast::ty_path(@spanned(lo, hi,
+        ret @spanned(lo, p.get_last_hi_pos(),
+                     ast::ty_path(@spanned(lo, p.get_last_hi_pos(),
                                            {global: pth.node.global,
                                             idents: pth.node.idents,
                                             types: seq}), ann));
@@ -527,7 +524,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
     } else { p.fatal("expecting type"); }
-    ret parse_ty_postfix(t, p, colons_before_params);
+    ret parse_ty_postfix(t, p, colons_before_params, lo);
 }
 
 fn parse_arg_mode(p: parser) -> ast::mode {
