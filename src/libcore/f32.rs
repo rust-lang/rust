@@ -224,10 +224,16 @@ mod consts {
     const ln_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
+pure fn signbit(x: f32) -> int {
+    if is_negative(x) { ret 1; } else { ret 0; }
+}
+
 #[cfg(target_os="linux")]
 #[cfg(target_os="macos")]
 #[cfg(target_os="win32")]
 pure fn logarithm(n: f32, b: f32) -> f32 {
+    // FIXME check if it is good to use log2 instead of ln here;
+    // in theory should be faster since the radix is 2
     ret log2(n) / log2(b);
 }
 

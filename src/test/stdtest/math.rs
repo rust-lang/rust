@@ -2,6 +2,7 @@ import core::*;
 
 use std;
 
+import math::{min, max};
 import float::*;
 import float;
 import c_int = ctypes::c_int;

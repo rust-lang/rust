@@ -1765,7 +1765,7 @@ mod unify {
         let vb = alt cx.st {
             in_bindings(vb) { vb }
         };
-        ufind::grow(vb.sets, float::max(set_a, set_b) + 1u);
+        ufind::grow(vb.sets, math::max(set_a, set_b) + 1u);
         let root_a = ufind::find(vb.sets, set_a);
         let root_b = ufind::find(vb.sets, set_b);
 

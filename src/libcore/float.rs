@@ -4,7 +4,7 @@ Module: float
 
 // FIXME find out why these have to be exported explicitly
 
-export to_str_common, to_str_exact, to_str, from_str, min, max;
+export to_str_common, to_str_exact, to_str, from_str;
 export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
@@ -16,6 +16,7 @@ export erf, erfc, exp, expm1, exp2, abs, abs_sub;
 export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
 export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
+export signbit;
 
 // export when m_float == c_double
 
@@ -279,20 +280,6 @@ fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
    ret total;
 }
 
-
-/*
-Function: min
-
-Returns the minimum of two values
-*/
-pure fn min<copy T>(x: T, y: T) -> T { x < y ? x : y }
-
-/*
-Function: max
-
-Returns the maximum of two values
-*/
-pure fn max<copy T>(x: T, y: T) -> T { x < y ? y : x }
 
 //
 // Local Variables:

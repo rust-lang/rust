@@ -12,6 +12,7 @@ export uint, u8, u32, u64, vec, bool;
 export either, option, result;
 export ctypes, sys, unsafe, comm, task;
 export extfmt;
+export math;
 
 // Built-in-type support modules
 
@@ -45,6 +46,7 @@ mod result;
 // Runtime and language-primitive support
 
 mod ctypes;
+mod math;
 mod cmath;
 mod sys;
 mod unsafe;
