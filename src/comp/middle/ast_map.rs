@@ -88,6 +88,14 @@ fn map_native_item(cx: ctx, i: @native_item) {
 
 fn map_expr(cx: ctx, ex: @expr) {
     cx.map.insert(ex.id, node_expr(ex));
+    alt ex.node {
+      expr_anon_obj(ao) {
+        for m in ao.methods {
+            cx.map.insert(m.id, node_obj_method(m));
+        }
+      }
+      _ {}
+    }
 }
 
 fn new_smallintmap_int_adapter<copy V>() -> std::map::hashmap<int, V> {
