@@ -70,7 +70,7 @@ fn test_join_convenient() {
 #[ignore]
 fn spawn_polymorphic() {
     // FIXME #1038: Can't spawn palymorphic functions
-    /*fn foo<send T>(x: T) { log(error, x); }
+    /*fn foo<T: send>(x: T) { log(error, x); }
 
     task::spawn(true, foo);
     task::spawn(42, foo);*/

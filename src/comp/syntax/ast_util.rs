@@ -1,7 +1,7 @@
 import codemap::span;
 import ast::*;
 
-fn respan<copy T>(sp: span, t: T) -> spanned<T> {
+fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
     ret {node: t, span: sp};
 }
 
@@ -201,7 +201,7 @@ fn eq_def_id(&&a: def_id, &&b: def_id) -> bool {
     a == b
 }
 
-fn new_def_id_hash<copy T>() -> std::map::hashmap<def_id, T> {
+fn new_def_id_hash<T: copy>() -> std::map::hashmap<def_id, T> {
     std::map::mk_hashmap(hash_def_id, eq_def_id)
 }
 

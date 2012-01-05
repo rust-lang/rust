@@ -8,7 +8,7 @@ fn main() { test05(); }
 
 type pair<A,B> = { a: A, b: B };
 
-fn make_generic_record<copy A,copy B>(a: A, b: B) -> pair<A,B> {
+fn make_generic_record<A: copy, B: copy>(a: A, b: B) -> pair<A,B> {
     ret {a: a, b: b};
 }
 
@@ -24,7 +24,7 @@ fn test05_start(&&f: sendfn(&&float, &&str) -> pair<float, str>) {
     assert q.b == "Ho";
 }
 
-fn spawn<copy A, copy B>(f: fn(sendfn(A,B)->pair<A,B>)) {
+fn spawn<A: copy, B: copy>(f: fn(sendfn(A,B)->pair<A,B>)) {
     let arg = sendfn(a: A, b: B) -> pair<A,B> {
         ret make_generic_record(a, b);
     };

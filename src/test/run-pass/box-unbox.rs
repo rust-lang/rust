@@ -1,8 +1,8 @@
 
 
-type box<copy T> = {c: @T};
+type box<T: copy> = {c: @T};
 
-fn unbox<copy T>(b: box<T>) -> T { ret *b.c; }
+fn unbox<T: copy>(b: box<T>) -> T { ret *b.c; }
 
 fn main() {
     let foo: int = 17;

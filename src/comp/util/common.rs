@@ -21,7 +21,7 @@ fn hash_def(d: ast::def_id) -> uint {
     ret h;
 }
 
-fn new_def_hash<copy V>() -> std::map::hashmap<ast::def_id, V> {
+fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
     let hasher: std::map::hashfn<ast::def_id> = hash_def;
     let eqer: std::map::eqfn<ast::def_id> = def_eq;
     ret std::map::mk_hashmap::<ast::def_id, V>(hasher, eqer);

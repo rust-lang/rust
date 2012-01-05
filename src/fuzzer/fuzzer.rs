@@ -226,7 +226,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
     check_variants_T(crate, codemap, filename, "ty", stolen.tys, pprust::ty_to_str, replace_ty_in_crate, cx);
 }
 
-fn check_variants_T<copy T>(
+fn check_variants_T<T: copy>(
   crate: ast::crate,
   codemap: codemap::codemap,
   filename: str,

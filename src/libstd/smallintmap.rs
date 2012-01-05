@@ -30,7 +30,7 @@ Function: insert
 Add a value to the map. If the map already contains a value for
 the specified key then the original value is replaced.
 */
-fn insert<copy T>(m: smallintmap<T>, key: uint, val: T) {
+fn insert<T: copy>(m: smallintmap<T>, key: uint, val: T) {
     vec::grow_set::<option::t<T>>(m.v, key, none::<T>, some::<T>(val));
 }
 
@@ -40,7 +40,7 @@ Function: find
 Get the value for the specified key. If the key does not exist
 in the map then returns none.
 */
-fn find<copy T>(m: smallintmap<T>, key: uint) -> option::t<T> {
+fn find<T: copy>(m: smallintmap<T>, key: uint) -> option::t<T> {
     if key < vec::len::<option::t<T>>(m.v) { ret m.v[key]; }
     ret none::<T>;
 }
@@ -54,7 +54,7 @@ Failure:
 
 If the key does not exist in the map
 */
-fn get<copy T>(m: smallintmap<T>, key: uint) -> T {
+fn get<T: copy>(m: smallintmap<T>, key: uint) -> T {
     alt find(m, key) {
       none. { #error("smallintmap::get(): key not present"); fail; }
       some(v) { ret v; }
@@ -66,13 +66,13 @@ Method: contains_key
 
 Returns true if the map contains a value for the specified key
 */
-fn contains_key<copy T>(m: smallintmap<T>, key: uint) -> bool {
+fn contains_key<T: copy>(m: smallintmap<T>, key: uint) -> bool {
     ret !option::is_none(find::<T>(m, key));
 }
 
 // FIXME: Are these really useful?
 
-fn truncate<copy T>(m: smallintmap<T>, len: uint) {
+fn truncate<T: copy>(m: smallintmap<T>, len: uint) {
     m.v = vec::slice_mut::<option::t<T>>(m.v, 0u, len);
 }
 

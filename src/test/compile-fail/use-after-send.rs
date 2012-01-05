@@ -1,5 +1,5 @@
 // error-pattern: Unsatisfied precondition constraint
-fn send<send T>(ch: _chan<T>, -data: T) {
+fn send<T: send>(ch: _chan<T>, -data: T) {
     log(debug, ch);
     log(debug, data);
     fail;

@@ -39,7 +39,7 @@ Function: lefts
 
 Extracts from a vector of either all the left values.
 */
-fn lefts<copy T, U>(eithers: [t<T, U>]) -> [T] {
+fn lefts<T: copy, U>(eithers: [t<T, U>]) -> [T] {
     let result: [T] = [];
     for elt: t<T, U> in eithers {
         alt elt { left(l) { result += [l]; } _ {/* fallthrough */ } }
@@ -52,7 +52,7 @@ Function: rights
 
 Extracts from a vector of either all the right values
 */
-fn rights<T, copy U>(eithers: [t<T, U>]) -> [U] {
+fn rights<T, U: copy>(eithers: [t<T, U>]) -> [U] {
     let result: [U] = [];
     for elt: t<T, U> in eithers {
         alt elt { right(r) { result += [r]; } _ {/* fallthrough */ } }
@@ -68,7 +68,7 @@ Extracts from a vector of either all the left values and right values
 Returns a structure containing a vector of left values and a vector of
 right values.
 */
-fn partition<copy T, copy U>(eithers: [t<T, U>])
+fn partition<T: copy, U: copy>(eithers: [t<T, U>])
     -> {lefts: [T], rights: [U]} {
     let lefts: [T] = [];
     let rights: [U] = [];
@@ -83,7 +83,7 @@ Function: flip
 
 Flips between left and right of a given either
 */
-pure fn flip<copy T, copy U>(eith: t<T, U>) -> t<U, T> {
+pure fn flip<T: copy, U: copy>(eith: t<T, U>) -> t<U, T> {
     alt eith {
       right(r) { left(r) }
       left(l) { right(l) }
@@ -96,7 +96,7 @@ Function: to_result
 Converts either::t to a result::t, making the "right" choice
 an ok result, and the "left" choice a fail
 */
-pure fn to_result<copy T, copy U>(eith: t<T, U>) -> result::t<U, T> {
+pure fn to_result<T: copy, U: copy>(eith: t<T, U>) -> result::t<U, T> {
     alt eith {
       right(r) { result::ok(r) }
       left(l) { result::err(l) }

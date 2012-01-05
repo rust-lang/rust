@@ -1,6 +1,6 @@
 
 
-fn id<send T>(t: T) -> T { ret t; }
+fn id<T: send>(t: T) -> T { ret t; }
 
 fn main() {
     let expected = ~100;

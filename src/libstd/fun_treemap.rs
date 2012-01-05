@@ -50,7 +50,7 @@ Function: insert
 
 Insert a value into the map
 */
-fn insert<copy K, copy V>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
+fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
     @alt m {
        @empty. { node(@k, @v, @empty, @empty) }
        @node(@kk, vv, left, right) {
@@ -68,7 +68,7 @@ Function: find
 
 Find a value based on the key
 */
-fn find<K, copy V>(m: treemap<K, V>, k: K) -> option<V> {
+fn find<K, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
       empty. { none }
       node(@kk, @v, left, right) {
@@ -84,7 +84,7 @@ Function: traverse
 
 Visit all pairs in the map in order.
 */
-fn traverse<K, copy V>(m: treemap<K, V>, f: block(K, V)) {
+fn traverse<K, V: copy>(m: treemap<K, V>, f: block(K, V)) {
     alt *m {
       empty. { }
       node(@k, @v, _, _) {

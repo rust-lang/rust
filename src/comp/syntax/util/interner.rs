@@ -12,12 +12,12 @@ type interner<T> =
      hasher: hashfn<T>,
      eqer: eqfn<T>};
 
-fn mk<copy T>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
+fn mk<T: copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
     let m = map::mk_hashmap::<T, uint>(hasher, eqer);
     ret {map: m, mutable vect: [], hasher: hasher, eqer: eqer};
 }
 
-fn intern<copy T>(itr: interner<T>, val: T) -> uint {
+fn intern<T: copy>(itr: interner<T>, val: T) -> uint {
     alt itr.map.find(val) {
       some(idx) { ret idx; }
       none. {
@@ -32,7 +32,7 @@ fn intern<copy T>(itr: interner<T>, val: T) -> uint {
 // |get| isn't "pure" in the traditional sense, because it can go from
 // failing to returning a value as items are interned. But for typestate,
 // where we first check a pred and then rely on it, ceasing to fail is ok.
-pure fn get<copy T>(itr: interner<T>, idx: uint) -> T {
+pure fn get<T: copy>(itr: interner<T>, idx: uint) -> T {
     unchecked {
         itr.vect[idx]
     }

@@ -3,7 +3,7 @@
 // -*- rust -*-
 type compare<T> = fn@(~T, ~T) -> bool;
 
-fn test_generic<copy T>(expected: ~T, eq: compare<T>) {
+fn test_generic<T: copy>(expected: ~T, eq: compare<T>) {
     let actual: ~T = alt true { true { expected } };
     assert (eq(expected, actual));
 }

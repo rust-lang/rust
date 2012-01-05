@@ -5,7 +5,7 @@ import comm::port;
 import comm::send;
 import comm::recv;
 
-fn echo<send T>(c: chan<T>, oc: chan<chan<T>>) {
+fn echo<T: send>(c: chan<T>, oc: chan<chan<T>>) {
     // Tests that the type argument in port gets
     // visited
     let p = port::<T>();

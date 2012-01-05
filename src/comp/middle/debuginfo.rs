@@ -118,7 +118,7 @@ tag debug_metadata {
     retval_metadata(@metadata<retval_md>);
 }
 
-fn cast_safely<copy T, U>(val: T) -> U unsafe {
+fn cast_safely<T: copy, U>(val: T) -> U unsafe {
     let val2 = val;
     let val3 = unsafe::reinterpret_cast(val2);
     unsafe::leak(val2);
@@ -138,7 +138,7 @@ fn md_from_metadata<T>(val: debug_metadata) -> T unsafe {
     }
 }
 
-fn cached_metadata<copy T>(cache: metadata_cache, mdtag: int,
+fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
                            eq: block(md: T) -> bool) -> option::t<T> unsafe {
     if cache.contains_key(mdtag) {
         let items = cache.get(mdtag);
