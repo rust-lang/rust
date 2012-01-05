@@ -26,60 +26,60 @@ fn test_from_str() {
    assert ( float::from_str(" -.5 ") == -0.5 );
    assert ( float::from_str(" -5 ") == -5. );
 
-   assert ( float::isNaN(float::from_str("x")) );
+   assert ( float::is_NaN(float::from_str("x")) );
    assert ( float::from_str(" ") == 0. );
    assert ( float::from_str("   ") == 0. );
    assert ( float::from_str(" 0.5") == 0.5 );
    assert ( float::from_str(" 0.5 ") == 0.5 );
    assert ( float::from_str(" .1 ") == 0.1 );
-   assert ( float::isNaN(float::from_str("e")) );
-   assert ( float::isNaN(float::from_str("E")) );
-   assert ( float::isNaN(float::from_str("E1")) );
-   assert ( float::isNaN(float::from_str("1e1e1")) );
-   assert ( float::isNaN(float::from_str("1e1.1")) );
-   assert ( float::isNaN(float::from_str("1e1-1")) );
+   assert ( float::is_NaN(float::from_str("e")) );
+   assert ( float::is_NaN(float::from_str("E")) );
+   assert ( float::is_NaN(float::from_str("E1")) );
+   assert ( float::is_NaN(float::from_str("1e1e1")) );
+   assert ( float::is_NaN(float::from_str("1e1.1")) );
+   assert ( float::is_NaN(float::from_str("1e1-1")) );
 }
 
 #[test]
 fn test_positive() {
-  assert(float::positive(float::infinity));
-  assert(float::positive(1.));
-  assert(float::positive(0.));
-  assert(!float::positive(-1.));
-  assert(!float::positive(float::neg_infinity));
-  assert(!float::positive(1./float::neg_infinity));
-  assert(!float::positive(float::NaN));
+  assert(float::is_positive(float::infinity));
+  assert(float::is_positive(1.));
+  assert(float::is_positive(0.));
+  assert(!float::is_positive(-1.));
+  assert(!float::is_positive(float::neg_infinity));
+  assert(!float::is_positive(1./float::neg_infinity));
+  assert(!float::is_positive(float::NaN));
 }
 
 #[test]
 fn test_negative() {
-  assert(!float::negative(float::infinity));
-  assert(!float::negative(1.));
-  assert(!float::negative(0.));
-  assert(float::negative(-1.));
-  assert(float::negative(float::neg_infinity));
-  assert(float::negative(1./float::neg_infinity));
-  assert(!float::negative(float::NaN));
+  assert(!float::is_negative(float::infinity));
+  assert(!float::is_negative(1.));
+  assert(!float::is_negative(0.));
+  assert(float::is_negative(-1.));
+  assert(float::is_negative(float::neg_infinity));
+  assert(float::is_negative(1./float::neg_infinity));
+  assert(!float::is_negative(float::NaN));
 }
 
 #[test]
 fn test_nonpositive() {
-  assert(!float::nonpositive(float::infinity));
-  assert(!float::nonpositive(1.));
-  assert(!float::nonpositive(0.));
-  assert(float::nonpositive(-1.));
-  assert(float::nonpositive(float::neg_infinity));
-  assert(float::nonpositive(1./float::neg_infinity));
-  assert(!float::nonpositive(float::NaN));
+  assert(!float::is_nonpositive(float::infinity));
+  assert(!float::is_nonpositive(1.));
+  assert(!float::is_nonpositive(0.));
+  assert(float::is_nonpositive(-1.));
+  assert(float::is_nonpositive(float::neg_infinity));
+  assert(float::is_nonpositive(1./float::neg_infinity));
+  assert(!float::is_nonpositive(float::NaN));
 }
 
 #[test]
 fn test_nonnegative() {
-  assert(float::nonnegative(float::infinity));
-  assert(float::nonnegative(1.));
-  assert(float::nonnegative(0.));
-  assert(!float::nonnegative(-1.));
-  assert(!float::nonnegative(float::neg_infinity));
-  assert(!float::nonnegative(1./float::neg_infinity));
-  assert(!float::nonnegative(float::NaN));
+  assert(float::is_nonnegative(float::infinity));
+  assert(float::is_nonnegative(1.));
+  assert(float::is_nonnegative(0.));
+  assert(!float::is_nonnegative(-1.));
+  assert(!float::is_nonnegative(float::neg_infinity));
+  assert(!float::is_nonnegative(1./float::neg_infinity));
+  assert(!float::is_nonnegative(float::NaN));
 }
