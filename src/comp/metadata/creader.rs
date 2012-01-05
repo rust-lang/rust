@@ -260,7 +260,8 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
         // Now resolve the crates referenced by this crate
         let cnum_map = resolve_crate_deps(e, cdata);
 
-        let cmeta = {name: ident, data: cdata, cnum_map: cnum_map};
+        let cmeta = @{name: ident, data: cdata,
+                      cnum_map: cnum_map, cnum: cnum};
 
         let cstore = e.sess.get_cstore();
         cstore::set_crate_data(cstore, cnum, cmeta);

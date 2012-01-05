@@ -30,7 +30,10 @@ export get_dep_hashes;
 // own crate numbers.
 type cnum_map = map::hashmap<ast::crate_num, ast::crate_num>;
 
-type crate_metadata = {name: str, data: @[u8], cnum_map: cnum_map};
+type crate_metadata = @{name: str,
+                        data: @[u8],
+                        cnum_map: cnum_map,
+                        cnum: ast::crate_num};
 
 // This is a bit of an experiment at encapsulating the data in cstore. By
 // keeping all the data in a non-exported tag variant, it's impossible for

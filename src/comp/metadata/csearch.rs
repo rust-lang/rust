@@ -58,32 +58,27 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
 
 fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
     let cstore = tcx.sess.get_cstore();
-    let cnum = def.crate;
-    let cdata = cstore::get_crate_data(cstore, cnum).data;
-    let resolver = bind translate_def_id(cstore, cnum, _);
-    ret decoder::get_tag_variants(cdata, def, tcx, resolver)
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    ret decoder::get_tag_variants(cdata, def.node, tcx)
 }
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
                      name: option::t<ast::ident>)
     -> @[@middle::resolve::_impl] {
-    let cdata = cstore::get_crate_data(cstore, def.crate).data;
-    let resolver = bind translate_def_id(cstore, def.crate, _);
-    decoder::get_impls_for_mod(cdata, def, name, resolver)
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_impls_for_mod(cdata, def.node, name)
 }
 
 fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @[ty::method] {
     let cstore = tcx.sess.get_cstore();
-    let cdata = cstore::get_crate_data(cstore, def.crate).data;
-    let resolver = bind translate_def_id(cstore, def.crate, _);
-    decoder::get_iface_methods(cdata, def, tcx, resolver)
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_iface_methods(cdata, def.node, tcx)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.sess.get_cstore();
-    let cdata = cstore::get_crate_data(cstore, def.crate).data;
-    let resolver = bind translate_def_id(cstore, def.crate, _);
-    decoder::get_type(cdata, def, tcx, resolver)
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_type(cdata, def.node, tcx)
 }
 
 fn get_item_name(cstore: cstore::cstore, cnum: int, id: int) -> ast::ident {
@@ -94,34 +89,8 @@ fn get_item_name(cstore: cstore::cstore, cnum: int, id: int) -> ast::ident {
 fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)
     -> option::t<ty::t> {
     let cstore = tcx.sess.get_cstore();
-    let cdata = cstore::get_crate_data(cstore, def.crate).data;
-    let resolver = bind translate_def_id(cstore, def.crate, _);
-    decoder::get_impl_iface(cdata, def, tcx, resolver)
-}
-
-// Translates a def_id from an external crate to a def_id for the current
-// compilation environment. We use this when trying to load types from
-// external crates - if those types further refer to types in other crates
-// then we must translate the crate number from that encoded in the external
-// crate to the correct local crate number.
-fn translate_def_id(cstore: cstore::cstore, searched_crate: ast::crate_num,
-                    def_id: ast::def_id) -> ast::def_id {
-
-    let ext_cnum = def_id.crate;
-    let node_id = def_id.node;
-
-    assert (searched_crate != ast::local_crate);
-    assert (ext_cnum != ast::local_crate);
-
-    let cmeta = cstore::get_crate_data(cstore, searched_crate);
-
-    let local_cnum =
-        alt cmeta.cnum_map.find(ext_cnum) {
-          option::some(n) { n }
-          option::none. { fail "didn't find a crate in the cnum_map"; }
-        };
-
-    ret {crate: local_cnum, node: node_id};
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_impl_iface(cdata, def.node, tcx)
 }
 
 // Local Variables:

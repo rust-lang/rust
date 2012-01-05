@@ -1,14 +1,13 @@
 // Decoding metadata from a single crate's metadata
 
-import core::{vec, option, str};
 import std::{ebml, io};
 import syntax::{ast, ast_util};
 import front::attr;
 import middle::ty;
 import common::*;
-import tydecode::{parse_def_id, parse_ty_data};
+import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
 import syntax::print::pprust;
-import cstore;
+import cmd=cstore::crate_metadata;
 
 export get_symbol;
 export get_tag_variants;
@@ -24,7 +23,6 @@ export list_crate_metadata;
 export crate_dep;
 export get_crate_deps;
 export get_crate_hash;
-export external_resolver;
 export get_impls_for_mod;
 export get_iface_methods;
 // A function that takes a def_id relative to the crate being searched and
@@ -32,7 +30,6 @@ export get_iface_methods;
 // def_id for an item defined in another crate, somebody needs to figure out
 // what crate that's in and give us a def_id that makes sense for the current
 // build.
-type external_resolver = fn@(ast::def_id) -> ast::def_id;
 
 fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
    [ebml::doc] {
@@ -91,66 +88,50 @@ fn variant_tag_id(d: ebml::doc) -> ast::def_id {
     ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
-fn parse_external_def_id(this_cnum: ast::crate_num,
-                         extres: external_resolver, s: str) ->
-    ast::def_id {
-    let buf = str::bytes(s);
-    let external_def_id = parse_def_id(buf);
-
-
-    // This item was defined in the crate we're searching if it's has the
-    // local crate number, otherwise we need to search a different crate
-    if external_def_id.crate == ast::local_crate {
-        ret {crate: this_cnum, node: external_def_id.node};
-    } else { ret extres(external_def_id); }
-}
-
-fn doc_type(doc: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
-            extres: external_resolver) -> ty::t {
+fn doc_type(doc: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let tp = ebml::get_doc(doc, tag_items_data_item_type);
-    let def_parser = bind parse_external_def_id(this_cnum, extres, _);
-    parse_ty_data(tp.data, this_cnum, tp.start, def_parser, tcx)
+    parse_ty_data(tp.data, cdata.cnum, tp.start, tcx, {|did|
+        translate_def_id(cdata, did)
+    })
 }
 
-fn item_type(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
-             extres: external_resolver) -> ty::t {
-    let t = doc_type(item, this_cnum, tcx, extres);
+fn item_type(item: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
+    let t = doc_type(item, tcx, cdata);
     if family_names_type(item_family(item)) {
         ty::mk_named(tcx, t, @item_name(item))
     } else { t }
 }
 
-fn item_impl_iface(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
-                   extres: external_resolver) -> option::t<ty::t> {
+fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
+    -> option::t<ty::t> {
     let result = none;
     ebml::tagged_docs(item, tag_impl_iface) {|ity|
-        let def_parser = bind parse_external_def_id(this_cnum, extres, _);
-        let t = parse_ty_data(ity.data, this_cnum, ity.start, def_parser,
-                              tcx);
+        let t = parse_ty_data(ity.data, cdata.cnum, ity.start, tcx, {|did|
+            translate_def_id(cdata, did)
+        });
         result = some(t);
     }
     result
 }
 
-fn item_impl_iface_did(item: ebml::doc, this_cnum: ast::crate_num,
-                       extres: external_resolver)
+fn item_impl_iface_did(item: ebml::doc, cdata: cmd)
     -> option::t<ast::def_id> {
     let result = none;
     ebml::tagged_docs(item, tag_impl_iface_did) {|doc|
-        let s = str::unsafe_from_bytes(ebml::doc_data(doc));
-        result = some(parse_external_def_id(this_cnum, extres, s));
+        let did = translate_def_id(cdata, parse_def_id(ebml::doc_data(doc)));
+        result = some(did);
     }
     result
 }
 
-fn item_ty_param_bounds(item: ebml::doc, this_cnum: ast::crate_num,
-                        tcx: ty::ctxt, extres: external_resolver)
+fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> @[ty::param_bounds] {
     let bounds = [];
-    let def_parser = bind parse_external_def_id(this_cnum, extres, _);
     ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
-        bounds += [tydecode::parse_bounds_data(p.data, p.start,
-                                               this_cnum, def_parser, tcx)];
+        let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx, {|did|
+            translate_def_id(cdata, did)
+        });
+        bounds += [bd];
     }
     @bounds
 }
@@ -162,13 +143,12 @@ fn item_ty_param_count(item: ebml::doc) -> uint {
     n
 }
 
-fn tag_variant_ids(item: ebml::doc, this_cnum: ast::crate_num) ->
-   [ast::def_id] {
+fn tag_variant_ids(item: ebml::doc, cdata: cmd) -> [ast::def_id] {
     let ids: [ast::def_id] = [];
     let v = tag_items_data_item_variant;
     ebml::tagged_docs(item, v) {|p|
         let ext = parse_def_id(ebml::doc_data(p));
-        ids += [{crate: this_cnum, node: ext.node}];
+        ids += [{crate: cdata.cnum, node: ext.node}];
     };
     ret ids;
 }
@@ -230,12 +210,12 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
     ret def;
 }
 
-fn get_type(data: @[u8], def: ast::def_id, tcx: ty::ctxt,
-            extres: external_resolver) -> ty::ty_param_bounds_and_ty {
-    let item = lookup_item(def.node, data);
-    let t = item_type(item, def.crate, tcx, extres);
+fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+    -> ty::ty_param_bounds_and_ty {
+    let item = lookup_item(id, cdata.data);
+    let t = item_type(item, tcx, cdata);
     let tp_bounds = if family_has_type_params(item_family(item)) {
-        item_ty_param_bounds(item, def.crate, tcx, extres)
+        item_ty_param_bounds(item, tcx, cdata)
     } else { @[] };
     ret {bounds: tp_bounds, ty: t};
 }
@@ -244,27 +224,25 @@ fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {
     item_ty_param_count(lookup_item(id, data))
 }
 
-fn get_impl_iface(data: @[u8], def: ast::def_id, tcx: ty::ctxt,
-                  extres: external_resolver) -> option::t<ty::t> {
-    item_impl_iface(lookup_item(def.node, data), def.crate, tcx, extres)
+fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+    -> option::t<ty::t> {
+    item_impl_iface(lookup_item(id, cdata.data), tcx, cdata)
 }
 
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
 }
 
-fn get_tag_variants(_data: @[u8], def: ast::def_id, tcx: ty::ctxt,
-                    extres: external_resolver) -> [ty::variant_info] {
-    let external_crate_id = def.crate;
-    let data =
-        cstore::get_crate_data(tcx.sess.get_cstore(), external_crate_id).data;
+fn get_tag_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+    -> [ty::variant_info] {
+    let data = cdata.data;
     let items = ebml::get_doc(ebml::new_doc(data), tag_items);
-    let item = find_item(def.node, items);
+    let item = find_item(id, items);
     let infos: [ty::variant_info] = [];
-    let variant_ids = tag_variant_ids(item, external_crate_id);
+    let variant_ids = tag_variant_ids(item, cdata);
     for did: ast::def_id in variant_ids {
         let item = find_item(did.node, items);
-        let ctor_ty = item_type(item, external_crate_id, tcx, extres);
+        let ctor_ty = item_type(item, tcx, cdata);
         let arg_tys: [ty::t] = [];
         alt ty::struct(tcx, ctor_ty) {
           ty::ty_fn(f) {
@@ -290,17 +268,17 @@ fn item_impl_methods(data: @[u8], item: ebml::doc, base_tps: uint)
     rslt
 }
 
-fn get_impls_for_mod(data: @[u8], m_def: ast::def_id,
-                     name: option::t<ast::ident>, extres: external_resolver)
+fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
+                     name: option::t<ast::ident>)
     -> @[@middle::resolve::_impl] {
-    let mod_item = lookup_item(m_def.node, data), result = [];
+    let data = cdata.data;
+    let mod_item = lookup_item(m_id, data), result = [];
     ebml::tagged_docs(mod_item, tag_mod_impl) {|doc|
-        let did = parse_external_def_id(
-            m_def.crate, extres, str::unsafe_from_bytes(ebml::doc_data(doc)));
+        let did = translate_def_id(cdata, parse_def_id(ebml::doc_data(doc)));
         let item = lookup_item(did.node, data), nm = item_name(item);
         if alt name { some(n) { n == nm } none. { true } } {
             let base_tps = item_ty_param_count(doc);
-            let i_did = item_impl_iface_did(item, m_def.crate, extres);
+            let i_did = item_impl_iface_did(item, cdata);
             result += [@{did: did, iface_did: i_did, ident: nm,
                          methods: item_impl_methods(data, doc, base_tps)}];
         }
@@ -308,13 +286,14 @@ fn get_impls_for_mod(data: @[u8], m_def: ast::def_id,
     @result
 }
 
-fn get_iface_methods(data: @[u8], def: ast::def_id, tcx: ty::ctxt,
-                     extres: external_resolver) -> @[ty::method] {
-    let item = lookup_item(def.node, data), result = [];
+fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+    -> @[ty::method] {
+    let data = cdata.data;
+    let item = lookup_item(id, data), result = [];
     ebml::tagged_docs(item, tag_item_method) {|mth|
-        let bounds = item_ty_param_bounds(mth, def.crate, tcx, extres);
+        let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
-        let ty = doc_type(mth, def.crate, tcx, extres);
+        let ty = doc_type(mth, tcx, cdata);
         let fty = alt ty::struct(tcx, ty) { ty::ty_fn(f) { f } };
         result += [{ident: name, tps: bounds, fty: fty}];
     }
@@ -487,6 +466,22 @@ fn list_crate_metadata(bytes: @[u8], out: io::writer) {
     list_crate_attributes(md, hash, out);
     list_crate_deps(bytes, out);
     list_crate_items(bytes, md, out);
+}
+
+// Translates a def_id from an external crate to a def_id for the current
+// compilation environment. We use this when trying to load types from
+// external crates - if those types further refer to types in other crates
+// then we must translate the crate number from that encoded in the external
+// crate to the correct local crate number.
+fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
+    if did.crate == ast::local_crate {
+        ret {crate: cdata.cnum, node: did.node};
+    }
+
+    alt cdata.cnum_map.find(did.crate) {
+      option::some(n) { ret {crate: n, node: did.node}; }
+      option::none. { fail "didn't find a crate in the cnum_map"; }
+    }
 }
 
 // Local Variables:
