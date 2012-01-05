@@ -1,6 +1,6 @@
 // error-pattern: instantiating a sendable type parameter with a copyable type
 
-fn f<send T>(i: T) {
+fn f<T: send>(i: T) {
 }
 
 fn main() {

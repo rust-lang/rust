@@ -221,7 +221,7 @@ fn native_abi(attrs: [ast::attribute]) -> either::t<str, ast::native_abi> {
     };
 }
 
-fn span<copy T>(item: T) -> ast::spanned<T> {
+fn span<T: copy>(item: T) -> ast::spanned<T> {
     ret {node: item, span: ast_util::dummy_sp()};
 }
 

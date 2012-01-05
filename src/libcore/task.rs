@@ -236,7 +236,7 @@ Returns:
 
 A handle to the new task
 */
-fn spawn<send T>(-data: T, f: fn(T)) -> task {
+fn spawn<T: send>(-data: T, f: fn(T)) -> task {
     spawn_inner(data, f, none)
 }
 
@@ -249,7 +249,7 @@ termination
 Immediately before termination, either on success or failure, the spawned
 task will send a <task_notification> message on the provided channel.
 */
-fn spawn_notify<send T>(-data: T, f: fn(T),
+fn spawn_notify<T: send>(-data: T, f: fn(T),
                          notify: comm::chan<task_notification>) -> task {
     spawn_inner(data, f, some(notify))
 }
@@ -263,7 +263,7 @@ This is a convenience wrapper around spawn_notify which, when paired
 with <join> can be easily used to spawn a task then wait for it to
 complete.
 */
-fn spawn_joinable<send T>(-data: T, f: fn(T)) -> joinable_task {
+fn spawn_joinable<T: send>(-data: T, f: fn(T)) -> joinable_task {
     let p = comm::port::<task_notification>();
     let id = spawn_notify(data, f, comm::chan::<task_notification>(p));
     ret (id, p);
@@ -279,11 +279,11 @@ fn spawn_joinable<send T>(-data: T, f: fn(T)) -> joinable_task {
 //
 // After the transition this should all be rewritten.
 
-fn spawn_inner<send T>(-data: T, f: fn(T),
+fn spawn_inner<T: send>(-data: T, f: fn(T),
                           notify: option<comm::chan<task_notification>>)
     -> task unsafe {
 
-    fn wrapper<send T>(data: *u8, f: fn(T)) unsafe {
+    fn wrapper<T: send>(data: *u8, f: fn(T)) unsafe {
         let data: ~T = unsafe::reinterpret_cast(data);
         f(*data);
     }

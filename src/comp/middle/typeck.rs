@@ -2920,8 +2920,6 @@ mod dict {
                             bind_params(fcx, self_ty, n_tps)
                         } else { {vars: [], ty: self_ty} };
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
-                        // FIXME[impl] don't do this in fcx (or make
-                        // unify transactional by scrubbing bindings on fail)
                         alt unify::unify(fcx, ty, self_ty) {
                           ures_ok(_) {
                             if option::is_some(found) {

@@ -114,7 +114,7 @@ fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
 fn inject_libcore_reference(sess: session::session,
                             crate: @ast::crate) -> @ast::crate {
 
-    fn spanned<copy T>(x: T) -> @ast::spanned<T> {
+    fn spanned<T: copy>(x: T) -> @ast::spanned<T> {
         ret @{node: x,
               span: {lo: 0u, hi: 0u,
                      expanded_from: codemap::os_none}};

@@ -37,7 +37,7 @@ Failure:
 
 If the result is an error
 */
-fn get<copy T, U>(res: t<T, U>) -> T {
+fn get<T: copy, U>(res: t<T, U>) -> T {
     alt res {
       ok(t) { t }
       err(_) {
@@ -57,7 +57,7 @@ Failure:
 
 If the result is not an error
 */
-fn get_err<T, copy U>(res: t<T, U>) -> U {
+fn get_err<T, U: copy>(res: t<T, U>) -> U {
     alt res {
       err(u) { u }
       ok(_) {
@@ -87,7 +87,7 @@ pure fn failure<T, U>(res: t<T, U>) -> bool {
     !success(res)
 }
 
-pure fn to_either<copy T, copy U>(res: t<U, T>) -> either::t<T, U> {
+pure fn to_either<T: copy, U: copy>(res: t<U, T>) -> either::t<T, U> {
     alt res {
       ok(res) { either::right(res) }
       err(fail_) { either::left(fail_) }
@@ -110,7 +110,7 @@ Example:
 > })
 
 */
-fn chain<T, copy U, copy V>(res: t<T, V>, op: block(T) -> t<U, V>)
+fn chain<T, U: copy, V: copy>(res: t<T, V>, op: block(T) -> t<U, V>)
     -> t<U, V> {
     alt res {
       ok(t) { op(t) }

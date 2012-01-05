@@ -1,4 +1,4 @@
-fn get_third<copy T>(t: (T, T, T)) -> T { let (_, _, x) = t; ret x; }
+fn get_third<T: copy>(t: (T, T, T)) -> T { let (_, _, x) = t; ret x; }
 
 fn main() {
     log(debug, get_third((1, 2, 3)));

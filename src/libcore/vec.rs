@@ -121,7 +121,7 @@ Creates and initializes an immutable vector.
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value `t`.
 */
-fn init_elt<copy T>(t: T, n_elts: uint) -> [T] {
+fn init_elt<T: copy>(t: T, n_elts: uint) -> [T] {
     let v = [];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -138,7 +138,7 @@ Creates and initializes a mutable vector.
 Creates a mutable vector of size `n_elts` and initializes the elements
 to the value `t`.
 */
-fn init_elt_mut<copy T>(t: T, n_elts: uint) -> [mutable T] {
+fn init_elt_mut<T: copy>(t: T, n_elts: uint) -> [mutable T] {
     let v = [mutable];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -153,7 +153,7 @@ Function: to_mut
 
 Produces a mutable vector from an immutable vector.
 */
-fn to_mut<copy T>(v: [T]) -> [mutable T] {
+fn to_mut<T: copy>(v: [T]) -> [mutable T] {
     let vres = [mutable];
     for t: T in v { vres += [mutable t]; }
     ret vres;
@@ -165,7 +165,7 @@ Function: from_mut
 
 Produces an immutable vector from a mutable vector.
 */
-fn from_mut<copy T>(v: [mutable T]) -> [T] {
+fn from_mut<T: copy>(v: [mutable T]) -> [T] {
     let vres = [];
     for t: T in v { vres += [t]; }
     ret vres;
@@ -181,7 +181,7 @@ Returns the first element of a vector
 Predicates:
 <is_not_empty> (v)
 */
-pure fn head<copy T>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
+pure fn head<T: copy>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
 
 /*
 Function: tail
@@ -191,7 +191,7 @@ Returns all but the first element of a vector
 Predicates:
 <is_not_empty> (v)
 */
-fn tail<copy T>(v: [const T]) : is_not_empty(v) -> [T] {
+fn tail<T: copy>(v: [const T]) : is_not_empty(v) -> [T] {
     ret slice(v, 1u, len(v));
 }
 
@@ -206,7 +206,7 @@ Returns all but the last elemnt of a vector
 Preconditions:
 `v` is not empty
 */
-fn init<copy T>(v: [const T]) -> [T] {
+fn init<T: copy>(v: [const T]) -> [T] {
     assert len(v) != 0u;
     slice(v, 0u, len(v) - 1u)
 }
@@ -221,7 +221,7 @@ Returns:
 An option containing the last element of `v` if `v` is not empty, or
 none if `v` is empty.
 */
-pure fn last<copy T>(v: [const T]) -> option::t<T> {
+pure fn last<T: copy>(v: [const T]) -> option::t<T> {
     if len(v) == 0u { ret none; }
     ret some(v[len(v) - 1u]);
 }
@@ -234,7 +234,7 @@ Returns the last element of a non-empty vector `v`
 Predicates:
 <is_not_empty> (v)
 */
-pure fn last_total<copy T>(v: [const T]) : is_not_empty(v) -> T {
+pure fn last_total<T: copy>(v: [const T]) : is_not_empty(v) -> T {
     ret v[len(v) - 1u];
 }
 
@@ -243,7 +243,7 @@ Function: slice
 
 Returns a copy of the elements from [`start`..`end`) from `v`.
 */
-fn slice<copy T>(v: [const T], start: uint, end: uint) -> [T] {
+fn slice<T: copy>(v: [const T], start: uint, end: uint) -> [T] {
     assert (start <= end);
     assert (end <= len(v));
     let result = [];
@@ -259,7 +259,7 @@ Function: slice_mut
 
 Returns a copy of the elements from [`start`..`end`) from `v`.
 */
-fn slice_mut<copy T>(v: [const T], start: uint, end: uint) -> [mutable T] {
+fn slice_mut<T: copy>(v: [const T], start: uint, end: uint) -> [mutable T] {
     assert (start <= end);
     assert (end <= len(v));
     let result = [mutable];
@@ -277,7 +277,7 @@ Function: shift
 
 Removes the first element from a vector and return it
 */
-fn shift<copy T>(&v: [const T]) -> T {
+fn shift<T: copy>(&v: [const T]) -> T {
     let ln = len::<T>(v);
     assert (ln > 0u);
     let e = v[0];
@@ -291,7 +291,7 @@ Function: pop
 
 Remove the last element from a vector and return it
 */
-fn pop<copy T>(&v: [const T]) -> T {
+fn pop<T: copy>(&v: [const T]) -> T {
     let ln = len(v);
     assert (ln > 0u);
     ln -= 1u;
@@ -305,7 +305,7 @@ Function: push
 
 Append an element to a vector and return it
 */
-fn push<copy T>(&v: [T], initval: T) {
+fn push<T: copy>(&v: [T], initval: T) {
     grow(v, 1u, initval)
 }
 
@@ -325,7 +325,7 @@ v - The vector to grow
 n - The number of elements to add
 initval - The value for the new elements
 */
-fn grow<copy T>(&v: [T], n: uint, initval: T) {
+fn grow<T: copy>(&v: [T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [initval]; i += 1u; }
@@ -344,7 +344,7 @@ v - The vector to grow
 n - The number of elements to add
 initval - The value for the new elements
 */
-fn grow_mut<copy T>(&v: [mutable T], n: uint, initval: T) {
+fn grow_mut<T: copy>(&v: [mutable T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [mutable initval]; i += 1u; }
@@ -380,7 +380,7 @@ Sets the element at position `index` to `val`. If `index` is past the end
 of the vector, expands the vector by replicating `initval` to fill the
 intervening space.
 */
-fn grow_set<copy T>(&v: [mutable T], index: uint, initval: T, val: T) {
+fn grow_set<T: copy>(&v: [mutable T], index: uint, initval: T, val: T) {
     if index >= len(v) { grow_mut(v, index - len(v) + 1u, initval); }
     v[index] = val;
 }
@@ -405,7 +405,7 @@ Function: map_mut
 
 Apply a function to each element of a mutable vector and return the results
 */
-fn map_mut<copy T, U>(v: [const T], f: block(T) -> U) -> [U] {
+fn map_mut<T: copy, U>(v: [const T], f: block(T) -> U) -> [U] {
     let result = [];
     reserve(result, len(v));
     for elem: T in v {
@@ -420,7 +420,7 @@ Function: map2
 
 Apply a function to each pair of elements and return the results
 */
-fn map2<copy T, copy U, V>(v0: [T], v1: [U], f: block(T, U) -> V) -> [V] {
+fn map2<T: copy, U: copy, V>(v0: [T], v1: [U], f: block(T, U) -> V) -> [V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail; }
     let u: [V] = [];
@@ -437,7 +437,7 @@ Apply a function to each element of a vector and return the results
 If function `f` returns `none` then that element is excluded from
 the resulting vector.
 */
-fn filter_map<copy T, copy U>(v: [const T], f: block(T) -> option::t<U>)
+fn filter_map<T: copy, U: copy>(v: [const T], f: block(T) -> option::t<U>)
     -> [U] {
     let result = [];
     for elem: T in v {
@@ -458,7 +458,7 @@ holds.
 Apply function `f` to each element of `v` and return a vector containing
 only those elements for which `f` returned true.
 */
-fn filter<copy T>(v: [T], f: block(T) -> bool) -> [T] {
+fn filter<T: copy>(v: [T], f: block(T) -> bool) -> [T] {
     let result = [];
     for elem: T in v {
         if f(elem) { result += [elem]; }
@@ -472,7 +472,7 @@ Function: concat
 Concatenate a vector of vectors. Flattens a vector of vectors of T into
 a single vector of T.
 */
-fn concat<copy T>(v: [const [const T]]) -> [T] {
+fn concat<T: copy>(v: [const [const T]]) -> [T] {
     let new: [T] = [];
     for inner: [T] in v { new += inner; }
     ret new;
@@ -483,7 +483,7 @@ Function: foldl
 
 Reduce a vector from left to right
 */
-fn foldl<copy T, U>(z: T, v: [const U], p: block(T, U) -> T) -> T {
+fn foldl<T: copy, U>(z: T, v: [const U], p: block(T, U) -> T) -> T {
     let accum = z;
     iter(v) { |elt|
         accum = p(accum, elt);
@@ -496,7 +496,7 @@ Function: foldr
 
 Reduce a vector from right to left
 */
-fn foldr<T, copy U>(v: [const T], z: U, p: block(T, U) -> U) -> U {
+fn foldr<T, U: copy>(v: [const T], z: U, p: block(T, U) -> U) -> U {
     let accum = z;
     riter(v) { |elt|
         accum = p(elt, accum);
@@ -591,7 +591,7 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<copy T>(v: [T], f: block(T) -> bool) -> option::t<T> {
+fn find<T: copy>(v: [T], f: block(T) -> bool) -> option::t<T> {
     for elt: T in v { if f(elt) { ret some(elt); } }
     ret none;
 }
@@ -637,7 +637,7 @@ vector contains the first element of the i-th tuple of the input vector,
 and the i-th element of the second vector contains the second element
 of the i-th tuple of the input vector.
 */
-fn unzip<copy T, copy U>(v: [(T, U)]) -> ([T], [U]) {
+fn unzip<T: copy, U: copy>(v: [(T, U)]) -> ([T], [U]) {
     let as = [], bs = [];
     for (a, b) in v { as += [a]; bs += [b]; }
     ret (as, bs);
@@ -655,7 +655,7 @@ Preconditions:
 
 <same_length> (v, u)
 */
-fn zip<copy T, copy U>(v: [T], u: [U]) : same_length(v, u) -> [(T, U)] {
+fn zip<T: copy, U: copy>(v: [T], u: [U]) : same_length(v, u) -> [(T, U)] {
     let zipped = [];
     let sz = len(v), i = 0u;
     assert (sz == len(u));
@@ -694,7 +694,7 @@ Function: reversed
 
 Returns a vector with the order of elements reversed
 */
-fn reversed<copy T>(v: [const T]) -> [T] {
+fn reversed<T: copy>(v: [const T]) -> [T] {
     let rs: [T] = [];
     let i = len::<T>(v);
     if i == 0u { ret rs; } else { i -= 1u; }
@@ -805,7 +805,7 @@ is sorted then the permutations are lexicographically sorted).
 The total number of permutations produced is `len(v)!`.  If `v` contains
 repeated elements, then some permutations are repeated.
 */
-fn permute<copy T>(v: [const T], put: block([T])) {
+fn permute<T: copy>(v: [const T], put: block([T])) {
   let ln = len(v);
   if ln == 0u {
     put([]);

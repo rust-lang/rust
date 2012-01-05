@@ -108,32 +108,32 @@ type hashmap<K, V> = obj {
 /* Section: Operations */
 
 mod chained {
-    type entry<copy K, copy V> = {
+    type entry<K: copy, V: copy> = {
         hash: uint,
         key: K,
         mutable value: V,
         mutable next: chain<K, V>
     };
 
-    tag chain<copy K, copy V> {
+    tag chain<K: copy, V: copy> {
         present(@entry<K, V>);
         absent;
     }
 
-    type t<copy K, copy V> = {
+    type t<K: copy, V: copy> = {
         mutable size: uint,
         mutable chains: [mutable chain<K,V>],
         hasher: hashfn<K>,
         eqer: eqfn<K>
     };
 
-    tag search_result<copy K, copy V> {
+    tag search_result<K: copy, V: copy> {
         not_found;
         found_first(uint, @entry<K,V>);
         found_after(@entry<K,V>, @entry<K,V>);
     }
 
-    fn search_rem<copy K, copy V>(tbl: t<K,V>,
+    fn search_rem<K: copy, V: copy>(tbl: t<K,V>,
                                   k: K,
                                   h: uint,
                                   idx: uint,
@@ -163,7 +163,7 @@ mod chained {
         util::unreachable();
     }
 
-    fn search_tbl<copy K, copy V>(
+    fn search_tbl<K: copy, V: copy>(
         tbl: t<K,V>, k: K, h: uint) -> search_result<K,V> {
         let idx = h % vec::len(tbl.chains);
         alt tbl.chains[idx] {
@@ -185,7 +185,7 @@ mod chained {
         }
     }
 
-    fn insert<copy K, copy V>(tbl: t<K,V>, k: K, v: V) -> bool {
+    fn insert<K: copy, V: copy>(tbl: t<K,V>, k: K, v: V) -> bool {
         let hash = tbl.hasher(k);
         alt search_tbl(tbl, k, hash) {
           not_found. {
@@ -210,7 +210,7 @@ mod chained {
         }
     }
 
-    fn get<copy K, copy V>(tbl: t<K,V>, k: K) -> core::option::t<V> {
+    fn get<K: copy, V: copy>(tbl: t<K,V>, k: K) -> core::option::t<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
           not_found. {
             ret core::option::none;
@@ -226,7 +226,7 @@ mod chained {
         }
     }
 
-    fn remove<copy K, copy V>(tbl: t<K,V>, k: K) -> core::option::t<V> {
+    fn remove<K: copy, V: copy>(tbl: t<K,V>, k: K) -> core::option::t<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
           not_found. {
             ret core::option::none;
@@ -246,11 +246,11 @@ mod chained {
         }
     }
 
-    fn chains<copy K, copy V>(nchains: uint) -> [mutable chain<K,V>] {
+    fn chains<K: copy, V: copy>(nchains: uint) -> [mutable chain<K,V>] {
         ret vec::init_elt_mut(absent, nchains);
     }
 
-    fn foreach_entry<copy K, copy V>(chain0: chain<K,V>,
+    fn foreach_entry<K: copy, V: copy>(chain0: chain<K,V>,
                                      blk: block(@entry<K,V>)) {
         let chain = chain0;
         while true {
@@ -265,7 +265,7 @@ mod chained {
         }
     }
 
-    fn foreach_chain<copy K, copy V>(chains: [const chain<K,V>],
+    fn foreach_chain<K: copy, V: copy>(chains: [const chain<K,V>],
                                      blk: block(@entry<K,V>)) {
         let i = 0u, n = vec::len(chains);
         while i < n {
@@ -274,7 +274,7 @@ mod chained {
         }
     }
 
-    fn rehash<copy K, copy V>(tbl: t<K,V>) {
+    fn rehash<K: copy, V: copy>(tbl: t<K,V>) {
         let old_chains = tbl.chains;
         let n_old_chains = vec::len(old_chains);
         let n_new_chains: uint = uint::next_power_of_two(n_old_chains + 1u);
@@ -286,7 +286,7 @@ mod chained {
         }
     }
 
-    fn items<copy K, copy V>(tbl: t<K,V>, blk: block(K,V)) {
+    fn items<K: copy, V: copy>(tbl: t<K,V>, blk: block(K,V)) {
         let tbl_chains = tbl.chains;  // Satisfy alias checker.
         foreach_chain(tbl_chains) { |entry|
             let key = entry.key;
@@ -295,7 +295,7 @@ mod chained {
         }
     }
 
-    obj o<copy K, copy V>(tbl: @t<K,V>,
+    obj o<K: copy, V: copy>(tbl: @t<K,V>,
                           lf: util::rational) {
         fn size() -> uint {
             ret tbl.size;
@@ -343,7 +343,8 @@ mod chained {
         }
     }
 
-    fn mk<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>) -> hashmap<K,V> {
+    fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
+        -> hashmap<K,V> {
         let initial_capacity: uint = 32u; // 2^5
         let t = @{mutable size: 0u,
                   mutable chains: chains(initial_capacity),
@@ -363,7 +364,7 @@ Parameters:
 hasher - The hash function for key type K
 eqer - The equality function for key type K
 */
-fn mk_hashmap<copy K, copy V>(hasher: hashfn<K>, eqer: eqfn<K>)
+fn mk_hashmap<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
     -> hashmap<K, V> {
     ret chained::mk(hasher, eqer);
 }
@@ -373,7 +374,7 @@ Function: new_str_hash
 
 Construct a hashmap for string keys
 */
-fn new_str_hash<copy V>() -> hashmap<str, V> {
+fn new_str_hash<V: copy>() -> hashmap<str, V> {
     ret mk_hashmap(str::hash, str::eq);
 }
 
@@ -382,7 +383,7 @@ Function: new_int_hash
 
 Construct a hashmap for int keys
 */
-fn new_int_hash<copy V>() -> hashmap<int, V> {
+fn new_int_hash<V: copy>() -> hashmap<int, V> {
     fn hash_int(&&x: int) -> uint { ret x as uint; }
     fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
     ret mk_hashmap(hash_int, eq_int);
@@ -393,7 +394,7 @@ Function: new_uint_hash
 
 Construct a hashmap for uint keys
 */
-fn new_uint_hash<copy V>() -> hashmap<uint, V> {
+fn new_uint_hash<V: copy>() -> hashmap<uint, V> {
     fn hash_uint(&&x: uint) -> uint { ret x; }
     fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
     ret mk_hashmap(hash_uint, eq_uint);

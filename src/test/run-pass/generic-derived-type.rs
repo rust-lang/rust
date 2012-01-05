@@ -1,8 +1,8 @@
 
 
-fn g<copy X>(x: X) -> X { ret x; }
+fn g<X: copy>(x: X) -> X { ret x; }
 
-fn f<copy T>(t: T) -> {a: T, b: T} {
+fn f<T: copy>(t: T) -> {a: T, b: T} {
     type pair = {a: T, b: T};
 
     let x: pair = {a: t, b: t};

@@ -115,7 +115,7 @@ fn run_tests_console(opts: test_opts,
     run_tests_console_(opts, tests, default_test_to_task)
 }
 
-fn run_tests_console_<copy T>(opts: test_opts, tests: [test_desc<T>],
+fn run_tests_console_<T: copy>(opts: test_opts, tests: [test_desc<T>],
                               to_task: test_to_task<T>) -> bool {
 
     type test_state =
@@ -127,7 +127,7 @@ fn run_tests_console_<copy T>(opts: test_opts, tests: [test_desc<T>],
           mutable ignored: uint,
           mutable failures: [test_desc<T>]};
 
-    fn callback<copy T>(event: testevent<T>, st: test_state) {
+    fn callback<T: copy>(event: testevent<T>, st: test_state) {
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
@@ -220,7 +220,7 @@ tag testevent<T> {
     te_result(test_desc<T>, test_result);
 }
 
-fn run_tests<copy T>(opts: test_opts, tests: [test_desc<T>],
+fn run_tests<T: copy>(opts: test_opts, tests: [test_desc<T>],
                      to_task: test_to_task<T>,
                      callback: fn@(testevent<T>)) {
 
@@ -254,7 +254,7 @@ fn run_tests<copy T>(opts: test_opts, tests: [test_desc<T>],
 
 fn get_concurrency() -> uint { rustrt::sched_threads() }
 
-fn filter_tests<copy T>(opts: test_opts,
+fn filter_tests<T: copy>(opts: test_opts,
                         tests: [test_desc<T>]) -> [test_desc<T>] {
     let filtered = tests;
 
@@ -268,7 +268,7 @@ fn filter_tests<copy T>(opts: test_opts,
           option::none. { "" }
         };
 
-        fn filter_fn<copy T>(test: test_desc<T>, filter_str: str) ->
+        fn filter_fn<T: copy>(test: test_desc<T>, filter_str: str) ->
             option::t<test_desc<T>> {
             if str::find(test.name, filter_str) >= 0 {
                 ret option::some(test);
@@ -284,7 +284,7 @@ fn filter_tests<copy T>(opts: test_opts,
     filtered = if !opts.run_ignored {
         filtered
     } else {
-        fn filter<copy T>(test: test_desc<T>) -> option::t<test_desc<T>> {
+        fn filter<T: copy>(test: test_desc<T>) -> option::t<test_desc<T>> {
             if test.ignore {
                 ret option::some({name: test.name,
                                   fn: test.fn,
@@ -310,7 +310,7 @@ fn filter_tests<copy T>(opts: test_opts,
 
 type test_future<T> = {test: test_desc<T>, wait: fn@() -> test_result};
 
-fn run_test<copy T>(test: test_desc<T>,
+fn run_test<T: copy>(test: test_desc<T>,
                     to_task: test_to_task<T>) -> test_future<T> {
     if test.ignore {
         ret {test: test, wait: fn () -> test_result { tr_ignored }};

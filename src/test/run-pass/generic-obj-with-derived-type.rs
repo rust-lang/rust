@@ -1,6 +1,6 @@
 
 
-obj handle<copy T>(data: T) {
+obj handle<T: copy>(data: T) {
     fn get() -> T { ret data; }
 }
 

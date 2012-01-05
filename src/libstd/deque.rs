@@ -33,7 +33,7 @@ Section: Functions
 /*
 Function: create
 */
-fn create<copy T>() -> t<T> {
+fn create<T: copy>() -> t<T> {
     type cell<T> = option::t<T>;
 
     let initial_capacity: uint = 32u; // 2^5
@@ -41,7 +41,7 @@ fn create<copy T>() -> t<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<copy T>(nelts: uint, lo: uint, elts: [mutable cell<T>]) ->
+    fn grow<T: copy>(nelts: uint, lo: uint, elts: [mutable cell<T>]) ->
        [mutable cell<T>] {
         assert (nelts == vec::len(elts));
         let rv = [mutable];
@@ -57,10 +57,10 @@ fn create<copy T>() -> t<T> {
 
         ret rv;
     }
-    fn get<copy T>(elts: [mutable cell<T>], i: uint) -> T {
+    fn get<T: copy>(elts: [mutable cell<T>], i: uint) -> T {
         ret alt elts[i] { option::some(t) { t } _ { fail } };
     }
-    obj deque<copy T>(mutable nelts: uint,
+    obj deque<T: copy>(mutable nelts: uint,
                       mutable lo: uint,
                       mutable hi: uint,
                       mutable elts: [mutable cell<T>]) {

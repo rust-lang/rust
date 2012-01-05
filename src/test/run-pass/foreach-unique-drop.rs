@@ -1,5 +1,5 @@
 
-obj ob<copy K>(k: K) {
+obj ob<K: copy>(k: K) {
     fn foo(it: block(~{a: K})) { it(~{a: k}); }
 }
 

@@ -44,7 +44,7 @@ Function: insert
 
 Insert a value into the map
 */
-fn insert<copy K, copy V>(m: treemap<K, V>, k: K, v: V) {
+fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) {
     alt m {
       @empty. { *m = node(@k, @v, @mutable empty, @mutable empty); }
       @node(@kk, _, _, _) {
@@ -63,7 +63,7 @@ Function: find
 
 Find a value based on the key
 */
-fn find<copy K, copy V>(m: treemap<K, V>, k: K) -> option<V> {
+fn find<K: copy, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
       empty. { none }
       node(@kk, @v, _, _) {

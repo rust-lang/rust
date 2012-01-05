@@ -41,7 +41,7 @@ native mod rustrt {
     type void;
     type rust_port;
 
-    fn chan_id_send<send T>(t: *sys::type_desc,
+    fn chan_id_send<T: send>(t: *sys::type_desc,
                             target_task: task::task, target_port: port_id,
                             data: T) -> ctypes::uintptr_t;
 
@@ -57,7 +57,7 @@ native mod rustrt {
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
-    fn call_with_retptr<send T>(&&f: fn@(*uint)) -> T;
+    fn call_with_retptr<T: send>(&&f: fn@(*uint)) -> T;
 }
 
 type port_id = int;
@@ -80,11 +80,11 @@ dropped.
 
 Channels may be duplicated and themselves transmitted over other channels.
 */
-tag chan<send T> {
+tag chan<T: send> {
     chan_t(task::task, port_id);
 }
 
-resource port_ptr<send T>(po: *rustrt::rust_port) {
+resource port_ptr<T: send>(po: *rustrt::rust_port) {
     // Once the port is detached it's guaranteed not to receive further
     // messages
     rustrt::rust_port_detach(po);
@@ -108,7 +108,7 @@ transmitted. If a port value is copied, both copies refer to the same port.
 
 Ports may be associated with multiple <chan>s.
 */
-tag port<send T> { port_t(@port_ptr<T>); }
+tag port<T: send> { port_t(@port_ptr<T>); }
 
 /*
 Function: send
@@ -118,7 +118,7 @@ Sends data over a channel.
 The sent data is moved into the channel, whereupon the caller loses access
 to it.
 */
-fn send<send T>(ch: chan<T>, -data: T) {
+fn send<T: send>(ch: chan<T>, -data: T) {
     let chan_t(t, p) = ch;
     let res = rustrt::chan_id_send(sys::get_type_desc::<T>(), t, p, data);
     if res != 0u unsafe {
@@ -133,7 +133,7 @@ Function: port
 
 Constructs a port.
 */
-fn port<send T>() -> port<T> {
+fn port<T: send>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>())))
 }
 
@@ -145,10 +145,10 @@ Receive from a port.
 If no data is available on the port then the task will block until data
 becomes available.
 */
-fn recv<send T>(p: port<T>) -> T { recv_(***p) }
+fn recv<T: send>(p: port<T>) -> T { recv_(***p) }
 
 // Receive on a raw port pointer
-fn recv_<send T>(p: *rustrt::rust_port) -> T {
+fn recv_<T: send>(p: *rustrt::rust_port) -> T {
     // FIXME: Due to issue 1185 we can't use a return pointer when
     // calling C code, and since we can't create our own return
     // pointer on the stack, we're going to call a little intrinsic
@@ -181,6 +181,6 @@ Constructs a channel.
 
 The channel is bound to the port used to construct it.
 */
-fn chan<send T>(p: port<T>) -> chan<T> {
+fn chan<T: send>(p: port<T>) -> chan<T> {
     chan_t(task::get_task(), rustrt::get_port_id(***p))
 }

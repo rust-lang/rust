@@ -414,7 +414,7 @@ fn mk_rcache() -> creader_cache {
     ret map::mk_hashmap(hash_cache_entry, eq_cache_entries);
 }
 
-fn new_ty_hash<copy V>() -> map::hashmap<t, V> { map::new_uint_hash() }
+fn new_ty_hash<V: copy>() -> map::hashmap<t, V> { map::new_uint_hash() }
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {

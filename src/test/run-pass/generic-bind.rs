@@ -1,6 +1,6 @@
 
 
-fn id<copy T>(t: T) -> T { ret t; }
+fn id<T: copy>(t: T) -> T { ret t; }
 
 fn main() {
     let t = {_0: 1, _1: 2, _2: 3, _3: 4, _4: 5, _5: 6, _6: 7};

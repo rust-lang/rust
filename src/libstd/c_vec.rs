@@ -108,7 +108,7 @@ Failure:
 
 If `ofs` is greater or equal to the length of the vector
 */
-fn get<copy T>(t: t<T>, ofs: uint) -> T {
+fn get<T: copy>(t: t<T>, ofs: uint) -> T {
     assert ofs < (*t).size;
     ret unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
@@ -122,7 +122,7 @@ Failure:
 
 If `ofs` is greater or equal to the length of the vector
 */
-fn set<copy T>(t: t<T>, ofs: uint, v: T) {
+fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
     assert ofs < (*t).size;
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }

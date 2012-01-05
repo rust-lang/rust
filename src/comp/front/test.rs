@@ -182,7 +182,7 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
     ret @item;
 }
 
-fn nospan<copy T>(t: T) -> ast::spanned<T> {
+fn nospan<T: copy>(t: T) -> ast::spanned<T> {
     ret {node: t, span: dummy_sp()};
 }
 

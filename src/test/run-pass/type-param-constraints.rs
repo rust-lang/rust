@@ -1,6 +1,6 @@
 fn p_foo<T>(pinned: T) { }
-fn s_foo<copy T>(shared: T) { }
-fn u_foo<send T>(unique: T) { }
+fn s_foo<T: copy>(shared: T) { }
+fn u_foo<T: send>(unique: T) { }
 
 resource r(i: int) { }
 

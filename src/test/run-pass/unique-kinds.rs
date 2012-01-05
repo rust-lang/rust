@@ -1,10 +1,10 @@
 fn sendable() {
 
-    fn f<send T>(i: T, j: T) {
+    fn f<T: send>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<send T>(i: T, j: T) {
+    fn g<T: send>(i: T, j: T) {
         assert i != j;
     }
 
@@ -18,11 +18,11 @@ fn sendable() {
 
 fn copyable() {
 
-    fn f<copy T>(i: T, j: T) {
+    fn f<T: copy>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<copy T>(i: T, j: T) {
+    fn g<T: copy>(i: T, j: T) {
         assert i != j;
     }
 
