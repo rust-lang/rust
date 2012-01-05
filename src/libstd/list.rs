@@ -46,16 +46,10 @@ ls - The list to fold
 z - The initial value
 f - The function to apply
 */
-fn foldl<copy T, copy U>(ls: list<U>, z: T, f: block(T, U) -> T) -> T {
+fn foldl<copy T, U>(ls: list<U>, z: T, f: block(T, U) -> T) -> T {
     let accum: T = z;
-    let ls = ls;
-    while true {
-        alt ls {
-          cons(hd, tl) { accum = f(accum, hd); ls = *tl; }
-          nil. { break; }
-        }
-    }
-    ret accum;
+    iter(ls) {|elt| accum = f(accum, elt);}
+    accum
 }
 
 /*
@@ -123,9 +117,10 @@ Function: len
 
 Returns the length of a list
 */
-fn len<copy T>(ls: list<T>) -> uint {
-    fn count<T>(&&u: uint, _t: T) -> uint { ret u + 1u; }
-    ret foldl(ls, 0u, bind count(_, _));
+fn len<T>(ls: list<T>) -> uint {
+    let count = 0u;
+    iter(ls) {|_e| count += 1u;}
+    count
 }
 
 /*
@@ -169,15 +164,22 @@ Function: iter
 
 Iterate over a list
 */
-fn iter<copy T>(l: list<T>, f: block(T)) {
-    let cur = l;
-    while cur != nil {
-        alt cur {
-          cons(hd, tl) {
-            f(hd);
-            cur = *tl;
-          }
+fn iter<T>(l: list<T>, f: block(T)) {
+    alt l {
+      cons(hd, tl) {
+        f(hd);
+        let cur = tl;
+        while true {
+            alt *cur {
+              cons(hd, tl) {
+                f(hd);
+                cur = tl;
+              }
+              nil. { break; }
+            }
         }
+      }
+      nil. {}
     }
 }
 
