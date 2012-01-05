@@ -3176,15 +3176,22 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
       _ { }
     }
     // Arg 0: Output pointer.
-    let llretty = type_of_or_i8(bcx, full_retty);
     let llretslot = alt dest {
       ignore. {
         if ty::type_is_nil(tcx, retty) {
-            llvm::LLVMGetUndef(T_ptr(llretty))
-        } else { alloca(cx, llretty) }
+            llvm::LLVMGetUndef(T_ptr(T_nil()))
+        } else {
+            let {bcx: cx, val} = alloc_ty(bcx, full_retty);
+            bcx = cx;
+            val
+        }
       }
       save_in(dst) { dst }
-      by_val(_) { alloca(cx, llretty) }
+      by_val(_) {
+          let {bcx: cx, val} = alloc_ty(bcx, full_retty);
+          bcx = cx;
+          val
+      }
     };
 
     if ty::type_contains_params(tcx, retty) {
