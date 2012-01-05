@@ -1151,7 +1151,10 @@ pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
     that the type context tracks about types should be immutable.)
     */
     type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
-        alt sty { ty_param(_, _) { true } _ { false }}
+        alt sty {
+          ty_opaque_closure. | ty_param(_, _) { true }
+          _ { false }
+        }
     })
 }
 
