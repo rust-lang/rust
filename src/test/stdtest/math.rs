@@ -2,6 +2,7 @@ import core::*;
 
 use std;
 
+import math::{min, max};
 import float::*;
 import float;
 import c_int = ctypes::c_int;
@@ -18,6 +19,7 @@ fn test_max_min() {
 
 // FIXME use macros to execute the tests below for all float types
 
+/*
 #[test]
 fn test_trig() {
     assert sin(0.0) == 0.0;
@@ -298,3 +300,5 @@ fn test_log_functions() {
     assert float::isNaN(ln1p(-2.0f));
     assert ln1p(float::infinity) == float::infinity;
 }
+
+*/

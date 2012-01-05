@@ -3,7 +3,7 @@ import float;
 
 fn main() {
   let nan = float::NaN;
-  assert(float::isNaN(nan));
+  assert(float::is_NaN(nan));
 
   let inf = float::infinity;
   assert(-inf == float::neg_infinity);
@@ -61,22 +61,22 @@ fn main() {
   assert(!(-inf < nan));
   assert(!(-nan < nan));
 
-  assert(float::isNaN(nan + inf));
-  assert(float::isNaN(nan + -inf));
-  assert(float::isNaN(nan + 0.));
-  assert(float::isNaN(nan + 1.));
-  assert(float::isNaN(nan * 1.));
-  assert(float::isNaN(nan / 1.));
-  assert(float::isNaN(nan / 0.));
-  assert(float::isNaN(0. / 0.));
-  assert(float::isNaN(-inf + inf));
-  assert(float::isNaN(inf - inf));
+  assert(float::is_NaN(nan + inf));
+  assert(float::is_NaN(nan + -inf));
+  assert(float::is_NaN(nan + 0.));
+  assert(float::is_NaN(nan + 1.));
+  assert(float::is_NaN(nan * 1.));
+  assert(float::is_NaN(nan / 1.));
+  assert(float::is_NaN(nan / 0.));
+  assert(float::is_NaN(0. / 0.));
+  assert(float::is_NaN(-inf + inf));
+  assert(float::is_NaN(inf - inf));
 
-  assert(!float::isNaN(-1.));
-  assert(!float::isNaN(0.));
-  assert(!float::isNaN(0.1));
-  assert(!float::isNaN(1.));
-  assert(!float::isNaN(inf));
-  assert(!float::isNaN(-inf));
-  assert(!float::isNaN(1./-inf));
+  assert(!float::is_NaN(-1.));
+  assert(!float::is_NaN(0.));
+  assert(!float::is_NaN(0.1));
+  assert(!float::is_NaN(1.));
+  assert(!float::is_NaN(inf));
+  assert(!float::is_NaN(-inf));
+  assert(!float::is_NaN(1./-inf));
 }

@@ -9,6 +9,8 @@ FIXME: Add a test that uses some native code to verify these sizes,
 which are not obviously correct for all potential platforms.
 */
 
+// PORT adapt to architecture
+
 /*
 Type: c_int
 
@@ -73,6 +75,20 @@ when interoperating with C void pointers can help in documentation.
 type void = int;
 
 /*
+Type: c_float
+
+A float value with the same size as a C `float`
+*/
+type c_float = f32;
+
+/*
+Type: c_float
+
+A float value with the same size as a C `double`
+*/
+type c_double = f64;
+
+/*
 Type: size_t
 
 An unsigned integer corresponding to the C `size_t`
@@ -114,3 +130,4 @@ Type: enum
 An unsigned integer with the same size as a C enum
 */
 type enum = u32;
+

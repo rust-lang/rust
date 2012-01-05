@@ -1,5 +1,4 @@
-import core::{str, option};
-import core::float::{max, min};
+import math::{max, min};
 import std::map::hashmap;
 import option::{some};
 import syntax::ast;
