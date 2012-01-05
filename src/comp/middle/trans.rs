@@ -414,14 +414,26 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
                                False);
 }
 
-fn size_of(cx: @block_ctxt, t: ty::t) -> result {
-    let {bcx, sz, align} = metrics(cx, t, none);
-    rslt(bcx, align)
+fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
+    assert !ty::type_has_opaque_size(bcx_tcx(bcx), t);
+    let {bcx, sz, align: _} = metrics(bcx, t, none);
+    rslt(bcx, sz)
 }
 
-fn align_of(cx: @block_ctxt, t: ty::t) -> result {
-    let {bcx, sz, align} = metrics(cx, t, none);
-    rslt(bcx, align)
+fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
+    assert !ty::type_has_opaque_size(bcx_tcx(bcx), t);
+    alt ty::struct(ccx.tcx, t) {
+      ty::ty_opaque_closure. {
+        // Hack: the alignment of an opaque closure is always defined as the
+        // alignment of a pointer.  This is not, however, strictly correct,
+        // depending on your point of view.  
+        llalign_of(bcx, T_ptr(T_i8()));
+      }
+      _ {
+        let {bcx, sz: _, align} = metrics(bcx, t, none);
+        rslt(bcx, align)
+      }
+    }
 }
 
 // Computes the size/alignment of the type `t`.  `opt_v`, if provided, should
@@ -431,11 +443,13 @@ fn align_of(cx: @block_ctxt, t: ty::t) -> result {
 // instance is required.
 fn metrics(bcx: @block_ctxt, t: ty::t, opt_v: option<ValueRef>)
     -> metrics_result {
-    let ccx = bcx_ccx(cx);
+    assert (option::is_some(opt_v) ||
+            !ty::type_has_opaque_size(bcx_tcx(bcx), t));
+    let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        let sp = cx.sp;
-        let sz = llsize_of(bcx_ccx(cx), type_of(ccx, sp, t));
-        let align = llalign_of(bcx_ccx(cx), type_of(ccx, sp, t));
+        let sp = bcx.sp;
+        let sz = llsize_of(bcx_ccx(bcx), type_of(ccx, sp, t));
+        let align = llalign_of(bcx_ccx(bcx), type_of(ccx, sp, t));
         ret {bcx: bcx, sz: sz, align: align};
     } else {
         ret dynamic_metrics(bcx, t, opt_v);
@@ -552,11 +566,11 @@ type metrics_result = {
 };
 
 fn dynamic_metrics(bcx: @block_ctxt,
-                   elts: [ty::t],
-                   opts_v: option<ValueRef>) -> metrics_result {
-    fn compute_elements_metrics(bcx: @block_ctxt,
-                                elts: [ty::t],
-                                opt_v: option<ValueRef>) -> metrics_result {
+                   t: ty::t,
+                   opt_v: option<ValueRef>) -> metrics_result {
+    fn c_struct_metrics(bcx: @block_ctxt,
+                        elts: [ty::t],
+                        opt_v: option<ValueRef>) -> metrics_result {
         //
         // C padding rules:
         //
@@ -570,40 +584,40 @@ fn dynamic_metrics(bcx: @block_ctxt,
         let max_align = C_int(bcx_ccx(bcx), 1);
         for e: ty::t in elts {
             let opt_ev = option::map(opt_v) {|v| ptr_offs(bcx, v, off) };
-            let elt_align = align_of(bcx, e, opt_ev);
-            bcx = elt_align.bcx;
-            let elt_size = size_of(bcx, e, opt_ev);
-            bcx = elt_size.bcx;
-            let aligned_off = align_to(bcx, off, elt_align.val);
-            off = Add(bcx, aligned_off, elt_size.val);
-            max_align = umax(bcx, max_align, elt_align.val);
+            let elt_metrics = metrics(bcx, e, opt_ev);
+            bcx = elt_metrics.bcx;
+            let aligned_off = align_to(bcx, off, elt_metrics.align);
+            off = Add(bcx, aligned_off, elt_metrics.sz);
+            max_align = umax(bcx, max_align, elt_metrics.align);
         }
+        off = align_to(bcx, off, max_align);
         ret { bcx: bcx, sz: off, align: max_align };
     }
 
     alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_param(p, _) {
-        let {bcx, value: szptr} =
-            field_of_tydesc(bcx, t, false, abi::tydesc_field_size);
-        let {bcx, value: aptr} =
-            field_of_tydesc(bcx, t, false, abi::tydesc_field_align);
-        ret { bcx: bcx, sz: Load(szptr), align: Load(align) };
+        let ti = none::<@tydesc_info>;
+        let {bcx, val: tydesc} =
+            get_tydesc(bcx, t, false, tps_normal, ti).result;
+        let sz = Load(bcx, GEPi(bcx, tydesc, [0, abi::tydesc_field_size]));
+        let al = Load(bcx, GEPi(bcx, tydesc, [0, abi::tydesc_field_align]));
+        ret { bcx: bcx, sz: sz, align: al };
       }
       ty::ty_rec(flds) {
         let tys: [ty::t] = [];
         for f: ty::field in flds { tys += [f.mt.ty]; }
-        ret compute_elements_metrics(bcx, tys, opt_v);
+        ret c_struct_metrics(bcx, tys, opt_v);
       }
       ty::ty_tup(elts) {
         let tys = [];
         for tp in elts { tys += [tp]; }
-        ret compute_elements_metrics(bcx, tys, opt_v);
+        ret c_struct_metrics(bcx, tys, opt_v);
       }
       ty::ty_tag(tid, tps) {
         let bcx = bcx;
         let ccx = bcx_ccx(bcx);
-        // Compute max(variant sizes) and max(variant alignments).
 
+        // Compute max(variant sizes) and max(variant alignments).
         let max_size: ValueRef = alloca(bcx, ccx.int_type);
         Store(bcx, C_int(ccx, 0), max_size);
         let variants = ty::tag_variants(bcx_tcx(bcx), tid);
@@ -616,9 +630,16 @@ fn dynamic_metrics(bcx: @block_ctxt,
                 let t = ty::substitute_type_params(bcx_tcx(bcx), tps, raw_ty);
                 tys += [t];
             }
-            let rslt = align_elements(bcx, tys, opt_v);
+
+            // Note: we do not pass in opt_v here for the value but rather
+            // none.  The reason is that what we would want to pass in is a
+            // ptr to the blob data of the tag, but this is impossible until
+            // we know the size/alignment of the blob data.  Therefore, it is
+            // not legal to have a tag type that contains an interior opaque
+            // type.  Fortunately this will never happen.
+            let rslt = c_struct_metrics(bcx, tys, none);
             bcx = rslt.bcx;
-            let this_size = rslt.val;
+            let this_size = rslt.sz;
             let old_max_size = Load(bcx, max_size);
             Store(bcx, umax(bcx, this_size, old_max_size), max_size);
         }
@@ -651,7 +672,7 @@ fn dynamic_metrics(bcx: @block_ctxt,
         let tdptr = Load(bcx, tdptrptr);
         let sz = Load(bcx, GEPi(bcx, tdptr, [0, abi::tydesc_field_size]));
         let align = Load(bcx, GEPi(bcx, tdptr, [0, abi::tydesc_field_align]));
-        ret { bcx: bcx, sz: sz, align: sz };
+        ret { bcx: bcx, sz: sz, align: align };
       }
     }
 }
@@ -661,7 +682,7 @@ fn dynamic_metrics(bcx: @block_ctxt,
 // return type, use bump_ptr().
 fn ptr_offs(bcx: @block_ctxt, base: ValueRef, sz: ValueRef) -> ValueRef {
     let raw = PointerCast(bcx, base, T_ptr(T_i8()));
-    GEP(bcx, raw, [sz]);
+    GEP(bcx, raw, [sz])
 }
 
 // Increment a pointer by a given amount and then cast it to be a pointer
@@ -760,7 +781,7 @@ fn GEP_tup_like(bcx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
     let args = [];
     for typ: ty::t in s.prefix { args += [typ]; }
     let prefix_ty = ty::mk_tup(bcx_tcx(bcx), args);
-    let {bcx, val: prefix_sz} = size_of(bcx, prefix_ty);
+    let {bcx, sz: prefix_sz, align: _} = metrics(bcx, prefix_ty, some(base));
     let {bcx, val: align} = align_of(bcx, s.target);
     let sz = align_to(bcx, prefix_sz, align);
     ret rslt(bcx, bump_ptr(bcx, s.target, base, sz));
@@ -897,7 +918,6 @@ fn field_of_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool, field: int) ->
     ret rslt(tydesc.bcx,
              GEPi(tydesc.bcx, tydesc.val, [0, field]));
 }
-
 
 // Given a type containing ty params, build a vector containing a ValueRef for
 // each of the ty params it uses (from the current frame) and a vector of the
@@ -2003,21 +2023,21 @@ fn call_bzero(cx: @block_ctxt, dst: ValueRef, n_bytes: ValueRef,
              Call(cx, memset, [dst_ptr, C_u8(0u), size, align, volatile]));
 }
 
-fn memmove_ty(cx: @block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
+fn memmove_ty(bcx: @block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
     @block_ctxt {
-    let ccx = bcx_ccx(cx);
+    let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        if ty::type_is_structural(bcx_tcx(cx), t) {
-            let sp = cx.sp;
+        if ty::type_is_structural(bcx_tcx(bcx), t) {
+            let sp = bcx.sp;
             let llsz = llsize_of(ccx, type_of(ccx, sp, t));
-            ret call_memmove(cx, dst, src, llsz).bcx;
+            ret call_memmove(bcx, dst, src, llsz).bcx;
         }
-        Store(cx, Load(cx, src), dst);
-        ret cx;
+        Store(bcx, Load(bcx, src), dst);
+        ret bcx;
     }
 
-    let llsz = size_of(cx, t);
-    ret call_memmove(llsz.bcx, dst, src, llsz.val).bcx;
+    let {bcx, sz: llsz, align: _} = metrics(bcx, t, some(src));
+    ret call_memmove(bcx, dst, src, llsz).bcx;
 }
 
 tag copy_action { INIT; DROP_EXISTING; }

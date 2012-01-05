@@ -149,6 +149,7 @@ export kind_can_be_copied, kind_can_be_sent, proto_kind, kind_lteq, type_kind;
 export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
+export type_has_opaque_size;
 export type_needs_drop;
 export type_is_bool;
 export type_is_bot;
@@ -1138,6 +1139,15 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
       }
       _ { ret false; }
     }
+}
+
+pure fn type_has_opaque_size(cx: ctxt, ty: t) -> bool unchecked {
+    type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
+        alt sty {
+          ty_opaque_closure. { true}
+          _ { false }
+        }
+    })
 }
 
 pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
