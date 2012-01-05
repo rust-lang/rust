@@ -219,6 +219,7 @@ fn store_environment(
         let tps = tps_normal;
         let {result:closure_td, _} =
             trans::get_tydesc(bcx, closure_ty, true, tps, ti);
+        trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = closure_td.bcx;
