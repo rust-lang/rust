@@ -7,9 +7,9 @@ Floating point operations and constants for `f64`
 // PORT
 
 import cmath::c_double::*;
+import cmath::c_double_targ_consts::*;
 
 type t = f64;
-
 
 // These are not defined inside consts:: for consistency with
 // the integer types
@@ -147,6 +147,8 @@ pure fn is_finite(x: f64) -> bool {
 /* Module: consts */
 mod consts {
 
+    // FIXME replace with mathematical constants from cmath
+
     /*
     Const: pi
 
@@ -239,6 +241,14 @@ mod consts {
     const ln_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
+#[cfg(target_os="linux")]
+#[cfg(target_os="macos")]
+#[cfg(target_os="win32")]
+pure fn logarithm(n: f64, b: f64) -> f64 {
+    ret log2(n) / log2(b);
+}
+
+#[cfg(target_os="freebsd")]
 pure fn logarithm(n: f64, b: f64) -> f64 {
     ret ln(n) / ln(b);
 }

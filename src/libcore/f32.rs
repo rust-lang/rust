@@ -7,32 +7,12 @@ Floating point operations and constants for `f32`
 // PORT
 
 import cmath::c_float::*;
+import cmath::c_float_targ_consts::*;
 
 type t = f32;
 
-
 // These are not defined inside consts:: for consistency with
 // the integer types
-
-// PORT check per architecture
-
-// FIXME obtain these in a different way
-
-const radix: uint = 2u;
-
-const mantissa_digits: uint = 24u;
-const digits: uint = 6u;
-
-const epsilon: f32 = 1.19209290e-07_f32;
-
-const min_value: f32 = 1.17549435e-38_f32;
-const max_value: f32 = 3.40282347e+38_f32;
-
-const min_exp: int = -125;
-const max_exp: int = 128;
-
-const min_10_exp: int = -37;
-const max_10_exp: int = 38;
 
 /* Const: NaN */
 const NaN: f32 = 0.0_f32/0.0_f32;
@@ -150,6 +130,8 @@ pure fn is_finite(x: f32) -> bool {
 /* Module: consts */
 mod consts {
 
+    // FIXME replace with mathematical constants from cmath
+
     /*
     Const: pi
 
@@ -242,6 +224,14 @@ mod consts {
     const ln_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
+#[cfg(target_os="linux")]
+#[cfg(target_os="macos")]
+#[cfg(target_os="win32")]
+pure fn logarithm(n: f32, b: f32) -> f32 {
+    ret log2(n) / log2(b);
+}
+
+#[cfg(target_os="freebsd")]
 pure fn logarithm(n: f32, b: f32) -> f32 {
     ret ln(n) / ln(b);
 }

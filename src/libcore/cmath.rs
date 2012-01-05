@@ -1,5 +1,11 @@
-export c_double;
 export c_float;
+export c_double;
+
+// FIXME export c_float_math_consts;
+// FIXME export c_double_math_consts;
+
+export c_float_targ_consts;
+export c_double_targ_consts;
 
 import ctypes::c_int;
 import ctypes::c_float;
@@ -142,6 +148,101 @@ native mod c_float {
     #[link_name="tgammaf"] pure fn tgamma(n: c_float) -> c_float;
     #[link_name="truncf"] pure fn trunc(n: c_float) -> c_float;
 }
+
+// PORT check these by running src/etc/machconsts.c for your architecture
+
+// FIXME obtain machine float/math constants automatically
+
+mod c_float_targ_consts {
+    const radix: uint = 2;
+    const mantissa_digits: uint = 24;
+    const digits: uint = 6;
+    const min_exp: uint = -125;
+    const max_exp: uint = 128;
+    const min_10_exp: int = -37;
+    const max_10_exp: int = 38;
+    // FIXME this is wrong! replace with hexadecimal (%a) constants below
+    const min_value: f32 = 1.175494e-38_f32;
+    const max_value: f32 = 3.402823e+38_f32;
+    const epsilon: f32 = 0.000000_f32;
+}
+
+mod c_double_targ_consts {
+    const radix: uint = 2;
+    const mantissa_digits: uint = 53;
+    const digits: uint = 15;
+    const min_exp: uint = -1021;
+    const max_exp: uint = 1024;
+    const min_10_exp: int = -307;
+    const max_10_exp: int = 308;
+    // FIXME this is wrong! replace with hexadecimal (%a) constants below
+    const min_value: f64 = 2.225074e-308_f64;
+    const max_value: f64 = 1.797693e+308_f64;
+    const epsilon: f64 = 2.220446e-16_f64;
+}
+
+/*
+
+FIXME use these once they can be parsed
+
+mod c_float_math_consts {
+    const pi: c_float = 0x1.921fb6p+1_f32;
+    const div_1_pi: c_float = 0x1.45f306p-2_f32;
+    const div_2_pi: c_float = 0x1.45f306p-1_f32;
+    const div_pi_2: c_float = 0x1.921fb6p+0_f32;
+    const div_pi_4: c_float = 0x1.921fb6p-1_f32;
+    const div_2_sqrtpi: c_float = 0x1.20dd76p+0_f32;
+    const e: c_float = 0x1.5bf0a8p+1_f32;
+    const log2_e: c_float = 0x1.715476p+0_f32;
+    const log10_e: c_float = 0x1.bcb7b2p-2_f32;
+    const ln_2: c_float = 0x1.62e43p-1_f32;
+    const ln_10: c_float = 0x1.26bb1cp+1_f32;
+    const sqrt2: c_float = 0x1.6a09e6p+0_f32;
+    const div_1_sqrt2: c_float = 0x1.6a09e6p-1_f32;
+}
+
+mod c_double_math_consts {
+    const pi: c_double = 0x1.921fb54442d18p+1_f64;
+    const div_1_pi: c_double = 0x1.45f306dc9c883p-2_f64;
+    const div_2_pi: c_double = 0x1.45f306dc9c883p-1_f64;
+    const div_pi_2: c_double = 0x1.921fb54442d18p+0_f64;
+    const div_pi_4: c_double = 0x1.921fb54442d18p-1_f64;
+    const div_2_sqrtpi: c_double = 0x1.20dd750429b6dp+0_f64;
+    const e: c_double = 0x1.5bf0a8b145769p+1_f64;
+    const log2_e: c_double = 0x1.71547652b82fep+0_f64;
+    const log10_e: c_double = 0x1.bcb7b1526e50ep-2_f64;
+    const ln_2: c_double = 0x1.62e42fefa39efp-1_f64;
+    const ln_10: c_double = 0x1.26bb1bbb55516p+1_f64;
+    const sqrt2: c_double = 0x1.6a09e667f3bcdp+0_f64;
+    const div_1_sqrt2: c_double = 0x1.6a09e667f3bcdp-1_f64;
+}
+
+mod c_float_targ_consts {
+    const radix: uint = 2;
+    const mantissa_digits: uint = 24;
+    const digits: uint = 6;
+    const min_exp: uint = -125;
+    const max_exp: uint = 128;
+    const min_10_exp: int = -37;
+    const max_10_exp: int = 38;
+    const min_value: c_float = 0x1p-126_f32;
+    const max_value: c_float = 0x1.fffffep+127_f32;
+    const epsilon: c_float = 0x1p-23_f32;
+}
+
+mod c_double_targ_consts {
+    const radix: uint = 2;
+    const mantissa_digits: uint = 53;
+    const digits: uint = 15;
+    const min_exp: uint = -1021;
+    const max_exp: uint = 1024;
+    const min_10_exp: int = -307;
+    const max_10_exp: int = 308;
+    const min_value: c_double = 0x1p-1022_f64;
+    const max_value: c_double = 0x1.fffffffffffffp+1023_f64;
+    const epsilon: c_double = 0x1p-52_f64;
+}
+*/
 
 //
 // Local Variables:
