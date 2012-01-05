@@ -1827,7 +1827,7 @@ fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
                 }
                 @tmp
             } else {
-                @csearch::get_impls_for_mod(e.cstore, defid, name)
+                csearch::get_impls_for_mod(e.sess.get_cstore(), defid, name)
             };
             e.impl_cache.insert(defid, cached);
           }

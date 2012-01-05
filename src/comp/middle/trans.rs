@@ -5039,8 +5039,8 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
                  with *extend_path(cx, item.ident)};
         trans_obj(sub_cx, item.span, ob, ctor_id, tps);
       }
-      ast::item_impl(tps, ifce, _, ms) {
-        trans_impl::trans_impl(cx, item.ident, ms, item.id, tps, ifce);
+      ast::item_impl(tps, _, _, ms) {
+        trans_impl::trans_impl(cx, item.ident, ms, item.id, tps);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
         trans_res_ctor(cx, item.span, decl, ctor_id, tps);
@@ -5436,6 +5436,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
         llvm::LLVMSetInitializer(vt_gvar, tbl);
         llvm::LLVMSetGlobalConstant(vt_gvar, True);
         ccx.item_ids.insert(it.id, vt_gvar);
+        ccx.item_symbols.insert(it.id, s);
       }
       _ { }
     }

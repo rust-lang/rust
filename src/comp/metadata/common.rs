@@ -66,8 +66,9 @@ const tag_crate_hash: uint = 0x28u;
 
 const tag_mod_impl: uint = 0x30u;
 
-const tag_impl_method: uint = 0x31u;
+const tag_item_method: uint = 0x31u;
 const tag_impl_iface: uint = 0x32u;
+const tag_impl_iface_did: uint = 0x33u;
 
 // djb's cdb hashes.
 fn hash_node_id(&&node_id: int) -> uint { ret 177573u ^ (node_id as uint); }

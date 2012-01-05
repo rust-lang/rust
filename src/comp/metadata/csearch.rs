@@ -10,7 +10,7 @@ export get_type_param_count;
 export lookup_defs;
 export get_tag_variants;
 export get_impls_for_mod;
-export get_impl_methods;
+export get_iface_methods;
 export get_type;
 export get_item_name;
 export get_impl_iface;
@@ -66,33 +66,23 @@ fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
                      name: option::t<ast::ident>)
-    -> [@middle::resolve::_impl] {
+    -> @[@middle::resolve::_impl] {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
-    let result = [];
-    for did in decoder::get_impls_for_mod(cdata, def.node, def.crate) {
-        let nm = decoder::lookup_item_name(cdata, did.node);
-        if alt name { some(n) { n == nm } none. { true } } {
-            result += [@{did: did,
-                         iface_did: none::<ast::def_id>, // FIXME[impl]
-                         ident: nm,
-                         methods: decoder::lookup_impl_methods(
-                             cdata, did.node, did.crate)}];
-        }
-    }
-    result
+    let resolver = bind translate_def_id(cstore, def.crate, _);
+    decoder::get_impls_for_mod(cdata, def, name, resolver)
 }
 
-fn get_impl_methods(cstore: cstore::cstore, def: ast::def_id)
-    -> [@middle::resolve::method_info] {
+fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @[ty::method] {
+    let cstore = tcx.sess.get_cstore();
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
-    decoder::lookup_impl_methods(cdata, def.node, def.crate)
+    let resolver = bind translate_def_id(cstore, def.crate, _);
+    decoder::get_iface_methods(cdata, def, tcx, resolver)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.sess.get_cstore();
-    let cnum = def.crate;
-    let cdata = cstore::get_crate_data(cstore, cnum).data;
-    let resolver = bind translate_def_id(cstore, cnum, _);
+    let cdata = cstore::get_crate_data(cstore, def.crate).data;
+    let resolver = bind translate_def_id(cstore, def.crate, _);
     decoder::get_type(cdata, def, tcx, resolver)
 }
 

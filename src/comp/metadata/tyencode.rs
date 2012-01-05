@@ -66,10 +66,8 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
             let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
             if abbrev_len < len {
                 // I.e. it's actually an abbreviation.
-
-                let s =
-                    "#" + uint::to_str(pos, 16u) + ":" +
-                        uint::to_str(len, 16u) + "#";
+                let s = "#" + uint::to_str(pos, 16u) + ":" +
+                    uint::to_str(len, 16u) + "#";
                 let a = {pos: pos, len: len, s: @s};
                 abbrevs.insert(t, a);
             }
@@ -282,6 +280,7 @@ fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]) {
           }
         }
     }
+    w.write_char('.');
 }
 
 //

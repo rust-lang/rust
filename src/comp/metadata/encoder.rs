@@ -277,12 +277,13 @@ fn encode_info_for_mod(ebml_w: ebml::writer, md: _mod,
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                         &index: [entry<int>]) {
+    let tcx = ecx.ccx.tcx;
     alt item.node {
       item_const(_, _) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'c' as u8);
-        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_type(ecx, ebml_w, node_id_to_monotype(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         ebml::end_tag(ebml_w);
       }
@@ -296,7 +297,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                         impure_fn. { 'f' }
                       } as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_type(ecx, ebml_w, node_id_to_monotype(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         ebml::end_tag(ebml_w);
       }
@@ -315,7 +316,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'y' as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_type(ecx, ebml_w, node_id_to_monotype(tcx, item.id));
         encode_name(ebml_w, item.ident);
         ebml::end_tag(ebml_w);
       }
@@ -324,7 +325,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 't' as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_type(ecx, ebml_w, node_id_to_monotype(tcx, item.id));
         encode_name(ebml_w, item.ident);
         for v: variant in variants {
             encode_variant_id(ebml_w, local_def(v.node.id));
@@ -333,13 +334,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_tag_variant_info(ecx, ebml_w, item.id, variants, index, tps);
       }
       item_res(_, tps, _, _, ctor_id) {
-        let fn_ty = node_id_to_monotype(ecx.ccx.tcx, ctor_id);
+        let fn_ty = node_id_to_monotype(tcx, ctor_id);
 
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(ctor_id));
         encode_family(ebml_w, 'y' as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
+        encode_type(ecx, ebml_w, ty::ty_fn_ret(tcx, fn_ty));
         encode_name(ebml_w, item.ident);
         encode_symbol(ecx, ebml_w, item.id);
         ebml::end_tag(ebml_w);
@@ -354,13 +355,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml::end_tag(ebml_w);
       }
       item_obj(_, tps, ctor_id) {
-        let fn_ty = node_id_to_monotype(ecx.ccx.tcx, ctor_id);
+        let fn_ty = node_id_to_monotype(tcx, ctor_id);
 
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'y' as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
+        encode_type(ecx, ebml_w, ty::ty_fn_ret(tcx, fn_ty));
         encode_name(ebml_w, item.ident);
         ebml::end_tag(ebml_w);
 
@@ -378,18 +379,26 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i' as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_type(ecx, ebml_w, node_id_to_monotype(tcx, item.id));
         encode_name(ebml_w, item.ident);
         for m in methods {
-            ebml::start_tag(ebml_w, tag_impl_method);
+            ebml::start_tag(ebml_w, tag_item_method);
             ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
             ebml::end_tag(ebml_w);
         }
         alt ifce {
           some(_) {
+            encode_symbol(ecx, ebml_w, item.id);
+            let i_ty = ty::lookup_item_type(tcx, local_def(item.id)).ty;
             ebml::start_tag(ebml_w, tag_impl_iface);
-            write_type(ecx, ebml_w, ty::lookup_item_type(
-                ecx.ccx.tcx, local_def(item.id)).ty);
+            write_type(ecx, ebml_w, i_ty);
+            ebml::end_tag(ebml_w);
+            ebml::start_tag(ebml_w, tag_impl_iface_did);
+            alt ty::struct(tcx, i_ty) {
+              ty::ty_iface(did, _) {
+                ebml_w.writer.write(str::bytes(def_to_str(did)));
+              }
+            }
             ebml::end_tag(ebml_w);
           }
           _ {}
@@ -403,13 +412,30 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_family(ebml_w, 'f' as u8);
             encode_type_param_bounds(ebml_w, ecx, tps + m.tps);
             encode_type(ecx, ebml_w,
-                        node_id_to_monotype(ecx.ccx.tcx, m.id));
+                        node_id_to_monotype(tcx, m.id));
             encode_name(ebml_w, m.ident);
             encode_symbol(ecx, ebml_w, m.id);
             ebml::end_tag(ebml_w);
         }
       }
-      item_iface(_, _) { /* FIXME[impl] */ }
+      item_iface(tps, ms) {
+        ebml::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_family(ebml_w, 'I' as u8);
+        encode_type_param_bounds(ebml_w, ecx, tps);
+        encode_type(ecx, ebml_w, node_id_to_monotype(tcx, item.id));
+        encode_name(ebml_w, item.ident);
+        let i = 0u;
+        for mty in *ty::iface_methods(tcx, local_def(item.id)) {
+            ebml::start_tag(ebml_w, tag_item_method);
+            encode_name(ebml_w, mty.ident);
+            encode_type_param_bounds(ebml_w, ecx, ms[i].tps);
+            encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
+            ebml::end_tag(ebml_w);
+            i += 1u;
+        }
+        ebml::end_tag(ebml_w);
+      }
     }
 }
 

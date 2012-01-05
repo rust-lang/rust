@@ -2665,7 +2665,7 @@ fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method] {
     }
     // Local interfaces are supposed to have been added explicitly.
     assert id.crate != ast::local_crate;
-    let result = @[]; // FIXME[impl]
+    let result = csearch::get_iface_methods(cx, id);
     cx.iface_method_cache.insert(id, result);
     result
 }
