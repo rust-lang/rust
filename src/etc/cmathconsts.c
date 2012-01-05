@@ -63,11 +63,11 @@ int main(int argc, char** argv) {
   printf("}\n\n");
 
   printf("mod c_float_targ_consts {\n");
-  printf("    const radix: uint = %u;\n", FLT_RADIX);
-  printf("    const mantissa_digits: uint = %u;\n", FLT_MANT_DIG);
-  printf("    const digits: uint = %u;\n", FLT_DIG);
-  printf("    const min_exp: uint = %i;\n", FLT_MIN_EXP);
-  printf("    const max_exp: uint = %i;\n", FLT_MAX_EXP);
+  printf("    const radix: uint = %uu;\n", FLT_RADIX);
+  printf("    const mantissa_digits: uint = %uu;\n", FLT_MANT_DIG);
+  printf("    const digits: uint = %uu;\n", FLT_DIG);
+  printf("    const min_exp: int = %i;\n", FLT_MIN_EXP);
+  printf("    const max_exp: int = %i;\n", FLT_MAX_EXP);
   printf("    const min_10_exp: int = %i;\n", FLT_MIN_10_EXP);
   printf("    const max_10_exp: int = %i;\n", FLT_MAX_10_EXP);
   printf("    const min_value: c_float = %a_%s;\n", C_FLT(FLT_MIN), c_flt);
@@ -76,11 +76,11 @@ int main(int argc, char** argv) {
   printf("}\n\n");
 
   printf("mod c_double_targ_consts {\n");
-  printf("    const radix: uint = %u;\n", FLT_RADIX);
-  printf("    const mantissa_digits: uint = %u;\n", DBL_MANT_DIG);
-  printf("    const digits: uint = %u;\n", DBL_DIG);
-  printf("    const min_exp: uint = %i;\n", DBL_MIN_EXP);
-  printf("    const max_exp: uint = %i;\n", DBL_MAX_EXP);
+  printf("    const radix: uint = %uu;\n", FLT_RADIX);
+  printf("    const mantissa_digits: uint = %uu;\n", DBL_MANT_DIG);
+  printf("    const digits: uint = %uu;\n", DBL_DIG);
+  printf("    const min_exp: int = %i;\n", DBL_MIN_EXP);
+  printf("    const max_exp: int = %i;\n", DBL_MAX_EXP);
   printf("    const min_10_exp: int = %i;\n", DBL_MIN_10_EXP);
   printf("    const max_10_exp: int = %i;\n", DBL_MAX_10_EXP);
   printf("    const min_value: c_double = %a_%s;\n", C_DBL(DBL_MIN), c_dbl);

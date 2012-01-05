@@ -60,7 +60,7 @@ native mod c_double {
     #[cfg(target_os="macos")]
     #[cfg(target_os="win32")]
     pure fn log2(n: c_double) -> c_double;
-    #[link_name="ilogb"] pure fn ilogradix(n: c_double) -> c_int;
+    #[link_name="ilogb"] pure fn ilog_radix(n: c_double) -> c_int;
     pure fn modf(n: c_double, &iptr: c_double) -> c_double;
     pure fn pow(n: c_double, e: c_double) -> c_double;
 // FIXME enable when rounding modes become available
@@ -139,7 +139,8 @@ native mod c_float {
 // FIXME enable when rounding modes become available
 //    #[link_name="rintf"] pure fn rint(n: c_float) -> c_float;
     #[link_name="roundf"] pure fn round(n: c_float) -> c_float;
-    #[link_name="scalbnf"] pure fn ldexp_radix(n: c_float, i: c_int) -> c_float;
+    #[link_name="scalbnf"] pure fn ldexp_radix(n: c_float, i: c_int)
+        -> c_float;
     #[link_name="sinf"] pure fn sin(n: c_float) -> c_float;
     #[link_name="sinhf"] pure fn sinh(n: c_float) -> c_float;
     #[link_name="sqrtf"] pure fn sqrt(n: c_float) -> c_float;
@@ -154,11 +155,11 @@ native mod c_float {
 // FIXME obtain machine float/math constants automatically
 
 mod c_float_targ_consts {
-    const radix: uint = 2;
-    const mantissa_digits: uint = 24;
-    const digits: uint = 6;
-    const min_exp: uint = -125;
-    const max_exp: uint = 128;
+    const radix: uint = 2u;
+    const mantissa_digits: uint = 24u;
+    const digits: uint = 6u;
+    const min_exp: uint = -125u;
+    const max_exp: uint = 128u;
     const min_10_exp: int = -37;
     const max_10_exp: int = 38;
     // FIXME this is wrong! replace with hexadecimal (%a) constants below
@@ -168,11 +169,11 @@ mod c_float_targ_consts {
 }
 
 mod c_double_targ_consts {
-    const radix: uint = 2;
-    const mantissa_digits: uint = 53;
-    const digits: uint = 15;
-    const min_exp: uint = -1021;
-    const max_exp: uint = 1024;
+    const radix: uint = 2u;
+    const mantissa_digits: uint = 53u;
+    const digits: uint = 15u;
+    const min_exp: uint = -1021u;
+    const max_exp: uint = 1024u;
     const min_10_exp: int = -307;
     const max_10_exp: int = 308;
     // FIXME this is wrong! replace with hexadecimal (%a) constants below
@@ -218,11 +219,11 @@ mod c_double_math_consts {
 }
 
 mod c_float_targ_consts {
-    const radix: uint = 2;
-    const mantissa_digits: uint = 24;
-    const digits: uint = 6;
-    const min_exp: uint = -125;
-    const max_exp: uint = 128;
+    const radix: uint = 2u;
+    const mantissa_digits: uint = 24u;
+    const digits: uint = 6u;
+    const min_exp: int = -125;
+    const max_exp: int = 128;
     const min_10_exp: int = -37;
     const max_10_exp: int = 38;
     const min_value: c_float = 0x1p-126_f32;
@@ -231,17 +232,18 @@ mod c_float_targ_consts {
 }
 
 mod c_double_targ_consts {
-    const radix: uint = 2;
-    const mantissa_digits: uint = 53;
-    const digits: uint = 15;
-    const min_exp: uint = -1021;
-    const max_exp: uint = 1024;
+    const radix: uint = 2u;
+    const mantissa_digits: uint = 53u;
+    const digits: uint = 15u;
+    const min_exp: int = -1021;
+    const max_exp: int = 1024;
     const min_10_exp: int = -307;
     const max_10_exp: int = 308;
     const min_value: c_double = 0x1p-1022_f64;
     const max_value: c_double = 0x1.fffffffffffffp+1023_f64;
     const epsilon: c_double = 0x1p-52_f64;
 }
+
 */
 
 //

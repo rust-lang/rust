@@ -3,13 +3,13 @@ import trans_common::*;
 import trans_build::*;
 import option::{some, none};
 import syntax::{ast, ast_util};
+import metadata::csearch;
 import back::link;
 import lib::llvm;
 import llvm::llvm::{ValueRef, TypeRef, LLVMGetParam};
 
 fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
-              id: ast::node_id, tps: [ast::ty_param],
-              _ifce: option::t<@ast::ty>) {
+              id: ast::node_id, tps: [ast::ty_param]) {
     let sub_cx = extend_path(cx, name);
     for m in methods {
         alt cx.ccx.item_ids.find(m.id) {
@@ -136,8 +136,12 @@ fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
     let bcx = bcx, ccx = bcx_ccx(bcx);
     alt origin {
       typeck::dict_static(impl_did, tys, sub_origins) {
-        assert impl_did.crate == ast::local_crate; // FIXME[impl]
-        let vtable = ccx.item_ids.get(impl_did.node);
+        let vtable = if impl_did.crate == ast::local_crate {
+            ccx.item_ids.get(impl_did.node)
+        } else {
+            let name = csearch::get_symbol(ccx.sess.get_cstore(), impl_did);
+            get_extern_const(ccx.externs, ccx.llmod, name, T_ptr(T_i8()))
+        };
         let impl_params = ty::lookup_item_type(ccx.tcx, impl_did).bounds;
         let ptrs = [vtable], i = 0u, origin = 0u, ti = none;
         for param in *impl_params {

@@ -8,28 +8,28 @@ fn main() {
     }
 
     // Usable at all:
-    let any_negative = vec::any(v) { |e| float::negative(e) };
+    let any_negative = vec::any(v) { |e| float::is_negative(e) };
     assert any_negative;
 
     // Higher precedence than assignments:
-    any_negative = vec::any(v) { |e| float::negative(e) };
+    any_negative = vec::any(v) { |e| float::is_negative(e) };
     assert any_negative;
 
     // Higher precedence than unary operations:
     let abs_v = vec::map(v) { |e| float::abs(e) };
-    assert vec::all(abs_v) { |e| float::nonnegative(e) };
-    assert !vec::any(abs_v) { |e| float::negative(e) };
+    assert vec::all(abs_v) { |e| float::is_nonnegative(e) };
+    assert !vec::any(abs_v) { |e| float::is_negative(e) };
 
     // Usable in funny statement-like forms:
-    if !vec::any(v) { |e| float::positive(e) } {
+    if !vec::any(v) { |e| float::is_positive(e) } {
         assert false;
     }
-    alt vec::all(v) { |e| float::negative(e) } {
+    alt vec::all(v) { |e| float::is_negative(e) } {
         true { fail "incorrect answer."; }
         false { }
     }
     alt 3 {
-      _ when vec::any(v) { |e| float::negative(e) } {
+      _ when vec::any(v) { |e| float::is_negative(e) } {
       }
       _ {
         fail "wrong answer.";
@@ -46,7 +46,7 @@ fn main() {
 
     // They are not allowed as the tail of a block without parentheses:
     let w =
-      if true { vec::any(abs_v, { |e| float::nonnegative(e) }) }
+      if true { vec::any(abs_v, { |e| float::is_nonnegative(e) }) }
       else { false };
     assert w;
 }

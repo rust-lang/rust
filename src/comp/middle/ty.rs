@@ -28,7 +28,6 @@ export node_id_to_ty_param_substs_opt_and_ty;
 export arg;
 export args_eq;
 export ast_constr_to_constr;
-export bind_params_in_type;
 export block_ty;
 export constr;
 export constr_general;
@@ -103,7 +102,7 @@ export substitute_type_params;
 export t;
 export new_ty_hash;
 export tag_variants;
-export iface_methods, store_iface_methods;
+export iface_methods, store_iface_methods, impl_iface;
 export tag_variant_with_id;
 export ty_param_substs_opt_and_ty;
 export ty_param_bounds_and_ty;
@@ -2632,23 +2631,6 @@ fn type_err_to_str(err: ty::type_err) -> str {
     }
 }
 
-
-// Converts type parameters in a type to type variables and returns the
-// resulting type along with a list of type variable IDs.
-fn bind_params_in_type(cx: ctxt, next_ty_var: block() -> int, typ: t,
-                       ty_param_count: uint) -> {ids: [int], ty: t} {
-    let param_var_ids = [], i = 0u;
-    while i < ty_param_count { param_var_ids += [next_ty_var()]; i += 1u; }
-    let param_var_ids = @param_var_ids;
-    fn binder(cx: ctxt, param_var_ids: @[int], index: uint,
-              _did: def_id) -> t {
-        ret mk_var(cx, param_var_ids[index]);
-    }
-    {ids: *param_var_ids,
-     ty: fold_ty(cx, fm_param(bind binder(cx, param_var_ids, _, _)), typ)}
-}
-
-
 // Replaces type parameters in the given type using the given list of
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
@@ -2683,9 +2665,17 @@ fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method] {
     }
     // Local interfaces are supposed to have been added explicitly.
     assert id.crate != ast::local_crate;
-    let result = @[]; // FIXME[impl]
+    let result = csearch::get_iface_methods(cx, id);
     cx.iface_method_cache.insert(id, result);
     result
+}
+
+fn impl_iface(cx: ctxt, id: ast::def_id) -> option::t<t> {
+    if id.crate == ast::local_crate {
+        option::map(cx.tcache.find(id), {|it| it.ty})
+    } else {
+        csearch::get_impl_iface(cx, id)
+    }
 }
 
 // Tag information

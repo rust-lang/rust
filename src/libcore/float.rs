@@ -2,10 +2,29 @@
 Module: float
 */
 
+// FIXME find out why these have to be exported explicitly
+
+export to_str_common, to_str_exact, to_str, from_str, min, max;
+export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
+export is_positive, is_negative, is_nonpositive, is_nonnegative;
+export is_zero, is_infinite, is_finite;
+export NaN, is_NaN, infinity, neg_infinity;
+export consts;
+export logarithm;
+export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh;
+export erf, erfc, exp, expm1, exp2, abs, abs_sub;
+export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
+export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
+export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
+
+// export when m_float == c_double
+
+export j0, j1, jn, y0, y1, yn;
+
 // PORT this must match in width according to architecture
 
 import m_float = f64;
-import m_float::*;
+import f64::*;
 
 type t = float;
 
@@ -25,7 +44,7 @@ digits - The number of significant digits
 exact - Whether to enforce the exact number of significant digits
 */
 fn to_str_common(num: float, digits: uint, exact: bool) -> str {
-    if isNaN(num) { ret "NaN"; }
+    if is_NaN(num) { ret "NaN"; }
     let (num, accum) = num < 0.0 ? (-num, "-") : (num, "");
     let trunc = num as uint;
     let frac = num - (trunc as float);

@@ -122,7 +122,7 @@ Predicate: is_finite
 Returns true if `x`is a finite numer
 */
 pure fn is_finite(x: f32) -> bool {
-    ret !(is_nan(x) || is_infinite(x));
+    ret !(is_NaN(x) || is_infinite(x));
 }
 
 // FIXME add is_normal, is_subnormal, and fpclassify

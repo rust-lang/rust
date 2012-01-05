@@ -19,11 +19,10 @@ export parse_bounds_data;
 // Callback to translate defs to strs or back:
 type str_def = fn@(str) -> ast::def_id;
 
-type pstate =
-    {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
+type pstate = {data: @[u8], crate: int, mutable pos: uint, tcx: ty::ctxt};
 
 fn peek(st: @pstate) -> u8 {
-    if st.pos < vec::len(*st.data) { st.data[st.pos] } else { 0u8 }
+    st.data[st.pos]
 }
 
 fn next(st: @pstate) -> u8 {
@@ -47,10 +46,9 @@ fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn@(char) -> bool) ->
 }
 
 
-fn parse_ty_data(data: @[u8], crate_num: int, pos: uint, len: uint,
-                 sd: str_def, tcx: ty::ctxt) -> ty::t {
-    let st =
-        @{data: data, crate: crate_num, mutable pos: pos, len: len, tcx: tcx};
+fn parse_ty_data(data: @[u8], crate_num: int, pos: uint, sd: str_def,
+                 tcx: ty::ctxt) -> ty::t {
+    let st = @{data: data, crate: crate_num, mutable pos: pos, tcx: tcx};
     parse_ty(st, sd)
 }
 
@@ -295,7 +293,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         alt st.tcx.rcache.find({cnum: st.crate, pos: pos, len: len}) {
           some(tt) { ret tt; }
           none. {
-            let ps = @{pos: pos, len: len with *st};
+            let ps = @{pos: pos with *st};
             let tt = parse_ty(ps, sd);
             st.tcx.rcache.insert({cnum: st.crate, pos: pos, len: len}, tt);
             ret tt;
@@ -381,7 +379,7 @@ fn parse_ty_fn(st: @pstate, sd: str_def) -> ty::fn_ty {
 // Rust metadata parsing
 fn parse_def_id(buf: [u8]) -> ast::def_id {
     let colon_idx = 0u;
-    let len = vec::len::<u8>(buf);
+    let len = vec::len(buf);
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
     if colon_idx == len {
         #error("didn't find ':' when parsing def id");
@@ -400,20 +398,21 @@ fn parse_def_id(buf: [u8]) -> ast::def_id {
     ret {crate: crate_num, node: def_num};
 }
 
-fn parse_bounds_data(data: @[u8], crate_num: int, sd: str_def, tcx: ty::ctxt)
+fn parse_bounds_data(data: @[u8], start: uint,
+                     crate_num: int, sd: str_def, tcx: ty::ctxt)
     -> @[ty::param_bound] {
-    let st = @{data: data, crate: crate_num, mutable pos: 0u,
-               len: vec::len(*data), tcx: tcx};
+    let st = @{data: data, crate: crate_num, mutable pos: start, tcx: tcx};
     parse_bounds(st, sd)
 }
 
 fn parse_bounds(st: @pstate, sd: str_def) -> @[ty::param_bound] {
     let bounds = [];
-    while peek(st) != 0u8 {
+    while true {
         bounds += [alt next(st) as char {
           'S' { ty::bound_send }
           'C' { ty::bound_copy }
           'I' { ty::bound_iface(parse_ty(st, sd)) }
+          '.' { break; }
         }];
     }
     @bounds
