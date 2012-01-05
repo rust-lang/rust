@@ -126,7 +126,7 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
         temp_cleanups += [lleltptr];
         i += 1u;
     }
-    for clean in temp_cleanups { revoke_clean(bcx, clean); }
+    for cln in temp_cleanups { revoke_clean(bcx, cln); }
     ret trans::store_in_dest(bcx, vptr, dest);
 }
 

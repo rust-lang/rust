@@ -220,18 +220,18 @@ fn join_branches(branches: [set]) -> set {
         i += 1u;
         for {def, exprs} in set {
             if !vec::any(found, {|v| v.def == def}) {
-                let j = i, ne = exprs;
+                let j = i, nne = exprs;
                 while j < l {
                     for {def: d2, exprs} in branches[j] {
                         if d2 == def {
                             list::iter(exprs) {|e|
-                                if !list::has(ne, e) { ne = cons(e, @ne); }
+                                if !list::has(nne, e) { nne = cons(e, @nne); }
                             }
                         }
                     }
                     j += 1u;
                 }
-                found += [{def: def, exprs: ne}];
+                found += [{def: def, exprs: nne}];
             }
         }
     }

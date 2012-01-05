@@ -450,9 +450,9 @@ fn extend_poststate_ann(ccx: crate_ctxt, id: node_id, post: poststate) ->
 fn set_pre_and_post(ccx: crate_ctxt, id: node_id, pre: precond,
                     post: postcond) {
     #debug("set_pre_and_post");
-    let t = node_id_to_ts_ann(ccx, id);
-    set_precondition(t, pre);
-    set_postcondition(t, post);
+    let tt = node_id_to_ts_ann(ccx, id);
+    set_precondition(tt, pre);
+    set_postcondition(tt, post);
 }
 
 fn copy_pre_post(ccx: crate_ctxt, id: node_id, sub: @expr) {
@@ -464,9 +464,9 @@ fn copy_pre_post(ccx: crate_ctxt, id: node_id, sub: @expr) {
 fn copy_pre_post_(ccx: crate_ctxt, id: node_id, pre: prestate,
                   post: poststate) {
     #debug("set_pre_and_post");
-    let t = node_id_to_ts_ann(ccx, id);
-    set_precondition(t, pre);
-    set_postcondition(t, post);
+    let tt = node_id_to_ts_ann(ccx, id);
+    set_precondition(tt, pre);
+    set_postcondition(tt, post);
 }
 
 /* sets all bits to *1* */
