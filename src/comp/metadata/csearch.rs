@@ -13,6 +13,7 @@ export get_impls_for_mod;
 export get_impl_methods;
 export get_type;
 export get_item_name;
+export get_impl_iface;
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
@@ -98,6 +99,14 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
 fn get_item_name(cstore: cstore::cstore, cnum: int, id: int) -> ast::ident {
     let cdata = cstore::get_crate_data(cstore, cnum).data;
     ret decoder::lookup_item_name(cdata, id);
+}
+
+fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)
+    -> option::t<ty::t> {
+    let cstore = tcx.sess.get_cstore();
+    let cdata = cstore::get_crate_data(cstore, def.crate).data;
+    let resolver = bind translate_def_id(cstore, def.crate, _);
+    decoder::get_impl_iface(cdata, def, tcx, resolver)
 }
 
 // Translates a def_id from an external crate to a def_id for the current

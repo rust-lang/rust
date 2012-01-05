@@ -102,7 +102,7 @@ export substitute_type_params;
 export t;
 export new_ty_hash;
 export tag_variants;
-export iface_methods, store_iface_methods;
+export iface_methods, store_iface_methods, impl_iface;
 export tag_variant_with_id;
 export ty_param_substs_opt_and_ty;
 export ty_param_bounds_and_ty;
@@ -2668,6 +2668,14 @@ fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method] {
     let result = @[]; // FIXME[impl]
     cx.iface_method_cache.insert(id, result);
     result
+}
+
+fn impl_iface(cx: ctxt, id: ast::def_id) -> option::t<t> {
+    if id.crate == ast::local_crate {
+        option::map(cx.tcache.find(id), {|it| it.ty})
+    } else {
+        csearch::get_impl_iface(cx, id)
+    }
 }
 
 // Tag information

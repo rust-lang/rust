@@ -202,13 +202,17 @@ fn encode_variant_id(ebml_w: ebml::writer, vid: def_id) {
     ebml::end_tag(ebml_w);
 }
 
-fn encode_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
-    ebml::start_tag(ebml_w, tag_items_data_item_type);
+fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
     let ty_str_ctxt =
         @{ds: def_to_str,
           tcx: ecx.ccx.tcx,
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(io::new_writer(ebml_w.writer), ty_str_ctxt, typ);
+}
+
+fn encode_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
+    ebml::start_tag(ebml_w, tag_items_data_item_type);
+    write_type(ecx, ebml_w, typ);
     ebml::end_tag(ebml_w);
 }
 
@@ -369,7 +373,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_symbol(ecx, ebml_w, ctor_id);
         ebml::end_tag(ebml_w);
       }
-      item_impl(tps, _, _, methods) {
+      item_impl(tps, ifce, _, methods) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i' as u8);
@@ -380,6 +384,15 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             ebml::start_tag(ebml_w, tag_impl_method);
             ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
             ebml::end_tag(ebml_w);
+        }
+        alt ifce {
+          some(_) {
+            ebml::start_tag(ebml_w, tag_impl_iface);
+            write_type(ecx, ebml_w, ty::lookup_item_type(
+                ecx.ccx.tcx, local_def(item.id)).ty);
+            ebml::end_tag(ebml_w);
+          }
+          _ {}
         }
         ebml::end_tag(ebml_w);
 

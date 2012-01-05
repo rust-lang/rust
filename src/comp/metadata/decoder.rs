@@ -14,8 +14,10 @@ export get_symbol;
 export get_tag_variants;
 export get_type;
 export get_type_param_count;
+export get_impl_iface;
 export lookup_def;
 export lookup_item_name;
+export get_impl_iface;
 export resolve_path;
 export get_crate_attributes;
 export list_crate_metadata;
@@ -113,6 +115,18 @@ fn item_type(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
         t = ty::mk_named(tcx, t, @item_name(item));
     }
     t
+}
+
+fn item_impl_iface(item: ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
+                   extres: external_resolver) -> option::t<ty::t> {
+    let result = none;
+    ebml::tagged_docs(item, tag_impl_iface) {|ity|
+        let def_parser = bind parse_external_def_id(this_cnum, extres, _);
+        let t = parse_ty_data(ity.data, this_cnum, ity.start,
+                              ity.end - ity.start, def_parser, tcx);
+        result = some(t);
+    }
+    result
 }
 
 fn item_ty_param_bounds(item: ebml::doc, this_cnum: ast::crate_num,
@@ -217,6 +231,11 @@ fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {
     item_ty_param_count(lookup_item(id, data))
 }
 
+fn get_impl_iface(data: @[u8], def: ast::def_id, tcx: ty::ctxt,
+                  extres: external_resolver) -> option::t<ty::t> {
+    item_impl_iface(lookup_item(def.node, data), def.crate, tcx, extres)
+}
+
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
 }
@@ -268,7 +287,6 @@ fn lookup_impl_methods(data: @[u8], node: ast::node_id, cnum: ast::crate_num)
     }
     rslt
 }
-
 
 fn family_has_type_params(fam_ch: u8) -> bool {
     ret alt fam_ch as char {
