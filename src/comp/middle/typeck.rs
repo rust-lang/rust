@@ -138,23 +138,16 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
     }
 }
 
-fn bind_params(fcx: @fn_ctxt, tp: ty::t, count: uint)
-    -> {ids: [int], ty: ty::t} {
-    ty::bind_params_in_type(fcx.ccx.tcx, {|| next_ty_var_id(fcx)}, tp, count)
-}
-
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
 fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
                     tpt: ty_param_bounds_and_ty, sp: span)
     -> ty_param_substs_opt_and_ty {
     let ty_param_count = vec::len(*tpt.bounds);
-    let bind_result = bind_params(fcx, tpt.ty, ty_param_count);
-    let ty_param_vars = bind_result.ids;
-    let ty_substs_opt;
-    let ty_substs_len = vec::len::<@ast::ty>(pth.node.types);
+    let vars = vec::init_fn({|_i| next_ty_var(fcx)}, ty_param_count);
+    let ty_substs_len = vec::len(pth.node.types);
     if ty_substs_len > 0u {
-        let param_var_len = vec::len(ty_param_vars);
+        let param_var_len = vec::len(vars);
         if param_var_len == 0u {
             fcx.ccx.tcx.sess.span_fatal
                 (sp, "this item does not take type parameters");
@@ -165,32 +158,16 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
             fcx.ccx.tcx.sess.span_fatal
                 (sp, "not enough type parameters provided for this item");
         }
-        let ty_substs: [ty::t] = [];
-        let i = 0u;
-        while i < ty_substs_len {
-            let ty_var = ty::mk_var(fcx.ccx.tcx, ty_param_vars[i]);
-            let ty_subst = ast_ty_to_ty_crate(fcx.ccx, pth.node.types[i]);
-            let res_ty = demand::simple(fcx, pth.span, ty_var, ty_subst);
-            ty_substs += [res_ty];
-            i += 1u;
+        vec::iter2(pth.node.types, vars) {|sub, var|
+            let ty_subst = ast_ty_to_ty_crate(fcx.ccx, sub);
+            demand::simple(fcx, pth.span, var, ty_subst);
         }
-        ty_substs_opt = some::<[ty::t]>(ty_substs);
         if ty_param_count == 0u {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                                        "this item does not take type \
-                                      parameters");
+            fcx.ccx.tcx.sess.span_fatal(
+                sp, "this item does not take type parameters");
         }
-    } else {
-        // We will acquire the type parameters through unification.
-        let ty_substs: [ty::t] = [];
-        let i = 0u;
-        while i < ty_param_count {
-            ty_substs += [ty::mk_var(fcx.ccx.tcx, ty_param_vars[i])];
-            i += 1u;
-        }
-        ty_substs_opt = some::<[ty::t]>(ty_substs);
     }
-    ret {substs: ty_substs_opt, ty: tpt.ty};
+    {substs: some(vars), ty: tpt.ty}
 }
 
 // Type tests
@@ -1555,9 +1532,9 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
             alt vec::find(methods, {|m| m.ident == name}) {
               some(m) {
                 let {n_tps, ty: self_ty} = impl_self_ty(tcx, did);
-                let {ids, ty: self_ty} = if n_tps > 0u {
+                let {vars, ty: self_ty} = if n_tps > 0u {
                     bind_params(fcx, self_ty, n_tps)
-                } else { {ids: [], ty: self_ty} };
+                } else { {vars: [], ty: self_ty} };
                 alt unify::unify(fcx, ty, self_ty) {
                   ures_ok(_) {
                     if option::is_some(result) {
@@ -1568,7 +1545,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                         result = some({
                             method_ty: ty_from_did(tcx, m.did),
                             n_tps: m.n_tps,
-                            substs: vec::map(ids, {|id| ty::mk_var(tcx, id)}),
+                            substs: vars,
                             origin: method_static(m.did)
                         });
                     }
@@ -2451,6 +2428,12 @@ fn next_ty_var(fcx: @fn_ctxt) -> ty::t {
     ret ty::mk_var(fcx.ccx.tcx, next_ty_var_id(fcx));
 }
 
+fn bind_params(fcx: @fn_ctxt, tp: ty::t, count: uint)
+    -> {vars: [ty::t], ty: ty::t} {
+    let vars = vec::init_fn({|_i| next_ty_var(fcx)}, count);
+    {vars: vars, ty: ty::substitute_type_params(fcx.ccx.tcx, vars, tp)}
+}
+
 fn get_self_info(ccx: @crate_ctxt) -> option::t<self_info> {
     ret vec::last(ccx.self_infos);
 }
@@ -2951,10 +2934,9 @@ mod dict {
                 for im in *impls {
                     if im.iface_did == some(iface_id) {
                         let {n_tps, ty: self_ty} = impl_self_ty(tcx, im.did);
-                        let {ids, ty: self_ty} = if n_tps > 0u {
+                        let {vars, ty: self_ty} = if n_tps > 0u {
                             bind_params(fcx, self_ty, n_tps)
-                        } else { {ids: [], ty: self_ty} };
-                        let vars = vec::map(ids, {|id| ty::mk_var(tcx, id)});
+                        } else { {vars: [], ty: self_ty} };
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
                         // FIXME[impl] don't do this in fcx (or make
                         // unify transactional by scrubbing bindings on fail)
