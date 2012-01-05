@@ -1,6 +1,7 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
+import syntax::print::pprust::path_to_str;
 import int;
 import std::map::*;
 import option::*;
@@ -47,21 +48,27 @@ fn collect_freevars(def_map: resolve::def_map, blk: ast::blk)
                 visit::visit_expr(expr, depth + 1, v);
               }
               ast::expr_path(path) {
-                let def = def_map.get(expr.id), i = 0;
-                while i < depth {
-                    alt copy def {
-                      ast::def_upvar(_, inner, _) { def = *inner; }
-                      _ { break; }
+                  let i = 0;
+                  alt def_map.find(expr.id) {
+                    none. { fail ("Not found: " + path_to_str(path)) }
+                    some(df) {
+                      let def = df;
+                      while i < depth {
+                        alt copy def {
+                          ast::def_upvar(_, inner, _) { def = *inner; }
+                          _ { break; }
+                        }
+                        i += 1;
+                      }
+                      if i == depth { // Made it to end of loop
+                        let dnum = ast_util::def_id_of_def(def).node;
+                        if !seen.contains_key(dnum) {
+                           *refs += [@{def:def, span:expr.span}];
+                           seen.insert(dnum, ());
+                        }
+                      }
                     }
-                    i += 1;
-                }
-                if i == depth { // Made it to end of loop
-                    let dnum = ast_util::def_id_of_def(def).node;
-                    if !seen.contains_key(dnum) {
-                        *refs += [@{def:def, span:expr.span}];
-                        seen.insert(dnum, ());
-                    }
-                }
+                  }
               }
               _ { visit::visit_expr(expr, depth, v); }
             }
