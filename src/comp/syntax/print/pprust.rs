@@ -567,11 +567,11 @@ fn print_stmt(s: ps, st: ast::stmt) {
       }
       ast::stmt_expr(expr, _) {
         space_if_not_bol(s);
-        print_tl_expr(s, expr);
+        print_expr(s, expr);
       }
       ast::stmt_semi(expr, _) {
         space_if_not_bol(s);
-        print_tl_expr(s, expr);
+        print_expr(s, expr);
         word(s.s, ";");
       }
     }
@@ -609,7 +609,7 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
     alt blk.node.expr {
       some(expr) {
         space_if_not_bol(s);
-        print_tl_expr(s, expr);
+        print_expr(s, expr);
         maybe_print_trailing_comment(s, expr.span, some(blk.span.hi));
       }
       _ { }
@@ -694,37 +694,6 @@ fn print_mac(s: ps, m: ast::mac) {
         print_possibly_embedded_block(s, blk, block_normal, indent_unit);
       }
       ast::mac_ellipsis. { word(s.s, "..."); }
-    }
-}
-
-// An expression that begins with a dual-form statement/expression like `{
-// ... }-10` would be parsed as `{ ... };-10` unless parentheses are used (ie,
-// `({...}-10)`).  These parentheses are not, however, preserved by the
-// parser. This function specifies whether parentheses must be inserted.
-fn print_tl_expr(s: ps, &&expr: @ast::expr) {
-    fn stmt_expr_requires_parens(ex: @ast::expr) -> bool {
-        fn helper(ex: @ast::expr, inner: bool) -> bool {
-            log(debug, ("helper", ex, inner));
-            if inner && !parse::parser::expr_requires_semi_to_be_stmt(ex) {
-                ret true;
-            }
-            alt ex.node {
-              ast::expr_call(subex, _, _) | ast::expr_binary(_, subex, _) {
-                be helper(subex, true);
-              }
-              _ { ret false; }
-            }
-        }
-        ret helper(ex, false);
-    }
-
-    #debug("print_tl_expr %s", expr_to_str(expr));
-    if stmt_expr_requires_parens(expr) {
-        popen(s);
-        print_expr(s, expr);
-        pclose(s);
-    } else {
-        print_expr(s, expr);
     }
 }
 
@@ -1062,6 +1031,7 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
       ast::expr_copy(_) | ast::expr_assign(_, _) | ast::expr_be(_) |
       ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
       ast::expr_log(_, _, _) | ast::expr_assert(_) |
+      ast::expr_call(_, _, true) |
       ast::expr_check(_, _) { true }
       _ { false }
     };
@@ -1404,7 +1374,7 @@ fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
       ast::expr_assert(_) { true }
       ast::expr_check(_, _) { true }
       ast::expr_log(_, _, _) { true }
-      _ { false }
+      _ { !parse::parser::expr_requires_semi_to_be_stmt(expr) }
     }
 }
 
