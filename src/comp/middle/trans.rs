@@ -5354,7 +5354,7 @@ fn collect_item(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
         register_fn(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
       }
       ast::item_impl(tps, _, _, methods) {
-        let name = ccx.names.next(i.ident);
+        let name = i.ident + int::str(i.id);
         for m in methods {
             register_fn(ccx, i.span, pt + [name, m.ident],
                         "impl_method", tps + m.tps, m.id);
@@ -5418,9 +5418,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
       ast::item_impl(tps, some(@{node: ast::ty_path(_, id), _}), _, ms) {
         let i_did = ast_util::def_id_of_def(ccx.tcx.def_map.get(id));
         let ty = ty::lookup_item_type(ccx.tcx, i_did).ty;
-        // FIXME[impl] use the same name as used in collect_items, for
-        // slightly more consistent symbol names?
-        let new_pt = pt + [ccx.names.next(it.ident)];
+        let new_pt = pt + [it.ident + int::str(it.id), "wrap"];
         let extra_tps = vec::map(tps, {|p| param_bounds(ccx, p)});
         let tbl = C_struct(vec::map(*ty::iface_methods(ccx.tcx, i_did), {|im|
             alt vec::find(ms, {|m| m.ident == im.ident}) {
