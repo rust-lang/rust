@@ -292,18 +292,9 @@ rust_task::~rust_task()
 
 struct spawn_args {
     rust_task *task;
-    uintptr_t envptr;
     spawn_fn f;
-};
-
-struct rust_closure {
-    const type_desc *td;
-    // ... see trans_closure.rs for full description ...
-};
-
-struct rust_boxed_closure {
-    intptr_t ref_count;
-    rust_closure closure;
+    rust_boxed_closure *envptr;
+    void *argptr;
 };
 
 struct cleanup_args {
@@ -318,14 +309,6 @@ cleanup_task(cleanup_args *args) {
     rust_task *task = a->task;
 
     cc::do_cc(task);
-
-    rust_boxed_closure* boxed_env = (rust_boxed_closure*)a->envptr;
-    if(boxed_env) {
-        // free the environment.
-        rust_closure *env = &boxed_env->closure;
-        env->td->drop_glue(NULL, NULL, &env->td, env);
-        env->td->free_glue(NULL, NULL, &env->td, env);
-    }
 
     task->die();
 
@@ -345,6 +328,8 @@ cleanup_task(cleanup_args *args) {
     }
 }
 
+extern "C" void upcall_shared_free(void* ptr);
+
 // This runs on the Rust stack
 extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
@@ -355,16 +340,23 @@ void task_start_wrapper(spawn_args *a)
     try {
         // The first argument is the return pointer; as the task fn 
         // must have void return type, we can safely pass 0.
-        a->f(0, a->envptr);
+        a->f(0, a->envptr, a->argptr);
     } catch (rust_task *ex) {
         A(task->sched, ex == task,
           "Expected this task to be thrown for unwinding");
         failed = true;
     }
 
-    cleanup_args ca = {a, failed};
+    rust_boxed_closure* boxed_env = (rust_boxed_closure*)a->envptr;
+    if(boxed_env) {
+        // free the environment.
+        const type_desc *td = boxed_env->closure.td;
+        td->drop_glue(NULL, NULL, td->first_param, &boxed_env->closure);
+        upcall_shared_free(boxed_env);
+    }
 
     // The cleanup work needs lots of stack
+    cleanup_args ca = {a, failed};
     task->sched->c_context.call_shim_on_c_stack(&ca, (void*)cleanup_task);
 
     task->ctx.next->swap(task->ctx);
@@ -372,10 +364,12 @@ void task_start_wrapper(spawn_args *a)
 
 void
 rust_task::start(spawn_fn spawnee_fn,
-                 uintptr_t env)
+                 rust_boxed_closure *envptr,
+                 void *argptr)
 {
     LOG(this, task, "starting task from fn 0x%" PRIxPTR
-        " with env 0x%" PRIxPTR, spawnee_fn, env);
+        " with env 0x%" PRIxPTR " and arg 0x%" PRIxPTR,
+        spawnee_fn, envptr, argptr);
 
     I(sched, stk->data != NULL);
 
@@ -386,7 +380,8 @@ rust_task::start(spawn_fn spawnee_fn,
     spawn_args *a = (spawn_args *)sp;
 
     a->task = this;
-    a->envptr = env;
+    a->envptr = envptr;
+    a->argptr = argptr;
     a->f = spawnee_fn;
 
     ctx.call((void *)task_start_wrapper, a, sp);

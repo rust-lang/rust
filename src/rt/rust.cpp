@@ -98,7 +98,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
         DLOG(sched, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    root_task->start((spawn_fn)main_fn, (uintptr_t)args->args);
+    root_task->start((spawn_fn)main_fn, NULL, args->args);
     root_task->deref();
     root_task = NULL;
 

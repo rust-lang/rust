@@ -11,33 +11,29 @@ fn test_sleep() { task::sleep(1000000u); }
 #[test]
 #[ignore(cfg(target_os = "win32"))]
 fn test_unsupervise() {
-    fn f(&&_i: ()) { task::unsupervise(); fail; }
-    task::spawn((), f);
+    fn f() { task::unsupervise(); fail; }
+    task::spawn {|| f};
 }
 
 #[test]
 fn test_lib_spawn() {
-    fn foo(&&_i: ()) { #error("Hello, World!"); }
-    task::spawn((), foo);
+    fn foo() { #error("Hello, World!"); }
+    task::spawn {|| foo};
 }
 
 #[test]
 fn test_lib_spawn2() {
-    fn foo(&&x: int) { assert (x == 42); }
-    task::spawn(42, foo);
+    fn foo(x: int) { assert (x == 42); }
+    task::spawn {|| foo(42);};
 }
 
 #[test]
 fn test_join_chan() {
-    fn winner(&&_i: ()) { }
+    fn winner() { }
 
-    let p = comm::port();
-    task::spawn_notify((), winner, comm::chan(p));
-    let s = comm::recv(p);
-    #error("received task status message");
-    log(error, s);
-    alt s {
-      task::exit(_, task::tr_success.) {/* yay! */ }
+    let t = task::spawn_joinable {|| winner();};
+    alt task::join(t) {
+      task::tr_success. {/* yay! */ }
       _ { fail "invalid task status received" }
     }
 }
@@ -46,32 +42,18 @@ fn test_join_chan() {
 #[test]
 #[ignore(cfg(target_os = "win32"))]
 fn test_join_chan_fail() {
-    fn failer(&&_i: ()) { task::unsupervise(); fail }
+    fn failer() { task::unsupervise(); fail }
 
-    let p = comm::port();
-    task::spawn_notify((), failer, comm::chan(p));
-    let s = comm::recv(p);
-    #error("received task status message");
-    log(error, s);
-    alt s {
-      task::exit(_, task::tr_failure.) {/* yay! */ }
+    let t = task::spawn_joinable {|| failer();};
+    alt task::join(t) {
+      task::tr_failure. {/* yay! */ }
       _ { fail "invalid task status received" }
     }
 }
 
 #[test]
-fn test_join_convenient() {
-    fn winner(&&_i: ()) { }
-    let handle = task::spawn_joinable((), winner);
-    assert (task::tr_success == task::join(handle));
-}
-
-#[test]
-#[ignore]
 fn spawn_polymorphic() {
-    // FIXME #1038: Can't spawn palymorphic functions
-    /*fn foo<T: send>(x: T) { log(error, x); }
-
-    task::spawn(true, foo);
-    task::spawn(42, foo);*/
+    fn foo<send T>(x: T) { log(error, x); }
+    task::spawn {|| foo(true);}
+    task::spawn {|| foo(42);}
 }

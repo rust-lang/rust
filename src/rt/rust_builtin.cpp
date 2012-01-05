@@ -421,15 +421,15 @@ rust_get_task() {
 }
 
 struct fn_env_pair {
-    intptr_t f;
-    intptr_t env;
+    spawn_fn f;
+    rust_boxed_closure *env;
 };
 
 extern "C" CDECL void
 start_task(rust_task_id id, fn_env_pair *f) {
     rust_task *task = rust_scheduler::get_task();
     rust_task *target = task->kernel->get_task_by_id(id);
-    target->start((spawn_fn)f->f, f->env);
+    target->start(f->f, f->env, NULL);
     target->deref();
 }
 
