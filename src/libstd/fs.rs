@@ -399,6 +399,54 @@ fn normalize(p: path) -> path {
     }
 }
 
+/*
+Function: homedir
+
+Returns the path to the user's home directory, if known.
+
+On Unix, returns the value of the "HOME" environment variable if it is set and
+not equal to the empty string.
+
+On Windows, returns the value of the "HOME" environment variable if it is set
+and not equal to the empty string. Otherwise, returns the value of the
+"USERPROFILE" environment variable if it is set and not equal to the empty
+string.
+
+Otherwise, homedir returns option::none.
+*/
+fn homedir() -> option<path> {
+    ret alt generic_os::getenv("HOME") {
+        some(p) {
+    	    if !str::is_empty(p) {
+                some(p)
+            } else {
+	        secondary()
+	    }
+	}
+	none. {
+	    secondary()
+	}
+    };
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn secondary() -> option<path> {
+        none
+    }
+
+    #[cfg(target_os = "win32")]
+    fn secondary() -> option<path> {
+        option::maybe(none, generic_os::getenv("USERPROFILE")) {|p|
+            if !str::is_empty(p) {
+                some(p)
+	    } else {
+	        none
+	    }
+        }
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

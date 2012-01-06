@@ -221,3 +221,55 @@ fn splitext_nobasename() {
     assert base == "oh.my/";
     assert ext == "";
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+fn homedir() {
+    import getenv = std::generic_os::getenv;
+    import setenv = std::generic_os::setenv;
+
+    let oldhome = getenv("HOME");
+
+    setenv("HOME", "/home/MountainView");
+    assert fs::homedir() == some("/home/MountainView");
+
+    setenv("HOME", "");
+    assert fs::homedir() == none;
+
+    option::may(oldhome, {|s| setenv("HOME", s)});
+}
+
+#[test]
+#[cfg(target_os = "win32")]
+fn homedir() {
+    import getenv = std::generic_os::getenv;
+    import setenv = std::generic_os::setenv;
+
+    let oldhome = getenv("HOME");
+    let olduserprofile = getenv("USERPROFILE");
+
+    setenv("HOME", "");
+    setenv("USERPROFILE", "");
+
+    assert fs::homedir() == none;
+
+    setenv("HOME", "/home/MountainView");
+    assert fs::homedir() == some("/home/MountainView");
+
+    setenv("HOME", "");
+
+    setenv("USERPROFILE", "/home/MountainView");
+    assert fs::homedir() == some("/home/MountainView");
+
+    setenv("USERPROFILE", "/home/MountainView");
+    assert fs::homedir() == some("/home/MountainView");
+
+    setenv("HOME", "/home/MountainView");
+    setenv("USERPROFILE", "/home/PaloAlto");
+    assert fs::homedir() == some("/home/MountainView");
+
+    option::may(oldhome, {|s| setenv("HOME", s)});
+    option::may(olduserprofile, {|s| setenv("USERPROFILE", s)});
+}
