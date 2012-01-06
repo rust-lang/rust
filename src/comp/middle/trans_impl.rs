@@ -8,6 +8,36 @@ import back::link;
 import lib::llvm::llvm;
 import llvm::{ValueRef, TypeRef, LLVMGetParam};
 
+// Translation functionality related to impls and ifaces
+//
+// Terminology:
+//  vtable:  a table of function pointers pointing to method wrappers
+//           of an impl that implements an iface
+//  dict:    a record containing a vtable pointer along with pointers to
+//           all tydescs and other dicts needed to run methods in this vtable
+//           (i.e. corresponding to the type parameters of the impl)
+//  wrapper: a function that takes a dict as first argument, along
+//           with the method-specific tydescs for a method (and all
+//           other args the method expects), which fetches the extra
+//           tydescs and dicts from the dict, splices them into the
+//           arglist, and calls through to the actual method
+//
+// Generic functions take, along with their normal arguments, a number
+// of extra tydesc and dict arguments -- one tydesc for each type
+// parameter, one dict (following the tydesc in the arg order) for
+// each interface bound on a type parameter.
+//
+// Most dicts are completely static, and are allocated and filled at
+// compile time. Dicts that depend on run-time values (tydescs or
+// dicts for type parameter types) are built at run-time, and interned
+// through upcall_intern_dict in the runtime. This means that dict
+// pointers are self-contained things that do not need to be cleaned
+// up.
+//
+// The trans_constants pass in trans.rs outputs the vtables. Typeck
+// annotates notes with information about the methods and dicts that
+// are referenced (ccx.method_map and ccx.dict_map).
+
 fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
               id: ast::node_id, tps: [ast::ty_param]) {
     let sub_cx = extend_path(cx, name);
