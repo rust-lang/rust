@@ -1,5 +1,3 @@
-// xfail-pretty
-
 iface to_str {
     fn to_str() -> str;
 }

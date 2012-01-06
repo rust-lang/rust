@@ -306,7 +306,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         pclose(s);
       }
       ast::ty_fn(proto, d) {
-        print_ty_fn(s, proto, d, none::<str>);
+        print_ty_fn(s, proto, d, none, none);
       }
       ast::ty_obj(methods) {
         head(s, "obj");
@@ -519,7 +519,7 @@ fn print_ty_method(s: ps, m: ast::ty_method) {
     hardbreak_if_not_bol(s);
     cbox(s, indent_unit);
     maybe_print_comment(s, m.span.lo);
-    print_ty_fn(s, ast::proto_bare, m.decl, some(m.ident));
+    print_ty_fn(s, ast::proto_bare, m.decl, some(m.ident), some(m.tps));
     word(s.s, ";");
     end(s);
 }
@@ -1399,10 +1399,12 @@ fn print_mt(s: ps, mt: ast::mt) {
 }
 
 fn print_ty_fn(s: ps, proto: ast::proto,
-               decl: ast::fn_decl, id: option::t<ast::ident>) {
+               decl: ast::fn_decl, id: option::t<ast::ident>,
+               tps: option::t<[ast::ty_param]>) {
     ibox(s, indent_unit);
     word(s.s, proto_to_str(proto));
     alt id { some(id) { word(s.s, " "); word(s.s, id); } _ { } }
+    alt tps { some(tps) { print_type_params(s, tps); } _ { } }
     zerobreak(s.s);
     popen(s);
     fn print_arg(s: ps, input: ast::arg) {
