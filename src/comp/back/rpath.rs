@@ -9,9 +9,7 @@ import metadata::cstore;
 import driver::session;
 import util::filesearch;
 
-// FIXME #721: Despite the compiler warning, test does exist and needs
-// to be exported
-export get_rpath_flags, test;
+export get_rpath_flags;
 
 fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
     let os = sess.get_targ_cfg().os;
