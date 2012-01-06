@@ -25,6 +25,7 @@ tag method_origin {
     method_static(ast::def_id);
     // iface id, method num, param num, bound num
     method_param(ast::def_id, uint, uint, uint);
+    method_iface;
 }
 type method_map = hashmap<ast::node_id, method_origin>;
 
@@ -1572,6 +1573,16 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
         }
         ret none;
       }
+      ty::ty_iface(did, tps) {
+        for m in *ty::iface_methods(tcx, did) {
+            if m.ident == name {
+                ret some({method_ty: ty::mk_fn(tcx, m.fty),
+                          n_tps: vec::len(*m.tps),
+                          substs: tps,
+                          origin: method_iface});
+            }
+        }
+      }
       _ {}
     }
 
@@ -2192,13 +2203,18 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                   ty_to_str(tcx, t_1));
         }
 
-        // FIXME there are more forms of cast to support, eventually.
-        if !(   type_is_scalar(fcx, expr.span, t_e)
-             && type_is_scalar(fcx, expr.span, t_1)) {
-            tcx.sess.span_err(expr.span,
-                              "non-scalar cast: " +
+        alt ty::struct(tcx, t_1) {
+          // This will be looked up later on
+          ty::ty_iface(_, _) {}
+          _ {
+            // FIXME there are more forms of cast to support, eventually.
+            if !(   type_is_scalar(fcx, expr.span, t_e)
+                 && type_is_scalar(fcx, expr.span, t_1)) {
+                tcx.sess.span_err(expr.span, "non-scalar cast: " +
                                   ty_to_str(tcx, t_e) + " as " +
                                   ty_to_str(tcx, t_1));
+            }
+          }
         }
         write::ty_only_fixup(fcx, id, t_1);
       }
@@ -3015,6 +3031,18 @@ mod dict {
                     cx.dict_map.insert(ex.id, lookup_dicts(
                         fcx, iscs, ex.span, bounds, ts));
                 }
+              }
+              _ {}
+            }
+          }
+          ast::expr_cast(src, _) {
+            let target_ty = expr_ty(cx.tcx, ex);
+            alt ty::struct(cx.tcx, target_ty) {
+              ty::ty_iface(_, _) {
+                let impls = cx.impl_map.get(ex.id);
+                let dict = lookup_dict(fcx, impls, ex.span,
+                                       expr_ty(cx.tcx, src), target_ty);
+                cx.dict_map.insert(ex.id, @[dict]);
               }
               _ {}
             }
