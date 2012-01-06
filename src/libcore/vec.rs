@@ -195,6 +195,16 @@ fn tail<T: copy>(v: [const T]) : is_not_empty(v) -> [T] {
     ret slice(v, 1u, len(v));
 }
 
+/*
+Function tail_n
+
+Returns all but the first N elements of a vector
+*/
+
+fn tail_n<T: copy>(v: [const T], n: uint) -> [T] {
+    slice(v, n, len(v))
+}
+
 // FIXME: This name is sort of confusing next to init_fn, etc
 // but this is the name haskell uses for this function,
 // along with head/tail/last.

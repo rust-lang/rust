@@ -55,7 +55,8 @@ fn trans_dict_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
     let generic = none;
     if vec::len(*method.tps) > 0u {
         let tydescs = [], tis = [];
-        for t in ty::node_id_to_type_params(tcx, e.id) {
+        let tptys = ty::node_id_to_type_params(tcx, e.id);
+        for t in vec::tail_n(tptys, vec::len(tptys) - vec::len(*method.tps)) {
             // TODO: Doesn't always escape.
             let ti = none;
             let td = get_tydesc(bcx, t, true, tps_normal, ti).result;

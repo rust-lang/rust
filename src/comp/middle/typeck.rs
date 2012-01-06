@@ -1037,8 +1037,8 @@ mod writeback {
             };
         let new_substs_opt;
         alt tpot.substs {
-          none::<[ty::t]>. { new_substs_opt = none::<[ty::t]>; }
-          some::<[ty::t]>(substs) {
+          none. { new_substs_opt = none; }
+          some(substs) {
             let new_substs: [ty::t] = [];
             for subst: ty::t in substs {
                 alt resolve_type_vars_in_type(fcx, sp, subst) {
@@ -1046,7 +1046,7 @@ mod writeback {
                   none. { wbcx.success = false; ret; }
                 }
             }
-            new_substs_opt = some::<[ty::t]>(new_substs);
+            new_substs_opt = some(new_substs);
           }
         }
         write::ty(fcx.ccx.tcx, id, {substs: new_substs_opt, ty: new_ty});
@@ -1568,7 +1568,6 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                 }
                 bound_n += 1u;
               }
-              _ {}
             }
         }
         ret none;

@@ -9,6 +9,9 @@ impl of to_str for int {
 impl of to_str for str {
     fn to_str() -> str { self }
 }
+impl of to_str for () {
+    fn to_str() -> str { "()" }
+}
 
 iface map<T> {
     fn map<U>(f: block(T) -> U) -> [U];
@@ -32,4 +35,5 @@ fn main() {
     assert foo([1]) == ["hi"];
     assert bar::<int, [int]>([4, 5]) == ["4", "5"];
     assert bar::<str, [str]>(["x", "y"]) == ["x", "y"];
+    assert bar::<(), [()]>([()]) == ["()"];
 }
