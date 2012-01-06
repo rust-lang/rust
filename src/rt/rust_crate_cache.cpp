@@ -45,8 +45,30 @@ rust_crate_cache::get_type_desc(size_t size,
     return td;
 }
 
+void**
+rust_crate_cache::get_dict(size_t n_fields, void** dict) {
+    rust_hashable_dict *found = NULL;
+    uintptr_t key = 0;
+    for (size_t i = 0; i < n_fields; ++i) key ^= (uintptr_t)dict[i];
+    size_t keysz = sizeof(uintptr_t);
+    HASH_FIND(hh, this->dicts, &key, keysz, found);
+    if (found) { printf("found!\n"); return &(found->fields[0]); }
+    printf("not found\n");
+    size_t dictsz = n_fields * sizeof(void*);
+    found = (rust_hashable_dict*)
+        sched->kernel->malloc(keysz + sizeof(UT_hash_handle) + dictsz,
+                              "crate cache dict");
+    if (!found) return NULL;
+    found->key = key;
+    void** retptr = &(found->fields[0]);
+    memcpy(retptr, dict, dictsz);
+    HASH_ADD(hh, this->dicts, key, keysz, found);
+    return retptr;
+}
+
 rust_crate_cache::rust_crate_cache(rust_scheduler *sched)
     : type_descs(NULL),
+      dicts(NULL),
       sched(sched),
       idx(0)
 {
@@ -60,6 +82,11 @@ rust_crate_cache::flush() {
         type_desc *d = type_descs;
         HASH_DEL(type_descs, d);
         DLOG(sched, mem, "rust_crate_cache::flush() tydesc %" PRIxPTR, d);
+        sched->kernel->free(d);
+    }
+    while (dicts) {
+        rust_hashable_dict *d = dicts;
+        HASH_DEL(dicts, d);
         sched->kernel->free(d);
     }
 }

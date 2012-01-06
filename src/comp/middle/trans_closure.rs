@@ -461,18 +461,24 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     let (outgoing_fty_real, lltydescs, param_bounds) = alt f_res.generic {
       none. { (outgoing_fty, [], @[]) }
       some(ginfo) {
-        for bounds in *ginfo.param_bounds {
+        let tds = [], orig = 0u;
+        vec::iter2(ginfo.tydescs, *ginfo.param_bounds) {|td, bounds|
+            tds += [td];
             for bound in *bounds {
                 alt bound {
                   ty::bound_iface(_) {
-                    fail "FIXME[impl] binding bounded types not implemented";
+                    let dict = trans_impl::get_dict(
+                        bcx, option::get(ginfo.origins)[orig]);
+                    tds += [PointerCast(bcx, dict.val, val_ty(td))];
+                    orig += 1u;
+                    bcx = dict.bcx;
                   }
                   _ {}
                 }
             }
         }
         lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
-        (ginfo.item_type, ginfo.tydescs, ginfo.param_bounds)
+        (ginfo.item_type, tds, ginfo.param_bounds)
       }
     };
 

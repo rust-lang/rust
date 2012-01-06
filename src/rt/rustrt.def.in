@@ -62,6 +62,7 @@ upcall_free
 upcall_create_shared_type_desc
 upcall_free_shared_type_desc
 upcall_get_type_desc
+upcall_intern_dict
 upcall_log_type
 upcall_malloc
 upcall_rust_personality

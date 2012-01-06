@@ -11,6 +11,12 @@
 
 struct rust_scheduler;
 
+struct rust_hashable_dict {
+    uintptr_t key;
+    UT_hash_handle hh;
+    void* fields[0];
+};
+
 class rust_crate_cache {
 public:
     type_desc *get_type_desc(size_t size,
@@ -18,10 +24,12 @@ public:
                              size_t n_descs,
                              type_desc const **descs,
                              uintptr_t n_obj_params);
+    void** get_dict(size_t n_fields, void** dict);
 
 private:
 
     type_desc *type_descs;
+    rust_hashable_dict *dicts;
 
 public:
 

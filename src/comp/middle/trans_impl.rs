@@ -143,9 +143,10 @@ fn dict_is_static(tcx: ty::ctxt, origin: typeck::dict_origin) -> bool {
 }
 
 fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
+    let ccx = bcx_ccx(bcx);
     alt origin {
       typeck::dict_static(impl_did, tys, sub_origins) {
-        if dict_is_static(bcx_tcx(bcx), origin) {
+        if dict_is_static(ccx.tcx, origin) {
             ret rslt(bcx, get_static_dict(bcx, origin));
         }
         let {bcx, ptrs} = get_dict_ptrs(bcx, origin);
@@ -155,7 +156,10 @@ fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
             Store(bcx, PointerCast(bcx, ptr, pty), GEPi(bcx, dict, [0, i]));
             i += 1;
         }
-        rslt(bcx, PointerCast(bcx, dict, T_ptr(T_dict())))
+        dict = Call(bcx, ccx.upcalls.intern_dict,
+                    [C_uint(ccx, vec::len(ptrs)),
+                     PointerCast(bcx, dict, T_ptr(T_dict()))]);
+        rslt(bcx, dict)
       }
       typeck::dict_param(n_param, n_bound) {
         rslt(bcx, option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound])

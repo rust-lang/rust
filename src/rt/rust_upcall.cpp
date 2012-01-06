@@ -336,6 +336,32 @@ upcall_get_type_desc(void *curr_crate, // ignored, legacy compat.
     return args.retval;
 }
 
+/**********************************************************************
+ * Called to get a heap-allocated dict. These are interned and kept
+ * around indefinitely
+ */
+
+struct s_intern_dict_args {
+    size_t n_fields;
+    void** dict;
+    void** res;
+};
+
+extern "C" CDECL void
+upcall_s_intern_dict(s_intern_dict_args *args) {
+    rust_task *task = rust_scheduler::get_task();
+    LOG_UPCALL_ENTRY(task);
+    rust_crate_cache *cache = task->get_crate_cache();
+    args->res = cache->get_dict(args->n_fields, args->dict);
+}
+
+extern "C" CDECL void**
+upcall_intern_dict(size_t n_fields, void** dict) {
+    s_intern_dict_args args = {n_fields, dict, 0 };
+    UPCALL_SWITCH_STACK(&args, upcall_s_intern_dict);
+    return args.res;
+}
+
 /**********************************************************************/
 
 struct s_vec_grow_args {
