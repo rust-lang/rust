@@ -27,7 +27,7 @@ struct registers_t {
   uint32_t eflags;
 
   uint32_t eip;
-};
+} __attribute__((aligned(16)));
 
 extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
 
