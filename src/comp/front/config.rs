@@ -4,16 +4,31 @@ import attr;
 
 export strip_unconfigured_items;
 export metas_in_cfg;
+export strip_items;
+
+type in_cfg_pred = fn@([ast::attribute]) -> bool;
+
+type ctxt = @{
+    in_cfg: in_cfg_pred
+};
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
 fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
-    let cfg = crate.node.config;
+    strip_items(crate) {|attrs|
+        in_cfg(crate.node.config, attrs)
+    }
+}
+
+fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
+    -> @ast::crate {
+
+    let ctxt = @{in_cfg: in_cfg};
 
     let precursor =
-        {fold_mod: bind fold_mod(cfg, _, _),
-         fold_block: bind fold_block(cfg, _, _),
-         fold_native_mod: bind fold_native_mod(cfg, _, _)
+        {fold_mod: bind fold_mod(ctxt, _, _),
+         fold_block: bind fold_block(ctxt, _, _),
+         fold_native_mod: bind fold_native_mod(ctxt, _, _)
             with *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
@@ -21,41 +36,41 @@ fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
     ret res;
 }
 
-fn filter_item(cfg: ast::crate_cfg, &&item: @ast::item) ->
+fn filter_item(cx: ctxt, &&item: @ast::item) ->
    option::t<@ast::item> {
-    if item_in_cfg(cfg, item) { option::some(item) } else { option::none }
+    if item_in_cfg(cx, item) { option::some(item) } else { option::none }
 }
 
-fn fold_mod(cfg: ast::crate_cfg, m: ast::_mod, fld: fold::ast_fold) ->
+fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
-    let filter = bind filter_item(cfg, _);
+    let filter = bind filter_item(cx, _);
     let filtered_items = vec::filter_map(m.items, filter);
     ret {view_items: vec::map(m.view_items, fld.fold_view_item),
          items: vec::map(filtered_items, fld.fold_item)};
 }
 
-fn filter_native_item(cfg: ast::crate_cfg, &&item: @ast::native_item) ->
+fn filter_native_item(cx: ctxt, &&item: @ast::native_item) ->
    option::t<@ast::native_item> {
-    if native_item_in_cfg(cfg, item) {
+    if native_item_in_cfg(cx, item) {
         option::some(item)
     } else { option::none }
 }
 
-fn fold_native_mod(cfg: ast::crate_cfg, nm: ast::native_mod,
+fn fold_native_mod(cx: ctxt, nm: ast::native_mod,
                    fld: fold::ast_fold) -> ast::native_mod {
-    let filter = bind filter_native_item(cfg, _);
+    let filter = bind filter_native_item(cx, _);
     let filtered_items = vec::filter_map(nm.items, filter);
     ret {view_items: vec::map(nm.view_items, fld.fold_view_item),
          items: filtered_items};
 }
 
-fn filter_stmt(cfg: ast::crate_cfg, &&stmt: @ast::stmt) ->
+fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
    option::t<@ast::stmt> {
     alt stmt.node {
       ast::stmt_decl(decl, _) {
         alt decl.node {
           ast::decl_item(item) {
-            if item_in_cfg(cfg, item) {
+            if item_in_cfg(cx, item) {
                 option::some(stmt)
             } else { option::none }
           }
@@ -66,9 +81,9 @@ fn filter_stmt(cfg: ast::crate_cfg, &&stmt: @ast::stmt) ->
     }
 }
 
-fn fold_block(cfg: ast::crate_cfg, b: ast::blk_, fld: fold::ast_fold) ->
+fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
-    let filter = bind filter_stmt(cfg, _);
+    let filter = bind filter_stmt(cx, _);
     let filtered_stmts = vec::filter_map(b.stmts, filter);
     ret {view_items: b.view_items,
          stmts: vec::map(filtered_stmts, fld.fold_stmt),
@@ -77,12 +92,12 @@ fn fold_block(cfg: ast::crate_cfg, b: ast::blk_, fld: fold::ast_fold) ->
          rules: b.rules};
 }
 
-fn item_in_cfg(cfg: ast::crate_cfg, item: @ast::item) -> bool {
-    ret in_cfg(cfg, item.attrs);
+fn item_in_cfg(cx: ctxt, item: @ast::item) -> bool {
+    ret cx.in_cfg(item.attrs);
 }
 
-fn native_item_in_cfg(cfg: ast::crate_cfg, item: @ast::native_item) -> bool {
-    ret in_cfg(cfg, item.attrs);
+fn native_item_in_cfg(cx: ctxt, item: @ast::native_item) -> bool {
+    ret cx.in_cfg(item.attrs);
 }
 
 // Determine if an item should be translated in the current crate

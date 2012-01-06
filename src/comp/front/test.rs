@@ -27,6 +27,15 @@ type test_ctxt =
 fn modify_for_testing(sess: session::session,
                       crate: @ast::crate) -> @ast::crate {
 
+    if sess.get_opts().test {
+        generate_test_harness(sess, crate)
+    } else {
+        strip_test_functions(crate)
+    }
+}
+
+fn generate_test_harness(sess: session::session,
+                         crate: @ast::crate) -> @ast::crate {
     let cx: test_ctxt =
         @{sess: sess,
           crate: crate,
@@ -41,6 +50,14 @@ fn modify_for_testing(sess: session::session,
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
     ret res;
+}
+
+fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
+    // When not compiling with --test we should not compile the
+    // #[test] functions
+    config::strip_items(crate) {|attrs|
+        !attr::contains_name(attr::attr_metas(attrs), "test")
+    }
 }
 
 fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
