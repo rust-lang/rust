@@ -13,7 +13,7 @@ PKG_NSI = $(S)src/etc/pkg/rust.nsi
 PKG_EXE = $(PKG_DIR)-install.exe
 endif
 
-PKG_3RDPARTY := rt/valgrind.h rt/memcheck.h \
+PKG_3RDPARTY := rt/vg/valgrind.h rt/vg/memcheck.h \
                 rt/isaac/rand.h rt/isaac/standard.h \
                 rt/uthash/uthash.h rt/uthash/utlist.h \
                 rt/bigint/bigint.h rt/bigint/bigint_int.cpp \
@@ -39,7 +39,9 @@ PKG_FILES = \
       $(RUNTIME_CS) $(RUNTIME_HDR)             \
       $(RUNTIME_S)                             \
       rt/rustrt.def.in                         \
-      rt/intrinsics/intrinsics.ll.in           \
+      rt/intrinsics/intrinsics.i386.ll.in      \
+      rt/intrinsics/intrinsics.x86_64.ll.in    \
+      rt/intrinsics/intrinsics.cpp             \
       $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS)   \
       $(RUSTLLVM_HDR)                          \
       rustllvm/rustllvm.def.in                 \
