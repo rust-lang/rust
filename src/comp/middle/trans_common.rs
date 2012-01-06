@@ -93,6 +93,7 @@ type crate_ctxt =
      discrim_symbols: hashmap<ast::node_id, str>,
      consts: hashmap<ast::node_id, ValueRef>,
      tydescs: hashmap<ty::t, @tydesc_info>,
+     dicts: hashmap<dict_id, ValueRef>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
@@ -923,6 +924,24 @@ pure fn returns_non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
 pure fn type_is_tup_like(cx: @block_ctxt, t: ty::t) -> bool {
     let tcx = bcx_tcx(cx);
     ty::type_is_tup_like(tcx, t)
+}
+
+// Used to identify cached dictionaries
+tag dict_param {
+    dict_param_dict(dict_id);
+    dict_param_ty(ty::t);
+}
+type dict_id = @{impl_def: ast::def_id, params: [dict_param]};
+fn hash_dict_id(&&dp: dict_id) -> uint {
+    let h = syntax::ast_util::hash_def_id(dp.impl_def);
+    for param in dp.params {
+        h = h << 2u;
+        alt param {
+          dict_param_dict(d) { h += hash_dict_id(d); }
+          dict_param_ty(t) { h += t; }
+        }
+    }
+    h
 }
 
 //

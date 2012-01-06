@@ -5,8 +5,8 @@ import option::{some, none};
 import syntax::{ast, ast_util};
 import metadata::csearch;
 import back::link;
-import lib::llvm;
-import llvm::llvm::{ValueRef, TypeRef, LLVMGetParam};
+import lib::llvm::llvm;
+import llvm::{ValueRef, TypeRef, LLVMGetParam};
 
 fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
               id: ast::node_id, tps: [ast::ty_param]) {
@@ -76,10 +76,10 @@ fn trans_dict_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
 }
 
 fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
-    let out_ty = llvm::llvm::LLVMGetReturnType(ft);
-    let n_args = llvm::llvm::LLVMCountParamTypes(ft);
+    let out_ty = llvm::LLVMGetReturnType(ft);
+    let n_args = llvm::LLVMCountParamTypes(ft);
     let args = vec::init_elt(0 as TypeRef, n_args);
-    unsafe { llvm::llvm::LLVMGetParamTypes(ft, vec::to_ptr(args)); }
+    unsafe { llvm::LLVMGetParamTypes(ft, vec::to_ptr(args)); }
     {inputs: args, output: out_ty}
 }
 
@@ -87,7 +87,7 @@ fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
                  extra_tps: [ty::param_bounds], m: @ast::method) -> ValueRef {
     let real_fn = ccx.item_ids.get(m.id);
     let {inputs: real_args, output: real_ret} =
-        llfn_arg_tys(llvm::llvm::LLVMGetElementType(val_ty(real_fn)));
+        llfn_arg_tys(llvm::LLVMGetElementType(val_ty(real_fn)));
     let extra_ptrs = [];
     for tp in extra_tps {
         extra_ptrs += [T_ptr(ccx.tydesc_type)];
@@ -121,7 +121,7 @@ fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
         args += [load_inbounds(bcx, dict, [0, i as int])];
     }
     // the rest of the parameters
-    let i = 3u, params_total = llvm::llvm::LLVMCountParamTypes(llfn_ty);
+    let i = 3u, params_total = llvm::LLVMCountParamTypes(llfn_ty);
     while i < params_total {
         args += [LLVMGetParam(llfn, i)];
         i += 1u;
@@ -132,9 +132,84 @@ fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
     ret llfn;
 }
 
-// FIXME[impl] cache these on the function level somehow
+fn dict_is_static(tcx: ty::ctxt, origin: typeck::dict_origin) -> bool {
+    alt origin {
+      typeck::dict_static(_, ts, origs) {
+        vec::all(ts, {|t| !ty::type_contains_params(tcx, t)}) &&
+        vec::all(*origs, {|o| dict_is_static(tcx, o)})
+      }
+      typeck::dict_param(_, _) { false }
+    }
+}
+
 fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
-    let bcx = bcx, ccx = bcx_ccx(bcx);
+    alt origin {
+      typeck::dict_static(impl_did, tys, sub_origins) {
+        if dict_is_static(bcx_tcx(bcx), origin) {
+            ret rslt(bcx, get_static_dict(bcx, origin));
+        }
+        let {bcx, ptrs} = get_dict_ptrs(bcx, origin);
+        let pty = T_ptr(T_i8()), dict_ty = T_array(pty, vec::len(ptrs));
+        let dict = alloca(bcx, dict_ty), i = 0;
+        for ptr in ptrs {
+            Store(bcx, PointerCast(bcx, ptr, pty), GEPi(bcx, dict, [0, i]));
+            i += 1;
+        }
+        rslt(bcx, PointerCast(bcx, dict, T_ptr(T_dict())))
+      }
+      typeck::dict_param(n_param, n_bound) {
+        rslt(bcx, option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound])
+      }
+    }
+}
+
+fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
+    alt origin {
+      typeck::dict_static(did, ts, origs) {
+        let d_params = [], orig = 0u;
+        if vec::len(ts) == 0u { ret @{impl_def: did, params: d_params}; }
+        let impl_params = ty::lookup_item_type(tcx, did).bounds;
+        vec::iter2(ts, *impl_params) {|t, bounds|
+            d_params += [dict_param_ty(t)];
+            for bound in *bounds {
+                alt bound {
+                  ty::bound_iface(_) {
+                    d_params += [dict_param_dict(dict_id(tcx, origs[orig]))];
+                    orig += 1u;
+                  }
+                }
+            }
+        }
+        @{impl_def: did, params: d_params}
+      }
+    }
+}
+
+fn get_static_dict(bcx: @block_ctxt, origin: typeck::dict_origin)
+    -> ValueRef {
+    let ccx = bcx_ccx(bcx);
+    let id = dict_id(ccx.tcx, origin);
+    alt ccx.dicts.find(id) {
+      some(d) { ret d; }
+      none. {}
+    }
+    let ptrs = C_struct(get_dict_ptrs(bcx, origin).ptrs);
+    let name = ccx.names.next("dict");
+    let gvar = str::as_buf(name, {|buf|
+        llvm::LLVMAddGlobal(ccx.llmod, val_ty(ptrs), buf)
+    });
+    llvm::LLVMSetGlobalConstant(gvar, lib::llvm::True);
+    llvm::LLVMSetInitializer(gvar, ptrs);
+    llvm::LLVMSetLinkage(gvar,
+                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    let cast = llvm::LLVMConstPointerCast(gvar, T_ptr(T_dict()));
+    ccx.dicts.insert(id, cast);
+    cast
+}
+
+fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
+    -> {bcx: @block_ctxt, ptrs: [ValueRef]} {
+    let ccx = bcx_ccx(bcx);
     alt origin {
       typeck::dict_static(impl_did, tys, sub_origins) {
         let vtable = if impl_did.crate == ast::local_crate {
@@ -144,9 +219,9 @@ fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
             get_extern_const(ccx.externs, ccx.llmod, name, T_ptr(T_i8()))
         };
         let impl_params = ty::lookup_item_type(ccx.tcx, impl_did).bounds;
-        let ptrs = [vtable], i = 0u, origin = 0u, ti = none;
-        for param in *impl_params {
-            let rslt = get_tydesc(bcx, tys[i], false, tps_normal, ti).result;
+        let ptrs = [vtable], origin = 0u, ti = none, bcx = bcx;
+        vec::iter2(*impl_params, tys) {|param, ty|
+            let rslt = get_tydesc(bcx, ty, true, tps_normal, ti).result;
             ptrs += [rslt.val];
             bcx = rslt.bcx;
             for bound in *param {
@@ -160,18 +235,8 @@ fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
                   _ {}
                 }
             }
-            i += 1u;
         }
-        let pty = T_ptr(T_i8()), dict_ty = T_array(pty, vec::len(ptrs));
-        let dict = alloca(bcx, dict_ty), i = 0;
-        for ptr in ptrs {
-            Store(bcx, PointerCast(bcx, ptr, pty), GEPi(bcx, dict, [0, i]));
-            i += 1;
-        }
-        rslt(bcx, PointerCast(bcx, dict, T_ptr(T_dict())))
-      }
-      typeck::dict_param(n_param, n_bound) {
-        rslt(bcx, option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound])
+        {bcx: bcx, ptrs: ptrs}
       }
     }
 }
