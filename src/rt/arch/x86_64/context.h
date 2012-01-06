@@ -21,21 +21,18 @@ T align_down(T sp)
 // The struct in which we store the saved data.  This is mostly the
 // volatile registers and instruction pointer, but it also includes
 // RCX/RDI which are used to pass arguments.  The indices for each
-// register are found in "regs.h":
+// register are found in "regs.h".  Note that the alignment must be
+// 16 bytes so that SSE instructions can be used.
 #include "regs.h"
 struct registers_t {
     uint64_t data[RUSTRT_MAX];
-};
+} __attribute__((aligned(16)));
 
 extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
 
 class context {
 public:
-#ifdef __FreeBSD__
-    registers_t regs __attribute__((aligned(16)));
-#else
     registers_t regs;
-#endif
     
     context();
     
