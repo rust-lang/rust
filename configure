@@ -19,6 +19,12 @@ err() {
     exit 1
 }
 
+need_ok() {
+    if [ $? -ne 0 ]
+    then
+        err $1
+    fi
+}
 
 need_cmd() {
     if which $1 >/dev/null 2>&1
@@ -441,12 +447,14 @@ if [ $NEED_INIT ]
 then
     msg "git: submodule init"
     "${CFG_GIT}" submodule init --quiet
+    need_ok "git failed"
 fi
 
 if [ $NEED_UPDATE ]
 then
     msg "git: submodule update"
     "${CFG_GIT}" submodule update --quiet
+    need_ok "git failed"
 fi
 
 cd ${CFG_BUILD_DIR}
@@ -534,6 +542,7 @@ do
 		${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
 		;;
 	esac
+    need_ok "LLVM configure failed"
 	cd $CFG_BUILD_DIR
     else
 	LLVM_BUILD_DIR=
