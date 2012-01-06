@@ -28,7 +28,7 @@ fn test_basic() {
     set(cv, 4u, 9u8);
     assert get(cv, 3u) == 8u8;
     assert get(cv, 4u) == 9u8;
-    assert size(cv) == 16u;
+    assert len(cv) == 16u;
 }
 
 #[test]
