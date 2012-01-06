@@ -16,6 +16,49 @@ Return the maximal value for a u64
 */
 const max_value: u64 = 18446744073709551615u64;
 
+/* Function: add */
+pure fn add(x: u64, y: u64) -> u64 { ret x + y; }
+
+/* Function: sub */
+pure fn sub(x: u64, y: u64) -> u64 { ret x - y; }
+
+/* Function: mul */
+pure fn mul(x: u64, y: u64) -> u64 { ret x * y; }
+
+/* Function: div */
+pure fn div(x: u64, y: u64) -> u64 { ret x / y; }
+
+/* Function: rem */
+pure fn rem(x: u64, y: u64) -> u64 { ret x % y; }
+
+/* Predicate: lt */
+pure fn lt(x: u64, y: u64) -> bool { ret x < y; }
+
+/* Predicate: le */
+pure fn le(x: u64, y: u64) -> bool { ret x <= y; }
+
+/* Predicate: eq */
+pure fn eq(x: u64, y: u64) -> bool { ret x == y; }
+
+/* Predicate: ne */
+pure fn ne(x: u64, y: u64) -> bool { ret x != y; }
+
+/* Predicate: ge */
+pure fn ge(x: u64, y: u64) -> bool { ret x >= y; }
+
+/* Predicate: gt */
+pure fn gt(x: u64, y: u64) -> bool { ret x > y; }
+
+/*
+Function: range
+
+Iterate over the range [`lo`..`hi`)
+*/
+fn range(lo: u64, hi: u64, it: block(u64)) {
+    let i = lo;
+    while i < hi { it(i); i += 1u64; }
+}
+
 /*
 Function: to_str
 

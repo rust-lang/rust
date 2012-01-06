@@ -104,6 +104,13 @@ pure fn ge(x: uint, y: uint) -> bool { ret x >= y; }
 pure fn gt(x: uint, y: uint) -> bool { ret x > y; }
 
 /*
+Function: hash
+
+Produce a uint suitable for use in a hash table
+*/
+fn hash(x: uint) -> uint { ret x; }
+
+/*
 Function: range
 
 Iterate over the range [`lo`..`hi`)
