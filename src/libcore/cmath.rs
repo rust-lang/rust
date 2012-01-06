@@ -122,8 +122,16 @@ native mod c_float {
                                                 y: c_float) -> c_float;
     #[link_name="hypotf"] pure fn hypot(x: c_float, y: c_float) -> c_float;
     #[link_name="ldexpf"] pure fn ldexp(x: c_float, n: c_int) -> c_float;
+
+    #[cfg(target_os="linux")]
+    #[cfg(target_os="macos")]
     #[link_name="lgammaf_r"] pure fn lgamma(n: c_float,
                                             &sign: c_int) -> c_float;
+
+    #[cfg(target_os="win32")]
+    #[link_name="__lgammaf_r"] pure fn lgamma(n: c_float,
+                                              &sign: c_int) -> c_float;
+
     #[link_name="logf"] pure fn ln(n: c_float) -> c_float;
     #[link_name="logbf"] pure fn log_radix(n: c_float) -> c_float;
     #[link_name="log1pf"] pure fn ln1p(n: c_float) -> c_float;
