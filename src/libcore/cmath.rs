@@ -47,8 +47,13 @@ native mod c_double {
     pure fn frexp(n: c_double, &value: c_int) -> c_double;
     pure fn hypot(x: c_double, y: c_double) -> c_double;
     pure fn ldexp(x: c_double, n: c_int) -> c_double;
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
     #[link_name="lgamma_r"] pure fn lgamma(n: c_double,
                                            &sign: c_int) -> c_double;
+    #[cfg(target_os = "win32")]
+    #[link_name="__lgamma_r"] pure fn lgamma(n: c_double,
+                                             &sign: c_int) -> c_double;
     // renamed: log is a reserved keyword; ln seems more natural, too
     #[link_name="log"] pure fn ln(n: c_double) -> c_double;
     // renamed: "logb" /often/ is confused for log2 by beginners
