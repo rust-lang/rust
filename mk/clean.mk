@@ -48,8 +48,7 @@ clean-misc:
                                    test/*/*.$(ext) \
                                    test/bench/*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext, \
-                 css html js \
-                 aux cp fn ky log pdf pg toc tp vr cps, \
+                 html aux cp fn ky log pdf pg toc tp vr cps, \
                  $(wildcard doc/*.$(ext) \
                             doc/*/*.$(ext) \
                             doc/*/*/*.$(ext)))
