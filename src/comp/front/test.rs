@@ -187,9 +187,12 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
     let mainfn = mk_main(cx);
     let testmod: ast::_mod = {view_items: [], items: [mainfn, testsfn]};
     let item_ = ast::item_mod(testmod);
+    // This attribute tells resolve to let us call unexported functions
+    let resolve_unexported_attr =
+        attr::mk_attr(attr::mk_word_item("!resolve_unexported"));
     let item: ast::item =
         {ident: "__test",
-         attrs: [],
+         attrs: [resolve_unexported_attr],
          id: cx.sess.next_node_id(),
          node: item_,
          span: dummy_sp()};

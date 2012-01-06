@@ -2,8 +2,9 @@
 import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
-import syntax::ast_util::{local_def, def_id_of_def, is_exported};
+import syntax::ast_util::{local_def, def_id_of_def};
 
+import front::attr;
 import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;
@@ -143,6 +144,7 @@ type env =
      mutable reported: [{ident: str, sc: scope}],
      mutable ignored_imports: [node_id],
      mutable current_tp: option::t<uint>,
+     mutable resolve_unexported: bool,
      sess: session};
 
 
@@ -170,6 +172,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           mutable reported: [],
           mutable ignored_imports: [],
           mutable current_tp: none,
+          mutable resolve_unexported: false,
           sess: sess};
     map_crate(e, crate);
     resolve_imports(*e);
@@ -231,7 +234,7 @@ fn map_crate(e: @env, c: @ast::crate) {
         path
     }
     fn index_i(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
-        visit_item_with_scope(i, sc, v);
+        visit_item_with_scope(e, i, sc, v);
         alt i.node {
           ast::item_mod(md) {
             e.mod_map.insert(i.id,
@@ -257,7 +260,7 @@ fn map_crate(e: @env, c: @ast::crate) {
     let v_link_glob =
         @{visit_view_item: bind link_glob(e, _, _, _),
           visit_block: visit_block_with_scope,
-          visit_item: visit_item_with_scope
+          visit_item: bind visit_item_with_scope(e, _, _, _)
           with *visit::default_visitor::<scopes>()};
     visit::visit_crate(*c, cons(scope_crate, @nil),
                        visit::mk_vt(v_link_glob));
@@ -331,7 +334,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
     e.used_imports.track = true;
     let v =
         @{visit_native_item: visit_native_item_with_scope,
-          visit_item: visit_item_with_scope,
+          visit_item: bind visit_item_with_scope(e, _, _, _),
           visit_block: visit_block_with_scope,
           visit_decl: visit_decl_with_scope,
           visit_arm: visit_arm_with_scope,
@@ -413,7 +416,17 @@ fn resolve_names(e: @env, c: @ast::crate) {
 
 
 // Visit helper functions
-fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
+fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
+
+    // Some magic here. Items with the !resolve_unexported attribute
+    // cause us to consider every name to be exported when resolving their
+    // contents. This is used to allow the test runner to run unexported
+    // tests.
+    let old_resolve_unexported = e.resolve_unexported;
+    e.resolve_unexported |=
+        attr::contains_name(attr::attr_metas(i.attrs),
+                            "!resolve_unexported");
+
     let sc = cons(scope_item(i), @sc);
     alt i.node {
       ast::item_impl(tps, ifce, sty, methods) {
@@ -436,6 +449,8 @@ fn visit_item_with_scope(i: @ast::item, sc: scopes, v: vt<scopes>) {
       }
       _ { visit::visit_item(i, sc, v); }
     }
+
+    e.resolve_unexported = old_resolve_unexported;
 }
 
 fn visit_native_item_with_scope(ni: @ast::native_item, sc: scopes,
@@ -1187,10 +1202,14 @@ fn lookup_in_local_native_mod(e: env, node_id: node_id, sp: span, id: ident,
     ret lookup_in_local_mod(e, node_id, sp, id, ns, inside);
 }
 
+fn is_exported(e: env, i: ident, m: _mod) -> bool {
+    ast_util::is_exported(i, m) || e.resolve_unexported
+}
+
 fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
                        ns: namespace, dr: dir) -> option::t<def> {
     let info = e.mod_map.get(node_id);
-    if dr == outside && !is_exported(id, option::get(info.m)) {
+    if dr == outside && !is_exported(e, id, option::get(info.m)) {
         // if we're in a native mod, then dr==inside, so info.m is some _mod
         ret none::<def>; // name is not visible
     }
@@ -1792,7 +1811,10 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
     alt i.node {
       ast::item_impl(_, ifce, _, mthds) {
         if alt name { some(n) { n == i.ident } _ { true } } &&
-           alt ck_exports { some(m) { is_exported(i.ident, m) } _ { true } } {
+           alt ck_exports {
+             some(m) { is_exported(e, i.ident, m) }
+             _ { true }
+           } {
             impls += [@{did: local_def(i.id),
                         iface_did: alt ifce {
                             some(@{node: ast::ty_path(_, id), _}) {
