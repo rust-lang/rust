@@ -277,7 +277,14 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       'E' { let def = parse_def(st, conv); ret ty::mk_native(st.tcx, def); }
       'Y' { ret ty::mk_type(st.tcx); }
       'y' { ret ty::mk_send_type(st.tcx); }
-      'C' { ret ty::mk_opaque_closure(st.tcx); }
+      'C' {
+        let ck = alt next(st) as char {
+          '&' { ty::closure_block }
+          '@' { ty::closure_shared }
+          '~' { ty::closure_send }
+        };
+        ret ty::mk_opaque_closure_ptr(st.tcx, ck);
+      }
       '#' {
         let pos = parse_hex(st);
         assert (next(st) as char == ':');

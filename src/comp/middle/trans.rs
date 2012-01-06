@@ -93,7 +93,7 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, is_method: bool, inputs: [ty::arg],
     if is_method {
         atys += [T_ptr(cx.rust_object_type)];
     } else {
-        atys += [T_opaque_boxed_closure_ptr(cx)];
+        atys += [T_opaque_cbox_ptr(cx)];
     }
 
     // Args >2: ty params, if not acquired via capture...
@@ -202,8 +202,8 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         }
         T_struct(tys)
       }
-      ty::ty_opaque_closure. {
-        T_opaque_closure(cx)
+      ty::ty_opaque_closure_ptr(_) {
+        T_opaque_cbox_ptr(cx)
       }
       ty::ty_constr(subt,_) {
         // FIXME: could be a constraint on ty_fn
@@ -415,25 +415,13 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 }
 
 fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
-    assert !ty::type_has_opaque_size(bcx_tcx(bcx), t);
     let {bcx, sz, align: _} = metrics(bcx, t, none);
     rslt(bcx, sz)
 }
 
 fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
-    assert !ty::type_has_opaque_size(bcx_tcx(bcx), t);
-    alt ty::struct(ccx.tcx, t) {
-      ty::ty_opaque_closure. {
-        // Hack: the alignment of an opaque closure is always defined as the
-        // alignment of a pointer.  This is not, however, strictly correct,
-        // depending on your point of view.  
-        llalign_of(bcx, T_ptr(T_i8()));
-      }
-      _ {
-        let {bcx, sz: _, align} = metrics(bcx, t, none);
-        rslt(bcx, align)
-      }
-    }
+    let {bcx, sz: _, align} = metrics(bcx, t, none);
+    rslt(bcx, align)
 }
 
 // Computes the size/alignment of the type `t`.  `opt_v`, if provided, should
@@ -443,8 +431,6 @@ fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
 // instance is required.
 fn metrics(bcx: @block_ctxt, t: ty::t, opt_v: option<ValueRef>)
     -> metrics_result {
-    assert (option::is_some(opt_v) ||
-            !ty::type_has_opaque_size(bcx_tcx(bcx), t));
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
         let sp = bcx.sp;
@@ -650,29 +636,6 @@ fn dynamic_metrics(bcx: @block_ctxt,
             } else { max_size_val };
         let total_align = C_int(bcx_ccx(bcx), 1); // FIXME: stub
         ret {bcx: bcx, sz: total_size, align: total_align};
-      }
-      ty::ty_opaque_closure. {
-        // Unlike most other types, the type of an opaque closure does not
-        // fully specify its size.  This is because the opaque closure type
-        // only says that this is a closure over some data, but doesn't say
-        // how much data there is (hence the word opaque).  This is an
-        // unavoidable consequence of the way that closures encapsulate the
-        // closed over data.  Therefore the only way to know the
-        // size/alignment of a particular opaque closure instance is to load
-        // the type descriptor from the instance and consult its
-        // size/alignment fields.  Note that it is meaningless to say "what is
-        // the size of the type opaque closure?" One can only ask "what is the
-        // size of this particular opaque closure?"
-        let v = alt opt_v {
-          none. { fail "Require value to compute metrics of opaque closures"; }
-          some(v) { v }
-        };
-        let v = PointerCast(bcx, v, T_ptr(T_opaque_closure(bcx_ccx(bcx))));
-        let tdptrptr = GEPi(bcx, v, [0, abi::closure_elt_tydesc]);
-        let tdptr = Load(bcx, tdptrptr);
-        let sz = Load(bcx, GEPi(bcx, tdptr, [0, abi::tydesc_field_size]));
-        let align = Load(bcx, GEPi(bcx, tdptr, [0, abi::tydesc_field_align]));
-        ret { bcx: bcx, sz: sz, align: align };
       }
     }
 }
@@ -1354,9 +1317,8 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
       ty::ty_native_fn(_, _) | ty::ty_fn(_) {
         trans_closure::make_fn_glue(bcx, v, t, take_ty)
       }
-      ty::ty_opaque_closure. {
-        trans_closure::call_opaque_closure_glue(
-            bcx, v, abi::tydesc_field_take_glue)
+      ty::ty_opaque_closure_ptr(ck) {
+        trans_closure::make_opaque_cbox_take_glue(bcx, ck, v)
       }
       _ when ty::type_is_structural(bcx_tcx(bcx), t) {
         iter_structural_ty(bcx, v, t, take_ty)
@@ -1429,9 +1391,8 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
       ty::ty_native_fn(_, _) | ty::ty_fn(_) {
         trans_closure::make_fn_glue(bcx, v, t, free_ty)
       }
-      ty::ty_opaque_closure. {
-        trans_closure::call_opaque_closure_glue(
-            bcx, v, abi::tydesc_field_free_glue)
+      ty::ty_opaque_closure_ptr(ck) {
+        trans_closure::make_opaque_cbox_free_glue(bcx, ck, v)
       }
       _ { bcx }
     };
@@ -1458,9 +1419,8 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
           ty::ty_native_fn(_, _) | ty::ty_fn(_) {
             trans_closure::make_fn_glue(bcx, v0, t, drop_ty)
           }
-          ty::ty_opaque_closure. {
-            trans_closure::call_opaque_closure_glue(
-                bcx, v0, abi::tydesc_field_drop_glue)
+          ty::ty_opaque_closure_ptr(ck) {
+            trans_closure::make_opaque_cbox_drop_glue(bcx, ck, v0)
           }
           _ {
             if ty::type_needs_drop(ccx.tcx, t) &&
@@ -2617,7 +2577,7 @@ type lval_maybe_callee = {bcx: @block_ctxt,
                           generic: option::t<generic_info>};
 
 fn null_env_ptr(bcx: @block_ctxt) -> ValueRef {
-    C_null(T_opaque_boxed_closure_ptr(bcx_ccx(bcx)))
+    C_null(T_opaque_cbox_ptr(bcx_ccx(bcx)))
 }
 
 fn lval_from_local_var(bcx: @block_ctxt, r: local_var_result) -> lval_result {
@@ -3274,7 +3234,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
     let llenv, dict_param = none;
     alt f_res.env {
       null_env. {
-        llenv = llvm::LLVMGetUndef(T_opaque_boxed_closure_ptr(bcx_ccx(cx)));
+        llenv = llvm::LLVMGetUndef(T_opaque_cbox_ptr(bcx_ccx(cx)));
       }
       obj_env(e) { llenv = e; }
       dict_env(dict, e) { llenv = e; dict_param = some(dict); }
@@ -5257,7 +5217,7 @@ fn fill_fn_pair(bcx: @block_ctxt, pair: ValueRef, llfn: ValueRef,
     Store(bcx, llfn, code_cell);
     let env_cell = GEPi(bcx, pair, [0, abi::fn_field_box]);
     let llenvblobptr =
-        PointerCast(bcx, llenvptr, T_opaque_boxed_closure_ptr(ccx));
+        PointerCast(bcx, llenvptr, T_opaque_cbox_ptr(ccx));
     Store(bcx, llenvblobptr, env_cell);
 }
 

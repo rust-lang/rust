@@ -58,7 +58,7 @@ fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
     let {bcx, val} = trans_arg_expr(bcx, {mode: ast::by_ref, ty: basety},
                                     T_ptr(type_of_or_i8(bcx, basety)), tz,
                                     tr, base);
-    rslt(bcx, PointerCast(bcx, val, T_opaque_boxed_closure_ptr(bcx_ccx(bcx))))
+    rslt(bcx, PointerCast(bcx, val, T_opaque_cbox_ptr(bcx_ccx(bcx))))
 }
 
 fn trans_static_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,

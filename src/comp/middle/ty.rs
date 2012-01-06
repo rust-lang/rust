@@ -84,7 +84,7 @@ export mk_send_type;
 export mk_uint;
 export mk_uniq;
 export mk_var;
-export mk_opaque_closure;
+export mk_opaque_closure_ptr;
 export mk_named;
 export gen_ty;
 export mode;
@@ -111,7 +111,7 @@ export ty_bool;
 export ty_bot;
 export ty_box;
 export ty_constr;
-export ty_opaque_closure;
+export ty_opaque_closure_ptr;
 export ty_constr_arg;
 export ty_float;
 export ty_fn, fn_ty;
@@ -149,7 +149,6 @@ export kind_can_be_copied, kind_can_be_sent, proto_kind, kind_lteq, type_kind;
 export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
-export type_has_opaque_size;
 export type_needs_drop;
 export type_is_bool;
 export type_is_bot;
@@ -276,7 +275,7 @@ tag sty {
     ty_send_type; // type_desc* that has been cloned into exchange heap
     ty_native(def_id);
     ty_constr(t, [@type_constr]);
-    ty_opaque_closure; // type of a captured environment.
+    ty_opaque_closure_ptr(closure_kind); // ptr to env for fn, fn@, fn~
     ty_named(t, @str);
 }
 
@@ -368,9 +367,7 @@ const idx_send_type: uint = 18u;
 
 const idx_bot: uint = 19u;
 
-const idx_opaque_closure: uint = 20u;
-
-const idx_first_others: uint = 21u;
+const idx_first_others: uint = 20u;
 
 type type_store = interner::interner<@raw_t>;
 
@@ -400,7 +397,6 @@ fn populate_type_store(cx: ctxt) {
     intern(cx, ty_type);
     intern(cx, ty_send_type);
     intern(cx, ty_bot);
-    intern(cx, ty_opaque_closure);
     assert (vec::len(cx.ts.vect) == idx_first_others);
 }
 
@@ -471,7 +467,8 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
     }
     alt st {
       ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_str. | ty_send_type. | ty_type. | ty_native(_) | ty_opaque_closure. {
+      ty_str. | ty_send_type. | ty_type. | ty_native(_) |
+      ty_opaque_closure_ptr(_) {
         /* no-op */
       }
       ty_param(_, _) { has_params = true; }
@@ -636,8 +633,8 @@ fn mk_send_type(_cx: ctxt) -> t { ret idx_send_type; }
 
 fn mk_native(cx: ctxt, did: def_id) -> t { ret gen_ty(cx, ty_native(did)); }
 
-fn mk_opaque_closure(_cx: ctxt) -> t {
-    ret idx_opaque_closure;
+fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
+    ret gen_ty(cx, ty_opaque_closure_ptr(ck));
 }
 
 fn mk_named(cx: ctxt, base: t, name: @str) -> t {
@@ -685,7 +682,8 @@ type ty_walk = fn@(t);
 fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
     alt struct(cx, ty) {
       ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str. | ty_send_type. | ty_type. | ty_native(_) | ty_opaque_closure. {
+      ty_str. | ty_send_type. | ty_type. | ty_native(_) |
+      ty_opaque_closure_ptr(_) {
         /* no-op */
       }
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
@@ -739,7 +737,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
     }
     alt interner::get(*cx.ts, ty).struct {
       ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str. | ty_send_type. | ty_type. | ty_native(_) | ty_opaque_closure. {
+      ty_str. | ty_send_type. | ty_type. | ty_native(_) |
+      ty_opaque_closure_ptr(_) {
         /* no-op */
       }
       ty_box(tm) {
@@ -881,6 +880,7 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
 pure fn type_is_tup_like(cx: ctxt, ty: t) -> bool {
     let sty = struct(cx, ty);
     alt sty {
+      ty_ptr(_) | ty_uniq(_) |
       ty_box(_) | ty_rec(_) | ty_tup(_) | ty_tag(_,_) { true }
       _ { false }
     }
@@ -1058,7 +1058,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // anything about its fields.
       ty_obj(_) { kind_copyable }
       ty_fn(f) { proto_kind(f.proto) }
-      ty_opaque_closure. { kind_noncopyable }
+      ty_opaque_closure_ptr(closure_block.) { kind_noncopyable }
+      ty_opaque_closure_ptr(closure_shared.) { kind_copyable }
+      ty_opaque_closure_ptr(closure_send.) { kind_sendable }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
       ty_box(_) | ty_iface(_, _) { kind_copyable }
@@ -1141,15 +1143,6 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
     }
 }
 
-pure fn type_has_opaque_size(cx: ctxt, ty: t) -> bool unchecked {
-    type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
-        alt sty {
-          ty_opaque_closure. { true}
-          _ { false }
-        }
-    })
-}
-
 pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
 
     /* type_structurally_contains can't be declared pure
@@ -1162,7 +1155,7 @@ pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
     */
     type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
         alt sty {
-          ty_opaque_closure. | ty_param(_, _) { true }
+          ty_param(_, _) { true }
           _ { false }
         }
     })
@@ -1424,13 +1417,15 @@ fn hash_type_structure(st: sty) -> uint {
       }
       ty_uniq(mt) { ret hash_subty(37u, mt.ty); }
       ty_send_type. { ret 38u; }
-      ty_opaque_closure. { ret 39u; }
-      ty_named(t, name) { (str::hash(*name) << 5u) + hash_subty(40u, t) }
+      ty_named(t, name) { (str::hash(*name) << 5u) + hash_subty(39u, t) }
       ty_iface(did, tys) {
-        let h = hash_def(41u, did);
-        for typ: t in tys { h += (h << 5u) + typ; }
+        let h = hash_def(40u, did);
+        for typ: t in tys { h = hash_subty(h, typ); }
         ret h;
       }
+      ty_opaque_closure_ptr(closure_block.) { ret 41u; }
+      ty_opaque_closure_ptr(closure_shared.) { ret 42u; }
+      ty_opaque_closure_ptr(closure_send.) { ret 43u; }
     }
 }
 

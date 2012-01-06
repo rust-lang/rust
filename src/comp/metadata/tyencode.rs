@@ -189,7 +189,9 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_type. { w.write_char('Y'); }
       ty::ty_send_type. { w.write_char('y'); }
-      ty::ty_opaque_closure. { w.write_char('C'); }
+      ty::ty_opaque_closure_ptr(ty::closure_block.) { w.write_str("C&"); }
+      ty::ty_opaque_closure_ptr(ty::closure_shared.) { w.write_str("C@"); }
+      ty::ty_opaque_closure_ptr(ty::closure_send.) { w.write_str("C~"); }
       ty::ty_constr(ty, cs) {
         w.write_str("A[");
         enc_ty(w, cx, ty);

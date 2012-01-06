@@ -51,7 +51,7 @@ const shape_obj: u8 = 19u8;
 const shape_res: u8 = 20u8;
 const shape_var: u8 = 21u8;
 const shape_uniq: u8 = 22u8;
-const shape_opaque_closure: u8 = 23u8; // the closure itself.
+const shape_opaque_closure_ptr: u8 = 23u8; // the closure itself.
 
 // FIXME: This is a bad API in trans_common.
 fn C_u8(n: u8) -> ValueRef { ret trans_common::C_u8(n as uint); }
@@ -419,8 +419,8 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
       ty::ty_fn(_) {
         s += [shape_fn];
       }
-      ty::ty_opaque_closure. {
-        s += [shape_opaque_closure];
+      ty::ty_opaque_closure_ptr(_) {
+        s += [shape_opaque_closure_ptr];
       }
     }
 
