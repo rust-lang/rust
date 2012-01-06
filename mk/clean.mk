@@ -33,10 +33,10 @@ clean-misc:
 	$(Q)rm -Rf $(GENERATED)
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
-	$(Q)find rustllvm llvm rt -name '*.[odasS]' -delete
-	$(Q)find rustllvm llvm rt -name '*.so' -delete
-	$(Q)find rustllvm llvm rt -name '*.dylib' -delete
-	$(Q)find rustllvm llvm rt -name '*.dll' -delete
+	$(Q)find rustllvm rt -name '*.[odasS]' -delete
+	$(Q)find rustllvm rt -name '*.so' -delete
+	$(Q)find rustllvm rt -name '*.dylib' -delete
+	$(Q)find rustllvm rt -name '*.dll' -delete
 	$(Q)find rustllvm rt -name '*.def' -delete
 	$(Q)rm -Rf $(wildcard rt/*/libuv/Default)
 	$(Q)rm -f test/run_pass_stage2.rc test/run_pass_stage2_driver.rs
