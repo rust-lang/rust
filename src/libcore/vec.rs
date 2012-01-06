@@ -719,7 +719,7 @@ Function: enum_chars
 
 Returns a vector containing a range of chars
 */
-fn enum_chars(start: u8, end: u8) : u8::le(start, end) -> [char] {
+fn enum_chars(start: u8, end: u8) : ::u8::le(start, end) -> [char] {
     let i = start;
     let r = [];
     while i <= end { r += [i as char]; i += 1u as u8; }
@@ -886,6 +886,99 @@ mod unsafe {
     unsafe fn to_ptr<T>(v: [const T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
+    }
+}
+
+/*
+Module: u8
+*/
+mod u8 {
+    export cmp;
+    export lt, le, eq, ne, ge, gt;
+    export hash;
+
+    #[nolink]
+    #[abi = "cdecl"]
+    native mod libc {
+        fn memcmp(s1: *u8, s2: *u8, n: ctypes::size_t) -> ctypes::c_int;
+    }
+
+    /*
+    Function cmp
+
+    Bytewise string comparison
+    */
+    pure fn cmp(&&a: [u8], &&b: [u8]) -> int unsafe {
+        let a_len = len(a);
+        let b_len = len(b);
+        let n = math::min(a_len, b_len) as ctypes::size_t;
+        let r = libc::memcmp(to_ptr(a), to_ptr(b), n) as int;
+
+        if r != 0 { r } else {
+            if a_len == b_len {
+                0
+            } else if a_len < b_len {
+                -1
+            } else {
+                1
+            }
+        }
+    }
+
+    /*
+    Function: lt
+
+    Bytewise less than or equal
+    */
+    pure fn lt(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) < 0 }
+
+    /*
+    Function: le
+
+    Bytewise less than or equal
+    */
+    pure fn le(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) <= 0 }
+
+    /*
+    Function: eq
+
+    Bytewise equality
+    */
+    pure fn eq(&&a: [u8], &&b: [u8]) -> bool unsafe { cmp(a, b) == 0 }
+
+    /*
+    Function: ne
+
+    Bytewise inequality
+    */
+    pure fn ne(&&a: [u8], &&b: [u8]) -> bool unsafe { cmp(a, b) != 0 }
+
+    /*
+    Function: ge
+
+    Bytewise greater than or equal
+    */
+    pure fn ge(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) >= 0 }
+
+    /*
+    Function: gt
+
+    Bytewise greater than
+    */
+    pure fn gt(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) > 0 }
+
+    /*
+    Function: hash
+
+    String hash function
+    */
+    fn hash(&&s: [u8]) -> uint {
+        // djb hash.
+        // FIXME: replace with murmur.
+
+        let u: uint = 5381u;
+        vec::iter(s, { |c| u *= 33u; u += c as uint; });
+        ret u;
     }
 }
 

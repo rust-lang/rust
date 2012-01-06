@@ -31,7 +31,7 @@ taken to ensure that a reference to the c_vec::t is still held if needed.
 export t;
 export create, create_with_dtor;
 export get, set;
-export size;
+export len;
 export ptr;
 
 /*
@@ -43,7 +43,7 @@ export ptr;
  */
 
 tag t<T> {
-    t({ base: *mutable T, size: uint, rsrc: @dtor_res});
+    t({ base: *mutable T, len: uint, rsrc: @dtor_res});
 }
 
 resource dtor_res(dtor: option::t<fn@()>) {
@@ -60,16 +60,16 @@ resource dtor_res(dtor: option::t<fn@()>) {
 /*
 Function: create
 
-Create a c_vec::t from a native buffer with a given size.
+Create a c_vec::t from a native buffer with a given length.
 
 Parameters:
 
 base - A native pointer to a buffer
-size - The number of elements in the buffer
+len - The number of elements in the buffer
 */
-unsafe fn create<T>(base: *mutable T, size: uint) -> t<T> {
+unsafe fn create<T>(base: *mutable T, len: uint) -> t<T> {
     ret t({base: base,
-           size: size,
+           len: len,
            rsrc: @dtor_res(option::none)
           });
 }
@@ -77,20 +77,20 @@ unsafe fn create<T>(base: *mutable T, size: uint) -> t<T> {
 /*
 Function: create_with_dtor
 
-Create a c_vec::t from a native buffer, with a given size,
+Create a c_vec::t from a native buffer, with a given length,
 and a function to run upon destruction.
 
 Parameters:
 
 base - A native pointer to a buffer
-size - The number of elements in the buffer
+len - The number of elements in the buffer
 dtor - A function to run when the value is destructed, useful
        for freeing the buffer, etc.
 */
-unsafe fn create_with_dtor<T>(base: *mutable T, size: uint, dtor: fn@())
+unsafe fn create_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
   -> t<T> {
     ret t({base: base,
-           size: size,
+           len: len,
            rsrc: @dtor_res(option::some(dtor))
           });
 }
@@ -109,7 +109,7 @@ Failure:
 If `ofs` is greater or equal to the length of the vector
 */
 fn get<T: copy>(t: t<T>, ofs: uint) -> T {
-    assert ofs < (*t).size;
+    assert ofs < len(t);
     ret unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
 
@@ -123,7 +123,7 @@ Failure:
 If `ofs` is greater or equal to the length of the vector
 */
 fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
-    assert ofs < (*t).size;
+    assert ofs < len(t);
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }
 
@@ -131,14 +131,13 @@ fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
  Section: Elimination forms
  */
 
-// FIXME: Rename to len
 /*
-Function: size
+Function: len
 
 Returns the length of the vector
 */
-fn size<T>(t: t<T>) -> uint {
-    ret (*t).size;
+fn len<T>(t: t<T>) -> uint {
+    ret (*t).len;
 }
 
 /*

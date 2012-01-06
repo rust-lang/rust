@@ -379,12 +379,21 @@ fn new_str_hash<V: copy>() -> hashmap<str, V> {
 }
 
 /*
+Function: new_bytes_hash
+
+Construct a hashmap for byte string keys
+*/
+fn new_bytes_hash<V: copy>() -> hashmap<[u8], V> {
+    ret mk_hashmap(vec::u8::hash, vec::u8::eq);
+}
+
+/*
 Function: new_int_hash
 
 Construct a hashmap for int keys
 */
 fn new_int_hash<V: copy>() -> hashmap<int, V> {
-    fn hash_int(&&x: int) -> uint { ret x as uint; }
+    fn hash_int(&&x: int) -> uint { int::hash(x) }
     fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
     ret mk_hashmap(hash_int, eq_int);
 }
@@ -395,7 +404,7 @@ Function: new_uint_hash
 Construct a hashmap for uint keys
 */
 fn new_uint_hash<V: copy>() -> hashmap<uint, V> {
-    fn hash_uint(&&x: uint) -> uint { ret x; }
+    fn hash_uint(&&x: uint) -> uint { uint::hash(x) }
     fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
     ret mk_hashmap(hash_uint, eq_uint);
 }
