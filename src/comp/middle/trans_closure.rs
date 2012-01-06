@@ -12,6 +12,7 @@ import syntax::codemap::span;
 import back::link::{
     mangle_internal_name_by_path,
     mangle_internal_name_by_path_and_seq};
+import util::ppaux::ty_to_str;
 import trans::{
     trans_shared_malloc,
     type_of_inner,
@@ -131,7 +132,8 @@ fn mk_tydesc_ty(tcx: ty::ctxt, ck: ty::closure_kind) -> ty::t {
 fn mk_closure_tys(tcx: ty::ctxt,
                   ck: ty::closure_kind,
                   ty_params: [fn_ty_param],
-                  bound_values: [environment_value]) -> (ty::t, [ty::t]) {
+                  bound_values: [environment_value])
+    -> (ty::t, ty::t, [ty::t]) {
     let bound_tys = [];
 
     let tydesc_ty =
@@ -157,23 +159,45 @@ fn mk_closure_tys(tcx: ty::ctxt,
     }
     let bound_data_ty = ty::mk_tup(tcx, bound_tys);
 
-    // closure_ty == ref count, data tydesc, typarams, bound data
-    let closure_ty =
-        ty::mk_tup(tcx, [ty::mk_int(tcx), tydesc_ty,
-                         ty::mk_tup(tcx, param_ptrs), bound_data_ty]);
+    let norc_tys = [tydesc_ty, ty::mk_tup(tcx, param_ptrs), bound_data_ty];
 
-    ret (closure_ty, bound_tys);
+    // closure_norc_ty == everything but ref count
+    //
+    // This is a hack to integrate with the cycle coll.  When you
+    // allocate memory in the task-local space, you are expected to
+    // provide a descriptor for that memory which excludes the ref
+    // count. That's what this represents.  However, this really
+    // assumes a type setup like [uint, data] where data can be a
+    // struct.  We don't use that structure here because we don't want
+    // to alignment of the first few fields being bound up in the
+    // alignment of the bound data, as would happen if we laid out
+    // that way.  For now this should be fine but ultimately we need
+    // to modify CC code or else modify box allocation interface to be
+    // a bit more flexible, perhaps taking a vec of tys in the box
+    // (which for normal rust code is always of length 1).
+    let closure_norc_ty = ty::mk_tup(tcx, norc_tys);
+
+    #debug["closure_norc_ty=%s", ty_to_str(tcx, closure_norc_ty)];
+
+    // closure_ty == ref count, data tydesc, typarams, bound data
+    let closure_ty = ty::mk_tup(tcx, [ty::mk_int(tcx)] + norc_tys);
+
+    #debug["closure_ty=%s", ty_to_str(tcx, closure_norc_ty)];
+
+    ret (closure_ty, closure_norc_ty, bound_tys);
 }
 
 fn allocate_cbox(bcx: @block_ctxt,
                  ck: ty::closure_kind,
-                 cbox_ty: ty::t)
+                 cbox_ty: ty::t,
+                 cbox_norc_ty: ty::t)
     -> (@block_ctxt, ValueRef, [ValueRef]) {
 
-    fn alloc_in_heap(bcx: @block_ctxt,
-                     cbox_ty: ty::t,
-                     shared: bool,
-                     &temp_cleanups: [ValueRef])
+    let ccx = bcx_ccx(bcx);
+
+    let alloc_in_heap = lambda(bcx: @block_ctxt,
+                               xchgheap: bool,
+                               &temp_cleanups: [ValueRef])
         -> (@block_ctxt, ValueRef) {
 
         // n.b. If you are wondering why we don't use
@@ -183,28 +207,28 @@ fn allocate_cbox(bcx: @block_ctxt,
 
         let {bcx, val:llsz} = size_of(bcx, cbox_ty);
         let ti = none;
+        let tydesc_ty = if xchgheap { cbox_ty } else { cbox_norc_ty };
         let {bcx, val:lltydesc} =
-            get_tydesc(bcx, cbox_ty, true, tps_normal, ti).result;
-        let malloc =
-            if shared { bcx_ccx(bcx).upcalls.shared_malloc }
-            else { bcx_ccx(bcx).upcalls.malloc };
+            get_tydesc(bcx, tydesc_ty, true, tps_normal, ti).result;
+        let malloc = {
+            if xchgheap { ccx.upcalls.shared_malloc}
+            else { ccx.upcalls.malloc }
+        };
         let box = Call(bcx, malloc, [llsz, lltydesc]);
-        add_clean_free(bcx, box, shared);
+        add_clean_free(bcx, box, xchgheap);
         temp_cleanups += [box];
         (bcx, box)
-    }
-
-    let ccx = bcx_ccx(bcx);
+    };
 
     // Allocate the box:
     let temp_cleanups = [];
     let (bcx, box, rc) = alt ck {
       ty::closure_shared. {
-        let (bcx, box) = alloc_in_heap(bcx, cbox_ty, false, temp_cleanups);
+        let (bcx, box) = alloc_in_heap(bcx, false, temp_cleanups);
         (bcx, box, 1)
       }
       ty::closure_send. {
-        let (bcx, box) = alloc_in_heap(bcx, cbox_ty, true, temp_cleanups);
+        let (bcx, box) = alloc_in_heap(bcx, true, temp_cleanups);
         (bcx, box, 0xdeadc0de) // use arbitrary value for debugging
       }
       ty::closure_block. {
@@ -264,11 +288,12 @@ fn store_environment(
     let tcx = bcx_tcx(bcx);
 
     // compute the shape of the closure
-    let (cbox_ty, bound_tys) =
+    let (cbox_ty, cbox_norc_ty, bound_tys) =
         mk_closure_tys(tcx, ck, lltyparams, bound_values);
 
     // allocate closure in the heap
-    let (bcx, llbox, temp_cleanups) = allocate_cbox(bcx, ck, cbox_ty);
+    let (bcx, llbox, temp_cleanups) =
+        allocate_cbox(bcx, ck, cbox_ty, cbox_norc_ty);
 
     // store data tydesc.
     alt ck {
