@@ -89,12 +89,12 @@ included:
 
 
 * Two header files that are part of the Valgrind
-  package. These files are found at src/rt/valgrind.h and
-  src/rt/memcheck.h, within this distribution. These files
+  package. These files are found at src/rt/vg/valgrind.h and
+  src/rt/vg/memcheck.h, within this distribution. These files
   are redistributed under the following terms, as noted in
   them:
 
-  for src/rt/valgrind.h:
+  for src/rt/vg/valgrind.h:
 
     This file is part of Valgrind, a dynamic binary
     instrumentation framework.
@@ -140,7 +140,7 @@ included:
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
     OF SUCH DAMAGE.
 
-  for src/rt/memcheck.h:
+  for src/rt/vg/memcheck.h:
 
     This file is part of MemCheck, a heavyweight Valgrind
     tool for detecting memory errors.
