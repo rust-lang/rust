@@ -379,6 +379,15 @@ fn new_str_hash<V: copy>() -> hashmap<str, V> {
 }
 
 /*
+Function: new_bytes_hash
+
+Construct a hashmap for byte string keys
+*/
+fn new_bytes_hash<V: copy>() -> hashmap<[u8], V> {
+    ret mk_hashmap(vec::u8::hash, vec::u8::eq);
+}
+
+/*
 Function: new_int_hash
 
 Construct a hashmap for int keys
