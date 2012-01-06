@@ -3,6 +3,7 @@
 #include "rust_internal.h"
 #include "rust_scheduler.h"
 #include "rust_task.h"
+#include "rust_util.h"
 
 #if !defined(__WIN32__)
 #include <sys/time.h>
@@ -419,11 +420,6 @@ extern "C" rust_task *
 rust_get_task() {
     return rust_scheduler::get_task();
 }
-
-struct fn_env_pair {
-    spawn_fn f;
-    rust_boxed_closure *env;
-};
 
 extern "C" CDECL void
 start_task(rust_task_id id, fn_env_pair *f) {

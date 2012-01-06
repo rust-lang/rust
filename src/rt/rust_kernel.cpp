@@ -1,4 +1,5 @@
 #include "rust_internal.h"
+#include "rust_util.h"
 
 #define KLOG_(...)                              \
     KLOG(this, kern, __VA_ARGS__)
@@ -216,6 +217,5 @@ rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //

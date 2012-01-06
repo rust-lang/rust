@@ -646,8 +646,12 @@ fn make_opaque_cbox_take_glue(
     -> @block_ctxt {
     // Easy cases:
     alt ck {
-      ty::closure_block. { ret bcx; }
-      ty::closure_shared. { ret incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); }
+      ty::closure_block. {
+        ret bcx;
+      }
+      ty::closure_shared. {
+        ret incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr));
+      }
       ty::closure_send. { /* hard case: */ }
     }
 
@@ -858,7 +862,8 @@ fn trans_bind_thunk(cx: @local_ctxt,
     // Copy in the type parameters.
     check type_is_tup_like(l_bcx, cboxptr_ty);
     let {bcx: l_bcx, val: param_record} =
-        GEP_tup_like(l_bcx, cboxptr_ty, llclosure, [0, abi::cbox_elt_ty_params]);
+        GEP_tup_like(l_bcx, cboxptr_ty, llclosure,
+                     [0, abi::cbox_elt_ty_params]);
     let off = 0;
     for param in param_bounds {
         let dsc = Load(l_bcx, GEPi(l_bcx, param_record, [0, off])),

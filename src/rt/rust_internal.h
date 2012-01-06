@@ -241,8 +241,6 @@ struct rust_timer {
     ~rust_timer();
 };
 
-#include "rust_util.h"
-
 typedef void CDECL (glue_fn)(void *, void *,
                              const type_desc **, void *);
 typedef void CDECL (cmp_glue_fn)(void *, void *,
@@ -252,6 +250,30 @@ typedef void CDECL (cmp_glue_fn)(void *, void *,
 struct rust_shape_tables {
     uint8_t *tags;
     uint8_t *resources;
+};
+
+struct rust_opaque_closure;
+
+// The type of functions that we spawn, which fall into two categories:
+// - the main function: has a NULL environment, but uses the void* arg
+// - unique closures of type fn~(): have a non-NULL environment, but
+//   no arguments (and hence the final void*) is harmless
+typedef void (*CDECL spawn_fn)(void*, rust_opaque_closure*, void *);
+
+// corresponds to the layout of a fn(), fn@(), fn~() etc
+struct fn_env_pair {
+    spawn_fn f;
+    rust_opaque_closure *env;
+};
+
+// corresponds the closures generated in trans_closure.rs
+struct rust_opaque_closure {
+    intptr_t ref_count;
+    const type_desc *td;
+    // The size/types of these will vary per closure, so they
+    // cannot be statically expressed.  See trans_closure.rs:
+    const type_desc *captured_tds[0];
+    // struct bound_data;
 };
 
 struct type_desc {
@@ -297,7 +319,6 @@ extern "C" type_desc *rust_clone_type_desc(type_desc*);
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //
 

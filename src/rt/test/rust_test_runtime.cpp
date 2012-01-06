@@ -39,7 +39,7 @@ rust_domain_test::run() {
     return true;
 }
 
-void task_entry(void *, rust_boxed_closure *, void *) {
+void task_entry(void *, rust_opaque_closure *, void *) {
     printf("task entry\n");
 }
 

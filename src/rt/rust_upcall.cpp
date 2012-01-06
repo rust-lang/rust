@@ -12,6 +12,7 @@
 #include "rust_scheduler.h"
 #include "rust_unwind.h"
 #include "rust_upcall.h"
+#include "rust_util.h"
 #include <stdint.h>
 
 

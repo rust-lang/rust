@@ -1,4 +1,5 @@
 #include "rust_internal.h"
+#include "rust_util.h"
 #include <cstdio>
 
 struct

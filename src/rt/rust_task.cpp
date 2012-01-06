@@ -293,7 +293,7 @@ rust_task::~rust_task()
 struct spawn_args {
     rust_task *task;
     spawn_fn f;
-    rust_boxed_closure *envptr;
+    rust_opaque_closure *envptr;
     void *argptr;
 };
 
@@ -347,12 +347,13 @@ void task_start_wrapper(spawn_args *a)
         failed = true;
     }
 
-    rust_boxed_closure* boxed_env = (rust_boxed_closure*)a->envptr;
-    if(boxed_env) {
+    rust_opaque_closure* env = a->envptr;
+    if(env) {
         // free the environment.
-        const type_desc *td = boxed_env->closure.td;
-        td->drop_glue(NULL, NULL, td->first_param, &boxed_env->closure);
-        upcall_shared_free(boxed_env);
+        const type_desc *td = env->td;
+        LOG(task, task, "Freeing env %p with td %p", env, td);
+        td->drop_glue(NULL, NULL, td->first_param, env);
+        upcall_shared_free(env);
     }
 
     // The cleanup work needs lots of stack
@@ -364,7 +365,7 @@ void task_start_wrapper(spawn_args *a)
 
 void
 rust_task::start(spawn_fn spawnee_fn,
-                 rust_boxed_closure *envptr,
+                 rust_opaque_closure *envptr,
                  void *argptr)
 {
     LOG(this, task, "starting task from fn 0x%" PRIxPTR

@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include "rust_internal.h"
+#include "rust_util.h"
 
 // ISAAC pollutes our namespace.
 #undef align
@@ -300,7 +301,7 @@ public:
     const type_param *params;   // subparameters
 
     // Constructs type parameters from a function shape.
-    static type_param *from_fn_shape(const uint8_t *sp, ptr dp, arena &arena);
+    static type_param *from_fn_shape(rust_opaque_closure *env, arena &arena);
     // Creates type parameters from an object shape description.
     static type_param *from_obj_shape(const uint8_t *sp, ptr dp,
                                       arena &arena);
@@ -952,23 +953,17 @@ data<T,U>::walk_tag(tag_info &tinfo) {
 template<typename T,typename U>
 void
 data<T,U>::walk_fn_contents(ptr &dp) {
-    dp += sizeof(void *);   // Skip over the code pointer.
-
-    uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
-    if (!box_ptr)
+    fn_env_pair pair = bump_dp<fn_env_pair>(dp);
+    if (!pair.env)
         return;
 
-    type_desc *subtydesc =
-        *reinterpret_cast<type_desc **>(box_ptr + sizeof(void *));
-    ptr closure_dp(box_ptr + sizeof(void *));
-
     arena arena;
-    type_param *params = type_param::from_fn_shape(subtydesc->shape,
-                                                   closure_dp, arena);
-
-    closure_dp += sizeof(void *);
-    T sub(*static_cast<T *>(this), subtydesc->shape, params,
-          subtydesc->shape_tables, closure_dp);
+    type_param *params =
+      type_param::from_fn_shape(pair.env, arena);
+    const type_desc *closure_td = pair.env->td;
+    ptr closure_dp((uintptr_t)pair.env);
+    T sub(*static_cast<T *>(this), closure_td->shape, params,
+          closure_td->shape_tables, closure_dp);
     sub.align = true;
     sub.walk();
 }

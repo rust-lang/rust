@@ -21,18 +21,6 @@ struct chan_handle {
     rust_port_id port;
 };
 
-struct rust_closure {
-    const type_desc *td;
-    // ... see trans_closure.rs for full description ...
-};
-
-struct rust_boxed_closure {
-    intptr_t ref_count;
-    rust_closure closure;
-};
-
-typedef void (*CDECL spawn_fn)(void*, rust_boxed_closure*, void *);
-
 struct rust_box;
 
 struct stk_seg {
@@ -145,7 +133,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     ~rust_task();
 
     void start(spawn_fn spawnee_fn,
-               rust_boxed_closure *env,
+               rust_opaque_closure *env,
                void *args);
     void start();
     bool running();

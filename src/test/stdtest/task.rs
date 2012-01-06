@@ -53,7 +53,7 @@ fn test_join_chan_fail() {
 
 #[test]
 fn spawn_polymorphic() {
-    fn foo<send T>(x: T) { log(error, x); }
+    fn foo<T:send>(x: T) { log(error, x); }
     task::spawn {|| foo(true);};
     task::spawn {|| foo(42);};
 }
