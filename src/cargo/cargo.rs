@@ -5,6 +5,7 @@ use std;
 
 import rustc::syntax::{ast, codemap, visit};
 import rustc::syntax::parse::parser;
+import rustc::util::filesearch::get_cargo_root;
 
 import std::fs;
 import std::generic_os;
@@ -300,14 +301,9 @@ fn load_source_packages(&c: cargo, &src: source) {
 }
 
 fn configure() -> cargo {
-    let p = alt generic_os::getenv("CARGO_ROOT") {
-        some(_p) { _p }
-        none. {
-            alt generic_os::getenv("HOME") {
-                some(_q) { fs::connect(_q, ".cargo") }
-                none. { fail "no CARGO_ROOT or HOME"; }
-            }
-        }
+    let p = alt get_cargo_root() {
+      result::ok(p) { p }
+      result::err(e) { fail e }
     };
 
     let sources = map::new_str_hash::<source>();

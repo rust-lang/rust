@@ -6,6 +6,8 @@ import core::option;
 import std::fs;
 import vec;
 import std::os;
+import result;
+import std::generic_os;
 
 export filesearch;
 export mk_filesearch;
@@ -13,6 +15,7 @@ export pick;
 export pick_file;
 export search;
 export relative_target_lib_path;
+export get_cargo_root;
 
 type pick<T> = block(path: fs::path) -> option::t<T>;
 
@@ -38,6 +41,10 @@ fn mk_filesearch(maybe_sysroot: option::t<fs::path>,
         fn lib_search_paths() -> [fs::path] {
             addl_lib_search_paths
                 + [make_target_lib_path(sysroot, target_triple)]
+                + alt get_cargo_lib_path() {
+                  result::ok(p) { [p] }
+                  result::err(p) { [] }
+                }
         }
 
         fn get_target_lib_path() -> fs::path {
@@ -97,5 +104,23 @@ fn get_sysroot(maybe_sysroot: option::t<fs::path>) -> fs::path {
     alt maybe_sysroot {
       option::some(sr) { sr }
       option::none. { get_default_sysroot() }
+    }
+}
+
+fn get_cargo_root() -> result::t<fs::path, str> {
+    alt generic_os::getenv("CARGO_ROOT") {
+        some(_p) { result::ok(_p) }
+        none. {
+            alt generic_os::getenv("HOME") {
+                some(_q) { result::ok(fs::connect(_q, ".cargo")) }
+                none. { result::err("no CARGO_ROOT or HOME") }
+            }
+        }
+    }
+}
+
+fn get_cargo_lib_path() -> result::t<fs::path, str> {
+    result::chain(get_cargo_root()) { |p|
+        result::ok(fs::connect(p, "lib"))
     }
 }
