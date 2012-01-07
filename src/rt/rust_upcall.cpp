@@ -247,7 +247,7 @@ void upcall_s_create_shared_type_desc(s_create_shared_type_desc_args *args)
     // Copy the main part of the type descriptor:
     const type_desc *td = args->td;
     int n_params = td->n_params;
-    size_t sz = sizeof(type_desc) + sizeof(type_desc*) * n_params;
+    size_t sz = sizeof(type_desc) + sizeof(type_desc*) * (n_params+1);
     args->res = (type_desc*) task->kernel->malloc(sz, "create_shared_type_desc");
     memcpy(args->res, td, sizeof(type_desc));
 
