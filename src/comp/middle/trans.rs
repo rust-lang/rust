@@ -1386,7 +1386,10 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
       ty::ty_send_type. {
         // sendable type descriptors are basically unique pointers,
         // they must be freed.
-        trans_shared_free(bcx, v)
+        let ccx = bcx_ccx(bcx);
+        let v = PointerCast(bcx, v, T_ptr(ccx.tydesc_type));
+        Call(bcx, ccx.upcalls.free_shared_type_desc, [v]);
+        bcx
       }
       ty::ty_native_fn(_, _) | ty::ty_fn(_) {
         trans_closure::make_fn_glue(bcx, v, t, free_ty)

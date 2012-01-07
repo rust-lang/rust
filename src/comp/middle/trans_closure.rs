@@ -736,6 +736,7 @@ fn make_opaque_cbox_free_glue(
     }
 
     let ccx = bcx_ccx(bcx);
+    let tcx = bcx_tcx(bcx);
     make_null_test(bcx, cbox) {|bcx|
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
@@ -763,7 +764,7 @@ fn make_opaque_cbox_free_glue(
             trans_free_if_not_gc(bcx, cbox)
           }
           ty::closure_send. {
-            let bcx = trans_shared_free(bcx, tydesc);
+            let bcx = free_ty(bcx, tydesc, mk_tydesc_ty(tcx, ck));
             trans_shared_free(bcx, cbox)
           }
         }

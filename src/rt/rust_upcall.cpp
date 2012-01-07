@@ -293,7 +293,9 @@ void upcall_s_free_shared_type_desc(type_desc *td)
 
 extern "C" CDECL void
 upcall_free_shared_type_desc(type_desc *td) {
-    UPCALL_SWITCH_STACK(td, upcall_s_free_shared_type_desc);
+    if (td) {
+        UPCALL_SWITCH_STACK(td, upcall_s_free_shared_type_desc);
+    }
 }
 
 /**********************************************************************
