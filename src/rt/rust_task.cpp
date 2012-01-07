@@ -457,6 +457,8 @@ rust_task::fail() {
 #else
     die();
     conclude_failure();
+    // FIXME: Need unwinding on windows. This will end up aborting
+    sched->fail();
 #endif
 }
 
