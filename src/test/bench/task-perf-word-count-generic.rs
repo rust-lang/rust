@@ -79,7 +79,7 @@ mod map_reduce {
         let tasks = [];
         for i in inputs {
             let m = map, c = ctrl, ii = i;
-            tasks += [task::spawn_joinable(bind map_task(m, c, ii))];
+            tasks += [task::spawn_joinable {|| map_task(m, c, ii)}];
         }
         ret tasks;
     }
@@ -182,10 +182,11 @@ mod map_reduce {
                   none. {
                     // log(error, "creating new reducer for " + k);
                     let p = port();
+                    let ch = chan(p);
                     let r = reduce, kk = k;
-                    tasks +=
-                        [task::spawn_joinable(bind reduce_task(r, kk,
-                                                               chan(p)))];
+                    tasks += [
+                        task::spawn_joinable {|| reduce_task(r, kk, ch) }
+                    ];
                     c = recv(p);
                     treemap::insert(reducers, k, c);
                   }

@@ -23,5 +23,7 @@ resource and_then_get_big_again(_i: @int) {
 }
 
 fn main() {
-    task::spawn(400, getbig_and_fail);
+    task::spawn {||
+        getbig_and_fail(400);
+    };
 }

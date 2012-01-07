@@ -22,5 +22,7 @@ resource and_then_get_big_again(_i: @int) {
 
 fn main() {
     rustrt::set_min_stack(256u);
-    task::spawn(1, getbig_and_fail);
+    task::spawn {||
+        getbig_and_fail(1);
+    };
 }

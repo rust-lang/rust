@@ -5,8 +5,8 @@ import task;
 
 // We don't want to see any invalid reads
 fn main() {
-    fn f(&&_i: ()) {
+    fn f() {
         fail;
     }
-    task::spawn((), f);
+    task::spawn {|| f(); };
 }

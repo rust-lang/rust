@@ -30,8 +30,8 @@ resource and_then_get_big_again(_i: ()) {
 }
 
 fn main() {
-    task::spawn((), fn (&&_i: ()) {
+    task::spawn {||
         let r = and_then_get_big_again(());
         getbig_call_c_and_fail(10000);
-    });
+    };
 }

@@ -4,13 +4,13 @@ use std;
 import task;
 import comm;
 
-fn goodfail(&&_i: ()) {
+fn goodfail() {
     task::yield();
     fail "goodfail";
 }
 
 fn main() {
-    task::spawn((), goodfail);
+    task::spawn {|| goodfail(); };
     let po = comm::port();
     // We shouldn't be able to get past this recv since there's no
     // message available

@@ -7,7 +7,7 @@ import str;
 fn f(&&n: uint) {
     let i = 0u;
     while i < n {
-        task::join(task::spawn_joinable((), g));
+        task::join(task::spawn_joinable {|| g(); });
         i += 1u;
     }
 }
@@ -20,5 +20,5 @@ fn main(args: [str]) {
             10u
         } else { uint::parse_buf(str::bytes(args[1]), 10u) };
     let i = 0u;
-    while i < n { task::spawn(copy n, f); i += 1u; }
+    while i < n { task::spawn {|| f(n); }; i += 1u; }
 }

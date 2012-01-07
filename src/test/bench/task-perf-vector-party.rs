@@ -21,5 +21,5 @@ fn main(args: [str]) {
         if vec::len(args) < 2u {
             100u
         } else { uint::parse_buf(str::bytes(args[1]), 10u) };
-    uint::range(0u, 100u) {|i| task::spawn(copy n, f); }
+    uint::range(0u, 100u) {|i| task::spawn {|| f(n); };}
 }

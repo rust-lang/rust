@@ -7,10 +7,10 @@ import comm::chan;
 import comm::port;
 import comm::recv;
 
-fn child(&&_i: ()) { fail; }
+fn child() { fail; }
 
 fn main() {
     let p = port::<int>();
-    task::spawn((), child);
+    task::spawn {|| child(); };
     task::yield();
 }

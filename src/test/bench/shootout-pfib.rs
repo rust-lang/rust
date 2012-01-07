@@ -31,24 +31,23 @@ import core::result;
 import result::{ok, err};
 
 fn fib(n: int) -> int {
-    fn pfib(args: (chan<int>, int)) {
-        let (c, n) = args;
+    fn pfib(c: chan<int>, n: int) {
         if n == 0 {
             send(c, 0);
         } else if n <= 2 {
             send(c, 1);
         } else {
             let p = port();
-
-            let t1 = task::spawn((chan(p), n - 1), pfib);
-            let t2 = task::spawn((chan(p), n - 2), pfib);
-
+            let ch = chan(p);
+            task::spawn {|| pfib(ch, n - 1); };
+            task::spawn {|| pfib(ch, n - 2); };
             send(c, recv(p) + recv(p));
         }
     }
 
     let p = port();
-    let t = task::spawn((chan(p), n), pfib);
+    let ch = chan(p);
+    let t = task::spawn {|| pfib(ch, n); };
     ret recv(p);
 }
 
@@ -79,7 +78,7 @@ fn stress_task(&&id: int) {
 fn stress(num_tasks: int) {
     let tasks = [];
     range(0, num_tasks) {|i|
-        tasks += [task::spawn_joinable(copy i, stress_task)];
+        tasks += [task::spawn_joinable {|| stress_task(i); }];
     }
     for t in tasks { task::join(t); }
 }
