@@ -12,7 +12,7 @@ fn f(&&n: uint) {
     }
 }
 
-fn g(&&_i: ()) { }
+fn g() { }
 
 fn main(args: [str]) {
     let n =

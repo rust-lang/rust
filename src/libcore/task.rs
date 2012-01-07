@@ -28,8 +28,6 @@ Example:
 */
 import cast = unsafe::reinterpret_cast;
 import comm;
-import option::{some, none};
-import option = option::t;
 import ptr;
 import c = ctypes;
 
@@ -112,10 +110,23 @@ Returns:
 
 A handle to the new task
 */
-fn spawn(-f: sendfn()) -> task unsafe {
+fn spawn(-f: sendfn()) -> task {
+    spawn_inner(f, none)
+}
+
+fn spawn_inner(-f: sendfn(),
+               notify: option<comm::chan<task_notification>>) -> task unsafe {
     let closure: *rust_closure = unsafe::reinterpret_cast(ptr::addr_of(f));
     #debug("spawn: closure={%x,%x}", (*closure).fnptr, (*closure).envptr);
     let id = rustrt::new_task();
+
+    // set up notifications if they are enabled.
+    option::may(notify) {|c|
+        let task_ptr <- rust_task_ptr(rustrt::get_task_pointer(id));
+        (**task_ptr).notify_enabled = 1;
+        (**task_ptr).notify_chan = c;
+    }
+
     rustrt::start_task(id, closure);
     unsafe::leak(f);
     ret id;
@@ -129,6 +140,11 @@ A task that sends notification upon termination
 type joinable_task = (task, comm::port<task_notification>);
 
 fn spawn_joinable(-f: sendfn()) -> joinable_task {
+    let notify_port = comm::port();
+    let notify_chan = comm::chan(notify_port);
+    let task = spawn_inner(f, some(notify_chan));
+    ret (task, notify_port);
+    /*
     resource notify_rsrc(data: (comm::chan<task_notification>,
                                 task,
                                 @mutable task_result)) {
@@ -148,6 +164,7 @@ fn spawn_joinable(-f: sendfn()) -> joinable_task {
     };
     let task = spawn(g);
     ret (task, notify_port);
+    */
 }
 
 /*
