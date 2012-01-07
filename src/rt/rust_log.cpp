@@ -7,7 +7,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "rust_util.h"
 
 /**
  * Synchronizes access to the underlying logging mechanism.
