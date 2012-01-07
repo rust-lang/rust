@@ -417,15 +417,15 @@ Otherwise, homedir returns option::none.
 fn homedir() -> option<path> {
     ret alt generic_os::getenv("HOME") {
         some(p) {
-    	    if !str::is_empty(p) {
+            if !str::is_empty(p) {
                 some(p)
             } else {
-	        secondary()
-	    }
-	}
-	none. {
-	    secondary()
-	}
+                secondary()
+            }
+        }
+        none. {
+            secondary()
+        }
     };
 
     #[cfg(target_os = "linux")]
@@ -440,9 +440,9 @@ fn homedir() -> option<path> {
         option::maybe(none, generic_os::getenv("USERPROFILE")) {|p|
             if !str::is_empty(p) {
                 some(p)
-	    } else {
-	        none
-	    }
+            } else {
+                none
+            }
         }
     }
 }
