@@ -22,22 +22,22 @@ import vec::slice;
 import vec::len;
 import int;
 
-fn vec_omit<T>(v: [T], i: uint) -> [T] {
+fn vec_omit<T: copy>(v: [T], i: uint) -> [T] {
     slice(v, 0u, i) + slice(v, i + 1u, len(v))
 }
-fn vec_dup<T>(v: [T], i: uint) -> [T] {
+fn vec_dup<T: copy>(v: [T], i: uint) -> [T] {
     slice(v, 0u, i) + [v[i]] + slice(v, i, len(v))
 }
-fn vec_swadj<T>(v: [T], i: uint) -> [T] {
+fn vec_swadj<T: copy>(v: [T], i: uint) -> [T] {
     slice(v, 0u, i) + [v[i + 1u], v[i]] + slice(v, i + 2u, len(v))
 }
-fn vec_prefix<T>(v: [T], i: uint) -> [T] { slice(v, 0u, i) }
-fn vec_suffix<T>(v: [T], i: uint) -> [T] { slice(v, i, len(v)) }
+fn vec_prefix<T: copy>(v: [T], i: uint) -> [T] { slice(v, 0u, i) }
+fn vec_suffix<T: copy>(v: [T], i: uint) -> [T] { slice(v, i, len(v)) }
 
-fn vec_poke<T>(v: [T], i: uint, x: T) -> [T] {
+fn vec_poke<T: copy>(v: [T], i: uint, x: T) -> [T] {
     slice(v, 0u, i) + [x] + slice(v, i + 1u, len(v))
 }
-fn vec_insert<T>(v: [T], i: uint, x: T) -> [T] {
+fn vec_insert<T: copy>(v: [T], i: uint, x: T) -> [T] {
     slice(v, 0u, i) + [x] + slice(v, i, len(v))
 }
 
@@ -48,7 +48,7 @@ fn ix(skip_low: uint, skip_high: uint, length: uint, it: block(uint)) {
 }
 
 // Returns a bunch of modified versions of v, some of which introduce new elements (borrowed from xs).
-fn vec_edits<T>(v: [T], xs: [T]) -> [[T]] {
+fn vec_edits<T: copy>(v: [T], xs: [T]) -> [[T]] {
     let edits: [[T]] = [];
     let Lv: uint = len(v);
 

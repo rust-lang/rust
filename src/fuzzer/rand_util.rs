@@ -6,7 +6,7 @@ import vec;
 fn under(r : rand::rng, n : uint) -> uint { assert n != 0u; r.next() as uint % n }
 
 // random choice from a vec
-fn choice<T>(r : rand::rng, v : [T]) -> T { assert vec::len(v) != 0u; v[under(r, vec::len(v))] }
+fn choice<T: copy>(r : rand::rng, v : [T]) -> T { assert vec::len(v) != 0u; v[under(r, vec::len(v))] }
 
 // 1 in n chance of being true
 fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }
@@ -22,7 +22,7 @@ fn shuffle<T>(r : rand::rng, &v : [mutable T]) {
 }
 
 // create a shuffled copy of a vec
-fn shuffled<T>(r : rand::rng, v : [T]) -> [T] {
+fn shuffled<T: copy>(r : rand::rng, v : [T]) -> [T] {
     let w = vec::to_mut(v);
     shuffle(r, w);
     vec::from_mut(w) // Shouldn't this happen automatically?
@@ -35,7 +35,7 @@ fn shuffled<T>(r : rand::rng, v : [T]) -> [T] {
 // * weighted_choice is O(number of choices) time
 // * weighted_vec is O(total weight) space
 type weighted<T> = { weight: uint, item: T };
-fn weighted_choice<T>(r : rand::rng, v : [weighted<T>]) -> T {
+fn weighted_choice<T: copy>(r : rand::rng, v : [weighted<T>]) -> T {
     assert vec::len(v) != 0u;
     let total = 0u;
     for {weight: weight, item: _} in v {
@@ -53,7 +53,7 @@ fn weighted_choice<T>(r : rand::rng, v : [weighted<T>]) -> T {
     std::util::unreachable();
 }
 
-fn weighted_vec<T>(v : [weighted<T>]) -> [T] {
+fn weighted_vec<T: copy>(v : [weighted<T>]) -> [T] {
     let r = [];
     for {weight: weight, item: item} in v {
         let i = 0u;
@@ -87,7 +87,7 @@ fn main()
 
     while i < 1000u {
         log(error, "Immed: " + weighted_choice(r, v));
-        log(error, "Fast: " + choice(r, w));
+        log(error, "Fast:  " + choice(r, w));
         i += 1u;
     }
 }

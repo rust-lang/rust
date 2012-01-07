@@ -7,7 +7,7 @@ import option;
 fn under(r : rand::rng, n : uint) -> uint { assert n != 0u; r.next() as uint % n }
 
 // random choice from a vec
-fn choice<T>(r : rand::rng, v : [T]) -> T { assert vec::len(v) != 0u; v[under(r, vec::len(v))] }
+fn choice<T: copy>(r : rand::rng, v : [T]) -> T { assert vec::len(v) != 0u; v[under(r, vec::len(v))] }
 
 // 1 in n chance of being true
 fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }
@@ -20,7 +20,7 @@ tag maybe_pointy {
 type pointy = {
   mutable x : maybe_pointy,
   mutable y : maybe_pointy,
-  mutable z : fn()->()
+  mutable z : fn@()->()
 };
 
 fn allunder(n: uint, it: block(uint)) {
@@ -36,8 +36,8 @@ fn test_cycles(r : rand::rng)
     const max : uint = 10u;
 
     let v : [mutable @pointy] = [mutable];
-    allunder(max) {|i|
-        v += [mutable @{ mutable x : no_pointy, mutable y : no_pointy, mutable z: nop }];
+    allunder(max) {|_i|
+        v += [mutable @{ mutable x : no_pointy, mutable y : no_pointy, mutable z: bind nop() }];
     }
 
     allunder(max) {|i|
@@ -48,7 +48,7 @@ fn test_cycles(r : rand::rng)
 
     // Drop refs one at a time
     allunder(max) {|i|
-        v[i] = @{ mutable x : no_pointy, mutable y : no_pointy, mutable z: nop };
+        v[i] = @{ mutable x : no_pointy, mutable y : no_pointy, mutable z: bind nop() };
     }
 }
 
