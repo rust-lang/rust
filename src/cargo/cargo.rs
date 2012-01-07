@@ -356,7 +356,7 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     let old = fs::list_dir(".");
     let p = run::program_output("rustc", [name + ".rc"]);
     if p.status != 0 {
-        error(#fmt["rustc failed: %d %s", p.status, p.err]);
+        error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
     }
     let new = fs::list_dir(".");
