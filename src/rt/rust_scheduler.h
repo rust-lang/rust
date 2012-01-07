@@ -12,7 +12,6 @@
 struct rust_scheduler;
 
 struct rust_hashable_dict {
-    uintptr_t key;
     UT_hash_handle hh;
     void* fields[0];
 };

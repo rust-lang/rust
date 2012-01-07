@@ -48,21 +48,16 @@ rust_crate_cache::get_type_desc(size_t size,
 void**
 rust_crate_cache::get_dict(size_t n_fields, void** dict) {
     rust_hashable_dict *found = NULL;
-    uintptr_t key = 0;
-    for (size_t i = 0; i < n_fields; ++i) key ^= (uintptr_t)dict[i];
-    size_t keysz = sizeof(uintptr_t);
-    HASH_FIND(hh, this->dicts, &key, keysz, found);
-    if (found) { printf("found!\n"); return &(found->fields[0]); }
-    printf("not found\n");
-    size_t dictsz = n_fields * sizeof(void*);
+    size_t dictsz = sizeof(void*) * n_fields;
+    HASH_FIND(hh, this->dicts, dict, dictsz, found);
+    if (found) return &(found->fields[0]);
     found = (rust_hashable_dict*)
-        sched->kernel->malloc(keysz + sizeof(UT_hash_handle) + dictsz,
+        sched->kernel->malloc(sizeof(UT_hash_handle) + dictsz,
                               "crate cache dict");
     if (!found) return NULL;
-    found->key = key;
     void** retptr = &(found->fields[0]);
     memcpy(retptr, dict, dictsz);
-    HASH_ADD(hh, this->dicts, key, keysz, found);
+    HASH_ADD_KEYPTR(hh, this->dicts, retptr, dictsz, found);
     return retptr;
 }
 
