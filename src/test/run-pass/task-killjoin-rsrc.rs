@@ -1,7 +1,7 @@
 // xfail-test
 
 // A port of task-killjoin to use a resource to manage
-// the join.  
+// the join.
 
 use std;
 import task;
