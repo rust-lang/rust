@@ -33,14 +33,24 @@ fn trans_uniq(bcx: @block_ctxt, contents: @ast::expr,
     ret trans::store_in_dest(bcx, llptr, dest);
 }
 
-fn alloc_uniq(bcx: @block_ctxt, uniq_ty: ty::t)
-    : type_is_unique_box(bcx, uniq_ty) -> result {
+fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)
+    : type_is_unique_box(cx, uniq_ty) -> result {
+
+    let bcx = cx;
     let contents_ty = content_ty(bcx, uniq_ty);
-    let {bcx, val: llsz} = size_of(bcx, contents_ty);
+    let r = size_of(bcx, contents_ty);
+    bcx = r.bcx;
+    let llsz = r.val;
+
     let ccx = bcx_ccx(bcx);
     check non_ty_var(ccx, contents_ty);
     let llptrty = T_ptr(type_of_inner(ccx, bcx.sp, contents_ty));
-    ret trans_shared_malloc(bcx, llptrty, llsz);
+
+    r = trans_shared_malloc(bcx, llptrty, llsz);
+    bcx = r.bcx;
+    let llptr = r.val;
+
+    ret rslt(bcx, llptr);
 }
 
 fn make_free_glue(cx: @block_ctxt, vptr: ValueRef, t: ty::t)
