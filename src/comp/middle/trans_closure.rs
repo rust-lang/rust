@@ -229,11 +229,11 @@ fn allocate_cbox(bcx: @block_ctxt,
       }
       ty::closure_send. {
         let (bcx, box) = alloc_in_heap(bcx, true, temp_cleanups);
-        (bcx, box, 0xdeadc0de) // use arbitrary value for debugging
+        (bcx, box, 0x12345678) // use arbitrary value for debugging
       }
       ty::closure_block. {
         let {bcx, val: box} = trans::alloc_ty(bcx, cbox_ty);
-        (bcx, box, 0xdeadc0df) // use arbitrary value for debugging
+        (bcx, box, 0x12345678) // use arbitrary value for debugging
       }
     };
 
