@@ -178,7 +178,8 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         let nft = native_fn_wrapper_type(cx, sp, [], t);
         T_fn_pair(cx, nft)
       }
-      ty::ty_obj(meths) { cx.rust_object_type }
+      ty::ty_obj(_) { cx.rust_object_type }
+      ty::ty_iface(_, _) { T_opaque_iface_ptr(cx) }
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
         check non_ty_var(cx, sub1);
@@ -483,7 +484,9 @@ fn mk_obstack_token(ccx: @crate_ctxt, fcx: @fn_ctxt) ->
 fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
     fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
         alt ty::struct(ccx.tcx, typ) {
-          ty::ty_box(_) { ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)); }
+          ty::ty_box(_) | ty::ty_iface(_, _) {
+            ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx));
+          }
           ty::ty_uniq(_) {
             ret ty::mk_imm_uniq(ccx.tcx, ty::mk_nil(ccx.tcx));
           }
@@ -1386,9 +1389,10 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
       ty::ty_vec(_) | ty::ty_str. {
         tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of_1(bcx, t)), t)
       }
-      ty::ty_obj(_) {
+      ty::ty_obj(_) | ty::ty_iface(_, _) {
         // Call through the obj's own fields-drop glue first.
         // Then free the body.
+        // (Same code of ifaces, whose layout is similar)
         let ccx = bcx_ccx(bcx);
         let llbox_ty = T_opaque_obj_ptr(ccx);
         let b = PointerCast(bcx, v, llbox_ty);
@@ -1425,13 +1429,14 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
     let ccx = bcx_ccx(bcx);
     let bcx =
         alt ty::struct(ccx.tcx, t) {
-          ty::ty_box(_) { decr_refcnt_maybe_free(bcx, Load(bcx, v0), t) }
+          ty::ty_box(_) | ty::ty_iface(_, _) {
+              decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
+          }
           ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str. | ty::ty_send_type. {
             free_ty(bcx, Load(bcx, v0), t)
           }
           ty::ty_obj(_) {
-            let box_cell =
-                GEPi(bcx, v0, [0, abi::obj_field_box]);
+            let box_cell = GEPi(bcx, v0, [0, abi::obj_field_box]);
             decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
           }
           ty::ty_res(did, inner, tps) {
@@ -1935,22 +1940,22 @@ fn drop_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
 
 fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
     alt ty::struct(bcx_tcx(bcx), t) {
-      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str. {
-        ret free_ty(bcx, v, t);
-      }
-      ty::ty_box(_) { ret decr_refcnt_maybe_free(bcx, v, t); }
+      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str. { free_ty(bcx, v, t) }
+      ty::ty_box(_) | ty::ty_iface(_, _) { decr_refcnt_maybe_free(bcx, v, t) }
     }
 }
 
 fn take_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
     alt ty::struct(bcx_tcx(bcx), t) {
-      ty::ty_box(_) { ret rslt(incr_refcnt_of_boxed(bcx, v), v); }
+      ty::ty_box(_) | ty::ty_iface(_, _) {
+        rslt(incr_refcnt_of_boxed(bcx, v), v)
+      }
       ty::ty_uniq(_) {
         check trans_uniq::type_is_unique_box(bcx, t);
-        ret trans_uniq::duplicate(bcx, v, t);
+        trans_uniq::duplicate(bcx, v, t)
       }
-      ty::ty_str. | ty::ty_vec(_) { ret tvec::duplicate(bcx, v, t); }
-      _ { ret rslt(bcx, v); }
+      ty::ty_str. | ty::ty_vec(_) { tvec::duplicate(bcx, v, t) }
+      _ { rslt(bcx, v) }
     }
 }
 
@@ -2873,8 +2878,11 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
                 ret trans_impl::trans_static_callee(bcx, e, base, did);
               }
               some(typeck::method_param(iid, off, p, b)) {
-                ret trans_impl::trans_dict_callee(
+                ret trans_impl::trans_param_callee(
                     bcx, e, base, iid, off, p, b);
+              }
+              some(typeck::method_iface(off)) {
+                ret trans_impl::trans_iface_callee(bcx, e, base, off);
               }
               none. { // An object method
                 let of = trans_object_field(bcx, base, ident);
@@ -3001,10 +3009,14 @@ fn float_cast(bcx: @block_ctxt, lldsttype: TypeRef, llsrctype: TypeRef,
 fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
               dest: dest) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
+    let t_out = node_id_type(ccx, id);
+    alt ty::struct(ccx.tcx, t_out) {
+      ty::ty_iface(_, _) { ret trans_impl::trans_cast(cx, e, id, dest); }
+      _ {}
+    }
     let e_res = trans_temp_expr(cx, e);
     let ll_t_in = val_ty(e_res.val);
     let t_in = ty::expr_ty(ccx.tcx, e);
-    let t_out = node_id_type(ccx, id);
     // Check should be avoidable because it's a cast.
     // FIXME: Constrain types so as to avoid this check.
     check (type_has_static_size(ccx, t_out));

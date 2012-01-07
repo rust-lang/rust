@@ -909,7 +909,7 @@ pure fn type_is_box(cx: ctxt, ty: t) -> bool {
 
 pure fn type_is_boxed(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_box(_) { ret true; }
+      ty_box(_) | ty_iface(_, _) { ret true; }
       _ { ret false; }
     }
 }

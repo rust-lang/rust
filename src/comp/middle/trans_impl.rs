@@ -4,7 +4,7 @@ import trans_build::*;
 import option::{some, none};
 import syntax::{ast, ast_util};
 import metadata::csearch;
-import back::link;
+import back::{link, abi};
 import lib::llvm::llvm;
 import llvm::{ValueRef, TypeRef, LLVMGetParam};
 
@@ -61,21 +61,20 @@ fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
     rslt(bcx, PointerCast(bcx, val, T_opaque_cbox_ptr(bcx_ccx(bcx))))
 }
 
+// Method callee where the method is statically known
 fn trans_static_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
                        did: ast::def_id) -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
     {env: obj_env(val) with lval_static_fn(bcx, did, e.id)}
 }
 
-fn trans_dict_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
-                     iface_id: ast::def_id, n_method: uint,
-                     n_param: uint, n_bound: uint) -> lval_maybe_callee {
-    let tcx = bcx_tcx(bcx);
-    let {bcx, val} = trans_self_arg(bcx, base);
-    let dict = option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound];
+fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
+                       fld_expr: @ast::expr, iface_id: ast::def_id,
+                       n_method: uint) -> lval_maybe_callee {
+    let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
     let method = ty::iface_methods(tcx, iface_id)[n_method];
-    let fty = ty::expr_ty(tcx, e);
-    let bare_fn_ty = type_of_fn_from_ty(bcx_ccx(bcx), ast_util::dummy_sp(),
+    let fty = ty::expr_ty(tcx, fld_expr);
+    let bare_fn_ty = type_of_fn_from_ty(ccx, ast_util::dummy_sp(),
                                         fty, *method.tps);
     let {inputs: bare_inputs, output} = llfn_arg_tys(bare_fn_ty);
     let fn_ty = T_fn([val_ty(dict)] + bare_inputs, output);
@@ -85,9 +84,8 @@ fn trans_dict_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
     let generic = none;
     if vec::len(*method.tps) > 0u {
         let tydescs = [], tis = [];
-        let tptys = ty::node_id_to_type_params(tcx, e.id);
+        let tptys = ty::node_id_to_type_params(tcx, fld_expr.id);
         for t in vec::tail_n(tptys, vec::len(tptys) - vec::len(*method.tps)) {
-            // TODO: Doesn't always escape.
             let ti = none;
             let td = get_tydesc(bcx, t, true, tps_normal, ti).result;
             tis += [ti];
@@ -98,11 +96,38 @@ fn trans_dict_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
                         static_tis: tis,
                         tydescs: tydescs,
                         param_bounds: method.tps,
-                        origins: bcx_ccx(bcx).dict_map.find(e.id)});
+                        origins: bcx_ccx(bcx).dict_map.find(fld_expr.id)});
     }
     {bcx: bcx, val: mptr, kind: owned,
-     env: dict_env(dict, val),
+     env: dict_env(dict, self),
      generic: generic}
+}
+
+// Method callee where the dict comes from a type param
+fn trans_param_callee(bcx: @block_ctxt, fld_expr: @ast::expr,
+                      base: @ast::expr, iface_id: ast::def_id, n_method: uint,
+                      n_param: uint, n_bound: uint) -> lval_maybe_callee {
+    let {bcx, val} = trans_self_arg(bcx, base);
+    let dict = option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound];
+    trans_vtable_callee(bcx, val, dict, fld_expr, iface_id, n_method)
+}
+
+// Method callee where the dict comes from a boxed iface
+fn trans_iface_callee(bcx: @block_ctxt, fld_expr: @ast::expr, base: @ast::expr,
+                      n_method: uint)
+    -> lval_maybe_callee {
+    let tcx = bcx_tcx(bcx);
+    let {bcx, val} = trans_temp_expr(bcx, base);
+    let box_body = GEPi(bcx, val, [0, abi::box_rc_field_body]);
+    let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, box_body, [0, 1]),
+                                     T_ptr(T_ptr(T_dict()))));
+    // FIXME[impl] I doubt this is alignment-safe
+    let self = PointerCast(bcx, GEPi(bcx, box_body, [0, 2]),
+                           T_opaque_cbox_ptr(bcx_ccx(bcx)));
+    let iface_id = alt ty::struct(tcx, ty::expr_ty(tcx, base)) {
+        ty::ty_iface(did, _) { did }
+    };
+    trans_vtable_callee(bcx, self, dict, fld_expr, iface_id, n_method)
 }
 
 fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
@@ -273,4 +298,23 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
         {bcx: bcx, ptrs: ptrs}
       }
     }
+}
+
+fn trans_cast(bcx: @block_ctxt, val: @ast::expr, id: ast::node_id, dest: dest)
+    -> @block_ctxt {
+    let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
+    let val_ty = ty::expr_ty(tcx, val);
+    let {bcx, val: dict} = get_dict(bcx, ccx.dict_map.get(id)[0]);
+    let body_ty = ty::mk_tup(tcx, [ty::mk_type(tcx), ty::mk_type(tcx),
+                                   val_ty]);
+    let ti = none;
+    let {bcx, val: tydesc} = get_tydesc(bcx, body_ty, true,
+                                        tps_normal, ti).result;
+    lazily_emit_all_tydesc_glue(bcx, ti);
+    let {bcx, box, body: box_body} = trans_malloc_boxed(bcx, body_ty);
+    Store(bcx, tydesc, GEPi(bcx, box_body, [0, 0]));
+    Store(bcx, PointerCast(bcx, dict, T_ptr(ccx.tydesc_type)),
+          GEPi(bcx, box_body, [0, 1]));
+    bcx = trans_expr_save_in(bcx, val, GEPi(bcx, box_body, [0, 2]));
+    store_in_dest(bcx, PointerCast(bcx, box, T_opaque_iface_ptr(ccx)), dest)
 }

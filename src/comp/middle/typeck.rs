@@ -18,14 +18,15 @@ import std::map::{hashmap, new_int_hash};
 import option::{none, some};
 import syntax::print::pprust::*;
 
-export check_crate, method_map, method_origin, method_static, method_param;
+export check_crate;
+export method_map, method_origin, method_static, method_param, method_iface;
 export dict_map, dict_res, dict_origin, dict_static, dict_param;
 
 tag method_origin {
     method_static(ast::def_id);
     // iface id, method num, param num, bound num
     method_param(ast::def_id, uint, uint, uint);
-    method_iface;
+    method_iface(uint);
 }
 type method_map = hashmap<ast::node_id, method_origin>;
 
@@ -1575,13 +1576,15 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
         ret none;
       }
       ty::ty_iface(did, tps) {
+        let i = 0u;
         for m in *ty::iface_methods(tcx, did) {
             if m.ident == name {
                 ret some({method_ty: ty::mk_fn(tcx, m.fty),
                           n_tps: vec::len(*m.tps),
                           substs: tps,
-                          origin: method_iface});
+                          origin: method_iface(i)});
             }
+            i += 1u;
         }
       }
       _ {}

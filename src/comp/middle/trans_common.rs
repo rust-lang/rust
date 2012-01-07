@@ -754,6 +754,11 @@ fn T_obj_ptr(cx: @crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
 
 fn T_opaque_obj_ptr(cx: @crate_ctxt) -> TypeRef { ret T_obj_ptr(cx, 0u); }
 
+fn T_opaque_iface_ptr(cx: @crate_ctxt) -> TypeRef {
+    let tdptr = T_ptr(cx.tydesc_type);
+    T_ptr(T_box(cx, T_struct([tdptr, tdptr, T_i8()])))
+}
+
 fn T_opaque_port_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 
 fn T_opaque_chan_ptr() -> TypeRef { ret T_ptr(T_i8()); }
