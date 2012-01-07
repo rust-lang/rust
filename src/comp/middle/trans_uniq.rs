@@ -5,7 +5,6 @@ import trans_build::*;
 import trans::{
     trans_shared_malloc,
     type_of_inner,
-    metrics,
     size_of,
     node_id_type,
     INIT,
@@ -34,15 +33,10 @@ fn trans_uniq(bcx: @block_ctxt, contents: @ast::expr,
     ret trans::store_in_dest(bcx, llptr, dest);
 }
 
-fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)
-    : type_is_unique_box(cx, uniq_ty) -> result {
-    ret alloc_uniq_(cx, uniq_ty, none);
-}
-
-fn alloc_uniq_(bcx: @block_ctxt, uniq_ty: ty::t, opt_v: option<ValueRef>)
+fn alloc_uniq(bcx: @block_ctxt, uniq_ty: ty::t)
     : type_is_unique_box(bcx, uniq_ty) -> result {
     let contents_ty = content_ty(bcx, uniq_ty);
-    let {bcx, sz: llsz, align: _} = metrics(bcx, contents_ty, opt_v);
+    let {bcx, val: llsz} = size_of(bcx, contents_ty);
     let ccx = bcx_ccx(bcx);
     check non_ty_var(ccx, contents_ty);
     let llptrty = T_ptr(type_of_inner(ccx, bcx.sp, contents_ty));
@@ -84,7 +78,7 @@ fn duplicate(bcx: @block_ctxt, v: ValueRef, t: ty::t)
     : type_is_unique_box(bcx, t) -> result {
 
     let content_ty = content_ty(bcx, t);
-    let {bcx, val: llptr} = alloc_uniq_(bcx, t, some(v));
+    let {bcx, val: llptr} = alloc_uniq(bcx, t);
 
     let src = load_if_immediate(bcx, v, content_ty);
     let dst = llptr;
