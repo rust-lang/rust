@@ -111,10 +111,10 @@ fn get_cargo_root() -> result::t<fs::path, str> {
     alt generic_os::getenv("CARGO_ROOT") {
         some(_p) { result::ok(_p) }
         none. {
-            alt generic_os::getenv("HOME") {
-                some(_q) { result::ok(fs::connect(_q, ".cargo")) }
-                none. { result::err("no CARGO_ROOT or HOME") }
-            }
+          alt fs::homedir() {
+            some(_q) { result::ok(fs::connect(_q, ".cargo")) }
+            none. { result::err("no CARGO_ROOT or home directory") }
+          }
         }
     }
 }
