@@ -46,6 +46,9 @@ export tr_failure;
 export get_task;
 export spawn;
 export spawn_joinable;
+export spawn_connected;
+export connected_fn;
+export connected_task;
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
@@ -190,27 +193,58 @@ tag task_notification {
 }
 
 /*
-type connected_fn<ToCh, FrCh> = sendfn(comm::chan<FrCh>, comm::port<ToCh>);
+Type: connected_fn
+
+The prototype for a connected child task function.  Such a function will be
+supplied with a channel to send messages to the parent and a port to receive
+messages from the parent. The type parameter `ToCh` is the type for messages
+sent from the parent to the child and `FrCh` is the type for messages sent
+from the child to the parent. */
+type connected_fn<ToCh, FrCh> = sendfn(comm::port<ToCh>, comm::chan<FrCh>);
+
+/*
+Type: connected_fn
+
+The result type of <spawn_connected>
+*/
 type connected_task<ToCh, FrCh> = {
-    port: comm::port<FrCh>,
-    chan: comm::chan<ToCh>,
+    from_child: comm::port<FrCh>,
+    to_child: comm::chan<ToCh>,
     task: task
 };
-fn spawn_connected<ToCh:send, FrCh:send>(f: connected_fn<ToCh, FrCh>)
-    -> connected_fn {
-    let from_child_port = comm::port<FrCh>();
-    let from_child_chan = comm::chan(from_child_port);
-    let get_to_child_port = comm::port<comm::chan<ToCh>>();
-    let get_to_child_chan = comm::chan(to_child_port);
-    let child_task = spawn(sendfn[move f]() {
-        let to_child_port = comm::port<ToCh>();
-        comm::send(get_to_child_chan, to_child_port);
-        f(from_child_chan, to_child_port);
-    });
-    let to_child_chan = comm::recv(get_out);
-    ret {port: from_child_port, chan: to_child_chan, task: child_task};
-}
+
+/*
+Function: spawn_connected
+
+Spawns a child task along with a port/channel for exchanging messages
+with the parent task.  The type `ToCh` represents messages sent to the child
+and `FrCh` messages received from the child.
+
+Parameters:
+
+f - the child function to execute
+
+Returns:
+
+The new child task along with the port to receive messages and the channel
+to send messages.
 */
+fn spawn_connected<ToCh:send, FrCh:send>(f: connected_fn<ToCh, FrCh>)
+    -> connected_task<ToCh,FrCh> {
+    let from_child_port = comm::port::<FrCh>();
+    let from_child_chan = comm::chan(from_child_port);
+    let get_to_child_port = comm::port::<comm::chan<ToCh>>();
+    let get_to_child_chan = comm::chan(get_to_child_port);
+    let child_task = spawn(sendfn[move f]() {
+        let to_child_port = comm::port::<ToCh>();
+        comm::send(get_to_child_chan, comm::chan(to_child_port));
+        f(to_child_port, from_child_chan);
+    });
+    let to_child_chan = comm::recv(get_to_child_port);
+    ret {from_child: from_child_port,
+         to_child: to_child_chan,
+         task: child_task};
+}
 
 /* Section: Operations */
 
