@@ -428,6 +428,14 @@ done
 # Configure submodules
 step_msg "configuring submodules"
 
+# If we have no git directory then we are probably a tarball distribution
+# and shouldn't attempt to load submodules
+if [ ! -e ${CFG_SRC_DIR}.git ]
+then
+    msg "git: no git directory. disabling submodules"
+    CFG_DISABLE_MANAGE_SUBMODULES=1
+fi
+
 # Have to be in the top of src directory for this
 cd ${CFG_SRC_DIR}
 
@@ -574,6 +582,12 @@ putvar CFG_HOST_TRIPLE
 putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
 putvar CFG_PREFIX
+
+# Setting this again because it may have been changed
+if [ $CFG_DISABLE_MANAGE_SUBMODULES ]
+then
+    putvar CFG_DISABLE_MANAGE_SUBMODULES
+fi
 
 if head -n 1 ${CFG_SRC_DIR}src/snapshots.txt | grep -q '^T'
 then

@@ -21,9 +21,9 @@ Tasks may execute in parallel and are scheduled automatically by the runtime.
 
 Example:
 
-> spawn("Hello, World", fn (&&msg: str) {
->   log(debug, msg);
-> });
+> spawn {||
+>   log(debug, "Hello, World!");
+> };
 
 */
 import cast = unsafe::reinterpret_cast;

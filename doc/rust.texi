@@ -2784,7 +2784,7 @@ effects of the expression's evaluation.
 * Ref.Expr.Cont::               Expression for terminating a single loop iteration.
 * Ref.Expr.For::                Expression for looping over strings and vectors.
 * Ref.Expr.If::                 Expression for simple conditional branching.
-* Ref.Expr.Alt::                Expression for branching on patterh matches.
+* Ref.Expr.Alt::                Expression for branching on pattern matches.
 * Ref.Expr.Prove::              Expression for static assertion of typestate.
 * Ref.Expr.Check::              Expression for dynamic assertion of typestate.
 * Ref.Expr.Claim::              Expression for static (unsafe) or dynamic assertion of typestate.
