@@ -110,7 +110,7 @@ Returns:
 
 A handle to the new task
 */
-fn spawn(-f: sendfn()) -> task {
+fn spawn(+f: sendfn()) -> task {
     spawn_inner(f, none)
 }
 
@@ -139,7 +139,7 @@ A task that sends notification upon termination
 */
 type joinable_task = (task, comm::port<task_notification>);
 
-fn spawn_joinable(-f: sendfn()) -> joinable_task {
+fn spawn_joinable(+f: sendfn()) -> joinable_task {
     let notify_port = comm::port();
     let notify_chan = comm::chan(notify_port);
     let task = spawn_inner(f, some(notify_chan));
@@ -188,6 +188,29 @@ tag task_notification {
     /* Variant: exit */
     exit(task, task_result);
 }
+
+/*
+type connected_fn<ToCh, FrCh> = sendfn(comm::chan<FrCh>, comm::port<ToCh>);
+type connected_task<ToCh, FrCh> = {
+    port: comm::port<FrCh>,
+    chan: comm::chan<ToCh>,
+    task: task
+};
+fn spawn_connected<ToCh:send, FrCh:send>(f: connected_fn<ToCh, FrCh>)
+    -> connected_fn {
+    let from_child_port = comm::port<FrCh>();
+    let from_child_chan = comm::chan(from_child_port);
+    let get_to_child_port = comm::port<comm::chan<ToCh>>();
+    let get_to_child_chan = comm::chan(to_child_port);
+    let child_task = spawn(sendfn[move f]() {
+        let to_child_port = comm::port<ToCh>();
+        comm::send(get_to_child_chan, to_child_port);
+        f(from_child_chan, to_child_port);
+    });
+    let to_child_chan = comm::recv(get_out);
+    ret {port: from_child_port, chan: to_child_chan, task: child_task};
+}
+*/
 
 /* Section: Operations */
 
