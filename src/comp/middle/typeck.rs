@@ -1569,6 +1569,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                 }
                 bound_n += 1u;
               }
+              _ {}
             }
         }
         ret none;
