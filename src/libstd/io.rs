@@ -103,7 +103,7 @@ obj new_reader(rdr: buf_reader) {
     fn unread_byte(byte: int) { ret rdr.unread_byte(byte); }
     fn read_bytes(len: uint) -> [u8] { ret rdr.read(len); }
     fn read_chars(n: uint) -> [char] {
-        // returns the (consumed offset, n_req)
+        // returns the (consumed offset, n_req), appends characters to &chars
         fn chars_from_buf(buf: [u8], &chars: [char]) -> (uint, uint) {
             let i = 0u;
             while i < vec::len(buf) {
@@ -135,20 +135,24 @@ obj new_reader(rdr: buf_reader) {
             }
             ret (i, 0u);
         }
-        let buf: [u8] = self.read_bytes(n); // might need more, n will never over-read
+        let buf: [u8] = [];
         let chars: [char] = [];
-        while vec::len(chars) < n {
+        let nbread = n; // might need more bytes, but reading n will never over-read
+        while nbread > 0u {
+            let data = self.read_bytes(nbread); 
+            if vec::len(data) == 0u {
+                // eof - FIXME should we do something if we're split in a unicode char?
+                break;
+            }
+            buf += data;
             let (offset, nbreq) = chars_from_buf(buf, chars);
             let ncreq = n - vec::len(chars);
-            let ntoread = if ncreq > nbreq { ncreq } else { nbreq };
-            if ntoread > 0u {
+            // again we either know we need a certain number of bytes to complete a
+            // character, or we make sure we don't over-read by reading 1-byte per char
+            // needed
+            nbread = if ncreq > nbreq { ncreq } else { nbreq };
+            if nbread > 0u {
                 buf = vec::slice(buf, offset, vec::len(buf));
-                let data = self.read_bytes(ntoread);
-                if vec::len(data) == 0u {
-                    // eof - should we do something if we're split in a unicode char?
-                    break;
-                }
-                buf += data;
             }
         }
         ret chars;
