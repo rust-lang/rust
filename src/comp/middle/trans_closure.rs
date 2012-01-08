@@ -9,6 +9,7 @@ import middle::freevars::{get_freevars, freevar_info};
 import option::{some, none};
 import back::abi;
 import syntax::codemap::span;
+import syntax::print::pprust::expr_to_str;
 import back::link::{
     mangle_internal_name_by_path,
     mangle_internal_name_by_path_and_seq};
@@ -119,6 +120,18 @@ tag environment_value {
 
     // Access by reference (used for blocks).
     env_ref(ValueRef, ty::t, lval_kind);
+}
+
+fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
+    alt ev {
+      env_expr(ex) { expr_to_str(ex) }
+      env_copy(v, t, lk) { #fmt("copy(%s,%s)", val_str(ccx.tn, v),
+                                ty_to_str(ccx.tcx, t)) }
+      env_move(v, t, lk) { #fmt("move(%s,%s)", val_str(ccx.tn, v),
+                                ty_to_str(ccx.tcx, t)) }
+      env_ref(v, t, lk) { #fmt("ref(%s,%s)", val_str(ccx.tn, v),
+                                ty_to_str(ccx.tcx, t)) }
+    }
 }
 
 fn mk_tydesc_ty(tcx: ty::ctxt, ck: ty::closure_kind) -> ty::t {
@@ -284,7 +297,7 @@ fn store_environment(
         };
     }
 
-    //let ccx = bcx_ccx(bcx);
+    let ccx = bcx_ccx(bcx);
     let tcx = bcx_tcx(bcx);
 
     // compute the shape of the closure
@@ -351,6 +364,11 @@ fn store_environment(
     let {bcx: bcx, val:bindings_slot} =
         GEP_tup_like_1(bcx, cboxptr_ty, llbox, [0, abi::cbox_elt_bindings]);
     vec::iteri(bound_values) { |i, bv|
+        if (!ccx.sess.get_opts().no_asm_comments) {
+            add_comment(bcx, #fmt("Copy %s into closure",
+                                  ev_to_str(ccx, bv)));
+        }
+
         let bound_data = GEPi(bcx, bindings_slot, [0, i as int]);
         alt bv {
           env_expr(e) {

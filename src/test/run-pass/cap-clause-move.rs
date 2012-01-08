@@ -1,4 +1,3 @@
-// error-pattern: warning: Captured variable 'y' not used in closure
 fn main() {
     let x = ~1;
     let y = ptr::addr_of(*x) as uint;

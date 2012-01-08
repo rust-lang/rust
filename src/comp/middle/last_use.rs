@@ -136,6 +136,16 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         v.visit_expr(dest, cx, v);
         clear_if_path(cx, dest, v, true);
       }
+      expr_fn(_, _, _, cap_clause) {
+        // n.b.: safe to ignore copies, as if they are unused
+        // then they are ignored, otherwise they will show up
+        // as freevars in the body.
+
+        vec::iter(cap_clause.moves) {|ci|
+            clear_def_if_path(cx, cx.def_map.get(ci.id), true);
+        }
+        visit::visit_expr(ex, cx, v);
+      }
       expr_call(f, args, _) {
         v.visit_expr(f, cx, v);
         let i = 0u, fns = [];
@@ -263,18 +273,25 @@ fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
     }
 }
 
+fn clear_def_if_path(cx: ctx, d: def, to: bool)
+    -> option<node_id> {
+    alt d {
+      def_local(def_id, let_copy.) | def_arg(def_id, by_copy.) |
+      def_arg(def_id, by_move.) {
+        clear_in_current(cx, def_id.node, to);
+        some(def_id.node)
+      }
+      _ {
+        none
+      }
+    }
+}
+
 fn clear_if_path(cx: ctx, ex: @expr, v: visit::vt<ctx>, to: bool)
     -> option::t<node_id> {
     alt ex.node {
       expr_path(_) {
-        alt cx.def_map.get(ex.id) {
-          def_local(def_id, let_copy.) | def_arg(def_id, by_copy.) |
-          def_arg(def_id, by_move.) {
-            clear_in_current(cx, def_id.node, to);
-            ret option::some(def_id.node);
-          }
-          _ {}
-        }
+        ret clear_def_if_path(cx, cx.def_map.get(ex.id), to);
       }
       _ { v.visit_expr(ex, cx, v); }
     }
