@@ -113,8 +113,8 @@ fn trans_param_callee(bcx: @block_ctxt, fld_expr: @ast::expr,
 }
 
 // Method callee where the dict comes from a boxed iface
-fn trans_iface_callee(bcx: @block_ctxt, fld_expr: @ast::expr, base: @ast::expr,
-                      n_method: uint)
+fn trans_iface_callee(bcx: @block_ctxt, fld_expr: @ast::expr,
+                      base: @ast::expr, n_method: uint)
     -> lval_maybe_callee {
     let tcx = bcx_tcx(bcx);
     let {bcx, val} = trans_temp_expr(bcx, base);
