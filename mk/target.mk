@@ -103,3 +103,8 @@ $(foreach source,$(CFG_TARGET_TRIPLES),						\
   $(eval $(call TARGET_RT_FROM_WD,1,$(target),$(source)))	\
   $(eval $(call TARGET_RT_FROM_WD,2,$(target),$(source)))	\
   $(eval $(call TARGET_RT_FROM_WD,3,$(target),$(source)))))
+
+# Non-host triples build the stage0 runtime from the working directory
+$(foreach source,$(CFG_TARGET_TRIPLES),						\
+ $(foreach target,$(NON_HOST_TRIPLES),					\
+  $(eval $(call TARGET_RT_FROM_WD,0,$(target),$(source)))))
