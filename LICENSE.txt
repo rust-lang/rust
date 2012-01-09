@@ -250,8 +250,8 @@ The remaining code and documentation in the collective work
 presented here, as well as the collective work itslf, is
 distributed under the following terms ("The Rust License"):
 
-    Copyright (c) 2006-2011 Graydon Hoare
-    Copyright (c) 2009-2011 Mozilla Foundation
+    Copyright (c) 2006-2012 Graydon Hoare
+    Copyright (c) 2009-2012 Mozilla Foundation
 
     Permission is hereby granted, free of charge, to any
     person obtaining a copy of this software and associated
