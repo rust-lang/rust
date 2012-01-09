@@ -4,6 +4,11 @@
 # $(2) is the target triple
 # $(3) is the host triple
 
+# If you are making non-backwards compatible changes to the runtime,
+# set this flag to 1.  It will cause stage1 to use the snapshot
+# runtime rather than the runtime from the working directory.
+USE_SNAPSHOT_RUNTIME=0
+
 define TARGET_STAGE_N
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.ll: \
@@ -58,11 +63,17 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC):		\
 endef
 
 # The stage0 (snapshot) compiler produces binaries that expect the
-# snapshot runtime.  Therefore, the stage1 compiler and libraries
-# (which are produced by stage0) should use the runtime from the
-# snapshot.  The stage2 compiler and libraries (which are produced by
-# stage1) will be the first that are expecting to run against the
-# runtime as defined in the working directory.
+# snapshot runtime.  Normally the working directory runtime and
+# snapshot runtime are compatible, so this is no problem. But
+# sometimes we want to make non-backwards-compatible changes.  In
+# those cases, the stage1 compiler and libraries (which are produced
+# by stage0) should use the runtime from the snapshot.  The stage2
+# compiler and libraries (which are produced by stage1) will be the
+# first that are expecting to run against the runtime as defined in
+# the working directory.
+#
+# The catch is that you may not add new functions to the runtime
+# in this case!
 #
 # Arguments are the same as for TARGET_BASE_STAGE_N
 define TARGET_RT_FROM_SNAPSHOT
@@ -96,15 +107,25 @@ $(foreach source,$(CFG_TARGET_TRIPLES),						\
   $(eval $(call TARGET_STAGE_N,2,$(target),$(source)))		\
   $(eval $(call TARGET_STAGE_N,3,$(target),$(source)))))
 
-$(eval $(call TARGET_RT_FROM_SNAPSHOT,0,$(CFG_HOST_TRIPLE),$(CFG_HOST_TRIPLE)))
+# Host triple either uses the snapshot runtime or runtime from
+# working directory, depending on the USE_SNAPSHOT_RUNTIME var.
+ifeq ($(USE_SNAPSHOT_RUNTIME),1)
+    $(foreach src,$(CFG_HOST_TRIPLE),\
+		$(eval $(call TARGET_RT_FROM_SNAPSHOT,0,$(src),$(src))))
+else 
+    $(foreach src,$(CFG_HOST_TRIPLE),\
+		$(eval $(call TARGET_RT_FROM_WD,0,$(src),$(src))))
+endif
 
+# Non-host triples build the stage0 runtime from the working directory
+$(foreach source,$(CFG_TARGET_TRIPLES),						\
+ $(foreach target,$(NON_HOST_TRIPLES),					\
+  $(eval $(call TARGET_RT_FROM_WD,0,$(target),$(source)))))
+
+# After stage0, always build the stage0 runtime from the working directory
 $(foreach source,$(CFG_TARGET_TRIPLES),						\
  $(foreach target,$(CFG_TARGET_TRIPLES),					\
   $(eval $(call TARGET_RT_FROM_WD,1,$(target),$(source)))	\
   $(eval $(call TARGET_RT_FROM_WD,2,$(target),$(source)))	\
   $(eval $(call TARGET_RT_FROM_WD,3,$(target),$(source)))))
 
-# Non-host triples build the stage0 runtime from the working directory
-$(foreach source,$(CFG_TARGET_TRIPLES),						\
- $(foreach target,$(NON_HOST_TRIPLES),					\
-  $(eval $(call TARGET_RT_FROM_WD,0,$(target),$(source)))))
