@@ -475,7 +475,7 @@ fn file_might_not_converge(filename: str) -> bool {
       "expr-alt.rs", // pretty-printing "(a = b) = c" vs "a = b = c" and wrapping
       "block-arg-in-ternary.rs", // wrapping
       "move-3-unique.rs", // 0 becomes (0), but both seem reasonable. wtf?
-      "move-3.rs", // 0 becomes (0), but both seem reasonable. wtf?
+      "move-3.rs"  // 0 becomes (0), but both seem reasonable. wtf?
     ];
 
 
