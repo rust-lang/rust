@@ -1389,7 +1389,11 @@ fn parse_alt_expr(p: parser) -> @ast::expr {
     while p.peek() != token::RBRACE {
         let pats = parse_pats(p);
         let guard = none;
-        if eat_word(p, "when") { guard = some(parse_expr(p)); }
+        if eat_word(p, "when") {
+            guard = some(parse_expr(p));
+        } else if eat_word(p, "if") {
+            guard = some(parse_expr(p));
+        }
         let blk = parse_block(p);
         arms += [{pats: pats, guard: guard, body: blk}];
     }
