@@ -4,7 +4,7 @@
        url = "http://rust-lang.org/src/core")];
 
 #[comment = "The Rust core library"];
-#[license = "BSD"];
+#[license = "MIT"];
 #[crate_type = "lib"];
 
 export box, char, float, bessel, f32, f64, int, str, ptr;

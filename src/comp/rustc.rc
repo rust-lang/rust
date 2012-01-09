@@ -6,7 +6,7 @@
        url = "http://rust-lang.org/src/rustc")];
 
 #[desc = "The Rust compiler"];
-#[license = "BSD"];
+#[license = "MIT"];
 #[crate_type = "bin"];
 
 use std (name = "std",

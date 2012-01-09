@@ -4,7 +4,7 @@
        url = "http://rust-lang.org/src/std")];
 
 #[comment = "The Rust standard library"];
-#[license = "BSD"];
+#[license = "MIT"];
 #[crate_type = "lib"];
 
 export comm, fs, io, net, run, uv;
