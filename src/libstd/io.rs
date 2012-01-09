@@ -130,26 +130,29 @@ obj new_reader(rdr: buf_reader) {
                     val += next & 63 as uint;
                 }
                 // See str::char_at
-                val += (b0 << (w + 1u as u8) as uint) << (w - 1u) * 6u - w - 1u;
+                val += (b0 << (w + 1u as u8) as uint)
+                    << (w - 1u) * 6u - w - 1u;
                 chars += [ val as char ];
             }
             ret (i, 0u);
         }
         let buf: [u8] = [];
         let chars: [char] = [];
-        let nbread = n; // might need more bytes, but reading n will never over-read
+        // might need more bytes, but reading n will never over-read
+        let nbread = n;
         while nbread > 0u {
-            let data = self.read_bytes(nbread); 
+            let data = self.read_bytes(nbread);
             if vec::len(data) == 0u {
-                // eof - FIXME should we do something if we're split in a unicode char?
+                // eof - FIXME should we do something if
+                // we're split in a unicode char?
                 break;
             }
             buf += data;
             let (offset, nbreq) = chars_from_buf(buf, chars);
             let ncreq = n - vec::len(chars);
-            // again we either know we need a certain number of bytes to complete a
-            // character, or we make sure we don't over-read by reading 1-byte per char
-            // needed
+            // again we either know we need a certain number of bytes
+            // to complete a character, or we make sure we don't
+            // over-read by reading 1-byte per char needed
             nbread = if ncreq > nbreq { ncreq } else { nbreq };
             if nbread > 0u {
                 buf = vec::slice(buf, offset, vec::len(buf));
