@@ -73,7 +73,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
                        n_method: uint) -> lval_maybe_callee {
     let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
     let method = ty::iface_methods(tcx, iface_id)[n_method];
-    let fty = ty::expr_ty(tcx, fld_expr);
+    let fty = ty::mk_fn(tcx, method.fty);
     let bare_fn_ty = type_of_fn_from_ty(ccx, ast_util::dummy_sp(),
                                         fty, *method.tps);
     let {inputs: bare_inputs, output} = llfn_arg_tys(bare_fn_ty);
@@ -82,7 +82,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
                              T_ptr(T_array(T_ptr(fn_ty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
     let generic = none;
-    if vec::len(*method.tps) > 0u {
+    if vec::len(*method.tps) > 0u || ty::type_contains_params(tcx, fty) {
         let tydescs = [], tis = [];
         let tptys = ty::node_id_to_type_params(tcx, fld_expr.id);
         for t in vec::tail_n(tptys, vec::len(tptys) - vec::len(*method.tps)) {

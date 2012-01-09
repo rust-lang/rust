@@ -1313,7 +1313,7 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
     let tcx = bcx_tcx(cx);
     // NB: v is an *alias* of type t here, not a direct value.
     bcx = alt ty::struct(tcx, t) {
-      ty::ty_box(_) {
+      ty::ty_box(_) | ty::ty_iface(_, _) {
         incr_refcnt_of_boxed(bcx, Load(bcx, v))
       }
       ty::ty_uniq(_) {
@@ -3078,7 +3078,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     ret store_in_dest(e_res.bcx, newval, dest);
 }
 
-fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
+fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
                   &to_zero: [{v: ValueRef, t: ty::t}],
                   &to_revoke: [{v: ValueRef, t: ty::t}], e: @ast::expr) ->
    result {
@@ -3092,8 +3092,8 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
         // For values of type _|_, we generate an
         // "undef" value, as such a value should never
         // be inspected. It's important for the value
-        // to have type lldestty0 (the callee's expected type).
-        val = llvm::LLVMGetUndef(lldestty0);
+        // to have type lldestty (the callee's expected type).
+        val = llvm::LLVMGetUndef(lldestty);
     } else if arg.mode == ast::by_ref || arg.mode == ast::by_val {
         let copied = false, imm = ty::type_is_immediate(ccx.tcx, e_ty);
         if arg.mode == ast::by_ref && lv.kind != owned && imm {
@@ -3134,7 +3134,6 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty0: TypeRef,
     }
 
     if !is_bot && ty::type_contains_params(ccx.tcx, arg.ty) {
-        let lldestty = lldestty0;
         val = PointerCast(bcx, val, lldestty);
     }
 
