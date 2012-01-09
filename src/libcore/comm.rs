@@ -15,8 +15,6 @@ shared boxes (@T) may not be transmitted across channels.
 
 Example:
 
-> import std::{task, comm, io};
->
 > let p = comm::port();
 > task::spawn(comm::chan(p), fn (c: chan<str>) {
 >   comm::send(c, "Hello, World");

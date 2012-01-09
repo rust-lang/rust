@@ -7,7 +7,7 @@
 #[license = "MIT"];
 #[crate_type = "lib"];
 
-export comm, fs, io, net, run, uv;
+export fs, io, net, run, uv;
 export c_vec, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
@@ -19,7 +19,6 @@ export generic_os, os, os_fs;
 
 // General io and system-services modules
 
-mod comm;
 mod fs;
 mod io;
 mod net;
