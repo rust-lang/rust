@@ -43,6 +43,7 @@ rust_ptr_eq
 rust_run_program
 rust_start
 rust_getcwd
+rust_task_is_unwinding
 rust_task_sleep
 rust_get_task
 set_min_stack

@@ -107,8 +107,10 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     memory_region local_region;
 
-    // Indicates that the task ended in failure
-    bool failed;
+    // Indicates that fail() has been called and we are cleaning up.
+    // We use this to suppress the "killed" flag during calls to yield.
+    bool unwinding;
+
     // Indicates that the task was killed and needs to unwind
     bool killed;
     bool propagate_failure;

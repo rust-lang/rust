@@ -245,7 +245,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     running_on(-1),
     pinned_on(-1),
     local_region(&sched->srv->local_region),
-    failed(false),
+    unwinding(false),
     killed(false),
     propagate_failure(true),
     dynastack(this),
@@ -299,27 +299,27 @@ struct spawn_args {
 
 struct cleanup_args {
     spawn_args *spargs;
-    bool failed;
+    bool threw_exception;
 };
 
 void
 cleanup_task(cleanup_args *args) {
     spawn_args *a = args->spargs;
-    bool failed = args->failed;
+    bool threw_exception = args->threw_exception;
     rust_task *task = a->task;
 
     cc::do_cc(task);
 
     task->die();
 
-    if (task->killed && !failed) {
+    if (task->killed && !threw_exception) {
         LOG(task, task, "Task killed during termination");
-        failed = true;
+        threw_exception = true;
     }
 
-    task->notify(!failed);
+    task->notify(!threw_exception);
 
-    if (failed) {
+    if (threw_exception) {
 #ifndef __WIN32__
         task->conclude_failure();
 #else
@@ -336,7 +336,7 @@ void task_start_wrapper(spawn_args *a)
 {
     rust_task *task = a->task;
 
-    bool failed = false;
+    bool threw_exception = false;
     try {
         // The first argument is the return pointer; as the task fn 
         // must have void return type, we can safely pass 0.
@@ -344,7 +344,7 @@ void task_start_wrapper(spawn_args *a)
     } catch (rust_task *ex) {
         A(task->sched, ex == task,
           "Expected this task to be thrown for unwinding");
-        failed = true;
+        threw_exception = true;
     }
 
     rust_opaque_closure* env = a->envptr;
@@ -357,7 +357,7 @@ void task_start_wrapper(spawn_args *a)
     }
 
     // The cleanup work needs lots of stack
-    cleanup_args ca = {a, failed};
+    cleanup_args ca = {a, threw_exception};
     task->sched->c_context.call_shim_on_c_stack(&ca, (void*)cleanup_task);
 
     task->ctx.next->swap(task->ctx);
@@ -437,11 +437,17 @@ rust_task::kill() {
     // run_on_resume(rust_unwind_glue);
 }
 
+extern "C" CDECL
+bool rust_task_is_unwinding(rust_task *rt) {
+    return rt->unwinding;
+}
+
 void
 rust_task::fail() {
     // See note in ::kill() regarding who should call this.
     DLOG(sched, task, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
+    unwinding = true;
 #ifndef __WIN32__
     throw this;
 #else
@@ -455,7 +461,6 @@ rust_task::fail() {
 void
 rust_task::conclude_failure() {
     fail_parent();
-    failed = true;
 }
 
 void

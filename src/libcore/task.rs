@@ -49,6 +49,7 @@ export spawn_joinable;
 export spawn_connected;
 export connected_fn;
 export connected_task;
+export currently_unwinding;
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
@@ -76,6 +77,8 @@ native mod rustrt {
     fn migrate_alloc(alloc: *u8, target: task_id);
 
     fn start_task(id: task, closure: *rust_closure);
+
+    fn rust_task_is_unwinding(rt: *rust_task) -> bool;
 }
 
 /* Section: Types */
@@ -271,7 +274,7 @@ fn sleep(time_in_us: uint) {
     // in a snapshot.
     // #debug("yielding for %u us", time_in_us);
     rusti::task_sleep(task, time_in_us, killed);
-    if killed {
+    if killed && !currently_unwinding() {
         fail "killed";
     }
 }
@@ -336,6 +339,15 @@ Function: unpin
 Unpin the current task and future child tasks
 */
 fn unpin() { rustrt::unpin_task(); }
+
+/*
+Function: currently_unwinding()
+
+True if we are currently unwinding after a failure.
+*/
+fn currently_unwinding() -> bool {
+    rustrt::rust_task_is_unwinding(rustrt::rust_get_task())
+}
 
 // Local Variables:
 // mode: rust;
