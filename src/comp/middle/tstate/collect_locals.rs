@@ -102,7 +102,7 @@ fn mk_fn_info(ccx: crate_ctxt,
               f_sp: span,
               id: node_id) {
     let name = visit::name_of_fn(fk);
-    let res_map = @new_def_hash::<constraint>();
+    let res_map = new_def_hash::<constraint>();
     let next: uint = 0u;
 
     let cx: ctxt = find_locals(ccx.tcx, fk, f_decl, f_body, f_sp, id);

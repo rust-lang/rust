@@ -1,5 +1,5 @@
 import option;
-import std::smallintmap;
+import std::map;
 import syntax::ast::*;
 import syntax::ast_util;
 import syntax::{visit, codemap};
@@ -18,14 +18,11 @@ tag ast_node {
     node_res_ctor(@item);
 }
 
-type map = std::map::hashmap<node_id, ast_node>;
+type map = std::map::map<node_id, ast_node>;
 type ctx = @{map: map, mutable local_id: uint};
 
 fn map_crate(c: crate) -> map {
-    // FIXME: This is using an adapter to convert the smallintmap
-    // interface to the hashmap interface. It would be better to just
-    // convert everything to use the smallintmap.
-    let cx = @{map: new_smallintmap_int_adapter::<ast_node>(),
+    let cx = @{map: std::map::new_int_hash(),
                mutable local_id: 0u};
 
     let v_map = visit::mk_simple_visitor
@@ -96,77 +93,6 @@ fn map_expr(cx: ctx, ex: @expr) {
       }
       _ {}
     }
-}
-
-fn new_smallintmap_int_adapter<V: copy>() -> std::map::hashmap<int, V> {
-    let key_idx = fn (&&key: int) -> uint { key as uint };
-    let idx_key = fn (idx: uint) -> int { idx as int };
-    ret new_smallintmap_adapter(key_idx, idx_key);
-}
-
-// This creates an object with the hashmap interface backed
-// by the smallintmap type, because I don't want to go through
-// the entire codebase adapting all the callsites to the different
-// interface.
-// FIXME: hashmap and smallintmap should support the same interface.
-fn new_smallintmap_adapter<K: copy, V: copy>(key_idx: fn(K) -> uint,
-                                           idx_key: fn(uint) -> K)
-    -> std::map::hashmap<K, V> {
-
-    obj adapter<K: copy, V: copy>(map: smallintmap::smallintmap<V>,
-                                key_idx: fn(K) -> uint,
-                                idx_key: fn(uint) -> K) {
-
-        fn size() -> uint { fail }
-
-        fn insert(key: K, value: V) -> bool {
-            let exists = smallintmap::contains_key(map, key_idx(key));
-            smallintmap::insert(map, key_idx(key), value);
-            ret !exists;
-        }
-
-        fn contains_key(key: K) -> bool {
-            ret smallintmap::contains_key(map, key_idx(key));
-        }
-
-        fn get(key: K) -> V { ret smallintmap::get(map, key_idx(key)); }
-
-        fn find(key: K) -> option::t<V> {
-            ret smallintmap::find(map, key_idx(key));
-        }
-
-        fn remove(_key: K) -> option::t<V> { fail }
-
-        fn rehash() { fail }
-
-        fn items(it: block(K, V)) {
-            let idx = 0u;
-            for item in map.v {
-                alt item {
-                  option::some(elt) {
-                    it(idx_key(idx), elt);
-                  }
-                  option::none. { }
-                }
-                idx += 1u;
-            }
-        }
-        fn keys(it: block(K)) {
-            let idx = 0u;
-            for item in map.v {
-                if item != option::none { it(idx_key(idx)); }
-                idx += 1u;
-            }
-        }
-        fn values(it: block(V)) {
-            for item in map.v {
-                alt item { option::some(elt) { it(elt); } _ {} }
-            }
-        }
-    }
-
-    let map = smallintmap::mk::<V>();
-    ret adapter(map, key_idx, idx_key);
 }
 
 fn node_span(node: ast_node) -> codemap::span {

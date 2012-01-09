@@ -44,7 +44,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
             {
              // just bogus
              enclosing:
-                 {constrs: @new_def_hash::<constraint>(),
+                 {constrs: new_def_hash::<constraint>(),
                   num_constraints: 0u,
                   cf: return_val,
                   i_return: ninit(0, ""),

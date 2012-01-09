@@ -1,7 +1,7 @@
 /*
 Module: map
 
-A hashmap
+A map type
 */
 
 /* Section: Types */
@@ -25,14 +25,17 @@ type eqfn<K> = fn(K, K) -> bool;
 /*
 Type: hashset
 
-A convenience type to treat a hashmap as a set
+A convenience type to treat a map as a set
 */
-type hashset<K> = hashmap<K, ()>;
+type set<K> = map<K, ()>;
+
+// Temporary alias to make migration easier
+type hashmap<K, V> = map<K, V>;
 
 /*
-Obj: hashmap
+IFace: map
 */
-type hashmap<K, V> = obj {
+iface map<K: copy, V: copy> {
     /*
     Method: size
 
@@ -72,20 +75,14 @@ type hashmap<K, V> = obj {
     Get the value for the specified key. If the key does not exist
     in the map then returns none.
     */
-    fn find(K) -> core::option::t<V>;
+    fn find(K) -> option::t<V>;
     /*
     Method: remove
 
     Remove and return a value from the map. If the key does not exist
     in the map then returns none.
     */
-    fn remove(K) -> core::option::t<V>;
-    /*
-    Method: rehash
-
-    Force map growth and rehashing
-    */
-    fn rehash();
+    fn remove(K) -> option::t<V>;
     /*
     Method: items
 
@@ -98,46 +95,44 @@ type hashmap<K, V> = obj {
     Iterate over all the keys in the map
     */
     fn keys(block(K));
-
     /*
     Iterate over all the values in the map
     */
     fn values(block(V));
-};
+}
 
-/* Section: Operations */
-
+// FIXME: package this up and export it as a datatype usable for
+// external code that doesn't want to pay the cost of a box and vtable
+// lookups.
 mod chained {
-    type entry<K: copy, V: copy> = {
+    type entry<K, V> = {
         hash: uint,
         key: K,
         mutable value: V,
         mutable next: chain<K, V>
     };
 
-    tag chain<K: copy, V: copy> {
+    tag chain<K, V> {
         present(@entry<K, V>);
         absent;
     }
 
-    type t<K: copy, V: copy> = {
+    type t<K, V> = {
         mutable size: uint,
         mutable chains: [mutable chain<K,V>],
         hasher: hashfn<K>,
         eqer: eqfn<K>
     };
 
-    tag search_result<K: copy, V: copy> {
+    tag search_result<K, V> {
         not_found;
         found_first(uint, @entry<K,V>);
         found_after(@entry<K,V>, @entry<K,V>);
     }
 
-    fn search_rem<K: copy, V: copy>(tbl: t<K,V>,
-                                  k: K,
-                                  h: uint,
-                                  idx: uint,
-                                  e_root: @entry<K,V>) -> search_result<K,V> {
+    fn search_rem<K: copy, V: copy>(
+        tbl: t<K,V>, k: K, h: uint, idx: uint,
+        e_root: @entry<K,V>) -> search_result<K,V> {
         let e0 = e_root;
         let comp = 1u;   // for logging
         while true {
@@ -295,62 +290,40 @@ mod chained {
         }
     }
 
-    obj o<K: copy, V: copy>(tbl: @t<K,V>,
-                          lf: util::rational) {
-        fn size() -> uint {
-            ret tbl.size;
-        }
+    impl <K: copy, V: copy> of map<K, V> for t<K, V> {
+        fn size() -> uint { self.size }
 
         fn insert(k: K, v: V) -> bool {
-            let nchains = vec::len(tbl.chains);
-            let load = {num:tbl.size + 1u as int, den:nchains as int};
-            if !util::rational_leq(load, lf) {
-                rehash(*tbl);
-            }
-            ret insert(*tbl, k, v);
+            let nchains = vec::len(self.chains);
+            let load = {num: self.size + 1u as int, den: nchains as int};
+            // Structural consts would be nice. This is a const 3/4
+            // load factor that we compare against.
+            if !util::rational_leq(load, {num:3, den:4}) { rehash(self); }
+            ret insert(self, k, v);
         }
 
-        fn contains_key(k: K) -> bool {
-            ret core::option::is_some(get(*tbl, k));
-        }
+        fn contains_key(k: K) -> bool { option::is_some(get(self, k)) }
 
-        fn get(k: K) -> V {
-            ret core::option::get(get(*tbl, k));
-        }
+        fn get(k: K) -> V { option::get(get(self, k)) }
 
-        fn find(k: K) -> core::option::t<V> {
-            ret get(*tbl, k);
-        }
+        fn find(k: K) -> option::t<V> { get(self, k) }
 
-        fn remove(k: K) -> core::option::t<V> {
-            ret remove(*tbl, k);
-        }
+        fn remove(k: K) -> option::t<V> { remove(self, k) }
 
-        fn rehash() {
-            rehash(*tbl);
-        }
+        fn items(blk: block(K, V)) { items(self, blk); }
 
-        fn items(blk: block(K, V)) {
-            items(*tbl, blk);
-        }
+        fn keys(blk: block(K)) { items(self) { |k, _v| blk(k) } }
 
-        fn keys(blk: block(K)) {
-            items(*tbl) { |k, _v| blk(k) }
-        }
-
-        fn values(blk: block(V)) {
-            items(*tbl) { |_k, v| blk(v) }
-        }
+        fn values(blk: block(V)) { items(self) { |_k, v| blk(v) } }
     }
 
-    fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
-        -> hashmap<K,V> {
+    fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> map<K,V> {
         let initial_capacity: uint = 32u; // 2^5
-        let t = @{mutable size: 0u,
-                  mutable chains: chains(initial_capacity),
-                  hasher: hasher,
-                  eqer: eqer};
-        ret o(t, {num:3, den:4});
+        let slf: t<K, V> = {mutable size: 0u,
+                            mutable chains: chains(initial_capacity),
+                            hasher: hasher,
+                            eqer: eqer};
+        slf as map::<K, V>
     }
 }
 
@@ -365,8 +338,8 @@ hasher - The hash function for key type K
 eqer - The equality function for key type K
 */
 fn mk_hashmap<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
-    -> hashmap<K, V> {
-    ret chained::mk(hasher, eqer);
+    -> map<K, V> {
+    chained::mk(hasher, eqer)
 }
 
 /*
@@ -374,7 +347,7 @@ Function: new_str_hash
 
 Construct a hashmap for string keys
 */
-fn new_str_hash<V: copy>() -> hashmap<str, V> {
+fn new_str_hash<V: copy>() -> map<str, V> {
     ret mk_hashmap(str::hash, str::eq);
 }
 
@@ -383,7 +356,7 @@ Function: new_bytes_hash
 
 Construct a hashmap for byte string keys
 */
-fn new_bytes_hash<V: copy>() -> hashmap<[u8], V> {
+fn new_bytes_hash<V: copy>() -> map<[u8], V> {
     ret mk_hashmap(vec::u8::hash, vec::u8::eq);
 }
 
@@ -392,7 +365,7 @@ Function: new_int_hash
 
 Construct a hashmap for int keys
 */
-fn new_int_hash<V: copy>() -> hashmap<int, V> {
+fn new_int_hash<V: copy>() -> map<int, V> {
     fn hash_int(&&x: int) -> uint { int::hash(x) }
     fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
     ret mk_hashmap(hash_int, eq_int);
@@ -403,7 +376,7 @@ Function: new_uint_hash
 
 Construct a hashmap for uint keys
 */
-fn new_uint_hash<V: copy>() -> hashmap<uint, V> {
+fn new_uint_hash<V: copy>() -> map<uint, V> {
     fn hash_uint(&&x: uint) -> uint { uint::hash(x) }
     fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
     ret mk_hashmap(hash_uint, eq_uint);
@@ -414,12 +387,4 @@ Function: set_add
 
 Convenience function for adding keys to a hashmap with nil type keys
 */
-fn set_add<K>(set: hashset<K>, key: K) -> bool { ret set.insert(key, ()); }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
+fn set_add<K>(set: set<K>, key: K) -> bool { ret set.insert(key, ()); }

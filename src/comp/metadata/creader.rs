@@ -20,10 +20,9 @@ export list_file_metadata;
 // Traverses an AST, reading all the information about use'd crates and native
 // libraries necessary for later resolving, typechecking, linking, etc.
 fn read_crates(sess: session::session, crate: ast::crate) {
-    let e =
-        @{sess: sess,
-          crate_cache: @std::map::new_str_hash::<int>(),
-          mutable next_crate_num: 1};
+    let e = @{sess: sess,
+              crate_cache: std::map::new_str_hash::<int>(),
+              mutable next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
                                        bind visit_view_item(e, _),
@@ -32,10 +31,9 @@ fn read_crates(sess: session::session, crate: ast::crate) {
     visit::visit_crate(crate, (), v);
 }
 
-type env =
-    @{sess: session::session,
-      crate_cache: @hashmap<str, int>,
-      mutable next_crate_num: ast::crate_num};
+type env = @{sess: session::session,
+             crate_cache: hashmap<str, int>,
+             mutable next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
     alt i.node {

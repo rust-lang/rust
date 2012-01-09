@@ -80,3 +80,67 @@ fn max_key<T>(m: smallintmap<T>) -> uint {
     ret vec::len::<option::t<T>>(m.v);
 }
 
+/*
+Impl: map
+
+Implements the map::map interface for smallintmap
+*/
+impl <V: copy> of map::map<uint, V> for smallintmap<V> {
+    fn size() -> uint {
+        let sz = 0u;
+        for item in self.v {
+            alt item { some(_) { sz += 1u; } _ {} }
+        }
+        sz
+    }
+    fn insert(&&key: uint, value: V) -> bool {
+        let exists = contains_key(self, key);
+        insert(self, key, value);
+        ret !exists;
+    }
+    fn remove(&&key: uint) -> option::t<V> {
+        if key >= vec::len(self.v) { ret none; }
+        let old = self.v[key];
+        self.v[key] = none;
+        old
+    }
+    fn contains_key(&&key: uint) -> bool {
+        contains_key(self, key)
+    }
+    fn get(&&key: uint) -> V { get(self, key) }
+    fn find(&&key: uint) -> option::t<V> { find(self, key) }
+    fn rehash() { fail }
+    fn items(it: block(&&uint, V)) {
+        let idx = 0u;
+        for item in self.v {
+            alt item {
+              some(elt) {
+                it(idx, elt);
+              }
+              none. { }
+            }
+            idx += 1u;
+        }
+    }
+    fn keys(it: block(&&uint)) {
+        let idx = 0u;
+        for item in self.v {
+            if item != none { it(idx); }
+            idx += 1u;
+        }
+    }
+    fn values(it: block(V)) {
+        for item in self.v {
+            alt item { some(elt) { it(elt); } _ {} }
+        }
+    }
+}
+
+/*
+Funtion: as_map
+
+Cast the given smallintmap to a map::map
+*/
+fn as_map<V>(s: smallintmap<V>) -> map::map<uint, V> {
+    s as map::map::<uint, V>
+}

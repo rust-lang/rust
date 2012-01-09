@@ -78,7 +78,7 @@ fn test_simple() {
 
 
 /**
- * Force map growth and rehashing.
+ * Force map growth
  */
 #[test]
 fn test_growth() {
@@ -107,7 +107,6 @@ fn test_growth() {
     assert (hm_uu.insert(num_to_insert, 17u));
     assert (hm_uu.get(num_to_insert) == 17u);
     #debug("-----");
-    hm_uu.rehash();
     i = 0u;
     while i < num_to_insert {
         #debug("get(%u) = %u", i, hm_uu.get(i));
@@ -142,7 +141,6 @@ fn test_growth() {
     assert (str::eq(hm_ss.get(uint::to_str(num_to_insert, 2u)),
                     uint::to_str(17u, 2u)));
     #debug("-----");
-    hm_ss.rehash();
     i = 0u;
     while i < num_to_insert {
         #debug("get(\"%s\") = \"%s\"",
@@ -200,9 +198,6 @@ fn test_removal() {
         i += 2u;
     }
     #debug("-----");
-    #debug("rehashing");
-    hm.rehash();
-    #debug("-----");
     i = 1u;
     while i < num_to_insert {
         #debug("get(%u) = %u", i, hm.get(i));
@@ -224,9 +219,6 @@ fn test_removal() {
         assert (hm.get(i) == i * i);
         i += 1u;
     }
-    #debug("-----");
-    #debug("rehashing");
-    hm.rehash();
     #debug("-----");
     assert (hm.size() == num_to_insert);
     i = 0u;

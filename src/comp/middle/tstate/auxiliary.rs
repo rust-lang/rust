@@ -218,7 +218,7 @@ type sp_constr = spanned<tsconstr>;
 
 type norm_constraint = {bit_num: uint, c: sp_constr};
 
-type constr_map = @std::map::hashmap<def_id, constraint>;
+type constr_map = std::map::hashmap<def_id, constraint>;
 
 /* Contains stuff that has to be computed up front */
 /* For easy access, the fn_info stores two special constraints for each
@@ -278,7 +278,7 @@ type node_ann_table = @mutable [mutable ts_ann];
 
 
 /* mapping from function name to fn_info map */
-type fn_info_map = @std::map::hashmap<node_id, fn_info>;
+type fn_info_map = std::map::hashmap<node_id, fn_info>;
 
 type fn_ctxt =
     {enclosing: fn_info, id: node_id, name: ident, ccx: crate_ctxt};
@@ -483,7 +483,7 @@ fn num_constraints(m: fn_info) -> uint { ret m.num_constraints; }
 
 fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
     let na: [mutable ts_ann] = [mutable];
-    ret {tcx: cx, node_anns: @mutable na, fm: @new_int_hash::<fn_info>()};
+    ret {tcx: cx, node_anns: @mutable na, fm: new_int_hash::<fn_info>()};
 }
 
 /* Use e's type to determine whether it returns.
