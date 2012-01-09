@@ -51,6 +51,7 @@ const uint8_t SHAPE_OBJ = 19u;
 const uint8_t SHAPE_RES = 20u;
 const uint8_t SHAPE_VAR = 21u;
 const uint8_t SHAPE_UNIQ = 22u;
+const uint8_t SHAPE_IFACE = 24u;
 
 #ifdef _LP64
 const uint8_t SHAPE_PTR = SHAPE_U64;
@@ -382,6 +383,7 @@ ctxt<T>::walk() {
     case SHAPE_RES:     walk_res();             break;
     case SHAPE_VAR:     walk_var();             break;
     case SHAPE_UNIQ:    walk_uniq();            break;
+    case SHAPE_IFACE:   WALK_SIMPLE(walk_iface); break;
     default:            abort();
     }
 }
@@ -566,6 +568,7 @@ public:
 
     void walk_fn()  { DPRINT("fn"); }
     void walk_obj() { DPRINT("obj"); }
+    void walk_iface() { DPRINT("iface"); }
     void walk_closure();
 
     template<typename T>
@@ -611,6 +614,7 @@ public:
     void walk_box()     { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_fn()      { sa.set(sizeof(void *)*2, sizeof(void *)); }
     void walk_obj()     { sa.set(sizeof(void *)*2, sizeof(void *)); }
+    void walk_iface()   { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_closure();
 
     void walk_vec(bool is_pod, uint16_t sp_size) {
@@ -819,6 +823,7 @@ protected:
     void walk_uniq_contents();
     void walk_fn_contents(ptr &dp);
     void walk_obj_contents(ptr &dp);
+    void walk_iface_value(ptr &dp);
     void walk_variant(tag_info &tinfo, tag_variant_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
@@ -862,6 +867,8 @@ public:
         static_cast<T *>(this)->walk_obj();
         dp = next_dp;
     }
+
+    void walk_iface() { DATA_SIMPLE(void *, walk_iface()); }
 
     void walk_res(const rust_fn *dtor, unsigned n_params,
                   const type_param *params, const uint8_t *end_sp) {
@@ -989,6 +996,20 @@ data<T,U>::walk_obj_contents(ptr &dp) {
     sub.walk();
 }
 
+template<typename T,typename U>
+void
+data<T,U>::walk_iface_value(ptr &dp) {
+    uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
+    if (!box_ptr) return;
+    uint8_t *body_ptr = box_ptr + sizeof(void*);
+    type_desc *valtydesc =
+        *reinterpret_cast<type_desc **>(body_ptr);
+    ptr value_dp(body_ptr + sizeof(void*) * 2);
+    T sub(*static_cast<T *>(this), valtydesc->shape + 2, NULL, NULL,
+          value_dp);
+    sub.align = true;
+    sub.walk();
+}
 
 // Polymorphic logging, for convenience
 
@@ -1071,6 +1092,13 @@ private:
         out << prefix << "obj";
         prefix = "";
         data<log,ptr>::walk_obj_contents(dp);
+    }
+
+    void walk_iface() {
+        out << prefix << "iface(";
+        prefix = "";
+        data<log,ptr>::walk_iface_value(dp);
+        out << prefix << ")";
     }
 
     void walk_subcontext(log &sub) { sub.walk(); }
