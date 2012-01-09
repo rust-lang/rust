@@ -50,6 +50,7 @@ type reader =
         fn unread_byte(int);
         fn read_bytes(uint) -> [u8];
         fn read_char() -> char;
+        fn read_chars(uint) -> [char];
         fn eof() -> bool;
         fn read_line() -> str;
         fn read_c_str() -> str;
@@ -101,29 +102,71 @@ obj new_reader(rdr: buf_reader) {
     fn read_byte() -> int { ret rdr.read_byte(); }
     fn unread_byte(byte: int) { ret rdr.unread_byte(byte); }
     fn read_bytes(len: uint) -> [u8] { ret rdr.read(len); }
+    fn read_chars(n: uint) -> [char] {
+        // returns the (consumed offset, n_req), appends characters to &chars
+        fn chars_from_buf(buf: [u8], &chars: [char]) -> (uint, uint) {
+            let i = 0u;
+            while i < vec::len(buf) {
+                let b0 = buf[i];
+                let w = str::utf8_char_width(b0);
+                let end = i + w;
+                i += 1u;
+                assert (w > 0u);
+                if w == 1u {
+                    chars += [ b0 as char ];
+                    cont;
+                }
+                // can't satisfy this char with the existing data
+                if end > vec::len(buf) {
+                    ret (i - 1u, end - vec::len(buf));
+                }
+                let val = 0u;
+                while i < end {
+                    let next = buf[i] as int;
+                    i += 1u;
+                    assert (next > -1);
+                    assert (next & 192 == 128);
+                    val <<= 6u;
+                    val += next & 63 as uint;
+                }
+                // See str::char_at
+                val += (b0 << (w + 1u as u8) as uint)
+                    << (w - 1u) * 6u - w - 1u;
+                chars += [ val as char ];
+            }
+            ret (i, 0u);
+        }
+        let buf: [u8] = [];
+        let chars: [char] = [];
+        // might need more bytes, but reading n will never over-read
+        let nbread = n;
+        while nbread > 0u {
+            let data = self.read_bytes(nbread);
+            if vec::len(data) == 0u {
+                // eof - FIXME should we do something if
+                // we're split in a unicode char?
+                break;
+            }
+            buf += data;
+            let (offset, nbreq) = chars_from_buf(buf, chars);
+            let ncreq = n - vec::len(chars);
+            // again we either know we need a certain number of bytes
+            // to complete a character, or we make sure we don't
+            // over-read by reading 1-byte per char needed
+            nbread = if ncreq > nbreq { ncreq } else { nbreq };
+            if nbread > 0u {
+                buf = vec::slice(buf, offset, vec::len(buf));
+            }
+        }
+        ret chars;
+    }
     fn read_char() -> char {
-        let c0 = rdr.read_byte();
-        if c0 == -1 {
+        let c = self.read_chars(1u);
+        if vec::len(c) == 0u {
             ret -1 as char; // FIXME will this stay valid?
-
         }
-        let b0 = c0 as u8;
-        let w = str::utf8_char_width(b0);
-        assert (w > 0u);
-        if w == 1u { ret b0 as char; }
-        let val = 0u;
-        while w > 1u {
-            w -= 1u;
-            let next = rdr.read_byte();
-            assert (next > -1);
-            assert (next & 192 == 128);
-            val <<= 6u;
-            val += next & 63 as uint;
-        }
-        // See str::char_at
-
-        val += (b0 << (w + 1u as u8) as uint) << (w - 1u) * 6u - w - 1u;
-        ret val as char;
+        assert(vec::len(c) == 1u);
+        ret c[0];
     }
     fn eof() -> bool { ret rdr.eof(); }
     fn read_line() -> str {
