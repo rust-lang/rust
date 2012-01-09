@@ -41,6 +41,7 @@ Paul Stansifer <paul.stansifer@gmail.com>
 Peter Hull <peterhull90@gmail.com>
 Ralph Giles <giles@thaumas.net>
 Rafael Ávila de Espíndola <respindola@mozilla.com>
+Reuben Morais <reuben.morais@gmail.com>
 Rob Arnold <robarnold@cs.cmu.edu>
 Roy Frostig <rfrostig@mozilla.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
