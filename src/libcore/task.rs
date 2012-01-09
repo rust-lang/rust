@@ -229,7 +229,7 @@ Returns:
 The new child task along with the port to receive messages and the channel
 to send messages.
 */
-fn spawn_connected<ToCh:send, FrCh:send>(f: connected_fn<ToCh, FrCh>)
+fn spawn_connected<ToCh:send, FrCh:send>(+f: connected_fn<ToCh, FrCh>)
     -> connected_task<ToCh,FrCh> {
     let from_child_port = comm::port::<FrCh>();
     let from_child_chan = comm::chan(from_child_port);
