@@ -847,8 +847,7 @@ fn type_is_bool(cx: ctxt, ty: t) -> bool {
 fn type_is_structural(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_rec(_) | ty_tup(_) | ty_tag(_, _) | ty_fn(_) |
-      ty_native_fn(_, _) | ty_obj(_) | ty_res(_, _, _) |
-      ty_iface(_, _) { true }
+      ty_native_fn(_, _) | ty_obj(_) | ty_res(_, _, _) { true }
       _ { false }
     }
 }
