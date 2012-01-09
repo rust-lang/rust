@@ -845,16 +845,14 @@ fn scope_closes(sc: scope) -> option::t<node_id> {
 }
 
 fn def_is_local(d: def) -> bool {
-    ret alt d {
-          ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_binding(_) |
-          ast::def_upvar(_, _, _) {
-            true
-          }
-          _ { false }
-        };
+    alt d {
+      ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_binding(_) |
+      ast::def_upvar(_, _, _) { true }
+      _ { false }
+    }
 }
 
-fn def_is_obj_field(d: def) -> bool {
+fn def_has_obj_scope(d: def) -> bool {
     alt d {
       ast::def_obj_field(_, _) | ast::def_self(_) { true }
       _ { false }
@@ -947,37 +945,32 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
             let fnd = in_scope(e, sp, name, hd, ns);
             if !is_none(fnd) {
                 let df = option::get(fnd);
-                let local = def_is_local(df);
-                if left_fn && local || left_fn_level2 && def_is_obj_field(df)
-                       || scope_is_fn(hd) && left_fn && def_is_ty_arg(df) {
-                    let msg =
-                        alt ns {
-                          ns_type. {
-                            "Attempt to use a type argument out of scope"
+                let local = def_is_local(df),
+                    obj_scope = def_has_obj_scope(df);
+                if left_fn && local || left_fn_level2 && obj_scope
+                   || scope_is_fn(hd) && left_fn && def_is_ty_arg(df) {
+                    let msg = alt ns {
+                      ns_type. {
+                        "attempt to use a type argument out of scope"
+                      }
+                      ns_val(v) {
+                          alt(v) {
+                            /* If we were looking for a tag, at this point
+                               we know it's bound to a non-tag value, and
+                               we can return none instead of failing */
+                            ns_a_tag. { ret none; }
+                            _ { "attempted dynamic environment-capture" }
                           }
-                          ns_val(v) {
-                              alt(v) {
-                                  ns_a_tag. {
-                              /* If we were looking for a tag, at this point
-                                 we know it's bound to a non-tag value, and
-                                 we can return none instead of failing */
-                                      ret none;
-                                  }
-                                  _ {
-                                      "attempted dynamic environment-capture"
-                                  }
-                              }
-                          }
-                          _ { "attempted dynamic environment-capture" }
-                        };
+                      }
+                      _ { "attempted dynamic environment-capture" }
+                    };
                     e.sess.span_fatal(sp, msg);
-                } else if local {
+                } else if local || obj_scope {
                     let i = vec::len(closing);
                     while i > 0u {
                         i -= 1u;
-                        df =
-                            ast::def_upvar(def_id_of_def(df), @df,
-                                           closing[i]);
+                        df = ast::def_upvar(def_id_of_def(df), @df,
+                                            closing[i]);
                         fnd = some(df);
                     }
                 }
