@@ -56,13 +56,14 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the
 // closure.
-fn with_closure_check_fn(cx: ctx, id: node_id,
-                         b: block(fn(ctx, ty::t, sp: span))) {
+fn with_appropriate_checker(cx: ctx, id: node_id,
+                            b: block(fn(ctx, ty::t, sp: span))) {
     let fty = ty::node_id_to_monotype(cx.tcx, id);
     alt ty::ty_fn_proto(cx.tcx, fty) {
       proto_send. { b(check_send); }
       proto_shared(_) { b(check_copy); }
-      proto_block. | proto_bare. { /* no check needed */ }
+      proto_block. { /* no check needed */ }
+      proto_bare. { b(check_none); }
     }
 }
 
@@ -81,11 +82,11 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
     // "future-proof" to do it this way, as check_fn_body() is supposed to be
     // the common flow point for all functions that appear in the AST.
 
-    with_closure_check_fn(cx, id) { |check_fn|
+    with_appropriate_checker(cx, id) { |checker|
         for @{def, span} in *freevars::get_freevars(cx.tcx, id) {
             let id = ast_util::def_id_of_def(def).node;
             let ty = ty::node_id_to_type(cx.tcx, id);
-            check_fn(cx, ty, span);
+            checker(cx, ty, span);
         }
     }
 
@@ -96,7 +97,7 @@ fn check_fn_cap_clause(cx: ctx,
                        id: node_id,
                        cap_clause: capture_clause) {
     // Check that the variables named in the clause which are not free vars
-    // (if any) are also legal.  freevars are checked above in check_fn_body.
+    // (if any) are also legal.  freevars are checked above in check_fn().
     // This is kind of a degenerate case, as captured variables will generally
     // appear free in the body.
     let freevars = freevars::get_freevars(cx.tcx, id);
@@ -104,13 +105,13 @@ fn check_fn_cap_clause(cx: ctx,
         ast_util::def_id_of_def(freevar.def).node
     });
     //log("freevar_ids", freevar_ids);
-    with_closure_check_fn(cx, id) { |check_fn|
+    with_appropriate_checker(cx, id) { |checker|
         let check_var = lambda(&&cap_item: @capture_item) {
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
             if !vec::member(cap_def_id, freevar_ids) {
                 let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
-                check_fn(cx, ty, cap_item.span);
+                checker(cx, ty, cap_item.span);
             }
         };
         vec::iter(cap_clause.copies, check_var);
@@ -238,6 +239,10 @@ fn check_send(cx: ctx, ty: ty::t, sp: span) {
     if !ty::kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
         cx.tcx.sess.span_err(sp, "not a sendable value");
     }
+}
+
+fn check_none(cx: ctx, _ty: ty::t, sp: span) {
+    cx.tcx.sess.span_err(sp, "attempted dynamic environment capture");
 }
 
 //
