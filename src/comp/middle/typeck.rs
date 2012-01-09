@@ -430,9 +430,6 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
                              @it.ident);
         let tpt = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
-        ty::store_iface_methods(tcx, it.id, @vec::map(ms, {|m|
-            ty_of_ty_method(tcx, m_collect, m)
-        }));
         ret tpt;
       }
       ast::item_impl(_, _, _, _) | ast::item_mod(_) |
@@ -817,6 +814,13 @@ mod collect {
             cx.tcx.tcache.insert(local_def(ctor_id),
                                  {bounds: bounds, ty: t_ctor});
             write::ty_only(cx.tcx, dtor_id, t_dtor);
+          }
+          ast::item_iface(_, ms) {
+            let tpt = ty_of_item(cx.tcx, m_collect, it);
+            write::ty_only(cx.tcx, it.id, tpt.ty);
+            ty::store_iface_methods(cx.tcx, it.id, @vec::map(ms, {|m|
+                ty_of_ty_method(cx.tcx, m_collect, m)
+            }));
           }
           _ {
             // This call populates the type cache with the converted type
