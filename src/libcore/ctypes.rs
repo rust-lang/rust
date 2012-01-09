@@ -33,6 +33,13 @@ A signed integer with the same size as a C `long`
 type long = int;
 
 /*
+Type: longlong
+
+A signed integer with the same size as a C `long long`
+*/
+type longlong = i64;
+
+/*
 Type: unsigned
 
 An unsigned integer with the same size as a C `unsigned int`
@@ -45,6 +52,13 @@ Type: ulong
 An unsigned integer with the same size as a C `unsigned long`
 */
 type ulong = uint;
+
+/*
+Type: ulonglong
+
+An unsigned integer with the same size as a C `unsigned long long`
+*/
+type ulonglong = u64;
 
 /*
 Type: intptr_t
