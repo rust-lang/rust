@@ -1005,7 +1005,10 @@ data<T,U>::walk_iface_value(ptr &dp) {
     type_desc *valtydesc =
         *reinterpret_cast<type_desc **>(body_ptr);
     ptr value_dp(body_ptr + sizeof(void*) * 2);
-    T sub(*static_cast<T *>(this), valtydesc->shape + 2, NULL, NULL,
+    // FIXME The 5 is a hard-coded way to skip over a struct shape
+    // header and the first two (number-typed) fields. This is too
+    // fragile, but I didn't see a good way to properly encode it.
+    T sub(*static_cast<T *>(this), valtydesc->shape + 5, NULL, NULL,
           value_dp);
     sub.align = true;
     sub.walk();
