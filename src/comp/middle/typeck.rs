@@ -1172,9 +1172,8 @@ fn gather_locals(ccx: @crate_ctxt,
         };
     let tcx = ccx.tcx;
 
-    let next_var_id = fn@ () -> int { let rv = *nvi; *nvi += 1; ret rv; };
-    let assign =
-        fn@ (nid: ast::node_id, ty_opt: option::t<ty::t>) {
+    let next_var_id = fn@() -> int { let rv = *nvi; *nvi += 1; ret rv; };
+    let assign = fn@(nid: ast::node_id, ty_opt: option::t<ty::t>) {
             let var_id = next_var_id();
             locals.insert(nid, var_id);
             alt ty_opt {
@@ -1205,16 +1204,14 @@ fn gather_locals(ccx: @crate_ctxt,
     }
 
     // Add explicitly-declared locals.
-    let visit_local =
-        fn@ (local: @ast::local, &&e: (), v: visit::vt<()>) {
+    let visit_local = fn@(local: @ast::local, &&e: (), v: visit::vt<()>) {
             let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
             assign(local.node.id, local_ty);
             visit::visit_local(local, e, v);
         };
 
     // Add pattern bindings.
-    let visit_pat =
-        fn@ (p: @ast::pat, &&e: (), v: visit::vt<()>) {
+    let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
             alt p.node {
               ast::pat_bind(_, _) { assign(p.id, none); }
               _ {/* no-op */ }
@@ -1725,8 +1722,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // functions. This is so that we have more information about the types
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
-        let check_args =
-            fn@ (check_blocks: bool) -> bool {
+        let check_args = fn@(check_blocks: bool) -> bool {
                 let i = 0u;
                 let bot = false;
                 for a_opt: option::t<@ast::expr> in args {

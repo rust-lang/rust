@@ -209,8 +209,8 @@ fn allocate_cbox(bcx: @block_ctxt,
     let ccx = bcx_ccx(bcx);
 
     let alloc_in_heap = fn@(bcx: @block_ctxt,
-                               xchgheap: bool,
-                               &temp_cleanups: [ValueRef])
+                            xchgheap: bool,
+                            &temp_cleanups: [ValueRef])
         -> (@block_ctxt, ValueRef) {
 
         // n.b. If you are wondering why we don't use

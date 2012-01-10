@@ -168,7 +168,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     let words = new_str_hash();
     for word in ["mod", "if", "else", "while", "do", "alt", "for", "break",
                  "cont", "ret", "be", "fail", "type", "resource", "check",
-                 "assert", "claim", "native", "fn", "fn@", "pure",
+                 "assert", "claim", "native", "fn", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
                  "log", "tag", "obj", "copy", "sendfn", "impl", "iface"] {
         words.insert(word, ());
@@ -515,8 +515,10 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
     } else if eat_word(p, "lambda") {
+        //(breaks prettyprinting!) p.warn("lambda is deprecated, use fn@");
         t = parse_ty_fn(ast::proto_box, p);
     } else if eat_word(p, "sendfn") {
+        //(breaks prettyprinting!) p.warn("sendfn is deprecated, use fn~");
         t = parse_ty_fn(ast::proto_uniq, p);
     } else if eat_word(p, "obj") {
         t = ast::ty_obj(parse_ty_methods(p, false));
@@ -822,8 +824,10 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if eat_word(p, "block") {
         ret pexpr(parse_fn_expr(p, ast::proto_block));
     } else if eat_word(p, "lambda") {
+        //(breaks prettyprinting!) p.warn("lambda is deprecated, use fn@");
         ret pexpr(parse_fn_expr(p, ast::proto_box));
     } else if eat_word(p, "sendfn") {
+        //(breaks prettyprinting!) p.warn("sendfn is deprecated, use fn~");
         ret pexpr(parse_fn_expr(p, ast::proto_uniq));
     } else if eat_word(p, "unchecked") {
         ret pexpr(parse_block_expr(p, lo, ast::unchecked_blk));
