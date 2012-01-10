@@ -13,51 +13,37 @@ PKG_NSI = $(S)src/etc/pkg/rust.nsi
 PKG_EXE = $(PKG_DIR)-install.exe
 endif
 
-PKG_3RDPARTY := rt/vg/valgrind.h rt/vg/memcheck.h \
-                rt/isaac/rand.h rt/isaac/standard.h \
-                rt/uthash/uthash.h rt/uthash/utlist.h \
-                rt/bigint/bigint.h rt/bigint/bigint_int.cpp \
-                rt/bigint/bigint_ext.cpp rt/bigint/low_primes.h
+PKG_OMIT_LLVM_DIRS := examples bindings/ocaml projects
+PKG_OMIT_LLVM_PATS := $(foreach d,$(PKG_OMIT_LLVM_DIRS), %$(d))
+PKG_LLVM_SKEL := $(foreach d,$(PKG_OMIT_LLVM_DIRS), \
+                     $(wildcard $(S)src/llvm/$(d)/*.in \
+                                $(S)src/llvm/$(d)/Makefile*))
 
-PKG_UV := \
-                $(wildcard $(S)src/libuv/*) \
-                $(wildcard $(S)src/libuv/include/*) \
-                $(wildcard $(S)src/libuv/include/*/*) \
-                $(wildcard $(S)src/libuv/src/*) \
-                $(wildcard $(S)src/libuv/src/*/*) \
-                $(wildcard $(S)src/libuv/src/*/*/*)
-
-PKG_PP_EXAMPLES = $(wildcard $(S)src/test/pretty/*.pp)
+PKG_GITMODULES := \
+    $(filter-out %test, $(wildcard $(S)src/libuv/*)) \
+    $(filter-out $(PKG_OMIT_LLVM_PATS), \
+                 $(wildcard $(S)src/llvm/*)) \
+    $(PKG_LLVM_SKEL)
 
 PKG_FILES = \
-    $(wildcard $(S)src/etc/*.*)                \
     $(S)LICENSE.txt $(S)README                 \
     $(S)configure $(S)Makefile.in              \
-    $(S)src/snapshots.txt                      \
+    $(S)/doc                                   \
     $(addprefix $(S)src/,                      \
-      README comp/README                       \
-      $(RUNTIME_CS) $(RUNTIME_HDR)             \
-      $(RUNTIME_S)                             \
-      rt/rustrt.def.in                         \
-      rt/intrinsics/intrinsics.i386.ll.in      \
-      rt/intrinsics/intrinsics.x86_64.ll.in    \
-      rt/intrinsics/intrinsics.cpp             \
-      $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS)   \
-      $(RUSTLLVM_HDR)                          \
-      rustllvm/rustllvm.def.in                 \
-      $(PKG_3RDPARTY))                         \
-    $(PKG_UV)                                  \
-    $(COMPILER_INPUTS)                         \
-    $(CORELIB_INPUTS)                          \
-    $(STDLIB_INPUTS)                           \
-    $(ALL_TEST_INPUTS)                         \
-    $(FUZZER_CRATE)                            \
-    $(FUZZER_INPUTS)                           \
-    $(COMPILETEST_CRATE)                       \
-    $(COMPILETEST_INPUTS)                      \
-    $(CARGO_CRATE)                             \
-    $(CARGO_INPUTS)                            \
-    $(PKG_PP_EXAMPLES)                         \
+      README                                   \
+      cargo                                    \
+      comp                                     \
+      compiletest                              \
+      etc                                      \
+      fuzzer                                   \
+      libcore                                  \
+      libstd                                   \
+      rt                                       \
+      rustdoc                                  \
+      rustllvm                                 \
+      snapshots.txt                            \
+      test)                                    \
+    $(PKG_GITMODULES)                          \
     $(MKFILE_DEPS)
 
 dist: $(PKG_TAR) $(PKG_EXE)
@@ -90,9 +76,9 @@ distcheck: $(PKG_TAR)
 	$(Q)mkdir -p dist/$(PKG_DIR)-build
 	$(Q)cd dist/$(PKG_DIR)-build && ../$(PKG_DIR)/configure
 	@$(call E, making 'check' in dist/$(PKG_DIR)-build)
-	$(Q)make -C dist/$(PKG_DIR)-build check
+	$(Q)+make -C dist/$(PKG_DIR)-build check
 	@$(call E, making 'clean' in dist/$(PKG_DIR)-build)
-	$(Q)make -C dist/$(PKG_DIR)-build clean
+	$(Q)+make -C dist/$(PKG_DIR)-build clean
 	$(Q)rm -Rf dist
 	@echo
 	@echo -----------------------------------------------
