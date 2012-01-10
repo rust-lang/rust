@@ -67,6 +67,7 @@ upcall_intern_dict
 upcall_log_type
 upcall_malloc
 upcall_rust_personality
+upcall_s_shared_malloc
 upcall_shared_malloc
 upcall_shared_free
 upcall_vec_grow
