@@ -189,9 +189,9 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_type. { w.write_char('Y'); }
       ty::ty_send_type. { w.write_char('y'); }
-      ty::ty_opaque_closure_ptr(ty::closure_block.) { w.write_str("C&"); }
-      ty::ty_opaque_closure_ptr(ty::closure_shared.) { w.write_str("C@"); }
-      ty::ty_opaque_closure_ptr(ty::closure_send.) { w.write_str("C~"); }
+      ty::ty_opaque_closure_ptr(ty::ck_block.) { w.write_str("C&"); }
+      ty::ty_opaque_closure_ptr(ty::ck_box.) { w.write_str("C@"); }
+      ty::ty_opaque_closure_ptr(ty::ck_uniq.) { w.write_str("C~"); }
       ty::ty_constr(ty, cs) {
         w.write_str("A[");
         enc_ty(w, cx, ty);
@@ -202,8 +202,8 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
 }
 fn enc_proto(w: io::writer, proto: proto) {
     alt proto {
-      proto_send. { w.write_char('s'); }
-      proto_shared. { w.write_char('F'); }
+      proto_uniq. { w.write_char('s'); }
+      proto_box. { w.write_char('F'); }
       proto_block. { w.write_char('B'); }
       proto_bare. { w.write_char('f'); }
     }

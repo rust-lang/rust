@@ -8,9 +8,10 @@ fn main() {
         macerate(*tasties);
     } (carrots, { |food|
         let mush = food + cheese;
-        let _ = fn@() {
+        let f = fn@() {
             let chew = mush + cheese;
             fail "so yummy"
-        } ();
+        };
+        f();
     });
 }

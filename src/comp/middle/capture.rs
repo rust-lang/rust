@@ -78,7 +78,7 @@ fn check_capture_clause(tcx: ty::ctxt,
         check_block_captures(cap_clause.copies);
         check_block_captures(cap_clause.moves);
       }
-      ast::proto_bare. | ast::proto_shared. | ast::proto_send. {
+      ast::proto_bare. | ast::proto_box. | ast::proto_uniq. {
         vec::iter(cap_clause.copies, check_capture_item);
         vec::iter(cap_clause.moves, check_capture_item);
         vec::iter(cap_clause.moves, check_not_upvar);
@@ -113,7 +113,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
 
     let implicit_mode = alt fn_proto {
       ast::proto_block. { cap_ref }
-      ast::proto_bare. | ast::proto_shared. | ast::proto_send. { cap_copy }
+      ast::proto_bare. | ast::proto_box. | ast::proto_uniq. { cap_copy }
     };
 
     vec::iter(*freevars) { |fvar|

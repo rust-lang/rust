@@ -111,10 +111,10 @@ tag pat_ {
 tag mutability { mut; imm; maybe_mut; }
 
 tag proto {
-    proto_bare;
-    proto_send;
-    proto_shared;
-    proto_block;
+    proto_bare;    // fn
+    proto_uniq;    // fn~
+    proto_box;     // fn@
+    proto_block;   // block
 }
 
 tag binop {

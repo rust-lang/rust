@@ -553,7 +553,7 @@ fn ty_of_obj_ctor(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
         let t_field = ast_ty_to_ty(tcx, mode, f.ty);
         t_inputs += [{mode: ast::by_copy, ty: t_field}];
     }
-    let t_fn = ty::mk_fn(tcx, {proto: ast::proto_shared,
+    let t_fn = ty::mk_fn(tcx, {proto: ast::proto_box,
                                inputs: t_inputs, output: t_obj.ty,
                                ret_style: ast::return_val, constraints: []});
     let tpt = {bounds: ty_param_bounds(tcx, mode, ty_params), ty: t_fn};
@@ -697,7 +697,7 @@ mod collect {
                 }
                 // FIXME: this will be different for constrained types
                 ty::mk_fn(cx.tcx,
-                          {proto: ast::proto_shared,
+                          {proto: ast::proto_box,
                            inputs: args, output: tag_ty,
                            ret_style: ast::return_val, constraints: []})
             };
@@ -799,13 +799,13 @@ mod collect {
             let t_res = ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
                                    params);
             let t_ctor = ty::mk_fn(cx.tcx, {
-                proto: ast::proto_shared,
+                proto: ast::proto_box,
                 inputs: [{mode: ast::by_copy with t_arg}],
                 output: t_res,
                 ret_style: ast::return_val, constraints: []
             });
             let t_dtor = ty::mk_fn(cx.tcx, {
-                proto: ast::proto_shared,
+                proto: ast::proto_box,
                 inputs: [t_arg], output: ty::mk_nil(cx.tcx),
                 ret_style: ast::return_val, constraints: []
             });
@@ -2179,7 +2179,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         fn lower_bound_proto(proto: ast::proto) -> ast::proto {
             // FIXME: This is right for bare fns, possibly not others
             alt proto {
-              ast::proto_bare. { ast::proto_shared }
+              ast::proto_bare. { ast::proto_box }
               _ { proto }
             }
         }
@@ -2632,7 +2632,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     let fcx: @fn_ctxt =
         @{ret_ty: rty,
           purity: ast::pure_fn,
-          proto: ast::proto_shared,
+          proto: ast::proto_box,
           var_bindings: ty::unify::mk_var_bindings(),
           locals: new_int_hash::<int>(),
           next_var_id: @mutable 0,

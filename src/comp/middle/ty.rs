@@ -181,9 +181,9 @@ export variant_info;
 export walk_ty;
 export occurs_check_fails;
 export closure_kind;
-export closure_block;
-export closure_shared;
-export closure_send;
+export ck_block;
+export ck_box;
+export ck_uniq;
 export param_bound, param_bounds, bound_copy, bound_send, bound_iface;
 export param_bounds_to_kind;
 
@@ -234,9 +234,9 @@ type raw_t = {struct: sty,
 type t = uint;
 
 tag closure_kind {
-    closure_block;
-    closure_shared;
-    closure_send;
+    ck_block;
+    ck_box;
+    ck_uniq;
 }
 
 type fn_ty = {proto: ast::proto,
@@ -1020,8 +1020,8 @@ pure fn kind_can_be_sent(k: kind) -> bool {
 fn proto_kind(p: proto) -> kind {
     alt p {
       ast::proto_block. { kind_noncopyable }
-      ast::proto_shared. { kind_copyable }
-      ast::proto_send. { kind_sendable }
+      ast::proto_box. { kind_copyable }
+      ast::proto_uniq. { kind_sendable }
       ast::proto_bare. { kind_sendable }
     }
 }
@@ -1057,9 +1057,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // anything about its fields.
       ty_obj(_) { kind_copyable }
       ty_fn(f) { proto_kind(f.proto) }
-      ty_opaque_closure_ptr(closure_block.) { kind_noncopyable }
-      ty_opaque_closure_ptr(closure_shared.) { kind_copyable }
-      ty_opaque_closure_ptr(closure_send.) { kind_sendable }
+      ty_opaque_closure_ptr(ck_block.) { kind_noncopyable }
+      ty_opaque_closure_ptr(ck_box.) { kind_copyable }
+      ty_opaque_closure_ptr(ck_uniq.) { kind_sendable }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
       ty_box(_) | ty_iface(_, _) { kind_copyable }
@@ -1422,9 +1422,9 @@ fn hash_type_structure(st: sty) -> uint {
         for typ: t in tys { h = hash_subty(h, typ); }
         ret h;
       }
-      ty_opaque_closure_ptr(closure_block.) { ret 41u; }
-      ty_opaque_closure_ptr(closure_shared.) { ret 42u; }
-      ty_opaque_closure_ptr(closure_send.) { ret 43u; }
+      ty_opaque_closure_ptr(ck_block.) { ret 41u; }
+      ty_opaque_closure_ptr(ck_box.) { ret 42u; }
+      ty_opaque_closure_ptr(ck_uniq.) { ret 43u; }
     }
 }
 
@@ -1563,7 +1563,7 @@ fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
       ty::ty_fn(f) { ret f.proto; }
       ty::ty_native_fn(_, _) {
         // FIXME: This should probably be proto_bare
-        ret ast::proto_shared;
+        ret ast::proto_box;
       }
       _ { cx.sess.bug("ty_fn_proto() called on non-fn type"); }
     }

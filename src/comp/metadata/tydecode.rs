@@ -231,10 +231,10 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ret ty::mk_tup(st.tcx, params);
       }
       's' {
-        ret parse_ty_rust_fn(st, conv, ast::proto_send);
+        ret parse_ty_rust_fn(st, conv, ast::proto_uniq);
       }
       'F' {
-        ret parse_ty_rust_fn(st, conv, ast::proto_shared);
+        ret parse_ty_rust_fn(st, conv, ast::proto_box);
       }
       'f' {
         ret parse_ty_rust_fn(st, conv, ast::proto_bare);
@@ -279,9 +279,9 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       'y' { ret ty::mk_send_type(st.tcx); }
       'C' {
         let ck = alt next(st) as char {
-          '&' { ty::closure_block }
-          '@' { ty::closure_shared }
-          '~' { ty::closure_send }
+          '&' { ty::ck_block }
+          '@' { ty::ck_box }
+          '~' { ty::ck_uniq }
         };
         ret ty::mk_opaque_closure_ptr(st.tcx, ck);
       }

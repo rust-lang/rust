@@ -60,8 +60,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id,
                             b: block(fn(ctx, ty::t, sp: span))) {
     let fty = ty::node_id_to_monotype(cx.tcx, id);
     alt ty::ty_fn_proto(cx.tcx, fty) {
-      proto_send. { b(check_send); }
-      proto_shared. { b(check_copy); }
+      proto_uniq. { b(check_send); }
+      proto_box. { b(check_copy); }
       proto_block. { /* no check needed */ }
       proto_bare. { b(check_none); }
     }

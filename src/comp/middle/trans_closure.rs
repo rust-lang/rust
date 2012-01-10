@@ -136,8 +136,8 @@ fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
 
 fn mk_tydesc_ty(tcx: ty::ctxt, ck: ty::closure_kind) -> ty::t {
     ret alt ck {
-      ty::closure_block. | ty::closure_shared. { ty::mk_type(tcx) }
-      ty::closure_send. { ty::mk_send_type(tcx) }
+      ty::ck_block. | ty::ck_box. { ty::mk_type(tcx) }
+      ty::ck_uniq. { ty::mk_send_type(tcx) }
     };
 }
 
@@ -236,15 +236,15 @@ fn allocate_cbox(bcx: @block_ctxt,
     // Allocate the box:
     let temp_cleanups = [];
     let (bcx, box, rc) = alt ck {
-      ty::closure_shared. {
+      ty::ck_box. {
         let (bcx, box) = alloc_in_heap(bcx, false, temp_cleanups);
         (bcx, box, 1)
       }
-      ty::closure_send. {
+      ty::ck_uniq. {
         let (bcx, box) = alloc_in_heap(bcx, true, temp_cleanups);
         (bcx, box, 0x12345678) // use arbitrary value for debugging
       }
-      ty::closure_block. {
+      ty::ck_block. {
         let {bcx, val: box} = trans::alloc_ty(bcx, cbox_ty);
         (bcx, box, 0x12345678) // use arbitrary value for debugging
       }
@@ -288,10 +288,10 @@ fn store_environment(
                           ck: ty::closure_kind,
                           td: ValueRef) -> ValueRef {
         ret alt ck {
-          ty::closure_block. | ty::closure_shared. {
+          ty::ck_block. | ty::ck_box. {
             td
           }
-          ty::closure_send. {
+          ty::ck_uniq. {
             Call(bcx, bcx_ccx(bcx).upcalls.create_shared_type_desc, [td])
           }
         };
@@ -310,7 +310,7 @@ fn store_environment(
 
     // store data tydesc.
     alt ck {
-      ty::closure_shared. | ty::closure_send. {
+      ty::ck_box. | ty::ck_uniq. {
         let bound_tydesc = GEPi(bcx, llbox, [0, abi::cbox_elt_tydesc]);
         let ti = none;
 
@@ -331,7 +331,7 @@ fn store_environment(
         let td = maybe_clone_tydesc(bcx, ck, closure_td.val);
         Store(bcx, td, bound_tydesc);
       }
-      ty::closure_block. { /* skip this for blocks, not really relevant */ }
+      ty::ck_block. { /* skip this for blocks, not really relevant */ }
     }
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
@@ -425,7 +425,7 @@ fn build_closure(bcx0: @block_ctxt,
         let ty = ty::node_id_to_monotype(tcx, nid);
         alt cap_var.mode {
           capture::cap_ref. {
-            assert ck == ty::closure_block;
+            assert ck == ty::ck_block;
             ty = ty::mk_mut_ptr(tcx, ty);
             env_vals += [env_ref(lv.val, ty, lv.kind)];
           }
@@ -492,8 +492,8 @@ fn load_environment(enclosing_cx: @block_ctxt,
             bcx = upvarptr.bcx;
             let llupvarptr = upvarptr.val;
             alt ck {
-              ty::closure_block. { llupvarptr = Load(bcx, llupvarptr); }
-              ty::closure_send. | ty::closure_shared. { }
+              ty::ck_block. { llupvarptr = Load(bcx, llupvarptr); }
+              ty::ck_uniq. | ty::ck_box. { }
             }
             let def_id = ast_util::def_id_of_def(cap_var.def);
             fcx.llupvars.insert(def_id.node, llupvarptr);
@@ -531,9 +531,9 @@ fn trans_expr_fn(bcx: @block_ctxt,
     };
 
     let closure = alt proto {
-      ast::proto_block. { trans_closure_env(ty::closure_block) }
-      ast::proto_shared. { trans_closure_env(ty::closure_shared) }
-      ast::proto_send. { trans_closure_env(ty::closure_send) }
+      ast::proto_block. { trans_closure_env(ty::ck_block) }
+      ast::proto_box. { trans_closure_env(ty::ck_box) }
+      ast::proto_uniq. { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare. {
         let closure = C_null(T_opaque_cbox_ptr(ccx));
         trans_closure(sub_cx, sp, decl, body, llfn, no_self, [],
@@ -625,7 +625,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     let {llbox, cboxptr_ty, bcx} = store_environment(
         bcx, vec::map(lltydescs, {|d| {desc: d, dicts: none}}),
         env_vals + vec::map(bound, {|x| env_expr(x)}),
-        ty::closure_shared);
+        ty::ck_box);
 
     // Make thunk
     let llthunk =
@@ -672,12 +672,8 @@ fn make_fn_glue(
     ret alt ty::struct(tcx, t) {
       ty::ty_native_fn(_, _) | ty::ty_fn({proto: ast::proto_bare., _}) { bcx }
       ty::ty_fn({proto: ast::proto_block., _}) { bcx }
-      ty::ty_fn({proto: ast::proto_send., _}) {
-        fn_env(ty::closure_send)
-      }
-      ty::ty_fn({proto: ast::proto_shared., _}) {
-        fn_env(ty::closure_shared)
-      }
+      ty::ty_fn({proto: ast::proto_uniq., _}) { fn_env(ty::ck_uniq) }
+      ty::ty_fn({proto: ast::proto_box., _}) { fn_env(ty::ck_box) }
       _ { fail "make_fn_glue invoked on non-function type" }
     };
 }
@@ -689,13 +685,9 @@ fn make_opaque_cbox_take_glue(
     -> @block_ctxt {
     // Easy cases:
     alt ck {
-      ty::closure_block. {
-        ret bcx;
-      }
-      ty::closure_shared. {
-        ret incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr));
-      }
-      ty::closure_send. { /* hard case: */ }
+      ty::ck_block. { ret bcx; }
+      ty::ck_box. { ret incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); }
+      ty::ck_uniq. { /* hard case: */ }
     }
 
     // Hard case, a deep copy:
@@ -731,12 +723,12 @@ fn make_opaque_cbox_drop_glue(
     cboxptr: ValueRef)     // ptr to the opaque closure
     -> @block_ctxt {
     alt ck {
-      ty::closure_block. { bcx }
-      ty::closure_shared. {
+      ty::ck_block. { bcx }
+      ty::ck_box. {
         decr_refcnt_maybe_free(bcx, Load(bcx, cboxptr),
                                ty::mk_opaque_closure_ptr(bcx_tcx(bcx), ck))
       }
-      ty::closure_send. {
+      ty::ck_uniq. {
         free_ty(bcx, Load(bcx, cboxptr),
                 ty::mk_opaque_closure_ptr(bcx_tcx(bcx), ck))
       }
@@ -749,8 +741,8 @@ fn make_opaque_cbox_free_glue(
     cbox: ValueRef)     // ptr to the opaque closure
     -> @block_ctxt {
     alt ck {
-      ty::closure_block. { ret bcx; }
-      ty::closure_shared. | ty::closure_send. { /* hard cases: */ }
+      ty::ck_block. { ret bcx; }
+      ty::ck_box. | ty::ck_uniq. { /* hard cases: */ }
     }
 
     let ccx = bcx_ccx(bcx);
@@ -777,11 +769,11 @@ fn make_opaque_cbox_free_glue(
 
         // Free the ty descr (if necc) and the box itself
         alt ck {
-          ty::closure_block. { fail "Impossible."; }
-          ty::closure_shared. {
+          ty::ck_block. { fail "Impossible."; }
+          ty::ck_box. {
             trans_free_if_not_gc(bcx, cbox)
           }
-          ty::closure_send. {
+          ty::ck_uniq. {
             let bcx = free_ty(bcx, tydesc, mk_tydesc_ty(tcx, ck));
             trans_shared_free(bcx, cbox)
           }

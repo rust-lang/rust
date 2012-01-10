@@ -514,10 +514,10 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         t = parse_ty_fn(proto, p);
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
-    } else if eat_word(p, "fn@") {
-        t = parse_ty_fn(ast::proto_shared, p);
+    } else if eat_word(p, "lambda") {
+        t = parse_ty_fn(ast::proto_box, p);
     } else if eat_word(p, "sendfn") {
-        t = parse_ty_fn(ast::proto_send, p);
+        t = parse_ty_fn(ast::proto_uniq, p);
     } else if eat_word(p, "obj") {
         t = ast::ty_obj(parse_ty_methods(p, false));
     } else if p.peek() == token::MOD_SEP || is_ident(p.peek()) {
@@ -821,10 +821,10 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(parse_fn_expr(p, proto));
     } else if eat_word(p, "block") {
         ret pexpr(parse_fn_expr(p, ast::proto_block));
-    } else if eat_word(p, "fn@") {
-        ret pexpr(parse_fn_expr(p, ast::proto_shared));
+    } else if eat_word(p, "lambda") {
+        ret pexpr(parse_fn_expr(p, ast::proto_box));
     } else if eat_word(p, "sendfn") {
-        ret pexpr(parse_fn_expr(p, ast::proto_send));
+        ret pexpr(parse_fn_expr(p, ast::proto_uniq));
     } else if eat_word(p, "unchecked") {
         ret pexpr(parse_block_expr(p, lo, ast::unchecked_blk));
     } else if eat_word(p, "unsafe") {
@@ -2113,7 +2113,10 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_fn_ty_proto(p: parser) -> ast::proto {
     if p.peek() == token::AT {
         p.bump();
-        ast::proto_shared
+        ast::proto_box
+    } else if p.peek() == token::TILDE {
+        p.bump();
+        ast::proto_uniq
     } else {
         ast::proto_bare
     }
