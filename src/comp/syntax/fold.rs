@@ -469,7 +469,9 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
         ret {ty: fld.fold_ty(va.ty), id: va.id};
     }
     let fold_variant_arg = bind fold_variant_arg_(_, fld);
-    ret {name: v.name, args: vec::map(v.args, fold_variant_arg), id: v.id};
+    ret {name: v.name, args: vec::map(v.args, fold_variant_arg), id: v.id,
+         disr_val: v.disr_val,  disr_expr: v.disr_expr
+         /* FIXME: is this right (copying disr_val and disr_expr) */};
 }
 
 fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident { ret i; }
