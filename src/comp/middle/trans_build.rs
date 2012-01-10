@@ -93,14 +93,9 @@ fn Invoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
     assert (!cx.terminated);
     cx.terminated = true;
     unsafe {
-        let instr = llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
-                                          vec::len(Args), Then, Catch,
-                                          noname());
-        if bcx_ccx(cx).sess.get_opts().debuginfo {
-            llvm::LLVMAddInstrAttribute(instr, 1u,
-                                        lib::llvm::LLVMStructRetAttribute as
-                                            lib::llvm::llvm::Attribute);
-        }
+        llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
+                              vec::len(Args), Then, Catch,
+                              noname());
     }
 }
 

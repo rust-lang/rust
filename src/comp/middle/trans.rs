@@ -4475,11 +4475,6 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
 
 fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
                         arg_tys: [ty::arg]) -> @block_ctxt {
-    if fcx_ccx(fcx).sess.get_opts().extra_debuginfo {
-        llvm::LLVMAddAttribute(llvm::LLVMGetFirstParam(fcx.llfn),
-                               lib::llvm::LLVMStructRetAttribute as
-                                   lib::llvm::llvm::Attribute);
-    }
     let arg_n: uint = 0u, bcx = bcx;
     for arg in arg_tys {
         let id = args[arg_n].id;
