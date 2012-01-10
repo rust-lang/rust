@@ -218,8 +218,8 @@ mod test {
     #[test]
     fn test_prefix_rpath() {
         let res = get_install_prefix_rpath("/usr/lib", "triple");
-        assert str::ends_with(res, #env("CFG_PREFIX")
-                              + "/lib/rustc/triple/lib");
+        let d = fs::connect(#env("CFG_PREFIX"), "/lib/rustc/triple/lib");
+        assert str::ends_with(res, d);
     }
 
     #[test]
