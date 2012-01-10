@@ -153,7 +153,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         for arg in args {
             alt arg.node {
               expr_fn(proto_block., _, _, _) { fns += [arg]; }
-              expr_fn_block(_, _) when is_block(cx, arg.id) { fns += [arg]; }
+              expr_fn_block(_, _) if is_block(cx, arg.id) { fns += [arg]; }
               _ {
                 alt arg_ts[i].mode {
                   by_mut_ref. { clear_if_path(cx, arg, v, false); }

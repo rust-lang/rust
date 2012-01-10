@@ -182,7 +182,7 @@ fn scan_digits(rdr: reader, radix: uint) -> str {
         let c = rdr.curr();
         if c == '_' { rdr.bump(); cont; }
         alt char::maybe_digit(c) {
-          some(d) when (d as uint) < radix {
+          some(d) if (d as uint) < radix {
             str::push_byte(rslt, c as u8);
             rdr.bump();
           }

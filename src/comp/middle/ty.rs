@@ -1953,9 +1953,9 @@ mod unify {
         }
 
         ret alt variance {
-          invariant. when e_proto == a_proto { none }
-          covariant. when sub_proto(a_proto, e_proto) { none }
-          contravariant. when sub_proto(e_proto, a_proto) { none }
+          invariant. if e_proto == a_proto { none }
+          covariant. if sub_proto(a_proto, e_proto) { none }
+          contravariant. if sub_proto(e_proto, a_proto) { none }
           _ { some(ures_err(terr_mismatch)) }
         };
     }
@@ -2220,7 +2220,7 @@ mod unify {
           }
           ty::ty_param(expected_n, _) {
             alt struct(cx.tcx, actual) {
-              ty::ty_param(actual_n, _) when expected_n == actual_n {
+              ty::ty_param(actual_n, _) if expected_n == actual_n {
                 ret ures_ok(expected);
               }
               _ { ret ures_err(terr_mismatch); }

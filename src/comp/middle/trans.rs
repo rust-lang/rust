@@ -1341,7 +1341,7 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
       ty::ty_opaque_closure_ptr(ck) {
         trans_closure::make_opaque_cbox_take_glue(bcx, ck, v)
       }
-      _ when ty::type_is_structural(bcx_tcx(bcx), t) {
+      _ if ty::type_is_structural(bcx_tcx(bcx), t) {
         iter_structural_ty(bcx, v, t, take_ty)
       }
       _ { bcx }

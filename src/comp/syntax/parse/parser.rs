@@ -753,7 +753,7 @@ fn mk_pexpr(p: parser, lo: uint, hi: uint, node: ast::expr_) -> pexpr {
 
 fn to_expr(e: pexpr) -> @ast::expr {
     alt e.node {
-      ast::expr_tup(es) when vec::len(es) == 1u { es[0u] }
+      ast::expr_tup(es) if vec::len(es) == 1u { es[0u] }
       _ { *e }
     }
 }
@@ -1020,7 +1020,7 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
     while !expr_is_complete(p, e) {
         alt p.peek() {
           // expr(...)
-          token::LPAREN. when permits_call(p) {
+          token::LPAREN. if permits_call(p) {
             let es = parse_seq(token::LPAREN, token::RPAREN,
                                seq_sep(token::COMMA), parse_expr, p);
             hi = es.span.hi;
@@ -1029,7 +1029,7 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
           }
 
           // expr {|| ... }
-          token::LBRACE. when is_bar(p.look_ahead(1u)) && permits_call(p) {
+          token::LBRACE. if is_bar(p.look_ahead(1u)) && permits_call(p) {
             p.bump();
             let blk = parse_fn_block_expr(p);
             alt e.node {

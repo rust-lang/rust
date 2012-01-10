@@ -29,7 +29,7 @@ fn main() {
         false { }
     }
     alt 3 {
-      _ when vec::any(v) { |e| float::is_negative(e) } {
+      _ if vec::any(v) { |e| float::is_negative(e) } {
       }
       _ {
         fail "wrong answer.";

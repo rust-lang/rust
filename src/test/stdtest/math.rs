@@ -251,7 +251,7 @@ fn test_sqrt() {
 fn test_angle() {
     fn angle(vec: (float, float)) -> float {
         alt vec {
-          (0f, y) when y < 0f { 1.5 * consts::pi }
+          (0f, y) if y < 0f { 1.5 * consts::pi }
           (0f, y) { 0.5 * consts::pi }
           (x, y) { float::atan(y / x) }
         }

@@ -31,7 +31,7 @@ fn ret_ret() -> int { ret (ret 2) + 3; }
 
 fn ret_guard() {
     alt 2 {
-      x when (ret) { x; }
+      x if (ret) { x; }
     }
 }
 
