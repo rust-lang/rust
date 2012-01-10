@@ -2686,7 +2686,8 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option::t<t> {
 }
 
 // Tag information
-type variant_info = @{args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
+type variant_info = @{args: [ty::t], ctor_ty: ty::t, id: ast::def_id,
+                      disr_val: int};
 
 fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
     alt cx.tag_var_cache.find(id) {
@@ -2705,7 +2706,9 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
                 } else { [] };
                 @{args: arg_tys,
                   ctor_ty: ctor_ty,
-                  id: ast_util::local_def(variant.node.id)}
+                  id: ast_util::local_def(variant.node.id),
+                  disr_val: variant.node.disr_val
+                 }
             })
           }
         }

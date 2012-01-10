@@ -228,6 +228,12 @@ fn encode_discriminant(ecx: @encode_ctxt, ebml_w: ebml::writer, id: node_id) {
     ebml::end_tag(ebml_w);
 }
 
+fn encode_disr_val(_ecx: @encode_ctxt, ebml_w: ebml::writer, disr_val: int) {
+    ebml::start_tag(ebml_w, tag_disr_val);
+    ebml_w.writer.write(str::bytes(int::to_str(disr_val,10u)));
+    ebml::end_tag(ebml_w);
+}
+
 fn encode_tag_id(ebml_w: ebml::writer, id: def_id) {
     ebml::start_tag(ebml_w, tag_items_data_item_tag_id);
     ebml_w.writer.write(str::bytes(def_to_str(id)));
@@ -237,6 +243,7 @@ fn encode_tag_id(ebml_w: ebml::writer, id: def_id) {
 fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
                            id: node_id, variants: [variant],
                            &index: [entry<int>], ty_params: [ty_param]) {
+    let disr_val = 0;
     for variant: variant in variants {
         index += [{val: variant.node.id, pos: ebml_w.writer.tell()}];
         ebml::start_tag(ebml_w, tag_items_data_item);
@@ -249,8 +256,13 @@ fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
             encode_symbol(ecx, ebml_w, variant.node.id);
         }
         encode_discriminant(ecx, ebml_w, variant.node.id);
+        if variant.node.disr_val != disr_val {
+            encode_disr_val(ecx, ebml_w, variant.node.disr_val);
+            disr_val = variant.node.disr_val;
+        }
         encode_type_param_bounds(ebml_w, ecx, ty_params);
         ebml::end_tag(ebml_w);
+        disr_val += 1;
     }
 }
 

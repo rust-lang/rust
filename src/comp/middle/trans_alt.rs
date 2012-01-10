@@ -16,7 +16,7 @@ import trans_common::*;
 // An option identifying a branch (either a literal, a tag variant or a range)
 tag opt {
     lit(@ast::expr);
-    var(/* variant id */uint, /* variant dids */{tg: def_id, var: def_id});
+    var(/* disr val */int, /* variant dids */{tg: def_id, var: def_id});
     range(@ast::expr, @ast::expr);
 }
 fn opt_eq(a: opt, b: opt) -> bool {
@@ -53,7 +53,7 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
           }
         }
       }
-      var(id, _) { ret single_result(rslt(bcx, C_int(ccx, id as int))); }
+      var(disr_val, _) { ret single_result(rslt(bcx, C_int(ccx, disr_val))); }
       range(l1, l2) {
         ret range_result(rslt(bcx, trans::trans_const_expr(ccx, l1)),
                          rslt(bcx, trans::trans_const_expr(ccx, l2)));
@@ -64,10 +64,8 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
 fn variant_opt(ccx: @crate_ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat_id));
     let variants = ty::tag_variants(ccx.tcx, vdef.tg);
-    let i = 0u;
     for v: ty::variant_info in *variants {
-        if vdef.var == v.id { ret var(i, vdef); }
-        i += 1u;
+        if vdef.var == v.id { ret var(v.disr_val, vdef); }
     }
     fail;
 }

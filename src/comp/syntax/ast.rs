@@ -416,7 +416,8 @@ type native_mod =
 
 type variant_arg = {ty: @ty, id: node_id};
 
-type variant_ = {name: ident, args: [variant_arg], id: node_id};
+type variant_ = {name: ident, args: [variant_arg], id: node_id,
+                disr_val: int, disr_expr: option::t<@expr>};
 
 type variant = spanned<variant_>;
 

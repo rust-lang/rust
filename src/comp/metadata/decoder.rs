@@ -88,6 +88,17 @@ fn variant_tag_id(d: ebml::doc) -> ast::def_id {
     ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
+fn variant_disr_val(d: ebml::doc) -> option::t<int> {
+    alt ebml::maybe_get_doc(d, tag_disr_val) {
+      some(val_doc) {
+        let val_buf = ebml::doc_data(val_doc);
+        let val = int::parse_buf(val_buf, 10u);
+        ret some(val);
+      }
+      _ { ret none;}
+    }
+}
+
 fn doc_type(doc: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let tp = ebml::get_doc(doc, tag_items_data_item_type);
     parse_ty_data(tp.data, cdata.cnum, tp.start, tcx, {|did|
@@ -240,6 +251,7 @@ fn get_tag_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let item = find_item(id, items);
     let infos: [ty::variant_info] = [];
     let variant_ids = tag_variant_ids(item, cdata);
+    let disr_val = 0;
     for did: ast::def_id in variant_ids {
         let item = find_item(did.node, items);
         let ctor_ty = item_type(item, tcx, cdata);
@@ -250,7 +262,13 @@ fn get_tag_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
           }
           _ { /* Nullary tag variant. */ }
         }
-        infos += [@{args: arg_tys, ctor_ty: ctor_ty, id: did}];
+        alt variant_disr_val(item) {
+          some(val) { disr_val = val; }
+          _         { /* empty */ }
+        }
+        infos += [@{args: arg_tys, ctor_ty: ctor_ty, id: did,
+                    disr_val: disr_val}];
+        disr_val += 1;
     }
     ret infos;
 }
