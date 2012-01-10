@@ -3017,7 +3017,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     check (type_has_static_size(ccx, t_out));
     let ll_t_out = type_of(ccx, e.span, t_out);
 
-    tag kind { pointer; integral; float; other; }
+    tag kind { pointer; integral; float; tag_; other; }
     fn t_kind(tcx: ty::ctxt, t: ty::t) -> kind {
         ret if ty::type_is_fp(tcx, t) {
                 float
@@ -3026,6 +3026,8 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
                 pointer
             } else if ty::type_is_integral(tcx, t) {
                 integral
+            } else if ty::type_is_tag(tcx, t) {
+                tag_
             } else { other };
     }
     let k_in = t_kind(ccx.tcx, t_in);
@@ -3058,6 +3060,18 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
           }
           {in: pointer., out: pointer.} {
             PointerCast(e_res.bcx, e_res.val, ll_t_out)
+          }
+          {in: tag_., out: integral.} | {in: tag_., out: float.} {
+            let cx = e_res.bcx;
+            let lltagty = T_opaque_tag_ptr(ccx);
+            let av_tag = PointerCast(cx, e_res.val, lltagty);
+            let lldiscrim_a_ptr = GEPi(cx, av_tag, [0, 0]);
+            let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
+            alt k_out {
+              integral. {int_cast(e_res.bcx, ll_t_out,
+                                  val_ty(lldiscrim_a), lldiscrim_a, true)}
+              float. {SIToFP(e_res.bcx, lldiscrim_a, ll_t_out)}
+            }
           }
           _ { ccx.sess.bug("Translating unsupported cast.") }
         };
