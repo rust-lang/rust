@@ -67,7 +67,7 @@ that `(float, float)` is a tuple of two floats:
 
     fn angle(vec: (float, float)) -> float {
         alt vec {
-          (0f, y) when y < 0f { 1.5 * std::math::pi }
+          (0f, y) if y < 0f { 1.5 * std::math::pi }
           (0f, y) { 0.5 * std::math::pi }
           (x, y) { std::math::atan(y / x) }
         }

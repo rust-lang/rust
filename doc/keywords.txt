@@ -17,4 +17,4 @@ self str syntax
 tag true type
 u16 u32 u64 u8 uint unchecked unsafe use
 vec
-when while with
+while with

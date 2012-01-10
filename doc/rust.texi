@@ -3331,12 +3331,12 @@ let message = alt x @{
 
 Finally, alt patterns can accept @emph{pattern guards} to further refine the
 criteria for matching a case. Pattern guards appear after the pattern and
-consist of a bool-typed expression following the @emph{when} keyword. A pattern
+consist of a bool-typed expression following the @emph{if} keyword. A pattern
 guard may refer to the variables bound within the pattern they follow.
 
 @example
 let message = alt maybe_digit @{
-  some(x) when x < 10 @{ process_digit(x) @}
+  some(x) if x < 10 @{ process_digit(x) @}
   some(x) @{ process_other(x) @}
 @}
 @end example
