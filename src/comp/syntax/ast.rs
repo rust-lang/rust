@@ -110,15 +110,10 @@ tag pat_ {
 
 tag mutability { mut; imm; maybe_mut; }
 
-tag proto_sugar {
-    sugar_normal;
-    sugar_sexy;
-}
-
 tag proto {
     proto_bare;
     proto_send;
-    proto_shared(proto_sugar);
+    proto_shared;
     proto_block;
 }
 

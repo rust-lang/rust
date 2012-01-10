@@ -208,7 +208,7 @@ fn allocate_cbox(bcx: @block_ctxt,
 
     let ccx = bcx_ccx(bcx);
 
-    let alloc_in_heap = lambda(bcx: @block_ctxt,
+    let alloc_in_heap = fn@(bcx: @block_ctxt,
                                xchgheap: bool,
                                &temp_cleanups: [ValueRef])
         -> (@block_ctxt, ValueRef) {
@@ -520,7 +520,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
     register_fn(ccx, sp, sub_cx.path, "anon fn", [], id);
 
-    let trans_closure_env = lambda(ck: ty::closure_kind) -> ValueRef {
+    let trans_closure_env = fn@(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
         let {llbox, cboxptr_ty, bcx} = build_closure(bcx, cap_vars, ck);
@@ -532,7 +532,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
 
     let closure = alt proto {
       ast::proto_block. { trans_closure_env(ty::closure_block) }
-      ast::proto_shared(_) { trans_closure_env(ty::closure_shared) }
+      ast::proto_shared. { trans_closure_env(ty::closure_shared) }
       ast::proto_send. { trans_closure_env(ty::closure_send) }
       ast::proto_bare. {
         let closure = C_null(T_opaque_cbox_ptr(ccx));
@@ -660,7 +660,7 @@ fn make_fn_glue(
     let bcx = cx;
     let tcx = bcx_tcx(cx);
 
-    let fn_env = lambda(ck: ty::closure_kind) -> @block_ctxt {
+    let fn_env = fn@(ck: ty::closure_kind) -> @block_ctxt {
         let box_cell_v = GEPi(cx, v, [0, abi::fn_field_box]);
         let box_ptr_v = Load(cx, box_cell_v);
         make_null_test(cx, box_ptr_v) {|bcx|
@@ -675,7 +675,7 @@ fn make_fn_glue(
       ty::ty_fn({proto: ast::proto_send., _}) {
         fn_env(ty::closure_send)
       }
-      ty::ty_fn({proto: ast::proto_shared(_), _}) {
+      ty::ty_fn({proto: ast::proto_shared., _}) {
         fn_env(ty::closure_shared)
       }
       _ { fail "make_fn_glue invoked on non-function type" }

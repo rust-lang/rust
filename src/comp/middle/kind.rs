@@ -61,7 +61,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id,
     let fty = ty::node_id_to_monotype(cx.tcx, id);
     alt ty::ty_fn_proto(cx.tcx, fty) {
       proto_send. { b(check_send); }
-      proto_shared(_) { b(check_copy); }
+      proto_shared. { b(check_copy); }
       proto_block. { /* no check needed */ }
       proto_bare. { b(check_none); }
     }
@@ -106,7 +106,7 @@ fn check_fn_cap_clause(cx: ctx,
     });
     //log("freevar_ids", freevar_ids);
     with_appropriate_checker(cx, id) { |checker|
-        let check_var = lambda(&&cap_item: @capture_item) {
+        let check_var = fn@(&&cap_item: @capture_item) {
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
             if !vec::member(cap_def_id, freevar_ids) {

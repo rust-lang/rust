@@ -4,7 +4,7 @@ fn asSendfn( f : sendfn()->uint ) -> uint {
    ret f();
 }
 
-fn asLambda( f : lambda()->uint ) -> uint {
+fn asLambda( f : fn@()->uint ) -> uint {
    ret f();
 }
 

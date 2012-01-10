@@ -34,7 +34,7 @@ fn check_capture_clause(tcx: ty::ctxt,
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let seen_defs = map::new_int_hash();
 
-    let check_capture_item = lambda(&&cap_item: @ast::capture_item) {
+    let check_capture_item = fn@(&&cap_item: @ast::capture_item) {
         let cap_def = tcx.def_map.get(cap_item.id);
         if !vec::any(*freevars, {|fv| fv.def == cap_def}) {
             tcx.sess.span_warn(
@@ -52,7 +52,7 @@ fn check_capture_clause(tcx: ty::ctxt,
         }
     };
 
-    let check_not_upvar = lambda(&&cap_item: @ast::capture_item) {
+    let check_not_upvar = fn@(&&cap_item: @ast::capture_item) {
         alt tcx.def_map.get(cap_item.id) {
           ast::def_upvar(_, _, _) {
             tcx.sess.span_err(
@@ -64,7 +64,7 @@ fn check_capture_clause(tcx: ty::ctxt,
         }
     };
 
-    let check_block_captures = lambda(v: [@ast::capture_item]) {
+    let check_block_captures = fn@(v: [@ast::capture_item]) {
         if check vec::is_not_empty(v) {
             let cap_item0 = vec::head(v);
             tcx.sess.span_err(
@@ -78,7 +78,7 @@ fn check_capture_clause(tcx: ty::ctxt,
         check_block_captures(cap_clause.copies);
         check_block_captures(cap_clause.moves);
       }
-      ast::proto_bare. | ast::proto_shared(_) | ast::proto_send. {
+      ast::proto_bare. | ast::proto_shared. | ast::proto_send. {
         vec::iter(cap_clause.copies, check_capture_item);
         vec::iter(cap_clause.moves, check_capture_item);
         vec::iter(cap_clause.moves, check_not_upvar);
@@ -113,7 +113,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
 
     let implicit_mode = alt fn_proto {
       ast::proto_block. { cap_ref }
-      ast::proto_bare. | ast::proto_shared(_) | ast::proto_send. { cap_copy }
+      ast::proto_bare. | ast::proto_shared. | ast::proto_send. { cap_copy }
     };
 
     vec::iter(*freevars) { |fvar|

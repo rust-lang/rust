@@ -168,7 +168,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     let words = new_str_hash();
     for word in ["mod", "if", "else", "while", "do", "alt", "for", "break",
                  "cont", "ret", "be", "fail", "type", "resource", "check",
-                 "assert", "claim", "native", "fn", "lambda", "pure",
+                 "assert", "claim", "native", "fn", "fn@", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
                  "log", "tag", "obj", "copy", "sendfn", "impl", "iface"] {
         words.insert(word, ());
@@ -514,8 +514,8 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         t = parse_ty_fn(proto, p);
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
-    } else if eat_word(p, "lambda") {
-        t = parse_ty_fn(ast::proto_shared(ast::sugar_sexy), p);
+    } else if eat_word(p, "fn@") {
+        t = parse_ty_fn(ast::proto_shared, p);
     } else if eat_word(p, "sendfn") {
         t = parse_ty_fn(ast::proto_send, p);
     } else if eat_word(p, "obj") {
@@ -821,8 +821,8 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(parse_fn_expr(p, proto));
     } else if eat_word(p, "block") {
         ret pexpr(parse_fn_expr(p, ast::proto_block));
-    } else if eat_word(p, "lambda") {
-        ret pexpr(parse_fn_expr(p, ast::proto_shared(ast::sugar_sexy)));
+    } else if eat_word(p, "fn@") {
+        ret pexpr(parse_fn_expr(p, ast::proto_shared));
     } else if eat_word(p, "sendfn") {
         ret pexpr(parse_fn_expr(p, ast::proto_send));
     } else if eat_word(p, "unchecked") {
@@ -2117,7 +2117,7 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_fn_ty_proto(p: parser) -> ast::proto {
     if p.peek() == token::AT {
         p.bump();
-        ast::proto_shared(ast::sugar_normal)
+        ast::proto_shared
     } else {
         ast::proto_bare
     }

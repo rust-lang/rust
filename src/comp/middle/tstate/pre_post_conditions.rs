@@ -348,7 +348,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_fn(_, _, _, cap_clause) {
         find_pre_post_expr_fn_upvars(fcx, e);
 
-        let use_cap_item = lambda(&&cap_item: @capture_item) {
+        let use_cap_item = fn@(&&cap_item: @capture_item) {
             let d = local_node_id_to_local_def_id(fcx, cap_item.id);
             option::may(d, { |id| use_var(fcx, id) });
         };

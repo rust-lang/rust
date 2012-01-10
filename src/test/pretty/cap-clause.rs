@@ -4,9 +4,9 @@ fn main() {
     let x = 1;
     let y = 2;
     let z = 3;
-    let l1 = lambda[copy x]() -> int { x + y };
-    let l2 = lambda[copy x; move y]() -> int { x + y };
-    let l3 = lambda[move z]() -> int { z };
+    let l1 = fn@[copy x]() -> int { x + y };
+    let l2 = fn@[copy x; move y]() -> int { x + y };
+    let l3 = fn@[move z]() -> int { z };
 
     let x = 1;
     let y = 2;

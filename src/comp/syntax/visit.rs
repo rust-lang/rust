@@ -19,7 +19,7 @@ tag fn_kind {
     fk_item_fn(ident, [ty_param]); //< an item declared with fn()
     fk_method(ident, [ty_param]);
     fk_res(ident, [ty_param]);
-    fk_anon(proto);  //< an anonymous function like lambda(...)
+    fk_anon(proto);  //< an anonymous function like fn@(...)
     fk_fn_block;     //< a block {||...}
 }
 

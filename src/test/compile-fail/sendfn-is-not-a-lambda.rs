@@ -1,6 +1,6 @@
-// error-pattern: mismatched types: expected `lambda(++uint) -> uint`
+// error-pattern: mismatched types: expected `fn@(++uint) -> uint`
 
-fn test(f: lambda(uint) -> uint) -> uint {
+fn test(f: fn@(uint) -> uint) -> uint {
     ret f(22u);
 }
 

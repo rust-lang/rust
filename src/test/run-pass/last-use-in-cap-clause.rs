@@ -1,9 +1,9 @@
 // Make sure #1399 stays fixed
 
-fn foo() -> lambda() -> int {
+fn foo() -> fn@() -> int {
     let k = ~22;
     let _u = {a: k};
-    ret lambda[move k]() -> int { 22 };
+    ret fn@[move k]() -> int { 22 };
 }
 
 fn main() {

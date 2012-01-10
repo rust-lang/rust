@@ -8,7 +8,7 @@ fn main() {
         macerate(*tasties);
     } (carrots, { |food|
         let mush = food + cheese;
-        lambda() {
+        let _ = fn@() {
             let chew = mush + cheese;
             fail "so yummy"
         } ();

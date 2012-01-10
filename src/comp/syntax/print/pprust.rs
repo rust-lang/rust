@@ -1685,8 +1685,7 @@ fn proto_to_str(p: ast::proto) -> str {
           ast::proto_bare. { "fn" }
           ast::proto_block. { "block" }
           ast::proto_send. { "sendfn" }
-          ast::proto_shared(ast::sugar_normal.) { "fn@" }
-          ast::proto_shared(ast::sugar_sexy.) { "lambda" }
+          ast::proto_shared. { "fn@" }
         };
 }
 

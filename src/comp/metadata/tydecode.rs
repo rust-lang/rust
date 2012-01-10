@@ -234,7 +234,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ret parse_ty_rust_fn(st, conv, ast::proto_send);
       }
       'F' {
-        ret parse_ty_rust_fn(st, conv, ast::proto_shared(ast::sugar_normal));
+        ret parse_ty_rust_fn(st, conv, ast::proto_shared);
       }
       'f' {
         ret parse_ty_rust_fn(st, conv, ast::proto_bare);

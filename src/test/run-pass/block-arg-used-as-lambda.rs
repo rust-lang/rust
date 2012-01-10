@@ -1,9 +1,9 @@
-fn to_lambda(f: lambda(uint) -> uint) -> lambda(uint) -> uint {
+fn to_lambda(f: fn@(uint) -> uint) -> fn@(uint) -> uint {
     ret f;
 }
 
 fn main() {
-    let x: lambda(uint) -> uint = to_lambda({ |x| x * 2u });
+    let x: fn@(uint) -> uint = to_lambda({ |x| x * 2u });
     let y = to_lambda(x);
 
     let x_r = x(22u);

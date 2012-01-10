@@ -1020,7 +1020,7 @@ pure fn kind_can_be_sent(k: kind) -> bool {
 fn proto_kind(p: proto) -> kind {
     alt p {
       ast::proto_block. { kind_noncopyable }
-      ast::proto_shared(_) { kind_copyable }
+      ast::proto_shared. { kind_copyable }
       ast::proto_send. { kind_sendable }
       ast::proto_bare. { kind_sendable }
     }
@@ -1563,7 +1563,7 @@ fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
       ty::ty_fn(f) { ret f.proto; }
       ty::ty_native_fn(_, _) {
         // FIXME: This should probably be proto_bare
-        ret ast::proto_shared(ast::sugar_normal);
+        ret ast::proto_shared;
       }
       _ { cx.sess.bug("ty_fn_proto() called on non-fn type"); }
     }
@@ -1947,8 +1947,7 @@ mod unify {
               (_, ast::proto_block.) { true }
               (ast::proto_bare., _) { true }
 
-              // Equal prototypes (modulo sugar) are always subprotos:
-              (ast::proto_shared(_), ast::proto_shared(_)) { true }
+              // Equal prototypes are always subprotos:
               (_, _) { p_sub == p_sup }
             };
         }

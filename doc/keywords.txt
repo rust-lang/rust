@@ -7,7 +7,7 @@ do
 else export
 f32 f64 fail false float fn for
 i16 i32 i64 i8 if import in int
-lambda let log
+let log
 mod mutable
 native note
 obj  

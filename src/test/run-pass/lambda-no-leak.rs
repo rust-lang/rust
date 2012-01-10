@@ -1,7 +1,7 @@
-// Make sure we don't leak lambdas in silly ways.
+// Make sure we don't leak fn@s in silly ways.
 fn force(f: fn@()) { f() }
 fn main() {
     let x = 7;
-    lambda () { log(error, x); };
-    force(lambda () { log(error, x); });
+    let _ = fn@ () { log(error, x); };
+    force(fn@ () { log(error, x); });
 }

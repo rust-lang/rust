@@ -553,7 +553,7 @@ fn ty_of_obj_ctor(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
         let t_field = ast_ty_to_ty(tcx, mode, f.ty);
         t_inputs += [{mode: ast::by_copy, ty: t_field}];
     }
-    let t_fn = ty::mk_fn(tcx, {proto: ast::proto_shared(ast::sugar_normal),
+    let t_fn = ty::mk_fn(tcx, {proto: ast::proto_shared,
                                inputs: t_inputs, output: t_obj.ty,
                                ret_style: ast::return_val, constraints: []});
     let tpt = {bounds: ty_param_bounds(tcx, mode, ty_params), ty: t_fn};
@@ -697,7 +697,7 @@ mod collect {
                 }
                 // FIXME: this will be different for constrained types
                 ty::mk_fn(cx.tcx,
-                          {proto: ast::proto_shared(ast::sugar_normal),
+                          {proto: ast::proto_shared,
                            inputs: args, output: tag_ty,
                            ret_style: ast::return_val, constraints: []})
             };
@@ -799,13 +799,13 @@ mod collect {
             let t_res = ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
                                    params);
             let t_ctor = ty::mk_fn(cx.tcx, {
-                proto: ast::proto_shared(ast::sugar_normal),
+                proto: ast::proto_shared,
                 inputs: [{mode: ast::by_copy with t_arg}],
                 output: t_res,
                 ret_style: ast::return_val, constraints: []
             });
             let t_dtor = ty::mk_fn(cx.tcx, {
-                proto: ast::proto_shared(ast::sugar_normal),
+                proto: ast::proto_shared,
                 inputs: [t_arg], output: ty::mk_nil(cx.tcx),
                 ret_style: ast::return_val, constraints: []
             });
@@ -1172,9 +1172,9 @@ fn gather_locals(ccx: @crate_ctxt,
         };
     let tcx = ccx.tcx;
 
-    let next_var_id = lambda () -> int { let rv = *nvi; *nvi += 1; ret rv; };
+    let next_var_id = fn@ () -> int { let rv = *nvi; *nvi += 1; ret rv; };
     let assign =
-        lambda (nid: ast::node_id, ty_opt: option::t<ty::t>) {
+        fn@ (nid: ast::node_id, ty_opt: option::t<ty::t>) {
             let var_id = next_var_id();
             locals.insert(nid, var_id);
             alt ty_opt {
@@ -1206,7 +1206,7 @@ fn gather_locals(ccx: @crate_ctxt,
 
     // Add explicitly-declared locals.
     let visit_local =
-        lambda (local: @ast::local, &&e: (), v: visit::vt<()>) {
+        fn@ (local: @ast::local, &&e: (), v: visit::vt<()>) {
             let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
             assign(local.node.id, local_ty);
             visit::visit_local(local, e, v);
@@ -1214,7 +1214,7 @@ fn gather_locals(ccx: @crate_ctxt,
 
     // Add pattern bindings.
     let visit_pat =
-        lambda (p: @ast::pat, &&e: (), v: visit::vt<()>) {
+        fn@ (p: @ast::pat, &&e: (), v: visit::vt<()>) {
             alt p.node {
               ast::pat_bind(_, _) { assign(p.id, none); }
               _ {/* no-op */ }
@@ -1726,7 +1726,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
         let check_args =
-            lambda (check_blocks: bool) -> bool {
+            fn@ (check_blocks: bool) -> bool {
                 let i = 0u;
                 let bot = false;
                 for a_opt: option::t<@ast::expr> in args {
@@ -2179,7 +2179,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         fn lower_bound_proto(proto: ast::proto) -> ast::proto {
             // FIXME: This is right for bare fns, possibly not others
             alt proto {
-              ast::proto_bare. { ast::proto_shared(ast::sugar_normal) }
+              ast::proto_bare. { ast::proto_shared }
               _ { proto }
             }
         }
@@ -2632,7 +2632,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     let fcx: @fn_ctxt =
         @{ret_ty: rty,
           purity: ast::pure_fn,
-          proto: ast::proto_shared(ast::sugar_normal),
+          proto: ast::proto_shared,
           var_bindings: ty::unify::mk_var_bindings(),
           locals: new_int_hash::<int>(),
           next_var_id: @mutable 0,
