@@ -17,7 +17,9 @@ fn main() {
 }
 
 fn test_color(color: color, val: int, name: str) unsafe {
-    assert unsafe::reinterpret_cast(color) == val;
+    //assert unsafe::reinterpret_cast(color) == val;
+    assert color as int == val;
+    assert color as float == val as float;
     assert get_color_alt(color) == name;
     assert get_color_if(color) == name;
 }
