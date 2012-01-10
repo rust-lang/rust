@@ -410,8 +410,8 @@ fn print_item(s: ps, &&item: @ast::item) {
                 vec::len(variants[0].node.args) == 1u;
         if newtype {
             ibox(s, indent_unit);
-            word_space(s, "tag");
-        } else { head(s, "tag"); }
+            word_space(s, "enum");
+        } else { head(s, "enum"); }
         word(s.s, item.ident);
         print_type_params(s, params);
         space(s.s);

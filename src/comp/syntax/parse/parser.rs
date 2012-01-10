@@ -170,7 +170,8 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
-                 "log", "tag", "obj", "copy", "sendfn", "impl", "iface"] {
+                 "log", "tag", "obj", "copy", "sendfn", "impl", "iface",
+                 "enum"] {
         words.insert(word, ());
     }
     words
@@ -2148,7 +2149,7 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
         ret some(parse_item_native_mod(p, attrs));
     } if eat_word(p, "type") {
         ret some(parse_item_type(p, attrs));
-    } else if eat_word(p, "tag") {
+    } else if eat_word(p, "tag") || eat_word(p, "enum") {
         ret some(parse_item_tag(p, attrs));
     } else if is_word(p, "obj") && p.look_ahead(1u) != token::LPAREN {
         p.bump();
