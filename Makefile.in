@@ -262,6 +262,7 @@ export CFG_HOST_TRIPLE
 export CFG_LLVM_ROOT
 export CFG_ENABLE_MINGW_CROSS
 export CFG_PREFIX
+export CFG_LIBDIR
 
 ######################################################################
 # Subprograms
@@ -279,12 +280,22 @@ define SREQ
 # Destinations of artifacts for the host compiler
 HROOT$(1)_H_$(3) = $(3)/stage$(1)
 HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
+# FIXME: Temporary hack for moving win32 libs to the bin directory
+ifeq ($(1),0)
 HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/lib
+else
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR)
+endif
 
 # Destinations of artifacts for target architectures
 TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustc/$(2)
 TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
+# FIXME: Temporary hack for moving win32 libs to the bin directory
+ifeq ($(1),0)
 TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/lib
+else
+TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/$$(CFG_LIBDIR)
+endif
 
 # The name of the core and standard libraries used by rustc
 ifdef CFG_DISABLE_SHAREDSTD
