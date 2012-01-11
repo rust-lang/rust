@@ -174,7 +174,7 @@ export type_is_tup_like;
 export type_is_str;
 export type_is_unique;
 export type_is_tag;
-export type_is_enum_like;
+export type_is_c_like_enum;
 export type_structurally_contains_uniques;
 export type_autoderef;
 export type_param;
@@ -1274,7 +1274,7 @@ fn type_is_tag(cx: ctxt, ty: t) -> bool {
 
 // Whether a type is enum like, that is a tag type with only nullary
 // constructors
-fn type_is_enum_like(cx: ctxt, ty: t) -> bool {
+fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
