@@ -483,7 +483,7 @@ fn create_index<T: copy>(index: [entry<T>], hash_fn: fn@(T) -> uint) ->
 
 fn encode_index<T>(ebml_w: ebml::writer, buckets: [@[entry<T>]],
                    write_fn: block(io::writer, T)) {
-    let writer = io::new_writer(ebml_w.writer);
+    let writer = ebml_w.writer;
     ebml::start_tag(ebml_w, tag_index);
     let bucket_locs: [uint] = [];
     ebml::start_tag(ebml_w, tag_index_buckets);

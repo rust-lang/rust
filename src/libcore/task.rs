@@ -116,7 +116,7 @@ Returns:
 
 A handle to the new task
 */
-fn spawn(+f: sendfn()) -> task {
+fn spawn(+f: fn~()) -> task {
     spawn_inner(f, none)
 }
 

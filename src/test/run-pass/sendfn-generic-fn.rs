@@ -23,7 +23,7 @@ fn test05_start(&&f: fn~(&&float, &&str) -> pair<float, str>) {
     assert q.b == "Ho";
 }
 
-fn spawn<A: copy, B: copy>(f: fn(fn~(A,B)->pair<A,B>)) {
+fn spawn<A: copy, B: copy>(f: native fn(fn~(A,B)->pair<A,B>)) {
     let arg = fn~(a: A, b: B) -> pair<A,B> {
         ret make_generic_record(a, b);
     };

@@ -1,2 +1,3 @@
-// error-pattern:wrong type in main function: found `fn() -> char`
-fn main() -> char { }
+fn main() -> char {
+//!^ ERROR wrong type in main function: found `native fn() -> char`
+}

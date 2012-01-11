@@ -313,24 +313,24 @@ type test_future<T> = {test: test_desc<T>, wait: fn@() -> test_result};
 fn run_test<T: copy>(test: test_desc<T>,
                     to_task: test_to_task<T>) -> test_future<T> {
     if test.ignore {
-        ret {test: test, wait: fn () -> test_result { tr_ignored }};
+        ret {test: test, wait: fn@() -> test_result { tr_ignored }};
     }
 
     let test_task = to_task(test.fn);
     ret {test: test,
-         wait:
-             bind fn (test_task: joinable, should_fail: bool) -> test_result {
-                  alt task::join(test_task) {
-                    task::tr_success. {
-                      if should_fail { tr_failed }
-                      else { tr_ok }
-                    }
-                    task::tr_failure. {
-                      if should_fail { tr_ok }
-                      else { tr_failed }
-                    }
-                  }
-              }(test_task, test.should_fail)};
+         wait: fn@() -> test_result {
+             alt task::join(test_task) {
+               task::tr_success. {
+                 if test.should_fail { tr_failed }
+                 else { tr_ok }
+               }
+               task::tr_failure. {
+                 if test.should_fail { tr_ok }
+                 else { tr_failed }
+               }
+             }
+         }
+        };
 }
 
 // We need to run our tests in another task in order to trap test failures.

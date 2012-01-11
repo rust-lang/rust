@@ -304,7 +304,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         pclose(s);
       }
       ast::ty_fn(proto, d) {
-        print_ty_fn(s, proto, d, none, none);
+        print_ty_fn(s, some(proto), d, none, none);
       }
       ast::ty_path(path, _) { print_path(s, path, false); }
       ast::ty_type. { word(s.s, "type"); }
@@ -485,7 +485,7 @@ fn print_ty_method(s: ps, m: ast::ty_method) {
     hardbreak_if_not_bol(s);
     cbox(s, indent_unit);
     maybe_print_comment(s, m.span.lo);
-    print_ty_fn(s, ast::proto_bare, m.decl, some(m.ident), some(m.tps));
+    print_ty_fn(s, none, m.decl, some(m.ident), some(m.tps));
     word(s.s, ";");
     end(s);
 }
@@ -1320,11 +1320,11 @@ fn print_mt(s: ps, mt: ast::mt) {
     print_type(s, mt.ty);
 }
 
-fn print_ty_fn(s: ps, proto: ast::proto,
+fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
                decl: ast::fn_decl, id: option::t<ast::ident>,
                tps: option::t<[ast::ty_param]>) {
     ibox(s, indent_unit);
-    word(s.s, proto_to_str(proto));
+    word(s.s, opt_proto_to_str(opt_proto));
     alt id { some(id) { word(s.s, " "); word(s.s, id); } _ { } }
     alt tps { some(tps) { print_type_params(s, tps); } _ { } }
     zerobreak(s.s);
@@ -1600,6 +1600,13 @@ fn ast_fn_constrs_str(decl: ast::fn_decl, constrs: [@ast::constr]) -> str {
         s += ast_fn_constr_to_str(decl, c);
     }
     ret s;
+}
+
+fn opt_proto_to_str(opt_p: option<ast::proto>) -> str {
+    alt opt_p {
+      none. { "fn" }
+      some(p) { proto_to_str(p) }
+    }
 }
 
 fn proto_to_str(p: ast::proto) -> str {
