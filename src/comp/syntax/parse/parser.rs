@@ -2117,7 +2117,7 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
                 // probably be doing."  (See issue #1417)
                 alt syntax::ast_util::eval_const_expr(e) {
                   syntax::ast_util::const_int(val) {
-                    // FIXME (#1417): check that value is in range
+                    // FIXME: check that value is in range
                     disr_val = val as int;
                   }
                 }
@@ -2148,7 +2148,7 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
     }
     let hi = p.get_hi_pos();
     if (have_disr && !all_nullary) {
-        p.fatal("discriminator values can only be used with enum-like tag");
+        p.fatal("discriminator values can only be used with a c-like enum");
     }
     p.bump();
     ret mk_item(p, lo, hi, id, ast::item_tag(variants, ty_params), attrs);

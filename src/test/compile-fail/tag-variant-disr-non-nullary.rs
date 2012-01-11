@@ -1,4 +1,4 @@
-//error-pattern: discriminator values can only be used with enum-like tag
+//error-pattern: discriminator values can only be used with a c-like enum
 // black and white have the same discriminator value ...
 
 tag color {

@@ -211,9 +211,9 @@ fn type_is_scalar(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
     ret ty::type_is_scalar(fcx.ccx.tcx, typ_s);
 }
 
-fn type_is_enum_like(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
+fn type_is_c_like_enum(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
-    ret ty::type_is_enum_like(fcx.ccx.tcx, typ_s);
+    ret ty::type_is_c_like_enum(fcx.ccx.tcx, typ_s);
 }
 
 // Parses the programmer's textual representation of a type into our internal
@@ -2216,7 +2216,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           ty::ty_iface(_, _) {}
           _ {
             let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
-            if type_is_enum_like(fcx,expr.span,t_e) && t_1_is_scalar {
+            if type_is_c_like_enum(fcx,expr.span,t_e) && t_1_is_scalar {
                 /* this case is allowed */
             } else if !(type_is_scalar(fcx,expr.span,t_e) && t_1_is_scalar) {
                 // FIXME there are more forms of cast to support, eventually.

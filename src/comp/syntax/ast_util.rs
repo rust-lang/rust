@@ -245,6 +245,8 @@ tag const_val {
     const_str(str);
 }
 
+// FIXME (#1417): any function that uses this function should likely be moved
+// into the middle end
 fn eval_const_expr(e: @expr) -> const_val {
     fn fromb(b: bool) -> const_val { const_int(b as i64) }
     alt e.node {

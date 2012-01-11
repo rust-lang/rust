@@ -473,9 +473,9 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     let (de, dv) = alt v.disr_expr {
       some(e) {
         let de = fld.fold_expr(e);
+        // FIXME (#1417): see parser.rs
         let dv = alt syntax::ast_util::eval_const_expr(e) {
           ast_util::const_int(val) {
-            // FIXME (#1417): check that value is in range
             val as int
           }
         };
