@@ -25,11 +25,11 @@ export mk_sha1;
 /* Section: Types */
 
 /*
-Obj: sha1
+Iface: sha1
 
-The SHA-1 object
+The SHA-1 interface
 */
-type sha1 = obj {
+iface sha1 {
     /*
     Method: input
 
@@ -62,7 +62,7 @@ type sha1 = obj {
     Reset the SHA-1 state for reuse
     */
     fn reset();
-};
+}
 
 /* Section: Operations */
 
@@ -248,39 +248,41 @@ fn mk_sha1() -> sha1 {
         st.msg_block[63] = st.len_low & 0xFFu32 as u8;
         process_msg_block(st);
     }
-    obj sha1(st: sha1state) {
+
+    impl of sha1 for sha1state {
         fn reset() {
             // FIXME: Should be typestate precondition
-            assert (vec::len(st.h) == digest_buf_len);
-            st.len_low = 0u32;
-            st.len_high = 0u32;
-            st.msg_block_idx = 0u;
-            st.h[0] = 0x67452301u32;
-            st.h[1] = 0xEFCDAB89u32;
-            st.h[2] = 0x98BADCFEu32;
-            st.h[3] = 0x10325476u32;
-            st.h[4] = 0xC3D2E1F0u32;
-            st.computed = false;
+            assert (vec::len(self.h) == digest_buf_len);
+            self.len_low = 0u32;
+            self.len_high = 0u32;
+            self.msg_block_idx = 0u;
+            self.h[0] = 0x67452301u32;
+            self.h[1] = 0xEFCDAB89u32;
+            self.h[2] = 0x98BADCFEu32;
+            self.h[3] = 0x10325476u32;
+            self.h[4] = 0xC3D2E1F0u32;
+            self.computed = false;
         }
-        fn input(msg: [u8]) { add_input(st, msg); }
-        fn input_str(msg: str) { add_input(st, str::bytes(msg)); }
-        fn result() -> [u8] { ret mk_result(st); }
+        fn input(msg: [u8]) { add_input(self, msg); }
+        fn input_str(msg: str) { add_input(self, str::bytes(msg)); }
+        fn result() -> [u8] { ret mk_result(self); }
         fn result_str() -> str {
-            let r = mk_result(st);
+            let r = mk_result(self);
             let s = "";
             for b: u8 in r { s += uint::to_str(b as uint, 16u); }
             ret s;
         }
     }
-    let st =
-        {h: vec::init_elt_mut::<u32>(0u32, digest_buf_len),
-         mutable len_low: 0u32,
-         mutable len_high: 0u32,
-         msg_block: vec::init_elt_mut::<u8>(0u8, msg_block_len),
-         mutable msg_block_idx: 0u,
-         mutable computed: false,
-         work_buf: vec::init_elt_mut::<u32>(0u32, work_buf_len)};
-    let sh = sha1(st);
+    let st = {
+        h: vec::init_elt_mut(0u32, digest_buf_len),
+        mutable len_low: 0u32,
+        mutable len_high: 0u32,
+        msg_block: vec::init_elt_mut(0u8, msg_block_len),
+        mutable msg_block_idx: 0u,
+        mutable computed: false,
+        work_buf: vec::init_elt_mut(0u32, work_buf_len)
+    };
+    let sh = st as sha1;
     sh.reset();
     ret sh;
 }

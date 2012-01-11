@@ -18,7 +18,7 @@ Obj: rng
 
 A random number generator
 */
-type rng = obj {
+iface rng {
     /*
     Method: next
 
@@ -46,7 +46,7 @@ type rng = obj {
     Return a random byte string.
     */
     fn gen_bytes(len: uint) -> [u8];
-};
+}
 
 resource rand_res(c: rustrt::rctx) { rustrt::rand_free(c); }
 
@@ -58,12 +58,12 @@ Function: mk_rng
 Create a random number generator
 */
 fn mk_rng() -> rng {
-    obj rt_rng(c: @rand_res) {
-        fn next() -> u32 { ret rustrt::rand_next(**c); }
+    impl of rng for @rand_res {
+        fn next() -> u32 { ret rustrt::rand_next(**self); }
         fn next_float() -> float {
-          let u1 = rustrt::rand_next(**c) as float;
-          let u2 = rustrt::rand_next(**c) as float;
-          let u3 = rustrt::rand_next(**c) as float;
+          let u1 = rustrt::rand_next(**self) as float;
+          let u2 = rustrt::rand_next(**self) as float;
+          let u3 = rustrt::rand_next(**self) as float;
           let scale = u32::max_value as float;
           ret ((u1 / scale + u2) / scale + u3) / scale;
         }
@@ -74,7 +74,7 @@ fn mk_rng() -> rng {
             let s = "";
             let i = 0u;
             while (i < len) {
-                let n = rustrt::rand_next(**c) as uint %
+                let n = rustrt::rand_next(**self) as uint %
                     str::char_len(charset);
                 s = s + str::from_char(str::char_at(charset, n));
                 i += 1u;
@@ -85,14 +85,14 @@ fn mk_rng() -> rng {
             let v = [];
             let i = 0u;
             while i < len {
-                let n = rustrt::rand_next(**c) as uint;
+                let n = rustrt::rand_next(**self) as uint;
                 v += [(n % (u8::max_value as uint)) as u8];
                 i += 1u;
             }
             v
         }
     }
-    ret rt_rng(@rand_res(rustrt::rand_new()));
+    @rand_res(rustrt::rand_new()) as rng
 }
 // Local Variables:
 // mode: rust;
