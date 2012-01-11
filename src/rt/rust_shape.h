@@ -363,7 +363,7 @@ public:
 template<typename T>
 void
 ctxt<T>::walk() {
-    switch (*sp++) {
+  switch (*sp++) {
     case SHAPE_U8:      WALK_NUMBER(uint8_t);   break;
     case SHAPE_U16:     WALK_NUMBER(uint16_t);  break;
     case SHAPE_U32:     WALK_NUMBER(uint32_t);  break;
@@ -823,7 +823,7 @@ protected:
     void walk_uniq_contents();
     void walk_fn_contents(ptr &dp);
     void walk_obj_contents(ptr &dp);
-    void walk_iface_value(ptr &dp);
+    void walk_iface_contents(ptr &dp);
     void walk_variant(tag_info &tinfo, tag_variant_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
@@ -870,7 +870,7 @@ public:
 
     void walk_iface() {
         ALIGN_TO(alignof<void *>());
-        U next_dp = dp + sizeof(void *) * 2;
+        U next_dp = dp + sizeof(void *);
         static_cast<T *>(this)->walk_iface();
         dp = next_dp;
     }
@@ -1003,14 +1003,21 @@ data<T,U>::walk_obj_contents(ptr &dp) {
 
 template<typename T,typename U>
 void
-data<T,U>::walk_iface_value(ptr &dp) {
-    opaque_iface *box_ptr = bump_dp<opaque_iface *>(dp);
+data<T,U>::walk_iface_contents(ptr &dp) {
+    uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
     if (!box_ptr) return;
-    const type_desc *contents_td = box_ptr->contents.td;
-    ptr contents_dp((uintptr_t)&box_ptr->contents);
-    T sub(*static_cast<T *>(this), contents_td->shape, NULL, NULL, contents_dp);
+    U ref_count_dp(box_ptr);
+    uint8_t *body_ptr = box_ptr + sizeof(void*);
+    type_desc *valtydesc =
+        *reinterpret_cast<type_desc **>(body_ptr);
+    ptr value_dp(body_ptr + sizeof(void*) * 2);
+    // FIXME The 5 is a hard-coded way to skip over a struct shape
+    // header and the first two (number-typed) fields. This is too
+    // fragile, but I didn't see a good way to properly encode it.
+    T sub(*static_cast<T *>(this), valtydesc->shape + 5, NULL, NULL,
+          value_dp);
     sub.align = true;
-    sub.walk();
+    static_cast<T *>(this)->walk_box_contents(sub, ref_count_dp);
 }
 
 // Polymorphic logging, for convenience
@@ -1099,7 +1106,7 @@ private:
     void walk_iface() {
         out << prefix << "iface(";
         prefix = "";
-        data<log,ptr>::walk_iface_value(dp);
+        data<log,ptr>::walk_iface_contents(dp);
         out << prefix << ")";
     }
 

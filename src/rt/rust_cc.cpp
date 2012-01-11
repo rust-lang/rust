@@ -111,8 +111,7 @@ class irc : public shape::data<irc,shape::ptr> {
     }
 
     void walk_iface() {
-        // an iface is always a ptr to a ref-counted obj.
-        shape::data<irc,shape::ptr>::walk_box_contents();
+        shape::data<irc,shape::ptr>::walk_iface_contents(dp);
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,
@@ -503,7 +502,7 @@ class sweep : public shape::data<sweep,shape::ptr> {
     }
 
     void walk_iface() {
-        shape::data<sweep,shape::ptr>::walk_box_contents();
+        shape::data<sweep,shape::ptr>::walk_iface_contents(dp);
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,

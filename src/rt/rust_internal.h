@@ -260,23 +260,6 @@ struct rust_opaque_closure;
 //   no arguments (and hence the final void*) is harmless
 typedef void (*CDECL spawn_fn)(void*, rust_opaque_closure*, void *);
 
-// corresponds to the layout of an iface value
-//
-// Note: eventually, we should inline the contents of opaque_iface_contents
-// into opaque_iface in the LLVM code.  Otherwise, the alignment of
-// opaque_iface_contents depends on the opaque data!
-
-struct opaque_iface_contents {
-    const type_desc *td; // describes opaque_iface_contents
-    const void *vtable;
-    // (opaque data goes here)
-};
-
-struct opaque_iface {
-    intptr_t ref_count;
-    opaque_iface_contents contents;
-};
-
 // corresponds to the layout of a fn(), fn@(), fn~() etc
 struct fn_env_pair {
     spawn_fn f;
