@@ -1,3 +1,5 @@
+import option::{some, none};
+
 /*
 Module: deque
 
@@ -5,9 +7,9 @@ A deque.  Untested as of yet.  Likely buggy.
 */
 
 /*
-Object: t
+Iface: t
 */
-type t<T> = obj {
+iface t<T> {
     // Method: size
     fn size() -> uint;
     // Method: add_front
@@ -24,7 +26,7 @@ type t<T> = obj {
     fn peek_back() -> T;
     // Method: get
     fn get(int) -> T;
-    };
+}
 
 /*
 Section: Functions
@@ -33,6 +35,8 @@ Section: Functions
 /*
 Function: create
 */
+// FIXME eventually, a proper datatype plus an exported impl would be
+// preferrable
 fn create<T: copy>() -> t<T> {
     type cell<T> = option::t<T>;
 
@@ -51,79 +55,79 @@ fn create<T: copy>() -> t<T> {
         while i < nalloc {
             if i < nelts {
                 rv += [mutable elts[(lo + i) % nelts]];
-            } else { rv += [mutable option::none]; }
+            } else { rv += [mutable none]; }
             i += 1u;
         }
 
         ret rv;
     }
     fn get<T: copy>(elts: [mutable cell<T>], i: uint) -> T {
-        ret alt elts[i] { option::some(t) { t } _ { fail } };
+        ret alt elts[i] { some(t) { t } _ { fail } };
     }
-    obj deque<T: copy>(mutable nelts: uint,
-                      mutable lo: uint,
-                      mutable hi: uint,
-                      mutable elts: [mutable cell<T>]) {
-        fn size() -> uint { ret nelts; }
+
+    type repr<T> = {mutable nelts: uint,
+                    mutable lo: uint,
+                    mutable hi: uint,
+                    mutable elts: [mutable cell<T>]};
+
+    impl <T: copy> of t<T> for repr<T> {
+        fn size() -> uint { ret self.nelts; }
         fn add_front(t: T) {
-            let oldlo: uint = lo;
-            if lo == 0u {
-                lo = vec::len::<cell<T>>(elts) - 1u;
-            } else { lo -= 1u; }
-            if lo == hi {
-                elts = grow::<T>(nelts, oldlo, elts);
-                lo = vec::len::<cell<T>>(elts) - 1u;
-                hi = nelts;
+            let oldlo: uint = self.lo;
+            if self.lo == 0u {
+                self.lo = vec::len(self.elts) - 1u;
+            } else { self.lo -= 1u; }
+            if self.lo == self.hi {
+                self.elts = grow(self.nelts, oldlo, self.elts);
+                self.lo = vec::len(self.elts) - 1u;
+                self.hi = self.nelts;
             }
-            elts[lo] = option::some::<T>(t);
-            nelts += 1u;
+            self.elts[self.lo] = some(t);
+            self.nelts += 1u;
         }
         fn add_back(t: T) {
-            if lo == hi && nelts != 0u {
-                elts = grow::<T>(nelts, lo, elts);
-                lo = 0u;
-                hi = nelts;
+            if self.lo == self.hi && self.nelts != 0u {
+                self.elts = grow(self.nelts, self.lo, self.elts);
+                self.lo = 0u;
+                self.hi = self.nelts;
             }
-            elts[hi] = option::some::<T>(t);
-            hi = (hi + 1u) % vec::len::<cell<T>>(elts);
-            nelts += 1u;
+            self.elts[self.hi] = some(t);
+            self.hi = (self.hi + 1u) % vec::len(self.elts);
+            self.nelts += 1u;
         }
-
         /**
          * We actually release (turn to none()) the T we're popping so
          * that we don't keep anyone's refcount up unexpectedly.
          */
         fn pop_front() -> T {
-            let t: T = get::<T>(elts, lo);
-            elts[lo] = option::none::<T>;
-            lo = (lo + 1u) % vec::len::<cell<T>>(elts);
-            nelts -= 1u;
+            let t: T = get(self.elts, self.lo);
+            self.elts[self.lo] = none;
+            self.lo = (self.lo + 1u) % vec::len(self.elts);
+            self.nelts -= 1u;
             ret t;
         }
         fn pop_back() -> T {
-            if hi == 0u {
-                hi = vec::len::<cell<T>>(elts) - 1u;
-            } else { hi -= 1u; }
-            let t: T = get::<T>(elts, hi);
-            elts[hi] = option::none::<T>;
-            nelts -= 1u;
+            if self.hi == 0u {
+                self.hi = vec::len(self.elts) - 1u;
+            } else { self.hi -= 1u; }
+            let t: T = get(self.elts, self.hi);
+            self.elts[self.hi] = none;
+            self.nelts -= 1u;
             ret t;
         }
-        fn peek_front() -> T { ret get::<T>(elts, lo); }
-        fn peek_back() -> T { ret get::<T>(elts, hi - 1u); }
+        fn peek_front() -> T { ret get(self.elts, self.lo); }
+        fn peek_back() -> T { ret get(self.elts, self.hi - 1u); }
         fn get(i: int) -> T {
-            let idx: uint = (lo + (i as uint)) % vec::len::<cell<T>>(elts);
-            ret get::<T>(elts, idx);
+            let idx = (self.lo + (i as uint)) % vec::len(self.elts);
+            ret get(self.elts, idx);
         }
     }
-    let v: [mutable cell<T>] =
-        vec::init_elt_mut(option::none, initial_capacity);
-    ret deque::<T>(0u, 0u, 0u, v);
+
+    let repr: repr<T> = {
+        mutable nelts: 0u,
+        mutable lo: 0u,
+        mutable hi: 0u,
+        mutable elts: vec::init_elt_mut(none, initial_capacity)
+    };
+    repr as t::<T>
 }
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
