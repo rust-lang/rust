@@ -16,6 +16,7 @@ export pick_file;
 export search;
 export relative_target_lib_path;
 export get_cargo_root;
+export libdir;
 
 type pick<T> = block(path: fs::path) -> option::t<T>;
 
@@ -80,7 +81,7 @@ fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option::t<T> {
 }
 
 fn relative_target_lib_path(target_triple: str) -> [fs::path] {
-    ["lib", "rustc", target_triple, "lib"]
+    [libdir(), "rustc", target_triple, libdir()]
 }
 
 fn make_target_lib_path(sysroot: fs::path,
@@ -121,6 +122,16 @@ fn get_cargo_root() -> result::t<fs::path, str> {
 
 fn get_cargo_lib_path() -> result::t<fs::path, str> {
     result::chain(get_cargo_root()) { |p|
-        result::ok(fs::connect(p, "lib"))
+        result::ok(fs::connect(p, libdir()))
     }
+}
+
+// The name of the directory rustc expects libraries to be located.
+// On Unix should be "lib", on windows "bin"
+fn libdir() -> str {
+   let libdir = #env("CFG_LIBDIR");
+   if str::is_empty(libdir) {
+      fail "rustc compiled without CFG_LIBDIR environment variable";
+   }
+   libdir
 }
