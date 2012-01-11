@@ -110,6 +110,11 @@ class irc : public shape::data<irc,shape::ptr> {
         maybe_record_irc(ref_count_dp);
     }
 
+    void walk_iface() {
+        // an iface is always a ptr to a ref-counted obj.
+        shape::data<irc,shape::ptr>::walk_box_contents();
+    }
+
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,
                   const shape::type_param *params, const uint8_t *end_sp,
                   bool live) {
@@ -495,6 +500,10 @@ class sweep : public shape::data<sweep,shape::ptr> {
 
     void walk_obj() {
         return;
+    }
+
+    void walk_iface() {
+        shape::data<sweep,shape::ptr>::walk_box_contents();
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,

@@ -868,7 +868,12 @@ public:
         dp = next_dp;
     }
 
-    void walk_iface() { DATA_SIMPLE(void *, walk_iface()); }
+    void walk_iface() {
+        ALIGN_TO(alignof<void *>());
+        U next_dp = dp + sizeof(void *) * 2;
+        static_cast<T *>(this)->walk_iface();
+        dp = next_dp;
+    }
 
     void walk_res(const rust_fn *dtor, unsigned n_params,
                   const type_param *params, const uint8_t *end_sp) {
@@ -999,17 +1004,11 @@ data<T,U>::walk_obj_contents(ptr &dp) {
 template<typename T,typename U>
 void
 data<T,U>::walk_iface_value(ptr &dp) {
-    uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
+    opaque_iface *box_ptr = bump_dp<opaque_iface *>(dp);
     if (!box_ptr) return;
-    uint8_t *body_ptr = box_ptr + sizeof(void*);
-    type_desc *valtydesc =
-        *reinterpret_cast<type_desc **>(body_ptr);
-    ptr value_dp(body_ptr + sizeof(void*) * 2);
-    // FIXME The 5 is a hard-coded way to skip over a struct shape
-    // header and the first two (number-typed) fields. This is too
-    // fragile, but I didn't see a good way to properly encode it.
-    T sub(*static_cast<T *>(this), valtydesc->shape + 5, NULL, NULL,
-          value_dp);
+    const type_desc *contents_td = box_ptr->contents.td;
+    ptr contents_dp((uintptr_t)&box_ptr->contents);
+    T sub(*static_cast<T *>(this), contents_td->shape, NULL, NULL, contents_dp);
     sub.align = true;
     sub.walk();
 }
