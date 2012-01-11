@@ -122,12 +122,6 @@ VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
 }
 
 static void
-free_stk(rust_task *task, stk_seg *stk) {
-    LOGPTR(task->sched, "freeing stk segment", (uintptr_t)stk);
-    task->free(stk);
-}
-
-static void
 add_stack_canary(stk_seg *stk) {
     memcpy(stk->data, stack_canary, sizeof(stack_canary));
     assert(sizeof(stack_canary) == 16 && "Stack canary was not the expected size");
@@ -137,6 +131,21 @@ static void
 check_stack_canary(stk_seg *stk) {
     assert(!memcmp(stk->data, stack_canary, sizeof(stack_canary))
       && "Somebody killed the canary");
+}
+
+// The amount of stack in a segment available to Rust code
+static size_t
+user_stack_size(stk_seg *stk) {
+    return (size_t)(stk->end
+                    - (uintptr_t)&stk->data[0]
+                    - RED_ZONE_SIZE);
+}
+
+static void
+free_stk(rust_task *task, stk_seg *stk) {
+    LOGPTR(task->sched, "freeing stk segment", (uintptr_t)stk);
+    task->total_stack_sz -= user_stack_size(stk);
+    task->free(stk);
 }
 
 static stk_seg*
@@ -152,9 +161,7 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
 
     // Try to reuse an existing stack segment
     if (task->stk != NULL && task->stk->prev != NULL) {
-        size_t prev_sz = (size_t)(task->stk->prev->end
-                                  - (uintptr_t)&task->stk->prev->data[0]
-                                  - RED_ZONE_SIZE);
+        size_t prev_sz = user_stack_size(task->stk->prev);
         if (min_sz <= prev_sz && requested_sz <= prev_sz) {
             LOG(task, mem, "reusing existing stack");
             task->stk = task->stk->prev;
@@ -171,13 +178,16 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
     // The size of the current stack segment, excluding red zone
     size_t current_sz = 0;
     if (task->stk != NULL) {
-        current_sz = (size_t)(task->stk->end
-                              - (uintptr_t)&task->stk->data[0]
-                              - RED_ZONE_SIZE);
+        current_sz = user_stack_size(task->stk);
     }
     // The calculated size of the new stack, excluding red zone
     size_t rust_stk_sz = get_next_stk_size(sched, task, min_sz,
                                            current_sz, requested_sz);
+
+    if (task->total_stack_sz + rust_stk_sz > sched->env->max_stack_size) {
+        LOG_ERR(task, task, "task %" PRIxPTR " ran out of stack", task);
+        task->fail();
+    }
 
     size_t sz = sizeof(stk_seg) + rust_stk_sz + RED_ZONE_SIZE;
     stk_seg *stk = (stk_seg *)task->malloc(sz, "stack");
@@ -191,6 +201,7 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
 
     task->stk = stk;
     config_valgrind_stack(task->stk);
+    task->total_stack_sz += user_stack_size(stk);
     return stk;
 }
 
@@ -222,6 +233,7 @@ del_stk(rust_task *task, stk_seg *stk)
     unconfig_valgrind_stack(stk);
     if (delete_stack) {
         free_stk(task, stk);
+        A(task->sched, task->total_stack_sz == 0, "Stack size should be 0");
     }
 }
 
@@ -249,7 +261,8 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     killed(false),
     propagate_failure(true),
     dynastack(this),
-    cc_counter(0)
+    cc_counter(0),
+    total_stack_sz(0)
 {
     LOGPTR(sched, "new task", (uintptr_t)this);
     DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);

@@ -126,6 +126,9 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     debug::task_debug_info debug;
 
+    // The amount of stack we're using, excluding red zones
+    size_t total_stack_sz;
+
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_scheduler *sched,
               rust_task_list *state,

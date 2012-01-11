@@ -10,5 +10,5 @@ fn getbig(i: int) -> int {
 }
 
 fn main() {
-    getbig(100000);
+    getbig(10000);
 }

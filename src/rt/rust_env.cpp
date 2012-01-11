@@ -8,6 +8,7 @@
 // The environment variables that the runtime knows about
 #define RUST_THREADS "RUST_THREADS"
 #define RUST_MIN_STACK "RUST_MIN_STACK"
+#define RUST_MAX_STACK "RUST_MAX_STACK"
 #define RUST_LOG "RUST_LOG"
 #define CHECK_CLAIMS "CHECK_CLAIMS"
 #define DETAILED_LEAKS "DETAILED_LEAKS"
@@ -69,12 +70,23 @@ get_num_threads()
 
 static size_t
 get_min_stk_size() {
-    char *stack_size = getenv(RUST_MIN_STACK);
-    if(stack_size) {
-        return strtol(stack_size, NULL, 0);
+    char *minsz = getenv(RUST_MIN_STACK);
+    if(minsz) {
+        return strtol(minsz, NULL, 0);
     }
     else {
         return 0x300;
+    }
+}
+
+static size_t
+get_max_stk_size() {
+    char *maxsz = getenv(RUST_MAX_STACK);
+    if (maxsz) {
+	return strtol(maxsz, NULL, 0);
+    }
+    else {
+	return 1024*1024*8;
     }
 }
 
@@ -99,6 +111,7 @@ load_env() {
 
     env->num_sched_threads = (size_t)get_num_threads();
     env->min_stack_size = get_min_stk_size();
+    env->max_stack_size = get_max_stk_size();
     env->logspec = copyenv(RUST_LOG);
     env->check_claims = getenv(CHECK_CLAIMS) != NULL;
     env->detailed_leaks = getenv(DETAILED_LEAKS) != NULL;
