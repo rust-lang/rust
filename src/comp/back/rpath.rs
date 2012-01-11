@@ -191,7 +191,6 @@ fn minimize_rpaths(rpaths: [str]) -> [str] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-#[cfg(test)]
 mod test {
     #[test]
     fn test_rpaths_to_flags() {
