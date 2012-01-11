@@ -1,6 +1,6 @@
 // pp-exact
 
-tag foo {
+enum foo {
     foo; // a foo.
     bar;
 }
