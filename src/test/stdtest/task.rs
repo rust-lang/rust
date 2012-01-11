@@ -57,22 +57,3 @@ fn spawn_polymorphic() {
     task::spawn {|| foo(true);};
     task::spawn {|| foo(42);};
 }
-
-#[test]
-fn spawn_connected_stringifier() {
-    fn stringifer(p: comm::port<uint>, ch: comm::chan<str>) {
-        let u = 1u;
-        while u != 0u {
-            u = comm::recv(p);
-            comm::send(ch, uint::to_str(u, 10u));
-        }
-    }
-
-    let ch = task::spawn_connected(stringifer);
-    comm::send(ch.to_child, 22u);
-    assert "22" == comm::recv(ch.from_child);
-    comm::send(ch.to_child, 44u);
-    assert "44" == comm::recv(ch.from_child);
-    comm::send(ch.to_child, 0u);
-    assert "0" == comm::recv(ch.from_child);
-}

@@ -74,3 +74,52 @@ to arrive on the port:
     some_other_expensive_computation();
     let result = comm::recv(port);
 
+## Creating a task with a bi-directional communication path
+
+A very common thing to do is to spawn a child task where the parent
+and child both need to exchange messages with each other.  The
+function `task::spawn_connected()` supports this pattern.  We'll look
+briefly at how it is used.
+
+To see how `spawn_connected()` works, we will create a child task
+which receives `uint` messages, converts them to a string, and sends
+the string in response.  The child terminates when `0` is received.
+Here is the function which implements the child task:
+
+    fn stringifier(from_par: comm::port<uint>,
+                   to_par: comm::chan<str>) {
+        let value: uint;
+        do {
+            value = comm::recv(from_par);
+            comm::send(to_par, uint::to_str(value, 10u));
+        } while value != 0u;
+    }
+    
+You can see that the function takes two parameters.  The first is a
+port used to receive messages from the parent, and the second is a
+channel used to send messages to the parent.  The body itself simply
+loops, reading from the `from_par` port and then sending its response
+to the `to_par` channel.  The actual response itself is simply the
+strified version of the received value, `uint::to_str(value)`.
+
+Here is the code for the parent task:
+    
+    fn main() {
+        let t = task::spawn_connected(stringifier);
+        comm::send(t.to_child, 22u);
+        assert comm::recv(t.from_child) == "22";
+        comm::send(t.to_child, 23u);
+        assert comm::recv(t.from_child) == "23";
+        comm::send(t.to_child, 0u);
+        assert comm::recv(t.from_child) == "0";
+    }
+
+The call to `spawn_connected()` on the first line will instantiate the
+various ports and channels and startup the child task.  The returned
+value, `t`, is a record of type `task::connected_task<uint,str>`.  In
+addition to the task id of the child, this record defines two fields,
+`from_child` and `to_child`, which contain the port and channel
+respectively for communicating with the child.  Those fields are used
+here to send and receive three messages from the child task.
+
+
