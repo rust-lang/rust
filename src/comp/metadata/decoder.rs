@@ -273,13 +273,13 @@ fn get_tag_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     ret infos;
 }
 
-fn item_impl_methods(data: @[u8], item: ebml::doc, base_tps: uint)
+fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     -> [@middle::resolve::method_info] {
     let rslt = [];
     ebml::tagged_docs(item, tag_item_method) {|doc|
         let m_did = parse_def_id(ebml::doc_data(doc));
-        let mth_item = lookup_item(m_did.node, data);
-        rslt += [@{did: m_did,
+        let mth_item = lookup_item(m_did.node, cdata.data);
+        rslt += [@{did: translate_def_id(cdata, m_did),
                    n_tps: item_ty_param_count(mth_item) - base_tps,
                    ident: item_name(mth_item)}];
     }
@@ -298,7 +298,7 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
             let base_tps = item_ty_param_count(doc);
             let i_did = item_impl_iface_did(item, cdata);
             result += [@{did: did, iface_did: i_did, ident: nm,
-                         methods: item_impl_methods(data, doc, base_tps)}];
+                         methods: item_impl_methods(cdata, item, base_tps)}];
         }
     }
     @result

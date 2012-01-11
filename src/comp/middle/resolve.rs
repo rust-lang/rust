@@ -1922,19 +1922,22 @@ fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
             cached = if defid.crate == ast::local_crate {
                 let tmp = [];
                 for i in option::get(e.mod_map.get(defid.node).m).items {
-                    find_impls_in_item(e, i, tmp, name, none);
+                    find_impls_in_item(e, i, tmp, none, none);
                 }
                 @tmp
             } else {
-                csearch::get_impls_for_mod(e.sess.get_cstore(), defid, name)
+                csearch::get_impls_for_mod(e.sess.get_cstore(), defid, none)
             };
             e.impl_cache.insert(defid, cached);
           }
         }
-        for im in *cached {
-            if alt name { some(n) { n == im.ident } _ { true } } {
-                impls += [im];
+        alt name {
+          some(n) {
+            for im in *cached {
+                if n == im.ident { impls += [im]; }
             }
+          }
+          _ { impls += *cached; }
         }
       }
       _ {}
