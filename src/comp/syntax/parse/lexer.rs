@@ -1,6 +1,7 @@
 
 import core::{vec, str, option, either};
 import std::io;
+import io::reader_util;
 import option::{some, none};
 import util::interner;
 import util::interner::intern;

@@ -4,16 +4,12 @@
 // child process. Because of that we have to use a complicated scheme with a
 // dedicated server for spawning processes.
 
-import core::comm;
-import core::option;
-import task;
 import std::generic_os::setenv;
 import std::generic_os::getenv;
-import vec;
 import std::os;
 import std::run;
 import std::io;
-import str;
+import io::writer_util;
 import comm::chan;
 import comm::port;
 import comm::send;
@@ -75,7 +71,7 @@ fn run(handle: handle, lib_path: str, prog: str, args: [str],
 
 fn writeclose(fd: fd_t, s: option::t<str>) {
     if option::is_some(s) {
-        let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
+        let writer = io::fd_writer(fd, false);
         writer.write_str(option::get(s));
     }
 
@@ -85,7 +81,7 @@ fn writeclose(fd: fd_t, s: option::t<str>) {
 fn readclose(fd: fd_t) -> str {
     // Copied from run::program_output
     let file = os::fd_FILE(fd);
-    let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
+    let reader = io::FILE_reader(file, false);
     let buf = "";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);

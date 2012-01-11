@@ -3,6 +3,7 @@ import core::*;
 // -*- rust -*-
 use std;
 import std::io;
+import io::{writer_util, reader_util};
 import str;
 import result;
 
@@ -82,8 +83,8 @@ fn file_reader_not_exist() {
 }
 
 #[test]
-fn file_buf_writer_bad_name() {
-    alt io::file_buf_writer("?/?", []) {
+fn file_writer_bad_name() {
+    alt io::file_writer("?/?", []) {
       result::err(e) {
         assert e == "error opening ?/?";
       }
@@ -92,8 +93,8 @@ fn file_buf_writer_bad_name() {
 }
 
 #[test]
-fn buffered_file_buf_writer_bad_name() {
-    alt io::buffered_file_buf_writer("?/?") {
+fn buffered_file_writer_bad_name() {
+    alt io::buffered_file_writer("?/?") {
       result::err(e) {
         assert e == "error opening ?/?";
       }

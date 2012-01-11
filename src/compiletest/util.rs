@@ -36,5 +36,5 @@ fn path_div() -> str { ";" }
 
 fn logv(config: config, s: str) {
     log(debug, s);
-    if config.verbose { io::stdout().write_line(s); }
+    if config.verbose { io::println(s); }
 }

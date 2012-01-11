@@ -44,7 +44,7 @@ fn test() {
     }
 }
 
-// Regression test for #705
+// Regression test for #750
 #[test]
 fn test_simple() {
     let names = [mutable 2, 1, 3];

@@ -11,20 +11,11 @@
 use std;
 
 import option = option::t;
-import option::some;
-import option::none;
-import str;
-import std::map;
-import vec;
-import std::io;
+import option::{some, none};
+import std::{map, io, time};
+import io::reader_util;
 
-import std::time;
-import u64;
-import result;
-
-import task;
 import task::joinable_task;
-import comm;
 import comm::chan;
 import comm::port;
 import comm::recv;
@@ -209,7 +200,6 @@ fn read_word(r: io::reader) -> option<str> {
 
     while !r.eof() {
         let c = r.read_char();
-
 
         if is_word_char(c) {
             w += str::from_char(c);

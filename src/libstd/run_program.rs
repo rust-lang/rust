@@ -197,15 +197,9 @@ fn start_program(prog: str, args: [str]) -> program {
 
     impl of program for prog_res {
         fn get_id() -> pid_t { ret self.pid; }
-        fn input() -> io::writer {
-            ret io::new_writer(io::fd_buf_writer(self.in_fd, none));
-        }
-        fn output() -> io::reader {
-            ret io::new_reader(io::FILE_buf_reader(self.out_file, none));
-        }
-        fn err() -> io::reader {
-            ret io::new_reader(io::FILE_buf_reader(self.err_file, none));
-        }
+        fn input() -> io::writer { io::fd_writer(self.in_fd, false) }
+        fn output() -> io::reader { io::FILE_reader(self.out_file, false) }
+        fn err() -> io::reader { io::FILE_reader(self.err_file, false) }
         fn close_input() { close_repr_input(*self); }
         fn finish() -> int { finish_repr(*self) }
         fn destroy() { destroy_repr(*self); }

@@ -12,16 +12,9 @@
 
 use std;
 
-import vec;
-import uint;
-import std::time;
-import str;
+import std::{time, io, getopts};
+import io::writer_util;
 import int::range;
-import std::io;
-import std::getopts;
-import task;
-import u64;
-import comm;
 import comm::port;
 import comm::chan;
 import comm::send;

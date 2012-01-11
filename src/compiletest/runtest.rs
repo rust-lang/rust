@@ -1,10 +1,7 @@
 import std::io;
-import str;
-import option;
+import io::writer_util;
 import std::fs;
 import std::os;
-import vec;
-import result;
 
 import common::mode_run_pass;
 import common::mode_run_fail;

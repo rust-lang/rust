@@ -1,11 +1,7 @@
 use std;
 
-import std::io;
-import str;
-import uint;
-import u8;
-import vec;
-import std::bitv;
+import std::{io, bitv};
+import io::{writer_util, reader_util};
 
 // Computes a single solution to a given 9x9 sudoku
 //

@@ -93,25 +93,23 @@ fn path_to_str(&&p: @ast::path) -> str {
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
               params: [ast::ty_param]) -> str {
-    let writer = io::string_writer();
-    let s = rust_printer(writer.get_writer());
+    let buffer = io::mk_mem_buffer();
+    let s = rust_printer(io::mem_buffer_writer(buffer));
     print_fn(s, decl, name, params);
     eof(s.s);
-    ret writer.get_str();
+    io::mem_buffer_str(buffer)
 }
 
 fn block_to_str(blk: ast::blk) -> str {
-    let writer = io::string_writer();
-    let s = rust_printer(writer.get_writer());
+    let buffer = io::mk_mem_buffer();
+    let s = rust_printer(io::mem_buffer_writer(buffer));
     // containing cbox, will be closed by print-block at }
-
     cbox(s, indent_unit);
     // head-ibox, will be closed by print-block after {
-
     ibox(s, 0u);
     print_block(s, blk);
     eof(s.s);
-    ret writer.get_str();
+    io::mem_buffer_str(buffer)
 }
 
 fn meta_item_to_str(mi: ast::meta_item) -> str {
@@ -1597,11 +1595,11 @@ fn escape_str(st: str, to_escape: char) -> str {
 }
 
 fn to_str<T>(t: T, f: fn@(ps, T)) -> str {
-    let writer = io::string_writer();
-    let s = rust_printer(writer.get_writer());
+    let buffer = io::mk_mem_buffer();
+    let s = rust_printer(io::mem_buffer_writer(buffer));
     f(s, t);
     eof(s.s);
-    ret writer.get_str();
+    io::mem_buffer_str(buffer)
 }
 
 fn next_comment(s: ps) -> option::t<lexer::cmnt> {

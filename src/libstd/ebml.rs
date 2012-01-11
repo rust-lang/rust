@@ -116,9 +116,9 @@ fn doc_as_uint(d: doc) -> uint {
 
 
 // ebml writing
-type writer = {writer: io::buf_writer, mutable size_positions: [uint]};
+type writer = {writer: io::writer, mutable size_positions: [uint]};
 
-fn write_sized_vint(w: io::buf_writer, n: uint, size: uint) {
+fn write_sized_vint(w: io::writer, n: uint, size: uint) {
     let buf: [u8];
     alt size {
       1u { buf = [0x80u8 | (n as u8)]; }
@@ -138,7 +138,7 @@ fn write_sized_vint(w: io::buf_writer, n: uint, size: uint) {
     w.write(buf);
 }
 
-fn write_vint(w: io::buf_writer, n: uint) {
+fn write_vint(w: io::writer, n: uint) {
     if n < 0x7fu { write_sized_vint(w, n, 1u); ret; }
     if n < 0x4000u { write_sized_vint(w, n, 2u); ret; }
     if n < 0x200000u { write_sized_vint(w, n, 3u); ret; }
@@ -147,7 +147,7 @@ fn write_vint(w: io::buf_writer, n: uint) {
     fail;
 }
 
-fn create_writer(w: io::buf_writer) -> writer {
+fn create_writer(w: io::writer) -> writer {
     let size_positions: [uint] = [];
     ret {writer: w, mutable size_positions: size_positions};
 }

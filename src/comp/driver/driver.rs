@@ -1,5 +1,4 @@
 
-
 // -*- rust -*-
 import metadata::{creader, cstore};
 import syntax::parse::{parser};
@@ -13,6 +12,7 @@ import back::link;
 import core::{option, str, int, result};
 import result::{ok, err};
 import std::{fs, io, getopts};
+import io::reader_util;
 import option::{some, none};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
@@ -84,7 +84,7 @@ fn parse_input(sess: session::session, cfg: ast::crate_cfg, input: str) ->
 
 fn parse_input_src(sess: session::session, cfg: ast::crate_cfg, infile: str)
    -> {crate: @ast::crate, src: str} {
-    let srcbytes = if infile != "-" {
+    let src_stream = if infile != "-" {
         alt io::file_reader(infile) {
           result::ok(reader) { reader }
           result::err(e) {
@@ -93,7 +93,8 @@ fn parse_input_src(sess: session::session, cfg: ast::crate_cfg, infile: str)
         }
     } else {
         io::stdin()
-    }.read_whole_stream();
+    };
+    let srcbytes = src_stream.read_whole_stream();
     let src = str::unsafe_from_bytes(srcbytes);
     let crate =
         parser::parse_crate_from_source_str(infile, src, cfg,

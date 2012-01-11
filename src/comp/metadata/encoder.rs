@@ -1,7 +1,7 @@
 // Metadata encoding
 
-import core::{vec, str, uint};
 import std::{io, ebml, map};
+import io::writer_util;
 import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::local_def;
@@ -191,7 +191,7 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
     for param in params {
         ebml::start_tag(ebml_w, tag_items_data_item_ty_param_bounds);
         let bs = ecx.ccx.tcx.ty_param_bounds.get(param.id);
-        tyencode::enc_bounds(io::new_writer(ebml_w.writer), ty_str_ctxt, bs);
+        tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, bs);
         ebml::end_tag(ebml_w);
     }
 }
@@ -207,7 +207,7 @@ fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
         @{ds: def_to_str,
           tcx: ecx.ccx.tcx,
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
-    tyencode::enc_ty(io::new_writer(ebml_w.writer), ty_str_ctxt, typ);
+    tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
 
 fn encode_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
@@ -522,7 +522,7 @@ fn create_index<T: copy>(index: [entry<T>], hash_fn: fn(T) -> uint) ->
 
 fn encode_index<T>(ebml_w: ebml::writer, buckets: [@[entry<T>]],
                    write_fn: fn(io::writer, T)) {
-    let writer = io::new_writer(ebml_w.writer);
+    let writer = ebml_w.writer;
     ebml::start_tag(ebml_w, tag_index);
     let bucket_locs: [uint] = [];
     ebml::start_tag(ebml_w, tag_index_buckets);
@@ -702,8 +702,8 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
     let abbrevs = ty::new_ty_hash();
     let ecx = @{ccx: cx, type_abbrevs: abbrevs};
 
-    let string_w = io::string_writer();
-    let buf_w = string_w.get_writer().get_buf_writer();
+    let buf = io::mk_mem_buffer();
+    let buf_w = io::mem_buffer_writer(buf);
     let ebml_w = ebml::create_writer(buf_w);
 
     encode_hash(ebml_w, cx.link_meta.extras_hash);
@@ -714,32 +714,31 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
     encode_crate_deps(ebml_w, cx.sess.get_cstore());
 
     // Encode and index the paths.
-
     ebml::start_tag(ebml_w, tag_paths);
     let paths_index = encode_item_paths(ebml_w, ecx, crate);
     let paths_buckets = create_index(paths_index, hash_path);
     encode_index(ebml_w, paths_buckets, write_str);
     ebml::end_tag(ebml_w);
-    // Encode and index the items.
 
+    // Encode and index the items.
     ebml::start_tag(ebml_w, tag_items);
     let items_index = encode_info_for_items(ecx, ebml_w, crate.node.module);
     let items_buckets = create_index(items_index, hash_node_id);
     encode_index(ebml_w, items_buckets, write_int);
     ebml::end_tag(ebml_w);
+
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
-
     buf_w.write([0u8, 0u8, 0u8, 0u8]);
-    ret string_w.get_str();
+    io::mem_buffer_str(buf)
 }
 
 // Get the encoded string for a type
 fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> str {
     let cx = @{ds: def_to_str, tcx: tcx, abbrevs: tyencode::ac_no_abbrevs};
-    let sw = io::string_writer();
-    tyencode::enc_ty(sw.get_writer(), cx, t);
-    ret sw.get_str();
+    let buf = io::mk_mem_buffer();
+    tyencode::enc_ty(io::mem_buffer_writer(buf), cx, t);
+    ret io::mem_buffer_str(buf);
 }
 
 

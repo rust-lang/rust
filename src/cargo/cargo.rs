@@ -10,6 +10,7 @@ import rustc::util::filesearch::get_cargo_root;
 import std::fs;
 import std::generic_os;
 import std::io;
+import io::writer_util;
 import std::json;
 import option;
 import option::{none, some};

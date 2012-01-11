@@ -4,6 +4,7 @@ use std;
 import std::run;
 import std::os;
 import std::io;
+import io::writer_util;
 import option;
 import str;
 import ctypes::fd_t;
@@ -41,7 +42,7 @@ fn test_pipes() {
 
     fn writeclose(fd: fd_t, s: str) {
         #error("writeclose %d, %s", fd as int, s);
-        let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
+        let writer = io::fd_writer(fd, false);
         writer.write_str(s);
 
         os::close(fd);
@@ -50,7 +51,7 @@ fn test_pipes() {
     fn readclose(fd: fd_t) -> str {
         // Copied from run::program_output
         let file = os::fd_FILE(fd);
-        let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
+        let reader = io::FILE_reader(file, false);
         let buf = "";
         while !reader.eof() {
             let bytes = reader.read_bytes(4096u);

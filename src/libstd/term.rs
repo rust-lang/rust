@@ -45,14 +45,14 @@ const color_bright_cyan: u8 = 14u8;
 /* Const: color_bright_white */
 const color_bright_white: u8 = 15u8;
 
-fn esc(writer: io::buf_writer) { writer.write([0x1bu8, '[' as u8]); }
+fn esc(writer: io::writer) { writer.write([0x1bu8, '[' as u8]); }
 
 /*
 Function: reset
 
 Reset the foreground and background colors to default
 */
-fn reset(writer: io::buf_writer) {
+fn reset(writer: io::writer) {
     esc(writer);
     writer.write(['0' as u8, 'm' as u8]);
 }
@@ -76,7 +76,7 @@ fn color_supported() -> bool {
         };
 }
 
-fn set_color(writer: io::buf_writer, first_char: u8, color: u8) {
+fn set_color(writer: io::writer, first_char: u8, color: u8) {
     assert (color < 16u8);
     esc(writer);
     let color = color;
@@ -89,7 +89,7 @@ Function: fg
 
 Set the foreground color
 */
-fn fg(writer: io::buf_writer, color: u8) {
+fn fg(writer: io::writer, color: u8) {
     ret set_color(writer, '3' as u8, color);
 }
 
@@ -98,7 +98,7 @@ Function: fg
 
 Set the background color
 */
-fn bg(writer: io::buf_writer, color: u8) {
+fn bg(writer: io::writer, color: u8) {
     ret set_color(writer, '4' as u8, color);
 }
 

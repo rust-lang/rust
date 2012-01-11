@@ -1,5 +1,6 @@
 import core::{vec, uint, str, option, result};
 import std::{term, io};
+import io::writer_util;
 import option::{some, none};
 
 type filename = str;
@@ -126,11 +127,11 @@ fn print_diagnostic(topic: str, t: diagnostictype, msg: str) {
         io::stdout().write_str(#fmt["%s ", topic]);
     }
     if term::color_supported() {
-        term::fg(io::stdout().get_buf_writer(), diagnosticcolor(t));
+        term::fg(io::stdout(), diagnosticcolor(t));
     }
     io::stdout().write_str(#fmt["%s:", diagnosticstr(t)]);
     if term::color_supported() {
-        term::reset(io::stdout().get_buf_writer());
+        term::reset(io::stdout());
     }
     io::stdout().write_str(#fmt[" %s\n", msg]);
 }

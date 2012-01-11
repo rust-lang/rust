@@ -1,7 +1,7 @@
 // Type encoding
 
-import core::{int, uint};
 import std::io;
+import io::writer_util;
 import std::map::hashmap;
 import option::{some, none};
 import syntax::ast::*;
@@ -37,25 +37,24 @@ fn cx_uses_abbrevs(cx: @ctxt) -> bool {
 fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
     alt cx.abbrevs {
       ac_no_abbrevs. {
-        let result_str: @str;
-        alt cx.tcx.short_names_cache.find(t) {
-          some(s) { result_str = s; }
+        let result_str = alt cx.tcx.short_names_cache.find(t) {
+          some(s) { *s }
           none. {
-            let sw = io::string_writer();
-            enc_sty(sw.get_writer(), cx, ty::struct(cx.tcx, t));
-            result_str = @sw.get_str();
-            cx.tcx.short_names_cache.insert(t, result_str);
+            let buf = io::mk_mem_buffer();
+            enc_sty(io::mem_buffer_writer(buf), cx, ty::struct(cx.tcx, t));
+            cx.tcx.short_names_cache.insert(t, @io::mem_buffer_str(buf));
+            io::mem_buffer_str(buf)
           }
-        }
-        w.write_str(*result_str);
+        };
+        w.write_str(result_str);
       }
       ac_use_abbrevs(abbrevs) {
         alt abbrevs.find(t) {
           some(a) { w.write_str(*a.s); ret; }
           none. {
-            let pos = w.get_buf_writer().tell();
+            let pos = w.tell();
             enc_sty(w, cx, ty::struct(cx.tcx, t));
-            let end = w.get_buf_writer().tell();
+            let end = w.tell();
             let len = end - pos;
             fn estimate_sz(u: uint) -> uint {
                 let n = u;

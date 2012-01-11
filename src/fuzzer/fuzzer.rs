@@ -1,4 +1,5 @@
 import std::{fs, io};
+import io::writer_util;
 
 import rustc::syntax::{ast, ast_util, fold, visit, codemap};
 import rustc::syntax::parse::parser;
@@ -212,12 +213,12 @@ fn under(n: uint, it: block(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-fn devnull() -> io::writer { std::io::string_writer().get_writer() }
+fn devnull() -> io::writer { io::mem_buffer_writer(io::mk_mem_buffer()) }
 
 fn as_str(f: fn@(io::writer)) -> str {
-    let w = std::io::string_writer();
-    f(w.get_writer());
-    ret w.get_str();
+    let buf = io::mk_mem_buffer();
+    f(io::mem_buffer_writer(buf));
+    io::mem_buffer_str(buf)
 }
 
 fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,

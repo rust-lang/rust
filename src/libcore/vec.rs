@@ -153,22 +153,21 @@ Function: to_mut
 
 Produces a mutable vector from an immutable vector.
 */
-fn to_mut<T: copy>(v: [T]) -> [mutable T] {
-    let vres = [mutable];
-    for t: T in v { vres += [mutable t]; }
-    ret vres;
+fn to_mut<T>(+v: [T]) -> [mutable T] unsafe {
+    let r = ::unsafe::reinterpret_cast(v);
+    ::unsafe::leak(v);
+    r
 }
 
-// Same comment as from_mut
 /*
 Function: from_mut
 
 Produces an immutable vector from a mutable vector.
 */
-fn from_mut<T: copy>(v: [mutable T]) -> [T] {
-    let vres = [];
-    for t: T in v { vres += [t]; }
-    ret vres;
+fn from_mut<T>(+v: [mutable T]) -> [T] unsafe {
+    let r = ::unsafe::reinterpret_cast(v);
+    ::unsafe::leak(v);
+    r
 }
 
 // Accessors

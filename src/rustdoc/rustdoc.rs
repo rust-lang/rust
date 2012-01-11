@@ -13,6 +13,7 @@ import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 import rustc::syntax::visit;
 import std::io;
+import io::writer_util;
 import std::map;
 
 type rustdoc = {

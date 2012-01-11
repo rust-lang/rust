@@ -3,13 +3,7 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
-import core::comm;
-import core::task;
-import task::task;
-import core::option;
-import core::either;
-import core::vec;
-import core::result::{ok, err};
+import result::{ok, err};
 
 export test_name;
 export test_fn;
@@ -36,6 +30,12 @@ native mod rustrt {
     fn sched_threads() -> uint;
 }
 
+// FIXME Kludge to work around issue #1494 . Simply import io::writer_util
+// when that is fixed.
+impl writer_util for io::writer {
+    fn write_str(s: str) { self.write(str::bytes(s)); }
+    fn write_line(s: str) { self.write(str::bytes(s + "\n")); }
+}
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers seperated by double
@@ -101,7 +101,7 @@ fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
 
 tag test_result { tr_ok; tr_failed; tr_ignored; }
 
-type joinable = (task, comm::port<task::task_notification>);
+type joinable = (task::task, comm::port<task::task_notification>);
 
 // To get isolation and concurrency tests have to be run in their own tasks.
 // In cases where test functions are closures it is not ok to just dump them
@@ -203,11 +203,11 @@ fn run_tests_console_<T: copy>(opts: test_opts, tests: [test_desc<T>],
 
     fn write_pretty(out: io::writer, word: str, color: u8, use_color: bool) {
         if use_color && term::color_supported() {
-            term::fg(out.get_buf_writer(), color);
+            term::fg(out, color);
         }
         out.write_str(word);
         if use_color && term::color_supported() {
-            term::reset(out.get_buf_writer());
+            term::reset(out);
         }
     }
 }

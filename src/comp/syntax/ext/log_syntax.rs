@@ -1,6 +1,6 @@
-import option;
 import base::*;
 import syntax::ast;
+import std::io::writer_util;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: @ast::expr,
                      _body: option::t<str>) -> @ast::expr {

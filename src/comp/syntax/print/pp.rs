@@ -1,6 +1,7 @@
 
 import core::{vec, str};
 import std::io;
+import io::writer_util;
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's
