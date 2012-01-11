@@ -3,7 +3,7 @@ Module: run
 
 Process spawning
 */
-import core::option;
+import option::{some, none};
 import str::sbuf;
 import ctypes::{fd_t, pid_t};
 
@@ -23,21 +23,11 @@ native mod rustrt {
 /* Section: Types */
 
 /*
-Resource: program_res
+Iface: program
 
-A resource that manages the destruction of a <program> object
-
-program_res ensures that the destroy method is called on a
-program object in order to close open file descriptors.
+A value representing a child process
 */
-resource program_res(p: program) { p.destroy(); }
-
-/*
-Obj: program
-
-An object representing a child process
-*/
-type program = obj {
+iface program {
     /*
     Method: get_id
 
@@ -87,7 +77,7 @@ type program = obj {
     Closes open handles
     */
     fn destroy();
-};
+}
 
 
 /* Section: Operations */
@@ -151,7 +141,7 @@ fn run_program(prog: str, args: [str]) -> int {
 /*
 Function: start_program
 
-Spawns a process and returns a boxed <program_res>
+Spawns a process and returns a program
 
 The returned value is a boxed resource containing a <program> object that can
 be used for sending and recieving data over the standard file descriptors.
@@ -166,7 +156,7 @@ Returns:
 
 A boxed resource of <program>
 */
-fn start_program(prog: str, args: [str]) -> @program_res {
+fn start_program(prog: str, args: [str]) -> program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -178,43 +168,54 @@ fn start_program(prog: str, args: [str]) -> @program_res {
     os::libc::close(pipe_input.in);
     os::libc::close(pipe_output.out);
     os::libc::close(pipe_err.out);
-    obj new_program(pid: pid_t,
-                    mutable in_fd: fd_t,
-                    out_file: os::libc::FILE,
-                    err_file: os::libc::FILE,
-                    mutable finished: bool) {
-        fn get_id() -> pid_t { ret pid; }
-        fn input() -> io::writer {
-            ret io::new_writer(io::fd_buf_writer(in_fd, option::none));
-        }
-        fn output() -> io::reader {
-            ret io::new_reader(io::FILE_buf_reader(out_file, option::none));
-        }
-        fn err() -> io::reader {
-            ret io::new_reader(io::FILE_buf_reader(err_file, option::none));
-        }
-        fn close_input() {
-            let invalid_fd = -1i32;
-            if in_fd != invalid_fd {
-                os::libc::close(in_fd);
-                in_fd = invalid_fd;
-            }
-        }
-        fn finish() -> int {
-            if finished { ret 0; }
-            finished = true;
-            self.close_input();
-            ret waitpid(pid);
-        }
-        fn destroy() {
-            self.finish();
-            os::libc::fclose(out_file);
-            os::libc::fclose(err_file);
+
+    type prog_repr = {pid: pid_t,
+                      mutable in_fd: fd_t,
+                      out_file: os::libc::FILE,
+                      err_file: os::libc::FILE,
+                      mutable finished: bool};
+
+    fn close_repr_input(r: prog_repr) {
+        let invalid_fd = -1i32;
+        if r.in_fd != invalid_fd {
+            os::libc::close(r.in_fd);
+            r.in_fd = invalid_fd;
         }
     }
-    ret @program_res(new_program(pid, pipe_input.out,
-                                 os::fd_FILE(pipe_output.in),
-                                 os::fd_FILE(pipe_err.in), false));
+    fn finish_repr(r: prog_repr) -> int {
+        if r.finished { ret 0; }
+        r.finished = true;
+        close_repr_input(r);
+        ret waitpid(r.pid);
+    }
+    fn destroy_repr(r: prog_repr) {
+        finish_repr(r);
+        os::libc::fclose(r.out_file);
+        os::libc::fclose(r.err_file);
+    }
+    resource prog_res(r: prog_repr) { destroy_repr(r); }
+
+    impl of program for prog_res {
+        fn get_id() -> pid_t { ret self.pid; }
+        fn input() -> io::writer {
+            ret io::new_writer(io::fd_buf_writer(self.in_fd, none));
+        }
+        fn output() -> io::reader {
+            ret io::new_reader(io::FILE_buf_reader(self.out_file, none));
+        }
+        fn err() -> io::reader {
+            ret io::new_reader(io::FILE_buf_reader(self.err_file, none));
+        }
+        fn close_input() { close_repr_input(*self); }
+        fn finish() -> int { finish_repr(*self) }
+        fn destroy() { destroy_repr(*self); }
+    }
+    let repr = {pid: pid,
+                mutable in_fd: pipe_input.out,
+                out_file: os::fd_FILE(pipe_output.in),
+                err_file: os::fd_FILE(pipe_err.in),
+                mutable finished: false};
+    ret prog_res(repr) as program;
 }
 
 fn read_all(rd: io::reader) -> str {
