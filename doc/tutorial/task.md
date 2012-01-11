@@ -14,7 +14,7 @@ somewhat.  The tutorial documents the API as it exists today.
 ## Spawning a task
 
 Spawning a task is done using the various spawn functions in the
-module task.  Let's begin with the simplest one, `task::spawn()`, and
+module `task`.  We will Let's begin with the simplest one, `task::spawn()`, and
 later move on to the others:
 
     let some_value = 22;
@@ -122,4 +122,23 @@ addition to the task id of the child, this record defines two fields,
 respectively for communicating with the child.  Those fields are used
 here to send and receive three messages from the child task.
 
+## Joining a task
+
+The function `spawn_joinable()` is used to spawn a task that can later
+be joined.  This is implemented by having the child task send a
+message when it has completed (either successfully or by failing).
+Therefore, `spawn_joinable()` returns a structure containing both the
+task ID and the port where this message will be sent---this structure
+type is called `task::joinable_task`.  The structure can be passed to
+`task::join()`, which simply blocks on the port, waiting to receive
+the message from the child task.
+
+## The supervisor relationship
+
+By default, failures in Rust propagate upward through the task tree.
+We say that each task is supervised by its parent, meaning that if the
+task fails, that failure is propagated to the parent task, which will
+fail sometime later.  This propagation can be disabled by using the
+function `task::unsupervise()`, which disables error propagation from
+the current task to its parent.
 
