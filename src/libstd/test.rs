@@ -31,7 +31,7 @@ native mod rustrt {
 }
 
 // FIXME Kludge to work around issue #1494 . Simply import io::writer_util
-// when that is fixed.
+// after the next snapshot.
 impl writer_util for io::writer {
     fn write_str(s: str) { self.write(str::bytes(s)); }
     fn write_line(s: str) { self.write(str::bytes(s + "\n")); }

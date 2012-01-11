@@ -126,16 +126,6 @@ fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     result
 }
 
-fn item_impl_iface_did(item: ebml::doc, cdata: cmd)
-    -> option::t<ast::def_id> {
-    let result = none;
-    ebml::tagged_docs(item, tag_impl_iface_did) {|doc|
-        let did = translate_def_id(cdata, parse_def_id(ebml::doc_data(doc)));
-        result = some(did);
-    }
-    result
-}
-
 fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> @[ty::param_bounds] {
     let bounds = [];
@@ -297,8 +287,7 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
         let item = lookup_item(did.node, data), nm = item_name(item);
         if alt name { some(n) { n == nm } none. { true } } {
             let base_tps = item_ty_param_count(doc);
-            let i_did = item_impl_iface_did(item, cdata);
-            result += [@{did: did, iface_did: i_did, ident: nm,
+            result += [@{did: did, ident: nm,
                          methods: item_impl_methods(cdata, item, base_tps)}];
         }
     }

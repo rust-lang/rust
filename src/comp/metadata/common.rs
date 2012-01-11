@@ -68,7 +68,6 @@ const tag_mod_impl: uint = 0x30u;
 
 const tag_item_method: uint = 0x31u;
 const tag_impl_iface: uint = 0x32u;
-const tag_impl_iface_did: uint = 0x33u;
 
 // discriminator value for variants
 const tag_disr_val: uint = 0x34u;

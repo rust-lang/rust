@@ -405,13 +405,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             ebml::start_tag(ebml_w, tag_impl_iface);
             write_type(ecx, ebml_w, i_ty);
             ebml::end_tag(ebml_w);
-            ebml::start_tag(ebml_w, tag_impl_iface_did);
-            alt ty::struct(tcx, i_ty) {
-              ty::ty_iface(did, _) {
-                ebml_w.writer.write(str::bytes(def_to_str(did)));
-              }
-            }
-            ebml::end_tag(ebml_w);
           }
           _ {}
         }

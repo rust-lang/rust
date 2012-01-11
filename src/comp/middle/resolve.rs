@@ -1825,8 +1825,7 @@ fn check_exports(e: @env) {
 // Impl resolution
 
 type method_info = {did: def_id, n_tps: uint, ident: ast::ident};
-type _impl = {did: def_id, iface_did: option::t<def_id>,
-              ident: ast::ident, methods: [@method_info]};
+type _impl = {did: def_id, ident: ast::ident, methods: [@method_info]};
 type iscopes = list<@[@_impl]>;
 
 fn resolve_impls(e: @env, c: @ast::crate) {
@@ -1893,12 +1892,6 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
              _ { true }
            } {
             impls += [@{did: local_def(i.id),
-                        iface_did: alt ifce {
-                            some(@{node: ast::ty_path(_, id), _}) {
-                                some(def_id_of_def(e.def_map.get(id)))
-                            }
-                            _ { none }
-                        },
                         ident: i.ident,
                         methods: vec::map(mthds, {|m|
                             @{did: local_def(m.id),

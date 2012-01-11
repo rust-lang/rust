@@ -2947,7 +2947,15 @@ mod dict {
             std::list::iter(isc) {|impls|
                 if option::is_some(found) { ret; }
                 for im in *impls {
-                    if im.iface_did == some(iface_id) {
+                    let match = alt ty::impl_iface(tcx, im.did) {
+                      some(ity) {
+                        alt ty::struct(tcx, ity) {
+                          ty::ty_iface(id, _) { id == iface_id }
+                        }
+                      }
+                      _ { false }
+                    };
+                    if match {
                         let {n_tps, ty: self_ty} = impl_self_ty(tcx, im.did);
                         let {vars, ty: self_ty} = if n_tps > 0u {
                             bind_params(fcx, self_ty, n_tps)
