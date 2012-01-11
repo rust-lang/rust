@@ -2394,6 +2394,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           _ { fail "LHS of bind expr didn't have a function type?!"; }
         }
 
+        let proto = alt proto {
+          ast::proto_bare | ast::proto_box { ast::proto_box }
+          ast::proto_uniq | ast::proto_any | ast::proto_block {
+            tcx.sess.span_err(expr.span,
+                              #fmt["cannot bind %s closures",
+                                   proto_to_str(proto)]);
+            proto // dummy value so compilation can proceed
+          }
+        };
+
         // For each blank argument, add the type of that argument
         // to the resulting function type.
         let out_args = [];
@@ -2406,16 +2416,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             i += 1u;
         }
 
-        // Determine what fn prototype results from binding
-        fn lower_bound_proto(proto: ast::proto) -> ast::proto {
-            // FIXME: This is right for bare fns, possibly not others
-            alt proto {
-              ast::proto_bare { ast::proto_box }
-              _ { proto }
-            }
-        }
-
-        let ft = ty::mk_fn(tcx, {proto: lower_bound_proto(proto),
+        let ft = ty::mk_fn(tcx, {proto: proto,
                                  inputs: out_args, output: rt,
                                  ret_style: cf, constraints: constrs});
         write_ty(tcx, id, ft);
