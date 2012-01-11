@@ -1726,17 +1726,15 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         Unreachable(unr_cx);
         let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb, n_variants);
         let next_cx = new_sub_block_ctxt(cx, "tag-iter-next");
-        let i = 0u;
         for variant: ty::variant_info in *variants {
             let variant_cx =
                 new_sub_block_ctxt(cx,
                                    "tag-iter-variant-" +
-                                       uint::to_str(i, 10u));
-            AddCase(llswitch, C_int(ccx, i as int), variant_cx.llbb);
+                                       int::to_str(variant.disr_val, 10u));
+            AddCase(llswitch, C_int(ccx, variant.disr_val), variant_cx.llbb);
             variant_cx =
                 iter_variant(variant_cx, llunion_a_ptr, variant, tps, tid, f);
             Br(variant_cx, next_cx.llbb);
-            i += 1u;
         }
         ret next_cx;
       }
@@ -2745,12 +2743,9 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
             let bcx = alloc_result.bcx;
             let lltagptr = PointerCast(bcx, lltagblob, T_ptr(lltagty));
             let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
-            let d = if vec::len(*ty::tag_variants(ccx.tcx, tid)) != 1u {
-                let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
-                let lldiscrim = Load(bcx, lldiscrim_gv);
-                lldiscrim
-            } else { C_int(ccx, 0) };
-            Store(bcx, d, lldiscrimptr);
+            let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
+            let lldiscrim = Load(bcx, lldiscrim_gv);
+            Store(bcx, lldiscrim, lldiscrimptr);
             ret lval_no_env(bcx, lltagptr, temporary);
         }
       }
@@ -3022,7 +3017,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     check (type_has_static_size(ccx, t_out));
     let ll_t_out = type_of(ccx, e.span, t_out);
 
-    tag kind { pointer; integral; float; other; }
+    tag kind { pointer; integral; float; tag_; other; }
     fn t_kind(tcx: ty::ctxt, t: ty::t) -> kind {
         ret if ty::type_is_fp(tcx, t) {
                 float
@@ -3031,6 +3026,8 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
                 pointer
             } else if ty::type_is_integral(tcx, t) {
                 integral
+            } else if ty::type_is_tag(tcx, t) {
+                tag_
             } else { other };
     }
     let k_in = t_kind(ccx.tcx, t_in);
@@ -3063,6 +3060,18 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
           }
           {in: pointer., out: pointer.} {
             PointerCast(e_res.bcx, e_res.val, ll_t_out)
+          }
+          {in: tag_., out: integral.} | {in: tag_., out: float.} {
+            let cx = e_res.bcx;
+            let lltagty = T_opaque_tag_ptr(ccx);
+            let av_tag = PointerCast(cx, e_res.val, lltagty);
+            let lldiscrim_a_ptr = GEPi(cx, av_tag, [0, 0]);
+            let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
+            alt k_out {
+              integral. {int_cast(e_res.bcx, ll_t_out,
+                                  val_ty(lldiscrim_a), lldiscrim_a, true)}
+              float. {SIToFP(e_res.bcx, lldiscrim_a, ll_t_out)}
+            }
           }
           _ { ccx.sess.bug("Translating unsupported cast.") }
         };
@@ -4685,7 +4694,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::fn_decl,
 
 
 fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
-                     variant: ast::variant, index: int, is_degen: bool,
+                     variant: ast::variant, is_degen: bool,
                      ty_params: [ast::ty_param]) {
     let ccx = cx.ccx;
 
@@ -4735,7 +4744,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
             let lltagptr =
                 PointerCast(bcx, fcx.llretptr, T_opaque_tag_ptr(ccx));
             let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
-            Store(bcx, C_int(ccx, index), lldiscrimptr);
+            Store(bcx, C_int(ccx, variant.node.disr_val), lldiscrimptr);
             GEPi(bcx, lltagptr, [0, 1])
         };
     i = 0u;
@@ -5086,10 +5095,8 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
       ast::item_tag(variants, tps) {
         let sub_cx = extend_path(cx, item.ident);
         let degen = vec::len(variants) == 1u;
-        let i = 0;
         for variant: ast::variant in variants {
-            trans_tag_variant(sub_cx, item.id, variant, i, degen, tps);
-            i += 1;
+            trans_tag_variant(sub_cx, item.id, variant, degen, tps);
         }
       }
       ast::item_const(_, expr) { trans_const(cx.ccx, expr, item.id); }
@@ -5421,19 +5428,18 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
     visit::visit_item(it, new_pt, v);
     alt it.node {
       ast::item_tag(variants, _) {
-        let i = 0u;
         for variant in variants {
             let p = new_pt + [variant.node.name, "discrim"];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
+            let disr_val = variant.node.disr_val;
             let discrim_gvar = str::as_buf(s, {|buf|
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
             });
-            llvm::LLVMSetInitializer(discrim_gvar, C_int(ccx, i as int));
+            llvm::LLVMSetInitializer(discrim_gvar, C_int(ccx, disr_val));
             llvm::LLVMSetGlobalConstant(discrim_gvar, True);
             ccx.discrims.insert(
                 ast_util::local_def(variant.node.id), discrim_gvar);
             ccx.discrim_symbols.insert(variant.node.id, s);
-            i += 1u;
         }
       }
       ast::item_impl(tps, some(@{node: ast::ty_path(_, id), _}), _, ms) {

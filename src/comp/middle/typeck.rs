@@ -211,6 +211,10 @@ fn type_is_scalar(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
     ret ty::type_is_scalar(fcx.ccx.tcx, typ_s);
 }
 
+fn type_is_enum_like(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    ret ty::type_is_enum_like(fcx.ccx.tcx, typ_s);
+}
 
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
@@ -2211,10 +2215,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           // This will be looked up later on
           ty::ty_iface(_, _) {}
           _ {
-            // FIXME there are more forms of cast to support, eventually.
-            if !(   type_is_scalar(fcx, expr.span, t_e)
-                 && type_is_scalar(fcx, expr.span, t_1)) {
-                tcx.sess.span_err(expr.span, "non-scalar cast: " +
+            let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
+            if type_is_enum_like(fcx,expr.span,t_e) && t_1_is_scalar {
+                /* this case is allowed */
+            } else if !(type_is_scalar(fcx,expr.span,t_e) && t_1_is_scalar) {
+                // FIXME there are more forms of cast to support, eventually.
+                tcx.sess.span_err(expr.span,
+                                  "non-scalar cast: " +
                                   ty_to_str(tcx, t_e) + " as " +
                                   ty_to_str(tcx, t_1));
             }

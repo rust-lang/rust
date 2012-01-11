@@ -173,6 +173,8 @@ export type_is_copyable;
 export type_is_tup_like;
 export type_is_str;
 export type_is_unique;
+export type_is_tag;
+export type_is_enum_like;
 export type_structurally_contains_uniques;
 export type_autoderef;
 export type_param;
@@ -1261,6 +1263,26 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
     }
 
     ret result;
+}
+
+fn type_is_tag(cx: ctxt, ty: t) -> bool {
+    alt struct(cx, ty) {
+      ty_tag(_, _) { ret true; }
+      _ { ret false;}
+    }
+}
+
+// Whether a type is enum like, that is a tag type with only nullary
+// constructors
+fn type_is_enum_like(cx: ctxt, ty: t) -> bool {
+    alt struct(cx, ty) {
+      ty_tag(did, tps) {
+        let variants = tag_variants(cx, did);
+        let some_n_ary = vec::any(*variants, {|v| vec::len(v.args) > 0u});
+        ret !some_n_ary;
+      }
+      _ { ret false;}
+    }
 }
 
 fn type_param(cx: ctxt, ty: t) -> option::t<uint> {
@@ -2686,7 +2708,8 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option::t<t> {
 }
 
 // Tag information
-type variant_info = @{args: [ty::t], ctor_ty: ty::t, id: ast::def_id};
+type variant_info = @{args: [ty::t], ctor_ty: ty::t, id: ast::def_id,
+                      disr_val: int};
 
 fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
     alt cx.tag_var_cache.find(id) {
@@ -2705,7 +2728,9 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
                 } else { [] };
                 @{args: arg_tys,
                   ctor_ty: ctor_ty,
-                  id: ast_util::local_def(variant.node.id)}
+                  id: ast_util::local_def(variant.node.id),
+                  disr_val: variant.node.disr_val
+                 }
             })
           }
         }

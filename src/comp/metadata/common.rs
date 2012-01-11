@@ -70,6 +70,9 @@ const tag_item_method: uint = 0x31u;
 const tag_impl_iface: uint = 0x32u;
 const tag_impl_iface_did: uint = 0x33u;
 
+// discriminator value for variants
+const tag_disr_val: uint = 0x34u;
+
 // djb's cdb hashes.
 fn hash_node_id(&&node_id: int) -> uint { ret 177573u ^ (node_id as uint); }
 
