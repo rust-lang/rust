@@ -50,6 +50,7 @@ mod ct {
         ty_hex(caseness);
         ty_octal;
         ty_float;
+        ty_poly;
         // FIXME: More types
     }
     tag flag {
@@ -249,6 +250,8 @@ mod ct {
                 ty_octal
             } else if str::eq(tstr, "f") {
                 ty_float
+            } else if str::eq(tstr, "?") {
+                ty_poly
             } else { error("unknown type in conversion: " + tstr) };
         ret {ty: t, next: i + 1u};
     }
@@ -345,6 +348,10 @@ mod rt {
             }
         }
         ret pad(cv, s, pad_signed);
+    }
+    fn conv_poly<T>(cv: conv, v: T) -> str {
+        let s = sys::log_str(v);
+        ret conv_str(cv, s);
     }
 
     // Convert an int to string with minimum number of digits. If precision is

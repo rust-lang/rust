@@ -548,6 +548,24 @@ shape_cmp_type(int8_t *result, const type_desc *tydesc,
     }
 }
 
+extern "C" rust_str *
+shape_log_str(const type_desc *tydesc, uint8_t *data) {
+    rust_task *task = rust_scheduler::get_task();
+
+    shape::arena arena;
+    shape::type_param *params =
+        shape::type_param::from_tydesc_and_data(tydesc, data, arena);
+
+    std::stringstream ss;
+    shape::log log(task, true, tydesc->shape, params, tydesc->shape_tables,
+                   data, ss);
+
+    log.walk();
+
+    int len = ss.str().length();
+    return make_str(task->kernel, ss.str().c_str(), len, "log_str");
+}
+
 extern "C" void
 shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
     rust_task *task = rust_scheduler::get_task();

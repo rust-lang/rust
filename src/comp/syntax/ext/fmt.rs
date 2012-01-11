@@ -247,6 +247,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
           ty_bits. { ret make_conv_call(cx, arg.span, "uint", cnv, arg); }
           ty_octal. { ret make_conv_call(cx, arg.span, "uint", cnv, arg); }
           ty_float. { ret make_conv_call(cx, arg.span, "float", cnv, arg); }
+          ty_poly. { ret make_conv_call(cx, arg.span, "poly", cnv, arg); }
           _ { cx.span_unimpl(sp, unsupported); }
         }
     }
@@ -303,6 +304,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
           }
           ty_octal. { #debug("type: octal"); }
           ty_float. { #debug("type: float"); }
+          ty_poly. { #debug("type: poly"); }
         }
     }
     let fmt_sp = args[0].span;

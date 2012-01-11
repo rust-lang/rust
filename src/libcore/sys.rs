@@ -19,6 +19,7 @@ native mod rustrt {
     fn refcount<T>(t: @T) -> uint;
     fn do_gc();
     fn unsupervise();
+    fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
 }
 
 #[abi = "rust-intrinsic"]
@@ -85,6 +86,10 @@ fn do_gc() -> () {
 // just belongs there
 fn unsupervise() -> () {
     ret rustrt::unsupervise();
+}
+
+fn log_str<T>(t: T) -> str {
+    rustrt::shape_log_str(get_type_desc::<T>(), t)
 }
 
 // Local Variables:
