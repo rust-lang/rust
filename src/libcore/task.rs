@@ -120,7 +120,7 @@ fn spawn(+f: sendfn()) -> task {
     spawn_inner(f, none)
 }
 
-fn spawn_inner(-f: sendfn(),
+fn spawn_inner(-f: fn~(),
                notify: option<comm::chan<task_notification>>) -> task unsafe {
     let closure: *rust_closure = unsafe::reinterpret_cast(ptr::addr_of(f));
     #debug("spawn: closure={%x,%x}", (*closure).fnptr, (*closure).envptr);
@@ -145,7 +145,7 @@ A task that sends notification upon termination
 */
 type joinable_task = (task, comm::port<task_notification>);
 
-fn spawn_joinable(+f: sendfn()) -> joinable_task {
+fn spawn_joinable(+f: fn~()) -> joinable_task {
     let notify_port = comm::port();
     let notify_chan = comm::chan(notify_port);
     let task = spawn_inner(f, some(notify_chan));
@@ -161,7 +161,7 @@ fn spawn_joinable(+f: sendfn()) -> joinable_task {
 
     let notify_port = comm::port();
     let notify_chan = comm::chan(notify_port);
-    let g = sendfn[copy notify_chan; move f]() {
+    let g = fn~[copy notify_chan; move f]() {
         let this_task = rustrt::get_task_id();
         let result = @mutable tr_failure;
         let _rsrc = notify_rsrc((notify_chan, this_task, result));
@@ -203,7 +203,7 @@ supplied with a channel to send messages to the parent and a port to receive
 messages from the parent. The type parameter `ToCh` is the type for messages
 sent from the parent to the child and `FrCh` is the type for messages sent
 from the child to the parent. */
-type connected_fn<ToCh, FrCh> = sendfn(comm::port<ToCh>, comm::chan<FrCh>);
+type connected_fn<ToCh, FrCh> = fn~(comm::port<ToCh>, comm::chan<FrCh>);
 
 /*
 Type: connected_fn
@@ -238,7 +238,7 @@ fn spawn_connected<ToCh:send, FrCh:send>(+f: connected_fn<ToCh, FrCh>)
     let from_child_chan = comm::chan(from_child_port);
     let get_to_child_port = comm::port::<comm::chan<ToCh>>();
     let get_to_child_chan = comm::chan(get_to_child_port);
-    let child_task = spawn(sendfn[move f]() {
+    let child_task = spawn(fn~[move f]() {
         let to_child_port = comm::port::<ToCh>();
         comm::send(get_to_child_chan, comm::chan(to_child_port));
         f(to_child_port, from_child_chan);

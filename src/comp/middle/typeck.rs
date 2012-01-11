@@ -1450,7 +1450,7 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
     }
 }
 
-type unifier = fn(@fn_ctxt, span, ty::t, ty::t) -> ty::t;
+type unifier = fn@(@fn_ctxt, span, ty::t, ty::t) -> ty::t;
 
 fn check_expr(fcx: @fn_ctxt, expr: @ast::expr) -> bool {
     fn dummy_unify(_fcx: @fn_ctxt, _sp: span, _expected: ty::t, actual: ty::t)
@@ -2886,8 +2886,8 @@ mod dict {
     fn resolve_in_block(fcx: @fn_ctxt, bl: ast::blk) {
         visit::visit_block(bl, fcx, visit::mk_vt(@{
             visit_expr: resolve_expr,
-            visit_item: fn(_i: @ast::item, &&_e: @fn_ctxt,
-                           _v: visit::vt<@fn_ctxt>) {}
+            visit_item: fn@(_i: @ast::item, &&_e: @fn_ctxt,
+                            _v: visit::vt<@fn_ctxt>) {}
             with *visit::default_visitor()
         }));
     }

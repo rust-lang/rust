@@ -1,6 +1,6 @@
 // This is what the signature to spawn should look like with bare functions
 
-fn spawn<T: send>(val: T, f: fn(T)) {
+fn spawn<T: send>(val: T, f: native fn(T)) {
     f(val);
 }
 
@@ -10,7 +10,4 @@ fn f(&&i: int) {
 
 fn main() {
     spawn(100, f);
-    spawn(100, fn(&&i: int) {
-        assert i == 100;
-    });
 }

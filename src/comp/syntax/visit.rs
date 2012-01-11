@@ -391,22 +391,22 @@ type simple_visitor =
 fn simple_ignore_ty(_t: @ty) {}
 
 fn default_simple_visitor() -> simple_visitor {
-    ret @{visit_mod: fn(_m: _mod, _sp: span) { },
-          visit_view_item: fn(_vi: @view_item) { },
-          visit_native_item: fn(_ni: @native_item) { },
-          visit_item: fn(_i: @item) { },
-          visit_local: fn(_l: @local) { },
-          visit_block: fn(_b: ast::blk) { },
-          visit_stmt: fn(_s: @stmt) { },
-          visit_arm: fn(_a: arm) { },
-          visit_pat: fn(_p: @pat) { },
-          visit_decl: fn(_d: @decl) { },
-          visit_expr: fn(_e: @expr) { },
+    ret @{visit_mod: fn@(_m: _mod, _sp: span) { },
+          visit_view_item: fn@(_vi: @view_item) { },
+          visit_native_item: fn@(_ni: @native_item) { },
+          visit_item: fn@(_i: @item) { },
+          visit_local: fn@(_l: @local) { },
+          visit_block: fn@(_b: ast::blk) { },
+          visit_stmt: fn@(_s: @stmt) { },
+          visit_arm: fn@(_a: arm) { },
+          visit_pat: fn@(_p: @pat) { },
+          visit_decl: fn@(_d: @decl) { },
+          visit_expr: fn@(_e: @expr) { },
           visit_ty: simple_ignore_ty,
-          visit_ty_params: fn(_ps: [ty_param]) {},
-          visit_constr: fn(_p: @path, _sp: span, _id: node_id) { },
-          visit_fn: fn(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
-                       _id: node_id) { }
+          visit_ty_params: fn@(_ps: [ty_param]) {},
+          visit_constr: fn@(_p: @path, _sp: span, _id: node_id) { },
+          visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
+                        _id: node_id) { }
          };
 }
 

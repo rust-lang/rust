@@ -480,14 +480,21 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         expect(p, token::RBRACKET);
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
+        alt proto {
+          ast::proto_bare. { p.warn("fn is deprecated, use native fn"); }
+          _ { /* fallthrough */ }
+        }
         t = parse_ty_fn(proto, p);
     } else if eat_word(p, "block") {
         t = parse_ty_fn(ast::proto_block, p);
+    } else if eat_word(p, "native") {
+        expect_word(p, "fn");
+        t = parse_ty_fn(ast::proto_bare, p);
     } else if eat_word(p, "lambda") {
-        //(breaks prettyprinting!) p.warn("lambda is deprecated, use fn@");
+        p.warn("lambda is deprecated, use fn@");
         t = parse_ty_fn(ast::proto_box, p);
     } else if eat_word(p, "sendfn") {
-        //(breaks prettyprinting!) p.warn("sendfn is deprecated, use fn~");
+        p.warn("sendfn is deprecated, use fn~");
         t = parse_ty_fn(ast::proto_uniq, p);
     } else if p.token == token::MOD_SEP || is_ident(p.token) {
         let path = parse_path(p);
@@ -786,6 +793,10 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(parse_alt_expr(p));
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
+        alt proto {
+          ast::proto_bare. { p.warn("fn expr are deprecated, use fn@"); }
+          _ { /* fallthrough */ }
+        }
         ret pexpr(parse_fn_expr(p, proto));
     } else if eat_word(p, "block") {
         ret pexpr(parse_fn_expr(p, ast::proto_block));

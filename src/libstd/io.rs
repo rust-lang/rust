@@ -523,7 +523,7 @@ mod fsync {
     type arg<t> = {
         val: t,
         opt_level: option::t<level>,
-        fsync_fn: fn(t, level) -> int
+        fsync_fn: fn@(t, level) -> int
     };
 
     // fsync file after executing blk
@@ -532,7 +532,7 @@ mod fsync {
                   blk: block(&&res<os::libc::FILE>)) {
         blk(res({
             val: *file, opt_level: opt_level,
-            fsync_fn: fn(&&file: os::libc::FILE, l: level) -> int {
+            fsync_fn: fn@(&&file: os::libc::FILE, l: level) -> int {
                 ret os::fsync_fd(os::libc::fileno(file), l) as int;
             }
         }));
@@ -543,7 +543,7 @@ mod fsync {
                    blk: block(&&res<fd_t>)) {
         blk(res({
             val: *fd, opt_level: opt_level,
-            fsync_fn: fn(&&fd: fd_t, l: level) -> int {
+            fsync_fn: fn@(&&fd: fd_t, l: level) -> int {
                 ret os::fsync_fd(fd, l) as int;
             }
         }));
@@ -556,7 +556,7 @@ mod fsync {
     fn obj_sync(&&o: t, opt_level: option::t<level>, blk: block(&&res<t>)) {
         blk(res({
             val: o, opt_level: opt_level,
-            fsync_fn: fn(&&o: t, l: level) -> int { ret o.fsync(l); }
+            fsync_fn: fn@(&&o: t, l: level) -> int { ret o.fsync(l); }
         }));
     }
 }

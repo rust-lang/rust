@@ -18,7 +18,7 @@ export enc_bounds;
 type ctxt =
     // Def -> str Callback:
     // The type context.
-    {ds: fn(def_id) -> str, tcx: ty::ctxt, abbrevs: abbrev_ctxt};
+    {ds: fn@(def_id) -> str, tcx: ty::ctxt, abbrevs: abbrev_ctxt};
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.

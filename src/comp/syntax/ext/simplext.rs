@@ -532,7 +532,7 @@ fn block_to_ident(blk: blk_) -> option::t<ident> {
 
 fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
     fn select_pt_1(cx: ext_ctxt, m: matchable,
-                   fn_m: fn(ast::mac) -> match_result) -> match_result {
+                   fn_m: block(ast::mac) -> match_result) -> match_result {
         ret alt m {
               match_expr(e) {
                 alt e.node { expr_mac(mac) { fn_m(mac) } _ { none } }

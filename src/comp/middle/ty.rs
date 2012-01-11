@@ -1077,7 +1077,7 @@ fn type_is_native(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) { ty_native(_) { ret true; } _ { ret false; } }
 }
 
-fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
+fn type_structurally_contains(cx: ctxt, ty: t, test: block(sty) -> bool) ->
    bool {
     let sty = struct(cx, ty);
     if test(sty) { ret true; }
@@ -1121,20 +1121,20 @@ pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
     actually checkable. It seems to me like a lot of properties
     that the type context tracks about types should be immutable.)
     */
-    type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
+    type_structurally_contains(cx, ty) {|sty|
         alt sty {
           ty_param(_, _) { true }
           _ { false }
         }
-    })
+    }
 }
 
 // Returns true for noncopyable types and types where a copy of a value can be
 // distinguished from the value itself. I.e. types with mutable content that's
 // not shared through a pointer.
 fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
-    ret !type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
-        ret alt sty {
+    ret !type_structurally_contains(cx, ty, {|sty|
+        alt sty {
           ty_param(_, _) { true }
           ty_vec(mt) {
             mt.mut != ast::imm
@@ -1149,12 +1149,12 @@ fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
             false
           }
           _ { false }
-        };
+        }
     }) && type_kind(cx, ty) != kind_noncopyable;
 }
 
 fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
-    ret type_structurally_contains(cx, ty, fn (sty: sty) -> bool {
+    ret type_structurally_contains(cx, ty, {|sty|
         ret alt sty {
           ty_uniq(_) { ret true; }
           ty_vec(_) { true }
@@ -1414,7 +1414,9 @@ fn hash_type_structure(st: sty) -> uint {
 
 fn hash_raw_ty(&&rt: @raw_t) -> uint { ret rt.hash; }
 
-fn arg_eq<T>(eq: fn(T, T) -> bool, a: @sp_constr_arg<T>, b: @sp_constr_arg<T>)
+fn arg_eq<T>(eq: block(T, T) -> bool,
+             a: @sp_constr_arg<T>,
+             b: @sp_constr_arg<T>)
    -> bool {
     alt a.node {
       ast::carg_base. {
@@ -1431,7 +1433,8 @@ fn arg_eq<T>(eq: fn(T, T) -> bool, a: @sp_constr_arg<T>, b: @sp_constr_arg<T>)
     }
 }
 
-fn args_eq<T>(eq: fn(T, T) -> bool, a: [@sp_constr_arg<T>],
+fn args_eq<T>(eq: block(T, T) -> bool,
+              a: [@sp_constr_arg<T>],
               b: [@sp_constr_arg<T>]) -> bool {
     let i: uint = 0u;
     for arg: @sp_constr_arg<T> in a {
@@ -1752,12 +1755,13 @@ mod unify {
         let root_a = ufind::find(vb.sets, set_a);
         let root_b = ufind::find(vb.sets, set_b);
 
-        let replace_type =
-            bind fn (vb: @var_bindings, t: t, set_a: uint, set_b: uint) {
-                     ufind::union(vb.sets, set_a, set_b);
-                     let root_c: uint = ufind::find(vb.sets, set_a);
-                     smallintmap::insert::<t>(vb.types, root_c, t);
-                 }(_, _, set_a, set_b);
+        let replace_type = (
+            fn@(vb: @var_bindings, t: t) {
+                ufind::union(vb.sets, set_a, set_b);
+                let root_c: uint = ufind::find(vb.sets, set_a);
+                smallintmap::insert::<t>(vb.types, root_c, t);
+            }
+        );
 
 
         alt smallintmap::find(vb.types, root_a) {

@@ -32,11 +32,11 @@ fn calllink08() { rustrt::get_task_id(); }
 fn calllink09() { rustrt::sched_threads(); }
 fn calllink10() { rustrt::rust_get_task(); }
 
-fn runtest(f: sendfn(), frame_backoff: u32) {
+fn runtest(f: fn~(), frame_backoff: u32) {
     runtest2(f, frame_backoff, 0 as *u8);
 }
 
-fn runtest2(f: sendfn(), frame_backoff: u32, last_stk: *u8) -> u32 {
+fn runtest2(f: fn~(), frame_backoff: u32, last_stk: *u8) -> u32 {
     let curr_stk = rustrt::debug_get_stk_seg();
     if (last_stk != curr_stk && last_stk != 0 as *u8) {
         // We switched stacks, go back and try to hit the dynamic linker

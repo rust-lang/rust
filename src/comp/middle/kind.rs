@@ -58,7 +58,7 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
 // variables. `id` is the node_id for some expression that creates the
 // closure.
 fn with_appropriate_checker(cx: ctx, id: node_id,
-                            b: block(fn(ctx, ty::t, sp: span))) {
+                            b: block(fn@(ctx, ty::t, sp: span))) {
     let fty = ty::node_id_to_monotype(cx.tcx, id);
     alt ty::ty_fn_proto(cx.tcx, fty) {
       proto_uniq. { b(check_send); }

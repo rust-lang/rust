@@ -13,14 +13,14 @@ A function that returns a hash of a value.
 The hash should concentrate entropy in the
 lower bits.
 */
-type hashfn<K> = fn(K) -> uint;
+type hashfn<K> = fn@(K) -> uint;
 
 /*
 Type: eqfn
 
 Equality
 */
-type eqfn<K> = fn(K, K) -> bool;
+type eqfn<K> = fn@(K, K) -> bool;
 
 /*
 Type: hashset

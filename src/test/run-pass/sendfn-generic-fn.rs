@@ -11,7 +11,7 @@ fn make_generic_record<A: copy, B: copy>(a: A, b: B) -> pair<A,B> {
     ret {a: a, b: b};
 }
 
-fn test05_start(&&f: sendfn(&&float, &&str) -> pair<float, str>) {
+fn test05_start(&&f: fn~(&&float, &&str) -> pair<float, str>) {
     let p = f(22.22f, "Hi");
     log(debug, p);
     assert p.a == 22.22f;
@@ -23,8 +23,8 @@ fn test05_start(&&f: sendfn(&&float, &&str) -> pair<float, str>) {
     assert q.b == "Ho";
 }
 
-fn spawn<A: copy, B: copy>(f: fn(sendfn(A,B)->pair<A,B>)) {
-    let arg = sendfn(a: A, b: B) -> pair<A,B> {
+fn spawn<A: copy, B: copy>(f: fn(fn~(A,B)->pair<A,B>)) {
+    let arg = fn~(a: A, b: B) -> pair<A,B> {
         ret make_generic_record(a, b);
     };
     task::spawn {|| f(arg); };

@@ -564,16 +564,15 @@ fn link_binary(sess: session,
                lm: link_meta) {
     // Converts a library file name into a gcc -l argument
     fn unlib(config: @session::config, filename: str) -> str {
-        let rmlib =
-            bind fn (config: @session::config, filename: str) -> str {
-                     if config.os == session::os_macos ||
-                            (config.os == session::os_linux ||
-                             config.os == session::os_freebsd) &&
-                                str::find(filename, "lib") == 0 {
-                         ret str::slice(filename, 3u,
-                                        str::byte_len(filename));
-                     } else { ret filename; }
-                 }(config, _);
+        let rmlib = fn@(filename: str) -> str {
+            if config.os == session::os_macos ||
+                (config.os == session::os_linux ||
+                 config.os == session::os_freebsd) &&
+                str::find(filename, "lib") == 0 {
+                ret str::slice(filename, 3u,
+                               str::byte_len(filename));
+            } else { ret filename; }
+        };
         fn rmext(filename: str) -> str {
             let parts = str::split(filename, '.' as u8);
             vec::pop(parts);

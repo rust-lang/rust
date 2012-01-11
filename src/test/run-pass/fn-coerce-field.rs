@@ -3,5 +3,6 @@ type r = {
 };
 
 fn main() {
-    let i: r = {field: fn() { }};
+    fn f() {}
+    let i: r = {field: f};
 }

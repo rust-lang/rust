@@ -194,7 +194,7 @@ fn synth_comment(s: ps, text: str) {
     word(s.s, "*/");
 }
 
-fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN)) {
+fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: block(ps, IN)) {
     box(s, 0u, b);
     let first = true;
     for elt: IN in elts {
@@ -205,8 +205,8 @@ fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN)) {
 }
 
 
-fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN),
-                     get_span: fn(IN) -> codemap::span) {
+fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: block(ps, IN),
+                     get_span: block(IN) -> codemap::span) {
     box(s, 0u, b);
     let len = vec::len::<IN>(elts);
     let i = 0u;
@@ -1246,7 +1246,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
         for elt: ast::ident in *mod_path { word(s.s, elt); word(s.s, "::"); }
         word(s.s, "{");
         commasep(s, inconsistent, idents,
-                 fn (s: ps, w: ast::import_ident) { word(s.s, w.node.name) });
+                 fn@(s: ps, w: ast::import_ident) { word(s.s, w.node.name) });
         word(s.s, "}");
       }
       ast::view_item_import_glob(ids, _) {
@@ -1261,7 +1261,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
       ast::view_item_export(ids, _) {
         head(s, "export");
         commasep(s, inconsistent, ids,
-                 fn (s: ps, &&w: ast::ident) { word(s.s, w) });
+                 fn@(s: ps, &&w: ast::ident) { word(s.s, w) });
       }
     }
     word(s.s, ";");
@@ -1604,7 +1604,7 @@ fn ast_fn_constrs_str(decl: ast::fn_decl, constrs: [@ast::constr]) -> str {
 
 fn proto_to_str(p: ast::proto) -> str {
     ret alt p {
-          ast::proto_bare. { "fn" }
+          ast::proto_bare. { "native fn" }
           ast::proto_block. { "block" }
           ast::proto_uniq. { "fn~" }
           ast::proto_box. { "fn@" }

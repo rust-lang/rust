@@ -237,29 +237,26 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
 
     let write_ptr_ptr = do_spill_noroot
         (bcx, get_dataptr(bcx, new_vec_ptr, llunitty));
-    let copy_fn =
-        bind fn (bcx: @block_ctxt, addr: ValueRef, _ty: ty::t,
-                 write_ptr_ptr: ValueRef, unit_ty: ty::t, llunitsz: ValueRef)
-                -> @block_ctxt {
-                 let ccx = bcx_ccx(bcx);
-                 let write_ptr = Load(bcx, write_ptr_ptr);
-                 let bcx =
-                     copy_val(bcx, INIT, write_ptr,
-                              load_if_immediate(bcx, addr, unit_ty), unit_ty);
-                 let incr =
-                     ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) ?
-                         llunitsz : C_int(ccx, 1);
-                 Store(bcx, InBoundsGEP(bcx, write_ptr, [incr]),
-                       write_ptr_ptr);
-                 ret bcx;
-             }(_, _, _, write_ptr_ptr, unit_ty, llunitsz);
+    let copy_fn = fn@(bcx: @block_ctxt, addr: ValueRef,
+                      _ty: ty::t) -> @block_ctxt {
+        let ccx = bcx_ccx(bcx);
+        let write_ptr = Load(bcx, write_ptr_ptr);
+        let bcx = copy_val(bcx, INIT, write_ptr,
+                           load_if_immediate(bcx, addr, unit_ty), unit_ty);
+        let incr =
+            ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) ?
+            llunitsz : C_int(ccx, 1);
+        Store(bcx, InBoundsGEP(bcx, write_ptr, [incr]),
+              write_ptr_ptr);
+        ret bcx;
+    };
 
     let bcx = iter_vec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn);
     bcx = iter_vec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn);
     ret trans::store_in_dest(bcx, new_vec_ptr, dest);
 }
 
-type val_and_ty_fn = fn(@block_ctxt, ValueRef, ty::t) -> result;
+type val_and_ty_fn = fn@(@block_ctxt, ValueRef, ty::t) -> result;
 
 type iter_vec_block = block(@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
 

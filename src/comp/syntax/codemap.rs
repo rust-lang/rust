@@ -32,7 +32,7 @@ fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
     file.lines += [{ch: chpos, byte: byte_pos}];
 }
 
-type lookup_fn = fn(file_pos) -> uint;
+type lookup_fn = fn@(file_pos) -> uint;
 
 fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
     let len = vec::len(map.files);

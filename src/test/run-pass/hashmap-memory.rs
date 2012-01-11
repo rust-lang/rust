@@ -28,7 +28,7 @@ mod map_reduce {
 
     type putter = fn@(str, str);
 
-    type mapper = fn(str, putter);
+    type mapper = native fn(str, putter);
 
     tag ctrl_proto { find_reducer([u8], chan<int>); mapper_done; }
 

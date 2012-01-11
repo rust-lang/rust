@@ -1,6 +1,6 @@
 use std;
 
-fn asSendfn( f : sendfn()->uint ) -> uint {
+fn asSendfn( f : fn~()->uint ) -> uint {
    ret f();
 }
 

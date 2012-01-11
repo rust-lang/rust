@@ -151,7 +151,7 @@ fn relax_precond_block(fcx: fn_ctxt, i: node_id, b: blk) {
           visit_expr: relax_precond_expr,
           visit_stmt: relax_precond_stmt,
           visit_item:
-              fn (_i: @item, _cx: relax_ctxt, _vt: visit::vt<relax_ctxt>) { },
+              fn@(_i: @item, _cx: relax_ctxt, _vt: visit::vt<relax_ctxt>) { },
           visit_fn: bind do_nothing(_, _, _, _, _, _, _)
              with *visitor};
     let v1 = visit::mk_vt(visitor);

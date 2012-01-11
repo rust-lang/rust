@@ -4,10 +4,13 @@ fn mk() -> int { ret 1; }
 
 fn chk(&&a: int) { log(debug, a); assert (a == 1); }
 
-fn apply<T>(produce: fn() -> T, consume: fn(T)) { consume(produce()); }
+fn apply<T>(produce: native fn() -> T,
+            consume: native fn(T)) {
+    consume(produce());
+}
 
 fn main() {
-    let produce: fn() -> int = mk;
-    let consume: fn(&&int) = chk;
+    let produce: native fn() -> int = mk;
+    let consume: native fn(&&int) = chk;
     apply::<int>(produce, consume);
 }

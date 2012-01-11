@@ -1140,7 +1140,7 @@ fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint])
     ret info;
 }
 
-type glue_helper = fn(@block_ctxt, ValueRef, ty::t);
+type glue_helper = fn@(@block_ctxt, ValueRef, ty::t);
 
 fn declare_generic_glue(cx: @local_ctxt, t: ty::t, llfnty: TypeRef, name: str)
    -> ValueRef {
@@ -1570,8 +1570,8 @@ fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
     }
 }
 
-type val_pair_fn = fn(@block_ctxt, ValueRef, ValueRef) -> @block_ctxt;
-type val_and_ty_fn = fn(@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
+type val_pair_fn = fn@(@block_ctxt, ValueRef, ValueRef) -> @block_ctxt;
+type val_and_ty_fn = fn@(@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
 
 fn load_inbounds(cx: @block_ctxt, p: ValueRef, idxs: [int]) -> ValueRef {
     ret Load(cx, GEPi(cx, p, idxs));
@@ -3268,8 +3268,8 @@ fn invoke_full(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
 fn invoke_(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
            to_zero: [{v: ValueRef, t: ty::t}],
            to_revoke: [{v: ValueRef, t: ty::t}],
-           invoker: fn(@block_ctxt, ValueRef, [ValueRef],
-                       BasicBlockRef, BasicBlockRef)) -> @block_ctxt {
+           invoker: block(@block_ctxt, ValueRef, [ValueRef],
+                          BasicBlockRef, BasicBlockRef)) -> @block_ctxt {
     // FIXME: May be worth turning this into a plain call when there are no
     // cleanups to run
     if bcx.unreachable { ret bcx; }

@@ -552,7 +552,7 @@ fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
 fn match_args(fcx: fn_ctxt, occs: @mutable [pred_args],
               occ: [@constr_arg_use]) -> uint {
     #debug("match_args: looking at %s",
-           constr_args_to_str(fn (i: inst) -> str { ret i.ident; }, occ));
+           constr_args_to_str(fn@(i: inst) -> str { ret i.ident; }, occ));
     for pd: pred_args in *occs {
         log(debug,
                  "match_args: candidate " + pred_args_to_str(pd));
@@ -633,7 +633,7 @@ fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
 
 fn pred_args_to_str(p: pred_args) -> str {
     "<" + uint::str(p.node.bit_num) + ", " +
-        constr_args_to_str(fn (i: inst) -> str { ret i.ident; }, p.node.args)
+        constr_args_to_str(fn@(i: inst) -> str { ret i.ident; }, p.node.args)
         + ">"
 }
 
@@ -973,7 +973,8 @@ fn non_init_constraint_mentions(_fcx: fn_ctxt, c: norm_constraint, v: node_id)
         };
 }
 
-fn args_mention<T>(args: [@constr_arg_use], q: fn([T], node_id) -> bool,
+fn args_mention<T>(args: [@constr_arg_use],
+                   q: block([T], node_id) -> bool,
                    s: [T]) -> bool {
     /*
       FIXME

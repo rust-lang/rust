@@ -3,7 +3,7 @@ fn f(i: int, &called: bool) {
     called = true;
 }
 
-fn g(f: fn(int, &bool), &called: bool) {
+fn g(f: native fn(int, &bool), &called: bool) {
     f(10, called);
 }
 

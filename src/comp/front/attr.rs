@@ -43,13 +43,13 @@ fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
 // Search a list of attributes and return only those with a specific name
 fn find_attrs_by_name(attrs: [ast::attribute], name: ast::ident) ->
    [ast::attribute] {
-    let filter =
-        bind fn (a: ast::attribute, name: ast::ident) ->
-                option::t<ast::attribute> {
-                 if get_attr_name(a) == name {
-                     option::some(a)
-                 } else { option::none }
-             }(_, name);
+    let filter = (
+        fn@(a: ast::attribute) -> option::t<ast::attribute> {
+            if get_attr_name(a) == name {
+                option::some(a)
+            } else { option::none }
+        }
+    );
     ret vec::filter_map(attrs, filter);
 }
 
@@ -59,13 +59,11 @@ fn get_attr_name(attr: ast::attribute) -> ast::ident {
 
 fn find_meta_items_by_name(metas: [@ast::meta_item], name: ast::ident) ->
    [@ast::meta_item] {
-    let filter =
-        bind fn (&&m: @ast::meta_item, name: ast::ident) ->
-                option::t<@ast::meta_item> {
-                 if get_meta_item_name(m) == name {
-                     option::some(m)
-                 } else { option::none }
-             }(_, name);
+    let filter = fn@(&&m: @ast::meta_item) -> option::t<@ast::meta_item> {
+        if get_meta_item_name(m) == name {
+            option::some(m)
+        } else { option::none }
+    };
     ret vec::filter_map(metas, filter);
 }
 
@@ -178,13 +176,11 @@ fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
 fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
    [@ast::meta_item] {
 
-    let filter =
-        bind fn (&&item: @ast::meta_item, name: str) ->
-                option::t<@ast::meta_item> {
-                 if get_meta_item_name(item) != name {
-                     option::some(item)
-                 } else { option::none }
-             }(_, name);
+    let filter = fn@(&&item: @ast::meta_item) -> option::t<@ast::meta_item> {
+        if get_meta_item_name(item) != name {
+            option::some(item)
+        } else { option::none }
+    };
 
     ret vec::filter_map(items, filter);
 }

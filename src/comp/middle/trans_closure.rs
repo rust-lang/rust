@@ -647,7 +647,7 @@ fn make_fn_glue(
     cx: @block_ctxt,
     v: ValueRef,
     t: ty::t,
-    glue_fn: fn(@block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt)
+    glue_fn: fn@(@block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt)
     -> @block_ctxt {
     let bcx = cx;
     let tcx = bcx_tcx(cx);
