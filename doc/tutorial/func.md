@@ -29,48 +29,86 @@ expected to return.
 
 ## Closures
 
-Normal Rust functions (declared with `fn`) do not close over their
-environment. A `lambda` expression can be used to create a closure.
+Named rust functions, like those in the previous section, do not close
+over their environment. Rust also includes support for closures, which
+are anonymous functions that can access the variables that were in
+scope at the time the closure was created.  Closures are represented
+as the pair of a function pointer (as in C) and the environment, which
+is where the values of the closed over variables are stored.  Rust
+includes support for three varieties of closure, each with different
+costs and capabilities:
 
-    fn make_plus_function(x: int) -> lambda(int) -> int {
-        lambda(y: int) -> int { x + y }
-    }
-    let plus_two = make_plus_function(2);
-    assert plus_two(3) == 5;
+- Stack closures (written `block`) store their environment in the
+  stack frame of their creator; they are very lightweight but cannot
+  be stored in a data structure.
+- Boxed closures (written `fn@`) store their environment in a
+  [shared box](data#shared-box).  These are good for storing within
+  data structures but cannot be sent to another task.
+- Unique closures (written `fn~`) store their environment in a
+  [unique box](data#unique-box).  These are limited in the kinds of
+  data that they can close over so that they can be safely sent
+  between tasks.  As with any unique pointer, copying a unique closure
+  results in a deep clone of the environment.
+  
+Both boxed closures and unique closures are subtypes of stack
+closures, meaning that wherever a stack closure type appears, a boxed
+or unique closure value can be used.  This is due to the restrictions
+placed on the use of stack closures, which ensure that all operations
+on a stack closure are also safe on any kind of closure.
 
-A `lambda` function *copies* its environment (in this case, the
-binding for `x`). It can not mutate the closed-over bindings, and will
-not see changes made to these variables after the `lambda` was
-evaluated. `lambda`s can be put in data structures and passed around
-without limitation.
+### Working with closures
 
-The type of a closure is `lambda(args) -> type`, as opposed to
-`fn(args) -> type`. The `fn` type stands for 'bare' functions, with no
-closure attached. Keep this in mind when writing higher-order
-functions.
+Closures are specified by writing an inline, anonymous function
+declaration.  For example, the following code creates a boxed closure:
 
-A different form of closure is the block. Blocks are written like they
-are in Ruby: `{|x| x + y}`, the formal parameters between pipes,
-followed by the function body. They are stack-allocated and properly
-close over their environment (they see updates to closed over
-variables, for example). But blocks can only be used in a limited set
-of circumstances. They can be passed to other functions, but not
-stored in data structures or returned.
+    let plus_two = fn@(x: int) -> int {
+        ret x + 2;
+    };
+    
+Creating a unique closure is very similar:
 
-    fn map_int(f: block(int) -> int, vec: [int]) -> [int] {
-        let result = [];
-        for i in vec { result += [f(i)]; }
-        ret result;
-    }
-    map_int({|x| x + 1 }, [1, 2, 3]);
+    let plus_two_uniq = fn~(x: int) -> int {
+        ret x + 2;
+    };
+    
+Stack closures can be created in a similar way; however, because stack
+closures literally point into their creator's stack frame, they can
+only be used in a very specific way.  Stack closures may be passed as
+parameters and they may be called, but they may not be stored into
+local variables or fields.  Creating a stack closure can therefore be
+done using a syntax like the following:
 
-The type of blocks is spelled `block(args) -> type`. Both closures and
-bare functions are automatically convert to `block`s when appropriate.
-Most higher-order functions should take their function arguments as
-`block`s.
+    let doubled = vec::map([1, 2, 3], block(x: int) -> int {
+        x * 2
+    });
+    
+Here the `vec::map()` is the standard higher-order map function, which
+applies the closure to each item in the vector and returns a new
+vector containing the results.
+    
+### Shorthand syntax
 
-A block with no arguments is written `{|| body(); }`—you can not leave
-off the pipes.
+The syntax in the previous section was very explicit; it fully
+specifies the kind of closure as well as the type of every parameter
+and the return type.  In practice, however, closures are often used as
+parameters to functions, and all of these details can be inferred.
+Therefore, we support a shorthand syntax similar to Ruby or Smalltalk
+blocks, which looks as follows:
+
+    let doubled = vec::map([1, 2, 3], {|x| x*2});
+ 
+Here the vertical bars after the open brace `{` indicate that this is
+a closure.  A list of parameters appears between the bars.  The bars
+must always be present: if there are no arguments, then simply write
+`{||...}`.
+
+As a further simplification, if the final parameter to a function is a
+closure, the closure need not be placed within parenthesis.
+Therefore, one could write
+
+    let doubled = vec::map([1, 2, 3]) {|x| x*2};
+   
+This form is often easier to parse as it involves less nesting.  
 
 ## Binding
 
@@ -79,8 +117,8 @@ Partial application is done using the `bind` keyword in Rust.
     let daynum = bind std::vec::position(_, ["mo", "tu", "we", "do",
                                              "fr", "sa", "su"]);
 
-Binding a function produces a closure (`lambda` type) in which some of
-the arguments to the bound function have already been provided.
+Binding a function produces a boxed closure (`fn@` type) in which some
+of the arguments to the bound function have already been provided.
 `daynum` will be a function taking a single string argument, and
 returning the day of the week that string corresponds to (if any).
 
@@ -103,11 +141,47 @@ To run such an iteration, you could do this:
     # fn for_rev(v: [int], act: block(int)) {}
     for_rev([1, 2, 3], {|n| log n; });
 
-But Rust allows a more pleasant syntax for this situation, with the
-loop block moved out of the parenthesis and the final semicolon
-omitted:
+Making use of the shorthand where a final closure argument can be
+moved outside of the parentheses permits the following, which
+looks quite like a normal loop:
 
     # fn for_rev(v: [int], act: block(int)) {}
     for_rev([1, 2, 3]) {|n|
         log n;
     }
+
+Note that, because `for_rev()` returns unit type, no semicolon is
+needed when the final closure is pulled outside of the parentheses.
+
+## Capture clauses
+
+When creating a boxed or unique closure, the default is to copy in the
+values of any closed over variables.  But sometimes, particularly if a
+value is large or expensive to copy, you would like to *move* the
+value into the closure instead.  Rust supports this via the use of a
+capture clause, which lets you specify precisely whether each variable
+used in the closure is copied or moved.
+
+As an example, let's assume we had some type of unique tree type:
+
+    tag tree<T> = tree_rec<T>;
+    type tree_rec<T> = ~{left: option<tree>, right: option<tree>, val: T};
+
+Now if we have a function like the following:
+
+    let some_tree: tree<T> = ...;
+    let some_closure = fn~() {
+        ... use some_tree in some way ...
+    };
+    
+Here the variable `some_tree` is used within the closure body, so a
+deep copy will be performed.  This can become quite expensive if the
+tree is large.  If we know that `some_tree` will not be used again,
+we could avoid this expense by making use of a capture clause like so:
+
+    let some_tree: tree<T> = ...;
+    let some_closure = fn~[move some_tree]() {
+        ... use some_tree in some way ...
+    };
+
+This is particularly useful when moving data into [child tasks](task).

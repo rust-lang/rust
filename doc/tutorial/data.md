@@ -188,6 +188,8 @@ All pointer types can be dereferenced with the `*` unary operator.
 
 ### Shared boxes
 
+<a name="shared-box"></a>
+
 Shared boxes are pointers to heap-allocated, reference counted memory.
 A cycle collector ensures that circular references do not result in
 memory leaks.
@@ -206,6 +208,8 @@ reference counting, for shared boxes.
 Shared boxes never cross task boundaries.
 
 ### Unique boxes
+
+<a name="unique-box"></a>
 
 In contrast to shared boxes, unique boxes are not reference counted.
 Instead, it is statically guaranteed that only a single owner of the

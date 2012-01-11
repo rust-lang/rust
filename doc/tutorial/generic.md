@@ -87,6 +87,8 @@ without any sophistication).
 
 ## Kinds
 
+<a name="kind"></a>
+
 Perhaps surprisingly, the 'copy' (duplicate) operation is not defined
 for all Rust types. Resource types (types with destructors) can not be
 copied, and neither can any type whose copying would require copying a
@@ -100,7 +102,7 @@ unless you explicitly declare that type parameter to have copyable
     // This does not compile
     fn head_bad<T>(v: [T]) -> T { v[0] }
     // This does
-    fn head<copy T>(v: [T]) -> T { v[0] }
+    fn head<T:copy>(v: [T]) -> T { v[0] }
 
 When instantiating a generic function, you can only instantiate it
 with types that fit its kinds. So you could not apply `head` to a
