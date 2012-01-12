@@ -111,7 +111,8 @@ class irc : public shape::data<irc,shape::ptr> {
     }
 
     void walk_iface() {
-        shape::data<irc,shape::ptr>::walk_iface_contents(dp);
+        //shape::data<irc,shape::ptr>::walk_iface_contents(dp);
+        shape::data<irc,shape::ptr>::walk_box_contents();
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,
@@ -502,7 +503,8 @@ class sweep : public shape::data<sweep,shape::ptr> {
     }
 
     void walk_iface() {
-        shape::data<sweep,shape::ptr>::walk_iface_contents(dp);
+        //shape::data<sweep,shape::ptr>::walk_iface_contents(dp);
+        shape::data<sweep,shape::ptr>::walk_box_contents();
     }
 
     void walk_res(const shape::rust_fn *dtor, unsigned n_params,
