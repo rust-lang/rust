@@ -5,11 +5,11 @@ tag maybe_pointy {
 
 type pointy = {
     mutable a : maybe_pointy,
-    d : sendfn() -> uint,
+    d : fn~() -> uint,
 };
 
-fn make_uniq_closure<A:send>(a: A) -> sendfn() -> uint {
-    sendfn() -> uint { ptr::addr_of(a) as uint }
+fn make_uniq_closure<A:send>(a: A) -> fn~() -> uint {
+    fn~() -> uint { ptr::addr_of(a) as uint }
 }
 
 fn empty_pointy() -> @pointy {

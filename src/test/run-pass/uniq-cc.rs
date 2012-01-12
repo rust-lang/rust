@@ -6,14 +6,14 @@ tag maybe_pointy {
 type pointy = {
     mutable a : maybe_pointy,
     c : ~int,
-    d : sendfn()->(),
+    d : fn~()->(),
 };
 
 fn empty_pointy() -> @pointy {
     ret @{
         mutable a : none,
         c : ~22,
-        d : sendfn()->(){},
+        d : fn~()->(){},
     }
 }
 
