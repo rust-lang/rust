@@ -139,7 +139,7 @@ The basic types are written like this:
 : Nil, the type that has only a single value.
 
 `bool`
-: Boolean type..
+: Boolean type, with values `true` and `false`.
 
 `int`
 : A machine-pointer-sized integer.
@@ -177,7 +177,7 @@ more detail later on (the `T`s here stand for any other type):
 `(T1, T2)`
 : Tuple type. Any arity above 1 is supported.
 
-`{fname1: T1, fname2: T2}`
+`{field1: T1, field2: T2}`
 : Record type.
 
 `fn(arg1: T1, arg2: T2) -> T3`, `lambda()`, `block()`
@@ -186,9 +186,6 @@ more detail later on (the `T`s here stand for any other type):
 `@T`, `~T`, `*T`
 : Pointer types.
 
-`obj { fn method1() }`
-: Object type.
-
 Types can be given names with `type` declarations:
 
     type monster_size = uint;
@@ -196,10 +193,10 @@ Types can be given names with `type` declarations:
 This will provide a synonym, `monster_size`, for unsigned integers. It
 will not actually create a new type—`monster_size` and `uint` can be
 used interchangeably, and using one where the other is expected is not
-a type error. Read about [single-variant tags][svt] further on if you
+a type error. Read about [single-variant enums][sve] further on if you
 need to create a type name that's not just a synonym.
 
-[svt]: data.html#single_variant_tag
+[sve]: data.html#single_variant_enum
 
 ## Literals
 
@@ -223,8 +220,8 @@ The nil literal is written just like the type: `()`. The keywords
 `true` and `false` produce the boolean literals.
 
 Character literals are written between single quotes, as in `'x'`. You
-may put non-ascii characters between single quotes (your source file
-should be encoded as utf-8 in that case). Rust understands a number of
+may put non-ascii characters between single quotes (your source files
+should be encoded as utf-8). Rust understands a number of
 character escapes, using the backslash character:
 
 `\n`
@@ -308,14 +305,16 @@ simply checks whether the configuration flag is defined at all). Flags
 for `target_os` and `target_arch` are set by the compiler. It is
 possible to set additional flags with the `--cfg` command-line option.
 
-Attributes always look like `#[attr]`, where `attr` can be simply a
-name (as in `#[test]`, which is used by the [built-in test
-framework](test.html)), a name followed by `=` and then a literal (as
-in `#[license = "BSD"]`, which is a valid way to annotate a Rust
-program as being released under a BSD-style license), or a name
-followed by a comma-separated list of nested attributes, as in the
-`cfg` example above, or in this [crate](mod.html) metadata
-declaration:
+Attributes are always wrapped in hash-braces (`#[attr]`). Inside the
+braces, a small minilanguage is supported, whose interpretation
+depends on the attribute that's being used. The simplest form is a
+plain name (as in `#[test]`, which is used by the [built-in test
+framework](test.html '')). A name-value pair can be provided using an `=`
+character followed by a literal (as in `#[license = "BSD"]`, which is
+a valid way to annotate a Rust program as being released under a
+BSD-style license). Finally, you can have a name followed by a
+comma-separated list of nested attributes, as in the `cfg` example
+above, or in this [crate](mod.html) metadata declaration:
 
     ## ignore
     #[link(name = "std",
@@ -324,7 +323,7 @@ declaration:
 
 An attribute without a semicolon following it applies to the
 definition that follows it. When terminated with a semicolon, it
-applies to the module or crate.
+applies to the module or crate in which it appears.
 
 ## Syntax extensions
 

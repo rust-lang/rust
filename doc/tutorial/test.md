@@ -18,8 +18,8 @@ Tests can be interspersed with other code, and annotated with the
     }
 
 When you compile the program normally, the `test_twice` function will
-not be used. To actually run the tests, compile with the `--test`
-flag:
+not be included. To compile and run such tests, compile with the
+`--test` flag, and then run the result:
 
     ## notrust
     > rustc --test twice.rs

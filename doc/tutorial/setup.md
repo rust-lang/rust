@@ -11,7 +11,7 @@ we have a file `hello.rs` containing this program:
 
     use std;
     fn main(args: [str]) {
-        std::io::println("hello world from " + args[0] + "!");
+        std::io::println("hello world from '" + args[0] + "'!");
     }
 
 If the Rust compiler was installed successfully, running `rustc
@@ -39,8 +39,10 @@ live inside a function.
 
 Rust programs can also be compiled as libraries, and included in other
 programs. The `use std` directive that appears at the top of a lot of
-examples imports the standard library. This is described in more
+examples imports the [standard library][std]. This is described in more
 detail [later on](mod.html).
+
+[std]: http://doc.rust-lang.org/doc/std/index/General.html
 
 ## Editing Rust code
 

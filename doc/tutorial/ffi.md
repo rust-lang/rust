@@ -13,7 +13,6 @@ hexadecimal string and prints to standard output. If you have the
 OpenSSL libraries installed, it should 'just work'.
 
     use std;
-    import std::{vec, str};
     
     native mod crypto {
         fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
@@ -28,7 +27,7 @@ OpenSSL libraries installed, it should 'just work'.
     fn sha1(data: str) -> str unsafe {
         let bytes = str::bytes(data);
         let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
-                                vec::len(bytes), std::ptr::null());
+                                vec::len(bytes), ptr::null());
         ret as_hex(vec::unsafe::from_buf(hash, 20u));
     }
     
@@ -109,13 +108,12 @@ null pointers.
 
 The `sha1` function is the most obscure part of the program.
 
-    # import std::{str, vec};
     # mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
     # fn as_hex(data: [u8]) -> str { "hi" }
     fn sha1(data: str) -> str unsafe {
         let bytes = str::bytes(data);
         let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
-                                vec::len(bytes), std::ptr::null());
+                                vec::len(bytes), ptr::null());
         ret as_hex(vec::unsafe::from_buf(hash, 20u));
     }
 
@@ -134,7 +132,7 @@ caused by some unsafe code.
 Unsafe blocks isolate unsafety. Unsafe functions, on the other hand,
 advertise it to the world. An unsafe function is written like this:
 
-    unsafe fn kaboom() { log "I'm harmless!"; }
+    unsafe fn kaboom() { "I'm harmless!"; }
 
 This function can only be called from an unsafe block or another
 unsafe function.
@@ -147,13 +145,12 @@ Rust's safety mechanisms.
 
 Let's look at our `sha1` function again.
 
-    # import std::{str, vec};
     # mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
     # fn as_hex(data: [u8]) -> str { "hi" }
     # fn x(data: str) -> str unsafe {
     let bytes = str::bytes(data);
     let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
-                            vec::len(bytes), std::ptr::null());
+                            vec::len(bytes), ptr::null());
     ret as_hex(vec::unsafe::from_buf(hash, 20u));
     # }
 
@@ -195,7 +192,7 @@ microsecond-resolution timer.
     }
     fn unix_time_in_microseconds() -> u64 unsafe {
         let x = {mutable tv_sec: 0u32, mutable tv_usec: 0u32};
-        libc::gettimeofday(std::ptr::addr_of(x), std::ptr::null());
+        libc::gettimeofday(ptr::addr_of(x), ptr::null());
         ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
     }
 

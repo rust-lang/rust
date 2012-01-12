@@ -1,7 +1,7 @@
 # Modules and crates
 
 The Rust namespace is divided into modules. Each source file starts
-with its own, empty module.
+with its own module.
 
 ## Local modules
 
@@ -15,7 +15,7 @@ explicitly import it, you must refer to it by its long name,
         fn cow() -> str { "mooo" }
     }
     fn main() {
-        log_err farm::chicken();
+        std::io::println(farm::chicken());
     }
 
 Modules can be nested to arbitrary depth.
@@ -48,7 +48,7 @@ file, compile them all together, and, depending on the presence of the
 
 The `#[link(...)]` part provides meta information about the module,
 which other crates can use to load the right module. More about that
-in a moment.
+later.
 
 To have a nested directory structure for your source files, you can
 nest mods in your `.rc` file:
@@ -68,15 +68,14 @@ content to the `poultry` module itself.
 
 Having compiled a crate with `--lib`, you can use it in another crate
 with a `use` directive. We've already seen `use std` in several of the
-examples, which loads in the standard library.
+examples, which loads in the [standard library][std].
+
+[std]: http://doc.rust-lang.org/doc/std/index/General.html
 
 `use` directives can appear in a crate file, or at the top level of a
 single-file `.rs` crate. They will cause the compiler to search its
 library search path (which you can extend with `-L` switch) for a Rust
-crate library with the right name. This name is deduced from the crate
-name in a platform-dependent way. The `farm` library will be called
-`farm.dll` on Windows, `libfarm.so` on Linux, and `libfarm.dylib` on
-OS X.
+crate library with the right name.
 
 It is possible to provide more specific information when using an
 external crate.
@@ -100,6 +99,16 @@ The version does not match the one provided in the `use` directive, so
 unless the compiler can find another crate with the right version
 somewhere, it will complain that no matching crate was found.
 
+## The core library
+
+A set of basic library routines, mostly related to built-in datatypes
+and the task system, are always implicitly linked and included in any
+Rust program, unless the `--no-core` compiler switch is given.
+
+This library is document [here][core].
+
+[core]: http://doc.rust-lang.org/doc/core/index/General.html
+
 ## A minimal example
 
 Now for something that you can actually compile yourself. We have
@@ -112,7 +121,7 @@ these two files:
     ## ignore
     // main.rs
     use mylib;
-    fn main() { log_err "hello " + mylib::world(); }
+    fn main() { std::io::println("hello " + mylib::world()); }
 
 Now compile and run like this (adjust to your platform if necessary):
 
@@ -127,7 +136,7 @@ Now compile and run like this (adjust to your platform if necessary):
 When using identifiers from other modules, it can get tiresome to
 qualify them with the full module path every time (especially when
 that path is several modules deep). Rust allows you to import
-identifiers at the top of a file or module.
+identifiers at the top of a file, module, or block.
 
     use std;
     import std::io::println;
@@ -136,12 +145,11 @@ identifiers at the top of a file or module.
     }
 
 It is also possible to import just the name of a module (`import
-std::io;`, then use `io::println`), import all identifiers exported by
-a given module (`import std::io::*`), or to import a specific set of
-identifiers (`import std::math::{min, max, pi}`).
+std::io;`, then use `io::println`), to import all identifiers exported
+by a given module (`import std::io::*`), or to import a specific set
+of identifiers (`import math::{min, max, pi}`).
 
-It is also possible to rename an identifier when importing, using the
-`=` operator:
+You can rename an identifier when importing using the `=` operator:
 
     import prnt = std::io::println;
 
@@ -177,7 +185,7 @@ and one for values. This means that this code is valid:
 
 You don't want to write things like that, but it *is* very practical
 to not have to worry about name clashes between types, values, and
-modules. This allows us to have a module `std::str`, for example, even
+modules. This allows us to have a module `core::str`, for example, even
 though `str` is a built-in type name.
 
 ## Resolution

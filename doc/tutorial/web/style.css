@@ -13,10 +13,6 @@ h1 { font-size: 22pt; }
 h2 { font-size: 17pt; }
 h3 { font-size: 14pt; }
 
-code {
-  color: #033;
-}
-
 pre {
   margin: 1.1em 0;
   padding: .4em .4em .4em 1em;

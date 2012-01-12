@@ -1,11 +1,11 @@
 # Datatypes
 
 Rust datatypes are, by default, immutable. The core datatypes of Rust
-are structural records and 'tags' (tagged unions, algebraic data
+are structural records and 'enums' (tagged unions, algebraic data
 types).
 
     type point = {x: float, y: float};
-    tag shape {
+    enum shape {
         circle(point, float);
         rectangle(point, point);
     }
@@ -26,8 +26,8 @@ example...
 
     type stack = {content: [int], mutable head: uint};
 
-With such a type, you can do `mystack.head += 1u`. When the `mutable`
-is omitted from the type, such an assignment would result in a type
+With such a type, you can do `mystack.head += 1u`. If `mutable` were
+omitted from the type, such an assignment would result in a type
 error.
 
 To 'update' an immutable record, you use functional record update
@@ -67,13 +67,13 @@ same order they appear in the type. When you are not interested in all
 the fields of a record, a record pattern may end with `, _` (as in
 `{field1, _}`) to indicate that you're ignoring all other fields.
 
-## Tags
+## Enums
 
-Tags [FIXME terminology] are datatypes that have several different
-representations. For example, the type shown earlier:
+Enums are datatypes that have several different representations. For
+example, the type shown earlier:
 
     # type point = {x: float, y: float};
-    tag shape {
+    enum shape {
         circle(point, float);
         rectangle(point, point);
     }
@@ -90,10 +90,10 @@ which can be used to construct values of the type (taking arguments of
 the specified types). So `circle({x: 0f, y: 0f}, 10f)` is the way to
 create a new circle.
 
-Tag variants do not have to have parameters. This, for example, is
-equivalent to an `enum` in C:
+Enum variants do not have to have parameters. This, for example, is
+equivalent to a C enum:
 
-    tag direction {
+    enum direction {
         north;
         east;
         south;
@@ -103,36 +103,36 @@ equivalent to an `enum` in C:
 This will define `north`, `east`, `south`, and `west` as constants,
 all of which have type `direction`.
 
-<a name="single_variant_tag"></a>
+<a name="single_variant_enum"></a>
 
-There is a special case for tags with a single variant. These are used
-to define new types in such a way that the new name is not just a
+There is a special case for enums with a single variant. These are
+used to define new types in such a way that the new name is not just a
 synonym for an existing type, but its own distinct type. If you say:
 
-    tag gizmo_id = int;
+    enum gizmo_id = int;
 
 That is a shorthand for this:
 
-    tag gizmo_id { gizmo_id(int); }
+    enum gizmo_id { gizmo_id(int); }
 
-Tag types like this can have their content extracted with the
+Enum types like this can have their content extracted with the
 dereference (`*`) unary operator:
 
-    # tag gizmo_id = int;
+    # enum gizmo_id = int;
     let my_gizmo_id = gizmo_id(10);
     let id_int: int = *my_gizmo_id;
 
-## Tag patterns
+## Enum patterns
 
-For tag types with multiple variants, destructuring is the only way to
+For enum types with multiple variants, destructuring is the only way to
 get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
     # type point = {x: float, y: float};
-    # tag shape { circle(point, float); rectangle(point, point); }
+    # enum shape { circle(point, float); rectangle(point, point); }
     fn area(sh: shape) -> float {
         alt sh {
-            circle(_, size) { std::math::pi * size * size }
+            circle(_, size) { float::consts::pi * size * size }
             rectangle({x, y}, {x: x2, y: y2}) { (x2 - x) * (y2 - y) }
         }
     }
@@ -142,7 +142,7 @@ a dot at the end) to match them in a pattern. This to prevent
 ambiguity between matching a variant name and binding a new variable.
 
     # type point = {x: float, y: float};
-    # tag direction { north; east; south; west; }
+    # enum direction { north; east; south; west; }
     fn point_from_direction(dir: direction) -> point {
         alt dir {
             north. { {x:  0f, y:  1f} }
@@ -161,22 +161,22 @@ Tuples can have any arity except for 0 or 1 (though you may see nil,
 
     let mytup: (int, int, float) = (10, 20, 30.0);
     alt mytup {
-      (a, b, c) { log a + b + (c as int); }
+      (a, b, c) { log(info, a + b + (c as int)); }
     }
 
 ## Pointers
 
-In contrast to a lot of modern languages, record and tag types in Rust
-are not represented as pointers to allocated memory. They are, like in
-C and C++, represented directly. This means that if you `let x = {x:
-1f, y: 1f};`, you are creating a record on the stack. If you then copy
-it into a data structure, the whole record is copied, not just a
-pointer.
+In contrast to a lot of modern languages, record and enum types in
+Rust are not represented as pointers to allocated memory. They are,
+like in C and C++, represented directly. This means that if you `let x
+= {x: 1f, y: 1f};`, you are creating a record on the stack. If you
+then copy it into a data structure, the whole record is copied, not
+just a pointer.
 
-For small records like `point`, this is usually still more efficient
-than allocating memory and going through a pointer. But for big
-records, or records with mutable fields, it can be useful to have a
-single copy on the heap, and refer to that through a pointer.
+For small records like `point`, this is usually more efficient than
+allocating memory and going through a pointer. But for big records, or
+records with mutable fields, it can be useful to have a single copy on
+the heap, and refer to that through a pointer.
 
 Rust supports several types of pointers. The simplest is the unsafe
 pointer, written `*TYPE`, which is a completely unchecked pointer
@@ -194,7 +194,7 @@ Shared boxes are pointers to heap-allocated, reference counted memory.
 A cycle collector ensures that circular references do not result in
 memory leaks.
 
-Creating a shared box is done by simply applying the binary `@`
+Creating a shared box is done by simply applying the unary `@`
 operator to an expression. The result of the expression will be boxed,
 resulting in a box of the right type. For example:
 
@@ -221,11 +221,8 @@ box exists at any time.
 This is where the 'move' (`<-`) operator comes in. It is similar to
 `=`, but it de-initializes its source. Thus, the unique box can move
 from `x` to `y`, without violating the constraint that it only has a
-single owner.
-
-NOTE: If you do `y = x` instead, the box will be copied. We should
-emit warning for this, or disallow it entirely, but do not currently
-do so.
+single owner (if you used assignment instead of the move operator, the
+box would, in principle, be copied).
 
 Unique boxes, when they do not contain any shared boxes, can be sent
 to other tasks. The sending task will give up ownership of the box,
@@ -249,10 +246,10 @@ Rust vectors are always heap-allocated and unique. A value of type
 containing any number of `TYPE` values.
 
 NOTE: This uniqueness is turning out to be quite awkward in practice,
-and might change.
+and might change in the future.
 
 Vector literals are enclosed in square brackets. Dereferencing is done
-with square brackets (and zero-based):
+with square brackets (zero-based):
 
     let myvec = [true, false, true, false];
     if myvec[1] { std::io::println("boom"); }
@@ -262,8 +259,8 @@ The type written as `[mutable TYPE]` is a vector with mutable
 elements. Mutable vector literals are written `[mutable]` (empty) or
 `[mutable 1, 2, 3]` (with elements).
 
-Growing a vector in Rust is not as inefficient as it looks (the `+`
-operator means concatenation when applied to vector types):
+The `+` operator means concatenation when applied to vector types.
+Growing a vector in Rust is not as inefficient as it looks :
 
     let myvec = [], i = 0;
     while i < 100 {
@@ -286,17 +283,17 @@ null byte (for interoperability with C APIs).
 
 This sequence of bytes is interpreted as an UTF-8 encoded sequence of
 characters. This has the advantage that UTF-8 encoded I/O (which
-should really be the goal for modern systems) is very fast, and that
-strings have, for most intents and purposes, a nicely compact
+should really be the default for modern systems) is very fast, and
+that strings have, for most intents and purposes, a nicely compact
 representation. It has the disadvantage that you only get
 constant-time access by byte, not by character.
 
 A lot of algorithms don't need constant-time indexed access (they
-iterate over all characters, which `std::str::chars` helps with), and
+iterate over all characters, which `str::chars` helps with), and
 for those that do, many don't need actual characters, and can operate
 on bytes. For algorithms that do really need to index by character,
 there's the option to convert your string to a character vector (using
-`std::str::to_chars`).
+`str::to_chars`).
 
 Like vectors, strings are always unique. You can wrap them in a shared
 box to share them. Unlike vectors, there is no mutable variant of

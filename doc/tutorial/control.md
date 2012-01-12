@@ -67,9 +67,9 @@ that `(float, float)` is a tuple of two floats:
 
     fn angle(vec: (float, float)) -> float {
         alt vec {
-          (0f, y) if y < 0f { 1.5 * std::math::pi }
-          (0f, y) { 0.5 * std::math::pi }
-          (x, y) { std::math::atan(y / x) }
+          (0f, y) if y < 0f { 1.5 * float::consts::pi }
+          (0f, y) { 0.5 * float::consts::pi }
+          (x, y) { float::atan(y / x) }
         }
     }
 
@@ -79,7 +79,7 @@ y)` matches any tuple whose first element is zero, and binds `y` to
 the second element. `(x, y)` matches any tuple, and binds both
 elements to a variable.
 
-Any `alt` arm can have a guard clause (written `when EXPR`), which is
+Any `alt` arm can have a guard clause (written `if EXPR`), which is
 an expression of type `bool` that determines, after the pattern is
 found to match, whether the arm is taken or not. The variables bound
 by the pattern are available in this guard expression.
@@ -111,7 +111,7 @@ to abort the current iteration and continue with the next.
     while true {
         x += x - 3;
         if x % 5 == 0 { break; }
-        std::io::println(std::int::str(x));
+        std::io::println(int::str(x));
     }
 
 This code prints out a weird sequence of numbers and stops as soon as
@@ -161,24 +161,32 @@ Logging is polymorphic—any type of value can be logged, and the
 runtime will do its best to output a textual representation of the
 value.
 
-    log "hi";
-    log (1, [2.5, -1.8]);
+    log(warn, "hi");
+    log(error, (1, [2.5, -1.8]));
 
-By default, you *will not* see the output of your log statements. The
-environment variable `RUST_LOG` controls which log statements actually
-get output. It can contain a comma-separated list of paths for modules
-that should be logged. For example, running `rustc` with
-`RUST_LOG=rustc::front::attr` will turn on logging in its attribute
-parser. If you compile a program `foo.rs`, you can set `RUST_LOG` to
-`foo` to enable its logging.
+The first argument is the log level (levels `info`, `warn`, and
+`error` are predefined), and the second is the value to log. By
+default, you *will not* see the output of that first log statement,
+which has `warn` level. The environment variable `RUST_LOG` controls
+which log level is used. It can contain a comma-separated list of
+paths for modules that should be logged. For example, running `rustc`
+with `RUST_LOG=rustc::front::attr` will turn on logging in its
+attribute parser. If you compile a program named `foo.rs`, its
+top-level module will be called `foo`, and you can set `RUST_LOG` to
+`foo` to enable `warn` and `info` logging for the module.
 
 Turned-off `log` statements impose minimal overhead on the code that
 contains them, so except in code that needs to be really, really fast,
 you should feel free to scatter around debug logging statements, and
 leave them in.
 
-For interactive debugging, you often want unconditional logging. For
-this, use `log_err` instead of `log` [FIXME better name].
+Three macros that combine text-formatting (as with `#fmt`) and logging
+are available. These take a string and any number of format arguments,
+and will log the formatted string:
+
+    # fn get_error_string() -> str { "boo" }
+    #warn("only %d seconds remaining", 10);
+    #error("fatal: %s", get_error_string());
 
 ## Assertions
 

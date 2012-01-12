@@ -3,36 +3,39 @@
 Rust datatypes are not trivial to copy (the way, for example,
 JavaScript values can be copied by simply taking one or two machine
 words and plunking them somewhere else). Shared boxes require
-reference count updates, big records or tags require an arbitrary
-amount of data to be copied (plus updating the reference counts of
-shared boxes hanging off them), unique pointers require their origin
-to be de-initialized.
+reference count updates, big records, tags, or unique pointers require
+an arbitrary amount of data to be copied (plus updating the reference
+counts of shared boxes hanging off them).
 
-For this reason, the way Rust passes arguments to functions is a bit
-more involved than it is in most languages. It performs some
-compile-time cleverness to get rid of most of the cost of copying
-arguments, and forces you to put in explicit copy operators in the
-places where it can not.
+For this reason, the default calling convention for Rust functions
+leaves ownership of the arguments with the caller. The caller
+guarantees that the arguments will outlive the call, the callee merely
+gets access to them.
 
 ## Safe references
 
-The foundation of Rust's argument-passing optimization is the fact
-that Rust tasks for single-threaded worlds, which share no data with
-other tasks, and that most data is immutable.
+There is one catch with this approach: sometimes the compiler can
+*not* statically guarantee that the argument value at the caller side
+will survive to the end of the call. Another argument might indirectly
+refer to it and be used to overwrite it, or a closure might assign a
+new value to it.
+
+Fortunately, Rust tasks are single-threaded worlds, which share no
+data with other tasks, and that most data is immutable. This allows
+most argument-passing situations to be proved safe without further
+difficulty.
 
 Take the following program:
 
     # fn get_really_big_record() -> int { 1 }
     # fn myfunc(a: int) {}
-    let x = get_really_big_record();
-    myfunc(x);
+    fn main() {
+        let x = get_really_big_record();
+        myfunc(x);
+    }
 
-We want to pass `x` to `myfunc` by pointer (which is easy), *and* we
-want to ensure that `x` stays intact for the duration of the call
-(which, in this example, is also easy). So we can just use the
-existing value as the argument, without copying.
-
-There are more involved cases. The call could look like this:
+Here we know for sure that no one else has access to the `x` variable
+in `main`, so we're good. But the call could also look like this:
 
     # fn myfunc(a: int, b: block()) {}
     # fn get_another_record() -> int { 1 }
@@ -43,14 +46,11 @@ Now, if `myfunc` first calls its second argument and then accesses its
 first argument, it will see a different value from the one that was
 passed to it.
 
-The compiler will insert an implicit copy of `x` in such a case,
+In such a case, the compiler will insert an implicit copy of `x`,
 *except* if `x` contains something mutable, in which case a copy would
-result in code that behaves differently (if you mutate the copy, `x`
-stays unchanged). That would be bad, so the compiler will disallow
-such code.
-
-When inserting an implicit copy for something big, the compiler will
-warn, so that you know that the code is not as efficient as it looks.
+result in code that behaves differently. If copying `x` might be
+expensive (for example, if it holds a vector), the compiler will emit
+a warning.
 
 There are even more tricky cases, in which the Rust compiler is forced
 to pessimistically assume a value will get mutated, even though it is
@@ -81,51 +81,59 @@ with the `copy` operator:
        for elt in v { iter(copy elt); }
     }
 
-## Argument passing styles
-
-The fact that arguments are conceptually passed by safe reference does
-not mean all arguments are passed by pointer. Composite types like
-records and tags *are* passed by pointer, but others, like integers
-and pointers, are simply passed by value.
-
-It is possible, when defining a function, to specify a passing style
-for a parameter by prefixing the parameter name with a symbol. The
-most common special style is by-mutable-reference, written `&`:
-
-    fn vec_push(&v: [int], elt: int) {
-        v += [elt];
-    }
-
-This will make it possible for the function to mutate the parameter.
-Clearly, you are only allowed to pass things that can actually be
-mutated to such a function.
-
-Another style is by-move, which will cause the argument to become
-de-initialized on the caller side, and give ownership of it to the
-called function. This is written `-`.
-
-Finally, the default passing styles (by-value for non-structural
-types, by-reference for structural ones) are written `++` for by-value
-and `&&` for by(-immutable)-reference. It is sometimes necessary to
-override the defaults. We'll talk more about this when discussing
-[generics][gens].
-
-[gens]: generic.html
+Adding a `copy` operator is also the way to muffle warnings about
+implicit copies.
 
 ## Other uses of safe references
 
 Safe references are not only used for argument passing. When you
 destructure on a value in an `alt` expression, or loop over a vector
 with `for`, variables bound to the inside of the given data structure
-will use safe references, not copies. This means such references have
-little overhead, but you'll occasionally have to copy them to ensure
+will use safe references, not copies. This means such references are
+very cheap, but you'll occasionally have to copy them to ensure
 safety.
 
     let my_rec = {a: 4, b: [1, 2, 3]};
     alt my_rec {
       {a, b} {
-        log b; // This is okay
+        log(info, b); // This is okay
         my_rec = {a: a + 1, b: b + [a]};
-        log b; // Here reference b has become invalid
+        log(info, b); // Here reference b has become invalid
       }
+    }
+
+## Argument passing styles
+
+The fact that arguments are conceptually passed by safe reference does
+not mean all arguments are passed by pointer. Composite types like
+records and tags *are* passed by pointer, but single-word values, like
+integers and pointers, are simply passed by value. Most of the time,
+the programmer does not have to worry about this, as the compiler will
+simply pick the most efficient passing style. There is one exception,
+which will be described in the section on [generics](generic.html).
+
+To explicitly set the passing-style for a parameter, you prefix the
+argument name with a sigil. There are two special passing styles that
+are often useful. The first is by-mutable-pointer, written with a
+single `&`:
+
+    fn vec_push(&v: [int], elt: int) {
+        v += [elt];
+    }
+
+This allows the function to mutate the value of the argument, *in the
+caller's context*. Clearly, you are only allowed to pass things that
+can actually be mutated to such a function.
+
+Then there is the by-copy style, written `+`. This indicates that the
+function wants to take ownership of the argument value. If the caller
+does not use the argument after the call, it will be 'given' to the
+callee. Otherwise a copy will be made. This mode is mostly used for
+functions that construct data structures. The argument will end up
+being owned by the data structure, so if that can be done without a
+copy, that's a win.
+
+    type person = {name: str, address: str};
+    fn make_person(+name: str, +address: str) -> person {
+        ret {name: name, address: address};
     }

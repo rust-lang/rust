@@ -8,8 +8,6 @@ programmed in one or more other languages before. The tutorial covers
 the whole language, though not with the depth and precision of the
 [language reference][1].
 
-FIXME: maybe also the stdlib?
-
 [1]: http://www.rust-lang.org/doc/rust.html
 
 ## Disclaimer
@@ -55,5 +53,5 @@ identifiers defined in the example code are displayed in `code font`.
 Code snippets are indented, and also shown in a monospace font. Not
 all snippets constitute whole programs. For brevity, we'll often show
 fragments of programs that don't compile on their own. To try them
-out, you'll have to wrap them in `fn main() { ... }`, and make sure
+out, you might have to wrap them in `fn main() { ... }`, and make sure
 they don't contain references to things that aren't actually defined.
