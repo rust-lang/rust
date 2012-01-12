@@ -278,7 +278,7 @@ native mod llvm {
     fn LLVMMDNodeInContext(C: ContextRef, Vals: *ValueRef, Count: uint) ->
        ValueRef;
     fn LLVMMDNode(Vals: *ValueRef, Count: uint) -> ValueRef;
-    fn LLVMAddNamedMetadataOperand(M: ModuleRef, Str: sbuf, SLen: uint,
+    fn LLVMAddNamedMetadataOperand(M: ModuleRef, Str: sbuf,
                                    Val: ValueRef);
 
     /* Operations on scalar constants */

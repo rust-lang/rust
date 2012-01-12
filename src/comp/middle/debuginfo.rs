@@ -73,7 +73,7 @@ fn llnull() -> ValueRef unsafe {
 
 fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
     str::as_buf(name, {|sbuf|
-        llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, str::byte_len(name),
+        llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf,
                                           val)
     })
 }
