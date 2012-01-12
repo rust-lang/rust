@@ -5443,24 +5443,10 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
       }
       ast::item_impl(tps, some(@{node: ast::ty_path(_, id), _}), _, ms) {
         let i_did = ast_util::def_id_of_def(ccx.tcx.def_map.get(id));
-        let ty = ty::lookup_item_type(ccx.tcx, i_did).ty;
-        let new_pt = pt + [it.ident + int::str(it.id), "wrap"];
-        let extra_tps = vec::map(tps, {|p| param_bounds(ccx, p)});
-        let tbl = C_struct(vec::map(*ty::iface_methods(ccx.tcx, i_did), {|im|
-            alt vec::find(ms, {|m| m.ident == im.ident}) {
-              some(m) {
-                trans_impl::trans_wrapper(ccx, new_pt, extra_tps, m)
-              }
-            }
-        }));
-        let s = mangle_exported_name(ccx, new_pt + ["!vtable"], ty);
-        let vt_gvar = str::as_buf(s, {|buf|
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
-        });
-        llvm::LLVMSetInitializer(vt_gvar, tbl);
-        llvm::LLVMSetGlobalConstant(vt_gvar, True);
-        ccx.item_ids.insert(it.id, vt_gvar);
-        ccx.item_symbols.insert(it.id, s);
+        trans_impl::trans_impl_vtable(ccx, pt, i_did, ms, tps, it);
+      }
+      ast::item_iface(_, _) {
+        trans_impl::trans_iface_vtable(ccx, pt, it);
       }
       _ { }
     }

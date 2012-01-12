@@ -68,18 +68,23 @@ fn trans_static_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
     {env: obj_env(val) with lval_static_fn(bcx, did, e.id)}
 }
 
+fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, m: ty::method)
+    -> {ty: ty::t, llty: TypeRef} {
+    let fty = ty::mk_fn(ccx.tcx, m.fty);
+    let bare_fn_ty = type_of_fn_from_ty(ccx, ast_util::dummy_sp(),
+                                        fty, *m.tps);
+    let {inputs, output} = llfn_arg_tys(bare_fn_ty);
+    {ty: fty, llty: T_fn([dict_ty] + inputs, output)}
+}
+
 fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
                        fld_expr: @ast::expr, iface_id: ast::def_id,
                        n_method: uint) -> lval_maybe_callee {
     let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
     let method = ty::iface_methods(tcx, iface_id)[n_method];
-    let fty = ty::mk_fn(tcx, method.fty);
-    let bare_fn_ty = type_of_fn_from_ty(ccx, ast_util::dummy_sp(),
-                                        fty, *method.tps);
-    let {inputs: bare_inputs, output} = llfn_arg_tys(bare_fn_ty);
-    let fn_ty = T_fn([val_ty(dict)] + bare_inputs, output);
+    let {ty: fty, llty: llfty} = wrapper_fn_ty(ccx, val_ty(dict), method);
     let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
-                             T_ptr(T_array(T_ptr(fn_ty), n_method + 1u)));
+                             T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
     let generic = none;
     if vec::len(*method.tps) > 0u || ty::type_contains_params(tcx, fty) {
@@ -138,9 +143,36 @@ fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
     {inputs: args, output: out_ty}
 }
 
-fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
-                 extra_tps: [ty::param_bounds], m: @ast::method) -> ValueRef {
-    let real_fn = ccx.item_ids.get(m.id);
+fn trans_vtable(ccx: @crate_ctxt, id: ast::node_id, name: str,
+                ptrs: [ValueRef]) {
+    let tbl = C_struct(ptrs);
+    let vt_gvar = str::as_buf(name, {|buf|
+        llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
+    });
+    llvm::LLVMSetInitializer(vt_gvar, tbl);
+    llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
+    ccx.item_ids.insert(id, vt_gvar);
+    ccx.item_symbols.insert(id, name);
+}
+
+fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident], llfty: TypeRef,
+                 fill: block(ValueRef, @block_ctxt) -> @block_ctxt)
+    -> ValueRef {
+    let lcx = @{path: pt, module_path: [],
+                obj_typarams: [], obj_fields: [], ccx: ccx};
+    let name = link::mangle_internal_name_by_path(ccx, pt);
+    let llfn = decl_internal_cdecl_fn(ccx.llmod, name, llfty);
+    let fcx = new_fn_ctxt(lcx, ast_util::dummy_sp(), llfn);
+    let bcx = new_top_block_ctxt(fcx), lltop = bcx.llbb;
+    let bcx = fill(llfn, bcx);
+    build_return(bcx);
+    finish_fn(fcx, lltop);
+    ret llfn;
+}
+
+fn trans_impl_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
+                      extra_tps: [ty::param_bounds], real_fn: ValueRef)
+    -> ValueRef {
     let {inputs: real_args, output: real_ret} =
         llfn_arg_tys(llvm::LLVMGetElementType(val_ty(real_fn)));
     let extra_ptrs = [];
@@ -159,32 +191,80 @@ fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
     let wrap_args = [T_ptr(T_dict())] + vec::slice(real_args, 0u, 2u) +
         vec::slice(real_args, 2u + vec::len(extra_ptrs), vec::len(real_args));
     let llfn_ty = T_fn(wrap_args, real_ret);
+    trans_wrapper(ccx, pt, llfn_ty, {|llfn, bcx|
+        let dict = PointerCast(bcx, LLVMGetParam(llfn, 0u), env_ty);
+        // retptr, self
+        let args = [LLVMGetParam(llfn, 1u), LLVMGetParam(llfn, 2u)], i = 0u;
+        // saved tydescs/dicts
+        while i < n_extra_ptrs {
+            i += 1u;
+            args += [load_inbounds(bcx, dict, [0, i as int])];
+        }
+        // the rest of the parameters
+        let i = 3u, params_total = llvm::LLVMCountParamTypes(llfn_ty);
+        while i < params_total {
+            args += [LLVMGetParam(llfn, i)];
+            i += 1u;
+        }
+        Call(bcx, real_fn, args);
+        bcx
+    })
+}
 
-    let lcx = @{path: pt + ["wrapper", m.ident], module_path: [],
-                obj_typarams: [], obj_fields: [], ccx: ccx};
-    let name = link::mangle_internal_name_by_path_and_seq(ccx, pt, m.ident);
-    let llfn = decl_internal_cdecl_fn(ccx.llmod, name, llfn_ty);
-    let fcx = new_fn_ctxt(lcx, ast_util::dummy_sp(), llfn);
-    let bcx = new_top_block_ctxt(fcx), lltop = bcx.llbb;
+fn trans_impl_vtable(ccx: @crate_ctxt, pt: [ast::ident],
+                     iface_id: ast::def_id, ms: [@ast::method],
+                     tps: [ast::ty_param], it: @ast::item) {
+    let new_pt = pt + [it.ident + int::str(it.id), "wrap"];
+    let extra_tps = vec::map(tps, {|p| param_bounds(ccx, p)});
+    let ptrs = vec::map(*ty::iface_methods(ccx.tcx, iface_id), {|im|
+        alt vec::find(ms, {|m| m.ident == im.ident}) {
+          some(m) {
+            let target = ccx.item_ids.get(m.id);
+            trans_impl_wrapper(ccx, new_pt + [m.ident], extra_tps, target)
+          }
+        }
+    });
+    let s = link::mangle_internal_name_by_path(ccx, new_pt + ["!vtable"]);
+    trans_vtable(ccx, it.id, s, ptrs);
+}
 
-    let dict = PointerCast(bcx, LLVMGetParam(llfn, 0u), env_ty);
-    // retptr, self
-    let args = [LLVMGetParam(llfn, 1u), LLVMGetParam(llfn, 2u)], i = 0u;
-    // saved tydescs/dicts
-    while i < n_extra_ptrs {
+fn trans_iface_wrapper(ccx: @crate_ctxt, pt: [ast::ident], m: ty::method,
+                       n: uint) -> ValueRef {
+    let {llty: llfty, _} = wrapper_fn_ty(ccx, T_ptr(T_i8()), m);
+    trans_wrapper(ccx, pt, llfty, {|llfn, bcx|
+        let self = Load(bcx, PointerCast(bcx, LLVMGetParam(llfn, 2u),
+                                         T_ptr(T_opaque_iface_ptr(ccx))));
+        let boxed = GEPi(bcx, self, [0, abi::box_rc_field_body]);
+        let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, boxed, [0, 1]),
+                                         T_ptr(T_ptr(T_dict()))));
+        let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
+                                 T_ptr(T_array(T_ptr(llfty), n + 1u)));
+        let mptr = Load(bcx, GEPi(bcx, vtable, [0, n as int]));
+        // FIXME[impl] This doesn't account for more-than-ptr-sized alignment
+        let inner_self = GEPi(bcx, boxed, [0, 2]);
+        let args = [PointerCast(bcx, dict, T_ptr(T_i8())),
+                    LLVMGetParam(llfn, 1u),
+                    PointerCast(bcx, inner_self, T_opaque_cbox_ptr(ccx))];
+        let i = 3u, total = llvm::LLVMCountParamTypes(llfty);
+        while i < total {
+            args += [LLVMGetParam(llfn, i)];
+            i += 1u;
+        }
+        Call(bcx, mptr, args);
+        bcx
+    })
+}
+
+fn trans_iface_vtable(ccx: @crate_ctxt, pt: [ast::ident], it: @ast::item) {
+    let new_pt = pt + [it.ident + int::str(it.id)];
+    let i_did = ast_util::local_def(it.id), i = 0u;
+    let ptrs = vec::map(*ty::iface_methods(ccx.tcx, i_did), {|m|
+        let w = trans_iface_wrapper(ccx, new_pt + [m.ident], m, i);
         i += 1u;
-        args += [load_inbounds(bcx, dict, [0, i as int])];
-    }
-    // the rest of the parameters
-    let i = 3u, params_total = llvm::LLVMCountParamTypes(llfn_ty);
-    while i < params_total {
-        args += [LLVMGetParam(llfn, i)];
-        i += 1u;
-    }
-    Call(bcx, ccx.item_ids.get(m.id), args);
-    build_return(bcx);
-    finish_fn(fcx, lltop);
-    ret llfn;
+        w
+    });
+    let s = link::mangle_internal_name_by_path(ccx, new_pt + ["!vtable"]);
+    trans_vtable(ccx, it.id, s, ptrs);
 }
 
 fn dict_is_static(tcx: ty::ctxt, origin: typeck::dict_origin) -> bool {
@@ -193,7 +273,8 @@ fn dict_is_static(tcx: ty::ctxt, origin: typeck::dict_origin) -> bool {
         vec::all(ts, {|t| !ty::type_contains_params(tcx, t)}) &&
         vec::all(*origs, {|o| dict_is_static(tcx, o)})
       }
-      typeck::dict_param(_, _) { false }
+      typeck::dict_iface(_) { true }
+      _ { false }
     }
 }
 
@@ -219,6 +300,9 @@ fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
       typeck::dict_param(n_param, n_bound) {
         rslt(bcx, option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound])
       }
+      typeck::dict_iface(did) {
+        ret rslt(bcx, get_static_dict(bcx, origin));
+      }
     }
 }
 
@@ -226,7 +310,7 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
     alt origin {
       typeck::dict_static(did, ts, origs) {
         let d_params = [], orig = 0u;
-        if vec::len(ts) == 0u { ret @{impl_def: did, params: d_params}; }
+        if vec::len(ts) == 0u { ret @{def: did, params: d_params}; }
         let impl_params = ty::lookup_item_type(tcx, did).bounds;
         vec::iter2(ts, *impl_params) {|t, bounds|
             d_params += [dict_param_ty(t)];
@@ -239,7 +323,10 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
                 }
             }
         }
-        @{impl_def: did, params: d_params}
+        @{def: did, params: d_params}
+      }
+      typeck::dict_iface(did) {
+        @{def: did, params: []}
       }
     }
 }
@@ -269,16 +356,19 @@ fn get_static_dict(bcx: @block_ctxt, origin: typeck::dict_origin)
 fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
     -> {bcx: @block_ctxt, ptrs: [ValueRef]} {
     let ccx = bcx_ccx(bcx);
+    fn get_vtable(ccx: @crate_ctxt, did: ast::def_id) -> ValueRef {
+        if did.crate == ast::local_crate {
+            ccx.item_ids.get(did.node)
+        } else {
+            let name = csearch::get_symbol(ccx.sess.get_cstore(), did);
+            get_extern_const(ccx.externs, ccx.llmod, name, T_ptr(T_i8()))
+        }
+    }
     alt origin {
       typeck::dict_static(impl_did, tys, sub_origins) {
-        let vtable = if impl_did.crate == ast::local_crate {
-            ccx.item_ids.get(impl_did.node)
-        } else {
-            let name = csearch::get_symbol(ccx.sess.get_cstore(), impl_did);
-            get_extern_const(ccx.externs, ccx.llmod, name, T_ptr(T_i8()))
-        };
         let impl_params = ty::lookup_item_type(ccx.tcx, impl_did).bounds;
-        let ptrs = [vtable], origin = 0u, ti = none, bcx = bcx;
+        let ptrs = [get_vtable(ccx, impl_did)];
+        let origin = 0u, ti = none, bcx = bcx;
         vec::iter2(*impl_params, tys) {|param, ty|
             let rslt = get_tydesc(bcx, ty, true, tps_normal, ti).result;
             ptrs += [rslt.val];
@@ -296,6 +386,9 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
             }
         }
         {bcx: bcx, ptrs: ptrs}
+      }
+      typeck::dict_iface(did) {
+        {bcx: bcx, ptrs: [get_vtable(ccx, did)]}
       }
     }
 }

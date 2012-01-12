@@ -20,7 +20,7 @@ import syntax::print::pprust::*;
 
 export check_crate;
 export method_map, method_origin, method_static, method_param, method_iface;
-export dict_map, dict_res, dict_origin, dict_static, dict_param;
+export dict_map, dict_res, dict_origin, dict_static, dict_param, dict_iface;
 
 tag method_origin {
     method_static(ast::def_id);
@@ -36,6 +36,7 @@ tag dict_origin {
     dict_static(ast::def_id, [ty::t], dict_res);
     // Param number, bound number
     dict_param(uint, uint);
+    dict_iface(ast::def_id);
 }
 type dict_map = hashmap<ast::node_id, dict_res>;
 
@@ -2197,24 +2198,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
         let t_e = ty::expr_ty(tcx, e);
 
-        if ty::type_is_nil(tcx, t_e) {
-            tcx.sess.span_err(expr.span,
-                              "cast from nil: " +
-                                  ty_to_str(tcx, t_e) + " as " +
-                                  ty_to_str(tcx, t_1));
-        }
-
-        if ty::type_is_nil(tcx, t_1) {
-            tcx.sess.span_err(expr.span,
-                              "cast to nil: " +
-                                  ty_to_str(tcx, t_e) + " as " +
-                                  ty_to_str(tcx, t_1));
-        }
-
         alt ty::struct(tcx, t_1) {
           // This will be looked up later on
           ty::ty_iface(_, _) {}
           _ {
+            if ty::type_is_nil(tcx, t_e) {
+                tcx.sess.span_err(expr.span, "cast from nil: " +
+                                  ty_to_str(tcx, t_e) + " as " +
+                                  ty_to_str(tcx, t_1));
+            } else if ty::type_is_nil(tcx, t_1) {
+                tcx.sess.span_err(expr.span, "cast to nil: " +
+                                  ty_to_str(tcx, t_e) + " as " +
+                                  ty_to_str(tcx, t_1));
+            }
+
             let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
             if type_is_c_like_enum(fcx,expr.span,t_e) && t_1_is_scalar {
                 /* this case is allowed */
@@ -2941,6 +2938,9 @@ mod dict {
                   _ {}
                 }
             }
+          }
+          ty::ty_iface(did, _) {
+            ret dict_iface(did);
           }
           _ {
             let found = none;

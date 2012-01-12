@@ -916,9 +916,9 @@ tag dict_param {
     dict_param_dict(dict_id);
     dict_param_ty(ty::t);
 }
-type dict_id = @{impl_def: ast::def_id, params: [dict_param]};
+type dict_id = @{def: ast::def_id, params: [dict_param]};
 fn hash_dict_id(&&dp: dict_id) -> uint {
-    let h = syntax::ast_util::hash_def_id(dp.impl_def);
+    let h = syntax::ast_util::hash_def_id(dp.def);
     for param in dp.params {
         h = h << 2u;
         alt param {
