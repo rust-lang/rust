@@ -196,9 +196,8 @@ microsecond-resolution timer.
         ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
     }
 
-The `#[nolink]` sets the name of the native module to the
-empty string to prevent the rust compiler from trying to link it.
-The standard C library is already linked with Rust programs.
+The `#[nolink]` attribute indicates that there's no native library to link
+in. The standard C library is already linked with Rust programs.
 
 A `timeval`, in C, is a struct with two 32-bit integers. Thus, we
 define a record type with the same contents, and declare
