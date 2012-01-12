@@ -2,8 +2,8 @@ import core::{vec, int, uint, option};
 import option::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
-import syntax::codemap::span;
-import syntax::visit;
+import syntax::{visit, codemap};
+import codemap::span;
 import std::map::{new_int_hash};
 import syntax::print::pprust::path_to_str;
 import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
@@ -15,6 +15,7 @@ import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
                      clear_in_poststate_};
 import tritv::*;
 import bitvectors::promises_;
+import driver::session::session;
 
 import syntax::print::pprust::{constr_args_to_str, lit_to_str};
 
@@ -51,13 +52,13 @@ fn constraint_to_str(tcx: ty::ctxt, c: sp_constr) -> str {
     alt c.node {
       ninit(id, i) {
         ret #fmt("init(%s id=%d - arising from %s)",
-                 i, id, tcx.sess.span_str(c.span));
+                 i, id, codemap::span_to_str(c.span, tcx.sess.codemap));
       }
       npred(p, _, args) {
           ret #fmt("%s(%s) - arising from %s",
                    path_to_str(p),
                    comma_str(args),
-                   tcx.sess.span_str(c.span));
+                   codemap::span_to_str(c.span, tcx.sess.codemap));
       }
     }
 }

@@ -3,6 +3,7 @@ import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
 import ty::{kind, kind_copyable, kind_sendable, kind_noncopyable};
+import driver::session::session;
 
 // Kind analysis pass. There are three kinds:
 //

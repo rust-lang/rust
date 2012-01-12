@@ -57,7 +57,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
 }
 
 fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
-    let cstore = tcx.sess.get_cstore();
+    let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     ret decoder::get_tag_variants(cdata, def.node, tcx)
 }
@@ -70,13 +70,13 @@ fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
 }
 
 fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @[ty::method] {
-    let cstore = tcx.sess.get_cstore();
+    let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_iface_methods(cdata, def.node, tcx)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
-    let cstore = tcx.sess.get_cstore();
+    let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_type(cdata, def.node, tcx)
 }
@@ -88,7 +88,7 @@ fn get_item_name(cstore: cstore::cstore, cnum: int, id: int) -> ast::ident {
 
 fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)
     -> option::t<ty::t> {
-    let cstore = tcx.sess.get_cstore();
+    let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_iface(cdata, def.node, tcx)
 }

@@ -1,5 +1,6 @@
 import syntax::visit;
 import syntax::ast::*;
+import driver::session::session;
 
 type ctx = {tcx: ty::ctxt, mutable allow_block: bool};
 

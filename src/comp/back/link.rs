@@ -1,5 +1,6 @@
 
 import driver::session;
+import session::session;
 import lib::llvm::llvm;
 import front::attr;
 import middle::ty;
@@ -30,16 +31,16 @@ tag output_type {
     output_type_exe;
 }
 
-fn llvm_err(sess: session::session, msg: str) unsafe {
+fn llvm_err(sess: session, msg: str) unsafe {
     let buf = llvm::LLVMRustGetLastError();
     if buf == ptr::null() {
         sess.fatal(msg);
     } else { sess.fatal(msg + ": " + str::from_cstr(buf)); }
 }
 
-fn load_intrinsics_bc(sess: session::session) -> option::t<ModuleRef> {
+fn load_intrinsics_bc(sess: session) -> option::t<ModuleRef> {
     let path = alt filesearch::search(
-        sess.filesearch(),
+        sess.filesearch,
         bind filesearch::pick_file("intrinsics.bc", _)) {
       option::some(path) { path }
       option::none. {
@@ -64,9 +65,9 @@ fn load_intrinsics_bc(sess: session::session) -> option::t<ModuleRef> {
     ret option::some(llintrinsicsmod);
 }
 
-fn load_intrinsics_ll(sess: session::session) -> ModuleRef {
+fn load_intrinsics_ll(sess: session) -> ModuleRef {
     let path = alt filesearch::search(
-        sess.filesearch(),
+        sess.filesearch,
         bind filesearch::pick_file("intrinsics.ll", _)) {
       option::some(path) { path }
       option::none. { sess.fatal("couldn't find intrinsics.ll") }
@@ -81,7 +82,7 @@ fn load_intrinsics_ll(sess: session::session) -> ModuleRef {
     ret llintrinsicsmod;
 }
 
-fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
+fn link_intrinsics(sess: session, llmod: ModuleRef) {
     let llintrinsicsmod = {
         alt load_intrinsics_bc(sess) {
           option::some(m) { m }
@@ -122,13 +123,13 @@ mod write {
         } else { stem = str::substr(output_path, 0u, dot_pos as uint); }
         ret stem + "." + extension;
     }
-    fn run_passes(sess: session::session, llmod: ModuleRef, output: str) {
-        let opts = sess.get_opts();
+    fn run_passes(sess: session, llmod: ModuleRef, output: str) {
+        let opts = sess.opts;
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
         link_intrinsics(sess, llmod);
         let pm = mk_pass_manager();
         let td = mk_target_data(
-            sess.get_targ_cfg().target_strs.data_layout);
+            sess.targ_cfg.target_strs.data_layout);
         llvm::LLVMAddTargetData(td.lltd, pm.llpm);
         // TODO: run the linter here also, once there are llvm-c bindings for
         // it.
@@ -234,7 +235,7 @@ mod write {
 
                 if opts.output_type == output_type_assembly {
                     let _: () = str::as_buf(
-                        sess.get_targ_cfg().target_strs.target_triple,
+                        sess.targ_cfg.target_strs.target_triple,
                         {|buf_t|
                             str::as_buf(output, {|buf_o|
                                 llvm::LLVMRustWriteOutputFile(
@@ -254,7 +255,7 @@ mod write {
                        opts.output_type == output_type_exe {
                     let _: () =
                         str::as_buf(
-                            sess.get_targ_cfg().target_strs.target_triple,
+                            sess.targ_cfg.target_strs.target_triple,
                             {|buf_t|
                                 str::as_buf(output, {|buf_o|
                                     llvm::LLVMRustWriteOutputFile(
@@ -272,7 +273,7 @@ mod write {
 
                 let _: () =
                     str::as_buf(
-                        sess.get_targ_cfg().target_strs.target_triple,
+                        sess.targ_cfg.target_strs.target_triple,
                         {|buf_t|
                             str::as_buf(output, {|buf_o|
                                 llvm::LLVMRustWriteOutputFile(
@@ -362,7 +363,7 @@ mod write {
 
 type link_meta = {name: str, vers: str, extras_hash: str};
 
-fn build_link_meta(sess: session::session, c: ast::crate, output: str,
+fn build_link_meta(sess: session, c: ast::crate, output: str,
                    sha: sha1) -> link_meta {
 
     type provided_metas =
@@ -370,7 +371,7 @@ fn build_link_meta(sess: session::session, c: ast::crate, output: str,
          vers: option::t<str>,
          cmh_items: [@ast::meta_item]};
 
-    fn provided_link_metas(sess: session::session, c: ast::crate) ->
+    fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
         let name: option::t<str> = none;
         let vers: option::t<str> = none;
@@ -430,13 +431,13 @@ fn build_link_meta(sess: session::session, c: ast::crate, output: str,
         ret truncated_sha1_result(sha);
     }
 
-    fn warn_missing(sess: session::session, name: str, default: str) {
-        if !sess.building_library() { ret; }
+    fn warn_missing(sess: session, name: str, default: str) {
+        if !sess.building_library { ret; }
         sess.warn(#fmt["missing crate link meta '%s', using '%s' as default",
                        name, default]);
     }
 
-    fn crate_meta_name(sess: session::session, _crate: ast::crate,
+    fn crate_meta_name(sess: session, _crate: ast::crate,
                        output: str, metas: provided_metas) -> str {
         ret alt metas.name {
               some(v) { v }
@@ -454,7 +455,7 @@ fn build_link_meta(sess: session::session, c: ast::crate, output: str,
             };
     }
 
-    fn crate_meta_vers(sess: session::session, _crate: ast::crate,
+    fn crate_meta_vers(sess: session, _crate: ast::crate,
                        metas: provided_metas) -> str {
         ret alt metas.vers {
               some(v) { v }
@@ -469,7 +470,7 @@ fn build_link_meta(sess: session::session, c: ast::crate, output: str,
     let provided_metas = provided_link_metas(sess, c);
     let name = crate_meta_name(sess, c, output, provided_metas);
     let vers = crate_meta_vers(sess, c, provided_metas);
-    let dep_hashes = cstore::get_dep_hashes(sess.get_cstore());
+    let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
         crate_meta_extras_hash(sha, c, provided_metas, dep_hashes);
 
@@ -557,7 +558,7 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 
 // If the user wants an exe generated we need to invoke
 // gcc to link the object file with some libs
-fn link_binary(sess: session::session,
+fn link_binary(sess: session,
                obj_filename: str,
                out_filename: str,
                lm: link_meta) {
@@ -586,7 +587,7 @@ fn link_binary(sess: session::session,
             };
     }
 
-    let output = if sess.building_library() {
+    let output = if sess.building_library {
         let long_libname =
             std::os::dylib_filename(#fmt("%s-%s-%s",
                                          lm.name, lm.extras_hash, lm.vers));
@@ -602,22 +603,22 @@ fn link_binary(sess: session::session,
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
-    let stage: str = "-L" + sess.filesearch().get_target_lib_path();
+    let stage: str = "-L" + sess.filesearch.get_target_lib_path();
 
     let prog: str = "gcc";
     // The invocations of gcc share some flags across platforms
 
     let gcc_args =
-        [stage] + sess.get_targ_cfg().target_strs.gcc_args +
+        [stage] + sess.targ_cfg.target_strs.gcc_args +
         ["-o", output, obj_filename];
 
     let lib_cmd;
-    let os = sess.get_targ_cfg().os;
+    let os = sess.targ_cfg.os;
     if os == session::os_macos {
         lib_cmd = "-dynamiclib";
     } else { lib_cmd = "-shared"; }
 
-    let cstore = sess.get_cstore();
+    let cstore = sess.cstore;
     for cratepath: str in cstore::get_used_crate_files(cstore) {
         if str::ends_with(cratepath, ".rlib") {
             gcc_args += [cratepath];
@@ -626,7 +627,7 @@ fn link_binary(sess: session::session,
         let cratepath = cratepath;
         let dir = fs::dirname(cratepath);
         if dir != "" { gcc_args += ["-L" + dir]; }
-        let libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
+        let libarg = unlib(sess.targ_cfg, fs::basename(cratepath));
         gcc_args += ["-l" + libarg];
     }
 
@@ -636,12 +637,12 @@ fn link_binary(sess: session::session,
     let used_libs = cstore::get_used_libraries(cstore);
     for l: str in used_libs { gcc_args += ["-l" + l]; }
 
-    if sess.building_library() {
+    if sess.building_library {
         gcc_args += [lib_cmd];
 
         // On mac we need to tell the linker to let this library
         // be rpathed
-        if sess.get_targ_cfg().os == session::os_macos {
+        if sess.targ_cfg.os == session::os_macos {
             gcc_args += ["-Wl,-install_name,@rpath/"
                         + fs::basename(output)];
         }
@@ -655,11 +656,11 @@ fn link_binary(sess: session::session,
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
-    if sess.get_targ_cfg().os == session::os_linux {
+    if sess.targ_cfg.os == session::os_linux {
         gcc_args += ["-lrt", "-ldl"];
     }
 
-    if sess.get_targ_cfg().os == session::os_freebsd {
+    if sess.targ_cfg.os == session::os_freebsd {
         gcc_args += ["-lrt", "-L/usr/local/lib", "-lexecinfo",
                      "-L/usr/local/lib/gcc46",
                      "-L/usr/local/lib/gcc44", "-lstdc++",
@@ -672,7 +673,7 @@ fn link_binary(sess: session::session,
     // linker from the dwarf unwind info. Unfortunately, it does not seem to
     // understand how to unwind our __morestack frame, so we have to turn it
     // off. This has impacted some other projects like GHC.
-    if sess.get_targ_cfg().os == session::os_macos {
+    if sess.targ_cfg.os == session::os_macos {
         gcc_args += ["-Wl,-no_compact_unwind"];
     }
 
@@ -692,12 +693,12 @@ fn link_binary(sess: session::session,
     }
 
     // Clean up on Darwin
-    if sess.get_targ_cfg().os == session::os_macos {
+    if sess.targ_cfg.os == session::os_macos {
         run::run_program("dsymutil", [output]);
     }
 
     // Remove the temporary object file if we aren't saving temps
-    if !sess.get_opts().save_temps {
+    if !sess.opts.save_temps {
         run::run_program("rm", [obj_filename]);
     }
 }

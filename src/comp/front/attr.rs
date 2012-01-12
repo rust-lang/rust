@@ -3,7 +3,7 @@
 import core::{either, vec, option};
 import std::map;
 import syntax::{ast, ast_util};
-import driver::session;
+import driver::session::session;
 
 export attr_meta;
 export attr_metas;
@@ -189,7 +189,7 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
     ret vec::filter_map(items, filter);
 }
 
-fn require_unique_names(sess: session::session, metas: [@ast::meta_item]) {
+fn require_unique_names(sess: session, metas: [@ast::meta_item]) {
     let map = map::new_str_hash();
     for meta: @ast::meta_item in metas {
         let name = get_meta_item_name(meta);

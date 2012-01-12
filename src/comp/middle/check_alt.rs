@@ -3,6 +3,7 @@ import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit_exprs,
                           lit_expr_eq};
 import syntax::visit;
 import option::{some, none};
+import driver::session::session;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     let v =

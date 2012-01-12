@@ -360,7 +360,7 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
         if did.crate == ast::local_crate {
             ccx.item_ids.get(did.node)
         } else {
-            let name = csearch::get_symbol(ccx.sess.get_cstore(), did);
+            let name = csearch::get_symbol(ccx.sess.cstore, did);
             get_extern_const(ccx.externs, ccx.llmod, name, T_ptr(T_i8()))
         }
     }

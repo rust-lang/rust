@@ -6,6 +6,7 @@ import aux::*;
 import util::common::new_def_hash;
 import syntax::codemap::span;
 import syntax::ast_util::respan;
+import driver::session::session;
 
 type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 

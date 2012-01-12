@@ -364,7 +364,7 @@ fn store_environment(
     let {bcx: bcx, val:bindings_slot} =
         GEP_tup_like_1(bcx, cboxptr_ty, llbox, [0, abi::cbox_elt_bindings]);
     vec::iteri(bound_values) { |i, bv|
-        if (!ccx.sess.get_opts().no_asm_comments) {
+        if (!ccx.sess.opts.no_asm_comments) {
             add_comment(bcx, #fmt("Copy %s into closure",
                                   ev_to_str(ccx, bv)));
         }

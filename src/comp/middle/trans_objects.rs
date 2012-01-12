@@ -16,6 +16,8 @@ import trans_common::*;
 import trans::*;
 import trans_build::*;
 
+import driver::session::session;
+
 export trans_anon_obj;
 export trans_obj;
 

@@ -18,6 +18,7 @@ import std::map::hashmap;
 import std::map::{new_int_hash, new_str_hash};
 import option::{some, none};
 import driver::session;
+import session::session;
 import front::attr;
 import middle::{ty, gc, resolve, debuginfo};
 import middle::freevars::*;
@@ -364,7 +365,7 @@ fn trans_native_call(cx: @block_ctxt, externs: hashmap<str, ValueRef>,
 
 fn trans_free_if_not_gc(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
-    if !ccx.sess.get_opts().do_gc {
+    if !ccx.sess.opts.do_gc {
         Call(cx, ccx.upcalls.free,
              [PointerCast(cx, v, T_ptr(T_i8())),
               C_int(bcx_ccx(cx), 0)]);
@@ -1153,7 +1154,7 @@ fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
         llalign = C_int(ccx, 0);
     }
     let name;
-    if cx.ccx.sess.get_opts().debuginfo {
+    if cx.ccx.sess.opts.debuginfo {
         name = mangle_internal_name_by_type_only(cx.ccx, t, "tydesc");
         name = sanitize(name);
     } else { name = mangle_internal_name_by_seq(cx.ccx, "tydesc"); }
@@ -1183,7 +1184,7 @@ fn declare_generic_glue(cx: @local_ctxt, t: ty::t, llfnty: TypeRef, name: str)
    -> ValueRef {
     let name = name;
     let fn_nm;
-    if cx.ccx.sess.get_opts().debuginfo {
+    if cx.ccx.sess.opts.debuginfo {
         fn_nm = mangle_internal_name_by_type_only(cx.ccx, t, "glue_" + name);
         fn_nm = sanitize(fn_nm);
     } else { fn_nm = mangle_internal_name_by_seq(cx.ccx, "glue_" + name); }
@@ -1237,7 +1238,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
 fn make_generic_glue(cx: @local_ctxt, sp: span, t: ty::t, llfn: ValueRef,
                      helper: glue_helper, ty_params: [uint], name: str) ->
    ValueRef {
-    if !cx.ccx.sess.get_opts().stats {
+    if !cx.ccx.sess.opts.stats {
         ret make_generic_glue_inner(cx, sp, t, llfn, helper, ty_params);
     }
 
@@ -1527,7 +1528,7 @@ fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
 
 // Structural comparison: a rather involved form of glue.
 fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: str) {
-    if cx.sess.get_opts().save_temps {
+    if cx.sess.opts.save_temps {
         let _: () = str::as_buf(s, {|buf| llvm::LLVMSetValueName(v, buf) });
     }
 }
@@ -1971,7 +1972,7 @@ fn call_memmove(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
     // LLVM complains -- not even a constant element of a tydesc works).
 
     let ccx = bcx_ccx(cx);
-    let key = alt ccx.sess.get_targ_cfg().arch {
+    let key = alt ccx.sess.targ_cfg.arch {
       session::arch_x86. | session::arch_arm. { "llvm.memmove.p0i8.p0i8.i32" }
       session::arch_x86_64. { "llvm.memmove.p0i8.p0i8.i64" }
     };
@@ -2623,7 +2624,7 @@ fn lval_no_env(bcx: @block_ctxt, val: ValueRef, kind: lval_kind)
 fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
                        tpt: ty::ty_param_bounds_and_ty) -> ValueRef {
     let lcx = cx.fcx.lcx;
-    let name = csearch::get_symbol(lcx.ccx.sess.get_cstore(), did);
+    let name = csearch::get_symbol(lcx.ccx.sess.cstore, did);
     ret get_extern_const(lcx.ccx.externs, lcx.ccx.llmod, name,
                          type_of_ty_param_bounds_and_ty(lcx, cx.sp, tpt));
 }
@@ -2667,7 +2668,7 @@ fn lookup_discriminant(lcx: @local_ctxt, vid: ast::def_id) -> ValueRef {
       none. {
         // It's an external discriminant that we haven't seen yet.
         assert (vid.crate != ast::local_crate);
-        let sym = csearch::get_symbol(lcx.ccx.sess.get_cstore(), vid);
+        let sym = csearch::get_symbol(lcx.ccx.sess.cstore, vid);
         let gvar =
             str::as_buf(sym,
                         {|buf|
@@ -3923,7 +3924,8 @@ fn trans_fail_value(bcx: @block_ctxt, sp_opt: option::t<span>,
     let V_line;
     alt sp_opt {
       some(sp) {
-        let loc = bcx_ccx(bcx).sess.lookup_pos(sp.lo);
+        let sess = bcx_ccx(bcx).sess;
+        let loc = codemap::lookup_char_pos(sess.parse_sess.cm, sp.lo);
         V_filename = C_cstr(bcx_ccx(bcx), loc.filename);
         V_line = loc.line as int;
       }
@@ -4077,7 +4079,7 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
 fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
     // FIXME Fill in cx.sp
 
-    if (!bcx_ccx(cx).sess.get_opts().no_asm_comments) {
+    if (!bcx_ccx(cx).sess.opts.no_asm_comments) {
         add_span_comment(cx, s.span, stmt_to_str(s));
     }
 
@@ -4097,7 +4099,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
                 } else {
                     bcx = init_ref_local(bcx, local);
                 }
-                if bcx_ccx(cx).sess.get_opts().extra_debuginfo {
+                if bcx_ccx(cx).sess.opts.extra_debuginfo {
                     debuginfo::create_local_var(bcx, local);
                 }
             }
@@ -4116,8 +4118,8 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
 fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
                   name: str) -> @block_ctxt {
     let s = "";
-    if cx.lcx.ccx.sess.get_opts().save_temps ||
-           cx.lcx.ccx.sess.get_opts().debuginfo {
+    if cx.lcx.ccx.sess.opts.save_temps ||
+           cx.lcx.ccx.sess.opts.debuginfo {
         s = cx.lcx.ccx.names.next(name);
     }
     let llbb: BasicBlockRef =
@@ -4284,7 +4286,7 @@ fn alloc_ty(cx: @block_ctxt, t: ty::t) -> result {
     // past caller conventions and may well make sense again,
     // so we leave it as-is.
 
-    if bcx_tcx(cx).sess.get_opts().do_gc {
+    if bcx_tcx(cx).sess.opts.do_gc {
         bcx = gc::add_gc_root(bcx, val, t);
     }
 
@@ -4309,7 +4311,7 @@ fn alloc_local(cx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let r = alloc_ty(cx, t);
     alt local.node.pat.node {
       ast::pat_bind(ident, none.) {
-        if bcx_ccx(cx).sess.get_opts().debuginfo {
+        if bcx_ccx(cx).sess.opts.debuginfo {
             let _: () = str::as_buf(ident, {|buf|
                 llvm::LLVMSetValueName(r.val, buf)
             });
@@ -4502,7 +4504,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
           }
           ast::by_ref. {}
         }
-        if fcx_ccx(fcx).sess.get_opts().extra_debuginfo {
+        if fcx_ccx(fcx).sess.opts.extra_debuginfo {
             debuginfo::create_arg(bcx, args[arg_n]);
         }
         arg_n += 1u;
@@ -4637,12 +4639,12 @@ fn trans_closure(cx: @local_ctxt, sp: span, decl: ast::fn_decl,
 fn trans_fn(cx: @local_ctxt, sp: span, decl: ast::fn_decl, body: ast::blk,
             llfndecl: ValueRef, ty_self: self_arg, ty_params: [ast::ty_param],
             id: ast::node_id) {
-    let do_time = cx.ccx.sess.get_opts().stats;
+    let do_time = cx.ccx.sess.opts.stats;
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
     let fcx = option::none;
     trans_closure(cx, sp, decl, body, llfndecl, ty_self, ty_params, id,
                   {|new_fcx| fcx = option::some(new_fcx);});
-    if cx.ccx.sess.get_opts().extra_debuginfo {
+    if cx.ccx.sess.opts.extra_debuginfo {
         debuginfo::create_function(option::get(fcx));
     }
     if do_time {
@@ -5149,7 +5151,7 @@ fn register_fn_full(ccx: @crate_ctxt, sp: span, path: [str], _flav: str,
     ccx.item_ids.insert(node_id, llfn);
     ccx.item_symbols.insert(node_id, ps);
 
-    let is_main: bool = is_main_name(path) && !ccx.sess.building_library();
+    let is_main: bool = is_main_name(path) && !ccx.sess.building_library;
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
 }
 
@@ -5551,12 +5553,12 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
 
 fn decl_crate_map(sess: session::session, mapname: str,
                   llmod: ModuleRef) -> ValueRef {
-    let targ_cfg = sess.get_targ_cfg();
+    let targ_cfg = sess.targ_cfg;
     let int_type = T_int(targ_cfg);
     let n_subcrates = 1;
-    let cstore = sess.get_cstore();
+    let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
-    let mapname = sess.building_library() ? mapname : "toplevel";
+    let mapname = sess.building_library ? mapname : "toplevel";
     let sym_name = "_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
     let maptype = T_struct([int_type, arrtype]);
@@ -5572,7 +5574,7 @@ fn decl_crate_map(sess: session::session, mapname: str,
 fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     let subcrates: [ValueRef] = [];
     let i = 1;
-    let cstore = ccx.sess.get_cstore();
+    let cstore = ccx.sess.cstore;
     while cstore::have_crate_data(cstore, i) {
         let nm = "_rust_crate_map_" + cstore::get_crate_data(cstore, i).name;
         let cr = str::as_buf(nm, {|buf|
@@ -5588,7 +5590,7 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
 }
 
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
-    if !cx.sess.building_library() { ret; }
+    if !cx.sess.building_library { ret; }
     let llmeta = C_postr(metadata::encoder::encode_metadata(cx, crate));
     let llconst = trans_common::C_struct([llmeta]);
     let llglobal =
@@ -5598,7 +5600,7 @@ fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
                     });
     llvm::LLVMSetInitializer(llglobal, llconst);
     let _: () =
-        str::as_buf(cx.sess.get_targ_cfg().target_strs.meta_sect_name,
+        str::as_buf(cx.sess.targ_cfg.target_strs.meta_sect_name,
                     {|buf| llvm::LLVMSetSection(llglobal, buf) });
     llvm::LLVMSetLinkage(llglobal,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -5645,19 +5647,19 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
         llvm::LLVMModuleCreateWithNameInContext
             (buf, llvm::LLVMGetGlobalContext())
     });
-    let data_layout = sess.get_targ_cfg().target_strs.data_layout;
-    let targ_triple = sess.get_targ_cfg().target_strs.target_triple;
+    let data_layout = sess.targ_cfg.target_strs.data_layout;
+    let targ_triple = sess.targ_cfg.target_strs.target_triple;
     let _: () =
         str::as_buf(data_layout,
                     {|buf| llvm::LLVMSetDataLayout(llmod, buf) });
     let _: () =
         str::as_buf(targ_triple,
                     {|buf| llvm::LLVMSetTarget(llmod, buf) });
-    let targ_cfg = sess.get_targ_cfg();
-    let td = mk_target_data(sess.get_targ_cfg().target_strs.data_layout);
+    let targ_cfg = sess.targ_cfg;
+    let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
-    if sess.get_opts().extra_debuginfo {
+    if sess.opts.extra_debuginfo {
         declare_dbg_intrinsics(llmod, intrinsics);
     }
     let int_type = T_int(targ_cfg);
@@ -5668,7 +5670,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let tydesc_type = T_tydesc(targ_cfg);
     tn.associate("tydesc", tydesc_type);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
-    let dbg_cx = if sess.get_opts().debuginfo {
+    let dbg_cx = if sess.opts.debuginfo {
         option::some(@{llmetadata: map::new_int_hash(),
                        names: namegen(0)})
     } else {
@@ -5737,7 +5739,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
 
     // Translate the metadata.
     write_metadata(cx.ccx, crate);
-    if ccx.sess.get_opts().stats {
+    if ccx.sess.opts.stats {
         #error("--- trans stats ---");
         #error("n_static_tydescs: %u", ccx.stats.n_static_tydescs);
         #error("n_derived_tydescs: %u", ccx.stats.n_derived_tydescs);

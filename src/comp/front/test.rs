@@ -8,6 +8,7 @@ import syntax::fold;
 import syntax::print::pprust;
 import syntax::codemap::span;
 import driver::session;
+import session::session;
 import front::attr;
 
 export modify_for_testing;
@@ -27,7 +28,7 @@ type test_ctxt =
 fn modify_for_testing(sess: session::session,
                       crate: @ast::crate) -> @ast::crate {
 
-    if sess.get_opts().test {
+    if sess.opts.test {
         generate_test_harness(sess, crate)
     } else {
         strip_test_functions(crate)

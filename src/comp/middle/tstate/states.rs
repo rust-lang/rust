@@ -10,6 +10,7 @@ import syntax::ast_util::*;
 import syntax::codemap::span;
 import middle::ty::{expr_ty, type_is_bot};
 import util::common::{field_exprs, has_nonlocal_exits};
+import driver::session::session;
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
     alt t {

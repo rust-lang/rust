@@ -240,7 +240,7 @@ fn tag_kind(ccx: @crate_ctxt, did: ast::def_id) -> tag_kind {
 
 // Returns the code corresponding to the pointer size on this architecture.
 fn s_int(tcx: ty_ctxt) -> u8 {
-    ret alt tcx.sess.get_targ_cfg().arch {
+    ret alt tcx.sess.targ_cfg.arch {
         session::arch_x86. { shape_i32 }
         session::arch_x86_64. { shape_i64 }
         session::arch_arm. { shape_i32 }
@@ -248,7 +248,7 @@ fn s_int(tcx: ty_ctxt) -> u8 {
 }
 
 fn s_uint(tcx: ty_ctxt) -> u8 {
-    ret alt tcx.sess.get_targ_cfg().arch {
+    ret alt tcx.sess.targ_cfg.arch {
         session::arch_x86. { shape_u32 }
         session::arch_x86_64. { shape_u64 }
         session::arch_arm. { shape_u32 }
@@ -256,7 +256,7 @@ fn s_uint(tcx: ty_ctxt) -> u8 {
 }
 
 fn s_float(tcx: ty_ctxt) -> u8 {
-    ret alt tcx.sess.get_targ_cfg().arch {
+    ret alt tcx.sess.targ_cfg.arch {
         session::arch_x86. { shape_f64 }
         session::arch_x86_64. { shape_f64 }
         session::arch_arm. { shape_f64 }

@@ -33,10 +33,10 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
     ret syntax_expanders;
 }
 
-obj ext_ctxt(sess: @session,
+obj ext_ctxt(sess: session,
              mutable backtrace: codemap::opt_span) {
 
-    fn session() -> @session { ret sess; }
+    fn session() -> session { ret sess; }
 
     fn print_backtrace() { }
 
@@ -80,7 +80,7 @@ obj ext_ctxt(sess: @session,
 }
 
 fn mk_ctxt(sess: session) -> ext_ctxt {
-    ret ext_ctxt(@sess, codemap::os_none);
+    ret ext_ctxt(sess, codemap::os_none);
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {

@@ -71,8 +71,8 @@ fn expand_crate(sess: session::session, c: @crate) -> @crate {
             with *afp};
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str("-", core_macros(),
-                                        sess.get_opts().cfg,
-                                        sess.get_parse_sess());
+                                        sess.opts.cfg,
+                                        sess.parse_sess);
 
     // This is run for its side-effects on the expander env,
     // as it registers all the core macros as expanders.

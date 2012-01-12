@@ -704,7 +704,7 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
     let crate_attrs = synthesize_crate_attrs(ecx, crate);
     encode_attributes(ebml_w, crate_attrs);
 
-    encode_crate_deps(ebml_w, cx.sess.get_cstore());
+    encode_crate_deps(ebml_w, cx.sess.cstore);
 
     // Encode and index the paths.
     ebml::start_tag(ebml_w, tag_paths);

@@ -3,6 +3,7 @@ import option::{some, none};
 import syntax::ast::*;
 import syntax::visit;
 import syntax::ast_util;
+import driver::session::session;
 
 tag deref_t { unbox; field; index; }
 

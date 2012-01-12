@@ -2,6 +2,7 @@ import syntax::ast;
 import syntax::visit;
 import option::some;
 import syntax::print::pprust::expr_to_str;
+import driver::session::session;
 
 export check_crate_fn_usage;
 

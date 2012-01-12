@@ -8,6 +8,7 @@ import middle::trans_common::*;
 import middle::ty;
 import option::none;
 import str;
+import driver::session::session;
 
 import lll = lib::llvm::llvm;
 import bld = trans_build;

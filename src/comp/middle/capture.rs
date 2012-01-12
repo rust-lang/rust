@@ -1,4 +1,5 @@
 import syntax::{ast, ast_util};
+import driver::session::session;
 import std::map;
 
 export capture_mode;

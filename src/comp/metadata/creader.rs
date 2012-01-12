@@ -1,6 +1,7 @@
 // Extracting metadata from crate files
 
 import driver::session;
+import session::session;
 import syntax::{ast, ast_util};
 import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 import front::attr;
@@ -39,7 +40,7 @@ fn visit_view_item(e: env, i: @ast::view_item) {
     alt i.node {
       ast::view_item_use(ident, meta_items, id) {
         let cnum = resolve_crate(e, ident, meta_items, i.span);
-        cstore::add_use_stmt_cnum(e.sess.get_cstore(), id, cnum);
+        cstore::add_use_stmt_cnum(e.sess.cstore, id, cnum);
       }
       _ { }
     }
@@ -56,7 +57,7 @@ fn visit_item(e: env, i: @ast::item) {
           either::left(msg) { e.sess.span_fatal(i.span, msg); }
         }
 
-        let cstore = e.sess.get_cstore();
+        let cstore = e.sess.cstore;
         let native_name =
             alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
               some(nn) {
@@ -126,7 +127,7 @@ fn metadata_matches(crate_data: @[u8], metas: [@ast::meta_item]) -> bool {
 fn default_native_lib_naming(sess: session::session, static: bool) ->
    {prefix: str, suffix: str} {
     if static { ret {prefix: "lib", suffix: ".rlib"}; }
-    alt sess.get_targ_cfg().os {
+    alt sess.targ_cfg.os {
       session::os_win32. { ret {prefix: "", suffix: ".dll"}; }
       session::os_macos. { ret {prefix: "lib", suffix: ".dylib"}; }
       session::os_linux. { ret {prefix: "lib", suffix: ".so"}; }
@@ -157,14 +158,14 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
             }
         };
 
-    let nn = default_native_lib_naming(sess, sess.get_opts().static);
+    let nn = default_native_lib_naming(sess, sess.opts.static);
     let x =
         find_library_crate_aux(sess, nn, crate_name,
-                               metas, sess.filesearch());
-    if x != none || sess.get_opts().static { ret x; }
+                               metas, sess.filesearch);
+    if x != none || sess.opts.static { ret x; }
     let nn2 = default_native_lib_naming(sess, true);
     ret find_library_crate_aux(sess, nn2, crate_name, metas,
-                               sess.filesearch());
+                               sess.filesearch);
 }
 
 fn find_library_crate_aux(sess: session::session,
@@ -218,7 +219,7 @@ fn get_metadata_section(sess: session::session,
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
         let name_buf = llvm::LLVMGetSectionName(si.llsi);
         let name = unsafe { str::from_cstr(name_buf) };
-        if str::eq(name, sess.get_targ_cfg().target_strs.meta_sect_name) {
+        if str::eq(name, sess.targ_cfg.target_strs.meta_sect_name) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi);
             unsafe {
@@ -264,7 +265,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
         let cmeta = @{name: ident, data: cdata,
                       cnum_map: cnum_map, cnum: cnum};
 
-        let cstore = e.sess.get_cstore();
+        let cstore = e.sess.cstore;
         cstore::set_crate_data(cstore, cnum, cmeta);
         cstore::add_used_crate_file(cstore, cfilename);
         ret cnum;

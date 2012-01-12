@@ -1,6 +1,7 @@
 
 // -*- rust -*-
 import metadata::{creader, cstore};
+import session::session;
 import syntax::parse::{parser};
 import syntax::{ast, codemap};
 import front::attr;
@@ -22,7 +23,7 @@ tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
 fn default_configuration(sess: session::session, argv0: str, input: str) ->
    ast::crate_cfg {
     let libc =
-        alt sess.get_targ_cfg().os {
+        alt sess.targ_cfg.os {
           session::os_win32. { "msvcrt.dll" }
           session::os_macos. { "libc.dylib" }
           session::os_linux. { "libc.so.6" }
@@ -32,7 +33,7 @@ fn default_configuration(sess: session::session, argv0: str, input: str) ->
 
     let mk = attr::mk_name_value_item_str;
 
-    let arch = alt sess.get_targ_cfg().arch {
+    let arch = alt sess.targ_cfg.arch {
       session::arch_x86. { "x86" }
       session::arch_x86_64. { "x86_64" }
       session::arch_arm. { "arm" }
@@ -52,11 +53,11 @@ fn build_configuration(sess: session::session, argv0: str, input: str) ->
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess, argv0, input);
-    let user_cfg = sess.get_opts().cfg;
+    let user_cfg = sess.opts.cfg;
     // If the user wants a test runner, then add the test cfg
     let gen_cfg =
         {
-            if sess.get_opts().test && !attr::contains_name(user_cfg, "test")
+            if sess.opts.test && !attr::contains_name(user_cfg, "test")
                {
                 [attr::mk_word_item("test")]
             } else { [] }
@@ -78,7 +79,7 @@ fn input_is_stdin(filename: str) -> bool { filename == "-" }
 fn parse_input(sess: session::session, cfg: ast::crate_cfg, input: str) ->
    @ast::crate {
     if !input_is_stdin(input) {
-        parser::parse_crate_from_file(input, cfg, sess.get_parse_sess())
+        parser::parse_crate_from_file(input, cfg, sess.parse_sess)
     } else { parse_input_src(sess, cfg, input).crate }
 }
 
@@ -98,7 +99,7 @@ fn parse_input_src(sess: session::session, cfg: ast::crate_cfg, infile: str)
     let src = str::unsafe_from_bytes(srcbytes);
     let crate =
         parser::parse_crate_from_source_str(infile, src, cfg,
-                                            sess.get_parse_sess());
+                                            sess.parse_sess);
     ret {crate: crate, src: src};
 }
 
@@ -137,12 +138,13 @@ fn inject_libcore_reference(sess: session::session,
 fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
                  outdir: option::t<str>, output: option::t<str>) {
 
-    let time_passes = sess.get_opts().time_passes;
+    let time_passes = sess.opts.time_passes;
     let crate =
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
-    if sess.get_opts().parse_only { ret; }
+    if sess.opts.parse_only { ret; }
 
-    sess.set_building_library(crate);
+    sess.building_library =
+        session::building_library(sess.opts.crate_type, crate);
 
     crate =
         time(time_passes, "configuration",
@@ -154,7 +156,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "expansion",
              bind syntax::ext::expand::expand_crate(sess, crate));
 
-    if sess.get_opts().libcore {
+    if sess.opts.libcore {
         crate = inject_libcore_reference(sess, crate);
     }
 
@@ -193,7 +195,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_uses, crate));
-    if sess.get_opts().no_trans { ret; }
+    if sess.opts.no_trans { ret; }
 
     let outputs = build_output_filenames(input, outdir, output, sess);
 
@@ -207,8 +209,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
          bind link::write::run_passes(sess, llmod, outputs.obj_filename));
 
     let stop_after_codegen =
-        sess.get_opts().output_type != link::output_type_exe ||
-            sess.get_opts().static && sess.building_library();
+        sess.opts.output_type != link::output_type_exe ||
+            sess.opts.static && sess.building_library;
 
     if stop_after_codegen { ret; }
 
@@ -283,7 +285,7 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
       }
       ppm_normal. { ann = pprust::no_ann(); }
     }
-    pprust::print_crate(sess.get_codemap(), crate, input,
+    pprust::print_crate(sess.codemap, crate, input,
                         io::string_reader(src), io::stdout(), ann);
 }
 
@@ -449,9 +451,18 @@ fn build_session(sopts: @session::options, input: str) -> session::session {
         sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
-    ret session::session(target_cfg, sopts, cstore,
-                         @{cm: codemap::new_codemap(), mutable next_id: 1},
-                         none, 0u, filesearch, false, fs::dirname(input));
+    let codemap = codemap::new_codemap();
+    @{targ_cfg: target_cfg,
+      opts: sopts,
+      cstore: cstore,
+      parse_sess: @{cm: codemap, mutable next_id: 1},
+      codemap: codemap,
+      // For a library crate, this is always none
+      mutable main_fn: none,
+      mutable err_count: 0u,
+      filesearch: filesearch,
+      mutable building_library: false,
+      working_dir: fs::dirname(input)}
 }
 
 fn parse_pretty(sess: session::session, &&name: str) -> pp_mode {
@@ -490,10 +501,10 @@ fn build_output_filenames(ifile: str,
         -> @{out_filename: str, obj_filename:str} {
     let obj_path = "";
     let out_path: str = "";
-    let sopts = sess.get_opts();
+    let sopts = sess.opts;
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
-            sopts.static && sess.building_library();
+            sopts.static && sess.building_library;
 
 
     let obj_suffix =
@@ -531,7 +542,7 @@ fn build_output_filenames(ifile: str,
         };
 
 
-        if sess.building_library() {
+        if sess.building_library {
             let basename = fs::basename(base_path);
             let dylibname = std::os::dylib_filename(basename);
             out_path = fs::connect(dirname, dylibname);
@@ -552,7 +563,7 @@ fn build_output_filenames(ifile: str,
             modified
         };
 
-        if sess.building_library() {
+        if sess.building_library {
             // FIXME: We might want to warn here; we're actually not going to
             // respect the user's choice of library name when it comes time to
             // link, we'll be linking to lib<basename>-<hash>-<version>.so no

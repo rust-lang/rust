@@ -8,6 +8,7 @@ import core::{vec, option};
 import std::list;
 import option::{some, none, is_none};
 import list::list;
+import driver::session::session;
 
 // This is not an alias-analyser (though it would merit from becoming one, or
 // getting input from one, to be more precise). It is a pass that checks

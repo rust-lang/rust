@@ -1,7 +1,8 @@
 import core::{vec, str};
 import str::sbuf;
 import lib::llvm::llvm;
-import syntax::codemap::span;
+import syntax::codemap;
+import codemap::span;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, Opcode,
               ModuleRef};
 import trans_common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1, T_void,
@@ -509,8 +510,9 @@ fn _UndefReturn(cx: @block_ctxt, Fn: ValueRef) -> ValueRef {
 
 fn add_span_comment(bcx: @block_ctxt, sp: span, text: str) {
     let ccx = bcx_ccx(bcx);
-    if (!ccx.sess.get_opts().no_asm_comments) {
-        let s = text + " (" + ccx.sess.span_str(sp) + ")";
+    if (!ccx.sess.opts.no_asm_comments) {
+        let s = text + " (" + codemap::span_to_str(sp, ccx.sess.codemap)
+            + ")";
         log(debug, s);
         add_comment(bcx, s);
     }
@@ -518,7 +520,7 @@ fn add_span_comment(bcx: @block_ctxt, sp: span, text: str) {
 
 fn add_comment(bcx: @block_ctxt, text: str) {
     let ccx = bcx_ccx(bcx);
-    if (!ccx.sess.get_opts().no_asm_comments) {
+    if (!ccx.sess.opts.no_asm_comments) {
         check str::is_not_empty("$");
         let sanitized = str::replace(text, "$", "");
         let comment_text = "; " + sanitized;

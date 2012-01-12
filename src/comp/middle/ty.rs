@@ -9,6 +9,7 @@ import option::none;
 import option::some;
 import std::smallintmap;
 import driver::session;
+import session::session;
 import syntax::ast;
 import syntax::ast::*;
 import syntax::ast_util;
@@ -1864,7 +1865,7 @@ mod unify {
     // Simple structural type comparison.
     fn struct_cmp(cx: @ctxt, expected: t, actual: t) -> result {
         let tcx = cx.tcx;
-        let cfg = tcx.sess.get_targ_cfg();
+        let cfg = tcx.sess.targ_cfg;
         if mach_struct(tcx, cfg, expected) == mach_struct(tcx, cfg, actual) {
             ret ures_ok(expected);
         }

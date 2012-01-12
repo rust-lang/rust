@@ -162,7 +162,7 @@ tag ns_value_type { ns_a_tag; ns_any_value; }
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
    {def_map: def_map, exp_map: exp_map, impl_map: impl_map} {
     let e =
-        @{cstore: sess.get_cstore(),
+        @{cstore: sess.cstore,
           def_map: new_int_hash(),
           ast_map: amap,
           imports: new_int_hash(),
@@ -185,7 +185,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     check_exports(e);
     resolve_names(e, crate);
     resolve_impls(e, crate);
-    if sess.get_opts().warn_unused_imports {
+    if sess.opts.warn_unused_imports {
         check_unused_imports(e);
     }
     ret {def_map: e.def_map, exp_map: e.exp_map, impl_map: e.impl_map};
@@ -472,10 +472,10 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     // is this a main fn declaration?
     alt fk {
       visit::fk_item_fn(nm, _) {
-        if is_main_name([nm]) && !e.sess.building_library() {
+        if is_main_name([nm]) && !e.sess.building_library {
             // This is a main function -- set it in the session
             // as the main ID
-            e.sess.set_main_id(id);
+            e.sess.main_fn = some(id);
         }
       }
       _ { /* fallthrough */ }
@@ -1496,7 +1496,7 @@ fn ns_ok(wanted:namespace, actual:namespace) -> bool {
 
 fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
    option::t<def> {
-    for d: def in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids) {
+    for d: def in csearch::lookup_defs(e.sess.cstore, cnum, ids) {
         let did = def_id_of_def(d);
         alt d {
           def_mod(_) | def_native_mod(_) {
@@ -1919,7 +1919,7 @@ fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
                 }
                 @tmp
             } else {
-                csearch::get_impls_for_mod(e.sess.get_cstore(), defid, none)
+                csearch::get_impls_for_mod(e.sess.cstore, defid, none)
             };
             e.impl_cache.insert(defid, cached);
           }

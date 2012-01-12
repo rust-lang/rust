@@ -3,7 +3,7 @@ import ast::spanned;
 import syntax::ast_util::{local_def, respan};
 import syntax::visit;
 import metadata::csearch;
-import driver::session;
+import driver::session::session;
 import util::common::*;
 import syntax::codemap::span;
 import middle::ty;
@@ -1468,7 +1468,7 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
     }
 }
 
-fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
+fn require_unsafe(sess: session, f_purity: ast::purity, sp: span) {
     alt f_purity {
       ast::unsafe_fn. { ret; }
       _ {
@@ -1479,7 +1479,7 @@ fn require_unsafe(sess: session::session, f_purity: ast::purity, sp: span) {
     }
 }
 
-fn require_impure(sess: session::session, f_purity: ast::purity, sp: span) {
+fn require_impure(sess: session, f_purity: ast::purity, sp: span) {
     alt f_purity {
       ast::unsafe_fn. { ret; }
       ast::impure_fn. { ret; }
@@ -2879,8 +2879,8 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
 }
 
 fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
-    if !tcx.sess.building_library() {
-        alt tcx.sess.get_main_id() {
+    if !tcx.sess.building_library {
+        alt tcx.sess.main_fn {
           some(id) { check_main_fn_ty(tcx, id); }
           none. { tcx.sess.span_err(crate.span, "main function not found"); }
         }

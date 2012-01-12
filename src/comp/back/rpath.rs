@@ -12,7 +12,7 @@ import util::filesearch;
 export get_rpath_flags;
 
 fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
-    let os = sess.get_targ_cfg().os;
+    let os = sess.targ_cfg.os;
 
     // No rpath on windows
     if os == session::os_win32 {
@@ -22,22 +22,22 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
     #debug("preparing the RPATH!");
 
     let cwd = os::getcwd();
-    let sysroot = sess.filesearch().sysroot();
+    let sysroot = sess.filesearch.sysroot();
     let output = out_filename;
-    let libs = cstore::get_used_crate_files(sess.get_cstore());
+    let libs = cstore::get_used_crate_files(sess.cstore);
     // We don't currently rpath native libraries, but we know
     // where rustrt is and we know every rust program needs it
     let libs = libs + [get_sysroot_absolute_rt_lib(sess)];
 
-    let target_triple = sess.get_opts().target_triple;
+    let target_triple = sess.opts.target_triple;
     let rpaths = get_rpaths(os, cwd, sysroot, output, libs, target_triple);
     rpaths_to_flags(rpaths)
 }
 
 fn get_sysroot_absolute_rt_lib(sess: session::session) -> fs::path {
-    let path = [sess.filesearch().sysroot()]
+    let path = [sess.filesearch.sysroot()]
         + filesearch::relative_target_lib_path(
-            sess.get_opts().target_triple)
+            sess.opts.target_triple)
         + [os::dylib_filename("rustrt")];
     check vec::is_not_empty(path);
     fs::connect_many(path)

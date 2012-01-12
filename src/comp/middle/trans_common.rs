@@ -9,6 +9,7 @@ import std::map::hashmap;
 import option::some;
 import syntax::ast;
 import driver::session;
+import session::session;
 import middle::{resolve, ty};
 import back::{link, abi, upcall};
 import util::common::*;
@@ -331,7 +332,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
                          [{mode: ast::by_ref, ty: inner_t}],
                          nil_res, *param_bounds);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
-                                csearch::get_symbol(ccx.sess.get_cstore(),
+                                csearch::get_symbol(ccx.sess.cstore,
                                                     did), f_t);
 }
 
@@ -662,7 +663,7 @@ fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
 }
 
 fn T_vec(ccx: @crate_ctxt, t: TypeRef) -> TypeRef {
-    ret T_vec2(ccx.sess.get_targ_cfg(), t);
+    ret T_vec2(ccx.sess.targ_cfg, t);
 }
 
 // Note that the size of this one is in bytes.
