@@ -36,7 +36,8 @@ pure fn xor(a: t, b: t) -> t { (a && !b) || (!a && b) }
 pure fn implies(a: t, b: t) -> t { !a || b }
 
 #[doc(
-  brief = "true if truth values `a` and `b` are indistinguishable in the logic"
+  brief = "true if truth values `a` and `b` \
+           are indistinguishable in the logic"
 )]
 pure fn eq(a: t, b: t) -> bool { a == b }
 
@@ -71,7 +72,8 @@ pure fn from_str(s: str) -> t {
 pure fn to_str(v: t) -> str { if v { "true" } else { "false" } }
 
 #[doc(
-  brief = "Iterates over all truth values by passing them to `blk` in an unspecified order"
+  brief = "Iterates over all truth values by passing them to `blk` \
+           in an unspecified order"
 )]
 fn all_values(blk: block(v: t)) {
     blk(true);
