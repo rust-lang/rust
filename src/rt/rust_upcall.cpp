@@ -279,7 +279,7 @@ upcall_create_shared_type_desc(type_desc *td) {
  */
 
 void upcall_s_free_shared_type_desc(type_desc *td)
-{
+{ // n.b.: invoked from rust_cc.cpp as well as generated code
     rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
 

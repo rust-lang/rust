@@ -6,12 +6,14 @@
 
     type pointy = {
         mutable a : maybe_pointy,
+        c : ~int,
         d : sendfn()->(),
     };
 
     fn empty_pointy() -> @pointy {
         ret @{
             mutable a : none,
+            c : ~22,
             d : sendfn()->(){},
         }
     }

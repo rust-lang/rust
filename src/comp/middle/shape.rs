@@ -46,13 +46,18 @@ const shape_vec: u8 = 11u8;
 const shape_tag: u8 = 12u8;
 const shape_box: u8 = 13u8;
 const shape_struct: u8 = 17u8;
-const shape_fn: u8 = 18u8;
+const shape_box_fn: u8 = 18u8;
 const shape_obj: u8 = 19u8;
 const shape_res: u8 = 20u8;
 const shape_var: u8 = 21u8;
 const shape_uniq: u8 = 22u8;
 const shape_opaque_closure_ptr: u8 = 23u8; // the closure itself.
 const shape_iface: u8 = 24u8;
+const shape_uniq_fn: u8 = 25u8;
+const shape_stack_fn: u8 = 26u8;
+const shape_bare_fn: u8 = 27u8;
+const shape_tydesc: u8 = 28u8;
+const shape_send_tydesc: u8 = 29u8;
 
 // FIXME: This is a bad API in trans_common.
 fn C_u8(n: u8) -> ValueRef { ret trans_common::C_u8(n as uint); }
@@ -267,6 +272,14 @@ fn s_variant_tag_t(tcx: ty_ctxt) -> u8 {
     ret s_int(tcx);
 }
 
+fn s_tydesc(_tcx: ty_ctxt) -> u8 {
+    ret shape_tydesc;
+}
+
+fn s_send_tydesc(_tcx: ty_ctxt) -> u8 {
+    ret shape_send_tydesc;
+}
+
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     let llshapetablesty = trans_common::T_named_struct("shapes");
     let llshapetables =
@@ -305,8 +318,10 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
       ty::ty_bot. { s += [shape_u8]; }
       ty::ty_int(ast::ty_i.) { s += [s_int(ccx.tcx)]; }
       ty::ty_float(ast::ty_f.) { s += [s_float(ccx.tcx)]; }
-      ty::ty_uint(ast::ty_u.) | ty::ty_ptr(_) | ty::ty_type. |
-      ty::ty_send_type. | ty::ty_native(_) { s += [s_uint(ccx.tcx)]; }
+      ty::ty_uint(ast::ty_u.) | ty::ty_ptr(_) |
+      ty::ty_native(_) { s += [s_uint(ccx.tcx)]; }
+      ty::ty_type. { s += [s_tydesc(ccx.tcx)]; }
+      ty::ty_send_type. { s += [s_send_tydesc(ccx.tcx)]; }
       ty::ty_int(ast::ty_i8.) { s += [shape_i8]; }
       ty::ty_uint(ast::ty_u16.) { s += [shape_u16]; }
       ty::ty_int(ast::ty_i16.) { s += [shape_i16]; }
@@ -418,8 +433,17 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
             }
         }
       }
-      ty::ty_fn(_) {
-        s += [shape_fn];
+      ty::ty_fn({proto: ast::proto_box., _}) {
+        s += [shape_box_fn];
+      }
+      ty::ty_fn({proto: ast::proto_uniq., _}) {
+        s += [shape_uniq_fn];
+      }
+      ty::ty_fn({proto: ast::proto_block., _}) {
+        s += [shape_stack_fn];
+      }
+      ty::ty_fn({proto: ast::proto_bare., _}) {
+        s += [shape_bare_fn];
       }
       ty::ty_opaque_closure_ptr(_) {
         s += [shape_opaque_closure_ptr];

@@ -18,6 +18,9 @@
 // collection.
 #define RUST_CC_FREQUENCY   5000
 
+// defined in rust_upcall.cpp:
+void upcall_s_free_shared_type_desc(type_desc *td);
+
 namespace cc {
 
 // Internal reference count computation
@@ -70,7 +73,7 @@ class irc : public shape::data<irc,shape::ptr> {
                                   in_tables, in_data),
       ircs(in_ircs) {}
 
-    void walk_vec(bool is_pod, uint16_t sp_size) {
+    void walk_vec2(bool is_pod, uint16_t sp_size) {
         if (is_pod || shape::get_dp<void *>(dp) == NULL)
             return;     // There can't be any outbound pointers from this.
 
@@ -86,47 +89,63 @@ class irc : public shape::data<irc,shape::ptr> {
         }
     }
 
-    void walk_tag(shape::tag_info &tinfo, uint32_t tag_variant) {
-        shape::data<irc,shape::ptr>::walk_variant(tinfo, tag_variant);
+    void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {
+        shape::data<irc,shape::ptr>::walk_variant1(tinfo, tag_variant);
     }
 
-    void walk_box() {
-        shape::data<irc,shape::ptr>::walk_box_contents();
+    void walk_box2() {
+        shape::data<irc,shape::ptr>::walk_box_contents1();
     }
 
-    void walk_fn() {
-        // Record an irc for the environment box, but don't descend
-        // into it since it will be walked via the box's allocation
-        dp += sizeof(void *); // skip code pointer
-        uint8_t * box_ptr = shape::bump_dp<uint8_t *>(dp);
-        shape::ptr ref_count_dp(box_ptr);
-        maybe_record_irc(ref_count_dp);
+    void walk_uniq2() {
+        shape::data<irc,shape::ptr>::walk_uniq_contents1();
     }
 
-    void walk_obj() {
+    void walk_fn2(char code) {
+        switch (code) {
+          case shape::SHAPE_BOX_FN: {
+              // Record an irc for the environment box, but don't descend
+              // into it since it will be walked via the box's allocation
+              shape::bump_dp<void*>(dp); // skip over the code ptr
+              walk_box2();               // walk over the environment ptr
+              break;
+          }
+          case shape::SHAPE_BARE_FN:        // Does not close over data.
+          case shape::SHAPE_STACK_FN:       // Not reachable from heap.
+          case shape::SHAPE_UNIQ_FN: break; /* Can only close over sendable
+                                             * (and hence acyclic) data */
+          default: abort();
+        }
+    }
+
+    void walk_obj2() {
         dp += sizeof(void *); // skip vtable
         uint8_t *box_ptr = shape::bump_dp<uint8_t *>(dp);
         shape::ptr ref_count_dp(box_ptr);
         maybe_record_irc(ref_count_dp);
     }
 
-    void walk_iface() {
-        //shape::data<irc,shape::ptr>::walk_iface_contents(dp);
-        shape::data<irc,shape::ptr>::walk_box_contents();
+    void walk_iface2() {
+        walk_box2();
     }
 
-    void walk_res(const shape::rust_fn *dtor, unsigned n_params,
-                  const shape::type_param *params, const uint8_t *end_sp,
-                  bool live) {
+    void walk_tydesc2(char) {
+    }
+
+    void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
+                   const shape::type_param *params, const uint8_t *end_sp,
+                   bool live) {
         while (this->sp != end_sp) {
             this->walk();
             align = true;
         }
     }
 
-    void walk_subcontext(irc &sub) { sub.walk(); }
+    void walk_subcontext2(irc &sub) { sub.walk(); }
 
-    void walk_box_contents(irc &sub, shape::ptr &ref_count_dp) {
+    void walk_uniq_contents2(irc &sub) { sub.walk(); }
+
+    void walk_box_contents2(irc &sub, shape::ptr &ref_count_dp) {
         maybe_record_irc(ref_count_dp);
 
         // Do not traverse the contents of this box; it's in the allocation
@@ -153,28 +172,28 @@ class irc : public shape::data<irc,shape::ptr> {
         }
     }
 
-    void walk_struct(const uint8_t *end_sp) {
+    void walk_struct2(const uint8_t *end_sp) {
         while (this->sp != end_sp) {
             this->walk();
             align = true;
         }
     }
 
-    void walk_variant(shape::tag_info &tinfo, uint32_t variant_id,
+    void walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
 
     template<typename T>
-    inline void walk_number() { /* no-op */ }
+    inline void walk_number2() { /* no-op */ }
 
 public:
     static void compute_ircs(rust_task *task, irc_map &ircs);
 };
 
 void
-irc::walk_variant(shape::tag_info &tinfo, uint32_t variant_id,
-                  const std::pair<const uint8_t *,const uint8_t *>
-                  variant_ptr_and_end) {
+irc::walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
+                   const std::pair<const uint8_t *,const uint8_t *>
+                   variant_ptr_and_end) {
     irc sub(*this, variant_ptr_and_end.first, tinfo.params);
 
     assert(variant_id < 256);   // FIXME: Temporary sanity check.
@@ -305,7 +324,7 @@ class mark : public shape::data<mark,shape::ptr> {
                                    in_tables, in_data),
       marked(in_marked) {}
 
-    void walk_vec(bool is_pod, uint16_t sp_size) {
+    void walk_vec2(bool is_pod, uint16_t sp_size) {
         if (is_pod || shape::get_dp<void *>(dp) == NULL)
             return;     // There can't be any outbound pointers from this.
 
@@ -321,23 +340,39 @@ class mark : public shape::data<mark,shape::ptr> {
         }
     }
 
-    void walk_tag(shape::tag_info &tinfo, uint32_t tag_variant) {
-        shape::data<mark,shape::ptr>::walk_variant(tinfo, tag_variant);
+    void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {
+        shape::data<mark,shape::ptr>::walk_variant1(tinfo, tag_variant);
     }
 
-    void walk_box() {
-        shape::data<mark,shape::ptr>::walk_box_contents();
+    void walk_box2() {
+        shape::data<mark,shape::ptr>::walk_box_contents1();
     }
 
-    void walk_fn() {
-        shape::data<mark,shape::ptr>::walk_fn_contents(dp);
+    void walk_uniq2() {
+        shape::data<mark,shape::ptr>::walk_uniq_contents1();
     }
 
-    void walk_obj() {
-        shape::data<mark,shape::ptr>::walk_obj_contents(dp);
+    void walk_fn2(char code) {
+        switch (code) {
+          case shape::SHAPE_BOX_FN: {
+              // Record an irc for the environment box, but don't descend
+              // into it since it will be walked via the box's allocation
+              shape::data<mark,shape::ptr>::walk_fn_contents1(dp);
+              break;
+          }
+          case shape::SHAPE_BARE_FN:        // Does not close over data.
+          case shape::SHAPE_STACK_FN:       // Not reachable from heap.
+          case shape::SHAPE_UNIQ_FN: break; /* Can only close over sendable
+                                             * (and hence acyclic) data */
+          default: abort();
+        }
     }
 
-    void walk_res(const shape::rust_fn *dtor, unsigned n_params,
+    void walk_obj2() {
+        shape::data<mark,shape::ptr>::walk_obj_contents1(dp);
+    }
+
+    void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
                   const shape::type_param *params, const uint8_t *end_sp,
                   bool live) {
         while (this->sp != end_sp) {
@@ -346,9 +381,18 @@ class mark : public shape::data<mark,shape::ptr> {
         }
     }
 
-    void walk_subcontext(mark &sub) { sub.walk(); }
+    void walk_iface2() {
+        walk_box2();
+    }
 
-    void walk_box_contents(mark &sub, shape::ptr &ref_count_dp) {
+    void walk_tydesc2(char) {
+    }
+
+    void walk_subcontext2(mark &sub) { sub.walk(); }
+
+    void walk_uniq_contents2(mark &sub) { sub.walk(); }
+
+    void walk_box_contents2(mark &sub, shape::ptr &ref_count_dp) {
         if (!ref_count_dp)
             return;
 
@@ -359,19 +403,19 @@ class mark : public shape::data<mark,shape::ptr> {
         sub.walk();
     }
 
-    void walk_struct(const uint8_t *end_sp) {
+    void walk_struct2(const uint8_t *end_sp) {
         while (this->sp != end_sp) {
             this->walk();
             align = true;
         }
     }
 
-    void walk_variant(shape::tag_info &tinfo, uint32_t variant_id,
+    void walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);
 
     template<typename T>
-    inline void walk_number() { /* no-op */ }
+    inline void walk_number2() { /* no-op */ }
 
 public:
     static void do_mark(rust_task *task, const std::vector<void *> &roots,
@@ -379,7 +423,7 @@ public:
 };
 
 void
-mark::walk_variant(shape::tag_info &tinfo, uint32_t variant_id,
+mark::walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                    const std::pair<const uint8_t *,const uint8_t *>
                    variant_ptr_and_end) {
     mark sub(*this, variant_ptr_and_end.first, tinfo.params);
@@ -470,13 +514,13 @@ class sweep : public shape::data<sweep,shape::ptr> {
         : shape::data<sweep,shape::ptr>(in_task, in_align, in_sp,
                                         in_params, in_tables, in_data) {}
 
-    void walk_vec(bool is_pod, uint16_t sp_size) {
+    void walk_vec2(bool is_pod, uint16_t sp_size) {
         void *vec = shape::get_dp<void *>(dp);
-        walk_vec(is_pod, get_vec_data_range(dp));
+        walk_vec2(is_pod, get_vec_data_range(dp));
         task->kernel->free(vec);
     }
 
-    void walk_vec(bool is_pod,
+    void walk_vec2(bool is_pod,
                   const std::pair<shape::ptr,shape::ptr> &data_range) {
         sweep sub(*this, data_range.first);
         shape::ptr data_end = sub.end_dp = data_range.second;
@@ -486,50 +530,99 @@ class sweep : public shape::data<sweep,shape::ptr> {
         }
     }
 
-    void walk_tag(shape::tag_info &tinfo, uint32_t tag_variant) {
-        shape::data<sweep,shape::ptr>::walk_variant(tinfo, tag_variant);
+    void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {
+        shape::data<sweep,shape::ptr>::walk_variant1(tinfo, tag_variant);
     }
 
-    void walk_box() {
-        shape::data<sweep,shape::ptr>::walk_box_contents();
+    void walk_uniq2() {
+        void *x = *((void **)dp);
+        // free contents first:
+        shape::data<sweep,shape::ptr>::walk_uniq_contents1();
+        // now free the ptr:
+        task->kernel->free(x);
     }
 
-    void walk_fn() {
+    void walk_box2() {
+        shape::data<sweep,shape::ptr>::walk_box_contents1();
+    }
+
+    void walk_fn2(char code) {
+        switch (code) {
+          case shape::SHAPE_UNIQ_FN: {
+              fn_env_pair pair = *(fn_env_pair*)dp;
+
+              // free closed over data:
+              // 
+              // FIXME--this is a bit sketchy, since there is an
+              // embedded tydesc that we will be using to walk the
+              // data, but it will be freed as we walk.  In the
+              // generated code we pull this desc out and free it
+              // later.  We may well want to do the same.  However,
+              // since all we use from the descr. is the "shape", I
+              // think we're ok.
+              shape::data<sweep,shape::ptr>::walk_fn_contents1(dp);
+
+              // now free the ptr:
+              task->kernel->free(pair.env);
+              break;
+          }
+          case shape::SHAPE_BOX_FN: {
+              // the box will be visited separately:
+              shape::bump_dp<void*>(dp); // skip over the code ptr
+              walk_box2();               // walk over the environment ptr
+              break;
+          }
+          case shape::SHAPE_BARE_FN:         // Does not close over data.
+          case shape::SHAPE_STACK_FN: break; // Not reachable from heap.
+          default: abort();
+        }
+    }
+
+    void walk_obj2() {
         return;
     }
 
-    void walk_obj() {
-        return;
+    void walk_iface2() {
+        walk_box2();
     }
 
-    void walk_iface() {
-        //shape::data<sweep,shape::ptr>::walk_iface_contents(dp);
-        shape::data<sweep,shape::ptr>::walk_box_contents();
+    void walk_tydesc2(char kind) {
+        type_desc *td = *(type_desc **)dp;
+        switch(kind) {
+          case shape::SHAPE_TYDESC:
+            break;
+          case shape::SHAPE_SEND_TYDESC:
+            upcall_s_free_shared_type_desc(td);
+            break;
+          default: abort();
+        }
     }
 
-    void walk_res(const shape::rust_fn *dtor, unsigned n_params,
-                  const shape::type_param *params, const uint8_t *end_sp,
-                  bool live) {
+    void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
+                   const shape::type_param *params, const uint8_t *end_sp,
+                   bool live) {
         while (this->sp != end_sp) {
             this->walk();
             align = true;
         }
     }
 
-    void walk_subcontext(sweep &sub) { sub.walk(); }
+    void walk_subcontext2(sweep &sub) { sub.walk(); }
 
-    void walk_box_contents(sweep &sub, shape::ptr &ref_count_dp) {
+    void walk_uniq_contents2(sweep &sub) { sub.walk(); }
+
+    void walk_box_contents2(sweep &sub, shape::ptr &ref_count_dp) {
         return;
     }
 
-    void walk_struct(const uint8_t *end_sp) {
+    void walk_struct2(const uint8_t *end_sp) {
         while (this->sp != end_sp) {
             this->walk();
             align = true;
         }
     }
 
-    void walk_variant(shape::tag_info &tinfo, uint32_t variant_id,
+    void walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end) {
         sweep sub(*this, variant_ptr_and_end.first, tinfo.params);
@@ -542,7 +635,7 @@ class sweep : public shape::data<sweep,shape::ptr> {
     }
 
     template<typename T>
-    inline void walk_number() { /* no-op */ }
+    inline void walk_number2() { /* no-op */ }
 
 public:
     static void do_sweep(rust_task *task, const std::set<void *> &marked);
