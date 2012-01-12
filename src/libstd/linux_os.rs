@@ -24,7 +24,6 @@ export fsync_fd;
 // FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
 // by https://github.com/graydon/rust/issues#issue/268
 
-#[link_name = ""]               // FIXME remove after #[nolink] is snapshotted
 #[nolink]
 #[abi = "cdecl"]
 native mod libc {

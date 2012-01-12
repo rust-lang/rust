@@ -57,17 +57,20 @@ fn visit_item(e: env, i: @ast::item) {
         }
 
         let cstore = e.sess.get_cstore();
-        let native_name = i.ident;
+        let native_name =
+            alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
+              some(nn) {
+                if nn == "" {
+                    e.sess.span_fatal(
+                        i.span,
+                        "empty #[link_name] not allowed; use #[nolink].");
+                }
+                nn
+              }
+              none. { i.ident }
+            };
         let already_added = false;
         if vec::len(attr::find_attrs_by_name(i.attrs, "nolink")) == 0u {
-            alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
-              some(nn) { native_name = nn; }
-              none. { }
-            }
-            if native_name == "" {
-                e.sess.span_fatal(i.span,
-                    "empty #[link_name] not allowed; use #[nolink].");
-            }
             already_added = !cstore::add_used_library(cstore, native_name);
         }
         let link_args = attr::find_attrs_by_name(i.attrs, "link_args");
