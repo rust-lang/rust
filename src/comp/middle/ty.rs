@@ -182,6 +182,7 @@ export variant_info;
 export walk_ty;
 export occurs_check_fails;
 export closure_kind;
+export ck_any;
 export ck_block;
 export ck_box;
 export ck_uniq;
@@ -235,6 +236,7 @@ type raw_t = {struct: sty,
 type t = uint;
 
 tag closure_kind {
+    ck_any;
     ck_block;
     ck_box;
     ck_uniq;

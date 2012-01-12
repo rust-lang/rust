@@ -481,7 +481,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         alt proto {
-          ast::proto_bare. { p.warn("fn is deprecated, use native fn"); }
+          ast::proto_bare. { p.fatal("fn is deprecated, use native fn"); }
           _ { /* fallthrough */ }
         }
         t = parse_ty_fn(proto, p);
@@ -490,12 +490,6 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "native") {
         expect_word(p, "fn");
         t = parse_ty_fn(ast::proto_bare, p);
-    } else if eat_word(p, "lambda") {
-        p.warn("lambda is deprecated, use fn@");
-        t = parse_ty_fn(ast::proto_box, p);
-    } else if eat_word(p, "sendfn") {
-        p.warn("sendfn is deprecated, use fn~");
-        t = parse_ty_fn(ast::proto_uniq, p);
     } else if p.token == token::MOD_SEP || is_ident(p.token) {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
@@ -800,12 +794,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(parse_fn_expr(p, proto));
     } else if eat_word(p, "block") {
         ret pexpr(parse_fn_expr(p, ast::proto_block));
-    } else if eat_word(p, "lambda") {
-        //(breaks prettyprinting!) p.warn("lambda is deprecated, use fn@");
-        ret pexpr(parse_fn_expr(p, ast::proto_box));
-    } else if eat_word(p, "sendfn") {
-        //(breaks prettyprinting!) p.warn("sendfn is deprecated, use fn~");
-        ret pexpr(parse_fn_expr(p, ast::proto_uniq));
     } else if eat_word(p, "unchecked") {
         ret pexpr(parse_block_expr(p, lo, ast::unchecked_blk));
     } else if eat_word(p, "unsafe") {
@@ -2067,14 +2055,29 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
 }
 
 fn parse_fn_ty_proto(p: parser) -> ast::proto {
+<<<<<<< HEAD
     if p.token == token::AT {
         p.bump();
         ast::proto_box
     } else if p.token == token::TILDE {
+=======
+    alt p.peek() {
+      token::AT. {
+        p.bump();
+        ast::proto_box
+      }
+      token::TILDE. {
+>>>>>>> make blocks fn& and fn stand for "any closure"
         p.bump();
         ast::proto_uniq
-    } else {
+      }
+      token::BINOP(token::AND.) {
+        p.bump();
+        ast::proto_block
+      }
+      _ {
         ast::proto_bare
+      }
     }
 }
 
