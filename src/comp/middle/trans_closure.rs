@@ -523,6 +523,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
     };
 
     let closure = alt proto {
+      ast::proto_any. { fail "proto_any cannot appear in an expr"; }
       ast::proto_block. { trans_closure_env(ty::ck_block) }
       ast::proto_box. { trans_closure_env(ty::ck_box) }
       ast::proto_uniq. { trans_closure_env(ty::ck_uniq) }
@@ -664,6 +665,7 @@ fn make_fn_glue(
     ret alt ty::struct(tcx, t) {
       ty::ty_native_fn(_, _) | ty::ty_fn({proto: ast::proto_bare., _}) { bcx }
       ty::ty_fn({proto: ast::proto_block., _}) { bcx }
+      ty::ty_fn({proto: ast::proto_any., _}) { bcx }
       ty::ty_fn({proto: ast::proto_uniq., _}) { fn_env(ty::ck_uniq) }
       ty::ty_fn({proto: ast::proto_box., _}) { fn_env(ty::ck_box) }
       _ { fail "make_fn_glue invoked on non-function type" }

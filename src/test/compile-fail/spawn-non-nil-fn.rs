@@ -3,4 +3,4 @@
 use std;
 import task;
 
-fn main() { task::spawn(sendfn() -> int { 10 }); }
+fn main() { task::spawn(fn~() -> int { 10 }); }

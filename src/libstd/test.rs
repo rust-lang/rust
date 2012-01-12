@@ -49,7 +49,7 @@ type test_name = str;
 // to support isolation of tests into tasks.
 type test_fn<T> = T;
 
-type default_test_fn = test_fn<sendfn()>;
+type default_test_fn = test_fn<fn~()>;
 
 // The definition of a single test. A test runner will run a list of
 // these.
@@ -336,7 +336,7 @@ fn run_test<T: copy>(test: test_desc<T>,
 // We need to run our tests in another task in order to trap test failures.
 // This function only works with functions that don't contain closures.
 fn default_test_to_task(&&f: default_test_fn) -> joinable {
-    ret task::spawn_joinable(sendfn[copy f]() {
+    ret task::spawn_joinable(fn~[copy f]() {
         configure_test_task();
         f();
     });

@@ -63,8 +63,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id,
     alt ty::ty_fn_proto(cx.tcx, fty) {
       proto_uniq. { b(check_send); }
       proto_box. { b(check_copy); }
-      proto_block. { /* no check needed */ }
       proto_bare. { b(check_none); }
+      proto_any. | proto_block. { /* no check needed */ }
     }
 }
 

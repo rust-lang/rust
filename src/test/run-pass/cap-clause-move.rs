@@ -9,8 +9,8 @@ fn main() {
 
     let x = ~2;
     let y = ptr::addr_of(*x) as uint;
-    let snd_copy = sendfn[copy x]() -> uint { ptr::addr_of(*x) as uint };
-    let snd_move = sendfn[move x]() -> uint { ptr::addr_of(*x) as uint };
+    let snd_copy = fn~[copy x]() -> uint { ptr::addr_of(*x) as uint };
+    let snd_move = fn~[move x]() -> uint { ptr::addr_of(*x) as uint };
     assert snd_copy() != y;
     assert snd_move() == y;
 }

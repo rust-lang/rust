@@ -2874,7 +2874,7 @@ mod dict {
               _ {}
             }
           }
-          ast::expr_fn(ast::proto_block., _, _, _) {}
+          ast::expr_fn(p, _, _, _) if ast::is_blockish(p) {}
           ast::expr_fn(_, _, _, _) { ret; }
           _ {}
         }

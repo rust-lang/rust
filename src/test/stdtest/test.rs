@@ -63,8 +63,8 @@ fn filter_for_ignored_option() {
 
     let opts = {filter: option::none, run_ignored: true};
     let tests =
-        [{name: "1", fn: fn () { }, ignore: true, should_fail: false},
-         {name: "2", fn: fn () { }, ignore: false, should_fail: false}];
+        [{name: "1", fn: fn@() { }, ignore: true, should_fail: false},
+         {name: "2", fn: fn@() { }, ignore: false, should_fail: false}];
     let filtered = test::filter_tests(opts, tests);
 
     assert (vec::len(filtered) == 1u);
@@ -85,7 +85,7 @@ fn sort_tests() {
          "test::sort_tests"];
     let tests =
         {
-            let testfn = fn () { };
+            let testfn = fn@() { };
             let tests = [];
             for name: str in names {
                 let test = {name: name, fn: testfn, ignore: false,

@@ -192,10 +192,11 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
 }
 fn enc_proto(w: io::writer, proto: proto) {
     alt proto {
-      proto_uniq. { w.write_char('s'); }
-      proto_box. { w.write_char('F'); }
-      proto_block. { w.write_char('B'); }
-      proto_bare. { w.write_char('f'); }
+      proto_uniq. { w.write_str("f~"); }
+      proto_box. { w.write_str("f@"); }
+      proto_block. { w.write_str("f&"); }
+      proto_any. { w.write_str("f*"); }
+      proto_bare. { w.write_str("fn"); }
     }
 }
 

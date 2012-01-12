@@ -88,11 +88,14 @@ fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
     // Blocks need to obey any restrictions from the enclosing scope, and may
     // be called multiple times.
     let proto = ty::ty_fn_proto(cx.tcx, fty);
-    if proto == ast::proto_block {
+    alt proto {
+      ast::proto_block. | ast::proto_any. {
         check_loop(*cx, sc) {|| v.visit_block(body, sc, v);}
-    } else {
+      }
+      ast::proto_box. | ast::proto_uniq. | ast::proto_bare. {
         let sc = {bs: [], invalid: @mutable list::nil};
         v.visit_block(body, sc, v);
+      }
     }
 }
 

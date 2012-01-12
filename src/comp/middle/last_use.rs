@@ -63,9 +63,9 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
     ret mini_table;
 }
 
-fn is_block(cx: ctx, id: node_id) -> bool {
+fn ex_is_blockish(cx: ctx, id: node_id) -> bool {
     alt ty::struct(cx.tcx, ty::node_id_to_monotype(cx.tcx, id)) {
-      ty::ty_fn({proto: proto_block., _}) { true }
+      ty::ty_fn({proto: p, _}) if is_blockish(p) { true }
       _ { false }
     }
 }
@@ -152,8 +152,12 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
         for arg in args {
             alt arg.node {
-              expr_fn(proto_block., _, _, _) { fns += [arg]; }
-              expr_fn_block(_, _) if is_block(cx, arg.id) { fns += [arg]; }
+              expr_fn(p, _, _, _) if is_blockish(p) {
+                fns += [arg];
+              }
+              expr_fn_block(_, _) if ex_is_blockish(cx, arg.id) {
+                fns += [arg];
+              }
               _ {
                 alt arg_ts[i].mode {
                   by_mut_ref. { clear_if_path(cx, arg, v, false); }
@@ -174,11 +178,13 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             cx: ctx, v: visit::vt<ctx>) {
     let fty = ty::node_id_to_type(cx.tcx, id);
     let proto = ty::ty_fn_proto(cx.tcx, fty);
-    if proto == proto_block {
+    alt proto {
+      proto_any. | proto_block. {
         visit_block(func, cx, {||
             visit::visit_fn(fk, decl, body, sp, id, cx, v);
         });
-    } else {
+      }
+      proto_box. | proto_uniq. | proto_bare. {
         alt cx.tcx.freevars.find(id) {
           some(vars) {
             for v in *vars {
@@ -193,6 +199,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         visit::visit_fn(fk, decl, body, sp, id, cx, v);
         cx.blocks <-> old;
         leave_fn(cx);
+      }
     }
 }
 

@@ -481,11 +481,12 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         alt proto {
-          ast::proto_bare. { p.fatal("fn is deprecated, use native fn"); }
+          ast::proto_bare. { p.warn("fn is deprecated, use native fn"); }
           _ { /* fallthrough */ }
         }
         t = parse_ty_fn(proto, p);
     } else if eat_word(p, "block") {
+        //p.warn("block is deprecated, use fn& or fn");
         t = parse_ty_fn(ast::proto_block, p);
     } else if eat_word(p, "native") {
         expect_word(p, "fn");
@@ -788,11 +789,13 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         alt proto {
-          ast::proto_bare. { p.warn("fn expr are deprecated, use fn@"); }
+          ast::proto_bare. { p.fatal("fn expr are deprecated, use fn@"); }
+          ast::proto_any. { p.fatal("fn* cannot be used in an expression"); }
           _ { /* fallthrough */ }
         }
         ret pexpr(parse_fn_expr(p, proto));
     } else if eat_word(p, "block") {
+        p.warn("block is deprecated, use fn& or fn");
         ret pexpr(parse_fn_expr(p, ast::proto_block));
     } else if eat_word(p, "unchecked") {
         ret pexpr(parse_block_expr(p, lo, ast::unchecked_blk));
@@ -2055,25 +2058,22 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
 }
 
 fn parse_fn_ty_proto(p: parser) -> ast::proto {
-<<<<<<< HEAD
-    if p.token == token::AT {
-        p.bump();
-        ast::proto_box
-    } else if p.token == token::TILDE {
-=======
-    alt p.peek() {
+    alt p.token {
       token::AT. {
         p.bump();
         ast::proto_box
       }
       token::TILDE. {
->>>>>>> make blocks fn& and fn stand for "any closure"
         p.bump();
         ast::proto_uniq
       }
       token::BINOP(token::AND.) {
         p.bump();
         ast::proto_block
+      }
+      token::BINOP(token::STAR.) {
+        p.bump(); // temporary: fn* for any closure
+        ast::proto_any
       }
       _ {
         ast::proto_bare

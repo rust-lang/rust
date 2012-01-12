@@ -116,13 +116,19 @@ fn safe_to_steal_ty(t: @ast::ty, tm: test_mode) -> bool {
 }
 
 // Not type-parameterized: https://github.com/graydon/rust/issues/898
-fn stash_expr_if(c: fn(@ast::expr, test_mode)->bool, es: @mutable [ast::expr], e: @ast::expr, tm: test_mode) {
+fn stash_expr_if(c: fn@(@ast::expr, test_mode)->bool,
+                 es: @mutable [ast::expr],
+                 e: @ast::expr,
+                 tm: test_mode) {
     if c(e, tm) {
         *es += [*e];
     } else {/* now my indices are wrong :( */ }
 }
 
-fn stash_ty_if(c: fn(@ast::ty, test_mode)->bool, es: @mutable [ast::ty], e: @ast::ty, tm: test_mode) {
+fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
+               es: @mutable [ast::ty],
+               e: @ast::ty,
+               tm: test_mode) {
     if c(e, tm) {
         *es += [*e];
     } else {/* now my indices are wrong :( */ }
@@ -236,8 +242,8 @@ fn check_variants_T<T: copy>(
   filename: str,
   thing_label: str,
   things: [T],
-  stringifier: fn(@T) -> str,
-  replacer: fn(ast::crate, uint, T, test_mode) -> ast::crate,
+  stringifier: fn@(@T) -> str,
+  replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {
     #error("%s contains %u %s objects", filename, vec::len(things), thing_label);

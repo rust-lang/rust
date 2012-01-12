@@ -161,6 +161,17 @@ fn parse_ty_rust_fn(st: @pstate, conv: conv_did, p: ast::proto) -> ty::t {
     ret ty::mk_fn(st.tcx, {proto: p with parse_ty_fn(st, conv)});
 }
 
+fn parse_proto(c: char) -> ast::proto {
+    alt c {
+      '~' { ast::proto_uniq }
+      '@' { ast::proto_box }
+      '*' { ast::proto_any }
+      '&' { ast::proto_block }
+      'n' { ast::proto_bare }
+      _ { fail "illegal fn type kind " + str::from_char(c); }
+    }
+}
+
 fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
     alt next(st) as char {
       'n' { ret ty::mk_nil(st.tcx); }
@@ -230,17 +241,9 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         st.pos = st.pos + 1u;
         ret ty::mk_tup(st.tcx, params);
       }
-      's' {
-        ret parse_ty_rust_fn(st, conv, ast::proto_uniq);
-      }
-      'F' {
-        ret parse_ty_rust_fn(st, conv, ast::proto_box);
-      }
       'f' {
-        ret parse_ty_rust_fn(st, conv, ast::proto_bare);
-      }
-      'B' {
-        ret parse_ty_rust_fn(st, conv, ast::proto_block);
+        let proto = parse_proto(next(st) as char);
+        parse_ty_rust_fn(st, conv, proto)
       }
       'N' {
         let func = parse_ty_fn(st, conv);

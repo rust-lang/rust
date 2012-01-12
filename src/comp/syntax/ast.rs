@@ -117,6 +117,13 @@ tag proto {
     proto_block;   // fn&
 }
 
+pure fn is_blockish(p: ast::proto) -> bool {
+    alt p {
+      proto_any. | proto_block. { true }
+      proto_bare. | proto_uniq. | proto_box. { false }
+    }
+}
+
 tag binop {
     add;
     sub;

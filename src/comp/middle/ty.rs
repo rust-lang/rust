@@ -993,6 +993,7 @@ pure fn kind_can_be_sent(k: kind) -> bool {
 
 fn proto_kind(p: proto) -> kind {
     alt p {
+      ast::proto_any. { kind_noncopyable }
       ast::proto_block. { kind_noncopyable }
       ast::proto_box. { kind_copyable }
       ast::proto_uniq. { kind_sendable }
@@ -1925,7 +1926,8 @@ mod unify {
         // subtype).
         fn sub_proto(p_sub: ast::proto, p_sup: ast::proto) -> bool {
             ret alt (p_sub, p_sup) {
-              (_, ast::proto_block.) { true }
+              (_, ast::proto_any.) { true }
+              (_, ast::proto_block.) { true } /* NDM temporary */
               (ast::proto_bare., _) { true }
 
               // Equal prototypes are always subprotos:

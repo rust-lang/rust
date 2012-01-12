@@ -3,6 +3,6 @@ fn test(f: block(uint) -> uint) -> uint {
 }
 
 fn main() {
-    let y = test(sendfn(x: uint) -> uint { ret 4u * x; });
+    let y = test(fn~(x: uint) -> uint { ret 4u * x; });
     assert y == 88u;
 }
