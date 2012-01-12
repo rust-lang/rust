@@ -306,8 +306,6 @@ public:
     const rust_shape_tables *tables;
     const type_param *params;   // subparameters
 
-    // Constructs type parameters from a function shape.
-    static type_param *from_fn_shape(rust_opaque_closure *env, arena &arena);
     // Creates type parameters from an object shape description.
     static type_param *from_obj_shape(const uint8_t *sp, ptr dp,
                                       arena &arena);
@@ -326,8 +324,8 @@ public:
         // have to actually have the data pointer, since we don't statically
         // know from the type of an object or function which type parameters
         // it closes over.
-        assert(!tydesc->n_obj_params && "Type-parametric objects and "
-               "functions must go through from_tydesc_and_data() instead!");
+        assert(!tydesc->n_obj_params && "Type-parametric objects "
+               "must go through from_tydesc_and_data() instead!");
 
         return make(tydesc->first_param, tydesc->n_params, arena);
     }
@@ -337,20 +335,11 @@ public:
         if (tydesc->n_obj_params) {
             uintptr_t n_obj_params = tydesc->n_obj_params;
             const type_desc **first_param;
-            if (n_obj_params & 0x80000000) {
-                // Function closure.
-                DPRINT("n_obj_params FN %lu, tydesc %p, starting at %p\n",
-                       (unsigned long)n_obj_params, tydesc,
-                       dp + sizeof(uintptr_t) + tydesc->size);
-                n_obj_params &= 0x7fffffff;
-                first_param = (const type_desc **)(dp + sizeof(uintptr_t));
-            } else {
-                // Object closure.
-                DPRINT("n_obj_params OBJ %lu, tydesc %p, starting at %p\n",
-                       (unsigned long)n_obj_params, tydesc,
-                       dp + sizeof(uintptr_t) * 2);
-                first_param = (const type_desc **)(dp + sizeof(uintptr_t) * 2);
-            }
+            // Object closure.
+            DPRINT("n_obj_params OBJ %lu, tydesc %p, starting at %p\n",
+                   (unsigned long)n_obj_params, tydesc,
+                   dp + sizeof(uintptr_t) * 2);
+            first_param = (const type_desc **)(dp + sizeof(uintptr_t) * 2);
             return make(first_param, n_obj_params, arena);
         }
 
@@ -852,7 +841,7 @@ protected:
 
     void walk_box_contents1();
     void walk_uniq_contents1();
-    void walk_fn_contents1(ptr &dp);
+    void walk_fn_contents1(ptr &dp, bool null_td);
     void walk_obj_contents1(ptr &dp);
     void walk_iface_contents1(ptr &dp);
     void walk_variant1(tag_info &tinfo, tag_variant_t variant);
@@ -1008,20 +997,40 @@ data<T,U>::walk_tag1(tag_info &tinfo) {
 
 template<typename T,typename U>
 void
-data<T,U>::walk_fn_contents1(ptr &dp) {
+data<T,U>::walk_fn_contents1(ptr &dp, bool null_td) {
     fn_env_pair pair = bump_dp<fn_env_pair>(dp);
     if (!pair.env)
         return;
 
     arena arena;
-    type_param *params =
-      type_param::from_fn_shape(pair.env, arena);
     const type_desc *closure_td = pair.env->td;
+    type_param *params =
+      type_param::from_tydesc(closure_td, arena);
     ptr closure_dp((uintptr_t)pair.env);
     T sub(*static_cast<T *>(this), closure_td->shape, params,
           closure_td->shape_tables, closure_dp);
     sub.align = true;
+
+    if (null_td) {
+        // if null_td flag is true, null out the type descr from
+        // the data structure while we walk.  This is used in cycle
+        // collector when we are sweeping up data.  The idea is that
+        // we are using the information in the embedded type desc to
+        // walk the contents, so we do not want to free it during that
+        // walk.  This is not *strictly* necessary today because
+        // type_param::from_tydesc() actually pulls out the "shape"
+        // string and other information and copies it into a new
+        // location that is unaffected by the free.  But it seems
+        // safer, particularly as this pulling out of information will
+        // not cope with nested, derived type descriptors.
+        pair.env->td = NULL;
+    }
+
     sub.walk();
+
+    if (null_td) {
+        pair.env->td = closure_td;
+    }
 }
 
 template<typename T,typename U>
@@ -1138,7 +1147,7 @@ private:
     void walk_fn2(char kind) {
         out << prefix << "fn";
         prefix = "";
-        data<log,ptr>::walk_fn_contents1(dp);
+        data<log,ptr>::walk_fn_contents1(dp, false);
     }
 
     void walk_obj2() {

@@ -357,7 +357,7 @@ class mark : public shape::data<mark,shape::ptr> {
           case shape::SHAPE_BOX_FN: {
               // Record an irc for the environment box, but don't descend
               // into it since it will be walked via the box's allocation
-              shape::data<mark,shape::ptr>::walk_fn_contents1(dp);
+              shape::data<mark,shape::ptr>::walk_fn_contents1(dp, false);
               break;
           }
           case shape::SHAPE_BARE_FN:        // Does not close over data.
@@ -552,15 +552,14 @@ class sweep : public shape::data<sweep,shape::ptr> {
               fn_env_pair pair = *(fn_env_pair*)dp;
 
               // free closed over data:
-              // 
-              // FIXME--this is a bit sketchy, since there is an
-              // embedded tydesc that we will be using to walk the
-              // data, but it will be freed as we walk.  In the
-              // generated code we pull this desc out and free it
-              // later.  We may well want to do the same.  However,
-              // since all we use from the descr. is the "shape", I
-              // think we're ok.
-              shape::data<sweep,shape::ptr>::walk_fn_contents1(dp);
+              shape::data<sweep,shape::ptr>::walk_fn_contents1(dp, true);
+
+              // now free the embedded type descr:
+              //
+              // see comment in walk_fn_contents1() concerning null_td
+              // to understand why this does not occur during the normal
+              // walk.
+              upcall_s_free_shared_type_desc((type_desc*)pair.env->td);
 
               // now free the ptr:
               task->kernel->free(pair.env);

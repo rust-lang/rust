@@ -283,12 +283,14 @@ void upcall_s_free_shared_type_desc(type_desc *td)
     rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
 
-    // Recursively free any referenced descriptors:
-    for (unsigned i = 0; i < td->n_params; i++) {
-        upcall_s_free_shared_type_desc((type_desc*) td->first_param[i]);
-    }
+    if (td) {
+        // Recursively free any referenced descriptors:
+        for (unsigned i = 0; i < td->n_params; i++) {
+            upcall_s_free_shared_type_desc((type_desc*) td->first_param[i]);
+        }
 
-    task->kernel->free(td);
+        task->kernel->free(td);
+    }
 }
 
 extern "C" CDECL void

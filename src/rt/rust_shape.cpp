@@ -44,15 +44,7 @@ type_param::make(const type_desc **tydescs, unsigned n_tydescs,
     return ptrs;
 }
 
-// Constructs type parameters from a function shape. This is a bit messy,
-// because it requires that the function shape have a specific format.
-type_param *
-type_param::from_fn_shape(rust_opaque_closure *env, arena &arena) {
-    unsigned n_tydescs = env->td->n_obj_params & 0x7fffffff;
-    return make(env->captured_tds, n_tydescs, arena);
-}
-
-// Constructs type parameters from an object shape. This is also a bit messy,
+// Constructs type parameters from an object shape. This is a bit messy,
 // because it requires that the object shape have a specific format.
 type_param *
 type_param::from_obj_shape(const uint8_t *sp, ptr dp, arena &arena) {
@@ -352,6 +344,10 @@ public:
 
     void walk_iface2() {
         data<cmp,ptr_pair>::walk_box_contents1();
+    }
+
+    void walk_tydesc2(char) {
+        cmp_pointer();
     }
 
     void walk_fn2(char) { return cmp_two_pointers(); }
