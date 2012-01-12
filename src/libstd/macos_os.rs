@@ -118,7 +118,6 @@ native mod rustrt {
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 
-#[link_name = ""]               // FIXME remove after #[nolink] is snapshotted
 #[nolink]
 #[abi = "cdecl"]
 native mod mac_libc {
