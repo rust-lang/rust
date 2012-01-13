@@ -86,6 +86,10 @@ symnames = {
 
 "::": "coloncolon",
 
+"->": "rightarrow",
+"<-": "leftarrow",
+"<->": "swaparrow",
+
 "//": "linecomment",
 "/*": "openblockcomment",
 "*/": "closeblockcomment"
