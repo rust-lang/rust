@@ -20,6 +20,7 @@ native mod rustrt {
     fn do_gc();
     fn unsupervise();
     fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
+    fn rust_set_exit_status(code: int);
 }
 
 #[abi = "rust-intrinsic"]
@@ -90,6 +91,18 @@ fn unsupervise() -> () {
 
 fn log_str<T>(t: T) -> str {
     rustrt::shape_log_str(get_type_desc::<T>(), t)
+}
+
+#[doc(
+    brief = "Sets the process exit code",
+    desc = "Sets the exit code returned by the process if all supervised \
+            tasks terminate successfully (without failing). If the current \
+            root task fails and is supervised by the scheduler then any \
+            user-specified exit status is ignored and the process exits \
+            with the default failure status."
+)]
+fn set_exit_status(code: int) {
+    rustrt::rust_set_exit_status(code);
 }
 
 // Local Variables:

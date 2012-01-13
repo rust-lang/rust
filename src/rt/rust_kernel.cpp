@@ -11,8 +11,8 @@ rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     _log(srv, NULL),
     srv(srv),
     max_id(0),
-    num_threads(num_threads),
     rval(0),
+    num_threads(num_threads),
     live_tasks(0),
     env(srv->env)
 {
@@ -140,6 +140,7 @@ rust_kernel::fail() {
     // FIXME: On windows we're getting "Application has requested the
     // Runtime to terminate it in an unusual way" when trying to shutdown
     // cleanly.
+    set_exit_status(PROC_FAIL_CODE);
 #if defined(__WIN32__)
     exit(rval);
 #endif
@@ -209,6 +210,15 @@ rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
     }
 }
 #endif
+
+void
+rust_kernel::set_exit_status(int code) {
+    scoped_lock with(_kernel_lock);
+    // If we've already failed then that's the code we're going to use
+    if (rval != PROC_FAIL_CODE) {
+        rval = code;
+    }
+}
 
 //
 // Local Variables:

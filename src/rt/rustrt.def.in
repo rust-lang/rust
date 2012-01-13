@@ -41,6 +41,7 @@ rust_port_size
 rust_process_wait
 rust_ptr_eq
 rust_run_program
+rust_set_exit_status
 rust_start
 rust_getcwd
 rust_task_is_unwinding

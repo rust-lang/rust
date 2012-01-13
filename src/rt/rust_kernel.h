@@ -34,9 +34,10 @@ private:
     rust_task_id max_id;
     hash_map<rust_task_id, rust_task *> task_table;
 
+    int rval;
+
 public:
     const size_t num_threads;
-    int rval;
 
     volatile int live_tasks;
     struct rust_env *env;
@@ -68,6 +69,7 @@ public:
     rust_task_id create_task(rust_task *spawner, const char *name);
     rust_task *get_task_by_id(rust_task_id id);
     void release_task_id(rust_task_id tid);
+    void set_exit_status(int code);
 };
 
 #endif /* RUST_KERNEL_H */

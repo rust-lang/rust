@@ -561,6 +561,12 @@ port_recv(uintptr_t *dptr, rust_port *port,
     return;
 }
 
+extern "C" CDECL void
+rust_set_exit_status(intptr_t code) {
+    rust_task *task = rust_scheduler::get_task();
+    task->kernel->set_exit_status((int)code);
+}
+
 //
 // Local Variables:
 // mode: C++

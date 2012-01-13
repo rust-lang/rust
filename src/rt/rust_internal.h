@@ -92,7 +92,7 @@ static size_t const TIME_SLICE_IN_MS = 10;
 static size_t const BUF_BYTES = 2048;
 
 // The error status to use when the process fails
-#define PROC_FAIL_CODE 101;
+#define PROC_FAIL_CODE 101
 
 // Every reference counted object should use this macro and initialize
 // ref_count.
