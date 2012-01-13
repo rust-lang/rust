@@ -7,81 +7,63 @@ import util::interner;
 import util::interner::intern;
 import codemap;
 
-type reader =
-    obj {
-        fn is_eof() -> bool;
-        fn curr() -> char;
-        fn next() -> char;
-        fn init();
-        fn bump();
-        fn get_str_from(uint) -> str;
-        fn get_interner() -> @interner::interner<str>;
-        fn get_chpos() -> uint;
-        fn get_byte_pos() -> uint;
-        fn get_col() -> uint;
-        fn get_filemap() -> codemap::filemap;
-        fn err(str);
-    };
+type reader = @{
+    cm: codemap::codemap,
+    src: str,
+    len: uint,
+    mutable col: uint,
+    mutable pos: uint,
+    mutable curr: char,
+    mutable chpos: uint,
+    mutable strs: [str],
+    filemap: codemap::filemap,
+    interner: @interner::interner<str>
+};
+
+impl reader for reader {
+    fn is_eof() -> bool { self.curr == -1 as char }
+    fn get_str_from(start: uint) -> str {
+        // I'm pretty skeptical about this subtraction. What if there's a
+        // multi-byte character before the mark?
+        ret str::slice(self.src, start - 1u, self.pos - 1u);
+    }
+    fn next() -> char {
+        if self.pos < self.len {
+            ret str::char_at(self.src, self.pos);
+        } else { ret -1 as char; }
+    }
+    fn bump() {
+        if self.pos < self.len {
+            self.col += 1u;
+            self.chpos += 1u;
+            if self.curr == '\n' {
+                codemap::next_line(self.filemap, self.chpos, self.pos +
+                                   self.filemap.start_pos.byte);
+                self.col = 0u;
+            }
+            let next = str::char_range_at(self.src, self.pos);
+            self.pos = next.next;
+            self.curr = next.ch;
+        } else { self.curr = -1 as char; }
+    }
+    fn err(m: str) {
+        codemap::emit_error(some(ast_util::mk_sp(self.chpos, self.chpos)),
+                            m, self.cm);
+    }
+}
 
 fn new_reader(cm: codemap::codemap, src: str, filemap: codemap::filemap,
               itr: @interner::interner<str>) -> reader {
-    obj reader(cm: codemap::codemap,
-               src: str,
-               len: uint,
-               mutable col: uint,
-               mutable pos: uint,
-               mutable ch: char,
-               mutable chpos: uint,
-               mutable strs: [str],
-               fm: codemap::filemap,
-               itr: @interner::interner<str>) {
-        fn is_eof() -> bool { ret ch == -1 as char; }
-        fn get_str_from(start: uint) -> str {
-            // I'm pretty skeptical about this subtraction. What if there's a
-            // multi-byte character before the mark?
-            ret str::slice(src, start - 1u, pos - 1u);
-        }
-        fn get_chpos() -> uint { ret chpos; }
-        fn get_byte_pos() -> uint { ret pos; }
-        fn curr() -> char { ret ch; }
-        fn next() -> char {
-            if pos < len {
-                ret str::char_at(src, pos);
-            } else { ret -1 as char; }
-        }
-        fn init() {
-            if pos < len {
-                let next = str::char_range_at(src, pos);
-                pos = next.next;
-                ch = next.ch;
-            }
-        }
-        fn bump() {
-            if pos < len {
-                col += 1u;
-                chpos += 1u;
-                if ch == '\n' {
-                    codemap::next_line(fm, chpos, pos + fm.start_pos.byte);
-                    col = 0u;
-                }
-                let next = str::char_range_at(src, pos);
-                pos = next.next;
-                ch = next.ch;
-            } else { ch = -1 as char; }
-        }
-        fn get_interner() -> @interner::interner<str> { ret itr; }
-        fn get_col() -> uint { ret col; }
-        fn get_filemap() -> codemap::filemap { ret fm; }
-        fn err(m: str) {
-            codemap::emit_error(some(ast_util::mk_sp(chpos, chpos)), m, cm);
-        }
+    let r = @{cm: cm, src: src, len: str::byte_len(src),
+              mutable col: 0u, mutable pos: 0u, mutable curr: -1 as char,
+              mutable chpos: filemap.start_pos.ch, mutable strs: [],
+              filemap: filemap, interner: itr};
+    if r.pos < r.len {
+        let next = str::char_range_at(r.src, r.pos);
+        r.pos = next.next;
+        r.curr = next.ch;
     }
-    let strs: [str] = [];
-    let rd =
-        reader(cm, src, str::byte_len(src), 0u, 0u, -1 as char,
-               filemap.start_pos.ch, strs, filemap, itr);
-    rd.init();
-    ret rd;
+    ret r;
 }
 
 fn dec_digit_val(c: char) -> int { ret (c as int) - ('0' as int); }
@@ -119,15 +101,15 @@ fn is_hex_digit(c: char) -> bool {
 fn is_bin_digit(c: char) -> bool { ret c == '0' || c == '1'; }
 
 fn consume_whitespace_and_comments(rdr: reader) {
-    while is_whitespace(rdr.curr()) { rdr.bump(); }
+    while is_whitespace(rdr.curr) { rdr.bump(); }
     be consume_any_line_comment(rdr);
 }
 
 fn consume_any_line_comment(rdr: reader) {
-    if rdr.curr() == '/' {
+    if rdr.curr == '/' {
         alt rdr.next() {
           '/' {
-            while rdr.curr() != '\n' && !rdr.is_eof() { rdr.bump(); }
+            while rdr.curr != '\n' && !rdr.is_eof() { rdr.bump(); }
             // Restart whitespace munch.
 
             be consume_whitespace_and_comments(rdr);
@@ -142,12 +124,12 @@ fn consume_block_comment(rdr: reader) {
     let level: int = 1;
     while level > 0 {
         if rdr.is_eof() { rdr.err("unterminated block comment"); fail; }
-        if rdr.curr() == '/' && rdr.next() == '*' {
+        if rdr.curr == '/' && rdr.next() == '*' {
             rdr.bump();
             rdr.bump();
             level += 1;
         } else {
-            if rdr.curr() == '*' && rdr.next() == '/' {
+            if rdr.curr == '*' && rdr.next() == '/' {
                 rdr.bump();
                 rdr.bump();
                 level -= 1;
@@ -160,12 +142,12 @@ fn consume_block_comment(rdr: reader) {
 }
 
 fn scan_exponent(rdr: reader) -> option::t<str> {
-    let c = rdr.curr();
+    let c = rdr.curr;
     let rslt = "";
     if c == 'e' || c == 'E' {
         str::push_byte(rslt, c as u8);
         rdr.bump();
-        c = rdr.curr();
+        c = rdr.curr;
         if c == '-' || c == '+' {
             str::push_byte(rslt, c as u8);
             rdr.bump();
@@ -180,7 +162,7 @@ fn scan_exponent(rdr: reader) -> option::t<str> {
 fn scan_digits(rdr: reader, radix: uint) -> str {
     let rslt = "";
     while true {
-        let c = rdr.curr();
+        let c = rdr.curr;
         if c == '_' { rdr.bump(); cont; }
         alt char::maybe_digit(c) {
           some(d) if (d as uint) < radix {
@@ -205,13 +187,13 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         base = 2u;
     }
     num_str = scan_digits(rdr, base);
-    c = rdr.curr();
+    c = rdr.curr;
     n = rdr.next();
     if c == 'u' || c == 'i' {
         let signed = c == 'i', tp = signed ? either::left(ast::ty_i)
                                            : either::right(ast::ty_u);
         rdr.bump();
-        c = rdr.curr();
+        c = rdr.curr;
         if c == '8' {
             rdr.bump();
             tp = signed ? either::left(ast::ty_i8)
@@ -241,7 +223,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         }
     }
     let is_float = false;
-    if rdr.curr() == '.' && !(is_alpha(rdr.next()) || rdr.next() == '_') {
+    if rdr.curr == '.' && !(is_alpha(rdr.next()) || rdr.next() == '_') {
         is_float = true;
         rdr.bump();
         let dec_part = scan_digits(rdr, 10u);
@@ -254,19 +236,19 @@ fn scan_number(c: char, rdr: reader) -> token::token {
       }
       none. {}
     }
-    if rdr.curr() == 'f' {
+    if rdr.curr == 'f' {
         rdr.bump();
-        c = rdr.curr();
+        c = rdr.curr;
         n = rdr.next();
         if c == '3' && n == '2' {
             rdr.bump();
             rdr.bump();
-            ret token::LIT_FLOAT(intern(*rdr.get_interner(), num_str),
+            ret token::LIT_FLOAT(intern(*rdr.interner, num_str),
                                  ast::ty_f32);
         } else if c == '6' && n == '4' {
             rdr.bump();
             rdr.bump();
-            ret token::LIT_FLOAT(intern(*rdr.get_interner(), num_str),
+            ret token::LIT_FLOAT(intern(*rdr.interner, num_str),
                                  ast::ty_f64);
             /* FIXME: if this is out of range for either a 32-bit or
             64-bit float, it won't be noticed till the back-end */
@@ -275,7 +257,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         }
     }
     if is_float {
-        ret token::LIT_FLOAT(interner::intern(*rdr.get_interner(), num_str),
+        ret token::LIT_FLOAT(interner::intern(*rdr.interner, num_str),
                              ast::ty_f);
     } else {
         let parsed = u64::from_str(num_str, base as u64);
@@ -286,7 +268,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
 fn scan_numeric_escape(rdr: reader, n_hex_digits: uint) -> char {
     let accum_int = 0, i = n_hex_digits;
     while i != 0u {
-        let n = rdr.curr();
+        let n = rdr.curr;
         rdr.bump();
         if !is_hex_digit(n) {
             rdr.err(#fmt["illegal numeric character escape: %d", n as int]);
@@ -301,26 +283,26 @@ fn scan_numeric_escape(rdr: reader, n_hex_digits: uint) -> char {
 
 fn next_token(rdr: reader) -> {tok: token::token, chpos: uint, bpos: uint} {
     consume_whitespace_and_comments(rdr);
-    let start_chpos = rdr.get_chpos();
-    let start_bpos = rdr.get_byte_pos();
+    let start_chpos = rdr.chpos;
+    let start_bpos = rdr.pos;
     let tok = if rdr.is_eof() { token::EOF } else { next_token_inner(rdr) };
     ret {tok: tok, chpos: start_chpos, bpos: start_bpos};
 }
 
 fn next_token_inner(rdr: reader) -> token::token {
     let accum_str = "";
-    let c = rdr.curr();
+    let c = rdr.curr;
     if char::is_XID_start(c) || c == '_' {
         while char::is_XID_continue(c) {
             str::push_char(accum_str, c);
             rdr.bump();
-            c = rdr.curr();
+            c = rdr.curr;
         }
         if str::eq(accum_str, "_") { ret token::UNDERSCORE; }
         let is_mod_name = c == ':' && rdr.next() == ':';
 
         // FIXME: perform NFKC normalization here.
-        ret token::IDENT(interner::intern::<str>(*rdr.get_interner(),
+        ret token::IDENT(interner::intern::<str>(*rdr.interner,
                                                  accum_str), is_mod_name);
     }
     if is_dec_digit(c) {
@@ -328,7 +310,7 @@ fn next_token_inner(rdr: reader) -> token::token {
     }
     fn binop(rdr: reader, op: token::binop) -> token::token {
         rdr.bump();
-        if rdr.curr() == '=' {
+        if rdr.curr == '=' {
             rdr.bump();
             ret token::BINOPEQ(op);
         } else { ret token::BINOP(op); }
@@ -348,7 +330,7 @@ fn next_token_inner(rdr: reader) -> token::token {
       ',' { rdr.bump(); ret token::COMMA; }
       '.' {
         rdr.bump();
-        if rdr.curr() == '.' && rdr.next() == '.' {
+        if rdr.curr == '.' && rdr.next() == '.' {
             rdr.bump();
             rdr.bump();
             ret token::ELLIPSIS;
@@ -364,14 +346,14 @@ fn next_token_inner(rdr: reader) -> token::token {
       '@' { rdr.bump(); ret token::AT; }
       '#' {
         rdr.bump();
-        if rdr.curr() == '<' { rdr.bump(); ret token::POUND_LT; }
-        if rdr.curr() == '{' { rdr.bump(); ret token::POUND_LBRACE; }
+        if rdr.curr == '<' { rdr.bump(); ret token::POUND_LT; }
+        if rdr.curr == '{' { rdr.bump(); ret token::POUND_LBRACE; }
         ret token::POUND;
       }
       '~' { rdr.bump(); ret token::TILDE; }
       ':' {
         rdr.bump();
-        if rdr.curr() == ':' {
+        if rdr.curr == ':' {
             rdr.bump();
             ret token::MOD_SEP;
         } else { ret token::COLON; }
@@ -384,26 +366,26 @@ fn next_token_inner(rdr: reader) -> token::token {
       // Multi-byte tokens.
       '=' {
         rdr.bump();
-        if rdr.curr() == '=' {
+        if rdr.curr == '=' {
             rdr.bump();
             ret token::EQEQ;
         } else { ret token::EQ; }
       }
       '!' {
         rdr.bump();
-        if rdr.curr() == '=' {
+        if rdr.curr == '=' {
             rdr.bump();
             ret token::NE;
         } else { ret token::NOT; }
       }
       '<' {
         rdr.bump();
-        alt rdr.curr() {
+        alt rdr.curr {
           '=' { rdr.bump(); ret token::LE; }
           '<' { ret binop(rdr, token::LSL); }
           '-' {
             rdr.bump();
-            alt rdr.curr() {
+            alt rdr.curr {
               '>' { rdr.bump(); ret token::DARROW; }
               _ { ret token::LARROW; }
             }
@@ -413,7 +395,7 @@ fn next_token_inner(rdr: reader) -> token::token {
       }
       '>' {
         rdr.bump();
-        alt rdr.curr() {
+        alt rdr.curr {
           '=' { rdr.bump(); ret token::GE; }
           '>' {
             if rdr.next() == '>' {
@@ -426,10 +408,10 @@ fn next_token_inner(rdr: reader) -> token::token {
       }
       '\'' {
         rdr.bump();
-        let c2 = rdr.curr();
+        let c2 = rdr.curr;
         rdr.bump();
         if c2 == '\\' {
-            let escaped = rdr.curr();
+            let escaped = rdr.curr;
             rdr.bump();
             alt escaped {
               'n' { c2 = '\n'; }
@@ -446,7 +428,7 @@ fn next_token_inner(rdr: reader) -> token::token {
               }
             }
         }
-        if rdr.curr() != '\'' {
+        if rdr.curr != '\'' {
             rdr.err("unterminated character constant");
             fail;
         }
@@ -454,20 +436,20 @@ fn next_token_inner(rdr: reader) -> token::token {
         ret token::LIT_INT(c2 as i64, ast::ty_char);
       }
       '"' {
-        let n = rdr.get_chpos();
+        let n = rdr.chpos;
         rdr.bump();
-        while rdr.curr() != '"' {
+        while rdr.curr != '"' {
             if rdr.is_eof() {
                 rdr.err(#fmt["unterminated double quote string: %s",
                              rdr.get_str_from(n)]);
                 fail;
             }
 
-            let ch = rdr.curr();
+            let ch = rdr.curr;
             rdr.bump();
             alt ch {
               '\\' {
-                let escaped = rdr.curr();
+                let escaped = rdr.curr;
                 rdr.bump();
                 alt escaped {
                   'n' { str::push_byte(accum_str, '\n' as u8); }
@@ -495,7 +477,7 @@ fn next_token_inner(rdr: reader) -> token::token {
             }
         }
         rdr.bump();
-        ret token::LIT_STR(interner::intern::<str>(*rdr.get_interner(),
+        ret token::LIT_STR(interner::intern::<str>(*rdr.interner,
                                                    accum_str));
       }
       '-' {
@@ -538,11 +520,11 @@ type cmnt = {style: cmnt_style, lines: [str], pos: uint};
 
 fn read_to_eol(rdr: reader) -> str {
     let val = "";
-    while rdr.curr() != '\n' && !rdr.is_eof() {
-        str::push_char(val, rdr.curr());
+    while rdr.curr != '\n' && !rdr.is_eof() {
+        str::push_char(val, rdr.curr);
         rdr.bump();
     }
-    if rdr.curr() == '\n' { rdr.bump(); }
+    if rdr.curr == '\n' { rdr.bump(); }
     ret val;
 }
 
@@ -553,11 +535,11 @@ fn read_one_line_comment(rdr: reader) -> str {
 }
 
 fn consume_whitespace(rdr: reader) {
-    while is_whitespace(rdr.curr()) && !rdr.is_eof() { rdr.bump(); }
+    while is_whitespace(rdr.curr) && !rdr.is_eof() { rdr.bump(); }
 }
 
 fn consume_non_eol_whitespace(rdr: reader) {
-    while is_whitespace(rdr.curr()) && rdr.curr() != '\n' && !rdr.is_eof() {
+    while is_whitespace(rdr.curr) && rdr.curr != '\n' && !rdr.is_eof() {
         rdr.bump();
     }
 }
@@ -565,12 +547,12 @@ fn consume_non_eol_whitespace(rdr: reader) {
 fn push_blank_line_comment(rdr: reader, &comments: [cmnt]) {
     #debug(">>> blank-line comment");
     let v: [str] = [];
-    comments += [{style: blank_line, lines: v, pos: rdr.get_chpos()}];
+    comments += [{style: blank_line, lines: v, pos: rdr.chpos}];
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: reader, &comments: [cmnt]) {
-    while is_whitespace(rdr.curr()) && !rdr.is_eof() {
-        if rdr.get_col() == 0u && rdr.curr() == '\n' {
+    while is_whitespace(rdr.curr) && !rdr.is_eof() {
+        if rdr.col == 0u && rdr.curr == '\n' {
             push_blank_line_comment(rdr, comments);
         }
         rdr.bump();
@@ -579,9 +561,9 @@ fn consume_whitespace_counting_blank_lines(rdr: reader, &comments: [cmnt]) {
 
 fn read_line_comments(rdr: reader, code_to_the_left: bool) -> cmnt {
     #debug(">>> line comments");
-    let p = rdr.get_chpos();
+    let p = rdr.chpos;
     let lines: [str] = [];
-    while rdr.curr() == '/' && rdr.next() == '/' {
+    while rdr.curr == '/' && rdr.next() == '/' {
         let line = read_one_line_comment(rdr);
         log(debug, line);
         lines += [line];
@@ -612,9 +594,9 @@ fn trim_whitespace_prefix_and_push_line(&lines: [str], s: str, col: uint) {
 
 fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
     #debug(">>> block comment");
-    let p = rdr.get_chpos();
+    let p = rdr.chpos;
     let lines: [str] = [];
-    let col: uint = rdr.get_col();
+    let col: uint = rdr.col;
     rdr.bump();
     rdr.bump();
     let curr_line = "/*";
@@ -622,19 +604,19 @@ fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
     while level > 0 {
         #debug("=== block comment level %d", level);
         if rdr.is_eof() { rdr.err("unterminated block comment"); fail; }
-        if rdr.curr() == '\n' {
+        if rdr.curr == '\n' {
             trim_whitespace_prefix_and_push_line(lines, curr_line, col);
             curr_line = "";
             rdr.bump();
         } else {
-            str::push_char(curr_line, rdr.curr());
-            if rdr.curr() == '/' && rdr.next() == '*' {
+            str::push_char(curr_line, rdr.curr);
+            if rdr.curr == '/' && rdr.next() == '*' {
                 rdr.bump();
                 rdr.bump();
                 curr_line += "*";
                 level += 1;
             } else {
-                if rdr.curr() == '*' && rdr.next() == '/' {
+                if rdr.curr == '*' && rdr.next() == '/' {
                     rdr.bump();
                     rdr.bump();
                     curr_line += "/";
@@ -648,7 +630,7 @@ fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
     }
     let style = if code_to_the_left { trailing } else { isolated };
     consume_non_eol_whitespace(rdr);
-    if !rdr.is_eof() && rdr.curr() != '\n' && vec::len(lines) == 1u {
+    if !rdr.is_eof() && rdr.curr != '\n' && vec::len(lines) == 1u {
         style = mixed;
     }
     #debug("<<< block comment");
@@ -656,15 +638,15 @@ fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
 }
 
 fn peeking_at_comment(rdr: reader) -> bool {
-    ret rdr.curr() == '/' && rdr.next() == '/' ||
-            rdr.curr() == '/' && rdr.next() == '*';
+    ret rdr.curr == '/' && rdr.next() == '/' ||
+            rdr.curr == '/' && rdr.next() == '*';
 }
 
 fn consume_comment(rdr: reader, code_to_the_left: bool, &comments: [cmnt]) {
     #debug(">>> consume comment");
-    if rdr.curr() == '/' && rdr.next() == '/' {
+    if rdr.curr == '/' && rdr.next() == '/' {
         comments += [read_line_comments(rdr, code_to_the_left)];
-    } else if rdr.curr() == '/' && rdr.next() == '*' {
+    } else if rdr.curr == '/' && rdr.next() == '*' {
         comments += [read_block_comment(rdr, code_to_the_left)];
     } else { fail; }
     #debug("<<< consume comment");
@@ -696,7 +678,7 @@ fn gather_comments_and_literals(cm: codemap::codemap, path: str,
         while true {
             let code_to_the_left = !first_read;
             consume_non_eol_whitespace(rdr);
-            if rdr.curr() == '\n' {
+            if rdr.curr == '\n' {
                 code_to_the_left = false;
                 consume_whitespace_counting_blank_lines(rdr, comments);
             }

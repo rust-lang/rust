@@ -1,6 +1,7 @@
 
 import util::interner;
 import core::{int, uint, str};
+import lexer::reader;
 
 type str_num = uint;
 
@@ -87,7 +88,7 @@ fn binop_to_str(o: binop) -> str {
     }
 }
 
-fn to_str(r: lexer::reader, t: token) -> str {
+fn to_str(r: reader, t: token) -> str {
     alt t {
       EQ. { ret "="; }
       LT. { ret "<"; }
@@ -142,17 +143,17 @@ fn to_str(r: lexer::reader, t: token) -> str {
         ret uint::to_str(u as uint, 10u) + ast_util::uint_ty_to_str(t);
       }
       LIT_FLOAT(s, t) {
-        ret interner::get::<str>(*r.get_interner(), s) +
+        ret interner::get::<str>(*r.interner, s) +
             ast_util::float_ty_to_str(t);
       }
       LIT_STR(s) { // FIXME: escape.
-        ret "\"" + interner::get::<str>(*r.get_interner(), s) + "\"";
+        ret "\"" + interner::get::<str>(*r.interner, s) + "\"";
       }
       LIT_BOOL(b) { if b { ret "true"; } else { ret "false"; } }
 
       /* Name components */
       IDENT(s, _) {
-        ret interner::get::<str>(*r.get_interner(), s);
+        ret interner::get::<str>(*r.interner, s);
       }
       IDX(i) { ret "_" + int::to_str(i, 10u); }
       UNDERSCORE. { ret "_"; }
