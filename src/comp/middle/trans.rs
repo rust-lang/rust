@@ -2,7 +2,7 @@
 //
 // Some functions here, such as trans_block and trans_expr, return a value --
 // the result of the translation to LLVM -- while others, such as trans_fn,
-// trans_obj, and trans_item, are called only for the side effect of adding a
+// trans_impl, and trans_item, are called only for the side effect of adding a
 // particular definition to the LLVM IR output we're producing.
 //
 // Hopefully useful general knowledge about trans:
@@ -42,8 +42,6 @@ import util::ppaux::{ty_to_str, ty_to_short_str};
 
 import trans_common::*;
 import trans_build::*;
-
-import trans_objects::{trans_anon_obj, trans_obj};
 import tvec = trans_vec;
 
 fn type_of_1(bcx: @block_ctxt, t: ty::t) -> TypeRef {
@@ -81,7 +79,7 @@ fn type_of_explicit_args(cx: @crate_ctxt, sp: span, inputs: [ty::arg]) ->
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn type_of_fn(cx: @crate_ctxt, sp: span, is_method: bool, inputs: [ty::arg],
+fn type_of_fn(cx: @crate_ctxt, sp: span, inputs: [ty::arg],
               output: ty::t, params: [ty::param_bounds]) -> TypeRef {
     let atys: [TypeRef] = [];
 
@@ -90,22 +88,16 @@ fn type_of_fn(cx: @crate_ctxt, sp: span, is_method: bool, inputs: [ty::arg],
     let out_ty = T_ptr(type_of_inner(cx, sp, output));
     atys += [out_ty];
 
-    // Arg 1: Env (closure-bindings / self-obj)
-    if is_method {
-        atys += [T_ptr(cx.rust_object_type)];
-    } else {
-        atys += [T_opaque_cbox_ptr(cx)];
-    }
+    // Arg 1: Environment
+    atys += [T_opaque_cbox_ptr(cx)];
 
     // Args >2: ty params, if not acquired via capture...
-    if !is_method {
-        for bounds in params {
-            atys += [T_ptr(cx.tydesc_type)];
-            for bound in *bounds {
-                alt bound {
-                  ty::bound_iface(_) { atys += [T_ptr(T_dict())]; }
-                  _ {}
-                }
+    for bounds in params {
+        atys += [T_ptr(cx.tydesc_type)];
+        for bound in *bounds {
+            alt bound {
+              ty::bound_iface(_) { atys += [T_ptr(T_dict())]; }
+              _ {}
             }
         }
     }
@@ -121,7 +113,7 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, sp: span, fty: ty::t,
     // by returns_non_ty_var(t). Make that a postcondition
     // (see Issue #586)
     let ret_ty = ty::ty_fn_ret(cx.tcx, fty);
-    ret type_of_fn(cx, sp, false, ty::ty_fn_args(cx.tcx, fty),
+    ret type_of_fn(cx, sp, ty::ty_fn_args(cx.tcx, fty),
                    ret_ty, param_bounds);
 }
 
@@ -179,7 +171,6 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
         let nft = native_fn_wrapper_type(cx, sp, [], t);
         T_fn_pair(cx, nft)
       }
-      ty::ty_obj(_) { cx.rust_object_type }
       ty::ty_iface(_, _) { T_opaque_iface_ptr(cx) }
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
@@ -465,7 +456,7 @@ fn dynastack_alloca(cx: @block_ctxt, t: TypeRef, n: ValueRef, ty: ty::t) ->
                    n);
 
     let ti = none;
-    let lltydesc = get_tydesc(cx, ty, false, tps_normal, ti).result.val;
+    let lltydesc = get_tydesc(cx, ty, false, ti).result.val;
 
     let llresult = Call(dy_cx, dynastack_alloc, [llsz, lltydesc]);
     ret PointerCast(dy_cx, llresult, T_ptr(t));
@@ -492,11 +483,6 @@ fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
             ret ty::mk_imm_uniq(ccx.tcx, ty::mk_nil(ccx.tcx));
           }
           ty::ty_fn(_) {
-            ret ty::mk_tup(ccx.tcx,
-                           [ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)),
-                            ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx))]);
-          }
-          ty::ty_obj(_) {
             ret ty::mk_tup(ccx.tcx,
                            [ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)),
                             ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx))]);
@@ -871,7 +857,7 @@ fn trans_malloc_boxed_raw(cx: @block_ctxt, t: ty::t) -> result {
     let llty = type_of(ccx, sp, box_ptr);
 
     let ti = none;
-    let tydesc_result = get_tydesc(bcx, t, true, tps_normal, ti);
+    let tydesc_result = get_tydesc(bcx, t, true, ti);
     let lltydesc = tydesc_result.result.val; bcx = tydesc_result.result.bcx;
 
     let rval = Call(cx, ccx.upcalls.malloc,
@@ -899,7 +885,7 @@ fn trans_malloc_boxed(cx: @block_ctxt, t: ty::t) ->
 fn field_of_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool, field: int) ->
    result {
     let ti = none::<@tydesc_info>;
-    let tydesc = get_tydesc(cx, t, escapes, tps_normal, ti).result;
+    let tydesc = get_tydesc(cx, t, escapes, ti).result;
     ret rslt(tydesc.bcx,
              GEPi(tydesc.bcx, tydesc.val, [0, field]));
 }
@@ -936,8 +922,8 @@ fn linearize_ty_params(cx: @block_ctxt, t: ty::t) ->
 
 fn trans_stack_local_derived_tydesc(cx: @block_ctxt, llsz: ValueRef,
                                     llalign: ValueRef, llroottydesc: ValueRef,
-                                    llfirstparam: ValueRef, n_params: uint,
-                                    obj_params: uint) -> ValueRef {
+                                    llfirstparam: ValueRef, n_params: uint)
+    -> ValueRef {
     let llmyroottydesc = alloca(cx, bcx_ccx(cx).tydesc_type);
 
     // By convention, desc 0 is the root descriptor.
@@ -954,39 +940,29 @@ fn trans_stack_local_derived_tydesc(cx: @block_ctxt, llsz: ValueRef,
                    [0, abi::tydesc_field_size]);
     store_inbounds(cx, llalign, llmyroottydesc,
                    [0, abi::tydesc_field_align]);
-    store_inbounds(cx, C_uint(ccx, obj_params), llmyroottydesc,
+    // FIXME legacy field, can be dropped
+    store_inbounds(cx, C_uint(ccx, 0u), llmyroottydesc,
                    [0, abi::tydesc_field_obj_params]);
     ret llmyroottydesc;
 }
 
-// Objects store their type parameters differently (in the object itself
-// rather than in the type descriptor).
-tag ty_param_storage { tps_normal; tps_obj(uint); }
-
 fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
-                      storage: ty_param_storage,
                       &static_ti: option::t<@tydesc_info>) -> result {
     alt cx.fcx.derived_tydescs.find(t) {
       some(info) {
         // If the tydesc escapes in this context, the cached derived
         // tydesc also has to be one that was marked as escaping.
-        if !(escapes && !info.escapes) && storage == tps_normal {
+        if !(escapes && !info.escapes) {
             ret rslt(cx, info.lltydesc);
         }
       }
       none. {/* fall through */ }
     }
 
-    let is_obj_body;
-    alt storage {
-        tps_normal. { is_obj_body = false; }
-        tps_obj(_) { is_obj_body = true; }
-    }
-
     bcx_ccx(cx).stats.n_derived_tydescs += 1u;
     let bcx = new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs);
     let tys = linearize_ty_params(bcx, t);
-    let root_ti = get_static_tydesc(bcx, t, tys.params, is_obj_body);
+    let root_ti = get_static_tydesc(bcx, t, tys.params);
     static_ti = some::<@tydesc_info>(root_ti);
     lazily_emit_all_tydesc_glue(cx, static_ti);
     let root = root_ti.tydesc;
@@ -1022,14 +998,6 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
         PointerCast(bcx, llparamtydescs,
                     T_ptr(T_ptr(bcx_ccx(bcx).tydesc_type)));
 
-    // The top bit indicates whether this type descriptor describes an object
-    // (0) or a function (1).
-    let obj_params;
-    alt storage {
-      tps_normal. { obj_params = 0u; }
-      tps_obj(np) { obj_params = np; }
-    }
-
     let v;
     if escapes {
         let ccx = bcx_ccx(bcx);
@@ -1037,13 +1005,11 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
             Call(bcx, ccx.upcalls.get_type_desc,
                  [C_null(T_ptr(T_nil())), sz.val,
                   align.val, C_uint(ccx, 1u + n_params), llfirstparam,
-                  C_uint(ccx, obj_params)]);
+                  C_uint(ccx, 0u)]);
         v = td_val;
     } else {
-        v =
-            trans_stack_local_derived_tydesc(bcx, sz.val, align.val, root,
-                                             llfirstparam, n_params,
-                                             obj_params);
+        v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val, root,
+                                             llfirstparam, n_params);
     }
     bcx.fcx.derived_tydescs.insert(t, {lltydesc: v, escapes: escapes});
     ret rslt(cx, v);
@@ -1052,7 +1018,7 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
 type get_tydesc_result = {kind: tydesc_kind, result: result};
 
 fn get_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
-              storage: ty_param_storage, &static_ti: option::t<@tydesc_info>)
+              &static_ti: option::t<@tydesc_info>)
    -> get_tydesc_result {
 
     // Is the supplied type a type param? If so, return the passed-in tydesc.
@@ -1076,22 +1042,21 @@ fn get_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     // Does it contain a type param? If so, generate a derived tydesc.
     if ty::type_contains_params(bcx_tcx(cx), t) {
         ret {kind: tk_derived,
-             result: get_derived_tydesc(cx, t, escapes, storage, static_ti)};
+             result: get_derived_tydesc(cx, t, escapes, static_ti)};
     }
     // Otherwise, generate a tydesc if necessary, and return it.
-    let info = get_static_tydesc(cx, t, [], false);
-    static_ti = some::<@tydesc_info>(info);
+    let info = get_static_tydesc(cx, t, []);
+    static_ti = some(info);
     ret {kind: tk_static, result: rslt(cx, info.tydesc)};
 }
 
-fn get_static_tydesc(cx: @block_ctxt, t: ty::t, ty_params: [uint],
-                     is_obj_body: bool) -> @tydesc_info {
+fn get_static_tydesc(cx: @block_ctxt, t: ty::t, ty_params: [uint])
+    -> @tydesc_info {
     alt bcx_ccx(cx).tydescs.find(t) {
       some(info) { ret info; }
       none. {
         bcx_ccx(cx).stats.n_static_tydescs += 1u;
-        let info = declare_tydesc(cx.fcx.lcx, cx.sp, t, ty_params,
-                                  is_obj_body);
+        let info = declare_tydesc(cx.fcx.lcx, cx.sp, t, ty_params);
         bcx_ccx(cx).tydescs.insert(t, info);
         ret info;
       }
@@ -1134,9 +1099,8 @@ fn set_glue_inlining(cx: @local_ctxt, f: ValueRef, t: ty::t) {
 
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
-                  is_obj_body: bool) ->
-   @tydesc_info {
+fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint])
+    -> @tydesc_info {
     log(debug, "+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t));
     let ccx = cx.ccx;
     let llsize;
@@ -1171,8 +1135,7 @@ fn declare_tydesc(cx: @local_ctxt, sp: span, t: ty::t, ty_params: [uint],
           mutable drop_glue: none::<ValueRef>,
           mutable free_glue: none::<ValueRef>,
           mutable cmp_glue: none::<ValueRef>,
-          ty_params: ty_params,
-          is_obj_body: is_obj_body};
+          ty_params: ty_params};
     log(debug, "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t));
     ret info;
 }
@@ -1275,8 +1238,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
 
-        let shape = shape::shape_of(ccx, key, ti.ty_params,
-                                    ti.is_obj_body);
+        let shape = shape::shape_of(ccx, key, ti.ty_params);
         let shape_tables =
             llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
                                        T_ptr(T_i8()));
@@ -1389,16 +1351,14 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
       ty::ty_vec(_) | ty::ty_str. {
         tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of_1(bcx, t)), t)
       }
-      ty::ty_obj(_) | ty::ty_iface(_, _) {
-        // Call through the obj's own fields-drop glue first.
+      ty::ty_iface(_, _) {
+        // Call through the box's own fields-drop glue first.
         // Then free the body.
-        // (Same code of ifaces, whose layout is similar)
         let ccx = bcx_ccx(bcx);
-        let llbox_ty = T_opaque_obj_ptr(ccx);
+        let llbox_ty = T_opaque_iface_ptr(ccx);
         let b = PointerCast(bcx, v, llbox_ty);
         let body = GEPi(bcx, b, [0, abi::box_rc_field_body]);
-        let tydescptr =
-            GEPi(bcx, body, [0, abi::obj_body_elt_tydesc]);
+        let tydescptr = GEPi(bcx, body, [0, 0]);
         let tydesc = Load(bcx, tydescptr);
         let ti = none;
         call_tydesc_glue_full(bcx, body, tydesc,
@@ -1434,10 +1394,6 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
           }
           ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str. | ty::ty_send_type. {
             free_ty(bcx, Load(bcx, v0), t)
-          }
-          ty::ty_obj(_) {
-            let box_cell = GEPi(bcx, v0, [0, abi::obj_field_box]);
-            decr_refcnt_maybe_free(bcx, Load(bcx, box_cell), t)
           }
           ty::ty_res(did, inner, tps) {
             trans_res_drop(bcx, v0, did, inner, tps)
@@ -1482,7 +1438,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     let args = [cx.fcx.llretptr, null_env_ptr(cx)];
     for tp: ty::t in tps {
         let ti: option::t<@tydesc_info> = none;
-        let td = get_tydesc(cx, tp, false, tps_normal, ti).result;
+        let td = get_tydesc(cx, tp, false, ti).result;
         args += [td.val];
         cx = td.bcx;
     }
@@ -1508,7 +1464,7 @@ fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
     let rc_adj_cx = new_sub_block_ctxt(cx, "rc--");
     let free_cx = new_sub_block_ctxt(cx, "free");
     let next_cx = new_sub_block_ctxt(cx, "next");
-    let llbox_ty = T_opaque_obj_ptr(ccx);
+    let llbox_ty = T_opaque_iface_ptr(ccx);
     let box_ptr = PointerCast(cx, box_ptr, llbox_ty);
     let null_test = IsNull(cx, box_ptr);
     CondBr(cx, null_test, next_cx.llbb, rc_adj_cx.llbb);
@@ -1738,10 +1694,6 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         }
         ret next_cx;
       }
-      ty::ty_obj(_) {
-        let box_cell_a = GEPi(cx, av, [0, abi::obj_field_box]);
-        ret iter_boxpp(cx, box_cell_a, f);
-      }
       _ { bcx_ccx(cx).sess.unimpl("type in iter_structural_ty"); }
     }
     ret cx;
@@ -1876,7 +1828,7 @@ fn call_tydesc_glue_full(cx: @block_ctxt, v: ValueRef, tydesc: ValueRef,
 fn call_tydesc_glue(cx: @block_ctxt, v: ValueRef, t: ty::t, field: int) ->
    @block_ctxt {
     let ti: option::t<@tydesc_info> = none::<@tydesc_info>;
-    let {bcx: bcx, val: td} = get_tydesc(cx, t, false, tps_normal, ti).result;
+    let {bcx: bcx, val: td} = get_tydesc(cx, t, false, ti).result;
     call_tydesc_glue_full(bcx, v, td, field, ti);
     ret bcx;
 }
@@ -1898,7 +1850,7 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
     let ti = none::<@tydesc_info>;
-    r = get_tydesc(bcx, t, false, tps_normal, ti).result;
+    r = get_tydesc(bcx, t, false, ti).result;
     let lltydesc = r.val;
     bcx = r.bcx;
     lazily_emit_tydesc_glue(bcx, abi::tydesc_field_cmp_glue, ti);
@@ -2591,7 +2543,7 @@ type lval_result = {bcx: @block_ctxt, val: ValueRef, kind: lval_kind};
 tag callee_env {
     null_env;
     is_closure;
-    obj_env(ValueRef);
+    self_env(ValueRef);
     dict_env(ValueRef, ValueRef);
 }
 type lval_maybe_callee = {bcx: @block_ctxt,
@@ -2647,7 +2599,7 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
         for t in tys {
             // TODO: Doesn't always escape.
             let ti = none;
-            let td = get_tydesc(bcx, t, true, tps_normal, ti).result;
+            let td = get_tydesc(bcx, t, true, ti).result;
             tis += [ti];
             bcx = td.bcx;
             tydescs += [td.val];
@@ -2701,10 +2653,6 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> local_var_result {
       }
       ast::def_local(did, _) | ast::def_binding(did) {
         ret take_local(cx.fcx.lllocals, did.node);
-      }
-      ast::def_obj_field(did, _) {
-        assert (cx.fcx.llobjfields.contains_key(did.node));
-        ret { val: cx.fcx.llobjfields.get(did.node), kind: owned };
       }
       ast::def_self(did) {
         let slf = option::get(cx.fcx.llself);
@@ -2765,35 +2713,6 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
       }
     }
 }
-
-fn trans_object_field(bcx: @block_ctxt, o: @ast::expr, field: ast::ident)
-    -> {bcx: @block_ctxt, mthptr: ValueRef, objptr: ValueRef} {
-    let {bcx, val} = trans_temp_expr(bcx, o);
-    let {bcx, val, ty} = autoderef(bcx, val, ty::expr_ty(bcx_tcx(bcx), o));
-    ret trans_object_field_inner(bcx, val, field, ty);
-}
-
-fn trans_object_field_inner(bcx: @block_ctxt, o: ValueRef,
-                            field: ast::ident, o_ty: ty::t)
-    -> {bcx: @block_ctxt, mthptr: ValueRef, objptr: ValueRef} {
-    let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
-    let mths = alt ty::struct(tcx, o_ty) { ty::ty_obj(ms) { ms } };
-
-    let ix = option::get(ty::method_idx(field, mths));
-    let vtbl = Load(bcx, GEPi(bcx, o, [0, abi::obj_field_vtbl]));
-    let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
-    vtbl = PointerCast(bcx, vtbl, vtbl_type);
-
-    let v = GEPi(bcx, vtbl, [0, ix as int]);
-    let fn_ty: ty::t = ty::mk_fn(tcx, mths[ix].fty);
-    let ret_ty = ty::ty_fn_ret(tcx, fn_ty);
-    // FIXME: constrain ty_obj?
-    let ll_fn_ty = type_of_fn(ccx, bcx.sp, true,
-                              ty::ty_fn_args(tcx, fn_ty), ret_ty, []);
-    v = Load(bcx, PointerCast(bcx, v, T_ptr(T_ptr(ll_fn_ty))));
-    ret {bcx: bcx, mthptr: v, objptr: o};
-}
-
 
 fn trans_rec_field(bcx: @block_ctxt, base: @ast::expr,
                    field: ast::ident) -> lval_result {
@@ -2859,7 +2778,7 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
 
 fn expr_is_lval(bcx: @block_ctxt, e: @ast::expr) -> bool {
     let ccx = bcx_ccx(bcx);
-    ty::expr_is_lval(ccx.method_map, ccx.tcx, e)
+    ty::expr_is_lval(ccx.method_map, e)
 }
 
 fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
@@ -2878,11 +2797,6 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
               }
               some(typeck::method_iface(off)) {
                 ret trans_impl::trans_iface_callee(bcx, e, base, off);
-              }
-              none. { // An object method
-                let of = trans_object_field(bcx, base, ident);
-                ret {bcx: of.bcx, val: of.mthptr, kind: owned,
-                     env: obj_env(of.objptr), generic: none};
               }
             }
         }
@@ -2948,7 +2862,7 @@ fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
     -> (lval_kind, ValueRef) {
     alt c.env {
       is_closure. { (c.kind, c.val) }
-      obj_env(_) | dict_env(_, _) {
+      self_env(_) | dict_env(_, _) {
         fail "Taking the value of a method does not work yet (issue #435)";
       }
       null_env. {
@@ -3230,7 +3144,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
         llargs += [PointerCast(cx, llretslot, llretty)];
     } else { llargs += [llretslot]; }
 
-    // Arg 1: Env (closure-bindings / self-obj)
+    // Arg 1: Env (closure-bindings / self value)
     llargs += [llenv];
 
     // Args >2: ty_params ...
@@ -3277,7 +3191,7 @@ fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
       null_env. {
         llenv = llvm::LLVMGetUndef(T_opaque_cbox_ptr(bcx_ccx(cx)));
       }
-      obj_env(e) { llenv = e; }
+      self_env(e) { llenv = e; }
       dict_env(dict, e) { llenv = e; dict_param = some(dict); }
       is_closure. {
         // It's a closure. Have to fetch the elements
@@ -3639,9 +3553,6 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         else { ret lval_to_dps(bcx, a, dest); }
       }
       ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
-      ast::expr_anon_obj(anon_obj) {
-        ret trans_anon_obj(bcx, e.span, anon_obj, e.id, dest);
-      }
       ast::expr_call(f, args, _) {
         ret trans_call(bcx, f, args, e.id, dest);
       }
@@ -3855,7 +3766,7 @@ fn trans_log(lvl: @ast::expr, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let log_bcx = sub.bcx;
 
     let ti = none::<@tydesc_info>;
-    let r = get_tydesc(log_bcx, e_ty, false, tps_normal, ti).result;
+    let r = get_tydesc(log_bcx, e_ty, false, ti).result;
     log_bcx = r.bcx;
     let lltydesc = r.val;
 
@@ -4350,8 +4261,6 @@ fn new_local_ctxt(ccx: @crate_ctxt) -> @local_ctxt {
     let pth: [str] = [];
     ret @{path: pth,
           module_path: [ccx.link_meta.name],
-          obj_typarams: [],
-          obj_fields: [],
           ccx: ccx};
 }
 
@@ -4404,7 +4313,6 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
           mutable llobstacktoken: none::<ValueRef>,
           mutable llself: none::<val_self_pair>,
           llargs: new_int_hash::<local_val>(),
-          llobjfields: new_int_hash::<ValueRef>(),
           lllocals: new_int_hash::<local_val>(),
           llupvars: new_int_hash::<ValueRef>(),
           mutable lltyparams: [],
@@ -4440,33 +4348,28 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
     // way.
     let arg_n = 2u;
     alt ty_self {
-      obj_self(tt) | impl_self(tt) {
+      impl_self(tt) {
         cx.llself = some({v: cx.llenv, t: tt});
       }
       no_self. {}
     }
-    alt ty_self {
-      obj_self(_) {}
-      _ {
-        for tp in ty_params {
-            let lltydesc = llvm::LLVMGetParam(cx.llfn, arg_n), dicts = none;
-            arg_n += 1u;
-            for bound in *fcx_tcx(cx).ty_param_bounds.get(tp.id) {
-                alt bound {
-                  ty::bound_iface(_) {
-                    let dict = llvm::LLVMGetParam(cx.llfn, arg_n);
-                    arg_n += 1u;
-                    dicts = some(alt dicts {
-                      none. { [dict] }
-                      some(ds) { ds + [dict] }
-                    });
-                  }
-                  _ {}
-                }
+    for tp in ty_params {
+        let lltydesc = llvm::LLVMGetParam(cx.llfn, arg_n), dicts = none;
+        arg_n += 1u;
+        for bound in *fcx_tcx(cx).ty_param_bounds.get(tp.id) {
+            alt bound {
+              ty::bound_iface(_) {
+                let dict = llvm::LLVMGetParam(cx.llfn, arg_n);
+                arg_n += 1u;
+                dicts = some(alt dicts {
+                    none. { [dict] }
+                    some(ds) { ds + [dict] }
+                });
+              }
+              _ {}
             }
-            cx.lltyparams += [{desc: lltydesc, dicts: dicts}];
         }
-      }
+        cx.lltyparams += [{desc: lltydesc, dicts: dicts}];
     }
 
     // Populate the llargs field of the function context with the ValueRefs
@@ -4517,54 +4420,6 @@ fn arg_tys_of_fn(ccx: @crate_ctxt, id: ast::node_id) -> [ty::arg] {
     }
 }
 
-fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
-    let ccx = fcx_ccx(fcx);
-    let bcx = llstaticallocas_block_ctxt(fcx);
-    let field_tys: [ty::t] = [];
-    for f: ast::obj_field in bcx.fcx.lcx.obj_fields {
-        field_tys += [node_id_type(ccx, f.id)];
-    }
-    // Synthesize a tuple type for the fields so that GEP_tup_like() can work
-    // its magic.
-
-    let fields_tup_ty = ty::mk_tup(fcx.lcx.ccx.tcx, field_tys);
-    let n_typarams = vec::len::<ast::ty_param>(bcx.fcx.lcx.obj_typarams);
-    let llobj_box_ty: TypeRef = T_obj_ptr(ccx, n_typarams);
-    let box_cell = GEPi(bcx, llself.v, [0, abi::obj_field_box]);
-    let box_ptr = Load(bcx, box_cell);
-    box_ptr = PointerCast(bcx, box_ptr, llobj_box_ty);
-    let obj_typarams =
-        GEPi(bcx, box_ptr, [0, abi::box_rc_field_body,
-                            abi::obj_body_elt_typarams]);
-
-    // The object fields immediately follow the type parameters, so we skip
-    // over them to get the pointer.
-    let obj_fields =
-        PointerCast(bcx, GEPi(bcx, obj_typarams, [1]),
-                    T_ptr(type_of_or_i8(bcx, fields_tup_ty)));
-
-    let i: int = 0;
-    for p: ast::ty_param in fcx.lcx.obj_typarams {
-        let lltyparam: ValueRef =
-            GEPi(bcx, obj_typarams, [0, i]);
-        lltyparam = Load(bcx, lltyparam);
-        fcx.lltyparams += [{desc: lltyparam, dicts: none}];
-        i += 1;
-    }
-    i = 0;
-    for f: ast::obj_field in fcx.lcx.obj_fields {
-        // FIXME: silly check
-        check type_is_tup_like(bcx, fields_tup_ty);
-        let rslt = GEP_tup_like(bcx, fields_tup_ty, obj_fields, [0, i]);
-        bcx = llstaticallocas_block_ctxt(fcx);
-        let llfield = rslt.val;
-        fcx.llobjfields.insert(f.id, llfield);
-        i += 1;
-    }
-    fcx.llstaticallocas = bcx.llbb;
-}
-
-
 // Ties up the llstaticallocas -> llloadenv -> llderivedtydescs ->
 // lldynamicallocas -> lltop edges, and builds the return block.
 fn finish_fn(fcx: @fn_ctxt, lltop: BasicBlockRef) {
@@ -4578,7 +4433,7 @@ fn finish_fn(fcx: @fn_ctxt, lltop: BasicBlockRef) {
     RetVoid(ret_cx);
 }
 
-tag self_arg { obj_self(ty::t); impl_self(ty::t); no_self; }
+tag self_arg { impl_self(ty::t); no_self; }
 
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
@@ -4592,12 +4447,6 @@ fn trans_closure(cx: @local_ctxt, sp: span, decl: ast::fn_decl,
     // Set up arguments to the function.
     let fcx = new_fn_ctxt_w_id(cx, sp, llfndecl, id, decl.cf);
     create_llargs_for_fn_args(fcx, ty_self, decl.inputs, ty_params);
-    alt ty_self {
-      obj_self(_) {
-          populate_fn_ctxt_from_llself(fcx, option::get(fcx.llself));
-      }
-      _ { }
-    }
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -4612,7 +4461,7 @@ fn trans_closure(cx: @local_ctxt, sp: span, decl: ast::fn_decl,
 
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
-    // trans_mod, trans_item, trans_obj, et cetera) and those that do
+    // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
     if ty::type_is_bot(cx.ccx.tcx, block_ty) ||
        ty::type_is_nil(cx.ccx.tcx, block_ty) ||
@@ -5063,12 +4912,6 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
           }
         }
       }
-      ast::item_obj(ob, tps, ctor_id) {
-        let sub_cx =
-            @{obj_typarams: tps, obj_fields: ob.fields
-                 with *extend_path(cx, item.ident)};
-        trans_obj(sub_cx, item.span, ob, ctor_id, tps);
-      }
       ast::item_impl(tps, _, _, ms) {
         trans_impl::trans_impl(cx, item.ident, ms, item.id, tps);
       }
@@ -5180,7 +5023,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
         // FIXME: mk_nil should have a postcondition
         let nt = ty::mk_nil(ccx.tcx);
-        let llfty = type_of_fn(ccx, sp, false, [vecarg_ty], nt, []);
+        let llfty = type_of_fn(ccx, sp, [vecarg_ty], nt, []);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::LLVMCCallConv, llfty);
 
@@ -5278,7 +5121,7 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span,
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
       ty::ty_native_fn(args, out) {
-        ret type_of_fn(cx, sp, false, args, out, param_bounds);
+        ret type_of_fn(cx, sp, args, out, param_bounds);
       }
     }
 }
@@ -5377,9 +5220,6 @@ fn collect_item(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
       }
       ast::item_fn(_, tps, _) {
         register_fn(ccx, i.span, new_pt, "fn", tps, i.id);
-      }
-      ast::item_obj(ob, tps, ctor_id) {
-        register_fn(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
       }
       ast::item_impl(tps, _, _, methods) {
         let name = i.ident + int::str(i.id);
@@ -5716,7 +5556,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           upcalls:
               upcall::declare_upcalls(targ_cfg, tn, tydesc_type,
                                       llmod),
-          rust_object_type: T_rust_object(),
           tydesc_type: tydesc_type,
           int_type: int_type,
           float_type: float_type,

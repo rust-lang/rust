@@ -306,12 +306,6 @@ fn print_type(s: ps, &&ty: @ast::ty) {
       ast::ty_fn(proto, d) {
         print_ty_fn(s, proto, d, none, none);
       }
-      ast::ty_obj(methods) {
-        head(s, "obj");
-        bopen(s);
-        for m in methods { print_ty_method(s, m); }
-        bclose(s, ty.span);
-      }
       ast::ty_path(path, _) { print_path(s, path, false); }
       ast::ty_type. { word(s.s, "type"); }
       ast::ty_constr(t, cs) {
@@ -437,32 +431,6 @@ fn print_item(s: ps, &&item: @ast::item) {
             }
             bclose(s, item.span);
         }
-      }
-      ast::item_obj(_obj, params, _) {
-        head(s, "obj");
-        word(s.s, item.ident);
-        print_type_params(s, params);
-        popen(s);
-        fn print_field(s: ps, field: ast::obj_field) {
-            ibox(s, indent_unit);
-            print_mutability(s, field.mut);
-            word_space(s, field.ident + ":");
-            print_type(s, field.ty);
-            end(s);
-        }
-        fn get_span(f: ast::obj_field) -> codemap::span { ret f.ty.span; }
-        commasep_cmnt(s, consistent, _obj.fields, print_field, get_span);
-        pclose(s);
-        space(s.s);
-        bopen(s);
-        for meth: @ast::method in _obj.methods {
-            hardbreak_if_not_bol(s);
-            maybe_print_comment(s, meth.span.lo);
-            print_fn(s, meth.decl, meth.ident, meth.tps);
-            word(s.s, " ");
-            print_block(s, meth.body);
-        }
-        bclose(s, item.span);
       }
       ast::item_impl(tps, ifce, ty, methods) {
         head(s, "impl");
@@ -972,50 +940,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         pclose(s);
       }
       ast::expr_mac(m) { print_mac(s, m); }
-      ast::expr_anon_obj(anon_obj) {
-        head(s, "obj");
-
-        // Fields
-        popen(s);
-        fn print_field(s: ps, field: ast::anon_obj_field) {
-            ibox(s, indent_unit);
-            print_mutability(s, field.mut);
-            word_space(s, field.ident + ":");
-            print_type(s, field.ty);
-            space(s.s);
-            word_space(s, "=");
-            print_expr(s, field.expr);
-            end(s);
-        }
-        fn get_span(f: ast::anon_obj_field) -> codemap::span {
-            ret f.ty.span;
-        }
-        alt anon_obj.fields {
-          none. { }
-          some(fields) {
-            commasep_cmnt(s, consistent, fields, print_field, get_span);
-          }
-        }
-        pclose(s);
-        space(s.s);
-        bopen(s);
-
-        // Methods
-        for meth: @ast::method in anon_obj.methods {
-            hardbreak_if_not_bol(s);
-            maybe_print_comment(s, meth.span.lo);
-            print_fn(s, meth.decl, meth.ident, meth.tps);
-            word(s.s, " ");
-            print_block(s, meth.body);
-        }
-
-        // With object
-        alt anon_obj.inner_obj {
-          none. { }
-          some(e) { space(s.s); word_space(s, "with"); print_expr(s, e); }
-        }
-        bclose(s, expr.span);
-      }
     }
     s.ann.post(ann_node);
     end(s);

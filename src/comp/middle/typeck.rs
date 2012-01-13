@@ -42,9 +42,8 @@ type dict_map = hashmap<ast::node_id, dict_res>;
 
 type ty_table = hashmap<ast::def_id, ty::t>;
 
-// Used for typechecking the methods of an object.
+// Used for typechecking the methods of an impl
 tag self_info {
-    self_obj([ast::obj_field], ty::t);
     self_impl(ty::t);
 }
 
@@ -102,15 +101,10 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {bounds: @[], ty: typ};
       }
-      ast::def_obj_field(id, _) {
-        assert (fcx.locals.contains_key(id.node));
-        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {bounds: @[], ty: typ};
-      }
       ast::def_self(id) {
         alt get_self_info(fcx.ccx) {
-          some(self_obj(_, obj_t)) | some(self_impl(obj_t)) {
-            ret {bounds: @[], ty: obj_t};
+          some(self_impl(impl_t)) {
+            ret {bounds: @[], ty: impl_t};
           }
         }
       }
@@ -356,10 +350,6 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           }
         }
       }
-      ast::ty_obj(meths) {
-        let ms = vec::map(meths, {|m| ty_of_ty_method(tcx, mode, m) });
-        typ = ty::mk_obj(tcx, ty::sort_methods(ms));
-      }
       ast::ty_constr(t, cs) {
         let out_cs = [];
         for constr: @ast::ty_constr in cs {
@@ -390,11 +380,6 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
       }
       ast::item_fn(decl, tps, _) {
         ret ty_of_fn(tcx, mode, decl, tps, local_def(it.id));
-      }
-      ast::item_obj(ob, tps, _) {
-        let t_obj = ty_of_obj(tcx, mode, it.ident, ob, tps);
-        tcx.tcache.insert(local_def(it.id), t_obj);
-        ret t_obj;
       }
       ast::item_ty(t, tps) {
         alt tcx.tcache.find(local_def(it.id)) {
@@ -540,30 +525,6 @@ fn ty_of_ty_method(tcx: ty::ctxt, mode: mode, m: ast::ty_method)
     -> ty::method {
     {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
      fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl)}
-}
-fn ty_of_obj(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
-        ty_params: [ast::ty_param]) -> ty::ty_param_bounds_and_ty {
-    let bounds = ty_param_bounds(tcx, mode, ty_params);
-    let methods = vec::map(ob.methods, {|m| ty_of_method(tcx, mode, m)});
-    let t_obj = ty::mk_named(tcx, ty::mk_obj(tcx, ty::sort_methods(methods)),
-                             @id);
-    ret {bounds: bounds, ty: t_obj};
-}
-fn ty_of_obj_ctor(tcx: ty::ctxt, mode: mode, id: ast::ident, ob: ast::_obj,
-            ctor_id: ast::node_id, ty_params: [ast::ty_param])
-    -> ty::ty_param_bounds_and_ty {
-    let t_obj = ty_of_obj(tcx, mode, id, ob, ty_params);
-    let t_inputs: [arg] = [];
-    for f: ast::obj_field in ob.fields {
-        let t_field = ast_ty_to_ty(tcx, mode, f.ty);
-        t_inputs += [{mode: ast::by_copy, ty: t_field}];
-    }
-    let t_fn = ty::mk_fn(tcx, {proto: ast::proto_box,
-                               inputs: t_inputs, output: t_obj.ty,
-                               ret_style: ast::return_val, constraints: []});
-    let tpt = {bounds: ty_param_bounds(tcx, mode, ty_params), ty: t_fn};
-    tcx.tcache.insert(local_def(ctor_id), tpt);
-    ret tpt;
 }
 
 // A convenience function to use a crate_ctxt to resolve names for
@@ -764,38 +725,6 @@ mod collect {
                 }
               }
               _ {}
-            }
-          }
-          ast::item_obj(object, ty_params, ctor_id) {
-            // Now we need to call ty_of_obj_ctor(); this is the type that
-            // we write into the table for this item.
-            ty_of_item(cx.tcx, m_collect, it);
-            let tpt = ty_of_obj_ctor(cx.tcx, m_collect, it.ident, object,
-                                      ctor_id, ty_params);
-            write::ty_only(cx.tcx, ctor_id, tpt.ty);
-            // Write the methods into the type table.
-            //
-            // FIXME: Inefficient; this ends up calling
-            // get_obj_method_types() twice. (The first time was above in
-            // ty_of_obj().)
-            let m_types = vec::map(object.methods,
-                                   {|m| ty_of_method(cx.tcx, m_collect, m)});
-            let i = 0u;
-            for m in object.methods {
-                write::ty_only(cx.tcx, m.id,
-                               ty::mk_fn(cx.tcx, m_types[i].fty));
-                i += 1u;
-            }
-            // Write in the types of the object fields.
-            //
-            // FIXME: We want to use uint::range() here, but that causes
-            // an assertion in trans.
-            let args = ty::ty_fn_args(cx.tcx, tpt.ty);
-            i = 0u;
-            while i < vec::len::<ty::arg>(args) {
-                let fld = object.fields[i];
-                write::ty_only(cx.tcx, fld.id, args[i].ty);
-                i += 1u;
             }
           }
           ast::item_res(decl, tps, _, dtor_id, ctor_id) {
@@ -1189,16 +1118,6 @@ fn gather_locals(ccx: @crate_ctxt,
               }
             }
         };
-
-    // Add object fields, if any.
-    alt get_self_info(ccx) {
-      some(self_obj(ofs, _)) {
-        for f in ofs {
-            assign(f.id, some(ty::node_id_to_type(ccx.tcx, f.id)));
-        }
-      }
-      _ {}
-    }
 
     // Add formal parameters.
     let args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
@@ -2323,21 +2242,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               _ {}
             }
           }
-          ty::ty_obj(methods) {
-            alt ty::method_idx(field, methods) {
-              some(ix) {
-                if n_tys > 0u {
-                    tcx.sess.span_err(expr.span,
-                                      "can't provide type parameters \
-                                       to an obj method");
-                }
-                write::ty_only_fixup(fcx, id,
-                                     ty::mk_fn(tcx, methods[ix].fty));
-                handled = true;
-              }
-              _ {}
-            }
-          }
           _ {}
         }
         if !handled {
@@ -2407,104 +2311,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                     ty_to_str(tcx, base_t));
           }
         }
-      }
-      ast::expr_anon_obj(ao) {
-        let fields: [ast::anon_obj_field] = [];
-        alt ao.fields { none. { } some(v) { fields = v; } }
-
-        let method_types: [ty::method] = [];
-        {
-            // Outer methods.
-            for m: @ast::method in ao.methods {
-                method_types += [ty_of_method(fcx.ccx.tcx, m_check, m)];
-            }
-
-            // Inner methods.
-
-            // Typecheck 'inner_obj'.  If it exists, it had better have object
-            // type.
-            let inner_obj_methods: [ty::method] = [];
-            let inner_obj_sty: option::t<ty::sty> = none;
-            alt ao.inner_obj {
-              none. { }
-              some(e) {
-                // If there's a inner_obj, we push it onto the self_infos
-                // stack so that self-calls can be checked within its context
-                // later.
-                bot |= check_expr(fcx, e);
-                let inner_obj_ty = expr_ty(tcx, e);
-                inner_obj_sty = some(structure_of(fcx, e.span, inner_obj_ty));
-
-                alt inner_obj_sty {
-                  none. { }
-                  some(sty) {
-                    alt sty {
-                      ty::ty_obj(ms) { inner_obj_methods = ms; }
-                      _ {
-                        // The user is trying to extend a non-object.
-                        tcx.sess.span_fatal
-                            (e.span, syntax::print::pprust::expr_to_str(e)
-                             + " does not have object type");
-                      }
-                    }
-                  }
-                }
-              }
-            }
-
-            // Whenever an outer method overrides an inner, we need to remove
-            // that inner from the type.  Filter inner_obj_methods to remove
-            // any methods that share a name with an outer method.
-            fn filtering_fn(ccx: @crate_ctxt, m: ty::method,
-                            outer_obj_methods: [@ast::method]) ->
-               option::t<ty::method> {
-
-                for om: @ast::method in outer_obj_methods {
-                    if str::eq(om.ident, m.ident) {
-                        // We'd better be overriding with one of the same
-                        // type.  Check to make sure.
-                        let new_type = ty_of_method(ccx.tcx, m_check, om);
-                        if !ty::same_method(ccx.tcx, new_type, m) {
-                            ccx.tcx.sess.span_fatal
-                                (om.span, "attempted to override method "
-                                 + m.ident + " with one of a different type");
-                        }
-                        ret none;
-                    }
-                }
-                ret some(m);
-            }
-
-            let f = bind filtering_fn(fcx.ccx, _, ao.methods);
-            inner_obj_methods = vec::filter_map(inner_obj_methods, f);
-
-            method_types += inner_obj_methods;
-        }
-
-        let ot = ty::mk_obj(tcx, ty::sort_methods(method_types));
-
-        write::ty_only_fixup(fcx, id, ot);
-
-        // Write the methods into the node type table.  (This happens in
-        // collect::convert for regular objects.)
-        let i = 0u;
-        while i < vec::len(ao.methods) {
-            write::ty_only(tcx, ao.methods[i].id,
-                           ty::mk_fn(tcx, method_types[i].fty));
-            i += 1u;
-        }
-
-        fcx.ccx.self_infos +=
-            [self_obj(
-                vec::map(fields, ast_util::obj_field_from_anon_obj_field),
-                ot)];
-        // Typecheck the methods.
-        for method: @ast::method in ao.methods {
-            check_method(fcx.ccx, method);
-        }
-
-        // Now remove the info from the stack.
-        vec::pop(fcx.ccx.self_infos);
       }
       _ { tcx.sess.unimpl("expr type in typeck::check_expr"); }
     }
@@ -2831,15 +2637,6 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       }
       ast::item_res(decl, tps, body, dtor_id, _) {
         check_fn(ccx, ast::proto_bare, decl, body, dtor_id, none);
-      }
-      ast::item_obj(ob, tps, _) {
-        // We're entering an object, so gather up the info we need.
-        ccx.self_infos += [self_obj(ob.fields,
-                                    ccx.tcx.tcache.get(local_def(it.id)).ty)];
-        // Typecheck the methods.
-        for method: @ast::method in ob.methods { check_method(ccx, method); }
-        // Now remove the info from the stack.
-        vec::pop(ccx.self_infos);
       }
       ast::item_impl(tps, _, ty, ms) {
         ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];

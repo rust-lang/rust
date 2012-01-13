@@ -126,14 +126,6 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             for va: variant_arg in vr.node.args { v.visit_ty(va.ty, e, v); }
         }
       }
-      item_obj(ob, tps, _) {
-        v.visit_ty_params(tps, e, v);
-        for f: obj_field in ob.fields { v.visit_ty(f.ty, e, v); }
-        for m: @method in ob.methods {
-            v.visit_fn(fk_method(m.ident, m.tps), m.decl, m.body, m.span,
-                       m.id, e, v);
-        }
-      }
       item_impl(tps, ifce, ty, methods) {
         v.visit_ty_params(tps, e, v);
         alt ifce { some(ty) { v.visit_ty(ty, e, v); } _ {} }
@@ -171,12 +163,6 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
             v.visit_constr(c.node.path, c.span, c.node.id, e, v);
         }
         v.visit_ty(decl.output, e, v);
-      }
-      ty_obj(tmeths) {
-        for m: ty_method in tmeths {
-            for a in m.decl.inputs { v.visit_ty(a.ty, e, v); }
-            v.visit_ty(m.decl.output, e, v);
-        }
       }
       ty_path(p, _) { visit_path(p, e, v); }
       ty_type. {/* no-op */ }
@@ -370,25 +356,6 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_check(_, x) { v.visit_expr(x, e, v); }
       expr_assert(x) { v.visit_expr(x, e, v); }
-      expr_anon_obj(anon_obj) {
-        alt anon_obj.fields {
-          none. { }
-          some(fields) {
-            for f: anon_obj_field in fields {
-                v.visit_ty(f.ty, e, v);
-                v.visit_expr(f.expr, e, v);
-            }
-          }
-        }
-        alt anon_obj.inner_obj {
-          none. { }
-          some(ex) { v.visit_expr(ex, e, v); }
-        }
-        for m: @method in anon_obj.methods {
-            v.visit_fn(fk_method(m.ident, m.tps), m.decl, m.body, m.span,
-                       m.id, e, v);
-        }
-      }
       expr_mac(mac) { visit_mac(mac, e, v); }
     }
 }

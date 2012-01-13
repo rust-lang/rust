@@ -157,15 +157,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_ty_fn(w, cx, {proto: proto_bare, inputs: args, output: out,
                           ret_style: return_val, constraints: []});
       }
-      ty::ty_obj(methods) {
-        w.write_str("O[");
-        for m: ty::method in methods {
-            enc_proto(w, m.fty.proto);
-            w.write_str(m.ident);
-            enc_ty_fn(w, cx, m.fty);
-        }
-        w.write_char(']');
-      }
       ty::ty_res(def, ty, tps) {
         w.write_str("r[");
         w.write_str(cx.ds(def));

@@ -65,7 +65,7 @@ fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
 fn trans_static_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
                        did: ast::def_id) -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
-    {env: obj_env(val) with lval_static_fn(bcx, did, e.id)}
+    {env: self_env(val) with lval_static_fn(bcx, did, e.id)}
 }
 
 fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, m: ty::method)
@@ -92,7 +92,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
         let tptys = ty::node_id_to_type_params(tcx, fld_expr.id);
         for t in vec::tail_n(tptys, vec::len(tptys) - vec::len(*method.tps)) {
             let ti = none;
-            let td = get_tydesc(bcx, t, true, tps_normal, ti).result;
+            let td = get_tydesc(bcx, t, true, ti).result;
             tis += [ti];
             tydescs += [td.val];
             bcx = td.bcx;
@@ -158,8 +158,7 @@ fn trans_vtable(ccx: @crate_ctxt, id: ast::node_id, name: str,
 fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident], llfty: TypeRef,
                  fill: block(ValueRef, @block_ctxt) -> @block_ctxt)
     -> ValueRef {
-    let lcx = @{path: pt, module_path: [],
-                obj_typarams: [], obj_fields: [], ccx: ccx};
+    let lcx = @{path: pt, module_path: [], ccx: ccx};
     let name = link::mangle_internal_name_by_path(ccx, pt);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, name, llfty);
     let fcx = new_fn_ctxt(lcx, ast_util::dummy_sp(), llfn);
@@ -370,7 +369,7 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
         let ptrs = [get_vtable(ccx, impl_did)];
         let origin = 0u, ti = none, bcx = bcx;
         vec::iter2(*impl_params, tys) {|param, ty|
-            let rslt = get_tydesc(bcx, ty, true, tps_normal, ti).result;
+            let rslt = get_tydesc(bcx, ty, true, ti).result;
             ptrs += [rslt.val];
             bcx = rslt.bcx;
             for bound in *param {
@@ -401,8 +400,7 @@ fn trans_cast(bcx: @block_ctxt, val: @ast::expr, id: ast::node_id, dest: dest)
     let body_ty = ty::mk_tup(tcx, [ty::mk_type(tcx), ty::mk_type(tcx),
                                    val_ty]);
     let ti = none;
-    let {bcx, val: tydesc} = get_tydesc(bcx, body_ty, true,
-                                        tps_normal, ti).result;
+    let {bcx, val: tydesc} = get_tydesc(bcx, body_ty, true, ti).result;
     lazily_emit_all_tydesc_glue(bcx, ti);
     let {bcx, box, body: box_body} = trans_malloc_boxed(bcx, body_ty);
     Store(bcx, tydesc, GEPi(bcx, box_body, [0, 0]));

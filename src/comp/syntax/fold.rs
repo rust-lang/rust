@@ -95,7 +95,6 @@ fn nf_native_mod_dummy(_n: native_mod) -> native_mod { fail; }
 fn nf_variant_dummy(_v: variant) -> variant { fail; }
 fn nf_ident_dummy(&&_i: ident) -> ident { fail; }
 fn nf_path_dummy(&&_p: @path) -> @path { fail; }
-fn nf_obj_field_dummy(_o: obj_field) -> obj_field { fail; }
 fn nf_local_dummy(&&_o: @local) -> @local { fail; }
 
 /* some little folds that probably aren't useful to have in ast_fold itself*/
@@ -216,14 +215,6 @@ fn noop_fold_item(&&i: @item, fld: ast_fold) -> @item {
 }
 
 fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
-    fn fold_obj_field_(of: obj_field, fld: ast_fold) -> obj_field {
-        ret {mut: of.mut,
-             ty: fld.fold_ty(of.ty),
-             ident: fld.fold_ident(of.ident),
-             id: of.id};
-    }
-    let fold_obj_field = bind fold_obj_field_(_, fld);
-
     ret alt i {
           item_const(t, e) { item_const(fld.fold_ty(t), fld.fold_expr(e)) }
           item_fn(decl, typms, body) {
@@ -235,11 +226,6 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_ty(t, typms) { item_ty(fld.fold_ty(t), typms) }
           item_tag(variants, typms) {
             item_tag(vec::map(variants, fld.fold_variant), typms)
-          }
-          item_obj(o, typms, d) {
-            item_obj({fields: vec::map(o.fields, fold_obj_field),
-                      methods: vec::map(o.methods, fld.fold_method)},
-                     typms, d)
           }
           item_impl(tps, ifce, ty, methods) {
             item_impl(tps, option::map(ifce, fld.fold_ty), fld.fold_ty(ty),
@@ -327,29 +313,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
              span: field.span};
     }
     let fold_field = bind fold_field_(_, fld);
-    fn fold_anon_obj_(ao: anon_obj, fld: ast_fold) -> anon_obj {
-        fn fold_anon_obj_field_(aof: anon_obj_field, fld: ast_fold) ->
-           anon_obj_field {
-            ret {mut: aof.mut,
-                 ty: fld.fold_ty(aof.ty),
-                 expr: fld.fold_expr(aof.expr),
-                 ident: fld.fold_ident(aof.ident),
-                 id: aof.id};
-        }
-        let fold_anon_obj_field = bind fold_anon_obj_field_(_, fld);
-
-
-        ret {fields:
-                 alt ao.fields {
-                   option::none. { ao.fields }
-                   option::some(v) {
-                     option::some(vec::map(v, fold_anon_obj_field))
-                   }
-                 },
-             methods: vec::map(ao.methods, fld.fold_method),
-             inner_obj: option::map(ao.inner_obj, fld.fold_expr)}
-    }
-    let fold_anon_obj = bind fold_anon_obj_(_, fld);
 
     let fold_mac = bind fold_mac_(_, fld);
 
@@ -439,7 +402,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_if_check(fld.fold_expr(cond), fld.fold_block(tr),
                           option::map(fl, fld.fold_expr))
           }
-          expr_anon_obj(ao) { expr_anon_obj(fold_anon_obj(ao)) }
           expr_mac(mac) { expr_mac(fold_mac(mac)) }
         }
 }

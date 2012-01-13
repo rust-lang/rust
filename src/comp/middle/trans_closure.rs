@@ -222,7 +222,7 @@ fn allocate_cbox(bcx: @block_ctxt,
         let ti = none;
         let tydesc_ty = if xchgheap { cbox_ty } else { cbox_norc_ty };
         let {bcx, val:lltydesc} =
-            get_tydesc(bcx, tydesc_ty, true, tps_normal, ti).result;
+            get_tydesc(bcx, tydesc_ty, true, ti).result;
         let malloc = {
             if xchgheap { ccx.upcalls.shared_malloc}
             else { ccx.upcalls.malloc }
@@ -315,7 +315,7 @@ fn store_environment(
         let ti = none;
 
         let {result:closure_td, _} =
-            trans::get_tydesc(bcx, cbox_ty, true, tps_normal, ti);
+            trans::get_tydesc(bcx, cbox_ty, true, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);

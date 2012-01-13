@@ -6,8 +6,6 @@ import syntax::{visit, codemap};
 
 tag ast_node {
     node_item(@item);
-    node_obj_ctor(@item);
-    node_obj_method(@method);
     node_native_item(@native_item);
     node_method(@method);
     node_expr(@expr);
@@ -62,12 +60,6 @@ fn map_arm(cx: ctx, arm: arm) {
 fn map_item(cx: ctx, i: @item) {
     cx.map.insert(i.id, node_item(i));
     alt i.node {
-      item_obj(ob, _, ctor_id) {
-        cx.map.insert(ctor_id, node_obj_ctor(i));
-        for m in ob.methods {
-            cx.map.insert(m.id, node_obj_method(m));
-        }
-      }
       item_impl(_, _, _, ms) {
         for m in ms { cx.map.insert(m.id, node_method(m)); }
       }
@@ -85,20 +77,11 @@ fn map_native_item(cx: ctx, i: @native_item) {
 
 fn map_expr(cx: ctx, ex: @expr) {
     cx.map.insert(ex.id, node_expr(ex));
-    alt ex.node {
-      expr_anon_obj(ao) {
-        for m in ao.methods {
-            cx.map.insert(m.id, node_obj_method(m));
-        }
-      }
-      _ {}
-    }
 }
 
 fn node_span(node: ast_node) -> codemap::span {
     alt node {
       node_item(item) { item.span }
-      node_obj_ctor(item) { item.span }
       node_native_item(nitem) { nitem.span }
       node_expr(expr) { expr.span }
     }
@@ -117,18 +100,6 @@ mod test {
                         id: 0,
                         node: item_mod({view_items: [], items: []}),
                         span: expected});
-        assert (node_span(node) == expected);
-    }
-
-    #[test]
-    fn test_node_span_obj_ctor() {
-        let expected: codemap::span = ast_util::mk_sp(20u, 30u);
-        let node =
-            node_obj_ctor(@{ident: "test",
-                            attrs: [],
-                            id: 0,
-                            node: item_mod({view_items: [], items: []}),
-                            span: expected});
         assert (node_span(node) == expected);
     }
 

@@ -112,11 +112,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         fn_to_str(cx, ast::proto_bare, none, inputs, output,
                   ast::return_val, [])
       }
-      ty_obj(meths) {
-        let strs = [];
-        for m: method in meths { strs += [method_to_str(cx, m)]; }
-        "obj {\n\t" + str::connect(strs, "\n\t") + "\n}"
-      }
       ty_var(v) { "<T" + int::str(v) + ">" }
       ty_param(id, _) {
         "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)])

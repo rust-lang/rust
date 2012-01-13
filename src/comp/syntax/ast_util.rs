@@ -25,7 +25,7 @@ fn variant_def_ids(d: def) -> {tg: def_id, var: def_id} {
 
 fn def_id_of_def(d: def) -> def_id {
     alt d {
-      def_fn(id, _) | def_obj_field(id, _) | def_self(id) | def_mod(id) |
+      def_fn(id, _) | def_self(id) | def_mod(id) |
       def_native_mod(id) | def_const(id) | def_arg(id, _) | def_local(id, _) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
       def_binding(id) | def_use(id) | def_native_ty(id) |
@@ -213,10 +213,6 @@ fn block_from_expr(e: @expr) -> blk {
 fn default_block(stmts1: [@stmt], expr1: option::t<@expr>, id1: node_id) ->
    blk_ {
     {view_items: [], stmts: stmts1, expr: expr1, id: id1, rules: default_blk}
-}
-
-fn obj_field_from_anon_obj_field(f: anon_obj_field) -> obj_field {
-    ret {mut: f.mut, ty: f.ty, ident: f.ident, id: f.id};
 }
 
 // This is a convenience function to transfor ternary expressions to if

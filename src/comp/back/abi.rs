@@ -46,7 +46,7 @@ const tydesc_field_cmp_glue: int = 10;
 const tydesc_field_shape: int = 11;
 const tydesc_field_shape_tables: int = 12;
 const tydesc_field_n_params: int = 13;
-const tydesc_field_obj_params: int = 14;
+const tydesc_field_obj_params: int = 14; // FIXME unused
 const n_tydesc_fields: int = 15;
 
 const cmp_glue_op_eq: uint = 0u;
@@ -54,19 +54,6 @@ const cmp_glue_op_eq: uint = 0u;
 const cmp_glue_op_lt: uint = 1u;
 
 const cmp_glue_op_le: uint = 2u;
-
-const obj_field_vtbl: int = 0;
-
-const obj_field_box: int = 1;
-
-const obj_body_elt_tydesc: int = 0;
-
-const obj_body_elt_typarams: int = 1;
-
-const obj_body_elt_fields: int = 2;
-
-// The base object to which an anonymous object is attached.
-const obj_body_elt_inner_obj: int = 3;
 
 // The two halves of a closure: code and environment.
 const fn_field_code: int = 0;

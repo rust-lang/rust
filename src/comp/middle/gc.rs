@@ -3,7 +3,7 @@
 import lib::llvm::True;
 import lib::llvm::llvm::ValueRef;
 import middle::trans;
-import middle::trans::{get_tydesc, tps_normal};
+import middle::trans::get_tydesc;
 import middle::trans_common::*;
 import middle::ty;
 import option::none;
@@ -43,7 +43,7 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     bcx = trans::zero_alloca(bcx, llval, ty);
 
     let ti = none;
-    let td_r = get_tydesc(bcx, ty, false, tps_normal, ti);
+    let td_r = get_tydesc(bcx, ty, false, ti);
     bcx = td_r.result.bcx;
     let lltydesc = td_r.result.val;
 
@@ -147,7 +147,7 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
       }
       ty::ty_constr(sub, _) { ret type_is_gc_relevant(cx, sub); }
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_fn(_) |
-      ty::ty_native_fn(_, _) | ty::ty_obj(_) | ty::ty_param(_, _) |
+      ty::ty_native_fn(_, _) | ty::ty_param(_, _) |
       ty::ty_res(_, _, _) { ret true; }
       ty::ty_var(_) {
         fail "ty_var in type_is_gc_relevant";

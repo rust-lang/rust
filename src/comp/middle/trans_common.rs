@@ -46,8 +46,7 @@ type tydesc_info =
      mutable drop_glue: option::t<ValueRef>,
      mutable free_glue: option::t<ValueRef>,
      mutable cmp_glue: option::t<ValueRef>,
-     ty_params: [uint],
-     is_obj_body: bool};
+     ty_params: [uint]};
 
 /*
  * A note on nomenclature of linking: "upcall", "extern" and "native".
@@ -112,7 +111,6 @@ type crate_ctxt =
      dict_map: typeck::dict_map,
      stats: stats,
      upcalls: @upcall::upcalls,
-     rust_object_type: TypeRef,
      tydesc_type: TypeRef,
      int_type: TypeRef,
      float_type: TypeRef,
@@ -127,8 +125,6 @@ type crate_ctxt =
 type local_ctxt =
     {path: [str],
      module_path: [str],
-     obj_typarams: [ast::ty_param],
-     obj_fields: [ast::obj_field],
      ccx: @crate_ctxt};
 
 // Types used for llself.
@@ -156,8 +152,7 @@ type fn_ctxt =
     // Points to the current task.
 
     // Points to the current environment (bindings of variables to
-    // values), if this is a regular function; points to the current
-    // object, if this is a method.
+    // values), if this is a regular function
 
     // Points to where the return value of this function should end
     // up.
@@ -185,7 +180,7 @@ type fn_ctxt =
 
     // The token used to clear the dynamic allocas at the end of this frame.
 
-    // The 'self' object currently in use in this function, if there
+    // The 'self' value currently in use in this function, if there
     // is one.
 
     // If this function is actually a iter, a block containing the
@@ -195,9 +190,6 @@ type fn_ctxt =
     // LLVM-stuff-in-the-frame.
 
     // Maps arguments to allocas created for them in llallocas.
-
-    // Maps fields in objects to pointers into the interior of
-    // llself's body.
 
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
@@ -240,7 +232,6 @@ type fn_ctxt =
      mutable llobstacktoken: option::t<ValueRef>,
      mutable llself: option::t<val_self_pair>,
      llargs: hashmap<ast::node_id, local_val>,
-     llobjfields: hashmap<ast::node_id, ValueRef>,
      lllocals: hashmap<ast::node_id, local_val>,
      llupvars: hashmap<ast::node_id, ValueRef>,
      mutable lltyparams: [fn_ty_param],
@@ -331,7 +322,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
     let nil_res = ty::mk_nil(ccx.tcx);
     // FIXME: Silly check -- mk_nil should have a postcondition
     check non_ty_var(ccx, nil_res);
-    let f_t = type_of_fn(ccx, sp, false,
+    let f_t = type_of_fn(ccx, sp,
                          [{mode: ast::by_ref, ty: inner_t}],
                          nil_res, *param_bounds);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
@@ -566,17 +557,6 @@ fn set_struct_body(t: TypeRef, elts: [TypeRef]) unsafe {
 
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
 
-// NB: This will return something different every time it's called. If
-// you need a generic object type that matches the type of your
-// existing objects, use ccx.rust_object_type.  Calling
-// T_rust_object() again will return a different one.
-fn T_rust_object() -> TypeRef {
-    let t = T_named_struct("rust_object");
-    let e = T_ptr(T_empty_struct());
-    set_struct_body(t, [e, e]);
-    ret t;
-}
-
 // A dict is, in reality, a vtable pointer followed by zero or more pointers
 // to tydescs and other dicts that it closes over. But the types and number of
 // those are rarely known to the code that needs to manipulate them, so they
@@ -744,19 +724,6 @@ fn T_opaque_tag_ptr(cx: @crate_ctxt) -> TypeRef {
 fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
     ret T_struct(vec::init_elt::<TypeRef>(T_ptr(cx.tydesc_type), n));
 }
-
-fn T_obj_ptr(cx: @crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
-    // This function is not publicly exposed because it returns an incomplete
-    // type. The dynamically-sized fields follow the captured tydescs.
-
-    fn T_obj(cx: @crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
-        ret T_struct([T_ptr(cx.tydesc_type),
-                      T_captured_tydescs(cx, n_captured_tydescs)]);
-    }
-    ret T_ptr(T_box(cx, T_obj(cx, n_captured_tydescs)));
-}
-
-fn T_opaque_obj_ptr(cx: @crate_ctxt) -> TypeRef { ret T_obj_ptr(cx, 0u); }
 
 fn T_opaque_iface_ptr(cx: @crate_ctxt) -> TypeRef {
     let tdptr = T_ptr(cx.tydesc_type);

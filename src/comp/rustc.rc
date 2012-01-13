@@ -18,7 +18,6 @@ mod middle {
     mod trans_build;
     mod trans;
     mod trans_alt;
-    mod trans_objects;
     mod trans_uniq;
     mod trans_closure;
     mod trans_vec;

@@ -47,7 +47,7 @@ const shape_tag: u8 = 12u8;
 const shape_box: u8 = 13u8;
 const shape_struct: u8 = 17u8;
 const shape_box_fn: u8 = 18u8;
-const shape_obj: u8 = 19u8;
+const shape_UNUSED: u8 = 19u8;
 const shape_res: u8 = 20u8;
 const shape_var: u8 = 21u8;
 const shape_uniq: u8 = 22u8;
@@ -309,8 +309,7 @@ fn add_substr(&dest: [u8], src: [u8]) {
     dest += src;
 }
 
-fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
-            is_obj_body: bool) -> [u8] {
+fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
     let s = [];
 
     alt ty::struct(ccx.tcx, t) {
@@ -335,7 +334,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
         s += [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
-        add_substr(s, shape_of(ccx, unit_ty, ty_param_map, is_obj_body));
+        add_substr(s, shape_of(ccx, unit_ty, ty_param_map));
       }
       ty::ty_tag(did, tps) {
         alt tag_kind(ccx, did) {
@@ -363,7 +362,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
 
             add_u16(sub, vec::len(tps) as u16);
             for tp: ty::t in tps {
-                let subshape = shape_of(ccx, tp, ty_param_map, is_obj_body);
+                let subshape = shape_of(ccx, tp, ty_param_map);
                 add_u16(sub, vec::len(subshape) as u16);
                 sub += subshape;
             }
@@ -374,22 +373,22 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
       }
       ty::ty_box(mt) {
         s += [shape_box];
-        add_substr(s, shape_of(ccx, mt.ty, ty_param_map, is_obj_body));
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
       }
       ty::ty_uniq(mt) {
         s += [shape_uniq];
-        add_substr(s, shape_of(ccx, mt.ty, ty_param_map, is_obj_body));
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
       }
       ty::ty_vec(mt) {
         s += [shape_vec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
-        add_substr(s, shape_of(ccx, mt.ty, ty_param_map, is_obj_body));
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
       }
       ty::ty_rec(fields) {
         s += [shape_struct];
         let sub = [];
         for f: field in fields {
-            sub += shape_of(ccx, f.mt.ty, ty_param_map, is_obj_body);
+            sub += shape_of(ccx, f.mt.ty, ty_param_map);
         }
         add_substr(s, sub);
       }
@@ -397,12 +396,11 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
         s += [shape_struct];
         let sub = [];
         for elt in elts {
-            sub += shape_of(ccx, elt, ty_param_map, is_obj_body);
+            sub += shape_of(ccx, elt, ty_param_map);
         }
         add_substr(s, sub);
       }
       ty::ty_native_fn(_, _) { s += [shape_u32]; }
-      ty::ty_obj(_) { s += [shape_obj]; }
       ty::ty_iface(_, _) { s += [shape_iface]; }
       ty::ty_res(did, raw_subt, tps) {
         let subt = ty::substitute_type_params(ccx.tcx, tps, raw_subt);
@@ -413,24 +411,19 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint],
         add_u16(s, id as u16);
         add_u16(s, vec::len(tps) as u16);
         for tp: ty::t in tps {
-            add_substr(s, shape_of(ccx, tp, ty_param_map, is_obj_body));
+            add_substr(s, shape_of(ccx, tp, ty_param_map));
         }
-        add_substr(s, shape_of(ccx, subt, ty_param_map, is_obj_body));
+        add_substr(s, shape_of(ccx, subt, ty_param_map));
 
       }
       ty::ty_var(n) {
         fail "shape_of ty_var";
       }
       ty::ty_param(n, _) {
-        if is_obj_body {
-            // Just write in the parameter number.
-            s += [shape_var, n as u8];
-        } else {
-            // Find the type parameter in the parameter list.
-            alt vec::position(n, ty_param_map) {
-              some(i) { s += [shape_var, i as u8]; }
-              none. { fail "ty param not found in ty_param_map"; }
-            }
+        // Find the type parameter in the parameter list.
+        alt vec::position(n, ty_param_map) {
+          some(i) { s += [shape_var, i as u8]; }
+          none. { fail "ty param not found in ty_param_map"; }
         }
       }
       ty::ty_fn({proto: ast::proto_box., _}) {
@@ -461,7 +454,7 @@ fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info,
     while i < ty_param_count { ty_param_map += [i]; i += 1u; }
 
     let s = [];
-    for t: ty::t in v.args { s += shape_of(ccx, t, ty_param_map, false); }
+    for t: ty::t in v.args { s += shape_of(ccx, t, ty_param_map); }
     ret s;
 }
 

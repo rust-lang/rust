@@ -535,9 +535,6 @@ fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
         v.visit_local(decl, new_sc, v);
         v.visit_block(blk, new_sc, v);
       }
-      ast::expr_anon_obj(_) {
-        visit::visit_expr(x, cons(scope_method(x.id, []), @sc), v);
-      }
       _ { visit::visit_expr(x, sc, v); }
     }
 }
@@ -852,9 +849,9 @@ fn def_is_local(d: def) -> bool {
     }
 }
 
-fn def_has_obj_scope(d: def) -> bool {
+fn def_is_self(d: def) -> bool {
     alt d {
-      ast::def_obj_field(_, _) | ast::def_self(_) { true }
+      ast::def_self(_) { true }
       _ { false }
     }
 }
@@ -874,9 +871,6 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           }
           scope_item(it) {
             alt it.node {
-              ast::item_obj(ob, ty_params, _) {
-                ret lookup_in_obj(e, name, ob, ty_params, ns, it.id);
-              }
               ast::item_impl(tps, _, _, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
@@ -935,7 +929,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
     }
     let left_fn = false;
     let closing = [];
-    // Used to determine whether obj fields are in scope
+    // Used to determine whether self is in scope
     let left_fn_level2 = false;
     let sc = sc;
     while true {
@@ -945,9 +939,8 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
             let fnd = in_scope(e, sp, name, hd, ns);
             if !is_none(fnd) {
                 let df = option::get(fnd);
-                let local = def_is_local(df),
-                    obj_scope = def_has_obj_scope(df);
-                if left_fn && local || left_fn_level2 && obj_scope
+                let local = def_is_local(df), self_scope = def_is_self(df);
+                if left_fn && local || left_fn_level2 && self_scope
                    || scope_is_fn(hd) && left_fn && def_is_ty_arg(df) {
                     let msg = alt ns {
                       ns_type. {
@@ -965,7 +958,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                       _ { "attempted dynamic environment-capture" }
                     };
                     e.sess.span_fatal(sp, msg);
-                } else if local || obj_scope {
+                } else if local || self_scope {
                     let i = vec::len(closing);
                     while i > 0u {
                         i -= 1u;
@@ -1030,24 +1023,6 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
     }
 }
 
-fn lookup_in_obj(e: env, name: ident, ob: ast::_obj,
-                 ty_params: [ast::ty_param],
-                 ns: namespace, id: node_id) -> option::t<def> {
-    alt ns {
-      ns_val(val_ty) {
-        if name == "self" && val_ty == ns_any_value
-           { ret some(ast::def_self(local_def(id))); }
-        for f: ast::obj_field in ob.fields {
-            if str::eq(f.ident, name) && val_ty == ns_any_value {
-                ret some(ast::def_obj_field(local_def(f.id), f.mut));
-            }
-        }
-        ret none::<def>;
-      }
-      ns_type. { ret lookup_in_ty_params(e, name, ty_params); }
-      _ { ret none::<def>; }
-    }
-}
 
 fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                    loc_pos: uint, ns: namespace) -> option::t<def> {
@@ -1158,15 +1133,6 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
       ast::item_res(_, _, _, _, ctor_id) {
-        alt ns {
-          ns_val(ns_any_value.) {
-            ret some(ast::def_fn(local_def(ctor_id), ast::impure_fn));
-          }
-          ns_type. { ret some(ast::def_ty(local_def(i.id))); }
-          _ { }
-        }
-      }
-      ast::item_obj(_, _, ctor_id) {
         alt ns {
           ns_val(ns_any_value.) {
             ret some(ast::def_fn(local_def(ctor_id), ast::impure_fn));
@@ -1422,7 +1388,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
         alt it.node {
           ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
           ast::item_native_mod(_) | ast::item_ty(_, _) |
-          ast::item_res(_, _, _, _, _) | ast::item_obj(_, _, _) |
+          ast::item_res(_, _, _, _, _) |
           ast::item_impl(_, _, _, _) | ast::item_iface(_, _) {
             add_to_index(index, it.ident, mie_item(it));
           }
@@ -1470,7 +1436,7 @@ fn index_nmod(md: ast::native_mod) -> mod_index {
 fn ns_for_def(d: def) -> namespace {
     alt d {
       ast::def_variant(_, _) { ns_val(ns_a_tag) }
-      ast::def_fn(_, _) | ast::def_obj_field(_, _) | ast::def_self(_) |
+      ast::def_fn(_, _) | ast::def_self(_) |
       ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
       ast::def_upvar(_, _, _) |  ast::def_native_fn(_, _) | ast::def_self(_)
         { ns_val(ns_any_value) }
@@ -1597,15 +1563,6 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
                       "type parameter");
       }
-      ast::item_obj(ob, ty_params, _) {
-        fn field_name(field: ast::obj_field) -> ident { ret field.ident; }
-        ensure_unique(*e, i.span, ob.fields, field_name, "object field");
-        for m: @ast::method in ob.methods {
-            check_fn(*e, m.span, m.decl);
-        }
-        ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
-                      "type parameter");
-      }
       ast::item_tag(_, ty_params) {
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
                       "type parameter");
@@ -1687,7 +1644,7 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                   ast::item_ty(_, _) | ast::item_iface(_, _) {
                     add_name(types, it.span, it.ident);
                   }
-                  ast::item_res(_, _, _, _, _) | ast::item_obj(_, _, _) {
+                  ast::item_res(_, _, _, _, _) {
                     add_name(types, it.span, it.ident);
                     add_name(values, it.span, it.ident);
                   }

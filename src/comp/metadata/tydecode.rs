@@ -246,24 +246,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let func = parse_ty_fn(st, conv);
         ret ty::mk_native_fn(st.tcx, func.inputs, func.output);
       }
-      'O' {
-        assert (next(st) as char == '[');
-        let methods: [ty::method] = [];
-        while peek(st) as char != ']' {
-            let proto;
-            alt next(st) as char {
-              'f' { proto = ast::proto_bare; }
-            }
-            let name = "";
-            while peek(st) as char != '[' {
-                name += str::unsafe_from_byte(next(st));
-            }
-            methods += [{ident: name, tps: @[],
-                         fty: {proto: proto with parse_ty_fn(st, conv)}}];
-        }
-        st.pos += 1u;
-        ret ty::mk_obj(st.tcx, methods);
-      }
       'r' {
         assert (next(st) as char == '[');
         let def = parse_def(st, conv);

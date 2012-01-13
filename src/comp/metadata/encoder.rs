@@ -126,18 +126,6 @@ fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
             ebml::end_tag(ebml_w);
             encode_tag_variant_paths(ebml_w, variants, path, index);
           }
-          item_obj(_, tps, ctor_id) {
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(ctor_id));
-            ebml::end_tag(ebml_w);
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(it.id));
-            ebml::end_tag(ebml_w);
-          }
           item_iface(_, _) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
@@ -355,26 +343,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, ty::ty_fn_ret(tcx, fn_ty));
         encode_name(ebml_w, item.ident);
         encode_symbol(ecx, ebml_w, item.id);
-        ebml::end_tag(ebml_w);
-
-        index += [{val: ctor_id, pos: ebml_w.writer.tell()}];
-        ebml::start_tag(ebml_w, tag_items_data_item);
-        encode_def_id(ebml_w, local_def(ctor_id));
-        encode_family(ebml_w, 'f' as u8);
-        encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, fn_ty);
-        encode_symbol(ecx, ebml_w, ctor_id);
-        ebml::end_tag(ebml_w);
-      }
-      item_obj(_, tps, ctor_id) {
-        let fn_ty = node_id_to_monotype(tcx, ctor_id);
-
-        ebml::start_tag(ebml_w, tag_items_data_item);
-        encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'y' as u8);
-        encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, ty::ty_fn_ret(tcx, fn_ty));
-        encode_name(ebml_w, item.ident);
         ebml::end_tag(ebml_w);
 
         index += [{val: ctor_id, pos: ebml_w.writer.tell()}];

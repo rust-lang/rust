@@ -34,7 +34,6 @@ type ty_param = {ident: ident, id: node_id, bounds: @[ty_param_bound]};
 
 tag def {
     def_fn(def_id, purity);
-    def_obj_field(def_id, mutability);
     def_self(def_id);
     def_mod(def_id);
     def_native_mod(def_id);
@@ -234,7 +233,6 @@ tag expr_ {
     /* FIXME Would be nice if expr_check desugared
        to expr_if_check. */
     expr_if_check(@expr, blk, option::t<@expr>);
-    expr_anon_obj(anon_obj);
     expr_mac(mac);
 }
 
@@ -318,7 +316,6 @@ tag ty_ {
     ty_chan(@ty);
     ty_rec([ty_field]);
     ty_fn(proto, fn_decl);
-    ty_obj([ty_method]);
     ty_tup([@ty]);
     ty_path(@path, node_id);
     ty_type;
@@ -389,19 +386,6 @@ tag ret_style {
 type method = {ident: ident, tps: [ty_param], decl: fn_decl, body: blk,
                id: node_id, span: span};
 
-type obj_field = {mut: mutability, ty: @ty, ident: ident, id: node_id};
-type anon_obj_field =
-    {mut: mutability, ty: @ty, expr: @expr, ident: ident, id: node_id};
-
-type _obj = {fields: [obj_field], methods: [@method]};
-
-type anon_obj =
-    // New fields and methods, if they exist.
-    // inner_obj: the original object being extended, if it exists.
-    {fields: option::t<[anon_obj_field]>,
-     methods: [@method],
-     inner_obj: option::t<@expr>};
-
 type _mod = {view_items: [@view_item], items: [@item]};
 
 tag native_abi {
@@ -439,9 +423,6 @@ tag view_item_ {
     view_item_export([ident], node_id);
 }
 
-type obj_def_ids = {ty: node_id, ctor: node_id};
-
-
 // Meta-data associated with an item
 type attribute = spanned<attribute_>;
 
@@ -453,8 +434,8 @@ tag attr_style { attr_outer; attr_inner; }
 
 type attribute_ = {style: attr_style, value: meta_item};
 
-type item =  // For objs and resources, this is the type def_id
-    {ident: ident, attrs: [attribute], id: node_id, node: item_, span: span};
+type item = {ident: ident, attrs: [attribute],
+             id: node_id, node: item_, span: span};
 
 tag item_ {
     item_const(@ty, @expr);
@@ -463,7 +444,6 @@ tag item_ {
     item_native_mod(native_mod);
     item_ty(@ty, [ty_param]);
     item_tag([variant], [ty_param]);
-    item_obj(_obj, [ty_param], /* constructor id */node_id);
     item_res(fn_decl /* dtor */, [ty_param], blk,
              node_id /* dtor id */, node_id /* ctor id */);
     item_iface([ty_param], [ty_method]);

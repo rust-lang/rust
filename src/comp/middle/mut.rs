@@ -60,7 +60,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                     }
                 }
               }
-              ty::ty_obj(_) { }
+              _ {}
             }
             ds += [@{mut: is_mut, kind: field, outer_t: auto_unbox.t}];
             ds += auto_unbox.ds;
@@ -201,9 +201,6 @@ fn check_move_rhs(cx: @ctx, src: @expr) {
     alt src.node {
       expr_path(p) {
         alt cx.tcx.def_map.get(src.id) {
-          def_obj_field(_, _) {
-            mk_err(cx, src.span, msg_move_out, "object field");
-          }
           def_self(_) {
             mk_err(cx, src.span, msg_move_out, "method self");
           }
@@ -267,7 +264,6 @@ fn is_immutable_def(cx: @ctx, def: def) -> option::t<str> {
       }
       def_arg(_, by_ref.) | def_arg(_, by_val.) |
       def_arg(_, mode_infer.) { some("argument") }
-      def_obj_field(_, imm.) { some("immutable object field") }
       def_self(_) { some("self argument") }
       def_upvar(_, inner, node_id) {
         let ty = ty::node_id_to_monotype(cx.tcx, node_id);

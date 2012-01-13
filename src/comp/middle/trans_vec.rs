@@ -6,7 +6,7 @@ import back::abi;
 import trans::{call_memmove, trans_shared_malloc, llsize_of, type_of_or_i8,
                INIT, copy_val, load_if_immediate, size_of,
                get_tydesc,
-               node_id_type, new_sub_block_ctxt, tps_normal, do_spill_noroot,
+               node_id_type, new_sub_block_ctxt, do_spill_noroot,
                dest};
 import trans_build::*;
 import trans_common::*;
@@ -201,7 +201,7 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     let elt_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let ti = none;
     let {bcx: bcx, val: td} =
-        get_tydesc(bcx, elt_ty, false, tps_normal, ti).result;
+        get_tydesc(bcx, elt_ty, false, ti).result;
     trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
     let opaque_v = PointerCast(bcx, vptrptr,
                                T_ptr(T_ptr(ccx.opaque_vec_type)));

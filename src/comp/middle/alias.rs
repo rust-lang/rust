@@ -56,8 +56,8 @@ type ctx = {tcx: ty::ctxt,
             mutable silent: bool};
 
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
-    // Stores information about object fields and function
-    // arguments that's otherwise not easily available.
+    // Stores information about function arguments that's otherwise not easily
+    // available.
     let cx = @{tcx: tcx,
                copy_map: std::map::new_int_hash(),
                ref_map: std::map::new_int_hash(),
@@ -521,7 +521,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
           }
           ty::ty_fn({proto: ast::proto_bare., _}) { ret false; }
           // These may contain anything.
-          ty::ty_fn(_) | ty::ty_obj(_) { ret true; }
+          ty::ty_fn(_) | ty::ty_iface(_, _) { ret true; }
           // A type param may include everything, but can only be
           // treated as opaque downstream, and is thus safe unless we
           // saw mutable fields, in which case the whole thing can be
@@ -536,8 +536,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
 fn def_is_local(d: ast::def) -> bool {
     alt d {
       ast::def_local(_, _) | ast::def_arg(_, _) | ast::def_binding(_) |
-      ast::def_upvar(_, _, _) | ast::def_self(_) |
-      ast::def_obj_field(_, _) { true }
+      ast::def_upvar(_, _, _) | ast::def_self(_) { true }
       _ { false }
     }
 }
@@ -557,10 +556,9 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int(_) |
           ty::ty_uint(_) | ty::ty_float(_) | ty::ty_type. | ty::ty_native(_) |
           ty::ty_ptr(_) { 1u }
-          ty::ty_box(_) { 3u }
+          ty::ty_box(_) | ty::ty_iface(_, _) { 3u }
           ty::ty_constr(t, _) | ty::ty_res(_, t, _) { score_ty(tcx, t) }
-          ty::ty_fn(_) | ty::ty_native_fn(_, _) |
-          ty::ty_obj(_) { 4u }
+          ty::ty_fn(_) | ty::ty_native_fn(_, _) { 4u }
           ty::ty_str. | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
           ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }
           ty::ty_tag(_, ts) | ty::ty_tup(ts) {
@@ -632,17 +630,6 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     let unsafe_ty = none;
     for d in *base_root.ds {
         if d.mut { unsafe_ty = some(contains(d.outer_t)); break; }
-    }
-    alt base_root.ex.node {
-      ast::expr_path(_) {
-        alt cx.tcx.def_map.get(base_root.ex.id) {
-          ast::def_obj_field(_, ast::mut.) {
-            unsafe_ty = some(mut_contains(ty::expr_ty(cx.tcx, base_root.ex)));
-          }
-          _ {}
-        }
-      }
-      _ {}
     }
     ret {ex: base_root.ex, mut: unsafe_ty};
 }

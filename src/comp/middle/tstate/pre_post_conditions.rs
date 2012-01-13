@@ -73,7 +73,6 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
              ccx: ccx};
         find_pre_post_fn(fcx, body);
       }
-      item_obj(o, _, _) {for m in o.methods { find_pre_post_method(ccx, m); }}
       item_impl(_, _, _, ms) { for m in ms { find_pre_post_method(ccx, m); } }
     }
 }
@@ -551,15 +550,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_break. { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_cont. { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
-      expr_anon_obj(anon_obj) {
-        alt anon_obj.inner_obj {
-          some(ex) {
-            find_pre_post_expr(fcx, ex);
-            copy_pre_post(fcx.ccx, e.id, ex);
-          }
-          none. { clear_pp(expr_pp(fcx.ccx, e)); }
-        }
-      }
     }
 }
 

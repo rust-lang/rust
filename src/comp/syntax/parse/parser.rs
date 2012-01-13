@@ -139,8 +139,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
-                 "log", "tag", "obj", "copy", "sendfn", "impl", "iface",
-                 "enum"] {
+                 "log", "copy", "sendfn", "impl", "iface", "enum"] {
         words.insert(word, ());
     }
     words
@@ -260,12 +259,12 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
                            constraints: constrs});
 }
 
-fn parse_ty_methods(p: parser, allow_tps: bool) -> [ast::ty_method] {
+fn parse_ty_methods(p: parser) -> [ast::ty_method] {
     parse_seq(token::LBRACE, token::RBRACE, seq_sep_none(), {|p|
         let flo = p.span.lo;
         expect_word(p, "fn");
         let ident = parse_value_ident(p);
-        let tps = allow_tps ? parse_ty_params(p) : [];
+        let tps = parse_ty_params(p);
         let f = parse_ty_fn(ast::proto_bare, p), fhi = p.last_span.hi;
         expect(p, token::SEMI);
         alt f {
@@ -490,8 +489,6 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     } else if eat_word(p, "sendfn") {
         //(breaks prettyprinting!) p.warn("sendfn is deprecated, use fn~");
         t = parse_ty_fn(ast::proto_uniq, p);
-    } else if eat_word(p, "obj") {
-        t = ast::ty_obj(parse_ty_methods(p, false));
     } else if p.token == token::MOD_SEP || is_ident(p.token) {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
@@ -825,35 +822,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if p.token == token::ELLIPSIS {
         p.bump();
         ret pexpr(mk_mac_expr(p, lo, p.span.hi, ast::mac_ellipsis));
-    } else if eat_word(p, "obj") {
-        // Anonymous object
-
-        // Only make people type () if they're actually adding new fields
-        let fields: option::t<[ast::anon_obj_field]> = none;
-        if p.token == token::LPAREN {
-            p.bump();
-            fields =
-                some(parse_seq_to_end(token::RPAREN, seq_sep(token::COMMA),
-                                      parse_anon_obj_field, p));
-        }
-        let meths: [@ast::method] = [];
-        let inner_obj: option::t<@ast::expr> = none;
-        expect(p, token::LBRACE);
-        while p.token != token::RBRACE {
-            if eat_word(p, "with") {
-                inner_obj = some(parse_expr(p));
-            } else { meths += [parse_method(p, false)]; }
-        }
-        hi = p.span.hi;
-        expect(p, token::RBRACE);
-        // fields and methods may be *additional* or *overriding* fields
-        // and methods if there's a inner_obj, or they may be the *only*
-        // fields and methods if there's no inner_obj.
-
-        // We don't need to pull ".node" out of fields because it's not a
-        // "spanned".
-        let ob = {fields: fields, methods: meths, inner_obj: inner_obj};
-        ex = ast::expr_anon_obj(ob);
     } else if eat_word(p, "bind") {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
         fn parse_expr_opt(p: parser) -> option::t<@ast::expr> {
@@ -1781,55 +1749,20 @@ fn parse_item_fn(p: parser, purity: ast::purity,
                 ast::item_fn(decl, t.tps, body), attrs);
 }
 
-fn parse_obj_field(p: parser) -> ast::obj_field {
-    let mut = parse_mutability(p);
-    let ident = parse_value_ident(p);
-    expect(p, token::COLON);
-    let ty = parse_ty(p, false);
-    ret {mut: mut, ty: ty, ident: ident, id: p.get_id()};
-}
-
-fn parse_anon_obj_field(p: parser) -> ast::anon_obj_field {
-    let mut = parse_mutability(p);
-    let ident = parse_value_ident(p);
-    expect(p, token::COLON);
-    let ty = parse_ty(p, false);
-    expect(p, token::EQ);
-    let expr = parse_expr(p);
-    ret {mut: mut, ty: ty, expr: expr, ident: ident, id: p.get_id()};
-}
-
-fn parse_method(p: parser, allow_tps: bool) -> @ast::method {
+fn parse_method(p: parser) -> @ast::method {
     let lo = p.span.lo;
     expect_word(p, "fn");
     let ident = parse_value_ident(p);
-    let tps = allow_tps ? parse_ty_params(p) : [];
+    let tps = parse_ty_params(p);
     let decl = parse_fn_decl(p, ast::impure_fn);
     let body = parse_block(p);
     @{ident: ident, tps: tps, decl: decl, body: body,
       id: p.get_id(), span: ast_util::mk_sp(lo, body.span.hi)}
 }
 
-fn parse_item_obj(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
-    let ident = parse_value_ident(p);
-    let ty_params = parse_ty_params(p);
-    let fields: ast::spanned<[ast::obj_field]> =
-        parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
-                  parse_obj_field, p);
-    let meths: [@ast::method] = [];
-    expect(p, token::LBRACE);
-    while p.token != token::RBRACE { meths += [parse_method(p, false)]; }
-    let hi = p.span.hi;
-    expect(p, token::RBRACE);
-    let ob: ast::_obj = {fields: fields.node, methods: meths};
-    ret mk_item(p, lo, hi, ident, ast::item_obj(ob, ty_params, p.get_id()),
-                attrs);
-}
-
 fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo, ident = parse_ident(p),
-        tps = parse_ty_params(p), meths = parse_ty_methods(p, true);
+        tps = parse_ty_params(p), meths = parse_ty_methods(p);
     ret mk_item(p, lo, p.last_span.hi, ident,
                 ast::item_iface(tps, meths), attrs);
 }
@@ -1861,7 +1794,7 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     expect_word(p, "for");
     let ty = parse_ty(p, false), meths = [];
     expect(p, token::LBRACE);
-    while !eat(p, token::RBRACE) { meths += [parse_method(p, true)]; }
+    while !eat(p, token::RBRACE) { meths += [parse_method(p)]; }
     ret mk_item(p, lo, p.last_span.hi, ident,
                 ast::item_impl(tps, ifce, ty, meths), attrs);
 }
@@ -2169,9 +2102,6 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
         ret some(parse_item_type(p, attrs));
     } else if eat_word(p, "tag") || eat_word(p, "enum") {
         ret some(parse_item_tag(p, attrs));
-    } else if is_word(p, "obj") && p.look_ahead(1u) != token::LPAREN {
-        p.bump();
-        ret some(parse_item_obj(p, attrs));
     } else if eat_word(p, "iface") {
         ret some(parse_item_iface(p, attrs));
     } else if eat_word(p, "impl") {

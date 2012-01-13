@@ -8,7 +8,7 @@ import driver::session::session;
 // Kind analysis pass. There are three kinds:
 //
 //  sendable: scalar types, and unique types containing only sendable types
-//  copyable: boxes, objects, closures, and uniques containing copyable types
+//  copyable: boxes, closures, and uniques containing copyable types
 //  noncopyable: resources, or unique types containing resources
 //
 // This pass ensures that type parameters are only instantiated with types
@@ -218,7 +218,7 @@ fn maybe_copy(cx: ctx, ex: @expr) {
 }
 
 fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
-    if ty::expr_is_lval(cx.method_map, cx.tcx, ex) &&
+    if ty::expr_is_lval(cx.method_map, ex) &&
        !cx.last_uses.contains_key(ex.id) {
         let ty = ty::expr_ty(cx.tcx, ex);
         check_copy(cx, ty, ex.span);

@@ -72,7 +72,6 @@ export mk_mach_float;
 export mk_native;
 export mk_native_fn;
 export mk_nil;
-export mk_obj;
 export mk_iface;
 export mk_res;
 export mk_param;
@@ -124,7 +123,6 @@ export ty_str;
 export ty_vec;
 export ty_native;
 export ty_nil;
-export ty_obj;
 export ty_iface;
 export ty_res;
 export ty_param;
@@ -138,7 +136,7 @@ export ty_uint;
 export ty_uniq;
 export ty_var;
 export ty_named;
-export same_type, same_method;
+export same_type;
 export ty_var_id;
 export ty_param_substs_opt_and_ty_to_monotype;
 export ty_fn_args;
@@ -266,7 +264,6 @@ tag sty {
     ty_rec([field]);
     ty_fn(fn_ty);
     ty_native_fn([arg], t);
-    ty_obj([method]);
     ty_iface(def_id, [t]);
     ty_res(def_id, t, [t]);
     ty_tup([t]);
@@ -298,8 +295,6 @@ tag type_err {
     terr_record_size(uint, uint);
     terr_record_mutability;
     terr_record_fields(ast::ident, ast::ident);
-    terr_meth_count;
-    terr_obj_meths(ast::ident, ast::ident);
     terr_arg_count;
     terr_mode_mismatch(mode, mode);
     terr_constr_len(uint, uint);
@@ -497,12 +492,6 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
       ty_native_fn(args, tt) {
         derive_flags_sig(cx, has_params, has_vars, args, tt);
       }
-      ty_obj(meths) {
-        for m: method in meths {
-            derive_flags_sig(cx, has_params, has_vars, m.fty.inputs,
-                             m.fty.output);
-        }
-      }
       ty_res(_, tt, tps) {
         derive_flags_t(cx, has_params, has_vars, tt);
         for tt: t in tps { derive_flags_t(cx, has_params, has_vars, tt); }
@@ -614,8 +603,6 @@ fn mk_native_fn(cx: ctxt, args: [arg], ty: t) -> t {
     ret gen_ty(cx, ty_native_fn(args, ty));
 }
 
-fn mk_obj(cx: ctxt, meths: [method]) -> t { ret gen_ty(cx, ty_obj(meths)); }
-
 fn mk_iface(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
     ret gen_ty(cx, ty_iface(did, tys));
 }
@@ -705,12 +692,6 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
         for a: arg in args { walk_ty(cx, walker, a.ty); }
         walk_ty(cx, walker, ret_ty);
       }
-      ty_obj(methods) {
-        for m: method in methods {
-            for a: arg in m.fty.inputs { walk_ty(cx, walker, a.ty); }
-            walk_ty(cx, walker, m.fty.output);
-        }
-      }
       ty_res(_, sub, tps) {
         walk_ty(cx, walker, sub);
         for tp: t in tps { walk_ty(cx, walker, tp); }
@@ -797,18 +778,6 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         }
         ty = mk_native_fn(cx, new_args, fold_ty(cx, fld, ret_ty));
       }
-      ty_obj(methods) {
-        let new_methods = vec::map(methods, {|m|
-            let new_args = vec::map(m.fty.inputs, {|a|
-                {mode: a.mode, ty: fold_ty(cx, fld, a.ty)}
-            });
-            {ident: m.ident, tps: m.tps,
-             fty: {inputs: new_args,
-                   output: fold_ty(cx, fld, m.fty.output)
-                   with m.fty}}
-        });
-        ty = mk_obj(cx, new_methods);
-      }
       ty_res(did, subty, tps) {
         let new_tps = [];
         for tp: t in tps { new_tps += [fold_ty(cx, fld, tp)]; }
@@ -850,7 +819,7 @@ fn type_is_bool(cx: ctxt, ty: t) -> bool {
 fn type_is_structural(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_rec(_) | ty_tup(_) | ty_tag(_, _) | ty_fn(_) |
-      ty_native_fn(_, _) | ty_obj(_) | ty_res(_, _, _) { true }
+      ty_native_fn(_, _) | ty_res(_, _, _) { true }
       _ { false }
     }
 }
@@ -1056,9 +1025,6 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_native(_) | ty_ptr(_) |
       ty_send_type. | ty_str. | ty_native_fn(_, _) { kind_sendable }
       ty_type. { kind_copyable }
-      // FIXME: obj is broken for now, since we aren't asserting
-      // anything about its fields.
-      ty_obj(_) { kind_copyable }
       ty_fn(f) { proto_kind(f.proto) }
       ty_opaque_closure_ptr(ck_block.) { kind_noncopyable }
       ty_opaque_closure_ptr(ck_box.) { kind_copyable }
@@ -1233,7 +1199,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_send_type. | ty_type. | ty_native(_) | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str. | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
-      ty_native_fn(_, _) | ty_obj(_) | ty_iface(_, _) { result = false; }
+      ty_native_fn(_, _) | ty_iface(_, _) { result = false; }
       // Structural types
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
@@ -1417,11 +1383,6 @@ fn hash_type_structure(st: sty) -> uint {
       // ???
       ty_fn(f) { ret hash_fn(27u, f.inputs, f.output); }
       ty_native_fn(args, rty) { ret hash_fn(28u, args, rty); }
-      ty_obj(methods) {
-        let h = 29u;
-        for m: method in methods { h += (h << 5u) + str::hash(m.ident); }
-        ret h;
-      }
       ty_var(v) { ret hash_uint(30u, v as uint); }
       ty_param(pid, _) { ret hash_uint(31u, pid); }
       ty_type. { ret 32u; }
@@ -1670,20 +1631,11 @@ fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
     ret node_id_has_type_params(cx, expr.id);
 }
 
-fn expr_is_lval(method_map: typeck::method_map, tcx: ty::ctxt,
-                e: @ast::expr) -> bool {
+fn expr_is_lval(method_map: typeck::method_map, e: @ast::expr) -> bool {
     alt e.node {
       ast::expr_path(_) | ast::expr_index(_, _) |
       ast::expr_unary(ast::deref., _) { true }
-      ast::expr_field(base, ident, _) {
-        method_map.contains_key(e.id) ? false : {
-            let basety = type_autoderef(tcx, expr_ty(tcx, base));
-            alt struct(tcx, basety) {
-              ty_obj(_) { false }
-              ty_rec(_) { true }
-            }
-        }
-      }
+      ast::expr_field(base, ident, _) { !method_map.contains_key(e.id) }
       _ { false }
     }
 }
@@ -2059,35 +2011,6 @@ mod unify {
           ures_ok(out) { ures_ok(mk_native_fn(cx.tcx, result_ins, out)) }
           err { err }
         }
-    }
-    fn unify_obj(cx: @ctxt, expected_meths: [method],
-                 actual_meths: [method], variance: variance) -> result {
-        let result_meths: [method] = [];
-        let i: uint = 0u;
-        let expected_len: uint = vec::len(expected_meths);
-        let actual_len: uint = vec::len(actual_meths);
-        if expected_len != actual_len { ret ures_err(terr_meth_count); }
-        while i < expected_len {
-            let e_meth = expected_meths[i];
-            let a_meth = actual_meths[i];
-            if !str::eq(e_meth.ident, a_meth.ident) {
-                ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident));
-            }
-            alt unify_fn(cx, e_meth.fty, a_meth.fty, variance) {
-              ures_ok(tfn) {
-                alt struct(cx.tcx, tfn) {
-                  ty_fn(f) {
-                    result_meths += [{ident: e_meth.ident,
-                                      tps: a_meth.tps, fty: f}];
-                  }
-                }
-              }
-              err { ret err; }
-            }
-            i += 1u;
-        }
-        let t = mk_obj(cx.tcx, result_meths);
-        ret ures_ok(t);
     }
 
     // If the given type is a variable, returns the structure of that type.
@@ -2483,14 +2406,6 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_obj(expected_meths) {
-            alt struct(cx.tcx, actual) {
-              ty::ty_obj(actual_meths) {
-                ret unify_obj(cx, expected_meths, actual_meths, variance);
-              }
-              _ { ret ures_err(terr_mismatch); }
-            }
-          }
           ty::ty_constr(expected_t, expected_constrs) {
 
             // unify the base types...
@@ -2600,13 +2515,6 @@ fn same_type(cx: ctxt, a: t, b: t) -> bool {
       _ { false }
     }
 }
-fn same_method(cx: ctxt, a: method, b: method) -> bool {
-    a.tps == b.tps && a.fty.proto == b.fty.proto && a.ident == b.ident &&
-    vec::all2(a.fty.inputs, b.fty.inputs,
-              {|a, b| a.mode == b.mode && same_type(cx, a.ty, b.ty) }) &&
-    same_type(cx, a.fty.output, b.fty.output) &&
-    a.fty.ret_style == b.fty.ret_style
-}
 
 fn type_err_to_str(err: ty::type_err) -> str {
     alt err {
@@ -2639,11 +2547,6 @@ fn type_err_to_str(err: ty::type_err) -> str {
                 "' but found one with field '" + a_fld + "'";
       }
       terr_arg_count. { ret "incorrect number of function parameters"; }
-      terr_meth_count. { ret "incorrect number of object methods"; }
-      terr_obj_meths(e_meth, a_meth) {
-        ret "expected an obj with method '" + e_meth +
-                "' but found one with method '" + a_meth + "'";
-      }
       terr_mode_mismatch(e_mode, a_mode) {
         ret "expected argument mode " + mode_str(e_mode) + " but found " +
                 mode_str(a_mode);
@@ -2675,7 +2578,7 @@ fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
 
 fn def_has_ty_params(def: ast::def) -> bool {
     alt def {
-      ast::def_obj_field(_, _) | ast::def_mod(_) | ast::def_const(_) |
+      ast::def_mod(_) | ast::def_const(_) |
       ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_upvar(_, _, _) |
       ast::def_ty_param(_, _) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_native_ty(_) | ast::def_self(_) | ast::def_ty(_) { false }
