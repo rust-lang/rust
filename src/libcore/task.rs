@@ -50,6 +50,7 @@ export spawn_connected;
 export connected_fn;
 export connected_task;
 export currently_unwinding;
+export try;
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
@@ -347,6 +348,30 @@ True if we are currently unwinding after a failure.
 */
 fn currently_unwinding() -> bool {
     rustrt::rust_task_is_unwinding(rustrt::rust_get_task())
+}
+
+/*
+Function: try
+
+Execute a function in another task and return either the return value
+of the function or result::err.
+
+Returns:
+
+If the function executed successfully then try returns result::ok
+containing the value returned by the function. If the function fails
+then try returns result::err containing nil.
+*/
+fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
+    let p = comm::port();
+    let ch = comm::chan(p);
+    alt join(spawn_joinable {||
+        unsupervise();
+        comm::send(ch, f());
+    }) {
+      tr_success. { result::ok(comm::recv(p)) }
+      tr_failure. { result::err(()) }
+    }
 }
 
 // Local Variables:

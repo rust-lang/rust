@@ -57,3 +57,24 @@ fn spawn_polymorphic() {
     task::spawn {|| foo(true);};
     task::spawn {|| foo(42);};
 }
+
+#[test]
+fn try_success() {
+    alt task::try {||
+        "Success!"
+    } {
+        result::ok("Success!") { }
+        _ { fail; }
+    }
+}
+
+#[test]
+#[ignore(cfg(target_os = "win32"))]
+fn try_fail() {
+    alt task::try {||
+        fail
+    } {
+        result::err(()) { }
+        _ { fail; }
+    }
+}
