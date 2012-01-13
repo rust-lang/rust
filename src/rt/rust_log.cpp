@@ -13,6 +13,32 @@
  * Synchronizes access to the underlying logging mechanism.
  */
 static lock_and_signal _log_lock;
+/**
+ * Indicates whether we are outputing to the console.
+ * Protected by _log_lock;
+ */
+static bool _log_to_console = true;
+
+/*
+ * Request that console logging be turned on.
+ */
+void
+log_console_on() {
+    scoped_lock with(_log_lock);
+    _log_to_console = true;
+}
+
+/*
+ * Request that console logging be turned off. Can be
+ * overridden by the environment.
+ */
+void
+log_console_off(rust_env *env) {
+    scoped_lock with(_log_lock);
+    if (env->logspec == NULL) {
+        _log_to_console = false;
+    }
+}
 
 rust_log::rust_log(rust_srv *srv, rust_scheduler *sched) :
     _srv(srv),
@@ -71,7 +97,9 @@ rust_log::trace_ln(char *prefix, char *message) {
     _log_lock.lock();
     append_string(buffer, "%s", prefix);
     append_string(buffer, "%s", message);
-    _srv->log(buffer);
+    if (_log_to_console) {
+        _srv->log(buffer);
+    }
     _log_lock.unlock();
 }
 

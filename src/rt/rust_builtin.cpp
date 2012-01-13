@@ -567,6 +567,21 @@ rust_set_exit_status(intptr_t code) {
     task->kernel->set_exit_status((int)code);
 }
 
+extern void log_console_on();
+
+extern "C" CDECL void
+rust_log_console_on() {
+    log_console_on();
+}
+
+extern void log_console_off(rust_env *env);
+
+extern "C" CDECL void
+rust_log_console_off() {
+    rust_task *task = rust_scheduler::get_task();
+    log_console_off(task->kernel->env);
+}
+
 //
 // Local Variables:
 // mode: C++
