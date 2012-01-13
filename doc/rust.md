@@ -736,13 +736,24 @@ macro-generated and user-written code can cause unintentional capture.
 
 Future versions of Rust will address these issues.
 
-# Memory and concurrency model
+
+# Memory and concurrency models
+
+Rust has a memory model centered around concurrently-executing _tasks_. Thus
+its memory model and its concurrency model are best discussed simultaneously,
+as parts of each only make sense when considered from the perspective of the
+other.
+
+When reading about the memory model, keep in mind that it is partitioned in
+order to support tasks; and when reading about tasks, keep in mind that their
+isolation and communication mechanisms are only possible due to the ownership
+and lifetime semantics of the memory model.
 
 ## Memory model
 
-A Rust task's memory consists of a static set of *items*, a set of tasks
-each with its own *stack*, and a *heap*. Immutable portions of the
-heap may be shared between tasks, mutable portions may not.
+A Rust [task](#tasks)'s memory consists of a static set of *items*, a set of
+tasks each with its own *stack*, and a *heap*. Immutable portions of the heap
+may be shared between tasks, mutable portions may not.
 
 Allocations in the stack consist of *slots*, and allocations in the heap
 consist of *boxes*.
@@ -774,10 +785,12 @@ shared or unique boxes, and/or references. Sharing memory between tasks can
 only be accomplished using *unsafe* constructs, such as raw pointer
 operations or calling C code.
 
-When a task sends a value of *unique* kind over a channel, it loses
-ownership of the value sent and can no longer refer to it. This is statically
-guaranteed by the combined use of "move semantics" and unique kinds, within
-the communication system.
+When a task sends a value satisfying the `send` interface over a channel, it
+loses ownership of the value sent and can no longer refer to it. This is
+statically guaranteed by the combined use of "move semantics" and the
+compiler-checked _meaning_ of the `send` interface: it is only instantiated
+for (transitively) unique kinds of data constructor and pointers, never shared
+pointers.
 
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes (both shared and owned) are dropped.
@@ -830,7 +843,6 @@ fn incr(&i: int) {
     i = i + 1;
 }
 ~~~~~~~~
-
 
 ### Memory boxes
 
@@ -897,6 +909,198 @@ fn main() {
     takes_boxed(x);
     takes_unboxed(*x);
 }
+~~~~~~~~
+
+## Tasks
+
+An executing Rust program consists of a tree of tasks. A Rust _task_
+consists of an entry function, a stack, a set of outgoing communication
+channels and incoming communication ports, and ownership of some portion of
+the heap of a single operating-system process.
+
+Multiple Rust tasks may coexist in a single operating-system process. The
+runtime scheduler maps tasks to a certain number of operating-system threads;
+by default a number of threads is used based on the number of concurrent
+physical CPUs detected at startup, but this can be changed dynamically at
+runtime. When the number of tasks exceeds the number of threads -- which is
+quite possible -- the tasks are multiplexed onto the threads ^[This is an M:N
+scheduler, which is known to give suboptimal results for CPU-bound concurrency
+problems. In such cases, running with the same number of threads as tasks can
+give better results. The M:N scheduling in Rust exists to support very large
+numbers of tasks in contexts where threads are too resource-intensive to use
+in a similar volume. The cost of threads varies substantially per operating
+system, and is sometimes quite low, so this flexibility is not always worth
+exploiting.]
+
+
+### Communication between tasks
+
+With the exception of *unsafe* blocks, Rust tasks are isolated from
+interfering with one another's memory directly. Instead of manipulating shared
+storage, Rust tasks communicate with one another using a typed, asynchronous,
+simplex message-passing system.
+
+A _port_ is a communication endpoint that can *receive* messages. Ports
+receive messages from channels.
+
+A _channel_ is a communication endpoint that can *send* messages. Channels
+send messages to ports.
+
+Each port is implicitly boxed and mutable; as such a port has a unique
+per-task identity and cannot be replicated or transmitted. If a port value is
+copied, both copies refer to the *same* port. New ports can be
+constructed dynamically and stored in data structures.
+
+Each channel is bound to a port when the channel is constructed, so the
+destination port for a channel must exist before the channel itself. A channel
+cannot be rebound to a different port from the one it was constructed with.
+
+Channels are weak: a channel does not keep the port it is bound to
+alive. Ports are owned by their allocating task and cannot be sent over
+channels; if a task dies its ports die with it, and all channels bound to
+those ports no longer function. Messages sent to a channel connected to a dead
+port will be dropped.
+
+Channels are immutable types with meaning known to the runtime; channels can
+be sent over channels.
+
+Many channels can be bound to the same port, but each channel is bound to a
+single port. In other words, channels and ports exist in an N:1 relationship,
+N channels to 1 port. ^[It may help to remember nautical terminology
+when differentiating channels from ports.  Many different waterways --
+channels -- may lead to the same port.}
+
+Each port and channel can carry only one type of message. The message type is
+encoded as a parameter of the channel or port type. The message type of a
+channel is equal to the message type of the port it is bound to. The types of
+messages must satisfy the `send` built-in interface.
+
+Messages are generally sent asynchronously, with optional rate-limiting on the
+transmit side. A channel contains a message queue and asynchronously sending a
+message merely inserts it into the sending channel's queue; message receipt is
+the responsibility of the receiving task.
+
+Messages are sent on channels and received on ports using standard library
+functions.
+
+
+### Task lifecycle
+
+The _lifecycle_ of a task consists of a finite set of states and events
+that cause transitions between the states. The lifecycle states of a task are:
+
+* running
+* blocked
+* failing
+* dead
+
+A task begins its lifecycle -- once it has been spawned -- in the *running*
+state. In this state it executes the statements of its entry function, and any
+functions called by the entry function.
+
+A task may transition from the *running* state to the *blocked* state any time
+it makes a blocking recieve call on a port, or attempts a rate-limited
+blocking send on a channel. When the communication expression can be completed
+-- when a message arrives at a sender, or a queue drains sufficiently to
+complete a rate-limited send -- then the blocked task will unblock and
+transition back to *running*.
+
+A task may transition to the *failing* state at any time, due being
+killed by some external event or internally, from the evaluation of a
+`fail` expression. Once *failing*, a task unwinds its stack and
+transitions to the *dead* state. Unwinding the stack of a task is done by
+the task itself, on its own control stack. If a value with a destructor is
+freed during unwinding, the code for the destructor is run, also on the task's
+control stack. Running the destructor code causes a temporary transition to a
+*running* state, and allows the destructor code to cause any subsequent
+state transitions.  The original task of unwinding and failing thereby may
+suspend temporarily, and may involve (recursive) unwinding of the stack of a
+failed destructor. Nonetheless, the outermost unwinding activity will continue
+until the stack is unwound and the task transitions to the *dead*
+state. There is no way to "recover" from task failure.  Once a task has
+temporarily suspended its unwinding in the *failing* state, failure
+occurring from within this destructor results in *hard* failure.  The
+unwinding procedure of hard failure frees resources but does not execute
+destructors.  The original (soft) failure is still resumed at the point where
+it was temporarily suspended.
+
+A task in the *dead* state cannot transition to other states; it exists
+only to have its termination status inspected by other tasks, and/or to await
+reclamation when the last reference to it drops.
+
+
+### Task scheduling
+
+The currently scheduled task is given a finite *time slice* in which to
+execute, after which it is *descheduled* at a loop-edge or similar
+preemption point, and another task within is scheduled, pseudo-randomly.
+
+An executing task can yield control at any time, by making a library call to
+`std::task::yield`, which deschedules it immediately. Entering any other
+non-executing state (blocked, dead) similarly deschedules the task.
+
+
+### Spawning tasks
+
+A call to `std::task::spawn`, passing a 0-argument function as its single
+argument, causes the runtime to construct a new task executing the passed
+function. The passed function is referred to as the _entry function_ for
+the spawned task, and any captured environment is carries is moved from the
+spawning task to the spawned task before the spawned task begins execution.
+
+The result of a `spawn` call is a `std::task::task` value.
+
+An example of a `spawn` call:
+
+~~~~
+import std::task::*;
+import std::comm::*;
+
+fn helper(c: chan<u8>) {
+    // do some work.
+    let result = ...;
+    send(c, result);
+}
+
+let p: port<u8>;
+
+spawn(bind helper(chan(p)));
+// let task run, do other things.
+// ...
+let result = recv(p);
+~~~~
+
+
+### Sending values into channels
+
+Sending a value into a channel is done by a library call to `std::comm::send`,
+which takes a channel and a value to send, and moves the value into the
+channel's outgoing buffer.
+
+An example of a send:
+
+~~~~
+import std::comm::*;
+let c: chan<str> = ...;
+send(c, "hello, world");
+~~~~
+
+
+### Receiving values from ports
+
+Receiving a value is done by a call to the `recv` method, on a value of type
+`std::comm::port`. This call causes the receiving task to enter the *blocked
+reading* state until a task is sending a value to the port, at which point the
+runtime pseudo-randomly selects a sending task and moves a value from the head
+of one of the task queues to the call's return value, and un-blocks the
+receiving task. See [communication system](#communication-system).
+
+An example of a *receive*:
+
+~~~~~~~~
+import std::comm::*;
+let p: port<str> = ...;
+let s: str = recv(p);
 ~~~~~~~~
 
 
