@@ -416,12 +416,18 @@ do
 
             # host lib dir
             make_dir $h/stage$i/$CFG_LIBDIR
+	    # FIXME: Transitional. remove
+	    make_dir $h/stage$i/lib
 
             # target bin dir
             make_dir $h/stage$i/$CFG_LIBDIR/rustc/$t/bin
+	    # FIXME: Transitional. remove
+	    make_dir $h/stage$i/lib/rustc/$t/bin
 
             # target lib dir
             make_dir $h/stage$i/$CFG_LIBDIR/rustc/$t/$CFG_LIBDIR
+	    # FIXME: Transitional. remove
+	    make_dir $h/stage$i/lib/rustc/$t/lib
         done
     done
 
