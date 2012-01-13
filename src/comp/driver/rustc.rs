@@ -61,6 +61,9 @@ options:
 }
 
 fn main(args: [str]) {
+    // Don't display log spew by default. Can override with RUST_LOG.
+    logging::console_off();
+
     let args = args, binary = vec::shift(args);
 
     if vec::len(args) == 0u { usage(binary); ret; }
