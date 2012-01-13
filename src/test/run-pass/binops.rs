@@ -132,29 +132,6 @@ fn test_native_fn() {
     */
 }
 
-fn test_obj() {
-    let o1 = obj () { };
-    let o2 = obj () { };
-
-    assert (o1 == o1);
-
-    // FIXME (#815): This doesn't work on linux only. Wierd.
-    //assert (o1 != o2);
-    //assert (!(o1 == o2));
-
-    obj constr1(i: int) { }
-    obj constr2(i: int) { }
-
-    let o5 = constr1(10);
-    let o6 = constr1(10);
-    let o7 = constr1(11);
-    let o8 = constr2(11);
-
-    assert (o5 != o6);
-    assert (o6 != o7);
-    assert (o7 != o8);
-}
-
 fn main() {
     test_nil();
     test_bool();
@@ -166,5 +143,4 @@ fn main() {
     test_task();
     test_fn();
     test_native_fn();
-    test_obj();
 }

@@ -59,14 +59,6 @@ fn test_box_rec() {
     assert *i == 1;
 }
 
-fn test_obj() {
-    obj o(_f: r) {}
-    let i = @mutable 0;
-    let rr = r(i);
-    { let _oo = o(rr); }
-    assert *i == 1;
-}
-
 fn main() {
     test_box();
     test_rec();
@@ -75,5 +67,4 @@ fn main() {
     test_tup();
     test_unique();
     test_box_rec();
-    test_obj();
 }

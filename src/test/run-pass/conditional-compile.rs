@@ -25,13 +25,6 @@ tag tg { foo; }
 tag tg { bar; }
 
 #[cfg(bogus)]
-obj o() {
-    fn f() { ret bogus; }
-}
-
-obj o() { }
-
-#[cfg(bogus)]
 resource r(i: int) { }
 
 resource r(i: int) { }

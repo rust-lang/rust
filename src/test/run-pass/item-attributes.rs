@@ -31,13 +31,6 @@ mod test_single_attr_outer {
     #[attr = "val"]
     #[abi = "cdecl"]
     native mod rustrt { }
-
-    #[attr = "val"]
-    type t = obj { };
-
-
-    #[attr = "val"]
-    obj o() { }
 }
 
 mod test_multi_attr_outer {
@@ -61,12 +54,7 @@ mod test_multi_attr_outer {
 
     #[attr1 = "val"]
     #[attr2 = "val"]
-    type t = obj { };
-
-
-    #[attr1 = "val"]
-    #[attr2 = "val"]
-    obj o() { }
+    type t = {x: int};
 }
 
 mod test_stmt_single_attr_outer {
@@ -89,13 +77,6 @@ mod test_stmt_single_attr_outer {
         native mod rustrt {
         }
         */
-
-        #[attr = "val"]
-        type t = obj { };
-
-        #[attr = "val"]
-        obj o() { }
-
     }
 }
 
@@ -123,15 +104,6 @@ mod test_stmt_multi_attr_outer {
         native mod rustrt {
         }
         */
-
-        #[attr1 = "val"]
-        #[attr2 = "val"]
-        type t = obj { };
-
-        #[attr1 = "val"]
-        #[attr2 = "val"]
-        obj o() { }
-
     }
 }
 

@@ -159,7 +159,6 @@ fn doc_item(rd: rustdoc, item: @ast::item) {
         ast::item_mod(_mod) { }
         ast::item_ty(ty, typarams) { }
         ast::item_tag(variant, typarams) { }
-        ast::item_obj(_obj, typarams, node_id) { }
         ast::item_res(_, _, _, _, _) { }
     };
 }

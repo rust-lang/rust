@@ -1,10 +1,9 @@
 type foo = { mutable z : fn@() };
 
 fn nop() { }
-fn nop_foo(_y: o, _x : @foo) { }
+fn nop_foo(_y: @int, _x : @foo) { }
 
-obj o() {
-}
+fn o() -> @int { @10 }
 
 fn main() {
     let w = @{ mutable z: bind nop() };

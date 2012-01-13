@@ -12,7 +12,6 @@ fn main() {
     test00();
     // test01();
     test02();
-    test03();
     test04();
     test05();
     test06();
@@ -76,18 +75,6 @@ fn test02() {
     #debug("Reading from a local task port.");
     let value: int = recv(p);
     log(debug, value);
-}
-
-obj vector(mutable x: int, y: int) {
-    fn length() -> int { x = x + 2; ret x + y; }
-}
-
-fn test03() {
-    #debug("Creating object ...");
-    let v: vector = vector(1, 2);
-    #debug("created object ...");
-    let t: vector = v;
-    log(debug, v.length());
 }
 
 fn test04_start() {

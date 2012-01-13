@@ -3,6 +3,6 @@
 
 fn f(a: int, b: int) : lt(a, b) { }
 
-obj lt(a: int, b: int) { }
+fn lt(a: int, b: int) { }
 
 fn main() { let a: int = 10; let b: int = 23; check (lt(a, b)); f(a, b); }

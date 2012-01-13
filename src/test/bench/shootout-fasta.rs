@@ -13,12 +13,11 @@ import str;
 
 fn LINE_LENGTH() -> uint { ret 60u; }
 
-obj myrandom(mutable last: u32) {
-    fn next(mx: u32) -> u32 {
-        last = (last * 3877u32 + 29573u32) % 139968u32;
-        let ans = mx * last / 139968u32;
-        ret ans;
-    }
+type myrandom = @{mutable last: u32};
+
+fn myrandom_next(r: myrandom, mx: u32) -> u32 {
+    r.last = (r.last * 3877u32 + 29573u32) % 139968u32;
+    mx * r.last / 139968u32
 }
 
 type aminoacids = {ch: char, prob: u32};
@@ -45,10 +44,11 @@ fn select_random(r: u32, genelist: [aminoacids]) -> char {
 
 fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
     log(debug, ">" + id + " " + desc);
-    let rng = myrandom(std::rand::mk_rng().next());
+    let rng = @{mutable last: std::rand::mk_rng().next()};
     let op: str = "";
-    uint::range(0u, n as uint) {|i|
-        str::push_byte(op, select_random(rng.next(100u32), genelist) as u8);
+    uint::range(0u, n as uint) {|_i|
+        str::push_byte(op, select_random(myrandom_next(rng, 100u32),
+                                         genelist) as u8);
         if str::byte_len(op) >= LINE_LENGTH() {
             log(debug, op);
             op = "";
@@ -73,7 +73,7 @@ fn make_repeat_fasta(id: str, desc: str, s: str, n: int) {
 
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
 
-fn main(args: [str]) {
+fn main() {
     let iub: [aminoacids] =
         make_cumulative([acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
                          acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
