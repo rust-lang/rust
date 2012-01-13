@@ -4,6 +4,7 @@
 // while providing a base that other test frameworks may build off of.
 
 import result::{ok, err};
+import io::writer_util;
 
 export test_name;
 export test_fn;
@@ -28,13 +29,6 @@ export joinable;
 #[abi = "cdecl"]
 native mod rustrt {
     fn sched_threads() -> uint;
-}
-
-// FIXME Kludge to work around issue #1494 . Simply import io::writer_util
-// after the next snapshot.
-impl writer_util for io::writer {
-    fn write_str(s: str) { self.write(str::bytes(s)); }
-    fn write_line(s: str) { self.write(str::bytes(s + "\n")); }
 }
 
 // The name of a test. By convention this follows the rules for rust
