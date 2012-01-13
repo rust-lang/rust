@@ -394,7 +394,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     let scx = create_structure(file_node,
-                               option::get(cx.dbg_cx).names.next("rec"),
+                               option::get(cx.dbg_cx).names("rec"),
                                line_from_span(cx.sess.codemap,
                                               span) as int);
     for field in fields {
@@ -738,10 +738,10 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
       ast_map::node_expr(expr) {
         alt expr.node {
           ast::expr_fn(_, decl, _, _) {
-            (dbg_cx.names.next("fn"), decl.output, expr.id)
+            (dbg_cx.names("fn"), decl.output, expr.id)
           }
           ast::expr_fn_block(decl, _) {
-            (dbg_cx.names.next("fn"), decl.output, expr.id)
+            (dbg_cx.names("fn"), decl.output, expr.id)
           }
         }
       }

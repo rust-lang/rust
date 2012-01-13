@@ -340,7 +340,7 @@ fn get_static_dict(bcx: @block_ctxt, origin: typeck::dict_origin)
       none. {}
     }
     let ptrs = C_struct(get_dict_ptrs(bcx, origin).ptrs);
-    let name = ccx.names.next("dict");
+    let name = ccx.names("dict");
     let gvar = str::as_buf(name, {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(ptrs), buf)
     });

@@ -33,54 +33,60 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
     ret syntax_expanders;
 }
 
-obj ext_ctxt(sess: session,
-             mutable backtrace: codemap::opt_span) {
-
-    fn session() -> session { ret sess; }
-
-    fn print_backtrace() { }
-
-    fn backtrace() -> codemap::opt_span { ret backtrace; }
-
-    fn bt_push(sp: span) {
-        backtrace =
-            codemap::os_some(@{lo: sp.lo,
-                               hi: sp.hi,
-                               expanded_from: backtrace});
-    }
-    fn bt_pop() {
-        alt backtrace {
-          codemap::os_some(@{expanded_from: pre, _}) {
-            let tmp = pre;
-            backtrace = tmp;
-          }
-          _ { self.bug("tried to pop without a push"); }
-        }
-    }
-
-    fn span_fatal(sp: span, msg: str) -> ! {
-        self.print_backtrace();
-        sess.span_fatal(sp, msg);
-    }
-    fn span_err(sp: span, msg: str) {
-        self.print_backtrace();
-        sess.span_err(sp, msg);
-    }
-    fn span_unimpl(sp: span, msg: str) -> ! {
-        self.print_backtrace();
-        sess.span_unimpl(sp, msg);
-    }
-    fn span_bug(sp: span, msg: str) -> ! {
-        self.print_backtrace();
-        sess.span_bug(sp, msg);
-    }
-    fn bug(msg: str) -> ! { self.print_backtrace(); sess.bug(msg); }
-    fn next_id() -> ast::node_id { ret sess.next_node_id(); }
-
+iface ext_ctxt {
+    fn session() -> session;
+    fn print_backtrace();
+    fn backtrace() -> codemap::opt_span;
+    fn bt_push(sp: span);
+    fn bt_pop();
+    fn span_fatal(sp: span, msg: str) -> !;
+    fn span_err(sp: span, msg: str);
+    fn span_unimpl(sp: span, msg: str) -> !;
+    fn span_bug(sp: span, msg: str) -> !;
+    fn bug(msg: str) -> !;
+    fn next_id() -> ast::node_id;
 }
 
 fn mk_ctxt(sess: session) -> ext_ctxt {
-    ret ext_ctxt(sess, codemap::os_none);
+    type ctxt_repr = {sess: session,
+                      mutable backtrace: codemap::opt_span};
+    impl of ext_ctxt for ctxt_repr {
+        fn session() -> session { self.sess }
+        fn print_backtrace() { }
+        fn backtrace() -> codemap::opt_span { self.backtrace }
+        fn bt_push(sp: span) {
+            self.backtrace = codemap::os_some(
+                @{lo: sp.lo, hi: sp.hi, expanded_from: self.backtrace});
+        }
+        fn bt_pop() {
+            alt self.backtrace {
+              codemap::os_some(@{expanded_from: pre, _}) {
+                let tmp = pre;
+                self.backtrace = tmp;
+              }
+              _ { self.bug("tried to pop without a push"); }
+            }
+        }
+        fn span_fatal(sp: span, msg: str) -> ! {
+            self.print_backtrace();
+            self.sess.span_fatal(sp, msg);
+        }
+        fn span_err(sp: span, msg: str) {
+            self.print_backtrace();
+            self.sess.span_err(sp, msg);
+        }
+        fn span_unimpl(sp: span, msg: str) -> ! {
+            self.print_backtrace();
+            self.sess.span_unimpl(sp, msg);
+        }
+        fn span_bug(sp: span, msg: str) -> ! {
+            self.print_backtrace();
+            self.sess.span_bug(sp, msg);
+        }
+        fn bug(msg: str) -> ! { self.print_backtrace(); self.sess.bug(msg); }
+        fn next_id() -> ast::node_id { ret self.sess.next_node_id(); }
+    }
+    {sess: sess, mutable backtrace: codemap::os_none} as ext_ctxt
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {

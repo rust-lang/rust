@@ -100,23 +100,28 @@ const size_infinity: int = 0xffff;
 fn mk_printer(out: io::writer, linewidth: uint) -> printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
-
     let n: uint = 3u * linewidth;
     #debug("mk_printer %u", linewidth);
     let token: [mutable token] = vec::init_elt_mut(EOF, n);
     let size: [mutable int] = vec::init_elt_mut(0, n);
     let scan_stack: [mutable uint] = vec::init_elt_mut(0u, n);
     let print_stack: [print_stack_elt] = [];
-    ret printer(out, n, linewidth as int, // margin
-                linewidth as int, // space
-                0u, // left
-                0u, // right
-                token, size, 0, // left_total
-                0, // right_total
-                scan_stack, true, // scan_stack_empty
-                0u, // top
-                0u, // bottom
-                print_stack, 0);
+    @{out: out,
+      buf_len: n,
+      mutable margin: linewidth as int,
+      mutable space: linewidth as int,
+      mutable left: 0u,
+      mutable right: 0u,
+      mutable token: token,
+      mutable size: size,
+      mutable left_total: 0,
+      mutable right_total: 0,
+      mutable scan_stack: scan_stack,
+      mutable scan_stack_empty: true,
+      mutable top: 0u,
+      mutable bottom: 0u,
+      mutable print_stack: print_stack,
+      mutable pending_indentation: 0}
 }
 
 
@@ -197,108 +202,96 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
  * the method called 'pretty_print', and the 'PRINT' process is the method
  * called 'print'.
  */
-obj printer(out: io::writer,
-            buf_len: uint,
-            mutable margin: int, // width of lines we're constrained to
+type printer = @{
+    out: io::writer,
+    buf_len: uint,
+    mutable margin: int, // width of lines we're constrained to
+    mutable space: int, // number of spaces left on line
+    mutable left: uint, // index of left side of input stream
+    mutable right: uint, // index of right side of input stream
+    mutable token: [mutable token], // ring-buffr stream goes through
+    mutable size: [mutable int], // ring-buffer of calculated sizes
+    mutable left_total: int, // running size of stream "...left"
+    mutable right_total: int, // running size of stream "...right"
+    // pseudo-stack, really a ring too. Holds the
+    // primary-ring-buffers index of the BEGIN that started the
+    // current block, possibly with the most recent BREAK after that
+    // BEGIN (if there is any) on top of it. Stuff is flushed off the
+    // bottom as it becomes irrelevant due to the primary ring-buffer
+    // advancing.
+    mutable scan_stack: [mutable uint],
+    mutable scan_stack_empty: bool, // top==bottom disambiguator
+    mutable top: uint, // index of top of scan_stack
+    mutable bottom: uint, // index of bottom of scan_stack
+    // stack of blocks-in-progress being flushed by print
+    mutable print_stack: [print_stack_elt],
+    // buffered indentation to avoid writing trailing whitespace
+    mutable pending_indentation: int
+};
 
-            mutable space: int, // number of spaces left on line
-
-            mutable left: uint, // index of left side of input stream
-
-            mutable right: uint, // index of right side of input stream
-
-            mutable token: [mutable token],
-
-            // ring-buffr stream goes through
-            mutable size: [mutable int], // ring-buffer of calculated sizes
-
-            mutable left_total: int, // running size of stream "...left"
-
-            mutable right_total: int, // running size of stream "...right"
-
-             // pseudo-stack, really a ring too. Holds the
-             // primary-ring-buffers index of the BEGIN that started the
-             // current block, possibly with the most recent BREAK after that
-             // BEGIN (if there is any) on top of it. Stuff is flushed off the
-             // bottom as it becomes irrelevant due to the primary ring-buffer
-             // advancing.
-             mutable scan_stack: [mutable uint],
-            mutable scan_stack_empty: bool, // top==bottom disambiguator
-
-            mutable top: uint, // index of top of scan_stack
-
-            mutable bottom: uint, // index of bottom of scan_stack
-
-             // stack of blocks-in-progress being flushed by print
-            mutable print_stack: [print_stack_elt],
-
-
-            // buffered indentation to avoid writing trailing whitespace
-            mutable pending_indentation: int) {
-
-    fn last_token() -> token { ret token[right]; }
-
+impl printer for printer {
+    fn last_token() -> token { self.token[self.right] }
     // be very careful with this!
-    fn replace_last_token(t: token) { token[right] = t; }
-
+    fn replace_last_token(t: token) { self.token[self.right] = t; }
     fn pretty_print(t: token) {
-        #debug("pp [%u,%u]", left, right);
+        #debug("pp [%u,%u]", self.left, self.right);
         alt t {
           EOF. {
-            if !scan_stack_empty {
+            if !self.scan_stack_empty {
                 self.check_stack(0);
-                self.advance_left(token[left], size[left]);
+                self.advance_left(self.token[self.left],
+                                  self.size[self.left]);
             }
             self.indent(0);
           }
           BEGIN(b) {
-            if scan_stack_empty {
-                left_total = 1;
-                right_total = 1;
-                left = 0u;
-                right = 0u;
+            if self.scan_stack_empty {
+                self.left_total = 1;
+                self.right_total = 1;
+                self.left = 0u;
+                self.right = 0u;
             } else { self.advance_right(); }
-            #debug("pp BEGIN/buffer [%u,%u]", left, right);
-            token[right] = t;
-            size[right] = -right_total;
-            self.scan_push(right);
+            #debug("pp BEGIN/buffer [%u,%u]", self.left, self.right);
+            self.token[self.right] = t;
+            self.size[self.right] = -self.right_total;
+            self.scan_push(self.right);
           }
           END. {
-            if scan_stack_empty {
-                #debug("pp END/print [%u,%u]", left, right);
+            if self.scan_stack_empty {
+                #debug("pp END/print [%u,%u]", self.left, self.right);
                 self.print(t, 0);
             } else {
-                #debug("pp END/buffer [%u,%u]", left, right);
+                #debug("pp END/buffer [%u,%u]", self.left, self.right);
                 self.advance_right();
-                token[right] = t;
-                size[right] = -1;
-                self.scan_push(right);
+                self.token[self.right] = t;
+                self.size[self.right] = -1;
+                self.scan_push(self.right);
             }
           }
           BREAK(b) {
-            if scan_stack_empty {
-                left_total = 1;
-                right_total = 1;
-                left = 0u;
-                right = 0u;
+            if self.scan_stack_empty {
+                self.left_total = 1;
+                self.right_total = 1;
+                self.left = 0u;
+                self.right = 0u;
             } else { self.advance_right(); }
-            #debug("pp BREAK/buffer [%u,%u]", left, right);
+            #debug("pp BREAK/buffer [%u,%u]", self.left, self.right);
             self.check_stack(0);
-            self.scan_push(right);
-            token[right] = t;
-            size[right] = -right_total;
-            right_total += b.blank_space;
+            self.scan_push(self.right);
+            self.token[self.right] = t;
+            self.size[self.right] = -self.right_total;
+            self.right_total += b.blank_space;
           }
           STRING(s, len) {
-            if scan_stack_empty {
-                #debug("pp STRING/print [%u,%u]", left, right);
+            if self.scan_stack_empty {
+                #debug("pp STRING/print [%u,%u]", self.left, self.right);
                 self.print(t, len);
             } else {
-                #debug("pp STRING/buffer [%u,%u]", left, right);
+                #debug("pp STRING/buffer [%u,%u]", self.left, self.right);
                 self.advance_right();
-                token[right] = t;
-                size[right] = len;
-                right_total += len;
+                self.token[self.right] = t;
+                self.size[self.right] = len;
+                self.right_total += len;
                 self.check_stream();
             }
           }
@@ -306,83 +299,92 @@ obj printer(out: io::writer,
     }
     fn check_stream() {
         #debug("check_stream [%u, %u] with left_total=%d, right_total=%d",
-               left, right, left_total, right_total);
-        if right_total - left_total > space {
+               self.left, self.right, self.left_total, self.right_total);
+        if self.right_total - self.left_total > self.space {
             #debug("scan window is %d, longer than space on line (%d)",
-                   right_total - left_total, space);
-            if !scan_stack_empty {
-                if left == scan_stack[bottom] {
-                    #debug("setting %u to infinity and popping", left);
-                    size[self.scan_pop_bottom()] = size_infinity;
+                   self.right_total - self.left_total, self.space);
+            if !self.scan_stack_empty {
+                if self.left == self.scan_stack[self.bottom] {
+                    #debug("setting %u to infinity and popping", self.left);
+                    self.size[self.scan_pop_bottom()] = size_infinity;
                 }
             }
-            self.advance_left(token[left], size[left]);
-            if left != right { self.check_stream(); }
+            self.advance_left(self.token[self.left], self.size[self.left]);
+            if self.left != self.right { self.check_stream(); }
         }
     }
     fn scan_push(x: uint) {
         #debug("scan_push %u", x);
-        if scan_stack_empty {
-            scan_stack_empty = false;
-        } else { top += 1u; top %= buf_len; assert (top != bottom); }
-        scan_stack[top] = x;
+        if self.scan_stack_empty {
+            self.scan_stack_empty = false;
+        } else {
+            self.top += 1u;
+            self.top %= self.buf_len;
+            assert (self.top != self.bottom);
+        }
+        self.scan_stack[self.top] = x;
     }
     fn scan_pop() -> uint {
-        assert (!scan_stack_empty);
-        let x = scan_stack[top];
-        if top == bottom {
-            scan_stack_empty = true;
-        } else { top += buf_len - 1u; top %= buf_len; }
+        assert (!self.scan_stack_empty);
+        let x = self.scan_stack[self.top];
+        if self.top == self.bottom {
+            self.scan_stack_empty = true;
+        } else { self.top += self.buf_len - 1u; self.top %= self.buf_len; }
         ret x;
     }
-    fn scan_top() -> uint { assert (!scan_stack_empty); ret scan_stack[top]; }
+    fn scan_top() -> uint {
+        assert (!self.scan_stack_empty);
+        ret self.scan_stack[self.top];
+    }
     fn scan_pop_bottom() -> uint {
-        assert (!scan_stack_empty);
-        let x = scan_stack[bottom];
-        if top == bottom {
-            scan_stack_empty = true;
-        } else { bottom += 1u; bottom %= buf_len; }
+        assert (!self.scan_stack_empty);
+        let x = self.scan_stack[self.bottom];
+        if self.top == self.bottom {
+            self.scan_stack_empty = true;
+        } else { self.bottom += 1u; self.bottom %= self.buf_len; }
         ret x;
     }
     fn advance_right() {
-        right += 1u;
-        right %= buf_len;
-        assert (right != left);
+        self.right += 1u;
+        self.right %= self.buf_len;
+        assert (self.right != self.left);
     }
     fn advance_left(x: token, L: int) {
-        #debug("advnce_left [%u,%u], sizeof(%u)=%d", left, right, left, L);
+        #debug("advnce_left [%u,%u], sizeof(%u)=%d", self.left, self.right,
+               self.left, L);
         if L >= 0 {
             self.print(x, L);
             alt x {
-              BREAK(b) { left_total += b.blank_space; }
-              STRING(_, len) { assert (len == L); left_total += len; }
+              BREAK(b) { self.left_total += b.blank_space; }
+              STRING(_, len) { assert (len == L); self.left_total += len; }
               _ { }
             }
-            if left != right {
-                left += 1u;
-                left %= buf_len;
-                self.advance_left(token[left], size[left]);
+            if self.left != self.right {
+                self.left += 1u;
+                self.left %= self.buf_len;
+                self.advance_left(self.token[self.left],
+                                  self.size[self.left]);
             }
         }
     }
     fn check_stack(k: int) {
-        if !scan_stack_empty {
+        if !self.scan_stack_empty {
             let x = self.scan_top();
-            alt token[x] {
+            alt self.token[x] {
               BEGIN(b) {
                 if k > 0 {
-                    size[self.scan_pop()] = size[x] + right_total;
+                    self.size[self.scan_pop()] = self.size[x] +
+                        self.right_total;
                     self.check_stack(k - 1);
                 }
               }
               END. {
                 // paper says + not =, but that makes no sense.
-
-                size[self.scan_pop()] = 1;
+                self.size[self.scan_pop()] = 1;
                 self.check_stack(k + 1);
               }
               _ {
-                size[self.scan_pop()] = size[x] + right_total;
+                self.size[self.scan_pop()] = self.size[x] + self.right_total;
                 if k > 0 { self.check_stack(k); }
               }
             }
@@ -390,69 +392,69 @@ obj printer(out: io::writer,
     }
     fn print_newline(amount: int) {
         #debug("NEWLINE %d", amount);
-        out.write_str("\n");
-        pending_indentation = 0;
+        self.out.write_str("\n");
+        self.pending_indentation = 0;
         self.indent(amount);
     }
     fn indent(amount: int) {
         #debug("INDENT %d", amount);
-        pending_indentation += amount;
+        self.pending_indentation += amount;
     }
-    fn top() -> print_stack_elt {
-        let n = vec::len(print_stack);
+    fn get_top() -> print_stack_elt {
+        let n = vec::len(self.print_stack);
         let top: print_stack_elt = {offset: 0, pbreak: broken(inconsistent)};
-        if n != 0u { top = print_stack[n - 1u]; }
+        if n != 0u { top = self.print_stack[n - 1u]; }
         ret top;
     }
     fn write_str(s: str) {
-        while pending_indentation > 0 {
-            out.write_str(" ");
-            pending_indentation -= 1;
+        while self.pending_indentation > 0 {
+            self.out.write_str(" ");
+            self.pending_indentation -= 1;
         }
-        out.write_str(s);
+        self.out.write_str(s);
     }
     fn print(x: token, L: int) {
         #debug("print %s %d (remaining line space=%d)", tok_str(x), L,
-               space);
-        log(debug, buf_str(token, size, left, right, 6u));
+               self.space);
+        log(debug, buf_str(self.token, self.size, self.left, self.right, 6u));
         alt x {
           BEGIN(b) {
-            if L > space {
-                let col = margin - space + b.offset;
+            if L > self.space {
+                let col = self.margin - self.space + b.offset;
                 #debug("print BEGIN -> push broken block at col %d", col);
-                print_stack += [{offset: col, pbreak: broken(b.breaks)}];
+                self.print_stack += [{offset: col, pbreak: broken(b.breaks)}];
             } else {
                 #debug("print BEGIN -> push fitting block");
-                print_stack += [{offset: 0, pbreak: fits}];
+                self.print_stack += [{offset: 0, pbreak: fits}];
             }
           }
           END. {
             #debug("print END -> pop END");
-            assert (vec::len(print_stack) != 0u);
-            vec::pop(print_stack);
+            assert (vec::len(self.print_stack) != 0u);
+            vec::pop(self.print_stack);
           }
           BREAK(b) {
-            let top = self.top();
+            let top = self.get_top();
             alt top.pbreak {
               fits. {
                 #debug("print BREAK in fitting block");
-                space -= b.blank_space;
+                self.space -= b.blank_space;
                 self.indent(b.blank_space);
               }
               broken(consistent.) {
                 #debug("print BREAK in consistent block");
                 self.print_newline(top.offset + b.offset);
-                space = margin - (top.offset + b.offset);
+                self.space = self.margin - (top.offset + b.offset);
               }
               broken(inconsistent.) {
-                if L > space {
+                if L > self.space {
                     #debug("print BREAK w/ newline in inconsistent");
                     self.print_newline(top.offset + b.offset);
-                    space = margin - (top.offset + b.offset);
+                    self.space = self.margin - (top.offset + b.offset);
                 } else {
                     #debug("print BREAK w/o newline in inconsistent");
                     self.indent(b.blank_space);
-                    space -= b.blank_space;
+                    self.space -= b.blank_space;
                 }
               }
             }
@@ -461,19 +463,16 @@ obj printer(out: io::writer,
             #debug("print STRING");
             assert (L == len);
             // assert L <= space;
-
-            space -= len;
+            self.space -= len;
             self.write_str(s);
           }
           EOF. {
             // EOF should never get here.
-
             fail;
           }
         }
     }
 }
-
 
 // Convenience functions to talk to the printer.
 fn box(p: printer, indent: uint, b: breaks) {

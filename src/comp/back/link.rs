@@ -545,7 +545,7 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt, t: ty::t, name: str) ->
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: [str],
                                         flav: str) -> str {
-    ret mangle(path + [ccx.names.next(flav)]);
+    ret mangle(path + [ccx.names(flav)]);
 }
 
 fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: [str]) -> str {
@@ -553,7 +553,7 @@ fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: [str]) -> str {
 }
 
 fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
-    ret ccx.names.next(flav);
+    ret ccx.names(flav);
 }
 
 // If the user wants an exe generated we need to invoke

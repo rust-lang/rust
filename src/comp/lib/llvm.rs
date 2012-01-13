@@ -898,37 +898,27 @@ native mod llvm {
 
 /* Memory-managed object interface to type handles. */
 
-obj type_names(type_names: std::map::hashmap<TypeRef, str>,
-               named_types: std::map::hashmap<str, TypeRef>) {
+type type_names = @{type_names: std::map::hashmap<TypeRef, str>,
+                    named_types: std::map::hashmap<str, TypeRef>};
 
-    fn associate(s: str, t: TypeRef) {
-        assert (!named_types.contains_key(s));
-        assert (!type_names.contains_key(t));
-        type_names.insert(t, s);
-        named_types.insert(s, t);
-    }
+fn associate_type(tn: type_names, s: str, t: TypeRef) {
+    assert tn.type_names.insert(t, s);
+    assert tn.named_types.insert(s, t);
+}
 
-    fn type_has_name(t: TypeRef) -> bool { ret type_names.contains_key(t); }
+fn type_has_name(tn: type_names, t: TypeRef) -> option::t<str> {
+    ret tn.type_names.find(t);
+}
 
-    fn get_name(t: TypeRef) -> str { ret type_names.get(t); }
-
-    fn name_has_type(s: str) -> bool { ret named_types.contains_key(s); }
-
-    fn get_type(s: str) -> TypeRef { ret named_types.get(s); }
+fn name_has_type(tn: type_names, s: str) -> option::t<TypeRef> {
+    ret tn.named_types.find(s);
 }
 
 fn mk_type_names() -> type_names {
-    let nt = std::map::new_str_hash::<TypeRef>();
-
     fn hash(&&t: TypeRef) -> uint { ret t as uint; }
-
     fn eq(&&a: TypeRef, &&b: TypeRef) -> bool { ret a as uint == b as uint; }
-
-    let hasher: std::map::hashfn<TypeRef> = hash;
-    let eqer: std::map::eqfn<TypeRef> = eq;
-    let tn = std::map::mk_hashmap::<TypeRef, str>(hasher, eqer);
-
-    ret type_names(tn, nt);
+    @{type_names: std::map::mk_hashmap(hash, eq),
+      named_types: std::map::new_str_hash()}
 }
 
 fn type_to_str(names: type_names, ty: TypeRef) -> str {
@@ -937,8 +927,10 @@ fn type_to_str(names: type_names, ty: TypeRef) -> str {
 
 fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
    str {
-
-    if names.type_has_name(ty) { ret names.get_name(ty); }
+    alt type_has_name(names, ty) {
+      option::some(n) { ret n; }
+      _ {}
+    }
 
     let outer = outer0 + [ty];
 

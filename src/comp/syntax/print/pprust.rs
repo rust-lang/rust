@@ -6,7 +6,7 @@ import syntax::codemap::codemap;
 import ast;
 import ast_util;
 import option::{some, none};
-import pp::{break_offset, word,
+import pp::{break_offset, word, printer,
             space, zerobreak, hardbreak, breaks, consistent,
             inconsistent, eof};
 

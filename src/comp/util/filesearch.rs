@@ -24,33 +24,32 @@ fn pick_file(file: fs::path, path: fs::path) -> option::t<fs::path> {
     else { option::none }
 }
 
-type filesearch = obj {
+iface filesearch {
     fn sysroot() -> fs::path;
     fn lib_search_paths() -> [fs::path];
     fn get_target_lib_path() -> fs::path;
     fn get_target_lib_file_path(file: fs::path) -> fs::path;
-};
+}
 
 fn mk_filesearch(maybe_sysroot: option::t<fs::path>,
                  target_triple: str,
                  addl_lib_search_paths: [fs::path]) -> filesearch {
-    obj filesearch_impl(sysroot: fs::path,
-                        addl_lib_search_paths: [fs::path],
-                        target_triple: str) {
-        fn sysroot() -> fs::path { sysroot }
+    type filesearch_impl = {sysroot: fs::path,
+                            addl_lib_search_paths: [fs::path],
+                            target_triple: str};
+    impl of filesearch for filesearch_impl {
+        fn sysroot() -> fs::path { self.sysroot }
         fn lib_search_paths() -> [fs::path] {
-            addl_lib_search_paths
-                + [make_target_lib_path(sysroot, target_triple)]
+            self.addl_lib_search_paths
+                + [make_target_lib_path(self.sysroot, self.target_triple)]
                 + alt get_cargo_lib_path() {
                   result::ok(p) { [p] }
                   result::err(p) { [] }
                 }
         }
-
         fn get_target_lib_path() -> fs::path {
-            make_target_lib_path(sysroot, target_triple)
+            make_target_lib_path(self.sysroot, self.target_triple)
         }
-
         fn get_target_lib_file_path(file: fs::path) -> fs::path {
             fs::connect(self.get_target_lib_path(), file)
         }
@@ -58,7 +57,9 @@ fn mk_filesearch(maybe_sysroot: option::t<fs::path>,
 
     let sysroot = get_sysroot(maybe_sysroot);
     #debug("using sysroot = %s", sysroot);
-    ret filesearch_impl(sysroot, addl_lib_search_paths, target_triple);
+    {sysroot: sysroot,
+     addl_lib_search_paths: addl_lib_search_paths,
+     target_triple: target_triple} as filesearch
 }
 
 // FIXME #1001: This can't be an obj method

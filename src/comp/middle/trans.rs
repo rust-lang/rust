@@ -4119,7 +4119,7 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
     let s = "";
     if cx.lcx.ccx.sess.opts.save_temps ||
            cx.lcx.ccx.sess.opts.debuginfo {
-        s = cx.lcx.ccx.names.next(name);
+        s = cx.lcx.ccx.names(name);
     }
     let llbb: BasicBlockRef =
         str::as_buf(s, {|buf| llvm::LLVMAppendBasicBlock(cx.llfn, buf) });
@@ -5665,13 +5665,13 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     let float_type = T_float(targ_cfg);
     let task_type = T_task(targ_cfg);
     let taskptr_type = T_ptr(task_type);
-    tn.associate("taskptr", taskptr_type);
+    lib::llvm::associate_type(tn, "taskptr", taskptr_type);
     let tydesc_type = T_tydesc(targ_cfg);
-    tn.associate("tydesc", tydesc_type);
+    lib::llvm::associate_type(tn, "tydesc", tydesc_type);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
     let dbg_cx = if sess.opts.debuginfo {
         option::some(@{llmetadata: map::new_int_hash(),
-                       names: namegen(0)})
+                       names: new_namegen()})
     } else {
         option::none
     };
@@ -5696,7 +5696,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           dicts: map::mk_hashmap(hash_dict_id, {|a, b| a == b}),
           module_data: new_str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
-          names: namegen(0),
+          names: new_namegen(),
           sha: sha,
           type_sha1s: ty::new_ty_hash(),
           type_short_names: ty::new_ty_hash(),

@@ -14,7 +14,8 @@ import middle::{resolve, ty};
 import back::{link, abi, upcall};
 import util::common::*;
 import syntax::codemap::span;
-import lib::llvm::{llvm, target_data, type_names};
+import lib::llvm::{llvm, target_data, type_names, associate_type,
+                   name_has_type};
 import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
 import lib::llvm::{True, False, Bool};
 import metadata::{csearch};
@@ -22,8 +23,10 @@ import metadata::{csearch};
 // FIXME: These should probably be pulled in here too.
 import trans::{type_of_fn, drop_ty};
 
-obj namegen(mutable i: int) {
-    fn next(prefix: str) -> str { i += 1; ret prefix + int::str(i); }
+type namegen = fn@(str) -> str;
+fn new_namegen() -> namegen {
+    let i = @mutable 0;
+    ret fn@(prefix: str) -> str { *i += 1; prefix + int::str(*i) };
 }
 
 type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
@@ -616,17 +619,17 @@ fn T_tydesc_field(cx: @crate_ctxt, field: int) -> TypeRef unsafe {
 
 fn T_glue_fn(cx: @crate_ctxt) -> TypeRef {
     let s = "glue_fn";
-    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
+    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
     let t = T_tydesc_field(cx, abi::tydesc_field_drop_glue);
-    cx.tn.associate(s, t);
+    associate_type(cx.tn, s, t);
     ret t;
 }
 
 fn T_cmp_glue_fn(cx: @crate_ctxt) -> TypeRef {
     let s = "cmp_glue_fn";
-    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
+    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
     let t = T_tydesc_field(cx, abi::tydesc_field_cmp_glue);
-    cx.tn.associate(s, t);
+    associate_type(cx.tn, s, t);
     ret t;
 }
 
@@ -691,9 +694,9 @@ fn T_taskptr(cx: @crate_ctxt) -> TypeRef { ret T_ptr(cx.task_type); }
 // This type must never be used directly; it must always be cast away.
 fn T_typaram(tn: type_names) -> TypeRef {
     let s = "typaram";
-    if tn.name_has_type(s) { ret tn.get_type(s); }
+    alt name_has_type(tn, s) { some(t) { ret t; } _ {} }
     let t = T_i8();
-    tn.associate(s, t);
+    associate_type(tn, s, t);
     ret t;
 }
 
@@ -701,13 +704,13 @@ fn T_typaram_ptr(tn: type_names) -> TypeRef { ret T_ptr(T_typaram(tn)); }
 
 fn T_opaque_cbox_ptr(cx: @crate_ctxt) -> TypeRef {
     let s = "*cbox";
-    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
+    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
     let t = T_ptr(T_struct([cx.int_type,
                             T_ptr(cx.tydesc_type),
                             T_i8() /* represents closed over tydescs
                             and data go here; see trans_closure.rs*/
                            ]));
-    cx.tn.associate(s, t);
+    associate_type(cx.tn, s, t);
     ret t;
 }
 
@@ -717,20 +720,20 @@ fn T_tag_variant(cx: @crate_ctxt) -> TypeRef {
 
 fn T_tag(cx: @crate_ctxt, size: uint) -> TypeRef {
     let s = "tag_" + uint::to_str(size, 10u);
-    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
+    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
     let t =
         if size == 0u {
             T_struct([T_tag_variant(cx)])
         } else { T_struct([T_tag_variant(cx), T_array(T_i8(), size)]) };
-    cx.tn.associate(s, t);
+    associate_type(cx.tn, s, t);
     ret t;
 }
 
 fn T_opaque_tag(cx: @crate_ctxt) -> TypeRef {
     let s = "opaque_tag";
-    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
+    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
     let t = T_struct([T_tag_variant(cx), T_i8()]);
-    cx.tn.associate(s, t);
+    associate_type(cx.tn, s, t);
     ret t;
 }
 
@@ -818,7 +821,7 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
                         llvm::LLVMConstString(buf, str::byte_len(s), False)
                     });
     let g =
-        str::as_buf(cx.names.next("str"),
+        str::as_buf(cx.names("str"),
                     {|buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf) });
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
@@ -865,11 +868,9 @@ fn C_bytes(bytes: [u8]) -> ValueRef unsafe {
 
 fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
-    let llglobal =
-        str::as_buf(ccx.names.next("shape"),
-                    {|buf|
-                        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
-                    });
+    let llglobal = str::as_buf(ccx.names("shape"), {|buf|
+        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
+    });
     llvm::LLVMSetInitializer(llglobal, llshape);
     llvm::LLVMSetGlobalConstant(llglobal, True);
     llvm::LLVMSetLinkage(llglobal,
