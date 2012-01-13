@@ -415,6 +415,21 @@ check-stage$(1)-H-$(2)-cfail:					\
 check-stage$(1)-H-$(2)-bench:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-bench)
+check-stage$(1)-H-$(2)-pretty:					\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-pretty)
+check-stage$(1)-H-$(2)-pretty-rpass:				\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-rpass)
+check-stage$(1)-H-$(2)-pretty-rfail:				\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-rfail)
+check-stage$(1)-H-$(2)-pretty-bench:				\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-bench)
+check-stage$(1)-H-$(2)-pretty-pretty:				\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-pretty)
 
 endef
 
@@ -457,6 +472,21 @@ check-stage$(1)-H-all-cfail: \
 check-stage$(1)-H-all-bench: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-bench)
+check-stage$(1)-H-all-pretty: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-pretty)
+check-stage$(1)-H-all-pretty-rpass: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-pretty-rpass)
+check-stage$(1)-H-all-pretty-rfail: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-pretty-rfail)
+check-stage$(1)-H-all-pretty-bench: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-pretty-bench)
+check-stage$(1)-H-all-pretty-pretty: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-pretty-pretty)
 
 endef
 
@@ -473,6 +503,11 @@ check-stage$(1)-rpass: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rpass
 check-stage$(1)-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rfail
 check-stage$(1)-cfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-cfail
 check-stage$(1)-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-bench
+check-stage$(1)-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty
+check-stage$(1)-pretty-rpass: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rpass
+check-stage$(1)-pretty-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rfail
+check-stage$(1)-pretty-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-bench
+check-stage$(1)-pretty-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-pretty
 
 endef
 
