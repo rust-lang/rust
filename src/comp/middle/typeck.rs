@@ -1264,7 +1264,18 @@ fn valid_range_bounds(from: @ast::expr, to: @ast::expr) -> bool {
 fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
              expected: ty::t) {
     alt pat.node {
-      ast::pat_wild. { write::ty_only_fixup(fcx, pat.id, expected); }
+      ast::pat_wild. {
+          alt structure_of(fcx, pat.span, expected) {
+                  ty::ty_tag(_, expected_tps) {
+                      let path_tpt = {substs: some(expected_tps),
+                                      ty: expected};
+                      write::ty_fixup(fcx, pat.id, path_tpt);
+                  }
+                  _ {
+                      write::ty_only_fixup(fcx, pat.id, expected);
+                  }
+              }
+      }
       ast::pat_lit(lt) {
         check_expr_with(fcx, lt, expected);
         write::ty_only_fixup(fcx, pat.id, expr_ty(fcx.ccx.tcx, lt));
