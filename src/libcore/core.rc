@@ -10,7 +10,7 @@
 export box, char, float, bessel, f32, f64, int, str, ptr;
 export uint, u8, u32, u64, vec, bool;
 export either, option, result;
-export ctypes, sys, unsafe, comm, task;
+export ctypes, sys, unsafe, comm, task, logging;
 export extfmt;
 export math;
 
@@ -52,6 +52,7 @@ mod sys;
 mod unsafe;
 mod comm;
 mod task;
+mod logging;
 
 // Compiler support modules
 
