@@ -397,14 +397,6 @@ do
   done
 done
 
-# On windows we just store the libraries in the bin directory because
-# there's no rpath
-CFG_LIBDIR=lib
-if [ "$CFG_OSTYPE" = "pc-mingw32" ]
-then
-    CFG_LIBDIR=bin
-fi
-
 for h in $CFG_TARGET_TRIPLES
 do
     for t in $CFG_TARGET_TRIPLES
@@ -415,19 +407,13 @@ do
             make_dir $h/stage$i/bin
 
             # host lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR
-	    # FIXME: Transitional. remove
-	    make_dir $h/stage$i/lib
+            make_dir $h/stage$i/lib
 
             # target bin dir
-            make_dir $h/stage$i/$CFG_LIBDIR/rustc/$t/bin
-	    # FIXME: Transitional. remove
-	    make_dir $h/stage$i/lib/rustc/$t/bin
+            make_dir $h/stage$i/lib/rustc/$t/bin
 
             # target lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR/rustc/$t/$CFG_LIBDIR
-	    # FIXME: Transitional. remove
-	    make_dir $h/stage$i/lib/rustc/$t/lib
+            make_dir $h/stage$i/lib/rustc/$t/lib
         done
     done
 
@@ -596,7 +582,6 @@ putvar CFG_HOST_TRIPLE
 putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
 putvar CFG_PREFIX
-putvar CFG_LIBDIR
 
 # Setting this again because it may have been changed
 if [ $CFG_DISABLE_MANAGE_SUBMODULES ]

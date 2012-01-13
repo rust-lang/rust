@@ -108,14 +108,14 @@ endif
 
 CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
  $(if $(findstring stage0,$(1)), \
-       stage0/$(CFG_LIBDIR), \
+       stage0/lib, \
       $(if $(findstring stage1,$(1)), \
-           stage1/$(CFG_LIBDIR), \
+           stage1/lib, \
           $(if $(findstring stage2,$(1)), \
-               stage2/$(CFG_LIBDIR), \
+               stage2/lib, \
                $(if $(findstring stage3,$(1)), \
-                    stage3/$(CFG_LIBDIR), \
-               )))))/rustc/$(CFG_HOST_TRIPLE)/$(CFG_LIBDIR)
+                    stage3/lib, \
+               )))))/rustc/$(CFG_HOST_TRIPLE)/lib
 
 ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
