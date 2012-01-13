@@ -136,26 +136,28 @@ fn print_diagnostic(topic: str, t: diagnostictype, msg: str) {
     io::stdout().write_str(#fmt[" %s\n", msg]);
 }
 
-fn emit_diagnostic(sp: option::t<span>, msg: str, t: diagnostictype,
-                   cm: codemap) {
+fn emit_diagnostic(cmsp: option<(codemap, span)>, msg: str,
+                   t: diagnostictype) {
     let ss = "";
     let maybe_lines: option::t<@file_lines> = none;
-    alt sp {
-      some(ssp) {
-        ss = span_to_str(ssp, cm);
-        maybe_lines = some(span_to_lines(ssp, cm));
+    alt cmsp {
+      some((cm, sp)) {
+        ss = span_to_str(sp, cm);
+        maybe_lines = some(span_to_lines(sp, cm));
       }
       none. { }
     }
     print_diagnostic(ss, t, msg);
-    maybe_highlight_lines(sp, cm, maybe_lines);
+    maybe_highlight_lines(cmsp, maybe_lines);
 }
 
-fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
+fn maybe_highlight_lines(cmsp: option<(codemap, span)>,
                          maybe_lines: option::t<@file_lines>) {
 
     alt maybe_lines {
       some(lines) {
+        let (cm, sp) = option::get(cmsp);
+
         // If we're not looking at a real file then we can't re-open it to
         // pull out the lines
         if lines.name == "-" { ret; }
@@ -165,7 +167,7 @@ fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
         let file = alt io::read_whole_file_str(lines.name) {
           result::ok(file) { file }
           result::err(e) {
-            emit_error(none, e, cm);
+            emit_error(none, e);
             fail;
           }
         };
@@ -199,7 +201,7 @@ fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
 
         // If there's one line at fault we can easily point to the problem
         if vec::len(lines.lines) == 1u {
-            let lo = lookup_char_pos(cm, option::get(sp).lo);
+            let lo = lookup_char_pos(cm, sp.lo);
             let digits = 0u;
             let num = (lines.lines[0] + 1u) / 10u;
 
@@ -212,7 +214,7 @@ fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
             while left > 0u { str::push_char(s, ' '); left -= 1u; }
 
             s += "^";
-            let hi = lookup_char_pos(cm, option::get(sp).hi);
+            let hi = lookup_char_pos(cm, sp.hi);
             if hi.col != lo.col {
                 // the ^ already takes up one space
                 let width = hi.col - lo.col - 1u;
@@ -225,14 +227,14 @@ fn maybe_highlight_lines(sp: option::t<span>, cm: codemap,
     }
 }
 
-fn emit_warning(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, warning, cm);
+fn emit_warning(cmsp: option<(codemap, span)>, msg: str) {
+    emit_diagnostic(cmsp, msg, warning);
 }
-fn emit_error(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, error, cm);
+fn emit_error(cmsp: option<(codemap, span)>, msg: str) {
+    emit_diagnostic(cmsp, msg, error);
 }
-fn emit_note(sp: option::t<span>, msg: str, cm: codemap) {
-    emit_diagnostic(sp, msg, note, cm);
+fn emit_note(cmsp: option<(codemap, span)>, msg: str) {
+    emit_diagnostic(cmsp, msg, note);
 }
 
 type file_lines = {name: str, lines: [uint]};

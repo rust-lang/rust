@@ -71,11 +71,11 @@ impl parser for parser {
         self.span_fatal(self.span, m);
     }
     fn span_fatal(sp: span, m: str) -> ! {
-        codemap::emit_error(some(sp), m, self.sess.cm);
+        codemap::emit_error(some((self.sess.cm, sp)), m);
         fail;
     }
     fn warn(m: str) {
-        codemap::emit_warning(some(self.span), m, self.sess.cm);
+        codemap::emit_warning(some((self.sess.cm, self.span)), m);
     }
     fn get_str(i: token::str_num) -> str {
         interner::get(*self.reader.interner, i)
@@ -92,7 +92,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
         src
       }
       result::err(e) {
-        codemap::emit_error(none, e, sess.cm);
+        codemap::emit_error(none, e);
         fail;
       }
     };
@@ -2525,8 +2525,7 @@ fn parse_crate_from_file(input: str, cfg: ast::crate_cfg, sess: parse_sess) ->
     } else if str::ends_with(input, ".rs") {
         parse_crate_from_source_file(input, cfg, sess)
     } else {
-        codemap::emit_error(none, "unknown input file type: " + input,
-                            sess.cm);
+        codemap::emit_error(none, "unknown input file type: " + input);
         fail
     }
 }

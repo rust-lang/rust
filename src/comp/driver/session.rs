@@ -65,19 +65,19 @@ type session = @{targ_cfg: @config,
 
 impl session for session {
     fn span_fatal(sp: span, msg: str) -> ! {
-        codemap::emit_error(some(sp), msg, self.parse_sess.cm);
+        codemap::emit_error(some((self.parse_sess.cm, sp)), msg);
         fail;
     }
     fn fatal(msg: str) -> ! {
-        codemap::emit_error(none, msg, self.parse_sess.cm);
+        codemap::emit_error(none, msg);
         fail;
     }
     fn span_err(sp: span, msg: str) {
-        codemap::emit_error(some(sp), msg, self.parse_sess.cm);
+        codemap::emit_error(some((self.parse_sess.cm, sp)), msg);
         self.err_count += 1u;
     }
     fn err(msg: str) {
-        codemap::emit_error(none, msg, self.parse_sess.cm);
+        codemap::emit_error(none, msg);
         self.err_count += 1u;
     }
     fn has_errors() -> bool { self.err_count > 0u }
@@ -87,16 +87,16 @@ impl session for session {
         }
     }
     fn span_warn(sp: span, msg: str) {
-        codemap::emit_warning(some(sp), msg, self.parse_sess.cm);
+        codemap::emit_warning(some((self.parse_sess.cm, sp)), msg);
     }
     fn warn(msg: str) {
-        codemap::emit_warning(none, msg, self.parse_sess.cm);
+        codemap::emit_warning(none, msg);
     }
     fn span_note(sp: span, msg: str) {
-        codemap::emit_note(some(sp), msg, self.parse_sess.cm);
+        codemap::emit_note(some((self.parse_sess.cm, sp)), msg);
     }
     fn note(msg: str) {
-        codemap::emit_note(none, msg, self.parse_sess.cm);
+        codemap::emit_note(none, msg);
     }
     fn span_bug(sp: span, msg: str) -> ! {
         self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
