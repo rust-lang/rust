@@ -138,92 +138,85 @@ fn print_diagnostic(topic: str, t: diagnostictype, msg: str) {
 
 fn emit_diagnostic(cmsp: option<(codemap, span)>, msg: str,
                    t: diagnostictype) {
-    let ss = "";
-    let maybe_lines: option::t<@file_lines> = none;
     alt cmsp {
       some((cm, sp)) {
-        ss = span_to_str(sp, cm);
-        maybe_lines = some(span_to_lines(sp, cm));
+        let ss = span_to_str(sp, cm);
+        let lines = span_to_lines(sp, cm);
+        print_diagnostic(ss, t, msg);
+        highlight_lines(cm, sp, lines);
       }
-      none. { }
+      none. {
+        print_diagnostic("", t, msg);
+      }
     }
-    print_diagnostic(ss, t, msg);
-    maybe_highlight_lines(cmsp, maybe_lines);
 }
 
-fn maybe_highlight_lines(cmsp: option<(codemap, span)>,
-                         maybe_lines: option::t<@file_lines>) {
+fn highlight_lines(cm: codemap, sp: span,
+                   lines: @file_lines) {
 
-    alt maybe_lines {
-      some(lines) {
-        let (cm, sp) = option::get(cmsp);
+    // If we're not looking at a real file then we can't re-open it to
+    // pull out the lines
+    if lines.name == "-" { ret; }
 
-        // If we're not looking at a real file then we can't re-open it to
-        // pull out the lines
-        if lines.name == "-" { ret; }
-
-        // FIXME: reading in the entire file is the worst possible way to
-        //        get access to the necessary lines.
-        let file = alt io::read_whole_file_str(lines.name) {
-          result::ok(file) { file }
-          result::err(e) {
-            emit_error(none, e);
-            fail;
-          }
-        };
-        let fm = get_filemap(cm, lines.name);
-
-        // arbitrarily only print up to six lines of the error
-        let max_lines = 6u;
-        let elided = false;
-        let display_lines = lines.lines;
-        if vec::len(display_lines) > max_lines {
-            display_lines = vec::slice(display_lines, 0u, max_lines);
-            elided = true;
-        }
-        // Print the offending lines
-        for line: uint in display_lines {
-            io::stdout().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
-            let s = get_line(fm, line as int, file);
-            if !str::ends_with(s, "\n") { s += "\n"; }
-            io::stdout().write_str(s);
-        }
-        if elided {
-            let last_line = display_lines[vec::len(display_lines) - 1u];
-            let s = #fmt["%s:%u ", fm.name, last_line + 1u];
-            let indent = str::char_len(s);
-            let out = "";
-            while indent > 0u { out += " "; indent -= 1u; }
-            out += "...\n";
-            io::stdout().write_str(out);
-        }
-
-
-        // If there's one line at fault we can easily point to the problem
-        if vec::len(lines.lines) == 1u {
-            let lo = lookup_char_pos(cm, sp.lo);
-            let digits = 0u;
-            let num = (lines.lines[0] + 1u) / 10u;
-
-            // how many digits must be indent past?
-            while num > 0u { num /= 10u; digits += 1u; }
-
-            // indent past |name:## | and the 0-offset column location
-            let left = str::char_len(fm.name) + digits + lo.col + 3u;
-            let s = "";
-            while left > 0u { str::push_char(s, ' '); left -= 1u; }
-
-            s += "^";
-            let hi = lookup_char_pos(cm, sp.hi);
-            if hi.col != lo.col {
-                // the ^ already takes up one space
-                let width = hi.col - lo.col - 1u;
-                while width > 0u { str::push_char(s, '~'); width -= 1u; }
-            }
-            io::stdout().write_str(s + "\n");
-        }
+    // FIXME: reading in the entire file is the worst possible way to
+    //        get access to the necessary lines.
+    let file = alt io::read_whole_file_str(lines.name) {
+      result::ok(file) { file }
+      result::err(e) {
+        emit_error(none, e);
+        fail;
       }
-      _ { }
+    };
+    let fm = get_filemap(cm, lines.name);
+
+    // arbitrarily only print up to six lines of the error
+    let max_lines = 6u;
+    let elided = false;
+    let display_lines = lines.lines;
+    if vec::len(display_lines) > max_lines {
+        display_lines = vec::slice(display_lines, 0u, max_lines);
+        elided = true;
+    }
+    // Print the offending lines
+    for line: uint in display_lines {
+        io::stdout().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
+        let s = get_line(fm, line as int, file);
+        if !str::ends_with(s, "\n") { s += "\n"; }
+        io::stdout().write_str(s);
+    }
+    if elided {
+        let last_line = display_lines[vec::len(display_lines) - 1u];
+        let s = #fmt["%s:%u ", fm.name, last_line + 1u];
+        let indent = str::char_len(s);
+        let out = "";
+        while indent > 0u { out += " "; indent -= 1u; }
+        out += "...\n";
+        io::stdout().write_str(out);
+    }
+
+
+    // If there's one line at fault we can easily point to the problem
+    if vec::len(lines.lines) == 1u {
+        let lo = lookup_char_pos(cm, sp.lo);
+        let digits = 0u;
+        let num = (lines.lines[0] + 1u) / 10u;
+
+        // how many digits must be indent past?
+        while num > 0u { num /= 10u; digits += 1u; }
+
+        // indent past |name:## | and the 0-offset column location
+        let left = str::char_len(fm.name) + digits + lo.col + 3u;
+        let s = "";
+        while left > 0u { str::push_char(s, ' '); left -= 1u; }
+
+        s += "^";
+        let hi = lookup_char_pos(cm, sp.hi);
+        if hi.col != lo.col {
+            // the ^ already takes up one space
+            let width = hi.col - lo.col - 1u;
+            while width > 0u { str::push_char(s, '~'); width -= 1u; }
+        }
+        io::stdout().write_str(s + "\n");
     }
 }
 
