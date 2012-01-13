@@ -103,12 +103,12 @@ fn bal1() {
     let init = @ "1234567890";
     let buf  = @ mutable * init;
     let i = 0;
-    while i < 16 { *buf = *buf + *buf; i+=1;}
+    while i < 8 { *buf = *buf + *buf; i+=1;}
     let sample = @*buf;
     let r1     = of_str(sample);
     let r2     = of_str(init);
     i = 0;
-    while i < 16 { r2 = append_rope(r2, r2); i+= 1;}
+    while i < 8 { r2 = append_rope(r2, r2); i+= 1;}
 
 
     assert eq(r1, r2);
