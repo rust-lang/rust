@@ -132,17 +132,17 @@ ifdef CFG_BAD_VALGRIND
 endif
 
 DOCS :=
-ifeq ($(CFG_MAKEINFO),)
-  $(info cfg: no makeinfo found, omitting doc/rust.html)
+ifeq ($(CFG_PANDOC),)
+  $(info cfg: no pandoc found, omitting doc/rust.html)
 else
   DOCS += doc/rust.html
 endif
 
-ifeq ($(CFG_TEXI2PDF),)
-  $(info cfg: no texi2pdf found, omitting doc/rust.pdf)
+ifeq ($(CFG_PANDOC),)
+  $(info cfg: no pandoc found, omitting doc/rust.pdf)
 else
-  ifeq ($(CFG_TEX),)
-    $(info cfg: no tex found, omitting doc/rust.pdf)
+  ifeq ($(CFG_PDFLATEX),)
+    $(info cfg: no pdflatex found, omitting doc/rust.pdf)
   else
     DOCS += doc/rust.pdf
   endif

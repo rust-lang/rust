@@ -52,8 +52,8 @@ clean-misc:
                  $(wildcard doc/*.$(ext) \
                             doc/*/*.$(ext) \
                             doc/*/*/*.$(ext)))
-	$(Q)rm -Rf doc/keywords.texi
-	$(Q)rm -Rf doc/version.texi
+	$(Q)rm -Rf doc/keywords.md
+	$(Q)rm -Rf doc/version.md
 	$(Q)rm -Rf $(foreach sub, index styles files search javascript, \
                  $(wildcard doc/*/$(sub)))
 	$(Q)rm -rf libuv

@@ -2,28 +2,61 @@
 # Doc variables and rules
 ######################################################################
 
-doc/keywords.texi: $(S)doc/keywords.txt $(S)src/etc/gen-keywords-table.py
-	@$(call E, gen-keywords-table: $@)
-	$(Q)$(S)src/etc/gen-keywords-table.py
-
-doc/version.texi: $(MKFILE_DEPS) rust.texi
+doc/version.md: $(MKFILE_DEPS) rust.md
 	@$(call E, version-stamp: $@)
-	$(Q)echo "@macro gitversion" >$@
 	$(Q)echo "$(CFG_VERSION)" >>$@
-	$(Q)echo "@end macro" >>$@
 
-GENERATED += doc/keywords.texi doc/version.texi
+doc/keywords.md: $(MKFILE_DEPS) rust.md
+	@$(call E, grep -v: $$@)
+	$(Q)grep -v '^#' $< >$@
 
-doc/%.pdf: %.texi doc/version.texi doc/keywords.texi
-	@$(call E, texi2pdf: $@)
-	@# LC_COLLATE=C works around a bug in texi2dvi; see
-	@# https://bugzilla.redhat.com/show_bug.cgi?id=583011 and
-	@# https://github.com/graydon/rust/issues/1134
-	$(Q)LC_COLLATE=C texi2pdf --silent --batch -I doc -o $@ --clean $<
+ifdef CFG_PANDOC
 
-doc/%.html: %.texi doc/version.texi doc/keywords.texi
-	@$(call E, makeinfo: $@)
-	$(Q)makeinfo -I doc --html --ifhtml --force --no-split --output=$@ $<
+doc/rust.html: rust.md doc/version.md doc/keywords.md
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_PANDOC) \
+         --standalone --toc \
+         --section-divs \
+         --number-sections \
+         --from=markdown --to=html \
+         --output=$@ \
+         $<
+
+ifdef CFG_PDFLATEX
+
+doc/rust.tex: rust.md doc/version.md doc/keywords.md
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_PANDOC) \
+         --standalone --toc \
+         --number-sections \
+         --from=markdown --to=latex \
+         --output=$@ \
+         $<
+
+doc/rust.pdf: doc/rust.tex
+	@$(call E, pdflatex: $@)
+	$(Q)$(CFG_PDFLATEX) \
+        -interaction=batchmode \
+        -output-directory=doc \
+        $<
+
+endif
+
+endif
+
+ifdef CFG_LLNEXTGEN
+doc/rust.g: rust.md $(S)src/etc/extract_grammar.py
+	@$(call E, extract_grammar: $@)
+	$(Q)$(S)src/etc/extract_grammar.py $< >$@
+
+verify-grammar: doc/rust.g
+	@$(call E, LLnextgen: $<)
+	$(Q)$(CFG_LLNEXTGEN) --generate-lexer-wrapper=no $< >$@
+	$(Q)rm -f doc/rust.c doc/rust.h
+endif
+
+
+GENERATED += doc/keywords.md doc/version.md
 
 docsnap: doc/rust.pdf
 	@$(call E, snap: doc/rust-$(shell date +"%Y-%m-%d")-snap.pdf)
