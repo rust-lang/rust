@@ -3,7 +3,8 @@ import io::writer_util;
 import syntax::codemap;
 import codemap::span;
 
-export emit_warning, emit_error, emit_note;
+export emit_diagnostic;
+export diagnostictype, fatal, error, warning, note;
 export handler, mk_codemap_handler;
 
 iface handler {
@@ -30,19 +31,19 @@ type codemap_t = @{
 
 impl codemap_handler of handler for codemap_t {
     fn span_fatal(sp: span, msg: str) -> ! {
-        emit_fatal(some((self.cm, sp)), msg);
+        emit_diagnostic(some((self.cm, sp)), msg, fatal);
         fail;
     }
     fn fatal(msg: str) -> ! {
-        emit_fatal(none, msg);
+        emit_diagnostic(none, msg, fatal);
         fail;
     }
     fn span_err(sp: span, msg: str) {
-        emit_error(some((self.cm, sp)), msg);
+        emit_diagnostic(some((self.cm, sp)), msg, error);
         self.err_count += 1u;
     }
     fn err(msg: str) {
-        emit_error(none, msg);
+        emit_diagnostic(none, msg, error);
         self.err_count += 1u;
     }
     fn has_errors() -> bool { self.err_count > 0u }
@@ -52,16 +53,16 @@ impl codemap_handler of handler for codemap_t {
         }
     }
     fn span_warn(sp: span, msg: str) {
-        emit_warning(some((self.cm, sp)), msg);
+        emit_diagnostic(some((self.cm, sp)), msg, warning);
     }
     fn warn(msg: str) {
-        emit_warning(none, msg);
+        emit_diagnostic(none, msg, warning);
     }
     fn span_note(sp: span, msg: str) {
-        emit_note(some((self.cm, sp)), msg);
+        emit_diagnostic(some((self.cm, sp)), msg, note);
     }
     fn note(msg: str) {
-        emit_note(none, msg);
+        emit_diagnostic(none, msg, note);
     }
     fn span_bug(sp: span, msg: str) -> ! {
         self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
@@ -148,7 +149,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     let file = alt io::read_whole_file_str(lines.name) {
       result::ok(file) { file }
       result::err(e) {
-        emit_error(none, e);
+        emit_diagnostic(none, e, fatal);
         fail;
       }
     };
@@ -203,17 +204,4 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
         }
         io::stdout().write_str(s + "\n");
     }
-}
-
-fn emit_fatal(cmsp: option<(codemap::codemap, span)>, msg: str) {
-    emit_diagnostic(cmsp, msg, fatal);
-}
-fn emit_error(cmsp: option<(codemap::codemap, span)>, msg: str) {
-    emit_diagnostic(cmsp, msg, error);
-}
-fn emit_warning(cmsp: option<(codemap::codemap, span)>, msg: str) {
-    emit_diagnostic(cmsp, msg, warning);
-}
-fn emit_note(cmsp: option<(codemap::codemap, span)>, msg: str) {
-    emit_diagnostic(cmsp, msg, note);
 }

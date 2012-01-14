@@ -585,7 +585,7 @@ fn build_output_filenames(ifile: str,
 }
 
 fn early_error(msg: str) -> ! {
-    diagnostic::emit_error(none, msg);
+    diagnostic::emit_diagnostic(none, msg, diagnostic::fatal);
     fail;
 }
 
