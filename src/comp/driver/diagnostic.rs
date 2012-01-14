@@ -168,8 +168,8 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     let file = alt io::read_whole_file_str(lines.name) {
       result::ok(file) { file }
       result::err(e) {
-        emit_diagnostic(none, e, fatal);
-        fail;
+        // Hard to report errors while reporting an error
+        ret;
       }
     };
     let fm = codemap::get_filemap(cm, lines.name);
