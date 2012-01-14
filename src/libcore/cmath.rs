@@ -49,6 +49,7 @@ native mod c_double {
     pure fn ldexp(x: c_double, n: c_int) -> c_double;
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
     #[link_name="lgamma_r"] pure fn lgamma(n: c_double,
                                            &sign: c_int) -> c_double;
     #[cfg(target_os = "win32")]
@@ -130,6 +131,7 @@ native mod c_float {
 
     #[cfg(target_os="linux")]
     #[cfg(target_os="macos")]
+    #[cfg(target_os="freebsd")]
     #[link_name="lgammaf_r"] pure fn lgamma(n: c_float,
                                             &sign: c_int) -> c_float;
 
