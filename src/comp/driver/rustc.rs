@@ -62,18 +62,13 @@ options:
 ");
 }
 
-fn main(args: [str]) {
+fn run_compiler(args: [str], demitter: diagnostic::emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     logging::console_off();
 
     let args = args, binary = vec::shift(args);
 
     if vec::len(args) == 0u { usage(binary); ret; }
-
-    let demitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
-                       msg: str, lvl: diagnostic::level) {
-        diagnostic::emit(cmsp, msg, lvl);
-    };
 
     let match =
         alt getopts::getopts(args, opts()) {
@@ -116,6 +111,70 @@ fn main(args: [str]) {
     }
 
     compile_input(sess, cfg, ifile, odir, ofile);
+}
+
+/*
+This is a sanity check that any failure of the compiler is performed
+through the diagnostic module and reported properly - we shouldn't be calling
+plain-old-fail on any execution path that might be taken. Since we have
+console logging off by default, hitting a plain fail statement would make the
+compiler silently exit, which would be terrible.
+
+This method wraps the compiler in a subtask and injects a function into the
+diagnostic emitter which records when we hit a fatal error. If the task
+fails without recording a fatal error then we've encountered a compiler
+bug and need to present an error.
+*/
+fn monitor(f: fn~(diagnostic::emitter)) {
+    tag monitor_msg {
+        fatal;
+        done;
+    };
+
+    let p = comm::port();
+    let ch = comm::chan(p);
+
+    alt task::try  {||
+
+        task::unsupervise();
+
+        // The 'diagnostics emitter'. Every error, warning, etc. should
+        // go through this function.
+        let demitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
+                           msg: str, lvl: diagnostic::level) {
+            if lvl == diagnostic::fatal {
+                comm::send(ch, fatal);
+            }
+            diagnostic::emit(cmsp, msg, lvl);
+        };
+
+        resource finally(ch: comm::chan<monitor_msg>) {
+            comm::send(ch, done);
+        }
+
+        let _finally = finally(ch);
+
+        f(demitter)
+    } {
+        result::ok(_) { /* fallthrough */ }
+        result::err(_) {
+            // Task failed without emitting a fatal diagnostic
+            if comm::recv(p) == done {
+                diagnostic::emit(
+                    none,
+                    diagnostic::ice_msg("unexpected failure"),
+                    diagnostic::error);
+            }
+            // Fail so the process returns a failure code
+            fail;
+        }
+    }
+}
+
+fn main(args: [str]) {
+    monitor {|demitter|
+        run_compiler(args, demitter);
+    }
 }
 
 // Local Variables:
