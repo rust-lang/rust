@@ -3,7 +3,7 @@ import io::writer_util;
 import syntax::codemap;
 import codemap::span;
 
-export emitter, emit_diagnostic;
+export emitter, emit;
 export level, fatal, error, warning, note;
 export handler, mk_codemap_handler;
 
@@ -89,7 +89,7 @@ fn mk_codemap_handler(cm: codemap::codemap,
       none. {
         let f = fn@(cmsp: option<(codemap::codemap, span)>,
             msg: str, t: level) {
-            emit_diagnostic(cmsp, msg, t);
+            emit(cmsp, msg, t);
         };
         f
       }
@@ -141,8 +141,8 @@ fn print_diagnostic(topic: str, lvl: level, msg: str) {
     io::stdout().write_str(#fmt[" %s\n", msg]);
 }
 
-fn emit_diagnostic(cmsp: option<(codemap::codemap, span)>,
-                   msg: str, lvl: level) {
+fn emit(cmsp: option<(codemap::codemap, span)>,
+        msg: str, lvl: level) {
     alt cmsp {
       some((cm, sp)) {
         let ss = codemap::span_to_str(sp, cm);

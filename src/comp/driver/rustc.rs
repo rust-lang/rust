@@ -72,7 +72,7 @@ fn main(args: [str]) {
 
     let demitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
                        msg: str, lvl: diagnostic::level) {
-        diagnostic::emit_diagnostic(cmsp, msg, lvl);
+        diagnostic::emit(cmsp, msg, lvl);
     };
 
     let match =
