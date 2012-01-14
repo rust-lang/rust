@@ -194,7 +194,7 @@ fn main(argv: [str]) {
     let sess = @{
         cm: cm,
         mutable next_id: 0,
-        diagnostic: diagnostic::mk_codemap_handler(cm)
+        diagnostic: diagnostic::mk_codemap_handler(cm, none)
     };
     let rd = { ps: pprust::rust_printer(w), w: w };
     doc_header(rd, argv[1]);

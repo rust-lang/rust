@@ -104,7 +104,7 @@ fn load_pkg(filename: str) -> option::t<pkg> {
     let sess = @{
         cm: cm,
         mutable next_id: 0,
-        diagnostic: diagnostic::mk_codemap_handler(cm)
+        diagnostic: diagnostic::mk_codemap_handler(cm, none)
     };
     let c = parser::parse_crate_from_crate_file(filename, [], sess);
 

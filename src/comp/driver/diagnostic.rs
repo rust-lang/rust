@@ -3,9 +3,13 @@ import io::writer_util;
 import syntax::codemap;
 import codemap::span;
 
-export emit_diagnostic;
+export emitter, emit_diagnostic;
 export diagnostictype, fatal, error, warning, note;
 export handler, mk_codemap_handler;
+
+type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
+                   msg: str, t: diagnostictype);
+
 
 iface handler {
     fn span_fatal(sp: span, msg: str) -> !;
@@ -26,24 +30,25 @@ iface handler {
 
 type codemap_t = @{
     cm: codemap::codemap,
-    mutable err_count: uint
+    mutable err_count: uint,
+    emit: emitter
 };
 
 impl codemap_handler of handler for codemap_t {
     fn span_fatal(sp: span, msg: str) -> ! {
-        emit_diagnostic(some((self.cm, sp)), msg, fatal);
+        self.emit(some((self.cm, sp)), msg, fatal);
         fail;
     }
     fn fatal(msg: str) -> ! {
-        emit_diagnostic(none, msg, fatal);
+        self.emit(none, msg, fatal);
         fail;
     }
     fn span_err(sp: span, msg: str) {
-        emit_diagnostic(some((self.cm, sp)), msg, error);
+        self.emit(some((self.cm, sp)), msg, error);
         self.err_count += 1u;
     }
     fn err(msg: str) {
-        emit_diagnostic(none, msg, error);
+        self.emit(none, msg, error);
         self.err_count += 1u;
     }
     fn has_errors() -> bool { self.err_count > 0u }
@@ -53,16 +58,16 @@ impl codemap_handler of handler for codemap_t {
         }
     }
     fn span_warn(sp: span, msg: str) {
-        emit_diagnostic(some((self.cm, sp)), msg, warning);
+        self.emit(some((self.cm, sp)), msg, warning);
     }
     fn warn(msg: str) {
-        emit_diagnostic(none, msg, warning);
+        self.emit(none, msg, warning);
     }
     fn span_note(sp: span, msg: str) {
-        emit_diagnostic(some((self.cm, sp)), msg, note);
+        self.emit(some((self.cm, sp)), msg, note);
     }
     fn note(msg: str) {
-        emit_diagnostic(none, msg, note);
+        self.emit(none, msg, note);
     }
     fn span_bug(sp: span, msg: str) -> ! {
         self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
@@ -76,10 +81,24 @@ impl codemap_handler of handler for codemap_t {
     fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
 }
 
-fn mk_codemap_handler(cm: codemap::codemap) -> handler {
+fn mk_codemap_handler(cm: codemap::codemap,
+                      emitter: option<emitter>) -> handler {
+
+    let emit = alt emitter {
+      some(e) { e }
+      none. {
+        let f = fn@(cmsp: option<(codemap::codemap, span)>,
+            msg: str, t: diagnostictype) {
+            emit_diagnostic(cmsp, msg, t);
+        };
+        f
+      }
+    };
+
     @{
         cm: cm,
         mutable err_count: 0u,
+        emit: emit
     } as handler
 }
 

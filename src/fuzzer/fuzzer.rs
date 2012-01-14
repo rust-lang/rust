@@ -262,7 +262,7 @@ fn check_variants_T<T: copy>(
                 let str3 =
                     as_str(bind pprust::print_crate(
                         codemap,
-                        diagnostic::mk_codemap_handler(codemap),
+                        diagnostic::mk_codemap_handler(codemap, none),
                         crate2,
                         filename,
                         io::string_reader(""), _,
@@ -419,7 +419,7 @@ fn parse_and_print(code: str) -> str {
     let sess = @{
         cm: cm,
         mutable next_id: 0,
-        diagnostic: diagnostic::mk_codemap_handler(cm)
+        diagnostic: diagnostic::mk_codemap_handler(cm, none)
     };
     write_file(filename, code);
     let crate = parser::parse_crate_from_source_str(
@@ -566,7 +566,7 @@ fn check_variants(files: [str], cx: context) {
         let sess = @{
             cm: cm,
             mutable next_id: 0,
-            diagnostic: diagnostic::mk_codemap_handler(cm)
+            diagnostic: diagnostic::mk_codemap_handler(cm, none)
         };
         let crate =
             parser::parse_crate_from_source_str(
