@@ -7,6 +7,7 @@ use rustc;
 
 import option;
 import option::{some, none};
+import rustc::driver::diagnostic;
 import rustc::syntax::ast;
 import rustc::syntax::codemap;
 import rustc::syntax::parse::parser;
@@ -189,7 +190,12 @@ fn main(argv: [str]) {
         ret;
     }
 
-    let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
+    let cm = codemap::new_codemap();
+    let sess = @{
+        cm: cm,
+        mutable next_id: 0,
+        diagnostic: diagnostic::mk_codemap_handler(cm)
+    };
     let rd = { ps: pprust::rust_printer(w), w: w };
     doc_header(rd, argv[1]);
     let p = parser::parse_crate_from_source_file(argv[1], [], sess);

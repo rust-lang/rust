@@ -6,6 +6,7 @@ use std;
 import rustc::syntax::{ast, codemap, visit};
 import rustc::syntax::parse::parser;
 import rustc::util::filesearch::get_cargo_root;
+import rustc::driver::diagnostic;
 
 import std::fs;
 import std::generic_os;
@@ -99,7 +100,12 @@ fn load_link(mis: [@ast::meta_item]) -> (option::t<str>,
 }
 
 fn load_pkg(filename: str) -> option::t<pkg> {
-    let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
+    let cm = codemap::new_codemap();
+    let sess = @{
+        cm: cm,
+        mutable next_id: 0,
+        diagnostic: diagnostic::mk_codemap_handler(cm)
+    };
     let c = parser::parse_crate_from_crate_file(filename, [], sess);
 
     let name = none;

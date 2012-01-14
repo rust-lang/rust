@@ -4,6 +4,7 @@ import io::writer_util;
 import rustc::syntax::{ast, ast_util, fold, visit, codemap};
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
+import rustc::driver::diagnostic;
 
 tag test_mode { tm_converge; tm_run; }
 type context = { mode: test_mode }; // + rng
@@ -259,10 +260,13 @@ fn check_variants_T<T: copy>(
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
                 let str3 =
-                    as_str(bind pprust::print_crate(codemap, crate2,
-                                                    filename,
-                                                    io::string_reader(""), _,
-                                                    pprust::no_ann()));
+                    as_str(bind pprust::print_crate(
+                        codemap,
+                        diagnostic::mk_codemap_handler(codemap),
+                        crate2,
+                        filename,
+                        io::string_reader(""), _,
+                        pprust::no_ann()));
                 alt cx.mode {
                   tm_converge. {
                     check_roundtrip_convergence(str3, 1u);
@@ -411,11 +415,18 @@ fn check_compiling(filename: str) -> happiness {
 
 fn parse_and_print(code: str) -> str {
     let filename = "tmp.rs";
-    let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
+    let cm = codemap::new_codemap();
+    let sess = @{
+        cm: cm,
+        mutable next_id: 0,
+        diagnostic: diagnostic::mk_codemap_handler(cm)
+    };
     write_file(filename, code);
     let crate = parser::parse_crate_from_source_str(
         filename, code, [], sess);
-    ret as_str(bind pprust::print_crate(sess.cm, crate,
+    ret as_str(bind pprust::print_crate(sess.cm,
+                                        sess.diagnostic,
+                                        crate,
                                         filename,
                                         io::string_reader(code), _,
                                         pprust::no_ann()));
@@ -551,13 +562,20 @@ fn check_variants(files: [str], cx: context) {
         }
 
         log(error, "check_variants: " + file);
-        let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
+        let cm = codemap::new_codemap();
+        let sess = @{
+            cm: cm,
+            mutable next_id: 0,
+            diagnostic: diagnostic::mk_codemap_handler(cm)
+        };
         let crate =
             parser::parse_crate_from_source_str(
                 file,
                 s, [], sess);
         #error("%s",
-               as_str(bind pprust::print_crate(sess.cm, crate,
+               as_str(bind pprust::print_crate(sess.cm,
+                                               sess.diagnostic,
+                                               crate,
                                                file,
                                                io::string_reader(s), _,
                                                pprust::no_ann())));
