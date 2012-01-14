@@ -5,7 +5,7 @@ import codemap::span;
 
 export emitter, emit;
 export level, fatal, error, warning, note;
-export handler, mk_codemap_handler;
+export handler, mk_handler;
 
 type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
                    msg: str, lvl: level);
@@ -81,8 +81,8 @@ impl codemap_handler of handler for codemap_t {
     fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
 }
 
-fn mk_codemap_handler(cm: codemap::codemap,
-                      emitter: option<emitter>) -> handler {
+fn mk_handler(cm: codemap::codemap,
+              emitter: option<emitter>) -> handler {
 
     let emit = alt emitter {
       some(e) { e }
