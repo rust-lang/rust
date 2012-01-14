@@ -4,7 +4,7 @@ import syntax::codemap;
 import codemap::span;
 
 export emit_warning, emit_error, emit_note;
-export handler, codemap_handler;
+export handler, mk_codemap_handler;
 
 iface handler {
     fn span_fatal(sp: span, msg: str) -> !;

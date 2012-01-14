@@ -58,56 +58,54 @@ type session = @{targ_cfg: @config,
                  codemap: codemap::codemap,
                  // For a library crate, this is always none
                  mutable main_fn: option::t<node_id>,
-                 mutable err_count: uint,
+                 diagnostic: diagnostic::handler,
                  filesearch: filesearch::filesearch,
                  mutable building_library: bool,
                  working_dir: str};
 
 impl session for session {
     fn span_fatal(sp: span, msg: str) -> ! {
-        diagnostic::emit_error(some((self.parse_sess.cm, sp)), msg);
-        fail;
+        self.diagnostic.span_fatal(sp, msg)
     }
     fn fatal(msg: str) -> ! {
-        diagnostic::emit_error(none, msg);
-        fail;
+        self.diagnostic.fatal(msg)
     }
     fn span_err(sp: span, msg: str) {
-        diagnostic::emit_error(some((self.parse_sess.cm, sp)), msg);
-        self.err_count += 1u;
+        self.diagnostic.span_err(sp, msg)
     }
     fn err(msg: str) {
-        diagnostic::emit_error(none, msg);
-        self.err_count += 1u;
+        self.diagnostic.err(msg)
     }
-    fn has_errors() -> bool { self.err_count > 0u }
+    fn has_errors() -> bool {
+        self.diagnostic.has_errors()
+    }
     fn abort_if_errors() {
-        if self.err_count > 0u {
-            self.fatal("aborting due to previous errors");
-        }
+        self.diagnostic.abort_if_errors()
     }
     fn span_warn(sp: span, msg: str) {
-        diagnostic::emit_warning(some((self.parse_sess.cm, sp)), msg);
+        self.diagnostic.span_warn(sp, msg)
     }
     fn warn(msg: str) {
-        diagnostic::emit_warning(none, msg);
+        self.diagnostic.warn(msg)
     }
     fn span_note(sp: span, msg: str) {
-        diagnostic::emit_note(some((self.parse_sess.cm, sp)), msg);
+        self.diagnostic.span_note(sp, msg)
     }
     fn note(msg: str) {
-        diagnostic::emit_note(none, msg);
+        self.diagnostic.note(msg)
     }
     fn span_bug(sp: span, msg: str) -> ! {
-        self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
+        self.diagnostic.span_bug(sp, msg)
     }
     fn bug(msg: str) -> ! {
-        self.fatal(#fmt["internal compiler error %s", msg]);
+        self.diagnostic.bug(msg)
     }
     fn span_unimpl(sp: span, msg: str) -> ! {
-        self.span_bug(sp, "unimplemented " + msg);
+        self.diagnostic.span_unimpl(sp, msg)
     }
-    fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
+    fn unimpl(msg: str) -> ! {
+        self.diagnostic.unimpl(msg)
+    }
     fn next_node_id() -> ast::node_id {
         ret syntax::parse::parser::next_node_id(self.parse_sess);
     }
