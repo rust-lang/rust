@@ -950,16 +950,17 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       // FIXME: more enum-as-int constants determined from Core::h;
       // horrible, horrible. Complete as needed.
       0 { ret "Void"; }
-      1 { ret "Float"; }
-      2 { ret "Double"; }
-      3 { ret "X86_FP80"; }
-      4 { ret "FP128"; }
-      5 { ret "PPC_FP128"; }
-      6 { ret "Label"; }
-      7 {
+      1 { ret "Half"; }
+      2 { ret "Float"; }
+      3 { ret "Double"; }
+      4 { ret "X86_FP80"; }
+      5 { ret "FP128"; }
+      6 { ret "PPC_FP128"; }
+      7 { ret "Label"; }
+      8 {
         ret "i" + int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
-      8 {
+      9 {
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args: uint = llvm::LLVMCountParamTypes(ty);
@@ -972,7 +973,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         s += type_to_str_inner(names, outer, out_ty);
         ret s;
       }
-      9 {
+      10 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
         let elts: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_elts);
@@ -983,12 +984,12 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         s += "}";
         ret s;
       }
-      10 {
+      11 {
         let el_ty = llvm::LLVMGetElementType(ty);
         ret "[" + type_to_str_inner(names, outer, el_ty) + " x " +
             uint::str(llvm::LLVMGetArrayLength(ty)) + "]";
       }
-      11 {
+      12 {
         let i: uint = 0u;
         for tout: TypeRef in outer0 {
             i += 1u;
@@ -1000,9 +1001,9 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         ret "*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
-      12 { ret "Opaque"; }
       13 { ret "Vector"; }
       14 { ret "Metadata"; }
+      15 { ret "X86_MMAX"; }
       _ { #error("unknown TypeKind %d", kind as int); fail; }
     }
 }
