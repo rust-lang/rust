@@ -34,7 +34,6 @@ export port;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    type void;
     type rust_port;
 
     fn chan_id_send<T: send>(t: *sys::type_desc,
