@@ -461,7 +461,8 @@ fn build_session(sopts: @session::options, input: str,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
     let codemap = codemap::new_codemap();
-    let diagnostic_handler = diagnostic::mk_codemap_handler(codemap, none);
+    let diagnostic_handler =
+        diagnostic::mk_codemap_handler(codemap, some(demitter));
     @{targ_cfg: target_cfg,
       opts: sopts,
       cstore: cstore,
