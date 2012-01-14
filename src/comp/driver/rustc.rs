@@ -9,6 +9,8 @@ import io::writer_util;
 import option::{some, none};
 import getopts::{opt_present};
 import rustc::driver::driver::*;
+import rustc::syntax::codemap;
+import rustc::driver::diagnostic;
 
 fn version(argv0: str) {
     let vers = "unknown version";
@@ -68,11 +70,16 @@ fn main(args: [str]) {
 
     if vec::len(args) == 0u { usage(binary); ret; }
 
+    let demitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
+                       msg: str, lvl: diagnostic::level) {
+        diagnostic::emit_diagnostic(cmsp, msg, lvl);
+    };
+
     let match =
         alt getopts::getopts(args, opts()) {
           ok(m) { m }
           err(f) {
-            early_error(getopts::fail_str(f))
+            early_error(demitter, getopts::fail_str(f))
           }
         };
     if opt_present(match, "h") || opt_present(match, "help") {
@@ -84,13 +91,13 @@ fn main(args: [str]) {
         ret;
     }
     let ifile = alt vec::len(match.free) {
-      0u { early_error("No input filename given.") }
+      0u { early_error(demitter, "No input filename given.") }
       1u { match.free[0] }
-      _ { early_error("Multiple input filenames provided.") }
+      _ { early_error(demitter, "Multiple input filenames provided.") }
     };
 
-    let sopts = build_session_options(match);
-    let sess = build_session(sopts, ifile);
+    let sopts = build_session_options(match, demitter);
+    let sess = build_session(sopts, ifile, demitter);
     let odir = getopts::opt_maybe_str(match, "out-dir");
     let ofile = getopts::opt_maybe_str(match, "o");
     let cfg = build_configuration(sess, binary, ifile);

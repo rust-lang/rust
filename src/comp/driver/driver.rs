@@ -316,14 +316,16 @@ fn get_arch(triple: str) -> option<session::arch> {
         } else { none };
 }
 
-fn build_target_config(sopts: @session::options) -> @session::config {
+fn build_target_config(sopts: @session::options,
+                       demitter: diagnostic::emitter) -> @session::config {
     let os = alt get_os(sopts.target_triple) {
       some(os) { os }
-      none. { early_error("Unknown operating system!") }
+      none. { early_error(demitter, "Unknown operating system!") }
     };
     let arch = alt get_arch(sopts.target_triple) {
       some(arch) { arch }
-      none. { early_error("Unknown architecture! " + sopts.target_triple) }
+      none. { early_error(demitter,
+                          "Unknown architecture! " + sopts.target_triple) }
     };
     let (int_type, uint_type, float_type) = alt arch {
       session::arch_x86. {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
@@ -353,8 +355,8 @@ fn host_triple() -> str {
     ret ht != "" ? ht : fail "rustc built without CFG_HOST_TRIPLE";
 }
 
-fn build_session_options(match: getopts::match)
-   -> @session::options {
+fn build_session_options(match: getopts::match,
+                         demitter: diagnostic::emitter) -> @session::options {
     let crate_type = if opt_present(match, "lib") {
         session::lib_crate
     } else if opt_present(match, "bin") {
@@ -398,7 +400,7 @@ fn build_session_options(match: getopts::match)
     let opt_level: uint =
         if opt_present(match, "O") {
             if opt_present(match, "opt-level") {
-                early_error("-O and --opt-level both provided");
+                early_error(demitter, "-O and --opt-level both provided");
             }
             2u
         } else if opt_present(match, "opt-level") {
@@ -408,7 +410,7 @@ fn build_session_options(match: getopts::match)
               "2" { 2u }
               "3" { 3u }
               _ {
-                early_error("optimization level needs " +
+                early_error(demitter, "optimization level needs " +
                             "to be between 0-3")
               }
             }
@@ -450,8 +452,9 @@ fn build_session_options(match: getopts::match)
     ret sopts;
 }
 
-fn build_session(sopts: @session::options, input: str) -> session::session {
-    let target_cfg = build_target_config(sopts);
+fn build_session(sopts: @session::options, input: str,
+                 demitter: diagnostic::emitter) -> session::session {
+    let target_cfg = build_target_config(sopts, demitter);
     let cstore = cstore::mk_cstore();
     let filesearch = filesearch::mk_filesearch(
         sopts.maybe_sysroot,
@@ -590,8 +593,8 @@ fn build_output_filenames(ifile: str,
           obj_filename: obj_path};
 }
 
-fn early_error(msg: str) -> ! {
-    diagnostic::emit_diagnostic(none, msg, diagnostic::fatal);
+fn early_error(emitter: diagnostic::emitter, msg: str) -> ! {
+    emitter(none, msg, diagnostic::fatal);
     fail;
 }
 
