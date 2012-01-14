@@ -38,11 +38,6 @@ pure fn rational_leq(x: rational, y: rational) -> bool {
     x.num * y.den <= y.num * x.den
 }
 
-/*
-Function: orb
-*/
-pure fn orb(a: bool, b: bool) -> bool { a || b }
-
 // FIXME: Document what this is for or delete it
 tag void {
     void(@void);
