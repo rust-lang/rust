@@ -285,7 +285,7 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
       }
       ppm_normal. { ann = pprust::no_ann(); }
     }
-    pprust::print_crate(sess.codemap, crate, input,
+    pprust::print_crate(sess.codemap, sess.diagnostic, crate, input,
                         io::string_reader(src), io::stdout(), ann);
 }
 
