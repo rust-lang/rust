@@ -123,6 +123,7 @@ mod metadata {
 mod driver {
     mod driver;
     mod session;
+    mod diagnostic;
 }
 
 mod util {

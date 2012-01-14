@@ -6,6 +6,7 @@ import option::{some, none};
 import util::interner;
 import util::interner::intern;
 import codemap;
+import driver::diagnostic;
 
 type reader = @{
     cm: codemap::codemap,
@@ -47,7 +48,7 @@ impl reader for reader {
         } else { self.curr = -1 as char; }
     }
     fn err(m: str) {
-        codemap::emit_error(
+        diagnostic::emit_error(
             some((self.cm, ast_util::mk_sp(self.chpos, self.chpos))), m);
     }
 }

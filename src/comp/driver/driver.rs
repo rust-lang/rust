@@ -580,7 +580,7 @@ fn build_output_filenames(ifile: str,
 }
 
 fn early_error(msg: str) -> ! {
-    codemap::print_diagnostic("", codemap::error, msg);
+    diagnostic::print_diagnostic("", diagnostic::error, msg);
     fail;
 }
 
