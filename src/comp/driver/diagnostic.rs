@@ -6,6 +6,7 @@ import codemap::span;
 export emitter, emit;
 export level, fatal, error, warning, note;
 export handler, mk_handler;
+export ice_msg;
 
 type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
                    msg: str, lvl: level);
@@ -70,15 +71,19 @@ impl codemap_handler of handler for codemap_t {
         self.emit(none, msg, note);
     }
     fn span_bug(sp: span, msg: str) -> ! {
-        self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
+        self.span_fatal(sp, ice_msg(msg));
     }
     fn bug(msg: str) -> ! {
-        self.fatal(#fmt["internal compiler error %s", msg]);
+        self.fatal(ice_msg(msg));
     }
     fn span_unimpl(sp: span, msg: str) -> ! {
         self.span_bug(sp, "unimplemented " + msg);
     }
     fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
+}
+
+fn ice_msg(msg: str) -> str {
+    #fmt["internal compiler error %s", msg]
 }
 
 fn mk_handler(cm: codemap::codemap,
