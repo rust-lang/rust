@@ -3,8 +3,7 @@ import io::writer_util;
 import syntax::codemap;
 import codemap::span;
 
-export diagnostictype, warning, error, note;
-export print_diagnostic, emit_warning, emit_error, emit_note;
+export emit_warning, emit_error, emit_note;
 
 tag diagnostictype {
     warning;
