@@ -4,11 +4,11 @@ import syntax::codemap;
 import codemap::span;
 
 export emitter, emit_diagnostic;
-export diagnostictype, fatal, error, warning, note;
+export level, fatal, error, warning, note;
 export handler, mk_codemap_handler;
 
 type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
-                   msg: str, t: diagnostictype);
+                   msg: str, lvl: level);
 
 
 iface handler {
@@ -88,7 +88,7 @@ fn mk_codemap_handler(cm: codemap::codemap,
       some(e) { e }
       none. {
         let f = fn@(cmsp: option<(codemap::codemap, span)>,
-            msg: str, t: diagnostictype) {
+            msg: str, t: level) {
             emit_diagnostic(cmsp, msg, t);
         };
         f
@@ -102,15 +102,15 @@ fn mk_codemap_handler(cm: codemap::codemap,
     } as handler
 }
 
-tag diagnostictype {
+tag level {
     fatal;
     error;
     warning;
     note;
 }
 
-fn diagnosticstr(t: diagnostictype) -> str {
-    alt t {
+fn diagnosticstr(lvl: level) -> str {
+    alt lvl {
       fatal. { "error" }
       error. { "error" }
       warning. { "warning" }
@@ -118,8 +118,8 @@ fn diagnosticstr(t: diagnostictype) -> str {
     }
 }
 
-fn diagnosticcolor(t: diagnostictype) -> u8 {
-    alt t {
+fn diagnosticcolor(lvl: level) -> u8 {
+    alt lvl {
       fatal. { term::color_bright_red }
       error. { term::color_bright_red }
       warning. { term::color_bright_yellow }
@@ -127,14 +127,14 @@ fn diagnosticcolor(t: diagnostictype) -> u8 {
     }
 }
 
-fn print_diagnostic(topic: str, t: diagnostictype, msg: str) {
+fn print_diagnostic(topic: str, lvl: level, msg: str) {
     if str::is_not_empty(topic) {
         io::stdout().write_str(#fmt["%s ", topic]);
     }
     if term::color_supported() {
-        term::fg(io::stdout(), diagnosticcolor(t));
+        term::fg(io::stdout(), diagnosticcolor(lvl));
     }
-    io::stdout().write_str(#fmt["%s:", diagnosticstr(t)]);
+    io::stdout().write_str(#fmt["%s:", diagnosticstr(lvl)]);
     if term::color_supported() {
         term::reset(io::stdout());
     }
@@ -142,16 +142,16 @@ fn print_diagnostic(topic: str, t: diagnostictype, msg: str) {
 }
 
 fn emit_diagnostic(cmsp: option<(codemap::codemap, span)>,
-                   msg: str, t: diagnostictype) {
+                   msg: str, lvl: level) {
     alt cmsp {
       some((cm, sp)) {
         let ss = codemap::span_to_str(sp, cm);
         let lines = codemap::span_to_lines(sp, cm);
-        print_diagnostic(ss, t, msg);
+        print_diagnostic(ss, lvl, msg);
         highlight_lines(cm, sp, lines);
       }
       none. {
-        print_diagnostic("", t, msg);
+        print_diagnostic("", lvl, msg);
       }
     }
 }
