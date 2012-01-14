@@ -56,18 +56,18 @@ private:
 
 void update_log_settings(void* crate_map, char* settings);
 
-extern size_t log_rt_mem;
-extern size_t log_rt_comm;
-extern size_t log_rt_task;
-extern size_t log_rt_dom;
-extern size_t log_rt_trace;
-extern size_t log_rt_cache;
-extern size_t log_rt_upcall;
-extern size_t log_rt_timer;
-extern size_t log_rt_gc;
-extern size_t log_rt_stdlib;
-extern size_t log_rt_kern;
-extern size_t log_rt_backtrace;
-extern size_t log_rt_callback;
+extern uint32_t log_rt_mem;
+extern uint32_t log_rt_comm;
+extern uint32_t log_rt_task;
+extern uint32_t log_rt_dom;
+extern uint32_t log_rt_trace;
+extern uint32_t log_rt_cache;
+extern uint32_t log_rt_upcall;
+extern uint32_t log_rt_timer;
+extern uint32_t log_rt_gc;
+extern uint32_t log_rt_stdlib;
+extern uint32_t log_rt_kern;
+extern uint32_t log_rt_backtrace;
+extern uint32_t log_rt_callback;
 
 #endif /* RUST_LOG_H */

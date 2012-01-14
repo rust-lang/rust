@@ -143,7 +143,7 @@ rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
 
 struct mod_entry {
     const char* name;
-    size_t* state;
+    uint32_t* state;
 };
 
 struct cratemap {
@@ -232,19 +232,19 @@ void print_crate_log_map(const cratemap* map) {
 
 // These are pseudo-modules used to control logging in the runtime.
 
-size_t log_rt_mem;
-size_t log_rt_comm;
-size_t log_rt_task;
-size_t log_rt_dom;
-size_t log_rt_trace;
-size_t log_rt_cache;
-size_t log_rt_upcall;
-size_t log_rt_timer;
-size_t log_rt_gc;
-size_t log_rt_stdlib;
-size_t log_rt_kern;
-size_t log_rt_backtrace;
-size_t log_rt_callback;
+uint32_t log_rt_mem;
+uint32_t log_rt_comm;
+uint32_t log_rt_task;
+uint32_t log_rt_dom;
+uint32_t log_rt_trace;
+uint32_t log_rt_cache;
+uint32_t log_rt_upcall;
+uint32_t log_rt_timer;
+uint32_t log_rt_gc;
+uint32_t log_rt_stdlib;
+uint32_t log_rt_kern;
+uint32_t log_rt_backtrace;
+uint32_t log_rt_callback;
 
 static const mod_entry _rt_module_map[] =
     {{"::rt::mem", &log_rt_mem},
