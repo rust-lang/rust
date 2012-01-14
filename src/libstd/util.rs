@@ -38,11 +38,6 @@ pure fn rational_leq(x: rational, y: rational) -> bool {
     x.num * y.den <= y.num * x.den
 }
 
-// FIXME: Document what this is for or delete it
-tag void {
-    void(@void);
-}
-
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
