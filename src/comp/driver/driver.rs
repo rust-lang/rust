@@ -289,36 +289,42 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
                         io::string_reader(src), io::stdout(), ann);
 }
 
-fn get_os(triple: str) -> session::os {
+fn get_os(triple: str) -> option<session::os> {
     ret if str::find(triple, "win32") >= 0 ||
                str::find(triple, "mingw32") >= 0 {
-            session::os_win32
+            some(session::os_win32)
         } else if str::find(triple, "darwin") >= 0 {
-            session::os_macos
+            some(session::os_macos)
         } else if str::find(triple, "linux") >= 0 {
-            session::os_linux
+            some(session::os_linux)
         } else if str::find(triple, "freebsd") >= 0 {
-            session::os_freebsd
-        } else { early_error("Unknown operating system!") };
+            some(session::os_freebsd)
+        } else { none };
 }
 
-fn get_arch(triple: str) -> session::arch {
+fn get_arch(triple: str) -> option<session::arch> {
     ret if str::find(triple, "i386") >= 0 || str::find(triple, "i486") >= 0 ||
                str::find(triple, "i586") >= 0 ||
                str::find(triple, "i686") >= 0 ||
                str::find(triple, "i786") >= 0 {
-            session::arch_x86
+            some(session::arch_x86)
         } else if str::find(triple, "x86_64") >= 0 {
-            session::arch_x86_64
+            some(session::arch_x86_64)
         } else if str::find(triple, "arm") >= 0 ||
                       str::find(triple, "xscale") >= 0 {
-            session::arch_arm
-        } else { early_error("Unknown architecture! " + triple) };
+            some(session::arch_arm)
+        } else { none };
 }
 
 fn build_target_config(sopts: @session::options) -> @session::config {
-    let os = get_os(sopts.target_triple);
-    let arch = get_arch(sopts.target_triple);
+    let os = alt get_os(sopts.target_triple) {
+      some(os) { os }
+      none. { early_error("Unknown operating system!") }
+    };
+    let arch = alt get_arch(sopts.target_triple) {
+      some(arch) { arch }
+      none. { early_error("Unknown architecture! " + sopts.target_triple) }
+    };
     let (int_type, uint_type, float_type) = alt arch {
       session::arch_x86. {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
       session::arch_x86_64. {(ast::ty_i64, ast::ty_u64, ast::ty_f64)}
