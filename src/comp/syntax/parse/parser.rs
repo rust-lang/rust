@@ -21,7 +21,11 @@ tag restriction {
 
 tag file_type { CRATE_FILE; SOURCE_FILE; }
 
-type parse_sess = @{cm: codemap::codemap, mutable next_id: node_id};
+type parse_sess = @{
+    cm: codemap::codemap,
+    mutable next_id: node_id,
+    diagnostic: diagnostic::handler
+};
 
 fn next_node_id(sess: parse_sess) -> node_id {
     let rv = sess.next_id;
@@ -69,14 +73,13 @@ impl parser for parser {
         ret self.buffer[distance - 1u].tok;
     }
     fn fatal(m: str) -> ! {
-        self.span_fatal(self.span, m);
+        self.sess.diagnostic.span_fatal(self.span, m)
     }
     fn span_fatal(sp: span, m: str) -> ! {
-        diagnostic::emit_error(some((self.sess.cm, sp)), m);
-        fail;
+        self.sess.diagnostic.span_fatal(sp, m)
     }
     fn warn(m: str) {
-        diagnostic::emit_warning(some((self.sess.cm, self.span)), m);
+        self.sess.diagnostic.span_warn(self.span, m)
     }
     fn get_str(i: token::str_num) -> str {
         interner::get(*self.reader.interner, i)
@@ -93,8 +96,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
         src
       }
       result::err(e) {
-        diagnostic::emit_error(none, e);
-        fail;
+        sess.diagnostic.fatal(e)
       }
     };
     let filemap = codemap::new_filemap(path, chpos, byte_pos);
@@ -2526,8 +2528,7 @@ fn parse_crate_from_file(input: str, cfg: ast::crate_cfg, sess: parse_sess) ->
     } else if str::ends_with(input, ".rs") {
         parse_crate_from_source_file(input, cfg, sess)
     } else {
-        diagnostic::emit_error(none, "unknown input file type: " + input);
-        fail
+        sess.diagnostic.fatal("unknown input file type: " + input)
     }
 }
 

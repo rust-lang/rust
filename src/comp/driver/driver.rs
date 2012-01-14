@@ -452,14 +452,19 @@ fn build_session(sopts: @session::options, input: str) -> session::session {
         sopts.target_triple,
         sopts.addl_lib_search_paths);
     let codemap = codemap::new_codemap();
+    let diagnostic_handler = diagnostic::mk_codemap_handler(codemap);
     @{targ_cfg: target_cfg,
       opts: sopts,
       cstore: cstore,
-      parse_sess: @{cm: codemap, mutable next_id: 1},
+      parse_sess: @{
+          cm: codemap,
+          mutable next_id: 1,
+          diagnostic: diagnostic_handler
+      },
       codemap: codemap,
       // For a library crate, this is always none
       mutable main_fn: none,
-      diagnostic: diagnostic::mk_codemap_handler(codemap),
+      diagnostic: diagnostic_handler,
       filesearch: filesearch,
       mutable building_library: false,
       working_dir: fs::dirname(input)}
