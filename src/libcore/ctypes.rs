@@ -9,6 +9,15 @@ FIXME: Add a test that uses some native code to verify these sizes,
 which are not obviously correct for all potential platforms.
 */
 
+export c_int, c_uint, long, longlong, unsigned, ulong, ulonglong;
+export intptr_t, uintptr_t;
+export uint32_t;
+export void;
+export c_float, c_double;
+export size_t, ssize_t;
+export off_t, fd_t, pid_t;
+export enum;
+
 // PORT adapt to architecture
 
 /*
@@ -80,13 +89,19 @@ type uint32_t = u32;
 /*
 Type: void
 
-A type, a pointer to which can be used as C `void *`
+A type, a pointer to which can be used as C `void *`.
 
-Note that this does not directly correspond to the C `void` type,
-which is an incomplete type. Using pointers to this type
-when interoperating with C void pointers can help in documentation.
+The void type cannot be constructed or destructured, but using
+pointers to this type when interoperating with C void pointers can
+help in documentation.
 */
-type void = int;
+tag void {
+    // Making the only variant reference itself makes it impossible to
+    // construct. Not exporting it makes it impossible to destructure.
+    void_private(@void);
+    // FIXME: #881
+    void_private2(@void);
+}
 
 /*
 Type: c_float
