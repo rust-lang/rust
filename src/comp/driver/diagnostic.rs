@@ -30,11 +30,11 @@ type codemap_t = @{
 
 impl codemap_handler of handler for codemap_t {
     fn span_fatal(sp: span, msg: str) -> ! {
-        emit_error(some((self.cm, sp)), msg);
+        emit_fatal(some((self.cm, sp)), msg);
         fail;
     }
     fn fatal(msg: str) -> ! {
-        emit_error(none, msg);
+        emit_fatal(none, msg);
         fail;
     }
     fn span_err(sp: span, msg: str) {
@@ -83,23 +83,26 @@ fn mk_codemap_handler(cm: codemap::codemap) -> handler {
 }
 
 tag diagnostictype {
-    warning;
+    fatal;
     error;
+    warning;
     note;
 }
 
 fn diagnosticstr(t: diagnostictype) -> str {
     alt t {
-      warning. { "warning" }
+      fatal. { "error" }
       error. { "error" }
+      warning. { "warning" }
       note. { "note" }
     }
 }
 
 fn diagnosticcolor(t: diagnostictype) -> u8 {
     alt t {
-      warning. { term::color_bright_yellow }
+      fatal. { term::color_bright_red }
       error. { term::color_bright_red }
+      warning. { term::color_bright_yellow }
       note. { term::color_bright_green }
     }
 }
@@ -202,11 +205,14 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     }
 }
 
-fn emit_warning(cmsp: option<(codemap::codemap, span)>, msg: str) {
-    emit_diagnostic(cmsp, msg, warning);
+fn emit_fatal(cmsp: option<(codemap::codemap, span)>, msg: str) {
+    emit_diagnostic(cmsp, msg, fatal);
 }
 fn emit_error(cmsp: option<(codemap::codemap, span)>, msg: str) {
     emit_diagnostic(cmsp, msg, error);
+}
+fn emit_warning(cmsp: option<(codemap::codemap, span)>, msg: str) {
+    emit_diagnostic(cmsp, msg, warning);
 }
 fn emit_note(cmsp: option<(codemap::codemap, span)>, msg: str) {
     emit_diagnostic(cmsp, msg, note);
