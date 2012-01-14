@@ -4,6 +4,83 @@ import syntax::codemap;
 import codemap::span;
 
 export emit_warning, emit_error, emit_note;
+export handler, codemap_handler;
+
+iface handler {
+    fn span_fatal(sp: span, msg: str) -> !;
+    fn fatal(msg: str) -> !;
+    fn span_err(sp: span, msg: str);
+    fn err(msg: str);
+    fn has_errors() -> bool;
+    fn abort_if_errors();
+    fn span_warn(sp: span, msg: str);
+    fn warn(msg: str);
+    fn span_note(sp: span, msg: str);
+    fn note(msg: str);
+    fn span_bug(sp: span, msg: str) -> !;
+    fn bug(msg: str) -> !;
+    fn span_unimpl(sp: span, msg: str) -> !;
+    fn unimpl(msg: str) -> !;
+}
+
+type codemap_t = @{
+    cm: codemap::codemap,
+    mutable err_count: uint
+};
+
+impl codemap_handler of handler for codemap_t {
+    fn span_fatal(sp: span, msg: str) -> ! {
+        emit_error(some((self.cm, sp)), msg);
+        fail;
+    }
+    fn fatal(msg: str) -> ! {
+        emit_error(none, msg);
+        fail;
+    }
+    fn span_err(sp: span, msg: str) {
+        emit_error(some((self.cm, sp)), msg);
+        self.err_count += 1u;
+    }
+    fn err(msg: str) {
+        emit_error(none, msg);
+        self.err_count += 1u;
+    }
+    fn has_errors() -> bool { self.err_count > 0u }
+    fn abort_if_errors() {
+        if self.err_count > 0u {
+            self.fatal("aborting due to previous errors");
+        }
+    }
+    fn span_warn(sp: span, msg: str) {
+        emit_warning(some((self.cm, sp)), msg);
+    }
+    fn warn(msg: str) {
+        emit_warning(none, msg);
+    }
+    fn span_note(sp: span, msg: str) {
+        emit_note(some((self.cm, sp)), msg);
+    }
+    fn note(msg: str) {
+        emit_note(none, msg);
+    }
+    fn span_bug(sp: span, msg: str) -> ! {
+        self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
+    }
+    fn bug(msg: str) -> ! {
+        self.fatal(#fmt["internal compiler error %s", msg]);
+    }
+    fn span_unimpl(sp: span, msg: str) -> ! {
+        self.span_bug(sp, "unimplemented " + msg);
+    }
+    fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
+}
+
+fn mk_codemap_handler(cm: codemap::codemap) -> handler {
+    @{
+        cm: cm,
+        mutable err_count: 0u,
+    } as handler
+}
 
 tag diagnostictype {
     warning;
