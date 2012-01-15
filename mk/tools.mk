@@ -13,7 +13,7 @@ CARGO_CRATE := $(S)src/cargo/cargo.rc
 CARGO_INPUTS := $(wildcard $(S)src/cargo/*rs)
 
 # Rustdoc, the documentation tool
-RUSTDOC_CRATE := $(wildcard $(S)src/rustdoc/.rc)
+RUSTDOC_CRATE := $(S)src/rustdoc/rustdoc.rc
 RUSTDOC_INPUTS := $(wildcard $(S)src/rustdoc/*.rs)
 
 # FIXME: These are only built for the host arch. Eventually we'll
