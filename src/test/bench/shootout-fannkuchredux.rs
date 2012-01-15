@@ -62,7 +62,7 @@ fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
         int::from_str(args[1])
     } else {
-        10
+        8
     };
     std::io::println(#fmt("Pfannkuchen(%d) = %d", n, fannkuch(n)));
 }

@@ -18,7 +18,7 @@ fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
         int::from_str(args[1])
     } else {
-        11
+        8
     };
     std::io::println(#fmt("Ack(3,%d): %d\n", n, ack(3, n)));
 }

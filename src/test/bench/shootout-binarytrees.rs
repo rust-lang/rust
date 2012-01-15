@@ -23,7 +23,7 @@ fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
         int::from_str(args[1])
     } else {
-        15
+        8
     };
     let min_depth = 4;
     let max_depth;

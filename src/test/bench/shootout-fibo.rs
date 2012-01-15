@@ -14,7 +14,7 @@ fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
         int::from_str(args[1])
     } else {
-        40
+        30
     };
     std::io::println(#fmt("%d\n", fib(n)));
 }

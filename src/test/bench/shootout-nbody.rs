@@ -17,7 +17,7 @@ fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
         int::from_str(args[1])
     } else {
-        1000000
+        100000
     };
     let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
     std::io::println(#fmt("%f", NBodySystem::energy(bodies)));
