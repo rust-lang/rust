@@ -177,6 +177,18 @@ fn doc_header(rd: rustdoc, name: str) {
     rd.w.write_line("# Crate " + name);
 }
 
+mod parse {
+    fn from_file(file: str) -> @ast::crate {
+        let cm = codemap::new_codemap();
+        let sess = @{
+            cm: cm,
+            mutable next_id: 0,
+            diagnostic: diagnostic::mk_handler(cm, none)
+        };
+        parser::parse_crate_from_source_file(file, [], sess)
+    }
+}
+
 #[doc(
   brief = "Main function.",
   desc = "Command-line arguments:
@@ -184,27 +196,21 @@ fn doc_header(rd: rustdoc, name: str) {
 *  argv[1]: crate file name",
   args(argv = "Command-line arguments.")
 )]
-
 fn main(argv: [str]) {
 
-    let w = io::stdout();
-
     if vec::len(argv) != 2u {
-        w.write_str(#fmt("usage: %s <input>\n", argv[0]));
+        io::println(#fmt("usage: %s <input>", argv[0]));
         ret;
     }
 
-    let cm = codemap::new_codemap();
-    let sess = @{
-        cm: cm,
-        mutable next_id: 0,
-        diagnostic: diagnostic::mk_handler(cm, none)
-    };
+    let crate = parse::from_file(argv[1]);
+
+    let w = io::stdout();
     let rd = { ps: pprust::rust_printer(w), w: w };
     doc_header(rd, argv[1]);
-    let p = parser::parse_crate_from_source_file(argv[1], [], sess);
+
     let v = visit::mk_simple_visitor(@{
         visit_item: bind doc_item(rd, _)
         with *visit::default_simple_visitor()});
-    visit::visit_crate(*p, (), v);
+    visit::visit_crate(*crate, (), v);
 }
