@@ -135,7 +135,8 @@ fn doc_item(rd: rustdoc, item: @ast::item) {
     let noargdocs = map::new_str_hash::<str>();
     for attr: ast::attribute in item.attrs {
         alt attr.node.value.node {
-            ast::meta_name_value("doc", {node: ast::lit_str(value), span: _}) {
+            ast::meta_name_value(
+                "doc", {node: ast::lit_str(value), span: _}) {
                 _fndoc = some({ brief: value,
                                 desc: none,
                                 return: none,
@@ -149,7 +150,10 @@ fn doc_item(rd: rustdoc, item: @ast::item) {
 
     let _fndoc0 = alt _fndoc {
         some(_d) { _d }
-        none. { { brief: "_undocumented_", desc: none, return: none, args: noargdocs } }
+        none. { { brief: "_undocumented_",
+                 desc: none,
+                 return: none,
+                 args: noargdocs } }
     };
 
     alt item.node {

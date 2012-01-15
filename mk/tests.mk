@@ -95,6 +95,8 @@ tidy:
               $(COMPILETEST_INPUTS) \
               $(CARGO_CRATE) \
               $(CARGO_INPUTS) \
+              $(RUSTDOC_CRATE) \
+              $(RUSTDOC_INPUTS) \
 		  | xargs -n 10 python $(S)src/etc/tidy.py
 		$(Q)echo \
               $(ALL_TEST_INPUTS) \
