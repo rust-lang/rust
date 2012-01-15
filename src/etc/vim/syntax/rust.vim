@@ -15,9 +15,9 @@ if !exists("main_syntax")
 endif
 
 syn keyword   rustKeyword     alt as assert auth be bind block break chan
-syn keyword   rustKeyword     check claim cont const copy do else export fail
-syn keyword   rustKeyword     fn for if import in inline lambda let log
-syn keyword   rustKeyword     log_err mod mutable native note obj prove pure
+syn keyword   rustKeyword     check claim cont const copy do else enum export fail
+syn keyword   rustKeyword     fn for if iface impl import in inline lambda let log
+syn keyword   rustKeyword     log_err mod mutable native note of prove pure
 syn keyword   rustKeyword     resource ret self tag type unsafe use while
 syn keyword   rustKeyword     with
 
