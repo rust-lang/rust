@@ -22,6 +22,14 @@ type rustdoc = {
     w: io::writer
 };
 
+type cratedoc = {
+    mods: [moddoc]
+};
+
+type moddoc = {
+    fns: [fndoc]
+};
+
 type fndoc = {
     brief: str,
     desc: option::t<str>,
