@@ -6,3 +6,5 @@
 #[desc = "The Rust documentation generator"];
 #[license = "MIT"];
 #[crate_type = "bin"];
+
+mod parse;

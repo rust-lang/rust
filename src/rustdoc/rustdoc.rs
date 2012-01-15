@@ -177,30 +177,6 @@ fn doc_header(rd: rustdoc, name: str) {
     rd.w.write_line("# Crate " + name);
 }
 
-mod parse {
-    export from_file, from_str;
-
-    fn new_parse_sess() -> parser::parse_sess {
-        let cm = codemap::new_codemap();
-        let sess = @{
-            cm: cm,
-            mutable next_id: 0,
-            diagnostic: diagnostic::mk_handler(cm, none)
-        };
-        ret sess;
-    }
-
-    fn from_file(file: str) -> @ast::crate {
-        parser::parse_crate_from_source_file(
-            file, [], new_parse_sess())
-    }
-
-    fn from_str(source: str) -> @ast::crate {
-        parser::parse_crate_from_source_str(
-            "-", source, [], new_parse_sess())
-    }
-}
-
 #[doc(
   brief = "Main function.",
   desc = "Command-line arguments:
