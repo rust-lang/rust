@@ -1,6 +1,7 @@
 import syntax::ast::*;
 import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit_exprs,
                           lit_expr_eq};
+import pat_util::*;
 import syntax::visit;
 import option::{some, none};
 import driver::session::session;
@@ -16,7 +17,12 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 
 fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
-    alt ex.node { expr_alt(_, arms) { check_arms(tcx, arms); } _ { } }
+    alt ex.node {
+        expr_alt(_, arms) {
+            check_arms(tcx, pat_util::normalize_arms(tcx, arms));
+        }
+        _ { }
+    }
 }
 
 fn check_arms(tcx: ty::ctxt, arms: [arm]) {
@@ -66,8 +72,8 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
     }
 
     alt a.node {
-      pat_bind(_, some(p)) { pattern_supersedes(tcx, p, b) }
-      pat_wild. | pat_bind(_, none.) { true }
+      pat_ident(_, some(p)) { pattern_supersedes(tcx, p, b) }
+      pat_wild. | pat_ident(_, none.) { true }
       pat_lit(la) {
         alt b.node {
           pat_lit(lb) { lit_expr_eq(la, lb) }
@@ -132,11 +138,11 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
 }
 
 fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
-    alt pat.node {
-      pat_box(sub) | pat_uniq(sub) | pat_bind(_, some(sub)) {
+    alt normalize_pat(tcx, pat).node {
+      pat_box(sub) | pat_uniq(sub) | pat_ident(_, some(sub)) {
         is_refutable(tcx, sub)
       }
-      pat_wild. | pat_bind(_, none.) { false }
+      pat_wild. | pat_ident(_, none.) { false }
       pat_lit(_) { true }
       pat_rec(fields, _) {
         for field: field_pat in fields {

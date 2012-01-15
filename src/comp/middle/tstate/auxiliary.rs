@@ -1,5 +1,6 @@
 import core::{vec, int, uint, option};
 import option::*;
+import pat_util::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::{visit, codemap};
@@ -69,10 +70,10 @@ fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> str {
     for p: norm_constraint in constraints(fcx) {
         alt tritv_get(v, p.bit_num) {
           dont_care. { }
-          t {
+          tt {
             s +=
                 if comma { ", " } else { comma = true; "" } +
-                    if t == tfalse { "!" } else { "" } +
+                    if tt == tfalse { "!" } else { "" } +
                     constraint_to_str(fcx.ccx.tcx, p.c);
           }
         }
@@ -313,7 +314,7 @@ fn node_id_to_ts_ann(ccx: crate_ctxt, id: node_id) -> ts_ann {
         #error("node_id_to_ts_ann: no ts_ann for node_id %d", id);
         fail;
       }
-      some(t) { ret t; }
+      some(tt) { ret tt; }
     }
 }
 
@@ -779,13 +780,6 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
     ret rslt;
 }
 
-fn path_to_ident(cx: ty::ctxt, p: @path) -> ident {
-    alt vec::last(p.node.idents) {
-      none. { cx.sess.span_fatal(p.span, "Malformed path"); }
-      some(i) { ret i; }
-    }
-}
-
 tag if_ty { if_check; plain_if; }
 
 fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
@@ -1059,18 +1053,20 @@ fn ast_constr_to_sp_constr(tcx: ty::ctxt, args: [arg], c: @constr) ->
 
 type binding = {lhs: [inst], rhs: option::t<initializer>};
 
-fn local_to_bindings(loc: @local) -> binding {
+fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let lhs = [];
-    pat_bindings(loc.node.pat) {|p|
-        let ident = alt p.node { pat_bind(name, _) { name } };
+    pat_bindings(pat_util::normalize_pat(tcx, loc.node.pat)) {|p|
+            let ident = alt p.node
+               { pat_ident(name, _) { path_to_ident(name) } };
         lhs += [{ident: ident, node: p.id}];
     };
     {lhs: lhs, rhs: loc.node.init}
 }
 
-fn locals_to_bindings(locals: [(let_style, @local)]) -> [binding] {
+fn locals_to_bindings(tcx: ty::ctxt,
+                      locals: [(let_style, @local)]) -> [binding] {
     let rslt = [];
-    for (_, loc) in locals { rslt += [local_to_bindings(loc)]; }
+    for (_, loc) in locals { rslt += [local_to_bindings(tcx, loc)]; }
     ret rslt;
 }
 

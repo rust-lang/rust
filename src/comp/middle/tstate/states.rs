@@ -5,6 +5,7 @@ import aux::*;
 import tritv::{tritv_clone, tritv_set, ttrue};
 
 import bitvectors::*;
+import pat_util::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::codemap::span;
@@ -37,7 +38,7 @@ fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
       some(rhsid) {
         // RHS is a local var
         let instrhs =
-            {ident: path_to_ident(fcx.ccx.tcx, rhs_path), node: rhsid.node};
+            {ident: path_to_ident(rhs_path), node: rhsid.node};
         copy_in_poststate(fcx, post, instlhs, instrhs,
                           op_to_oper_ty(init_op));
       }
@@ -143,9 +144,9 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
                 alt d1 {
                   some(id1) {
                     let instlhs =
-                        {ident: path_to_ident(fcx.ccx.tcx, p), node: id};
+                        {ident: path_to_ident(p), node: id};
                     let instrhs =
-                        {ident: path_to_ident(fcx.ccx.tcx, p1), node: id1};
+                        {ident: path_to_ident(p1), node: id1};
                     copy_in_poststate_two(fcx, tmp, post, instlhs, instrhs,
                                           ty);
                   }
@@ -206,8 +207,9 @@ fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
     // Make sure the index vars are considered initialized
     // in the body
     let index_post = tritv_clone(expr_poststate(fcx.ccx, index));
-    pat_bindings(l.node.pat) {|p|
-        let ident = alt p.node { pat_bind(name, _) { name } };
+    pat_bindings(pat_util::normalize_pat(fcx.ccx.tcx, l.node.pat)) {|p|
+        let ident = alt p.node
+           { pat_ident(name, _) { path_to_ident(name) } };
         set_in_poststate_ident(fcx, p.id, ident, index_post);
     };
 
@@ -231,7 +233,7 @@ fn gen_if_local(fcx: fn_ctxt, p: poststate, e: @expr) -> bool {
         alt fcx.ccx.tcx.def_map.find(e.id) {
           some(def_local(loc, _)) {
             ret set_in_poststate_ident(fcx, loc.node,
-                                       path_to_ident(fcx.ccx.tcx, pth), p);
+                                       path_to_ident(pth), p);
           }
           _ { ret false; }
         }
@@ -632,7 +634,8 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
         alt adecl.node {
           decl_local(alocals) {
             set_prestate(stmt_ann, pres);
-            let c_and_p = seq_states(fcx, pres, locals_to_bindings(alocals));
+            let c_and_p = seq_states(fcx, pres,
+                  locals_to_bindings(fcx.ccx.tcx, alocals));
             /* important to do this in one step to ensure
             termination (don't want to set changed to true
             for intermediate changes) */

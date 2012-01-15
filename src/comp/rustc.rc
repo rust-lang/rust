@@ -39,6 +39,7 @@ mod middle {
     mod gc;
     mod debuginfo;
     mod capture;
+    mod pat_util;
 
     mod tstate {
         mod ck;

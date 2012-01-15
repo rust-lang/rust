@@ -6,6 +6,7 @@ import metadata::csearch;
 import driver::session::session;
 import util::common::*;
 import syntax::codemap::span;
+import pat_util::*;
 import middle::ty;
 import middle::ty::{node_id_to_type, arg, block_ty,
                     expr_ty, field, node_type_table, mk_nil,
@@ -1137,8 +1138,8 @@ fn gather_locals(ccx: @crate_ctxt,
 
     // Add pattern bindings.
     let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
-            alt p.node {
-              ast::pat_bind(_, _) { assign(p.id, none); }
+        alt normalize_pat(ccx.tcx, p).node {
+              ast::pat_ident(_, _) { assign(p.id, none); }
               _ {/* no-op */ }
             }
             visit::visit_pat(p, e, v);
@@ -1181,9 +1182,9 @@ fn valid_range_bounds(from: @ast::expr, to: @ast::expr) -> bool {
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
+fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
              expected: ty::t) {
-    alt pat.node {
+    alt normalize_pat(fcx.ccx.tcx, pat).node {
       ast::pat_wild. {
           alt structure_of(fcx, pat.span, expected) {
                   ty::ty_tag(_, expected_tps) {
@@ -1218,11 +1219,11 @@ fn check_pat(fcx: @fn_ctxt, map: ast_util::pat_id_map, pat: @ast::pat,
         }
         write::ty_only_fixup(fcx, pat.id, b_ty);
       }
-      ast::pat_bind(name, sub) {
+      ast::pat_ident(name, sub) {
         let vid = lookup_local(fcx, pat.span, pat.id);
         let typ = ty::mk_var(fcx.ccx.tcx, vid);
         typ = demand::simple(fcx, pat.span, expected, typ);
-        let canon_id = map.get(name);
+        let canon_id = map.get(path_to_ident(name));
         if canon_id != pat.id {
             let ct =
                 ty::mk_var(fcx.ccx.tcx,
@@ -2014,7 +2015,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // bindings.
         let pattern_ty = ty::expr_ty(tcx, expr);
         for arm: ast::arm in arms {
-            let id_map = ast_util::pat_id_map(arm.pats[0]);
+            let id_map = pat_util::pat_id_map(tcx, arm.pats[0]);
             for p: @ast::pat in arm.pats {
                 check_pat(fcx, id_map, p, pattern_ty);
             }
@@ -2360,7 +2361,7 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
           }
           _ {/* fall through */ }
         }
-        let id_map = ast_util::pat_id_map(local.node.pat);
+        let id_map = pat_util::pat_id_map(fcx.ccx.tcx, local.node.pat);
         check_pat(fcx, id_map, local.node.pat, t);
       }
     }

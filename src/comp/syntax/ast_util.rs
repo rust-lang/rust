@@ -33,43 +33,10 @@ fn def_id_of_def(d: def) -> def_id {
     }
 }
 
-type pat_id_map = std::map::hashmap<str, node_id>;
-
-// This is used because same-named variables in alternative patterns need to
-// use the node_id of their namesake in the first pattern.
-fn pat_id_map(pat: @pat) -> pat_id_map {
-    let map = std::map::new_str_hash::<node_id>();
-    pat_bindings(pat) {|bound|
-        let name = alt bound.node { pat_bind(n, _) { n } };
-        map.insert(name, bound.id);
-    };
-    ret map;
-}
-
-// FIXME: could return a constrained type
-fn pat_bindings(pat: @pat, it: block(@pat)) {
-    alt pat.node {
-      pat_bind(_, option::none.) { it(pat); }
-      pat_bind(_, option::some(sub)) { it(pat); pat_bindings(sub, it); }
-      pat_tag(_, sub) { for p in sub { pat_bindings(p, it); } }
-      pat_rec(fields, _) { for f in fields { pat_bindings(f.pat, it); } }
-      pat_tup(elts) { for elt in elts { pat_bindings(elt, it); } }
-      pat_box(sub) { pat_bindings(sub, it); }
-      pat_uniq(sub) { pat_bindings(sub, it); }
-      pat_wild. | pat_lit(_) | pat_range(_, _) { }
-    }
-}
-
-fn pat_binding_ids(pat: @pat) -> [node_id] {
-    let found = [];
-    pat_bindings(pat) {|b| found += [b.id]; };
-    ret found;
-}
-
 fn binop_to_str(op: binop) -> str {
     alt op {
       add. { ret "+"; }
-      sub. { ret "-"; }
+      subtract. { ret "-"; }
       mul. { ret "*"; }
       div. { ret "/"; }
       rem. { ret "%"; }
@@ -262,7 +229,7 @@ fn eval_const_expr(e: @expr) -> const_val {
         alt (eval_const_expr(a), eval_const_expr(b)) {
           (const_float(a), const_float(b)) {
             alt op {
-              add. { const_float(a + b) } sub. { const_float(a - b) }
+              add. { const_float(a + b) } subtract. { const_float(a - b) }
               mul. { const_float(a * b) } div. { const_float(a / b) }
               rem. { const_float(a % b) } eq. { fromb(a == b) }
               lt. { fromb(a < b) } le. { fromb(a <= b) } ne. { fromb(a != b) }
@@ -271,7 +238,7 @@ fn eval_const_expr(e: @expr) -> const_val {
           }
           (const_int(a), const_int(b)) {
             alt op {
-              add. { const_int(a + b) } sub. { const_int(a - b) }
+              add. { const_int(a + b) } subtract. { const_int(a - b) }
               mul. { const_int(a * b) } div. { const_int(a / b) }
               rem. { const_int(a % b) } and. | bitand. { const_int(a & b) }
               or. | bitor. { const_int(a | b) } bitxor. { const_int(a ^ b) }
@@ -282,7 +249,7 @@ fn eval_const_expr(e: @expr) -> const_val {
           }
           (const_uint(a), const_uint(b)) {
             alt op {
-              add. { const_uint(a + b) } sub. { const_uint(a - b) }
+              add. { const_uint(a + b) } subtract. { const_uint(a - b) }
               mul. { const_uint(a * b) } div. { const_uint(a / b) }
               rem. { const_uint(a % b) } and. | bitand. { const_uint(a & b) }
               or. | bitor. { const_uint(a | b) } bitxor. { const_uint(a ^ b) }
@@ -325,6 +292,10 @@ fn lit_expr_eq(a: @expr, b: @expr) -> bool { compare_lit_exprs(a, b) == 0 }
 
 fn lit_eq(a: @lit, b: @lit) -> bool {
     compare_const_vals(lit_to_const(a), lit_to_const(b)) == 0
+}
+
+fn ident_to_path(s: span, i: ident) -> @path {
+    @respan(s, {global: false, idents: [i], types: []})
 }
 
 // Local Variables:

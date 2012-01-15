@@ -10,6 +10,7 @@ export make_fold;
 export noop_fold_crate;
 export noop_fold_item;
 export noop_fold_expr;
+export noop_fold_pat;
 export noop_fold_mod;
 export noop_fold_ty;
 
@@ -273,8 +274,8 @@ fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {
 fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
     ret alt p {
           pat_wild. { p }
-          pat_bind(ident, sub) {
-            pat_bind(fld.fold_ident(ident), option::map(sub, fld.fold_pat))
+          pat_ident(pth, sub) {
+            pat_ident(fld.fold_path(pth), option::map(sub, fld.fold_pat))
           }
           pat_lit(_) { p }
           pat_tag(pth, pats) {
@@ -317,8 +318,8 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
     let fold_mac = bind fold_mac_(_, fld);
 
     ret alt e {
-          expr_vec(exprs, mut) {
-            expr_vec(fld.map_exprs(fld.fold_expr, exprs), mut)
+            expr_vec(exprs, mutt) {
+            expr_vec(fld.map_exprs(fld.fold_expr, exprs), mutt)
           }
           expr_rec(fields, maybe_expr) {
             expr_rec(vec::map(fields, fold_field),
@@ -390,8 +391,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           }
           expr_path(pth) { expr_path(fld.fold_path(pth)) }
           expr_fail(e) { expr_fail(option::map(e, fld.fold_expr)) }
-          expr_break. { e }
-          expr_cont. { e }
+          expr_break. | expr_cont. { e }
           expr_ret(e) { expr_ret(option::map(e, fld.fold_expr)) }
           expr_be(e) { expr_be(fld.fold_expr(e)) }
           expr_log(i, lv, e) { expr_log(i, fld.fold_expr(lv),

@@ -1,8 +1,10 @@
 import core::{str, vec, option};
 import option::{some, none};
 
+import driver::session::session;
 import lib::llvm::llvm;
 import lib::llvm::llvm::{ValueRef, BasicBlockRef};
+import pat_util::*;
 import trans_build::*;
 import trans::{new_sub_block_ctxt, new_scope_block_ctxt, load_if_immediate};
 import syntax::ast;
@@ -10,6 +12,7 @@ import syntax::ast_util;
 import syntax::ast_util::{dummy_sp};
 import syntax::ast::def_id;
 import syntax::codemap::span;
+import syntax::print::pprust::pat_to_str;
 
 import trans_common::*;
 
@@ -61,6 +64,7 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
     }
 }
 
+// FIXME: invariant -- pat_id is bound in the def_map?
 fn variant_opt(ccx: @crate_ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat_id));
     let variants = ty::tag_variants(ccx.tcx, vdef.tg);
@@ -83,13 +87,13 @@ type match_branch =
       bound: bind_map,
       data: @{body: BasicBlockRef,
               guard: option::t<@ast::expr>,
-              id_map: ast_util::pat_id_map}};
+              id_map: pat_id_map}};
 type match = [match_branch];
 
 fn has_nested_bindings(m: match, col: uint) -> bool {
     for br in m {
         alt br.pats[col].node {
-          ast::pat_bind(_, some(_)) { ret true; }
+          ast::pat_ident(_, some(_)) { ret true; }
           _ {}
         }
     }
@@ -99,12 +103,13 @@ fn has_nested_bindings(m: match, col: uint) -> bool {
 fn expand_nested_bindings(m: match, col: uint, val: ValueRef) -> match {
     let result = [];
     for br in m {
-        alt br.pats[col].node {
-          ast::pat_bind(name, some(inner)) {
+      alt br.pats[col].node {
+          ast::pat_ident(name, some(inner)) {
             let pats = vec::slice(br.pats, 0u, col) + [inner] +
                 vec::slice(br.pats, col + 1u, vec::len(br.pats));
             result += [@{pats: pats,
-                         bound: br.bound + [{ident: name, val: val}]
+                        bound: br.bound + [{ident: path_to_ident(name),
+                                val: val}]
                          with *br}];
           }
           _ { result += [br]; }
@@ -124,8 +129,9 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
                 vec::slice(br.pats, col + 1u, vec::len(br.pats));
             let new_br = @{pats: pats,
                            bound: alt br.pats[col].node {
-                             ast::pat_bind(name, none.) {
-                               br.bound + [{ident: name, val: val}]
+                             ast::pat_ident(name, none.) {
+                                 br.bound + [{ident: path_to_ident(name),
+                                              val: val}]
                              }
                              _ { br.bound }
                            } with *br};
@@ -139,11 +145,11 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
 
 fn enter_default(m: match, col: uint, val: ValueRef) -> match {
     fn matches_always(p: @ast::pat) -> bool {
-        ret alt p.node {
-          ast::pat_wild. | ast::pat_bind(_, none.) | ast::pat_rec(_, _) |
-          ast::pat_tup(_) { true }
-          _ { false }
-        };
+        alt p.node {
+                ast::pat_wild. | ast::pat_rec(_, _) |
+                ast::pat_ident(_, none.) | ast::pat_tup(_) { true }
+                _ { false }
+        }
     }
     fn e(p: @ast::pat) -> option::t<[@ast::pat]> {
         ret if matches_always(p) { some([]) } else { none };
@@ -257,6 +263,8 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
                         vdefs: {tg: def_id, var: def_id}, val: ValueRef) ->
    {vals: [ValueRef], bcx: @block_ctxt} {
     let ccx = bcx.fcx.lcx.ccx, bcx = bcx;
+    // invariant:
+    // pat_id must have the same length ty_param_substs as vdefs?
     let ty_param_substs = ty::node_id_to_type_params(ccx.tcx, pat_id);
     let blobptr = val;
     let variants = ty::tag_variants(ccx.tcx, vdefs.tg);
@@ -274,6 +282,9 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
     while i < size {
         check (valid_variant_index(i, bcx, vdefs_tg, vdefs_var));
         let r =
+            // invariant needed:
+            // how do we know it even makes sense to pass in ty_param_substs
+            // here? What if it's [] and the tag type has variables in it?
             trans::GEP_tag(bcx, blobptr, vdefs_tg, vdefs_var, ty_param_substs,
                            i);
         bcx = r.bcx;
@@ -328,7 +339,7 @@ fn pick_col(m: match) -> uint {
     fn score(p: @ast::pat) -> uint {
         alt p.node {
           ast::pat_lit(_) | ast::pat_tag(_, _) | ast::pat_range(_, _) { 1u }
-          ast::pat_bind(_, some(p)) { score(p) }
+          ast::pat_ident(_, some(p)) { score(p) }
           _ { 0u }
         }
     }
@@ -582,7 +593,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 
 // Returns false for unreachable blocks
 fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
-                     ids: ast_util::pat_id_map) -> bool {
+                     ids: pat_util::pat_id_map) -> bool {
     let our_block = bcx.llbb as uint;
     let success = true, bcx = bcx;
     ids.items {|name, node_id|
@@ -623,7 +634,7 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
     ret success;
 }
 
-fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
+fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
              dest: trans::dest) -> @block_ctxt {
     let bodies = [];
     let match: match = [];
@@ -633,9 +644,15 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
     let er = trans::trans_temp_expr(alt_cx, expr);
     if er.bcx.unreachable { ret er.bcx; }
 
+    /*
+      n.b. nothing else in this module should need to normalize,
+      b/c of this call
+     */
+    let arms = normalize_arms(bcx_tcx(cx), arms_);
+
     for a: ast::arm in arms {
         let body = new_scope_block_ctxt(er.bcx, "case_body");
-        let id_map = ast_util::pat_id_map(a.pats[0]);
+        let id_map = pat_util::pat_id_map(bcx_tcx(cx), a.pats[0]);
         bodies += [body];
         for p: @ast::pat in a.pats {
             match +=
@@ -666,7 +683,8 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
     for a: ast::arm in arms {
         let body_cx = bodies[i];
         if make_phi_bindings(body_cx, exit_map,
-                             ast_util::pat_id_map(a.pats[0])) {
+                             pat_util::pat_id_map(bcx_tcx(cx),
+                                                  a.pats[0])) {
             let arm_dest = trans::dup_for_join(dest);
             arm_dests += [arm_dest];
             arm_cxs += [trans::trans_block_dps(body_cx, a.body, arm_dest)];
@@ -684,8 +702,10 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms: [ast::arm],
 fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
                         make_copy: bool) -> @block_ctxt {
     let ccx = bcx.fcx.lcx.ccx, bcx = bcx;
-    alt pat.node {
-      ast::pat_bind(_, inner) {
+
+    // Necessary since bind_irrefutable_pat is called outside trans_alt
+    alt normalize_pat(bcx_tcx(bcx), pat).node {
+      ast::pat_ident(_,inner) {
         if make_copy || ccx.copy_map.contains_key(pat.id) {
             let ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
             // FIXME: Could constrain pat_bind to make this

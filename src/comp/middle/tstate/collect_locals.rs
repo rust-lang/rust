@@ -1,18 +1,20 @@
+import option::*;
+import pat_util::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
-import option::*;
 import syntax::visit;
-import aux::*;
 import util::common::new_def_hash;
 import syntax::codemap::span;
 import syntax::ast_util::respan;
 import driver::session::session;
+import aux::*;
 
 type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 
 fn collect_local(loc: @local, cx: ctxt, v: visit::vt<ctxt>) {
-    pat_bindings(loc.node.pat) {|p|
-        let ident = alt p.node { pat_bind(id, _) { id } };
+    pat_bindings(pat_util::normalize_pat(cx.tcx, loc.node.pat)) {|p|
+            let ident = alt p.node
+                 { pat_ident(id, _) { path_to_ident(id) } };
         log(debug, "collect_local: pushing " + ident);;
         *cx.cs += [respan(loc.span, ninit(p.id, ident))];
     };

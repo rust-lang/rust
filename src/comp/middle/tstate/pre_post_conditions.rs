@@ -8,6 +8,8 @@ import bitvectors::{bit_num, seq_preconds, seq_postconds,
                     intersect_states,
                     relax_precond_block, gen};
 import tritv::*;
+
+import pat_util::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::visit;
@@ -15,6 +17,7 @@ import util::common::{new_def_hash, log_expr, field_exprs,
                       has_nonlocal_exits, log_stmt};
 import syntax::codemap::span;
 import driver::session::session;
+
 
 fn find_pre_post_mod(_m: _mod) -> _mod {
     #debug("implement find_pre_post_mod!");
@@ -103,8 +106,9 @@ fn find_pre_post_loop(fcx: fn_ctxt, l: @local, index: @expr, body: blk,
                       id: node_id) {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
-    pat_bindings(l.node.pat) {|p|
-        let ident = alt p.node { pat_bind(id, _) { id } };
+    pat_bindings(normalize_pat(fcx.ccx.tcx, l.node.pat)) {|p|
+        let ident = alt p.node
+             { pat_ident(id, _) { path_to_ident(id) } };
         let v_init = ninit(p.id, ident);
         relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
         // Hack: for-loop index variables are frequently ignored,
@@ -197,7 +201,7 @@ fn gen_if_local(fcx: fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
             set_pre_and_post(fcx.ccx, larger_id, p.precondition,
                              p.postcondition);
             gen(fcx, larger_id,
-                ninit(d_id.node, path_to_ident(fcx.ccx.tcx, pth)));
+                ninit(d_id.node, path_to_ident(pth)));
           }
           _ { find_pre_post_exprs(fcx, [lhs, rhs], larger_id); }
         }
@@ -232,7 +236,7 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
               def_local(d_id, _) {
                 let i =
                     bit_num(fcx,
-                            ninit(d_id.node, path_to_ident(fcx.ccx.tcx, p)));
+                            ninit(d_id.node, path_to_ident(p)));
                 require_and_preserve(i, expr_pp(fcx.ccx, lhs));
               }
               _ { }
@@ -250,9 +254,9 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
                 alt d1 {
                   some(id1) {
                     let instlhs =
-                        {ident: path_to_ident(fcx.ccx.tcx, p), node: id};
+                        {ident: path_to_ident(p), node: id};
                     let instrhs =
-                        {ident: path_to_ident(fcx.ccx.tcx, p1), node: id1};
+                        {ident: path_to_ident(p1), node: id1};
                     copy_in_poststate_two(fcx, tmp, post, instlhs, instrhs,
                                           ty);
                   }
@@ -340,7 +344,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_path(p) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
-        handle_var(fcx, rslt, e.id, path_to_ident(fcx.ccx.tcx, p));
+        handle_var(fcx, rslt, e.id, path_to_ident(p));
       }
       expr_log(_, lvl, arg) {
         find_pre_post_exprs(fcx, [lvl, arg], e.id);
@@ -581,18 +585,19 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                       _ { }
                     }
 
-                    pat_bindings(alocal.node.pat) {|pat|
+                    pat_bindings(normalize_pat(fcx.ccx.tcx, alocal.node.pat))
+                        {|pat|
                         /* FIXME: This won't be necessary when typestate
                         works well enough for pat_bindings to return a
                         refinement-typed thing. */
-                        let ident = alt pat.node { pat_bind(n, _) { n } };
+                            let ident = alt pat.node
+                                     { pat_ident(n, _) { path_to_ident(n) } };
                         alt p {
                           some(p) {
                             copy_in_postcond(fcx, id,
                                              {ident: ident, node: pat.id},
                                              {ident:
-                                                  path_to_ident(fcx.ccx.tcx,
-                                                                p),
+                                                  path_to_ident(p),
                                               node: an_init.expr.id},
                                              op_to_oper_ty(an_init.op));
                           }
@@ -612,11 +617,14 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                                seq_preconds(fcx, [prev_pp, e_pp]));
                     /* Include the LHSs too, since those aren't in the
                      postconds of the RHSs themselves */
-                    pat_bindings(alocal.node.pat) {|pat|
+                    pat_bindings(normalize_pat(fcx.ccx.tcx, alocal.node.pat))
+                        {|pat|
+                            // FIXME
+                            // Generalize this pattern? map_if_ident...
                         alt pat.node {
-                          pat_bind(n, _) {
-                            set_in_postcond(bit_num(fcx, ninit(pat.id, n)),
-                                            prev_pp);
+                          pat_ident(n, _) {
+                            set_in_postcond(bit_num(fcx,
+                               ninit(pat.id, path_to_ident(n))), prev_pp);
                           }
                         }
                     };

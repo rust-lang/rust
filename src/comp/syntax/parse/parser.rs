@@ -8,6 +8,7 @@ import token::can_begin_expr;
 import codemap::span;
 import util::interner;
 import ast::{node_id, spanned};
+import ast_util::{mk_sp, ident_to_path};
 import front::attr;
 import lexer::reader;
 import driver::diagnostic;
@@ -1097,7 +1098,7 @@ fn prec_table() -> @[op_spec] {
           {tok: token::BINOP(token::SLASH), op: ast::div, prec: 11},
           {tok: token::BINOP(token::PERCENT), op: ast::rem, prec: 11},
           {tok: token::BINOP(token::PLUS), op: ast::add, prec: 10},
-          {tok: token::BINOP(token::MINUS), op: ast::sub, prec: 10},
+          {tok: token::BINOP(token::MINUS), op: ast::subtract, prec: 10},
           {tok: token::BINOP(token::LSL), op: ast::lsl, prec: 9},
           {tok: token::BINOP(token::LSR), op: ast::lsr, prec: 9},
           {tok: token::BINOP(token::ASR), op: ast::asr, prec: 9},
@@ -1165,7 +1166,7 @@ fn parse_assign_expr(p: parser) -> @ast::expr {
         let aop = ast::add;
         alt op {
           token::PLUS. { aop = ast::add; }
-          token::MINUS. { aop = ast::sub; }
+          token::MINUS. { aop = ast::subtract; }
           token::STAR. { aop = ast::mul; }
           token::SLASH. { aop = ast::div; }
           token::PERCENT. { aop = ast::rem; }
@@ -1426,7 +1427,11 @@ fn parse_pat(p: parser) -> @ast::pat {
                 break;
             }
 
+            let lo1 = p.last_span.lo;
             let fieldname = parse_ident(p);
+            let hi1 = p.last_span.lo;
+            let fieldpath = ast_util::ident_to_path(ast_util::mk_sp(lo1, hi1),
+                                          fieldname);
             let subpat;
             if p.token == token::COLON {
                 p.bump();
@@ -1436,7 +1441,7 @@ fn parse_pat(p: parser) -> @ast::pat {
                     p.fatal("found " + fieldname + " in binding position");
                 }
                 subpat = @{id: p.get_id(),
-                           node: ast::pat_bind(fieldname, none),
+                           node: ast::pat_ident(fieldpath, none),
                            span: ast_util::mk_sp(lo, hi)};
             }
             fields += [{ident: fieldname, pat: subpat}];
@@ -1478,7 +1483,10 @@ fn parse_pat(p: parser) -> @ast::pat {
             }
         } else if is_plain_ident(p) &&
                       alt p.look_ahead(1u) {
-                        token::DOT. | token::LPAREN. | token::LBRACKET. {
+                    // Take this out once the libraries change
+                        token::DOT. |
+                        token::LPAREN. | token::LBRACKET. |
+                            token::LT. {
                           false
                         }
                         _ { true }
@@ -1486,7 +1494,7 @@ fn parse_pat(p: parser) -> @ast::pat {
             hi = p.span.hi;
             let name = parse_value_ident(p);
             let sub = eat(p, token::AT) ? some(parse_pat(p)) : none;
-            pat = ast::pat_bind(name, sub);
+            pat = ast::pat_ident(ident_to_path(mk_sp(lo, hi), name), sub);
         } else {
             let tag_path = parse_path_and_ty_param_substs(p, true);
             hi = tag_path.span.hi;
@@ -1499,10 +1507,19 @@ fn parse_pat(p: parser) -> @ast::pat {
                 args = a.node;
                 hi = a.span.hi;
               }
+              token::LBRACE. { args = []; }
+              // take this out once the libraries change
               token::DOT. { args = []; p.bump(); }
               _ { expect(p, token::LPAREN); fail; }
             }
-            pat = ast::pat_tag(tag_path, args);
+            // at this point, we're not sure whether it's a tag or a bind
+            if vec::len(args) == 0u &&
+               vec::len(tag_path.node.idents) == 1u {
+                pat = ast::pat_ident(tag_path, none);
+            }
+            else {
+                pat = ast::pat_tag(tag_path, args);
+            }
         }
       }
     }

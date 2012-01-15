@@ -9,6 +9,7 @@ import std::list;
 import option::{some, none, is_none};
 import list::list;
 import driver::session::session;
+import pat_util::*;
 
 // This is not an alias-analyser (though it would merit from becoming one, or
 // getting input from one, to be more precise). It is a pass that checks
@@ -323,7 +324,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
     for a: ast::arm in arms {
         let new_bs = sc.bs;
         let root_var = path_def_id(cx, root.ex);
-        let pat_id_map = ast_util::pat_id_map(a.pats[0]);
+        let pat_id_map = pat_util::pat_id_map(cx.tcx, a.pats[0]);
         type info = {
             id: node_id,
             mutable unsafe_tys: [unsafe_ty],
@@ -588,10 +589,11 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
     -> [pattern_root] {
     fn walk(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat,
             &set: [pattern_root]) {
-        alt pat.node {
+        alt normalize_pat(tcx, pat).node {
           ast::pat_wild. | ast::pat_lit(_) | ast::pat_range(_, _) {}
-          ast::pat_bind(nm, sub) {
-            set += [{id: pat.id, name: nm, mut: mut, span: pat.span}];
+          ast::pat_ident(nm, sub) {
+            set += [{id: pat.id, name: path_to_ident(nm), mut: mut,
+                        span: pat.span}];
             alt sub { some(p) { walk(tcx, mut, p, set); } _ {} }
           }
           ast::pat_tag(_, ps) | ast::pat_tup(ps) {

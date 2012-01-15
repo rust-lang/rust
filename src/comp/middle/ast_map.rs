@@ -44,14 +44,14 @@ fn map_fn(cx: ctx, _fk: visit::fn_kind, decl: fn_decl, _body: blk,
 }
 
 fn map_local(cx: ctx, loc: @local) {
-    ast_util::pat_bindings(loc.node.pat) {|p|
+    pat_util::pat_bindings(loc.node.pat) {|p|
         cx.map.insert(p.id, node_local(cx.local_id));
         cx.local_id += 1u;
     };
 }
 
 fn map_arm(cx: ctx, arm: arm) {
-    ast_util::pat_bindings(arm.pats[0]) {|p|
+    pat_util::pat_bindings(arm.pats[0]) {|p|
         cx.map.insert(p.id, node_local(cx.local_id));
         cx.local_id += 1u;
     };

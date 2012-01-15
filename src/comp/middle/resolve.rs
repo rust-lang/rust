@@ -3,6 +3,7 @@ import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
 import syntax::ast_util::{local_def, def_id_of_def};
+import pat_util::*;
 
 import front::attr;
 import metadata::{csearch, cstore};
@@ -181,10 +182,12 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
           sess: sess};
     map_crate(e, crate);
     resolve_imports(*e);
-    check_for_collisions(e, *crate);
     check_exports(e);
     resolve_names(e, crate);
     resolve_impls(e, crate);
+    // check_for_collisions must happen after resolve_names so we
+    // don't complain if a pattern uses the same nullary tag twice
+    check_for_collisions(e, *crate);
     if sess.opts.warn_unused_imports {
         check_unused_imports(e);
     }
@@ -417,6 +420,20 @@ fn resolve_names(e: @env, c: @ast::crate) {
               }
             }
           }
+          /* Here we determine whether a given pat_ident binds a new
+           variable a refers to a nullary tag. */
+          ast::pat_ident(p, none.) {
+              let fnd = lookup_in_scope(*e, sc, p.span, path_to_ident(p),
+                                    ns_val(ns_a_tag));
+              alt fnd {
+                some(ast::def_variant(did, vid)) {
+                    e.def_map.insert(pat.id, ast::def_variant(did, vid));
+                }
+                _ {
+                    // Binds a var -- nothing needs to be done
+                }
+              }
+          }
           _ { }
         }
     }
@@ -539,30 +556,32 @@ fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
     }
 }
 
+// This is only for irrefutable patterns (e.g. ones that appear in a let)
+// So if x occurs, and x is already known to be a tag, that's always an error.
 fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
-    // Checks whether the given local has the same name as a tag that's
+    // Check whether the given local has the same name as a tag that's
     // in scope
     // We disallow this, in order to make alt patterns consisting of
     // a single identifier unambiguous (does the pattern "foo" refer
     // to tag foo, or is it binding a new name foo?)
     alt loc.node.pat.node {
-      pat_bind(an_ident,_) {
+      pat_ident(an_ident,_) {
           // Be sure to pass ns_a_tag to lookup_in_scope so that
           // if this is a name that's being shadowed, we don't die
-          alt lookup_in_scope(*e, sc, loc.span, an_ident, ns_val(ns_a_tag)) {
+          alt lookup_in_scope(*e, sc, loc.span,
+                 path_to_ident(an_ident), ns_val(ns_a_tag)) {
               some(ast::def_variant(tag_id,variant_id)) {
                   // Declaration shadows a tag that's in scope.
                   // That's an error.
                   e.sess.span_err(loc.span,
                     #fmt("Declaration of %s shadows a tag that's in scope",
-                         an_ident));
+                         path_to_ident(an_ident)));
                   }
               _ {}
           }
       }
       _ {}
     }
-
     visit::visit_local(loc, sc, v);
 }
 
@@ -907,7 +926,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           }
           scope_loop(local) {
             if ns == ns_val(ns_any_value) {
-                alt lookup_in_pat(name, local.node.pat) {
+                alt lookup_in_pat(e, name, local.node.pat) {
                   some(did) { ret some(ast::def_binding(did)); }
                   _ { }
                 }
@@ -918,7 +937,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           }
           scope_arm(a) {
             if ns == ns_val(ns_any_value) {
-                alt lookup_in_pat(name, a.pats[0]) {
+                alt lookup_in_pat(e, name, a.pats[0]) {
                   some(did) { ret some(ast::def_binding(did)); }
                   _ { ret none; }
                 }
@@ -997,11 +1016,13 @@ fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
     ret none::<def>;
 }
 
-fn lookup_in_pat(name: ident, pat: @ast::pat) -> option::t<def_id> {
+fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option::t<def_id> {
     let found = none;
-    ast_util::pat_bindings(pat) {|bound|
-        let p_name = alt bound.node { ast::pat_bind(n, _) { n } };
-        if str::eq(p_name, name) { found = some(local_def(bound.id)); }
+
+    pat_util::pat_bindings(normalize_pat_def_map(e.def_map, pat)) {|bound|
+        let p_name = alt bound.node { ast::pat_ident(n, _) { n } };
+        if str::eq(path_to_ident(p_name), name)
+                    { found = some(local_def(bound.id)); }
     };
     ret found;
 }
@@ -1041,7 +1062,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                         let (style, loc) = locs[j];
                         if ns == ns_val(ns_any_value)
                                      && (i < pos || j < loc_pos) {
-                            alt lookup_in_pat(name, loc.node.pat) {
+                            alt lookup_in_pat(e, name, loc.node.pat) {
                               some(did) {
                                 ret some(ast::def_local(did, style));
                               }
@@ -1571,9 +1592,9 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
     }
 }
 
-fn check_pat(ch: checker, p: @ast::pat) {
-    ast_util::pat_bindings(p) {|p|
-        let ident = alt p.node { pat_bind(n, _) { n } };
+fn check_pat(e: @env, ch: checker, p: @ast::pat) {
+    pat_util::pat_bindings(normalize_pat_def_map(e.def_map, p)) {|p|
+        let ident = path_to_ident(alt p.node { pat_ident(n, _) { n } });
         add_name(ch, p.span, ident);
     };
 }
@@ -1581,13 +1602,13 @@ fn check_pat(ch: checker, p: @ast::pat) {
 fn check_arm(e: @env, a: ast::arm, &&x: (), v: vt<()>) {
     visit::visit_arm(a, x, v);
     let ch0 = checker(*e, "binding");
-    check_pat(ch0, a.pats[0]);
+    check_pat(e, ch0, a.pats[0]);
     let seen0 = ch0.seen;
     let i = vec::len(a.pats);
     while i > 1u {
         i -= 1u;
         let ch = checker(*e, "binding");
-        check_pat(ch, a.pats[i]);
+        check_pat(e, ch, a.pats[i]);
 
         // Ensure the bindings introduced in this pattern are the same as in
         // the first pattern.
@@ -1620,8 +1641,11 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
               ast::decl_local(locs) {
                 let local_values = checker(*e, "value");
                 for (_, loc) in locs {
-                    ast_util::pat_bindings(loc.node.pat) {|p|
-                        let ident = alt p.node { pat_bind(n, _) { n } };
+                        pat_util::pat_bindings
+                            (normalize_pat_def_map(e.def_map, loc.node.pat))
+                            {|p|
+                            let ident = path_to_ident(alt p.node
+                                 { pat_ident(n, _) { n } });
                         add_name(local_values, p.span, ident);
                         check_name(values, p.span, ident);
                     };

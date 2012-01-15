@@ -1278,7 +1278,7 @@ mod node {
             while true {
                 alt(get_current_or_next_leaf(it)) {
                   option::none. { ret option::none; }
-                  option::some(leaf) {
+                  option::some(_) {
                     let next_char = get_next_char_in_leaf(it);
                     alt(next_char) {
                       option::none. {
@@ -1301,7 +1301,7 @@ mod node {
                 let next = leaf_iterator::next(it.leaf_iterator);
                 alt(next) {
                   option::none. { ret option::none }
-                  option::some(leaf) {
+                  option::some(_) {
                     it.leaf          = next;
                     it.leaf_byte_pos = 0u;
                     ret next;
@@ -1314,16 +1314,16 @@ mod node {
         fn get_next_char_in_leaf(it: t) -> option::t<char> {
             alt(it.leaf) {
               option::none. { ret option::none }
-              option::some(leaf) {
-                if it.leaf_byte_pos >= leaf.byte_len {
+              option::some(aleaf) {
+                if it.leaf_byte_pos >= aleaf.byte_len {
                     //We are actually past the end of the leaf
                     it.leaf = option::none;
                     ret option::none
                 } else {
                     let {ch, next} =
-                        str::char_range_at(*leaf.content,
-                                     it.leaf_byte_pos + leaf.byte_offset);
-                    it.leaf_byte_pos = next - leaf.byte_offset;
+                        str::char_range_at(*aleaf.content,
+                                     it.leaf_byte_pos + aleaf.byte_offset);
+                    it.leaf_byte_pos = next - aleaf.byte_offset;
                     ret option::some(ch)
                 }
               }

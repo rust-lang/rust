@@ -97,7 +97,17 @@ type field_pat = {ident: ident, pat: @pat};
 
 tag pat_ {
     pat_wild;
-    pat_bind(ident, option::t<@pat>);
+    // A pat_ident may either be a new bound variable,
+    // or a nullary tag (in which case the second field
+    // is none).
+    // In the nullary tag case, the parser can't determine
+    // which it is. The resolver determines this, and
+    // records this pattern's node_id in an auxiliary
+    // set (of "pat_idents that refer to nullary tags")
+    // After the resolution phase, code should never pattern-
+    // match on a pat directly! Always call pat_util::normalize_pat --
+    // it turns any pat_idents that refer to nullary tags into pat_tags.
+    pat_ident(@path, option::t<@pat>);
     pat_tag(@path, [@pat]);
     pat_rec([field_pat], bool);
     pat_tup([@pat]);
@@ -126,7 +136,7 @@ pure fn is_blockish(p: ast::proto) -> bool {
 
 tag binop {
     add;
-    sub;
+    subtract;
     mul;
     div;
     rem;

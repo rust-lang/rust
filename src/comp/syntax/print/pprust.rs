@@ -1055,10 +1055,12 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
     s.ann.pre(ann_node);
+    /* Pat isn't normalized, but the beauty of it
+     is that it doesn't matter */
     alt pat.node {
       ast::pat_wild. { word(s.s, "_"); }
-      ast::pat_bind(id, sub) {
-        word(s.s, id);
+      ast::pat_ident(path, sub) {
+        print_path(s, path, true);
         alt sub {
           some(p) { word(s.s, "@"); print_pat(s, p); }
           _ {}
@@ -1070,7 +1072,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
             popen(s);
             commasep(s, inconsistent, args, print_pat);
             pclose(s);
-        } else { word(s.s, "."); }
+        } else { word(s.s, "."); }  // FIXME
       }
       ast::pat_rec(fields, etc) {
         word(s.s, "{");

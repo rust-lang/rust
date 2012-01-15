@@ -1,12 +1,12 @@
 
 import core::{int, uint};
 import syntax::ast::*;
-import syntax::ast_util::pat_binding_ids;
 import syntax::visit;
 import syntax::codemap::span;
 import util::common::{log_stmt};
 import aux::{num_constraints, get_fn_info, crate_ctxt, add_node};
-import middle::tstate::ann::empty_ann;
+import ann::empty_ann;
+import pat_util::pat_binding_ids;
 
 fn collect_ids_expr(e: @expr, rs: @mutable [node_id]) { *rs += [e.id]; }
 

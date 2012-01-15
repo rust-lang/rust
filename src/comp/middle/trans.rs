@@ -26,7 +26,8 @@ import back::{link, abi, upcall};
 import syntax::{ast, ast_util, codemap};
 import syntax::visit;
 import syntax::codemap::span;
-import syntax::print::pprust::{expr_to_str, stmt_to_str};
+import syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
+import pat_util::*;
 import visit::vt;
 import util::common::*;
 import lib::llvm::{llvm, mk_target_data, mk_type_names};
@@ -775,6 +776,8 @@ fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: ast::def_id,
 
     let true_arg_tys: [ty::t] = [];
     for aty: ty::t in arg_tys {
+            // Would be nice to have a way of stating the invariant
+            // that ty_substs is valid for aty
         let arg_ty = ty::substitute_type_params(bcx_tcx(cx), ty_substs, aty);
         true_arg_tys += [arg_ty];
     }
@@ -2203,7 +2206,7 @@ fn trans_eager_binop(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
         if is_float { FAdd(cx, lhs, rhs) }
         else { Add(cx, lhs, rhs) }
       }
-      ast::sub. {
+      ast::subtract. {
         if is_float { FSub(cx, lhs, rhs) }
         else { Sub(cx, lhs, rhs) }
       }
@@ -2641,6 +2644,7 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> local_var_result {
         alt table.find(id) {
           some(local_mem(v)) { {val: v, kind: owned} }
           some(local_imm(v)) { {val: v, kind: owned_imm} }
+          r { fail("take_local: internal error"); }
         }
     }
     alt def {
@@ -2649,9 +2653,11 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> local_var_result {
         ret { val: cx.fcx.llupvars.get(did.node), kind: owned };
       }
       ast::def_arg(did, _) {
+        assert (cx.fcx.llargs.contains_key(did.node));
         ret take_local(cx.fcx.llargs, did.node);
       }
       ast::def_local(did, _) | ast::def_binding(did) {
+        assert (cx.fcx.lllocals.contains_key(did.node));
         ret take_local(cx.fcx.lllocals, did.node);
       }
       ast::def_self(did) {
@@ -3502,6 +3508,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_expr(bcx, ast_util::ternary_to_if(e), dest);
       }
       ast::expr_alt(expr, arms) {
+          //          tcx.sess.span_note(e.span, "about to call trans_alt");
         ret trans_alt::trans_alt(bcx, expr, arms, dest);
       }
       ast::expr_block(blk) {
@@ -4205,8 +4212,9 @@ fn alloc_ty(cx: @block_ctxt, t: ty::t) -> result {
 
 fn alloc_local(cx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let t = node_id_type(bcx_ccx(cx), local.node.id);
-    let is_simple = alt local.node.pat.node {
-      ast::pat_bind(_, none.) { true } _ { false }
+    let p = normalize_pat(bcx_tcx(cx), local.node.pat);
+    let is_simple = alt p.node {
+      ast::pat_ident(_, none.) { true } _ { false }
     };
     // Do not allocate space for locals that can be kept immediate.
     let ccx = bcx_ccx(cx);
@@ -4219,10 +4227,10 @@ fn alloc_local(cx: @block_ctxt, local: @ast::local) -> @block_ctxt {
         }
     }
     let r = alloc_ty(cx, t);
-    alt local.node.pat.node {
-      ast::pat_bind(ident, none.) {
+    alt p.node {
+      ast::pat_ident(pth, none.) {
         if bcx_ccx(cx).sess.opts.debuginfo {
-            let _: () = str::as_buf(ident, {|buf|
+            let _: () = str::as_buf(path_to_ident(pth), {|buf|
                 llvm::LLVMSetValueName(r.val, buf)
             });
         }
@@ -4635,7 +4643,7 @@ fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
             if is_float { llvm::LLVMConstFAdd(te1, te2) }
             else        { llvm::LLVMConstAdd(te1, te2) }
           }
-          ast::sub.    {
+          ast::subtract. {
             if is_float { llvm::LLVMConstFSub(te1, te2) }
             else        { llvm::LLVMConstSub(te1, te2) }
           }

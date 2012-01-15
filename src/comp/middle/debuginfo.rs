@@ -8,6 +8,7 @@ import middle::trans_build::B;
 import middle::ty;
 import syntax::{ast, codemap};
 import ast::ty;
+import pat_util::*;
 import util::ppaux::ty_to_str;
 
 export create_local_var;
@@ -629,9 +630,10 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
       option::none. {}
     }
 
-    let name = alt local.node.pat.node {
-      ast::pat_bind(ident, _) { ident /*XXX deal w/ optional node binding*/ }
-    };
+    let name = path_to_ident(alt pat_util::normalize_pat(bcx_tcx(bcx),
+                                           local.node.pat).node {
+      ast::pat_ident(ident, _) { ident /*XXX deal w/ optional node binding*/ }
+     });
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        local.span.lo);
     let ty = trans::node_id_type(cx, local.node.id);

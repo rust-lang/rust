@@ -371,6 +371,8 @@ const idx_first_others: uint = 20u;
 
 type type_store = interner::interner<@raw_t>;
 
+// substs is a list of actuals that correspond to ty's
+// formal parameters
 type ty_param_substs_opt_and_ty = {substs: option::t<[ty::t]>, ty: ty::t};
 
 type node_type_table =
@@ -2215,7 +2217,7 @@ mod unify {
           ty::ty_box(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_box(actual_mt) {
-                let (mut, var) = alt unify_mut(
+                let (mutt, var) = alt unify_mut(
                     expected_mt.mut, actual_mt.mut, variance) {
                   none. { ret ures_err(terr_box_mutability); }
                   some(mv) { mv }
@@ -2224,7 +2226,7 @@ mod unify {
                     cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
-                    let mt = {ty: result_sub, mut: mut};
+                    let mt = {ty: result_sub, mut: mutt};
                     ret ures_ok(mk_box(cx.tcx, mt));
                   }
                   _ { ret result; }
@@ -2236,7 +2238,7 @@ mod unify {
           ty::ty_uniq(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_uniq(actual_mt) {
-                let (mut, var) = alt unify_mut(
+                let (mutt, var) = alt unify_mut(
                     expected_mt.mut, actual_mt.mut, variance) {
                   none. { ret ures_err(terr_box_mutability); }
                   some(mv) { mv }
@@ -2245,7 +2247,7 @@ mod unify {
                     cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_mt) {
-                    let mt = {ty: result_mt, mut: mut};
+                    let mt = {ty: result_mt, mut: mutt};
                     ret ures_ok(mk_uniq(cx.tcx, mt));
                   }
                   _ { ret result; }
@@ -2257,7 +2259,7 @@ mod unify {
           ty::ty_vec(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_vec(actual_mt) {
-                let (mut, var) = alt unify_mut(
+                let (mutt, var) = alt unify_mut(
                     expected_mt.mut, actual_mt.mut, variance) {
                   none. { ret ures_err(terr_vec_mutability); }
                   some(mv) { mv }
@@ -2266,7 +2268,7 @@ mod unify {
                     cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
-                    let mt = {ty: result_sub, mut: mut};
+                    let mt = {ty: result_sub, mut: mutt};
                     ret ures_ok(mk_vec(cx.tcx, mt));
                   }
                   _ { ret result; }
@@ -2278,7 +2280,7 @@ mod unify {
           ty::ty_ptr(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_ptr(actual_mt) {
-                let (mut, var) = alt unify_mut(
+                let (mutt, var) = alt unify_mut(
                     expected_mt.mut, actual_mt.mut, variance) {
                   none. { ret ures_err(terr_vec_mutability); }
                   some(mv) { mv }
@@ -2287,7 +2289,7 @@ mod unify {
                     cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
-                    let mt = {ty: result_sub, mut: mut};
+                    let mt = {ty: result_sub, mut: mutt};
                     ret ures_ok(mk_ptr(cx.tcx, mt));
                   }
                   _ { ret result; }
@@ -2342,7 +2344,7 @@ mod unify {
                 while i < expected_len {
                     let expected_field = expected_fields[i];
                     let actual_field = actual_fields[i];
-                    let (mut, var) = alt unify_mut(
+                    let (mutt, var) = alt unify_mut(
                         expected_field.mt.mut, actual_field.mt.mut, variance)
                         {
                       none. { ret ures_err(terr_record_mutability); }
@@ -2359,7 +2361,7 @@ mod unify {
                                    actual_field.mt.ty, var);
                     alt result {
                       ures_ok(rty) {
-                        let mt = {ty: rty, mut: mut};
+                        let mt = {ty: rty, mut: mutt};
                         result_fields += [{mt: mt with expected_field}];
                       }
                       _ { ret result; }
@@ -2579,11 +2581,18 @@ fn type_err_to_str(err: ty::type_err) -> str {
 // Replaces type parameters in the given type using the given list of
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
-    if !type_contains_params(cx, typ) { ret typ; }
+
+   if !type_contains_params(cx, typ) { ret typ; }
+    // Precondition? idx < vec::len(substs)
     fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint, _did: def_id)
         -> t {
-        // FIXME: bounds check can fail
-        ret substs[idx];
+        if idx < vec::len(*substs) {
+            ret substs[idx];
+        }
+        else {
+            fail #fmt("Internal error in substituter (substitute_type_params)\
+             %u %u", vec::len(*substs), idx);
+        }
     }
     ret fold_ty(cx, fm_param(bind substituter(cx, @substs, _, _)), typ);
 }
@@ -2729,7 +2738,7 @@ fn is_binopable(cx: ctxt, ty: t, op: ast::binop) -> bool {
     fn opcat(op: ast::binop) -> int {
         alt op {
           ast::add. { opcat_add }
-          ast::sub. { opcat_sub }
+          ast::subtract. { opcat_sub }
           ast::mul. { opcat_mult }
           ast::div. { opcat_mult }
           ast::rem. { opcat_mult }
