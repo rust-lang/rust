@@ -1,9 +1,9 @@
 use std;
 import int;
 
-tag tree { nil; node(@tree, @tree, int); }
+tag tree { nil; node(~tree, ~tree, int); }
 
-fn item_check(t: @tree) -> int {
+fn item_check(t: ~tree) -> int {
     alt *t {
       nil. { ret 0; }
       node(left, right, item) {
@@ -12,11 +12,11 @@ fn item_check(t: @tree) -> int {
     }
 }
 
-fn bottom_up_tree(item: int, depth: int) -> @tree {
+fn bottom_up_tree(item: int, depth: int) -> ~tree {
     if depth > 0 {
-        ret @node(bottom_up_tree(2 * item - 1, depth - 1),
+        ret ~node(bottom_up_tree(2 * item - 1, depth - 1),
                   bottom_up_tree(2 * item, depth - 1), item);
-    } else { ret @nil; }
+    } else { ret ~nil; }
 }
 
 fn main() {
