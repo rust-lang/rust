@@ -5,10 +5,9 @@ import vec;
 
 fn fannkuch(n: int) -> int {
     fn perm1init(i: uint) -> int { ret i as int; }
-    let perm1init_ = perm1init; // Rustboot workaround
 
     let perm = vec::init_elt_mut(0, n as uint);
-    let perm1 = vec::init_fn_mut(perm1init_, n as uint);
+    let perm1 = vec::init_fn_mut(perm1init, n as uint);
     let count = vec::init_elt_mut(0, n as uint);
     let f = 0;
     let i = 0;
@@ -43,7 +42,10 @@ fn fannkuch(n: int) -> int {
 
         let go = true;
         while go {
-            if r == n { log(debug, checksum); ret flips; }
+            if r == n {
+                std::io::println(#fmt("%d", checksum));
+                ret flips;
+            }
             let p0 = perm1[0];
             i = 0;
             while i < r { let j = i + 1; perm1[i] = perm1[j]; i = j; }
@@ -57,6 +59,10 @@ fn fannkuch(n: int) -> int {
 }
 
 fn main(args: [str]) {
-    let n = 7;
-    #debug("Pfannkuchen(%d) = %d", n, fannkuch(n));
+    let n = if vec::len(args) == 2u {
+        int::from_str(args[1])
+    } else {
+        10
+    };
+    std::io::println(#fmt("Pfannkuchen(%d) = %d", n, fannkuch(n)));
 }
