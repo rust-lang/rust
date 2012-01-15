@@ -19,8 +19,12 @@ fn bottom_up_tree(item: int, depth: int) -> ~tree {
     } else { ret ~nil; }
 }
 
-fn main() {
-    let n = 8;
+fn main(args: [str]) {
+    let n = if vec::len(args) == 2u {
+        int::from_str(args[1])
+    } else {
+        15
+    };
     let min_depth = 4;
     let max_depth;
     if min_depth + 2 > n {
@@ -28,8 +32,9 @@ fn main() {
     } else { max_depth = n; }
     let stretch_depth = max_depth + 1;
     let stretch_tree = bottom_up_tree(0, stretch_depth);
-    #debug("stretch tree of depth %d\t check: %d", stretch_depth,
-           item_check(stretch_tree));
+    std::io::println(#fmt("stretch tree of depth %d\t check: %d",
+                          stretch_depth,
+                          item_check(stretch_tree)));
     let long_lived_tree = bottom_up_tree(0, max_depth);
     let depth = min_depth;
     while depth <= max_depth {
@@ -43,10 +48,12 @@ fn main() {
             chk += item_check(temp_tree);
             i += 1;
         }
-        #debug("%d\t trees of depth %d\t check: %d", iterations * 2, depth,
-               chk);
+        std::io::println(#fmt("%d\t trees of depth %d\t check: %d",
+                               iterations * 2, depth,
+                               chk));
         depth += 2;
     }
-    #debug("long lived trees of depth %d\t check: %d", max_depth,
-           item_check(long_lived_tree));
+    std::io::println(#fmt("long lived trees of depth %d\t check: %d",
+                          max_depth,
+                          item_check(long_lived_tree)));
 }
