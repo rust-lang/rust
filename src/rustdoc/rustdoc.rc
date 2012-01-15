@@ -8,3 +8,4 @@
 #[crate_type = "bin"];
 
 mod parse;
+mod doc;

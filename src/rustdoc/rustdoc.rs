@@ -22,21 +22,6 @@ type rustdoc = {
     w: io::writer
 };
 
-type cratedoc = {
-    mods: [moddoc]
-};
-
-type moddoc = {
-    fns: [fndoc]
-};
-
-type fndoc = {
-    brief: str,
-    desc: option::t<str>,
-    return: option::t<str>,
-    args: map::hashmap<str, str>
-};
-
 #[doc(
   brief = "Documents a single function.",
   args(rd = "Rustdoc context",
@@ -44,7 +29,7 @@ type fndoc = {
        doc = "Function docs extracted from attributes",
        _fn = "AST object representing this function")
 )]
-fn doc_fn(rd: rustdoc, ident: str, doc: fndoc, decl: ast::fn_decl) {
+fn doc_fn(rd: rustdoc, ident: str, doc: doc::fndoc, decl: ast::fn_decl) {
     rd.w.write_line("## Function `" + ident + "`");
     rd.w.write_line(doc.brief);
     alt doc.desc {
@@ -84,7 +69,7 @@ fn doc_fn(rd: rustdoc, ident: str, doc: fndoc, decl: ast::fn_decl) {
   args(items = "Doc attribute contents"),
   return = "Parsed function docs."
 )]
-fn parse_compound_fndoc(items: [@ast::meta_item]) -> fndoc {
+fn parse_compound_fndoc(items: [@ast::meta_item]) -> doc::fndoc {
     let brief = none;
     let desc = none;
     let return = none;
