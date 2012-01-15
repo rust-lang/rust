@@ -1,31 +1,29 @@
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 
-#[abi = "cdecl"]
+use std;
+
+// Using sqrt from the standard library is way slower than using libc
+// directly even though std just calls libc, I guess it must be
+// because the the indirection through another dynamic linker
+// stub. Kind of shocking. Might be able to make it faster still with
+// an llvm intrinsic.
 #[nolink]
-native mod llvm {
+native mod libc {
     fn sqrt(n: float) -> float;
 }
 
-fn main() {
-    //
-    // Leave these commented out to
-    // finish in a reasonable time
-    // during 'make check' under valgrind
-    // 5000000
-    // 50000000
-    let inputs: [int] = [50000, 500000];
-
+fn main(args: [str]) {
+    let n = if vec::len(args) == 2u {
+        int::from_str(args[1])
+    } else {
+        1000000
+    };
     let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
-
-
-    for n: int in inputs {
-        log(debug, NBodySystem::energy(bodies));
-
-        let i: int = 0;
-        while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
-        log(debug, NBodySystem::energy(bodies));
-    }
+    std::io::println(#fmt("%f", NBodySystem::energy(bodies)));
+    let i: int = 0;
+    while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
+    std::io::println(#fmt("%f", NBodySystem::energy(bodies)));
 }
 
 // Body::props is a record of floats, so
@@ -79,7 +77,7 @@ mod NBodySystem {
 
         let dSquared: float = dx * dx + dy * dy + dz * dz;
 
-        let distance: float = llvm::sqrt(dSquared);
+        let distance: float = libc::sqrt(dSquared);
         let mag: float = dt / (dSquared * distance);
 
         bi.vx -= dx * bj.mass * mag;
@@ -117,7 +115,7 @@ mod NBodySystem {
                 dy = bodies[i].y - bodies[j].y;
                 dz = bodies[i].z - bodies[j].z;
 
-                distance = llvm::sqrt(dx * dx + dy * dy + dz * dz);
+                distance = libc::sqrt(dx * dx + dy * dy + dz * dz);
                 e -= bodies[i].mass * bodies[j].mass / distance;
 
                 j += 1;
