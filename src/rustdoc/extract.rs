@@ -5,17 +5,19 @@ export extract;
 
 #[doc = "Converts the Rust AST to the rustdoc document model"]
 fn extract(
-    crate: @ast::crate
+    crate: @ast::crate,
+    default_name: str
 ) -> doc::cratedoc {
     ~{
-        topmod: top_moddoc_from_crate(crate),
+        topmod: top_moddoc_from_crate(crate, default_name),
     }
 }
 
 fn top_moddoc_from_crate(
-    crate: @ast::crate
+    crate: @ast::crate,
+    default_name: str
 ) -> doc::moddoc {
-    moddoc_from_mod(crate.node.module, "crate", crate.node.attrs)
+    moddoc_from_mod(crate.node.module, default_name, crate.node.attrs)
 }
 
 fn moddoc_from_mod(
@@ -69,7 +71,7 @@ mod tests {
     fn extract_empty_crate() {
         let source = ""; // empty crate
         let ast = parse::from_str(source);
-        let doc = extract(ast);
+        let doc = extract(ast, "");
         // FIXME #1535: These are boxed to prevent a crash
         assert ~doc.topmod.mods == ~doc::modlist([]);
         assert ~doc.topmod.fns == ~doc::fnlist([]);
@@ -79,7 +81,7 @@ mod tests {
     fn extract_mods() {
         let source = "mod a { mod b { } mod c { } }";
         let ast = parse::from_str(source);
-        let doc = extract(ast);
+        let doc = extract(ast, "");
         assert doc.topmod.mods[0].name == "a";
         assert doc.topmod.mods[0].mods[0].name == "b";
         assert doc.topmod.mods[0].mods[1].name == "c";
@@ -89,7 +91,7 @@ mod tests {
     fn extract_mods_deep() {
         let source = "mod a { mod b { mod c { } } }";
         let ast = parse::from_str(source);
-        let doc = extract(ast);
+        let doc = extract(ast, "");
         assert doc.topmod.mods[0].mods[0].mods[0].name == "c";
     }
 
@@ -99,7 +101,7 @@ mod tests {
             "fn a() { } \
              mod b { fn c() { } }";
         let ast = parse::from_str(source);
-        let doc = extract(ast);
+        let doc = extract(ast, "");
         assert doc.topmod.fns[0].name == "a";
         assert doc.topmod.mods[0].fns[0].name == "c";
     }
@@ -108,7 +110,15 @@ mod tests {
     fn extract_should_set_fn_ast_id() {
         let source = "fn a() { }";
         let ast = parse::from_str(source);
-        let doc = extract(ast);
+        let doc = extract(ast, "");
         assert doc.topmod.fns[0].id != 0;
+    }
+
+    #[test]
+    fn extract_should_use_default_crate_name_if_no_link_name_exists() {
+        let source = "";
+        let ast = parse::from_str(source);
+        let doc = extract(ast, "burp");
+        assert doc.topmod.name == "burp";
     }
 }
