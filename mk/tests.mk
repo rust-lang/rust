@@ -123,7 +123,8 @@ check-stage$(1)-T-$(2)-H-$(3): tidy				\
 	check-stage$(1)-T-$(2)-H-$(3)-rfail			\
 	check-stage$(1)-T-$(2)-H-$(3)-cfail			\
 	check-stage$(1)-T-$(2)-H-$(3)-bench			\
-	check-stage$(1)-T-$(2)-H-$(3)-pretty
+	check-stage$(1)-T-$(2)-H-$(3)-pretty                    \
+        check-stage$(1)-T-$(2)-H-$(3)-rustdoc
 
 check-stage$(1)-T-$(2)-H-$(3)-std:				\
 	check-stage$(1)-T-$(2)-H-$(3)-std-dummy
@@ -164,6 +165,9 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-bench:			\
 check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty:				\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy
 
+check-stage$(1)-T-$(2)-H-$(3)-rustdoc:				\
+	check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy
+
 # Rules for the standard library test runner
 
 $(3)/test/stdtest.stage$(1)-$(2)$$(X):			\
@@ -189,6 +193,22 @@ $(3)/test/rustctest.stage$(1)-$(2)$$(X):					\
 
 check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy:		\
 		$(3)/test/rustctest.stage$(1)-$(2)$$(X)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
+
+# Rules for the rustdoc test runner
+
+$(3)/test/rustdoctest.stage$(1)-$(2)$$(X):					\
+		$$(RUSTDOC_CRATE) $$(RUSTDOC_INPUTS)		\
+		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+
+check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy:		\
+		$(3)/test/rustdoctest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
 
@@ -432,6 +452,9 @@ check-stage$(1)-H-$(2)-pretty-bench:				\
 check-stage$(1)-H-$(2)-pretty-pretty:				\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-pretty)
+check-stage$(1)-H-$(2)-rustdoc:					\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-rustdoc)
 
 endef
 
@@ -489,6 +512,9 @@ check-stage$(1)-H-all-pretty-bench: \
 check-stage$(1)-H-all-pretty-pretty: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-pretty-pretty)
+check-stage$(1)-H-all-rustdoc: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-rustdoc)
 
 endef
 
@@ -510,6 +536,7 @@ check-stage$(1)-pretty-rpass: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rpass
 check-stage$(1)-pretty-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rfail
 check-stage$(1)-pretty-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-bench
 check-stage$(1)-pretty-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-pretty
+check-stage$(1)-rustdoc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustdoc
 
 endef
 
