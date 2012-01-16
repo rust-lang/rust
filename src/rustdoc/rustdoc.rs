@@ -23,5 +23,6 @@ fn main(argv: [str]) {
     let default_name = source_file;
     let crate = parse::from_file(source_file);
     let doc = extract::extract(crate, default_name);
-    gen::write_markdown(doc, crate, std::io::stdout());
+    let doc = tystr_pass::run(doc, crate);
+    gen::write_markdown(doc, std::io::stdout());
 }
