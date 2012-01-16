@@ -103,6 +103,24 @@ equivalent to a C enum:
 This will define `north`, `east`, `south`, and `west` as constants,
 all of which have type `direction`.
 
+When the enum is is C like, that is none of the variants have
+parameters, it is possible to explicit set the discriminator values to
+an integer value:
+
+    enum color {
+      red = 0xff0000;
+      green = 0x00ff00;
+      blue = 0x0000ff;
+    }
+
+If an explicit discriminator is not specified for a variant, the value
+defaults to the value of the previous variant plus one.  If the first
+variant does not have a discriminator, it defaults to 0.  For example,
+the value of `north` is 0, `east` is 1, etc.
+
+When an enum is C-like the `as` cast operator can be used to get the
+discriminator's value.
+
 <a name="single_variant_enum"></a>
 
 There is a special case for enums with a single variant. These are
