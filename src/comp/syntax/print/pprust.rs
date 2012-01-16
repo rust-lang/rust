@@ -419,6 +419,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             for v: ast::variant in variants {
                 space_if_not_bol(s);
                 maybe_print_comment(s, v.span.lo);
+                ibox(s, indent_unit);
                 word(s.s, v.node.name);
                 if vec::len(v.node.args) > 0u {
                     popen(s);
@@ -429,14 +430,15 @@ fn print_item(s: ps, &&item: @ast::item) {
                     pclose(s);
                 }
                 alt v.node.disr_expr {
-                  some(expr) {
-                    nbsp(s);
-                    word_nbsp(s, "=");
-                    print_expr(s, expr);
+                  some(d) {
+                    space(s.s);
+                    word_space(s, "=");
+                    print_expr(s, d);
                   }
                   _ {}
                 }
                 word(s.s, ";");
+                end(s);
                 maybe_print_trailing_comment(s, v.span, none::<uint>);
             }
             bclose(s, item.span);
@@ -1414,11 +1416,12 @@ fn in_cbox(s: ps) -> bool {
 
 fn print_literal(s: ps, &&lit: @ast::lit) {
     maybe_print_comment(s, lit.span.lo);
-    alt next_lit(s) {
+    alt next_lit(s, lit.span.lo) {
       some(lt) {
-        if lt.pos == lit.span.lo { word(s.s, lt.lit); s.cur_lit += 1u; ret; }
+        word(s.s, lt.lit);
+        ret;
       }
-      _ { }
+      _ {}
     }
     alt lit.node {
       ast::lit_str(st) { print_string(s, st); }
@@ -1443,14 +1446,18 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
 
 fn lit_to_str(l: @ast::lit) -> str { be to_str(l, print_literal); }
 
-fn next_lit(s: ps) -> option::t<lexer::lit> {
+fn next_lit(s: ps, pos: uint) -> option::t<lexer::lit> {
     alt s.literals {
       some(lits) {
-        if s.cur_lit < vec::len(lits) {
-            ret some(lits[s.cur_lit]);
-        } else { ret none::<lexer::lit>; }
+        while s.cur_lit < vec::len(lits) {
+            let lt = lits[s.cur_lit];
+            if lt.pos > pos { ret none; }
+            s.cur_lit += 1u;
+            if lt.pos == pos { ret some(lt); }
+        }
+        ret none;
       }
-      _ { ret none::<lexer::lit>; }
+      _ { ret none; }
     }
 }
 
