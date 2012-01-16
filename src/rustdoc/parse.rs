@@ -1,3 +1,8 @@
+import rustc::driver::diagnostic;
+import rustc::syntax::ast;
+import rustc::syntax::codemap;
+import rustc::syntax::parse::parser;
+
 export from_file, from_str;
 
 fn new_parse_sess() -> parser::parse_sess {

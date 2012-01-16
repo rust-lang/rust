@@ -1,3 +1,6 @@
+import std::map;
+import rustc::syntax::ast;
+
 export parse_fn;
 
 fn parse_fn(

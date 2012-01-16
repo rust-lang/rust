@@ -1,3 +1,5 @@
+import std::map;
+
 type ast_id = int;
 
 type cratedoc = ~{

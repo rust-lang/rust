@@ -1,3 +1,8 @@
+import std::io;
+import std::io::writer_util;
+import rustc::syntax::ast;
+import rustc::syntax::print::pprust;
+
 type ctxt = {
     ps: pprust::ps,
     w: io::writer

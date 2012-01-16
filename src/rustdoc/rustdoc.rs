@@ -5,18 +5,6 @@
 use std;
 use rustc;
 
-import option;
-import option::{some, none};
-import rustc::driver::diagnostic;
-import rustc::syntax::ast;
-import rustc::syntax::codemap;
-import rustc::syntax::parse::parser;
-import rustc::syntax::print::pprust;
-import rustc::syntax::visit;
-import std::io;
-import io::writer_util;
-import std::map;
-
 #[doc(
   brief = "Main function.",
   desc = "Command-line arguments:
@@ -27,7 +15,7 @@ import std::map;
 fn main(argv: [str]) {
 
     if vec::len(argv) != 2u {
-        io::println(#fmt("usage: %s <input>", argv[0]));
+        std::io::println(#fmt("usage: %s <input>", argv[0]));
         ret;
     }
 
@@ -35,5 +23,5 @@ fn main(argv: [str]) {
     let default_name = source_file;
     let crate = parse::from_file(source_file);
     let doc = extract::extract(crate, default_name);
-    gen::write_markdown(doc, crate, io::stdout());
+    gen::write_markdown(doc, crate, std::io::stdout());
 }
