@@ -4543,7 +4543,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::fn_decl,
 
 
 fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
-                     variant: ast::variant, is_degen: bool,
+                     variant: ast::variant, disr: int, is_degen: bool,
                      ty_params: [ast::ty_param]) {
     let ccx = cx.ccx;
 
@@ -4593,7 +4593,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
             let lltagptr =
                 PointerCast(bcx, fcx.llretptr, T_opaque_tag_ptr(ccx));
             let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
-            Store(bcx, C_int(ccx, variant.node.disr_val), lldiscrimptr);
+            Store(bcx, C_int(ccx, disr), lldiscrimptr);
             GEPi(bcx, lltagptr, [0, 1])
         };
     i = 0u;
@@ -4938,8 +4938,13 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
       ast::item_tag(variants, tps) {
         let sub_cx = extend_path(cx, item.ident);
         let degen = vec::len(variants) == 1u;
+        let vi = ty::tag_variants(cx.ccx.tcx, {crate: ast::local_crate,
+                                               node: item.id});
+        let i = 0;
         for variant: ast::variant in variants {
-            trans_tag_variant(sub_cx, item.id, variant, degen, tps);
+            trans_tag_variant(sub_cx, item.id, variant,
+                              vi[i].disr_val, degen, tps);
+            i += 1;
         }
       }
       ast::item_const(_, expr) { trans_const(cx.ccx, expr, item.id); }
@@ -5268,10 +5273,13 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
     visit::visit_item(it, new_pt, v);
     alt it.node {
       ast::item_tag(variants, _) {
+        let vi = ty::tag_variants(ccx.tcx, {crate: ast::local_crate,
+                                            node: it.id});
+        let i = 0;
         for variant in variants {
             let p = new_pt + [variant.node.name, "discrim"];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
-            let disr_val = variant.node.disr_val;
+            let disr_val = vi[i].disr_val;
             let discrim_gvar = str::as_buf(s, {|buf|
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
             });
@@ -5280,6 +5288,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
             ccx.discrims.insert(
                 ast_util::local_def(variant.node.id), discrim_gvar);
             ccx.discrim_symbols.insert(variant.node.id, s);
+            i += 1;
         }
       }
       ast::item_impl(tps, some(@{node: ast::ty_path(_, id), _}), _, ms) {

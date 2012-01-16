@@ -2023,7 +2023,6 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
                     {name: id,
                      args: [{ty: ty, id: p.get_id()}],
                      id: p.get_id(),
-                     disr_val: 0,
                      disr_expr: none});
         ret mk_item(p, lo, ty.span.hi, id,
                     ast::item_tag([variant], ty_params), attrs);
@@ -2031,7 +2030,6 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
     expect(p, token::LBRACE);
     let all_nullary = true;
     let have_disr = false;
-    let disr_val = 0;
     while p.token != token::RBRACE {
         let tok = p.token;
         alt tok {
@@ -2056,38 +2054,15 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
               token::EQ. {
                 have_disr = true;
                 p.bump();
-                let e = parse_expr(p);
-                // FIXME: eval_const_expr does no error checking, nor do I.
-                // Also, the parser is not the right place to do this; likely
-                // somewhere in the middle end so that constants can be
-                // refereed to, even if they are after the declaration for the
-                // type.  Finally, eval_const_expr probably shouldn't exist as
-                // it Graydon puts it: "[I] am a little worried at its
-                // presence since it quasi-duplicates stuff that trans should
-                // probably be doing."  (See issue #1417)
-                alt syntax::ast_util::eval_const_expr(e) {
-                  syntax::ast_util::const_int(val) {
-                    // FIXME: check that value is in range
-                    disr_val = val as int;
-                  }
-                }
-                if option::is_some
-                    (vec::find
-                     (variants, {|v| v.node.disr_val == disr_val}))
-                {
-                    p.fatal("discriminator value " + /* str(disr_val) + */
-                            "already exists.");
-                }
-                disr_expr = some(e);
+                disr_expr = some(parse_expr(p));
               }
               _ {/* empty */ }
             }
             expect(p, token::SEMI);
             p.get_id();
             let vr = {name: p.get_str(name), args: args, id: p.get_id(),
-                      disr_val: disr_val, disr_expr: disr_expr};
+                      disr_expr: disr_expr};
             variants += [spanned(vlo, vhi, vr)];
-            disr_val += 1;
           }
           token::RBRACE. {/* empty */ }
           _ {

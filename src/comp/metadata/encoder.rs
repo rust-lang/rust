@@ -232,6 +232,8 @@ fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
                            id: node_id, variants: [variant],
                            &index: [entry<int>], ty_params: [ty_param]) {
     let disr_val = 0;
+    let i = 0;
+    let vi = ty::tag_variants(ecx.ccx.tcx, {crate: local_crate, node: id});
     for variant: variant in variants {
         index += [{val: variant.node.id, pos: ebml_w.writer.tell()}];
         ebml::start_tag(ebml_w, tag_items_data_item);
@@ -244,13 +246,14 @@ fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
             encode_symbol(ecx, ebml_w, variant.node.id);
         }
         encode_discriminant(ecx, ebml_w, variant.node.id);
-        if variant.node.disr_val != disr_val {
-            encode_disr_val(ecx, ebml_w, variant.node.disr_val);
-            disr_val = variant.node.disr_val;
+        if vi[i].disr_val != disr_val {
+            encode_disr_val(ecx, ebml_w, vi[i].disr_val);
+            disr_val = vi[i].disr_val;
         }
         encode_type_param_bounds(ebml_w, ecx, ty_params);
         ebml::end_tag(ebml_w);
         disr_val += 1;
+        i += 1;
     }
 }
 
