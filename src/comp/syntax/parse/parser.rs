@@ -1531,20 +1531,31 @@ fn parse_let(p: parser) -> @ast::decl {
     ret @spanned(lo, p.last_span.hi, ast::decl_local(locals));
 }
 
-fn parse_stmt(p: parser) -> @ast::stmt {
+fn parse_stmt(p: parser, first_item_attrs: [ast::attribute]) -> @ast::stmt {
+    fn check_expected_item(p: parser, current_attrs: [ast::attribute]) {
+        // If we have attributes then we should have an item
+        if vec::is_not_empty(current_attrs) {
+            p.fatal("expected item");
+        }
+    }
+
     let lo = p.span.lo;
-    if eat_word(p, "let") {
+    if is_word(p, "let") {
+        check_expected_item(p, first_item_attrs);
+        expect_word(p, "let");
         let decl = parse_let(p);
         ret @spanned(lo, decl.span.hi, ast::stmt_decl(decl, p.get_id()));
     } else {
         let item_attrs;
-        alt parse_outer_attrs_or_ext(p) {
+        alt parse_outer_attrs_or_ext(p, first_item_attrs) {
           none. { item_attrs = []; }
           some(left(attrs)) { item_attrs = attrs; }
           some(right(ext)) {
             ret @spanned(lo, ext.span.hi, ast::stmt_expr(ext, p.get_id()));
           }
         }
+
+        let item_attrs = first_item_attrs + item_attrs;
 
         alt parse_item(p, item_attrs) {
           some(i) {
@@ -1555,10 +1566,7 @@ fn parse_stmt(p: parser) -> @ast::stmt {
           none() { /* fallthrough */ }
         }
 
-        // If we have attributes then we should have an item
-        if vec::len(item_attrs) > 0u {
-            ret p.fatal("expected item");
-        }
+        check_expected_item(p, item_attrs);
 
         // Remainder are line-expr stmts.
         let e = parse_expr_res(p, RESTRICT_STMT_EXPR);
@@ -1605,16 +1613,37 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
 }
 
 fn parse_block(p: parser) -> ast::blk {
+    let (attrs, blk) = parse_inner_attrs_and_block(p, false);
+    assert vec::is_empty(attrs);
+    ret blk;
+}
+
+fn parse_inner_attrs_and_block(
+    p: parser, parse_attrs: bool) -> ([ast::attribute], ast::blk) {
+
+    fn maybe_parse_inner_attrs_and_next(
+        p: parser, parse_attrs: bool) ->
+        {inner: [ast::attribute], next: [ast::attribute]} {
+        if parse_attrs {
+            parse_inner_attrs_and_next(p)
+        } else {
+            {inner: [], next: []}
+        }
+    }
+
     let lo = p.span.lo;
     if eat_word(p, "unchecked") {
         expect(p, token::LBRACE);
-        be parse_block_tail(p, lo, ast::unchecked_blk);
+        let {inner, next} = maybe_parse_inner_attrs_and_next(p, parse_attrs);
+        ret (inner, parse_block_tail_(p, lo, ast::unchecked_blk, next));
     } else if eat_word(p, "unsafe") {
         expect(p, token::LBRACE);
-        be parse_block_tail(p, lo, ast::unsafe_blk);
+        let {inner, next} = maybe_parse_inner_attrs_and_next(p, parse_attrs);
+        ret (inner, parse_block_tail_(p, lo, ast::unsafe_blk, next));
     } else {
         expect(p, token::LBRACE);
-        be parse_block_tail(p, lo, ast::default_blk);
+        let {inner, next} = maybe_parse_inner_attrs_and_next(p, parse_attrs);
+        ret (inner, parse_block_tail_(p, lo, ast::default_blk, next));
     }
 }
 
@@ -1630,15 +1659,28 @@ fn parse_block_no_value(p: parser) -> ast::blk {
 // necessary, and this should take a qualifier.
 // some blocks start with "#{"...
 fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
-    let stmts = [], expr = none;
-    let view_items = parse_view_import_only(p);
+    parse_block_tail_(p, lo, s, [])
+}
+
+fn parse_block_tail_(p: parser, lo: uint, s: ast::blk_check_mode,
+                     first_item_attrs: [ast::attribute]) -> ast::blk {
+    let stmts = [];
+    let expr = none;
+    let view_items = maybe_parse_view_import_only(p, first_item_attrs);
+    let initial_attrs = first_item_attrs;
+
+    if p.token == token::RBRACE && !vec::is_empty(initial_attrs) {
+        p.fatal("expected item");
+    }
+
     while p.token != token::RBRACE {
         alt p.token {
           token::SEMI. {
             p.bump(); // empty
           }
           _ {
-            let stmt = parse_stmt(p);
+            let stmt = parse_stmt(p, initial_attrs);
+            initial_attrs = [];
             alt stmt.node {
               ast::stmt_expr(e, stmt_id) { // Expression without semicolon:
                 alt p.token {
@@ -1751,7 +1793,8 @@ fn parse_item_fn(p: parser, purity: ast::purity,
     let lo = p.last_span.lo;
     let t = parse_fn_header(p);
     let decl = parse_fn_decl(p, purity);
-    let body = parse_block(p);
+    let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
+    let attrs = attrs + inner_attrs;
     ret mk_item(p, lo, body.span.hi, t.ident,
                 ast::item_fn(decl, t.tps, body), attrs);
 }
@@ -1832,8 +1875,7 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_mod_items(p: parser, term: token::token,
                    first_item_attrs: [ast::attribute]) -> ast::_mod {
     // Shouldn't be any view items since we've already parsed an item attr
-    let view_items =
-        if vec::len(first_item_attrs) == 0u { parse_view(p) } else { [] };
+    let view_items = maybe_parse_view(p, first_item_attrs);
     let items: [@ast::item] = [];
     let initial_attrs = first_item_attrs;
     while p.token != term {
@@ -2134,14 +2176,20 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
 // extensions, which both begin with token.POUND
 type attr_or_ext = option::t<either::t<[ast::attribute], @ast::expr>>;
 
-fn parse_outer_attrs_or_ext(p: parser) -> attr_or_ext {
+fn parse_outer_attrs_or_ext(
+    p: parser,
+    first_item_attrs: [ast::attribute]) -> attr_or_ext {
+    let expect_item_next = vec::is_not_empty(first_item_attrs);
     if p.token == token::POUND {
         let lo = p.span.lo;
-        p.bump();
-        if p.token == token::LBRACKET {
+        if p.look_ahead(1u) == token::LBRACKET {
+            p.bump();
             let first_attr = parse_attribute_naked(p, ast::attr_outer, lo);
             ret some(left([first_attr] + parse_outer_attributes(p)));
-        } else if !(p.token == token::LT || p.token == token::LBRACKET) {
+        } else if !(p.look_ahead(1u) == token::LT
+                    || p.look_ahead(1u) == token::LBRACKET
+                    || expect_item_next) {
+            p.bump();
             ret some(right(parse_syntax_ext_naked(p, lo)));
         } else { ret none; }
     } else { ret none; }
@@ -2182,6 +2230,10 @@ fn parse_inner_attrs_and_next(p: parser) ->
     let inner_attrs: [ast::attribute] = [];
     let next_outer_attrs: [ast::attribute] = [];
     while p.token == token::POUND {
+        if p.look_ahead(1u) != token::LBRACKET {
+            // This is an extension
+            break;
+        }
         let attr = parse_attribute(p, ast::attr_inner);
         if p.token == token::SEMI {
             p.bump();
@@ -2377,22 +2429,37 @@ fn is_view_item(p: parser) -> bool {
     }
 }
 
-fn parse_view(p: parser) -> [@ast::view_item] {
-    parse_view_while(p, is_view_item)
+fn maybe_parse_view(
+    p: parser,
+    first_item_attrs: [ast::attribute]) -> [@ast::view_item] {
+
+    maybe_parse_view_while(p, first_item_attrs, is_view_item)
 }
 
-fn parse_view_import_only(p: parser) -> [@ast::view_item] {
-    parse_view_while(p, bind is_word(_, "import"))
+fn maybe_parse_view_import_only(
+    p: parser,
+    first_item_attrs: [ast::attribute]) -> [@ast::view_item] {
+
+    maybe_parse_view_while(p, first_item_attrs, bind is_word(_, "import"))
 }
 
-fn parse_view_while(p: parser, f: fn@(parser) -> bool) -> [@ast::view_item] {
-    let items = [];
-    while f(p) { items += [parse_view_item(p)]; }
-    ret items;
+fn maybe_parse_view_while(
+    p: parser,
+    first_item_attrs: [ast::attribute],
+    f: fn@(parser) -> bool) -> [@ast::view_item] {
+
+    if vec::len(first_item_attrs) == 0u {
+        let items = [];
+        while f(p) { items += [parse_view_item(p)]; }
+        ret items;
+    } else {
+        // Shouldn't be any view items since we've already parsed an item attr
+        ret [];
+    }
 }
 
 fn parse_native_view(p: parser) -> [@ast::view_item] {
-    parse_view_while(p, is_view_item)
+    maybe_parse_view_while(p, [], is_view_item)
 }
 
 fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,

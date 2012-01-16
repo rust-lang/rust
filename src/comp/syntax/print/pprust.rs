@@ -366,7 +366,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_fn(decl, typarams, body) {
         print_fn(s, decl, item.ident, typarams);
         word(s.s, " ");
-        print_block(s, body);
+        print_block_with_attrs(s, body, item.attrs);
       }
       ast::item_mod(_mod) {
         head(s, "mod");
@@ -551,10 +551,20 @@ fn print_block(s: ps, blk: ast::blk) {
     print_possibly_embedded_block(s, blk, block_normal, indent_unit);
 }
 
+fn print_block_with_attrs(s: ps, blk: ast::blk, attrs: [ast::attribute]) {
+    print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs);
+}
+
 tag embed_type { block_macro; block_block_fn; block_normal; }
 
 fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
                                  indented: uint) {
+    print_possibly_embedded_block_(
+        s, blk, embedded, indented, []);
+}
+
+fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
+                                  indented: uint, attrs: [ast::attribute]) {
     alt blk.node.rules {
       ast::unchecked_blk. { word(s.s, "unchecked"); }
       ast::unsafe_blk. { word(s.s, "unsafe"); }
@@ -569,6 +579,8 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
       block_block_fn. { end(s); }
       block_normal. { bopen(s); }
     }
+
+    print_inner_attributes(s, attrs);
 
     for vi in blk.node.view_items { print_view_item(s, vi); }
     for st: @ast::stmt in blk.node.stmts {

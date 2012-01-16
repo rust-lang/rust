@@ -183,6 +183,10 @@ mod test_literals {
     mod m { }
 }
 
+fn test_fn_inner() {
+    #[inner_fn_attr];
+}
+
 fn main() { }
 
 //
