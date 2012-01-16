@@ -428,6 +428,14 @@ fn print_item(s: ps, &&item: @ast::item) {
                     commasep(s, consistent, v.node.args, print_variant_arg);
                     pclose(s);
                 }
+                alt v.node.disr_expr {
+                  some(expr) {
+                    nbsp(s);
+                    word_nbsp(s, "=");
+                    print_expr(s, expr);
+                  }
+                  _ {}
+                }
                 word(s.s, ";");
                 maybe_print_trailing_comment(s, v.span, none::<uint>);
             }
