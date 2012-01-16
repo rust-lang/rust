@@ -363,6 +363,16 @@ then
     err "either clang or gcc is required"
 fi
 
+if [ ! -z "$CFG_PERF" ]
+then
+    HAVE_PERF_LOGFD=`$CFG_PERF stat --log-fd 2>&1 | grep 'unknown option'`
+    if [ -z "$HAVE_PERF_LOGFD" ];
+    then
+        CFG_PERF_WITH_LOGFD=1
+        putvar CFG_PERF_WITH_LOGFD
+    fi
+fi
+
 step_msg "making directories"
 
 for i in \
