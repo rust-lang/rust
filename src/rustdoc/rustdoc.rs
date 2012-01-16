@@ -44,7 +44,7 @@ fn doc_item(rd: rustdoc, item: @ast::item) {
             }
             ast::meta_list("doc", docs) {
                 _fndoc = some(
-                    attr_parser::parse_compound_fndoc(docs));
+                    attr_parser::parse_fn(docs));
             }
         }
     }

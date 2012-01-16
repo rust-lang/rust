@@ -1,4 +1,4 @@
-export parse_compound_fndoc;
+export parse_fn;
 
 #[doc(
   brief = "Parses function docs from a complex #[doc] attribute.",
@@ -12,7 +12,7 @@ export parse_compound_fndoc;
   args(items = "Doc attribute contents"),
   return = "Parsed function docs."
 )]
-fn parse_compound_fndoc(items: [@ast::meta_item]) -> doc::fndoc {
+fn parse_fn(items: [@ast::meta_item]) -> doc::fndoc {
     let brief = none;
     let desc = none;
     let return = none;
