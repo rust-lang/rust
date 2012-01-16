@@ -1,34 +1,57 @@
 export fold;
 export fold_crate, fold_mod, fold_fn, fold_modlist, fold_fnlist;
 export default_seq_fold;
+export default_seq_fold_fn;
 
-tag fold = t;
+tag fold<T> = t<T>;
 
-type fold_crate = fn~(fold: fold, doc: doc::cratedoc) -> doc::cratedoc;
-type fold_mod = fn~(fold: fold, doc: doc::moddoc) -> doc::moddoc;
-type fold_fn = fn~(fold: fold, doc: doc::fndoc) -> doc::fndoc;
-type fold_modlist = fn~(fold: fold, list: doc::modlist) -> doc::modlist;
-type fold_fnlist = fn~(fold: fold, list: doc::fnlist) -> doc::fnlist;
+type fold_crate<T> = fn~(
+    fold: fold<T>,
+    doc: doc::cratedoc
+) -> doc::cratedoc;
 
-type t = {
-    fold_crate: fold_crate,
-    fold_mod: fold_mod,
-    fold_fn: fold_fn,
-    fold_modlist: fold_modlist,
-    fold_fnlist: fold_fnlist
+type fold_mod<T> = fn~(
+    fold: fold<T>,
+    doc: doc::moddoc
+) -> doc::moddoc;
+
+type fold_fn<T> = fn~(
+    fold: fold<T>,
+    doc: doc::fndoc
+) -> doc::fndoc;
+
+type fold_modlist<T> = fn~(
+    fold: fold<T>,
+    list: doc::modlist
+) -> doc::modlist;
+
+type fold_fnlist<T> = fn~(
+    fold: fold<T>,
+    list: doc::fnlist
+) -> doc::fnlist;
+
+type t<T> = {
+    ctxt: T,
+    fold_crate: fold_crate<T>,
+    fold_mod: fold_mod<T>,
+    fold_fn: fold_fn<T>,
+    fold_modlist: fold_modlist<T>,
+    fold_fnlist: fold_fnlist<T>
 };
 
 
 // This exists because fn types don't infer correctly as record
 // initializers, but they do as function arguments
-fn mk_fold(
-    fold_crate: fold_crate,
-    fold_mod: fold_mod,
-    fold_fn: fold_fn,
-    fold_modlist: fold_modlist,
-    fold_fnlist: fold_fnlist
-) -> fold {
+fn mk_fold<T:copy>(
+    ctxt: T,
+    fold_crate: fold_crate<T>,
+    fold_mod: fold_mod<T>,
+    fold_fn: fold_fn<T>,
+    fold_modlist: fold_modlist<T>,
+    fold_fnlist: fold_fnlist<T>
+) -> fold<T> {
     fold({
+        ctxt: ctxt,
         fold_crate: fold_crate,
         fold_mod: fold_mod,
         fold_fn: fold_fn,
@@ -37,18 +60,19 @@ fn mk_fold(
     })
 }
 
-fn default_seq_fold() -> fold {
+fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
     mk_fold(
-        default_seq_fold_crate,
-        default_seq_fold_mod,
-        default_seq_fold_fn,
-        default_seq_fold_modlist,
-        default_seq_fold_fnlist
+        ctxt,
+        {|f, d| default_seq_fold_crate(f, d)},
+        {|f, d| default_seq_fold_mod(f, d)},
+        {|f, d| default_seq_fold_fn(f, d)},
+        {|f, d| default_seq_fold_modlist(f, d)},
+        {|f, d| default_seq_fold_fnlist(f, d)}
     )
 }
 
-fn default_seq_fold_crate(
-    fold: fold,
+fn default_seq_fold_crate<T>(
+    fold: fold<T>,
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     ~{
@@ -56,8 +80,8 @@ fn default_seq_fold_crate(
     }
 }
 
-fn default_seq_fold_mod(
-    fold: fold,
+fn default_seq_fold_mod<T>(
+    fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
     ~{
@@ -67,15 +91,15 @@ fn default_seq_fold_mod(
     }
 }
 
-fn default_seq_fold_fn(
-    _fold: fold,
+fn default_seq_fold_fn<T>(
+    _fold: fold<T>,
     doc: doc::fndoc
 ) -> doc::fndoc {
     doc
 }
 
-fn default_seq_fold_modlist(
-    fold: fold,
+fn default_seq_fold_modlist<T>(
+    fold: fold<T>,
     list: doc::modlist
 ) -> doc::modlist {
     doc::modlist(vec::map(*list) {|doc|
@@ -83,8 +107,8 @@ fn default_seq_fold_modlist(
     })
 }
 
-fn default_seq_fold_fnlist(
-    fold: fold,
+fn default_seq_fold_fnlist<T>(
+    fold: fold<T>,
     list: doc::fnlist
 ) -> doc::fnlist {
     doc::fnlist(vec::map(*list) {|doc|
@@ -99,7 +123,7 @@ mod tests {
         let source = "mod a { fn b() { } mod c { fn d() { } } }";
         let ast = parse::from_str(source);
         let doc = extract::extract(ast, "");
-        let fld = default_seq_fold();
+        let fld = default_seq_fold(());
         let folded = fld.fold_crate(fld, doc);
         assert doc == folded;
     }
