@@ -190,9 +190,11 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char(']');
       }
       ty::ty_named(t, name) {
-        w.write_char('"');
-        w.write_str(*name);
-        w.write_char('"');
+        if cx.abbrevs != ac_no_abbrevs {
+            w.write_char('"');
+            w.write_str(*name);
+            w.write_char('"');
+        }
         enc_ty(w, cx, t);
       }
     }
