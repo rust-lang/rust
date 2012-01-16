@@ -1,3 +1,5 @@
+type ast_id = int;
+
 type cratedoc = ~{
     topmod: moddoc,
 };
@@ -9,6 +11,7 @@ type moddoc = ~{
 };
 
 type fndoc = ~{
+    id: ast_id,
     name: str,
     brief: str,
     desc: option::t<str>,

@@ -23,7 +23,7 @@ import std::map;
        item = "AST item to document")
 )]
 fn doc_item(ctxt: gen::ctxt, item: @ast::item) {
-    let _fndoc0 = attr_parser::parse_fn(item.ident, item.attrs);
+    let _fndoc0 = attr_parser::parse_fn(item.ident, item.id, item.attrs);
 
     alt item.node {
         ast::item_const(ty, expr) { }

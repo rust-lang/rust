@@ -1,6 +1,10 @@
 export parse_fn;
 
-fn parse_fn(name: str, attrs: [ast::attribute]) -> doc::fndoc {
+fn parse_fn(
+    name: str,
+    id: ast::node_id,
+    attrs: [ast::attribute]
+) -> doc::fndoc {
     let noargdocs = map::new_str_hash::<str>();
     let _fndoc = none;
     for attr: ast::attribute in attrs {
@@ -8,6 +12,7 @@ fn parse_fn(name: str, attrs: [ast::attribute]) -> doc::fndoc {
             ast::meta_name_value(
                 "doc", {node: ast::lit_str(value), span: _}) {
                 _fndoc = some(~{
+                    id: id,
                     name: name,
                     brief: value,
                     desc: none,
@@ -17,7 +22,7 @@ fn parse_fn(name: str, attrs: [ast::attribute]) -> doc::fndoc {
             }
             ast::meta_list("doc", docs) {
                 _fndoc = some(
-                    parse_fn_(name, docs));
+                    parse_fn_(name, id, docs));
             }
         }
     }
@@ -26,6 +31,7 @@ fn parse_fn(name: str, attrs: [ast::attribute]) -> doc::fndoc {
         some(_d) { _d }
         none. {
           ~{
+              id: id,
               name: name,
               brief: "_undocumented_",
               desc: none,
@@ -50,7 +56,11 @@ fn parse_fn(name: str, attrs: [ast::attribute]) -> doc::fndoc {
   args(items = "Doc attribute contents"),
   return = "Parsed function docs."
 )]
-fn parse_fn_(name: str, items: [@ast::meta_item]) -> doc::fndoc {
+fn parse_fn_(
+    name: str,
+    id: ast::node_id,
+    items: [@ast::meta_item]
+) -> doc::fndoc {
     let brief = none;
     let desc = none;
     let return = none;
@@ -97,6 +107,7 @@ fn parse_fn_(name: str, items: [@ast::meta_item]) -> doc::fndoc {
     };
 
     ~{
+        id: id,
         name: name,
         brief: _brief,
         desc: desc,
@@ -128,7 +139,7 @@ mod tests {
     fn parse_fn_should_handle_undocumented_functions() {
         let source = "";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", attrs);
+        let doc = parse_fn("f", 0, attrs);
         assert doc.brief == "_undocumented_";
         assert doc.desc == none;
         assert doc.return == none;
@@ -139,7 +150,7 @@ mod tests {
     fn parse_fn_should_parse_simple_doc_attributes() {
         let source = "#[doc = \"basic\"]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", attrs);
+        let doc = parse_fn("f", 0, attrs);
         assert doc.brief == "basic";
     }
 
@@ -147,7 +158,7 @@ mod tests {
     fn parse_fn_should_parse_the_brief_description() {
         let source = "#[doc(brief = \"short\")]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", attrs);
+        let doc = parse_fn("f", 0, attrs);
         assert doc.brief == "short";
     }
 
@@ -155,7 +166,7 @@ mod tests {
     fn parse_fn_should_parse_the_long_description() {
         let source = "#[doc(desc = \"description\")]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", attrs);
+        let doc = parse_fn("f", 0, attrs);
         assert doc.desc == some("description");
     }
 
@@ -163,7 +174,7 @@ mod tests {
     fn parse_fn_should_parse_the_return_value_description() {
         let source = "#[doc(return = \"return value\")]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", attrs);
+        let doc = parse_fn("f", 0, attrs);
         assert doc.return == some("return value");
     }
 
@@ -171,7 +182,7 @@ mod tests {
     fn parse_fn_should_parse_the_argument_descriptions() {
         let source = "#[doc(args(a = \"arg a\", b = \"arg b\"))]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", attrs);
+        let doc = parse_fn("f", 0, attrs);
         assert doc.args.get("a") == "arg a";
         assert doc.args.get("b") == "arg b";
     }
@@ -180,7 +191,7 @@ mod tests {
     fn parse_fn_should_set_brief_desc_to_undocumented_if_not_exists() {
         let source = "#[doc(desc = \"long desc\")]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", attrs);
+        let doc = parse_fn("f", 0, attrs);
         assert doc.brief == "_undocumented_";
     }
 }

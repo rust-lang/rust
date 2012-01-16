@@ -42,7 +42,7 @@ fn moddoc_from_mod(
                 alt item.node {
                   ast::item_fn(decl, typarams, _) {
                     some(fndoc_from_fn(
-                        decl, typarams, item.ident, item.attrs))
+                        decl, typarams, item.ident, item.id, item.attrs))
                   }
                   _ {
                     none
@@ -56,9 +56,10 @@ fn fndoc_from_fn(
     _decl: ast::fn_decl,
     _typarams: [ast::ty_param],
     name: ast::ident,
+    id: ast::node_id,
     attrs: [ast::attribute]
 ) -> doc::fndoc {
-    attr_parser::parse_fn(name, attrs)
+    attr_parser::parse_fn(name, id, attrs)
 }
 
 #[cfg(test)]
@@ -101,5 +102,13 @@ mod tests {
         let doc = extract(ast);
         assert doc.topmod.fns[0].name == "a";
         assert doc.topmod.mods[0].fns[0].name == "c";
+    }
+
+    #[test]
+    fn extract_should_set_fn_ast_id() {
+        let source = "fn a() { }";
+        let ast = parse::from_str(source);
+        let doc = extract(ast);
+        assert doc.topmod.fns[0].id != 0;
     }
 }
