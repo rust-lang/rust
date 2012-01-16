@@ -14,7 +14,7 @@ type fndoc = ~{
     id: ast_id,
     name: str,
     brief: str,
-    desc: option::t<str>,
+    desc: option<str>,
     return: option<retdoc>,
     args: [(str, str)]
 };

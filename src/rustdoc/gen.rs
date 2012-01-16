@@ -19,6 +19,10 @@ fn write_markdown(
     write_top_module(ctxt, doc.topmod);
 }
 
+fn write_header(ctxt: ctxt, name: str) {
+    ctxt.w.write_line("# Crate " + name);
+}
+
 fn write_top_module(
     ctxt: ctxt,
     moddoc: doc::moddoc
@@ -48,29 +52,9 @@ fn write_mod_contents(
 
 fn write_fn(
     ctxt: ctxt,
-    fndoc: doc::fndoc
+    doc: doc::fndoc
 ) {
-    write_fndoc(ctxt, fndoc.name, fndoc);
-}
-
-#[doc(
-  brief = "Generate a crate document header.",
-  args(rd = "Rustdoc context",
-       name = "Crate name")
-)]
-fn write_header(ctxt: ctxt, name: str) {
-    ctxt.w.write_line("# Crate " + name);
-}
-
-#[doc(
-  brief = "Documents a single function.",
-  args(rd = "Rustdoc context",
-       ident = "Identifier for this function",
-       doc = "Function docs extracted from attributes",
-       _fn = "AST object representing this function")
-)]
-fn write_fndoc(ctxt: ctxt, ident: str, doc: doc::fndoc) {
-    ctxt.w.write_line("## Function `" + ident + "`");
+    ctxt.w.write_line("## Function `" + doc.name + "`");
     ctxt.w.write_line(doc.brief);
     alt doc.desc {
         some(_d) {

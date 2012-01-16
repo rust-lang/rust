@@ -24,7 +24,6 @@ fn moddoc_from_mod(
     module: ast::_mod,
     name: ast::ident,
     _attrs: [ast::attribute]
-
 ) -> doc::moddoc {
     ~{
         name: name,

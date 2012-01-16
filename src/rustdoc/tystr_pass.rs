@@ -2,7 +2,10 @@ import rustc::syntax::ast;
 
 export run;
 
-fn run(doc: doc::cratedoc, crate: @ast::crate) -> doc::cratedoc {
+fn run(
+    doc: doc::cratedoc,
+    crate: @ast::crate
+) -> doc::cratedoc {
     let fold = fold::fold({
         fold_fn: fn~(
             f: fold::fold<@ast::crate>,
