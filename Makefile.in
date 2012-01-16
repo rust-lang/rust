@@ -397,7 +397,7 @@ rustc-stage3: rustc-stage3-H-$(CFG_HOST_TRIPLE)
 define DEF_RUSTC_TARGET
 # $(1) == architecture
 
-rustc-H-$(1): rustc-stage3-H-$(1)
+rustc-H-$(1): rustc-stage2-H-$(1)
 endef
 
 $(foreach host,$(CFG_TARGET_TRIPLES),			\
