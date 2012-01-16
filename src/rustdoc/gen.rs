@@ -1,4 +1,4 @@
-type rustdoc = {
+type ctxt = {
     ps: pprust::ps,
     w: io::writer
 };
@@ -8,8 +8,8 @@ type rustdoc = {
   args(rd = "Rustdoc context",
        name = "Crate name")
 )]
-fn write_header(rd: rustdoc, name: str) {
-    rd.w.write_line("# Crate " + name);
+fn write_header(ctxt: ctxt, name: str) {
+    ctxt.w.write_line("# Crate " + name);
 }
 
 #[doc(
@@ -19,30 +19,30 @@ fn write_header(rd: rustdoc, name: str) {
        doc = "Function docs extracted from attributes",
        _fn = "AST object representing this function")
 )]
-fn write_fndoc(rd: rustdoc, ident: str, doc: doc::fndoc, decl: ast::fn_decl) {
-    rd.w.write_line("## Function `" + ident + "`");
-    rd.w.write_line(doc.brief);
+fn write_fndoc(ctxt: ctxt, ident: str, doc: doc::fndoc, decl: ast::fn_decl) {
+    ctxt.w.write_line("## Function `" + ident + "`");
+    ctxt.w.write_line(doc.brief);
     alt doc.desc {
         some(_d) {
-            rd.w.write_line("");
-            rd.w.write_line(_d);
-            rd.w.write_line("");
+            ctxt.w.write_line("");
+            ctxt.w.write_line(_d);
+            ctxt.w.write_line("");
         }
         none. { }
     }
     for arg: ast::arg in decl.inputs {
-        rd.w.write_str("### Argument `" + arg.ident + "`: ");
-        rd.w.write_line("`" + pprust::ty_to_str(arg.ty) + "`");
+        ctxt.w.write_str("### Argument `" + arg.ident + "`: ");
+        ctxt.w.write_line("`" + pprust::ty_to_str(arg.ty) + "`");
         alt doc.args.find(arg.ident) {
             some(_d) {
-                rd.w.write_line(_d);
+                ctxt.w.write_line(_d);
             }
             none. { }
         };
     }
-    rd.w.write_line("### Returns `" + pprust::ty_to_str(decl.output) + "`");
+    ctxt.w.write_line("### Returns `" + pprust::ty_to_str(decl.output) + "`");
     alt doc.return {
-        some(_r) { rd.w.write_line(_r); }
+        some(_r) { ctxt.w.write_line(_r); }
         none. { }
     }
 }
