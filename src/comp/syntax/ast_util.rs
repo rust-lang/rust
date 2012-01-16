@@ -126,7 +126,7 @@ fn int_ty_max(t: int_ty) -> u64 {
 
 fn uint_ty_to_str(t: uint_ty) -> str {
     alt t {
-      ty_u. { "" } ty_u8. { "u8" } ty_u16. { "u16" }
+      ty_u. { "u" } ty_u8. { "u8" } ty_u16. { "u16" }
       ty_u32. { "u32" } ty_u64. { "u64" }
     }
 }
