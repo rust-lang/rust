@@ -2461,6 +2461,55 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     demand::simple(fcx, e.span, declty, cty);
 }
 
+fn check_tag_variants(ccx: @crate_ctxt, _sp: span, vs: [ast::variant],
+                      id: ast::node_id) {
+    // FIXME: this is kinda a kludge; we manufacture a fake function context
+    // and statement context for checking the initializer expression.
+    let rty = node_id_to_type(ccx.tcx, id);
+    let fixups: [ast::node_id] = [];
+    let fcx: @fn_ctxt =
+        @{ret_ty: rty,
+          purity: ast::pure_fn,
+          proto: ast::proto_box,
+          var_bindings: ty::unify::mk_var_bindings(),
+          locals: new_int_hash::<int>(),
+          next_var_id: @mutable 0,
+          mutable fixups: fixups,
+          ccx: ccx};
+    let disr_vals: [int] = [];
+    let disr_val = 0;
+    for v in vs {
+        alt v.node.disr_expr {
+          some(e) {
+            check_expr(fcx, e);
+            let cty = expr_ty(fcx.ccx.tcx, e);
+            let declty =ty::mk_int(fcx.ccx.tcx);
+            demand::simple(fcx, e.span, declty, cty);
+            // FIXME: issue #1417
+            // Also, check_expr (from check_const pass) doesn't guarantee that
+            // the expression in an form that eval_const_expr, so we may still
+            // get an internal compiler error
+            alt syntax::ast_util::eval_const_expr(e) {
+              syntax::ast_util::const_int(val) {
+                disr_val = val as int;
+              }
+              _ {
+                ccx.tcx.sess.span_err(e.span,
+                                      "expected signed integer constant");
+              }
+            }
+          }
+          _ {}
+        }
+        if vec::member(disr_val, disr_vals) {
+            ccx.tcx.sess.span_err(v.span,
+                                  "discriminator value already exists.");
+        }
+        disr_vals += [disr_val];
+        disr_val += 1;
+    }
+}
+
 // A generic function for checking the pred in a check
 // or if-check
 fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
@@ -2632,6 +2681,7 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method) {
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
+      ast::item_tag(vs, _) { check_tag_variants(ccx, it.span, vs, it.id); }
       ast::item_fn(decl, tps, body) {
         check_fn(ccx, ast::proto_bare, decl, body, it.id, none);
       }

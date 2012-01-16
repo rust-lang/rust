@@ -2631,17 +2631,30 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
     let result = if ast::local_crate != id.crate {
         @csearch::get_tag_variants(cx, id)
     } else {
+        // FIXME: Now that the variants are run through the type checker (to
+        // check the disr_expr if one exists), this code should likely be
+        // moved there to avoid having to call eval_const_expr twice
         alt cx.items.get(id.node) {
           ast_map::node_item(@{node: ast::item_tag(variants, _), _}) {
+            let disr_val = -1;
             @vec::map(variants, {|variant|
                 let ctor_ty = node_id_to_monotype(cx, variant.node.id);
                 let arg_tys = if vec::len(variant.node.args) > 0u {
                     vec::map(ty_fn_args(cx, ctor_ty), {|a| a.ty})
                 } else { [] };
+                alt variant.node.disr_expr {
+                  some (ex) {
+                    // FIXME: issue #1417
+                    disr_val = alt syntax::ast_util::eval_const_expr(ex) {
+                      ast_util::const_int(val) {val as int}
+                    }
+                  }
+                  _ {disr_val += 1;}
+                }
                 @{args: arg_tys,
                   ctor_ty: ctor_ty,
                   id: ast_util::local_def(variant.node.id),
-                  disr_val: variant.node.disr_val
+                  disr_val: disr_val
                  }
             })
           }

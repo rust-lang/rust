@@ -15,6 +15,13 @@ fn check_crate(sess: session, crate: @crate) {
 fn check_item(it: @item, &&_is_const: bool, v: visit::vt<bool>) {
     alt it.node {
       item_const(_, ex) { v.visit_expr(ex, true, v); }
+      item_tag(vs, _) {
+        for var in vs {
+            option::may(var.node.disr_expr) {|ex|
+                v.visit_expr(ex, true, v);
+            }
+        }
+      }
       _ { visit::visit_item(it, false, v); }
     }
 }
