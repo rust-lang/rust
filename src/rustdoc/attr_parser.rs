@@ -1,4 +1,3 @@
-import std::map;
 import rustc::syntax::ast;
 
 export parse_fn;
@@ -8,7 +7,6 @@ fn parse_fn(
     id: ast::node_id,
     attrs: [ast::attribute]
 ) -> doc::fndoc {
-    let noargdocs = map::new_str_hash::<str>();
     let _fndoc = none;
     for attr: ast::attribute in attrs {
         alt attr.node.value.node {
@@ -20,7 +18,7 @@ fn parse_fn(
                     brief: value,
                     desc: none,
                     return: none,
-                    args: noargdocs
+                    args: []
                 });
             }
             ast::meta_list("doc", docs) {
@@ -39,7 +37,7 @@ fn parse_fn(
               brief: "_undocumented_",
               desc: none,
               return: none,
-              args: noargdocs
+              args: []
           }
         }
     };
@@ -67,7 +65,7 @@ fn parse_fn_(
     let brief = none;
     let desc = none;
     let return = none;
-    let argdocs = map::new_str_hash::<str>();
+    let argdocs = [];
     let argdocsfound = none;
     for item: @ast::meta_item in items {
         alt item.node {
@@ -95,10 +93,10 @@ fn parse_fn_(
         some(ds) {
             for d: @ast::meta_item in ds {
                 alt d.node {
-                    ast::meta_name_value(key, {node: ast::lit_str(value),
-                                               span: _}) {
-                        argdocs.insert(key, value);
-                    }
+                  ast::meta_name_value(key, {node: ast::lit_str(value),
+                                             span: _}) {
+                    argdocs += [(key, value)];
+                  }
                 }
             }
         }
@@ -146,7 +144,7 @@ mod tests {
         assert doc.brief == "_undocumented_";
         assert doc.desc == none;
         assert doc.return == none;
-        assert doc.args.size() == 0u;
+        assert vec::len(doc.args) == 0u;
     }
 
     #[test]
@@ -186,8 +184,8 @@ mod tests {
         let source = "#[doc(args(a = \"arg a\", b = \"arg b\"))]";
         let attrs = parse_attributes(source);
         let doc = parse_fn("f", 0, attrs);
-        assert doc.args.get("a") == "arg a";
-        assert doc.args.get("b") == "arg b";
+        assert doc.args[0] == ("a", "arg a");
+        assert doc.args[1] == ("b", "arg b");
     }
 
     #[test]

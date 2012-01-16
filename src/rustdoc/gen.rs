@@ -98,15 +98,9 @@ fn write_fndoc(ctxt: ctxt, ident: str, doc: doc::fndoc, decl: ast::fn_decl) {
         }
         none. { }
     }
-    for arg: ast::arg in decl.inputs {
-        ctxt.w.write_str("### Argument `" + arg.ident + "`: ");
-        ctxt.w.write_line("`" + pprust::ty_to_str(arg.ty) + "`");
-        alt doc.args.find(arg.ident) {
-            some(_d) {
-                ctxt.w.write_line(_d);
-            }
-            none. { }
-        };
+    for (arg, desc) in doc.args {
+        ctxt.w.write_str("### Argument `" + arg + "`: ");
+        ctxt.w.write_str(desc);
     }
     ctxt.w.write_line("### Returns `" + pprust::ty_to_str(decl.output) + "`");
     alt doc.return {

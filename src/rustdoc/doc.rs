@@ -1,5 +1,3 @@
-import std::map;
-
 type ast_id = int;
 
 type cratedoc = ~{
@@ -18,7 +16,7 @@ type fndoc = ~{
     brief: str,
     desc: option::t<str>,
     return: option::t<str>,
-    args: map::hashmap<str, str>
+    args: [(str, str)]
 };
 
 // Just to break the structural recursive types
