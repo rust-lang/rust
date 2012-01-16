@@ -561,7 +561,7 @@ fn build_output_filenames(ifile: str,
             let basename = fs::basename(base_path);
             let dylibname = std::os::dylib_filename(basename);
             out_path = fs::connect(dirname, dylibname);
-            obj_path = fs::connect(dirname, basename + "." + obj_path);
+            obj_path = fs::connect(dirname, basename + "." + obj_suffix);
         } else {
             out_path = base_path;
             obj_path = base_path + "." + obj_suffix;
