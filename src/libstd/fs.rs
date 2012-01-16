@@ -13,8 +13,8 @@ import os_fs;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_path_is_dir(path: str::sbuf) -> int;
-    fn rust_path_exists(path: str::sbuf) -> int;
+    fn rust_path_is_dir(path: str::sbuf) -> ctypes::c_int;
+    fn rust_path_exists(path: str::sbuf) -> ctypes::c_int;
 }
 
 /*
@@ -120,7 +120,7 @@ Function: path_is_dir
 Indicates whether a path represents a directory.
 */
 fn path_is_dir(p: path) -> bool {
-    ret str::as_buf(p, {|buf| rustrt::rust_path_is_dir(buf) != 0 });
+    ret str::as_buf(p, {|buf| rustrt::rust_path_is_dir(buf) != 0i32 });
 }
 
 /*
@@ -129,7 +129,7 @@ Function: path_exists
 Indicates whether a path exists.
 */
 fn path_exists(p: path) -> bool {
-    ret str::as_buf(p, {|buf| rustrt::rust_path_exists(buf) != 0 });
+    ret str::as_buf(p, {|buf| rustrt::rust_path_exists(buf) != 0i32 });
 }
 
 /*

@@ -1,4 +1,4 @@
-
+import core::ctypes::{c_int, c_uint};
 import driver::session;
 import session::session;
 import lib::llvm::llvm;
@@ -170,24 +170,25 @@ mod write {
             llvm::LLVMAddTargetData(td.lltd, fpm.llpm);
 
             let FPMB = llvm::LLVMPassManagerBuilderCreate();
-            llvm::LLVMPassManagerBuilderSetOptLevel(FPMB, 2u);
+            llvm::LLVMPassManagerBuilderSetOptLevel(FPMB, 2u32);
             llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(FPMB,
                                                                     fpm.llpm);
             llvm::LLVMPassManagerBuilderDispose(FPMB);
 
             llvm::LLVMRunPassManager(fpm.llpm, llmod);
-            let threshold: uint = 225u;
-            if opts.optimize == 3u { threshold = 275u; }
+            let threshold = 225u as c_uint;
+            if opts.optimize == 3u { threshold = 275u as c_uint; }
 
             let MPMB = llvm::LLVMPassManagerBuilderCreate();
-            llvm::LLVMPassManagerBuilderSetOptLevel(MPMB, opts.optimize);
+            llvm::LLVMPassManagerBuilderSetOptLevel(MPMB,
+                                                    opts.optimize as u32);
             llvm::LLVMPassManagerBuilderSetSizeLevel(MPMB, 0);
             llvm::LLVMPassManagerBuilderSetDisableUnitAtATime(MPMB, False);
             llvm::LLVMPassManagerBuilderSetDisableUnrollLoops(MPMB, False);
             llvm::LLVMPassManagerBuilderSetDisableSimplifyLibCalls(MPMB,
                                                                    False);
 
-            if threshold != 0u {
+            if threshold != 0u32 {
                 llvm::LLVMPassManagerBuilderUseInlinerWithThreshold
                     (MPMB, threshold);
             }
@@ -198,12 +199,12 @@ mod write {
         }
         if opts.verify { llvm::LLVMAddVerifierPass(pm.llpm); }
         if is_object_or_assembly_or_exe(opts.output_type) {
-            let LLVMAssemblyFile: int = 0;
-            let LLVMObjectFile: int = 1;
-            let LLVMOptNone: int = 0; // -O0
-            let LLVMOptLess: int = 1; // -O1
-            let LLVMOptDefault: int = 2; // -O2, -Os
-            let LLVMOptAggressive: int = 3; // -O3
+            let LLVMAssemblyFile  = 0 as c_int;
+            let LLVMObjectFile    = 1 as c_int;
+            let LLVMOptNone       = 0 as c_int; // -O0
+            let LLVMOptLess       = 1 as c_int; // -O1
+            let LLVMOptDefault    = 2 as c_int; // -O2, -Os
+            let LLVMOptAggressive = 3 as c_int; // -O3
 
             let CodeGenOptLevel;
             alt opts.optimize {

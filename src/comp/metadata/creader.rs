@@ -221,7 +221,7 @@ fn get_metadata_section(sess: session::session,
         let name = unsafe { str::from_cstr(name_buf) };
         if str::eq(name, sess.targ_cfg.target_strs.meta_sect_name) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
-            let csz = llvm::LLVMGetSectionSize(si.llsi);
+            let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
             unsafe {
                 let cvbuf: *u8 = unsafe::reinterpret_cast(cbuf);
                 ret option::some::<@[u8]>(@vec::unsafe::from_buf(cvbuf, csz));
