@@ -962,8 +962,13 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
     } else if starts_with(s, from) {
         ret to + replace(slice(s, byte_len(from), byte_len(s)), from, to);
     } else {
-        ret unsafe_from_byte(s[0]) +
-                replace(slice(s, 1u, byte_len(s)), from, to);
+        let idx = find(s, from);
+        if idx == -1 {
+            ret s;
+        }
+        ret char_slice(s, 0u, idx as uint) + to +
+            replace(char_slice(s, idx as uint + char_len(from), char_len(s)),
+                    from, to);
     }
 }
 
