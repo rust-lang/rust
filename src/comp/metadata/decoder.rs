@@ -246,6 +246,7 @@ fn get_tag_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     for did: ast::def_id in variant_ids {
         let item = find_item(did.node, items);
         let ctor_ty = item_type(item, tcx, cdata);
+        let name = item_name(item);
         let arg_tys: [ty::t] = [];
         alt ty::struct(tcx, ctor_ty) {
           ty::ty_fn(f) {
@@ -257,8 +258,8 @@ fn get_tag_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
           some(val) { disr_val = val; }
           _         { /* empty */ }
         }
-        infos += [@{args: arg_tys, ctor_ty: ctor_ty, id: did,
-                    disr_val: disr_val}];
+        infos += [@{args: arg_tys, ctor_ty: ctor_ty, name: name,
+                    id: did, disr_val: disr_val}];
         disr_val += 1;
     }
     ret infos;

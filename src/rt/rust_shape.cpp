@@ -358,7 +358,8 @@ public:
     void walk_res2(const rust_fn *dtor, uint16_t n_ty_params,
                    const type_param *ty_params_sp, const uint8_t *end_sp,
                    const data_pair<uintptr_t> &live);
-    void walk_variant2(tag_info &tinfo, tag_variant_t variant_id,
+    void walk_variant2(tag_info &tinfo,
+                       tag_variant_t variant_id,
                        const std::pair<const uint8_t *,const uint8_t *>
                        variant_ptr_and_end);
 
@@ -413,7 +414,8 @@ cmp::walk_res2(const rust_fn *dtor, uint16_t n_ty_params,
 }
 
 void
-cmp::walk_variant2(tag_info &tinfo, tag_variant_t variant_id,
+cmp::walk_variant2(tag_info &tinfo,
+                   tag_variant_t variant_id,
                    const std::pair<const uint8_t *,const uint8_t *>
                    variant_ptr_and_end) {
     cmp sub(*this, variant_ptr_and_end.first, tinfo.params);
@@ -485,7 +487,8 @@ log::walk_vec2(bool is_pod, const std::pair<ptr,ptr> &data) {
 }
 
 void
-log::walk_variant2(tag_info &tinfo, tag_variant_t variant_id,
+log::walk_variant2(tag_info &tinfo,
+                   tag_variant_t variant_id,
                    const std::pair<const uint8_t *,const uint8_t *>
                    variant_ptr_and_end) {
     log sub(*this, variant_ptr_and_end.first, tinfo.params);

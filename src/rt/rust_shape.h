@@ -246,6 +246,9 @@ public:
     std::pair<const uint8_t *,const uint8_t *>
     get_variant_sp(tag_info &info, tag_variant_t variant_id);
 
+    const char *
+    get_variant_name(tag_info &info, tag_variant_t variant_id);
+
 protected:
     inline uint8_t peek() { return *sp; }
 
@@ -415,7 +418,17 @@ ctxt<T>::get_variant_sp(tag_info &tinfo, tag_variant_t variant_id) {
     const uint8_t *variant_ptr = tables->tags + variant_offset;
     uint16_t variant_len = get_u16_bump(variant_ptr);
     const uint8_t *variant_end = variant_ptr + variant_len;
+    
     return std::make_pair(variant_ptr, variant_end);
+}
+
+template<typename T>
+const char *
+ctxt<T>::get_variant_name(tag_info &tinfo, tag_variant_t variant_id) {
+    std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
+      this->get_variant_sp(tinfo, variant_id);
+    // skip over the length to get the null-terminated string:
+    return (const char*)(variant_ptr_and_end.second + 2);
 }
 
 template<typename T>
@@ -951,7 +964,7 @@ template<typename T,typename U>
 void
 data<T,U>::walk_variant1(tag_info &tinfo, tag_variant_t variant_id) {
     std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
-        this->get_variant_sp(tinfo, variant_id);
+      this->get_variant_sp(tinfo, variant_id);
     static_cast<T *>(this)->walk_variant2(tinfo, variant_id,
                                           variant_ptr_and_end);
 }
@@ -1128,7 +1141,8 @@ private:
     }
 
     void walk_tag2(tag_info &tinfo, tag_variant_t tag_variant) {
-        out << prefix << "tag" << tag_variant;
+        // out << prefix << "tag" << tag_variant;
+        out << prefix << get_variant_name(tinfo, tag_variant);
         data<log,ptr>::walk_variant1(tinfo, tag_variant);
     }
 
@@ -1187,9 +1201,10 @@ private:
 
     void walk_struct2(const uint8_t *end_sp);
     void walk_vec2(bool is_pod, const std::pair<ptr,ptr> &data);
-    void walk_variant2(tag_info &tinfo, tag_variant_t variant_id,
-                      const std::pair<const uint8_t *,const uint8_t *>
-                      variant_ptr_and_end);
+    void walk_variant2(tag_info &tinfo,
+                       tag_variant_t variant_id,
+                       const std::pair<const uint8_t *,const uint8_t *>
+                       variant_ptr_and_end);
     void walk_string2(const std::pair<ptr,ptr> &data);
     void walk_res2(const rust_fn *dtor, unsigned n_params,
                    const type_param *params, const uint8_t *end_sp, bool live);

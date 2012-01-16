@@ -239,6 +239,7 @@ fn encode_tag_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
         encode_family(ebml_w, 'v' as u8);
+        encode_name(ebml_w, variant.node.name);
         encode_tag_id(ebml_w, local_def(id));
         encode_type(ecx, ebml_w,
                     node_id_to_monotype(ecx.ccx.tcx, variant.node.id));
