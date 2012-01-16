@@ -5,7 +5,7 @@ type ctxt = {
 
 fn write_markdown(
     doc: doc::cratedoc,
-    _crate: @ast::crate,
+    crate: @ast::crate,
     writer: io::writer
 ) {
     let ctxt = {
@@ -14,6 +14,54 @@ fn write_markdown(
     };
 
     write_header(ctxt, doc.topmod.name);
+    write_top_module(ctxt, crate, doc.topmod);
+}
+
+fn write_top_module(
+    ctxt: ctxt,
+    crate: @ast::crate,
+    moddoc: doc::moddoc
+) {
+    write_mod_contents(ctxt, crate, moddoc);
+}
+
+fn write_mod(
+    ctxt: ctxt,
+    crate: @ast::crate,
+    moddoc: doc::moddoc
+) {
+    write_mod_contents(ctxt, crate, moddoc);
+}
+
+fn write_mod_contents(
+    ctxt: ctxt,
+    crate: @ast::crate,
+    moddoc: doc::moddoc
+) {
+    for fndoc in *moddoc.fns {
+        write_fn(ctxt, crate, fndoc);
+    }
+
+    for moddoc in *moddoc.mods {
+        write_mod(ctxt, crate, moddoc);
+    }
+}
+
+fn write_fn(
+    ctxt: ctxt,
+    crate: @ast::crate,
+    fndoc: doc::fndoc
+) {
+    import rustc::middle::ast_map;
+
+    let map = ast_map::map_crate(*crate);
+    let decl = alt map.get(fndoc.id) {
+      ast_map::node_item(@{
+        node: ast::item_fn(decl, _, _), _
+      }) { decl }
+    };
+
+    write_fndoc(ctxt, fndoc.name, fndoc, decl);
 }
 
 #[doc(
@@ -79,5 +127,14 @@ mod tests {
         let doc = extract::extract(ast, "belch");
         let markdown = write_markdown_str(doc, ast);
         assert str::contains(markdown, "# Crate belch\n");
+    }
+
+    #[test]
+    fn write_markdown_should_write_function_header() {
+        let source = "fn func() { }";
+        let ast = parse::from_str(source);
+        let doc = extract::extract(ast, "");
+        let markdown = write_markdown_str(doc, ast);
+        assert str::contains(markdown, "## Function `func`");
     }
 }
