@@ -100,12 +100,12 @@ fn write_fndoc(ctxt: ctxt, ident: str, doc: doc::fndoc, decl: ast::fn_decl) {
     }
     for (arg, desc) in doc.args {
         ctxt.w.write_str("### Argument `" + arg + "`: ");
-        ctxt.w.write_str(desc);
+        ctxt.w.write_str(desc)
     }
     ctxt.w.write_line("### Returns `" + pprust::ty_to_str(decl.output) + "`");
     alt doc.return {
-        some(_r) { ctxt.w.write_line(_r); }
-        none. { }
+      some({desc: some(d), _}) { ctxt.w.write_line(d); }
+      _ { }
     }
 }
 

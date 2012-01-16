@@ -112,7 +112,10 @@ fn parse_fn_(
         name: name,
         brief: _brief,
         desc: desc,
-        return: return,
+        return: some({
+            desc: return,
+            ty: none,
+        }),
         args: argdocs }
 }
 
@@ -176,7 +179,7 @@ mod tests {
         let source = "#[doc(return = \"return value\")]";
         let attrs = parse_attributes(source);
         let doc = parse_fn("f", 0, attrs);
-        assert doc.return == some("return value");
+        assert option::get(doc.return).desc == some("return value");
     }
 
     #[test]
