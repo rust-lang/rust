@@ -1630,8 +1630,8 @@ fn parse_block_no_value(p: parser) -> ast::blk {
 // necessary, and this should take a qualifier.
 // some blocks start with "#{"...
 fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
-    let view_items = [], stmts = [], expr = none;
-    while is_word(p, "import") { view_items += [parse_view_item(p)]; }
+    let stmts = [], expr = none;
+    let view_items = parse_view_import_only(p);
     while p.token != token::RBRACE {
         alt p.token {
           token::SEMI. {
@@ -2378,15 +2378,21 @@ fn is_view_item(p: parser) -> bool {
 }
 
 fn parse_view(p: parser) -> [@ast::view_item] {
-    let items: [@ast::view_item] = [];
-    while is_view_item(p) { items += [parse_view_item(p)]; }
+    parse_view_while(p, is_view_item)
+}
+
+fn parse_view_import_only(p: parser) -> [@ast::view_item] {
+    parse_view_while(p, bind is_word(_, "import"))
+}
+
+fn parse_view_while(p: parser, f: fn@(parser) -> bool) -> [@ast::view_item] {
+    let items = [];
+    while f(p) { items += [parse_view_item(p)]; }
     ret items;
 }
 
 fn parse_native_view(p: parser) -> [@ast::view_item] {
-    let items: [@ast::view_item] = [];
-    while is_view_item(p) { items += [parse_view_item(p)]; }
-    ret items;
+    parse_view_while(p, is_view_item)
 }
 
 fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
