@@ -432,21 +432,12 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     }
     let fold_variant_arg = bind fold_variant_arg_(_, fld);
     let args = vec::map(v.args, fold_variant_arg);
-    let (de, dv) = alt v.disr_expr {
-      some(e) {
-        let de = fld.fold_expr(e);
-        // FIXME (#1417): see parser.rs
-        let dv = alt syntax::ast_util::eval_const_expr(e) {
-          ast_util::const_int(val) {
-            val as int
-          }
-        };
-        (some(de), dv)
-      }
-      none. { (none, v.disr_val) }
+    let de = alt v.disr_expr {
+      some(e) {some(fld.fold_expr(e))}
+      none. {none}
     };
     ret {name: v.name, args: args, id: v.id,
-         disr_val: dv,  disr_expr: de};
+         disr_expr: de};
 }
 
 fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident { ret i; }
