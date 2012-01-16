@@ -7,7 +7,8 @@ String manipulation.
 export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        byte_len_range, index,
        rindex, find, starts_with, ends_with, substr, slice, split, splitn,
-       split_str, concat, connect, to_lower, to_upper, replace, char_slice,
+       split_str, split_func, split_char, lines, lines_any, words,
+       concat, connect, to_lower, to_upper, replace, char_slice,
        trim_left, trim_right, trim, unshift_char, shift_char, pop_char,
        push_char, is_utf8, from_chars, to_chars, char_len, char_len_range,
        char_at, bytes, is_ascii, shift_byte, pop_byte,
@@ -252,7 +253,7 @@ fn from_chars(chs: [char]) -> str {
 /*
 Function: utf8_char_width
 
-FIXME: What does this function do?
+Given a first byte, determine how many bytes are in this UTF-8 character
 */
 pure fn utf8_char_width(b: u8) -> uint {
     let byte: uint = b as uint;
@@ -275,14 +276,26 @@ Pluck a character out of a string and return the index of the next character.
 This function can be used to iterate over the unicode characters of a string.
 
 Example:
-
-> let s = "Clam chowder, hot sauce, pork rinds";
-> let i = 0;
-> while i < len(s) {
->   let {ch, next} = char_range_at(s, i);
->   log(debug, ch);
->   i = next;
+> let s = "中华Việt Nam";
+> let i = 0u;
+> while i < str::byte_len(s) {
+>    let {ch, next} = str::char_range_at(s, i);
+>    std::io::println(#fmt("%u: %c",i,ch));
+>    i = next;
 > }
+
+Example output:
+
+      0: 中
+      3: 华
+      6: V
+      7: i
+      8: ệ
+      11: t
+      12:
+      13: N
+      14: a
+      15: m
 
 Parameters:
 
@@ -721,6 +734,8 @@ Split a string at each occurance of a given separator
 Returns:
 
 A vector containing all the strings between each occurance of the separator
+
+FIXME: should be renamed to split_byte
 */
 fn split(s: str, sep: u8) -> [str] {
     let v: [str] = [];
@@ -772,6 +787,9 @@ leading fields are suppressed, and empty trailing fields are preserved.
 Returns:
 
 A vector containing all the strings between each occurrence of the separator.
+
+FIXME: should behave like split and split_char:
+         assert ["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".");
 */
 fn split_str(s: str, sep: str) -> [str] {
     assert byte_len(sep) > 0u;
@@ -797,6 +815,76 @@ fn split_str(s: str, sep: str) -> [str] {
     if sep_match == byte_len(sep) { v += [""]; }
 
     ret v;
+}
+
+/*
+Function: split_func
+
+Splits a string into substrings using a function
+(unicode safe)
+
+FIXME: will be renamed to split.
+*/
+fn split_func(ss: str, sepfn: fn&(cc: char)->bool) -> [str] {
+    let vv: [str] = [];
+    let accum: str = "";
+    let ends_with_sep: bool = false;
+
+    str::iter_chars(ss, {|cc| if sepfn(cc) {
+            vv += [accum];
+            accum = "";
+            ends_with_sep = true;
+        } else {
+            str::push_char(accum, cc);
+            ends_with_sep = false;
+        }
+    });
+
+    if char_len(accum) >= 0u || ends_with_sep {
+        vv += [accum];
+    }
+
+    ret vv;
+}
+
+/*
+Function: split_char
+
+Splits a string into a vector of the substrings separated by a given character
+*/
+fn split_char(ss: str, cc: char) -> [str] {
+   split_func(ss, {|kk| kk == cc})
+}
+
+/*
+Function: lines
+
+Splits a string into a vector of the substrings
+separated by LF ('\n')
+*/
+fn lines(ss: str) -> [str] {
+    split_func(ss, {|cc| cc == '\n'})
+}
+
+/*
+Function: lines_any
+
+Splits a string into a vector of the substrings
+separated by LF ('\n') and/or CR LF ('\r\n')
+*/
+fn lines_any(ss: str) -> [str] {
+    vec::map(lines(ss), {|s| trim_right(s)})
+}
+
+/*
+Function: words
+
+Splits a string into a vector of the substrings
+separated by whitespace
+*/
+fn words(ss: str) -> [str] {
+    ret vec::filter( split_func(ss, {|cc| char::is_whitespace(cc)}),
+                     {|w| 0u < str::char_len(w)});
 }
 
 /*
