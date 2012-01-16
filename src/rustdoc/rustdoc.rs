@@ -80,7 +80,12 @@ fn parse_compound_fndoc(items: [@ast::meta_item]) -> doc::fndoc {
         none. { "_undocumented_" }
     };
 
-    { brief: _brief, desc: desc, return: return, args: argdocs }
+    ~{
+        name: "todo",
+        brief: _brief,
+        desc: desc,
+        return: return,
+        args: argdocs }
 }
 
 #[doc(
@@ -95,10 +100,13 @@ fn doc_item(rd: rustdoc, item: @ast::item) {
         alt attr.node.value.node {
             ast::meta_name_value(
                 "doc", {node: ast::lit_str(value), span: _}) {
-                _fndoc = some({ brief: value,
-                                desc: none,
-                                return: none,
-                                args: noargdocs });
+                _fndoc = some(~{
+                    name: "todo",
+                    brief: value,
+                    desc: none,
+                    return: none,
+                    args: noargdocs
+                });
             }
             ast::meta_list("doc", docs) {
                 _fndoc = some(parse_compound_fndoc(docs));
@@ -108,10 +116,15 @@ fn doc_item(rd: rustdoc, item: @ast::item) {
 
     let _fndoc0 = alt _fndoc {
         some(_d) { _d }
-        none. { { brief: "_undocumented_",
-                 desc: none,
-                 return: none,
-                 args: noargdocs } }
+        none. {
+          ~{
+              name: "todo",
+              brief: "_undocumented_",
+              desc: none,
+              return: none,
+              args: noargdocs
+          }
+        }
     };
 
     alt item.node {
