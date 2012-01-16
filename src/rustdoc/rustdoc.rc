@@ -8,5 +8,6 @@
 #[crate_type = "bin"];
 
 mod parse;
+mod extract;
 mod doc;
 mod gen;
