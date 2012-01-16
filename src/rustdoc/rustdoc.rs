@@ -28,39 +28,7 @@ type rustdoc = {
        item = "AST item to document")
 )]
 fn doc_item(rd: rustdoc, item: @ast::item) {
-    let _fndoc = none;
-    let noargdocs = map::new_str_hash::<str>();
-    for attr: ast::attribute in item.attrs {
-        alt attr.node.value.node {
-            ast::meta_name_value(
-                "doc", {node: ast::lit_str(value), span: _}) {
-                _fndoc = some(~{
-                    name: "todo",
-                    brief: value,
-                    desc: none,
-                    return: none,
-                    args: noargdocs
-                });
-            }
-            ast::meta_list("doc", docs) {
-                _fndoc = some(
-                    attr_parser::parse_fn(docs));
-            }
-        }
-    }
-
-    let _fndoc0 = alt _fndoc {
-        some(_d) { _d }
-        none. {
-          ~{
-              name: "todo",
-              brief: "_undocumented_",
-              desc: none,
-              return: none,
-              args: noargdocs
-          }
-        }
-    };
+    let _fndoc0 = attr_parser::parse_fn(item.attrs);
 
     alt item.node {
         ast::item_const(ty, expr) { }

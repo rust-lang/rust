@@ -1,5 +1,43 @@
 export parse_fn;
 
+fn parse_fn(attrs: [ast::attribute]) -> doc::fndoc {
+    let noargdocs = map::new_str_hash::<str>();
+    let _fndoc = none;
+    for attr: ast::attribute in attrs {
+        alt attr.node.value.node {
+            ast::meta_name_value(
+                "doc", {node: ast::lit_str(value), span: _}) {
+                _fndoc = some(~{
+                    name: "todo",
+                    brief: value,
+                    desc: none,
+                    return: none,
+                    args: noargdocs
+                });
+            }
+            ast::meta_list("doc", docs) {
+                _fndoc = some(
+                    parse_fn_(docs));
+            }
+        }
+    }
+
+    let _fndoc0 = alt _fndoc {
+        some(_d) { _d }
+        none. {
+          ~{
+              name: "todo",
+              brief: "_undocumented_",
+              desc: none,
+              return: none,
+              args: noargdocs
+          }
+        }
+    };
+
+    ret _fndoc0;
+}
+
 #[doc(
   brief = "Parses function docs from a complex #[doc] attribute.",
   desc = "Supported attributes:
@@ -12,7 +50,7 @@ export parse_fn;
   args(items = "Doc attribute contents"),
   return = "Parsed function docs."
 )]
-fn parse_fn(items: [@ast::meta_item]) -> doc::fndoc {
+fn parse_fn_(items: [@ast::meta_item]) -> doc::fndoc {
     let brief = none;
     let desc = none;
     let return = none;
