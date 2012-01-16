@@ -47,8 +47,8 @@ detail [later on](mod.html).
 ## Editing Rust code
 
 There are Vim highlighting and indentation scrips in the Rust source
-distribution under `src/etc/vim/`. An Emacs mode can be found at
-[https://github.com/marijnh/rust-mode][rust-mode].
+distribution under `src/etc/vim/`, and an emacs mode under
+`src/etc/emacs/`.
 
 [rust-mode]: https://github.com/marijnh/rust-mode
 
