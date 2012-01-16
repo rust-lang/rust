@@ -80,12 +80,83 @@ fn test_split_str() {
         let v = str::split_str(s, sep);
         assert str::eq(v[i], k);
     }
+
+    //FIXME: should behave like split and split_char:
+    //assert ["", "XXX", "YYY", ""] == str::split_str(".XXX.YYY.", ".");
+
     t("abc::hello::there", "::", 0, "abc");
     t("abc::hello::there", "::", 1, "hello");
     t("abc::hello::there", "::", 2, "there");
     t("::hello::there", "::", 0, "hello");
     t("hello::there::", "::", 2, "");
     t("::hello::there::", "::", 2, "");
+    t("ประเทศไทย中华Việt Nam", "中华", 0, "ประเทศไทย");
+    t("ประเทศไทย中华Việt Nam", "中华", 1, "Việt Nam");
+}
+
+#[test]
+fn test_split_func () {
+    let data = "ประเทศไทย中华Việt Nam";
+    assert ["ประเทศไทย中", "Việt Nam"]
+        == str::split_func (data, {|cc| cc == '华'});
+
+    assert ["", "", "XXX", "YYY", ""]
+         == str::split_func("zzXXXzYYYz", char::is_lowercase);
+
+    assert ["zz", "", "", "z", "", "", "z"]
+         == str::split_func("zzXXXzYYYz", char::is_uppercase);
+
+    assert ["",""] == str::split_func("z", {|cc| cc == 'z'});
+    assert [""] == str::split_func("", {|cc| cc == 'z'});
+    assert ["ok"] == str::split_func("ok", {|cc| cc == 'z'});
+}
+
+#[test]
+fn test_split_char () {
+    let data = "ประเทศไทย中华Việt Nam";
+    assert ["ประเทศไทย中", "Việt Nam"]
+        == str::split_char(data, '华');
+
+    assert ["", "", "XXX", "YYY", ""]
+         == str::split_char("zzXXXzYYYz", 'z');
+    assert ["",""] == str::split_char("z", 'z');
+    assert [""] == str::split_char("", 'z');
+    assert ["ok"] == str::split_char("ok", 'z');
+}
+
+#[test]
+fn test_lines () {
+    let lf = "\nMary had a little lamb\nLittle lamb\n";
+    let crlf = "\r\nMary had a little lamb\r\nLittle lamb\r\n";
+
+    assert ["", "Mary had a little lamb", "Little lamb", ""]
+      == str::lines(lf);
+
+    assert ["", "Mary had a little lamb", "Little lamb", ""]
+      == str::lines_any(lf);
+
+    assert ["\r", "Mary had a little lamb\r", "Little lamb\r", ""]
+      == str::lines(crlf);
+
+    assert ["", "Mary had a little lamb", "Little lamb", ""]
+      == str::lines_any(crlf);
+
+    assert [""] == str::lines    ("");
+    assert [""] == str::lines_any("");
+    assert ["",""] == str::lines    ("\n");
+    assert ["",""] == str::lines_any("\n");
+    assert ["banana"] == str::lines    ("banana");
+    assert ["banana"] == str::lines_any("banana");
+}
+
+#[test]
+fn test_words () {
+    let data = "\nMary had a little lamb\nLittle lamb\n";
+    assert ["Mary","had","a","little","lamb","Little","lamb"]
+        == str::words(data);
+
+    assert ["ok"] == str::words("ok");
+    assert [] == str::words("");
 }
 
 #[test]
@@ -215,6 +286,27 @@ fn test_char_slice() {
     assert (str::eq("bc", str::char_slice("abc", 1u, 3u)));
     assert (str::eq("", str::char_slice("abc", 1u, 1u)));
     assert (str::eq("\u65e5", str::char_slice("\u65e5\u672c", 0u, 1u)));
+
+    let data = "ประเทศไทย中华";
+    assert (str::eq("ป", str::char_slice(data, 0u, 1u)));
+    assert (str::eq("ร", str::char_slice(data, 1u, 2u)));
+    assert (str::eq("华", str::char_slice(data, 10u, 11u)));
+    assert (str::eq("", str::char_slice(data, 1u, 1u)));
+
+    fn a_million_letter_X() -> str {
+        let i = 0;
+        let rs = "";
+        while i < 100000 { rs += "华华华华华华华华华华"; i += 1; }
+        ret rs;
+    }
+    fn half_a_million_letter_X() -> str {
+        let i = 0;
+        let rs = "";
+        while i < 100000 { rs += "华华华华华"; i += 1; }
+        ret rs;
+    }
+    assert (str::eq(half_a_million_letter_X(),
+                    str::char_slice(a_million_letter_X(), 0u, 500000u)));
 }
 
 #[test]
