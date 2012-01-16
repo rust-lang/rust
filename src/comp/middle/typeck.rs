@@ -439,6 +439,7 @@ fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
           none. { }
         }
         let t = ty::mk_native(tcx, ast_util::local_def(it.id));
+        let t = ty::mk_named(tcx, t, @it.ident);
         let tpt = {bounds: @[], ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;

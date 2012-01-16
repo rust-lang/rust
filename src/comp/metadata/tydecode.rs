@@ -292,6 +292,13 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert (next(st) as char == ']');
         ret ty::mk_constr(st.tcx, tt, tcs);
       }
+      '"' {
+        let name = "";
+        while peek(st) as char != '"' { str::push_byte(name, next(st)); }
+        st.pos = st.pos + 1u;
+        let inner = parse_ty(st, conv);
+        ty::mk_named(st.tcx, inner, @name)
+      }
       c { #error("unexpected char in type string: %c", c); fail;}
     }
 }

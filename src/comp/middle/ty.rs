@@ -93,7 +93,7 @@ export node_type_table;
 export pat_ty;
 export ret_ty_of_fn;
 export sequence_element_type;
-export struct;
+export struct, struct_raw;
 export ty_name;
 export sort_methods;
 export stmt_node_id;
@@ -639,6 +639,10 @@ pure fn struct(cx: ctxt, typ: t) -> sty {
       ty_named(t, _) { struct(cx, t) }
       s { s }
     }
+}
+
+pure fn struct_raw(cx: ctxt, typ: t) -> sty {
+    interner::get(*cx.ts, typ).struct
 }
 
 // Returns struact(cx, typ) but replaces all occurences of platform

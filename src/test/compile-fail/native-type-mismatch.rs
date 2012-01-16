@@ -1,4 +1,4 @@
-// error-pattern:expected `*u8` but found `native`
+// error-pattern:expected `sbuf` but found `FILE`
 use std;
 
 fn main() unsafe {
