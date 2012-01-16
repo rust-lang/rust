@@ -14,7 +14,7 @@ else
 endif
 
 # The stage we install from
-ISTAGE = 3
+ISTAGE = 2
 
 PREFIX_ROOT = $(CFG_PREFIX)
 PREFIX_BIN = $(PREFIX_ROOT)/bin
@@ -56,6 +56,7 @@ install: all install-host install-targets
 
 # Shorthand for build/stageN/bin
 HB = $(HBIN$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
+HB3 = $(HBIN3_H_$(CFG_HOST_TRIPLE))
 # Shorthand for build/stageN/lib
 HL = $(HLIB$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
 # Shorthand for the prefix bin directory
@@ -67,9 +68,9 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_BIN)
 	$(Q)mkdir -p $(PREFIX_LIB)
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
-	$(Q)$(call INSTALL,$(HB),$(PHB),rustc$(X))
-	$(Q)$(call INSTALL,$(HB),$(PHB),cargo$(X))
-	$(Q)$(call INSTALL,$(HB),$(PHB),rustdoc$(X))
+	$(Q)$(call INSTALL,$(HB3),$(PHB),rustc$(X))
+	$(Q)$(call INSTALL,$(HB3),$(PHB),cargo$(X))
+	$(Q)$(call INSTALL,$(HB3),$(PHB),rustdoc$(X))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(CORELIB_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB))

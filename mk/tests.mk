@@ -70,7 +70,7 @@ endif
 # Main test targets
 ######################################################################
 
-check: all tidy check-stage3 \
+check: all tidy check-stage2 \
 
 check-full: all tidy check-stage1 check-stage2 check-stage3 \
 
