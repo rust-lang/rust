@@ -3,6 +3,8 @@ import std::io::writer_util;
 import rustc::syntax::ast;
 import rustc::syntax::print::pprust;
 
+export write_markdown;
+
 type ctxt = {
     ps: pprust::ps,
     w: io::writer
