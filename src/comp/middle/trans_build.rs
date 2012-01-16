@@ -1,4 +1,5 @@
 import core::{vec, str};
+import core::ctypes::c_uint;
 import str::sbuf;
 import lib::llvm::llvm;
 import syntax::codemap;
@@ -42,7 +43,7 @@ fn AggregateRet(cx: @block_ctxt, RetVals: [ValueRef]) {
     cx.terminated = true;
     unsafe {
         llvm::LLVMBuildAggregateRet(B(cx), vec::to_ptr(RetVals),
-                                    vec::len(RetVals));
+                                    vec::len(RetVals) as c_uint);
     }
 }
 
@@ -66,7 +67,7 @@ fn Switch(cx: @block_ctxt, V: ValueRef, Else: BasicBlockRef, NumCases: uint)
     if cx.unreachable { ret _Undef(V); }
     assert !cx.terminated;
     cx.terminated = true;
-    ret llvm::LLVMBuildSwitch(B(cx), V, Else, NumCases);
+    ret llvm::LLVMBuildSwitch(B(cx), V, Else, NumCases as c_uint);
 }
 
 fn AddCase(S: ValueRef, OnVal: ValueRef, Dest: BasicBlockRef) {
@@ -78,7 +79,7 @@ fn IndirectBr(cx: @block_ctxt, Addr: ValueRef, NumDests: uint) {
     if cx.unreachable { ret; }
     assert (!cx.terminated);
     cx.terminated = true;
-    llvm::LLVMBuildIndirectBr(B(cx), Addr, NumDests);
+    llvm::LLVMBuildIndirectBr(B(cx), Addr, NumDests as c_uint);
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a
@@ -95,7 +96,7 @@ fn Invoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
     cx.terminated = true;
     unsafe {
         llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
-                              vec::len(Args), Then, Catch,
+                              vec::len(Args) as c_uint, Then, Catch,
                               noname());
     }
 }
@@ -107,8 +108,10 @@ fn FastInvoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
     cx.terminated = true;
     unsafe {
         let v = llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
-                                      vec::len(Args), Then, Catch, noname());
-        llvm::LLVMSetInstructionCallConv(v, lib::llvm::LLVMFastCallConv);
+                                      vec::len(Args) as c_uint,
+                                      Then, Catch, noname());
+        llvm::LLVMSetInstructionCallConv(
+            v, lib::llvm::LLVMFastCallConv as c_uint);
     }
 }
 
@@ -308,7 +311,7 @@ fn Load(cx: @block_ctxt, PointerVal: ValueRef) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
     if cx.unreachable {
         let ty = val_ty(PointerVal);
-        let eltty = if llvm::LLVMGetTypeKind(ty) == 11 {
+        let eltty = if llvm::LLVMGetTypeKind(ty) == 11i32 {
             llvm::LLVMGetElementType(ty) } else { ccx.int_type };
         ret llvm::LLVMGetUndef(eltty);
     }
@@ -324,7 +327,7 @@ fn GEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
         ret llvm::LLVMBuildGEP(B(cx), Pointer, vec::to_ptr(Indices),
-                               vec::len(Indices), noname());
+                               vec::len(Indices) as c_uint, noname());
     }
 }
 
@@ -342,13 +345,14 @@ fn InBoundsGEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) ->
     unsafe {
         ret llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
                                        vec::to_ptr(Indices),
-                                       vec::len(Indices), noname());
+                                       vec::len(Indices) as c_uint,
+                                       noname());
     }
 }
 
 fn StructGEP(cx: @block_ctxt, Pointer: ValueRef, Idx: uint) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
-    ret llvm::LLVMBuildStructGEP(B(cx), Pointer, Idx, noname());
+    ret llvm::LLVMBuildStructGEP(B(cx), Pointer, Idx as c_uint, noname());
 }
 
 fn GlobalString(cx: @block_ctxt, _Str: sbuf) -> ValueRef {
@@ -465,12 +469,12 @@ fn FPCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
 /* Comparisons */
 fn ICmp(cx: @block_ctxt, Op: uint, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_i1()); }
-    ret llvm::LLVMBuildICmp(B(cx), Op, LHS, RHS, noname());
+    ret llvm::LLVMBuildICmp(B(cx), Op as c_uint, LHS, RHS, noname());
 }
 
 fn FCmp(cx: @block_ctxt, Op: uint, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_i1()); }
-    ret llvm::LLVMBuildFCmp(B(cx), Op, LHS, RHS, noname());
+    ret llvm::LLVMBuildFCmp(B(cx), Op as c_uint, LHS, RHS, noname());
 }
 
 /* Miscellaneous instructions */
@@ -486,7 +490,7 @@ fn Phi(cx: @block_ctxt, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
     let phi = EmptyPhi(cx, Ty);
     unsafe {
         llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
-                              vec::len(vals));
+                              vec::len(vals) as c_uint);
         ret phi;
     }
 }
@@ -496,14 +500,14 @@ fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     unsafe {
         let valptr = unsafe::reinterpret_cast(ptr::addr_of(val));
         let bbptr = unsafe::reinterpret_cast(ptr::addr_of(bb));
-        llvm::LLVMAddIncoming(phi, valptr, bbptr, 1u);
+        llvm::LLVMAddIncoming(phi, valptr, bbptr, 1u32);
     }
 }
 
 fn _UndefReturn(cx: @block_ctxt, Fn: ValueRef) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
     let ty = val_ty(Fn);
-    let retty = if llvm::LLVMGetTypeKind(ty) == 8 {
+    let retty = if llvm::LLVMGetTypeKind(ty) == 8i32 {
         llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
     ret llvm::LLVMGetUndef(retty);
 }
@@ -535,7 +539,7 @@ fn Call(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         ret llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
-                                vec::len(Args), noname());
+                                vec::len(Args) as c_uint, noname());
     }
 }
 
@@ -543,18 +547,19 @@ fn FastCall(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
-                                    vec::len(Args), noname());
-        llvm::LLVMSetInstructionCallConv(v, lib::llvm::LLVMFastCallConv);
+                                    vec::len(Args) as c_uint, noname());
+        llvm::LLVMSetInstructionCallConv(
+            v, lib::llvm::LLVMFastCallConv as c_uint);
         ret v;
     }
 }
 
-fn CallWithConv(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef], Conv: uint)
-   -> ValueRef {
+fn CallWithConv(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
+                Conv: c_uint) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
-                                    vec::len(Args), noname());
+                                    vec::len(Args) as c_uint, noname());
         llvm::LLVMSetInstructionCallConv(v, Conv);
         ret v;
     }
@@ -591,13 +596,14 @@ fn ShuffleVector(cx: @block_ctxt, V1: ValueRef, V2: ValueRef,
 
 fn ExtractValue(cx: @block_ctxt, AggVal: ValueRef, Index: uint) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_nil()); }
-    ret llvm::LLVMBuildExtractValue(B(cx), AggVal, Index, noname());
+    ret llvm::LLVMBuildExtractValue(B(cx), AggVal, Index as c_uint, noname());
 }
 
 fn InsertValue(cx: @block_ctxt, AggVal: ValueRef, EltVal: ValueRef,
                Index: uint) {
     if cx.unreachable { ret; }
-    llvm::LLVMBuildInsertValue(B(cx), AggVal, EltVal, Index, noname());
+    llvm::LLVMBuildInsertValue(B(cx), AggVal, EltVal, Index as c_uint,
+                               noname());
 }
 
 fn IsNull(cx: @block_ctxt, Val: ValueRef) -> ValueRef {
@@ -628,15 +634,16 @@ fn Trap(cx: @block_ctxt) {
     assert (T as int != 0);
     let Args: [ValueRef] = [];
     unsafe {
-        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args), vec::len(Args),
-                            noname());
+        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args),
+                            vec::len(Args) as c_uint, noname());
     }
 }
 
 fn LandingPad(cx: @block_ctxt, Ty: TypeRef, PersFn: ValueRef,
               NumClauses: uint) -> ValueRef {
     assert !cx.terminated && !cx.unreachable;
-    ret llvm::LLVMBuildLandingPad(B(cx), Ty, PersFn, NumClauses, noname());
+    ret llvm::LLVMBuildLandingPad(B(cx), Ty, PersFn,
+                                  NumClauses as c_uint, noname());
 }
 
 fn SetCleanup(_cx: @block_ctxt, LandingPad: ValueRef) {

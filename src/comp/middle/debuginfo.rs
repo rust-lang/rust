@@ -46,7 +46,7 @@ const DW_ATE_unsigned_char: int = 0x08;
 
 fn llstr(s: str) -> ValueRef {
     str::as_buf(s, {|sbuf|
-        llvm::LLVMMDString(sbuf, str::byte_len(s))
+        llvm::LLVMMDString(sbuf, str::byte_len(s) as u32)
     })
 }
 fn lltag(lltag: int) -> ValueRef {
@@ -63,7 +63,7 @@ fn lli1(bval: bool) -> ValueRef {
 }
 fn llmdnode(elems: [ValueRef]) -> ValueRef unsafe {
     llvm::LLVMMDNode(vec::unsafe::to_ptr(elems),
-                     vec::len(elems))
+                     vec::len(elems) as u32)
 }
 fn llunused() -> ValueRef {
     lli32(0x0)

@@ -138,7 +138,7 @@ fn trans_iface_callee(bcx: @block_ctxt, fld_expr: @ast::expr,
 fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
     let out_ty = llvm::LLVMGetReturnType(ft);
     let n_args = llvm::LLVMCountParamTypes(ft);
-    let args = vec::init_elt(0 as TypeRef, n_args);
+    let args = vec::init_elt(0 as TypeRef, n_args as uint);
     unsafe { llvm::LLVMGetParamTypes(ft, vec::to_ptr(args)); }
     {inputs: args, output: out_ty}
 }
@@ -191,19 +191,20 @@ fn trans_impl_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
         vec::slice(real_args, 2u + vec::len(extra_ptrs), vec::len(real_args));
     let llfn_ty = T_fn(wrap_args, real_ret);
     trans_wrapper(ccx, pt, llfn_ty, {|llfn, bcx|
-        let dict = PointerCast(bcx, LLVMGetParam(llfn, 0u), env_ty);
+        let dict = PointerCast(bcx, LLVMGetParam(llfn, 0u32), env_ty);
         // retptr, self
-        let args = [LLVMGetParam(llfn, 1u), LLVMGetParam(llfn, 2u)], i = 0u;
+        let args = [LLVMGetParam(llfn, 1u32), LLVMGetParam(llfn, 2u32)];
+        let i = 0u;
         // saved tydescs/dicts
         while i < n_extra_ptrs {
             i += 1u;
             args += [load_inbounds(bcx, dict, [0, i as int])];
         }
         // the rest of the parameters
-        let i = 3u, params_total = llvm::LLVMCountParamTypes(llfn_ty);
+        let i = 3u32, params_total = llvm::LLVMCountParamTypes(llfn_ty);
         while i < params_total {
             args += [LLVMGetParam(llfn, i)];
-            i += 1u;
+            i += 1u32;
         }
         Call(bcx, real_fn, args);
         bcx
@@ -231,7 +232,7 @@ fn trans_iface_wrapper(ccx: @crate_ctxt, pt: [ast::ident], m: ty::method,
                        n: uint) -> ValueRef {
     let {llty: llfty, _} = wrapper_fn_ty(ccx, T_ptr(T_i8()), m);
     trans_wrapper(ccx, pt, llfty, {|llfn, bcx|
-        let self = Load(bcx, PointerCast(bcx, LLVMGetParam(llfn, 2u),
+        let self = Load(bcx, PointerCast(bcx, LLVMGetParam(llfn, 2u32),
                                          T_ptr(T_opaque_iface_ptr(ccx))));
         let boxed = GEPi(bcx, self, [0, abi::box_rc_field_body]);
         let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, boxed, [0, 1]),
@@ -242,12 +243,12 @@ fn trans_iface_wrapper(ccx: @crate_ctxt, pt: [ast::ident], m: ty::method,
         // FIXME[impl] This doesn't account for more-than-ptr-sized alignment
         let inner_self = GEPi(bcx, boxed, [0, 2]);
         let args = [PointerCast(bcx, dict, T_ptr(T_i8())),
-                    LLVMGetParam(llfn, 1u),
+                    LLVMGetParam(llfn, 1u32),
                     PointerCast(bcx, inner_self, T_opaque_cbox_ptr(ccx))];
-        let i = 3u, total = llvm::LLVMCountParamTypes(llfty);
+        let i = 3u32, total = llvm::LLVMCountParamTypes(llfty);
         while i < total {
             args += [LLVMGetParam(llfn, i)];
-            i += 1u;
+            i += 1u32;
         }
         Call(bcx, mptr, args);
         bcx

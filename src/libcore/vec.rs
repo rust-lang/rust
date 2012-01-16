@@ -8,17 +8,17 @@ import ptr::addr_of;
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
-    fn vec_len<T>(&&v: [const T]) -> uint;
+    fn vec_len<T>(&&v: [const T]) -> ctypes::size_t;
 }
 
 #[abi = "cdecl"]
 native mod rustrt {
     fn vec_reserve_shared<T>(t: *sys::type_desc,
                              &v: [const T],
-                             n: uint);
+                             n: ctypes::size_t);
     fn vec_from_buf_shared<T>(t: *sys::type_desc,
                               ptr: *T,
-                              count: uint) -> [T];
+                              count: ctypes::size_t) -> [T];
 }
 
 /*

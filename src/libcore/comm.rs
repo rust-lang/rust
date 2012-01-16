@@ -33,7 +33,7 @@ native mod rustrt {
                             target_task: task::task, target_port: port_id,
                             data: T) -> ctypes::uintptr_t;
 
-    fn new_port(unit_sz: uint) -> *rust_port;
+    fn new_port(unit_sz: ctypes::size_t) -> *rust_port;
     fn del_port(po: *rust_port);
     fn rust_port_detach(po: *rust_port);
     fn get_port_id(po: *rust_port) -> port_id;

@@ -4,9 +4,8 @@ import str::sbuf;
 import llvm::{TypeRef, MemoryBufferRef,
               PassManagerRef, TargetDataRef,
               ObjectFileRef, SectionIteratorRef};
+import ctypes::{c_int, c_uint, unsigned, longlong, ulonglong};
 
-type ULongLong = u64;
-type LongLong = i64;
 type Long = i32;
 type Bool = int;
 
@@ -141,9 +140,9 @@ native mod llvm {
     fn LLVMContextCreate() -> ContextRef;
     fn LLVMGetGlobalContext() -> ContextRef;
     fn LLVMContextDispose(C: ContextRef);
-    fn LLVMGetMDKindIDInContext(C: ContextRef, Name: sbuf, SLen: uint) ->
-       uint;
-    fn LLVMGetMDKindID(Name: sbuf, SLen: uint) -> uint;
+    fn LLVMGetMDKindIDInContext(C: ContextRef, Name: sbuf, SLen: unsigned) ->
+       unsigned;
+    fn LLVMGetMDKindID(Name: sbuf, SLen: unsigned) -> unsigned;
 
     /* Create and destroy modules. */
     fn LLVMModuleCreateWithNameInContext(ModuleID: sbuf, C: ContextRef) ->
@@ -170,7 +169,7 @@ native mod llvm {
     // we directly inspect the values, and casting from
     // a native doesn't work yet (only *to* a native).
 
-    fn LLVMGetTypeKind(Ty: TypeRef) -> int;
+    fn LLVMGetTypeKind(Ty: TypeRef) -> c_int;
 
     /** See llvm::LLVMType::getContext. */
     fn LLVMGetTypeContext(Ty: TypeRef) -> ContextRef;
@@ -181,15 +180,15 @@ native mod llvm {
     fn LLVMInt16TypeInContext(C: ContextRef) -> TypeRef;
     fn LLVMInt32TypeInContext(C: ContextRef) -> TypeRef;
     fn LLVMInt64TypeInContext(C: ContextRef) -> TypeRef;
-    fn LLVMIntTypeInContext(C: ContextRef, NumBits: uint) -> TypeRef;
+    fn LLVMIntTypeInContext(C: ContextRef, NumBits: unsigned) -> TypeRef;
 
     fn LLVMInt1Type() -> TypeRef;
     fn LLVMInt8Type() -> TypeRef;
     fn LLVMInt16Type() -> TypeRef;
     fn LLVMInt32Type() -> TypeRef;
     fn LLVMInt64Type() -> TypeRef;
-    fn LLVMIntType(NumBits: uint) -> TypeRef;
-    fn LLVMGetIntTypeWidth(IntegerTy: TypeRef) -> uint;
+    fn LLVMIntType(NumBits: unsigned) -> TypeRef;
+    fn LLVMGetIntTypeWidth(IntegerTy: TypeRef) -> unsigned;
 
     /* Operations on real types */
     fn LLVMFloatTypeInContext(C: ContextRef) -> TypeRef;
@@ -206,30 +205,34 @@ native mod llvm {
 
     /* Operations on function types */
     fn LLVMFunctionType(ReturnType: TypeRef, ParamTypes: *TypeRef,
-                        ParamCount: uint, IsVarArg: Bool) -> TypeRef;
+                        ParamCount: unsigned, IsVarArg: Bool) -> TypeRef;
     fn LLVMIsFunctionVarArg(FunctionTy: TypeRef) -> Bool;
     fn LLVMGetReturnType(FunctionTy: TypeRef) -> TypeRef;
-    fn LLVMCountParamTypes(FunctionTy: TypeRef) -> uint;
+    fn LLVMCountParamTypes(FunctionTy: TypeRef) -> unsigned;
     fn LLVMGetParamTypes(FunctionTy: TypeRef, Dest: *TypeRef);
 
     /* Operations on struct types */
     fn LLVMStructTypeInContext(C: ContextRef, ElementTypes: *TypeRef,
-                               ElementCount: uint, Packed: Bool) -> TypeRef;
-    fn LLVMStructType(ElementTypes: *TypeRef, ElementCount: uint,
+                               ElementCount: unsigned,
+                               Packed: Bool) -> TypeRef;
+    fn LLVMStructType(ElementTypes: *TypeRef, ElementCount: unsigned,
                       Packed: Bool) -> TypeRef;
-    fn LLVMCountStructElementTypes(StructTy: TypeRef) -> uint;
+    fn LLVMCountStructElementTypes(StructTy: TypeRef) -> unsigned;
     fn LLVMGetStructElementTypes(StructTy: TypeRef, Dest: *TypeRef);
     fn LLVMIsPackedStruct(StructTy: TypeRef) -> Bool;
 
     /* Operations on array, pointer, and vector types (sequence types) */
-    fn LLVMArrayType(ElementType: TypeRef, ElementCount: uint) -> TypeRef;
-    fn LLVMPointerType(ElementType: TypeRef, AddressSpace: uint) -> TypeRef;
-    fn LLVMVectorType(ElementType: TypeRef, ElementCount: uint) -> TypeRef;
+    fn LLVMArrayType(ElementType: TypeRef,
+                     ElementCount: unsigned) -> TypeRef;
+    fn LLVMPointerType(ElementType: TypeRef,
+                       AddressSpace: unsigned) -> TypeRef;
+    fn LLVMVectorType(ElementType: TypeRef,
+                      ElementCount: unsigned) -> TypeRef;
 
     fn LLVMGetElementType(Ty: TypeRef) -> TypeRef;
-    fn LLVMGetArrayLength(ArrayTy: TypeRef) -> uint;
-    fn LLVMGetPointerAddressSpace(PointerTy: TypeRef) -> uint;
-    fn LLVMGetVectorSize(VectorTy: TypeRef) -> uint;
+    fn LLVMGetArrayLength(ArrayTy: TypeRef) -> unsigned;
+    fn LLVMGetPointerAddressSpace(PointerTy: TypeRef) -> unsigned;
+    fn LLVMGetVectorSize(VectorTy: TypeRef) -> unsigned;
 
     /* Operations on other types */
     fn LLVMVoidTypeInContext(C: ContextRef) -> TypeRef;
@@ -246,9 +249,9 @@ native mod llvm {
     fn LLVMSetValueName(Val: ValueRef, Name: sbuf);
     fn LLVMDumpValue(Val: ValueRef);
     fn LLVMReplaceAllUsesWith(OldVal: ValueRef, NewVal: ValueRef);
-    fn LLVMHasMetadata(Val: ValueRef) -> int;
-    fn LLVMGetMetadata(Val: ValueRef, KindID: uint) -> ValueRef;
-    fn LLVMSetMetadata(Val: ValueRef, KindID: uint, Node: ValueRef);
+    fn LLVMHasMetadata(Val: ValueRef) -> c_int;
+    fn LLVMGetMetadata(Val: ValueRef, KindID: unsigned) -> ValueRef;
+    fn LLVMSetMetadata(Val: ValueRef, KindID: unsigned, Node: ValueRef);
 
     /* Operations on Uses */
     fn LLVMGetFirstUse(Val: ValueRef) -> UseRef;
@@ -257,8 +260,8 @@ native mod llvm {
     fn LLVMGetUsedValue(U: UseRef) -> ValueRef;
 
     /* Operations on Users */
-    fn LLVMGetOperand(Val: ValueRef, Index: uint) -> ValueRef;
-    fn LLVMSetOperand(Val: ValueRef, Index: uint, Op: ValueRef);
+    fn LLVMGetOperand(Val: ValueRef, Index: unsigned) -> ValueRef;
+    fn LLVMSetOperand(Val: ValueRef, Index: unsigned, Op: ValueRef);
 
     /* Operations on constants of any type */
     fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
@@ -272,45 +275,46 @@ native mod llvm {
     fn LLVMConstPointerNull(Ty: TypeRef) -> ValueRef;
 
     /* Operations on metadata */
-    fn LLVMMDStringInContext(C: ContextRef, Str: sbuf, SLen: uint) ->
+    fn LLVMMDStringInContext(C: ContextRef, Str: sbuf, SLen: unsigned) ->
        ValueRef;
-    fn LLVMMDString(Str: sbuf, SLen: uint) -> ValueRef;
-    fn LLVMMDNodeInContext(C: ContextRef, Vals: *ValueRef, Count: uint) ->
+    fn LLVMMDString(Str: sbuf, SLen: unsigned) -> ValueRef;
+    fn LLVMMDNodeInContext(C: ContextRef, Vals: *ValueRef, Count: unsigned) ->
        ValueRef;
-    fn LLVMMDNode(Vals: *ValueRef, Count: uint) -> ValueRef;
+    fn LLVMMDNode(Vals: *ValueRef, Count: unsigned) -> ValueRef;
     fn LLVMAddNamedMetadataOperand(M: ModuleRef, Str: sbuf,
                                    Val: ValueRef);
 
     /* Operations on scalar constants */
-    fn LLVMConstInt(IntTy: TypeRef, N: ULongLong, SignExtend: Bool) ->
+    fn LLVMConstInt(IntTy: TypeRef, N: ulonglong, SignExtend: Bool) ->
        ValueRef;
     // FIXME: radix is actually u8, but our native layer can't handle this
     // yet.  lucky for us we're little-endian. Small miracles.
-    fn LLVMConstIntOfString(IntTy: TypeRef, Text: sbuf, Radix: int) ->
+    fn LLVMConstIntOfString(IntTy: TypeRef, Text: sbuf, Radix: c_int) ->
        ValueRef;
-    fn LLVMConstIntOfStringAndSize(IntTy: TypeRef, Text: sbuf, SLen: uint,
+    fn LLVMConstIntOfStringAndSize(IntTy: TypeRef, Text: sbuf, SLen: unsigned,
                                    Radix: u8) -> ValueRef;
     fn LLVMConstReal(RealTy: TypeRef, N: f64) -> ValueRef;
     fn LLVMConstRealOfString(RealTy: TypeRef, Text: sbuf) -> ValueRef;
-    fn LLVMConstRealOfStringAndSize(RealTy: TypeRef, Text: sbuf, SLen: uint)
-       -> ValueRef;
-    fn LLVMConstIntGetZExtValue(ConstantVal: ValueRef) -> ULongLong;
-    fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> LongLong;
+    fn LLVMConstRealOfStringAndSize(RealTy: TypeRef, Text: sbuf,
+                                    SLen: unsigned) -> ValueRef;
+    fn LLVMConstIntGetZExtValue(ConstantVal: ValueRef) -> ulonglong;
+    fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> longlong;
 
 
     /* Operations on composite constants */
-    fn LLVMConstStringInContext(C: ContextRef, Str: sbuf, Length: uint,
+    fn LLVMConstStringInContext(C: ContextRef, Str: sbuf, Length: unsigned,
                                 DontNullTerminate: Bool) -> ValueRef;
     fn LLVMConstStructInContext(C: ContextRef, ConstantVals: *ValueRef,
-                                Count: uint, Packed: Bool) -> ValueRef;
+                                Count: unsigned, Packed: Bool) -> ValueRef;
 
-    fn LLVMConstString(Str: sbuf, Length: uint, DontNullTerminate: Bool) ->
-       ValueRef;
+    fn LLVMConstString(Str: sbuf, Length: unsigned,
+                       DontNullTerminate: Bool) -> ValueRef;
     fn LLVMConstArray(ElementTy: TypeRef, ConstantVals: *ValueRef,
-                      Length: uint) -> ValueRef;
-    fn LLVMConstStruct(ConstantVals: *ValueRef, Count: uint, Packed: Bool) ->
-       ValueRef;
-    fn LLVMConstVector(ScalarConstantVals: *ValueRef, Size: uint) -> ValueRef;
+                      Length: unsigned) -> ValueRef;
+    fn LLVMConstStruct(ConstantVals: *ValueRef,
+                       Count: unsigned, Packed: Bool) -> ValueRef;
+    fn LLVMConstVector(ScalarConstantVals: *ValueRef,
+                       Size: unsigned) -> ValueRef;
 
     /* Constant expressions */
     fn LLVMAlignOf(Ty: TypeRef) -> ValueRef;
@@ -364,9 +368,9 @@ native mod llvm {
     fn LLVMConstAShr(LHSConstant: ValueRef, RHSConstant: ValueRef) ->
        ValueRef;
     fn LLVMConstGEP(ConstantVal: ValueRef, ConstantIndices: *uint,
-                    NumIndices: uint) -> ValueRef;
+                    NumIndices: unsigned) -> ValueRef;
     fn LLVMConstInBoundsGEP(ConstantVal: ValueRef, ConstantIndices: *uint,
-                            NumIndices: uint) -> ValueRef;
+                            NumIndices: unsigned) -> ValueRef;
     fn LLVMConstTrunc(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
     fn LLVMConstSExt(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
     fn LLVMConstZExt(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
@@ -401,10 +405,10 @@ native mod llvm {
                               VectorBConstant: ValueRef,
                               MaskConstant: ValueRef) -> ValueRef;
     fn LLVMConstExtractValue(AggConstant: ValueRef, IdxList: *uint,
-                             NumIdx: uint) -> ValueRef;
+                             NumIdx: unsigned) -> ValueRef;
     fn LLVMConstInsertValue(AggConstant: ValueRef,
                             ElementValueConstant: ValueRef, IdxList: *uint,
-                            NumIdx: uint) -> ValueRef;
+                            NumIdx: unsigned) -> ValueRef;
     fn LLVMConstInlineAsm(Ty: TypeRef, AsmString: sbuf, Constraints: sbuf,
                           HasSideEffects: Bool, IsAlignStack: Bool) ->
        ValueRef;
@@ -421,14 +425,14 @@ native mod llvm {
     fn LLVMSetSection(Global: ValueRef, Section: sbuf);
     fn LLVMGetVisibility(Global: ValueRef) -> Visibility;
     fn LLVMSetVisibility(Global: ValueRef, Viz: Visibility);
-    fn LLVMGetAlignment(Global: ValueRef) -> uint;
-    fn LLVMSetAlignment(Global: ValueRef, Bytes: uint);
+    fn LLVMGetAlignment(Global: ValueRef) -> unsigned;
+    fn LLVMSetAlignment(Global: ValueRef, Bytes: unsigned);
 
 
     /* Operations on global variables */
     fn LLVMAddGlobal(M: ModuleRef, Ty: TypeRef, Name: sbuf) -> ValueRef;
     fn LLVMAddGlobalInAddressSpace(M: ModuleRef, Ty: TypeRef, Name: sbuf,
-                                   AddressSpace: uint) -> ValueRef;
+                                   AddressSpace: unsigned) -> ValueRef;
     fn LLVMGetNamedGlobal(M: ModuleRef, Name: sbuf) -> ValueRef;
     fn LLVMGetFirstGlobal(M: ModuleRef) -> ValueRef;
     fn LLVMGetLastGlobal(M: ModuleRef) -> ValueRef;
@@ -457,19 +461,19 @@ native mod llvm {
     fn LLVMDeleteFunction(Fn: ValueRef);
     fn LLVMGetOrInsertFunction(M: ModuleRef, Name: sbuf, FunctionTy: TypeRef)
        -> ValueRef;
-    fn LLVMGetIntrinsicID(Fn: ValueRef) -> uint;
-    fn LLVMGetFunctionCallConv(Fn: ValueRef) -> uint;
-    fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: uint);
+    fn LLVMGetIntrinsicID(Fn: ValueRef) -> unsigned;
+    fn LLVMGetFunctionCallConv(Fn: ValueRef) -> unsigned;
+    fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: unsigned);
     fn LLVMGetGC(Fn: ValueRef) -> sbuf;
     fn LLVMSetGC(Fn: ValueRef, Name: sbuf);
-    fn LLVMAddFunctionAttr(Fn: ValueRef, PA: Attribute, HighPA: uint);
+    fn LLVMAddFunctionAttr(Fn: ValueRef, PA: Attribute, HighPA: unsigned);
     fn LLVMGetFunctionAttr(Fn: ValueRef) -> Attribute;
-    fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: Attribute, HighPA: uint);
+    fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: Attribute, HighPA: unsigned);
 
     /* Operations on parameters */
-    fn LLVMCountParams(Fn: ValueRef) -> uint;
+    fn LLVMCountParams(Fn: ValueRef) -> unsigned;
     fn LLVMGetParams(Fn: ValueRef, Params: *ValueRef);
-    fn LLVMGetParam(Fn: ValueRef, Index: uint) -> ValueRef;
+    fn LLVMGetParam(Fn: ValueRef, Index: unsigned) -> ValueRef;
     fn LLVMGetParamParent(Inst: ValueRef) -> ValueRef;
     fn LLVMGetFirstParam(Fn: ValueRef) -> ValueRef;
     fn LLVMGetLastParam(Fn: ValueRef) -> ValueRef;
@@ -478,14 +482,14 @@ native mod llvm {
     fn LLVMAddAttribute(Arg: ValueRef, PA: Attribute);
     fn LLVMRemoveAttribute(Arg: ValueRef, PA: Attribute);
     fn LLVMGetAttribute(Arg: ValueRef) -> Attribute;
-    fn LLVMSetParamAlignment(Arg: ValueRef, align: uint);
+    fn LLVMSetParamAlignment(Arg: ValueRef, align: unsigned);
 
     /* Operations on basic blocks */
     fn LLVMBasicBlockAsValue(BB: BasicBlockRef) -> ValueRef;
     fn LLVMValueIsBasicBlock(Val: ValueRef) -> Bool;
     fn LLVMValueAsBasicBlock(Val: ValueRef) -> BasicBlockRef;
     fn LLVMGetBasicBlockParent(BB: BasicBlockRef) -> ValueRef;
-    fn LLVMCountBasicBlocks(Fn: ValueRef) -> uint;
+    fn LLVMCountBasicBlocks(Fn: ValueRef) -> unsigned;
     fn LLVMGetBasicBlocks(Fn: ValueRef, BasicBlocks: *ValueRef);
     fn LLVMGetFirstBasicBlock(Fn: ValueRef) -> BasicBlockRef;
     fn LLVMGetLastBasicBlock(Fn: ValueRef) -> BasicBlockRef;
@@ -511,11 +515,13 @@ native mod llvm {
     fn LLVMGetPreviousInstruction(Inst: ValueRef) -> ValueRef;
 
     /* Operations on call sites */
-    fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: uint);
-    fn LLVMGetInstructionCallConv(Instr: ValueRef) -> uint;
-    fn LLVMAddInstrAttribute(Instr: ValueRef, index: uint, IA: Attribute);
-    fn LLVMRemoveInstrAttribute(Instr: ValueRef, index: uint, IA: Attribute);
-    fn LLVMSetInstrParamAlignment(Instr: ValueRef, index: uint, align: uint);
+    fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: unsigned);
+    fn LLVMGetInstructionCallConv(Instr: ValueRef) -> unsigned;
+    fn LLVMAddInstrAttribute(Instr: ValueRef, index: unsigned, IA: Attribute);
+    fn LLVMRemoveInstrAttribute(Instr: ValueRef, index: unsigned,
+                                IA: Attribute);
+    fn LLVMSetInstrParamAlignment(Instr: ValueRef, index: unsigned,
+                                  align: unsigned);
 
     /* Operations on call instructions (only) */
     fn LLVMIsTailCall(CallInst: ValueRef) -> Bool;
@@ -523,10 +529,11 @@ native mod llvm {
 
     /* Operations on phi nodes */
     fn LLVMAddIncoming(PhiNode: ValueRef, IncomingValues: *ValueRef,
-                       IncomingBlocks: *BasicBlockRef, Count: uint);
-    fn LLVMCountIncoming(PhiNode: ValueRef) -> uint;
-    fn LLVMGetIncomingValue(PhiNode: ValueRef, Index: uint) -> ValueRef;
-    fn LLVMGetIncomingBlock(PhiNode: ValueRef, Index: uint) -> BasicBlockRef;
+                       IncomingBlocks: *BasicBlockRef, Count: unsigned);
+    fn LLVMCountIncoming(PhiNode: ValueRef) -> unsigned;
+    fn LLVMGetIncomingValue(PhiNode: ValueRef, Index: unsigned) -> ValueRef;
+    fn LLVMGetIncomingBlock(PhiNode: ValueRef,
+                            Index: unsigned) -> BasicBlockRef;
 
     /* Instruction builders */
     fn LLVMCreateBuilderInContext(C: ContextRef) -> BuilderRef;
@@ -550,20 +557,20 @@ native mod llvm {
     /* Terminators */
     fn LLVMBuildRetVoid(B: BuilderRef) -> ValueRef;
     fn LLVMBuildRet(B: BuilderRef, V: ValueRef) -> ValueRef;
-    fn LLVMBuildAggregateRet(B: BuilderRef, RetVals: *ValueRef, N: uint) ->
-       ValueRef;
+    fn LLVMBuildAggregateRet(B: BuilderRef, RetVals: *ValueRef,
+                             N: unsigned) -> ValueRef;
     fn LLVMBuildBr(B: BuilderRef, Dest: BasicBlockRef) -> ValueRef;
     fn LLVMBuildCondBr(B: BuilderRef, If: ValueRef, Then: BasicBlockRef,
                        Else: BasicBlockRef) -> ValueRef;
     fn LLVMBuildSwitch(B: BuilderRef, V: ValueRef, Else: BasicBlockRef,
-                       NumCases: uint) -> ValueRef;
-    fn LLVMBuildIndirectBr(B: BuilderRef, Addr: ValueRef, NumDests: uint) ->
-       ValueRef;
+                       NumCases: unsigned) -> ValueRef;
+    fn LLVMBuildIndirectBr(B: BuilderRef, Addr: ValueRef,
+                           NumDests: unsigned) -> ValueRef;
     fn LLVMBuildInvoke(B: BuilderRef, Fn: ValueRef, Args: *ValueRef,
-                       NumArgs: uint, Then: BasicBlockRef,
+                       NumArgs: unsigned, Then: BasicBlockRef,
                        Catch: BasicBlockRef, Name: sbuf) -> ValueRef;
     fn LLVMBuildLandingPad(B: BuilderRef, Ty: TypeRef, PersFn: ValueRef,
-                           NumClauses: uint, Name: sbuf) -> ValueRef;
+                           NumClauses: unsigned, Name: sbuf) -> ValueRef;
     fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
     fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
@@ -651,11 +658,12 @@ native mod llvm {
     fn LLVMBuildStore(B: BuilderRef, Val: ValueRef, Ptr: ValueRef) ->
        ValueRef;
     fn LLVMBuildGEP(B: BuilderRef, Pointer: ValueRef, Indices: *ValueRef,
-                    NumIndices: uint, Name: sbuf) -> ValueRef;
+                    NumIndices: unsigned, Name: sbuf) -> ValueRef;
     fn LLVMBuildInBoundsGEP(B: BuilderRef, Pointer: ValueRef,
-                            Indices: *ValueRef, NumIndices: uint, Name: sbuf)
+                            Indices: *ValueRef, NumIndices: unsigned,
+                            Name: sbuf)
        -> ValueRef;
-    fn LLVMBuildStructGEP(B: BuilderRef, Pointer: ValueRef, Idx: uint,
+    fn LLVMBuildStructGEP(B: BuilderRef, Pointer: ValueRef, Idx: unsigned,
                           Name: sbuf) -> ValueRef;
     fn LLVMBuildGlobalString(B: BuilderRef, Str: sbuf, Name: sbuf) ->
        ValueRef;
@@ -703,15 +711,15 @@ native mod llvm {
                        Name: sbuf) -> ValueRef;
 
     /* Comparisons */
-    fn LLVMBuildICmp(B: BuilderRef, Op: uint, LHS: ValueRef, RHS: ValueRef,
-                     Name: sbuf) -> ValueRef;
-    fn LLVMBuildFCmp(B: BuilderRef, Op: uint, LHS: ValueRef, RHS: ValueRef,
-                     Name: sbuf) -> ValueRef;
+    fn LLVMBuildICmp(B: BuilderRef, Op: unsigned, LHS: ValueRef,
+                     RHS: ValueRef, Name: sbuf) -> ValueRef;
+    fn LLVMBuildFCmp(B: BuilderRef, Op: unsigned, LHS: ValueRef,
+                     RHS: ValueRef, Name: sbuf) -> ValueRef;
 
     /* Miscellaneous instructions */
     fn LLVMBuildPhi(B: BuilderRef, Ty: TypeRef, Name: sbuf) -> ValueRef;
     fn LLVMBuildCall(B: BuilderRef, Fn: ValueRef, Args: *ValueRef,
-                     NumArgs: uint, Name: sbuf) -> ValueRef;
+                     NumArgs: unsigned, Name: sbuf) -> ValueRef;
     fn LLVMBuildSelect(B: BuilderRef, If: ValueRef, Then: ValueRef,
                        Else: ValueRef, Name: sbuf) -> ValueRef;
     fn LLVMBuildVAArg(B: BuilderRef, list: ValueRef, Ty: TypeRef, Name: sbuf)
@@ -723,10 +731,10 @@ native mod llvm {
        -> ValueRef;
     fn LLVMBuildShuffleVector(B: BuilderRef, V1: ValueRef, V2: ValueRef,
                               Mask: ValueRef, Name: sbuf) -> ValueRef;
-    fn LLVMBuildExtractValue(B: BuilderRef, AggVal: ValueRef, Index: uint,
+    fn LLVMBuildExtractValue(B: BuilderRef, AggVal: ValueRef, Index: unsigned,
                              Name: sbuf) -> ValueRef;
     fn LLVMBuildInsertValue(B: BuilderRef, AggVal: ValueRef, EltVal: ValueRef,
-                            Index: uint, Name: sbuf) -> ValueRef;
+                            Index: unsigned, Name: sbuf) -> ValueRef;
 
     fn LLVMBuildIsNull(B: BuilderRef, Val: ValueRef, Name: sbuf) -> ValueRef;
     fn LLVMBuildIsNotNull(B: BuilderRef, Val: ValueRef, Name: sbuf) ->
@@ -738,7 +746,7 @@ native mod llvm {
     fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
 
     /** Writes a module to the specified path. Returns 0 on success. */
-    fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: sbuf) -> int;
+    fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: sbuf) -> c_int;
 
     /** Creates target data from a target layout string. */
     fn LLVMCreateTargetData(StringRep: sbuf) -> TargetDataRef;
@@ -746,9 +754,10 @@ native mod llvm {
         references the target data only weakly. */
     fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
     /** Returns the size of a type. FIXME: rv is actually a ULongLong! */
-    fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef) -> uint;
+    fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef) -> unsigned;
     /** Returns the alignment of a type. */
-    fn LLVMPreferredAlignmentOfType(TD: TargetDataRef, Ty: TypeRef) -> uint;
+    fn LLVMPreferredAlignmentOfType(TD: TargetDataRef,
+                                    Ty: TypeRef) -> unsigned;
     /** Disposes target data. */
     fn LLVMDisposeTargetData(TD: TargetDataRef);
 
@@ -801,7 +810,7 @@ native mod llvm {
     fn LLVMPassManagerBuilderCreate() -> PassManagerBuilderRef;
     fn LLVMPassManagerBuilderDispose(PMB: PassManagerBuilderRef);
     fn LLVMPassManagerBuilderSetOptLevel(PMB: PassManagerBuilderRef,
-                                         OptimizationLevel: uint);
+                                         OptimizationLevel: unsigned);
     fn LLVMPassManagerBuilderSetSizeLevel(PMB: PassManagerBuilderRef,
                                           Value: Bool);
     fn LLVMPassManagerBuilderSetDisableUnitAtATime(PMB: PassManagerBuilderRef,
@@ -811,7 +820,7 @@ native mod llvm {
     fn LLVMPassManagerBuilderSetDisableSimplifyLibCalls
         (PMB: PassManagerBuilderRef, Value: Bool);
     fn LLVMPassManagerBuilderUseInlinerWithThreshold
-        (PMB: PassManagerBuilderRef, threshold: uint);
+        (PMB: PassManagerBuilderRef, threshold: unsigned);
     fn LLVMPassManagerBuilderPopulateModulePassManager
         (PMB: PassManagerBuilderRef, PM: PassManagerRef);
 
@@ -844,9 +853,8 @@ native mod llvm {
     fn LLVMMoveToNextSection(SI: SectionIteratorRef);
     /** Returns the current section name. */
     fn LLVMGetSectionName(SI: SectionIteratorRef) -> sbuf;
-    /** Returns the current section size.
-        FIXME: The return value is actually a uint64_t! */
-    fn LLVMGetSectionSize(SI: SectionIteratorRef) -> uint;
+    /** Returns the current section size. */
+    fn LLVMGetSectionSize(SI: SectionIteratorRef) -> ulonglong;
     /** Returns the current section contents as a string buffer. */
     fn LLVMGetSectionContents(SI: SectionIteratorRef) -> sbuf;
 
@@ -857,7 +865,7 @@ native mod llvm {
 
     /* FIXME: The FileType is an enum.*/
     fn LLVMRustWriteOutputFile(PM: PassManagerRef, M: ModuleRef, Triple: sbuf,
-                               Output: sbuf, FileType: int, OptLevel: int,
+                               Output: sbuf, FileType: c_int, OptLevel: c_int,
                                EnableSegmentedStacks: bool);
 
     /** Returns a string describing the last error caused by an LLVMRust*
@@ -871,7 +879,7 @@ native mod llvm {
     fn LLVMRustParseAssemblyFile(Filename: sbuf) -> ModuleRef;
 
     /** FiXME: Hacky adaptor for lack of ULongLong in FFI: */
-    fn LLVMRustConstInt(IntTy: TypeRef, N_hi: uint, N_lo: uint,
+    fn LLVMRustConstInt(IntTy: TypeRef, N_hi: unsigned, N_lo: unsigned,
                         SignExtend: Bool) -> ValueRef;
 
     fn LLVMRustAddPrintModulePass(PM: PassManagerRef, M: ModuleRef,
@@ -886,10 +894,10 @@ native mod llvm {
     fn LLVMStructCreateNamed(C: ContextRef, Name: sbuf) -> TypeRef;
 
     fn LLVMStructSetBody(StructTy: TypeRef, ElementTypes: *TypeRef,
-                         ElementCount: uint, Packed: Bool);
+                         ElementCount: unsigned, Packed: Bool);
 
-    fn LLVMConstNamedStruct(S: TypeRef, ConstantVals: *ValueRef, Count: uint)
-       -> ValueRef;
+    fn LLVMConstNamedStruct(S: TypeRef, ConstantVals: *ValueRef,
+                            Count: unsigned) -> ValueRef;
 
     /** Links LLVM modules together. `Src` is destroyed by this call and
         must never be referenced again. */
@@ -934,7 +942,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
 
     let outer = outer0 + [ty];
 
-    let kind: int = llvm::LLVMGetTypeKind(ty);
+    let kind: int = llvm::LLVMGetTypeKind(ty) as int;
 
     fn tys_str(names: type_names, outer: [TypeRef], tys: [TypeRef]) -> str {
         let s: str = "";
@@ -963,7 +971,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       9 {
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
-        let n_args: uint = llvm::LLVMCountParamTypes(ty);
+        let n_args = llvm::LLVMCountParamTypes(ty) as uint;
         let args: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_args);
         unsafe {
             llvm::LLVMGetParamTypes(ty, vec::to_ptr(args));
@@ -975,7 +983,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       }
       10 {
         let s: str = "{";
-        let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
+        let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
         let elts: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_elts);
         unsafe {
             llvm::LLVMGetStructElementTypes(ty, vec::to_ptr(elts));
@@ -987,7 +995,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       11 {
         let el_ty = llvm::LLVMGetElementType(ty);
         ret "[" + type_to_str_inner(names, outer, el_ty) + " x " +
-            uint::str(llvm::LLVMGetArrayLength(ty)) + "]";
+            uint::str(llvm::LLVMGetArrayLength(ty) as uint) + "]";
       }
       12 {
         let i: uint = 0u;
@@ -1009,7 +1017,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
 }
 
 fn float_width(llt: TypeRef) -> uint {
-    ret alt llvm::LLVMGetTypeKind(llt) {
+    ret alt llvm::LLVMGetTypeKind(llt) as int {
           1 { 32u }
           2 { 64u }
           3 { 80u }
@@ -1019,7 +1027,8 @@ fn float_width(llt: TypeRef) -> uint {
 }
 
 fn fn_ty_param_tys(fn_ty: TypeRef) -> [TypeRef] unsafe {
-    let args = vec::init_elt(0 as TypeRef, llvm::LLVMCountParamTypes(fn_ty));
+    let args = vec::init_elt(0 as TypeRef,
+                             llvm::LLVMCountParamTypes(fn_ty) as uint);
     llvm::LLVMGetParamTypes(fn_ty, vec::to_ptr(args));
     ret args;
 }

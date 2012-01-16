@@ -918,7 +918,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
         fcx.lltyparams += [{desc: dsc, dicts: dicts}];
     }
 
-    let a: uint = 2u; // retptr, env come first
+    let a: u32 = 2u32; // retptr, env come first
     let b: int = starting_idx;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =
@@ -960,7 +960,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
                 arg = PointerCast(bcx, arg, llout_arg_ty);
             }
             llargs += [arg];
-            a += 1u;
+            a += 1u32;
           }
         }
         outgoing_arg_index += 1u;
