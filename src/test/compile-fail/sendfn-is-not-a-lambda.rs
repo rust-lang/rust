@@ -4,5 +4,5 @@ fn test(f: fn@(uint) -> uint) -> uint {
 
 fn main() {
     let f = fn~(x: uint) -> uint { ret 4u; };
-    log(debug, test(f)); //! ERROR expected `fn@(++uint) -> uint`
+    log(debug, test(f)); //! ERROR expected `fn@(uint) -> uint`
 }

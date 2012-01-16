@@ -22,8 +22,16 @@ fn mode_str(m: ty::mode) -> str {
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: middle::ty::mode, ty: t}) ->
        str {
-        let s = mode_str(input.mode);
-        ret s + ty_to_str(cx, input.ty);
+        let modestr = alt input.mode {
+          ast::by_ref. {
+            ty::type_is_immediate(cx, input.ty) ? "&&" : ""
+          }
+          ast::by_val. {
+            ty::type_is_immediate(cx, input.ty) ? "" : "++"
+          }
+          _ { mode_str(input.mode) }
+        };
+        modestr + ty_to_str(cx, input.ty)
     }
     fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option::t<ast::ident>,
                  inputs: [arg], output: t, cf: ast::ret_style,
