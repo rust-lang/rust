@@ -56,15 +56,9 @@ fn fndoc_from_fn(
     _decl: ast::fn_decl,
     _typarams: [ast::ty_param],
     name: ast::ident,
-    _attrs: [ast::attribute]
+    attrs: [ast::attribute]
 ) -> doc::fndoc {
-    ~{
-        name: name,
-        brief: "todo",
-        desc: none,
-        return: none,
-        args: map::new_str_hash::<str>()
-    }
+    attr_parser::parse_fn(name, attrs)
 }
 
 #[cfg(test)]
