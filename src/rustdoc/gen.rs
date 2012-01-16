@@ -1,3 +1,8 @@
+type rustdoc = {
+    ps: pprust::ps,
+    w: io::writer
+};
+
 #[doc(
   brief = "Generate a crate document header.",
   args(rd = "Rustdoc context",
