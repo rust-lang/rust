@@ -9,5 +9,6 @@
 
 mod parse;
 mod extract;
+mod attr_parser;
 mod doc;
 mod gen;
