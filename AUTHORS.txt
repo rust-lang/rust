@@ -29,6 +29,7 @@ Josh Matthews <josh@joshmatthews.net>
 Joshua Wise <joshua@joshuawise.com>
 Jyun-Yan You <jyyou@cs.nctu.edu.tw>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
+Kevin Cantu <me@kevincantu.org>
 Lennart Kudling
 Lindsey Kuper <lkuper@mozilla.com>
 Marijn Haverbeke <marijnh@gmail.com>
