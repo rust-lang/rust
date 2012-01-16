@@ -18,26 +18,6 @@ import io::writer_util;
 import std::map;
 
 #[doc(
-  brief = "Documents a single crate item.",
-  args(rd = "Rustdoc context",
-       item = "AST item to document")
-)]
-fn doc_item(ctxt: gen::ctxt, item: @ast::item) {
-    let _fndoc0 = attr_parser::parse_fn(item.ident, item.id, item.attrs);
-
-    alt item.node {
-        ast::item_const(ty, expr) { }
-        ast::item_fn(decl, _, _) {
-            gen::write_fndoc(ctxt, item.ident, _fndoc0, decl);
-        }
-        ast::item_mod(_mod) { }
-        ast::item_ty(ty, typarams) { }
-        ast::item_tag(variant, typarams) { }
-        ast::item_res(_, _, _, _, _) { }
-    };
-}
-
-#[doc(
   brief = "Main function.",
   desc = "Command-line arguments:
 
@@ -51,14 +31,9 @@ fn main(argv: [str]) {
         ret;
     }
 
-    let crate = parse::from_file(argv[1]);
-
-    let w = io::stdout();
-    let ctxt = { ps: pprust::rust_printer(w), w: w };
-    gen::write_header(ctxt, argv[1]);
-
-    let v = visit::mk_simple_visitor(@{
-        visit_item: bind doc_item(ctxt, _)
-        with *visit::default_simple_visitor()});
-    visit::visit_crate(*crate, (), v);
+    let source_file = argv[1];
+    let default_name = source_file;
+    let crate = parse::from_file(source_file);
+    let doc = extract::extract(crate, default_name);
+    gen::write_markdown(doc, crate, io::stdout());
 }
