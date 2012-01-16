@@ -28,7 +28,7 @@ type rustdoc = {
        item = "AST item to document")
 )]
 fn doc_item(rd: rustdoc, item: @ast::item) {
-    let _fndoc0 = attr_parser::parse_fn(item.attrs);
+    let _fndoc0 = attr_parser::parse_fn(item.ident, item.attrs);
 
     alt item.node {
         ast::item_const(ty, expr) { }
