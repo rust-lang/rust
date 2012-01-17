@@ -81,22 +81,21 @@ fn parse_input(sess: session, cfg: ast::crate_cfg, input: str) ->
     if !input_is_stdin(input) {
         parser::parse_crate_from_file(input, cfg, sess.parse_sess)
     } else {
-        let srcbytes = get_input_stream(sess, input).read_whole_stream();
-        let srcstring = str::unsafe_from_bytes(srcbytes);
-        parser::parse_crate_from_source_str(input, srcstring, cfg,
-                                            sess.parse_sess)
+        let src = get_input_str(sess, input);
+        parser::parse_crate_from_source_str(input, src, cfg, sess.parse_sess)
     }
 }
 
-fn get_input_stream(sess: session, infile: str) -> io::reader {
-    if !input_is_stdin(infile) {
+fn get_input_str(sess: session, infile: str) -> str {
+    let stream = if !input_is_stdin(infile) {
         alt io::file_reader(infile) {
           result::ok(reader) { reader }
           result::err(e) {
             sess.fatal(e)
           }
         }
-    } else { io::stdin() }
+    } else { io::stdin() };
+    str::unsafe_from_bytes(stream.read_whole_stream())
 }
 
 fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
@@ -285,7 +284,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
       _ { cu_parse }
     };
     let {crate, tcx} = compile_upto(sess, cfg, input, upto, none);
-    let src = get_input_stream(sess, input);
+    let src = get_input_str(sess, input);
 
     let ann: pprust::pp_ann = pprust::no_ann();
     alt ppm {
@@ -299,7 +298,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
       ppm_expanded. | ppm_normal. {}
     }
     pprust::print_crate(sess.codemap, sess.diagnostic, crate, input,
-                        src, io::stdout(), ann);
+                        io::string_reader(src), io::stdout(), ann);
 }
 
 fn get_os(triple: str) -> option<session::os> {
