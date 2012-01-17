@@ -566,8 +566,229 @@ a referencing crate file, or by the filename of the source file itself.
 
 # Items and attributes
 
+A crate is a collection of [items](#items), each of which may have some number
+of [attributes](#attributes) attached to it.
 
-### Attributes
+## Items
+
+~~~~~~~~ {.ebnf .gram}
+item : mod_item | fn_item | type_item | enum_item
+     | res_item | iface_item | impl_item ;
+~~~~~~~~
+
+An _item_ is a component of a crate; some module items can be defined in
+[crate files](#crate-files) but most are defined in [source
+files](#source-files). Items are organized within a crate by a nested set of
+[modules](#modules). Every crate has a single "outermost" anonymous module;
+all further items within the crate have [paths](#paths) within the module tree
+of the crate.
+
+Items are entirely determined at compile-time, remain constant during
+execution, and may reside in read-only memory.
+
+There are several kinds of item:
+
+  * [modules](#modules)
+  * [functions](#functions)
+  * [type definitions](#type-definitions)
+  * [eunmerations](#enumerations)
+  * [resources](#resources)
+  * [interfaces](#interfaces)
+  * [implementations](#implementations)
+
+Some items form an implicit scope for the declaration of sub-items. In other
+words, within a function or module, declarations of items can (in many cases)
+be mixed with the statements, control blocks, and similar artifacts that
+otherwise compose the item body. The meaning of these scoped items is the same
+as if the item was declared outside the scope -- it is still a static item --
+except that the item's *path name* within the module namespace is qualified by
+the name of the enclosing item, or is private to the enclosing item (in the
+case of functions). The exact locations in which sub-items may be declared is
+given by the grammar.
+
+All items except modules may be *parametrized* by type. Type parameters are
+given as a comma-separated list of identifiers enclosed in angle brackets
+(`<...>`), after the name of the item and before its definition. The type
+parameters of an item are considered "part of the name", not the type of the
+item; in order to refer to the type-parametrized item, a referencing
+[path](#paths) must in general provide type arguments as a list of
+comma-separated types enclosed within angle brackets. In practice, the
+type-inference system can usually infer such argument types from
+context. There are no general type-parametric types, only type-parametric
+items.
+
+
+### Modules
+
+~~~~~~~~ {.ebnf .gram}
+mod_item : "mod" '{' mod '}' ;
+mod : [ view_item | item ] * ;
+~~~~~~~~
+
+A module is a kind of item that contains zero or more [view
+items](#view-items) and zero or more sub-[items](#items). The view items
+manage the visibility of the items defined within the module, as well as the
+visibility of names from outside the module when referenced from inside the
+module.
+
+#### View items
+
+~~~~~~~~ {.ebnf .gram}
+view_item : use_decl | import_decl | export_decl ;
+~~~~~~~~
+
+A view item manages the namespace of a module; it does not define new items
+but simply changes the visibility of other items. There are several kinds of
+view item:
+
+ * [use declarations](#use-declarations)
+ * [import declarations](#import-declarations)
+ * [export declarations](#export-declarations)
+
+##### Use declarations
+
+~~~~~~~~ {.ebnf .gram}
+use_decl : "use" ident [ '(' link_attrs ')' ] ? ;
+link_attrs : link_attr [ ',' link_attrs ] + ;
+link_attr : ident '=' immediate ;
+~~~~~~~~
+
+A _use declaration_ specifies a dependency on an external crate. The external
+crate is then imported into the declaring scope as the `ident` provided in the
+`use_decl`.
+
+The external crate is resolved to a specific `soname` at compile time, and a
+runtime linkage requirement to that `soname` is passed to the linker for
+loading at runtime. The `soname` is resolved at compile time by scanning the
+compiler's library path and matching the `link_attrs` provided in the
+`use_decl` against any `#link` attributes that were declared on the external
+crate when it was compiled. If no `link_attrs` are provided, a default `name`
+attribute is assumed, equal to the `ident` given in the `use_decl`.
+
+Two examples of `use` declarations:
+
+~~~~~~~~
+use pcre (uuid = "54aba0f8-a7b1-4beb-92f1-4cf625264841");
+
+use std; // equivalent to: use std ( name = "std" );
+
+use ruststd (name = "std"); // linking to 'std' under another name
+~~~~~~~~
+
+##### Import declarations
+
+~~~~~~~~ {.ebnf .gram}
+import_decl : "import" ident [ '=' path
+                             | "::" path_glob ] ;
+
+path_glob : ident [ "::" path_glob ] ?
+          | '*'
+          | '{' ident [ ',' ident ] * '}'
+~~~~~~~~
+
+An _import declaration_ creates one or more local name bindings synonymous
+with some other [path](#paths). Usually an import declaration is used to
+shorten the path required to refer to a module item.
+
+*Note*: unlike many languages, Rust's `import` declarations do not* declare
+*linkage-dependency with external crates. Linkage dependencies are
+*independently declared with [`use` declarations](#use -eclarations).
+
+Imports support a number of "convenience" notations:
+
+  * Importing as a different name than the imported name, using the 
+    syntax `import x = p::q::r;`.
+  * Importing a list of paths differing only in final element, using
+    the glob-like brace syntax `import a::b::{c,d,e,f};`
+  * Importing all paths matching a given prefix, using the glob-like
+    asterisk syntax `import a::b::*;`
+
+An example of imports:
+
+~~~~
+import foo = core::info;
+import std::math::sin;
+import std::str::{char_at, hash};
+import core::option::*;
+
+fn main() {
+    // Equivalent to 'log(core::info, std::math::sin(1.0));'
+    log(foo, sin(1.0));
+
+    // Equivalent to 'log(core::info, core::option::some(1.0));'
+    log(info, some(1.0));
+
+    // Equivalent to 'log(core::info,
+    //                    std::str::hash(std::str::char_at("foo")));'
+    log(info, hash(char_at("foo")));
+}
+~~~~
+
+##### Export declarations
+
+~~~~~~~~ {.ebnf .gram}
+export_decl : "export" ident [ ',' ident ] * ;
+~~~~~~~~
+
+An _export declaration_ restricts the set of local names within a module that
+can be accessed from code outside the module. By default, all _local items_ in
+a module are exported; imported paths are not automatically re-exported by
+default. If a module contains an explicit `export` declaration, this
+declaration replaces the default export with the export specified.
+
+An example of an export:
+
+~~~~~~~~
+mod foo {
+    export primary;
+
+    fn primary() {
+        helper(1, 2);
+        helper(3, 4);
+    }
+
+    fn helper(x: int, y: int) {
+        ...
+    }
+}
+
+fn main() {
+    foo::primary();  // Will compile.
+    foo::helper(2,3) // ERROR: will not compile.
+}
+~~~~~~~~
+
+Multiple names may be exported from a single export declaration:
+
+~~~~~~~~
+mod foo {
+    export primary, secondary;
+
+    fn primary() {
+        helper(1, 2);
+        helper(3, 4);
+    }
+
+    fn secondary() {
+        ...
+    }
+
+    fn helper(x: int, y: int) {
+        ...
+    }
+}
+~~~~~~~~
+
+
+### Functions
+### Type definitions
+### Enumerations
+### Resources
+### Interfaces
+### Implementations
+
+
+## Attributes
 
 ~~~~~~~~{.ebnf .gram}
 attribute : '#' '[' attr_list ']' ;
@@ -736,6 +957,199 @@ macro-generated and user-written code can cause unintentional capture.
 
 Future versions of Rust will address these issues.
 
+
+# Types and typestates
+
+## Type system
+
+Every slot and value in a Rust program has a type. The _type_ of a *value*
+defines the interpretation of the memory holding it. The type of a *slot* may
+also include [constraints](#constrained-types).
+
+Built-in types and type-constructors are tightly integrated into the language,
+in nontrivial ways that are not possible to emulate in user-defined
+types. User-defined types have limited capabilities. In addition, every
+built-in type or type-constructor name is reserved as a *keyword* in Rust;
+they cannot be used as user-defined identifiers in any context.
+
+### Primitive types
+
+The primitive types are the following:
+
+* The "nil" type `()`, having the single "nil" value `()`.^[The "nil" value
+  `()` is *not* a sentinel "null pointer" value for reference slots; the "nil"
+  type is the implicit return type from functions otherwise lacking a return
+  type, and can be used in other contexts (such as message-sending or
+  type-parametric code) as a zero-size type.]
+* The boolean type `bool` with values `true` and `false`.
+* The machine types.
+* The machine-dependent integer and floating-point types.
+
+#### Machine types
+
+The machine types are the following:
+
+
+* The unsigned word types `u8`, `u16`, `u32` and `u64`, with values drawn from
+  the integer intervals $[0, 2^8 - 1]$, $[0, 2^16 - 1]$, $[0, 2^32 - 1]$ and
+  $[0, 2^64 - 1]$ respectively.
+
+* The signed two's complement word types `i8`, `i16`, `i32` and `i64`, with
+  values drawn from the integer intervals $[-(2^7), 2^7 - 1]$,
+  $[-(2^15), 2^15 - 1]$, $[-(2^31), 2^31 - 1]$, $[-(2^63), 2^63 - 1]$
+  respectively.
+
+* The IEEE 754-2008 `binary32` and `binary64` floating-point types: `f32` and
+  `f64`, respectively.
+
+#### Machine-dependent integer types
+
+The Rust type `uint`^[A Rust `uint` is analogous to a C99 `uintptr_t`.] is an
+unsigned integer type with with target-machine-dependent size. Its size, in
+bits, is equal to the number of bits required to hold any memory address on
+the target machine.
+
+The Rust type `int`^[A Rust `int` is analogous to a C99 `intptr_t`.] is a
+two's complement signed integer type with target-machine-dependent size. Its
+size, in bits, is equal to the size of the rust type `uint` on the same target
+machine.
+
+
+#### Machine-dependent floating point type
+
+The Rust type `float` is a machine-specific type equal to one of the supported
+Rust floating-point machine types (`f32` or `f64`). It is the largest
+floating-point type that is directly supported by hardware on the target
+machine, or if the target machine has no floating-point hardware support, the
+largest floating-point type supported by the software floating-point library
+used to support the other floating-point machine types.
+
+Note that due to the preference for hardware-supported floating-point, the
+type `float` may not be equal to the largest *supported* floating-point type.
+
+
+### Textual types
+
+The types `char` and `str` hold textual data.
+
+A value of type `char` is a Unicode character, represented as a 32-bit
+unsigned word holding a UCS-4 codepoint.
+
+A value of type `str` is a Unicode string, represented as a vector of 8-bit
+unsigned bytes holding a sequence of UTF-8 codepoints.
+
+
+
+### Record types
+
+The record type-constructor forms a new heterogeneous product of values.^[The
+record type-constructor is analogous to the `struct` type-constructor in the
+Algol/C family, the *record* types of the ML family, or the *structure* types
+of the Lisp family.] Fields of a record type are accessed by name and are
+arranged in memory in the order specified by the record type.
+
+An example of a record type and its use:
+
+~~~~
+type point = {x: int, y: int};
+let p: point = {x: 10, y: 11};
+let px: int = p.x;
+~~~~
+
+### Tuple types
+
+The tuple type-constructor forms a new heterogeneous product of values similar
+to the record type-constructor. The differences are as follows:
+
+* tuple elements cannot be mutable, unlike record fields
+* tuple elements are not named and can be accessed only by pattern-matching
+
+Tuple types and values are denoted by listing the types or values of their
+elements, respectively, in a parenthesized, comma-separated
+list. Single-element tuples are not legal; all tuples have two or more values.
+
+The members of a tuple are laid out in memory contiguously, like a record, in
+order specified by the tuple type.
+
+An example of a tuple type and its use:
+
+~~~~
+type pair = (int,str);
+let p: pair = (10,"hello");
+let (a, b) = p;
+assert (b == "world");
+~~~~
+
+### Vector types
+
+The vector type-constructor represents a homogeneous array of values of a
+given type. A vector has a fixed size. The kind of a vector type depends on
+the kind of its member type, as with other simple structural types.
+
+An example of a vector type and its use:
+
+~~~~
+let v: [int] = [7, 5, 3];
+let i: int = v[2];
+assert (i == 3);
+~~~~
+
+Vectors always *allocate* a storage region sufficient to store the first power
+of two worth of elements greater than or equal to the size of the vector. This
+behaviour supports idiomatic in-place "growth" of a mutable slot holding a
+vector:
+
+
+~~~~
+let v: mutable [int] = [1, 2, 3];
+v += [4, 5, 6];
+~~~~
+
+Normal vector concatenation causes the allocation of a fresh vector to hold
+the result; in this case, however, the slot holding the vector recycles the
+underlying storage in-place (since the reference-count of the underlying
+storage is equal to 1).
+
+All accessible elements of a vector are always initialized, and access to a
+vector is always bounds-checked.
+
+
+### Enumerated types
+
+An *enumerated type* is a nominal, heterogeneous disjoint union type.^[The
+`enum` type is analogous to a `data` constructor declaration in ML or a *pick
+ADT* in Limbo.} An [`enum` *item*](#enumerations) consists of a number of
+*constructors*, each of which is independently named and takes an optional
+tuple of arguments.
+
+Enumerated types cannot be denoted *structurally* as types, but must be
+denoted by named reference to an [*enumeration* item](#enumerations).
+
+
+### Function types
+
+The function type-constructor `fn` forms new function types. A function type
+consists of a sequence of input slots, an optional set of [input
+constraints](#input-constraints) and an output slot. See
+[Ref.Item.Fn](#ref.item.fn).
+
+An example of a `fn` type:
+
+~~~~
+fn add(x: int, y: int) -> int {
+  ret x + y;
+}
+
+let int x = add(5,7);
+
+type binop = fn(int,int) -> int;
+let bo: binop = add;
+x = bo(5,7);
+~~~~
+
+
+
+## Typestate system
 
 # Memory and concurrency models
 
