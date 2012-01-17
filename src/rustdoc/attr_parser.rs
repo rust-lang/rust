@@ -33,6 +33,7 @@ fn parse_fn(
           ast::meta_list("doc", docs) {
             ret parse_fn_(docs);
           }
+          _ { }
         }
     }
 
