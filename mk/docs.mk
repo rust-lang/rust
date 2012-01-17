@@ -47,7 +47,7 @@ ifdef CFG_NODE
 doc/tutorial/web/index.html: \
         $(wildcard $(S)doc/tutorial/*.md)
 	@$(call E, cp: $@)
-	$(Q)cp -arv $(S)doc/tutorial doc/
+	$(Q)cp -a $(S)doc/tutorial doc/
 	@$(call E, node: build.js)
 	$(Q)cd doc/tutorial && $(CFG_NODE) build.js
 
