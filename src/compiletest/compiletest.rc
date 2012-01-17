@@ -1,3 +1,5 @@
+#[crate_type = "bin"];
+
 use std;
 
 mod procsrv;

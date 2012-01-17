@@ -1,5 +1,7 @@
 // -*- rust -*-
 
+#[crate_type = "bin"];
+
 use std;
 use rustc;
 
