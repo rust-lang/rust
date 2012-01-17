@@ -41,8 +41,19 @@ Section "Uninstall"
     RMDir $INSTDIR\bin
     RMDir $INSTDIR\doc
     RMDir $INSTDIR
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Rust"
 SectionEnd
 
 Section
     WriteUninstaller $INSTDIR\uninstall.exe
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Rust" \
+                     "DisplayName" "Rust"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Rust" \
+                     "Publisher" "Mozilla"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Rust" \
+                       "NoModify" 1
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Rust" \
+                     "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Rust" \
+                     "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
 SectionEnd
