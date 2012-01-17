@@ -2,7 +2,6 @@
 Module: tuple
 */
 
-// FIXME #1546: Would rather write fst<T, U>(+pair: (T, U)) -> T
 fn first<T:copy, U:copy>(pair: (T, U)) -> T {
     let (t, _) = pair;
     ret t;
