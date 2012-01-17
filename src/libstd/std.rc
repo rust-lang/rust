@@ -57,6 +57,7 @@ mod getopts;
 mod json;
 mod rand;
 mod sha1;
+mod md4;
 mod tempfile;
 mod term;
 mod time;
