@@ -20,6 +20,9 @@ export get_meta_item_name;
 export get_meta_item_value_str;
 export get_meta_item_value_str_by_name;
 export get_meta_item_list;
+export meta_item_value_from_list;
+export meta_item_list_from_list;
+export name_value_str_pair;
 export mk_name_value_item_str;
 export mk_name_value_item;
 export mk_list_item;
@@ -215,6 +218,53 @@ fn native_abi(attrs: [ast::attribute]) -> either::t<str, ast::native_abi> {
         either::left("unsupported abi: " + t)
       }
     };
+}
+
+fn meta_item_from_list(
+    items: [@ast::meta_item],
+    name: str
+) -> option<@ast::meta_item> {
+    let items = attr::find_meta_items_by_name(items, name);
+    vec::last(items)
+}
+
+fn meta_item_value_from_list(
+    items: [@ast::meta_item],
+    name: str
+) -> option<str> {
+    alt meta_item_from_list(items, name) {
+      some(item) {
+        alt attr::get_meta_item_value_str(item) {
+          some(value) { some(value) }
+          none. { none }
+        }
+      }
+      none. { none }
+    }
+}
+
+fn meta_item_list_from_list(
+    items: [@ast::meta_item],
+    name: str
+) -> option<[@ast::meta_item]> {
+    alt meta_item_from_list(items, name) {
+      some(item) {
+        attr::get_meta_item_list(item)
+      }
+      none. { none }
+    }
+}
+
+fn name_value_str_pair(
+    item: @ast::meta_item
+) -> option<(str, str)> {
+    alt attr::get_meta_item_value_str(item) {
+      some(value) {
+        let name = attr::get_meta_item_name(item);
+        some((name, value))
+      }
+      none. { none }
+    }
 }
 
 fn span<T: copy>(item: T) -> ast::spanned<T> {

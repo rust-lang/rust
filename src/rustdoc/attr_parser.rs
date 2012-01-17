@@ -71,64 +71,17 @@ fn parse_fn(
     };
 }
 
-fn meta_item_from_list(
-    items: [@ast::meta_item],
-    name: str
-) -> option<@ast::meta_item> {
-    let items = attr::find_meta_items_by_name(items, name);
-    vec::last(items)
-}
-
-fn meta_item_value_from_list(
-    items: [@ast::meta_item],
-    name: str
-) -> option<str> {
-    alt meta_item_from_list(items, name) {
-      some(item) {
-        alt attr::get_meta_item_value_str(item) {
-          some(value) { some(value) }
-          none. { none }
-        }
-      }
-      none. { none }
-    }
-}
-
-fn meta_item_list_from_list(
-    items: [@ast::meta_item],
-    name: str
-) -> option<[@ast::meta_item]> {
-    alt meta_item_from_list(items, name) {
-      some(item) {
-        attr::get_meta_item_list(item)
-      }
-      none. { none }
-    }
-}
-
-fn name_value_str_pair(
-    item: @ast::meta_item
-) -> option<(str, str)> {
-    alt attr::get_meta_item_value_str(item) {
-      some(value) {
-        let name = attr::get_meta_item_name(item);
-        some((name, value))
-      }
-      none. { none }
-    }
-}
-
 fn parse_fn_(
     items: [@ast::meta_item]
 ) -> fn_attrs {
-    let brief = meta_item_value_from_list(items, "brief");
-    let desc = meta_item_value_from_list(items, "desc");
-    let return = meta_item_value_from_list(items, "return");
+    let brief = attr::meta_item_value_from_list(items, "brief");
+    let desc = attr::meta_item_value_from_list(items, "desc");
+    let return = attr::meta_item_value_from_list(items, "return");
 
-    let args = alt meta_item_list_from_list(items, "args") {
+    let args = alt attr::meta_item_list_from_list(items, "args") {
       some(items) {
         vec::filter_map(items) {|item|
-            option::map(name_value_str_pair(item)) { |pair|
+            option::map(attr::name_value_str_pair(item)) { |pair|
                 {
                     name: util::fst(pair),
                     desc: util::snd(pair)
