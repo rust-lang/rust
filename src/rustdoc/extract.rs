@@ -17,13 +17,12 @@ fn top_moddoc_from_crate(
     crate: @ast::crate,
     default_name: str
 ) -> doc::moddoc {
-    moddoc_from_mod(crate.node.module, default_name, crate.node.attrs)
+    moddoc_from_mod(crate.node.module, default_name)
 }
 
 fn moddoc_from_mod(
     module: ast::_mod,
-    name: ast::ident,
-    _attrs: [ast::attribute]
+    name: ast::ident
 ) -> doc::moddoc {
     ~{
         name: name,
@@ -31,7 +30,7 @@ fn moddoc_from_mod(
             vec::filter_map(module.items) {|item|
                 alt item.node {
                   ast::item_mod(m) {
-                    some(moddoc_from_mod(m, item.ident, item.attrs))
+                    some(moddoc_from_mod(m, item.ident))
                   }
                   _ {
                     none
@@ -41,9 +40,9 @@ fn moddoc_from_mod(
         fns: doc::fnlist(
             vec::filter_map(module.items) {|item|
                 alt item.node {
-                  ast::item_fn(decl, typarams, _) {
+                  ast::item_fn(decl, _, _) {
                     some(fndoc_from_fn(
-                        decl, typarams, item.ident, item.id, item.attrs))
+                        decl, item.ident, item.id))
                   }
                   _ {
                     none
@@ -55,12 +54,17 @@ fn moddoc_from_mod(
 
 fn fndoc_from_fn(
     _decl: ast::fn_decl,
-    _typarams: [ast::ty_param],
     name: ast::ident,
-    id: ast::node_id,
-    attrs: [ast::attribute]
+    id: ast::node_id
 ) -> doc::fndoc {
-    attr_parser::parse_fn(name, id, attrs)
+    ~{
+        id: id,
+        name: name,
+        brief: none,
+        desc: none,
+        return: none,
+        args: []
+    }
 }
 
 #[cfg(test)]
@@ -114,7 +118,7 @@ mod tests {
     }
 
     #[test]
-    fn extract_should_use_default_crate_name_if_no_link_name_exists() {
+    fn extract_should_use_default_crate_name() {
         let source = "";
         let ast = parse::from_str(source);
         let doc = extract(ast, "burp");

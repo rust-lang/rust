@@ -15,7 +15,7 @@ fn parse_fn(
                 _fndoc = some(~{
                     id: id,
                     name: name,
-                    brief: value,
+                    brief: some(value),
                     desc: none,
                     return: none,
                     args: []
@@ -34,7 +34,7 @@ fn parse_fn(
           ~{
               id: id,
               name: name,
-              brief: "_undocumented_",
+              brief: none,
               desc: none,
               return: none,
               args: []
@@ -102,15 +102,10 @@ fn parse_fn_(
         }
     }
 
-    let _brief = alt brief {
-        some(_b) { _b }
-        none. { "_undocumented_" }
-    };
-
     ~{
         id: id,
         name: name,
-        brief: _brief,
+        brief: brief,
         desc: desc,
         return: some({
             desc: return,
@@ -144,7 +139,7 @@ mod tests {
         let source = "";
         let attrs = parse_attributes(source);
         let doc = parse_fn("f", 0, attrs);
-        assert doc.brief == "_undocumented_";
+        assert doc.brief == none;
         assert doc.desc == none;
         assert doc.return == none;
         assert vec::len(doc.args) == 0u;
@@ -155,7 +150,7 @@ mod tests {
         let source = "#[doc = \"basic\"]";
         let attrs = parse_attributes(source);
         let doc = parse_fn("f", 0, attrs);
-        assert doc.brief == "basic";
+        assert doc.brief == some("basic");
     }
 
     #[test]
@@ -163,7 +158,7 @@ mod tests {
         let source = "#[doc(brief = \"short\")]";
         let attrs = parse_attributes(source);
         let doc = parse_fn("f", 0, attrs);
-        assert doc.brief == "short";
+        assert doc.brief == some("short");
     }
 
     #[test]
@@ -189,13 +184,5 @@ mod tests {
         let doc = parse_fn("f", 0, attrs);
         assert doc.args[0] == ("a", "arg a");
         assert doc.args[1] == ("b", "arg b");
-    }
-
-    #[test]
-    fn parse_fn_should_set_brief_desc_to_undocumented_if_not_exists() {
-        let source = "#[doc(desc = \"long desc\")]";
-        let attrs = parse_attributes(source);
-        let doc = parse_fn("f", 0, attrs);
-        assert doc.brief == "_undocumented_";
     }
 }

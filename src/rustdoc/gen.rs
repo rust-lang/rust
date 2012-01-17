@@ -55,7 +55,12 @@ fn write_fn(
     doc: doc::fndoc
 ) {
     ctxt.w.write_line("## Function `" + doc.name + "`");
-    ctxt.w.write_line(doc.brief);
+    alt doc.brief {
+      some(brief) {
+        ctxt.w.write_line(brief);
+      }
+      none. { }
+    }
     alt doc.desc {
         some(_d) {
             ctxt.w.write_line("");

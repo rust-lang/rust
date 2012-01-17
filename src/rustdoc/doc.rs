@@ -13,7 +13,7 @@ type moddoc = ~{
 type fndoc = ~{
     id: ast_id,
     name: str,
-    brief: str,
+    brief: option<str>,
     desc: option<str>,
     return: option<retdoc>,
     args: [(str, str)]
