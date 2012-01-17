@@ -1944,24 +1944,6 @@ fn call_memmove(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
     ret rslt(cx, ret_val);
 }
 
-fn call_bzero(cx: @block_ctxt, dst: ValueRef, n_bytes: ValueRef,
-              align_bytes: ValueRef) -> result {
-    // FIXME: switch to the 64-bit variant when on such a platform.
-    let ccx = bcx_ccx(cx);
-    let i = ccx.intrinsics;
-    assert (i.contains_key("llvm.memset.p0i8.i32"));
-    let memset = i.get("llvm.memset.p0i8.i32");
-    let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
-    let size = IntCast(cx, n_bytes, T_i32());
-    let align =
-        if lib::llvm::llvm::LLVMIsConstant(align_bytes) == True {
-            IntCast(cx, align_bytes, T_i32())
-        } else { IntCast(cx, C_int(ccx, 0), T_i32()) };
-    let volatile = C_bool(false);
-    ret rslt(cx,
-             Call(cx, memset, [dst_ptr, C_u8(0u), size, align, volatile]));
-}
-
 fn memmove_ty(bcx: @block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
     @block_ctxt {
     let ccx = bcx_ccx(bcx);
@@ -3985,10 +3967,18 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
         let llty = type_of(ccx, sp, t);
         Store(bcx, C_null(llty), llptr);
     } else {
-        let llsz = size_of(bcx, t);
-        // FIXME passing in the align here is correct, but causes issue #843
-        // let llalign = align_of(llsz.bcx, t);
-        bcx = call_bzero(llsz.bcx, llptr, llsz.val, C_int(ccx, 0)).bcx;
+        let key = alt ccx.sess.targ_cfg.arch {
+          session::arch_x86. | session::arch_arm. { "llvm.memset.p0i8.i32" }
+          session::arch_x86_64. { "llvm.memset.p0i8.i64" }
+        };
+        let i = ccx.intrinsics;
+        let memset = i.get(key);
+        let dst_ptr = PointerCast(cx, llptr, T_ptr(T_i8()));
+        let size = size_of(cx, t);
+        bcx = size.bcx;
+        let align = C_i32(1i32); // cannot use computed value here.
+        let volatile = C_bool(false);
+        Call(cx, memset, [dst_ptr, C_u8(0u), size.val, align, volatile]);
     }
     ret bcx;
 }
