@@ -2645,8 +2645,8 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
         @csearch::get_tag_variants(cx, id)
     } else {
         // FIXME: Now that the variants are run through the type checker (to
-        // check the disr_expr if one exists), this code should likely be
-        // moved there to avoid having to call eval_const_expr twice
+        // check the disr_expr if it exists), this code should likely be
+        // moved there to avoid having to call eval_const_expr twice.
         alt cx.items.get(id.node) {
           ast_map::node_item(@{node: ast::item_tag(variants, _), _}) {
             let disr_val = -1;

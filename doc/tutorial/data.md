@@ -103,9 +103,9 @@ equivalent to a C enum:
 This will define `north`, `east`, `south`, and `west` as constants,
 all of which have type `direction`.
 
-When the enum is is C like, that is none of the variants have
-parameters, it is possible to explicit set the discriminator values to
-an integer value:
+When the enum is C like, that is none of the variants have parameters,
+it is possible to explicitly set the discriminator values to an integer
+value:
 
     enum color {
       red = 0xff0000;

@@ -2489,8 +2489,8 @@ fn check_tag_variants(ccx: @crate_ctxt, _sp: span, vs: [ast::variant],
             demand::simple(fcx, e.span, declty, cty);
             // FIXME: issue #1417
             // Also, check_expr (from check_const pass) doesn't guarantee that
-            // the expression in an form that eval_const_expr, so we may still
-            // get an internal compiler error
+            // the expression in an form that eval_const_expr can handle, so
+            // we may still get an internal compiler error.
             alt syntax::ast_util::eval_const_expr(e) {
               syntax::ast_util::const_int(val) {
                 disr_val = val as int;
