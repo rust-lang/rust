@@ -291,6 +291,11 @@ probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
 probe CFG_NODE             node
 
+if [ -z "$CFG_NODE" ]
+then
+    probe CFG_NODE         nodejs
+fi
+
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
     err "either clang or gcc is required"

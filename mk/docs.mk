@@ -44,20 +44,11 @@ endif
 
 ifdef CFG_NODE
 
-doc/tutorial/web/index.html: doc/tutorial/args.md \
-		doc/tutorial/control.md \
-		doc/tutorial/data.md \
-		doc/tutorial/ffi.md \
-		doc/tutorial/func.md \
-		doc/tutorial/generic.md \
-		doc/tutorial/iface.md \
-		doc/tutorial/index.md \
-		doc/tutorial/intro.md \
-		doc/tutorial/mod.md \
-		doc/tutorial/setup.md \
-		doc/tutorial/syntax.md \
-		doc/tutorial/task.md \
-		doc/tutorial/test.md
+doc/tutorial/web/index.html: \
+        $(wildcard $(S)doc/tutorial/*.md)
+	@$(call E, cp: $@)
+	$(Q)cp -arv $(S)doc/tutorial doc/
+	@$(call E, node: build.js)
 	$(Q)cd doc/tutorial && $(CFG_NODE) build.js
 
 endif
