@@ -4,7 +4,8 @@ import std::io::writer_util;
 export write_markdown;
 
 type ctxt = {
-    w: io::writer
+    w: io::writer,
+    mutable depth: uint
 };
 
 fn write_markdown(
@@ -12,15 +13,25 @@ fn write_markdown(
     writer: io::writer
 ) {
     let ctxt = {
-        w: writer
+        w: writer,
+        mutable depth: 1u
     };
 
-    write_header(ctxt, doc.topmod.name);
-    write_top_module(ctxt, doc.topmod);
+    write_crate(ctxt, doc);
 }
 
-fn write_header(ctxt: ctxt, name: str) {
-    ctxt.w.write_line("# Crate " + name);
+fn write_header(ctxt: ctxt, title: str) {
+    let hashes = str::from_chars(vec::init_elt('#', ctxt.depth));
+    ctxt.w.write_line(#fmt("%s %s", hashes, title));
+}
+
+fn write_crate(
+    ctxt: ctxt,
+    doc: doc::cratedoc
+) {
+    ctxt.depth = 1u;
+    write_header(ctxt, #fmt("Crate %s", doc.topmod.name));
+    write_top_module(ctxt, doc.topmod);
 }
 
 fn write_top_module(
@@ -54,7 +65,8 @@ fn write_fn(
     ctxt: ctxt,
     doc: doc::fndoc
 ) {
-    ctxt.w.write_line("## Function `" + doc.name + "`");
+    ctxt.depth = 2u;
+    write_header(ctxt, #fmt("Function `%s`", doc.name));
     alt doc.brief {
       some(brief) {
         ctxt.w.write_line(brief);
