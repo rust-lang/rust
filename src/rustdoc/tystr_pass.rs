@@ -1,33 +1,32 @@
 import rustc::syntax::ast;
+import rustc::syntax::print::pprust;
+import rustc::middle::ast_map;
+import astsrv::seq_srv;
 
 export run;
 
 fn run(
-    doc: doc::cratedoc,
-    crate: @ast::crate
+    srv: astsrv::seq_srv,
+    doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
         fold_fn: fn~(
-            f: fold::fold<@ast::crate>,
+            f: fold::fold<astsrv::seq_srv>,
             d: doc::fndoc
         ) -> doc::fndoc {
             fold_fn(f, d)
         }
-        with *fold::default_seq_fold(crate)
+        with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
 }
 
 fn fold_fn(
-    fold: fold::fold<@ast::crate>,
+    fold: fold::fold<astsrv::seq_srv>,
     doc: doc::fndoc
 ) -> doc::fndoc {
-    import rustc::middle::ast_map;
-    import rustc::syntax::print::pprust;
 
-    let crate = fold.ctxt;
-
-    let map = ast_map::map_crate(*crate);
+    let srv = fold.ctxt;
 
     fn add_ret_ty(
         doc: option<doc::retdoc>,
@@ -46,14 +45,18 @@ fn fold_fn(
         }
     }
 
-    ~{
-        return: alt map.get(doc.id) {
+    let retty = srv.exec {|ctxt|
+        alt ctxt.map.get(doc.id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
           }) {
-            add_ret_ty(doc.return, pprust::ty_to_str(decl.output))
+            pprust::ty_to_str(decl.output)
           }
         }
+    };
+
+    ~{
+        return: add_ret_ty(doc.return, retty)
         with *doc
     }
 }
@@ -64,9 +67,9 @@ mod tests {
     #[test]
     fn should_add_fn_ret_types() {
         let source = "fn a() -> int { }";
-        let ast = parse::from_str(source);
-        let doc = extract::extract(ast, "");
-        let doc = run(doc, ast);
+        let srv = astsrv::mk_seq_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = run(srv, doc);
         assert option::get(doc.topmod.fns[0].return).ty == some("int");
     }
 }

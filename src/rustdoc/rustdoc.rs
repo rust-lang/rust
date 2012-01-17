@@ -67,9 +67,16 @@ fn main(argv: [str]) {
     }
 
     let source_file = argv[1];
+    run(source_file);
+}
+
+fn run(source_file: str) {
+
     let default_name = source_file;
-    let crate = parse::from_file(source_file);
-    let doc = extract::extract(crate, default_name);
-    let doc = tystr_pass::run(doc, crate);
+    let srv = astsrv::mk_seq_srv_from_file(source_file);
+    let doc = extract::from_srv(srv, default_name);
+    let doc = run_passes(srv, doc, [
+        tystr_pass::run
+    ]);
     gen::write_markdown(doc, std::io::stdout());
 }
