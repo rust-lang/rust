@@ -25,11 +25,16 @@ fn write_header(ctxt: ctxt, title: str) {
     ctxt.w.write_line(#fmt("%s %s", hashes, title));
 }
 
+fn subsection(ctxt: ctxt, f: fn&()) {
+    ctxt.depth += 1u;
+    f();
+    ctxt.depth -= 1u;
+}
+
 fn write_crate(
     ctxt: ctxt,
     doc: doc::cratedoc
 ) {
-    ctxt.depth = 1u;
     write_header(ctxt, #fmt("Crate %s", doc.topmod.name));
     write_top_module(ctxt, doc.topmod);
 }
@@ -53,11 +58,15 @@ fn write_mod_contents(
     moddoc: doc::moddoc
 ) {
     for fndoc in *moddoc.fns {
-        write_fn(ctxt, fndoc);
+        subsection(ctxt) {||
+            write_fn(ctxt, fndoc);
+        }
     }
 
     for moddoc in *moddoc.mods {
-        write_mod(ctxt, moddoc);
+        subsection(ctxt) {||
+            write_mod(ctxt, moddoc);
+        }
     }
 }
 
@@ -65,7 +74,6 @@ fn write_fn(
     ctxt: ctxt,
     doc: doc::fndoc
 ) {
-    ctxt.depth = 2u;
     write_header(ctxt, #fmt("Function `%s`", doc.name));
     alt doc.brief {
       some(brief) {
