@@ -117,7 +117,13 @@ def local_rev_committer_date():
     return local_rev_info("ci")
 
 def get_url_to_file(u,f):
-  subprocess.check_call(["curl", "-o", f, u])
+    tmpf = f + '.tmp' # no security issue, just to stop partial download leaving a stale file
+    try:
+        subprocess.check_call(["curl", "-o", tmpf, u])
+    except subprocess.CalledProcessError:
+        os.unlink(tmpf)
+        raise
+    os.rename(tmpf, f)
 
 def snap_filename_hash_part(snap):
   match = re.match(r".*([a-fA-F\d]{40}).tar.bz2$", snap)
