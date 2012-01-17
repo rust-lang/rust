@@ -1945,21 +1945,21 @@ fn call_memmove(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
 }
 
 fn call_bzero(cx: @block_ctxt, dst: ValueRef, n_bytes: ValueRef,
-              align_bytes: ValueRef) -> @block_ctxt {
+              align_bytes: ValueRef) -> result {
     // FIXME: switch to the 64-bit variant when on such a platform.
-    let ccx = bcx_ccx(cx), dst = dst;
+    let ccx = bcx_ccx(cx);
+    let i = ccx.intrinsics;
+    assert (i.contains_key("llvm.memset.p0i8.i32"));
+    let memset = i.get("llvm.memset.p0i8.i32");
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
     let size = IntCast(cx, n_bytes, T_i32());
-    let align = IntCast(cx, align_bytes, T_i32());
-    if lib::llvm::llvm::LLVMIsConstant(align_bytes) != True {
-        // Use our own upcall (see issue 843), since the LLVM intrinsic can
-        // only handle constant alignments.
-        Call(cx, ccx.upcalls.memset, [dst_ptr, C_u8(0u), size, align]);
-    } else {
-        let memset = ccx.intrinsics.get("llvm.memset.p0i8.i32");
-        Call(cx, memset, [dst_ptr, C_u8(0u), size, align, C_bool(false)]);
-    }
-    cx
+    let align =
+        if lib::llvm::llvm::LLVMIsConstant(align_bytes) == True {
+            IntCast(cx, align_bytes, T_i32())
+        } else { IntCast(cx, C_int(ccx, 0), T_i32()) };
+    let volatile = C_bool(false);
+    ret rslt(cx,
+             Call(cx, memset, [dst_ptr, C_u8(0u), size, align, volatile]));
 }
 
 fn memmove_ty(bcx: @block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
@@ -3984,13 +3984,13 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
         let sp = cx.sp;
         let llty = type_of(ccx, sp, t);
         Store(bcx, C_null(llty), llptr);
-        bcx
     } else {
-        let {bcx, val: llsz} = size_of(bcx, t);
+        let llsz = size_of(bcx, t);
         // FIXME passing in the align here is correct, but causes issue #843
-        let {bcx, val: align} = align_of(bcx, t);
-        call_bzero(bcx, llptr, llsz, align)
+        // let llalign = align_of(llsz.bcx, t);
+        bcx = call_bzero(llsz.bcx, llptr, llsz.val, C_int(ccx, 0)).bcx;
     }
+    ret bcx;
 }
 
 fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {

@@ -74,7 +74,6 @@ upcall_rust_personality
 upcall_s_shared_malloc
 upcall_shared_malloc
 upcall_shared_free
-upcall_memset
 upcall_vec_grow
 upcall_vec_push
 upcall_call_shim_on_c_stack

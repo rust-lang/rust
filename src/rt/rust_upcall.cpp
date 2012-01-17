@@ -227,15 +227,6 @@ upcall_shared_free(void* ptr) {
     UPCALL_SWITCH_STACK(&args, upcall_s_shared_free);
 }
 
-/************************************************************************
- * Memset that, contrary to the llvm intrinsic, handles dynamic alignment
- */
-
-extern "C" CDECL void
-upcall_memset(void* ptr, char val, unsigned size, unsigned align) {
-    memset(ptr, val, align_to(size, align));
-}
-
 /**********************************************************************
  * Called to deep copy a type descriptor onto the exchange heap.
  * Used when sending closures.  It's possible that we should have
