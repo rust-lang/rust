@@ -1,6 +1,6 @@
 import rustc::syntax::ast;
 import rustc::front::attr;
-import std::tuple;
+import core::tuple;
 
 export fn_attrs, arg_attrs;
 export parse_fn;
