@@ -53,15 +53,15 @@ type port_id = int;
 // It's critical that this only have one variant, so it has a record
 // layout, and will work in the rust_task structure in task.rs.
 #[doc(
-  brief = "A communication endpoint that can send messages.\
+  brief = "A communication endpoint that can send messages. \
            Channels send messages to ports.",
-  desc = "Each channel is bound to a port when the channel is\
-          constructed, so the destination port for a channel\
-          must exist before the channel itself.\
-          Channels are weak: a channel does not keep the port it\
-          is bound to alive. If a channel attempts to send data\
-          to a dead port that data will be silently dropped.\
-          Channels may be duplicated and themselves transmitted\
+  desc = "Each channel is bound to a port when the channel is \
+          constructed, so the destination port for a channel \
+          must exist before the channel itself. \
+          Channels are weak: a channel does not keep the port it \
+          is bound to alive. If a channel attempts to send data \
+          to a dead port that data will be silently dropped. \
+          Channels may be duplicated and themselves transmitted \
           over other channels."
 )]
 tag chan<T: send> {
@@ -150,7 +150,7 @@ fn recv_<T: send>(p: *rustrt::rust_port) -> T {
 }
 
 #[doc(
-  brief = "Constructs a channel. The channel is bound to the\
+  brief = "Constructs a channel. The channel is bound to the \
            port used to construct it."
 )]
 fn chan<T: send>(p: port<T>) -> chan<T> {
