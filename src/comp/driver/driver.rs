@@ -20,7 +20,7 @@ import back::{x86, x86_64};
 
 tag pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
 
-fn default_configuration(sess: session::session, argv0: str, input: str) ->
+fn default_configuration(sess: session, argv0: str, input: str) ->
    ast::crate_cfg {
     let libc =
         alt sess.targ_cfg.os {
@@ -48,7 +48,7 @@ fn default_configuration(sess: session::session, argv0: str, input: str) ->
          mk("build_input", input)];
 }
 
-fn build_configuration(sess: session::session, argv0: str, input: str) ->
+fn build_configuration(sess: session, argv0: str, input: str) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -76,31 +76,27 @@ fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
 
 fn input_is_stdin(filename: str) -> bool { filename == "-" }
 
-fn parse_input(sess: session::session, cfg: ast::crate_cfg, input: str) ->
+fn parse_input(sess: session, cfg: ast::crate_cfg, input: str) ->
    @ast::crate {
     if !input_is_stdin(input) {
         parser::parse_crate_from_file(input, cfg, sess.parse_sess)
-    } else { parse_input_src(sess, cfg, input).crate }
+    } else {
+        let srcbytes = get_input_stream(sess, input).read_whole_stream();
+        let srcstring = str::unsafe_from_bytes(srcbytes);
+        parser::parse_crate_from_source_str(input, srcstring, cfg,
+                                            sess.parse_sess)
+    }
 }
 
-fn parse_input_src(sess: session::session, cfg: ast::crate_cfg, infile: str)
-   -> {crate: @ast::crate, src: str} {
-    let src_stream = if infile != "-" {
+fn get_input_stream(sess: session, infile: str) -> io::reader {
+    if !input_is_stdin(infile) {
         alt io::file_reader(infile) {
           result::ok(reader) { reader }
           result::err(e) {
             sess.fatal(e)
           }
         }
-    } else {
-        io::stdin()
-    };
-    let srcbytes = src_stream.read_whole_stream();
-    let src = str::unsafe_from_bytes(srcbytes);
-    let crate =
-        parser::parse_crate_from_source_str(infile, src, cfg,
-                                            sess.parse_sess);
-    ret {crate: crate, src: src};
+    } else { io::stdin() }
 }
 
 fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
@@ -113,7 +109,7 @@ fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
     ret rv;
 }
 
-fn inject_libcore_reference(sess: session::session,
+fn inject_libcore_reference(sess: session,
                             crate: @ast::crate) -> @ast::crate {
 
     fn spanned<T: copy>(x: T) -> @ast::spanned<T> {
@@ -134,14 +130,22 @@ fn inject_libcore_reference(sess: session::session,
                  with crate.node} with *crate }
 }
 
+enum compile_upto {
+    cu_parse;
+    cu_expand;
+    cu_typeck;
+    cu_no_trans;
+    cu_everything;
+}
 
-fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
-                 outdir: option::t<str>, output: option::t<str>) {
-
+fn compile_upto(sess: session, cfg: ast::crate_cfg,
+                input: str, upto: compile_upto,
+                outputs: option::t<output_filenames>)
+    -> {crate: @ast::crate, tcx: option::t<ty::ctxt>} {
     let time_passes = sess.opts.time_passes;
     let crate =
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
-    if sess.opts.parse_only { ret; }
+    if upto == cu_parse { ret {crate: crate, tcx: none}; }
 
     sess.building_library =
         session::building_library(sess.opts.crate_type, crate);
@@ -156,6 +160,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "expansion",
              bind syntax::ext::expand::expand_crate(sess, crate));
 
+    if upto == cu_expand { ret {crate: crate, tcx: none}; }
     if sess.opts.libcore {
         crate = inject_libcore_reference(sess, crate);
     }
@@ -177,6 +182,9 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let (method_map, dict_map) =
         time(time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, impl_map, crate));
+
+    if upto == cu_typeck { ret {crate: crate, tcx: some(ty_cx)}; }
+
     time(time_passes, "block-use checking",
          bind middle::block_use::check_crate(ty_cx, crate));
     time(time_passes, "function usage",
@@ -195,9 +203,9 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_uses, crate));
-    if sess.opts.no_trans { ret; }
 
-    let outputs = build_output_filenames(input, outdir, output, sess);
+    if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
+    let outputs = option::get(outputs);
 
     let (llmod, link_meta) =
         time(time_passes, "translation",
@@ -212,14 +220,25 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         sess.opts.output_type != link::output_type_exe ||
             sess.opts.static && sess.building_library;
 
-    if stop_after_codegen { ret; }
+    if stop_after_codegen { ret {crate: crate, tcx: some(ty_cx)}; }
 
     time(time_passes, "Linking",
          bind link::link_binary(sess, outputs.obj_filename,
                                 outputs.out_filename, link_meta));
+    ret {crate: crate, tcx: some(ty_cx)};
 }
 
-fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
+fn compile_input(sess: session, cfg: ast::crate_cfg, input: str,
+                 outdir: option::t<str>, output: option::t<str>) {
+
+    let upto = if sess.opts.parse_only { cu_parse }
+               else if sess.opts.no_trans { cu_no_trans }
+               else { cu_everything };
+    let outputs = build_output_filenames(input, outdir, output, sess);
+    compile_upto(sess, cfg, input, upto, some(outputs));
+}
+
+fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
                       ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         alt node { pprust::node_expr(s, expr) { pprust::popen(s); } _ { } }
@@ -260,33 +279,27 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     // to collect comments and literals, and we need to support reading
     // from stdin, we're going to just suck the source into a string
     // so both the parser and pretty-printer can use it.
-    let crate_src = parse_input_src(sess, cfg, input);
-    let crate = crate_src.crate;
-    let src = crate_src.src;
+    let upto = alt ppm {
+      ppm_expanded. { cu_expand }
+      ppm_typed. { cu_typeck }
+      _ { cu_parse }
+    };
+    let {crate, tcx} = compile_upto(sess, cfg, input, upto, none);
+    let src = get_input_stream(sess, input);
 
-    let ann;
+    let ann: pprust::pp_ann = pprust::no_ann();
     alt ppm {
-      ppm_expanded. {
-        crate = syntax::ext::expand::expand_crate(sess, crate);
-        ann = pprust::no_ann();
-      }
       ppm_typed. {
-        crate = syntax::ext::expand::expand_crate(sess, crate);
-        let amap = middle::ast_map::map_crate(*crate);
-        let {def_map, impl_map, _} =
-            resolve::resolve_crate(sess, amap, crate);
-        let freevars = freevars::annotate_freevars(def_map, crate);
-        let ty_cx = ty::mk_ctxt(sess, def_map, amap, freevars);
-        typeck::check_crate(ty_cx, impl_map, crate);
-        ann = {pre: ann_paren_for_expr, post: bind ann_typed_post(ty_cx, _)};
+        ann = {pre: ann_paren_for_expr,
+               post: bind ann_typed_post(option::get(tcx), _)};
       }
       ppm_identified. {
         ann = {pre: ann_paren_for_expr, post: ann_identified_post};
       }
-      ppm_normal. { ann = pprust::no_ann(); }
+      ppm_expanded. | ppm_normal. {}
     }
     pprust::print_crate(sess.codemap, sess.diagnostic, crate, input,
-                        io::string_reader(src), io::stdout(), ann);
+                        src, io::stdout(), ann);
 }
 
 fn get_os(triple: str) -> option<session::os> {
@@ -453,7 +466,7 @@ fn build_session_options(match: getopts::match,
 }
 
 fn build_session(sopts: @session::options, input: str,
-                 demitter: diagnostic::emitter) -> session::session {
+                 demitter: diagnostic::emitter) -> session {
     let target_cfg = build_target_config(sopts, demitter);
     let cstore = cstore::mk_cstore();
     let filesearch = filesearch::mk_filesearch(
@@ -480,7 +493,7 @@ fn build_session(sopts: @session::options, input: str,
       working_dir: fs::dirname(input)}
 }
 
-fn parse_pretty(sess: session::session, &&name: str) -> pp_mode {
+fn parse_pretty(sess: session, &&name: str) -> pp_mode {
     if str::eq(name, "normal") {
         ret ppm_normal;
     } else if str::eq(name, "expanded") {
@@ -509,11 +522,13 @@ fn opts() -> [getopts::opt] {
          optflag("warn-unused-imports")];
 }
 
+type output_filenames = @{out_filename: str, obj_filename:str};
+
 fn build_output_filenames(ifile: str,
                           odir: option::t<str>,
                           ofile: option::t<str>,
-                          sess: session::session)
-        -> @{out_filename: str, obj_filename:str} {
+                          sess: session)
+        -> output_filenames {
     let obj_path = "";
     let out_path: str = "";
     let sopts = sess.opts;
@@ -599,7 +614,7 @@ fn early_error(emitter: diagnostic::emitter, msg: str) -> ! {
     fail;
 }
 
-fn list_metadata(sess: session::session, path: str, out: io::writer) {
+fn list_metadata(sess: session, path: str, out: io::writer) {
     metadata::creader::list_file_metadata(sess, path, out);
 }
 
