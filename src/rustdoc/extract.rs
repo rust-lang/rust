@@ -1,6 +1,17 @@
 import rustc::syntax::ast;
 
-export extract;
+export from_srv, extract;
+
+// FIXME: Want this to be from_srv<T:ast::srv> but it crashes
+fn from_srv(
+    srv: astsrv::seq_srv,
+    default_name: str
+) -> doc::cratedoc {
+    import astsrv::seq_srv;
+    srv.exec {|ctxt|
+        extract(ctxt.ast, default_name)
+    }
+}
 
 #[doc = "Converts the Rust AST to the rustdoc document model"]
 fn extract(
@@ -122,5 +133,14 @@ mod tests {
         let ast = parse::from_str(source);
         let doc = extract(ast, "burp");
         assert doc.topmod.name == "burp";
+    }
+
+    #[test]
+    fn extract_from_seq_srv() {
+        import astsrv::seq_srv;
+        let source = "";
+        let srv = astsrv::mk_seq_srv_from_str(source);
+        let doc = from_srv(srv, "name");
+        assert doc.topmod.name == "name";
     }
 }
