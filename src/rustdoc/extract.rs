@@ -1,5 +1,4 @@
 import rustc::syntax::ast;
-import rustc::syntax::visit;
 
 export extract;
 
