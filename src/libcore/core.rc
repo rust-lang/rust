@@ -13,6 +13,7 @@ export either, option, result;
 export ctypes, sys, unsafe, comm, task, logging;
 export extfmt;
 export math;
+export tuple;
 
 // Built-in-type support modules
 
@@ -41,6 +42,7 @@ mod unicode;
 mod either;
 mod option;
 mod result;
+mod tuple;
 
 
 // Runtime and language-primitive support
