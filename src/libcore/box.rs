@@ -1,15 +1,8 @@
-/*
-Module: box
-*/
-
-
 export ptr_eq;
 
-/*
-Function: ptr_eq
-
-Determine if two shared boxes point to the same object
-*/
+#[doc(
+  brief = "Determine if two shared boxes point to the same object"
+)]
 pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     // FIXME: ptr::addr_of
     unsafe {
