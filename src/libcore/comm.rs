@@ -11,7 +11,7 @@
            shared boxes (@T) may not be transmitted across channels. \
            Example: \
                let p = comm::port(); \
-               task::spawn(comm::chan(p), fn (c: chan&lt;str>) { \
+               task::spawn(comm::chan(p), fn (c: chan<str>) { \
                    comm::send(c, \"Hello, World\"); \
                }); \
                io::println(comm::recv(p));"
@@ -87,7 +87,7 @@ resource port_ptr<T: send>(po: *rustrt::rust_port) {
   desc = "Each port has a unique per-task identity and may not \
           be replicated or transmitted. If a port value is \
           copied, both copies refer to the same port. \
-          Ports may be associated with multiple &lt;chan>s."
+          Ports may be associated with multiple <chan>s."
 )]
 tag port<T: send> { port_t(@port_ptr<T>); }
 

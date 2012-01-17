@@ -140,7 +140,7 @@ pure fn to_upper(c: char) -> char {
 
 #[doc(
   brief =  "Compare two chars.",
-  return = "-1 if a&lt;b, 0 if a==b, +1 if a>b"
+  return = "-1 if a<b, 0 if a==b, +1 if a>b"
 )]
 pure fn cmp(a: char, b: char) -> int {
     ret  if b > a { -1 }
