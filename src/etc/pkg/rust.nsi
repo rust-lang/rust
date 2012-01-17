@@ -18,10 +18,6 @@ Page instfiles
 UninstPage uninstConfirm
 UninstPage instfiles
 
-Section
-    WriteUninstaller $INSTDIR\uninstall.exe
-SectionEnd
-
 Section "Compiler"
     SetOutPath $INSTDIR
     File /nonfatal /r i686-pc-mingw32\stage3\*.*
@@ -36,17 +32,17 @@ SectionEnd
 Section "Uninstall"
     Delete $INSTDIR\uninstall.exe
     Delete $INSTDIR\bin\*.*
-    Delete $INSTDIR\lib\*.*
-    Delete $INSTDIR\lib\rustc\i686-pc-mingw32\bin\*.*
-    Delete $INSTDIR\lib\rustc\i686-pc-mingw32\lib\*.*
+    Delete $INSTDIR\bin\rustc\i686-pc-mingw32\bin\*.*
     Delete $INSTDIR\doc\rust.html
     Delete $INSTDIR\doc\rust.pdf
+    RMDir $INSTDIR\bin\rustc\i686-pc-mingw32\bin
+    RMDir $INSTDIR\bin\rustc\i686-pc-mingw32
+    RMDir $INSTDIR\bin\rustc
     RMDir $INSTDIR\bin
-    RMDir $INSTDIR\lib\rustc\i686-pc-mingw32\bin
-    RMDir $INSTDIR\lib\rustc\i686-pc-mingw32\lib
-    RMDir $INSTDIR\lib\rustc\i686-pc-mingw32
-    RMDir $INSTDIR\lib\rustc
-    RMDir $INSTDIR\lib
     RMDir $INSTDIR\doc
     RMDir $INSTDIR
+SectionEnd
+
+Section
+    WriteUninstaller $INSTDIR\uninstall.exe
 SectionEnd
