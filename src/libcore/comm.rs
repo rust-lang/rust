@@ -1,19 +1,19 @@
 #[doc(
   brief = "Communication between tasks",
-  desc  = "Communication between tasks is facilitated by ports (in the\
-           receiving task), and channels (in the sending task). Any\
-           number of channels may feed into a single port.\
-           Ports and channels may only transmit values of unique\
-           types; that is, values that are statically guaranteed to\
-           be accessed by a single 'owner' at a time.  Unique types\
-           include scalars, vectors, strings, and records, tags,\
-           tuples and unique boxes (~T) thereof. Most notably,\
-           shared boxes (@T) may not be transmitted across channels.\
-           Example:\
-               let p = comm::port();\
-               task::spawn(comm::chan(p), fn (c: chan<str>) {\
-                   comm::send(c, \"Hello, World\");\
-               });\
+  desc  = "Communication between tasks is facilitated by ports (in the \
+           receiving task), and channels (in the sending task). Any \
+           number of channels may feed into a single port. \
+           Ports and channels may only transmit values of unique \
+           types; that is, values that are statically guaranteed to \
+           be accessed by a single 'owner' at a time.  Unique types \
+           include scalars, vectors, strings, and records, tags, \
+           tuples and unique boxes (~T) thereof. Most notably, \
+           shared boxes (@T) may not be transmitted across channels. \
+           Example: \
+               let p = comm::port(); \
+               task::spawn(comm::chan(p), fn (c: chan&lt;str>) { \
+                   comm::send(c, \"Hello, World\"); \
+               }); \
                io::println(comm::recv(p));"
 )];
 
@@ -82,18 +82,18 @@ resource port_ptr<T: send>(po: *rustrt::rust_port) {
 }
 
 #[doc(
-  brief = "A communication endpoint that can receive messages.\
+  brief = "A communication endpoint that can receive messages. \
            Ports receive messages from channels.",
-  desc = "Each port has a unique per-task identity and may not\
-          be replicated or transmitted. If a port value is\
-          copied, both copies refer to the same port.\
+  desc = "Each port has a unique per-task identity and may not \
+          be replicated or transmitted. If a port value is \
+          copied, both copies refer to the same port. \
           Ports may be associated with multiple &lt;chan>s."
 )]
 tag port<T: send> { port_t(@port_ptr<T>); }
 
 #[doc(
-  brief = "Sends data over a channel. The sent data is moved\
-           into the channel, whereupon the caller loses\
+  brief = "Sends data over a channel. The sent data is moved \
+           into the channel, whereupon the caller loses \
            access to it."
 )]
 fn send<T: send>(ch: chan<T>, -data: T) {
@@ -114,8 +114,8 @@ fn port<T: send>() -> port<T> {
 }
 
 #[doc(
-  brief = "Receive from a port.\
-           If no data is available on the port then the task will\
+  brief = "Receive from a port. \
+           If no data is available on the port then the task will \
            block until data becomes available."
 )]
 fn recv<T: send>(p: port<T>) -> T { recv_(***p) }

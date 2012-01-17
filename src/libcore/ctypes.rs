@@ -52,15 +52,15 @@ type ulong = uint;
 type ulonglong = u64;
 
 #[doc(
-  brief = "A signed integer with the same size as a pointer.\
-           This is guaranteed to always be the same type as a\
+  brief = "A signed integer with the same size as a pointer. \
+           This is guaranteed to always be the same type as a \
             Rust `int`."
 )]
 type intptr_t = uint; // FIXME: int
 
 #[doc(
-  brief = "An unsigned integer with the same size as a pointer.\
-           This is guaranteed to always be the same type as a Rust\
+  brief = "An unsigned integer with the same size as a pointer. \
+           This is guaranteed to always be the same type as a Rust \
            `uint`."
 )]
 type uintptr_t = uint;
@@ -68,8 +68,8 @@ type uint32_t = u32;
 
 #[doc(
   brief = "A type, a pointer to which can be used as C `void *`.",
-  desc = "The void type cannot be constructed or destructured,\
-         but using pointers to this type when interoperating\
+  desc = "The void type cannot be constructed or destructured, \
+         but using pointers to this type when interoperating \
          with C void pointers can help in documentation."
 )]
 tag void {
@@ -116,8 +116,8 @@ type fd_t = i32;      // not actually a C type, but should be.
 type pid_t = i32;
 
 #[doc(
-  brief = "An unsigned integer with the same size as a C enum.\
-           enum is implementation-defined, but is 32-bits in\
+  brief = "An unsigned integer with the same size as a C enum. \
+           enum is implementation-defined, but is 32-bits in \
            practice"
 )]
 type enum = u32;

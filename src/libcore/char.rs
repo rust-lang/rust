@@ -45,7 +45,7 @@ import is_XID_continue = unicode::derived_property::XID_Continue;
 
 
 #[doc(
-  brief = "Indicates whether a character is in lower case, defined\
+  brief = "Indicates whether a character is in lower case, defined \
            in terms of the Unicode General Category 'Ll'."
 )]
 pure fn is_lowercase(c: char) -> bool {
@@ -53,7 +53,7 @@ pure fn is_lowercase(c: char) -> bool {
 }
 
 #[doc(
-  brief = "Indicates whether a character is in upper case, defined\
+  brief = "Indicates whether a character is in upper case, defined \
            in terms of the Unicode General Category 'Lu'."
 )]
 pure fn is_uppercase(c: char) -> bool {
@@ -61,8 +61,8 @@ pure fn is_uppercase(c: char) -> bool {
 }
 
 #[doc(
-  brief = "Indicates whether a character is whitespace, defined in\
-           terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'\
+  brief = "Indicates whether a character is whitespace, defined in \
+           terms of the Unicode General Categories 'Zs', 'Zl', 'Zp' \
            additional 'Cc'-category control codes in the range [0x09, 0x0d]"
 )]
 pure fn is_whitespace(c: char) -> bool {
@@ -73,8 +73,8 @@ pure fn is_whitespace(c: char) -> bool {
 }
 
 #[doc(
-  brief = "Indicates whether a character is alphanumeric, defined\
-            in terms of the Unicode General Categories 'Nd',\
+  brief = "Indicates whether a character is alphanumeric, defined \
+            in terms of the Unicode General Categories 'Nd', \
             'Nl', 'No' and the Derived Core Property 'Alphabetic'."
 )]
 pure fn is_alphanumeric(c: char) -> bool {
@@ -86,10 +86,10 @@ pure fn is_alphanumeric(c: char) -> bool {
 
 
 #[doc(
-  brief = "Convert a char to the corresponding digit.\
+  brief = "Convert a char to the corresponding digit. \
            Safety note: This function fails if `c` is not a valid char",
-  return = "If `c` is between '0' and '9', the corresponding value\
-            between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is\
+  return = "If `c` is between '0' and '9', the corresponding value \
+            between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is \
             'b' or 'B', 11, etc."
 )]
 pure fn to_digit(c: char) -> u8 unsafe {
@@ -100,7 +100,7 @@ pure fn to_digit(c: char) -> u8 unsafe {
 }
 
 #[doc(
-  brief = "Convert a char to the corresponding digit. Returns none when\
+  brief = "Convert a char to the corresponding digit. Returns none when \
            character is not a valid hexadecimal digit."
 )]
 pure fn maybe_digit(c: char) -> option::t<u8> {
