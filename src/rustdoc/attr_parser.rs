@@ -118,16 +118,6 @@ fn name_value_str_pair(
     }
 }
 
-fn fst<T, U>(+pair: (T, U)) -> T {
-    let (t, _) = pair;
-    ret t;
-}
-
-fn snd<T, U>(+pair: (T, U)) -> U {
-    let (_, u) = pair;
-    ret u;
-}
-
 fn parse_fn_(
     items: [@ast::meta_item]
 ) -> fn_attrs {
@@ -140,8 +130,8 @@ fn parse_fn_(
         vec::filter_map(items) {|item|
             option::map(name_value_str_pair(item)) { |pair|
                 {
-                    name: fst(pair),
-                    desc: snd(pair)
+                    name: util::fst(pair),
+                    desc: util::snd(pair)
                 }
             }
         }
