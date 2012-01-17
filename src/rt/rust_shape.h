@@ -28,7 +28,6 @@ namespace shape {
 
 typedef unsigned long tag_variant_t;
 typedef unsigned long tag_align_t;
-typedef unsigned long ref_cnt_t;
 
 // Constants
 
@@ -376,7 +375,6 @@ ctxt<T>::walk() {
     case SHAPE_TAG:      walk_tag0();             break;
     case SHAPE_BOX:      walk_box0();             break;
     case SHAPE_STRUCT:   walk_struct0();          break;
-    case SHAPE_OBJ:      WALK_SIMPLE(walk_obj1);      break;
     case SHAPE_RES:      walk_res0();             break;
     case SHAPE_VAR:      walk_var0();             break;
     case SHAPE_UNIQ:     walk_uniq0();            break;
@@ -591,7 +589,6 @@ public:
           default: abort();
         }
     }
-    void walk_obj1() { DPRINT("obj"); }
     void walk_iface1() { DPRINT("iface"); }
 
     void walk_tydesc1(char kind) {
@@ -645,7 +642,6 @@ public:
     void walk_uniq1()       { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_box1()        { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_fn1(char)     { sa.set(sizeof(void *)*2, sizeof(void *)); }
-    void walk_obj1()        { sa.set(sizeof(void *)*2, sizeof(void *)); }
     void walk_iface1()      { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_tydesc1(char) { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_closure1();
@@ -854,9 +850,8 @@ protected:
 
     void walk_box_contents1();
     void walk_uniq_contents1();
-    void walk_fn_contents1(ptr &dp, bool null_td);
-    void walk_obj_contents1(ptr &dp);
-    void walk_iface_contents1(ptr &dp);
+    void walk_fn_contents1();
+    void walk_iface_contents1();
     void walk_variant1(tag_info &tinfo, tag_variant_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
@@ -891,13 +886,6 @@ public:
         ALIGN_TO(alignof<void *>());
         U next_dp = dp + sizeof(void *) * 2;
         static_cast<T *>(this)->walk_fn2(code);
-        dp = next_dp;
-    }
-
-    void walk_obj1() {
-        ALIGN_TO(alignof<void *>());
-        U next_dp = dp + sizeof(void *) * 2;
-        static_cast<T *>(this)->walk_obj2();
         dp = next_dp;
     }
 
@@ -946,9 +934,17 @@ template<typename T,typename U>
 void
 data<T,U>::walk_box_contents1() {
     typename U::template data<uint8_t *>::t box_ptr = bump_dp<uint8_t *>(dp);
-    U ref_count_dp(box_ptr);
-    T sub(*static_cast<T *>(this), ref_count_dp + sizeof(ref_cnt_t));
-    static_cast<T *>(this)->walk_box_contents2(sub, ref_count_dp);
+    U box_dp(box_ptr);
+
+    // No need to worry about alignment so long as the box header is
+    // a multiple of 16 bytes.  We can just find the body by adding
+    // the size of header to box_dp.
+    assert ((sizeof(rust_opaque_box) % 16) == 0 ||
+            !"Must align to find the box body");
+
+    U body_dp = box_dp + sizeof(rust_opaque_box);
+    T sub(*static_cast<T *>(this), body_dp);
+    static_cast<T *>(this)->walk_box_contents2(sub, box_dp);
 }
 
 template<typename T,typename U>
@@ -1010,80 +1006,26 @@ data<T,U>::walk_tag1(tag_info &tinfo) {
 
 template<typename T,typename U>
 void
-data<T,U>::walk_fn_contents1(ptr &dp, bool null_td) {
+data<T,U>::walk_fn_contents1() {
     fn_env_pair pair = bump_dp<fn_env_pair>(dp);
     if (!pair.env)
         return;
 
     arena arena;
     const type_desc *closure_td = pair.env->td;
-    type_param *params =
-      type_param::from_tydesc(closure_td, arena);
-    ptr closure_dp((uintptr_t)pair.env);
+    type_param *params = type_param::from_tydesc(closure_td, arena);
+    ptr closure_dp((uintptr_t)box_body(pair.env));
     T sub(*static_cast<T *>(this), closure_td->shape, params,
           closure_td->shape_tables, closure_dp);
     sub.align = true;
 
-    if (null_td) {
-        // if null_td flag is true, null out the type descr from
-        // the data structure while we walk.  This is used in cycle
-        // collector when we are sweeping up data.  The idea is that
-        // we are using the information in the embedded type desc to
-        // walk the contents, so we do not want to free it during that
-        // walk.  This is not *strictly* necessary today because
-        // type_param::from_tydesc() actually pulls out the "shape"
-        // string and other information and copies it into a new
-        // location that is unaffected by the free.  But it seems
-        // safer, particularly as this pulling out of information will
-        // not cope with nested, derived type descriptors.
-        pair.env->td = NULL;
-    }
-
-    sub.walk();
-
-    if (null_td) {
-        pair.env->td = closure_td;
-    }
-}
-
-template<typename T,typename U>
-void
-data<T,U>::walk_obj_contents1(ptr &dp) {
-    dp += sizeof(void *);   // Skip over the vtable.
-
-    uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
-    type_desc *subtydesc =
-        *reinterpret_cast<type_desc **>(box_ptr + sizeof(void *));
-    ptr obj_closure_dp(box_ptr + sizeof(void *));
-    if (!box_ptr)   // Null check.
-        return;
-
-    arena arena;
-    type_param *params = type_param::from_obj_shape(subtydesc->shape,
-                                                    obj_closure_dp, arena);
-    T sub(*static_cast<T *>(this), subtydesc->shape, params,
-          subtydesc->shape_tables, obj_closure_dp);
-    sub.align = true;
     sub.walk();
 }
 
 template<typename T,typename U>
 void
-data<T,U>::walk_iface_contents1(ptr &dp) {
-    uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
-    if (!box_ptr) return;
-    U ref_count_dp(box_ptr);
-    uint8_t *body_ptr = box_ptr + sizeof(void*);
-    type_desc *valtydesc =
-        *reinterpret_cast<type_desc **>(body_ptr);
-    ptr value_dp(body_ptr + sizeof(void*) * 2);
-    // FIXME The 5 is a hard-coded way to skip over a struct shape
-    // header and the first two (number-typed) fields. This is too
-    // fragile, but I didn't see a good way to properly encode it.
-    T sub(*static_cast<T *>(this), valtydesc->shape + 5, NULL, NULL,
-          value_dp);
-    sub.align = true;
-    static_cast<T *>(this)->walk_box_contents2(sub, ref_count_dp);
+data<T,U>::walk_iface_contents1() {
+    walk_box_contents1();
 }
 
 // Polymorphic logging, for convenience
@@ -1161,19 +1103,13 @@ private:
     void walk_fn2(char kind) {
         out << prefix << "fn";
         prefix = "";
-        data<log,ptr>::walk_fn_contents1(dp, false);
-    }
-
-    void walk_obj2() {
-        out << prefix << "obj";
-        prefix = "";
-        data<log,ptr>::walk_obj_contents1(dp);
+        data<log,ptr>::walk_fn_contents1();
     }
 
     void walk_iface2() {
         out << prefix << "iface(";
         prefix = "";
-        data<log,ptr>::walk_iface_contents1(dp);
+        data<log,ptr>::walk_iface_contents1();
         out << prefix << ")";
     }
 

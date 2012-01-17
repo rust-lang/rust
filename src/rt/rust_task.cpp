@@ -14,6 +14,7 @@
 #include <algorithm>
 
 #include "globals.h"
+#include "rust_upcall.h"
 
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
@@ -246,6 +247,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     running_on(-1),
     pinned_on(-1),
     local_region(&sched->srv->local_region),
+    boxed(&local_region),
     unwinding(false),
     killed(false),
     propagate_failure(true),
@@ -295,7 +297,7 @@ rust_task::~rust_task()
 struct spawn_args {
     rust_task *task;
     spawn_fn f;
-    rust_opaque_closure *envptr;
+    rust_opaque_box *envptr;
     void *argptr;
 };
 
@@ -330,8 +332,6 @@ cleanup_task(cleanup_args *args) {
     }
 }
 
-extern "C" void upcall_shared_free(void* ptr);
-
 // This runs on the Rust stack
 extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
@@ -349,12 +349,13 @@ void task_start_wrapper(spawn_args *a)
         threw_exception = true;
     }
 
-    rust_opaque_closure* env = a->envptr;
+    rust_opaque_box* env = a->envptr;
     if(env) {
-        // free the environment.
+        // free the environment (which should be a unique closure).
         const type_desc *td = env->td;
         LOG(task, task, "Freeing env %p with td %p", env, td);
-        td->drop_glue(NULL, NULL, td->first_param, env);
+        td->drop_glue(NULL, NULL, td->first_param, box_body(env));
+        upcall_free_shared_type_desc(env->td);
         upcall_shared_free(env);
     }
 
@@ -367,7 +368,7 @@ void task_start_wrapper(spawn_args *a)
 
 void
 rust_task::start(spawn_fn spawnee_fn,
-                 rust_opaque_closure *envptr,
+                 rust_opaque_box *envptr,
                  void *argptr)
 {
     LOG(this, task, "starting task from fn 0x%" PRIxPTR
@@ -676,38 +677,6 @@ rust_port *rust_task::get_port_by_id(rust_port_id id) {
         port->ref();
     }
     return port;
-}
-
-
-// Temporary routine to allow boxes on one task's shared heap to be reparented
-// to another.
-const type_desc *
-rust_task::release_alloc(void *alloc) {
-    I(sched, !lock.lock_held_by_current_thread());
-    lock.lock();
-
-    assert(local_allocs.find(alloc) != local_allocs.end());
-    const type_desc *tydesc = local_allocs[alloc];
-    local_allocs.erase(alloc);
-
-    local_region.release_alloc(alloc);
-
-    lock.unlock();
-    return tydesc;
-}
-
-// Temporary routine to allow boxes from one task's shared heap to be
-// reparented to this one.
-void
-rust_task::claim_alloc(void *alloc, const type_desc *tydesc) {
-    I(sched, !lock.lock_held_by_current_thread());
-    lock.lock();
-
-    assert(local_allocs.find(alloc) == local_allocs.end());
-    local_allocs[alloc] = tydesc;
-    local_region.claim_alloc(alloc);
-
-    lock.unlock();
 }
 
 void

@@ -26,9 +26,11 @@ const frame_glue_fns_field_drop: int = 1;
 
 const frame_glue_fns_field_reloc: int = 2;
 
-// n.b. must be same as cbox_elt_refcnt
-const box_rc_field_refcnt: int = 0;
-const box_rc_field_body: int = 1;
+const box_field_refcnt: int = 0;
+const box_field_tydesc: int = 1;
+const box_field_prev: int = 2;
+const box_field_next: int = 3;
+const box_field_body: int = 4;
 
 const general_code_alignment: int = 16;
 
@@ -59,13 +61,9 @@ const cmp_glue_op_le: uint = 2u;
 const fn_field_code: int = 0;
 const fn_field_box: int = 1;
 
-// closure_box, see trans_closure.rs
-//
-// n.b. the refcnt must be compatible with a normal box
-const cbox_elt_refcnt: int = 0;
-const cbox_elt_tydesc: int = 1;
-const cbox_elt_ty_params: int = 2;
-const cbox_elt_bindings: int = 3;
+// closures, see trans_closure.rs
+const closure_body_ty_params: int = 0;
+const closure_body_bindings: int = 1;
 
 const vec_elt_fill: int = 0;
 

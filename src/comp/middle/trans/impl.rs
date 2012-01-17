@@ -145,7 +145,7 @@ fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
     -> lval_maybe_callee {
     let tcx = bcx_tcx(bcx);
     let {bcx, val} = trans_temp_expr(bcx, base);
-    let box_body = GEPi(bcx, val, [0, abi::box_rc_field_body]);
+    let box_body = GEPi(bcx, val, [0, abi::box_field_body]);
     let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, box_body, [0, 1]),
                                      T_ptr(T_ptr(T_dict()))));
     // FIXME[impl] I doubt this is alignment-safe
@@ -266,7 +266,7 @@ fn trans_iface_wrapper(ccx: @crate_ctxt, pt: [ast::ident], m: ty::method,
         let self = Load(bcx, PointerCast(bcx,
                                          LLVMGetParam(llfn, 2u as c_uint),
                                          T_ptr(T_opaque_iface_ptr(ccx))));
-        let boxed = GEPi(bcx, self, [0, abi::box_rc_field_body]);
+        let boxed = GEPi(bcx, self, [0, abi::box_field_body]);
         let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, boxed, [0, 1]),
                                          T_ptr(T_ptr(T_dict()))));
         let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),

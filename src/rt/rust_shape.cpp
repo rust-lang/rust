@@ -264,7 +264,7 @@ private:
         result = sub.result;
     }
 
-    inline void walk_box_contents2(cmp &sub, ptr_pair &ref_count_dp) {
+    inline void walk_box_contents2(cmp &sub, ptr_pair &box_dp) {
         sub.align = true;
         sub.walk();
         result = sub.result;
