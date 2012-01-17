@@ -111,16 +111,21 @@ impl session for session {
     }
 }
 
-fn building_library(req_crate_type: crate_type, crate: @ast::crate) -> bool {
+fn building_library(req_crate_type: crate_type, crate: @ast::crate,
+                    testing: bool) -> bool {
     alt req_crate_type {
       bin_crate. { false }
       lib_crate. { true }
       unknown_crate. {
-        alt front::attr::get_meta_item_value_str_by_name(
-            crate.node.attrs,
-            "crate_type") {
-          option::some("lib") { true }
-          _ { false }
+        if testing {
+            false
+        } else {
+            alt front::attr::get_meta_item_value_str_by_name(
+                crate.node.attrs,
+                "crate_type") {
+              option::some("lib") { true }
+              _ { false }
+            }
         }
       }
     }
@@ -156,31 +161,43 @@ mod test {
     #[test]
     fn bin_crate_type_attr_results_in_bin_output() {
         let crate = make_crate(true, false);
-        assert !building_library(unknown_crate, crate);
+        assert !building_library(unknown_crate, crate, false);
     }
 
     #[test]
     fn lib_crate_type_attr_results_in_lib_output() {
         let crate = make_crate(false, true);
-        assert building_library(unknown_crate, crate);
+        assert building_library(unknown_crate, crate, false);
     }
 
     #[test]
     fn bin_option_overrides_lib_crate_type() {
         let crate = make_crate(false, true);
-        assert !building_library(bin_crate, crate);
+        assert !building_library(bin_crate, crate, false);
     }
 
     #[test]
     fn lib_option_overrides_bin_crate_type() {
         let crate = make_crate(true, false);
-        assert building_library(lib_crate, crate);
+        assert building_library(lib_crate, crate, false);
     }
 
     #[test]
     fn bin_crate_type_is_default() {
         let crate = make_crate(false, false);
-        assert !building_library(unknown_crate, crate);
+        assert !building_library(unknown_crate, crate, false);
+    }
+
+    #[test]
+    fn test_option_overrides_lib_crate_type() {
+        let crate = make_crate(false, true);
+        assert !building_library(unknown_crate, crate, true);
+    }
+
+    #[test]
+    fn test_option_does_not_override_requested_lib_type() {
+        let crate = make_crate(false, false);
+        assert building_library(lib_crate, crate, true);
     }
 }
 

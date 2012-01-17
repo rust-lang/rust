@@ -147,8 +147,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
     if upto == cu_parse { ret {crate: crate, tcx: none, src: src}; }
 
-    sess.building_library =
-        session::building_library(sess.opts.crate_type, crate);
+    sess.building_library = session::building_library(
+        sess.opts.crate_type, crate, sess.opts.test);
 
     crate =
         time(time_passes, "configuration",
