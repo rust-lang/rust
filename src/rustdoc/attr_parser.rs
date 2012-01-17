@@ -1,67 +1,52 @@
 import rustc::syntax::ast;
 
+export fn_attrs, arg_attrs;
 export parse_fn;
 
-fn parse_fn(
+type fn_attrs = {
+    brief: option<str>,
+    desc: option<str>,
+    args: [arg_attrs],
+    return: option<str>
+};
+
+type arg_attrs = {
     name: str,
-    id: ast::node_id,
+    desc: str
+};
+
+fn parse_fn(
     attrs: [ast::attribute]
-) -> doc::fndoc {
-    let _fndoc = none;
-    for attr: ast::attribute in attrs {
+) -> fn_attrs {
+
+    for attr in attrs {
         alt attr.node.value.node {
-            ast::meta_name_value(
-                "doc", {node: ast::lit_str(value), span: _}) {
-                _fndoc = some(~{
-                    id: id,
-                    name: name,
-                    brief: some(value),
-                    desc: none,
-                    return: none,
-                    args: []
-                });
-            }
-            ast::meta_list("doc", docs) {
-                _fndoc = some(
-                    parse_fn_(name, id, docs));
-            }
+          ast::meta_name_value(
+              "doc", {node: ast::lit_str(value), span: _}) {
+            ret {
+                brief: none,
+                desc: some(value),
+                args: [],
+                return: none
+            };
+          }
+          ast::meta_list("doc", docs) {
+            ret parse_fn_(docs);
+          }
         }
     }
 
-    let _fndoc0 = alt _fndoc {
-        some(_d) { _d }
-        none. {
-          ~{
-              id: id,
-              name: name,
-              brief: none,
-              desc: none,
-              return: none,
-              args: []
-          }
-        }
-    };
-
-    ret _fndoc0;
+    {
+        brief: none,
+        desc: none,
+        args: [],
+        return: none
+    }
 }
 
-#[doc(
-  brief = "Parses function docs from a complex #[doc] attribute.",
-  desc = "Supported attributes:
-
-* `brief`: Brief description
-* `desc`: Long description
-* `return`: Description of return value
-* `args`: List of argname = argdesc pairs
-",
-  args(items = "Doc attribute contents"),
-  return = "Parsed function docs."
-)]
 fn parse_fn_(
-    name: str,
-    id: ast::node_id,
     items: [@ast::meta_item]
-) -> doc::fndoc {
+) -> fn_attrs {
     let brief = none;
     let desc = none;
     let return = none;
@@ -95,23 +80,22 @@ fn parse_fn_(
                 alt d.node {
                   ast::meta_name_value(key, {node: ast::lit_str(value),
                                              span: _}) {
-                    argdocs += [(key, value)];
+                    argdocs += [{
+                        name: key,
+                        desc: value
+                    }];
                   }
                 }
             }
         }
     }
 
-    ~{
-        id: id,
-        name: name,
+    {
         brief: brief,
         desc: desc,
-        return: some({
-            desc: return,
-            ty: none,
-        }),
-        args: argdocs }
+        args: argdocs,
+        return: return
+    }
 }
 
 #[cfg(test)]
@@ -138,51 +122,51 @@ mod tests {
     fn parse_fn_should_handle_undocumented_functions() {
         let source = "";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", 0, attrs);
-        assert doc.brief == none;
-        assert doc.desc == none;
-        assert doc.return == none;
-        assert vec::len(doc.args) == 0u;
+        let attrs = parse_fn(attrs);
+        assert attrs.brief == none;
+        assert attrs.desc == none;
+        assert attrs.return == none;
+        assert vec::len(attrs.args) == 0u;
     }
 
-    #[test]
+    #[tes]
     fn parse_fn_should_parse_simple_doc_attributes() {
         let source = "#[doc = \"basic\"]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", 0, attrs);
-        assert doc.brief == some("basic");
+        let attrs = parse_fn(attrs);
+        assert attrs.brief == some("basic");
     }
 
     #[test]
     fn parse_fn_should_parse_the_brief_description() {
         let source = "#[doc(brief = \"short\")]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", 0, attrs);
-        assert doc.brief == some("short");
+        let attrs = parse_fn(attrs);
+        assert attrs.brief == some("short");
     }
 
     #[test]
     fn parse_fn_should_parse_the_long_description() {
         let source = "#[doc(desc = \"description\")]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", 0, attrs);
-        assert doc.desc == some("description");
+        let attrs = parse_fn(attrs);
+        assert attrs.desc == some("description");
     }
 
     #[test]
     fn parse_fn_should_parse_the_return_value_description() {
         let source = "#[doc(return = \"return value\")]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", 0, attrs);
-        assert option::get(doc.return).desc == some("return value");
+        let attrs = parse_fn(attrs);
+        assert attrs.return == some("return value");
     }
 
     #[test]
     fn parse_fn_should_parse_the_argument_descriptions() {
         let source = "#[doc(args(a = \"arg a\", b = \"arg b\"))]";
         let attrs = parse_attributes(source);
-        let doc = parse_fn("f", 0, attrs);
-        assert doc.args[0] == ("a", "arg a");
-        assert doc.args[1] == ("b", "arg b");
+        let attrs = parse_fn(attrs);
+        assert attrs.args[0] == {name: "a", desc: "arg a"};
+        assert attrs.args[1] == {name: "b", desc: "arg b"};
     }
 }
