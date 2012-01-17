@@ -42,6 +42,26 @@ doc/rust.pdf: doc/rust.tex
 
 endif
 
+ifdef CFG_NODE
+
+doc/tutorial/web/index.html: doc/tutorial/args.md \
+		doc/tutorial/control.md \
+		doc/tutorial/data.md \
+		doc/tutorial/ffi.md \
+		doc/tutorial/func.md \
+		doc/tutorial/generic.md \
+		doc/tutorial/iface.md \
+		doc/tutorial/index.md \
+		doc/tutorial/intro.md \
+		doc/tutorial/mod.md \
+		doc/tutorial/setup.md \
+		doc/tutorial/syntax.md \
+		doc/tutorial/task.md \
+		doc/tutorial/test.md
+	$(Q)cd doc/tutorial && $(CFG_NODE) build.js
+
+endif
+
 endif
 
 ifdef CFG_LLNEXTGEN
