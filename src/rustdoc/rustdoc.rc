@@ -13,4 +13,5 @@ mod attr_parser;
 mod doc;
 mod gen;
 mod fold;
+mod attr_pass;
 mod tystr_pass;
