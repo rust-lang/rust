@@ -76,6 +76,7 @@ fn run(source_file: str) {
     let srv = astsrv::mk_seq_srv_from_file(source_file);
     let doc = extract::from_srv(srv, default_name);
     let doc = run_passes(srv, doc, [
+        attr_pass::run,
         tystr_pass::run
     ]);
     gen::write_markdown(doc, std::io::stdout());
