@@ -34,9 +34,9 @@ Rust is a work in progress. The language continues to evolve as the design
 shifts and is fleshed out in working code. Certain parts work, certain parts
 do not, certain parts will be removed or changed.
 
-This manual is a snapshot written in the present tense. All features
-described exist in working code, but some are quite primitive or remain to
-be further modified by planned work. Some may be temporary. It is a
+This manual is a snapshot written in the present tense. All features described
+exist in working code unless otherwise noted, but some are quite primitive or
+remain to be further modified by planned work. Some may be temporary. It is a
 *draft*, and we ask that you not take anything you read here as final.
 
 If you have suggestions to make, please try to focus them on *reductions* to
@@ -82,11 +82,11 @@ Where:
 
 This EBNF dialect should hopefully be familiar to many readers.
 
-The grammar for Rust given in this document is extracted and verified as
-LL(1) by an automated grammar-analysis tool, and further tested against the
-Rust sources. The generated parser is currently *not* the one used by the
-Rust compiler itself, but in the future we hope to relate the two together
-more precisely. As of this writing they are only related by testing against
+The grammar for Rust given in this document is extracted and verified as LL(1)
+by an automated grammar-analysis tool, and further tested against the Rust
+sources. The generated parser is currently *not* the one used by the Rust
+compiler itself, but in the future we hope to relate the two together more
+precisely. As of this writing they are only related by testing against
 existing source code.
 
 ## Unicode productions
@@ -99,13 +99,14 @@ Productions](#special-unicode-productions).
 
 ## String table productions
 
-Some rules in the grammar -- notably [operators](#operators),
-[keywords](#keywords) and [reserved words](#reserved-words) -- are given in a
-simplified form: as a listing of a table of unquoted, printable
-whitespace-separated strings. These cases form a subset of the rules regarding
-the [token](#tokens) rule, and are assumed to be the result of a
-lexical-analysis phase feeding the parser, driven by a DFA, operating over the
-disjunction of all such string table entries.
+Some rules in the grammar -- notably [unary
+operators](#unary-operator-expressions), [binary
+operators](#binary-operator-expressions), [keywords](#keywords) and [reserved
+words](#reserved-words) -- are given in a simplified form: as a listing of a
+table of unquoted, printable whitespace-separated strings. These cases form a
+subset of the rules regarding the [token](#tokens) rule, and are assumed to be
+the result of a lexical-analysis phase feeding the parser, driven by a DFA,
+operating over the disjunction of all such string table entries.
 
 When such a string enclosed in double-quotes (`"`) occurs inside the
 grammar, it is an implicit reference to a single member of such a string table
@@ -189,7 +190,7 @@ with any other legal whitespace element, such as a single space character.
 
 ~~~~~~~~ {.ebnf .gram}
 simple_token : keyword | reserved | unop | binop ; 
-token : simple_token | ident | immediate | symbol | whitespace token ;
+token : simple_token | ident | literal | symbol | whitespace token ;
 ~~~~~~~~
 
 Tokens are primitive productions in the grammar defined by regular
@@ -244,16 +245,16 @@ class trait
 Any of these may have special meaning in future versions of the language, do
 are excluded from the `ident` rule.
 
-### Immediates
+### Literals
 
-Immediates are a subset of all possible literals: those that are defined as
-single tokens, rather than sequences of tokens.
-
-An immediate is a form of [constant expression](#constant-expression), so is
-evaluated (primarily) at compile time.
+A literal is an expression consisting of a single token, rather than a
+sequence of tokens, that immediately and directly denotes the value it
+evaluates to, rather than referring to it by name or some other evaluation
+rule. A literal is a form of [constant expression](#constant-expression), so
+is evaluated (primarily) at compile time.
 
 ~~~~~~~~ {.ebnf .gram}
-immediate : string_lit | char_lit | num_lit ;
+literal : string_lit | char_lit | num_lit ;
 ~~~~~~~~
 
 #### Character and string literals
@@ -406,7 +407,8 @@ symbol : "::" "->"
 Symbols are a general class of printable [token](#tokens) that play structural
 roles in a variety of grammar productions. They are catalogued here for
 completeness as the set of remaining miscellaneous printable token that do not
-otherwise appear as [operators](#operators), [keywords](#keywords) or [reserved
+otherwise appear as [unary operators](#unary-operator-expressions), [binary
+operators](#binary-operator-expressions), [keywords](#keywords) or [reserved
 words](#reserved-words).
 
 
@@ -621,15 +623,37 @@ items.
 ### Modules
 
 ~~~~~~~~ {.ebnf .gram}
-mod_item : "mod" '{' mod '}' ;
+mod_item : "mod" ident '{' mod '}' ;
 mod : [ view_item | item ] * ;
 ~~~~~~~~
 
-A module is a kind of item that contains zero or more [view
-items](#view-items) and zero or more sub-[items](#items). The view items
-manage the visibility of the items defined within the module, as well as the
-visibility of names from outside the module when referenced from inside the
-module.
+A module is a container for zero or more [view items](#view-items) and zero or
+more [items](#items). The view items manage the visibility of the items
+defined within the module, as well as the visibility of names from outside the
+module when referenced from inside the module.
+
+A _module item_ is a module, surrounded in braces, named, and prefixed with
+the keyword `mod`. A module item introduces a new, named module into the tree
+of modules making up a crate. Modules can nest arbitrarily.
+
+An example of a module:
+
+~~~~~~~~
+mod math {
+    type complex = (f64,f64);
+    fn sin(f64) -> f64 {
+        ...
+    }
+    fn cos(f64) -> f64 {
+        ...
+    }
+    fn tan(f64) -> f64 {
+        ...
+    }
+    ...
+}
+~~~~~~~~
+
 
 #### View items
 
@@ -650,7 +674,7 @@ view item:
 ~~~~~~~~ {.ebnf .gram}
 use_decl : "use" ident [ '(' link_attrs ')' ] ? ;
 link_attrs : link_attr [ ',' link_attrs ] + ;
-link_attr : ident '=' immediate ;
+link_attr : ident '=' literal ;
 ~~~~~~~~
 
 A _use declaration_ specifies a dependency on an external crate. The external
@@ -781,11 +805,220 @@ mod foo {
 
 
 ### Functions
+
+A _function item_ defines a sequence of [statements](#statements) and an
+optional final [expression](#expressions) associated with a name and a set of
+parameters. Functions are declared with the keyword `fn`. Functions declare a
+set of *input [slots](#slots)* as parameters, through which the caller passes
+arguments into the function, and an *output [slot](#slots)* through which the
+function passes results back to the caller.
+
+A function may also be copied into a first class *value*, in which case the
+value has the corresponding [*function type*](#function-types), and can be
+used otherwise exactly as a function item (with a minor additional cost of
+calling the function, as such a call is indirect).
+
+Every control path in a function logically ends with a `ret` expression or a
+diverging expression. If the outermost block of a function has a
+value-producing expression in its final-expression position, that expression
+is interpreted as an implicit `ret` expression applied to the
+final-expression.
+
+An example of a function:
+
+~~~~
+fn add(x: int, y: int) -> int {
+    ret x + y;
+}
+~~~~
+
+#### Diverging functions
+
+A special kind of function can be declared with a `!` character where the
+output slot type would normally be. For example:
+
+~~~~
+fn my_err(s: str) -> ! {
+    log(info, s);
+    fail;
+}
+~~~~
+
+We call such functions "diverging" because they never return a value to the
+caller. Every control path in a diverging function must end with a
+[`fail`](#fail-expressions) or a call to another diverging function on every
+control path. The `!` annotation does *not* denote a type. Rather, the result
+type of a diverging function is a special type called $\bot$ ("bottom") that
+unifies with any type. Rust has no syntax for $\bot$.
+
+It might be necessary to declare a diverging function because as mentioned
+previously, the typechecker checks that every control path in a function ends
+with a [`ret`](#return-expressions) or diverging expression. So, if `my_err`
+were declared without the `!` annotation, the following code would not
+typecheck:
+
+~~~~
+fn f(i: int) -> int {
+   if i == 42 {
+     ret 42;
+   }
+   else {
+     my_err("Bad number!");
+   }
+}
+~~~~
+
+The typechecker would complain that `f` doesn't return a value in the
+`else` branch. Adding the `!` annotation on `my_err` would
+express that `f` requires no explicit `ret`, as if it returns
+control to the caller, it returns a value (true because it never returns
+control).
+
+#### Predicate functions
+
+Any pure boolean function is called a *predicate function*, and may be used in
+a [constraint](#constraints), as part of the static [typestate
+system](#typestate-system). A predicate declaration is identical to a function
+declaration, except that it is declared with the additional keyword `pure`. In
+addition, the typechecker checks the body of a predicate with a restricted set
+of typechecking rules. A predicate
+
+* may not contain an assignment or self-call expression; and
+* may only call other predicates, not general functions.
+
+An example of a predicate:
+
+~~~~
+pure fn lt_42(x: int) -> bool {
+    ret (x < 42);
+}
+~~~~
+
+A non-boolean function may also be declared with `pure fn`. This allows
+predicates to call non-boolean functions as long as they are pure. For example:
+
+~~~~
+pure fn pure_length<@T>(ls: list<T>) -> uint { /* ... */ }
+
+pure fn nonempty_list<@T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
+~~~~
+
+In this example, `nonempty_list` is a predicate---it can be used in a
+typestate constraint---but the auxiliary function `pure_length`@ is
+not.
+
+*ToDo:* should actually define referential transparency.
+
+The effect checking rules previously enumerated are a restricted set of
+typechecking rules meant to approximate the universe of observably
+referentially transparent Rust procedures conservatively. Sometimes, these
+rules are *too* restrictive. Rust allows programmers to violate these rules by
+writing predicates that the compiler cannot prove to be referentially
+transparent, using an escape-hatch feature called "unchecked blocks". When
+writing code that uses unchecked blocks, programmers should always be aware
+that they have an obligation to show that the code *behaves* referentially
+transparently at all times, even if the compiler cannot *prove* automatically
+that the code is referentially transparent. In the presence of unchecked
+blocks, the compiler provides no static guarantee that the code will behave as
+expected at runtime. Rather, the programmer has an independent obligation to
+verify the semantics of the predicates they write.
+
+*ToDo:* last two sentences are vague.
+
+An example of a predicate that uses an unchecked block:
+
+~~~~
+fn pure_foldl<@T, @U>(ls: list<T>, u: U, f: block(&T, &U) -> U) -> U {
+    alt ls {
+      nil. { u }
+      cons(hd, tl) { f(hd, pure_foldl(*tl, f(hd, u), f)) }
+    }
+}
+
+pure fn pure_length<@T>(ls: list<T>) -> uint {
+    fn count<T>(_t: T, u: uint) -> uint { u + 1u }
+    unchecked {
+        pure_foldl(ls, 0u, count)
+    }
+}
+~~~~
+
+Despite its name, `pure_foldl` is a `fn`, not a `pure fn`, because there is no
+way in Rust to specify that the higher-order function argument `f` is a pure
+function. So, to use `foldl` in a pure list length function that a predicate
+could then use, we must use an `unchecked` block wrapped around the call to
+`pure_foldl` in the definition of `pure_length`.
+
+
 ### Type definitions
+
+A _type definition_ defines a new name for an existing [type](#types). Type
+definitions are declared with the keyword `type`. Every value has a single,
+specific type; the type-specified aspects of a value include:
+
+* Whether the value is composed of sub-values or is indivisible.
+* Whether the value represents textual or numerical information.
+* Whether the value represents integral or floating-point information.
+* The sequence of memory operations required to access the value.
+* The *kind* of the type (pinned, unique or shared).
+
+For example, the type `{x: u8, y: u8@`} defines the set of immutable values
+that are composite records, each containing two unsigned 8-bit integers
+accessed through the components `x` and `y`, and laid out in memory with the
+`x` component preceding the `y` component.
+
 ### Enumerations
+
+An _enumeration item_ simultaneously declares a new nominal [enumerated
+type](#enumerated-type) as well as a set of *constructors* that can be used to
+create or pattern-match values of the corresponding enumerated type.
+
+The constructors of an `enum` type may be recursive: that is, each constructor
+may take an argument that refers, directly or indirectly, to the enumerated
+type the constructor is a member of. Such recursion has restrictions:
+
+* Recursive types can be introduced only through `enum` constructors.
+* A recursive `enum` item must have at least one non-recursive constructor (in
+  order to give the recursion a basis case).
+* The recursive argument of recursive `enum` constructors must be [*box*
+  values](#box-types) (in order to bound the in-memory size of the
+  constructor).
+* Recursive type definitions can cross module boundaries, but not module
+  *visibility* boundaries, nor crate boundaries (in order to simplify the
+  module system).
+
+
+An example of an `enum` item and its use:
+
+~~~~
+enum animal {
+  dog;
+  cat;
+}
+
+let a: animal = dog;
+a = cat;
+~~~~
+
+An example of a *recursive* `enum` item and its use:
+
+~~~~
+enum list<T> {
+  nil;
+  cons(T, @list<T>);
+}
+
+let a: list<int> = cons(7, @cons(13, @nil));
+~~~~
+
 ### Resources
+*TODO*.
+
 ### Interfaces
+*TODO*.
+
 ### Implementations
+*TODO*.
 
 
 ## Attributes
@@ -851,23 +1084,119 @@ Other attributes may be added or removed during development of the language.
 
 # Statements and expressions
 
-## Call expressions
+Rust is _primarily_ an expression language. This means that most forms of
+value-producing or effect-causing evaluation are directed by the uniform
+syntax category of _expressions_. Each kind of expression can typically _nest_
+within each other kind of expression, and rules for evaluation of expressions
+involve specifying both the value produced by the expression and the order in
+which its sub-expressions are themselves evaluated.
 
-~~~~~~~~ {.abnf .gram}
-expr_list : [ expr [ ',' expr ]* ] ? ;
-paren_expr_list : '(' expr_list ')' ;
-call_expr : expr paren_expr_list ;
-~~~~~~~~
+In contrast, statements in Rust serve _mostly_ to contain and explicitly
+sequence expression evaluation.
 
-## Operators
+## Statements
 
-### Unary operators
+A _statement_ is a component of a block, which is in turn a component of an
+outer [block-expression](#block-expressions) or [function](#functions). When a
+function is spawned into a [task](#tasks), the task *executes* statements in
+an order determined by the body of the enclosing function. Each statement
+causes the task to perform certain actions.
+
+Rust has two kinds of statement: [declarations](#declarations) and
+[expressions](#expressions).
+
+A declaration serves to introduce a *name* that can be used in the block
+*scope* enclosing the statement: all statements before and after the
+name, from the previous opening curly-brace (`{`) up to the next closing
+curly-brace (`}`).
+
+An expression serves the dual roles of causing side effects and producing a
+*value*. Expressions are said to *evaluate to* a value, and the side effects
+are caused during *evaluation*. Many expressions contain sub-expressions as
+operands; the definition of each kind of expression dictates whether or not,
+and in which order, it will evaluate its sub-expressions, and how the
+expression's value derives from the value of its sub-expressions.
+
+In this way, the structure of execution -- both the overall sequence of
+observable side effects and the final produced value -- is dictated by the
+structure of expressions. Blocks themselves are expressions, so the nesting
+sequence of block, statement, expression, and block can repeatedly nest to an
+arbitrary depth.
+
+### Declaration statements
+
+A _declaration statement_ is one that introduces a *name* into the
+enclosing statement block. The declared name may denote a new slot or a new
+item.
+
+#### Item declarations
+
+An _item declaration statement_ has a syntactic form identical to an
+[item](#items) declaration within a module. Declaring an item -- a function,
+enumeration, type, resource, interface, implementation or module -- locally
+within a statement block is simply a way of restricting its scope to a narrow
+region containing all of its uses; it is otherwise identical in meaning to
+declaring the item outside the statement block.
+
+Note: there is no implicit capture of the function's dynamic environment when
+declaring a function-local item.
+
+
+#### Slot declarations
+
+A _slot declaration_ has one one of two forms:
+
+* `let` `pattern` `optional-init`;
+* `let` `pattern` : `type` `optional-init`;
+
+Where `type` is a type expression, `pattern` is an irrefutable pattern (often
+just the name of a single slot), and `optional-init` is an optional
+initializer. If present, the initializer consists of either an assignment
+operator (`=`) or move operator (`<-`), followed by an expression.
+
+Both forms introduce a new slot into the enclosing block scope. The new slot
+is visible from the point of declaration until the end of the enclosing block
+scope.
+
+The former form, with no type annotation, causes the compiler to infer the
+static type of the slot through unification with the types of values assigned
+to the slot in the remaining code in the block scope. Inference only occurs on
+frame-local slots, not argument slots. Function and object signatures must
+always declared types for all argument slots.
+
+
+### Expression statements
+
+An _expression statement_ is one that evaluates an [expression](#expressions)
+and drops its result. The purpose of an expression statement is often to cause
+the side effects of the expression's evaluation.
+
+## Expressions
+
+### Literal expressions
+
+*TODO*.
+
+### Tuple expressions
+
+*TODO*.
+
+### Record expressions
+
+*TODO*.
+
+### Vector expressions
+
+*TODO*.
+
+
+### Unary operator expressions
 
 ~~~~~~~~ {.unop}
 + - * ! @ ~
 ~~~~~~~~
 
-### Binary operators
+### Binary operator expressions
 
 ~~~~~~~~ {.binop}
 .
@@ -876,11 +1205,604 @@ call_expr : expr paren_expr_list ;
 || &&
 < <= == >= >
 << >> >>>
+as
 <- <-> = += -= *= /= %= &= |= ^= <<= >>= >>>=
 ~~~~~~~~
 
+#### Type cast expressions
 
-## Syntax extensions
+A type cast expression is denoted with the binary operator `as`.
+
+Executing an `as` expression casts the value on the left-hand side to the type
+on the right-hand side.
+
+A numeric value can be cast to any numeric type.  A native pointer value can
+be cast to or from any integral type or native pointer type.  Any other cast
+is unsupported and will fail to compile.
+
+An example of an `as` expression:
+
+~~~~
+fn avg(v: [float]) -> float {
+  let sum: float = sum(v);
+  let sz: float = std::vec::len(v) as float;
+  ret sum / sz;
+}
+~~~~
+
+A cast is a *trivial cast* iff the type of the casted expression and the
+target type are identical after replacing all occurences of `int`, `uint`,
+`float` with their machine type equivalents of the target architecture in both
+types.
+
+
+#### Binary move expressions
+
+A _binary move experssion_ consists of an *lval* followed by a left-pointing
+arrow (`<-`) and an *rval* expression.
+
+Evaluating a move expression causes, as a side effect, the *rval* to be
+*moved* into the *lval*. If the *rval* was itself an *lval*, it must be a
+local variable, as it will be de-initialized in the process.
+
+Evaluating a move expression does not effect reference counts nor does it
+cause a deep copy of any unique structure pointed-to by the moved
+*rval*. Instead, the move expression represents an indivisible *transfer of
+ownership* from the right-hand-side to the left-hand-side of the
+expression. No allocation or destruction is entailed.
+
+An example of three different move expressions:
+
+~~~~~~~~
+x <- a;
+x[i] <- b;
+x.y <- c;
+~~~~~~~~
+
+#### Swap expressions
+
+A _swap experssion_ consists of an *lval* followed by a bi-directional arrow
+(`<->`) and another *lval* expression.
+
+Evaluating a swap expression causes, as a side effect, the vales held in the
+left-hand-side and right-hand-side *lvals* to be exchanged indivisibly.
+
+Evaluating a move expression does not effect reference counts nor does it
+cause a deep copy of any unique structure pointed-to by the moved
+*rval*. Instead, the move expression represents an indivisible *exchange of
+ownership* between the right-hand-side to the left-hand-side of the
+expression. No allocation or destruction is entailed.
+
+An example of three different swap expressions:
+
+~~~~~~~~
+x <-> a;
+x[i] <-> b[i];
+x.y <-> a.b;
+~~~~~~~~
+
+
+#### Assignment expressions
+
+An _assignment expression_ consists of an *lval* expression followed by an
+equals-sign (`=`) and an *rval* expression.
+
+Evaluating an assignment expression is equivalent to evaluating a [binary move
+expression](#binary-move-expressions) applied to a [unary copy
+expression](unary-copy-expressions). For example, the following two
+expressions have the same effect:
+
+~~~~
+x = y
+x <- copy y
+~~~~
+
+The former is just more terse and familiar.
+
+### Unary copy expressions
+
+A _unary copy expression_ consists of the unary `copy` operator applied to
+some argument expression.
+
+Evaluating a copy expression first evaluates the argument expression, then
+performs a copy of the resulting value, allocating any memory necessary to
+hold the new copy.
+
+[Shared boxes](#shared-box-types) (type `@`) are, as usual, shallow-copied, as
+they may be cyclic. [Unique boxes](unique-box-types), [vectors](#vector-types)
+and similar unique types are deep-copied.
+
+Since the binary [assignment operator](#assignment-operator) `=` performs a
+copy implicitly, the unary copy operator is typically only used to cause an
+argument to a function should be copied, and the copy passed by-value.
+
+An example of a copy expression:
+
+~~~~
+fn mutate(vec: [mutable int]) {
+   vec[0] = 10;
+}
+
+let v = [mutable 1,2,3];
+
+mutate(copy v);   // Pass a copy
+
+assert v[0] == 1; // Original was not modified
+~~~~
+
+### Unary move expressions
+
+*TODO*.
+
+
+### Call expressions
+
+~~~~~~~~ {.abnf .gram}
+expr_list : [ expr [ ',' expr ]* ] ? ;
+paren_expr_list : '(' expr_list ')' ;
+call_expr : expr paren_expr_list ;
+~~~~~~~~
+
+A _call expression_ invokes a function, providing a tuple of input slots
+and a reference slot to serve as the function's output, bound to the
+`lval` on the right hand side of the call. If the function eventually
+returns, then the expression completes.
+
+A call expression statically requires that the precondition declared in the
+callee's signature is satisfied by the expression prestate. In this way,
+typestates propagate through function boundaries. See [Ref.Typestate](#ref.typestate).
+
+An example of a call expression:
+
+~~~~
+let x: int = add(1, 2);
+~~~~
+
+
+### Bind expressions
+
+A _bind expression_ constructs a new function from an existing function.^[The
+`bind` expression is analogous to the `bind` expression in the Sather
+language.] The new function has zero or more of its arguments *bound* into a
+new, hidden boxed tuple that holds the bindings. For each concrete argument
+passed in the `bind` expression, the corresponding parameter in the existing
+function is *omitted* as a parameter of the new function. For each argument
+passed the placeholder symbol `_` in the `bind` expression, the corresponding
+parameter of the existing function is *retained* as a parameter of the new
+function.
+
+Any subsequent invocation of the new function with residual arguments causes
+invocation of the existing function with the combination of bound arguments
+and residual arguments that was specified during the binding.
+
+An example of a `bind` expression:
+
+~~~~
+fn add(x: int, y: int) -> int {
+    ret x + y;
+}
+type single_param_fn = fn(int) -> int;
+
+let add4: single_param_fn = bind add(4, _);
+
+let add5: single_param_fn = bind add(_, 5);
+
+assert (add(4,5) == add4(5));
+assert (add(4,5) == add5(4));
+
+~~~~
+
+A `bind` expression generally stores a copy of the bound arguments in the
+hidden, boxed tuple, owned by the resulting first-class function. For each
+bound slot in the bound function's signature, space is allocated in the hidden
+tuple and populated with a copy of the bound value.
+
+A `bind` expression is an alternative way of constructing a shared function
+closure; the [`fn@` expression](#shared-function-expression) form is another
+way.
+
+### Shared function expressions
+
+*TODO*.
+
+### Unique function expressions
+
+*TODO*.
+
+### While expressions
+
+A `while` expression is a loop construct. A `while` loop may be either a
+simple `while` or a `do`-`while` loop.
+
+In the case of a simple `while`, the loop begins by evaluating the boolean
+loop conditional expression. If the loop conditional expression evaluates to
+`true`, the loop body block executes and control returns to the loop
+conditional expression. If the loop conditional expression evaluates to
+`false`, the `while` expression completes.
+
+In the case of a `do`-`while`, the loop begins with an execution of the loop
+body. After the loop body executes, it evaluates the loop conditional
+expression. If it evaluates to `true`, control returns to the beginning of the
+loop body. If it evaluates to `false`, control exits the loop.
+
+An example of a simple `while` expression:
+
+~~~~
+while (i < 10) {
+    print("hello\n");
+    i = i + 1;
+}
+~~~~
+
+An example of a `do`-`while` expression:
+
+~~~~
+do {
+    print("hello\n");
+    i = i + 1;
+} while (i < 10);
+~~~~
+
+
+### Break expressions
+
+Executing a `break` expression immediately terminates the innermost loop
+enclosing it. It is only permitted in the body of a loop.
+
+### Continue expressions
+
+Evaluating a `cont` expression immediately terminates the current iteration of
+the innermost loop enclosing it, returning control to the loop *head*. In the
+case of a `while` loop, the head is the conditional expression controlling the
+loop. In the case of a `for` loop, the head is the vector-element increment
+controlling the loop.
+
+A `cont` expression is only permitted in the body of a loop.
+
+
+### For expressions
+
+A _for loop_ is controlled by a vector or string. The for loop bounds-checks
+the underlying sequence *once* when initiating the loop, then repeatedly
+executes the loop body with the loop variable referencing the successive
+elements of the underlying sequence, one iteration per sequence element.
+
+An example a for loop:
+
+~~~~
+let v: [foo] = [a, b, c];
+
+for e: foo in v {
+    bar(e);
+}
+~~~~
+
+
+### If expressions
+
+An `if` expression is a conditional branch in program control. The form of
+an `if` expression is a condition expression, followed by a consequent
+block, any number of `else if` conditions and blocks, and an optional
+trailing `else` block. The condition expressions must have type
+`bool`. If a condition expression evaluates to `true`, the
+consequent block is executed and any subsequent `else if` or `else`
+block is skipped. If a condition expression evaluates to `false`, the
+consequent block is skipped and any subsequent `else if` condition is
+evaluated. If all `if` and `else if` conditions evaluate to `false`
+then any `else` block is executed.
+
+
+### Alternative expressions
+
+An `alt` expression branches on a *pattern*. The exact form of matching that
+occurs depends on the pattern. Patterns consist of some combination of
+literals, destructured tag constructors, records and tuples, variable binding
+specifications and placeholders (`_`). An `alt` expression has a *head
+expression*, which is the value to compare to the patterns. The type of the
+patterns must equal the type of the head expression.
+
+To execute an `alt` expression, first the head expression is evaluated, then
+its value is sequentially compared to the patterns in the arms until a match
+is found. The first arm with a matching pattern is chosen as the branch target
+of the `alt`, any variables bound by the pattern are assigned to local slots
+in the arm's block, and control enters the block.
+
+An example of an `alt` expression:
+
+
+~~~~
+tag list<X> { nil; cons(X, @list<X>); }
+
+let x: list<int> = cons(10, @cons(11, @nil));
+
+alt x {
+    cons(a, @cons(b, _)) {
+        process_pair(a,b);
+    }
+    cons(10, _) {
+        process_ten();
+    }
+    nil {
+        ret;
+    }
+    _ {
+        fail;
+    }
+}
+~~~~
+
+Records can also be pattern-matched and their fields bound to variables.
+When matching fields of a record, the fields being matched are specified
+first, then a placeholder (`_`) represents the remaining fields.
+
+~~~~
+fn main() {
+    let r = {
+        player: "ralph",
+        stats: load_stats(),
+        options: {
+            choose: true,
+            size: "small"
+        }
+    };
+
+    alt r {
+      {options: {choose: true, _}, _} {
+        choose_player(r)
+      }
+      {player: p, options: {size: "small", _}, _} {
+        log(info, p + " is small");
+      }
+      _ {
+        next_player();
+      }
+    }
+}
+~~~~
+
+Multiple alternative patterns may be joined with the `|` operator.  A
+range of values may be specified with `to`.  For example:
+
+~~~~
+let message = alt x {
+  0 | 1  { "not many" }
+  2 to 9 { "a few" }
+  _      { "lots" }
+}
+~~~~
+
+Finally, alt patterns can accept *pattern guards* to further refine the
+criteria for matching a case. Pattern guards appear after the pattern and
+consist of a bool-typed expression following the `if` keyword. A pattern
+guard may refer to the variables bound within the pattern they follow.
+
+~~~~
+let message = alt maybe_digit {
+  some(x) if x < 10 { process_digit(x) }
+  some(x) { process_other(x) }
+}
+~~~~
+
+
+### Fail expressions
+
+Evaluating a `fail` expression causes a task to enter the *failing* state. In
+the *failing* state, a task unwinds its stack, destroying all frames and
+freeing all resources until it reaches its entry frame, at which point it
+halts execution in the *dead* state.
+
+### Note expressions
+
+**Note: Note expressions are not yet supported by the compiler.**
+
+A `note` expression has no effect during normal execution. The purpose of a
+`note` expression is to provide additional diagnostic information to the
+logging subsystem during task failure. See [log
+expressions](#log-expressions). Using `note` expressions, normal diagnostic
+logging can be kept relatively sparse, while still providing verbose
+diagnostic "back-traces" when a task fails.
+
+When a task is failing, control frames *unwind* from the innermost frame to
+the outermost, and from the innermost lexical block within an unwinding frame
+to the outermost. When unwinding a lexical block, the runtime processes all
+the `note` expressions in the block sequentially, from the first expression of
+the block to the last.  During processing, a `note` expression has equivalent
+meaning to a `log` expression: it causes the runtime to append the argument of
+the `note` to the internal logging diagnostic buffer.
+
+An example of a `note` expression:
+
+~~~~
+fn read_file_lines(path: str) -> [str] {
+    note path;
+    let r: [str];
+    let f: file = open_read(path);
+    lines(f) {|s|
+        r += [s];
+    }
+    ret r;
+}
+~~~~
+
+In this example, if the task fails while attempting to open or read a file,
+the runtime will log the path name that was being read. If the function
+completes normally, the runtime will not log the path.
+
+A value that is marked by a `note` expression is *not* copied aside
+when control passes through the `note`. In other words, if a `note`
+expression notes a particular `lval`, and code after the `note`
+mutates that slot, and then a subsequent failure occurs, the *mutated*
+value will be logged during unwinding, *not* the original value that was
+denoted by the `lval` at the moment control passed through the `note`
+expression.
+
+### Return expressions
+
+Return expressions are denoted with the keyword `ret`. Evaluating a `ret`
+expression^[footnote{A `ret` expression is analogous to a `return` expression
+in the C family.] moves its argument into the output slot of the current
+function, destroys the current function activation frame, and transfers
+control to the caller frame.
+
+An example of a `ret` expression:
+
+~~~~
+fn max(a: int, b: int) -> int {
+   if a > b {
+      ret a;
+   }
+   ret b;
+}
+~~~~
+
+### Log expressions
+
+Evaluating a `log` expression may, depending on runtime configuration, cause a
+value to be appended to an internal diagnostic logging buffer provided by the
+runtime or emitted to a system console. Log expressions are enabled or
+disabled dynamically at run-time on a per-task and per-item basis. See
+[logging system](#logging-system).
+
+Each `log` expression must be provided with a *level* argument in
+addition to the value to log. The logging level is a `u32` value, where
+lower levels indicate more-urgent levels of logging. By default, the lowest
+four logging levels (`0_u32 ... 3_u32`) are predefined as the constants
+`error`, `warn`, `info` and `debug` in the `core` library.
+
+Additionally, the macros `#error`, `#warn`, `#info` and `#debug` are defined
+in the default syntax-extension namespace. These expand into calls to the
+logging facility composed with calls to the `#fmt` string formatting
+syntax-extension.
+
+The following examples all produce the same output, logged at the `error`
+logging level:
+
+~~~~
+// Full version, logging a value.
+log(core::error, "file not found: " + filename);
+
+// Log-level abbreviated, since core::* is imported by default.
+log(error, "file not found: " + filename);
+
+// Formatting the message using a format-string and #fmt
+log(error, #fmt("file not found: %s", filename));
+
+// Using the #error macro, that expands to the previous call.
+#error("file not found: %s", filename);
+~~~~
+
+A `log` expression is *not evaluated* when logging at the specified
+logging-level, module or task is disabled at runtime. This makes inactive
+`log` expressions very cheap; they should be used extensively in Rust
+code, as diagnostic aids, as they add little overhead beyond a single
+integer-compare and branch at runtime.
+
+Logging is presently implemented as a language built-in feature, as it makes
+use of compiler-provided logic for allocating the associated per-module
+logging-control structures visible to the runtime, and lazily evaluating
+arguments. In the future, as more of the supporting compiler-provided logic is
+moved into libraries, logging is likely to move to a component of the core
+library. It is best to use the macro forms of logging (*#error*,
+*#debug*, etc.) to minimize disruption to code using the logging facility
+when it is changed.
+
+
+### Check expressions
+
+A `check` expression connects dynamic assertions made at run-time to the
+static [typestate system](#typestate-system). A `check` expression takes a
+constraint to check at run-time. If the constraint holds at run-time, control
+passes through the `check` and on to the next expression in the enclosing
+block. If the condition fails to hold at run-time, the `check` expression
+behaves as a `fail` expression.
+
+The typestate algorithm is built around `check` expressions, and in particular
+the fact that control *will not pass* a check expression with a condition that
+fails to hold. The typestate algorithm can therefore assume that the (static)
+postcondition of a `check` expression includes the checked constraint
+itself. From there, the typestate algorithm can perform dataflow calculations
+on subsequent expressions, propagating [conditions](#conditions) forward and
+statically comparing implied states and their specifications.
+
+~~~~~~~~
+pure fn even(x: int) -> bool {
+    ret x & 1 == 0;
+}
+
+fn print_even(x: int) : even(x) {
+    print(x);
+}
+
+fn test() {
+    let y: int = 8;
+
+    // Cannot call print_even(y) here.
+
+    check even(y);
+
+    // Can call print_even(y) here, since even(y) now holds.
+    print_even(y);
+}
+~~~~~~~~
+
+### Prove expressions
+
+A `prove` expression has no run-time effect. Its purpose is to statically
+check (and document) that its argument constraint holds at its expression
+entry point. If its argument typestate does not hold, under the typestate
+algorithm, the program containing it will fail to compile.
+
+### Claim expressions
+
+A `claim` expression is an unsafe variant on a `check` expression that is not
+actually checked at runtime. Thus, using a `claim` implies a proof obligation
+to ensure---without compiler assistance---that an assertion always holds.
+
+Setting a runtime flag can turn all `claim` expressions into `check`
+expressions in a compiled Rust program, but the default is to not check the
+assertion contained in a `claim`. The idea behind `claim` is that performance
+profiling might identify a few bottlenecks in the code where actually checking
+a given callee's predicate is too expensive; `claim` allows the code to
+typecheck without removing the predicate check at every other call site.
+
+
+
+### If-Check expressions
+
+An `if check` expression combines a `if` expression and a `check`
+expression in an indivisible unit that can be used to build more complex
+conditional control-flow than the `check` expression affords.
+
+In fact, `if check` is a "more primitive" expression than `check`;
+instances of the latter can be rewritten as instances of the former. The
+following two examples are equivalent:
+
+Example using `check`:
+
+~~~~
+check even(x);
+print_even(x);
+~~~~
+
+Equivalent example using `if check`:
+
+~~~~
+if check even(x) {
+    print_even(x);
+} else {
+    fail;
+}
+~~~~
+
+### Assert expressions
+
+An `assert` expression is similar to a `check` expression, except
+the condition may be any boolean-typed expression, and the compiler makes no
+use of the knowledge that the condition holds if the program continues to
+execute after the `assert`.
+
+
+### Syntax extension expressions
 
 ~~~~~~~~ {.abnf .gram}
 syntax_ext_expr : '#' ident paren_expr_list ? brace_match ? ;
@@ -1125,6 +2047,9 @@ tuple of arguments.
 Enumerated types cannot be denoted *structurally* as types, but must be
 denoted by named reference to an [*enumeration* item](#enumerations).
 
+### Box types
+
+*TODO*.
 
 ### Function types
 
@@ -1135,7 +2060,7 @@ constraints](#input-constraints) and an output slot. See
 
 An example of a `fn` type:
 
-~~~~
+~~~~~~~~
 fn add(x: int, y: int) -> int {
   ret x + y;
 }
@@ -1145,11 +2070,216 @@ let int x = add(5,7);
 type binop = fn(int,int) -> int;
 let bo: binop = add;
 x = bo(5,7);
-~~~~
+~~~~~~~~
 
 
 
 ## Typestate system
+
+
+Rust programs have a static semantics that determine the types of values
+produced by each expression, as well as the *predicates* that hold over
+slots in the environment at each point in time during execution.
+
+The latter semantics -- the dataflow analysis of predicates holding over slots
+-- is called the *typestate* system.
+
+### Points
+
+Control flows from statement to statement in a block, and through the
+evaluation of each expression, from one sub-expression to another. This
+sequential control flow is specified as a set of _points_, each of which
+has a set of points before and after it in the implied control flow.
+
+For example, this code:
+
+~~~~~~~~
+ s = "hello, world";
+ print(s);
+~~~~~~~~
+
+Consists of 2 statements, 3 expressions and 12 points:
+
+
+* the point before the first statement
+* the point before evaluating the static initializer `"hello, world"`
+* the point after evaluating the static initializer `"hello, world"`
+* the point after the first statement
+* the point before the second statement
+* the point before evaluating the function value `print`
+* the point after evaluating the function value `print`
+* the point before evaluating the arguments to `print`
+* the point before evaluating the symbol `s`
+* the point after evaluating the symbol `s`
+* the point after evaluating the arguments to `print`
+* the point after the second statement
+
+
+Whereas this code:
+
+
+~~~~~~~~
+ print(x() + y());
+~~~~~~~~
+
+Consists of 1 statement, 7 expressions and 14 points:
+
+
+* the point before the statement
+* the point before evaluating the function value `print`
+* the point after evaluating the function value `print`
+* the point before evaluating the arguments to `print`
+* the point before evaluating the arguments to `+`
+* the point before evaluating the function value `x`
+* the point after evaluating the function value `x`
+* the point before evaluating the arguments to `x`
+* the point after evaluating the arguments to `x`
+* the point before evaluating the function value `y`
+* the point after evaluating the function value `y`
+* the point before evaluating the arguments to `y`
+* the point after evaluating the arguments to `y`
+* the point after evaluating the arguments to `+`
+* the point after evaluating the arguments to `print`
+
+
+The typestate system reasons over points, rather than statements or
+expressions. This may seem counter-intuitive, but points are the more
+primitive concept. Another way of thinking about a point is as a set of
+*instants in time* at which the state of a task is fixed. By contrast, a
+statement or expression represents a *duration in time*, during which the
+state of the task changes. The typestate system is concerned with constraining
+the possible states of a task's memory at *instants*; it is meaningless to
+speak of the state of a task's memory "at" a statement or expression, as each
+statement or expression is likely to change the contents of memory.
+
+
+### Control flow graph
+
+Each *point* can be considered a vertex in a directed *graph*. Each
+kind of expression or statement implies a number of points *and edges* in
+this graph. The edges connect the points within each statement or expression,
+as well as between those points and those of nearby statements and expressions
+in the program. The edges between points represent *possible* indivisible
+control transfers that might occur during execution.
+
+This implicit graph is called the _control-flow graph_, or _CFG_.
+
+
+### Constraints
+
+A [_predicate_](#predicate-functions) is a pure boolean function declared with
+the keywords `pure fn`.
+
+A _constraint_ is a predicate applied to specific slots.
+
+For example, consider the following code:
+
+~~~~~~~~
+pure fn is_less_than(int a, int b) -> bool {
+     ret a < b;
+}
+
+fn test() {
+   let x: int = 10;
+   let y: int = 20;
+   check is_less_than(x,y);
+}
+~~~~~~~~
+
+This example defines the predicate `is_less_than`, and applies it to the slots
+`x` and `y`. The constraint being checked on the third line of the function is
+`is_less_than(x,y)`.
+
+Predicates can only apply to slots holding immutable values. The slots a
+predicate applies to can themselves be mutable, but the types of values held
+in those slots must be immutable.
+
+### Conditions
+
+A _condition_ is a set of zero or more constraints.
+
+Each *point* has an associated *condition*:
+
+* The _precondition_ of a statement or expression is the condition required at
+in the point before it.
+* The _postcondition_ of a statement or expression is the condition enforced
+in the point after it.
+
+Any constraint present in the precondition and *absent* in the postcondition
+is considered to be *dropped* by the statement or expression.
+
+
+### Calculated typestates
+
+The typestate checking system *calculates* an additional condition for each
+point called its _typestate_. For a given statement or expression, we call the
+two typestates associated with its two points the prestate and a poststate.
+
+* The _prestate_ of a statement or expression is the typestate of the
+point before it.
+* The _poststate_ of a statement or expression is the typestate of the
+point after it.
+
+A _typestate_ is a condition that has _been determined by the typestate
+algorithm_ to hold at a point. This is a subtle but important point to
+understand: preconditions and postconditions are *inputs* to the typestate
+algorithm; prestates and poststates are *outputs* from the typestate
+algorithm.
+
+The typestate algorithm analyses the preconditions and postconditions of every
+statement and expression in a block, and computes a condition for each
+typestate. Specifically:
+
+
+* Initially, every typestate is empty.
+* Each statement or expression's poststate is given the union of the its
+prestate, precondition, and postcondition.
+* Each statement or expression's poststate has the difference between its
+precondition and postcondition removed.
+* Each statement or expression's prestate is given the intersection of the
+poststates of every predecessor point in the CFG.
+* The previous three steps are repeated until no typestates in the
+block change.
+
+The typestate algorithm is a very conventional dataflow calculation, and can
+be performed using bit-set operations, with one bit per predicate and one
+bit-set per condition.
+
+After the typestates of a block are computed, the typestate algorithm checks
+that every constraint in the precondition of a statement is satisfied by its
+prestate. If any preconditions are not satisfied, the mismatch is considered a
+static (compile-time) error.
+
+
+### Typestate checks
+
+The key mechanism that connects run-time semantics and compile-time analysis
+of typestates is the use of [`check` expressions](#check-expressions). A
+`check` expression guarantees that *if* control were to proceed past it, the
+predicate associated with the `check` would have succeeded, so the constraint
+being checked *statically* holds in subsequent points.^[A `check` expression
+is similar to an `assert` call in a C program, with the significant difference
+that the Rust compiler *tracks* the constraint that each `check` expression
+enforces. Naturally, `check` expressions cannot be omitted from a "production
+build" of a Rust program the same way `asserts` are frequently disabled in
+deployed C programs.}
+
+It is important to understand that the typestate system has *no insight* into
+the meaning of a particular predicate. Predicates and constraints are not
+evaluated in any way at compile time. Predicates are treated as specific (but
+unknown) functions applied to specific (also unknown) slots. All the typestate
+system does is track which of those predicates -- whatever they calculate --
+*must have been checked already* in order for program control to reach a
+particular point in the CFG. The fundamental building block, therefore, is the
+`check` statement, which tells the typestate system "if control passes this
+point, the checked predicate holds".
+
+From this building block, constraints can be propagated to function signatures
+and constrained types, and the responsibility to `check` a constraint
+pushed further and further away from the site at which the program requires it
+to hold in order to execute properly.
+
+
 
 # Memory and concurrency models
 
@@ -1522,7 +2652,7 @@ let s: str = recv(p);
 
 # Appendix: Rationales and design tradeoffs
 
-_TBD_.
+*TODO*.
 
 # Appendix: Influences and further references
 
