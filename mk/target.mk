@@ -31,14 +31,14 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB): \
 		$$(CORELIB_CRATE) $$(CORELIB_INPUTS) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) --no-core --lib -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) --no-core -o $$@ $$< && touch $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB): \
 		$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
         $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) --lib -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM): \
 		rustllvm/$(2)/$$(CFG_RUSTLLVM)
@@ -58,7 +58,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC):		\
 		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
 		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3))  --lib -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
 
 endef
 
