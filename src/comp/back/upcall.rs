@@ -16,6 +16,7 @@ type upcalls =
      free: ValueRef,
      shared_malloc: ValueRef,
      shared_free: ValueRef,
+     memset: ValueRef,
      mark: ValueRef,
      create_shared_type_desc: ValueRef,
      free_shared_type_desc: ValueRef,
@@ -64,6 +65,7 @@ fn declare_upcalls(targ_cfg: @session::config,
                 T_ptr(T_i8())),
           shared_free:
               dv("shared_free", [T_ptr(T_i8())]),
+          memset: dv("memset", [T_ptr(T_i8()), T_i8(), T_i32(), T_i32()]),
           mark:
               d("mark", [T_ptr(T_i8())], int_t),
           create_shared_type_desc:
