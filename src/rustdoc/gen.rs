@@ -50,6 +50,7 @@ fn write_mod(
     ctxt: ctxt,
     moddoc: doc::moddoc
 ) {
+    write_header(ctxt, #fmt("Module `%s`", moddoc.name));
     write_mod_contents(ctxt, moddoc);
 }
 
@@ -139,5 +140,14 @@ mod tests {
         let doc = extract::extract(ast, "");
         let markdown = write_markdown_str(doc);
         assert str::contains(markdown, "## Function `func`");
+    }
+
+    #[test]
+    fn write_markdown_should_write_mod_headers() {
+        let source = "mod moo { }";
+        let ast = parse::from_str(source);
+        let doc = extract::extract(ast, "");
+        let markdown = write_markdown_str(doc);
+        assert str::contains(markdown, "## Module `moo`");
     }
 }
