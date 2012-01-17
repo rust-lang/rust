@@ -1,4 +1,5 @@
 import rustc::syntax::ast;
+import rustc::front::attr;
 
 export fn_attrs, arg_attrs;
 export parse_fn;
@@ -15,86 +16,143 @@ type arg_attrs = {
     desc: str
 };
 
+fn doc_meta(
+    attrs: [ast::attribute]
+) -> option<@ast::meta_item> {
+    let doc_attrs = attr::find_attrs_by_name(attrs, "doc");
+    let doc_metas = attr::attr_metas(doc_attrs);
+    if vec::is_not_empty(doc_metas) {
+        if vec::len(doc_metas) != 1u {
+            #warn("ignoring %u doc attributes", vec::len(doc_metas) - 1u);
+        }
+        some(doc_metas[0])
+    } else {
+        none
+    }
+}
+
 fn parse_fn(
     attrs: [ast::attribute]
 ) -> fn_attrs {
 
-    for attr in attrs {
-        alt attr.node.value.node {
-          ast::meta_name_value(
-              "doc", {node: ast::lit_str(value), span: _}) {
-            ret {
-                brief: none,
-                desc: some(value),
-                args: [],
-                return: none
-            };
-          }
-          ast::meta_list("doc", docs) {
-            ret parse_fn_(docs);
-          }
-          _ { }
-        }
-    }
-
-    {
+    let no_attrs = {
         brief: none,
         desc: none,
         args: [],
         return: none
+    };
+
+    ret alt doc_meta(attrs) {
+      some(meta) {
+        alt attr::get_meta_item_value_str(meta) {
+          some(desc) {
+            {
+                brief: none,
+                desc: some(desc),
+                args: [],
+                return: none
+            }
+          }
+          none. {
+            alt attr::get_meta_item_list(meta) {
+              some(list) {
+                parse_fn_(list)
+              }
+              none. {
+                no_attrs
+              }
+            }
+          }
+        }
+      }
+      none. {
+        no_attrs
+      }
+    };
+}
+
+fn meta_item_from_list(
+    items: [@ast::meta_item],
+    name: str
+) -> option<@ast::meta_item> {
+    let items = attr::find_meta_items_by_name(items, name);
+    vec::last(items)
+}
+
+fn meta_item_value_from_list(
+    items: [@ast::meta_item],
+    name: str
+) -> option<str> {
+    alt meta_item_from_list(items, name) {
+      some(item) {
+        alt attr::get_meta_item_value_str(item) {
+          some(value) { some(value) }
+          none. { none }
+        }
+      }
+      none. { none }
     }
+}
+
+fn meta_item_list_from_list(
+    items: [@ast::meta_item],
+    name: str
+) -> option<[@ast::meta_item]> {
+    alt meta_item_from_list(items, name) {
+      some(item) {
+        attr::get_meta_item_list(item)
+      }
+      none. { none }
+    }
+}
+
+fn name_value_str_pair(
+    item: @ast::meta_item
+) -> option<(str, str)> {
+    alt attr::get_meta_item_value_str(item) {
+      some(value) {
+        let name = attr::get_meta_item_name(item);
+        some((name, value))
+      }
+      none. { none }
+    }
+}
+
+fn fst<T, U>(+pair: (T, U)) -> T {
+    let (t, _) = pair;
+    ret t;
+}
+
+fn snd<T, U>(+pair: (T, U)) -> U {
+    let (_, u) = pair;
+    ret u;
 }
 
 fn parse_fn_(
     items: [@ast::meta_item]
 ) -> fn_attrs {
-    let brief = none;
-    let desc = none;
-    let return = none;
-    let argdocs = [];
-    let argdocsfound = none;
-    for item: @ast::meta_item in items {
-        alt item.node {
-            ast::meta_name_value("brief", {node: ast::lit_str(value),
-                                           span: _}) {
-                brief = some(value);
-            }
-            ast::meta_name_value("desc", {node: ast::lit_str(value),
-                                              span: _}) {
-                desc = some(value);
-            }
-            ast::meta_name_value("return", {node: ast::lit_str(value),
-                                            span: _}) {
-                return = some(value);
-            }
-            ast::meta_list("args", args) {
-                argdocsfound = some(args);
-            }
-            _ { }
-        }
-    }
+    let brief = meta_item_value_from_list(items, "brief");
+    let desc = meta_item_value_from_list(items, "desc");
+    let return = meta_item_value_from_list(items, "return");
 
-    alt argdocsfound {
-        none. { }
-        some(ds) {
-            for d: @ast::meta_item in ds {
-                alt d.node {
-                  ast::meta_name_value(key, {node: ast::lit_str(value),
-                                             span: _}) {
-                    argdocs += [{
-                        name: key,
-                        desc: value
-                    }];
-                  }
+    let args = alt meta_item_list_from_list(items, "args") {
+      some(items) {
+        vec::filter_map(items) {|item|
+            option::map(name_value_str_pair(item)) { |pair|
+                {
+                    name: fst(pair),
+                    desc: snd(pair)
                 }
             }
         }
-    }
+      }
+      none. { [] }
+    };
 
     {
         brief: brief,
         desc: desc,
-        args: argdocs,
+        args: args,
         return: return
     }
 }
@@ -103,11 +161,12 @@ fn parse_fn_(
 mod tests {
 
     fn parse_attributes(source: str) -> [ast::attribute] {
-        import rustc::driver::diagnostic;
-        import rustc::syntax::codemap;
         import rustc::syntax::parse::parser;
+        // FIXME: Uncommenting this results in rustc bugs
+        //import rustc::syntax::codemap;
+        import rustc::driver::diagnostic;
 
-        let cm = codemap::new_codemap();
+        let cm = rustc::syntax::codemap::new_codemap();
         let parse_sess = @{
             cm: cm,
             mutable next_id: 0,
@@ -130,12 +189,12 @@ mod tests {
         assert vec::len(attrs.args) == 0u;
     }
 
-    #[tes]
+    #[test]
     fn parse_fn_should_parse_simple_doc_attributes() {
         let source = "#[doc = \"basic\"]";
         let attrs = parse_attributes(source);
         let attrs = parse_fn(attrs);
-        assert attrs.brief == some("basic");
+        assert attrs.desc == some("basic");
     }
 
     #[test]
