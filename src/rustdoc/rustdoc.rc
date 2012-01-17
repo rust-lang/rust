@@ -15,5 +15,6 @@ mod gen;
 mod fold;
 mod attr_pass;
 mod tystr_pass;
+mod prune_undoc_pass;
 mod astsrv;
 mod util;
