@@ -16,7 +16,7 @@ fn new_parse_sess() -> parser::parse_sess {
 }
 
 fn from_file(file: str) -> @ast::crate {
-    parser::parse_crate_from_source_file(
+    parser::parse_crate_from_file(
         file, [], new_parse_sess())
 }
 
