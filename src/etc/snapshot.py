@@ -118,7 +118,7 @@ def local_rev_committer_date():
 
 def get_url_to_file(u,f):
     # no security issue, just to stop partial download leaving a stale file
-  tmpf = f + '.tmp'
+    tmpf = f + '.tmp'
     try:
         subprocess.check_call(["curl", "-o", tmpf, u])
     except subprocess.CalledProcessError:
