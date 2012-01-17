@@ -148,6 +148,12 @@ else
   endif
 endif
 
+ifeq ($(CFG_NODE),)
+  $(info cfg: no node found, omitting doc/tutorial/web)
+else
+  DOCS += doc/tutorial/web/index.html
+endif
+
 ifeq ($(CFG_NATURALDOCS),)
   $(info cfg: no naturaldocs found, omitting library doc build)
 else
