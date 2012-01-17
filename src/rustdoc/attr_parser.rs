@@ -1,5 +1,6 @@
 import rustc::syntax::ast;
 import rustc::front::attr;
+import std::tuple;
 
 export fn_attrs, arg_attrs;
 export parse_fn;
@@ -83,8 +84,8 @@ fn parse_fn_(
         vec::filter_map(items) {|item|
             option::map(attr::name_value_str_pair(item)) { |pair|
                 {
-                    name: util::fst(pair),
-                    desc: util::snd(pair)
+                    name: tuple::first(pair),
+                    desc: tuple::second(pair)
                 }
             }
         }

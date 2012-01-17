@@ -12,7 +12,7 @@ export c_vec, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
 export ebml, dbg, getopts, json, rand, sha1, term, time;
-export extfmt, test, tempfile;
+export extfmt, test, tempfile, tuple;
 // FIXME: generic_os and os_fs shouldn't be exported
 export generic_os, os, os_fs;
 
@@ -61,6 +61,7 @@ mod md4;
 mod tempfile;
 mod term;
 mod time;
+mod tuple;
 
 #[cfg(unicode)]
 mod unicode;
