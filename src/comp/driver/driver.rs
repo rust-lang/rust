@@ -76,14 +76,15 @@ fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
 
 fn input_is_stdin(filename: str) -> bool { filename == "-" }
 
-fn parse_input(sess: session, cfg: ast::crate_cfg, input: str) ->
-   @ast::crate {
-    if !input_is_stdin(input) {
+fn parse_input(sess: session, cfg: ast::crate_cfg, input: str)
+    -> {crate: @ast::crate, src: str} {
+    let src = get_input_str(sess, input);
+    let crate = if !input_is_stdin(input) {
         parser::parse_crate_from_file(input, cfg, sess.parse_sess)
     } else {
-        let src = get_input_str(sess, input);
         parser::parse_crate_from_source_str(input, src, cfg, sess.parse_sess)
-    }
+    };
+    {crate: crate, src: src}
 }
 
 fn get_input_str(sess: session, infile: str) -> str {
@@ -140,11 +141,11 @@ enum compile_upto {
 fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 input: str, upto: compile_upto,
                 outputs: option::t<output_filenames>)
-    -> {crate: @ast::crate, tcx: option::t<ty::ctxt>} {
+    -> {crate: @ast::crate, tcx: option::t<ty::ctxt>, src: str} {
     let time_passes = sess.opts.time_passes;
-    let crate =
+    let {crate, src} =
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
-    if upto == cu_parse { ret {crate: crate, tcx: none}; }
+    if upto == cu_parse { ret {crate: crate, tcx: none, src: src}; }
 
     sess.building_library =
         session::building_library(sess.opts.crate_type, crate);
@@ -159,7 +160,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         time(time_passes, "expansion",
              bind syntax::ext::expand::expand_crate(sess, crate));
 
-    if upto == cu_expand { ret {crate: crate, tcx: none}; }
+    if upto == cu_expand { ret {crate: crate, tcx: none, src: src}; }
     if sess.opts.libcore {
         crate = inject_libcore_reference(sess, crate);
     }
@@ -182,7 +183,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         time(time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, impl_map, crate));
 
-    if upto == cu_typeck { ret {crate: crate, tcx: some(ty_cx)}; }
+    if upto == cu_typeck { ret {crate: crate, tcx: some(ty_cx), src: src}; }
 
     time(time_passes, "block-use checking",
          bind middle::block_use::check_crate(ty_cx, crate));
@@ -203,7 +204,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_uses, crate));
 
-    if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
+    if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx), src: src}; }
     let outputs = option::get(outputs);
 
     let (llmod, link_meta) =
@@ -219,12 +220,12 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         sess.opts.output_type != link::output_type_exe ||
             sess.opts.static && sess.building_library;
 
-    if stop_after_codegen { ret {crate: crate, tcx: some(ty_cx)}; }
+    if stop_after_codegen { ret {crate: crate, tcx: some(ty_cx), src: src}; }
 
     time(time_passes, "Linking",
          bind link::link_binary(sess, outputs.obj_filename,
                                 outputs.out_filename, link_meta));
-    ret {crate: crate, tcx: some(ty_cx)};
+    ret {crate: crate, tcx: some(ty_cx), src: src};
 }
 
 fn compile_input(sess: session, cfg: ast::crate_cfg, input: str,
@@ -283,8 +284,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
       ppm_typed. { cu_typeck }
       _ { cu_parse }
     };
-    let {crate, tcx} = compile_upto(sess, cfg, input, upto, none);
-    let src = get_input_str(sess, input);
+    let {crate, tcx, src} = compile_upto(sess, cfg, input, upto, none);
 
     let ann: pprust::pp_ann = pprust::no_ann();
     alt ppm {
