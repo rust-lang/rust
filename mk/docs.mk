@@ -19,8 +19,12 @@ doc/rust.html: rust.md doc/version.md doc/keywords.md
          --section-divs \
          --number-sections \
          --from=markdown --to=html \
+         --css=rust.css \
          --output=$@ \
          $<
+	@$(call E, cp: $(S)doc/rust.css)
+	-$(Q)cp -a $(S)doc/rust.css doc/rust.css 2> /dev/null
+
 
 ifdef CFG_PDFLATEX
 
@@ -50,7 +54,7 @@ ifdef CFG_NODE
 doc/tutorial/web/index.html: \
         $(wildcard $(S)doc/tutorial/*.md)
 	@$(call E, cp: $(S)doc/tutorial)
-	$(Q)cp -a $(S)doc/tutorial doc/
+	-$(Q)cp -a $(S)doc/tutorial doc/ 2> /dev/null
 	@$(call E, node: build.js)
 	$(Q)cd doc/tutorial && $(CFG_NODE) build.js
 
