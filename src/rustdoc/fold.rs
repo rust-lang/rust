@@ -1,6 +1,7 @@
 export fold;
 export fold_crate, fold_mod, fold_fn, fold_modlist, fold_fnlist;
 export default_seq_fold;
+export default_seq_fold_crate;
 export default_seq_fold_fn;
 export default_seq_fold_fnlist;
 

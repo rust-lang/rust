@@ -20,6 +20,12 @@ fn run(
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
+        fold_crate: fn~(
+            f: fold::fold<astsrv::srv>,
+            d: doc::cratedoc
+        ) -> doc::cratedoc {
+            fold_crate(f, d)
+        },
         fold_fn: fn~(
             f: fold::fold<astsrv::srv>,
             d: doc::fndoc
@@ -29,6 +35,38 @@ fn run(
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
+}
+
+fn fold_crate(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::cratedoc
+) -> doc::cratedoc {
+
+    let srv = fold.ctxt;
+    let doc = fold::default_seq_fold_crate(fold, doc);
+
+    let attrs = astsrv::exec(srv) {|ctxt|
+        let attrs = ctxt.ast.node.attrs;
+        attr_parser::parse_crate(attrs)
+    };
+
+    ~{
+        topmod: ~{
+            name: option::from_maybe(doc.topmod.name, attrs.name),
+            mods: doc.topmod.mods,
+            fns: doc.topmod.fns
+        }
+    }
+}
+
+#[test]
+fn should_replace_top_module_name_with_crate_name() {
+    let source = "#[link(name = \"bond\")];";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_crate(fold, doc);
+    assert doc.topmod.name == "bond";
 }
 
 fn fold_fn(
