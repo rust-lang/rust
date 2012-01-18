@@ -1,3 +1,4 @@
+import core::ctypes::c_uint;
 import syntax::ast;
 import syntax::ast_util;
 import lib::llvm::llvm;
@@ -955,7 +956,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
 
           // Arg will be provided when the thunk is invoked.
           none. {
-            let arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
+            let arg: ValueRef = llvm::LLVMGetParam(llthunk, a as c_uint);
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
                 arg = PointerCast(bcx, arg, llout_arg_ty);
             }

@@ -55,7 +55,7 @@ export try;
 #[abi = "rust-intrinsic"]
 native mod rusti {
     // these must run on the Rust stack so that they can swap stacks etc:
-    fn task_sleep(task: *rust_task, time_in_us: uint, &killed: bool);
+    fn task_sleep(task: *rust_task, time_in_us: c::size_t, &killed: bool);
 }
 
 type rust_closure = {

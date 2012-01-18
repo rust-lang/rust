@@ -6,7 +6,7 @@ Unsafe pointer utility functions
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn addr_of<T>(val: T) -> *T;
-    fn ptr_offset<T>(ptr: *T, count: uint) -> *T;
+    fn ptr_offset<T>(ptr: *T, count: ctypes::uintptr_t) -> *T;
 }
 
 /*

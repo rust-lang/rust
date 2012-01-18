@@ -2680,6 +2680,25 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method) {
     check_fn(ccx, ast::proto_bare, method.decl, method.body, method.id, none);
 }
 
+fn check_native_fn(ccx: @crate_ctxt, decl: ast::fn_decl) {
+    let tys = vec::map(decl.inputs) {|a| a.ty };
+    for ty in (tys + [decl.output]) {
+        alt ty.node {
+          ast::ty_int(ast::ty_i.) {
+            ccx.tcx.sess.span_warn(
+                ty.span, "found rust type `int` in native module, while " +
+                         "ctypes::c_int or ctypes::long should be used");
+          }
+          ast::ty_uint(ast::ty_u.) {
+            ccx.tcx.sess.span_warn(
+                ty.span, "found rust type `uint` in native module, while " +
+                         "ctypes::c_uint or ctypes::ulong should be used");
+          }
+          _ { }
+        }
+    }
+}
+
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
@@ -2689,6 +2708,16 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       }
       ast::item_res(decl, tps, body, dtor_id, _) {
         check_fn(ccx, ast::proto_bare, decl, body, dtor_id, none);
+      }
+      ast::item_native_mod(nmod) {
+        for ni in nmod.items {
+            alt ni.node {
+              ast::native_item_fn(decl, tps) {
+                check_native_fn(ccx, decl);
+              }
+              _ { }
+            }
+        }
       }
       ast::item_impl(tps, _, ty, ms) {
         ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];

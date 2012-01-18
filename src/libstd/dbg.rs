@@ -14,7 +14,8 @@ native mod rustrt {
     fn debug_opaque<T>(td: *sys::type_desc, x: T);
     fn debug_box<T>(td: *sys::type_desc, x: @T);
     fn debug_tag<T>(td: *sys::type_desc, x: T);
-    fn debug_obj<T>(td: *sys::type_desc, x: T, nmethods: uint, nbytes: uint);
+    fn debug_obj<T>(td: *sys::type_desc, x: T,
+                    nmethods: ctypes::size_t, nbytes: ctypes::size_t);
     fn debug_fn<T>(td: *sys::type_desc, x: T);
     fn debug_ptrcast<T, U>(td: *sys::type_desc, x: @T) -> @U;
 }
