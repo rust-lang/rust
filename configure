@@ -298,6 +298,16 @@ then
     probe CFG_NODE         nodejs
 fi
 
+if [ ! -z "$CFG_PANDOC" ]
+then
+    PV=$(pandoc --version | awk '/^pandoc/ {print $2}')
+    if [ "$PV" \< "1.8" ]
+    then
+	step_msg "pandoc $PV is too old. disabling"
+	BAD_PANDOC=1
+    fi
+fi
+
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
     err "either clang or gcc is required"
@@ -614,6 +624,13 @@ putvar CFG_LIBDIR
 if [ $CFG_DISABLE_MANAGE_SUBMODULES ]
 then
     putvar CFG_DISABLE_MANAGE_SUBMODULES
+fi
+
+# Ditto for pandoc
+if [ ! -z $BAD_PANDOC ]
+then
+    CFG_PANDOC=
+    putvar CFG_PANDOC
 fi
 
 if head -n 1 ${CFG_SRC_DIR}src/snapshots.txt | grep -q '^T'
