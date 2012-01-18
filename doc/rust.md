@@ -1,5 +1,4 @@
 % Rust Reference Manual
-% January 2012
 
 # Introduction
 
@@ -3179,5 +3178,3 @@ Additional specific influences can be seen from the following languages:
 * The lexical identifier rule of Python.
 * The block syntax of Ruby.
 
-
-LocalWords:  codepoint

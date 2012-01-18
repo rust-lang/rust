@@ -145,7 +145,7 @@ endif
 
 doc/version.md: $(MKFILE_DEPS) rust.md
 	@$(call E, version-stamp: $@)
-	$(Q)echo "$(CFG_VERSION)" >>$@
+	$(Q)echo "$(CFG_VERSION)" >$@
 
 doc/keywords.md: $(MKFILE_DEPS) rust.md
 	@$(call E, grep -v: $$@)
