@@ -118,6 +118,7 @@ define TEST_STAGEN
 
 check-stage$(1)-T-$(2)-H-$(3): tidy				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc			\
+        check-stage$(1)-T-$(2)-H-$(3)-core                      \
 	check-stage$(1)-T-$(2)-H-$(3)-std			\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass			\
 	check-stage$(1)-T-$(2)-H-$(3)-rfail			\
@@ -125,6 +126,9 @@ check-stage$(1)-T-$(2)-H-$(3): tidy				\
 	check-stage$(1)-T-$(2)-H-$(3)-bench			\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty                    \
         check-stage$(1)-T-$(2)-H-$(3)-rustdoc
+
+check-stage$(1)-T-$(2)-H-$(3)-core:				\
+	check-stage$(1)-T-$(2)-H-$(3)-core-dummy
 
 check-stage$(1)-T-$(2)-H-$(3)-std:				\
 	check-stage$(1)-T-$(2)-H-$(3)-std-dummy
@@ -167,6 +171,19 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty:				\
 
 check-stage$(1)-T-$(2)-H-$(3)-rustdoc:				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy
+
+# Rules for the core library test runner
+
+$(3)/test/coretest.stage$(1)-$(2)$$(X):			\
+		$$(CORELIB_CRATE) $$(CORELIB_INPUTS)	\
+        $$(SREQ$(1)_T_$(2)_H_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test --no-core
+
+check-stage$(1)-T-$(2)-H-$(3)-core-dummy:			\
+		$(3)/test/coretest.stage$(1)-$(2)$$(X)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
 
 # Rules for the standard library test runner
 
@@ -422,6 +439,9 @@ check-stage$(1)-H-$(2)-perf:					\
 check-stage$(1)-H-$(2)-rustc:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rustc)
+check-stage$(1)-H-$(2)-core:					\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-core)
 check-stage$(1)-H-$(2)-std:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-std)
@@ -482,6 +502,9 @@ check-stage$(1)-H-all-perf: \
 check-stage$(1)-H-all-rustc: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rustc)
+check-stage$(1)-H-all-core: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-core)
 check-stage$(1)-H-all-std: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-std)
@@ -526,6 +549,7 @@ define DEF_CHECK_FOR_STAGE
 check-stage$(1): check-stage$(1)-H-$$(CFG_HOST_TRIPLE)
 check-stage$(1)-perf: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-perf
 check-stage$(1)-rustc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustc
+check-stage$(1)-core: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-core
 check-stage$(1)-std: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-std
 check-stage$(1)-rpass: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rpass
 check-stage$(1)-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rfail

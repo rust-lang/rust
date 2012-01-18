@@ -26,3 +26,10 @@ mod core {
     const info : u32 = 2_u32;
     const debug : u32 = 3_u32;
 }
+
+// Similar to above. Some magic to make core testable.
+#[cfg(test)]
+mod std {
+    use std;
+    import std::test;
+}
