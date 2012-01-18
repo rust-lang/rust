@@ -24,12 +24,14 @@ type arg_attrs = {
     desc: str
 };
 
-#[doc =
-  "Given a vec of attributes, extract the meta_items contained in the \
-   doc attribute"]
 fn doc_meta(
     attrs: [ast::attribute]
 ) -> option<@ast::meta_item> {
+
+    #[doc =
+      "Given a vec of attributes, extract the meta_items contained in the \
+       doc attribute"];
+
     let doc_attrs = attr::find_attrs_by_name(attrs, "doc");
     let doc_metas = attr::attr_metas(doc_attrs);
     if vec::is_not_empty(doc_metas) {

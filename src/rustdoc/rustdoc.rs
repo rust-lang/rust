@@ -5,12 +5,14 @@
 #[doc = "A single operation on the document model"]
 type pass = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc;
 
-#[doc = "Run a series of passes over the document"]
 fn run_passes(
     srv: astsrv::srv,
     doc: doc::cratedoc,
     passes: [pass]
 ) -> doc::cratedoc {
+
+    #[doc = "Run a series of passes over the document"];
+
     vec::foldl(doc, passes) {|doc, pass|
         pass(srv, doc)
     }

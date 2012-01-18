@@ -4,11 +4,13 @@ import rustc::syntax::ast;
 
 export from_srv, extract;
 
-#[doc = "Use the AST service to create a document tree"]
 fn from_srv(
     srv: astsrv::srv,
     default_name: str
 ) -> doc::cratedoc {
+
+    #[doc = "Use the AST service to create a document tree"];
+
     astsrv::exec(srv) {|ctxt|
         extract(ctxt.ast, default_name)
     }
