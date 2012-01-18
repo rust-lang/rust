@@ -35,6 +35,7 @@ fn write_markdown(
 fn write_header(ctxt: ctxt, title: str) {
     let hashes = str::from_chars(vec::init_elt('#', ctxt.depth));
     ctxt.w.write_line(#fmt("%s %s", hashes, title));
+    ctxt.w.write_line("");
 }
 
 fn subsection(ctxt: ctxt, f: fn&()) {
@@ -161,5 +162,15 @@ mod tests {
         let doc = extract::extract(ast, "");
         let markdown = write_markdown_str(doc);
         assert str::contains(markdown, "## Module `moo`");
+    }
+
+    #[test]
+    fn should_leave_blank_line_after_header() {
+        let source = "mod morp { }";
+        let ast = parse::from_str(source);
+        let doc = extract::extract(ast, "");
+        let markdown = write_markdown_str(doc);
+        log(error, markdown);
+        assert str::contains(markdown, "Module `morp`\n");
     }
 }
