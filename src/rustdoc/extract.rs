@@ -85,16 +85,18 @@ fn should_extract_fn_args() {
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
     let fn_ = doc.topmod.fns[0];
-    assert tuple::first(fn_.args[0]) == "b";
-    assert tuple::first(fn_.args[1]) == "c";
+    assert fn_.args[0].name == "b";
+    assert fn_.args[1].name == "c";
 }
 
-fn argdocs_from_args(args: [ast::arg]) -> [(str, str)] {
+fn argdocs_from_args(args: [ast::arg]) -> [doc::argdoc] {
     vec::map(args, argdoc_from_arg)
 }
 
-fn argdoc_from_arg(arg: ast::arg) -> (str, str) {
-    (arg.ident, "")
+fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
+    ~{
+        name: arg.ident
+    }
 }
 
 #[cfg(test)]

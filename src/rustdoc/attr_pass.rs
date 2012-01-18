@@ -99,9 +99,9 @@ fn fold_fn(
     }
 
     fn merge_arg_attrs(
-        doc: [(str, str)],
+        doc: [doc::argdoc],
         _attrs: [attr_parser::arg_attrs]
-    ) -> [(str, str)] {
+    ) -> [doc::argdoc] {
         // FIXME
         doc
     }

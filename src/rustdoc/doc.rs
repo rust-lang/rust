@@ -18,7 +18,11 @@ type fndoc = ~{
     brief: option<str>,
     desc: option<str>,
     return: option<retdoc>,
-    args: [(str, str)]
+    args: [argdoc]
+};
+
+type argdoc = ~{
+    name: str
 };
 
 type retdoc = {

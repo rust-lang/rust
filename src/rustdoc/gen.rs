@@ -125,11 +125,10 @@ fn write_desc(
 
 fn write_args(
     ctxt: ctxt,
-    args: [(str, str)]
+    args: [doc::argdoc]
 ) {
-    for (arg, desc) in args {
-        ctxt.w.write_str("### Argument `" + arg + "`: ");
-        ctxt.w.write_str(desc)
+    for arg in args {
+        ctxt.w.write_str("### Argument `" + arg.name + "`: ");
     }
 }
 
