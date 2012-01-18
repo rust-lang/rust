@@ -157,6 +157,150 @@ fn quick_sort3<T: copy>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
                 (len::<T>(arr) as int) - 1);
 }
 
+#[cfg(test)]
+mod test_qsort3 {
+    fn check_sort(v1: [mutable int], v2: [mutable int]) {
+        let len = vec::len::<int>(v1);
+        fn lt(&&a: int, &&b: int) -> bool { ret a < b; }
+        fn equal(&&a: int, &&b: int) -> bool { ret a == b; }
+        let f1 = lt;
+        let f2 = equal;
+        quick_sort3::<int>(f1, f2, v1);
+        let i = 0u;
+        while i < len {
+            log(debug, v2[i]);
+            assert (v2[i] == v1[i]);
+            i += 1u;
+        }
+    }
+
+    #[test]
+    fn test() {
+        {
+            let v1 = [mutable 3, 7, 4, 5, 2, 9, 5, 8];
+            let v2 = [mutable 2, 3, 4, 5, 5, 7, 8, 9];
+            check_sort(v1, v2);
+        }
+        {
+            let v1 = [mutable 1, 1, 1];
+            let v2 = [mutable 1, 1, 1];
+            check_sort(v1, v2);
+        }
+        {
+            let v1: [mutable int] = [mutable];
+            let v2: [mutable int] = [mutable];
+            check_sort(v1, v2);
+        }
+        { let v1 = [mutable 9]; let v2 = [mutable 9]; check_sort(v1, v2); }
+        {
+            let v1 = [mutable 9, 3, 3, 3, 9];
+            let v2 = [mutable 3, 3, 3, 9, 9];
+            check_sort(v1, v2);
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_qsort {
+    fn check_sort(v1: [mutable int], v2: [mutable int]) {
+        let len = vec::len::<int>(v1);
+        fn ltequal(&&a: int, &&b: int) -> bool { ret a <= b; }
+        let f = ltequal;
+        quick_sort::<int>(f, v1);
+        let i = 0u;
+        while i < len {
+            log(debug, v2[i]);
+            assert (v2[i] == v1[i]);
+            i += 1u;
+        }
+    }
+
+    #[test]
+    fn test() {
+        {
+            let v1 = [mutable 3, 7, 4, 5, 2, 9, 5, 8];
+            let v2 = [mutable 2, 3, 4, 5, 5, 7, 8, 9];
+            check_sort(v1, v2);
+        }
+        {
+            let v1 = [mutable 1, 1, 1];
+            let v2 = [mutable 1, 1, 1];
+            check_sort(v1, v2);
+        }
+        {
+            let v1: [mutable int] = [mutable];
+            let v2: [mutable int] = [mutable];
+            check_sort(v1, v2);
+        }
+        { let v1 = [mutable 9]; let v2 = [mutable 9]; check_sort(v1, v2); }
+        {
+            let v1 = [mutable 9, 3, 3, 3, 9];
+            let v2 = [mutable 3, 3, 3, 9, 9];
+            check_sort(v1, v2);
+        }
+    }
+
+    // Regression test for #750
+    #[test]
+    fn test_simple() {
+        let names = [mutable 2, 1, 3];
+
+        let expected = [1, 2, 3];
+
+        fn lteq(&&a: int, &&b: int) -> bool { int::le(a, b) }
+        sort::quick_sort(lteq, names);
+
+        let immut_names = vec::from_mut(names);
+
+        // Silly, but what else can we do?
+        check (vec::same_length(expected, immut_names));
+        let pairs = vec::zip(expected, immut_names);
+        for (a, b) in pairs { #debug("%d %d", a, b); assert (a == b); }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    fn check_sort(v1: [int], v2: [int]) {
+        let len = vec::len::<int>(v1);
+        fn lteq(&&a: int, &&b: int) -> bool { ret a <= b; }
+        let f = lteq;
+        let v3 = merge_sort::<int>(f, v1);
+        let i = 0u;
+        while i < len {
+            log(debug, v3[i]);
+            assert (v3[i] == v2[i]);
+            i += 1u;
+        }
+    }
+
+    #[test]
+    fn test() {
+        {
+            let v1 = [3, 7, 4, 5, 2, 9, 5, 8];
+            let v2 = [2, 3, 4, 5, 5, 7, 8, 9];
+            check_sort(v1, v2);
+        }
+        { let v1 = [1, 1, 1]; let v2 = [1, 1, 1]; check_sort(v1, v2); }
+        { let v1: [int] = []; let v2: [int] = []; check_sort(v1, v2); }
+        { let v1 = [9]; let v2 = [9]; check_sort(v1, v2); }
+        {
+            let v1 = [9, 3, 3, 3, 9];
+            let v2 = [3, 3, 3, 9, 9];
+            check_sort(v1, v2);
+        }
+    }
+
+    #[test]
+    fn test_merge_sort_mutable() {
+        fn lteq(&&a: int, &&b: int) -> bool { ret a <= b; }
+        let v1 = [mutable 3, 2, 1];
+        let v2 = merge_sort(lteq, v1);
+        assert v2 == [1, 2, 3];
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

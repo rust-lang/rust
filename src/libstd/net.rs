@@ -54,3 +54,13 @@ fn parse_addr(ip: str) -> ip_addr {
     for i in parts { if i > 255u { fail "Invalid IP Address part."; } }
     ipv4(parts[0] as u8, parts[1] as u8, parts[2] as u8, parts[3] as u8)
 }
+
+#[test]
+fn test_format_ip() {
+    assert (net::format_addr(net::ipv4(127u8, 0u8, 0u8, 1u8)) == "127.0.0.1")
+}
+
+#[test]
+fn test_parse_ip() {
+    assert (net::parse_addr("127.0.0.1") == net::ipv4(127u8, 0u8, 0u8, 1u8));
+}

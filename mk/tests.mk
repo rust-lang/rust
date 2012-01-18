@@ -55,10 +55,6 @@ ifdef VERBOSE
   CTEST_TESTARGS += --verbose
 endif
 
-# The standard library test crate
-STDTEST_CRATE := $(S)src/test/stdtest/stdtest.rc
-STDTEST_INPUTS := $(wildcard $(S)src/test/stdtest/*rs)
-
 # Run the compiletest runner itself under valgrind
 ifdef CTEST_VALGRIND
   CFG_RUN_CTEST=$(call CFG_RUN_TEST,$(2),$(3))
@@ -188,7 +184,7 @@ check-stage$(1)-T-$(2)-H-$(3)-core-dummy:			\
 # Rules for the standard library test runner
 
 $(3)/test/stdtest.stage$(1)-$(2)$$(X):			\
-		$$(STDTEST_CRATE) $$(STDTEST_INPUTS)	\
+		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)	\
         $$(SREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test

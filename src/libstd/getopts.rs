@@ -375,6 +375,479 @@ fn opt_default(m: match, nm: str, def: str) -> option::t<str> {
     if vec::len::<optval>(vals) == 0u { ret none::<str>; }
     ret alt vals[0] { val(s) { some::<str>(s) } _ { some::<str>(def) } }
 }
+
+#[cfg(test)]
+mod tests {
+    import opt = getopts;
+    import result::{err, ok};
+
+    tag fail_type {
+        argument_missing_;
+        unrecognized_option_;
+        option_missing_;
+        option_duplicated_;
+        unexpected_argument_;
+    }
+
+    fn check_fail_type(f: fail_, ft: fail_type) {
+        alt f {
+          argument_missing(_) { assert (ft == argument_missing_); }
+          unrecognized_option(_) { assert (ft == unrecognized_option_); }
+          option_missing(_) { assert (ft == option_missing_); }
+          option_duplicated(_) { assert (ft == option_duplicated_); }
+          unexpected_argument(_) { assert (ft == unexpected_argument_); }
+          _ { fail; }
+        }
+    }
+
+
+    // Tests for reqopt
+    #[test]
+    fn test_reqopt_long() {
+        let args = ["--test=20"];
+        let opts = [reqopt("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (opt_present(m, "test"));
+            assert (opt_str(m, "test") == "20");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_reqopt_long_missing() {
+        let args = ["blah"];
+        let opts = [reqopt("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, option_missing_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_reqopt_long_no_arg() {
+        let args = ["--test"];
+        let opts = [reqopt("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, argument_missing_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_reqopt_long_multi() {
+        let args = ["--test=20", "--test=30"];
+        let opts = [reqopt("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, option_duplicated_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_reqopt_short() {
+        let args = ["-t", "20"];
+        let opts = [reqopt("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (opt_present(m, "t"));
+            assert (opt_str(m, "t") == "20");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_reqopt_short_missing() {
+        let args = ["blah"];
+        let opts = [reqopt("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, option_missing_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_reqopt_short_no_arg() {
+        let args = ["-t"];
+        let opts = [reqopt("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, argument_missing_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_reqopt_short_multi() {
+        let args = ["-t", "20", "-t", "30"];
+        let opts = [reqopt("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, option_duplicated_); }
+          _ { fail; }
+        }
+    }
+
+
+    // Tests for optopt
+    #[test]
+    fn test_optopt_long() {
+        let args = ["--test=20"];
+        let opts = [optopt("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (opt_present(m, "test"));
+            assert (opt_str(m, "test") == "20");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optopt_long_missing() {
+        let args = ["blah"];
+        let opts = [optopt("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) { assert (!opt_present(m, "test")); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optopt_long_no_arg() {
+        let args = ["--test"];
+        let opts = [optopt("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, argument_missing_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optopt_long_multi() {
+        let args = ["--test=20", "--test=30"];
+        let opts = [optopt("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, option_duplicated_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optopt_short() {
+        let args = ["-t", "20"];
+        let opts = [optopt("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (opt_present(m, "t"));
+            assert (opt_str(m, "t") == "20");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optopt_short_missing() {
+        let args = ["blah"];
+        let opts = [optopt("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) { assert (!opt_present(m, "t")); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optopt_short_no_arg() {
+        let args = ["-t"];
+        let opts = [optopt("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, argument_missing_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optopt_short_multi() {
+        let args = ["-t", "20", "-t", "30"];
+        let opts = [optopt("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, option_duplicated_); }
+          _ { fail; }
+        }
+    }
+
+
+    // Tests for optflag
+    #[test]
+    fn test_optflag_long() {
+        let args = ["--test"];
+        let opts = [optflag("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) { assert (opt_present(m, "test")); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optflag_long_missing() {
+        let args = ["blah"];
+        let opts = [optflag("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) { assert (!opt_present(m, "test")); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optflag_long_arg() {
+        let args = ["--test=20"];
+        let opts = [optflag("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) {
+            log(error, fail_str(f));
+            check_fail_type(f, unexpected_argument_);
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optflag_long_multi() {
+        let args = ["--test", "--test"];
+        let opts = [optflag("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, option_duplicated_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optflag_short() {
+        let args = ["-t"];
+        let opts = [optflag("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) { assert (opt_present(m, "t")); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optflag_short_missing() {
+        let args = ["blah"];
+        let opts = [optflag("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) { assert (!opt_present(m, "t")); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optflag_short_arg() {
+        let args = ["-t", "20"];
+        let opts = [optflag("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            // The next variable after the flag is just a free argument
+
+            assert (m.free[0] == "20");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optflag_short_multi() {
+        let args = ["-t", "-t"];
+        let opts = [optflag("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, option_duplicated_); }
+          _ { fail; }
+        }
+    }
+
+
+    // Tests for optmulti
+    #[test]
+    fn test_optmulti_long() {
+        let args = ["--test=20"];
+        let opts = [optmulti("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (opt_present(m, "test"));
+            assert (opt_str(m, "test") == "20");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optmulti_long_missing() {
+        let args = ["blah"];
+        let opts = [optmulti("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) { assert (!opt_present(m, "test")); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optmulti_long_no_arg() {
+        let args = ["--test"];
+        let opts = [optmulti("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, argument_missing_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optmulti_long_multi() {
+        let args = ["--test=20", "--test=30"];
+        let opts = [optmulti("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (opt_present(m, "test"));
+            assert (opt_str(m, "test") == "20");
+            assert (opt_strs(m, "test")[0] == "20");
+            assert (opt_strs(m, "test")[1] == "30");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optmulti_short() {
+        let args = ["-t", "20"];
+        let opts = [optmulti("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (opt_present(m, "t"));
+            assert (opt_str(m, "t") == "20");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optmulti_short_missing() {
+        let args = ["blah"];
+        let opts = [optmulti("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) { assert (!opt_present(m, "t")); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optmulti_short_no_arg() {
+        let args = ["-t"];
+        let opts = [optmulti("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, argument_missing_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_optmulti_short_multi() {
+        let args = ["-t", "20", "-t", "30"];
+        let opts = [optmulti("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (opt_present(m, "t"));
+            assert (opt_str(m, "t") == "20");
+            assert (opt_strs(m, "t")[0] == "20");
+            assert (opt_strs(m, "t")[1] == "30");
+          }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_unrecognized_option_long() {
+        let args = ["--untest"];
+        let opts = [optmulti("t")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, unrecognized_option_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_unrecognized_option_short() {
+        let args = ["-t"];
+        let opts = [optmulti("test")];
+        let rs = getopts(args, opts);
+        alt rs {
+          err(f) { check_fail_type(f, unrecognized_option_); }
+          _ { fail; }
+        }
+    }
+
+    #[test]
+    fn test_combined() {
+        let args =
+            ["prog", "free1", "-s", "20", "free2", "--flag", "--long=30",
+             "-f", "-m", "40", "-m", "50", "-n", "-A B", "-n", "-60 70"];
+        let opts =
+            [optopt("s"), optflag("flag"), reqopt("long"),
+             optflag("f"), optmulti("m"), optmulti("n"),
+             optopt("notpresent")];
+        let rs = getopts(args, opts);
+        alt rs {
+          ok(m) {
+            assert (m.free[0] == "prog");
+            assert (m.free[1] == "free1");
+            assert (opt_str(m, "s") == "20");
+            assert (m.free[2] == "free2");
+            assert (opt_present(m, "flag"));
+            assert (opt_str(m, "long") == "30");
+            assert (opt_present(m, "f"));
+            assert (opt_strs(m, "m")[0] == "40");
+            assert (opt_strs(m, "m")[1] == "50");
+            assert (opt_strs(m, "n")[0] == "-A B");
+            assert (opt_strs(m, "n")[1] == "-60 70");
+            assert (!opt_present(m, "notpresent"));
+          }
+          _ { fail; }
+        }
+    }
+
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

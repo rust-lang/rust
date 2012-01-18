@@ -93,6 +93,56 @@ fn setenv(n: str, v: str) {
         });
 }
 
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    #[ignore(reason = "fails periodically on mac")]
+    fn test_setenv() {
+        // NB: Each test of setenv needs to use different variable names or
+        // the tests will not be threadsafe
+        setenv("NAME1", "VALUE");
+        assert (getenv("NAME1") == option::some("VALUE"));
+    }
+
+    #[test]
+    #[ignore(reason = "fails periodically on mac")]
+    fn test_setenv_overwrite() {
+        setenv("NAME2", "1");
+        setenv("NAME2", "2");
+        assert (getenv("NAME2") == option::some("2"));
+    }
+
+    // Windows GetEnvironmentVariable requires some extra work to make sure
+    // the buffer the variable is copied into is the right size
+    #[test]
+    #[ignore(reason = "fails periodically on mac")]
+    fn test_getenv_big() {
+        let s = "";
+        let i = 0;
+        while i < 100 { s += "aaaaaaaaaa"; i += 1; }
+        setenv("test_getenv_big", s);
+        log(debug, s);
+        assert (getenv("test_getenv_big") == option::some(s));
+    }
+
+    #[test]
+    fn test_get_exe_path() {
+        let path = os::get_exe_path();
+        assert option::is_some(path);
+        let path = option::get(path);
+        log(debug, path);
+
+        // Hard to test this function
+        if os::target_os() != "win32" {
+            assert str::starts_with(path, fs::path_sep());
+        } else {
+            assert path[1] == ':' as u8;
+        }
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

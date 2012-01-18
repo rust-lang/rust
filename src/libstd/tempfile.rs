@@ -24,3 +24,15 @@ fn mkdtemp(prefix: str, suffix: str) -> option::t<str> {
     }
     ret none;
 }
+
+#[test]
+fn test_mkdtemp() {
+    let r = mkdtemp("./", "foobar");
+    alt r {
+        some(p) {
+            fs::remove_dir(p);
+            assert(str::ends_with(p, "foobar"));
+        }
+        _ { assert(false); }
+    }
+}

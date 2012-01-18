@@ -305,6 +305,291 @@ fn eq_vec(v0: t, v1: [uint]) -> bool {
     ret true;
 }
 
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_0_elements() {
+        let act;
+        let exp;
+        act = create(0u, false);
+        exp = vec::init_elt::<uint>(0u, 0u);
+        assert (eq_vec(act, exp));
+    }
+
+    #[test]
+    fn test_1_element() {
+        let act;
+        act = create(1u, false);
+        assert (eq_vec(act, [0u]));
+        act = create(1u, true);
+        assert (eq_vec(act, [1u]));
+    }
+
+    #[test]
+    fn test_10_elements() {
+        let act;
+        // all 0
+
+        act = create(10u, false);
+        assert (eq_vec(act, [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u]));
+        // all 1
+
+        act = create(10u, true);
+        assert (eq_vec(act, [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u]));
+        // mixed
+
+        act = create(10u, false);
+        set(act, 0u, true);
+        set(act, 1u, true);
+        set(act, 2u, true);
+        set(act, 3u, true);
+        set(act, 4u, true);
+        assert (eq_vec(act, [1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u]));
+        // mixed
+
+        act = create(10u, false);
+        set(act, 5u, true);
+        set(act, 6u, true);
+        set(act, 7u, true);
+        set(act, 8u, true);
+        set(act, 9u, true);
+        assert (eq_vec(act, [0u, 0u, 0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u]));
+        // mixed
+
+        act = create(10u, false);
+        set(act, 0u, true);
+        set(act, 3u, true);
+        set(act, 6u, true);
+        set(act, 9u, true);
+        assert (eq_vec(act, [1u, 0u, 0u, 1u, 0u, 0u, 1u, 0u, 0u, 1u]));
+    }
+
+    #[test]
+    fn test_31_elements() {
+        let act;
+        // all 0
+
+        act = create(31u, false);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u]));
+        // all 1
+
+        act = create(31u, true);
+        assert (eq_vec(act,
+                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u]));
+        // mixed
+
+        act = create(31u, false);
+        set(act, 0u, true);
+        set(act, 1u, true);
+        set(act, 2u, true);
+        set(act, 3u, true);
+        set(act, 4u, true);
+        set(act, 5u, true);
+        set(act, 6u, true);
+        set(act, 7u, true);
+        assert (eq_vec(act,
+                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u]));
+        // mixed
+
+        act = create(31u, false);
+        set(act, 16u, true);
+        set(act, 17u, true);
+        set(act, 18u, true);
+        set(act, 19u, true);
+        set(act, 20u, true);
+        set(act, 21u, true);
+        set(act, 22u, true);
+        set(act, 23u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u]));
+        // mixed
+
+        act = create(31u, false);
+        set(act, 24u, true);
+        set(act, 25u, true);
+        set(act, 26u, true);
+        set(act, 27u, true);
+        set(act, 28u, true);
+        set(act, 29u, true);
+        set(act, 30u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u]));
+        // mixed
+
+        act = create(31u, false);
+        set(act, 3u, true);
+        set(act, 17u, true);
+        set(act, 30u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 1u]));
+    }
+
+    #[test]
+    fn test_32_elements() {
+        let act;
+        // all 0
+
+        act = create(32u, false);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u]));
+        // all 1
+
+        act = create(32u, true);
+        assert (eq_vec(act,
+                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u, 1u]));
+        // mixed
+
+        act = create(32u, false);
+        set(act, 0u, true);
+        set(act, 1u, true);
+        set(act, 2u, true);
+        set(act, 3u, true);
+        set(act, 4u, true);
+        set(act, 5u, true);
+        set(act, 6u, true);
+        set(act, 7u, true);
+        assert (eq_vec(act,
+                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u]));
+        // mixed
+
+        act = create(32u, false);
+        set(act, 16u, true);
+        set(act, 17u, true);
+        set(act, 18u, true);
+        set(act, 19u, true);
+        set(act, 20u, true);
+        set(act, 21u, true);
+        set(act, 22u, true);
+        set(act, 23u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u]));
+        // mixed
+
+        act = create(32u, false);
+        set(act, 24u, true);
+        set(act, 25u, true);
+        set(act, 26u, true);
+        set(act, 27u, true);
+        set(act, 28u, true);
+        set(act, 29u, true);
+        set(act, 30u, true);
+        set(act, 31u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u, 1u]));
+        // mixed
+
+        act = create(32u, false);
+        set(act, 3u, true);
+        set(act, 17u, true);
+        set(act, 30u, true);
+        set(act, 31u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 1u, 1u]));
+    }
+
+    #[test]
+    fn test_33_elements() {
+        let act;
+        // all 0
+
+        act = create(33u, false);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
+        // all 1
+
+        act = create(33u, true);
+        assert (eq_vec(act,
+                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u, 1u, 1u]));
+        // mixed
+
+        act = create(33u, false);
+        set(act, 0u, true);
+        set(act, 1u, true);
+        set(act, 2u, true);
+        set(act, 3u, true);
+        set(act, 4u, true);
+        set(act, 5u, true);
+        set(act, 6u, true);
+        set(act, 7u, true);
+        assert (eq_vec(act,
+                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
+        // mixed
+
+        act = create(33u, false);
+        set(act, 16u, true);
+        set(act, 17u, true);
+        set(act, 18u, true);
+        set(act, 19u, true);
+        set(act, 20u, true);
+        set(act, 21u, true);
+        set(act, 22u, true);
+        set(act, 23u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
+        // mixed
+
+        act = create(33u, false);
+        set(act, 24u, true);
+        set(act, 25u, true);
+        set(act, 26u, true);
+        set(act, 27u, true);
+        set(act, 28u, true);
+        set(act, 29u, true);
+        set(act, 30u, true);
+        set(act, 31u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
+                        1u, 1u, 1u, 1u, 1u, 1u, 0u]));
+        // mixed
+
+        act = create(33u, false);
+        set(act, 3u, true);
+        set(act, 17u, true);
+        set(act, 30u, true);
+        set(act, 31u, true);
+        set(act, 32u, true);
+        assert (eq_vec(act,
+                       [0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                        0u, 0u, 0u, 0u, 1u, 1u, 1u]));
+    }
+
+}
+
 //
 // Local Variables:
 // mode: rust

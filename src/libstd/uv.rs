@@ -153,3 +153,47 @@ fn idle_new() -> idle_t {
         fields: handle_fields_new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_sanity_check() {
+        sanity_check();
+    }
+
+    // From test-ref.c
+    mod test_ref {
+
+        #[test]
+        fn ref() {
+            let loop = loop_new();
+            run(loop);
+            loop_delete(loop);
+        }
+
+        #[test]
+        fn idle_ref() {
+            let loop = loop_new();
+            let h = idle_new();
+            idle_init(loop, ptr::addr_of(h));
+            idle_start(ptr::addr_of(h), ptr::null());
+            unref(loop);
+            run(loop);
+            loop_delete(loop);
+        }
+
+        #[test]
+        fn async_ref() {
+            /*
+            let loop = loop_new();
+            let h = async_new();
+            async_init(loop, ptr::addr_of(h), ptr::null());
+            unref(loop);
+            run(loop);
+            loop_delete(loop);
+            */
+        }
+    }
+}
+
