@@ -121,7 +121,10 @@ Indicates whether a path represents a directory.
 */
 fn path_is_dir(p: path) -> bool {
     ret str::as_buf(p, {|buf|
-        rustrt::rust_path_is_dir(buf) != 0 as ctypes::c_int
+        // FIXME: instead of 0i32, ctypes::c_int
+        // should be used here. but it triggers
+        // a segv fault. Issue 1558
+        rustrt::rust_path_is_dir(buf) != 0i32
     });
 }
 
