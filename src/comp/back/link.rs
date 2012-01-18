@@ -170,27 +170,27 @@ mod write {
             llvm::LLVMAddTargetData(td.lltd, fpm.llpm);
 
             let FPMB = llvm::LLVMPassManagerBuilderCreate();
-            llvm::LLVMPassManagerBuilderSetOptLevel(FPMB, 2u32);
+            llvm::LLVMPassManagerBuilderSetOptLevel(FPMB, 2u as c_uint);
             llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(FPMB,
                                                                     fpm.llpm);
             llvm::LLVMPassManagerBuilderDispose(FPMB);
 
             llvm::LLVMRunPassManager(fpm.llpm, llmod);
-            let threshold = 225u as c_uint;
-            if opts.optimize == 3u { threshold = 275u as c_uint; }
+            let threshold = 225u;
+            if opts.optimize == 3u { threshold = 275u; }
 
             let MPMB = llvm::LLVMPassManagerBuilderCreate();
             llvm::LLVMPassManagerBuilderSetOptLevel(MPMB,
-                                                    opts.optimize as u32);
+                                                    opts.optimize as c_uint);
             llvm::LLVMPassManagerBuilderSetSizeLevel(MPMB, 0);
             llvm::LLVMPassManagerBuilderSetDisableUnitAtATime(MPMB, False);
             llvm::LLVMPassManagerBuilderSetDisableUnrollLoops(MPMB, False);
             llvm::LLVMPassManagerBuilderSetDisableSimplifyLibCalls(MPMB,
                                                                    False);
 
-            if threshold != 0u32 {
+            if threshold != 0u {
                 llvm::LLVMPassManagerBuilderUseInlinerWithThreshold
-                    (MPMB, threshold);
+                    (MPMB, threshold as c_uint);
             }
             llvm::LLVMPassManagerBuilderPopulateModulePassManager(MPMB,
                                                                   pm.llpm);

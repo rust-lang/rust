@@ -1073,7 +1073,7 @@ fn set_no_inline(f: ValueRef) {
     llvm::LLVMAddFunctionAttr(f,
                               lib::llvm::LLVMNoInlineAttribute as
                                   lib::llvm::llvm::Attribute,
-                              0u32);
+                              0u as c_uint);
 }
 
 // Tell LLVM to emit the information necessary to unwind the stack for the
@@ -1082,19 +1082,20 @@ fn set_uwtable(f: ValueRef) {
     llvm::LLVMAddFunctionAttr(f,
                               lib::llvm::LLVMUWTableAttribute as
                                   lib::llvm::llvm::Attribute,
-                              0u32);
+                              0u as c_uint);
 }
 
 fn set_always_inline(f: ValueRef) {
     llvm::LLVMAddFunctionAttr(f,
                               lib::llvm::LLVMAlwaysInlineAttribute as
                                   lib::llvm::llvm::Attribute,
-                              0u32);
+                              0u as c_uint);
 }
 
 fn set_custom_stack_growth_fn(f: ValueRef) {
     // TODO: Remove this hack to work around the lack of u64 in the FFI.
-    llvm::LLVMAddFunctionAttr(f, 0 as lib::llvm::llvm::Attribute, 1u32);
+    llvm::LLVMAddFunctionAttr(f, 0 as lib::llvm::llvm::Attribute,
+                              1u as c_uint);
 }
 
 fn set_glue_inlining(cx: @local_ctxt, f: ValueRef, t: ty::t) {
@@ -1181,7 +1182,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
         } else { T_ptr(T_i8()) };
 
     let ty_param_count = vec::len::<uint>(ty_params);
-    let lltyparams = llvm::LLVMGetParam(llfn, 2u32);
+    let lltyparams = llvm::LLVMGetParam(llfn, 2u as c_uint);
     let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
     let lltydescs = [mutable];
     let p = 0u;
@@ -1196,7 +1197,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, sp: span, t: ty::t,
 
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
-    let llrawptr0 = llvm::LLVMGetParam(llfn, 3u32);
+    let llrawptr0 = llvm::LLVMGetParam(llfn, 3u as c_uint);
     let llval0 = BitCast(bcx, llrawptr0, llty);
     helper(bcx, llval0, t);
     finish_fn(fcx, lltop);
@@ -4303,8 +4304,8 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: span, llfndecl: ValueRef,
     -> @fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
     ret @{llfn: llfndecl,
-          llenv: llvm::LLVMGetParam(llfndecl, 1u32),
-          llretptr: llvm::LLVMGetParam(llfndecl, 0u32),
+          llenv: llvm::LLVMGetParam(llfndecl, 1u as c_uint),
+          llretptr: llvm::LLVMGetParam(llfndecl, 0u as c_uint),
           mutable llstaticallocas: llbbs.sa,
           mutable llloadenv: llbbs.ca,
           mutable llderivedtydescs_first: llbbs.dt,
@@ -4347,7 +4348,7 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
     // Skip the implicit arguments 0, and 1.  TODO: Pull out 2u and define
     // it as a constant, since we're using it in several places in trans this
     // way.
-    let arg_n = 2u32;
+    let arg_n = 2u;
     alt ty_self {
       impl_self(tt) {
         cx.llself = some({v: cx.llenv, t: tt});
@@ -4355,13 +4356,14 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
       no_self. {}
     }
     for tp in ty_params {
-        let lltydesc = llvm::LLVMGetParam(cx.llfn, arg_n), dicts = none;
-        arg_n += 1u32;
+        let lltydesc = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
+        let dicts = none;
+        arg_n += 1u;
         for bound in *fcx_tcx(cx).ty_param_bounds.get(tp.id) {
             alt bound {
               ty::bound_iface(_) {
-                let dict = llvm::LLVMGetParam(cx.llfn, arg_n);
-                arg_n += 1u32;
+                let dict = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
+                arg_n += 1u;
                 dicts = some(alt dicts {
                     none. { [dict] }
                     some(ds) { ds + [dict] }
@@ -4376,13 +4378,13 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
     // Populate the llargs field of the function context with the ValueRefs
     // that we get from llvm::LLVMGetParam for each argument.
     for arg: ast::arg in args {
-        let llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
+        let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
         assert (llarg as int != 0);
         // Note that this uses local_mem even for things passed by value.
         // copy_args_to_allocas will overwrite the table entry with local_imm
         // before it's actually used.
         cx.llargs.insert(arg.id, local_mem(llarg));
-        arg_n += 1u32;
+        arg_n += 1u;
     }
 }
 
@@ -4801,7 +4803,7 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
         let fcx = new_fn_ctxt(lcx, span, llshimfn);
         let bcx = new_top_block_ctxt(fcx);
         let lltop = bcx.llbb;
-        let llargbundle = llvm::LLVMGetParam(llshimfn, 0u32);
+        let llargbundle = llvm::LLVMGetParam(llshimfn, 0 as c_uint);
         let i = 0u, n = vec::len(tys.arg_tys);
         let llargvals = [];
         while i < n {
@@ -4851,7 +4853,7 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
             store_inbounds(bcx, llargval, llargbundle, [0, i as int]);
             i += 1u;
         }
-        let llretptr = llvm::LLVMGetParam(llwrapfn, 0u32);
+        let llretptr = llvm::LLVMGetParam(llwrapfn, 0 as c_uint);
         store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
 
         // Create call itself.
@@ -5036,10 +5038,10 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let bcx = new_top_block_ctxt(fcx);
         let lltop = bcx.llbb;
 
-        let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u32);
-        let llenvarg = llvm::LLVMGetParam(llfdecl, 1u32);
+        let lloutputarg = llvm::LLVMGetParam(llfdecl, 0 as c_uint);
+        let llenvarg = llvm::LLVMGetParam(llfdecl, 1 as c_uint);
         let args = [lloutputarg, llenvarg];
-        if takes_argv { args += [llvm::LLVMGetParam(llfdecl, 2u32)]; }
+        if takes_argv { args += [llvm::LLVMGetParam(llfdecl, 2 as c_uint)]; }
         Call(bcx, main_llfn, args);
         build_return(bcx);
 
@@ -5070,8 +5072,8 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let start = str::as_buf("rust_start", {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, start_ty, buf)
         });
-        let args = [rust_main, llvm::LLVMGetParam(llfn, 0u32),
-                    llvm::LLVMGetParam(llfn, 1u32), crate_map];
+        let args = [rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
+                    llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map];
         let result = unsafe {
             llvm::LLVMBuildCall(bld, start, vec::to_ptr(args),
                                 vec::len(args) as c_uint, noname())

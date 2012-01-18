@@ -1,3 +1,4 @@
+import core::ctypes::c_uint;
 import syntax::ast;
 import syntax::ast_util;
 import lib::llvm::llvm;
@@ -918,7 +919,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
         fcx.lltyparams += [{desc: dsc, dicts: dicts}];
     }
 
-    let a: u32 = 2u32; // retptr, env come first
+    let a: uint = 2u; // retptr, env come first
     let b: int = starting_idx;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =
@@ -955,12 +956,12 @@ fn trans_bind_thunk(cx: @local_ctxt,
 
           // Arg will be provided when the thunk is invoked.
           none. {
-            let arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
+            let arg: ValueRef = llvm::LLVMGetParam(llthunk, a as c_uint);
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
                 arg = PointerCast(bcx, arg, llout_arg_ty);
             }
             llargs += [arg];
-            a += 1u32;
+            a += 1u;
           }
         }
         outgoing_arg_index += 1u;
