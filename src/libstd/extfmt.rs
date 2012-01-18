@@ -366,7 +366,7 @@ mod rt {
                 let len = str::char_len(s);
                 if len < prec {
                     let diff = prec - len;
-                    let pad = str_init_elt('0', diff);
+                    let pad = str_init_elt(diff, '0');
                     pad + s
                 } else { s }
             };
@@ -379,7 +379,7 @@ mod rt {
     }
 
     // FIXME: This might be useful in str: but needs to be utf8 safe first
-    fn str_init_elt(c: char, n_elts: uint) -> str {
+    fn str_init_elt(n_elts: uint, c: char) -> str {
         let svec = vec::init_elt::<u8>(n_elts, c as u8);
 
         ret str::unsafe_from_bytes(svec);
@@ -400,7 +400,7 @@ mod rt {
         let padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
-            let padstr = str_init_elt(padchar, diff);
+            let padstr = str_init_elt(diff, padchar);
             ret s + padstr;
         }
         let might_zero_pad = false;
@@ -422,7 +422,7 @@ mod rt {
             padchar = '0';
             zero_padding = true;
         }
-        let padstr = str_init_elt(padchar, diff);
+        let padstr = str_init_elt(diff, padchar);
         // This is completely heinous. If we have a signed value then
         // potentially rip apart the intermediate result and insert some
         // zeros. It may make sense to convert zero padding to a precision
