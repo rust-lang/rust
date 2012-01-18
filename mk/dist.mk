@@ -2,10 +2,8 @@
 # Distribution
 ######################################################################
 
-
 PKG_NAME := rust
-PKG_VER  = $(shell date +"%Y-%m-%d")-snap
-PKG_DIR = $(PKG_NAME)-$(PKG_VER)
+PKG_DIR = $(PKG_NAME)-$(CFG_RELEASE)
 PKG_TAR = $(PKG_DIR).tar.gz
 
 ifdef CFG_MAKENSIS
@@ -26,11 +24,11 @@ PKG_GITMODULES := \
     $(PKG_LLVM_SKEL)
 
 PKG_FILES = \
-    $(S)LICENSE.txt $(S)README                 \
+    $(S)LICENSE.txt $(S)README.txt             \
     $(S)configure $(S)Makefile.in              \
     $(S)/doc                                   \
     $(addprefix $(S)src/,                      \
-      README                                   \
+      README.txt                               \
       cargo                                    \
       comp                                     \
       compiletest                              \
@@ -46,9 +44,6 @@ PKG_FILES = \
     $(PKG_GITMODULES)                          \
     $(MKFILE_DEPS)
 
-dist: $(PKG_TAR) $(PKG_EXE)
-
-nsis-dist: $(PKG_EXE)
 
 lic.txt: $(S)LICENSE.txt
 	@$(call E, crlf: $@)
@@ -66,6 +61,12 @@ $(PKG_TAR): $(PKG_FILES)
 	$(Q)tar -c $(PKG_FILES) | tar -x -C dist/$(PKG_DIR)
 	$(Q)tar -czf $(PKG_TAR) -C dist $(PKG_DIR)
 	$(Q)rm -Rf dist
+
+.PHONY: dist nsis-dist distcheck
+
+dist: $(PKG_TAR) $(PKG_EXE)
+
+nsis-dist: $(PKG_EXE)
 
 distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist
