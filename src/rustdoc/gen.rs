@@ -141,7 +141,8 @@ fn write_return(
       some(doc) {
         alt doc.ty {
           some(ty) {
-            ctxt.w.write_line("### Returns `" + ty + "`");
+            ctxt.w.write_line(#fmt("Returns `%s`", ty));
+            ctxt.w.write_line("");
             alt doc.desc {
               some(d) {
                 ctxt.w.write_line(d);
@@ -162,6 +163,7 @@ mod tests {
         let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
         let doc = attr_pass::mk_pass()(srv, doc);
+        let doc = tystr_pass::mk_pass()(srv, doc);
         write_markdown_str(doc)
     }
 
@@ -208,16 +210,31 @@ mod tests {
     }
 
     #[test]
-    fn should_leve_blank_line_after_brief() {
+    fn should_leave_blank_line_after_brief() {
         let markdown = render("#[doc(brief = \"brief\")] fn a() { }");
         assert str::contains(markdown, "brief\n\n");
     }
 
     #[test]
-    fn should_leve_blank_line_between_brief_and_desc() {
+    fn should_leave_blank_line_between_brief_and_desc() {
         let markdown = render(
             "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
         );
         assert str::contains(markdown, "brief\n\ndesc");
+    }
+
+    #[test]
+    fn should_write_return_type_on_new_line() {
+        let markdown = render("fn a() -> int { }");
+        assert str::contains(markdown, "\nReturns `int`");
+    }
+
+    #[test]
+    fn should_write_blank_line_between_return_type_and_next_header() {
+        let markdown = render(
+            "fn a() -> int { } \
+             fn b() -> int { }"
+        );
+        assert str::contains(markdown, "Returns `int`\n\n##");
     }
 }
