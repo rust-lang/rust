@@ -41,9 +41,23 @@ fn mk_srv_from_file(file: str) -> srv {
 }
 
 fn build_ctxt(ast: @ast::crate) -> ctxt {
+
+    import rustc::front::config;
+
+    let ast = config::strip_unconfigured_items(ast);
+
     {
         ast: ast,
         map: ast_map::map_crate(*ast)
+    }
+}
+
+#[test]
+fn should_prune_unconfigured_items() {
+    let source = "#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
+    let srv = mk_srv_from_str(source);
+    exec(srv) {|ctxt|
+        assert vec::is_empty(ctxt.ast.node.module.items);
     }
 }
 
