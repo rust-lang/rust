@@ -2047,7 +2047,8 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
     expect(p, token::LBRACE);
     let all_nullary = true;
     let have_disr = false;
-    while p.token != token::RBRACE {
+    let done = false;
+    while !done {
         let tok = p.token;
         alt tok {
           token::IDENT(name, _) {
@@ -2075,13 +2076,21 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
               }
               _ {/* empty */ }
             }
-            expect(p, token::SEMI);
+
+            alt p.token {
+              token::SEMI. | token::COMMA. {
+                p.bump();
+                if p.token == token::RBRACE { done = true; }
+              }
+              token::RBRACE. { done = true; }
+              _ { /* fall through */ }
+            }
+
             p.get_id();
             let vr = {name: p.get_str(name), args: args, id: p.get_id(),
                       disr_expr: disr_expr};
             variants += [spanned(vlo, vhi, vr)];
           }
-          token::RBRACE. {/* empty */ }
           _ {
             p.fatal("expected name of variant or '}' but found '" +
                         token::to_str(p.reader, tok) + "'");
