@@ -131,6 +131,13 @@ fn write_fn(
 
 #[cfg(test)]
 mod tests {
+    fn render(source: str) -> str {
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        write_markdown_str(doc)
+    }
+
     fn write_markdown_str(
         doc: doc::cratedoc
     ) -> str {
@@ -142,57 +149,40 @@ mod tests {
 
     #[test]
     fn write_markdown_should_write_crate_header() {
-        let source = "";
-        let ast = parse::from_str(source);
-        let doc = extract::extract(ast, "belch");
+        let srv = astsrv::mk_srv_from_str("");
+        let doc = extract::from_srv(srv, "belch");
+        let doc = attr_pass::mk_pass()(srv, doc);
         let markdown = write_markdown_str(doc);
         assert str::contains(markdown, "# Crate belch");
     }
 
     #[test]
     fn write_markdown_should_write_function_header() {
-        let source = "fn func() { }";
-        let ast = parse::from_str(source);
-        let doc = extract::extract(ast, "");
-        let markdown = write_markdown_str(doc);
+        let markdown = render("fn func() { }");
         assert str::contains(markdown, "## Function `func`");
     }
 
     #[test]
     fn write_markdown_should_write_mod_headers() {
-        let source = "mod moo { }";
-        let ast = parse::from_str(source);
-        let doc = extract::extract(ast, "");
-        let markdown = write_markdown_str(doc);
+        let markdown = render("mod moo { }");
         assert str::contains(markdown, "## Module `moo`");
     }
 
     #[test]
     fn should_leave_blank_line_after_header() {
-        let source = "mod morp { }";
-        let ast = parse::from_str(source);
-        let doc = extract::extract(ast, "");
-        let markdown = write_markdown_str(doc);
+        let markdown = render("mod morp { }");
         assert str::contains(markdown, "Module `morp`\n\n");
     }
 
     #[test]
     fn should_leave_blank_line_between_fn_header_and_brief() {
-        let source = "#[doc(brief = \"brief\")] fn a() { }";
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        let markdown = write_markdown_str(doc);
+        let markdown = render("#[doc(brief = \"brief\")] fn a() { }");
         assert str::contains(markdown, "Function `a`\n\nbrief");
     }
 
     #[test]
     fn should_leve_blank_line_after_brief() {
-        let source = "#[doc(brief = \"brief\")] fn a() { }";
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        let markdown = write_markdown_str(doc);
+        let markdown = render("#[doc(brief = \"brief\")] fn a() { }");
         assert str::contains(markdown, "brief\n\n");
     }
 }
