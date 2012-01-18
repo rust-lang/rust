@@ -869,8 +869,9 @@ fn get_element_type(cx: ctxt, ty: t, i: uint) -> t {
       ty_rec(flds) { ret flds[i].mt.ty; }
       ty_tup(ts) { ret ts[i]; }
       _ {
-        cx.sess.bug("get_element_type called on type " + ty_to_str(cx, ty) +
-                        " - expected a tuple or record");
+        cx.sess.bug(
+            #fmt["get_element_type called on invalid type %s with index %u",
+                 ty_to_str(cx, ty), i]);
       }
     }
 }

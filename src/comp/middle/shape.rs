@@ -505,9 +505,9 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
     let info_sz = 0u16;
     for did_: ast::def_id in ccx.shape_cx.tag_order {
         let did = did_; // Satisfy alias checker.
-        let variants = ty::tag_variants(ccx.tcx, did);
+        let num_variants = vec::len(*ty::tag_variants(ccx.tcx, did)) as u16;
         add_u16(header, header_sz + info_sz);
-        info_sz += 2u16 * ((vec::len(*variants) as u16) + 2u16) + 3u16;
+        info_sz += 2u16 * (num_variants + 2u16) + 3u16;
     }
 
     // Construct the info tables, which contain offsets to the shape of each

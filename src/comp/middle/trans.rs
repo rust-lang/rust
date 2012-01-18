@@ -412,20 +412,15 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 }
 
 fn size_of(cx: @block_ctxt, t: ty::t) -> result {
-    size_of_(cx, t, align_total)
+    size_of_(cx, t)
 }
 
-tag align_mode {
-    align_total;
-    align_next(ty::t);
-}
-
-fn size_of_(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
+fn size_of_(cx: @block_ctxt, t: ty::t) -> result {
     let ccx = bcx_ccx(cx);
     if check type_has_static_size(ccx, t) {
         let sp = cx.sp;
         rslt(cx, llsize_of(bcx_ccx(cx), type_of(ccx, sp, t)))
-    } else { dynamic_size_of(cx, t, mode) }
+    } else { dynamic_size_of(cx, t) }
 }
 
 fn align_of(cx: @block_ctxt, t: ty::t) -> result {
@@ -536,9 +531,8 @@ fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
     }
 }
 
-fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
-    fn align_elements(cx: @block_ctxt, elts: [ty::t],
-                      mode: align_mode) -> result {
+fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
+    fn align_elements(cx: @block_ctxt, elts: [ty::t]) -> result {
         //
         // C padding rules:
         //
@@ -560,15 +554,16 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
             off = Add(bcx, aligned_off, elt_size.val);
             max_align = umax(bcx, max_align, elt_align.val);
         }
-        off = alt mode {
-          align_total. {
-            align_to(bcx, off, max_align)
-          }
-          align_next(t) {
-            let {bcx, val: align} = align_of(bcx, t);
-            align_to(bcx, off, align)
-          }
-        };
+        off = align_to(bcx, off, max_align);
+        //off = alt mode {
+        //  align_total. {
+        //    align_to(bcx, off, max_align)
+        //  }
+        //  align_next(t) {
+        //    let {bcx, val: align} = align_of(bcx, t);
+        //    align_to(bcx, off, align)
+        //  }
+        //};
         ret rslt(bcx, off);
     }
     alt ty::struct(bcx_tcx(cx), t) {
@@ -579,12 +574,12 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
       ty::ty_rec(flds) {
         let tys: [ty::t] = [];
         for f: ty::field in flds { tys += [f.mt.ty]; }
-        ret align_elements(cx, tys, mode);
+        ret align_elements(cx, tys);
       }
       ty::ty_tup(elts) {
         let tys = [];
         for tp in elts { tys += [tp]; }
-        ret align_elements(cx, tys, mode);
+        ret align_elements(cx, tys);
       }
       ty::ty_tag(tid, tps) {
         let bcx = cx;
@@ -603,7 +598,7 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t, mode: align_mode) -> result {
                 let t = ty::substitute_type_params(bcx_tcx(cx), tps, raw_ty);
                 tys += [t];
             }
-            let rslt = align_elements(bcx, tys, mode);
+            let rslt = align_elements(bcx, tys);
             bcx = rslt.bcx;
             let this_size = rslt.val;
             let old_max_size = Load(bcx, max_size);
@@ -689,84 +684,55 @@ fn GEP_tup_like_1(cx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
 // above.
 fn GEP_tup_like(bcx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
     : type_is_tup_like(bcx, t) -> result {
-    // It might be a static-known type. Handle this.
-    if !ty::type_has_dynamic_size(bcx_tcx(bcx), t) {
-        #debug["GEP_tup_like t=%? ixs=%? -> static",
-               ty_to_str(bcx_tcx(bcx), t), ixs];
 
+    fn compute_off(bcx: @block_ctxt,
+                   off: ValueRef,
+                   t: ty::t,
+                   ixs: [int],
+                   n: uint) -> (@block_ctxt, ValueRef, ty::t) {
+        if n == vec::len(ixs) {
+            ret (bcx, off, t);
+        }
+
+        let tcx = bcx_tcx(bcx);
+        let ix = ixs[n];
+        let bcx = bcx, off = off;
+        int::range(0, ix) {|i|
+            let comp_t = ty::get_element_type(tcx, t, i as uint);
+            let align = align_of(bcx, comp_t);
+            bcx = align.bcx;
+            off = align_to(bcx, off, align.val);
+            let sz = size_of(bcx, comp_t);
+            bcx = sz.bcx;
+            off = Add(bcx, off, sz.val);
+        }
+
+        let comp_t = ty::get_element_type(tcx, t, ix as uint);
+        let align = align_of(bcx, comp_t);
+        bcx = align.bcx;
+        off = align_to(bcx, off, align.val);
+
+        be compute_off(bcx, off, comp_t, ixs, n+1u);
+    }
+
+    if !ty::type_has_dynamic_size(bcx_tcx(bcx), t) {
         ret rslt(bcx, GEPi(bcx, base, ixs));
     }
-    // It is a dynamic-containing type that, if we convert directly to an LLVM
-    // TypeRef, will be all wrong; there's no proper LLVM type to represent
-    // it, and the lowering function will stick in i8* values for each
-    // ty_param, which is not right; the ty_params are all of some dynamic
-    // size.
-    //
-    // What we must do instead is sadder. We must look through the indices
-    // manually and split the input type into a prefix and a target. We then
-    // measure the prefix size, bump the input pointer by that amount, and
-    // cast to a pointer-to-target type.
 
-    // Given a type, an index vector and an element number N in that vector,
-    // calculate index X and the type that results by taking the first X-1
-    // elements of the type and splitting the Xth off. Return the prefix as
-    // well as the innermost Xth type.
+    #debug["GEP_tup_like(t=%s,base=%s,ixs=%?)",
+           ty_to_str(bcx_tcx(bcx), t),
+           val_str(bcx_ccx(bcx).tn, base),
+           ixs];
 
-    fn split_type(ccx: @crate_ctxt, t: ty::t, ixs: [int], n: uint) ->
-       {prefix: [ty::t], target: ty::t} {
-        let len: uint = vec::len::<int>(ixs);
-        // We don't support 0-index or 1-index GEPs: The former is nonsense
-        // and the latter would only be meaningful if we supported non-0
-        // values for the 0th index (we don't).
+    // We require that ixs start with 0 and we expect the input to be a
+    // pointer to an instance of type t, so we can safely ignore ixs[0],
+    // basically.
+    assert ixs[0] == 0;
 
-        assert (len > 1u);
-        if n == 0u {
-            // Since we're starting from a value that's a pointer to a
-            // *single* structure, the first index (in GEP-ese) should just be
-            // 0, to yield the pointee.
-
-            assert (ixs[n] == 0);
-            ret split_type(ccx, t, ixs, n + 1u);
-        }
-        assert (n < len);
-        let ix: int = ixs[n];
-        let prefix: [ty::t] = [];
-        let i: int = 0;
-        while i < ix {
-            prefix += [ty::get_element_type(ccx.tcx, t, i as uint)];
-            i += 1;
-        }
-        let selected = ty::get_element_type(ccx.tcx, t, i as uint);
-        if n == len - 1u {
-            // We are at the innermost index.
-
-            ret {prefix: prefix, target: selected};
-        } else {
-            // Not the innermost index; call self recursively to dig deeper.
-            // Once we get an inner result, append it current prefix and
-            // return to caller.
-
-            let inner = split_type(ccx, selected, ixs, n + 1u);
-            prefix += inner.prefix;
-            ret {prefix: prefix with inner};
-        }
-    }
-    // We make a fake prefix tuple-type here; luckily for measuring sizes
-    // the tuple parens are associative so it doesn't matter that we've
-    // flattened the incoming structure.
-
-    let s = split_type(bcx_ccx(bcx), t, ixs, 0u);
-
-    let args = [];
-    for typ: ty::t in s.prefix { args += [typ]; }
-    let prefix_ty = ty::mk_tup(bcx_tcx(bcx), args);
-
-    #debug["GEP_tup_like t=%? ixs=%? prefix_ty=%?",
-           ty_to_str(bcx_tcx(bcx), t), ixs,
-           ty_to_str(bcx_tcx(bcx), prefix_ty)];
-
-    let sz = size_of_(bcx, prefix_ty, align_next(s.target));
-    ret rslt(sz.bcx, bump_ptr(sz.bcx, s.target, base, sz.val));
+    let (bcx, off, tar_t) = {
+        compute_off(bcx, C_int(bcx_ccx(bcx), 0), t, ixs, 1u)
+    };
+    ret rslt(bcx, bump_ptr(bcx, tar_t, base, off));
 }
 
 

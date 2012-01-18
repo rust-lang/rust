@@ -361,7 +361,8 @@ fn store_environment(
         }
 
         let bound_data = GEP_tup_like_1(bcx, cbox_ty, llbox,
-                                        [0, abi::cbox_elt_bindings, i as int]);
+                                        [0, abi::cbox_elt_bindings,
+                                         i as int]);
         bcx = bound_data.bcx;
         let bound_data = bound_data.val;
         alt bv {
