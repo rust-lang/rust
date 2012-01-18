@@ -1,3 +1,5 @@
+#[doc = "Rustdoc - The Rust documentation generator"];
+
 #[link(name = "rustdoc",
        vers = "0.1",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
@@ -6,6 +8,9 @@
 #[desc = "The Rust documentation generator"];
 #[license = "MIT"];
 #[crate_type = "bin"];
+
+use std;
+use rustc;
 
 mod parse;
 mod extract;
@@ -17,4 +22,3 @@ mod attr_pass;
 mod tystr_pass;
 mod prune_undoc_pass;
 mod astsrv;
-mod util;

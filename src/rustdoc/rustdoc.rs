@@ -2,9 +2,6 @@
  * Copyright 2011 Google Inc.
  */
 
-use std;
-use rustc;
-
 type pass = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc;
 
 fn run_passes(
@@ -51,13 +48,6 @@ fn test_run_passes() {
     assert doc.topmod.name == "onetwothree";
 }
 
-#[doc(
-  brief = "Main function.",
-  desc = "Command-line arguments:
-
-*  argv[1]: crate file name",
-  args(argv = "Command-line arguments.")
-)]
 fn main(argv: [str]) {
 
     if vec::len(argv) != 2u {
@@ -69,6 +59,7 @@ fn main(argv: [str]) {
     run(source_file);
 }
 
+#[doc = "Runs rustdoc over the given file"]
 fn run(source_file: str) {
 
     let default_name = source_file;
