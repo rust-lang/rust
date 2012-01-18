@@ -172,7 +172,6 @@ mod tests {
         let ast = parse::from_str(source);
         let doc = extract::extract(ast, "");
         let markdown = write_markdown_str(doc);
-        log(error, markdown);
         assert str::contains(markdown, "Module `morp`\n");
     }
 }
