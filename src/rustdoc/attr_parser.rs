@@ -24,6 +24,9 @@ type arg_attrs = {
     desc: str
 };
 
+#[doc =
+  "Given a vec of attributes, extract the meta_items contained in the \
+   doc attribute"]
 fn doc_meta(
     attrs: [ast::attribute]
 ) -> option<@ast::meta_item> {
