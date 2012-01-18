@@ -88,7 +88,7 @@ Creates and initializes an immutable vector.
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value returned by the function `op`.
 */
-fn init_fn<T>(op: init_op<T>, n_elts: uint) -> [T] {
+fn init_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
     let v = [];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -105,7 +105,7 @@ Creates and initializes a mutable vector.
 Creates a mutable vector of size `n_elts` and initializes the elements to
 the value returned by the function `op`.
 */
-fn init_fn_mut<T>(op: init_op<T>, n_elts: uint) -> [mutable T] {
+fn init_fn_mut<T>(n_elts: uint, op: init_op<T>) -> [mutable T] {
     let v = [mutable];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -365,13 +365,13 @@ Function: grow_fn
 Expands a vector in place, initializing the new elements to the result of a
 function
 
-Function `init_fn` is called `n` times with the values [0..`n`)
+Function `init_op` is called `n` times with the values [0..`n`)
 
 Parameters:
 
 v - The vector to grow
 n - The number of elements to add
-init_fn - A function to call to retreive each appended element's value
+init_op - A function to call to retreive each appended element's value
 */
 fn grow_fn<T>(&v: [T], n: uint, op: init_op<T>) {
     reserve(v, next_power_of_two(len(v) + n));
@@ -1026,14 +1026,14 @@ mod tests {
     #[test]
     fn test_init_fn() {
         // Test on-stack init_fn.
-        let v = init_fn(square, 3u);
+        let v = init_fn(3u, square);
         assert (len(v) == 3u);
         assert (v[0] == 0u);
         assert (v[1] == 1u);
         assert (v[2] == 4u);
 
         // Test on-heap init_fn.
-        v = init_fn(square, 5u);
+        v = init_fn(5u, square);
         assert (len(v) == 5u);
         assert (v[0] == 0u);
         assert (v[1] == 1u);

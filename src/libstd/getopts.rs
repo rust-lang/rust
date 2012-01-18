@@ -212,7 +212,7 @@ err(fail_) - On failure. Use <fail_str> to get an error message.
 fn getopts(args: [str], opts: [opt]) -> result {
     let n_opts = vec::len::<opt>(opts);
     fn f(_x: uint) -> [optval] { ret []; }
-    let vals = vec::init_fn_mut::<[optval]>(f, n_opts);
+    let vals = vec::init_fn_mut::<[optval]>(n_opts, f);
     let free: [str] = [];
     let l = vec::len(args);
     let i = 0u;
