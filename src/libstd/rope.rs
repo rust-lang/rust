@@ -181,7 +181,7 @@ fn concat(v: [rope]) -> rope {
     //Copy `v` into a mutable vector
     let len   = vec::len(v);
     if len == 0u { ret node::empty; }
-    let ropes = vec::init_elt_mut(v[0], len);
+    let ropes = vec::init_elt_mut(len, v[0]);
     uint::range(1u, len) {|i|
        ropes[i] = v[i];
     }
@@ -779,7 +779,7 @@ mod node {
             //Firstly, split `str` in slices of hint_max_leaf_char_len
             let leaves = uint::div_ceil(char_len, hint_max_leaf_char_len);
             //Number of leaves
-            let nodes  = vec::init_elt_mut(candidate, leaves);
+            let nodes  = vec::init_elt_mut(leaves, candidate);
 
             let i = 0u;
             let offset = byte_start;
@@ -892,7 +892,7 @@ mod node {
     }
 
     fn serialize_node(node: @node) -> str unsafe {
-        let buf = vec::init_elt_mut(0u8, byte_len(node));
+        let buf = vec::init_elt_mut(byte_len(node), 0u8);
         let offset = 0u;//Current position in the buffer
         let it = leaf_iterator::start(node);
         while true {
@@ -1223,7 +1223,7 @@ mod node {
         }
 
         fn start(node: @node) -> t {
-            let stack = vec::init_elt_mut(node, height(node)+1u);
+            let stack = vec::init_elt_mut(height(node)+1u, node);
             ret {
                 stack:             stack,
                 mutable stackpos:  0
@@ -1490,7 +1490,7 @@ mod tests {
         }
 
         //Same rope, obtained with rope::concat
-        let r2 = concat(vec::init_elt(chunk, 10u));
+        let r2 = concat(vec::init_elt(10u, chunk));
 
         assert eq(r, r2);
     }

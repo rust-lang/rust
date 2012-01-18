@@ -121,7 +121,7 @@ Creates and initializes an immutable vector.
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value `t`.
 */
-fn init_elt<T: copy>(t: T, n_elts: uint) -> [T] {
+fn init_elt<T: copy>(n_elts: uint, t: T) -> [T] {
     let v = [];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -138,7 +138,7 @@ Creates and initializes a mutable vector.
 Creates a mutable vector of size `n_elts` and initializes the elements
 to the value `t`.
 */
-fn init_elt_mut<T: copy>(t: T, n_elts: uint) -> [mutable T] {
+fn init_elt_mut<T: copy>(n_elts: uint, t: T) -> [mutable T] {
     let v = [mutable];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -1045,13 +1045,13 @@ mod tests {
     #[test]
     fn test_init_elt() {
         // Test on-stack init_elt.
-        let v = init_elt(10u, 2u);
+        let v = init_elt(2u, 10u);
         assert (len(v) == 2u);
         assert (v[0] == 10u);
         assert (v[1] == 10u);
 
         // Test on-heap init_elt.
-        v = init_elt(20u, 6u);
+        v = init_elt(6u, 20u);
         assert (v[0] == 20u);
         assert (v[1] == 20u);
         assert (v[2] == 20u);

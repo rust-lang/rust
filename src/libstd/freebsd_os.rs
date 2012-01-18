@@ -129,7 +129,7 @@ fn dylib_filename(base: str) -> str { ret "lib" + base + ".so"; }
 /// followed by a path separator
 fn get_exe_path() -> option::t<fs::path> unsafe {
     let bufsize = 1023u;
-    let path = str::unsafe_from_bytes(vec::init_elt(0u8, bufsize));
+    let path = str::unsafe_from_bytes(vec::init_elt(bufsize, 0u8));
     let mib = [libc_constants::CTL_KERN,
                libc_constants::KERN_PROC,
                libc_constants::KERN_PROC_PATHNAME, -1i32];

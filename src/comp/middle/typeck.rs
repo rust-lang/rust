@@ -1650,7 +1650,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             // HACK: build an arguments list with dummy arguments to
             // check against
             let dummy = {mode: ast::by_ref, ty: ty::mk_bot(fcx.ccx.tcx)};
-            arg_tys = vec::init_elt(dummy, supplied_arg_count);
+            arg_tys = vec::init_elt(supplied_arg_count, dummy);
         }
 
         // Check the arguments.

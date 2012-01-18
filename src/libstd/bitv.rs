@@ -49,7 +49,7 @@ init - If true then the bits are initialized to 1, otherwise 0
 */
 fn create(nbits: uint, init: bool) -> t {
     let elt = if init { !0u } else { 0u };
-    let storage = vec::init_elt_mut::<uint>(elt, nbits / uint_bits + 1u);
+    let storage = vec::init_elt_mut::<uint>(nbits / uint_bits + 1u, elt);
     ret @{storage: storage, nbits: nbits};
 }
 
@@ -117,7 +117,7 @@ Function: clone
 Makes a copy of a bitvector
 */
 fn clone(v: t) -> t {
-    let storage = vec::init_elt_mut::<uint>(0u, v.nbits / uint_bits + 1u);
+    let storage = vec::init_elt_mut::<uint>(v.nbits / uint_bits + 1u, 0u);
     let len = vec::len(v.storage);
     uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
     ret @{storage: storage, nbits: v.nbits};

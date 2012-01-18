@@ -25,7 +25,7 @@ fn md4(msg: [u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     }
 
     let i = 0u, e = vec::len(msg);
-    let x = vec::init_elt_mut(0u32, 16u);
+    let x = vec::init_elt_mut(16u, 0u32);
     while i < e {
         let aa = a, bb = b, cc = c, dd = d;
 

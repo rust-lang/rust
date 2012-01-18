@@ -35,7 +35,7 @@ fn write_markdown(
 }
 
 fn write_header(ctxt: ctxt, title: str) {
-    let hashes = str::from_chars(vec::init_elt('#', ctxt.depth));
+    let hashes = str::from_chars(vec::init_elt(ctxt.depth, '#'));
     ctxt.w.write_line(#fmt("%s %s", hashes, title));
     ctxt.w.write_line("");
 }
