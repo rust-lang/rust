@@ -820,7 +820,7 @@ Markdown.dialects.Gruber.inline = {
       //      1          2            3       4         <--- captures
       var m = text.match( /^\[([\s\S]*?)\][ \t]*\([ \t]*(\S+)(?:[ \t]+(["'])(.*?)\3)?[ \t]*\)/ );
 
-      if ( m ) {
+      if ( m && m[1].indexOf("]") == -1 ) {
         if ( m[2] && m[2][0] == '<' && m[2][m[2].length-1] == '>' )
           m[2] = m[2].substring( 1, m[2].length - 1 );
 
