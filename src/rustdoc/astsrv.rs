@@ -5,9 +5,10 @@ import rustc::middle::ast_map;
 
 export ctxt;
 export ctxt_handler;
-export srv, seq_srv;
-export mk_seq_srv_from_str;
-export mk_seq_srv_from_file;
+export srv;
+export mk_srv_from_str;
+export mk_srv_from_file;
+export exec;
 
 type ctxt = {
     ast: @ast::crate,
@@ -16,25 +17,20 @@ type ctxt = {
 
 type ctxt_handler<T> = fn~(ctxt: ctxt) -> T;
 
-iface srv {
-    fn exec<T>(f: ctxt_handler<T>) -> T;
-}
+type srv = {
+    ctxt: ctxt
+};
 
-#[doc = "The single-task service"]
-tag seq_srv = ctxt;
-
-impl seq_srv of srv for seq_srv {
-    fn exec<T>(f: ctxt_handler<T>) -> T {
-        f(*self)
+fn mk_srv_from_str(source: str) -> srv {
+    {
+        ctxt: build_ctxt(parse::from_str(source))
     }
 }
 
-fn mk_seq_srv_from_str(source: str) -> seq_srv {
-    seq_srv(build_ctxt(parse::from_str(source)))
-}
-
-fn mk_seq_srv_from_file(file: str) -> seq_srv {
-    seq_srv(build_ctxt(parse::from_file(file)))
+fn mk_srv_from_file(file: str) -> srv {
+    {
+        ctxt: build_ctxt(parse::from_file(file))
+    }
 }
 
 fn build_ctxt(ast: @ast::crate) -> ctxt {
@@ -44,23 +40,30 @@ fn build_ctxt(ast: @ast::crate) -> ctxt {
     }
 }
 
+fn exec<T>(
+    srv: srv,
+    f: fn~(ctxt: ctxt) -> T
+) -> T {
+    f(srv.ctxt)
+}
+
 #[cfg(test)]
 mod tests {
 
     #[test]
-    fn seq_srv_should_build_ast_map() {
+    fn srv_should_build_ast_map() {
         let source = "fn a() { }";
-        let srv = mk_seq_srv_from_str(source);
-        srv.exec {|ctxt|
+        let srv = mk_srv_from_str(source);
+        exec(srv) {|ctxt|
             assert ctxt.map.size() != 0u
         };
     }
 
     #[test]
-    fn seq_srv_should_return_request_result() {
+    fn srv_should_return_request_result() {
         let source = "fn a() { }";
-        let srv = mk_seq_srv_from_str(source);
-        let result = srv.exec {|_ctxt| 1000};
+        let srv = mk_srv_from_str(source);
+        let result = exec(srv) {|_ctxt| 1000};
         assert result == 1000;
     }
 }

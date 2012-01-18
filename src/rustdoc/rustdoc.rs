@@ -5,10 +5,10 @@
 use std;
 use rustc;
 
-type pass = fn~(srv: astsrv::seq_srv, doc: doc::cratedoc) -> doc::cratedoc;
+type pass = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc;
 
 fn run_passes(
-    srv: astsrv::seq_srv,
+    srv: astsrv::srv,
     doc: doc::cratedoc,
     passes: [pass]
 ) -> doc::cratedoc {
@@ -19,9 +19,8 @@ fn run_passes(
 
 #[test]
 fn test_run_passes() {
-    import astsrv::seq_srv;
     fn pass1(
-        _srv: astsrv::seq_srv,
+        _srv: astsrv::srv,
         doc: doc::cratedoc
     ) -> doc::cratedoc {
         ~{
@@ -33,7 +32,7 @@ fn test_run_passes() {
         }
     }
     fn pass2(
-        _srv: astsrv::seq_srv,
+        _srv: astsrv::srv,
         doc: doc::cratedoc
     ) -> doc::cratedoc {
         ~{
@@ -45,7 +44,7 @@ fn test_run_passes() {
         }
     }
     let source = "";
-    let srv = astsrv::mk_seq_srv_from_str(source);
+    let srv = astsrv::mk_srv_from_str(source);
     let passes = [pass1, pass2];
     let doc = extract::from_srv(srv, "one");
     let doc = run_passes(srv, doc, passes);
@@ -73,7 +72,7 @@ fn main(argv: [str]) {
 fn run(source_file: str) {
 
     let default_name = source_file;
-    let srv = astsrv::mk_seq_srv_from_file(source_file);
+    let srv = astsrv::mk_srv_from_file(source_file);
     let doc = extract::from_srv(srv, default_name);
     let doc = run_passes(srv, doc, [
         attr_pass::run,

@@ -1,17 +1,16 @@
 import rustc::syntax::ast;
 import rustc::syntax::print::pprust;
 import rustc::middle::ast_map;
-import astsrv::seq_srv;
 
 export run;
 
 fn run(
-    srv: astsrv::seq_srv,
+    srv: astsrv::srv,
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
         fold_fn: fn~(
-            f: fold::fold<astsrv::seq_srv>,
+            f: fold::fold<astsrv::srv>,
             d: doc::fndoc
         ) -> doc::fndoc {
             fold_fn(f, d)
@@ -22,7 +21,7 @@ fn run(
 }
 
 fn fold_fn(
-    fold: fold::fold<astsrv::seq_srv>,
+    fold: fold::fold<astsrv::srv>,
     doc: doc::fndoc
 ) -> doc::fndoc {
 
@@ -45,7 +44,7 @@ fn fold_fn(
         }
     }
 
-    let retty = srv.exec {|ctxt|
+    let retty = astsrv::exec(srv) {|ctxt|
         alt ctxt.map.get(doc.id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
@@ -67,7 +66,7 @@ mod tests {
     #[test]
     fn should_add_fn_ret_types() {
         let source = "fn a() -> int { }";
-        let srv = astsrv::mk_seq_srv_from_str(source);
+        let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert option::get(doc.topmod.fns[0].return).ty == some("int");

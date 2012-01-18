@@ -5,7 +5,7 @@ type ctxt = {
 };
 
 fn run(
-    _srv: astsrv::seq_srv,
+    _srv: astsrv::srv,
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let ctxt = {
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn should_elide_undocumented_fns() {
         let source = "fn a() { }";
-        let srv = astsrv::mk_seq_srv_from_str(source);
+        let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert vec::is_empty(*doc.topmod.fns);

@@ -4,11 +4,10 @@ export from_srv, extract;
 
 // FIXME: Want this to be from_srv<T:ast::srv> but it crashes
 fn from_srv(
-    srv: astsrv::seq_srv,
+    srv: astsrv::srv,
     default_name: str
 ) -> doc::cratedoc {
-    import astsrv::seq_srv;
-    srv.exec {|ctxt|
+    astsrv::exec(srv) {|ctxt|
         extract(ctxt.ast, default_name)
     }
 }
@@ -137,9 +136,8 @@ mod tests {
 
     #[test]
     fn extract_from_seq_srv() {
-        import astsrv::seq_srv;
         let source = "";
-        let srv = astsrv::mk_seq_srv_from_str(source);
+        let srv = astsrv::mk_srv_from_str(source);
         let doc = from_srv(srv, "name");
         assert doc.topmod.name == "name";
     }

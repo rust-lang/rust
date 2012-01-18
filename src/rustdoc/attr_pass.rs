@@ -4,12 +4,12 @@ import rustc::middle::ast_map;
 export run;
 
 fn run(
-    srv: astsrv::seq_srv,
+    srv: astsrv::srv,
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
         fold_fn: fn~(
-            f: fold::fold<astsrv::seq_srv>,
+            f: fold::fold<astsrv::srv>,
             d: doc::fndoc
         ) -> doc::fndoc {
             fold_fn(f, d)
@@ -20,16 +20,18 @@ fn run(
 }
 
 fn fold_fn(
-    fold: fold::fold<astsrv::seq_srv>,
+    fold: fold::fold<astsrv::srv>,
     doc: doc::fndoc
 ) -> doc::fndoc {
 
     let srv = fold.ctxt;
 
-    let attrs = alt srv.map.get(doc.id) {
-      ast_map::node_item(item) { item.attrs }
+    let attrs = astsrv::exec(srv) {|ctxt|
+        let attrs = alt ctxt.map.get(doc.id) {
+          ast_map::node_item(item) { item.attrs }
+        };
+        attr_parser::parse_fn(attrs)
     };
-    let attrs = attr_parser::parse_fn(attrs);
     ret merge_fn_attrs(doc, attrs);
 
     fn merge_fn_attrs(
@@ -66,7 +68,7 @@ fn fold_fn(
 #[test]
 fn fold_fn_should_extract_fn_attributes() {
     let source = "#[doc = \"test\"] fn a() -> int { }";
-    let srv = astsrv::mk_seq_srv_from_str(source);
+    let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let fold = fold::default_seq_fold(srv);
     let doc = fold_fn(fold, doc.topmod.fns[0]);
