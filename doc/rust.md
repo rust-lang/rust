@@ -208,6 +208,10 @@ import export use mod dir
 
 The keywords in [source files](#source-files) are the following strings:
 
+*TODO* split these between type keywords and regular (value) keywords,
+ and define two different `identifier` productions for the different
+ contexts.
+
 ~~~~~~~~ {.keyword}
 alt any as assert
 be bind block bool break
@@ -215,18 +219,17 @@ char check claim const cont
 do
 else export
 f32 f64 fail false float fn for
-i16 i32 i64 i8 if import in int
+i16 i32 i64 i8 if iface impl import in int
 let log
 mod mutable
 native note
-obj  
 prove pure
 resource ret
 self str syntax
 tag true type
 u16 u32 u64 u8 uint unchecked unsafe use
 vec
-while with
+while
 ~~~~~~~~
 
 Any of these have special meaning in their respective grammars, and are
@@ -377,11 +380,12 @@ A _floating-point literal_ has one of two forms:
   second decimal literal.
 * A single _decimal literal_ followed by an _exponent_.
 
-By default, a floating-point literal is of type `float`. A floating-point
-literal may be followed (immediately, without any spaces) by a
-_floating-point suffix_, which changes the type of the literal. There are
-only two floating-point suffixes: `f32` and `f64`. Each of these gives the
-floating point literal the associated type, rather than `float`.
+By default, a floating-point literal is of type `float`. A
+floating-point literal may be followed (immediately, without any
+spaces) by a _floating-point suffix_, which changes the type of the
+literal. There are three floating-point suffixes: `f` (for the base
+`float` type), `f32`, and `f64` (the 32-bit and 64-bit floating point
+types).
 
 A set of suffixes are also reserved to accommodate literal support for
 types corresponding to reserved tokens. The reserved suffixes are `f16`,
@@ -392,9 +396,16 @@ Examples of floating-point literals of various forms:
 ~~~~
 123.0;                             // type float
 0.1;                               // type float
+3f;                                // type float
 0.1f32;                            // type f32
 12E+99_f64;                        // type f64
 ~~~~
+
+##### Nil and boolean literals
+
+The _nil value_, the only value of the type by the same name, is
+written as `()`. The two values of the boolean type are written `true`
+and `false`.
 
 ### Symbols
 
@@ -898,9 +909,9 @@ A non-boolean function may also be declared with `pure fn`. This allows
 predicates to call non-boolean functions as long as they are pure. For example:
 
 ~~~~
-pure fn pure_length<@T>(ls: list<T>) -> uint { /* ... */ }
+pure fn pure_length<T>(ls: list<T>) -> uint { /* ... */ }
 
-pure fn nonempty_list<@T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
+pure fn nonempty_list<T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
 ~~~~
 
 In this example, `nonempty_list` is a predicate---it can be used in a
@@ -928,14 +939,14 @@ verify the semantics of the predicates they write.
 An example of a predicate that uses an unchecked block:
 
 ~~~~
-fn pure_foldl<@T, @U>(ls: list<T>, u: U, f: block(&T, &U) -> U) -> U {
+fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: block(&T, &U) -> U) -> U {
     alt ls {
       nil. { u }
       cons(hd, tl) { f(hd, pure_foldl(*tl, f(hd, u), f)) }
     }
 }
 
-pure fn pure_length<@T>(ls: list<T>) -> uint {
+pure fn pure_length<T>(ls: list<T>) -> uint {
     fn count<T>(_t: T, u: uint) -> uint { u + 1u }
     unchecked {
         pure_foldl(ls, 0u, count)
@@ -949,6 +960,45 @@ function. So, to use `foldl` in a pure list length function that a predicate
 could then use, we must use an `unchecked` block wrapped around the call to
 `pure_foldl` in the definition of `pure_length`.
 
+#### Generic functions
+
+A _generic function_ allows one or more _parameterized types_ to
+appear in its signature. Each type parameter must be explicitly
+declared, in an angle-bracket-enclosed, comma-separated list following
+the function name.
+
+~~~~
+fn iter<T>(seq: [T], f: block(T)) {
+    for elt: T in seq { f(elt); }
+}
+fn map<T, U>(seq: [T], f: block(T) -> U) -> [U] {
+    let acc = [];
+    for elt in seq { acc += [f(elt)]; }
+    acc
+}
+~~~~
+
+Inside the function signature and body, the name of the type parameter
+can be used as a type name.
+
+When a generic function is referenced, its type is instantiated based
+on the context of the reference. For example, calling the `iter`
+function defined above on `[1, 2]` will instantiate type parameter `T`
+with `int`, and require the closure parameter to have type
+`block(int)`.
+
+Since a parameter type is opaque to the generic function, the set of
+operations that can be performed on it is limited. Values of parameter
+type can always be moved, but they can only be copied when the
+parameter is given a [`copy` bound](#type-kinds).
+
+~~~~
+fn id<T: copy>(x: T) -> T { x }
+~~~~
+
+Similarly, [interface](#interfaces) bounds can be specified for type
+parameters to allow methods of that interface to be called on values
+of that type.
 
 ### Type definitions
 
@@ -1012,14 +1062,147 @@ let a: list<int> = cons(7, @cons(13, @nil));
 ~~~~
 
 ### Resources
-*TODO*.
+
+_Resources_ are values that have a destructor associated with them. A
+_resource item_ is used to declare resource type and constructor.
+
+~~~~
+resource file_descriptor(fd: int) {
+    std::os::libc::close(fd);
+}
+~~~~
+
+Calling the `file_descriptor` constructor function on an integer will
+produce a value with the `file_descriptor` type. Resource types have a
+noncopyable [type kind](#type-kinds), and thus may not be copied. It
+is guaranteed, barring drastic program termination that somehow
+prevents unwinding from taking place, that for each constucted
+resource value, the destructor will run once, when the value is
+disposed of. For stack-allocated values, this happens when the value
+goes out of scope. For values in shared boxes, it happens when the
+reference count of the box reaches zero.
+
+The argument to the resource constructor is stored in the resulting
+value, and can be accessed using the dereference (`*`) [unary
+operator](#unary-operator-expressions).
 
 ### Interfaces
-*TODO*.
+
+An _interface item_ describes a set of method types. _[implementation
+items](#implementations)_ can be used to provide implementations of
+those methods for a specific type.
+
+~~~~
+iface shape {
+    fn draw(surface);
+    fn bounding_box() -> bounding_box;
+}
+~~~~
+
+This defines an interface with two methods. All values which have
+[implementations](#implementations) of this interface in scope can
+have their `draw` and `bounding_box` methods called, using
+`value.bounding_box()` [syntax](#field-expressions).
+
+Type parameters can be specified for an interface to make it generic.
+These appear after the name, using the same syntax used in [generic
+functions](#generic-functions).
+
+~~~~
+iface seq<T> {
+   fn len() -> uint;
+   fn elt_at(n: uint) -> T;
+   fn iter(block(T));
+}
+~~~~
+
+Generic functions may use interfaces as bounds on their type
+parameters. This will have two effects: only types that implement the
+interface can be used to instantiate the parameter, and within the
+generic function, the methods of the interface can be called on values
+that have the parameter's type. For example:
+
+~~~~
+fn draw_twice<T: shape>(surface: surface, sh: T) {
+    sh.draw(surface);
+    sh.draw(surface);
+}
+~~~~
+
+Interface items also define a type with the same name as the
+interface. Values of this type are created by
+[casting](#type-cast-expressions) values (of a type for which an
+implementation of the given interface is in scope) to the interface
+type.
+
+~~~~
+let myshape: shape = mycircle as shape;
+~~~~
+
+The resulting value is a reference counted box containing the value
+that was cast along with information that identify the methods of the
+implementation that was used. Values with an interface type can always
+have methods of their interface called on them, and can be used to
+instantiate type parameters that are bounded on their interface.
 
 ### Implementations
-*TODO*.
 
+An _implementation item_ provides an implementation of an
+[interfaces](#interfaces) for a type.
+
+~~~~
+type circle = {radius: float, center: point};
+    
+impl circle_shape of shape for circle {
+    fn draw(s: surface) { do_draw_circle(s, self); }
+    fn bounding_box() -> bounding_box {
+        let r = self.radius;
+        {x: self.center.x - r, y: self.center.y - r,
+         width: 2 * r, height: 2 * r}
+    }
+}
+~~~~
+
+This defines an implementation named `circle_shape` of interface
+`shape` for type `circle`. The name of the implementation is the name
+by which it is imported and exported, but has no further significance.
+It may be left off to default to the name of the interface that was
+implemented. Implementation names do not conflict the way other names
+do—multiple implementations with the same name may exist in a scope at
+the same time.
+
+It is possible to define an implementation without referencing an
+interface. The methods in such an implementation can only be used
+statically (as direct calls on the values of the type that the
+implementation targets). In such an implementation, the `of` clause is
+not given, and the name is mandatory.
+
+~~~~
+impl uint_loops for uint {
+    fn times(f: block(uint)) {
+        let i = 0;
+        while i < self { f(i); i += 1u; }
+    }
+}
+~~~~
+
+_When_ an interface is specified, all methods declared as part of the
+interface must be present, with matching types and type parameter
+counts, in the implementation.
+
+An implementation can take type parameters, which can be different
+from the type parameters taken by the interface it implements. They
+are written after the name of the implementation, or if that is not
+specified, after the `impl` keyword.
+
+~~~~
+impl <T> of seq<T> for [T] {
+    /* ... */
+}
+impl of seq<bool> for u32 {
+   /* Treat the integer as a sequence of bits */
+}
+~~~~
 
 ## Attributes
 
@@ -1161,7 +1344,7 @@ scope.
 The former form, with no type annotation, causes the compiler to infer the
 static type of the slot through unification with the types of values assigned
 to the slot in the remaining code in the block scope. Inference only occurs on
-frame-local slots, not argument slots. Function and object signatures must
+frame-local slots, not argument slots. Function signatures must
 always declared types for all argument slots.
 
 
@@ -1175,39 +1358,206 @@ the side effects of the expression's evaluation.
 
 ### Literal expressions
 
-*TODO*.
+A _literal expression_ consists of one of the [literal](#literals)
+forms described earlier. It directly describes a number, character,
+string, boolean value, or the nil value.
+
+~~~~~~~~ {.literals}
+();        // nil type
+"hello";   // string type
+'5';       // character type
+5;         // integer type
+~~~~~~~~
 
 ### Tuple expressions
 
-*TODO*.
+Tuples are written by enclosing two or more comma-separated
+expressions in parentheses. They are used to create [tuple
+typed](#tuple-types) values.
+
+~~~~~~~~ {.tuple}
+(0f, 4.5f);
+("a", 4u, true)
+~~~~~~~~
 
 ### Record expressions
 
-*TODO*.
+A _[record](#record-types) expression_ is one or more comma-separated
+name-value pairs enclosed by braces. A fieldname can be any identifier
+(including reserved words), and is separated from its value expression
+by a colon. To indicate that a field is mutable, the `mutable` keyword
+is written before its name.
+
+~~~~
+{x: 10f, y: 20f};
+{name: "Joe", age: 35u, score: 100_000};
+{ident: "X", mutable count: 0u};
+~~~~
+
+The order of the fields in a record expression is significant, and
+determines the type of the resulting value. `{a: u8, b: u8}` and `{b:
+u8, a: u8}` are two different fields.
+
+A record expression can be ended with the word `with` followed by an
+expression to denote a functional update. The expression following
+`with` (the base) be of a record type that includes at least all the
+fields mentioned in the record expression. A new record will be
+created, of the same type as the base expression, with the given
+values for the fields that were explicitly specified, and the values
+in the base record for all other fields. The ordering of the fields in
+such a record expression is not significant.
+
+~~~~
+let base = {x: 1, y: 2, z: 3};
+{y: 0, z: 10 with base};
+~~~~
+
+### Field expressions
+
+A dot can be used to access a field in a record.
+
+~~~~~~~~ {.field}
+myrecord.myfield;
+{a: 10, b: 20}.a;
+~~~~~~~~
+
+A field access on a record is an _lval_ referring to the value of that
+field. When the field is mutable, it can be
+[assigned](#assignment-expressions) to.
+
+When the type of the expression to the left of the dot is a boxed
+record, it is automatically derferenced to make the field access
+possible.
+
+Field access syntax is overloaded for [interface method](#interfaces)
+access. When no matching field is found, or the expression to the left
+of the dot is not a (boxed) record, an
+[implementation](#implementations) that matches this type and the
+given method name is looked up instead, and the result of the
+expression is this method, with its _self_ argument bound to the
+expression on the left of the dot.
 
 ### Vector expressions
 
-*TODO*.
+A _[vector](#vector-types) expression_ is written by enclosing zero or
+more comma-separated expressions of uniform type in square brackets.
+The keyword `mutable` can be written after the opening bracket to
+indicate that the elements of the resulting vector may be mutated.
+When no mutability is specified, the vector is immutable.
 
+~~~~
+[1, 2, 3, 4];
+["a", "b", "c", "d"];
+[mutable 0u8, 0u8, 0u8, 0u8];
+~~~~
+
+### Index expressions
+
+[Vector](#vector-types)-typed expressions can be indexed by writing a
+square-bracket-enclosed expression (the index) after them. When the
+vector is mutable, the resulting _lval_ can be assigned to.
+
+Indices are zero-based, and may be of any integral type. Vector access
+is bounds-checked at run-time. When the check fails, it will put the
+task in a _failing state_.
+
+~~~~
+[1, 2, 3, 4][0];
+[mutable 'x', 'y'][1] = 'z';
+["a", "b"][10]; // fails
+~~~~
 
 ### Unary operator expressions
 
-~~~~~~~~ {.unop}
-+ - * ! @ ~
-~~~~~~~~
+Rust defines five unary operators. They are all written a prefix
+operators, before the expression they apply to.
+
+`-`
+  : Negation. May only be applied to numeric types.
+`*`
+  : Dereference. When applied to a [box](#box-types) or
+    [resource](#resources) type, it accesses the inner value. For
+    mutable boxes, the resulting _lval_ can be assigned to. For
+    [enums](#enumerated-types) that have only a single variant,
+    containing a single parameter, the dereference operator accesses
+    this parameter.
+`!`
+  : Logical negation. On the boolean type, this flips between `true` and
+    `false`. On integer types, this inverts the individual bits in the
+    two's complement representation of the value.
+`@` and `~`
+  :  [Boxing](#box-types) operators. Allocate a box to hold the value
+     they are applied to, and store the value in it. `@` creates a
+     shared, reference-counted box, whereas `~` creates a unique box.
 
 ### Binary operator expressions
 
-~~~~~~~~ {.binop}
-.
-+ - * / %
-& | ^
-|| &&
-< <= == >= >
-<< >> >>>
-as
-<- <-> = += -= *= /= %= &= |= ^= <<= >>= >>>=
-~~~~~~~~
+#### Arithmetic operators
+
+Binary arithmetic expressions require both their operands to be of the
+same type, and can be applied only to numeric types, with the
+exception of `+`, which acts both as addition operator on numbers and
+as concatenate operator on vectors and strings.
+
+`+`
+  : Addition and vector/string concatenation.
+`-`
+  : Subtraction.
+`*`
+  : Multiplication.
+`/`
+  : Division.
+`%`
+  : Remainder.
+
+#### Bitwise operators
+
+Bitwise operators apply only to integer types, and perform their
+operation on the bits of the two's complement representation of the
+values.
+
+`&`
+  : And.
+`|`
+  : Inclusive or.
+`^`
+  : Exclusive or.
+`<<`
+  : Logical left shift.
+`>>`
+  : Logical right shift.
+`>>>`
+  : Arithmetic right shift.
+
+#### Lazy boolean operators
+
+The operators `||` and `&&` may be applied to operands of boolean
+type. The first performs the 'or' operation, and the second the 'and'
+operation. They differ from `|` and `&` in that the right-hand operand
+is only evaluated when the left-hand operand does not already
+determine the outcome of the expression. That is, `||` only evaluates
+it right-hand operand when the left-hand operand evaluates to `false`,
+and `&&` only when it evaluates to `true`.
+
+#### Comparison operators
+
+`==`
+  : Equal to.
+`!=`
+  : Unequal to.
+`<`
+  : Less than.
+`>`
+  : Greater than.
+`<=`
+  : Less than or equal.
+`>=`
+  : Greater than or equal.
+
+The binary comparison operators can be applied to any two operands of
+the same type, and produce a boolean value.
+
+*TODO* details on how types are descended during comparison.
 
 #### Type cast expressions
 
@@ -1299,6 +1649,31 @@ x <- copy y
 
 The former is just more terse and familiar.
 
+#### Operator-assignment expressions
+
+The `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<<`, `>>`, and `>>>`
+operators may be composed with the `=` operator. The expression `lval
+OP= val` is equivalent to `lval = lval OP val`. For example, `x = x +
+1` may be written as `x += 1`.
+
+#### Operator precedence
+
+The precedence of Rust binary operators is ordered as follows, going
+from strong to weak:
+
+~~~~ {.precedence}
+* / %
++ -
+<< >> >>>
+&
+^ |
+as
+< > <= >=
+== !=
+&&
+||
+~~~~
+
 ### Unary copy expressions
 
 A _unary copy expression_ consists of the unary `copy` operator applied to
@@ -1332,8 +1707,18 @@ assert v[0] == 1; // Original was not modified
 
 ### Unary move expressions
 
-*TODO*.
+This is used to indicate that the referenced _lval_ must be moved out,
+rather than copied, when evaluating this expression. It will only have
+effect when the expression is _stored_ somewhere or passed to a
+function that takes ownership of it.
 
+~~~~
+let x = ~10;
+let y = [move x];
+~~~~
+
+Any access to `y` after applying the `move` operator to it is invalid,
+since it is no longer initialized at that point.
 
 ### Call expressions
 
@@ -2049,7 +2434,25 @@ denoted by named reference to an [*enumeration* item](#enumerations).
 
 ### Box types
 
-*TODO*.
+Box types are represented as pointers. There are three flavours of
+pointers:
+
+Shared boxes (`@`)
+  : These are reference-counted boxes. Their type is written
+    `@content`, for example `@int` means a shared box containing an
+    integer. Copying a value of such a type means copying the pointer
+    and increasing the reference count.
+
+Unique boxes (`~`)
+  : Unique boxes have only a single owner, and are freed when their
+    owner releases them. They are written `~content`. Copying a
+    unique box involves copying the contents into a new box.
+
+Unsafe pointers (`*`)
+  : Unsafe pointers are pointers without safety guarantees or
+    language-enforced semantics. Their type is written `*content`.
+    They can be copied and dropped freely. Dereferencing an unsafe
+    pointer is part of the unsafe sub-dialect of Rust.
 
 ### Function types
 
@@ -2071,6 +2474,56 @@ type binop = fn(int,int) -> int;
 let bo: binop = add;
 x = bo(5,7);
 ~~~~~~~~
+
+## Type kinds
+
+Types in Rust are categorized into three kinds, based on whether they
+allow copying of their values, and sending to different tasks. The
+kinds are:
+
+Sendable
+  : Values with a sendable type can be safely sent to another task.
+    This kind includes scalars, unique pointers, unique closures, and
+    structural types containing only other sendable types.
+Copyable
+  : This kind includes all types that can be copied. All types with
+    sendable kind are copyable, as are shared boxes, shared closures,
+    interface types, and structural types built out of these.
+Noncopyable
+  : [Resource](#resources) types, and every type that includes a
+    resource without storing it in a shared box, may not be copied.
+    Types of sendable or copyable type can always be used in places
+    where a noncopyable type is expected, so in effect this kind
+    includes all types.
+
+These form a hierarchy. The noncopyable kind is the widest, including
+all types in the language. The copyable kind is a subset of that, and
+the sendable kind is a subset of the copyable kind.
+
+Any operation that causes a value to be copied requires the type of
+that value to be of copyable kind. Type parameter types are assumed to
+be noncopyable, unless one of the special bounds `send` or `copy` is
+declared for it. For example, this is not a valid program:
+
+~~~~
+fn box<T>(x: T) -> @T { @x }
+~~~~
+
+Putting `x` into a shared box involves copying, and the `T` parameter
+is assumed to be noncopyable. To change that, a bound is declared:
+
+~~~~
+fn box<T: copy>(x: T) -> @T { @x }
+~~~~
+
+Calling this second version of `box` on a noncopyable type is not
+allowed. When instantiating a type parameter, the kind bounds on the
+parameter are checked to be the same or narrower than the kind of the
+type that it is instantiated with.
+
+Sending operations are not part of the Rust language, but are
+implemented in the library. Generic functions that send values bound
+the kind of these values to sendable.
 
 
 
@@ -2305,7 +2758,7 @@ consist of *boxes*.
 
 ### Memory allocation and lifetime
 
-The _items_ of a program are those functions, objects, modules and types
+The _items_ of a program are those functions, modules and types
 that have their value calculated at compile-time and stored uniquely in the
 memory image of the rust process. Items are neither dynamically allocated nor
 freed.
