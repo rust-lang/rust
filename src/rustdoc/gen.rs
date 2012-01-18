@@ -91,14 +91,30 @@ fn write_fn(
     doc: doc::fndoc
 ) {
     write_header(ctxt, #fmt("Function `%s`", doc.name));
-    alt doc.brief {
+    write_brief(ctxt, doc.brief);
+    write_desc(ctxt, doc.desc);
+    write_args(ctxt, doc.args);
+    write_return(ctxt, doc.return);
+}
+
+fn write_brief(
+    ctxt: ctxt,
+    brief: option<str>
+) {
+    alt brief {
       some(brief) {
         ctxt.w.write_line(brief);
         ctxt.w.write_line("");
       }
       none. { }
     }
-    alt doc.desc {
+}
+
+fn write_desc(
+    ctxt: ctxt,
+    desc: option<str>
+) {
+    alt desc {
         some(_d) {
             ctxt.w.write_line("");
             ctxt.w.write_line(_d);
@@ -106,11 +122,23 @@ fn write_fn(
         }
         none. { }
     }
-    for (arg, desc) in doc.args {
+}
+
+fn write_args(
+    ctxt: ctxt,
+    args: [(str, str)]
+) {
+    for (arg, desc) in args {
         ctxt.w.write_str("### Argument `" + arg + "`: ");
         ctxt.w.write_str(desc)
     }
-    alt doc.return {
+}
+
+fn write_return(
+    ctxt: ctxt,
+    return: option<doc::retdoc>
+) {
+    alt return {
       some(doc) {
         alt doc.ty {
           some(ty) {
