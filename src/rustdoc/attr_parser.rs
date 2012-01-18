@@ -9,8 +9,12 @@ import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
 
-export fn_attrs, arg_attrs;
-export parse_fn;
+export crate_attrs, fn_attrs, arg_attrs;
+export parse_crate, parse_fn;
+
+type crate_attrs = {
+    name: option<str>
+};
 
 type fn_attrs = {
     brief: option<str>,
@@ -42,6 +46,38 @@ fn doc_meta(
     } else {
         none
     }
+}
+
+fn parse_crate(attrs: [ast::attribute]) -> crate_attrs {
+    let link_metas = attr::find_linkage_metas(attrs);
+
+    {
+        name: attr::meta_item_value_from_list(link_metas, "name")
+    }
+}
+
+#[test]
+fn should_extract_crate_name_from_link_attribute() {
+    let source = "#[link(name = \"snuggles\")]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_crate(attrs);
+    assert attrs.name == some("snuggles");
+}
+
+#[test]
+fn should_not_extract_crate_name_if_no_link_attribute() {
+    let source = "";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_crate(attrs);
+    assert attrs.name == none;
+}
+
+#[test]
+fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
+    let source = "#[link(whatever)]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_crate(attrs);
+    assert attrs.name == none;
 }
 
 fn parse_fn(
@@ -114,7 +150,7 @@ fn parse_fn_(
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
 
     fn parse_attributes(source: str) -> [ast::attribute] {
         import rustc::syntax::parse::parser;
