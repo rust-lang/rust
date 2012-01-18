@@ -1,6 +1,6 @@
 Short version for non-lawyers:
 
-This work licensed under BSD-like terms.
+This work licensed under MIT-like terms.
 
 
 Long version follows:
