@@ -61,7 +61,7 @@ function foot(created, modified) {
 
 function formatTime(tm) {
   var d = new Date(tm);
-  var months = ["", "January", "February", "March", "April", "May", "June", "July", "August",
+  var months = ["January", "February", "March", "April", "May", "June", "July", "August",
                 "September", "October", "November", "December"];
   return months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
 }
