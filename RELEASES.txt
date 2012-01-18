@@ -1,0 +1,27 @@
+Version 0.1  (January 2012)
+---------------------------
+
+   * Language is "alpha-level complete"; Most planned features are present in
+     preliminary form. Try it out, let us know how it feels.
+
+   * Compiler should work with the following configurations:
+      * Linux: x86 and x86_64 hosts and targets
+      * MacOS: x86 and x86_64 hosts and targets
+      * Windows: x86 hosts and targets
+
+   * Cross compilation / multi-target configuration supported.
+
+   * Preliminary API-documentation and package-management tools included.
+
+Known issues:
+
+   * Many open bugs, see http://github.com/mozilla/rust/issues
+
+   * Documentation is rough, incomplete.
+
+   * Performance is still well below intended target.
+
+   * Standard library APIs subject to extensive change, reorganization.
+
+   * Language-level versioning not yet operational, future code will break
+     unexpectedly.
