@@ -66,9 +66,9 @@ endif
 # Main test targets
 ######################################################################
 
-check: all tidy check-stage2 \
+check: tidy all check-stage2 \
 
-check-full: all tidy check-stage1 check-stage2 check-stage3 \
+check-full: tidy all check-stage1 check-stage2 check-stage3 \
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
 ifdef CFG_NOTIDY
