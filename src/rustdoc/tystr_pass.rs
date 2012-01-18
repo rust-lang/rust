@@ -2,7 +2,11 @@ import rustc::syntax::ast;
 import rustc::syntax::print::pprust;
 import rustc::middle::ast_map;
 
-export run;
+export mk_pass;
+
+fn mk_pass() -> pass {
+    run
+}
 
 fn run(
     srv: astsrv::srv,

@@ -1,4 +1,8 @@
-export run;
+export mk_pass;
+
+fn mk_pass() -> pass {
+    run
+}
 
 type ctxt = {
     mutable have_docs: bool

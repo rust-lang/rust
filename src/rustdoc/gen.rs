@@ -1,7 +1,19 @@
 import std::io;
 import std::io::writer_util;
 
-export write_markdown;
+export mk_pass;
+
+fn mk_pass(
+    writer: fn~() -> io::writer
+) -> pass {
+    ret fn~(
+        _srv: astsrv::srv,
+        doc: doc::cratedoc
+    ) -> doc::cratedoc {
+        write_markdown(doc, writer());
+        doc
+    };
+}
 
 type ctxt = {
     w: io::writer,

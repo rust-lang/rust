@@ -74,11 +74,11 @@ fn run(source_file: str) {
     let default_name = source_file;
     let srv = astsrv::mk_srv_from_file(source_file);
     let doc = extract::from_srv(srv, default_name);
-    let doc = run_passes(srv, doc, [
-        attr_pass::run,
+    run_passes(srv, doc, [
+        attr_pass::mk_pass(),
         // FIXME: This pass should be optional
-        prune_undoc_pass::run,
-        tystr_pass::run
+        prune_undoc_pass::mk_pass(),
+        tystr_pass::mk_pass(),
+        gen::mk_pass {|| std::io:: stdout()}
     ]);
-    gen::write_markdown(doc, std::io::stdout());
 }
