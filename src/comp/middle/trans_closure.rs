@@ -528,8 +528,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
     };
 
     let closure = alt proto {
-      ast::proto_any { fail "proto_any cannot appear in an expr"; }
-      ast::proto_block { trans_closure_env(ty::ck_block) }
+      ast::proto_any | ast::proto_block { trans_closure_env(ty::ck_block) }
       ast::proto_box { trans_closure_env(ty::ck_box) }
       ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare {

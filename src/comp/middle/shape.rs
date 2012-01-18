@@ -432,7 +432,8 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_fn({proto: ast::proto_uniq, _}) {
         s += [shape_uniq_fn];
       }
-      ty::ty_fn({proto: ast::proto_block, _}) {
+      ty::ty_fn({proto: ast::proto_block, _}) |
+      ty::ty_fn({proto: ast::proto_any, _}) {
         s += [shape_stack_fn];
       }
       ty::ty_fn({proto: ast::proto_bare, _}) {

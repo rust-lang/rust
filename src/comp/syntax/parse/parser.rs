@@ -146,8 +146,8 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     for word in ["mod", "if", "else", "while", "do", "alt", "for", "break",
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "pure",
-                 "unsafe", "block", "import", "export", "let", "const",
-                 "log", "copy", "sendfn", "impl", "iface", "enum"] {
+                 "unsafe", "import", "export", "let", "const",
+                 "log", "copy", "impl", "iface", "enum"] {
         words.insert(word, ());
     }
     words
@@ -493,9 +493,6 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
           _ { /* fallthrough */ }
         }
         t = parse_ty_fn(proto, p);
-    } else if eat_word(p, "block") {
-        //p.warn("block is deprecated, use fn& or fn");
-        t = parse_ty_fn(ast::proto_block, p);
     } else if eat_word(p, "native") {
         expect_word(p, "fn");
         t = parse_ty_fn(ast::proto_bare, p);
@@ -802,9 +799,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
           _ { /* fallthrough */ }
         }
         ret pexpr(parse_fn_expr(p, proto));
-    } else if eat_word(p, "block") {
-        p.warn("block is deprecated, use fn& or fn");
-        ret pexpr(parse_fn_expr(p, ast::proto_block));
     } else if eat_word(p, "unchecked") {
         ret pexpr(parse_block_expr(p, lo, ast::unchecked_blk));
     } else if eat_word(p, "unsafe") {
