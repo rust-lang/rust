@@ -42,18 +42,20 @@ doc/rust.pdf: doc/rust.tex
 
 endif
 
+endif
+
+
 ifdef CFG_NODE
 
 doc/tutorial/web/index.html: \
         $(wildcard $(S)doc/tutorial/*.md)
-	@$(call E, cp: $@)
+	@$(call E, cp: $(S)doc/tutorial)
 	$(Q)cp -a $(S)doc/tutorial doc/
 	@$(call E, node: build.js)
 	$(Q)cd doc/tutorial && $(CFG_NODE) build.js
 
 endif
 
-endif
 
 ifdef CFG_LLNEXTGEN
 doc/rust.g: rust.md $(S)src/etc/extract_grammar.py
