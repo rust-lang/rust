@@ -156,3 +156,46 @@ fn recv_<T: send>(p: *rustrt::rust_port) -> T {
 fn chan<T: send>(p: port<T>) -> chan<T> {
     chan_t(task::get_task(), rustrt::get_port_id(***p))
 }
+
+#[test]
+fn create_port_and_chan() { let p = port::<int>(); chan(p); }
+
+#[test]
+fn send_int() {
+    let p = port::<int>();
+    let c = chan(p);
+    send(c, 22);
+}
+
+#[test]
+fn send_recv_fn() {
+    let p = port::<int>();
+    let c = chan::<int>(p);
+    send(c, 42);
+    assert (recv(p) == 42);
+}
+
+#[test]
+fn send_recv_fn_infer() {
+    let p = port();
+    let c = chan(p);
+    send(c, 42);
+    assert (recv(p) == 42);
+}
+
+#[test]
+fn chan_chan_infer() {
+    let p = port(), p2 = port::<int>();
+    let c = chan(p);
+    send(c, chan(p2));
+    recv(p);
+}
+
+#[test]
+fn chan_chan() {
+    let p = port::<chan<int>>(), p2 = port::<int>();
+    let c = chan(p);
+    send(c, chan(p2));
+    recv(p);
+}
+

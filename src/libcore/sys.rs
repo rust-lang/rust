@@ -122,6 +122,60 @@ fn set_min_stack(size: uint) {
     rustrt::set_min_stack(size);
 }
 
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn last_os_error() {
+        log(debug, last_os_error());
+    }
+
+    #[test]
+    fn size_of_basic() {
+        assert size_of::<u8>() == 1u;
+        assert size_of::<u16>() == 2u;
+        assert size_of::<u32>() == 4u;
+        assert size_of::<u64>() == 8u;
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "arm")]
+    fn size_of_32() {
+        assert size_of::<uint>() == 4u;
+        assert size_of::<*uint>() == 4u;
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn size_of_64() {
+        assert size_of::<uint>() == 8u;
+        assert size_of::<*uint>() == 8u;
+    }
+
+    #[test]
+    fn align_of_basic() {
+        assert align_of::<u8>() == 1u;
+        assert align_of::<u16>() == 2u;
+        assert align_of::<u32>() == 4u;
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "arm")]
+    fn align_of_32() {
+        assert align_of::<uint>() == 4u;
+        assert align_of::<*uint>() == 4u;
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn align_of_64() {
+        assert align_of::<uint>() == 8u;
+        assert align_of::<*uint>() == 8u;
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

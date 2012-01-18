@@ -1112,3 +1112,464 @@ fn escape(s: str) -> str {
     loop_chars(s, { |c| r += escape_char(c); true });
     r
 }
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_eq() {
+        assert (eq("", ""));
+        assert (eq("foo", "foo"));
+        assert (!eq("foo", "bar"));
+    }
+
+    #[test]
+    fn test_lteq() {
+        assert (lteq("", ""));
+        assert (lteq("", "foo"));
+        assert (lteq("foo", "foo"));
+        assert (!eq("foo", "bar"));
+    }
+
+    #[test]
+    fn test_bytes_len() {
+        assert (byte_len("") == 0u);
+        assert (byte_len("hello world") == 11u);
+        assert (byte_len("\x63") == 1u);
+        assert (byte_len("\xa2") == 2u);
+        assert (byte_len("\u03c0") == 2u);
+        assert (byte_len("\u2620") == 3u);
+        assert (byte_len("\U0001d11e") == 4u);
+    }
+
+    #[test]
+    fn test_index_and_rindex() {
+        assert (index("hello", 'e' as u8) == 1);
+        assert (index("hello", 'o' as u8) == 4);
+        assert (index("hello", 'z' as u8) == -1);
+        assert (rindex("hello", 'l' as u8) == 3);
+        assert (rindex("hello", 'h' as u8) == 0);
+        assert (rindex("hello", 'z' as u8) == -1);
+    }
+
+    #[test]
+    fn test_split() {
+        fn t(s: str, c: char, u: [str]) {
+            log(debug, "split: " + s);
+            let v = split(s, c as u8);
+            #debug("split to: ");
+            log(debug, v);
+            assert (vec::all2(v, u, { |a,b| a == b }));
+        }
+        t("abc.hello.there", '.', ["abc", "hello", "there"]);
+        t(".hello.there", '.', ["", "hello", "there"]);
+        t("...hello.there.", '.', ["", "", "", "hello", "there", ""]);
+    }
+
+    #[test]
+    fn test_splitn() {
+        fn t(s: str, c: char, n: uint, u: [str]) {
+            log(debug, "splitn: " + s);
+            let v = splitn(s, c as u8, n);
+            #debug("split to: ");
+            log(debug, v);
+            #debug("comparing vs. ");
+            log(debug, u);
+            assert (vec::all2(v, u, { |a,b| a == b }));
+        }
+        t("abc.hello.there", '.', 0u, ["abc.hello.there"]);
+        t("abc.hello.there", '.', 1u, ["abc", "hello.there"]);
+        t("abc.hello.there", '.', 2u, ["abc", "hello", "there"]);
+        t("abc.hello.there", '.', 3u, ["abc", "hello", "there"]);
+        t(".hello.there", '.', 0u, [".hello.there"]);
+        t(".hello.there", '.', 1u, ["", "hello.there"]);
+        t("...hello.there.", '.', 3u, ["", "", "", "hello.there."]);
+        t("...hello.there.", '.', 5u, ["", "", "", "hello", "there", ""]);
+    }
+
+    #[test]
+    fn test_split_str() {
+        fn t(s: str, sep: str, i: int, k: str) {
+            let v = split_str(s, sep);
+            assert eq(v[i], k);
+        }
+
+        //FIXME: should behave like split and split_char:
+        //assert ["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".");
+
+        t("abc::hello::there", "::", 0, "abc");
+        t("abc::hello::there", "::", 1, "hello");
+        t("abc::hello::there", "::", 2, "there");
+        t("::hello::there", "::", 0, "hello");
+        t("hello::there::", "::", 2, "");
+        t("::hello::there::", "::", 2, "");
+        t("ประเทศไทย中华Việt Nam", "中华", 0, "ประเทศไทย");
+        t("ประเทศไทย中华Việt Nam", "中华", 1, "Việt Nam");
+    }
+
+    #[test]
+    fn test_split_func () {
+        let data = "ประเทศไทย中华Việt Nam";
+        assert ["ประเทศไทย中", "Việt Nam"]
+            == split_func (data, {|cc| cc == '华'});
+
+        assert ["", "", "XXX", "YYY", ""]
+            == split_func("zzXXXzYYYz", char::is_lowercase);
+
+        assert ["zz", "", "", "z", "", "", "z"]
+            == split_func("zzXXXzYYYz", char::is_uppercase);
+
+        assert ["",""] == split_func("z", {|cc| cc == 'z'});
+        assert [""] == split_func("", {|cc| cc == 'z'});
+        assert ["ok"] == split_func("ok", {|cc| cc == 'z'});
+    }
+
+    #[test]
+    fn test_split_char () {
+        let data = "ประเทศไทย中华Việt Nam";
+        assert ["ประเทศไทย中", "Việt Nam"]
+            == split_char(data, '华');
+
+        assert ["", "", "XXX", "YYY", ""]
+            == split_char("zzXXXzYYYz", 'z');
+        assert ["",""] == split_char("z", 'z');
+        assert [""] == split_char("", 'z');
+        assert ["ok"] == split_char("ok", 'z');
+    }
+
+    #[test]
+    fn test_lines () {
+        let lf = "\nMary had a little lamb\nLittle lamb\n";
+        let crlf = "\r\nMary had a little lamb\r\nLittle lamb\r\n";
+
+        assert ["", "Mary had a little lamb", "Little lamb", ""]
+            == lines(lf);
+
+        assert ["", "Mary had a little lamb", "Little lamb", ""]
+            == lines_any(lf);
+
+        assert ["\r", "Mary had a little lamb\r", "Little lamb\r", ""]
+            == lines(crlf);
+
+        assert ["", "Mary had a little lamb", "Little lamb", ""]
+            == lines_any(crlf);
+
+        assert [""] == lines    ("");
+        assert [""] == lines_any("");
+        assert ["",""] == lines    ("\n");
+        assert ["",""] == lines_any("\n");
+        assert ["banana"] == lines    ("banana");
+        assert ["banana"] == lines_any("banana");
+    }
+
+    #[test]
+    fn test_words () {
+        let data = "\nMary had a little lamb\nLittle lamb\n";
+        assert ["Mary","had","a","little","lamb","Little","lamb"]
+            == words(data);
+
+        assert ["ok"] == words("ok");
+        assert [] == words("");
+    }
+
+    #[test]
+    fn test_find() {
+        fn t(haystack: str, needle: str, i: int) {
+            let j: int = find(haystack, needle);
+            log(debug, "searched for " + needle);
+            log(debug, j);
+            assert (i == j);
+        }
+        t("this is a simple", "is a", 5);
+        t("this is a simple", "is z", -1);
+        t("this is a simple", "", 0);
+        t("this is a simple", "simple", 10);
+        t("this", "simple", -1);
+    }
+
+    #[test]
+    fn test_substr() {
+        fn t(a: str, b: str, start: int) {
+            assert (eq(substr(a, start as uint, byte_len(b)), b));
+        }
+        t("hello", "llo", 2);
+        t("hello", "el", 1);
+        t("substr should not be a challenge", "not", 14);
+    }
+
+    #[test]
+    fn test_concat() {
+        fn t(v: [str], s: str) { assert (eq(concat(v), s)); }
+        t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
+        let v: [str] = [];
+        t(v, "");
+        t(["hi"], "hi");
+    }
+
+    #[test]
+    fn test_connect() {
+        fn t(v: [str], sep: str, s: str) {
+            assert (eq(connect(v, sep), s));
+        }
+        t(["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");
+        let v: [str] = [];
+        t(v, " ", "");
+        t(["hi"], " ", "hi");
+    }
+
+    #[test]
+    fn test_to_upper() {
+        // to_upper doesn't understand unicode yet,
+        // but we need to at least preserve it
+
+        let unicode = "\u65e5\u672c";
+        let input = "abcDEF" + unicode + "xyz:.;";
+        let expected = "ABCDEF" + unicode + "XYZ:.;";
+        let actual = to_upper(input);
+        assert (eq(expected, actual));
+    }
+
+    #[test]
+    fn test_slice() {
+        assert (eq("ab", slice("abc", 0u, 2u)));
+        assert (eq("bc", slice("abc", 1u, 3u)));
+        assert (eq("", slice("abc", 1u, 1u)));
+        fn a_million_letter_a() -> str {
+            let i = 0;
+            let rs = "";
+            while i < 100000 { rs += "aaaaaaaaaa"; i += 1; }
+            ret rs;
+        }
+        fn half_a_million_letter_a() -> str {
+            let i = 0;
+            let rs = "";
+            while i < 100000 { rs += "aaaaa"; i += 1; }
+            ret rs;
+        }
+        assert (eq(half_a_million_letter_a(),
+                        slice(a_million_letter_a(), 0u, 500000u)));
+    }
+
+    #[test]
+    fn test_starts_with() {
+        assert (starts_with("", ""));
+        assert (starts_with("abc", ""));
+        assert (starts_with("abc", "a"));
+        assert (!starts_with("a", "abc"));
+        assert (!starts_with("", "abc"));
+    }
+
+    #[test]
+    fn test_ends_with() {
+        assert (ends_with("", ""));
+        assert (ends_with("abc", ""));
+        assert (ends_with("abc", "c"));
+        assert (!ends_with("a", "abc"));
+        assert (!ends_with("", "abc"));
+    }
+
+    #[test]
+    fn test_is_empty() {
+        assert (is_empty(""));
+        assert (!is_empty("a"));
+    }
+
+    #[test]
+    fn test_is_not_empty() {
+        assert (is_not_empty("a"));
+        assert (!is_not_empty(""));
+    }
+
+    #[test]
+    fn test_replace() {
+        let a = "a";
+        check (is_not_empty(a));
+        assert (replace("", a, "b") == "");
+        assert (replace("a", a, "b") == "b");
+        assert (replace("ab", a, "b") == "bb");
+        let test = "test";
+        check (is_not_empty(test));
+        assert (replace(" test test ", test, "toast") == " toast toast ");
+        assert (replace(" test test ", test, "") == "   ");
+    }
+
+    #[test]
+    fn test_char_slice() {
+        assert (eq("ab", char_slice("abc", 0u, 2u)));
+        assert (eq("bc", char_slice("abc", 1u, 3u)));
+        assert (eq("", char_slice("abc", 1u, 1u)));
+        assert (eq("\u65e5", char_slice("\u65e5\u672c", 0u, 1u)));
+
+        let data = "ประเทศไทย中华";
+        assert (eq("ป", char_slice(data, 0u, 1u)));
+        assert (eq("ร", char_slice(data, 1u, 2u)));
+        assert (eq("华", char_slice(data, 10u, 11u)));
+        assert (eq("", char_slice(data, 1u, 1u)));
+
+        fn a_million_letter_X() -> str {
+            let i = 0;
+            let rs = "";
+            while i < 100000 { rs += "华华华华华华华华华华"; i += 1; }
+            ret rs;
+        }
+        fn half_a_million_letter_X() -> str {
+            let i = 0;
+            let rs = "";
+            while i < 100000 { rs += "华华华华华"; i += 1; }
+            ret rs;
+        }
+        assert (eq(half_a_million_letter_X(),
+                        char_slice(a_million_letter_X(), 0u, 500000u)));
+    }
+
+    #[test]
+    fn test_trim_left() {
+        assert (trim_left("") == "");
+        assert (trim_left("a") == "a");
+        assert (trim_left("    ") == "");
+        assert (trim_left("     blah") == "blah");
+        assert (trim_left("   \u3000  wut") == "wut");
+        assert (trim_left("hey ") == "hey ");
+    }
+
+    #[test]
+    fn test_trim_right() {
+        assert (trim_right("") == "");
+        assert (trim_right("a") == "a");
+        assert (trim_right("    ") == "");
+        assert (trim_right("blah     ") == "blah");
+        assert (trim_right("wut   \u3000  ") == "wut");
+        assert (trim_right(" hey") == " hey");
+    }
+
+    #[test]
+    fn test_trim() {
+        assert (trim("") == "");
+        assert (trim("a") == "a");
+        assert (trim("    ") == "");
+        assert (trim("    blah     ") == "blah");
+        assert (trim("\nwut   \u3000  ") == "wut");
+        assert (trim(" hey dude ") == "hey dude");
+    }
+
+    #[test]
+    fn test_is_whitespace() {
+        assert (is_whitespace(""));
+        assert (is_whitespace(" "));
+        assert (is_whitespace("\u2009")); // Thin space
+        assert (is_whitespace("  \n\t   "));
+        assert (!is_whitespace("   _   "));
+    }
+
+    #[test]
+    fn test_is_ascii() {
+        assert (is_ascii(""));
+        assert (is_ascii("a"));
+        assert (!is_ascii("\u2009"));
+    }
+
+    #[test]
+    fn test_shift_byte() {
+        let s = "ABC";
+        let b = shift_byte(s);
+        assert (s == "BC");
+        assert (b == 65u8);
+    }
+
+    #[test]
+    fn test_pop_byte() {
+        let s = "ABC";
+        let b = pop_byte(s);
+        assert (s == "AB");
+        assert (b == 67u8);
+    }
+
+    #[test]
+    fn test_unsafe_from_bytes() {
+        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
+        let b = unsafe_from_bytes(a);
+        assert (b == "AAAAAAA");
+    }
+
+    #[test]
+    fn test_from_cstr() unsafe {
+        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+        let b = vec::to_ptr(a);
+        let c = from_cstr(b);
+        assert (c == "AAAAAAA");
+    }
+
+    #[test]
+    fn test_as_buf() unsafe {
+        let a = "Abcdefg";
+        let b = as_buf(a, {|buf| assert (*buf == 65u8); 100 });
+        assert (b == 100);
+    }
+
+    #[test]
+    fn test_as_buf_small() unsafe {
+        let a = "A";
+        let b = as_buf(a, {|buf| assert (*buf == 65u8); 100 });
+        assert (b == 100);
+    }
+
+    #[test]
+    fn test_as_buf2() unsafe {
+        let s = "hello";
+        let sb = as_buf(s, {|b| b });
+        let s_cstr = from_cstr(sb);
+        assert (eq(s_cstr, s));
+    }
+
+    #[test]
+    fn vec_str_conversions() {
+        let s1: str = "All mimsy were the borogoves";
+
+        let v: [u8] = bytes(s1);
+        let s2: str = unsafe_from_bytes(v);
+        let i: uint = 0u;
+        let n1: uint = byte_len(s1);
+        let n2: uint = vec::len::<u8>(v);
+        assert (n1 == n2);
+        while i < n1 {
+            let a: u8 = s1[i];
+            let b: u8 = s2[i];
+            log(debug, a);
+            log(debug, b);
+            assert (a == b);
+            i += 1u;
+        }
+    }
+
+    #[test]
+    fn test_contains() {
+        assert contains("abcde", "bcd");
+        assert contains("abcde", "abcd");
+        assert contains("abcde", "bcde");
+        assert contains("abcde", "");
+        assert contains("", "");
+        assert !contains("abcde", "def");
+        assert !contains("", "a");
+    }
+
+    #[test]
+    fn test_iter_chars() {
+        let i = 0;
+        iter_chars("x\u03c0y") {|ch|
+            alt i {
+              0 { assert ch == 'x'; }
+              1 { assert ch == '\u03c0'; }
+              2 { assert ch == 'y'; }
+            }
+            i += 1;
+        }
+    }
+
+    #[test]
+    fn test_escape() {
+        assert(escape("abcdef") == "abcdef");
+        assert(escape("abc\\def") == "abc\\\\def");
+        assert(escape("abc\ndef") == "abc\\ndef");
+        assert(escape("abc\"def") == "abc\\\"def");
+    }
+}

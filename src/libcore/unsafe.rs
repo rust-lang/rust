@@ -4,6 +4,8 @@ Module: unsafe
 Unsafe operations
 */
 
+export reinterpret_cast, leak;
+
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn cast<T, U>(src: T) -> U;
@@ -39,3 +41,19 @@ can be used for various acts of magick, particularly when using
 reinterpret_cast on managed pointer types.
 */
 unsafe fn leak<T>(-thing: T) { rustrt::leak(thing); }
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_reinterpret_cast() unsafe {
+        assert reinterpret_cast(1) == 1u;
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(target_os = "win32"))]
+    fn test_reinterpret_cast_wrong_size() unsafe {
+        let _i: uint = reinterpret_cast(0u8);
+    }
+}

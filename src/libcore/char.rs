@@ -147,3 +147,77 @@ pure fn cmp(a: char, b: char) -> int {
     else if b < a { 1 }
     else { 0 }
 }
+
+#[test]
+fn test_is_lowercase() {
+    assert is_lowercase('a');
+    assert is_lowercase('ö');
+    assert is_lowercase('ß');
+    assert !is_lowercase('Ü');
+    assert !is_lowercase('P');
+}
+
+#[test]
+fn test_is_uppercase() {
+    assert !is_uppercase('h');
+    assert !is_uppercase('ä');
+    assert !is_uppercase('ß');
+    assert is_uppercase('Ö');
+    assert is_uppercase('T');
+}
+
+#[test]
+fn test_is_whitespace() {
+    assert is_whitespace(' ');
+    assert is_whitespace('\u2007');
+    assert is_whitespace('\t');
+    assert is_whitespace('\n');
+
+    assert !is_whitespace('a');
+    assert !is_whitespace('_');
+    assert !is_whitespace('\u0000');
+}
+
+#[test]
+fn test_to_digit() {
+    assert (to_digit('0') == 0u8);
+    assert (to_digit('1') == 1u8);
+    assert (to_digit('2') == 2u8);
+    assert (to_digit('9') == 9u8);
+    assert (to_digit('a') == 10u8);
+    assert (to_digit('A') == 10u8);
+    assert (to_digit('b') == 11u8);
+    assert (to_digit('B') == 11u8);
+    assert (to_digit('z') == 35u8);
+    assert (to_digit('Z') == 35u8);
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_to_digit_fail_1() {
+    to_digit(' ');
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_to_digit_fail_2() {
+    to_digit('$');
+}
+
+#[test]
+fn test_to_lower() {
+    assert (to_lower('H') == 'h');
+    assert (to_lower('e') == 'e');
+    //assert (to_lower('Ö') == 'ö');
+    assert (to_lower('ß') == 'ß');
+}
+
+#[test]
+fn test_to_upper() {
+    assert (to_upper('l') == 'L');
+    assert (to_upper('Q') == 'Q');
+    //assert (to_upper('ü') == 'Ü');
+    assert (to_upper('ß') == 'ß');
+}

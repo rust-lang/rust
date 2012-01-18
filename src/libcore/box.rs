@@ -11,3 +11,13 @@ pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
         ret a_ptr == b_ptr;
     }
 }
+
+#[test]
+fn test() {
+    let x = @3;
+    let y = @3;
+    assert (ptr_eq::<int>(x, x));
+    assert (ptr_eq::<int>(y, y));
+    assert (!ptr_eq::<int>(x, y));
+    assert (!ptr_eq::<int>(y, x));
+}

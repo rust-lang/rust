@@ -50,3 +50,20 @@ Function: null
 Create an unsafe null pointer
 */
 fn null<T>() -> *T unsafe { ret unsafe::reinterpret_cast(0u); }
+
+#[test]
+fn test() unsafe {
+    type pair = {mutable fst: int, mutable snd: int};
+    let p = {mutable fst: 10, mutable snd: 20};
+    let pptr: *mutable pair = mut_addr_of(p);
+    let iptr: *mutable int = unsafe::reinterpret_cast(pptr);
+    assert (*iptr == 10);;
+    *iptr = 30;
+    assert (*iptr == 30);
+    assert (p.fst == 30);;
+
+    *pptr = {mutable fst: 50, mutable snd: 60};
+    assert (*iptr == 50);
+    assert (p.fst == 50);
+    assert (p.snd == 60);
+}

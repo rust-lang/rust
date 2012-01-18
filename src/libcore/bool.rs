@@ -85,6 +85,26 @@ fn all_values(blk: block(v: t)) {
 )]
 pure fn to_bit(v: t) -> u8 { if v { 1u8 } else { 0u8 } }
 
+#[test]
+fn test_bool_from_str() {
+    all_values { |v|
+        assert v == from_str(bool::to_str(v))
+    }
+}
+
+#[test]
+fn test_bool_to_str() {
+    assert to_str(false) == "false";
+    assert to_str(true) == "true";
+}
+
+#[test]
+fn test_bool_to_bit() {
+    all_values { |v|
+        assert to_bit(v) == if is_true(v) { 1u8 } else { 0u8 };
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

@@ -374,6 +374,85 @@ fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_sleep() { sleep(1000000u); }
+
+    // FIXME: Leaks on windows
+    #[test]
+    #[ignore(cfg(target_os = "win32"))]
+    fn test_unsupervise() {
+        fn f() { unsupervise(); fail; }
+        spawn {|| f();};
+    }
+
+    #[test]
+    fn test_lib_spawn() {
+        fn foo() { #error("Hello, World!"); }
+        spawn {|| foo();};
+    }
+
+    #[test]
+    fn test_lib_spawn2() {
+        fn foo(x: int) { assert (x == 42); }
+        spawn {|| foo(42);};
+    }
+
+    #[test]
+    fn test_join_chan() {
+        fn winner() { }
+
+        let t = spawn_joinable {|| winner();};
+        alt join(t) {
+          tr_success. {/* yay! */ }
+          _ { fail "invalid task status received" }
+        }
+    }
+
+    // FIXME: Leaks on windows
+    #[test]
+    #[ignore(cfg(target_os = "win32"))]
+    fn test_join_chan_fail() {
+        fn failer() { unsupervise(); fail }
+
+        let t = spawn_joinable {|| failer();};
+        alt join(t) {
+          tr_failure. {/* yay! */ }
+          _ { fail "invalid task status received" }
+        }
+    }
+
+    #[test]
+    fn spawn_polymorphic() {
+        fn foo<T:send>(x: T) { log(error, x); }
+        spawn {|| foo(true);};
+        spawn {|| foo(42);};
+    }
+
+    #[test]
+    fn try_success() {
+        alt try {||
+            "Success!"
+        } {
+            result::ok("Success!") { }
+            _ { fail; }
+        }
+    }
+
+    #[test]
+    #[ignore(cfg(target_os = "win32"))]
+    fn try_fail() {
+        alt try {||
+            fail
+        } {
+            result::err(()) { }
+            _ { fail; }
+        }
+    }
+}
+
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

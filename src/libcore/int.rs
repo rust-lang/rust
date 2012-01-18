@@ -180,6 +180,101 @@ fn pow(base: int, exponent: uint) -> int {
     }
     ret acc;
 }
+
+#[test]
+fn test_from_str() {
+    assert(from_str("0") == 0);
+    assert(from_str("3") == 3);
+    assert(from_str("10") == 10);
+    assert(from_str("123456789") == 123456789);
+    assert(from_str("00100") == 100);
+
+    assert(from_str("-1") == -1);
+    assert(from_str("-3") == -3);
+    assert(from_str("-10") == -10);
+    assert(from_str("-123456789") == -123456789);
+    assert(from_str("-00100") == -100);
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_from_str_fail_1() {
+    from_str(" ");
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_from_str_fail_2() {
+    from_str("x");
+}
+
+#[test]
+fn test_parse_buf() {
+    import str::bytes;
+    assert (parse_buf(bytes("123"), 10u) == 123);
+    assert (parse_buf(bytes("1001"), 2u) == 9);
+    assert (parse_buf(bytes("123"), 8u) == 83);
+    assert (parse_buf(bytes("123"), 16u) == 291);
+    assert (parse_buf(bytes("ffff"), 16u) == 65535);
+    assert (parse_buf(bytes("FFFF"), 16u) == 65535);
+    assert (parse_buf(bytes("z"), 36u) == 35);
+    assert (parse_buf(bytes("Z"), 36u) == 35);
+
+    assert (parse_buf(bytes("-123"), 10u) == -123);
+    assert (parse_buf(bytes("-1001"), 2u) == -9);
+    assert (parse_buf(bytes("-123"), 8u) == -83);
+    assert (parse_buf(bytes("-123"), 16u) == -291);
+    assert (parse_buf(bytes("-ffff"), 16u) == -65535);
+    assert (parse_buf(bytes("-FFFF"), 16u) == -65535);
+    assert (parse_buf(bytes("-z"), 36u) == -35);
+    assert (parse_buf(bytes("-Z"), 36u) == -35);
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_parse_buf_fail_1() {
+    parse_buf(str::bytes("Z"), 35u);
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_parse_buf_fail_2() {
+    parse_buf(str::bytes("-9"), 2u);
+}
+
+#[test]
+fn test_to_str() {
+    import str::eq;
+    assert (eq(to_str(0, 10u), "0"));
+    assert (eq(to_str(1, 10u), "1"));
+    assert (eq(to_str(-1, 10u), "-1"));
+    assert (eq(to_str(255, 16u), "ff"));
+    assert (eq(to_str(100, 10u), "100"));
+}
+
+#[test]
+fn test_pow() {
+    assert (pow(0, 0u) == 1);
+    assert (pow(0, 1u) == 0);
+    assert (pow(0, 2u) == 0);
+    assert (pow(-1, 0u) == 1);
+    assert (pow(1, 0u) == 1);
+    assert (pow(-3, 2u) == 9);
+    assert (pow(-3, 3u) == -27);
+    assert (pow(4, 9u) == 262144);
+}
+
+#[test]
+fn test_overflows() {
+   assert (max_value > 0);
+   assert (min_value <= 0);
+   assert (min_value + max_value + 1 == 0);
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

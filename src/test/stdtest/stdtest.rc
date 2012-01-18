@@ -1,51 +1,34 @@
 use std;
 
 mod bitv;
-mod bool;
-mod box;
 mod c_vec;
-mod char;
-mod comm;
 mod deque;
-mod either;
-mod float;
 mod four;
 mod fs;
 mod getopts;
-mod int;
 mod io;
 mod json;
 mod list;
 mod map;
-mod math;
 mod net;
-mod option;
 mod os;
 mod path;
-mod ptr;
 mod qsort3;
 mod qsort;
 mod rand;
-mod result;
 mod rope;
 mod run;
 mod sha1;
 mod sort;
-mod str;
-mod sys;
-mod task;
 mod tempfile;
 mod test;
 mod tri;
 mod treemap;
-mod uint;
 
 #[cfg(unicode)]
 mod unicode;
 
-mod unsafe;
 mod uv;
-mod vec;
 
 // Local Variables:
 // mode: rust

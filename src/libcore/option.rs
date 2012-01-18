@@ -84,6 +84,9 @@ fn may<T>(opt: t<T>, f: block(T)) {
     alt opt { none. {/* nothing */ } some(t) { f(t); } }
 }
 
+#[test]
+fn test() { let _x = some::<int>(10); }
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

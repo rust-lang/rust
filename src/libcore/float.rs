@@ -281,6 +281,87 @@ fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
 }
 
 
+#[test]
+fn test_from_str() {
+   assert ( from_str("3") == 3. );
+   assert ( from_str("  3  ") == 3. );
+   assert ( from_str("3.14") == 3.14 );
+   assert ( from_str("+3.14") == 3.14 );
+   assert ( from_str("-3.14") == -3.14 );
+   assert ( from_str("2.5E10") == 25000000000. );
+   assert ( from_str("2.5e10") == 25000000000. );
+   assert ( from_str("25000000000.E-10") == 2.5 );
+   assert ( from_str("") == 0. );
+   assert ( from_str(".") == 0. );
+   assert ( from_str(".e1") == 0. );
+   assert ( from_str(".e-1") == 0. );
+   assert ( from_str("5.") == 5. );
+   assert ( from_str(".5") == 0.5 );
+   assert ( from_str("0.5") == 0.5 );
+   assert ( from_str("0.5 ") == 0.5 );
+   assert ( from_str(" 0.5 ") == 0.5 );
+   assert ( from_str(" -.5 ") == -0.5 );
+   assert ( from_str(" -.5 ") == -0.5 );
+   assert ( from_str(" -5 ") == -5. );
+
+   assert ( is_NaN(from_str("x")) );
+   assert ( from_str(" ") == 0. );
+   assert ( from_str("   ") == 0. );
+   assert ( from_str(" 0.5") == 0.5 );
+   assert ( from_str(" 0.5 ") == 0.5 );
+   assert ( from_str(" .1 ") == 0.1 );
+   assert ( is_NaN(from_str("e")) );
+   assert ( is_NaN(from_str("E")) );
+   assert ( is_NaN(from_str("E1")) );
+   assert ( is_NaN(from_str("1e1e1")) );
+   assert ( is_NaN(from_str("1e1.1")) );
+   assert ( is_NaN(from_str("1e1-1")) );
+}
+
+#[test]
+fn test_positive() {
+  assert(is_positive(infinity));
+  assert(is_positive(1.));
+  assert(is_positive(0.));
+  assert(!is_positive(-1.));
+  assert(!is_positive(neg_infinity));
+  assert(!is_positive(1./neg_infinity));
+  assert(!is_positive(NaN));
+}
+
+#[test]
+fn test_negative() {
+  assert(!is_negative(infinity));
+  assert(!is_negative(1.));
+  assert(!is_negative(0.));
+  assert(is_negative(-1.));
+  assert(is_negative(neg_infinity));
+  assert(is_negative(1./neg_infinity));
+  assert(!is_negative(NaN));
+}
+
+#[test]
+fn test_nonpositive() {
+  assert(!is_nonpositive(infinity));
+  assert(!is_nonpositive(1.));
+  assert(!is_nonpositive(0.));
+  assert(is_nonpositive(-1.));
+  assert(is_nonpositive(neg_infinity));
+  assert(is_nonpositive(1./neg_infinity));
+  assert(!is_nonpositive(NaN));
+}
+
+#[test]
+fn test_nonnegative() {
+  assert(is_nonnegative(infinity));
+  assert(is_nonnegative(1.));
+  assert(is_nonnegative(0.));
+  assert(!is_nonnegative(-1.));
+  assert(!is_nonnegative(neg_infinity));
+  assert(!is_nonnegative(1./neg_infinity));
+  assert(!is_nonnegative(NaN));
+}
+
 //
 // Local Variables:
 // mode: rust
