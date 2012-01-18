@@ -267,7 +267,7 @@ in the resulting vector has either value 0u or 1u.
 */
 fn to_vec(v: t) -> [uint] {
     let sub = bind init_to_vec(v, _);
-    ret vec::init_fn::<uint>(sub, v.nbits);
+    ret vec::init_fn::<uint>(v.nbits, sub);
 }
 
 /*

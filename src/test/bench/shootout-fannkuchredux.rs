@@ -7,7 +7,7 @@ fn fannkuch(n: int) -> int {
     fn perm1init(i: uint) -> int { ret i as int; }
 
     let perm = vec::init_elt_mut(0, n as uint);
-    let perm1 = vec::init_fn_mut(perm1init, n as uint);
+    let perm1 = vec::init_fn_mut(n as uint, perm1init);
     let count = vec::init_elt_mut(0, n as uint);
     let f = 0;
     let i = 0;

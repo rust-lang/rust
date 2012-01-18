@@ -142,7 +142,7 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
                     tpt: ty_param_bounds_and_ty, sp: span)
     -> ty_param_substs_opt_and_ty {
     let ty_param_count = vec::len(*tpt.bounds);
-    let vars = vec::init_fn({|_i| next_ty_var(fcx)}, ty_param_count);
+    let vars = vec::init_fn(ty_param_count, {|_i| next_ty_var(fcx)});
     let ty_substs_len = vec::len(pth.node.types);
     if ty_substs_len > 0u {
         let param_var_len = vec::len(vars);
@@ -611,9 +611,9 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
     } else {
         let impl_fty = ty::mk_fn(tcx, impl_m.fty);
         // Add dummy substs for the parameters of the impl method
-        let substs = substs + vec::init_fn({|i|
+        let substs = substs + vec::init_fn(vec::len(*if_m.tps), {|i|
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
-        }, vec::len(*if_m.tps));
+        });
         let if_fty = ty::substitute_type_params(tcx, substs,
                                                 ty::mk_fn(tcx, if_m.fty));
         alt ty::unify::unify(impl_fty, if_fty, ty::unify::precise, tcx) {
@@ -2334,7 +2334,7 @@ fn next_ty_var(fcx: @fn_ctxt) -> ty::t {
 
 fn bind_params(fcx: @fn_ctxt, tp: ty::t, count: uint)
     -> {vars: [ty::t], ty: ty::t} {
-    let vars = vec::init_fn({|_i| next_ty_var(fcx)}, count);
+    let vars = vec::init_fn(count, {|_i| next_ty_var(fcx)});
     {vars: vars, ty: ty::substitute_type_params(fcx.ccx.tcx, vars, tp)}
 }
 
