@@ -127,9 +127,37 @@ fn write_args(
     ctxt: ctxt,
     args: [doc::argdoc]
 ) {
-    for arg in args {
-        ctxt.w.write_str("### Argument `" + arg.name + "`: ");
+    if vec::is_not_empty(args) {
+        ctxt.w.write_line("Arguments:");
+        ctxt.w.write_line("");
+        vec::iter(args) {|arg| write_arg(ctxt, arg) };
+        ctxt.w.write_line("");
     }
+}
+
+fn write_arg(ctxt: ctxt, arg: doc::argdoc) {
+    ctxt.w.write_line(#fmt("* %s", arg.name));
+}
+
+#[test]
+fn should_write_argument_list() {
+    let source = "fn a(b: int, c: int) { }";
+    let markdown = test::render(source);
+    assert str::contains(
+        markdown,
+        "Arguments:\n\
+         \n\
+         * b\n\
+         * c\n\
+         \n"
+    );
+}
+
+#[test]
+fn should_not_write_arguments_if_none() {
+    let source = "fn a() { } fn b() { }";
+    let markdown = test::render(source);
+    assert !str::contains(markdown, "Arguments");
 }
 
 fn write_return(
@@ -157,13 +185,15 @@ fn write_return(
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     fn render(source: str) -> str {
         let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
         let doc = attr_pass::mk_pass()(srv, doc);
         let doc = tystr_pass::mk_pass()(srv, doc);
-        write_markdown_str(doc)
+        let markdown = write_markdown_str(doc);
+        #debug("markdown: %s", markdown);
+        markdown
     }
 
     fn write_markdown_str(
