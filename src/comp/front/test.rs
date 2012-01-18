@@ -234,20 +234,33 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     ret @item;
 }
 
+fn mk_path(cx: test_ctxt, path: [ast::ident]) -> [ast::ident] {
+    // For tests that are inside of std we don't want to prefix
+    // the paths with std::
+    let is_std = {
+        let items = attr::find_linkage_metas(cx.crate.node.attrs);
+        alt attr::meta_item_value_from_list(items, "name") {
+          some("std") { true }
+          _ { false }
+        }
+    };
+    (is_std ? [] : ["std"]) + path
+}
+
 // The ast::ty of [std::test::test_desc]
 fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
     let test_fn_ty: ast::ty = nospan(
         ast::ty_path(
             @nospan({
                 global: false,
-                idents: ["std", "test", "default_test_fn"],
+                idents: mk_path(cx, ["test", "default_test_fn"]),
                 types: []
             }),
             cx.sess.next_node_id()));
 
     let test_desc_ty_path =
         @nospan({global: false,
-                 idents: ["std", "test", "test_desc"],
+                 idents: mk_path(cx, ["test", "test_desc"]),
                  types: [@test_fn_ty]});
 
     let test_desc_ty: ast::ty =
@@ -437,7 +450,7 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
     // Call std::test::test_main
     let test_main_path =
         @nospan({global: false,
-                 idents: ["std", "test", "test_main"],
+                 idents: mk_path(cx, ["test", "test_main"]),
                  types: []});
 
     let test_main_path_expr_: ast::expr_ = ast::expr_path(test_main_path);
