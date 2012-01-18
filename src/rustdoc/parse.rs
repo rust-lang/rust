@@ -1,3 +1,5 @@
+#[doc = "AST-parsing helpers"];
+
 import rustc::driver::diagnostic;
 import rustc::syntax::ast;
 import rustc::syntax::codemap;

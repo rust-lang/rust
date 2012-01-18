@@ -1,3 +1,11 @@
+#[doc(
+    brief = "The attribute parsing pass",
+    desc =
+    "Traverses the document tree, pulling relevant documention out of the \
+     corresponding AST nodes. The information gathered here is the basis \
+     of the natural-language documentation for a crate."
+)];
+
 import rustc::syntax::ast;
 import rustc::middle::ast_map;
 

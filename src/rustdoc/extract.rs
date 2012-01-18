@@ -1,8 +1,10 @@
+#[doc = "Converts the Rust AST to the rustdoc document model"];
+
 import rustc::syntax::ast;
 
 export from_srv, extract;
 
-// FIXME: Want this to be from_srv<T:ast::srv> but it crashes
+#[doc = "Use the AST service to create a document tree"]
 fn from_srv(
     srv: astsrv::srv,
     default_name: str
@@ -12,7 +14,6 @@ fn from_srv(
     }
 }
 
-#[doc = "Converts the Rust AST to the rustdoc document model"]
 fn extract(
     crate: @ast::crate,
     default_name: str

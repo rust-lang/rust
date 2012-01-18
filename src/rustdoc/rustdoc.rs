@@ -2,8 +2,10 @@
  * Copyright 2011 Google Inc.
  */
 
+#[doc = "A single operation on the document model"]
 type pass = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc;
 
+#[doc = "Run a series of passes over the document"]
 fn run_passes(
     srv: astsrv::srv,
     doc: doc::cratedoc,

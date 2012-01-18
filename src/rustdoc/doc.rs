@@ -1,3 +1,5 @@
+#[doc = "The document model"];
+
 type ast_id = int;
 
 type cratedoc = ~{

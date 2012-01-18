@@ -1,3 +1,5 @@
+#[doc = "Prunes branches of the document tree that contain no documentation"];
+
 export mk_pass;
 
 fn mk_pass() -> pass {

@@ -1,3 +1,5 @@
+#[doc = "Generate markdown from a document tree"];
+
 import std::io;
 import std::io::writer_util;
 

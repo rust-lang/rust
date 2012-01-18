@@ -1,3 +1,10 @@
+#[doc(
+    brief = "Attribute parsing",
+    desc =
+    "The attribute parser provides methods for pulling documentation out of \
+     an AST's attributes."
+)];
+
 import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
