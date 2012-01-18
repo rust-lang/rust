@@ -139,7 +139,7 @@ fn trans_iface_callee(bcx: @block_ctxt, fld_expr: @ast::expr,
 fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
     let out_ty = llvm::LLVMGetReturnType(ft);
     let n_args = llvm::LLVMCountParamTypes(ft);
-    let args = vec::init_elt(0 as TypeRef, n_args as uint);
+    let args = vec::init_elt(n_args as uint, 0 as TypeRef);
     unsafe { llvm::LLVMGetParamTypes(ft, vec::to_ptr(args)); }
     {inputs: args, output: out_ty}
 }

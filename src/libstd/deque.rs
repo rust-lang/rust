@@ -127,7 +127,7 @@ fn create<T: copy>() -> t<T> {
         mutable nelts: 0u,
         mutable lo: 0u,
         mutable hi: 0u,
-        mutable elts: vec::init_elt_mut(none, initial_capacity)
+        mutable elts: vec::init_elt_mut(initial_capacity, none)
     };
     repr as t::<T>
 }

@@ -413,7 +413,7 @@ fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
 fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
     let elt_count = llvm::LLVMCountStructElementTypes(llstructty) as uint;
     assert (n < elt_count);
-    let elt_tys = vec::init_elt(T_nil(), elt_count);
+    let elt_tys = vec::init_elt(elt_count, T_nil());
     llvm::LLVMGetStructElementTypes(llstructty, to_ptr(elt_tys));
     ret llvm::LLVMGetElementType(elt_tys[n]);
 }
@@ -594,8 +594,8 @@ fn T_tydesc_field(cx: @crate_ctxt, field: int) -> TypeRef unsafe {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     let tydesc_elts: [TypeRef] =
-        vec::init_elt::<TypeRef>(T_nil(),
-                                      abi::n_tydesc_fields as uint);
+        vec::init_elt::<TypeRef>(abi::n_tydesc_fields as uint,
+                                 T_nil());
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
                                     to_ptr::<TypeRef>(tydesc_elts));
     let t = llvm::LLVMGetElementType(tydesc_elts[field]);
@@ -729,7 +729,7 @@ fn T_opaque_tag_ptr(cx: @crate_ctxt) -> TypeRef {
 }
 
 fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
-    ret T_struct(vec::init_elt::<TypeRef>(T_ptr(cx.tydesc_type), n));
+    ret T_struct(vec::init_elt::<TypeRef>(n, T_ptr(cx.tydesc_type)));
 }
 
 fn T_opaque_iface_ptr(cx: @crate_ctxt) -> TypeRef {

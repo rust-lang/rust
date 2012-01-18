@@ -242,7 +242,7 @@ mod chained {
     }
 
     fn chains<K: copy, V: copy>(nchains: uint) -> [mutable chain<K,V>] {
-        ret vec::init_elt_mut(absent, nchains);
+        ret vec::init_elt_mut(nchains, absent);
     }
 
     fn foreach_entry<K: copy, V: copy>(chain0: chain<K,V>,

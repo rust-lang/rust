@@ -175,7 +175,7 @@ fn enter_opt(ccx: @crate_ctxt, m: match, opt: opt, col: uint, tag_size: uint,
           ast::pat_range(l1, l2) {
             ret if opt_eq(range(l1, l2), opt) { some([]) } else { none };
           }
-          _ { ret some(vec::init_elt(dummy, size)); }
+          _ { ret some(vec::init_elt(size, dummy)); }
         }
     }
     ret enter_match(m, col, val, bind e(ccx, dummy, opt, tag_size, _));
@@ -198,7 +198,7 @@ fn enter_rec(m: match, col: uint, fields: [ast::ident], val: ValueRef) ->
             }
             ret some(pats);
           }
-          _ { ret some(vec::init_elt(dummy, vec::len(fields))); }
+          _ { ret some(vec::init_elt(vec::len(fields), dummy)); }
         }
     }
     ret enter_match(m, col, val, bind e(dummy, fields, _));
@@ -210,7 +210,7 @@ fn enter_tup(m: match, col: uint, val: ValueRef, n_elts: uint) -> match {
        option::t<[@ast::pat]> {
         alt p.node {
           ast::pat_tup(elts) { ret some(elts); }
-          _ { ret some(vec::init_elt(dummy, n_elts)); }
+          _ { ret some(vec::init_elt(n_elts, dummy)); }
         }
     }
     ret enter_match(m, col, val, bind e(dummy, n_elts, _));
@@ -344,7 +344,7 @@ fn pick_col(m: match) -> uint {
           _ { 0u }
         }
     }
-    let scores = vec::init_elt_mut(0u, vec::len(m[0].pats));
+    let scores = vec::init_elt_mut(vec::len(m[0].pats), 0u);
     for br: match_branch in m {
         let i = 0u;
         for p: @ast::pat in br.pats { scores[i] += score(p); i += 1u; }

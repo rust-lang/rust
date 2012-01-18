@@ -338,7 +338,7 @@ fn get_simple_extern_fn(cx: @block_ctxt,
                         llmod: ModuleRef,
                         name: str, n_args: int) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
-    let inputs = vec::init_elt::<TypeRef>(ccx.int_type, n_args as uint);
+    let inputs = vec::init_elt::<TypeRef>(n_args as uint, ccx.int_type);
     let output = ccx.int_type;
     let t = T_fn(inputs, output);
     ret get_extern_fn(externs, llmod, name,
@@ -2842,7 +2842,7 @@ fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
     alt c.generic {
       some(gi) {
         let n_args = vec::len(ty::ty_fn_args(bcx_tcx(c.bcx), ty));
-        let args = vec::init_elt(none::<@ast::expr>, n_args);
+        let args = vec::init_elt(n_args, none::<@ast::expr>);
         let space = alloc_ty(c.bcx, ty);
         let bcx = trans_closure::trans_bind_1(space.bcx, ty, c, args, ty,
                                               save_in(space.val));

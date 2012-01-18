@@ -230,7 +230,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
                          procres: procres) {
 
     // true if we found the error in question
-    let found_flags = vec::init_elt_mut(false, vec::len(expected_errors));
+    let found_flags = vec::init_elt_mut(vec::len(expected_errors), false);
 
     if procres.status == 0 {
         fatal("process did not return an error status");

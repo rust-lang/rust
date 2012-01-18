@@ -39,7 +39,7 @@ enum hlvl {
 }
 
 fn write_header(ctxt: ctxt, lvl: hlvl, title: str) {
-    let hashes = str::from_chars(vec::init_elt('#', lvl as uint));
+    let hashes = str::from_chars(vec::init_elt(lvl as uint, '#'));
     ctxt.w.write_line(#fmt("%s %s", hashes, title));
     ctxt.w.write_line("");
 }
