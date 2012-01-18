@@ -115,9 +115,8 @@ fn write_desc(
     desc: option<str>
 ) {
     alt desc {
-        some(_d) {
-            ctxt.w.write_line("");
-            ctxt.w.write_line(_d);
+        some(desc) {
+            ctxt.w.write_line(desc);
             ctxt.w.write_line("");
         }
         none. { }
@@ -212,5 +211,13 @@ mod tests {
     fn should_leve_blank_line_after_brief() {
         let markdown = render("#[doc(brief = \"brief\")] fn a() { }");
         assert str::contains(markdown, "brief\n\n");
+    }
+
+    #[test]
+    fn should_leve_blank_line_between_brief_and_desc() {
+        let markdown = render(
+            "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
+        );
+        assert str::contains(markdown, "brief\n\ndesc");
     }
 }
