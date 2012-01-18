@@ -94,6 +94,7 @@ fn write_fn(
     alt doc.brief {
       some(brief) {
         ctxt.w.write_line(brief);
+        ctxt.w.write_line("");
       }
       none. { }
     }
@@ -145,7 +146,7 @@ mod tests {
         let ast = parse::from_str(source);
         let doc = extract::extract(ast, "belch");
         let markdown = write_markdown_str(doc);
-        assert str::contains(markdown, "# Crate belch\n");
+        assert str::contains(markdown, "# Crate belch");
     }
 
     #[test]
@@ -172,6 +173,26 @@ mod tests {
         let ast = parse::from_str(source);
         let doc = extract::extract(ast, "");
         let markdown = write_markdown_str(doc);
-        assert str::contains(markdown, "Module `morp`\n");
+        assert str::contains(markdown, "Module `morp`\n\n");
+    }
+
+    #[test]
+    fn should_leave_blank_line_between_fn_header_and_brief() {
+        let source = "#[doc(brief = \"brief\")] fn a() { }";
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        let markdown = write_markdown_str(doc);
+        assert str::contains(markdown, "Function `a`\n\nbrief");
+    }
+
+    #[test]
+    fn should_leve_blank_line_after_brief() {
+        let source = "#[doc(brief = \"brief\")] fn a() { }";
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        let markdown = write_markdown_str(doc);
+        assert str::contains(markdown, "brief\n\n");
     }
 }
