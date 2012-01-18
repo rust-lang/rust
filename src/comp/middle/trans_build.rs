@@ -1,5 +1,5 @@
 import core::{vec, str};
-import core::ctypes::c_uint;
+import core::ctypes::{c_uint, c_int};
 import str::sbuf;
 import lib::llvm::llvm;
 import syntax::codemap;
@@ -311,7 +311,7 @@ fn Load(cx: @block_ctxt, PointerVal: ValueRef) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
     if cx.unreachable {
         let ty = val_ty(PointerVal);
-        let eltty = if llvm::LLVMGetTypeKind(ty) == 11i32 {
+        let eltty = if llvm::LLVMGetTypeKind(ty) == 11 as c_int {
             llvm::LLVMGetElementType(ty) } else { ccx.int_type };
         ret llvm::LLVMGetUndef(eltty);
     }
@@ -500,14 +500,14 @@ fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     unsafe {
         let valptr = unsafe::reinterpret_cast(ptr::addr_of(val));
         let bbptr = unsafe::reinterpret_cast(ptr::addr_of(bb));
-        llvm::LLVMAddIncoming(phi, valptr, bbptr, 1u32);
+        llvm::LLVMAddIncoming(phi, valptr, bbptr, 1 as c_uint);
     }
 }
 
 fn _UndefReturn(cx: @block_ctxt, Fn: ValueRef) -> ValueRef {
     let ccx = cx.fcx.lcx.ccx;
     let ty = val_ty(Fn);
-    let retty = if llvm::LLVMGetTypeKind(ty) == 8i32 {
+    let retty = if llvm::LLVMGetTypeKind(ty) == 8 as c_int {
         llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
     ret llvm::LLVMGetUndef(retty);
 }
