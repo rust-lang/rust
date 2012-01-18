@@ -691,6 +691,9 @@ fn GEP_tup_like(bcx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
     : type_is_tup_like(bcx, t) -> result {
     // It might be a static-known type. Handle this.
     if !ty::type_has_dynamic_size(bcx_tcx(bcx), t) {
+        #debug["GEP_tup_like t=%? ixs=%? -> static",
+               ty_to_str(bcx_tcx(bcx), t), ixs];
+
         ret rslt(bcx, GEPi(bcx, base, ixs));
     }
     // It is a dynamic-containing type that, if we convert directly to an LLVM
@@ -757,6 +760,10 @@ fn GEP_tup_like(bcx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
     let args = [];
     for typ: ty::t in s.prefix { args += [typ]; }
     let prefix_ty = ty::mk_tup(bcx_tcx(bcx), args);
+
+    #debug["GEP_tup_like t=%? ixs=%? prefix_ty=%?",
+           ty_to_str(bcx_tcx(bcx), t), ixs,
+           ty_to_str(bcx_tcx(bcx), prefix_ty)];
 
     let sz = size_of_(bcx, prefix_ty, align_next(s.target));
     ret rslt(sz.bcx, bump_ptr(sz.bcx, s.target, base, sz.val));

@@ -261,7 +261,7 @@ fn allocate_cbox(bcx: @block_ctxt,
 
 type closure_result = {
     llbox: ValueRef,     // llvalue of ptr to closure
-    cboxptr_ty: ty::t,   // type of ptr to closure
+    cbox_ty: ty::t,      // type of the closure data
     bcx: @block_ctxt     // final bcx
 };
 
@@ -332,12 +332,12 @@ fn store_environment(
     // whatever.
     let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mut:ast::imm});
     let llbox = cast_if_we_can(bcx, llbox, cboxptr_ty);
-    check type_is_tup_like(bcx, cboxptr_ty);
+    check type_is_tup_like(bcx, cbox_ty);
 
     // If necessary, copy tydescs describing type parameters into the
     // appropriate slot in the closure.
     let {bcx:bcx, val:ty_params_slot} =
-        GEP_tup_like_1(bcx, cboxptr_ty, llbox, [0, abi::cbox_elt_ty_params]);
+        GEP_tup_like(bcx, cbox_ty, llbox, [0, abi::cbox_elt_ty_params]);
     let off = 0;
     for tp in lltyparams {
         let cloned_td = maybe_clone_tydesc(bcx, ck, tp.desc);
@@ -354,15 +354,16 @@ fn store_environment(
 
     // Copy expr values into boxed bindings.
     // Silly check
-    let {bcx: bcx, val:bindings_slot} =
-        GEP_tup_like_1(bcx, cboxptr_ty, llbox, [0, abi::cbox_elt_bindings]);
     vec::iteri(bound_values) { |i, bv|
         if (!ccx.sess.opts.no_asm_comments) {
             add_comment(bcx, #fmt("Copy %s into closure",
                                   ev_to_str(ccx, bv)));
         }
 
-        let bound_data = GEPi(bcx, bindings_slot, [0, i as int]);
+        let bound_data = GEP_tup_like_1(bcx, cbox_ty, llbox,
+                                        [0, abi::cbox_elt_bindings, i as int]);
+        bcx = bound_data.bcx;
+        let bound_data = bound_data.val;
         alt bv {
           env_expr(e) {
             bcx = trans::trans_expr_save_in(bcx, e, bound_data);
@@ -397,7 +398,7 @@ fn store_environment(
     }
     for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
 
-    ret {llbox: llbox, cboxptr_ty: cboxptr_ty, bcx: bcx};
+    ret {llbox: llbox, cbox_ty: cbox_ty, bcx: bcx};
 }
 
 // Given a context and a list of upvars, build a closure. This just
@@ -441,13 +442,15 @@ fn build_closure(bcx0: @block_ctxt,
 // with the upvars and type descriptors.
 fn load_environment(enclosing_cx: @block_ctxt,
                     fcx: @fn_ctxt,
-                    cboxptr_ty: ty::t,
+                    cbox_ty: ty::t,
                     cap_vars: [capture::capture_var],
                     ck: ty::closure_kind) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
     let ccx = bcx_ccx(bcx);
+    let tcx = bcx_tcx(bcx);
 
     let sp = bcx.sp;
+    let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mut:ast::imm});
     check (type_has_static_size(ccx, cboxptr_ty));
     let llty = type_of(ccx, sp, cboxptr_ty);
     let llclosure = PointerCast(bcx, fcx.llenv, llty);
@@ -479,9 +482,9 @@ fn load_environment(enclosing_cx: @block_ctxt,
         alt cap_var.mode {
           capture::cap_drop. { /* ignore */ }
           _ {
-            check type_is_tup_like(bcx, cboxptr_ty);
+            check type_is_tup_like(bcx, cbox_ty);
             let upvarptr = GEP_tup_like(
-                bcx, cboxptr_ty, llclosure, path + [i as int]);
+                bcx, cbox_ty, llclosure, path + [i as int]);
             bcx = upvarptr.bcx;
             let llupvarptr = upvarptr.val;
             alt ck {
@@ -516,9 +519,9 @@ fn trans_expr_fn(bcx: @block_ctxt,
     let trans_closure_env = fn@(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
-        let {llbox, cboxptr_ty, bcx} = build_closure(bcx, cap_vars, ck);
+        let {llbox, cbox_ty, bcx} = build_closure(bcx, cap_vars, ck);
         trans_closure(sub_cx, sp, decl, body, llfn, no_self, [], id, {|fcx|
-            load_environment(bcx, fcx, cboxptr_ty, cap_vars, ck);
+            load_environment(bcx, fcx, cbox_ty, cap_vars, ck);
         });
         llbox
     };
@@ -616,7 +619,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     };
 
     // Actually construct the closure
-    let {llbox, cboxptr_ty, bcx} = store_environment(
+    let {llbox, cbox_ty, bcx} = store_environment(
         bcx, vec::map(lltydescs, {|d| {desc: d, dicts: none}}),
         env_vals + vec::map(bound, {|x| env_expr(x)}),
         ty::ck_box);
@@ -624,7 +627,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     // Make thunk
     let llthunk =
         trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real, args,
-                         cboxptr_ty, *param_bounds, target_res);
+                         cbox_ty, *param_bounds, target_res);
 
     // Fill the function pair
     fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, llbox);
@@ -782,7 +785,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
                     incoming_fty: ty::t,
                     outgoing_fty: ty::t,
                     args: [option::t<@ast::expr>],
-                    cboxptr_ty: ty::t,
+                    cbox_ty: ty::t,
                     param_bounds: [ty::param_bounds],
                     target_fn: option::t<ValueRef>)
     -> {val: ValueRef, ty: TypeRef} {
@@ -794,6 +797,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
     */
     // but since we don't, we have to do the checks at the beginning.
     let ccx = cx.ccx;
+    let tcx = ccx_tcx(ccx);
     check type_has_static_size(ccx, incoming_fty);
 
     // Here we're not necessarily constructing a thunk in the sense of
@@ -838,7 +842,8 @@ fn trans_bind_thunk(cx: @local_ctxt,
     // to the original function.  So, let's create one of those:
 
     // The llenv pointer needs to be the correct size.  That size is
-    // 'cboxptr_ty', which was determined by trans_bind.
+    // 'cbox_ty', which was determined by trans_bind.
+    let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mut:ast::imm});
     check type_has_static_size(ccx, cboxptr_ty);
     let llclosure_ptr_ty = type_of(ccx, sp, cboxptr_ty);
     let llclosure = PointerCast(l_bcx, fcx.llenv, llclosure_ptr_ty);
@@ -854,9 +859,9 @@ fn trans_bind_thunk(cx: @local_ctxt,
       }
       none. {
         // Silly check
-        check type_is_tup_like(bcx, cboxptr_ty);
+        check type_is_tup_like(bcx, cbox_ty);
         let {bcx: cx, val: pair} =
-            GEP_tup_like(bcx, cboxptr_ty, llclosure,
+            GEP_tup_like(bcx, cbox_ty, llclosure,
                          [0, abi::cbox_elt_bindings, 0]);
         let lltargetenv =
             Load(cx, GEPi(cx, pair, [0, abi::fn_field_box]));
@@ -891,9 +896,9 @@ fn trans_bind_thunk(cx: @local_ctxt,
     let llargs: [ValueRef] = [llretptr, lltargetenv];
 
     // Copy in the type parameters.
-    check type_is_tup_like(l_bcx, cboxptr_ty);
+    check type_is_tup_like(l_bcx, cbox_ty);
     let {bcx: l_bcx, val: param_record} =
-        GEP_tup_like(l_bcx, cboxptr_ty, llclosure,
+        GEP_tup_like(l_bcx, cbox_ty, llclosure,
                      [0, abi::cbox_elt_ty_params]);
     let off = 0;
     for param in param_bounds {
@@ -932,9 +937,9 @@ fn trans_bind_thunk(cx: @local_ctxt,
           // closure.
           some(e) {
             // Silly check
-            check type_is_tup_like(bcx, cboxptr_ty);
+            check type_is_tup_like(bcx, cbox_ty);
             let bound_arg =
-                GEP_tup_like(bcx, cboxptr_ty, llclosure,
+                GEP_tup_like(bcx, cbox_ty, llclosure,
                              [0, abi::cbox_elt_bindings, b]);
             bcx = bound_arg.bcx;
             let val = bound_arg.val;

@@ -859,8 +859,7 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
 pure fn type_is_tup_like(cx: ctxt, ty: t) -> bool {
     let sty = struct(cx, ty);
     alt sty {
-      ty_ptr(_) | ty_uniq(_) |
-      ty_box(_) | ty_rec(_) | ty_tup(_) | ty_tag(_,_) { true }
+      ty_rec(_) | ty_tup(_) { true }
       _ { false }
     }
 }
@@ -871,12 +870,9 @@ fn get_element_type(cx: ctxt, ty: t, i: uint) -> t {
       ty_tup(ts) { ret ts[i]; }
       _ {
         cx.sess.bug("get_element_type called on type " + ty_to_str(cx, ty) +
-                        " - expected a \
-            tuple or record");
+                        " - expected a tuple or record");
       }
     }
-    // NB: This is not exhaustive -- struct(cx, ty) could be a box or a
-    // tag.
 }
 
 pure fn type_is_box(cx: ctxt, ty: t) -> bool {
