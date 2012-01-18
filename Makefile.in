@@ -133,39 +133,6 @@ ifdef CFG_BAD_VALGRIND
   CFG_VALGRIND :=
 endif
 
-DOCS :=
-ifeq ($(CFG_PANDOC),)
-  $(info cfg: no pandoc found, omitting doc/rust.html)
-else
-  DOCS += doc/rust.html
-endif
-
-ifeq ($(CFG_PANDOC),)
-  $(info cfg: no pandoc found, omitting doc/rust.pdf)
-else
-  ifeq ($(CFG_PDFLATEX),)
-    $(info cfg: no pdflatex found, omitting doc/rust.pdf)
-  else
-    DOCS += doc/rust.pdf
-  endif
-endif
-
-ifeq ($(CFG_NODE),)
-  $(info cfg: no node found, omitting doc/tutorial/web)
-else
-  DOCS += doc/tutorial/web/index.html
-endif
-
-ifeq ($(CFG_NATURALDOCS),)
-  $(info cfg: no naturaldocs found, omitting library doc build)
-else
-  DOCS += doc/core/index.html doc/std/index.html
-endif
-
-ifdef CFG_DISABLE_DOCS
-  $(info cfg: disabling doc build (CFG_DISABLE_DOCS))
-  DOCS :=
-endif
 
 ######################################################################
 # Target-and-rule "utility variables"
@@ -431,7 +398,7 @@ CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
 CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
 CFG_INFO := $(info cfg:)
 
-all: $(SREQ1$(CFG_HOST_TRIPLE)) $(GENERATED) $(DOCS)
+all: $(SREQ1$(CFG_HOST_TRIPLE)) $(GENERATED) docs
 
 else
 
@@ -442,7 +409,7 @@ FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
 RUSTDOC := $(HBIN3_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
 
-all: rustc $(GENERATED) $(DOCS) $(FUZZ) $(CARGO) $(RUSTDOC)
+all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC)
 
 endif
 

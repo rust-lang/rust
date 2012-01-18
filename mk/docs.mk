@@ -2,16 +2,17 @@
 # Doc variables and rules
 ######################################################################
 
-doc/version.md: $(MKFILE_DEPS) rust.md
-	@$(call E, version-stamp: $@)
-	$(Q)echo "$(CFG_VERSION)" >>$@
+DOCS :=
 
-doc/keywords.md: $(MKFILE_DEPS) rust.md
-	@$(call E, grep -v: $$@)
-	$(Q)grep -v '^#' $< >$@
 
-ifdef CFG_PANDOC
+######################################################################
+# Pandoc (reference-manual related)
+######################################################################
+ifeq ($(CFG_PANDOC),)
+  $(info cfg: no pandoc found, omitting doc/rust.pdf)
+else
 
+DOCS += doc/rust.html
 doc/rust.html: rust.md doc/version.md doc/keywords.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_PANDOC) \
@@ -26,8 +27,17 @@ doc/rust.html: rust.md doc/version.md doc/keywords.md
 	-$(Q)cp -a $(S)doc/rust.css doc/rust.css 2> /dev/null
 
 
-ifdef CFG_PDFLATEX
+  ifeq ($(CFG_PDFLATEX),)
+    $(info cfg: no pdflatex found, omitting doc/rust.pdf)
+  else
+    ifeq ($(CFG_XETEX),)
+      $(info cfg: no xetex found, disabling doc/rust.pdf)
+    else
+      ifeq ($(CFG_LUATEX),)
+        $(info cfg: lacking luatex, disabling pdflatex)
+      else
 
+DOCS += doc/rust.pdf
 doc/rust.tex: rust.md doc/version.md doc/keywords.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_PANDOC) \
@@ -44,24 +54,20 @@ doc/rust.pdf: doc/rust.tex
         -output-directory=doc \
         $<
 
-endif
-
-endif
-
-
-ifdef CFG_NODE
-
-doc/tutorial/web/index.html: \
-        $(wildcard $(S)doc/tutorial/*.md)
-	@$(call E, cp: $(S)doc/tutorial)
-	-$(Q)cp -a $(S)doc/tutorial doc/ 2> /dev/null
-	@$(call E, node: build.js)
-	$(Q)cd doc/tutorial && $(CFG_NODE) build.js
-
+      endif
+    endif
+  endif
 endif
 
 
-ifdef CFG_LLNEXTGEN
+######################################################################
+# LLnextgen (grammar analysis from refman)
+######################################################################
+ifeq ($(CFG_LLNEXTGEN),)
+  $(info cfg: no llnextgen found, omitting grammar-verification)
+else
+.PHONY: verify-grammar
+
 doc/rust.g: rust.md $(S)src/etc/extract_grammar.py
 	@$(call E, extract_grammar: $@)
 	$(Q)$(S)src/etc/extract_grammar.py $< >$@
@@ -73,11 +79,32 @@ verify-grammar: doc/rust.g
 endif
 
 
-GENERATED += doc/keywords.md doc/version.md
+######################################################################
+# Node (tutorial related)
+######################################################################
+ifeq ($(CFG_NODE),)
+  $(info cfg: no node found, omitting doc/tutorial/web)
+else
 
-docsnap: doc/rust.pdf
-	@$(call E, snap: doc/rust-$(shell date +"%Y-%m-%d")-snap.pdf)
-	$(Q)mv $< doc/rust-$(shell date +"%Y-%m-%d")-snap.pdf
+DOCS += doc/tutorial/web/index.html
+doc/tutorial/web/index.html: \
+        $(wildcard $(S)doc/tutorial/*.md)
+	@$(call E, cp: $(S)doc/tutorial)
+	-$(Q)cp -a $(S)doc/tutorial doc/ 2> /dev/null
+	@$(call E, node: build.js)
+	$(Q)cd doc/tutorial && $(CFG_NODE) build.js
+
+endif
+
+
+
+######################################################################
+# Naturaldocs (library reference related)
+######################################################################
+
+ifeq ($(CFG_NATURALDOCS),)
+  $(info cfg: no naturaldocs found, omitting library doc build)
+else
 
 define libdoc
 doc/$(1)/index.html: nd/$(1)/Languages.txt nd/$(1)/Topics.txt \
@@ -103,10 +130,27 @@ GENERATED += nd/$(1)/Languages.txt \
              nd/$(1)/Data
 
 DOCS += doc/$(1)/index.html nd/$(1)/lib.css
-
 endef
 
 $(eval $(call libdoc,core,$(CORELIB_CRATE) $(CORELIB_INPUTS)))
 $(eval $(call libdoc,std,$(STDLIB_CRATE) $(STDLIB_INPUTS)))
+endif
+
+
+ifdef CFG_DISABLE_DOCS
+  $(info cfg: disabling doc build (CFG_DISABLE_DOCS))
+  DOCS :=
+endif
+
+
+doc/version.md: $(MKFILE_DEPS) rust.md
+	@$(call E, version-stamp: $@)
+	$(Q)echo "$(CFG_VERSION)" >>$@
+
+doc/keywords.md: $(MKFILE_DEPS) rust.md
+	@$(call E, grep -v: $$@)
+	$(Q)grep -v '^#' $< >$@
+
+GENERATED += doc/keywords.md doc/version.md
 
 docs: $(DOCS)
