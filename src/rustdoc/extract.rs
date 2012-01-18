@@ -65,7 +65,7 @@ fn moddoc_from_mod(
 }
 
 fn fndoc_from_fn(
-    _decl: ast::fn_decl,
+    decl: ast::fn_decl,
     name: ast::ident,
     id: ast::node_id
 ) -> doc::fndoc {
@@ -75,8 +75,26 @@ fn fndoc_from_fn(
         brief: none,
         desc: none,
         return: none,
-        args: []
+        args: argdocs_from_args(decl.inputs)
     }
+}
+
+#[test]
+fn should_extract_fn_args() {
+    let source = "fn a(b: int, c: int) { }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    let fn_ = doc.topmod.fns[0];
+    assert tuple::first(fn_.args[0]) == "b";
+    assert tuple::first(fn_.args[1]) == "c";
+}
+
+fn argdocs_from_args(args: [ast::arg]) -> [(str, str)] {
+    vec::map(args, argdoc_from_arg)
+}
+
+fn argdoc_from_arg(arg: ast::arg) -> (str, str) {
+    (arg.ident, "")
 }
 
 #[cfg(test)]
