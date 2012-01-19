@@ -1245,7 +1245,7 @@ mod bar {
 }
 
 // A documentation attribute
-#[doc = "Add two numbers together."
+#[doc = "Add two numbers together."]
 fn add(x: int, y: int) { x + y }
 ~~~~~~~~
 
