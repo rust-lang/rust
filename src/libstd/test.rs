@@ -17,7 +17,6 @@ export tr_ok;
 export tr_failed;
 export tr_ignored;
 export run_tests_console;
-export configure_test_task;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -192,6 +191,8 @@ enum testevent {
     te_result(test_desc, test_result);
 }
 
+type monitor_msg = (test_desc, test_result);
+
 fn run_tests(opts: test_opts, tests: [test_desc],
              callback: fn@(testevent)) {
 
@@ -202,23 +203,27 @@ fn run_tests(opts: test_opts, tests: [test_desc],
     // many tests that run in other processes we would be making a big mess.
     let concurrency = get_concurrency();
     #debug("using %u test tasks", concurrency);
+
     let total = vec::len(filtered_tests);
     let run_idx = 0u;
     let wait_idx = 0u;
-    let futures = [];
+    let done_idx = 0u;
 
-    while wait_idx < total {
-        while vec::len(futures) < concurrency && run_idx < total {
-            futures += [run_test(filtered_tests[run_idx])];
+    let p = comm::port();
+    let ch = comm::chan(p);
+
+    while done_idx < total {
+        while wait_idx < concurrency && run_idx < total {
+            run_test(vec::shift(filtered_tests), ch);
+            wait_idx += 1u;
             run_idx += 1u;
         }
 
-        let future = futures[0];
-        callback(te_wait(future.test));
-        let result = future.wait();
-        callback(te_result(future.test, result));
-        futures = vec::slice(futures, 1u, vec::len(futures));
-        wait_idx += 1u;
+        let (test, result) = comm::recv(p);
+        callback(te_wait(test));
+        callback(te_result(test, result));
+        wait_idx -= 1u;
+        done_idx += 1u;
     }
 }
 
@@ -280,35 +285,34 @@ fn filter_tests(opts: test_opts,
 
 type test_future = {test: test_desc, wait: fn@() -> test_result};
 
-fn run_test(test: test_desc) -> test_future {
+fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     if test.ignore {
-        ret {test: test, wait: fn@() -> test_result { tr_ignored }};
+        comm::send(monitor_ch, (test, tr_ignored));
+        ret;
     }
 
-    let test_task = test_to_task(test.fn);
-    ret {test: test,
-         wait: fn@() -> test_result {
-             alt task::join(test_task) {
-               task::tr_success {
-                 if test.should_fail { tr_failed }
-                 else { tr_ok }
-               }
-               task::tr_failure {
-                 if test.should_fail { tr_ok }
-                 else { tr_failed }
-               }
-             }
-         }
+    task::spawn {||
+
+        let testfn = test.fn;
+        let test_task = task::spawn_joinable {||
+            configure_test_task();
+            testfn();
         };
+
+        let task_result = task::join(test_task);
+        let test_result = calc_result(test, task_result == task::tr_success);
+        comm::send(monitor_ch, (test, test_result));
+    };
 }
 
-// We need to run our tests in another task in order to trap test failures.
-// This function only works with functions that don't contain closures.
-fn test_to_task(&&f: test_fn) -> task::joinable_task {
-    ret task::spawn_joinable(fn~[copy f]() {
-        configure_test_task();
-        f();
-    });
+fn calc_result(test: test_desc, task_succeeded: bool) -> test_result {
+    if task_succeeded {
+        if test.should_fail { tr_failed }
+        else { tr_ok }
+    } else {
+        if test.should_fail { tr_ok }
+        else { tr_failed }
+    }
 }
 
 // Call from within a test task to make sure it's set up correctly
@@ -330,9 +334,11 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let future = run_test(desc);
-        let result = future.wait();
-        assert result != tr_ok;
+        let p = comm::port();
+        let ch = comm::chan(p);
+        run_test(desc, ch);
+        let (_, res) = comm::recv(p);
+        assert res != tr_ok;
     }
 
     #[test]
@@ -344,8 +350,11 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let res = run_test(desc).wait();
-        assert (res == tr_ignored);
+        let p = comm::port();
+        let ch = comm::chan(p);
+        run_test(desc, ch);
+        let (_, res) = comm::recv(p);
+        assert res == tr_ignored;
     }
 
     #[test]
@@ -358,7 +367,10 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let res = run_test(desc).wait();
+        let p = comm::port();
+        let ch = comm::chan(p);
+        run_test(desc, ch);
+        let (_, res) = comm::recv(p);
         assert res == tr_ok;
     }
 
@@ -371,7 +383,10 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let res = run_test(desc).wait();
+        let p = comm::port();
+        let ch = comm::chan(p);
+        run_test(desc, ch);
+        let (_, res) = comm::recv(p);
         assert res == tr_failed;
     }
 
