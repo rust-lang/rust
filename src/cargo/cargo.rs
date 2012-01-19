@@ -356,7 +356,7 @@ fn for_each_package(c: cargo, b: block(source, package)) {
 }
 
 // FIXME: deduplicate code with install_one_crate
-fn test_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
+fn test_one_crate(_c: cargo, _path: str, cf: str, _p: pkg) {
     let buildpath = fs::connect(_path, "/test");
     need_dir(buildpath);
     #debug("Testing: %s -> %s", cf, buildpath);
