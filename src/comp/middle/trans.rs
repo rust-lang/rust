@@ -3775,7 +3775,7 @@ fn trans_fail_expr(bcx: @block_ctxt, sp_opt: option::t<span>,
                 bcx, expr_res.val, type_of_or_i8(
                     bcx, ty::mk_mach_uint(tcx, ast::ty_u8)));
             ret trans_fail_value(bcx, sp_opt, data);
-        } else if bcx.unreachable {
+        } else if bcx.unreachable || ty::type_is_bot(tcx, e_ty) {
             ret bcx;
         } else {
             bcx_ccx(bcx).sess.span_bug(
