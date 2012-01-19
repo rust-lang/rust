@@ -167,7 +167,7 @@ fn fold_fn(
                         with *doc
                     }
                 }
-                none. { doc }
+                none { doc }
             }
         }
         // FIXME: Warning when documenting a non-existant arg

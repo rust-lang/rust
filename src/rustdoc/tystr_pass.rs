@@ -50,7 +50,7 @@ fn merge_ret_ty(
       some(doc) {
         fail "unimplemented";
       }
-      none. {
+      none {
         alt get_ret_ty(srv, fn_id) {
           some(ty) {
             some({
@@ -58,7 +58,7 @@ fn merge_ret_ty(
                 ty: some(ty)
             })
           }
-          none. { none }
+          none { none }
         }
       }
     }

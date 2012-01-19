@@ -162,7 +162,7 @@ fn write_arg(ctxt: ctxt, arg: doc::argdoc) {
       some(desc) {
         ctxt.w.write_str(#fmt(" - %s", desc));
       }
-      none. { }
+      none { }
     }
     ctxt.w.write_line("");
 }
