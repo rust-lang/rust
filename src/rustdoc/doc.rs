@@ -22,7 +22,8 @@ type fndoc = ~{
 };
 
 type argdoc = ~{
-    name: str
+    name: str,
+    ty: option<str>
 };
 
 type retdoc = {
