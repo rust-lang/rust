@@ -1,4 +1,4 @@
-// error-pattern:Declaration of thpppt shadows a tag
+// error-pattern:Declaration of thpppt shadows
 tag ack { thpppt; ffff; }
 
 fn main() {

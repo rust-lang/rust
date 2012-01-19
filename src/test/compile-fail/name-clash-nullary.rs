@@ -1,4 +1,4 @@
-// error-pattern:Declaration of none shadows a tag
+// error-pattern:Declaration of none shadows
 import option::*;
 
 fn main() {
