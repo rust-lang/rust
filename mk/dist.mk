@@ -23,10 +23,10 @@ PKG_GITMODULES := \
                  $(wildcard $(S)src/llvm/*)) \
     $(PKG_LLVM_SKEL)
 
-PKG_FILES = \
+PKG_FILES := \
     $(S)LICENSE.txt $(S)README.txt             \
     $(S)configure $(S)Makefile.in              \
-    $(S)/doc                                   \
+    $(S)doc                                    \
     $(addprefix $(S)src/,                      \
       README.txt                               \
       cargo                                    \
@@ -42,8 +42,9 @@ PKG_FILES = \
       snapshots.txt                            \
       test)                                    \
     $(PKG_GITMODULES)                          \
-    $(MKFILE_DEPS)
+    $(filter-out Makefile config.mk, $(MKFILE_DEPS))
 
+UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
 
 lic.txt: $(S)LICENSE.txt
 	@$(call E, crlf: $@)
@@ -58,7 +59,7 @@ $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
 	$(Q)rm -Rf dist
 	$(Q)mkdir -p dist/$(PKG_DIR)
-	$(Q)tar -c $(PKG_FILES) | tar -x -C dist/$(PKG_DIR)
+	$(Q)tar -C $(S) -c $(UNROOTED_PKG_FILES) | tar -x -C dist/$(PKG_DIR)
 	$(Q)tar -czf $(PKG_TAR) -C dist $(PKG_DIR)
 	$(Q)rm -Rf dist
 
