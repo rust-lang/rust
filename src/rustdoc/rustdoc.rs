@@ -26,6 +26,7 @@ fn test_run_passes() {
     ) -> doc::cratedoc {
         ~{
             topmod: ~{
+                id: 0,
                 name: doc.topmod.name + "two",
                 brief: none,
                 desc: none,
@@ -40,6 +41,7 @@ fn test_run_passes() {
     ) -> doc::cratedoc {
         ~{
             topmod: ~{
+                id: 0,
                 name: doc.topmod.name + "three",
                 brief: none,
                 desc: none,

@@ -29,14 +29,16 @@ fn top_moddoc_from_crate(
     crate: @ast::crate,
     default_name: str
 ) -> doc::moddoc {
-    moddoc_from_mod(crate.node.module, default_name)
+    moddoc_from_mod(crate.node.module, default_name, ast::crate_node_id)
 }
 
 fn moddoc_from_mod(
     module: ast::_mod,
-    name: ast::ident
+    name: ast::ident,
+    id: ast::node_id
 ) -> doc::moddoc {
     ~{
+        id: id,
         name: name,
         brief: none,
         desc: none,
@@ -44,7 +46,7 @@ fn moddoc_from_mod(
             vec::filter_map(module.items) {|item|
                 alt item.node {
                   ast::item_mod(m) {
-                    some(moddoc_from_mod(m, item.ident))
+                    some(moddoc_from_mod(m, item.ident, item.id))
                   }
                   _ {
                     none
@@ -131,6 +133,14 @@ mod tests {
         let ast = parse::from_str(source);
         let doc = extract(ast, "");
         assert doc.topmod.mods[0].mods[0].mods[0].name == "c";
+    }
+
+    #[test]
+    fn extract_should_set_mod_ast_id() {
+        let source = "mod a { }";
+        let ast = parse::from_str(source);
+        let doc = extract(ast, "");
+        assert doc.topmod.mods[0].id != 0;
     }
 
     #[test]

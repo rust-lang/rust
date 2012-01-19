@@ -11,7 +11,7 @@ fn new_parse_sess() -> parser::parse_sess {
     let cm = codemap::new_codemap();
     let sess = @{
         cm: cm,
-        mutable next_id: 0,
+        mutable next_id: 1,
         diagnostic: diagnostic::mk_handler(cm, none)
     };
     ret sess;

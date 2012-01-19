@@ -7,6 +7,7 @@ type cratedoc = ~{
 };
 
 type moddoc = ~{
+    id: ast_id,
     name: str,
     brief: option<str>,
     desc: option<str>,
