@@ -12,7 +12,7 @@ Tag: t
 
 The option type
 */
-tag t<T> {
+enum t<T> {
     /* Variant: none */
     none;
     /* Variant: some */

@@ -10,7 +10,7 @@ Tag: t
 
 The either type
 */
-tag t<T, U> {
+enum t<T, U> {
     /* Variant: left */
     left(T);
     /* Variant: right */

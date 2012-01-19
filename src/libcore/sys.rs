@@ -3,7 +3,7 @@ Module: sys
 
 Misc low level stuff
 */
-tag type_desc = {
+enum type_desc = {
     first_param: **ctypes::c_int,
     size: ctypes::size_t,
     align: ctypes::size_t

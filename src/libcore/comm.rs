@@ -64,7 +64,7 @@ type port_id = int;
           Channels may be duplicated and themselves transmitted \
           over other channels."
 )]
-tag chan<T: send> {
+enum chan<T: send> {
     chan_t(task::task, port_id);
 }
 
@@ -89,7 +89,7 @@ resource port_ptr<T: send>(po: *rustrt::rust_port) {
           copied, both copies refer to the same port. \
           Ports may be associated with multiple <chan>s."
 )]
-tag port<T: send> { port_t(@port_ptr<T>); }
+enum port<T: send> { port_t(@port_ptr<T>); }
 
 #[doc(
   brief = "Sends data over a channel. The sent data is moved \

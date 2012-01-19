@@ -11,7 +11,7 @@ Tag: t
 
 The result type
 */
-tag t<T, U> {
+enum t<T, U> {
     /*
     Variant: ok
 

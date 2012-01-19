@@ -179,7 +179,7 @@ Tag: task_result
 
 Indicates the manner in which a task exited
 */
-tag task_result {
+enum task_result {
     /* Variant: tr_success */
     tr_success;
     /* Variant: tr_failure */
@@ -191,7 +191,7 @@ Tag: task_notification
 
 Message sent upon task exit to indicate normal or abnormal termination
 */
-tag task_notification {
+enum task_notification {
     /* Variant: exit */
     exit(task, task_result);
 }
