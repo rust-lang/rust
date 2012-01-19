@@ -111,7 +111,8 @@ define libdoc
 doc/$(1)/index.html: nd/$(1)/Languages.txt nd/$(1)/Topics.txt \
                      nd/$(1)/lib.css $(2)
 	@$$(call E, naturaldocs: $$@)
-	naturaldocs -i $(S)src/lib$(1) -o HTML doc/$(1) -p nd/$(1) -r -s Default lib
+	$(CFG_NATURALDOCS) -i $(S)src/lib$(1) -o HTML doc/$(1) \
+                       -p nd/$(1) -r -s Default lib
 
 nd/$(1)/Languages.txt: $(S)doc/Languages.txt
 	@$$(call E, cp: $$@)
