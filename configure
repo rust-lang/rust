@@ -61,25 +61,30 @@ putvar() {
 
 probe() {
     local V=$1
-    local P=$2
+    shift
+    local P
     local T
-    T=$(which $P 2>&1)
-    if [ $? -ne 0 ]
-    then
-        T=""
-    fi
+    for P
+    do
+        T=$(which $P 2>&1)
+        if [ $? -eq 0 ]
+        then
+            break
+        else
+            T=""
+        fi
+    done
     eval $V=\$T
     putvar $V
 }
 
 probe_need() {
     local V=$1
-    local P=$2
-    probe $V $P
+    probe $*
     eval VV=\$$V
     if [ -z "$VV" ]
     then
-        err "required program '$P' not found"
+        err "needed, but unable to find any of: $*"
     fi
 }
 
@@ -275,7 +280,7 @@ fi
 step_msg "looking for build programs"
 
 probe_need CFG_PERL         perl
-probe_need CFG_PYTHON       python
+probe_need CFG_PYTHON       python python2.6 python2 python3
 probe_need CFG_CURL         curl
 
 probe CFG_GIT              git
@@ -285,18 +290,14 @@ probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_MAKENSIS         makensis
-probe CFG_NATURALDOCS      naturaldocs
+probe CFG_NATURALDOCS      NaturalDocs naturaldocs
 probe CFG_LLNEXTGEN        LLnextgen
 probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
 probe CFG_XETEX            xetex
 probe CFG_LUATEX           luatex
-probe CFG_NODE             node
+probe CFG_NODE             nodejs node
 
-if [ -z "$CFG_NODE" ]
-then
-    probe CFG_NODE         nodejs
-fi
 
 if [ ! -z "$CFG_PANDOC" ]
 then
