@@ -71,19 +71,34 @@ fn write_mod(
 
 fn write_mod_contents(
     ctxt: ctxt,
-    moddoc: doc::moddoc
+    doc: doc::moddoc
 ) {
-    for fndoc in *moddoc.fns {
+    write_brief(ctxt, doc.brief);
+    write_desc(ctxt, doc.desc);
+
+    for fndoc in *doc.fns {
         subsection(ctxt) {||
             write_fn(ctxt, fndoc);
         }
     }
 
-    for moddoc in *moddoc.mods {
+    for moddoc in *doc.mods {
         subsection(ctxt) {||
             write_mod(ctxt, moddoc);
         }
     }
+}
+
+#[test]
+fn should_write_crate_brief_description() {
+    let markdown = test::render("#[doc(brief = \"this is the crate\")];");
+    assert str::contains(markdown, "this is the crate");
+}
+
+#[test]
+fn should_write_crate_description() {
+    let markdown = test::render("#[doc = \"this is the crate\"];");
+    assert str::contains(markdown, "this is the crate");
 }
 
 fn write_fn(
