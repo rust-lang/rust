@@ -357,23 +357,37 @@ fn for_each_package(c: cargo, b: block(source, package)) {
 
 // FIXME: deduplicate code with install_one_crate
 fn test_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
-    let name = fs::basename(cf);
-    let ri = str::index(name, '.' as u8);
-    if ri != -1 {
-        name = str::slice(name, 0u, ri as uint);
-    }
-    #debug("Installing: %s", name);
-    let old = fs::list_dir(".");
-    let p = run::program_output("rustc", ["--test", name + ".rc"]);
+    let buildpath = fs::connect(_path, "/test");
+    need_dir(buildpath);
+    #debug("Testing: %s -> %s", cf, buildpath);
+    let p = run::program_output("rustc", ["--out-dir", buildpath, "--test",
+                                          cf]);
     if p.status != 0 {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
     }
-    let new = fs::list_dir(".");
-    let created =
-        vec::filter::<str>(new, { |n| !vec::member::<str>(n, old) });
+    let new = fs::list_dir(buildpath);
     let exec_suffix = os::exec_suffix();
-    for ct: str in created {
+    for ct: str in new {
+        if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
+            (exec_suffix == "" && !str::starts_with(ct, "./lib")) {
+            run::run_program(ct, []);
+        }
+    }
+}
+
+fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
+    let buildpath = fs::connect(_path, "/build");
+    need_dir(buildpath);
+    #debug("Installing: %s -> %s", cf, buildpath);
+    let p = run::program_output("rustc", ["--out-dir", buildpath, cf]);
+    if p.status != 0 {
+        error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
+        ret;
+    }
+    let new = fs::list_dir(buildpath);
+    let exec_suffix = os::exec_suffix();
+    for ct: str in new {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(ct, "./lib")) {
             // FIXME: need libstd fs::copy or something
