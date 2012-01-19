@@ -18,8 +18,7 @@ fn mk_pass(
 }
 
 type ctxt = {
-    w: io::writer,
-    mutable depth: uint
+    w: io::writer
 };
 
 fn write_markdown(
@@ -27,30 +26,29 @@ fn write_markdown(
     writer: io::writer
 ) {
     let ctxt = {
-        w: writer,
-        mutable depth: 1u
+        w: writer
     };
 
     write_crate(ctxt, doc);
 }
 
-fn write_header(ctxt: ctxt, title: str) {
-    let hashes = str::from_chars(vec::init_elt('#', ctxt.depth));
-    ctxt.w.write_line(#fmt("%s %s", hashes, title));
-    ctxt.w.write_line("");
+tag hlvl {
+    h1 = 1;
+    h2 = 2;
+    h3 = 3;
 }
 
-fn subsection(ctxt: ctxt, f: fn&()) {
-    ctxt.depth += 1u;
-    f();
-    ctxt.depth -= 1u;
+fn write_header(ctxt: ctxt, lvl: hlvl, title: str) {
+    let hashes = str::from_chars(vec::init_elt('#', lvl as uint));
+    ctxt.w.write_line(#fmt("%s %s", hashes, title));
+    ctxt.w.write_line("");
 }
 
 fn write_crate(
     ctxt: ctxt,
     doc: doc::cratedoc
 ) {
-    write_header(ctxt, #fmt("Crate %s", doc.topmod.name));
+    write_header(ctxt, h1, #fmt("Crate %s", doc.topmod.name));
     write_top_module(ctxt, doc.topmod);
 }
 
@@ -65,7 +63,7 @@ fn write_mod(
     ctxt: ctxt,
     moddoc: doc::moddoc
 ) {
-    write_header(ctxt, #fmt("Module `%s`", moddoc.name));
+    write_header(ctxt, h2, #fmt("Module `%s`", moddoc.name));
     write_mod_contents(ctxt, moddoc);
 }
 
@@ -77,15 +75,11 @@ fn write_mod_contents(
     write_desc(ctxt, doc.desc);
 
     for fndoc in *doc.fns {
-        subsection(ctxt) {||
-            write_fn(ctxt, fndoc);
-        }
+        write_fn(ctxt, fndoc);
     }
 
     for moddoc in *doc.mods {
-        subsection(ctxt) {||
-            write_mod(ctxt, moddoc);
-        }
+        write_mod(ctxt, moddoc);
     }
 }
 
@@ -105,7 +99,7 @@ fn write_fn(
     ctxt: ctxt,
     doc: doc::fndoc
 ) {
-    write_header(ctxt, #fmt("Function `%s`", doc.name));
+    write_header(ctxt, h3, #fmt("Function `%s`", doc.name));
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
     write_args(ctxt, doc.args);
