@@ -3700,7 +3700,13 @@ fn load_if_immediate(cx: @block_ctxt, v: ValueRef, t: ty::t) -> ValueRef {
 fn trans_log(lvl: @ast::expr, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
     let lcx = cx.fcx.lcx;
+    let tcx = ccx.tcx;
     let modname = str::connect(lcx.module_path, "::");
+
+    if ty::type_is_bot(tcx, ty::expr_ty(tcx, lvl)) {
+       ret trans_expr(cx, lvl, ignore);
+    }
+
     let global = if lcx.ccx.module_data.contains_key(modname) {
         lcx.ccx.module_data.get(modname)
     } else {
