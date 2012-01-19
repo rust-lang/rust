@@ -14,7 +14,7 @@ iface to_str {
 impl <T: to_str> of to_str for option<T> {
     fn to_str() -> str {
         alt self {
-          none. { "none" }
+          none { "none" }
           some(t) { "some(" + t.to_str() + ")" }
         }
     }

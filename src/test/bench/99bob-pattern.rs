@@ -12,13 +12,13 @@ tag bottle { none; dual; single; multiple(int); }
 
 fn show(b: bottle) {
     alt b {
-      none. {
+      none {
         #debug("No more bottles of beer on the wall, \
                 no more bottles of beer,");
         #debug("Go to the store and buy some more, \
                 99 bottles of beer on the wall.");
       }
-      single. {
+      single {
         #debug("1 bottle of beer on the wall, 1 bottle of beer,");
         #debug("Take one down and pass it around, \
                 no more bottles of beer on the wall.");
@@ -38,8 +38,8 @@ fn show(b: bottle) {
 
 fn next(b: bottle) -> bottle {
     alt b {
-      none. { ret none; }
-      single. { ret none; }
+      none { ret none; }
+      single { ret none; }
       dual. { ret single; }
       multiple(3) { ret dual; }
       multiple(n) { ret multiple(n - 1); }
@@ -48,7 +48,7 @@ fn next(b: bottle) -> bottle {
 
 
 // Won't need this when tags can be compared with ==
-fn more(b: bottle) -> bool { alt b { none. { ret false; } _ { ret true; } } }
+fn more(b: bottle) -> bool { alt b { none { ret false; } _ { ret true; } } }
 
 fn main() {
     let b: bottle = multiple(99);

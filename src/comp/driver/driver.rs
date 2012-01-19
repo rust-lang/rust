@@ -280,22 +280,22 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
     // from stdin, we're going to just suck the source into a string
     // so both the parser and pretty-printer can use it.
     let upto = alt ppm {
-      ppm_expanded. { cu_expand }
-      ppm_typed. { cu_typeck }
+      ppm_expanded { cu_expand }
+      ppm_typed { cu_typeck }
       _ { cu_parse }
     };
     let {crate, tcx, src} = compile_upto(sess, cfg, input, upto, none);
 
     let ann: pprust::pp_ann = pprust::no_ann();
     alt ppm {
-      ppm_typed. {
+      ppm_typed {
         ann = {pre: ann_paren_for_expr,
                post: bind ann_typed_post(option::get(tcx), _)};
       }
-      ppm_identified. {
+      ppm_identified {
         ann = {pre: ann_paren_for_expr, post: ann_identified_post};
       }
-      ppm_expanded. | ppm_normal. {}
+      ppm_expanded | ppm_normal {}
     }
     pprust::print_crate(sess.codemap, sess.diagnostic, crate, input,
                         io::string_reader(src), io::stdout(), ann);
@@ -332,11 +332,11 @@ fn build_target_config(sopts: @session::options,
                        demitter: diagnostic::emitter) -> @session::config {
     let os = alt get_os(sopts.target_triple) {
       some(os) { os }
-      none. { early_error(demitter, "Unknown operating system!") }
+      none { early_error(demitter, "Unknown operating system!") }
     };
     let arch = alt get_arch(sopts.target_triple) {
       some(arch) { arch }
-      none. { early_error(demitter,
+      none { early_error(demitter,
                           "Unknown architecture! " + sopts.target_triple) }
     };
     let (int_type, uint_type, float_type) = alt arch {
@@ -429,7 +429,7 @@ fn build_session_options(match: getopts::match,
         } else { 0u };
     let target =
         alt target_opt {
-            none. { host_triple() }
+            none { host_triple() }
             some(s) { s }
         };
 
@@ -538,8 +538,8 @@ fn build_output_filenames(ifile: str,
 
     let obj_suffix =
         alt sopts.output_type {
-          link::output_type_none. { "none" }
-          link::output_type_bitcode. { "bc" }
+          link::output_type_none { "none" }
+          link::output_type_bitcode { "bc" }
           link::output_type_assembly. { "s" }
           link::output_type_llvm_assembly. { "ll" }
           // Object and exe output both use the '.o' extension here
@@ -549,13 +549,13 @@ fn build_output_filenames(ifile: str,
         };
 
     alt ofile {
-      none. {
+      none {
         // "-" as input file will cause the parser to read from stdin so we
         // have to make up a name
         // We want to toss everything after the final '.'
         let dirname = alt odir {
           some(d) { d }
-          none. {
+          none {
             if input_is_stdin(ifile) {
                 std::os::getcwd()
             } else {

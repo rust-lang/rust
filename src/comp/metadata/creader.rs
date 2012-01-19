@@ -68,7 +68,7 @@ fn visit_item(e: env, i: @ast::item) {
                 }
                 nn
               }
-              none. { i.ident }
+              none { i.ident }
             };
         let already_added = false;
         if vec::len(attr::find_attrs_by_name(i.attrs, "nolink")) == 0u {
@@ -84,7 +84,7 @@ fn visit_item(e: env, i: @ast::item) {
               some(linkarg) {
                 cstore::add_used_link_args(cstore, linkarg);
               }
-              none. {/* fallthrough */ }
+              none {/* fallthrough */ }
             }
         }
       }
@@ -96,7 +96,7 @@ fn visit_item(e: env, i: @ast::item) {
 fn list_file_metadata(sess: session::session, path: str, out: io::writer) {
     alt get_metadata_section(sess, path) {
       option::some(bytes) { decoder::list_crate_metadata(bytes, out); }
-      option::none. {
+      option::none {
         out.write_str("Could not find metadata in " + path + ".\n");
       }
     }
@@ -154,7 +154,7 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
                   _ { ident }
                 }
               }
-              none. { ident }
+              none { ident }
             }
         };
 
@@ -239,7 +239,7 @@ fn load_library_crate(sess: session::session, span: span, ident: ast::ident,
 
     alt find_library_crate(sess, ident, metas) {
       some(t) { ret t; }
-      none. {
+      none {
         sess.span_fatal(span, #fmt["can't find crate for '%s'", ident]);
       }
     }

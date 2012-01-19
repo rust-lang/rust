@@ -68,8 +68,8 @@ fn tok_str(t: token) -> str {
       STRING(s, len) { ret #fmt["STR(%s,%d)", s, len]; }
       BREAK(_) { ret "BREAK"; }
       BEGIN(_) { ret "BEGIN"; }
-      END. { ret "END"; }
-      EOF. { ret "EOF"; }
+      END { ret "END"; }
+      EOF { ret "EOF"; }
     }
 }
 
@@ -236,7 +236,7 @@ impl printer for printer {
     fn pretty_print(t: token) {
         #debug("pp [%u,%u]", self.left, self.right);
         alt t {
-          EOF. {
+          EOF {
             if !self.scan_stack_empty {
                 self.check_stack(0);
                 self.advance_left(self.token[self.left],
@@ -256,7 +256,7 @@ impl printer for printer {
             self.size[self.right] = -self.right_total;
             self.scan_push(self.right);
           }
-          END. {
+          END {
             if self.scan_stack_empty {
                 #debug("pp END/print [%u,%u]", self.left, self.right);
                 self.print(t, 0);
@@ -378,7 +378,7 @@ impl printer for printer {
                     self.check_stack(k - 1);
                 }
               }
-              END. {
+              END {
                 // paper says + not =, but that makes no sense.
                 self.size[self.scan_pop()] = 1;
                 self.check_stack(k + 1);
@@ -428,7 +428,7 @@ impl printer for printer {
                 self.print_stack += [{offset: 0, pbreak: fits}];
             }
           }
-          END. {
+          END {
             #debug("print END -> pop END");
             assert (vec::len(self.print_stack) != 0u);
             vec::pop(self.print_stack);
@@ -436,17 +436,17 @@ impl printer for printer {
           BREAK(b) {
             let top = self.get_top();
             alt top.pbreak {
-              fits. {
+              fits {
                 #debug("print BREAK in fitting block");
                 self.space -= b.blank_space;
                 self.indent(b.blank_space);
               }
-              broken(consistent.) {
+              broken(consistent) {
                 #debug("print BREAK in consistent block");
                 self.print_newline(top.offset + b.offset);
                 self.space = self.margin - (top.offset + b.offset);
               }
-              broken(inconsistent.) {
+              broken(inconsistent) {
                 if L > self.space {
                     #debug("print BREAK w/ newline in inconsistent");
                     self.print_newline(top.offset + b.offset);
@@ -466,7 +466,7 @@ impl printer for printer {
             self.space -= len;
             self.write_str(s);
           }
-          EOF. {
+          EOF {
             // EOF should never get here.
             fail;
           }

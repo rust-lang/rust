@@ -80,7 +80,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         visit::visit_expr_opt(oexpr, cx, v);
         leave_fn(cx);
       }
-      expr_break. { add_block_exit(cx, loop); }
+      expr_break { add_block_exit(cx, loop); }
       expr_while(_, _) | expr_do_while(_, _) {
         visit_block(loop, cx) {|| visit::visit_expr(ex, cx, v);}
       }
@@ -160,7 +160,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
               }
               _ {
                 alt arg_ts[i].mode {
-                  by_mut_ref. { clear_if_path(cx, arg, v, false); }
+                  by_mut_ref { clear_if_path(cx, arg, v, false); }
                   _ { v.visit_expr(arg, cx, v); }
                 }
               }
@@ -179,12 +179,12 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let fty = ty::node_id_to_type(cx.tcx, id);
     let proto = ty::ty_fn_proto(cx.tcx, fty);
     alt proto {
-      proto_any. | proto_block. {
+      proto_any | proto_block {
         visit_block(func, cx, {||
             visit::visit_fn(fk, decl, body, sp, id, cx, v);
         });
       }
-      proto_box. | proto_uniq. | proto_bare. {
+      proto_box | proto_uniq | proto_bare {
         alt cx.tcx.freevars.find(id) {
           some(vars) {
             for v in *vars {
@@ -283,8 +283,8 @@ fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
 fn clear_def_if_path(cx: ctx, d: def, to: bool)
     -> option<node_id> {
     alt d {
-      def_local(def_id, let_copy.) | def_arg(def_id, by_copy.) |
-      def_arg(def_id, by_move.) {
+      def_local(def_id, let_copy) | def_arg(def_id, by_copy) |
+      def_arg(def_id, by_move) {
         clear_in_current(cx, def_id.node, to);
         some(def_id.node)
       }

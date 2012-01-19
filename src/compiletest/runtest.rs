@@ -24,10 +24,10 @@ fn run(cx: cx, -_testfile: [u8]) {
     #debug("running %s", testfile);
     let props = load_props(testfile);
     alt cx.config.mode {
-      mode_compile_fail. { run_cfail_test(cx, props, testfile); }
-      mode_run_fail. { run_rfail_test(cx, props, testfile); }
-      mode_run_pass. { run_rpass_test(cx, props, testfile); }
-      mode_pretty. { run_pretty_test(cx, props, testfile); }
+      mode_compile_fail { run_cfail_test(cx, props, testfile); }
+      mode_run_fail { run_rfail_test(cx, props, testfile); }
+      mode_run_pass { run_rpass_test(cx, props, testfile); }
+      mode_pretty { run_pretty_test(cx, props, testfile); }
     }
 }
 
@@ -96,7 +96,7 @@ fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
     } else { logv(cx.config, "testing for converging pretty-printing"); }
 
     let rounds =
-        alt props.pp_exact { option::some(_) { 1 } option::none. { 2 } };
+        alt props.pp_exact { option::some(_) { 1 } option::none { 2 } };
 
     let srcs = [result::get(io::read_whole_file_str(testfile))];
 
@@ -120,7 +120,7 @@ fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
             let filepath = fs::connect(fs::dirname(testfile), file);
             result::get(io::read_whole_file_str(filepath))
           }
-          option::none. { srcs[vec::len(srcs) - 2u] }
+          option::none { srcs[vec::len(srcs) - 2u] }
         };
     let actual = srcs[vec::len(srcs) - 1u];
 
@@ -326,7 +326,7 @@ fn make_run_args(config: config, _props: test_props, testfile: str) ->
             let runtool =
                 alt config.runtool {
                   option::some(s) { option::some(s) }
-                  option::none. { option::none }
+                  option::none { option::none }
                 };
             split_maybe_args(runtool)
         };
@@ -351,7 +351,7 @@ fn split_maybe_args(argstr: option::t<str>) -> [str] {
 
     alt argstr {
       option::some(s) { rm_whitespace(str::split(s, ' ' as u8)) }
-      option::none. { [] }
+      option::none { [] }
     }
 }
 

@@ -38,7 +38,7 @@ fn insert<T: copy>(m: smallintmap<T>, key: uint, val: T) {
 Function: find
 
 Get the value for the specified key. If the key does not exist
-in the map then returns none.
+in the map then returns none
 */
 fn find<T: copy>(m: smallintmap<T>, key: uint) -> option::t<T> {
     if key < vec::len::<option::t<T>>(m.v) { ret m.v[key]; }
@@ -56,7 +56,7 @@ If the key does not exist in the map
 */
 fn get<T: copy>(m: smallintmap<T>, key: uint) -> T {
     alt find(m, key) {
-      none. { #error("smallintmap::get(): key not present"); fail; }
+      none { #error("smallintmap::get(): key not present"); fail; }
       some(v) { ret v; }
     }
 }
@@ -117,7 +117,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
               some(elt) {
                 it(idx, elt);
               }
-              none. { }
+              none { }
             }
             idx += 1u;
         }

@@ -121,7 +121,7 @@ fn write_brief(
         ctxt.w.write_line(brief);
         ctxt.w.write_line("");
       }
-      none. { }
+      none { }
     }
 }
 
@@ -134,7 +134,7 @@ fn write_desc(
             ctxt.w.write_line(desc);
             ctxt.w.write_line("");
         }
-        none. { }
+        none { }
     }
 }
 
@@ -208,13 +208,13 @@ fn write_return(
               some(d) {
                 ctxt.w.write_line(d);
               }
-              none. { }
+              none { }
             }
           }
-          none. { fail "unimplemented"; }
+          none { fail "unimplemented"; }
         }
       }
-      none. { }
+      none { }
     }
 }
 

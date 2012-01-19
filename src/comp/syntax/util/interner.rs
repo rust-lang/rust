@@ -20,7 +20,7 @@ fn mk<T: copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
 fn intern<T: copy>(itr: interner<T>, val: T) -> uint {
     alt itr.map.find(val) {
       some(idx) { ret idx; }
-      none. {
+      none {
         let new_idx = vec::len::<T>(itr.vect);
         itr.map.insert(val, new_idx);
         itr.vect += [val];

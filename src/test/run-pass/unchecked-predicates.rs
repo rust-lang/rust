@@ -9,7 +9,7 @@ import std::list::*;
 // no syntax for specifying that f is pure.
 fn pure_foldl<T: copy, U: copy>(ls: list<T>, u: U, f: block(T, U) -> U) -> U {
     alt ls {
-        nil. { u }
+        nil { u }
         cons(hd, tl) { f(hd, pure_foldl(*tl, f(hd, u), f)) }
     }
 }

@@ -240,7 +240,7 @@ fn implies(a: t, b: t) -> bool {
 }
 
 fn trit_str(t: trit) -> str {
-    alt t { dont_care. { "?" } ttrue. { "1" } tfalse. { "0" } }
+    alt t { dont_care { "?" } ttrue { "1" } tfalse { "0" } }
 }
 //
 // Local Variables:

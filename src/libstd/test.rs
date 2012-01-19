@@ -131,18 +131,18 @@ fn run_tests_console_<T: copy>(opts: test_opts, tests: [test_desc<T>],
           te_wait(test) { st.out.write_str(#fmt["test %s ... ", test.name]); }
           te_result(test, result) {
             alt result {
-              tr_ok. {
+              tr_ok {
                 st.passed += 1u;
                 write_ok(st.out, st.use_color);
                 st.out.write_line("");
               }
-              tr_failed. {
+              tr_failed {
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line("");
                 st.failures += [test];
               }
-              tr_ignored. {
+              tr_ignored {
                 st.ignored += 1u;
                 write_ignored(st.out, st.use_color);
                 st.out.write_line("");
@@ -260,7 +260,7 @@ fn filter_tests<T: copy>(opts: test_opts,
         let filter_str =
             alt opts.filter {
           option::some(f) { f }
-          option::none. { "" }
+          option::none { "" }
         };
 
         fn filter_fn<T: copy>(test: test_desc<T>, filter_str: str) ->
@@ -315,11 +315,11 @@ fn run_test<T: copy>(test: test_desc<T>,
     ret {test: test,
          wait: fn@() -> test_result {
              alt task::join(test_task) {
-               task::tr_success. {
+               task::tr_success {
                  if test.should_fail { tr_failed }
                  else { tr_ok }
                }
-               task::tr_failure. {
+               task::tr_failure {
                  if test.should_fail { tr_ok }
                  else { tr_failed }
                }

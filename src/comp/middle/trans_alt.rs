@@ -129,7 +129,7 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
                 vec::slice(br.pats, col + 1u, vec::len(br.pats));
             let new_br = @{pats: pats,
                            bound: alt br.pats[col].node {
-                             ast::pat_ident(name, none.) {
+                             ast::pat_ident(name, none) {
                                  br.bound + [{ident: path_to_ident(name),
                                               val: val}]
                              }
@@ -137,7 +137,7 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
                            } with *br};
             result += [new_br];
           }
-          none. { }
+          none { }
         }
     }
     ret result;
@@ -146,8 +146,8 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
 fn enter_default(m: match, col: uint, val: ValueRef) -> match {
     fn matches_always(p: @ast::pat) -> bool {
         alt p.node {
-                ast::pat_wild. | ast::pat_rec(_, _) |
-                ast::pat_ident(_, none.) | ast::pat_tup(_) { true }
+                ast::pat_wild | ast::pat_rec(_, _) |
+                ast::pat_ident(_, none) | ast::pat_tup(_) { true }
                 _ { false }
         }
     }
@@ -508,7 +508,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     }
     let else_cx =
         alt kind {
-          no_branch. | single. { bcx }
+          no_branch | single { bcx }
           _ { new_sub_block_ctxt(bcx, "match_else") }
         };
     let sw;
@@ -525,8 +525,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     for opt: opt in opts {
         let opt_cx = new_sub_block_ctxt(bcx, "match_case");
         alt kind {
-          single. { Br(bcx, opt_cx.llbb); }
-          switch. {
+          single { Br(bcx, opt_cx.llbb); }
+          switch {
             let res = trans_opt(bcx, opt);
             alt res {
               single_result(r) {
@@ -535,7 +535,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
               }
             }
           }
-          compare. {
+          compare {
             let compare_cx = new_scope_block_ctxt(bcx, "compare_scope");
             Br(bcx, compare_cx.llbb);
             bcx = compare_cx;
@@ -603,7 +603,7 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
             if ex.to as uint == our_block {
                 alt assoc(name, ex.bound) {
                   some(val) { llbbs += [ex.from]; vals += [val]; }
-                  none. { }
+                  none { }
                 }
             }
         }
@@ -767,7 +767,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         let val = Load(bcx, val);
         bcx = bind_irrefutable_pat(bcx, inner, val, true);
       }
-      ast::pat_wild. | ast::pat_lit(_) | ast::pat_range(_, _) { }
+      ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) { }
     }
     ret bcx;
 }

@@ -19,7 +19,7 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
                 assert (vec::len(pth.node.idents) > 0u);
                 let extname = pth.node.idents[0];
                 alt exts.find(extname) {
-                  none. {
+                  none {
                     cx.span_fatal(pth.span,
                                   #fmt["macro undefined: '%s'", extname])
                   }

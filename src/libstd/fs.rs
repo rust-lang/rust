@@ -433,7 +433,7 @@ fn homedir() -> option<path> {
                 secondary()
             }
         }
-        none. {
+        none {
             secondary()
         }
     };

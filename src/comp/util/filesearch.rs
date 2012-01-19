@@ -96,7 +96,7 @@ fn make_target_lib_path(sysroot: fs::path,
 fn get_default_sysroot() -> fs::path {
     alt os::get_exe_path() {
       option::some(p) { fs::normalize(fs::connect(p, "..")) }
-      option::none. {
+      option::none {
         fail "can't determine value for sysroot";
       }
     }
@@ -105,17 +105,17 @@ fn get_default_sysroot() -> fs::path {
 fn get_sysroot(maybe_sysroot: option::t<fs::path>) -> fs::path {
     alt maybe_sysroot {
       option::some(sr) { sr }
-      option::none. { get_default_sysroot() }
+      option::none { get_default_sysroot() }
     }
 }
 
 fn get_cargo_root() -> result::t<fs::path, str> {
     alt generic_os::getenv("CARGO_ROOT") {
         some(_p) { result::ok(_p) }
-        none. {
+        none {
           alt fs::homedir() {
             some(_q) { result::ok(fs::connect(_q, ".cargo")) }
-            none. { result::err("no CARGO_ROOT or home directory") }
+            none { result::err("no CARGO_ROOT or home directory") }
           }
         }
     }

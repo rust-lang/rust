@@ -16,8 +16,8 @@ fn normalize_pat_def_map(dm: resolve::def_map, p: @pat) -> @pat {
   // have to do it the hard way b/c ast fold doesn't pass around
   // node IDs. bother.
   alt p.node {
-      pat_wild. { p }
-      pat_ident(_, none.) { normalize_one(dm, p) }
+      pat_wild { p }
+      pat_ident(_, none) { normalize_one(dm, p) }
       pat_ident(q, some(r)) {
         @{node: pat_ident(q, some(normalize_pat_def_map(dm, r)))
             with *p}
@@ -58,7 +58,7 @@ fn normalize_one(dm: resolve::def_map, p: @pat) -> @pat {
               _ { p }
           }
         }
-        none. { p }
+        none { p }
     }
 }
 
@@ -93,14 +93,14 @@ fn pat_id_map(tcx: ty::ctxt, pat: @pat) -> pat_id_map {
 // Could return a constrained type in order to express that (future work)
 fn pat_bindings(pat: @pat, it: block(@pat)) {
   alt pat.node {
-      pat_ident(_, option::none.) { it(pat); }
+      pat_ident(_, option::none) { it(pat); }
       pat_ident(_, option::some(sub)) { it(pat); pat_bindings(sub, it); }
       pat_tag(_, sub) { for p in sub { pat_bindings(p, it); } }
       pat_rec(fields, _) { for f in fields { pat_bindings(f.pat, it); } }
       pat_tup(elts) { for elt in elts { pat_bindings(elt, it); } }
       pat_box(sub) { pat_bindings(sub, it); }
       pat_uniq(sub) { pat_bindings(sub, it); }
-      pat_wild. | pat_lit(_) | pat_range(_, _) { }
+      pat_wild | pat_lit(_) | pat_range(_, _) { }
     }
 }
 
@@ -112,7 +112,7 @@ fn pat_binding_ids(pat: @pat) -> [node_id] {
 
 fn path_to_ident(p: @path) -> ident {
     alt vec::last(p.node.idents) {
-        none. { // sigh
+        none { // sigh
           fail "Malformed path"; }
       some(i) { ret i; }
     }

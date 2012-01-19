@@ -45,7 +45,7 @@ fn check_expr(sess: session, e: @expr, &&is_const: bool, v: visit::vt<bool>) {
     if is_const {
         alt e.node {
           expr_unary(box(_), _) | expr_unary(uniq(_), _) |
-          expr_unary(deref., _){
+          expr_unary(deref, _){
             sess.span_err(e.span,
                           "disallowed operator in constant expression");
             ret;

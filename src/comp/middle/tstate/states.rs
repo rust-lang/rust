@@ -15,7 +15,7 @@ import driver::session::session;
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
     alt t {
-      oper_move. {
+      oper_move {
         alt local_node_id_to_def(fcx, rhs_id) {
           some(def_upvar(_, _, _)) {
             fcx.ccx.tcx.sess.span_err(sp,
@@ -94,7 +94,7 @@ fn find_pre_post_state_sub(fcx: fn_ctxt, pres: prestate, e: @expr,
 
     let post = tritv_clone(expr_poststate(fcx.ccx, e));
     alt c {
-      none. { }
+      none { }
       some(c1) { set_in_poststate_(bit_num(fcx, c1), post); }
     }
 
@@ -123,11 +123,11 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
         let tmp = tritv_clone(post);
 
         alt ty {
-          oper_move. {
+          oper_move {
             if is_path(rhs) { forget_in_poststate(fcx, post, rhs.id); }
             forget_in_poststate_still_init(fcx, post, lhs.id);
           }
-          oper_swap. {
+          oper_swap {
             forget_in_poststate_still_init(fcx, post, lhs.id);
             forget_in_poststate_still_init(fcx, post, rhs.id);
           }
@@ -187,7 +187,7 @@ fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
     let changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
     alt cf {
-      noreturn. {
+      noreturn {
         let post = false_postcond(num_constraints(fcx.enclosing));
         changed |= set_poststate_ann(fcx.ccx, id, post);
       }
@@ -265,9 +265,9 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
     */
 
     alt maybe_alt {
-      none. {
+      none {
         alt chk {
-          if_check. {
+          if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
             let conseq_prestate = tritv_clone(expr_poststate(fcx.ccx, antec));
             tritv_set(bit_num(fcx, c.node), conseq_prestate, ttrue);
@@ -292,7 +292,7 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
 
         let conseq_prestate = expr_poststate(fcx.ccx, antec);
         alt chk {
-          if_check. {
+          if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
             conseq_prestate = tritv_clone(conseq_prestate);
             tritv_set(bit_num(fcx, c.node), conseq_prestate, ttrue);
@@ -360,7 +360,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let i = 0;
         for a_opt: option::t<@expr> in maybe_args {
             alt a_opt {
-              none. {/* no-op */ }
+              none {/* no-op */ }
               some(a) { ops += [callee_ops[i]]; args += [a]; }
             }
             i += 1;
@@ -390,7 +390,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                                     vec::len(fields)),
                                       field_exprs(fields), return_val);
         alt maybe_base {
-          none. {/* do nothing */ }
+          none {/* do nothing */ }
           some(base) {
             changed |=
                 find_pre_post_state_expr(fcx, pres, base) |
@@ -431,7 +431,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         set_poststate_ann(fcx.ccx, e.id, post);
 
         alt maybe_ret_val {
-          none. {/* do nothing */ }
+          none {/* do nothing */ }
           some(ret_val) {
             changed |= find_pre_post_state_expr(fcx, pres, ret_val);
           }
@@ -586,13 +586,13 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         woo! */
         let post = false_postcond(num_constrs);
         alt fcx.enclosing.cf {
-          noreturn. { kill_poststate_(fcx, ninit(fcx.id, fcx.name), post); }
+          noreturn { kill_poststate_(fcx, ninit(fcx.id, fcx.name), post); }
           _ { }
         }
         ret set_prestate_ann(fcx.ccx, e.id, pres) |
                 set_poststate_ann(fcx.ccx, e.id, post) |
                 alt maybe_fail_val {
-                  none. { false }
+                  none { false }
                   some(fail_val) {
                     find_pre_post_state_expr(fcx, pres, fail_val)
                   }
@@ -609,8 +609,8 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_if_check(p, conseq, maybe_alt) {
         ret join_then_else(fcx, p, conseq, maybe_alt, e.id, if_check, pres);
       }
-      expr_break. { ret pure_exp(fcx.ccx, e.id, pres); }
-      expr_cont. { ret pure_exp(fcx.ccx, e.id, pres); }
+      expr_break { ret pure_exp(fcx.ccx, e.id, pres); }
+      expr_cont { ret pure_exp(fcx.ccx, e.id, pres); }
     }
 }
 
@@ -704,7 +704,7 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
     }
     let post = pres;
     alt b.node.expr {
-      none. { }
+      none { }
       some(e) {
         changed |= find_pre_post_state_expr(fcx, pres, e);
         post = expr_poststate(fcx.ccx, e);
@@ -767,7 +767,7 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
             set_poststate_ann(fcx.ccx, f_body.node.id, post);
         }
       }
-      none. {/* fallthrough */ }
+      none {/* fallthrough */ }
     }
 
     /*

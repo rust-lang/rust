@@ -10,11 +10,11 @@ import middle::ast_map;
 
 fn mode_str(m: ty::mode) -> str {
     alt m {
-      ast::by_ref. { "&&" }
-      ast::by_val. { "++" }
-      ast::by_mut_ref. { "&" }
-      ast::by_move. { "-" }
-      ast::by_copy. { "+" }
+      ast::by_ref { "&&" }
+      ast::by_val { "++" }
+      ast::by_mut_ref { "&" }
+      ast::by_move { "-" }
+      ast::by_copy { "+" }
       _ { "" }
     }
 }
@@ -23,10 +23,10 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: middle::ty::mode, ty: t}) ->
        str {
         let modestr = alt input.mode {
-          ast::by_ref. {
+          ast::by_ref {
             ty::type_is_immediate(cx, input.ty) ? "&&" : ""
           }
-          ast::by_val. {
+          ast::by_val {
             ty::type_is_immediate(cx, input.ty) ? "" : "++"
           }
           _ { mode_str(input.mode) }
@@ -46,7 +46,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         if struct(cx, output) != ty_nil {
             s += " -> ";
             alt cf {
-              ast::noreturn. { s += "!"; }
+              ast::noreturn { s += "!"; }
               ast::return_val. { s += ty_to_str(cx, output); }
             }
         }
@@ -63,9 +63,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn mt_to_str(cx: ctxt, m: mt) -> str {
         let mstr;
         alt m.mut {
-          ast::mut. { mstr = "mutable "; }
-          ast::imm. { mstr = ""; }
-          ast::maybe_mut. { mstr = "const "; }
+          ast::mut { mstr = "mutable "; }
+          ast::imm { mstr = ""; }
+          ast::maybe_mut { mstr = "const "; }
         }
         ret mstr + ty_to_str(cx, m.ty);
     }
@@ -86,22 +86,22 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     }
     ret alt struct(cx, typ) {
       ty_native(_) { "native" }
-      ty_nil. { "()" }
-      ty_bot. { "_|_" }
-      ty_bool. { "bool" }
-      ty_int(ast::ty_i.) { "int" }
-      ty_int(ast::ty_char.) { "char" }
+      ty_nil { "()" }
+      ty_bot { "_|_" }
+      ty_bool { "bool" }
+      ty_int(ast::ty_i) { "int" }
+      ty_int(ast::ty_char) { "char" }
       ty_int(t) { ast_util::int_ty_to_str(t) }
-      ty_uint(ast::ty_u.) { "uint" }
+      ty_uint(ast::ty_u) { "uint" }
       ty_uint(t) { ast_util::uint_ty_to_str(t) }
-      ty_float(ast::ty_f.) { "float" }
+      ty_float(ast::ty_f) { "float" }
       ty_float(t) { ast_util::float_ty_to_str(t) }
-      ty_str. { "str" }
+      ty_str { "str" }
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
-      ty_type. { "type" }
+      ty_type { "type" }
       ty_rec(elems) {
         let strs: [str] = [];
         for fld: field in elems { strs += [field_to_str(cx, fld)]; }

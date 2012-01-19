@@ -86,7 +86,7 @@ fn span_to_str(sp: span, cm: codemap) -> str {
                      "-"
                  } else { lo.filename }, lo.line, lo.col, hi.line, hi.col];
         alt cur.expanded_from {
-          os_none. { break; }
+          os_none { break; }
           os_some(new_sp) {
             cur = *new_sp;
             prev_file = some(lo.filename);

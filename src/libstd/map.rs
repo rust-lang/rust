@@ -137,7 +137,7 @@ mod chained {
         let comp = 1u;   // for logging
         while true {
             alt e0.next {
-              absent. {
+              absent {
                 #debug("search_tbl: absent, comp %u, hash %u, idx %u",
                        comp, h, idx);
                 ret not_found;
@@ -162,7 +162,7 @@ mod chained {
         tbl: t<K,V>, k: K, h: uint) -> search_result<K,V> {
         let idx = h % vec::len(tbl.chains);
         alt tbl.chains[idx] {
-          absent. {
+          absent {
             #debug("search_tbl: absent, comp %u, hash %u, idx %u",
                    0u, h, idx);
             ret not_found;
@@ -183,7 +183,7 @@ mod chained {
     fn insert<K: copy, V: copy>(tbl: t<K,V>, k: K, v: V) -> bool {
         let hash = tbl.hasher(k);
         alt search_tbl(tbl, k, hash) {
-          not_found. {
+          not_found {
             tbl.size += 1u;
             let idx = hash % vec::len(tbl.chains);
             let old_chain = tbl.chains[idx];
@@ -207,7 +207,7 @@ mod chained {
 
     fn get<K: copy, V: copy>(tbl: t<K,V>, k: K) -> core::option::t<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
-          not_found. {
+          not_found {
             ret core::option::none;
           }
 
@@ -223,7 +223,7 @@ mod chained {
 
     fn remove<K: copy, V: copy>(tbl: t<K,V>, k: K) -> core::option::t<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
-          not_found. {
+          not_found {
             ret core::option::none;
           }
 
@@ -250,7 +250,7 @@ mod chained {
         let chain = chain0;
         while true {
             alt chain {
-              absent. { ret; }
+              absent { ret; }
               present(entry) {
                 let next = entry.next;
                 blk(entry); // may modify entry.next!
@@ -569,7 +569,7 @@ mod tests {
             let v = hm.remove(i);
             alt v {
               option::some(u) { assert (u == i * i); }
-              option::none. { fail; }
+              option::none { fail; }
             }
             i += 2u;
         }

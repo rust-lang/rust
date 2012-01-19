@@ -369,8 +369,8 @@ fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
         unsupervise();
         comm::send(ch, f());
     }) {
-      tr_success. { result::ok(comm::recv(p)) }
-      tr_failure. { result::err(()) }
+      tr_success { result::ok(comm::recv(p)) }
+      tr_failure { result::err(()) }
     }
 }
 
@@ -405,7 +405,7 @@ mod tests {
 
         let t = spawn_joinable {|| winner();};
         alt join(t) {
-          tr_success. {/* yay! */ }
+          tr_success {/* yay! */ }
           _ { fail "invalid task status received" }
         }
     }
@@ -418,7 +418,7 @@ mod tests {
 
         let t = spawn_joinable {|| failer();};
         alt join(t) {
-          tr_failure. {/* yay! */ }
+          tr_failure {/* yay! */ }
           _ { fail "invalid task status received" }
         }
     }

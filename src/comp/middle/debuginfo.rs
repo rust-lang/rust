@@ -160,7 +160,7 @@ fn create_compile_unit(cx: @crate_ctxt, full_path: str)
     alt cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
                         {|md| md.data.path == full_path}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }
 
     let work_dir = cx.sess.working_dir;
@@ -202,7 +202,7 @@ fn create_file(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
     alt cached_metadata::<@metadata<file_md>>(
         cache, tg, {|md| md.data.path == full_path}) {
         option::some(md) { ret md; }
-        option::none. {}
+        option::none {}
     }
 
     let fname = fs::basename(full_path);
@@ -234,17 +234,17 @@ fn create_block(cx: @block_ctxt) -> @metadata<block_md> {
         cache, tg,
         {|md| start == md.data.start && end == md.data.end}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }
 
     let parent = alt cx.parent {
-      trans_common::parent_none. { create_function(cx.fcx).node }
+      trans_common::parent_none { create_function(cx.fcx).node }
       trans_common::parent_some(bcx) { create_block(cx).node }
     };
     let file_node = create_file(bcx_ccx(cx), fname);
     let unique_id = alt cache.find(LexicalBlockTag) {
       option::some(v) { vec::len(v) as int }
-      option::none. { 0 }
+      option::none { 0 }
     };
     let lldata = [lltag(tg),
                   parent,
@@ -270,30 +270,30 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| t == md.data.hash}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }
 
     let (name, (size, align), encoding) = alt ty.node {
-      ast::ty_bool. {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
+      ast::ty_bool {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
       ast::ty_int(m) { alt m {
-        ast::ty_char. {("char", size_and_align_of::<char>(), DW_ATE_unsigned)}
-        ast::ty_i. {("int", size_and_align_of::<int>(), DW_ATE_signed)}
-        ast::ty_i8. {("i8", size_and_align_of::<i8>(), DW_ATE_signed_char)}
-        ast::ty_i16. {("i16", size_and_align_of::<i16>(), DW_ATE_signed)}
-        ast::ty_i32. {("i32", size_and_align_of::<i32>(), DW_ATE_signed)}
-        ast::ty_i64. {("i64", size_and_align_of::<i64>(), DW_ATE_signed)}
+        ast::ty_char {("char", size_and_align_of::<char>(), DW_ATE_unsigned)}
+        ast::ty_i {("int", size_and_align_of::<int>(), DW_ATE_signed)}
+        ast::ty_i8 {("i8", size_and_align_of::<i8>(), DW_ATE_signed_char)}
+        ast::ty_i16 {("i16", size_and_align_of::<i16>(), DW_ATE_signed)}
+        ast::ty_i32 {("i32", size_and_align_of::<i32>(), DW_ATE_signed)}
+        ast::ty_i64 {("i64", size_and_align_of::<i64>(), DW_ATE_signed)}
       }}
       ast::ty_uint(m) { alt m {
-        ast::ty_u. {("uint", size_and_align_of::<uint>(), DW_ATE_unsigned)}
-        ast::ty_u8. {("u8", size_and_align_of::<u8>(), DW_ATE_unsigned_char)}
-        ast::ty_u16. {("u16", size_and_align_of::<u16>(), DW_ATE_unsigned)}
-        ast::ty_u32. {("u32", size_and_align_of::<u32>(), DW_ATE_unsigned)}
-        ast::ty_u64. {("u64", size_and_align_of::<u64>(), DW_ATE_unsigned)}
+        ast::ty_u {("uint", size_and_align_of::<uint>(), DW_ATE_unsigned)}
+        ast::ty_u8 {("u8", size_and_align_of::<u8>(), DW_ATE_unsigned_char)}
+        ast::ty_u16 {("u16", size_and_align_of::<u16>(), DW_ATE_unsigned)}
+        ast::ty_u32 {("u32", size_and_align_of::<u32>(), DW_ATE_unsigned)}
+        ast::ty_u64 {("u64", size_and_align_of::<u64>(), DW_ATE_unsigned)}
       }}
       ast::ty_float(m) { alt m {
-        ast::ty_f. {("float", size_and_align_of::<float>(), DW_ATE_float)}
-        ast::ty_f32. {("f32", size_and_align_of::<f32>(), DW_ATE_float)}
-        ast::ty_f64. {("f64", size_and_align_of::<f64>(), DW_ATE_float)}
+        ast::ty_f {("float", size_and_align_of::<float>(), DW_ATE_float)}
+        ast::ty_f32 {("f32", size_and_align_of::<f32>(), DW_ATE_float)}
+        ast::ty_f64 {("f64", size_and_align_of::<f64>(), DW_ATE_float)}
       }}
     };
 
@@ -325,7 +325,7 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: codemap::span,
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(t) == ty::hash_ty(md.data.hash)}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }*/
     let (size, align) = size_and_align_of::<ctypes::intptr_t>();
     let fname = filename_from_span(cx, span);
@@ -418,7 +418,7 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(outer) == ty::hash_ty(md.data.hash)}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }*/
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
@@ -492,24 +492,24 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t, vec_ty: @ast::ty)
 
 fn member_size_and_align(ty: @ast::ty) -> (int, int) {
     alt ty.node {
-      ast::ty_bool. { size_and_align_of::<bool>() }
+      ast::ty_bool { size_and_align_of::<bool>() }
       ast::ty_int(m) { alt m {
-        ast::ty_char. { size_and_align_of::<char>() }
-        ast::ty_i. { size_and_align_of::<int>() }
-        ast::ty_i8. { size_and_align_of::<i8>() }
-        ast::ty_i16. { size_and_align_of::<i16>() }
-        ast::ty_i32. { size_and_align_of::<i32>() }
+        ast::ty_char { size_and_align_of::<char>() }
+        ast::ty_i { size_and_align_of::<int>() }
+        ast::ty_i8 { size_and_align_of::<i8>() }
+        ast::ty_i16 { size_and_align_of::<i16>() }
+        ast::ty_i32 { size_and_align_of::<i32>() }
       }}
       ast::ty_uint(m) { alt m {
-        ast::ty_u. { size_and_align_of::<uint>() }
-        ast::ty_u8. { size_and_align_of::<i8>() }
-        ast::ty_u16. { size_and_align_of::<u16>() }
-        ast::ty_u32. { size_and_align_of::<u32>() }
+        ast::ty_u { size_and_align_of::<uint>() }
+        ast::ty_u8 { size_and_align_of::<i8>() }
+        ast::ty_u16 { size_and_align_of::<u16>() }
+        ast::ty_u32 { size_and_align_of::<u32>() }
       }}
       ast::ty_float(m) { alt m {
-        ast::ty_f. { size_and_align_of::<float>() }
-        ast::ty_f32. { size_and_align_of::<f32>() }
-        ast::ty_f64. { size_and_align_of::<f64>() }
+        ast::ty_f { size_and_align_of::<float>() }
+        ast::ty_f32 { size_and_align_of::<f32>() }
+        ast::ty_f64 { size_and_align_of::<f64>() }
       }}
       ast::ty_box(_) | ast::ty_uniq(_) {
         size_and_align_of::<ctypes::uintptr_t>()
@@ -534,14 +534,14 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| t == md.data.hash}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }*/
 
     fn t_to_ty(cx: @crate_ctxt, t: ty::t, span: codemap::span) -> @ast::ty {
         let ty = alt ty::struct(ccx_tcx(cx), t) {
-          ty::ty_nil. { ast::ty_nil }
-          ty::ty_bot. { ast::ty_bot }
-          ty::ty_bool. { ast::ty_bool }
+          ty::ty_nil { ast::ty_nil }
+          ty::ty_bot { ast::ty_bot }
+          ty::ty_bool { ast::ty_bool }
           ty::ty_int(t) { ast::ty_int(t) }
           ty::ty_float(t) { ast::ty_float(t) }
           ty::ty_uint(t) { ast::ty_uint(t) }
@@ -627,7 +627,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     alt cached_metadata::<@metadata<local_var_md>>(
         cache, tg, {|md| md.data.id == local.node.id}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }
 
     let name = path_to_ident(alt pat_util::normalize_pat(bcx_tcx(bcx),
@@ -640,7 +640,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.filename);
     let context = alt bcx.parent {
-      trans_common::parent_none. { create_function(bcx.fcx).node }
+      trans_common::parent_none { create_function(bcx.fcx).node }
       trans_common::parent_some(_) { create_block(bcx).node }
     };
     let mdnode = create_var(tg, context, name, filemd.node,
@@ -650,7 +650,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
 
     let llptr = alt bcx.fcx.lllocals.find(local.node.id) {
       option::some(local_mem(v)) { v }
-      option::none. {
+      option::none {
         alt bcx.fcx.lllocals.get(local.node.pat.id) {
           local_imm(v) { v }
         }
@@ -671,7 +671,7 @@ fn create_arg(bcx: @block_ctxt, arg: ast::arg)
     alt cached_metadata::<@metadata<argument_md>>(
         cache, ArgVariableTag, {|md| md.data.id == arg.id}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }
 
     /*let arg_n = alt cx.ast_map.get(arg.id) {
@@ -759,7 +759,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
         cache, SubprogramTag, {|md| md.data.path == path &&
                                     /*md.data.path == ??*/ true}) {
       option::some(md) { ret md; }
-      option::none. {}
+      option::none {}
     }
 
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
@@ -769,7 +769,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
     let mangled = cx.item_symbols.get(key);
     let ty_node = if cx.sess.opts.extra_debuginfo {
         alt ret_ty.node {
-          ast::ty_nil. { llnull() }
+          ast::ty_nil { llnull() }
           _ { create_ty(cx, ty::node_id_to_type(ccx_tcx(cx), id),
                         ret_ty).node }
         }

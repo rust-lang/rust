@@ -277,7 +277,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert (next(st) as char == '#');
         alt st.tcx.rcache.find({cnum: st.crate, pos: pos, len: len}) {
           some(tt) { ret tt; }
-          none. {
+          none {
             let ps = @{pos: pos with *st};
             let tt = parse_ty(ps, conv);
             st.tcx.rcache.insert({cnum: st.crate, pos: pos, len: len}, tt);

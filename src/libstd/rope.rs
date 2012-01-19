@@ -156,10 +156,10 @@ Concatenate two ropes
  */
 fn append_rope(left: rope, right: rope) -> rope {
    alt(left) {
-     node::empty. { ret right; }
+     node::empty { ret right; }
      node::content(left_content) {
        alt(right) {
-         node::empty. { ret left; }
+         node::empty { ret left; }
      node::content(right_content) {
            ret node::content(node::concat2(left_content, right_content));
      }
@@ -224,10 +224,10 @@ to rebalance your rope at some point, before using it for other purposes.
  */
 fn bal(rope:rope) -> rope {
     alt(rope) {
-      node::empty. { ret rope }
+      node::empty { ret rope }
       node::content(x) {
         alt(node::bal(x)) {
-          option::none.   { rope }
+          option::none   { rope }
           option::some(y) { node::content(y) }
         }
       }
@@ -255,7 +255,7 @@ valid positions in rope
 fn sub_chars(rope: rope, char_offset: uint, char_len: uint) -> rope {
     if char_len == 0u { ret node::empty; }
     alt(rope) {
-      node::empty. { fail }
+      node::empty { fail }
       node::content(node) {
         if char_len > node::char_len(node) { fail }
         else {
@@ -281,7 +281,7 @@ valid positions in rope
 fn sub_bytes(rope: rope, byte_offset: uint, byte_len: uint) -> rope {
     if byte_len == 0u { ret node::empty; }
     alt(rope) {
-      node::empty. { fail }
+      node::empty { fail }
       node::content(node) {
         if byte_len > node::byte_len(node) { fail }
         else {
@@ -309,9 +309,9 @@ value if `left > right`
 */
 fn cmp(left: rope, right: rope) -> int {
     alt((left, right)) {
-      (node::empty., node::empty.) { ret 0; }
-      (node::empty., _)     { ret -1;}
-      (_, node::empty.)     { ret  1;}
+      (node::empty, node::empty) { ret 0; }
+      (node::empty, _)     { ret -1;}
+      (_, node::empty)     { ret  1;}
       (node::content(a), node::content(b)) {
         ret node::cmp(a, b);
       }
@@ -421,7 +421,7 @@ that is if `it` returned `false` at any point.
  */
 fn loop_chars(rope: rope, it: block(char) -> bool) -> bool {
    alt(rope) {
-      node::empty. { ret true }
+      node::empty { ret true }
       node::content(x) { ret node::loop_chars(x, it) }
    }
 }
@@ -432,7 +432,7 @@ Function: iter_chars
 Loop through a rope, char by char, until the end.
 
 Parameters:
-rope - A rope to traverse. It may be empty.
+rope - A rope to traverse. It may be empty
 it - A block to execute with each consecutive character of the rope.
  */
 fn iter_chars(rope: rope, it: block(char)) {
@@ -457,9 +457,9 @@ use `traverse`.
 
 Parameters:
 
-rope - A rope to traverse. It may be empty.
+rope - A rope to traverse. It may be empty
 it - A block to execute with each consecutive string component of the rope.
-Return `true` to continue, `false` to stop.
+Return `true` to continue, `false` to stop
 
 Returns:
 
@@ -468,7 +468,7 @@ that is if `it` returned `false` at any point.
  */
 fn loop_leaves(rope: rope, it: block(node::leaf) -> bool) -> bool{
    alt(rope) {
-      node::empty. { ret true }
+      node::empty { ret true }
       node::content(x) {ret node::loop_leaves(x, it)}
    }
 }
@@ -477,7 +477,7 @@ mod iterator {
     mod leaf {
         fn start(rope: rope) -> node::leaf_iterator::t {
             alt(rope) {
-              node::empty.     { ret node::leaf_iterator::empty() }
+              node::empty     { ret node::leaf_iterator::empty() }
               node::content(x) { ret node::leaf_iterator::start(x) }
             }
         }
@@ -488,7 +488,7 @@ mod iterator {
     mod char {
         fn start(rope: rope) -> node::char_iterator::t {
             alt(rope) {
-              node::empty.   { ret node::char_iterator::empty() }
+              node::empty   { ret node::char_iterator::empty() }
               node::content(x) { ret node::char_iterator::start(x) }
             }
         }
@@ -513,7 +513,7 @@ finding the leaf in which a character is contained.
 */
 fn height(rope: rope) -> uint {
    alt(rope) {
-      node::empty.    { ret 0u; }
+      node::empty    { ret 0u; }
       node::content(x) { ret node::height(x); }
    }
 }
@@ -529,7 +529,7 @@ fn height(rope: rope) -> uint {
  */
 pure fn char_len(rope: rope) -> uint {
    alt(rope) {
-     node::empty.           { ret 0u; }
+     node::empty           { ret 0u; }
      node::content(x)       { ret node::char_len(x) }
    }
 }
@@ -543,7 +543,7 @@ pure fn char_len(rope: rope) -> uint {
  */
 pure fn byte_len(rope: rope) -> uint {
    alt(rope) {
-     node::empty.           { ret 0u; }
+     node::empty           { ret 0u; }
      node::content(x)       { ret node::byte_len(x) }
    }
 }
@@ -565,7 +565,7 @@ pure fn byte_len(rope: rope) -> uint {
  */
 fn char_at(rope: rope, pos: uint) -> char {
    alt(rope) {
-      node::empty. { fail }
+      node::empty { fail }
       node::content(x) { ret node::char_at(x, pos) }
    }
 }
@@ -730,7 +730,7 @@ mod node {
 
     If the slice is longer than `max_leaf_char_len`, it is logically split
     between as many leaves as necessary. Regardless, the string itself
-    is not copied.
+    is not copied
 
     Parameters:
     byte_start - The byte offset where the slice of `str` starts.
@@ -752,7 +752,7 @@ mod node {
 
     If the slice is longer than `max_leaf_char_len`, it is logically split
     between as many leaves as necessary. Regardless, the string itself
-    is not copied.
+    is not copied
 
     byte_start - The byte offset where the slice of `str` starts.
     byte_len   - The number of bytes from `str` to use.
@@ -897,7 +897,7 @@ mod node {
         let it = leaf_iterator::start(node);
         while true {
             alt(leaf_iterator::next(it)) {
-              option::none. { break; }
+              option::none { break; }
               option::some(x) {
                 //TODO: Replace with memcpy or something similar
                 let local_buf: [u8] = unsafe::reinterpret_cast(*x.content);
@@ -959,7 +959,7 @@ mod node {
         let it = leaf_iterator::start(node);
         while true {
             alt (leaf_iterator::next(it)) {
-              option::none.   { break; }
+              option::none   { break; }
               option::some(x) { forest += [mutable @leaf(x)]; }
             }
         }
@@ -1117,7 +1117,7 @@ mod node {
         let pos = 0u;
         while result == 0 {
             alt((char_iterator::next(ita), char_iterator::next(itb))) {
-              (option::none., option::none.) {
+              (option::none, option::none) {
                 break;
               }
               (option::some(chara), option::some(charb)) {
@@ -1152,7 +1152,7 @@ mod node {
 
     rope - A node to traverse.
     it - A block to execute with each consecutive leaf of the node.
-    Return `true` to continue, `false` to stop.
+    Return `true` to continue, `false` to stop
 
     Returns:
 
@@ -1277,11 +1277,11 @@ mod node {
         fn next(it: t) -> option::t<char> {
             while true {
                 alt(get_current_or_next_leaf(it)) {
-                  option::none. { ret option::none; }
+                  option::none { ret option::none; }
                   option::some(_) {
                     let next_char = get_next_char_in_leaf(it);
                     alt(next_char) {
-                      option::none. {
+                      option::none {
                         cont;
                       }
                       option::some(_) {
@@ -1297,10 +1297,10 @@ mod node {
         fn get_current_or_next_leaf(it: t) -> option::t<leaf> {
             alt(it.leaf) {
               option::some(_) { ret it.leaf }
-              option::none. {
+              option::none {
                 let next = leaf_iterator::next(it.leaf_iterator);
                 alt(next) {
-                  option::none. { ret option::none }
+                  option::none { ret option::none }
                   option::some(_) {
                     it.leaf          = next;
                     it.leaf_byte_pos = 0u;
@@ -1313,7 +1313,7 @@ mod node {
 
         fn get_next_char_in_leaf(it: t) -> option::t<char> {
             alt(it.leaf) {
-              option::none. { ret option::none }
+              option::none { ret option::none }
               option::some(aleaf) {
                 if it.leaf_byte_pos >= aleaf.byte_len {
                     //We are actually past the end of the leaf
@@ -1338,7 +1338,7 @@ mod tests {
     //Utility function, used for sanity check
     fn rope_to_string(r: rope) -> str {
         alt(r) {
-          node::empty. { ret "" }
+          node::empty { ret "" }
           node::content(x) {
             let str = @mutable "";
             fn aux(str: @mutable str, node: @node::node) {
@@ -1392,7 +1392,7 @@ mod tests {
         let pos         = 0u;
         while equal {
             alt(node::char_iterator::next(rope_iter)) {
-              option::none. {
+              option::none {
                 if string_iter < string_len {
                     equal = false;
                 } break; }
@@ -1420,7 +1420,7 @@ mod tests {
         let it  = iterator::char::start(r);
         while true {
             alt(node::char_iterator::next(it)) {
-              option::none. { break; }
+              option::none { break; }
               option::some(_) { len += 1u; }
             }
         }

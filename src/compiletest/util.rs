@@ -12,7 +12,7 @@ fn make_new_path(path: str) -> str {
       option::some(curr) {
         #fmt["%s%s%s", path, path_div(), curr]
       }
-      option::none. { path }
+      option::none { path }
     }
 }
 

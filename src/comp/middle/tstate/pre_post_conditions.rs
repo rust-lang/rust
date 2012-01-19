@@ -132,9 +132,9 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
     find_pre_post_expr(fcx, antec);
     find_pre_post_block(fcx, conseq);
     alt maybe_alt {
-      none. {
+      none {
         alt chck {
-          if_check. {
+          if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
             gen(fcx, antec.id, c.node);
           }
@@ -166,7 +166,7 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
         /* Be sure to set the bit for the check condition here,
          so that it's *not* set in the alternative. */
         alt chck {
-          if_check. {
+          if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
             gen(fcx, antec.id, c.node);
           }
@@ -219,14 +219,14 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
         let tmp = tritv_clone(post);
 
         alt ty {
-          oper_move. {
+          oper_move {
             if is_path(rhs) { forget_in_postcond(fcx, parent.id, rhs.id); }
           }
-          oper_swap. {
+          oper_swap {
             forget_in_postcond_still_init(fcx, parent.id, lhs.id);
             forget_in_postcond_still_init(fcx, parent.id, rhs.id);
           }
-          oper_assign. {
+          oper_assign {
             forget_in_postcond_still_init(fcx, parent.id, lhs.id);
           }
           _ {
@@ -336,7 +336,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 
         /* if this is a failing call, its postcondition sets everything */
         alt controlflow_expr(fcx.ccx, operator) {
-          noreturn. { set_postcond_false(fcx.ccx, e.id); }
+          noreturn { set_postcond_false(fcx.ccx, e.id); }
           _ { }
         }
       }
@@ -374,7 +374,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       }
       expr_rec(fields, maybe_base) {
         let es = field_exprs(fields);
-        alt maybe_base { none. {/* no-op */ } some(b) { es += [b]; } }
+        alt maybe_base { none {/* no-op */ } some(b) { es += [b]; } }
         find_pre_post_exprs(fcx, es, e.id);
       }
       expr_tup(elts) { find_pre_post_exprs(fcx, elts, e.id); }
@@ -395,7 +395,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_lit(_) { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_ret(maybe_val) {
         alt maybe_val {
-          none. {
+          none {
             clear_precond(fcx.ccx, e.id);
             set_postcond_false(fcx.ccx, e.id);
           }
@@ -503,7 +503,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_fail(maybe_val) {
         let prestate;
         alt maybe_val {
-          none. { prestate = empty_prestate(num_local_vars); }
+          none { prestate = empty_prestate(num_local_vars); }
           some(fail_val) {
             find_pre_post_expr(fcx, fail_val);
             prestate = expr_precond(fcx.ccx, fail_val);
@@ -542,7 +542,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         let i = 0;
         for expr_opt: option::t<@expr> in maybe_args {
             alt expr_opt {
-              none. {/* no-op */ }
+              none {/* no-op */ }
               some(expr) { modes += [cmodes[i]]; args += [expr]; }
             }
             i += 1;
@@ -551,8 +551,8 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         forget_args_moved_in(fcx, e, modes, args);
         find_pre_post_exprs(fcx, args, e.id);
       }
-      expr_break. { clear_pp(expr_pp(fcx.ccx, e)); }
-      expr_cont. { clear_pp(expr_pp(fcx.ccx, e)); }
+      expr_break { clear_pp(expr_pp(fcx.ccx, e)); }
+      expr_cont { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
     }
 }
@@ -601,7 +601,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                                               node: an_init.expr.id},
                                              op_to_oper_ty(an_init.op));
                           }
-                          none. { }
+                          none { }
                         }
                         gen(fcx, id, ninit(pat.id, ident));
                     };
@@ -631,7 +631,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                     copy_pre_post_(fcx.ccx, id, prev_pp.precondition,
                                    prev_pp.postcondition);
                   }
-                  none. {
+                  none {
                     pat_bindings(alocal.node.pat) {|p|
                         clear_pp(node_id_to_ts_ann(fcx.ccx, p.id).conditions);
                     };
@@ -689,7 +689,7 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     let pps: [pre_and_post] = [];
     for s: @stmt in b.node.stmts { pps += [stmt_pp(fcx.ccx, *s)]; }
     alt b.node.expr {
-      none. {/* no-op */ }
+      none {/* no-op */ }
       some(e) { pps += [expr_pp(fcx.ccx, e)]; }
     }
 
@@ -721,7 +721,7 @@ fn find_pre_post_fn(fcx: fn_ctxt, body: blk) {
     // Treat the tail expression as a return statement
     alt body.node.expr {
       some(tailexpr) { set_postcond_false(fcx.ccx, tailexpr.id); }
-      none. {/* fallthrough */ }
+      none {/* fallthrough */ }
     }
 }
 

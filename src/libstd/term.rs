@@ -72,7 +72,7 @@ fn color_supported() -> bool {
             }
             false
           }
-          option::none. { false }
+          option::none { false }
         };
 }
 

@@ -37,7 +37,7 @@ fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
     while true {
         alt read_word(f) {
           some(w) { emit(str::bytes(w), 1); }
-          none. { break; }
+          none { break; }
         }
     }
 }
@@ -45,7 +45,7 @@ fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
 fn reduce(&&_word: [u8], get: map_reduce::getter<int>) {
     let count = 0;
 
-    while true { alt get() { some(_) { count += 1; } none. { break; } } }
+    while true { alt get() { some(_) { count += 1; } none { break; } } }
 }
 
 mod map_reduce {
@@ -97,7 +97,7 @@ mod map_reduce {
             let c;
             alt treemap::find(im, key) {
               some(_c) { c = _c; }
-              none. {
+              none {
                 let p = port();
                 send(ctrl, find_reducer(key, chan(p)));
                 c = recv(p);
@@ -136,7 +136,7 @@ mod map_reduce {
                     // #error("received %d", v);
                     ret some(v);
                   }
-                  done. {
+                  done {
                     // #error("all done");
                     is_done = true;
                   }
@@ -166,7 +166,7 @@ mod map_reduce {
 
         while num_mappers > 0 {
             alt recv(ctrl) {
-              mapper_done. {
+              mapper_done {
                 // #error("received mapper terminated.");
                 num_mappers -= 1;
               }
@@ -179,7 +179,7 @@ mod map_reduce {
                     // "reusing existing reducer for " + k);
                     c = _c;
                   }
-                  none. {
+                  none {
                     // log(error, "creating new reducer for " + k);
                     let p = port();
                     let ch = chan(p);

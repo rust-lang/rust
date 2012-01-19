@@ -22,9 +22,9 @@ import driver::session::session;
 
 fn kind_to_str(k: kind) -> str {
     alt k {
-      kind_sendable. { "sendable" }
-      kind_copyable. { "copyable" }
-      kind_noncopyable. { "noncopyable" }
+      kind_sendable { "sendable" }
+      kind_copyable { "copyable" }
+      kind_noncopyable { "noncopyable" }
     }
 }
 
@@ -61,10 +61,10 @@ fn with_appropriate_checker(cx: ctx, id: node_id,
                             b: block(fn@(ctx, ty::t, sp: span))) {
     let fty = ty::node_id_to_monotype(cx.tcx, id);
     alt ty::ty_fn_proto(cx.tcx, fty) {
-      proto_uniq. { b(check_send); }
-      proto_box. { b(check_copy); }
-      proto_bare. { b(check_none); }
-      proto_any. | proto_block. { /* no check needed */ }
+      proto_uniq { b(check_send); }
+      proto_box { b(check_copy); }
+      proto_bare { b(check_none); }
+      proto_any | proto_block { /* no check needed */ }
     }
 }
 
@@ -135,7 +135,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_ret(some(ex)) { maybe_copy(cx, ex); }
       expr_copy(expr) { check_copy_ex(cx, expr, false); }
       // Vector add copies.
-      expr_binary(add., ls, rs) { maybe_copy(cx, ls); maybe_copy(cx, rs); }
+      expr_binary(add, ls, rs) { maybe_copy(cx, ls); maybe_copy(cx, rs); }
       expr_rec(fields, def) {
         for field in fields { maybe_copy(cx, field.node.expr); }
         alt def {
@@ -163,7 +163,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_call(f, args, _) {
         let i = 0u;
         for arg_t in ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f)) {
-            alt arg_t.mode { by_copy. { maybe_copy(cx, args[i]); } _ {} }
+            alt arg_t.mode { by_copy { maybe_copy(cx, args[i]); } _ {} }
             i += 1u;
         }
       }
@@ -186,7 +186,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                 i += 1u;
             }
           }
-          none. {}
+          none {}
         }
       }
       expr_ternary(_, a, b) { maybe_copy(cx, a); maybe_copy(cx, b); }
@@ -203,7 +203,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
       stmt_decl(@{node: decl_local(locals), _}, _) {
         for (_, local) in locals {
             alt local.node.init {
-              some({op: init_assign., expr}) { maybe_copy(cx, expr); }
+              some({op: init_assign, expr}) { maybe_copy(cx, expr); }
               _ {}
             }
         }

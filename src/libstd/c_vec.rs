@@ -48,7 +48,7 @@ tag t<T> {
 
 resource dtor_res(dtor: option::t<fn@()>) {
     alt dtor {
-      option::none. { }
+      option::none { }
       option::some(f) { f(); }
     }
 }

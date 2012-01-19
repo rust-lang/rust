@@ -66,7 +66,7 @@ fn maybe_get_doc(d: doc, tg: uint) -> option::t<doc> {
 fn get_doc(d: doc, tg: uint) -> doc {
     alt maybe_get_doc(d, tg) {
       some(d) { ret d; }
-      none. {
+      none {
         #error("failed to find block with tag %u", tg);
         fail;
       }

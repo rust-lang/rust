@@ -46,7 +46,7 @@ mod map_reduce {
             let c;
             alt im.find(key) {
               some(_c) { c = _c }
-              none. {
+              none {
                 let p = port();
                 #error("sending find_reducer");
                 send(ctrl, find_reducer(str::bytes(key), chan(p)));
@@ -78,12 +78,12 @@ mod map_reduce {
 
         while num_mappers > 0 {
             alt recv(ctrl) {
-              mapper_done. { num_mappers -= 1; }
+              mapper_done { num_mappers -= 1; }
               find_reducer(k, cc) {
                 let c;
                 alt reducers.find(str::unsafe_from_bytes(k)) {
                   some(_c) { c = _c; }
-                  none. { c = 0; }
+                  none { c = 0; }
                 }
                 send(cc, c);
               }

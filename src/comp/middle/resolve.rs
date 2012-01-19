@@ -71,8 +71,8 @@ fn new_ext_hash() -> ext_hash {
         ret str::hash(v.ident) + util::common::hash_def(v.did) +
                 alt v.ns {
                   ns_val(_) { 1u }
-                  ns_type. { 2u }
-                  ns_module. { 3u }
+                  ns_type { 2u }
+                  ns_module { 3u }
                 };
     }
     fn eq(v1: key, v2: key) -> bool {
@@ -88,8 +88,8 @@ fn new_exp_hash() -> exp_map {
         ret str::hash(v.path) +
                 alt v.ns {
                   ns_val(_) { 1u }
-                  ns_type. { 2u }
-                  ns_module. { 3u }
+                  ns_type { 2u }
+                  ns_module { 3u }
                 };
     }
     fn eq(v1: key, v2: key) -> bool {
@@ -286,11 +286,11 @@ fn map_crate(e: @env, c: @ast::crate) {
                   }
                   scope_block(b, _, _) {
                     let globs = alt e.block_map.find(b.node.id) {
-                      some(globs) { globs + [glob] } none. { [glob] }
+                      some(globs) { globs + [glob] } none { [glob] }
                     };
                     e.block_map.insert(b.node.id, globs);
                   }
-                  scope_crate. {
+                  scope_crate {
                     e.mod_map.get(ast::crate_node_id).glob_imports += [glob];
                   }
                 }
@@ -422,7 +422,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           }
           /* Here we determine whether a given pat_ident binds a new
            variable a refers to a nullary tag. */
-          ast::pat_ident(p, none.) {
+          ast::pat_ident(p, none) {
               let fnd = lookup_in_scope(*e, sc, p.span, path_to_ident(p),
                                     ns_val(ns_a_tag));
               alt fnd {
@@ -504,8 +504,8 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     let scope = alt fk {
       visit::fk_item_fn(_, tps) | visit::fk_res(_, tps) |
       visit::fk_method(_, tps) { scope_bare_fn(decl, id, tps) }
-      visit::fk_anon(ast::proto_bare.) { scope_bare_fn(decl, id, []) }
-      visit::fk_anon(_) | visit::fk_fn_block. { scope_fn_expr(decl, id, []) }
+      visit::fk_anon(ast::proto_bare) { scope_bare_fn(decl, id, []) }
+      visit::fk_anon(_) | visit::fk_fn_block { scope_fn_expr(decl, id, []) }
     };
 
     visit::visit_fn(fk, decl, body, sp, id, cons(scope, @sc), v);
@@ -557,7 +557,7 @@ fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
 }
 
 // This is only for irrefutable patterns (e.g. ones that appear in a let)
-// So if x occurs, and x is already known to be a tag, that's always an error.
+// So if x occurs, and x is already known to be a tag, that's always an error
 fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
     // Check whether the given local has the same name as a tag that's
     // in scope
@@ -616,7 +616,7 @@ fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
                            ns_val(ns_any_value));
     if option::is_some(new_def) {
         alt option::get(new_def) {
-          ast::def_fn(pred_id, ast::pure_fn.) {
+          ast::def_fn(pred_id, ast::pure_fn) {
             e.def_map.insert(c.node.id, ast::def_fn(pred_id, ast::pure_fn));
           }
           _ {
@@ -675,7 +675,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
           cons(scope_block(b, _, _), _) {
             lst(id, b.node.view_items)
           }
-          cons(scope_crate., _) {
+          cons(scope_crate, _) {
             lst(id,
                 option::get(e.mod_map.get(ast::crate_node_id).m).view_items)
           }
@@ -693,7 +693,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                  {|ns| lookup_in_scope(e, sc, sp, end_id, ns) }, []);
     } else {
         alt lookup_in_scope(e, sc, sp, ids[0], ns_module) {
-          none. {
+          none {
             unresolved_err(e, in_scope(sc), sp, ids[0], ns_name(ns_module));
           }
           some(dcur_) {
@@ -710,7 +710,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                     dcur = alt lookup_in_mod(e, dcur, sp, ids[i], ns_module,
                                              outside) {
                       some(dcur) { dcur }
-                      none. {
+                      none {
                         unresolved_err(e, in_mod(dcur), sp, ids[i],
                                        ns_name(ns_module));
                         break;
@@ -738,14 +738,14 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
 // Utilities
 fn ns_name(ns: namespace) -> str {
     alt ns {
-      ns_type. { "typename" }
+      ns_type { "typename" }
       ns_val(v) {
           alt (v) {
-              ns_any_value. { "name" }
-              ns_a_tag.     { "tag" }
+              ns_any_value { "name" }
+              ns_a_tag     { "tag" }
           }
       }
-      ns_module. { ret "modulename" }
+      ns_module { ret "modulename" }
     }
 }
 
@@ -758,7 +758,7 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
             alt sc {
               cons(cur, rest) {
                 alt cur {
-                  scope_crate. | scope_bare_fn(_, _, _) |
+                  scope_crate | scope_bare_fn(_, _, _) |
                   scope_fn_expr(_, _, _) |
                   scope_item(@{node: ast::item_mod(_), _}) {
                     ret some(cur);
@@ -835,7 +835,7 @@ fn lookup_path_strict(e: env, sc: scopes, sp: span, pth: ast::path_,
 fn lookup_in_scope_strict(e: env, sc: scopes, sp: span, name: ident,
                           ns: namespace) -> option::t<def> {
     alt lookup_in_scope(e, sc, sp, name, ns) {
-      none. {
+      none {
         unresolved_err(e, in_scope(sc), sp, name, ns_name(ns));
         ret none;
       }
@@ -884,7 +884,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
     fn in_scope(e: env, sp: span, name: ident, s: scope, ns: namespace) ->
        option::t<def> {
         alt s {
-          scope_crate. {
+          scope_crate {
             ret lookup_in_local_mod(e, ast::crate_node_id, sp,
                                     name, ns, inside);
           }
@@ -953,7 +953,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
     let sc = sc;
     while true {
         alt copy sc {
-          nil. { ret none::<def>; }
+          nil { ret none::<def>; }
           cons(hd, tl) {
             let fnd = in_scope(e, sp, name, hd, ns);
             if !is_none(fnd) {
@@ -962,7 +962,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                 if left_fn && local || left_fn_level2 && self_scope
                    || scope_is_fn(hd) && left_fn && def_is_ty_arg(df) {
                     let msg = alt ns {
-                      ns_type. {
+                      ns_type {
                         "attempt to use a type argument out of scope"
                       }
                       ns_val(v) {
@@ -970,7 +970,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                             /* If we were looking for a tag, at this point
                                we know it's bound to a non-tag value, and
                                we can return none instead of failing */
-                            ns_a_tag. { ret none; }
+                            ns_a_tag { ret none; }
                             _ { "attempted dynamic environment-capture" }
                           }
                       }
@@ -1009,7 +1009,7 @@ fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
     let n = 0u;
     for tp: ast::ty_param in ty_params {
         if str::eq(tp.ident, name) && alt e.current_tp {
-            some(cur) { n < cur } none. { true }
+            some(cur) { n < cur } none { true }
         } { ret some(ast::def_ty_param(local_def(tp.id), n)); }
         n += 1u;
     }
@@ -1031,7 +1031,7 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
                 ty_params: [ast::ty_param],
                 ns: namespace) -> option::t<def> {
     alt ns {
-      ns_val(ns_any_value.) {
+      ns_val(ns_any_value) {
         for a: ast::arg in decl.inputs {
             if str::eq(a.ident, name) {
                 ret some(ast::def_arg(local_def(a.id), a.mode));
@@ -1039,7 +1039,7 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
         }
         ret none::<def>;
       }
-      ns_type. { ret lookup_in_ty_params(e, name, ty_params); }
+      ns_type { ret lookup_in_ty_params(e, name, ty_params); }
       _ { ret none::<def>; }
     }
 }
@@ -1155,10 +1155,10 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
       }
       ast::item_res(_, _, _, _, ctor_id) {
         alt ns {
-          ns_val(ns_any_value.) {
+          ns_val(ns_any_value) {
             ret some(ast::def_fn(local_def(ctor_id), ast::impure_fn));
           }
-          ns_type. { ret some(ast::def_ty(local_def(i.id))); }
+          ns_type { ret some(ast::def_ty(local_def(i.id))); }
           _ { }
         }
       }
@@ -1170,7 +1170,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
 fn lookup_in_mod_strict(e: env, m: def, sp: span, name: ident,
                         ns: namespace, dr: dir) -> option::t<def> {
     alt lookup_in_mod(e, m, sp, name, ns, dr) {
-      none. {
+      none {
         unresolved_err(e, in_mod(m), sp, name, ns_name(ns));
         ret none;
       }
@@ -1231,8 +1231,8 @@ fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
         if e.used_imports.track {
             e.used_imports.data += [defid.node];
         }
-        ret alt ns { ns_val(_) { val } ns_type. { typ }
-                     ns_module. { md } };
+        ret alt ns { ns_val(_) { val } ns_type { typ }
+                     ns_module { md } };
       }
     }
 }
@@ -1254,12 +1254,12 @@ fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
         ret none::<def>; // name is not visible
     }
     alt info.index.find(id) {
-      none. { }
+      none { }
       some(lst_) {
         let lst = lst_;
         while true {
             alt lst {
-              nil. { break; }
+              nil { break; }
               cons(hd, tl) {
                 let found = lookup_in_mie(e, hd, ns);
                 if !is_none(found) { ret found; }
@@ -1284,7 +1284,7 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
         }
         alt lookup_in_mod(e, def.def, sp, name, ns, dr) {
           some(d) { option::some({def: d, item: def.item}) }
-          none. { none }
+          none { none }
         }
     }
     let matches = vec::filter_map(copy globs,
@@ -1326,8 +1326,8 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
       glob_resolved(val, typ, md) {
         ret alt wanted_ns {
                 ns_val(_) { val }
-                ns_type. { typ }
-                ns_module. { md }
+                ns_type { typ }
+                ns_module { md }
         };
       }
     }
@@ -1357,7 +1357,7 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
       }
       mie_native_item(native_item) {
         alt native_item.node {
-          ast::native_item_ty. {
+          ast::native_item_ty {
             if ns == ns_type {
                 ret some(ast::def_native_ty(local_def(native_item.id)));
             }
@@ -1380,7 +1380,7 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
 fn add_to_index(index: hashmap<ident, list<mod_index_entry>>, id: ident,
                 ent: mod_index_entry) {
     alt index.find(id) {
-      none. { index.insert(id, cons(ent, @nil::<mod_index_entry>)); }
+      none { index.insert(id, cons(ent, @nil::<mod_index_entry>)); }
       some(prev) { index.insert(id, cons(ent, @prev)); }
     }
 }
@@ -1471,7 +1471,7 @@ fn ns_for_def(d: def) -> namespace {
 // a tag
 fn ns_ok(wanted:namespace, actual:namespace) -> bool {
     alt actual {
-      ns_val(ns_a_tag.) {
+      ns_val(ns_a_tag) {
         alt wanted {
           ns_val(_) { true }
           _ { false }
@@ -1556,7 +1556,7 @@ fn check_mod_name(e: env, name: ident, entries: list<mod_index_entry>) {
             }
             entries = *rest;
           }
-          nil. { break; }
+          nil { break; }
         }
     }
 }
@@ -1798,7 +1798,7 @@ fn check_exports(e: @env) {
                 }
             }
           }
-          none. { }
+          none { }
         }
     };
 }
@@ -1892,7 +1892,7 @@ fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
         let cached;
         alt e.impl_cache.find(defid) {
           some(v) { cached = v; }
-          none. {
+          none {
             cached = if defid.crate == ast::local_crate {
                 let tmp = [];
                 for i in option::get(e.mod_map.get(defid.node).m).items {

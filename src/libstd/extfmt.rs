@@ -119,7 +119,7 @@ mod ct {
         if !('0' as u8 <= c && c <= '9' as u8) { ret option::none; }
         let n = c - ('0' as u8) as uint;
         ret alt peek_num(s, i + 1u, lim) {
-              none. { some({num: n, next: i + 1u}) }
+              none { some({num: n, next: i + 1u}) }
               some(next) {
                 let m = next.num;
                 let j = next.next;
@@ -147,7 +147,7 @@ mod ct {
         if i >= lim { ret {param: none, next: i}; }
         let num = peek_num(s, i, lim);
         ret alt num {
-              none. { {param: none, next: i} }
+              none { {param: none, next: i} }
               some(t) {
                 let n = t.num;
                 let j = t.next;
@@ -193,13 +193,13 @@ mod ct {
                 let param = parse_parameter(s, i + 1u, lim);
                 let j = param.next;
                 alt param.param {
-                  none. { {count: count_is_next_param, next: j} }
+                  none { {count: count_is_next_param, next: j} }
                   some(n) { {count: count_is_param(n), next: j} }
                 }
             } else {
                 let num = peek_num(s, i, lim);
                 alt num {
-                  none. { {count: count_implied, next: i} }
+                  none { {count: count_implied, next: i} }
                   some(num) {
                     {count: count_is(num.num as int), next: num.next}
                   }
@@ -217,7 +217,7 @@ mod ct {
                 // If there were no digits specified, i.e. the precision
                 // was ".", then the precision is 0
                 alt count.count {
-                  count_implied. { {count: count_is(0), next: count.next} }
+                  count_implied { {count: count_is(0), next: count.next} }
                   _ { count }
                 }
             } else { {count: count_implied, next: i} };
@@ -297,11 +297,11 @@ mod rt {
         let prec = get_int_precision(cv);
         let rs =
             alt cv.ty {
-              ty_default. { uint_to_str_prec(u, 10u, prec) }
-              ty_hex_lower. { uint_to_str_prec(u, 16u, prec) }
-              ty_hex_upper. { str::to_upper(uint_to_str_prec(u, 16u, prec)) }
-              ty_bits. { uint_to_str_prec(u, 2u, prec) }
-              ty_octal. { uint_to_str_prec(u, 8u, prec) }
+              ty_default { uint_to_str_prec(u, 10u, prec) }
+              ty_hex_lower { uint_to_str_prec(u, 16u, prec) }
+              ty_hex_upper { str::to_upper(uint_to_str_prec(u, 16u, prec)) }
+              ty_bits { uint_to_str_prec(u, 2u, prec) }
+              ty_octal { uint_to_str_prec(u, 8u, prec) }
             };
         ret pad(cv, rs, pad_unsigned);
     }
@@ -322,7 +322,7 @@ mod rt {
         // FIXME: substr works on bytes, not chars!
         let unpadded =
             alt cv.precision {
-              count_implied. { s }
+              count_implied { s }
               count_is(max) {
                 if max as uint < str::char_len(s) {
                     str::substr(s, 0u, max as uint)
@@ -334,7 +334,7 @@ mod rt {
     fn conv_float(cv: conv, f: float) -> str {
         let (to_str, digits) = alt cv.precision {
               count_is(c) { (float::to_str_exact, c as uint) }
-              count_implied. { (float::to_str, 6u) }
+              count_implied { (float::to_str, 6u) }
         };
         let s = to_str(f, digits);
         if 0.0 <= f {
@@ -374,7 +374,7 @@ mod rt {
     fn get_int_precision(cv: conv) -> uint {
         ret alt cv.precision {
               count_is(c) { c as uint }
-              count_implied. { 1u }
+              count_implied { 1u }
             };
     }
 
@@ -388,7 +388,7 @@ mod rt {
     fn pad(cv: conv, s: str, mode: pad_mode) -> str {
         let uwidth;
         alt cv.width {
-          count_implied. { ret s; }
+          count_implied { ret s; }
           count_is(width) {
             // FIXME: Maybe width should be uint
 
@@ -406,15 +406,15 @@ mod rt {
         let might_zero_pad = false;
         let signed = false;
         alt mode {
-          pad_nozero. {
+          pad_nozero {
             // fallthrough
 
           }
-          pad_signed. { might_zero_pad = true; signed = true; }
-          pad_unsigned. { might_zero_pad = true; }
+          pad_signed { might_zero_pad = true; signed = true; }
+          pad_unsigned { might_zero_pad = true; }
         }
         fn have_precision(cv: conv) -> bool {
-            ret alt cv.precision { count_implied. { false } _ { true } };
+            ret alt cv.precision { count_implied { false } _ { true } };
         }
         let zero_padding = false;
         if might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&

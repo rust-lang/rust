@@ -73,8 +73,8 @@ fn has_nonlocal_exits(b: ast::blk) -> bool {
     let has_exits = @mutable false;
     fn visit_expr(flag: @mutable bool, e: @ast::expr) {
         alt e.node {
-          ast::expr_break. { *flag = true; }
-          ast::expr_cont. { *flag = true; }
+          ast::expr_break { *flag = true; }
+          ast::expr_cont { *flag = true; }
           _ { }
         }
     }

@@ -61,7 +61,7 @@ pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
 
 pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
     alt tm {
-      tm_converge. {
+      tm_converge {
         alt e.node {
           // If the fuzzer moves a block-ending-in-semicolon into callee position,
           // the pretty-printer can't preserve this even by parenthesizing!!
@@ -83,8 +83,8 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_assign(_, _) { false }
           ast::expr_assign_op(_, _, _) { false }
 
-          ast::expr_fail(option::none.) { false }
-          ast::expr_ret(option::none.) { false }
+          ast::expr_fail(option::none) { false }
+          ast::expr_ret(option::none) { false }
 
           // https://github.com/graydon/rust/issues/953
           ast::expr_fail(option::some(_)) { false }
@@ -102,7 +102,7 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           _ { true }
         }
       }
-      tm_run. { true }
+      tm_run { true }
     }
 }
 
@@ -166,7 +166,7 @@ fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
 fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
     alt t {
       ast::ty_infer. { false } // always implicit, always top level
-      ast::ty_bot. { false }   // in source, can only appear as the out type of a function
+      ast::ty_bot { false }   // in source, can only appear as the out type of a function
       ast::ty_mac(_) { false }
       _ { true }
     }
@@ -268,10 +268,10 @@ fn check_variants_T<T: copy>(
                         io::string_reader(""), _,
                         pprust::no_ann()));
                 alt cx.mode {
-                  tm_converge. {
+                  tm_converge {
                     check_roundtrip_convergence(str3, 1u);
                   }
-                  tm_run. {
+                  tm_run {
                     let file_label = #fmt("rusttmp/%s_%s_%u_%u", last_part(filename), thing_label, i, j);
                     let safe_to_run = !(content_is_dangerous_to_run(str3) || has_raw_pointers(*crate2));
                     check_whole_compiler(str3, file_label, safe_to_run);
@@ -301,12 +301,12 @@ fn check_whole_compiler(code: str, suggested_filename_prefix: str, allow_running
     let compile_result = check_compiling(filename);
 
     let run_result = alt (compile_result, allow_running) {
-      (passed., true) { check_running(suggested_filename_prefix) }
+      (passed, true) { check_running(suggested_filename_prefix) }
       (h, _) { h }
     };
 
     alt run_result {
-      passed. | cleanly_rejected(_) | known_bug(_) {
+      passed | cleanly_rejected(_) | known_bug(_) {
         removeIfExists(suggested_filename_prefix);
         removeIfExists(suggested_filename_prefix + ".rs");
         removeDirIfExists(suggested_filename_prefix + ".dSYM");

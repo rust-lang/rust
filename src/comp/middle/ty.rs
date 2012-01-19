@@ -313,10 +313,10 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     let kind = kind_noncopyable;
     for bound in *bounds {
         alt bound {
-          bound_copy. {
+          bound_copy {
             if kind != kind_sendable { kind = kind_copyable; }
           }
-          bound_send. { kind = kind_sendable; }
+          bound_send { kind = kind_sendable; }
           _ {}
         }
     }
@@ -468,8 +468,8 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
         derive_flags_t(cx, has_params, has_vars, tt);
     }
     alt st {
-      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_str. | ty_send_type. | ty_type. | ty_native(_) |
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_str | ty_send_type | ty_type | ty_native(_) |
       ty_opaque_closure_ptr(_) {
         /* no-op */
       }
@@ -535,30 +535,30 @@ fn mk_uint(_cx: ctxt) -> t { ret idx_uint; }
 
 fn mk_mach_int(_cx: ctxt, tm: ast::int_ty) -> t {
     alt tm {
-      ast::ty_i. { ret idx_int; }
-      ast::ty_char. { ret idx_char; }
-      ast::ty_i8. { ret idx_i8; }
-      ast::ty_i16. { ret idx_i16; }
-      ast::ty_i32. { ret idx_i32; }
-      ast::ty_i64. { ret idx_i64; }
+      ast::ty_i { ret idx_int; }
+      ast::ty_char { ret idx_char; }
+      ast::ty_i8 { ret idx_i8; }
+      ast::ty_i16 { ret idx_i16; }
+      ast::ty_i32 { ret idx_i32; }
+      ast::ty_i64 { ret idx_i64; }
     }
 }
 
 fn mk_mach_uint(_cx: ctxt, tm: ast::uint_ty) -> t {
     alt tm {
-      ast::ty_u. { ret idx_uint; }
-      ast::ty_u8. { ret idx_u8; }
-      ast::ty_u16. { ret idx_u16; }
-      ast::ty_u32. { ret idx_u32; }
-      ast::ty_u64. { ret idx_u64; }
+      ast::ty_u { ret idx_uint; }
+      ast::ty_u8 { ret idx_u8; }
+      ast::ty_u16 { ret idx_u16; }
+      ast::ty_u32 { ret idx_u32; }
+      ast::ty_u64 { ret idx_u64; }
     }
 }
 
 fn mk_mach_float(_cx: ctxt, tm: ast::float_ty) -> t {
     alt tm {
-      ast::ty_f. { ret idx_float; }
-      ast::ty_f32. { ret idx_f32; }
-      ast::ty_f64. { ret idx_f64; }
+      ast::ty_f { ret idx_float; }
+      ast::ty_f32 { ret idx_f32; }
+      ast::ty_f64 { ret idx_f64; }
     }
 }
 
@@ -659,9 +659,9 @@ pure fn mach_struct(cx: ctxt, cfg: @session::config, typ: t) -> sty {
 // Converts s to its machine type equivalent
 pure fn mach_sty(cfg: @session::config, s: sty) -> sty {
     alt s {
-      ty_int(ast::ty_i.) { ty_int(cfg.int_type) }
-      ty_uint(ast::ty_u.) { ty_uint(cfg.uint_type) }
-      ty_float(ast::ty_f.) { ty_float(cfg.float_type) }
+      ty_int(ast::ty_i) { ty_int(cfg.int_type) }
+      ty_uint(ast::ty_u) { ty_uint(cfg.uint_type) }
+      ty_float(ast::ty_f) { ty_float(cfg.float_type) }
       s { s }
     }
 }
@@ -679,8 +679,8 @@ type ty_walk = fn@(t);
 
 fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
     alt struct(cx, ty) {
-      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str. | ty_send_type. | ty_type. | ty_native(_) |
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_str | ty_send_type | ty_type | ty_native(_) |
       ty_opaque_closure_ptr(_) {
         /* no-op */
       }
@@ -728,8 +728,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       fm_general(_) {/* no fast path */ }
     }
     alt interner::get(*cx.ts, ty).struct {
-      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str. | ty_send_type. | ty_type. | ty_native(_) |
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_str | ty_send_type | ty_type | ty_native(_) |
       ty_opaque_closure_ptr(_) {
         /* no-op */
       }
@@ -813,15 +813,15 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
 // Type utilities
 
 fn type_is_nil(cx: ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_nil. { ret true; } _ { ret false; } }
+    alt struct(cx, ty) { ty_nil { ret true; } _ { ret false; } }
 }
 
 fn type_is_bot(cx: ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_bot. { ret true; } _ { ret false; } }
+    alt struct(cx, ty) { ty_bot { ret true; } _ { ret false; } }
 }
 
 fn type_is_bool(cx: ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_bool. { ret true; } _ { ret false; } }
+    alt struct(cx, ty) { ty_bool { ret true; } _ { ret false; } }
 }
 
 fn type_is_structural(cx: ctxt, ty: t) -> bool {
@@ -838,19 +838,19 @@ fn type_is_copyable(cx: ctxt, ty: t) -> bool {
 
 fn type_is_sequence(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_str. { ret true; }
+      ty_str { ret true; }
       ty_vec(_) { ret true; }
       _ { ret false; }
     }
 }
 
 fn type_is_str(cx: ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_str. { ret true; } _ { ret false; } }
+    alt struct(cx, ty) { ty_str { ret true; } _ { ret false; } }
 }
 
 fn sequence_element_type(cx: ctxt, ty: t) -> t {
     alt struct(cx, ty) {
-      ty_str. { ret mk_mach_uint(cx, ast::ty_u8); }
+      ty_str { ret mk_mach_uint(cx, ast::ty_u8); }
       ty_vec(mt) { ret mt.ty; }
       _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
     }
@@ -907,7 +907,7 @@ pure fn type_is_unsafe_ptr(cx: ctxt, ty: t) -> bool {
 pure fn type_is_vec(cx: ctxt, ty: t) -> bool {
     ret alt struct(cx, ty) {
           ty_vec(_) { true }
-          ty_str. { true }
+          ty_str { true }
           _ { false }
         };
 }
@@ -916,15 +916,15 @@ pure fn type_is_unique(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_uniq(_) { ret true; }
       ty_vec(_) { true }
-      ty_str. { true }
+      ty_str { true }
       _ { ret false; }
     }
 }
 
 pure fn type_is_scalar(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_nil. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_send_type. | ty_type. | ty_native(_) | ty_ptr(_) { true }
+      ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_send_type | ty_type | ty_native(_) | ty_ptr(_) { true }
       _ { false }
     }
 }
@@ -938,14 +938,14 @@ fn type_is_immediate(cx: ctxt, ty: t) -> bool {
 fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     alt cx.needs_drop_cache.find(ty) {
       some(result) { ret result; }
-      none. {/* fall through */ }
+      none {/* fall through */ }
     }
 
     let accum = false;
     let result = alt struct(cx, ty) {
       // scalar types
-      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type. | ty_native(_) | ty_ptr(_) { false }
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_type | ty_native(_) | ty_ptr(_) { false }
       ty_rec(flds) {
         for f in flds { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
@@ -980,35 +980,35 @@ tag kind { kind_sendable; kind_copyable; kind_noncopyable; }
 // future.
 pure fn kind_can_be_copied(k: kind) -> bool {
     ret alt k {
-      kind_sendable. { true }
-      kind_copyable. { true }
-      kind_noncopyable. { false }
+      kind_sendable { true }
+      kind_copyable { true }
+      kind_noncopyable { false }
     };
 }
 
 pure fn kind_can_be_sent(k: kind) -> bool {
     ret alt k {
-      kind_sendable. { true }
-      kind_copyable. { false }
-      kind_noncopyable. { false }
+      kind_sendable { true }
+      kind_copyable { false }
+      kind_noncopyable { false }
     };
 }
 
 fn proto_kind(p: proto) -> kind {
     alt p {
-      ast::proto_any. { kind_noncopyable }
-      ast::proto_block. { kind_noncopyable }
-      ast::proto_box. { kind_copyable }
-      ast::proto_uniq. { kind_sendable }
-      ast::proto_bare. { kind_sendable }
+      ast::proto_any { kind_noncopyable }
+      ast::proto_block { kind_noncopyable }
+      ast::proto_box { kind_copyable }
+      ast::proto_uniq { kind_sendable }
+      ast::proto_bare { kind_sendable }
     }
 }
 
 fn kind_lteq(a: kind, b: kind) -> bool {
     alt a {
-      kind_noncopyable. { true }
-      kind_copyable. { b != kind_noncopyable }
-      kind_sendable. { b == kind_sendable }
+      kind_noncopyable { true }
+      kind_copyable { b != kind_noncopyable }
+      kind_sendable { b == kind_sendable }
     }
 }
 
@@ -1019,7 +1019,7 @@ fn lower_kind(a: kind, b: kind) -> kind {
 fn type_kind(cx: ctxt, ty: t) -> kind {
     alt cx.kind_cache.find(ty) {
       some(result) { ret result; }
-      none. {/* fall through */ }
+      none {/* fall through */ }
     }
 
     // Insert a default in case we loop back on self recursively.
@@ -1027,14 +1027,14 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
 
     let result = alt struct(cx, ty) {
       // Scalar and unique types are sendable
-      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_native(_) | ty_ptr(_) |
-      ty_send_type. | ty_str. | ty_native_fn(_, _) { kind_sendable }
-      ty_type. { kind_copyable }
+      ty_send_type | ty_str | ty_native_fn(_, _) { kind_sendable }
+      ty_type { kind_copyable }
       ty_fn(f) { proto_kind(f.proto) }
-      ty_opaque_closure_ptr(ck_block.) { kind_noncopyable }
-      ty_opaque_closure_ptr(ck_box.) { kind_copyable }
-      ty_opaque_closure_ptr(ck_uniq.) { kind_sendable }
+      ty_opaque_closure_ptr(ck_block) { kind_noncopyable }
+      ty_opaque_closure_ptr(ck_box) { kind_copyable }
+      ty_opaque_closure_ptr(ck_uniq) { kind_sendable }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
       ty_box(_) | ty_iface(_, _) { kind_copyable }
@@ -1164,7 +1164,7 @@ fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
         ret alt sty {
           ty_uniq(_) { ret true; }
           ty_vec(_) { true }
-          ty_str. { true }
+          ty_str { true }
           _ { ret false; }
         };
     });
@@ -1172,7 +1172,7 @@ fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
 
 fn type_is_integral(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_int(_) | ty_uint(_) | ty_bool. { true }
+      ty_int(_) | ty_uint(_) | ty_bool { true }
       _ { false }
     }
 }
@@ -1201,10 +1201,10 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let result = true;
     alt struct(cx, ty) {
       // Scalar types
-      ty_nil. | ty_bot. | ty_bool. | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_send_type. | ty_type. | ty_native(_) | ty_ptr(_) { result = true; }
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_send_type | ty_type | ty_native(_) | ty_ptr(_) { result = true; }
       // Boxed types
-      ty_str. | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
+      ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
       ty_native_fn(_, _) | ty_iface(_, _) { result = false; }
       // Structural types
       ty_tag(did, tps) {
@@ -1334,7 +1334,7 @@ fn hash_type_structure(st: sty) -> uint {
         let h = id;
         for a: @ty_constr_arg in args {
             alt a.node {
-              carg_base. { h += h << 5u; }
+              carg_base { h += h << 5u; }
               carg_lit(_) {
                 // FIXME
                 fail "lit args not implemented yet";
@@ -1355,23 +1355,23 @@ fn hash_type_structure(st: sty) -> uint {
         ret h;
     }
     alt st {
-      ty_nil. { 0u } ty_bool. { 1u }
+      ty_nil { 0u } ty_bool { 1u }
       ty_int(t) {
         alt t {
-          ast::ty_i. { 2u } ast::ty_char. { 3u } ast::ty_i8. { 4u }
-          ast::ty_i16. { 5u } ast::ty_i32. { 6u } ast::ty_i64. { 7u }
+          ast::ty_i { 2u } ast::ty_char { 3u } ast::ty_i8 { 4u }
+          ast::ty_i16 { 5u } ast::ty_i32 { 6u } ast::ty_i64 { 7u }
         }
       }
       ty_uint(t) {
         alt t {
-          ast::ty_u. { 8u } ast::ty_u8. { 9u } ast::ty_u16. { 10u }
-          ast::ty_u32. { 11u } ast::ty_u64. { 12u }
+          ast::ty_u { 8u } ast::ty_u8 { 9u } ast::ty_u16 { 10u }
+          ast::ty_u32 { 11u } ast::ty_u64 { 12u }
         }
       }
       ty_float(t) {
-        alt t { ast::ty_f. { 13u } ast::ty_f32. { 14u } ast::ty_f64. { 15u } }
+        alt t { ast::ty_f { 13u } ast::ty_f32 { 14u } ast::ty_f64 { 15u } }
       }
-      ty_str. { ret 17u; }
+      ty_str { ret 17u; }
       ty_tag(did, tys) {
         let h = hash_def(18u, did);
         for typ: t in tys { h += (h << 5u) + typ; }
@@ -1391,9 +1391,9 @@ fn hash_type_structure(st: sty) -> uint {
       ty_native_fn(args, rty) { ret hash_fn(28u, args, rty); }
       ty_var(v) { ret hash_uint(30u, v as uint); }
       ty_param(pid, _) { ret hash_uint(31u, pid); }
-      ty_type. { ret 32u; }
+      ty_type { ret 32u; }
       ty_native(did) { ret hash_def(33u, did); }
-      ty_bot. { ret 34u; }
+      ty_bot { ret 34u; }
       ty_ptr(mt) { ret hash_subty(35u, mt.ty); }
       ty_res(did, sub, tps) {
         let h = hash_subty(hash_def(18u, did), sub);
@@ -1405,16 +1405,16 @@ fn hash_type_structure(st: sty) -> uint {
         ret h;
       }
       ty_uniq(mt) { ret hash_subty(37u, mt.ty); }
-      ty_send_type. { ret 38u; }
+      ty_send_type { ret 38u; }
       ty_named(t, name) { (str::hash(*name) << 5u) + hash_subty(39u, t) }
       ty_iface(did, tys) {
         let h = hash_def(40u, did);
         for typ: t in tys { h = hash_subty(h, typ); }
         ret h;
       }
-      ty_opaque_closure_ptr(ck_block.) { ret 41u; }
-      ty_opaque_closure_ptr(ck_box.) { ret 42u; }
-      ty_opaque_closure_ptr(ck_uniq.) { ret 43u; }
+      ty_opaque_closure_ptr(ck_block) { ret 41u; }
+      ty_opaque_closure_ptr(ck_box) { ret 42u; }
+      ty_opaque_closure_ptr(ck_uniq) { ret 43u; }
     }
 }
 
@@ -1425,8 +1425,8 @@ fn arg_eq<T>(eq: block(T, T) -> bool,
              b: @sp_constr_arg<T>)
    -> bool {
     alt a.node {
-      ast::carg_base. {
-        alt b.node { ast::carg_base. { ret true; } _ { ret false; } }
+      ast::carg_base {
+        alt b.node { ast::carg_base { ret true; } _ { ret false; } }
       }
       ast::carg_ident(s) {
         alt b.node { ast::carg_ident(t) { ret eq(s, t); } _ { ret false; } }
@@ -1469,7 +1469,7 @@ fn node_id_to_ty_param_substs_opt_and_ty(cx: ctxt, id: ast::node_id) ->
    ty_param_substs_opt_and_ty {
     // Pull out the node type table.
     alt smallintmap::find(*cx.node_types, id as uint) {
-      none. {
+      none {
         cx.sess.bug("node_id_to_ty_param_substs_opt_and_ty() called on " +
                         "an untyped node (" + int::to_str(id, 10u) +
                         ")");
@@ -1484,7 +1484,7 @@ fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
 
 fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> [t] {
     alt node_id_to_ty_param_substs_opt_and_ty(cx, id).substs {
-      none. { ret []; }
+      none { ret []; }
       some(tps) { ret tps; }
     }
 }
@@ -1494,19 +1494,19 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 }
 
 
-// Returns a type with type parameter substitutions performed if applicable.
+// Returns a type with type parameter substitutions performed if applicable
 fn ty_param_substs_opt_and_ty_to_monotype(cx: ctxt,
                                           tpot: ty_param_substs_opt_and_ty) ->
    t {
     alt tpot.substs {
-      none. { ret tpot.ty; }
+      none { ret tpot.ty; }
       some(tps) { ret substitute_type_params(cx, tps, tpot.ty); }
     }
 }
 
 
 // Returns the type of an annotation, with type parameter substitutions
-// performed if applicable.
+// performed if applicable
 fn node_id_to_monotype(cx: ctxt, id: ast::node_id) -> t {
     let tpot = node_id_to_ty_param_substs_opt_and_ty(cx, id);
     ret ty_param_substs_opt_and_ty_to_monotype(cx, tpot);
@@ -1643,7 +1643,7 @@ fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
 fn expr_is_lval(method_map: typeck::method_map, e: @ast::expr) -> bool {
     alt e.node {
       ast::expr_path(_) | ast::expr_index(_, _) |
-      ast::expr_unary(ast::deref., _) { true }
+      ast::expr_unary(ast::deref, _) { true }
       ast::expr_field(base, ident, _) { !method_map.contains_key(e.id) }
       _ { false }
     }
@@ -1771,15 +1771,15 @@ mod unify {
 
 
         alt smallintmap::find(vb.types, root_a) {
-          none. {
+          none {
             alt smallintmap::find(vb.types, root_b) {
-              none. { ufind::union(vb.sets, set_a, set_b); ret unres_ok; }
+              none { ufind::union(vb.sets, set_a, set_b); ret unres_ok; }
               some(t_b) { replace_type(vb, t_b); ret unres_ok; }
             }
           }
           some(t_a) {
             alt smallintmap::find(vb.types, root_b) {
-              none. { replace_type(vb, t_a); ret unres_ok; }
+              none { replace_type(vb, t_a); ret unres_ok; }
               some(t_b) {
                 alt unify_step(cx, t_a, t_b, variance) {
                   ures_ok(t_c) { replace_type(vb, t_c); ret unres_ok; }
@@ -1818,7 +1818,7 @@ mod unify {
               rs { ret rs; }
             }
           }
-          none. {/* fall through */ }
+          none {/* fall through */ }
         }
         smallintmap::insert::<t>(vb.types, root, result_type);
         ret ures_ok(typ);
@@ -1866,8 +1866,8 @@ mod unify {
         for a: @ty_constr_arg in expected.node.args {
             actual = actual_constr.node.args[i];
             alt a.node {
-              carg_base. {
-                alt actual.node { carg_base. { } _ { ret err_res; } }
+              carg_base {
+                alt actual.node { carg_base { } _ { ret err_res; } }
               }
               carg_lit(l) {
                 alt actual.node {
@@ -1895,7 +1895,7 @@ mod unify {
         // If you're unifying on something mutable then we have to
         // be invariant on the inner type
         let newvariance = alt expected {
-          ast::mut. {
+          ast::mut {
             variance_transform(variance, invariant)
           }
           _ {
@@ -1929,9 +1929,9 @@ mod unify {
         // subtype).
         fn sub_proto(p_sub: ast::proto, p_sup: ast::proto) -> bool {
             ret alt (p_sub, p_sup) {
-              (_, ast::proto_any.) { true }
-              (_, ast::proto_block.) { true } /* NDM temporary */
-              (ast::proto_bare., _) { true }
+              (_, ast::proto_any) { true }
+              (_, ast::proto_block) { true } /* NDM temporary */
+              (ast::proto_bare, _) { true }
 
               // Equal prototypes are always subprotos:
               (_, _) { p_sub == p_sup }
@@ -1939,9 +1939,9 @@ mod unify {
         }
 
         ret alt variance {
-          invariant. if e_proto == a_proto { none }
-          covariant. if sub_proto(a_proto, e_proto) { none }
-          contravariant. if sub_proto(e_proto, a_proto) { none }
+          invariant if e_proto == a_proto { none }
+          covariant if sub_proto(a_proto, e_proto) { none }
+          contravariant if sub_proto(e_proto, a_proto) { none }
           _ { some(ures_err(terr_mismatch)) }
         };
     }
@@ -1981,7 +1981,7 @@ mod unify {
         -> result {
         alt unify_fn_proto(e_f.proto, a_f.proto, variance) {
           some(err) { ret err; }
-          none. { /* fall through */ }
+          none { /* fall through */ }
         }
 
         if a_f.ret_style != ast::noreturn && a_f.ret_style != e_f.ret_style {
@@ -2032,7 +2032,7 @@ mod unify {
             if vid as uint >= ufind::set_count(vb.sets) { ret fix_err(vid); }
             let root_id = ufind::find(vb.sets, vid as uint);
             alt smallintmap::find::<t>(vb.types, root_id) {
-              none. { ret fix_err(vid); }
+              none { ret fix_err(vid); }
               some(rt) { ret fix_ok(rt); }
             }
           }
@@ -2058,25 +2058,25 @@ mod unify {
     // read the paper (yet).
     fn variance_transform(a: variance, b: variance) -> variance {
         alt a {
-          covariant. {
+          covariant {
             alt b {
-              covariant. { covariant }
-              contravariant. { contravariant }
-              invariant. { invariant }
+              covariant { covariant }
+              contravariant { contravariant }
+              invariant { invariant }
             }
           }
-          contravariant. {
+          contravariant {
             alt b {
-              covariant. { contravariant }
-              contravariant. { covariant }
-              invariant. { invariant }
+              covariant { contravariant }
+              contravariant { covariant }
+              invariant { invariant }
             }
           }
-          invariant. {
+          invariant {
             alt b {
-              covariant. { invariant }
-              contravariant. { invariant }
-              invariant. { invariant }
+              covariant { invariant }
+              contravariant { invariant }
+              invariant { invariant }
             }
           }
         }
@@ -2108,7 +2108,7 @@ mod unify {
         if expected == actual { ret ures_ok(expected); }
 
         // Stage 1: Handle the cases in which one side or another is a type
-        // variable.
+        // variable
 
         alt struct(cx.tcx, actual) {
           // If the RHS is a variable type, then just do the
@@ -2119,7 +2119,7 @@ mod unify {
               ty::ty_var(expected_id) {
                 let expected_n = expected_id as uint;
                 alt union(cx, expected_n, actual_n, variance) {
-                  unres_ok. {/* fall through */ }
+                  unres_ok {/* fall through */ }
                   unres_err(t_e) { ret ures_err(t_e); }
                 }
               }
@@ -2152,17 +2152,17 @@ mod unify {
         // Stage 2: Handle all other cases.
 
         alt struct(cx.tcx, actual) {
-          ty::ty_bot. { ret ures_ok(expected); }
+          ty::ty_bot { ret ures_ok(expected); }
           _ {/* fall through */ }
         }
         alt struct(cx.tcx, expected) {
-          ty::ty_nil. { ret struct_cmp(cx, expected, actual); }
+          ty::ty_nil { ret struct_cmp(cx, expected, actual); }
           // _|_ unifies with anything
-          ty::ty_bot. {
+          ty::ty_bot {
             ret ures_ok(actual);
           }
-          ty::ty_bool. | ty::ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty::ty_str. | ty::ty_type. | ty::ty_send_type. {
+          ty::ty_bool | ty::ty_int(_) | ty_uint(_) | ty_float(_) |
+          ty::ty_str | ty::ty_type | ty::ty_send_type {
             ret struct_cmp(cx, expected, actual);
           }
           ty::ty_native(ex_id) {
@@ -2216,7 +2216,7 @@ mod unify {
               ty::ty_box(actual_mt) {
                 let (mutt, var) = alt unify_mut(
                     expected_mt.mut, actual_mt.mut, variance) {
-                  none. { ret ures_err(terr_box_mutability); }
+                  none { ret ures_err(terr_box_mutability); }
                   some(mv) { mv }
                 };
                 let result = unify_step(
@@ -2237,7 +2237,7 @@ mod unify {
               ty::ty_uniq(actual_mt) {
                 let (mutt, var) = alt unify_mut(
                     expected_mt.mut, actual_mt.mut, variance) {
-                  none. { ret ures_err(terr_box_mutability); }
+                  none { ret ures_err(terr_box_mutability); }
                   some(mv) { mv }
                 };
                 let result = unify_step(
@@ -2258,7 +2258,7 @@ mod unify {
               ty::ty_vec(actual_mt) {
                 let (mutt, var) = alt unify_mut(
                     expected_mt.mut, actual_mt.mut, variance) {
-                  none. { ret ures_err(terr_vec_mutability); }
+                  none { ret ures_err(terr_vec_mutability); }
                   some(mv) { mv }
                 };
                 let result = unify_step(
@@ -2279,7 +2279,7 @@ mod unify {
               ty::ty_ptr(actual_mt) {
                 let (mutt, var) = alt unify_mut(
                     expected_mt.mut, actual_mt.mut, variance) {
-                  none. { ret ures_err(terr_vec_mutability); }
+                  none { ret ures_err(terr_vec_mutability); }
                   some(mv) { mv }
                 };
                 let result = unify_step(
@@ -2344,7 +2344,7 @@ mod unify {
                     let (mutt, var) = alt unify_mut(
                         expected_field.mt.mut, actual_field.mt.mut, variance)
                         {
-                      none. { ret ures_err(terr_record_mutability); }
+                      none { ret ures_err(terr_record_mutability); }
                       some(mv) { mv }
                     };
                     if !str::eq(expected_field.ident, actual_field.ident) {
@@ -2462,7 +2462,7 @@ mod unify {
             }
             let typespec;
             alt smallintmap::find::<t>(vb.types, i) {
-              none. { typespec = ""; }
+              none { typespec = ""; }
               some(typ) { typespec = " =" + ty_to_str(tcx, typ); }
             }
             #error("set %u:%s%s", i, typespec, sets);
@@ -2486,7 +2486,7 @@ mod unify {
             }
             let root_id = ufind::find(vb.sets, vid as uint);
             alt smallintmap::find::<t>(vb.types, root_id) {
-              none. { *unresolved = some(vid); ret ty::mk_var(tcx, vid); }
+              none { *unresolved = some(vid); ret ty::mk_var(tcx, vid); }
               some(rt) {
                 if occurs_check_fails(tcx, sp, vid, rt) {
                     // Return the type unchanged, so we can error out
@@ -2505,7 +2505,7 @@ mod unify {
                     typ);
         let ur = *unresolved;
         alt ur {
-          none. { ret fix_ok(rty); }
+          none { ret fix_ok(rty); }
           some(var_id) { ret fix_err(var_id); }
         }
     }
@@ -2514,7 +2514,7 @@ mod unify {
         if vid as uint >= ufind::set_count(vb.sets) { ret fix_err(vid); }
         let root_id = ufind::find(vb.sets, vid as uint);
         alt smallintmap::find::<t>(vb.types, root_id) {
-          none. { ret fix_err(vid); }
+          none { ret fix_err(vid); }
           some(rt) { ret fixup_vars(tcx, sp, vb, rt); }
         }
     }
@@ -2529,19 +2529,19 @@ fn same_type(cx: ctxt, a: t, b: t) -> bool {
 
 fn type_err_to_str(err: ty::type_err) -> str {
     alt err {
-      terr_mismatch. { ret "types differ"; }
+      terr_mismatch { ret "types differ"; }
       terr_ret_style_mismatch(expect, actual) {
         fn to_str(s: ast::ret_style) -> str {
             alt s {
-              ast::noreturn. { "non-returning" }
+              ast::noreturn { "non-returning" }
               ast::return_val. { "return-by-value" }
             }
         }
         ret to_str(actual) + " function found where " + to_str(expect) +
             " function was expected";
       }
-      terr_box_mutability. { ret "boxed values differ in mutability"; }
-      terr_vec_mutability. { ret "vectors differ in mutability"; }
+      terr_box_mutability { ret "boxed values differ in mutability"; }
+      terr_vec_mutability { ret "vectors differ in mutability"; }
       terr_tuple_size(e_sz, a_sz) {
         ret "expected a tuple with " + uint::to_str(e_sz, 10u) +
                 " elements but found one with " + uint::to_str(a_sz, 10u) +
@@ -2552,12 +2552,12 @@ fn type_err_to_str(err: ty::type_err) -> str {
                 " fields but found one with " + uint::to_str(a_sz, 10u) +
                 " fields";
       }
-      terr_record_mutability. { ret "record elements differ in mutability"; }
+      terr_record_mutability { ret "record elements differ in mutability"; }
       terr_record_fields(e_fld, a_fld) {
         ret "expected a record with field '" + e_fld +
                 "' but found one with field '" + a_fld + "'";
       }
-      terr_arg_count. { ret "incorrect number of function parameters"; }
+      terr_arg_count { ret "incorrect number of function parameters"; }
       terr_mode_mismatch(e_mode, a_mode) {
         ret "expected argument mode " + mode_str(e_mode) + " but found " +
                 mode_str(a_mode);
@@ -2701,7 +2701,7 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     }
     alt cx.tcache.find(did) {
       some(tpt) { ret tpt; }
-      none. {
+      none {
         let tyt = csearch::get_type(cx, did);
         cx.tcache.insert(did, tyt);
         ret tyt;
@@ -2735,40 +2735,40 @@ fn is_binopable(cx: ctxt, ty: t, op: ast::binop) -> bool {
 
     fn opcat(op: ast::binop) -> int {
         alt op {
-          ast::add. { opcat_add }
-          ast::subtract. { opcat_sub }
-          ast::mul. { opcat_mult }
-          ast::div. { opcat_mult }
-          ast::rem. { opcat_mult }
-          ast::and. { opcat_logic }
-          ast::or. { opcat_logic }
-          ast::bitxor. { opcat_bit }
-          ast::bitand. { opcat_bit }
-          ast::bitor. { opcat_bit }
-          ast::lsl. { opcat_shift }
-          ast::lsr. { opcat_shift }
-          ast::asr. { opcat_shift }
-          ast::eq. { opcat_eq }
-          ast::ne. { opcat_eq }
-          ast::lt. { opcat_rel }
-          ast::le. { opcat_rel }
-          ast::ge. { opcat_rel }
-          ast::gt. { opcat_rel }
+          ast::add { opcat_add }
+          ast::subtract { opcat_sub }
+          ast::mul { opcat_mult }
+          ast::div { opcat_mult }
+          ast::rem { opcat_mult }
+          ast::and { opcat_logic }
+          ast::or { opcat_logic }
+          ast::bitxor { opcat_bit }
+          ast::bitand { opcat_bit }
+          ast::bitor { opcat_bit }
+          ast::lsl { opcat_shift }
+          ast::lsr { opcat_shift }
+          ast::asr { opcat_shift }
+          ast::eq { opcat_eq }
+          ast::ne { opcat_eq }
+          ast::lt { opcat_rel }
+          ast::le { opcat_rel }
+          ast::ge { opcat_rel }
+          ast::gt { opcat_rel }
         }
     }
 
     fn tycat(cx: ctxt, ty: t) -> int {
         alt struct(cx, ty) {
-          ty_bool. { tycat_bool }
+          ty_bool { tycat_bool }
           ty_int(_) { tycat_int }
           ty_uint(_) { tycat_int }
           ty_float(_) { tycat_float }
-          ty_str. { tycat_str }
+          ty_str { tycat_str }
           ty_vec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }
           ty_tup(_) { tycat_struct }
           ty_tag(_, _) { tycat_struct }
-          ty_bot. { tycat_bot }
+          ty_bot { tycat_bot }
           _ { tycat_other }
         }
     }
@@ -2798,7 +2798,7 @@ fn is_binopable(cx: ctxt, ty: t, op: ast::binop) -> bool {
 fn ast_constr_to_constr<T>(tcx: ty::ctxt, c: @ast::constr_general<T>) ->
    @ty::constr_general<T> {
     alt tcx.def_map.find(c.node.id) {
-      some(ast::def_fn(pred_id, ast::pure_fn.)) {
+      some(ast::def_fn(pred_id, ast::pure_fn)) {
         ret @ast_util::respan(c.span,
                               {path: c.node.path,
                                args: c.node.args,

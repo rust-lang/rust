@@ -51,7 +51,7 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     let llvalptr = bld::PointerCast(bcx, llval, T_ptr(T_ptr(T_i8())));
 
     alt td_r.kind {
-      tk_derived. {
+      tk_derived {
         // It's a derived type descriptor. First, spill it.
         let lltydescptr = trans::alloca(bcx, val_ty(lltydesc));
 
@@ -81,11 +81,11 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
         bld::Call(llderivedtydescs, gcroot, [lltydescptr, lldestindex]);
         bld::Call(bcx, gcroot, [llvalptr, llsrcindex]);
       }
-      tk_param. {
+      tk_param {
         bcx_tcx(cx).sess.bug("we should never be trying to root values " +
                                  "of a type parameter");
       }
-      tk_static. {
+      tk_static {
         // Static type descriptor.
 
         let llstaticgcmeta =
@@ -103,9 +103,9 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
 
 fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
     alt ty::struct(cx, ty) {
-      ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int(_) |
-      ty::ty_float(_) | ty::ty_uint(_) | ty::ty_str. |
-      ty::ty_type. | ty::ty_native(_) | ty::ty_ptr(_) | ty::ty_type. |
+      ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) |
+      ty::ty_float(_) | ty::ty_uint(_) | ty::ty_str |
+      ty::ty_type | ty::ty_native(_) | ty::ty_ptr(_) | ty::ty_type. |
       ty::ty_native(_) {
         ret false;
       }

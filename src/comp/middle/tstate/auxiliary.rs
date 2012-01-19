@@ -41,7 +41,7 @@ fn comma_str(args: [@constr_arg_use]) -> str {
     for a: @constr_arg_use in args {
         if comma { rslt += ", "; } else { comma = true; }
         alt a.node {
-          carg_base. { rslt += "*"; }
+          carg_base { rslt += "*"; }
           carg_ident(i) { rslt += i.ident; }
           carg_lit(l) { rslt += lit_to_str(l); }
         }
@@ -69,7 +69,7 @@ fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> str {
     let comma = false;
     for p: norm_constraint in constraints(fcx) {
         alt tritv_get(v, p.bit_num) {
-          dont_care. { }
+          dont_care { }
           tt {
             s +=
                 if comma { ", " } else { comma = true; "" } +
@@ -310,7 +310,7 @@ fn get_ts_ann(ccx: crate_ctxt, i: node_id) -> option::t<ts_ann> {
 /********* utils ********/
 fn node_id_to_ts_ann(ccx: crate_ctxt, id: node_id) -> ts_ann {
     alt get_ts_ann(ccx, id) {
-      none. {
+      none {
         #error("node_id_to_ts_ann: no ts_ann for node_id %d", id);
         fail;
       }
@@ -507,7 +507,7 @@ fn constraints_expr(cx: ty::ctxt, e: @expr) -> [@ty::constr] {
 
 fn node_id_to_def_strict(cx: ty::ctxt, id: node_id) -> def {
     alt cx.def_map.find(id) {
-      none. {
+      none {
         #error("node_id_to_def: node_id %d has no def", id);
         fail;
       }
@@ -565,7 +565,7 @@ fn match_args(fcx: fn_ctxt, occs: @mutable [pred_args],
 
 fn def_id_for_constr(tcx: ty::ctxt, t: node_id) -> def_id {
     alt tcx.def_map.find(t) {
-      none. {
+      none {
         tcx.sess.bug("node_id_for_constr: bad node_id " + int::str(t));
       }
       some(def_fn(i, _)) { ret i; }
@@ -658,7 +658,7 @@ fn substitute_arg(cx: ty::ctxt, actuals: [@expr], a: @constr_arg) ->
             cx.sess.span_fatal(a.span, "Constraint argument out of bounds");
         }
       }
-      carg_base. { ret @respan(a.span, carg_base); }
+      carg_base { ret @respan(a.span, carg_base); }
       carg_lit(l) { ret @respan(a.span, carg_lit(l)); }
     }
 }
@@ -675,7 +675,7 @@ fn pred_args_matches(pattern: [constr_arg_general_<inst>], desc: pred_args) ->
               _ { ret false; }
             }
           }
-          carg_base. { if n != carg_base { ret false; } }
+          carg_base { if n != carg_base { ret false; } }
           carg_lit(l) {
             alt n {
               carg_lit(m) { if !lit_eq(l, m) { ret false; } }
@@ -741,7 +741,7 @@ fn insts_to_str(stuff: [constr_arg_general_<inst>]) -> str {
             " " +
                 alt i {
                   carg_ident(p) { p.ident }
-                  carg_base. { "*" }
+                  carg_base { "*" }
                   carg_lit(_) { "[lit]" }
                 } + " ";
     }
@@ -794,7 +794,7 @@ fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
                                     "local_node_id_to_def_id: id \
                isn't a local");
       }
-      none. {
+      none {
         // should really be bug. span_bug()?
         fcx.ccx.tcx.sess.span_fatal(sp,
                                     "local_node_id_to_def_id: id \
@@ -848,8 +848,8 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
                          ty: oper_type) {
     let subst;
     alt ty {
-      oper_swap. { subst = [{from: dest, to: src}, {from: src, to: dest}]; }
-      oper_assign_op. {
+      oper_swap { subst = [{from: dest, to: src}, {from: src, to: dest}]; }
+      oper_assign_op {
         ret; // Don't do any propagation
       }
       _ { subst = [{from: src, to: dest}]; }
@@ -1003,7 +1003,7 @@ fn vec_contains(v: @mutable [node_id], i: node_id) -> bool {
 }
 
 fn op_to_oper_ty(io: init_op) -> oper_type {
-    alt io { init_move. { oper_move } _ { oper_assign } }
+    alt io { init_move { oper_move } _ { oper_assign } }
 }
 
 // default function visitor
@@ -1021,7 +1021,7 @@ fn args_to_constr_args(tcx: ty::ctxt, args: [arg],
         actuals +=
             [@respan(a.span,
                      alt a.node {
-                       carg_base. { carg_base }
+                       carg_base { carg_base }
                        carg_ident(i) {
                          if i < num_args {
                              carg_ident({ident: args[i].ident,
@@ -1090,7 +1090,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [ty::mode] {
 
 fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> [init_op] {
     fn mode_to_op(m: ty::mode) -> init_op {
-        alt m { by_move. { init_move } _ { init_assign } }
+        alt m { by_move { init_move } _ { init_assign } }
     }
     vec::map(callee_modes(fcx, callee), mode_to_op)
 }

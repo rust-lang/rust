@@ -67,9 +67,9 @@ fn find<T: copy, U: copy>(ls: list<T>, f: block(T) -> option::t<U>)
     while true {
         alt ls {
           cons(hd, tl) {
-            alt f(hd) { none. { ls = *tl; } some(rs) { ret some(rs); } }
+            alt f(hd) { none { ls = *tl; } some(rs) { ret some(rs); } }
           }
-          nil. { break; }
+          nil { break; }
         }
     }
     ret none;
@@ -85,7 +85,7 @@ fn has<T: copy>(ls: list<T>, elt: T) -> bool {
     while true {
         alt ls {
           cons(hd, tl) { if elt == hd { ret true; } else { ls = *tl; } }
-          nil. { break; }
+          nil { break; }
         }
     }
     ret false;
@@ -98,7 +98,7 @@ Returns true if the list is empty.
 */
 pure fn is_empty<T: copy>(ls: list<T>) -> bool {
     alt ls {
-        nil. { true }
+        nil { true }
         _ { false }
     }
 }
@@ -131,7 +131,7 @@ Returns all but the first element of a list
 pure fn tail<T: copy>(ls: list<T>) : is_not_empty(ls) -> list<T> {
     alt ls {
         cons(_, tl) { ret *tl; }
-        nil. { fail "list empty" }
+        nil { fail "list empty" }
     }
 }
 
@@ -143,7 +143,7 @@ Returns the first element of a list
 pure fn head<T: copy>(ls: list<T>) : is_not_empty(ls) -> T {
     alt ls {
         cons(hd, _) { ret hd; }
-        nil. { fail "list empty" }
+        nil { fail "list empty" }
     }
 }
 
@@ -154,7 +154,7 @@ Appends one list to another
 */
 pure fn append<T: copy>(l: list<T>, m: list<T>) -> list<T> {
     alt l {
-      nil. { ret m; }
+      nil { ret m; }
       cons(x, xs) { let rest = append(*xs, m); ret cons(x, @rest); }
     }
 }
@@ -175,11 +175,11 @@ fn iter<T>(l: list<T>, f: block(T)) {
                 f(hd);
                 cur = tl;
               }
-              nil. { break; }
+              nil { break; }
             }
         }
       }
-      nil. {}
+      nil {}
     }
 }
 

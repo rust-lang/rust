@@ -91,7 +91,7 @@ fn mk_handler(cm: codemap::codemap,
 
     let emit = alt emitter {
       some(e) { e }
-      none. {
+      none {
         let f = fn@(cmsp: option<(codemap::codemap, span)>,
             msg: str, t: level) {
             emit(cmsp, msg, t);
@@ -116,19 +116,19 @@ tag level {
 
 fn diagnosticstr(lvl: level) -> str {
     alt lvl {
-      fatal. { "error" }
-      error. { "error" }
-      warning. { "warning" }
-      note. { "note" }
+      fatal { "error" }
+      error { "error" }
+      warning { "warning" }
+      note { "note" }
     }
 }
 
 fn diagnosticcolor(lvl: level) -> u8 {
     alt lvl {
-      fatal. { term::color_bright_red }
-      error. { term::color_bright_red }
-      warning. { term::color_bright_yellow }
-      note. { term::color_bright_green }
+      fatal { term::color_bright_red }
+      error { term::color_bright_red }
+      warning { term::color_bright_yellow }
+      note { term::color_bright_green }
     }
 }
 
@@ -155,7 +155,7 @@ fn emit(cmsp: option<(codemap::codemap, span)>,
         print_diagnostic(ss, lvl, msg);
         highlight_lines(cm, sp, lines);
       }
-      none. {
+      none {
         print_diagnostic("", lvl, msg);
       }
     }

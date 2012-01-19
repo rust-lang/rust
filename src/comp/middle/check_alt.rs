@@ -73,7 +73,7 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
 
     alt a.node {
       pat_ident(_, some(p)) { pattern_supersedes(tcx, p, b) }
-      pat_wild. | pat_ident(_, none.) { true }
+      pat_wild | pat_ident(_, none) { true }
       pat_lit(la) {
         alt b.node {
           pat_lit(lb) { lit_expr_eq(la, lb) }
@@ -142,7 +142,7 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       pat_box(sub) | pat_uniq(sub) | pat_ident(_, some(sub)) {
         is_refutable(tcx, sub)
       }
-      pat_wild. | pat_ident(_, none.) { false }
+      pat_wild | pat_ident(_, none) { false }
       pat_lit(_) { true }
       pat_rec(fields, _) {
         for field: field_pat in fields {

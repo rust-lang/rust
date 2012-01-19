@@ -3,7 +3,7 @@ use std;
 import std::list::*;
 
 pure fn pure_length_go<T: copy>(ls: list<T>, acc: uint) -> uint {
-    alt ls { nil. { acc } cons(_, tl) { pure_length_go(*tl, acc + 1u) } }
+    alt ls { nil { acc } cons(_, tl) { pure_length_go(*tl, acc + 1u) } }
 }
 
 pure fn pure_length<T: copy>(ls: list<T>) -> uint { pure_length_go(ls, 0u) }

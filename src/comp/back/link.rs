@@ -43,7 +43,7 @@ fn load_intrinsics_bc(sess: session) -> option::t<ModuleRef> {
         sess.filesearch,
         bind filesearch::pick_file("intrinsics.bc", _)) {
       option::some(path) { path }
-      option::none. {
+      option::none {
         sess.warn("couldn't find intrinsics.bc");
         ret option::none;
       }
@@ -70,7 +70,7 @@ fn load_intrinsics_ll(sess: session) -> ModuleRef {
         sess.filesearch,
         bind filesearch::pick_file("intrinsics.ll", _)) {
       option::some(path) { path }
-      option::none. { sess.fatal("couldn't find intrinsics.ll") }
+      option::none { sess.fatal("couldn't find intrinsics.ll") }
     };
     let llintrinsicsmod = str::as_buf(path, { |buf|
         llvm::LLVMRustParseAssemblyFile(buf)
@@ -86,7 +86,7 @@ fn link_intrinsics(sess: session, llmod: ModuleRef) {
     let llintrinsicsmod = {
         alt load_intrinsics_bc(sess) {
           option::some(m) { m }
-          option::none. {
+          option::none {
             // When the bitcode format changes we can't parse a .bc
             // file produced with a newer LLVM (as happens when stage0
             // is trying to build against a new LLVM revision), in
@@ -139,7 +139,7 @@ mod write {
 
         if opts.save_temps {
             alt opts.output_type {
-              output_type_bitcode. {
+              output_type_bitcode {
                 if opts.optimize != 0u {
                     let filename = mk_intermediate_name(output, "no-opt.bc");
                     str::as_buf(filename,
@@ -383,12 +383,12 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
             if attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
-                  none. { cmh_items += [meta]; }
+                  none { cmh_items += [meta]; }
                 }
             } else if attr::get_meta_item_name(meta) == "vers" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { vers = some(v); }
-                  none. { cmh_items += [meta]; }
+                  none { cmh_items += [meta]; }
                 }
             } else { cmh_items += [meta]; }
         }
@@ -442,7 +442,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                        output: str, metas: provided_metas) -> str {
         ret alt metas.name {
               some(v) { v }
-              none. {
+              none {
                 let name =
                     {
                         let os = str::split(fs::basename(output), '.' as u8);
@@ -463,7 +463,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                        metas: provided_metas) -> str {
         ret alt metas.vers {
               some(v) { v }
-              none. {
+              none {
                 let vers = "0.0";
                 warn_missing(sess, "vers", vers);
                 vers
@@ -509,7 +509,7 @@ fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
     let hash = "";
     alt ccx.type_sha1s.find(t) {
       some(h) { hash = h; }
-      none. {
+      none {
         hash = symbol_hash(ccx.tcx, ccx.sha, t, ccx.link_meta);
         ccx.type_sha1s.insert(t, hash);
       }

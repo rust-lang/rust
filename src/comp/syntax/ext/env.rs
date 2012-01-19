@@ -26,7 +26,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: @ast::expr,
 
     let var = expr_to_str(cx, args[0], "#env requires a string");
     alt generic_os::getenv(var) {
-      option::none. { ret make_new_str(cx, sp, ""); }
+      option::none { ret make_new_str(cx, sp, ""); }
       option::some(s) { ret make_new_str(cx, sp, s); }
     }
 }

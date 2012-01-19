@@ -313,24 +313,24 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
     let s = [];
 
     alt ty::struct(ccx.tcx, t) {
-      ty::ty_nil. | ty::ty_bool. | ty::ty_uint(ast::ty_u8.) |
-      ty::ty_bot. { s += [shape_u8]; }
-      ty::ty_int(ast::ty_i.) { s += [s_int(ccx.tcx)]; }
-      ty::ty_float(ast::ty_f.) { s += [s_float(ccx.tcx)]; }
-      ty::ty_uint(ast::ty_u.) | ty::ty_ptr(_) |
+      ty::ty_nil | ty::ty_bool | ty::ty_uint(ast::ty_u8) |
+      ty::ty_bot { s += [shape_u8]; }
+      ty::ty_int(ast::ty_i) { s += [s_int(ccx.tcx)]; }
+      ty::ty_float(ast::ty_f) { s += [s_float(ccx.tcx)]; }
+      ty::ty_uint(ast::ty_u) | ty::ty_ptr(_) |
       ty::ty_native(_) { s += [s_uint(ccx.tcx)]; }
-      ty::ty_type. { s += [s_tydesc(ccx.tcx)]; }
-      ty::ty_send_type. { s += [s_send_tydesc(ccx.tcx)]; }
-      ty::ty_int(ast::ty_i8.) { s += [shape_i8]; }
-      ty::ty_uint(ast::ty_u16.) { s += [shape_u16]; }
-      ty::ty_int(ast::ty_i16.) { s += [shape_i16]; }
-      ty::ty_uint(ast::ty_u32.) { s += [shape_u32]; }
-      ty::ty_int(ast::ty_i32.) | ty::ty_int(ast::ty_char.) {s += [shape_i32];}
-      ty::ty_uint(ast::ty_u64.) { s += [shape_u64]; }
-      ty::ty_int(ast::ty_i64.) { s += [shape_i64]; }
-      ty::ty_float(ast::ty_f32.) { s += [shape_f32]; }
-      ty::ty_float(ast::ty_f64.) { s += [shape_f64]; }
-      ty::ty_str. {
+      ty::ty_type { s += [s_tydesc(ccx.tcx)]; }
+      ty::ty_send_type { s += [s_send_tydesc(ccx.tcx)]; }
+      ty::ty_int(ast::ty_i8) { s += [shape_i8]; }
+      ty::ty_uint(ast::ty_u16) { s += [shape_u16]; }
+      ty::ty_int(ast::ty_i16) { s += [shape_i16]; }
+      ty::ty_uint(ast::ty_u32) { s += [shape_u32]; }
+      ty::ty_int(ast::ty_i32) | ty::ty_int(ast::ty_char) {s += [shape_i32];}
+      ty::ty_uint(ast::ty_u64) { s += [shape_u64]; }
+      ty::ty_int(ast::ty_i64) { s += [shape_i64]; }
+      ty::ty_float(ast::ty_f32) { s += [shape_f32]; }
+      ty::ty_float(ast::ty_f64) { s += [shape_f64]; }
+      ty::ty_str {
         s += [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
@@ -338,19 +338,19 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       }
       ty::ty_tag(did, tps) {
         alt tag_kind(ccx, did) {
-          tk_unit. {
+          tk_unit {
             // FIXME: For now we do this.
             s += [s_variant_tag_t(ccx.tcx)];
           }
-          tk_enum. { s += [s_variant_tag_t(ccx.tcx)]; }
-          tk_complex. {
+          tk_enum { s += [s_variant_tag_t(ccx.tcx)]; }
+          tk_complex {
             s += [shape_tag];
 
             let sub = [];
 
             let id;
             alt ccx.shape_cx.tag_id_to_index.find(did) {
-              none. {
+              none {
                 id = ccx.shape_cx.next_tag_id;
                 ccx.shape_cx.tag_id_to_index.insert(did, id);
                 ccx.shape_cx.tag_order += [did];
@@ -423,19 +423,19 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         // Find the type parameter in the parameter list.
         alt vec::position(n, ty_param_map) {
           some(i) { s += [shape_var, i as u8]; }
-          none. { fail "ty param not found in ty_param_map"; }
+          none { fail "ty param not found in ty_param_map"; }
         }
       }
-      ty::ty_fn({proto: ast::proto_box., _}) {
+      ty::ty_fn({proto: ast::proto_box, _}) {
         s += [shape_box_fn];
       }
-      ty::ty_fn({proto: ast::proto_uniq., _}) {
+      ty::ty_fn({proto: ast::proto_uniq, _}) {
         s += [shape_uniq_fn];
       }
-      ty::ty_fn({proto: ast::proto_block., _}) {
+      ty::ty_fn({proto: ast::proto_block, _}) {
         s += [shape_stack_fn];
       }
-      ty::ty_fn({proto: ast::proto_bare., _}) {
+      ty::ty_fn({proto: ast::proto_bare, _}) {
         s += [shape_bare_fn];
       }
       ty::ty_opaque_closure_ptr(_) {

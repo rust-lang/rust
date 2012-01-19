@@ -84,7 +84,7 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
               }
             }
           }
-          none. {
+          none {
             let rslt: @mutable [pred_args] =
                 @mutable [respan(c.span, {args: args, bit_num: next})];
             tbl.insert(d_id, cpred(p, rslt));

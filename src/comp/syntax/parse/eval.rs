@@ -58,7 +58,7 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option::t<str>)
     fn companion_file(prefix: str, suffix: option::t<str>) -> str {
         ret alt suffix {
           option::some(s) { fs::connect(prefix, s) }
-          option::none. { prefix }
+          option::none { prefix }
         } + ".rs";
     }
 
@@ -93,7 +93,7 @@ fn cdir_path_opt(id: str, attrs: [ast::attribute]) -> str {
       some(d) {
         ret d;
       }
-      none. { ret id; }
+      none { ret id; }
     }
 }
 

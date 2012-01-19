@@ -417,7 +417,7 @@ fn install_source(c: cargo, path: str) {
     for cf: str in cratefiles {
         let p = load_pkg(cf);
         alt p {
-            none. { cont; }
+            none { cont; }
             some(_p) {
                 if c.test {
                     test_one_crate(c, path, cf, _p);
@@ -559,7 +559,7 @@ fn cmd_install(c: cargo, argv: [str]) {
 
     let wd = alt tempfile::mkdtemp(c.workdir + fs::path_sep(), "") {
         some(_wd) { _wd }
-        none. { fail "needed temp dir"; }
+        none { fail "needed temp dir"; }
     };
 
     if str::starts_with(target, "uuid:") {

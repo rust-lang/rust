@@ -240,7 +240,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         is_float = true;
         num_str += s;
       }
-      none. {}
+      none {}
     }
     if rdr.curr == 'f' {
         rdr.bump();

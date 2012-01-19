@@ -48,7 +48,7 @@ fn promises_(n: uint, p: poststate) -> bool { ret tritv_get(p, n) == ttrue; }
 
 // v "happens after" u
 fn seq_trit(u: trit, v: trit) -> trit {
-    alt v { ttrue. { ttrue } tfalse. { tfalse } dont_care. { u } }
+    alt v { ttrue { ttrue } tfalse { tfalse } dont_care { u } }
 }
 
 // idea: q "happens after" p -- so if something is

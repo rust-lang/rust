@@ -75,11 +75,11 @@ fn check_capture_clause(tcx: ty::ctxt,
     };
 
     alt fn_proto {
-      ast::proto_any. | ast::proto_block. {
+      ast::proto_any | ast::proto_block {
         check_block_captures(cap_clause.copies);
         check_block_captures(cap_clause.moves);
       }
-      ast::proto_bare. | ast::proto_box. | ast::proto_uniq. {
+      ast::proto_bare | ast::proto_box | ast::proto_uniq {
         vec::iter(cap_clause.copies, check_capture_item);
         vec::iter(cap_clause.moves, check_capture_item);
         vec::iter(cap_clause.moves, check_not_upvar);
@@ -113,15 +113,15 @@ fn compute_capture_vars(tcx: ty::ctxt,
     }
 
     let implicit_mode = alt fn_proto {
-      ast::proto_any. | ast::proto_block. { cap_ref }
-      ast::proto_bare. | ast::proto_box. | ast::proto_uniq. { cap_copy }
+      ast::proto_any | ast::proto_block { cap_ref }
+      ast::proto_bare | ast::proto_box | ast::proto_uniq { cap_copy }
     };
 
     vec::iter(*freevars) { |fvar|
         let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
         alt cap_map.find(fvar_def_id) {
           option::some(_) { /* was explicitly named, do nothing */ }
-          option::none. {
+          option::none {
             cap_map.insert(fvar_def_id, {def:fvar.def, mode:implicit_mode});
           }
         }

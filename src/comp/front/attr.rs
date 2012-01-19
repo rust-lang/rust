@@ -202,7 +202,7 @@ fn require_unique_names(sess: session, metas: [@ast::meta_item]) {
 
 fn native_abi(attrs: [ast::attribute]) -> either::t<str, ast::native_abi> {
     ret alt attr::get_meta_item_value_str_by_name(attrs, "abi") {
-      option::none. {
+      option::none {
         either::right(ast::native_abi_cdecl)
       }
       option::some("rust-intrinsic") {
@@ -236,10 +236,10 @@ fn meta_item_value_from_list(
       some(item) {
         alt attr::get_meta_item_value_str(item) {
           some(value) { some(value) }
-          none. { none }
+          none { none }
         }
       }
-      none. { none }
+      none { none }
     }
 }
 
@@ -251,7 +251,7 @@ fn meta_item_list_from_list(
       some(item) {
         attr::get_meta_item_list(item)
       }
-      none. { none }
+      none { none }
     }
 }
 
@@ -263,7 +263,7 @@ fn name_value_str_pair(
         let name = attr::get_meta_item_name(item);
         some((name, value))
       }
-      none. { none }
+      none { none }
     }
 }
 

@@ -95,7 +95,7 @@ pure fn is_alphanumeric(c: char) -> bool {
 pure fn to_digit(c: char) -> u8 unsafe {
     alt maybe_digit(c) {
       option::some(x) { x }
-      option::none. { fail; }
+      option::none { fail; }
     }
 }
 

@@ -90,10 +90,10 @@ fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
     // be called multiple times.
     let proto = ty::ty_fn_proto(cx.tcx, fty);
     alt proto {
-      ast::proto_block. | ast::proto_any. {
+      ast::proto_block | ast::proto_any {
         check_loop(*cx, sc) {|| v.visit_block(body, sc, v);}
       }
-      ast::proto_box. | ast::proto_uniq. | ast::proto_bare. {
+      ast::proto_box | ast::proto_uniq | ast::proto_bare {
         let sc = {bs: [], invalid: @mutable list::nil};
         v.visit_block(body, sc, v);
       }
@@ -156,7 +156,7 @@ fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
                         check_lval(cx, init.expr, sc, v);
                     }
                   }
-                  none. { }
+                  none { }
                 }
             }
           }
@@ -197,9 +197,9 @@ fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
 
 fn cant_copy(cx: ctx, b: binding) -> bool {
     alt b.copied {
-      not_allowed. { ret true; }
-      copied. { ret false; }
-      not_copied. {}
+      not_allowed { ret true; }
+      copied { ret false; }
+      not_copied {}
     }
     let ty = ty::node_id_to_type(cx.tcx, b.node_id);
     if ty::type_allows_implicit_copy(cx.tcx, ty) {
@@ -240,8 +240,8 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
                        local_id: 0u,
                        unsafe_tys: unsafe_set(root.mut),
                        mutable copied: alt arg_t.mode {
-                         ast::by_move. | ast::by_copy. { copied }
-                         ast::by_mut_ref. { not_allowed }
+                         ast::by_move | ast::by_copy { copied }
+                         ast::by_mut_ref { not_allowed }
                          _ { not_copied }
                        }}];
         i += 1u;
@@ -306,7 +306,7 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
                         break;
                     }
                   }
-                  none. { }
+                  none { }
                 }
             }
             i += 1u;
@@ -335,7 +335,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
                 let canon_id = pat_id_map.get(proot.name);
                 alt vec::find(binding_info, {|x| x.id == canon_id}) {
                   some(s) { s.unsafe_tys += unsafe_set(proot.mut); }
-                  none. {
+                  none {
                       binding_info += [
                           {id: canon_id,
                            mutable unsafe_tys: unsafe_set(proot.mut),
@@ -466,8 +466,8 @@ fn test_scope(cx: ctx, sc: scope, b: binding, p: @ast::path) {
     if !is_none(prob) && cant_copy(cx, b) {
         let i = option::get(prob);
         let msg = alt i.reason {
-          overwritten. { "overwriting " + ast_util::path_name(i.path) }
-          val_taken. { "taking the value of " + ast_util::path_name(i.path) }
+          overwritten { "overwriting " + ast_util::path_name(i.path) }
+          val_taken { "taking the value of " + ast_util::path_name(i.path) }
         };
         err(cx, i.sp, msg + " will invalidate reference " +
             ast_util::path_name(p) + ", which is still used");
@@ -523,7 +523,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
             for t in ts { if helper(tcx, needle, t, mut) { ret true; } }
             ret false;
           }
-          ty::ty_fn({proto: ast::proto_bare., _}) { ret false; }
+          ty::ty_fn({proto: ast::proto_bare, _}) { ret false; }
           // These may contain anything.
           ty::ty_fn(_) | ty::ty_iface(_, _) { ret true; }
           // A type param may include everything, but can only be
@@ -557,13 +557,13 @@ fn local_id_of_node(cx: ctx, id: node_id) -> uint {
 fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
     fn score_ty(tcx: ty::ctxt, ty: ty::t) -> uint {
         ret alt ty::struct(tcx, ty) {
-          ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int(_) |
-          ty::ty_uint(_) | ty::ty_float(_) | ty::ty_type. | ty::ty_native(_) |
+          ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) |
+          ty::ty_uint(_) | ty::ty_float(_) | ty::ty_type | ty::ty_native(_) |
           ty::ty_ptr(_) { 1u }
           ty::ty_box(_) | ty::ty_iface(_, _) { 3u }
           ty::ty_constr(t, _) | ty::ty_res(_, t, _) { score_ty(tcx, t) }
           ty::ty_fn(_) | ty::ty_native_fn(_, _) { 4u }
-          ty::ty_str. | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
+          ty::ty_str | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
           ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }
           ty::ty_tag(_, ts) | ty::ty_tup(ts) {
             let sum = 0u;
@@ -590,7 +590,7 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
     fn walk(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat,
             &set: [pattern_root]) {
         alt normalize_pat(tcx, pat).node {
-          ast::pat_wild. | ast::pat_lit(_) | ast::pat_range(_, _) {}
+          ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) {}
           ast::pat_ident(nm, sub) {
             set += [{id: pat.id, name: path_to_ident(nm), mut: mut,
                         span: pat.span}];
@@ -648,7 +648,7 @@ fn find_invalid(id: node_id, lst: list<@invalid>)
     let cur = lst;
     while true {
         alt cur {
-          list::nil. { break; }
+          list::nil { break; }
           list::cons(head, tail) {
             if head.node_id == id { ret some(head); }
             cur = *tail;

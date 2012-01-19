@@ -49,25 +49,25 @@ fn trit_minus(a: trit, b: trit) -> trit {
          0 - anything else - 0
      */
     alt a {
-      dont_care. { dont_care }
-      ttrue. {
+      dont_care { dont_care }
+      ttrue {
         alt b {
-          ttrue. { dont_care }
-          tfalse. { ttrue }
+          ttrue { dont_care }
+          tfalse { ttrue }
 
 
 
 
           /* internally contradictory, but
              I guess it'll get flagged? */
-          dont_care. {
+          dont_care {
             ttrue
           }
         }
       }
-      tfalse. {
+      tfalse {
         alt b {
-          ttrue. { tfalse }
+          ttrue { tfalse }
 
 
 
@@ -83,11 +83,11 @@ fn trit_minus(a: trit, b: trit) -> trit {
 
 fn trit_or(a: trit, b: trit) -> trit {
     alt a {
-      dont_care. { b }
-      ttrue. { ttrue }
-      tfalse. {
+      dont_care { b }
+      ttrue { ttrue }
+      tfalse {
         alt b {
-          ttrue. { dont_care }
+          ttrue { dont_care }
 
 
 
@@ -108,21 +108,21 @@ fn trit_or(a: trit, b: trit) -> trit {
 // (we consider a constraint false until proven true), too.
 fn trit_and(a: trit, b: trit) -> trit {
     alt a {
-      dont_care. { b }
+      dont_care { b }
 
 
 
 
       // also seems wrong for case b = ttrue
-      ttrue. {
+      ttrue {
         alt b {
-          dont_care. { ttrue }
+          dont_care { ttrue }
 
 
 
 
           // ??? Seems wrong
-          ttrue. {
+          ttrue {
             ttrue
           }
 
@@ -135,7 +135,7 @@ fn trit_and(a: trit, b: trit) -> trit {
           // (Rationale: it's always safe to assume that
           // a var is uninitialized or that a constraint
           // needs to be re-established)
-          tfalse. {
+          tfalse {
             tfalse
           }
         }
@@ -147,7 +147,7 @@ fn trit_and(a: trit, b: trit) -> trit {
 
       // Rationale: if it's uninit on one path,
       // we can consider it as uninit on all paths
-      tfalse. {
+      tfalse {
         tfalse
       }
     }
@@ -214,12 +214,12 @@ fn tritv_get(v: t, i: uint) -> trit {
 fn tritv_set(i: uint, v: t, t: trit) -> bool {
     let old = tritv_get(v, i);
     alt t {
-      dont_care. {
+      dont_care {
         bitv::set(v.uncertain, i, true);
         bitv::set(v.val, i, false);
       }
-      ttrue. { bitv::set(v.uncertain, i, false); bitv::set(v.val, i, true); }
-      tfalse. {
+      ttrue { bitv::set(v.uncertain, i, false); bitv::set(v.val, i, true); }
+      tfalse {
         bitv::set(v.uncertain, i, false);
         bitv::set(v.val, i, false);
       }
@@ -273,9 +273,9 @@ fn to_vec(v: t) -> [uint] {
     while i < v.nbits {
         rslt +=
             [alt tritv_get(v, i) {
-               dont_care. { 2u }
-               ttrue. { 1u }
-               tfalse. { 0u }
+               dont_care { 2u }
+               ttrue { 1u }
+               tfalse { 0u }
              }];
         i += 1u;
     }
@@ -288,9 +288,9 @@ fn to_str(v: t) -> str {
     while i < v.nbits {
         rs +=
             alt tritv_get(v, i) {
-              dont_care. { "?" }
-              ttrue. { "1" }
-              tfalse. { "0" }
+              dont_care { "?" }
+              ttrue { "1" }
+              tfalse { "0" }
             };
         i += 1u;
     }

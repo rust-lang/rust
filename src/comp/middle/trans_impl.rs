@@ -341,7 +341,7 @@ fn get_static_dict(bcx: @block_ctxt, origin: typeck::dict_origin)
     let id = dict_id(ccx.tcx, origin);
     alt ccx.dicts.find(id) {
       some(d) { ret d; }
-      none. {}
+      none {}
     }
     let ptrs = C_struct(get_dict_ptrs(bcx, origin).ptrs);
     let name = ccx.names("dict");

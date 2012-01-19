@@ -74,62 +74,62 @@ tag token {
 
 fn binop_to_str(o: binop) -> str {
     alt o {
-      PLUS. { ret "+"; }
-      MINUS. { ret "-"; }
-      STAR. { ret "*"; }
-      SLASH. { ret "/"; }
-      PERCENT. { ret "%"; }
-      CARET. { ret "^"; }
-      AND. { ret "&"; }
-      OR. { ret "|"; }
-      LSL. { ret "<<"; }
-      LSR. { ret ">>"; }
-      ASR. { ret ">>>"; }
+      PLUS { ret "+"; }
+      MINUS { ret "-"; }
+      STAR { ret "*"; }
+      SLASH { ret "/"; }
+      PERCENT { ret "%"; }
+      CARET { ret "^"; }
+      AND { ret "&"; }
+      OR { ret "|"; }
+      LSL { ret "<<"; }
+      LSR { ret ">>"; }
+      ASR { ret ">>>"; }
     }
 }
 
 fn to_str(r: reader, t: token) -> str {
     alt t {
-      EQ. { ret "="; }
-      LT. { ret "<"; }
-      LE. { ret "<="; }
-      EQEQ. { ret "=="; }
-      NE. { ret "!="; }
-      GE. { ret ">="; }
-      GT. { ret ">"; }
-      NOT. { ret "!"; }
-      TILDE. { ret "~"; }
-      OROR. { ret "||"; }
-      ANDAND. { ret "&&"; }
+      EQ { ret "="; }
+      LT { ret "<"; }
+      LE { ret "<="; }
+      EQEQ { ret "=="; }
+      NE { ret "!="; }
+      GE { ret ">="; }
+      GT { ret ">"; }
+      NOT { ret "!"; }
+      TILDE { ret "~"; }
+      OROR { ret "||"; }
+      ANDAND { ret "&&"; }
       BINOP(op) { ret binop_to_str(op); }
       BINOPEQ(op) { ret binop_to_str(op) + "="; }
 
       /* Structural symbols */
-      AT. {
+      AT {
         ret "@";
       }
-      DOT. { ret "."; }
-      ELLIPSIS. { ret "..."; }
-      COMMA. { ret ","; }
-      SEMI. { ret ";"; }
-      COLON. { ret ":"; }
-      MOD_SEP. { ret "::"; }
-      QUES. { ret "?"; }
-      RARROW. { ret "->"; }
-      LARROW. { ret "<-"; }
-      DARROW. { ret "<->"; }
-      LPAREN. { ret "("; }
-      RPAREN. { ret ")"; }
-      LBRACKET. { ret "["; }
-      RBRACKET. { ret "]"; }
-      LBRACE. { ret "{"; }
-      RBRACE. { ret "}"; }
-      POUND. { ret "#"; }
-      POUND_LBRACE. { ret "#{"; }
-      POUND_LT. { ret "#<"; }
+      DOT { ret "."; }
+      ELLIPSIS { ret "..."; }
+      COMMA { ret ","; }
+      SEMI { ret ";"; }
+      COLON { ret ":"; }
+      MOD_SEP { ret "::"; }
+      QUES { ret "?"; }
+      RARROW { ret "->"; }
+      LARROW { ret "<-"; }
+      DARROW { ret "<->"; }
+      LPAREN { ret "("; }
+      RPAREN { ret ")"; }
+      LBRACKET { ret "["; }
+      RBRACKET { ret "]"; }
+      LBRACE { ret "{"; }
+      RBRACE { ret "}"; }
+      POUND { ret "#"; }
+      POUND_LBRACE { ret "#{"; }
+      POUND_LT { ret "#<"; }
 
       /* Literals */
-      LIT_INT(c, ast::ty_char.) {
+      LIT_INT(c, ast::ty_char) {
         // FIXME: escape.
         let tmp = "'";
         str::push_char(tmp, c as char);
@@ -156,31 +156,31 @@ fn to_str(r: reader, t: token) -> str {
         ret interner::get::<str>(*r.interner, s);
       }
       IDX(i) { ret "_" + int::to_str(i, 10u); }
-      UNDERSCORE. { ret "_"; }
+      UNDERSCORE { ret "_"; }
       BRACEQUOTE(_) { ret "<bracequote>"; }
-      EOF. { ret "<eof>"; }
+      EOF { ret "<eof>"; }
     }
 }
 
 
 pure fn can_begin_expr(t: token) -> bool {
     alt t {
-      LPAREN. { true }
-      LBRACE. { true }
-      LBRACKET. { true }
+      LPAREN { true }
+      LBRACE { true }
+      LBRACKET { true }
       IDENT(_, _) { true }
-      UNDERSCORE. { true }
-      TILDE. { true }
+      UNDERSCORE { true }
+      TILDE { true }
       LIT_INT(_, _) { true }
       LIT_UINT(_, _) { true }
       LIT_FLOAT(_, _) { true }
       LIT_STR(_) { true }
-      POUND. { true }
-      AT. { true }
-      NOT. { true }
-      BINOP(MINUS.) { true }
-      BINOP(STAR.) { true }
-      MOD_SEP. { true }
+      POUND { true }
+      AT { true }
+      NOT { true }
+      BINOP(MINUS) { true }
+      BINOP(STAR) { true }
+      MOD_SEP { true }
       _ { false }
     }
 }

@@ -160,9 +160,9 @@ impl reader_util for reader {
 
 fn convert_whence(whence: seek_style) -> i32 {
     ret alt whence {
-      seek_set. { 0i32 }
-      seek_cur. { 1i32 }
-      seek_end. { 2i32 }
+      seek_set { 0i32 }
+      seek_cur { 1i32 }
+      seek_end { 2i32 }
     };
 }
 
@@ -347,10 +347,10 @@ fn mk_file_writer(path: str, flags: [fileflag])
         os::libc_constants::O_WRONLY | os::libc_constants::O_BINARY;
     for f: fileflag in flags {
         alt f {
-          append. { fflags |= os::libc_constants::O_APPEND; }
-          create. { fflags |= os::libc_constants::O_CREAT; }
-          truncate. { fflags |= os::libc_constants::O_TRUNC; }
-          none. { }
+          append { fflags |= os::libc_constants::O_APPEND; }
+          create { fflags |= os::libc_constants::O_CREAT; }
+          truncate { fflags |= os::libc_constants::O_TRUNC; }
+          none { }
         }
     }
     let fd = str::as_buf(path, {|pathbuf|
@@ -469,9 +469,9 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
     let bpos = pos as int;
     let blen = len as int;
     alt whence {
-      seek_set. { bpos = offset; }
-      seek_cur. { bpos += offset; }
-      seek_end. { bpos = blen + offset; }
+      seek_set { bpos = offset; }
+      seek_cur { bpos += offset; }
+      seek_end { bpos = blen + offset; }
     }
     if bpos < 0 { bpos = 0; } else if bpos > blen { bpos = blen; }
     ret bpos as uint;
@@ -512,7 +512,7 @@ mod fsync {
     // Resource of artifacts that need to fsync on destruction
     resource res<t>(arg: arg<t>) {
         alt arg.opt_level {
-          option::none. { }
+          option::none { }
           option::some(level) {
             // fail hard if not succesful
             assert(arg.fsync_fn(arg.val, level) != -1);

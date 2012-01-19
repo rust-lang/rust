@@ -75,7 +75,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                        kind: index,
                        outer_t: auto_unbox.t}];
               }
-              ty::ty_str. {
+              ty::ty_str {
                 ds += [@{mut: false, kind: index, outer_t: auto_unbox.t}];
               }
             }
@@ -125,9 +125,9 @@ tag msg { msg_assign; msg_move_out; msg_mut_ref; }
 
 fn mk_err(cx: @ctx, span: syntax::codemap::span, msg: msg, name: str) {
     cx.tcx.sess.span_err(span, alt msg {
-      msg_assign. { "assigning to " + name }
-      msg_move_out. { "moving out of " + name }
-      msg_mut_ref. { "passing " + name + " by mutable reference" }
+      msg_assign { "assigning to " + name }
+      msg_move_out { "moving out of " + name }
+      msg_mut_ref { "passing " + name + " by mutable reference" }
     });
 }
 
@@ -140,7 +140,7 @@ fn visit_decl(cx: @ctx, d: @decl, &&e: (), v: visit::vt<()>) {
               some(init) {
                 if init.op == init_move { check_move_rhs(cx, init.expr); }
               }
-              none. { }
+              none { }
             }
         }
       }
@@ -224,8 +224,8 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
         alt arg_t.mode {
-          by_mut_ref. { check_lval(cx, args[i], msg_mut_ref); }
-          by_move. { check_lval(cx, args[i], msg_move_out); }
+          by_mut_ref { check_lval(cx, args[i], msg_mut_ref); }
+          by_move { check_lval(cx, args[i], msg_move_out); }
           _ {}
         }
         i += 1u;
@@ -239,15 +239,15 @@ fn check_bind(cx: @ctx, f: @expr, args: [option::t<@expr>]) {
         alt arg {
           some(expr) {
             alt (alt arg_ts[i].mode {
-              by_mut_ref. { some("by mutable reference") }
-              by_move. { some("by move") }
+              by_mut_ref { some("by mutable reference") }
+              by_move { some("by move") }
               _ { none }
             }) {
               some(name) {
                 cx.tcx.sess.span_err(
                     expr.span, "can not bind an argument passed " + name);
               }
-              none. {}
+              none {}
             }
           }
           _ {}
@@ -262,19 +262,19 @@ fn is_immutable_def(cx: @ctx, def: def) -> option::t<str> {
       def_use(_) {
         some("static item")
       }
-      def_arg(_, by_ref.) | def_arg(_, by_val.) |
-      def_arg(_, mode_infer.) { some("argument") }
+      def_arg(_, by_ref) | def_arg(_, by_val) |
+      def_arg(_, mode_infer) { some("argument") }
       def_self(_) { some("self argument") }
       def_upvar(_, inner, node_id) {
         let ty = ty::node_id_to_monotype(cx.tcx, node_id);
         let proto = ty::ty_fn_proto(cx.tcx, ty);
         ret alt proto {
-          proto_any. | proto_block. { is_immutable_def(cx, *inner) }
+          proto_any | proto_block { is_immutable_def(cx, *inner) }
           _ { some("upvar") }
         };
       }
       def_binding(_) { some("binding") }
-      def_local(_, let_ref.) { some("by-reference binding") }
+      def_local(_, let_ref) { some("by-reference binding") }
       _ { none }
     }
 }

@@ -35,39 +35,39 @@ fn def_id_of_def(d: def) -> def_id {
 
 fn binop_to_str(op: binop) -> str {
     alt op {
-      add. { ret "+"; }
-      subtract. { ret "-"; }
-      mul. { ret "*"; }
-      div. { ret "/"; }
-      rem. { ret "%"; }
-      and. { ret "&&"; }
-      or. { ret "||"; }
-      bitxor. { ret "^"; }
-      bitand. { ret "&"; }
-      bitor. { ret "|"; }
-      lsl. { ret "<<"; }
-      lsr. { ret ">>"; }
-      asr. { ret ">>>"; }
-      eq. { ret "=="; }
-      lt. { ret "<"; }
-      le. { ret "<="; }
-      ne. { ret "!="; }
-      ge. { ret ">="; }
-      gt. { ret ">"; }
+      add { ret "+"; }
+      subtract { ret "-"; }
+      mul { ret "*"; }
+      div { ret "/"; }
+      rem { ret "%"; }
+      and { ret "&&"; }
+      or { ret "||"; }
+      bitxor { ret "^"; }
+      bitand { ret "&"; }
+      bitor { ret "|"; }
+      lsl { ret "<<"; }
+      lsr { ret ">>"; }
+      asr { ret ">>>"; }
+      eq { ret "=="; }
+      lt { ret "<"; }
+      le { ret "<="; }
+      ne { ret "!="; }
+      ge { ret ">="; }
+      gt { ret ">"; }
     }
 }
 
 pure fn lazy_binop(b: binop) -> bool {
-    alt b { and. { true } or. { true } _ { false } }
+    alt b { and { true } or { true } _ { false } }
 }
 
 fn unop_to_str(op: unop) -> str {
     alt op {
       box(mt) { if mt == mut { ret "@mutable "; } ret "@"; }
       uniq(mt) { if mt == mut { ret "~mutable "; } ret "~"; }
-      deref. { ret "*"; }
-      not. { ret "!"; }
-      neg. { ret "-"; }
+      deref { ret "*"; }
+      not { ret "!"; }
+      neg { ret "-"; }
     }
 }
 
@@ -77,38 +77,38 @@ fn is_path(e: @expr) -> bool {
 
 fn int_ty_to_str(t: int_ty) -> str {
     alt t {
-      ty_i. { "" } ty_i8. { "i8" } ty_i16. { "i16" }
-      ty_i32. { "i32" } ty_i64. { "i64" }
+      ty_i { "" } ty_i8 { "i8" } ty_i16 { "i16" }
+      ty_i32 { "i32" } ty_i64 { "i64" }
     }
 }
 
 fn int_ty_max(t: int_ty) -> u64 {
     alt t {
-      ty_i8. { 0x80u64 }
-      ty_i16. { 0x800u64 }
-      ty_char. | ty_i32. { 0x80000000u64 }
-      ty_i64. { 0x8000000000000000u64 }
+      ty_i8 { 0x80u64 }
+      ty_i16 { 0x800u64 }
+      ty_char | ty_i32 { 0x80000000u64 }
+      ty_i64 { 0x8000000000000000u64 }
     }
 }
 
 fn uint_ty_to_str(t: uint_ty) -> str {
     alt t {
-      ty_u. { "u" } ty_u8. { "u8" } ty_u16. { "u16" }
-      ty_u32. { "u32" } ty_u64. { "u64" }
+      ty_u { "u" } ty_u8 { "u8" } ty_u16 { "u16" }
+      ty_u32 { "u32" } ty_u64 { "u64" }
     }
 }
 
 fn uint_ty_max(t: uint_ty) -> u64 {
     alt t {
-      ty_u8. { 0xffu64 }
-      ty_u16. { 0xffffu64 }
-      ty_u32. { 0xffffffffu64 }
-      ty_u64. { 0xffffffffffffffffu64 }
+      ty_u8 { 0xffu64 }
+      ty_u16 { 0xffffu64 }
+      ty_u32 { 0xffffffffu64 }
+      ty_u64 { 0xffffffffffffffffu64 }
     }
 }
 
 fn float_ty_to_str(t: float_ty) -> str {
-    alt t { ty_f. { "" } ty_f32. { "f32" } ty_f64. { "f64" } }
+    alt t { ty_f { "" } ty_f32 { "f32" } ty_f64 { "f64" } }
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
@@ -212,14 +212,14 @@ tag const_val {
 fn eval_const_expr(e: @expr) -> const_val {
     fn fromb(b: bool) -> const_val { const_int(b as i64) }
     alt e.node {
-      expr_unary(neg., inner) {
+      expr_unary(neg, inner) {
         alt eval_const_expr(inner) {
           const_float(f) { const_float(-f) }
           const_int(i) { const_int(-i) }
           const_uint(i) { const_uint(-i) }
         }
       }
-      expr_unary(not., inner) {
+      expr_unary(not, inner) {
         alt eval_const_expr(inner) {
           const_int(i) { const_int(!i) }
           const_uint(i) { const_uint(!i) }
@@ -229,33 +229,33 @@ fn eval_const_expr(e: @expr) -> const_val {
         alt (eval_const_expr(a), eval_const_expr(b)) {
           (const_float(a), const_float(b)) {
             alt op {
-              add. { const_float(a + b) } subtract. { const_float(a - b) }
-              mul. { const_float(a * b) } div. { const_float(a / b) }
-              rem. { const_float(a % b) } eq. { fromb(a == b) }
-              lt. { fromb(a < b) } le. { fromb(a <= b) } ne. { fromb(a != b) }
-              ge. { fromb(a >= b) } gt. { fromb(a > b) }
+              add { const_float(a + b) } subtract { const_float(a - b) }
+              mul { const_float(a * b) } div { const_float(a / b) }
+              rem { const_float(a % b) } eq { fromb(a == b) }
+              lt { fromb(a < b) } le { fromb(a <= b) } ne { fromb(a != b) }
+              ge { fromb(a >= b) } gt { fromb(a > b) }
             }
           }
           (const_int(a), const_int(b)) {
             alt op {
-              add. { const_int(a + b) } subtract. { const_int(a - b) }
-              mul. { const_int(a * b) } div. { const_int(a / b) }
-              rem. { const_int(a % b) } and. | bitand. { const_int(a & b) }
-              or. | bitor. { const_int(a | b) } bitxor. { const_int(a ^ b) }
-              eq. { fromb(a == b) } lt. { fromb(a < b) }
-              le. { fromb(a <= b) } ne. { fromb(a != b) }
-              ge. { fromb(a >= b) } gt. { fromb(a > b) }
+              add { const_int(a + b) } subtract { const_int(a - b) }
+              mul { const_int(a * b) } div { const_int(a / b) }
+              rem { const_int(a % b) } and | bitand { const_int(a & b) }
+              or | bitor { const_int(a | b) } bitxor { const_int(a ^ b) }
+              eq { fromb(a == b) } lt { fromb(a < b) }
+              le { fromb(a <= b) } ne { fromb(a != b) }
+              ge { fromb(a >= b) } gt { fromb(a > b) }
             }
           }
           (const_uint(a), const_uint(b)) {
             alt op {
-              add. { const_uint(a + b) } subtract. { const_uint(a - b) }
-              mul. { const_uint(a * b) } div. { const_uint(a / b) }
-              rem. { const_uint(a % b) } and. | bitand. { const_uint(a & b) }
-              or. | bitor. { const_uint(a | b) } bitxor. { const_uint(a ^ b) }
-              eq. { fromb(a == b) } lt. { fromb(a < b) }
-              le. { fromb(a <= b) } ne. { fromb(a != b) }
-              ge. { fromb(a >= b) } gt. { fromb(a > b) }
+              add { const_uint(a + b) } subtract { const_uint(a - b) }
+              mul { const_uint(a * b) } div { const_uint(a / b) }
+              rem { const_uint(a % b) } and | bitand { const_uint(a & b) }
+              or | bitor { const_uint(a | b) } bitxor { const_uint(a ^ b) }
+              eq { fromb(a == b) } lt { fromb(a < b) }
+              le { fromb(a <= b) } ne { fromb(a != b) }
+              ge { fromb(a >= b) } gt { fromb(a > b) }
             }
           }
         }
@@ -270,7 +270,7 @@ fn lit_to_const(lit: @lit) -> const_val {
       lit_int(n, _) { const_int(n) }
       lit_uint(n, _) { const_uint(n) }
       lit_float(n, _) { const_float(float::from_str(n)) }
-      lit_nil. { const_int(0i64) }
+      lit_nil { const_int(0i64) }
       lit_bool(b) { const_int(b as i64) }
     }
 }

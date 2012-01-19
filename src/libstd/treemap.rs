@@ -46,7 +46,7 @@ Insert a value into the map
 */
 fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) {
     alt m {
-      @empty. { *m = node(@k, @v, @mutable empty, @mutable empty); }
+      @empty { *m = node(@k, @v, @mutable empty, @mutable empty); }
       @node(@kk, _, _, _) {
 
         // We have to name left and right individually, because
@@ -65,7 +65,7 @@ Find a value based on the key
 */
 fn find<K: copy, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
-      empty. { none }
+      empty { none }
       node(@kk, @v, _, _) {
         if k == kk {
             some(v)
@@ -85,7 +85,7 @@ Visit all pairs in the map in order.
 */
 fn traverse<K, V>(m: treemap<K, V>, f: block(K, V)) {
     alt *m {
-      empty. { }
+      empty { }
       node(k, v, _, _) {
         let k1 = k, v1 = v;
         alt *m { node(_, _, left, _) { traverse(left, f); } }

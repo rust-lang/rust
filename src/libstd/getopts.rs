@@ -255,16 +255,16 @@ fn getopts(args: [str], opts: [opt]) -> result {
                 let optid;
                 alt find_opt(opts, nm) {
                   some(id) { optid = id; }
-                  none. { ret err(unrecognized_option(name_str(nm))); }
+                  none { ret err(unrecognized_option(name_str(nm))); }
                 }
                 alt opts[optid].hasarg {
-                  no. {
+                  no {
                     if !option::is_none::<str>(i_arg) {
                         ret err(unexpected_argument(name_str(nm)));
                     }
                     vals[optid] += [given];
                   }
-                  maybe. {
+                  maybe {
                     if !option::is_none::<str>(i_arg) {
                         vals[optid] += [val(option::get(i_arg))];
                     } else if name_pos < vec::len::<name>(names) ||
@@ -272,7 +272,7 @@ fn getopts(args: [str], opts: [opt]) -> result {
                         vals[optid] += [given];
                     } else { i += 1u; vals[optid] += [val(args[i])]; }
                   }
-                  yes. {
+                  yes {
                     if !option::is_none::<str>(i_arg) {
                         vals[optid] += [val(option::get::<str>(i_arg))];
                     } else if i + 1u == l {
@@ -306,7 +306,7 @@ fn getopts(args: [str], opts: [opt]) -> result {
 fn opt_vals(m: match, nm: str) -> [optval] {
     ret alt find_opt(m.opts, mkname(nm)) {
           some(id) { m.vals[id] }
-          none. { #error("No option '%s' defined", nm); fail }
+          none { #error("No option '%s' defined", nm); fail }
         };
 }
 

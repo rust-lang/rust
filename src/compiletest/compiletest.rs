@@ -85,7 +85,7 @@ fn log_config(config: config) {
 }
 
 fn opt_str(maybestr: option::t<str>) -> str {
-    alt maybestr { option::some(s) { s } option::none. { "(none)" } }
+    alt maybestr { option::some(s) { s } option::none { "(none)" } }
 }
 
 fn str_opt(maybestr: str) -> option::t<str> {
@@ -104,10 +104,10 @@ fn str_mode(s: str) -> mode {
 
 fn mode_str(mode: mode) -> str {
     alt mode {
-      mode_compile_fail. { "compile-fail" }
-      mode_run_fail. { "run-fail" }
-      mode_run_pass. { "run-pass" }
-      mode_pretty. { "pretty" }
+      mode_compile_fail { "compile-fail" }
+      mode_run_fail { "run-fail" }
+      mode_run_pass { "run-pass" }
+      mode_pretty { "pretty" }
     }
 }
 
@@ -124,7 +124,7 @@ fn test_opts(config: config) -> test::test_opts {
     {filter:
          alt config.filter {
            option::some(s) { option::some(s) }
-           option::none. { option::none }
+           option::none { option::none }
          },
      run_ignored: config.run_ignored}
 }
@@ -151,7 +151,7 @@ fn make_tests(cx: cx) -> tests_and_conv_fn {
 fn is_test(config: config, testfile: str) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
-        alt config.mode { mode_pretty. { [".rs"] } _ { [".rc", ".rs"] } };
+        alt config.mode { mode_pretty { [".rs"] } _ { [".rc", ".rs"] } };
     let invalid_prefixes = [".", "#", "~"];
     let name = fs::basename(testfile);
 

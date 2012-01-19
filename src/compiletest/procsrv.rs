@@ -119,7 +119,7 @@ fn worker(p: port<request>) {
                      args: clone_vecu8str(args),
                      respchan: respchan}
                   }
-                  stop. { ret }
+                  stop { ret }
                 }
             };
 

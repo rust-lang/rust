@@ -137,8 +137,8 @@ fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
 
 fn mk_tydesc_ty(tcx: ty::ctxt, ck: ty::closure_kind) -> ty::t {
     ret alt ck {
-      ty::ck_block. | ty::ck_box. { ty::mk_type(tcx) }
-      ty::ck_uniq. { ty::mk_send_type(tcx) }
+      ty::ck_block | ty::ck_box { ty::mk_type(tcx) }
+      ty::ck_uniq { ty::mk_send_type(tcx) }
     };
 }
 
@@ -237,15 +237,15 @@ fn allocate_cbox(bcx: @block_ctxt,
     // Allocate the box:
     let temp_cleanups = [];
     let (bcx, box, rc) = alt ck {
-      ty::ck_box. {
+      ty::ck_box {
         let (bcx, box) = alloc_in_heap(bcx, false, temp_cleanups);
         (bcx, box, 1)
       }
-      ty::ck_uniq. {
+      ty::ck_uniq {
         let (bcx, box) = alloc_in_heap(bcx, true, temp_cleanups);
         (bcx, box, 0x12345678) // use arbitrary value for debugging
       }
-      ty::ck_block. {
+      ty::ck_block {
         let {bcx, val: box} = trans::alloc_ty(bcx, cbox_ty);
         (bcx, box, 0x12345678) // use arbitrary value for debugging
       }
@@ -289,10 +289,10 @@ fn store_environment(
                           ck: ty::closure_kind,
                           td: ValueRef) -> ValueRef {
         ret alt ck {
-          ty::ck_block. | ty::ck_box. {
+          ty::ck_block | ty::ck_box {
             td
           }
-          ty::ck_uniq. {
+          ty::ck_uniq {
             Call(bcx, bcx_ccx(bcx).upcalls.create_shared_type_desc, [td])
           }
         };
@@ -311,7 +311,7 @@ fn store_environment(
 
     // store data tydesc.
     alt ck {
-      ty::ck_box. | ty::ck_uniq. {
+      ty::ck_box | ty::ck_uniq {
         let bound_tydesc = GEPi(bcx, llbox, [0, abi::cbox_elt_tydesc]);
         let ti = none;
 
@@ -324,7 +324,7 @@ fn store_environment(
         let td = maybe_clone_tydesc(bcx, ck, closure_td.val);
         Store(bcx, td, bound_tydesc);
       }
-      ty::ck_block. { /* skip this for blocks, not really relevant */ }
+      ty::ck_block { /* skip this for blocks, not really relevant */ }
     }
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
@@ -371,28 +371,28 @@ fn store_environment(
             add_clean_temp_mem(bcx, bound_data, bound_tys[i]);
             temp_cleanups += [bound_data];
           }
-          env_copy(val, ty, owned.) {
+          env_copy(val, ty, owned) {
             let val1 = load_if_immediate(bcx, val, ty);
             bcx = trans::copy_val(bcx, INIT, bound_data, val1, ty);
           }
-          env_copy(val, ty, owned_imm.) {
+          env_copy(val, ty, owned_imm) {
             bcx = trans::copy_val(bcx, INIT, bound_data, val, ty);
           }
-          env_copy(_, _, temporary.) {
+          env_copy(_, _, temporary) {
             fail "Cannot capture temporary upvar";
           }
           env_move(val, ty, kind) {
             let src = {bcx:bcx, val:val, kind:kind};
             bcx = move_val(bcx, INIT, bound_data, src, ty);
           }
-          env_ref(val, ty, owned.) {
+          env_ref(val, ty, owned) {
             Store(bcx, val, bound_data);
           }
-          env_ref(val, ty, owned_imm.) {
+          env_ref(val, ty, owned_imm) {
             let addr = do_spill_noroot(bcx, val);
             Store(bcx, addr, bound_data);
           }
-          env_ref(_, _, temporary.) {
+          env_ref(_, _, temporary) {
             fail "Cannot capture temporary upvar";
           }
         }
@@ -489,8 +489,8 @@ fn load_environment(enclosing_cx: @block_ctxt,
             bcx = upvarptr.bcx;
             let llupvarptr = upvarptr.val;
             alt ck {
-              ty::ck_block. { llupvarptr = Load(bcx, llupvarptr); }
-              ty::ck_uniq. | ty::ck_box. { }
+              ty::ck_block { llupvarptr = Load(bcx, llupvarptr); }
+              ty::ck_uniq | ty::ck_box { }
             }
             let def_id = ast_util::def_id_of_def(cap_var.def);
             fcx.llupvars.insert(def_id.node, llupvarptr);
@@ -528,11 +528,11 @@ fn trans_expr_fn(bcx: @block_ctxt,
     };
 
     let closure = alt proto {
-      ast::proto_any. { fail "proto_any cannot appear in an expr"; }
-      ast::proto_block. { trans_closure_env(ty::ck_block) }
-      ast::proto_box. { trans_closure_env(ty::ck_box) }
-      ast::proto_uniq. { trans_closure_env(ty::ck_uniq) }
-      ast::proto_bare. {
+      ast::proto_any { fail "proto_any cannot appear in an expr"; }
+      ast::proto_block { trans_closure_env(ty::ck_block) }
+      ast::proto_box { trans_closure_env(ty::ck_box) }
+      ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
+      ast::proto_bare {
         let closure = C_null(T_opaque_cbox_ptr(ccx));
         trans_closure(sub_cx, sp, decl, body, llfn, no_self, [],
                       id, {|_fcx|});
@@ -556,7 +556,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
                 dest: dest) -> @block_ctxt {
     let bound: [@ast::expr] = [];
     for argopt: option::t<@ast::expr> in args {
-        alt argopt { none. { } some(e) { bound += [e]; } }
+        alt argopt { none { } some(e) { bound += [e]; } }
     }
     let bcx = f_res.bcx;
     if dest == ignore {
@@ -566,7 +566,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
 
     // Figure out which tydescs we need to pass, if any.
     let (outgoing_fty_real, lltydescs, param_bounds) = alt f_res.generic {
-      none. { (outgoing_fty, [], @[]) }
+      none { (outgoing_fty, [], @[]) }
       some(ginfo) {
         let tds = [], orig = 0u;
         vec::iter2(ginfo.tydescs, *ginfo.param_bounds) {|td, bounds|
@@ -596,7 +596,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
         ret memmove_ty(bcx, get_dest_addr(dest), lv.val, pair_ty);
     }
     let closure = alt f_res.env {
-      null_env. { none }
+      null_env { none }
       _ { let (_, cl) = maybe_add_env(cx, f_res); some(cl) }
     };
 
@@ -616,7 +616,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
         let src_loc = PointerCast(bcx, cl, llclosurety);
         ([env_copy(src_loc, pair_ty, owned)], none)
       }
-      none. { ([], some(f_res.val)) }
+      none { ([], some(f_res.val)) }
     };
 
     // Actually construct the closure
@@ -668,11 +668,11 @@ fn make_fn_glue(
     };
 
     ret alt ty::struct(tcx, t) {
-      ty::ty_native_fn(_, _) | ty::ty_fn({proto: ast::proto_bare., _}) { bcx }
-      ty::ty_fn({proto: ast::proto_block., _}) { bcx }
-      ty::ty_fn({proto: ast::proto_any., _}) { bcx }
-      ty::ty_fn({proto: ast::proto_uniq., _}) { fn_env(ty::ck_uniq) }
-      ty::ty_fn({proto: ast::proto_box., _}) { fn_env(ty::ck_box) }
+      ty::ty_native_fn(_, _) | ty::ty_fn({proto: ast::proto_bare, _}) { bcx }
+      ty::ty_fn({proto: ast::proto_block, _}) { bcx }
+      ty::ty_fn({proto: ast::proto_any, _}) { bcx }
+      ty::ty_fn({proto: ast::proto_uniq, _}) { fn_env(ty::ck_uniq) }
+      ty::ty_fn({proto: ast::proto_box, _}) { fn_env(ty::ck_box) }
       _ { fail "make_fn_glue invoked on non-function type" }
     };
 }
@@ -684,9 +684,9 @@ fn make_opaque_cbox_take_glue(
     -> @block_ctxt {
     // Easy cases:
     alt ck {
-      ty::ck_block. { ret bcx; }
-      ty::ck_box. { ret incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); }
-      ty::ck_uniq. { /* hard case: */ }
+      ty::ck_block { ret bcx; }
+      ty::ck_box { ret incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); }
+      ty::ck_uniq { /* hard case: */ }
     }
 
     // Hard case, a deep copy:
@@ -722,12 +722,12 @@ fn make_opaque_cbox_drop_glue(
     cboxptr: ValueRef)     // ptr to the opaque closure
     -> @block_ctxt {
     alt ck {
-      ty::ck_block. { bcx }
-      ty::ck_box. {
+      ty::ck_block { bcx }
+      ty::ck_box {
         decr_refcnt_maybe_free(bcx, Load(bcx, cboxptr),
                                ty::mk_opaque_closure_ptr(bcx_tcx(bcx), ck))
       }
-      ty::ck_uniq. {
+      ty::ck_uniq {
         free_ty(bcx, Load(bcx, cboxptr),
                 ty::mk_opaque_closure_ptr(bcx_tcx(bcx), ck))
       }
@@ -740,8 +740,8 @@ fn make_opaque_cbox_free_glue(
     cbox: ValueRef)     // ptr to the opaque closure
     -> @block_ctxt {
     alt ck {
-      ty::ck_block. { ret bcx; }
-      ty::ck_box. | ty::ck_uniq. { /* hard cases: */ }
+      ty::ck_block { ret bcx; }
+      ty::ck_box | ty::ck_uniq { /* hard cases: */ }
     }
 
     let ccx = bcx_ccx(bcx);
@@ -768,11 +768,11 @@ fn make_opaque_cbox_free_glue(
 
         // Free the ty descr (if necc) and the box itself
         alt ck {
-          ty::ck_block. { fail "Impossible."; }
-          ty::ck_box. {
+          ty::ck_block { fail "Impossible"; }
+          ty::ck_box {
             trans_free_if_not_gc(bcx, cbox)
           }
-          ty::ck_uniq. {
+          ty::ck_uniq {
             let bcx = free_ty(bcx, tydesc, mk_tydesc_ty(tcx, ck));
             trans_shared_free(bcx, cbox)
           }
@@ -858,7 +858,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
       some(fptr) {
         (fptr, llvm::LLVMGetUndef(T_opaque_cbox_ptr(ccx)), 0)
       }
-      none. {
+      none {
         // Silly check
         check type_is_tup_like(bcx, cbox_ty);
         let {bcx: cx, val: pair} =
@@ -915,7 +915,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
                 llargs += [dict];
                 off += 1;
                 dicts = some(alt dicts {
-                  none. { [dict] }
+                  none { [dict] }
                   some(ds) { ds + [dict] }
                 });
               }
@@ -961,7 +961,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
           }
 
           // Arg will be provided when the thunk is invoked.
-          none. {
+          none {
             let arg: ValueRef = llvm::LLVMGetParam(llthunk, a as c_uint);
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
                 arg = PointerCast(bcx, arg, llout_arg_ty);

@@ -60,7 +60,7 @@ fn match_error(cx: ext_ctxt, m: matchable, expected: str) -> ! {
         cx.span_fatal(x.span,
                       "this argument is a block, expected " + expected);
       }
-      match_exact. { cx.bug("what is a match_exact doing in a bindings?"); }
+      match_exact { cx.bug("what is a match_exact doing in a bindings?"); }
     }
 }
 
@@ -81,7 +81,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
         alt elt.node {
           expr_mac(m) {
             alt m.node {
-              ast::mac_ellipsis. {
+              ast::mac_ellipsis {
                 if res != none {
                     cx.span_fatal(m.span, "only one ellipsis allowed");
                 }
@@ -99,7 +99,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
     }
     ret alt res {
           some(val) { val }
-          none. { {pre: elts, rep: none, post: []} }
+          none { {pre: elts, rep: none, post: []} }
         }
 }
 
@@ -107,7 +107,7 @@ fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> option::t<U>, v: [T]) ->
    option::t<[U]> {
     let res = [];
     for elem: T in v {
-        alt f(elem) { none. { ret none; } some(fv) { res += [fv]; } }
+        alt f(elem) { none { ret none; } some(fv) { res += [fv]; } }
     }
     ret some(res);
 }
@@ -117,7 +117,7 @@ fn a_d_map(ad: arb_depth<matchable>, f: selector) -> match_result {
       leaf(x) { ret f(x); }
       seq(ads, span) {
         alt option_flatten_map(bind a_d_map(_, f), *ads) {
-          none. { ret none; }
+          none { ret none; }
           some(ts) { ret some(seq(@ts, span)); }
         }
       }
@@ -127,7 +127,7 @@ fn a_d_map(ad: arb_depth<matchable>, f: selector) -> match_result {
 fn compose_sels(s1: selector, s2: selector) -> selector {
     fn scomp(s1: selector, s2: selector, m: matchable) -> match_result {
         ret alt s1(m) {
-              none. { none }
+              none { none }
               some(matches) { a_d_map(matches, s2) }
             }
     }
@@ -168,12 +168,12 @@ fn use_selectors_to_bind(b: binders, e: @expr) -> option::t<bindings> {
     let res = new_str_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
     for sel: selector in b.literal_ast_matchers {
-        alt sel(match_expr(e)) { none. { ret none; } _ { } }
+        alt sel(match_expr(e)) { none { ret none; } _ { } }
     }
     let never_mind: bool = false;
     b.real_binders.items {|key, val|
         alt val(match_expr(e)) {
-          none. { never_mind = true; }
+          none { never_mind = true; }
           some(mtc) { res.insert(key, mtc); }
         }
     };
@@ -226,7 +226,7 @@ fn follow(m: arb_depth<matchable>, idx_path: @mutable [uint]) ->
 fn follow_for_trans(cx: ext_ctxt, mmaybe: option::t<arb_depth<matchable>>,
                     idx_path: @mutable [uint]) -> option::t<matchable> {
     alt mmaybe {
-      none. { ret none }
+      none { ret none }
       some(m) {
         ret alt follow(m, idx_path) {
               seq(_, sp) {
@@ -267,7 +267,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
       {pre: pre, rep: repeat_me_maybe, post: post} {
         let res = vec::map(pre, recur);
         alt repeat_me_maybe {
-          none. { }
+          none { }
           some(repeat_me) {
             let repeat: option::t<{rep_count: uint, name: ident}> = none;
             /* we need to walk over all the free vars in lockstep, except for
@@ -278,7 +278,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                   leaf(_) { }
                   seq(ms, _) {
                     alt repeat {
-                      none. {
+                      none {
                         repeat = some({rep_count: vec::len(*ms), name: fv});
                       }
                       some({rep_count: old_len, name: old_name}) {
@@ -296,7 +296,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                 }
             };
             alt repeat {
-              none. {
+              none {
                 cx.span_fatal(repeat_me.span,
                               "'...' surrounds an expression without any" +
                                   " repeating syntax variables");
@@ -328,7 +328,7 @@ fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
     ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
           some(m) { match_error(cx, m, "an identifier") }
-          none. { i }
+          none { i }
         }
 }
 
@@ -343,7 +343,7 @@ fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
           }
           some(match_path(a_pth)) { a_pth.node }
           some(m) { match_error(cx, m, "a path") }
-          none. { p }
+          none { p }
         }
 }
 
@@ -368,7 +368,7 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
               some(match_path(a_pth)) { expr_path(a_pth) }
               some(match_expr(a_exp)) { a_exp.node }
               some(m) { match_error(cx, m, "an expression") }
-              none. { orig(e, fld) }
+              none { orig(e, fld) }
             }
           }
           _ { orig(e, fld) }
@@ -385,10 +385,10 @@ fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                 alt follow_for_trans(cx, b.find(id), idx_path) {
                   some(match_ty(ty)) { ty.node }
                   some(m) { match_error(cx, m, "a type") }
-                  none. { orig(t, fld) }
+                  none { orig(t, fld) }
                 }
               }
-              none. { orig(t, fld) }
+              none { orig(t, fld) }
             }
           }
           _ { orig(t, fld) }
@@ -415,10 +415,10 @@ fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
               some(m) {
                 match_error(cx, m, "a block")
               }
-              none. { orig(blk, fld) }
+              none { orig(blk, fld) }
             }
           }
-          none. { orig(blk, fld) }
+          none { orig(blk, fld) }
         }
 }
 
@@ -447,7 +447,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                                    "matching after `...` not yet supported");
                 }
               }
-              {pre: pre, rep: none., post: post} {
+              {pre: pre, rep: none, post: post} {
                 if post != [] {
                     cx.bug("elts_to_ell provided an invalid result");
                 }
@@ -491,7 +491,7 @@ fn specialize_match(m: matchable) -> matchable {
               expr_path(pth) {
                 alt path_to_ident(pth) {
                   some(id) { match_ident(respan(pth.span, id)) }
-                  none. { match_path(pth) }
+                  none { match_path(pth) }
                 }
               }
               _ { m }
@@ -516,7 +516,7 @@ fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
         }
         b.real_binders.insert(p_id, compose_sels(s, bind select(cx, _)));
       }
-      none. { }
+      none { }
     }
 }
 
@@ -526,7 +526,7 @@ fn block_to_ident(blk: blk_) -> option::t<ident> {
           some(expr) {
             alt expr.node { expr_path(pth) { path_to_ident(pth) } _ { none } }
           }
-          none. { none }
+          none { none }
         }
 }
 
@@ -544,7 +544,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
         cx.span_fatal(sp, "destructuring " + syn + " is not yet supported");
     }
     alt mac.node {
-      ast::mac_ellipsis. { cx.span_fatal(mac.span, "misused `...`"); }
+      ast::mac_ellipsis { cx.span_fatal(mac.span, "misused `...`"); }
       ast::mac_invoc(_, _, _) { no_des(cx, mac.span, "macro calls"); }
       ast::mac_embed_type(ty) {
         alt ty.node {
@@ -561,7 +561,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
                 let final_step = bind select_pt_1(cx, _, select_pt_2);
                 b.real_binders.insert(id, compose_sels(s, final_step));
               }
-              none. { no_des(cx, pth.span, "under `#<>`"); }
+              none { no_des(cx, pth.span, "under `#<>`"); }
             }
           }
           _ { no_des(cx, ty.span, "under `#<>`"); }
@@ -581,7 +581,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
             let final_step = bind select_pt_1(cx, _, select_pt_2);
             b.real_binders.insert(id, compose_sels(s, final_step));
           }
-          none. { no_des(cx, blk.span, "under `#{}`"); }
+          none { no_des(cx, blk.span, "under `#{}`"); }
         }
       }
     }
@@ -693,7 +693,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
                     alt path_to_ident(pth) {
                       some(id) {
                         alt macro_name {
-                          none. { macro_name = some(id); }
+                          none { macro_name = some(id); }
                           some(other_id) {
                             if id != other_id {
                                 cx.span_fatal(pth.span,
@@ -703,7 +703,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
                           }
                         }
                       }
-                      none. {
+                      none {
                         cx.span_fatal(pth.span,
                                       "macro name must not be a path");
                       }
@@ -735,7 +735,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
     ret {ident:
              alt macro_name {
                some(id) { id }
-               none. {
+               none {
                  cx.span_fatal(sp,
                                "macro definition must have " +
                                    "at least one clause")
@@ -748,7 +748,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) { ret transcribe(cx, bindings, c.body); }
-              none. { cont; }
+              none { cont; }
             }
         }
         cx.span_fatal(sp, "no clauses match macro invocation");

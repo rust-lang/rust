@@ -296,9 +296,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w,
                       alt decl.purity {
-                        unsafe_fn. { 'u' }
-                        pure_fn. { 'p' }
-                        impure_fn. { 'f' }
+                        unsafe_fn { 'u' }
+                        pure_fn { 'p' }
+                        impure_fn { 'f' }
                       } as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_monotype(tcx, item.id));
@@ -420,7 +420,7 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                nitem: @native_item) {
     ebml::start_tag(ebml_w, tag_items_data_item);
     alt nitem.node {
-      native_item_ty. {
+      native_item_ty {
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, 'T' as u8);
         encode_type(ecx, ebml_w,
@@ -429,9 +429,9 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
       native_item_fn(fn_decl, tps) {
         let letter =
             alt fn_decl.purity {
-              unsafe_fn. { 'U' }
-              pure_fn. { 'P' }   // this is currently impossible, but hey.
-              impure_fn. { 'F' }
+              unsafe_fn { 'U' }
+              pure_fn { 'P' }   // this is currently impossible, but hey.
+              impure_fn { 'F' }
             } as u8;
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, letter);

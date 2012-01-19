@@ -26,14 +26,14 @@ tag fn_kind {
 fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
       fk_item_fn(name, _) | fk_method(name, _) | fk_res(name, _) { name }
-      fk_anon(_) | fk_fn_block. { "anon" }
+      fk_anon(_) | fk_fn_block { "anon" }
     }
 }
 
 fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
       fk_item_fn(_, tps) | fk_method(_, tps) | fk_res(_, tps) { tps }
-      fk_anon(_) | fk_fn_block. { [] }
+      fk_anon(_) | fk_fn_block { [] }
     }
 }
 
@@ -101,7 +101,7 @@ fn visit_view_item<E>(_vi: @view_item, _e: E, _v: vt<E>) { }
 fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
     v.visit_pat(loc.node.pat, e, v);
     v.visit_ty(loc.node.ty, e, v);
-    alt loc.node.init { none. { } some(i) { v.visit_expr(i.expr, e, v); } }
+    alt loc.node.init { none { } some(i) { v.visit_expr(i.expr, e, v); } }
 }
 
 fn visit_item<E>(i: @item, e: E, v: vt<E>) {
@@ -165,7 +165,7 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
         v.visit_ty(decl.output, e, v);
       }
       ty_path(p, _) { visit_path(p, e, v); }
-      ty_type. {/* no-op */ }
+      ty_type {/* no-op */ }
       ty_constr(t, cs) {
         v.visit_ty(t, e, v);
         for tc: @spanned<constr_general_<@path, node_id>> in cs {
@@ -212,7 +212,7 @@ fn visit_native_item<E>(ni: @native_item, e: E, v: vt<E>) {
         v.visit_ty_params(tps, e, v);
         visit_fn_decl(fd, e, v);
       }
-      native_item_ty. { }
+      native_item_ty { }
     }
 }
 
@@ -266,7 +266,7 @@ fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
 }
 
 fn visit_expr_opt<E>(eo: option::t<@expr>, e: E, v: vt<E>) {
-    alt eo { none. { } some(ex) { v.visit_expr(ex, e, v); } }
+    alt eo { none { } some(ex) { v.visit_expr(ex, e, v); } }
 }
 
 fn visit_exprs<E>(exprs: [@expr], e: E, v: vt<E>) {
@@ -278,7 +278,7 @@ fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
       ast::mac_invoc(pth, arg, body) { visit_expr(arg, e, v); }
       ast::mac_embed_type(ty) { v.visit_ty(ty, e, v); }
       ast::mac_embed_block(blk) { v.visit_block(blk, e, v); }
-      ast::mac_ellipsis. { }
+      ast::mac_ellipsis { }
     }
 }
 
@@ -350,8 +350,8 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_index(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_path(p) { visit_path(p, e, v); }
       expr_fail(eo) { visit_expr_opt(eo, e, v); }
-      expr_break. { }
-      expr_cont. { }
+      expr_break { }
+      expr_cont { }
       expr_ret(eo) { visit_expr_opt(eo, e, v); }
       expr_be(x) { v.visit_expr(x, e, v); }
       expr_log(_, lv, x) {

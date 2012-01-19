@@ -129,8 +129,8 @@ tag proto {
 
 pure fn is_blockish(p: ast::proto) -> bool {
     alt p {
-      proto_any. | proto_block. { true }
-      proto_bare. | proto_uniq. | proto_box. { false }
+      proto_any | proto_block { true }
+      proto_bare | proto_uniq | proto_box { false }
     }
 }
 

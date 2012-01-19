@@ -5,7 +5,7 @@ tag tree { nil; node(~tree, ~tree, int); }
 
 fn item_check(t: ~tree) -> int {
     alt *t {
-      nil. { ret 0; }
+      nil { ret 0; }
       node(left, right, item) {
         ret item + item_check(left) - item_check(right);
       }

@@ -286,7 +286,7 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
     ebml::tagged_docs(mod_item, tag_mod_impl) {|doc|
         let did = translate_def_id(cdata, parse_def_id(ebml::doc_data(doc)));
         let item = lookup_item(did.node, data), nm = item_name(item);
-        if alt name { some(n) { n == nm } none. { true } } {
+        if alt name { some(n) { n == nm } none { true } } {
             let base_tps = item_ty_param_count(doc);
             result += [@{did: did, ident: nm,
                          methods: item_impl_methods(cdata, item, base_tps)}];
@@ -393,7 +393,7 @@ fn get_attributes(md: ebml::doc) -> [ast::attribute] {
                   span: ast_util::dummy_sp()}];
         };
       }
-      option::none. { }
+      option::none { }
     }
     ret attrs;
 }
@@ -489,7 +489,7 @@ fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
 
     alt cdata.cnum_map.find(did.crate) {
       option::some(n) { ret {crate: n, node: did.node}; }
-      option::none. { fail "didn't find a crate in the cnum_map"; }
+      option::none { fail "didn't find a crate in the cnum_map"; }
     }
 }
 

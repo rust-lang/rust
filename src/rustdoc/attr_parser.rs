@@ -157,21 +157,21 @@ fn parse_short_doc_or<T>(
       some(meta) {
         alt attr::get_meta_item_value_str(meta) {
           some(desc) { handle_short(some(desc)) }
-          none. {
+          none {
             alt attr::get_meta_item_list(meta) {
               some(list) {
                 let brief = attr::meta_item_value_from_list(list, "brief");
                 let desc = attr::meta_item_value_from_list(list, "desc");
                 parse_long(list, brief, desc)
               }
-              none. {
+              none {
                 handle_short(none)
               }
             }
           }
         }
       }
-      none. {
+      none {
         handle_short(none)
       }
     }
@@ -213,7 +213,7 @@ fn parse_fn_long_doc(
             }
         }
       }
-      none. { [] }
+      none { [] }
     };
 
     {

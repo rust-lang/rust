@@ -31,13 +31,13 @@ Failure:
 Fails if the value equals `none`.
 */
 pure fn get<T: copy>(opt: t<T>) -> T {
-    alt opt { some(x) { ret x; } none. { fail "option none"; } }
+    alt opt { some(x) { ret x; } none { fail "option none"; } }
 }
 
 /*
 */
 fn map<T, U: copy>(opt: t<T>, f: block(T) -> U) -> t<U> {
-    alt opt { some(x) { some(f(x)) } none. { none } }
+    alt opt { some(x) { some(f(x)) } none { none } }
 }
 
 /*
@@ -46,7 +46,7 @@ Function: is_none
 Returns true if the option equals none
 */
 pure fn is_none<T>(opt: t<T>) -> bool {
-    alt opt { none. { true } some(_) { false } }
+    alt opt { none { true } some(_) { false } }
 }
 
 /*
@@ -62,7 +62,7 @@ Function: from_maybe
 Returns the contained value or a default
 */
 pure fn from_maybe<T: copy>(def: T, opt: t<T>) -> T {
-    alt opt { some(x) { x } none. { def } }
+    alt opt { some(x) { x } none { def } }
 }
 
 /*
@@ -71,7 +71,7 @@ Function: maybe
 Applies a function to the contained value or returns a default
 */
 fn maybe<T, U: copy>(def: U, opt: t<T>, f: block(T) -> U) -> U {
-    alt opt { none. { def } some(t) { f(t) } }
+    alt opt { none { def } some(t) { f(t) } }
 }
 
 // FIXME: Can be defined in terms of the above when/if we have const bind.
@@ -81,7 +81,7 @@ Function: may
 Performs an operation on the contained value or does nothing
 */
 fn may<T>(opt: t<T>, f: block(T)) {
-    alt opt { none. {/* nothing */ } some(t) { f(t); } }
+    alt opt { none {/* nothing */ } some(t) { f(t); } }
 }
 
 #[test]

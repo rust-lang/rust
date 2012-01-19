@@ -114,9 +114,9 @@ impl session for session {
 fn building_library(req_crate_type: crate_type, crate: @ast::crate,
                     testing: bool) -> bool {
     alt req_crate_type {
-      bin_crate. { false }
-      lib_crate. { true }
-      unknown_crate. {
+      bin_crate { false }
+      lib_crate { true }
+      unknown_crate {
         if testing {
             false
         } else {

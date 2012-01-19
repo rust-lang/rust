@@ -29,17 +29,17 @@ tag abbrev_ctxt { ac_no_abbrevs; ac_use_abbrevs(hashmap<ty::t, ty_abbrev>); }
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     alt cx.abbrevs {
-      ac_no_abbrevs. { ret false; }
+      ac_no_abbrevs { ret false; }
       ac_use_abbrevs(_) { ret true; }
     }
 }
 
 fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
     alt cx.abbrevs {
-      ac_no_abbrevs. {
+      ac_no_abbrevs {
         let result_str = alt cx.tcx.short_names_cache.find(t) {
           some(s) { *s }
-          none. {
+          none {
             let buf = io::mk_mem_buffer();
             enc_sty(io::mem_buffer_writer(buf), cx,
                     ty::struct_raw(cx.tcx, t));
@@ -52,7 +52,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
       ac_use_abbrevs(abbrevs) {
         alt abbrevs.find(t) {
           some(a) { w.write_str(*a.s); ret; }
-          none. {
+          none {
             let pos = w.tell();
             enc_sty(w, cx, ty::struct_raw(cx.tcx, t));
             let end = w.tell();
@@ -79,44 +79,44 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
 }
 fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
     alt mt.mut {
-      imm. { }
-      mut. { w.write_char('m'); }
-      maybe_mut. { w.write_char('?'); }
+      imm { }
+      mut { w.write_char('m'); }
+      maybe_mut { w.write_char('?'); }
     }
     enc_ty(w, cx, mt.ty);
 }
 fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
     alt st {
-      ty::ty_nil. { w.write_char('n'); }
-      ty::ty_bot. { w.write_char('z'); }
-      ty::ty_bool. { w.write_char('b'); }
+      ty::ty_nil { w.write_char('n'); }
+      ty::ty_bot { w.write_char('z'); }
+      ty::ty_bool { w.write_char('b'); }
       ty::ty_int(t) {
         alt t {
-          ty_i. { w.write_char('i'); }
-          ty_char. { w.write_char('c'); }
-          ty_i8. { w.write_str("MB"); }
-          ty_i16. { w.write_str("MW"); }
-          ty_i32. { w.write_str("ML"); }
-          ty_i64. { w.write_str("MD"); }
+          ty_i { w.write_char('i'); }
+          ty_char { w.write_char('c'); }
+          ty_i8 { w.write_str("MB"); }
+          ty_i16 { w.write_str("MW"); }
+          ty_i32 { w.write_str("ML"); }
+          ty_i64 { w.write_str("MD"); }
         }
       }
       ty::ty_uint(t) {
         alt t {
-          ty_u. { w.write_char('u'); }
-          ty_u8. { w.write_str("Mb"); }
-          ty_u16. { w.write_str("Mw"); }
-          ty_u32. { w.write_str("Ml"); }
-          ty_u64. { w.write_str("Md"); }
+          ty_u { w.write_char('u'); }
+          ty_u8 { w.write_str("Mb"); }
+          ty_u16 { w.write_str("Mw"); }
+          ty_u32 { w.write_str("Ml"); }
+          ty_u64 { w.write_str("Md"); }
         }
       }
       ty::ty_float(t) {
         alt t {
-          ty_f. { w.write_char('l'); }
-          ty_f32. { w.write_str("Mf"); }
-          ty_f64. { w.write_str("MF"); }
+          ty_f { w.write_char('l'); }
+          ty_f32 { w.write_str("Mf"); }
+          ty_f64 { w.write_str("MF"); }
         }
       }
-      ty::ty_str. { w.write_char('S'); }
+      ty::ty_str { w.write_char('S'); }
       ty::ty_tag(def, tys) {
         w.write_str("t[");
         w.write_str(cx.ds(def));
@@ -178,11 +178,11 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char('|');
         w.write_str(uint::str(id));
       }
-      ty::ty_type. { w.write_char('Y'); }
-      ty::ty_send_type. { w.write_char('y'); }
-      ty::ty_opaque_closure_ptr(ty::ck_block.) { w.write_str("C&"); }
-      ty::ty_opaque_closure_ptr(ty::ck_box.) { w.write_str("C@"); }
-      ty::ty_opaque_closure_ptr(ty::ck_uniq.) { w.write_str("C~"); }
+      ty::ty_type { w.write_char('Y'); }
+      ty::ty_send_type { w.write_char('y'); }
+      ty::ty_opaque_closure_ptr(ty::ck_block) { w.write_str("C&"); }
+      ty::ty_opaque_closure_ptr(ty::ck_box) { w.write_str("C@"); }
+      ty::ty_opaque_closure_ptr(ty::ck_uniq) { w.write_str("C~"); }
       ty::ty_constr(ty, cs) {
         w.write_str("A[");
         enc_ty(w, cx, ty);
@@ -201,11 +201,11 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
 }
 fn enc_proto(w: io::writer, proto: proto) {
     alt proto {
-      proto_uniq. { w.write_str("f~"); }
-      proto_box. { w.write_str("f@"); }
-      proto_block. { w.write_str("f&"); }
-      proto_any. { w.write_str("f*"); }
-      proto_bare. { w.write_str("fn"); }
+      proto_uniq { w.write_str("f~"); }
+      proto_box { w.write_str("f@"); }
+      proto_block { w.write_str("f&"); }
+      proto_any { w.write_str("f*"); }
+      proto_bare { w.write_str("fn"); }
     }
 }
 
@@ -213,11 +213,11 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     w.write_char('[');
     for arg: ty::arg in ft.inputs {
         alt arg.mode {
-          by_mut_ref. { w.write_char('&'); }
-          by_move. { w.write_char('-'); }
-          by_copy. { w.write_char('+'); }
-          by_ref. { w.write_char('='); }
-          by_val. { w.write_char('#'); }
+          by_mut_ref { w.write_char('&'); }
+          by_move { w.write_char('-'); }
+          by_copy { w.write_char('+'); }
+          by_ref { w.write_char('='); }
+          by_val { w.write_char('#'); }
         }
         enc_ty(w, cx, arg.ty);
     }
@@ -231,7 +231,7 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
         enc_constr(w, cx, c);
     }
     alt ft.ret_style {
-      noreturn. { w.write_char('!'); }
+      noreturn { w.write_char('!'); }
       _ { enc_ty(w, cx, ft.output); }
     }
 }
@@ -246,7 +246,7 @@ fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
     for a: @constr_arg in c.node.args {
         if semi { w.write_char(';'); } else { semi = true; }
         alt a.node {
-          carg_base. { w.write_char('*'); }
+          carg_base { w.write_char('*'); }
           carg_ident(i) { w.write_uint(i); }
           carg_lit(l) { w.write_str(lit_to_str(l)); }
         }
@@ -263,7 +263,7 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
     for a: @ty::ty_constr_arg in c.node.args {
         if semi { w.write_char(';'); } else { semi = true; }
         alt a.node {
-          carg_base. { w.write_char('*'); }
+          carg_base { w.write_char('*'); }
           carg_ident(p) { w.write_str(path_to_str(p)); }
           carg_lit(l) { w.write_str(lit_to_str(l)); }
         }
@@ -274,8 +274,8 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
 fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]) {
     for bound in *bs {
         alt bound {
-          ty::bound_send. { w.write_char('S'); }
-          ty::bound_copy. { w.write_char('C'); }
+          ty::bound_send { w.write_char('S'); }
+          ty::bound_copy { w.write_char('C'); }
           ty::bound_iface(tp) {
             w.write_char('I');
             enc_ty(w, cx, tp);

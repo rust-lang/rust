@@ -137,7 +137,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
                }
                mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
                mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
-               mac_ellipsis. { mac_ellipsis }
+               mac_ellipsis { mac_ellipsis }
              },
          span: m.span};
 }
@@ -189,7 +189,7 @@ fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
           attrs: vec::map(ni.attrs, fold_attribute),
           node:
               alt ni.node {
-                native_item_ty. { native_item_ty }
+                native_item_ty { native_item_ty }
                 native_item_fn(fdec, typms) {
                   native_item_fn({inputs: vec::map(fdec.inputs, fold_arg),
                                   output: fld.fold_ty(fdec.output),
@@ -273,7 +273,7 @@ fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {
 
 fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
     ret alt p {
-          pat_wild. { p }
+          pat_wild { p }
           pat_ident(pth, sub) {
             pat_ident(fld.fold_path(pth), option::map(sub, fld.fold_pat))
           }
@@ -391,7 +391,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           }
           expr_path(pth) { expr_path(fld.fold_path(pth)) }
           expr_fail(e) { expr_fail(option::map(e, fld.fold_expr)) }
-          expr_break. | expr_cont. { e }
+          expr_break | expr_cont { e }
           expr_ret(e) { expr_ret(option::map(e, fld.fold_expr)) }
           expr_be(e) { expr_be(fld.fold_expr(e)) }
           expr_log(i, lv, e) { expr_log(i, fld.fold_expr(lv),
@@ -434,7 +434,7 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     let args = vec::map(v.args, fold_variant_arg);
     let de = alt v.disr_expr {
       some(e) {some(fld.fold_expr(e))}
-      none. {none}
+      none {none}
     };
     ret {name: v.name, args: args, id: v.id,
          disr_expr: de};

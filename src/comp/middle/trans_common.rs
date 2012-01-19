@@ -33,7 +33,7 @@ fn new_namegen() -> namegen {
 type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
 
 tag tydesc_kind {
-    tk_static; // Static (monomorphic) type descriptor.
+    tk_static; // Static (monomorphic) type descriptor
     tk_param; // Type parameter.
     tk_derived; // Derived from a typaram or another derived tydesc.
 }
@@ -335,7 +335,7 @@ tag block_kind {
 
 
     // A scope block is a basic block created by translating a block { ... }
-    // the the source language.  Since these blocks create variable scope, any
+    // in the source language.  Since these blocks create variable scope, any
     // variables created in them that are still live at the end of the block
     // must be dropped and cleaned up when the block ends.
     SCOPE_BLOCK;
@@ -422,7 +422,7 @@ fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
     if cx.kind != NON_SCOPE_BLOCK { ret cx; }
     alt cx.parent {
       parent_some(b) { ret find_scope_cx(b); }
-      parent_none. {
+      parent_none {
         cx.fcx.lcx.ccx.sess.bug("trans::find_scope_cx() " +
                                     "called on parentless block_ctxt");
       }
@@ -491,30 +491,30 @@ fn T_int(targ_cfg: @session::config) -> TypeRef {
 
 fn T_int_ty(cx: @crate_ctxt, t: ast::int_ty) -> TypeRef {
     alt t {
-      ast::ty_i. { cx.int_type }
-      ast::ty_char. { T_char() }
-      ast::ty_i8. { T_i8() }
-      ast::ty_i16. { T_i16() }
-      ast::ty_i32. { T_i32() }
-      ast::ty_i64. { T_i64() }
+      ast::ty_i { cx.int_type }
+      ast::ty_char { T_char() }
+      ast::ty_i8 { T_i8() }
+      ast::ty_i16 { T_i16() }
+      ast::ty_i32 { T_i32() }
+      ast::ty_i64 { T_i64() }
     }
 }
 
 fn T_uint_ty(cx: @crate_ctxt, t: ast::uint_ty) -> TypeRef {
     alt t {
-      ast::ty_u. { cx.int_type }
-      ast::ty_u8. { T_i8() }
-      ast::ty_u16. { T_i16() }
-      ast::ty_u32. { T_i32() }
-      ast::ty_u64. { T_i64() }
+      ast::ty_u { cx.int_type }
+      ast::ty_u8 { T_i8() }
+      ast::ty_u16 { T_i16() }
+      ast::ty_u32 { T_i32() }
+      ast::ty_u64 { T_i64() }
     }
 }
 
 fn T_float_ty(cx: @crate_ctxt, t: ast::float_ty) -> TypeRef {
     alt t {
-      ast::ty_f. { cx.float_type }
-      ast::ty_f32. { T_f32() }
-      ast::ty_f64. { T_f64() }
+      ast::ty_f { cx.float_type }
+      ast::ty_f32 { T_f32() }
+      ast::ty_f64 { T_f64() }
     }
 }
 

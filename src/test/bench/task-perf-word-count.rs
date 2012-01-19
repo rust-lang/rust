@@ -26,14 +26,14 @@ fn map(input: str, emit: map_reduce::putter) {
 
 
     while true {
-        alt read_word(f) { some(w) { emit(w, 1); } none. { break; } }
+        alt read_word(f) { some(w) { emit(w, 1); } none { break; } }
     }
 }
 
 fn reduce(_word: str, get: map_reduce::getter) {
     let count = 0;
 
-    while true { alt get() { some(_) { count += 1; } none. { break; } } }
+    while true { alt get() { some(_) { count += 1; } none { break; } } }
 }
 
 mod map_reduce {
@@ -78,7 +78,7 @@ mod map_reduce {
               some(_c) {
                 c = _c;
               }
-              none. {
+              none {
                 let p = port();
                 send(ctrl, find_reducer(key, chan(p)));
                 c = recv(p);
@@ -112,7 +112,7 @@ mod map_reduce {
                     // #error("received %d", v);
                     ret some(v);
                   }
-                  done. {
+                  done {
                     // #error("all done");
                     state.is_done = true;
                   }
@@ -141,7 +141,7 @@ mod map_reduce {
 
         while num_mappers > 0 {
             alt recv(ctrl) {
-              mapper_done. {
+              mapper_done {
                 // #error("received mapper terminated.");
                 num_mappers -= 1;
               }
@@ -154,7 +154,7 @@ mod map_reduce {
                     // "reusing existing reducer for " + k);
                     c = _c;
                   }
-                  none. {
+                  none {
                     // log(error, "creating new reducer for " + k);
                     let p = port();
                     let ch = chan(p);

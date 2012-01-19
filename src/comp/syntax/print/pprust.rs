@@ -163,7 +163,7 @@ fn is_begin(s: ps) -> bool {
 }
 
 fn is_end(s: ps) -> bool {
-    alt s.s.last_token() { pp::END. { true } _ { false } }
+    alt s.s.last_token() { pp::END { true } _ { false } }
 }
 
 fn is_bol(s: ps) -> bool {
@@ -251,25 +251,25 @@ fn print_type(s: ps, &&ty: @ast::ty) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     alt ty.node {
-      ast::ty_nil. { word(s.s, "()"); }
-      ast::ty_bool. { word(s.s, "bool"); }
-      ast::ty_bot. { word(s.s, "!"); }
-      ast::ty_int(ast::ty_i.) { word(s.s, "int"); }
-      ast::ty_int(ast::ty_char.) { word(s.s, "char"); }
+      ast::ty_nil { word(s.s, "()"); }
+      ast::ty_bool { word(s.s, "bool"); }
+      ast::ty_bot { word(s.s, "!"); }
+      ast::ty_int(ast::ty_i) { word(s.s, "int"); }
+      ast::ty_int(ast::ty_char) { word(s.s, "char"); }
       ast::ty_int(t) { word(s.s, ast_util::int_ty_to_str(t)); }
-      ast::ty_uint(ast::ty_u.) { word(s.s, "uint"); }
+      ast::ty_uint(ast::ty_u) { word(s.s, "uint"); }
       ast::ty_uint(t) { word(s.s, ast_util::uint_ty_to_str(t)); }
-      ast::ty_float(ast::ty_f.) { word(s.s, "float"); }
+      ast::ty_float(ast::ty_f) { word(s.s, "float"); }
       ast::ty_float(t) { word(s.s, ast_util::float_ty_to_str(t)); }
-      ast::ty_str. { word(s.s, "str"); }
+      ast::ty_str { word(s.s, "str"); }
       ast::ty_box(mt) { word(s.s, "@"); print_mt(s, mt); }
       ast::ty_uniq(mt) { word(s.s, "~"); print_mt(s, mt); }
       ast::ty_vec(mt) {
         word(s.s, "[");
         alt mt.mut {
-          ast::mut. { word_space(s, "mutable"); }
-          ast::maybe_mut. { word_space(s, "const"); }
-          ast::imm. { }
+          ast::mut { word_space(s, "mutable"); }
+          ast::maybe_mut { word_space(s, "const"); }
+          ast::imm { }
         }
         print_type(s, mt.ty);
         word(s.s, "]");
@@ -309,7 +309,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         print_ty_fn(s, some(proto), d, none, none);
       }
       ast::ty_path(path, _) { print_path(s, path, false); }
-      ast::ty_type. { word(s.s, "type"); }
+      ast::ty_type { word(s.s, "type"); }
       ast::ty_constr(t, cs) {
         print_type(s, t);
         space(s.s);
@@ -324,7 +324,7 @@ fn print_native_item(s: ps, item: @ast::native_item) {
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     alt item.node {
-      ast::native_item_ty. {
+      ast::native_item_ty {
         ibox(s, indent_unit);
         ibox(s, 0u);
         word_nbsp(s, "type");
@@ -585,9 +585,9 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
     let ann_node = node_block(s, blk);
     s.ann.pre(ann_node);
     alt embedded {
-      block_macro. { word(s.s, "#{"); end(s); }
-      block_block_fn. { end(s); }
-      block_normal. { bopen(s); }
+      block_macro { word(s.s, "#{"); end(s); }
+      block_block_fn { end(s); }
+      block_normal { bopen(s); }
     }
 
     print_inner_attributes(s, attrs);
@@ -612,7 +612,7 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
 // alt, do, & while unambiguously without being parenthesized
 fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
     let disambig = alt e.node {
-      ast::expr_ret(none.) | ast::expr_fail(none.) { true }
+      ast::expr_ret(none) | ast::expr_fail(none) { true }
       _ { false }
     };
     if disambig { popen(s); }
@@ -683,7 +683,7 @@ fn print_mac(s: ps, m: ast::mac) {
       ast::mac_embed_block(blk) {
         print_possibly_embedded_block(s, blk, block_normal, indent_unit);
       }
-      ast::mac_ellipsis. { word(s.s, "..."); }
+      ast::mac_ellipsis { word(s.s, "..."); }
     }
 }
 
@@ -834,7 +834,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             space(s.s);
             alt arm.guard {
               some(e) { word_space(s, "if"); print_expr(s, e); space(s.s); }
-              none. { }
+              none { }
             }
             print_possibly_embedded_block(s, arm.body, block_normal,
                                           alt_indent_unit);
@@ -923,8 +923,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           _ { }
         }
       }
-      ast::expr_break. { word(s.s, "break"); }
-      ast::expr_cont. { word(s.s, "cont"); }
+      ast::expr_break { word(s.s, "break"); }
+      ast::expr_cont { word(s.s, "cont"); }
       ast::expr_ret(result) {
         word(s.s, "ret");
         alt result {
@@ -1011,8 +1011,8 @@ fn print_decl(s: ps, decl: @ast::decl) {
               some(init) {
                 nbsp(s);
                 alt init.op {
-                  ast::init_assign. { word_space(s, "="); }
-                  ast::init_move. { word_space(s, "<-"); }
+                  ast::init_assign { word_space(s, "="); }
+                  ast::init_move { word_space(s, "<-"); }
                 }
                 print_expr(s, init.expr);
               }
@@ -1058,7 +1058,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
     /* Pat isn't normalized, but the beauty of it
      is that it doesn't matter */
     alt pat.node {
-      ast::pat_wild. { word(s.s, "_"); }
+      ast::pat_wild { word(s.s, "_"); }
       ast::pat_ident(path, sub) {
         print_path(s, path, true);
         alt sub {
@@ -1112,9 +1112,9 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
 fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
             typarams: [ast::ty_param]) {
     alt decl.purity {
-      ast::impure_fn. { head(s, "fn"); }
-      ast::unsafe_fn. { head(s, "unsafe fn"); }
-      ast::pure_fn. { head(s, "pure fn"); }
+      ast::impure_fn { head(s, "fn"); }
+      ast::unsafe_fn { head(s, "unsafe fn"); }
+      ast::pure_fn { head(s, "pure fn"); }
     }
     word(s.s, name);
     print_type_params(s, typarams);
@@ -1188,12 +1188,12 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
 
 fn print_arg_mode(s: ps, m: ast::mode) {
     alt m {
-      ast::by_mut_ref. { word(s.s, "&"); }
-      ast::by_move. { word(s.s, "-"); }
-      ast::by_ref. { word(s.s, "&&"); }
-      ast::by_val. { word(s.s, "++"); }
-      ast::by_copy. { word(s.s, "+"); }
-      ast::mode_infer. {}
+      ast::by_mut_ref { word(s.s, "&"); }
+      ast::by_move { word(s.s, "-"); }
+      ast::by_ref { word(s.s, "&&"); }
+      ast::by_val { word(s.s, "++"); }
+      ast::by_copy { word(s.s, "+"); }
+      ast::mode_infer {}
     }
 }
 
@@ -1203,8 +1203,8 @@ fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {
         for bound in *bounds {
             nbsp(s);
             alt bound {
-              ast::bound_copy. { word(s.s, "copy"); }
-              ast::bound_send. { word(s.s, "send"); }
+              ast::bound_copy { word(s.s, "copy"); }
+              ast::bound_send { word(s.s, "send"); }
               ast::bound_iface(t) { print_type(s, t); }
             }
         }
@@ -1335,9 +1335,9 @@ fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: int) {
 
 fn print_mutability(s: ps, mut: ast::mutability) {
     alt mut {
-      ast::mut. { word_nbsp(s, "mutable"); }
-      ast::maybe_mut. { word_nbsp(s, "const"); }
-      ast::imm. {/* nothing */ }
+      ast::mut { word_nbsp(s, "mutable"); }
+      ast::maybe_mut { word_nbsp(s, "const"); }
+      ast::imm {/* nothing */ }
     }
 }
 
@@ -1387,7 +1387,7 @@ fn maybe_print_trailing_comment(s: ps, span: codemap::span,
         let span_line = codemap::lookup_char_pos(cm, span.hi);
         let comment_line = codemap::lookup_char_pos(cm, cmnt.pos);
         let next = cmnt.pos + 1u;
-        alt next_pos { none. { } some(p) { next = p; } }
+        alt next_pos { none { } some(p) { next = p; } }
         if span.hi < cmnt.pos && cmnt.pos < next &&
                span_line.line == comment_line.line {
             print_comment(s, cmnt);
@@ -1427,7 +1427,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
     }
     alt lit.node {
       ast::lit_str(st) { print_string(s, st); }
-      ast::lit_int(ch, ast::ty_char.) {
+      ast::lit_int(ch, ast::ty_char) {
         word(s.s, "'" + escape_str(str::from_char(ch as char), '\'') + "'");
       }
       ast::lit_int(i, t) {
@@ -1439,7 +1439,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
       ast::lit_float(f, t) {
         word(s.s, f + ast_util::float_ty_to_str(t));
       }
-      ast::lit_nil. { word(s.s, "()"); }
+      ast::lit_nil { word(s.s, "()"); }
       ast::lit_bool(val) {
         if val { word(s.s, "true"); } else { word(s.s, "false"); }
       }
@@ -1508,7 +1508,7 @@ fn print_comment(s: ps, cmnt: lexer::cmnt) {
             end(s);
         }
       }
-      lexer::blank_line. {
+      lexer::blank_line {
         // We need to do at least one, possibly two hardbreaks.
         let is_semi =
             alt s.s.last_token() {
@@ -1585,7 +1585,7 @@ fn constr_args_to_str<T>(f: fn@(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
 fn constr_arg_to_str<T>(f: fn@(T) -> str, c: ast::constr_arg_general_<T>) ->
    str {
     alt c {
-      ast::carg_base. { ret "*"; }
+      ast::carg_base { ret "*"; }
       ast::carg_ident(i) { ret f(i); }
       ast::carg_lit(l) { ret lit_to_str(l); }
     }
@@ -1635,18 +1635,18 @@ fn ast_fn_constrs_str(decl: ast::fn_decl, constrs: [@ast::constr]) -> str {
 
 fn opt_proto_to_str(opt_p: option<ast::proto>) -> str {
     alt opt_p {
-      none. { "fn" }
+      none { "fn" }
       some(p) { proto_to_str(p) }
     }
 }
 
 fn proto_to_str(p: ast::proto) -> str {
     ret alt p {
-      ast::proto_bare. { "native fn" }
-      ast::proto_any. { "fn*" }
-      ast::proto_block. { "fn&" }
-      ast::proto_uniq. { "fn~" }
-      ast::proto_box. { "fn@" }
+      ast::proto_bare { "native fn" }
+      ast::proto_any { "fn*" }
+      ast::proto_block { "fn&" }
+      ast::proto_uniq { "fn~" }
+      ast::proto_box { "fn@" }
     };
 }
 
@@ -1671,7 +1671,7 @@ fn ast_ty_constrs_str(constrs: [@ast::ty_constr]) -> str {
 
 fn ends_in_lit_int(ex: @ast::expr) -> bool {
     alt ex.node {
-      ast::expr_lit(@{node: ast::lit_int(_, ast::ty_i.), _}) { true }
+      ast::expr_lit(@{node: ast::lit_int(_, ast::ty_i), _}) { true }
       ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
       ast::expr_ternary(_, _, sub) | ast::expr_move(_, sub) |
       ast::expr_copy(sub) | ast::expr_assign(_, sub) | ast::expr_be(sub) |

@@ -28,7 +28,7 @@ fn load_props(testfile: str) -> test_props {
     iter_header(testfile) {|ln|
         alt parse_error_pattern(ln) {
           option::some(ep) { error_patterns += [ep]; }
-          option::none. { }
+          option::none { }
         };
 
         if option::is_none(compile_flags) {
@@ -89,7 +89,7 @@ fn parse_compile_flags(line: str) -> option::t<str> {
 fn parse_pp_exact(line: str, testfile: str) -> option::t<str> {
     alt parse_name_value_directive(line, "pp-exact") {
       option::some(s) { option::some(s) }
-      option::none. {
+      option::none {
         if parse_name_directive(line, "pp-exact") {
             option::some(fs::basename(testfile))
         } else {

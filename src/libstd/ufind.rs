@@ -27,7 +27,7 @@ fn grow(ufnd: ufind, n: uint) {
 
 fn find(ufnd: ufind, n: uint) -> uint {
     alt ufnd.nodes[n] {
-      none. { ret n; }
+      none { ret n; }
       some(m) { let m_ = m; be find(ufnd, m_); }
     }
 }
