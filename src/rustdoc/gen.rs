@@ -136,7 +136,12 @@ fn write_args(
 }
 
 fn write_arg(ctxt: ctxt, arg: doc::argdoc) {
-    ctxt.w.write_line(#fmt("* %s", arg.name));
+    assert option::is_some(arg.ty);
+    ctxt.w.write_line(#fmt(
+        "* %s: `%s`",
+        arg.name,
+        option::get(arg.ty)
+    ));
 }
 
 #[test]
@@ -147,8 +152,8 @@ fn should_write_argument_list() {
         markdown,
         "Arguments:\n\
          \n\
-         * b\n\
-         * c\n\
+         * b: `int`\n\
+         * c: `int`\n\
          \n"
     );
 }
