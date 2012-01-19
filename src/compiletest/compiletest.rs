@@ -187,7 +187,6 @@ fn make_test_closure(cx: cx, testfile: str) -> test::test_fn {
 fn run_test_task(config: common::config,
                  procsrv_chan: procsrv::reqchan,
                  testfile: str) {
-    test::configure_test_task();
 
     let procsrv = procsrv::from_chan(procsrv_chan);
     let cx = {config: config, procsrv: procsrv};

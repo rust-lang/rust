@@ -227,7 +227,11 @@ fn run_tests(opts: test_opts, tests: [test_desc],
     }
 }
 
-fn get_concurrency() -> uint { rustrt::sched_threads() }
+fn get_concurrency() -> uint {
+    let threads = rustrt::sched_threads();
+    if threads == 1u { 1u }
+    else { threads * 4u }
+}
 
 fn filter_tests(opts: test_opts,
                 tests: [test_desc]) -> [test_desc] {
