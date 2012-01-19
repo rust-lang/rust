@@ -12,7 +12,7 @@ ifeq ($(CFG_PANDOC),)
   $(info cfg: no pandoc found, omitting doc/rust.pdf)
 else
 
-DOCS += doc/rust.html doc/rust.css
+DOCS += doc/rust.html
 doc/rust.html: rust.md doc/version.md doc/keywords.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_PANDOC) \
