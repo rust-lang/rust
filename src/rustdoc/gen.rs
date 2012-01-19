@@ -152,11 +152,18 @@ fn write_args(
 
 fn write_arg(ctxt: ctxt, arg: doc::argdoc) {
     assert option::is_some(arg.ty);
-    ctxt.w.write_line(#fmt(
+    ctxt.w.write_str(#fmt(
         "* `%s`: `%s`",
         arg.name,
         option::get(arg.ty)
     ));
+    alt arg.desc {
+      some(desc) {
+        ctxt.w.write_str(#fmt(" - %s", desc));
+      }
+      none. { }
+    }
+    ctxt.w.write_line("");
 }
 
 #[test]
@@ -178,6 +185,13 @@ fn should_not_write_arguments_if_none() {
     let source = "fn a() { } fn b() { }";
     let markdown = test::render(source);
     assert !str::contains(markdown, "Arguments");
+}
+
+#[test]
+fn should_write_argument_description() {
+    let source = "#[doc(args(a = \"milk\"))] fn f(a: bool) { }";
+    let markdown = test::render(source);
+    assert str::contains(markdown, "`a`: `bool` - milk");
 }
 
 fn write_return(
