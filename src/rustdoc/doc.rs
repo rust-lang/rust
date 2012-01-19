@@ -9,6 +9,7 @@ type cratedoc = ~{
 type moddoc = ~{
     id: ast_id,
     name: str,
+    path: [str],
     brief: option<str>,
     desc: option<str>,
     mods: modlist,

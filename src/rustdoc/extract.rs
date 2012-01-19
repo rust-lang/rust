@@ -40,6 +40,7 @@ fn moddoc_from_mod(
     ~{
         id: id,
         name: name,
+        path: [],
         brief: none,
         desc: none,
         mods: doc::modlist(

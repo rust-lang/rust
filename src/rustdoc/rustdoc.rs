@@ -42,6 +42,7 @@ fn test_run_passes() {
             topmod: ~{
                 id: 0,
                 name: doc.topmod.name + "two",
+                path: [],
                 brief: none,
                 desc: none,
                 mods: doc::modlist([]),
@@ -57,6 +58,7 @@ fn test_run_passes() {
             topmod: ~{
                 id: 0,
                 name: doc.topmod.name + "three",
+                path: [],
                 brief: none,
                 desc: none,
                 mods: doc::modlist([]),
