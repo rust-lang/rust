@@ -112,7 +112,7 @@ mod chained {
         mutable next: chain<K, V>
     };
 
-    tag chain<K, V> {
+    enum chain<K, V> {
         present(@entry<K, V>);
         absent;
     }
@@ -124,7 +124,7 @@ mod chained {
         eqer: eqfn<K>
     };
 
-    tag search_result<K, V> {
+    enum search_result<K, V> {
         not_found;
         found_first(uint, @entry<K,V>);
         found_after(@entry<K,V>, @entry<K,V>);

@@ -39,9 +39,9 @@ import option::{some, none};
 
 // Functions used by the fmt extension at compile time
 mod ct {
-    tag signedness { signed; unsigned; }
-    tag caseness { case_upper; case_lower; }
-    tag ty {
+    enum signedness { signed; unsigned; }
+    enum caseness { case_upper; case_lower; }
+    enum ty {
         ty_bool;
         ty_str;
         ty_char;
@@ -52,14 +52,14 @@ mod ct {
         ty_float;
         // FIXME: More types
     }
-    tag flag {
+    enum flag {
         flag_left_justify;
         flag_left_zero_pad;
         flag_space_for_sign;
         flag_sign_always;
         flag_alternate;
     }
-    tag count {
+    enum count {
         count_is(int);
         count_is_param(int);
         count_is_next_param;
@@ -76,7 +76,7 @@ mod ct {
 
 
     // A fragment of the output sequence
-    tag piece { piece_string(str); piece_conv(conv); }
+    enum piece { piece_string(str); piece_conv(conv); }
     type error_fn = fn@(str) -> ! ;
 
     fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
@@ -260,7 +260,7 @@ mod ct {
 // conditions can be evaluated at compile-time. For now though it's cleaner to
 // implement it this way, I think.
 mod rt {
-    tag flag {
+    enum flag {
         flag_left_justify;
         flag_left_zero_pad;
         flag_space_for_sign;
@@ -273,8 +273,8 @@ mod rt {
         // comments in front::extfmt::make_flags
         flag_none;
     }
-    tag count { count_is(int); count_implied; }
-    tag ty { ty_default; ty_bits; ty_hex_upper; ty_hex_lower; ty_octal; }
+    enum count { count_is(int); count_implied; }
+    enum ty { ty_default; ty_bits; ty_hex_upper; ty_hex_lower; ty_octal; }
 
     // FIXME: May not want to use a vector here for flags;
     // instead just use a bool per flag
@@ -384,7 +384,7 @@ mod rt {
 
         ret str::unsafe_from_bytes(svec);
     }
-    tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
+    enum pad_mode { pad_signed; pad_unsigned; pad_nozero; }
     fn pad(cv: conv, s: str, mode: pad_mode) -> str {
         let uwidth;
         alt cv.width {

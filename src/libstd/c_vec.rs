@@ -37,12 +37,12 @@ export ptr;
 /*
  Type: t
 
- The type representing a native chunk of memory.  Wrapped in a tag for
+ The type representing a native chunk of memory.  Wrapped in a enum for
  opacity; FIXME #818 when it is possible to have truly opaque types, this
  should be revisited.
  */
 
-tag t<T> {
+enum t<T> {
     t({ base: *mutable T, len: uint, rsrc: @dtor_res});
 }
 

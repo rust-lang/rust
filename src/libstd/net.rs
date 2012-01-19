@@ -12,7 +12,7 @@ Tag: ip_addr
 
 An IP address
 */
-tag ip_addr {
+enum ip_addr {
     /*
     Variant: ipv4
 
@@ -42,7 +42,7 @@ Function: parse_addr
 
 Convert a str to <ip_addr>
 
-Converts a string of the format "x.x.x.x" into an ip_addr tag.
+Converts a string of the format "x.x.x.x" into an ip_addr enum.
 
 Failure:
 

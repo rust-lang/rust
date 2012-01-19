@@ -23,7 +23,7 @@ Tag: json
 
 Represents a json value.
 */
-tag json {
+enum json {
     /* Variant: num */
     num(float);
     /* Variant: string */

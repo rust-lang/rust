@@ -585,7 +585,7 @@ mod node {
        empty   - An empty rope
        content - A non-empty rope
     */
-    tag root {
+    enum root {
         empty;
         content(@node);
     }
@@ -688,7 +688,7 @@ mod node {
     leaf - A leaf consisting in a `str`
     concat - The concatenation of two ropes
     */
-    tag node {
+    enum node {
         leaf(leaf);
         concat(concat);
     }

@@ -31,7 +31,7 @@ type treemap<K, V> = @tree_node<K, V>;
 /*
 Tag: tree_node
 */
-tag tree_node<K, V> {
+enum tree_node<K, V> {
     empty;
     node(@K, @V, @tree_node<K, V>, @tree_node<K, V>);
 }

@@ -84,7 +84,7 @@ fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
     ret either::left(test_opts);
 }
 
-tag test_result { tr_ok; tr_failed; tr_ignored; }
+enum test_result { tr_ok; tr_failed; tr_ignored; }
 
 // A simple console test runner
 fn run_tests_console(opts: test_opts,
@@ -186,7 +186,7 @@ fn run_tests_console(opts: test_opts,
 
 fn use_color() -> bool { ret get_concurrency() == 1u; }
 
-tag testevent {
+enum testevent {
     te_filtered([test_desc]);
     te_wait(test_desc);
     te_result(test_desc, test_result);

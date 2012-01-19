@@ -17,7 +17,7 @@ native mod rustrt {
 // Reading
 
 // FIXME This is all buffered. We might need an unbuffered variant as well
-tag seek_style { seek_set; seek_end; seek_cur; }
+enum seek_style { seek_set; seek_end; seek_cur; }
 
 
 // The raw underlying reader iface. All readers must implement this.
@@ -264,7 +264,7 @@ fn string_reader(s: str) -> reader {
 
 
 // Writing
-tag fileflag { append; create; truncate; none; }
+enum fileflag { append; create; truncate; none; }
 
 // FIXME: Seekable really should be orthogonal.
 // FIXME: eventually u64
@@ -495,7 +495,7 @@ fn read_whole_file(file: str) -> result::t<[u8], str> {
 
 mod fsync {
 
-    tag level {
+    enum level {
         // whatever fsync does on that platform
         fsync;
 

@@ -241,9 +241,9 @@ mod tests {
         assert (e(deq.get(3), d));
     }
 
-    tag taggy { one(int); two(int, int); three(int, int, int); }
+    enum taggy { one(int); two(int, int); three(int, int, int); }
 
-    tag taggypar<T> {
+    enum taggypar<T> {
         onepar(int); twopar(int, int); threepar(int, int, int);
     }
 

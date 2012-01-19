@@ -13,7 +13,7 @@ import option::{some, none};
 /*
 Tag: list
 */
-tag list<T> {
+enum list<T> {
     /* Variant: cons */
     cons(T, @list<T>);
     /* Variant: nil */

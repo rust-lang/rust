@@ -21,7 +21,7 @@ fn path_is_absolute(p: str) -> bool {
  * different semantics for each. Since we build on mingw, we are usually
  * dealing with /-separated paths. But the whole interface to splitting and
  * joining pathnames needs a bit more abstraction on win32. Possibly a vec or
- * tag type.
+ * enum type.
  */
 const path_sep: char = '/';
 

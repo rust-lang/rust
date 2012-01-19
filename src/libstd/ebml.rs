@@ -67,7 +67,7 @@ fn get_doc(d: doc, tg: uint) -> doc {
     alt maybe_get_doc(d, tg) {
       some(d) { ret d; }
       none {
-        #error("failed to find block with tag %u", tg);
+        #error("failed to find block with enum %u", tg);
         fail;
       }
     }
@@ -155,7 +155,7 @@ fn create_writer(w: io::writer) -> writer {
 
 // TODO: Provide a function to write the standard ebml header.
 fn start_tag(w: writer, tag_id: uint) {
-    // Write the tag ID:
+    // Write the enum ID:
 
     write_vint(w.writer, tag_id);
     // Write a placeholder four-byte size.
