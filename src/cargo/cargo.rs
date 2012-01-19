@@ -390,26 +390,6 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     for ct: str in new {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(ct, "./lib")) {
-            // FIXME: need libstd fs::copy or something
-            run::run_program(ct, []);
-        }
-    }
-}
-
-fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
-    let buildpath = fs::connect(_path, "/build");
-    need_dir(buildpath);
-    #debug("Installing: %s -> %s", cf, buildpath);
-    let p = run::program_output("rustc", ["--out-dir", buildpath, cf]);
-    if p.status != 0 {
-        error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
-        ret;
-    }
-    let new = fs::list_dir(buildpath);
-    let exec_suffix = os::exec_suffix();
-    for ct: str in new {
-        if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
-            (exec_suffix == "" && !str::starts_with(ct, "./lib")) {
             #debug("  bin: %s", ct);
             // FIXME: need libstd fs::copy or something
             run::run_program("cp", [ct, c.bindir]);
