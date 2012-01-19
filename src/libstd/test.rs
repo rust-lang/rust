@@ -198,8 +198,8 @@ fn run_tests(opts: test_opts, tests: [test_desc],
     let filtered_tests = filter_tests(opts, tests);
     callback(te_filtered(filtered_tests));
 
-    // It's tempting to just spawn all the tests at once, but since we have many
-    // tests that run in other processes we would be making a big mess.
+    // It's tempting to just spawn all the tests at once, but since we have
+    // many tests that run in other processes we would be making a big mess.
     let concurrency = get_concurrency();
     #debug("using %u test tasks", concurrency);
     let total = vec::len(filtered_tests);
