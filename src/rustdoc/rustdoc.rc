@@ -18,6 +18,7 @@ mod attr_parser;
 mod doc;
 mod gen;
 mod fold;
+mod path_pass;
 mod attr_pass;
 mod tystr_pass;
 mod prune_undoc_pass;
