@@ -203,9 +203,14 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_uses, crate));
-    if vec::len(sess.opts.lint_opts) > 0u {
-        let timer = bind time(time_passes, _, _);
-        lint::check_crate(ty_cx, crate, sess.opts.lint_opts, timer)
+
+    vec::iter(sess.opts.lint_opts) {|lopt|
+        alt lopt {
+          ctypes {
+            time(time_passes, "ctypes usage checking",
+                 bind lint::check_ctypes(ty_cx, crate))
+          }
+        }
     }
 
     if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx), src: src}; }
@@ -384,7 +389,7 @@ fn build_session_options(match: getopts::match,
 
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
-    let lint_opts : [lint::option] = [];
+    let lint_opts = [];
     if !opt_present(match, "no-lint-ctypes") {
         lint_opts += [lint::ctypes];
     }

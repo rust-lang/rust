@@ -8,31 +8,19 @@ enum option {
     ctypes;
 }
 
-fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
-               checks: [option], timer: block(str, fn@())) {
-    let ccx = @{tcx: tcx};
-    vec::iter(checks) {|c|
-        alt c {
-          ctypes {
-            timer("ctypes usage checking", bind check_ctypes(ccx, crate))
-          }
-        }
-    }
-}
-
-fn check_ctypes(ccx: @crate_ctxt, crate: @ast::crate) {
-    fn check_native_fn(ccx: @crate_ctxt, decl: ast::fn_decl) {
+fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
+    fn check_native_fn(tcx: ty::ctxt, decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs) {|a| a.ty };
         for ty in (tys + [decl.output]) {
             alt ty.node {
               ast::ty_int(ast::ty_i) {
-                ccx.tcx.sess.span_warn(
+                tcx.sess.span_warn(
                     ty.span,
                     "found rust type `int` in native module, while \
                      ctypes::c_int or ctypes::long should be used");
               }
               ast::ty_uint(ast::ty_u) {
-                ccx.tcx.sess.span_warn(
+                tcx.sess.span_warn(
                     ty.span,
                     "found rust type `uint` in native module, while \
                      ctypes::c_uint or ctypes::ulong should be used");
@@ -42,13 +30,13 @@ fn check_ctypes(ccx: @crate_ctxt, crate: @ast::crate) {
         }
     }
 
-    fn check_item(ccx: @crate_ctxt, it: @ast::item) {
+    fn check_item(tcx: ty::ctxt, it: @ast::item) {
         alt it.node {
           ast::item_native_mod(nmod) {
             for ni in nmod.items {
                 alt ni.node {
                   ast::native_item_fn(decl, tps) {
-                    check_native_fn(ccx, decl);
+                    check_native_fn(tcx, decl);
                   }
                   _ { }
                 }
@@ -59,7 +47,7 @@ fn check_ctypes(ccx: @crate_ctxt, crate: @ast::crate) {
     }
 
     let visit = visit::mk_simple_visitor(@{
-        visit_item: bind check_item(ccx, _)
+        visit_item: bind check_item(tcx, _)
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), visit);
