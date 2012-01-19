@@ -160,10 +160,20 @@ fn fold_fn(
 
     fn merge_ret_attrs(
         doc: option<doc::retdoc>,
-        _attrs: option<str>
+        attrs: option<str>
     ) -> option<doc::retdoc> {
-        // FIXME
-        doc
+        alt doc {
+          some(doc) {
+            some({
+                desc: attrs
+                with doc
+            })
+          }
+          none {
+            // FIXME: Warning about documenting nil?
+            none
+          }
+        }
     }
 }
 
@@ -185,4 +195,15 @@ fn fold_fn_should_extract_arg_attributes() {
     let fold = fold::default_seq_fold(srv);
     let doc = fold_fn(fold, doc.topmod.fns[0]);
     assert doc.args[0].desc == some("b");
+}
+
+#[test]
+fn fold_fn_should_extract_return_attributes() {
+    let source = "#[doc(return = \"what\")] fn a() -> int { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = tystr_pass::mk_pass()(srv, doc);
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    assert option::get(doc.return).desc == some("what");
 }
