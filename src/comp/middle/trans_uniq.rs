@@ -5,7 +5,6 @@ import trans_build::*;
 import trans::{
     trans_shared_malloc,
     type_of_inner,
-    size_of,
     node_id_type,
     INIT,
     trans_shared_free,
@@ -14,6 +13,7 @@ import trans::{
     load_if_immediate,
     dest
 };
+import shape::{size_of};
 
 export trans_uniq, make_free_glue, type_is_unique_box, autoderef, duplicate,
        alloc_uniq;

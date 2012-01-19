@@ -18,7 +18,6 @@ import util::ppaux::ty_to_str;
 import trans::{
     trans_shared_malloc,
     type_of_inner,
-    size_of,
     node_id_type,
     INIT,
     trans_shared_free,
@@ -27,6 +26,7 @@ import trans::{
     load_if_immediate,
     dest
 };
+import shape::{size_of};
 
 // ___Good to know (tm)__________________________________________________
 //

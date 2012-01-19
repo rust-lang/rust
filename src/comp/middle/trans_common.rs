@@ -902,6 +902,22 @@ fn hash_dict_id(&&dp: dict_id) -> uint {
     h
 }
 
+fn umax(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
+    let cond = trans_build::ICmp(cx, lib::llvm::LLVMIntULT, a, b);
+    ret trans_build::Select(cx, cond, b, a);
+}
+
+fn umin(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
+    let cond = trans_build::ICmp(cx, lib::llvm::LLVMIntULT, a, b);
+    ret trans_build::Select(cx, cond, a, b);
+}
+
+fn align_to(cx: @block_ctxt, off: ValueRef, align: ValueRef) -> ValueRef {
+    let mask = trans_build::Sub(cx, align, C_int(bcx_ccx(cx), 1));
+    let bumped = trans_build::Add(cx, off, mask);
+    ret trans_build::And(cx, bumped, trans_build::Not(cx, mask));
+}
+
 //
 // Local Variables:
 // mode: rust

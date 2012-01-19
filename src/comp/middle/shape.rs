@@ -1,18 +1,26 @@
 // A "shape" is a compact encoding of a type that is used by interpreted glue.
 // This substitutes for the runtime tags used by e.g. MLs.
 
-import lib::llvm::True;
+import lib::llvm::llvm;
+import lib::llvm::{True, False};
 import lib::llvm::llvm::{ModuleRef, TypeRef, ValueRef};
 import driver::session;
+import driver::session::session;
 import middle::{trans, trans_common};
-import middle::trans_common::{crate_ctxt, val_ty, C_bytes,
-                              C_named_struct, C_struct, T_tag_variant};
+import middle::trans_common::{crate_ctxt, val_ty, C_bytes, C_int,
+                              C_named_struct, C_struct, T_tag_variant,
+                              block_ctxt, result, rslt, bcx_ccx, bcx_tcx,
+                              type_has_static_size, umax, umin, align_to,
+                              tydesc_info};
+import back::abi;
 import middle::ty;
 import middle::ty::field;
 import syntax::ast;
 import syntax::ast_util::dummy_sp;
 import syntax::util::interner;
 import util::common;
+import trans_build::{Load, Store, Add, GEPi};
+import syntax::codemap::span;
 
 import core::{vec, str};
 import std::map::hashmap;
@@ -128,8 +136,8 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
                 // once we implement Issue #586.)
                 check (trans_common::type_has_static_size(ccx, elem_t));
                 let llty = trans::type_of(ccx, dummy_sp(), elem_t);
-                min_size += trans::llsize_of_real(ccx, llty);
-                min_align += trans::llalign_of_real(ccx, llty);
+                min_size += llsize_of_real(ccx, llty);
+                min_align += llalign_of_real(ccx, llty);
             }
         }
 
@@ -210,8 +218,8 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
         }
 
         let llty = trans_common::T_struct(lltys);
-        let dp = trans::llsize_of_real(ccx, llty) as u16;
-        let variant_align = trans::llalign_of_real(ccx, llty) as u8;
+        let dp = llsize_of_real(ccx, llty) as u16;
+        let variant_align = llalign_of_real(ccx, llty) as u8;
 
         if max_size < dp { max_size = dp; }
         if max_align < variant_align { max_align = variant_align; }
@@ -222,8 +230,8 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
     // aligned quantity, we don't align it.
     if vec::len(*variants) > 1u {
         let variant_t = T_tag_variant(ccx);
-        max_size += trans::llsize_of_real(ccx, variant_t) as u16;
-        let align = trans::llalign_of_real(ccx, variant_t) as u8;
+        max_size += llsize_of_real(ccx, variant_t) as u16;
+        let align = llalign_of_real(ccx, variant_t) as u8;
         if max_align < align { max_align = align; }
     }
 
@@ -596,3 +604,231 @@ fn gen_shape_tables(ccx: @crate_ctxt) {
                                         lib::llvm::llvm::Linkage);
 }
 
+// ______________________________________________________________________
+// compute sizeof / alignof
+
+fn size_of(cx: @block_ctxt, t: ty::t) -> result {
+    let ccx = bcx_ccx(cx);
+    if check type_has_static_size(ccx, t) {
+        let sp = cx.sp;
+        rslt(cx, llsize_of(bcx_ccx(cx), trans::type_of(ccx, sp, t)))
+    } else { dynamic_size_of(cx, t) }
+}
+
+fn align_of(cx: @block_ctxt, t: ty::t) -> result {
+    let ccx = bcx_ccx(cx);
+    if check type_has_static_size(ccx, t) {
+        let sp = cx.sp;
+        rslt(cx, llalign_of(bcx_ccx(cx), trans::type_of(ccx, sp, t)))
+    } else { dynamic_align_of(cx, t) }
+}
+
+// Returns the real size of the given type for the current target.
+fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
+    ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
+}
+
+// Returns the real alignment of the given type for the current target.
+fn llalign_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
+    ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
+}
+
+fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
+    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), cx.int_type,
+                               False);
+}
+
+fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
+    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMAlignOf(t), cx.int_type,
+                               False);
+}
+
+// Computes the size of the data part of a non-dynamically-sized enum.
+fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
+    : type_has_static_size(cx, t) -> uint {
+    if cx.tag_sizes.contains_key(t) { ret cx.tag_sizes.get(t); }
+    alt ty::struct(cx.tcx, t) {
+      ty::ty_tag(tid, subtys) {
+        // Compute max(variant sizes).
+
+        let max_size = 0u;
+        let variants = ty::tag_variants(cx.tcx, tid);
+        for variant: ty::variant_info in *variants {
+            let tup_ty = simplify_type(cx, ty::mk_tup(cx.tcx, variant.args));
+            // Perform any type parameter substitutions.
+
+            tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
+            // Here we possibly do a recursive call.
+
+            // FIXME: Avoid this check. Since the parent has static
+            // size, any field must as well. There should be a way to
+            // express that with constrained types.
+            check (type_has_static_size(cx, tup_ty));
+            let this_size = llsize_of_real(cx, type_of(cx, sp, tup_ty));
+            if max_size < this_size { max_size = this_size; }
+        }
+        cx.tag_sizes.insert(t, max_size);
+        ret max_size;
+      }
+      _ {
+        cx.tcx.sess.span_fatal(sp, "non-enum passed to static_size_of_tag()");
+      }
+    }
+}
+
+fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
+    fn align_elements(cx: @block_ctxt, elts: [ty::t]) -> result {
+        //
+        // C padding rules:
+        //
+        //
+        //   - Pad after each element so that next element is aligned.
+        //   - Pad after final structure member so that whole structure
+        //     is aligned to max alignment of interior.
+        //
+
+        let off = C_int(bcx_ccx(cx), 0);
+        let max_align = C_int(bcx_ccx(cx), 1);
+        let bcx = cx;
+        for e: ty::t in elts {
+            let elt_align = align_of(bcx, e);
+            bcx = elt_align.bcx;
+            let elt_size = size_of(bcx, e);
+            bcx = elt_size.bcx;
+            let aligned_off = align_to(bcx, off, elt_align.val);
+            off = Add(bcx, aligned_off, elt_size.val);
+            max_align = umax(bcx, max_align, elt_align.val);
+        }
+        off = align_to(bcx, off, max_align);
+        //off = alt mode {
+        //  align_total. {
+        //    align_to(bcx, off, max_align)
+        //  }
+        //  align_next(t) {
+        //    let {bcx, val: align} = align_of(bcx, t);
+        //    align_to(bcx, off, align)
+        //  }
+        //};
+        ret rslt(bcx, off);
+    }
+    alt ty::struct(bcx_tcx(cx), t) {
+      ty::ty_param(p, _) {
+        let szptr = field_of_tydesc(cx, t, false, abi::tydesc_field_size);
+        ret rslt(szptr.bcx, Load(szptr.bcx, szptr.val));
+      }
+      ty::ty_rec(flds) {
+        let tys: [ty::t] = [];
+        for f: ty::field in flds { tys += [f.mt.ty]; }
+        ret align_elements(cx, tys);
+      }
+      ty::ty_tup(elts) {
+        let tys = [];
+        for tp in elts { tys += [tp]; }
+        ret align_elements(cx, tys);
+      }
+      ty::ty_tag(tid, tps) {
+        let bcx = cx;
+        let ccx = bcx_ccx(bcx);
+        // Compute max(variant sizes).
+
+        let max_size: ValueRef = trans::alloca(bcx, ccx.int_type);
+        Store(bcx, C_int(ccx, 0), max_size);
+        let variants = ty::tag_variants(bcx_tcx(bcx), tid);
+        for variant: ty::variant_info in *variants {
+            // Perform type substitution on the raw argument types.
+
+            let raw_tys: [ty::t] = variant.args;
+            let tys: [ty::t] = [];
+            for raw_ty: ty::t in raw_tys {
+                let t = ty::substitute_type_params(bcx_tcx(cx), tps, raw_ty);
+                tys += [t];
+            }
+            let rslt = align_elements(bcx, tys);
+            bcx = rslt.bcx;
+            let this_size = rslt.val;
+            let old_max_size = Load(bcx, max_size);
+            Store(bcx, umax(bcx, this_size, old_max_size), max_size);
+        }
+        let max_size_val = Load(bcx, max_size);
+        let total_size =
+            if vec::len(*variants) != 1u {
+                Add(bcx, max_size_val, llsize_of(ccx, ccx.int_type))
+            } else { max_size_val };
+        ret rslt(bcx, total_size);
+      }
+    }
+}
+
+fn dynamic_align_of(cx: @block_ctxt, t: ty::t) -> result {
+// FIXME: Typestate constraint that shows this alt is
+// exhaustive
+    alt ty::struct(bcx_tcx(cx), t) {
+      ty::ty_param(p, _) {
+        let aptr = field_of_tydesc(cx, t, false, abi::tydesc_field_align);
+        ret rslt(aptr.bcx, Load(aptr.bcx, aptr.val));
+      }
+      ty::ty_rec(flds) {
+        let a = C_int(bcx_ccx(cx), 1);
+        let bcx = cx;
+        for f: ty::field in flds {
+            let align = align_of(bcx, f.mt.ty);
+            bcx = align.bcx;
+            a = umax(bcx, a, align.val);
+        }
+        ret rslt(bcx, a);
+      }
+      ty::ty_tag(_, _) {
+        ret rslt(cx, C_int(bcx_ccx(cx), 1)); // FIXME: stub
+      }
+      ty::ty_tup(elts) {
+        let a = C_int(bcx_ccx(cx), 1);
+        let bcx = cx;
+        for e in elts {
+            let align = align_of(bcx, e);
+            bcx = align.bcx;
+            a = umax(bcx, a, align.val);
+        }
+        ret rslt(bcx, a);
+      }
+    }
+}
+
+// Given a type and a field index into its corresponding type descriptor,
+// returns an LLVM ValueRef of that field from the tydesc, generating the
+// tydesc if necessary.
+fn field_of_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool, field: int) ->
+   result {
+    let ti = none::<@tydesc_info>;
+    let tydesc = trans::get_tydesc(cx, t, escapes, ti).result;
+    ret rslt(tydesc.bcx,
+             GEPi(tydesc.bcx, tydesc.val, [0, field]));
+}
+
+// Creates a simpler, size-equivalent type. The resulting type is guaranteed
+// to have (a) the same size as the type that was passed in; (b) to be non-
+// recursive. This is done by replacing all boxes in a type with boxed unit
+// types.
+fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
+    fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
+        alt ty::struct(ccx.tcx, typ) {
+          ty::ty_box(_) | ty::ty_iface(_, _) {
+            ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx));
+          }
+          ty::ty_uniq(_) {
+            ret ty::mk_imm_uniq(ccx.tcx, ty::mk_nil(ccx.tcx));
+          }
+          ty::ty_fn(_) {
+            ret ty::mk_tup(ccx.tcx,
+                           [ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)),
+                            ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx))]);
+          }
+          ty::ty_res(_, sub, tps) {
+            let sub1 = ty::substitute_type_params(ccx.tcx, tps, sub);
+            ret ty::mk_tup(ccx.tcx,
+                           [ty::mk_int(ccx.tcx), simplify_type(ccx, sub1)]);
+          }
+          _ { ret typ; }
+        }
+    }
+    ret ty::fold_ty(ccx.tcx, ty::fm_general(bind simplifier(ccx, _)), typ);
+}
