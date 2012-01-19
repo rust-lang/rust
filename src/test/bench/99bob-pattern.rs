@@ -23,7 +23,7 @@ fn show(b: bottle) {
         #debug("Take one down and pass it around, \
                 no more bottles of beer on the wall.");
       }
-      dual. {
+      dual {
         #debug("2 bottles of beer on the wall, 2 bottles of beer,");
         #debug("Take one down and pass it around, \
                 1 bottle of beer on the wall.");
@@ -40,7 +40,7 @@ fn next(b: bottle) -> bottle {
     alt b {
       none { ret none; }
       single { ret none; }
-      dual. { ret single; }
+      dual { ret single; }
       multiple(3) { ret dual; }
       multiple(n) { ret multiple(n - 1); }
     }

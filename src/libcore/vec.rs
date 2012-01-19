@@ -451,7 +451,7 @@ fn filter_map<T: copy, U: copy>(v: [const T], f: block(T) -> option::t<U>)
     let result = [];
     for elem: T in v {
         alt f(copy elem) {
-          none. {/* no-op */ }
+          none {/* no-op */ }
           some(result_elem) { result += [result_elem]; }
         }
     }

@@ -7,7 +7,7 @@ fn main() {
 
 
     alt tag1("test") {
-      tag2. { fail; }
+      tag2 { fail; }
       tag1("not-test") { fail; }
       tag1("test") { }
       _ { fail; }

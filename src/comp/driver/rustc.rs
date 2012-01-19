@@ -102,7 +102,7 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
                     bind parse_pretty(sess, _));
     alt pretty {
       some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, ifile, ppm); ret; }
-      none::<pp_mode>. {/* continue */ }
+      none::<pp_mode> {/* continue */ }
     }
     let ls = opt_present(match, "ls");
     if ls {

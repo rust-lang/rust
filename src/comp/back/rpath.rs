@@ -102,9 +102,9 @@ fn get_rpath_relative_to_output(os: session::os,
                                 &&lib: fs::path) -> str {
     // Mac doesn't appear to support $ORIGIN
     let prefix = alt os {
-        session::os_linux. { "$ORIGIN" + fs::path_sep() }
-        session::os_freebsd. { "$ORIGIN" + fs::path_sep() }
-        session::os_macos. { "@executable_path" + fs::path_sep() }
+        session::os_linux { "$ORIGIN" + fs::path_sep() }
+        session::os_freebsd { "$ORIGIN" + fs::path_sep() }
+        session::os_macos { "@executable_path" + fs::path_sep() }
     };
 
     prefix + get_relative_to(

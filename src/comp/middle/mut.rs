@@ -187,9 +187,9 @@ fn check_lval(cx: @ctx, dest: @expr, msg: msg) {
         } else if !root.ds[0].mut {
             let name =
                 alt root.ds[0].kind {
-                  mut::unbox. { "immutable box" }
-                  mut::field. { "immutable field" }
-                  mut::index. { "immutable vec content" }
+                  mut::unbox { "immutable box" }
+                  mut::field { "immutable field" }
+                  mut::index { "immutable vec content" }
                 };
             mk_err(cx, dest.span, msg, name);
         }

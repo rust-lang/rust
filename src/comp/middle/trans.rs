@@ -1904,8 +1904,8 @@ fn call_memmove(cx: @block_ctxt, dst: ValueRef, src: ValueRef,
 
     let ccx = bcx_ccx(cx);
     let key = alt ccx.sess.targ_cfg.arch {
-      session::arch_x86. | session::arch_arm. { "llvm.memmove.p0i8.p0i8.i32" }
-      session::arch_x86_64. { "llvm.memmove.p0i8.p0i8.i64" }
+      session::arch_x86 | session::arch_arm { "llvm.memmove.p0i8.p0i8.i32" }
+      session::arch_x86_64 { "llvm.memmove.p0i8.p0i8.i64" }
     };
     let i = ccx.intrinsics;
     assert (i.contains_key(key));
@@ -2915,10 +2915,10 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
 
     let newval =
         alt {in: k_in, out: k_out} {
-          {in: integral, out: integral.} {
+          {in: integral, out: integral} {
             int_cast(e_res.bcx, ll_t_out, ll_t_in, e_res.val, s_in)
           }
-          {in: float, out: float.} {
+          {in: float, out: float} {
             float_cast(e_res.bcx, ll_t_out, ll_t_in, e_res.val)
           }
           {in: integral, out: float} {
@@ -2937,10 +2937,10 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
           {in: pointer, out: integral} {
             PtrToInt(e_res.bcx, e_res.val, ll_t_out)
           }
-          {in: pointer, out: pointer.} {
+          {in: pointer, out: pointer} {
             PointerCast(e_res.bcx, e_res.val, ll_t_out)
           }
-          {in: tag_, out: integral} | {in: tag_., out: float} {
+          {in: tag_, out: integral} | {in: tag_, out: float} {
             let cx = e_res.bcx;
             let lltagty = T_opaque_tag_ptr(ccx);
             let av_tag = PointerCast(cx, e_res.val, lltagty);
@@ -3559,11 +3559,11 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         assert dest == ignore;
         ret trans_check_expr(bcx, a, "Assertion");
       }
-      ast::expr_check(ast::checked_expr., a) {
+      ast::expr_check(ast::checked_expr, a) {
         assert dest == ignore;
         ret trans_check_expr(bcx, a, "Predicate");
       }
-      ast::expr_check(ast::claimed_expr., a) {
+      ast::expr_check(ast::claimed_expr, a) {
         assert dest == ignore;
         /* Claims are turned on and off by a global variable
            that the RTS sets. This case generates code to
@@ -3945,8 +3945,8 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
         Store(bcx, C_null(llty), llptr);
     } else {
         let key = alt ccx.sess.targ_cfg.arch {
-          session::arch_x86. | session::arch_arm. { "llvm.memset.p0i8.i32" }
-          session::arch_x86_64. { "llvm.memset.p0i8.i64" }
+          session::arch_x86 | session::arch_arm { "llvm.memset.p0i8.i32" }
+          session::arch_x86_64 { "llvm.memset.p0i8.i64" }
         };
         let i = ccx.intrinsics;
         let memset = i.get(key);
@@ -4841,9 +4841,9 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
     let ccx = lcx_ccx(lcx);
     let cc = lib::llvm::LLVMCCallConv;
     alt abi {
-      ast::native_abi_rust_intrinsic. { ret; }
-      ast::native_abi_cdecl. { cc = lib::llvm::LLVMCCallConv; }
-      ast::native_abi_stdcall. { cc = lib::llvm::LLVMX86StdcallCallConv; }
+      ast::native_abi_rust_intrinsic { ret; }
+      ast::native_abi_cdecl { cc = lib::llvm::LLVMCCallConv; }
+      ast::native_abi_stdcall { cc = lib::llvm::LLVMX86StdcallCallConv; }
     }
 
     for native_item in native_mod.items {
@@ -5143,7 +5143,7 @@ fn collect_native_item(ccx: @crate_ctxt,
                 }
             };
         alt fn_abi {
-          ast::native_abi_rust_intrinsic. {
+          ast::native_abi_rust_intrinsic {
             // For intrinsics: link the function directly to the intrinsic
             // function itself.
             let fn_type = type_of_fn_from_ty(
@@ -5157,7 +5157,7 @@ fn collect_native_item(ccx: @crate_ctxt,
             ccx.item_symbols.insert(id, ri_name);
           }
 
-          ast::native_abi_cdecl. | ast::native_abi_stdcall. {
+          ast::native_abi_cdecl | ast::native_abi_stdcall {
             // For true external functions: create a rust wrapper
             // and link to that.  The rust wrapper will handle
             // switching to the C stack.

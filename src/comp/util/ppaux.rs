@@ -47,7 +47,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
             s += " -> ";
             alt cf {
               ast::noreturn { s += "!"; }
-              ast::return_val. { s += ty_to_str(cx, output); }
+              ast::return_val { s += ty_to_str(cx, output); }
             }
         }
         s += constrs_str(constrs);

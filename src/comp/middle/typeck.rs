@@ -358,7 +358,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         }
         typ = ty::mk_constr(tcx, ast_ty_to_ty(tcx, mode, t), out_cs);
       }
-      ast::ty_infer. {
+      ast::ty_infer {
         alt mode {
           m_check_tyvar(fcx) { ret next_ty_var(fcx); }
           _ { tcx.sess.span_bug(ast_ty.span,
@@ -539,7 +539,7 @@ fn ast_ty_to_ty_crate(ccx: @crate_ctxt, &&ast_ty: @ast::ty) -> ty::t {
 fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, &&ast_ty: @ast::ty) ->
    option::t<ty::t> {
     alt ast_ty.node {
-      ast::ty_infer. { none }
+      ast::ty_infer { none }
       _ { some(ast_ty_to_ty_crate(ccx, ast_ty)) }
     }
 }
@@ -2406,9 +2406,9 @@ fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
 
 fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
     let fcx = alt blk.node.rules {
-      ast::unchecked_blk. { @{purity: ast::impure_fn with *fcx0} }
-      ast::unsafe_blk. { @{purity: ast::unsafe_fn with *fcx0} }
-      ast::default_blk. { fcx0 }
+      ast::unchecked_blk { @{purity: ast::impure_fn with *fcx0} }
+      ast::unsafe_blk { @{purity: ast::unsafe_fn with *fcx0} }
+      ast::default_blk { fcx0 }
     };
     let bot = false;
     let warned = false;
@@ -2745,7 +2745,7 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
     let main_t = ty::node_id_to_monotype(tcx, main_id);
     alt ty::struct(tcx, main_t) {
       ty::ty_fn({proto: ast::proto_bare, inputs, output,
-                 ret_style: ast::return_val., constraints}) {
+                 ret_style: ast::return_val, constraints}) {
         let ok = vec::len(constraints) == 0u;
         ok &= ty::type_is_nil(tcx, output);
         let num_args = vec::len(inputs);

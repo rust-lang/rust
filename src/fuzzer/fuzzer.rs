@@ -165,7 +165,7 @@ fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
 
 fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
     alt t {
-      ast::ty_infer. { false } // always implicit, always top level
+      ast::ty_infer { false } // always implicit, always top level
       ast::ty_bot { false }   // in source, can only appear as the out type of a function
       ast::ty_mac(_) { false }
       _ { true }

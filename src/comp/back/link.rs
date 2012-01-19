@@ -583,9 +583,9 @@ fn link_binary(sess: session,
             ret str::connect(parts, ".");
         }
         ret alt config.os {
-              session::os_macos. { rmext(rmlib(filename)) }
-              session::os_linux. { rmext(rmlib(filename)) }
-              session::os_freebsd. { rmext(rmlib(filename)) }
+              session::os_macos { rmext(rmlib(filename)) }
+              session::os_linux { rmext(rmlib(filename)) }
+              session::os_freebsd { rmext(rmlib(filename)) }
               _ { rmext(filename) }
             };
     }

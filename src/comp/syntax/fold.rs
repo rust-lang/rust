@@ -453,7 +453,7 @@ fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {
          pat: fld.fold_pat(l.pat),
          init:
              alt l.init {
-               option::none::<initializer>. { l.init }
+               option::none::<initializer> { l.init }
                option::some::<initializer>(init) {
                  option::some::<initializer>({op: init.op,
                                               expr: fld.fold_expr(init.expr)})

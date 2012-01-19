@@ -583,7 +583,7 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
         ret create_pointer_type(cx, t, ty.span, md);
       }
 
-      ast::ty_infer. {
+      ast::ty_infer {
         let inferred = t_to_ty(cx, t, ty.span);
         ret create_ty(cx, t, inferred);
       }

@@ -128,10 +128,10 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
    {prefix: str, suffix: str} {
     if static { ret {prefix: "lib", suffix: ".rlib"}; }
     alt sess.targ_cfg.os {
-      session::os_win32. { ret {prefix: "", suffix: ".dll"}; }
-      session::os_macos. { ret {prefix: "lib", suffix: ".dylib"}; }
-      session::os_linux. { ret {prefix: "lib", suffix: ".so"}; }
-      session::os_freebsd. { ret {prefix: "lib", suffix: ".so"}; }
+      session::os_win32 { ret {prefix: "", suffix: ".dll"}; }
+      session::os_macos { ret {prefix: "lib", suffix: ".dylib"}; }
+      session::os_linux { ret {prefix: "lib", suffix: ".so"}; }
+      session::os_freebsd { ret {prefix: "lib", suffix: ".so"}; }
     }
 }
 

@@ -24,19 +24,19 @@ fn default_configuration(sess: session, argv0: str, input: str) ->
    ast::crate_cfg {
     let libc =
         alt sess.targ_cfg.os {
-          session::os_win32. { "msvcrt.dll" }
-          session::os_macos. { "libc.dylib" }
-          session::os_linux. { "libc.so.6" }
-          session::os_freebsd. { "libc.so.7" }
+          session::os_win32 { "msvcrt.dll" }
+          session::os_macos { "libc.dylib" }
+          session::os_linux { "libc.so.6" }
+          session::os_freebsd { "libc.so.7" }
           _ { "libc.so" }
         };
 
     let mk = attr::mk_name_value_item_str;
 
     let arch = alt sess.targ_cfg.arch {
-      session::arch_x86. { "x86" }
-      session::arch_x86_64. { "x86_64" }
-      session::arch_arm. { "arm" }
+      session::arch_x86 { "x86" }
+      session::arch_x86_64 { "x86_64" }
+      session::arch_arm { "arm" }
     };
 
     ret [ // Target bindings.
@@ -340,14 +340,14 @@ fn build_target_config(sopts: @session::options,
                           "Unknown architecture! " + sopts.target_triple) }
     };
     let (int_type, uint_type, float_type) = alt arch {
-      session::arch_x86. {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
-      session::arch_x86_64. {(ast::ty_i64, ast::ty_u64, ast::ty_f64)}
-      session::arch_arm. {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
+      session::arch_x86 {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
+      session::arch_x86_64 {(ast::ty_i64, ast::ty_u64, ast::ty_f64)}
+      session::arch_arm {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
     };
     let target_strs = alt arch {
-      session::arch_x86. {x86::get_target_strs(os)}
-      session::arch_x86_64. {x86_64::get_target_strs(os)}
-      session::arch_arm. {x86::get_target_strs(os)}
+      session::arch_x86 {x86::get_target_strs(os)}
+      session::arch_x86_64 {x86_64::get_target_strs(os)}
+      session::arch_arm {x86::get_target_strs(os)}
     };
     let target_cfg: @session::config =
         @{os: os, arch: arch, target_strs: target_strs, int_type: int_type,
@@ -406,7 +406,7 @@ fn build_session_options(match: getopts::match,
     let no_asm_comments = getopts::opt_present(match, "no-asm-comments");
     alt output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
-      link::output_type_llvm_assembly. | link::output_type_assembly. {}
+      link::output_type_llvm_assembly | link::output_type_assembly {}
       _ { no_asm_comments = true; }
     }
     let opt_level: uint =
@@ -540,10 +540,10 @@ fn build_output_filenames(ifile: str,
         alt sopts.output_type {
           link::output_type_none { "none" }
           link::output_type_bitcode { "bc" }
-          link::output_type_assembly. { "s" }
-          link::output_type_llvm_assembly. { "ll" }
+          link::output_type_assembly { "s" }
+          link::output_type_llvm_assembly { "ll" }
           // Object and exe output both use the '.o' extension here
-          link::output_type_object. | link::output_type_exe. {
+          link::output_type_object | link::output_type_exe {
             "o"
           }
         };

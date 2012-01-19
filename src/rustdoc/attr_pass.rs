@@ -155,7 +155,7 @@ fn fold_fn(
                 none { doc }
             }
         }
-        // FIXME: Warning when documenting a non-existant arg
+        // FIXME: Warning when documenting a non-existent arg
     }
 
     fn merge_ret_attrs(

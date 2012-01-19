@@ -97,8 +97,8 @@ fn fclose(file: libc::FILE) {
 
 fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
     alt level {
-      io::fsync::fsync. | io::fsync::fullfsync. { ret libc::fsync(fd); }
-      io::fsync::fdatasync. { ret libc::fdatasync(fd); }
+      io::fsync::fsync | io::fsync::fullfsync { ret libc::fsync(fd); }
+      io::fsync::fdatasync { ret libc::fdatasync(fd); }
     }
 }
 

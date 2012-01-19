@@ -116,8 +116,8 @@ mod map_reduce {
                     // #error("all done");
                     state.is_done = true;
                   }
-                  ref. { state.ref_count += 1; }
-                  release. { state.ref_count -= 1; }
+                  ref { state.ref_count += 1; }
+                  release { state.ref_count -= 1; }
                 }
             }
             ret none;

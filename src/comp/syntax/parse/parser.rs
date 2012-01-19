@@ -1485,8 +1485,6 @@ fn parse_pat(p: parser) -> @ast::pat {
             }
         } else if is_plain_ident(p) &&
                       alt p.look_ahead(1u) {
-                    // Take this out once the libraries change
-                        token::DOT |
                         token::LPAREN | token::LBRACKET |
                             token::LT {
                           false
@@ -1508,8 +1506,6 @@ fn parse_pat(p: parser) -> @ast::pat {
                 args = a.node;
                 hi = a.span.hi;
               }
-              // take this out once the libraries change
-              token::DOT. { args = []; p.bump(); }
               _ { args = []; }
             }
             // at this point, we're not sure whether it's a tag or a bind

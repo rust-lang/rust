@@ -275,7 +275,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         word(s.s, "]");
       }
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
-      ast::ty_task. { word(s.s, "task"); }
+      ast::ty_task { word(s.s, "task"); }
       ast::ty_port(t) {
         word(s.s, "port<");
         print_type(s, t);
@@ -506,7 +506,7 @@ fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {
     let count = 0;
     for attr: ast::attribute in attrs {
         alt attr.node.style {
-          ast::attr_outer. { print_attribute(s, attr); count += 1; }
+          ast::attr_outer { print_attribute(s, attr); count += 1; }
           _ {/* fallthrough */ }
         }
     }
@@ -517,7 +517,7 @@ fn print_inner_attributes(s: ps, attrs: [ast::attribute]) {
     let count = 0;
     for attr: ast::attribute in attrs {
         alt attr.node.style {
-          ast::attr_inner. {
+          ast::attr_inner {
             print_attribute(s, attr);
             word(s.s, ";");
             count += 1;
@@ -576,9 +576,9 @@ fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
 fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
                                   indented: uint, attrs: [ast::attribute]) {
     alt blk.node.rules {
-      ast::unchecked_blk. { word(s.s, "unchecked"); }
-      ast::unsafe_blk. { word(s.s, "unsafe"); }
-      ast::default_blk. { }
+      ast::unchecked_blk { word(s.s, "unchecked"); }
+      ast::unsafe_blk { word(s.s, "unsafe"); }
+      ast::default_blk { }
     }
 
     maybe_print_comment(s, blk.span.lo);
@@ -950,8 +950,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_check(m, expr) {
         alt m {
-          ast::claimed_expr. { word_nbsp(s, "claim"); }
-          ast::checked_expr. { word_nbsp(s, "check"); }
+          ast::claimed_expr { word_nbsp(s, "claim"); }
+          ast::checked_expr { word_nbsp(s, "check"); }
         }
         popen(s);
         print_expr(s, expr);
@@ -989,7 +989,7 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
 fn print_local_decl(s: ps, loc: @ast::local) {
     print_pat(s, loc.node.pat);
     alt loc.node.ty.node {
-      ast::ty_infer. { }
+      ast::ty_infer { }
       _ { word_space(s, ":"); print_type(s, loc.node.ty); }
     }
 }
@@ -1072,7 +1072,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
             popen(s);
             commasep(s, inconsistent, args, print_pat);
             pclose(s);
-        } else { word(s.s, "."); }  // FIXME
+        } else { }
       }
       ast::pat_rec(fields, etc) {
         word(s.s, "{");
@@ -1479,13 +1479,13 @@ fn maybe_print_comment(s: ps, pos: uint) {
 
 fn print_comment(s: ps, cmnt: lexer::cmnt) {
     alt cmnt.style {
-      lexer::mixed. {
+      lexer::mixed {
         assert (vec::len(cmnt.lines) == 1u);
         zerobreak(s.s);
         word(s.s, cmnt.lines[0]);
         zerobreak(s.s);
       }
-      lexer::isolated. {
+      lexer::isolated {
         pprust::hardbreak_if_not_bol(s);
         for line: str in cmnt.lines {
             // Don't print empty lines because they will end up as trailing
@@ -1494,7 +1494,7 @@ fn print_comment(s: ps, cmnt: lexer::cmnt) {
             hardbreak(s.s);
         }
       }
-      lexer::trailing. {
+      lexer::trailing {
         word(s.s, " ");
         if vec::len(cmnt.lines) == 1u {
             word(s.s, cmnt.lines[0]);

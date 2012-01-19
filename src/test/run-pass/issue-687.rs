@@ -49,7 +49,7 @@ fn main() {
     while true {
         let msg = recv(p);
         alt msg {
-          closed. { #debug("Got close message"); break; }
+          closed { #debug("Got close message"); break; }
           received(data) {
             #debug("Got data. Length is:");
             log(debug, vec::len::<u8>(data));

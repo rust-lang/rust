@@ -419,18 +419,18 @@ fn build_closure(bcx0: @block_ctxt,
         let nid = ast_util::def_id_of_def(cap_var.def).node;
         let ty = ty::node_id_to_monotype(tcx, nid);
         alt cap_var.mode {
-          capture::cap_ref. {
+          capture::cap_ref {
             assert ck == ty::ck_block;
             ty = ty::mk_mut_ptr(tcx, ty);
             env_vals += [env_ref(lv.val, ty, lv.kind)];
           }
-          capture::cap_copy. {
+          capture::cap_copy {
             env_vals += [env_copy(lv.val, ty, lv.kind)];
           }
-          capture::cap_move. {
+          capture::cap_move {
             env_vals += [env_move(lv.val, ty, lv.kind)];
           }
-          capture::cap_drop. {
+          capture::cap_drop {
             bcx = drop_ty(bcx, lv.val, ty);
           }
         }
@@ -481,7 +481,7 @@ fn load_environment(enclosing_cx: @block_ctxt,
     let i = 0u;
     vec::iter(cap_vars) { |cap_var|
         alt cap_var.mode {
-          capture::cap_drop. { /* ignore */ }
+          capture::cap_drop { /* ignore */ }
           _ {
             check type_is_tup_like(bcx, cbox_ty);
             let upvarptr = GEP_tup_like(

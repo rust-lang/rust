@@ -1,7 +1,7 @@
 tag blah { a; b; }
 
 fn or_alt(q: blah) -> int {
-  alt q { a. | b. { 42 } }
+  alt q { a | b { 42 } }
 }
 
 fn main() {

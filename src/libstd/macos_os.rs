@@ -100,7 +100,7 @@ fn waitpid(pid: pid_t) -> i32 {
 
 fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
     alt level {
-      io::fsync::fsync. { ret libc::fsync(fd); }
+      io::fsync::fsync { ret libc::fsync(fd); }
       _ {
         // According to man fnctl, the ok retval is only specified to be !=-1
         if (libc::fcntl(libc_constants::F_FULLFSYNC, fd) == -1 as c_int)
