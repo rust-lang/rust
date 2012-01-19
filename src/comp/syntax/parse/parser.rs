@@ -1493,10 +1493,9 @@ fn parse_pat(p: parser) -> @ast::pat {
                         }
                         _ { true }
                       } {
-            hi = p.span.hi;
-            let name = parse_value_ident(p);
+            let name = parse_path(p);
             let sub = eat(p, token::AT) ? some(parse_pat(p)) : none;
-            pat = ast::pat_ident(ident_to_path(mk_sp(lo, hi), name), sub);
+            pat = ast::pat_ident(name, sub);
         } else {
             let tag_path = parse_path_and_ty_param_substs(p, true);
             hi = tag_path.span.hi;
@@ -1509,10 +1508,9 @@ fn parse_pat(p: parser) -> @ast::pat {
                 args = a.node;
                 hi = a.span.hi;
               }
-              token::LBRACE. { args = []; }
               // take this out once the libraries change
               token::DOT. { args = []; p.bump(); }
-              _ { expect(p, token::LPAREN); fail; }
+              _ { args = []; }
             }
             // at this point, we're not sure whether it's a tag or a bind
             if vec::len(args) == 0u &&
