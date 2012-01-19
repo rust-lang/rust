@@ -12,7 +12,7 @@ ifeq ($(CFG_PANDOC),)
   $(info cfg: no pandoc found, omitting doc/rust.pdf)
 else
 
-DOCS += doc/rust.html
+DOCS += doc/rust.html doc/rust.css
 doc/rust.html: rust.md doc/version.md doc/keywords.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_PANDOC) \
@@ -57,6 +57,26 @@ doc/rust.pdf: doc/rust.tex
       endif
     endif
   endif
+
+######################################################################
+# Node (tutorial related)
+######################################################################
+  ifeq ($(CFG_NODE),)
+    $(info cfg: no node found, omitting doc/tutorial.html)
+  else
+
+DOCS += doc/tutorial.html
+doc/tutorial.html: $(S)doc/tutorial.md
+	@$(call E, cp: $(S)doc/rust.css)
+	-$(Q)cp -a $(S)doc/rust.css doc/ 2> /dev/null
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+          $(CFG_PANDOC) --standalone --toc \
+           --section-divs --number-sections \
+           --from=markdown --to=html --css=rust.css \
+           --output=$@
+
+  endif
 endif
 
 
@@ -77,25 +97,6 @@ verify-grammar: doc/rust.g
 	$(Q)$(CFG_LLNEXTGEN) --generate-lexer-wrapper=no $< >$@
 	$(Q)rm -f doc/rust.c doc/rust.h
 endif
-
-
-######################################################################
-# Node (tutorial related)
-######################################################################
-ifeq ($(CFG_NODE),)
-  $(info cfg: no node found, omitting doc/tutorial/web)
-else
-
-DOCS += doc/tutorial/web/index.html
-doc/tutorial/web/index.html: \
-        $(wildcard $(S)doc/tutorial/*.md)
-	@$(call E, cp: $(S)doc/tutorial)
-	-$(Q)cp -a $(S)doc/tutorial doc/ 2> /dev/null
-	@$(call E, node: build.js)
-	$(Q)cd doc/tutorial && $(CFG_NODE) build.js
-
-endif
-
 
 
 ######################################################################

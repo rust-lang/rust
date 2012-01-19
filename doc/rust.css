@@ -6,10 +6,14 @@ body {
 
 body {
   padding: 1em 6em;
-  max-width: 50em;
+  max-width: 60em;
 }
 
-h1 { font-size: 22pt; }
+h1 {
+  font-size: 22pt;
+  margin-top: 2em;
+  border-bottom: 2px solid silver;
+}
 h2 { font-size: 17pt; }
 h3 { font-size: 14pt; }
 
@@ -23,3 +27,27 @@ a, a:visited, a:link {
   text-decoration: none;
   color: #00438a;
 }
+
+h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
+h3 a:link, h3 a:visited { color: black; }
+
+/* Code highlighting */
+.cm-s-default span.cm-keyword {color: #708;}
+.cm-s-default span.cm-atom {color: #219;}
+.cm-s-default span.cm-number {color: #164;}
+.cm-s-default span.cm-def {color: #00f;}
+.cm-s-default span.cm-variable {color: black;}
+.cm-s-default span.cm-variable-2 {color: #05a;}
+.cm-s-default span.cm-variable-3 {color: #085;}
+.cm-s-default span.cm-property {color: black;}
+.cm-s-default span.cm-operator {color: black;}
+.cm-s-default span.cm-comment {color: #a50;}
+.cm-s-default span.cm-string {color: #a11;}
+.cm-s-default span.cm-string-2 {color: #f50;}
+.cm-s-default span.cm-meta {color: #555;}
+.cm-s-default span.cm-error {color: #f00;}
+.cm-s-default span.cm-qualifier {color: #555;}
+.cm-s-default span.cm-builtin {color: #30a;}
+.cm-s-default span.cm-bracket {color: #cc7;}
+.cm-s-default span.cm-tag {color: #170;}
+.cm-s-default span.cm-attribute {color: #00c;}
