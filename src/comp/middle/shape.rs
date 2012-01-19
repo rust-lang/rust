@@ -238,18 +238,23 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
     ret {size: max_size, align: max_align};
 }
 
-enum tag_kind { tk_unit, tk_enum, tk_complex, }
+enum tag_kind {
+    tk_unit,    // 1 variant, no data
+    tk_enum,    // N variants, no data
+    tk_newtype, // 1 variant, data
+    tk_complex  // N variants, no data
+}
 
 fn tag_kind(ccx: @crate_ctxt, did: ast::def_id) -> tag_kind {
     let variants = ty::tag_variants(ccx.tcx, did);
-    if vec::len(*variants) == 0u { ret tk_complex; }
-    for v: ty::variant_info in *variants {
-        if vec::len(v.args) > 0u { ret tk_complex; }
+    if vec::any(*variants) {|v| vec::len(v.args) > 0u} {
+        if vec::len(*variants) == 1u { tk_newtype }
+        else { tk_complex }
+    } else {
+        if vec::len(*variants) <= 1u { tk_unit }
+        else { tk_enum }
     }
-    if vec::len(*variants) == 1u { ret tk_unit; }
-    ret tk_enum;
 }
-
 
 // Returns the code corresponding to the pointer size on this architecture.
 fn s_int(tcx: ty_ctxt) -> u8 {
@@ -351,7 +356,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
             s += [s_variant_tag_t(ccx.tcx)];
           }
           tk_enum { s += [s_variant_tag_t(ccx.tcx)]; }
-          tk_complex {
+          tk_newtype | tk_complex {
             s += [shape_tag];
 
             let sub = [];
@@ -607,20 +612,47 @@ fn gen_shape_tables(ccx: @crate_ctxt) {
 // ______________________________________________________________________
 // compute sizeof / alignof
 
-fn size_of(cx: @block_ctxt, t: ty::t) -> result {
-    let ccx = bcx_ccx(cx);
+type metrics = {
+    bcx: @block_ctxt,
+    sz: ValueRef,
+    align: ValueRef
+};
+
+type tag_metrics = {
+    bcx: @block_ctxt,
+    sz: ValueRef,
+    align: ValueRef,
+    payload_align: ValueRef
+};
+
+fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
+    let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        let sp = cx.sp;
-        rslt(cx, llsize_of(bcx_ccx(cx), trans::type_of(ccx, sp, t)))
-    } else { dynamic_size_of(cx, t) }
+        rslt(bcx, llsize_of(ccx, trans::type_of(ccx, bcx.sp, t)))
+    } else {
+        let { bcx, sz, align: _ } = dynamic_metrics(bcx, t);
+        rslt(bcx, sz)
+    }
 }
 
-fn align_of(cx: @block_ctxt, t: ty::t) -> result {
-    let ccx = bcx_ccx(cx);
+fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
+    let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        let sp = cx.sp;
-        rslt(cx, llalign_of(bcx_ccx(cx), trans::type_of(ccx, sp, t)))
-    } else { dynamic_align_of(cx, t) }
+        rslt(bcx, llalign_of(ccx, trans::type_of(ccx, bcx.sp, t)))
+    } else {
+        let { bcx, sz: _, align } = dynamic_metrics(bcx, t);
+        rslt(bcx, align)
+    }
+}
+
+fn metrics(bcx: @block_ctxt, t: ty::t) -> metrics {
+    let ccx = bcx_ccx(bcx);
+    if check type_has_static_size(ccx, t) {
+        let llty = trans::type_of(ccx, bcx.sp, t);
+        { bcx: bcx, sz: llsize_of(ccx, llty), align: llalign_of(ccx, llty) }
+    } else {
+        dynamic_metrics(bcx, t)
+    }
 }
 
 // Returns the real size of the given type for the current target.
@@ -676,8 +708,8 @@ fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
     }
 }
 
-fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
-    fn align_elements(cx: @block_ctxt, elts: [ty::t]) -> result {
+fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
+    fn align_elements(cx: @block_ctxt, elts: [ty::t]) -> metrics {
         //
         // C padding rules:
         //
@@ -700,108 +732,60 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
             max_align = umax(bcx, max_align, elt_align.val);
         }
         off = align_to(bcx, off, max_align);
-        //off = alt mode {
-        //  align_total. {
-        //    align_to(bcx, off, max_align)
-        //  }
-        //  align_next(t) {
-        //    let {bcx, val: align} = align_of(bcx, t);
-        //    align_to(bcx, off, align)
-        //  }
-        //};
-        ret rslt(bcx, off);
+        ret { bcx: bcx, sz: off, align: max_align };
     }
+
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_param(p, _) {
-        let szptr = field_of_tydesc(cx, t, false, abi::tydesc_field_size);
-        ret rslt(szptr.bcx, Load(szptr.bcx, szptr.val));
+        let ti = none::<@tydesc_info>;
+        let {bcx, val: tydesc} = trans::get_tydesc(cx, t, false, ti).result;
+        let szptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_size]);
+        let aptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_align]);
+        {bcx: bcx, sz: Load(bcx, szptr), align: Load(bcx, aptr)}
       }
       ty::ty_rec(flds) {
         let tys: [ty::t] = [];
         for f: ty::field in flds { tys += [f.mt.ty]; }
-        ret align_elements(cx, tys);
+        align_elements(cx, tys)
       }
       ty::ty_tup(elts) {
         let tys = [];
         for tp in elts { tys += [tp]; }
-        ret align_elements(cx, tys);
+        align_elements(cx, tys)
       }
       ty::ty_tag(tid, tps) {
         let bcx = cx;
         let ccx = bcx_ccx(bcx);
-        // Compute max(variant sizes).
 
-        let max_size: ValueRef = trans::alloca(bcx, ccx.int_type);
-        Store(bcx, C_int(ccx, 0), max_size);
-        let variants = ty::tag_variants(bcx_tcx(bcx), tid);
-        for variant: ty::variant_info in *variants {
-            // Perform type substitution on the raw argument types.
-
-            let raw_tys: [ty::t] = variant.args;
-            let tys: [ty::t] = [];
-            for raw_ty: ty::t in raw_tys {
-                let t = ty::substitute_type_params(bcx_tcx(cx), tps, raw_ty);
-                tys += [t];
+        let compute_max_variant_size = fn@(bcx: @block_ctxt) -> result {
+            // Compute max(variant sizes).
+            let bcx = bcx;
+            let max_size: ValueRef = C_int(ccx, 0);
+            let variants = ty::tag_variants(bcx_tcx(bcx), tid);
+            for variant: ty::variant_info in *variants {
+                // Perform type substitution on the raw argument types.
+                let tys = vec::map(variant.args) {|raw_ty|
+                    ty::substitute_type_params(bcx_tcx(cx), tps, raw_ty)
+                };
+                let rslt = align_elements(bcx, tys);
+                bcx = rslt.bcx;
+                max_size = umax(bcx, rslt.sz, max_size);
             }
-            let rslt = align_elements(bcx, tys);
-            bcx = rslt.bcx;
-            let this_size = rslt.val;
-            let old_max_size = Load(bcx, max_size);
-            Store(bcx, umax(bcx, this_size, old_max_size), max_size);
-        }
-        let max_size_val = Load(bcx, max_size);
-        let total_size =
-            if vec::len(*variants) != 1u {
-                Add(bcx, max_size_val, llsize_of(ccx, ccx.int_type))
-            } else { max_size_val };
-        ret rslt(bcx, total_size);
+            rslt(bcx, max_size)
+        };
+
+        let {bcx, val: sz} = alt tag_kind(ccx, tid) {
+          tk_unit | tk_enum { rslt(bcx, llsize_of(ccx, T_tag_variant(ccx))) }
+          tk_newtype { compute_max_variant_size(bcx) }
+          tk_complex {
+            let {bcx, val} = compute_max_variant_size(bcx);
+            rslt(bcx, Add(bcx, val, llsize_of(ccx, T_tag_variant(ccx))))
+          }
+        };
+
+        { bcx: bcx, sz: sz, align: C_int(ccx, 1) }
       }
     }
-}
-
-fn dynamic_align_of(cx: @block_ctxt, t: ty::t) -> result {
-// FIXME: Typestate constraint that shows this alt is
-// exhaustive
-    alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_param(p, _) {
-        let aptr = field_of_tydesc(cx, t, false, abi::tydesc_field_align);
-        ret rslt(aptr.bcx, Load(aptr.bcx, aptr.val));
-      }
-      ty::ty_rec(flds) {
-        let a = C_int(bcx_ccx(cx), 1);
-        let bcx = cx;
-        for f: ty::field in flds {
-            let align = align_of(bcx, f.mt.ty);
-            bcx = align.bcx;
-            a = umax(bcx, a, align.val);
-        }
-        ret rslt(bcx, a);
-      }
-      ty::ty_tag(_, _) {
-        ret rslt(cx, C_int(bcx_ccx(cx), 1)); // FIXME: stub
-      }
-      ty::ty_tup(elts) {
-        let a = C_int(bcx_ccx(cx), 1);
-        let bcx = cx;
-        for e in elts {
-            let align = align_of(bcx, e);
-            bcx = align.bcx;
-            a = umax(bcx, a, align.val);
-        }
-        ret rslt(bcx, a);
-      }
-    }
-}
-
-// Given a type and a field index into its corresponding type descriptor,
-// returns an LLVM ValueRef of that field from the tydesc, generating the
-// tydesc if necessary.
-fn field_of_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool, field: int) ->
-   result {
-    let ti = none::<@tydesc_info>;
-    let tydesc = trans::get_tydesc(cx, t, escapes, ti).result;
-    ret rslt(tydesc.bcx,
-             GEPi(tydesc.bcx, tydesc.val, [0, field]));
 }
 
 // Creates a simpler, size-equivalent type. The resulting type is guaranteed
@@ -832,3 +816,14 @@ fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
     }
     ret ty::fold_ty(ccx.tcx, ty::fm_general(bind simplifier(ccx, _)), typ);
 }
+
+// Given a tag type `ty`, returns the offset of the payload.
+//fn tag_payload_offs(bcx: @block_ctxt, tag_id: ast::def_id, tps: [ty::t])
+//    -> ValueRef {
+//    alt tag_kind(tag_id) {
+//      tk_unit | tk_enum | tk_newtype { C_int(bcx_ccx(bcx), 0) }
+//      tk_complex {
+//        compute_tag_metrics(tag_id, tps)
+//      }
+//    }
+//}
