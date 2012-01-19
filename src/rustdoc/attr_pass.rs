@@ -26,6 +26,12 @@ fn run(
         ) -> doc::cratedoc {
             fold_crate(f, d)
         },
+        fold_mod: fn~(
+            f: fold::fold<astsrv::srv>,
+            d: doc::moddoc
+        ) -> doc::moddoc {
+            fold_mod(f, d)
+        },
         fold_fn: fn~(
             f: fold::fold<astsrv::srv>,
             d: doc::fndoc
@@ -66,6 +72,56 @@ fn should_replace_top_module_name_with_crate_name() {
     let fold = fold::default_seq_fold(srv);
     let doc = fold_crate(fold, doc);
     assert doc.topmod.name == "bond";
+}
+
+fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
+    let srv = fold.ctxt;
+    let attrs = if doc.id == ast::crate_node_id {
+        // This is the top-level mod, use the crate attributes
+        astsrv::exec(srv) {|ctxt|
+            attr_parser::parse_mod(ctxt.ast.node.attrs)
+        }
+    } else {
+        astsrv::exec(srv) {|ctxt|
+            let attrs = alt ctxt.map.get(doc.id) {
+              ast_map::node_item(item) { item.attrs }
+            };
+            attr_parser::parse_mod(attrs)
+        }
+    };
+    let doc = fold::default_seq_fold_mod(fold, doc);
+    ret merge_mod_attrs(doc, attrs);
+
+    fn merge_mod_attrs(
+        doc: doc::moddoc,
+        attrs: attr_parser::mod_attrs
+    ) -> doc::moddoc {
+        ~{
+            brief: attrs.brief,
+            desc: attrs.desc
+            with *doc
+        }
+    }
+}
+
+#[test]
+fn fold_mod_should_extract_mod_attributes() {
+    let source = "#[doc = \"test\"] mod a { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_mod(fold, doc.topmod.mods[0]);
+    assert doc.desc == some("test");
+}
+
+#[test]
+fn fold_mod_should_extract_top_mod_attributes() {
+    let source = "#[doc = \"test\"];";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_mod(fold, doc.topmod);
+    assert doc.desc == some("test");
 }
 
 fn fold_fn(

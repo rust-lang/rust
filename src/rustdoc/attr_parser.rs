@@ -9,7 +9,7 @@ import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
 
-export crate_attrs, fn_attrs, arg_attrs;
+export crate_attrs, mod_attrs, fn_attrs, arg_attrs;
 export parse_crate, parse_mod, parse_fn;
 
 type crate_attrs = {
