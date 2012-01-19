@@ -108,7 +108,7 @@ type retval_md = {id: ast::node_id};
 
 type metadata_cache = hashmap<int, [debug_metadata]>;
 
-tag debug_metadata {
+enum debug_metadata {
     file_metadata(@metadata<file_md>);
     compile_unit_metadata(@metadata<compile_unit_md>);
     subprogram_metadata(@metadata<subprogram_md>);

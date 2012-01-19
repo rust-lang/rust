@@ -5,7 +5,7 @@ import lexer::reader;
 
 type str_num = uint;
 
-tag binop {
+enum binop {
     PLUS;
     MINUS;
     STAR;
@@ -19,7 +19,7 @@ tag binop {
     ASR;
 }
 
-tag token {
+enum token {
     /* Expression-operator symbols. */
     EQ;
     LT;

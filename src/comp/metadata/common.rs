@@ -1,4 +1,4 @@
-// EBML tag definitions and utils shared by the encoder and decoder
+// EBML enum definitions and utils shared by the encoder and decoder
 
 import str;
 

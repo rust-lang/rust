@@ -498,7 +498,7 @@ fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
 }
 
 
-// Computes the size of the data part of a non-dynamically-sized tag.
+// Computes the size of the data part of a non-dynamically-sized enum.
 fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
     : type_has_static_size(cx, t) -> uint {
     if cx.tag_sizes.contains_key(t) { ret cx.tag_sizes.get(t); }
@@ -526,7 +526,7 @@ fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
         ret max_size;
       }
       _ {
-        cx.tcx.sess.span_fatal(sp, "non-tag passed to static_size_of_tag()");
+        cx.tcx.sess.span_fatal(sp, "non-enum passed to static_size_of_tag()");
       }
     }
 }
@@ -736,9 +736,9 @@ fn GEP_tup_like(bcx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
 }
 
 
-// Replacement for the LLVM 'GEP' instruction when field indexing into a tag.
+// Replacement for the LLVM 'GEP' instruction when field indexing into a enum.
 // This function uses GEP_tup_like() above and automatically performs casts as
-// appropriate. @llblobptr is the data part of a tag value; its actual type is
+// appropriate. @llblobptr is the data part of a enum value; its actual type is
 // meaningless, as it will be cast away.
 fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: ast::def_id,
            variant_id: ast::def_id, ty_substs: [ty::t],
@@ -1470,7 +1470,7 @@ fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: str) {
 
 
 // Used only for creating scalar comparison glue.
-tag scalar_type { nil_type; signed_int; unsigned_int; floating_point; }
+enum scalar_type { nil_type; signed_int; unsigned_int; floating_point; }
 
 
 fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
@@ -1658,14 +1658,14 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         // NB: we must hit the discriminant first so that structural
         // comparison know not to proceed when the discriminants differ.
         cx = f(cx, lldiscrim_a_ptr, ty::mk_int(bcx_tcx(cx)));
-        let unr_cx = new_sub_block_ctxt(cx, "tag-iter-unr");
+        let unr_cx = new_sub_block_ctxt(cx, "enum-iter-unr");
         Unreachable(unr_cx);
         let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb, n_variants);
-        let next_cx = new_sub_block_ctxt(cx, "tag-iter-next");
+        let next_cx = new_sub_block_ctxt(cx, "enum-iter-next");
         for variant: ty::variant_info in *variants {
             let variant_cx =
                 new_sub_block_ctxt(cx,
-                                   "tag-iter-variant-" +
+                                   "enum-iter-variant-" +
                                        int::to_str(variant.disr_val, 10u));
             AddCase(llswitch, C_int(ccx, variant.disr_val), variant_cx.llbb);
             variant_cx =
@@ -1938,7 +1938,7 @@ fn memmove_ty(bcx: @block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
     ret call_memmove(bcx, dst, src, llsz).bcx;
 }
 
-tag copy_action { INIT; DROP_EXISTING; }
+enum copy_action { INIT; DROP_EXISTING; }
 
 // These are the types that are passed by pointer.
 fn type_is_structural_or_param(tcx: ty::ctxt, t: ty::t) -> bool {
@@ -2244,7 +2244,7 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
             t1 = mt.ty;
 
             // Since we're changing levels of box indirection, we may have
-            // to cast this pointer, since statically-sized tag types have
+            // to cast this pointer, since statically-sized enum types have
             // different types depending on whether they're behind a box
             // or not.
             if check type_has_static_size(ccx, t1) {
@@ -2330,7 +2330,7 @@ fn trans_binary(cx: @block_ctxt, op: ast::binop, a: @ast::expr, b: @ast::expr,
     }
 }
 
-tag dest {
+enum dest {
     by_val(@mutable ValueRef);
     save_in(ValueRef);
     ignore;
@@ -2495,14 +2495,14 @@ type generic_info = {
     origins: option::t<typeck::dict_res>
 };
 
-tag lval_kind {
+enum lval_kind {
     temporary; //< Temporary value passed by value if of immediate type
     owned;     //< Non-temporary value passed by pointer
     owned_imm; //< Non-temporary value passed by value
 }
 type local_var_result = {val: ValueRef, kind: lval_kind};
 type lval_result = {bcx: @block_ctxt, val: ValueRef, kind: lval_kind};
-tag callee_env {
+enum callee_env {
     null_env;
     is_closure;
     self_env(ValueRef);
@@ -2896,7 +2896,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     check (type_has_static_size(ccx, t_out));
     let ll_t_out = type_of(ccx, e.span, t_out);
 
-    tag kind { pointer; integral; float; tag_; other; }
+    enum kind { pointer; integral; float; tag_; other; }
     fn t_kind(tcx: ty::ctxt, t: ty::t) -> kind {
         ret if ty::type_is_fp(tcx, t) {
                 float
@@ -3540,7 +3540,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_ret(bcx, ex);
       }
       ast::expr_be(ex) {
-        // Ideally, the expr_be tag would have a precondition
+        // Ideally, the expr_be enum would have a precondition
         // that is_call_expr(ex) -- but we don't support that
         // yet
         // FIXME
@@ -4409,7 +4409,7 @@ fn finish_fn(fcx: @fn_ctxt, lltop: BasicBlockRef) {
     RetVoid(ret_cx);
 }
 
-tag self_arg { impl_self(ty::t); no_self; }
+enum self_arg { impl_self(ty::t); no_self; }
 
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
@@ -4557,7 +4557,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     let lltop = bcx.llbb;
     bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
 
-    // Cast the tag to a type we can GEP into.
+    // Cast the enum to a type we can GEP into.
     let llblobptr =
         if is_degen {
             fcx.llretptr
@@ -4576,7 +4576,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         let rslt = GEP_tag(bcx, llblobptr, t_id, v_id, ty_param_substs, i);
         bcx = rslt.bcx;
         let lldestptr = rslt.val;
-        // If this argument to this function is a tag, it'll have come in to
+        // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
         let llarg = alt fcx.llargs.find(va.id) { some(local_mem(x)) { x } };
@@ -5222,7 +5222,7 @@ fn collect_item(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
         for variant in variants {
             if vec::len(variant.node.args) != 0u {
                 register_fn(ccx, i.span, new_pt + [variant.node.name],
-                            "tag", tps, variant.node.id);
+                            "enum", tps, variant.node.id);
             }
         }
       }

@@ -16,8 +16,8 @@ import syntax::print::pprust::pat_to_str;
 
 import trans_common::*;
 
-// An option identifying a branch (either a literal, a tag variant or a range)
-tag opt {
+// An option identifying a branch (either a literal, a enum variant or a range)
+enum opt {
     lit(@ast::expr);
     var(/* disr val */int, /* variant dids */{tg: def_id, var: def_id});
     range(@ast::expr, @ast::expr);
@@ -34,7 +34,7 @@ fn opt_eq(a: opt, b: opt) -> bool {
     }
 }
 
-tag opt_result {
+enum opt_result {
     single_result(result);
     range_result(result, result);
 }
@@ -284,7 +284,7 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
         let r =
             // invariant needed:
             // how do we know it even makes sense to pass in ty_param_substs
-            // here? What if it's [] and the tag type has variables in it?
+            // here? What if it's [] and the enum type has variables in it?
             trans::GEP_tag(bcx, blobptr, vdefs_tg, vdefs_var, ty_param_substs,
                            i);
         bcx = r.bcx;
@@ -472,7 +472,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 
     // Decide what kind of branch we need
     let opts = get_options(ccx, m, col);
-    tag branch_kind { no_branch; single; switch; compare; }
+    enum branch_kind { no_branch; single; switch; compare; }
     let kind = no_branch;
     let test_val = val;
     if vec::len(opts) > 0u {

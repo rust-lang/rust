@@ -24,7 +24,7 @@ type def_id = {crate: crate_num, node: node_id};
 const local_crate: crate_num = 0;
 const crate_node_id: node_id = 0;
 
-tag ty_param_bound {
+enum ty_param_bound {
     bound_copy;
     bound_send;
     bound_iface(@ty);
@@ -32,7 +32,7 @@ tag ty_param_bound {
 
 type ty_param = {ident: ident, id: node_id, bounds: @[ty_param_bound]};
 
-tag def {
+enum def {
     def_fn(def_id, purity);
     def_self(def_id);
     def_mod(def_id);
@@ -40,7 +40,7 @@ tag def {
     def_const(def_id);
     def_arg(def_id, mode);
     def_local(def_id, let_style);
-    def_variant(def_id /* tag */, def_id /* variant */);
+    def_variant(def_id /* enum */, def_id /* variant */);
     def_ty(def_id);
     def_ty_param(def_id, uint);
     def_binding(def_id);
@@ -62,13 +62,13 @@ type crate_ =
      attrs: [attribute],
      config: crate_cfg};
 
-tag crate_directive_ {
+enum crate_directive_ {
     cdir_src_mod(ident, [attribute]);
     cdir_dir_mod(ident, [@crate_directive], [attribute]);
 
     // NB: cdir_view_item is *not* processed by the rest of the compiler; the
     // attached view_items are sunk into the crate's module during parsing,
-    // and processed (resolved, imported, etc.) there. This tag-variant exists
+    // and processed (resolved, imported, etc.) there. This enum-variant exists
     // only to preserve the view items in order in case we decide to
     // pretty-print crates in the future.
     cdir_view_item(@view_item);
@@ -80,7 +80,7 @@ type crate_directive = spanned<crate_directive_>;
 
 type meta_item = spanned<meta_item_>;
 
-tag meta_item_ {
+enum meta_item_ {
     meta_word(ident);
     meta_list(ident, [@meta_item]);
     meta_name_value(ident, lit);
@@ -95,12 +95,12 @@ type pat = {id: node_id, node: pat_, span: span};
 
 type field_pat = {ident: ident, pat: @pat};
 
-tag pat_ {
+enum pat_ {
     pat_wild;
     // A pat_ident may either be a new bound variable,
-    // or a nullary tag (in which case the second field
+    // or a nullary enum (in which case the second field
     // is none).
-    // In the nullary tag case, the parser can't determine
+    // In the nullary enum case, the parser can't determine
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary tags")
@@ -117,9 +117,9 @@ tag pat_ {
     pat_range(@expr, @expr);
 }
 
-tag mutability { mut; imm; maybe_mut; }
+enum mutability { mut; imm; maybe_mut; }
 
-tag proto {
+enum proto {
     proto_bare;    // native fn
     proto_any;     // fn
     proto_uniq;    // fn~
@@ -134,7 +134,7 @@ pure fn is_blockish(p: ast::proto) -> bool {
     }
 }
 
-tag binop {
+enum binop {
     add;
     subtract;
     mul;
@@ -156,17 +156,17 @@ tag binop {
     gt;
 }
 
-tag unop {
+enum unop {
     box(mutability);
     uniq(mutability);
     deref; not; neg;
 }
 
-tag mode { by_ref; by_val; by_mut_ref; by_move; by_copy; mode_infer; }
+enum mode { by_ref; by_val; by_mut_ref; by_move; by_copy; mode_infer; }
 
 type stmt = spanned<stmt_>;
 
-tag stmt_ {
+enum stmt_ {
     stmt_decl(@decl, node_id);
 
     // expr without trailing semi-colon (must have unit type):
@@ -176,7 +176,7 @@ tag stmt_ {
     stmt_semi(@expr, node_id);
 }
 
-tag init_op { init_assign; init_move; }
+enum init_op { init_assign; init_move; }
 
 type initializer = {op: init_op, expr: @expr};
 
@@ -187,9 +187,9 @@ type local = spanned<local_>;
 
 type decl = spanned<decl_>;
 
-tag let_style { let_copy; let_ref; }
+enum let_style { let_copy; let_ref; }
 
-tag decl_ { decl_local([(let_style, @local)]); decl_item(@item); }
+enum decl_ { decl_local([(let_style, @local)]); decl_item(@item); }
 
 type arm = {pats: [@pat], guard: option::t<@expr>, body: blk};
 
@@ -197,13 +197,13 @@ type field_ = {mut: mutability, ident: ident, expr: @expr};
 
 type field = spanned<field_>;
 
-tag blk_check_mode { default_blk; unchecked_blk; unsafe_blk; }
+enum blk_check_mode { default_blk; unchecked_blk; unsafe_blk; }
 
-tag expr_check_mode { claimed_expr; checked_expr; }
+enum expr_check_mode { claimed_expr; checked_expr; }
 
 type expr = {id: node_id, node: expr_, span: span};
 
-tag expr_ {
+enum expr_ {
     expr_vec([@expr], mutability);
     expr_rec([field], option::t<@expr>);
     expr_call(@expr, [@expr], bool);
@@ -267,7 +267,7 @@ type capture_clause = {
 /*
 // Says whether this is a block the user marked as
 // "unchecked"
-tag blk_sort {
+enum blk_sort {
     blk_unchecked; // declared as "exception to effect-checking rules"
     blk_checked; // all typing rules apply
 }
@@ -275,7 +275,7 @@ tag blk_sort {
 
 type mac = spanned<mac_>;
 
-tag mac_ {
+enum mac_ {
     mac_invoc(@path, @expr, option::t<str>);
     mac_embed_type(@ty);
     mac_embed_block(blk);
@@ -284,7 +284,7 @@ tag mac_ {
 
 type lit = spanned<lit_>;
 
-tag lit_ {
+enum lit_ {
     lit_str(str);
     lit_int(i64, int_ty);
     lit_uint(u64, uint_ty);
@@ -303,15 +303,15 @@ type ty_field = spanned<ty_field_>;
 
 type ty_method = {ident: ident, decl: fn_decl, tps: [ty_param], span: span};
 
-tag int_ty { ty_i; ty_char; ty_i8; ty_i16; ty_i32; ty_i64; }
+enum int_ty { ty_i; ty_char; ty_i8; ty_i16; ty_i32; ty_i64; }
 
-tag uint_ty { ty_u; ty_u8; ty_u16; ty_u32; ty_u64; }
+enum uint_ty { ty_u; ty_u8; ty_u16; ty_u32; ty_u64; }
 
-tag float_ty { ty_f; ty_f32; ty_f64; }
+enum float_ty { ty_f; ty_f32; ty_f64; }
 
 type ty = spanned<ty_>;
 
-tag ty_ {
+enum ty_ {
     ty_nil;
     ty_bot; /* return type of ! functions and type of
              ret/fail/break/cont. there is no syntax
@@ -354,7 +354,7 @@ so that the typestate pass doesn't have to map a function name onto its decl.
 So, the constr_arg type is parameterized: it's instantiated with uint for
 declarations, and ident for uses.
 */
-tag constr_arg_general_<T> { carg_base; carg_ident(T); carg_lit(@lit); }
+enum constr_arg_general_<T> { carg_base; carg_ident(T); carg_lit(@lit); }
 
 type fn_constr_arg = constr_arg_general_<uint>;
 type sp_constr_arg<T> = spanned<constr_arg_general_<T>>;
@@ -389,13 +389,13 @@ type fn_decl =
      cf: ret_style,
      constraints: [@constr]};
 
-tag purity {
+enum purity {
     pure_fn; // declared with "pure fn"
     unsafe_fn; // declared with "unsafe fn"
     impure_fn; // declared with "fn"
 }
 
-tag ret_style {
+enum ret_style {
     noreturn; // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
     return_val; // everything else
@@ -406,7 +406,7 @@ type method = {ident: ident, tps: [ty_param], decl: fn_decl, body: blk,
 
 type _mod = {view_items: [@view_item], items: [@item]};
 
-tag native_abi {
+enum native_abi {
     native_abi_rust_intrinsic;
     native_abi_cdecl;
     native_abi_stdcall;
@@ -433,7 +433,7 @@ type import_ident_ = {name: ident, id: node_id};
 
 type import_ident = spanned<import_ident_>;
 
-tag view_item_ {
+enum view_item_ {
     view_item_use(ident, [@meta_item], node_id);
     view_item_import(ident, @simple_path, node_id);
     view_item_import_glob(@simple_path, node_id);
@@ -448,14 +448,14 @@ type attribute = spanned<attribute_>;
 // Distinguishes between attributes that decorate items and attributes that
 // are contained as statements within items. These two cases need to be
 // distinguished for pretty-printing.
-tag attr_style { attr_outer; attr_inner; }
+enum attr_style { attr_outer; attr_inner; }
 
 type attribute_ = {style: attr_style, value: meta_item};
 
 type item = {ident: ident, attrs: [attribute],
              id: node_id, node: item_, span: span};
 
-tag item_ {
+enum item_ {
     item_const(@ty, @expr);
     item_fn(fn_decl, [ty_param], blk);
     item_mod(_mod);
@@ -476,7 +476,7 @@ type native_item =
      id: node_id,
      span: span};
 
-tag native_item_ {
+enum native_item_ {
     native_item_ty;
     native_item_fn(fn_decl, [ty_param]);
 }

@@ -12,10 +12,10 @@ import codemap::span;
 // override the context), or prevent deeper traversal by doing nothing.
 
 // Our typesystem doesn't do circular types, so the visitor record can not
-// hold functions that take visitors. A vt tag is used to break the cycle.
-tag vt<E> { mk_vt(visitor<E>); }
+// hold functions that take visitors. A vt enum is used to break the cycle.
+enum vt<E> { mk_vt(visitor<E>); }
 
-tag fn_kind {
+enum fn_kind {
     fk_item_fn(ident, [ty_param]); //< an item declared with fn()
     fk_method(ident, [ty_param]);
     fk_res(ident, [ty_param]);

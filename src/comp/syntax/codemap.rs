@@ -65,7 +65,7 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
     ret lookup_pos(map, pos, lookup);
 }
 
-tag opt_span {
+enum opt_span {
 
     //hack (as opposed to option::t), to make `span` compile
     os_none;

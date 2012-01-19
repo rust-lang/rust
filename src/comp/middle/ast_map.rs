@@ -4,7 +4,7 @@ import syntax::ast::*;
 import syntax::ast_util;
 import syntax::{visit, codemap};
 
-tag ast_node {
+enum ast_node {
     node_item(@item);
     node_native_item(@native_item);
     node_method(@method);

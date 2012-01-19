@@ -36,11 +36,11 @@ type crate_metadata = @{name: str,
                         cnum: ast::crate_num};
 
 // This is a bit of an experiment at encapsulating the data in cstore. By
-// keeping all the data in a non-exported tag variant, it's impossible for
+// keeping all the data in a non-exported enum variant, it's impossible for
 // other modules to access the cstore's private data. This could also be
 // achieved with an obj, but at the expense of a vtable. Not sure if this is a
 // good pattern or not.
-tag cstore { private(cstore_private); }
+enum cstore { private(cstore_private); }
 
 type cstore_private =
     @{metas: map::hashmap<ast::crate_num, crate_metadata>,

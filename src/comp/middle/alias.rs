@@ -15,13 +15,13 @@ import pat_util::*;
 // getting input from one, to be more precise). It is a pass that checks
 // whether aliases are used in a safe way.
 
-tag copied { not_allowed; copied; not_copied; }
-tag invalid_reason { overwritten; val_taken; }
+enum copied { not_allowed; copied; not_copied; }
+enum invalid_reason { overwritten; val_taken; }
 type invalid = {reason: invalid_reason,
                 node_id: node_id,
                 sp: span, path: @ast::path};
 
-tag unsafe_ty { contains(ty::t); mut_contains(ty::t); }
+enum unsafe_ty { contains(ty::t); mut_contains(ty::t); }
 
 type binding = @{node_id: node_id,
                  span: span,
@@ -46,7 +46,7 @@ fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
           mutable copied: not_copied};
 }
 
-tag local_info { local(uint); }
+enum local_info { local(uint); }
 
 type copy_map = std::map::hashmap<node_id, ()>;
 type ref_map = std::map::hashmap<node_id, node_id>;

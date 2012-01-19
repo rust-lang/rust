@@ -235,7 +235,7 @@ type raw_t = {struct: sty,
 
 type t = uint;
 
-tag closure_kind {
+enum closure_kind {
     ck_any;
     ck_block;
     ck_box;
@@ -250,7 +250,7 @@ type fn_ty = {proto: ast::proto,
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast::rs as well.
-tag sty {
+enum sty {
     ty_nil;
     ty_bot;
     ty_bool;
@@ -271,7 +271,7 @@ tag sty {
     ty_tup([t]);
     ty_var(int); // type variable
 
-    ty_param(uint, def_id); // fn/tag type param
+    ty_param(uint, def_id); // fn/enum type param
 
     ty_type; // type_desc*
     ty_send_type; // type_desc* that has been cloned into exchange heap
@@ -288,7 +288,7 @@ type type_constr = constr_general<@path>;
 type constr = constr_general<uint>;
 
 // Data structures used in type unification
-tag type_err {
+enum type_err {
     terr_mismatch;
     terr_ret_style_mismatch(ast::ret_style, ast::ret_style);
     terr_box_mutability;
@@ -303,7 +303,7 @@ tag type_err {
     terr_constr_mismatch(@type_constr, @type_constr);
 }
 
-tag param_bound {
+enum param_bound {
     bound_copy;
     bound_send;
     bound_iface(t);
@@ -712,7 +712,7 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
     walker(ty);
 }
 
-tag fold_mode {
+enum fold_mode {
     fm_var(fn@(int) -> t);
     fm_param(fn@(uint, def_id) -> t);
     fm_general(fn@(t) -> t);
@@ -973,7 +973,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     ret result;
 }
 
-tag kind { kind_sendable; kind_copyable; kind_noncopyable; }
+enum kind { kind_sendable; kind_copyable; kind_noncopyable; }
 
 // Using these query functons is preferable to direct comparison or matching
 // against the kind constants, as we may modify the kind hierarchy in the
@@ -1245,7 +1245,7 @@ fn type_is_tag(cx: ctxt, ty: t) -> bool {
     }
 }
 
-// Whether a type is enum like, that is a tag type with only nullary
+// Whether a type is enum like, that is a enum type with only nullary
 // constructors
 fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
@@ -1732,16 +1732,16 @@ mod unify {
     export var_bindings;
     export precise, in_bindings;
 
-    tag result { ures_ok(t); ures_err(type_err); }
-    tag union_result { unres_ok; unres_err(type_err); }
-    tag fixup_result {
+    enum result { ures_ok(t); ures_err(type_err); }
+    enum union_result { unres_ok; unres_err(type_err); }
+    enum fixup_result {
         fix_ok(t); // fixup succeeded
         fix_err(int); // fixup failed because a type variable was unresolved
     }
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
 
-    tag unify_style {
+    enum unify_style {
         precise;
         in_bindings(@var_bindings);
     }
@@ -2041,7 +2041,7 @@ mod unify {
     }
 
     // Specifies the allowable subtyping between expected and actual types
-    tag variance {
+    enum variance {
         // Actual may be a subtype of expected
         covariant;
         // Actual may be a supertype of expected
@@ -2676,7 +2676,7 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
 }
 
 
-// Returns information about the tag variant with the given ID:
+// Returns information about the enum variant with the given ID:
 fn tag_variant_with_id(cx: ctxt, tag_id: ast::def_id, variant_id: ast::def_id)
    -> variant_info {
     let variants = tag_variants(cx, tag_id);

@@ -109,7 +109,7 @@ import trans::{
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-tag environment_value {
+enum environment_value {
     // Evaluate expr and store result in env (used for bind).
     env_expr(@ast::expr);
 

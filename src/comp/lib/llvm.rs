@@ -15,7 +15,7 @@ const False: Bool = 0;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
 // FIXME: figure out a way to merge these with the native
-// typedef and/or a tag type in the native module below.
+// typedef and/or a enum type in the native module below.
 
 const LLVMCCallConv: uint = 0u;
 const LLVMFastCallConv: uint = 8u;

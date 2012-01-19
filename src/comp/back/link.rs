@@ -22,7 +22,7 @@ import lib::llvm::mk_target_data;
 import lib::llvm::False;
 import util::filesearch;
 
-tag output_type {
+enum output_type {
     output_type_none;
     output_type_bitcode;
     output_type_assembly;

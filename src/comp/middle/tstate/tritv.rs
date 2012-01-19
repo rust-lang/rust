@@ -30,7 +30,7 @@ export to_str;
 */
 
 type t = {uncertain: bitv::t, val: bitv::t, nbits: uint};
-tag trit { ttrue; tfalse; dont_care; }
+enum trit { ttrue; tfalse; dont_care; }
 
 fn create_tritv(len: uint) -> t {
     ret {uncertain: bitv::create(len, true),

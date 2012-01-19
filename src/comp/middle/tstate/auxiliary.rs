@@ -22,7 +22,7 @@ import syntax::print::pprust::{constr_args_to_str, lit_to_str};
 
 // Used to communicate which operands should be invalidated
 // to helper functions
-tag oper_type {
+enum oper_type {
     oper_move;
     oper_swap;
     oper_assign;
@@ -198,7 +198,7 @@ type pred_args = spanned<pred_args_>;
 // for this local.
 type constr_arg_use = spanned<constr_arg_general_<inst>>;
 
-tag constraint {
+enum constraint {
     cinit(uint, span, ident);
 
     // FIXME: really only want it to be mutable during collect_locals.
@@ -211,7 +211,7 @@ tag constraint {
 // predicate need not be local.
 // FIXME: would be nice to give both a def_id field,
 // and give ninit a constraint saying it's local.
-tag tsconstr {
+enum tsconstr {
     ninit(node_id, ident);
     npred(@path, def_id, [@constr_arg_use]);
 }
@@ -780,7 +780,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
     ret rslt;
 }
 
-tag if_ty { if_check; plain_if; }
+enum if_ty { if_check; plain_if; }
 
 fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
    def_id {

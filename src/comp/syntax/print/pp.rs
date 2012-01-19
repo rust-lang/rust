@@ -55,13 +55,13 @@ import io::writer_util;
  * line (which it can't) and so naturally place the content on its own line to
  * avoid combining it with other lines and making matters even worse.
  */
-tag breaks { consistent; inconsistent; }
+enum breaks { consistent; inconsistent; }
 
 type break_t = {offset: int, blank_space: int};
 
 type begin_t = {offset: int, breaks: breaks};
 
-tag token { STRING(str, int); BREAK(break_t); BEGIN(begin_t); END; EOF; }
+enum token { STRING(str, int); BREAK(break_t); BEGIN(begin_t); END; EOF; }
 
 fn tok_str(t: token) -> str {
     alt t {
@@ -91,7 +91,7 @@ fn buf_str(toks: [mutable token], szs: [mutable int], left: uint, right: uint,
     ret s;
 }
 
-tag print_stack_break { fits; broken(breaks); }
+enum print_stack_break { fits; broken(breaks); }
 
 type print_stack_elt = {offset: int, pbreak: print_stack_break};
 

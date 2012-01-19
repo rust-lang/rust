@@ -12,7 +12,7 @@ export cap_move;
 export cap_drop;
 export cap_ref;
 
-tag capture_mode {
+enum capture_mode {
     cap_copy; //< Copy the value into the closure.
     cap_move; //< Move the value into the closure.
     cap_drop; //< Drop value after creating closure.

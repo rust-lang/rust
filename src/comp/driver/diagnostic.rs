@@ -107,7 +107,7 @@ fn mk_handler(cm: codemap::codemap,
     } as handler
 }
 
-tag level {
+enum level {
     fatal;
     error;
     warning;

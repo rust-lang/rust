@@ -98,8 +98,8 @@ fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
 }
 
 
-// Computes a set of variants of a tag that are guaranteed to have size and
-// alignment at least as large as any other variant of the tag. This is an
+// Computes a set of variants of a enum that are guaranteed to have size and
+// alignment at least as large as any other variant of the enum. This is an
 // important performance optimization.
 //
 // TODO: Use this in dynamic_size_of() as well.
@@ -180,7 +180,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     ret result;
 }
 
-// Computes the static size of a tag, without using mk_tup(), which is
+// Computes the static size of a enum, without using mk_tup(), which is
 // bad for performance.
 //
 // TODO: Migrate trans over to use this.
@@ -217,8 +217,8 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
         if max_align < variant_align { max_align = variant_align; }
     }
 
-    // Add space for the tag if applicable.
-    // FIXME (issue #792): This is wrong. If the tag starts with an 8 byte
+    // Add space for the enum if applicable.
+    // FIXME (issue #792): This is wrong. If the enum starts with an 8 byte
     // aligned quantity, we don't align it.
     if vec::len(*variants) > 1u {
         let variant_t = T_tag_variant(ccx);
@@ -230,7 +230,7 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
     ret {size: max_size, align: max_align};
 }
 
-tag tag_kind { tk_unit; tk_enum; tk_complex; }
+enum tag_kind { tk_unit; tk_enum; tk_complex; }
 
 fn tag_kind(ccx: @crate_ctxt, did: ast::def_id) -> tag_kind {
     let variants = ty::tag_variants(ccx.tcx, did);
@@ -469,7 +469,7 @@ fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info,
 //}
 
 fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
-    // Loop over all the tag variants and write their shapes into a data
+    // Loop over all the enum variants and write their shapes into a data
     // buffer. As we do this, it's possible for us to discover new tags, so we
     // must do this first.
     let i = 0u;
@@ -495,7 +495,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
     }
 
     // Now calculate the sizes of the header space (which contains offsets to
-    // info records for each tag) and the info space (which contains offsets
+    // info records for each enum) and the info space (which contains offsets
     // to each variant shape). As we do so, build up the header.
 
     let header = [];
@@ -512,7 +512,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
     }
 
     // Construct the info tables, which contain offsets to the shape of each
-    // variant. Also construct the largest-variant table for each tag, which
+    // variant. Also construct the largest-variant table for each enum, which
     // contains the variants that the size-of operation needs to look at.
 
     let lv_table = [];
@@ -530,7 +530,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
         add_u16(lv_table, vec::len(lv) as u16);
         for v: uint in lv { add_u16(lv_table, v as u16); }
 
-        // Determine whether the tag has dynamic size.
+        // Determine whether the enum has dynamic size.
         let dynamic = false;
         for variant: ty::variant_info in *variants {
             for typ: ty::t in variant.args {
@@ -538,7 +538,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
             }
         }
 
-        // If we can, write in the static size and alignment of the tag.
+        // If we can, write in the static size and alignment of the enum.
         // Otherwise, write a placeholder.
         let size_align;
         if dynamic {

@@ -30,7 +30,7 @@ export _impl, iscopes, method_info;
 // locates all names (in expressions, types, and alt patterns) and resolves
 // them, storing the resulting def in the AST nodes.
 
-tag scope {
+enum scope {
     scope_crate;
     scope_item(@ast::item);
     scope_bare_fn(ast::fn_decl, node_id, [ast::ty_param]);
@@ -44,7 +44,7 @@ tag scope {
 
 type scopes = list<scope>;
 
-tag import_state {
+enum import_state {
     todo(ast::node_id, ast::ident, @[ast::ident], codemap::span, scopes);
     is_glob(@[ast::ident], scopes, codemap::span);
     resolving(span);
@@ -56,7 +56,7 @@ tag import_state {
              ast::ident, codemap::span);
 }
 
-tag glob_import_state {
+enum glob_import_state {
     glob_resolving(span);
     glob_resolved(option::t<def>,  /* value */
                   option::t<def>,  /* type */
@@ -98,12 +98,12 @@ fn new_exp_hash() -> exp_map {
     ret std::map::mk_hashmap::<key, def>(hash, eq);
 }
 
-tag mod_index_entry {
+enum mod_index_entry {
     mie_view_item(@ast::view_item);
     mie_import_ident(node_id, codemap::span);
     mie_item(@ast::item);
     mie_native_item(@ast::native_item);
-    mie_tag_variant(/* tag item */@ast::item, /* variant index */uint);
+    mie_tag_variant(/* enum item */@ast::item, /* variant index */uint);
 }
 
 type mod_index = hashmap<ident, list<mod_index_entry>>;
@@ -151,14 +151,14 @@ type env =
 
 // Used to distinguish between lookups from outside and from inside modules,
 // since export restrictions should only be applied for the former.
-tag dir { inside; outside; }
+enum dir { inside; outside; }
 
-// There are two types of ns_value tag: "definitely a tag";
+// There are two types of ns_value enum: "definitely a enum";
 // and "any value". This is so that lookup can behave differently
 // when looking up a variable name that's not yet in scope to check
-// if it's already bound to a tag.
-tag namespace { ns_val(ns_value_type); ns_type; ns_module; }
-tag ns_value_type { ns_a_tag; ns_any_value; }
+// if it's already bound to a enum.
+enum namespace { ns_val(ns_value_type); ns_type; ns_module; }
+enum ns_value_type { ns_a_tag; ns_any_value; }
 
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
    {def_map: def_map, exp_map: exp_map, impl_map: impl_map} {
@@ -186,7 +186,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     resolve_names(e, crate);
     resolve_impls(e, crate);
     // check_for_collisions must happen after resolve_names so we
-    // don't complain if a pattern uses the same nullary tag twice
+    // don't complain if a pattern uses the same nullary enum twice
     check_for_collisions(e, *crate);
     if sess.opts.warn_unused_imports {
         check_unused_imports(e);
@@ -415,13 +415,13 @@ fn resolve_names(e: @env, c: @ast::crate) {
               }
               _ {
                 e.sess.span_err(p.span,
-                                "not a tag variant: " +
+                                "not a enum variant: " +
                                     ast_util::path_name(p));
               }
             }
           }
           /* Here we determine whether a given pat_ident binds a new
-           variable a refers to a nullary tag. */
+           variable a refers to a nullary enum. */
           ast::pat_ident(p, none) {
               let fnd = lookup_in_scope(*e, sc, p.span, path_to_ident(p),
                                     ns_val(ns_a_tag));
@@ -557,13 +557,13 @@ fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
 }
 
 // This is only for irrefutable patterns (e.g. ones that appear in a let)
-// So if x occurs, and x is already known to be a tag, that's always an error
+// So if x occurs, and x is already known to be a enum, that's always an error
 fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
-    // Check whether the given local has the same name as a tag that's
+    // Check whether the given local has the same name as a enum that's
     // in scope
     // We disallow this, in order to make alt patterns consisting of
     // a single identifier unambiguous (does the pattern "foo" refer
-    // to tag foo, or is it binding a new name foo?)
+    // to enum foo, or is it binding a new name foo?)
     alt loc.node.pat.node {
       pat_ident(an_ident,_) {
           // Be sure to pass ns_a_tag to lookup_in_scope so that
@@ -571,10 +571,10 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
           alt lookup_in_scope(*e, sc, loc.span,
                  path_to_ident(an_ident), ns_val(ns_a_tag)) {
               some(ast::def_variant(tag_id,variant_id)) {
-                  // Declaration shadows a tag that's in scope.
+                  // Declaration shadows a enum that's in scope.
                   // That's an error.
                   e.sess.span_err(loc.span,
-                    #fmt("Declaration of %s shadows a tag that's in scope",
+                    #fmt("Declaration of %s shadows a enum that's in scope",
                          path_to_ident(an_ident)));
                   }
               _ {}
@@ -742,14 +742,14 @@ fn ns_name(ns: namespace) -> str {
       ns_val(v) {
           alt (v) {
               ns_any_value { "name" }
-              ns_a_tag     { "tag" }
+              ns_a_tag     { "enum" }
           }
       }
       ns_module { ret "modulename" }
     }
 }
 
-tag ctxt { in_mod(def); in_scope(scopes); }
+enum ctxt { in_mod(def); in_scope(scopes); }
 
 fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
     fn find_fn_or_mod_scope(sc: scopes) -> option::t<scope> {
@@ -967,8 +967,8 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                       }
                       ns_val(v) {
                           alt(v) {
-                            /* If we were looking for a tag, at this point
-                               we know it's bound to a non-tag value, and
+                            /* If we were looking for a enum, at this point
+                               we know it's bound to a non-enum value, and
                                we can return none instead of failing */
                             ns_a_tag { ret none; }
                             _ { "attempted dynamic environment-capture" }
@@ -1468,7 +1468,7 @@ fn ns_for_def(d: def) -> namespace {
 }
 
 // if we're searching for a value, it's ok if we found
-// a tag
+// a enum
 fn ns_ok(wanted:namespace, actual:namespace) -> bool {
     alt actual {
       ns_val(ns_a_tag) {

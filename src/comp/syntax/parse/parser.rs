@@ -13,14 +13,14 @@ import front::attr;
 import lexer::reader;
 import driver::diagnostic;
 
-tag restriction {
+enum restriction {
     UNRESTRICTED;
     RESTRICT_STMT_EXPR;
     RESTRICT_NO_CALL_EXPRS;
     RESTRICT_NO_BAR_OP;
 }
 
-tag file_type { CRATE_FILE; SOURCE_FILE; }
+enum file_type { CRATE_FILE; SOURCE_FILE; }
 
 type parse_sess = @{
     cm: codemap::codemap,
@@ -147,7 +147,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "pure",
                  "unsafe", "block", "import", "export", "let", "const",
-                 "log", "copy", "sendfn", "impl", "iface", "enum"] {
+                 "log", "copy", "sendfn", "impl", "iface", "tag", "enum"] {
         words.insert(word, ());
     }
     words
@@ -719,9 +719,9 @@ fn mk_lit_u32(p: parser, i: u32) -> @ast::expr {
 // parsing because `(while{...})+3` parses differently from `while{...}+3`.
 //
 // To reflect the fact that the @ast::expr is not a true expr that should be
-// part of the AST, we wrap such expressions in the pexpr tag.  They
+// part of the AST, we wrap such expressions in the pexpr enum.  They
 // can then be converted to true expressions by a call to `to_expr()`.
-tag pexpr {
+enum pexpr {
     pexpr(@ast::expr);
 }
 
@@ -1508,7 +1508,7 @@ fn parse_pat(p: parser) -> @ast::pat {
               }
               _ { args = []; }
             }
-            // at this point, we're not sure whether it's a tag or a bind
+            // at this point, we're not sure whether it's a enum or a bind
             if vec::len(args) == 0u &&
                vec::len(tag_path.node.idents) == 1u {
                 pat = ast::pat_ident(tag_path, none);
@@ -2026,7 +2026,7 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
     // Newtype syntax
     if p.token == token::EQ {
         if p.bad_expr_words.contains_key(id) {
-            p.fatal("found " + id + " in tag constructor position");
+            p.fatal("found " + id + " in enum constructor position");
         }
         p.bump();
         let ty = parse_ty(p, false);

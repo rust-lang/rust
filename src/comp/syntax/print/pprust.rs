@@ -12,8 +12,8 @@ import pp::{break_offset, word, printer,
 import driver::diagnostic;
 
 // The ps is stored here to prevent recursive type.
-// FIXME use a nominal tag instead
-tag ann_node {
+// FIXME use a nominal enum instead
+enum ann_node {
     node_block(ps, ast::blk);
     node_item(ps, @ast::item);
     node_expr(ps, @ast::expr);
@@ -565,7 +565,7 @@ fn print_block_with_attrs(s: ps, blk: ast::blk, attrs: [ast::attribute]) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs);
 }
 
-tag embed_type { block_macro; block_block_fn; block_normal; }
+enum embed_type { block_macro; block_block_fn; block_normal; }
 
 fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
                                  indented: uint) {

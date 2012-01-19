@@ -25,10 +25,10 @@ fn path_to_ident(pth: @path) -> option::t<ident> {
 type clause = {params: binders, body: @expr};
 
 /* logically, an arb_depth should contain only one kind of matchable */
-tag arb_depth<T> { leaf(T); seq(@[arb_depth<T>], span); }
+enum arb_depth<T> { leaf(T); seq(@[arb_depth<T>], span); }
 
 
-tag matchable {
+enum matchable {
     match_expr(@expr);
     match_path(@path);
     match_ident(ast::spanned<ident>);

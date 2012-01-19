@@ -10,11 +10,11 @@ import util::filesearch;
 import back::target_strs;
 import middle::lint;
 
-tag os { os_win32; os_macos; os_linux; os_freebsd; }
+enum os { os_win32; os_macos; os_linux; os_freebsd; }
 
-tag arch { arch_x86; arch_x86_64; arch_arm; }
+enum arch { arch_x86; arch_x86_64; arch_arm; }
 
-tag crate_type { bin_crate; lib_crate; unknown_crate; }
+enum crate_type { bin_crate; lib_crate; unknown_crate; }
 
 type config =
     {os: os,

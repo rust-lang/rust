@@ -127,7 +127,7 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 fn monitor(f: fn~(diagnostic::emitter)) {
-    tag monitor_msg {
+    enum monitor_msg {
         fatal;
         done;
     };

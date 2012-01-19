@@ -5,7 +5,7 @@ import syntax::visit;
 import syntax::ast_util;
 import driver::session::session;
 
-tag deref_t { unbox; field; index; }
+enum deref_t { unbox; field; index; }
 
 type deref = @{mut: bool, kind: deref_t, outer_t: ty::t};
 
@@ -121,7 +121,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) -> mut_map {
     ret cx.mut_map;
 }
 
-tag msg { msg_assign; msg_move_out; msg_mut_ref; }
+enum msg { msg_assign; msg_move_out; msg_mut_ref; }
 
 fn mk_err(cx: @ctx, span: syntax::codemap::span, msg: msg, name: str) {
     cx.tcx.sess.span_err(span, alt msg {

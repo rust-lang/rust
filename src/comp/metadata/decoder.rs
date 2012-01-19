@@ -252,7 +252,7 @@ fn get_tag_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
           ty::ty_fn(f) {
             for a: ty::arg in f.inputs { arg_tys += [a.ty]; }
           }
-          _ { /* Nullary tag variant. */ }
+          _ { /* Nullary enum variant. */ }
         }
         alt variant_disr_val(item) {
           some(val) { disr_val = val; }
@@ -347,7 +347,7 @@ fn item_family_to_str(fam: u8) -> str {
       't' { ret "type"; }
       'm' { ret "mod"; }
       'n' { ret "native mod"; }
-      'v' { ret "tag"; }
+      'v' { ret "enum"; }
       'i' { ret "impl"; }
       'I' { ret "iface"; }
     }

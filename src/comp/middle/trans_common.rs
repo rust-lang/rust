@@ -32,7 +32,7 @@ fn new_namegen() -> namegen {
 
 type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
 
-tag tydesc_kind {
+enum tydesc_kind {
     tk_static; // Static (monomorphic) type descriptor
     tk_param; // Type parameter.
     tk_derived; // Derived from a typaram or another derived tydesc.
@@ -131,7 +131,7 @@ type local_ctxt =
 // Types used for llself.
 type val_self_pair = {v: ValueRef, t: ty::t};
 
-tag local_val { local_mem(ValueRef); local_imm(ValueRef); }
+enum local_val { local_mem(ValueRef); local_imm(ValueRef); }
 
 type fn_ty_param = {desc: ValueRef, dicts: option::t<[ValueRef]>};
 
@@ -242,7 +242,7 @@ type fn_ctxt =
      sp: span,
      lcx: @local_ctxt};
 
-tag cleanup {
+enum cleanup {
     clean(fn@(@block_ctxt) -> @block_ctxt);
     clean_temp(ValueRef, fn@(@block_ctxt) -> @block_ctxt);
 }
@@ -331,7 +331,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
                                                     did), f_t);
 }
 
-tag block_kind {
+enum block_kind {
 
 
     // A scope block is a basic block created by translating a block { ... }
@@ -387,8 +387,8 @@ type block_ctxt =
      fcx: @fn_ctxt};
 
 // FIXME: we should be able to use option::t<@block_parent> here but
-// the infinite-tag check in rustboot gets upset.
-tag block_parent { parent_none; parent_some(@block_ctxt); }
+// the infinite-enum check in rustboot gets upset.
+enum block_parent { parent_none; parent_some(@block_ctxt); }
 
 type result = {bcx: @block_ctxt, val: ValueRef};
 type result_t = {bcx: @block_ctxt, val: ValueRef, ty: ty::t};
@@ -885,7 +885,7 @@ pure fn type_is_tup_like(cx: @block_ctxt, t: ty::t) -> bool {
 }
 
 // Used to identify cached dictionaries
-tag dict_param {
+enum dict_param {
     dict_param_dict(dict_id);
     dict_param_ty(ty::t);
 }

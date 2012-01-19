@@ -23,7 +23,7 @@ export check_crate;
 export method_map, method_origin, method_static, method_param, method_iface;
 export dict_map, dict_res, dict_origin, dict_static, dict_param, dict_iface;
 
-tag method_origin {
+enum method_origin {
     method_static(ast::def_id);
     // iface id, method num, param num, bound num
     method_param(ast::def_id, uint, uint, uint);
@@ -33,7 +33,7 @@ type method_map = hashmap<ast::node_id, method_origin>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
 type dict_res = @[dict_origin];
-tag dict_origin {
+enum dict_origin {
     dict_static(ast::def_id, [ty::t], dict_res);
     // Param number, bound number
     dict_param(uint, uint);
@@ -44,7 +44,7 @@ type dict_map = hashmap<ast::node_id, dict_res>;
 type ty_table = hashmap<ast::def_id, ty::t>;
 
 // Used for typechecking the methods of an impl
-tag self_info {
+enum self_info {
     self_impl(ty::t);
 }
 
@@ -231,7 +231,7 @@ fn default_arg_mode_for_ty(tcx: ty::ctxt, m: ast::mode,
     }
 }
 
-tag mode { m_collect; m_check; m_check_tyvar(@fn_ctxt); }
+enum mode { m_collect; m_check; m_check_tyvar(@fn_ctxt); }
 
 fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
     fn getter(tcx: ty::ctxt, mode: mode, id: ast::def_id)
@@ -263,7 +263,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
       some(none) {
         tcx.sess.span_fatal(ast_ty.span,
                             "illegal recursive type \
-                              insert a tag in the cycle, \
+                              insert a enum in the cycle, \
                               if this is desired)");
       }
       none { }
@@ -650,7 +650,7 @@ mod collect {
         // Create a set of parameter types shared among all the variants.
 
         for variant: ast::variant in variants {
-            // Nullary tag constructors get turned into constants; n-ary tag
+            // Nullary enum constructors get turned into constants; n-ary enum
             // constructors get turned into functions.
 
             let result_ty = if vec::len(variant.node.args) == 0u {
@@ -921,7 +921,7 @@ fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
 }
 
 
-// Returns the types of the arguments to a tag variant.
+// Returns the types of the arguments to a enum variant.
 fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
                      tag_ty_params: [ty::t]) -> [ty::t] {
     let result: [ty::t] = [];
@@ -1243,10 +1243,10 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
         let tag_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids.tg);
         let path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
 
-        // Take the tag type params out of `expected`.
+        // Take the enum type params out of `expected`.
         alt structure_of(fcx, pat.span, expected) {
           ty::ty_tag(_, expected_tps) {
-            // Unify with the expected tag type.
+            // Unify with the expected enum type.
             let ctor_ty =
                 ty::ty_param_substs_opt_and_ty_to_monotype(fcx.ccx.tcx,
                                                            path_tpot);
@@ -1257,7 +1257,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
             path_tpot =
                 {substs: some::<[ty::t]>(path_tpt.substs), ty: path_tpt.ty};
 
-            // Get the number of arguments in this tag variant.
+            // Get the number of arguments in this enum variant.
             let arg_types =
                 variant_arg_types(fcx.ccx, pat.span, v_def_ids.var,
                                   expected_tps);
@@ -1267,7 +1267,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
 
                 let arg_len = vec::len::<ty::t>(arg_types);
                 if arg_len != subpats_len {
-                    // TODO: note definition of tag variant
+                    // TODO: note definition of enum variant
                     // TODO (issue #448): Wrap a #fmt string over multiple
                     // lines...
                     let s =
@@ -1287,7 +1287,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
                     i += 1u;
                 }
             } else if subpats_len > 0u {
-                // TODO: note definition of tag variant
+                // TODO: note definition of enum variant
                 fcx.ccx.tcx.sess.span_fatal
                     (pat.span,
                      #fmt["this pattern has %u field%s, \
@@ -1305,7 +1305,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
             // can never tell.
             fcx.ccx.tcx.sess.span_fatal
                 (pat.span,
-                 #fmt["mismatched types: expected `%s` but found tag",
+                 #fmt["mismatched types: expected `%s` but found enum",
                       ty_to_str(fcx.ccx.tcx, expected)]);
           }
         }
