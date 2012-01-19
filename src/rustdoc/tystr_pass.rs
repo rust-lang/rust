@@ -16,12 +16,7 @@ fn run(
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
-        fold_fn: fn~(
-            f: fold::fold<astsrv::srv>,
-            d: doc::fndoc
-        ) -> doc::fndoc {
-            fold_fn(f, d)
-        }
+        fold_fn: fold_fn
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)

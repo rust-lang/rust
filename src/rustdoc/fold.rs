@@ -8,30 +8,11 @@ export default_seq_fold_fnlist;
 
 tag fold<T> = t<T>;
 
-type fold_crate<T> = fn~(
-    fold: fold<T>,
-    doc: doc::cratedoc
-) -> doc::cratedoc;
-
-type fold_mod<T> = fn~(
-    fold: fold<T>,
-    doc: doc::moddoc
-) -> doc::moddoc;
-
-type fold_fn<T> = fn~(
-    fold: fold<T>,
-    doc: doc::fndoc
-) -> doc::fndoc;
-
-type fold_modlist<T> = fn~(
-    fold: fold<T>,
-    list: doc::modlist
-) -> doc::modlist;
-
-type fold_fnlist<T> = fn~(
-    fold: fold<T>,
-    list: doc::fnlist
-) -> doc::fnlist;
+type fold_crate<T> = fn~(fold: fold<T>, doc: doc::cratedoc) -> doc::cratedoc;
+type fold_mod<T> = fn~(fold: fold<T>, doc: doc::moddoc) -> doc::moddoc;
+type fold_fn<T> = fn~(fold: fold<T>, doc: doc::fndoc) -> doc::fndoc;
+type fold_modlist<T> = fn~(fold: fold<T>,list: doc::modlist) -> doc::modlist;
+type fold_fnlist<T> = fn~(fold: fold<T>,list: doc::fnlist) -> doc::fnlist;
 
 type t<T> = {
     ctxt: T,

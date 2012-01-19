@@ -18,18 +18,8 @@ fn run(
         mutable have_docs: true
     };
     let fold = fold::fold({
-        fold_fn: fn~(
-            f: fold::fold<ctxt>,
-            d: doc::fndoc
-        ) -> doc::fndoc {
-            fold_fn(f, d)
-        },
-        fold_fnlist: fn~(
-            f: fold::fold<ctxt>,
-            l: doc::fnlist
-        ) -> doc::fnlist {
-            fold_fnlist(f, l)
-        }
+        fold_fn: fold_fn,
+        fold_fnlist: fold_fnlist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)

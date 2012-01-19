@@ -20,24 +20,9 @@ fn run(
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
-        fold_crate: fn~(
-            f: fold::fold<astsrv::srv>,
-            d: doc::cratedoc
-        ) -> doc::cratedoc {
-            fold_crate(f, d)
-        },
-        fold_mod: fn~(
-            f: fold::fold<astsrv::srv>,
-            d: doc::moddoc
-        ) -> doc::moddoc {
-            fold_mod(f, d)
-        },
-        fold_fn: fn~(
-            f: fold::fold<astsrv::srv>,
-            d: doc::fndoc
-        ) -> doc::fndoc {
-            fold_fn(f, d)
-        }
+        fold_crate: fold_crate,
+        fold_mod: fold_mod,
+        fold_fn: fold_fn
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
