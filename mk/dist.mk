@@ -11,17 +11,7 @@ PKG_NSI = $(S)src/etc/pkg/rust.nsi
 PKG_EXE = $(PKG_DIR)-install.exe
 endif
 
-PKG_OMIT_LLVM_DIRS := examples bindings/ocaml projects
-PKG_OMIT_LLVM_PATS := $(foreach d,$(PKG_OMIT_LLVM_DIRS), %$(d))
-PKG_LLVM_SKEL := $(foreach d,$(PKG_OMIT_LLVM_DIRS), \
-                     $(wildcard $(S)src/llvm/$(d)/*.in \
-                                $(S)src/llvm/$(d)/Makefile*))
-
-PKG_GITMODULES := \
-    $(filter-out %test, $(wildcard $(S)src/libuv/*)) \
-    $(filter-out $(PKG_OMIT_LLVM_PATS), \
-                 $(wildcard $(S)src/llvm/*)) \
-    $(PKG_LLVM_SKEL)
+PKG_GITMODULES := $(S)src/libuv $(S)src/llvm
 
 PKG_FILES := \
     $(S)LICENSE.txt $(S)README.txt             \
