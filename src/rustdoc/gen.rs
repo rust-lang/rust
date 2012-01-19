@@ -208,6 +208,7 @@ fn write_return(
             alt doc.desc {
               some(d) {
                 ctxt.w.write_line(d);
+                ctxt.w.write_line("");
               }
               none { }
             }
@@ -238,6 +239,14 @@ fn should_write_blank_line_between_return_type_and_next_header() {
 fn should_not_write_return_type_when_there_is_none() {
     let markdown = test::render("fn a() { }");
     assert !str::contains(markdown, "Returns");
+}
+
+#[test]
+fn should_write_blank_line_after_return_description() {
+    let markdown = test::render(
+        "#[doc(return = \"blorp\")] fn a() -> int { }"
+    );
+    assert str::contains(markdown, "blorp\n\n");
 }
 
 #[cfg(test)]
