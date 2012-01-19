@@ -54,7 +54,8 @@ type cargo = {
     libdir: str,
     workdir: str,
     sourcedir: str,
-    sources: map::hashmap<str, source>
+    sources: map::hashmap<str, source>,
+    mutable test: bool
 };
 
 type pkg = {
@@ -67,7 +68,7 @@ type pkg = {
 };
 
 fn info(msg: str) {
-    io::stdout().write_line(msg);
+    io::stdout().write_line("info: " + msg);
 }
 
 fn warn(msg: str) {
@@ -323,7 +324,8 @@ fn configure() -> cargo {
         libdir: fs::connect(p, "lib"),
         workdir: fs::connect(p, "work"),
         sourcedir: fs::connect(p, "sources"),
-        sources: sources
+        sources: sources,
+        mutable test: false
     };
 
     need_dir(c.root);
@@ -353,7 +355,8 @@ fn for_each_package(c: cargo, b: block(source, package)) {
     })
 }
 
-fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
+// FIXME: deduplicate code with install_one_crate
+fn test_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     let name = fs::basename(cf);
     let ri = str::index(name, '.' as u8);
     if ri != -1 {
@@ -361,7 +364,7 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     }
     #debug("Installing: %s", name);
     let old = fs::list_dir(".");
-    let p = run::program_output("rustc", [name + ".rc"]);
+    let p = run::program_output("rustc", ["--test", name + ".rc"]);
     if p.status != 0 {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
@@ -371,6 +374,26 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
         vec::filter::<str>(new, { |n| !vec::member::<str>(n, old) });
     let exec_suffix = os::exec_suffix();
     for ct: str in created {
+        if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
+            (exec_suffix == "" && !str::starts_with(ct, "./lib")) {
+            // FIXME: need libstd fs::copy or something
+            run::run_program(ct, []);
+        }
+    }
+}
+
+fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
+    let buildpath = fs::connect(_path, "/build");
+    need_dir(buildpath);
+    #debug("Installing: %s -> %s", cf, buildpath);
+    let p = run::program_output("rustc", ["--out-dir", buildpath, cf]);
+    if p.status != 0 {
+        error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
+        ret;
+    }
+    let new = fs::list_dir(buildpath);
+    let exec_suffix = os::exec_suffix();
+    for ct: str in new {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(ct, "./lib")) {
             #debug("  bin: %s", ct);
@@ -402,6 +425,9 @@ fn install_source(c: cargo, path: str) {
         alt p {
             none. { cont; }
             some(_p) {
+                if c.test {
+                    test_one_crate(c, path, cf, _p);
+                }
                 install_one_crate(c, path, cf, _p);
             }
         }
@@ -530,13 +556,20 @@ fn cmd_install(c: cargo, argv: [str]) {
         ret;
     }
 
+    let target = argv[2];
+    // TODO: getopts
+    if vec::len(argv) > 3u && argv[2] == "--test" {
+        c.test = true;
+        target = argv[3];
+    }
+
     let wd = alt tempfile::mkdtemp(c.workdir + fs::path_sep(), "") {
         some(_wd) { _wd }
         none. { fail "needed temp dir"; }
     };
 
-    if str::starts_with(argv[2], "uuid:") {
-        let uuid = rest(argv[2], 5u);
+    if str::starts_with(target, "uuid:") {
+        let uuid = rest(target, 5u);
         let idx = str::index(uuid, '/' as u8);
         if idx != -1 {
             let source = str::slice(uuid, 0u, idx as uint);
@@ -546,7 +579,7 @@ fn cmd_install(c: cargo, argv: [str]) {
             install_uuid(c, wd, uuid);
         }
     } else {
-        let name = argv[2];
+        let name = target;
         let idx = str::index(name, '/' as u8);
         if idx != -1 {
             let source = str::slice(name, 0u, idx as uint);
@@ -686,13 +719,13 @@ fn cmd_search(c: cargo, argv: [str]) {
 
 fn cmd_usage() {
     print("Usage: cargo <verb> [args...]");
-    print("  init                                 Fetch default sources");
-    print("  install [source/]package-name        Install by name");
-    print("  install uuid:[source/]package-uuid   Install by uuid");
-    print("  list [source]                        List packages");
-    print("  search <name | '*'> [tags...]        Search packages");
-    print("  sync                                 Sync all sources");
-    print("  usage                                This");
+    print("  init                                          Fetch default sources");
+    print("  install [--test] [source/]package-name        Install by name");
+    print("  install [--test] uuid:[source/]package-uuid   Install by uuid");
+    print("  list [source]                                 List packages");
+    print("  search <name | '*'> [tags...]                 Search packages");
+    print("  sync                                          Sync all sources");
+    print("  usage                                         This");
 }
 
 fn main(argv: [str]) {
