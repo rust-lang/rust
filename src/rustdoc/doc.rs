@@ -8,6 +8,8 @@ type cratedoc = ~{
 
 type moddoc = ~{
     name: str,
+    brief: option<str>,
+    desc: option<str>,
     mods: modlist,
     fns: fnlist
 };

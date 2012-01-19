@@ -38,6 +38,8 @@ fn moddoc_from_mod(
 ) -> doc::moddoc {
     ~{
         name: name,
+        brief: none,
+        desc: none,
         mods: doc::modlist(
             vec::filter_map(module.items) {|item|
                 alt item.node {

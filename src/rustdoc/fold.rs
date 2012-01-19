@@ -87,9 +87,9 @@ fn default_seq_fold_mod<T>(
     doc: doc::moddoc
 ) -> doc::moddoc {
     ~{
-        name: doc.name,
         mods: fold.fold_modlist(fold, doc.mods),
         fns: fold.fold_fnlist(fold, doc.fns)
+        with *doc
     }
 }
 

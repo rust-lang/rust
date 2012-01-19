@@ -52,9 +52,8 @@ fn fold_crate(
 
     ~{
         topmod: ~{
-            name: option::from_maybe(doc.topmod.name, attrs.name),
-            mods: doc.topmod.mods,
-            fns: doc.topmod.fns
+            name: option::from_maybe(doc.topmod.name, attrs.name)
+            with *doc.topmod
         }
     }
 }
