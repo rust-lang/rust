@@ -9,7 +9,6 @@ import core::ctypes;
 
 export test_name;
 export test_fn;
-export default_test_fn;
 export test_desc;
 export test_main;
 export test_result;
@@ -18,14 +17,7 @@ export tr_ok;
 export tr_failed;
 export tr_ignored;
 export run_tests_console;
-export run_tests_console_;
-export run_test;
-export filter_tests;
-export parse_opts;
-export test_to_task;
-export default_test_to_task;
 export configure_test_task;
-export joinable;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -42,22 +34,20 @@ type test_name = str;
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
 // to support isolation of tests into tasks.
-type test_fn<T> = T;
-
-type default_test_fn = test_fn<fn~()>;
+type test_fn = fn~();
 
 // The definition of a single test. A test runner will run a list of
 // these.
-type test_desc<T> = {
+type test_desc = {
     name: test_name,
-    fn: test_fn<T>,
+    fn: test_fn,
     ignore: bool,
     should_fail: bool
 };
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: [str], tests: [test_desc<default_test_fn>]) {
+fn test_main(args: [str], tests: [test_desc]) {
     check (vec::is_not_empty(args));
     let opts =
         alt parse_opts(args) {
@@ -96,22 +86,9 @@ fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
 
 tag test_result { tr_ok; tr_failed; tr_ignored; }
 
-type joinable = (task::task, comm::port<task::task_notification>);
-
-// To get isolation and concurrency tests have to be run in their own tasks.
-// In cases where test functions are closures it is not ok to just dump them
-// into a task and run them, so this transformation gives the caller a chance
-// to create the test task.
-type test_to_task<T> = fn@(test_fn<T>) -> joinable;
-
 // A simple console test runner
 fn run_tests_console(opts: test_opts,
-                         tests: [test_desc<default_test_fn>]) -> bool {
-    run_tests_console_(opts, tests, default_test_to_task)
-}
-
-fn run_tests_console_<T: copy>(opts: test_opts, tests: [test_desc<T>],
-                              to_task: test_to_task<T>) -> bool {
+                     tests: [test_desc]) -> bool {
 
     type test_state =
         @{out: io::writer,
@@ -120,9 +97,9 @@ fn run_tests_console_<T: copy>(opts: test_opts, tests: [test_desc<T>],
           mutable passed: uint,
           mutable failed: uint,
           mutable ignored: uint,
-          mutable failures: [test_desc<T>]};
+          mutable failures: [test_desc]};
 
-    fn callback<T: copy>(event: testevent<T>, st: test_state) {
+    fn callback(event: testevent, st: test_state) {
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
@@ -161,14 +138,14 @@ fn run_tests_console_<T: copy>(opts: test_opts, tests: [test_desc<T>],
           mutable ignored: 0u,
           mutable failures: []};
 
-    run_tests(opts, tests, to_task, bind callback(_, st));
+    run_tests(opts, tests, bind callback(_, st));
 
     assert (st.passed + st.failed + st.ignored == st.total);
     let success = st.failed == 0u;
 
     if !success {
         st.out.write_line("\nfailures:");
-        for test: test_desc<T> in st.failures {
+        for test: test_desc in st.failures {
             let testname = test.name; // Satisfy alias analysis
             st.out.write_line(#fmt["    %s", testname]);
         }
@@ -209,22 +186,20 @@ fn run_tests_console_<T: copy>(opts: test_opts, tests: [test_desc<T>],
 
 fn use_color() -> bool { ret get_concurrency() == 1u; }
 
-tag testevent<T> {
-    te_filtered([test_desc<T>]);
-    te_wait(test_desc<T>);
-    te_result(test_desc<T>, test_result);
+tag testevent {
+    te_filtered([test_desc]);
+    te_wait(test_desc);
+    te_result(test_desc, test_result);
 }
 
-fn run_tests<T: copy>(opts: test_opts, tests: [test_desc<T>],
-                     to_task: test_to_task<T>,
-                     callback: fn@(testevent<T>)) {
+fn run_tests(opts: test_opts, tests: [test_desc],
+             callback: fn@(testevent)) {
 
     let filtered_tests = filter_tests(opts, tests);
     callback(te_filtered(filtered_tests));
 
-    // It's tempting to just spawn all the tests at once but that doesn't
-    // provide a great user experience because you might sit waiting for the
-    // result of a particular test for an unusually long amount of time.
+    // It's tempting to just spawn all the tests at once, but since we have many
+    // tests that run in other processes we would be making a big mess.
     let concurrency = get_concurrency();
     #debug("using %u test tasks", concurrency);
     let total = vec::len(filtered_tests);
@@ -234,7 +209,7 @@ fn run_tests<T: copy>(opts: test_opts, tests: [test_desc<T>],
 
     while wait_idx < total {
         while vec::len(futures) < concurrency && run_idx < total {
-            futures += [run_test(filtered_tests[run_idx], to_task)];
+            futures += [run_test(filtered_tests[run_idx])];
             run_idx += 1u;
         }
 
@@ -249,8 +224,8 @@ fn run_tests<T: copy>(opts: test_opts, tests: [test_desc<T>],
 
 fn get_concurrency() -> uint { rustrt::sched_threads() }
 
-fn filter_tests<T: copy>(opts: test_opts,
-                        tests: [test_desc<T>]) -> [test_desc<T>] {
+fn filter_tests(opts: test_opts,
+                tests: [test_desc]) -> [test_desc] {
     let filtered = tests;
 
     // Remove tests that don't match the test filter
@@ -263,8 +238,8 @@ fn filter_tests<T: copy>(opts: test_opts,
           option::none { "" }
         };
 
-        fn filter_fn<T: copy>(test: test_desc<T>, filter_str: str) ->
-            option::t<test_desc<T>> {
+        fn filter_fn(test: test_desc, filter_str: str) ->
+            option::t<test_desc> {
             if str::find(test.name, filter_str) >= 0 {
                 ret option::some(test);
             } else { ret option::none; }
@@ -279,7 +254,7 @@ fn filter_tests<T: copy>(opts: test_opts,
     filtered = if !opts.run_ignored {
         filtered
     } else {
-        fn filter<T: copy>(test: test_desc<T>) -> option::t<test_desc<T>> {
+        fn filter(test: test_desc) -> option::t<test_desc> {
             if test.ignore {
                 ret option::some({name: test.name,
                                   fn: test.fn,
@@ -294,7 +269,7 @@ fn filter_tests<T: copy>(opts: test_opts,
     // Sort the tests alphabetically
     filtered =
         {
-            fn lteq<T>(t1: test_desc<T>, t2: test_desc<T>) -> bool {
+            fn lteq(t1: test_desc, t2: test_desc) -> bool {
                 str::lteq(t1.name, t2.name)
             }
             sort::merge_sort(bind lteq(_, _), filtered)
@@ -303,15 +278,14 @@ fn filter_tests<T: copy>(opts: test_opts,
     ret filtered;
 }
 
-type test_future<T> = {test: test_desc<T>, wait: fn@() -> test_result};
+type test_future = {test: test_desc, wait: fn@() -> test_result};
 
-fn run_test<T: copy>(test: test_desc<T>,
-                    to_task: test_to_task<T>) -> test_future<T> {
+fn run_test(test: test_desc) -> test_future {
     if test.ignore {
         ret {test: test, wait: fn@() -> test_result { tr_ignored }};
     }
 
-    let test_task = to_task(test.fn);
+    let test_task = test_to_task(test.fn);
     ret {test: test,
          wait: fn@() -> test_result {
              alt task::join(test_task) {
@@ -330,7 +304,7 @@ fn run_test<T: copy>(test: test_desc<T>,
 
 // We need to run our tests in another task in order to trap test failures.
 // This function only works with functions that don't contain closures.
-fn default_test_to_task(&&f: default_test_fn) -> joinable {
+fn test_to_task(&&f: test_fn) -> task::joinable_task {
     ret task::spawn_joinable(fn~[copy f]() {
         configure_test_task();
         f();
@@ -356,9 +330,9 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let future = test::run_test(desc, test::default_test_to_task);
+        let future = run_test(desc);
         let result = future.wait();
-        assert result != test::tr_ok;
+        assert result != tr_ok;
     }
 
     #[test]
@@ -370,8 +344,8 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let res = test::run_test(desc, test::default_test_to_task).wait();
-        assert (res == test::tr_ignored);
+        let res = run_test(desc).wait();
+        assert (res == tr_ignored);
     }
 
     #[test]
@@ -384,8 +358,8 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let res = test::run_test(desc, test::default_test_to_task).wait();
-        assert res == test::tr_ok;
+        let res = run_test(desc).wait();
+        assert res == tr_ok;
     }
 
     #[test]
@@ -397,15 +371,15 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let res = test::run_test(desc, test::default_test_to_task).wait();
-        assert res == test::tr_failed;
+        let res = run_test(desc).wait();
+        assert res == tr_failed;
     }
 
     #[test]
     fn first_free_arg_should_be_a_filter() {
         let args = ["progname", "filter"];
         check (vec::is_not_empty(args));
-        let opts = alt test::parse_opts(args) { either::left(o) { o } };
+        let opts = alt parse_opts(args) { either::left(o) { o } };
         assert (str::eq("filter", option::get(opts.filter)));
     }
 
@@ -413,7 +387,7 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ["progname", "filter", "--ignored"];
         check (vec::is_not_empty(args));
-        let opts = alt test::parse_opts(args) { either::left(o) { o } };
+        let opts = alt parse_opts(args) { either::left(o) { o } };
         assert (opts.run_ignored);
     }
 
@@ -424,9 +398,9 @@ mod tests {
 
         let opts = {filter: option::none, run_ignored: true};
         let tests =
-            [{name: "1", fn: fn@() { }, ignore: true, should_fail: false},
-             {name: "2", fn: fn@() { }, ignore: false, should_fail: false}];
-        let filtered = test::filter_tests(opts, tests);
+            [{name: "1", fn: fn~() { }, ignore: true, should_fail: false},
+             {name: "2", fn: fn~() { }, ignore: false, should_fail: false}];
+        let filtered = filter_tests(opts, tests);
 
         assert (vec::len(filtered) == 1u);
         assert (filtered[0].name == "1");
@@ -446,7 +420,7 @@ mod tests {
              "test::sort_tests"];
         let tests =
         {
-        let testfn = fn@() { };
+        let testfn = fn~() { };
         let tests = [];
         for name: str in names {
             let test = {name: name, fn: testfn, ignore: false,
@@ -455,7 +429,7 @@ mod tests {
         }
         tests
     };
-    let filtered = test::filter_tests(opts, tests);
+    let filtered = filter_tests(opts, tests);
 
     let expected =
         ["int::test_pow", "int::test_to_str", "sha1::test",
@@ -469,7 +443,7 @@ mod tests {
 
 
     for (a, b) in pairs { assert (a == b.name); }
-}
+    }
 }
 
 

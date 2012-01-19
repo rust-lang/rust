@@ -115,7 +115,7 @@ fn run_tests(config: config) {
     let opts = test_opts(config);
     let cx = {config: config, procsrv: procsrv::mk()};
     let tests = make_tests(cx);
-    let res = test::run_tests_console_(opts, tests.tests, tests.to_task);
+    let res = test::run_tests_console(opts, tests);
     procsrv::close(cx.procsrv);
     if !res { fail "Some tests failed"; }
 }
@@ -129,23 +129,17 @@ fn test_opts(config: config) -> test::test_opts {
      run_ignored: config.run_ignored}
 }
 
-type tests_and_conv_fn = {
-    tests: [test::test_desc<fn@()>],
-    to_task: fn@(fn@()) -> test::joinable
-};
-
-fn make_tests(cx: cx) -> tests_and_conv_fn {
+fn make_tests(cx: cx) -> [test::test_desc] {
     #debug("making tests from %s", cx.config.src_base);
-    let configport = port::<[u8]>();
     let tests = [];
     for file: str in fs::list_dir(cx.config.src_base) {
         let file = file;
         #debug("inspecting file %s", file);
         if is_test(cx.config, file) {
-            tests += [make_test(cx, file, configport)];
+            tests += [make_test(cx, file)]
         }
     }
-    ret {tests: tests, to_task: bind closure_to_task(cx, configport, _)};
+    ret tests;
 }
 
 fn is_test(config: config, testfile: str) -> bool {
@@ -168,40 +162,31 @@ fn is_test(config: config, testfile: str) -> bool {
     ret valid;
 }
 
-fn make_test(cx: cx, testfile: str, configport: port<[u8]>) ->
-   test::test_desc<fn@()> {
-    {name: make_test_name(cx.config, testfile),
-     fn: make_test_closure(testfile, chan(configport)),
-     ignore: header::is_test_ignored(cx.config, testfile),
-     should_fail: false}
+fn make_test(cx: cx, testfile: str) ->
+   test::test_desc {
+    {
+        name: make_test_name(cx.config, testfile),
+        fn: make_test_closure(cx, testfile),
+        ignore: header::is_test_ignored(cx.config, testfile),
+        should_fail: false
+    }
 }
 
 fn make_test_name(config: config, testfile: str) -> str {
     #fmt["[%s] %s", mode_str(config.mode), testfile]
 }
 
-fn make_test_closure(testfile: str,
-                     configchan: chan<[u8]>) -> test::test_fn<fn@()> {
-    bind send_config(testfile, configchan)
-}
-
-fn send_config(testfile: str, configchan: chan<[u8]>) {
-    send(configchan, str::bytes(testfile));
-}
-
-fn closure_to_task(cx: cx, configport: port<[u8]>, testfn: fn@()) ->
-   test::joinable {
-    testfn();
-    let testfile = recv(configport);
-    let (config, chan) = (cx.config, cx.procsrv.chan);
-    ret task::spawn_joinable {||
+fn make_test_closure(cx: cx, testfile: str) -> test::test_fn {
+    let config = cx.config;
+    let chan = cx.procsrv.chan;
+    ret {||
         run_test_task(config, chan, testfile);
     };
 }
 
 fn run_test_task(config: common::config,
                  procsrv_chan: procsrv::reqchan,
-                 testfile: [u8]) {
+                 testfile: str) {
     test::configure_test_task();
 
     let procsrv = procsrv::from_chan(procsrv_chan);

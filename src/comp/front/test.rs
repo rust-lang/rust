@@ -249,19 +249,10 @@ fn mk_path(cx: test_ctxt, path: [ast::ident]) -> [ast::ident] {
 
 // The ast::ty of [std::test::test_desc]
 fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
-    let test_fn_ty: ast::ty = nospan(
-        ast::ty_path(
-            @nospan({
-                global: false,
-                idents: mk_path(cx, ["test", "default_test_fn"]),
-                types: []
-            }),
-            cx.sess.next_node_id()));
-
     let test_desc_ty_path =
         @nospan({global: false,
                  idents: mk_path(cx, ["test", "test_desc"]),
-                 types: [@test_fn_ty]});
+                 types: []});
 
     let test_desc_ty: ast::ty =
         nospan(ast::ty_path(test_desc_ty_path, cx.sess.next_node_id()));

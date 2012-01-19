@@ -15,8 +15,7 @@ import util::logv;
 
 export run;
 
-fn run(cx: cx, -_testfile: [u8]) {
-    let testfile = str::unsafe_from_bytes(_testfile);
+fn run(cx: cx, testfile: str) {
     if cx.config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str("\n\n");
