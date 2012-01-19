@@ -63,8 +63,15 @@ fn write_mod(
     ctxt: ctxt,
     moddoc: doc::moddoc
 ) {
-    write_header(ctxt, h2, #fmt("Module `%s`", moddoc.name));
+    let fullpath = str::connect(moddoc.path + [moddoc.name], "::");
+    write_header(ctxt, h2, #fmt("Module `%s`", fullpath));
     write_mod_contents(ctxt, moddoc);
+}
+
+#[test]
+fn should_write_full_path_to_mod() {
+    let markdown = test::render("mod a { mod b { mod c { } } }");
+    assert str::contains(markdown, "## Module `a::b::c`");
 }
 
 fn write_mod_contents(
@@ -238,6 +245,7 @@ mod test {
     fn render(source: str) -> str {
         let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
+        let doc = path_pass::mk_pass()(srv, doc);
         let doc = attr_pass::mk_pass()(srv, doc);
         let doc = tystr_pass::mk_pass()(srv, doc);
         let markdown = write_markdown_str(doc);
