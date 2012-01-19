@@ -11,7 +11,21 @@ fn run_passes(
     passes: [pass]
 ) -> doc::cratedoc {
 
-    #[doc = "Run a series of passes over the document"];
+    #[doc(
+        brief =
+        "Run a series of passes over the document",
+        args(
+            srv =
+            "The AST service to provide to the passes",
+            doc =
+            "The document to transform",
+            passes =
+            "The list of passes used to transform the document"
+        ),
+        return =
+        "The transformed document that results from folding the \
+         original through each pass"
+    )];
 
     vec::foldl(doc, passes) {|doc, pass|
         pass(srv, doc)
