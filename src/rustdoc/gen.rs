@@ -204,6 +204,27 @@ fn write_return(
     }
 }
 
+#[test]
+fn should_write_return_type_on_new_line() {
+    let markdown = test::render("fn a() -> int { }");
+    assert str::contains(markdown, "\nReturns `int`");
+}
+
+#[test]
+fn should_write_blank_line_between_return_type_and_next_header() {
+    let markdown = test::render(
+        "fn a() -> int { } \
+         fn b() -> int { }"
+    );
+    assert str::contains(markdown, "Returns `int`\n\n##");
+}
+
+#[test]
+fn should_not_write_return_type_when_there_is_none() {
+    let markdown = test::render("fn a() { }");
+    assert !str::contains(markdown, "Returns");
+}
+
 #[cfg(test)]
 mod test {
     fn render(source: str) -> str {
@@ -272,18 +293,4 @@ mod test {
         assert str::contains(markdown, "brief\n\ndesc");
     }
 
-    #[test]
-    fn should_write_return_type_on_new_line() {
-        let markdown = render("fn a() -> int { }");
-        assert str::contains(markdown, "\nReturns `int`");
-    }
-
-    #[test]
-    fn should_write_blank_line_between_return_type_and_next_header() {
-        let markdown = render(
-            "fn a() -> int { } \
-             fn b() -> int { }"
-        );
-        assert str::contains(markdown, "Returns `int`\n\n##");
-    }
 }

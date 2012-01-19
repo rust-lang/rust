@@ -46,27 +46,36 @@ fn merge_ret_ty(
     fn_id: doc::ast_id,
     doc: option<doc::retdoc>
 ) -> option<doc::retdoc> {
-    let ty = get_ret_ty(srv, fn_id);
     alt doc {
       some(doc) {
         fail "unimplemented";
       }
       none. {
-        some({
-            desc: none,
-            ty: some(ty)
-        })
+        alt get_ret_ty(srv, fn_id) {
+          some(ty) {
+            some({
+                desc: none,
+                ty: some(ty)
+            })
+          }
+          none. { none }
+        }
       }
     }
 }
 
-fn get_ret_ty(srv: astsrv::srv, id: doc::ast_id) -> str {
+fn get_ret_ty(srv: astsrv::srv, id: doc::ast_id) -> option<str> {
     astsrv::exec(srv) {|ctxt|
         alt ctxt.map.get(id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
           }) {
-            pprust::ty_to_str(decl.output)
+            if decl.output.node != ast::ty_nil {
+                some(pprust::ty_to_str(decl.output))
+            } else {
+                // Nil-typed return values are not interesting
+                none
+            }
           }
         }
     }
@@ -79,6 +88,15 @@ fn should_add_fn_ret_types() {
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert option::get(doc.topmod.fns[0].return).ty == some("int");
+}
+
+#[test]
+fn should_not_add_nil_ret_type() {
+    let source = "fn a() { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.fns[0].return == none;
 }
 
 fn merge_arg_tys(
