@@ -1508,11 +1508,9 @@ fn parse_pat(p: parser) -> @ast::pat {
                 args = a.node;
                 hi = a.span.hi;
               }
-              token::LBRACE. | token::RPAREN. | token::COMMA.
-                  | token::BINOP(token::OR.) { args = []; }
               // take this out once the libraries change
               token::DOT. { args = []; p.bump(); }
-              _ { expect(p, token::LPAREN); fail; }
+              _ { args = []; }
             }
             // at this point, we're not sure whether it's a tag or a bind
             if vec::len(args) == 0u &&
