@@ -738,8 +738,8 @@ fn GEP_tup_like(bcx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
 
 // Replacement for the LLVM 'GEP' instruction when field indexing into a enum.
 // This function uses GEP_tup_like() above and automatically performs casts as
-// appropriate. @llblobptr is the data part of a enum value; its actual type is
-// meaningless, as it will be cast away.
+// appropriate. @llblobptr is the data part of a enum value; its actual type
+// is meaningless, as it will be cast away.
 fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: ast::def_id,
            variant_id: ast::def_id, ty_substs: [ty::t],
            ix: uint) : valid_variant_index(ix, cx, tag_id, variant_id) ->

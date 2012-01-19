@@ -16,7 +16,8 @@ import syntax::print::pprust::pat_to_str;
 
 import trans_common::*;
 
-// An option identifying a branch (either a literal, a enum variant or a range)
+// An option identifying a branch (either a literal, a enum variant or a
+// range)
 enum opt {
     lit(@ast::expr);
     var(/* disr val */int, /* variant dids */{tg: def_id, var: def_id});
