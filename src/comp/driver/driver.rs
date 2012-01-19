@@ -564,11 +564,13 @@ fn build_output_filenames(ifile: str,
           }
         };
 
-        let (base_path, _) = if !input_is_stdin(ifile) {
-            fs::splitext(ifile)
+        let base_filename = if !input_is_stdin(ifile) {
+            let (path, _) = fs::splitext(ifile);
+            fs::basename(path)
         } else {
-            (fs::connect(dirname, "rust_out"), "")
+            "rust_out"
         };
+        let base_path = fs::connect(dirname, base_filename);
 
 
         if sess.building_library {
