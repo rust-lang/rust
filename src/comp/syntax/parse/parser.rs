@@ -31,6 +31,8 @@ type parse_sess = @{
 fn next_node_id(sess: parse_sess) -> node_id {
     let rv = sess.next_id;
     sess.next_id += 1;
+    // ID 0 is reserved for the crate and doesn't actually exist in the AST
+    assert rv != 0;
     ret rv;
 }
 
