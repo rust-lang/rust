@@ -1,16 +1,16 @@
-// error-pattern: mismatched types
-
 // Make sure that fn-to-block coercion isn't incorrectly lifted over
 // other tycons.
 
-fn coerce(b: block()) -> fn() {
-    fn lol(f: fn(block()) -> fn(), g: block()) -> fn() { ret f(g); }
-    fn fn_id(f: fn()) -> fn() { ret f }
+fn coerce(b: fn()) -> native fn() {
+    fn lol(f: native fn(block()) -> native fn(),
+           g: fn()) -> native fn() { ret f(g); }
+    fn fn_id(f: native fn()) -> native fn() { ret f }
     ret lol(fn_id, b);
+    //!^ ERROR mismatched types: expected `native fn(fn&()) -> native fn()`
 }
-
 
 fn main() {
     let i = 8;
-    let f = coerce(block () { log(error, i); });
-    f(); }
+    let f = coerce({|| log(error, i); });
+    f();
+}

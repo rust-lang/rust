@@ -1643,7 +1643,7 @@ fn opt_proto_to_str(opt_p: option<ast::proto>) -> str {
 fn proto_to_str(p: ast::proto) -> str {
     ret alt p {
       ast::proto_bare { "native fn" }
-      ast::proto_any { "fn*" }
+      ast::proto_any { "fn" }
       ast::proto_block { "fn&" }
       ast::proto_uniq { "fn~" }
       ast::proto_box { "fn@" }
