@@ -100,6 +100,7 @@ fn argdocs_from_args(args: [ast::arg]) -> [doc::argdoc] {
 fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
     ~{
         name: arg.ident,
+        desc: none,
         ty: none
     }
 }

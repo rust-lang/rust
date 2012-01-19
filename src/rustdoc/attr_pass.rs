@@ -154,11 +154,23 @@ fn fold_fn(
     }
 
     fn merge_arg_attrs(
-        doc: [doc::argdoc],
-        _attrs: [attr_parser::arg_attrs]
+        docs: [doc::argdoc],
+        attrs: [attr_parser::arg_attrs]
     ) -> [doc::argdoc] {
-        // FIXME
-        doc
+        vec::map(docs) {|doc|
+            alt vec::find(attrs) {|attr|
+                attr.name == doc.name
+            } {
+                some(attr) {
+                    ~{
+                        desc: some(attr.desc)
+                        with *doc
+                    }
+                }
+                none. { doc }
+            }
+        }
+        // FIXME: Warning when documenting a non-existant arg
     }
 
     fn merge_ret_attrs(
@@ -178,4 +190,14 @@ fn fold_fn_should_extract_fn_attributes() {
     let fold = fold::default_seq_fold(srv);
     let doc = fold_fn(fold, doc.topmod.fns[0]);
     assert doc.desc == some("test");
+}
+
+#[test]
+fn fold_fn_should_extract_arg_attributes() {
+    let source = "#[doc(args(a = \"b\"))] fn c(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    assert doc.args[0].desc == some("b");
 }

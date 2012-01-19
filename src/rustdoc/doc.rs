@@ -26,6 +26,7 @@ type fndoc = ~{
 
 type argdoc = ~{
     name: str,
+    desc: option<str>,
     ty: option<str>
 };
 
