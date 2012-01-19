@@ -49,7 +49,17 @@ $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
 	$(Q)rm -Rf dist
 	$(Q)mkdir -p dist/$(PKG_DIR)
-	$(Q)tar -C $(S) -c $(UNROOTED_PKG_FILES) | tar -x -C dist/$(PKG_DIR)
+	$(Q)tar \
+         -C $(S) \
+         --exclude-vcs \
+         --exclude=*~ \
+         --exclude=*/llvm/test/*/*.ll \
+         --exclude=*/llvm/test/*/*.td \
+         --exclude=*/llvm/test/*/*.s \
+         --exclude=*/llvm/test/*/*/*.ll \
+         --exclude=*/llvm/test/*/*/*.td \
+         --exclude=*/llvm/test/*/*/*.s \
+         -c $(UNROOTED_PKG_FILES) | tar -x -C dist/$(PKG_DIR)
 	$(Q)tar -czf $(PKG_TAR) -C dist $(PKG_DIR)
 	$(Q)rm -Rf dist
 
