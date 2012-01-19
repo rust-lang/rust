@@ -13,7 +13,7 @@ import back::link;
 import core::{option, str, int, result};
 import result::{ok, err};
 import std::{fs, io, getopts};
-import io::reader_util;
+import io::{reader_util, writer_util};
 import option::{some, none};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
@@ -104,8 +104,8 @@ fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = thunk();
     let end = std::time::precise_time_s();
-    std::io::println(#fmt["time: %s took %s s", what,
-                          float::to_str(end - start, 3u)]);
+    io::stdout().write_str(#fmt("time: %3.3f s\t%s\n",
+                                end - start, what));
     ret rv;
 }
 
