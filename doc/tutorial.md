@@ -8,9 +8,7 @@ This is a tutorial for the Rust programming language. It assumes the
 reader is familiar with the basic concepts of programming, and has
 programmed in one or more other languages before. The tutorial covers
 the whole language, though not with the depth and precision of the
-[language reference][1].
-
-[1]: http://www.rust-lang.org/doc/rust.html
+[language reference](rust.html).
 
 ## Disclaimer
 
@@ -106,7 +104,7 @@ live inside a function.
 Rust programs can also be compiled as libraries, and included in other
 programs. The `use std` directive that appears at the top of a lot of
 examples imports the [standard library][std]. This is described in more
-detail [later on](mod.html).
+detail [later on](#modules-and-crates).
 
 [std]: http://doc.rust-lang.org/doc/std/index/General.html
 
@@ -332,10 +330,9 @@ type monster_size = uint;
 This will provide a synonym, `monster_size`, for unsigned integers. It
 will not actually create a new type—`monster_size` and `uint` can be
 used interchangeably, and using one where the other is expected is not
-a type error. Read about [single-variant enums][sve] further on if you
-need to create a type name that's not just a synonym.
-
-[sve]: data.html#single_variant_enum
+a type error. Read about [single-variant enums](#single_variant_enum)
+further on if you need to create a type name that's not just a
+synonym.
 
 ## Literals
 
@@ -435,8 +432,6 @@ assert y == 4u;
 
 ## Attributes
 
-<a name="conditional"></a>
-
 Every definition can be annotated with attributes. Attributes are meta
 information that can serve a variety of purposes. One of those is
 conditional compilation:
@@ -457,12 +452,12 @@ Attributes are always wrapped in hash-braces (`#[attr]`). Inside the
 braces, a small minilanguage is supported, whose interpretation
 depends on the attribute that's being used. The simplest form is a
 plain name (as in `#[test]`, which is used by the [built-in test
-framework](test.html '')). A name-value pair can be provided using an `=`
+framework](#testing)). A name-value pair can be provided using an `=`
 character followed by a literal (as in `#[license = "BSD"]`, which is
 a valid way to annotate a Rust program as being released under a
 BSD-style license). Finally, you can have a name followed by a
 comma-separated list of nested attributes, as in the `cfg` example
-above, or in this [crate](mod.html) metadata declaration:
+above, or in this [crate](#modules-and-crates) metadata declaration:
 
 ~~~~
 ## ignore
@@ -662,7 +657,7 @@ moment.
 
 ## Failure
 
-The `fail` keyword causes the current [task][tasks] to fail. You use
+The `fail` keyword causes the current [task](#tasks) to fail. You use
 it to indicate unexpected failure, much like you'd use `exit(1)` in a
 C program, except that in Rust, it is possible for other tasks to
 handle the failure, allowing the program to continue running.
@@ -670,8 +665,6 @@ handle the failure, allowing the program to continue running.
 `fail` takes an optional argument, which must have type `str`. Trying
 to access a vector out of bounds, or running a pattern match with no
 matching clauses, both result in the equivalent of a `fail`.
-
-[tasks]: task.html
 
 ## Logging
 
@@ -835,14 +828,12 @@ call_twice(bare_function);
 
 ### Unique closures
 
-<a name="unique"></a>
-
 Unique closures, written `fn~` in analogy to the `~` pointer type (see
 next section), hold on to things that can safely be sent between
 processes. They copy the values they close over, much like boxed
 closures, but they also 'own' them—meaning no other code can access
 them. Unique closures mostly exist to for spawning new
-[tasks](task.html).
+[tasks](#tasks).
 
 ### Shorthand syntax
 
@@ -1151,8 +1142,6 @@ All pointer types can be dereferenced with the `*` unary operator.
 
 ### Shared boxes
 
-<a name="shared-box"></a>
-
 Shared boxes are pointers to heap-allocated, reference counted memory.
 A cycle collector ensures that circular references do not result in
 memory leaks.
@@ -1173,8 +1162,6 @@ reference counting, for shared boxes.
 Shared boxes never cross task boundaries.
 
 ### Unique boxes
-
-<a name="unique-box"></a>
 
 In contrast to shared boxes, unique boxes are not reference counted.
 Instead, it is statically guaranteed that only a single owner of the
@@ -1414,7 +1401,7 @@ records and tags *are* passed by pointer, but single-word values, like
 integers and pointers, are simply passed by value. Most of the time,
 the programmer does not have to worry about this, as the compiler will
 simply pick the most efficient passing style. There is one exception,
-which will be described in the section on [generics](generic.html).
+which will be described in the section on [generics](#generics).
 
 To explicitly set the passing-style for a parameter, you prefix the
 argument name with a sigil. There are two special passing styles that
@@ -1541,8 +1528,6 @@ note that `"bac" < "ác"`, because the ordering acts on UTF-8 sequences
 without any sophistication).
 
 ## Kinds
-
-<a name="kind"></a>
 
 Perhaps surprisingly, the 'copy' (duplicate) operation is not defined
 for all Rust types. Resource types (types with destructors) can not be
@@ -1724,7 +1709,7 @@ A set of basic library routines, mostly related to built-in datatypes
 and the task system, are always implicitly linked and included in any
 Rust program, unless the `--no-core` compiler switch is given.
 
-This library is document [here][core].
+This library is documented [here][core].
 
 [core]: http://doc.rust-lang.org/doc/core/index/General.html
 
@@ -2310,11 +2295,9 @@ supposed to point at, this is safe.
 Rust supports a system of lightweight tasks, similar to what is found
 in Erlang or other actor systems. Rust tasks communicate via messages
 and do not share data. However, it is possible to send data without
-copying it by making use of [unique boxes][uniques], which allow the
-sending task to release ownership of a value, so that the receiving
-task can keep on using it.
-
-[uniques]: data.html#unique-box
+copying it by making use of [unique boxes](#unique-boxes), which allow
+the sending task to release ownership of a value, so that the
+receiving task can keep on using it.
 
 NOTE: As Rust evolves, we expect the Task API to grow and change
 somewhat.  The tutorial documents the API as it exists today.
@@ -2333,7 +2316,7 @@ let child_task = task::spawn {||
 ~~~~
 
 The argument to `task::spawn()` is a [unique
-closure](func.html#unique) of type `fn~()`, meaning that it takes no
+closure](#unique-closures) of type `fn~()`, meaning that it takes no
 arguments and generates no return value. The effect of `task::spawn()`
 is to fire up a child task that will execute the closure in parallel
 with the creator. The result is a task id, here stored into the
@@ -2553,4 +2536,4 @@ ignored.
 A program compiled as a test runner will have the configuration flag
 `test` defined, so that you can add code that won't be included in a
 normal compile with the `#[cfg(test)]` attribute (see [conditional
-compilation](syntax.md#conditional)).
+compilation](#attributes)).
