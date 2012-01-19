@@ -104,8 +104,8 @@ fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = thunk();
     let end = std::time::precise_time_s();
-    #error("time: %s took %s s", what,
-           float::to_str(end - start, 3u));
+    std::io::println(#fmt["time: %s took %s s", what,
+                          float::to_str(end - start, 3u)]);
     ret rv;
 }
 
