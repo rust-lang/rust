@@ -245,9 +245,9 @@ mod test {
     fn render(source: str) -> str {
         let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
+        let doc = tystr_pass::mk_pass()(srv, doc);
         let doc = path_pass::mk_pass()(srv, doc);
         let doc = attr_pass::mk_pass()(srv, doc);
-        let doc = tystr_pass::mk_pass()(srv, doc);
         let markdown = write_markdown_str(doc);
         #debug("markdown: %s", markdown);
         markdown
