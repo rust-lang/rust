@@ -72,3 +72,6 @@ src/.DS_Store
 /doc/std
 /nd/
 /llvm/
+version.md
+rust.tex
+keywords.md
