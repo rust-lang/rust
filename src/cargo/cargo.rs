@@ -719,7 +719,7 @@ fn cmd_search(c: cargo, argv: [str]) {
 
 fn cmd_usage() {
     print("Usage: cargo <verb> [args...]");
-    print("  init                                          Fetch default sources");
+    print("  init                                          Set up ~/.cargo");
     print("  install [--test] [source/]package-name        Install by name");
     print("  install [--test] uuid:[source/]package-uuid   Install by uuid");
     print("  list [source]                                 List packages");
