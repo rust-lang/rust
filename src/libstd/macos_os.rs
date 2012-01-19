@@ -134,7 +134,7 @@ fn dylib_filename(base: str) -> str { ret "lib" + base + ".dylib"; }
 fn get_exe_path() -> option::t<fs::path> {
     // FIXME: This doesn't handle the case where the buffer is too small
     let bufsize = 1023u32;
-    let path = str::unsafe_from_bytes(vec::init_elt(0u8, bufsize as uint));
+    let path = str::unsafe_from_bytes(vec::init_elt(bufsize as uint, 0u8));
     ret str::as_buf(path, { |path_buf|
         if mac_libc::_NSGetExecutablePath(path_buf,
                                           ptr::mut_addr_of(bufsize)) == 0i32 {
