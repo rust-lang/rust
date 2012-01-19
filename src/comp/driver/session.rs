@@ -8,6 +8,7 @@ import option::{some, none};
 import syntax::parse::parser::parse_sess;
 import util::filesearch;
 import back::target_strs;
+import middle::lint;
 
 tag os { os_win32; os_macos; os_linux; os_freebsd; }
 
@@ -33,7 +34,7 @@ type options =
      debuginfo: bool,
      extra_debuginfo: bool,
      verify: bool,
-     check_usage: bool,
+     lint_opts: [lint::option],
      save_temps: bool,
      stats: bool,
      time_passes: bool,

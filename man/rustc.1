@@ -124,8 +124,10 @@ Build a test harness.
 \fB--warn-unused-imports\fR:
 Warn about unnecessary imports.
 .TP
-\fB--no-check-usage\fR:
-Disables various one-off usage analyses.
+\fB--no-lint-ctypes\fR:
+Disables checking of possibly incorrect usage of Rust int or uint types in
+native function declarations, where types defined in libcore::ctypes should be
+used instead. Ctypes check emits warnings by default.
 .SH "BUGS"
 See \fBhttps://github.com/mozilla/rust/issues\fR for a list of known bugs.
 .SH "AUTHOR"

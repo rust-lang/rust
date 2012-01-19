@@ -38,7 +38,6 @@ options:
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
     --no-verify        suppress LLVM verification step (slight speedup)
-    --no-check-usage   suppress various one-off usage analyses
     --parse-only       parse only; do not compile, assemble, or link
     --no-trans         run all passes except translation; no output
     -g                 produce debug info
@@ -59,6 +58,7 @@ options:
     --gc               garbage collect shared data (experimental/temporary)
     --warn-unused-imports
                        warn about unnecessary imports
+    --no-lint-ctypes   suppress lint-style ctypes usage check
 
 ");
 }
