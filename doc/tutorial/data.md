@@ -155,18 +155,16 @@ patterns, as in this definition of `area`:
         }
     }
 
-For variants without arguments, you have to write `variantname.` (with
-a dot at the end) to match them in a pattern. This to prevent
-ambiguity between matching a variant name and binding a new variable.
+Another example:
 
     # type point = {x: float, y: float};
     # enum direction { north; east; south; west; }
     fn point_from_direction(dir: direction) -> point {
         alt dir {
-            north. { {x:  0f, y:  1f} }
-            east.  { {x:  1f, y:  0f} }
-            south. { {x:  0f, y: -1f} }
-            west.  { {x: -1f, y:  0f} }
+            north { {x:  0f, y:  1f} }
+            east  { {x:  1f, y:  0f} }
+            south { {x:  0f, y: -1f} }
+            west  { {x: -1f, y:  0f} }
         }
     }
 

@@ -2702,7 +2702,7 @@ arbitrary depth.
 A @dfn{declaration statement} is one that introduces a @emph{name} into the
 enclosing statement block. The declared name may denote a new slot or a new
 item. The scope of the name extends to the entire containing block, both
-before and after the declaration.
+before and after the declaration. Tag names may not be shadowed by variable names.
 
 @menu
 * Ref.Stmt.Decl.Item::              Statement declaring an item.
@@ -3274,7 +3274,7 @@ alt x @{
     cons(10, _) @{
         process_ten();
     @}
-    nil. @{
+    nil @{
         ret;
     @}
     _ @{
@@ -3282,12 +3282,6 @@ alt x @{
     @}
 @}
 @end example
-
-Note in the above example that @code{nil} is followed by a period. This is
-required syntax for pattern matching a nullary tag variant, to distingush the
-variant @code{nil} from a binding to variable @code{nil}. Without the period
-the value of @code{x} would be bound to variable @code{nil} and the compiler
-would issue an error about the final wildcard case being unreachable.
 
 Records can also be pattern-matched and their fields bound to variables.
 When matching fields of a record, the fields being matched are specified
