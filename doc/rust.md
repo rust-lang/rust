@@ -2964,17 +2964,18 @@ Many channels can be bound to the same port, but each channel is bound to a
 single port. In other words, channels and ports exist in an N:1 relationship,
 N channels to 1 port. ^[It may help to remember nautical terminology
 when differentiating channels from ports.  Many different waterways --
-channels -- may lead to the same port.}
+channels -- may lead to the same port.]
 
 Each port and channel can carry only one type of message. The message type is
 encoded as a parameter of the channel or port type. The message type of a
 channel is equal to the message type of the port it is bound to. The types of
 messages must satisfy the `send` built-in interface.
 
-Messages are generally sent asynchronously, with optional rate-limiting on the
-transmit side. A channel contains a message queue and asynchronously sending a
-message merely inserts it into the sending channel's queue; message receipt is
-the responsibility of the receiving task.
+Messages are generally sent asynchronously, with optional
+rate-limiting on the transmit side.  Each port contains a message
+queue and sending a message over a channel merely means inserting it
+into the associated port's queue; message receipt is the
+responsibility of the receiving task.
 
 Messages are sent on channels and received on ports using standard library
 functions.
@@ -3032,51 +3033,49 @@ execute, after which it is *descheduled* at a loop-edge or similar
 preemption point, and another task within is scheduled, pseudo-randomly.
 
 An executing task can yield control at any time, by making a library call to
-`std::task::yield`, which deschedules it immediately. Entering any other
+`core::task::yield`, which deschedules it immediately. Entering any other
 non-executing state (blocked, dead) similarly deschedules the task.
 
 
 ### Spawning tasks
 
-A call to `std::task::spawn`, passing a 0-argument function as its single
+A call to `core::task::spawn`, passing a 0-argument function as its single
 argument, causes the runtime to construct a new task executing the passed
 function. The passed function is referred to as the _entry function_ for
 the spawned task, and any captured environment is carries is moved from the
 spawning task to the spawned task before the spawned task begins execution.
 
-The result of a `spawn` call is a `std::task::task` value.
+The result of a `spawn` call is a `core::task::task` value.
 
 An example of a `spawn` call:
 
 ~~~~
-import std::task::*;
-import std::comm::*;
+import task::*;
+import comm::*;
 
-fn helper(c: chan<u8>) {
-    // do some work.
-    let result = ...;
-    send(c, result);
-}
+let p = port();
+let c = chan(p);
 
-let p: port<u8>;
+spawn {||
+    // let task run, do other things
+    // ...
+    send(c, true);
+};
 
-spawn(bind helper(chan(p)));
-// let task run, do other things.
-// ...
 let result = recv(p);
 ~~~~
 
 
 ### Sending values into channels
 
-Sending a value into a channel is done by a library call to `std::comm::send`,
+Sending a value into a channel is done by a library call to `core::comm::send`,
 which takes a channel and a value to send, and moves the value into the
 channel's outgoing buffer.
 
 An example of a send:
 
 ~~~~
-import std::comm::*;
+import comm::*;
 let c: chan<str> = ...;
 send(c, "hello, world");
 ~~~~
@@ -3084,19 +3083,18 @@ send(c, "hello, world");
 
 ### Receiving values from ports
 
-Receiving a value is done by a call to the `recv` method, on a value of type
-`std::comm::port`. This call causes the receiving task to enter the *blocked
-reading* state until a task is sending a value to the port, at which point the
-runtime pseudo-randomly selects a sending task and moves a value from the head
-of one of the task queues to the call's return value, and un-blocks the
-receiving task. See [communication system](#communication-system).
+Receiving a value is done by a call to the `recv` method on a value of type
+`core::comm::port`. This call causes the receiving task to enter the *blocked
+reading* state until a value arrives in the port's receive queue, at which
+time the port deques a value to return, and un-blocks the receiving task.
+See [communication system](#communication-system).
 
 An example of a *receive*:
 
 ~~~~~~~~
-import std::comm::*;
+import comm::*;
 let p: port<str> = ...;
-let s: str = recv(p);
+let s = recv(p);
 ~~~~~~~~
 
 
