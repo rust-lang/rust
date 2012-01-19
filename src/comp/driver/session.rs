@@ -33,6 +33,7 @@ type options =
      debuginfo: bool,
      extra_debuginfo: bool,
      verify: bool,
+     check_usage: bool,
      save_temps: bool,
      stats: bool,
      time_passes: bool,

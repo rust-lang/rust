@@ -6,7 +6,7 @@ import syntax::parse::{parser};
 import syntax::{ast, codemap};
 import front::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
-                last_use};
+                last_use, check_usage};
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
@@ -203,6 +203,10 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_uses, crate));
+    if sess.opts.check_usage {
+        time(time_passes, "usage analyses",
+             bind check_usage::check_crate(ty_cx, crate));
+    }
 
     if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx), src: src}; }
     let outputs = option::get(outputs);
@@ -395,6 +399,7 @@ fn build_session_options(match: getopts::match,
         } else { link::output_type_exe };
     let libcore = !opt_present(match, "no-core");
     let verify = !opt_present(match, "no-verify");
+    let check_usage = !opt_present(match, "no-usage-check");
     let save_temps = opt_present(match, "save-temps");
     let extra_debuginfo = opt_present(match, "xg");
     let debuginfo = opt_present(match, "g") || extra_debuginfo;
@@ -446,6 +451,7 @@ fn build_session_options(match: getopts::match,
           debuginfo: debuginfo,
           extra_debuginfo: extra_debuginfo,
           verify: verify,
+          check_usage: check_usage,
           save_temps: save_temps,
           stats: stats,
           time_passes: time_passes,
@@ -514,6 +520,7 @@ fn opts() -> [getopts::opt] {
          optopt("sysroot"), optopt("target"), optflag("stats"),
          optflag("time-passes"), optflag("time-llvm-passes"),
          optflag("no-verify"),
+         optflag("no-usage-check"),
          optmulti("cfg"), optflag("test"),
          optflag("no-core"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),

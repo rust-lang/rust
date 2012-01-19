@@ -5,5 +5,6 @@ native mod xx {
 }
 
 fn main() {
-  "let compile fail to verify warning message" = 999;
+  // let it fail to verify warning message
+  fail
 }
