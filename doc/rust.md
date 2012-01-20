@@ -479,12 +479,12 @@ compile-time rule has no defined semantics at run-time; the compiler should
 halt with an error report, and produce no executable artifact.
 
 The compilation model centres on artifacts called _crates_. Each compilation
-is directed towards a single crate in source form, and if successful
-produces a single crate in binary form, either an executable or a library.
+is directed towards a single crate in source form, and if successful,
+produces a single crate in binary form: either an executable or a library.
 
 A _crate_ is a unit of compilation and linking, as well as versioning,
 distribution and runtime loading. A crate contains a _tree_ of nested
-[module](#modules) scopes. The top-level of this tree is a module that is
+[module](#modules) scopes. The top level of this tree is a module that is
 anonymous -- from the point of view of paths within the module -- and any item
 within a crate has a canonical [module path](#paths) denoting its location
 within the crate's module tree.
@@ -503,7 +503,7 @@ crate with modules derived from all the source files referenced by the
 crate, reading and processing all the referenced modules at once.
 
 When the Rust compiler is invoked with a source file, it creates an
-_implicit_ crate and treats the source file and though it was referenced as
+_implicit_ crate and treats the source file as though it was referenced as
 the sole module populating this implicit crate. The module name is derived
 from the source file name, with the `.rs` extension removed.
 
@@ -569,7 +569,7 @@ the `dir_directive` modules containing the `source_directive`.
 
 ## Source file
 
-A source file contains a `module`, that is, a sequence of zero-or-more
+A source file contains a `module`: that is, a sequence of zero or more
 `item` definitions. Each source file is an implicit module, the name and
 location of which -- in the module tree of the current crate -- is defined
 from outside the source file: either by an explicit `source_directive` in
