@@ -22,7 +22,7 @@ fn test_rec() {
 }
 
 fn test_tag() {
-    tag t {
+    enum t {
         t0(r);
     }
 
@@ -62,7 +62,7 @@ fn test_box_rec() {
 fn main() {
     test_box();
     test_rec();
-    // FIXME: tag constructors don't optimize their arguments into moves
+    // FIXME: enum constructors don't optimize their arguments into moves
     // test_tag();
     test_tup();
     test_unique();

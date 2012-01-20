@@ -1,4 +1,4 @@
-tag chan { chan_t; }
+enum chan { chan_t; }
 
 fn wrapper3(i: chan) {
     assert i == chan_t;

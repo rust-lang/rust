@@ -1,6 +1,6 @@
 // Test cyclic detector when using iface instances.
 
-tag Tree = TreeR;
+enum Tree = TreeR;
 type TreeR = @{
     mutable left: option<Tree>,
     mutable right: option<Tree>,

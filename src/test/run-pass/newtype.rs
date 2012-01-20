@@ -1,4 +1,4 @@
-tag mytype = {compute: native fn(mytype) -> int, val: int};
+enum mytype = {compute: native fn(mytype) -> int, val: int};
 
 fn compute(i: mytype) -> int { ret i.val + 20; }
 

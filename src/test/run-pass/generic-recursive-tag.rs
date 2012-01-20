@@ -1,6 +1,6 @@
 
 
-tag list<T> { cons(@T, @list<T>); nil; }
+enum list<T> { cons(@T, @list<T>); nil; }
 
 fn main() {
     let a: list<int> =

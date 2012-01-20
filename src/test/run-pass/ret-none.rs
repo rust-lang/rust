@@ -1,6 +1,6 @@
 
 
-tag option<T> { none; some(T); }
+enum option<T> { none; some(T); }
 
 fn f<T: copy>() -> option<T> { ret none; }
 

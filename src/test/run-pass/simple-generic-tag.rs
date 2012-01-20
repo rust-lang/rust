@@ -1,5 +1,5 @@
 
 
-tag clam<T> { a(T); }
+enum clam<T> { a(T); }
 
 fn main() { }

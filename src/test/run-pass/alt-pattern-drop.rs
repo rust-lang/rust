@@ -5,7 +5,7 @@ use std;
 
 import std::dbg;
 
-tag t { make_t(@int); clam; }
+enum t { make_t(@int); clam; }
 
 fn foo(s: @int) {
     let count = dbg::refcount(s);

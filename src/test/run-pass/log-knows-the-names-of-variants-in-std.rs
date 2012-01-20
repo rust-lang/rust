@@ -1,7 +1,7 @@
 use std;
 import std::list;
 
-tag foo {
+enum foo {
   a(uint);
   b(str);
 }

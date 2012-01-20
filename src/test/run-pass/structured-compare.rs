@@ -1,6 +1,6 @@
 
 
-tag foo { large; small; }
+enum foo { large; small; }
 
 fn main() {
     let a = {x: 1, y: 2, z: 3};

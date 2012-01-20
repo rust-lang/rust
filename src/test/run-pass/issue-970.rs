@@ -1,4 +1,4 @@
-tag maybe_ordered_pair {
+enum maybe_ordered_pair {
     yes({low: int, high: int} : less_than(*.low, *.high));
     no;
 }

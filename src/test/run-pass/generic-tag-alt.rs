@@ -1,6 +1,6 @@
 
 
-tag foo<T> { arm(T); }
+enum foo<T> { arm(T); }
 
 fn altfoo<T>(f: foo<T>) {
     let hit = false;

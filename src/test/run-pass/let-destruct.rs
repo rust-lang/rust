@@ -1,4 +1,4 @@
-tag xx = int;
+enum xx = int;
 
 fn main() {
     let @{x: xx(x), y: y} = @{x: xx(10), y: 20};

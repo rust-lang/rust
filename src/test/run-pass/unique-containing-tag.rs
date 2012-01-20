@@ -1,5 +1,5 @@
 fn main() {
-    tag t { t1(int); t2(int); }
+    enum t { t1(int); t2(int); }
 
     let x = ~t1(10);
 

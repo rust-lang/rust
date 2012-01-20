@@ -1,4 +1,4 @@
-tag myvec<X> = [X];
+enum myvec<X> = [X];
 
 fn myvec_deref<X: copy>(mv: myvec<X>) -> [X] { ret *mv; }
 

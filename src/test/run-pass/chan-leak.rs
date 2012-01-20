@@ -8,7 +8,7 @@ import comm;
 import comm::port;
 import comm::recv;
 
-tag request { quit; close(chan<bool>); }
+enum request { quit; close(chan<bool>); }
 
 type ctx = chan<request>;
 

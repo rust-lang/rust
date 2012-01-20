@@ -1,4 +1,4 @@
-tag foo {
+enum foo {
   a(uint);
   b(str);
   c;

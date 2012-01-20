@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-tag color {
+enum color {
     rgb(int, int, int);
     rgba(int, int, int, int);
     hsl(int, int, int);

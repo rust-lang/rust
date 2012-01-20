@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-tag noption<T> { some(T); }
+enum noption<T> { some(T); }
 
 fn main() {
     let nop: noption<int> = some::<int>(5);

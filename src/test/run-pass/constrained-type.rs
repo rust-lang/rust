@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-tag list { cons(int, @list); nil; }
+enum list { cons(int, @list); nil; }
 
 type bubu = {x: int, y: int};
 

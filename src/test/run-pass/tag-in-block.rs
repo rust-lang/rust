@@ -2,7 +2,7 @@
 
 fn foo() {
     fn zed(z: bar) { }
-    tag bar { nil; }
+    enum bar { nil; }
     fn baz() { zed(nil); }
 }
 

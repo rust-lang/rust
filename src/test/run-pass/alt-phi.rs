@@ -1,6 +1,6 @@
 
 
-tag thing { a; b; c; }
+enum thing { a; b; c; }
 
 fn foo(it: block(int)) { it(10); }
 

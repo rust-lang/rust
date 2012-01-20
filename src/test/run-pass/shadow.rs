@@ -16,6 +16,6 @@ fn foo(c: [int]) {
     }
 }
 
-tag t<T> { none; some(T); }
+enum t<T> { none; some(T); }
 
 fn main() { let x = 10; let x = x + 20; assert (x == 30); foo([]); }

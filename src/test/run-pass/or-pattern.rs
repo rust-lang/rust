@@ -1,4 +1,4 @@
-tag blah { a(int, int, uint); b(int, int); c; }
+enum blah { a(int, int, uint); b(int, int); c; }
 
 fn or_alt(q: blah) -> int {
     alt q { a(x, y, _) | b(x, y) { ret x + y; } c { ret 0; } }

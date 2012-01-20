@@ -6,7 +6,7 @@ import option;
 import option::some;
 import option::none;
 
-tag t { foo(int, uint); bar(int, option::t<int>); }
+enum t { foo(int, uint); bar(int, option::t<int>); }
 
 fn nested(o: t) {
     alt o {

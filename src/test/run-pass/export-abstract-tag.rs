@@ -5,7 +5,7 @@ mod foo {
     export t;
     export f;
 
-    tag t { t1; }
+    enum t { t1; }
 
     fn f() -> t { ret t1; }
 }

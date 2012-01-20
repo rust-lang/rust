@@ -26,7 +26,7 @@ pure fn nonempty_list<T: copy>(ls: list<T>) -> bool { pure_length(ls) > 0u }
 // Of course, the compiler can't take advantage of the
 // knowledge that ls is a cons node. Future work.
 // Also, this is pretty contrived since nonempty_list
-// could be a "tag refinement", if we implement those.
+// could be a "enum refinement", if we implement those.
 fn safe_head<T: copy>(ls: list<T>) : nonempty_list(ls) -> T {
     check is_not_empty(ls);
     ret head(ls)

@@ -1,4 +1,4 @@
-tag option<T> { some(T); none; }
+enum option<T> { some(T); none; }
 
 type r<T> = {mutable v: [option<T>]};
 

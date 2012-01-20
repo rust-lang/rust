@@ -1,4 +1,4 @@
-tag taggy {
+enum taggy {
     cons(@mutable taggy);
     nil;
 }

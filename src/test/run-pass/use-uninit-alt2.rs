@@ -6,6 +6,6 @@ fn foo<T>(o: myoption<T>) -> int {
     ret x;
 }
 
-tag myoption<T> { none; some(T); }
+enum myoption<T> { none; some(T); }
 
 fn main() { log(debug, 5); }

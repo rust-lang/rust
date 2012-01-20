@@ -5,7 +5,7 @@ type closable = @mutable bool;
 
 resource close_res(i: closable) { *i = false; }
 
-tag option<T> { none; some(T); }
+enum option<T> { none; some(T); }
 
 fn sink(res: option<close_res>) { }
 

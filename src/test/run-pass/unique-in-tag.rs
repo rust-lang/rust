@@ -1,5 +1,5 @@
 fn test1() {
-    tag bar { u(~int); w(int); }
+    enum bar { u(~int); w(int); }
 
     let x = u(~10);
     assert alt x {

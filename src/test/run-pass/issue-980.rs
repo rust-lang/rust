@@ -1,4 +1,4 @@
-tag maybe_pointy {
+enum maybe_pointy {
     no_pointy;
     yes_pointy(@pointy);
 }

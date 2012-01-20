@@ -1,8 +1,8 @@
-// Export the tag variants, without the tag
+// Export the enum variants, without the enum
 
 mod foo {
     export t1;
-    tag t { t1; }
+    enum t { t1; }
 }
 
 fn main() { let v = foo::t1; }

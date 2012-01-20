@@ -1,6 +1,6 @@
 // xfail-pretty Issue #1510
 
-tag color {
+enum color {
     red = 0xff0000;
     green = 0x00ff00;
     blue = 0x0000ff;

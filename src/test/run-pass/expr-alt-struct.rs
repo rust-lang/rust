@@ -10,7 +10,7 @@ fn test_rec() {
 }
 
 fn test_tag() {
-    tag mood { happy; sad; }
+    enum mood { happy; sad; }
     let rs = alt true { true { happy } false { sad } };
     assert (rs == happy);
 }

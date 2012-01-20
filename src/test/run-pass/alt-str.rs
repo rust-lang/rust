@@ -3,7 +3,7 @@
 fn main() {
     alt "test" { "not-test" { fail; } "test" { } _ { fail; } }
 
-    tag t { tag1(str); tag2; }
+    enum t { tag1(str); tag2; }
 
 
     alt tag1("test") {

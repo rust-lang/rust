@@ -1,6 +1,6 @@
 // Tests that shapes respect linearize_ty_params().
 
-tag option<T> {
+enum option<T> {
     none;
     some(T);
 }

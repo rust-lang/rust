@@ -1,5 +1,5 @@
 // Exercises a bug in the shape code that was exposed
-// on x86_64: when there is a tag embedded in an
+// on x86_64: when there is a enum embedded in an
 // interior record which is then itself interior to
 // something else, shape calculations were off.
 use std;
@@ -7,7 +7,7 @@ import std::list;
 import std::list::list;
 import option;
 
-tag opt_span {
+enum opt_span {
 
     //hack (as opposed to option::t), to make `span` compile
     os_none;

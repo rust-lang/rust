@@ -30,7 +30,7 @@ mod map_reduce {
 
     type mapper = native fn(str, putter);
 
-    tag ctrl_proto { find_reducer([u8], chan<int>); mapper_done; }
+    enum ctrl_proto { find_reducer([u8], chan<int>); mapper_done; }
 
     fn start_mappers(ctrl: chan<ctrl_proto>, inputs: [str]) {
         for i: str in inputs {
