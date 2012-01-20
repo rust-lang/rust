@@ -6,7 +6,7 @@ import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 import rustc::driver::diagnostic;
 
-tag test_mode { tm_converge; tm_run; }
+enum test_mode { tm_converge; tm_run; }
 type context = { mode: test_mode }; // + rng
 
 fn write_file(filename: str, content: str) {
@@ -288,7 +288,7 @@ fn last_part(filename: str) -> str {
   str::slice(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
 }
 
-tag happiness { passed; cleanly_rejected(str); known_bug(str); failed(str); }
+enum happiness { passed; cleanly_rejected(str); known_bug(str); failed(str); }
 
 // We'd find more bugs if we could take an AST here, but
 // - that would find many "false positives" or unimportant bugs
@@ -464,7 +464,7 @@ fn content_is_dangerous_to_compile(code: str) -> bool {
     let dangerous_patterns =
         ["xfail-test",
          "-> !",    // https://github.com/graydon/rust/issues/897
-         "tag",     // typeck hang with ty variants:   https://github.com/graydon/rust/issues/742 (from dup #900)
+         "enum",     // typeck hang with ty variants:   https://github.com/graydon/rust/issues/742 (from dup #900)
          "with",    // tstate hang with expr variants: https://github.com/graydon/rust/issues/948
          "import comm" // mysterious hang: https://github.com/graydon/rust/issues/1464
          ];

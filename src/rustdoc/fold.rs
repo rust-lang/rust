@@ -6,7 +6,7 @@ export default_seq_fold_mod;
 export default_seq_fold_fn;
 export default_seq_fold_fnlist;
 
-tag fold<T> = t<T>;
+enum fold<T> = t<T>;
 
 type fold_crate<T> = fn~(fold: fold<T>, doc: doc::cratedoc) -> doc::cratedoc;
 type fold_mod<T> = fn~(fold: fold<T>, doc: doc::moddoc) -> doc::moddoc;

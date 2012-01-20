@@ -37,5 +37,5 @@ type retdoc = {
 };
 
 // Just to break the structural recursive types
-tag modlist = [moddoc];
-tag fnlist = [fndoc];
+enum modlist = [moddoc];
+enum fnlist = [fndoc];

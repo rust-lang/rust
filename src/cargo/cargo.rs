@@ -23,7 +23,7 @@ import str;
 import std::tempfile;
 import vec;
 
-tag _src {
+enum _src {
     /* Break cycles in package <-> source */
     _source(source);
 }

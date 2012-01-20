@@ -32,7 +32,7 @@ fn write_markdown(
     write_crate(ctxt, doc);
 }
 
-tag hlvl {
+enum hlvl {
     h1 = 1;
     h2 = 2;
     h3 = 3;
