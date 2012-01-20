@@ -585,7 +585,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         woo! */
         let post = false_postcond(num_constrs);
         alt fcx.enclosing.cf {
-          noreturn { kill_poststate_(fcx, ninit(fcx.id, fcx.name), post); }
+          noreturn { kill_poststate_(fcx, fcx.enclosing.i_return, post); }
           _ { }
         }
         ret set_prestate_ann(fcx.ccx, e.id, pres) |

@@ -136,24 +136,25 @@ fn mk_fn_info(ccx: crate_ctxt,
     /* add the special i_diverge and i_return constraints
     (see the type definition for auxiliary::fn_info for an explanation) */
 
-    // use the name of the function for the "return" constraint
+    // use the function name for the "returns" constraint"
+    let returns_id = ccx.tcx.sess.next_node_id();
+    let returns_constr = ninit(returns_id, name);
     next =
-        add_constraint(cx.tcx, respan(f_sp, ninit(id, name)), next, res_map);
+        add_constraint(cx.tcx, respan(f_sp, returns_constr), next, res_map);
     // and the name of the function, with a '!' appended to it, for the
     // "diverges" constraint
     let diverges_id = ccx.tcx.sess.next_node_id();
-    let diverges_name = name + "!";
-    next = add_constraint(cx.tcx, respan(f_sp, ninit(diverges_id,
-                                                     diverges_name)),
-                          next, res_map);
+    let diverges_constr = ninit(diverges_id, name + "!");
+    next = add_constraint(cx.tcx, respan(f_sp, diverges_constr), next,
+                          res_map);
 
     let v: @mutable [node_id] = @mutable [];
     let rslt =
         {constrs: res_map,
          num_constraints: next,
          cf: f_decl.cf,
-         i_return: ninit(id, name),
-         i_diverge: ninit(diverges_id, diverges_name),
+         i_return: returns_constr,
+         i_diverge: diverges_constr,
          used_vars: v};
     ccx.fm.insert(id, rslt);
     #debug("%s has %u constraints", name, num_constraints(rslt));
