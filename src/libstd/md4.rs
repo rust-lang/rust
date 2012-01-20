@@ -6,17 +6,17 @@ fn md4(msg: [u8]) -> {a: u32, b: u32, c: u32, d: u32} {
 
     // pad message
     let msg = msg + [0x80u8];
-    let bitlen = orig_len + 8u;
-    while (bitlen + 64u) % 512u > 0u {
+    let bitlen = orig_len + 8u64;
+    while (bitlen + 64u64) % 512u64 > 0u64 {
         msg += [0u8];
-        bitlen += 8u;
+        bitlen += 8u64;
     }
 
     // append length
-    let i = 0u;
-    while i < 8u {
-        msg += [(orig_len >> (i * 8u)) as u8];
-        i += 1u;
+    let i = 0u64;
+    while i < 8u64 {
+        msg += [(orig_len >> (i * 8u64)) as u8];
+        i += 1u64;
     }
 
     let a = 0x67452301u32;
