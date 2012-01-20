@@ -114,7 +114,7 @@ LIBRUSTC_GLOB :=$(call CFG_LIB_GLOB,rustc)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = prerelease
+CFG_RELEASE = 0.1
 CFG_VERSION = $(CFG_RELEASE)
 
 ifneq ($(wildcard $(CFG_GIT)),)
