@@ -40,7 +40,7 @@ lic.txt: $(S)LICENSE.txt
 	@$(call E, crlf: $@)
 	@$(Q)perl -pe 's@\r\n|\n@\r\n@go' <$< >$@
 
-$(PKG_EXE): $(PKG_NSI) $(PKG_FILES) $(DOCS) $(SREQ3$(CFG_HOST_TRIPLE)) lic.txt
+$(PKG_EXE): all rustc-stage3 $(PKG_NSI) $(PKG_FILES) lic.txt
 	@$(call E, makensis: $@)
 	$(Q)makensis -NOCD -V1 "-XOutFile $@" "-XLicenseData lic.txt" $<
 	$(Q)rm -f lic.txt
@@ -68,7 +68,6 @@ $(PKG_TAR): $(PKG_FILES)
 ifdef CFG_WINDOWSY
 
 dist: $(PKG_EXE)
-
 
 distcheck: dist
 	@echo
