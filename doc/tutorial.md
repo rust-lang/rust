@@ -127,7 +127,7 @@ The install locations can be adjusted by passing a `--prefix` argument
 to `configure`. Various other options are also supported, pass `--help`
 for more information on them. 
 
-[installer]: http://dl.rust-lang.org/dist/rust-0.1-installer.exe
+[installer]: http://dl.rust-lang.org/dist/rust-0.1-install.exe
 [tarball]: http://dl.rust-lang.org/dist/rust-0.1.tar.gz
 
 ## Compiling your first program
