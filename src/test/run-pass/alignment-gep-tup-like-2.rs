@@ -2,7 +2,7 @@ type pair<A,B> = {
     a: A, b: B
 };
 
-tag rec<A> = _rec<A>;
+enum rec<A> = _rec<A>;
 type _rec<A> = {
     val: A,
     mutable rec: option<@rec<A>>
