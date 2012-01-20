@@ -1,5 +1,4 @@
 //error-pattern: discriminator values can only be used with a c-like enum
-// black and white have the same discriminator value ...
 
 enum color {
     red = 0xff0000;
