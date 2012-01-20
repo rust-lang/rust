@@ -225,7 +225,7 @@ fn main() {
 
 Though it isn't apparent in all code, there is a fundamental
 difference between Rust's syntax and the predecessors in this family
-of languages. A lot of thing that are statements in C are expressions
+of languages. A lot of things that are statements in C are expressions
 in Rust. This allows for useless things like this (which passes
 nil—the void type—to a function):
 
@@ -458,7 +458,7 @@ let s = "a\
 
 Rust's set of operators contains very few surprises. The main
 difference with C is that `++` and `--` are missing, and that the
-logical binary operators have higher precedence—in C, `x & 2 > 0`
+logical bitwise operators have higher precedence—in C, `x & 2 > 0`
 comes out as `x & (2 > 0)`, in Rust, it means `(x & 2) > 0`, which is
 more likely to be what you expect (unless you are a C veteran).
 
