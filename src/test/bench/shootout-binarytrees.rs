@@ -1,7 +1,7 @@
 use std;
 import int;
 
-tag tree { nil; node(~tree, ~tree, int); }
+enum tree { nil; node(~tree, ~tree, int); }
 
 fn item_check(t: ~tree) -> int {
     alt *t {

@@ -8,7 +8,7 @@ use std;
 import int;
 import str;
 
-tag bottle { none; dual; single; multiple(int); }
+enum bottle { none; dual; single; multiple(int); }
 
 fn show(b: bottle) {
     alt b {

@@ -65,12 +65,12 @@ mod map_reduce {
 
     type reducer<K: send, V: send> = fn(K, getter<V>);
 
-    tag ctrl_proto<K: send, V: send> {
+    enum ctrl_proto<K: send, V: send> {
         find_reducer(K, chan<chan<reduce_proto<V>>>);
         mapper_done;
     }
 
-    tag reduce_proto<V: send> { emit_val(V); done; ref; release; }
+    enum reduce_proto<V: send> { emit_val(V); done; ref; release; }
 
     fn start_mappers<K1: send, K2: send,
                      V: send>(map: mapper<K1, K2, V>,
