@@ -1,6 +1,7 @@
 // Searching for information from the cstore
 
 import syntax::ast;
+import syntax::ast_util;
 import middle::ty;
 import option::{some, none};
 import driver::session;
@@ -12,7 +13,6 @@ export get_tag_variants;
 export get_impls_for_mod;
 export get_iface_methods;
 export get_type;
-export get_item_name;
 export get_impl_iface;
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
@@ -79,11 +79,6 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_type(cdata, def.node, tcx)
-}
-
-fn get_item_name(cstore: cstore::cstore, cnum: int, id: int) -> ast::ident {
-    let cdata = cstore::get_crate_data(cstore, cnum).data;
-    ret decoder::lookup_item_name(cdata, id);
 }
 
 fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)

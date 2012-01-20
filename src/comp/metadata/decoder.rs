@@ -1,6 +1,6 @@
 // Decoding metadata from a single crate's metadata
 
-import std::{ebml, io};
+import std::{ebml, map, io};
 import io::writer_util;
 import syntax::{ast, ast_util};
 import front::attr;
@@ -26,6 +26,8 @@ export get_crate_deps;
 export get_crate_hash;
 export get_impls_for_mod;
 export get_iface_methods;
+export get_crate_module_paths;
+
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
 // def_id for an item defined in another crate, somebody needs to figure out
@@ -451,8 +453,16 @@ fn get_crate_hash(data: @[u8]) -> str {
 
 fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {
     out.write_str("=Items=\n");
-    let paths = ebml::get_doc(md, tag_paths);
     let items = ebml::get_doc(md, tag_items);
+    iter_crate_items(bytes) {|path, did|
+        out.write_str(#fmt["%s (%s)\n", path, describe_def(items, did)]);
+    }
+    out.write_str("\n");
+}
+
+fn iter_crate_items(bytes: @[u8], proc: block(str, ast::def_id)) {
+    let md = ebml::new_doc(bytes);
+    let paths = ebml::get_doc(md, tag_paths);
     let index = ebml::get_doc(paths, tag_index);
     let bs = ebml::get_doc(index, tag_index_buckets);
     ebml::tagged_docs(bs, tag_index_buckets_bucket) {|bucket|
@@ -462,11 +472,35 @@ fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {
             let def = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
             let did = parse_def_id(ebml::doc_data(did_doc));
-            out.write_str(#fmt["%s (%s)\n", data.path,
-                               describe_def(items, did)]);
+            proc(data.path, did);
         };
     };
-    out.write_str("\n");
+}
+
+fn get_crate_module_paths(bytes: @[u8]) -> [(ast::def_id, str)] {
+    fn mod_of_path(p: str) -> str {
+        str::connect(vec::init(str::split_str(p, "::")), "::")
+    }
+
+    // find all module (path, def_ids), which are not
+    // fowarded path due to renamed import or reexport
+    let res = [];
+    let mods = map::new_str_hash();
+    iter_crate_items(bytes) {|path, did|
+        let m = mod_of_path(path);
+        if str::is_not_empty(m) {
+            // if m has a sub-item, it must be a module
+            mods.insert(m, true);
+        }
+        // Collect everything by now. There might be multiple
+        // paths pointing to the same did. Those will be
+        // unified later by using the mods map
+        res += [(did, path)];
+    }
+    ret vec::filter(res) {|x|
+        let (_, xp) = x;
+        mods.contains_key(xp)
+    }
 }
 
 fn list_crate_metadata(bytes: @[u8], out: io::writer) {
