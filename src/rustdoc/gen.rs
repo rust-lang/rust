@@ -107,10 +107,35 @@ fn write_fn(
     doc: doc::fndoc
 ) {
     write_header(ctxt, h3, #fmt("Function `%s`", doc.name));
+    write_sig(ctxt, doc.sig);
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
     write_args(ctxt, doc.args);
     write_return(ctxt, doc.return);
+}
+
+fn write_sig(ctxt: ctxt, sig: option<str>) {
+    alt sig {
+      some(sig) {
+        ctxt.w.write_line("```");
+        ctxt.w.write_line(#fmt("%s", sig));
+        ctxt.w.write_line("```");
+        ctxt.w.write_line("");
+      }
+      none { fail "unimplemented" }
+    }
+}
+
+#[test]
+fn should_write_the_function_signature() {
+    let markdown = test::render("#[doc = \"f\"] fn a() { }");
+    assert str::contains(markdown, "```\nfn a()\n```");
+}
+
+#[test]
+fn should_insert_blank_line_after_fn_signature() {
+    let markdown = test::render("#[doc = \"f\"] fn a() { }");
+    assert str::contains(markdown, "fn a()\n```\n\n");
 }
 
 fn write_brief(
@@ -254,9 +279,13 @@ mod test {
     fn render(source: str) -> str {
         let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
+        #debug("doc (extract): %?", doc);
         let doc = tystr_pass::mk_pass()(srv, doc);
+        #debug("doc (tystr): %?", doc);
         let doc = path_pass::mk_pass()(srv, doc);
+        #debug("doc (path): %?", doc);
         let doc = attr_pass::mk_pass()(srv, doc);
+        #debug("doc (attr): %?", doc);
         let markdown = write_markdown_str(doc);
         #debug("markdown: %s", markdown);
         markdown
@@ -299,9 +328,9 @@ mod test {
     }
 
     #[test]
-    fn should_leave_blank_line_between_fn_header_and_brief() {
+    fn should_leave_blank_line_between_fn_header_and_sig() {
         let markdown = render("#[doc(brief = \"brief\")] fn a() { }");
-        assert str::contains(markdown, "Function `a`\n\nbrief");
+        assert str::contains(markdown, "Function `a`\n\n```\nfn a()");
     }
 
     #[test]

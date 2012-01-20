@@ -129,13 +129,11 @@ fn fold_fn(
         attrs: attr_parser::fn_attrs
     ) -> doc::fndoc {
         ret ~{
-            id: doc.id,
-            name: doc.name,
             brief: attrs.brief,
             desc: attrs.desc,
             args: merge_arg_attrs(doc.args, attrs.args),
-            return: merge_ret_attrs(doc.return, attrs.return),
-            sig: none
+            return: merge_ret_attrs(doc.return, attrs.return)
+            with *doc
         };
     }
 
@@ -207,4 +205,15 @@ fn fold_fn_should_extract_return_attributes() {
     let fold = fold::default_seq_fold(srv);
     let doc = fold_fn(fold, doc.topmod.fns[0]);
     assert option::get(doc.return).desc == some("what");
+}
+
+#[test]
+fn fold_fn_should_preserve_sig() {
+    let source = "fn a() -> int { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = tystr_pass::mk_pass()(srv, doc);
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    assert doc.sig == some("fn a() -> int");
 }
