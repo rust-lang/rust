@@ -91,7 +91,7 @@ existing source code.
 ## Unicode productions
 
 A small number of productions in Rust's grammar permit Unicode codepoints
-ouside the ASCII range; these productions are defined in terms of character
+outside the ASCII range; these productions are defined in terms of character
 properties given by the Unicode standard, rather than ASCII-range
 codepoints. These are given in the section [Special Unicode
 Productions](#special-unicode-productions).
