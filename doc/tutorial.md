@@ -1066,7 +1066,7 @@ enum shape {
 }
 ~~~~
 
-A value of this type is either a circle¸ in which case it contains a
+A value of this type is either a circle, in which case it contains a
 point record and a float, or a rectangle, in which case it contains
 two point records. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
