@@ -1703,6 +1703,24 @@ as
 = <- <->
 ~~~~
 
+Operators at the same precedence level are evaluated left-to-right.
+
+### Grouped expressions
+
+An expression enclosed in parentheses evaluates to the result of the enclosed
+expression.  Parentheses can be used to explicitly specify evaluation order
+within an expression.
+
+~~~~~~~~{.ebnf .gram}
+paren_expr : '(' expr ')' ;
+~~~~~~~~
+
+An example of a parenthesized expression:
+
+~~~~
+let x = (2 + 3) * 4;
+~~~~
+
 ### Unary copy expressions
 
 ~~~~~~~~{.ebnf .gram}
@@ -2851,9 +2869,9 @@ and lifetime semantics of the memory model.
 
 ## Memory model
 
-A Rust [task](#tasks)'s memory consists of a static set of *items*, a set of
-tasks each with its own *stack*, and a *heap*. Immutable portions of the heap
-may be shared between tasks, mutable portions may not.
+A Rust program's memory consists of a static set of *items*, a set of
+[tasks](#tasks) each with its own *stack*, and a *heap*. Immutable portions of
+the heap may be shared between tasks, mutable portions may not.
 
 Allocations in the stack consist of *slots*, and allocations in the heap
 consist of *boxes*.
