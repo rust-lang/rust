@@ -56,7 +56,6 @@ fn should_add_fn_sig() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    log(error, doc.topmod.fns[0].sig);
     assert doc.topmod.fns[0].sig == some("fn a() -> int");
 }
 
