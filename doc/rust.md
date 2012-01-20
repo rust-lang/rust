@@ -42,6 +42,15 @@ If you have suggestions to make, please try to focus them on *reductions* to
 the language: possible features that can be combined or omitted. We aim to
 keep the size and complexity of the language under control.
 
+**Note on grammar:** The grammar for Rust given in this document is rough and
+very incomplete; only a modest number of sections have accompanying grammar
+rules. Formalizing the grammar accepted by the Rust parser is ongoing work,
+but future versions of this document will contain a complete
+grammar. Moreover, we hope that this grammar will be be extracted and verified
+as LL(1) by an automated grammar-analysis tool, and further tested against the
+Rust sources. Preliminary versions of this automation exist, but are not yet
+complete.
+
 # Notation
 
 Rust's grammar is defined over Unicode codepoints, each conventionally
@@ -80,13 +89,6 @@ Where:
     - NUMBER on its own gives an exact repetition count
 
 This EBNF dialect should hopefully be familiar to many readers.
-
-The grammar for Rust given in this document is extracted and verified as LL(1)
-by an automated grammar-analysis tool, and further tested against the Rust
-sources. The generated parser is currently *not* the one used by the Rust
-compiler itself, but in the future we hope to relate the two together more
-precisely. As of this writing they are only related by testing against
-existing source code.
 
 ## Unicode productions
 
@@ -917,7 +919,7 @@ In this example, `nonempty_list` is a predicate---it can be used in a
 typestate constraint---but the auxiliary function `pure_length` is
 not.
 
-*ToDo:* should actually define referential transparency.
+*TODO:* should actually define referential transparency.
 
 The effect checking rules previously enumerated are a restricted set of
 typechecking rules meant to approximate the universe of observably
@@ -933,7 +935,7 @@ blocks, the compiler provides no static guarantee that the code will behave as
 expected at runtime. Rather, the programmer has an independent obligation to
 verify the semantics of the predicates they write.
 
-*ToDo:* last two sentences are vague.
+*TODO:* last two sentences are vague.
 
 An example of a predicate that uses an unchecked block:
 
@@ -1327,6 +1329,12 @@ declaring a function-local item.
 
 #### Slot declarations
 
+~~~~~~~~{.ebnf .gram}
+let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
+init : [ '=' | '<-' ] expr ; 
+~~~~~~~~
+
+
 A _slot declaration_ has one one of two forms:
 
 * `let` `pattern` `optional-init`;
@@ -1382,6 +1390,12 @@ values.
 
 ### Record expressions
 
+~~~~~~~~{.ebnf .gram}
+rec_expr : '{' ident ':' expr
+               [ ',' ident ':' expr ] *
+               [ "with" expr ] '}'
+~~~~~~~~
+
 A _[record](#record-types) expression_ is one or more comma-separated
 name-value pairs enclosed by braces. A fieldname can be any identifier
 (including reserved words), and is separated from its value expression
@@ -1414,6 +1428,10 @@ let base = {x: 1, y: 2, z: 3};
 
 ### Field expressions
 
+~~~~~~~~{.ebnf .gram}
+field_expr : expr '.' expr
+~~~~~~~~
+
 A dot can be used to access a field in a record.
 
 ~~~~~~~~ {.field}
@@ -1439,6 +1457,10 @@ expression on the left of the dot.
 
 ### Vector expressions
 
+~~~~~~~~{.ebnf .gram}
+vec_expr : '[' "mutable" ? [ expr [ ',' expr ] * ] ? ']'
+~~~~~~~~
+
 A _[vector](#vector-types) expression_ is written by enclosing zero or
 more comma-separated expressions of uniform type in square brackets.
 The keyword `mutable` can be written after the opening bracket to
@@ -1452,6 +1474,11 @@ When no mutability is specified, the vector is immutable.
 ~~~~
 
 ### Index expressions
+
+~~~~~~~~{.ebnf .gram}
+idx_expr : expr '[' expr ']'
+~~~~~~~~
+
 
 [Vector](#vector-types)-typed expressions can be indexed by writing a
 square-bracket-enclosed expression (the index) after them. When the
@@ -1491,6 +1518,13 @@ operators, before the expression they apply to.
      shared, reference-counted box, whereas `~` creates a unique box.
 
 ### Binary operator expressions
+
+~~~~~~~~{.ebnf .gram}
+binop_expr : expr binop expr ;
+~~~~~~~~
+
+Binary operators expressions are given in terms of
+[operator precedence](#operator-precedence).
 
 #### Arithmetic operators
 
@@ -1672,9 +1706,14 @@ as
 == !=
 &&
 ||
+= <- <->
 ~~~~
 
 ### Unary copy expressions
+
+~~~~~~~~{.ebnf .gram}
+copy_expr : "copy" expr ;
+~~~~~~~~
 
 A _unary copy expression_ consists of the unary `copy` operator applied to
 some argument expression.
@@ -1684,8 +1723,8 @@ copies the resulting value, allocating any memory necessary to hold the new
 copy.
 
 [Shared boxes](#shared-box-types) (type `@`) are, as usual, shallow-copied, as
-they may be cyclic. [Unique boxes](unique-box-types), [vectors](#vector-types)
-and similar unique types are deep-copied.
+they may be cyclic. [Unique boxes](#unique-box-types),
+[vectors](#vector-types) and similar unique types are deep-copied.
 
 Since the binary [assignment operator](#assignment-operator) `=` performs a
 copy implicitly, the unary copy operator is typically only used to cause an
@@ -1706,6 +1745,10 @@ assert v[0] == 1; // Original was not modified
 ~~~~
 
 ### Unary move expressions
+
+~~~~~~~~{.ebnf .gram}
+move_expr : "move" expr ;
+~~~~~~~~
 
 This is used to indicate that the referenced _lval_ must be moved out,
 rather than copied, when evaluating this expression. It will only have
@@ -1796,6 +1839,11 @@ way.
 
 ### While expressions
 
+~~~~~~~~{.ebnf .gram}
+while_expr : "while" expr '{' block '}'
+           | "do" '{' block '}' "while" expr ;
+~~~~~~~~
+
 A `while` expression is a loop construct. A `while` loop may be either a
 simple `while` or a `do`-`while` loop.
 
@@ -1813,7 +1861,7 @@ loop body. If it evaluates to `false`, control exits the loop.
 An example of a simple `while` expression:
 
 ~~~~
-while (i < 10) {
+while i < 10 {
     print("hello\n");
     i = i + 1;
 }
@@ -1825,16 +1873,24 @@ An example of a `do`-`while` expression:
 do {
     print("hello\n");
     i = i + 1;
-} while (i < 10);
+} while i < 10;
 ~~~~
 
 
 ### Break expressions
 
+~~~~~~~~{.ebnf .gram}
+break_expr : "break" ;
+~~~~~~~~
+
 Executing a `break` expression immediately terminates the innermost loop
 enclosing it. It is only permitted in the body of a loop.
 
 ### Continue expressions
+
+~~~~~~~~{.ebnf .gram}
+break_expr : "cont" ;
+~~~~~~~~
 
 Evaluating a `cont` expression immediately terminates the current iteration of
 the innermost loop enclosing it, returning control to the loop *head*. In the
@@ -1846,6 +1902,10 @@ A `cont` expression is only permitted in the body of a loop.
 
 
 ### For expressions
+
+~~~~~~~~{.ebnf .gram}
+for_expr : "for" pat "in" expr '{' block '}' ;
+~~~~~~~~
 
 A _for loop_ is controlled by a vector or string. The for loop bounds-checks
 the underlying sequence *once* when initiating the loop, then repeatedly
@@ -1865,6 +1925,14 @@ for e: foo in v {
 
 ### If expressions
 
+~~~~~~~~{.ebnf .gram}
+if_expr : "if" expr '{' block '}'
+          [ "else" else_tail ] ? ;
+          
+else_tail : "else" [ if_expr
+                   | '{' block '} ] ;
+~~~~~~~~
+
 An `if` expression is a conditional branch in program control. The form of
 an `if` expression is a condition expression, followed by a consequent
 block, any number of `else if` conditions and blocks, and an optional
@@ -1878,6 +1946,15 @@ then any `else` block is executed.
 
 
 ### Alternative expressions
+
+~~~~~~~~{.ebnf .gram}
+alt_expr : "alt" expr '{' alt_arm [ '|' alt_arm ] * '}' ;
+
+alt_arm : alt_pat '{' block '}' ;
+
+alt_pat : pat [ "to" pat ] ? [ "if" expr ] ;
+~~~~~~~~
+
 
 An `alt` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
@@ -1971,12 +2048,20 @@ let message = alt maybe_digit {
 
 ### Fail expressions
 
+~~~~~~~~{.ebnf .gram}
+fail_expr : "fail" expr ? ;
+~~~~~~~~
+
 Evaluating a `fail` expression causes a task to enter the *failing* state. In
 the *failing* state, a task unwinds its stack, destroying all frames and
 freeing all resources until it reaches its entry frame, at which point it
 halts execution in the *dead* state.
 
 ### Note expressions
+
+~~~~~~~~{.ebnf .gram}
+note_expr : "note" expr ;
+~~~~~~~~
 
 **Note: Note expressions are not yet supported by the compiler.**
 
@@ -2023,6 +2108,10 @@ expression.
 
 ### Return expressions
 
+~~~~~~~~{.ebnf .gram}
+ret_expr : "ret" expr ? ;
+~~~~~~~~
+
 Return expressions are denoted with the keyword `ret`. Evaluating a `ret`
 expression^[footnote{A `ret` expression is analogous to a `return` expression
 in the C family.] moves its argument into the output slot of the current
@@ -2041,6 +2130,10 @@ fn max(a: int, b: int) -> int {
 ~~~~
 
 ### Log expressions
+
+~~~~~~~~{.ebnf .gram}
+log_expr : "log" '(' level ',' expr ')' ;
+~~~~~~~~
 
 Evaluating a `log` expression may, depending on runtime configuration, cause a
 value to be appended to an internal diagnostic logging buffer provided by the
@@ -2094,6 +2187,10 @@ when it is changed.
 
 ### Check expressions
 
+~~~~~~~~{.ebnf .gram}
+check_expr : "check" call_expr ;
+~~~~~~~~
+
 A `check` expression connects dynamic assertions made at run-time to the
 static [typestate system](#typestate-system). A `check` expression takes a
 constraint to check at run-time. If the constraint holds at run-time, control
@@ -2134,12 +2231,20 @@ fn test() {
 
 **Note: Prove expressions are not yet supported by the compiler.**
 
+~~~~~~~~{.ebnf .gram}
+prove_expr : "prove" call_expr ;
+~~~~~~~~
+
 A `prove` expression has no run-time effect. Its purpose is to statically
 check (and document) that its argument constraint holds at its expression
 entry point. If its argument typestate does not hold, under the typestate
 algorithm, the program containing it will fail to compile.
 
 ### Claim expressions
+
+~~~~~~~~{.ebnf .gram}
+claim_expr : "claim" call_expr ;
+~~~~~~~~
 
 A `claim` expression is an unsafe variant on a `check` expression that is not
 actually checked at runtime. Thus, using a `claim` implies a proof obligation
@@ -2182,6 +2287,10 @@ if check even(x) {
 ~~~~
 
 ### Assert expressions
+
+~~~~~~~~{.ebnf .gram}
+assert_expr : "assert" expr ;
+~~~~~~~~
 
 An `assert` expression is similar to a `check` expression, except
 the condition may be any boolean-typed expression, and the compiler makes no
