@@ -15,7 +15,7 @@ provides three kinds of material:
 
 This document does not serve as a tutorial introduction to the
 language. Background familiarity with the language is assumed. A separate
-tutorial document is available at <http://www.rust-lang.org/doc/tutorial>
+tutorial document is available at <http://doc.rust-lang.org/doc/tutorial.html>
 to help acquire such background familiarity.
 
 This document also does not serve as a reference to the core or standard
@@ -454,8 +454,8 @@ x::y::z;
 ~~~~
 
 Path components are usually [identifiers](#identifiers), but the trailing
-component of a path may be an angle-bracket-enclosed list of [type
-arguments](type-arguments). In [expression](#expressions) context, the type
+component of a path may be an angle-bracket-enclosed list of type
+arguments. In [expression](#expressions) context, the type
 argument list is given after a final (`::`) namespace qualifier in order to
 disambiguate it from a relational expression involving the less-than symbol
 (`<`). In [type expression](#type-expressions) context, the final namespace
