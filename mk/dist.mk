@@ -40,10 +40,13 @@ lic.txt: $(S)LICENSE.txt
 	@$(call E, crlf: $@)
 	@$(Q)perl -pe 's@\r\n|\n@\r\n@go' <$< >$@
 
+ifdef CFG_MAKENSIS
 $(PKG_EXE): all rustc-stage3 $(PKG_NSI) $(PKG_FILES) lic.txt
 	@$(call E, makensis: $@)
-	$(Q)makensis -NOCD -V1 "-XOutFile $@" "-XLicenseData lic.txt" $<
+	$(Q)$(CFG_MAKENSIS) -NOCD -V1 "-XOutFile $@" \
+                        "-XLicenseData lic.txt" $<
 	$(Q)rm -f lic.txt
+endif
 
 $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
