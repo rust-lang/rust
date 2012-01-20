@@ -98,8 +98,22 @@ fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
     let buffer = io::mk_mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
     print_fn(s, decl, name, params);
+    end(s); // Close the head box
+    end(s); // Close the outer box
     eof(s.s);
     io::mem_buffer_str(buffer)
+}
+
+#[test]
+fn test_fun_to_str() {
+    let decl: ast::fn_decl = {
+        inputs: [],
+        output: @ast_util::respan(ast_util::dummy_sp(), ast::ty_nil),
+        purity: ast::impure_fn,
+        cf: ast::return_val,
+        constraints: []
+    };
+    assert fun_to_str(decl, "a", []) == "fn a()";
 }
 
 fn block_to_str(blk: ast::blk) -> str {
