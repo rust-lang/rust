@@ -14,9 +14,9 @@ The option type
 */
 enum t<T> {
     /* Variant: none */
-    none;
+    none,
     /* Variant: some */
-    some(T);
+    some(T),
 }
 
 /* Section: Operations */

@@ -15,9 +15,9 @@ Tag: list
 */
 enum list<T> {
     /* Variant: cons */
-    cons(T, @list<T>);
+    cons(T, @list<T>),
     /* Variant: nil */
-    nil;
+    nil,
 }
 
 /*Section: Operations */

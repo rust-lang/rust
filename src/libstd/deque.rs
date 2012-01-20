@@ -241,10 +241,10 @@ mod tests {
         assert (e(deq.get(3), d));
     }
 
-    enum taggy { one(int); two(int, int); three(int, int, int); }
+    enum taggy { one(int), two(int, int), three(int, int, int), }
 
     enum taggypar<T> {
-        onepar(int); twopar(int, int); threepar(int, int, int);
+        onepar(int), twopar(int, int), threepar(int, int, int),
     }
 
     type reccy = {x: int, y: int, t: taggy};

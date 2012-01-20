@@ -181,9 +181,9 @@ Indicates the manner in which a task exited
 */
 enum task_result {
     /* Variant: tr_success */
-    tr_success;
+    tr_success,
     /* Variant: tr_failure */
-    tr_failure;
+    tr_failure,
 }
 
 /*
@@ -193,7 +193,7 @@ Message sent upon task exit to indicate normal or abnormal termination
 */
 enum task_notification {
     /* Variant: exit */
-    exit(task, task_result);
+    exit(task, task_result),
 }
 
 /*

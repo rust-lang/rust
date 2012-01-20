@@ -75,9 +75,9 @@ type uint32_t = u32;
 enum void {
     // Making the only variant reference itself makes it impossible to
     // construct. Not exporting it makes it impossible to destructure.
-    void_private(@void);
+    void_private(@void),
     // FIXME: #881
-    void_private2(@void);
+    void_private2(@void),
 }
 
 #[doc(

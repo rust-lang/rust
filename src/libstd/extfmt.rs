@@ -39,31 +39,31 @@ import option::{some, none};
 
 // Functions used by the fmt extension at compile time
 mod ct {
-    enum signedness { signed; unsigned; }
-    enum caseness { case_upper; case_lower; }
+    enum signedness { signed, unsigned, }
+    enum caseness { case_upper, case_lower, }
     enum ty {
-        ty_bool;
-        ty_str;
-        ty_char;
-        ty_int(signedness);
-        ty_bits;
-        ty_hex(caseness);
-        ty_octal;
-        ty_float;
+        ty_bool,
+        ty_str,
+        ty_char,
+        ty_int(signedness),
+        ty_bits,
+        ty_hex(caseness),
+        ty_octal,
+        ty_float,
         // FIXME: More types
     }
     enum flag {
-        flag_left_justify;
-        flag_left_zero_pad;
-        flag_space_for_sign;
-        flag_sign_always;
-        flag_alternate;
+        flag_left_justify,
+        flag_left_zero_pad,
+        flag_space_for_sign,
+        flag_sign_always,
+        flag_alternate,
     }
     enum count {
-        count_is(int);
-        count_is_param(int);
-        count_is_next_param;
-        count_implied;
+        count_is(int),
+        count_is_param(int),
+        count_is_next_param,
+        count_implied,
     }
 
     // A formatted conversion from an expression to a string
@@ -76,7 +76,7 @@ mod ct {
 
 
     // A fragment of the output sequence
-    enum piece { piece_string(str); piece_conv(conv); }
+    enum piece { piece_string(str), piece_conv(conv), }
     type error_fn = fn@(str) -> ! ;
 
     fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
@@ -261,20 +261,20 @@ mod ct {
 // implement it this way, I think.
 mod rt {
     enum flag {
-        flag_left_justify;
-        flag_left_zero_pad;
-        flag_space_for_sign;
-        flag_sign_always;
-        flag_alternate;
+        flag_left_justify,
+        flag_left_zero_pad,
+        flag_space_for_sign,
+        flag_sign_always,
+        flag_alternate,
 
 
         // FIXME: This is a hack to avoid creating 0-length vec exprs,
         // which have some difficulty typechecking currently. See
         // comments in front::extfmt::make_flags
-        flag_none;
+        flag_none,
     }
-    enum count { count_is(int); count_implied; }
-    enum ty { ty_default; ty_bits; ty_hex_upper; ty_hex_lower; ty_octal; }
+    enum count { count_is(int), count_implied, }
+    enum ty { ty_default, ty_bits, ty_hex_upper, ty_hex_lower, ty_octal, }
 
     // FIXME: May not want to use a vector here for flags;
     // instead just use a bool per flag
@@ -384,7 +384,7 @@ mod rt {
 
         ret str::unsafe_from_bytes(svec);
     }
-    enum pad_mode { pad_signed; pad_unsigned; pad_nozero; }
+    enum pad_mode { pad_signed, pad_unsigned, pad_nozero, }
     fn pad(cv: conv, s: str, mode: pad_mode) -> str {
         let uwidth;
         alt cv.width {

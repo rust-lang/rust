@@ -586,8 +586,8 @@ mod node {
        content - A non-empty rope
     */
     enum root {
-        empty;
-        content(@node);
+        empty,
+        content(@node),
     }
 
     /*
@@ -689,8 +689,8 @@ mod node {
     concat - The concatenation of two ropes
     */
     enum node {
-        leaf(leaf);
-        concat(concat);
+        leaf(leaf),
+        concat(concat),
     }
 
     /*

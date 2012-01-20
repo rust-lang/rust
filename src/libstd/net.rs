@@ -18,7 +18,7 @@ enum ip_addr {
 
     An IPv4 address
     */
-    ipv4(u8, u8, u8, u8);
+    ipv4(u8, u8, u8, u8),
 }
 
 /* Section: Operations */

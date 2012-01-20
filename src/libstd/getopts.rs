@@ -65,11 +65,11 @@ export opt_strs;
 export opt_maybe_str;
 export opt_default;
 
-enum name { long(str); short(char); }
+enum name { long(str), short(char), }
 
-enum hasarg { yes; no; maybe; }
+enum hasarg { yes, no, maybe, }
 
-enum occur { req; optional; multi; }
+enum occur { req, optional, multi, }
 
 /*
 Type: opt
@@ -130,7 +130,7 @@ fn optmulti(name: str) -> opt {
     ret {name: mkname(name), hasarg: yes, occur: multi};
 }
 
-enum optval { val(str); given; }
+enum optval { val(str), given, }
 
 /*
 Type: match
@@ -159,11 +159,11 @@ The type returned when the command line does not conform to the
 expected format. Pass this value to <fail_str> to get an error message.
 */
 enum fail_ {
-    argument_missing(str);
-    unrecognized_option(str);
-    option_missing(str);
-    option_duplicated(str);
-    unexpected_argument(str);
+    argument_missing(str),
+    unrecognized_option(str),
+    option_missing(str),
+    option_duplicated(str),
+    unexpected_argument(str),
 }
 
 /*
@@ -382,11 +382,11 @@ mod tests {
     import result::{err, ok};
 
     enum fail_type {
-        argument_missing_;
-        unrecognized_option_;
-        option_missing_;
-        option_duplicated_;
-        unexpected_argument_;
+        argument_missing_,
+        unrecognized_option_,
+        option_missing_,
+        option_duplicated_,
+        unexpected_argument_,
     }
 
     fn check_fail_type(f: fail_, ft: fail_type) {

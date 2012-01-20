@@ -25,17 +25,17 @@ Represents a json value.
 */
 enum json {
     /* Variant: num */
-    num(float);
+    num(float),
     /* Variant: string */
-    string(str);
+    string(str),
     /* Variant: boolean */
-    boolean(bool);
+    boolean(bool),
     /* Variant: list */
-    list(@[json]);
+    list(@[json]),
     /* Variant: dict */
-    dict(map::map<str,json>);
+    dict(map::map<str,json>),
     /* Variant: null */
-    null;
+    null,
 }
 
 /*
