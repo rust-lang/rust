@@ -1293,7 +1293,7 @@ A declaration serves to introduce a *name* that can be used in the block
 name, from the previous opening curly-brace (`{`) up to the next closing
 curly-brace (`}`).
 
-An expression serves the dual roles of causing side effects and producing a
+An expression plays the dual roles of causing side effects and producing a
 *value*. Expressions are said to *evaluate to* a value, and the side effects
 are caused during *evaluation*. Many expressions contain sub-expressions as
 operands; the definition of each kind of expression dictates whether or not,
@@ -1345,7 +1345,7 @@ The former form, with no type annotation, causes the compiler to infer the
 static type of the slot through unification with the types of values assigned
 to the slot in the remaining code in the block scope. Inference only occurs on
 frame-local slots, not argument slots. Function signatures must
-always declared types for all argument slots.
+always declare types for all argument slots.
 
 
 ### Expression statements
@@ -1372,8 +1372,8 @@ string, boolean value, or the nil value.
 ### Tuple expressions
 
 Tuples are written by enclosing two or more comma-separated
-expressions in parentheses. They are used to create [tuple
-typed](#tuple-types) values.
+expressions in parentheses. They are used to create [tuple-typed](#tuple-types)
+values.
 
 ~~~~~~~~ {.tuple}
 (0f, 4.5f);
@@ -1398,9 +1398,9 @@ The order of the fields in a record expression is significant, and
 determines the type of the resulting value. `{a: u8, b: u8}` and `{b:
 u8, a: u8}` are two different fields.
 
-A record expression can be ended with the word `with` followed by an
+A record expression can terminate with the word `with` followed by an
 expression to denote a functional update. The expression following
-`with` (the base) be of a record type that includes at least all the
+`with` (the base) must be of a record type that includes at least all the
 fields mentioned in the record expression. A new record will be
 created, of the same type as the base expression, with the given
 values for the fields that were explicitly specified, and the values
@@ -1469,7 +1469,7 @@ task in a _failing state_.
 
 ### Unary operator expressions
 
-Rust defines five unary operators. They are all written a prefix
+Rust defines five unary operators. They are all written as prefix
 operators, before the expression they apply to.
 
 `-`
@@ -1536,7 +1536,7 @@ type. The first performs the 'or' operation, and the second the 'and'
 operation. They differ from `|` and `&` in that the right-hand operand
 is only evaluated when the left-hand operand does not already
 determine the outcome of the expression. That is, `||` only evaluates
-it right-hand operand when the left-hand operand evaluates to `false`,
+its right-hand operand when the left-hand operand evaluates to `false`,
 and `&&` only when it evaluates to `true`.
 
 #### Comparison operators
@@ -1588,15 +1588,15 @@ types.
 
 #### Binary move expressions
 
-A _binary move experssion_ consists of an *lval* followed by a left-pointing
+A _binary move expression_ consists of an *lval* followed by a left-pointing
 arrow (`<-`) and an *rval* expression.
 
 Evaluating a move expression causes, as a side effect, the *rval* to be
 *moved* into the *lval*. If the *rval* was itself an *lval*, it must be a
 local variable, as it will be de-initialized in the process.
 
-Evaluating a move expression does not effect reference counts nor does it
-cause a deep copy of any unique structure pointed-to by the moved
+Evaluating a move expression does not change reference counts, nor does it
+cause a deep copy of any unique structure pointed to by the moved
 *rval*. Instead, the move expression represents an indivisible *transfer of
 ownership* from the right-hand-side to the left-hand-side of the
 expression. No allocation or destruction is entailed.
@@ -1611,14 +1611,14 @@ x.y <- c;
 
 #### Swap expressions
 
-A _swap experssion_ consists of an *lval* followed by a bi-directional arrow
+A _swap expression_ consists of an *lval* followed by a bi-directional arrow
 (`<->`) and another *lval* expression.
 
 Evaluating a swap expression causes, as a side effect, the vales held in the
 left-hand-side and right-hand-side *lvals* to be exchanged indivisibly.
 
-Evaluating a move expression does not effect reference counts nor does it
-cause a deep copy of any unique structure pointed-to by the moved
+Evaluating a move expression does not change reference counts, nor does it
+cause a deep copy of any unique structure pointed to by the moved
 *rval*. Instead, the move expression represents an indivisible *exchange of
 ownership* between the right-hand-side to the left-hand-side of the
 expression. No allocation or destruction is entailed.
@@ -1635,7 +1635,7 @@ x.y <-> a.b;
 #### Assignment expressions
 
 An _assignment expression_ consists of an *lval* expression followed by an
-equals-sign (`=`) and an *rval* expression.
+equals sign (`=`) and an *rval* expression.
 
 Evaluating an assignment expression is equivalent to evaluating a [binary move
 expression](#binary-move-expressions) applied to a [unary copy
@@ -1680,8 +1680,8 @@ A _unary copy expression_ consists of the unary `copy` operator applied to
 some argument expression.
 
 Evaluating a copy expression first evaluates the argument expression, then
-performs a copy of the resulting value, allocating any memory necessary to
-hold the new copy.
+copies the resulting value, allocating any memory necessary to hold the new
+copy.
 
 [Shared boxes](#shared-box-types) (type `@`) are, as usual, shallow-copied, as
 they may be cyclic. [Unique boxes](unique-box-types), [vectors](#vector-types)
@@ -1689,7 +1689,7 @@ and similar unique types are deep-copied.
 
 Since the binary [assignment operator](#assignment-operator) `=` performs a
 copy implicitly, the unary copy operator is typically only used to cause an
-argument to a function should be copied, and the copy passed by-value.
+argument to a function to be copied and passed by value.
 
 An example of a copy expression:
 
@@ -1709,7 +1709,7 @@ assert v[0] == 1; // Original was not modified
 
 This is used to indicate that the referenced _lval_ must be moved out,
 rather than copied, when evaluating this expression. It will only have
-effect when the expression is _stored_ somewhere or passed to a
+an effect when the expression is _stored_ somewhere or passed to a
 function that takes ownership of it.
 
 ~~~~
@@ -1777,7 +1777,7 @@ assert (add(4,5) == add5(4));
 
 ~~~~
 
-A `bind` expression generally stores a copy of the bound arguments in the
+A `bind` expression generally stores a copy of the bound arguments in a
 hidden, boxed tuple, owned by the resulting first-class function. For each
 bound slot in the bound function's signature, space is allocated in the hidden
 tuple and populated with a copy of the bound value.
@@ -2131,6 +2131,8 @@ fn test() {
 ~~~~~~~~
 
 ### Prove expressions
+
+**Note: Prove expressions are not yet supported by the compiler.**
 
 A `prove` expression has no run-time effect. Its purpose is to statically
 check (and document) that its argument constraint holds at its expression
