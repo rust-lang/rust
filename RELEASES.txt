@@ -1,10 +1,19 @@
 Version 0.1  (January 2012)
 ---------------------------
 
-   * Language is "alpha-level complete"; Most planned features are present in
-     preliminary form. Try it out, let us know how it feels.
+   * Most language features work, including:
+      * Unique pointers, unique closures, move semantics
+      * Interface-constrained generics
+      * Static interface dispatch
+      * Stack growth
+      * Multithread task scheduling
+      * Typestate predicates
+      * Failure unwinding, destructors
+      * Pattern matching and destructuring assignment
+      * Lightweight block-lambda syntax
+      * Preliminary macro-by-example
 
-   * Compiler should work with the following configurations:
+   * Compiler works with the following configurations:
       * Linux: x86 and x86_64 hosts and targets
       * MacOS: x86 and x86_64 hosts and targets
       * Windows: x86 hosts and targets
@@ -15,13 +24,11 @@ Version 0.1  (January 2012)
 
 Known issues:
 
-   * Many open bugs, see http://github.com/mozilla/rust/issues
+   * Documentation is incomplete.
 
-   * Documentation is rough, incomplete.
+   * Performance is below intendend target.
 
-   * Performance is still well below intended target.
+   * Standard library APIs are subject to extensive change, reorganization.
 
-   * Standard library APIs subject to extensive change, reorganization.
-
-   * Language-level versioning not yet operational, future code will break
-     unexpectedly.
+   * Language-level versioning is not yet operational - future code will
+     break unexpectedly.
