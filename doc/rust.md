@@ -2851,9 +2851,9 @@ and lifetime semantics of the memory model.
 
 ## Memory model
 
-A Rust [task](#tasks)'s memory consists of a static set of *items*, a set of
-tasks each with its own *stack*, and a *heap*. Immutable portions of the heap
-may be shared between tasks, mutable portions may not.
+A Rust program's memory consists of a static set of *items*, a set of
+[tasks](#tasks) each with its own *stack*, and a *heap*. Immutable portions of
+the heap may be shared between tasks, mutable portions may not.
 
 Allocations in the stack consist of *slots*, and allocations in the heap
 consist of *boxes*.
