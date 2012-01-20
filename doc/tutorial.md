@@ -381,7 +381,7 @@ more detail later on (the `T`s here stand for any other type):
 `{field1: T1, field2: T2}`
   : Record type.
 
-`fn(arg1: T1, arg2: T2) -> T3`, `lambda()`, `block()`
+`fn(arg1: T1, arg2: T2) -> T3`, `fn@()`, `fn~()`, `fn&()`
   : Function types.
 
 `@T`, `~T`, `*T`
@@ -824,32 +824,36 @@ functions that can access variables in the scope in which they are
 created.
 
 There are several forms of closures, each with its own role. The most
-common type is called a 'block', this is a closure which has full
-access to its environment.
+common type is called a 'stack closure'; this is a closure which has
+full access to its environment.
 
 ~~~~
-fn call_block_with_ten(b: block(int)) { b(10); }
+fn call_closure_with_ten(b: fn(int)) { b(10); }
 
 let x = 20;    
-call_block_with_ten({|arg|
+call_closure_with_ten({|arg|
     #info("x=%d, arg=%d", x, arg);
 });
 ~~~~
 
-This defines a function that accepts a block, and then calls it with a
-simple block that executes a log statement, accessing both its
-argument and the variable `x` from its environment.
+This defines a function that accepts a closure, and then calls it with
+a simple stack closure that executes a log statement, accessing both
+its argument and the variable `x` from its environment.
 
-Blocks can only be used in a restricted way, because it is not allowed
-to survive the scope in which it was created. They are allowed to
-appear in function argument position and in call position, but nowhere
-else.
+Stack closures are called stack closures because they directly access
+the stack frame in which they are created.  This makes them very
+lightweight to construct and lets them modify local variables from the
+enclosing scope, but it also makes it unsafe for the closure to
+survive the scope in which it was created.  To prevent them from being
+used after the creating scope has returned, stack closures can only be
+used in a restricted way: they are allowed to appear in function
+argument position and in call position, but nowhere else.
 
 ### Boxed closures
 
-When you need to store a closure in a data structure, a block will not
-do, since the compiler will refuse to let you store it. For this
-purpose, Rust provides a type of closure that has an arbitrary
+When you need to store a closure in a data structure, a stack closure
+will not do, since the compiler will refuse to let you store it. For
+this purpose, Rust provides a type of closure that has an arbitrary
 lifetime, written `fn@` (boxed closure, analogous to the `@` pointer
 type described in the next section).
 
@@ -879,14 +883,14 @@ fn main() {
 
 A nice property of Rust closures is that you can pass any kind of
 closure (as long as the arguments and return types match) to functions
-that expect a `block`. Thus, when writing a higher-order function that
+that expect a `fn()`. Thus, when writing a higher-order function that
 wants to do nothing with its function argument beyond calling it, you
-should almost always specify the type of that argument as `block`, so
+should almost always specify the type of that argument as `fn()`, so
 that callers have the flexibility to pass whatever they want.
 
 ~~~~
-fn call_twice(f: block()) { f(); f(); }
-call_twice({|| "I am a block"; });
+fn call_twice(f: fn()) { f(); f(); }
+call_twice({|| "I am a stack closure; });
 call_twice(fn@() { "I am a boxed closure"; });
 fn bare_function() { "I am a plain function"; }
 call_twice(bare_function);
@@ -903,9 +907,9 @@ them. Unique closures mostly exist to for spawning new
 
 ### Shorthand syntax
 
-The compact syntax used for blocks (`{|arg1, arg2| body}`) can also
-be used to express boxed and unique closures in situations where the
-closure style can be unambiguously derived from the context. Most
+The compact syntax used for stack closures (`{|arg1, arg2| body}`) can
+also be used to express boxed and unique closures in situations where
+the closure style can be unambiguously derived from the context. Most
 notably, when calling a higher-order function you do not have to use
 the long-hand syntax for the function you're passing, since the
 compiler can look at the argument type to find out what the parameter
@@ -941,12 +945,12 @@ returning the day of the week that string corresponds to (if any).
 
 ## Iteration
 
-Functions taking blocks provide a good way to define non-trivial
+Functions taking closures provide a good way to define non-trivial
 iteration constructs. For example, this one iterates over a vector
 of integers backwards:
 
 ~~~~
-fn for_rev(v: [int], act: block(int)) {
+fn for_rev(v: [int], act: fn(int)) {
     let i = vec::len(v);
     while (i > 0u) {
         i -= 1u;
@@ -958,7 +962,7 @@ fn for_rev(v: [int], act: block(int)) {
 To run such an iteration, you could do this:
 
 ~~~~
-# fn for_rev(v: [int], act: block(int)) {}
+# fn for_rev(v: [int], act: fn(int)) {}
 for_rev([1, 2, 3], {|n| log(error, n); });
 ~~~~
 
@@ -967,7 +971,7 @@ moved outside of the parentheses permits the following, which
 looks quite like a normal loop:
 
 ~~~~
-# fn for_rev(v: [int], act: block(int)) {}
+# fn for_rev(v: [int], act: fn(int)) {}
 for_rev([1, 2, 3]) {|n|
     log(error, n);
 }
@@ -1387,7 +1391,7 @@ Here we know for sure that no one else has access to the `x` variable
 in `main`, so we're good. But the call could also look like this:
 
 ~~~~
-# fn myfunc(a: int, b: block()) {}
+# fn myfunc(a: int, b: fn()) {}
 # fn get_another_record() -> int { 1 }
 # let x = 1;
 myfunc(x, {|| x = get_another_record(); });
@@ -1408,7 +1412,7 @@ to pessimistically assume a value will get mutated, even though it is
 not sure.
 
 ~~~~
-fn for_each(v: [mutable @int], iter: block(@int)) {
+fn for_each(v: [mutable @int], iter: fn(@int)) {
    for elt in v { iter(elt); }
 }
 ~~~~
@@ -1431,7 +1435,7 @@ with the `copy` operator:
 
 ~~~~
 type mutrec = {mutable x: int};
-fn for_each(v: [mutable mutrec], iter: block(mutrec)) {
+fn for_each(v: [mutable mutrec], iter: fn(mutrec)) {
    for elt in v { iter(copy elt); }
 }
 ~~~~
@@ -1509,7 +1513,7 @@ defining such functions again and again for every type they apply to.
 Thus, Rust allows functions and datatypes to have type parameters.
 
 ~~~~
-fn for_rev<T>(v: [T], act: block(T)) {
+fn for_rev<T>(v: [T], act: fn(T)) {
     let i = vec::len(v);
     while i > 0u {
         i -= 1u;
@@ -1517,7 +1521,7 @@ fn for_rev<T>(v: [T], act: block(T)) {
     }
 }
 
-fn map<T, U>(v: [T], f: block(T) -> U) -> [U] {
+fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
     let acc = [];
     for elt in v { acc += [f(elt)]; }
     ret acc;
@@ -1525,7 +1529,7 @@ fn map<T, U>(v: [T], f: block(T) -> U) -> [U] {
 ~~~~
 
 When defined in this way, these functions can be applied to any type
-of vector, as long as the type of the block's argument and the type of
+of vector, as long as the type of the closure's argument and the type of
 the vector's content agree with each other.
 
 Inside a parameterized (generic) function, the names of the type
@@ -1635,7 +1639,7 @@ by value based on their type. There is one situation in which this is
 difficult. If you try this program:
 
 ~~~~
-# fn map(f: block(int) -> int, v: [int]) {}
+# fn map(f: fn(int) -> int, v: [int]) {}
 fn plus1(x: int) -> int { x + 1 }
 map(plus1, [1, 2, 3]);
 ~~~~
@@ -1650,7 +1654,7 @@ pass to a generic higher-order function as being passed by pointer,
 using the `&&` sigil:
 
 ~~~~
-# fn map<T, U>(f: block(T) -> U, v: [T]) {}
+# fn map<T, U>(f: fn(T) -> U, v: [T]) {}
 fn plus1(&&x: int) -> int { x + 1 }
 map(plus1, [1, 2, 3]);
 ~~~~
@@ -2027,11 +2031,11 @@ generalized sequence types:
 ~~~~
 iface seq<T> {
     fn len() -> uint;
-    fn iter(block(T));
+    fn iter(fn(T));
 }
 impl <T> of seq<T> for [T] {
     fn len() -> uint { vec::len(self) }
-    fn iter(b: block(T)) {
+    fn iter(b: fn(T)) {
         for elt in self { b(elt); }
     }
 }
@@ -2112,7 +2116,7 @@ to leave off the `of` clause.
 # type currency = ();
 # fn mk_currency(x: int, s: str) {}
 impl int_util for int {
-    fn times(b: block(int)) {
+    fn times(b: fn(int)) {
         let i = 0;
         while i < self { b(i); i += 1; }
     }
