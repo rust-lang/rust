@@ -2107,7 +2107,7 @@ ret_expr : "ret" expr ? ;
 ~~~~~~~~
 
 Return expressions are denoted with the keyword `ret`. Evaluating a `ret`
-expression^[footnote{A `ret` expression is analogous to a `return` expression
+expression^[A `ret` expression is analogous to a `return` expression
 in the C family.] moves its argument into the output slot of the current
 function, destroys the current function activation frame, and transfers
 control to the caller frame.
