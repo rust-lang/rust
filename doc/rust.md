@@ -1703,6 +1703,8 @@ as
 = <- <->
 ~~~~
 
+Operators at the same precedence level are evaluated left-to-right.
+
 ### Unary copy expressions
 
 ~~~~~~~~{.ebnf .gram}
