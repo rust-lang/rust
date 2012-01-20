@@ -696,7 +696,8 @@ fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
             // size, any field must as well. There should be a way to
             // express that with constrained types.
             check (type_has_static_size(cx, tup_ty));
-            let this_size = llsize_of_real(cx, type_of(cx, sp, tup_ty));
+            let this_size =
+                llsize_of_real(cx, trans::type_of(cx, sp, tup_ty));
             if max_size < this_size { max_size = this_size; }
         }
         cx.tag_sizes.insert(t, max_size);
