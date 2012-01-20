@@ -43,7 +43,7 @@ lic.txt: $(S)LICENSE.txt
 ifdef CFG_MAKENSIS
 $(PKG_EXE): all rustc-stage3 $(PKG_NSI) $(PKG_FILES) lic.txt
 	@$(call E, makensis: $@)
-	$(Q)$(CFG_MAKENSIS) -NOCD -V1 "-XOutFile $@" \
+	$(Q)"$(CFG_MAKENSIS)" -NOCD -V1 "-XOutFile $@" \
                         "-XLicenseData lic.txt" $<
 	$(Q)rm -f lic.txt
 endif
