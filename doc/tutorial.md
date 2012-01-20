@@ -38,7 +38,7 @@ fn fac(n: int) -> int {
 Several differences from C stand out. Types do not come before, but
 after variable names (preceded by a colon). In local variables
 (introduced with `let`), they are optional, and will be inferred when
-left off. Constructs like `while` and `if` do not require parenthesis
+left off. Constructs like `while` and `if` do not require parentheses
 around the condition (though they allow them). Also, there's a
 tendency towards aggressive abbreviation in the keywords—`fn` for
 function, `ret` for return.
@@ -52,7 +52,7 @@ quite a different direction.
 Throughout the tutorial, words that indicate language keywords or
 identifiers defined in the example code are displayed in `code font`.
 
-Code snippets are indented, and also shown in a monospace font. Not
+Code snippets are indented, and also shown in a monospaced font. Not
 all snippets constitute whole programs. For brevity, we'll often show
 fragments of programs that don't compile on their own. To try them
 out, you might have to wrap them in `fn main() { ... }`, and make sure
@@ -176,7 +176,7 @@ detail [later on](#modules-and-crates).
 
 ## Editing Rust code
 
-There are Vim highlighting and indentation scrips in the Rust source
+There are Vim highlighting and indentation scripts in the Rust source
 distribution under `src/etc/vim/`, and an emacs mode under
 `src/etc/emacs/`.
 
@@ -260,7 +260,7 @@ fn is_four(x: int) -> bool { x == 4 }
 ~~~~
 
 In short, everything that's not a declaration (`let` for variables,
-`fn` for functions, etcetera) is an expression.
+`fn` for functions, et cetera) is an expression.
 
 If all those things are expressions, you might conclude that you have
 to add a terminating semicolon after *every* statement, even ones that
@@ -285,7 +285,7 @@ The double-colon (`::`) is used as a module separator, so
 `std::io::println` means 'the thing named `println` in the module
 named `io` in the module named `std`'.
 
-Rust will normally emit warning about unused variables. These can be
+Rust will normally emit warnings about unused variables. These can be
 suppressed by using a variable name that starts with an underscore.
 
 ~~~~
@@ -364,7 +364,7 @@ The basic types are written like this:
   : A character is a 32-bit Unicode code point.
 
 `str`
-  : String type. A string contains a utf-8 encoded sequence of characters.
+  : String type. A string contains a UTF-8 encoded sequence of characters.
 
 These can be combined in composite types, which will be described in
 more detail later on (the `T`s here stand for any other type):
@@ -403,7 +403,7 @@ synonym.
 ## Literals
 
 Integers can be written in decimal (`144`), hexadecimal (`0x90`), and
-binary (`0b10010000`) base. Without suffix, an integer literal is
+binary (`0b10010000`) base. Without a suffix, an integer literal is
 considered to be of type `int`. Add a `u` (`144u`) to make it a `uint`
 instead. Literals of the fixed-size integer types can be created by
 the literal with the type name (`255u8`, `50i64`, etc).
@@ -413,7 +413,7 @@ happens. If you are adding one to a variable of type `uint`, you must
 type `v += 1u`—saying `+= 1` will give you a type error.
 
 Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`. Without
-suffix, the literal is assumed to be of type `float`. Suffixes `f32`
+a suffix, the literal is assumed to be of type `float`. Suffixes `f32`
 and `f64` can be used to create literals of a specific type. The
 suffix `f` can be used to write `float` literals without a dot or
 exponent: `3f`.
@@ -423,11 +423,11 @@ The nil literal is written just like the type: `()`. The keywords
 
 Character literals are written between single quotes, as in `'x'`. You
 may put non-ascii characters between single quotes (your source files
-should be encoded as utf-8). Rust understands a number of
+should be encoded as UTF-8). Rust understands a number of
 character escapes, using the backslash character:
 
 `\n`
-  : A newline (unicode character 32).
+  : A newline (Unicode character 32).
 
 `\r`
   : A carriage return (13).
@@ -912,7 +912,7 @@ compiler can look at the argument type to find out what the parameter
 types are.
 
 As a further simplification, if the final parameter to a function is a
-closure, the closure need not be placed within parenthesis. You could,
+closure, the closure need not be placed within parentheses. You could,
 for example, write...
 
 ~~~~
