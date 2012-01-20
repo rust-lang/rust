@@ -744,8 +744,8 @@ log(warn, "hi");
 log(error, (1, [2.5, -1.8]));
 ~~~~
 
-The first argument is the log level (levels `info`, `warn`, and
-`error` are predefined), and the second is the value to log. By
+The first argument is the log level (levels `debug`, `info`, `warn`,
+and `error` are predefined), and the second is the value to log. By
 default, you *will not* see the output of that first log statement,
 which has `warn` level. The environment variable `RUST_LOG` controls
 which log level is used. It can contain a comma-separated list of
@@ -753,7 +753,7 @@ paths for modules that should be logged. For example, running `rustc`
 with `RUST_LOG=rustc::front::attr` will turn on logging in its
 attribute parser. If you compile a program named `foo.rs`, its
 top-level module will be called `foo`, and you can set `RUST_LOG` to
-`foo` to enable `warn` and `info` logging for the module.
+`foo` to enable `warn`, `info` and `debug` logging for the module.
 
 Turned-off `log` statements impose minimal overhead on the code that
 contains them, so except in code that needs to be really, really fast,
