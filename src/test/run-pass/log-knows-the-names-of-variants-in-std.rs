@@ -2,8 +2,8 @@ use std;
 import std::list;
 
 enum foo {
-  a(uint);
-  b(str);
+  a(uint),
+  b(str),
 }
 
 fn check_log<T>(exp: str, v: T) {

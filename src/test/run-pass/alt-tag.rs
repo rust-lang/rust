@@ -3,9 +3,9 @@
 
 // -*- rust -*-
 enum color {
-    rgb(int, int, int);
-    rgba(int, int, int, int);
-    hsl(int, int, int);
+    rgb(int, int, int),
+    rgba(int, int, int, int),
+    hsl(int, int, int),
 }
 
 fn process(c: color) -> int {

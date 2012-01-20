@@ -4,7 +4,7 @@ use std;
 
 type cell = {mutable c: @list};
 
-enum list { link(@cell); nil; }
+enum list { link(@cell), nil, }
 
 fn main() {
     let first: @cell = @{mutable c: @nil()};

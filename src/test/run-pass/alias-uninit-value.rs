@@ -5,7 +5,7 @@ use std;
 import option;
 import option::none;
 
-enum sty { ty_nil; }
+enum sty { ty_nil, }
 
 type raw_t = {struct: sty, cname: option::t<str>, hash: uint};
 

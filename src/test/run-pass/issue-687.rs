@@ -7,7 +7,7 @@ import comm::port;
 import comm::recv;
 import comm::send;
 
-enum msg { closed; received([u8]); }
+enum msg { closed, received([u8]), }
 
 fn producer(c: chan<[u8]>) {
     send(c, [1u8, 2u8, 3u8, 4u8]);

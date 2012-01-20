@@ -1,6 +1,6 @@
 // pp-exact
 
-enum color { red = 1; green; blue; imaginary = -1; }
+enum color { red = 1, green, blue, imaginary = -1, }
 
 fn main() {
     test_color(red, 1, "red");

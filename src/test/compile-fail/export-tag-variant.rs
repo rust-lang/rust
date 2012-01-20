@@ -5,7 +5,7 @@ mod foo {
 
     fn x() { }
 
-    enum y { y1; }
+    enum y { y1, }
 }
 
 fn main() { let z = foo::y1; }

@@ -1,6 +1,6 @@
-enum t1 { a(int); b(uint); }
+enum t1 { a(int), b(uint), }
 type t2 = {x: t1, y: int};
-enum t3 { c(t2, uint); }
+enum t3 { c(t2, uint), }
 
 fn m(in: t3) -> int {
     alt in {

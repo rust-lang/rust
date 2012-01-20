@@ -20,9 +20,9 @@ type t = int;
 type t = bool;
 
 #[cfg(bogus)]
-enum tg { foo; }
+enum tg { foo, }
 
-enum tg { bar; }
+enum tg { bar, }
 
 #[cfg(bogus)]
 resource r(i: int) { }

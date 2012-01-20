@@ -1,5 +1,5 @@
 
 
-enum t { foo(@int); }
+enum t { foo(@int), }
 
 fn main() { let tt = foo(@10); alt tt { foo(z) { } } }

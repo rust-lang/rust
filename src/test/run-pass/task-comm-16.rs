@@ -50,7 +50,7 @@ fn test_str() {
 }
 
 fn test_tag() {
-    enum t { tag1; tag2(int); tag3(int, u8, char); }
+    enum t { tag1, tag2(int), tag3(int, u8, char), }
     let po = port();
     let ch = chan(po);
     send(ch, tag1);

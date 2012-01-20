@@ -1,6 +1,6 @@
 // xfail-test
 
-enum color { red; green; blue; black; white; }
+enum color { red, green, blue, black, white, }
 
 fn main() {
     assert (uint::to_str(red as uint, 10) == #fmt["%?", red]);

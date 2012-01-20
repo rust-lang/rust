@@ -1,8 +1,8 @@
 // Tests that shapes respect linearize_ty_params().
 
 enum option<T> {
-    none;
-    some(T);
+    none,
+    some(T),
 }
 
 type smallintmap<T> = @{mutable v: [mutable option<T>]};

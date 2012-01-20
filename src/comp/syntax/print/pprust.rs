@@ -451,7 +451,7 @@ fn print_item(s: ps, &&item: @ast::item) {
                   }
                   _ {}
                 }
-                word(s.s, ";");
+                word(s.s, ",");
                 end(s);
                 maybe_print_trailing_comment(s, v.span, none::<uint>);
             }

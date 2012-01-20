@@ -1,6 +1,6 @@
 
 
-enum opt<T> { none; }
+enum opt<T> { none, }
 
 fn main() {
     let x = none::<int>;

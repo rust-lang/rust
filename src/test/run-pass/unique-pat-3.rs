@@ -1,5 +1,5 @@
 
-enum bar { u(~int); w(int); }
+enum bar { u(~int), w(int), }
 
 fn main() {
     assert alt u(~10) {

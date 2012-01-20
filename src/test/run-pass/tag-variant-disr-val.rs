@@ -1,10 +1,10 @@
 enum color {
-    red = 0xff0000;
-    green = 0x00ff00;
-    blue = 0x0000ff;
-    black = 0x000000;
-    white = 0xFFFFFF;
-    imaginary = -1;
+    red = 0xff0000,
+    green = 0x00ff00,
+    blue = 0x0000ff,
+    black = 0x000000,
+    white = 0xFFFFFF,
+    imaginary = -1,
 }
 
 fn main() {

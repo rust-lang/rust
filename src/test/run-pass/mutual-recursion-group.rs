@@ -2,12 +2,12 @@
 
 
 // -*- rust -*-
-enum colour { red; green; blue; }
+enum colour { red, green, blue, }
 
-enum tree { children(@list); leaf(colour); }
+enum tree { children(@list), leaf(colour), }
 
-enum list { cons(@tree, @list); nil; }
+enum list { cons(@tree, @list), nil, }
 
-enum small_list { kons(int, @small_list); neel; }
+enum small_list { kons(int, @small_list), neel, }
 
 fn main() { }

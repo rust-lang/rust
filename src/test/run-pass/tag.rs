@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-enum colour { red(int, int); green; }
+enum colour { red(int, int), green, }
 
 fn f() { let x = red(1, 2); let y = green; assert (x != y); }
 

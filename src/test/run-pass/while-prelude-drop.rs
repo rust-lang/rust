@@ -1,5 +1,5 @@
 
-enum t { a; b(str); }
+enum t { a, b(str), }
 
 fn make(i: int) -> t {
     if i > 10 { ret a; }

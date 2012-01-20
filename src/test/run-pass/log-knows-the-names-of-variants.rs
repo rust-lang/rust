@@ -1,7 +1,7 @@
 enum foo {
-  a(uint);
-  b(str);
-  c;
+  a(uint),
+  b(str),
+  c,
 }
 
 fn main() {

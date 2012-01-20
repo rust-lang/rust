@@ -1,8 +1,8 @@
 //error-pattern: non-scalar cast
 
 enum non_nullary {
-    nullary;
-    other(int);
+    nullary,
+    other(int),
 }
 
 fn main() {

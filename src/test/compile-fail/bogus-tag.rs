@@ -2,7 +2,7 @@
 
 // error-pattern: unresolved
 
-enum color { rgb(int, int, int); rgba(int, int, int, int); }
+enum color { rgb(int, int, int), rgba(int, int, int, int), }
 
 fn main() {
     let red: color = rgb(255, 0, 0);

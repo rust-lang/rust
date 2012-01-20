@@ -6,7 +6,7 @@ mod foo {
     export g;
 
     // not exported
-    enum t { t1; t2; }
+    enum t { t1, t2, }
 
     fn f() -> t { ret t1; }
 

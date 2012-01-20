@@ -25,7 +25,7 @@ export grid_t, read_grid, solve_grid, write_grid;
 type grid = [[mutable u8]];
 
 // exported type of sudoku grids
-enum grid_t { grid_ctor(grid); }
+enum grid_t { grid_ctor(grid), }
 
 // read a sudoku problem from file f
 fn read_grid(f: io::reader) -> grid_t {

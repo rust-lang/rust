@@ -1,6 +1,6 @@
 enum taggy {
-    cons(@mutable taggy);
-    nil;
+    cons(@mutable taggy),
+    nil,
 }
 
 fn f() {

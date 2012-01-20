@@ -52,11 +52,11 @@ mod map_reduce {
     type reducer = fn@(str, getter);
 
     enum ctrl_proto {
-        find_reducer(str, chan<chan<reduce_proto>>);
-        mapper_done;
+        find_reducer(str, chan<chan<reduce_proto>>),
+        mapper_done,
     }
 
-    enum reduce_proto { emit_val(int); done; ref; release; }
+    enum reduce_proto { emit_val(int), done, ref, release, }
 
     fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: [str]) ->
        [joinable_task] {

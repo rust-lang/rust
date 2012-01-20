@@ -1,6 +1,6 @@
 enum maybe_pointy {
-    none;
-    p(@pointy);
+    none,
+    p(@pointy),
 }
 
 type pointy = {

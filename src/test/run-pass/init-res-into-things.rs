@@ -23,7 +23,7 @@ fn test_rec() {
 
 fn test_tag() {
     enum t {
-        t0(r);
+        t0(r),
     }
 
     let i = @mutable 0;
