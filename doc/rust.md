@@ -1290,24 +1290,6 @@ Rust has two kinds of statement:
 [declaration statements](#declaration-statements) and
 [expression statements](#expression-statements).
 
-A declaration serves to introduce a *name* that can be used in the block
-*scope* enclosing the statement: all statements before and after the
-name, from the previous opening curly-brace (`{`) up to the next closing
-curly-brace (`}`).
-
-An expression plays the dual roles of causing side effects and producing a
-*value*. Expressions are said to *evaluate to* a value, and the side effects
-are caused during *evaluation*. Many expressions contain sub-expressions as
-operands; the definition of each kind of expression dictates whether or not,
-and in which order, it will evaluate its sub-expressions, and how the
-expression's value derives from the value of its sub-expressions.
-
-In this way, the structure of execution -- both the overall sequence of
-observable side effects and the final produced value -- is dictated by the
-structure of expressions. Blocks themselves are expressions, so the nesting
-sequence of block, statement, expression, and block can repeatedly nest to an
-arbitrary depth.
-
 ### Declaration statements
 
 A _declaration statement_ is one that introduces a *name* into the enclosing
@@ -1362,6 +1344,19 @@ and drops its result. The purpose of an expression statement is often to cause
 the side effects of the expression's evaluation.
 
 ## Expressions
+
+An expression plays the dual roles of causing side effects and producing a
+*value*. Expressions are said to *evaluate to* a value, and the side effects
+are caused during *evaluation*. Many expressions contain sub-expressions as
+operands; the definition of each kind of expression dictates whether or not,
+and in which order, it will evaluate its sub-expressions, and how the
+expression's value derives from the value of its sub-expressions.
+
+In this way, the structure of execution -- both the overall sequence of
+observable side effects and the final produced value -- is dictated by the
+structure of expressions. Blocks themselves are expressions, so the nesting
+sequence of block, statement, expression, and block can repeatedly nest to an
+arbitrary depth.
 
 ### Literal expressions
 
@@ -1759,7 +1754,7 @@ let x = ~10;
 let y = [move x];
 ~~~~
 
-Any access to `y` after applying the `move` operator to it is invalid,
+Any access to `x` after applying the `move` operator to it is invalid,
 since it is no longer initialized at that point.
 
 ### Call expressions
@@ -1770,10 +1765,10 @@ paren_expr_list : '(' expr_list ')' ;
 call_expr : expr paren_expr_list ;
 ~~~~~~~~
 
-A _call expression_ invokes a function, providing a tuple of input slots
-and a reference slot to serve as the function's output, bound to the
-`lval` on the right hand side of the call. If the function eventually
-returns, then the expression completes.
+A _call expression_ invokes a function, providing zero or more input slots and
+an optional reference slot to serve as the function's output, bound to the
+`lval` on the right hand side of the call. If the function eventually returns,
+then the expression completes.
 
 A call expression statically requires that the precondition declared in the
 callee's signature is satisfied by the expression prestate. In this way,
