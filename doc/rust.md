@@ -1667,7 +1667,7 @@ equals sign (`=`) and an *rval* expression.
 
 Evaluating an assignment expression is equivalent to evaluating a [binary move
 expression](#binary-move-expressions) applied to a [unary copy
-expression](unary-copy-expressions). For example, the following two
+expression](#unary-copy-expressions). For example, the following two
 expressions have the same effect:
 
 ~~~~
