@@ -29,7 +29,7 @@ type handle =
     {task: option::t<(task::task, port<task::task_notification>)>,
      chan: reqchan};
 
-enum request { exec([u8], [u8], [[u8]], chan<response>); stop; }
+enum request { exec([u8], [u8], [[u8]], chan<response>), stop, }
 
 type response = {pid: pid_t, infd: fd_t,
                  outfd: fd_t, errfd: fd_t};

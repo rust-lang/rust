@@ -25,7 +25,7 @@ import vec;
 
 enum _src {
     /* Break cycles in package <-> source */
-    _source(source);
+    _source(source),
 }
 
 type package = {

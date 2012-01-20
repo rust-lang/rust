@@ -13,8 +13,8 @@ fn choice<T: copy>(r : rand::rng, v : [T]) -> T { assert vec::len(v) != 0u; v[un
 fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }
 
 enum maybe_pointy {
-  no_pointy;
-  yes_pointy(@pointy);
+  no_pointy,
+  yes_pointy(@pointy),
 }
 
 type pointy = {

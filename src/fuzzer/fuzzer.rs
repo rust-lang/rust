@@ -6,7 +6,7 @@ import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 import rustc::driver::diagnostic;
 
-enum test_mode { tm_converge; tm_run; }
+enum test_mode { tm_converge, tm_run, }
 type context = { mode: test_mode }; // + rng
 
 fn write_file(filename: str, content: str) {
@@ -288,7 +288,7 @@ fn last_part(filename: str) -> str {
   str::slice(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
 }
 
-enum happiness { passed; cleanly_rejected(str); known_bug(str); failed(str); }
+enum happiness { passed, cleanly_rejected(str), known_bug(str), failed(str), }
 
 // We'd find more bugs if we could take an AST here, but
 // - that would find many "false positives" or unimportant bugs
