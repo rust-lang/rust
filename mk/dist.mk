@@ -65,7 +65,20 @@ $(PKG_TAR): $(PKG_FILES)
 
 .PHONY: dist nsis-dist distcheck
 
-dist: $(PKG_TAR) $(PKG_EXE)
+ifdef CFG_WINDOWSY
+
+dist: $(PKG_EXE)
+
+
+distcheck: dist
+	@echo
+	@echo -----------------------------------------------
+	@echo $(PKG_EXE) ready for distribution
+	@echo -----------------------------------------------
+
+else
+
+dist: $(PKG_TAR)
 
 nsis-dist: $(PKG_EXE)
 
@@ -87,4 +100,4 @@ distcheck: $(PKG_TAR)
 	@echo $(PKG_TAR) ready for distribution
 	@echo -----------------------------------------------
 
-
+endif
