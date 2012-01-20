@@ -81,7 +81,7 @@ fn fndoc_from_fn(
         desc: none,
         args: argdocs_from_args(decl.inputs),
         return: none,
-        ty: none
+        sig: none
     }
 }
 

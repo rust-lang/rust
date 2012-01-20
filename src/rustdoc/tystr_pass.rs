@@ -30,10 +30,34 @@ fn fold_fn(
     let srv = fold.ctxt;
 
     ~{
+        args: merge_arg_tys(srv, doc.id, doc.args),
         return: merge_ret_ty(srv, doc.id, doc.return),
-        args: merge_arg_tys(srv, doc.id, doc.args)
+        sig: get_fn_sig(srv, doc.id)
         with *doc
     }
+}
+
+fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
+    astsrv::exec(srv) {|ctxt|
+        alt ctxt.map.get(fn_id) {
+          ast_map::node_item(@{
+            ident: ident,
+            node: ast::item_fn(decl, _, blk), _
+          }) {
+            some(pprust::fun_to_str(decl, ident, []))
+          }
+        }
+    }
+}
+
+#[test]
+fn should_add_fn_sig() {
+    let source = "fn a() -> int { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    log(error, doc.topmod.fns[0].sig);
+    assert doc.topmod.fns[0].sig == some("fn a() -> int");
 }
 
 fn merge_ret_ty(
@@ -59,9 +83,9 @@ fn merge_ret_ty(
     }
 }
 
-fn get_ret_ty(srv: astsrv::srv, id: doc::ast_id) -> option<str> {
+fn get_ret_ty(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
     astsrv::exec(srv) {|ctxt|
-        alt ctxt.map.get(id) {
+        alt ctxt.map.get(fn_id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
           }) {

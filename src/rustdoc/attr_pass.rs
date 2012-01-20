@@ -135,7 +135,7 @@ fn fold_fn(
             desc: attrs.desc,
             args: merge_arg_attrs(doc.args, attrs.args),
             return: merge_ret_attrs(doc.return, attrs.return),
-            ty: none
+            sig: none
         };
     }
 
