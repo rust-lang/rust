@@ -132,7 +132,7 @@ The following productions in the Rust grammar are defined in terms of
 Unicode properties: `ident`, `non_null`, `non_star`, `non_eol`, `non_slash`,
 `non_single_quote` and `non_double_quote`.
 
-### Identifier
+### Identifiers
 
 The `ident` production is any nonempty Unicode string of the following form:
 
@@ -254,8 +254,8 @@ are excluded from the `ident` rule.
 A literal is an expression consisting of a single token, rather than a
 sequence of tokens, that immediately and directly denotes the value it
 evaluates to, rather than referring to it by name or some other evaluation
-rule. A literal is a form of [constant expression](#constant-expression), so
-is evaluated (primarily) at compile time.
+rule. A literal is a form of constant expression, so is evaluated (primarily)
+at compile time.
 
 ~~~~~~~~ {.ebnf .gram}
 literal : string_lit | char_lit | num_lit ;
@@ -439,14 +439,13 @@ type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
 ~~~~~~~~
 
 A _path_ is a sequence of one or more path components _logically_ separated by
-a namespace qualifier (`::`). If a path consists of only one component, it
-may refer to either an [item](#items) or a [variable](#variables) in a local
+a namespace qualifier (`::`). If a path consists of only one component, it may
+refer to either an [item](#items) or a [slot](#slot-declarations) in a local
 control scope. If a path has multiple components, it refers to an item.
 
-Every item has a _canonical path_ within its [crate](#crates), but the path
-naming an item is only meaningful within a given crate. There is no global
-namespace across crates; an item's canonical path merely identifies it within
-the crate.
+Every item has a _canonical path_ within its crate, but the path naming an
+item is only meaningful within a given crate. There is no global namespace
+across crates; an item's canonical path merely identifies it within the crate.
 
 Two examples of simple paths consisting of only identifier components:
 
@@ -457,11 +456,10 @@ x::y::z;
 
 Path components are usually [identifiers](#identifiers), but the trailing
 component of a path may be an angle-bracket-enclosed list of type
-arguments. In [expression](#expressions) context, the type
-argument list is given after a final (`::`) namespace qualifier in order to
-disambiguate it from a relational expression involving the less-than symbol
-(`<`). In [type expression](#type-expressions) context, the final namespace
-qualifier is omitted.
+arguments. In [expression](#expressions) context, the type argument list is
+given after a final (`::`) namespace qualifier in order to disambiguate it
+from a relational expression involving the less-than symbol (`<`). In type
+expression context, the final namespace qualifier is omitted.
 
 Two examples of paths with type arguments:
 
@@ -569,7 +567,7 @@ implicitly by combining the module name with the file extension `.rs`.  The
 module contained in that source file is bound to the module path formed by
 the `dir_directive` modules containing the `source_directive`.
 
-## Source file
+## Source files
 
 A source file contains a `module`: that is, a sequence of zero or more
 `item` definitions. Each source file is an implicit module, the name and
@@ -590,12 +588,11 @@ item : mod_item | fn_item | type_item | enum_item
      | res_item | iface_item | impl_item ;
 ~~~~~~~~
 
-An _item_ is a component of a crate; some module items can be defined in
-[crate files](#crate-files), but most are defined in [source
-files](#source-files). Items are organized within a crate by a nested set of
-[modules](#modules). Every crate has a single "outermost" anonymous module;
-all further items within the crate have [paths](#paths) within the module tree
-of the crate.
+An _item_ is a component of a crate; some module items can be defined in crate
+files, but most are defined in source files. Items are organized within a
+crate by a nested set of [modules](#modules). Every crate has a single
+"outermost" anonymous module; all further items within the crate have
+[paths](#paths) within the module tree of the crate.
 
 Items are entirely determined at compile-time, remain constant during
 execution, and may reside in read-only memory.
@@ -821,9 +818,10 @@ mod foo {
 A _function item_ defines a sequence of [statements](#statements) and an
 optional final [expression](#expressions) associated with a name and a set of
 parameters. Functions are declared with the keyword `fn`. Functions declare a
-set of *input [slots](#slots)* as parameters, through which the caller passes
-arguments into the function, and an *output [slot](#slots)* through which the
-function passes results back to the caller.
+set of *input [slots](#slot-declarations)* as parameters, through which the
+caller passes arguments into the function, and an *output
+[slot](#slot-declarations)* through which the function passes results back to
+the caller.
 
 A function may also be copied into a first class *value*, in which case the
 value has the corresponding [*function type*](#function-types), and can be
@@ -1020,9 +1018,10 @@ accessed through the components `x` and `y`, and laid out in memory with the
 
 ### Enumerations
 
-An _enumeration item_ simultaneously declares a new nominal [enumerated
-type](#enumerated-type) as well as a set of *constructors* that can be used to
-create or pattern-match values of the corresponding enumerated type.
+An _enumeration item_ simultaneously declares a new nominal
+[enumerated type](#enumerated-types) as well as a set of *constructors* that
+can be used to create or pattern-match values of the corresponding enumerated
+type.
 
 The constructors of an `enum` type may be recursive: that is, each constructor
 may take an argument that refers, directly or indirectly, to the enumerated
@@ -1282,13 +1281,14 @@ sequence expression evaluation.
 ## Statements
 
 A _statement_ is a component of a block, which is in turn a component of an
-outer [block-expression](#block-expressions) or [function](#functions). When a
-function is spawned into a [task](#tasks), the task *executes* statements in
-an order determined by the body of the enclosing function. Each statement
-causes the task to perform certain actions.
+outer [expression](#expressions) or [function](#functions). When a function is
+spawned into a [task](#tasks), the task *executes* statements in an order
+determined by the body of the enclosing function. Each statement causes the
+task to perform certain actions.
 
-Rust has two kinds of statement: [declarations](#declarations) and
-[expressions](#expressions).
+Rust has two kinds of statement:
+[declaration statements](#declaration-statements) and
+[expression statements](#expression-statements).
 
 A declaration serves to introduce a *name* that can be used in the block
 *scope* enclosing the statement: all statements before and after the
@@ -1310,9 +1310,8 @@ arbitrary depth.
 
 ### Declaration statements
 
-A _declaration statement_ is one that introduces a *name* into the
-enclosing statement block. The declared name may denote a new slot or a new
-item.
+A _declaration statement_ is one that introduces a *name* into the enclosing
+statement block. The declared name may denote a new slot or a new item.
 
 #### Item declarations
 
@@ -1352,7 +1351,7 @@ scope.
 The former form, with no type annotation, causes the compiler to infer the
 static type of the slot through unification with the types of values assigned
 to the slot in the remaining code in the block scope. Inference only occurs on
-frame-local slots, not argument slots. Function signatures must
+frame-local variable, not argument slots. Function signatures must
 always declare types for all argument slots.
 
 
@@ -1722,11 +1721,11 @@ Evaluating a copy expression first evaluates the argument expression, then
 copies the resulting value, allocating any memory necessary to hold the new
 copy.
 
-[Shared boxes](#shared-box-types) (type `@`) are, as usual, shallow-copied, as
-they may be cyclic. [Unique boxes](#unique-box-types),
-[vectors](#vector-types) and similar unique types are deep-copied.
+[Shared boxes](#box-types) (type `@`) are, as usual, shallow-copied, as they
+may be cyclic. [Unique boxes](#box-types), [vectors](#vector-types) and
+similar unique types are deep-copied.
 
-Since the binary [assignment operator](#assignment-operator) `=` performs a
+Since the binary [assignment operator](#assignment-expressions) `=` performs a
 copy implicitly, the unary copy operator is typically only used to cause an
 argument to a function to be copied and passed by value.
 
@@ -1826,7 +1825,7 @@ bound slot in the bound function's signature, space is allocated in the hidden
 tuple and populated with a copy of the bound value.
 
 A `bind` expression is an alternative way of constructing a shared function
-closure; the [`fn@` expression](#shared-function-expression) form is another
+closure; the [`fn@` expression](#shared-function-expressions) form is another
 way.
 
 ### Shared function expressions
@@ -1966,8 +1965,8 @@ patterns must equal the type of the head expression.
 To execute an `alt` expression, first the head expression is evaluated, then
 its value is sequentially compared to the patterns in the arms until a match
 is found. The first arm with a matching pattern is chosen as the branch target
-of the `alt`, any variables bound by the pattern are assigned to local slots
-in the arm's block, and control enters the block.
+of the `alt`, any variables bound by the pattern are assigned to local
+variables in the arm's block, and control enters the block.
 
 An example of an `alt` expression:
 
@@ -2378,11 +2377,11 @@ Future versions of Rust will address these issues.
 
 # Types and typestates
 
-## Type system
+## Types
 
 Every slot and value in a Rust program has a type. The _type_ of a *value*
 defines the interpretation of the memory holding it. The type of a *slot* may
-also include [constraints](#constrained-types).
+also include [constraints](#constraints).
 
 Built-in types and type-constructors are tightly integrated into the language,
 in nontrivial ways that are not possible to emulate in user-defined
@@ -2455,7 +2454,6 @@ unsigned word holding a UCS-4 codepoint.
 
 A value of type `str` is a Unicode string, represented as a vector of 8-bit
 unsigned bytes holding a sequence of UTF-8 codepoints.
-
 
 
 ### Record types
@@ -2568,8 +2566,8 @@ Unsafe pointers (`*`)
 ### Function types
 
 The function type-constructor `fn` forms new function types. A function type
-consists of a sequence of input slots, an optional set of [input
-constraints](#input-constraints) and an output slot.
+consists of a sequence of input slots, an optional set of
+[input constraints](#constraints) and an output slot.
 
 An example of a `fn` type:
 
@@ -2916,23 +2914,23 @@ references to any boxes; the remainder of its heap is immediately freed.
 
 A task's stack contains slots.
 
-A _slot_ is a component of a stack frame. A slot is either *local* or
-a *reference*.
+A _slot_ is a component of a stack frame. A slot is either a *local variable*
+or a *reference*.
 
-A _local_ slot (or *stack-local* allocation) holds a value directly,
+A _local variable_ (or *stack-local* allocation) holds a value directly,
 allocated within the stack's memory. The value is a part of the stack frame.
 
 A _reference_ references a value outside the frame. It may refer to a
 value allocated in another frame *or* a boxed value in the heap. The
 reference-formation rules ensure that the referent will outlive the reference.
 
-Local slots are always implicitly mutable.
+Local variables are always implicitly mutable.
 
-Local slots are not initialized when allocated; the entire frame worth of
-local slots are allocated at once, on frame-entry, in an uninitialized
+Local variables are not initialized when allocated; the entire frame worth of
+local variables are allocated at once, on frame-entry, in an uninitialized
 state. Subsequent statements within a function may or may not initialize the
-local slots. Local slots can be used only after they have been initialized;
-this condition is guaranteed by the typestate system.
+local variables. Local variables can be used only after they have been
+initialized; this condition is guaranteed by the typestate system.
 
 References are created for function arguments. If the compiler can not prove
 that the referred-to value will outlive the reference, it will try to set
@@ -3198,7 +3196,6 @@ Receiving a value is done by a call to the `recv` method on a value of type
 `core::comm::port`. This call causes the receiving task to enter the *blocked
 reading* state until a value arrives in the port's receive queue, at which
 time the port deques a value to return, and un-blocks the receiving task.
-See [communication system](#communication-system).
 
 An example of a *receive*:
 
