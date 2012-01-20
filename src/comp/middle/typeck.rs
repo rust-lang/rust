@@ -24,20 +24,20 @@ export method_map, method_origin, method_static, method_param, method_iface;
 export dict_map, dict_res, dict_origin, dict_static, dict_param, dict_iface;
 
 enum method_origin {
-    method_static(ast::def_id);
+    method_static(ast::def_id),
     // iface id, method num, param num, bound num
-    method_param(ast::def_id, uint, uint, uint);
-    method_iface(uint);
+    method_param(ast::def_id, uint, uint, uint),
+    method_iface(uint),
 }
 type method_map = hashmap<ast::node_id, method_origin>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
 type dict_res = @[dict_origin];
 enum dict_origin {
-    dict_static(ast::def_id, [ty::t], dict_res);
+    dict_static(ast::def_id, [ty::t], dict_res),
     // Param number, bound number
-    dict_param(uint, uint);
-    dict_iface(ast::def_id);
+    dict_param(uint, uint),
+    dict_iface(ast::def_id),
 }
 type dict_map = hashmap<ast::node_id, dict_res>;
 
@@ -45,7 +45,7 @@ type ty_table = hashmap<ast::def_id, ty::t>;
 
 // Used for typechecking the methods of an impl
 enum self_info {
-    self_impl(ty::t);
+    self_impl(ty::t),
 }
 
 type crate_ctxt = {mutable self_infos: [self_info],
@@ -231,7 +231,7 @@ fn default_arg_mode_for_ty(tcx: ty::ctxt, m: ast::mode,
     }
 }
 
-enum mode { m_collect; m_check; m_check_tyvar(@fn_ctxt); }
+enum mode { m_collect, m_check, m_check_tyvar(@fn_ctxt), }
 
 fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
     fn getter(tcx: ty::ctxt, mode: mode, id: ast::def_id)

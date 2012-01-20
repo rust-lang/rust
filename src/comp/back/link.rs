@@ -23,12 +23,12 @@ import lib::llvm::False;
 import util::filesearch;
 
 enum output_type {
-    output_type_none;
-    output_type_bitcode;
-    output_type_assembly;
-    output_type_llvm_assembly;
-    output_type_object;
-    output_type_exe;
+    output_type_none,
+    output_type_bitcode,
+    output_type_assembly,
+    output_type_llvm_assembly,
+    output_type_object,
+    output_type_exe,
 }
 
 fn llvm_err(sess: session, msg: str) unsafe {

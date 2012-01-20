@@ -31,36 +31,36 @@ export _impl, iscopes, method_info;
 // them, storing the resulting def in the AST nodes.
 
 enum scope {
-    scope_crate;
-    scope_item(@ast::item);
-    scope_bare_fn(ast::fn_decl, node_id, [ast::ty_param]);
-    scope_fn_expr(ast::fn_decl, node_id, [ast::ty_param]);
-    scope_native_item(@ast::native_item);
-    scope_loop(@ast::local); // there's only 1 decl per loop.
-    scope_block(ast::blk, @mutable uint, @mutable uint);
-    scope_arm(ast::arm);
-    scope_method(ast::node_id, [ast::ty_param]);
+    scope_crate,
+    scope_item(@ast::item),
+    scope_bare_fn(ast::fn_decl, node_id, [ast::ty_param]),
+    scope_fn_expr(ast::fn_decl, node_id, [ast::ty_param]),
+    scope_native_item(@ast::native_item),
+    scope_loop(@ast::local), // there's only 1 decl per loop.
+    scope_block(ast::blk, @mutable uint, @mutable uint),
+    scope_arm(ast::arm),
+    scope_method(ast::node_id, [ast::ty_param]),
 }
 
 type scopes = list<scope>;
 
 enum import_state {
-    todo(ast::node_id, ast::ident, @[ast::ident], codemap::span, scopes);
-    is_glob(@[ast::ident], scopes, codemap::span);
-    resolving(span);
+    todo(ast::node_id, ast::ident, @[ast::ident], codemap::span, scopes),
+    is_glob(@[ast::ident], scopes, codemap::span),
+    resolving(span),
     resolved(option::t<def>, /* value */
              option::t<def>, /* type */
              option::t<def>, /* module */
              @[@_impl], /* impls */
              /* used for reporting unused import warning */
-             ast::ident, codemap::span);
+             ast::ident, codemap::span),
 }
 
 enum glob_import_state {
-    glob_resolving(span);
+    glob_resolving(span),
     glob_resolved(option::t<def>,  /* value */
                   option::t<def>,  /* type */
-                  option::t<def>); /* module */
+                  option::t<def>), /* module */
 }
 
 type ext_hash = hashmap<{did: def_id, ident: str, ns: namespace}, def>;
@@ -99,11 +99,11 @@ fn new_exp_hash() -> exp_map {
 }
 
 enum mod_index_entry {
-    mie_view_item(@ast::view_item);
-    mie_import_ident(node_id, codemap::span);
-    mie_item(@ast::item);
-    mie_native_item(@ast::native_item);
-    mie_tag_variant(/* enum item */@ast::item, /* variant index */uint);
+    mie_view_item(@ast::view_item),
+    mie_import_ident(node_id, codemap::span),
+    mie_item(@ast::item),
+    mie_native_item(@ast::native_item),
+    mie_tag_variant(/* enum item */@ast::item, /* variant index */uint),
 }
 
 type mod_index = hashmap<ident, list<mod_index_entry>>;
@@ -151,14 +151,14 @@ type env =
 
 // Used to distinguish between lookups from outside and from inside modules,
 // since export restrictions should only be applied for the former.
-enum dir { inside; outside; }
+enum dir { inside, outside, }
 
 // There are two types of ns_value enum: "definitely a enum";
 // and "any value". This is so that lookup can behave differently
 // when looking up a variable name that's not yet in scope to check
 // if it's already bound to a enum.
-enum namespace { ns_val(ns_value_type); ns_type; ns_module; }
-enum ns_value_type { ns_a_tag; ns_any_value; }
+enum namespace { ns_val(ns_value_type), ns_type, ns_module, }
+enum ns_value_type { ns_a_tag, ns_any_value, }
 
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
    {def_map: def_map, exp_map: exp_map, impl_map: impl_map} {
@@ -749,7 +749,7 @@ fn ns_name(ns: namespace) -> str {
     }
 }
 
-enum ctxt { in_mod(def); in_scope(scopes); }
+enum ctxt { in_mod(def), in_scope(scopes), }
 
 fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
     fn find_fn_or_mod_scope(sc: scopes) -> option::t<scope> {

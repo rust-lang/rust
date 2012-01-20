@@ -111,16 +111,16 @@ import trans::{
 
 enum environment_value {
     // Evaluate expr and store result in env (used for bind).
-    env_expr(@ast::expr);
+    env_expr(@ast::expr),
 
     // Copy the value from this llvm ValueRef into the environment.
-    env_copy(ValueRef, ty::t, lval_kind);
+    env_copy(ValueRef, ty::t, lval_kind),
 
     // Move the value from this llvm ValueRef into the environment.
-    env_move(ValueRef, ty::t, lval_kind);
+    env_move(ValueRef, ty::t, lval_kind),
 
     // Access by reference (used for blocks).
-    env_ref(ValueRef, ty::t, lval_kind);
+    env_ref(ValueRef, ty::t, lval_kind),
 }
 
 fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {

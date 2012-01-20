@@ -68,8 +68,8 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
 enum opt_span {
 
     //hack (as opposed to option::t), to make `span` compile
-    os_none;
-    os_some(@span);
+    os_none,
+    os_some(@span),
 }
 type span = {lo: uint, hi: uint, expanded_from: opt_span};
 

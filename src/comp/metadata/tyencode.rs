@@ -25,7 +25,7 @@ type ctxt =
 // Whatever format you choose should not contain pipe characters.
 type ty_abbrev = {pos: uint, len: uint, s: @str};
 
-enum abbrev_ctxt { ac_no_abbrevs; ac_use_abbrevs(hashmap<ty::t, ty_abbrev>); }
+enum abbrev_ctxt { ac_no_abbrevs, ac_use_abbrevs(hashmap<ty::t, ty_abbrev>), }
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     alt cx.abbrevs {

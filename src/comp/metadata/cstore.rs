@@ -40,7 +40,7 @@ type crate_metadata = @{name: str,
 // other modules to access the cstore's private data. This could also be
 // achieved with an obj, but at the expense of a vtable. Not sure if this is a
 // good pattern or not.
-enum cstore { private(cstore_private); }
+enum cstore { private(cstore_private), }
 
 type cstore_private =
     @{metas: map::hashmap<ast::crate_num, crate_metadata>,

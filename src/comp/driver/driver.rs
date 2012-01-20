@@ -18,7 +18,7 @@ import option::{some, none};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 
-enum pp_mode { ppm_normal; ppm_expanded; ppm_typed; ppm_identified; }
+enum pp_mode { ppm_normal, ppm_expanded, ppm_typed, ppm_identified, }
 
 fn default_configuration(sess: session, argv0: str, input: str) ->
    ast::crate_cfg {
@@ -131,11 +131,11 @@ fn inject_libcore_reference(sess: session,
 }
 
 enum compile_upto {
-    cu_parse;
-    cu_expand;
-    cu_typeck;
-    cu_no_trans;
-    cu_everything;
+    cu_parse,
+    cu_expand,
+    cu_typeck,
+    cu_no_trans,
+    cu_everything,
 }
 
 fn compile_upto(sess: session, cfg: ast::crate_cfg,

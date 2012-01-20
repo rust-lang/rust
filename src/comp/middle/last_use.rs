@@ -26,8 +26,8 @@ import std::list;
 // Marks expr_paths that are last uses.
 type last_uses = std::map::hashmap<node_id, ()>;
 
-enum seen { unset; seen(node_id); }
-enum block_type { func; loop; }
+enum seen { unset, seen(node_id), }
+enum block_type { func, loop, }
 
 type set = [{def: node_id, exprs: list<node_id>}];
 type bl = @{type: block_type, mutable second: bool, mutable exits: [set]};

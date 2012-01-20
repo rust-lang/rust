@@ -12,8 +12,8 @@ type macro_definer =
     fn@(ext_ctxt, span, @ast::expr, option::t<str>) -> macro_def;
 
 enum syntax_extension {
-    normal(syntax_expander);
-    macro_defining(macro_definer);
+    normal(syntax_expander),
+    macro_defining(macro_definer),
 }
 
 // A temporary hard-coded map of methods for expanding syntax extension

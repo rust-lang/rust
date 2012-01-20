@@ -108,10 +108,10 @@ fn mk_handler(cm: codemap::codemap,
 }
 
 enum level {
-    fatal;
-    error;
-    warning;
-    note;
+    fatal,
+    error,
+    warning,
+    note,
 }
 
 fn diagnosticstr(lvl: level) -> str {

@@ -19,7 +19,7 @@ import trans_common::*;
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
 enum opt {
-    lit(@ast::expr);
+    lit(@ast::expr),
     var(/* disr val */int, /* variant dids */{tg: def_id, var: def_id});
     range(@ast::expr, @ast::expr);
 }
@@ -36,8 +36,8 @@ fn opt_eq(a: opt, b: opt) -> bool {
 }
 
 enum opt_result {
-    single_result(result);
-    range_result(result, result);
+    single_result(result),
+    range_result(result, result),
 }
 fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
     let ccx = bcx_ccx(bcx), bcx = bcx;
@@ -473,7 +473,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 
     // Decide what kind of branch we need
     let opts = get_options(ccx, m, col);
-    enum branch_kind { no_branch; single; switch; compare; }
+    enum branch_kind { no_branch, single, switch, compare, }
     let kind = no_branch;
     let test_val = val;
     if vec::len(opts) > 0u {

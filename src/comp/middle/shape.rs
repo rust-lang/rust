@@ -230,7 +230,7 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
     ret {size: max_size, align: max_align};
 }
 
-enum tag_kind { tk_unit; tk_enum; tk_complex; }
+enum tag_kind { tk_unit, tk_enum, tk_complex, }
 
 fn tag_kind(ccx: @crate_ctxt, did: ast::def_id) -> tag_kind {
     let variants = ty::tag_variants(ccx.tcx, did);

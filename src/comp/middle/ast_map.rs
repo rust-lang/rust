@@ -5,15 +5,15 @@ import syntax::ast_util;
 import syntax::{visit, codemap};
 
 enum ast_node {
-    node_item(@item);
-    node_native_item(@native_item);
-    node_method(@method);
-    node_expr(@expr);
+    node_item(@item),
+    node_native_item(@native_item),
+    node_method(@method),
+    node_expr(@expr),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
-    node_arg(arg, uint);
-    node_local(uint);
-    node_res_ctor(@item);
+    node_arg(arg, uint),
+    node_local(uint),
+    node_res_ctor(@item),
 }
 
 type map = std::map::map<node_id, ast_node>;

@@ -5,7 +5,7 @@ import syntax::{ast, visit};
 type crate_ctxt = {tcx: ty::ctxt};
 
 enum option {
-    ctypes;
+    ctypes,
 }
 
 fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {

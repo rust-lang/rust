@@ -109,14 +109,14 @@ type retval_md = {id: ast::node_id};
 type metadata_cache = hashmap<int, [debug_metadata]>;
 
 enum debug_metadata {
-    file_metadata(@metadata<file_md>);
-    compile_unit_metadata(@metadata<compile_unit_md>);
-    subprogram_metadata(@metadata<subprogram_md>);
-    local_var_metadata(@metadata<local_var_md>);
-    tydesc_metadata(@metadata<tydesc_md>);
-    block_metadata(@metadata<block_md>);
-    argument_metadata(@metadata<argument_md>);
-    retval_metadata(@metadata<retval_md>);
+    file_metadata(@metadata<file_md>),
+    compile_unit_metadata(@metadata<compile_unit_md>),
+    subprogram_metadata(@metadata<subprogram_md>),
+    local_var_metadata(@metadata<local_var_md>),
+    tydesc_metadata(@metadata<tydesc_md>),
+    block_metadata(@metadata<block_md>),
+    argument_metadata(@metadata<argument_md>),
+    retval_metadata(@metadata<retval_md>),
 }
 
 fn cast_safely<T: copy, U>(val: T) -> U unsafe {

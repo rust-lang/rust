@@ -23,11 +23,11 @@ import syntax::print::pprust::{constr_args_to_str, lit_to_str};
 // Used to communicate which operands should be invalidated
 // to helper functions
 enum oper_type {
-    oper_move;
-    oper_swap;
-    oper_assign;
-    oper_assign_op;
-    oper_pure;
+    oper_move,
+    oper_swap,
+    oper_assign,
+    oper_assign_op,
+    oper_pure,
 }
 
 /* logging funs */
@@ -199,11 +199,11 @@ type pred_args = spanned<pred_args_>;
 type constr_arg_use = spanned<constr_arg_general_<inst>>;
 
 enum constraint {
-    cinit(uint, span, ident);
+    cinit(uint, span, ident),
 
     // FIXME: really only want it to be mutable during collect_locals.
     // freeze it after that.
-    cpred(@path, @mutable [pred_args]);
+    cpred(@path, @mutable [pred_args]),
 }
 
 // An ninit variant has a node_id because it refers to a local var.
@@ -212,8 +212,8 @@ enum constraint {
 // FIXME: would be nice to give both a def_id field,
 // and give ninit a constraint saying it's local.
 enum tsconstr {
-    ninit(node_id, ident);
-    npred(@path, def_id, [@constr_arg_use]);
+    ninit(node_id, ident),
+    npred(@path, def_id, [@constr_arg_use]),
 }
 
 type sp_constr = spanned<tsconstr>;
@@ -780,7 +780,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
     ret rslt;
 }
 
-enum if_ty { if_check; plain_if; }
+enum if_ty { if_check, plain_if, }
 
 fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
    def_id {

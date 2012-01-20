@@ -1470,7 +1470,7 @@ fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: str) {
 
 
 // Used only for creating scalar comparison glue.
-enum scalar_type { nil_type; signed_int; unsigned_int; floating_point; }
+enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
 
 fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
@@ -1938,7 +1938,7 @@ fn memmove_ty(bcx: @block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) ->
     ret call_memmove(bcx, dst, src, llsz).bcx;
 }
 
-enum copy_action { INIT; DROP_EXISTING; }
+enum copy_action { INIT, DROP_EXISTING, }
 
 // These are the types that are passed by pointer.
 fn type_is_structural_or_param(tcx: ty::ctxt, t: ty::t) -> bool {
@@ -2331,9 +2331,9 @@ fn trans_binary(cx: @block_ctxt, op: ast::binop, a: @ast::expr, b: @ast::expr,
 }
 
 enum dest {
-    by_val(@mutable ValueRef);
-    save_in(ValueRef);
-    ignore;
+    by_val(@mutable ValueRef),
+    save_in(ValueRef),
+    ignore,
 }
 
 fn empty_dest_cell() -> @mutable ValueRef {
@@ -2496,17 +2496,17 @@ type generic_info = {
 };
 
 enum lval_kind {
-    temporary; //< Temporary value passed by value if of immediate type
-    owned;     //< Non-temporary value passed by pointer
-    owned_imm; //< Non-temporary value passed by value
+    temporary, //< Temporary value passed by value if of immediate type
+    owned,     //< Non-temporary value passed by pointer
+    owned_imm, //< Non-temporary value passed by value
 }
 type local_var_result = {val: ValueRef, kind: lval_kind};
 type lval_result = {bcx: @block_ctxt, val: ValueRef, kind: lval_kind};
 enum callee_env {
-    null_env;
-    is_closure;
-    self_env(ValueRef);
-    dict_env(ValueRef, ValueRef);
+    null_env,
+    is_closure,
+    self_env(ValueRef),
+    dict_env(ValueRef, ValueRef),
 }
 type lval_maybe_callee = {bcx: @block_ctxt,
                           val: ValueRef,
@@ -2896,7 +2896,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     check (type_has_static_size(ccx, t_out));
     let ll_t_out = type_of(ccx, e.span, t_out);
 
-    enum kind { pointer; integral; float; tag_; other; }
+    enum kind { pointer, integral, float, tag_, other, }
     fn t_kind(tcx: ty::ctxt, t: ty::t) -> kind {
         ret if ty::type_is_fp(tcx, t) {
                 float
@@ -4415,7 +4415,7 @@ fn finish_fn(fcx: @fn_ctxt, lltop: BasicBlockRef) {
     RetVoid(ret_cx);
 }
 
-enum self_arg { impl_self(ty::t); no_self; }
+enum self_arg { impl_self(ty::t), no_self, }
 
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be

@@ -13,10 +13,10 @@ export cap_drop;
 export cap_ref;
 
 enum capture_mode {
-    cap_copy; //< Copy the value into the closure.
-    cap_move; //< Move the value into the closure.
-    cap_drop; //< Drop value after creating closure.
-    cap_ref;  //< Reference directly from parent stack frame (block fn).
+    cap_copy, //< Copy the value into the closure.
+    cap_move, //< Move the value into the closure.
+    cap_drop, //< Drop value after creating closure.
+    cap_ref,  //< Reference directly from parent stack frame (block fn).
 }
 
 type capture_var = {

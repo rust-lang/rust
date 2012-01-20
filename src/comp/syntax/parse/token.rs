@@ -6,70 +6,70 @@ import lexer::reader;
 type str_num = uint;
 
 enum binop {
-    PLUS;
-    MINUS;
-    STAR;
-    SLASH;
-    PERCENT;
-    CARET;
-    AND;
-    OR;
-    LSL;
-    LSR;
-    ASR;
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    PERCENT,
+    CARET,
+    AND,
+    OR,
+    LSL,
+    LSR,
+    ASR,
 }
 
 enum token {
     /* Expression-operator symbols. */
-    EQ;
-    LT;
-    LE;
-    EQEQ;
-    NE;
-    GE;
-    GT;
-    ANDAND;
-    OROR;
-    NOT;
-    TILDE;
-    BINOP(binop);
-    BINOPEQ(binop);
+    EQ,
+    LT,
+    LE,
+    EQEQ,
+    NE,
+    GE,
+    GT,
+    ANDAND,
+    OROR,
+    NOT,
+    TILDE,
+    BINOP(binop),
+    BINOPEQ(binop),
 
     /* Structural symbols */
-    AT;
-    DOT;
-    ELLIPSIS;
-    COMMA;
-    SEMI;
-    COLON;
-    MOD_SEP;
-    QUES;
-    RARROW;
-    LARROW;
-    DARROW;
-    LPAREN;
-    RPAREN;
-    LBRACKET;
-    RBRACKET;
-    LBRACE;
-    RBRACE;
-    POUND;
-    POUND_LBRACE;
-    POUND_LT;
+    AT,
+    DOT,
+    ELLIPSIS,
+    COMMA,
+    SEMI,
+    COLON,
+    MOD_SEP,
+    QUES,
+    RARROW,
+    LARROW,
+    DARROW,
+    LPAREN,
+    RPAREN,
+    LBRACKET,
+    RBRACKET,
+    LBRACE,
+    RBRACE,
+    POUND,
+    POUND_LBRACE,
+    POUND_LT,
 
     /* Literals */
-    LIT_INT(i64, ast::int_ty);
-    LIT_UINT(u64, ast::uint_ty);
-    LIT_FLOAT(str_num, ast::float_ty);
-    LIT_STR(str_num);
-    LIT_BOOL(bool);
+    LIT_INT(i64, ast::int_ty),
+    LIT_UINT(u64, ast::uint_ty),
+    LIT_FLOAT(str_num, ast::float_ty),
+    LIT_STR(str_num),
+    LIT_BOOL(bool),
 
     /* Name components */
-    IDENT(str_num, bool);
-    IDX(int);
-    UNDERSCORE;
-    BRACEQUOTE(str_num);
-    EOF;
+    IDENT(str_num, bool),
+    IDX(int),
+    UNDERSCORE,
+    BRACEQUOTE(str_num),
+    EOF,
 }
 
 fn binop_to_str(o: binop) -> str {

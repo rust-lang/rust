@@ -128,8 +128,8 @@ bug and need to present an error.
 */
 fn monitor(f: fn~(diagnostic::emitter)) {
     enum monitor_msg {
-        fatal;
-        done;
+        fatal,
+        done,
     };
 
     let p = comm::port();

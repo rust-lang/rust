@@ -236,10 +236,10 @@ type raw_t = {struct: sty,
 type t = uint;
 
 enum closure_kind {
-    ck_any;
-    ck_block;
-    ck_box;
-    ck_uniq;
+    ck_any,
+    ck_block,
+    ck_box,
+    ck_uniq,
 }
 
 type fn_ty = {proto: ast::proto,
@@ -251,34 +251,34 @@ type fn_ty = {proto: ast::proto,
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast::rs as well.
 enum sty {
-    ty_nil;
-    ty_bot;
-    ty_bool;
-    ty_int(ast::int_ty);
-    ty_uint(ast::uint_ty);
-    ty_float(ast::float_ty);
-    ty_str;
-    ty_tag(def_id, [t]);
-    ty_box(mt);
-    ty_uniq(mt);
-    ty_vec(mt);
-    ty_ptr(mt);
-    ty_rec([field]);
-    ty_fn(fn_ty);
-    ty_native_fn([arg], t);
-    ty_iface(def_id, [t]);
-    ty_res(def_id, t, [t]);
-    ty_tup([t]);
-    ty_var(int); // type variable
+    ty_nil,
+    ty_bot,
+    ty_bool,
+    ty_int(ast::int_ty),
+    ty_uint(ast::uint_ty),
+    ty_float(ast::float_ty),
+    ty_str,
+    ty_tag(def_id, [t]),
+    ty_box(mt),
+    ty_uniq(mt),
+    ty_vec(mt),
+    ty_ptr(mt),
+    ty_rec([field]),
+    ty_fn(fn_ty),
+    ty_native_fn([arg], t),
+    ty_iface(def_id, [t]),
+    ty_res(def_id, t, [t]),
+    ty_tup([t]),
+    ty_var(int), // type variable
 
-    ty_param(uint, def_id); // fn/enum type param
+    ty_param(uint, def_id), // fn/enum type param
 
-    ty_type; // type_desc*
-    ty_send_type; // type_desc* that has been cloned into exchange heap
-    ty_native(def_id);
-    ty_constr(t, [@type_constr]);
-    ty_opaque_closure_ptr(closure_kind); // ptr to env for fn, fn@, fn~
-    ty_named(t, @str);
+    ty_type, // type_desc*
+    ty_send_type, // type_desc* that has been cloned into exchange heap
+    ty_native(def_id),
+    ty_constr(t, [@type_constr]),
+    ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
+    ty_named(t, @str),
 }
 
 // In the middle end, constraints have a def_id attached, referring
@@ -289,24 +289,24 @@ type constr = constr_general<uint>;
 
 // Data structures used in type unification
 enum type_err {
-    terr_mismatch;
-    terr_ret_style_mismatch(ast::ret_style, ast::ret_style);
-    terr_box_mutability;
-    terr_vec_mutability;
-    terr_tuple_size(uint, uint);
-    terr_record_size(uint, uint);
-    terr_record_mutability;
-    terr_record_fields(ast::ident, ast::ident);
-    terr_arg_count;
-    terr_mode_mismatch(mode, mode);
-    terr_constr_len(uint, uint);
-    terr_constr_mismatch(@type_constr, @type_constr);
+    terr_mismatch,
+    terr_ret_style_mismatch(ast::ret_style, ast::ret_style),
+    terr_box_mutability,
+    terr_vec_mutability,
+    terr_tuple_size(uint, uint),
+    terr_record_size(uint, uint),
+    terr_record_mutability,
+    terr_record_fields(ast::ident, ast::ident),
+    terr_arg_count,
+    terr_mode_mismatch(mode, mode),
+    terr_constr_len(uint, uint),
+    terr_constr_mismatch(@type_constr, @type_constr),
 }
 
 enum param_bound {
-    bound_copy;
-    bound_send;
-    bound_iface(t);
+    bound_copy,
+    bound_send,
+    bound_iface(t),
 }
 
 fn param_bounds_to_kind(bounds: param_bounds) -> kind {
@@ -713,9 +713,9 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
 }
 
 enum fold_mode {
-    fm_var(fn@(int) -> t);
-    fm_param(fn@(uint, def_id) -> t);
-    fm_general(fn@(t) -> t);
+    fm_var(fn@(int) -> t),
+    fm_param(fn@(uint, def_id) -> t),
+    fm_general(fn@(t) -> t),
 }
 
 fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
@@ -973,7 +973,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     ret result;
 }
 
-enum kind { kind_sendable; kind_copyable; kind_noncopyable; }
+enum kind { kind_sendable, kind_copyable, kind_noncopyable, }
 
 // Using these query functons is preferable to direct comparison or matching
 // against the kind constants, as we may modify the kind hierarchy in the
@@ -1732,18 +1732,18 @@ mod unify {
     export var_bindings;
     export precise, in_bindings;
 
-    enum result { ures_ok(t); ures_err(type_err); }
-    enum union_result { unres_ok; unres_err(type_err); }
+    enum result { ures_ok(t), ures_err(type_err), }
+    enum union_result { unres_ok, unres_err(type_err), }
     enum fixup_result {
-        fix_ok(t); // fixup succeeded
-        fix_err(int); // fixup failed because a type variable was unresolved
+        fix_ok(t), // fixup succeeded
+        fix_err(int), // fixup failed because a type variable was unresolved
     }
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
 
     enum unify_style {
-        precise;
-        in_bindings(@var_bindings);
+        precise,
+        in_bindings(@var_bindings),
     }
     type ctxt = {st: unify_style, tcx: ty_ctxt};
 
@@ -2043,11 +2043,11 @@ mod unify {
     // Specifies the allowable subtyping between expected and actual types
     enum variance {
         // Actual may be a subtype of expected
-        covariant;
+        covariant,
         // Actual may be a supertype of expected
-        contravariant;
+        contravariant,
         // Actual must be the same type as expected
-        invariant;
+        invariant,
     }
 
     // The calculation for recursive variance

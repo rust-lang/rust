@@ -14,13 +14,13 @@ import lexer::reader;
 import driver::diagnostic;
 
 enum restriction {
-    UNRESTRICTED;
-    RESTRICT_STMT_EXPR;
-    RESTRICT_NO_CALL_EXPRS;
-    RESTRICT_NO_BAR_OP;
+    UNRESTRICTED,
+    RESTRICT_STMT_EXPR,
+    RESTRICT_NO_CALL_EXPRS,
+    RESTRICT_NO_BAR_OP,
 }
 
-enum file_type { CRATE_FILE; SOURCE_FILE; }
+enum file_type { CRATE_FILE, SOURCE_FILE, }
 
 type parse_sess = @{
     cm: codemap::codemap,
@@ -722,7 +722,7 @@ fn mk_lit_u32(p: parser, i: u32) -> @ast::expr {
 // part of the AST, we wrap such expressions in the pexpr enum.  They
 // can then be converted to true expressions by a call to `to_expr()`.
 enum pexpr {
-    pexpr(@ast::expr);
+    pexpr(@ast::expr),
 }
 
 fn mk_pexpr(p: parser, lo: uint, hi: uint, node: ast::expr_) -> pexpr {

@@ -202,10 +202,10 @@ fn ternary_to_if(e: @expr) -> @expr {
 // FIXME this doesn't handle big integer/float literals correctly (nor does
 // the rest of our literal handling)
 enum const_val {
-    const_float(float);
-    const_int(i64);
-    const_uint(u64);
-    const_str(str);
+    const_float(float),
+    const_int(i64),
+    const_uint(u64),
+    const_str(str),
 }
 
 // FIXME: issue #1417

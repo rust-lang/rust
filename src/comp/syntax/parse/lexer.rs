@@ -511,10 +511,10 @@ fn next_token_inner(rdr: reader) -> token::token {
 }
 
 enum cmnt_style {
-    isolated; // No code on either side of each line of the comment
-    trailing; // Code exists to the left of the comment
-    mixed; // Code before /* foo */ and after the comment
-    blank_line; // Just a manual blank line "\n\n", for layout
+    isolated, // No code on either side of each line of the comment
+    trailing, // Code exists to the left of the comment
+    mixed, // Code before /* foo */ and after the comment
+    blank_line, // Just a manual blank line "\n\n", for layout
 }
 
 type cmnt = {style: cmnt_style, lines: [str], pos: uint};

@@ -13,14 +13,14 @@ import codemap::span;
 
 // Our typesystem doesn't do circular types, so the visitor record can not
 // hold functions that take visitors. A vt enum is used to break the cycle.
-enum vt<E> { mk_vt(visitor<E>); }
+enum vt<E> { mk_vt(visitor<E>), }
 
 enum fn_kind {
-    fk_item_fn(ident, [ty_param]); //< an item declared with fn()
-    fk_method(ident, [ty_param]);
-    fk_res(ident, [ty_param]);
-    fk_anon(proto);  //< an anonymous function like fn@(...)
-    fk_fn_block;     //< a block {||...}
+    fk_item_fn(ident, [ty_param]), //< an item declared with fn()
+    fk_method(ident, [ty_param]),
+    fk_res(ident, [ty_param]),
+    fk_anon(proto),  //< an anonymous function like fn@(...)
+    fk_fn_block,     //< a block {||...}
 }
 
 fn name_of_fn(fk: fn_kind) -> ident {
