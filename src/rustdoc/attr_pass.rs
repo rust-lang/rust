@@ -158,20 +158,12 @@ fn fold_fn(
     }
 
     fn merge_ret_attrs(
-        doc: option<doc::retdoc>,
+        doc: doc::retdoc,
         attrs: option<str>
-    ) -> option<doc::retdoc> {
-        alt doc {
-          some(doc) {
-            some({
-                desc: attrs
-                with doc
-            })
-          }
-          none {
-            // FIXME: Warning about documenting nil?
-            none
-          }
+    ) -> doc::retdoc {
+        {
+            desc: attrs
+            with doc
         }
     }
 }
@@ -204,7 +196,7 @@ fn fold_fn_should_extract_return_attributes() {
     let doc = tystr_pass::mk_pass()(srv, doc);
     let fold = fold::default_seq_fold(srv);
     let doc = fold_fn(fold, doc.topmod.fns[0]);
-    assert option::get(doc.return).desc == some("what");
+    assert doc.return.desc == some("what");
 }
 
 #[test]

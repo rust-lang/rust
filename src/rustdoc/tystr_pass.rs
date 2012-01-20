@@ -62,23 +62,16 @@ fn should_add_fn_sig() {
 fn merge_ret_ty(
     srv: astsrv::srv,
     fn_id: doc::ast_id,
-    doc: option<doc::retdoc>
-) -> option<doc::retdoc> {
-    alt doc {
-      some(doc) {
-        fail "unimplemented";
-      }
-      none {
-        alt get_ret_ty(srv, fn_id) {
-          some(ty) {
-            some({
-                desc: none,
-                ty: some(ty)
-            })
-          }
-          none { none }
+    doc: doc::retdoc
+) -> doc::retdoc {
+    alt get_ret_ty(srv, fn_id) {
+      some(ty) {
+        {
+            ty: some(ty)
+            with doc
         }
       }
+      none { doc }
     }
 }
 
@@ -105,7 +98,7 @@ fn should_add_fn_ret_types() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert option::get(doc.topmod.fns[0].return).ty == some("int");
+    assert doc.topmod.fns[0].return.ty == some("int");
 }
 
 #[test]
@@ -114,7 +107,7 @@ fn should_not_add_nil_ret_type() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert doc.topmod.fns[0].return == none;
+    assert doc.topmod.fns[0].return.ty == none;
 }
 
 fn merge_arg_tys(

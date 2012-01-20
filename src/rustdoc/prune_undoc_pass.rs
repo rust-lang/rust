@@ -32,7 +32,7 @@ fn fold_fn(
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
-        || doc.return != none;
+        || doc.return.desc != none;
     ret doc;
 }
 

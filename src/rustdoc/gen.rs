@@ -222,23 +222,18 @@ fn should_write_argument_description() {
 
 fn write_return(
     ctxt: ctxt,
-    return: option<doc::retdoc>
+    doc: doc::retdoc
 ) {
-    alt return {
-      some(doc) {
-        alt doc.ty {
-          some(ty) {
-            ctxt.w.write_line(#fmt("Returns `%s`", ty));
+    alt doc.ty {
+      some(ty) {
+        ctxt.w.write_line(#fmt("Returns `%s`", ty));
+        ctxt.w.write_line("");
+        alt doc.desc {
+          some(d) {
+            ctxt.w.write_line(d);
             ctxt.w.write_line("");
-            alt doc.desc {
-              some(d) {
-                ctxt.w.write_line(d);
-                ctxt.w.write_line("");
-              }
-              none { }
-            }
           }
-          none { fail "unimplemented"; }
+          none { }
         }
       }
       none { }
