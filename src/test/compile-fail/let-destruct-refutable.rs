@@ -1,6 +1,6 @@
 // error-pattern:refutable pattern
 
-tag xx { xx(int); yy; }
+enum xx { xx(int); yy; }
 
 fn main() {
     let @{x: xx(x), y: y} = @{x: xx(10), y: 20};

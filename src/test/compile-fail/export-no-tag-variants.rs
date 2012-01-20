@@ -6,7 +6,7 @@
 mod foo {
     export t;
 
-    tag t { t1; }
+    enum t { t1; }
 }
 
 fn main() { let x = foo::t1; }

@@ -1,6 +1,6 @@
 //error-pattern: mismatched types
 
-tag color {
+enum color {
     red = 1u;
     blue = 2;
 }

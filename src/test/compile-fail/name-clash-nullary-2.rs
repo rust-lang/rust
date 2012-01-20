@@ -1,5 +1,5 @@
 // error-pattern:Declaration of thpppt shadows
-tag ack { thpppt; ffff; }
+enum ack { thpppt; ffff; }
 
 fn main() {
   let thpppt: int = 42;

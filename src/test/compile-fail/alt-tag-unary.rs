@@ -1,7 +1,7 @@
 // error-pattern: mismatched types
 
-tag a { A(int); }
-tag b { B(int); }
+enum a { A(int); }
+enum b { B(int); }
 
 fn main() { let x: a = A(0); alt x { B(y) { } } }
 
