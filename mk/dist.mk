@@ -16,6 +16,7 @@ PKG_GITMODULES := $(S)src/libuv $(S)src/llvm
 PKG_FILES := \
     $(S)LICENSE.txt $(S)README.txt             \
     $(S)configure $(S)Makefile.in              \
+    $(S)man                                    \
     $(S)doc                                    \
     $(addprefix $(S)src/,                      \
       README.txt                               \
