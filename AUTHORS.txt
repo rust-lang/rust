@@ -30,6 +30,7 @@ Josh Matthews <josh@joshmatthews.net>
 Joshua Wise <joshua@joshuawise.com>
 Jyun-Yan You <jyyou@cs.nctu.edu.tw>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
+Kevin Atkinson <kevina@cs.utah.edu>
 Kevin Cantu <me@kevincantu.org>
 Lennart Kudling
 Lindsey Kuper <lkuper@mozilla.com>
