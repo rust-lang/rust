@@ -10,7 +10,7 @@ import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::codemap::span;
 import middle::ty::{expr_ty, type_is_bot};
-import util::common::{field_exprs, has_nonlocal_exits};
+import util::common::*;
 import driver::session::session;
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
@@ -384,20 +384,19 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                 set_poststate_ann(fcx.ccx, e.id, block_poststate(fcx.ccx, b));
       }
       expr_rec(fields, maybe_base) {
+        let exs = field_exprs(fields);
         let changed =
             find_pre_post_state_exprs(fcx, pres, e.id,
                                       vec::init_elt(init_assign,
                                                     vec::len(fields)),
-                                      field_exprs(fields), return_val);
-        alt maybe_base {
-          none {/* do nothing */ }
-          some(base) {
-            changed |=
-                find_pre_post_state_expr(fcx, pres, base) |
-                    set_poststate_ann(fcx.ccx, e.id,
-                                      expr_poststate(fcx.ccx, base));
-          }
-        }
+                                      exs, return_val);
+
+        let base_pres = alt vec::last(exs) { none { pres }
+                          some(f) { expr_poststate(fcx.ccx, f) }};
+        option::may(maybe_base, {|base|
+            changed |= find_pre_post_state_expr(fcx, base_pres, base) |
+              set_poststate_ann(fcx.ccx, e.id,
+                                expr_poststate(fcx.ccx, base))});
         ret changed;
       }
       expr_tup(elts) {
@@ -591,12 +590,8 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         }
         ret set_prestate_ann(fcx.ccx, e.id, pres) |
                 set_poststate_ann(fcx.ccx, e.id, post) |
-                alt maybe_fail_val {
-                  none { false }
-                  some(fail_val) {
-                    find_pre_post_state_expr(fcx, pres, fail_val)
-                  }
-                }
+                option::maybe(false, maybe_fail_val, {|fail_val|
+                        find_pre_post_state_expr(fcx, pres, fail_val)});
       }
       expr_assert(p) {
         ret find_pre_post_state_sub(fcx, pres, p, e.id, none);
@@ -617,18 +612,14 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
 fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
 
-    /*
-        log(error, ("[" + fcx.name + "]"));
-        #error("*At beginning: stmt = ");
-        log_stmt_err(*s);
-        #error("*prestate = ");
-        log_tritv_err(fcx, stmt_ann.states.prestate);
-        #error("*poststate =");
-        log_tritv_err(fcx, stmt_ann.states.poststate);
-        #error("pres = ");
-        log_tritv_err(fcx, pres);
-    */
-
+    log(debug, "[" + fcx.name + "]");
+    #debug("*At beginning: stmt = ");
+    log_stmt(*s);
+    #debug("*prestate = ");
+    log(debug, tritv::to_str(stmt_ann.states.prestate));
+    #debug("*poststate =");
+    log(debug, tritv::to_str(stmt_ann.states.prestate));
+    
     alt s.node {
       stmt_decl(adecl, id) {
         alt adecl.node {
@@ -643,16 +634,14 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
             let changed =
                 set_poststate(stmt_ann, c_and_p.post) | c_and_p.changed;
 
-            /*
-                            #error("Summary: stmt = ");
-                            log_stmt_err(*s);
-                            #error("prestate = ");
-                            log_tritv_err(fcx, stmt_ann.states.prestate);
-                            #error("poststate =");
-                            log_tritv_err(fcx, stmt_ann.states.poststate);
-                            #error("changed =");
-                            log(error, changed);
-            */
+            #debug("Summary: stmt = ");
+            log_stmt(*s);
+            #debug("prestate = ");
+            log(debug, tritv::to_str(stmt_ann.states.prestate));
+            #debug("poststate =");
+            log(debug, tritv::to_str(stmt_ann.states.prestate));
+            #debug("changed =");
+            log(debug, changed);
 
             ret changed;
           }
@@ -668,17 +657,14 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
                 set_prestate(stmt_ann, expr_prestate(fcx.ccx, ex)) |
                 set_poststate(stmt_ann, expr_poststate(fcx.ccx, ex));
 
-        /*
-        #error("Finally:");
-        log_stmt_err(*s);
-        log_err("prestate = ");
-        log_err(bitv::to_str(stmt_ann.states.prestate));
-        log_tritv_err(fcx, stmt_ann.states.prestate);
-        log_err("poststate =");
-        log_err(bitv::to_str(stmt_ann.states.poststate));
-        log_tritv_err(fcx, stmt_ann.states.poststate);
-        log_err("changed =");
-        */
+
+        #debug("Finally:");
+        log_stmt(*s);
+        log(debug, "prestate = ");
+        log(debug, tritv::to_str(stmt_ann.states.prestate));
+        #debug("poststate =");
+        log(debug, (tritv::to_str(stmt_ann.states.poststate)));
+        #debug("changed =");
 
         ret changed;
       }
