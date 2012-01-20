@@ -1705,6 +1705,22 @@ as
 
 Operators at the same precedence level are evaluated left-to-right.
 
+### Grouped expressions
+
+An expression enclosed in parentheses evaluates to the result of the enclosed
+expression.  Parentheses can be used to explicitly specify evaluation order
+within an expression.
+
+~~~~~~~~{.ebnf .gram}
+paren_expr : '(' expr ')' ;
+~~~~~~~~
+
+An example of a parenthesized expression:
+
+~~~~
+let x = (2 + 3) * 4;
+~~~~
+
 ### Unary copy expressions
 
 ~~~~~~~~{.ebnf .gram}
