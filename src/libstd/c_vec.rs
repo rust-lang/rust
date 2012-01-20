@@ -43,7 +43,7 @@ export ptr;
  */
 
 enum t<T> {
-    t({ base: *mutable T, len: uint, rsrc: @dtor_res});
+    t({ base: *mutable T, len: uint, rsrc: @dtor_res})
 }
 
 resource dtor_res(dtor: option::t<fn@()>) {

@@ -33,7 +33,7 @@ Tag: tree_node
 */
 enum tree_node<K, V> {
     empty,
-    node(@K, @V, @tree_node<K, V>, @tree_node<K, V>),
+    node(@K, @V, @tree_node<K, V>, @tree_node<K, V>)
 }
 
 /* Section: Operations */

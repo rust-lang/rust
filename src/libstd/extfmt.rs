@@ -39,8 +39,8 @@ import option::{some, none};
 
 // Functions used by the fmt extension at compile time
 mod ct {
-    enum signedness { signed, unsigned, }
-    enum caseness { case_upper, case_lower, }
+    enum signedness { signed, unsigned }
+    enum caseness { case_upper, case_lower }
     enum ty {
         ty_bool,
         ty_str,

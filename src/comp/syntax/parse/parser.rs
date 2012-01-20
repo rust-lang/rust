@@ -2074,7 +2074,7 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
             }
 
             alt p.token {
-              token::SEMI | token::COMMA {
+              token::COMMA {
                 p.bump();
                 if p.token == token::RBRACE { done = true; }
               }

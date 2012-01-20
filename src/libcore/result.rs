@@ -23,7 +23,7 @@ enum t<T, U> {
 
     Contains the error value
     */
-    err(U),
+    err(U)
 }
 
 /* Section: Operations */

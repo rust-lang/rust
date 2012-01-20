@@ -20,8 +20,8 @@ import trans_common::*;
 // range)
 enum opt {
     lit(@ast::expr),
-    var(/* disr val */int, /* variant dids */{tg: def_id, var: def_id});
-    range(@ast::expr, @ast::expr);
+    var(/* disr val */int, /* variant dids */{tg: def_id, var: def_id}),
+    range(@ast::expr, @ast::expr)
 }
 fn opt_eq(a: opt, b: opt) -> bool {
     alt (a, b) {

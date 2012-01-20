@@ -114,7 +114,7 @@ mod chained {
 
     enum chain<K, V> {
         present(@entry<K, V>),
-        absent,
+        absent
     }
 
     type t<K, V> = {
@@ -127,7 +127,7 @@ mod chained {
     enum search_result<K, V> {
         not_found,
         found_first(uint, @entry<K,V>),
-        found_after(@entry<K,V>, @entry<K,V>),
+        found_after(@entry<K,V>, @entry<K,V>)
     }
 
     fn search_rem<K: copy, V: copy>(

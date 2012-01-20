@@ -338,21 +338,21 @@ enum block_kind {
     // in the source language.  Since these blocks create variable scope, any
     // variables created in them that are still live at the end of the block
     // must be dropped and cleaned up when the block ends.
-    SCOPE_BLOCK;
+    SCOPE_BLOCK,
 
 
     // A basic block created from the body of a loop.  Contains pointers to
     // which block to jump to in the case of "continue" or "break", with the
     // "continue" block optional, because "while" and "do while" don't support
     // "continue" (TODO: is this intentional?)
-    LOOP_SCOPE_BLOCK(option::t<@block_ctxt>, @block_ctxt);
+    LOOP_SCOPE_BLOCK(option::t<@block_ctxt>, @block_ctxt),
 
 
     // A non-scope block is a basic block created as a translation artifact
     // from translating code that expresses conditional logic rather than by
     // explicit { ... } block structure in the source language.  It's called a
     // non-scope block because it doesn't introduce a new variable scope.
-    NON_SCOPE_BLOCK;
+    NON_SCOPE_BLOCK
 }
 
 

@@ -33,9 +33,9 @@ fn write_markdown(
 }
 
 enum hlvl {
-    h1 = 1;
-    h2 = 2;
-    h3 = 3;
+    h1 = 1,
+    h2 = 2,
+    h3 = 3
 }
 
 fn write_header(ctxt: ctxt, lvl: hlvl, title: str) {

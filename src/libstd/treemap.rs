@@ -28,7 +28,7 @@ type treemap<K, V> = @mutable tree_node<K, V>;
 /*
 Tag: tree_node
 */
-enum tree_node<K, V> { empty, node(@K, @V, treemap<K, V>, treemap<K, V>), }
+enum tree_node<K, V> { empty, node(@K, @V, treemap<K, V>, treemap<K, V>) }
 
 /* Section: Operations */
 

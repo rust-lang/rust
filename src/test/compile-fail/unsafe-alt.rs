@@ -1,6 +1,6 @@
 // error-pattern:invalidate reference i
 
-enum foo { left({mutable x: int}); right(bool); }
+enum foo { left({mutable x: int}), right(bool) }
 
 fn main() {
     let x = left({mutable x: 10});

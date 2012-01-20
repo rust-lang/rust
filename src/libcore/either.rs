@@ -14,7 +14,7 @@ enum t<T, U> {
     /* Variant: left */
     left(T),
     /* Variant: right */
-    right(U),
+    right(U)
 }
 
 /* Section: Operations */
