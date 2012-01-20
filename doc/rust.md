@@ -589,7 +589,7 @@ item : mod_item | fn_item | type_item | enum_item
 ~~~~~~~~
 
 An _item_ is a component of a crate; some module items can be defined in
-[crate files](#crate-files) but most are defined in [source
+[crate files](#crate-files), but most are defined in [source
 files](#source-files). Items are organized within a crate by a nested set of
 [modules](#modules). Every crate has a single "outermost" anonymous module;
 all further items within the crate have [paths](#paths) within the module tree
@@ -603,7 +603,7 @@ There are several kinds of item:
   * [modules](#modules)
   * [functions](#functions)
   * [type definitions](#type-definitions)
-  * [eunmerations](#enumerations)
+  * [enumerations](#enumerations)
   * [resources](#resources)
   * [interfaces](#interfaces)
   * [implementations](#implementations)
@@ -724,9 +724,9 @@ An _import declaration_ creates one or more local name bindings synonymous
 with some other [path](#paths). Usually an import declaration is used to
 shorten the path required to refer to a module item.
 
-*Note*: unlike many languages, Rust's `import` declarations do not* declare
-*linkage-dependency with external crates. Linkage dependencies are
-*independently declared with [`use` declarations](#use -eclarations).
+*Note*: unlike many languages, Rust's `import` declarations do *not* declare
+linkage-dependency with external crates. Linkage dependencies are
+independently declared with [`use` declarations](#use-declarations).
 
 Imports support a number of "convenience" notations:
 
@@ -826,7 +826,7 @@ function passes results back to the caller.
 A function may also be copied into a first class *value*, in which case the
 value has the corresponding [*function type*](#function-types), and can be
 used otherwise exactly as a function item (with a minor additional cost of
-calling the function, as such a call is indirect).
+calling the function indirectly).
 
 Every control path in a function logically ends with a `ret` expression or a
 diverging expression. If the outermost block of a function has a
@@ -914,7 +914,7 @@ pure fn nonempty_list<T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
 ~~~~
 
 In this example, `nonempty_list` is a predicate---it can be used in a
-typestate constraint---but the auxiliary function `pure_length`@ is
+typestate constraint---but the auxiliary function `pure_length` is
 not.
 
 *ToDo:* should actually define referential transparency.
@@ -1011,7 +1011,7 @@ specific type; the type-specified aspects of a value include:
 * The sequence of memory operations required to access the value.
 * The *kind* of the type (pinned, unique or shared).
 
-For example, the type `{x: u8, y: u8@`} defines the set of immutable values
+For example, the type `{x: u8, y: u8`} defines the set of immutable values
 that are composite records, each containing two unsigned 8-bit integers
 accessed through the components `x` and `y`, and laid out in memory with the
 `x` component preceding the `y` component.
@@ -1033,7 +1033,7 @@ type the constructor is a member of. Such recursion has restrictions:
   values](#box-types) (in order to bound the in-memory size of the
   constructor).
 * Recursive type definitions can cross module boundaries, but not module
-  *visibility* boundaries, nor crate boundaries (in order to simplify the
+  *visibility* boundaries or crate boundaries (in order to simplify the
   module system).
 
 
@@ -1073,11 +1073,11 @@ resource file_descriptor(fd: int) {
 
 Calling the `file_descriptor` constructor function on an integer will
 produce a value with the `file_descriptor` type. Resource types have a
-noncopyable [type kind](#type-kinds), and thus may not be copied. It
-is guaranteed, barring drastic program termination that somehow
-prevents unwinding from taking place, that for each constucted
-resource value, the destructor will run once, when the value is
-disposed of. For stack-allocated values, this happens when the value
+noncopyable [type kind](#type-kinds), and thus may not be copied. The
+semantics guarantee that for each constructed resources value, the
+destructor will run once: when the value is disposed of (barring
+drastic program termination that somehow prevents unwinding from taking
+place). For stack-allocated values, disposal happens when the value
 goes out of scope. For values in shared boxes, it happens when the
 reference count of the box reaches zero.
 
@@ -1165,9 +1165,9 @@ impl circle_shape of shape for circle {
 This defines an implementation named `circle_shape` of interface
 `shape` for type `circle`. The name of the implementation is the name
 by which it is imported and exported, but has no further significance.
-It may be left off to default to the name of the interface that was
+It may be omitted to default to the name of the interface that was
 implemented. Implementation names do not conflict the way other names
-do—multiple implementations with the same name may exist in a scope at
+do: multiple implementations with the same name may exist in a scope at
 the same time.
 
 It is possible to define an implementation without referencing an
@@ -1250,13 +1250,14 @@ fn add(x: int, y: int) { x + y }
 ~~~~~~~~
 
 In future versions of Rust, user-provided extensions to the compiler will be
-able to interpret attributes. When this facility is provided, a distinction
-will be made between language-reserved and user-available attributes.
+able to interpret attributes. When this facility is provided, the compiler
+will distinguish will be made between language-reserved and user-available
+attributes.
 
 At present, only the Rust compiler interprets attributes, so all attribute
 names are effectively reserved. Some significant attributes include:
 
-* The `doc` attribute, for documenting code where it's written.
+* The `doc` attribute, for documenting code in-place.
 * The `cfg` attribute, for conditional-compilation by build-configuration.
 * The `link` attribute, for describing linkage metadata for a crate.
 * The `test` attribute, for marking functions as unit tests.
