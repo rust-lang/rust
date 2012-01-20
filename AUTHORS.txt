@@ -7,6 +7,7 @@ Other authors:
 Adam Bozanich <adam.boz@gmail.com>
 Andreas Gal <gal@mozilla.com>
 Austin Seipp <as@hacks.yi.org>
+Ben Striegel <ben.striegel@gmail.com>
 Benjamin Jackman <ben@jackman.biz>
 Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
