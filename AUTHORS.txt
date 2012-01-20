@@ -49,6 +49,7 @@ Reuben Morais <reuben.morais@gmail.com>
 Rob Arnold <robarnold@cs.cmu.edu>
 Roland Tanglao <roland@rolandtanglao.com>
 Roy Frostig <rfrostig@mozilla.com>
+Sean Stangl <sstangl@mozilla.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
 Tim Chevalier <chevalier@alum.wellesley.edu>
 Tycho Sci <tychosci@gmail.com>
