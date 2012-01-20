@@ -12,9 +12,9 @@ The either type
 */
 enum t<T, U> {
     /* Variant: left */
-    left(T);
+    left(T),
     /* Variant: right */
-    right(U);
+    right(U),
 }
 
 /* Section: Operations */

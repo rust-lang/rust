@@ -17,13 +17,13 @@ enum t<T, U> {
 
     Contains the result value
     */
-    ok(T);
+    ok(T),
     /*
     Variant: err
 
     Contains the error value
     */
-    err(U);
+    err(U),
 }
 
 /* Section: Operations */
