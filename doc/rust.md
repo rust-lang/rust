@@ -1778,7 +1778,7 @@ returns, then the expression completes.
 
 A call expression statically requires that the precondition declared in the
 callee's signature is satisfied by the expression prestate. In this way,
-typestates propagate through function boundaries. See [Ref.Typestate](#ref.typestate).
+typestates propagate through function boundaries.
 
 An example of a call expression:
 
@@ -2569,8 +2569,7 @@ Unsafe pointers (`*`)
 
 The function type-constructor `fn` forms new function types. A function type
 consists of a sequence of input slots, an optional set of [input
-constraints](#input-constraints) and an output slot. See
-[Ref.Item.Fn](#ref.item.fn).
+constraints](#input-constraints) and an output slot.
 
 An example of a `fn` type:
 
