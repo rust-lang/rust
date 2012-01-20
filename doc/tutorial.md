@@ -809,7 +809,7 @@ expected to return.
 ~~~~
 # fn can_go_left() -> bool { true }
 # fn can_go_right() -> bool { true }
-# enum dir { left; right; }
+# enum dir { left, right }
 # fn dead_end() -> ! { fail; }
 let dir = if can_go_left() { left }
           else if can_go_right() { right }
@@ -989,8 +989,8 @@ types).
 ~~~~
 type point = {x: float, y: float};
 enum shape {
-    circle(point, float);
-    rectangle(point, point);
+    circle(point, float),
+    rectangle(point, point)
 }
 let my_shape = circle({x: 0.0, y: 0.0}, 10.0);
 ~~~~
@@ -1065,8 +1065,8 @@ example, the type shown earlier:
 ~~~~
 # type point = {x: float, y: float};
 enum shape {
-    circle(point, float);
-    rectangle(point, point);
+    circle(point, float),
+    rectangle(point, point)
 }
 ~~~~
 
@@ -1087,10 +1087,10 @@ equivalent to a C enum:
 
 ~~~~
 enum direction {
-    north;
-    east;
-    south;
-    west;
+    north,
+    east,
+    south,
+    west
 }
 ~~~~
 
@@ -1103,9 +1103,9 @@ value:
 
 ~~~~
 enum color {
-  red = 0xff0000;
-  green = 0x00ff00;
-  blue = 0x0000ff;
+  red = 0xff0000,
+  green = 0x00ff00,
+  blue = 0x0000ff
 }
 ~~~~
 
@@ -1130,7 +1130,7 @@ enum gizmo_id = int;
 That is a shorthand for this:
 
 ~~~~
-enum gizmo_id { gizmo_id(int); }
+enum gizmo_id { gizmo_id(int) }
 ~~~~
 
 Enum types like this can have their content extracted with the
@@ -1150,7 +1150,7 @@ patterns, as in this definition of `area`:
 
 ~~~~
 # type point = {x: float, y: float};
-# enum shape { circle(point, float); rectangle(point, point); }
+# enum shape { circle(point, float), rectangle(point, point) }
 fn area(sh: shape) -> float {
     alt sh {
         circle(_, size) { float::consts::pi * size * size }
@@ -1163,7 +1163,7 @@ Another example, matching nullary enum variants:
 
 ~~~~
 # type point = {x: float, y: float};
-# enum direction { north; east; south; west; }
+# enum direction { north, east, south, west }
 fn point_from_direction(dir: direction) -> point {
     alt dir {
         north { {x:  0f, y:  1f} }
@@ -1545,7 +1545,7 @@ type circular_buf<T> = {start: uint,
                         end: uint,
                         buf: [mutable T]};
 
-enum option<T> { some(T); none; }
+enum option<T> { some(T), none }
 ~~~~
 
 You can then declare a function to take a `circular_buf<u8>` or return
