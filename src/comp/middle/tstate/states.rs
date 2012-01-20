@@ -619,7 +619,7 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     log(debug, tritv::to_str(stmt_ann.states.prestate));
     #debug("*poststate =");
     log(debug, tritv::to_str(stmt_ann.states.prestate));
-    
+
     alt s.node {
       stmt_decl(adecl, id) {
         alt adecl.node {
