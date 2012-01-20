@@ -26,8 +26,8 @@
 
 namespace shape {
 
-typedef unsigned long tag_variant_t;
-typedef unsigned long tag_align_t;
+typedef unsigned tag_variant_t;
+typedef unsigned tag_align_t;
 typedef unsigned long ref_cnt_t;
 
 // Constants

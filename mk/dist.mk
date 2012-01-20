@@ -41,9 +41,9 @@ lic.txt: $(S)LICENSE.txt
 	@$(Q)perl -pe 's@\r\n|\n@\r\n@go' <$< >$@
 
 ifdef CFG_MAKENSIS
-$(PKG_EXE): all rustc-stage3 $(PKG_NSI) $(PKG_FILES) lic.txt
+$(PKG_EXE): $(PKG_NSI) $(PKG_FILES) all rustc-stage3 lic.txt
 	@$(call E, makensis: $@)
-	$(Q)$(CFG_MAKENSIS) -NOCD -V1 "-XOutFile $@" \
+	$(Q)"$(CFG_MAKENSIS)" -NOCD -V1 "-XOutFile $@" \
                         "-XLicenseData lic.txt" $<
 	$(Q)rm -f lic.txt
 endif
