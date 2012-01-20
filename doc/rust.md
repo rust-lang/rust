@@ -116,7 +116,7 @@ production. See [tokens](#tokens) for more information.
 
 ## Input format
 
-Rust input is interpreted in as a sequence of Unicode codepoints encoded in
+Rust input is interpreted as a sequence of Unicode codepoints encoded in
 UTF-8. No normalization is performed during input processing. Most Rust
 grammar rules are defined in terms of printable ASCII-range codepoints, but
 a small number are defined in terms of Unicode properties or explicit
@@ -180,7 +180,7 @@ of the following Unicode characters: `U+0020` (space, `' '`), `U+0009` (tab,
 `'\t'`), `U+000A` (LF, `'\n'`), `U+000D` (CR, `'\r'`).
 
 Rust is a "free-form" language, meaning that all forms of whitespace serve
-only to separate _tokens_ in the grammar, and have no semantic meaning.
+only to separate _tokens_ in the grammar, and have no semantic significance.
 
 A Rust program has identical meaning if each whitespace element is replaced
 with any other legal whitespace element, such as a single space character.
@@ -244,7 +244,7 @@ f80 f16 f128
 class trait
 ~~~~~~~~
 
-Any of these may have special meaning in future versions of the language, do
+Any of these may have special meaning in future versions of the language, so
 are excluded from the `ident` rule.
 
 ### Literals
@@ -334,7 +334,7 @@ dec_lit : [ dec_digit | '_' ] + ;
 ~~~~~~~~
 
 A _number literal_ is either an _integer literal_ or a _floating-point
-literal_. The grammar for recognizing the two kinds of literals is mixed
+literal_. The grammar for recognizing the two kinds of literals is mixed,
 as they are differentiated by suffixes.
 
 ##### Integer literals
@@ -416,7 +416,7 @@ symbol : "::" "->"
 
 Symbols are a general class of printable [token](#tokens) that play structural
 roles in a variety of grammar productions. They are catalogued here for
-completeness as the set of remaining miscellaneous printable token that do not
+completeness as the set of remaining miscellaneous printable tokens that do not
 otherwise appear as [unary operators](#unary-operator-expressions), [binary
 operators](#binary-operator-expressions), [keywords](#keywords) or [reserved
 words](#reserved-words).
@@ -438,7 +438,7 @@ type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
 
 A _path_ is a sequence of one or more path components _logically_ separated by
 a namespace qualifier (`::`). If a path consists of only one component, it
-may refer to either an [item](#items) or a (variable)[#variables) in a local
+may refer to either an [item](#items) or a [variable](#variables) in a local
 control scope. If a path has multiple components, it refers to an item.
 
 Every item has a _canonical path_ within its [crate](#crates), but the path
@@ -454,7 +454,7 @@ x::y::z;
 ~~~~
 
 Path components are usually [identifiers](#identifiers), but the trailing
-component of a path may be an angle-bracket enclosed list of [type
+component of a path may be an angle-bracket-enclosed list of [type
 arguments](type-arguments). In [expression](#expressions) context, the type
 argument list is given after a final (`::`) namespace qualifier in order to
 disambiguate it from a relational expression involving the less-than symbol
