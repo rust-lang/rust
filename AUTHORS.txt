@@ -51,6 +51,7 @@ Roland Tanglao <roland@rolandtanglao.com>
 Roy Frostig <rfrostig@mozilla.com>
 Sean Stangl <sstangl@mozilla.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
+Taras Shpot <mrshpot@gmail.com>
 Tim Chevalier <chevalier@alum.wellesley.edu>
 Tycho Sci <tychosci@gmail.com>
 Wade Mealing <wmealing@gmail.com>
