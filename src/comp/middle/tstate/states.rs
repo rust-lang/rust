@@ -48,6 +48,22 @@ fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
     }
 }
 
+fn handle_fail(fcx: fn_ctxt, pres:prestate, post:poststate) {
+    // Remember what the old value of the "I return" trit was, so that
+    // we can avoid changing that (if it was true, there was a return
+    // that dominates this fail and the fail is unreachable)
+    if !promises(fcx, pres, fcx.enclosing.i_return)
+        // (only if we're in a diverging function -- you can fail when
+        // you're supposed to return, but not vice versa).
+        && fcx.enclosing.cf == noreturn {
+          kill_poststate_(fcx, fcx.enclosing.i_return, post);
+    } else {
+        // This code is unreachable (it's dominated by a return),
+        // so doesn't diverge.
+        kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
+    }
+}
+
 fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
    {changed: bool, post: poststate} {
     let changed = false;
@@ -189,6 +205,7 @@ fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
     alt cf {
       noreturn {
         let post = false_postcond(num_constraints(fcx.enclosing));
+        handle_fail(fcx, pres, post);
         changed |= set_poststate_ann(fcx.ccx, id, post);
       }
       _ { changed |= set_poststate_ann(fcx.ccx, id, rs.post); }
@@ -584,10 +601,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         /* if execution continues after fail, then everything is true!
         woo! */
         let post = false_postcond(num_constrs);
-        alt fcx.enclosing.cf {
-          noreturn { kill_poststate_(fcx, fcx.enclosing.i_return, post); }
-          _ { }
-        }
+        handle_fail(fcx, pres, post);
         ret set_prestate_ann(fcx.ccx, e.id, pres) |
                 set_poststate_ann(fcx.ccx, e.id, post) |
                 option::maybe(false, maybe_fail_val, {|fail_val|
