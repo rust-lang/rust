@@ -2411,7 +2411,6 @@ For example, imagine we wish to perform two expensive computations
 in parallel.  We might write something like:
 
 ~~~~
-## xfail-test
 # fn some_expensive_computation() -> int { 42 }
 # fn some_other_expensive_computation() {}
 let port = comm::port::<int>();
@@ -2459,9 +2458,10 @@ some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
 ~~~~
-## xfail-test
 # fn some_other_expensive_computation() {}
 # let port = comm::port::<int>();
+# let chan = comm::chan::<int>(port);
+# comm::send(chan, 0);
 some_other_expensive_computation();
 let result = comm::recv(port);
 ~~~~
@@ -2498,9 +2498,12 @@ strified version of the received value, `uint::to_str(value)`.
 
 Here is the code for the parent task:
 ~~~~
-## xfail-test
 # fn stringifier(from_par: comm::port<uint>,
-#                to_par: comm::chan<str>) {}
+#                to_par: comm::chan<str>) {
+#     comm::send(to_par, "22");
+#     comm::send(to_par, "23");
+#     comm::send(to_par, "0");
+# }
 fn main() {
     let t = task::spawn_connected(stringifier);
     comm::send(t.to_child, 22u);
