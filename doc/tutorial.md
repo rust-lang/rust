@@ -898,7 +898,7 @@ that callers have the flexibility to pass whatever they want.
 ~~~~
 ## xfail-test
 fn call_twice(f: fn()) { f(); f(); }
-call_twice({|| "I am a stack closure; });
+call_twice({|| "I am a stack closure"; });
 call_twice(fn@() { "I am a boxed closure"; });
 fn bare_function() { "I am a plain function"; }
 call_twice(bare_function);
