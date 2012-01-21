@@ -101,6 +101,7 @@ mod ct {
                 }
                 let curr2 = str::substr(s, i, 1u);
                 if str::eq(curr2, "%") {
+                    buf += curr2;
                     i += 1u;
                 } else {
                     buf = flush_buf(buf, pieces);
@@ -451,6 +452,16 @@ mod rt {
         ret false;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_percent() {
+        let s = #fmt["ab%%cd"];
+        assert(s == "ab%cd");
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
