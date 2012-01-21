@@ -34,16 +34,14 @@ type lookup_fn = fn@(file_pos) -> uint;
 
 fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
     let len = vec::len(map.files);
-    if len > 1u && map.files[len - 1u].name == "-" {
-        // the trailing "-" must be the core_macros inserted by expand_crate,
-        // exclude it from the targets to lookup
-        len = len - 1u;
-    }
     let a = 0u;
     let b = len;
     while b - a > 1u {
         let m = (a + b) / 2u;
         if lookup(map.files[m].start_pos) > pos { b = m; } else { a = m; }
+    }
+    if (a >= len) {
+        ret { filename: "-", line: 0u, col: 0u };
     }
     let f = map.files[a];
     a = 0u;
