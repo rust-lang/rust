@@ -642,7 +642,6 @@ you use the matching to get at the contents of data types. Remember
 that `(float, float)` is a tuple of two floats:
 
 ~~~~
-## xfail-test
 fn angle(vec: (float, float)) -> float {
     alt vec {
       (0f, y) if y < 0f { 1.5 * float::consts::pi }
@@ -896,7 +895,6 @@ should almost always specify the type of that argument as `fn()`, so
 that callers have the flexibility to pass whatever they want.
 
 ~~~~
-## xfail-test
 fn call_twice(f: fn()) { f(); f(); }
 call_twice({|| "I am a stack closure"; });
 call_twice(fn@() { "I am a boxed closure"; });
@@ -1156,7 +1154,6 @@ get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
 ~~~~
-## xfail-test
 # type point = {x: float, y: float};
 # enum shape { circle(point, float), rectangle(point, point) }
 fn area(sh: shape) -> float {
