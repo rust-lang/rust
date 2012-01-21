@@ -20,8 +20,8 @@ for line in f.readlines():
 
     if parsed["type"] == "snapshot":
         if (len(newestSet) == 0 or parsed["date"] > newestSet["date"]):
-            newestSet["date"] = parsed["date"] 
-            newestSet["rev"] = parsed["rev"] 
+            newestSet["date"] = parsed["date"]
+            newestSet["rev"] = parsed["rev"]
             newestSet["files"] = []
             addingMode = True
         else:
@@ -49,6 +49,7 @@ def download_new_file (date, rev, platform, hsh):
             raise Exception("bad hash on download")
 
 for ff in newestSet["files"]:
-   download_new_file (newestSet["date"], newestSet["rev"], ff["platform"], ff["hash"])
+   download_new_file (newestSet["date"], newestSet["rev"],
+                      ff["platform"], ff["hash"])
 
 
