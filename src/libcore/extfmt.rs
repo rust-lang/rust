@@ -453,15 +453,6 @@ mod rt {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_percent() {
-        let s = #fmt["ab%%cd"];
-        assert(s == "ab%cd");
-    }
-}
-
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

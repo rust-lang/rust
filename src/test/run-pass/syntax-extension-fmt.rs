@@ -21,6 +21,7 @@ fn main() {
     part4();
     part5();
     part6();
+    percent();
 }
 
 fn part1() {
@@ -228,4 +229,9 @@ fn part6() {
     test(#fmt["%- 05d", -1], "-1   ");
     test(#fmt["%-+05d", 1], "+1   ");
     test(#fmt["%-+05d", -1], "-1   ");
+}
+
+fn percent() {
+    let s = #fmt["ab%%cd"];
+    assert(s == "ab%cd");
 }
