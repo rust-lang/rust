@@ -6,11 +6,12 @@
 
 import sys, re;
 
-if len(sys.argv) < 2:
+if len(sys.argv) < 3:
     print("Please provide an input filename")
     sys.exit(1)
 
 filename = sys.argv[1]
+dest = sys.argv[2]
 f = open(filename)
 lines = f.readlines()
 f.close()
@@ -30,24 +31,31 @@ while cur < len(lines):
     elif re.match("~~~", line):
         block = ""
         ignore = False
+        xfail = False
         while cur < len(lines):
             line = lines[cur]
             cur += 1
             if re.match(r"\s*## (notrust|ignore)", line):
                 ignore = True
+            elif re.match(r"\s*## xfail-test", line):
+                xfail = True
             elif re.match("~~~", line):
                 break
             else:
                 block += re.sub("^# ", "", line)
         if not ignore:
             if not re.search(r"\bfn main\b", block):
-                if re.search(r"(^|\n) *(native|use|mod|import|export)\b", block):
+                if re.search(
+                    r"(^|\n) *(native|use|mod|import|export)\b", block):
                     block += "\nfn main() {}\n"
                 else:
                     block = "fn main() {\n" + block + "\n}\n"
             if not re.search(r"\buse std\b", block):
                 block = "use std;\n" + block;
-            filename = "fragments/" + str(chapter) + "_" + str(chapter_n) + ".rs"
+            if xfail:
+                block = "// xfail-test\n" + block
+            filename = (dest + "/" + str(chapter)
+                        + "_" + str(chapter_n) + ".rs")
             chapter_n += 1
             f = open(filename, 'w')
             f.write(block)

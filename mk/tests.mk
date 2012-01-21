@@ -99,6 +99,24 @@ tidy:
 	  	| xargs -n 10 python $(S)src/etc/tidy.py
 endif
 
+
+######################################################################
+# Extracting tests for docs
+######################################################################
+
+EXTRACT_TESTS := $(CFG_PYTHON) $(S)src/etc/extract-tests.py
+
+define DEF_DOC_TEST_HOST
+
+doc-tutorial-extract$(1):
+	@$$(call E, extract: tutorial tests)
+	$$(Q)$$(EXTRACT_TESTS) $$(S)doc/tutorial.md $(1)/test/doc-tutorial
+
+endef
+
+$(foreach host,$(CFG_TARGET_TRIPLES), \
+ $(eval $(call DEF_DOC_TEST_HOST,$(host))))
+
 ######################################################################
 # Rules for the test runners
 ######################################################################
@@ -121,7 +139,8 @@ check-stage$(1)-T-$(2)-H-$(3): tidy				\
 	check-stage$(1)-T-$(2)-H-$(3)-cfail			\
 	check-stage$(1)-T-$(2)-H-$(3)-bench			\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty                    \
-        check-stage$(1)-T-$(2)-H-$(3)-rustdoc
+        check-stage$(1)-T-$(2)-H-$(3)-rustdoc                   \
+        check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial
 
 check-stage$(1)-T-$(2)-H-$(3)-core:				\
 	check-stage$(1)-T-$(2)-H-$(3)-core-dummy
@@ -167,6 +186,9 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty:				\
 
 check-stage$(1)-T-$(2)-H-$(3)-rustdoc:				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy
+
+check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial: \
+	check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-dummy
 
 # Rules for the core library test runner
 
@@ -293,6 +315,12 @@ PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3) :=			\
         --build-base $(3)/test/pretty/			\
         --mode pretty
 
+DOC_TUTORIAL_ARGS$(1)-T-$(2)-H-$(3) :=			\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $(3)/test/doc-tutorial/		\
+        --build-base $(3)/test/doc-tutorial/		\
+        --mode run-pass
+
 check-stage$(1)-T-$(2)-H-$(3)-cfail-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
 		$$(SREQ$(1)_T_$(2)_H_$(3))		\
@@ -364,6 +392,14 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy:	\
 	@$$(call E, run pretty-pretty: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3))
+
+check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-dummy:       \
+		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
+	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+                doc-tutorial-extract$(3)
+	@$$(call E, run doc-tutorial: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
+                $$(DOC_TUTORIAL_ARGS$(1)-T-$(2)-H-$(3))
 
 endef
 
@@ -471,6 +507,9 @@ check-stage$(1)-H-$(2)-pretty-pretty:				\
 check-stage$(1)-H-$(2)-rustdoc:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rustdoc)
+check-stage$(1)-H-$(2)-doc-tutorial:				\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-doc-tutorial)
 
 endef
 
@@ -534,6 +573,9 @@ check-stage$(1)-H-all-pretty-pretty: \
 check-stage$(1)-H-all-rustdoc: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rustdoc)
+check-stage$(1)-H-all-doc-tutorial: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-doc-tutorial)
 
 endef
 
@@ -557,6 +599,7 @@ check-stage$(1)-pretty-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rfail
 check-stage$(1)-pretty-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-bench
 check-stage$(1)-pretty-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-pretty
 check-stage$(1)-rustdoc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustdoc
+check-stage$(1)-doc-tutorial: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial
 
 endef
 

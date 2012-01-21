@@ -642,6 +642,7 @@ you use the matching to get at the contents of data types. Remember
 that `(float, float)` is a tuple of two floats:
 
 ~~~~
+## xfail-test
 fn angle(vec: (float, float)) -> float {
     alt vec {
       (0f, y) if y < 0f { 1.5 * float::consts::pi }
@@ -895,6 +896,7 @@ should almost always specify the type of that argument as `fn()`, so
 that callers have the flexibility to pass whatever they want.
 
 ~~~~
+## xfail-test
 fn call_twice(f: fn()) { f(); f(); }
 call_twice({|| "I am a stack closure; });
 call_twice(fn@() { "I am a boxed closure"; });
@@ -1154,6 +1156,7 @@ get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
 ~~~~
+## xfail-test
 # type point = {x: float, y: float};
 # enum shape { circle(point, float), rectangle(point, point) }
 fn area(sh: shape) -> float {
@@ -2152,6 +2155,7 @@ hexadecimal string and prints to standard output. If you have the
 OpenSSL libraries installed, it should 'just work'.
 
 ~~~~
+## xfail-test
 use std;
 
 native mod crypto {
@@ -2182,6 +2186,7 @@ Before we can call `SHA1`, we have to declare it. That is what this
 part of the program is responsible for:
 
 ~~~~
+## xfail-test
 native mod crypto {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 }
@@ -2197,6 +2202,7 @@ link that in. If you want the module to have a different name from the
 actual library, you can use the `"link_name"` attribute, like:
 
 ~~~~
+## xfail-test
 #[link_name = "crypto"]
 native mod something {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
@@ -2229,6 +2235,7 @@ The native `SHA1` function is declared to take three arguments, and
 return a pointer.
 
 ~~~~
+## xfail-test
 # native mod crypto {
 fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 # }
@@ -2407,6 +2414,7 @@ For example, imagine we wish to perform two expensive computations
 in parallel.  We might write something like:
 
 ~~~~
+## xfail-test
 # fn some_expensive_computation() -> int { 42 }
 # fn some_other_expensive_computation() {}
 let port = comm::port::<int>();
@@ -2454,6 +2462,7 @@ some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
 ~~~~
+## xfail-test
 # fn some_other_expensive_computation() {}
 # let port = comm::port::<int>();
 some_other_expensive_computation();
@@ -2492,7 +2501,7 @@ strified version of the received value, `uint::to_str(value)`.
 
 Here is the code for the parent task:
 ~~~~
-
+## xfail-test
 # fn stringifier(from_par: comm::port<uint>,
 #                to_par: comm::chan<str>) {}
 fn main() {
