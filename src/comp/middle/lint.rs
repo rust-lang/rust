@@ -1,11 +1,96 @@
 import driver::session::session;
 import middle::ty::ctxt;
 import syntax::{ast, visit};
-
-type crate_ctxt = {tcx: ty::ctxt};
+import front::attr;
+import std::io;
+import io::writer_util;
 
 enum option {
     ctypes,
+}
+
+impl opt_ for option {
+    fn desc() -> str {
+        "lint: " + alt self {
+          ctypes { "ctypes usage checking" }
+        }
+    }
+    fn run(tcx: ty::ctxt, crate: @ast::crate, time_pass: bool) {
+        let checker = alt self {
+          ctypes {
+            bind check_ctypes(tcx, crate)
+          }
+        };
+        time(time_pass, self.desc(), checker);
+    }
+}
+
+// FIXME: Copied from driver.rs, to work around a bug(#1566)
+fn time(do_it: bool, what: str, thunk: block()) {
+    if !do_it{ ret thunk(); }
+    let start = std::time::precise_time_s();
+    thunk();
+    let end = std::time::precise_time_s();
+    io::stdout().write_str(#fmt("time: %3.3f s\t%s\n",
+                                end - start, what));
+}
+
+// Merge lint options specified by crate attributes and rustc command
+// line. Precedence: cmdline > attribute > default
+fn merge_opts(attrs: [ast::attribute], cmd_opts: [(option, bool)]) ->
+    [(option, bool)] {
+    fn str_to_option(name: str) -> (option, bool) {
+        ret alt name {
+          "ctypes" { (ctypes, true) }
+          "no_ctypes" { (ctypes, false) }
+        }
+    }
+
+    fn meta_to_option(meta: @ast::meta_item) -> (option, bool) {
+        ret alt meta.node {
+          ast::meta_word(name) {
+            str_to_option(name)
+          }
+        };
+    }
+
+    fn default() -> [(option, bool)] {
+        [(ctypes, true)]
+    }
+
+    fn contains(xs: [(option, bool)], x: option) -> bool {
+        for (o, _) in xs {
+            if o == x { ret true; }
+        }
+        ret false;
+    }
+
+    let result = cmd_opts;
+
+    let lint_metas =
+        attr::attr_metas(attr::find_attrs_by_name(attrs, "lint"));
+
+    vec::iter(lint_metas) {|mi|
+        alt mi.node {
+          ast::meta_list(_, list) {
+            vec::iter(list) {|e|
+                let (o, v) = meta_to_option(e);
+                if !contains(cmd_opts, o) {
+                    result += [(o, v)];
+                }
+            }
+          }
+          _ { }
+        }
+    };
+
+    for (o, v) in default() {
+        if !contains(result, o) {
+            result += [(o, v)];
+        }
+    }
+
+    ret result;
 }
 
 fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
@@ -51,6 +136,16 @@ fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), visit);
+}
+
+fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
+               opts: [(option, bool)], time: bool) {
+    let lint_opts = lint::merge_opts(crate.node.attrs, opts);
+    for (lopt, switch) in lint_opts {
+        if switch == true {
+            lopt.run(tcx, crate, time);
+        }
+    }
 }
 //
 // Local Variables:

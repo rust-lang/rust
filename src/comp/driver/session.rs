@@ -34,7 +34,7 @@ type options =
      debuginfo: bool,
      extra_debuginfo: bool,
      verify: bool,
-     lint_opts: [lint::option],
+     lint_opts: [(lint::option, bool)],
      save_temps: bool,
      stats: bool,
      time_passes: bool,
