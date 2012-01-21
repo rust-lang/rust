@@ -14,15 +14,18 @@ if !exists("main_syntax")
   let main_syntax='rust'
 endif
 
-syn keyword   rustKeyword     alt as assert auth be bind block break chan
+syn keyword   rustKeyword     alt as assert be bind block break
 syn keyword   rustKeyword     check claim cont const copy do else enum export fail
 syn keyword   rustKeyword     fn for if iface impl import in inline lambda let log
-syn keyword   rustKeyword     log_err mod mutable native note of prove pure
-syn keyword   rustKeyword     resource ret self tag type unsafe use while
-syn keyword   rustKeyword     with
+syn keyword   rustKeyword     mod mutable native note of prove pure
+syn keyword   rustKeyword     resource ret self syntax type unchecked
+syn keyword   rustKeyword     unsafe use while with
+
+" Reserved words
+syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128 class trait
 
 syn keyword   rustType        any int uint float char bool u8 u16 u32 u64 f32
-syn keyword   rustType        f64 i8 i16 i32 i64 str task
+syn keyword   rustType        f64 i8 i16 i32 i64 str
 
 syn keyword   rustBoolean     true false
 
