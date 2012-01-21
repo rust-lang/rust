@@ -33,7 +33,7 @@ Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
 Kevin Atkinson <kevina@cs.utah.edu>
 Kevin Cantu <me@kevincantu.org>
 Lennart Kudling
-Lindsey Kuper <lkuper@mozilla.com>
+Lindsey Kuper <lindsey@rockstargirl.org>
 Marijn Haverbeke <marijnh@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Michael Bebenita <mbebenita@mozilla.com>
