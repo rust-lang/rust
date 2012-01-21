@@ -908,8 +908,7 @@ Unique closures, written `fn~` in analogy to the `~` pointer type (see
 next section), hold on to things that can safely be sent between
 processes. They copy the values they close over, much like boxed
 closures, but they also 'own' them—meaning no other code can access
-them. Unique closures mostly exist to for spawning new
-[tasks](#tasks).
+them. Unique closures mostly exist for spawning new [tasks](#tasks).
 
 ### Shorthand syntax
 
@@ -1045,7 +1044,7 @@ not an actual new type.)
 
 ## Record patterns
 
-Records can be destructured on in `alt` patterns. The basic syntax is
+Records can be destructured in `alt` patterns. The basic syntax is
 `{fieldname: pattern, ...}`, but the pattern for a field can be
 omitted as a shorthand for simply binding the variable with the same
 name as the field.
@@ -1378,8 +1377,8 @@ refer to it and be used to overwrite it, or a closure might assign a
 new value to it.
 
 Fortunately, Rust tasks are single-threaded worlds, which share no
-data with other tasks, and that most data is immutable. This allows
-most argument-passing situations to be proved safe without further
+data with other tasks, and most data is immutable. This allows most
+argument-passing situations to be proved safe without further
 difficulty.
 
 Take the following program:
