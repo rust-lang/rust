@@ -2391,11 +2391,35 @@ fn parse_import(p: parser) -> ast::view_item_ {
     }
 }
 
+fn parse_tag_export(p:parser, tyname:ast::ident) -> ast::view_item_ {
+    let tagnames:[ast::ident] =
+        parse_seq(token::LBRACE, token::RBRACE,
+                    seq_sep(token::COMMA), {|p| parse_ident(p) }, p).node;
+    let id = p.get_id();
+    if vec::is_empty(tagnames) {
+       ret ast::view_item_export_tag_none(tyname, id);
+    }
+    else {
+       ret ast::view_item_export_tag_some(tyname, tagnames, id);
+    }
+}
+
 fn parse_export(p: parser) -> ast::view_item_ {
-    let ids =
-        parse_seq_to_before_end(token::SEMI, seq_sep(token::COMMA),
-                                parse_ident, p);
-    ret ast::view_item_export(ids, p.get_id());
+    let first = parse_ident(p);
+    alt p.token {
+       token::COLON {
+           p.bump();
+           expect(p, token::COLON);
+           ret parse_tag_export(p, first);
+       }
+       t {
+           if t == token::COMMA { p.bump(); }
+           let ids =
+               parse_seq_to_before_end(token::SEMI, seq_sep(token::COMMA),
+                                       parse_ident, p);
+           ret ast::view_item_export(vec::concat([[first], ids]), p.get_id());
+       }
+    }
 }
 
 fn parse_view_item(p: parser) -> @ast::view_item {

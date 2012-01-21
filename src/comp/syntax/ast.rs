@@ -439,6 +439,10 @@ enum view_item_ {
     view_item_import_glob(@simple_path, node_id),
     view_item_import_from(@simple_path, [import_ident], node_id),
     view_item_export([ident], node_id),
+    // export foo::{}
+    view_item_export_tag_none(ident, node_id),
+    // export foo::{bar, baz, blat}
+    view_item_export_tag_some(ident, [ident], node_id)
 }
 
 // Meta-data associated with an item
