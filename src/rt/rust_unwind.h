@@ -17,8 +17,12 @@ typedef int _Unwind_Reason_Code;
 
 #if (defined __APPLE__) || (defined __clang__)
 
+#ifndef __FreeBSD__
+
 typedef int _Unwind_Action;
 typedef void _Unwind_Exception;
+
+#endif
 
 #endif
 
