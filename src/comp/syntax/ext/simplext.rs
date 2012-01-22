@@ -338,9 +338,9 @@ fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
     if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret (p, s); }
     ret alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
           some(match_ident(id)) {
-            ({global: false, idents: [id.node], types: []}, s)
+            ({global: false, idents: [id.node], types: []}, id.span)
           }
-          some(match_path(a_pth)) { (a_pth.node, s) }
+          some(match_path(a_pth)) { (a_pth.node, a_pth.span) }
           some(m) { match_error(cx, m, "a path") }
           none { (p, s) }
         }
@@ -363,10 +363,10 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                 (expr_path(@respan(id.span,
                                    {global: false,
                                     idents: [id.node],
-                                    types: []})), s)
+                                    types: []})), id.span)
               }
               some(match_path(a_pth)) { (expr_path(a_pth), s) }
-              some(match_expr(a_exp)) { (a_exp.node, s) }
+              some(match_expr(a_exp)) { (a_exp.node, a_exp.span) }
               some(m) { match_error(cx, m, "an expression") }
               none { orig(e, s, fld) }
             }
@@ -385,7 +385,7 @@ fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
             alt path_to_ident(pth) {
               some(id) {
                 alt follow_for_trans(cx, b.find(id), idx_path) {
-                  some(match_ty(ty)) { (ty.node, s) }
+                  some(match_ty(ty)) { (ty.node, ty.span) }
                   some(m) { match_error(cx, m, "a type") }
                   none { orig(t, s, fld) }
                 }
@@ -409,7 +409,7 @@ fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
     ret alt block_to_ident(blk) {
           some(id) {
             alt follow_for_trans(cx, b.find(id), idx_path) {
-              some(match_block(new_blk)) { (new_blk.node, s) }
+              some(match_block(new_blk)) { (new_blk.node, new_blk.span) }
 
 
 
