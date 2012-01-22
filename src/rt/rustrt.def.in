@@ -88,3 +88,12 @@ rust_uv_unref
 rust_uv_idle_init
 rust_uv_idle_start
 rust_uv_size_of_idle_t
+rust_uvtmp_create_thread
+rust_uvtmp_start_thread
+rust_uvtmp_join_thread
+rust_uvtmp_delete_thread
+rust_uvtmp_connect
+rust_uvtmp_close_connection
+rust_uvtmp_write
+rust_uvtmp_read_start
+rust_uvtmp_delete_buf

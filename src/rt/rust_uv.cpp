@@ -48,3 +48,4 @@ extern "C" CDECL size_t
 rust_uv_size_of_idle_t() {
   return sizeof(uv_idle_t);
 }
+
