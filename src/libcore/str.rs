@@ -1768,7 +1768,7 @@ mod tests {
         assert false == any("ymca", char::is_uppercase);
         assert true  == any("YMCA", char::is_uppercase);
         assert true == any("yMCA", char::is_uppercase);
-        assert true == any("YMCy", char::is_uppercase);
+        assert true == any("Ymcy", char::is_uppercase);
     }
 
     #[test]
