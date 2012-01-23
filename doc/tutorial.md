@@ -91,11 +91,6 @@ packages:
   * gnu make 3.81 or later
   * curl
 
-On Windows Rust requires [MinGW][mingw] (version 20110802 is known to
-work).  It is currently recommended that windows development be done
-under the MinGW shell to ensure that the environment is configured
-correctly.
-
 Assuming you're on a relatively modern Linux system and have met the
 prerequisites, something along these lines should work:
 
@@ -107,6 +102,9 @@ $ cd rust-0.1
 $ ./configure
 $ make && make install
 ~~~~
+
+Building from source on windows requires some extra steps, please see
+the [getting started][wiki-get-started] page on the Rust wiki.
 
 When complete, `make install` will place the following programs into
 `/usr/local/bin`:
@@ -120,10 +118,10 @@ a set of host and target libraries under `/usr/local/lib/rustc`.
 
 The install locations can be adjusted by passing a `--prefix` argument
 to `configure`. Various other options are also supported, pass `--help`
-for more information on them. 
+for more information on them.
 
+[wiki-get-started]: https://github.com/mozilla/rust/wiki/Doc-getting-started
 [tarball]: http://dl.rust-lang.org/dist/rust-0.1.tar.gz
-[mingw]: http://sourceforge.net/projects/mingw/files/Installer/mingw-get-inst/mingw-get-inst-20110802/mingw-get-inst-20110802.exe/download
 
 ## Compiling your first program
 
