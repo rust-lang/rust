@@ -1,19 +1,18 @@
-// xfail-test
+// error-pattern:unresolved name: northrup
+import alder::*;
+
 mod alder {
   export burnside;
   export everett::{flanders};
   export irving::{johnson, kearney};
   export marshall::{};
 
-  tag burnside { couch, davis }
-  tag everett { flanders, glisan, hoyt }
-  tag irving { johnson, kearney, lovejoy }
-  tag marshall { northrup, overton }
+  enum burnside { couch, davis }
+  enum everett { flanders, glisan, hoyt }
+  enum irving { johnson, kearney, lovejoy }
+  enum marshall { northrup, overton }
 }
-
-import alder::*;
 
 fn main() {
   let savier: marshall = northrup;
-
 }

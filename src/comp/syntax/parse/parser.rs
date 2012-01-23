@@ -194,8 +194,16 @@ fn spanned<T: copy>(lo: uint, hi: uint, node: T) -> spanned<T> {
 fn parse_ident(p: parser) -> ast::ident {
     alt p.token {
       token::IDENT(i, _) { p.bump(); ret p.get_str(i); }
-      _ { p.fatal("expecting ident"); }
+      _ { p.fatal("expecting ident, found "
+                  + token::to_str(p.reader, p.token)); }
     }
+}
+
+fn parse_import_ident(p: parser) -> ast::import_ident {
+    let lo = p.span.lo;
+    let ident = parse_ident(p);
+    let hi = p.span.hi;
+    ret spanned(lo, hi, {name: ident, id: p.get_id()});
 }
 
 fn parse_value_ident(p: parser) -> ast::ident {
@@ -2316,12 +2324,6 @@ fn parse_rest_import_name(p: parser, first: ast::ident,
 
 
           token::LBRACE {
-            fn parse_import_ident(p: parser) -> ast::import_ident {
-                let lo = p.span.lo;
-                let ident = parse_ident(p);
-                let hi = p.span.hi;
-                ret spanned(lo, hi, {name: ident, id: p.get_id()});
-            }
             let from_idents_ =
                 parse_seq(token::LBRACE, token::RBRACE, seq_sep(token::COMMA),
                           parse_import_ident, p).node;
@@ -2392,9 +2394,9 @@ fn parse_import(p: parser) -> ast::view_item_ {
 }
 
 fn parse_tag_export(p:parser, tyname:ast::ident) -> ast::view_item_ {
-    let tagnames:[ast::ident] =
+    let tagnames:[ast::import_ident] =
         parse_seq(token::LBRACE, token::RBRACE,
-                    seq_sep(token::COMMA), {|p| parse_ident(p) }, p).node;
+             seq_sep(token::COMMA), {|p| parse_import_ident(p) }, p).node;
     let id = p.get_id();
     if vec::is_empty(tagnames) {
        ret ast::view_item_export_tag_none(tyname, id);
@@ -2407,9 +2409,8 @@ fn parse_tag_export(p:parser, tyname:ast::ident) -> ast::view_item_ {
 fn parse_export(p: parser) -> ast::view_item_ {
     let first = parse_ident(p);
     alt p.token {
-       token::COLON {
+       token::MOD_SEP {
            p.bump();
-           expect(p, token::COLON);
            ret parse_tag_export(p, first);
        }
        t {

@@ -113,12 +113,16 @@ fn float_ty_to_str(t: float_ty) -> str {
 
 fn is_exported(i: ident, m: _mod) -> bool {
     let nonlocal = true;
+    let parent_tag : option<ident> = none;
     for it: @item in m.items {
         if it.ident == i { nonlocal = false; }
         alt it.node {
           item_tag(variants, _) {
             for v: variant in variants {
-                if v.node.name == i { nonlocal = false; }
+                if v.node.name == i {
+                   nonlocal = false;
+                   parent_tag = some(it.ident);
+                }
             }
           }
           _ { }
@@ -129,8 +133,27 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for vi: @view_item in m.view_items {
         alt vi.node {
           view_item_export(ids, _) {
-            for id in ids { if str::eq(i, id) { ret true; } }
+              // If any of ids is a tag, we want to consider
+              // all the variants to be exported
+            for id in ids {
+                if str::eq(i, id) { ret true; }
+                alt parent_tag {
+                    some(parent_tag_id) {
+                        if str::eq(id, parent_tag_id) { ret true; }
+                    }
+                    _ { }
+                 }
+            }
             count += 1u;
+          }
+          view_item_export_tag_none(id, _) {
+              if str::eq(i, id) { ret true; }
+              count += 1u;
+          }
+          view_item_export_tag_some(id, ids, _) {
+              if str::eq(i, id) { ret true; }
+              for id in ids { if str::eq(i, id.node.name) { ret true; } }
+              count += 1u;
           }
           _ {/* fall through */ }
         }

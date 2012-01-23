@@ -1403,6 +1403,8 @@ fn index_mod(md: ast::_mod) -> mod_index {
           }
           //globbed imports have to be resolved lazily.
           ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) {}
+          // exports: ignore
+          _ {}
         }
     }
     for it: @ast::item in md.items {
