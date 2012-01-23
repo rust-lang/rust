@@ -190,7 +190,7 @@ with any other legal whitespace element, such as a single space character.
 ## Tokens
 
 ~~~~~~~~ {.ebnf .gram}
-simple_token : keyword | reserved | unop | binop ; 
+simple_token : keyword | reserved | unop | binop ;
 token : simple_token | ident | literal | symbol | whitespace token ;
 ~~~~~~~~
 
@@ -511,7 +511,7 @@ from the source file name, with the `.rs` extension removed.
 ## Crate files
 
 ~~~~~~~~ {.ebnf .gram}
-crate : attribute [ ';' | attribute* directive ] 
+crate : attribute [ ';' | attribute* directive ]
       | directive ;
 directive : view_item | dir_directive | source_directive ;
 ~~~~~~~~
@@ -730,7 +730,7 @@ independently declared with [`use` declarations](#use-declarations).
 
 Imports support a number of "convenience" notations:
 
-  * Importing as a different name than the imported name, using the 
+  * Importing as a different name than the imported name, using the
     syntax `import x = p::q::r;`.
   * Importing a list of paths differing only in final element, using
     the glob-like brace syntax `import a::b::{c,d,e,f};`
@@ -1153,7 +1153,7 @@ An _implementation item_ provides an implementation of an
 
 ~~~~
 type circle = {radius: float, center: point};
-    
+
 impl circle_shape of shape for circle {
     fn draw(s: surface) { do_draw_circle(s, self); }
     fn bounding_box() -> bounding_box {
@@ -1313,7 +1313,7 @@ declaring a function-local item.
 
 ~~~~~~~~{.ebnf .gram}
 let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
-init : [ '=' | '<-' ] expr ; 
+init : [ '=' | '<-' ] expr ;
 ~~~~~~~~
 
 
@@ -1941,7 +1941,7 @@ for e: foo in v {
 ~~~~~~~~{.ebnf .gram}
 if_expr : "if" expr '{' block '}'
           [ "else" else_tail ] ? ;
-          
+
 else_tail : "else" [ if_expr
                    | '{' block '} ] ;
 ~~~~~~~~
@@ -2331,11 +2331,11 @@ introduced inline in source code using the `macro` extension, may be used. The
 current built-in syntax extensions are:
 
 
-* `fmt` expands into code to produce a formatted string, similar to 
+* `fmt` expands into code to produce a formatted string, similar to
       `printf` from C.
 * `env` expands into a string literal containing the value of that
       environment variable at compile-time.
-* `concat_idents` expands into an identifier which is the 
+* `concat_idents` expands into an identifier which is the
       concatenation of its arguments.
 * `ident_to_str` expands into a string literal containing the name of
       its argument (which must be a literal).
@@ -2750,7 +2750,7 @@ A _constraint_ is a predicate applied to specific slots.
 For example, consider the following code:
 
 ~~~~~~~~
-pure fn is_less_than(int a, int b) -> bool {
+pure fn is_less_than(a: int, b: int) -> bool {
      ret a < b;
 }
 
