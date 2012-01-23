@@ -1113,6 +1113,33 @@ fn escape(s: str) -> str {
     r
 }
 
+/*
+Function: all
+
+Return true if a predicate matches all characters
+
+If the string contains no characters
+*/
+fn all(ss: str, ff: fn&(char) -> bool) -> bool {
+    str::loop_chars(ss, ff)
+}
+
+/*
+Function: map
+
+Apply a function to each character
+*/
+fn map(ss: str, ff: fn&(char) -> char) -> str {
+    let result = "";
+
+    str::iter_chars(ss, {|cc|
+        str::push_char(result, ff(cc));
+    });
+
+    ret result;
+}
+
+
 #[cfg(test)]
 mod tests {
 
@@ -1572,4 +1599,19 @@ mod tests {
         assert(escape("abc\ndef") == "abc\\ndef");
         assert(escape("abc\"def") == "abc\\\"def");
     }
+
+   #[test]
+   fn test_map () {
+      assert "" == map("", char::to_upper);
+      assert "YMCA" == map("ymca", char::to_upper);
+   }
+
+   #[test]
+   fn test_all () {
+       assert true  == all("", char::is_uppercase);
+       assert false == all("ymca", char::is_uppercase);
+       assert true  == all("YMCA", char::is_uppercase);
+       assert false == all("yMCA", char::is_uppercase);
+       assert false == all("YMCy", char::is_uppercase);
+   }
 }
