@@ -1,11 +1,5 @@
 ### Installing Rust
 
-Windows installer
-=========================
-
-FIXME: the installer is broken and borks %PATH%
-
-
 Source build
 =========================
 
