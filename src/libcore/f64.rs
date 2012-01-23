@@ -9,6 +9,22 @@ Floating point operations and constants for `f64`
 import cmath::c_double::*;
 import cmath::c_double_targ_consts::*;
 
+// FIXME find out why these have to be exported explicitly
+
+export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
+export is_positive, is_negative, is_nonpositive, is_nonnegative;
+export is_zero, is_infinite, is_finite;
+export NaN, is_NaN, infinity, neg_infinity;
+export consts;
+export logarithm;
+export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh;
+export erf, erfc, exp, expm1, exp2, abs, abs_sub;
+export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
+export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
+export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
+export signbit;
+export epsilon;
+
 type t = f64;
 
 // These are not defined inside consts:: for consistency with
