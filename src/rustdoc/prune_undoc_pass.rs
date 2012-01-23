@@ -18,11 +18,26 @@ fn run(
         mutable have_docs: true
     };
     let fold = fold::fold({
+        fold_mod: fold_mod,
         fold_fn: fold_fn,
+        fold_modlist: fold_modlist,
         fold_fnlist: fold_fnlist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
+}
+
+fn fold_mod(
+    fold: fold::fold<ctxt>,
+    doc: doc::moddoc
+) -> doc::moddoc {
+    let doc = fold::default_seq_fold_mod(fold, doc);
+    fold.ctxt.have_docs =
+        doc.brief != none
+        || doc.desc != none
+        || vec::is_not_empty(*doc.mods)
+        || vec::is_not_empty(*doc.fns);
+    ret doc;
 }
 
 fn fold_fn(
@@ -34,6 +49,20 @@ fn fold_fn(
         || doc.desc != none
         || doc.return.desc != none;
     ret doc;
+}
+
+fn fold_modlist(
+    fold: fold::fold<ctxt>,
+    list: doc::modlist
+) -> doc::modlist {
+    doc::modlist(vec::filter_map(*list) {|doc|
+        let doc = fold_mod(fold, doc);
+        if fold.ctxt.have_docs {
+            some(doc)
+        } else {
+            none
+        }
+    })
 }
 
 fn fold_fnlist(
@@ -52,6 +81,35 @@ fn fold_fnlist(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn should_elide_undocumented_mods() {
+        let source = "mod a { }";
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = run(srv, doc);
+        assert vec::is_empty(*doc.topmod.mods);
+    }
+
+    #[test]
+    fn should_not_elide_undocument_mods_with_documented_mods() {
+        let source = "mod a { #[doc = \"b\"] mod b { } }";
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        let doc = run(srv, doc);
+        assert vec::is_not_empty(*doc.topmod.mods);
+    }
+
+    #[test]
+    fn should_not_elide_undocument_mods_with_documented_fns() {
+        let source = "mod a { #[doc = \"b\"] fn b() { } }";
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        let doc = run(srv, doc);
+        assert vec::is_not_empty(*doc.topmod.mods);
+    }
+
     #[test]
     fn should_elide_undocumented_fns() {
         let source = "fn a() { }";
