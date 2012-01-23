@@ -14,7 +14,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
-       contains, iter_chars, chars_iter, bytes_iter, words_iter,
+       contains, iter_chars, chars_iter, bytes_iter, words_iter, lines_iter,
        loop_chars, loop_chars_sub, escape, any, all, map, windowed;
 
 #[abi = "cdecl"]
@@ -924,6 +924,15 @@ fn words_iter(ss: str, ff: fn&(&&str)) {
 }
 
 /*
+Function: lines_iter
+
+Apply a function to each lines (by '\n')
+*/
+fn lines_iter(ss: str, ff: fn&(&&str)) {
+    vec::iter(lines(ss), ff)
+}
+
+/*
 Function: concat
 
 Concatenate a vector of strings
@@ -1708,11 +1717,26 @@ mod tests {
             }
             ii += 1;
         }
+
+        words_iter("") {|_x| fail; } // should not fail
     }
 
     #[test]
-    fn test_words_iter_() {
-        words_iter("") {|_ww| fail; } // should not fail
+    fn test_lines_iter () {
+        let lf = "\nMary had a little lamb\nLittle lamb\n";
+
+        let ii = 0;
+
+        lines_iter(lf) {|x|
+            alt ii {
+                0 { assert "" == x; }
+                1 { assert "Mary had a little lamb" == x; }
+                2 { assert "Little lamb" == x; }
+                3 { assert "" == x; }
+                _ { () }
+            }
+            ii += 1;
+        }
     }
 
     #[test]
