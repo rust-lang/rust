@@ -14,7 +14,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
-       contains, iter_chars, chars_iter, bytes_iter,
+       contains, iter_chars, chars_iter, bytes_iter, words_iter,
        loop_chars, loop_chars_sub, escape, any, all, map, windowed;
 
 #[abi = "cdecl"]
@@ -915,6 +915,15 @@ fn words(ss: str) -> [str] {
 }
 
 /*
+Function: words_iter
+
+Apply a function to each word
+*/
+fn words_iter(ss: str, ff: fn&(&&str)) {
+   vec::iter(words(ss), ff)
+}
+
+/*
 Function: concat
 
 Concatenate a vector of strings
@@ -1649,7 +1658,7 @@ mod tests {
             i += 1;
         }
 
-        iter_chars("") {|ch| fail; } // should not fail
+        iter_chars("") {|_ch| fail; } // should not fail
     }
 
     #[test]
@@ -1681,6 +1690,29 @@ mod tests {
         }
 
         bytes_iter("") {|bb| assert bb == 0u8; }
+    }
+
+    #[test]
+    fn test_words_iter() {
+        let data = "\nMary had a little lamb\nLittle lamb\n";
+
+        let ii = 0;
+
+        words_iter(data) {|ww|
+            alt ii {
+              0 { assert "Mary"   == ww; }
+              1 { assert "had"    == ww; }
+              2 { assert "a"      == ww; }
+              3 { assert "little" == ww; }
+              _ { () }
+            }
+            ii += 1;
+        }
+    }
+
+    #[test]
+    fn test_words_iter_() {
+        words_iter("") {|_ww| fail; } // should not fail
     }
 
     #[test]
